@@ -27,6 +27,28 @@
 }
 ```
 
+使用 “通义千问” 大语言模型:
+
+```java
+ public static void main(String[] args) throws InterruptedException {
+
+    QwenLlmConfig config = new QwenLlmConfig();
+    config.setApiKey("sk-28a6be3236****");
+    config.setModel("qwen-turbo");
+
+    Llm llm = new QwenLlm(config);
+
+    Prompt  prompt = new SimplePrompt("请写一个关于小兔子战胜大灰狼的故事。");
+    llm.chat(prompt, (llmInstance, message) -> {
+        System.out.println("--->" + message.getContent());
+    });
+
+    Thread.sleep(10000);
+}
+```
+
+
+
 使用 “讯飞星火” 大语言模型:
 
 ```java

@@ -26,6 +26,28 @@ use OpenAi LLM:
 }
 ```
 
+
+use Qwen LLM:
+
+```java
+ public static void main(String[] args) throws InterruptedException {
+
+    QwenLlmConfig config = new QwenLlmConfig();
+    config.setApiKey("sk-28a6be3236****");
+    config.setModel("qwen-turbo");
+
+    Llm llm = new QwenLlm(config);
+
+    Prompt  prompt = new SimplePrompt("Please write a story about a little rabbit defeating a big bad wolf");
+    llm.chat(prompt, (llmInstance, message) -> {
+        System.out.println("--->" + message.getContent());
+    });
+
+    Thread.sleep(10000);
+}
+```
+
+
 use SparkAi LLM:
 
 ```java
