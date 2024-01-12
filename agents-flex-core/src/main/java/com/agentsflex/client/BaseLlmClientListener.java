@@ -9,6 +9,7 @@ public abstract class BaseLlmClientListener implements LlmClientListener{
     private final ChatListener chatListener;
 
     public BaseLlmClientListener(Llm llm,ChatListener chatListener) {
+
         this.llm = llm;
         this.chatListener = chatListener;
     }

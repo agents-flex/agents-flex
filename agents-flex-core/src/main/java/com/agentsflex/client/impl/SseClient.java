@@ -3,21 +3,19 @@ package com.agentsflex.client.impl;
 import com.agentsflex.client.LlmClient;
 import com.agentsflex.client.LlmClientListener;
 import okhttp3.*;
-import okhttp3.internal.sse.RealEventSource;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class SseClient extends EventSourceListener implements LlmClient {
 
     private OkHttpClient client;
-    private RealEventSource eventSource;
+    private EventSource eventSource;
 
     private LlmClientListener listener;
     private boolean isStop = false;
@@ -35,7 +33,7 @@ public class SseClient extends EventSourceListener implements LlmClient {
         }
 
         MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
-        RequestBody body = RequestBody.create(payload,mediaType);
+        RequestBody body = RequestBody.create(payload, mediaType);
         rBuilder.post(body);
 
 
@@ -44,16 +42,11 @@ public class SseClient extends EventSourceListener implements LlmClient {
             .readTimeout(3, TimeUnit.MINUTES)
             .build();
 
-//        this.eventSource = new RealEventSource(rBuilder.build(), this);
-//        this.eventSource.connect(this.client);
-
-
-        this.listener.onStart(this);
 
         EventSource.Factory factory = EventSources.createFactory(this.client);
-        factory.newEventSource(rBuilder.build(),this);
+        this.eventSource = factory.newEventSource(rBuilder.build(), this);
 
-
+        this.listener.onStart(this);
     }
 
     @Override
@@ -69,7 +62,6 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
     @Override
     public void onClosed(@NotNull EventSource eventSource) {
-        System.out.println("onClosed-->>" + eventSource);
         if (!isStop) {
             this.isStop = true;
             this.listener.onStop(this);
@@ -78,33 +70,16 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
     @Override
     public void onEvent(@NotNull EventSource eventSource, @Nullable String id, @Nullable String type, @NotNull String data) {
-        System.out.println("onEvent-->>" + eventSource);
-        System.out.println("onEvent-->>" + id);
-        System.out.println("onEvent-->>" + type);
-        System.out.println("onEvent-->>" + data);
         this.listener.onMessage(this, data);
     }
 
     @Override
     public void onFailure(@NotNull EventSource eventSource, @Nullable Throwable t, @Nullable Response response) {
-        System.out.println("onFailure-->>" + eventSource);
-        System.out.println("onFailure-->>" + t);
-        System.out.println("onFailure-->>" + response);
-        String string = null;
-        try {
-            string = response.body().string();
-            System.out.println("onFailure-->>" + string);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
         this.listener.onFailure(this, t);
     }
 
     @Override
     public void onOpen(@NotNull EventSource eventSource, @NotNull Response response) {
         //super.onOpen(eventSource, response);
-        System.out.println("onOpen-->>" + eventSource);
-        System.out.println("onOpen-->>" + response);
     }
 }

@@ -3,7 +3,7 @@
 
 
 
-# Agents-Flex： 一个优雅的 LLM（大语言模型） 应用开发
+# Agents-Flex： 一个优雅的 LLM（大语言模型） 应用开发框架
 
 
 ## Hello Word
