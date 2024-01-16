@@ -5,7 +5,7 @@
 # Agents-Flex is an elegant LLM Application Framework like LangChain with Java.
 
 
-## Hello Word
+## Simple Chat
 
 use OpenAi LLM:
 
@@ -69,3 +69,40 @@ use SparkAi LLM:
 }
 ```
 
+## Chat With Histories
+
+
+```java
+ public static void main(String[] args) {
+
+    SparkLlmConfig config = new SparkLlmConfig();
+    config.setAppId("****");
+    config.setApiKey("****");
+    config.setApiSecret("****");
+
+    // Create LLM
+    Llm llm = new SparkLlm(config);
+
+    // Create Histories prompt
+    HistoriesPrompt prompt = new HistoriesPrompt();
+
+    System.out.println("ask for something...");
+    Scanner scanner = new Scanner(System.in);
+
+    //wait for user input
+    String userInput = scanner.nextLine();
+
+    while (userInput != null){
+
+        prompt.addMessage(new HumanMessage(userInput));
+
+        //chat with llm
+        llm.chat(prompt, (instance, message) -> {
+            System.out.println(">>>> " + message.getContent());
+        });
+
+        //wait for user input
+        userInput = scanner.nextLine();
+    }
+}
+```
