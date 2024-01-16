@@ -16,5 +16,8 @@
 package com.agentsflex.vector;
 
 public interface VectorStorage {
-    Retriever getRetrieve(RetrieverOptions options);
+
+    void store(VectorData vectorData);
+
+    VectorData retrieval(VectorData vectorData);
 }

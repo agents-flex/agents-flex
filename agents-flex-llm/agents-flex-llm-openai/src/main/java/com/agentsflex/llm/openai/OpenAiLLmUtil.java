@@ -20,6 +20,7 @@ import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.text.Text;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
@@ -44,12 +45,11 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToEmbeddingsPayload(Prompt prompt) {
-        List<Message> messages = prompt.toMessages();
+    public static String promptToEmbeddingsPayload(Text text) {
 
         // https://platform.openai.com/docs/api-reference/making-requests
         String payload = "{\n" +
-            "  \"input\": \""+messages.get(0).getContent()+"\",\n" +
+            "  \"input\": \""+text.getContent()+"\",\n" +
             "  \"model\": \"text-embedding-ada-002\",\n" +
             "  \"encoding_format\": \"float\"\n" +
             "}";

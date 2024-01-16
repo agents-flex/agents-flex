@@ -16,6 +16,23 @@
 package com.agentsflex.vector;
 
 
-public interface Retriever {
-    VectorData retrieve(String prompt);
+import com.agentsflex.llm.Embeddings;
+import com.agentsflex.text.Text;
+
+public abstract class Retriever {
+    protected Embeddings embeddings;
+    protected VectorStorage storage;
+
+    public Retriever(Embeddings embeddings, VectorStorage storage) {
+        this.embeddings = embeddings;
+        this.storage = storage;
+    }
+
+    public Text retrieval(Text text){
+        VectorData vectorData = embeddings.embeddings(text);
+        VectorData retrieval = storage.retrieval(vectorData);
+        return vectorDataToText(retrieval);
+    }
+
+    public abstract Text vectorDataToText(VectorData vector);
 }

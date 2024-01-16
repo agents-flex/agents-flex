@@ -22,6 +22,7 @@ import com.agentsflex.client.impl.WebSocketClient;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatListener;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.text.Text;
 import com.agentsflex.vector.VectorData;
 
 public class SparkLlm extends BaseLlm<SparkLlmConfig> {
@@ -45,7 +46,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
 
     @Override
-    public VectorData embeddings(Prompt prompt) {
+    public VectorData embeddings(Text text) {
         return null;
     }
 }
