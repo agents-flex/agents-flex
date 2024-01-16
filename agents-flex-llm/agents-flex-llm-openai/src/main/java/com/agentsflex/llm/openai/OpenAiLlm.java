@@ -22,7 +22,10 @@ import com.agentsflex.client.impl.SseClient;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatListener;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.util.OKHttpUtil;
+import com.agentsflex.util.StringUtil;
 import com.agentsflex.vector.VectorData;
+import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,6 +54,22 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     @Override
     public VectorData embeddings(Prompt prompt) {
-        return null;
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+
+        String payload = OpenAiLLmUtil.promptToEmbeddingsPayload(prompt);
+
+        // https://platform.openai.com/docs/api-reference/embeddings/create
+        String response = OKHttpUtil.post("https://api.openai.com/v1/embeddings", headers, payload);
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+
+        VectorData vectorData = new VectorData();
+        double[] embedding = JSONPath.read(response, "$.data[0].embedding", double[].class);
+        vectorData.setData(embedding);
+
+        return vectorData;
     }
 }

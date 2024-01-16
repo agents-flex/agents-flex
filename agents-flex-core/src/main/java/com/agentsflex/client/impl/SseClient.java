@@ -40,16 +40,16 @@ public class SseClient extends EventSourceListener implements LlmClient {
         this.listener = listener;
         this.isStop = false;
 
-        Request.Builder rBuilder = new Request.Builder()
+        Request.Builder builder = new Request.Builder()
             .url(url);
 
         if (headers != null && !headers.isEmpty()) {
-            headers.forEach(rBuilder::addHeader);
+            headers.forEach(builder::addHeader);
         }
 
         MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
         RequestBody body = RequestBody.create(payload, mediaType);
-        rBuilder.post(body);
+        Request request = builder.post(body).build();
 
 
         this.client = new OkHttpClient.Builder()
@@ -59,7 +59,7 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
 
         EventSource.Factory factory = EventSources.createFactory(this.client);
-        this.eventSource = factory.newEventSource(rBuilder.build(), this);
+        this.eventSource = factory.newEventSource(request, this);
 
         this.listener.onStart(this);
     }

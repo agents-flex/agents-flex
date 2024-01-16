@@ -16,4 +16,21 @@
 package com.agentsflex.util;
 
 public class StringUtil {
+
+    public static boolean noText(String string) {
+        return !hasText(string);
+    }
+
+    public static boolean hasText(String string) {
+        return string != null && !string.isEmpty() && containsText(string);
+    }
+
+    private static boolean containsText(CharSequence str) {
+        for (int i = 0; i < str.length(); i++) {
+            if (!Character.isWhitespace(str.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

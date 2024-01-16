@@ -44,6 +44,21 @@ public class OpenAiLLmUtil {
     }
 
 
+    public static String promptToEmbeddingsPayload(Prompt prompt) {
+        List<Message> messages = prompt.toMessages();
+
+        // https://platform.openai.com/docs/api-reference/making-requests
+        String payload = "{\n" +
+            "  \"input\": \""+messages.get(0).getContent()+"\",\n" +
+            "  \"model\": \"text-embedding-ada-002\",\n" +
+            "  \"encoding_format\": \"float\"\n" +
+            "}";
+
+        return payload;
+    }
+
+
+
     public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config) {
 
         List<Message> messages = prompt.toMessages();

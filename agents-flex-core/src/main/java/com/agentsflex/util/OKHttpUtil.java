@@ -15,5 +15,40 @@
  */
 package com.agentsflex.util;
 
+import okhttp3.*;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 public class OKHttpUtil {
+
+
+    private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
+
+    public static String post(String url, Map<String, String> headers, String payload){
+        Request.Builder builder = new Request.Builder()
+            .url(url);
+
+        if (headers != null && !headers.isEmpty()) {
+            headers.forEach(builder::addHeader);
+        }
+
+        RequestBody body = RequestBody.create(payload, JSON_TYPE);
+        Request request = builder.post(body).build();
+
+        OkHttpClient client = new OkHttpClient.Builder()
+            .connectTimeout(3, TimeUnit.MINUTES)
+            .readTimeout(3, TimeUnit.MINUTES)
+            .build();
+
+        try {
+            Response response = client.newCall(request).execute();
+            return response.message();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 }

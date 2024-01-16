@@ -17,18 +17,66 @@ package com.agentsflex.client.impl;
 
 import com.agentsflex.client.LlmClient;
 import com.agentsflex.client.LlmClientListener;
+import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class HttpClient implements LlmClient {
+    private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
+    private OkHttpClient client;
+    private LlmClientListener listener;
+    private boolean isStop = false;
 
     @Override
     public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener) {
+        this.listener = listener;
+        this.isStop = false;
 
+        Request.Builder rBuilder = new Request.Builder()
+            .url(url);
+
+        if (headers != null && !headers.isEmpty()) {
+            headers.forEach(rBuilder::addHeader);
+        }
+
+        RequestBody body = RequestBody.create(payload, JSON_TYPE);
+        rBuilder.post(body);
+
+        this.client = new OkHttpClient.Builder()
+            .connectTimeout(3, TimeUnit.MINUTES)
+            .readTimeout(3, TimeUnit.MINUTES)
+            .build();
+
+
+        this.listener.onStart(this);
+        this.client.newCall(rBuilder.build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                HttpClient.this.listener.onFailure(HttpClient.this, e);
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                HttpClient.this.listener.onMessage(HttpClient.this, response.message());
+                if (!isStop) {
+                    HttpClient.this.listener.onStop(HttpClient.this);
+                    HttpClient.this.isStop = true;
+                }
+            }
+        });
     }
 
     @Override
     public void stop() {
-
+        if (!isStop) {
+            this.isStop = true;
+            client.dispatcher().executorService().shutdown();
+            this.listener.onStop(this);
+        }
     }
+
+
 }

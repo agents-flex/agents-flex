@@ -48,10 +48,6 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
         this.webSocket = client.newWebSocket(request, this);
         this.isStop = false;
-
-
-        // Trigger shutdown of the dispatcher's executor so this process can exit cleanly.
-//        client.dispatcher().executorService().shutdown();
     }
 
     @Override
