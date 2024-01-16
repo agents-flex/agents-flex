@@ -1,10 +1,10 @@
 package com.agentsflex.llm;
 
-import com.agentsflex.client.LlmClient;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.vector.VectorData;
 
 public interface Embeddings {
 
-   LlmClient embeddings(Prompt prompt, EmbeddingsListener listener);
+   VectorData embeddings(Prompt prompt);
 
 }

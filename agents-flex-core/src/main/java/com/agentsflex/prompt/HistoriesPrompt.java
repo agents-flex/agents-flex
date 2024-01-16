@@ -10,7 +10,6 @@ public class HistoriesPrompt extends Prompt{
     private final List<Message> messages = new ArrayList<>();
 
 
-
     public void addMessage(Message message) {
         messages.add(message);
     }

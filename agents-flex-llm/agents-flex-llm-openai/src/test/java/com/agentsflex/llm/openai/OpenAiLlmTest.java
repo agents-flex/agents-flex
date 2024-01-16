@@ -8,7 +8,7 @@ public class OpenAiLlmTest {
     public static void main(String[] args) throws InterruptedException {
 
 
-        OpenAiConfig config = new OpenAiConfig();
+        OpenAiLlmConfig config = new OpenAiLlmConfig();
         config.setApiKey("sk-rts5NF6n*******");
 
         Llm llm = new OpenAiLlm(config);

@@ -2,19 +2,19 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.client.BaseLlmClientListener;
 import com.agentsflex.client.LlmClient;
+import com.agentsflex.client.LlmClientListener;
 import com.agentsflex.client.impl.SseClient;
-import com.agentsflex.llm.ChatListener;
 import com.agentsflex.llm.BaseLlm;
-import com.agentsflex.llm.EmbeddingsListener;
-import com.agentsflex.message.AiMessage;
+import com.agentsflex.llm.ChatListener;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.vector.VectorData;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class OpenAiLlm extends BaseLlm<OpenAiConfig> {
+public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
-    public OpenAiLlm(OpenAiConfig config) {
+    public OpenAiLlm(OpenAiLlmConfig config) {
         super(config);
     }
 
@@ -28,20 +28,14 @@ public class OpenAiLlm extends BaseLlm<OpenAiConfig> {
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
 
-
-        llmClient.start("https://api.openai.com/v1/chat/completions", headers, payload, new BaseLlmClientListener(this, listener) {
-            @Override
-            public void onMessage(LlmClient client, String response) {
-                listener.onMessage(OpenAiLlm.this, new AiMessage());
-            }
-        });
-
+        LlmClientListener clientListener = new BaseLlmClientListener(this, listener, prompt, OpenAiLLmUtil::parseAiMessage);
+        llmClient.start("https://api.openai.com/v1/chat/completions", headers, payload, clientListener);
         return llmClient;
     }
 
 
     @Override
-    public LlmClient embeddings(Prompt prompt, EmbeddingsListener listener) {
+    public VectorData embeddings(Prompt prompt) {
         return null;
     }
 }

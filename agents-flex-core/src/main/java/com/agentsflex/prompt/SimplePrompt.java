@@ -4,6 +4,7 @@ import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class SimplePrompt extends Prompt{
@@ -16,6 +17,6 @@ public class SimplePrompt extends Prompt{
 
     @Override
     public List<Message> toMessages() {
-        return Arrays.asList(new HumanMessage(content));
+        return Collections.singletonList(new HumanMessage(content));
     }
 }

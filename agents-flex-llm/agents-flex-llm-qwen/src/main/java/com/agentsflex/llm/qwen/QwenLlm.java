@@ -2,12 +2,13 @@ package com.agentsflex.llm.qwen;
 
 import com.agentsflex.client.BaseLlmClientListener;
 import com.agentsflex.client.LlmClient;
+import com.agentsflex.client.LlmClientListener;
 import com.agentsflex.client.impl.SseClient;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatListener;
-import com.agentsflex.llm.EmbeddingsListener;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.vector.VectorData;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,24 +29,24 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config);
 
+        LlmClientListener clientListener = new BaseLlmClientListener(this, listener, prompt, new BaseLlmClientListener.MessageParser() {
+            int prevMessageLength = 0;
 
-        llmClient.start("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload,
-            new BaseLlmClientListener(this, listener) {
-                int prevMessageLength = 0;
-                @Override
-                public void onMessage(LlmClient client, String response) {
-                    AiMessage aiMessage = QwenLlmUtil.parseAiMessage(response, prevMessageLength);
-                    prevMessageLength += aiMessage.getContent().length();
-                    listener.onMessage(QwenLlm.this, aiMessage);
-                }
-            });
+            @Override
+            public AiMessage parseMessage(String response) {
+                AiMessage aiMessage = QwenLlmUtil.parseAiMessage(response, prevMessageLength);
+                prevMessageLength += aiMessage.getContent().length();
+                return aiMessage;
+            }
+        });
+        llmClient.start("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload, clientListener);
 
         return llmClient;
     }
 
 
     @Override
-    public LlmClient embeddings(Prompt prompt, EmbeddingsListener listener) {
+    public VectorData embeddings(Prompt prompt) {
         return null;
     }
 }

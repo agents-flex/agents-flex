@@ -2,7 +2,7 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.llm.LlmConfig;
 
-public class OpenAiConfig extends LlmConfig {
+public class OpenAiLlmConfig extends LlmConfig {
 
     private String apiKey;
     private String model = "gpt-3.5-turbo";

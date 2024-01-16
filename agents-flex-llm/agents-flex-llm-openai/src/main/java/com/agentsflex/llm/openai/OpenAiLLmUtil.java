@@ -10,8 +10,12 @@ import java.util.*;
 
 public class OpenAiLLmUtil {
 
+    public static AiMessage parseAiMessage(String json){
+        return null;
+    }
 
-    public static String promptToPayload(Prompt prompt,OpenAiConfig config) {
+
+    public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config) {
 
         List<Message> messages = prompt.toMessages();
 
