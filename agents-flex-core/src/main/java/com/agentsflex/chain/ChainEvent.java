@@ -15,5 +15,6 @@
  */
 package com.agentsflex.chain;
 
-public class Interceptor {
+public interface ChainEvent {
+    String name();
 }

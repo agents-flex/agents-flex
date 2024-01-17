@@ -15,8 +15,15 @@
  */
 package com.agentsflex.chain;
 
-public class Invoker {
+public interface Invoker {
 
+    Chain getChain();
 
+    //notify the next Invoker to work
+    default void complete(){
+        getChain().doComplete();
+    }
 
+    //the invoker execute
+    void invoke();
 }

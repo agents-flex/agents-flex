@@ -15,32 +15,6 @@
  */
 package com.agentsflex.chain;
 
-import java.io.Serializable;
-
-public class Chain implements Serializable {
-
-    private String id;
-    private ChainContext context;
-    private Invoker[] invokers;
-    private int index = 0;
-
-    public ChainContext getContext() {
-        return context;
-    }
-
-    public void setContext(ChainContext context) {
-        this.context = context;
-    }
-
-    public void start() {
-        doComplete();
-    }
-
-    public void stop() {
-
-    }
-
-    void doComplete() {
-        invokers[index++].invoke();
-    }
+public interface ChainEventListener {
+    void onEvent(ChainEvent event, Chain chain);
 }
