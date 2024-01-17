@@ -21,13 +21,13 @@ import com.agentsflex.util.Metadata;
 public class VectorData extends Metadata {
 
     // the embedding data
-    private double[] data;
+    private double[] vector;
 
-    public double[] getData() {
-        return data;
+    public double[] getVector() {
+        return vector;
     }
 
-    public void setData(double[] data) {
-        this.data = data;
+    public void setVector(double[] vector) {
+        this.vector = vector;
     }
 }

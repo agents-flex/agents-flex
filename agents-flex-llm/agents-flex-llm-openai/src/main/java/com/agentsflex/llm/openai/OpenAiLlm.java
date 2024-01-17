@@ -69,7 +69,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
         VectorData vectorData = new VectorData();
         double[] embedding = JSONPath.read(response, "$.data[0].embedding", double[].class);
-        vectorData.setData(embedding);
+        vectorData.setVector(embedding);
 
         return vectorData;
     }

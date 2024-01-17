@@ -13,7 +13,7 @@
         <module>agents-flex-test</module>
         <module>agents-flex-samples</module>
         <module>agents-flex-llm</module>
-        <module>agents-flex-vector</module>
+        <module>agents-flex-storage</module>
     </modules>
 
     <properties>

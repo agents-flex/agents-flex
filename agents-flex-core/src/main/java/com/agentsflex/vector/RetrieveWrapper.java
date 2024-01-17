@@ -15,24 +15,25 @@
  */
 package com.agentsflex.vector;
 
+public class RetrieveWrapper extends VectorData {
 
-import com.agentsflex.llm.Embeddings;
-import com.agentsflex.text.Text;
+    private Integer limit;
 
-public abstract class Retriever {
-    protected Embeddings embeddings;
-    protected VectorStorage storage;
+    private boolean withVector = false;
 
-    public Retriever(Embeddings embeddings, VectorStorage storage) {
-        this.embeddings = embeddings;
-        this.storage = storage;
+    public Integer getLimit() {
+        return limit;
     }
 
-    public Text retrieval(Text text){
-        VectorData vectorData = embeddings.embeddings(text);
-        VectorData retrieval = storage.retrieval(vectorData);
-        return vectorDataToText(retrieval);
+    public void setLimit(Integer limit) {
+        this.limit = limit;
     }
 
-    public abstract Text vectorDataToText(VectorData vector);
+    public boolean isWithVector() {
+        return withVector;
+    }
+
+    public void setWithVector(boolean withVector) {
+        this.withVector = withVector;
+    }
 }

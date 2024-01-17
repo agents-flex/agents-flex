@@ -15,15 +15,25 @@
  */
 package com.agentsflex.vector;
 
-import java.util.List;
+public class VectorDocument extends VectorData{
 
-public abstract  class VectorStorage<T extends VectorDocument> {
+    private String id;
 
-    public abstract void store(T document);
 
-    public abstract void delete(T document);
+    public VectorDocument() {
+    }
 
-    public abstract void update(T document);
 
-    public abstract List<T> retrieval(RetrieveWrapper wrapper);
+    public VectorDocument(VectorData vectorData) {
+        this.setVector(vectorData.getVector());
+        this.setMetadataMap(vectorData.getMetadataMap());
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 }
