@@ -33,4 +33,9 @@ public class SimplePrompt extends Prompt{
     public List<Message> toMessages() {
         return Collections.singletonList(new HumanMessage(content));
     }
+
+    @Override
+    public String toString() {
+        return content;
+    }
 }
