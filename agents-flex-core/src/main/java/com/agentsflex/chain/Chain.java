@@ -19,10 +19,22 @@ import java.io.Serializable;
 
 public class Chain implements Serializable {
 
-    private String id;
-    private ChainContext context;
-    private Invoker[] invokers;
-    private int index = 0;
+    protected String id;
+    protected ChainContext context;
+    protected Invoker[] invokers;
+    protected int index = 0;
+
+    public Chain(Invoker[] invokers) {
+        this.invokers = invokers;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public ChainContext getContext() {
         return context;
@@ -30,6 +42,22 @@ public class Chain implements Serializable {
 
     public void setContext(ChainContext context) {
         this.context = context;
+    }
+
+    public Invoker[] getInvokers() {
+        return invokers;
+    }
+
+    public void setInvokers(Invoker[] invokers) {
+        this.invokers = invokers;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
     }
 
     public void start() {

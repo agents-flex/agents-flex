@@ -16,6 +16,10 @@
 package com.agentsflex.chain;
 
 public class ParallelChain extends Chain implements Invoker{
+    public ParallelChain(Invoker[] invokers) {
+        super(invokers);
+    }
+
     @Override
     public Chain getChain() {
         return null;

@@ -15,7 +15,11 @@
  */
 package com.agentsflex.chain;
 
-public class SequentialChain extends Chain implements Invoker{
+public class SequentialChain extends Chain implements Invoker {
+    public SequentialChain(Invoker[] invokers) {
+        super(invokers);
+    }
+
     @Override
     public Chain getChain() {
         return null;
