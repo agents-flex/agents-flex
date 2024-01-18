@@ -5,6 +5,17 @@
 
 # Agents-Flex： 一个优雅的 LLM（大语言模型） 应用开发框架
 
+## 能力
+
+- LLM 的访问能力
+- Prompt、Prompt Template 定义加载的能力
+- Function Calling 定义、调用和执行等能力
+- Embedding
+- Vector Storage
+- 丰富的内容加载器
+- 丰富的文本分割器
+- LLM Chain
+- Agents Chain
 
 ## 简单对话
 
