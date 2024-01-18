@@ -15,10 +15,11 @@
  */
 package com.agentsflex.functions;
 
-public class Function<R> {
+public class Parameter {
     private String name;
+    private String type;
     private String description;
-    private Parameter[] parameters;
+    private boolean required = false;
 
     public String getName() {
         return name;
@@ -26,6 +27,14 @@ public class Function<R> {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public String getDescription() {
@@ -36,11 +45,11 @@ public class Function<R> {
         this.description = description;
     }
 
-    public Parameter[] getParameters() {
-        return parameters;
+    public boolean isRequired() {
+        return required;
     }
 
-    public void setParameters(Parameter[] parameters) {
-        this.parameters = parameters;
+    public void setRequired(boolean required) {
+        this.required = required;
     }
 }

@@ -13,34 +13,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.functions;
+package com.agentsflex.functions.annotation;
 
-public class Function<R> {
-    private String name;
-    private String description;
-    private Parameter[] parameters;
+import java.lang.annotation.*;
 
-    public String getName() {
-        return name;
-    }
+@Inherited
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.PARAMETER})
+public @interface FunctionParam {
+    String name() default "";
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    String description();
 
-    public String getDescription() {
-        return description;
-    }
+    boolean required() default false;
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Parameter[] getParameters() {
-        return parameters;
-    }
-
-    public void setParameters(Parameter[] parameters) {
-        this.parameters = parameters;
-    }
 }
