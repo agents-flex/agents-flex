@@ -26,6 +26,9 @@ import com.alibaba.fastjson.JSONObject;
 
 import java.util.*;
 
+/**
+ * https://help.aliyun.com/document_detail/2510317.html
+ */
 public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
 
     private AliyunVectorStorageConfig config;
@@ -35,35 +38,69 @@ public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
     }
 
     @Override
-    public void store(VectorDocument vectorDocument) {
+    public void store(List<VectorDocument> documents) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("dashvector-auth-token", config.getApiKey());
 
         Map<String, Object> payloadMap = new HashMap<>();
 
-        Map<String, Object> document = new HashMap<>();
-        if (vectorDocument.getMetadataMap() != null) {
-            document.put("fields", vectorDocument.getMetadataMap());
+        List<Map<String,Object>> payloadDocs = new ArrayList<>();
+        for (VectorDocument vectorDocument : documents) {
+            Map<String, Object> document = new HashMap<>();
+            if (vectorDocument.getMetadataMap() != null) {
+                document.put("fields", vectorDocument.getMetadataMap());
+            }
+            document.put("vector", vectorDocument.getVector());
+            document.put("id", vectorDocument.getId());
+            payloadDocs.add(document);
         }
-        document.put("vector", vectorDocument.getVector());
-        document.put("id", vectorDocument.getId());
 
-        payloadMap.put("docs", Collections.singletonList(document));
+        payloadMap.put("docs", payloadDocs);
 
         String payload = JSON.toJSONString(payloadMap);
         OKHttpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
     }
 
     @Override
-    public void delete(VectorDocument document) {
+    public void delete(Collection<String> ids) {
 
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("dashvector-auth-token", config.getApiKey());
+
+        Map<String,Object> payloadMap = new HashMap<>();
+        payloadMap.put("ids",ids);
+        String payload = JSON.toJSONString(payloadMap);
+
+        OKHttpUtil.delete("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
     }
 
     @Override
-    public void update(VectorDocument document) {
+    public void update(List<VectorDocument> documents) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("dashvector-auth-token", config.getApiKey());
 
+        Map<String, Object> payloadMap = new HashMap<>();
+
+        List<Map<String,Object>> payloadDocs = new ArrayList<>();
+        for (VectorDocument vectorDocument : documents) {
+            Map<String, Object> document = new HashMap<>();
+            if (vectorDocument.getMetadataMap() != null) {
+                document.put("fields", vectorDocument.getMetadataMap());
+            }
+            document.put("vector", vectorDocument.getVector());
+            document.put("id", vectorDocument.getId());
+            payloadDocs.add(document);
+        }
+
+        payloadMap.put("docs", payloadDocs);
+
+        String payload = JSON.toJSONString(payloadMap);
+        OKHttpUtil.put("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
     }
+
 
     @Override
     public List<VectorDocument> retrieval(RetrieveWrapper wrapper) {

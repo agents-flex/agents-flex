@@ -15,15 +15,25 @@
  */
 package com.agentsflex.vector;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
-public abstract  class VectorStorage<T extends VectorDocument> {
+public abstract class VectorStorage<T extends VectorDocument> {
 
-    public abstract void store(T document);
+    public void store(T document) {
+        store(Collections.singletonList(document));
+    }
 
-    public abstract void delete(T document);
+    public abstract void store(List<T> documents);
 
-    public abstract void update(T document);
+    public abstract void delete(Collection<String> ids);
+
+    public void update(T document) {
+        update(Collections.singletonList(document));
+    }
+
+    public abstract void update(List<T> documents);
 
     public abstract List<T> retrieval(RetrieveWrapper wrapper);
 }

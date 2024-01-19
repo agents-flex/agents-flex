@@ -21,13 +21,14 @@ import com.agentsflex.vector.RetrieveWrapper;
 import com.agentsflex.vector.VectorDocument;
 import com.agentsflex.vector.VectorStorage;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+/**
+ * doc https://cloud.tencent.com/document/product/1709/95121
+ */
 public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
 
     private QCloudVectorStorageConfig config;
@@ -36,8 +37,9 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
         this.config = config;
     }
 
+
     @Override
-    public void store(VectorDocument vectorDocument) {
+    public void store(List<VectorDocument> documents) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
@@ -46,26 +48,62 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
         payloadMap.put("database", config.getDatabase());
         payloadMap.put("collection", config.getCollection());
 
-        Map<String, Object> document = new HashMap<>();
-        if (vectorDocument.getMetadataMap() != null) {
-            document.putAll(vectorDocument.getMetadataMap());
+
+        List<Map<String, Object>> payloadDocs = new ArrayList<>();
+        for (VectorDocument vectorDocument : documents) {
+            Map<String, Object> document = new HashMap<>();
+            if (vectorDocument.getMetadataMap() != null) {
+                document.putAll(vectorDocument.getMetadataMap());
+            }
+            document.put("vector", vectorDocument.getVector());
+            document.put("id", vectorDocument.getId());
+            payloadDocs.add(document);
         }
-        document.put("vector", vectorDocument.getVector());
-        document.put("id", vectorDocument.getId());
-        payloadMap.put("documents", Collections.singletonList(document));
+        payloadMap.put("documents", payloadDocs);
 
         String payload = JSON.toJSONString(payloadMap);
         OKHttpUtil.post(config.getHost() + "/document/upsert", headers, payload);
     }
 
-    @Override
-    public void delete(VectorDocument document) {
 
+    @Override
+    public void delete(Collection<String> ids) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
+
+        Map<String, Object> payloadMap = new HashMap<>();
+        payloadMap.put("database", config.getDatabase());
+        payloadMap.put("collection", config.getCollection());
+
+        Map<String, Object> documentIdsObj = new HashMap<>();
+        documentIdsObj.put("documentIds", ids);
+        payloadMap.put("query", documentIdsObj);
+
+        String payload = JSON.toJSONString(payloadMap);
+
+        OKHttpUtil.post(config.getHost() + "/document/delete", headers, payload);
     }
 
-    @Override
-    public void update(VectorDocument document) {
 
+    @Override
+    public void update(List<VectorDocument> documents) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
+
+        Map<String, Object> payloadMap = new HashMap<>();
+        payloadMap.put("database", config.getDatabase());
+        payloadMap.put("collection", config.getCollection());
+
+        for (VectorDocument document : documents) {
+            Map<String, Object> documentIdsObj = new HashMap<>();
+            documentIdsObj.put("documentIds", Collections.singletonList(document.getId()));
+            payloadMap.put("query", documentIdsObj);
+            payloadMap.put("update", document.getMetadataMap());
+            String payload = JSON.toJSONString(payloadMap);
+            OKHttpUtil.post(config.getHost() + "/document/update", headers, payload);
+        }
     }
 
     @Override
@@ -95,8 +133,20 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
             return null;
         }
 
+        List<VectorDocument> result = new ArrayList<>();
         JSONObject rootObject = JSON.parseObject(response);
-
-        return null;
+        JSONArray rootDocs = rootObject.getJSONArray("documents");
+        for (int i = 0; i < rootDocs.size(); i++) {
+            JSONArray docs = rootDocs.getJSONArray(i);
+            for (int j = 0; j < docs.size(); j++) {
+                JSONObject doc = docs.getJSONObject(j);
+                VectorDocument vd = new VectorDocument();
+                vd.setId(doc.getString("id"));
+                doc.remove("id");
+                vd.addMetadata(doc);
+                result.add(vd);
+            }
+        }
+        return result;
     }
 }

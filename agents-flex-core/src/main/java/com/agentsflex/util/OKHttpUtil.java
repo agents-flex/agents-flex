@@ -22,11 +22,21 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class OKHttpUtil {
-
-
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
-    public static String post(String url, Map<String, String> headers, String payload){
+    public static String post(String url, Map<String, String> headers, String payload) {
+        return method(url, "POST", headers, payload);
+    }
+
+    public static String put(String url, Map<String, String> headers, String payload) {
+        return method(url, "PUT", headers, payload);
+    }
+
+    public static String delete(String url, Map<String, String> headers, String payload) {
+        return method(url, "DELETE", headers, payload);
+    }
+
+    private static String method(String url, String method, Map<String, String> headers, String payload) {
         Request.Builder builder = new Request.Builder()
             .url(url);
 
@@ -35,7 +45,7 @@ public class OKHttpUtil {
         }
 
         RequestBody body = RequestBody.create(payload, JSON_TYPE);
-        Request request = builder.post(body).build();
+        Request request = builder.method(method, body).build();
 
         OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(3, TimeUnit.MINUTES)
@@ -48,7 +58,6 @@ public class OKHttpUtil {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
         return null;
     }
 }
