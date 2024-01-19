@@ -118,3 +118,42 @@
     }
 }
 ```
+
+
+
+## Function Calling
+
+- 第一步: 通过注解定义本地方法
+
+```java
+public class WeatherUtil {
+
+    @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
+    public static String getWeatherInfo(
+        @FunctionParam(name = "city", description = "the city name") String name
+    ) {
+        return name + "的天气是阴转多云。 ";
+    }
+}
+
+```
+
+- 第二步: 通过 Prompt、Functions 传入给大模型，然后得到结果
+
+```java
+ public static void main(String[] args) throws InterruptedException {
+
+    OpenAiLlmConfig config = new OpenAiLlmConfig();
+    config.setApiKey("sk-rts5NF6n*******");
+
+    OpenAiLlm llm = new OpenAiLlm(config);
+
+    Functions<String> functions = Functions.from(WeatherUtil.class, String.class);
+    String result = llm.call(new SimplePrompt("今天的天气如何"), functions);
+
+    System.out.println(result);
+    // "北京的天气是阴转多云。 ";
+
+    Thread.sleep(10000);
+}
+```

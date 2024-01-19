@@ -117,3 +117,40 @@ use SparkAi LLM:
     }
 }
 ```
+
+## Function Calling
+
+- step 1: define the function native
+
+```java
+public class WeatherUtil {
+
+    @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
+    public static String getWeatherInfo(
+        @FunctionParam(name = "city", description = "the city name") String name
+    ) {
+        return "Today it will be dull and overcast in " + name;
+    }
+}
+
+```
+
+- step 2: invoke the function from LLM
+
+```java
+ public static void main(String[] args) throws InterruptedException {
+
+    OpenAiLlmConfig config = new OpenAiLlmConfig();
+    config.setApiKey("sk-rts5NF6n*******");
+
+    OpenAiLlm llm = new OpenAiLlm(config);
+
+    Functions<String> functions = Functions.from(WeatherUtil.class, String.class);
+    String result = llm.call(new SimplePrompt("How is the weather like today?"), functions);
+
+    System.out.println(result);
+    // "Today it will be dull and overcast in Beijing";
+
+    Thread.sleep(10000);
+}
+```
