@@ -19,6 +19,7 @@ public class Parameter {
     private String name;
     private String type;
     private String description;
+    private String[] enums;
     private boolean required = false;
 
     public String getName() {
@@ -43,6 +44,14 @@ public class Parameter {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String[] getEnums() {
+        return enums;
+    }
+
+    public void setEnums(String[] enums) {
+        this.enums = enums;
     }
 
     public boolean isRequired() {

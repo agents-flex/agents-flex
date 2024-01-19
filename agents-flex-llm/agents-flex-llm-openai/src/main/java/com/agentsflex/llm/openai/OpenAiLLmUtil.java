@@ -15,6 +15,8 @@
  */
 package com.agentsflex.llm.openai;
 
+import com.agentsflex.functions.Function;
+import com.agentsflex.functions.Parameter;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
@@ -63,14 +65,36 @@ public class OpenAiLLmUtil {
 
         List<Message> messages = prompt.toMessages();
 
+        List<Map<String, String>> messageArray = new ArrayList<>();
+        messages.forEach(message -> {
+            Map<String, String> map = new HashMap<>(2);
+            if (message instanceof HumanMessage) {
+                map.put("role", "user");
+                map.put("content", message.getContent());
+            } else if (message instanceof AiMessage) {
+                map.put("role", "assistant");
+                map.put("content", ((AiMessage) message).getFullContent());
+            }
+
+            messageArray.add(map);
+        });
+
+        String messageText = JSON.toJSONString(messageArray);
+
+
         // https://platform.openai.com/docs/api-reference/making-requests
-        String payload = "{\n" +
+        return "{\n" +
 //            "  \"model\": \"gpt-3.5-turbo\",\n" +
             "  \"model\": \"" + config.getModel() + "\",\n" +
-            "  \"messages\": messageJsonString,\n" +
+            "  \"messages\": "+messageText+",\n" +
             "  \"temperature\": 0.7\n" +
             "}";
+    }
 
+
+    public static <R> String promptToFunctionCallingPayload(Prompt prompt, OpenAiLlmConfig config, List<Function<R>> functions) {
+
+        List<Message> messages = prompt.toMessages();
 
         List<Map<String, String>> messageArray = new ArrayList<>();
         messages.forEach(message -> {
@@ -87,8 +111,50 @@ public class OpenAiLLmUtil {
         });
 
         String messageText = JSON.toJSONString(messageArray);
-        return payload.replace("messageJsonString", messageText);
+
+
+        List<Map<String,Object>> toolsArray = new ArrayList<>();
+        for (Function<?> function : functions) {
+            Map<String,Object> functionRoot = new HashMap<>();
+            functionRoot.put("type","function");
+
+            Map<String,Object> functionObj = new HashMap<>();
+            functionRoot.put("function",functionObj);
+
+            functionObj.put("name",function.getName());
+            functionObj.put("description",function.getDescription());
+
+
+            Map<String,Object> parametersObj = new HashMap<>();
+            functionObj.put("parameters",parametersObj);
+
+            parametersObj.put("type","object");
+
+            Map<String,Object> propertiesObj = new HashMap<>();
+            parametersObj.put("properties",propertiesObj);
+
+            for (Parameter parameter : function.getParameters()) {
+                Map<String,Object> parameterObj = new HashMap<>();
+                parameterObj.put("type",parameter.getType());
+                parameterObj.put("description",parameter.getDescription());
+                parameterObj.put("enum",parameter.getEnums());
+                propertiesObj.put(parameter.getName(),parameterObj);
+            }
+
+            toolsArray.add(functionRoot);
+        }
+
+        String toolsText = JSON.toJSONString(toolsArray);
+        // https://platform.openai.com/docs/api-reference/making-requests
+        return "{\n" +
+//            "  \"model\": \"gpt-3.5-turbo\",\n" +
+            "  \"model\": \"" + config.getModel() + "\",\n" +
+            "  \"messages\": "+messageText+",\n" +
+            "  \"tools\": "+toolsText+",\n" +
+            "  \"tool_choice\": \"auto\"\n" +
+            "}";
     }
+
 
 
 }

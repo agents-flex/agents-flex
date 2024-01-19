@@ -62,6 +62,7 @@ public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
         OKHttpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
     }
 
+
     @Override
     public void delete(Collection<String> ids) {
 

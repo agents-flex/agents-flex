@@ -21,9 +21,11 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER})
 public @interface FunctionParam {
-    String name() default "";
+    String name();
 
     String description();
+
+    String[] enums() default {};
 
     boolean required() default false;
 

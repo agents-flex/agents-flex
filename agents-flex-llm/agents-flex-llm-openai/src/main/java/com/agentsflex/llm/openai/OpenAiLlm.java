@@ -19,19 +19,24 @@ import com.agentsflex.client.BaseLlmClientListener;
 import com.agentsflex.client.LlmClient;
 import com.agentsflex.client.LlmClientListener;
 import com.agentsflex.client.impl.SseClient;
+import com.agentsflex.functions.Function;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatListener;
+import com.agentsflex.llm.FunctionCalling;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.text.Text;
 import com.agentsflex.util.OKHttpUtil;
 import com.agentsflex.util.StringUtil;
 import com.agentsflex.vector.VectorData;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
+public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> implements FunctionCalling {
 
     public OpenAiLlm(OpenAiLlmConfig config) {
         super(config);
@@ -72,5 +77,32 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         vectorData.setVector(embedding);
 
         return vectorData;
+    }
+
+    @Override
+    public <R> R call(Prompt prompt, List<Function<R>> functions) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+
+        String payload = OpenAiLLmUtil.promptToFunctionCallingPayload(prompt, config, functions);
+
+        // https://platform.openai.com/docs/api-reference/embeddings/create
+        String response = OKHttpUtil.post("https://api.openai.com/v1/embeddings", headers, payload);
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+
+        JSONObject jsonObject = JSON.parseObject(response);
+        String callFunctionName = (String) JSONPath.eval(jsonObject, "$.choices[0].tool_calls[0].function.name");
+        String callFunctionArgsString = (String) JSONPath.eval(jsonObject, "$.choices[0].tool_calls[0].function.arguments");
+        JSONObject callFunctionArgs = JSON.parseObject(callFunctionArgsString);
+
+        for (Function<R> function : functions) {
+            if (function.getName().equals(callFunctionName)) {
+                return function.invoke(callFunctionArgs);
+            }
+        }
+        return null;
     }
 }
