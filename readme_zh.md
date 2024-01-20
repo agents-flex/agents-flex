@@ -132,6 +132,7 @@ public class WeatherUtil {
     public static String getWeatherInfo(
         @FunctionParam(name = "city", description = "the city name") String name
     ) {
+        //在这里，我们应该通过第三方接口调用 api 信息
         return name + "的天气是阴转多云。 ";
     }
 }

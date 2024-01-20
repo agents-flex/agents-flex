@@ -129,6 +129,7 @@ public class WeatherUtil {
     public static String getWeatherInfo(
         @FunctionParam(name = "city", description = "the city name") String name
     ) {
+        //we should invoke the third part api for weather info here
         return "Today it will be dull and overcast in " + name;
     }
 }
