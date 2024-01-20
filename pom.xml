@@ -11,7 +11,7 @@
 
     <name>agents-flex</name>
     <url>https://agentsflex.com</url>
-    <description>AAgents-Flex is an elegant LLM Application Framework like LangChain with Java.</description>
+    <description>Agents-Flex is an elegant LLM Application Framework like LangChain with Java.</description>
 
     <issueManagement>
         <system>Github Issue</system>
