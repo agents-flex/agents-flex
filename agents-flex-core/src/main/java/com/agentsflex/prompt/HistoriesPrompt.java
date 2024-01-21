@@ -15,23 +15,29 @@
  */
 package com.agentsflex.prompt;
 
+import com.agentsflex.memory.DefaultMessageMemory;
+import com.agentsflex.memory.MessageMemory;
 import com.agentsflex.message.Message;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class HistoriesPrompt extends Prompt{
 
-    private final List<Message> messages = new ArrayList<>();
+    private MessageMemory memory = new DefaultMessageMemory();
 
-
-    public void addMessage(Message message) {
-        messages.add(message);
+    public HistoriesPrompt() {
     }
 
+    public HistoriesPrompt(MessageMemory memory) {
+        this.memory = memory;
+    }
+
+    public void writeMessage(Message message) {
+        memory.addMessage(message);
+    }
 
     @Override
-    public List<Message> toMessages() {
-        return messages;
+    public List<Message> getMessages() {
+        return memory.getMessages();
     }
 }

@@ -23,6 +23,6 @@ import java.util.List;
 
 public abstract class Prompt extends Metadata {
 
-    public abstract List<Message> toMessages();
+    public abstract List<Message> getMessages();
 
 }

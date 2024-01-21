@@ -13,44 +13,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain;
+package com.agentsflex.memory;
 
-import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class ChainContext implements Serializable {
+public class DefaultContextMemory implements ContextMemory{
 
-    protected Map<String, Object> contextMap;
+    protected Map<String, Object> context = new ConcurrentHashMap<>();
 
+    @Override
     public Object get(String key) {
-        return contextMap != null ? contextMap.get(key) : null;
+        return context.get(key);
     }
 
+    @Override
+    public Map<String, Object> getAll() {
+        return context;
+    }
+
+    @Override
     public void put(String key, Object value) {
-        if (contextMap == null) {
-            contextMap = new HashMap<>();
-        }
-        contextMap.put(key, value);
+        context.put(key,value);
     }
 
+    @Override
     public void putAll(Map<String, Object> context) {
-        if (context == null || context.isEmpty()) {
-            return;
-        }
-        if (contextMap == null) {
-            contextMap = new HashMap<>();
-        }
-        contextMap.putAll(context);
+        this.context.putAll(context);
     }
 
-    public Map<String, Object> getContextMap() {
-        return contextMap;
+    @Override
+    public void remove(String key) {
+        this.context.remove(key);
     }
 
-    public void setContextMap(Map<String, Object> contextMap) {
-        this.contextMap = contextMap;
+    @Override
+    public void clear() {
+        context.clear();
     }
-
-
 }

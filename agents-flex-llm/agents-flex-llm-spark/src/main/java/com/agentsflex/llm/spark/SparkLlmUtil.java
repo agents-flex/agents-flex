@@ -46,7 +46,7 @@ public class SparkLlmUtil {
 
     public static String promptToPayload(Prompt prompt, SparkLlmConfig config) {
 
-        List<Message> messages = prompt.toMessages();
+        List<Message> messages = prompt.getMessages();
 
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
         String payload = "{\n" +

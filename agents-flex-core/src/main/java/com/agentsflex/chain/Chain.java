@@ -15,12 +15,14 @@
  */
 package com.agentsflex.chain;
 
+import com.agentsflex.memory.ContextMemory;
+import com.agentsflex.memory.DefaultContextMemory;
+
 import java.io.Serializable;
 
 public class Chain implements Serializable {
-
     protected String id;
-    protected ChainContext context;
+    protected ContextMemory context = new DefaultContextMemory();
     protected Invoker[] invokers;
     protected int index = 0;
 
@@ -36,11 +38,11 @@ public class Chain implements Serializable {
         this.id = id;
     }
 
-    public ChainContext getContext() {
+    public ContextMemory getContext() {
         return context;
     }
 
-    public void setContext(ChainContext context) {
+    public void setContext(ContextMemory context) {
         this.context = context;
     }
 

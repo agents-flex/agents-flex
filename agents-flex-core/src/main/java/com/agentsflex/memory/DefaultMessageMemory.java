@@ -13,29 +13,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.prompt;
+package com.agentsflex.memory;
 
-import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
-public class SimplePrompt extends Prompt{
-
-    private final String content;
-
-    public SimplePrompt(String content) {
-        this.content = content;
-    }
+public class DefaultMessageMemory implements MessageMemory {
+    private final List<Message> messages = new ArrayList<>();
 
     @Override
     public List<Message> getMessages() {
-        return Collections.singletonList(new HumanMessage(content));
+        return messages;
     }
 
     @Override
-    public String toString() {
-        return content;
+    public void addMessage(Message message) {
+        messages.add(message);
     }
 }

@@ -52,7 +52,7 @@ public class QwenLlmUtil {
 
     public static String promptToPayload(Prompt prompt, QwenLlmConfig config) {
 
-        List<Message> messages = prompt.toMessages();
+        List<Message> messages = prompt.getMessages();
 
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
         String payload = "{\n" +
