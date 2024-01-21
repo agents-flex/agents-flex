@@ -158,3 +158,7 @@ public class WeatherUtil {
     Thread.sleep(10000);
 }
 ```
+
+## 交流群
+
+![](./docs/assets/images/wechat-group.jpg)
