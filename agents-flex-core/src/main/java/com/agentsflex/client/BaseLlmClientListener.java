@@ -61,7 +61,7 @@ public class BaseLlmClientListener implements LlmClientListener {
             lastAiMessage.setFullContent(fullMessage.toString());
 
             if (this.prompt instanceof HistoriesPrompt){
-                ((HistoriesPrompt) this.prompt).writeMessage(lastAiMessage);
+                ((HistoriesPrompt) this.prompt).addMessage(lastAiMessage);
             }
         }
 

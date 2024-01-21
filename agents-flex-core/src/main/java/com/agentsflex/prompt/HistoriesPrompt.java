@@ -32,7 +32,7 @@ public class HistoriesPrompt extends Prompt{
         this.memory = memory;
     }
 
-    public void writeMessage(Message message) {
+    public void addMessage(Message message) {
         memory.addMessage(message);
     }
 
