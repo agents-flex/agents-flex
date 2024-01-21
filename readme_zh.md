@@ -29,7 +29,7 @@
 
     Llm llm = new OpenAiLlm(config);
 
-    Prompt  prompt = new SimplePrompt("请写一个关于小兔子战胜大灰狼的故事。");
+    String prompt = "请写一个关于小兔子战胜大灰狼的故事。";
     llm.chat(prompt, (llmInstance, message) -> {
         System.out.println("--->" + message.getContent());
     });
@@ -49,7 +49,7 @@
 
     Llm llm = new QwenLlm(config);
 
-    Prompt  prompt = new SimplePrompt("请写一个关于小兔子战胜大灰狼的故事。");
+    String prompt = "请写一个关于小兔子战胜大灰狼的故事。";
     llm.chat(prompt, (llmInstance, message) -> {
         System.out.println("--->" + message.getContent());
     });
@@ -72,7 +72,7 @@
 
     Llm llm = new SparkLlm(config);
 
-    Prompt  prompt = new SimplePrompt("请写一个关于小兔子战胜大灰狼的故事。");
+    String prompt = "请写一个关于小兔子战胜大灰狼的故事。";
     llm.chat(prompt, (llmInstance, message) -> {
         System.out.println("--->" + message.getContent());
     });
@@ -150,7 +150,7 @@ public class WeatherUtil {
     OpenAiLlm llm = new OpenAiLlm(config);
 
     Functions<String> functions = Functions.from(WeatherUtil.class, String.class);
-    String result = llm.call(new SimplePrompt("今天的天气如何"), functions);
+    String result = llm.call("今天北京的天气如何", functions);
 
     System.out.println(result);
     // "北京的天气是阴转多云。 ";

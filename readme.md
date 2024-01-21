@@ -28,7 +28,7 @@ use OpenAi LLM:
 
     Llm llm = new OpenAiLlm(config);
 
-    Prompt  prompt = new SimplePrompt("Please write a story about a little rabbit defeating a big bad wolf");
+    String prompt = "Please write a story about a little rabbit defeating a big bad wolf";
     llm.chat(prompt, (llmInstance, message) -> {
         System.out.println("--->" + message.getContent());
     });
@@ -49,7 +49,7 @@ use Qwen LLM:
 
     Llm llm = new QwenLlm(config);
 
-    Prompt  prompt = new SimplePrompt("Please write a story about a little rabbit defeating a big bad wolf");
+    String  prompt = "Please write a story about a little rabbit defeating a big bad wolf";
     llm.chat(prompt, (llmInstance, message) -> {
         System.out.println("--->" + message.getContent());
     });
@@ -71,7 +71,7 @@ use SparkAi LLM:
 
     Llm llm = new SparkLlm(config);
 
-    Prompt  prompt = new SimplePrompt("Please write a story about a little rabbit defeating a big bad wolf");
+    String  prompt = "Please write a story about a little rabbit defeating a big bad wolf";
     llm.chat(prompt, (llmInstance, message) -> {
         System.out.println("--->" + message.getContent());
     });
@@ -147,7 +147,7 @@ public class WeatherUtil {
     OpenAiLlm llm = new OpenAiLlm(config);
 
     Functions<String> functions = Functions.from(WeatherUtil.class, String.class);
-    String result = llm.call(new SimplePrompt("How is the weather like today?"), functions);
+    String result = llm.call("How is the weather in Beijing today?", functions);
 
     System.out.println(result);
     // "Today it will be dull and overcast in Beijing";
