@@ -9,6 +9,7 @@
 - LLM Visit
 - Prompt、Prompt Template Loader
 - Function Calling Definer, Invoker、Running
+- Memory
 - Embedding
 - Vector Storage
 - Resource Loaders

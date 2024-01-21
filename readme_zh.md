@@ -10,6 +10,7 @@
 - LLM 的访问能力
 - Prompt、Prompt Template 定义加载的能力
 - Function Calling 定义、调用和执行等能力
+- 记忆的能力（Memory）
 - Embedding
 - Vector Storage
 - 丰富的内容加载器
