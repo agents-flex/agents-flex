@@ -5,7 +5,9 @@
 
 # Agents-Flex： 一个优雅的 LLM（大语言模型） 应用开发框架
 
-## 能力
+---
+
+## 基本能力
 
 - LLM 的访问能力
 - Prompt、Prompt Template 定义加载的能力
@@ -163,3 +165,9 @@ public class WeatherUtil {
 ## 交流群
 
 ![](./docs/assets/images/wechat-group.jpg)
+
+
+
+## 模块构成
+
+![](./docs/assets/images/modules.jpg)

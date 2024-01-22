@@ -4,6 +4,8 @@
 
 # Agents-Flex is an elegant LLM Application Framework like LangChain with Java.
 
+---
+
 ## Features
 
 - LLM Visit
@@ -161,3 +163,7 @@ public class WeatherUtil {
 ## Communication
 
 ![](./docs/assets/images/wechat-group.jpg)
+
+## Modules
+
+![](./docs/assets/images/modules.jpg)
