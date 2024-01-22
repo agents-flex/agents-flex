@@ -13,13 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.client;
+package com.agentsflex.text.loader;
 
-import java.util.Map;
+import com.agentsflex.text.Loader;
+import com.agentsflex.text.Text;
 
-public interface LlmClient {
-
-    void start(String url, Map<String, String> headers, String payload, LlmClientListener listener);
-
-    void stop();
+public class FileLoader implements Loader {
+    @Override
+    public Text load() {
+        return null;
+    }
 }

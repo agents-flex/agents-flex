@@ -13,25 +13,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.client.impl;
+package com.agentsflex.llm.client.impl;
 
-import com.agentsflex.client.LlmClient;
-import com.agentsflex.client.LlmClientListener;
+import com.agentsflex.llm.client.LlmClient;
+import com.agentsflex.llm.client.LlmClientListener;
 import okhttp3.*;
-import okhttp3.sse.EventSource;
-import okhttp3.sse.EventSourceListener;
-import okhttp3.sse.EventSources;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class SseClient extends EventSourceListener implements LlmClient {
-
+public class HttpClient implements LlmClient {
+    private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
     private OkHttpClient client;
-    private EventSource eventSource;
-
     private LlmClientListener listener;
     private boolean isStop = false;
 
@@ -40,17 +35,15 @@ public class SseClient extends EventSourceListener implements LlmClient {
         this.listener = listener;
         this.isStop = false;
 
-        Request.Builder builder = new Request.Builder()
+        Request.Builder rBuilder = new Request.Builder()
             .url(url);
 
         if (headers != null && !headers.isEmpty()) {
-            headers.forEach(builder::addHeader);
+            headers.forEach(rBuilder::addHeader);
         }
 
-        MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
-        RequestBody body = RequestBody.create(payload, mediaType);
-        Request request = builder.post(body).build();
-
+        RequestBody body = RequestBody.create(payload, JSON_TYPE);
+        rBuilder.post(body);
 
         this.client = new OkHttpClient.Builder()
             .connectTimeout(3, TimeUnit.MINUTES)
@@ -58,43 +51,32 @@ public class SseClient extends EventSourceListener implements LlmClient {
             .build();
 
 
-        EventSource.Factory factory = EventSources.createFactory(this.client);
-        this.eventSource = factory.newEventSource(request, this);
-
         this.listener.onStart(this);
+        this.client.newCall(rBuilder.build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                HttpClient.this.listener.onFailure(HttpClient.this, e);
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                HttpClient.this.listener.onMessage(HttpClient.this, response.message());
+                if (!isStop) {
+                    HttpClient.this.listener.onStop(HttpClient.this);
+                    HttpClient.this.isStop = true;
+                }
+            }
+        });
     }
 
     @Override
     public void stop() {
         if (!isStop) {
             this.isStop = true;
-            eventSource.cancel();
             client.dispatcher().executorService().shutdown();
             this.listener.onStop(this);
         }
     }
 
 
-    @Override
-    public void onClosed(@NotNull EventSource eventSource) {
-        if (!isStop) {
-            this.isStop = true;
-            this.listener.onStop(this);
-        }
-    }
-
-    @Override
-    public void onEvent(@NotNull EventSource eventSource, @Nullable String id, @Nullable String type, @NotNull String data) {
-        this.listener.onMessage(this, data);
-    }
-
-    @Override
-    public void onFailure(@NotNull EventSource eventSource, @Nullable Throwable t, @Nullable Response response) {
-        this.listener.onFailure(this, t);
-    }
-
-    @Override
-    public void onOpen(@NotNull EventSource eventSource, @NotNull Response response) {
-        //super.onOpen(eventSource, response);
-    }
 }

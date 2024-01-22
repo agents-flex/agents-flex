@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.client.impl;
+package com.agentsflex.llm.client.impl;
 
-import com.agentsflex.client.LlmClient;
-import com.agentsflex.client.LlmClientListener;
+import com.agentsflex.llm.client.LlmClient;
+import com.agentsflex.llm.client.LlmClientListener;
 import okhttp3.*;
 import okio.ByteString;
 import org.jetbrains.annotations.NotNull;

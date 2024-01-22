@@ -13,16 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.client;
+package com.agentsflex.llm.client;
 
-public interface LlmClientListener {
+import java.util.Map;
 
-    void onStart(LlmClient client);
+public interface LlmClient {
 
-    void onMessage(LlmClient client,String response);
+    void start(String url, Map<String, String> headers, String payload, LlmClientListener listener);
 
-    void onStop(LlmClient client);
-
-    void onFailure(LlmClient client, Throwable throwable);
-
+    void stop();
 }

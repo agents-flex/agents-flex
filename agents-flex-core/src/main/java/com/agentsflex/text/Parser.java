@@ -13,18 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
+package com.agentsflex.text;
 
-import com.agentsflex.llm.client.LlmClient;
-import com.agentsflex.prompt.Prompt;
-import com.agentsflex.prompt.SimplePrompt;
+import java.io.InputStream;
 
-public abstract class Llm implements Embeddings {
-
-    public LlmClient chat(String prompt, ChatListener listener) {
-        return chat(new SimplePrompt(prompt), listener);
-    }
-
-    public abstract LlmClient chat(Prompt prompt, ChatListener listener);
-
+public interface Parser {
+    Text parse(InputStream stream);
 }

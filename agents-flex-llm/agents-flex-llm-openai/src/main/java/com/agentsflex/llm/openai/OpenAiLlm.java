@@ -15,10 +15,10 @@
  */
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.client.BaseLlmClientListener;
-import com.agentsflex.client.LlmClient;
-import com.agentsflex.client.LlmClientListener;
-import com.agentsflex.client.impl.SseClient;
+import com.agentsflex.llm.client.BaseLlmClientListener;
+import com.agentsflex.llm.client.LlmClient;
+import com.agentsflex.llm.client.LlmClientListener;
+import com.agentsflex.llm.client.impl.SseClient;
 import com.agentsflex.functions.Function;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatListener;

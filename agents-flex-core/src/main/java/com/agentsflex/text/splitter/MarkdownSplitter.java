@@ -13,18 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
+package com.agentsflex.text.splitter;
 
-import com.agentsflex.llm.client.LlmClient;
-import com.agentsflex.prompt.Prompt;
-import com.agentsflex.prompt.SimplePrompt;
+import com.agentsflex.text.Splitter;
+import com.agentsflex.text.Text;
 
-public abstract class Llm implements Embeddings {
+import java.util.List;
 
-    public LlmClient chat(String prompt, ChatListener listener) {
-        return chat(new SimplePrompt(prompt), listener);
+public class MarkdownSplitter implements Splitter {
+    @Override
+    public List<Text> split(Text text) {
+        return null;
     }
-
-    public abstract LlmClient chat(Prompt prompt, ChatListener listener);
-
 }

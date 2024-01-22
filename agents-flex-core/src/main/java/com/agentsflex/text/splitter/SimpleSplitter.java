@@ -17,13 +17,33 @@ package com.agentsflex.text.splitter;
 
 import com.agentsflex.text.Splitter;
 import com.agentsflex.text.Text;
+import com.agentsflex.util.StringUtil;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class SimpleSplitter implements Splitter {
 
+    private final String regex;
+
+    public SimpleSplitter(String regex) {
+        this.regex = regex;
+    }
+
     @Override
     public List<Text> split(Text text) {
-        return null;
+        if (text == null || StringUtil.noText(text.getContent())) {
+            return Collections.emptyList();
+        }
+        String[] textArray = text.getContent().split(regex);
+        List<Text> texts = new ArrayList<>(textArray.length);
+        for (String textString : textArray) {
+            Text newText = new Text();
+            newText.setMetadataMap(text.getMetadataMap());
+            newText.setContent(textString);
+            texts.add(newText);
+        }
+        return texts;
     }
 }
