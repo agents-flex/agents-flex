@@ -62,8 +62,8 @@ public class HttpClient implements LlmClient {
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                 HttpClient.this.listener.onMessage(HttpClient.this, response.message());
                 if (!isStop) {
-                    HttpClient.this.listener.onStop(HttpClient.this);
                     HttpClient.this.isStop = true;
+                    HttpClient.this.listener.onStop(HttpClient.this);
                 }
             }
         });

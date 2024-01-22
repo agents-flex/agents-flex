@@ -38,6 +38,8 @@ import java.util.Map;
 
 public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> implements FunctionCalling {
 
+    private final OKHttpUtil httpUtil = new OKHttpUtil();
+
     public OpenAiLlm(OpenAiLlmConfig config) {
         super(config);
     }
@@ -67,7 +69,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> implements FunctionCalli
         String payload = OpenAiLLmUtil.promptToEmbeddingsPayload(text);
 
         // https://platform.openai.com/docs/api-reference/embeddings/create
-        String response = OKHttpUtil.post("https://api.openai.com/v1/embeddings", headers, payload);
+        String response = httpUtil.post("https://api.openai.com/v1/embeddings", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
         }
@@ -88,7 +90,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> implements FunctionCalli
         String payload = OpenAiLLmUtil.promptToFunctionCallingPayload(prompt, config, functions);
 
         // https://platform.openai.com/docs/api-reference/embeddings/create
-        String response = OKHttpUtil.post("https://api.openai.com/v1/embeddings", headers, payload);
+        String response = httpUtil.post("https://api.openai.com/v1/embeddings", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
         }

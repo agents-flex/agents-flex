@@ -16,27 +16,44 @@
 package com.agentsflex.util;
 
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class OKHttpUtil {
+    private static final Logger LOG = LoggerFactory.getLogger(OKHttpUtil.class);
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
-    public static String post(String url, Map<String, String> headers, String payload) {
+    private final OkHttpClient okHttpClient;
+
+    public OKHttpUtil() {
+        this.okHttpClient = new OkHttpClient.Builder()
+            .connectTimeout(3, TimeUnit.MINUTES)
+            .readTimeout(3, TimeUnit.MINUTES)
+            .build();
+    }
+
+
+    public OKHttpUtil(OkHttpClient okHttpClient) {
+        this.okHttpClient = okHttpClient;
+    }
+
+    public  String post(String url, Map<String, String> headers, String payload) {
         return method(url, "POST", headers, payload);
     }
 
-    public static String put(String url, Map<String, String> headers, String payload) {
+    public  String put(String url, Map<String, String> headers, String payload) {
         return method(url, "PUT", headers, payload);
     }
 
-    public static String delete(String url, Map<String, String> headers, String payload) {
+    public  String delete(String url, Map<String, String> headers, String payload) {
         return method(url, "DELETE", headers, payload);
     }
 
-    private static String method(String url, String method, Map<String, String> headers, String payload) {
+    private  String method(String url, String method, Map<String, String> headers, String payload) {
         Request.Builder builder = new Request.Builder()
             .url(url);
 
@@ -47,16 +64,11 @@ public class OKHttpUtil {
         RequestBody body = RequestBody.create(payload, JSON_TYPE);
         Request request = builder.method(method, body).build();
 
-        OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(3, TimeUnit.MINUTES)
-            .readTimeout(3, TimeUnit.MINUTES)
-            .build();
-
         try {
-            Response response = client.newCall(request).execute();
+            Response response = okHttpClient.newCall(request).execute();
             return response.message();
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error(e.toString(), e);
         }
         return null;
     }

@@ -26,11 +26,9 @@ import java.util.concurrent.TimeUnit;
 
 public class WebSocketClient extends WebSocketListener implements LlmClient {
 
-
     private WebSocket webSocket;
     private LlmClientListener listener;
     private boolean isStop = false;
-
     private String payload;
 
     @Override

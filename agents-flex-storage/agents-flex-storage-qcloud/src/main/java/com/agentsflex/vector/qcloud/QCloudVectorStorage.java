@@ -33,6 +33,9 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
 
     private QCloudVectorStorageConfig config;
 
+    private final OKHttpUtil httpUtil = new OKHttpUtil();
+
+
     public QCloudVectorStorage(QCloudVectorStorageConfig config) {
         this.config = config;
     }
@@ -62,7 +65,7 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
         payloadMap.put("documents", payloadDocs);
 
         String payload = JSON.toJSONString(payloadMap);
-        OKHttpUtil.post(config.getHost() + "/document/upsert", headers, payload);
+        httpUtil.post(config.getHost() + "/document/upsert", headers, payload);
     }
 
 
@@ -82,7 +85,7 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
 
         String payload = JSON.toJSONString(payloadMap);
 
-        OKHttpUtil.post(config.getHost() + "/document/delete", headers, payload);
+        httpUtil.post(config.getHost() + "/document/delete", headers, payload);
     }
 
 
@@ -102,7 +105,7 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
             payloadMap.put("query", documentIdsObj);
             payloadMap.put("update", document.getMetadataMap());
             String payload = JSON.toJSONString(payloadMap);
-            OKHttpUtil.post(config.getHost() + "/document/update", headers, payload);
+            httpUtil.post(config.getHost() + "/document/update", headers, payload);
         }
     }
 
@@ -128,7 +131,7 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
         String payload = JSON.toJSONString(payloadMap);
 
         //https://cloud.tencent.com/document/product/1709/95123
-        String response = OKHttpUtil.post(config.getHost() + "/document/search", headers, payload);
+        String response = httpUtil.post(config.getHost() + "/document/search", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
         }

@@ -33,6 +33,8 @@ public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
 
     private AliyunVectorStorageConfig config;
 
+    private final OKHttpUtil httpUtil = new OKHttpUtil();
+
     public AliyunVectorStorage(AliyunVectorStorageConfig config) {
         this.config = config;
     }
@@ -59,7 +61,7 @@ public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
         payloadMap.put("docs", payloadDocs);
 
         String payload = JSON.toJSONString(payloadMap);
-        OKHttpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
+        httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
     }
 
 
@@ -74,7 +76,7 @@ public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
         payloadMap.put("ids",ids);
         String payload = JSON.toJSONString(payloadMap);
 
-        OKHttpUtil.delete("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
+        httpUtil.delete("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
     }
 
     @Override
@@ -99,7 +101,7 @@ public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
         payloadMap.put("docs", payloadDocs);
 
         String payload = JSON.toJSONString(payloadMap);
-        OKHttpUtil.put("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
+        httpUtil.put("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
     }
 
 
@@ -115,7 +117,7 @@ public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
         payloadMap.put("include_vector", wrapper.isWithVector());
 
         String payload = JSON.toJSONString(payloadMap);
-        String result = OKHttpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/query", headers, payload);
+        String result = httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/query", headers, payload);
         if (StringUtil.noText(result)) {
             return null;
         }

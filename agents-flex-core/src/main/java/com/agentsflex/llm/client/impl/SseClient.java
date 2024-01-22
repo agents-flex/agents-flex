@@ -31,7 +31,6 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
     private OkHttpClient client;
     private EventSource eventSource;
-
     private LlmClientListener listener;
     private boolean isStop = false;
 
