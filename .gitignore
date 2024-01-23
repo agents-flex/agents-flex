@@ -18,3 +18,4 @@ logs
 docker_volumes/
 package-lock.json
 yarn.lock
+/docs/.vitepress/cache/
