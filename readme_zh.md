@@ -15,8 +15,14 @@
 - 记忆的能力（Memory）
 - Embedding
 - Vector Storage
-- 丰富的内容加载器
-- 丰富的文本分割器
+- 文档处理
+  - 加载器（Loader）
+    - Http
+    - FileSystem
+  - 分割器（Splitter）
+  - 解析器（Parser）
+    - PoiParser
+    - PdfBoxParser
 - LLM Chain
 - Agents Chain
 

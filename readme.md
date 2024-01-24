@@ -15,7 +15,12 @@
 - Embedding
 - Vector Storage
 - Resource Loaders
-- Text Splitter
+- Document
+  - Splitter
+  - Loader
+  - Parser
+    - PoiParser
+    - PdfBoxParser
 - LLMs Chain
 - Agents Chain
 
