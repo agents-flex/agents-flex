@@ -15,8 +15,20 @@
  */
 package com.agentsflex.document;
 
+import java.util.Collections;
 import java.util.List;
+
+import static java.util.stream.Collectors.toList;
 
 public interface Splitter {
     List<Document> split(Document text);
+
+    default List<Document> splitAll(List<Document> documents) {
+        if (documents == null || documents.isEmpty()){
+            return Collections.emptyList();
+        }
+        return documents.stream()
+            .flatMap(document -> split(document).stream())
+            .collect(toList());
+    }
 }

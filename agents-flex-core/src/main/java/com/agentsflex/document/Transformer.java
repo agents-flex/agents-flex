@@ -15,6 +15,23 @@
  */
 package com.agentsflex.document;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+
+import static java.util.stream.Collectors.toList;
+
 public interface Transformer {
+
     Document transform(Document document);
+
+    default List<Document> transformAll(List<Document> documents) {
+        if (documents == null || documents.isEmpty()){
+            return Collections.emptyList();
+        }
+        return documents.stream()
+            .map(this::transform)
+            .filter(Objects::nonNull)
+            .collect(toList());
+    }
 }

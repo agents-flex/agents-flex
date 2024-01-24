@@ -31,7 +31,6 @@ public abstract class BaseLoader implements Loader{
         return parser.parse(stream);
     }
 
-    public abstract InputStream loadInputStream();
-
+    protected abstract InputStream loadInputStream();
 
 }
