@@ -5,27 +5,43 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>agents-flex-llm</artifactId>
+        <artifactId>agents-flex-document-parser</artifactId>
         <version>1.0.0-alpha.1</version>
     </parent>
 
-    <artifactId>agents-flex-llm-openai</artifactId>
+    <artifactId>agents-flex-document-parser-poi</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <apache.poi.version>5.2.5</apache.poi.version>
     </properties>
+
     <dependencies>
+
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
             <version>1.0.0-alpha.1</version>
         </dependency>
+
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>${apache.poi.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${apache.poi.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-scratchpad</artifactId>
+            <version>${apache.poi.version}</version>
         </dependency>
     </dependencies>
 

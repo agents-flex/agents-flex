@@ -20,6 +20,13 @@ import com.agentsflex.util.Metadata;
 public class Document extends Metadata {
     private String content;
 
+    public Document() {
+    }
+
+    public Document(String content) {
+        this.content = content;
+    }
+
     public String getContent() {
         return content;
     }

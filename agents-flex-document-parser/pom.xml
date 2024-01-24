@@ -5,28 +5,23 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>agents-flex-llm</artifactId>
+        <artifactId>parent</artifactId>
         <version>1.0.0-alpha.1</version>
     </parent>
 
-    <artifactId>agents-flex-llm-openai</artifactId>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-document-parser</artifactId>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>agents-flex-document-parser-pdfbox</module>
+        <module>agents-flex-document-parser-poi</module>
+    </modules>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-    <dependencies>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-alpha.1</version>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 
 </project>
