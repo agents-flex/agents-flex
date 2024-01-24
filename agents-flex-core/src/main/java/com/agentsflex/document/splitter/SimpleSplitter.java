@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text.splitter;
+package com.agentsflex.document.splitter;
 
-import com.agentsflex.text.Splitter;
-import com.agentsflex.text.Text;
+import com.agentsflex.document.Splitter;
+import com.agentsflex.document.Document;
 import com.agentsflex.util.StringUtil;
 
 import java.util.ArrayList;
@@ -32,14 +32,14 @@ public class SimpleSplitter implements Splitter {
     }
 
     @Override
-    public List<Text> split(Text text) {
+    public List<Document> split(Document text) {
         if (text == null || StringUtil.noText(text.getContent())) {
             return Collections.emptyList();
         }
         String[] textArray = text.getContent().split(regex);
-        List<Text> texts = new ArrayList<>(textArray.length);
+        List<Document> texts = new ArrayList<>(textArray.length);
         for (String textString : textArray) {
-            Text newText = new Text();
+            Document newText = new Document();
             newText.setMetadataMap(text.getMetadataMap());
             newText.setContent(textString);
             texts.add(newText);

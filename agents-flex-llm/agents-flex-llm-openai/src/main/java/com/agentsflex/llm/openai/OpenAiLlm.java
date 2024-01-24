@@ -24,7 +24,7 @@ import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatListener;
 import com.agentsflex.llm.FunctionCalling;
 import com.agentsflex.prompt.Prompt;
-import com.agentsflex.text.Text;
+import com.agentsflex.document.Document;
 import com.agentsflex.util.OKHttpUtil;
 import com.agentsflex.util.StringUtil;
 import com.agentsflex.vector.VectorData;
@@ -61,7 +61,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> implements FunctionCalli
 
 
     @Override
-    public VectorData embeddings(Text text) {
+    public VectorData embeddings(Document text) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());

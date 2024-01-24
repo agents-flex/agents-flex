@@ -13,13 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
+package com.agentsflex.document;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.vector.VectorData;
+import java.util.List;
 
-public interface Embeddings {
-
-   VectorData embeddings(Document prompt);
-
+public interface Splitter {
+    List<Document> split(Document text);
 }

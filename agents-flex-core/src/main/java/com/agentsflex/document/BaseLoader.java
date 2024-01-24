@@ -13,10 +13,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text;
+package com.agentsflex.document;
 
 import java.io.InputStream;
 
-public interface Parser {
-    Text parse(InputStream stream);
+public abstract class BaseLoader implements Loader{
+
+    protected Parser parser;
+
+    public BaseLoader(Parser parser) {
+        this.parser = parser;
+    }
+
+    @Override
+    public Document load() {
+        InputStream stream = loadInputStream();
+        return parser.parse(stream);
+    }
+
+    public abstract InputStream loadInputStream();
+
+
 }

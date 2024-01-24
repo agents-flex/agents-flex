@@ -22,7 +22,7 @@ import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.prompt.Prompt;
-import com.agentsflex.text.Text;
+import com.agentsflex.document.Document;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
@@ -47,7 +47,7 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToEmbeddingsPayload(Text text) {
+    public static String promptToEmbeddingsPayload(Document text) {
 
         // https://platform.openai.com/docs/api-reference/making-requests
         String payload = "{\n" +

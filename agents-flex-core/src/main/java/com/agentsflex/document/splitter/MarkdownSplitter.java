@@ -13,10 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text;
+package com.agentsflex.document.splitter;
+
+import com.agentsflex.document.Splitter;
+import com.agentsflex.document.Document;
 
 import java.util.List;
 
-public interface Splitter {
-    List<Text> split(Text text);
+public class MarkdownSplitter implements Splitter {
+    @Override
+    public List<Document> split(Document text) {
+        return null;
+    }
 }

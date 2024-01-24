@@ -23,7 +23,7 @@ import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatListener;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.prompt.Prompt;
-import com.agentsflex.text.Text;
+import com.agentsflex.document.Document;
 import com.agentsflex.vector.VectorData;
 
 import java.util.HashMap;
@@ -62,7 +62,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
 
     @Override
-    public VectorData embeddings(Text text) {
+    public VectorData embeddings(Document text) {
         return null;
     }
 }

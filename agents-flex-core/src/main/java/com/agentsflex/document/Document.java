@@ -13,16 +13,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text.splitter;
+package com.agentsflex.document;
 
-import com.agentsflex.text.Splitter;
-import com.agentsflex.text.Text;
+import com.agentsflex.util.Metadata;
 
-import java.util.List;
+public class Document extends Metadata {
+    private String content;
 
-public class ParagraphSplitter implements Splitter {
-    @Override
-    public List<Text> split(Text text) {
-        return null;
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 }

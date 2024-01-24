@@ -13,14 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text.loader;
+package com.agentsflex.document;
 
-import com.agentsflex.text.Loader;
-import com.agentsflex.text.Text;
-
-public class HttpLoader implements Loader {
-    @Override
-    public Text load() {
-        return null;
-    }
+public interface Transformer {
+    Document transform(Document document);
 }

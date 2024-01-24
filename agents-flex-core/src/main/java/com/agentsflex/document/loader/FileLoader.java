@@ -13,16 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text.splitter;
+package com.agentsflex.document.loader;
 
-import com.agentsflex.text.Splitter;
-import com.agentsflex.text.Text;
+import com.agentsflex.document.BaseLoader;
+import com.agentsflex.document.Parser;
 
-import java.util.List;
+import java.io.InputStream;
 
-public class MarkdownSplitter implements Splitter {
+public class FileLoader extends BaseLoader {
+
+    public FileLoader(Parser parser) {
+        super(parser);
+    }
+
     @Override
-    public List<Text> split(Text text) {
+    public InputStream loadInputStream() {
         return null;
     }
 }

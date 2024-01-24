@@ -13,18 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text;
+package com.agentsflex.document;
 
-import com.agentsflex.util.Metadata;
+import java.io.InputStream;
 
-public class Text extends Metadata {
-    private String content;
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
+public interface Parser {
+    Document parse(InputStream stream);
 }

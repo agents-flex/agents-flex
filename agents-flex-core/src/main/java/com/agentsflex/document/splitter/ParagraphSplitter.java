@@ -13,13 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
+package com.agentsflex.document.splitter;
 
+import com.agentsflex.document.Splitter;
 import com.agentsflex.document.Document;
-import com.agentsflex.vector.VectorData;
 
-public interface Embeddings {
+import java.util.List;
 
-   VectorData embeddings(Document prompt);
-
+public class ParagraphSplitter implements Splitter {
+    @Override
+    public List<Document> split(Document text) {
+        return null;
+    }
 }

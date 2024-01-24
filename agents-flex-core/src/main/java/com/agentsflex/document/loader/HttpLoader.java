@@ -13,14 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text.loader;
+package com.agentsflex.document.loader;
 
-import com.agentsflex.text.Loader;
-import com.agentsflex.text.Text;
+import com.agentsflex.document.BaseLoader;
+import com.agentsflex.document.Parser;
 
-public class FileLoader implements Loader {
+import java.io.InputStream;
+
+public class HttpLoader extends BaseLoader{
+
+    public HttpLoader(Parser parser) {
+        super(parser);
+    }
+
     @Override
-    public Text load() {
+    public InputStream loadInputStream() {
         return null;
     }
 }
