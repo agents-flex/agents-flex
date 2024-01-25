@@ -18,6 +18,7 @@ package com.agentsflex.functions;
 public class Parameter {
     private String name;
     private String type;
+    private Class<?> typeClass;
     private String description;
     private String[] enums;
     private boolean required = false;
@@ -36,6 +37,14 @@ public class Parameter {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public Class<?> getTypeClass() {
+        return typeClass;
+    }
+
+    public void setTypeClass(Class<?> typeClass) {
+        this.typeClass = typeClass;
     }
 
     public String getDescription() {

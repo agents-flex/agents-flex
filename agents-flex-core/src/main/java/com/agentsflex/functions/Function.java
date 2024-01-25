@@ -15,8 +15,10 @@
  */
 package com.agentsflex.functions;
 
+import com.agentsflex.convert.ConvertService;
 import com.agentsflex.functions.annotation.FunctionDef;
 import com.agentsflex.functions.annotation.FunctionParam;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -53,16 +55,23 @@ public class Function<R> {
         List<Parameter> parameterList = new ArrayList<>();
         java.lang.reflect.Parameter[] methodParameters = method.getParameters();
         for (java.lang.reflect.Parameter methodParameter : methodParameters) {
-            FunctionParam functionParam = methodParameter.getAnnotation(FunctionParam.class);
-            Parameter parameter = new Parameter();
-            parameter.setName(functionParam.name());
-            parameter.setDescription(functionParam.description());
-            parameter.setType(methodParameter.getType().getSimpleName().toLowerCase());
-            parameter.setRequired(functionParam.required());
-            parameter.setEnums(functionParam.enums());
+            Parameter parameter = getParameter(methodParameter);
             parameterList.add(parameter);
         }
         this.parameters = parameterList.toArray(new Parameter[]{});
+    }
+
+    @NotNull
+    private static Parameter getParameter(java.lang.reflect.Parameter methodParameter) {
+        FunctionParam functionParam = methodParameter.getAnnotation(FunctionParam.class);
+        Parameter parameter = new Parameter();
+        parameter.setName(functionParam.name());
+        parameter.setDescription(functionParam.description());
+        parameter.setType(methodParameter.getType().getSimpleName().toLowerCase());
+        parameter.setTypeClass(methodParameter.getType());
+        parameter.setRequired(functionParam.required());
+        parameter.setEnums(functionParam.enums());
+        return parameter;
     }
 
     public String getName() {
@@ -93,7 +102,8 @@ public class Function<R> {
         try {
             Object[] args = new Object[this.parameters.length];
             for (int i = 0; i < this.parameters.length; i++) {
-                args[i] = argsMap.get(this.parameters[i].getName());
+                Object value = argsMap.get(this.parameters[i].getName());
+                args[i] = ConvertService.convert(value, this.parameters[i].getTypeClass());
             }
             //noinspection unchecked
             return (R) method.invoke(null, args);
