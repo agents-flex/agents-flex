@@ -2,7 +2,7 @@
 
 
 
-# Agents-Flex is an elegant LLM Application Framework like LangChain with Java.
+# Agents-Flex is a LLM Application Framework like LangChain base on Java.
 
 ---
 

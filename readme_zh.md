@@ -3,7 +3,7 @@
 
 
 
-# Agents-Flex： 一个优雅的 LLM（大语言模型） 应用开发框架
+# Agents-Flex： 一个基于 Java 的 LLM（大语言模型）应用开发框架。
 
 ---
 
