@@ -29,19 +29,15 @@
 use OpenAi LLM:
 
 ```java
- public static void main(String[] args) throws InterruptedException {
-
-    OpenAiConfig config = new OpenAiConfig();
+ @Test
+public void testChat() {
+    OpenAiLlmConfig config = new OpenAiLlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
     Llm llm = new OpenAiLlm(config);
+    String response = llm.chat("what is your name?");
 
-    String prompt = "Please write a story about a little rabbit defeating a big bad wolf";
-    llm.chat(prompt, (llmInstance, message) -> {
-        System.out.println("--->" + message.getContent());
-    });
-
-    Thread.sleep(10000);
+    System.out.println(response);
 }
 ```
 
@@ -49,20 +45,16 @@ use OpenAi LLM:
 use Qwen LLM:
 
 ```java
- public static void main(String[] args) throws InterruptedException {
-
+ @Test
+public void testChat() {
     QwenLlmConfig config = new QwenLlmConfig();
     config.setApiKey("sk-28a6be3236****");
     config.setModel("qwen-turbo");
 
     Llm llm = new QwenLlm(config);
+    String response = llm.chat("what is your name?");
 
-    String  prompt = "Please write a story about a little rabbit defeating a big bad wolf";
-    llm.chat(prompt, (llmInstance, message) -> {
-        System.out.println("--->" + message.getContent());
-    });
-
-    Thread.sleep(10000);
+    System.out.println(response);
 }
 ```
 
@@ -70,21 +62,17 @@ use Qwen LLM:
 use SparkAi LLM:
 
 ```java
- public static void main(String[] args) throws InterruptedException {
-
+ @Test
+public void testChat() {
     SparkLlmConfig config = new SparkLlmConfig();
     config.setAppId("****");
     config.setApiKey("****");
     config.setApiSecret("****");
 
     Llm llm = new SparkLlm(config);
+    String response = llm.chat("what is your name?");
 
-    String  prompt = "Please write a story about a little rabbit defeating a big bad wolf";
-    llm.chat(prompt, (llmInstance, message) -> {
-        System.out.println("--->" + message.getContent());
-    });
-
-    Thread.sleep(10000);
+    System.out.println(response);
 }
 ```
 
@@ -92,35 +80,28 @@ use SparkAi LLM:
 
 
 ```java
- public static void main(String[] args) {
-
+public static void main(String[] args) {
     SparkLlmConfig config = new SparkLlmConfig();
     config.setAppId("****");
     config.setApiKey("****");
     config.setApiSecret("****");
 
-    // Create LLM
     Llm llm = new SparkLlm(config);
 
-    // Create Histories prompt
     HistoriesPrompt prompt = new HistoriesPrompt();
 
     System.out.println("ask for something...");
     Scanner scanner = new Scanner(System.in);
-
-    //wait for user input
     String userInput = scanner.nextLine();
 
-    while (userInput != null){
+    while (userInput != null) {
 
         prompt.addMessage(new HumanMessage(userInput));
 
-        //chat with llm
-        llm.chat(prompt, (instance, message) -> {
-            System.out.println(">>>> " + message.getContent());
+        llm.chatAsync(prompt, (context, response) -> {
+            System.out.println(">>>> " + response.getMessage().getContent());
         });
 
-        //wait for user input
         userInput = scanner.nextLine();
     }
 }
@@ -147,20 +128,19 @@ public class WeatherUtil {
 - step 2: invoke the function from LLM
 
 ```java
- public static void main(String[] args) throws InterruptedException {
-
+ public static void main(String[] args) {
     OpenAiLlmConfig config = new OpenAiLlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
     OpenAiLlm llm = new OpenAiLlm(config);
 
-    Functions<String> functions = Functions.from(WeatherUtil.class, String.class);
-    String result = llm.call("How is the weather in Beijing today?", functions);
+    FunctionPrompt prompt = new FunctionPrompt("How is the weather in Beijing today?", WeatherUtil.class);
+    FunctionResultResponse response = llm.chat(prompt);
+
+    Object result = response.invoke();
 
     System.out.println(result);
-    // "Today it will be dull and overcast in Beijing";
-
-    Thread.sleep(10000);
+    //Today it will be dull and overcast in Beijing
 }
 ```
 

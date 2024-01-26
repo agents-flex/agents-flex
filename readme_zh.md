@@ -31,39 +31,31 @@
 使用 OpenAi 大语言模型:
 
 ```java
- public static void main(String[] args) throws InterruptedException {
-
-    OpenAiConfig config = new OpenAiConfig();
+ @Test
+public void testChat() {
+    OpenAiLlmConfig config = new OpenAiLlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
     Llm llm = new OpenAiLlm(config);
+    String response = llm.chat("请问你叫什么名字");
 
-    String prompt = "请写一个关于小兔子战胜大灰狼的故事。";
-    llm.chat(prompt, (llmInstance, message) -> {
-        System.out.println("--->" + message.getContent());
-    });
-
-    Thread.sleep(10000);
+    System.out.println(response);
 }
 ```
 
 使用 “通义千问” 大语言模型:
 
 ```java
- public static void main(String[] args) throws InterruptedException {
-
+@Test
+public void testChat() {
     QwenLlmConfig config = new QwenLlmConfig();
     config.setApiKey("sk-28a6be3236****");
     config.setModel("qwen-turbo");
 
     Llm llm = new QwenLlm(config);
+    String response = llm.chat("请问你叫什么名字");
 
-    String prompt = "请写一个关于小兔子战胜大灰狼的故事。";
-    llm.chat(prompt, (llmInstance, message) -> {
-        System.out.println("--->" + message.getContent());
-    });
-
-    Thread.sleep(10000);
+    System.out.println(response);
 }
 ```
 
@@ -72,21 +64,17 @@
 使用 “讯飞星火” 大语言模型:
 
 ```java
- public static void main(String[] args) throws InterruptedException {
-
+@Test
+public void testChat() {
     SparkLlmConfig config = new SparkLlmConfig();
     config.setAppId("****");
     config.setApiKey("****");
     config.setApiSecret("****");
 
     Llm llm = new SparkLlm(config);
+    String response = llm.chat("请问你叫什么名字");
 
-    String prompt = "请写一个关于小兔子战胜大灰狼的故事。";
-    llm.chat(prompt, (llmInstance, message) -> {
-        System.out.println("--->" + message.getContent());
-    });
-
-    Thread.sleep(10000);
+    System.out.println(response);
 }
 ```
 
@@ -94,35 +82,28 @@
 
 
 ```java
- public static void main(String[] args) throws InterruptedException {
-
+public static void main(String[] args) {
     SparkLlmConfig config = new SparkLlmConfig();
     config.setAppId("****");
     config.setApiKey("****");
     config.setApiSecret("****");
 
-    // 创建一个大模型
     Llm llm = new SparkLlm(config);
 
-    //创建一个历史对话的 prompt
     HistoriesPrompt prompt = new HistoriesPrompt();
 
     System.out.println("您想问什么？");
     Scanner scanner = new Scanner(System.in);
-
-    //等待用户从控制台输入问题
     String userInput = scanner.nextLine();
 
-    while (userInput != null){
+    while (userInput != null) {
 
         prompt.addMessage(new HumanMessage(userInput));
 
-        //向大模型提问
-        llm.chat(prompt, (instance, message) -> {
-            System.out.println(">>>> " + message.getContent());
+        llm.chatAsync(prompt, (context, response) -> {
+            System.out.println(">>>> " + response.getMessage().getContent());
         });
 
-        //继续等待用户从控制台输入内容
         userInput = scanner.nextLine();
     }
 }
@@ -151,20 +132,20 @@ public class WeatherUtil {
 - 第二步: 通过 Prompt、Functions 传入给大模型，然后得到结果
 
 ```java
- public static void main(String[] args) throws InterruptedException {
+ public static void main(String[] args) {
 
     OpenAiLlmConfig config = new OpenAiLlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
     OpenAiLlm llm = new OpenAiLlm(config);
 
-    Functions<String> functions = Functions.from(WeatherUtil.class, String.class);
-    String result = llm.call("今天北京的天气如何", functions);
+    FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
+    FunctionResultResponse response = llm.chat(prompt);
+
+    Object result = response.invoke();
 
     System.out.println(result);
-    // "北京的天气是阴转多云。 ";
-
-    Thread.sleep(10000);
+    //"北京的天气是阴转多云。 "
 }
 ```
 
