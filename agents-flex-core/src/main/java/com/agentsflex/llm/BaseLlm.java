@@ -15,7 +15,7 @@
  */
 package com.agentsflex.llm;
 
-public abstract class BaseLlm<T extends LlmConfig> extends Llm{
+public abstract class BaseLlm<T extends LlmConfig> implements Llm {
 
     protected T config;
 

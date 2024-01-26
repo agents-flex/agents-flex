@@ -15,16 +15,23 @@
  */
 package com.agentsflex.llm;
 
-import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.SimplePrompt;
 
-public abstract class Llm implements Embeddings {
+public interface Llm extends Embeddings {
 
-    public LlmClient chat(String prompt, ChatListener listener) {
-        return chat(new SimplePrompt(prompt), listener);
+    default String chat(String prompt) {
+        ChatResponse<?> chat = chat(new SimplePrompt(prompt));
+        return chat != null ? chat.getMessage().getContent() : null;
     }
 
-    public abstract LlmClient chat(Prompt prompt, ChatListener listener);
+    <T extends ChatResponse<?>> T chat(Prompt<T> prompt);
+
+
+    default void chatAsync(String prompt, ChatListener listener) {
+        this.chatAsync(new SimplePrompt(prompt), listener);
+    }
+
+    void chatAsync(Prompt prompt, ChatListener listener);
 
 }

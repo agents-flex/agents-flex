@@ -15,7 +15,7 @@
  */
 package com.agentsflex.vector.qcloud;
 
-import com.agentsflex.util.OKHttpUtil;
+import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.util.StringUtil;
 import com.agentsflex.vector.RetrieveWrapper;
 import com.agentsflex.vector.VectorDocument;
@@ -33,7 +33,7 @@ public class QCloudVectorStorage extends VectorStorage<VectorDocument> {
 
     private QCloudVectorStorageConfig config;
 
-    private final OKHttpUtil httpUtil = new OKHttpUtil();
+    private final HttpClient httpUtil = new HttpClient();
 
 
     public QCloudVectorStorage(QCloudVectorStorageConfig config) {

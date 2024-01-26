@@ -15,30 +15,39 @@
  */
 package com.agentsflex.prompt;
 
-import com.agentsflex.llm.response.MessageResponse;
+import com.agentsflex.functions.Function;
+import com.agentsflex.functions.Functions;
+import com.agentsflex.llm.response.FunctionResultResponse;
 import com.agentsflex.memory.DefaultMessageMemory;
 import com.agentsflex.memory.MessageMemory;
+import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class HistoriesPrompt extends Prompt<MessageResponse>{
-
+public class FunctionPrompt extends Prompt<FunctionResultResponse> {
     private MessageMemory memory = new DefaultMessageMemory();
 
-    public HistoriesPrompt() {
+    private List<Function<?>> functions = new ArrayList<>();
+
+    public FunctionPrompt(String prompt, Class<?> funcClass) {
+        memory.addMessage(new HumanMessage(prompt));
+        functions.addAll(Functions.from(funcClass));
     }
 
-    public HistoriesPrompt(MessageMemory memory) {
-        this.memory = memory;
+    public FunctionPrompt(List<Message> messages, Class<?> funcClass) {
+        memory.addMessages(messages);
+        functions.addAll(Functions.from(funcClass));
     }
 
-    public void addMessage(Message message) {
-        memory.addMessage(message);
-    }
 
     @Override
     public List<Message> getMessages() {
         return memory.getMessages();
+    }
+
+    public List<Function<?>> getFunctions() {
+        return functions;
     }
 }

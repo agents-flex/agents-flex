@@ -13,16 +13,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.prompt;
+package com.agentsflex.llm;
 
-import com.agentsflex.message.Message;
-import com.agentsflex.util.Metadata;
+import com.agentsflex.llm.client.LlmClient;
 
-import java.util.List;
+public class ChatContext {
+    private Llm llm;
+    private LlmClient client;
 
+    public ChatContext(Llm llm, LlmClient client) {
+        this.llm = llm;
+        this.client = client;
+    }
 
-public abstract class Prompt<ChatResponse> extends Metadata {
+    public Llm getLlm() {
+        return llm;
+    }
 
-    public abstract List<Message> getMessages();
+    public void setLlm(Llm llm) {
+        this.llm = llm;
+    }
 
+    public LlmClient getClient() {
+        return client;
+    }
+
+    public void setClient(LlmClient client) {
+        this.client = client;
+    }
 }

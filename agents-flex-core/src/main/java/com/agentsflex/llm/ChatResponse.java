@@ -13,16 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.prompt;
+package com.agentsflex.llm;
 
 import com.agentsflex.message.Message;
-import com.agentsflex.util.Metadata;
 
-import java.util.List;
-
-
-public abstract class Prompt<ChatResponse> extends Metadata {
-
-    public abstract List<Message> getMessages();
-
+public interface ChatResponse<T extends Message> {
+    T getMessage();
 }

@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class HttpClient implements LlmClient {
+public class AsyncHttpClient implements LlmClient {
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
     private OkHttpClient client;
     private LlmClientListener listener;
@@ -55,15 +55,15 @@ public class HttpClient implements LlmClient {
         this.client.newCall(rBuilder.build()).enqueue(new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                HttpClient.this.listener.onFailure(HttpClient.this, e);
+                AsyncHttpClient.this.listener.onFailure(AsyncHttpClient.this, e);
             }
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                HttpClient.this.listener.onMessage(HttpClient.this, response.message());
+                AsyncHttpClient.this.listener.onMessage(AsyncHttpClient.this, response.message());
                 if (!isStop) {
-                    HttpClient.this.isStop = true;
-                    HttpClient.this.listener.onStop(HttpClient.this);
+                    AsyncHttpClient.this.isStop = true;
+                    AsyncHttpClient.this.listener.onStop(AsyncHttpClient.this);
                 }
             }
         });

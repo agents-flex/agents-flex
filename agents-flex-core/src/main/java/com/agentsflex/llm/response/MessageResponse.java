@@ -13,15 +13,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
+package com.agentsflex.llm.response;
 
-import com.agentsflex.functions.Function;
-import com.agentsflex.prompt.Prompt;
+import com.agentsflex.llm.ChatResponse;
+import com.agentsflex.message.AiMessage;
 
-import java.util.List;
+public class MessageResponse implements ChatResponse<AiMessage> {
+    private final AiMessage aiMessage;
 
-public interface FunctionCalling {
+    public MessageResponse(AiMessage aiMessage) {
+        this.aiMessage = aiMessage;
+    }
 
-    <R> R call(Prompt prompt, List<Function<R>> functions);
-
+    @Override
+    public AiMessage getMessage() {
+        return aiMessage;
+    }
 }

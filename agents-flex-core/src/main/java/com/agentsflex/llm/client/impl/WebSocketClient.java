@@ -79,6 +79,10 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
     @Override
     public void onClosing(WebSocket webSocket, int code, String reason) {
+        if (!isStop) {
+            this.isStop = true;
+            this.listener.onStop(this);
+        }
     }
 
     @Override

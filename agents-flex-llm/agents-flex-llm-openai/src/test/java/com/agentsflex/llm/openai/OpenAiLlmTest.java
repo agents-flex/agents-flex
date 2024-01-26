@@ -1,43 +1,36 @@
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.functions.Functions;
 import com.agentsflex.llm.Llm;
-import com.agentsflex.prompt.SimplePrompt;
+import com.agentsflex.llm.response.FunctionResultResponse;
+import com.agentsflex.prompt.FunctionPrompt;
 import org.junit.Test;
 
 public class OpenAiLlmTest {
 
     @Test
-    public  void testChat() throws InterruptedException {
-
-
+    public void testChat() {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
         config.setApiKey("sk-rts5NF6n*******");
 
         Llm llm = new OpenAiLlm(config);
+        String response = llm.chat("请问你叫什么名字");
 
-        llm.chat(new SimplePrompt("请写一个小兔子战胜大灰狼的故事"), (instance, message) -> {
-            System.out.println("--->" + message.getContent());
-        });
-
-        Thread.sleep(10000);
-
+        System.out.println(response);
     }
+
     @Test
-    public  void testFunctionCalling() throws InterruptedException {
-
-
+    public void testFunctionCalling() throws InterruptedException {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
         config.setApiKey("sk-rts5NF6n*******");
 
         OpenAiLlm llm = new OpenAiLlm(config);
 
-        Functions<String> functions = Functions.from(WeatherUtil.class, String.class);
-        String result = llm.call(new SimplePrompt("今天的天气怎么样"), functions);
+        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
+        FunctionResultResponse response = llm.chat(prompt);
+
+        Object result = response.invoke();
 
         System.out.println(result);
-
-        Thread.sleep(10000);
-
+        // "Today it will be dull and overcast in 北京"
     }
 }

@@ -20,6 +20,6 @@ import com.agentsflex.vector.VectorData;
 
 public interface Embeddings {
 
-   VectorData embeddings(Document prompt);
+   VectorData embeddings(Document document);
 
 }

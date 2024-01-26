@@ -15,5 +15,26 @@
  */
 package com.agentsflex.message;
 
+import java.util.Map;
+
 public class FunctionMessage extends Message{
+
+    private String functionName;
+    private Map<String,Object> args;
+
+    public String getFunctionName() {
+        return functionName;
+    }
+
+    public void setFunctionName(String functionName) {
+        this.functionName = functionName;
+    }
+
+    public Map<String, Object> getArgs() {
+        return args;
+    }
+
+    public void setArgs(Map<String, Object> args) {
+        this.args = args;
+    }
 }

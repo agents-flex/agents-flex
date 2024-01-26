@@ -15,66 +15,96 @@
  */
 package com.agentsflex.llm.client;
 
+import com.agentsflex.functions.Function;
+import com.agentsflex.llm.ChatContext;
 import com.agentsflex.llm.ChatListener;
+import com.agentsflex.llm.ChatResponse;
 import com.agentsflex.llm.Llm;
+import com.agentsflex.llm.response.FunctionResultResponse;
+import com.agentsflex.llm.response.MessageResponse;
 import com.agentsflex.message.AiMessage;
+import com.agentsflex.message.FunctionMessage;
+import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.HistoriesPrompt;
 import com.agentsflex.prompt.Prompt;
+
+import java.util.List;
 
 public class BaseLlmClientListener implements LlmClientListener {
 
     private final Llm llm;
+    private final LlmClient client;
     private final ChatListener chatListener;
-
     private final Prompt prompt;
-
-    private final MessageParser messageParser;
-
+    private final AiMessageParser messageParser;
+    private final FunctionMessageParser functionInfoParser;
     private final StringBuilder fullMessage = new StringBuilder();
-
     private AiMessage lastAiMessage;
+    private boolean isFunctionCalling = false;
 
-    public BaseLlmClientListener(Llm llm, ChatListener chatListener, Prompt prompt, MessageParser messageParser) {
+    public BaseLlmClientListener(Llm llm, LlmClient client, ChatListener chatListener, Prompt prompt
+        , AiMessageParser messageParser
+        , FunctionMessageParser functionInfoParser) {
         this.llm = llm;
+        this.client = client;
         this.chatListener = chatListener;
         this.prompt = prompt;
         this.messageParser = messageParser;
+        this.functionInfoParser = functionInfoParser;
+
+        if (prompt instanceof FunctionPrompt) {
+            if (functionInfoParser == null) {
+                throw new IllegalArgumentException("Can not support Function Calling");
+            } else {
+                isFunctionCalling = true;
+            }
+        }
     }
 
 
     @Override
     public void onStart(LlmClient client) {
-        chatListener.onStart(llm);
+        chatListener.onStart(new ChatContext(llm, client));
     }
 
     @Override
     public void onMessage(LlmClient client, String response) {
-        lastAiMessage =  messageParser.parseMessage(response);
-        fullMessage.append(lastAiMessage.getContent());
-        chatListener.onMessage(llm, lastAiMessage);
+        if (isFunctionCalling) {
+            FunctionMessage functionInfo = functionInfoParser.parseMessage(response);
+            List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
+            ChatResponse<?> r = new FunctionResultResponse(functions, functionInfo);
+            chatListener.onMessage(new ChatContext(llm, client), r);
+        } else {
+            lastAiMessage = messageParser.parseMessage(response);
+            fullMessage.append(lastAiMessage.getContent());
+            lastAiMessage.setFullContent(fullMessage.toString());
+            ChatResponse<?> r = new MessageResponse(lastAiMessage);
+            chatListener.onMessage(new ChatContext(llm, client), r);
+        }
     }
 
     @Override
     public void onStop(LlmClient client) {
-        if (lastAiMessage != null){
-
-            lastAiMessage.setFullContent(fullMessage.toString());
-
-            if (this.prompt instanceof HistoriesPrompt){
+        if (lastAiMessage != null) {
+            if (this.prompt instanceof HistoriesPrompt) {
                 ((HistoriesPrompt) this.prompt).addMessage(lastAiMessage);
             }
         }
 
-        chatListener.onStop(llm);
+        chatListener.onStop(new ChatContext(llm, client));
     }
 
     @Override
     public void onFailure(LlmClient client, Throwable throwable) {
-        chatListener.onFailure(llm, throwable);
+        chatListener.onFailure(new ChatContext(llm, client), throwable);
     }
 
 
-    public interface MessageParser{
+    public interface AiMessageParser {
         AiMessage parseMessage(String response);
+    }
+
+    public interface FunctionMessageParser {
+        FunctionMessage parseMessage(String response);
     }
 }

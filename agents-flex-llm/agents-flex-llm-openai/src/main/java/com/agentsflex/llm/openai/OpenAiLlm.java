@@ -15,17 +15,22 @@
  */
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.llm.client.BaseLlmClientListener;
-import com.agentsflex.llm.client.LlmClient;
-import com.agentsflex.llm.client.LlmClientListener;
-import com.agentsflex.llm.client.impl.SseClient;
+import com.agentsflex.document.Document;
 import com.agentsflex.functions.Function;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatListener;
-import com.agentsflex.llm.FunctionCalling;
+import com.agentsflex.llm.ChatResponse;
+import com.agentsflex.llm.client.BaseLlmClientListener;
+import com.agentsflex.llm.client.HttpClient;
+import com.agentsflex.llm.client.LlmClient;
+import com.agentsflex.llm.client.LlmClientListener;
+import com.agentsflex.llm.client.impl.SseClient;
+import com.agentsflex.llm.response.FunctionResultResponse;
+import com.agentsflex.llm.response.MessageResponse;
+import com.agentsflex.message.AiMessage;
+import com.agentsflex.message.FunctionMessage;
+import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
-import com.agentsflex.document.Document;
-import com.agentsflex.util.OKHttpUtil;
 import com.agentsflex.util.StringUtil;
 import com.agentsflex.vector.VectorData;
 import com.alibaba.fastjson.JSON;
@@ -36,17 +41,46 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> implements FunctionCalling {
+public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
-    private final OKHttpUtil httpUtil = new OKHttpUtil();
+    private final HttpClient httpClient = new HttpClient();
 
     public OpenAiLlm(OpenAiLlmConfig config) {
         super(config);
     }
 
+    @Override
+    public  <T extends ChatResponse<?>> T chat(Prompt<T> prompt){
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+
+        String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
+        String responseString = httpClient.post("https://api.openai.com/v1/chat/completions", headers, payload);
+        if (StringUtil.noText(responseString)) {
+            return null;
+        }
+
+        if (prompt instanceof FunctionPrompt) {
+            List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
+
+            JSONObject jsonObject = JSON.parseObject(responseString);
+            String callFunctionName = (String) JSONPath.eval(jsonObject, "$.choices[0].tool_calls[0].function.name");
+            String callFunctionArgsString = (String) JSONPath.eval(jsonObject, "$.choices[0].tool_calls[0].function.arguments");
+            JSONObject callFunctionArgs = JSON.parseObject(callFunctionArgsString);
+
+            FunctionMessage functionMessage = new FunctionMessage();
+            functionMessage.setFunctionName(callFunctionName);
+            functionMessage.setArgs(callFunctionArgs);
+            return (T) new FunctionResultResponse(functions, functionMessage);
+        } else {
+            AiMessage aiMessage = OpenAiLLmUtil.parseAiMessage(responseString);
+            return (T) new MessageResponse(aiMessage);
+        }
+    }
 
     @Override
-    public LlmClient chat(Prompt prompt, ChatListener listener) {
+    public void chatAsync(Prompt prompt, ChatListener listener) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -54,22 +88,21 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> implements FunctionCalli
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
 
-        LlmClientListener clientListener = new BaseLlmClientListener(this, listener, prompt, OpenAiLLmUtil::parseAiMessage);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, OpenAiLLmUtil::parseAiMessage, null);
         llmClient.start("https://api.openai.com/v1/chat/completions", headers, payload, clientListener);
-        return llmClient;
     }
 
 
     @Override
-    public VectorData embeddings(Document text) {
+    public VectorData embeddings(Document document) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToEmbeddingsPayload(text);
+        String payload = OpenAiLLmUtil.promptToEmbeddingsPayload(document);
 
         // https://platform.openai.com/docs/api-reference/embeddings/create
-        String response = httpUtil.post("https://api.openai.com/v1/embeddings", headers, payload);
+        String response = httpClient.post("https://api.openai.com/v1/embeddings", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
         }
@@ -81,30 +114,5 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> implements FunctionCalli
         return vectorData;
     }
 
-    @Override
-    public <R> R call(Prompt prompt, List<Function<R>> functions) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToFunctionCallingPayload(prompt, config, functions);
-
-        // https://platform.openai.com/docs/api-reference/embeddings/create
-        String response = httpUtil.post("https://api.openai.com/v1/embeddings", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
-
-        JSONObject jsonObject = JSON.parseObject(response);
-        String callFunctionName = (String) JSONPath.eval(jsonObject, "$.choices[0].tool_calls[0].function.name");
-        String callFunctionArgsString = (String) JSONPath.eval(jsonObject, "$.choices[0].tool_calls[0].function.arguments");
-        JSONObject callFunctionArgs = JSON.parseObject(callFunctionArgsString);
-
-        for (Function<R> function : functions) {
-            if (function.getName().equals(callFunctionName)) {
-                return function.invoke(callFunctionArgs);
-            }
-        }
-        return null;
-    }
 }

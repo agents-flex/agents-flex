@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.util;
+package com.agentsflex.llm.client;
 
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -23,13 +23,13 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class OKHttpUtil {
-    private static final Logger LOG = LoggerFactory.getLogger(OKHttpUtil.class);
+public class HttpClient {
+    private static final Logger LOG = LoggerFactory.getLogger(HttpClient.class);
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
     private final OkHttpClient okHttpClient;
 
-    public OKHttpUtil() {
+    public HttpClient() {
         this.okHttpClient = new OkHttpClient.Builder()
             .connectTimeout(3, TimeUnit.MINUTES)
             .readTimeout(3, TimeUnit.MINUTES)
@@ -37,7 +37,7 @@ public class OKHttpUtil {
     }
 
 
-    public OKHttpUtil(OkHttpClient okHttpClient) {
+    public HttpClient(OkHttpClient okHttpClient) {
         this.okHttpClient = okHttpClient;
     }
 

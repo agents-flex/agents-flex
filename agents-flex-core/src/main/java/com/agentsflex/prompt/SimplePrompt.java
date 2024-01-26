@@ -15,13 +15,14 @@
  */
 package com.agentsflex.prompt;
 
+import com.agentsflex.llm.response.MessageResponse;
 import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 
 import java.util.Collections;
 import java.util.List;
 
-public class SimplePrompt extends Prompt{
+public class SimplePrompt extends Prompt<MessageResponse> {
 
     private final String content;
 

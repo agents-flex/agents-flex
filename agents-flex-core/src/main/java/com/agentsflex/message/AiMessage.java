@@ -21,7 +21,6 @@ public class AiMessage extends Message {
     private Integer index;
     private MessageStatus status;
     private int totalTokens;
-
     private String fullContent;
 
 

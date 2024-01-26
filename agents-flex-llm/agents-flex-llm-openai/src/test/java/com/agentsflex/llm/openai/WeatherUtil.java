@@ -9,6 +9,6 @@ public class WeatherUtil {
     public static String getWeatherInfo(
         @FunctionParam(name = "city", description = "the city name") String name
     ) {
-        return "Today it will be dull and overcast in city " + name;
+        return "Today it will be dull and overcast in " + name;
     }
 }

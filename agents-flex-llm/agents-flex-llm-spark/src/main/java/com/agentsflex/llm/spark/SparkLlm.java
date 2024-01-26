@@ -15,15 +15,21 @@
  */
 package com.agentsflex.llm.spark;
 
+import com.agentsflex.document.Document;
+import com.agentsflex.llm.BaseLlm;
+import com.agentsflex.llm.ChatContext;
+import com.agentsflex.llm.ChatListener;
+import com.agentsflex.llm.ChatResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.WebSocketClient;
-import com.agentsflex.llm.BaseLlm;
-import com.agentsflex.llm.ChatListener;
+import com.agentsflex.llm.response.MessageResponse;
+import com.agentsflex.message.AiMessage;
 import com.agentsflex.prompt.Prompt;
-import com.agentsflex.document.Document;
 import com.agentsflex.vector.VectorData;
+
+import java.util.concurrent.CountDownLatch;
 
 public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
@@ -32,21 +38,44 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     }
 
     @Override
-    public LlmClient chat(Prompt prompt, ChatListener listener) {
+    public VectorData embeddings(Document document) {
+        return null;
+    }
+
+    @Override
+    public MessageResponse chat(Prompt prompt) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AiMessage aiMessage = new AiMessage();
+        chatAsync(prompt, new ChatListener() {
+            @Override
+            public void onMessage(ChatContext context, ChatResponse<?> response) {
+                aiMessage.setContent(((AiMessage) response.getMessage()).getFullContent());
+            }
+
+            @Override
+            public void onStop(ChatContext context) {
+                ChatListener.super.onStop(context);
+                latch.countDown();
+            }
+        });
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return new MessageResponse(aiMessage);
+    }
+
+
+    @Override
+    public void chatAsync(Prompt prompt, ChatListener listener) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
 
         String payload = SparkLlmUtil.promptToPayload(prompt, config);
 
-        LlmClientListener clientListener = new BaseLlmClientListener(this, listener, prompt, SparkLlmUtil::parseAiMessage);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, SparkLlmUtil::parseAiMessage, null);
         llmClient.start(url, null, payload, clientListener);
-
-        return llmClient;
     }
 
-
-    @Override
-    public VectorData embeddings(Document text) {
-        return null;
-    }
 }

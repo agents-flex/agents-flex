@@ -15,15 +15,16 @@
  */
 package com.agentsflex.llm;
 
-import com.agentsflex.message.AiMessage;
-
 public interface ChatListener {
 
-    default void onStart(Llm llm){}
+    default void onStart(ChatContext context) {
+    }
 
-    void onMessage(Llm llm, AiMessage aiMessage);
+    void onMessage(ChatContext context, ChatResponse<?> response);
 
-    default void onStop(Llm llm){}
+    default void onStop(ChatContext context) {
+    }
 
-    default void onFailure(Llm llm, Throwable throwable){}
+    default void onFailure(ChatContext context, Throwable throwable) {
+    }
 }
