@@ -41,19 +41,19 @@ public class HttpClient {
         this.okHttpClient = okHttpClient;
     }
 
-    public  String post(String url, Map<String, String> headers, String payload) {
+    public String post(String url, Map<String, String> headers, String payload) {
         return method(url, "POST", headers, payload);
     }
 
-    public  String put(String url, Map<String, String> headers, String payload) {
+    public String put(String url, Map<String, String> headers, String payload) {
         return method(url, "PUT", headers, payload);
     }
 
-    public  String delete(String url, Map<String, String> headers, String payload) {
+    public String delete(String url, Map<String, String> headers, String payload) {
         return method(url, "DELETE", headers, payload);
     }
 
-    private  String method(String url, String method, Map<String, String> headers, String payload) {
+    private String method(String url, String method, Map<String, String> headers, String payload) {
         Request.Builder builder = new Request.Builder()
             .url(url);
 
@@ -66,7 +66,12 @@ public class HttpClient {
 
         try {
             Response response = okHttpClient.newCall(request).execute();
-            return response.message();
+            return response.body().string();
+//            if (response.isSuccessful()) {
+//                return response.message();
+//            } else {
+//                return response.body().string();
+//            }
         } catch (IOException e) {
             LOG.error(e.toString(), e);
         }

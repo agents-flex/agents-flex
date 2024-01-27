@@ -32,6 +32,6 @@ public interface Llm extends Embeddings {
         this.chatAsync(new SimplePrompt(prompt), listener);
     }
 
-    void chatAsync(Prompt prompt, ChatListener listener);
+    void chatAsync(Prompt<?> prompt, ChatListener listener);
 
 }

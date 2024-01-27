@@ -42,8 +42,9 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         return null;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public MessageResponse chat(Prompt prompt) {
+    public <T extends ChatResponse<?>> T chat(Prompt<T> prompt) {
         CountDownLatch latch = new CountDownLatch(1);
         AiMessage aiMessage = new AiMessage();
         chatAsync(prompt, new ChatListener() {
@@ -63,12 +64,14 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        return new MessageResponse(aiMessage);
+        return (T) new MessageResponse(aiMessage);
     }
 
 
+
+
     @Override
-    public void chatAsync(Prompt prompt, ChatListener listener) {
+    public void chatAsync(Prompt<?> prompt, ChatListener listener) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
 
@@ -77,5 +80,6 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, SparkLlmUtil::parseAiMessage, null);
         llmClient.start(url, null, payload, clientListener);
     }
+
 
 }

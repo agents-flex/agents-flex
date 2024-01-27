@@ -67,7 +67,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
     }
 
     @Override
-    public void chatAsync(Prompt prompt, ChatListener listener) {
+    public void chatAsync(Prompt<?> prompt, ChatListener listener) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
