@@ -42,6 +42,8 @@ public class BaseLlmClientListener implements LlmClientListener {
     private AiMessage lastAiMessage;
     private boolean isFunctionCalling = false;
 
+    private final ChatContext context;
+
     public BaseLlmClientListener(Llm llm, LlmClient client, ChatListener chatListener, Prompt prompt
         , AiMessageParser messageParser
         , FunctionMessageParser functionInfoParser) {
@@ -51,6 +53,7 @@ public class BaseLlmClientListener implements LlmClientListener {
         this.prompt = prompt;
         this.messageParser = messageParser;
         this.functionInfoParser = functionInfoParser;
+        this.context = new ChatContext(llm, client);
 
         if (prompt instanceof FunctionPrompt) {
             if (functionInfoParser == null) {
@@ -64,7 +67,7 @@ public class BaseLlmClientListener implements LlmClientListener {
 
     @Override
     public void onStart(LlmClient client) {
-        chatListener.onStart(new ChatContext(llm, client));
+        chatListener.onStart(context);
     }
 
     @Override
@@ -73,13 +76,13 @@ public class BaseLlmClientListener implements LlmClientListener {
             FunctionMessage functionInfo = functionInfoParser.parseMessage(response);
             List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
             ChatResponse<?> r = new FunctionResultResponse(functions, functionInfo);
-            chatListener.onMessage(new ChatContext(llm, client), r);
+            chatListener.onMessage(context, r);
         } else {
             lastAiMessage = messageParser.parseMessage(response);
             fullMessage.append(lastAiMessage.getContent());
             lastAiMessage.setFullContent(fullMessage.toString());
             ChatResponse<?> r = new MessageResponse(lastAiMessage);
-            chatListener.onMessage(new ChatContext(llm, client), r);
+            chatListener.onMessage(context, r);
         }
     }
 
@@ -91,12 +94,12 @@ public class BaseLlmClientListener implements LlmClientListener {
             }
         }
 
-        chatListener.onStop(new ChatContext(llm, client));
+        chatListener.onStop(context);
     }
 
     @Override
     public void onFailure(LlmClient client, Throwable throwable) {
-        chatListener.onFailure(new ChatContext(llm, client), throwable);
+        chatListener.onFailure(context, throwable);
     }
 
 
