@@ -5,21 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>agents-flex-storage</artifactId>
         <version>1.0.0-alpha.1</version>
     </parent>
 
-    <artifactId>agents-flex-storage</artifactId>
-    <packaging>pom</packaging>
-    <modules>
-        <module>agents-flex-storage-qcloud</module>
-        <module>agents-flex-storage-aliyun</module>
-        <module>agents-flex-storage-chroma</module>
-        <module>agents-flex-storage-milvus</module>
-        <module>agents-flex-storage-redis</module>
-        <module>agents-flex-storage-opensearch</module>
-        <module>agents-flex-storage-elasticsearch</module>
-    </modules>
+    <artifactId>agents-flex-storage-redis</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
