@@ -15,5 +15,27 @@
  */
 package com.agentsflex.agent;
 
-public class Agent {
+import com.agentsflex.memory.ContextMemory;
+
+public abstract class Agent<Output> {
+    private Object id;
+    private ContextMemory memory;
+
+    public Object getId() {
+        return id;
+    }
+
+    public void setId(Object id) {
+        this.id = id;
+    }
+
+    public ContextMemory getMemory() {
+        return memory;
+    }
+
+    public void setMemory(ContextMemory memory) {
+        this.memory = memory;
+    }
+
+    public abstract Output execute();
 }

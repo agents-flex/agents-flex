@@ -20,7 +20,7 @@ import com.agentsflex.message.Message;
 import java.util.Collection;
 import java.util.List;
 
-public interface MessageMemory extends Memory {
+public interface ChatMemory extends Memory {
     List<Message> getMessages();
 
     void addMessage(Message message);

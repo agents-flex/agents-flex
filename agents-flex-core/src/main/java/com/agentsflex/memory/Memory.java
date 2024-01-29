@@ -19,5 +19,6 @@ import java.io.Serializable;
 
 public interface Memory extends Serializable {
 
+    Object id();
 
 }

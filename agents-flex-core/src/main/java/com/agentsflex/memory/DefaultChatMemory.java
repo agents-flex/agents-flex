@@ -19,8 +19,24 @@ import com.agentsflex.message.Message;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-public class DefaultMessageMemory implements MessageMemory {
+public class DefaultChatMemory implements ChatMemory {
+
+    private final Object id;
+
+    public DefaultChatMemory() {
+        this.id = UUID.randomUUID().toString();
+    }
+
+    public DefaultChatMemory(Object id) {
+        this.id = id;
+    }
+
+    @Override
+    public Object id() {
+        return id;
+    }
     private final List<Message> messages = new ArrayList<>();
 
     @Override
@@ -32,4 +48,6 @@ public class DefaultMessageMemory implements MessageMemory {
     public void addMessage(Message message) {
         messages.add(message);
     }
+
+
 }

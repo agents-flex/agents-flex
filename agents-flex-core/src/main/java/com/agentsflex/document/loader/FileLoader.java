@@ -18,16 +18,29 @@ package com.agentsflex.document.loader;
 import com.agentsflex.document.BaseLoader;
 import com.agentsflex.document.Parser;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 
 public class FileLoader extends BaseLoader {
 
-    public FileLoader(Parser parser) {
+    private final File file;
+
+    public FileLoader(File file,Parser parser){
         super(parser);
+        this.file = file;
     }
 
     @Override
     public InputStream loadInputStream() {
+        if (file.isFile()){
+            try {
+                return new FileInputStream(file);
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
         return null;
     }
 }

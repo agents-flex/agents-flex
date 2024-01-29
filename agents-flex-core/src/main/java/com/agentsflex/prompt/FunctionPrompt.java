@@ -18,8 +18,8 @@ package com.agentsflex.prompt;
 import com.agentsflex.functions.Function;
 import com.agentsflex.functions.Functions;
 import com.agentsflex.llm.response.FunctionResultResponse;
-import com.agentsflex.memory.DefaultMessageMemory;
-import com.agentsflex.memory.MessageMemory;
+import com.agentsflex.memory.DefaultChatMemory;
+import com.agentsflex.memory.ChatMemory;
 import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 
@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FunctionPrompt extends Prompt<FunctionResultResponse> {
-    private MessageMemory memory = new DefaultMessageMemory();
+    private final ChatMemory memory = new DefaultChatMemory();
 
     private List<Function<?>> functions = new ArrayList<>();
 

@@ -16,20 +16,20 @@
 package com.agentsflex.prompt;
 
 import com.agentsflex.llm.response.MessageResponse;
-import com.agentsflex.memory.DefaultMessageMemory;
-import com.agentsflex.memory.MessageMemory;
+import com.agentsflex.memory.DefaultChatMemory;
+import com.agentsflex.memory.ChatMemory;
 import com.agentsflex.message.Message;
 
 import java.util.List;
 
 public class HistoriesPrompt extends Prompt<MessageResponse>{
 
-    private MessageMemory memory = new DefaultMessageMemory();
+    private ChatMemory memory = new DefaultChatMemory();
 
     public HistoriesPrompt() {
     }
 
-    public HistoriesPrompt(MessageMemory memory) {
+    public HistoriesPrompt(ChatMemory memory) {
         this.memory = memory;
     }
 
