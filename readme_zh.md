@@ -151,7 +151,7 @@ public class WeatherUtil {
 
 ## 交流群
 
-![](./docs/assets/images/wechat-group.jpg)
+![](./docs/assets/images/wechat-group.png)
 
 
 

@@ -147,7 +147,7 @@ public class WeatherUtil {
 
 ## Communication
 
-![](./docs/assets/images/wechat-group.jpg)
+![](./docs/assets/images/wechat-group.png)
 
 ## Modules
 
