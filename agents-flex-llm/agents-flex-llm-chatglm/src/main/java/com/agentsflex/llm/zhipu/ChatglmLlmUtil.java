@@ -14,9 +14,9 @@ import io.jsonwebtoken.SignatureAlgorithm;
 
 import java.util.*;
 
-public class ZhipuLlmUtil {
+public class ChatglmLlmUtil {
 
-    public static String createAuthorizationToken(ZhipuLlmConfig config) {
+    public static String createAuthorizationToken(ChatglmLlmConfig config) {
         Map<String, Object> headers = new HashMap<>();
         headers.put("alg", "HS256");
         headers.put("sign_type", "SIGN");
@@ -39,7 +39,7 @@ public class ZhipuLlmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, ZhipuLlmConfig config) {
+    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config) {
 
         List<Message> messages = prompt.getMessages();
 

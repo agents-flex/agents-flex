@@ -15,11 +15,11 @@ import com.agentsflex.vector.VectorData;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ZhipuLlm extends BaseLlm<ZhipuLlmConfig> {
+public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
     private HttpClient httpClient = new HttpClient();
 
-    public ZhipuLlm(ZhipuLlmConfig config) {
+    public ChatglmLlm(ChatglmLlmConfig config) {
         super(config);
     }
 
@@ -34,9 +34,9 @@ public class ZhipuLlm extends BaseLlm<ZhipuLlmConfig> {
     public <T extends ChatResponse<?>> T chat(Prompt<T> prompt) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("Authorization", ZhipuLlmUtil.createAuthorizationToken(config));
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
-        String payload = ZhipuLlmUtil.promptToPayload(prompt, config);
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config);
         String responseString = httpClient.post("https://open.bigmodel.cn/api/paas/v4/chat/completions", headers, payload);
         if (StringUtil.noText(responseString)) {
             return null;
@@ -45,7 +45,7 @@ public class ZhipuLlm extends BaseLlm<ZhipuLlmConfig> {
         if (prompt instanceof FunctionPrompt) {
 
         } else {
-            AiMessage aiMessage = ZhipuLlmUtil.parseAiMessage(responseString);
+            AiMessage aiMessage = ChatglmLlmUtil.parseAiMessage(responseString);
             return (T) new MessageResponse(aiMessage);
         }
 

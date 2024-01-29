@@ -15,7 +15,7 @@
         <module>agents-flex-llm-openai</module>
         <module>agents-flex-llm-spark</module>
         <module>agents-flex-llm-qwen</module>
-        <module>agents-flex-llm-zhipu</module>
+        <module>agents-flex-llm-chatglm</module>
     </modules>
 
     <properties>

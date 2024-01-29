@@ -2,7 +2,7 @@ package com.agentsflex.llm.zhipu;
 
 import com.agentsflex.llm.LlmConfig;
 
-public class ZhipuLlmConfig extends LlmConfig {
+public class ChatglmLlmConfig extends LlmConfig {
 
     //f26ca1e9****.JmzpD****
     private String apiKey;
