@@ -26,5 +26,6 @@ public interface ChatListener {
     }
 
     default void onFailure(ChatContext context, Throwable throwable) {
+        throwable.printStackTrace();
     }
 }
