@@ -16,9 +16,14 @@
 package com.agentsflex.memory;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultContextMemory implements ContextMemory{
+    @Override
+    public Object id() {
+        return UUID.randomUUID().toString();
+    }
 
     protected Map<String, Object> context = new ConcurrentHashMap<>();
 
@@ -51,4 +56,6 @@ public class DefaultContextMemory implements ContextMemory{
     public void clear() {
         context.clear();
     }
+
+
 }
