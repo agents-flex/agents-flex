@@ -18,6 +18,8 @@ public class OpenAiLlmTest {
         System.out.println(response);
     }
 
+
+
     @Test
     public void testFunctionCalling() throws InterruptedException {
         OpenAiLlmConfig config = new OpenAiLlmConfig();

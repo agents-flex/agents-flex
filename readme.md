@@ -1,6 +1,8 @@
 <h4 align="right"><strong>English</strong> | <a href="./readme_zh.md">简体中文</a></h4>
 
-
+<p align="center">
+    <img src="./docs/assets/images/logo.png"/>
+</p>
 
 # Agents-Flex is a LLM Application Framework like LangChain base on Java.
 
