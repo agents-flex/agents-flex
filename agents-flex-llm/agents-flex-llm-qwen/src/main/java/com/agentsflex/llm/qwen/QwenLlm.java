@@ -29,7 +29,7 @@ import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.document.Document;
 import com.agentsflex.util.StringUtil;
-import com.agentsflex.vector.VectorData;
+import com.agentsflex.store.VectorData;
 
 import java.util.HashMap;
 import java.util.Map;

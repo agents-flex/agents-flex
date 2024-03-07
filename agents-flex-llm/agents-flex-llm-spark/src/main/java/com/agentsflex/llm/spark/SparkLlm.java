@@ -27,7 +27,7 @@ import com.agentsflex.llm.client.impl.WebSocketClient;
 import com.agentsflex.llm.response.MessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.prompt.Prompt;
-import com.agentsflex.vector.VectorData;
+import com.agentsflex.store.VectorData;
 
 import java.util.concurrent.CountDownLatch;
 

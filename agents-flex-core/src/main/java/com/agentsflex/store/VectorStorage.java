@@ -13,13 +13,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
+package com.agentsflex.store;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.store.VectorData;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
-public interface Embeddings {
+public abstract class VectorStorage<T extends VectorDocument> {
 
-   VectorData embeddings(Document document);
+    public void store(T document) {
+        store(Collections.singletonList(document));
+    }
 
+    public abstract void store(List<T> documents);
+
+    public abstract void delete(Collection<String> ids);
+
+    public void update(T document) {
+        update(Collections.singletonList(document));
+    }
+
+    public abstract void update(List<T> documents);
+
+    public abstract List<T> retrieval(RetrieveWrapper wrapper);
 }

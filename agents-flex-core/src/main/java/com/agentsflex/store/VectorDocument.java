@@ -13,13 +13,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
+package com.agentsflex.store;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.store.VectorData;
+public class VectorDocument extends VectorData{
 
-public interface Embeddings {
+    private String id;
 
-   VectorData embeddings(Document document);
 
+    public VectorDocument() {
+    }
+
+
+    public VectorDocument(VectorData vectorData) {
+        this.setVector(vectorData.getVector());
+        this.setMetadataMap(vectorData.getMetadataMap());
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 }

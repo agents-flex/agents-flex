@@ -46,7 +46,7 @@
         <module>agents-flex-test</module>
         <module>agents-flex-samples</module>
         <module>agents-flex-llm</module>
-        <module>agents-flex-storage</module>
+        <module>agents-flex-store</module>
         <module>agents-flex-document-parser</module>
     </modules>
 

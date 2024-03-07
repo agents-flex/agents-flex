@@ -13,13 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.store.VectorData;
-
-public interface Embeddings {
-
-   VectorData embeddings(Document document);
-
-}
+/**
+ * 消息
+ */
+package com.agentsflex.message;

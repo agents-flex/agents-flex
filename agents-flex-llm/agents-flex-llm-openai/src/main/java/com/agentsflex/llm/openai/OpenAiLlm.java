@@ -32,7 +32,7 @@ import com.agentsflex.message.FunctionMessage;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.util.StringUtil;
-import com.agentsflex.vector.VectorData;
+import com.agentsflex.store.VectorData;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;

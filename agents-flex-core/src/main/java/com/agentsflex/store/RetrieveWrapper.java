@@ -13,13 +13,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm;
+package com.agentsflex.store;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.store.VectorData;
+public class RetrieveWrapper extends VectorData {
 
-public interface Embeddings {
+    private Integer limit;
 
-   VectorData embeddings(Document document);
+    private boolean withVector = false;
 
+    public Integer getLimit() {
+        return limit;
+    }
+
+    public void setLimit(Integer limit) {
+        this.limit = limit;
+    }
+
+    public boolean isWithVector() {
+        return withVector;
+    }
+
+    public void setWithVector(boolean withVector) {
+        this.withVector = withVector;
+    }
 }
