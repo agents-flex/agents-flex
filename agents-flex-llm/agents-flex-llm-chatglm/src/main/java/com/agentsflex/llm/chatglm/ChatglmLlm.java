@@ -1,4 +1,4 @@
-package com.agentsflex.llm.zhipu;
+package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
@@ -7,6 +7,7 @@ import com.agentsflex.llm.ChatResponse;
 import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.llm.response.MessageResponse;
 import com.agentsflex.message.AiMessage;
+import com.agentsflex.message.Message;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.util.StringUtil;
@@ -31,7 +32,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T extends ChatResponse<?>> T chat(Prompt<T> prompt) {
+    public <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
@@ -53,7 +54,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
     }
 
     @Override
-    public void chatAsync(Prompt<?> prompt, ChatListener listener) {
+    public <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener) {
 
     }
 }

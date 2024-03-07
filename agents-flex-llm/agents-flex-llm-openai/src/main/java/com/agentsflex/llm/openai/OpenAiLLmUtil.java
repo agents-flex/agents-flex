@@ -63,7 +63,7 @@ public class OpenAiLLmUtil {
 
     public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config) {
 
-        List<Message> messages = prompt.getMessages();
+        List<Message> messages = prompt.toMessages();
 
         List<Map<String, String>> messageArray = new ArrayList<>();
         messages.forEach(message -> {
@@ -94,7 +94,7 @@ public class OpenAiLLmUtil {
 
     public static <R> String promptToFunctionCallingPayload(Prompt prompt, OpenAiLlmConfig config, List<Function<R>> functions) {
 
-        List<Message> messages = prompt.getMessages();
+        List<Message> messages = prompt.toMessages();
 
         List<Map<String, String>> messageArray = new ArrayList<>();
         messages.forEach(message -> {

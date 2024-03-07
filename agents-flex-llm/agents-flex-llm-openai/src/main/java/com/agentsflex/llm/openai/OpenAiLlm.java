@@ -29,6 +29,7 @@ import com.agentsflex.llm.response.FunctionResultResponse;
 import com.agentsflex.llm.response.MessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.FunctionMessage;
+import com.agentsflex.message.Message;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.util.StringUtil;
@@ -51,7 +52,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T extends ChatResponse<?>> T chat(Prompt<T> prompt) {
+    public <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
@@ -81,7 +82,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
     }
 
     @Override
-    public void chatAsync(Prompt<?> prompt, ChatListener listener) {
+    public <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

@@ -15,14 +15,14 @@
  */
 package com.agentsflex.prompt;
 
-import com.agentsflex.llm.response.MessageResponse;
+import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 
 import java.util.Collections;
 import java.util.List;
 
-public class SimplePrompt extends Prompt<MessageResponse> {
+public class SimplePrompt extends Prompt<AiMessage> {
 
     private final String content;
 
@@ -31,7 +31,7 @@ public class SimplePrompt extends Prompt<MessageResponse> {
     }
 
     @Override
-    public List<Message> getMessages() {
+    public List<Message> toMessages() {
         return Collections.singletonList(new HumanMessage(content));
     }
 

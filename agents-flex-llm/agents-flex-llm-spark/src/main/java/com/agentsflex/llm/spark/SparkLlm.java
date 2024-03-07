@@ -26,6 +26,7 @@ import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.WebSocketClient;
 import com.agentsflex.llm.response.MessageResponse;
 import com.agentsflex.message.AiMessage;
+import com.agentsflex.message.Message;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
 
@@ -44,12 +45,12 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T extends ChatResponse<?>> T chat(Prompt<T> prompt) {
+    public <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt) {
         CountDownLatch latch = new CountDownLatch(1);
         AiMessage aiMessage = new AiMessage();
-        chatAsync(prompt, new ChatListener() {
+        chatAsync(prompt, new ChatListener<ChatResponse<M>, M>() {
             @Override
-            public void onMessage(ChatContext context, ChatResponse<?> response) {
+            public void onMessage(ChatContext context, ChatResponse<M> response) {
                 aiMessage.setContent(((AiMessage) response.getMessage()).getFullContent());
             }
 
@@ -68,10 +69,8 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     }
 
 
-
-
     @Override
-    public void chatAsync(Prompt<?> prompt, ChatListener listener) {
+    public <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
 

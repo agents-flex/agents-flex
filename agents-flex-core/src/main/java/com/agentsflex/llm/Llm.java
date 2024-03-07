@@ -15,6 +15,9 @@
  */
 package com.agentsflex.llm;
 
+import com.agentsflex.llm.response.MessageResponse;
+import com.agentsflex.message.AiMessage;
+import com.agentsflex.message.Message;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.SimplePrompt;
 
@@ -25,13 +28,12 @@ public interface Llm extends Embeddings {
         return chat != null ? chat.getMessage().getContent() : null;
     }
 
-    <T extends ChatResponse<?>> T chat(Prompt<T> prompt);
+    <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt);
 
-
-    default void chatAsync(String prompt, ChatListener listener) {
+    default void chatAsync(String prompt, ChatListener<MessageResponse, AiMessage> listener) {
         this.chatAsync(new SimplePrompt(prompt), listener);
     }
 
-    void chatAsync(Prompt<?> prompt, ChatListener listener);
+    <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener);
 
 }

@@ -1,4 +1,4 @@
-package com.agentsflex.llm.zhipu;
+package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.HumanMessage;
@@ -41,7 +41,7 @@ public class ChatglmLlmUtil {
 
     public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config) {
 
-        List<Message> messages = prompt.getMessages();
+        List<Message> messages = prompt.toMessages();
 
         // https://open.bigmodel.cn/dev/api#glm-4
         String payload = "{\n" +

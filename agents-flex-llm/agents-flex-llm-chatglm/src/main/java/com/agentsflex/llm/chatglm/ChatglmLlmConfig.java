@@ -1,4 +1,4 @@
-package com.agentsflex.llm.zhipu;
+package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.llm.LlmConfig;
 

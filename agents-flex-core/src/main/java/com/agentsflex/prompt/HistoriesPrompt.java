@@ -15,14 +15,14 @@
  */
 package com.agentsflex.prompt;
 
-import com.agentsflex.llm.response.MessageResponse;
-import com.agentsflex.memory.DefaultChatMemory;
 import com.agentsflex.memory.ChatMemory;
+import com.agentsflex.memory.DefaultChatMemory;
+import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.Message;
 
 import java.util.List;
 
-public class HistoriesPrompt extends Prompt<MessageResponse>{
+public class HistoriesPrompt extends Prompt<AiMessage> {
 
     private ChatMemory memory = new DefaultChatMemory();
 
@@ -38,7 +38,7 @@ public class HistoriesPrompt extends Prompt<MessageResponse>{
     }
 
     @Override
-    public List<Message> getMessages() {
+    public List<Message> toMessages() {
         return memory.getMessages();
     }
 }

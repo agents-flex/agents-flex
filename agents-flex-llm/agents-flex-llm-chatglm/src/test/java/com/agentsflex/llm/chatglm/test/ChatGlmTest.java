@@ -1,10 +1,10 @@
-package com.agentsflex.llm.zhipu.test;
+package com.agentsflex.llm.chatglm.test;
 
 import com.agentsflex.llm.Llm;
-import com.agentsflex.llm.zhipu.ChatglmLlm;
-import com.agentsflex.llm.zhipu.ChatglmLlmConfig;
+import com.agentsflex.llm.chatglm.ChatglmLlm;
+import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
 
-public class ZhipuTest {
+public class ChatGlmTest {
 
     public static void main(String[] args) {
         ChatglmLlmConfig config = new ChatglmLlmConfig();

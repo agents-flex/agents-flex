@@ -15,21 +15,22 @@
  */
 package com.agentsflex.llm.qwen;
 
+import com.agentsflex.document.Document;
+import com.agentsflex.llm.BaseLlm;
+import com.agentsflex.llm.ChatListener;
 import com.agentsflex.llm.ChatResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
-import com.agentsflex.llm.BaseLlm;
-import com.agentsflex.llm.ChatListener;
 import com.agentsflex.llm.response.MessageResponse;
 import com.agentsflex.message.AiMessage;
+import com.agentsflex.message.Message;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
-import com.agentsflex.document.Document;
-import com.agentsflex.util.StringUtil;
 import com.agentsflex.store.VectorData;
+import com.agentsflex.util.StringUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,30 +45,31 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
 
     @Override
-    public ChatResponse<?> chat(Prompt prompt) {
-                Map<String, String> headers = new HashMap<>();
+    public <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt) {
+        Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config);
         String responseString = httpClient.post("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload);
-        if (StringUtil.noText(responseString)){
+        if (StringUtil.noText(responseString)) {
             return null;
         }
 
-        if (prompt instanceof FunctionPrompt){
+        if (prompt instanceof FunctionPrompt) {
 
-        }else {
+        } else {
             AiMessage aiMessage = QwenLlmUtil.parseAiMessage(responseString, 0);
-            return new MessageResponse(aiMessage);
+            return (T) new MessageResponse(aiMessage);
         }
 
         return null;
     }
 
+
     @Override
-    public void chatAsync(Prompt<?> prompt, ChatListener listener) {
+    public <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -75,7 +77,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config);
 
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient,listener, prompt, new BaseLlmClientListener.AiMessageParser() {
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, new BaseLlmClientListener.AiMessageParser() {
             int prevMessageLength = 0;
             @Override
             public AiMessage parseMessage(String response) {
@@ -83,13 +85,13 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
                 prevMessageLength += aiMessage.getContent().length();
                 return aiMessage;
             }
-        },null);
+        }, null);
         llmClient.start("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload, clientListener);
     }
-
 
     @Override
     public VectorData embeddings(Document document) {
         return null;
     }
+
 }

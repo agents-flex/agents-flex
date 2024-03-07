@@ -15,12 +15,14 @@
  */
 package com.agentsflex.llm;
 
-public interface ChatListener {
+import com.agentsflex.message.Message;
+
+public interface ChatListener<R extends ChatResponse<M>, M extends Message> {
 
     default void onStart(ChatContext context) {
     }
 
-    void onMessage(ChatContext context, ChatResponse<?> response);
+    void onMessage(ChatContext context, R response);
 
     default void onStop(ChatContext context) {
     }
