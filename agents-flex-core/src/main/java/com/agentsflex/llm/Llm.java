@@ -28,12 +28,12 @@ public interface Llm extends Embeddings {
         return chat != null ? chat.getMessage().getContent() : null;
     }
 
-    <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt);
+    <R extends ChatResponse<M>, M extends Message> R chat(Prompt<M> prompt);
 
     default void chatAsync(String prompt, ChatListener<MessageResponse, AiMessage> listener) {
         this.chatAsync(new SimplePrompt(prompt), listener);
     }
 
-    <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener);
+    <R extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<R, M> listener);
 
 }
