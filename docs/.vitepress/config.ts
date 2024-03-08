@@ -48,36 +48,29 @@ export default defineConfig({
                     {text: '快速开始', link: '/zh/intro/getting-started'},
                     {text: 'Maven 依赖', link: '/zh/intro/maven'},
                     {text: 'Gradle 依赖', link: '/zh/intro/gradle'},
-                    {text: 'Kotlin 使用', link: '/zh/intro/use-in-kotlin'},
                     {text: '交流群', link: '/zh/intro/qq-group'},
                 ]
             },
             {
-                text: '基础功能',
+                text: '核心模块',
                 items: [
-                    {text: '增、删、改', link: '/zh/base/add-delete-update'},
-                    {text: '基础查询', link: '/zh/base/query'},
-                    {text: '自动映射', link: '/zh/base/auto-mapping'},
-                    {text: '关联查询', link: '/zh/base/relations-query'},
-                    {text: '批量操作', link: '/zh/base/batch'},
+                    {text: 'LLMs 大语言模型', link: '/zh/base/add-delete-update'},
+                    {text: 'Prompt 提示词', link: '/zh/base/query'},
+                    {text: 'Function Calling 方法调用', link: '/zh/base/auto-mapping'},
+                    {text: 'Memory 记忆存储', link: '/zh/base/relations-query'},
+                    {text: 'Embedding 嵌入', link: '/zh/base/batch'},
+                    {text: 'Store 存储', link: '/zh/base/batch'},
+                    {text: 'Document 文档', link: '/zh/base/batch'},
+                    {text: 'Agents 代理', link: '/zh/base/batch'},
+                    {text: 'Chain 执行链', link: '/zh/base/batch'},
                 ]
             },
             {
-                text: '高级功能',
+                text: '基础示例',
                 items: [
-                    {text: '@Table 注解', link: '/zh/core/table'},
-                    {text: '@Id 注解', link: '/zh/core/id'},
-                    {text: '@Column 注解', link: '/zh/core/column'},
-                    {text: '逻辑删除', link: '/zh/core/logic-delete'},
-                    {text: '乐观锁', link: '/zh/core/version'},
-                ]
-            },
-            {
-                text: '其他',
-                items: [
-                    {text: '代码生成器', link: '/zh/others/codegen'},
-                    {text: 'APT 设置', link: '/zh/others/apt'},
-                    {text: 'KAPT 设置', link: '/zh/others/kapt'},
+                    {text: '简单对话', link: '/zh/core/table'},
+                    {text: '历史对话', link: '/zh/core/id'},
+                    {text: 'RAG 应用', link: '/zh/core/column'},
                 ]
             }
         ],

@@ -13,8 +13,8 @@ hero:
       text: 快速开始
       link: /zh/intro/getting-started
     - theme: alt
-      text: 获取源码
-      link: /zh/intro/comparison
+      text: 帮助文档
+      link: /zh/intro/what-is-agentsflex
 
 features:
   - title: LLMs Connector
@@ -29,8 +29,8 @@ features:
     details: Agents-Flex 的 Memory 模块分为 MessageMemory 和 ContextMemory，他们分别用于历史对话和 Chain 执行上下文记录，我们可以通过继承 Memory 去实现更加丰富的扩展。
   - title: Embedding
     details: Agents-Flex 内置了非常丰富的 Embedding 能力和扩展，我们可以通过去实现 Embedding 接口，来扩充自己的私有 Embedding 算法和支持 。
-  - title: Vector Storage
-    details: Agents-Flex 内置了多种向量数据库支持、当然，我们可以自己去实现 VectorStorage 接口，来扩充自己的私有 VectorStorage 服务 。
+  - title: Vector Store
+    details: Agents-Flex 内置了多种向量数据库支持、当然，我们可以自己去实现 VectorStore 接口，来扩充自己的私有 VectorStore 服务 。
   - title: Agent
     details: Agents-Flex 内置 Action Agents 以及 Plan And Execution Agents，同时可以扩展额外的 Agents 服务。
   - title: Chain
