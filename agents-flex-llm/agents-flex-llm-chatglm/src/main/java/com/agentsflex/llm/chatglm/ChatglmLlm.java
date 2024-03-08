@@ -32,7 +32,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt) {
+    public <R extends ChatResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
@@ -47,14 +47,14 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
         } else {
             AiMessage aiMessage = ChatglmLlmUtil.parseAiMessage(responseString);
-            return (T) new MessageResponse(aiMessage);
+            return (R) new MessageResponse(aiMessage);
         }
 
         return null;
     }
 
     @Override
-    public <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener) {
+    public <R extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<R, M> listener) {
 
     }
 }

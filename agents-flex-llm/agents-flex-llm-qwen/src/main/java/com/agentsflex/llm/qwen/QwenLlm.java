@@ -45,7 +45,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
 
     @Override
-    public <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt) {
+    public <R extends ChatResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
@@ -61,7 +61,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
         } else {
             AiMessage aiMessage = QwenLlmUtil.parseAiMessage(responseString, 0);
-            return (T) new MessageResponse(aiMessage);
+            return (R) new MessageResponse(aiMessage);
         }
 
         return null;
@@ -69,7 +69,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
 
     @Override
-    public <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener) {
+    public <R extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<R, M> listener) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -79,6 +79,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, new BaseLlmClientListener.AiMessageParser() {
             int prevMessageLength = 0;
+
             @Override
             public AiMessage parseMessage(String response) {
                 AiMessage aiMessage = QwenLlmUtil.parseAiMessage(response, prevMessageLength);

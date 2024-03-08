@@ -52,7 +52,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T extends ChatResponse<M>, M extends Message> T chat(Prompt<M> prompt) {
+    public <R extends ChatResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
@@ -74,15 +74,15 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
             FunctionMessage functionMessage = new FunctionMessage();
             functionMessage.setFunctionName(callFunctionName);
             functionMessage.setArgs(callFunctionArgs);
-            return (T) new FunctionResultResponse(functions, functionMessage);
+            return (R) new FunctionResultResponse(functions, functionMessage);
         } else {
             AiMessage aiMessage = OpenAiLLmUtil.parseAiMessage(responseString);
-            return (T) new MessageResponse(aiMessage);
+            return (R) new MessageResponse(aiMessage);
         }
     }
 
     @Override
-    public <T extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<T, M> listener) {
+    public <R extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<R, M> listener) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
