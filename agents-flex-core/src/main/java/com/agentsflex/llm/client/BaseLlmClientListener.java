@@ -41,7 +41,6 @@ public class BaseLlmClientListener implements LlmClientListener {
     private final StringBuilder fullMessage = new StringBuilder();
     private AiMessage lastAiMessage;
     private boolean isFunctionCalling = false;
-
     private final ChatContext context;
 
     public BaseLlmClientListener(Llm llm, LlmClient client, MessageListener messageListener, Prompt prompt
