@@ -19,7 +19,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class VectorStorage<T extends VectorDocument> {
+public abstract class VectorStore<T extends VectorDocument> {
 
     public void store(T document) {
         store(Collections.singletonList(document));

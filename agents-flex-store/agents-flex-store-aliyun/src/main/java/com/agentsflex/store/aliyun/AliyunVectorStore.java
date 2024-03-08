@@ -19,7 +19,7 @@ import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.util.StringUtil;
 import com.agentsflex.store.RetrieveWrapper;
 import com.agentsflex.store.VectorDocument;
-import com.agentsflex.store.VectorStorage;
+import com.agentsflex.store.VectorStore;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -29,13 +29,13 @@ import java.util.*;
 /**
  * https://help.aliyun.com/document_detail/2510317.html
  */
-public class AliyunVectorStorage extends VectorStorage<VectorDocument> {
+public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
     private AliyunVectorStorageConfig config;
 
     private final HttpClient httpUtil = new HttpClient();
 
-    public AliyunVectorStorage(AliyunVectorStorageConfig config) {
+    public AliyunVectorStore(AliyunVectorStorageConfig config) {
         this.config = config;
     }
 
