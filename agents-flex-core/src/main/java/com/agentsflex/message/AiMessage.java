@@ -16,13 +16,12 @@
 package com.agentsflex.message;
 
 
-public class AiMessage extends Message {
+public class AiMessage extends TextMessage {
 
     private Integer index;
     private MessageStatus status;
     private int totalTokens;
     private String fullContent;
-
 
     public Integer getIndex() {
         return index;

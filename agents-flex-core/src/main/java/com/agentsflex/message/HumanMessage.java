@@ -15,10 +15,9 @@
  */
 package com.agentsflex.message;
 
-public class HumanMessage extends Message{
+public class HumanMessage extends TextMessage{
 
     public HumanMessage(String content) {
-        super();
         setContent(content);
     }
 }

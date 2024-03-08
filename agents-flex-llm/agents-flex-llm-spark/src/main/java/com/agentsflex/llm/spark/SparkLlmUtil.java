@@ -46,7 +46,6 @@ public class SparkLlmUtil {
 
     public static String promptToPayload(Prompt prompt, SparkLlmConfig config) {
 
-        List<Message> messages = prompt.toMessages();
 
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
         String payload = "{\n" +
@@ -69,19 +68,19 @@ public class SparkLlmUtil {
             "    }\n" +
             "}";
 
-
+        List<Message> messages = prompt.toMessages();
         List<Map<String, String>> messageArray = new ArrayList<>();
         messages.forEach(message -> {
             Map<String, String> map = new HashMap<>(2);
             if (message instanceof HumanMessage) {
                 map.put("role", "user");
-                map.put("content", message.getContent());
+                map.put("content", ((HumanMessage) message).getContent());
             } else if (message instanceof AiMessage) {
                 map.put("role", "assistant");
                 map.put("content", ((AiMessage) message).getFullContent());
             } else if (message instanceof SystemMessage) {
                 map.put("role", "system");
-                map.put("content", message.getContent());
+                map.put("content", ((SystemMessage) message).getContent());
             }
             messageArray.add(map);
         });
@@ -124,10 +123,6 @@ public class SparkLlmUtil {
             }
             Map<String, Object> functionsJsonMap = new HashMap<>();
             functionsJsonMap.put("text", functionsArray);
-
-//            Map<String, Object> functionsJsonRoot = new HashMap<>();
-//            functionsJsonRoot.put("functions", functionsJsonMap);
-
             functionsJsonString = JSON.toJSONString(functionsJsonMap);
         }
 

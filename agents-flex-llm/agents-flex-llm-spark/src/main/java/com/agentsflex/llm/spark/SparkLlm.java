@@ -63,7 +63,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
                     if (messages[0] == null) {
                         messages[0] = response.getMessage();
                     } else {
-                        messages[0].setContent(((AiMessage) response.getMessage()).getFullContent());
+                        ((AiMessage)messages[0]).setContent(((AiMessage) response.getMessage()).getFullContent());
                     }
 
                 } else if (response.getMessage() instanceof FunctionMessage) {

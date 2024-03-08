@@ -55,7 +55,7 @@ public class ChatglmLlmUtil {
             Map<String, String> map = new HashMap<>(2);
             if (message instanceof HumanMessage) {
                 map.put("role", "user");
-                map.put("content", message.getContent());
+                map.put("content", ((HumanMessage) message).getContent());
             } else if (message instanceof AiMessage) {
                 map.put("role", "assistant");
                 map.put("content", ((AiMessage) message).getFullContent());
