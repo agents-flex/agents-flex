@@ -16,6 +16,7 @@
 package com.agentsflex.llm.spark;
 
 import com.agentsflex.document.Document;
+import com.agentsflex.functions.Function;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatContext;
 import com.agentsflex.llm.MessageListener;
@@ -25,11 +26,18 @@ import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.WebSocketClient;
 import com.agentsflex.llm.response.AiMessageResponse;
+import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
+import com.agentsflex.message.FunctionMessage;
 import com.agentsflex.message.Message;
+import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 public class SparkLlm extends BaseLlm<SparkLlmConfig> {
@@ -47,11 +55,20 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     @Override
     public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
         CountDownLatch latch = new CountDownLatch(1);
-        AiMessage aiMessage = new AiMessage();
+        Message[] messages = new Message[1];
         chatAsync(prompt, new MessageListener<MessageResponse<M>, M>() {
             @Override
             public void onMessage(ChatContext context, MessageResponse<M> response) {
-                aiMessage.setContent(((AiMessage) response.getMessage()).getFullContent());
+                if (response.getMessage() instanceof AiMessage) {
+                    if (messages[0] == null) {
+                        messages[0] = response.getMessage();
+                    } else {
+                        messages[0].setContent(((AiMessage) response.getMessage()).getFullContent());
+                    }
+
+                } else if (response.getMessage() instanceof FunctionMessage) {
+                    messages[0] = response.getMessage();
+                }
             }
 
             @Override
@@ -65,7 +82,12 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        return (R) new AiMessageResponse(aiMessage);
+
+        if (prompt instanceof FunctionPrompt) {
+            return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions(), (FunctionMessage) messages[0]);
+        } else {
+            return (R) new AiMessageResponse((AiMessage) messages[0]);
+        }
     }
 
 
@@ -76,7 +98,20 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
         String payload = SparkLlmUtil.promptToPayload(prompt, config);
 
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, SparkLlmUtil::parseAiMessage, null);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, SparkLlmUtil::parseAiMessage, new BaseLlmClientListener.FunctionMessageParser() {
+            @Override
+            public FunctionMessage parseMessage(String response) {
+                JSONObject jsonObject = JSON.parseObject(response);
+                String callFunctionName = (String) JSONPath.eval(jsonObject, "$.payload.choices.text[0].function_call.name");
+                String callFunctionArgsString = (String) JSONPath.eval(jsonObject, "$.payload.choices.text[0].function_call.arguments");
+                JSONObject callFunctionArgs = JSON.parseObject(callFunctionArgsString);
+
+                FunctionMessage functionMessage = new FunctionMessage();
+                functionMessage.setFunctionName(callFunctionName);
+                functionMessage.setArgs(callFunctionArgs);
+                return functionMessage;
+            }
+        });
         llmClient.start(url, null, payload, clientListener);
     }
 

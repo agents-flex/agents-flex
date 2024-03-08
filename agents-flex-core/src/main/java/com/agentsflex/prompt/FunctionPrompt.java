@@ -29,11 +29,16 @@ import java.util.List;
 public class FunctionPrompt extends Prompt<FunctionMessage> {
     private final ChatMemory memory = new DefaultChatMemory();
 
-    private List<Function<?>> functions = new ArrayList<>();
+    private final List<Function<?>> functions = new ArrayList<>();
 
     public FunctionPrompt(String prompt, Class<?> funcClass) {
         memory.addMessage(new HumanMessage(prompt));
         functions.addAll(Functions.from(funcClass));
+    }
+
+    public FunctionPrompt(String prompt, Class<?> funcClass, String... methodNames) {
+        memory.addMessage(new HumanMessage(prompt));
+        functions.addAll(Functions.from(funcClass, methodNames));
     }
 
     public FunctionPrompt(List<Message> messages, Class<?> funcClass) {
@@ -41,6 +46,10 @@ public class FunctionPrompt extends Prompt<FunctionMessage> {
         functions.addAll(Functions.from(funcClass));
     }
 
+    public FunctionPrompt(List<Message> messages, Class<?> funcClass, String... methodNames) {
+        memory.addMessages(messages);
+        functions.addAll(Functions.from(funcClass, methodNames));
+    }
 
     @Override
     public List<Message> toMessages() {

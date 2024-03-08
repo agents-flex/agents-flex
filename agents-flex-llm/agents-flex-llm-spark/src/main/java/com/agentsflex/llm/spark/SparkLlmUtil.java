@@ -15,10 +15,10 @@
  */
 package com.agentsflex.llm.spark;
 
-import com.agentsflex.message.AiMessage;
-import com.agentsflex.message.HumanMessage;
-import com.agentsflex.message.Message;
-import com.agentsflex.message.MessageStatus;
+import com.agentsflex.functions.Function;
+import com.agentsflex.functions.Parameter;
+import com.agentsflex.message.*;
+import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.util.HashUtil;
 import com.alibaba.fastjson.JSON;
@@ -32,14 +32,14 @@ import java.util.*;
 
 public class SparkLlmUtil {
 
-    public static AiMessage parseAiMessage(String json){
+    public static AiMessage parseAiMessage(String json) {
         AiMessage aiMessage = new AiMessage();
         JSONObject jsonObject = JSON.parseObject(json);
         Object status = JSONPath.eval(jsonObject, "$.payload.choices.status");
         MessageStatus messageStatus = SparkLlmUtil.parseMessageStatus((Integer) status);
         aiMessage.setStatus(messageStatus);
-        aiMessage.setIndex((Integer) JSONPath.eval(jsonObject,"$.payload.choices.text[0].index"));
-        aiMessage.setContent((String) JSONPath.eval(jsonObject,"$.payload.choices.text[0].content"));
+        aiMessage.setIndex((Integer) JSONPath.eval(jsonObject, "$.payload.choices.text[0].index"));
+        aiMessage.setContent((String) JSONPath.eval(jsonObject, "$.payload.choices.text[0].content"));
         return aiMessage;
     }
 
@@ -64,7 +64,8 @@ public class SparkLlmUtil {
             "        \"payload\": {\n" +
             "            \"message\": {\n" +
             "                \"text\": messageJsonString" +
-            "        }\n" +
+            "        },\n" +
+            "       \"functions\":functionsJsonString" +
             "    }\n" +
             "}";
 
@@ -78,13 +79,60 @@ public class SparkLlmUtil {
             } else if (message instanceof AiMessage) {
                 map.put("role", "assistant");
                 map.put("content", ((AiMessage) message).getFullContent());
+            } else if (message instanceof SystemMessage) {
+                map.put("role", "system");
+                map.put("content", message.getContent());
             }
-
             messageArray.add(map);
         });
 
+
+
+        String functionsJsonString = "\"\"";
+        if (prompt instanceof FunctionPrompt) {
+            List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
+
+            List<Map<String, Object>> functionsArray = new ArrayList<>();
+            for (Function<?> function : functions) {
+                Map<String, Object> functionRoot = new HashMap<>();
+                functionRoot.put("type", "function");
+
+                Map<String, Object> functionObj = new HashMap<>();
+                functionRoot.put("function", functionObj);
+
+                functionObj.put("name", function.getName());
+                functionObj.put("description", function.getDescription());
+
+
+                Map<String, Object> parametersObj = new HashMap<>();
+                functionObj.put("parameters", parametersObj);
+
+                parametersObj.put("type", "object");
+
+                Map<String, Object> propertiesObj = new HashMap<>();
+                parametersObj.put("properties", propertiesObj);
+
+                for (Parameter parameter : function.getParameters()) {
+                    Map<String, Object> parameterObj = new HashMap<>();
+                    parameterObj.put("type", parameter.getType());
+                    parameterObj.put("description", parameter.getDescription());
+                    parameterObj.put("enum", parameter.getEnums());
+                    propertiesObj.put(parameter.getName(), parameterObj);
+                }
+
+                functionsArray.add(functionRoot);
+            }
+            Map<String, Object> functionsJsonMap = new HashMap<>();
+            functionsJsonMap.put("text", functionsArray);
+
+//            Map<String, Object> functionsJsonRoot = new HashMap<>();
+//            functionsJsonRoot.put("functions", functionsJsonMap);
+
+            functionsJsonString = JSON.toJSONString(functionsJsonMap);
+        }
+
         String messageText = JSON.toJSONString(messageArray);
-        return payload.replace("messageJsonString", messageText);
+        return payload.replace("messageJsonString", messageText).replace("functionsJsonString", functionsJsonString);
     }
 
     public static MessageStatus parseMessageStatus(Integer status) {

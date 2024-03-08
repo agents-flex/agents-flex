@@ -51,14 +51,13 @@ public class OpenAiLLmUtil {
 
         // https://platform.openai.com/docs/api-reference/making-requests
         String payload = "{\n" +
-            "  \"input\": \""+text.getContent()+"\",\n" +
+            "  \"input\": \"" + text.getContent() + "\",\n" +
             "  \"model\": \"text-embedding-ada-002\",\n" +
             "  \"encoding_format\": \"float\"\n" +
             "}";
 
         return payload;
     }
-
 
 
     public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config) {
@@ -86,7 +85,7 @@ public class OpenAiLLmUtil {
         return "{\n" +
 //            "  \"model\": \"gpt-3.5-turbo\",\n" +
             "  \"model\": \"" + config.getModel() + "\",\n" +
-            "  \"messages\": "+messageText+",\n" +
+            "  \"messages\": " + messageText + ",\n" +
             "  \"temperature\": 0.7\n" +
             "}";
     }
@@ -113,32 +112,32 @@ public class OpenAiLLmUtil {
         String messageText = JSON.toJSONString(messageArray);
 
 
-        List<Map<String,Object>> toolsArray = new ArrayList<>();
+        List<Map<String, Object>> toolsArray = new ArrayList<>();
         for (Function<?> function : functions) {
-            Map<String,Object> functionRoot = new HashMap<>();
-            functionRoot.put("type","function");
+            Map<String, Object> functionRoot = new HashMap<>();
+            functionRoot.put("type", "function");
 
-            Map<String,Object> functionObj = new HashMap<>();
-            functionRoot.put("function",functionObj);
+            Map<String, Object> functionObj = new HashMap<>();
+            functionRoot.put("function", functionObj);
 
-            functionObj.put("name",function.getName());
-            functionObj.put("description",function.getDescription());
+            functionObj.put("name", function.getName());
+            functionObj.put("description", function.getDescription());
 
 
-            Map<String,Object> parametersObj = new HashMap<>();
-            functionObj.put("parameters",parametersObj);
+            Map<String, Object> parametersObj = new HashMap<>();
+            functionObj.put("parameters", parametersObj);
 
-            parametersObj.put("type","object");
+            parametersObj.put("type", "object");
 
-            Map<String,Object> propertiesObj = new HashMap<>();
-            parametersObj.put("properties",propertiesObj);
+            Map<String, Object> propertiesObj = new HashMap<>();
+            parametersObj.put("properties", propertiesObj);
 
             for (Parameter parameter : function.getParameters()) {
-                Map<String,Object> parameterObj = new HashMap<>();
-                parameterObj.put("type",parameter.getType());
-                parameterObj.put("description",parameter.getDescription());
-                parameterObj.put("enum",parameter.getEnums());
-                propertiesObj.put(parameter.getName(),parameterObj);
+                Map<String, Object> parameterObj = new HashMap<>();
+                parameterObj.put("type", parameter.getType());
+                parameterObj.put("description", parameter.getDescription());
+                parameterObj.put("enum", parameter.getEnums());
+                propertiesObj.put(parameter.getName(), parameterObj);
             }
 
             toolsArray.add(functionRoot);
@@ -149,12 +148,11 @@ public class OpenAiLLmUtil {
         return "{\n" +
 //            "  \"model\": \"gpt-3.5-turbo\",\n" +
             "  \"model\": \"" + config.getModel() + "\",\n" +
-            "  \"messages\": "+messageText+",\n" +
-            "  \"tools\": "+toolsText+",\n" +
+            "  \"messages\": " + messageText + ",\n" +
+            "  \"tools\": " + toolsText + ",\n" +
             "  \"tool_choice\": \"auto\"\n" +
             "}";
     }
-
 
 
 }

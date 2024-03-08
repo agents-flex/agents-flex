@@ -1,9 +1,11 @@
 package com.agentsflex.llm.spark.test;
 
 import com.agentsflex.llm.Llm;
+import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import com.agentsflex.message.HumanMessage;
+import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.HistoriesPrompt;
 import org.junit.Test;
 
@@ -20,6 +22,24 @@ public class SparkLlmTest {
 
         Llm llm = new SparkLlm(config);
         String result = llm.chat("你好");
+        System.out.println(result);
+    }
+
+
+    @Test
+    public void testFunctionCalling() throws InterruptedException {
+        SparkLlmConfig config = new SparkLlmConfig();
+        config.setAppId("****");
+        config.setApiKey("****");
+        config.setApiSecret("****");
+
+        Llm llm = new SparkLlm(config);
+
+        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        FunctionMessageResponse response = llm.chat(prompt);
+
+        Object result = response.invoke();
+
         System.out.println(result);
     }
 
