@@ -27,7 +27,7 @@ public class OpenAiLlmTest {
 
         OpenAiLlm llm = new OpenAiLlm(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
+        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
         FunctionMessageResponse response = llm.chat(prompt);
 
         Object result = response.invoke();

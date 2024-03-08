@@ -15,8 +15,12 @@
  */
 package com.agentsflex.convert;
 
+import com.agentsflex.util.ArrayUtil;
 import com.agentsflex.util.StringUtil;
 
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,6 +34,14 @@ public class ConvertService {
         register(new LongConverter(), Long.class, long.class);
         register(new DoubleConverter(), Double.class, double.class);
         register(new FloatConverter(), Float.class, float.class);
+        register(new ShortConverter(), Short.class, short.class);
+
+        register(new BigDecimalConverter(), BigDecimal.class);
+        register(new BigIntegerConverter(), BigInteger.class);
+        register(new ByteConverter(), byte.class);
+        register(new ByteArrayConverter(), byte[].class);
+
+
     }
 
     private static void register(IConverter<?> converter, Class<?>... classes) {
@@ -48,11 +60,11 @@ public class ConvertService {
             return value;
         }
 
-        String valueString = value.toString();
-        if (valueString == null) {
-            return null;
+        if (toType == Serializable.class && ArrayUtil.contains(value.getClass().getInterfaces(), Serializable.class)) {
+            return value;
         }
-        valueString = valueString.trim();
+
+        String valueString = value.toString().trim();
         if (valueString.isEmpty()) {
             return null;
         }
@@ -61,6 +73,7 @@ public class ConvertService {
         if (converter != null) {
             return converter.convert(valueString);
         }
+
         return null;
     }
 

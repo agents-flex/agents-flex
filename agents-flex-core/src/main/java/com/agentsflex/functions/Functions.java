@@ -28,13 +28,9 @@ public class Functions<T> extends ArrayList<Function<T>> {
 
     public static <R> Functions<R> from(Class<?> clazz, String... methodNames) {
         List<Method> methodList = ClassUtil.getAllMethods(clazz, method -> {
-            if (Modifier.isStatic(method.getModifiers())) {
+            if (!Modifier.isStatic(method.getModifiers())) {
                 return false;
             }
-
-//            if (!resultType.isAssignableFrom(method.getReturnType())) {
-//                return false;
-//            }
 
             if (method.getAnnotation(FunctionDef.class) == null) {
                 return false;

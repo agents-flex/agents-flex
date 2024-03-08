@@ -3,7 +3,7 @@ package com.agentsflex.llm.openai;
 import com.agentsflex.functions.annotation.FunctionDef;
 import com.agentsflex.functions.annotation.FunctionParam;
 
-public class WeatherUtil {
+public class WeatherFunctions {
 
     @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
     public static String getWeatherInfo(
