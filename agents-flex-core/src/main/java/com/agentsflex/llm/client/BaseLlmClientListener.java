@@ -17,11 +17,11 @@ package com.agentsflex.llm.client;
 
 import com.agentsflex.functions.Function;
 import com.agentsflex.llm.ChatContext;
-import com.agentsflex.llm.ChatListener;
-import com.agentsflex.llm.ChatResponse;
+import com.agentsflex.llm.MessageListener;
+import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.llm.Llm;
-import com.agentsflex.llm.response.FunctionResultResponse;
-import com.agentsflex.llm.response.MessageResponse;
+import com.agentsflex.llm.response.AiMessageResponse;
+import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.FunctionMessage;
 import com.agentsflex.prompt.FunctionPrompt;
@@ -34,7 +34,7 @@ public class BaseLlmClientListener implements LlmClientListener {
 
     private final Llm llm;
     private final LlmClient client;
-    private final ChatListener chatListener;
+    private final MessageListener messageListener;
     private final Prompt prompt;
     private final AiMessageParser messageParser;
     private final FunctionMessageParser functionInfoParser;
@@ -44,12 +44,12 @@ public class BaseLlmClientListener implements LlmClientListener {
 
     private final ChatContext context;
 
-    public BaseLlmClientListener(Llm llm, LlmClient client, ChatListener chatListener, Prompt prompt
+    public BaseLlmClientListener(Llm llm, LlmClient client, MessageListener messageListener, Prompt prompt
         , AiMessageParser messageParser
         , FunctionMessageParser functionInfoParser) {
         this.llm = llm;
         this.client = client;
-        this.chatListener = chatListener;
+        this.messageListener = messageListener;
         this.prompt = prompt;
         this.messageParser = messageParser;
         this.functionInfoParser = functionInfoParser;
@@ -67,7 +67,7 @@ public class BaseLlmClientListener implements LlmClientListener {
 
     @Override
     public void onStart(LlmClient client) {
-        chatListener.onStart(context);
+        messageListener.onStart(context);
     }
 
     @Override
@@ -75,14 +75,14 @@ public class BaseLlmClientListener implements LlmClientListener {
         if (isFunctionCalling) {
             FunctionMessage functionInfo = functionInfoParser.parseMessage(response);
             List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
-            ChatResponse<?> r = new FunctionResultResponse(functions, functionInfo);
-            chatListener.onMessage(context, r);
+            MessageResponse<?> r = new FunctionMessageResponse(functions, functionInfo);
+            messageListener.onMessage(context, r);
         } else {
             lastAiMessage = messageParser.parseMessage(response);
             fullMessage.append(lastAiMessage.getContent());
             lastAiMessage.setFullContent(fullMessage.toString());
-            ChatResponse<?> r = new MessageResponse(lastAiMessage);
-            chatListener.onMessage(context, r);
+            MessageResponse<?> r = new AiMessageResponse(lastAiMessage);
+            messageListener.onMessage(context, r);
         }
     }
 
@@ -94,12 +94,12 @@ public class BaseLlmClientListener implements LlmClientListener {
             }
         }
 
-        chatListener.onStop(context);
+        messageListener.onStop(context);
     }
 
     @Override
     public void onFailure(LlmClient client, Throwable throwable) {
-        chatListener.onFailure(context, throwable);
+        messageListener.onFailure(context, throwable);
     }
 
 

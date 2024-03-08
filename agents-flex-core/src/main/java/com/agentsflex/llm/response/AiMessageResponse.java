@@ -15,13 +15,13 @@
  */
 package com.agentsflex.llm.response;
 
-import com.agentsflex.llm.ChatResponse;
+import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.message.AiMessage;
 
-public class MessageResponse implements ChatResponse<AiMessage> {
+public class AiMessageResponse implements MessageResponse<AiMessage> {
     private final AiMessage aiMessage;
 
-    public MessageResponse(AiMessage aiMessage) {
+    public AiMessageResponse(AiMessage aiMessage) {
         this.aiMessage = aiMessage;
     }
 

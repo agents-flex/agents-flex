@@ -17,7 +17,7 @@ package com.agentsflex.llm;
 
 import com.agentsflex.message.Message;
 
-public interface ChatListener<R extends ChatResponse<M>, M extends Message> {
+public interface MessageListener<R extends MessageResponse<M>, M extends Message> {
 
     default void onStart(ChatContext context) {
     }
@@ -28,6 +28,7 @@ public interface ChatListener<R extends ChatResponse<M>, M extends Message> {
     }
 
     default void onFailure(ChatContext context, Throwable throwable) {
+        //noinspection CallToPrintStackTrace
         throwable.printStackTrace();
     }
 }

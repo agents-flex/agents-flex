@@ -18,13 +18,13 @@ package com.agentsflex.llm.spark;
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatContext;
-import com.agentsflex.llm.ChatListener;
-import com.agentsflex.llm.ChatResponse;
+import com.agentsflex.llm.MessageListener;
+import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.WebSocketClient;
-import com.agentsflex.llm.response.MessageResponse;
+import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.Message;
 import com.agentsflex.prompt.Prompt;
@@ -45,18 +45,18 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <R extends ChatResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
+    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
         CountDownLatch latch = new CountDownLatch(1);
         AiMessage aiMessage = new AiMessage();
-        chatAsync(prompt, new ChatListener<ChatResponse<M>, M>() {
+        chatAsync(prompt, new MessageListener<MessageResponse<M>, M>() {
             @Override
-            public void onMessage(ChatContext context, ChatResponse<M> response) {
+            public void onMessage(ChatContext context, MessageResponse<M> response) {
                 aiMessage.setContent(((AiMessage) response.getMessage()).getFullContent());
             }
 
             @Override
             public void onStop(ChatContext context) {
-                ChatListener.super.onStop(context);
+                MessageListener.super.onStop(context);
                 latch.countDown();
             }
         });
@@ -65,12 +65,12 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        return (R) new MessageResponse(aiMessage);
+        return (R) new AiMessageResponse(aiMessage);
     }
 
 
     @Override
-    public <R extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<R, M> listener) {
+    public <R extends MessageResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, MessageListener<R, M> listener) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
 

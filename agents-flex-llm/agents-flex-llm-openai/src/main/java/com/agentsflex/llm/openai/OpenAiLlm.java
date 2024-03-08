@@ -18,15 +18,15 @@ package com.agentsflex.llm.openai;
 import com.agentsflex.document.Document;
 import com.agentsflex.functions.Function;
 import com.agentsflex.llm.BaseLlm;
-import com.agentsflex.llm.ChatListener;
-import com.agentsflex.llm.ChatResponse;
+import com.agentsflex.llm.MessageListener;
+import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
-import com.agentsflex.llm.response.FunctionResultResponse;
-import com.agentsflex.llm.response.MessageResponse;
+import com.agentsflex.llm.response.AiMessageResponse;
+import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.FunctionMessage;
 import com.agentsflex.message.Message;
@@ -52,7 +52,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <R extends ChatResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
+    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
@@ -74,15 +74,15 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
             FunctionMessage functionMessage = new FunctionMessage();
             functionMessage.setFunctionName(callFunctionName);
             functionMessage.setArgs(callFunctionArgs);
-            return (R) new FunctionResultResponse(functions, functionMessage);
+            return (R) new FunctionMessageResponse(functions, functionMessage);
         } else {
             AiMessage aiMessage = OpenAiLLmUtil.parseAiMessage(responseString);
-            return (R) new MessageResponse(aiMessage);
+            return (R) new AiMessageResponse(aiMessage);
         }
     }
 
     @Override
-    public <R extends ChatResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, ChatListener<R, M> listener) {
+    public <R extends MessageResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, MessageListener<R, M> listener) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

@@ -1,7 +1,7 @@
 package com.agentsflex.llm.openai;
 
 import com.agentsflex.llm.Llm;
-import com.agentsflex.llm.response.FunctionResultResponse;
+import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.prompt.FunctionPrompt;
 import org.junit.Test;
 
@@ -28,7 +28,7 @@ public class OpenAiLlmTest {
         OpenAiLlm llm = new OpenAiLlm(config);
 
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
-        FunctionResultResponse response = llm.chat(prompt);
+        FunctionMessageResponse response = llm.chat(prompt);
 
         Object result = response.invoke();
 

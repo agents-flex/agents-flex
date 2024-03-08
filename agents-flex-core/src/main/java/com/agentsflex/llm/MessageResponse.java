@@ -17,6 +17,6 @@ package com.agentsflex.llm;
 
 import com.agentsflex.message.Message;
 
-public interface ChatResponse<M extends Message> {
+public interface MessageResponse<M extends Message> {
     M getMessage();
 }

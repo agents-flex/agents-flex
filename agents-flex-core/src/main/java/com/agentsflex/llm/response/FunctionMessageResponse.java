@@ -16,17 +16,17 @@
 package com.agentsflex.llm.response;
 
 import com.agentsflex.functions.Function;
-import com.agentsflex.llm.ChatResponse;
+import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.message.FunctionMessage;
 
 import java.util.List;
 
-public class FunctionResultResponse implements ChatResponse<FunctionMessage> {
+public class FunctionMessageResponse implements MessageResponse<FunctionMessage> {
 
     private final List<Function<?>> functions;
     private final FunctionMessage functionMessage;
 
-    public FunctionResultResponse(List<Function<?>> functions, FunctionMessage functionMessage) {
+    public FunctionMessageResponse(List<Function<?>> functions, FunctionMessage functionMessage) {
         this.functions = functions;
         this.functionMessage = functionMessage;
     }
