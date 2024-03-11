@@ -31,11 +31,11 @@ import java.util.*;
  */
 public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
-    private AliyunVectorStorageConfig config;
+    private AliyunVectorStoreConfig config;
 
     private final HttpClient httpUtil = new HttpClient();
 
-    public AliyunVectorStore(AliyunVectorStorageConfig config) {
+    public AliyunVectorStore(AliyunVectorStoreConfig config) {
         this.config = config;
     }
 
@@ -50,8 +50,8 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         List<Map<String,Object>> payloadDocs = new ArrayList<>();
         for (VectorDocument vectorDocument : documents) {
             Map<String, Object> document = new HashMap<>();
-            if (vectorDocument.getMetadataMap() != null) {
-                document.put("fields", vectorDocument.getMetadataMap());
+            if (vectorDocument.getMetadatas() != null) {
+                document.put("fields", vectorDocument.getMetadatas());
             }
             document.put("vector", vectorDocument.getVector());
             document.put("id", vectorDocument.getId());
@@ -79,6 +79,7 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         httpUtil.delete("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
     }
 
+
     @Override
     public void update(List<VectorDocument> documents) {
         Map<String, String> headers = new HashMap<>();
@@ -90,8 +91,8 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         List<Map<String,Object>> payloadDocs = new ArrayList<>();
         for (VectorDocument vectorDocument : documents) {
             Map<String, Object> document = new HashMap<>();
-            if (vectorDocument.getMetadataMap() != null) {
-                document.put("fields", vectorDocument.getMetadataMap());
+            if (vectorDocument.getMetadatas() != null) {
+                document.put("fields", vectorDocument.getMetadatas());
             }
             document.put("vector", vectorDocument.getVector());
             document.put("id", vectorDocument.getId());

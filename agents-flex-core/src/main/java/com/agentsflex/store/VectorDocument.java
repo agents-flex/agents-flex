@@ -26,7 +26,7 @@ public class VectorDocument extends VectorData{
 
     public VectorDocument(VectorData vectorData) {
         this.setVector(vectorData.getVector());
-        this.setMetadataMap(vectorData.getMetadataMap());
+        this.setMetadatas(vectorData.getMetadatas());
     }
 
     public String getId() {

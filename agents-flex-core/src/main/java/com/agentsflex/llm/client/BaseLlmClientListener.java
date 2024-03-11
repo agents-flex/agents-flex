@@ -17,13 +17,15 @@ package com.agentsflex.llm.client;
 
 import com.agentsflex.functions.Function;
 import com.agentsflex.llm.ChatContext;
+import com.agentsflex.llm.Llm;
 import com.agentsflex.llm.MessageListener;
 import com.agentsflex.llm.MessageResponse;
-import com.agentsflex.llm.Llm;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.FunctionMessage;
+import com.agentsflex.parser.AiMessageParser;
+import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.HistoriesPrompt;
 import com.agentsflex.prompt.Prompt;
@@ -72,12 +74,12 @@ public class BaseLlmClientListener implements LlmClientListener {
     @Override
     public void onMessage(LlmClient client, String response) {
         if (isFunctionCalling) {
-            FunctionMessage functionInfo = functionInfoParser.parseMessage(response);
+            FunctionMessage functionInfo = functionInfoParser.parse(response);
             List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
             MessageResponse<?> r = new FunctionMessageResponse(functions, functionInfo);
             messageListener.onMessage(context, r);
         } else {
-            lastAiMessage = messageParser.parseMessage(response);
+            lastAiMessage = messageParser.parse(response);
             fullMessage.append(lastAiMessage.getContent());
             lastAiMessage.setFullContent(fullMessage.toString());
             MessageResponse<?> r = new AiMessageResponse(lastAiMessage);
@@ -102,11 +104,11 @@ public class BaseLlmClientListener implements LlmClientListener {
     }
 
 
-    public interface AiMessageParser {
-        AiMessage parseMessage(String response);
-    }
-
-    public interface FunctionMessageParser {
-        FunctionMessage parseMessage(String response);
-    }
+//    public interface AiMessageParser {
+//        AiMessage parseMessage(String response);
+//    }
+//
+//    public interface FunctionMessageParser {
+//        FunctionMessage parseMessage(String response);
+//    }
 }

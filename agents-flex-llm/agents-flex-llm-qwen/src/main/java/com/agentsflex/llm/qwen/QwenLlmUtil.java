@@ -15,33 +15,37 @@
  */
 package com.agentsflex.llm.qwen;
 
-import com.agentsflex.message.AiMessage;
-import com.agentsflex.message.HumanMessage;
-import com.agentsflex.message.Message;
 import com.agentsflex.message.MessageStatus;
+import com.agentsflex.parser.AiMessageParser;
+import com.agentsflex.parser.FunctionMessageParser;
+import com.agentsflex.parser.impl.BaseAiMessageParser;
+import com.agentsflex.parser.impl.BaseFunctionMessageParser;
+import com.agentsflex.prompt.DefaultPromptFormat;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.prompt.PromptFormat;
+import com.agentsflex.util.Maps;
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONPath;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class QwenLlmUtil {
 
+    private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
-    public static AiMessage parseAiMessage(String json, int length) {
-        AiMessage aiMessage = new AiMessage();
-        JSONObject jsonObject = JSON.parseObject(json);
-        MessageStatus messageStatus = parseMessageStatus((String) JSONPath.eval(json, "$.output.finish_reason"));
-        aiMessage.setStatus(messageStatus);
+    public static AiMessageParser getAiMessageParser() {
+        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
+        aiMessageParser.setContentPath("$.output.text");
+        aiMessageParser.setStatusPath("$.output.finish_reason");
+        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
+        aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
+        return aiMessageParser;
+    }
 
-        String text = (String) JSONPath.eval(jsonObject, "$.output.text");
-        aiMessage.setContent(text.substring(length));
-        aiMessage.setTotalTokens((Integer) JSONPath.eval(jsonObject, "$.usage.total_tokens"));
-        return aiMessage;
+
+    public static FunctionMessageParser getFunctionMessageParser() {
+        BaseFunctionMessageParser functionMessageParser = new BaseFunctionMessageParser();
+        functionMessageParser.setFunctionNamePath("$.choices[0].message.tool_calls[0].function.name");
+        functionMessageParser.setFunctionArgsPath("$.choices[0].message.tool_calls[0].function.arguments");
+        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
+        return functionMessageParser;
     }
 
 
@@ -50,34 +54,9 @@ public class QwenLlmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, QwenLlmConfig config) {
-
-        List<Message> messages = prompt.toMessages();
-
+    public static String promptToPayload(Prompt<?> prompt, QwenLlmConfig config) {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
-        String payload = "{\n" +
-            "  \"model\": \"" + config.getModel() + "\",\n" +
-            "  \"input\": {\n" +
-            "    \"messages\": messageJsonString\n" +
-            "  }\n" +
-            "}";
-
-
-        List<Map<String, String>> messageArray = new ArrayList<>();
-        messages.forEach(message -> {
-            Map<String, String> map = new HashMap<>(2);
-            if (message instanceof HumanMessage) {
-                map.put("role", "user");
-                map.put("content", ((HumanMessage) message).getContent());
-            } else if (message instanceof AiMessage) {
-                map.put("role", "assistant");
-                map.put("content", ((AiMessage) message).getFullContent());
-            }
-
-            messageArray.add(map);
-        });
-
-        String messageText = JSON.toJSONString(messageArray);
-        return payload.replace("messageJsonString", messageText);
+        Maps.Builder root = Maps.of("model", config.getModel()).put("input", Maps.of("messages", promptFormat.toMessagesJsonKey(prompt)));
+        return JSON.toJSONString(root.build());
     }
 }

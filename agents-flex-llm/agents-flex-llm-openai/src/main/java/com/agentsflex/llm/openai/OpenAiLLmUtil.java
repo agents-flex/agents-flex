@@ -15,32 +15,40 @@
  */
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.functions.Function;
-import com.agentsflex.functions.Parameter;
-import com.agentsflex.message.AiMessage;
-import com.agentsflex.message.HumanMessage;
-import com.agentsflex.message.Message;
-import com.agentsflex.message.MessageStatus;
-import com.agentsflex.prompt.Prompt;
 import com.agentsflex.document.Document;
+import com.agentsflex.message.MessageStatus;
+import com.agentsflex.parser.AiMessageParser;
+import com.agentsflex.parser.FunctionMessageParser;
+import com.agentsflex.parser.impl.BaseAiMessageParser;
+import com.agentsflex.parser.impl.BaseFunctionMessageParser;
+import com.agentsflex.prompt.DefaultPromptFormat;
+import com.agentsflex.prompt.Prompt;
+import com.agentsflex.prompt.PromptFormat;
+import com.agentsflex.util.Maps;
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONPath;
-
-import java.util.*;
 
 public class OpenAiLLmUtil {
 
-    public static AiMessage parseAiMessage(String json) {
-        AiMessage aiMessage = new AiMessage();
-        JSONObject jsonObject = JSON.parseObject(json);
-        Object status = JSONPath.eval(jsonObject, "$.choices[0].finish_reason");
-        MessageStatus messageStatus = parseMessageStatus((String) status);
-        aiMessage.setStatus(messageStatus);
-        aiMessage.setIndex((Integer) JSONPath.eval(jsonObject, "$.choices[0].index"));
-        aiMessage.setContent((String) JSONPath.eval(jsonObject, "$.choices[0].delta.content"));
-        return aiMessage;
+    private static final PromptFormat promptFormat = new DefaultPromptFormat();
+
+    public static AiMessageParser getAiMessageParser() {
+        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
+        aiMessageParser.setContentPath("$.choices[0].delta.content");
+        aiMessageParser.setIndexPath("$.choices[0].index");
+        aiMessageParser.setStatusPath("$.choices[0].finish_reason");
+        aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
+        return aiMessageParser;
     }
+
+
+    public static FunctionMessageParser getFunctionMessageParser() {
+        BaseFunctionMessageParser functionMessageParser = new BaseFunctionMessageParser();
+        functionMessageParser.setFunctionNamePath("$.choices[0].message.tool_calls[0].function.name");
+        functionMessageParser.setFunctionArgsPath("$.choices[0].message.tool_calls[0].function.arguments");
+        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
+        return functionMessageParser;
+    }
+
 
     public static MessageStatus parseMessageStatus(String status) {
         return "stop".equals(status) ? MessageStatus.END : MessageStatus.MIDDLE;
@@ -48,7 +56,6 @@ public class OpenAiLLmUtil {
 
 
     public static String promptToEmbeddingsPayload(Document text) {
-
         // https://platform.openai.com/docs/api-reference/making-requests
         String payload = "{\n" +
             "  \"input\": \"" + text.getContent() + "\",\n" +
@@ -61,96 +68,13 @@ public class OpenAiLLmUtil {
 
 
     public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config) {
+        Maps.Builder builder = Maps.of("model", config.getModel())
+            .put("messages", promptFormat.toMessagesJsonKey(prompt))
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonKey(prompt))
+            .putIfContainsKey("tools", "tool_choice", "auto")
+            .putIfNotContainsKey("tools", "temperature", 0.7);
 
-        List<Message> messages = prompt.toMessages();
-
-        List<Map<String, String>> messageArray = new ArrayList<>();
-        messages.forEach(message -> {
-            Map<String, String> map = new HashMap<>(2);
-            if (message instanceof HumanMessage) {
-                map.put("role", "user");
-                map.put("content", ((HumanMessage) message).getContent());
-            } else if (message instanceof AiMessage) {
-                map.put("role", "assistant");
-                map.put("content", ((AiMessage) message).getFullContent());
-            }
-            messageArray.add(map);
-        });
-
-        String messageText = JSON.toJSONString(messageArray);
-
-
-        // https://platform.openai.com/docs/api-reference/making-requests
-        return "{\n" +
-//            "  \"model\": \"gpt-3.5-turbo\",\n" +
-            "  \"model\": \"" + config.getModel() + "\",\n" +
-            "  \"messages\": " + messageText + ",\n" +
-            "  \"temperature\": 0.7\n" +
-            "}";
-    }
-
-
-    public static <R> String promptToFunctionCallingPayload(Prompt prompt, OpenAiLlmConfig config, List<Function<R>> functions) {
-
-        List<Message> messages = prompt.toMessages();
-
-        List<Map<String, String>> messageArray = new ArrayList<>();
-        messages.forEach(message -> {
-            Map<String, String> map = new HashMap<>(2);
-            if (message instanceof HumanMessage) {
-                map.put("role", "user");
-                map.put("content", ((HumanMessage) message).getContent());
-            } else if (message instanceof AiMessage) {
-                map.put("role", "assistant");
-                map.put("content", ((AiMessage) message).getFullContent());
-            }
-
-            messageArray.add(map);
-        });
-
-        String messageText = JSON.toJSONString(messageArray);
-
-
-        List<Map<String, Object>> toolsArray = new ArrayList<>();
-        for (Function<?> function : functions) {
-            Map<String, Object> functionRoot = new HashMap<>();
-            functionRoot.put("type", "function");
-
-            Map<String, Object> functionObj = new HashMap<>();
-            functionRoot.put("function", functionObj);
-
-            functionObj.put("name", function.getName());
-            functionObj.put("description", function.getDescription());
-
-
-            Map<String, Object> parametersObj = new HashMap<>();
-            functionObj.put("parameters", parametersObj);
-
-            parametersObj.put("type", "object");
-
-            Map<String, Object> propertiesObj = new HashMap<>();
-            parametersObj.put("properties", propertiesObj);
-
-            for (Parameter parameter : function.getParameters()) {
-                Map<String, Object> parameterObj = new HashMap<>();
-                parameterObj.put("type", parameter.getType());
-                parameterObj.put("description", parameter.getDescription());
-                parameterObj.put("enum", parameter.getEnums());
-                propertiesObj.put(parameter.getName(), parameterObj);
-            }
-
-            toolsArray.add(functionRoot);
-        }
-
-        String toolsText = JSON.toJSONString(toolsArray);
-        // https://platform.openai.com/docs/api-reference/making-requests
-        return "{\n" +
-//            "  \"model\": \"gpt-3.5-turbo\",\n" +
-            "  \"model\": \"" + config.getModel() + "\",\n" +
-            "  \"messages\": " + messageText + ",\n" +
-            "  \"tools\": " + toolsText + ",\n" +
-            "  \"tool_choice\": \"auto\"\n" +
-            "}";
+        return JSON.toJSONString(builder.build());
     }
 
 

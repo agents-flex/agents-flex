@@ -13,9 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.parser;
+package com.agentsflex.prompt;
 
-import com.agentsflex.message.AiMessage;
+public interface PromptFormat {
 
-public interface AiMessageParser extends TextParser<AiMessage> {
+    Object toMessagesJsonKey(Prompt<?> prompt);
+
+    Object toFunctionsJsonKey(Prompt<?> prompt);
 }

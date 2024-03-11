@@ -16,7 +16,6 @@
 package com.agentsflex.llm.openai;
 
 import com.agentsflex.document.Document;
-import com.agentsflex.functions.Function;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.MessageListener;
 import com.agentsflex.llm.MessageResponse;
@@ -27,24 +26,24 @@ import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
-import com.agentsflex.message.AiMessage;
-import com.agentsflex.message.FunctionMessage;
 import com.agentsflex.message.Message;
+import com.agentsflex.parser.AiMessageParser;
+import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
-import com.agentsflex.util.StringUtil;
 import com.agentsflex.store.VectorData;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.agentsflex.util.StringUtil;
 import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     private final HttpClient httpClient = new HttpClient();
+    public AiMessageParser aiMessageParser = OpenAiLLmUtil.getAiMessageParser();
+    public FunctionMessageParser functionMessageParser = OpenAiLLmUtil.getFunctionMessageParser();
+
 
     public OpenAiLlm(OpenAiLlmConfig config) {
         super(config);
@@ -64,20 +63,10 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         }
 
         if (prompt instanceof FunctionPrompt) {
-            List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
-
-            JSONObject jsonObject = JSON.parseObject(responseString);
-            String callFunctionName = (String) JSONPath.eval(jsonObject, "$.choices[0].tool_calls[0].function.name");
-            String callFunctionArgsString = (String) JSONPath.eval(jsonObject, "$.choices[0].tool_calls[0].function.arguments");
-            JSONObject callFunctionArgs = JSON.parseObject(callFunctionArgsString);
-
-            FunctionMessage functionMessage = new FunctionMessage();
-            functionMessage.setFunctionName(callFunctionName);
-            functionMessage.setArgs(callFunctionArgs);
-            return (R) new FunctionMessageResponse(functions, functionMessage);
+            return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
+                , functionMessageParser.parse(responseString));
         } else {
-            AiMessage aiMessage = OpenAiLLmUtil.parseAiMessage(responseString);
-            return (R) new AiMessageResponse(aiMessage);
+            return (R) new AiMessageResponse(aiMessageParser.parse(responseString));
         }
     }
 
@@ -90,7 +79,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
 
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, OpenAiLLmUtil::parseAiMessage, null);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
         llmClient.start("https://api.openai.com/v1/chat/completions", headers, payload, clientListener);
     }
 

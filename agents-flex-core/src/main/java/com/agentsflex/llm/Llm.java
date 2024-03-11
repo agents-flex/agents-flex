@@ -24,7 +24,7 @@ import com.agentsflex.prompt.SimplePrompt;
 public interface Llm extends Embeddings {
 
     default String chat(String prompt) {
-        MessageResponse<?> chat = chat(new SimplePrompt(prompt));
+        MessageResponse<AiMessage> chat = chat(new SimplePrompt(prompt));
         return chat != null ? chat.getMessage().getContent() : null;
     }
 

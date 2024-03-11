@@ -18,5 +18,4 @@ package com.agentsflex.parser;
 import com.agentsflex.message.FunctionMessage;
 
 public interface FunctionMessageParser extends TextParser<FunctionMessage> {
-
 }

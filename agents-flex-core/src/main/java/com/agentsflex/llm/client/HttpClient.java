@@ -67,12 +67,7 @@ public class HttpClient {
         try {
             Response response = okHttpClient.newCall(request).execute();
             return response.body().string();
-//            if (response.isSuccessful()) {
-//                return response.message();
-//            } else {
-//                return response.body().string();
-//            }
-        } catch (IOException e) {
+        } catch (Exception e) {
             LOG.error(e.toString(), e);
         }
         return null;

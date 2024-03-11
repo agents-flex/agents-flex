@@ -31,12 +31,12 @@ import java.util.*;
  */
 public class QCloudVectorStore extends VectorStore<VectorDocument> {
 
-    private QCloudVectorStorageConfig config;
+    private QCloudVectorStoreConfig config;
 
     private final HttpClient httpUtil = new HttpClient();
 
 
-    public QCloudVectorStore(QCloudVectorStorageConfig config) {
+    public QCloudVectorStore(QCloudVectorStoreConfig config) {
         this.config = config;
     }
 
@@ -55,8 +55,8 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
         List<Map<String, Object>> payloadDocs = new ArrayList<>();
         for (VectorDocument vectorDocument : documents) {
             Map<String, Object> document = new HashMap<>();
-            if (vectorDocument.getMetadataMap() != null) {
-                document.putAll(vectorDocument.getMetadataMap());
+            if (vectorDocument.getMetadatas() != null) {
+                document.putAll(vectorDocument.getMetadatas());
             }
             document.put("vector", vectorDocument.getVector());
             document.put("id", vectorDocument.getId());
@@ -103,7 +103,7 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
             Map<String, Object> documentIdsObj = new HashMap<>();
             documentIdsObj.put("documentIds", Collections.singletonList(document.getId()));
             payloadMap.put("query", documentIdsObj);
-            payloadMap.put("update", document.getMetadataMap());
+            payloadMap.put("update", document.getMetadatas());
             String payload = JSON.toJSONString(payloadMap);
             httpUtil.post(config.getHost() + "/document/update", headers, payload);
         }

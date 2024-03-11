@@ -25,8 +25,12 @@ import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
 import com.agentsflex.llm.response.AiMessageResponse;
+import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.Message;
+import com.agentsflex.parser.AiMessageParser;
+import com.agentsflex.parser.FunctionMessageParser;
+import com.agentsflex.parser.impl.BaseAiMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
@@ -37,11 +41,15 @@ import java.util.Map;
 
 public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
+
+    HttpClient httpClient = new HttpClient();
+
+    public AiMessageParser aiMessageParser = QwenLlmUtil.getAiMessageParser();
+    public FunctionMessageParser functionMessageParser = QwenLlmUtil.getFunctionMessageParser();
+
     public QwenLlm(QwenLlmConfig config) {
         super(config);
     }
-
-    HttpClient httpClient = new HttpClient();
 
 
     @Override
@@ -58,13 +66,10 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
         }
 
         if (prompt instanceof FunctionPrompt) {
-
+            return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions(), functionMessageParser.parse(responseString));
         } else {
-            AiMessage aiMessage = QwenLlmUtil.parseAiMessage(responseString, 0);
-            return (R) new AiMessageResponse(aiMessage);
+            return (R) new AiMessageResponse(aiMessageParser.parse(responseString));
         }
-
-        return null;
     }
 
 
@@ -77,16 +82,18 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config);
 
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, new BaseLlmClientListener.AiMessageParser() {
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, new BaseAiMessageParser() {
             int prevMessageLength = 0;
 
             @Override
-            public AiMessage parseMessage(String response) {
-                AiMessage aiMessage = QwenLlmUtil.parseAiMessage(response, prevMessageLength);
-                prevMessageLength += aiMessage.getContent().length();
+            public AiMessage parse(String content) {
+                AiMessage aiMessage = aiMessageParser.parse(content);
+                String messageContent = aiMessage.getContent();
+                aiMessage.setContent(messageContent.substring(prevMessageLength));
+                prevMessageLength = messageContent.length();
                 return aiMessage;
             }
-        }, null);
+        }, functionMessageParser);
         llmClient.start("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload, clientListener);
     }
 

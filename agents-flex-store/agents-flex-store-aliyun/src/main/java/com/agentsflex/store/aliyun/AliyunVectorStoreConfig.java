@@ -20,7 +20,7 @@ import java.io.Serializable;
 /**
  * https://help.aliyun.com/document_detail/2510317.html
  */
-public class AliyunVectorStorageConfig implements Serializable {
+public class AliyunVectorStoreConfig implements Serializable {
     private String endpoint;
     private String apiKey;
     private String database;

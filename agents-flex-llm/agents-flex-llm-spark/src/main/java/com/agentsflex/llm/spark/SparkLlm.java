@@ -16,7 +16,6 @@
 package com.agentsflex.llm.spark;
 
 import com.agentsflex.document.Document;
-import com.agentsflex.functions.Function;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatContext;
 import com.agentsflex.llm.MessageListener;
@@ -30,17 +29,20 @@ import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.FunctionMessage;
 import com.agentsflex.message.Message;
+import com.agentsflex.parser.AiMessageParser;
+import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONPath;
 
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 public class SparkLlm extends BaseLlm<SparkLlmConfig> {
+
+    public AiMessageParser aiMessageParser = SparkLlmUtil.getAiMessageParser();
+    public FunctionMessageParser functionMessageParser = SparkLlmUtil.getFunctionMessageParser();
+
+
 
     public SparkLlm(SparkLlmConfig config) {
         super(config);
@@ -50,6 +52,8 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     public VectorData embeddings(Document document) {
         return null;
     }
+
+
 
     @SuppressWarnings("unchecked")
     @Override
@@ -91,6 +95,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     }
 
 
+
     @Override
     public <R extends MessageResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, MessageListener<R, M> listener) {
         LlmClient llmClient = new WebSocketClient();
@@ -98,20 +103,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
         String payload = SparkLlmUtil.promptToPayload(prompt, config);
 
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, SparkLlmUtil::parseAiMessage, new BaseLlmClientListener.FunctionMessageParser() {
-            @Override
-            public FunctionMessage parseMessage(String response) {
-                JSONObject jsonObject = JSON.parseObject(response);
-                String callFunctionName = (String) JSONPath.eval(jsonObject, "$.payload.choices.text[0].function_call.name");
-                String callFunctionArgsString = (String) JSONPath.eval(jsonObject, "$.payload.choices.text[0].function_call.arguments");
-                JSONObject callFunctionArgs = JSON.parseObject(callFunctionArgsString);
-
-                FunctionMessage functionMessage = new FunctionMessage();
-                functionMessage.setFunctionName(callFunctionName);
-                functionMessage.setArgs(callFunctionArgs);
-                return functionMessage;
-            }
-        });
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
         llmClient.start(url, null, payload, clientListener);
     }
 

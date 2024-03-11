@@ -17,7 +17,7 @@ package com.agentsflex.store.qcloud;
 
 import java.io.Serializable;
 
-public class QCloudVectorStorageConfig implements Serializable {
+public class QCloudVectorStoreConfig implements Serializable {
 
     private String host;
     private String apiKey;

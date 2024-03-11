@@ -40,7 +40,7 @@ public class SimpleSplitter implements Splitter {
         List<Document> texts = new ArrayList<>(textArray.length);
         for (String textString : textArray) {
             Document newText = new Document();
-            newText.setMetadataMap(text.getMetadataMap());
+            newText.setMetadatas(text.getMetadatas());
             newText.setContent(textString);
             texts.add(newText);
         }
