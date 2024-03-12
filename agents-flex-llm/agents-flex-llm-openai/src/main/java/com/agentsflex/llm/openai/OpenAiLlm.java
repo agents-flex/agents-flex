@@ -80,7 +80,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
 
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
-        llmClient.start("https://api.openai.com/v1/chat/completions", headers, payload, clientListener);
+        llmClient.start("https://api.openai.com/v1/chat/completions", headers, payload, clientListener,config);
     }
 
 

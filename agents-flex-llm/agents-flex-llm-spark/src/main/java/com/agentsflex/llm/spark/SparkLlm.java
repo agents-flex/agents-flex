@@ -43,7 +43,6 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     public FunctionMessageParser functionMessageParser = SparkLlmUtil.getFunctionMessageParser();
 
 
-
     public SparkLlm(SparkLlmConfig config) {
         super(config);
     }
@@ -52,7 +51,6 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     public VectorData embeddings(Document document) {
         return null;
     }
-
 
 
     @SuppressWarnings("unchecked")
@@ -67,7 +65,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
                     if (messages[0] == null) {
                         messages[0] = response.getMessage();
                     } else {
-                        ((AiMessage)messages[0]).setContent(((AiMessage) response.getMessage()).getFullContent());
+                        ((AiMessage) messages[0]).setContent(((AiMessage) response.getMessage()).getFullContent());
                     }
 
                 } else if (response.getMessage() instanceof FunctionMessage) {
@@ -95,7 +93,6 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     }
 
 
-
     @Override
     public <R extends MessageResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, MessageListener<R, M> listener) {
         LlmClient llmClient = new WebSocketClient();
@@ -104,7 +101,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         String payload = SparkLlmUtil.promptToPayload(prompt, config);
 
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
-        llmClient.start(url, null, payload, clientListener);
+        llmClient.start(url, null, payload, clientListener, config);
     }
 
 

@@ -15,6 +15,7 @@
  */
 package com.agentsflex.llm.client.impl;
 
+import com.agentsflex.llm.LlmConfig;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import okhttp3.*;
@@ -32,11 +33,13 @@ public class SseClient extends EventSourceListener implements LlmClient {
     private OkHttpClient client;
     private EventSource eventSource;
     private LlmClientListener listener;
+    private LlmConfig config;
     private boolean isStop = false;
 
     @Override
-    public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener) {
+    public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener, LlmConfig config) {
         this.listener = listener;
+        this.config = config;
         this.isStop = false;
 
         Request.Builder builder = new Request.Builder()
@@ -59,6 +62,10 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
         EventSource.Factory factory = EventSources.createFactory(this.client);
         this.eventSource = factory.newEventSource(request, this);
+
+        if (this.config.isDebug()){
+            System.out.println(">>>>send payload:" + payload);
+        }
 
         this.listener.onStart(this);
     }
@@ -84,6 +91,9 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
     @Override
     public void onEvent(@NotNull EventSource eventSource, @Nullable String id, @Nullable String type, @NotNull String data) {
+        if (this.config.isDebug()){
+            System.out.println(">>>>receive payload:" + data);
+        }
         this.listener.onMessage(this, data);
     }
 

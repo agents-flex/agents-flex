@@ -15,11 +15,13 @@
  */
 package com.agentsflex.llm.client;
 
+import com.agentsflex.llm.LlmConfig;
+
 import java.util.Map;
 
 public interface LlmClient {
 
-    void start(String url, Map<String, String> headers, String payload, LlmClientListener listener);
+    void start(String url, Map<String, String> headers, String payload, LlmClientListener listener, LlmConfig config);
 
     void stop();
 }

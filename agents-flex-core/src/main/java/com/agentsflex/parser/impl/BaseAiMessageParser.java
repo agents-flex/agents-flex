@@ -19,6 +19,7 @@ import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.Parser;
+import com.agentsflex.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
@@ -76,13 +77,24 @@ public class BaseAiMessageParser implements AiMessageParser {
     public AiMessage parse(String content) {
         AiMessage aiMessage = new AiMessage();
         JSONObject rootJson = JSON.parseObject(content);
-        aiMessage.setContent((String) JSONPath.eval(rootJson, this.contentPath));
-        aiMessage.setIndex((Integer) JSONPath.eval(rootJson, this.indexPath));
-        aiMessage.setTotalTokens((Integer) JSONPath.eval(rootJson, this.totalTokensPath));
 
-        String statusString = (String) JSONPath.eval(rootJson, this.statusPath);
-        if (this.statusParser != null) {
-            aiMessage.setStatus(this.statusParser.parse(statusString));
+        if (StringUtil.hasText(this.contentPath)) {
+            aiMessage.setContent((String) JSONPath.eval(rootJson, this.contentPath));
+        }
+
+        if (StringUtil.hasText(this.indexPath)) {
+            aiMessage.setIndex((Integer) JSONPath.eval(rootJson, this.indexPath));
+        }
+
+        if (StringUtil.hasText(this.totalTokensPath)) {
+            aiMessage.setTotalTokens((Integer) JSONPath.eval(rootJson, this.totalTokensPath));
+        }
+
+        if (StringUtil.hasText(this.statusPath)) {
+            Object statusString = JSONPath.eval(rootJson, this.statusPath);
+            if (this.statusParser != null) {
+                aiMessage.setStatus(this.statusParser.parse(statusString));
+            }
         }
 
         return aiMessage;

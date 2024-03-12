@@ -26,6 +26,10 @@ public class Maps {
         return new Builder();
     }
 
+    public static Builder of(String key, Builder value) {
+        return of(key, value.build());
+    }
+
     public static Builder of(String key, Object value) {
         return new Builder().put(key, value);
     }

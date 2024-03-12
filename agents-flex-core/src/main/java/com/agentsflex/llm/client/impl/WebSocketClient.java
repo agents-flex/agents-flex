@@ -15,6 +15,7 @@
  */
 package com.agentsflex.llm.client.impl;
 
+import com.agentsflex.llm.LlmConfig;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import okhttp3.*;
@@ -28,13 +29,15 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
     private WebSocket webSocket;
     private LlmClientListener listener;
+    private LlmConfig config;
     private boolean isStop = false;
     private String payload;
 
     @Override
-    public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener) {
+    public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener, LlmConfig config) {
         this.listener = listener;
         this.payload = payload;
+        this.config = config;
 
         OkHttpClient client = new OkHttpClient.Builder()
             .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -46,6 +49,10 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
         this.webSocket = client.newWebSocket(request, this);
         this.isStop = false;
+
+        if (this.config.isDebug()){
+            System.out.println(">>>>send payload:" + payload);
+        }
     }
 
     @Override
@@ -69,6 +76,9 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
     @Override
     public void onMessage(WebSocket webSocket, String text) {
+        if (this.config.isDebug()){
+            System.out.println(">>>>receive payload:" + text);
+        }
         this.listener.onMessage(this, text);
     }
 

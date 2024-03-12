@@ -57,7 +57,7 @@
         <slf4j.version>1.7.29</slf4j.version>
         <junit.version>4.13.2</junit.version>
         <okhttp.version>4.9.3</okhttp.version>
-        <fastjson.version>2.0.45</fastjson.version>
+        <fastjson.version>2.0.47</fastjson.version>
     </properties>
 
 

@@ -40,7 +40,13 @@ public class DefaultPromptFormat implements PromptFormat {
             return null;
         }
 
-        List<Map<String, String>> messageArray = new ArrayList<>(messages.size());
+        List<Map<String, String>> messageJsonArray = new ArrayList<>(messages.size());
+        buildMessageJsonArray(messageJsonArray, messages);
+
+        return messageJsonArray;
+    }
+
+    protected void buildMessageJsonArray(List<Map<String, String>> messageJsonArray, List<Message> messages) {
         messages.forEach(message -> {
             Map<String, String> map = new HashMap<>(2);
             if (message instanceof HumanMessage) {
@@ -53,10 +59,8 @@ public class DefaultPromptFormat implements PromptFormat {
                 map.put("role", "system");
                 map.put("content", ((SystemMessage) message).getContent());
             }
-            messageArray.add(map);
+            messageJsonArray.add(map);
         });
-
-        return messageArray;
     }
 
 
@@ -66,12 +70,18 @@ public class DefaultPromptFormat implements PromptFormat {
             return null;
         }
 
-        List<Function<?>> functions = ((FunctionPrompt)prompt).getFunctions();
+        List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
         if (functions == null || functions.isEmpty()) {
             return null;
         }
 
         List<Map<String, Object>> functionsJsonArray = new ArrayList<>();
+        buildFunctionJsonArray(functionsJsonArray, functions);
+
+        return functionsJsonArray;
+    }
+
+    protected void buildFunctionJsonArray(List<Map<String, Object>> functionsJsonArray, List<Function<?>> functions) {
         for (Function<?> function : functions) {
             Map<String, Object> functionRoot = new HashMap<>();
             functionRoot.put("type", "function");
@@ -100,8 +110,6 @@ public class DefaultPromptFormat implements PromptFormat {
             }
             functionsJsonArray.add(functionRoot);
         }
-
-        return functionsJsonArray;
     }
 
 }

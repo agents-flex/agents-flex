@@ -21,7 +21,7 @@ public class SparkLlmTest {
         config.setApiSecret("****");
 
         Llm llm = new SparkLlm(config);
-        String result = llm.chat("你好");
+        String result = llm.chat("你好，请问你是谁？");
         System.out.println(result);
     }
 
@@ -32,6 +32,10 @@ public class SparkLlmTest {
         config.setAppId("****");
         config.setApiKey("****");
         config.setApiSecret("****");
+        config.setDebug(true);
+
+        //只有 v3.5 版本支持 function calling
+        config.setVersion("v3.5");
 
         Llm llm = new SparkLlm(config);
 

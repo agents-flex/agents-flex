@@ -94,7 +94,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
                 return aiMessage;
             }
         }, functionMessageParser);
-        llmClient.start("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload, clientListener);
+        llmClient.start("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload, clientListener,config);
     }
 
     @Override

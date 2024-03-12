@@ -15,6 +15,7 @@
  */
 package com.agentsflex.llm.client.impl;
 
+import com.agentsflex.llm.LlmConfig;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import okhttp3.*;
@@ -28,11 +29,13 @@ public class AsyncHttpClient implements LlmClient {
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
     private OkHttpClient client;
     private LlmClientListener listener;
+    private LlmConfig config;
     private boolean isStop = false;
 
     @Override
-    public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener) {
+    public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener, LlmConfig config) {
         this.listener = listener;
+        this.config = config;
         this.isStop = false;
 
         Request.Builder rBuilder = new Request.Builder()
@@ -50,6 +53,9 @@ public class AsyncHttpClient implements LlmClient {
             .readTimeout(3, TimeUnit.MINUTES)
             .build();
 
+        if (this.config.isDebug()){
+            System.out.println(">>>>send payload:" + payload);
+        }
 
         this.listener.onStart(this);
         this.client.newCall(rBuilder.build()).enqueue(new Callback() {
@@ -60,6 +66,9 @@ public class AsyncHttpClient implements LlmClient {
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                if (config.isDebug()){
+                    System.out.println(">>>>receive payload:" + response.message());
+                }
                 AsyncHttpClient.this.listener.onMessage(AsyncHttpClient.this, response.message());
                 if (!isStop) {
                     AsyncHttpClient.this.isStop = true;

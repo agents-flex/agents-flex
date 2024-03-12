@@ -15,13 +15,14 @@
  */
 package com.agentsflex.llm.spark;
 
+import com.agentsflex.functions.Function;
+import com.agentsflex.functions.Parameter;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.parser.impl.BaseAiMessageParser;
 import com.agentsflex.parser.impl.BaseFunctionMessageParser;
 import com.agentsflex.prompt.DefaultPromptFormat;
-import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.PromptFormat;
 import com.agentsflex.util.HashUtil;
@@ -31,14 +32,34 @@ import com.alibaba.fastjson.JSON;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
-import java.util.Base64;
-import java.util.Date;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.*;
 
 public class SparkLlmUtil {
 
-    private static final PromptFormat promptFormat = new DefaultPromptFormat();
+    private static final PromptFormat promptFormat = new DefaultPromptFormat() {
+        @Override
+        protected void buildFunctionJsonArray(List<Map<String, Object>> functionsJsonArray, List<Function<?>> functions) {
+            for (Function<?> function : functions) {
+                Map<String, Object> propertiesMap = new HashMap<>();
+                List<String> requiredProperties = new ArrayList<>();
+
+                Parameter[] parameters = function.getParameters();
+                if (parameters != null) {
+                    for (Parameter parameter : parameters) {
+                        if (parameter.isRequired()) {
+                            requiredProperties.add(parameter.getName());
+                        }
+                        propertiesMap.put(parameter.getName(), Maps.of("type", parameter.getType()).put("description", parameter.getDescription()).build());
+                    }
+                }
+
+                Maps.Builder builder = Maps.of("name", function.getName()).put("description", function.getDescription())
+                    .put("parameters", Maps.of("type", "object").put("properties", propertiesMap).put("required", requiredProperties));
+                functionsJsonArray.add(builder.build());
+            }
+        }
+    };
+
 
     public static AiMessageParser getAiMessageParser() {
         BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
@@ -62,14 +83,17 @@ public class SparkLlmUtil {
     public static String promptToPayload(Prompt prompt, SparkLlmConfig config) {
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
         Maps.Builder root = Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()));
-        root.put("parameter", Maps.of("chat", Maps.of("domain", "generalv3").put("temperature", 0.5).put("max_tokens", 1024)));
+        root.put("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion())).put("temperature", 0.5).put("max_tokens", 1024)));
         root.put("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonKey(prompt)))
-            .putIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonKey((FunctionPrompt) prompt)))
+            .putIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonKey(prompt)))
         );
         return JSON.toJSONString(root.build());
     }
 
     public static MessageStatus parseMessageStatus(Integer status) {
+        if (status == null) {
+            return MessageStatus.UNKNOW;
+        }
         switch (status) {
             case 0:
                 return MessageStatus.START;
@@ -104,6 +128,20 @@ public class SparkLlmUtil {
             return URLEncoder.encode(content, "utf-8").replace("+", "%20");
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+
+    private static String getDomain(String version) {
+        switch (version) {
+            case "v3.5":
+                return "generalv3.5";
+            case "v3.1":
+                return "generalv3";
+            case "v2.1":
+                return "generalv2";
+            default:
+                return "general";
         }
     }
 }

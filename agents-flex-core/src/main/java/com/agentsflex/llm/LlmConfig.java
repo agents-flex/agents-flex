@@ -18,4 +18,14 @@ package com.agentsflex.llm;
 import java.io.Serializable;
 
 public class LlmConfig implements Serializable {
+
+    private boolean debug;
+
+    public boolean isDebug() {
+        return debug;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
 }
