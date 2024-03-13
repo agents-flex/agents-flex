@@ -20,7 +20,7 @@ public class AiMessage extends TextMessage {
 
     private Integer index;
     private MessageStatus status;
-    private int totalTokens;
+    private Integer totalTokens;
     private String fullContent;
 
     public Integer getIndex() {
@@ -39,11 +39,11 @@ public class AiMessage extends TextMessage {
         this.status = status;
     }
 
-    public int getTotalTokens() {
+    public Integer getTotalTokens() {
         return totalTokens;
     }
 
-    public void setTotalTokens(int totalTokens) {
+    public void setTotalTokens(Integer totalTokens) {
         this.totalTokens = totalTokens;
     }
 

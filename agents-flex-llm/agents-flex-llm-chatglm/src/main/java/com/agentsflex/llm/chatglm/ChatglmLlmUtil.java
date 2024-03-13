@@ -1,20 +1,27 @@
 package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.message.AiMessage;
-import com.agentsflex.message.HumanMessage;
-import com.agentsflex.message.Message;
 import com.agentsflex.message.MessageStatus;
+import com.agentsflex.parser.AiMessageParser;
+import com.agentsflex.parser.FunctionMessageParser;
+import com.agentsflex.parser.impl.BaseAiMessageParser;
+import com.agentsflex.parser.impl.BaseFunctionMessageParser;
+import com.agentsflex.prompt.DefaultPromptFormat;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.prompt.PromptFormat;
+import com.agentsflex.util.Maps;
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONPath;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ChatglmLlmUtil {
+
+    private static final PromptFormat promptFormat = new DefaultPromptFormat();
+
 
     public static String createAuthorizationToken(ChatglmLlmConfig config) {
         Map<String, Object> headers = new HashMap<>();
@@ -38,48 +45,41 @@ public class ChatglmLlmUtil {
         return builder.compact();
     }
 
-
-    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config) {
-
-        List<Message> messages = prompt.toMessages();
-
-        // https://open.bigmodel.cn/dev/api#glm-4
-        String payload = "{\n" +
-            "  \"model\": \"" + config.getModel() + "\",\n" +
-            "  \"messages\": messageJsonString\n" +
-            "}";
-
-
-        List<Map<String, String>> messageArray = new ArrayList<>();
-        messages.forEach(message -> {
-            Map<String, String> map = new HashMap<>(2);
-            if (message instanceof HumanMessage) {
-                map.put("role", "user");
-                map.put("content", ((HumanMessage) message).getContent());
-            } else if (message instanceof AiMessage) {
-                map.put("role", "assistant");
-                map.put("content", ((AiMessage) message).getFullContent());
+    public static AiMessageParser getAiMessageParser() {
+        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser(){
+            @Override
+            public AiMessage parse(String content) {
+                if ("[DONE]".equals(content)){
+                    return null;
+                }
+                return super.parse(content);
             }
-
-            messageArray.add(map);
-        });
-
-        String messageText = JSON.toJSONString(messageArray);
-        return payload.replace("messageJsonString", messageText);
+        };
+        aiMessageParser.setContentPath("$.choices[0].delta.content");
+        aiMessageParser.setIndexPath("$.choices[0].index");
+        aiMessageParser.setStatusPath("$.choices[0].finish_reason");
+        aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
+        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
+        return aiMessageParser;
     }
 
 
-    public static AiMessage parseAiMessage(String json) {
-        AiMessage aiMessage = new AiMessage();
-        JSONObject jsonObject = JSON.parseObject(json);
-        Object status = JSONPath.eval(jsonObject, "$.choices[0].finish_reason");
-        MessageStatus messageStatus = parseMessageStatus((String) status);
-        aiMessage.setStatus(messageStatus);
-        aiMessage.setIndex((Integer) JSONPath.eval(jsonObject, "$.choices[0].index"));
-        aiMessage.setContent((String) JSONPath.eval(jsonObject, "$.choices[0].message.content"));
-        aiMessage.setTotalTokens((Integer)JSONPath.eval(jsonObject,"$.usage.total_tokens"));
-        return aiMessage;
+    public static FunctionMessageParser getFunctionMessageParser() {
+        BaseFunctionMessageParser functionMessageParser = new BaseFunctionMessageParser();
+        functionMessageParser.setFunctionNamePath("$.choices[0].message.tool_calls[0].function.name");
+        functionMessageParser.setFunctionArgsPath("$.choices[0].message.tool_calls[0].function.arguments");
+        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
+        return functionMessageParser;
     }
+
+
+    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config,boolean stream) {
+        Maps.Builder builder = Maps.of("model", config.getModel()).put("messages", promptFormat.toMessagesJsonKey(prompt)).putIf(stream,"stream",stream);
+        return JSON.toJSONString(builder.build());
+
+    }
+
+
 
     public static MessageStatus parseMessageStatus(String status) {
         return "stop".equals(status) ? MessageStatus.END : MessageStatus.MIDDLE;

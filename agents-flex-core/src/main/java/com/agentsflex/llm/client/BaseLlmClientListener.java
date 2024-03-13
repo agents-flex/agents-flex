@@ -34,8 +34,6 @@ import java.util.List;
 
 public class BaseLlmClientListener implements LlmClientListener {
 
-    private final Llm llm;
-    private final LlmClient client;
     private final MessageListener messageListener;
     private final Prompt prompt;
     private final AiMessageParser messageParser;
@@ -45,11 +43,13 @@ public class BaseLlmClientListener implements LlmClientListener {
     private boolean isFunctionCalling = false;
     private final ChatContext context;
 
-    public BaseLlmClientListener(Llm llm, LlmClient client, MessageListener messageListener, Prompt prompt
+    public BaseLlmClientListener(Llm llm
+        , LlmClient client
+        , MessageListener messageListener
+        , Prompt prompt
         , AiMessageParser messageParser
         , FunctionMessageParser functionInfoParser) {
-        this.llm = llm;
-        this.client = client;
+
         this.messageListener = messageListener;
         this.prompt = prompt;
         this.messageParser = messageParser;
@@ -79,7 +79,11 @@ public class BaseLlmClientListener implements LlmClientListener {
             MessageResponse<?> r = new FunctionMessageResponse(functions, functionInfo);
             messageListener.onMessage(context, r);
         } else {
-            lastAiMessage = messageParser.parse(response);
+            AiMessage parsedMessage = messageParser.parse(response);
+            if (parsedMessage == null) {
+                return;
+            }
+            lastAiMessage = parsedMessage;
             fullMessage.append(lastAiMessage.getContent());
             lastAiMessage.setFullContent(fullMessage.toString());
             MessageResponse<?> r = new AiMessageResponse(lastAiMessage);

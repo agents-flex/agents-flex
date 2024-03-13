@@ -15,6 +15,8 @@
  */
 package com.agentsflex.util;
 
+import com.alibaba.fastjson.JSON;
+
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.HashMap;
@@ -146,6 +148,9 @@ public class Maps {
             return (Map) map.get(key);
         }
 
+        public String toJSON() {
+            return JSON.toJSONString(map);
+        }
     }
 
 }
