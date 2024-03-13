@@ -46,10 +46,10 @@ public class ChatglmLlmUtil {
     }
 
     public static AiMessageParser getAiMessageParser() {
-        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser(){
+        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser() {
             @Override
             public AiMessage parse(String content) {
-                if ("[DONE]".equals(content)){
+                if ("[DONE]".equals(content)) {
                     return null;
                 }
                 return super.parse(content);
@@ -73,12 +73,14 @@ public class ChatglmLlmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config,boolean stream) {
-        Maps.Builder builder = Maps.of("model", config.getModel()).put("messages", promptFormat.toMessagesJsonKey(prompt)).putIf(stream,"stream",stream);
+    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config, boolean stream) {
+        Maps.Builder builder = Maps.of("model", config.getModel())
+            .put("messages", promptFormat.toMessagesJsonKey(prompt))
+            .putIf(stream, "stream", stream)
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonKey(prompt));
         return JSON.toJSONString(builder.build());
 
     }
-
 
 
     public static MessageStatus parseMessageStatus(String status) {

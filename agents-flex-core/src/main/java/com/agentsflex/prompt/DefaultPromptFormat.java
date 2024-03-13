@@ -101,13 +101,25 @@ public class DefaultPromptFormat implements PromptFormat {
             Map<String, Object> propertiesObj = new HashMap<>();
             parametersObj.put("properties", propertiesObj);
 
+            List<String> requiredProperties = new ArrayList<>();
+
             for (Parameter parameter : function.getParameters()) {
                 Map<String, Object> parameterObj = new HashMap<>();
                 parameterObj.put("type", parameter.getType());
                 parameterObj.put("description", parameter.getDescription());
                 parameterObj.put("enum", parameter.getEnums());
+
+                if (parameter.isRequired()) {
+                    requiredProperties.add(parameter.getName());
+                }
+
                 propertiesObj.put(parameter.getName(), parameterObj);
             }
+
+            if (!requiredProperties.isEmpty()) {
+                parametersObj.put("required", requiredProperties);
+            }
+
             functionsJsonArray.add(functionRoot);
         }
     }

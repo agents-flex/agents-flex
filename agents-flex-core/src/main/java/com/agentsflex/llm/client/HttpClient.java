@@ -19,7 +19,6 @@ import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -39,6 +38,14 @@ public class HttpClient {
 
     public HttpClient(OkHttpClient okHttpClient) {
         this.okHttpClient = okHttpClient;
+    }
+
+    public String get(String url) {
+        return method(url, "GET", null, null);
+    }
+
+    public String get(String url, Map<String, String> headers) {
+        return method(url, "GET", headers, null);
     }
 
     public String post(String url, Map<String, String> headers, String payload) {
@@ -61,8 +68,13 @@ public class HttpClient {
             headers.forEach(builder::addHeader);
         }
 
-        RequestBody body = RequestBody.create(payload, JSON_TYPE);
-        Request request = builder.method(method, body).build();
+        Request request = null;
+        if ("GET".equals(method)) {
+            request = builder.method(method, null).build();
+        } else {
+            RequestBody body = RequestBody.create(payload, JSON_TYPE);
+            request = builder.method(method, body).build();
+        }
 
         try {
             Response response = okHttpClient.newCall(request).execute();
