@@ -32,6 +32,9 @@ public class FunctionMessageResponse implements MessageResponse<FunctionMessage>
     }
 
     public Object invoke() {
+        if (functionMessage == null){
+            return null;
+        }
         for (Function<?> function : functions) {
             if (function.getName().equals(functionMessage.getFunctionName())) {
                 return function.invoke(functionMessage.getArgs());

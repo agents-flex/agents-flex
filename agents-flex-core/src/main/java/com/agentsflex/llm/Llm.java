@@ -25,7 +25,7 @@ public interface Llm extends Embeddings {
 
     default String chat(String prompt) {
         MessageResponse<AiMessage> chat = chat(new SimplePrompt(prompt));
-        return chat != null ? chat.getMessage().getContent() : null;
+        return chat != null && chat.getMessage() != null ? chat.getMessage().getContent() : null;
     }
 
     <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt);
