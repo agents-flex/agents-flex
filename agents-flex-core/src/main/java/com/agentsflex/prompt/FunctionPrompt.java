@@ -24,16 +24,21 @@ import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class FunctionPrompt extends Prompt<FunctionMessage> {
     private final ChatMemory memory = new DefaultChatMemory();
-
     private final List<Function<?>> functions = new ArrayList<>();
 
-    public FunctionPrompt(String prompt, Class<?> funcClass) {
+    public FunctionPrompt(String prompt, Collection<Function<?>> functions) {
         memory.addMessage(new HumanMessage(prompt));
-        functions.addAll(Functions.from(funcClass));
+        this.functions.addAll(functions);
+    }
+
+    public FunctionPrompt(List<Message> messages, Collection<Function<?>> functions) {
+        memory.addMessages(messages);
+        this.functions.addAll(functions);
     }
 
     public FunctionPrompt(String prompt, Class<?> funcClass, String... methodNames) {
@@ -41,14 +46,19 @@ public class FunctionPrompt extends Prompt<FunctionMessage> {
         functions.addAll(Functions.from(funcClass, methodNames));
     }
 
-    public FunctionPrompt(List<Message> messages, Class<?> funcClass) {
-        memory.addMessages(messages);
-        functions.addAll(Functions.from(funcClass));
-    }
-
     public FunctionPrompt(List<Message> messages, Class<?> funcClass, String... methodNames) {
         memory.addMessages(messages);
         functions.addAll(Functions.from(funcClass, methodNames));
+    }
+
+    public FunctionPrompt(String prompt, Object funcObject, String... methodNames) {
+        memory.addMessage(new HumanMessage(prompt));
+        functions.addAll(Functions.from(funcObject, methodNames));
+    }
+
+    public FunctionPrompt(List<Message> messages, Object funcObject, String... methodNames) {
+        memory.addMessages(messages);
+        functions.addAll(Functions.from(funcObject, methodNames));
     }
 
     @Override

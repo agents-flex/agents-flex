@@ -26,20 +26,26 @@ import java.util.List;
 
 public class Functions<T> extends ArrayList<Function<T>> {
 
+    public static <R> Functions<R> from(Object object, String... methodNames) {
+        return from(object.getClass(), object, methodNames);
+    }
+
     public static <R> Functions<R> from(Class<?> clazz, String... methodNames) {
+        return from(clazz, null, methodNames);
+    }
+
+    private static <R> Functions<R> from(Class<?> clazz, Object object, String... methodNames) {
+        clazz = ClassUtil.getUsefulClass(clazz);
         List<Method> methodList = ClassUtil.getAllMethods(clazz, method -> {
-            if (!Modifier.isStatic(method.getModifiers())) {
+            if (object == null && !Modifier.isStatic(method.getModifiers())) {
                 return false;
             }
-
             if (method.getAnnotation(FunctionDef.class) == null) {
                 return false;
             }
-
             if (methodNames.length > 0) {
                 return ArrayUtil.contains(methodNames, method.getName());
             }
-
             return true;
         });
 
@@ -49,6 +55,11 @@ public class Functions<T> extends ArrayList<Function<T>> {
             Function<R> function = new Function<>();
             function.setClazz(clazz);
             function.setMethod(method);
+
+            if (!Modifier.isStatic(method.getModifiers())) {
+                function.setObject(object);
+            }
+
             functions.add(function);
         }
 

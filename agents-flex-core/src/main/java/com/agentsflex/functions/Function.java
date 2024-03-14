@@ -28,6 +28,7 @@ import java.util.Map;
 
 public class Function<R> {
     private Class<?> clazz;
+    private Object object;
     private Method method;
     private String name;
     private String description;
@@ -39,6 +40,14 @@ public class Function<R> {
 
     public void setClazz(Class<?> clazz) {
         this.clazz = clazz;
+    }
+
+    public Object getObject() {
+        return object;
+    }
+
+    public void setObject(Object object) {
+        this.object = object;
     }
 
     public Method getMethod() {
@@ -106,7 +115,7 @@ public class Function<R> {
                 args[i] = ConvertService.convert(value, this.parameters[i].getTypeClass());
             }
             //noinspection unchecked
-            return (R) method.invoke(null, args);
+            return (R) method.invoke(object, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
