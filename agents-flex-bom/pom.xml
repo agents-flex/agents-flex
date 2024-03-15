@@ -9,7 +9,7 @@
         <version>1.0.0-alpha.2</version>
     </parent>
 
-    <groupId>cc.aiadmin</groupId>
+    <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
 
     <properties>
@@ -64,11 +64,6 @@
 
 
         <!--store start-->
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-store-aliyun</artifactId>
-            <version>${agents-flex.version}</version>
-        </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-aliyun</artifactId>
