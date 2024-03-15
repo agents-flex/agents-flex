@@ -42,6 +42,7 @@
 
 
     <modules>
+        <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
         <module>agents-flex-test</module>
         <module>agents-flex-samples</module>

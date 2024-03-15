@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.agentsflex</groupId>
+        <artifactId>parent</artifactId>
+        <version>1.0.0-alpha.2</version>
+    </parent>
+
+    <groupId>cc.aiadmin</groupId>
+    <artifactId>agents-flex-bom</artifactId>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <agents-flex.version>1.0.0-alpha.2</agents-flex.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+
+        <!--document parser start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-document-parser-poi</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-document-parser-pdfbox</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <!--document parser end-->
+
+        <!--llm start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-chatglm</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-openai</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-qwen</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-spark</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <!--llm end-->
+
+
+        <!--store start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-aliyun</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-aliyun</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-chroma</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-elasticsearch</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-milvus</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-opensearch</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-qcloud</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-redis</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <!--store end-->
+
+    </dependencies>
+
+</project>
