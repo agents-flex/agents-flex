@@ -38,8 +38,8 @@ public class SparkLlmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat() {
         @Override
-        protected void buildFunctionJsonArray(List<Map<String, Object>> functionsJsonArray, List<Function<?>> functions) {
-            for (Function<?> function : functions) {
+        protected void buildFunctionJsonArray(List<Map<String, Object>> functionsJsonArray, List<Function> functions) {
+            for (Function function : functions) {
                 Map<String, Object> propertiesMap = new HashMap<>();
                 List<String> requiredProperties = new ArrayList<>();
 

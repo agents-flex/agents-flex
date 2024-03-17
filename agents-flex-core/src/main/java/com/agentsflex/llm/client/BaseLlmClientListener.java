@@ -75,7 +75,7 @@ public class BaseLlmClientListener implements LlmClientListener {
     public void onMessage(LlmClient client, String response) {
         if (isFunctionCalling) {
             FunctionMessage functionInfo = functionInfoParser.parse(response);
-            List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
+            List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
             MessageResponse<?> r = new FunctionMessageResponse(functions, functionInfo);
             messageListener.onMessage(context, r);
         } else {

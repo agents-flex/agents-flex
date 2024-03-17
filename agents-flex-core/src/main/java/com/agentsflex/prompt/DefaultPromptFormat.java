@@ -70,7 +70,7 @@ public class DefaultPromptFormat implements PromptFormat {
             return null;
         }
 
-        List<Function<?>> functions = ((FunctionPrompt) prompt).getFunctions();
+        List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
         if (functions == null || functions.isEmpty()) {
             return null;
         }
@@ -81,8 +81,8 @@ public class DefaultPromptFormat implements PromptFormat {
         return functionsJsonArray;
     }
 
-    protected void buildFunctionJsonArray(List<Map<String, Object>> functionsJsonArray, List<Function<?>> functions) {
-        for (Function<?> function : functions) {
+    protected void buildFunctionJsonArray(List<Map<String, Object>> functionsJsonArray, List<Function> functions) {
+        for (Function function : functions) {
             Map<String, Object> functionRoot = new HashMap<>();
             functionRoot.put("type", "function");
 

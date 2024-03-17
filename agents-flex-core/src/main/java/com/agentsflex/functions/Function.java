@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class Function<R> {
+public class Function {
     private Class<?> clazz;
     private Object object;
     private Method method;
@@ -107,15 +107,14 @@ public class Function<R> {
         this.parameters = parameters;
     }
 
-    public R invoke(Map<String, Object> argsMap) {
+    public Object invoke(Map<String, Object> argsMap) {
         try {
             Object[] args = new Object[this.parameters.length];
             for (int i = 0; i < this.parameters.length; i++) {
                 Object value = argsMap.get(this.parameters[i].getName());
                 args[i] = ConvertService.convert(value, this.parameters[i].getTypeClass());
             }
-            //noinspection unchecked
-            return (R) method.invoke(object, args);
+            return method.invoke(object, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }

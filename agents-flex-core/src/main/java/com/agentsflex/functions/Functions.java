@@ -24,17 +24,17 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Functions<T> extends ArrayList<Function<T>> {
+public class Functions extends ArrayList<Function> {
 
-    public static <R> Functions<R> from(Object object, String... methodNames) {
+    public static Functions from(Object object, String... methodNames) {
         return from(object.getClass(), object, methodNames);
     }
 
-    public static <R> Functions<R> from(Class<?> clazz, String... methodNames) {
+    public static Functions from(Class<?> clazz, String... methodNames) {
         return from(clazz, null, methodNames);
     }
 
-    private static <R> Functions<R> from(Class<?> clazz, Object object, String... methodNames) {
+    private static Functions from(Class<?> clazz, Object object, String... methodNames) {
         clazz = ClassUtil.getUsefulClass(clazz);
         List<Method> methodList = ClassUtil.getAllMethods(clazz, method -> {
             if (object == null && !Modifier.isStatic(method.getModifiers())) {
@@ -49,10 +49,10 @@ public class Functions<T> extends ArrayList<Function<T>> {
             return true;
         });
 
-        Functions<R> functions = new Functions<>();
+        Functions functions = new Functions();
 
         for (Method method : methodList) {
-            Function<R> function = new Function<>();
+            Function function = new Function();
             function.setClazz(clazz);
             function.setMethod(method);
 

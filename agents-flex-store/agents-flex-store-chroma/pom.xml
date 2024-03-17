@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-store</artifactId>
-        <version>1.0.0-alpha.2</version>
+        <version>1.0.0-alpha.3</version>
     </parent>
 
     <artifactId>agents-flex-store-chroma</artifactId>

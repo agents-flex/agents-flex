@@ -23,19 +23,19 @@ import java.util.List;
 
 public class FunctionMessageResponse implements MessageResponse<FunctionMessage> {
 
-    private final List<Function<?>> functions;
+    private final List<Function> functions;
     private final FunctionMessage functionMessage;
 
-    public FunctionMessageResponse(List<Function<?>> functions, FunctionMessage functionMessage) {
+    public FunctionMessageResponse(List<Function> functions, FunctionMessage functionMessage) {
         this.functions = functions;
         this.functionMessage = functionMessage;
     }
 
     public Object invoke() {
-        if (functionMessage == null){
+        if (functionMessage == null) {
             return null;
         }
-        for (Function<?> function : functions) {
+        for (Function function : functions) {
             if (function.getName().equals(functionMessage.getFunctionName())) {
                 return function.invoke(functionMessage.getArgs());
             }

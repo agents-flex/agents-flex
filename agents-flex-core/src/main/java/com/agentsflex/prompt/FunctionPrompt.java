@@ -29,14 +29,14 @@ import java.util.List;
 
 public class FunctionPrompt extends Prompt<FunctionMessage> {
     private final ChatMemory memory = new DefaultChatMemory();
-    private final List<Function<?>> functions = new ArrayList<>();
+    private final List<Function> functions = new ArrayList<>();
 
-    public FunctionPrompt(String prompt, Collection<Function<?>> functions) {
+    public FunctionPrompt(String prompt, Collection<Function> functions) {
         memory.addMessage(new HumanMessage(prompt));
         this.functions.addAll(functions);
     }
 
-    public FunctionPrompt(List<Message> messages, Collection<Function<?>> functions) {
+    public FunctionPrompt(List<Message> messages, Collection<Function> functions) {
         memory.addMessages(messages);
         this.functions.addAll(functions);
     }
@@ -66,7 +66,7 @@ public class FunctionPrompt extends Prompt<FunctionMessage> {
         return memory.getMessages();
     }
 
-    public List<Function<?>> getFunctions() {
+    public List<Function> getFunctions() {
         return functions;
     }
 }
