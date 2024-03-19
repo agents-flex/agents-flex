@@ -35,5 +35,5 @@ public abstract class VectorStore<T extends VectorDocument> {
 
     public abstract void update(List<T> documents);
 
-    public abstract List<T> retrieval(RetrieveWrapper wrapper);
+    public abstract List<T> search(SearchWrapper wrapper);
 }

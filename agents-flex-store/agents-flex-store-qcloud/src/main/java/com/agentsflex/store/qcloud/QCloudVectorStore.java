@@ -17,7 +17,7 @@ package com.agentsflex.store.qcloud;
 
 import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.util.StringUtil;
-import com.agentsflex.store.RetrieveWrapper;
+import com.agentsflex.store.SearchWrapper;
 import com.agentsflex.store.VectorDocument;
 import com.agentsflex.store.VectorStore;
 import com.alibaba.fastjson.JSON;
@@ -110,7 +110,7 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
     }
 
     @Override
-    public List<VectorDocument> retrieval(RetrieveWrapper retrieveWrapper) {
+    public List<VectorDocument> search(SearchWrapper searchWrapper) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
@@ -119,10 +119,10 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
         payloadMap.put("collection", config.getCollection());
 
         Map<String, Object> searchMap = new HashMap<>();
-        searchMap.put("vector", retrieveWrapper.getVector());
+        searchMap.put("vector", searchWrapper.getVector());
 
-        if (retrieveWrapper.getLimit() != null) {
-            searchMap.put("limit", retrieveWrapper.getLimit());
+        if (searchWrapper.getMaxResults() != null) {
+            searchMap.put("limit", searchWrapper.getMaxResults());
         }
 
         payloadMap.put("search", searchMap);

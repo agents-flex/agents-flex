@@ -17,6 +17,7 @@ package com.agentsflex.store.condition;
 
 public class Value implements Operand {
 
+    Condition condition;
     private Object value;
 
     public Value(Object value) {
@@ -36,6 +37,6 @@ public class Value implements Operand {
         if (value instanceof Operand) {
             return adaptor.toRight(this);
         }
-        return adaptor.toValue(value);
+        return adaptor.toValue(this.condition.type, value);
     }
 }

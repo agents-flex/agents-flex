@@ -33,22 +33,6 @@ public class Group extends Condition {
 
 
     @Override
-    public Condition and(Condition nextCondition) {
-        connectToChild(nextCondition, Connector.AND);
-        return this;
-    }
-
-    @Override
-    public Condition or(Condition nextCondition) {
-        connectToChild(nextCondition, Connector.OR);
-        return this;
-    }
-
-    protected void connectToChild(Condition nextCondition, Connector connector) {
-        childCondition.connect(nextCondition, connector);
-    }
-
-    @Override
     public boolean checkEffective() {
         boolean effective = super.checkEffective();
         if (!effective) {

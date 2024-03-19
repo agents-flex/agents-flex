@@ -3,13 +3,13 @@ package com.agentsflex.store.condition;
 public enum ConditionType {
     EQ(" = "),
     NE(" != "),
-    GT(" >= "),
+    GT(" > "),
     GE(" >= "),
     LT(" < "),
     LE(" <= "),
     IN(" IN "),
     NIN(" MIN "),
-    NOT(" NOT "),
+    BETWEEN(" BETWEEN "),
     ;
 
     private final String defaultSymbol;

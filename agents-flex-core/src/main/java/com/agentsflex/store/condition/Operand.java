@@ -15,7 +15,9 @@
  */
 package com.agentsflex.store.condition;
 
-public interface Operand {
+import java.io.Serializable;
+
+public interface Operand extends Serializable {
     String toExpression(ExpressionAdaptor adaptor);
 
 }

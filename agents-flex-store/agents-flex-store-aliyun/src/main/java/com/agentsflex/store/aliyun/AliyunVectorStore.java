@@ -17,7 +17,7 @@ package com.agentsflex.store.aliyun;
 
 import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.util.StringUtil;
-import com.agentsflex.store.RetrieveWrapper;
+import com.agentsflex.store.SearchWrapper;
 import com.agentsflex.store.VectorDocument;
 import com.agentsflex.store.VectorStore;
 import com.alibaba.fastjson.JSON;
@@ -27,7 +27,7 @@ import com.alibaba.fastjson.JSONObject;
 import java.util.*;
 
 /**
- * https://help.aliyun.com/document_detail/2510317.html
+ *  文档 https://help.aliyun.com/document_detail/2510317.html
  */
 public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
@@ -47,7 +47,7 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
         Map<String, Object> payloadMap = new HashMap<>();
 
-        List<Map<String,Object>> payloadDocs = new ArrayList<>();
+        List<Map<String, Object>> payloadDocs = new ArrayList<>();
         for (VectorDocument vectorDocument : documents) {
             Map<String, Object> document = new HashMap<>();
             if (vectorDocument.getMetadatas() != null) {
@@ -72,8 +72,8 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         headers.put("Content-Type", "application/json");
         headers.put("dashvector-auth-token", config.getApiKey());
 
-        Map<String,Object> payloadMap = new HashMap<>();
-        payloadMap.put("ids",ids);
+        Map<String, Object> payloadMap = new HashMap<>();
+        payloadMap.put("ids", ids);
         String payload = JSON.toJSONString(payloadMap);
 
         httpUtil.delete("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
@@ -88,7 +88,7 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
         Map<String, Object> payloadMap = new HashMap<>();
 
-        List<Map<String,Object>> payloadDocs = new ArrayList<>();
+        List<Map<String, Object>> payloadDocs = new ArrayList<>();
         for (VectorDocument vectorDocument : documents) {
             Map<String, Object> document = new HashMap<>();
             if (vectorDocument.getMetadatas() != null) {
@@ -107,15 +107,16 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
 
     @Override
-    public List<VectorDocument> retrieval(RetrieveWrapper wrapper) {
+    public List<VectorDocument> search(SearchWrapper wrapper) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("dashvector-auth-token", config.getApiKey());
 
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("vector", wrapper.getVector());
-        payloadMap.put("topk", wrapper.getLimit());
-        payloadMap.put("include_vector", wrapper.isWithVector());
+        payloadMap.put("topk", wrapper.getMaxResults());
+        payloadMap.put("include_vector", wrapper.getWithVector());
+        payloadMap.put("filter", wrapper.toExpression());
 
         String payload = JSON.toJSONString(payloadMap);
         String result = httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/query", headers, payload);

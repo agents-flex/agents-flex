@@ -27,9 +27,24 @@ public enum Connector {
     AND(" AND "),
 
     /**
+     * AND NOT
+     */
+    AND_NOT(" AND NOT "),
+
+    /**
      * OR
      */
     OR(" OR "),
+
+    /**
+     * OR NOT
+     */
+    OR_NOT(" OR NOT "),
+
+    /**
+     * NOT
+     */
+    NOT(" NOT "),
     ;
 
 

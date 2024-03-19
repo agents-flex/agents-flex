@@ -28,7 +28,13 @@ public interface ExpressionAdaptor {
         return operand.toExpression(this);
     }
 
-    default String toValue(Object value) {
+    default String toValue(ConditionType type, Object value) {
+        if (value instanceof Operand) {
+            return ((Operand) value).toExpression(this);
+        }
+//        if (type == ConditionType.IN) {
+//            return "(\"" + value + "\")";
+//        }
         return value == null ? "" : "\"" + value + "\"";
     }
 

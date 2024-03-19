@@ -17,15 +17,12 @@ public class Condition implements Operand {
         this.type = type;
         this.left = left;
         this.right = right;
+
+        if (this.right instanceof Value) {
+            ((Value) this.right).condition = this;
+        }
     }
 
-    public Condition and(Condition next) {
-        return new Group(this).and(next);
-    }
-
-    public Condition or(Condition next) {
-        return new Group(this).or(next);
-    }
 
     public void connect(Condition nextCondition, Connector connector) {
         if (this.next != null) {
