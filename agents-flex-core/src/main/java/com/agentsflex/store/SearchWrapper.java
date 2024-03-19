@@ -23,17 +23,28 @@ import java.util.function.Consumer;
 public class SearchWrapper extends VectorData {
 
     /**
+     * 默认返回的数据量
+     */
+    public static final int DEFAULT_MAX_RESULTS = 4;
+
+    /**
+     * 搜索的内容，一般情况下，会把 text 转换为向量数据后再进行搜索
+     */
+    private String text;
+
+    /**
      * 返回的最大数据量，类似传统数据库 mysql 的 limit
      */
-    private Integer maxResults;
+    private Integer maxResults = DEFAULT_MAX_RESULTS;
 
     /**
      * 最低相关性得分，范围从 0 到 1（包括 0 到 1 ）。只有分数为该值或更高的嵌入才会返回。
+     * 0.0 表示接受任何相似性或禁用相似性阈值筛选。阈值 1.0 表示需要完全匹配。
      */
     private Double minScore;
 
     /**
-     * 是否包含向量数据查询
+     * 是否包含向量数据查询，如果当前值为 true，且向量内容为 null 时，会自动通过向量数据库把 text 转换为 向量数据
      */
     private Boolean withVector;
 
@@ -41,6 +52,14 @@ public class SearchWrapper extends VectorData {
      * 查询条件
      */
     private Condition condition;
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
 
     public Integer getMaxResults() {
         return maxResults;
@@ -219,11 +238,17 @@ public class SearchWrapper extends VectorData {
         return this;
     }
 
-    public String toExpression() {
-        return toExpression(ExpressionAdaptor.DEFAULT);
+
+    /**
+     * 转换为过滤条件的表达式，每个厂商的表达式要求不一样，可以通过 ExpressionAdaptor 来实现自定义的适配
+     *
+     * @return 过滤条件表达式
+     */
+    public String toFilterExpression() {
+        return toFilterExpression(ExpressionAdaptor.DEFAULT);
     }
 
-    public String toExpression(ExpressionAdaptor adaptor) {
+    public String toFilterExpression(ExpressionAdaptor adaptor) {
         if (this.condition == null) {
             return null;
         } else {

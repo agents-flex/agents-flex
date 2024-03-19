@@ -116,7 +116,7 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         payloadMap.put("vector", wrapper.getVector());
         payloadMap.put("topk", wrapper.getMaxResults());
         payloadMap.put("include_vector", wrapper.getWithVector());
-        payloadMap.put("filter", wrapper.toExpression());
+        payloadMap.put("filter", wrapper.toFilterExpression());
 
         String payload = JSON.toJSONString(payloadMap);
         String result = httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/query", headers, payload);

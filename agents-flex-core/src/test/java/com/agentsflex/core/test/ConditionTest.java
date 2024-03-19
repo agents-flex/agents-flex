@@ -2,6 +2,7 @@ package com.agentsflex.core.test;
 
 import com.agentsflex.store.SearchWrapper;
 import com.agentsflex.store.condition.Connector;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class ConditionTest {
@@ -13,6 +14,9 @@ public class ConditionTest {
             rw1.eq("ckey", "avalue").in(Connector.AND_NOT, "dkey", "bvalue");
         }).eq("a", "b");
 
-        System.out.println(rw.toExpression());
+        String expr = "akey = \"avalue\" OR bkey = \"bvalue\" AND (ckey = \"avalue\" AND NOT dkey IN \"bvalue\") AND a = \"b\"";
+        Assert.assertEquals(expr, rw.toFilterExpression());
+
+        System.out.println(rw.toFilterExpression());
     }
 }
