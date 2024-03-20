@@ -33,7 +33,7 @@ public class OpenAiLLmUtil {
 
     public static AiMessageParser getAiMessageParser() {
         BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
-        aiMessageParser.setContentPath("$.choices[0].delta.content");
+        aiMessageParser.setContentPath("$.choices[0].message.content");
         aiMessageParser.setIndexPath("$.choices[0].index");
         aiMessageParser.setStatusPath("$.choices[0].finish_reason");
         aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
