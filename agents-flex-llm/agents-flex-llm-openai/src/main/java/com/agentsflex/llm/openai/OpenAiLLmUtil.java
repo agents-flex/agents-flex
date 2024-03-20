@@ -57,13 +57,10 @@ public class OpenAiLLmUtil {
 
     public static String promptToEmbeddingsPayload(Document text) {
         // https://platform.openai.com/docs/api-reference/making-requests
-        String payload = "{\n" +
-            "  \"input\": \"" + text.getContent() + "\",\n" +
-            "  \"model\": \"text-embedding-ada-002\",\n" +
-            "  \"encoding_format\": \"float\"\n" +
-            "}";
-
-        return payload;
+        return Maps.of("model", "text-embedding-ada-002")
+            .put("encoding_format", "float")
+            .put("input", text.getContent())
+            .toJSON();
     }
 
 
