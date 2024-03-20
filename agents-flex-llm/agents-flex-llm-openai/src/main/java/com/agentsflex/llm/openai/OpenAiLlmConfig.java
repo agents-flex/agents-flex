@@ -19,22 +19,12 @@ import com.agentsflex.llm.LlmConfig;
 
 public class OpenAiLlmConfig extends LlmConfig {
 
-    private String apiKey;
-    private String model = "gpt-3.5-turbo";
+	private static final String DEFAULT_MODEL = "gpt-3.5-turbo";
+	private static final String DEFAULT_ENDPOINT = "https://api.openai.com";
 
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
-    }
-
-    public String getModel() {
-        return model;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
-    }
+	public OpenAiLlmConfig() {
+		setEndpoint(DEFAULT_ENDPOINT);
+		setModel(DEFAULT_MODEL);
+	}
+	
 }

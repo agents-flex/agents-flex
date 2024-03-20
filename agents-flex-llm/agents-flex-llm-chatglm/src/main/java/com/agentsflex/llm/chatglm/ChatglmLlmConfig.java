@@ -1,26 +1,15 @@
+
 package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.llm.LlmConfig;
 
 public class ChatglmLlmConfig extends LlmConfig {
 
-    //f26ca1e9****.JmzpD****
-    private String apiKey;
-    private String model = "glm-4";
+	private static final String DEFAULT_MODEL = "glm-4";
+	private static final String DEFAULT_ENDPOINT = "https://open.bigmodel.cn";
 
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
-    }
-
-    public String getModel() {
-        return model;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
-    }
+	public ChatglmLlmConfig() {
+		setEndpoint(DEFAULT_ENDPOINT);
+		setModel(DEFAULT_MODEL);
+	}
 }
