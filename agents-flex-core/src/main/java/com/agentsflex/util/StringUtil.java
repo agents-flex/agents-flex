@@ -33,4 +33,13 @@ public class StringUtil {
         }
         return false;
     }
+
+    public static String obtainFirstHasText(String... strings) {
+        for (String string : strings) {
+            if (hasText(string)) {
+                return string;
+            }
+        }
+        return null;
+    }
 }

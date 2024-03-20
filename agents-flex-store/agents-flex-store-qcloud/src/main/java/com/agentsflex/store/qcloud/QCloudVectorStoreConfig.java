@@ -23,7 +23,8 @@ public class QCloudVectorStoreConfig implements Serializable {
     private String apiKey;
     private String account;
     private String database;
-    private String collection;
+
+    private String defaultCollectionName;
 
     public String getHost() {
         return host;
@@ -57,11 +58,12 @@ public class QCloudVectorStoreConfig implements Serializable {
         this.database = database;
     }
 
-    public String getCollection() {
-        return collection;
+    public String getDefaultCollectionName() {
+        return defaultCollectionName;
     }
 
-    public void setCollection(String collection) {
-        this.collection = collection;
+    public void setDefaultCollectionName(String defaultCollectionName) {
+        this.defaultCollectionName = defaultCollectionName;
     }
 }
+

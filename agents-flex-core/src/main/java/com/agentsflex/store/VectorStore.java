@@ -27,7 +27,11 @@ public abstract class VectorStore<T extends VectorDocument> {
 
     public abstract void store(List<T> documents);
 
-    public abstract void delete(Collection<String> ids);
+    public void delete(Collection<String> ids, String collectionName) {
+        delete(ids, collectionName, null);
+    }
+
+    public abstract void delete(Collection<String> ids, String collectionName, String partitionName);
 
     public void update(T document) {
         update(Collections.singletonList(document));

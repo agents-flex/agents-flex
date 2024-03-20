@@ -24,7 +24,7 @@ public class AliyunVectorStoreConfig implements Serializable {
     private String endpoint;
     private String apiKey;
     private String database;
-    private String collection;
+    private String defaultCollectionName;
 
     public String getEndpoint() {
         return endpoint;
@@ -50,11 +50,11 @@ public class AliyunVectorStoreConfig implements Serializable {
         this.database = database;
     }
 
-    public String getCollection() {
-        return collection;
+    public String getDefaultCollectionName() {
+        return defaultCollectionName;
     }
 
-    public void setCollection(String collection) {
-        this.collection = collection;
+    public void setDefaultCollectionName(String defaultCollectionName) {
+        this.defaultCollectionName = defaultCollectionName;
     }
 }

@@ -43,13 +43,17 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
 
     @Override
     public void store(List<VectorDocument> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
+
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
 
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("database", config.getDatabase());
-        payloadMap.put("collection", config.getCollection());
+        payloadMap.put("collection", StringUtil.obtainFirstHasText(documents.get(0).getCollectionName(), config.getDefaultCollectionName()));
 
 
         List<Map<String, Object>> payloadDocs = new ArrayList<>();
@@ -70,14 +74,14 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
 
 
     @Override
-    public void delete(Collection<String> ids) {
+    public void delete(Collection<String> ids, String collectionName, String partitionName) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
 
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("database", config.getDatabase());
-        payloadMap.put("collection", config.getCollection());
+        payloadMap.put("collection", StringUtil.obtainFirstHasText(collectionName, config.getDefaultCollectionName()));
 
         Map<String, Object> documentIdsObj = new HashMap<>();
         documentIdsObj.put("documentIds", ids);
@@ -91,13 +95,17 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
 
     @Override
     public void update(List<VectorDocument> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
+
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
 
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("database", config.getDatabase());
-        payloadMap.put("collection", config.getCollection());
+        payloadMap.put("collection", StringUtil.obtainFirstHasText(documents.get(0).getCollectionName(), config.getDefaultCollectionName()));
 
         for (VectorDocument document : documents) {
             Map<String, Object> documentIdsObj = new HashMap<>();
@@ -116,7 +124,7 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("database", config.getDatabase());
-        payloadMap.put("collection", config.getCollection());
+        payloadMap.put("collection", StringUtil.obtainFirstHasText(searchWrapper.getCollectionName(), config.getDefaultCollectionName()));
 
         Map<String, Object> searchMap = new HashMap<>();
         searchMap.put("vector", searchWrapper.getVector());
@@ -130,7 +138,7 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
 
         String payload = JSON.toJSONString(payloadMap);
 
-        //https://cloud.tencent.com/document/product/1709/95123
+        // https://cloud.tencent.com/document/product/1709/95123
         String response = httpUtil.post(config.getHost() + "/document/search", headers, payload);
         if (StringUtil.noText(response)) {
             return null;

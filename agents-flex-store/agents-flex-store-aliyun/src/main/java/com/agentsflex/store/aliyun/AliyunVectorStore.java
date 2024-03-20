@@ -27,7 +27,7 @@ import com.alibaba.fastjson.JSONObject;
 import java.util.*;
 
 /**
- *  文档 https://help.aliyun.com/document_detail/2510317.html
+ * 文档 https://help.aliyun.com/document_detail/2510317.html
  */
 public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
@@ -41,6 +41,9 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
     @Override
     public void store(List<VectorDocument> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("dashvector-auth-token", config.getApiKey());
@@ -61,12 +64,13 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         payloadMap.put("docs", payloadDocs);
 
         String payload = JSON.toJSONString(payloadMap);
-        httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
+        String collectionName = StringUtil.obtainFirstHasText(documents.get(0).getCollectionName(), config.getDefaultCollectionName());
+        httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + collectionName + "/docs", headers, payload);
     }
 
 
     @Override
-    public void delete(Collection<String> ids) {
+    public void delete(Collection<String> ids, String collectionName, String partitionName) {
 
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -75,13 +79,16 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("ids", ids);
         String payload = JSON.toJSONString(payloadMap);
-
-        httpUtil.delete("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
+        collectionName = StringUtil.obtainFirstHasText(collectionName, config.getDefaultCollectionName());
+        httpUtil.delete("https://" + config.getEndpoint() + "/v1/collections/" + collectionName + "/docs", headers, payload);
     }
 
 
     @Override
     public void update(List<VectorDocument> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("dashvector-auth-token", config.getApiKey());
@@ -102,7 +109,8 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         payloadMap.put("docs", payloadDocs);
 
         String payload = JSON.toJSONString(payloadMap);
-        httpUtil.put("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/docs", headers, payload);
+        String collectionName = StringUtil.obtainFirstHasText(documents.get(0).getCollectionName(), config.getDefaultCollectionName());
+        httpUtil.put("https://" + config.getEndpoint() + "/v1/collections/" + collectionName + "/docs", headers, payload);
     }
 
 
@@ -119,7 +127,8 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         payloadMap.put("filter", wrapper.toFilterExpression());
 
         String payload = JSON.toJSONString(payloadMap);
-        String result = httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + config.getCollection() + "/query", headers, payload);
+        String collectionName = StringUtil.obtainFirstHasText(wrapper.getCollectionName(), config.getDefaultCollectionName());
+        String result = httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/" + collectionName + "/query", headers, payload);
         if (StringUtil.noText(result)) {
             return null;
         }

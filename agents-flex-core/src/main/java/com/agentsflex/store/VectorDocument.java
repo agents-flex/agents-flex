@@ -15,25 +15,53 @@
  */
 package com.agentsflex.store;
 
-public class VectorDocument extends VectorData{
+public class VectorDocument extends VectorData {
 
-    private String id;
+    /**
+     * 集合名称
+     */
+    private String collectionName;
+
+    /**
+     * 分区名称
+     */
+    private String partitionName;
+
+    /**
+     * 文档 ID
+     */
+    private Object id;
 
 
     public VectorDocument() {
     }
-
 
     public VectorDocument(VectorData vectorData) {
         this.setVector(vectorData.getVector());
         this.setMetadatas(vectorData.getMetadatas());
     }
 
-    public String getId() {
+    public Object getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Object id) {
         this.id = id;
+    }
+
+    public String getCollectionName() {
+        return collectionName;
+    }
+
+    public void setCollectionName(String collectionName) {
+        this.collectionName = collectionName;
+    }
+
+    public String getPartitionName() {
+        return partitionName;
+    }
+
+    public void setPartitionName(String partitionName) {
+        this.partitionName = partitionName;
     }
 }

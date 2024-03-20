@@ -17,10 +17,20 @@ package com.agentsflex.store;
 
 import com.agentsflex.store.condition.*;
 
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class SearchWrapper extends VectorData {
+
+    /**
+     * 集合名称（表名？）
+     */
+    private String collectionName;
+
+    /**
+     * 分区名称
+     */
+    private String partitionName;
 
     /**
      * 默认返回的数据量
@@ -53,12 +63,54 @@ public class SearchWrapper extends VectorData {
      */
     private Condition condition;
 
+    /**
+     * 查询的列名
+     */
+    private List<String> outputFields;
+
+    /**
+     * 是否输出向量数据
+     */
+    private boolean outputVector = false;
+
+    public String getCollectionName() {
+        return collectionName;
+    }
+
+    public void setCollectionName(String collectionName) {
+        this.collectionName = collectionName;
+    }
+
+    public SearchWrapper collectionName(String collectionName) {
+        setCollectionName(collectionName);
+        return this;
+    }
+
+    public String getPartitionName() {
+        return partitionName;
+    }
+
+    public void setPartitionName(String partitionName) {
+        this.partitionName = partitionName;
+    }
+
+    public SearchWrapper partitionName(String partitionName) {
+        setPartitionName(partitionName);
+        return this;
+    }
+
+
     public String getText() {
         return text;
     }
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public SearchWrapper text(String text) {
+        setText(text);
+        return this;
     }
 
     public Integer getMaxResults() {
@@ -69,12 +121,22 @@ public class SearchWrapper extends VectorData {
         this.maxResults = maxResults;
     }
 
+    public SearchWrapper maxResults(Integer maxResults) {
+        setMaxResults(maxResults);
+        return this;
+    }
+
     public Double getMinScore() {
         return minScore;
     }
 
     public void setMinScore(Double minScore) {
         this.minScore = minScore;
+    }
+
+    public SearchWrapper minScore(Double minScore) {
+        setMinScore(minScore);
+        return this;
     }
 
     public Boolean getWithVector() {
@@ -85,6 +147,11 @@ public class SearchWrapper extends VectorData {
         this.withVector = withVector;
     }
 
+    public SearchWrapper withVector(Boolean withVector) {
+        setWithVector(withVector);
+        return this;
+    }
+
     public Condition getCondition() {
         return condition;
     }
@@ -92,6 +159,38 @@ public class SearchWrapper extends VectorData {
     public void setCondition(Condition condition) {
         this.condition = condition;
     }
+
+    public List<String> getOutputFields() {
+        return outputFields;
+    }
+
+    public void setOutputFields(List<String> outputFields) {
+        this.outputFields = outputFields;
+    }
+
+    public SearchWrapper outputFields(Collection<String> outputFields) {
+        setOutputFields(new ArrayList<>(outputFields));
+        return this;
+    }
+
+    public SearchWrapper outputFields(String... outputFields) {
+        setOutputFields(Arrays.asList(outputFields));
+        return this;
+    }
+
+    public boolean isOutputVector() {
+        return outputVector;
+    }
+
+    public void setOutputVector(boolean outputVector) {
+        this.outputVector = outputVector;
+    }
+
+    public SearchWrapper outputVector(boolean outputVector) {
+        setOutputVector(outputVector);
+        return this;
+    }
+
 
     public SearchWrapper eq(String key, Object value) {
         return eq(Connector.AND, key, value);
