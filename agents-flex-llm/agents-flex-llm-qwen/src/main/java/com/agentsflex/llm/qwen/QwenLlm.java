@@ -15,6 +15,9 @@
  */
 package com.agentsflex.llm.qwen;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.MessageListener;
@@ -35,9 +38,6 @@ import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
 import com.agentsflex.util.StringUtil;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
@@ -60,7 +60,8 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config);
-        String responseString = httpClient.post("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload);
+        String endpoint = config.getEndpoint();
+        String responseString = httpClient.post(endpoint + "/api/v1/services/aigc/text-generation/generation", headers, payload);
         if (StringUtil.noText(responseString)) {
             return null;
         }
@@ -94,7 +95,9 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
                 return aiMessage;
             }
         }, functionMessageParser);
-        llmClient.start("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation", headers, payload, clientListener, config);
+
+        String endpoint = config.getEndpoint();
+        llmClient.start(endpoint + "/api/v1/services/aigc/text-generation/generation", headers, payload, clientListener, config);
     }
 
     @Override
