@@ -15,6 +15,9 @@
  */
 package com.agentsflex.llm.openai;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.MessageListener;
@@ -35,9 +38,6 @@ import com.agentsflex.store.VectorData;
 import com.agentsflex.util.StringUtil;
 import com.alibaba.fastjson.JSONPath;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     private final HttpClient httpClient = new HttpClient();
@@ -57,7 +57,8 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
-        String responseString = httpClient.post("https://api.openai.com/v1/chat/completions", headers, payload);
+        String endpoint = config.getEndpoint();
+        String responseString = httpClient.post(endpoint +"/v1/chat/completions", headers, payload);
         if (StringUtil.noText(responseString)) {
             return null;
         }
@@ -78,9 +79,9 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
-
+        String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
-        llmClient.start("https://api.openai.com/v1/chat/completions", headers, payload, clientListener,config);
+        llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener,config);
     }
 
 
@@ -91,9 +92,9 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
         String payload = OpenAiLLmUtil.promptToEmbeddingsPayload(document);
-
+        String endpoint = config.getEndpoint();
         // https://platform.openai.com/docs/api-reference/embeddings/create
-        String response = httpClient.post("https://api.openai.com/v1/embeddings", headers, payload);
+        String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
         }

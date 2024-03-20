@@ -13,19 +13,60 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package com.agentsflex.llm;
 
 import java.io.Serializable;
 
 public class LlmConfig implements Serializable {
 
-    private boolean debug;
+	private String model;
 
-    public boolean isDebug() {
-        return debug;
-    }
+	private String endpoint;
 
-    public void setDebug(boolean debug) {
-        this.debug = debug;
-    }
+	private String apiKey;
+
+	private String apiSecret;
+
+	private boolean debug;
+
+	public boolean isDebug() {
+		return debug;
+	}
+
+	public void setDebug(boolean debug) {
+		this.debug = debug;
+	}
+
+	public String getModel() {
+		return model;
+	}
+
+	public void setModel(String model) {
+		this.model = model;
+	}
+
+	public String getEndpoint() {
+		return endpoint;
+	}
+
+	public void setEndpoint(String endpoint) {
+		this.endpoint = endpoint;
+	}
+
+	public String getApiKey() {
+		return apiKey;
+	}
+
+	public void setApiKey(String apiKey) {
+		this.apiKey = apiKey;
+	}
+
+	public String getApiSecret() {
+		return apiSecret;
+	}
+
+	public void setApiSecret(String apiSecret) {
+		this.apiSecret = apiSecret;
+	}
 }
