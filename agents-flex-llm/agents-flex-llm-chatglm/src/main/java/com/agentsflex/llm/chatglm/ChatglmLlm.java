@@ -1,5 +1,8 @@
 package com.agentsflex.llm.chatglm;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.MessageListener;
@@ -22,9 +25,6 @@ import com.agentsflex.store.VectorData;
 import com.agentsflex.util.Maps;
 import com.agentsflex.util.StringUtil;
 import com.alibaba.fastjson.JSONPath;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
@@ -49,8 +49,9 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
+        String endpoint = config.getEndpoint();
         String payload = Maps.of("model", "embedding-2").put("input", document.getContent()).toJSON();
-        String responseString = httpClient.post("https://open.bigmodel.cn/api/paas/v4/embeddings", headers, payload);
+        String responseString = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
         if (StringUtil.noText(responseString)) {
             return null;
         }
@@ -68,8 +69,9 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
+        String endpoint = config.getEndpoint();
         String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false);
-        String responseString = httpClient.post("https://open.bigmodel.cn/api/paas/v4/chat/completions", headers, payload);
+        String responseString = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
         if (StringUtil.noText(responseString)) {
             return null;
         }
@@ -93,8 +95,9 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
         String payload = ChatglmLlmUtil.promptToPayload(prompt, config, true);
 
+        String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
-        llmClient.start("https://open.bigmodel.cn/api/paas/v4/chat/completions", headers, payload, clientListener, config);
+        llmClient.start(endpoint + "/api/paas/v4/chat/completions", headers, payload, clientListener, config);
     }
 
 
