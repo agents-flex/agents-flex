@@ -12,15 +12,29 @@ import com.agentsflex.prompt.PromptFormat;
 import com.agentsflex.util.Maps;
 import com.alibaba.fastjson.JSON;
 import io.jsonwebtoken.JwtBuilder;
-import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.impl.DefaultJwtBuilder;
 
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ChatglmLlmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
+
+    public static class MyJwtBuilder extends DefaultJwtBuilder {
+        @Override
+        protected String base64UrlEncode(Object o, String errMsg) {
+            byte[] bytes;
+            try {
+                bytes = toJson(o);
+            } catch (Exception e) {
+                throw new IllegalStateException(errMsg, e);
+            }
+            return Base64.getUrlEncoder().encodeToString(bytes);
+        }
+    }
 
 
     public static String createAuthorizationToken(ChatglmLlmConfig config) {
@@ -37,11 +51,11 @@ public class ChatglmLlmUtil {
         payloadMap.put("timestamp", nowMillis);
         String payloadJsonString = JSON.toJSONString(payloadMap);
 
-        JwtBuilder builder = Jwts.builder()
+        byte[] bytes = idAndSecret[1].getBytes();
+        JwtBuilder builder = new MyJwtBuilder()
             .setPayload(payloadJsonString)
             .setHeader(headers)
-            .signWith(SignatureAlgorithm.HS256, idAndSecret[1].getBytes());
-
+            .signWith(SignatureAlgorithm.HS256, bytes);
         return builder.compact();
     }
 
