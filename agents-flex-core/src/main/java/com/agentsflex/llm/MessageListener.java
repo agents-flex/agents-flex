@@ -28,7 +28,8 @@ public interface MessageListener<R extends MessageResponse<M>, M extends Message
     }
 
     default void onFailure(ChatContext context, Throwable throwable) {
-        //noinspection CallToPrintStackTrace
-        throwable.printStackTrace();
+        if (throwable != null) {
+            throwable.printStackTrace();
+        }
     }
 }
