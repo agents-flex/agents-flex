@@ -51,7 +51,7 @@ public class LlamaLlmUtil {
 
     public static String promptToPayload(Prompt prompt, LlamaLlmConfig config, boolean stream) {
         return Maps.of("model", config.getModel())
-            .put("messages", promptFormat.toMessagesJsonKey(prompt))
+            .put("messages", promptFormat.toMessagesJsonObject(prompt))
             .toJSON();
 
     }

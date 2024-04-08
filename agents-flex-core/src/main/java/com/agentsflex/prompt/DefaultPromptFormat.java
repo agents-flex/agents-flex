@@ -30,7 +30,7 @@ import java.util.Map;
 public class DefaultPromptFormat implements PromptFormat {
 
     @Override
-    public Object toMessagesJsonKey(Prompt<?> prompt) {
+    public Object toMessagesJsonObject(Prompt<?> prompt) {
         if (prompt == null) {
             return null;
         }
@@ -65,7 +65,7 @@ public class DefaultPromptFormat implements PromptFormat {
 
 
     @Override
-    public Object toFunctionsJsonKey(Prompt<?> prompt) {
+    public Object toFunctionsJsonObject(Prompt<?> prompt) {
         if (!(prompt instanceof FunctionPrompt)) {
             return null;
         }

@@ -56,7 +56,7 @@ public class QwenLlmUtil {
 
     public static String promptToPayload(Prompt<?> prompt, QwenLlmConfig config) {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
-        Maps.Builder root = Maps.of("model", config.getModel()).put("input", Maps.of("messages", promptFormat.toMessagesJsonKey(prompt)));
+        Maps.Builder root = Maps.of("model", config.getModel()).put("input", Maps.of("messages", promptFormat.toMessagesJsonObject(prompt)));
         return JSON.toJSONString(root.build());
     }
 }

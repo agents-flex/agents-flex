@@ -15,9 +15,6 @@
  */
 package com.agentsflex.llm.openai;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.MessageListener;
@@ -38,10 +35,14 @@ import com.agentsflex.store.VectorData;
 import com.agentsflex.util.StringUtil;
 import com.alibaba.fastjson.JSONPath;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     private final HttpClient httpClient = new HttpClient();
     public AiMessageParser aiMessageParser = OpenAiLLmUtil.getAiMessageParser();
+    public AiMessageParser streamMessageParser = OpenAiLLmUtil.getStreamMessageParser();
     public FunctionMessageParser functionMessageParser = OpenAiLLmUtil.getFunctionMessageParser();
 
 
@@ -58,7 +59,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
         String endpoint = config.getEndpoint();
-        String responseString = httpClient.post(endpoint +"/v1/chat/completions", headers, payload);
+        String responseString = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
         if (StringUtil.noText(responseString)) {
             return null;
         }
@@ -67,7 +68,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
             return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
                 , functionMessageParser.parse(responseString));
         } else {
-            return (R) new AiMessageResponse(aiMessageParser.parse(responseString));
+            return (R) new AiMessageResponse(streamMessageParser.parse(responseString));
         }
     }
 
@@ -81,7 +82,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
-        llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener,config);
+        llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
     }
 
 

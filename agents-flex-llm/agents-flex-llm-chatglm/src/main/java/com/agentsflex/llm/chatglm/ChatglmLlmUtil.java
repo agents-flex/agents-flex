@@ -104,9 +104,9 @@ public class ChatglmLlmUtil {
 
     public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config, boolean stream) {
         Maps.Builder builder = Maps.of("model", config.getModel())
-            .put("messages", promptFormat.toMessagesJsonKey(prompt))
+            .put("messages", promptFormat.toMessagesJsonObject(prompt))
             .putIf(stream, "stream", stream)
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonKey(prompt));
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt));
         return JSON.toJSONString(builder.build());
 
     }

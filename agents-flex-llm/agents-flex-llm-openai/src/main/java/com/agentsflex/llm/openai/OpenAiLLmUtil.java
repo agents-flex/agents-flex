@@ -40,6 +40,15 @@ public class OpenAiLLmUtil {
         return aiMessageParser;
     }
 
+    public static AiMessageParser getStreamMessageParser() {
+        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
+        aiMessageParser.setContentPath("$.choices[0].delta.content");
+        aiMessageParser.setIndexPath("$.choices[0].index");
+        aiMessageParser.setStatusPath("$.choices[0].finish_reason");
+        aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
+        return aiMessageParser;
+    }
+
 
     public static FunctionMessageParser getFunctionMessageParser() {
         BaseFunctionMessageParser functionMessageParser = new BaseFunctionMessageParser();
@@ -66,8 +75,8 @@ public class OpenAiLLmUtil {
 
     public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config) {
         Maps.Builder builder = Maps.of("model", config.getModel())
-            .put("messages", promptFormat.toMessagesJsonKey(prompt))
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonKey(prompt))
+            .put("messages", promptFormat.toMessagesJsonObject(prompt))
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
             .putIfContainsKey("tools", "tool_choice", "auto")
             .putIfNotContainsKey("tools", "temperature", 0.7);
 

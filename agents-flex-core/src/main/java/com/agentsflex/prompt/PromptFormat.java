@@ -17,7 +17,7 @@ package com.agentsflex.prompt;
 
 public interface PromptFormat {
 
-    Object toMessagesJsonKey(Prompt<?> prompt);
+    Object toMessagesJsonObject(Prompt<?> prompt);
 
-    Object toFunctionsJsonKey(Prompt<?> prompt);
+    Object toFunctionsJsonObject(Prompt<?> prompt);
 }
