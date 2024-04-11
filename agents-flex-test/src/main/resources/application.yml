@@ -1,0 +1,10 @@
+spring:
+    profiles:
+        active: dev
+
+#agents-flex:
+#    llm:
+#        spark:
+#            app-id: ...
+#            api-secret: ...
+#            api-key: ...
