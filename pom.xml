@@ -49,6 +49,7 @@
         <module>agents-flex-llm</module>
         <module>agents-flex-store</module>
         <module>agents-flex-document-parser</module>
+        <module>agents-flex-spring-boot-starter</module>
     </modules>
 
     <properties>
@@ -59,6 +60,8 @@
         <junit.version>4.13.2</junit.version>
         <okhttp.version>4.9.3</okhttp.version>
         <fastjson.version>2.0.47</fastjson.version>
+        <spring-boot.version>2.7.18</spring-boot.version>
+        <agents-flex.version>1.0.0-alpha.4</agents-flex.version>
     </properties>
 
 
