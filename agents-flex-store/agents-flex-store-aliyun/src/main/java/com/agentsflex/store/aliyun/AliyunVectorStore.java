@@ -23,6 +23,7 @@ import com.agentsflex.store.VectorStore;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -135,6 +136,13 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
 
         //https://help.aliyun.com/document_detail/2510319.html
         JSONObject rootObject = JSON.parseObject(result);
+        int code = rootObject.getIntValue("code");
+        if (code != 0) {
+            //error
+            LoggerFactory.getLogger(AliyunVectorStore.class).error("can not search data, code: " + code);
+            return null;
+        }
+
         JSONArray output = rootObject.getJSONArray("output");
 
         List<VectorDocument> documents = new ArrayList<>(output.size());
