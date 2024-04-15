@@ -23,6 +23,7 @@ import com.agentsflex.store.VectorStore;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -127,7 +128,7 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
         payloadMap.put("collection", StringUtil.obtainFirstHasText(searchWrapper.getCollectionName(), config.getDefaultCollectionName()));
 
         Map<String, Object> searchMap = new HashMap<>();
-        searchMap.put("vector", searchWrapper.getVector());
+        searchMap.put("vectors", Collections.singletonList(searchWrapper.getVector()));
 
         if (searchWrapper.getMaxResults() != null) {
             searchMap.put("limit", searchWrapper.getMaxResults());
@@ -146,6 +147,12 @@ public class QCloudVectorStore extends VectorStore<VectorDocument> {
 
         List<VectorDocument> result = new ArrayList<>();
         JSONObject rootObject = JSON.parseObject(response);
+        int code = rootObject.getIntValue("code");
+        if (code != 0) {
+            LoggerFactory.getLogger(QCloudVectorStore.class).error("can not search in QCloudVectorStore, code:" + code + ",  message: " + rootObject.getString("msg"));
+            return null;
+        }
+
         JSONArray rootDocs = rootObject.getJSONArray("documents");
         for (int i = 0; i < rootDocs.size(); i++) {
             JSONArray docs = rootDocs.getJSONArray(i);

@@ -139,7 +139,7 @@ public class AliyunVectorStore extends VectorStore<VectorDocument> {
         int code = rootObject.getIntValue("code");
         if (code != 0) {
             //error
-            LoggerFactory.getLogger(AliyunVectorStore.class).error("can not search data, code: " + code);
+            LoggerFactory.getLogger(AliyunVectorStore.class).error("can not search data AliyunVectorStore, code: " + code);
             return null;
         }
 
