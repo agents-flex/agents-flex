@@ -15,6 +15,6 @@
  */
 
 /**
- * Agent 代理
+ * Chain 执行链
  */
 package com.agentsflex.chain;

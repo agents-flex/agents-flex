@@ -15,6 +15,23 @@
  */
 package com.agentsflex.chain;
 
-public interface ChainEventListener {
-    void onEvent(ChainEvent event, Chain<?,?> chain);
+public abstract class BaseChain<Input, Output> extends Chain<Input, Output> implements Invoker{
+
+    private Condition condition;
+
+    @Override
+    public Condition getCondition() {
+        return condition;
+    }
+
+    @Override
+    public void setCondition(Condition condition) {
+        this.condition = condition;
+    }
+
+    @Override
+    public Object invoke(Object prevResult, Chain<?, ?> chain) {
+        //noinspection unchecked
+        return execute((Input) prevResult);
+    }
 }

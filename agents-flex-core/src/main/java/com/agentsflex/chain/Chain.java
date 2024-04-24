@@ -15,20 +15,32 @@
  */
 package com.agentsflex.chain;
 
+import com.agentsflex.agent.Agent;
+import com.agentsflex.chain.events.OnErrorEvent;
 import com.agentsflex.memory.ContextMemory;
 import com.agentsflex.memory.DefaultContextMemory;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-public class Chain implements Serializable {
+
+public abstract class Chain<Input, Output> implements Serializable {
+
     protected String id;
-    protected ContextMemory context = new DefaultContextMemory();
-    protected Invoker[] invokers;
-    protected int index = 0;
 
-    public Chain(Invoker[] invokers) {
-        this.invokers = invokers;
-    }
+    protected ContextMemory context = new DefaultContextMemory();
+    protected Map<String, List<ChainEventListener>> listeners = new HashMap<>();
+    protected List<Invoker> invokers;
+
+    protected Chain<?, ?> parent;
+    protected Input input;
+    protected Output output;
+    protected Object lastResult;
+
+    protected boolean stopFlag = false;
 
     public String getId() {
         return id;
@@ -46,31 +58,124 @@ public class Chain implements Serializable {
         this.context = context;
     }
 
-    public Invoker[] getInvokers() {
+    public Map<String, List<ChainEventListener>> getListeners() {
+        return listeners;
+    }
+
+    public void setListeners(Map<String, List<ChainEventListener>> listeners) {
+        this.listeners = listeners;
+    }
+
+    public synchronized void registerListener(String name, ChainEventListener listener) {
+        List<ChainEventListener> chainEventListeners = listeners.computeIfAbsent(name, k -> new ArrayList<>());
+        chainEventListeners.add(listener);
+    }
+
+    public synchronized void removeListener(ChainEventListener listener) {
+        for (List<ChainEventListener> list : listeners.values()) {
+            list.removeIf(item -> item == listener);
+        }
+    }
+
+    public synchronized void removeListener(String name, ChainEventListener listener) {
+        List<ChainEventListener> list = listeners.get(name);
+        if (list != null && !list.isEmpty()) {
+            list.removeIf(item -> item == listener);
+        }
+    }
+
+    public List<Invoker> getInvokers() {
         return invokers;
     }
 
-    public void setInvokers(Invoker[] invokers) {
+    public void setInvokers(List<Invoker> invokers) {
         this.invokers = invokers;
     }
 
-    public int getIndex() {
-        return index;
+    public void addInvoker(Invoker invoker) {
+        if (invokers == null) {
+            this.invokers = new ArrayList<>();
+        }
+        if (invoker instanceof Chain) {
+            ((Chain<?, ?>) invoker).parent = this;
+        }
+        invokers.add(invoker);
     }
 
-    public void setIndex(int index) {
-        this.index = index;
+    public void addInvoker(Agent<?> agent) {
+        addInvoker(new AgentInvoker(agent));
     }
 
-    public void start() {
-        doComplete();
+    public void addInvoker(Agent<?> agent, Condition condition) {
+        addInvoker(new AgentInvoker(agent, condition));
+    }
+
+    public Input getInput() {
+        return input;
+    }
+
+    public void setInput(Input input) {
+        this.input = input;
+    }
+
+    public Output getOutput() {
+        return output;
+    }
+
+    public void setOutput(Output output) {
+        this.output = output;
+    }
+
+    public Object getLastResult() {
+        return lastResult;
+    }
+
+    public void setLastResult(Object lastResult) {
+        this.lastResult = lastResult;
+    }
+
+    public Chain<?, ?> getParent() {
+        return parent;
+    }
+
+    public void setParent(Chain<?, ?> parent) {
+        this.parent = parent;
+    }
+
+    public void notify(ChainEvent event) {
+        List<ChainEventListener> chainEventListeners = listeners.get(event.name());
+        if (chainEventListeners != null) {
+            chainEventListeners.forEach(chainEventListener -> chainEventListener.onEvent(event, Chain.this));
+        }
     }
 
     public void stop() {
-
+        stopFlag = true;
     }
 
-    void doComplete() {
-        invokers[index++].invoke();
+    public void stop(boolean stop) {
+        stopFlag = stop;
     }
+
+    public void stopAndOutput(Output output) {
+        stopFlag = true;
+        this.output = output;
+    }
+
+    public boolean isStop() {
+        return stopFlag;
+    }
+
+    public Output execute(Input input) {
+        this.input = input;
+        this.lastResult = input;
+        try {
+            doExecuteAndSetOutput();
+        } catch (Exception ex) {
+            notify(new OnErrorEvent(this,ex));
+        }
+        return output;
+    }
+
+    protected abstract void doExecuteAndSetOutput();
 }

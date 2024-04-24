@@ -13,8 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain;
+package com.agentsflex.core.test;
 
-public interface ChainEventListener {
-    void onEvent(ChainEvent event, Chain<?,?> chain);
+import com.agentsflex.agent.Agent;
+import com.agentsflex.chain.Chain;
+
+public class SimpleAgent2 extends Agent<String> {
+    @Override
+    public String execute(Object input, Chain<?, ?> chain) {
+        return "agent2:" + input.toString() ;
+    }
 }

@@ -15,10 +15,17 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.chain.Chain;
 import com.agentsflex.memory.ContextMemory;
 
+/**
+ * 代理（人），有身份 （id），有姓名（name），有记忆 （memory），能执行 execute
+ *
+ * @param <Output>
+ */
 public abstract class Agent<Output> {
     private Object id;
+    private String name;
     private ContextMemory memory;
 
     public Object getId() {
@@ -29,6 +36,14 @@ public abstract class Agent<Output> {
         this.id = id;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public ContextMemory getMemory() {
         return memory;
     }
@@ -37,5 +52,10 @@ public abstract class Agent<Output> {
         this.memory = memory;
     }
 
-    public abstract Output execute();
+    public Output execute(Object input) {
+        return execute(input, null);
+    }
+
+    public abstract Output execute(Object input, Chain<?, ?> chain);
+
 }

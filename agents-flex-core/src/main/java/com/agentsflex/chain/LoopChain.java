@@ -24,17 +24,18 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 顺序执行
+ * 循环执行连
  *
  * @param <Input>
  * @param <Output>
  */
-public class SequentialChain<Input, Output> extends BaseChain<Input, Output> {
+public class LoopChain<Input, Output> extends BaseChain<Input, Output> {
 
-    public SequentialChain() {
+
+    public LoopChain() {
     }
 
-    public SequentialChain(Agent<?>... agents) {
+    public LoopChain(Agent<?>... agents) {
         List<Invoker> invokers = new ArrayList<>(agents.length);
         for (Agent<?> agent : agents) {
             invokers.add(new AgentInvoker(agent));
@@ -42,24 +43,26 @@ public class SequentialChain<Input, Output> extends BaseChain<Input, Output> {
         setInvokers(invokers);
     }
 
-    public SequentialChain(Invoker... invokers) {
+    public LoopChain(Invoker... invokers) {
         setInvokers(new ArrayList<>(Arrays.asList(invokers)));
     }
 
 
     @Override
     protected void doExecuteAndSetOutput() {
-        for (Invoker invoker : invokers) {
-            if (isStop()) {
-                break;
-            }
-            try {
-                if (invoker.checkCondition(lastResult, this)) {
-                    lastResult = invoker.invoke(lastResult, this);
-                    notify(new OnInvokeAfter(this, invoker, lastResult));
+        while (!isStop()) {
+            for (Invoker invoker : invokers) {
+                if (isStop()) {
+                    break;
                 }
-            } catch (Exception e) {
-                notify(new OnErrorEvent(this, e));
+                try {
+                    if (invoker.checkCondition(lastResult, this)) {
+                        lastResult = invoker.invoke(lastResult, this);
+                        notify(new OnInvokeAfter(this, invoker, lastResult));
+                    }
+                } catch (Exception e) {
+                    notify(new OnErrorEvent(this, e));
+                }
             }
         }
 

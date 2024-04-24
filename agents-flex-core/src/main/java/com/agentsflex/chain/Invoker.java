@@ -17,13 +17,15 @@ package com.agentsflex.chain;
 
 public interface Invoker {
 
-    Chain getChain();
+    Condition getCondition();
 
-    //notify the next Invoker to work
-    default void complete(){
-        getChain().doComplete();
+    void setCondition(Condition condition);
+
+
+    default boolean checkCondition(Object prevResult, Chain<?, ?> chain) {
+        Condition condition = getCondition();
+        return condition == null || condition.check(prevResult, chain);
     }
 
-    //the invoker execute
-    void invoke();
+    Object invoke(Object prevResult, Chain<?, ?> chain);
 }

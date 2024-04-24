@@ -15,18 +15,55 @@
  */
 package com.agentsflex.chain;
 
-public class ParallelChain extends Chain implements Invoker{
-    public ParallelChain(Invoker[] invokers) {
-        super(invokers);
+import com.agentsflex.agent.Agent;
+import com.agentsflex.chain.events.OnInvokeAfter;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * 并发执行，并行执行
+ *
+ * @param <Input>
+ * @param <Output>
+ */
+public abstract class ParallelChain<Input, Output> extends BaseChain<Input, Output> {
+
+    public ParallelChain() {
     }
 
+    public ParallelChain(Agent<?>... agents) {
+        List<Invoker> invokers = new ArrayList<>(agents.length);
+        for (Agent<?> agent : agents) {
+            invokers.add(new AgentInvoker(agent));
+        }
+        setInvokers(invokers);
+    }
+
+    public ParallelChain(Invoker... invokers) {
+        setInvokers(new ArrayList<>(Arrays.asList(invokers)));
+    }
+
+
+    /**
+     * 在并发执行下，每个执行 Invoker 都会有自己的结果
+     * 需要重写 buildOutput 方法用于对对结果的整理
+     */
     @Override
-    public Chain getChain() {
-        return null;
+    protected void doExecuteAndSetOutput() {
+        List<Object> allResult = new ArrayList<>();
+        for (Invoker invoker : invokers) {
+            if (invoker.checkCondition(lastResult, this)) {
+                Object result = invoker.invoke(lastResult, this);
+                allResult.add(result);
+                notify(new OnInvokeAfter(this, invoker, result));
+            }
+        }
+        this.output = buildOutput(allResult);
     }
 
-    @Override
-    public void invoke() {
+    protected abstract Output buildOutput(List<Object> results);
 
-    }
+
 }

@@ -46,6 +46,12 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
     public AiMessageParser streamMessageParser = OpenAiLLmUtil.getStreamMessageParser();
     public FunctionMessageParser functionMessageParser = OpenAiLLmUtil.getFunctionMessageParser();
 
+    public static OpenAiLlm of(String apiKey) {
+        OpenAiLlmConfig config = new OpenAiLlmConfig();
+        config.setApiKey(apiKey);
+        return new OpenAiLlm(config);
+    }
+
 
     public OpenAiLlm(OpenAiLlmConfig config) {
         super(config);

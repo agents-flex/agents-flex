@@ -13,8 +13,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain;
+package com.agentsflex.core.test;
 
-public interface ChainEventListener {
-    void onEvent(ChainEvent event, Chain<?,?> chain);
+import com.agentsflex.chain.Chain;
+import com.agentsflex.chain.SequentialChain;
+import org.junit.Test;
+
+public class AgentTest {
+
+    @Test
+    public void testAgent01() {
+
+        SimpleAgent1 agent1 = new SimpleAgent1();
+        SimpleAgent2 agent2 = new SimpleAgent2();
+
+        Chain<String, String> chain = new SequentialChain<>(agent1, agent2);
+        String execute = chain.execute("xxx");
+
+        System.out.println(execute);
+
+    }
 }
