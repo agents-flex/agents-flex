@@ -17,6 +17,8 @@ package com.agentsflex.store;
 
 import com.agentsflex.util.Metadata;
 
+import java.util.Arrays;
+
 
 public class VectorData extends Metadata {
 
@@ -29,5 +31,13 @@ public class VectorData extends Metadata {
 
     public void setVector(double[] vector) {
         this.vector = vector;
+    }
+
+    @Override
+    public String toString() {
+        return "VectorData{" +
+            "vector=" + Arrays.toString(vector) +
+            ", metadatas=" + metadatas +
+            '}';
     }
 }

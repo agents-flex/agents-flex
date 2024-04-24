@@ -21,7 +21,7 @@ import java.util.Objects;
 
 import static java.util.stream.Collectors.toList;
 
-public interface Transformer {
+public interface DocumentTransformer {
 
     Document transform(Document document);
 

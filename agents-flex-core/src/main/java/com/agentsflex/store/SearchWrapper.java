@@ -23,16 +23,6 @@ import java.util.function.Consumer;
 public class SearchWrapper extends VectorData {
 
     /**
-     * 集合名称（表名？）
-     */
-    private String collectionName;
-
-    /**
-     * 分区名称
-     */
-    private String partitionName;
-
-    /**
      * 默认返回的数据量
      */
     public static final int DEFAULT_MAX_RESULTS = 4;
@@ -72,32 +62,6 @@ public class SearchWrapper extends VectorData {
      * 是否输出向量数据
      */
     private boolean outputVector = false;
-
-    public String getCollectionName() {
-        return collectionName;
-    }
-
-    public void setCollectionName(String collectionName) {
-        this.collectionName = collectionName;
-    }
-
-    public SearchWrapper collectionName(String collectionName) {
-        setCollectionName(collectionName);
-        return this;
-    }
-
-    public String getPartitionName() {
-        return partitionName;
-    }
-
-    public void setPartitionName(String partitionName) {
-        this.partitionName = partitionName;
-    }
-
-    public SearchWrapper partitionName(String partitionName) {
-        setPartitionName(partitionName);
-        return this;
-    }
 
 
     public String getText() {

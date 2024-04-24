@@ -15,13 +15,14 @@
  */
 package com.agentsflex.llm;
 
+import com.agentsflex.llm.embedding.EmbeddingModel;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.Message;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.SimplePrompt;
 
-public interface Llm extends Embeddings {
+public interface Llm extends EmbeddingModel {
 
     default String chat(String prompt) {
         MessageResponse<AiMessage> chat = chat(new SimplePrompt(prompt));

@@ -19,25 +19,30 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class VectorStore<T extends VectorDocument> {
+/**
+ * 向量存储
+ *
+ * @param <T>
+ */
+public abstract class VectorStore<T extends VectorData> {
 
-    public void store(T document) {
-        store(Collections.singletonList(document));
+    public StoreResult store(T document, StoreOptions options) {
+        return store(Collections.singletonList(document), options);
     }
 
-    public abstract void store(List<T> documents);
+    public abstract StoreResult store(List<T> documents, StoreOptions options);
 
-    public void delete(Collection<String> ids, String collectionName) {
-        delete(ids, collectionName, null);
+    public StoreResult delete(Collection<String> ids) {
+        return delete(ids, null);
     }
 
-    public abstract void delete(Collection<String> ids, String collectionName, String partitionName);
+    public abstract StoreResult delete(Collection<String> ids, StoreOptions options);
 
-    public void update(T document) {
-        update(Collections.singletonList(document));
+    public StoreResult update(T document, StoreOptions options) {
+        return update(Collections.singletonList(document), options);
     }
 
-    public abstract void update(List<T> documents);
+    public abstract StoreResult update(List<T> documents, StoreOptions options);
 
-    public abstract List<T> search(SearchWrapper wrapper);
+    public abstract List<T> search(SearchWrapper wrapper, StoreOptions options);
 }

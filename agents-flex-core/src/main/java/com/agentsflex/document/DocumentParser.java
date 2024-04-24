@@ -13,16 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.document.splitter;
+package com.agentsflex.document;
 
-import com.agentsflex.document.Splitter;
-import com.agentsflex.document.Document;
+import java.io.InputStream;
 
-import java.util.List;
-
-public class ParagraphSplitter implements Splitter {
-    @Override
-    public List<Document> split(Document text) {
-        return null;
-    }
+public interface DocumentParser {
+    Document parse(InputStream stream);
 }

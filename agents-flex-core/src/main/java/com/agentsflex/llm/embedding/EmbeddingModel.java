@@ -13,8 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.document;
+package com.agentsflex.llm.embedding;
 
-public interface Loader {
-    Document load();
+import com.agentsflex.document.Document;
+import com.agentsflex.store.VectorData;
+
+public interface EmbeddingModel {
+
+    VectorData embed(Document document, EmbeddingOptions options);
+
 }

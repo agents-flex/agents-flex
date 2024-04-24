@@ -15,9 +15,18 @@
  */
 package com.agentsflex.document;
 
-import com.agentsflex.util.Metadata;
+import com.agentsflex.store.VectorData;
 
-public class Document extends Metadata {
+public class Document extends VectorData {
+
+    /**
+     * 文档 ID
+     */
+    private Object id;
+
+    /**
+     * 文档内容
+     */
     private String content;
 
     public Document() {
@@ -27,11 +36,25 @@ public class Document extends Metadata {
         this.content = content;
     }
 
+    public Object getId() {
+        return id;
+    }
+
+    public void setId(Object id) {
+        this.id = id;
+    }
+
     public String getContent() {
         return content;
     }
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public static Document of(String content){
+        Document document = new Document();
+        document.setContent(content);
+        return document;
     }
 }

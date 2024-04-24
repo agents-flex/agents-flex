@@ -4,6 +4,7 @@ import com.agentsflex.document.Document;
 import com.agentsflex.llm.Llm;
 import com.agentsflex.llm.chatglm.ChatglmLlm;
 import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
+import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.store.VectorData;
@@ -30,7 +31,7 @@ public class ChatGlmTest {
         Llm llm = new ChatglmLlm(config);
         Document document = new Document();
         document.setContent("你好");
-        VectorData embeddings = llm.embeddings(document);
+        VectorData embeddings = llm.embed(document, EmbeddingOptions.EMPTY);
         System.out.println(Arrays.toString(embeddings.getVector()));
     }
 

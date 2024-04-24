@@ -13,16 +13,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.document.splitter;
+package com.agentsflex.document.loader;
 
-import com.agentsflex.document.Splitter;
-import com.agentsflex.document.Document;
+import com.agentsflex.document.DocumentParser;
 
-import java.util.List;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 
-public class MarkdownSplitter implements Splitter {
+public class FileDocumentLoader extends BaseDocumentLoader {
+
+    private final File file;
+
+    public FileDocumentLoader(File file, DocumentParser documentParser){
+        super(documentParser);
+        this.file = file;
+    }
+
     @Override
-    public List<Document> split(Document text) {
+    public InputStream loadInputStream() {
+        if (file.isFile()){
+            try {
+                return new FileInputStream(file);
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
         return null;
     }
 }

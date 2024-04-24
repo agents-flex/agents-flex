@@ -15,7 +15,7 @@
  */
 package com.agentsflex.document.splitter;
 
-import com.agentsflex.document.Splitter;
+import com.agentsflex.document.DocumentSplitter;
 import com.agentsflex.document.Document;
 import com.agentsflex.util.StringUtil;
 
@@ -23,11 +23,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class SimpleSplitter implements Splitter {
+public class SimpleDocumentSplitter implements DocumentSplitter {
 
     private final String regex;
 
-    public SimpleSplitter(String regex) {
+    public SimpleDocumentSplitter(String regex) {
         this.regex = regex;
     }
 

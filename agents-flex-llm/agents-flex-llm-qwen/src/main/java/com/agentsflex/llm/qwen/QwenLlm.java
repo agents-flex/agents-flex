@@ -15,9 +15,6 @@
  */
 package com.agentsflex.llm.qwen;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.MessageListener;
@@ -27,6 +24,7 @@ import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
+import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
@@ -38,6 +36,9 @@ import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
 import com.agentsflex.util.StringUtil;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
@@ -101,7 +102,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
     }
 
     @Override
-    public VectorData embeddings(Document document) {
+    public VectorData embed(Document document, EmbeddingOptions options) {
         return null;
     }
 

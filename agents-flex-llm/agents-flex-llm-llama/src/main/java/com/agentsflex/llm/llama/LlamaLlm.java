@@ -24,6 +24,7 @@ import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
+import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.Message;
@@ -49,7 +50,7 @@ public class LlamaLlm extends BaseLlm<LlamaLlmConfig> {
 
 
     @Override
-    public VectorData embeddings(Document document) {
+    public VectorData embed(Document document, EmbeddingOptions options) {
         return null;
     }
 

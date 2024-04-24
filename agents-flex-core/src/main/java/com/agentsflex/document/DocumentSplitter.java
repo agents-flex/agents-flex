@@ -15,22 +15,20 @@
  */
 package com.agentsflex.document;
 
-import java.io.InputStream;
+import java.util.Collections;
+import java.util.List;
 
-public abstract class BaseLoader implements Loader{
+import static java.util.stream.Collectors.toList;
 
-    protected Parser parser;
+public interface DocumentSplitter {
+    List<Document> split(Document text);
 
-    public BaseLoader(Parser parser) {
-        this.parser = parser;
+    default List<Document> splitAll(List<Document> documents) {
+        if (documents == null || documents.isEmpty()){
+            return Collections.emptyList();
+        }
+        return documents.stream()
+            .flatMap(document -> split(document).stream())
+            .collect(toList());
     }
-
-    @Override
-    public Document load() {
-        InputStream stream = loadInputStream();
-        return parser.parse(stream);
-    }
-
-    protected abstract InputStream loadInputStream();
-
 }

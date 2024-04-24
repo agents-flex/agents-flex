@@ -13,22 +13,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.document;
+package com.agentsflex.document.loader;
 
-import java.util.Collections;
-import java.util.List;
+import com.agentsflex.document.Document;
+import com.agentsflex.document.DocumentLoader;
+import com.agentsflex.document.DocumentParser;
 
-import static java.util.stream.Collectors.toList;
+import java.io.InputStream;
 
-public interface Splitter {
-    List<Document> split(Document text);
+public abstract class BaseDocumentLoader implements DocumentLoader {
 
-    default List<Document> splitAll(List<Document> documents) {
-        if (documents == null || documents.isEmpty()){
-            return Collections.emptyList();
-        }
-        return documents.stream()
-            .flatMap(document -> split(document).stream())
-            .collect(toList());
+    protected DocumentParser documentParser;
+
+    public BaseDocumentLoader(DocumentParser documentParser) {
+        this.documentParser = documentParser;
     }
+
+    @Override
+    public Document load() {
+        InputStream stream = loadInputStream();
+        return documentParser.parse(stream);
+    }
+
+    protected abstract InputStream loadInputStream();
+
 }

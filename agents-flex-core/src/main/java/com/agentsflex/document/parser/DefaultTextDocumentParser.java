@@ -16,14 +16,14 @@
 package com.agentsflex.document.parser;
 
 import com.agentsflex.document.Document;
-import com.agentsflex.document.Parser;
+import com.agentsflex.document.DocumentParser;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
-public class DefaultTextParser implements Parser {
+public class DefaultTextDocumentParser implements DocumentParser {
     @Override
     public Document parse(InputStream stream) {
         try {

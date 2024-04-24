@@ -24,6 +24,7 @@ import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.WebSocketClient;
+import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
@@ -48,7 +49,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     }
 
     @Override
-    public VectorData embeddings(Document document) {
+    public VectorData embed(Document document, EmbeddingOptions options) {
         return null;
     }
 
