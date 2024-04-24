@@ -32,9 +32,9 @@ features:
   - title: Vector Store
     details: Agents-Flex 内置了多种向量数据库支持、当然，我们可以自己去实现 VectorStore 接口，来扩充自己的私有 VectorStore 服务 。
   - title: Agent
-    details: Agents-Flex 内置 Action Agents 以及 Plan And Execution Agents，同时可以扩展额外的 Agents 服务。
+    details: Agents-Flex 定义了 Agent 的抽象实现，开发者可以通过 Agents Chain 来实现更多的交互。
   - title: Chain
-    details: Agents-Flex 的 Chain 包含了 LLMs Chain 以及 Agents Chain，与此同时，Agents-Flex Chain 也支持同步顺序 Chain，和异步执行的 Chain 等，帮助开发面对多种不同场景 。
+    details: Agents-Flex 的 Chain 包含了同步顺序执行 Chain，异步执行 Chain 以及循环执行 Chain，帮助开发面对多种不同场景 。
 ---
 
 
