@@ -1,18 +1,18 @@
-package com.agentsflex.chain.events;
+package com.agentsflex.chain.event;
 
 import com.agentsflex.chain.Chain;
 import com.agentsflex.chain.ChainEvent;
-import com.agentsflex.chain.Invoker;
+import com.agentsflex.chain.ChainNode;
 
 public class OnInvokeAfter implements ChainEvent {
 
     private Chain<?,?> chain;
-    private Invoker invoker;
+    private ChainNode chainNode;
     private Object result;
 
-    public OnInvokeAfter(Chain<?, ?> chain, Invoker invoker, Object result) {
+    public OnInvokeAfter(Chain<?, ?> chain, ChainNode chainNode, Object result) {
         this.chain = chain;
-        this.invoker = invoker;
+        this.chainNode = chainNode;
         this.result = result;
     }
 
@@ -29,12 +29,12 @@ public class OnInvokeAfter implements ChainEvent {
         this.chain = chain;
     }
 
-    public Invoker getInvoker() {
-        return invoker;
+    public ChainNode getInvoker() {
+        return chainNode;
     }
 
-    public void setInvoker(Invoker invoker) {
-        this.invoker = invoker;
+    public void setInvoker(ChainNode chainNode) {
+        this.chainNode = chainNode;
     }
 
     public Object getResult() {

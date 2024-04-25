@@ -16,8 +16,9 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.chain.events.OnErrorEvent;
-import com.agentsflex.chain.events.OnInvokeAfter;
+import com.agentsflex.chain.event.OnErrorEvent;
+import com.agentsflex.chain.event.OnInvokeAfter;
+import com.agentsflex.chain.node.AgentNode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,15 +36,15 @@ public abstract class ParallelChain<Input, Output> extends BaseChain<Input, Outp
     }
 
     public ParallelChain(Agent<?>... agents) {
-        List<Invoker> invokers = new ArrayList<>(agents.length);
+        List<ChainNode> chainNodes = new ArrayList<>(agents.length);
         for (Agent<?> agent : agents) {
-            invokers.add(new AgentInvoker(agent));
+            chainNodes.add(new AgentNode(agent));
         }
-        setInvokers(invokers);
+        setInvokers(chainNodes);
     }
 
-    public ParallelChain(Invoker... invokers) {
-        setInvokers(new ArrayList<>(Arrays.asList(invokers)));
+    public ParallelChain(ChainNode... chainNodes) {
+        setInvokers(new ArrayList<>(Arrays.asList(chainNodes)));
     }
 
 
@@ -54,16 +55,16 @@ public abstract class ParallelChain<Input, Output> extends BaseChain<Input, Outp
     @Override
     protected void doExecuteAndSetOutput() {
         List<Object> allResult = new ArrayList<>();
-        for (Invoker invoker : invokers) {
+        for (ChainNode node : chainNodes) {
             if (isStop()) {
                 break;
             }
             try {
-                if (invoker.checkCondition(lastResult, this)) {
-                    Object result = invoker.invoke(lastResult, this);
+                Object result = node.execute(this.lastResult, this);
+                if (!node.isSkip()) {
                     allResult.add(result);
-                    notify(new OnInvokeAfter(this, invoker, result));
                 }
+                notify(new OnInvokeAfter(this, node, lastResult));
             } catch (Exception e) {
                 notify(new OnErrorEvent(this, e));
             }

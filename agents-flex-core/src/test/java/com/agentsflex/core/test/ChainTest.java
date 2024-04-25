@@ -15,9 +15,9 @@
  */
 package com.agentsflex.core.test;
 
-import com.agentsflex.chain.AgentInvoker;
 import com.agentsflex.chain.Chain;
 import com.agentsflex.chain.SequentialChain;
+import com.agentsflex.chain.node.AgentNode;
 import org.junit.Test;
 
 public class ChainTest {
@@ -44,7 +44,7 @@ public class ChainTest {
 
 
         SimpleAgent2 agent22 = new SimpleAgent2();
-        Chain<String, String> chain2 = new SequentialChain<>(new AgentInvoker(agent22), chain1);
+        Chain<String, String> chain2 = new SequentialChain<>(new AgentNode(agent22), chain1);
 
         String execute = chain2.execute("xxx");
 

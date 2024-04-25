@@ -13,37 +13,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain;
+package com.agentsflex.chain.node;
 
-import com.agentsflex.agent.Agent;
+import com.agentsflex.chain.ChainNode;
 
-public abstract class ELRouterChain<Input, Output> extends RouterChain<Input, Output> {
+public abstract class BaseNode implements ChainNode {
 
-    private String elContent;
+    protected Object id;
+    protected boolean skip;
 
-    public String getElContent() {
-        return elContent;
+    @Override
+    public Object getId() {
+        return id;
     }
 
-    public void setElContent(String elContent) {
-        this.elContent = elContent;
-    }
-
-    public ELRouterChain() {
-    }
-
-    public ELRouterChain(Agent<?>... agents) {
-        super(agents);
-    }
-
-    public ELRouterChain(Invoker... invokers) {
-        super(invokers);
+    public void setId(Object id) {
+        this.id = id;
     }
 
     @Override
-    protected String route() {
-        return runEl();
+    public boolean isSkip() {
+        return skip;
     }
 
-    protected abstract String runEl();
+    public void skip() {
+        this.skip = true;
+    }
+
 }

@@ -16,8 +16,9 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.chain.events.OnErrorEvent;
-import com.agentsflex.chain.events.OnInvokeAfter;
+import com.agentsflex.chain.event.OnErrorEvent;
+import com.agentsflex.chain.event.OnInvokeAfter;
+import com.agentsflex.chain.node.AgentNode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,34 +37,35 @@ public class SequentialChain<Input, Output> extends BaseChain<Input, Output> {
     }
 
     public SequentialChain(Agent<?>... agents) {
-        List<Invoker> invokers = new ArrayList<>(agents.length);
+        List<ChainNode> chainNodes = new ArrayList<>(agents.length);
         for (Agent<?> agent : agents) {
-            invokers.add(new AgentInvoker(agent));
+            chainNodes.add(new AgentNode(agent));
         }
-        setInvokers(invokers);
+        setInvokers(chainNodes);
     }
 
-    public SequentialChain(Invoker... invokers) {
-        setInvokers(new ArrayList<>(Arrays.asList(invokers)));
+    public SequentialChain(ChainNode... chainNodes) {
+        setInvokers(new ArrayList<>(Arrays.asList(chainNodes)));
     }
 
 
-    public SequentialChain(Collection<Invoker> invokers) {
-        setInvokers(new ArrayList<>(invokers));
+    public SequentialChain(Collection<ChainNode> chainNodes) {
+        setInvokers(new ArrayList<>(chainNodes));
     }
 
 
     @Override
     protected void doExecuteAndSetOutput() {
-        for (Invoker invoker : invokers) {
+        for (ChainNode node : chainNodes) {
             if (isStop()) {
                 break;
             }
             try {
-                if (invoker.checkCondition(lastResult, this)) {
-                    lastResult = invoker.invoke(lastResult, this);
-                    notify(new OnInvokeAfter(this, invoker, lastResult));
+                Object result = node.execute(this.lastResult, this);
+                if (!node.isSkip()) {
+                    this.lastResult = result;
                 }
+                notify(new OnInvokeAfter(this, node, lastResult));
             } catch (Exception e) {
                 notify(new OnErrorEvent(this, e));
             }

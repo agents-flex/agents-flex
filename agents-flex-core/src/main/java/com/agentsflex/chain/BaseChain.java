@@ -15,27 +15,22 @@
  */
 package com.agentsflex.chain;
 
-public abstract class BaseChain<Input, Output> extends Chain<Input, Output> implements Invoker {
+public abstract class BaseChain<Input, Output> extends Chain<Input, Output> implements ChainNode {
 
-    private Condition condition;
+    protected boolean skip;
 
     @Override
-    public Condition getCondition() {
-        return condition;
+    public boolean isSkip() {
+        return skip;
     }
 
-    @Override
-    public void setCondition(Condition condition) {
-        this.condition = condition;
+    public void skip() {
+        this.skip = true;
     }
 
-    @Override
-    public Object getId() {
-        return super.getId();
-    }
 
     @Override
-    public Object invoke(Object prevResult, Chain<?, ?> chain) {
+    public Object execute(Object prevResult, Chain<?, ?> chain) {
         //noinspection unchecked
         return execute((Input) prevResult);
     }

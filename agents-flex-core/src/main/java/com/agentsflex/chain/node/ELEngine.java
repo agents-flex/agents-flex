@@ -13,20 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain;
+package com.agentsflex.chain.node;
 
-public interface Invoker {
+import com.agentsflex.chain.Chain;
 
-    Condition getCondition();
+public interface ELEngine {
 
-    void setCondition(Condition condition);
+    String run(String elContent, Object prevResult, Chain<?, ?> chain);
 
-    Object getId();
-
-    default boolean checkCondition(Object prevResult, Chain<?, ?> chain) {
-        Condition condition = getCondition();
-        return condition == null || condition.check(prevResult, chain);
-    }
-
-    Object invoke(Object prevResult, Chain<?, ?> chain);
 }

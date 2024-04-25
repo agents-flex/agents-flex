@@ -15,6 +15,11 @@
  */
 package com.agentsflex.chain;
 
-public interface Condition {
-    boolean check(Object result, Chain<?, ?> chain);
+public interface ChainNode {
+
+    Object getId();
+
+    boolean isSkip();
+
+    Object execute(Object prevResult, Chain<?, ?> chain);
 }

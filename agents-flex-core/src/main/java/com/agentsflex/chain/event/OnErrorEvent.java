@@ -1,4 +1,4 @@
-package com.agentsflex.chain.events;
+package com.agentsflex.chain.event;
 
 import com.agentsflex.chain.Chain;
 import com.agentsflex.chain.ChainEvent;

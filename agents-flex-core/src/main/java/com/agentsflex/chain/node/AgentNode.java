@@ -13,42 +13,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain;
+package com.agentsflex.chain.node;
 
 import com.agentsflex.agent.Agent;
+import com.agentsflex.chain.Chain;
 
-public class AgentInvoker implements Invoker {
+public class AgentNode extends BaseNode {
     private final Agent<?> agent;
-    private Condition condition;
-    public AgentInvoker(Agent<?> agent) {
+
+    public AgentNode(Agent<?> agent) {
         this.agent = agent;
     }
 
-    public AgentInvoker(Agent<?> agent, Condition condition) {
-        this.agent = agent;
-        this.condition = condition;
-    }
-
     @Override
-    public boolean checkCondition(Object prevResult, Chain<?, ?> chain) {
-        return condition == null || condition.check(prevResult, chain);
-    }
-
-    @Override
-    public Object invoke(Object prevResult, Chain<?, ?> chain) {
+    public Object execute(Object prevResult, Chain<?, ?> chain) {
         return agent.execute(prevResult, chain);
     }
 
-    public Condition getCondition() {
-        return condition;
-    }
-
-    public void setCondition(Condition condition) {
-        this.condition = condition;
-    }
 
     @Override
     public Object getId() {
-        return agent.getId();
+        return this.id != null ? this.id : agent.getId();
     }
 }

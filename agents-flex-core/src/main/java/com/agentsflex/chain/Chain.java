@@ -16,7 +16,8 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.chain.events.OnErrorEvent;
+import com.agentsflex.chain.event.OnErrorEvent;
+import com.agentsflex.chain.node.AgentNode;
 import com.agentsflex.memory.ContextMemory;
 import com.agentsflex.memory.DefaultContextMemory;
 
@@ -28,11 +29,12 @@ import java.util.Map;
 
 
 public abstract class Chain<Input, Output> implements Serializable {
+
     protected Object id;
 
     protected ContextMemory context = new DefaultContextMemory();
     protected Map<String, List<ChainEventListener>> listeners = new HashMap<>();
-    protected List<Invoker> invokers;
+    protected List<ChainNode> chainNodes;
 
     protected Chain<?, ?> parent;
 
@@ -83,30 +85,26 @@ public abstract class Chain<Input, Output> implements Serializable {
         }
     }
 
-    public List<Invoker> getInvokers() {
-        return invokers;
+    public List<ChainNode> getInvokers() {
+        return chainNodes;
     }
 
-    public void setInvokers(List<Invoker> invokers) {
-        this.invokers = invokers;
+    public void setInvokers(List<ChainNode> chainNodes) {
+        this.chainNodes = chainNodes;
     }
 
-    public void addInvoker(Invoker invoker) {
-        if (invokers == null) {
-            this.invokers = new ArrayList<>();
+    public void addInvoker(ChainNode chainNode) {
+        if (chainNodes == null) {
+            this.chainNodes = new ArrayList<>();
         }
-        if (invoker instanceof Chain) {
-            ((Chain<?, ?>) invoker).parent = this;
+        if (chainNode instanceof Chain) {
+            ((Chain<?, ?>) chainNode).parent = this;
         }
-        invokers.add(invoker);
+        chainNodes.add(chainNode);
     }
 
     public void addInvoker(Agent<?> agent) {
-        addInvoker(new AgentInvoker(agent));
-    }
-
-    public void addInvoker(Agent<?> agent, Condition condition) {
-        addInvoker(new AgentInvoker(agent, condition));
+        addInvoker(new AgentNode(agent));
     }
 
     public Input getInput() {
@@ -166,6 +164,22 @@ public abstract class Chain<Input, Output> implements Serializable {
 
     public boolean isStop() {
         return stopFlag;
+    }
+
+    public Object get(String key) {
+        return this.context.get(key);
+    }
+
+    public Object getGlobal(String key) {
+        Object object = this.context.get(key);
+        if (object != null) {
+            return object;
+        }
+
+        if (parent != null) {
+            return parent.getGlobal(key);
+        }
+        return null;
     }
 
     public Output execute(Input input) {
