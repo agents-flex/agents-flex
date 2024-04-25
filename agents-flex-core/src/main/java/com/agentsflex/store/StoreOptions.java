@@ -1,18 +1,19 @@
 package com.agentsflex.store;
 
+import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.util.StringUtil;
 
 public class StoreOptions {
 
-    public static  StoreOptions EMPTY = new StoreOptions(){
+    public static final StoreOptions DEFAULT = new StoreOptions() {
         @Override
         public void setCollectionName(String collectionName) {
-            throw new IllegalStateException("Can not set collectionName to the empty instance.");
+            throw new IllegalStateException("Can not set collectionName to the default instance.");
         }
 
         @Override
         public void setPartitionName(String partitionName) {
-            throw new IllegalStateException("Can not set partitionName to the empty instance.");
+            throw new IllegalStateException("Can not set partitionName to the default instance.");
         }
     };
 
@@ -25,6 +26,11 @@ public class StoreOptions {
      * 分区名称
      */
     private String partitionName;
+
+    /**
+     * embedding 的配置内容
+     */
+    private EmbeddingOptions embeddingOptions;
 
 
     public String getCollectionName() {
@@ -49,5 +55,20 @@ public class StoreOptions {
 
     public void setPartitionName(String partitionName) {
         this.partitionName = partitionName;
+    }
+
+    public EmbeddingOptions getEmbeddingOptions() {
+        return embeddingOptions;
+    }
+
+    public void setEmbeddingOptions(EmbeddingOptions embeddingOptions) {
+        this.embeddingOptions = embeddingOptions;
+    }
+
+
+    public static StoreOptions ofCollectionName(String collectionName) {
+        StoreOptions storeOptions = new StoreOptions();
+        storeOptions.setCollectionName(collectionName);
+        return storeOptions;
     }
 }

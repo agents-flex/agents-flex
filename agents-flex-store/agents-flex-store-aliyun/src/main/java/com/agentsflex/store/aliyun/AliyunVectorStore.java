@@ -43,7 +43,7 @@ public class AliyunVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult store(List<Document> documents, StoreOptions options) {
+    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.DEFAULT_SUCCESS;
         }
@@ -75,7 +75,7 @@ public class AliyunVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult delete(Collection<String> ids, StoreOptions options) {
+    public StoreResult deleteInternal(Collection<String> ids, StoreOptions options) {
 
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -92,7 +92,7 @@ public class AliyunVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult update(List<Document> documents, StoreOptions options) {
+    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.DEFAULT_SUCCESS;
         }
@@ -124,7 +124,7 @@ public class AliyunVectorStore extends DocumentStore {
 
 
     @Override
-    public List<Document> search(SearchWrapper wrapper, StoreOptions options) {
+    public List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("dashvector-auth-token", config.getApiKey());
@@ -132,7 +132,7 @@ public class AliyunVectorStore extends DocumentStore {
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("vector", wrapper.getVector());
         payloadMap.put("topk", wrapper.getMaxResults());
-        payloadMap.put("include_vector", wrapper.getWithVector());
+        payloadMap.put("include_vector", wrapper.isWithVector());
         payloadMap.put("filter", wrapper.toFilterExpression());
 
         String payload = JSON.toJSONString(payloadMap);
@@ -147,7 +147,7 @@ public class AliyunVectorStore extends DocumentStore {
         int code = rootObject.getIntValue("code");
         if (code != 0) {
             //error
-            LoggerFactory.getLogger(AliyunVectorStore.class).error("can not search data AliyunVectorStore, code: " + code);
+            LoggerFactory.getLogger(AliyunVectorStore.class).error("can not search data AliyunVectorStore（code: " + code + "), message: " + rootObject.getString("message"));
             return null;
         }
 

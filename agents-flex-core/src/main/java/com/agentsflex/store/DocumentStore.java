@@ -19,10 +19,13 @@ import com.agentsflex.document.Document;
 import com.agentsflex.document.DocumentSplitter;
 import com.agentsflex.llm.embedding.EmbeddingModel;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
  * 文档存储器
  */
-public abstract class DocumentStore extends VectorStore<Document>{
+public abstract class DocumentStore extends VectorStore<Document> {
 
     /**
      * embeddings 模型，可以使用外部的 embeddings 模型，也可以使用自己的 embeddings
@@ -48,5 +51,76 @@ public abstract class DocumentStore extends VectorStore<Document>{
         this.documentSplitter = documentSplitter;
     }
 
+    @Override
+    public StoreResult store(List<Document> documents, StoreOptions options) {
+        if (options == null) {
+            options = StoreOptions.DEFAULT;
+        }
 
+        if (documentSplitter != null) {
+            documents = documentSplitter.splitAll(documents);
+        }
+
+        embedDocumentsIfNecessary(documents, options);
+
+        return storeInternal(documents, options);
+    }
+
+    @Override
+    public StoreResult delete(Collection<String> ids, StoreOptions options) {
+        if (options == null) {
+            options = StoreOptions.DEFAULT;
+        }
+        return deleteInternal(ids, options);
+    }
+
+    @Override
+    public StoreResult update(List<Document> documents, StoreOptions options) {
+        if (options == null) {
+            options = StoreOptions.DEFAULT;
+        }
+
+        embedDocumentsIfNecessary(documents, options);
+        return updateInternal(documents, options);
+    }
+
+
+    @Override
+    public List<Document> search(SearchWrapper wrapper, StoreOptions options) {
+        if (options == null) {
+            options = StoreOptions.DEFAULT;
+        }
+
+        if (wrapper.getVector() == null && embeddingModel != null && wrapper.isWithVector()) {
+            VectorData vectorData = embeddingModel.embed(Document.of(wrapper.getText()), options.getEmbeddingOptions());
+            if (vectorData != null) {
+                wrapper.setVector(vectorData.getVector());
+            }
+        }
+
+        return searchInternal(wrapper, options);
+    }
+
+
+    protected void embedDocumentsIfNecessary(List<Document> documents, StoreOptions options) {
+        if (embeddingModel != null) {
+            for (Document document : documents) {
+                if (document.getVector() == null) {
+                    VectorData vectorData = embeddingModel.embed(document, options.getEmbeddingOptions());
+                    if (vectorData != null) {
+                        document.setVector(vectorData.getVector());
+                    }
+                }
+            }
+        }
+    }
+    
+
+    public abstract StoreResult storeInternal(List<Document> documents, StoreOptions options);
+
+    public abstract StoreResult deleteInternal(Collection<String> ids, StoreOptions options);
+
+    public abstract StoreResult updateInternal(List<Document> documents, StoreOptions options);
+
+    public abstract List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options);
 }

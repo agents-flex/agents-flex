@@ -26,20 +26,36 @@ import java.util.List;
  */
 public abstract class VectorStore<T extends VectorData> {
 
+    public StoreResult store(T document) {
+        return store(document, StoreOptions.DEFAULT);
+    }
+
     public StoreResult store(T document, StoreOptions options) {
         return store(Collections.singletonList(document), options);
+    }
+
+    public StoreResult store(List<T> documents) {
+        return store(documents, StoreOptions.DEFAULT);
     }
 
     public abstract StoreResult store(List<T> documents, StoreOptions options);
 
     public StoreResult delete(Collection<String> ids) {
-        return delete(ids, null);
+        return delete(ids, StoreOptions.DEFAULT);
     }
 
     public abstract StoreResult delete(Collection<String> ids, StoreOptions options);
 
+    public StoreResult update(T document) {
+        return update(document, StoreOptions.DEFAULT);
+    }
+
     public StoreResult update(T document, StoreOptions options) {
         return update(Collections.singletonList(document), options);
+    }
+
+    public StoreResult update(List<T> documents) {
+        return update(documents, StoreOptions.DEFAULT);
     }
 
     public abstract StoreResult update(List<T> documents, StoreOptions options);

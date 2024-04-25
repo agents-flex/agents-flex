@@ -46,7 +46,7 @@ public class SearchWrapper extends VectorData {
     /**
      * 是否包含向量数据查询，如果当前值为 true，且向量内容为 null 时，会自动通过向量数据库把 text 转换为 向量数据
      */
-    private Boolean withVector;
+    private boolean withVector = true;
 
     /**
      * 查询条件
@@ -103,11 +103,11 @@ public class SearchWrapper extends VectorData {
         return this;
     }
 
-    public Boolean getWithVector() {
+    public boolean isWithVector() {
         return withVector;
     }
 
-    public void setWithVector(Boolean withVector) {
+    public void setWithVector(boolean withVector) {
         this.withVector = withVector;
     }
 

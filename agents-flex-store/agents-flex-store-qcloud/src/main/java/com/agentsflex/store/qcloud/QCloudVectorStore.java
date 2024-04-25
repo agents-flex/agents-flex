@@ -45,7 +45,7 @@ public class QCloudVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult store(List<Document> documents, StoreOptions options) {
+    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.DEFAULT_SUCCESS;
         }
@@ -78,7 +78,7 @@ public class QCloudVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult delete(Collection<String> ids, StoreOptions options) {
+    public StoreResult deleteInternal(Collection<String> ids, StoreOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
@@ -100,7 +100,7 @@ public class QCloudVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult update(List<Document> documents, StoreOptions options) {
+    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.DEFAULT_SUCCESS;
         }
@@ -126,7 +126,7 @@ public class QCloudVectorStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> search(SearchWrapper searchWrapper, StoreOptions options) {
+    public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
