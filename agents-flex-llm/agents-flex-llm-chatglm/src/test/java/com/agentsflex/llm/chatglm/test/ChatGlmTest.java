@@ -19,7 +19,7 @@ public class ChatGlmTest {
         config.setApiKey("**.**");
 
         Llm llm = new ChatglmLlm(config);
-        llm.chatAsync("你叫什么名字", (context, response) -> System.out.println(response.getMessage().getContent()));
+        llm.chatStream("你叫什么名字", (context, response) -> System.out.println(response.getMessage().getContent()));
     }
 
 

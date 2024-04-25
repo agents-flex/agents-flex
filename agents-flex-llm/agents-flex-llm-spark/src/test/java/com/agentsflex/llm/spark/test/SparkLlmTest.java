@@ -66,7 +66,7 @@ public class SparkLlmTest {
 
             prompt.addMessage(new HumanMessage(userInput));
 
-            llm.chatAsync(prompt, (context, response) -> {
+            llm.chatStream(prompt, (context, response) -> {
                 System.out.println(">>>> " + response.getMessage().getContent());
             });
 

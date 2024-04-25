@@ -17,7 +17,7 @@ package com.agentsflex.llm.llama;
 
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
-import com.agentsflex.llm.MessageListener;
+import com.agentsflex.llm.StreamResponseListener;
 import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.HttpClient;
@@ -78,7 +78,7 @@ public class LlamaLlm extends BaseLlm<LlamaLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, MessageListener<R, M> listener) {
+    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

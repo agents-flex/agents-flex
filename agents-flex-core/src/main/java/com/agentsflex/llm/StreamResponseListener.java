@@ -17,7 +17,7 @@ package com.agentsflex.llm;
 
 import com.agentsflex.message.Message;
 
-public interface MessageListener<R extends MessageResponse<M>, M extends Message> {
+public interface StreamResponseListener<R extends MessageResponse<M>, M extends Message> {
 
     default void onStart(ChatContext context) {
     }

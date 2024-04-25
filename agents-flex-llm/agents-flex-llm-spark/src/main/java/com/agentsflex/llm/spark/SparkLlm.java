@@ -18,7 +18,7 @@ package com.agentsflex.llm.spark;
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatContext;
-import com.agentsflex.llm.MessageListener;
+import com.agentsflex.llm.StreamResponseListener;
 import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.LlmClient;
@@ -59,7 +59,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
         CountDownLatch latch = new CountDownLatch(1);
         Message[] messages = new Message[1];
-        chatAsync(prompt, new MessageListener<MessageResponse<M>, M>() {
+        chatStream(prompt, new StreamResponseListener<MessageResponse<M>, M>() {
             @Override
             public void onMessage(ChatContext context, MessageResponse<M> response) {
                 if (response.getMessage() instanceof AiMessage) {
@@ -76,7 +76,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
             @Override
             public void onStop(ChatContext context) {
-                MessageListener.super.onStop(context);
+                StreamResponseListener.super.onStop(context);
                 latch.countDown();
             }
         });
@@ -95,7 +95,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, MessageListener<R, M> listener) {
+    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
 

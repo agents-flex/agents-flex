@@ -12,7 +12,7 @@ public class QwenTest {
         config.setModel("qwen-turbo");
 
         Llm llm = new QwenLlm(config);
-//        llm.chatAsync("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
+//        llm.chatStream("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
 //            AiMessage message = response.getMessage();
 //            System.out.println(">>>> " + message.getContent());
 //        });

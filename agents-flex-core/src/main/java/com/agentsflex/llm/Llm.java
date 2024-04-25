@@ -31,10 +31,11 @@ public interface Llm extends EmbeddingModel {
 
     <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt);
 
-    default void chatAsync(String prompt, MessageListener<AiMessageResponse, AiMessage> listener) {
-        this.chatAsync(new SimplePrompt(prompt), listener);
+    default void chatStream(String prompt, StreamResponseListener<AiMessageResponse, AiMessage> listener) {
+        this.chatStream(new SimplePrompt(prompt), listener);
     }
 
-    <R extends MessageResponse<M>, M extends Message> void chatAsync(Prompt<M> prompt, MessageListener<R, M> listener);
+    //chatStream
+    <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener);
 
 }
