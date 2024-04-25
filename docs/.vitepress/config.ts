@@ -44,7 +44,7 @@ export default defineConfig({
             {
                 text: '简介',
                 items: [
-                    {text: 'agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
+                    {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
                     {text: '快速开始', link: '/zh/intro/getting-started'},
                     {text: 'Maven 依赖', link: '/zh/intro/maven'},
                     {text: 'Gradle 依赖', link: '/zh/intro/gradle'},

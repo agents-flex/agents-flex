@@ -91,11 +91,12 @@ public void testChain() {
 ![](../../assets/images/chians-01.png)
 
 数据流向： agent3 --> agent4 --> chain1，而 chain1 内部又包含 agent1 --> agent2 的过程，
-在 Agents-Flex 中，我们内置了 3 种不同的 Agents 执行链，他们分别是：
+在 Agents-Flex 中，我们内置了 4 种不同的 Agents 执行链，他们分别是：
 
 - SequentialChain：顺序执行链
-- ParallelChain：并发执行，并行执行链
+- ParallelChain：并发（并行）执行链
 - LoopChain：循环执行连
+- RouterChain：路由执行链
 
-而以上 3 种执行链中，每个又可以作为其他执行链的子链进行执行，从而形成强大而复杂的 Agents 执行链条。
+而以上 4 种执行链中，每个又可以作为其他执行链的子链进行执行，从而形成强大而复杂的 Agents 执行链条。
 
