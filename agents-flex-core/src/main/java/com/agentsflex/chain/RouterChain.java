@@ -16,26 +16,20 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.chain.events.OnErrorEvent;
 import com.agentsflex.chain.events.OnInvokeAfter;
+import com.agentsflex.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
-/**
- * 顺序执行
- *
- * @param <Input>
- * @param <Output>
- */
-public class SequentialChain<Input, Output> extends BaseChain<Input, Output> {
+public abstract class RouterChain<Input, Output> extends BaseChain<Input, Output> {
 
-    public SequentialChain() {
+    public RouterChain() {
     }
 
-    public SequentialChain(Agent<?>... agents) {
+    public RouterChain(Agent<?>... agents) {
         List<Invoker> invokers = new ArrayList<>(agents.length);
         for (Agent<?> agent : agents) {
             invokers.add(new AgentInvoker(agent));
@@ -43,39 +37,43 @@ public class SequentialChain<Input, Output> extends BaseChain<Input, Output> {
         setInvokers(invokers);
     }
 
-    public SequentialChain(Invoker... invokers) {
+    public RouterChain(Invoker... invokers) {
         setInvokers(new ArrayList<>(Arrays.asList(invokers)));
-    }
-
-
-    public SequentialChain(Collection<Invoker> invokers) {
-        setInvokers(new ArrayList<>(invokers));
     }
 
 
     @Override
     protected void doExecuteAndSetOutput() {
-        for (Invoker invoker : invokers) {
-            if (isStop()) {
-                break;
-            }
-            try {
-                if (invoker.checkCondition(lastResult, this)) {
-                    lastResult = invoker.invoke(lastResult, this);
-                    notify(new OnInvokeAfter(this, invoker, lastResult));
-                }
-            } catch (Exception e) {
-                notify(new OnErrorEvent(this, e));
-            }
-        }
-
-        //agent call stopAndOutput()...
-        if (isStop() && this.output != null) {
+        String result = route();
+        if (StringUtil.noText(result)) {
+            stop();
             return;
         }
 
-        //noinspection unchecked
-        this.output = (Output) this.lastResult;
+        List<Invoker> findInvokers = new ArrayList<>();
+        String[] ids = result.split(",");
+        for (String id : ids) {
+            for (Invoker invoker : this.invokers) {
+                if (Objects.equals(id, String.valueOf(invoker.getId()))) {
+                    findInvokers.add(invoker);
+                }
+            }
+        }
+
+        if (findInvokers.isEmpty()) {
+            stop();
+            return;
+        }
+
+        if (findInvokers.size() == 1) {
+            Invoker invoker = findInvokers.get(0);
+            this.lastResult = invoker.invoke(this.lastResult, this);
+            notify(new OnInvokeAfter(this, invoker, this.lastResult));
+        } else {
+            lastResult = new SequentialChain<>(findInvokers).execute(this.lastResult);
+        }
     }
+
+    protected abstract String route();
 
 }

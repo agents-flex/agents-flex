@@ -15,28 +15,35 @@
  */
 package com.agentsflex.chain;
 
-public abstract class BaseChain<Input, Output> extends Chain<Input, Output> implements Invoker {
+import com.agentsflex.agent.Agent;
 
-    private Condition condition;
+public abstract class ELRouterChain<Input, Output> extends RouterChain<Input, Output> {
 
-    @Override
-    public Condition getCondition() {
-        return condition;
+    private String elContent;
+
+    public String getElContent() {
+        return elContent;
+    }
+
+    public void setElContent(String elContent) {
+        this.elContent = elContent;
+    }
+
+    public ELRouterChain() {
+    }
+
+    public ELRouterChain(Agent<?>... agents) {
+        super(agents);
+    }
+
+    public ELRouterChain(Invoker... invokers) {
+        super(invokers);
     }
 
     @Override
-    public void setCondition(Condition condition) {
-        this.condition = condition;
+    protected String route() {
+        return runEl();
     }
 
-    @Override
-    public Object getId() {
-        return super.getId();
-    }
-
-    @Override
-    public Object invoke(Object prevResult, Chain<?, ?> chain) {
-        //noinspection unchecked
-        return execute((Input) prevResult);
-    }
+    protected abstract String runEl();
 }

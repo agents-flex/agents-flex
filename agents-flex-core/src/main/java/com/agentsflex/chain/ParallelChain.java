@@ -16,6 +16,7 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
+import com.agentsflex.chain.events.OnErrorEvent;
 import com.agentsflex.chain.events.OnInvokeAfter;
 
 import java.util.ArrayList;
@@ -54,10 +55,17 @@ public abstract class ParallelChain<Input, Output> extends BaseChain<Input, Outp
     protected void doExecuteAndSetOutput() {
         List<Object> allResult = new ArrayList<>();
         for (Invoker invoker : invokers) {
-            if (invoker.checkCondition(lastResult, this)) {
-                Object result = invoker.invoke(lastResult, this);
-                allResult.add(result);
-                notify(new OnInvokeAfter(this, invoker, result));
+            if (isStop()) {
+                break;
+            }
+            try {
+                if (invoker.checkCondition(lastResult, this)) {
+                    Object result = invoker.invoke(lastResult, this);
+                    allResult.add(result);
+                    notify(new OnInvokeAfter(this, invoker, result));
+                }
+            } catch (Exception e) {
+                notify(new OnErrorEvent(this, e));
             }
         }
         this.output = buildOutput(allResult);

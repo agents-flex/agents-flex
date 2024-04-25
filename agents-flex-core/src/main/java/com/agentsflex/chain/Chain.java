@@ -28,21 +28,20 @@ import java.util.Map;
 
 
 public abstract class Chain<Input, Output> implements Serializable {
-
-    protected String id;
+    protected Object id;
 
     protected ContextMemory context = new DefaultContextMemory();
     protected Map<String, List<ChainEventListener>> listeners = new HashMap<>();
     protected List<Invoker> invokers;
 
     protected Chain<?, ?> parent;
+
     protected Input input;
     protected Output output;
     protected Object lastResult;
-
     protected boolean stopFlag = false;
 
-    public String getId() {
+    public Object getId() {
         return id;
     }
 
@@ -147,6 +146,9 @@ public abstract class Chain<Input, Output> implements Serializable {
         if (chainEventListeners != null) {
             chainEventListeners.forEach(chainEventListener -> chainEventListener.onEvent(event, Chain.this));
         }
+        if (parent != null) {
+            parent.notify(event);
+        }
     }
 
     public void stop() {
@@ -172,7 +174,7 @@ public abstract class Chain<Input, Output> implements Serializable {
         try {
             doExecuteAndSetOutput();
         } catch (Exception ex) {
-            notify(new OnErrorEvent(this,ex));
+            notify(new OnErrorEvent(this, ex));
         }
         return output;
     }

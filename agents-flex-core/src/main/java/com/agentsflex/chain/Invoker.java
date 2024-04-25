@@ -21,6 +21,7 @@ public interface Invoker {
 
     void setCondition(Condition condition);
 
+    Object getId();
 
     default boolean checkCondition(Object prevResult, Chain<?, ?> chain) {
         Condition condition = getCondition();

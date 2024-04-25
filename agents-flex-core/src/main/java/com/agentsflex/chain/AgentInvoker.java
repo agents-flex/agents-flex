@@ -46,4 +46,9 @@ public class AgentInvoker implements Invoker {
     public void setCondition(Condition condition) {
         this.condition = condition;
     }
+
+    @Override
+    public Object getId() {
+        return agent.getId();
+    }
 }
