@@ -26,7 +26,7 @@
             <version>${agents-flex.version}</version>
         </dependency>
 
-        <!--document documentParser start-->
+        <!--document parser start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-document-parser-poi</artifactId>
@@ -37,7 +37,7 @@
             <artifactId>agents-flex-document-parser-pdfbox</artifactId>
             <version>${agents-flex.version}</version>
         </dependency>
-        <!--document documentParser end-->
+        <!--document parser end-->
 
         <!--llm start-->
         <dependency>
