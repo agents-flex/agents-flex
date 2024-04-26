@@ -6,7 +6,7 @@
 
     <groupId>com.agentsflex</groupId>
     <artifactId>parent</artifactId>
-    <version>1.0.0-alpha.6</version>
+    <version>1.0.0-beta.0</version>
     <packaging>pom</packaging>
 
     <name>agents-flex</name>
@@ -39,8 +39,6 @@
         <developerConnection>scm:git:https://github.com/agents-flex/agents-flex.git</developerConnection>
     </scm>
 
-
-
     <modules>
         <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
@@ -61,7 +59,7 @@
         <okhttp.version>4.9.3</okhttp.version>
         <fastjson.version>2.0.47</fastjson.version>
         <spring-boot.version>2.7.18</spring-boot.version>
-        <agents-flex.version>1.0.0-alpha.6</agents-flex.version>
+        <agents-flex.version>1.0.0-beta.0</agents-flex.version>
     </properties>
 
 
