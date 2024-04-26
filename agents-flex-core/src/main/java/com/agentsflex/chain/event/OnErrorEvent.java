@@ -25,7 +25,6 @@ public class OnErrorEvent implements ChainEvent {
         this.exception = exception;
     }
 
-
     public Exception getException() {
         return exception;
     }

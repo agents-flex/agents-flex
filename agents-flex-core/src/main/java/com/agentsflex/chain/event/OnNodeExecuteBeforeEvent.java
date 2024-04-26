@@ -28,12 +28,11 @@ public class OnNodeExecuteBeforeEvent implements ChainEvent {
         this.result = result;
     }
 
-
-    public ChainNode getInvoker() {
+    public ChainNode getChainNode() {
         return chainNode;
     }
 
-    public void setInvoker(ChainNode chainNode) {
+    public void setChainNode(ChainNode chainNode) {
         this.chainNode = chainNode;
     }
 

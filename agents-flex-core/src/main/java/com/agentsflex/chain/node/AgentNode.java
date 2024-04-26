@@ -17,6 +17,8 @@ package com.agentsflex.chain.node;
 
 import com.agentsflex.agent.Agent;
 import com.agentsflex.chain.Chain;
+import com.agentsflex.chain.NodeResult;
+import com.agentsflex.chain.result.SingleNodeResult;
 
 public class AgentNode extends BaseNode {
     private final Agent<?> agent;
@@ -26,13 +28,13 @@ public class AgentNode extends BaseNode {
     }
 
     @Override
-    public Object execute(Object prevResult, Chain<?, ?> chain) {
-        return agent.execute(prevResult, chain);
-    }
-
-
-    @Override
     public Object getId() {
         return this.id != null ? this.id : agent.getId();
+    }
+
+    @Override
+    public NodeResult<?> execute(NodeResult<?> prevResult, Chain<?, ?> chain) {
+        Object result = agent.execute(prevResult.getValue(), chain);
+        return new SingleNodeResult(result);
     }
 }

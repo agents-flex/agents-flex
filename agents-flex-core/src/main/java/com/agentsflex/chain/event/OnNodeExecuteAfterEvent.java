@@ -29,15 +29,6 @@ public class OnNodeExecuteAfterEvent implements ChainEvent {
         this.result = result;
     }
 
-
-    public ChainNode getInvoker() {
-        return chainNode;
-    }
-
-    public void setInvoker(ChainNode chainNode) {
-        this.chainNode = chainNode;
-    }
-
     public ChainNode getChainNode() {
         return chainNode;
     }
