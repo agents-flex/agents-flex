@@ -17,7 +17,10 @@ package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
 import com.agentsflex.chain.event.OnErrorEvent;
+import com.agentsflex.chain.event.OnNodeExecuteAfterEvent;
+import com.agentsflex.chain.event.OnNodeExecuteBeforeEvent;
 import com.agentsflex.chain.node.AgentNode;
+import com.agentsflex.chain.result.SingleNodeResult;
 import com.agentsflex.memory.ContextMemory;
 import com.agentsflex.memory.DefaultContextMemory;
 
@@ -33,14 +36,14 @@ public abstract class Chain<Input, Output> implements Serializable {
     protected Object id;
 
     protected ContextMemory context = new DefaultContextMemory();
-    protected Map<String, List<ChainEventListener>> listeners = new HashMap<>();
+    protected Map<Class<?>, List<ChainEventListener>> listeners = new HashMap<>();
     protected List<ChainNode> chainNodes;
 
     protected Chain<?, ?> parent;
 
     protected Input input;
     protected Output output;
-    protected Object lastResult;
+    protected NodeResult<?> lastResult;
     protected boolean stopFlag = false;
 
     public Object getId() {
@@ -59,16 +62,16 @@ public abstract class Chain<Input, Output> implements Serializable {
         this.context = context;
     }
 
-    public Map<String, List<ChainEventListener>> getListeners() {
+    public Map<Class<?>, List<ChainEventListener>> getListeners() {
         return listeners;
     }
 
-    public void setListeners(Map<String, List<ChainEventListener>> listeners) {
+    public void setListeners(Map<Class<?>, List<ChainEventListener>> listeners) {
         this.listeners = listeners;
     }
 
-    public synchronized void registerListener(String name, ChainEventListener listener) {
-        List<ChainEventListener> chainEventListeners = listeners.computeIfAbsent(name, k -> new ArrayList<>());
+    public synchronized void registerListener(Class<?> eventClass, ChainEventListener listener) {
+        List<ChainEventListener> chainEventListeners = listeners.computeIfAbsent(eventClass, k -> new ArrayList<>());
         chainEventListeners.add(listener);
     }
 
@@ -78,8 +81,8 @@ public abstract class Chain<Input, Output> implements Serializable {
         }
     }
 
-    public synchronized void removeListener(String name, ChainEventListener listener) {
-        List<ChainEventListener> list = listeners.get(name);
+    public synchronized void removeListener(Class<?> eventClass, ChainEventListener listener) {
+        List<ChainEventListener> list = listeners.get(eventClass);
         if (list != null && !list.isEmpty()) {
             list.removeIf(item -> item == listener);
         }
@@ -123,11 +126,11 @@ public abstract class Chain<Input, Output> implements Serializable {
         this.output = output;
     }
 
-    public Object getLastResult() {
+    public NodeResult<?> getLastResult() {
         return lastResult;
     }
 
-    public void setLastResult(Object lastResult) {
+    public void setLastResult(NodeResult<?> lastResult) {
         this.lastResult = lastResult;
     }
 
@@ -140,7 +143,7 @@ public abstract class Chain<Input, Output> implements Serializable {
     }
 
     public void notify(ChainEvent event) {
-        List<ChainEventListener> chainEventListeners = listeners.get(event.name());
+        List<ChainEventListener> chainEventListeners = listeners.get(event.getClass());
         if (chainEventListeners != null) {
             chainEventListeners.forEach(chainEventListener -> chainEventListener.onEvent(event, Chain.this));
         }
@@ -160,6 +163,13 @@ public abstract class Chain<Input, Output> implements Serializable {
     public void stopAndOutput(Output output) {
         stopFlag = true;
         this.output = output;
+    }
+
+    public void stopGlobal() {
+        this.stop();
+        if (parent != null) {
+            parent.stopGlobal();
+        }
     }
 
     public boolean isStop() {
@@ -184,14 +194,38 @@ public abstract class Chain<Input, Output> implements Serializable {
 
     public Output execute(Input input) {
         this.input = input;
-        this.lastResult = input;
+        this.lastResult = new SingleNodeResult(input);
         try {
-            doExecuteAndSetOutput();
-        } catch (Exception ex) {
-            notify(new OnErrorEvent(this, ex));
+            executeInternal();
+        } catch (Exception e) {
+            notify(new OnErrorEvent(e));
         }
-        return output;
+
+        if (output != null) {
+            return output;
+        }
+
+        if (lastResult == null) {
+            return null;
+        }
+
+        if (lastResult instanceof SingleNodeResult) {
+            //noinspection unchecked
+            return (Output) lastResult.getValue();
+        }
+
+        throw new IllegalStateException("Can not give the output for multi result.");
     }
 
-    protected abstract void doExecuteAndSetOutput();
+
+    public NodeResult<?> runNode(ChainNode node) {
+        try {
+            notify(new OnNodeExecuteBeforeEvent(node, lastResult));
+            return node.execute(this.lastResult, this);
+        } finally {
+            notify(new OnNodeExecuteAfterEvent(node, lastResult));
+        }
+    }
+
+    protected abstract void executeInternal();
 }

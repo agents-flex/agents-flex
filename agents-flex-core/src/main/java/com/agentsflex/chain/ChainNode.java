@@ -21,5 +21,5 @@ public interface ChainNode {
 
     boolean isSkip();
 
-    Object execute(Object prevResult, Chain<?, ?> chain);
+    NodeResult<?> execute(NodeResult<?> prevResult, Chain<?, ?> chain);
 }

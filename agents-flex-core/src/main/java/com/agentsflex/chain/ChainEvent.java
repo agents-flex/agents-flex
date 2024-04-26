@@ -16,5 +16,4 @@
 package com.agentsflex.chain;
 
 public interface ChainEvent {
-    String name();
 }

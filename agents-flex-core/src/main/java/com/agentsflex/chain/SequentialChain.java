@@ -17,7 +17,8 @@ package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
 import com.agentsflex.chain.event.OnErrorEvent;
-import com.agentsflex.chain.event.OnInvokeAfter;
+import com.agentsflex.chain.event.OnNodeExecuteAfterEvent;
+import com.agentsflex.chain.event.OnNodeExecuteBeforeEvent;
 import com.agentsflex.chain.node.AgentNode;
 
 import java.util.ArrayList;
@@ -55,29 +56,26 @@ public class SequentialChain<Input, Output> extends BaseChain<Input, Output> {
 
 
     @Override
-    protected void doExecuteAndSetOutput() {
+    protected void executeInternal() {
         for (ChainNode node : chainNodes) {
             if (isStop()) {
                 break;
             }
             try {
-                Object result = node.execute(this.lastResult, this);
-                if (!node.isSkip()) {
-                    this.lastResult = result;
+                notify(new OnNodeExecuteBeforeEvent(node, lastResult));
+                if (node.isSkip()) {
+                    continue;
                 }
-                notify(new OnInvokeAfter(this, node, lastResult));
+                NodeResult<?> nodeResult = node.execute(this.lastResult, this);
+                if (!node.isSkip()) {
+                    this.lastResult = nodeResult;
+                }
             } catch (Exception e) {
-                notify(new OnErrorEvent(this, e));
+                notify(new OnErrorEvent(e));
+            } finally {
+                notify(new OnNodeExecuteAfterEvent(node, lastResult));
             }
         }
-
-        //agent call stopAndOutput()...
-        if (isStop() && this.output != null) {
-            return;
-        }
-
-        //noinspection unchecked
-        this.output = (Output) this.lastResult;
     }
 
 }

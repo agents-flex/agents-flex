@@ -17,8 +17,10 @@ package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
 import com.agentsflex.chain.event.OnErrorEvent;
-import com.agentsflex.chain.event.OnInvokeAfter;
+import com.agentsflex.chain.event.OnNodeExecuteAfterEvent;
+import com.agentsflex.chain.event.OnNodeExecuteBeforeEvent;
 import com.agentsflex.chain.node.AgentNode;
+import com.agentsflex.chain.result.MultiNodeResult;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,31 +50,36 @@ public abstract class ParallelChain<Input, Output> extends BaseChain<Input, Outp
     }
 
 
-    /**
-     * 在并发执行下，每个执行 Invoker 都会有自己的结果
-     * 需要重写 buildOutput 方法用于对对结果的整理
-     */
     @Override
-    protected void doExecuteAndSetOutput() {
-        List<Object> allResult = new ArrayList<>();
+    protected void executeInternal() {
+        List<NodeResult<?>> allResult = new ArrayList<>();
         for (ChainNode node : chainNodes) {
             if (isStop()) {
                 break;
             }
             try {
-                Object result = node.execute(this.lastResult, this);
-                if (!node.isSkip()) {
-                    allResult.add(result);
+                notify(new OnNodeExecuteBeforeEvent(node, lastResult));
+                if (node.isSkip()) {
+                    continue;
                 }
-                notify(new OnInvokeAfter(this, node, lastResult));
+                NodeResult<?> nodeResult = node.execute(this.lastResult, this);
+                if (!node.isSkip()) {
+                    allResult.add(nodeResult);
+                }
             } catch (Exception e) {
-                notify(new OnErrorEvent(this, e));
+                notify(new OnErrorEvent(e));
+            } finally {
+                notify(new OnNodeExecuteAfterEvent(this, lastResult));
             }
         }
-        this.output = buildOutput(allResult);
-    }
 
-    protected abstract Output buildOutput(List<Object> results);
+        //agent call stopAndOutput()...
+        if (isStop() && this.output != null) {
+            return;
+        }
+
+        this.lastResult = MultiNodeResult.ofResults(allResult);
+    }
 
 
 }

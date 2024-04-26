@@ -13,27 +13,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain;
+package com.agentsflex.chain.event;
 
-import com.agentsflex.chain.result.SingleNodeResult;
+import com.agentsflex.chain.ChainEvent;
+import com.agentsflex.chain.ChainNode;
 
-public abstract class BaseChain<Input, Output> extends Chain<Input, Output> implements ChainNode {
+public class OnNodeExecuteBeforeEvent implements ChainEvent {
 
-    protected boolean skip;
+    private ChainNode chainNode;
+    private Object result;
 
-    @Override
-    public boolean isSkip() {
-        return skip;
+    public OnNodeExecuteBeforeEvent(ChainNode chainNode, Object result) {
+        this.chainNode = chainNode;
+        this.result = result;
     }
 
-    public void skip() {
-        this.skip = true;
+
+    public ChainNode getInvoker() {
+        return chainNode;
     }
 
-    @Override
-    public NodeResult<?> execute(NodeResult<?> prevResult, Chain<?, ?> chain) {
-        //noinspection unchecked
-        Object result = execute((Input) prevResult.getValue());
-        return new SingleNodeResult(result);
+    public void setInvoker(ChainNode chainNode) {
+        this.chainNode = chainNode;
+    }
+
+    public Object getResult() {
+        return result;
+    }
+
+    public void setResult(Object result) {
+        this.result = result;
     }
 }
