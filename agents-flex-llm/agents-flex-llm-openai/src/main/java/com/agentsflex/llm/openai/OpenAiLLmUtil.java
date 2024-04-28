@@ -74,9 +74,10 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config, ChatOptions options) {
+    public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config, ChatOptions options, boolean withStream) {
         Maps.Builder builder = Maps.of("model", config.getModel())
             .put("messages", promptFormat.toMessagesJsonObject(prompt))
+            .putIf(withStream, "stream", true)
             .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
             .putIfContainsKey("tools", "tool_choice", "auto")
             .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())

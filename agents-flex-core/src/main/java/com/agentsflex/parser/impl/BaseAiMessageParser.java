@@ -75,6 +75,10 @@ public class BaseAiMessageParser implements AiMessageParser {
 
     @Override
     public AiMessage parse(String content) {
+        if (StringUtil.noText(content) || "[DONE]".equalsIgnoreCase(content.trim())) {
+            return null;
+        }
+
         AiMessage aiMessage = new AiMessage();
         JSONObject rootJson = JSON.parseObject(content);
 

@@ -71,7 +71,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options);
+        String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
         String responseString = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
         if (StringUtil.noText(responseString)) {
@@ -82,7 +82,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
             return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
                 , functionMessageParser.parse(responseString));
         } else {
-            return (R) new AiMessageResponse(streamMessageParser.parse(responseString));
+            return (R) new AiMessageResponse(aiMessageParser.parse(responseString));
         }
     }
 
@@ -94,9 +94,9 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options);
+        String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options, true);
         String endpoint = config.getEndpoint();
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser, functionMessageParser);
         llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
     }
 
