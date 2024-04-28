@@ -18,52 +18,59 @@ package com.agentsflex.prompt.template;
 import com.agentsflex.prompt.SimplePrompt;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SimplePromptTemplate implements PromptTemplate<SimplePrompt>{
+public class SimplePromptTemplate implements PromptTemplate<SimplePrompt> {
 
-    protected final String template;
-    protected Map<String, List<Integer>> keywordPositions = new HashMap<>();
+    private final List<String> parts = new ArrayList<>();
 
     public SimplePromptTemplate(String template) {
         boolean isCurrentInKeyword = false;
         StringBuilder keyword = null;
+        StringBuilder content = null;
 
-        StringBuilder newTemplate = new StringBuilder();
-        int newTemplatePosition = 0;
         for (int index = 0; index < template.length(); index++) {
             char c = template.charAt(index);
-
             if (c == '{' && !isCurrentInKeyword) {
                 isCurrentInKeyword = true;
-                keyword = new StringBuilder();
+                keyword = new StringBuilder("{");
+
+                if (content != null) {
+                    parts.add(content.toString());
+                    content = null;
+                }
                 continue;
             }
 
             if (c == '}' && isCurrentInKeyword) {
-                List<Integer> positions = keywordPositions.get(keyword.toString());
-                if (positions == null) {
-                    positions = new ArrayList<>(1);
-                }
-                positions.add(newTemplatePosition);
-                keywordPositions.put(keyword.toString(), positions);
-
                 isCurrentInKeyword = false;
+                keyword.append("}");
+                parts.add(keyword.toString());
                 keyword = null;
                 continue;
             }
 
-            if (isCurrentInKeyword && !Character.isWhitespace(c)) {
-                keyword.append(c);
-            } else if (!isCurrentInKeyword) {
-                newTemplate.append(c);
-                newTemplatePosition++;
+            if (isCurrentInKeyword) {
+                if (!Character.isWhitespace(c)) {
+                    keyword.append(c);
+                }
+                continue;
             }
+
+            if (content == null) {
+                content = new StringBuilder();
+            }
+            content.append(c);
         }
 
-        this.template = newTemplate.toString();
+        if (keyword != null) {
+            parts.add(keyword.toString());
+        }
+
+        if (content != null) {
+            parts.add(content.toString());
+        }
     }
 
 
@@ -72,22 +79,25 @@ public class SimplePromptTemplate implements PromptTemplate<SimplePrompt>{
     }
 
     public SimplePrompt format(Map<String, Object> params) {
-        StringBuilder result = new StringBuilder(this.template);
-
-        int offset = 0;
-        for (String param : this.keywordPositions.keySet()) {
-            Object value = params.get(param);
-            if (value == null) {
-                continue;
+        StringBuilder result = new StringBuilder();
+        for (String part : parts) {
+            if (part.charAt(0) == '{' && part.charAt(part.length() - 1) == '}') {
+                if (part.length() > 2) {
+                    String key = part.substring(1, part.length() - 1);
+                    Object value = getParams(key, params);
+                    result.append(value == null ? "" : value);
+                }
             } else {
-                value = value.toString();
-            }
-            for (Integer position : this.keywordPositions.get(param)) {
-                result.insert(position + offset, value);
-                offset += ((String) value).length();
+                result.append(part);
             }
         }
         return new SimplePrompt(result.toString());
+    }
+
+
+    private Object getParams(String keysString, Map<String, Object> params) {
+        //todo 支持通过 "." 访问属性或者方法
+        return params != null ? params.get(keysString) : null;
     }
 
 }
