@@ -17,6 +17,7 @@ package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
+import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.llm.StreamResponseListener;
 import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
@@ -80,7 +81,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
+    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
@@ -103,7 +104,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
+    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

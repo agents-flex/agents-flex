@@ -17,6 +17,7 @@ package com.agentsflex.llm.qwen;
 
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
+import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.llm.StreamResponseListener;
 import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
@@ -54,7 +55,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
+    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
@@ -76,7 +77,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
+    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

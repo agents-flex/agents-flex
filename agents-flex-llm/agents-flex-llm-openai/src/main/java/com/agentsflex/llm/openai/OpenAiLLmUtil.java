@@ -16,6 +16,7 @@
 package com.agentsflex.llm.openai;
 
 import com.agentsflex.document.Document;
+import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
@@ -73,12 +74,13 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config) {
+    public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config, ChatOptions options) {
         Maps.Builder builder = Maps.of("model", config.getModel())
             .put("messages", promptFormat.toMessagesJsonObject(prompt))
             .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
             .putIfContainsKey("tools", "tool_choice", "auto")
-            .putIfNotContainsKey("tools", "temperature", 0.7);
+            .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
+            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens());
 
         return JSON.toJSONString(builder.build());
     }

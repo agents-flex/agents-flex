@@ -16,10 +16,7 @@
 package com.agentsflex.llm.spark;
 
 import com.agentsflex.document.Document;
-import com.agentsflex.llm.BaseLlm;
-import com.agentsflex.llm.ChatContext;
-import com.agentsflex.llm.StreamResponseListener;
-import com.agentsflex.llm.MessageResponse;
+import com.agentsflex.llm.*;
 import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
@@ -56,7 +53,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
+    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Message[] messages = new Message[1];
         chatStream(prompt, new StreamResponseListener<MessageResponse<M>, M>() {
@@ -79,7 +76,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
                 StreamResponseListener.super.onStop(context);
                 latch.countDown();
             }
-        });
+        }, options);
         try {
             latch.await();
         } catch (InterruptedException e) {
@@ -95,11 +92,11 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
+    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
 
-        String payload = SparkLlmUtil.promptToPayload(prompt, config);
+        String payload = SparkLlmUtil.promptToPayload(prompt, config, options);
 
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
         llmClient.start(url, null, payload, clientListener, config);

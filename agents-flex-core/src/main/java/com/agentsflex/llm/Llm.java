@@ -25,17 +25,34 @@ import com.agentsflex.prompt.SimplePrompt;
 public interface Llm extends EmbeddingModel {
 
     default String chat(String prompt) {
-        MessageResponse<AiMessage> chat = chat(new SimplePrompt(prompt));
+        MessageResponse<AiMessage> chat = chat(new SimplePrompt(prompt), ChatOptions.DEFAULT);
         return chat != null && chat.getMessage() != null ? chat.getMessage().getContent() : null;
     }
 
-    <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt);
+    default String chat(String prompt, ChatOptions options) {
+        MessageResponse<AiMessage> chat = chat(new SimplePrompt(prompt), options);
+        return chat != null && chat.getMessage() != null ? chat.getMessage().getContent() : null;
+    }
+
+    default <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
+        return chat(prompt, ChatOptions.DEFAULT);
+    }
+
+    <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt, ChatOptions options);
 
     default void chatStream(String prompt, StreamResponseListener<AiMessageResponse, AiMessage> listener) {
-        this.chatStream(new SimplePrompt(prompt), listener);
+        this.chatStream(new SimplePrompt(prompt), listener, ChatOptions.DEFAULT);
+    }
+
+    default void chatStream(String prompt, StreamResponseListener<AiMessageResponse, AiMessage> listener, ChatOptions options) {
+        this.chatStream(new SimplePrompt(prompt), listener, options);
     }
 
     //chatStream
-    <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener);
+    default <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
+        this.chatStream(prompt, listener, ChatOptions.DEFAULT);
+    }
+
+    <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options);
 
 }

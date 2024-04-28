@@ -17,6 +17,7 @@ package com.agentsflex.llm.spark;
 
 import com.agentsflex.functions.Function;
 import com.agentsflex.functions.Parameter;
+import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
@@ -80,10 +81,12 @@ public class SparkLlmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, SparkLlmConfig config) {
+    public static String promptToPayload(Prompt prompt, SparkLlmConfig config, ChatOptions options) {
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
         Maps.Builder root = Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()));
-        root.put("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion())).put("temperature", 0.5).put("max_tokens", 1024)));
+        root.put("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
+            .putIf(options.getTemperature() > 0, "temperature", options.getTemperature())
+            .putIf(options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens())));
         root.put("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(prompt)))
             .putIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(prompt)))
         );

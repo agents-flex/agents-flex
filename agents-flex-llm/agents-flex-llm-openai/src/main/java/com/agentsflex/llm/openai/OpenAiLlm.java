@@ -17,6 +17,7 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
+import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.llm.StreamResponseListener;
 import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.llm.client.BaseLlmClientListener;
@@ -52,6 +53,12 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         return new OpenAiLlm(config);
     }
 
+    public static OpenAiLlm of(String apiKey, String endpoint) {
+        OpenAiLlmConfig config = new OpenAiLlmConfig();
+        config.setApiKey(apiKey);
+        config.setEndpoint(endpoint);
+        return new OpenAiLlm(config);
+    }
 
     public OpenAiLlm(OpenAiLlmConfig config) {
         super(config);
@@ -59,12 +66,12 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
+    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
+        String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options);
         String endpoint = config.getEndpoint();
         String responseString = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
         if (StringUtil.noText(responseString)) {
@@ -79,14 +86,15 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         }
     }
 
+
     @Override
-    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
+    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToPayload(prompt, config);
+        String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options);
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
         llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);

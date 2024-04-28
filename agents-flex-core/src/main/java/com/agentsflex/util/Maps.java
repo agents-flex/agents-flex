@@ -21,6 +21,7 @@ import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 public class Maps {
 
@@ -68,6 +69,11 @@ public class Maps {
 
         public Builder putIf(boolean condition, String key, Object value) {
             if (condition) put(key, value);
+            return this;
+        }
+
+        public Builder putIf(Function<Map<String, Object>, Boolean> func, String key, Object value) {
+            if (func.apply(map)) put(key, value);
             return this;
         }
 
