@@ -15,11 +15,13 @@
  */
 package com.agentsflex.chain;
 
+import java.util.Map;
+
 public interface ChainNode {
 
     Object getId();
 
     boolean isSkip();
 
-    NodeResult<?> execute(NodeResult<?> prevResult, Chain<?, ?> chain);
+    Map<String, Object> execute(Chain chain);
 }

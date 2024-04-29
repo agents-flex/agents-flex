@@ -17,31 +17,33 @@ package com.agentsflex.chain.event;
 
 import com.agentsflex.chain.ChainEvent;
 import com.agentsflex.chain.ChainNode;
-import com.agentsflex.chain.NodeResult;
+
+import java.util.Map;
 
 public class OnNodeExecuteAfterEvent implements ChainEvent {
 
-    private ChainNode chainNode;
-    private NodeResult<?> result;
+    private ChainNode node;
+    private Map<String, Object> result;
 
-    public OnNodeExecuteAfterEvent(ChainNode chainNode, NodeResult<?> result) {
-        this.chainNode = chainNode;
+
+    public OnNodeExecuteAfterEvent(ChainNode node, Map<String, Object> result) {
+        this.node = node;
         this.result = result;
     }
 
-    public ChainNode getChainNode() {
-        return chainNode;
+    public ChainNode getNode() {
+        return node;
     }
 
-    public void setChainNode(ChainNode chainNode) {
-        this.chainNode = chainNode;
+    public void setNode(ChainNode node) {
+        this.node = node;
     }
 
-    public NodeResult<?> getResult() {
+    public Map<String, Object> getResult() {
         return result;
     }
 
-    public void setResult(NodeResult<?> result) {
+    public void setResult(Map<String, Object> result) {
         this.result = result;
     }
 }

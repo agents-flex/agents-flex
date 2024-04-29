@@ -13,15 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain.node;
+package com.agentsflex.chain;
 
-import com.agentsflex.chain.Chain;
+import com.agentsflex.agent.Agent;
 
-/**
- * express language
- */
-public interface ELEngine {
-
-    String run(String elContent, Chain chain);
-
+public interface ChainOutputListener {
+    void onOutput(Chain chain, Agent agent, Object outputMessage);
 }

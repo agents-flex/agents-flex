@@ -16,66 +16,79 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.chain.event.OnErrorEvent;
 import com.agentsflex.chain.event.OnNodeExecuteAfterEvent;
 import com.agentsflex.chain.event.OnNodeExecuteBeforeEvent;
 import com.agentsflex.chain.node.AgentNode;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * 顺序执行
- *
- * @param <Input>
- * @param <Output>
  */
-public class SequentialChain<Input, Output> extends BaseChain<Input, Output> {
+public class SequentialChain extends BaseChain {
+
+    private int currentIndex = 0;
 
     public SequentialChain() {
     }
 
-    public SequentialChain(Agent<?>... agents) {
+    public SequentialChain(Agent... agents) {
         List<ChainNode> chainNodes = new ArrayList<>(agents.length);
-        for (Agent<?> agent : agents) {
+        for (Agent agent : agents) {
             chainNodes.add(new AgentNode(agent));
         }
-        setInvokers(chainNodes);
+        setNodes(chainNodes);
     }
 
     public SequentialChain(ChainNode... chainNodes) {
-        setInvokers(new ArrayList<>(Arrays.asList(chainNodes)));
+        setNodes(new ArrayList<>(Arrays.asList(chainNodes)));
     }
 
 
     public SequentialChain(Collection<ChainNode> chainNodes) {
-        setInvokers(new ArrayList<>(chainNodes));
+        setNodes(new ArrayList<>(chainNodes));
     }
 
 
     @Override
     protected void executeInternal() {
-        for (ChainNode node : chainNodes) {
-            if (isStop()) {
-                break;
-            }
+        List<ChainNode> nodes = getNodes();
+        for (int i = currentIndex; i < getNodes().size(); i++) {
             try {
-                notify(new OnNodeExecuteBeforeEvent(node, lastResult));
+                ChainNode node = nodes.get(i);
+                notifyEvent(new OnNodeExecuteBeforeEvent(node));
+
+                if (this.getStatus() != ChainStatus.START) {
+                    break;
+                }
+
+                Map<String, Object> result = node.execute(this);
+                notifyEvent(new OnNodeExecuteAfterEvent(node, result));
+
+                if (this.getStatus() != ChainStatus.START) {
+                    break;
+                }
+
                 if (node.isSkip()) {
                     continue;
                 }
-                NodeResult<?> nodeResult = node.execute(this.lastResult, this);
-                if (!node.isSkip()) {
-                    this.lastResult = nodeResult;
+
+                if (result != null) {
+                    this.getMemory().putAll(result);
                 }
-            } catch (Exception e) {
-                notify(new OnErrorEvent(e));
             } finally {
-                notify(new OnNodeExecuteAfterEvent(node, lastResult));
+                this.currentIndex = i;
             }
         }
     }
+
+    @Override
+    protected void resumeInternal(Map<String, Object> variables) {
+        if (variables != null){
+            this.getMemory().putAll(variables);
+        }
+        executeInternal();
+    }
+
 
 }

@@ -16,5 +16,5 @@
 package com.agentsflex.chain;
 
 public interface ChainEventListener {
-    void onEvent(ChainEvent event, Chain<?,?> chain);
+    void onEvent(ChainEvent event, Chain chain);
 }

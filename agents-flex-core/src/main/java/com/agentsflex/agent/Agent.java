@@ -18,15 +18,26 @@ package com.agentsflex.agent;
 import com.agentsflex.chain.Chain;
 import com.agentsflex.memory.ContextMemory;
 
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 /**
  * 代理（人），有身份 （id），有姓名（name），有记忆 （memory），能执行 execute
  *
- * @param <Output>
  */
-public abstract class Agent<Output> {
+public abstract class Agent {
     private Object id;
     private String name;
     private ContextMemory memory;
+    private List<Parameter> inputParameters;
+    private List<String> outputKeys;
+    private Map<String, String> outputMapping;
+
+    public Agent() {
+        this.id = UUID.randomUUID();
+        this.inputParameters = this.defineInputParameter();
+    }
 
     public Object getId() {
         return id;
@@ -52,10 +63,35 @@ public abstract class Agent<Output> {
         this.memory = memory;
     }
 
-    public Output execute(Object input) {
-        return execute(input, null);
+    public List<Parameter> getInputParameters() {
+        return inputParameters;
     }
 
-    public abstract Output execute(Object input, Chain<?, ?> chain);
+    public void setInputParameters(List<Parameter> inputParameters) {
+        this.inputParameters = inputParameters;
+    }
+
+    public List<String> getOutputKeys() {
+        return outputKeys;
+    }
+
+    public void setOutputKeys(List<String> outputKeys) {
+        this.outputKeys = outputKeys;
+    }
+
+    public Map<String, String> getOutputMapping() {
+        return outputMapping;
+    }
+
+    public void setOutputMapping(Map<String, String> outputMapping) {
+        this.outputMapping = outputMapping;
+    }
+
+    public AgentOutput execute(Map<String, Object> variables) {
+        return execute(variables, null);
+    }
+
+    public abstract List<Parameter> defineInputParameter();
+    public abstract AgentOutput execute(Map<String, Object> variables, Chain chain);
 
 }

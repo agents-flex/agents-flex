@@ -16,21 +16,31 @@
 package com.agentsflex.chain.event;
 
 import com.agentsflex.chain.ChainEvent;
-import com.agentsflex.chain.ChainNode;
+import com.agentsflex.chain.ChainStatus;
 
-public class OnNodeExecuteBeforeEvent implements ChainEvent {
+public class OnStatusChangeEvent implements ChainEvent {
 
-    private ChainNode node;
+    private ChainStatus status;
+    private ChainStatus before;
 
-    public OnNodeExecuteBeforeEvent(ChainNode node) {
-        this.node = node;
+    public OnStatusChangeEvent(ChainStatus status, ChainStatus before) {
+        this.status = status;
+        this.before = before;
     }
 
-    public ChainNode getNode() {
-        return node;
+    public ChainStatus getStatus() {
+        return status;
     }
 
-    public void setNode(ChainNode node) {
-        this.node = node;
+    public void setStatus(ChainStatus status) {
+        this.status = status;
+    }
+
+    public ChainStatus getBefore() {
+        return before;
+    }
+
+    public void setBefore(ChainStatus before) {
+        this.before = before;
     }
 }

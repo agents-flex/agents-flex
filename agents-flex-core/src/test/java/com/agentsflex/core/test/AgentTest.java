@@ -15,22 +15,39 @@
  */
 package com.agentsflex.core.test;
 
+import com.agentsflex.agent.Parameter;
 import com.agentsflex.chain.Chain;
 import com.agentsflex.chain.SequentialChain;
-import org.junit.Test;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
 
 public class AgentTest {
 
-    @Test
-    public void testAgent01() {
+    public static void main(String[] args) {
 
         SimpleAgent1 agent1 = new SimpleAgent1();
         SimpleAgent2 agent2 = new SimpleAgent2();
 
-        Chain<String, String> chain = new SequentialChain<>(agent1, agent2);
-        String execute = chain.execute("xxx");
+        Chain chain = new SequentialChain(agent1, agent2);
+        chain.registerInputListener((chain1, parameters) -> {
+            Parameter parameter = parameters.get(0);
+            System.out.println("请输入 " + parameter.getName());
 
-        System.out.println(execute);
+            Scanner scanner = new Scanner(System.in);
+            String userInput = scanner.nextLine();
 
+            Map<String, Object> variables = new HashMap<>();
+            variables.put(parameter.getName(), userInput);
+
+            chain.resume(variables);
+        });
+
+        chain.execute(new HashMap<>());
+
+        for (Map.Entry<String, Object> entry : chain.getMemory().getAll().entrySet()) {
+            System.out.println("执行结果" + entry);
+        }
     }
 }

@@ -16,11 +16,24 @@
 package com.agentsflex.core.test;
 
 import com.agentsflex.agent.Agent;
+import com.agentsflex.agent.AgentOutput;
+import com.agentsflex.agent.Parameter;
 import com.agentsflex.chain.Chain;
 
-public class SimpleAgent2 extends Agent<String> {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class SimpleAgent2 extends Agent {
     @Override
-    public String execute(Object input, Chain<?, ?> chain) {
-        return "agent2:" + input.toString() ;
+    public List<Parameter> defineInputParameter() {
+        List<Parameter> parameters = new ArrayList<>();
+        parameters.add(new Parameter("key2", true));
+        return parameters;
+    }
+
+    @Override
+    public AgentOutput execute(Map<String, Object> variables, Chain chain) {
+        return new AgentOutput().set("result2", "SimpleAgent2" + variables.get("key2"));
     }
 }

@@ -15,13 +15,29 @@
  */
 package com.agentsflex.chain.node;
 
-import com.agentsflex.chain.Chain;
+import com.agentsflex.chain.ChainNode;
 
-/**
- * express language
- */
-public interface ELEngine {
+public abstract class AbstractBaseNode implements ChainNode {
 
-    String run(String elContent, Chain chain);
+    protected Object id;
+    protected boolean skip;
+
+    @Override
+    public Object getId() {
+        return id;
+    }
+
+    public void setId(Object id) {
+        this.id = id;
+    }
+
+    @Override
+    public boolean isSkip() {
+        return skip;
+    }
+
+    public void skip() {
+        this.skip = true;
+    }
 
 }

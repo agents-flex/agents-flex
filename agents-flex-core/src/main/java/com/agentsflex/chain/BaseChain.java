@@ -15,9 +15,9 @@
  */
 package com.agentsflex.chain;
 
-import com.agentsflex.chain.result.SingleNodeResult;
+import java.util.Map;
 
-public abstract class BaseChain<Input, Output> extends Chain<Input, Output> implements ChainNode {
+public abstract class BaseChain extends Chain implements ChainNode {
 
     protected boolean skip;
 
@@ -29,11 +29,10 @@ public abstract class BaseChain<Input, Output> extends Chain<Input, Output> impl
     public void skip() {
         this.skip = true;
     }
-
     @Override
-    public NodeResult<?> execute(NodeResult<?> prevResult, Chain<?, ?> chain) {
-        //noinspection unchecked
-        Object result = execute((Input) prevResult.getValue());
-        return new SingleNodeResult(result);
+    public Map<String, Object> execute(Chain parent) {
+        this.execute(parent.getMemory().getAll());
+        return this.getMemory().getAll();
     }
+
 }

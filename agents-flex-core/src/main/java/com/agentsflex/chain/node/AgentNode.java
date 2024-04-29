@@ -16,14 +16,19 @@
 package com.agentsflex.chain.node;
 
 import com.agentsflex.agent.Agent;
+import com.agentsflex.agent.AgentOutput;
+import com.agentsflex.agent.Parameter;
 import com.agentsflex.chain.Chain;
-import com.agentsflex.chain.NodeResult;
-import com.agentsflex.chain.result.SingleNodeResult;
 
-public class AgentNode extends BaseNode {
-    private final Agent<?> agent;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-    public AgentNode(Agent<?> agent) {
+public class AgentNode extends AbstractBaseNode {
+    private final Agent agent;
+
+    public AgentNode(Agent agent) {
         this.agent = agent;
     }
 
@@ -32,9 +37,48 @@ public class AgentNode extends BaseNode {
         return this.id != null ? this.id : agent.getId();
     }
 
-    @Override
-    public NodeResult<?> execute(NodeResult<?> prevResult, Chain<?, ?> chain) {
-        Object result = agent.execute(prevResult.getValue(), chain);
-        return new SingleNodeResult(result);
+    public Agent getAgent() {
+        return agent;
     }
+
+    @Override
+    public Map<String, Object> execute(Chain chain) {
+        List<Parameter> inputParameters = agent.getInputParameters();
+        Map<String, Object> variables = new HashMap<>();
+        List<Parameter> requiredParameters = null;
+        for (Parameter parameter : inputParameters) {
+            Object value = chain.get(parameter.getName());
+            if (value == null && parameter.isRequired()) {
+                if (requiredParameters == null) {
+                    requiredParameters = new ArrayList<>();
+                }
+                requiredParameters.add(parameter);
+
+            } else {
+                variables.put(parameter.getName(), value);
+            }
+        }
+
+        if (requiredParameters != null) {
+            chain.waitInput(requiredParameters, this);
+            return null;
+        }
+
+        AgentOutput output = agent.execute(variables);
+        List<String> outputKeys = agent.getOutputKeys();
+        if (outputKeys != null && !outputKeys.isEmpty()) {
+            Map<String, String> outputMapping = agent.getOutputMapping();
+
+            Map<String, Object> result = new HashMap<>();
+            for (String outputKey : outputKeys) {
+                String resultKey = outputMapping.getOrDefault(outputKey, outputKey);
+                result.put(resultKey, output.get(outputKey));
+            }
+            return result;
+        } else {
+            return output;
+        }
+    }
+
+
 }

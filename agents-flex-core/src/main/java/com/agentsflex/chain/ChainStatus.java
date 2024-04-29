@@ -13,31 +13,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain.node;
+package com.agentsflex.chain;
 
-import com.agentsflex.chain.ChainNode;
+public enum ChainStatus {
 
-public abstract class BaseNode implements ChainNode {
+    READY(0), // 未开始执行
+    START(1), // 已开始执行，执行中...
+    PAUSE_FOR_WAKE_UP(5), //暂停等待唤醒
+    PAUSE_FOR_INPUT(6), //暂停等待数据输入
+    ERROR(7), //发生错误
+    FINISHED_NORMAL(10), //正常结束
+    FINISHED_ABNORMAL(11), //错误结束
+    ;
 
-    protected Object id;
-    protected boolean skip;
+    final int value;
 
-    @Override
-    public Object getId() {
-        return id;
+    ChainStatus(int value) {
+        this.value = value;
     }
-
-    public void setId(Object id) {
-        this.id = id;
-    }
-
-    @Override
-    public boolean isSkip() {
-        return skip;
-    }
-
-    public void skip() {
-        this.skip = true;
-    }
-
 }

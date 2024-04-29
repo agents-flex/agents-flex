@@ -17,20 +17,12 @@ package com.agentsflex.chain.node;
 
 import com.agentsflex.chain.Chain;
 import com.agentsflex.chain.ChainNode;
-import com.agentsflex.chain.NodeResult;
-import com.agentsflex.chain.event.OnErrorEvent;
-import com.agentsflex.chain.event.OnNodeExecuteAfterEvent;
-import com.agentsflex.chain.event.OnNodeExecuteBeforeEvent;
-import com.agentsflex.chain.result.MultiNodeResult;
 import com.agentsflex.util.StringUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-public abstract class RouterNode extends BaseNode {
-
+public abstract class RouterNode extends AbstractBaseNode {
     private MultiMatchStrategy multiMatchStrategy = MultiMatchStrategy.ALL;
     private List<ChainNode> nodes;
 
@@ -39,14 +31,14 @@ public abstract class RouterNode extends BaseNode {
     }
 
     @Override
-    public NodeResult<?> execute(NodeResult<?> prevResult, Chain<?, ?> chain) {
-        String result = route(prevResult, chain);
-        if (StringUtil.noText(result)) {
+    public Map<String, Object> execute(Chain chain) {
+        String routeKeys = route(chain);
+        if (StringUtil.noText(routeKeys)) {
             return null;
         }
 
         List<ChainNode> matchNodes = new ArrayList<>();
-        String[] ids = result.split(",");
+        String[] ids = routeKeys.split(",");
         for (String id : ids) {
             for (ChainNode node : this.nodes) {
                 if (Objects.equals(id, String.valueOf(node.getId()))) {
@@ -59,51 +51,44 @@ public abstract class RouterNode extends BaseNode {
         }
 
         if (matchNodes.size() == 1) {
-            return chain.runNode(matchNodes.get(0));
+            return executeNode(chain, matchNodes.get(0));
         }
 
-        return onMatchMultiNodes(matchNodes, chain);
+        return onMatchMultiNodes(matchNodes,chain);
     }
 
-
-    protected NodeResult<?> onMatchMultiNodes(List<ChainNode> nodes, Chain<?, ?> chain) {
+    protected Map<String,Object> onMatchMultiNodes(List<ChainNode> nodes, Chain chain) {
         switch (this.multiMatchStrategy) {
-            case FIRST:
-                return chain.runNode(nodes.get(0));
-            case LAST:
-                return chain.runNode(nodes.get(nodes.size() - 1));
-            case RANDOM:
-                return chain.runNode(nodes.get(ThreadLocalRandom.current().nextInt(nodes.size())));
             case ALL:
                 return buildMultiResult(nodes, chain);
+            case FIRST:
+                return executeNode(chain,nodes.get(0));
+            case LAST:
+                return executeNode(chain,nodes.get(nodes.size() - 1));
+            case RANDOM:
+                return executeNode(chain,nodes.get(ThreadLocalRandom.current().nextInt(nodes.size())));
             default:
                 return null;
         }
     }
 
-    private NodeResult<?> buildMultiResult(List<ChainNode> nodes, Chain<?, ?> chain) {
-        List<NodeResult<?>> allResult = new ArrayList<>();
-        for (ChainNode node : nodes) {
-            try {
-                chain.notify(new OnNodeExecuteBeforeEvent(node, chain.getLastResult()));
-                if (node.isSkip()) {
-                    continue;
-                }
-                NodeResult<?> nodeResult = node.execute(chain.getLastResult(), chain);
-                if (!node.isSkip()) {
-                    allResult.add(nodeResult);
-                }
-            } catch (Exception e) {
-                chain.notify(new OnErrorEvent(e));
-            } finally {
-                chain.notify(new OnNodeExecuteAfterEvent(node, chain.getLastResult()));
+
+    private Map<String,Object> buildMultiResult(List<ChainNode> nodes, Chain chain) {
+        Map<String,Object> results = new HashMap<>();
+        for (ChainNode matchNode : nodes) {
+            Map<String, Object> result = executeNode(chain, matchNode);
+            if (result != null){
+                results.putAll(result);
             }
         }
-        return MultiNodeResult.ofResults(allResult);
+        return results;
     }
 
+    private Map<String, Object> executeNode(Chain chain, ChainNode node) {
+        return node.execute(chain);
+    }
 
-    protected abstract String route(Object prevResult, Chain<?, ?> chain);
+    protected abstract String route(Chain chain);
 
     public MultiMatchStrategy getMultiMatchStrategy() {
         return multiMatchStrategy;
@@ -121,11 +106,11 @@ public abstract class RouterNode extends BaseNode {
         this.nodes = nodes;
     }
 
+
     public enum MultiMatchStrategy {
         FIRST,
         LAST,
         RANDOM,
         ALL;
     }
-
 }

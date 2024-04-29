@@ -17,36 +17,26 @@ package com.agentsflex.chain.node;
 
 import com.agentsflex.chain.Chain;
 import com.agentsflex.chain.ChainNode;
+import com.agentsflex.llm.Llm;
+import com.agentsflex.llm.response.AiMessageResponse;
+import com.agentsflex.prompt.SimplePrompt;
+import com.agentsflex.prompt.template.SimplePromptTemplate;
 
 import java.util.List;
 
-public class ELRouterNode extends RouterNode {
-    private String elContent;
-    private ELEngine elEngine;
+public class LLMRouterNode extends RouterNode {
+    private Llm llm;
+    private String prompt;
 
-    public String getElContent() {
-        return elContent;
-    }
-
-    public void setElContent(String elContent) {
-        this.elContent = elContent;
-    }
-
-    public ELEngine getElEngine() {
-        return elEngine;
-    }
-
-    public void setElEngine(ELEngine elEngine) {
-        this.elEngine = elEngine;
-    }
-
-    public ELRouterNode(List<ChainNode> nodes) {
+    public LLMRouterNode(List<ChainNode> nodes) {
         super(nodes);
     }
 
     @Override
     protected String route(Chain chain) {
-        return elEngine.run(elContent, chain);
+        SimplePromptTemplate promptTemplate = SimplePromptTemplate.create(prompt);
+        SimplePrompt simplePrompt = promptTemplate.format(chain.getMemory().getAll());
+        AiMessageResponse response = llm.chat(simplePrompt);
+        return response.getMessage().getContent();
     }
-
 }

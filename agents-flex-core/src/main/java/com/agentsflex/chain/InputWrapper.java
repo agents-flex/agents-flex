@@ -13,29 +13,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.test;
+package com.agentsflex.chain;
 
-import com.agentsflex.agent.Agent;
-import com.agentsflex.agent.AgentOutput;
 import com.agentsflex.agent.Parameter;
-import com.agentsflex.chain.Chain;
+import com.agentsflex.chain.node.AgentNode;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-public class SimpleAgent1 extends Agent {
+public class InputWrapper {
 
+    private AgentNode agentNode;
+    private List<Parameter> parameters;
 
-    @Override
-    public List<Parameter> defineInputParameter() {
-        List<Parameter> parameters = new ArrayList<>();
-        parameters.add(new Parameter("key1", true));
+    public InputWrapper(AgentNode agentNode, List<Parameter> parameters) {
+        this.agentNode = agentNode;
+        this.parameters = parameters;
+    }
+
+    public AgentNode getAgentNode() {
+        return agentNode;
+    }
+
+    public void setAgentNode(AgentNode agentNode) {
+        this.agentNode = agentNode;
+    }
+
+    public List<Parameter> getParameters() {
         return parameters;
     }
 
-    @Override
-    public AgentOutput execute(Map<String, Object> variables, Chain chain) {
-        return new AgentOutput().set("result1", "SimpleAgent1" + variables.get("key1"));
+    public void setParameters(List<Parameter> parameters) {
+        this.parameters = parameters;
     }
 }

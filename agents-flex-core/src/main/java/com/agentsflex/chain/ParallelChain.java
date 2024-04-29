@@ -16,69 +16,125 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.chain.event.OnErrorEvent;
+import com.agentsflex.agent.Parameter;
 import com.agentsflex.chain.event.OnNodeExecuteAfterEvent;
 import com.agentsflex.chain.event.OnNodeExecuteBeforeEvent;
 import com.agentsflex.chain.node.AgentNode;
-import com.agentsflex.chain.result.MultiNodeResult;
+import com.agentsflex.util.NamedThreadPools;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 
 /**
  * 并发执行，并行执行
- *
- * @param <Input>
- * @param <Output>
  */
-public abstract class ParallelChain<Input, Output> extends BaseChain<Input, Output> {
+public class ParallelChain extends BaseChain {
+
+    private ExecutorService threadPool = NamedThreadPools.newFixedThreadPool("ParallelChain");
+    private volatile List<ChainNode> pauseNodes;
 
     public ParallelChain() {
     }
 
-    public ParallelChain(Agent<?>... agents) {
+    public ParallelChain(Agent... agents) {
         List<ChainNode> chainNodes = new ArrayList<>(agents.length);
-        for (Agent<?> agent : agents) {
+        for (Agent agent : agents) {
             chainNodes.add(new AgentNode(agent));
         }
-        setInvokers(chainNodes);
+        setNodes(chainNodes);
     }
 
     public ParallelChain(ChainNode... chainNodes) {
-        setInvokers(new ArrayList<>(Arrays.asList(chainNodes)));
+        setNodes(new ArrayList<>(Arrays.asList(chainNodes)));
     }
 
 
     @Override
     protected void executeInternal() {
-        List<NodeResult<?>> allResult = new ArrayList<>();
-        for (ChainNode node : chainNodes) {
-            if (isStop()) {
-                break;
-            }
-            try {
-                notify(new OnNodeExecuteBeforeEvent(node, lastResult));
-                if (node.isSkip()) {
-                    continue;
-                }
-                NodeResult<?> nodeResult = node.execute(this.lastResult, this);
-                if (!node.isSkip()) {
-                    allResult.add(nodeResult);
-                }
-            } catch (Exception e) {
-                notify(new OnErrorEvent(e));
-            } finally {
-                notify(new OnNodeExecuteAfterEvent(this, lastResult));
-            }
-        }
+        executeNodes(getNodes());
+    }
 
-        //agent call stopAndOutput()...
-        if (isStop() && this.output != null) {
+    @Override
+    protected void resumeInternal(Map<String, Object> variables) {
+        List<ChainNode> nodes = new ArrayList<>(this.pauseNodes);
+        this.pauseNodes.clear();
+        executeNodes(nodes);
+    }
+
+
+    private void executeNodes(List<ChainNode> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
             return;
         }
+        CountDownLatch latch = new CountDownLatch(nodes.size());
+        for (ChainNode node : nodes) {
+            threadPool.execute(new ParalleChainRunnable(this, node, latch));
+        }
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-        this.lastResult = MultiNodeResult.ofResults(allResult);
+    @Override
+    public void waitInput(List<Parameter> parameters, AgentNode agent) {
+        super.waitInput(parameters, agent);
+        if (pauseNodes == null) {
+            synchronized (this) {
+                if (pauseNodes == null) {
+                    pauseNodes = new ArrayList<>();
+                }
+            }
+        }
+        pauseNodes.add(agent);
+    }
+
+    public ExecutorService getThreadPool() {
+        return threadPool;
+    }
+
+    public void setThreadPool(ExecutorService threadPool) {
+        this.threadPool = threadPool;
+    }
+
+    static class ParalleChainRunnable implements Runnable {
+        ParallelChain chain;
+        ChainNode node;
+        CountDownLatch countDownLatch;
+
+        public ParalleChainRunnable(ParallelChain chain, ChainNode node, CountDownLatch countDownLatch) {
+            this.chain = chain;
+            this.node = node;
+            this.countDownLatch = countDownLatch;
+        }
+
+        @Override
+        public void run() {
+            try {
+                chain.notifyEvent(new OnNodeExecuteBeforeEvent(node));
+                if (chain.getStatus() != ChainStatus.START) {
+                    return;
+                }
+
+                Map<String, Object> result = node.execute(chain);
+                chain.notifyEvent(new OnNodeExecuteAfterEvent(node, result));
+
+                if (chain.getStatus() != ChainStatus.START) {
+                    return;
+                }
+
+                if (!node.isSkip()) {
+                    chain.getMemory().putAll(result);
+                }
+            } finally {
+                this.countDownLatch.countDown();
+            }
+        }
     }
 
 
