@@ -18,7 +18,7 @@
     <dependency>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-bom</artifactId>
-        <version>1.0.0-beta.0</version>
+        <version>1.0.0-beta.1</version>
     </dependency>
 </dependencies>
 ```
@@ -26,7 +26,7 @@
 或者使用 Gradle:
 
 ```java
-implementation 'com.agentsflex:agents-flex-bom:1.0.0-beta.0'
+implementation 'com.agentsflex:agents-flex-bom:1.0.0-beta.1'
 ```
 
 **第 2 步：创建一个带有 Main 方法的 Java 类**
