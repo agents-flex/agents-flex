@@ -18,8 +18,8 @@ package com.agentsflex.llm.openai;
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.BaseLlm;
 import com.agentsflex.llm.ChatOptions;
-import com.agentsflex.llm.StreamResponseListener;
 import com.agentsflex.llm.MessageResponse;
+import com.agentsflex.llm.StreamResponseListener;
 import com.agentsflex.llm.client.BaseLlmClientListener;
 import com.agentsflex.llm.client.HttpClient;
 import com.agentsflex.llm.client.LlmClient;
@@ -28,7 +28,7 @@ import com.agentsflex.llm.client.impl.SseClient;
 import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
-import com.agentsflex.message.Message;
+import com.agentsflex.message.AiMessage;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
@@ -66,7 +66,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt, ChatOptions options) {
+    public <R extends MessageResponse<M>, M extends AiMessage> R chat(Prompt<M> prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
@@ -88,7 +88,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options) {
+    public <R extends MessageResponse<M>, M extends AiMessage> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

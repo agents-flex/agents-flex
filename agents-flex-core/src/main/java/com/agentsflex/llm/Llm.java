@@ -18,7 +18,6 @@ package com.agentsflex.llm;
 import com.agentsflex.llm.embedding.EmbeddingModel;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.message.AiMessage;
-import com.agentsflex.message.Message;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.SimplePrompt;
 
@@ -34,11 +33,11 @@ public interface Llm extends EmbeddingModel {
         return chat != null && chat.getMessage() != null ? chat.getMessage().getContent() : null;
     }
 
-    default <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt) {
+    default <R extends MessageResponse<M>, M extends AiMessage> R chat(Prompt<M> prompt) {
         return chat(prompt, ChatOptions.DEFAULT);
     }
 
-    <R extends MessageResponse<M>, M extends Message> R chat(Prompt<M> prompt, ChatOptions options);
+    <R extends MessageResponse<M>, M extends AiMessage> R chat(Prompt<M> prompt, ChatOptions options);
 
     default void chatStream(String prompt, StreamResponseListener<AiMessageResponse, AiMessage> listener) {
         this.chatStream(new SimplePrompt(prompt), listener, ChatOptions.DEFAULT);
@@ -49,10 +48,10 @@ public interface Llm extends EmbeddingModel {
     }
 
     //chatStream
-    default <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
+    default <R extends MessageResponse<M>, M extends AiMessage> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
         this.chatStream(prompt, listener, ChatOptions.DEFAULT);
     }
 
-    <R extends MessageResponse<M>, M extends Message> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options);
+    <R extends MessageResponse<M>, M extends AiMessage> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options);
 
 }

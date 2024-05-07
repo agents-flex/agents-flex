@@ -17,7 +17,10 @@ package com.agentsflex.message;
 
 import java.util.Map;
 
-public class FunctionMessage extends Message{
+public class FunctionMessage extends AiMessage{
+
+    public FunctionMessage() {
+    }
 
     private String functionName;
     private Map<String,Object> args;

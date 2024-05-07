@@ -15,8 +15,8 @@
  */
 package com.agentsflex.llm;
 
-import com.agentsflex.message.Message;
+import com.agentsflex.message.AiMessage;
 
-public interface MessageResponse<M extends Message> {
+public interface MessageResponse<M extends AiMessage> {
     M getMessage();
 }

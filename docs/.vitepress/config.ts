@@ -79,12 +79,7 @@ export default defineConfig({
             message: 'Released under the Apache License.',
             copyright: 'Copyright © 2022-present Agents-Flex. ' +
                 '<span style="display: flex;align-items: center;justify-content: center;">' +
-                '<span style="font-size: 12px;margin-right:10px;"><a style="color:#777" target="_blank" rel="noopener" href="http://beian.miit.gov.cn/">黔ICP备19009310号-9 </a></span>' +
-
-                '<img src="/beian.jpg" style="margin-top: -2px;margin-right: 2px;width: 15px;">' +
-
-                '<a target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=52010202003658"' +
-                ' style="display:inline-block;text-decoration:none;color:#777;font-size: 12px">贵公网安备 52010202003658 号</a>' +
+                '<span style="font-size: 12px;margin-right:10px;"><a style="color:#777" target="_blank" rel="noopener" href="http://beian.miit.gov.cn/">黔ICP备19009310号-13 </a></span>' +
                 '</span>'
         }
     },
