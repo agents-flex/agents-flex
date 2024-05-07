@@ -75,3 +75,23 @@ public class Main {
 }
 ```
 
+## 流式（Stream）对话
+
+流式（Stream）对话需要调用 `chatStream` 方法，并传入 prompt 以及 `StreamResponseListener`，代码如下所示：
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+
+        llm.chatStream("what is your name?", new StreamResponseListener<AiMessageResponse, AiMessage>() {
+            @Override
+            public void onMessage(ChatContext context, AiMessageResponse response) {
+                System.out.println(">>>> " + response.getMessage().getContent());
+            }
+        });
+
+        System.out.println(response);
+    }
+}
+```

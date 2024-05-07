@@ -1,8 +1,6 @@
 # Agents-Flex 是什么？
 
-Agents-Flex 是一个 Java 开发的 AI 应用开发框架，是为了简化 AI 应用开发而生。
-
-其灵感来源 LangChain、 LlamaIndex 以及作者作为一线 AI 应用开发工程师的最佳实践，提供了跨
+Agents-Flex 是一个 Java 开发的 AI 应用开发框架，是为了简化 AI 应用开发而生。 其灵感来源 LangChain、 LlamaIndex 以及作者作为一线 AI 应用开发工程师的最佳实践，提供了跨
 AI 服务商的、可移植的、不限 Java 开发框架的 API 支持。
 
 Agents-Flex 适用于聊天、图像生成、Embedding 模型、Function Calling 以及 RAG 应用等场景，支持同步以及流式（Stream）的 API 选择。
@@ -12,7 +10,7 @@ Agents-Flex 适用于聊天、图像生成、Embedding 模型、Function Calling
 - AiEditor：https://aieditor.dev
 - AiAdmin：官网正在建设中...
 
-## 和其他框架对比
+## Agents-Flex 和其他框架对比
 
 **1、更具有普适性**
 
@@ -72,17 +70,17 @@ public class WeatherUtil {
 ```java
 @Test
 public void testChain() {
-    SimpleAgent1 agent1 = new SimpleAgent1();
-    SimpleAgent2 agent2 = new SimpleAgent2();
+    IOChain ioChain1 = new IOChain();
+    ioChain1.addNode(new IOAgent1("agent1"));
+    ioChain1.addNode(new IOAgent2("agent2"));
 
-    SequentialChain<String, String> chain1 = new SequentialChain<>(agent1, agent2);
+    IOChain ioChain2 = new IOChain();
+    ioChain2.addNode(new IOAgent1("agent3"));
+    ioChain2.addNode(new IOAgent2("agent4"));
+    ioChain2.addNode(ioChain1);
 
-    Chain<String, String> chain2 = new SequentialChain<>();
-    chain2.addInvoker(new SimpleAgent3());
-    chain2.addInvoker(new SimpleAgent4());
-    chain2.addInvoker(chain1);
 
-    String result = chain2.execute("some data...");
+    Object result = ioChain2.execute("your params");
     System.out.println(result);
 }
 ```
@@ -90,12 +88,16 @@ public void testChain() {
 
 ![](../../assets/images/chians-01.png)
 
-数据流向： agent3 --> agent4 --> chain1，而 chain1 内部又包含 agent1 --> agent2 的过程，
+数据流向： agent3 --> agent4 --> chain1，而 chain1 内部又包含 agent1 --> agent2 的过程。
+
+
 在 Agents-Flex 中，我们内置了 3 种不同的 Agents 执行链，他们分别是：
 
 - SequentialChain：顺序执行链
 - ParallelChain：并发（并行）执行链
 - LoopChain：循环执行连
+
+> `IOChain` 属于 `SequentialChain` 中的一种，默认的 `SequentialChain` 不一定有输入或者输出，而 `IOChain` 是具有输入和输出的顺序执行链：`IOChain` 执行完毕后会有结果输出。
 
 而以上 3 种执行链中，每个又可以作为其他执行链的子链进行执行，从而形成强大而复杂的 Agents 执行链条。
 

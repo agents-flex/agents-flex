@@ -47,30 +47,30 @@ export default defineConfig({
                     {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
                     {text: '快速开始', link: '/zh/intro/getting-started'},
                     {text: 'Maven 依赖', link: '/zh/intro/maven'},
-                    {text: 'Gradle 依赖', link: '/zh/intro/gradle'},
-                    {text: '交流群', link: '/zh/intro/qq-group'},
+                    {text: '交流群', link: '/zh/intro/communication'},
                 ]
             },
             {
                 text: '核心模块',
                 items: [
-                    {text: 'LLMs 大语言模型', link: '/zh/base/add-delete-update'},
-                    {text: 'Prompt 提示词', link: '/zh/base/query'},
-                    {text: 'Function Calling 方法调用', link: '/zh/base/auto-mapping'},
-                    {text: 'Memory 记忆存储', link: '/zh/base/relations-query'},
-                    {text: 'Embedding 嵌入', link: '/zh/base/batch'},
-                    {text: 'Store 存储', link: '/zh/base/batch'},
-                    {text: 'Document 文档', link: '/zh/base/batch'},
-                    {text: 'Agents 代理', link: '/zh/base/batch'},
-                    {text: 'Chain 执行链', link: '/zh/base/batch'},
+                    {text: 'LLMs 大语言模型', link: '/zh/core/llms'},
+                    {text: 'Prompt 提示词', link: '/zh/core/prompt'},
+                    {text: 'Chat 对话', link: '/zh/core/chat'},
+                    {text: 'Function Calling 方法调用', link: '/zh/core/function-calling'},
+                    {text: 'Memory 记忆', link: '/zh/core/memory'},
+                    {text: 'Embedding 嵌入', link: '/zh/core/embedding'},
+                    {text: 'Store 存储', link: '/zh/core/store'},
+                    {text: 'Document 文档', link: '/zh/core/document'},
+                    {text: 'Agent 智能体', link: '/zh/core/agent'},
+                    {text: 'Chain 执行链', link: '/zh/core/chain'},
                 ]
             },
             {
                 text: '基础示例',
                 items: [
-                    {text: '简单对话', link: '/zh/core/table'},
-                    {text: '历史对话', link: '/zh/core/id'},
-                    {text: 'RAG 应用', link: '/zh/core/column'},
+                    {text: '简单对话', link: '/zh/samples/chat'},
+                    {text: '历史对话', link: '/zh/samples/chat-with-memory'},
+                    {text: 'RAG 应用', link: '/zh/samples/rag'},
                 ]
             }
         ],
