@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class DefaultChatMemory implements ChatMemory {
-
     private final Object id;
+    private final List<Message> messages = new ArrayList<>();
 
     public DefaultChatMemory() {
         this.id = UUID.randomUUID().toString();
@@ -37,7 +37,6 @@ public class DefaultChatMemory implements ChatMemory {
     public Object id() {
         return id;
     }
-    private final List<Message> messages = new ArrayList<>();
 
     @Override
     public List<Message> getMessages() {
