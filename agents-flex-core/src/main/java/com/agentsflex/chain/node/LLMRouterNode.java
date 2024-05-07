@@ -39,4 +39,14 @@ public class LLMRouterNode extends RouterNode {
         AiMessageResponse response = llm.chat(simplePrompt);
         return response.getMessage().getContent();
     }
+
+    @Override
+    public String toString() {
+        return "LLMRouterNode{" +
+            "llm=" + llm +
+            ", prompt='" + prompt + '\'' +
+            ", id=" + id +
+            ", skip=" + skip +
+            '}';
+    }
 }

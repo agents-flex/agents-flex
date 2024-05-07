@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DefaultContextMemory implements ContextMemory{
+public class DefaultContextMemory implements ContextMemory {
     @Override
     public Object id() {
         return UUID.randomUUID().toString();
@@ -39,7 +39,7 @@ public class DefaultContextMemory implements ContextMemory{
 
     @Override
     public void put(String key, Object value) {
-        context.put(key,value);
+        context.put(key, value);
     }
 
     @Override

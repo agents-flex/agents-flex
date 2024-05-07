@@ -18,6 +18,7 @@ package com.agentsflex.agent;
 import com.agentsflex.chain.Chain;
 import com.agentsflex.memory.ContextMemory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,8 +37,23 @@ public abstract class Agent {
 
     public Agent() {
         this.id = UUID.randomUUID();
-        this.inputParameters = this.defineInputParameter();
+        List<Parameter> definedInputParameter = this.defineInputParameter();
+        this.inputParameters = definedInputParameter == null ? Collections.emptyList(): definedInputParameter;
     }
+
+    public Agent(Object id) {
+        this.id = id;
+        List<Parameter> definedInputParameter = this.defineInputParameter();
+        this.inputParameters = definedInputParameter == null ? Collections.emptyList(): definedInputParameter;
+    }
+
+    public Agent(Object id, String name) {
+        this.id = id;
+        this.name = name;
+        List<Parameter> definedInputParameter = this.defineInputParameter();
+        this.inputParameters = definedInputParameter == null ? Collections.emptyList(): definedInputParameter;
+    }
+
 
     public Object getId() {
         return id;
@@ -94,4 +110,11 @@ public abstract class Agent {
     public abstract List<Parameter> defineInputParameter();
     public abstract AgentOutput execute(Map<String, Object> variables, Chain chain);
 
+    @Override
+    public String toString() {
+        return "Agent{" +
+            "id=" + id +
+            ", name='" + name + '\'' +
+            '}';
+    }
 }

@@ -30,7 +30,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 
 /**
- * 并发执行，并行执行
+ * 并行执行链：并发执行，并行执行（不确定其节点的执行顺序）
  */
 public class ParallelChain extends BaseChain {
 
@@ -83,7 +83,6 @@ public class ParallelChain extends BaseChain {
 
     @Override
     public void waitInput(List<Parameter> parameters, AgentNode agent) {
-        super.waitInput(parameters, agent);
         if (pauseNodes == null) {
             synchronized (this) {
                 if (pauseNodes == null) {
@@ -92,6 +91,7 @@ public class ParallelChain extends BaseChain {
             }
         }
         pauseNodes.add(agent);
+        super.waitInput(parameters, agent);
     }
 
     public ExecutorService getThreadPool() {

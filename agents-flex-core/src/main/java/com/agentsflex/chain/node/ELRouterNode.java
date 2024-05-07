@@ -49,4 +49,13 @@ public class ELRouterNode extends RouterNode {
         return elEngine.run(elContent, chain);
     }
 
+    @Override
+    public String toString() {
+        return "ELRouterNode{" +
+            "elContent='" + elContent + '\'' +
+            ", elEngine=" + elEngine +
+            ", id=" + id +
+            ", skip=" + skip +
+            '}';
+    }
 }

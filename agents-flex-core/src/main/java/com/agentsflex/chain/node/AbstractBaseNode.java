@@ -17,10 +17,16 @@ package com.agentsflex.chain.node;
 
 import com.agentsflex.chain.ChainNode;
 
+import java.util.UUID;
+
 public abstract class AbstractBaseNode implements ChainNode {
 
     protected Object id;
     protected boolean skip;
+
+    public AbstractBaseNode() {
+        this.id = UUID.randomUUID();
+    }
 
     @Override
     public Object getId() {

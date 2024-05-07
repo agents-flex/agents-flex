@@ -31,7 +31,7 @@ import java.util.*;
 public abstract class Chain implements Serializable {
     private Object id;
     private ContextMemory memory = new DefaultContextMemory();
-    private Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>();
+    private Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
     private List<ChainInputListener> inputListeners = new ArrayList<>();
     private List<ChainOutputListener> outputListeners = new ArrayList<>();
     private List<ChainNode> nodes;
@@ -41,6 +41,11 @@ public abstract class Chain implements Serializable {
 
     //理论上是线程安全的，所有有多线程写入的情况，但是只有全部写入完成后才会去通知监听器
     private List<Parameter> waitInputParameters = new ArrayList<>();
+
+
+    public Chain() {
+        this.id = UUID.randomUUID();
+    }
 
     public Object getId() {
         return id;
@@ -59,13 +64,13 @@ public abstract class Chain implements Serializable {
         this.eventListeners = eventListeners;
     }
 
-    public synchronized void registerEventListener(Class<?> eventClass, ChainEventListener listener) {
+    public synchronized void registerEventListener(Class<? extends ChainEvent> eventClass, ChainEventListener listener) {
         List<ChainEventListener> chainEventListeners = eventListeners.computeIfAbsent(eventClass, k -> new ArrayList<>());
         chainEventListeners.add(listener);
     }
 
     public synchronized void registerEventListener(ChainEventListener listener) {
-        List<ChainEventListener> chainEventListeners = eventListeners.computeIfAbsent(EventListener.class, k -> new ArrayList<>());
+        List<ChainEventListener> chainEventListeners = eventListeners.computeIfAbsent(ChainEvent.class, k -> new ArrayList<>());
         chainEventListeners.add(listener);
     }
 
@@ -76,7 +81,7 @@ public abstract class Chain implements Serializable {
         }
     }
 
-    public synchronized void removeEventListener(Class<?> eventClass, ChainEventListener listener) {
+    public synchronized void removeEventListener(Class<? extends ChainEvent> eventClass, ChainEventListener listener) {
         List<ChainEventListener> list = eventListeners.get(eventClass);
         if (list != null && !list.isEmpty()) {
             list.removeIf(item -> item == listener);
@@ -195,7 +200,7 @@ public abstract class Chain implements Serializable {
 
     public void notifyEvent(ChainEvent event) {
         for (Map.Entry<Class<?>, List<ChainEventListener>> entry : eventListeners.entrySet()) {
-            if (entry.getClass().isAssignableFrom(entry.getKey())) {
+            if (entry.getKey().isInstance(event)) {
                 for (ChainEventListener chainEventListener : entry.getValue()) {
                     chainEventListener.onEvent(event, this);
                 }
@@ -282,5 +287,12 @@ public abstract class Chain implements Serializable {
         for (ChainInputListener inputListener : inputListeners) {
             inputListener.onInput(this, parameters);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "Chain{" +
+            "id=" + id +
+            '}';
     }
 }

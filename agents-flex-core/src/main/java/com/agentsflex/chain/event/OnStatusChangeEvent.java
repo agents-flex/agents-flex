@@ -43,4 +43,12 @@ public class OnStatusChangeEvent implements ChainEvent {
     public void setBefore(ChainStatus before) {
         this.before = before;
     }
+
+    @Override
+    public String toString() {
+        return "OnStatusChangeEvent{" +
+            "status=" + status +
+            ", before=" + before +
+            '}';
+    }
 }

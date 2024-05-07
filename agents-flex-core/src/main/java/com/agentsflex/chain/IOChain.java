@@ -13,31 +13,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.chain.event;
+package com.agentsflex.chain;
 
-import com.agentsflex.chain.ChainEvent;
-import com.agentsflex.chain.ChainNode;
+import java.util.HashMap;
+import java.util.Map;
 
-public class OnNodeExecuteBeforeEvent implements ChainEvent {
+/**
+ * input and output chain
+ */
+public class IOChain extends SequentialChain {
 
-    private ChainNode node;
+    public <T> T execute(Object input) {
+        Map<String, Object> variables = new HashMap<>(1);
+        variables.put("default", input);
 
-    public OnNodeExecuteBeforeEvent(ChainNode node) {
-        this.node = node;
-    }
+        super.execute(variables);
 
-    public ChainNode getNode() {
-        return node;
-    }
-
-    public void setNode(ChainNode node) {
-        this.node = node;
-    }
-
-    @Override
-    public String toString() {
-        return "OnNodeExecuteBeforeEvent{" +
-            "node=" + node +
-            '}';
+        //noinspection unchecked
+        return (T) this.getMemory().get("default");
     }
 }

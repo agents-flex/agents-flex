@@ -32,4 +32,11 @@ public class OnErrorEvent implements ChainEvent {
     public void setException(Exception exception) {
         this.exception = exception;
     }
+
+    @Override
+    public String toString() {
+        return "OnErrorEvent{" +
+            "exception=" + exception +
+            '}';
+    }
 }

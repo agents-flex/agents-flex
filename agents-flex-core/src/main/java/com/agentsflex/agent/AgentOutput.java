@@ -20,7 +20,7 @@ import java.util.Map;
 
 public class AgentOutput extends HashMap<String, Object> {
 
-    private static final String DEFAULT_VALUE_KEY = "value__";
+    private static final String DEFAULT_VALUE_KEY = "default";
 
     public AgentOutput(int initialCapacity, float loadFactor) {
         super(initialCapacity, loadFactor);
@@ -42,8 +42,8 @@ public class AgentOutput extends HashMap<String, Object> {
     }
 
 
-    public AgentOutput set(String key,Object value){
-        this.put(key,value);
+    public AgentOutput set(String key, Object value) {
+        this.put(key, value);
         return this;
     }
 

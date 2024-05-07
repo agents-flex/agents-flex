@@ -17,12 +17,17 @@ package com.agentsflex.memory;
 
 import java.util.Map;
 
-public interface ContextMemory extends Memory{
+public interface ContextMemory extends Memory {
 
-    public Object get(String key);
-    public Map<String,Object> getAll();
-    public void put(String key, Object value) ;
-    public void putAll(Map<String, Object> context);
-    public void remove(String key);
-    public void clear();
+    Object get(String key);
+
+    Map<String, Object> getAll();
+
+    void put(String key, Object value);
+
+    void putAll(Map<String, Object> context);
+
+    void remove(String key);
+
+    void clear();
 }

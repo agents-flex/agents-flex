@@ -80,5 +80,12 @@ public class AgentNode extends AbstractBaseNode {
         }
     }
 
-
+    @Override
+    public String toString() {
+        return "AgentNode{" +
+            "agent=" + agent +
+            ", id=" + id +
+            ", skip=" + skip +
+            '}';
+    }
 }

@@ -46,4 +46,12 @@ public class OnNodeExecuteAfterEvent implements ChainEvent {
     public void setResult(Map<String, Object> result) {
         this.result = result;
     }
+
+    @Override
+    public String toString() {
+        return "OnNodeExecuteAfterEvent{" +
+            "node=" + node +
+            ", result=" + result +
+            '}';
+    }
 }

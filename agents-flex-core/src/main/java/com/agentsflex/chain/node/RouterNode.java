@@ -113,4 +113,14 @@ public abstract class RouterNode extends AbstractBaseNode {
         RANDOM,
         ALL;
     }
+
+    @Override
+    public String toString() {
+        return "RouterNode{" +
+            "multiMatchStrategy=" + multiMatchStrategy +
+            ", nodes=" + nodes +
+            ", id=" + id +
+            ", skip=" + skip +
+            '}';
+    }
 }
