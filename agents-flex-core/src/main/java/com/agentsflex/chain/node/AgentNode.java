@@ -16,7 +16,7 @@
 package com.agentsflex.chain.node;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.agent.AgentOutput;
+import com.agentsflex.agent.Output;
 import com.agentsflex.agent.Parameter;
 import com.agentsflex.chain.Chain;
 
@@ -64,7 +64,7 @@ public class AgentNode extends AbstractBaseNode {
             return null;
         }
 
-        AgentOutput output = agent.execute(variables);
+        Output output = agent.execute(variables);
         List<String> outputKeys = agent.getOutputKeys();
         if (outputKeys != null && !outputKeys.isEmpty()) {
             Map<String, String> outputMapping = agent.getOutputMapping();

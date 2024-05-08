@@ -18,22 +18,22 @@ package com.agentsflex.agent;
 import java.util.HashMap;
 import java.util.Map;
 
-public class AgentOutput extends HashMap<String, Object> {
+public class Output extends HashMap<String, Object> {
 
     private static final String DEFAULT_VALUE_KEY = "default";
 
-    public AgentOutput(int initialCapacity, float loadFactor) {
+    public Output(int initialCapacity, float loadFactor) {
         super(initialCapacity, loadFactor);
     }
 
-    public AgentOutput(int initialCapacity) {
+    public Output(int initialCapacity) {
         super(initialCapacity);
     }
 
-    public AgentOutput() {
+    public Output() {
     }
 
-    public AgentOutput(Map<String, ?> m) {
+    public Output(Map<String, ?> m) {
         super(m);
     }
 
@@ -42,13 +42,13 @@ public class AgentOutput extends HashMap<String, Object> {
     }
 
 
-    public AgentOutput set(String key, Object value) {
+    public Output set(String key, Object value) {
         this.put(key, value);
         return this;
     }
 
-    public static AgentOutput ofValue(Object value) {
-        AgentOutput output = new AgentOutput();
+    public static Output ofValue(Object value) {
+        Output output = new Output();
         output.put(DEFAULT_VALUE_KEY, value);
         return output;
     }

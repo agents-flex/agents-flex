@@ -103,12 +103,12 @@ public abstract class Agent {
         this.outputMapping = outputMapping;
     }
 
-    public AgentOutput execute(Map<String, Object> variables) {
+    public Output execute(Map<String, Object> variables) {
         return execute(variables, null);
     }
 
     public abstract List<Parameter> defineInputParameter();
-    public abstract AgentOutput execute(Map<String, Object> variables, Chain chain);
+    public abstract Output execute(Map<String, Object> variables, Chain chain);
 
     @Override
     public String toString() {

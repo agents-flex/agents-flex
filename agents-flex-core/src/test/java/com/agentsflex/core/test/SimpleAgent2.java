@@ -16,7 +16,7 @@
 package com.agentsflex.core.test;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.agent.AgentOutput;
+import com.agentsflex.agent.Output;
 import com.agentsflex.agent.Parameter;
 import com.agentsflex.chain.Chain;
 
@@ -33,7 +33,7 @@ public class SimpleAgent2 extends Agent {
     }
 
     @Override
-    public AgentOutput execute(Map<String, Object> variables, Chain chain) {
-        return new AgentOutput().set("result2", "SimpleAgent2" + variables.get("key2"));
+    public Output execute(Map<String, Object> variables, Chain chain) {
+        return new Output().set("result2", "SimpleAgent2" + variables.get("key2"));
     }
 }

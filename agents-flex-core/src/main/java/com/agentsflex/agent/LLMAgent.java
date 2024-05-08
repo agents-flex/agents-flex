@@ -32,25 +32,27 @@ public class LLMAgent extends Agent {
     public LLMAgent() {
     }
 
-    @Override
-    public List<Parameter> defineInputParameter() {
-        return null;
-    }
 
     public LLMAgent(Llm llm, String prompt) {
         this.llm = llm;
         this.prompt = prompt;
     }
 
+
     @Override
-    public AgentOutput execute(Map<String, Object> variables, Chain chain) {
+    public List<Parameter> defineInputParameter() {
+        return null;
+    }
+
+    @Override
+    public Output execute(Map<String, Object> variables, Chain chain) {
         SimplePromptTemplate promptTemplate = SimplePromptTemplate.create(prompt);
         SimplePrompt simplePrompt = promptTemplate.format(chain.getMemory().getAll());
         AiMessageResponse response = llm.chat(simplePrompt);
         return parseAiMessage(response.getMessage());
     }
 
-    public AgentOutput parseAiMessage(AiMessage aiMessage) {
-        return AgentOutput.ofValue(aiMessage.getContent());
+    public Output parseAiMessage(AiMessage aiMessage) {
+        return Output.ofValue(aiMessage.getContent());
     }
 }

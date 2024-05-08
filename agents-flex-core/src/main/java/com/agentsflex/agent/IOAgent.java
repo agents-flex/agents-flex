@@ -47,7 +47,7 @@ public abstract class IOAgent extends Agent {
     }
 
     @Override
-    public AgentOutput execute(Map<String, Object> variables, Chain chain) {
+    public Output execute(Map<String, Object> variables, Chain chain) {
         Object value;
         if (variables == null || variables.isEmpty()) {
             value = null;
@@ -57,7 +57,7 @@ public abstract class IOAgent extends Agent {
             String key = variables.keySet().iterator().next();
             value = variables.get(key);
         }
-        return AgentOutput.ofValue(execute(value, chain));
+        return Output.ofValue(execute(value, chain));
     }
 
     public abstract Object execute(Object param, Chain chain);
