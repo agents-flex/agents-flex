@@ -19,5 +19,6 @@ docker_volumes/
 package-lock.json
 yarn.lock
 /docs/.vitepress/cache/
+/docs/.vitepress/dist/
 /docs/pnpm-lock.yaml
 application-dev.yml
