@@ -26,8 +26,9 @@ import java.util.List;
 import java.util.Map;
 
 public class LLMAgent extends Agent {
-    private Llm llm;
-    private String prompt;
+
+    protected Llm llm;
+    protected String prompt;
 
     public LLMAgent() {
     }
@@ -39,6 +40,22 @@ public class LLMAgent extends Agent {
     }
 
 
+    public Llm getLlm() {
+        return llm;
+    }
+
+    public void setLlm(Llm llm) {
+        this.llm = llm;
+    }
+
+    public String getPrompt() {
+        return prompt;
+    }
+
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
+    }
+
     @Override
     public List<Parameter> defineInputParameter() {
         return null;
@@ -47,12 +64,13 @@ public class LLMAgent extends Agent {
     @Override
     public Output execute(Map<String, Object> variables, Chain chain) {
         SimplePromptTemplate promptTemplate = SimplePromptTemplate.create(prompt);
-        SimplePrompt simplePrompt = promptTemplate.format(chain.getMemory().getAll());
+        SimplePrompt simplePrompt = promptTemplate.format(chain == null ? variables : chain.getMemory().getAll());
         AiMessageResponse response = llm.chat(simplePrompt);
         return parseAiMessage(response.getMessage());
     }
 
-    public Output parseAiMessage(AiMessage aiMessage) {
+    protected Output parseAiMessage(AiMessage aiMessage) {
         return Output.ofValue(aiMessage.getContent());
     }
+
 }
