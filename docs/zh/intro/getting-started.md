@@ -14,13 +14,11 @@
 **第 1 步：创建 Java 项目，并添加 Maven 依赖**
 
 ```xml
-<dependencies>
-    <dependency>
-        <groupId>com.agentsflex</groupId>
-        <artifactId>agents-flex-bom</artifactId>
-        <version>1.0.0-beta.1</version>
-    </dependency>
-</dependencies>
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-bom</artifactId>
+    <version>1.0.0-beta.1</version>
+</dependency>
 ```
 
 或者使用 Gradle:

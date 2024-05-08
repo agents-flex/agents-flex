@@ -42,21 +42,21 @@ export default defineConfig({
 
         sidebar: [
             {
-                text: '简介',
+                text: '快速开始',
                 items: [
                     {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
                     {text: '快速开始', link: '/zh/intro/getting-started'},
                     {text: 'Maven 依赖', link: '/zh/intro/maven'},
-                    {text: '交流群', link: '/zh/intro/communication'},
+                    {text: '微信交流群', link: '/zh/intro/communication'},
                 ]
             },
             {
                 text: '核心模块',
                 items: [
                     {text: 'LLMs 大语言模型', link: '/zh/core/llms'},
-                    {text: 'Prompt 提示词', link: '/zh/core/prompt'},
-                    {text: 'Chat 对话', link: '/zh/core/chat'},
-                    {text: 'Function Calling 方法调用', link: '/zh/core/function-calling'},
+                    // {text: 'Prompt 提示词', link: '/zh/core/prompt'},
+                    // {text: 'Chat 对话', link: '/zh/core/chat'},
+                    // {text: 'Function Calling 方法调用', link: '/zh/core/function-calling'},
                     {text: 'Memory 记忆', link: '/zh/core/memory'},
                     {text: 'Embedding 嵌入', link: '/zh/core/embedding'},
                     {text: 'Store 存储', link: '/zh/core/store'},
