@@ -21,11 +21,11 @@ import com.agentsflex.document.DocumentParser;
 
 import java.io.InputStream;
 
-public abstract class BaseDocumentLoader implements DocumentLoader {
+public abstract class StreamDocumentLoader implements DocumentLoader {
 
     protected DocumentParser documentParser;
 
-    public BaseDocumentLoader(DocumentParser documentParser) {
+    public StreamDocumentLoader(DocumentParser documentParser) {
         this.documentParser = documentParser;
     }
 

@@ -22,7 +22,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 
-public class FileDocumentLoader extends BaseDocumentLoader {
+public class FileDocumentLoader extends StreamDocumentLoader {
 
     private final File file;
 

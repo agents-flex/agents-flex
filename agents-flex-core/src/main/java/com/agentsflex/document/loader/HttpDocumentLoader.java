@@ -19,7 +19,7 @@ import com.agentsflex.document.DocumentParser;
 
 import java.io.InputStream;
 
-public class HttpDocumentLoader extends BaseDocumentLoader {
+public class HttpDocumentLoader extends StreamDocumentLoader {
 
     public HttpDocumentLoader(DocumentParser documentParser) {
         super(documentParser);
