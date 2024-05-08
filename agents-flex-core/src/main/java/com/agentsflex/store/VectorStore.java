@@ -15,6 +15,7 @@
  */
 package com.agentsflex.store;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -40,11 +41,16 @@ public abstract class VectorStore<T extends VectorData> {
 
     public abstract StoreResult store(List<T> documents, StoreOptions options);
 
-    public StoreResult delete(Collection<String> ids) {
+
+    public StoreResult delete(Object... ids) {
+        return delete(Arrays.asList(ids), StoreOptions.DEFAULT);
+    }
+
+    public StoreResult delete(Collection<Object> ids) {
         return delete(ids, StoreOptions.DEFAULT);
     }
 
-    public abstract StoreResult delete(Collection<String> ids, StoreOptions options);
+    public abstract StoreResult delete(Collection<Object> ids, StoreOptions options);
 
     public StoreResult update(T document) {
         return update(document, StoreOptions.DEFAULT);
@@ -59,6 +65,10 @@ public abstract class VectorStore<T extends VectorData> {
     }
 
     public abstract StoreResult update(List<T> documents, StoreOptions options);
+
+    public List<T> search(SearchWrapper wrapper) {
+        return search(wrapper, StoreOptions.DEFAULT);
+    }
 
     public abstract List<T> search(SearchWrapper wrapper, StoreOptions options);
 }

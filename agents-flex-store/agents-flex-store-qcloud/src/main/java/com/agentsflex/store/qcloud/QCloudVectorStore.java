@@ -78,7 +78,7 @@ public class QCloudVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult deleteInternal(Collection<String> ids, StoreOptions options) {
+    public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());

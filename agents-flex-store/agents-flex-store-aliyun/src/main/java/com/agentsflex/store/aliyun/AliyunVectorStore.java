@@ -75,7 +75,7 @@ public class AliyunVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult deleteInternal(Collection<String> ids, StoreOptions options) {
+    public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
 
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
