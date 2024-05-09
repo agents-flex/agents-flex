@@ -27,24 +27,22 @@ public class MilvusExpressionAdaptor implements ExpressionAdaptor {
     public static final MilvusExpressionAdaptor DEFAULT = new MilvusExpressionAdaptor();
 
     @Override
-    public String toSymbol(ConditionType type) {
+    public String toOperationSymbol(ConditionType type) {
         if (type == ConditionType.EQ) {
             return " == ";
         }
-
-        return ExpressionAdaptor.super.toSymbol(type);
+        return type.getDefaultSymbol();
     }
-
 
     @Override
     public String toCondition(Condition condition) {
         if (condition.getType() == ConditionType.BETWEEN) {
             Object[] values = (Object[]) ((Value) condition.getRight()).getValue();
             return "(" + toLeft(condition.getLeft())
-                + toSymbol(ConditionType.GE)
+                + toOperationSymbol(ConditionType.GE)
                 + values[0] + " && "
                 + toLeft(condition.getLeft())
-                + toSymbol(ConditionType.LE)
+                + toOperationSymbol(ConditionType.LE)
                 + values[1] + ")";
         }
 

@@ -24,7 +24,7 @@ public interface ExpressionAdaptor {
 
     default String toCondition(Condition condition) {
         return toLeft(condition.left)
-            + toSymbol(condition.type)
+            + toOperationSymbol(condition.type)
             + toRight(condition.right);
     }
 
@@ -32,7 +32,7 @@ public interface ExpressionAdaptor {
         return operand.toExpression(this);
     }
 
-    default String toSymbol(ConditionType type) {
+    default String toOperationSymbol(ConditionType type) {
         return type.getDefaultSymbol();
     }
 
@@ -66,7 +66,6 @@ public interface ExpressionAdaptor {
     default String toConnector(Connector connector) {
         return connector.getValue();
     }
-
 
     default String toGroupStart(Group group) {
         return "(";
