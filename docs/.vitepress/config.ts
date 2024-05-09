@@ -12,7 +12,7 @@ export default defineConfig({
     // logo: '/assets/images/logo02.png',
 
     themeConfig: {
-        logo: '/assets/images/logo.png',
+        // logo: '/assets/images/logo.png',
         outline:{
             label:"章节"
         },

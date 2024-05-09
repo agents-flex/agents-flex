@@ -17,7 +17,7 @@
 - Function Calling 定义、调用和执行等能力
 - 记忆的能力（Memory）
 - Embedding
-- Vector Storage
+- Vector Store
 - 文档处理
   - 加载器（Loader）
     - Http
@@ -26,8 +26,18 @@
   - 解析器（Parser）
     - PoiParser
     - PdfBoxParser
-- LLM Chain
-- Agents Chain
+- Agent
+  - LLM Agent
+  - IOAgent
+- Chain 执行链
+    - SequentialChain 顺序执行链
+    - ParallelChain 并发（并行）执行链
+    - LoopChain 循环执行连
+    - ChainNode
+        - AgentNode Agent 执行节点
+        - RouterNode 路由节点
+            - ELRouterNode 规则路由
+            - LLMRouterNode LLM路由（由 AI 自行判断路由规则）
 
 ## 简单对话
 

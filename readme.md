@@ -12,11 +12,11 @@
 ## Features
 
 - LLM Visit
-- Prompt、Prompt Template Loader
+- Prompt、Prompt Template
 - Function Calling Definer, Invoker、Running
 - Memory
 - Embedding
-- Vector Storage
+- Vector Store
 - Resource Loaders
 - Document
   - Splitter
@@ -24,8 +24,17 @@
   - Parser
     - PoiParser
     - PdfBoxParser
-- LLMs Chain
-- Agents Chain
+- Agent
+  - LLM Agent
+- Chain
+  - SequentialChain
+  - ParallelChain
+  - LoopChain
+  - ChainNode
+    - AgentNode
+    - RouterNode
+      - ELRouterNode
+      - LLMRouterNode
 
 ## Simple Chat
 
