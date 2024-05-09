@@ -45,9 +45,9 @@ public class MilvusVectorStore extends DocumentStore {
 
     public MilvusVectorStore(MilvusVectorStoreConfig config) {
         ConnectConfig connectConfig = ConnectConfig.builder()
-                .uri(config.getHost())
-                .token(config.getToken())
-                .build();
+            .uri(config.getHost())
+            .token(config.getToken())
+            .build();
 
         this.client = new MilvusClientV2(connectConfig);
         this.defaultCollectionName = config.getDefaultCollectionName();
@@ -64,9 +64,9 @@ public class MilvusVectorStore extends DocumentStore {
             data.add(dict);
         }
         InsertReq insertReq = InsertReq.builder()
-                .collectionName(options.getPartitionName(defaultCollectionName))
-                .data(data)
-                .build();
+            .collectionName(options.getPartitionName(defaultCollectionName))
+            .data(data)
+            .build();
 
         client.insert(insertReq);
         return StoreResult.DEFAULT_SUCCESS;
@@ -76,9 +76,9 @@ public class MilvusVectorStore extends DocumentStore {
     public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
         // Implement Milvus delete logic
         DeleteReq deleteReq = DeleteReq.builder()
-                .collectionName(options.getPartitionName(defaultCollectionName))
-                .ids(new ArrayList<>(ids))
-                .build();
+            .collectionName(options.getPartitionName(defaultCollectionName))
+            .ids(new ArrayList<>(ids))
+            .build();
 
         client.delete(deleteReq);
         return StoreResult.DEFAULT_SUCCESS;
@@ -89,12 +89,13 @@ public class MilvusVectorStore extends DocumentStore {
     public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
         // Implement Milvus search logic
         SearchReq searchReq = SearchReq.builder()
-                .collectionName(options.getCollectionName(defaultCollectionName))
-                .annsField("vector")
-                .topK(searchWrapper.getMaxResults())
-                .filter(searchWrapper.toFilterExpression())
-                .data(Collections.singletonList(searchWrapper.getVector()))
-                .build();
+            .collectionName(options.getCollectionName(defaultCollectionName))
+            .annsField("vector")
+            .topK(searchWrapper.getMaxResults())
+            .filter(searchWrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT))
+            .data(Collections.singletonList(searchWrapper.getVector()))
+            .build();
+
         try {
             SearchResp resp = client.search(searchReq);
             // Parse and convert search results to Document list
@@ -126,6 +127,7 @@ public class MilvusVectorStore extends DocumentStore {
             return Collections.emptyList();
         }
     }
+
     @Override
     public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {

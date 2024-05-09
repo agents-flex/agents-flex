@@ -18,7 +18,7 @@ package com.agentsflex;
 import java.io.Serializable;
 
 /**
- * https://help.aliyun.com/document_detail/2510317.html
+ * https://milvus.io/docs/install-java.md
  */
 public class MilvusVectorStoreConfig implements Serializable {
     private String host;
