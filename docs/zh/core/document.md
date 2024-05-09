@@ -22,7 +22,7 @@ public class Document extends VectorData {
 
 由于其带有向量数据，因此可以被存储在向量数据库（VectorStore）中。
 
-在文档模块了，除了 `Document` 本身以外，还提供了如下几种组件：
+在文档模块中，除了 `Document` 本身以外，还提供了如下几种组件：
 
 - **DocumentLoader**：文档加载器，用于从不同的地方加载（读取）内容（比如 本地磁盘、数据库、网站 等）文档内容。
 - **DocumentParser**：文档解析器，用于对不同类型的文档进行解析，最终得到 `Document` 对象，比如解析 word、pdf、html 等等。
