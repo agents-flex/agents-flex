@@ -20,7 +20,7 @@ import com.agentsflex.util.StringUtil;
 public class Group extends Condition {
 
     private String prevOperand = "";
-    private Condition childCondition;
+    private final Condition childCondition;
 
     public Group(Condition condition) {
         this.childCondition = condition;

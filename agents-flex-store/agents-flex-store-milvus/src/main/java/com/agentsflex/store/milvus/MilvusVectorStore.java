@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex;
+package com.agentsflex.store.milvus;
 
 import com.agentsflex.document.Document;
 import com.agentsflex.store.DocumentStore;

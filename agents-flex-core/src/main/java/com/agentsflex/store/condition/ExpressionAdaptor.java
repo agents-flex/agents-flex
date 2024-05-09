@@ -15,36 +15,58 @@
  */
 package com.agentsflex.store.condition;
 
+import java.util.StringJoiner;
+
 public interface ExpressionAdaptor {
 
     ExpressionAdaptor DEFAULT = new ExpressionAdaptor() {
     };
 
+    default String toCondition(Condition condition) {
+        return toLeft(condition.left)
+            + toSymbol(condition.type)
+            + toRight(condition.right);
+    }
+
     default String toLeft(Operand operand) {
         return operand.toExpression(this);
+    }
+
+    default String toSymbol(ConditionType type) {
+        return type.getDefaultSymbol();
     }
 
     default String toRight(Operand operand) {
         return operand.toExpression(this);
     }
 
-    default String toValue(ConditionType type, Object value) {
-        if (value instanceof Operand) {
-            return ((Operand) value).toExpression(this);
+    default String toValue(Condition condition, Object value) {
+        // between
+        if (condition.getType() == ConditionType.BETWEEN) {
+            Object[] values = (Object[]) value;
+            return "\"" + values[0] + "\" AND \"" + values[1] + "\"";
         }
-//        if (type == ConditionType.IN) {
-//            return "(\"" + value + "\")";
-//        }
+
+        // in
+        else if (condition.getType() == ConditionType.IN) {
+            Object[] values = (Object[]) value;
+            StringJoiner stringJoiner = new StringJoiner(",", "(", ")");
+            for (Object v : values) {
+                if (v != null) {
+                    stringJoiner.add("\"" + v + "\"");
+                }
+            }
+            return stringJoiner.toString();
+        }
+
         return value == null ? "" : "\"" + value + "\"";
     }
+
 
     default String toConnector(Connector connector) {
         return connector.getValue();
     }
 
-    default String toType(ConditionType type) {
-        return type.getDefaultSymbol();
-    }
 
     default String toGroupStart(Group group) {
         return "(";
@@ -53,4 +75,6 @@ public interface ExpressionAdaptor {
     default String toGroupEnd(Group group) {
         return ")";
     }
+
+
 }

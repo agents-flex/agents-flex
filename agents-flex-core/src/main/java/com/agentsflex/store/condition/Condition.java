@@ -18,8 +18,11 @@ public class Condition implements Operand {
         this.left = left;
         this.right = right;
 
-        if (this.right instanceof Value) {
-            ((Value) this.right).condition = this;
+        if (left instanceof Value) {
+            ((Value) left).setCondition(this);
+        }
+        if (right instanceof Value) {
+            ((Value) right).setCondition(this);
         }
     }
 
@@ -61,10 +64,7 @@ public class Condition implements Operand {
             if (prevEffectiveCondition != null && this.connector != null) {
                 expr.append(adaptor.toConnector(this.connector));
             }
-
-            expr.append(adaptor.toLeft(this.left));
-            expr.append(adaptor.toType(this.type));
-            expr.append(adaptor.toRight(this.right));
+            expr.append(adaptor.toCondition(this));
         }
 
         if (this.next != null) {
@@ -72,6 +72,63 @@ public class Condition implements Operand {
         }
 
         return expr.toString();
+    }
+
+
+    public ConditionType getType() {
+        return type;
+    }
+
+    public void setType(ConditionType type) {
+        this.type = type;
+    }
+
+    public Operand getLeft() {
+        return left;
+    }
+
+    public void setLeft(Operand left) {
+        this.left = left;
+    }
+
+    public Operand getRight() {
+        return right;
+    }
+
+    public void setRight(Operand right) {
+        this.right = right;
+    }
+
+    public boolean isEffective() {
+        return effective;
+    }
+
+    public void setEffective(boolean effective) {
+        this.effective = effective;
+    }
+
+    public Connector getConnector() {
+        return connector;
+    }
+
+    public void setConnector(Connector connector) {
+        this.connector = connector;
+    }
+
+    public Condition getPrev() {
+        return prev;
+    }
+
+    public void setPrev(Condition prev) {
+        this.prev = prev;
+    }
+
+    public Condition getNext() {
+        return next;
+    }
+
+    public void setNext(Condition next) {
+        this.next = next;
     }
 
     @Override

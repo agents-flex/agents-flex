@@ -238,15 +238,15 @@ public class SearchWrapper extends VectorData {
     }
 
 
-    public SearchWrapper in(String key, Object value) {
-        return in(Connector.AND, key, value);
+    public SearchWrapper in(String key, Collection<?> values) {
+        return in(Connector.AND, key, values);
     }
 
-    public SearchWrapper in(Connector connector, String key, Object value) {
+    public SearchWrapper in(Connector connector, String key, Collection<?> values) {
         if (this.condition == null) {
-            this.condition = new Condition(ConditionType.IN, new Key(key), new Value(value));
+            this.condition = new Condition(ConditionType.IN, new Key(key), new Value(values.toArray()));
         } else {
-            this.condition.connect(new Condition(ConditionType.IN, new Key(key), new Value(value)), connector);
+            this.condition.connect(new Condition(ConditionType.IN, new Key(key), new Value(values.toArray())), connector);
         }
         return this;
     }
@@ -264,15 +264,15 @@ public class SearchWrapper extends VectorData {
         return this;
     }
 
-    public SearchWrapper between(String key, Object value) {
-        return between(Connector.AND, key, value);
+    public SearchWrapper between(String key, Object start, Object end) {
+        return between(Connector.AND, key, start, end);
     }
 
-    public SearchWrapper between(Connector connector, String key, Object value) {
+    public SearchWrapper between(Connector connector, String key, Object start, Object end) {
         if (this.condition == null) {
-            this.condition = new Condition(ConditionType.BETWEEN, new Key(key), new Value(value));
+            this.condition = new Condition(ConditionType.BETWEEN, new Key(key), new Value(start, end));
         } else {
-            this.condition.connect(new Condition(ConditionType.BETWEEN, new Key(key), new Value(value)), connector);
+            this.condition.connect(new Condition(ConditionType.BETWEEN, new Key(key), new Value(start, end)), connector);
         }
         return this;
     }
