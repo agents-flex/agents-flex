@@ -41,10 +41,17 @@ public abstract class RouterNode extends AbstractBaseNode {
         }
 
         List<ChainNode> matchNodes = new ArrayList<>();
-        String[] ids = routeKeys.split(",");
-        for (String id : ids) {
+        String[] idOrNames = routeKeys.split(",");
+        for (String idOrName : idOrNames) {
+            if (StringUtil.noText(idOrName)) {
+                continue;
+            } else {
+                idOrName = idOrName.trim();
+            }
             for (ChainNode node : this.nodes) {
-                if (Objects.equals(id, String.valueOf(node.getId()))) {
+                if (Objects.equals(idOrName, String.valueOf(node.getId()))
+                    || Objects.equals(idOrName, node.getName())
+                ) {
                     matchNodes.add(node);
                 }
             }
@@ -57,30 +64,30 @@ public abstract class RouterNode extends AbstractBaseNode {
             return executeNode(chain, matchNodes.get(0));
         }
 
-        return onMatchMultiNodes(matchNodes,chain);
+        return onMatchMultiNodes(matchNodes, chain);
     }
 
-    protected Map<String,Object> onMatchMultiNodes(List<ChainNode> nodes, Chain chain) {
+    protected Map<String, Object> onMatchMultiNodes(List<ChainNode> nodes, Chain chain) {
         switch (this.multiMatchStrategy) {
             case ALL:
                 return buildMultiResult(nodes, chain);
             case FIRST:
-                return executeNode(chain,nodes.get(0));
+                return executeNode(chain, nodes.get(0));
             case LAST:
-                return executeNode(chain,nodes.get(nodes.size() - 1));
+                return executeNode(chain, nodes.get(nodes.size() - 1));
             case RANDOM:
-                return executeNode(chain,nodes.get(ThreadLocalRandom.current().nextInt(nodes.size())));
+                return executeNode(chain, nodes.get(ThreadLocalRandom.current().nextInt(nodes.size())));
             default:
                 return null;
         }
     }
 
 
-    private Map<String,Object> buildMultiResult(List<ChainNode> nodes, Chain chain) {
-        Map<String,Object> results = new HashMap<>();
+    private Map<String, Object> buildMultiResult(List<ChainNode> nodes, Chain chain) {
+        Map<String, Object> results = new HashMap<>();
         for (ChainNode matchNode : nodes) {
             Map<String, Object> result = executeNode(chain, matchNode);
-            if (result != null){
+            if (result != null) {
                 results.putAll(result);
             }
         }
@@ -109,8 +116,8 @@ public abstract class RouterNode extends AbstractBaseNode {
         this.nodes = nodes;
     }
 
-    public void addNode(ChainNode node){
-        if (nodes == null){
+    public void addNode(ChainNode node) {
+        if (nodes == null) {
             nodes = new ArrayList<>();
         }
         nodes.add(node);

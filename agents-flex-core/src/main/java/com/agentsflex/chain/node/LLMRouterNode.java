@@ -28,8 +28,38 @@ public class LLMRouterNode extends RouterNode {
     private Llm llm;
     private String prompt;
 
+    public LLMRouterNode() {
+    }
+
+    public LLMRouterNode(Llm llm, String prompt) {
+        this.llm = llm;
+        this.prompt = prompt;
+    }
+
+    public LLMRouterNode(List<ChainNode> nodes, Llm llm, String prompt) {
+        super(nodes);
+        this.llm = llm;
+        this.prompt = prompt;
+    }
+
     public LLMRouterNode(List<ChainNode> nodes) {
         super(nodes);
+    }
+
+    public Llm getLlm() {
+        return llm;
+    }
+
+    public void setLlm(Llm llm) {
+        this.llm = llm;
+    }
+
+    public String getPrompt() {
+        return prompt;
+    }
+
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
     }
 
     @Override

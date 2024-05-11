@@ -26,7 +26,10 @@ import java.util.List;
 import java.util.Map;
 
 public class AgentNode extends AbstractBaseNode {
-    private final Agent agent;
+    private Agent agent;
+
+    public AgentNode() {
+    }
 
     public AgentNode(Agent agent) {
         this.agent = agent;
@@ -39,6 +42,10 @@ public class AgentNode extends AbstractBaseNode {
 
     public Agent getAgent() {
         return agent;
+    }
+
+    public void setAgent(Agent agent) {
+        this.agent = agent;
     }
 
     @Override

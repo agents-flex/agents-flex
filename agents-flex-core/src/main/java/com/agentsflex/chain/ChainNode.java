@@ -21,6 +21,10 @@ public interface ChainNode {
 
     Object getId();
 
+    default String getName() {
+        return null;
+    }
+
     boolean isSkip();
 
     Map<String, Object> execute(Chain chain);

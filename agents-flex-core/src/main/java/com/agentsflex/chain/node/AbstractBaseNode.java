@@ -22,6 +22,7 @@ import java.util.UUID;
 public abstract class AbstractBaseNode implements ChainNode {
 
     protected Object id;
+    protected String name;
     protected boolean skip;
 
     public AbstractBaseNode() {
@@ -35,6 +36,19 @@ public abstract class AbstractBaseNode implements ChainNode {
 
     public void setId(Object id) {
         this.id = id;
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setSkip(boolean skip) {
+        this.skip = skip;
     }
 
     @Override

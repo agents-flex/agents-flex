@@ -16,12 +16,33 @@
 package com.agentsflex.chain.node;
 
 import com.agentsflex.chain.Chain;
+import com.agentsflex.chain.ChainNode;
 import com.ql.util.express.DefaultContext;
 import com.ql.util.express.ExpressRunner;
 
-public class QLExpressRouterNode extends RouterNode {
+import java.util.Arrays;
+import java.util.List;
 
+public class QLExpressRouterNode extends RouterNode {
     private String express;
+
+    public QLExpressRouterNode() {
+
+    }
+
+    public QLExpressRouterNode(String express) {
+        this.express = express;
+    }
+
+    public QLExpressRouterNode(String express, ChainNode... nodes) {
+        this.express = express;
+        this.setNodes(Arrays.asList(nodes));
+    }
+
+    public QLExpressRouterNode(List<ChainNode> nodes, String express) {
+        super(nodes);
+        this.express = express;
+    }
 
     @Override
     protected String route(Chain chain) {

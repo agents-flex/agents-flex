@@ -16,14 +16,35 @@
 package com.agentsflex.chain.node;
 
 import com.agentsflex.chain.Chain;
+import com.agentsflex.chain.ChainNode;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 public class GroovyRouterNode extends RouterNode {
 
     private String express;
+
+    public GroovyRouterNode() {
+
+    }
+
+    public GroovyRouterNode(String express) {
+        this.express = express;
+    }
+
+    public GroovyRouterNode(String express, ChainNode... nodes) {
+        this.express = express;
+        this.setNodes(Arrays.asList(nodes));
+    }
+
+    public GroovyRouterNode(List<ChainNode> nodes, String express) {
+        super(nodes);
+        this.express = express;
+    }
 
     @Override
     protected String route(Chain chain) {

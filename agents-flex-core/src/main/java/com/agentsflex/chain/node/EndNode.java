@@ -21,6 +21,10 @@ import java.util.Map;
 
 public class EndNode extends AbstractBaseNode {
 
+    public EndNode() {
+        this.name = "end";
+    }
+
     @Override
     public Map<String, Object> execute(Chain chain) {
         chain.stop();
