@@ -54,4 +54,16 @@ public class AiMessage extends TextMessage {
     public void setFullContent(String fullContent) {
         this.fullContent = fullContent;
     }
+
+    @Override
+    public String toString() {
+        return "AiMessage{" +
+            "index=" + index +
+            ", status=" + status +
+            ", totalTokens=" + totalTokens +
+            ", fullContent='" + fullContent + '\'' +
+            ", content='" + content + '\'' +
+            ", metadatas=" + metadatas +
+            '}';
+    }
 }

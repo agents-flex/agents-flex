@@ -21,8 +21,8 @@ import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
-import com.agentsflex.parser.impl.BaseAiMessageParser;
-import com.agentsflex.parser.impl.BaseFunctionMessageParser;
+import com.agentsflex.parser.impl.DefaultAiMessageParser;
+import com.agentsflex.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.prompt.DefaultPromptFormat;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.PromptFormat;
@@ -63,7 +63,7 @@ public class SparkLlmUtil {
 
 
     public static AiMessageParser getAiMessageParser() {
-        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
+        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         aiMessageParser.setContentPath("$.payload.choices.text[0].content");
         aiMessageParser.setIndexPath("$.payload.choices.text[0].index");
         aiMessageParser.setStatusPath("$.payload.choices.status");
@@ -73,7 +73,7 @@ public class SparkLlmUtil {
 
 
     public static FunctionMessageParser getFunctionMessageParser() {
-        BaseFunctionMessageParser functionMessageParser = new BaseFunctionMessageParser();
+        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
         functionMessageParser.setFunctionNamePath("$.payload.choices.text[0].function_call.name");
         functionMessageParser.setFunctionArgsPath("$.payload.choices.text[0].function_call.arguments");
         functionMessageParser.setFunctionArgsParser(JSON::parseObject);

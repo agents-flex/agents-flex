@@ -26,6 +26,7 @@ import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
 import com.agentsflex.llm.embedding.EmbeddingOptions;
+import com.agentsflex.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
@@ -35,6 +36,8 @@ import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
 import com.agentsflex.util.StringUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
@@ -64,7 +67,6 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         super(config);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <R extends MessageResponse<M>, M extends AiMessage> R chat(Prompt<M> prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
@@ -73,17 +75,38 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
-        String responseString = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
-        if (StringUtil.noText(responseString)) {
+        String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
+        if (StringUtil.noText(response)) {
             return null;
         }
 
-        if (prompt instanceof FunctionPrompt) {
-            return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
-                , functionMessageParser.parse(responseString));
-        } else {
-            return (R) new AiMessageResponse(aiMessageParser.parse(responseString));
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
         }
+
+        JSONObject jsonObject = JSON.parseObject(response);
+        JSONObject error = jsonObject.getJSONObject("error");
+
+        AbstractBaseMessageResponse<M> messageResponse;
+
+        if (prompt instanceof FunctionPrompt) {
+            //noinspection unchecked
+            messageResponse = (AbstractBaseMessageResponse<M>) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
+                , functionMessageParser.parse(jsonObject));
+        } else {
+            //noinspection unchecked
+            messageResponse = (AbstractBaseMessageResponse<M>) new AiMessageResponse(aiMessageParser.parse(jsonObject));
+        }
+
+        if (error != null && !error.isEmpty()) {
+            messageResponse.setError(true);
+            messageResponse.setErrorMessage(error.getString("message"));
+            messageResponse.setErrorType(error.getString("type"));
+            messageResponse.setErrorCode(error.getString("code"));
+        }
+
+        //noinspection unchecked
+        return (R) messageResponse;
     }
 
 
@@ -113,6 +136,10 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
+        }
+
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
         }
 
         VectorData vectorData = new VectorData();

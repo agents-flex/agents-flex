@@ -19,6 +19,7 @@ import com.agentsflex.agent.Agent;
 import com.agentsflex.agent.Parameter;
 import com.agentsflex.chain.event.OnErrorEvent;
 import com.agentsflex.chain.event.OnFinishedEvent;
+import com.agentsflex.chain.event.OnStartEvent;
 import com.agentsflex.chain.event.OnStatusChangeEvent;
 import com.agentsflex.chain.node.AgentNode;
 import com.agentsflex.memory.ContextMemory;
@@ -39,12 +40,14 @@ public abstract class Chain implements Serializable {
     private List<Chain> children;
     private ChainStatus status = ChainStatus.READY;
 
+    private String errorMessage;
+
     //理论上是线程安全的，所有有多线程写入的情况，但是只有全部写入完成后才会去通知监听器
     private List<Parameter> waitInputParameters = new ArrayList<>();
 
 
     public Chain() {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
     }
 
     public Object getId() {
@@ -260,18 +263,18 @@ public abstract class Chain implements Serializable {
             this.memory.putAll(variables);
         }
         try {
-            setStatus(ChainStatus.START);
-            runnable.run();
-        } catch (Exception e) {
-            setStatus(ChainStatus.ERROR);
-            notifyEvent(new OnErrorEvent(e));
-        } finally {
-            if (!waitInputParameters.isEmpty()) {
-                notifyInput(waitInputParameters);
+            notifyEvent(new OnStartEvent());
+            try {
+                setStatus(ChainStatus.START);
+                runnable.run();
+            } catch (Exception e) {
+                setStatus(ChainStatus.ERROR);
+                notifyEvent(new OnErrorEvent(e));
+            } finally {
+                if (!waitInputParameters.isEmpty()) {
+                    notifyInput(waitInputParameters);
+                }
             }
-        }
-
-        try {
             if (status == ChainStatus.START) {
                 setStatus(ChainStatus.FINISHED_NORMAL);
             } else if (status == ChainStatus.ERROR) {
@@ -297,11 +300,36 @@ public abstract class Chain implements Serializable {
         }
     }
 
-    public void stop() {
+    private void notifyOutput(Agent agent, Object response) {
+        for (ChainOutputListener inputListener : outputListeners) {
+            inputListener.onOutput(this, agent, response);
+        }
+    }
+
+    public void stopNormal() {
         setStatus(ChainStatus.FINISHED_NORMAL);
         if (parent != null) {
-            parent.stop();
+            parent.stopNormal();
         }
+    }
+
+    public void stopError(String errorMessage) {
+        this.errorMessage = errorMessage;
+        setStatus(ChainStatus.FINISHED_ABNORMAL);
+        if (parent != null) {
+            parent.stopError(errorMessage);
+        }
+    }
+
+    public void output(Agent agent, Object response) {
+        notifyOutput(agent, response);
+        if (parent != null) {
+            parent.output(agent, response);
+        }
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
     }
 
     @Override

@@ -17,7 +17,7 @@ package com.agentsflex.llm.llama;
 
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
-import com.agentsflex.parser.impl.BaseAiMessageParser;
+import com.agentsflex.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.prompt.DefaultPromptFormat;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.PromptFormat;
@@ -29,7 +29,7 @@ public class LlamaLlmUtil {
 
 
     public static AiMessageParser getAiMessageParser() {
-        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser() ;
+        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser() ;
         aiMessageParser.setContentPath("$.choices[0].message.content");
         aiMessageParser.setIndexPath("$.choices[0].index");
         aiMessageParser.setStatusPath("$.choices[0].finish_reason");

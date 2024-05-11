@@ -16,6 +16,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.chain.Chain;
+import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.llm.Llm;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.message.AiMessage;
@@ -28,6 +29,7 @@ import java.util.Map;
 public class LLMAgent extends Agent {
 
     protected Llm llm;
+    protected ChatOptions chatOptions = ChatOptions.DEFAULT;
     protected String prompt;
 
     public LLMAgent() {
@@ -56,6 +58,17 @@ public class LLMAgent extends Agent {
         this.prompt = prompt;
     }
 
+    public ChatOptions getChatOptions() {
+        return chatOptions;
+    }
+
+    public void setChatOptions(ChatOptions chatOptions) {
+        if (chatOptions == null) {
+            chatOptions = ChatOptions.DEFAULT;
+        }
+        this.chatOptions = chatOptions;
+    }
+
     @Override
     public List<Parameter> defineInputParameter() {
         return null;
@@ -65,7 +78,18 @@ public class LLMAgent extends Agent {
     public Output execute(Map<String, Object> variables, Chain chain) {
         SimplePromptTemplate promptTemplate = SimplePromptTemplate.create(prompt);
         SimplePrompt simplePrompt = promptTemplate.format(chain == null ? variables : chain.getMemory().getAll());
-        AiMessageResponse response = llm.chat(simplePrompt);
+        AiMessageResponse response = llm.chat(simplePrompt, chatOptions);
+
+        if (chain != null) {
+            chain.output(this, response);
+
+            if (response.isError()) {
+                chain.stopError(response.getErrorMessage());
+                return null;
+            }
+        }
+
+
         return parseAiMessage(response.getMessage());
     }
 
@@ -73,4 +97,13 @@ public class LLMAgent extends Agent {
         return Output.ofValue(aiMessage.getContent());
     }
 
+    @Override
+    public String toString() {
+        return "LLMAgent{" +
+            "llm=" + llm +
+            ", prompt='" + prompt + '\'' +
+            ", id=" + id +
+            ", name='" + name + '\'' +
+            '}';
+    }
 }

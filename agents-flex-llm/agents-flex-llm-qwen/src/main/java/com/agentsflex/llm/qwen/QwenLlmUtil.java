@@ -18,8 +18,8 @@ package com.agentsflex.llm.qwen;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
-import com.agentsflex.parser.impl.BaseAiMessageParser;
-import com.agentsflex.parser.impl.BaseFunctionMessageParser;
+import com.agentsflex.parser.impl.DefaultAiMessageParser;
+import com.agentsflex.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.prompt.DefaultPromptFormat;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.PromptFormat;
@@ -31,7 +31,7 @@ public class QwenLlmUtil {
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
     public static AiMessageParser getAiMessageParser() {
-        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
+        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         aiMessageParser.setContentPath("$.output.text");
         aiMessageParser.setStatusPath("$.output.finish_reason");
         aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
@@ -41,7 +41,7 @@ public class QwenLlmUtil {
 
 
     public static FunctionMessageParser getFunctionMessageParser() {
-        BaseFunctionMessageParser functionMessageParser = new BaseFunctionMessageParser();
+        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
         functionMessageParser.setFunctionNamePath("$.choices[0].message.tool_calls[0].function.name");
         functionMessageParser.setFunctionArgsPath("$.choices[0].message.tool_calls[0].function.arguments");
         functionMessageParser.setFunctionArgsParser(JSON::parseObject);

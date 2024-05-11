@@ -17,5 +17,5 @@ package com.agentsflex.parser;
 
 import com.agentsflex.message.AiMessage;
 
-public interface AiMessageParser extends TextParser<AiMessage> {
+public interface AiMessageParser extends JSONObjectParser<AiMessage> {
 }

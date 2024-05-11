@@ -16,12 +16,11 @@
 package com.agentsflex.llm.response;
 
 import com.agentsflex.functions.Function;
-import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.message.FunctionMessage;
 
 import java.util.List;
 
-public class FunctionMessageResponse implements MessageResponse<FunctionMessage> {
+public class FunctionMessageResponse extends AbstractBaseMessageResponse<FunctionMessage> {
 
     private final List<Function> functions;
     private final FunctionMessage functionMessage;
@@ -46,5 +45,17 @@ public class FunctionMessageResponse implements MessageResponse<FunctionMessage>
     @Override
     public FunctionMessage getMessage() {
         return functionMessage;
+    }
+
+    @Override
+    public String toString() {
+        return "FunctionMessageResponse{" +
+            "functions=" + functions +
+            ", functionMessage=" + functionMessage +
+            ", isError=" + isError +
+            ", errorMessage='" + errorMessage + '\'' +
+            ", errorType='" + errorType + '\'' +
+            ", errorCode='" + errorCode + '\'' +
+            '}';
     }
 }

@@ -26,10 +26,10 @@ import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
 import com.agentsflex.llm.embedding.EmbeddingOptions;
+import com.agentsflex.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
-import com.agentsflex.message.FunctionMessage;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
@@ -37,6 +37,8 @@ import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
 import com.agentsflex.util.Maps;
 import com.agentsflex.util.StringUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
@@ -67,13 +69,17 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
         String endpoint = config.getEndpoint();
         String payload = Maps.of("model", "embedding-2").put("input", document.getContent()).toJSON();
-        String responseString = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
-        if (StringUtil.noText(responseString)) {
+        String response = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
+        if (StringUtil.noText(response)) {
             return null;
         }
 
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
+        }
+
         VectorData vectorData = new VectorData();
-        vectorData.setVector(JSONPath.read(responseString, "$.data[0].embedding", double[].class));
+        vectorData.setVector(JSONPath.read(response, "$.data[0].embedding", double[].class));
 
         return vectorData;
     }
@@ -87,18 +93,39 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
         String endpoint = config.getEndpoint();
         String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false);
-        String responseString = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
-        if (StringUtil.noText(responseString)) {
+        String response = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
+        if (StringUtil.noText(response)) {
             return null;
         }
 
-        if (prompt instanceof FunctionPrompt) {
-            FunctionMessage functionMessage = functionMessageParser.parse(responseString);
-            return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions(), functionMessage);
-        } else {
-            AiMessage aiMessage = aiMessageParser.parse(responseString);
-            return (R) new AiMessageResponse(aiMessage);
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
         }
+
+
+        JSONObject jsonObject = JSON.parseObject(response);
+        JSONObject error = jsonObject.getJSONObject("error");
+
+        AbstractBaseMessageResponse<M> messageResponse;
+
+        if (prompt instanceof FunctionPrompt) {
+            //noinspection unchecked
+            messageResponse = (AbstractBaseMessageResponse<M>) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
+                , functionMessageParser.parse(jsonObject));
+        } else {
+            //noinspection unchecked
+            messageResponse = (AbstractBaseMessageResponse<M>) new AiMessageResponse(aiMessageParser.parse(jsonObject));
+        }
+
+        if (error != null && !error.isEmpty()) {
+            messageResponse.setError(true);
+            messageResponse.setErrorMessage(error.getString("message"));
+            messageResponse.setErrorType(error.getString("type"));
+            messageResponse.setErrorCode(error.getString("code"));
+        }
+
+        //noinspection unchecked
+        return (R) messageResponse;
     }
 
 

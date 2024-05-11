@@ -39,12 +39,25 @@ public class DefaultContextMemory implements ContextMemory {
 
     @Override
     public void put(String key, Object value) {
-        context.put(key, value);
+        if (value == null) {
+            this.context.remove(key);
+        } else {
+            context.put(key, value);
+        }
     }
 
     @Override
-    public void putAll(Map<String, Object> context) {
-        this.context.putAll(context);
+    public void putAll(Map<String, Object> map) {
+        if (map == null) {
+            return;
+        }
+        map.forEach((string, object) -> {
+            if (object == null) {
+                DefaultContextMemory.this.context.remove(string);
+            } else {
+                DefaultContextMemory.this.context.put(string, object);
+            }
+        });
     }
 
     @Override

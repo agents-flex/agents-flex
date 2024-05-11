@@ -16,8 +16,8 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.chain.event.OnNodeExecuteAfterEvent;
-import com.agentsflex.chain.event.OnNodeExecuteBeforeEvent;
+import com.agentsflex.chain.event.OnNodeFinishedEvent;
+import com.agentsflex.chain.event.OnNodeStartEvent;
 import com.agentsflex.chain.node.AgentNode;
 
 import java.util.*;
@@ -56,14 +56,17 @@ public class SequentialChain extends BaseChain {
         for (int i = currentIndex; i < getNodes().size(); i++) {
             try {
                 ChainNode node = nodes.get(i);
-                notifyEvent(new OnNodeExecuteBeforeEvent(node));
 
-                if (this.getStatus() != ChainStatus.START) {
-                    break;
+                Map<String, Object> result = null;
+                try {
+                    notifyEvent(new OnNodeStartEvent(node));
+                    if (this.getStatus() != ChainStatus.START) {
+                        break;
+                    }
+                    result = node.execute(this);
+                } finally {
+                    notifyEvent(new OnNodeFinishedEvent(node, result));
                 }
-
-                Map<String, Object> result = node.execute(this);
-                notifyEvent(new OnNodeExecuteAfterEvent(node, result));
 
                 if (this.getStatus() != ChainStatus.START) {
                     break;
@@ -84,7 +87,7 @@ public class SequentialChain extends BaseChain {
 
     @Override
     protected void resumeInternal(Map<String, Object> variables) {
-        if (variables != null){
+        if (variables != null) {
             this.getMemory().putAll(variables);
         }
         executeInternal();

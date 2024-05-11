@@ -20,8 +20,8 @@ import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
-import com.agentsflex.parser.impl.BaseAiMessageParser;
-import com.agentsflex.parser.impl.BaseFunctionMessageParser;
+import com.agentsflex.parser.impl.DefaultAiMessageParser;
+import com.agentsflex.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.prompt.DefaultPromptFormat;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.prompt.PromptFormat;
@@ -33,7 +33,7 @@ public class OpenAiLLmUtil {
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
     public static AiMessageParser getAiMessageParser() {
-        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
+        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         aiMessageParser.setContentPath("$.choices[0].message.content");
         aiMessageParser.setIndexPath("$.choices[0].index");
         aiMessageParser.setStatusPath("$.choices[0].finish_reason");
@@ -42,7 +42,7 @@ public class OpenAiLLmUtil {
     }
 
     public static AiMessageParser getStreamMessageParser() {
-        BaseAiMessageParser aiMessageParser = new BaseAiMessageParser();
+        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         aiMessageParser.setContentPath("$.choices[0].delta.content");
         aiMessageParser.setIndexPath("$.choices[0].index");
         aiMessageParser.setStatusPath("$.choices[0].finish_reason");
@@ -52,7 +52,7 @@ public class OpenAiLLmUtil {
 
 
     public static FunctionMessageParser getFunctionMessageParser() {
-        BaseFunctionMessageParser functionMessageParser = new BaseFunctionMessageParser();
+        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
         functionMessageParser.setFunctionNamePath("$.choices[0].message.tool_calls[0].function.name");
         functionMessageParser.setFunctionArgsPath("$.choices[0].message.tool_calls[0].function.arguments");
         functionMessageParser.setFunctionArgsParser(JSON::parseObject);

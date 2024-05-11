@@ -26,6 +26,7 @@ import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
 import com.agentsflex.llm.embedding.EmbeddingOptions;
+import com.agentsflex.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.parser.AiMessageParser;
@@ -33,6 +34,8 @@ import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
 import com.agentsflex.util.StringUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -62,17 +65,36 @@ public class LlamaLlm extends BaseLlm<LlamaLlmConfig> {
 
         String endpoint = config.getEndpoint();
         String payload = LlamaLlmUtil.promptToPayload(prompt, config, false);
-        String responseString = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
-        if (StringUtil.noText(responseString)) {
+        String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
+        if (StringUtil.noText(response)) {
             return null;
         }
 
-        if (prompt instanceof FunctionPrompt) {
-            throw new IllegalStateException("Llama LLM can not support function prompt.");
-        } else {
-            AiMessage aiMessage = aiMessageParser.parse(responseString);
-            return (R) new AiMessageResponse(aiMessage);
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
         }
+
+        JSONObject jsonObject = JSON.parseObject(response);
+        JSONObject error = jsonObject.getJSONObject("error");
+
+        AbstractBaseMessageResponse<M> messageResponse;
+
+        if (prompt instanceof FunctionPrompt) {
+            throw new IllegalStateException("Llama not support function calling");
+        } else {
+            //noinspection unchecked
+            messageResponse = (AbstractBaseMessageResponse<M>) new AiMessageResponse(aiMessageParser.parse(jsonObject));
+        }
+
+        if (error != null && !error.isEmpty()) {
+            messageResponse.setError(true);
+            messageResponse.setErrorMessage(error.getString("message"));
+            messageResponse.setErrorType(error.getString("type"));
+            messageResponse.setErrorCode(error.getString("code"));
+        }
+
+        //noinspection unchecked
+        return (R) messageResponse;
     }
 
 

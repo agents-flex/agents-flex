@@ -80,7 +80,7 @@ public class AgentNode extends AbstractBaseNode {
             return null;
         }
 
-        Output output = agent.execute(variables);
+        Output output = agent.execute(variables, chain);
         List<String> outputKeys = agent.getOutputKeys();
         if (outputKeys != null && !outputKeys.isEmpty()) {
             Map<String, String> outputMapping = agent.getOutputMapping();

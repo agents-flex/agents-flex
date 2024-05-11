@@ -16,28 +16,7 @@
 package com.agentsflex.chain.event;
 
 import com.agentsflex.chain.ChainEvent;
-import com.agentsflex.chain.ChainNode;
 
-public class OnNodeExecuteBeforeEvent implements ChainEvent {
+public class OnStartEvent implements ChainEvent {
 
-    private ChainNode node;
-
-    public OnNodeExecuteBeforeEvent(ChainNode node) {
-        this.node = node;
-    }
-
-    public ChainNode getNode() {
-        return node;
-    }
-
-    public void setNode(ChainNode node) {
-        this.node = node;
-    }
-
-    @Override
-    public String toString() {
-        return "OnNodeExecuteBeforeEvent{" +
-            "node=" + node +
-            '}';
-    }
 }

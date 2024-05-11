@@ -15,11 +15,10 @@
  */
 package com.agentsflex.llm.response;
 
-import com.agentsflex.llm.MessageResponse;
 import com.agentsflex.message.AiMessage;
 
-public class AiMessageResponse implements MessageResponse<AiMessage> {
-    private final AiMessage aiMessage;
+public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
+    private AiMessage aiMessage;
 
     public AiMessageResponse(AiMessage aiMessage) {
         this.aiMessage = aiMessage;
@@ -28,5 +27,16 @@ public class AiMessageResponse implements MessageResponse<AiMessage> {
     @Override
     public AiMessage getMessage() {
         return aiMessage;
+    }
+
+    @Override
+    public String toString() {
+        return "AiMessageResponse{" +
+            "aiMessage=" + aiMessage +
+            ", isError=" + isError +
+            ", errorMessage='" + errorMessage + '\'' +
+            ", errorType='" + errorType + '\'' +
+            ", errorCode='" + errorCode + '\'' +
+            '}';
     }
 }

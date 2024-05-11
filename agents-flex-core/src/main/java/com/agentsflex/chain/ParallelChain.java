@@ -17,8 +17,8 @@ package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
 import com.agentsflex.agent.Parameter;
-import com.agentsflex.chain.event.OnNodeExecuteAfterEvent;
-import com.agentsflex.chain.event.OnNodeExecuteBeforeEvent;
+import com.agentsflex.chain.event.OnNodeFinishedEvent;
+import com.agentsflex.chain.event.OnNodeStartEvent;
 import com.agentsflex.chain.node.AgentNode;
 import com.agentsflex.util.NamedThreadPools;
 
@@ -116,13 +116,16 @@ public class ParallelChain extends BaseChain {
         @Override
         public void run() {
             try {
-                chain.notifyEvent(new OnNodeExecuteBeforeEvent(node));
-                if (chain.getStatus() != ChainStatus.START) {
-                    return;
+                Map<String, Object> result = null;
+                try {
+                    chain.notifyEvent(new OnNodeStartEvent(node));
+                    if (chain.getStatus() != ChainStatus.START) {
+                        return;
+                    }
+                    result = node.execute(chain);
+                } finally {
+                    chain.notifyEvent(new OnNodeFinishedEvent(node, result));
                 }
-
-                Map<String, Object> result = node.execute(chain);
-                chain.notifyEvent(new OnNodeExecuteAfterEvent(node, result));
 
                 if (chain.getStatus() != ChainStatus.START) {
                     return;

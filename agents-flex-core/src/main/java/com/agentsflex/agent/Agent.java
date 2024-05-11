@@ -25,33 +25,32 @@ import java.util.UUID;
 
 /**
  * 代理（人），有身份 （id），有姓名（name），有记忆 （memory），能执行 execute
- *
  */
 public abstract class Agent {
-    private Object id;
-    private String name;
+    protected Object id;
+    protected String name;
     private ContextMemory memory;
     private List<Parameter> inputParameters;
     private List<String> outputKeys;
     private Map<String, String> outputMapping;
 
     public Agent() {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         List<Parameter> definedInputParameter = this.defineInputParameter();
-        this.inputParameters = definedInputParameter == null ? Collections.emptyList(): definedInputParameter;
+        this.inputParameters = definedInputParameter == null ? Collections.emptyList() : definedInputParameter;
     }
 
     public Agent(Object id) {
         this.id = id;
         List<Parameter> definedInputParameter = this.defineInputParameter();
-        this.inputParameters = definedInputParameter == null ? Collections.emptyList(): definedInputParameter;
+        this.inputParameters = definedInputParameter == null ? Collections.emptyList() : definedInputParameter;
     }
 
     public Agent(Object id, String name) {
         this.id = id;
         this.name = name;
         List<Parameter> definedInputParameter = this.defineInputParameter();
-        this.inputParameters = definedInputParameter == null ? Collections.emptyList(): definedInputParameter;
+        this.inputParameters = definedInputParameter == null ? Collections.emptyList() : definedInputParameter;
     }
 
 
@@ -108,6 +107,7 @@ public abstract class Agent {
     }
 
     public abstract List<Parameter> defineInputParameter();
+
     public abstract Output execute(Map<String, Object> variables, Chain chain);
 
     @Override

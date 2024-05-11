@@ -20,12 +20,11 @@ import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.Parser;
 import com.agentsflex.util.StringUtil;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 
 
-public class BaseAiMessageParser implements AiMessageParser {
+public class DefaultAiMessageParser implements AiMessageParser {
 
     private String contentPath;
     private String indexPath;
@@ -74,13 +73,8 @@ public class BaseAiMessageParser implements AiMessageParser {
     }
 
     @Override
-    public AiMessage parse(String content) {
-        if (StringUtil.noText(content) || "[DONE]".equalsIgnoreCase(content.trim())) {
-            return null;
-        }
-
+    public AiMessage parse(JSONObject rootJson) {
         AiMessage aiMessage = new AiMessage();
-        JSONObject rootJson = JSON.parseObject(content);
 
         if (StringUtil.hasText(this.contentPath)) {
             aiMessage.setContent((String) JSONPath.eval(rootJson, this.contentPath));

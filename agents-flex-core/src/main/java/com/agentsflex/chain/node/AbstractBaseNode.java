@@ -26,7 +26,7 @@ public abstract class AbstractBaseNode implements ChainNode {
     protected boolean skip;
 
     public AbstractBaseNode() {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
     }
 
 

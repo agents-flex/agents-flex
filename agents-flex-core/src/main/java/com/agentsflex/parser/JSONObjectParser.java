@@ -15,6 +15,8 @@
  */
 package com.agentsflex.parser;
 
-public interface TextParser<T> extends Parser<String, T> {
+import com.alibaba.fastjson.JSONObject;
+
+public interface JSONObjectParser<T> extends Parser<JSONObject, T> {
 
 }

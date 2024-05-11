@@ -27,7 +27,7 @@ public class EndNode extends AbstractBaseNode {
 
     @Override
     public Map<String, Object> execute(Chain chain) {
-        chain.stop();
+        chain.stopNormal();
         return null;
     }
 }

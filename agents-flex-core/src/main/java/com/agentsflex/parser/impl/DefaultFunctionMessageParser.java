@@ -18,13 +18,12 @@ package com.agentsflex.parser.impl;
 import com.agentsflex.message.FunctionMessage;
 import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.parser.Parser;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 
 import java.util.Map;
 
-public class BaseFunctionMessageParser implements FunctionMessageParser {
+public class DefaultFunctionMessageParser implements FunctionMessageParser {
 
     private String functionNamePath;
     private String functionArgsPath;
@@ -55,9 +54,8 @@ public class BaseFunctionMessageParser implements FunctionMessageParser {
     }
 
     @Override
-    public FunctionMessage parse(String content) {
+    public FunctionMessage parse(JSONObject jsonObject) {
         FunctionMessage functionMessage = new FunctionMessage();
-        JSONObject jsonObject = JSON.parseObject(content);
         String functionName = (String) JSONPath.eval(jsonObject, this.functionNamePath);
         functionMessage.setFunctionName(functionName);
         String functionArgsString = (String) JSONPath.eval(jsonObject, this.functionArgsPath);

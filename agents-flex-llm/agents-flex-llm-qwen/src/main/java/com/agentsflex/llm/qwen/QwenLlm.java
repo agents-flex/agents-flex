@@ -26,16 +26,19 @@ import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.SseClient;
 import com.agentsflex.llm.embedding.EmbeddingOptions;
+import com.agentsflex.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
-import com.agentsflex.parser.impl.BaseAiMessageParser;
+import com.agentsflex.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.Prompt;
 import com.agentsflex.store.VectorData;
 import com.agentsflex.util.StringUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -62,16 +65,38 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config);
         String endpoint = config.getEndpoint();
-        String responseString = httpClient.post(endpoint + "/api/v1/services/aigc/text-generation/generation", headers, payload);
-        if (StringUtil.noText(responseString)) {
+        String response = httpClient.post(endpoint + "/api/v1/services/aigc/text-generation/generation", headers, payload);
+        if (StringUtil.noText(response)) {
             return null;
         }
 
-        if (prompt instanceof FunctionPrompt) {
-            return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions(), functionMessageParser.parse(responseString));
-        } else {
-            return (R) new AiMessageResponse(aiMessageParser.parse(responseString));
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
         }
+
+        JSONObject jsonObject = JSON.parseObject(response);
+        JSONObject error = jsonObject.getJSONObject("error");
+
+        AbstractBaseMessageResponse<M> messageResponse;
+
+        if (prompt instanceof FunctionPrompt) {
+            //noinspection unchecked
+            messageResponse = (AbstractBaseMessageResponse<M>) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
+                , functionMessageParser.parse(jsonObject));
+        } else {
+            //noinspection unchecked
+            messageResponse = (AbstractBaseMessageResponse<M>) new AiMessageResponse(aiMessageParser.parse(jsonObject));
+        }
+
+        if (error != null && !error.isEmpty()) {
+            messageResponse.setError(true);
+            messageResponse.setErrorMessage(error.getString("message"));
+            messageResponse.setErrorType(error.getString("type"));
+            messageResponse.setErrorCode(error.getString("code"));
+        }
+
+        //noinspection unchecked
+        return (R) messageResponse;
     }
 
 
@@ -84,11 +109,11 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config);
 
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, new BaseAiMessageParser() {
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, new DefaultAiMessageParser() {
             int prevMessageLength = 0;
 
             @Override
-            public AiMessage parse(String content) {
+            public AiMessage parse(JSONObject content) {
                 AiMessage aiMessage = aiMessageParser.parse(content);
                 String messageContent = aiMessage.getContent();
                 aiMessage.setContent(messageContent.substring(prevMessageLength));

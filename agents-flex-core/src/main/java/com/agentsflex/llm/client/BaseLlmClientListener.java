@@ -29,6 +29,9 @@ import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.HistoriesPrompt;
 import com.agentsflex.prompt.Prompt;
+import com.agentsflex.util.StringUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 
 import java.util.List;
 
@@ -73,20 +76,22 @@ public class BaseLlmClientListener implements LlmClientListener {
 
     @Override
     public void onMessage(LlmClient client, String response) {
+        if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim())) {
+            return;
+        }
+        JSONObject jsonObject = JSON.parseObject(response);
         if (isFunctionCalling) {
-            FunctionMessage functionInfo = functionInfoParser.parse(response);
+            FunctionMessage functionInfo = functionInfoParser.parse(jsonObject);
             List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
             MessageResponse<?> r = new FunctionMessageResponse(functions, functionInfo);
+            //noinspection unchecked
             streamResponseListener.onMessage(context, r);
         } else {
-            AiMessage parsedMessage = messageParser.parse(response);
-            if (parsedMessage == null) {
-                return;
-            }
-            lastAiMessage = parsedMessage;
+            lastAiMessage = messageParser.parse(jsonObject);
             fullMessage.append(lastAiMessage.getContent());
             lastAiMessage.setFullContent(fullMessage.toString());
             MessageResponse<?> r = new AiMessageResponse(lastAiMessage);
+            //noinspection unchecked
             streamResponseListener.onMessage(context, r);
         }
     }
@@ -108,11 +113,4 @@ public class BaseLlmClientListener implements LlmClientListener {
     }
 
 
-//    public interface AiMessageParser {
-//        AiMessage parseMessage(String response);
-//    }
-//
-//    public interface FunctionMessageParser {
-//        FunctionMessage parseMessage(String response);
-//    }
 }
