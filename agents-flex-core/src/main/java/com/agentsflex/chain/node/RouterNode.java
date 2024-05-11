@@ -26,6 +26,9 @@ public abstract class RouterNode extends AbstractBaseNode {
     private MultiMatchStrategy multiMatchStrategy = MultiMatchStrategy.ALL;
     private List<ChainNode> nodes;
 
+    public RouterNode() {
+    }
+
     public RouterNode(List<ChainNode> nodes) {
         this.nodes = nodes;
     }
@@ -104,6 +107,13 @@ public abstract class RouterNode extends AbstractBaseNode {
 
     public void setNodes(List<ChainNode> nodes) {
         this.nodes = nodes;
+    }
+
+    public void addNode(ChainNode node){
+        if (nodes == null){
+            nodes = new ArrayList<>();
+        }
+        nodes.add(node);
     }
 
 

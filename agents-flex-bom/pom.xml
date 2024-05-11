@@ -62,6 +62,19 @@
         </dependency>
         <!--llm end-->
 
+        <!--chains start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-chain-qlexpress</artifactId>
+            <version>1.0.0-beta.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-chain-groovy</artifactId>
+            <version>1.0.0-beta.1</version>
+        </dependency>
+        <!--chains end-->
+
 
         <!--store start-->
         <dependency>

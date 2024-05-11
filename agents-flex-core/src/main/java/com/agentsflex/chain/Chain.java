@@ -235,6 +235,11 @@ public abstract class Chain implements Serializable {
     protected abstract void executeInternal();
 
     public boolean resume(Map<String, Object> variables) {
+        if (status != ChainStatus.PAUSE_FOR_INPUT &&
+            status != ChainStatus.PAUSE_FOR_WAKE_UP) {
+            return false;
+        }
+
         if (variables == null || variables.isEmpty()) {
             return false;
         }
@@ -289,10 +294,19 @@ public abstract class Chain implements Serializable {
         }
     }
 
+    public void stop() {
+        setStatus(ChainStatus.FINISHED_NORMAL);
+        if (parent != null) {
+            parent.stop();
+        }
+    }
+
     @Override
     public String toString() {
         return "Chain{" +
             "id=" + id +
             '}';
     }
+
+
 }

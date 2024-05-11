@@ -48,6 +48,8 @@
         <module>agents-flex-store</module>
         <module>agents-flex-document-parser</module>
         <module>agents-flex-spring-boot-starter</module>
+        <module>agents-flex-chain</module>
+        <module>agents-flex-chain/agents-flex-chain-qlexpress</module>
     </modules>
 
     <properties>
