@@ -82,18 +82,21 @@ public class LLMAgent extends Agent {
 
         if (chain != null) {
             chain.output(this, response);
-
-            if (response.isError()) {
-                chain.stopError(response.getErrorMessage());
-                return null;
-            }
         }
 
-
-        return parseAiMessage(response.getMessage());
+        return response.isError()
+            ? onError(response, chain)
+            : onMessage(response.getMessage());
     }
 
-    protected Output parseAiMessage(AiMessage aiMessage) {
+    protected Output onError(AiMessageResponse response, Chain chain) {
+        if (chain != null) {
+            chain.stopError(response.getErrorMessage());
+        }
+        return null;
+    }
+
+    protected Output onMessage(AiMessage aiMessage) {
         return Output.ofValue(aiMessage.getContent());
     }
 
