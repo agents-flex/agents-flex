@@ -35,9 +35,11 @@
     - LoopChain 循环执行连
     - ChainNode
         - AgentNode Agent 执行节点
+        - EndNode 终点节点
         - RouterNode 路由节点
-            - ELRouterNode 规则路由
-            - LLMRouterNode LLM路由（由 AI 自行判断路由规则）
+          - GroovyRouterNode Groovy 规则路由
+          - QLExpressRouterNode QLExpress 规则路由
+          - LLMRouterNode LLM路由（由 AI 自行判断路由规则）
 
 ## 简单对话
 

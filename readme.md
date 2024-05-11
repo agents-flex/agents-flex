@@ -32,8 +32,10 @@
   - LoopChain
   - ChainNode
     - AgentNode
+    - EndNode
     - RouterNode
-      - ELRouterNode
+      - GroovyRouterNode
+      - QLExpressRouterNode
       - LLMRouterNode
 
 ## Simple Chat
