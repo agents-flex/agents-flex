@@ -270,11 +270,14 @@ public abstract class Chain implements Serializable {
                 notifyInput(waitInputParameters);
             }
         }
-        if (status == ChainStatus.START) {
-            setStatus(ChainStatus.FINISHED_NORMAL);
-            notifyEvent(new OnFinishedEvent());
-        } else if (status == ChainStatus.ERROR) {
-            setStatus(ChainStatus.FINISHED_ABNORMAL);
+
+        try {
+            if (status == ChainStatus.START) {
+                setStatus(ChainStatus.FINISHED_NORMAL);
+            } else if (status == ChainStatus.ERROR) {
+                setStatus(ChainStatus.FINISHED_ABNORMAL);
+            }
+        } finally {
             notifyEvent(new OnFinishedEvent());
         }
     }

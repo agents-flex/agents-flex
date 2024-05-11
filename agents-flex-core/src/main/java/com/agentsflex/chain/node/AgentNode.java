@@ -50,19 +50,28 @@ public class AgentNode extends AbstractBaseNode {
 
     @Override
     public Map<String, Object> execute(Chain chain) {
-        List<Parameter> inputParameters = agent.getInputParameters();
+
         Map<String, Object> variables = new HashMap<>();
         List<Parameter> requiredParameters = null;
-        for (Parameter parameter : inputParameters) {
-            Object value = chain.get(parameter.getName());
-            if (value == null && parameter.isRequired()) {
-                if (requiredParameters == null) {
-                    requiredParameters = new ArrayList<>();
-                }
-                requiredParameters.add(parameter);
 
-            } else {
-                variables.put(parameter.getName(), value);
+        List<Parameter> inputParameters = agent.getInputParameters();
+
+        // Agent 未定义输入参数
+        if (inputParameters.isEmpty()) {
+            variables.putAll(chain.getMemory().getAll());
+        }
+        // Agent 定义了固定的输入参数
+        else {
+            for (Parameter parameter : inputParameters) {
+                Object value = chain.get(parameter.getName());
+                if (value == null && parameter.isRequired()) {
+                    if (requiredParameters == null) {
+                        requiredParameters = new ArrayList<>();
+                    }
+                    requiredParameters.add(parameter);
+                } else {
+                    variables.put(parameter.getName(), value);
+                }
             }
         }
 

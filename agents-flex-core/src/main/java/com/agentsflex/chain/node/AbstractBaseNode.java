@@ -29,6 +29,7 @@ public abstract class AbstractBaseNode implements ChainNode {
         this.id = UUID.randomUUID();
     }
 
+
     @Override
     public Object getId() {
         return id;
@@ -38,6 +39,12 @@ public abstract class AbstractBaseNode implements ChainNode {
         this.id = id;
     }
 
+    public AbstractBaseNode id(Object id) {
+        this.id = id;
+        return this;
+    }
+
+
     @Override
     public String getName() {
         return name;
@@ -45,6 +52,11 @@ public abstract class AbstractBaseNode implements ChainNode {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public AbstractBaseNode name(String name) {
+        this.name = name;
+        return this;
     }
 
     public void setSkip(boolean skip) {
@@ -56,8 +68,10 @@ public abstract class AbstractBaseNode implements ChainNode {
         return skip;
     }
 
-    public void skip() {
+    public AbstractBaseNode skip() {
         this.skip = true;
+        return this;
     }
+
 
 }
