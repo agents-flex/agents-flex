@@ -86,7 +86,7 @@ public class LLMAgent extends Agent {
             return null;
         }
 
-        List<Parameter> parameters = new ArrayList<>();
+        List<Parameter> parameters = new ArrayList<>(keys.size());
         for (String key : keys) {
             Parameter parameter = new Parameter(key, true);
             parameters.add(parameter);

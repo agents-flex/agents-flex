@@ -30,8 +30,6 @@ public abstract class Agent {
     protected Object id;
     protected String name;
     private ContextMemory memory;
-//    private List<String> outputKeys;
-//    private Map<String, String> outputMapping;
 
     public Agent() {
         this.id = UUID.randomUUID().toString();
@@ -80,18 +78,6 @@ public abstract class Agent {
         List<String> outputKeys = defineOutputKeys();
         return outputKeys == null ? Collections.emptyList() : outputKeys;
     }
-//
-//    public void setOutputKeys(List<String> outputKeys) {
-//        this.outputKeys = outputKeys;
-//    }
-//
-//    public Map<String, String> getOutputMapping() {
-//        return outputMapping;
-//    }
-//
-//    public void setOutputMapping(Map<String, String> outputMapping) {
-//        this.outputMapping = outputMapping;
-//    }
 
     public Output execute(Map<String, Object> variables) {
         return execute(variables, null);
