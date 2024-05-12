@@ -39,21 +39,19 @@ public enum ChainStatus {
 
 ## 示例代码
 
-**示例代码1**： 通过 `IOChain` 执行，并得到一个结果：
+**示例代码1**： 通过 `SequentialChain` 执行，并得到一个结果：
 
 ```java
 public static void main(String[] args) {
+    SequentialChain ioChain1 = new SequentialChain();
+    ioChain1.addNode(new Agent1("agent1"));
+    ioChain1.addNode(new Agent2("agent2"));
 
-    IOChain ioChain1 = new IOChain();
-    ioChain1.addNode(new IOAgent1("agent1"));
-    ioChain1.addNode(new IOAgent2("agent2"));
-
-    IOChain ioChain2 = new IOChain();
-    ioChain2.addNode(new IOAgent1("agent3"));
-    ioChain2.addNode(new IOAgent2("agent4"));
+    SequentialChain ioChain2 = new SequentialChain();
+    ioChain2.addNode(new Agent1("agent3"));
+    ioChain2.addNode(new Agent2("agent4"));
     ioChain2.addNode(ioChain1);
 
-    //监听 chain2 的执行情况
     ioChain2.registerEventListener(new ChainEventListener() {
         @Override
         public void onEvent(ChainEvent event, Chain chain) {
@@ -61,12 +59,11 @@ public static void main(String[] args) {
         }
     });
 
-    Object result = ioChain2.execute("your params");
+
+    Object result = ioChain2.executeForResult("your params");
     System.out.println(result);
 }
 ```
-
-> `IOChain` 是 `SequentialChain` （顺序执行链）的子类，用于执行完毕后会产生唯一输出结果的场景。
 
 以上代码实现了如下图所示的 Agents 编排：
 

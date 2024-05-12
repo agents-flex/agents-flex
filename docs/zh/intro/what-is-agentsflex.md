@@ -68,19 +68,25 @@ public class WeatherUtil {
 以下是一个简单的 Agents-Flex 关于 Chain（执行链） 编排示例代码：
 
 ```java
-@Test
-public void testChain() {
-    IOChain ioChain1 = new IOChain();
-    ioChain1.addNode(new IOAgent1("agent1"));
-    ioChain1.addNode(new IOAgent2("agent2"));
+public static void main(String[] args) {
+    SequentialChain ioChain1 = new SequentialChain();
+    ioChain1.addNode(new Agent1("agent1"));
+    ioChain1.addNode(new Agent2("agent2"));
 
-    IOChain ioChain2 = new IOChain();
-    ioChain2.addNode(new IOAgent1("agent3"));
-    ioChain2.addNode(new IOAgent2("agent4"));
+    SequentialChain ioChain2 = new SequentialChain();
+    ioChain2.addNode(new Agent1("agent3"));
+    ioChain2.addNode(new Agent2("agent4"));
     ioChain2.addNode(ioChain1);
 
+    ioChain2.registerEventListener(new ChainEventListener() {
+        @Override
+        public void onEvent(ChainEvent event, Chain chain) {
+            System.out.println(event);
+        }
+    });
 
-    Object result = ioChain2.execute("your params");
+
+    Object result = ioChain2.executeForResult("your params");
     System.out.println(result);
 }
 ```
@@ -97,7 +103,6 @@ public void testChain() {
 - ParallelChain：并发（并行）执行链
 - LoopChain：循环执行连
 
-> `IOChain` 属于 `SequentialChain` 中的一种，默认的 `SequentialChain` 不一定有输入或者输出，而 `IOChain` 是具有输入和输出的顺序执行链：`IOChain` 执行完毕后会有结果输出。
 
 而以上 3 种执行链中，每个又可以作为其他执行链的子链进行执行，从而形成强大而复杂的 Agents 执行链条。
 
