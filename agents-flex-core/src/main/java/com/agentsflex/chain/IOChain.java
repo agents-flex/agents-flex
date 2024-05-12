@@ -15,6 +15,8 @@
  */
 package com.agentsflex.chain;
 
+import com.agentsflex.agent.Output;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,11 +27,11 @@ public class IOChain extends SequentialChain {
 
     public <T> T execute(Object input) {
         Map<String, Object> variables = new HashMap<>(1);
-        variables.put("default", input);
+        variables.put(Output.DEFAULT_VALUE_KEY, input);
 
         super.execute(variables);
 
         //noinspection unchecked
-        return (T) this.getMemory().get("default");
+        return (T) this.getMemory().get(Output.DEFAULT_VALUE_KEY);
     }
 }

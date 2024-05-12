@@ -19,6 +19,7 @@ public class Parameter {
     private String name;
     private String type;
     private boolean required;
+    private boolean isDefault;
 
     public Parameter() {
     }
@@ -43,6 +44,13 @@ public class Parameter {
         this.required = required;
     }
 
+    public Parameter(String name, String type, boolean required, boolean isDefault) {
+        this.name = name;
+        this.type = type;
+        this.required = required;
+        this.isDefault = isDefault;
+    }
+
     public String getName() {
         return name;
     }
@@ -65,5 +73,12 @@ public class Parameter {
 
     public void setRequired(boolean required) {
         this.required = required;
+    }
+
+    public boolean isDefault() {
+        return isDefault;
+    }
+    public void setDefault(boolean aDefault) {
+        isDefault = aDefault;
     }
 }

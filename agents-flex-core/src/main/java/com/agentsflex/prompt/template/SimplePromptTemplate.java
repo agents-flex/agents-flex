@@ -17,13 +17,21 @@ package com.agentsflex.prompt.template;
 
 import com.agentsflex.prompt.SimplePrompt;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SimplePromptTemplate implements PromptTemplate<SimplePrompt> {
 
-    private final List<String> parts = new ArrayList<>();
+    private final Set<String> keys = new HashSet<>();
+
+    private final List<String> parts = new ArrayList<String>() {
+        @Override
+        public boolean add(String string) {
+            if (string.charAt(0) == '{' && string.length() > 2 && string.charAt(string.length() - 1) == '}') {
+                keys.add(string.substring(1, string.length() - 1));
+            }
+            return super.add(string);
+        }
+    };
 
     public SimplePromptTemplate(String template) {
         boolean isCurrentInKeyword = false;
@@ -94,10 +102,24 @@ public class SimplePromptTemplate implements PromptTemplate<SimplePrompt> {
         return new SimplePrompt(result.toString());
     }
 
+    public Set<String> getKeys() {
+        return keys;
+    }
+
+    public List<String> getParts() {
+        return parts;
+    }
 
     private Object getParams(String keysString, Map<String, Object> params) {
         //todo 支持通过 "." 访问属性或者方法
         return params != null ? params.get(keysString) : null;
     }
 
+    @Override
+    public String toString() {
+        return "SimplePromptTemplate{" +
+            "keys=" + keys +
+            ", parts=" + parts +
+            '}';
+    }
 }

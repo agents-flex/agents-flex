@@ -20,7 +20,7 @@ import java.util.Map;
 
 public class Output extends HashMap<String, Object> {
 
-    private static final String DEFAULT_VALUE_KEY = "default";
+    public static final String DEFAULT_VALUE_KEY = "default";
 
     public Output(int initialCapacity, float loadFactor) {
         super(initialCapacity, loadFactor);

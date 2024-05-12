@@ -12,7 +12,8 @@ public class PromptTemplateTest {
     public void test001(){
         Map<String ,Object> map = new HashMap<>();
         map.put("x","abc");
-        String string = SimplePromptTemplate.create("你好，{ } 今天是星期 :{ x }--xx--{x }---{  x }--}}--{ x} }")
+        SimplePromptTemplate promptTemplate = SimplePromptTemplate.create("你好，{ } 今天是星期 :{x}{ x }--xx--{x }---{  x }--}}--{ x} }");
+        String string = promptTemplate
             .format(map).toString();
         System.out.println(string);
 

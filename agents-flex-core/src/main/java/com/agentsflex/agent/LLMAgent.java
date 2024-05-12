@@ -23,14 +23,17 @@ import com.agentsflex.message.AiMessage;
 import com.agentsflex.prompt.SimplePrompt;
 import com.agentsflex.prompt.template.SimplePromptTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class LLMAgent extends Agent {
 
     protected Llm llm;
     protected ChatOptions chatOptions = ChatOptions.DEFAULT;
     protected String prompt;
+    protected SimplePromptTemplate promptTemplate;
 
     public LLMAgent() {
     }
@@ -39,6 +42,7 @@ public class LLMAgent extends Agent {
     public LLMAgent(Llm llm, String prompt) {
         this.llm = llm;
         this.prompt = prompt;
+        this.promptTemplate = new SimplePromptTemplate(prompt);
     }
 
 
@@ -56,6 +60,7 @@ public class LLMAgent extends Agent {
 
     public void setPrompt(String prompt) {
         this.prompt = prompt;
+        this.promptTemplate = new SimplePromptTemplate(prompt);
     }
 
     public ChatOptions getChatOptions() {
@@ -69,14 +74,29 @@ public class LLMAgent extends Agent {
         this.chatOptions = chatOptions;
     }
 
+
     @Override
     public List<Parameter> defineInputParameter() {
-        return null;
+        if (this.promptTemplate == null) {
+            return null;
+        }
+
+        Set<String> keys = this.promptTemplate.getKeys();
+        if (keys == null || keys.isEmpty()) {
+            return null;
+        }
+
+        List<Parameter> parameters = new ArrayList<>();
+        for (String key : keys) {
+            Parameter parameter = new Parameter(key, true);
+            parameters.add(parameter);
+        }
+        return parameters;
     }
+
 
     @Override
     public Output execute(Map<String, Object> variables, Chain chain) {
-        SimplePromptTemplate promptTemplate = SimplePromptTemplate.create(prompt);
         SimplePrompt simplePrompt = promptTemplate.format(chain == null ? variables : chain.getMemory().getAll());
         AiMessageResponse response = llm.chat(simplePrompt, chatOptions);
 
@@ -89,12 +109,14 @@ public class LLMAgent extends Agent {
             : onMessage(response.getMessage());
     }
 
+
     protected Output onError(AiMessageResponse response, Chain chain) {
         if (chain != null) {
             chain.stopError(response.getErrorMessage());
         }
         return null;
     }
+
 
     protected Output onMessage(AiMessage aiMessage) {
         return Output.ofValue(aiMessage.getContent());

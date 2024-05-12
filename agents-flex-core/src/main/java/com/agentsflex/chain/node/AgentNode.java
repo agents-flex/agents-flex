@@ -27,6 +27,7 @@ import java.util.Map;
 
 public class AgentNode extends AbstractBaseNode {
     private Agent agent;
+    private Map<String, String> outputMapping;
 
     public AgentNode() {
     }
@@ -48,6 +49,14 @@ public class AgentNode extends AbstractBaseNode {
         this.agent = agent;
     }
 
+    public Map<String, String> getOutputMapping() {
+        return outputMapping;
+    }
+
+    public void setOutputMapping(Map<String, String> outputMapping) {
+        this.outputMapping = outputMapping;
+    }
+
     @Override
     public Map<String, Object> execute(Chain chain) {
 
@@ -64,6 +73,11 @@ public class AgentNode extends AbstractBaseNode {
         else {
             for (Parameter parameter : inputParameters) {
                 Object value = chain.get(parameter.getName());
+
+                //当只有一个参数时，或者当前参数为默认参数时，尝试使用 default 数据库
+                if (value == null && (parameter.isDefault() || inputParameters.size() == 1)) {
+                    value = chain.get(Output.DEFAULT_VALUE_KEY);
+                }
                 if (value == null && parameter.isRequired()) {
                     if (requiredParameters == null) {
                         requiredParameters = new ArrayList<>();
@@ -82,18 +96,17 @@ public class AgentNode extends AbstractBaseNode {
 
         Output output = agent.execute(variables, chain);
         List<String> outputKeys = agent.getOutputKeys();
-        if (outputKeys != null && !outputKeys.isEmpty()) {
-            Map<String, String> outputMapping = agent.getOutputMapping();
-
-            Map<String, Object> result = new HashMap<>();
-            for (String outputKey : outputKeys) {
-                String resultKey = outputMapping.getOrDefault(outputKey, outputKey);
-                result.put(resultKey, output.get(outputKey));
-            }
-            return result;
-        } else {
+        if (outputKeys.isEmpty() || outputMapping == null || outputMapping.isEmpty()) {
             return output;
         }
+
+        Map<String, Object> newResult = new HashMap<>(outputKeys.size());
+        for (String outputKey : outputKeys) {
+            String newKey = outputMapping.getOrDefault(outputKey, outputKey);
+            newResult.put(newKey, output.get(outputKey));
+        }
+
+        return newResult;
     }
 
     @Override

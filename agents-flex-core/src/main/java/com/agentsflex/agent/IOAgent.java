@@ -25,8 +25,6 @@ import java.util.Map;
  * input and output agent
  */
 public abstract class IOAgent extends Agent {
-    private static final String PARAMETER_KEY = "default";
-
     public IOAgent() {
     }
 
@@ -42,7 +40,7 @@ public abstract class IOAgent extends Agent {
     @Override
     public List<Parameter> defineInputParameter() {
         List<Parameter> parameters = new ArrayList<>(1);
-        parameters.add(new Parameter(PARAMETER_KEY, true));
+        parameters.add(new Parameter(Output.DEFAULT_VALUE_KEY, true));
         return parameters;
     }
 
@@ -51,8 +49,8 @@ public abstract class IOAgent extends Agent {
         Object value;
         if (variables == null || variables.isEmpty()) {
             value = null;
-        } else if (variables.containsKey(PARAMETER_KEY)) {
-            value = variables.get(PARAMETER_KEY);
+        } else if (variables.containsKey(Output.DEFAULT_VALUE_KEY)) {
+            value = variables.get(Output.DEFAULT_VALUE_KEY);
         } else {
             String key = variables.keySet().iterator().next();
             value = variables.get(key);
