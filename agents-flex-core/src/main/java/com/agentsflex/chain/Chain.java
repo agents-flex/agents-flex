@@ -355,8 +355,16 @@ public abstract class Chain implements Serializable {
     public String toString() {
         return "Chain{" +
             "id=" + id +
+            ", memory=" + memory +
+            ", eventListeners=" + eventListeners +
+            ", inputListeners=" + inputListeners +
+            ", outputListeners=" + outputListeners +
+            ", nodes=" + nodes +
+            ", parent=" + parent +
+            ", children=" + children +
+            ", status=" + status +
+            ", message='" + message + '\'' +
+            ", waitInputParameters=" + waitInputParameters +
             '}';
     }
-
-
 }

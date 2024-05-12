@@ -57,8 +57,6 @@ public class LoopChain extends BaseChain {
             for (int i = currentIndex; i < nodes.size(); i++) {
                 try {
                     ChainNode node = nodes.get(i);
-
-
                     Map<String, Object> result = null;
                     try {
                         notifyEvent(new OnNodeStartEvent(node));

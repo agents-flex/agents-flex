@@ -56,7 +56,6 @@ public class SequentialChain extends BaseChain {
         for (int i = currentIndex; i < getNodes().size(); i++) {
             try {
                 ChainNode node = nodes.get(i);
-
                 Map<String, Object> result = null;
                 try {
                     notifyEvent(new OnNodeStartEvent(node));
