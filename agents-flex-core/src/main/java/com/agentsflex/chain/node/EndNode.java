@@ -20,6 +20,24 @@ import com.agentsflex.chain.Chain;
 import java.util.Map;
 
 public class EndNode extends AbstractBaseNode {
+    private boolean isNormal = true;
+    private String message;
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public boolean isNormal() {
+        return isNormal;
+    }
+
+    public void setNormal(boolean normal) {
+        isNormal = normal;
+    }
 
     public EndNode() {
         this.name = "end";
@@ -27,7 +45,11 @@ public class EndNode extends AbstractBaseNode {
 
     @Override
     public Map<String, Object> execute(Chain chain) {
-        chain.stopNormal();
+        if (isNormal) {
+            chain.stopNormal(message);
+        } else {
+            chain.stopError(message);
+        }
         return null;
     }
 }

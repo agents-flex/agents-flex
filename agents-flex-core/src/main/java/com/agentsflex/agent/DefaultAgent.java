@@ -21,18 +21,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * input and output agent
- */
-public abstract class IOAgent extends Agent {
-    public IOAgent() {
+
+public abstract class DefaultAgent extends Agent {
+    public DefaultAgent() {
     }
 
-    public IOAgent(Object id) {
+    public DefaultAgent(Object id) {
         super(id);
     }
 
-    public IOAgent(Object id, String name) {
+    public DefaultAgent(Object id, String name) {
         super(id, name);
     }
 
@@ -58,7 +56,7 @@ public abstract class IOAgent extends Agent {
         return Output.ofValue(execute(value, chain));
     }
 
-    public abstract Object execute(Object param, Chain chain);
+    public abstract Object execute(Object parameter, Chain chain);
 
 
 }

@@ -16,6 +16,7 @@
 package com.agentsflex.chain;
 
 import com.agentsflex.agent.Agent;
+import com.agentsflex.agent.Output;
 import com.agentsflex.agent.Parameter;
 import com.agentsflex.chain.event.OnErrorEvent;
 import com.agentsflex.chain.event.OnFinishedEvent;
@@ -40,7 +41,7 @@ public abstract class Chain implements Serializable {
     private List<Chain> children;
     private ChainStatus status = ChainStatus.READY;
 
-    private String errorMessage;
+    private String message;
 
     //理论上是线程安全的，所有有多线程写入的情况，但是只有全部写入完成后才会去通知监听器
     private List<Parameter> waitInputParameters = new ArrayList<>();
@@ -230,6 +231,23 @@ public abstract class Chain implements Serializable {
         return null;
     }
 
+    public void execute(Object variable) {
+        Map<String, Object> variables = new HashMap<>(1);
+        variables.put(Output.DEFAULT_VALUE_KEY, variable);
+        this.execute(variables);
+    }
+
+
+    public <T> T executeForResult(Object variable) {
+        Map<String, Object> variables = new HashMap<>(1);
+        variables.put(Output.DEFAULT_VALUE_KEY, variable);
+        this.execute(variables);
+
+        //noinspection unchecked
+        return (T) this.getMemory().get(Output.DEFAULT_VALUE_KEY);
+    }
+
+
     public void execute(Map<String, Object> variables) {
         runInLifeCycle(variables, this::executeInternal);
     }
@@ -306,18 +324,19 @@ public abstract class Chain implements Serializable {
         }
     }
 
-    public void stopNormal() {
+    public void stopNormal(String message) {
+        this.message = message;
         setStatus(ChainStatus.FINISHED_NORMAL);
         if (parent != null) {
-            parent.stopNormal();
+            parent.stopNormal(message);
         }
     }
 
-    public void stopError(String errorMessage) {
-        this.errorMessage = errorMessage;
+    public void stopError(String message) {
+        this.message = message;
         setStatus(ChainStatus.FINISHED_ABNORMAL);
         if (parent != null) {
-            parent.stopError(errorMessage);
+            parent.stopError(message);
         }
     }
 
@@ -328,8 +347,8 @@ public abstract class Chain implements Serializable {
         }
     }
 
-    public String getErrorMessage() {
-        return errorMessage;
+    public String getMessage() {
+        return message;
     }
 
     @Override

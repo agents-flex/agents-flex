@@ -97,7 +97,7 @@ public class LLMAgent extends Agent {
 
     @Override
     public Output execute(Map<String, Object> variables, Chain chain) {
-        SimplePrompt simplePrompt = promptTemplate.format(chain == null ? variables : chain.getMemory().getAll());
+        SimplePrompt simplePrompt = promptTemplate.format(variables);
         AiMessageResponse response = llm.chat(simplePrompt, chatOptions);
 
         if (chain != null) {
