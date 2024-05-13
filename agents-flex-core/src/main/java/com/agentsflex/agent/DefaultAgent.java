@@ -53,7 +53,7 @@ public abstract class DefaultAgent extends Agent {
             String key = variables.keySet().iterator().next();
             value = variables.get(key);
         }
-        return Output.ofValue(execute(value, chain));
+        return Output.ofDefault(execute(value, chain));
     }
 
     public abstract Object execute(Object parameter, Chain chain);

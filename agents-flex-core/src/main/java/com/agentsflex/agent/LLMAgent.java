@@ -119,7 +119,12 @@ public class LLMAgent extends Agent {
 
 
     protected Output onMessage(AiMessage aiMessage) {
-        return Output.ofValue(aiMessage.getContent());
+        List<String> outputKeys = getOutputKeys();
+        if (outputKeys != null && outputKeys.size() == 1) {
+            return Output.of(outputKeys.get(0), aiMessage.getContent());
+        }
+
+        return Output.ofDefault(aiMessage.getContent());
     }
 
     @Override

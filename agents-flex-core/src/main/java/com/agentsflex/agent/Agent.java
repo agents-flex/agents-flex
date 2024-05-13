@@ -18,10 +18,7 @@ package com.agentsflex.agent;
 import com.agentsflex.chain.Chain;
 import com.agentsflex.memory.ContextMemory;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 代理（人），有身份 （id），有姓名（name），有记忆 （memory），能执行 execute
@@ -30,6 +27,7 @@ public abstract class Agent {
     protected Object id;
     protected String name;
     private ContextMemory memory;
+    private List<String> outputKeys;
 
     public Agent() {
         this.id = UUID.randomUUID().toString();
@@ -75,19 +73,27 @@ public abstract class Agent {
 
 
     public List<String> getOutputKeys() {
-        List<String> outputKeys = defineOutputKeys();
-        return outputKeys == null ? Collections.emptyList() : outputKeys;
+        return outputKeys ;
+    }
+
+    public void setOutputKeys(List<String> outputKeys) {
+        this.outputKeys = outputKeys;
+    }
+
+    public Agent output(String ... keys){
+        if (this.outputKeys == null){
+            this.outputKeys = new ArrayList<>();
+        }
+
+        this.outputKeys.addAll(Arrays.asList(keys));
+        return this;
     }
 
     public Output execute(Map<String, Object> variables) {
         return execute(variables, null);
     }
 
-    public abstract List<Parameter> defineInputParameter();
-
-    public List<String> defineOutputKeys() {
-        return null;
-    }
+    protected abstract List<Parameter> defineInputParameter();
 
     public abstract Output execute(Map<String, Object> variables, Chain chain);
 

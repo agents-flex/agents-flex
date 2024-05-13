@@ -47,9 +47,13 @@ public class Output extends HashMap<String, Object> {
         return this;
     }
 
-    public static Output ofValue(Object value) {
+    public static Output of(String key, Object value) {
         Output output = new Output();
-        output.put(DEFAULT_VALUE_KEY, value);
+        output.put(key, value);
         return output;
+    }
+
+    public static Output ofDefault(Object value) {
+        return of(DEFAULT_VALUE_KEY, value);
     }
 }

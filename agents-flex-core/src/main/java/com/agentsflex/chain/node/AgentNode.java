@@ -96,7 +96,8 @@ public class AgentNode extends AbstractBaseNode {
 
         Output output = agent.execute(variables, chain);
         List<String> outputKeys = agent.getOutputKeys();
-        if (outputKeys.isEmpty() || outputMapping == null || outputMapping.isEmpty()) {
+        if (outputKeys == null || outputKeys.isEmpty()
+            || outputMapping == null || outputMapping.isEmpty()) {
             return output;
         }
 
