@@ -50,8 +50,7 @@ public abstract class RouterNode extends AbstractBaseNode {
             }
             for (ChainNode node : this.nodes) {
                 if (Objects.equals(idOrName, String.valueOf(node.getId()))
-                    || Objects.equals(idOrName, node.getName())
-                ) {
+                    || Objects.equals(idOrName, node.getName())) {
                     matchNodes.add(node);
                 }
             }
