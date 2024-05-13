@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-llm</artifactId>
-        <version>1.0.0-beta.2</version>
+        <version>1.0.0-beta.3</version>
     </parent>
 
     <artifactId>agents-flex-llm-openai</artifactId>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-beta.2</version>
+            <version>1.0.0-beta.3</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

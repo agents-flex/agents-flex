@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-beta.2
+## v1.0.0-beta.3
 - 新增：MilvusVectorStore 用于对 Milvus 向量数据库的支持，感谢 @xgc
 - 新增：执行链的路由节点新增对 QLExpress 和 Groovy 的规则支持
 - 优化：重构让 FunctionMessage 继承 AiMessage

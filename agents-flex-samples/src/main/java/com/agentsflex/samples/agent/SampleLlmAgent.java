@@ -21,6 +21,6 @@ public class SampleLlmAgent extends LLMAgent {
         String sqlContent = aiMessage.getContent()
             .replace("```sql", "")
             .replace("```", "");
-        return Output.ofValue(sqlContent);
+        return Output.ofDefault(sqlContent);
     }
 }

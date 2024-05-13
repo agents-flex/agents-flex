@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-chain</artifactId>
-        <version>1.0.0-beta.2</version>
+        <version>1.0.0-beta.3</version>
     </parent>
 
     <artifactId>agents-flex-chain-groovy</artifactId>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-beta.2</version>
+            <version>1.0.0-beta.3</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
