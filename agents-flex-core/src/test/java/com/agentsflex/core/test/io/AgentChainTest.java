@@ -4,7 +4,7 @@ import com.agentsflex.chain.*;
 
 public class AgentChainTest {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ChainException {
 
         SequentialChain ioChain1 = new SequentialChain();
         ioChain1.addNode(new Agent1("agent1"));

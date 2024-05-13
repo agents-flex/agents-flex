@@ -241,14 +241,18 @@ public abstract class Chain implements Serializable {
         this.execute(variables);
     }
 
-    public <T> T executeForResult(Object variable) {
+    public <T> T executeForResult(Object variable) throws ChainException {
         return executeForResult(Output.DEFAULT_VALUE_KEY, variable);
     }
 
-    public <T> T executeForResult(String key, Object variable) {
+    public <T> T executeForResult(String key, Object variable) throws ChainException {
         Map<String, Object> variables = new HashMap<>(1);
         variables.put(key, variable);
         this.execute(variables);
+
+        if (this.status != ChainStatus.FINISHED_NORMAL) {
+            throw new ChainException(this.message);
+        }
         //noinspection unchecked
         return (T) this.getMemory().get(Output.DEFAULT_VALUE_KEY);
     }
