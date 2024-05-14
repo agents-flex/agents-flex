@@ -3,38 +3,38 @@ layout: home
 
 hero:
   name: "Agents-Flex"
-  text: "一个优雅的 LLM（大语言模型）应用开发框架"
-  tagline: 对标 LangChain、使用 Java 开发、简单、轻量。
+  text: "An Elegant Framework for Developing LLM (Large Language Model) Applications"
+  tagline: A lightweight and simple Java framework for LLM applications, inspired by LangChain。
   image:
     src: /assets/images/logo.png
     alt: Agents-Flex
   actions:
     - theme: brand
-      text: 快速开始
+      text: Start
       link: /zh/intro/getting-started
     - theme: alt
-      text: 帮助文档
+      text: Documentation
       link: /zh/intro/what-is-agentsflex
 
 features:
   - title: LLMs Connector
-    details: Agents-Flex 内置了丰富的对接大模型的网络协议，比如 HTTP、SSE、WS 等，其简单灵活的设计，使得开发者可以使用其轻易的对接各种大模型，包括 OpenAI、文心一言、星火大模型、通义千问等等。
+    details: Agents-Flex includes a variety of network protocols for connecting large models, such as HTTP, SSE, and WS. Its simple and flexible design allows developers to easily connect to various large models, including OpenAI, Baidu Wenxin, Spark Model, and Tongyi Qianwen.
   - title: Prompt
-    details: Agents-Flex 提供了丰富的大语言模型开发模板以及 Prompt Framework 的支持，比如 FEW-SHOT、CRISPE、BROKE、ICIO 等。另外，Prompt Template 我们也可以自定义自己独特的内容。
+    details: Agents-Flex provides a rich set of development templates and supports a Prompt Framework, including FEW-SHOT, CRISPE, BROKE, and ICIO. Developers can also customize their own unique prompt templates.
   - title: Function Calling
-    details: Agents-Flex 内置了非常灵活的 Function Calling 组件，包括本地方法的定义、解析、通过 LLMs 回调、并执行本地方法到结果，开发者几行代码就可以完成 Function Calling。
+    details: Agents-Flex has a very flexible Function Calling component. It supports local method definitions, parsing, callbacks through LLMs, and executing local methods to obtain results. Developers can implement Function Calling with just a few lines of code.
   - title: Document
-    details: Agents-Flex 在文本出来方法、内置了 Loader、Parser、Splitter 三大组件，而每种组件又有多重不同的实现类，因此，我们可以轻易的加载网络数据、本地数据、数据库数据，以及多种数据类型。
+    details: Agents-Flex offers comprehensive text processing methods with built-in Loader, Parser, and Splitter components. Each component has multiple implementations, making it easy to load data from the web, local files, databases, and various data types.
   - title: Memory
-    details: Agents-Flex 的 Memory 模块分为 MessageMemory 和 ContextMemory，他们分别用于历史对话和 Chain 执行上下文记录，我们可以通过继承 Memory 去实现更加丰富的扩展。
+    details: The Memory module of Agents-Flex is divided into MessageMemory and ContextMemory, used for recording historical dialogues and Chain execution contexts, respectively. Developers can extend the Memory module by inheritance to achieve richer functionalities.
   - title: Embedding
-    details: Agents-Flex 内置了非常丰富的 Embedding 能力和扩展，我们可以通过去实现 Embedding 接口，来扩充自己的私有 Embedding 算法和支持 。
+    details: Agents-Flex includes extensive embedding capabilities and extensions. Developers can implement the Embedding interface to expand their private embedding algorithms and support.
   - title: Vector Store
-    details: Agents-Flex 内置了多种向量数据库支持、当然，我们可以自己去实现 VectorStore 接口，来扩充自己的私有 VectorStore 服务 。
+    details: Agents-Flex supports multiple vector databases. Developers can also implement the VectorStore interface to expand their private VectorStore services.
   - title: Agent
-    details: Agents-Flex 定义了 Agent 的抽象实现，开发者可以通过 Agents Chain 来实现更多的交互。
+    details: Agents-Flex defines an abstract implementation of Agents. Developers can use the Agents Chain to create more interactive applications.
   - title: Chain
-    details: Agents-Flex 的 Chain 包含了同步顺序执行 Chain，异步执行 Chain 以及循环执行 Chain，帮助开发面对多种不同场景 。
+    details: Agents-Flex’s Chain includes synchronous sequential execution Chains, asynchronous execution Chains, and loop execution Chains, helping developers handle various scenarios.
 ---
 
 
