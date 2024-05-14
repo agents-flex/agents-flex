@@ -11,18 +11,42 @@ export default defineConfig({
 
     // logo: '/assets/images/logo02.png',
 
+    locales:{
+        root: {
+            label: 'English',
+            lang: 'en'
+        },
+        zh:{
+            label: '简体中文',
+            lang: 'zh', // 可选，将作为 `lang` 属性添加到 `html` 标签中
+            // link: '/zh/guide' // 默认 /fr/ -- 显示在导航栏翻译菜单上，可以是外部的
+
+            themeConfig: {
+                // logo: '/assets/images/logo.png',
+                outline: {
+                    label: "章节"
+                },
+                editLink: {
+                    pattern: 'https://github.com/agents-flex/agents-flex/edit/main/docs/:path',
+                    text: '编辑当前页面'
+                },
+            }
+
+        },
+    },
+
     themeConfig: {
         // logo: '/assets/images/logo.png',
-        outline:{
-            label:"章节"
-        },
+        // outline:{
+        //     label:"章节"
+        // },
         search: {
             provider: 'local'
         },
         editLink: {
             // pattern: 'https://github.com/agents-flex/agents-flex/edit/main/docs/:path'
             pattern: 'https://gitee.com/agents-flex/agents-flex/edit/main/docs/:path',
-            text: '编辑当前页面'
+            // text: '编辑当前页面'
         },
         // https://vitepress.dev/reference/default-theme-config
         // logo: '/assets/images/logo01.png',
