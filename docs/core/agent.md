@@ -2,7 +2,7 @@
 
 `AI Agent` is an abstract concept with various definitions and interpretations within the industry.
 
-The author understands an agent as a "person" with an identity, a name, memory, and the ability to execute tasks. During execution, an agent can engage in planning, use tools, or perform critical thinking.
+According to the author:  an agent as a "person" with an identity, a name, memory, and the ability to execute tasks. During execution, an agent can engage in planning, use tools, or perform critical thinking.
 
 It is entirely up to the developer to decide how an agent engages in planning, uses tools, or performs critical thinking, rather than being determined by the Agents-Flex framework.
 
@@ -20,7 +20,7 @@ public abstract class Agent {
 
 - id: Defines the agent's id, which should be unique for each agent.
 - name: The agent's name (or alias)
-- memory: Memory storage
+- memory: Memory store
 - `execute(Map<String, Object> variables, Chain chain)`: Execution method to be implemented by subclasses.
 
 ## Example Code
@@ -32,8 +32,8 @@ public class SampleLlmAgent extends LLMAgent {
 
     public SampleLlmAgent(Llm llm) {
         this.llm = llm;
-        this.prompt = "You are now a MySQL database architect. Please, based on the following table structure information," +
-            "Help me generate executable DDL statements so that I can use them to create the table structure in MySQL.\n" +
+        this.prompt = "You are now a MySQL database architect. Please help me generate executable DDL statements so that I can use them to create the table structure in MySQL " +
+            "based on the following table structure information.\n" +
             "Note: \n" +
             "Please return the DDL content directly, without explanation or any additional content other than the DDL statements.\n" +
             "\nThe following is the content of the table information:\n\n{ddlInfo}";
@@ -56,7 +56,7 @@ public static void main(String[] args) {
 
     SampleLlmAgent agent = new SampleLlmAgent(llm);
 
-    String ddlInfo = "Table Name student，Fields id,name";
+    String ddlInfo = "Table Name: student，Fields: id,name";
 
     Map<String, Object> variables = new HashMap<>();
     variables.put("ddlInfo", ddlInfo);
@@ -66,7 +66,7 @@ public static void main(String[] args) {
 }
 ```
 
-` System.out.println` The output result is as follows:
+ The output result is as follows:
 
 ```sql
 CREATE TABLE `student` (

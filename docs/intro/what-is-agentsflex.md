@@ -4,11 +4,6 @@ Agents-Flex is an AI application development framework developed in Java, design
 
 Agents-Flex is suitable for various scenarios, including chat, image generation, embedding models, function calling, and RAG applications, and supports both synchronous and streaming API options.
 
-Other open-source frameworks by the author include:
-
-- MyBatis-Flex: https://mybatis-flex.com
-- AiEditor: https://aieditor.dev
-- AiAdmin: Official website under construction...
 
 ## Comparison between Agents-Flex and other frameworks
 
@@ -18,7 +13,6 @@ Compared to `Spring-AI` and `LangChain4j`, Agents-Flex is more universally appli
 
 > 1) For example, `Spring-AI` requires JDK version `JDK 21+` whereas Agents-Flex only needs `JDK8+`.
 > 2) `Spring-AI` requires usage within the Spring framework, whereas Agents-Flex supports integration with any framework and provides `spring-boot-starter`.
-> 3) `Spring-AI` and `LangChain4j` generally do not support large models, embedding models, and vector databases commonly used in China, whereas Agents-Flex is friendly towards domestically developed services.
 
 **2、Simpler API design**
 
@@ -78,14 +72,6 @@ public static void main(String[] args) {
     ioChain2.addNode(new Agent2("agent4"));
     ioChain2.addNode(ioChain1);
 
-    ioChain2.registerEventListener(new ChainEventListener() {
-        @Override
-        public void onEvent(ChainEvent event, Chain chain) {
-            System.out.println(event);
-        }
-    });
-
-
     Object result = ioChain2.executeForResult("your params");
     System.out.println(result);
 }
@@ -95,14 +81,14 @@ The above code implements Agents orchestration as shown in the diagram below:
 
 ![](../../assets/images/chians-01.png)
 
-The data flow is as follows: agent3 --> agent4 --> chain1, and within chain1, there is the process of agent1 --> agent2.
+The data flow is as follows: `agent3` --> `agent4` --> `chain1`, and within `chain1`, there is the process of `agent1` --> `agent2`.
 
 
 In Agents-Flex, we have built-in three different types of Agents execution chains:
 
-- SequentialChain: Executes agents sequentially.
-- ParallelChain: Executes agents concurrently (in parallel).
-- LoopChain: Executes agents in a loop.
+- **SequentialChain**: Executes agents sequentially.
+- **ParallelChain**: Executes agents concurrently (in parallel).
+- **LoopChain**: Executes agents in a loop.
 
-Moreover, each of these three execution chains can serve as a sub-chain for other execution chains, thus forming powerful and complex Agents execution chains.
+Moreover, each of these three chains can serve as a sub-chain for other chains, thus forming powerful and complex Agents chains.
 

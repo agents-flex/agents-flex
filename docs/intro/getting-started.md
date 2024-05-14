@@ -27,7 +27,7 @@ Or use Gradle:
 implementation 'com.agentsflex:agents-flex-bom:1.0.0-beta.3'
 ```
 
-**Step 2: Create a Java class with a Main method:**
+**Step 2: Create a Java class with a `main` method:**
 
 ```java
 public class Main {
@@ -57,25 +57,10 @@ public class Main {
 }
 ```
 
-For Spark model:
-
-```java
-public class Main {
-    public static void main(String[] args) {
-        SparkLlmConfig config = new SparkLlmConfig();
-        config.setAppId("****");
-        config.setApiKey("****");
-        config.setApiSecret("****");
-
-        Llm llm = new SparkLlm(config);
-        String response = llm.chat("请问你叫什么名字");
-    }
-}
-```
 
 ## Streaming Conversation
 
-Streaming dialogue requires calling the `chatStream` method, and passing the prompt along with `StreamResponseListener`, as shown in the code below:
+Streaming Conversation requires calling the `chatStream` method, and passing the prompt with `StreamResponseListener` object, as shown in the code below:
 
 ```java
 public class Main {

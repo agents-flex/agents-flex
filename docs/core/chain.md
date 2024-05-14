@@ -1,15 +1,16 @@
 # Chain
 
-The execution chain is a chain formed by arranging and combining multiple agents. A powerful AI functionality often requires the collaboration of multiple agents.
+The `Chain` is a chain formed by arranging and combining multiple agents. A powerful AI functionality often requires the collaboration of multiple agents.
 
 In the chain execution, it is generally executed by the first agent, and the result of the execution is handed over to the second agent for further cooperation, and then to the third agent, and so on, until we get the desired result.
 
-During the execution of the execution chain, it may be necessary to pause for user interaction or data input, before the execution chain can resume execution. Therefore, each Chain execution chain has many different states, with the following state constants:
+During the execution of the execution chain, it may be necessary to pause for user interaction or data input, before the execution chain can resume execution.
+Therefore, each Chain has many different states, with the following state constants:
 
 ```java
 public enum ChainStatus {
 
-    READY(0), // Not started execution
+    READY(0), // Not execution
     START(1), // Execution started, in progress...
     PAUSE_FOR_WAKE_UP(5), //Paused waiting for wake-up
     PAUSE_FOR_INPUT(6), //Paused waiting for data input
@@ -25,24 +26,24 @@ public enum ChainStatus {
     }
 }
 ```
-## Types of Execution Chains
+## Types of Chains
 
-To meet different scenarios, Agents-Flex provides the following types of execution chains:
+To meet different scenarios, Agents-Flex provides the following types of chains:
 
-- SequentialChain: Sequential execution chain
-- ParallelChain: Concurrent (parallel) execution chain
-- LoopChain: Looping execution chain, which can be used for games between two (or more) models (such as two large models playing chess) or similar functionalities like the `Stanford AI Town`.
+- SequentialChain: Sequential chain
+- ParallelChain: Concurrent (parallel) chain
+- LoopChain: Looping chain, which can be used for games between two (or more) models (such as two LLMs playing chess) or similar functionalities like the `Stanford AI Town`.
 
 
 ## Perception
 
 During the execution of a chain, notifications of execution events are issued at different stages. Additionally, each agent may also publish its own custom events during execution.
 
-Each agent can perceive changes in the execution of the chain by implementing `ChainEventListener`, thereby endowing the agent with the ability to perceive the world.
+Each agent can perceive changes in the execution of the chain by implementing `ChainEventListener`, thereby endowing the agent with the ability to perceive the world (Chain).
 
-## Example Code
+## Samples
 
-**Example Code1**：Execute through `SequentialChain` and obtain a result:
+**Samples 1**：Execute through `SequentialChain` and obtain a result:
 
 ```java
 public static void main(String[] args) {
@@ -75,7 +76,7 @@ The above code implements the Agents arrangement shown in the diagram below:
 
 ---
 
-**Example Code2** ： The execution chain pauses during execution, waiting for user input before resuming execution.
+**Samples 2** ： The chain pauses during execution, waiting for user input before resuming execution.
 
 ```java
 public static void main(String[] args) {
@@ -94,11 +95,11 @@ public static void main(String[] args) {
         Map<String, Object> variables = new HashMap<>();
         variables.put(parameter.getName(), userInput);
 
-        //Resume the execution of the chain.
+        //Resume the chain execution.
         chain.resume(variables);
     });
 
-    //Start execution.
+    //start execution.
     chain.execute(new HashMap<>());
 
     //Output results (multiple results).

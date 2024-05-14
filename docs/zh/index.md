@@ -24,7 +24,7 @@ features:
   - title: Function Calling
     details: Agents-Flex 内置了非常灵活的 Function Calling 组件，包括本地方法的定义、解析、通过 LLMs 回调、并执行本地方法到结果，开发者几行代码就可以完成 Function Calling。
   - title: Document
-    details: Agents-Flex 在文本出来方法、内置了 Loader、Parser、Splitter 三大组件，而每种组件又有多重不同的实现类，因此，我们可以轻易的加载网络数据、本地数据、数据库数据，以及多种数据类型。
+    details: Agents-Flex 在文本处理方面、内置了 Loader、Parser、Splitter 三大组件，而每种组件又有多重不同的实现类，因此，我们可以轻易的加载网络数据、本地数据、数据库数据，以及多种数据类型。
   - title: Memory
     details: Agents-Flex 的 Memory 模块分为 MessageMemory 和 ContextMemory，他们分别用于历史对话和 Chain 执行上下文记录，我们可以通过继承 Memory 去实现更加丰富的扩展。
   - title: Embedding

@@ -5,13 +5,14 @@ Agents-Flex's Store refers to the ` VectorStore `, which defines the following m
 - `store(List<T> documents, StoreOptions options)`: Used to store vector data.
 - `delete(Collection<String> ids, StoreOptions options)`: Used to delete vector data.
 - `update(List<T> documents, StoreOptions options)`: Used to update vector data.
-- `search(SearchWrapper wrapper, StoreOptions options)`: Used to query (retrieve) vector data.
+- `search(SearchWrapper wrapper, StoreOptions options)`: Used to search (retrieve) vector data.
 
 Currently, the following vector databases have been adapted in Agents-Flex:
 
+
+- Milvus Vector Database: https://milvus.io
 - Alibaba Cloud Vector Retrieval Service: https://help.aliyun.com/document_detail/2510317.html
 - Tencent Cloud Vector Database: https://cloud.tencent.com/document/product/1709/98666
-- Milvus Vector Database: https://milvus.io
 
 Additionally, adaptation for more vector databases is currently in progress:
 
@@ -41,7 +42,7 @@ store.setEmbeddingModel(llm);
 
 With the above setup completed, we can happily use the store to perform  `CRUD ` operations on vector data.
 
-**Add new data:**
+**Add new Document:**
 
 ```java
 Document document = new Document();
@@ -51,7 +52,7 @@ document.setContent("Text data of the document...");
 store.store(document);
 ```
 
-**Update data：**
+**Update Document：**
 
 ```java
 Document document = new Document();
@@ -61,7 +62,7 @@ document.setContent("New document data...");
 store.update(document);
 ```
 
-**Delete data:**
+**Delete Document:**
 
 ```java
 store.delete(100);
@@ -81,9 +82,9 @@ List<Document> result = store.search(wrapper);
 
 Currently, there is no SQL-like language in the field of vector databases to unify database queries. Each vector database provider offers different APIs or unique query languages.
 
-To eliminate the differences in querying among various vector databases, Agents-Flex has developed the SearchWrapper for unified adaptation.
+To eliminate the differences in querying among various vector databases, Agents-Flex has developed the `SearchWrapper` for unified adaptation.
 
-The SearchWrapper supports generating Filter Expressions (similar to the "where" clause in SQL) for further filtering of vector databases.
+The `SearchWrapper` supports generating Filter Expressions (similar to the "where" clause in SQL) for further filtering of vector databases.
 
 ```java
 @Test
@@ -103,9 +104,9 @@ public void testSearchWrapper() {
 ```
 
 Filter expressions can be referred to as follows:
+
+- Milvus Vector Database：https://milvus.io/docs/boolean.md
 - Tencent Cloud Vector Database：https://cloud.tencent.com/document/product/1709/95099
 - Alibaba Cloud Vector Retrieval Service：https://help.aliyun.com/document_detail/2513006.html
-- Milvus Vector Database：https://milvus.io/docs/boolean.md
-
 
 

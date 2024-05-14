@@ -2,24 +2,27 @@
 
 ## Foreword
 
-The XML Maven dependency example below may not represent the latest version of Agents-Flex. Please refer to the latest version and modify the version number accordingly. You can check the latest version at:https://search.maven.org/artifact/com.agentsflex/parent
+The Maven dependency example below may not represent the latest version of Agents-Flex. Please refer to the latest version and modify the version number accordingly.
+You can check the latest version at: https://search.maven.org/artifact/com.agentsflex/parent
 
-## Scenarios without SpringBoot
 
-```xml
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-bom</artifactId>
-    <version>1.0.0-beta.3</version>
-</dependency>
-```
-
-## Scenarios with SpringBoot
+## use with SpringBoot
 
 ```xml
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-spring-boot-starter</artifactId>
+    <version>1.0.0-beta.3</version>
+</dependency>
+```
+
+
+## without SpringBoot
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-bom</artifactId>
     <version>1.0.0-beta.3</version>
 </dependency>
 ```
