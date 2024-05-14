@@ -19,6 +19,7 @@ public class SparkLlmTest {
         config.setAppId("****");
         config.setApiKey("****");
         config.setApiSecret("****");
+        config.setVersion("v3.5");
 
         Llm llm = new SparkLlm(config);
         String result = llm.chat("你好，请问你是谁？");
@@ -53,6 +54,7 @@ public class SparkLlmTest {
         config.setAppId("****");
         config.setApiKey("****");
         config.setApiSecret("****");
+        config.setVersion("v3.5");
 
         Llm llm = new SparkLlm(config);
 
