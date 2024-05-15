@@ -21,7 +21,7 @@ import com.agentsflex.memory.ContextMemory;
 import java.util.*;
 
 /**
- * 代理（人），有身份 （id），有姓名（name），有记忆 （memory），能执行 execute
+ * an agent should have an ID, a name, a memory, and the ability to execute.
  */
 public abstract class Agent {
     protected Object id;
@@ -73,15 +73,15 @@ public abstract class Agent {
 
 
     public List<String> getOutputKeys() {
-        return outputKeys ;
+        return outputKeys;
     }
 
     public void setOutputKeys(List<String> outputKeys) {
         this.outputKeys = outputKeys;
     }
 
-    public Agent output(String ... keys){
-        if (this.outputKeys == null){
+    public Agent output(String... keys) {
+        if (this.outputKeys == null) {
             this.outputKeys = new ArrayList<>();
         }
 

@@ -53,6 +53,11 @@ public abstract class DefaultAgent extends Agent {
             String key = variables.keySet().iterator().next();
             value = variables.get(key);
         }
+        List<String> outputKeys = getOutputKeys();
+        if (outputKeys != null && outputKeys.size() == 1) {
+            return Output.of(outputKeys.get(0), execute(value, chain));
+        }
+
         return Output.ofDefault(execute(value, chain));
     }
 
