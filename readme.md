@@ -163,6 +163,8 @@ public class WeatherUtil {
 
 - Twitter: https://twitter.com/yangfuhai
 
+<a href="https://www.producthunt.com/posts/agents-flex?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-agents&#0045;flex" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=457469&theme=neutral" alt="Agents&#0045;Flex - &#0032;A&#0032;Java&#0032;framework&#0032;for&#0032;LLM&#0032;applications | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+
 ## Modules
 
 ![](./docs/assets/images/modules.jpg)
