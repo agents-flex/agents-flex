@@ -15,11 +15,11 @@
  */
 package com.agentsflex.prompt.template;
 
-import com.agentsflex.prompt.SimplePrompt;
+import com.agentsflex.prompt.TextPrompt;
 
 import java.util.*;
 
-public class SimplePromptTemplate implements PromptTemplate<SimplePrompt> {
+public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
 
     private final Set<String> keys = new HashSet<>();
 
@@ -33,7 +33,7 @@ public class SimplePromptTemplate implements PromptTemplate<SimplePrompt> {
         }
     };
 
-    public SimplePromptTemplate(String template) {
+    public TextPromptTemplate(String template) {
         boolean isCurrentInKeyword = false;
         StringBuilder keyword = null;
         StringBuilder content = null;
@@ -82,11 +82,11 @@ public class SimplePromptTemplate implements PromptTemplate<SimplePrompt> {
     }
 
 
-    public static SimplePromptTemplate create(String template) {
-        return new SimplePromptTemplate(template);
+    public static TextPromptTemplate create(String template) {
+        return new TextPromptTemplate(template);
     }
 
-    public SimplePrompt format(Map<String, Object> params) {
+    public TextPrompt format(Map<String, Object> params) {
         StringBuilder result = new StringBuilder();
         for (String part : parts) {
             if (part.charAt(0) == '{' && part.charAt(part.length() - 1) == '}') {
@@ -99,7 +99,7 @@ public class SimplePromptTemplate implements PromptTemplate<SimplePrompt> {
                 result.append(part);
             }
         }
-        return new SimplePrompt(result.toString());
+        return new TextPrompt(result.toString());
     }
 
     public Set<String> getKeys() {

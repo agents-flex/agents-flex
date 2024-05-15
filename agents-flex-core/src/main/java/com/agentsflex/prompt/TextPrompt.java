@@ -22,11 +22,11 @@ import com.agentsflex.message.Message;
 import java.util.Collections;
 import java.util.List;
 
-public class SimplePrompt extends Prompt<AiMessage> {
+public class TextPrompt extends Prompt<AiMessage> {
 
     private final String content;
 
-    public SimplePrompt(String content) {
+    public TextPrompt(String content) {
         this.content = content;
     }
 

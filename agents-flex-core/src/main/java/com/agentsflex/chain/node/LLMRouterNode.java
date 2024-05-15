@@ -19,8 +19,8 @@ import com.agentsflex.chain.Chain;
 import com.agentsflex.chain.ChainNode;
 import com.agentsflex.llm.Llm;
 import com.agentsflex.llm.response.AiMessageResponse;
-import com.agentsflex.prompt.SimplePrompt;
-import com.agentsflex.prompt.template.SimplePromptTemplate;
+import com.agentsflex.prompt.TextPrompt;
+import com.agentsflex.prompt.template.TextPromptTemplate;
 
 import java.util.List;
 
@@ -64,9 +64,9 @@ public class LLMRouterNode extends RouterNode {
 
     @Override
     protected String route(Chain chain) {
-        SimplePromptTemplate promptTemplate = SimplePromptTemplate.create(prompt);
-        SimplePrompt simplePrompt = promptTemplate.format(chain.getMemory().getAll());
-        AiMessageResponse response = llm.chat(simplePrompt);
+        TextPromptTemplate promptTemplate = TextPromptTemplate.create(prompt);
+        TextPrompt textPrompt = promptTemplate.format(chain.getMemory().getAll());
+        AiMessageResponse response = llm.chat(textPrompt);
         return response.getMessage().getContent();
     }
 

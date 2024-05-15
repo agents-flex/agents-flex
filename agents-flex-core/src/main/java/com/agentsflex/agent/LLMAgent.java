@@ -20,8 +20,8 @@ import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.llm.Llm;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.message.AiMessage;
-import com.agentsflex.prompt.SimplePrompt;
-import com.agentsflex.prompt.template.SimplePromptTemplate;
+import com.agentsflex.prompt.TextPrompt;
+import com.agentsflex.prompt.template.TextPromptTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +33,7 @@ public class LLMAgent extends Agent {
     protected Llm llm;
     protected ChatOptions chatOptions = ChatOptions.DEFAULT;
     protected String prompt;
-    protected SimplePromptTemplate promptTemplate;
+    protected TextPromptTemplate promptTemplate;
 
     public LLMAgent() {
     }
@@ -42,7 +42,7 @@ public class LLMAgent extends Agent {
     public LLMAgent(Llm llm, String prompt) {
         this.llm = llm;
         this.prompt = prompt;
-        this.promptTemplate = new SimplePromptTemplate(prompt);
+        this.promptTemplate = new TextPromptTemplate(prompt);
     }
 
 
@@ -60,7 +60,7 @@ public class LLMAgent extends Agent {
 
     public void setPrompt(String prompt) {
         this.prompt = prompt;
-        this.promptTemplate = new SimplePromptTemplate(prompt);
+        this.promptTemplate = new TextPromptTemplate(prompt);
     }
 
     public ChatOptions getChatOptions() {
@@ -97,8 +97,8 @@ public class LLMAgent extends Agent {
 
     @Override
     public Output execute(Map<String, Object> variables, Chain chain) {
-        SimplePrompt simplePrompt = promptTemplate.format(variables);
-        AiMessageResponse response = llm.chat(simplePrompt, chatOptions);
+        TextPrompt textPrompt = promptTemplate.format(variables);
+        AiMessageResponse response = llm.chat(textPrompt, chatOptions);
 
         if (chain != null) {
             chain.output(this, response);
