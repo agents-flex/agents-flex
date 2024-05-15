@@ -161,7 +161,7 @@ public class WeatherUtil {
 
 ## Communication
 
-![](./docs/assets/images/wechat-group.png)
+- Twitter: https://twitter.com/yangfuhai
 
 ## Modules
 
