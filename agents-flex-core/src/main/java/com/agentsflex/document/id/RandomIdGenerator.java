@@ -13,17 +13,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.document.splitter;
+package com.agentsflex.document.id;
 
-import com.agentsflex.document.DocumentSplitter;
 import com.agentsflex.document.Document;
-import com.agentsflex.document.id.DocumentIdGenerator;
 
-import java.util.List;
+import java.util.UUID;
 
-public class ParagraphDocumentSplitter implements DocumentSplitter {
+public class RandomIdGenerator implements DocumentIdGenerator {
+
+    /**
+     * Generate a unique ID for the Document
+     *
+     * @param document Document
+     * @return the unique ID
+     */
     @Override
-    public List<Document> split(Document text, DocumentIdGenerator idGenerator) {
-        return null;
+    public Object generateId(Document document) {
+        return UUID.randomUUID().toString();
     }
 }

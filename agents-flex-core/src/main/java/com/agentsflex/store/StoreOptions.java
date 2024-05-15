@@ -19,7 +19,7 @@ import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.util.StringUtil;
 
 /**
- * 每个 store 都可以有自己的实现类
+ * Store Options, Each store can have its own Options implementation.
  */
 public class StoreOptions {
 
@@ -33,20 +33,25 @@ public class StoreOptions {
         public void setPartitionName(String partitionName) {
             throw new IllegalStateException("Can not set partitionName to the default instance.");
         }
+
+        @Override
+        public void setEmbeddingOptions(EmbeddingOptions embeddingOptions) {
+            throw new IllegalStateException("Can not set embeddingOptions to the default instance.");
+        }
     };
 
     /**
-     * 集合名称
+     * store collection name
      */
     private String collectionName;
 
     /**
-     * 分区名称
+     * store partition name
      */
     private String partitionName;
 
     /**
-     * embedding 的配置内容
+     * store embedding options
      */
     private EmbeddingOptions embeddingOptions;
 

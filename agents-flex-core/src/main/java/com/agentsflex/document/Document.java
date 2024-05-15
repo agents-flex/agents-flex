@@ -20,14 +20,15 @@ import com.agentsflex.store.VectorData;
 public class Document extends VectorData {
 
     /**
-     * 文档 ID
+     * Document ID
      */
     private Object id;
 
     /**
-     * 文档内容
+     * Document Content
      */
     private String content;
+
 
     public Document() {
     }

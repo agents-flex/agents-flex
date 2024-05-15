@@ -15,20 +15,23 @@
  */
 package com.agentsflex.document;
 
+import com.agentsflex.document.id.DocumentIdGenerator;
+
 import java.util.Collections;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
 
 public interface DocumentSplitter {
-    List<Document> split(Document text);
 
-    default List<Document> splitAll(List<Document> documents) {
-        if (documents == null || documents.isEmpty()){
+    List<Document> split(Document text, DocumentIdGenerator idGenerator);
+
+    default List<Document> splitAll(List<Document> documents, DocumentIdGenerator idGenerator) {
+        if (documents == null || documents.isEmpty()) {
             return Collections.emptyList();
         }
         return documents.stream()
-            .flatMap(document -> split(document).stream())
+            .flatMap(document -> split(document, idGenerator).stream())
             .collect(toList());
     }
 }

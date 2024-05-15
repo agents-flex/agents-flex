@@ -17,23 +17,27 @@ package com.agentsflex.store;
 
 import com.agentsflex.document.Document;
 import com.agentsflex.document.DocumentSplitter;
+import com.agentsflex.document.id.DocumentIdGenerator;
+import com.agentsflex.document.id.DocumentIdGeneratorFactory;
 import com.agentsflex.llm.embedding.EmbeddingModel;
 
 import java.util.Collection;
 import java.util.List;
 
 /**
- * 文档存储器
+ * Document Store
  */
 public abstract class DocumentStore extends VectorStore<Document> {
 
     /**
-     * embeddings 模型，可以使用外部的 embeddings 模型，也可以使用自己的 embeddings
-     * 许多向量数据库会自带有 embeddings 的能力
+     * DocumentStore can use external embeddings models or its own embeddings
+     * Many vector databases come with the ability to embed themselves
      */
     private EmbeddingModel embeddingModel;
 
     private DocumentSplitter documentSplitter;
+
+    private DocumentIdGenerator documentIdGenerator = DocumentIdGeneratorFactory.getDocumentIdGenerator();
 
     public EmbeddingModel getEmbeddingModel() {
         return embeddingModel;
@@ -51,6 +55,14 @@ public abstract class DocumentStore extends VectorStore<Document> {
         this.documentSplitter = documentSplitter;
     }
 
+    public DocumentIdGenerator getDocumentIdGenerator() {
+        return documentIdGenerator;
+    }
+
+    public void setDocumentIdGenerator(DocumentIdGenerator documentIdGenerator) {
+        this.documentIdGenerator = documentIdGenerator;
+    }
+
     @Override
     public StoreResult store(List<Document> documents, StoreOptions options) {
         if (options == null) {
@@ -58,7 +70,16 @@ public abstract class DocumentStore extends VectorStore<Document> {
         }
 
         if (documentSplitter != null) {
-            documents = documentSplitter.splitAll(documents);
+            documents = documentSplitter.splitAll(documents, documentIdGenerator);
+        }
+        // use the documentIdGenerator create unique id for document
+        else if (documentIdGenerator != null) {
+            for (Document document : documents) {
+                if (document.getId() == null) {
+                    Object id = documentIdGenerator.generateId(document);
+                    document.setId(id);
+                }
+            }
         }
 
         embedDocumentsIfNecessary(documents, options);
@@ -103,13 +124,14 @@ public abstract class DocumentStore extends VectorStore<Document> {
 
 
     protected void embedDocumentsIfNecessary(List<Document> documents, StoreOptions options) {
-        if (embeddingModel != null) {
-            for (Document document : documents) {
-                if (document.getVector() == null) {
-                    VectorData vectorData = embeddingModel.embed(document, options.getEmbeddingOptions());
-                    if (vectorData != null) {
-                        document.setVector(vectorData.getVector());
-                    }
+        if (embeddingModel == null) {
+            return;
+        }
+        for (Document document : documents) {
+            if (document.getVector() == null) {
+                VectorData vectorData = embeddingModel.embed(document, options.getEmbeddingOptions());
+                if (vectorData != null) {
+                    document.setVector(vectorData.getVector());
                 }
             }
         }

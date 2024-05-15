@@ -17,6 +17,7 @@ package com.agentsflex.document.splitter;
 
 import com.agentsflex.document.DocumentSplitter;
 import com.agentsflex.document.Document;
+import com.agentsflex.document.id.DocumentIdGenerator;
 import com.agentsflex.util.StringUtil;
 
 import java.util.ArrayList;
@@ -32,17 +33,20 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
     }
 
     @Override
-    public List<Document> split(Document text) {
-        if (text == null || StringUtil.noText(text.getContent())) {
+    public List<Document> split(Document document, DocumentIdGenerator idGenerator) {
+        if (document == null || StringUtil.noText(document.getContent())) {
             return Collections.emptyList();
         }
-        String[] textArray = text.getContent().split(regex);
+        String[] textArray = document.getContent().split(regex);
         List<Document> texts = new ArrayList<>(textArray.length);
         for (String textString : textArray) {
-            Document newText = new Document();
-            newText.setMetadatas(text.getMetadatas());
-            newText.setContent(textString);
-            texts.add(newText);
+            Document newDocument = new Document();
+            newDocument.setMetadatas(document.getMetadatas());
+            newDocument.setContent(textString);
+
+            //we should invoke setId after setContent
+            newDocument.setId(idGenerator == null ? null : idGenerator.generateId(newDocument));
+            texts.add(newDocument);
         }
         return texts;
     }

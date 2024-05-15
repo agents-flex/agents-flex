@@ -17,12 +17,13 @@ package com.agentsflex.document.splitter;
 
 import com.agentsflex.document.DocumentSplitter;
 import com.agentsflex.document.Document;
+import com.agentsflex.document.id.DocumentIdGenerator;
 
 import java.util.List;
 
 public class MarkdownDocumentSplitter implements DocumentSplitter {
     @Override
-    public List<Document> split(Document text) {
+    public List<Document> split(Document text, DocumentIdGenerator idGenerator) {
         return null;
     }
 }

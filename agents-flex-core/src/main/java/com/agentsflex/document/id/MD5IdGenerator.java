@@ -13,17 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.document.splitter;
+package com.agentsflex.document.id;
 
-import com.agentsflex.document.DocumentSplitter;
 import com.agentsflex.document.Document;
-import com.agentsflex.document.id.DocumentIdGenerator;
+import com.agentsflex.util.HashUtil;
 
-import java.util.List;
-
-public class ParagraphDocumentSplitter implements DocumentSplitter {
+public class MD5IdGenerator implements DocumentIdGenerator {
+    /**
+     * Generate a unique ID for the Document
+     *
+     * @param document Document
+     * @return the unique ID
+     */
     @Override
-    public List<Document> split(Document text, DocumentIdGenerator idGenerator) {
-        return null;
+    public Object generateId(Document document) {
+        return document.getContent() != null ? HashUtil.md5(document.getContent()) : null;
     }
+
 }
