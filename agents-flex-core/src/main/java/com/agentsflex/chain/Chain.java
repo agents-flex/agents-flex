@@ -40,7 +40,6 @@ public abstract class Chain implements Serializable {
     private Chain parent;
     private List<Chain> children;
     private ChainStatus status = ChainStatus.READY;
-
     private String message;
 
     //理论上是线程安全的，所有有多线程写入的情况，但是只有全部写入完成后才会去通知监听器
