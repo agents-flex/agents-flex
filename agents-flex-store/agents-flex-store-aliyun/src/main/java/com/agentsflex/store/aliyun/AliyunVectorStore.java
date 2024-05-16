@@ -45,7 +45,7 @@ public class AliyunVectorStore extends DocumentStore {
     @Override
     public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
-            return StoreResult.DEFAULT_SUCCESS;
+            return StoreResult.success();
         }
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -68,15 +68,14 @@ public class AliyunVectorStore extends DocumentStore {
 
         String payload = JSON.toJSONString(payloadMap);
         httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/"
-            + options.getCollectionName(config.getDefaultCollectionName()) + "/docs", headers, payload);
+            + options.getCollectionNameOrDefault(config.getDefaultCollectionName()) + "/docs", headers, payload);
 
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.successWithIds(documents);
     }
 
 
     @Override
     public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
-
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("dashvector-auth-token", config.getApiKey());
@@ -85,16 +84,16 @@ public class AliyunVectorStore extends DocumentStore {
         payloadMap.put("ids", ids);
         String payload = JSON.toJSONString(payloadMap);
         httpUtil.delete("https://" + config.getEndpoint() + "/v1/collections/"
-            + options.getCollectionName(config.getDefaultCollectionName()) + "/docs", headers, payload);
+            + options.getCollectionNameOrDefault(config.getDefaultCollectionName()) + "/docs", headers, payload);
 
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.success();
     }
 
 
     @Override
     public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
-            return StoreResult.DEFAULT_SUCCESS;
+            return StoreResult.success();
         }
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -117,9 +116,9 @@ public class AliyunVectorStore extends DocumentStore {
 
         String payload = JSON.toJSONString(payloadMap);
         httpUtil.put("https://" + config.getEndpoint() + "/v1/collections/"
-            + options.getCollectionName(config.getDefaultCollectionName()) + "/docs", headers, payload);
+            + options.getCollectionNameOrDefault(config.getDefaultCollectionName()) + "/docs", headers, payload);
 
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.successWithIds(documents);
     }
 
 
@@ -137,7 +136,7 @@ public class AliyunVectorStore extends DocumentStore {
 
         String payload = JSON.toJSONString(payloadMap);
         String result = httpUtil.post("https://" + config.getEndpoint() + "/v1/collections/"
-            + options.getCollectionName(config.getDefaultCollectionName()) + "/query", headers, payload);
+            + options.getCollectionNameOrDefault(config.getDefaultCollectionName()) + "/query", headers, payload);
         if (StringUtil.noText(result)) {
             return null;
         }

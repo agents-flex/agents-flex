@@ -18,7 +18,7 @@ package com.agentsflex.document.id;
 public abstract class DocumentIdGeneratorFactory {
 
     private static DocumentIdGeneratorFactory factory = new DocumentIdGeneratorFactory() {
-        final RandomIdGenerator randomIdGenerator = new RandomIdGenerator();
+        final MD5IdGenerator randomIdGenerator = new MD5IdGenerator();
 
         @Override
         public DocumentIdGenerator createGenerator() {

@@ -55,7 +55,6 @@ public class MilvusVectorStore extends DocumentStore {
 
     @Override
     public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
-        // Implement Milvus insert logic
         List<JSONObject> data = new ArrayList<>();
         for (Document doc : documents) {
             JSONObject dict = new JSONObject();
@@ -64,24 +63,26 @@ public class MilvusVectorStore extends DocumentStore {
             data.add(dict);
         }
         InsertReq insertReq = InsertReq.builder()
-            .collectionName(options.getPartitionName(defaultCollectionName))
+            .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
+            .partitionName(options.getPartitionName())
             .data(data)
             .build();
 
         client.insert(insertReq);
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.successWithIds(documents);
     }
 
     @Override
     public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
         // Implement Milvus delete logic
         DeleteReq deleteReq = DeleteReq.builder()
-            .collectionName(options.getPartitionName(defaultCollectionName))
+            .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
+            .partitionName(options.getPartitionName())
             .ids(new ArrayList<>(ids))
             .build();
 
         client.delete(deleteReq);
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.success();
 
     }
 
@@ -89,8 +90,9 @@ public class MilvusVectorStore extends DocumentStore {
     public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
         // Implement Milvus search logic
         SearchReq searchReq = SearchReq.builder()
-            .collectionName(options.getCollectionName(defaultCollectionName))
+            .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
             .annsField("vector")
+            .partitionNames(options.getPartitionNamesOrEmpty())
             .topK(searchWrapper.getMaxResults())
             .filter(searchWrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT))
             .data(Collections.singletonList(searchWrapper.getVector()))
@@ -131,7 +133,7 @@ public class MilvusVectorStore extends DocumentStore {
     @Override
     public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
-            return StoreResult.DEFAULT_SUCCESS;
+            return StoreResult.success();
         }
         List<JSONObject> data = new ArrayList<>();
         for (Document doc : documents) {
@@ -142,11 +144,12 @@ public class MilvusVectorStore extends DocumentStore {
             data.add(dict);
         }
         UpsertReq upsertReq = UpsertReq.builder()
-            .collectionName(options.getPartitionName(defaultCollectionName))
+            .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
+            .partitionName(options.getPartitionName())
             .data(data)
             .build();
         client.upsert(upsertReq);
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.successWithIds(documents);
     }
 
 }

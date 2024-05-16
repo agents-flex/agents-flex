@@ -47,7 +47,7 @@ public class QCloudVectorStore extends DocumentStore {
     @Override
     public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
-            return StoreResult.DEFAULT_SUCCESS;
+            return StoreResult.success();
         }
 
         Map<String, String> headers = new HashMap<>();
@@ -56,7 +56,7 @@ public class QCloudVectorStore extends DocumentStore {
 
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("database", config.getDatabase());
-        payloadMap.put("collection", config.getDefaultCollectionName());
+        payloadMap.put("collection", options.getCollectionNameOrDefault(config.getDefaultCollectionName()));
 
 
         List<Map<String, Object>> payloadDocs = new ArrayList<>();
@@ -73,7 +73,7 @@ public class QCloudVectorStore extends DocumentStore {
 
         String payload = JSON.toJSONString(payloadMap);
         httpUtil.post(config.getHost() + "/document/upsert", headers, payload);
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.successWithIds(documents);
     }
 
 
@@ -85,7 +85,7 @@ public class QCloudVectorStore extends DocumentStore {
 
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("database", config.getDatabase());
-        payloadMap.put("collection", options.getPartitionName(config.getDefaultCollectionName()));
+        payloadMap.put("collection", options.getCollectionNameOrDefault(config.getDefaultCollectionName()));
 
         Map<String, Object> documentIdsObj = new HashMap<>();
         documentIdsObj.put("documentIds", ids);
@@ -95,14 +95,14 @@ public class QCloudVectorStore extends DocumentStore {
 
         httpUtil.post(config.getHost() + "/document/delete", headers, payload);
 
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.success();
     }
 
 
     @Override
     public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
-            return StoreResult.DEFAULT_SUCCESS;
+            return StoreResult.success();
         }
 
         Map<String, String> headers = new HashMap<>();
@@ -111,7 +111,7 @@ public class QCloudVectorStore extends DocumentStore {
 
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("database", config.getDatabase());
-        payloadMap.put("collection", options.getPartitionName(config.getDefaultCollectionName()));
+        payloadMap.put("collection", options.getCollectionNameOrDefault(config.getDefaultCollectionName()));
 
         for (Document document : documents) {
             Map<String, Object> documentIdsObj = new HashMap<>();
@@ -122,7 +122,7 @@ public class QCloudVectorStore extends DocumentStore {
             httpUtil.post(config.getHost() + "/document/update", headers, payload);
         }
 
-        return StoreResult.DEFAULT_SUCCESS;
+        return StoreResult.successWithIds(documents);
     }
 
     @Override
@@ -132,7 +132,7 @@ public class QCloudVectorStore extends DocumentStore {
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("database", config.getDatabase());
-        payloadMap.put("collection", options.getCollectionName(config.getDefaultCollectionName()));
+        payloadMap.put("collection", options.getCollectionNameOrDefault(config.getDefaultCollectionName()));
 
         Map<String, Object> searchMap = new HashMap<>();
         searchMap.put("vectors", Collections.singletonList(searchWrapper.getVector()));

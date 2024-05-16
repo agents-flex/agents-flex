@@ -15,15 +15,42 @@
  */
 package com.agentsflex.store;
 
+import com.agentsflex.document.Document;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public interface StoreResult {
-    StoreResult DEFAULT_SUCCESS = new DefaultResult() ;
 
     boolean isSuccess();
 
-    class DefaultResult implements StoreResult {
+    List<Object> ids();
+
+    static StoreResult success() {
+        return new SuccessResult();
+    }
+
+    static StoreResult successWithIds(List<Document> documents) {
+        SuccessResult result = new SuccessResult();
+        result.ids = new ArrayList<>(documents.size());
+        for (Document document : documents) {
+            result.ids.add(document.getId());
+        }
+        return result;
+    }
+
+    class SuccessResult implements StoreResult {
+
+        List<Object> ids;
+
         @Override
         public boolean isSuccess() {
             return true;
+        }
+
+        @Override
+        public List<Object> ids() {
+            return ids;
         }
     }
 }
