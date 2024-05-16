@@ -32,18 +32,14 @@ public class OpenAiLLmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
-    public static AiMessageParser getAiMessageParser() {
+    public static AiMessageParser getAiMessageParser(boolean isStream) {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        aiMessageParser.setContentPath("$.choices[0].message.content");
-        aiMessageParser.setIndexPath("$.choices[0].index");
-        aiMessageParser.setStatusPath("$.choices[0].finish_reason");
-        aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
-        return aiMessageParser;
-    }
+        if (isStream){
+            aiMessageParser.setContentPath("$.choices[0].delta.content");
+        }else {
+            aiMessageParser.setContentPath("$.choices[0].message.content");
+        }
 
-    public static AiMessageParser getStreamMessageParser() {
-        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        aiMessageParser.setContentPath("$.choices[0].delta.content");
         aiMessageParser.setIndexPath("$.choices[0].index");
         aiMessageParser.setStatusPath("$.choices[0].finish_reason");
         aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));

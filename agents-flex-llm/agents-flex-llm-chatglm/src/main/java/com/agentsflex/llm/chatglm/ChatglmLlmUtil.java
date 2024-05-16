@@ -15,6 +15,7 @@
  */
 package com.agentsflex.llm.chatglm;
 
+import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
@@ -73,9 +74,14 @@ public class ChatglmLlmUtil {
         return builder.compact();
     }
 
-    public static AiMessageParser getAiMessageParser() {
+    public static AiMessageParser getAiMessageParser(boolean isStream) {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        aiMessageParser.setContentPath("$.choices[0].delta.content");
+        if (isStream) {
+            aiMessageParser.setContentPath("$.choices[0].delta.content");
+        } else {
+            aiMessageParser.setContentPath("$.choices[0].message.content");
+        }
+
         aiMessageParser.setIndexPath("$.choices[0].index");
         aiMessageParser.setStatusPath("$.choices[0].finish_reason");
         aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
@@ -93,10 +99,12 @@ public class ChatglmLlmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config, boolean stream) {
+    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config, boolean stream, ChatOptions chatOptions) {
         Maps.Builder builder = Maps.of("model", config.getModel())
             .put("messages", promptFormat.toMessagesJsonObject(prompt))
             .putIf(stream, "stream", stream)
+            .put("temperature", chatOptions.getTemperature())
+            .put("max_tokens", chatOptions.getMaxTokens())
             .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt));
         return JSON.toJSONString(builder.build());
 

@@ -46,8 +46,8 @@ import java.util.Map;
 public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
     private final HttpClient httpClient = new HttpClient();
-    public AiMessageParser aiMessageParser = OpenAiLLmUtil.getAiMessageParser();
-    public AiMessageParser streamMessageParser = OpenAiLLmUtil.getStreamMessageParser();
+    public AiMessageParser aiMessageParser = OpenAiLLmUtil.getAiMessageParser(false);
+    public AiMessageParser streamMessageParser = OpenAiLLmUtil.getAiMessageParser(true);
     public FunctionMessageParser functionMessageParser = OpenAiLLmUtil.getFunctionMessageParser();
 
     public static OpenAiLlm of(String apiKey) {

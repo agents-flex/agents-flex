@@ -47,7 +47,8 @@ import java.util.Map;
 public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
     private HttpClient httpClient = new HttpClient();
-    public AiMessageParser aiMessageParser = ChatglmLlmUtil.getAiMessageParser();
+    public AiMessageParser aiMessageParser = ChatglmLlmUtil.getAiMessageParser(false);
+    public AiMessageParser aiStreamMessageParser = ChatglmLlmUtil.getAiMessageParser(true);
     public FunctionMessageParser functionMessageParser = ChatglmLlmUtil.getFunctionMessageParser();
 
 
@@ -92,7 +93,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
         String endpoint = config.getEndpoint();
-        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false);
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false, options);
         String response = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
@@ -136,10 +137,10 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
-        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, true);
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, true, options);
 
         String endpoint = config.getEndpoint();
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser, functionMessageParser);
         llmClient.start(endpoint + "/api/paas/v4/chat/completions", headers, payload, clientListener, config);
     }
 
