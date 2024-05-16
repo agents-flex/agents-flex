@@ -23,43 +23,44 @@ import java.util.function.Consumer;
 public class SearchWrapper extends VectorData {
 
     /**
-     * 默认返回的数据量
+     * the default value of search data count
      */
     public static final int DEFAULT_MAX_RESULTS = 4;
 
     /**
-     * 搜索的内容，一般情况下，会把 text 转换为向量数据后再进行搜索
+     * search text, Vector store will convert the text to vector data
      */
     private String text;
 
     /**
-     * 返回的最大数据量，类似传统数据库 mysql 的 limit
+     * search max result, like the sql "limit" in mysql
      */
     private Integer maxResults = DEFAULT_MAX_RESULTS;
 
     /**
-     * 最低相关性得分，范围从 0 到 1（包括 0 到 1 ）。只有分数为该值或更高的嵌入才会返回。
-     * 0.0 表示接受任何相似性或禁用相似性阈值筛选。阈值 1.0 表示需要完全匹配。
+     * The lowest correlation score, ranging from 0 to 1 (including 0 and 1). Only embeddings with a score of this value or higher will be returned.
+     * 0.0 indicates accepting any similarity or disabling similarity threshold filtering. A threshold of 1.0 indicates the need for a perfect match.
      */
     private Double minScore;
 
     /**
-     * 是否包含向量数据查询，如果当前值为 true，且向量内容为 null 时，会自动通过向量数据库把 text 转换为 向量数据
+     * The flag of include vector data queries. If the current value is true and the vector content is null,
+     * the query text will be automatically converted into vector data through the vector store.
      */
     private boolean withVector = true;
 
     /**
-     * 查询条件
+     * query condition
      */
     private Condition condition;
 
     /**
-     * 查询的列名
+     * query fields
      */
     private List<String> outputFields;
 
     /**
-     * 是否输出向量数据
+     * whether to output vector data
      */
     private boolean outputVector = false;
 
@@ -303,9 +304,8 @@ public class SearchWrapper extends VectorData {
 
 
     /**
-     * 转换为过滤条件的表达式，每个厂商的表达式要求不一样，可以通过 ExpressionAdaptor 来实现自定义的适配
-     *
-     * @return 过滤条件表达式
+     * Convert to expressions for filtering conditions, with different expression requirements for each vendor.
+     * Customized adaptor can be achieved through ExpressionAdaptor
      */
     public String toFilterExpression() {
         return toFilterExpression(ExpressionAdaptor.DEFAULT);

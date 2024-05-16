@@ -21,54 +21,141 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 向量存储
+ * Vector Store
  *
- * @param <T>
+ * @param <T> The Vector Data
  */
 public abstract class VectorStore<T extends VectorData> {
 
-    public StoreResult store(T document) {
-        return store(document, StoreOptions.DEFAULT);
+    /**
+     * Store Vector Data
+     *
+     * @param vectorData The Vector Data
+     * @return Store Result
+     */
+    public StoreResult store(T vectorData) {
+        return store(vectorData, StoreOptions.DEFAULT);
     }
 
-    public StoreResult store(T document, StoreOptions options) {
-        return store(Collections.singletonList(document), options);
+    /**
+     * Store Vector Data With Options
+     *
+     * @param vectorData The Vector Data
+     * @param options    Store Options
+     * @return Store Result
+     */
+    public StoreResult store(T vectorData, StoreOptions options) {
+        return store(Collections.singletonList(vectorData), options);
     }
 
-    public StoreResult store(List<T> documents) {
-        return store(documents, StoreOptions.DEFAULT);
+    /**
+     * Store Vector Data List
+     *
+     * @param vectorDataList The Vector Data List
+     * @return Store Result
+     */
+    public StoreResult store(List<T> vectorDataList) {
+        return store(vectorDataList, StoreOptions.DEFAULT);
     }
 
-    public abstract StoreResult store(List<T> documents, StoreOptions options);
+    /**
+     * Store Vector Data list wit options
+     *
+     * @param vectorDataList vector data list
+     * @param options        options
+     * @return store result
+     */
+    public abstract StoreResult store(List<T> vectorDataList, StoreOptions options);
 
 
+    /**
+     * delete store data by ids
+     *
+     * @param ids the data ids
+     * @return store result
+     */
     public StoreResult delete(Object... ids) {
         return delete(Arrays.asList(ids), StoreOptions.DEFAULT);
     }
 
+
+    /**
+     * delete store data by id collection
+     *
+     * @param ids the ids
+     * @return store result
+     */
     public StoreResult delete(Collection<Object> ids) {
         return delete(ids, StoreOptions.DEFAULT);
     }
 
+    /**
+     * delete store data by ids with options
+     *
+     * @param ids     ids
+     * @param options store options
+     * @return store result
+     */
     public abstract StoreResult delete(Collection<Object> ids, StoreOptions options);
 
-    public StoreResult update(T document) {
-        return update(document, StoreOptions.DEFAULT);
+    /**
+     * update the vector data by id
+     *
+     * @param vectorData the vector data
+     * @return store result
+     */
+    public StoreResult update(T vectorData) {
+        return update(vectorData, StoreOptions.DEFAULT);
     }
 
-    public StoreResult update(T document, StoreOptions options) {
-        return update(Collections.singletonList(document), options);
+
+    /**
+     * update the vector data by id with options
+     *
+     * @param vectorData vector data
+     * @param options    store options
+     * @return store result
+     */
+    public StoreResult update(T vectorData, StoreOptions options) {
+        return update(Collections.singletonList(vectorData), options);
     }
 
-    public StoreResult update(List<T> documents) {
-        return update(documents, StoreOptions.DEFAULT);
+    /**
+     * update vector data list
+     *
+     * @param vectorDataList vector data list
+     * @return store result
+     */
+    public StoreResult update(List<T> vectorDataList) {
+        return update(vectorDataList, StoreOptions.DEFAULT);
     }
 
-    public abstract StoreResult update(List<T> documents, StoreOptions options);
+    /**
+     * update store data list with options
+     *
+     * @param vectorDataList vector data list
+     * @param options        store options
+     * @return store result
+     */
+    public abstract StoreResult update(List<T> vectorDataList, StoreOptions options);
 
+    /**
+     * search vector data by SearchWrapper
+     *
+     * @param wrapper SearchWrapper
+     * @return the vector data list
+     */
     public List<T> search(SearchWrapper wrapper) {
         return search(wrapper, StoreOptions.DEFAULT);
     }
 
+
+    /**
+     * search vector data by SearchWrapper with options
+     *
+     * @param wrapper SearchWrapper
+     * @param options Store Options
+     * @return the vector data list
+     */
     public abstract List<T> search(SearchWrapper wrapper, StoreOptions options);
 }
