@@ -1,15 +1,20 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-beta.3 20240513
-- 新增：MilvusVectorStore 用于对 Milvus 向量数据库的支持，感谢 @xgc
-- 新增：执行链的路由节点新增对 QLExpress 和 Groovy 的表达式的支持
-- 优化：重构让 FunctionMessage 继承 AiMessage
-- 优化：修改 VectorStore 的 document id 为 object 类型
-- 优化：重命名 BaseDocumentLoader 为 StreamDocumentLoader
-- 优化：优化 ExpressionAdaptor 方便用于对 Milvus 向量数据库的查询适配
-- 优化：优化执行链 Chain 以及 Node 节点，方便更加容易的创建和配置
-- 优化：重命名 BaseFunctionMessageParser 为 DefaultFunctionMessageParser
-- 优化：修改 TextParser 为 JSONObjectParser
-- 测试：多场景大量测试 Agent 以及 Chain，已初步具备编排能力
-- 文档：https://agentsflex.com 官网上线
+## v1.0.0-beta.3 20240516
+- feat：add "description" to agent for automatic arrangement by LLM
+- feat: StoreResult can return ids if document store success
+- feat: StoreOptions support set multi partitionNames
+- feat: add DocumentIdGenerator for Document and Store
+- feat: add ChainException for Chain.executeForResult
+- refactor: rename "SimplePrompt" to "TextPrompt"
+
+---
+- 新增：为 Agent 添加 description 属性，方便用于 AI 自动编排的场景
+- 新增：Agent 添加对 outputKeys 的定义支持
+- 新增：添加 DocumentIdGenerator 用于在对文档存储时自动生成 id 的功能
+- 新增：StoreOptions 添加多个 partitionName 配置的支持
+- 新增：当 Document 保存成功时，自动返回保存的 id
+- 优化：Chain.executeForResult 会抛出异常 ChainException
+- 修复：ChatGLM 的 Chat JSON 解析错误的问题
+- 测试：优化 SparkLlmTest 的测试代码
 - 文档：完善基础文档
