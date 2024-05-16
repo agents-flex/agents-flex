@@ -18,6 +18,10 @@ package com.agentsflex.store;
 import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.util.StringUtil;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Store Options, Each store can have its own Options implementation.
  */
@@ -30,7 +34,7 @@ public class StoreOptions {
         }
 
         @Override
-        public void setPartitionName(String partitionName) {
+        public void setPartitionNames(List<String> partitionNames) {
             throw new IllegalStateException("Can not set partitionName to the default instance.");
         }
 
@@ -48,7 +52,7 @@ public class StoreOptions {
     /**
      * store partition name
      */
-    private String partitionName;
+    private List<String> partitionNames;
 
     /**
      * store embedding options
@@ -60,25 +64,38 @@ public class StoreOptions {
         return collectionName;
     }
 
-    public String getCollectionName(String orDefault) {
-        return StringUtil.hasText(collectionName) ? collectionName : orDefault;
+    public String getCollectionNameOrDefault(String other) {
+        return StringUtil.hasText(collectionName) ? collectionName : other;
     }
 
     public void setCollectionName(String collectionName) {
         this.collectionName = collectionName;
     }
 
+    public List<String> getPartitionNames() {
+        return partitionNames;
+    }
+
     public String getPartitionName() {
-        return partitionName;
+        return partitionNames != null && !partitionNames.isEmpty() ? partitionNames.get(0) : null;
     }
 
-    public String getPartitionName(String orDefault) {
-        return StringUtil.hasText(partitionName) ? partitionName : orDefault;
+    public List<String> getPartitionNamesOrEmpty() {
+        return partitionNames == null ? Collections.emptyList() : partitionNames;
     }
 
-    public void setPartitionName(String partitionName) {
-        this.partitionName = partitionName;
+    public void setPartitionNames(List<String> partitionNames) {
+        this.partitionNames = partitionNames;
     }
+
+    public StoreOptions partitionName(String partitionName) {
+        if (this.partitionNames == null) {
+            this.partitionNames = new ArrayList<>(1);
+        }
+        this.partitionNames.add(partitionName);
+        return this;
+    }
+
 
     public EmbeddingOptions getEmbeddingOptions() {
         return embeddingOptions;
