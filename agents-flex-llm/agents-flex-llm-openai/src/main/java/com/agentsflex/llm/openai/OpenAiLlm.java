@@ -130,7 +130,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToEmbeddingsPayload(document);
+        String payload = OpenAiLLmUtil.promptToEmbeddingsPayload(document, options, config);
         String endpoint = config.getEndpoint();
         // https://platform.openai.com/docs/api-reference/embeddings/create
         String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);

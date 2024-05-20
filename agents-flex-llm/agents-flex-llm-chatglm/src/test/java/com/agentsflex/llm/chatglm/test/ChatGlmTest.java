@@ -31,7 +31,7 @@ public class ChatGlmTest {
         Llm llm = new ChatglmLlm(config);
         Document document = new Document();
         document.setContent("你好");
-        VectorData embeddings = llm.embed(document, EmbeddingOptions.EMPTY);
+        VectorData embeddings = llm.embed(document, EmbeddingOptions.DEFAULT);
         System.out.println(Arrays.toString(embeddings.getVector()));
     }
 

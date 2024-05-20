@@ -19,12 +19,23 @@ import com.agentsflex.llm.LlmConfig;
 
 public class OpenAiLlmConfig extends LlmConfig {
 
-	private static final String DEFAULT_MODEL = "gpt-3.5-turbo";
-	private static final String DEFAULT_ENDPOINT = "https://api.openai.com";
+    private static final String DEFAULT_MODEL = "gpt-3.5-turbo";
+    private static final String DEFAULT_EMBEDDING_MODEL = "text-embedding-ada-002";
+    private static final String DEFAULT_ENDPOINT = "https://api.openai.com";
 
-	public OpenAiLlmConfig() {
-		setEndpoint(DEFAULT_ENDPOINT);
-		setModel(DEFAULT_MODEL);
-	}
+    private String defaultEmbeddingModal = DEFAULT_EMBEDDING_MODEL;
+
+    public String getDefaultEmbeddingModal() {
+        return defaultEmbeddingModal;
+    }
+
+    public void setDefaultEmbeddingModal(String defaultEmbeddingModal) {
+        this.defaultEmbeddingModal = defaultEmbeddingModal;
+    }
+
+    public OpenAiLlmConfig() {
+        setEndpoint(DEFAULT_ENDPOINT);
+        setModel(DEFAULT_MODEL);
+    }
 
 }

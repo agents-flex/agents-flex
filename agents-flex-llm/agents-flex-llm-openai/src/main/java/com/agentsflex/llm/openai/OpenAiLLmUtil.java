@@ -17,6 +17,7 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.document.Document;
 import com.agentsflex.llm.ChatOptions;
+import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
@@ -34,9 +35,9 @@ public class OpenAiLLmUtil {
 
     public static AiMessageParser getAiMessageParser(boolean isStream) {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        if (isStream){
+        if (isStream) {
             aiMessageParser.setContentPath("$.choices[0].delta.content");
-        }else {
+        } else {
             aiMessageParser.setContentPath("$.choices[0].message.content");
         }
 
@@ -61,9 +62,9 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToEmbeddingsPayload(Document text) {
+    public static String promptToEmbeddingsPayload(Document text, EmbeddingOptions options, OpenAiLlmConfig config) {
         // https://platform.openai.com/docs/api-reference/making-requests
-        return Maps.of("model", "text-embedding-ada-002")
+        return Maps.of("model", options.getModelOrDefault(config.getDefaultEmbeddingModal()))
             .put("encoding_format", "float")
             .put("input", text.getContent())
             .toJSON();

@@ -1,12 +1,34 @@
 package com.agentsflex.llm.embedding;
 
-public interface EmbeddingOptions {
+import com.agentsflex.util.StringUtil;
 
-    EmbeddingOptions EMPTY = new EmptyEmbeddingOptions();
+public class EmbeddingOptions {
+    public static final EmbeddingOptions DEFAULT = new EmbeddingOptions(){
+        @Override
+        public void setModel(String model) {
+            throw new IllegalStateException("Can not set modal to the default instance.");
+        }
+    };
 
-    class EmptyEmbeddingOptions implements EmbeddingOptions {
+    private String model;
 
+    public String getModel() {
+        return model;
+    }
+
+    public String getModelOrDefault(String defaultModel) {
+        return StringUtil.noText(model) ? defaultModel : model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
     }
 
 
+    @Override
+    public String toString() {
+        return "EmbeddingOptions{" +
+            "model='" + model + '\'' +
+            '}';
+    }
 }
