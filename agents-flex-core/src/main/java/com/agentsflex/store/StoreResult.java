@@ -22,9 +22,15 @@ import java.util.List;
 
 public interface StoreResult {
 
+    static StoreResult fail() {
+        return new FaiResult();
+    }
+
     boolean isSuccess();
 
-    List<Object> ids();
+    default List<Object> ids() {
+        return null;
+    }
 
     static StoreResult success() {
         return new SuccessResult();
@@ -51,6 +57,13 @@ public interface StoreResult {
         @Override
         public List<Object> ids() {
             return ids;
+        }
+    }
+
+    class FaiResult implements StoreResult {
+        @Override
+        public boolean isSuccess() {
+            return false;
         }
     }
 }
