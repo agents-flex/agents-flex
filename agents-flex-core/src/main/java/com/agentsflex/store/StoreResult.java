@@ -58,6 +58,7 @@ public interface StoreResult {
         public List<Object> ids() {
             return ids;
         }
+
     }
 
     class FaiResult implements StoreResult {

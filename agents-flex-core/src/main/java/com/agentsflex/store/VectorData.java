@@ -22,7 +22,6 @@ import java.util.Arrays;
 
 public class VectorData extends Metadata {
 
-    // the embedding data
     private double[] vector;
 
     public double[] getVector() {
