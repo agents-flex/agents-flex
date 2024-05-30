@@ -16,6 +16,7 @@
 package com.agentsflex.store;
 
 import com.agentsflex.llm.embedding.EmbeddingOptions;
+import com.agentsflex.util.Metadata;
 import com.agentsflex.util.StringUtil;
 
 import java.util.ArrayList;
@@ -25,7 +26,7 @@ import java.util.List;
 /**
  * Store Options, Each store can have its own Options implementation.
  */
-public class StoreOptions {
+public class StoreOptions extends Metadata {
 
     public static final StoreOptions DEFAULT = new StoreOptions() {
         @Override
