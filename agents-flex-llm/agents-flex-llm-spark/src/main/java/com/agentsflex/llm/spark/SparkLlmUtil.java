@@ -15,6 +15,7 @@
  */
 package com.agentsflex.llm.spark;
 
+import com.agentsflex.document.Document;
 import com.agentsflex.functions.Function;
 import com.agentsflex.functions.Parameter;
 import com.agentsflex.llm.ChatOptions;
@@ -149,5 +150,36 @@ public class SparkLlmUtil {
             default:
                 return "general";
         }
+    }
+
+    public static String embedPayload(SparkLlmConfig config, Document document) {
+        String text = Maps.of("messages",Collections.singletonList(Maps.of("content",document.getContent()).put("role","user").build())).toJSON();
+        String textBase64 = Base64.getEncoder().encodeToString(text.getBytes());
+
+        return Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()).put("status", 3))
+            .put("parameter", Maps.of("emb", Maps.of("domain", "para").put("feature", Maps.of("encoding", "utf8").put("compress", "raw").put("format", "plain"))))
+            .put("payload", Maps.of("messages", Maps.of("encoding", "utf8").put("compress", "raw").put("format", "json").put("status", 3).put("text", textBase64)))
+            .toJSON();
+    }
+
+
+    ///   http://emb-cn-huabei-1.xf-yun.com/
+
+    public static String createEmbedURL(SparkLlmConfig config) {
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss '+0000'", Locale.US);
+        sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        String date = sdf.format(new Date());
+
+        String header = "host: emb-cn-huabei-1.xf-yun.com\n";
+        header += "date: " + date + "\n";
+        header += "POST / HTTP/1.1";
+
+        String base64 = HashUtil.hmacSHA256ToBase64(header, config.getApiSecret());
+        String authorization_origin = "api_key=\"" + config.getApiKey()
+            + "\", algorithm=\"hmac-sha256\", headers=\"host date request-line\", signature=\"" + base64 + "\"";
+
+        String authorization = Base64.getEncoder().encodeToString(authorization_origin.getBytes());
+        return "http://emb-cn-huabei-1.xf-yun.com/?authorization=" + authorization
+            + "&date=" + urlEncode(date) + "&host=emb-cn-huabei-1.xf-yun.com";
     }
 }
