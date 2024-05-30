@@ -5,15 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>agents-flex-samples</artifactId>
         <version>1.0.0-beta.3</version>
     </parent>
 
-    <artifactId>agents-flex-samples</artifactId>
-    <packaging>pom</packaging>
-    <modules>
-        <module>milvus-samples</module>
-    </modules>
+    <artifactId>milvus-samples</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -23,7 +19,13 @@
     <dependencies>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-openai</artifactId>
+            <artifactId>agents-flex-store-milvus</artifactId>
+            <version>1.0.0-beta.3</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-spark</artifactId>
             <version>1.0.0-beta.3</version>
             <scope>compile</scope>
         </dependency>
