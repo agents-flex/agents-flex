@@ -35,6 +35,8 @@ public class LlamaLlmUtil {
         aiMessageParser.setStatusPath("$.choices[0].finish_reason");
         aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
         aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
+        aiMessageParser.setPromptTokensPath("$.usage.prompt_tokens");
+        aiMessageParser.setCompletionTokensPath("$.usage.completion_tokens");
         return aiMessageParser;
     }
 

@@ -67,6 +67,9 @@ public class SparkLlmUtil {
         aiMessageParser.setContentPath("$.payload.choices.text[0].content");
         aiMessageParser.setIndexPath("$.payload.choices.text[0].index");
         aiMessageParser.setStatusPath("$.payload.choices.status");
+        aiMessageParser.setCompletionTokensPath("$.payload.usage.text.completion_tokens");
+        aiMessageParser.setPromptTokensPath("$.payload.usage.text.prompt_tokens");
+        aiMessageParser.setTotalTokensPath("$.payload.usage.text.total_tokens");
         aiMessageParser.setStatusParser(content -> parseMessageStatus((Integer) content));
         return aiMessageParser;
     }

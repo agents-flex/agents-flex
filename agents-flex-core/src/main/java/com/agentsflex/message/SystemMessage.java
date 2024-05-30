@@ -17,6 +17,9 @@ package com.agentsflex.message;
 
 public class SystemMessage extends TextMessage {
 
+    public SystemMessage() {
+    }
+
     public SystemMessage(String content) {
         this.content = content;
     }

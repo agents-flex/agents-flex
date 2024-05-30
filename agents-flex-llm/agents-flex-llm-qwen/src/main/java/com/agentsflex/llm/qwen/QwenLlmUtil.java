@@ -36,6 +36,9 @@ public class QwenLlmUtil {
         aiMessageParser.setStatusPath("$.output.finish_reason");
         aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
         aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
+        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
+        aiMessageParser.setPromptTokensPath("$.usage.input_tokens");
+        aiMessageParser.setCompletionTokensPath("$.usage.output_tokens");
         return aiMessageParser;
     }
 

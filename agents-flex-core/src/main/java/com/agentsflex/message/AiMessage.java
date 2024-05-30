@@ -20,6 +20,8 @@ public class AiMessage extends TextMessage {
 
     private Integer index;
     private MessageStatus status;
+    private Integer promptTokens;
+    private Integer completionTokens;
     private Integer totalTokens;
     private String fullContent;
 
@@ -37,6 +39,22 @@ public class AiMessage extends TextMessage {
 
     public void setStatus(MessageStatus status) {
         this.status = status;
+    }
+
+    public Integer getPromptTokens() {
+        return promptTokens;
+    }
+
+    public void setPromptTokens(Integer promptTokens) {
+        this.promptTokens = promptTokens;
+    }
+
+    public Integer getCompletionTokens() {
+        return completionTokens;
+    }
+
+    public void setCompletionTokens(Integer completionTokens) {
+        this.completionTokens = completionTokens;
     }
 
     public Integer getTotalTokens() {

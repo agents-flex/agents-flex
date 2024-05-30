@@ -30,6 +30,8 @@ public class DefaultAiMessageParser implements AiMessageParser {
     private String indexPath;
     private String statusPath;
     private String totalTokensPath;
+    private String promptTokensPath;
+    private String completionTokensPath;
     private Parser<Object, MessageStatus> statusParser;
 
     public String getContentPath() {
@@ -64,6 +66,22 @@ public class DefaultAiMessageParser implements AiMessageParser {
         this.totalTokensPath = totalTokensPath;
     }
 
+    public String getPromptTokensPath() {
+        return promptTokensPath;
+    }
+
+    public void setPromptTokensPath(String promptTokensPath) {
+        this.promptTokensPath = promptTokensPath;
+    }
+
+    public String getCompletionTokensPath() {
+        return completionTokensPath;
+    }
+
+    public void setCompletionTokensPath(String completionTokensPath) {
+        this.completionTokensPath = completionTokensPath;
+    }
+
     public Parser<Object, MessageStatus> getStatusParser() {
         return statusParser;
     }
@@ -86,6 +104,13 @@ public class DefaultAiMessageParser implements AiMessageParser {
 
         if (StringUtil.hasText(this.totalTokensPath)) {
             aiMessage.setTotalTokens((Integer) JSONPath.eval(rootJson, this.totalTokensPath));
+        }
+
+        if (StringUtil.hasText(promptTokensPath)) {
+            aiMessage.setPromptTokens((Integer) JSONPath.eval(rootJson, this.promptTokensPath));
+        }
+        if (StringUtil.hasText(completionTokensPath)) {
+            aiMessage.setCompletionTokens((Integer) JSONPath.eval(rootJson, this.completionTokensPath));
         }
 
         if (StringUtil.hasText(this.statusPath)) {
