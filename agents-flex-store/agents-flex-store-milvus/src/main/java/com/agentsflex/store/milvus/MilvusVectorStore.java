@@ -20,14 +20,22 @@ import com.agentsflex.store.DocumentStore;
 import com.agentsflex.store.SearchWrapper;
 import com.agentsflex.store.StoreOptions;
 import com.agentsflex.store.StoreResult;
+import com.agentsflex.util.VectorUtil;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import io.milvus.exception.MilvusException;
 import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.common.DataType;
+import io.milvus.v2.exception.MilvusClientException;
+import io.milvus.v2.service.collection.request.CreateCollectionReq;
+import io.milvus.v2.service.collection.request.HasCollectionReq;
 import io.milvus.v2.service.vector.request.DeleteReq;
 import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.request.SearchReq;
 import io.milvus.v2.service.vector.request.UpsertReq;
+import io.milvus.v2.service.vector.response.DeleteResp;
+import io.milvus.v2.service.vector.response.InsertResp;
 import io.milvus.v2.service.vector.response.SearchResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,15 +50,18 @@ public class MilvusVectorStore extends DocumentStore {
     private static final Logger logger = LoggerFactory.getLogger(MilvusVectorStore.class);
     private final MilvusClientV2 client;
     private final String defaultCollectionName;
+    private final MilvusVectorStoreConfig config;
 
     public MilvusVectorStore(MilvusVectorStoreConfig config) {
         ConnectConfig connectConfig = ConnectConfig.builder()
-            .uri(config.getHost())
+            .uri(config.getUri())
+            .dbName(config.getDatabaseName())
             .token(config.getToken())
             .build();
 
         this.client = new MilvusClientV2(connectConfig);
         this.defaultCollectionName = config.getDefaultCollectionName();
+        this.config = config;
     }
 
     @Override
@@ -59,17 +70,92 @@ public class MilvusVectorStore extends DocumentStore {
         for (Document doc : documents) {
             JSONObject dict = new JSONObject();
             dict.put("id", doc.getId());
-            dict.put("vector", doc.getVector());
+            dict.put("content", doc.getContent());
+            dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
+
+            Map<String, Object> metadatas = doc.getMetadatas();
+            JSONObject jsonObject = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
+            dict.put("metadata", jsonObject);
             data.add(dict);
         }
+
+        String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
         InsertReq insertReq = InsertReq.builder()
-            .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
+            .collectionName(collectionName)
             .partitionName(options.getPartitionName())
             .data(data)
             .build();
+        try {
+            InsertResp insertResp = client.insert(insertReq);
+        } catch (MilvusClientException e) {
+            if (e.getMessage() != null && e.getMessage().contains("collection not found")
+                && config.isAutoCreateCollection()
+                && options.getMetadata("forInternal") == null) {
 
-        client.insert(insertReq);
+                createCollection(collectionName);
+
+                //store
+                options.addMetadata("forInternal", true);
+                storeInternal(documents, options);
+            } else {
+                return StoreResult.fail();
+            }
+        }
+
         return StoreResult.successWithIds(documents);
+    }
+
+
+    private void createCollection(String collectionName) {
+        List<CreateCollectionReq.FieldSchema> fieldSchemaList = new ArrayList<>();
+
+        //id
+        CreateCollectionReq.FieldSchema id = CreateCollectionReq.FieldSchema.builder()
+            .name("id")
+            .dataType(DataType.VarChar)
+            .maxLength(36)
+            .isPrimaryKey(true)
+            .autoID(false)
+            .build();
+        fieldSchemaList.add(id);
+
+        //content
+        CreateCollectionReq.FieldSchema content = CreateCollectionReq.FieldSchema.builder()
+            .name("content")
+            .dataType(DataType.VarChar)
+            .maxLength(65535)
+            .build();
+        fieldSchemaList.add(content);
+
+        //metadata
+        CreateCollectionReq.FieldSchema metadata = CreateCollectionReq.FieldSchema.builder()
+            .name("metadata")
+            .dataType(DataType.JSON)
+            .build();
+        fieldSchemaList.add(metadata);
+
+        //vector
+        CreateCollectionReq.FieldSchema vector = CreateCollectionReq.FieldSchema.builder()
+            .name("vector")
+            .dataType(DataType.FloatVector)
+            .dimension(this.getEmbeddingModel().dimensions())
+            .build();
+        fieldSchemaList.add(vector);
+
+        CreateCollectionReq.CollectionSchema collectionSchema = CreateCollectionReq.CollectionSchema
+            .builder()
+            .fieldSchemaList(fieldSchemaList)
+            .build();
+
+        CreateCollectionReq createCollectionReq = CreateCollectionReq.builder()
+            .collectionName(collectionName)
+            .collectionSchema(collectionSchema)
+            .primaryFieldName("id")
+            .description("Agents Flex Vector Store")
+            .vectorFieldName("vector")
+            .build();
+
+        client.createCollection(createCollectionReq);
     }
 
     @Override
@@ -81,7 +167,7 @@ public class MilvusVectorStore extends DocumentStore {
             .ids(new ArrayList<>(ids))
             .build();
 
-        client.delete(deleteReq);
+        DeleteResp deleteResp = client.delete(deleteReq);
         return StoreResult.success();
 
     }
@@ -95,7 +181,7 @@ public class MilvusVectorStore extends DocumentStore {
             .partitionNames(options.getPartitionNamesOrEmpty())
             .topK(searchWrapper.getMaxResults())
             .filter(searchWrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT))
-            .data(Collections.singletonList(searchWrapper.getVector()))
+            .data(Collections.singletonList(VectorUtil.toFloatList(searchWrapper.getVector())))
             .build();
 
         try {
@@ -152,4 +238,11 @@ public class MilvusVectorStore extends DocumentStore {
         return StoreResult.successWithIds(documents);
     }
 
+
+    private boolean checkCollectionExists(String collectionName) {
+        HasCollectionReq hasCollectionParam = HasCollectionReq.builder()
+            .collectionName(collectionName).build();
+        Boolean exist = this.client.hasCollection(hasCollectionParam);
+        return exist != null && exist;
+    }
 }

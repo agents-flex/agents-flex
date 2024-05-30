@@ -21,22 +21,22 @@ import java.io.Serializable;
  * https://milvus.io/docs/install-java.md
  */
 public class MilvusVectorStoreConfig implements Serializable {
-    private String host;
+    private String uri;
     private String token;
+    private String databaseName = "default";
     private String defaultCollectionName;
 
-    public MilvusVectorStoreConfig(String host, String token, String defaultCollectionName) {
-        this.host = host;
-        this.token = token;
-        this.defaultCollectionName = defaultCollectionName;
+    private boolean autoCreateCollection = true;
+
+    public MilvusVectorStoreConfig() {
     }
 
-    public String getHost() {
-        return host;
+    public String getUri() {
+        return uri;
     }
 
-    public void setHost(String host) {
-        this.host = host;
+    public void setUri(String uri) {
+        this.uri = uri;
     }
 
     public String getToken() {
@@ -47,11 +47,27 @@ public class MilvusVectorStoreConfig implements Serializable {
         this.token = token;
     }
 
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
+    public void setDatabaseName(String databaseName) {
+        this.databaseName = databaseName;
+    }
+
     public String getDefaultCollectionName() {
         return defaultCollectionName;
     }
 
     public void setDefaultCollectionName(String defaultCollectionName) {
         this.defaultCollectionName = defaultCollectionName;
+    }
+
+    public boolean isAutoCreateCollection() {
+        return autoCreateCollection;
+    }
+
+    public void setAutoCreateCollection(boolean autoCreateCollection) {
+        this.autoCreateCollection = autoCreateCollection;
     }
 }
