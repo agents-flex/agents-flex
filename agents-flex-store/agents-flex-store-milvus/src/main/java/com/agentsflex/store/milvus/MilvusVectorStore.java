@@ -21,10 +21,10 @@ import com.agentsflex.store.SearchWrapper;
 import com.agentsflex.store.StoreOptions;
 import com.agentsflex.store.StoreResult;
 import com.agentsflex.util.Maps;
+import com.agentsflex.util.StringUtil;
 import com.agentsflex.util.VectorUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import io.milvus.exception.MilvusException;
 import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.common.ConsistencyLevel;
@@ -37,7 +37,6 @@ import io.milvus.v2.service.vector.request.DeleteReq;
 import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.request.SearchReq;
 import io.milvus.v2.service.vector.request.UpsertReq;
-import io.milvus.v2.service.vector.response.DeleteResp;
 import io.milvus.v2.service.vector.response.InsertResp;
 import io.milvus.v2.service.vector.response.SearchResp;
 import org.slf4j.Logger;
@@ -74,7 +73,7 @@ public class MilvusVectorStore extends DocumentStore {
         List<JSONObject> data = new ArrayList<>();
         for (Document doc : documents) {
             JSONObject dict = new JSONObject();
-            dict.put("id", doc.getId());
+            dict.put("id", String.valueOf(doc.getId()));
             dict.put("content", doc.getContent());
             dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
 
@@ -85,9 +84,12 @@ public class MilvusVectorStore extends DocumentStore {
         }
 
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        InsertReq insertReq = InsertReq.builder()
+        InsertReq.InsertReqBuilder<?, ?> builder = InsertReq.builder();
+        if (StringUtil.hasText(options.getPartitionName())) {
+            builder.partitionName(options.getPartitionName());
+        }
+        InsertReq insertReq = builder
             .collectionName(collectionName)
-            .partitionName(options.getPartitionName())
             .data(data)
             .build();
         try {
@@ -184,14 +186,24 @@ public class MilvusVectorStore extends DocumentStore {
 
     @Override
     public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
-        // Implement Milvus delete logic
-        DeleteReq deleteReq = DeleteReq.builder()
+
+        DeleteReq.DeleteReqBuilder<?, ?> builder = DeleteReq.builder();
+        if (StringUtil.hasText(options.getPartitionName())) {
+            builder.partitionName(options.getPartitionName());
+        }
+
+        DeleteReq deleteReq = builder
             .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
-            .partitionName(options.getPartitionName())
             .ids(new ArrayList<>(ids))
             .build();
 
-        DeleteResp deleteResp = client.delete(deleteReq);
+        try {
+            client.delete(deleteReq);
+        } catch (Exception e) {
+            logger.error("delete document error: " + e, e);
+            return StoreResult.fail();
+        }
+
         return StoreResult.success();
 
     }
@@ -202,8 +214,12 @@ public class MilvusVectorStore extends DocumentStore {
             ? Arrays.asList("id", "vector", "content", "metadata")
             : Arrays.asList("id", "content", "metadata");
 
-        SearchReq searchReq = SearchReq.builder()
-            .partitionNames(options.getPartitionNamesOrEmpty())
+        SearchReq.SearchReqBuilder<?, ?> builder = SearchReq.builder();
+        if (StringUtil.hasText(options.getPartitionName())) {
+            builder.partitionNames(options.getPartitionNamesOrEmpty());
+        }
+
+        SearchReq searchReq = builder
             .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
             .consistencyLevel(ConsistencyLevel.STRONG)
             .outputFields(outputFields)
@@ -244,7 +260,7 @@ public class MilvusVectorStore extends DocumentStore {
                 }
             }
             return documents;
-        } catch (MilvusException e) {
+        } catch (Exception e) {
             logger.error("Error searching in Milvus", e);
             return Collections.emptyList();
         }
