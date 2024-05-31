@@ -20,16 +20,19 @@ import com.agentsflex.store.DocumentStore;
 import com.agentsflex.store.SearchWrapper;
 import com.agentsflex.store.StoreOptions;
 import com.agentsflex.store.StoreResult;
+import com.agentsflex.util.Maps;
 import com.agentsflex.util.VectorUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import io.milvus.exception.MilvusException;
 import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.common.ConsistencyLevel;
 import io.milvus.v2.common.DataType;
+import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.exception.MilvusClientException;
 import io.milvus.v2.service.collection.request.CreateCollectionReq;
-import io.milvus.v2.service.collection.request.HasCollectionReq;
+import io.milvus.v2.service.collection.request.GetLoadStateReq;
 import io.milvus.v2.service.vector.request.DeleteReq;
 import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.request.SearchReq;
@@ -94,11 +97,12 @@ public class MilvusVectorStore extends DocumentStore {
                 && config.isAutoCreateCollection()
                 && options.getMetadata("forInternal") == null) {
 
-                createCollection(collectionName);
-
-                //store
-                options.addMetadata("forInternal", true);
-                storeInternal(documents, options);
+                Boolean success = createCollection(collectionName);
+                if (success != null && success) {
+                    //store
+                    options.addMetadata("forInternal", true);
+                    storeInternal(documents, options);
+                }
             } else {
                 return StoreResult.fail();
             }
@@ -108,7 +112,7 @@ public class MilvusVectorStore extends DocumentStore {
     }
 
 
-    private void createCollection(String collectionName) {
+    private Boolean createCollection(String collectionName) {
         List<CreateCollectionReq.FieldSchema> fieldSchemaList = new ArrayList<>();
 
         //id
@@ -149,15 +153,33 @@ public class MilvusVectorStore extends DocumentStore {
             .fieldSchemaList(fieldSchemaList)
             .build();
 
+
+        List<IndexParam> indexParams = new ArrayList<>();
+        IndexParam vectorIndex = IndexParam.builder().fieldName("vector")
+            .indexType(IndexParam.IndexType.IVF_FLAT)
+            .metricType(IndexParam.MetricType.COSINE)
+            .indexName("vector")
+            .extraParams(Maps.of("nlist", 1024).build())
+            .build();
+        indexParams.add(vectorIndex);
+
+
         CreateCollectionReq createCollectionReq = CreateCollectionReq.builder()
             .collectionName(collectionName)
             .collectionSchema(collectionSchema)
             .primaryFieldName("id")
-            .description("Agents Flex Vector Store")
             .vectorFieldName("vector")
+            .description("Agents Flex Vector Store")
+            .indexParams(indexParams)
             .build();
 
         client.createCollection(createCollectionReq);
+
+        GetLoadStateReq quickSetupLoadStateReq = GetLoadStateReq.builder()
+            .collectionName(collectionName)
+            .build();
+
+        return client.getLoadState(quickSetupLoadStateReq);
     }
 
     @Override
@@ -176,14 +198,19 @@ public class MilvusVectorStore extends DocumentStore {
 
     @Override
     public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
-        // Implement Milvus search logic
+        List<String> outputFields = searchWrapper.isOutputVector()
+            ? Arrays.asList("id", "vector", "content", "metadata")
+            : Arrays.asList("id", "content", "metadata");
+
         SearchReq searchReq = SearchReq.builder()
-            .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
-            .annsField("vector")
             .partitionNames(options.getPartitionNamesOrEmpty())
+            .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
+            .consistencyLevel(ConsistencyLevel.STRONG)
+            .outputFields(outputFields)
             .topK(searchWrapper.getMaxResults())
-            .filter(searchWrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT))
+            .annsField("vector")
             .data(Collections.singletonList(VectorUtil.toFloatList(searchWrapper.getVector())))
+            .filter(searchWrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT))
             .build();
 
         try {
@@ -194,23 +221,28 @@ public class MilvusVectorStore extends DocumentStore {
             for (List<SearchResp.SearchResult> resultList : results) {
                 for (SearchResp.SearchResult result : resultList) {
                     Map<String, Object> entity = result.getEntity();
+                    if (entity == null || entity.isEmpty()) {
+                        continue;
+                    }
+
                     Document doc = new Document();
                     doc.setId(result.getId());
+
                     Object vectorObj = entity.get("vector");
                     if (vectorObj instanceof List) {
-                        @SuppressWarnings("unchecked")
-                        List<Double> vectorList = (List<Double>) vectorObj;
-                        // 使用 Stream API 将 List<Double> 转换为 double[]
-                        double[] vector = vectorList.stream()
-                            .mapToDouble(Double::doubleValue)
-                            .toArray();
-                        doc.setVector(vector);
+                        //noinspection unchecked
+                        doc.setVector(VectorUtil.convertToVector((List<Float>) vectorObj));
                     }
+
+                    doc.setContent((String) entity.get("content"));
+
+                    JSONObject object = (JSONObject) entity.get("metadata");
+                    doc.setMetadatas(object);
+
                     doc.addMetadata(entity);
                     documents.add(doc);
                 }
             }
-
             return documents;
         } catch (MilvusException e) {
             logger.error("Error searching in Milvus", e);
@@ -226,11 +258,19 @@ public class MilvusVectorStore extends DocumentStore {
         List<JSONObject> data = new ArrayList<>();
         for (Document doc : documents) {
             JSONObject dict = new JSONObject();
+
             dict.put("id", doc.getId());
-            dict.put("vector", doc.getVector());
-            // 将其他元数据字段添加到字典中，如果需要的话
+            dict.put("content", doc.getContent());
+            dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
+
+            Map<String, Object> metadatas = doc.getMetadatas();
+            JSONObject jsonObject = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
+            dict.put("metadata", jsonObject);
+            data.add(dict);
+
             data.add(dict);
         }
+
         UpsertReq upsertReq = UpsertReq.builder()
             .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
             .partitionName(options.getPartitionName())
@@ -241,10 +281,7 @@ public class MilvusVectorStore extends DocumentStore {
     }
 
 
-    private boolean checkCollectionExists(String collectionName) {
-        HasCollectionReq hasCollectionParam = HasCollectionReq.builder()
-            .collectionName(collectionName).build();
-        Boolean exist = this.client.hasCollection(hasCollectionParam);
-        return exist != null && exist;
+    public MilvusClientV2 getClient() {
+        return client;
     }
 }

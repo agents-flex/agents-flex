@@ -42,4 +42,16 @@ public class VectorUtil {
         }
         return output;
     }
+
+    public static double[] convertToVector(List<Float> floats) {
+        if (floats == null) {
+            return null;
+        }
+        double[] output = new double[floats.size()];
+        int index = 0;
+        for (Float aFloat : floats) {
+            output[index++] = aFloat;
+        }
+        return output;
+    }
 }
