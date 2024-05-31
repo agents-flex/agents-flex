@@ -33,7 +33,7 @@ export default defineConfig({
                 nav: [
                     {text: '首页', link: '/'},
                     {text: '帮助文档', link: '/zh/intro/what-is-agentsflex'},
-                    {text: 'ChangeLog', link: 'https://github.com/agents-flex/agents-flex/releases'},
+                    {text: 'ChangeLog', link: 'https://github.com/agents-flex/agents-flex/blob/main/changes.md'},
                 ],
 
                 sidebar: [
@@ -90,7 +90,7 @@ export default defineConfig({
         nav: [
             {text: 'Home', link: '/'},
             {text: 'Document', link: '/intro/what-is-agentsflex'},
-            {text: 'ChangeLog', link: 'https://github.com/agents-flex/agents-flex/releases'},
+            {text: 'ChangeLog', link: 'https://github.com/agents-flex/agents-flex/blob/main/changes.md'},
         ],
 
         sidebar: [
