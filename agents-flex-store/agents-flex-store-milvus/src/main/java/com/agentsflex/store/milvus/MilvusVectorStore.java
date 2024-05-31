@@ -57,6 +57,8 @@ public class MilvusVectorStore extends DocumentStore {
             .uri(config.getUri())
             .dbName(config.getDatabaseName())
             .token(config.getToken())
+            .username(config.getUsername())
+            .password(config.getPassword())
             .build();
 
         this.client = new MilvusClientV2(connectConfig);

@@ -24,8 +24,9 @@ public class MilvusVectorStoreConfig implements Serializable {
     private String uri;
     private String token;
     private String databaseName = "default";
+    private String username;
+    private String password;
     private String defaultCollectionName;
-
     private boolean autoCreateCollection = true;
 
     public MilvusVectorStoreConfig() {
@@ -69,5 +70,21 @@ public class MilvusVectorStoreConfig implements Serializable {
 
     public void setAutoCreateCollection(boolean autoCreateCollection) {
         this.autoCreateCollection = autoCreateCollection;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
