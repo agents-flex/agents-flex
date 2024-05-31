@@ -21,41 +21,41 @@ import java.util.Map;
 
 public class Metadata implements Serializable {
 
-    protected Map<String, Object> metadatas;
+    protected Map<String, Object> metadataMap;
 
     public Object getMetadata(String key) {
-        return metadatas != null ? metadatas.get(key) : null;
+        return metadataMap != null ? metadataMap.get(key) : null;
     }
 
     public void addMetadata(String key, Object value) {
-        if (metadatas == null) {
-            metadatas = new HashMap<>();
+        if (metadataMap == null) {
+            metadataMap = new HashMap<>();
         }
-        metadatas.put(key, value);
+        metadataMap.put(key, value);
     }
 
     public void addMetadata(Map<String, Object> metadata) {
         if (metadata == null || metadata.isEmpty()) {
             return;
         }
-        if (metadatas == null) {
-            metadatas = new HashMap<>();
+        if (metadataMap == null) {
+            metadataMap = new HashMap<>();
         }
-        metadatas.putAll(metadata);
+        metadataMap.putAll(metadata);
     }
 
     public Object removeMetadata(String key) {
-        if (this.metadatas == null) {
+        if (this.metadataMap == null) {
             return null;
         }
-        return this.metadatas.remove(key);
+        return this.metadataMap.remove(key);
     }
 
-    public Map<String, Object> getMetadatas() {
-        return metadatas;
+    public Map<String, Object> getMetadataMap() {
+        return metadataMap;
     }
 
-    public void setMetadatas(Map<String, Object> metadatas) {
-        this.metadatas = metadatas;
+    public void setMetadataMap(Map<String, Object> metadatas) {
+        this.metadataMap = metadatas;
     }
 }

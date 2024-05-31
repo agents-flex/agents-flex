@@ -58,8 +58,8 @@ public class AliyunVectorStore extends DocumentStore {
         List<Map<String, Object>> payloadDocs = new ArrayList<>();
         for (Document vectorDocument : documents) {
             Map<String, Object> document = new HashMap<>();
-            if (vectorDocument.getMetadatas() != null) {
-                document.put("fields", vectorDocument.getMetadatas());
+            if (vectorDocument.getMetadataMap() != null) {
+                document.put("fields", vectorDocument.getMetadataMap());
             }
             document.put("vector", vectorDocument.getVector());
             document.put("id", vectorDocument.getId());
@@ -130,8 +130,8 @@ public class AliyunVectorStore extends DocumentStore {
         List<Map<String, Object>> payloadDocs = new ArrayList<>();
         for (Document vectorDocument : documents) {
             Map<String, Object> document = new HashMap<>();
-            if (vectorDocument.getMetadatas() != null) {
-                document.put("fields", vectorDocument.getMetadatas());
+            if (vectorDocument.getMetadataMap() != null) {
+                document.put("fields", vectorDocument.getMetadataMap());
             }
             document.put("vector", vectorDocument.getVector());
             document.put("id", vectorDocument.getId());

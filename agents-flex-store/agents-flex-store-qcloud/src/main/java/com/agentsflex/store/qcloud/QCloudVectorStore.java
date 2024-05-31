@@ -62,8 +62,8 @@ public class QCloudVectorStore extends DocumentStore {
         List<Map<String, Object>> payloadDocs = new ArrayList<>();
         for (Document vectorDocument : documents) {
             Map<String, Object> document = new HashMap<>();
-            if (vectorDocument.getMetadatas() != null) {
-                document.putAll(vectorDocument.getMetadatas());
+            if (vectorDocument.getMetadataMap() != null) {
+                document.putAll(vectorDocument.getMetadataMap());
             }
             document.put("vector", vectorDocument.getVector());
             document.put("id", vectorDocument.getId());
@@ -117,7 +117,7 @@ public class QCloudVectorStore extends DocumentStore {
             Map<String, Object> documentIdsObj = new HashMap<>();
             documentIdsObj.put("documentIds", Collections.singletonList(document.getId()));
             payloadMap.put("query", documentIdsObj);
-            payloadMap.put("update", document.getMetadatas());
+            payloadMap.put("update", document.getMetadataMap());
             String payload = JSON.toJSONString(payloadMap);
             httpUtil.post(config.getHost() + "/document/update", headers, payload);
         }

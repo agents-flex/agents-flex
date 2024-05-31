@@ -16,55 +16,42 @@
 package com.agentsflex.store;
 
 import com.agentsflex.document.Document;
+import com.agentsflex.util.Metadata;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public interface StoreResult {
+public class StoreResult extends Metadata {
+    private final boolean success;
+    private List<Object> ids;
 
-    static StoreResult fail() {
-        return new FaiResult();
+    public StoreResult(boolean success) {
+        this.success = success;
     }
 
-    boolean isSuccess();
 
-    default List<Object> ids() {
-        return null;
+    public boolean isSuccess() {
+        return success;
     }
 
-    static StoreResult success() {
-        return new SuccessResult();
+    public List<Object> ids() {
+        return ids;
     }
 
-    static StoreResult successWithIds(List<Document> documents) {
-        SuccessResult result = new SuccessResult();
+    public static StoreResult fail() {
+        return new StoreResult(false);
+    }
+
+    public static StoreResult success() {
+        return new StoreResult(true);
+    }
+
+    public static StoreResult successWithIds(List<Document> documents) {
+        StoreResult result = success();
         result.ids = new ArrayList<>(documents.size());
         for (Document document : documents) {
             result.ids.add(document.getId());
         }
         return result;
-    }
-
-    class SuccessResult implements StoreResult {
-
-        List<Object> ids;
-
-        @Override
-        public boolean isSuccess() {
-            return true;
-        }
-
-        @Override
-        public List<Object> ids() {
-            return ids;
-        }
-
-    }
-
-    class FaiResult implements StoreResult {
-        @Override
-        public boolean isSuccess() {
-            return false;
-        }
     }
 }

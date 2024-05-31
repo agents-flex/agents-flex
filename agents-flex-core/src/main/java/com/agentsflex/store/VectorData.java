@@ -36,7 +36,7 @@ public class VectorData extends Metadata {
     public String toString() {
         return "VectorData{" +
             "vector=" + Arrays.toString(vector) +
-            ", metadatas=" + metadatas +
+            ", metadataMap=" + metadataMap +
             '}';
     }
 }

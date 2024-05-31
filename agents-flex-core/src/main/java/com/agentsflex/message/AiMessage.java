@@ -81,7 +81,7 @@ public class AiMessage extends TextMessage {
             ", totalTokens=" + totalTokens +
             ", fullContent='" + fullContent + '\'' +
             ", content='" + content + '\'' +
-            ", metadatas=" + metadatas +
+            ", metadataMap=" + metadataMap +
             '}';
     }
 }

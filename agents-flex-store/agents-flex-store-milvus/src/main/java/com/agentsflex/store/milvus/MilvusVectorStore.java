@@ -77,7 +77,7 @@ public class MilvusVectorStore extends DocumentStore {
             dict.put("content", doc.getContent());
             dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
 
-            Map<String, Object> metadatas = doc.getMetadatas();
+            Map<String, Object> metadatas = doc.getMetadataMap();
             JSONObject jsonObject = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
             dict.put("metadata", jsonObject);
             data.add(dict);
@@ -253,7 +253,7 @@ public class MilvusVectorStore extends DocumentStore {
                     doc.setContent((String) entity.get("content"));
 
                     JSONObject object = (JSONObject) entity.get("metadata");
-                    doc.setMetadatas(object);
+                    doc.addMetadata(object);
 
                     doc.addMetadata(entity);
                     documents.add(doc);
@@ -279,7 +279,7 @@ public class MilvusVectorStore extends DocumentStore {
             dict.put("content", doc.getContent());
             dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
 
-            Map<String, Object> metadatas = doc.getMetadatas();
+            Map<String, Object> metadatas = doc.getMetadataMap();
             JSONObject jsonObject = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
             dict.put("metadata", jsonObject);
             data.add(dict);

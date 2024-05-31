@@ -41,7 +41,7 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
         List<Document> texts = new ArrayList<>(textArray.length);
         for (String textString : textArray) {
             Document newDocument = new Document();
-            newDocument.setMetadatas(document.getMetadatas());
+            newDocument.addMetadata(document.getMetadataMap());
             newDocument.setContent(textString);
 
             //we should invoke setId after setContent
