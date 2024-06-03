@@ -15,6 +15,7 @@
  */
 package com.agentsflex.llm.qwen;
 
+import com.agentsflex.llm.ChatOptions;
 import com.agentsflex.message.MessageStatus;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
@@ -32,8 +33,8 @@ public class QwenLlmUtil {
 
     public static AiMessageParser getAiMessageParser() {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        aiMessageParser.setContentPath("$.output.text");
-        aiMessageParser.setStatusPath("$.output.finish_reason");
+        aiMessageParser.setContentPath("$.output.choices[0].message.content");
+        aiMessageParser.setStatusPath("$.output.choices[0].finish_reason");
         aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
         aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
         aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
@@ -45,8 +46,8 @@ public class QwenLlmUtil {
 
     public static FunctionMessageParser getFunctionMessageParser() {
         DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
-        functionMessageParser.setFunctionNamePath("$.choices[0].message.tool_calls[0].function.name");
-        functionMessageParser.setFunctionArgsPath("$.choices[0].message.tool_calls[0].function.arguments");
+        functionMessageParser.setFunctionNamePath("$.output.choices[0].message.tool_calls[0].function.name");
+        functionMessageParser.setFunctionArgsPath("$.output.choices[0].message.tool_calls[0].function.arguments");
         functionMessageParser.setFunctionArgsParser(JSON::parseObject);
         return functionMessageParser;
     }
@@ -57,9 +58,17 @@ public class QwenLlmUtil {
     }
 
 
-    public static String promptToPayload(Prompt<?> prompt, QwenLlmConfig config) {
+    public static String promptToPayload(Prompt<?> prompt, QwenLlmConfig config, ChatOptions options) {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
-        Maps.Builder root = Maps.of("model", config.getModel()).put("input", Maps.of("messages", promptFormat.toMessagesJsonObject(prompt)));
+        Maps.Builder root = Maps.of("model", config.getModel())
+            .put("input", Maps.of("messages", promptFormat.toMessagesJsonObject(prompt)))
+            .put("parameters", Maps.of("result_format", "message")
+                .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
+                .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
+                .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens())
+            );
+
+
         return JSON.toJSONString(root.build());
     }
 }

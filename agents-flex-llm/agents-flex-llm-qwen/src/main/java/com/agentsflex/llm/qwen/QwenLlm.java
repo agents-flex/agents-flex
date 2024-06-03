@@ -63,7 +63,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
 
-        String payload = QwenLlmUtil.promptToPayload(prompt, config);
+        String payload = QwenLlmUtil.promptToPayload(prompt, config, options);
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + "/api/v1/services/aigc/text-generation/generation", headers, payload);
         if (StringUtil.noText(response)) {
@@ -106,12 +106,12 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+        headers.put("X-DashScope-SSE", "enable"); //stream
 
-        String payload = QwenLlmUtil.promptToPayload(prompt, config);
+        String payload = QwenLlmUtil.promptToPayload(prompt, config, options);
 
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, new DefaultAiMessageParser() {
             int prevMessageLength = 0;
-
             @Override
             public AiMessage parse(JSONObject content) {
                 AiMessage aiMessage = aiMessageParser.parse(content);

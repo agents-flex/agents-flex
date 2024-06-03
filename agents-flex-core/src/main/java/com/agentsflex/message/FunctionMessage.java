@@ -40,4 +40,14 @@ public class FunctionMessage extends AiMessage{
     public void setArgs(Map<String, Object> args) {
         this.args = args;
     }
+
+    @Override
+    public String toString() {
+        return "FunctionMessage{" +
+            "functionName='" + functionName + '\'' +
+            ", args=" + args +
+            ", content='" + content + '\'' +
+            ", metadataMap=" + metadataMap +
+            '}';
+    }
 }
