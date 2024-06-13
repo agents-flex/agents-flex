@@ -16,7 +16,7 @@
 package com.agentsflex.message;
 
 
-public class AiMessage extends TextMessage {
+public class AiMessage extends AbstractTextMessage {
 
     private Integer index;
     private MessageStatus status;

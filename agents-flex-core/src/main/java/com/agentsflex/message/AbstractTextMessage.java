@@ -1,6 +1,6 @@
 package com.agentsflex.message;
 
-public class TextMessage extends Message{
+public class AbstractTextMessage extends Message{
 
     protected String content;
 

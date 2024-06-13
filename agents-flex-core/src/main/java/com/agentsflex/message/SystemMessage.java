@@ -15,7 +15,7 @@
  */
 package com.agentsflex.message;
 
-public class SystemMessage extends TextMessage {
+public class SystemMessage extends AbstractTextMessage {
 
     public SystemMessage() {
     }
