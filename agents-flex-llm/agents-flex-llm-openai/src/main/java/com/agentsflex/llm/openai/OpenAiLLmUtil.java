@@ -75,7 +75,7 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config, ChatOptions options, boolean withStream) {
+    public static String promptToPayload(Prompt<?> prompt, OpenAiLlmConfig config, ChatOptions options, boolean withStream) {
         Maps.Builder builder = Maps.of("model", config.getModel())
             .put("messages", promptFormat.toMessagesJsonObject(prompt))
             .putIf(withStream, "stream", true)

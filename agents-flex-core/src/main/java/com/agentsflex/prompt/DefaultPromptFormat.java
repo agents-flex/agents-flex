@@ -40,25 +40,23 @@ public class DefaultPromptFormat implements PromptFormat {
             return null;
         }
 
-        List<Map<String, String>> messageJsonArray = new ArrayList<>(messages.size());
+        List<Map<String, Object>> messageJsonArray = new ArrayList<>(messages.size());
         buildMessageJsonArray(messageJsonArray, messages);
 
         return messageJsonArray;
     }
 
-    protected void buildMessageJsonArray(List<Map<String, String>> messageJsonArray, List<Message> messages) {
+    protected void buildMessageJsonArray(List<Map<String, Object>> messageJsonArray, List<Message> messages) {
         messages.forEach(message -> {
-            Map<String, String> map = new HashMap<>(2);
+            Map<String, Object> map = new HashMap<>(2);
             if (message instanceof HumanMessage) {
                 map.put("role", "user");
-                map.put("content", ((HumanMessage) message).getContent());
             } else if (message instanceof AiMessage) {
                 map.put("role", "assistant");
-                map.put("content", ((AiMessage) message).getFullContent());
             } else if (message instanceof SystemMessage) {
                 map.put("role", "system");
-                map.put("content", ((SystemMessage) message).getContent());
             }
+            map.put("content", message.getMessageContent());
             messageJsonArray.add(map);
         });
     }

@@ -24,7 +24,7 @@ import java.util.List;
 
 public class TextPrompt extends Prompt<AiMessage> {
 
-    private final String content;
+    protected String content;
 
     public TextPrompt(String content) {
         this.content = content;
@@ -37,6 +37,9 @@ public class TextPrompt extends Prompt<AiMessage> {
 
     @Override
     public String toString() {
-        return content;
+        return "TextPrompt{" +
+            "content='" + content + '\'' +
+            ", metadataMap=" + metadataMap +
+            '}';
     }
 }

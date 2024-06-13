@@ -74,6 +74,11 @@ public class AiMessage extends TextMessage {
     }
 
     @Override
+    public Object getMessageContent() {
+        return getFullContent();
+    }
+
+    @Override
     public String toString() {
         return "AiMessage{" +
             "index=" + index +

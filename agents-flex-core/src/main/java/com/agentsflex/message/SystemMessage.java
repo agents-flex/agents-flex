@@ -24,4 +24,5 @@ public class SystemMessage extends TextMessage {
         this.content = content;
     }
 
+
 }
