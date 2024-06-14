@@ -15,14 +15,14 @@
  */
 package com.agentsflex.prompt;
 
+import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.memory.ChatMemory;
 import com.agentsflex.memory.DefaultChatMemory;
-import com.agentsflex.message.AiMessage;
 import com.agentsflex.message.Message;
 
 import java.util.List;
 
-public class HistoriesPrompt extends Prompt<AiMessage> {
+public class HistoriesPrompt extends Prompt<AiMessageResponse> {
 
     private ChatMemory memory = new DefaultChatMemory();
 

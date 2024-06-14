@@ -15,14 +15,14 @@
  */
 package com.agentsflex.prompt;
 
-import com.agentsflex.message.AiMessage;
+import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.message.HumanMessage;
 import com.agentsflex.message.Message;
 
 import java.util.Collections;
 import java.util.List;
 
-public class TextPrompt extends Prompt<AiMessage> {
+public class TextPrompt extends Prompt<AiMessageResponse> {
 
     protected String content;
 

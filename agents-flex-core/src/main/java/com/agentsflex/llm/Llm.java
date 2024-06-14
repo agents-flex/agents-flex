@@ -33,25 +33,25 @@ public interface Llm extends EmbeddingModel {
         return chat != null && chat.getMessage() != null ? chat.getMessage().getContent() : null;
     }
 
-    default <R extends MessageResponse<M>, M extends AiMessage> R chat(Prompt<M> prompt) {
+    default <R extends MessageResponse<?>> R chat(Prompt<R> prompt) {
         return chat(prompt, ChatOptions.DEFAULT);
     }
 
-    <R extends MessageResponse<M>, M extends AiMessage> R chat(Prompt<M> prompt, ChatOptions options);
+    <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options);
 
-    default void chatStream(String prompt, StreamResponseListener<AiMessageResponse, AiMessage> listener) {
+    default void chatStream(String prompt, StreamResponseListener<AiMessageResponse> listener) {
         this.chatStream(new TextPrompt(prompt), listener, ChatOptions.DEFAULT);
     }
 
-    default void chatStream(String prompt, StreamResponseListener<AiMessageResponse, AiMessage> listener, ChatOptions options) {
+    default void chatStream(String prompt, StreamResponseListener<AiMessageResponse> listener, ChatOptions options) {
         this.chatStream(new TextPrompt(prompt), listener, options);
     }
 
     //chatStream
-    default <R extends MessageResponse<M>, M extends AiMessage> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener) {
+    default <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener) {
         this.chatStream(prompt, listener, ChatOptions.DEFAULT);
     }
 
-    <R extends MessageResponse<M>, M extends AiMessage> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options);
+    <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options);
 
 }

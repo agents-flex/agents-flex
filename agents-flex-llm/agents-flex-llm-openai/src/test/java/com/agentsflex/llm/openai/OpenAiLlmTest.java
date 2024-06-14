@@ -5,7 +5,6 @@ import com.agentsflex.llm.Llm;
 import com.agentsflex.llm.StreamResponseListener;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
-import com.agentsflex.message.AiMessage;
 import com.agentsflex.prompt.FunctionPrompt;
 import com.agentsflex.prompt.ImagePrompt;
 import org.junit.Test;
@@ -33,7 +32,7 @@ public class OpenAiLlmTest {
 
         Llm llm = new OpenAiLlm(config);
 //        String response = llm.chat("请问你叫什么名字");
-        llm.chatStream("你叫什么名字", new StreamResponseListener<AiMessageResponse, AiMessage>() {
+        llm.chatStream("你叫什么名字", new StreamResponseListener<AiMessageResponse>() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
@@ -46,8 +45,6 @@ public class OpenAiLlmTest {
             throw new RuntimeException(e);
         }
     }
-
-
 
 
     @Test

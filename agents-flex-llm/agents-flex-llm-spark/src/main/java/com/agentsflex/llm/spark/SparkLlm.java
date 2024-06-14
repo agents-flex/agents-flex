@@ -90,12 +90,12 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <R extends MessageResponse<M>, M extends AiMessage> R chat(Prompt<M> prompt, ChatOptions options) {
+    public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Message[] messages = new Message[1];
-        chatStream(prompt, new StreamResponseListener<MessageResponse<M>, M>() {
+        chatStream(prompt, new StreamResponseListener<R>() {
             @Override
-            public void onMessage(ChatContext context, MessageResponse<M> response) {
+            public void onMessage(ChatContext context, R response) {
                 if (response.getMessage() instanceof FunctionMessage) {
                     messages[0] = response.getMessage();
                 } else {
@@ -128,7 +128,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends AiMessage> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options) {
+    public <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
 

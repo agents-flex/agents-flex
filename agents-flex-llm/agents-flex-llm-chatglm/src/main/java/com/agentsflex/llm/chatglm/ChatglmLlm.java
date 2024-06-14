@@ -29,7 +29,6 @@ import com.agentsflex.llm.embedding.EmbeddingOptions;
 import com.agentsflex.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
-import com.agentsflex.message.AiMessage;
 import com.agentsflex.parser.AiMessageParser;
 import com.agentsflex.parser.FunctionMessageParser;
 import com.agentsflex.prompt.FunctionPrompt;
@@ -87,7 +86,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends AiMessage> R chat(Prompt<M> prompt, ChatOptions options) {
+    public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
@@ -107,15 +106,13 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
-        AbstractBaseMessageResponse<M> messageResponse;
+        AbstractBaseMessageResponse<?> messageResponse;
 
         if (prompt instanceof FunctionPrompt) {
-            //noinspection unchecked
-            messageResponse = (AbstractBaseMessageResponse<M>) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
+            messageResponse = new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
                 , functionMessageParser.parse(jsonObject));
         } else {
-            //noinspection unchecked
-            messageResponse = (AbstractBaseMessageResponse<M>) new AiMessageResponse(aiMessageParser.parse(jsonObject));
+            messageResponse = new AiMessageResponse(aiMessageParser.parse(jsonObject));
         }
 
         if (error != null && !error.isEmpty()) {
@@ -131,7 +128,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<M>, M extends AiMessage> void chatStream(Prompt<M> prompt, StreamResponseListener<R, M> listener, ChatOptions options) {
+    public <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
