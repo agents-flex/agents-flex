@@ -47,7 +47,7 @@ public class WeatherUtil {
         FunctionPrompt prompt = new FunctionPrompt("What's the weather like in Beijing today?", WeatherUtil.class);
         FunctionResultResponse response = llm.chat(prompt);
 
-        Object result = response.invoke();
+        Object result = response.getFunctionResult();
 
         System.out.println(result);
         //"The weather in Beijing is overcast turning to cloudy. "

@@ -24,27 +24,40 @@ public class FunctionMessageResponse extends AbstractBaseMessageResponse<Functio
 
     private final List<Function> functions;
     private final FunctionMessage functionMessage;
+    private final Object functionResult;
 
     public FunctionMessageResponse(List<Function> functions, FunctionMessage functionMessage) {
         this.functions = functions;
         this.functionMessage = functionMessage;
+        this.functionResult = invoke();
+
+        if (this.functionMessage != null) {
+            String messageContent = this.functionResult != null ? this.functionResult.toString() : null;
+            this.functionMessage.setContent(messageContent);
+        }
     }
 
-    public Object invoke() {
+    private Object invoke() {
         if (functionMessage == null) {
             return null;
         }
+        Object result = null;
         for (Function function : functions) {
             if (function.getName().equals(functionMessage.getFunctionName())) {
-                return function.invoke(functionMessage.getArgs());
+                result = function.invoke(functionMessage.getArgs());
+                break;
             }
         }
-        return null;
+        return result;
     }
 
     @Override
     public FunctionMessage getMessage() {
         return functionMessage;
+    }
+
+    public Object getFunctionResult() {
+        return functionResult;
     }
 
     @Override

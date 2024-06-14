@@ -87,7 +87,7 @@ public static void main(String[] args) {
     FunctionResultResponse response = llm.chat(prompt);
 
     //Execute utility class method to obtain result.
-    Object result = response.invoke();
+    Object result = response.getFunctionResult();
 
     System.out.println(result);
     //"The weather in New York is cloudy turning overcast."

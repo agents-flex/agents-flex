@@ -53,7 +53,7 @@ public class WeatherUtil {
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
         FunctionResultResponse response = llm.chat(prompt);
 
-        Object result = response.invoke();
+        Object result = response.getFunctionResult();
 
         System.out.println(result);
         //"北京的天气是阴转多云。 "

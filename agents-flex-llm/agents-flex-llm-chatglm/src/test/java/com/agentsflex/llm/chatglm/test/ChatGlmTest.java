@@ -46,7 +46,7 @@ public class ChatGlmTest {
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
         FunctionMessageResponse response = llm.chat(prompt);
 
-        Object result = response.invoke();
+        Object result = response.getFunctionResult();
 
         System.out.println(result);
     }

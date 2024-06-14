@@ -23,6 +23,7 @@ import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
 import com.agentsflex.llm.client.impl.WebSocketClient;
 import com.agentsflex.llm.embedding.EmbeddingOptions;
+import com.agentsflex.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
@@ -93,6 +94,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Message[] messages = new Message[1];
+        Throwable[] failureThrowable = new Throwable[1];
         chatStream(prompt, new StreamResponseListener<R>() {
             @Override
             public void onMessage(ChatContext context, R response) {
@@ -112,6 +114,11 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
                 StreamResponseListener.super.onStop(context);
                 latch.countDown();
             }
+
+            @Override
+            public void onFailure(ChatContext context, Throwable throwable) {
+                StreamResponseListener.super.onFailure(context, throwable);
+            }
         }, options);
         try {
             latch.await();
@@ -119,11 +126,22 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
             throw new RuntimeException(e);
         }
 
+        AbstractBaseMessageResponse<?> response;
+
         if (prompt instanceof FunctionPrompt) {
-            return (R) new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions(), (FunctionMessage) messages[0]);
+            response = new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions(), (FunctionMessage) messages[0]);
         } else {
-            return (R) new AiMessageResponse((AiMessage) messages[0]);
+            response = new AiMessageResponse((AiMessage) messages[0]);
         }
+
+        if (messages[0] == null || failureThrowable[0] != null) {
+            response.setError(true);
+            if (failureThrowable[0] != null) {
+                response.setErrorMessage(failureThrowable[0].getMessage());
+            }
+        }
+
+        return (R) response;
     }
 
 

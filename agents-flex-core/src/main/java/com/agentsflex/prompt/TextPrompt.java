@@ -26,7 +26,18 @@ public class TextPrompt extends Prompt<AiMessageResponse> {
 
     protected String content;
 
+    public TextPrompt() {
+    }
+
     public TextPrompt(String content) {
+        this.content = content;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
         this.content = content;
     }
 

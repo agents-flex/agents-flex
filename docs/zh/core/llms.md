@@ -85,7 +85,7 @@ public static void main(String[] args) {
     FunctionResultResponse response = llm.chat(prompt);
 
     //执行工具类方法得到结果
-    Object result = response.invoke();
+    Object result = response.getFunctionResult();
 
     System.out.println(result);
     //"北京的天气是阴转多云。 "
