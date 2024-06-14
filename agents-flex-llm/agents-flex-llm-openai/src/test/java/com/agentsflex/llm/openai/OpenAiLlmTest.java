@@ -7,6 +7,7 @@ import com.agentsflex.llm.response.AiMessageResponse;
 import com.agentsflex.llm.response.FunctionMessageResponse;
 import com.agentsflex.message.AiMessage;
 import com.agentsflex.prompt.FunctionPrompt;
+import com.agentsflex.prompt.ImagePrompt;
 import org.junit.Test;
 
 public class OpenAiLlmTest {
@@ -46,6 +47,33 @@ public class OpenAiLlmTest {
         }
     }
 
+
+
+
+    @Test
+    public void testChatWithImage() {
+        OpenAiLlmConfig config = new OpenAiLlmConfig();
+        config.setApiKey("sk-5gqOclb****0");
+        config.setModel("gpt-4-turbo");
+
+        Llm llm = new OpenAiLlm(config);
+        ImagePrompt prompt = new ImagePrompt("What's in this image?");
+        prompt.setImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
+
+
+//        llm.chatStream(prompt, (StreamResponseListener<AiMessageResponse, AiMessage>)
+//            (context, response) -> System.out.println(response.getMessage().getContent())
+//        );
+
+        AiMessageResponse response = llm.chat(prompt);
+        System.out.println(response);
+
+        try {
+            Thread.sleep(12000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 
     @Test
