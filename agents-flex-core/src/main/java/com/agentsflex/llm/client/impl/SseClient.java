@@ -16,10 +16,8 @@
 package com.agentsflex.llm.client.impl;
 
 import com.agentsflex.llm.LlmConfig;
-import com.agentsflex.llm.client.LLMClientException;
 import com.agentsflex.llm.client.LlmClient;
 import com.agentsflex.llm.client.LlmClientListener;
-import com.agentsflex.util.StringUtil;
 import okhttp3.*;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
@@ -27,7 +25,6 @@ import okhttp3.sse.EventSources;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -102,26 +99,7 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
     @Override
     public void onFailure(@NotNull EventSource eventSource, @Nullable Throwable t, @Nullable Response response) {
-        if (t == null && response != null) {
-            String errMessage = "Response code: " + response.code();
-            String message = response.message();
-            if (StringUtil.hasText(message)) {
-                errMessage += ", message: " + message;
-            }
-            try {
-                ResponseBody body = response.body();
-                if (body != null) {
-                    String string = body.string();
-                    if (StringUtil.hasText(string)) {
-                        errMessage += ", body: " + string;
-                    }
-                }
-            } catch (IOException e) {
-                // ignore
-            }
-            t = new LLMClientException(errMessage);
-        }
-        this.listener.onFailure(this, t);
+        this.listener.onFailure(this, Util.getFailureThrowable(t, response));
     }
 
     @Override

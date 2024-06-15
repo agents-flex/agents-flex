@@ -50,7 +50,7 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
         this.webSocket = client.newWebSocket(request, this);
         this.isStop = false;
 
-        if (this.config.isDebug()){
+        if (this.config.isDebug()) {
             System.out.println(">>>>send payload:" + payload);
         }
     }
@@ -76,7 +76,7 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
     @Override
     public void onMessage(WebSocket webSocket, String text) {
-        if (this.config.isDebug()){
+        if (this.config.isDebug()) {
             System.out.println(">>>>receive payload:" + text);
         }
         this.listener.onMessage(this, text);
@@ -84,7 +84,7 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
     @Override
     public void onMessage(WebSocket webSocket, ByteString bytes) {
-        this.listener.onMessage(this, bytes.utf8());
+        this.onMessage(webSocket, bytes.utf8());
     }
 
     @Override
@@ -100,8 +100,7 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
         if (!isStop) {
             this.isStop = true;
             this.listener.onStop(this);
-
-            this.listener.onFailure(this, t);
+            this.listener.onFailure(this, Util.getFailureThrowable(t, response));
         }
     }
 

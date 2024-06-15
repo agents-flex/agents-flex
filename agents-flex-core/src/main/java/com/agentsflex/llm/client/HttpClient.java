@@ -75,8 +75,8 @@ public class HttpClient {
             request = builder.method(method, body).build();
         }
 
-        try (Response response = okHttpClient.newCall(request).execute()) {
-            ResponseBody body = response.body();
+        try (Response response = okHttpClient.newCall(request).execute();
+             ResponseBody body = response.body()) {
             if (body != null) {
                 return body.string();
             }
