@@ -66,6 +66,9 @@ public class QwenLlmUtil {
                 .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
                 .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
                 .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens())
+                .putIfNotNull("top_p", options.getTopP())
+                .putIfNotNull("top_k", options.getTopK())
+                .putIfNotEmpty("stop", options.getStop())
             );
 
 

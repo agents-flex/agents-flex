@@ -16,6 +16,8 @@
 package com.agentsflex.llm;
 
 
+import java.util.List;
+
 /**
  * 每个大模型都可以有自己的实现类
  */
@@ -35,7 +37,10 @@ public class ChatOptions {
 
 
     private float temperature = 0.5f;
+    private float topP;
+    private int topK;
     private int maxTokens = 0;
+    private List<String> stop;
 
     public float getTemperature() {
         return temperature;
@@ -45,11 +50,35 @@ public class ChatOptions {
         this.temperature = temperature;
     }
 
+    public float getTopP() {
+        return topP;
+    }
+
+    public void setTopP(float topP) {
+        this.topP = topP;
+    }
+
+    public int getTopK() {
+        return topK;
+    }
+
+    public void setTopK(int topK) {
+        this.topK = topK;
+    }
+
     public int getMaxTokens() {
         return maxTokens;
     }
 
     public void setMaxTokens(int maxTokens) {
         this.maxTokens = maxTokens;
+    }
+
+    public List<String> getStop() {
+        return stop;
+    }
+
+    public void setStop(List<String> stop) {
+        this.stop = stop;
     }
 }

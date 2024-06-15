@@ -101,13 +101,16 @@ public class ChatglmLlmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config, boolean stream, ChatOptions chatOptions) {
+    public static String promptToPayload(Prompt<?> prompt, ChatglmLlmConfig config, boolean withStream, ChatOptions options) {
         Maps.Builder builder = Maps.of("model", config.getModel())
             .put("messages", promptFormat.toMessagesJsonObject(prompt))
-            .putIf(stream, "stream", stream)
-            .put("temperature", chatOptions.getTemperature())
-            .put("max_tokens", chatOptions.getMaxTokens())
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt));
+            .putIf(withStream, "stream", true)
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
+            .putIfContainsKey("tools", "tool_choice", "auto")
+            .putIfNotNull("top_p", options.getTopP())
+            .putIfNotEmpty("stop", options.getStop())
+            .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
+            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens());
         return JSON.toJSONString(builder.build());
 
     }

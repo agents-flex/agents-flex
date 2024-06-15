@@ -89,8 +89,11 @@ public class SparkLlmUtil {
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
         Maps.Builder root = Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()));
         root.put("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
-            .putIf(options.getTemperature() > 0, "temperature", options.getTemperature())
-            .putIf(options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens())));
+                .putIf(options.getTemperature() > 0, "temperature", options.getTemperature())
+                .putIf(options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens())
+                .putIfNotNull("top_k", options.getTopK())
+            )
+        );
         root.put("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(prompt)))
             .putIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(prompt)))
         );
@@ -153,7 +156,7 @@ public class SparkLlmUtil {
     }
 
     public static String embedPayload(SparkLlmConfig config, Document document) {
-        String text = Maps.of("messages",Collections.singletonList(Maps.of("content",document.getContent()).put("role","user").build())).toJSON();
+        String text = Maps.of("messages", Collections.singletonList(Maps.of("content", document.getContent()).put("role", "user").build())).toJSON();
         String textBase64 = Base64.getEncoder().encodeToString(text.getBytes());
 
         return Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()).put("status", 3))
