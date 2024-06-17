@@ -20,13 +20,15 @@ import com.agentsflex.message.FunctionMessage;
 
 import java.util.List;
 
-public class FunctionMessageResponse extends AbstractBaseMessageResponse<FunctionMessage> {
+public class FunctionMessageResponse extends AiMessageResponse {
 
     private final List<Function> functions;
     private final FunctionMessage functionMessage;
     private final Object functionResult;
 
     public FunctionMessageResponse(List<Function> functions, FunctionMessage functionMessage) {
+        super(functionMessage);
+
         this.functions = functions;
         this.functionMessage = functionMessage;
         this.functionResult = invoke();
@@ -36,6 +38,7 @@ public class FunctionMessageResponse extends AbstractBaseMessageResponse<Functio
             this.functionMessage.setContent(messageContent);
         }
     }
+
 
     private Object invoke() {
         if (functionMessage == null) {
