@@ -1,5 +1,30 @@
 # Agents-Flex ChangeLog
 
+
+## v1.0.0-beta.5 20240617
+- feat: add ImagePrompt to send image to LLM
+- feat: chatOptions add topP/topK and stop config
+- refactor: rename TextMessage.java to AbstractTextMessage.java
+- refactor: refactor llm methods
+- refactor: refactor FunctionMessageResponse.java
+- refactor: optimize HttpClient.java And SseClient.java
+- fix: fix function calling error in QwenLLM
+- test: add chat with image test
+
+
+---
+- 新增：新增 ImagePrompt 用于发送图片对话的场景
+- 新增：对话模型下的 ChatOptions 添加 topK 和 topP 配置的支持
+- 优化：重命名 TextMessage 为 AbstractTextMessage
+- 优化：重构 LLM 的方法定义，使之更加简单易用
+- 优化：优化 HttpClient.java 和 SseClient.java 的相关代码
+- 修复：通义千问 QwenLLM 在 function calling 下无法正常调用的问题
+- 测试：添加发送图片相关的测试内容
+
+
+
+
+
 ## v1.0.0-beta.4 20240531
 - feat: OpenAiLlm support embedding model config
 - feat: add get dimensions method in EmbeddingModel
