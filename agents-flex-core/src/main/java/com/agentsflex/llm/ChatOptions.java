@@ -25,52 +25,52 @@ public class ChatOptions {
 
     public static final ChatOptions DEFAULT = new ChatOptions() {
         @Override
-        public void setTemperature(float temperature) {
+        public void setTemperature(Float temperature) {
             throw new IllegalStateException("Can not set temperature to the default instance.");
         }
 
         @Override
-        public void setMaxTokens(int maxTokens) {
+        public void setMaxTokens(Integer maxTokens) {
             throw new IllegalStateException("Can not set maxTokens to the default instance.");
         }
     };
 
 
-    private float temperature = 0.5f;
-    private float topP;
-    private int topK;
-    private int maxTokens = 0;
+    private Float temperature = 0.8f;
+    private Float topP;
+    private Integer topK;
+    private Integer maxTokens;
     private List<String> stop;
 
-    public float getTemperature() {
+    public Float getTemperature() {
         return temperature;
     }
 
-    public void setTemperature(float temperature) {
+    public void setTemperature(Float temperature) {
         this.temperature = temperature;
     }
 
-    public float getTopP() {
+    public Float getTopP() {
         return topP;
     }
 
-    public void setTopP(float topP) {
+    public void setTopP(Float topP) {
         this.topP = topP;
     }
 
-    public int getTopK() {
+    public Integer getTopK() {
         return topK;
     }
 
-    public void setTopK(int topK) {
+    public void setTopK(Integer topK) {
         this.topK = topK;
     }
 
-    public int getMaxTokens() {
+    public Integer getMaxTokens() {
         return maxTokens;
     }
 
-    public void setMaxTokens(int maxTokens) {
+    public void setMaxTokens(Integer maxTokens) {
         this.maxTokens = maxTokens;
     }
 

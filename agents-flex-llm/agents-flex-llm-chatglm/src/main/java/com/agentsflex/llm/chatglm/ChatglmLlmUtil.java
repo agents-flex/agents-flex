@@ -110,7 +110,7 @@ public class ChatglmLlmUtil {
             .putIfNotNull("top_p", options.getTopP())
             .putIfNotEmpty("stop", options.getStop())
             .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
-            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens());
+            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens());
         return JSON.toJSONString(builder.build());
 
     }

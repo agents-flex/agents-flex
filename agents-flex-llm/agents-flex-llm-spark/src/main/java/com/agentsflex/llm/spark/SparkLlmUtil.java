@@ -90,7 +90,7 @@ public class SparkLlmUtil {
         Maps.Builder root = Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()));
         root.put("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
                 .putIf(options.getTemperature() > 0, "temperature", options.getTemperature())
-                .putIf(options.getMaxTokens() > 0, "max_tokens", options.getMaxTokens())
+                .putIf(options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
                 .putIfNotNull("top_k", options.getTopK())
             )
         );
