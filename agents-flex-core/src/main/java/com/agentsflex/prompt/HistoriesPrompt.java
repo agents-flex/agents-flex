@@ -37,6 +37,14 @@ public class HistoriesPrompt extends Prompt<AiMessageResponse> {
         memory.addMessage(message);
     }
 
+    public ChatMemory getMemory() {
+        return memory;
+    }
+
+    public void setMemory(ChatMemory memory) {
+        this.memory = memory;
+    }
+
     @Override
     public List<Message> toMessages() {
         return memory.getMessages();
