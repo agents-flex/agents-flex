@@ -53,7 +53,7 @@ public class AsyncHttpClient implements LlmClient {
             .readTimeout(3, TimeUnit.MINUTES)
             .build();
 
-        if (this.config.isDebug()){
+        if (this.config.isDebug()) {
             System.out.println(">>>>send payload:" + payload);
         }
 
@@ -66,25 +66,39 @@ public class AsyncHttpClient implements LlmClient {
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                if (config.isDebug()){
+                if (config.isDebug()) {
                     System.out.println(">>>>receive payload:" + response.message());
                 }
                 AsyncHttpClient.this.listener.onMessage(AsyncHttpClient.this, response.message());
-                if (!isStop) {
-                    AsyncHttpClient.this.isStop = true;
-                    AsyncHttpClient.this.listener.onStop(AsyncHttpClient.this);
+                try {
+                    tryToStop();
+                } finally {
+                    response.close();
                 }
             }
         });
     }
 
+
     @Override
     public void stop() {
-        if (!isStop) {
-            this.isStop = true;
-            client.dispatcher().executorService().shutdown();
-            this.listener.onStop(this);
+        tryToStop();
+    }
+
+
+    private boolean tryToStop() {
+        if (!this.isStop) {
+            try {
+                this.isStop = true;
+                this.listener.onStop(this);
+            } finally {
+                if (client != null) {
+                    client.dispatcher().executorService().shutdown();
+                }
+            }
+            return true;
         }
+        return false;
     }
 
 

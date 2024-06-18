@@ -72,21 +72,13 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
     @Override
     public void stop() {
-        if (!isStop) {
-            this.isStop = true;
-            eventSource.cancel();
-            client.dispatcher().executorService().shutdown();
-            this.listener.onStop(this);
-        }
+        tryToStop();
     }
 
 
     @Override
     public void onClosed(@NotNull EventSource eventSource) {
-        if (!isStop) {
-            this.isStop = true;
-            this.listener.onStop(this);
-        }
+        tryToStop();
     }
 
     @Override
@@ -99,11 +91,34 @@ public class SseClient extends EventSourceListener implements LlmClient {
 
     @Override
     public void onFailure(@NotNull EventSource eventSource, @Nullable Throwable t, @Nullable Response response) {
-        this.listener.onFailure(this, Util.getFailureThrowable(t, response));
+        try {
+            tryToStop();
+        } finally {
+            this.listener.onFailure(this, Util.getFailureThrowable(t, response));
+        }
     }
 
     @Override
     public void onOpen(@NotNull EventSource eventSource, @NotNull Response response) {
         //super.onOpen(eventSource, response);
+    }
+
+
+    private boolean tryToStop() {
+        if (!this.isStop) {
+            try {
+                this.isStop = true;
+                this.listener.onStop(this);
+            } finally {
+                if (eventSource != null) {
+                    eventSource.cancel();
+                }
+                if (client != null) {
+                    client.dispatcher().executorService().shutdown();
+                }
+            }
+            return true;
+        }
+        return false;
     }
 }

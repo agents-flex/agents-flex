@@ -47,8 +47,8 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
             .url(url)
             .build();
 
-        this.webSocket = client.newWebSocket(request, this);
         this.isStop = false;
+        this.webSocket = client.newWebSocket(request, this);
 
         if (this.config.isDebug()) {
             System.out.println(">>>>send payload:" + payload);
@@ -57,12 +57,10 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
     @Override
     public void stop() {
-        if (webSocket != null) {
-            webSocket.close(0, "");
-        }
-        if (!isStop) {
-            this.isStop = true;
-            listener.onStop(this);
+        try {
+            tryToStop();
+        } finally {
+            tryToCloseWebSocket();
         }
     }
 
@@ -89,26 +87,47 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
     @Override
     public void onClosing(WebSocket webSocket, int code, String reason) {
-        if (!isStop) {
-            this.isStop = true;
-            this.listener.onStop(this);
+        try {
+            tryToStop();
+        } finally {
+            tryToCloseWebSocket();
         }
     }
 
     @Override
     public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-        if (!isStop) {
-            this.isStop = true;
-            this.listener.onStop(this);
-            this.listener.onFailure(this, Util.getFailureThrowable(t, response));
+        try {
+            if (tryToStop()) {
+                this.listener.onFailure(this, Util.getFailureThrowable(t, response));
+            }
+        } finally {
+            tryToCloseWebSocket();
         }
     }
 
     @Override
     public void onClosed(@NotNull WebSocket webSocket, int code, @NotNull String reason) {
-        if (!isStop) {
+        try {
+            tryToStop();
+        } finally {
+            tryToCloseWebSocket();
+        }
+    }
+
+
+    private void tryToCloseWebSocket() {
+        if (this.webSocket != null) {
+            this.webSocket.close(1000, "");
+            this.webSocket = null;
+        }
+    }
+
+    private boolean tryToStop() {
+        if (!this.isStop) {
             this.isStop = true;
             this.listener.onStop(this);
+            return true;
         }
+        return false;
     }
 }
