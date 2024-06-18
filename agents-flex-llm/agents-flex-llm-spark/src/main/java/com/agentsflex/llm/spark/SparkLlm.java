@@ -117,9 +117,10 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
             @Override
             public void onFailure(ChatContext context, Throwable throwable) {
-                StreamResponseListener.super.onFailure(context, throwable);
+                failureThrowable[0] = throwable;
             }
         }, options);
+
         try {
             latch.await();
         } catch (InterruptedException e) {

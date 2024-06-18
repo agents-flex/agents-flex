@@ -40,7 +40,7 @@ public class BaseLlmClientListener implements LlmClientListener {
     private final StreamResponseListener streamResponseListener;
     private final Prompt prompt;
     private final AiMessageParser messageParser;
-    private final FunctionMessageParser functionInfoParser;
+    private final FunctionMessageParser functionMessageParser;
     private final StringBuilder fullMessage = new StringBuilder();
     private AiMessage lastAiMessage;
     private boolean isFunctionCalling = false;
@@ -51,16 +51,16 @@ public class BaseLlmClientListener implements LlmClientListener {
         , StreamResponseListener streamResponseListener
         , Prompt prompt
         , AiMessageParser messageParser
-        , FunctionMessageParser functionInfoParser) {
+        , FunctionMessageParser functionMessageParser) {
 
         this.streamResponseListener = streamResponseListener;
         this.prompt = prompt;
         this.messageParser = messageParser;
-        this.functionInfoParser = functionInfoParser;
+        this.functionMessageParser = functionMessageParser;
         this.context = new ChatContext(llm, client);
 
         if (prompt instanceof FunctionPrompt) {
-            if (functionInfoParser == null) {
+            if (functionMessageParser == null) {
                 throw new IllegalArgumentException("Can not support Function Calling");
             } else {
                 isFunctionCalling = true;
@@ -81,9 +81,9 @@ public class BaseLlmClientListener implements LlmClientListener {
         }
         JSONObject jsonObject = JSON.parseObject(response);
         if (isFunctionCalling) {
-            FunctionMessage functionInfo = functionInfoParser.parse(jsonObject);
+            FunctionMessage functionMessage = functionMessageParser.parse(jsonObject);
             List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
-            MessageResponse<?> r = new FunctionMessageResponse(functions, functionInfo);
+            MessageResponse<?> r = new FunctionMessageResponse(functions, functionMessage);
             //noinspection unchecked
             streamResponseListener.onMessage(context, r);
         } else {
