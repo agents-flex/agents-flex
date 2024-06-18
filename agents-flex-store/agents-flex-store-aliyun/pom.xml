@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-store</artifactId>
-        <version>1.0.0-beta.5</version>
+        <version>1.0.0-beta.6</version>
     </parent>
 
     <artifactId>agents-flex-store-aliyun</artifactId>
@@ -21,7 +21,7 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-beta.5</version>
+            <version>1.0.0-beta.6</version>
         </dependency>
 
         <dependency>

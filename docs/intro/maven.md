@@ -12,7 +12,7 @@ You can check the latest version at: https://search.maven.org/artifact/com.agent
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-spring-boot-starter</artifactId>
-    <version>1.0.0-beta.5</version>
+    <version>1.0.0-beta.6</version>
 </dependency>
 ```
 
@@ -23,6 +23,6 @@ You can check the latest version at: https://search.maven.org/artifact/com.agent
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>1.0.0-beta.5</version>
+    <version>1.0.0-beta.6</version>
 </dependency>
 ```
