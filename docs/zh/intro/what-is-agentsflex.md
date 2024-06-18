@@ -1,14 +1,14 @@
 # Agents-Flex 是什么？
 
 Agents-Flex 是一个 Java 开发的 AI 应用开发框架，是为了简化 AI 应用开发而生。 其灵感来源 LangChain、 LlamaIndex 以及作者作为一线 AI 应用开发工程师的最佳实践，提供了跨
-AI 服务商的、可移植的、不限 Java 开发框架的 API 支持。
+AI 服务商的、可移植的、可编排、不限 Java 开发框架的 API 支持。
 
-Agents-Flex 适用于聊天、图像生成、Embedding 模型、Function Calling 以及 RAG 应用等场景，支持同步以及流式（Stream）的 API 选择。
+Agents-Flex 适用于聊天、图像生成、Embedding 模型、Function Calling 以及 RAG 应用、智能体编排等场景，支持同步以及流式（Stream）的 API 选择。
 
 作者的其他开源框架，还包含了：
 - MyBatis-Flex：https://mybatis-flex.com
 - AiEditor：https://aieditor.dev
-- AiAdmin：官网正在建设中...
+- AiAdmin：https://aiadmin.cc
 
 ## Agents-Flex 和其他框架对比
 
@@ -16,8 +16,8 @@ Agents-Flex 适用于聊天、图像生成、Embedding 模型、Function Calling
 
 相比 `Spring-AI`、`LangChain4j` 而言，Agents-Flex 更具有普适性。
 
-> 1) 比如 `Spring-AI` 要求的 JDK 版本必须是 `JDK 21+`，而 Agents-Flex 只需要 `JDK8+`。
-> 2) `Spring-AI` 要求必须在 Spring 框架下使用，而 Agents-Flex 支持与任何框架搭配，并提供了 `spring-boot-starter`。
+> 1) `Spring-AI` 要求的 JDK 版本必须是 `JDK 21+`，而 Agents-Flex 只需要 `JDK 8+`。
+> 2) `Spring-AI` 要求必须在 Spring 框架下使用，而 Agents-Flex 支持与任何的 JAVA 框架搭配使用，并提供了 `spring-boot-starter` 的支持。
 > 3) `Spring-AI`、`LangChain4j` 普遍不支持国内的大模型、Embedding 模型以及向量数据库，而 Agents-Flex 对国产服务支持友好。
 
 **2、更简易的 API 设计**
@@ -61,7 +61,7 @@ public class WeatherUtil {
 }
 ```
 
-**2、更强大的 Agents 编排**
+**2、更强大的智能体编排**
 
 我们知道，一个强大的 AI 应用，往往是需要灵活的编排能力来完成的， 相比 Agents-Flex 而言，`Spring-AI`、`LangChain4j`几乎没有编排的能力。
 
@@ -69,16 +69,16 @@ public class WeatherUtil {
 
 ```java
 public static void main(String[] args) {
-    SequentialChain ioChain1 = new SequentialChain();
-    ioChain1.addNode(new Agent1("agent1"));
-    ioChain1.addNode(new Agent2("agent2"));
+    SequentialChain chain1 = new SequentialChain();
+    chain1.addNode(new Agent1("agent1"));
+    chain1.addNode(new Agent2("agent2"));
 
-    SequentialChain ioChain2 = new SequentialChain();
-    ioChain2.addNode(new Agent1("agent3"));
-    ioChain2.addNode(new Agent2("agent4"));
-    ioChain2.addNode(ioChain1);
+    SequentialChain chain2 = new SequentialChain();
+    chain2.addNode(new Agent1("agent3"));
+    chain2.addNode(new Agent2("agent4"));
+    chain2.addNode(chain1);
 
-    ioChain2.registerEventListener(new ChainEventListener() {
+    chain2.registerEventListener(new ChainEventListener() {
         @Override
         public void onEvent(ChainEvent event, Chain chain) {
             System.out.println(event);
@@ -86,7 +86,7 @@ public static void main(String[] args) {
     });
 
 
-    Object result = ioChain2.executeForResult("your params");
+    Object result = chain2.executeForResult("your params");
     System.out.println(result);
 }
 ```
