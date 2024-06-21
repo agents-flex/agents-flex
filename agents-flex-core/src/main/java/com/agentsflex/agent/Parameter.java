@@ -17,6 +17,7 @@ package com.agentsflex.agent;
 
 public class Parameter {
     private String name;
+    private String description;
     private String type;
     private boolean required;
     private boolean isDefault;
@@ -57,6 +58,14 @@ public class Parameter {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getType() {

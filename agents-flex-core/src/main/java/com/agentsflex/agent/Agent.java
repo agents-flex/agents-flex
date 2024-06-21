@@ -28,7 +28,8 @@ public abstract class Agent {
     protected String name;
     protected String description;
     private ContextMemory memory;
-    private List<String> outputKeys;
+    private List<Parameter> inputParameters;
+    private List<OutputKey> outputKeys;
 
     public Agent() {
         this.id = UUID.randomUUID().toString();
@@ -76,16 +77,21 @@ public abstract class Agent {
     }
 
     public List<Parameter> getInputParameters() {
-        List<Parameter> parameters = defineInputParameter();
-        return parameters == null ? Collections.emptyList() : parameters;
+        if (this.inputParameters == null) {
+            this.inputParameters = defineInputParameter();
+            if (this.inputParameters == null) {
+                this.inputParameters = Collections.emptyList();
+            }
+        }
+        return this.inputParameters;
     }
 
 
-    public List<String> getOutputKeys() {
+    public List<OutputKey> getOutputKeys() {
         return outputKeys;
     }
 
-    public void setOutputKeys(List<String> outputKeys) {
+    public void setOutputKeys(List<OutputKey> outputKeys) {
         this.outputKeys = outputKeys;
     }
 
@@ -94,7 +100,10 @@ public abstract class Agent {
             this.outputKeys = new ArrayList<>();
         }
 
-        this.outputKeys.addAll(Arrays.asList(keys));
+        for (String key : keys) {
+            this.outputKeys.add(new OutputKey(key));
+        }
+
         return this;
     }
 
@@ -102,7 +111,9 @@ public abstract class Agent {
         return execute(variables, null);
     }
 
-    protected abstract List<Parameter> defineInputParameter();
+    protected List<Parameter> defineInputParameter() {
+        return Collections.emptyList();
+    }
 
     public abstract Output execute(Map<String, Object> variables, Chain chain);
 
