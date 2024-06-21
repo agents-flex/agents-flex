@@ -117,6 +117,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
             @Override
             public void onFailure(ChatContext context, Throwable throwable) {
+                logger.error(throwable.toString(), throwable);
                 failureThrowable[0] = throwable;
             }
         }, options);
