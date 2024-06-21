@@ -21,7 +21,6 @@ public class SparkLlmTest {
         config.setAppId("****");
         config.setApiKey("****");
         config.setApiSecret("****");
-        config.setVersion("v3.5");
 
         Llm llm = new SparkLlm(config);
         String result = llm.chat("你好，请问你是谁？");
@@ -34,7 +33,6 @@ public class SparkLlmTest {
         config.setAppId("****");
         config.setApiKey("****");
         config.setApiSecret("****");
-        config.setVersion("v3.5");
 
         Llm llm = new SparkLlm(config);
         VectorData vectorData = llm.embed(Document.of("你好，请问你是谁？"));
@@ -50,8 +48,6 @@ public class SparkLlmTest {
         config.setApiSecret("****");
         config.setDebug(true);
 
-        //只有 v3.5 版本支持 function calling
-        config.setVersion("v3.5");
 
         Llm llm = new SparkLlm(config);
 
@@ -69,7 +65,6 @@ public class SparkLlmTest {
         config.setAppId("****");
         config.setApiKey("****");
         config.setApiSecret("****");
-        config.setVersion("v3.5");
 
         Llm llm = new SparkLlm(config);
 
