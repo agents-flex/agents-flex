@@ -97,8 +97,11 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
     @Override
     public void onFailure(WebSocket webSocket, Throwable t, Response response) {
         try {
-            if (tryToStop()) {
-                this.listener.onFailure(this, Util.getFailureThrowable(t, response));
+            try {
+                Throwable failureThrowable = Util.getFailureThrowable(t, response);
+                this.listener.onFailure(this, failureThrowable);
+            } finally {
+                tryToStop();
             }
         } finally {
             tryToCloseWebSocket();

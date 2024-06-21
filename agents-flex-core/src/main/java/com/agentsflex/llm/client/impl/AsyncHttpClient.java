@@ -61,7 +61,11 @@ public class AsyncHttpClient implements LlmClient {
         this.client.newCall(rBuilder.build()).enqueue(new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                AsyncHttpClient.this.listener.onFailure(AsyncHttpClient.this, e);
+                try {
+                    AsyncHttpClient.this.listener.onFailure(AsyncHttpClient.this, e);
+                } finally {
+                    tryToStop();
+                }
             }
 
             @Override
@@ -69,11 +73,11 @@ public class AsyncHttpClient implements LlmClient {
                 if (config.isDebug()) {
                     System.out.println(">>>>receive payload:" + response.message());
                 }
-                AsyncHttpClient.this.listener.onMessage(AsyncHttpClient.this, response.message());
                 try {
-                    tryToStop();
+                    AsyncHttpClient.this.listener.onMessage(AsyncHttpClient.this, response.message());
                 } finally {
                     response.close();
+                    tryToStop();
                 }
             }
         });

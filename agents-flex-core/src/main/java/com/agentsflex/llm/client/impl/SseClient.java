@@ -92,9 +92,9 @@ public class SseClient extends EventSourceListener implements LlmClient {
     @Override
     public void onFailure(@NotNull EventSource eventSource, @Nullable Throwable t, @Nullable Response response) {
         try {
-            tryToStop();
-        } finally {
             this.listener.onFailure(this, Util.getFailureThrowable(t, response));
+        } finally {
+            tryToStop();
         }
     }
 
