@@ -22,7 +22,7 @@ public class SparkLlmConfig extends LlmConfig {
     private String appId;
     private String apiSecret;
     private  String apiKey ;
-    private  String version = "v3.1";
+    private  String version = "v3.5";
 
 
     public String getAppId() {
