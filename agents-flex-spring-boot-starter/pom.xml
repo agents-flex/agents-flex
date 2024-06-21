@@ -34,6 +34,18 @@
             <optional>true</optional>
         </dependency>
 
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+            <version>${agents-flex.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!--llm start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
