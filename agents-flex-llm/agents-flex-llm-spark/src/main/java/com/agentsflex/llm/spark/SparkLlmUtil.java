@@ -15,20 +15,20 @@
  */
 package com.agentsflex.llm.spark;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.functions.Function;
-import com.agentsflex.functions.Parameter;
-import com.agentsflex.llm.ChatOptions;
-import com.agentsflex.message.MessageStatus;
-import com.agentsflex.parser.AiMessageParser;
-import com.agentsflex.parser.FunctionMessageParser;
-import com.agentsflex.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.parser.impl.DefaultFunctionMessageParser;
-import com.agentsflex.prompt.DefaultPromptFormat;
-import com.agentsflex.prompt.Prompt;
-import com.agentsflex.prompt.PromptFormat;
-import com.agentsflex.util.HashUtil;
-import com.agentsflex.util.Maps;
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.functions.Function;
+import com.agentsflex.core.functions.Parameter;
+import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.message.MessageStatus;
+import com.agentsflex.core.parser.AiMessageParser;
+import com.agentsflex.core.parser.FunctionMessageParser;
+import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
+import com.agentsflex.core.parser.impl.DefaultFunctionMessageParser;
+import com.agentsflex.core.prompt.DefaultPromptFormat;
+import com.agentsflex.core.prompt.Prompt;
+import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.util.HashUtil;
+import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
 
 import java.io.UnsupportedEncodingException;

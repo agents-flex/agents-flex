@@ -15,7 +15,7 @@
  */
 package com.agentsflex.llm.qwen;
 
-import com.agentsflex.llm.LlmConfig;
+import com.agentsflex.core.llm.LlmConfig;
 
 public class QwenLlmConfig extends LlmConfig {
 

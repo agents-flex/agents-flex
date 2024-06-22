@@ -15,7 +15,7 @@
  */
 package com.agentsflex.llm.llama;
 
-import com.agentsflex.llm.LlmConfig;
+import com.agentsflex.core.llm.LlmConfig;
 
 public class LlamaLlmConfig extends LlmConfig {
 

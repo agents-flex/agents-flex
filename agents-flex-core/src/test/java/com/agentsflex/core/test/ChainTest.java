@@ -15,9 +15,9 @@
  */
 package com.agentsflex.core.test;
 
-import com.agentsflex.agent.Parameter;
-import com.agentsflex.chain.Chain;
-import com.agentsflex.chain.SequentialChain;
+import com.agentsflex.core.agent.Parameter;
+import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.SequentialChain;
 
 import java.util.HashMap;
 import java.util.Map;

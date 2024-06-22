@@ -1,6 +1,6 @@
 package com.agentsflex.core.test;
 
-import com.agentsflex.prompt.template.TextPromptTemplate;
+import com.agentsflex.core.prompt.template.TextPromptTemplate;
 import org.junit.Test;
 
 import java.util.HashMap;

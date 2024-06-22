@@ -15,8 +15,9 @@
  */
 package com.agentsflex.chain.node;
 
-import com.agentsflex.chain.Chain;
-import com.agentsflex.chain.ChainNode;
+import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.ChainNode;
+import com.agentsflex.core.chain.node.RouterNode;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 

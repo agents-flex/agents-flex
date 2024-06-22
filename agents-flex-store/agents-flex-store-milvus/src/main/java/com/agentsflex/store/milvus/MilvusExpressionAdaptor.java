@@ -15,10 +15,10 @@
  */
 package com.agentsflex.store.milvus;
 
-import com.agentsflex.store.condition.Condition;
-import com.agentsflex.store.condition.ConditionType;
-import com.agentsflex.store.condition.ExpressionAdaptor;
-import com.agentsflex.store.condition.Value;
+import com.agentsflex.core.store.condition.Condition;
+import com.agentsflex.core.store.condition.ConditionType;
+import com.agentsflex.core.store.condition.ExpressionAdaptor;
+import com.agentsflex.core.store.condition.Value;
 
 import java.util.StringJoiner;
 

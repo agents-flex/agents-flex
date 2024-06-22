@@ -15,13 +15,13 @@
  */
 package com.agentsflex.llm.llama;
 
-import com.agentsflex.message.MessageStatus;
-import com.agentsflex.parser.AiMessageParser;
-import com.agentsflex.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.prompt.DefaultPromptFormat;
-import com.agentsflex.prompt.Prompt;
-import com.agentsflex.prompt.PromptFormat;
-import com.agentsflex.util.Maps;
+import com.agentsflex.core.message.MessageStatus;
+import com.agentsflex.core.parser.AiMessageParser;
+import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
+import com.agentsflex.core.prompt.DefaultPromptFormat;
+import com.agentsflex.core.prompt.Prompt;
+import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.util.Maps;
 
 public class LlamaLlmUtil {
 

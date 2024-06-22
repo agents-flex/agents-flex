@@ -15,8 +15,8 @@
  */
 package com.agentsflex.core.test;
 
-import com.agentsflex.store.SearchWrapper;
-import com.agentsflex.store.condition.Connector;
+import com.agentsflex.core.store.SearchWrapper;
+import com.agentsflex.core.store.condition.Connector;
 import org.junit.Assert;
 import org.junit.Test;
 

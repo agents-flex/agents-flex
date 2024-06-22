@@ -15,8 +15,9 @@
  */
 package com.agentsflex.chain.node;
 
-import com.agentsflex.chain.Chain;
-import com.agentsflex.chain.ChainNode;
+import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.ChainNode;
+import com.agentsflex.core.chain.node.RouterNode;
 import com.ql.util.express.DefaultContext;
 import com.ql.util.express.ExpressRunner;
 

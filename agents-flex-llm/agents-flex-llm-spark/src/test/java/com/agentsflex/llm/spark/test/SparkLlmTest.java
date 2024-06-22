@@ -1,14 +1,14 @@
 package com.agentsflex.llm.spark.test;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.llm.Llm;
-import com.agentsflex.llm.response.FunctionMessageResponse;
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
-import com.agentsflex.message.HumanMessage;
-import com.agentsflex.prompt.FunctionPrompt;
-import com.agentsflex.prompt.HistoriesPrompt;
-import com.agentsflex.store.VectorData;
+import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.prompt.FunctionPrompt;
+import com.agentsflex.core.prompt.HistoriesPrompt;
+import com.agentsflex.core.store.VectorData;
 import org.junit.Test;
 
 import java.util.Scanner;

@@ -15,7 +15,7 @@
  */
 package com.agentsflex.llm.chatglm;
 
-import com.agentsflex.llm.LlmConfig;
+import com.agentsflex.core.llm.LlmConfig;
 
 public class ChatglmLlmConfig extends LlmConfig {
 

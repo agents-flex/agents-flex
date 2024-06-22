@@ -1,6 +1,6 @@
 package com.agentsflex.core.test.io;
 
-import com.agentsflex.chain.*;
+import com.agentsflex.core.chain.*;
 
 public class AgentChainTest {
 

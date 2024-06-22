@@ -15,7 +15,7 @@
  */
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.llm.LlmConfig;
+import com.agentsflex.core.llm.LlmConfig;
 
 public class OpenAiLlmConfig extends LlmConfig {
 

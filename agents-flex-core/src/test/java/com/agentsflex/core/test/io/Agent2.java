@@ -1,7 +1,7 @@
 package com.agentsflex.core.test.io;
 
-import com.agentsflex.agent.DefaultAgent;
-import com.agentsflex.chain.Chain;
+import com.agentsflex.core.agent.DefaultAgent;
+import com.agentsflex.core.chain.Chain;
 
 public class Agent2 extends DefaultAgent {
 

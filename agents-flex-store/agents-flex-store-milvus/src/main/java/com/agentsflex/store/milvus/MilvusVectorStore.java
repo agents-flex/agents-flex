@@ -15,14 +15,14 @@
  */
 package com.agentsflex.store.milvus;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.store.DocumentStore;
-import com.agentsflex.store.SearchWrapper;
-import com.agentsflex.store.StoreOptions;
-import com.agentsflex.store.StoreResult;
-import com.agentsflex.util.Maps;
-import com.agentsflex.util.StringUtil;
-import com.agentsflex.util.VectorUtil;
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.store.DocumentStore;
+import com.agentsflex.core.store.SearchWrapper;
+import com.agentsflex.core.store.StoreOptions;
+import com.agentsflex.core.store.StoreResult;
+import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.core.util.VectorUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import io.milvus.v2.client.ConnectConfig;

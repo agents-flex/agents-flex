@@ -1,7 +1,7 @@
 package com.agentsflex.document.parser;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.document.DocumentParser;
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.document.DocumentParser;
 import org.apache.poi.extractor.ExtractorFactory;
 import org.apache.poi.extractor.POITextExtractor;
 

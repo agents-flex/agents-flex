@@ -1,7 +1,7 @@
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.functions.annotation.FunctionDef;
-import com.agentsflex.functions.annotation.FunctionParam;
+import com.agentsflex.core.functions.annotation.FunctionDef;
+import com.agentsflex.core.functions.annotation.FunctionParam;
 
 public class WeatherFunctions {
 

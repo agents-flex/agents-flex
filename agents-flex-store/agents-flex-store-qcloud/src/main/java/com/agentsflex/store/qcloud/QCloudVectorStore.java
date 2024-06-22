@@ -15,13 +15,13 @@
  */
 package com.agentsflex.store.qcloud;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.llm.client.HttpClient;
-import com.agentsflex.store.DocumentStore;
-import com.agentsflex.store.SearchWrapper;
-import com.agentsflex.store.StoreOptions;
-import com.agentsflex.store.StoreResult;
-import com.agentsflex.util.StringUtil;
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.store.DocumentStore;
+import com.agentsflex.core.store.SearchWrapper;
+import com.agentsflex.core.store.StoreOptions;
+import com.agentsflex.core.store.StoreResult;
+import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;

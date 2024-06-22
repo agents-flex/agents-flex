@@ -1,11 +1,11 @@
 package com.agentsflex.store.milvus;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.llm.Llm;
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.llm.Llm;
 import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
-import com.agentsflex.store.SearchWrapper;
-import com.agentsflex.store.StoreResult;
+import com.agentsflex.core.store.SearchWrapper;
+import com.agentsflex.core.store.StoreResult;
 
 import java.util.List;
 

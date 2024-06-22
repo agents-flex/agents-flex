@@ -1,12 +1,12 @@
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.llm.ChatContext;
-import com.agentsflex.llm.Llm;
-import com.agentsflex.llm.StreamResponseListener;
-import com.agentsflex.llm.response.AiMessageResponse;
-import com.agentsflex.llm.response.FunctionMessageResponse;
-import com.agentsflex.prompt.FunctionPrompt;
-import com.agentsflex.prompt.ImagePrompt;
+import com.agentsflex.core.llm.ChatContext;
+import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.llm.StreamResponseListener;
+import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.llm.response.FunctionMessageResponse;
+import com.agentsflex.core.prompt.FunctionPrompt;
+import com.agentsflex.core.prompt.ImagePrompt;
 import org.junit.Test;
 
 public class OpenAiLlmTest {

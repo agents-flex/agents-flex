@@ -1,11 +1,11 @@
 package com.agentsflex.llm.qwen.test;
 
-import com.agentsflex.llm.Llm;
+import com.agentsflex.core.llm.Llm;
 import com.agentsflex.llm.qwen.QwenLlm;
 import com.agentsflex.llm.qwen.QwenLlmConfig;
-import com.agentsflex.llm.response.FunctionMessageResponse;
-import com.agentsflex.message.AiMessage;
-import com.agentsflex.prompt.FunctionPrompt;
+import com.agentsflex.core.llm.response.FunctionMessageResponse;
+import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.prompt.FunctionPrompt;
 import org.junit.Test;
 
 public class QwenTest {

@@ -15,7 +15,7 @@
  */
 package com.agentsflex.llm.spark;
 
-import com.agentsflex.llm.LlmConfig;
+import com.agentsflex.core.llm.LlmConfig;
 
 public class SparkLlmConfig extends LlmConfig {
 

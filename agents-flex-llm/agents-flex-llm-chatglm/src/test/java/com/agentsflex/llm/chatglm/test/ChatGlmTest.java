@@ -1,13 +1,13 @@
 package com.agentsflex.llm.chatglm.test;
 
-import com.agentsflex.document.Document;
-import com.agentsflex.llm.Llm;
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.llm.Llm;
 import com.agentsflex.llm.chatglm.ChatglmLlm;
 import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
-import com.agentsflex.llm.embedding.EmbeddingOptions;
-import com.agentsflex.llm.response.FunctionMessageResponse;
-import com.agentsflex.prompt.FunctionPrompt;
-import com.agentsflex.store.VectorData;
+import com.agentsflex.core.llm.embedding.EmbeddingOptions;
+import com.agentsflex.core.llm.response.FunctionMessageResponse;
+import com.agentsflex.core.prompt.FunctionPrompt;
+import com.agentsflex.core.store.VectorData;
 import org.junit.Test;
 
 import java.util.Arrays;
