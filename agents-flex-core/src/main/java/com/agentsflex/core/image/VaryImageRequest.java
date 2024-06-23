@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.llm.image;
+package com.agentsflex.core.image;
 
 public class VaryImageRequest extends BaseImageRequest {
     private Image image;

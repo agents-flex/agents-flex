@@ -13,14 +13,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.llm.image;
+package com.agentsflex.core.image;
 
-public interface ImageModel {
+public class EditImageRequest extends GenerateImageRequest {
+    private Image image;
+    private Image mask;
 
-    ImageResponse generate(GenerateImageRequest options);
+    public Image getImage() {
+        return image;
+    }
 
-    ImageResponse edit(EditImageRequest options);
+    public void setImage(Image image) {
+        this.image = image;
+    }
 
-    ImageResponse vary(VaryImageRequest options);
+    public Image getMask() {
+        return mask;
+    }
 
+    public void setMask(Image mask) {
+        this.mask = mask;
+    }
 }
+

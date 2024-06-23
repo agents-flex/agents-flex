@@ -13,20 +13,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.llm.image;
+package com.agentsflex.core.image;
 
-import com.agentsflex.core.util.Metadata;
+public class GenerateImageRequest extends BaseImageRequest {
+    private String prompt;
+    private String quality;
+    private String style;
 
-import java.util.List;
-
-public class ImageResponse extends Metadata {
-    private List<Image> images;
-
-    public List<Image> getImages() {
-        return images;
+    public String getPrompt() {
+        return prompt;
     }
 
-    public void setImages(List<Image> images) {
-        this.images = images;
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
+    }
+
+    public String getQuality() {
+        return quality;
+    }
+
+    public void setQuality(String quality) {
+        this.quality = quality;
+    }
+
+    public String getStyle() {
+        return style;
+    }
+
+    public void setStyle(String style) {
+        this.style = style;
     }
 }
+

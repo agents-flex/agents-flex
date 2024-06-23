@@ -50,6 +50,7 @@
         <module>agents-flex-spring-boot-starter</module>
         <module>agents-flex-chain</module>
         <module>agents-flex-chain/agents-flex-chain-qlexpress</module>
+        <module>agents-flex-image</module>
     </modules>
 
     <properties>
