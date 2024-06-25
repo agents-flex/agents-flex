@@ -77,6 +77,12 @@
             <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-moonshot</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
         <!--llm end-->
 
         <!--store start-->
