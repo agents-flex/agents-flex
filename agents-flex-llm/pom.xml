@@ -17,6 +17,7 @@
         <module>agents-flex-llm-qwen</module>
         <module>agents-flex-llm-chatglm</module>
         <module>agents-flex-llm-llama</module>
+        <module>agents-flex-llm-moonshot</module>
     </modules>
 
     <properties>
