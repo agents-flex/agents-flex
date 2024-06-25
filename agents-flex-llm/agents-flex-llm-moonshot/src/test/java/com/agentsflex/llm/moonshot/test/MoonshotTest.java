@@ -2,12 +2,9 @@ package com.agentsflex.llm.moonshot.test;
 
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.llm.moonshot.MoonshotLlm;
 import com.agentsflex.llm.moonshot.MoonshotLlmConfig;
-import org.junit.Test;
 
 public class MoonshotTest {
 
