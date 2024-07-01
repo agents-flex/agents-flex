@@ -17,45 +17,28 @@ package com.agentsflex.core.chain;
 
 import com.agentsflex.core.agent.Agent;
 import com.agentsflex.core.agent.Output;
-import com.agentsflex.core.agent.Parameter;
-import com.agentsflex.core.chain.event.OnErrorEvent;
-import com.agentsflex.core.chain.event.OnFinishedEvent;
-import com.agentsflex.core.chain.event.OnStartEvent;
-import com.agentsflex.core.chain.event.OnStatusChangeEvent;
+import com.agentsflex.core.chain.event.*;
 import com.agentsflex.core.chain.node.AgentNode;
 import com.agentsflex.core.memory.ContextMemory;
-import com.agentsflex.core.memory.DefaultContextMemory;
+import com.agentsflex.core.util.CollectionUtil;
+import com.agentsflex.core.util.StringUtil;
 
-import java.io.Serializable;
 import java.util.*;
 
 
-public abstract class Chain implements Serializable {
-    private Object id;
-    private ContextMemory memory = new DefaultContextMemory();
+public class Chain extends ChainNode {
     private Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
-    private List<ChainInputListener> inputListeners = new ArrayList<>();
     private List<ChainOutputListener> outputListeners = new ArrayList<>();
     private List<ChainNode> nodes;
-    private Chain parent;
-    private List<Chain> children;
+    private List<ChainLine> lines;
     private ChainStatus status = ChainStatus.READY;
     private String message;
-
-    //理论上是线程安全的，所有有多线程写入的情况，但是只有全部写入完成后才会去通知监听器
-    private List<Parameter> waitInputParameters = new ArrayList<>();
+    private Chain parent;
+    private List<Chain> children;
 
 
     public Chain() {
         this.id = UUID.randomUUID().toString();
-    }
-
-    public Object getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
     }
 
 
@@ -92,21 +75,6 @@ public abstract class Chain implements Serializable {
     }
 
 
-    public List<ChainInputListener> getInputListeners() {
-        return inputListeners;
-    }
-
-    public void setInputListeners(List<ChainInputListener> inputListeners) {
-        this.inputListeners = inputListeners;
-    }
-
-    public void registerInputListener(ChainInputListener inputListener) {
-        if (this.inputListeners == null) {
-            this.inputListeners = new ArrayList<>();
-        }
-        this.inputListeners.add(inputListener);
-    }
-
     public List<ChainOutputListener> getOutputListeners() {
         return outputListeners;
     }
@@ -135,9 +103,6 @@ public abstract class Chain implements Serializable {
         if (nodes == null) {
             this.nodes = new ArrayList<>();
         }
-        if (chainNode instanceof Chain) {
-            ((Chain) chainNode).parent = this;
-        }
         if (chainNode instanceof ChainEventListener) {
             registerEventListener((ChainEventListener) chainNode);
         }
@@ -150,34 +115,13 @@ public abstract class Chain implements Serializable {
     }
 
 
-    public Chain getParent() {
-        return parent;
-    }
-
-    public void setParent(Chain parent) {
-        this.parent = parent;
-    }
-
-
-    public void setId(Object id) {
-        this.id = id;
-    }
-
     public ContextMemory getMemory() {
         return memory;
     }
 
+
     public void setMemory(ContextMemory memory) {
         this.memory = memory;
-    }
-
-
-    public List<Chain> getChildren() {
-        return children;
-    }
-
-    public void setChildren(List<Chain> children) {
-        this.children = children;
     }
 
     public ChainStatus getStatus() {
@@ -193,13 +137,22 @@ public abstract class Chain implements Serializable {
         }
     }
 
-    public List<Parameter> getWaitInputParameters() {
-        return waitInputParameters;
+    public Chain getParent() {
+        return parent;
     }
 
-    public void setWaitInputParameters(List<Parameter> waitInputParameters) {
-        this.waitInputParameters = waitInputParameters;
+    public void setParent(Chain parent) {
+        this.parent = parent;
     }
+
+    public List<Chain> getChildren() {
+        return children;
+    }
+
+    public void setChildren(List<Chain> children) {
+        this.children = children;
+    }
+
 
     public void notifyEvent(ChainEvent event) {
         for (Map.Entry<Class<?>, List<ChainEventListener>> entry : eventListeners.entrySet()) {
@@ -209,9 +162,6 @@ public abstract class Chain implements Serializable {
                 }
             }
         }
-        if (parent != null) {
-            parent.notifyEvent(event);
-        }
     }
 
     public Object get(String key) {
@@ -219,16 +169,15 @@ public abstract class Chain implements Serializable {
     }
 
     public Object getGlobal(String key) {
-        Object object = this.memory.get(key);
-        if (object != null) {
-            return object;
-        }
-
-        if (parent != null) {
-            return parent.getGlobal(key);
-        }
-        return null;
+        return this.memory.get(key);
     }
+
+    @Override
+    protected Map<String, Object> execute(Chain parent) {
+        this.execute(parent.getMemory().getAll());
+        return this.memory.getAll();
+    }
+
 
     public void execute(Object variable) {
         this.execute(Output.DEFAULT_VALUE_KEY, variable);
@@ -262,70 +211,118 @@ public abstract class Chain implements Serializable {
     }
 
 
-    protected abstract void executeInternal();
+    protected void executeInternal() {
+        List<ChainNode> currentNodes = getStartNodes();
+        while (CollectionUtil.hasItems(currentNodes)) {
+            ChainNode currentNode = currentNodes.remove(0);
 
-    public boolean resume(Map<String, Object> variables) {
-        if (status != ChainStatus.PAUSE_FOR_INPUT &&
-            status != ChainStatus.PAUSE_FOR_WAKE_UP) {
-            return false;
+            Integer execCount = (Integer) currentNode.getMemory().get("_exec_count");
+            if (execCount == null) execCount = 0;
+
+            ChainCondition nodeCondition = currentNode.getCondition();
+            if (nodeCondition != null && !nodeCondition.check(this, this.getMemory().getAll())) {
+                continue;
+            }
+
+            Map<String, Object> executeResult = null;
+            try {
+                ChainContext.setNode(currentNode);
+                notifyEvent(new OnNodeStartEvent(currentNode));
+                if (this.getStatus() != ChainStatus.RUNNING) {
+                    break;
+                }
+                executeResult = currentNode.execute(this);
+            } finally {
+                ChainContext.clearNode();
+                currentNode.getMemory().put("_exec_count", execCount + 1);
+                notifyEvent(new OnNodeFinishedEvent(currentNode, executeResult));
+            }
+
+            if (executeResult != null && !executeResult.isEmpty()) {
+                this.memory.putAll(executeResult);
+            }
+
+            if (this.getStatus() != ChainStatus.RUNNING) {
+                break;
+            }
+
+            List<ChainLine> linesOut = currentNode.getLinesOut();
+
+            if (CollectionUtil.hasItems(linesOut)) {
+                for (ChainLine chainLine : linesOut) {
+                    ChainNode nextNode = getNodeById(chainLine.getTarget());
+                    if (nextNode == null) {
+                        continue;
+                    }
+                    ChainCondition condition = chainLine.getCondition();
+                    if (condition == null) {
+                        currentNodes.add(nextNode);
+                    } else if (condition.check(this, this.memory.getAll())) {
+                        currentNodes.add(nextNode);
+                    }
+                }
+            }
+        }
+    }
+
+
+    private List<ChainNode> getStartNodes() {
+        if (this.nodes == null || this.nodes.isEmpty()) {
+            return null;
         }
 
-        if (variables == null || variables.isEmpty()) {
-            return false;
-        }
+        List<ChainNode> nodes = new ArrayList<>();
 
-        for (Parameter waitInputParameter : this.waitInputParameters) {
-            if (variables.get(waitInputParameter.getName()) == null) {
-                return false;
+        for (ChainNode node : this.nodes) {
+            if (CollectionUtil.noItems(node.getLinesIn())) {
+                nodes.add(node);
             }
         }
 
-        waitInputParameters.clear();
-        runInLifeCycle(variables, () -> resumeInternal(variables));
-        return true;
+        return nodes;
     }
+
+
+    private ChainNode getNodeById(String id) {
+        if (id == null || StringUtil.noText(id)) {
+            return null;
+        }
+
+        for (ChainNode node : this.nodes) {
+            if (id.equals(node.getId())) {
+                return node;
+            }
+        }
+
+        return null;
+    }
+
 
     protected void runInLifeCycle(Map<String, Object> variables, Runnable runnable) {
         if (variables != null) {
             this.memory.putAll(variables);
         }
         try {
+            ChainContext.setChain(this);
             notifyEvent(new OnStartEvent());
             try {
-                setStatus(ChainStatus.START);
+                setStatus(ChainStatus.RUNNING);
                 runnable.run();
             } catch (Exception e) {
                 setStatus(ChainStatus.ERROR);
                 notifyEvent(new OnErrorEvent(e));
-            } finally {
-                if (!waitInputParameters.isEmpty()) {
-                    notifyInput(waitInputParameters);
-                }
             }
-            if (status == ChainStatus.START) {
+            if (status == ChainStatus.RUNNING) {
                 setStatus(ChainStatus.FINISHED_NORMAL);
             } else if (status == ChainStatus.ERROR) {
                 setStatus(ChainStatus.FINISHED_ABNORMAL);
             }
         } finally {
+            ChainContext.clearChain();
             notifyEvent(new OnFinishedEvent());
         }
     }
 
-
-    protected abstract void resumeInternal(Map<String, Object> variables);
-
-
-    public void waitInput(List<Parameter> parameters, AgentNode agent) {
-        setStatus(ChainStatus.PAUSE_FOR_INPUT);
-        this.waitInputParameters.addAll(parameters);
-    }
-
-    private void notifyInput(List<Parameter> parameters) {
-        for (ChainInputListener inputListener : inputListeners) {
-            inputListener.onInput(this, parameters);
-        }
-    }
 
     private void notifyOutput(Agent agent, Object response) {
         for (ChainOutputListener inputListener : outputListeners) {
@@ -336,44 +333,52 @@ public abstract class Chain implements Serializable {
     public void stopNormal(String message) {
         this.message = message;
         setStatus(ChainStatus.FINISHED_NORMAL);
-        if (parent != null) {
-            parent.stopNormal(message);
-        }
     }
 
     public void stopError(String message) {
         this.message = message;
         setStatus(ChainStatus.FINISHED_ABNORMAL);
-        if (parent != null) {
-            parent.stopError(message);
-        }
     }
 
     public void output(Agent agent, Object response) {
         notifyOutput(agent, response);
-        if (parent != null) {
-            parent.output(agent, response);
-        }
     }
 
     public String getMessage() {
         return message;
     }
 
+
+    public List<ChainLine> getLines() {
+        return lines;
+    }
+
+    public void setLines(List<ChainLine> lines) {
+        this.lines = lines;
+    }
+
+    public void addLine(ChainLine line) {
+        if (this.lines == null) {
+            this.lines = new ArrayList<>();
+        }
+        this.lines.add(line);
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
     @Override
     public String toString() {
         return "Chain{" +
-            "id=" + id +
+            "id='" + id + '\'' +
             ", memory=" + memory +
             ", eventListeners=" + eventListeners +
-            ", inputListeners=" + inputListeners +
             ", outputListeners=" + outputListeners +
             ", nodes=" + nodes +
-            ", parent=" + parent +
-            ", children=" + children +
+            ", lines=" + lines +
             ", status=" + status +
             ", message='" + message + '\'' +
-            ", waitInputParameters=" + waitInputParameters +
             '}';
     }
 }

@@ -20,13 +20,14 @@ import com.agentsflex.core.agent.Output;
 import com.agentsflex.core.agent.OutputKey;
 import com.agentsflex.core.agent.Parameter;
 import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.ChainNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class AgentNode extends AbstractBaseNode {
+public class AgentNode extends ChainNode {
     private Agent agent;
     private Map<String, String> outputMapping;
 
@@ -38,8 +39,16 @@ public class AgentNode extends AbstractBaseNode {
     }
 
     @Override
-    public Object getId() {
-        return this.id != null ? this.id : agent.getId();
+    public String getId() {
+        if (this.id != null) {
+            return this.id;
+        }
+
+        Object agentId = agent.getId();
+        if (agentId == null) {
+            return null;
+        }
+        return agentId.toString();
     }
 
     public Agent getAgent() {
@@ -60,7 +69,6 @@ public class AgentNode extends AbstractBaseNode {
 
     @Override
     public Map<String, Object> execute(Chain chain) {
-
         Map<String, Object> variables = new HashMap<>();
         List<Parameter> requiredParameters = null;
 
@@ -75,7 +83,7 @@ public class AgentNode extends AbstractBaseNode {
             for (Parameter parameter : inputParameters) {
                 Object value = chain.get(parameter.getName());
 
-                //当只有一个参数时，或者当前参数为默认参数时，尝试使用 default 数据库
+                //当只有一个参数时，或者当前参数为默认参数时，尝试使用 default 数据
                 if (value == null && (parameter.isDefault() || inputParameters.size() == 1)) {
                     value = chain.get(Output.DEFAULT_VALUE_KEY);
                 }
@@ -91,7 +99,6 @@ public class AgentNode extends AbstractBaseNode {
         }
 
         if (requiredParameters != null) {
-            chain.waitInput(requiredParameters, this);
             return null;
         }
 
@@ -117,7 +124,6 @@ public class AgentNode extends AbstractBaseNode {
         return "AgentNode{" +
             "agent=" + agent +
             ", id=" + id +
-            ", skip=" + skip +
             '}';
     }
 }

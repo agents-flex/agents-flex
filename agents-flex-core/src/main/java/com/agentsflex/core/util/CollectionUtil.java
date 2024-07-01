@@ -13,20 +13,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain;
+package com.agentsflex.core.util;
 
-public enum ChainStatus {
+import java.util.Collection;
 
-    READY(0), // 未开始执行
-    RUNNING(1), // 已开始执行，执行中...
-    ERROR(10), //发生错误
-    FINISHED_NORMAL(20), //正常结束
-    FINISHED_ABNORMAL(21), //错误结束
-    ;
+public class CollectionUtil {
 
-    final int value;
+    private CollectionUtil() {
+    }
 
-    ChainStatus(int value) {
-        this.value = value;
+
+    public static <T> boolean noItems(Collection<?> collection) {
+        return collection == null || collection.isEmpty();
+    }
+
+
+    public static boolean hasItems(Collection<?> collection) {
+        return !noItems(collection);
     }
 }

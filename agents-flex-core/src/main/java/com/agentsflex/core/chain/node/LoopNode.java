@@ -20,37 +20,9 @@ import com.agentsflex.core.chain.ChainNode;
 
 import java.util.Map;
 
-public class EndNode extends ChainNode {
-    private boolean normal = true;
-    private String message;
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public boolean isNormal() {
-        return normal;
-    }
-
-    public void setNormal(boolean normal) {
-        this.normal = normal;
-    }
-
-    public EndNode() {
-        this.name = "end";
-    }
-
+public class LoopNode extends ChainNode {
     @Override
-    public Map<String, Object> execute(Chain chain) {
-        if (normal) {
-            chain.stopNormal(message);
-        } else {
-            chain.stopError(message);
-        }
+    protected Map<String, Object> execute(Chain chain) {
         return null;
     }
 }

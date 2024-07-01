@@ -15,17 +15,81 @@
  */
 package com.agentsflex.core.chain;
 
+import com.agentsflex.core.memory.ContextMemory;
+import com.agentsflex.core.memory.DefaultContextMemory;
+
+import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 
-public interface ChainNode {
+public abstract class ChainNode implements Serializable {
 
-    Object getId();
+    protected String id;
+    protected String name;
+    protected List<ChainLine> linesIn;
+    protected List<ChainLine> linesOut;
 
-    default String getName() {
-        return null;
+    protected ChainCondition condition;
+
+    protected ContextMemory memory = new DefaultContextMemory();
+    protected ChainNodeStatus nodeStatus = ChainNodeStatus.READY;
+
+    public String getId() {
+        return id;
     }
 
-    boolean isSkip();
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    Map<String, Object> execute(Chain chain);
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<ChainLine> getLinesIn() {
+        return linesIn;
+    }
+
+    public void setLinesIn(List<ChainLine> linesIn) {
+        this.linesIn = linesIn;
+    }
+
+    public List<ChainLine> getLinesOut() {
+        return linesOut;
+    }
+
+    public void setLinesOut(List<ChainLine> linesOut) {
+        this.linesOut = linesOut;
+    }
+
+    public ChainCondition getCondition() {
+        return condition;
+    }
+
+    public void setCondition(ChainCondition condition) {
+        this.condition = condition;
+    }
+
+    public ContextMemory getMemory() {
+        return memory;
+    }
+
+    public void setMemory(ContextMemory memory) {
+        this.memory = memory;
+    }
+
+    public ChainNodeStatus getNodeStatus() {
+        return nodeStatus;
+    }
+
+    public void setNodeStatus(ChainNodeStatus nodeStatus) {
+        this.nodeStatus = nodeStatus;
+    }
+
+    protected abstract Map<String, Object> execute(Chain chain);
+
 }

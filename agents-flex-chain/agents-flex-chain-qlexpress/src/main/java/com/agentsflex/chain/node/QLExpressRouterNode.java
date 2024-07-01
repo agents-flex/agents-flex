@@ -17,14 +17,13 @@ package com.agentsflex.chain.node;
 
 import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.chain.ChainNode;
-import com.agentsflex.core.chain.node.RouterNode;
 import com.ql.util.express.DefaultContext;
 import com.ql.util.express.ExpressRunner;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
-public class QLExpressRouterNode extends RouterNode {
+public class QLExpressRouterNode extends ChainNode {
     private String express;
 
     public QLExpressRouterNode() {
@@ -35,36 +34,27 @@ public class QLExpressRouterNode extends RouterNode {
         this.express = express;
     }
 
-    public QLExpressRouterNode(String express, ChainNode... nodes) {
-        this.express = express;
-        this.setNodes(Arrays.asList(nodes));
-    }
-
-    public QLExpressRouterNode(List<ChainNode> nodes, String express) {
-        super(nodes);
-        this.express = express;
-    }
-
-    @Override
-    protected String route(Chain chain) {
-        ExpressRunner runner = new ExpressRunner();
-        DefaultContext<String, Object> context = new DefaultContext<>();
-        context.putAll(chain.getMemory().getAll());
-        context.put("chain", chain);
-        try {
-            Object result = runner.execute(express, context, null, true, false);
-            if (result != null) return result.toString();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return null;
-    }
-
     public String getExpress() {
         return express;
     }
 
     public void setExpress(String express) {
         this.express = express;
+    }
+
+    @Override
+    protected Map<String, Object> execute(Chain chain) {
+        Map<String, Object> result = new HashMap<>();
+        ExpressRunner runner = new ExpressRunner();
+        DefaultContext<String, Object> context = new DefaultContext<>();
+        context.putAll(chain.getMemory().getAll());
+        context.put("chain", chain);
+        context.put("_result", result);
+        try {
+            runner.execute(express, context, null, true, false);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return result;
     }
 }

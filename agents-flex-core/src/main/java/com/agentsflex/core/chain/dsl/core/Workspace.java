@@ -13,20 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain;
+package com.agentsflex.core.chain.dsl.core;
 
-public enum ChainStatus {
+import com.agentsflex.core.chain.Chain;
 
-    READY(0), // 未开始执行
-    RUNNING(1), // 已开始执行，执行中...
-    ERROR(10), //发生错误
-    FINISHED_NORMAL(20), //正常结束
-    FINISHED_ABNORMAL(21), //错误结束
-    ;
+public class Workspace {
 
-    final int value;
-
-    ChainStatus(int value) {
-        this.value = value;
+    public Chain toChain() {
+        return null;
     }
 }

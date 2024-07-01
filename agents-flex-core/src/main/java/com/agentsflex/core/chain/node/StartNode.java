@@ -13,26 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain;
+package com.agentsflex.core.chain.node;
+
+import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.ChainNode;
 
 import java.util.Map;
 
-public abstract class BaseChain extends Chain implements ChainNode {
-
-    protected boolean skip;
-
+public class StartNode extends ChainNode {
     @Override
-    public boolean isSkip() {
-        return skip;
+    protected Map<String, Object> execute(Chain chain) {
+        return null;
     }
-
-    public void skip() {
-        this.skip = true;
-    }
-    @Override
-    public Map<String, Object> execute(Chain parent) {
-        this.execute(parent.getMemory().getAll());
-        return this.getMemory().getAll();
-    }
-
 }
