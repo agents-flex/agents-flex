@@ -27,14 +27,14 @@ import java.util.*;
 
 
 public class Chain extends ChainNode {
-    private Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
-    private List<ChainOutputListener> outputListeners = new ArrayList<>();
-    private List<ChainNode> nodes;
-    private List<ChainLine> lines;
-    private ChainStatus status = ChainStatus.READY;
-    private String message;
-    private Chain parent;
-    private List<Chain> children;
+    protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
+    protected List<ChainOutputListener> outputListeners = new ArrayList<>();
+    protected List<ChainNode> nodes;
+    protected List<ChainLine> lines;
+    protected ChainStatus status = ChainStatus.READY;
+    protected String message;
+    protected Chain parent;
+    protected List<Chain> children;
 
 
     public Chain() {
@@ -103,11 +103,28 @@ public class Chain extends ChainNode {
         if (nodes == null) {
             this.nodes = new ArrayList<>();
         }
+
         if (chainNode instanceof ChainEventListener) {
             registerEventListener((ChainEventListener) chainNode);
         }
 
+        if (chainNode.getId() == null) {
+            chainNode.setId(UUID.randomUUID().toString());
+        }
+
+        if (chainNode instanceof Chain) {
+            ((Chain) chainNode).parent = this;
+            this.addChild((Chain) chainNode);
+        }
+
         nodes.add(chainNode);
+    }
+
+    private void addChild(Chain child) {
+        if (this.children == null) {
+            this.children = new ArrayList<>();
+        }
+        this.children.add(child);
     }
 
     public void addNode(Agent agent) {
@@ -162,6 +179,7 @@ public class Chain extends ChainNode {
                 }
             }
         }
+        if (parent != null) parent.notifyEvent(event);
     }
 
     public Object get(String key) {
@@ -328,6 +346,7 @@ public class Chain extends ChainNode {
         for (ChainOutputListener inputListener : outputListeners) {
             inputListener.onOutput(this, agent, response);
         }
+        if (parent != null) parent.notifyOutput(agent, response);
     }
 
     public void stopNormal(String message) {
@@ -362,6 +381,21 @@ public class Chain extends ChainNode {
             this.lines = new ArrayList<>();
         }
         this.lines.add(line);
+
+        boolean findSource = false, findTarget = false;
+
+        for (ChainNode node : this.nodes) {
+            if (node.getId().equals(line.getSource())) {
+                node.addLineOut(line);
+                findSource = true;
+            } else if (node.getId().equals(line.getTarget())) {
+                node.addLineIn(line);
+                findTarget = true;
+            }
+            if (findSource && findTarget) {
+                break;
+            }
+        }
     }
 
     public void setMessage(String message) {

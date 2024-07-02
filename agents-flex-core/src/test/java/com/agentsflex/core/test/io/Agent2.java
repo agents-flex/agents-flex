@@ -11,6 +11,6 @@ public class Agent2 extends DefaultAgent {
 
     @Override
     public Object execute(Object parameter, Chain chain) {
-        return "002:" + parameter;
+        return id + ":" + parameter;
     }
 }

@@ -19,6 +19,7 @@ import com.agentsflex.core.memory.ContextMemory;
 import com.agentsflex.core.memory.DefaultContextMemory;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -92,4 +93,17 @@ public abstract class ChainNode implements Serializable {
 
     protected abstract Map<String, Object> execute(Chain chain);
 
+    protected void addLineOut(ChainLine line) {
+        if (this.linesOut == null) {
+            this.linesOut = new ArrayList<>();
+        }
+        this.linesOut.add(line);
+    }
+
+    protected void addLineIn(ChainLine line) {
+        if (this.linesIn == null) {
+            this.linesIn = new ArrayList<>();
+        }
+        this.linesIn.add(line);
+    }
 }
