@@ -26,6 +26,10 @@ public interface DocumentSplitter {
 
     List<Document> split(Document text, DocumentIdGenerator idGenerator);
 
+    default List<Document> split(Document text) {
+        return split(text, null);
+    }
+
     default List<Document> splitAll(List<Document> documents, DocumentIdGenerator idGenerator) {
         if (documents == null || documents.isEmpty()) {
             return Collections.emptyList();

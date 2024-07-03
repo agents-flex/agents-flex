@@ -15,8 +15,8 @@
  */
 package com.agentsflex.core.document.splitter;
 
-import com.agentsflex.core.document.DocumentSplitter;
 import com.agentsflex.core.document.Document;
+import com.agentsflex.core.document.DocumentSplitter;
 import com.agentsflex.core.document.id.DocumentIdGenerator;
 import com.agentsflex.core.util.StringUtil;
 
@@ -25,11 +25,42 @@ import java.util.Collections;
 import java.util.List;
 
 public class SimpleDocumentSplitter implements DocumentSplitter {
+    private int chunkSize;
+    private int overlapSize;
 
-    private final String regex;
+    public SimpleDocumentSplitter(int chunkSize) {
+        this.chunkSize = chunkSize;
+        if (this.chunkSize <= 0) {
+            throw new IllegalArgumentException("chunkSize must be greater than 0, chunkSize: " + this.chunkSize);
+        }
+    }
 
-    public SimpleDocumentSplitter(String regex) {
-        this.regex = regex;
+    public SimpleDocumentSplitter(int chunkSize, int overlapSize) {
+        this.chunkSize = chunkSize;
+        this.overlapSize = overlapSize;
+
+        if (this.chunkSize <= 0) {
+            throw new IllegalArgumentException("chunkSize must be greater than 0, chunkSize: " + this.chunkSize);
+        }
+        if (this.overlapSize >= this.chunkSize) {
+            throw new IllegalArgumentException("overlapSize must be less than chunkSize, overlapSize: " + this.overlapSize + ", chunkSize: " + this.chunkSize);
+        }
+    }
+
+    public int getChunkSize() {
+        return chunkSize;
+    }
+
+    public void setChunkSize(int chunkSize) {
+        this.chunkSize = chunkSize;
+    }
+
+    public int getOverlapSize() {
+        return overlapSize;
+    }
+
+    public void setOverlapSize(int overlapSize) {
+        this.overlapSize = overlapSize;
     }
 
     @Override
@@ -37,17 +68,30 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
         if (document == null || StringUtil.noText(document.getContent())) {
             return Collections.emptyList();
         }
-        String[] textArray = document.getContent().split(regex);
-        List<Document> texts = new ArrayList<>(textArray.length);
-        for (String textString : textArray) {
+
+        String content = document.getContent();
+        int index = 0, currentIndex = index;
+        int maxIndex = content.length();
+
+        List<Document> chunks = new ArrayList<>();
+        while (currentIndex < maxIndex) {
+            int endIndex = currentIndex + chunkSize;
+            if (endIndex > maxIndex) {
+                endIndex = maxIndex;
+            }
+
+            String chunk = content.substring(currentIndex, endIndex);
+            currentIndex = currentIndex + chunkSize - overlapSize;
+
             Document newDocument = new Document();
             newDocument.addMetadata(document.getMetadataMap());
-            newDocument.setContent(textString);
+            newDocument.setContent(chunk);
 
             //we should invoke setId after setContent
             newDocument.setId(idGenerator == null ? null : idGenerator.generateId(newDocument));
-            texts.add(newDocument);
+            chunks.add(newDocument);
         }
-        return texts;
+
+        return chunks;
     }
 }
