@@ -16,13 +16,13 @@
 package com.agentsflex.core.test.splitter;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.document.splitter.SimpleDocumentSplitter;
+import com.agentsflex.core.document.splitter.SimpleTokenizeSplitter;
 import org.junit.Test;
 
 import java.util.List;
 
-public class SimpleDocumentSplitterTest {
-    String text = "MyBatis-Flex 是一个优雅的 MyBatis 增强框架，它非常轻量、同时拥有极高的性能与灵活性。我们可以轻松的使用 Mybaits-Flex 链接任何数据库，其内置的 QueryWrapper^亮点 帮助我们极大的减少了 SQL 编写的工作的同时，减少出错的可能性。\n" +
+public class SimpleTokenizeSplitterTest {
+    String text = "MyBatis-Flex 是一个优雅的 MyBatis 增强框架，它非常轻量、同时拥有极高的性能与灵活性。我们可以轻松的使用 Mybaits-Flex 链接任何数据库，其内置的 QueryWrapper帮助我们极大的减少了 SQL 编写的工作的同时，减少出错的可能性。\n" +
         "总而言之，MyBatis-Flex 能够极大地提高我们的开发效率和开发体验，让我们有更多的时间专注于自己的事情。";
 
     String text2 = "AiEditor is a next-generation rich text editor for AI. It is developed based on Web Component and therefore supports almost any front-end framework such as Vue, React, Angular, Svelte, etc. It is adapted to PC Web and mobile terminals, and provides two themes: light and dark. In addition, it also provides flexible configuration, and developers can easily use it to develop any text editing application.";
@@ -30,7 +30,7 @@ public class SimpleDocumentSplitterTest {
 
     @Test
     public void test01() {
-        SimpleDocumentSplitter splitter = new SimpleDocumentSplitter(20);
+        SimpleTokenizeSplitter splitter = new SimpleTokenizeSplitter(20);
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {
@@ -40,7 +40,7 @@ public class SimpleDocumentSplitterTest {
 
     @Test
     public void test02() {
-        SimpleDocumentSplitter splitter = new SimpleDocumentSplitter(20, 3);
+        SimpleTokenizeSplitter splitter = new SimpleTokenizeSplitter(20, 3);
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {
@@ -50,7 +50,7 @@ public class SimpleDocumentSplitterTest {
 
     @Test
     public void test03() {
-        SimpleDocumentSplitter splitter = new SimpleDocumentSplitter(20);
+        SimpleTokenizeSplitter splitter = new SimpleTokenizeSplitter(20);
         List<Document> chunks = splitter.split(Document.of(text2));
 
         for (Document chunk : chunks) {
@@ -60,7 +60,7 @@ public class SimpleDocumentSplitterTest {
 
     @Test
     public void test04() {
-        SimpleDocumentSplitter splitter = new SimpleDocumentSplitter(20, 3);
+        SimpleTokenizeSplitter splitter = new SimpleTokenizeSplitter(20, 3);
         List<Document> chunks = splitter.split(Document.of(text2));
 
         for (Document chunk : chunks) {

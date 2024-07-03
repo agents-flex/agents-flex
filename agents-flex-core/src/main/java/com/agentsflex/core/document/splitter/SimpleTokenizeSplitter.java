@@ -19,23 +19,30 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentSplitter;
 import com.agentsflex.core.document.id.DocumentIdGenerator;
 import com.agentsflex.core.util.StringUtil;
+import com.knuddels.jtokkit.Encodings;
+import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.EncodingRegistry;
+import com.knuddels.jtokkit.api.EncodingType;
+import com.knuddels.jtokkit.api.IntArrayList;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class SimpleDocumentSplitter implements DocumentSplitter {
+public class SimpleTokenizeSplitter implements DocumentSplitter {
+    private EncodingRegistry registry = Encodings.newLazyEncodingRegistry();
+    private EncodingType encodingType = EncodingType.CL100K_BASE;
     private int chunkSize;
     private int overlapSize;
 
-    public SimpleDocumentSplitter(int chunkSize) {
+    public SimpleTokenizeSplitter(int chunkSize) {
         this.chunkSize = chunkSize;
         if (this.chunkSize <= 0) {
             throw new IllegalArgumentException("chunkSize must be greater than 0, chunkSize: " + this.chunkSize);
         }
     }
 
-    public SimpleDocumentSplitter(int chunkSize, int overlapSize) {
+    public SimpleTokenizeSplitter(int chunkSize, int overlapSize) {
         this.chunkSize = chunkSize;
         this.overlapSize = overlapSize;
 
@@ -63,6 +70,22 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
         this.overlapSize = overlapSize;
     }
 
+    public EncodingRegistry getRegistry() {
+        return registry;
+    }
+
+    public void setRegistry(EncodingRegistry registry) {
+        this.registry = registry;
+    }
+
+    public EncodingType getEncodingType() {
+        return encodingType;
+    }
+
+    public void setEncodingType(EncodingType encodingType) {
+        this.encodingType = encodingType;
+    }
+
     @Override
     public List<Document> split(Document document, DocumentIdGenerator idGenerator) {
         if (document == null || StringUtil.noText(document.getContent())) {
@@ -70,22 +93,33 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
         }
 
         String content = document.getContent();
+        Encoding encoding = this.registry.getEncoding(this.encodingType);
+
+        List<Integer> tokens = encoding.encode(content).boxed();
+
+
         int index = 0, currentIndex = index;
-        int maxIndex = content.length();
+        int maxIndex = tokens.size();
 
         List<Document> chunks = new ArrayList<>();
         while (currentIndex < maxIndex) {
             int endIndex = Math.min(currentIndex + chunkSize, maxIndex);
-            String chunk = content.substring(currentIndex, endIndex).trim();
+            List<Integer> chunkTokens = tokens.subList(currentIndex, endIndex);
             currentIndex = currentIndex + chunkSize - overlapSize;
 
-            if (chunk.isEmpty()) {
+            IntArrayList intArrayList = new IntArrayList();
+            for (Integer chunkToken : chunkTokens) {
+                intArrayList.add(chunkToken);
+            }
+            String chunkText = encoding.decode(intArrayList).trim();
+
+            if (chunkText.isEmpty()) {
                 continue;
             }
 
             Document newDocument = new Document();
             newDocument.addMetadata(document.getMetadataMap());
-            newDocument.setContent(chunk);
+            newDocument.setContent(chunkText);
 
             //we should invoke setId after setContent
             newDocument.setId(idGenerator == null ? null : idGenerator.generateId(newDocument));
