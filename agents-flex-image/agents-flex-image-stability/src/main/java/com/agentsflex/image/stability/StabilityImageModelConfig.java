@@ -13,14 +13,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.image;
+package com.agentsflex.image.stability;
 
-public interface ImageModel {
+public class StabilityImageModelConfig {
+    private String endpoint = "https://api.stability.ai/";
+    private String apiKey;
 
-    ImageResponse generate(GenerateImageRequest request);
+    public String getEndpoint() {
+        return endpoint;
+    }
 
-    ImageResponse edit(EditImageRequest request);
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+    }
 
-    ImageResponse vary(VaryImageRequest request);
+    public String getApiKey() {
+        return apiKey;
+    }
 
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
 }

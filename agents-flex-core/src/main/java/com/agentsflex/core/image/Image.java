@@ -15,6 +15,9 @@
  */
 package com.agentsflex.core.image;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 
 public class Image {
@@ -33,6 +36,18 @@ public class Image {
      * The data of image
      */
     private byte[] bytes;
+
+    public static Image ofUrl(String url) {
+        Image image = new Image();
+        image.setUrl(url);
+        return image;
+    }
+
+    public static Image ofBytes(byte[] bytes) {
+        Image image = new Image();
+        image.setBytes(bytes);
+        return image;
+    }
 
     public String getB64Json() {
         return b64Json;
@@ -60,6 +75,14 @@ public class Image {
 
     public byte[] readBytes() {
         return bytes;
+    }
+
+    public void writeBytesToFile(File file) {
+        try (FileOutputStream stream = new FileOutputStream(file)) {
+            stream.write(bytes);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

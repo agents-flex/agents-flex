@@ -19,6 +19,8 @@ import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -40,42 +42,30 @@ public class HttpClient {
     }
 
     public String get(String url) {
-        return execute(url, "GET", null, null);
+        return executeString(url, "GET", null, null);
     }
 
     public String get(String url, Map<String, String> headers) {
-        return execute(url, "GET", headers, null);
+        return executeString(url, "GET", headers, null);
     }
 
     public String post(String url, Map<String, String> headers, String payload) {
-        return execute(url, "POST", headers, payload);
+        return executeString(url, "POST", headers, payload);
+    }
+    public byte[] postBytes(String url, Map<String, String> headers, String payload) {
+        return executeBytes(url, "POST", headers, payload);
     }
 
     public String put(String url, Map<String, String> headers, String payload) {
-        return execute(url, "PUT", headers, payload);
+        return executeString(url, "PUT", headers, payload);
     }
 
     public String delete(String url, Map<String, String> headers, String payload) {
-        return execute(url, "DELETE", headers, payload);
+        return executeString(url, "DELETE", headers, payload);
     }
 
-    private String execute(String url, String method, Map<String, String> headers, String payload) {
-        Request.Builder builder = new Request.Builder()
-            .url(url);
-
-        if (headers != null && !headers.isEmpty()) {
-            headers.forEach(builder::addHeader);
-        }
-
-        Request request;
-        if ("GET".equals(method)) {
-            request = builder.method(method, null).build();
-        } else {
-            RequestBody body = RequestBody.create(payload, JSON_TYPE);
-            request = builder.method(method, body).build();
-        }
-
-        try (Response response = okHttpClient.newCall(request).execute();
+    public String multipartString(String url, Map<String, String> headers, Map<String, Object> payload) {
+        try (Response response = multipart(url, headers, payload);
              ResponseBody body = response.body()) {
             if (body != null) {
                 return body.string();
@@ -84,5 +74,90 @@ public class HttpClient {
             LOG.error(e.toString(), e);
         }
         return null;
+    }
+
+
+    public byte[] multipartBytes(String url, Map<String, String> headers, Map<String, Object> payload) {
+        try (Response response = multipart(url, headers, payload);
+             ResponseBody body = response.body()) {
+            if (body != null) {
+                return body.bytes();
+            }
+        } catch (Exception e) {
+            LOG.error(e.toString(), e);
+        }
+        return null;
+    }
+
+
+    public Response multipart(String url, Map<String, String> headers, Map<String, Object> payload) throws IOException {
+        Request.Builder builder = new Request.Builder()
+            .url(url);
+
+        if (headers != null && !headers.isEmpty()) {
+            headers.forEach(builder::addHeader);
+        }
+
+        MultipartBody.Builder mbBuilder = new MultipartBody.Builder()
+            .setType(MultipartBody.FORM);
+        payload.forEach((s, o) -> {
+            if (o instanceof File) {
+                File f = (File) o;
+                RequestBody body = RequestBody.create(f, MediaType.parse("application/octet-stream"));
+                mbBuilder.addFormDataPart(s, f.getName(), body);
+            } else {
+                mbBuilder.addFormDataPart(s, String.valueOf(o));
+            }
+        });
+
+        MultipartBody multipartBody = mbBuilder.build();
+        Request request = builder.post(multipartBody).build();
+        return okHttpClient.newCall(request).execute();
+    }
+
+
+    public String executeString(String url, String method, Map<String, String> headers, String payload) {
+        try (Response response = execute0(url, method, headers, payload);
+             ResponseBody body = response.body()) {
+            if (body != null) {
+                return body.string();
+            }
+        } catch (Exception e) {
+            LOG.error(e.toString(), e);
+        }
+        return null;
+    }
+
+
+    public byte[] executeBytes(String url, String method, Map<String, String> headers, String payload) {
+        try (Response response = execute0(url, method, headers, payload);
+             ResponseBody body = response.body()) {
+            if (body != null) {
+                return body.bytes();
+            }
+        } catch (Exception e) {
+            LOG.error(e.toString(), e);
+        }
+        return null;
+    }
+
+
+    private Response execute0(String url, String method, Map<String, String> headers, String payload) throws IOException {
+        Request.Builder builder = new Request.Builder()
+            .url(url);
+
+        if (headers != null && !headers.isEmpty()) {
+            headers.forEach(builder::addHeader);
+        }
+
+        Request request;
+        if ("GET".equalsIgnoreCase(method)) {
+            request = builder.method(method, null).build();
+        } else {
+            RequestBody body = RequestBody.create(payload, JSON_TYPE);
+            request = builder.method(method, body).build();
+        }
+
+        return okHttpClient.newCall(request).execute();
     }
 }

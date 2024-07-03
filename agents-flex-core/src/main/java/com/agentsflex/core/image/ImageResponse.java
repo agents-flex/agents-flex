@@ -17,6 +17,7 @@ package com.agentsflex.core.image;
 
 import com.agentsflex.core.util.Metadata;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ImageResponse extends Metadata {
@@ -28,5 +29,28 @@ public class ImageResponse extends Metadata {
 
     public void setImages(List<Image> images) {
         this.images = images;
+    }
+
+    public void addImage(String url){
+        if (this.images == null){
+            this.images = new ArrayList<>();
+        }
+
+        this.images.add(Image.ofUrl(url));
+    }
+    public void addImage(byte[] bytes){
+        if (this.images == null){
+            this.images = new ArrayList<>();
+        }
+
+        this.images.add(Image.ofBytes(bytes));
+    }
+
+    @Override
+    public String toString() {
+        return "ImageResponse{" +
+            "images=" + images +
+            ", metadataMap=" + metadataMap +
+            '}';
     }
 }
