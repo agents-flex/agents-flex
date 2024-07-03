@@ -58,4 +58,13 @@ public class Document extends VectorData {
         document.setContent(content);
         return document;
     }
+
+    @Override
+    public String toString() {
+        return "Document{" +
+            "id=" + id +
+            ", content='" + content + '\'' +
+            ", metadataMap=" + metadataMap +
+            '}';
+    }
 }

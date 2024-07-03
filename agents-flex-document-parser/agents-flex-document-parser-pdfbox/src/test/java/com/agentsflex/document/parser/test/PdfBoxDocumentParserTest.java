@@ -13,25 +13,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.document.parser;
+package com.agentsflex.document.parser.test;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.document.DocumentParser;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
+import com.agentsflex.document.parser.PdfBoxDocumentParser;
+import org.junit.Test;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 
-public class PdfBoxDocumentParser implements DocumentParser {
-    @Override
-    public Document parse(InputStream stream) {
-        try (PDDocument pdfDocument = PDDocument.load(stream)) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            String text = stripper.getText(pdfDocument);
-            return new Document(text);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+public class PdfBoxDocumentParserTest {
+
+    @Test
+    public void testParserPdf() throws FileNotFoundException {
+        File file = new File(System.getProperty("user.dir"), "../../testresource/a.pdf");
+        FileInputStream stream = new FileInputStream(file);
+        PdfBoxDocumentParser parser = new PdfBoxDocumentParser();
+        Document document = parser.parse(stream);
+        System.out.println(document);
     }
 }
