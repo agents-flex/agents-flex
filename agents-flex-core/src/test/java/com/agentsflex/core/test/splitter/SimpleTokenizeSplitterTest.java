@@ -40,7 +40,7 @@ public class SimpleTokenizeSplitterTest {
 
     @Test
     public void test02() {
-        SimpleTokenizeSplitter splitter = new SimpleTokenizeSplitter(20, 3);
+        SimpleTokenizeSplitter splitter = new SimpleTokenizeSplitter(20, 4);
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {

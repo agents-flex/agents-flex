@@ -105,17 +105,35 @@ public class SimpleTokenizeSplitter implements DocumentSplitter {
         while (currentIndex < maxIndex) {
             int endIndex = Math.min(currentIndex + chunkSize, maxIndex);
             List<Integer> chunkTokens = tokens.subList(currentIndex, endIndex);
-            currentIndex = currentIndex + chunkSize - overlapSize;
 
             IntArrayList intArrayList = new IntArrayList();
             for (Integer chunkToken : chunkTokens) {
                 intArrayList.add(chunkToken);
             }
             String chunkText = encoding.decode(intArrayList).trim();
-
             if (chunkText.isEmpty()) {
                 continue;
             }
+
+            //UTF-8 'Unicode replacement character' which in your case is 0xFFFD (65533 in Hex).
+            //fix 修复中文乱码的问题
+            boolean firstIsReplacement = chunkText.charAt(0) == 65533;
+            boolean lastIsReplacement = chunkText.charAt(chunkText.length() - 1) == 65533;
+
+            if (firstIsReplacement || lastIsReplacement) {
+                if (firstIsReplacement) currentIndex -= 1;
+                if (lastIsReplacement) endIndex += 1;
+
+                chunkTokens = tokens.subList(currentIndex, endIndex);
+                intArrayList = new IntArrayList();
+                for (Integer chunkToken : chunkTokens) {
+                    intArrayList.add(chunkToken);
+                }
+
+                chunkText = encoding.decode(intArrayList).trim();
+            }
+
+            currentIndex = currentIndex + chunkSize - overlapSize;
 
             Document newDocument = new Document();
             newDocument.addMetadata(document.getMetadataMap());
