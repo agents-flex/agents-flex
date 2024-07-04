@@ -19,6 +19,7 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentLoader;
 import com.agentsflex.core.document.DocumentParser;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 public abstract class StreamDocumentLoader implements DocumentLoader {
@@ -31,8 +32,11 @@ public abstract class StreamDocumentLoader implements DocumentLoader {
 
     @Override
     public Document load() {
-        InputStream stream = loadInputStream();
-        return documentParser.parse(stream);
+        try (InputStream stream = loadInputStream()){
+            return documentParser.parse(stream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected abstract InputStream loadInputStream();

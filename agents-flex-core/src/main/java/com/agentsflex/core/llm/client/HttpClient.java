@@ -16,11 +16,13 @@
 package com.agentsflex.core.llm.client;
 
 import okhttp3.*;
+import okio.BufferedSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +54,7 @@ public class HttpClient {
     public String post(String url, Map<String, String> headers, String payload) {
         return executeString(url, "POST", headers, payload);
     }
+
     public byte[] postBytes(String url, Map<String, String> headers, String payload) {
         return executeBytes(url, "POST", headers, payload);
     }
@@ -105,6 +108,11 @@ public class HttpClient {
                 File f = (File) o;
                 RequestBody body = RequestBody.create(f, MediaType.parse("application/octet-stream"));
                 mbBuilder.addFormDataPart(s, f.getName(), body);
+            } else if (o instanceof InputStream) {
+                RequestBody body = new InputStreamRequestBody(MediaType.parse("application/octet-stream"), (InputStream) o);
+                mbBuilder.addFormDataPart(s, s, body);
+            } else if (o instanceof byte[]) {
+                mbBuilder.addFormDataPart(s, s, RequestBody.create((byte[]) o));
             } else {
                 mbBuilder.addFormDataPart(s, String.valueOf(o));
             }
@@ -159,5 +167,35 @@ public class HttpClient {
         }
 
         return okHttpClient.newCall(request).execute();
+    }
+
+
+    public static class InputStreamRequestBody extends RequestBody {
+        private final InputStream inputStream;
+        private final MediaType contentType;
+
+        public InputStreamRequestBody(MediaType contentType, InputStream inputStream) {
+            if (inputStream == null) throw new NullPointerException("inputStream == null");
+            this.contentType = contentType;
+            this.inputStream = inputStream;
+        }
+
+        @Override
+        public MediaType contentType() {
+            return contentType;
+        }
+
+        @Override
+        public long contentLength() throws IOException {
+            return inputStream.available() == 0 ? -1 : inputStream.available();
+        }
+
+        @Override
+        public void writeTo(BufferedSink sink) throws IOException {
+            byte[] buffer = new byte[1024];
+            for (int len; (len = inputStream.read(buffer)) != -1; ) {
+                sink.write(buffer, 0, len);
+            }
+        }
     }
 }

@@ -5,19 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>agents-flex-document-parser</artifactId>
         <version>1.0.0-beta.6</version>
     </parent>
 
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-document-parser</artifactId>
-    <packaging>pom</packaging>
-
-    <modules>
-        <module>agents-flex-document-parser-pdfbox</module>
-        <module>agents-flex-document-parser-poi</module>
-        <module>agents-flex-document-parser-omniparse</module>
-    </modules>
+    <artifactId>agents-flex-document-parser-omniparse</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -25,4 +17,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+            <version>1.0.0-beta.6</version>
+        </dependency>
+    </dependencies>
 </project>
