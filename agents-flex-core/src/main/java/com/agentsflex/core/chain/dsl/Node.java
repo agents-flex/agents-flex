@@ -13,13 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain.dsl.core;
+package com.agentsflex.core.chain.dsl;
 
-import com.agentsflex.core.chain.Chain;
+public class Node {
+    private String id;
+    private NodeData data;
 
-public class Workspace {
 
-    public Chain toChain() {
-        return null;
-    }
 }
