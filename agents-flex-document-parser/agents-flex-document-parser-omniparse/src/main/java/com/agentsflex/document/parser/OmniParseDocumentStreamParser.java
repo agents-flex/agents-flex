@@ -16,7 +16,7 @@
 package com.agentsflex.document.parser;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.document.DocumentParser;
+import com.agentsflex.core.document.parser.AbstractStreamParser;
 import com.agentsflex.core.llm.client.HttpClient;
 
 import java.io.InputStream;
@@ -26,14 +26,14 @@ import java.util.Map;
 /**
  * https://docs.cognitivelab.in/api
  */
-public class OmniParseDocumentParser implements DocumentParser {
+public class OmniParseDocumentStreamParser extends AbstractStreamParser {
 
     private OmniParseConfig config;
     private String fileName;
     private HttpClient httpClient = new HttpClient();
 
 
-    public OmniParseDocumentParser(OmniParseConfig config, String fileName) {
+    public OmniParseDocumentStreamParser(OmniParseConfig config, String fileName) {
         this.config = config;
         this.fileName = fileName;
     }
@@ -44,7 +44,7 @@ public class OmniParseDocumentParser implements DocumentParser {
         payload.put(fileName, stream);
 
         String url = config.getEndpoint();
-        if (isImageFile()) {
+        if (Util.isImageFile(fileName)) {
             url += "/parse_image/image";
         } else {
             url += "/parse_document";
@@ -52,17 +52,5 @@ public class OmniParseDocumentParser implements DocumentParser {
 
         String response = httpClient.multipartString(url, null, payload);
         return Document.of(response);
-    }
-
-    private static final String[] imageSuffixes = new String[]{".png", ".jpg", ".jpeg", ".tiff", ".webp"};
-
-    private boolean isImageFile() {
-        String fileName = this.fileName.toLowerCase();
-        for (String imageSuffix : imageSuffixes) {
-            if (fileName.endsWith(imageSuffix)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

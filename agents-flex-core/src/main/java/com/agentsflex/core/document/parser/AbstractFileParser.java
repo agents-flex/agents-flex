@@ -13,8 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.document;
+package com.agentsflex.core.document.parser;
 
-public interface DocumentParser<T> {
-    Document parse(T stream);
+import com.agentsflex.core.document.DocumentParser;
+
+import java.io.File;
+
+public abstract class AbstractFileParser implements DocumentParser<File> {
+
 }

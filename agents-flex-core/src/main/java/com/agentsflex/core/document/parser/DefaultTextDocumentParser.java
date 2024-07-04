@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
-public class DefaultTextDocumentParser implements DocumentParser {
+public class DefaultTextDocumentParser implements DocumentParser<InputStream> {
     @Override
     public Document parse(InputStream stream) {
         try {

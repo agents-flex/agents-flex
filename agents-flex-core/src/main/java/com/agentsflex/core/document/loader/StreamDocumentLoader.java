@@ -17,16 +17,16 @@ package com.agentsflex.core.document.loader;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentLoader;
-import com.agentsflex.core.document.DocumentParser;
+import com.agentsflex.core.document.parser.AbstractStreamParser;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 public abstract class StreamDocumentLoader implements DocumentLoader {
 
-    protected DocumentParser documentParser;
+    protected AbstractStreamParser documentParser;
 
-    public StreamDocumentLoader(DocumentParser documentParser) {
+    public StreamDocumentLoader(AbstractStreamParser documentParser) {
         this.documentParser = documentParser;
     }
 

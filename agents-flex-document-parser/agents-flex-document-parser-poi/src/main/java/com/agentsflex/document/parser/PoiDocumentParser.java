@@ -23,7 +23,7 @@ import org.apache.poi.extractor.POITextExtractor;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class PoiDocumentParser implements DocumentParser {
+public class PoiDocumentParser implements DocumentParser<InputStream> {
     @Override
     public Document parse(InputStream stream) {
         try (POITextExtractor extractor = ExtractorFactory.createExtractor(stream)) {

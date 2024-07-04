@@ -13,8 +13,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.document;
+package com.agentsflex.document.parser;
 
-public interface DocumentParser<T> {
-    Document parse(T stream);
+public class Util {
+
+
+    private static final String[] imageSuffixes = new String[]{".png", ".jpg", ".jpeg", ".tiff", ".webp"};
+
+    public static boolean isImageFile(String fileName) {
+        fileName = fileName.toLowerCase();
+        for (String imageSuffix : imageSuffixes) {
+            if (fileName.endsWith(imageSuffix)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
