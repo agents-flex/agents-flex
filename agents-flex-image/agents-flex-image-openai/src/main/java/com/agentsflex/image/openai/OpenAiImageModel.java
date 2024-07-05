@@ -57,6 +57,9 @@ public class OpenAiImageModel implements ImageModel {
 
         JSONObject root = JSON.parseObject(responseJson);
         JSONArray images = root.getJSONArray("data");
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
         ImageResponse response = new ImageResponse();
         for (int i = 0; i < images.size(); i++) {
             JSONObject imageObj = images.getJSONObject(i);
