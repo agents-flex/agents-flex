@@ -1,6 +1,37 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.0-beta.7 20240705
+- feat: add image models support
+- feat: add SimpleTokenizeSplitter
+- feat: add OmniParseDocumentParser
+- feat: add openai，stability AI and gitee-sd3 AI support
+- feat: add moonshot support
+- feat: add chain dsl support
+- refactor: optimize llm clients
+- refactor: optimize SparkLLM
+- refactor: optimize slf4j dependencies
+- refactor: optimize Agent define
+- refactor: optimize chain
+- test: add .pdf and .doc parse test
+- test: add SimpleDocumentSplitterTest.java
+
+---
+- 新增：新增图片模型的支持
+- 新增：新增 SimpleTokenizeSplitter 分割器
+- 新增：新增 OmniParseDocumentParser 文档解析器
+- 新增：新增 openai、stability ai 以及 gitee ai 对图片生成的支持
+- 新增：新增月之暗面的支持
+- 优化：优化  llm 客户端的细节
+- 优化：优化星火大模型的细节
+- 优化：优化 slf4j 依赖的细节
+- 优化：优化 Agent 和 Chain 的定义细节
+- 测试：添加 .pdf 和 .doc 的解析测试
+- 测试：添加文档分割器的测试
+- 测试：添加 token 文档分割器的测试
+
+
+
 ## v1.0.0-beta.5 20240617
 - feat: add ImagePrompt to send image to LLM
 - feat: chatOptions add topP/topK and stop config
