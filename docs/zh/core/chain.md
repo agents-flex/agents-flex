@@ -35,7 +35,7 @@ public enum ChainStatus {
 ## 感知
 执行链（Chain）在执行的过程中，会在不同的阶段发出执行事件的通知，另外每个智能体在执行的过程中，也可能会发布自己的自定义事件。
 
-每个智能体可以通过去实现 `ChainEventListener` 来感知 Chain 的执行变化，通过这种方式赋予 Agent 感知世间的能力。
+每个智能体可以通过去实现 `ChainEventListener` 来感知 Chain 的执行变化，通过这种方式赋予 Agent 感知世界的能力。
 
 ## 示例代码
 
