@@ -23,7 +23,7 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class PdfBoxDocumentParser implements DocumentParser<InputStream> {
+public class PdfBoxDocumentParser implements DocumentParser {
     @Override
     public Document parse(InputStream stream) {
         try (PDDocument pdfDocument = PDDocument.load(stream)) {

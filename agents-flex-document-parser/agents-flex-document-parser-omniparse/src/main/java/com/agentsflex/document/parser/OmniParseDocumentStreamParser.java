@@ -16,7 +16,7 @@
 package com.agentsflex.document.parser;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.document.parser.AbstractStreamParser;
+import com.agentsflex.core.document.DocumentParser;
 import com.agentsflex.core.llm.client.HttpClient;
 
 import java.io.InputStream;
@@ -26,7 +26,7 @@ import java.util.Map;
 /**
  * https://docs.cognitivelab.in/api
  */
-public class OmniParseDocumentStreamParser extends AbstractStreamParser {
+public class OmniParseDocumentStreamParser implements DocumentParser {
 
     private OmniParseConfig config;
     private String fileName;

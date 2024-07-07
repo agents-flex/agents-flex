@@ -13,12 +13,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.document.parser;
+package com.agentsflex.core.document.loader;
 
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.document.DocumentLoader;
 import com.agentsflex.core.document.DocumentParser;
 
+import java.io.IOException;
 import java.io.InputStream;
 
-public abstract class AbstractStreamParser implements DocumentParser<InputStream> {
+public abstract class AbstractDocumentLoader implements DocumentLoader {
+
+    protected DocumentParser documentParser;
+
+    public AbstractDocumentLoader(DocumentParser documentParser) {
+        this.documentParser = documentParser;
+    }
+
+    @Override
+    public Document load() {
+        try (InputStream stream = loadInputStream()){
+            return documentParser.parse(stream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected abstract InputStream loadInputStream();
 
 }

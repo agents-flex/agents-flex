@@ -15,24 +15,28 @@
  */
 package com.agentsflex.core.document.loader;
 
-import com.agentsflex.core.document.Document;
-import com.agentsflex.core.document.DocumentLoader;
-import com.agentsflex.core.document.parser.AbstractFileParser;
+import com.agentsflex.core.document.DocumentParser;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 
-public class FileDocumentLoader implements DocumentLoader {
+public class FileDocumentLoader extends AbstractDocumentLoader {
 
     private final File file;
-    private final AbstractFileParser documentParser;
 
-    public FileDocumentLoader(File file, AbstractFileParser documentParser) {
+    public FileDocumentLoader(DocumentParser documentParser, File file) {
+        super(documentParser);
         this.file = file;
-        this.documentParser = documentParser;
     }
 
     @Override
-    public Document load() {
-        return documentParser.parse(file);
+    protected InputStream loadInputStream() {
+        try {
+            return new FileInputStream(file);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

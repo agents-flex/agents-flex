@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.document;
 
-public interface DocumentParser<T> {
-    Document parse(T stream);
+import java.io.InputStream;
+
+public interface DocumentParser {
+    Document parse(InputStream stream);
 }

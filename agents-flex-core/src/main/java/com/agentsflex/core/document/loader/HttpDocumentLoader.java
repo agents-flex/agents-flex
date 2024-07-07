@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.document.loader;
 
-import com.agentsflex.core.document.parser.AbstractStreamParser;
+import com.agentsflex.core.document.DocumentParser;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -26,7 +26,7 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class HttpDocumentLoader extends StreamDocumentLoader {
+public class HttpDocumentLoader extends AbstractDocumentLoader {
 
     private String url;
     private Map<String, String> headers;
@@ -34,7 +34,7 @@ public class HttpDocumentLoader extends StreamDocumentLoader {
     private final OkHttpClient okHttpClient;
 
 
-    public HttpDocumentLoader(AbstractStreamParser documentParser, String url) {
+    public HttpDocumentLoader(DocumentParser documentParser, String url) {
         super(documentParser);
         this.url = url;
         this.okHttpClient = new OkHttpClient.Builder()
@@ -44,7 +44,7 @@ public class HttpDocumentLoader extends StreamDocumentLoader {
     }
 
 
-    public HttpDocumentLoader(AbstractStreamParser documentParser, String url, Map<String, String> headers) {
+    public HttpDocumentLoader(DocumentParser documentParser, String url, Map<String, String> headers) {
         super(documentParser);
         this.url = url;
         this.headers = headers;
