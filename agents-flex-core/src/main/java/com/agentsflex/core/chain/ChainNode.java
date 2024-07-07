@@ -27,6 +27,7 @@ public abstract class ChainNode implements Serializable {
 
     protected String id;
     protected String name;
+    protected boolean async;
     protected List<ChainLine> linesIn;
     protected List<ChainLine> linesOut;
 
@@ -49,6 +50,14 @@ public abstract class ChainNode implements Serializable {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public boolean isAsync() {
+        return async;
+    }
+
+    public void setAsync(boolean async) {
+        this.async = async;
     }
 
     public List<ChainLine> getLinesIn() {

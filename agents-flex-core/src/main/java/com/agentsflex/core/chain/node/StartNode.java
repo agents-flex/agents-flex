@@ -23,6 +23,7 @@ import java.util.Map;
 public class StartNode extends ChainNode {
     @Override
     protected Map<String, Object> execute(Chain chain) {
+        //execute nothing
         return null;
     }
 }

@@ -21,9 +21,11 @@ import com.agentsflex.core.chain.event.*;
 import com.agentsflex.core.chain.node.AgentNode;
 import com.agentsflex.core.memory.ContextMemory;
 import com.agentsflex.core.util.CollectionUtil;
+import com.agentsflex.core.util.NamedThreadPools;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 
 
 public class Chain extends ChainNode {
@@ -36,6 +38,7 @@ public class Chain extends ChainNode {
     protected String message;
     protected Chain parent;
     protected List<Chain> children;
+    protected ExecutorService asyncNodeExecutors = NamedThreadPools.newFixedThreadPool("chain-executor");
 
 
     public Chain() {
@@ -250,7 +253,7 @@ public class Chain extends ChainNode {
                 if (this.getStatus() != ChainStatus.RUNNING) {
                     break;
                 }
-                executeResult = currentNode.execute(this);
+                executeResult = executeNode(currentNode);
             } finally {
                 ChainContext.clearNode();
                 currentNode.getMemory().put(CTX_EXEC_COUNT, execCount + 1);
@@ -282,6 +285,17 @@ public class Chain extends ChainNode {
                 }
             }
         }
+    }
+
+
+    private Map<String, Object> executeNode(ChainNode currentNode) {
+        Map<String, Object> executeResult = null;
+        if (currentNode.isAsync()) {
+            asyncNodeExecutors.execute(() -> currentNode.execute(Chain.this));
+        } else {
+            executeResult = currentNode.execute(this);
+        }
+        return executeResult;
     }
 
 
@@ -401,6 +415,14 @@ public class Chain extends ChainNode {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public ExecutorService getAsyncNodeExecutors() {
+        return asyncNodeExecutors;
+    }
+
+    public void setAsyncNodeExecutors(ExecutorService asyncNodeExecutors) {
+        this.asyncNodeExecutors = asyncNodeExecutors;
     }
 
     @Override
