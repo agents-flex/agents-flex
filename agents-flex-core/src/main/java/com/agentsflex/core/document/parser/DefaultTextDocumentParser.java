@@ -17,26 +17,18 @@ package com.agentsflex.core.document.parser;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentParser;
+import com.agentsflex.core.util.IOUtil;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 public class DefaultTextDocumentParser implements DocumentParser {
     @Override
     public Document parse(InputStream stream) {
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = stream.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
-            }
-            return new Document(new String(baos.toByteArray(), StandardCharsets.UTF_8));
+            return Document.of(IOUtil.readUtf8(stream));
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return null;
     }
 }

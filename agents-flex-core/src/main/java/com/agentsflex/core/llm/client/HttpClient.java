@@ -15,8 +15,10 @@
  */
 package com.agentsflex.core.llm.client;
 
+import com.agentsflex.core.util.IOUtil;
 import okhttp3.*;
 import okio.BufferedSink;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -191,11 +193,8 @@ public class HttpClient {
         }
 
         @Override
-        public void writeTo(BufferedSink sink) throws IOException {
-            byte[] buffer = new byte[1024];
-            for (int len; (len = inputStream.read(buffer)) != -1; ) {
-                sink.write(buffer, 0, len);
-            }
+        public void writeTo(@NotNull BufferedSink sink) throws IOException {
+            IOUtil.copy(inputStream, sink);
         }
     }
 }
