@@ -15,10 +15,10 @@
  */
 package com.agentsflex.core.chain;
 
-import java.util.Map;
+import com.agentsflex.core.memory.ContextMemory;
 
 public interface ChainCondition {
 
-    boolean check(Chain chain, Map<String, Object> variables);
+    boolean check(Chain chain, ContextMemory memory);
 
 }

@@ -27,6 +27,7 @@ import java.util.*;
 
 
 public class Chain extends ChainNode {
+    public static final String CTX_EXEC_COUNT = "_exec_count";
     protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
     protected List<ChainOutputListener> outputListeners = new ArrayList<>();
     protected List<ChainNode> nodes;
@@ -234,11 +235,11 @@ public class Chain extends ChainNode {
         while (CollectionUtil.hasItems(currentNodes)) {
             ChainNode currentNode = currentNodes.remove(0);
 
-            Integer execCount = (Integer) currentNode.getMemory().get("_exec_count");
+            Integer execCount = (Integer) currentNode.getMemory().get(CTX_EXEC_COUNT);
             if (execCount == null) execCount = 0;
 
             ChainCondition nodeCondition = currentNode.getCondition();
-            if (nodeCondition != null && !nodeCondition.check(this, this.getMemory().getAll())) {
+            if (nodeCondition != null && !nodeCondition.check(this, this.getMemory())) {
                 continue;
             }
 
@@ -252,7 +253,7 @@ public class Chain extends ChainNode {
                 executeResult = currentNode.execute(this);
             } finally {
                 ChainContext.clearNode();
-                currentNode.getMemory().put("_exec_count", execCount + 1);
+                currentNode.getMemory().put(CTX_EXEC_COUNT, execCount + 1);
                 notifyEvent(new OnNodeFinishedEvent(currentNode, executeResult));
             }
 
@@ -275,7 +276,7 @@ public class Chain extends ChainNode {
                     ChainCondition condition = chainLine.getCondition();
                     if (condition == null) {
                         currentNodes.add(nextNode);
-                    } else if (condition.check(this, this.memory.getAll())) {
+                    } else if (condition.check(this, this.getMemory())) {
                         currentNodes.add(nextNode);
                     }
                 }
