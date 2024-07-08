@@ -16,7 +16,7 @@
 package com.agentsflex.core.chain.impl;
 
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.ChainLine;
+import com.agentsflex.core.chain.ChainEdge;
 import com.agentsflex.core.chain.ChainNode;
 
 public class SequentialChain extends Chain {
@@ -32,10 +32,10 @@ public class SequentialChain extends Chain {
         String sourceId = this.nodes.get(this.nodes.size() - 2).getId();
         String targetId = this.nodes.get(this.nodes.size() - 1).getId();
 
-        ChainLine line = new ChainLine();
-        line.setSource(sourceId);
-        line.setTarget(targetId);
+        ChainEdge edge = new ChainEdge();
+        edge.setSource(sourceId);
+        edge.setTarget(targetId);
 
-        super.addLine(line);
+        super.addEdge(edge);
     }
 }

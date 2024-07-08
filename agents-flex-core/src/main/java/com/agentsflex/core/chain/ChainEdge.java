@@ -13,22 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain.dsl;
+package com.agentsflex.core.chain;
 
-public class Line {
-    private String id;
+public class ChainEdge {
     private String source;
     private String target;
-    private String sourceHandle;
-    private LineData data;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
+    private ChainCondition condition;
+    private int weight;
+    private boolean isDefault;
 
     public String getSource() {
         return source;
@@ -46,19 +38,27 @@ public class Line {
         this.target = target;
     }
 
-    public String getSourceHandle() {
-        return sourceHandle;
+    public ChainCondition getCondition() {
+        return condition;
     }
 
-    public void setSourceHandle(String sourceHandle) {
-        this.sourceHandle = sourceHandle;
+    public void setCondition(ChainCondition condition) {
+        this.condition = condition;
     }
 
-    public LineData getData() {
-        return data;
+    public int getWeight() {
+        return weight;
     }
 
-    public void setData(LineData data) {
-        this.data = data;
+    public void setWeight(int weight) {
+        this.weight = weight;
+    }
+
+    public boolean isDefault() {
+        return isDefault;
+    }
+
+    public void setDefault(boolean aDefault) {
+        isDefault = aDefault;
     }
 }

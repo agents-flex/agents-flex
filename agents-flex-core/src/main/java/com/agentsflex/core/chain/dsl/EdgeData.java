@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.chain.dsl;
 
-public class LineData {
+public class EdgeData {
 
     private String label;
 }

@@ -16,7 +16,7 @@
 package com.agentsflex.core.chain.impl;
 
 import com.agentsflex.core.chain.ChainEvent;
-import com.agentsflex.core.chain.ChainLine;
+import com.agentsflex.core.chain.ChainEdge;
 import com.agentsflex.core.chain.ChainNode;
 import com.agentsflex.core.chain.event.OnNodeFinishedEvent;
 import com.agentsflex.core.chain.node.StartNode;
@@ -45,11 +45,11 @@ public class LoopChain extends SequentialChain {
         String sourceId = this.nodes.get(this.nodes.size() - 1).getId();
         String targetId = this.nodes.get(1).getId();
 
-        ChainLine line = new ChainLine();
-        line.setSource(sourceId);
-        line.setTarget(targetId);
+        ChainEdge edge = new ChainEdge();
+        edge.setSource(sourceId);
+        edge.setTarget(targetId);
 
-        super.addLine(line);
+        super.addEdge(edge);
     }
 
     @Override

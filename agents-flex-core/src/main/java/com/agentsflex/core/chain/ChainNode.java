@@ -28,8 +28,8 @@ public abstract class ChainNode implements Serializable {
     protected String id;
     protected String name;
     protected boolean async;
-    protected List<ChainLine> linesIn;
-    protected List<ChainLine> linesOut;
+    protected List<ChainEdge> inwardEdges;
+    protected List<ChainEdge> outwardEdges;
 
     protected ChainCondition condition;
 
@@ -60,20 +60,20 @@ public abstract class ChainNode implements Serializable {
         this.async = async;
     }
 
-    public List<ChainLine> getLinesIn() {
-        return linesIn;
+    public List<ChainEdge> getInwardEdges() {
+        return inwardEdges;
     }
 
-    public void setLinesIn(List<ChainLine> linesIn) {
-        this.linesIn = linesIn;
+    public void setInwardEdges(List<ChainEdge> inwardEdges) {
+        this.inwardEdges = inwardEdges;
     }
 
-    public List<ChainLine> getLinesOut() {
-        return linesOut;
+    public List<ChainEdge> getOutwardEdges() {
+        return outwardEdges;
     }
 
-    public void setLinesOut(List<ChainLine> linesOut) {
-        this.linesOut = linesOut;
+    public void setOutwardEdges(List<ChainEdge> outwardEdges) {
+        this.outwardEdges = outwardEdges;
     }
 
     public ChainCondition getCondition() {
@@ -102,17 +102,17 @@ public abstract class ChainNode implements Serializable {
 
     protected abstract Map<String, Object> execute(Chain chain);
 
-    protected void addLineOut(ChainLine line) {
-        if (this.linesOut == null) {
-            this.linesOut = new ArrayList<>();
+    protected void addOutwardEdge(ChainEdge edge) {
+        if (this.outwardEdges == null) {
+            this.outwardEdges = new ArrayList<>();
         }
-        this.linesOut.add(line);
+        this.outwardEdges.add(edge);
     }
 
-    protected void addLineIn(ChainLine line) {
-        if (this.linesIn == null) {
-            this.linesIn = new ArrayList<>();
+    protected void addInwardEdge(ChainEdge edge) {
+        if (this.inwardEdges == null) {
+            this.inwardEdges = new ArrayList<>();
         }
-        this.linesIn.add(line);
+        this.inwardEdges.add(edge);
     }
 }

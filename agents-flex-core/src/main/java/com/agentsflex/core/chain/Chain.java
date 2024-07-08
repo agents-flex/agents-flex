@@ -33,7 +33,7 @@ public class Chain extends ChainNode {
     protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
     protected List<ChainOutputListener> outputListeners = new ArrayList<>();
     protected List<ChainNode> nodes;
-    protected List<ChainLine> lines;
+    protected List<ChainEdge> edges;
     protected ChainStatus status = ChainStatus.READY;
     protected String message;
     protected Chain parent;
@@ -268,15 +268,15 @@ public class Chain extends ChainNode {
                 break;
             }
 
-            List<ChainLine> linesOut = currentNode.getLinesOut();
+            List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
 
-            if (CollectionUtil.hasItems(linesOut)) {
-                for (ChainLine chainLine : linesOut) {
-                    ChainNode nextNode = getNodeById(chainLine.getTarget());
+            if (CollectionUtil.hasItems(outwardEdges)) {
+                for (ChainEdge chainEdge : outwardEdges) {
+                    ChainNode nextNode = getNodeById(chainEdge.getTarget());
                     if (nextNode == null) {
                         continue;
                     }
-                    ChainCondition condition = chainLine.getCondition();
+                    ChainCondition condition = chainEdge.getCondition();
                     if (condition == null) {
                         currentNodes.add(nextNode);
                     } else if (condition.check(this, this.getMemory())) {
@@ -307,7 +307,7 @@ public class Chain extends ChainNode {
         List<ChainNode> nodes = new ArrayList<>();
 
         for (ChainNode node : this.nodes) {
-            if (CollectionUtil.noItems(node.getLinesIn())) {
+            if (CollectionUtil.noItems(node.getInwardEdges())) {
                 nodes.add(node);
             }
         }
@@ -383,28 +383,28 @@ public class Chain extends ChainNode {
     }
 
 
-    public List<ChainLine> getLines() {
-        return lines;
+    public List<ChainEdge> getEdges() {
+        return edges;
     }
 
-    public void setLines(List<ChainLine> lines) {
-        this.lines = lines;
+    public void setEdges(List<ChainEdge> edges) {
+        this.edges = edges;
     }
 
-    public void addLine(ChainLine line) {
-        if (this.lines == null) {
-            this.lines = new ArrayList<>();
+    public void addEdge(ChainEdge edge) {
+        if (this.edges == null) {
+            this.edges = new ArrayList<>();
         }
-        this.lines.add(line);
+        this.edges.add(edge);
 
         boolean findSource = false, findTarget = false;
 
         for (ChainNode node : this.nodes) {
-            if (node.getId().equals(line.getSource())) {
-                node.addLineOut(line);
+            if (node.getId().equals(edge.getSource())) {
+                node.addOutwardEdge(edge);
                 findSource = true;
-            } else if (node.getId().equals(line.getTarget())) {
-                node.addLineIn(line);
+            } else if (node.getId().equals(edge.getTarget())) {
+                node.addInwardEdge(edge);
                 findTarget = true;
             }
             if (findSource && findTarget) {
@@ -433,7 +433,7 @@ public class Chain extends ChainNode {
             ", eventListeners=" + eventListeners +
             ", outputListeners=" + outputListeners +
             ", nodes=" + nodes +
-            ", lines=" + lines +
+            ", lines=" + edges +
             ", status=" + status +
             ", message='" + message + '\'' +
             '}';

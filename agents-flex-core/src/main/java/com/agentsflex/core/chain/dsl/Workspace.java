@@ -23,7 +23,7 @@ import java.util.List;
 public class Workspace {
     private List<LlmWrapper> llms;
     private List<Node> nodes;
-    private List<Line> lines;
+    private List<Edge> edges;
 
     private String llmsJsonString;
     private String nodesJsonString;
@@ -59,20 +59,19 @@ public class Workspace {
         this.nodes.add(node);
     }
 
-
-    public List<Line> getLines() {
-        return lines;
+    public List<Edge> getEdges() {
+        return edges;
     }
 
-    public void setLines(List<Line> lines) {
-        this.lines = lines;
+    public void setEdges(List<Edge> edges) {
+        this.edges = edges;
     }
 
-    public void addLine(Line line) {
-        if (this.lines == null) {
-            this.lines = new ArrayList<>();
+    public void addEdge(Edge edge) {
+        if (this.edges == null) {
+            this.edges = new ArrayList<>();
         }
-        this.lines.add(line);
+        this.edges.add(edge);
     }
 
     public String getLlmsJsonString() {
