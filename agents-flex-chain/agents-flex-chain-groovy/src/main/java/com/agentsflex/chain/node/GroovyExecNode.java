@@ -17,22 +17,16 @@ package com.agentsflex.chain.node;
 
 import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.chain.ChainNode;
-import com.ql.util.express.DefaultContext;
-import com.ql.util.express.ExpressRunner;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class QLExpressRouterNode extends ChainNode {
+public class GroovyExecNode extends ChainNode {
+
     private String express;
 
-    public QLExpressRouterNode() {
-
-    }
-
-    public QLExpressRouterNode(String express) {
-        this.express = express;
-    }
 
     public String getExpress() {
         return express;
@@ -44,17 +38,18 @@ public class QLExpressRouterNode extends ChainNode {
 
     @Override
     protected Map<String, Object> execute(Chain chain) {
-        Map<String, Object> result = new HashMap<>();
-        ExpressRunner runner = new ExpressRunner();
-        DefaultContext<String, Object> context = new DefaultContext<>();
-        context.putAll(chain.getMemory().getAll());
-        context.put("chain", chain);
-        context.put("_result", result);
-        try {
-            runner.execute(express, context, null, true, false);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        Binding binding = new Binding();
+        Map<String, Object> all = chain.getMemory().getAll();
+        if (all != null) {
+            all.forEach(binding::setVariable);
         }
+
+        Map<String, Object> result = new HashMap<>();
+        binding.setVariable("_result", result);
+
+        binding.setVariable("chain", chain);
+        GroovyShell shell = new GroovyShell(binding);
+        shell.evaluate(express);
         return result;
     }
 }
