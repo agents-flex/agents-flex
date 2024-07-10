@@ -15,12 +15,17 @@
  */
 package com.agentsflex.core.agent;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Parameter {
     private String name;
     private String description;
     private String type;
     private boolean required;
     private boolean isDefault;
+    private String defaultValue;
+    private List<Parameter> children;
 
     public Parameter() {
     }
@@ -87,7 +92,31 @@ public class Parameter {
     public boolean isDefault() {
         return isDefault;
     }
+
     public void setDefault(boolean aDefault) {
         isDefault = aDefault;
+    }
+
+    public String getDefaultValue() {
+        return defaultValue;
+    }
+
+    public void setDefaultValue(String defaultValue) {
+        this.defaultValue = defaultValue;
+    }
+
+    public List<Parameter> getChildren() {
+        return children;
+    }
+
+    public void setChildren(List<Parameter> children) {
+        this.children = children;
+    }
+
+    public void addChild(Parameter parameter) {
+        if (this.children == null) {
+            this.children = new ArrayList<>();
+        }
+        this.children.add(parameter);
     }
 }
