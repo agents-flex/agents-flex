@@ -45,6 +45,27 @@ public class OpenAiLlmTest {
             throw new RuntimeException(e);
         }
     }
+    @Test
+    public void testChatOllama() {
+        OpenAiLlmConfig config = new OpenAiLlmConfig();
+        config.setEndpoint("http://localhost:11434");
+        config.setModel("llama3");
+//        config.setDebug(true);
+
+        Llm llm = new OpenAiLlm(config);
+        llm.chatStream("who are you", new StreamResponseListener<AiMessageResponse>() {
+            @Override
+            public void onMessage(ChatContext context, AiMessageResponse response) {
+                System.out.println(response.getMessage().getContent());
+            }
+        });
+
+        try {
+            Thread.sleep(20000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 
     @Test
