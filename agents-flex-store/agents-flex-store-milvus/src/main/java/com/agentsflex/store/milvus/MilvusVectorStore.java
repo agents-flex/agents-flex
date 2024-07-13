@@ -275,7 +275,7 @@ public class MilvusVectorStore extends DocumentStore {
         for (Document doc : documents) {
             JSONObject dict = new JSONObject();
 
-            dict.put("id", doc.getId());
+            dict.put("id", String.valueOf(doc.getId()));
             dict.put("content", doc.getContent());
             dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
 
