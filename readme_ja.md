@@ -1,46 +1,46 @@
-<h4 align="right"><strong>English</strong> | <a href="./readme_zh.md">简体中文</a> | <a href="./readme_ja.md">日本語</a></h4>
+<h4 align="right"><a href="./readme.md">English</a> | <a href="./readme_zh.md">简体中文</a> | <strong>日本語</strong></h4>
 
 <p align="center">
     <img src="./docs/assets/images/banner.png"/>
 </p>
 
 
-# Agents-Flex is a LLM Application Framework like LangChain base on Java.
+# Agents-Flexは、JavaベースのLangChainのようなLLMアプリケーションフレームワークです。
 
 ---
 
-## Features
+## 機能
 
-- LLM Visit
-- Prompt、Prompt Template
-- Function Calling Definer, Invoker、Running
-- Memory
-- Embedding
-- Vector Store
-- Resource Loaders
-- Document
-  - Splitter
-  - Loader
-  - Parser
+- LLMアクセス
+- プロンプト、プロンプトテンプレート
+- 関数呼び出しの定義、呼び出し、実行
+- メモリ
+- 埋め込み
+- ベクトルストア
+- リソースローダー
+- ドキュメント
+  - 分割器
+  - ローダー
+  - パーサー
     - PoiParser
     - PdfBoxParser
-- Agent
-  - LLM Agent
-- Chain
-  - SequentialChain
-  - ParallelChain
-  - LoopChain
-  - ChainNode
-    - AgentNode
-    - EndNode
-    - RouterNode
+- エージェント
+  - LLMエージェント
+- チェーン
+  - シーケンシャルチェーン
+  - パラレルチェーン
+  - ループチェーン
+  - チェーンノード
+    - エージェントノード
+    - エンドノード
+    - ルーターノード
       - GroovyRouterNode
       - QLExpressRouterNode
       - LLMRouterNode
 
-## Simple Chat
+## 簡単なチャット
 
-use OpenAi LLM:
+OpenAi LLMを使用:
 
 ```java
  @Test
@@ -49,14 +49,14 @@ public void testChat() {
     config.setApiKey("sk-rts5NF6n*******");
 
     Llm llm = new OpenAiLlm(config);
-    String response = llm.chat("what is your name?");
+    String response = llm.chat("あなたの名前は何ですか？");
 
     System.out.println(response);
 }
 ```
 
 
-use Qwen LLM:
+Qwen LLMを使用:
 
 ```java
  @Test
@@ -66,14 +66,14 @@ public void testChat() {
     config.setModel("qwen-turbo");
 
     Llm llm = new QwenLlm(config);
-    String response = llm.chat("what is your name?");
+    String response = llm.chat("あなたの名前は何ですか？");
 
     System.out.println(response);
 }
 ```
 
 
-use SparkAi LLM:
+SparkAi LLMを使用:
 
 ```java
  @Test
@@ -84,13 +84,13 @@ public void testChat() {
     config.setApiSecret("****");
 
     Llm llm = new SparkLlm(config);
-    String response = llm.chat("what is your name?");
+    String response = llm.chat("あなたの名前は何ですか？");
 
     System.out.println(response);
 }
 ```
 
-## Chat With Histories
+## 履歴付きチャット
 
 
 ```java
@@ -104,7 +104,7 @@ public static void main(String[] args) {
 
     HistoriesPrompt prompt = new HistoriesPrompt();
 
-    System.out.println("ask for something...");
+    System.out.println("何か質問してください...");
     Scanner scanner = new Scanner(System.in);
     String userInput = scanner.nextLine();
 
@@ -121,9 +121,9 @@ public static void main(String[] args) {
 }
 ```
 
-## Function Calling
+## 関数呼び出し
 
-- step 1: define the function native
+- ステップ1: ネイティブ関数を定義
 
 ```java
 public class WeatherUtil {
@@ -132,14 +132,14 @@ public class WeatherUtil {
     public static String getWeatherInfo(
         @FunctionParam(name = "city", description = "the city name") String name
     ) {
-        //we should invoke the third part api for weather info here
-        return "Today it will be dull and overcast in " + name;
+        //ここで天気情報のためにサードパーティAPIを呼び出す必要があります
+        return name + "の天気は曇り時々晴れです。";
     }
 }
 
 ```
 
-- step 2: invoke the function from LLM
+- ステップ2: LLMから関数を呼び出す
 
 ```java
  public static void main(String[] args) {
@@ -148,23 +148,23 @@ public class WeatherUtil {
 
     OpenAiLlm llm = new OpenAiLlm(config);
 
-    FunctionPrompt prompt = new FunctionPrompt("How is the weather in Beijing today?", WeatherUtil.class);
+    FunctionPrompt prompt = new FunctionPrompt("今日の北京の天気はどうですか？", WeatherUtil.class);
     FunctionResultResponse response = llm.chat(prompt);
 
     Object result = response.getFunctionResult();
 
     System.out.println(result);
-    //Today it will be dull and overcast in Beijing
+    //今日の北京の天気は曇り時々晴れです
 }
 ```
 
 
-## Communication
+## コミュニケーション
 
 - Twitter: https://twitter.com/yangfuhai
 
 <a href="https://www.producthunt.com/posts/agents-flex?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-agents&#0045;flex" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=457469&theme=neutral" alt="Agents&#0045;Flex - &#0032;A&#0032;Java&#0032;framework&#0032;for&#0032;LLM&#0032;applications | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
-## Modules
+## モジュール
 
 ![](./docs/assets/images/modules.jpg)
