@@ -20,17 +20,17 @@ import com.agentsflex.core.message.AiMessage;
 
 public abstract class AbstractBaseMessageResponse<M extends AiMessage> implements MessageResponse<M> {
 
-    protected boolean isError = false;
+    protected boolean error = false;
     protected String errorMessage;
     protected String errorType;
     protected String errorCode;
 
     public boolean isError() {
-        return isError;
+        return error;
     }
 
     public void setError(boolean error) {
-        isError = error;
+        this.error = error;
     }
 
     public String getErrorMessage() {

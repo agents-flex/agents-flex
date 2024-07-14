@@ -16,21 +16,25 @@
 package com.agentsflex.core.llm;
 
 import com.agentsflex.core.llm.embedding.EmbeddingModel;
-import com.agentsflex.core.prompt.TextPrompt;
+import com.agentsflex.core.llm.exception.LlmException;
+import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.Prompt;
+import com.agentsflex.core.prompt.TextPrompt;
 
 public interface Llm extends EmbeddingModel {
 
     default String chat(String prompt) {
-        MessageResponse<AiMessage> chat = chat(new TextPrompt(prompt), ChatOptions.DEFAULT);
-        return chat != null && chat.getMessage() != null ? chat.getMessage().getContent() : null;
+        AbstractBaseMessageResponse<AiMessage> response = chat(new TextPrompt(prompt), ChatOptions.DEFAULT);
+        if (response != null && response.isError()) throw new LlmException(response.getErrorMessage());
+        return response != null && response.getMessage() != null ? response.getMessage().getContent() : null;
     }
 
     default String chat(String prompt, ChatOptions options) {
-        MessageResponse<AiMessage> chat = chat(new TextPrompt(prompt), options);
-        return chat != null && chat.getMessage() != null ? chat.getMessage().getContent() : null;
+        AbstractBaseMessageResponse<AiMessage> response = chat(new TextPrompt(prompt), options);
+        if (response != null && response.isError()) throw new LlmException(response.getErrorMessage());
+        return response != null && response.getMessage() != null ? response.getMessage().getContent() : null;
     }
 
     default <R extends MessageResponse<?>> R chat(Prompt<R> prompt) {

@@ -68,7 +68,7 @@ public class FunctionMessageResponse extends AiMessageResponse {
         return "FunctionMessageResponse{" +
             "functions=" + functions +
             ", functionMessage=" + functionMessage +
-            ", isError=" + isError +
+            ", isError=" + error +
             ", errorMessage='" + errorMessage + '\'' +
             ", errorType='" + errorType + '\'' +
             ", errorCode='" + errorCode + '\'' +

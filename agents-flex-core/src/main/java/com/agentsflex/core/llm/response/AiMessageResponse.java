@@ -33,7 +33,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
     public String toString() {
         return "AiMessageResponse{" +
             "aiMessage=" + aiMessage +
-            ", isError=" + isError +
+            ", isError=" + error +
             ", errorMessage='" + errorMessage + '\'' +
             ", errorType='" + errorType + '\'' +
             ", errorCode='" + errorCode + '\'' +
