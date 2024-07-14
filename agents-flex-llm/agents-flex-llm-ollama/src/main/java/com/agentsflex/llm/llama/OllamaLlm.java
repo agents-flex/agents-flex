@@ -39,13 +39,13 @@ import com.alibaba.fastjson.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
-public class LlamaLlm extends BaseLlm<LlamaLlmConfig> {
+public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
     private HttpClient httpClient = new HttpClient();
-    public AiMessageParser aiMessageParser = LlamaLlmUtil.getAiMessageParser();
+    public AiMessageParser aiMessageParser = OllamaLlmUtil.getAiMessageParser();
 
 
-    public LlamaLlm(LlamaLlmConfig config) {
+    public OllamaLlm(OllamaLlmConfig config) {
         super(config);
     }
 
@@ -63,7 +63,7 @@ public class LlamaLlm extends BaseLlm<LlamaLlmConfig> {
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
         String endpoint = config.getEndpoint();
-        String payload = LlamaLlmUtil.promptToPayload(prompt, config, false);
+        String payload = OllamaLlmUtil.promptToPayload(prompt, config, false);
         String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
@@ -103,7 +103,7 @@ public class LlamaLlm extends BaseLlm<LlamaLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
-        String payload = LlamaLlmUtil.promptToPayload(prompt, config, true);
+        String payload = OllamaLlmUtil.promptToPayload(prompt, config, true);
 
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, null);

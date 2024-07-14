@@ -17,11 +17,11 @@ package com.agentsflex.llm.llama;
 
 import com.agentsflex.core.llm.LlmConfig;
 
-public class LlamaLlmConfig extends LlmConfig {
+public class OllamaLlmConfig extends LlmConfig {
 
 	private static final String DEFAULT_MODEL = "LLaMA_CPP";
 
-	public LlamaLlmConfig() {
+	public OllamaLlmConfig() {
 		setModel(DEFAULT_MODEL);
 	}
 }

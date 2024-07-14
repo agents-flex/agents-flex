@@ -55,7 +55,7 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-llama</artifactId>
+            <artifactId>agents-flex-llm-ollama</artifactId>
             <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
