@@ -13,15 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.llama;
+package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.llm.LlmConfig;
 
 public class OllamaLlmConfig extends LlmConfig {
 
-	private static final String DEFAULT_MODEL = "LLaMA_CPP";
 
-	public OllamaLlmConfig() {
-		setModel(DEFAULT_MODEL);
-	}
 }

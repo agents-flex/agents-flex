@@ -102,15 +102,21 @@ public class DefaultAiMessageParser implements AiMessageParser {
             aiMessage.setIndex((Integer) JSONPath.eval(rootJson, this.indexPath));
         }
 
-        if (StringUtil.hasText(this.totalTokensPath)) {
-            aiMessage.setTotalTokens((Integer) JSONPath.eval(rootJson, this.totalTokensPath));
-        }
 
         if (StringUtil.hasText(promptTokensPath)) {
             aiMessage.setPromptTokens((Integer) JSONPath.eval(rootJson, this.promptTokensPath));
         }
+
         if (StringUtil.hasText(completionTokensPath)) {
             aiMessage.setCompletionTokens((Integer) JSONPath.eval(rootJson, this.completionTokensPath));
+        }
+
+        if (StringUtil.hasText(this.totalTokensPath)) {
+            aiMessage.setTotalTokens((Integer) JSONPath.eval(rootJson, this.totalTokensPath));
+        }
+        //some LLMs like Ollama not response the total tokens
+        else if (aiMessage.getPromptTokens() != null && aiMessage.getCompletionTokens() != null) {
+            aiMessage.setTotalTokens(aiMessage.getPromptTokens() + aiMessage.getCompletionTokens());
         }
 
         if (StringUtil.hasText(this.statusPath)) {
@@ -119,6 +125,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
                 aiMessage.setStatus(this.statusParser.parse(statusString));
             }
         }
+
 
         return aiMessage;
     }

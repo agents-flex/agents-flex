@@ -56,11 +56,15 @@ public class DefaultPromptFormat implements PromptFormat {
             } else if (message instanceof SystemMessage) {
                 map.put("role", "system");
             }
-            map.put("content", message.getMessageContent());
+            buildMessageContent(message, map);
             messageJsonArray.add(map);
         });
     }
 
+
+    protected void buildMessageContent(Message message, Map<String, Object> map) {
+        map.put("content", message.getMessageContent());
+    }
 
     @Override
     public Object toFunctionsJsonObject(Prompt<?> prompt) {

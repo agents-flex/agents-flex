@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.llama;
+package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.BaseLlm;
@@ -24,6 +24,7 @@ import com.agentsflex.core.llm.client.BaseLlmClientListener;
 import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
+import com.agentsflex.core.llm.client.impl.DnjsonClient;
 import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
@@ -32,9 +33,11 @@ import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +45,7 @@ import java.util.Map;
 public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
     private HttpClient httpClient = new HttpClient();
+    private DnjsonClient dnjsonClient = new DnjsonClient();
     public AiMessageParser aiMessageParser = OllamaLlmUtil.getAiMessageParser();
 
 
@@ -52,7 +56,30 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        return null;
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+
+        String payload = Maps.of("model", options.getModelOrDefault(config.getModel()))
+            .put("prompt", document.getContent())
+            .toJSON();
+
+        String endpoint = config.getEndpoint();
+        // https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
+        String response = httpClient.post(endpoint + "/api/embeddings", headers, payload);
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
+        }
+
+        VectorData vectorData = new VectorData();
+        double[] embedding = JSONPath.read(response, "$.embedding", double[].class);
+        vectorData.setVector(embedding);
+
+        return vectorData;
     }
 
 
@@ -64,7 +91,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
         String endpoint = config.getEndpoint();
         String payload = OllamaLlmUtil.promptToPayload(prompt, config, false);
-        String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
+        String response = httpClient.post(endpoint + "/api/chat", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
         }
@@ -74,21 +101,19 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         }
 
         JSONObject jsonObject = JSON.parseObject(response);
-        JSONObject error = jsonObject.getJSONObject("error");
+        String error = jsonObject.getString("error");
 
         AbstractBaseMessageResponse<?> messageResponse;
 
         if (prompt instanceof FunctionPrompt) {
-            throw new IllegalStateException("Llama not support function calling");
+            throw new IllegalStateException("OLlama not support function calling");
         } else {
             messageResponse = new AiMessageResponse(aiMessageParser.parse(jsonObject));
         }
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
-            messageResponse.setErrorMessage(error.getString("message"));
-            messageResponse.setErrorType(error.getString("type"));
-            messageResponse.setErrorCode(error.getString("code"));
+            messageResponse.setErrorMessage(error);
         }
 
         //noinspection unchecked
@@ -107,7 +132,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, null);
-        llmClient.start(endpoint + "/api/paas/v4/chat/completions", headers, payload, clientListener, config);
+        dnjsonClient.start(endpoint + "/api/chat", headers, payload, clientListener, config);
     }
 
     public HttpClient getHttpClient() {

@@ -56,10 +56,15 @@ public class ImagePrompt extends TextPrompt {
     }
 
 
-    static class TextAndImageMessage extends Message {
+    public static class TextAndImageMessage extends Message {
         private final ImagePrompt prompt;
+
         public TextAndImageMessage(ImagePrompt prompt) {
             this.prompt = prompt;
+        }
+
+        public ImagePrompt getPrompt() {
+            return prompt;
         }
 
         @Override

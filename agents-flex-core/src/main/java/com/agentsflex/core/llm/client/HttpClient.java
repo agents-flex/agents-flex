@@ -48,6 +48,10 @@ public class HttpClient {
     public String get(String url) {
         return executeString(url, "GET", null, null);
     }
+    
+    public byte[] getBytes(String url) {
+        return executeBytes(url, "GET", null, null);
+    }
 
     public String get(String url, Map<String, String> headers) {
         return executeString(url, "GET", headers, null);
