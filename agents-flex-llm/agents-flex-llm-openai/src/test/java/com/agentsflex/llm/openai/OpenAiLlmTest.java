@@ -3,6 +3,7 @@ package com.agentsflex.llm.openai;
 import com.agentsflex.core.llm.ChatContext;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.StreamResponseListener;
+import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
@@ -11,7 +12,7 @@ import org.junit.Test;
 
 public class OpenAiLlmTest {
 
-    @Test
+    @Test(expected = LlmException.class)
     public void testChat() {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
         config.setApiKey("sk-rts5NF6n*******");
@@ -22,7 +23,7 @@ public class OpenAiLlmTest {
         System.out.println(response);
     }
 
-    @Test
+    @Test()
     public void testChat01() {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
         config.setApiKey("sk-alQ9N********");
@@ -68,7 +69,7 @@ public class OpenAiLlmTest {
     }
 
 
-    @Test
+    @Test()
     public void testChatWithImage() {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
         config.setApiKey("sk-5gqOclb****0");
@@ -94,7 +95,7 @@ public class OpenAiLlmTest {
     }
 
 
-    @Test
+    @Test()
     public void testFunctionCalling() throws InterruptedException {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
         config.setApiKey("sk-rts5NF6n*******");

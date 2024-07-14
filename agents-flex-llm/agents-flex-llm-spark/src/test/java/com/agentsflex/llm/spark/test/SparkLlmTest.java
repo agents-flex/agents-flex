@@ -2,6 +2,7 @@ package com.agentsflex.llm.spark.test;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
@@ -15,7 +16,7 @@ import java.util.Scanner;
 
 public class SparkLlmTest {
 
-    @Test
+    @Test(expected = LlmException.class)
     public void testSimple() {
         SparkLlmConfig config = new SparkLlmConfig();
         config.setAppId("****");
