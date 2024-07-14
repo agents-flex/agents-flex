@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.llm.client.impl;
 
-import com.agentsflex.core.llm.client.LLMClientException;
+import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.util.StringUtil;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -45,7 +45,7 @@ class Util {
             } catch (IOException e) {
                 // ignore
             }
-            t = new LLMClientException(errMessage);
+            t = new LlmException(errMessage);
         }
 
         return t;
