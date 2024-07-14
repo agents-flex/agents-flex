@@ -1,6 +1,38 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.0-beta.8 20240714
+- feat: add "async" flag for the ChainNode
+- feat: add Ollama LLM
+- feat: add DnjsonClient for OllamaLlm
+- refactor: refactor ChainCondition.java
+- refactor: add throw LlmException if LLMs has error
+- refactor: refactor DocumentParser
+- refactor: refactor chain module
+- refactor: rename GroovyExecNode.java and QLExpressExecNode.java
+- refactor: add children property in Parameter
+- refactor: remove unused code AsyncHttpClient.java
+- refactor: use LlmException to replace LLMClientException
+  fix: Milvus type mismatch for filed 'id'
+- test: add LoopChain test
+- test: add ollama test use openai instance
+- docs: add Japanese README
+
+---
+- 新增：为 ChainNode 添加 "async" 属性标识的设置
+- 新增：添加基于 Ollama 大语言模型的对接，非 openai 适配模式
+- 新增：新增 DnjsonClient 用于和 Ollama 的 stream 模型对接
+- 优化：重构 ChainCondition
+- 优化：chat 时当大语言模型发生错误时抛出异常，之前返回 null
+- 优化：重构 DocumentParser
+- 优化：Parameter 支持子参数的配置能力
+- 修复：Milvus 向量数据库当传入 number 类型是出错的问题
+- 测试：添加对 LoopChain 的测试
+- 测试：添加文使用 openai 兼容 api 对 Ollama 对接的测试
+
+
+
+
 ## v1.0.0-beta.7 20240705
 - feat: add image models support
 - feat: add SimpleTokenizeSplitter

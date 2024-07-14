@@ -1,7 +1,7 @@
 # Agents-Flex ChangeLog
 
 
-## v1.0.0-beta.7 20240705
+## v1.0.0-beta.8 20240705
 - feat: add image models support
 - feat: add SimpleTokenizeSplitter
 - feat: add OmniParseDocumentParser
