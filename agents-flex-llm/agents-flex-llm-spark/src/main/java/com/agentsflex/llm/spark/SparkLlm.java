@@ -98,14 +98,10 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         chatStream(prompt, new StreamResponseListener<R>() {
             @Override
             public void onMessage(ChatContext context, R response) {
-                if (response.getMessage() instanceof FunctionMessage) {
+                if (response.getMessage() instanceof FunctionMessage || messages[0] == null) {
                     messages[0] = response.getMessage();
                 } else {
-                    if (messages[0] == null) {
-                        messages[0] = response.getMessage();
-                    } else {
-                        ((AiMessage) messages[0]).setContent(response.getMessage().getFullContent());
-                    }
+                    ((AiMessage) messages[0]).setContent(response.getMessage().getFullContent());
                 }
             }
 
