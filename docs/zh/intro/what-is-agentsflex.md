@@ -16,7 +16,7 @@ Agents-Flex 适用于聊天、图像生成、Embedding 模型、Function Calling
 
 相比 `Spring-AI`、`LangChain4j` 而言，Agents-Flex 更具有普适性。
 
-> 1) `Spring-AI` 要求的 JDK 版本必须是 `JDK 21+`，而 Agents-Flex 只需要 `JDK 8+`。
+> 1) `Spring-AI` 要求的 JDK 版本必须是 `JDK 17+`，而 Agents-Flex 只需要 `JDK 8+`。
 > 2) `Spring-AI` 要求必须在 Spring 框架下使用，而 Agents-Flex 支持与任何的 JAVA 框架搭配使用，并提供了 `spring-boot-starter` 的支持。
 > 3) `Spring-AI`、`LangChain4j` 普遍不支持国内的大模型、Embedding 模型以及向量数据库，而 Agents-Flex 对国产服务支持友好。
 
