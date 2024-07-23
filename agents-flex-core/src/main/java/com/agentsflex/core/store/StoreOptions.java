@@ -58,7 +58,7 @@ public class StoreOptions extends Metadata {
     /**
      * store embedding options
      */
-    private EmbeddingOptions embeddingOptions;
+    private EmbeddingOptions embeddingOptions = EmbeddingOptions.DEFAULT;
 
 
     public String getCollectionName() {
