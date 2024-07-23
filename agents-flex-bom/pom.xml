@@ -37,12 +37,47 @@
             <artifactId>agents-flex-document-parser-pdfbox</artifactId>
             <version>${agents-flex.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-document-parser-omniparse</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
         <!--document parser end-->
+
+
+        <!--image model start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-gitee-sd3</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-openai</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-stability</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <!--image model end-->
+
 
         <!--llm start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-chatglm</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-moonshot</artifactId>
+            <version>${agents-flex.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-ollama</artifactId>
             <version>${agents-flex.version}</version>
         </dependency>
         <dependency>
