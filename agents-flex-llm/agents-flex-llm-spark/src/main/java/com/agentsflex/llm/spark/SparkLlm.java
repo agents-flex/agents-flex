@@ -93,15 +93,17 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     @Override
     public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
-        Message[] messages = new Message[1];
         Throwable[] failureThrowable = new Throwable[1];
+        AbstractBaseMessageResponse<?>[] messageResponse = {null};
         chatStream(prompt, new StreamResponseListener<R>() {
             @Override
             public void onMessage(ChatContext context, R response) {
-                if (response.getMessage() instanceof FunctionMessage || messages[0] == null) {
-                    messages[0] = response.getMessage();
+                if (response.getMessage() instanceof FunctionMessage) {
+                    messageResponse[0] = (FunctionMessageResponse) response;
                 } else {
-                    ((AiMessage) messages[0]).setContent(response.getMessage().getFullContent());
+                    AiMessage aiMessage = new AiMessage();
+                    aiMessage.setContent(response.getMessage().getFullContent());
+                    messageResponse[0] = new AiMessageResponse(aiMessage);
                 }
             }
 
@@ -124,22 +126,16 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
             throw new RuntimeException(e);
         }
 
-        AbstractBaseMessageResponse<?> response;
-
-        if (prompt instanceof FunctionPrompt) {
-            response = new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions(), (FunctionMessage) messages[0]);
-        } else {
-            response = new AiMessageResponse((AiMessage) messages[0]);
-        }
-
-        if (messages[0] == null || failureThrowable[0] != null) {
-            response.setError(true);
+        if (null == messageResponse[0].getMessage() || failureThrowable[0] != null) {
+            messageResponse[0].setError(true);
             if (failureThrowable[0] != null) {
-                response.setErrorMessage(failureThrowable[0].getMessage());
+                messageResponse[0].setErrorMessage(failureThrowable[0].getMessage());
             }
+        } else {
+            messageResponse[0].setError(false);
         }
 
-        return (R) response;
+        return (R) messageResponse[0];
     }
 
 
