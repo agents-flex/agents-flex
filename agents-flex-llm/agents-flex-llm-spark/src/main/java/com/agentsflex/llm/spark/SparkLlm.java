@@ -28,10 +28,8 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionMessage;
-import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.FunctionMessageParser;
-import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.StringUtil;
@@ -95,6 +93,29 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         CountDownLatch latch = new CountDownLatch(1);
         Throwable[] failureThrowable = new Throwable[1];
         AbstractBaseMessageResponse<?>[] messageResponse = {null};
+
+        waitResponse(prompt, options, messageResponse, latch, failureThrowable);
+
+        AbstractBaseMessageResponse<?> response = messageResponse[0];
+        Throwable fialureThrowable = failureThrowable[0];
+        if (null == response.getMessage() || fialureThrowable != null) {
+            response.setError(true);
+            if (fialureThrowable != null) {
+                response.setErrorMessage(fialureThrowable.getMessage());
+            }
+        } else {
+            response.setError(false);
+        }
+
+        return (R) response;
+    }
+
+
+    private <R extends MessageResponse<?>> void waitResponse(Prompt<R> prompt
+        , ChatOptions options
+        , AbstractBaseMessageResponse<?>[] messageResponse
+        , CountDownLatch latch
+        , Throwable[] failureThrowable) {
         chatStream(prompt, new StreamResponseListener<R>() {
             @Override
             public void onMessage(ChatContext context, R response) {
@@ -125,17 +146,6 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-
-        if (null == messageResponse[0].getMessage() || failureThrowable[0] != null) {
-            messageResponse[0].setError(true);
-            if (failureThrowable[0] != null) {
-                messageResponse[0].setErrorMessage(failureThrowable[0].getMessage());
-            }
-        } else {
-            messageResponse[0].setError(false);
-        }
-
-        return (R) messageResponse[0];
     }
 
 
