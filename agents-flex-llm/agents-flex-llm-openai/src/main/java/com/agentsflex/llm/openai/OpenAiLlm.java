@@ -41,6 +41,7 @@ import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
@@ -71,6 +72,11 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+
+        Consumer<Map<String, String>> headersConfig = config.getHeadersConfig();
+        if (headersConfig != null) {
+            headersConfig.accept(headers);
+        }
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
