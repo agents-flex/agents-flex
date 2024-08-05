@@ -26,7 +26,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class HttpClient {
     private static final Logger LOG = LoggerFactory.getLogger(HttpClient.class);
@@ -35,10 +34,7 @@ public class HttpClient {
     private final OkHttpClient okHttpClient;
 
     public HttpClient() {
-        this.okHttpClient = new OkHttpClient.Builder()
-            .connectTimeout(3, TimeUnit.MINUTES)
-            .readTimeout(3, TimeUnit.MINUTES)
-            .build();
+        this(OkHttpClientUtil.buildDefaultClient());
     }
 
     public HttpClient(OkHttpClient okHttpClient) {
@@ -48,7 +44,7 @@ public class HttpClient {
     public String get(String url) {
         return executeString(url, "GET", null, null);
     }
-    
+
     public byte[] getBytes(String url) {
         return executeBytes(url, "GET", null, null);
     }

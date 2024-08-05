@@ -18,6 +18,7 @@ package com.agentsflex.core.llm.client.impl;
 import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
+import com.agentsflex.core.llm.client.OkHttpClientUtil;
 import okhttp3.*;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
@@ -26,11 +27,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class SseClient extends EventSourceListener implements LlmClient {
 
-    private OkHttpClient client;
+    private OkHttpClient okHttpClient;
     private EventSource eventSource;
     private LlmClientListener listener;
     private LlmConfig config;
@@ -54,13 +54,9 @@ public class SseClient extends EventSourceListener implements LlmClient {
         Request request = builder.post(body).build();
 
 
-        this.client = new OkHttpClient.Builder()
-            .connectTimeout(3, TimeUnit.MINUTES)
-            .readTimeout(3, TimeUnit.MINUTES)
-            .build();
+        this.okHttpClient = OkHttpClientUtil.buildDefaultClient();
 
-
-        EventSource.Factory factory = EventSources.createFactory(this.client);
+        EventSource.Factory factory = EventSources.createFactory(this.okHttpClient);
         this.eventSource = factory.newEventSource(request, this);
 
         if (this.config.isDebug()) {
@@ -113,8 +109,8 @@ public class SseClient extends EventSourceListener implements LlmClient {
                 if (eventSource != null) {
                     eventSource.cancel();
                 }
-                if (client != null) {
-                    client.dispatcher().executorService().shutdown();
+                if (okHttpClient != null) {
+                    okHttpClient.dispatcher().executorService().shutdown();
                 }
             }
             return true;

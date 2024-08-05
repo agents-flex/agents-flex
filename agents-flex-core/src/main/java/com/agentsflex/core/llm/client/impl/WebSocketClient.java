@@ -18,12 +18,12 @@ package com.agentsflex.core.llm.client.impl;
 import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
+import com.agentsflex.core.llm.client.OkHttpClientUtil;
 import okhttp3.*;
 import okio.ByteString;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class WebSocketClient extends WebSocketListener implements LlmClient {
 
@@ -39,9 +39,7 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
         this.payload = payload;
         this.config = config;
 
-        OkHttpClient client = new OkHttpClient.Builder()
-            .readTimeout(0, TimeUnit.MILLISECONDS)
-            .build();
+        OkHttpClient client = OkHttpClientUtil.buildDefaultClient();
 
         Request request = new Request.Builder()
             .url(url)

@@ -18,6 +18,7 @@ package com.agentsflex.core.llm.client.impl;
 import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
+import com.agentsflex.core.llm.client.OkHttpClientUtil;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,13 +26,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class DnjsonClient implements LlmClient, Callback {
 
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
-    private OkHttpClient client;
+    private OkHttpClient okHttpClient;
     private LlmClientListener listener;
     private LlmConfig config;
     private boolean isStop = false;
@@ -52,10 +52,7 @@ public class DnjsonClient implements LlmClient, Callback {
         RequestBody body = RequestBody.create(payload, JSON_TYPE);
         rBuilder.post(body);
 
-        this.client = new OkHttpClient.Builder()
-            .connectTimeout(3, TimeUnit.MINUTES)
-            .readTimeout(3, TimeUnit.MINUTES)
-            .build();
+        this.okHttpClient = OkHttpClientUtil.buildDefaultClient();
 
         if (this.config.isDebug()) {
             System.out.println(">>>>send payload:" + payload);
@@ -63,7 +60,7 @@ public class DnjsonClient implements LlmClient, Callback {
 
 
         this.listener.onStart(this);
-        this.client.newCall(rBuilder.build()).enqueue(this);
+        this.okHttpClient.newCall(rBuilder.build()).enqueue(this);
     }
 
     @Override
@@ -113,8 +110,8 @@ public class DnjsonClient implements LlmClient, Callback {
                 this.isStop = true;
                 this.listener.onStop(this);
             } finally {
-                if (client != null) {
-                    client.dispatcher().executorService().shutdown();
+                if (okHttpClient != null) {
+                    okHttpClient.dispatcher().executorService().shutdown();
                 }
             }
             return true;
