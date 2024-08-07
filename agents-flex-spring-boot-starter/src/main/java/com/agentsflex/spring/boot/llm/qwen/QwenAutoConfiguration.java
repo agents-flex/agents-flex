@@ -27,7 +27,7 @@ public class QwenAutoConfiguration {
         config.setApiSecret(properties.getApiSecret());
         config.setEndpoint(properties.getEndpoint());
         config.setModel(properties.getModel());
-        return new QwenLlm(null);
+        return new QwenLlm(config);
     }
 
 }
