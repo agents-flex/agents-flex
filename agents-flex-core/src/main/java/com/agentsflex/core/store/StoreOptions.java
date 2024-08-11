@@ -51,6 +51,11 @@ public class StoreOptions extends Metadata {
     private String collectionName;
 
     /**
+     * store index name
+     */
+    private String indexName;
+
+    /**
      * store partition name
      */
     private List<String> partitionNames;
@@ -111,5 +116,17 @@ public class StoreOptions extends Metadata {
         StoreOptions storeOptions = new StoreOptions();
         storeOptions.setCollectionName(collectionName);
         return storeOptions;
+    }
+
+    public String getIndexName() {
+        return indexName;
+    }
+
+    public void setIndexName(String indexName) {
+        this.indexName = indexName;
+    }
+
+    public String getIndexNameOrDefault(String other) {
+        return StringUtil.hasText(indexName) ? indexName : other;
     }
 }
