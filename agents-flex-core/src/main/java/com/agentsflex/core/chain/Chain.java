@@ -19,7 +19,6 @@ import com.agentsflex.core.agent.Agent;
 import com.agentsflex.core.agent.Output;
 import com.agentsflex.core.chain.event.*;
 import com.agentsflex.core.chain.node.AgentNode;
-import com.agentsflex.core.memory.ContextMemory;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.NamedThreadPools;
 import com.agentsflex.core.util.StringUtil;
@@ -133,16 +132,6 @@ public class Chain extends ChainNode {
 
     public void addNode(Agent agent) {
         addNode(new AgentNode(agent));
-    }
-
-
-    public ContextMemory getMemory() {
-        return memory;
-    }
-
-
-    public void setMemory(ContextMemory memory) {
-        this.memory = memory;
     }
 
     public ChainStatus getStatus() {
