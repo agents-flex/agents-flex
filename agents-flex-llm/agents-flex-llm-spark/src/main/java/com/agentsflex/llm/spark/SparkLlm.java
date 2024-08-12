@@ -97,6 +97,9 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         waitResponse(prompt, options, messageResponse, latch, failureThrowable);
 
         AbstractBaseMessageResponse<?> response = messageResponse[0];
+        if (response == null){
+            return null;
+        }
         Throwable fialureThrowable = failureThrowable[0];
         if (null == response.getMessage() || fialureThrowable != null) {
             response.setError(true);

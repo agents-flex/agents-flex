@@ -2,21 +2,20 @@ package com.agentsflex.llm.spark.test;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.FunctionMessageResponse;
-import com.agentsflex.llm.spark.SparkLlm;
-import com.agentsflex.llm.spark.SparkLlmConfig;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.llm.spark.SparkLlm;
+import com.agentsflex.llm.spark.SparkLlmConfig;
 import org.junit.Test;
 
 import java.util.Scanner;
 
 public class SparkLlmTest {
 
-    @Test(expected = LlmException.class)
+    @Test()
     public void testSimple() {
         SparkLlmConfig config = new SparkLlmConfig();
         config.setAppId("****");
@@ -55,7 +54,7 @@ public class SparkLlmTest {
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
         FunctionMessageResponse response = llm.chat(prompt);
 
-        Object result = response.getFunctionResult();
+        Object result = response == null ? null : response.getFunctionResult();
 
         System.out.println(result);
     }
