@@ -15,10 +15,13 @@
  */
 package com.agentsflex.core.image;
 
+import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.util.IOUtil;
+import com.agentsflex.core.util.StringUtil;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Base64;
 
 public class Image {
 
@@ -78,7 +81,18 @@ public class Image {
     }
 
     public void writeBytesToFile(File file) {
-        IOUtil.writeBytes(this.bytes, file);
+        if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
+            throw new IllegalStateException("Can not mkdirs for path: " + file.getParentFile().getAbsolutePath());
+        }
+        if (this.bytes != null && this.bytes.length > 0) {
+            IOUtil.writeBytes(this.bytes, file);
+        } else if (this.b64Json != null) {
+            byte[] bytes = Base64.getDecoder().decode(b64Json);
+            IOUtil.writeBytes(bytes, file);
+        } else if (StringUtil.hasText(this.url)) {
+            byte[] bytes = new HttpClient().getBytes(this.url);
+            IOUtil.writeBytes(bytes, file);
+        }
     }
 
     @Override
