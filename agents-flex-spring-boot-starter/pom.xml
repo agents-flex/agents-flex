@@ -103,6 +103,18 @@
             <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-elasticsearch</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-opensearch</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
         <!--store end-->
     </dependencies>
 
