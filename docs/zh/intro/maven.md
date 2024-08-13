@@ -10,7 +10,7 @@
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>1.0.0-beta.8</version>
+    <version>1.0.0-beta.9</version>
 </dependency>
 ```
 
@@ -20,6 +20,6 @@
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-spring-boot-starter</artifactId>
-    <version>1.0.0-beta.8</version>
+    <version>1.0.0-beta.9</version>
 </dependency>
 ```

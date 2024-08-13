@@ -1,6 +1,30 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.0-beta.9 20240813
+- feat: add custom request header in openaiLLM https://github.com/agents-flex/agents-flex/issues/5
+- feat: add https.proxyHost config for the http client, close https://github.com/agents-flex/agents-flex/issues/1
+- feat: add SpringBoot3 auto config support @songyinyin
+- feat: add openSearch store support @songyinyin
+- fix: fix config error in QwenAutoConfiguration @songyinyin
+- fix: NPE in OpenAiLLmUtil.promptToEmbeddingsPayload
+- fix: fix FunctionMessageResponse error in BaseLlmClientListener, @imayou
+- refactor: update bom module
+- refactor: optimize SparkLlm.java
+
+---
+- 新增: 添加自定义 openaiLLM 请求 api 的支持  https://github.com/agents-flex/agents-flex/issues/5
+- 新增: 添加 https.proxyHost 配置的支持 https://github.com/agents-flex/agents-flex/issues/1
+- 新增: 添加对 SpringBoot3 自动配置的支持 @songyinyin
+- 新增: 添加使用 openSearch 用于向量数据存储的支持 @songyinyin
+- 修复: 修复 QwenAutoConfiguration 配置错误的问题  @songyinyin
+- 修复: 修复 OpenAiLLmUtil.promptToEmbeddingsPayload 空指针异常的问题
+- 修复: 修复 FunctionMessageResponse 在某些情况下出错的问题, @imayou
+- 优化: 更新重构 bom 模块
+- 优化: 优化 SparkLlm.java 的相关代码
+
+
+
 ## v1.0.0-beta.8 20240714
 - feat: add "async" flag for the ChainNode
 - feat: add Ollama LLM
