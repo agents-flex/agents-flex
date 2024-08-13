@@ -135,6 +135,11 @@ public class OpenSearchVectorStore extends DocumentStore {
         }
     }
 
+    public OpenSearchVectorStore(OpenSearchVectorStoreConfig config, OpenSearchClient client) {
+        this.config = config;
+        this.client = client;
+    }
+
     private void createIndexIfNotExist(String indexName) {
         try {
             BooleanResponse response = client.indices().exists(c -> c.index(indexName));
