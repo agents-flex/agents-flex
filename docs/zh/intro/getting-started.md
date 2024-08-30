@@ -49,7 +49,7 @@ public class Main {
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+        Llm llm = OpenAiLlm.of("sk-rts5NF6n*******");
         String response = llm.chat("what is your name?");
 
         System.out.println(response);
