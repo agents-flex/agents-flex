@@ -15,7 +15,9 @@
  */
 package com.agentsflex.llm.qwen;
 
+import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.FunctionMessageParser;
@@ -26,6 +28,9 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class QwenLlmUtil {
 
@@ -73,5 +78,19 @@ public class QwenLlmUtil {
 
 
         return JSON.toJSONString(root.build());
+    }
+
+    public static String promptToEnabledPayload(Document text, EmbeddingOptions options, QwenLlmConfig config) {
+        // https://help.aliyun.com/zh/model-studio/developer-reference/text-embedding-synchronous-api?spm=a2c4g.11186623.0.nextDoc.100230b7arAV4X#e6bf7ae0fedrb
+
+        List<String> list=new ArrayList<>();
+        list.add(text.getContent());
+        Maps.Builder root = Maps.of("model", config.getModel())
+            .put("input", Maps.of("texts",list));
+        return JSON.toJSONString(root.build());
+    }
+
+    public static String createEmbedURL(QwenLlmConfig config) {
+        return "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding";
     }
 }

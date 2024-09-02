@@ -39,6 +39,7 @@ import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -127,7 +128,26 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        return null;
+        String payload = QwenLlmUtil.promptToEnabledPayload(document,options,config);
+
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+
+        String response = httpClient.post(QwenLlmUtil.createEmbedURL(config), headers, payload);
+
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
+        }
+        VectorData vectorData = new VectorData();
+        Object verctor= JSONPath.read(response,"$.output.embeddings[0].embedding");
+        double[] vers=JSON.parseObject(JSON.toJSONString(verctor),double[].class);
+        vectorData.setVector(vers);
+        return vectorData;
     }
 
 }
