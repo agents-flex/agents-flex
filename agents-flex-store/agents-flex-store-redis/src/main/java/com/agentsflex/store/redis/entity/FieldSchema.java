@@ -1,8 +1,6 @@
 package com.agentsflex.store.redis.entity;
 
-import lombok.Data;
 
-@Data
 public  class FieldSchema {
     private  String name;
     private  FieldType type;
@@ -18,4 +16,43 @@ public  class FieldSchema {
         this.metric = metric;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public FieldType getType() {
+        return type;
+    }
+
+    public void setType(FieldType type) {
+        this.type = type;
+    }
+
+    public VectorDataType getDataType() {
+        return dataType;
+    }
+
+    public void setDataType(VectorDataType dataType) {
+        this.dataType = dataType;
+    }
+
+    public Integer getDimension() {
+        return dimension;
+    }
+
+    public void setDimension(Integer dimension) {
+        this.dimension = dimension;
+    }
+
+    public DistanceMetric getMetric() {
+        return metric;
+    }
+
+    public void setMetric(DistanceMetric metric) {
+        this.metric = metric;
+    }
 }
