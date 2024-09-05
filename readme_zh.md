@@ -192,6 +192,19 @@ public class WeatherUtil {
 | 更多           |计划中... | 期待 PR |
 
 
+### 向量化模型
+
+
+| 大语言模型名称    | 支持情况   | 描述    |
+|------------|--------|-------|
+| Openai     | ✅ 已支持  | -     |
+| 星火大模型      | ✅ 已支持  | -     |
+| 智普 ChatGLM | ✅ 已支持  | -     |
+| Ollama     | ✅ 已支持  | -     |
+| 通义千问     | ✅ 已支持  | -     |
+| 更多       |计划中... | 期待 PR |
+
+
 ### 向量存储（向量数据库）
 
 
@@ -202,7 +215,11 @@ public class WeatherUtil {
 | 腾讯云向量数据存储服务   | ✅ 已支持  | -  |
 | OpenSearch    | ✅ 已支持  | -  |
 | ElasticSearch | ✅ 已支持  | -  |
-| Redis         | 计划中... | 期待 PR  |
+| Redis         | ✅ 已支持  | -  |
+| Chroma        | 计划中... | 期待 PR  |
+| Cassandra     | 计划中... | 期待 PR  |
+| Gemfire       | 计划中... | 期待 PR  |
+| Weaviate      | 计划中... | 期待 PR  |
 
 
 ### 文档解析器
