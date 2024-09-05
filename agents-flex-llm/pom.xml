@@ -18,6 +18,7 @@
         <module>agents-flex-llm-chatglm</module>
         <module>agents-flex-llm-ollama</module>
         <module>agents-flex-llm-moonshot</module>
+        <module>agents-flex-llm-coze</module>
     </modules>
 
     <properties>
