@@ -18,6 +18,7 @@ package com.agentsflex.store.redis.test;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.store.SearchWrapper;
+import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import com.agentsflex.store.redis.RedisVectorStore;
@@ -38,15 +39,26 @@ public class Test {
 
         RedisVectorStoreConfig config = new RedisVectorStoreConfig();
         config.setUri("redis://localhost:6379");
-        config.setDefaultCollectionName("test");
+        config.setDefaultCollectionName("test04");
 
         RedisVectorStore store = new RedisVectorStore(config);
         store.setEmbeddingModel(llm);
 
+        Document document = new Document();
+        document.setContent("你好");
+        document.setId(1);
+        store.store(document);
+
         SearchWrapper sw = new SearchWrapper();
-        sw.setText("nihao");
+        sw.setText("你好");
 
         List<Document> search = store.search(sw);
+        System.out.println(search);
+
+
+        StoreResult result = store.delete("1");
+        System.out.println("-------delete-----" + result);
+        search = store.search(sw);
         System.out.println(search);
     }
 }

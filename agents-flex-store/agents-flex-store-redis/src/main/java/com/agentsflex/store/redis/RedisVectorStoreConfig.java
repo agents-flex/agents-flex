@@ -21,10 +21,7 @@ public class RedisVectorStoreConfig implements Serializable {
 
     private String uri;
 
-    private String user;
-    private String password;
-    private int database;
-
+    private String storePrefix = "docs:";
     private String defaultCollectionName;
 
 
@@ -36,28 +33,12 @@ public class RedisVectorStoreConfig implements Serializable {
         this.uri = uri;
     }
 
-    public String getUser() {
-        return user;
+    public String getStorePrefix() {
+        return storePrefix;
     }
 
-    public void setUser(String user) {
-        this.user = user;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public int getDatabase() {
-        return database;
-    }
-
-    public void setDatabase(int database) {
-        this.database = database;
+    public void setStorePrefix(String storePrefix) {
+        this.storePrefix = storePrefix;
     }
 
     public String getDefaultCollectionName() {

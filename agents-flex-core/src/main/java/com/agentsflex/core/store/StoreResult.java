@@ -54,4 +54,12 @@ public class StoreResult extends Metadata {
         }
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "StoreResult{" +
+            "success=" + success +
+            ", ids=" + ids +
+            '}';
+    }
 }
