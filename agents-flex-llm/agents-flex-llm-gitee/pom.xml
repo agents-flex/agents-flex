@@ -5,27 +5,29 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>agents-flex-llm</artifactId>
         <version>1.0.0-beta.9</version>
     </parent>
 
-    <artifactId>agents-flex-llm</artifactId>
-    <packaging>pom</packaging>
-    <modules>
-        <module>agents-flex-llm-openai</module>
-        <module>agents-flex-llm-spark</module>
-        <module>agents-flex-llm-qwen</module>
-        <module>agents-flex-llm-chatglm</module>
-        <module>agents-flex-llm-ollama</module>
-        <module>agents-flex-llm-moonshot</module>
-        <module>agents-flex-llm-coze</module>
-        <module>agents-flex-llm-gitee</module>
-    </modules>
+    <artifactId>agents-flex-llm-gitee</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+            <version>1.0.0-beta.9</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
 </project>
