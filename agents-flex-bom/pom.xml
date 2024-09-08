@@ -48,7 +48,7 @@
         <!--image model start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-image-gitee-sd3</artifactId>
+            <artifactId>agents-flex-image-gitee</artifactId>
             <version>${agents-flex.version}</version>
         </dependency>
         <dependency>

@@ -176,7 +176,6 @@ public class WeatherUtil {
 | Ollama 部署模型                  | ✅ 已支持  | -     |
 | 星火大模型                        | ✅ 已支持  | -     |
 | 通义千问                         | ✅ 已支持  | -     |
-| 文心一言                         | 计划中... | 期待 PR |
 | 智普 ChatGLM                   | ✅ 已支持  | -     |
 | 月之暗面 Moonshot                | ✅ 已支持  | -     |
 | 扣子 Coze                      | ✅ 已支持  | -     |
@@ -184,17 +183,20 @@ public class WeatherUtil {
 | GiteeAI - Qwen2-72B-Instruct | ✅ 已支持  | -     |
 | GiteeAI - Yi-1.5-34B-Chat    | ✅ 已支持  | -     |
 | GiteeAI - glm-4-9b-chat      | ✅ 已支持  | -     |
-
+| 文心一言                         | 计划中... | 期待 PR |
 
 ### 图片生成模型
 
 
-| 大语言模型名称      | 支持情况   | 描述    |
-|--------------|--------|-------|
-| Openai       | ✅ 已支持  | -     |
-| Gitee AI sd3 | ✅ 已支持  | -     |
-| Stability    | ✅ 已支持  | -     |
-| 更多           |计划中... | 期待 PR |
+| 大语言模型名称                                | 支持情况   | 描述    |
+|----------------------------------------|--------|-------|
+| Openai                                 | ✅ 已支持  | -     |
+| Stability                              | ✅ 已支持  | -     |
+| GiteeAI - stable-diffusion-3-medium    | ✅ 已支持  | -     |
+| GiteeAI - FLUX.1-schnell               | ✅ 已支持  | -     |
+| GiteeAI - stable-diffusion-xl-base-1.0 | ✅ 已支持  | -     |
+| GiteeAI - Kolors                       | ✅ 已支持  | -     |
+| 更多                                     |计划中... | 期待 PR |
 
 
 ### 向量化模型
@@ -213,7 +215,6 @@ public class WeatherUtil {
 
 
 ### 向量存储（向量数据库）
-
 
 | 向量数据库名称       | 支持情况   | 描述 |
 |---------------|--------|----|

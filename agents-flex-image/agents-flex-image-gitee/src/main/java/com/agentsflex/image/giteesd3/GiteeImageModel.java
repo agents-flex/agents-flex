@@ -22,11 +22,11 @@ import com.agentsflex.core.util.Maps;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GiteeSD3ImageModel implements ImageModel {
-    private GiteeSD3ImageModelConfig config;
+public class GiteeImageModel implements ImageModel {
+    private GiteeImageModelConfig config;
     private HttpClient httpClient = new HttpClient();
 
-    public GiteeSD3ImageModel(GiteeSD3ImageModelConfig config) {
+    public GiteeImageModel(GiteeImageModelConfig config) {
         this.config = config;
     }
 
@@ -36,9 +36,13 @@ public class GiteeSD3ImageModel implements ImageModel {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
-        String payload = Maps.of("inputs", request.getPrompt()).toJSON();
+        String payload = Maps.of("inputs", request.getPrompt())
+            .putIfNotNull("width", request.getWidth())
+            .putIfNotNull("height", request.getHeight())
+            .toJSON();
 
-        byte[] imageBytes = httpClient.postBytes(config.getApiUrl(), headers, payload);
+        String url = config.getEndpoint() + "/api/serverless/" + config.getModel() + "/text-to-image";
+        byte[] imageBytes = httpClient.postBytes(url, headers, payload);
         if (imageBytes == null || imageBytes.length == 0) {
             return null;
         }
@@ -52,7 +56,7 @@ public class GiteeSD3ImageModel implements ImageModel {
 
     @Override
     public ImageResponse edit(EditImageRequest request) {
-       throw new IllegalStateException("GiteeSD3ImageModel Can not support edit image.");
+        throw new IllegalStateException("GiteeSD3ImageModel Can not support edit image.");
     }
 
     @Override

@@ -18,23 +18,24 @@ package com.agentsflex.image.test;
 import com.agentsflex.core.image.GenerateImageRequest;
 import com.agentsflex.core.image.Image;
 import com.agentsflex.core.image.ImageResponse;
-import com.agentsflex.image.giteesd3.GiteeSD3ImageModel;
-import com.agentsflex.image.giteesd3.GiteeSD3ImageModelConfig;
+import com.agentsflex.image.giteesd3.GiteeImageModel;
+import com.agentsflex.image.giteesd3.GiteeImageModelConfig;
 import org.junit.Test;
 
 import java.io.File;
 
-public class GiteeSD3ImageModelTest {
+public class GiteeImageModelTest {
 
     @Test
     public void testGenImage(){
-        GiteeSD3ImageModelConfig config = new GiteeSD3ImageModelConfig();
-        config.setApiKey("****");
+        GiteeImageModelConfig config = new GiteeImageModelConfig();
+        config.setApiKey("P07AGYTQBNHREVNGDCM8XATPJLY8RVESLLLNWCNR");
 
-        GiteeSD3ImageModel openAiImageModel = new GiteeSD3ImageModel(config);
+        GiteeImageModel openAiImageModel = new GiteeImageModel(config);
 
         GenerateImageRequest request = new GenerateImageRequest();
         request.setPrompt("A cute little tiger standing in the high-speed train");
+        request.setSize(1024,1024);
         ImageResponse generate = openAiImageModel.generate(request);
         if (generate != null && generate.getImages() != null){
             int index = 0;

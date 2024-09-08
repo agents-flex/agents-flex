@@ -19,8 +19,9 @@ public class BaseImageRequest {
     private String model;
     private Integer n;
     private String responseFormat;
-    private String size;
     private String user;
+    private Integer width;
+    private Integer height;
 
     public String getModel() {
         return model;
@@ -46,13 +47,34 @@ public class BaseImageRequest {
         this.responseFormat = responseFormat;
     }
 
-    public String getSize() {
-        return size;
+    public Integer getWidth() {
+        return width;
     }
 
-    public void setSize(String size) {
-        this.size = size;
+    public void setWidth(Integer width) {
+        this.width = width;
     }
+
+    public Integer getHeight() {
+        return height;
+    }
+
+    public void setHeight(Integer height) {
+        this.height = height;
+    }
+
+    public void setSize(Integer width, Integer height) {
+        this.width = width;
+        this.height = height;
+    }
+
+    public String getSize() {
+        if (this.width == null || this.height == null) {
+            return null;
+        }
+        return this.width + "x" + this.height;
+    }
+
 
     public String getUser() {
         return user;

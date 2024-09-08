@@ -14,7 +14,7 @@
     <modules>
         <module>agents-flex-image-openai</module>
         <module>agents-flex-image-stability</module>
-        <module>agents-flex-image-gitee-sd3</module>
+        <module>agents-flex-image-gitee</module>
     </modules>
 
     <properties>

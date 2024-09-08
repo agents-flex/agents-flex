@@ -17,16 +17,26 @@ package com.agentsflex.image.giteesd3;
 
 import java.io.Serializable;
 
-public class GiteeSD3ImageModelConfig implements Serializable {
-    private String apiUrl = "https://ai.gitee.com/api/inference/serverless/CMXPCHEBARDA/text-to-image";
+public class GiteeImageModelConfig implements Serializable {
+    private String endpoint = "https://ai.gitee.com";
+    private String model = GiteeImageModels.flux_1_schnell;
     private String apiKey;
 
-    public String getApiUrl() {
-        return apiUrl;
+
+    public String getEndpoint() {
+        return endpoint;
     }
 
-    public void setApiUrl(String apiUrl) {
-        this.apiUrl = apiUrl;
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
     }
 
     public String getApiKey() {
