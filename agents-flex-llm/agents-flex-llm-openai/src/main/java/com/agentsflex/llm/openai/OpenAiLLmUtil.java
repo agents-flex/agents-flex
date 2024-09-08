@@ -68,7 +68,7 @@ public class OpenAiLLmUtil {
 
     public static String promptToEmbeddingsPayload(Document text, EmbeddingOptions options, OpenAiLlmConfig config) {
         // https://platform.openai.com/docs/api-reference/making-requests
-        return Maps.of("model", options.getModelOrDefault(config.getDefaultEmbeddingModal()))
+        return Maps.of("model", options.getModelOrDefault(config.getDefaultEmbeddingModel()))
             .put("encoding_format", "float")
             .put("input", text.getContent())
             .toJSON();

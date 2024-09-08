@@ -23,14 +23,14 @@ public class OpenAiLlmConfig extends LlmConfig {
     private static final String DEFAULT_EMBEDDING_MODEL = "text-embedding-ada-002";
     private static final String DEFAULT_ENDPOINT = "https://api.openai.com";
 
-    private String defaultEmbeddingModal = DEFAULT_EMBEDDING_MODEL;
+    private String defaultEmbeddingModel = DEFAULT_EMBEDDING_MODEL;
 
-    public String getDefaultEmbeddingModal() {
-        return defaultEmbeddingModal;
+    public String getDefaultEmbeddingModel() {
+        return defaultEmbeddingModel;
     }
 
-    public void setDefaultEmbeddingModal(String defaultEmbeddingModal) {
-        this.defaultEmbeddingModal = defaultEmbeddingModal;
+    public void setDefaultEmbeddingModel(String defaultEmbeddingModel) {
+        this.defaultEmbeddingModel = defaultEmbeddingModel;
     }
 
     public OpenAiLlmConfig() {
