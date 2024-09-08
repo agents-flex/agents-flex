@@ -15,8 +15,6 @@
  */
 package com.agentsflex.llm.coze;
 
-import com.agentsflex.core.message.AiMessage;
-
 /**
  * @author yulsh
  */

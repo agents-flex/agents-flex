@@ -26,6 +26,7 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
+
 import java.util.Map;
 
 /**
@@ -65,14 +66,14 @@ public class CozeLlmUtil {
         return functionMessageParser;
     }
 
-    public static String promptToPayload(Prompt<?> prompt, CozeLlmConfig config, CozeChatOptions options, boolean stream) {
+    public static String promptToPayload(Prompt<?> prompt, String botId, String userId, Map<String, String> customVariables, boolean stream) {
         return Maps.of()
-                .put("bot_id", options.getBotId())
-                .put("user_id", options.getUserId())
-                .put("auto_save_history", true)
+            .put("bot_id", botId)
+            .put("user_id", userId)
+            .put("auto_save_history", true)
             .put("additional_messages", promptFormat.toMessagesJsonObject(prompt))
-            .put( "stream", stream)
-                .putIf(options.getCustomVariables() != null, "custom_variables", options.getCustomVariables())
+            .put("stream", stream)
+            .putIf(customVariables != null, "custom_variables", customVariables)
             .toJSON();
     }
 

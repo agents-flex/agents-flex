@@ -17,36 +17,30 @@ package com.agentsflex.llm.coze;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.BaseLlm;
-import com.agentsflex.core.llm.ChatContext;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.MessageResponse;
 import com.agentsflex.core.llm.StreamResponseListener;
-import com.agentsflex.core.llm.client.BaseLlmClientListener;
 import com.agentsflex.core.llm.client.HttpClient;
-import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
@@ -71,17 +65,28 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
     }
 
     private <R extends MessageResponse<?>> void botChat(Prompt<R> prompt, CozeRequestListener listener, ChatOptions chatOptions, boolean stream) {
-        CozeChatOptions options = (CozeChatOptions) chatOptions;
-        String payload = CozeLlmUtil.promptToPayload(prompt, config, options, stream);
+        String botId = config.getDefaultBotId();
+        String userId = config.getDefaultUserId();
+        String conversationId = config.getDefaultConversationId();
+        Map<String, String> customVariables = null;
+
+        if (chatOptions instanceof CozeChatOptions) {
+            CozeChatOptions options = (CozeChatOptions) chatOptions;
+            botId = StringUtil.hasText(options.getBotId()) ? options.getBotId() : botId;
+            userId = StringUtil.hasText(options.getUserId()) ? options.getUserId() : userId;
+            conversationId = StringUtil.hasText(options.getConversationId()) ? options.getConversationId() : conversationId;
+            customVariables = options.getCustomVariables();
+        }
+
+        String payload = CozeLlmUtil.promptToPayload(prompt, botId, userId, customVariables, stream);
         String url = config.getEndpoint() + config.getChatApi();
-        if (options.getConversationId() != null) {
-            url += "?conversation_id=" + options.getConversationId();
+        if (StringUtil.hasText(conversationId)) {
+            url += "?conversation_id=" + conversationId;
         }
         String response = httpClient.post(url, buildHeader(), payload);
         if (config.isDebug()) {
             System.out.println(">>>>request payload:" + payload);
         }
-        CozeChatContext cozeChat;
 
         // stream mode
         if (stream) {
@@ -92,7 +97,8 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         JSONObject jsonObject = JSON.parseObject(response);
         String code = jsonObject.getString("code");
         String error = jsonObject.getString("msg");
-        cozeChat = jsonObject.getObject("data", (Type) CozeChatContext.class);
+
+        CozeChatContext cozeChat = jsonObject.getObject("data", (Type) CozeChatContext.class);
 
         if (!error.isEmpty() && !Objects.equals(code, "0")) {
             listener.onFailure(cozeChat, new Throwable(error));
@@ -104,8 +110,8 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         int attemptCount = 0;
         boolean isCompleted = false;
         int maxAttempts = 20;
-        while (attemptCount < maxAttempts && !isCompleted)  {
-            attemptCount ++;
+        while (attemptCount < maxAttempts && !isCompleted) {
+            attemptCount++;
             try {
                 cozeChat = checkStatus(cozeChat);
                 listener.onMessage(cozeChat);
@@ -127,43 +133,42 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
     private void handleStreamResponse(String response, CozeRequestListener listener) {
         ByteArrayInputStream inputStream = new ByteArrayInputStream(response.getBytes(Charset.defaultCharset()));
         BufferedReader br = new BufferedReader(new InputStreamReader(inputStream, Charset.defaultCharset()));
-        String line;
         CozeChatContext context = new CozeChatContext(this, null);
         List<AiMessage> messageList = new ArrayList<>();
         try {
-            while ( (line = br.readLine()) != null ) {
-                if(!line.trim().equals("") && line.startsWith("data:")){
-                    if (line.contains("[DONE]")) {
-                        continue;
-                    }
-                    line = line.replace("data:", "");
-                    Map<String, String> data = JSON.parseObject(line, Map.class);
-                    String status = data.getOrDefault("status", "");
-                    String type = data.getOrDefault("type", "");
-                    if (status.equals("completed")) {
-                        context = JSON.parseObject(line, CozeChatContext.class);
-                        listener.onStop(context);
-                        continue;
-                    }
-                    // N 条answer，最后一条是完整的
-                    if (type.equals("answer")) {
-                        AiMessage message = new AiMessage();
-                        message.setContent(data.get("content"));
-                        messageList.add(message);
-                    }
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty() || !line.startsWith("data:") || line.contains("[DONE]")) {
+                    continue;
+                }
+
+                //remove "data:"
+                line = line.substring(5);
+                JSONObject data = JSON.parseObject(line);
+                String status = data.getString("status");
+                String type = data.getString("type");
+                if ("completed".equalsIgnoreCase(status)) {
+                    context = JSON.parseObject(line, CozeChatContext.class);
+                    listener.onStop(context);
+                    continue;
+                }
+                // N 条answer，最后一条是完整的
+                if ("answer".equalsIgnoreCase(type)) {
+                    AiMessage message = new AiMessage();
+                    message.setContent(data.getString("content"));
+                    messageList.add(message);
                 }
             }
             if (!messageList.isEmpty()) {
                 // 删除最后一条完整的之后输出
-                messageList.remove(messageList.size() -1);
-                for(AiMessage m: messageList) {
+                messageList.remove(messageList.size() - 1);
+                for (AiMessage m : messageList) {
                     context.setMessage(m);
                     listener.onMessage(context);
                     Thread.sleep(10);
                 }
             }
         } catch (IOException ex) {
-            ex.printStackTrace();
             listener.onFailure(context, ex.getCause());
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -176,8 +181,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         String url = String.format("%s/v3/chat/retrieve?chat_id=%s&conversation_id=%s", config.getEndpoint(), chatId, conversationId);
         String response = httpClient.get(url, buildHeader());
         JSONObject resObj = JSON.parseObject(response);
-        CozeChatContext data = resObj.getObject("data", (Type) CozeChatContext.class);
-        return data;
+        return resObj.getObject("data", (Type) CozeChatContext.class);
     }
 
     private JSONArray fetchMessageList(CozeChatContext cozeChat) {
@@ -198,17 +202,19 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
 
     public AiMessage getChatAnswer(CozeChatContext cozeChat) {
         JSONArray messageList = fetchMessageList(cozeChat);
+        if (messageList == null || messageList.isEmpty()) {
+            return null;
+        }
         List<JSONObject> objects = messageList.stream()
-        .map(JSONObject.class::cast)
-        .filter(obj -> "answer".equals(obj.getString("type")))
-        .collect(Collectors.toList());
+            .map(JSONObject.class::cast)
+            .filter(obj -> "answer".equals(obj.getString("type")))
+            .collect(Collectors.toList());
 
-        JSONObject answer = objects.size() > 0 ? objects.get(0) : null;
+        JSONObject answer = !objects.isEmpty() ? objects.get(0) : null;
         if (answer != null) {
             answer.put("usage", cozeChat.getUsage());
-            answer.put("content",answer.getString("content"));
-            AiMessage message = aiMessageParser.parse(answer);
-            return message;
+            answer.put("content", answer.getString("content"));
+            return aiMessageParser.parse(answer);
         }
         return null;
     }
