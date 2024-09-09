@@ -17,14 +17,14 @@ Before you begin, ensure you are:
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>1.0.0-beta.9</version>
+    <version>1.0.0-beta.10</version>
 </dependency>
 ```
 
 Or use Gradle:
 
 ```java
-implementation 'com.agentsflex:agents-flex-bom:1.0.0-beta.9'
+implementation 'com.agentsflex:agents-flex-bom:1.0.0-beta.10'
 ```
 
 **Step 2: Create a Java class with a `main` method:**

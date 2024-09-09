@@ -1,6 +1,26 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.0-beta.10 20240909
+- feat: Added support for RedisStore vector storage, thanks to @giteeClass
+- feat: Added support for large model dialogues for Coze Bot, thanks to @yulongsheng
+- feat: Automatic configuration of Springboot for ElasticSearch Store, thanks to @songyinyin
+- feat: Added support for Embedding of Tongyi Qianwen, thanks to @sssllg
+- feat: Added support for all text generation models of Gitee AI's serverless
+- feat: Added support for all image generation models of Gitee AI's serverless
+- docs: Corrected sample code errors in the documentation
+
+---
+- 新增：添加 RedisStore 的向量存储支持，感谢 @giteeClass
+- 新增：新增 Coze Bot 的大模型对话支持，感谢 @yulongsheng
+- 新增: ElasticSearch Store 对 Springboot 的自动配置功能，感谢@songyinyin
+- 新增：新增通义千问的 Embedding 支持，感谢 @sssllg
+- 新增：新增对 Gitee AI 的 serverless 所有文本生成模型的支持
+- 新增：新增对 Gitee AI 的 serverless 所有图片生成模型的支持
+- 文档：修正文档的示例代码错误
+
+
+
 ## v1.0.0-beta.9 20240813
 - feat: add custom request header in openaiLLM https://github.com/agents-flex/agents-flex/issues/5
 - feat: add https.proxyHost config for the http client, close https://github.com/agents-flex/agents-flex/issues/1
