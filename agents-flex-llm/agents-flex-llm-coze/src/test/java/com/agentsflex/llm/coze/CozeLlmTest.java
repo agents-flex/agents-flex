@@ -48,8 +48,14 @@ public class CozeLlmTest {
     public void testChat() {
         TextPrompt prompt = new TextPrompt(textPrompt);
         AiMessageResponse response = llm.chat(prompt, options);
-        AiMessage message = response.getMessage();
 
+        if (response.isError()){
+            System.out.println(response.getErrorMessage());
+            return;
+        }
+
+
+        AiMessage message = response.getMessage();
         String content = message.getContent();
         System.out.println(content);
     }

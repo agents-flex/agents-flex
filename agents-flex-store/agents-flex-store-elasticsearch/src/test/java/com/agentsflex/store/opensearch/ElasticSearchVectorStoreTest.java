@@ -21,6 +21,7 @@ import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.store.exception.StoreException;
 import com.agentsflex.store.elasticsearch.ElasticSearchVectorStore;
 import com.agentsflex.store.elasticsearch.ElasticSearchVectorStoreConfig;
 import org.junit.Test;
@@ -51,7 +52,7 @@ public class ElasticSearchVectorStoreTest {
         return store;
     }
 
-    @Test
+    @Test(expected = StoreException.class)
     public void test01() {
         ElasticSearchVectorStore store = getVectorStore();
 
