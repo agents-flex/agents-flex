@@ -17,6 +17,7 @@ package com.agentsflex.core.image;
 
 public class GenerateImageRequest extends BaseImageRequest {
     private String prompt;
+    private String negativePrompt;
     private String quality;
     private String style;
 
@@ -26,6 +27,14 @@ public class GenerateImageRequest extends BaseImageRequest {
 
     public void setPrompt(String prompt) {
         this.prompt = prompt;
+    }
+
+    public String getNegativePrompt() {
+        return negativePrompt;
+    }
+
+    public void setNegativePrompt(String negativePrompt) {
+        this.negativePrompt = negativePrompt;
     }
 
     public String getQuality() {
