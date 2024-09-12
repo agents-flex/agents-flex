@@ -170,33 +170,40 @@ public class WeatherUtil {
 ### 大语言模型
 
 
-| 大语言模型名称                      | 支持情况   | 描述    |
-|------------------------------|--------|-------|
-| ChatGPT                      | ✅ 已支持  | -     |
-| Ollama 部署模型                  | ✅ 已支持  | -     |
-| 星火大模型                        | ✅ 已支持  | -     |
-| 通义千问                         | ✅ 已支持  | -     |
-| 智普 ChatGLM                   | ✅ 已支持  | -     |
-| 月之暗面 Moonshot                | ✅ 已支持  | -     |
-| 扣子 Coze                      | ✅ 已支持  | -     |
-| GiteeAI - Qwen2-7B-Instruct  | ✅ 已支持  | -     |
-| GiteeAI - Qwen2-72B-Instruct | ✅ 已支持  | -     |
-| GiteeAI - Yi-1.5-34B-Chat    | ✅ 已支持  | -     |
-| GiteeAI - glm-4-9b-chat      | ✅ 已支持  | -     |
-| 文心一言                         | 计划中... | 期待 PR |
+| 大语言模型名称                       | 支持情况   | 描述    |
+|-------------------------------|--------|-------|
+| ChatGPT                       | ✅ 已支持  | -     |
+| Ollama 部署模型                   | ✅ 已支持  | -     |
+| 星火大模型                         | ✅ 已支持  | -     |
+| 通义千问                          | ✅ 已支持  | -     |
+| 智普 ChatGLM                    | ✅ 已支持  | -     |
+| 月之暗面 Moonshot                 | ✅ 已支持  | -     |
+| 扣子 Coze                       | ✅ 已支持  | -     |
+| GiteeAI - Qwen2-7B-Instruct   | ✅ 已支持  | -     |
+| GiteeAI - Qwen2-72B-Instruct  | ✅ 已支持  | -     |
+| GiteeAI - Yi-1.5-34B-Chat     | ✅ 已支持  | -     |
+| GiteeAI - glm-4-9b-chat       | ✅ 已支持  | -     |
+| 文心一言                          | 计划中... | 期待 PR |
 
 ### 图片生成模型
 
 
-| 大语言模型名称                                | 支持情况   | 描述    |
-|----------------------------------------|--------|-------|
-| Openai                                 | ✅ 已支持  | -     |
-| Stability                              | ✅ 已支持  | -     |
-| GiteeAI - stable-diffusion-3-medium    | ✅ 已支持  | -     |
-| GiteeAI - FLUX.1-schnell               | ✅ 已支持  | -     |
-| GiteeAI - stable-diffusion-xl-base-1.0 | ✅ 已支持  | -     |
-| GiteeAI - Kolors                       | ✅ 已支持  | -     |
-| 更多                                     |计划中... | 期待 PR |
+| 大语言模型名称                                     | 支持情况   | 描述    |
+|---------------------------------------------|--------|-------|
+| Openai                                      | ✅ 已支持  | -     |
+| Stability                                   | ✅ 已支持  | -     |
+| GiteeAI - stable-diffusion-3-medium         | ✅ 已支持  | -     |
+| GiteeAI - FLUX.1-schnell                    | ✅ 已支持  | -     |
+| GiteeAI - stable-diffusion-xl-base-1.0      | ✅ 已支持  | -     |
+| GiteeAI - Kolors                            | ✅ 已支持  | -     |
+| SiliconFlow - Flux.1-schnell                | ✅ 已支持  | -     |
+| SiliconFlow - Stable Diffusion 3            | ✅ 已支持  | -     |
+| SiliconFlow - Stable Diffusion XL           | ✅ 已支持  | -     |
+| SiliconFlow - Stable Diffusion 2.1          | ✅ 已支持  | -     |
+| SiliconFlow - Stable Diffusion Turbo        | ✅ 已支持  | -     |
+| SiliconFlow - Stable Diffusion XL Turbo     | ✅ 已支持  | -     |
+| SiliconFlow - Stable Diffusion XL Lighting  | ✅ 已支持  | -     |
+| 更多                                          |计划中... | 期待 PR |
 
 
 ### 向量化模型
