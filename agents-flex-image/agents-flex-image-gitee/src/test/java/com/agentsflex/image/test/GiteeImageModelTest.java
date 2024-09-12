@@ -18,8 +18,8 @@ package com.agentsflex.image.test;
 import com.agentsflex.core.image.GenerateImageRequest;
 import com.agentsflex.core.image.Image;
 import com.agentsflex.core.image.ImageResponse;
-import com.agentsflex.image.giteesd3.GiteeImageModel;
-import com.agentsflex.image.giteesd3.GiteeImageModelConfig;
+import com.agentsflex.image.gitee.GiteeImageModel;
+import com.agentsflex.image.gitee.GiteeImageModelConfig;
 import org.junit.Test;
 
 import java.io.File;
@@ -29,7 +29,7 @@ public class GiteeImageModelTest {
     @Test
     public void testGenImage(){
         GiteeImageModelConfig config = new GiteeImageModelConfig();
-        config.setApiKey("P07AGYTQBNHREVNGDCM8XATPJLY8RVESLLLNWCNR");
+        config.setApiKey("****");
 
         GiteeImageModel openAiImageModel = new GiteeImageModel(config);
 

@@ -1,4 +1,4 @@
-package com.agentsflex.image.giteesd3;
+package com.agentsflex.image.gitee;
 
 public class GiteeImageModels {
 

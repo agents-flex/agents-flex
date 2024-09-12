@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.image.giteesd3;
+package com.agentsflex.image.gitee;
 
 import com.agentsflex.core.image.*;
 import com.agentsflex.core.llm.client.HttpClient;
@@ -56,12 +56,12 @@ public class GiteeImageModel implements ImageModel {
 
     @Override
     public ImageResponse edit(EditImageRequest request) {
-        throw new IllegalStateException("GiteeSD3ImageModel Can not support edit image.");
+        throw new IllegalStateException("GiteeImageModel Can not support edit image.");
     }
 
     @Override
     public ImageResponse vary(VaryImageRequest request) {
-        throw new IllegalStateException("GiteeSD3ImageModel Can not support vary image.");
+        throw new IllegalStateException("GiteeImageModel Can not support vary image.");
     }
 
 }
