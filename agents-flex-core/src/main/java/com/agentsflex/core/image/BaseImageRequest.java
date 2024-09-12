@@ -15,6 +15,9 @@
  */
 package com.agentsflex.core.image;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class BaseImageRequest {
     private String model;
     private Integer n;
@@ -22,6 +25,7 @@ public class BaseImageRequest {
     private String user;
     private Integer width;
     private Integer height;
+    private Map<String, Object> options;
 
     public String getModel() {
         return model;
@@ -82,5 +86,28 @@ public class BaseImageRequest {
 
     public void setUser(String user) {
         this.user = user;
+    }
+
+    public Map<String, Object> getOptions() {
+        return options;
+    }
+
+    public void setOptions(Map<String, Object> options) {
+        this.options = options;
+    }
+
+    public void addOption(String key, Object value) {
+        if (this.options == null) {
+            this.options = new HashMap<>();
+        }
+        this.options.put(key, value);
+    }
+
+    public Object getOption(String key) {
+        return this.options == null ? null : this.options.get(key);
+    }
+
+    public Object getOptionOrDefault(String key, Object defaultValue) {
+        return this.options == null ? defaultValue : this.options.getOrDefault(key, defaultValue);
     }
 }
