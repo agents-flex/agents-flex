@@ -80,7 +80,7 @@ public class Image {
         return bytes;
     }
 
-    public void writeBytesToFile(File file) {
+    public void writeToFile(File file) {
         if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
             throw new IllegalStateException("Can not mkdirs for path: " + file.getParentFile().getAbsolutePath());
         }

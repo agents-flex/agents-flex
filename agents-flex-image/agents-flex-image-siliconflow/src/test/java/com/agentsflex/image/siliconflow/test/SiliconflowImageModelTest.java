@@ -43,7 +43,7 @@ public class SiliconflowImageModelTest {
         if (generate != null && generate.getImages() != null){
             int index = 0;
             for (Image image : generate.getImages()) {
-                image.writeBytesToFile(new File("/Users/michael/Desktop/test/image"+(index++)+".jpg"));
+                image.writeToFile(new File("/Users/michael/Desktop/test/image"+(index++)+".jpg"));
             }
         }
 
