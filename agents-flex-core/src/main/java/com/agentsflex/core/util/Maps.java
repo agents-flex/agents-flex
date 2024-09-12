@@ -57,6 +57,14 @@ public class Maps {
             return this;
         }
 
+        public Builder putOrDefault(String key, Object value, Object orDefault) {
+            if (isNullOrEmpty(value)) {
+                return this.put(key, orDefault);
+            } else {
+                return this.put(key, value);
+            }
+        }
+
         public Builder put(String key, Builder value) {
             map.put(key, value.build());
             return this;
@@ -89,28 +97,33 @@ public class Maps {
         }
 
         public Builder putIfNotEmpty(String key, Object value) {
+            if (!isNullOrEmpty(value)) {
+                put(key, value);
+            }
+            return this;
+        }
+
+        private boolean isNullOrEmpty(Object value) {
             if (value == null) {
-                return this;
+                return true;
             }
 
             if (value instanceof Collection && ((Collection<?>) value).isEmpty()) {
-                return this;
+                return true;
             }
 
             if (value instanceof Map && ((Map<?, ?>) value).isEmpty()) {
-                return this;
+                return true;
             }
 
             if (value.getClass().isArray() && Array.getLength(value) == 0) {
-                return this;
+                return true;
             }
 
-            if (value instanceof String && ((String) value).isEmpty()) {
-                return this;
+            if (value instanceof String && ((String) value).trim().isEmpty()) {
+                return true;
             }
-
-            put(key, value);
-            return this;
+            return false;
         }
 
 
