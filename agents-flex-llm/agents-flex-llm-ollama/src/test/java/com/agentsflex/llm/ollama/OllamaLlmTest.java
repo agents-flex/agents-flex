@@ -1,6 +1,8 @@
 package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.llm.response.FunctionMessageResponse;
+import com.agentsflex.core.prompt.FunctionPrompt;
 import org.junit.Test;
 
 public class OllamaLlmTest {
@@ -29,5 +31,23 @@ public class OllamaLlmTest {
         llm.chatStream("who are your", (context, response) -> System.out.println(response.getMessage().getContent()));
 
         Thread.sleep(20000);
+    }
+
+    @Test
+    public void testFunctionCall() throws InterruptedException {
+        OllamaLlmConfig config = new OllamaLlmConfig();
+        config.setEndpoint("http://localhost:11434");
+        config.setModel("qwen2:1.5b");
+        config.setDebug(true);
+
+        Llm llm = new OllamaLlm(config);
+
+
+        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        FunctionMessageResponse response = llm.chat(prompt);
+
+        Object result = response.getFunctionResult();
+
+        System.out.println(result);
     }
 }
