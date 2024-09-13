@@ -37,13 +37,13 @@ public class OllamaLlmTest {
     public void testFunctionCall() throws InterruptedException {
         OllamaLlmConfig config = new OllamaLlmConfig();
         config.setEndpoint("http://localhost:11434");
-        config.setModel("qwen2:1.5b");
+        config.setModel("llama3.1");
         config.setDebug(true);
 
         Llm llm = new OllamaLlm(config);
 
 
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        FunctionPrompt prompt = new FunctionPrompt("What's the weather like in Beijing?", WeatherFunctions.class);
         FunctionMessageResponse response = llm.chat(prompt);
 
         Object result = response.getFunctionResult();
