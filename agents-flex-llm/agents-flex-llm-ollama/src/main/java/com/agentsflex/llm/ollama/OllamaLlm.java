@@ -29,7 +29,9 @@ import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
+import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
@@ -47,6 +49,8 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
     private HttpClient httpClient = new HttpClient();
     private DnjsonClient dnjsonClient = new DnjsonClient();
     public AiMessageParser aiMessageParser = OllamaLlmUtil.getAiMessageParser();
+    public FunctionMessageParser functionMessageParser = OllamaLlmUtil.getFunctionMessageParser();
+
 
 
     public OllamaLlm(OllamaLlmConfig config) {
@@ -67,12 +71,13 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         String endpoint = config.getEndpoint();
         // https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
         String response = httpClient.post(endpoint + "/api/embeddings", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
         }
 
         VectorData vectorData = new VectorData();
@@ -90,7 +95,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
         String endpoint = config.getEndpoint();
-        String payload = OllamaLlmUtil.promptToPayload(prompt, config, false);
+        String payload = OllamaLlmUtil.promptToPayload(prompt, config, options,false);
         String response = httpClient.post(endpoint + "/api/chat", headers, payload);
         if (StringUtil.noText(response)) {
             return null;
@@ -106,7 +111,8 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         AbstractBaseMessageResponse<?> messageResponse;
 
         if (prompt instanceof FunctionPrompt) {
-            throw new IllegalStateException("OLlama not support function calling");
+            messageResponse = new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
+                , functionMessageParser.parse(jsonObject));
         } else {
             messageResponse = new AiMessageResponse(aiMessageParser.parse(jsonObject));
         }
@@ -128,7 +134,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
-        String payload = OllamaLlmUtil.promptToPayload(prompt, config, true);
+        String payload = OllamaLlmUtil.promptToPayload(prompt, config, options, true);
 
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, null);

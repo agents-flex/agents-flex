@@ -20,12 +20,15 @@ import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
+import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
+import com.agentsflex.core.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
+import com.alibaba.fastjson.JSON;
 
 import java.util.Base64;
 import java.util.Map;
@@ -68,6 +71,14 @@ public class OllamaLlmUtil {
         aiMessageParser.setTotalTokensPath("$.eval_count");
         aiMessageParser.setCompletionTokensPath("$.prompt_eval_count");
         return aiMessageParser;
+    }
+
+    public static FunctionMessageParser getFunctionMessageParser() {
+        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
+        functionMessageParser.setFunctionNamePath("$.message.tool_calls[0].function.name");
+        functionMessageParser.setFunctionArgsPath("$.message.tool_calls[0].function.arguments");
+        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
+        return functionMessageParser;
     }
 
 
