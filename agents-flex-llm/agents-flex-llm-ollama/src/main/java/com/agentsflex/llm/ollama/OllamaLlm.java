@@ -40,7 +40,6 @@ import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
-import com.alibaba.fastjson.JSONReader;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -53,7 +52,6 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
     public FunctionMessageParser functionMessageParser = OllamaLlmUtil.getFunctionMessageParser();
 
 
-
     public OllamaLlm(OllamaLlmConfig config) {
         super(config);
     }
@@ -63,7 +61,10 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
     public VectorData embed(Document document, EmbeddingOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        //headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+
+        if (StringUtil.hasText(getConfig().getApiKey())) {
+            headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+        }
 
         String payload = Maps.of("model", options.getModelOrDefault(config.getModel()))
             .put("input", document.getContent())
@@ -84,6 +85,12 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
         double[] embedding = JSONPath.read(response, "$.embeddings[0]", double[].class);
         vectorData.setVector(embedding);
+
+        vectorData.addMetadata("total_duration", JSONPath.read(response, "$.total_duration", Long.class));
+        vectorData.addMetadata("load_duration", JSONPath.read(response, "$.load_duration", Long.class));
+        vectorData.addMetadata("prompt_eval_count", JSONPath.read(response, "$.prompt_eval_count", Integer.class));
+        vectorData.addMetadata("model", JSONPath.read(response, "$.model", String.class));
+
         return vectorData;
     }
 
@@ -94,7 +101,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
         String endpoint = config.getEndpoint();
-        String payload = OllamaLlmUtil.promptToPayload(prompt, config, options,false);
+        String payload = OllamaLlmUtil.promptToPayload(prompt, config, options, false);
         String response = httpClient.post(endpoint + "/api/chat", headers, payload);
         if (StringUtil.noText(response)) {
             return null;

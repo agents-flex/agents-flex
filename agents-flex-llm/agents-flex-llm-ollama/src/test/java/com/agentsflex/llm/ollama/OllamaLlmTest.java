@@ -1,14 +1,16 @@
 package com.agentsflex.llm.ollama;
 
+import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
+import com.agentsflex.core.store.VectorData;
 import org.junit.Test;
 
 public class OllamaLlmTest {
 
     @Test
-    public void test01() {
+    public void testChat() {
         OllamaLlmConfig config = new OllamaLlmConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3");
@@ -32,6 +34,21 @@ public class OllamaLlmTest {
 
         Thread.sleep(20000);
     }
+
+
+    @Test
+    public void testEmbedding() {
+        OllamaLlmConfig config = new OllamaLlmConfig();
+        config.setEndpoint("http://localhost:11434");
+        config.setModel("llama3.1");
+        config.setDebug(true);
+
+        Llm llm = new OllamaLlm(config);
+        VectorData vectorData = llm.embed(Document.of("hello world"));
+        System.out.println(vectorData);
+    }
+
+
 
     @Test
     public void testFunctionCall() throws InterruptedException {

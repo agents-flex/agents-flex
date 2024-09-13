@@ -62,9 +62,11 @@ public class DefaultFunctionMessageParser implements FunctionMessageParser {
         }
         FunctionMessage functionMessage = new FunctionMessage();
         functionMessage.setFunctionName(functionName);
-        String functionArgsString = (String) JSONPath.eval(jsonObject, this.functionArgsPath);
-        if (functionArgsString != null) {
-            functionMessage.setArgs(this.functionArgsParser.parse(functionArgsString));
+        Object argsResult = JSONPath.eval(jsonObject, this.functionArgsPath);
+        if (argsResult instanceof String && this.functionArgsParser != null) {
+            functionMessage.setArgs(this.functionArgsParser.parse((String) argsResult));
+        } else if (argsResult instanceof Map) {
+            functionMessage.setArgs((Map) argsResult);
         }
         return functionMessage;
     }
