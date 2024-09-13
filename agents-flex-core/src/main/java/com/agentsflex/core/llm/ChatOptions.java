@@ -36,11 +36,20 @@ public class ChatOptions {
     };
 
 
+    private String seed;
     private Float temperature = 0.8f;
     private Float topP;
     private Integer topK;
     private Integer maxTokens;
     private List<String> stop;
+
+    public String getSeed() {
+        return seed;
+    }
+
+    public void setSeed(String seed) {
+        this.seed = seed;
+    }
 
     public Float getTemperature() {
         return temperature;
