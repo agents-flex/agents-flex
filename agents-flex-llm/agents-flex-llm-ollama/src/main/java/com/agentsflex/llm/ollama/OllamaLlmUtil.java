@@ -15,6 +15,7 @@
  */
 package com.agentsflex.llm.ollama;
 
+import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
@@ -70,12 +71,17 @@ public class OllamaLlmUtil {
     }
 
 
-    public static String promptToPayload(Prompt<?> prompt, OllamaLlmConfig config, boolean stream) {
+    public static String promptToPayload(Prompt<?> prompt, OllamaLlmConfig config, ChatOptions options, boolean stream) {
         return Maps.of("model", config.getModel())
             .put("messages", promptFormat.toMessagesJsonObject(prompt))
             .putIf(!stream, "stream", stream)
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
+            .putIfNotEmpty("options.seed", options.getSeed())
+            .putIfNotEmpty("options.top_k", options.getTopK())
+            .putIfNotEmpty("options.top_p", options.getTopP())
+            .putIfNotEmpty("options.temperature", options.getTemperature())
+            .putIfNotEmpty("options.stop", options.getStop())
             .toJSON();
-
     }
 
 }
