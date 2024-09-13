@@ -53,7 +53,24 @@ public class Maps {
         private Map<String, Object> map = new HashMap<>();
 
         public Builder put(String key, Object value) {
-            map.put(key, value);
+            if (key.contains(".")) {
+                String[] keys = key.split("\\.");
+                Map<String, Object> currentMap = map;
+                for (int i = 0; i < keys.length; i++) {
+                    String currentKey = keys[i].trim();
+                    if (currentKey.isEmpty()) {
+                        continue;
+                    }
+                    if (i == keys.length - 1) {
+                        currentMap.put(currentKey, value);
+                    } else {
+                        currentMap = (Map<String, Object>) currentMap.computeIfAbsent(currentKey, k -> new HashMap<>());
+                    }
+                }
+            } else {
+                map.put(key, value);
+            }
+
             return this;
         }
 
@@ -66,7 +83,7 @@ public class Maps {
         }
 
         public Builder put(String key, Builder value) {
-            map.put(key, value.build());
+            this.put(key, value.build());
             return this;
         }
 
