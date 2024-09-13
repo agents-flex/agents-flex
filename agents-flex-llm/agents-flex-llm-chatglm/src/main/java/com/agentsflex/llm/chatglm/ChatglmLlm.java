@@ -70,12 +70,13 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         String endpoint = config.getEndpoint();
         String payload = Maps.of("model", "embedding-2").put("input", document.getContent()).toJSON();
         String response = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
         }
 
         VectorData vectorData = new VectorData();
@@ -94,14 +95,14 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         String endpoint = config.getEndpoint();
         String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false, options);
         String response = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
 
+        if (StringUtil.noText(response)) {
+            return null;
+        }
 
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");

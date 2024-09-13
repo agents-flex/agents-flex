@@ -63,12 +63,13 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
         String endpoint = config.getEndpoint();
         String payload = MoonshotLlmUtil.promptToPayload(prompt, config, false, options);
         String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
         }
 
         JSONObject jsonObject = JSON.parseObject(response);

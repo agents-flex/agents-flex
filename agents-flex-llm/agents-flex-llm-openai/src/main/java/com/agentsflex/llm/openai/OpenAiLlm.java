@@ -81,12 +81,14 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
+        }
+
+
+        if (StringUtil.noText(response)) {
+            return null;
         }
 
         JSONObject jsonObject = JSON.parseObject(response);
@@ -137,12 +139,13 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
         String endpoint = config.getEndpoint();
         // https://platform.openai.com/docs/api-reference/embeddings/create
         String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
         }
 
         VectorData vectorData = new VectorData();

@@ -67,12 +67,13 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
         String payload = QwenLlmUtil.promptToPayload(prompt, config, options);
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + "/api/v1/services/aigc/text-generation/generation", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
         }
 
         JSONObject jsonObject = JSON.parseObject(response);
@@ -128,7 +129,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        String payload = QwenLlmUtil.promptToEnabledPayload(document,options,config);
+        String payload = QwenLlmUtil.promptToEnabledPayload(document, options, config);
 
 
         Map<String, String> headers = new HashMap<>();
@@ -144,8 +145,8 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
             System.out.println(">>>>receive payload:" + response);
         }
         VectorData vectorData = new VectorData();
-        Object verctor= JSONPath.read(response,"$.output.embeddings[0].embedding");
-        double[] vers=JSON.parseObject(JSON.toJSONString(verctor),double[].class);
+        Object verctor = JSONPath.read(response, "$.output.embeddings[0].embedding");
+        double[] vers = JSON.parseObject(JSON.toJSONString(verctor), double[].class);
         vectorData.setVector(vers);
         return vectorData;
     }

@@ -125,12 +125,13 @@ public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
         String endpoint = config.getEndpoint();
         String embeddingModel = options.getModelOrDefault(config.getDefaultEmbeddingModal());
         String response = httpClient.post(endpoint + "/api/serverless/" + embeddingModel + "/embeddings", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
         }
 
         VectorData vectorData = new VectorData();
