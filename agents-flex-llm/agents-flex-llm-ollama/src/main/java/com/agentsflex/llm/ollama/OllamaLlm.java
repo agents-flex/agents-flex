@@ -40,6 +40,7 @@ import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
+import com.alibaba.fastjson.JSONReader;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -62,15 +63,15 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
     public VectorData embed(Document document, EmbeddingOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+        //headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
         String payload = Maps.of("model", options.getModelOrDefault(config.getModel()))
-            .put("prompt", document.getContent())
+            .put("input", document.getContent())
             .toJSON();
 
         String endpoint = config.getEndpoint();
         // https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
-        String response = httpClient.post(endpoint + "/api/embeddings", headers, payload);
+        String response = httpClient.post(endpoint + "/api/embed", headers, payload);
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
@@ -79,14 +80,12 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         if (StringUtil.noText(response)) {
             return null;
         }
-
         VectorData vectorData = new VectorData();
-        double[] embedding = JSONPath.read(response, "$.embedding", double[].class);
-        vectorData.setVector(embedding);
 
+        double[] embedding = JSONPath.read(response, "$.embeddings[0]", double[].class);
+        vectorData.setVector(embedding);
         return vectorData;
     }
-
 
     @Override
     public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
