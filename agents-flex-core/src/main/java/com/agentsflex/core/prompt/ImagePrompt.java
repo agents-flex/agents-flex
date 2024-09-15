@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.prompt;
 
+import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.util.Maps;
 
@@ -46,6 +47,7 @@ public class ImagePrompt extends TextPrompt {
         return Collections.singletonList(new TextAndImageMessage(this));
     }
 
+
     @Override
     public String toString() {
         return "ImagePrompt{" +
@@ -56,7 +58,7 @@ public class ImagePrompt extends TextPrompt {
     }
 
 
-    public static class TextAndImageMessage extends Message {
+    public static class TextAndImageMessage extends HumanMessage {
         private final ImagePrompt prompt;
 
         public TextAndImageMessage(ImagePrompt prompt) {
