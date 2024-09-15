@@ -221,8 +221,9 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        return super.embed(document);
+        throw new UnsupportedOperationException("Not supported yet.");
     }
+
 
     @Override
     public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {

@@ -28,7 +28,6 @@ import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.prompt.FunctionPrompt;
@@ -83,8 +82,9 @@ public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
         AbstractBaseMessageResponse<?> messageResponse;
 
         if (prompt instanceof FunctionPrompt) {
-            messageResponse = new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
-                , functionMessageParser.parse(jsonObject));
+//            messageResponse = new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
+//                , functionMessageParser.parse(jsonObject));
+            throw new UnsupportedOperationException("Gitee AI not support function call");
         } else {
             messageResponse = new AiMessageResponse(aiMessageParser.parse(jsonObject));
         }

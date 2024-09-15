@@ -138,16 +138,18 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
         String response = httpClient.post(QwenLlmUtil.createEmbedURL(config), headers, payload);
 
-        if (StringUtil.noText(response)) {
-            return null;
-        }
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
+
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+
         VectorData vectorData = new VectorData();
-        Object verctor = JSONPath.read(response, "$.output.embeddings[0].embedding");
-        double[] vers = JSON.parseObject(JSON.toJSONString(verctor), double[].class);
-        vectorData.setVector(vers);
+        Object embedding = JSONPath.read(response, "$.output.embeddings[0].embedding");
+        double[] vector = JSON.parseObject(JSON.toJSONString(embedding), double[].class);
+        vectorData.setVector(vector);
         return vectorData;
     }
 

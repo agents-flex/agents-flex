@@ -108,6 +108,7 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
         llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
     }
 
+
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
         throw new IllegalStateException("Moonshot can not support embedding");
