@@ -2,8 +2,11 @@ package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.llm.response.FunctionMessageResponse;
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
+import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.store.VectorData;
 import org.junit.Test;
 
@@ -49,7 +52,6 @@ public class OllamaLlmTest {
     }
 
 
-
     @Test
     public void testFunctionCall() throws InterruptedException {
         OllamaLlmConfig config = new OllamaLlmConfig();
@@ -67,4 +69,23 @@ public class OllamaLlmTest {
 
         System.out.println(result);
     }
+
+
+    @Test
+    public void testVisionModel() {
+        OllamaLlmConfig config = new OllamaLlmConfig();
+        config.setEndpoint("http://localhost:11434");
+        config.setModel("llava");
+        config.setDebug(true);
+
+        Llm llm = new OllamaLlm(config);
+
+        ImagePrompt imagePrompt = new ImagePrompt("What's in the picture?",
+            "https://agentsflex.com/assets/images/logo.png");
+
+        AiMessageResponse response = llm.chat(imagePrompt);
+        AiMessage message = response.getMessage();
+        System.out.println(message);
+    }
+
 }
