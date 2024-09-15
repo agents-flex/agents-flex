@@ -142,7 +142,6 @@ public class WeatherUtil {
         return name + "的天气是阴转多云。 ";
     }
 }
-
 ```
 
 - 第二步: 通过 Prompt、Functions 传入给大模型，然后得到结果
@@ -185,6 +184,7 @@ public class WeatherUtil {
 | GiteeAI - glm-4-9b-chat       | ✅ 已支持  | -     |
 | 文心一言                          | 计划中... | 期待 PR |
 
+
 ### 图片生成模型
 
 
@@ -204,6 +204,28 @@ public class WeatherUtil {
 | SiliconFlow - Stable Diffusion XL Turbo     | ✅ 已支持  | -     |
 | SiliconFlow - Stable Diffusion XL Lighting  | ✅ 已支持  | -     |
 | 更多                                          |计划中... | 期待 PR |
+
+
+
+### Function Calling 方法调用
+
+| 大语言模型名称                     | 支持情况   | 描述    |
+|-----------------------------|--------|-------|
+| Openai                      | ✅ 已支持  | -     |
+| 星火大模型                       | ✅ 已支持  | -     |
+| 智普 ChatGLM                  | ✅ 已支持  | -     |
+| Ollama                      | ✅ 已支持  | -     |
+| 通义千问                        | ✅ 已支持  | -     |
+| 更多                          |计划中... | 期待 PR |
+
+
+### 多模态
+
+| 大语言模型名称                     | 支持情况   | 描述    |
+|-----------------------------|--------|-------|
+| Openai                      | ✅ 已支持  | -     |
+| Ollama                      | ✅ 已支持  | -     |
+| 更多                          |计划中... | 期待 PR |
 
 
 ### 向量化模型
