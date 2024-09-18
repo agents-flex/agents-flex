@@ -52,13 +52,13 @@ public class OpenAiImageModel implements ImageModel {
         String responseJson = httpClient.post(url, headers, payload);
 
         if (StringUtil.noText(responseJson)) {
-            return null;
+            return ImageResponse.error("response is no text");
         }
 
         JSONObject root = JSON.parseObject(responseJson);
         JSONArray images = root.getJSONArray("data");
         if (images == null || images.isEmpty()) {
-            return null;
+            return ImageResponse.error("image data is empty: " + responseJson);
         }
         ImageResponse response = new ImageResponse();
         for (int i = 0; i < images.size(); i++) {
@@ -72,12 +72,12 @@ public class OpenAiImageModel implements ImageModel {
 
     @Override
     public ImageResponse edit(EditImageRequest request) {
-        return null;
+        throw new UnsupportedOperationException("not support edit image");
     }
 
     @Override
     public ImageResponse vary(VaryImageRequest request) {
-        return null;
+        throw new UnsupportedOperationException("not support vary image");
     }
 
 }

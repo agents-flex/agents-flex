@@ -51,7 +51,11 @@ public class SiliconImageModel implements ImageModel {
         String url = config.getEndpoint() + SiliconflowImageModels.getPath(config.getModel());
         String response = httpClient.post(url, headers, payload);
         if (StringUtil.noText(response)) {
-            return null;
+            return ImageResponse.error("response is no text");
+        }
+
+        if (StringUtil.notJsonObject(response)) {
+            return ImageResponse.error(response);
         }
 
         JSONObject jsonObject = JSON.parseObject(response);

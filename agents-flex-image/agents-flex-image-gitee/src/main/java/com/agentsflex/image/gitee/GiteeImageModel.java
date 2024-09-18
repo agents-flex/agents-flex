@@ -44,7 +44,7 @@ public class GiteeImageModel implements ImageModel {
         String url = config.getEndpoint() + "/api/serverless/" + config.getModel() + "/text-to-image";
         byte[] imageBytes = httpClient.postBytes(url, headers, payload);
         if (imageBytes == null || imageBytes.length == 0) {
-            return null;
+            return ImageResponse.error("can not read the image bytes.");
         }
 
         ImageResponse response = new ImageResponse();
