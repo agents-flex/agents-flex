@@ -42,4 +42,17 @@ public class StringUtil {
         }
         return null;
     }
+
+    public static boolean isJsonObject(String jsonString) {
+        if (noText(jsonString)) {
+            return false;
+        }
+
+        jsonString = jsonString.trim();
+        return jsonString.startsWith("{") && jsonString.endsWith("}");
+    }
+
+    public static boolean notJsonObject(String jsonString) {
+        return !isJsonObject(jsonString);
+    }
 }
