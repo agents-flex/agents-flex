@@ -65,7 +65,7 @@ public class OllamaLlmTest {
         FunctionPrompt prompt = new FunctionPrompt("What's the weather like in Beijing?", WeatherFunctions.class);
         FunctionMessageResponse response = llm.chat(prompt);
 
-        Object result = response.getFunctionResult();
+        Object result = response == null ? null : response.getFunctionResult();
 
         System.out.println(result);
     }
@@ -80,11 +80,10 @@ public class OllamaLlmTest {
 
         Llm llm = new OllamaLlm(config);
 
-        ImagePrompt imagePrompt = new ImagePrompt("What's in the picture?",
-            "https://agentsflex.com/assets/images/logo.png");
+        ImagePrompt imagePrompt = new ImagePrompt("What's in the picture?", "https://agentsflex.com/assets/images/logo.png");
 
         AiMessageResponse response = llm.chat(imagePrompt);
-        AiMessage message = response.getMessage();
+        AiMessage message = response == null ? null : response.getMessage();
         System.out.println(message);
     }
 
