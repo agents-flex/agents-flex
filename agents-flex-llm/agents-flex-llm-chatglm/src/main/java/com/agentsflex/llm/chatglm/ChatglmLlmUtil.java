@@ -27,10 +27,13 @@ import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
 import io.jsonwebtoken.JwtBuilder;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.impl.DefaultJwtBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.MacAlgorithm;
 
-import java.util.Base64;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,16 +41,21 @@ public class ChatglmLlmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
-    public static class MyJwtBuilder extends DefaultJwtBuilder {
-        @Override
-        protected String base64UrlEncode(Object o, String errMsg) {
-            byte[] bytes;
-            try {
-                bytes = toJson(o);
-            } catch (Exception e) {
-                throw new IllegalStateException(errMsg, e);
-            }
-            return Base64.getUrlEncoder().encodeToString(bytes);
+    private static final String id = "HS256";
+    private static final String jcaName = "HmacSHA256";
+    private static final MacAlgorithm macAlgorithm;
+
+    static {
+        try {
+            //create a custom MacAlgorithm with a custom minKeyBitLength
+            int minKeyBitLength = 128;
+            Class<?> c = Class.forName("io.jsonwebtoken.impl.security.DefaultMacAlgorithm");
+            Constructor<?> ctor = c.getDeclaredConstructor(String.class, String.class, int.class);
+            ctor.setAccessible(true);
+            macAlgorithm = (MacAlgorithm) ctor.newInstance(id, jcaName, minKeyBitLength);
+        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException |
+                 InvocationTargetException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -67,10 +75,12 @@ public class ChatglmLlmUtil {
         String payloadJsonString = JSON.toJSONString(payloadMap);
 
         byte[] bytes = idAndSecret[1].getBytes();
-        JwtBuilder builder = new MyJwtBuilder()
-            .setPayload(payloadJsonString)
-            .setHeader(headers)
-            .signWith(SignatureAlgorithm.HS256, bytes);
+        SecretKey secretKey = new SecretKeySpec(bytes, jcaName);
+
+        JwtBuilder builder = Jwts.builder()
+            .content(payloadJsonString)
+            .header().add(headers).and()
+            .signWith(secretKey, macAlgorithm);
         return builder.compact();
     }
 
