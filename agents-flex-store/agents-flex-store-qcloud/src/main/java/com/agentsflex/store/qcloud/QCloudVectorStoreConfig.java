@@ -15,9 +15,10 @@
  */
 package com.agentsflex.store.qcloud;
 
-import java.io.Serializable;
+import com.agentsflex.core.store.DocumentStoreConfig;
+import com.agentsflex.core.util.StringUtil;
 
-public class QCloudVectorStoreConfig implements Serializable {
+public class QCloudVectorStoreConfig implements DocumentStoreConfig {
 
     private String host;
     private String apiKey;
@@ -64,6 +65,11 @@ public class QCloudVectorStoreConfig implements Serializable {
 
     public void setDefaultCollectionName(String defaultCollectionName) {
         this.defaultCollectionName = defaultCollectionName;
+    }
+
+    @Override
+    public boolean checkAvailable() {
+        return StringUtil.hasText(this.host, this.apiKey, this.account, this.database, this.defaultCollectionName);
     }
 }
 

@@ -15,9 +15,11 @@
  */
 package com.agentsflex.store.redis;
 
-import java.io.Serializable;
+import com.agentsflex.core.store.DocumentStoreConfig;
+import com.agentsflex.core.util.StringUtil;
 
-public class RedisVectorStoreConfig implements Serializable {
+
+public class RedisVectorStoreConfig implements DocumentStoreConfig {
 
     private String uri;
 
@@ -47,5 +49,10 @@ public class RedisVectorStoreConfig implements Serializable {
 
     public void setDefaultCollectionName(String defaultCollectionName) {
         this.defaultCollectionName = defaultCollectionName;
+    }
+
+    @Override
+    public boolean checkAvailable() {
+        return StringUtil.hasText(this.uri);
     }
 }

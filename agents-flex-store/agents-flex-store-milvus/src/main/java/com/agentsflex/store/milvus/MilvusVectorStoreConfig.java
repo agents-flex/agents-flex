@@ -15,12 +15,13 @@
  */
 package com.agentsflex.store.milvus;
 
-import java.io.Serializable;
+import com.agentsflex.core.store.DocumentStoreConfig;
+import com.agentsflex.core.util.StringUtil;
 
 /**
  * https://milvus.io/docs/install-java.md
  */
-public class MilvusVectorStoreConfig implements Serializable {
+public class MilvusVectorStoreConfig implements DocumentStoreConfig {
     private String uri;
     private String token;
     private String databaseName = "default";
@@ -86,5 +87,11 @@ public class MilvusVectorStoreConfig implements Serializable {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    @Override
+    public boolean checkAvailable() {
+        return StringUtil.hasText(this.uri, this.token)
+            || StringUtil.hasText(this.uri, this.username, this.password);
     }
 }

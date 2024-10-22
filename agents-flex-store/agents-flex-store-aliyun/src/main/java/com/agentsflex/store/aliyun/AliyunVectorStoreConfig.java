@@ -15,16 +15,18 @@
  */
 package com.agentsflex.store.aliyun;
 
-import java.io.Serializable;
+import com.agentsflex.core.store.DocumentStoreConfig;
+import com.agentsflex.core.util.StringUtil;
 
 /**
  * https://help.aliyun.com/document_detail/2510317.html
  */
-public class AliyunVectorStoreConfig implements Serializable {
+public class AliyunVectorStoreConfig implements DocumentStoreConfig {
     private String endpoint;
     private String apiKey;
     private String database;
     private String defaultCollectionName;
+
 
     public String getEndpoint() {
         return endpoint;
@@ -56,5 +58,10 @@ public class AliyunVectorStoreConfig implements Serializable {
 
     public void setDefaultCollectionName(String defaultCollectionName) {
         this.defaultCollectionName = defaultCollectionName;
+    }
+
+    @Override
+    public boolean checkAvailable() {
+        return StringUtil.hasText(this.endpoint, this.apiKey, this.database, this.defaultCollectionName);
     }
 }

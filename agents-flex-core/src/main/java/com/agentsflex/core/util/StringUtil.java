@@ -25,6 +25,15 @@ public class StringUtil {
         return string != null && !string.isEmpty() && containsText(string);
     }
 
+    public static boolean hasText(String... strings) {
+        for (String string : strings) {
+            if (!hasText(string)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static boolean containsText(CharSequence str) {
         for (int i = 0; i < str.length(); i++) {
             if (!Character.isWhitespace(str.charAt(i))) {
@@ -55,4 +64,6 @@ public class StringUtil {
     public static boolean notJsonObject(String jsonString) {
         return !isJsonObject(jsonString);
     }
+
+
 }

@@ -15,14 +15,15 @@
  */
 package com.agentsflex.store.elasticsearch;
 
-import java.io.Serializable;
+import com.agentsflex.core.store.DocumentStoreConfig;
+import com.agentsflex.core.util.StringUtil;
 
 /**
  * 连接 elasticsearch 配置：<a href="https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/getting-started-java.html">elasticsearch-java</a>
  *
  * @author songyinyin
  */
-public class ElasticSearchVectorStoreConfig implements Serializable {
+public class ElasticSearchVectorStoreConfig implements DocumentStoreConfig {
 
     private String serverUrl = "https://localhost:9200";
 
@@ -72,5 +73,10 @@ public class ElasticSearchVectorStoreConfig implements Serializable {
 
     public void setDefaultIndexName(String defaultIndexName) {
         this.defaultIndexName = defaultIndexName;
+    }
+
+    @Override
+    public boolean checkAvailable() {
+        return StringUtil.hasText(this.serverUrl, this.apiKey, this.defaultIndexName);
     }
 }

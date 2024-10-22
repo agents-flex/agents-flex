@@ -15,7 +15,8 @@
  */
 package com.agentsflex.store.opensearch;
 
-import java.io.Serializable;
+import com.agentsflex.core.store.DocumentStoreConfig;
+import com.agentsflex.core.util.StringUtil;
 
 /**
  * 连接 open search 配置：<a href="https://opensearch.org/docs/latest/clients/java/">opensearch-java</a>
@@ -23,7 +24,7 @@ import java.io.Serializable;
  * @author songyinyin
  * @since 2024/8/10 下午8:39
  */
-public class OpenSearchVectorStoreConfig implements Serializable {
+public class OpenSearchVectorStoreConfig implements DocumentStoreConfig {
 
     private String serverUrl = "https://localhost:9200";
 
@@ -73,5 +74,12 @@ public class OpenSearchVectorStoreConfig implements Serializable {
 
     public void setDefaultIndexName(String defaultIndexName) {
         this.defaultIndexName = defaultIndexName;
+    }
+
+
+    @Override
+    public boolean checkAvailable() {
+        return StringUtil.hasText(this.serverUrl, this.apiKey)
+            || StringUtil.hasText(this.serverUrl, this.username, this.password);
     }
 }
