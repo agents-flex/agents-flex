@@ -20,7 +20,7 @@ public class AliyunAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public AliyunVectorStore aliyunVectorStore(AliyunProperties properties) {
-        AliyunVectorStoreConfig config = AliyunVectorStoreConfig.createAliyunVectorStoreConfig();
+        AliyunVectorStoreConfig config = new AliyunVectorStoreConfig();
         config.setApiKey(properties.getApiKey());
         config.setEndpoint(properties.getEndpoint());
         config.setDatabase(properties.getDatabase());

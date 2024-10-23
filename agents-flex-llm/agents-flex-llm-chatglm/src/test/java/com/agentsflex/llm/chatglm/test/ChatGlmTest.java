@@ -16,7 +16,7 @@ public class ChatGlmTest {
 
     public static void main(String[] args) {
         ChatglmLlmConfig config = new ChatglmLlmConfig();
-        config.setApiKey("**.**");
+        config.setApiKey("**.***********************");
 
         Llm llm = new ChatglmLlm(config);
         llm.chatStream("你叫什么名字", (context, response) -> System.out.println(response.getMessage().getContent()));
@@ -26,7 +26,7 @@ public class ChatGlmTest {
     @Test
     public void testEmbedding() {
         ChatglmLlmConfig config = new ChatglmLlmConfig();
-        config.setApiKey("**.**");
+        config.setApiKey("**.***********************");
 
         Llm llm = new ChatglmLlm(config);
         Document document = new Document();
@@ -39,7 +39,7 @@ public class ChatGlmTest {
     @Test
     public void testFunctionCalling() {
         ChatglmLlmConfig config = new ChatglmLlmConfig();
-        config.setApiKey("**.**");
+        config.setApiKey("**.***********************");
 
         Llm llm = new ChatglmLlm(config);
 
