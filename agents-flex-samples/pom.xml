@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>parent</artifactId>
-        <version>1.0.0-beta.11</version>
+        <version>1.0.0-beta.12</version>
     </parent>
 
     <artifactId>agents-flex-samples</artifactId>
@@ -24,7 +24,7 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-openai</artifactId>
-            <version>1.0.0-beta.11</version>
+            <version>1.0.0-beta.12</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
