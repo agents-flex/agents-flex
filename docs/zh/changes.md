@@ -1,6 +1,59 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.0-beta.12 20241025
+refactor：add DocumentStoreConfig
+refactor：optimize HistoriesPrompt.java
+refactor: update pom.xml in agents-flex-bom
+refactor: upgrade jedis version to "5.2.0"
+refactor: optimize RedisVectorStore
+fix: NoClassDefFoundError in jdk17: javax/xml/bind/DatatypeConverter 感谢 @songyinyin #I9AELG
+
+---
+- 优化：添加 DocumentStoreConfig，向量数据库的配置都实现 DocumentStoreConfig
+- 优化：重构优化 HistoriesPrompt，使其支持更多的属性配置
+- 优化：更新 agents-flex-bom 的 pom.xml
+- 优化：升级 jedis 版本为 "5.2.0"
+- 优化：重构 RedisVectorStore 的错误信息，使之错误信息更加友好
+- 修复：修复 jdk17 下出现 NoSuchMethodError 问题，感谢 @songyinyin #I9AELG
+
+
+
+## v1.0.0-beta.11 20240918
+- feat: GenerateImageRequest add negativePrompt property
+- feat: Maps Util add putOrDefault method
+- feat: add siliconFlow image models
+- feat: ChatOptions add "seed" property
+- feat: Maps can put a child map by key
+- feat: Ollama add options config
+- feat: Ollama function calling support
+- feat: add StringUtil.isJsonObject method
+- refactor: BaseImageRequest add extend options property
+- refactor: make ImagePrompt to extends HumanMessage
+- refactor: ImageResponse add error flag and errorMessage properties
+- refactor: rename Image.writeBytesToFile to writeToFile
+- refactor: rename "giteesd3" to "gitee"
+- refactor: optimize VectorData.toString
+
+
+---
+- 新增：GenerateImageRequest 添加反向提示词相关属性
+- 新增：Maps 工具类添加 putOrDefault 方法
+- 新增：添加 siliconFlow 的图片模型的支持
+- 新增: ChatOptions 添加 "seed" 属性
+- 新增：Maps 可以 put 一个子 map 的功能
+- 新增：新增 Ollama 的函数调用（Function Calling）的支持
+- 新增：添加 StringUtil.isJsonObject 方法
+- 优化：重构 BaseImageRequest 类，添加 options 属性
+- 优化：重构 ImagePrompt 使之继承于 HumanMessage
+- 优化：重构 ImageResponse 类，添加 error 和 errorMessage 属性
+- 优化：修改 Image.writeBytesToFile 方法为 writeToFile
+- 优化：重命名 "giteesd3" 为 "gitee"
+- 优化：重构 VectorData.toString 方法
+
+
+
+
 ## v1.0.0-beta.10 20240909
 - feat: Added support for RedisStore vector storage, thanks to @giteeClass
 - feat: Added support for large model dialogues for Coze Bot, thanks to @yulongsheng
