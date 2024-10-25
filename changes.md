@@ -2,12 +2,12 @@
 
 
 ## v1.0.0-beta.12 20241025
-refactor：add DocumentStoreConfig
-refactor：optimize HistoriesPrompt.java
-refactor: update pom.xml in agents-flex-bom
-refactor: upgrade jedis version to "5.2.0"
-refactor: optimize RedisVectorStore
-fix: NoClassDefFoundError in jdk17: javax/xml/bind/DatatypeConverter 感谢 @songyinyin #I9AELG
+- refactor：add DocumentStoreConfig
+- refactor：optimize HistoriesPrompt.java
+- refactor: update pom.xml in agents-flex-bom
+- refactor: upgrade jedis version to "5.2.0"
+- refactor: optimize RedisVectorStore
+- fix: NoClassDefFoundError in jdk17: javax/xml/bind/DatatypeConverter 感谢 @songyinyin #I9AELG
 
 ---
 - 优化：添加 DocumentStoreConfig，向量数据库的配置都实现 DocumentStoreConfig
