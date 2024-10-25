@@ -20,6 +20,7 @@ import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
+import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import kotlin.collections.ArrayDeque;
 import redis.clients.jedis.*;
@@ -99,6 +100,11 @@ public class RedisVectorStore extends DocumentStore {
     @Override
     public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
         String indexName = createIndexName(options);
+
+        if (StringUtil.noText(indexName)) {
+            throw new IllegalStateException("IndexName is null or blank. please config the \"defaultCollectionName\" or store with designative collectionName.");
+        }
+
         createSchemaIfNecessary(indexName);
 
         try (Pipeline pipeline = jedis.pipelined();) {
@@ -154,6 +160,11 @@ public class RedisVectorStore extends DocumentStore {
     @Override
     public List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options) {
         String indexName = createIndexName(options);
+
+        if (StringUtil.noText(indexName)) {
+            throw new IllegalStateException("IndexName is null or blank. please config the \"defaultCollectionName\" or store with designative collectionName.");
+        }
+
         createSchemaIfNecessary(indexName);
 
         // 创建查询向量
