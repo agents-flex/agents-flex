@@ -32,6 +32,7 @@ import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.SleepUtils;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSONPath;
 import org.slf4j.Logger;
@@ -57,6 +58,11 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
+        return embed(document, options, 0);
+    }
+
+
+    public VectorData embed(Document document, EmbeddingOptions options, int tryTimes) {
         String payload = SparkLlmUtil.embedPayload(config, document);
         String resp = httpClient.post(SparkLlmUtil.createEmbedURL(config), null, payload);
         if (StringUtil.noText(resp)) {
@@ -64,13 +70,25 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         }
 
         Integer code = JSONPath.read(resp, "$.header.code", Integer.class);
-        if (code == null || code != 0) {
+        if (code == null) {
             logger.error(resp);
             return null;
         }
 
+        if (code != 0) {
+            //11202	授权错误：秒级流控超限。秒级并发超过授权路数限制
+            if (code.equals(11202) && tryTimes < 3) {
+                SleepUtils.sleep(200);
+                return embed(document, options, tryTimes + 1);
+            } else {
+                logger.error(resp);
+                return null;
+            }
+        }
+
         String text = JSONPath.read(resp, "$.payload.feature.text", String.class);
         if (StringUtil.noText(text)) {
+            logger.error(resp);
             return null;
         }
 
@@ -97,7 +115,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         waitResponse(prompt, options, messageResponse, latch, failureThrowable);
 
         AbstractBaseMessageResponse<?> response = messageResponse[0];
-        if (response == null){
+        if (response == null) {
             return null;
         }
         Throwable fialureThrowable = failureThrowable[0];
