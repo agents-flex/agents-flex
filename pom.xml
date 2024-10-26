@@ -47,6 +47,7 @@
         <module>agents-flex-llm</module>
         <module>agents-flex-store</module>
         <module>agents-flex-document-parser</module>
+        <module>agents-flex-solon-plugin</module>
         <module>agents-flex-spring-boot-starter</module>
         <module>agents-flex-chain</module>
         <module>agents-flex-chain/agents-flex-chain-qlexpress</module>
@@ -61,6 +62,7 @@
         <junit.version>4.13.2</junit.version>
         <okhttp.version>4.9.3</okhttp.version>
         <fastjson.version>2.0.47</fastjson.version>
+        <solon.version>3.0.2</solon.version>
         <spring-boot.version>2.7.18</spring-boot.version>
         <agents-flex.version>1.0.0-beta.12</agents-flex.version>
     </properties>
