@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.agentsflex</groupId>
+        <artifactId>parent</artifactId>
+        <version>1.0.0-beta.12</version>
+    </parent>
+
+    <artifactId>agents-flex-solon-plugin</artifactId>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.noear</groupId>
+                <artifactId>solon-parent</artifactId>
+                <version>${solon.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- solon 内核 -->
+        <dependency>
+            <groupId>org.noear</groupId>
+            <artifactId>solon</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+            <version>${agents-flex.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!--llm start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-chatglm</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-ollama</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-openai</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-qwen</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-spark</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-moonshot</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <!--llm end-->
+
+        <!--store start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-aliyun</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-qcloud</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-elasticsearch</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-opensearch</artifactId>
+            <version>${agents-flex.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <!--store end-->
+    </dependencies>
+
+</project>
