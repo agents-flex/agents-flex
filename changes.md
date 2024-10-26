@@ -1,5 +1,17 @@
 # Agents-Flex ChangeLog
 
+## v1.0.0-beta.13 20241026
+- feat: add plugin for solon framework
+- refactor: optimize VectorStore delete methods
+- refactor: optimize RedisVectorStore for sort by desc
+- refactor: optimize SparkLLM embedding
+
+---
+- 新增：添加 solon 添加新的插件支持
+- 优化: 重构 VectorStore 的 delete 方法
+- 优化: 优化 RedisVectorStore 的搜索排序
+- 优化: 星火大模型新增秒级并发超过授权路数限制进行重试
+
 
 ## v1.0.0-beta.12 20241025
 - refactor：add DocumentStoreConfig

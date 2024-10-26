@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-image</artifactId>
-        <version>1.0.0-beta.12</version>
+        <version>1.0.0-beta.13</version>
     </parent>
 
     <artifactId>agents-flex-image-openai</artifactId>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-beta.12</version>
+            <version>1.0.0-beta.13</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
