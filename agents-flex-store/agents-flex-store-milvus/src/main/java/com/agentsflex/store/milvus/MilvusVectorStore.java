@@ -185,7 +185,7 @@ public class MilvusVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
+    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
 
         DeleteReq.DeleteReqBuilder<?, ?> builder = DeleteReq.builder();
         if (StringUtil.hasText(options.getPartitionName())) {

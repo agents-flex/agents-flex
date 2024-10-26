@@ -201,7 +201,7 @@ public class OpenSearchVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
+    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
         String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
         for (Object id : ids) {

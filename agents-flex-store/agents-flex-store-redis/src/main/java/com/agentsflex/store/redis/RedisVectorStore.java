@@ -23,9 +23,15 @@ import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import kotlin.collections.ArrayDeque;
-import redis.clients.jedis.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.JedisPooled;
+import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.json.Path2;
-import redis.clients.jedis.search.*;
+import redis.clients.jedis.search.FTCreateParams;
+import redis.clients.jedis.search.IndexDataType;
+import redis.clients.jedis.search.Query;
+import redis.clients.jedis.search.SearchResult;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
 import redis.clients.jedis.search.schemafields.VectorField;
@@ -34,7 +40,6 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.text.MessageFormat;
 import java.util.*;
 
 public class RedisVectorStore extends DocumentStore {
@@ -42,6 +47,8 @@ public class RedisVectorStore extends DocumentStore {
     private final RedisVectorStoreConfig config;
     private final JedisPooled jedis;
     private final Set<String> redisIndexesCache = new HashSet<>();
+    private static final Logger logger = LoggerFactory.getLogger(RedisVectorStore.class);
+
 
     public RedisVectorStore(RedisVectorStoreConfig config) {
         this.config = config;
@@ -120,8 +127,8 @@ public class RedisVectorStore extends DocumentStore {
             List<Object> objects = pipeline.syncAndReturnAll();
             for (Object object : objects) {
                 if (!object.equals("OK")) {
-                    String message = MessageFormat.format("Could not store document: {0}", object);
-                    throw new RuntimeException(message);
+                    logger.error("Could not store document: {}", object);
+                    return StoreResult.fail();
                 }
             }
         }
@@ -131,7 +138,7 @@ public class RedisVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult deleteInternal(Collection<Object> ids, StoreOptions options) {
+    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
         try (Pipeline pipeline = this.jedis.pipelined()) {
             for (Object id : ids) {
                 String key = config.getStorePrefix() + id;
@@ -141,8 +148,8 @@ public class RedisVectorStore extends DocumentStore {
             List<Object> objects = pipeline.syncAndReturnAll();
             for (Object object : objects) {
                 if (!object.equals(1L)) {
-                    String message = MessageFormat.format("Could not delete document: {0}", object);
-                    throw new RuntimeException(message);
+                    logger.error("Could not delete document: {}", object);
+                    return StoreResult.fail();
                 }
             }
         }
@@ -178,7 +185,8 @@ public class RedisVectorStore extends DocumentStore {
         Query query = new Query("*=>[KNN " + wrapper.getMaxResults() + " @vector $BLOB AS score]")
             .addParam("BLOB", vectorBytes)
             .returnFields("text", "vector", "score")
-            .setSortBy("score", true)
+            // 按照 score 排序，降序, 相似度越高的越靠前
+            .setSortBy("score", false)
             .dialect(2);
 
         // 执行搜索

@@ -88,7 +88,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
     }
 
     @Override
-    public StoreResult delete(Collection<Object> ids, StoreOptions options) {
+    public StoreResult delete(Collection<?> ids, StoreOptions options) {
         if (options == null) {
             options = StoreOptions.DEFAULT;
         }
@@ -140,7 +140,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
 
     public abstract StoreResult storeInternal(List<Document> documents, StoreOptions options);
 
-    public abstract StoreResult deleteInternal(Collection<Object> ids, StoreOptions options);
+    public abstract StoreResult deleteInternal(Collection<?> ids, StoreOptions options);
 
     public abstract StoreResult updateInternal(List<Document> documents, StoreOptions options);
 

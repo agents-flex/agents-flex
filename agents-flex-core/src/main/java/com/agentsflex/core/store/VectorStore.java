@@ -75,6 +75,20 @@ public abstract class VectorStore<T extends VectorData> {
      * @return store result
      */
     public StoreResult delete(Object... ids) {
+        if (ids.length == 0) {
+            throw new IllegalArgumentException("ids can not be empty.");
+        }
+
+        if (ids.length == 1) {
+            Object object = ids[0];
+            if (object == null) {
+                throw new NullPointerException("id can not be null.");
+            }
+            if (object instanceof Collection) {
+                return delete((Collection<?>) object, StoreOptions.DEFAULT);
+            }
+        }
+
         return delete(Arrays.asList(ids), StoreOptions.DEFAULT);
     }
 
@@ -85,7 +99,7 @@ public abstract class VectorStore<T extends VectorData> {
      * @param ids the ids
      * @return store result
      */
-    public StoreResult delete(Collection<Object> ids) {
+    public StoreResult delete(Collection<?> ids) {
         return delete(ids, StoreOptions.DEFAULT);
     }
 
@@ -96,7 +110,7 @@ public abstract class VectorStore<T extends VectorData> {
      * @param options store options
      * @return store result
      */
-    public abstract StoreResult delete(Collection<Object> ids, StoreOptions options);
+    public abstract StoreResult delete(Collection<?> ids, StoreOptions options);
 
     /**
      * update the vector data by id
