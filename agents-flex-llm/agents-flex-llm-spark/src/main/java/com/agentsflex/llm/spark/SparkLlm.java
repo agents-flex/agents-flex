@@ -32,7 +32,7 @@ import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
-import com.agentsflex.core.util.SleepUtils;
+import com.agentsflex.core.util.SleepUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSONPath;
 import org.slf4j.Logger;
@@ -78,7 +78,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         if (code != 0) {
             //11202	授权错误：秒级流控超限。秒级并发超过授权路数限制
             if (code.equals(11202) && tryTimes < 3) {
-                SleepUtils.sleep(200);
+                SleepUtil.sleep(200);
                 return embed(document, options, tryTimes + 1);
             } else {
                 logger.error(resp);

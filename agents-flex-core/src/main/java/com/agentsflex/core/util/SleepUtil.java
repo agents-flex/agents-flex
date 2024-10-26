@@ -17,7 +17,7 @@ package com.agentsflex.core.util;
 
 import java.util.concurrent.Callable;
 
-public class SleepUtils {
+public class SleepUtil {
 
     public static void sleep(long millis) {
         try {
