@@ -15,6 +15,7 @@
  */
 package com.agentsflex.solon.store.qcloud;
 
+import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.store.qcloud.QCloudVectorStore;
 import com.agentsflex.store.qcloud.QCloudVectorStoreConfig;
 import org.noear.solon.annotation.Bean;
@@ -29,9 +30,9 @@ import org.noear.solon.annotation.Inject;
 @Condition(onClass = QCloudVectorStore.class)
 public class QCloudStoreAutoConfiguration {
 
-    @Bean(typed = true)
+    @Bean
     @Condition(onMissingBean = QCloudVectorStore.class)
-    public QCloudVectorStore qCloudVectorStore(@Inject("${agents-flex.store.qcloud}") QCloudVectorStoreConfig config) {
+    public DocumentStore qCloudVectorStore(@Inject("${agents-flex.store.qcloud}") QCloudVectorStoreConfig config) {
         return new QCloudVectorStore(config);
     }
 

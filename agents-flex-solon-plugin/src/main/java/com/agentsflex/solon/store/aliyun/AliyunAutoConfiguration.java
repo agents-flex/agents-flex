@@ -15,6 +15,7 @@
  */
 package com.agentsflex.solon.store.aliyun;
 
+import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.store.aliyun.AliyunVectorStore;
 import com.agentsflex.store.aliyun.AliyunVectorStoreConfig;
 import org.noear.solon.annotation.Bean;
@@ -29,9 +30,9 @@ import org.noear.solon.annotation.Inject;
 @Condition(onClass = AliyunVectorStore.class)
 public class AliyunAutoConfiguration {
 
-    @Bean(typed = true)
+    @Bean
     @Condition(onMissingBean = AliyunVectorStore.class)
-    public AliyunVectorStore aliyunVectorStore(@Inject("${agents-flex.store.aliyun}") AliyunVectorStoreConfig config) {
+    public DocumentStore aliyunVectorStore(@Inject("${agents-flex.store.aliyun}") AliyunVectorStoreConfig config) {
         return new AliyunVectorStore(config);
     }
 

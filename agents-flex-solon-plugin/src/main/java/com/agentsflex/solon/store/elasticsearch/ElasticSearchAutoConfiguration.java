@@ -16,6 +16,7 @@
 package com.agentsflex.solon.store.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.store.elasticsearch.ElasticSearchVectorStore;
 import com.agentsflex.store.elasticsearch.ElasticSearchVectorStoreConfig;
 import org.noear.solon.annotation.Bean;
@@ -33,10 +34,10 @@ import org.noear.solon.annotation.Inject;
 @Condition(onClass = ElasticSearchVectorStore.class)
 public class ElasticSearchAutoConfiguration {
 
-    @Bean(typed = true)
+    @Bean
     @Condition(onMissingBean = ElasticSearchVectorStore.class)
-    public ElasticSearchVectorStore elasticSearchVectorStore(@Inject("${agents-flex.store.elasticsearch}") ElasticSearchVectorStoreConfig config,
-                                                             @Inject(required = false) ElasticsearchClient client) {
+    public DocumentStore elasticSearchVectorStore(@Inject("${agents-flex.store.elasticsearch}") ElasticSearchVectorStoreConfig config,
+                                                  @Inject(required = false) ElasticsearchClient client) {
         if (client != null) {
             return new ElasticSearchVectorStore(config, client);
         }

@@ -15,6 +15,7 @@
  */
 package com.agentsflex.solon.llm.moonshot;
 
+import com.agentsflex.core.llm.Llm;
 import com.agentsflex.llm.moonshot.MoonshotLlm;
 import com.agentsflex.llm.moonshot.MoonshotLlmConfig;
 import org.noear.solon.annotation.Bean;
@@ -29,9 +30,9 @@ import org.noear.solon.annotation.Inject;
 @Condition(onClass = MoonshotLlm.class)
 public class MoonshotAutoConfiguration {
 
-    @Bean(typed = true)
+    @Bean
     @Condition(onMissingBean = MoonshotLlm.class)
-    public MoonshotLlm moonshotLlm(@Inject("agents-flex.llm.moonshot") MoonshotLlmConfig config) {
+    public Llm moonshotLlm(@Inject("agents-flex.llm.moonshot") MoonshotLlmConfig config) {
         return new MoonshotLlm(config);
     }
 
