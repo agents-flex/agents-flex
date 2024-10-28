@@ -15,6 +15,7 @@
  */
 package com.agentsflex.solon.store.opensearch;
 
+import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.store.opensearch.OpenSearchVectorStore;
 import com.agentsflex.store.opensearch.OpenSearchVectorStoreConfig;
 import org.noear.solon.annotation.Bean;
@@ -33,10 +34,10 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 @Condition(onClass = OpenSearchVectorStore.class)
 public class OpenSearchAutoConfiguration {
 
-    @Bean(typed = true)
+    @Bean
     @Condition(onMissingBean = OpenSearchVectorStore.class)
-    public OpenSearchVectorStore openSearchVectorStore(@Inject("${agents-flex.store.opensearch}") OpenSearchVectorStoreConfig config,
-                                                       @Inject(required = false) OpenSearchClient client) {
+    public DocumentStore openSearchVectorStore(@Inject("${agents-flex.store.opensearch}") OpenSearchVectorStoreConfig config,
+                                               @Inject(required = false) OpenSearchClient client) {
         if (client != null) {
             return new OpenSearchVectorStore(config, client);
         }

@@ -24,10 +24,10 @@ import org.noear.solon.core.Plugin;
  * @author songyinyin
  * @since 2024/10/25 下午10:18
  */
-public class XPluginImp implements Plugin {
+public class AgentsFlexPlugin implements Plugin {
 
     @Override
     public void start(AppContext context) throws Throwable {
-        context.beanScan(XPluginImp.class);
+        context.beanScan(AgentsFlexPlugin.class);
     }
 }

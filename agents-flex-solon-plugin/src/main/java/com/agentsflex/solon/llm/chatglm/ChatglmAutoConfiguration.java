@@ -15,6 +15,7 @@
  */
 package com.agentsflex.solon.llm.chatglm;
 
+import com.agentsflex.core.llm.Llm;
 import com.agentsflex.llm.chatglm.ChatglmLlm;
 import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
 import org.noear.solon.annotation.Bean;
@@ -29,9 +30,9 @@ import org.noear.solon.annotation.Inject;
 @Condition(onClass = ChatglmLlm.class)
 public class ChatglmAutoConfiguration {
 
-    @Bean(typed = true)
+    @Bean
     @Condition(onMissingBean = ChatglmLlm.class)
-    public ChatglmLlm chatglmLlm(@Inject("${agents-flex.llm.chatglm}") ChatglmLlmConfig config) {
+    public Llm chatglmLlm(@Inject("${agents-flex.llm.chatglm}") ChatglmLlmConfig config) {
         return new ChatglmLlm(config);
     }
 }

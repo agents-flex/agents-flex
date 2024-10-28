@@ -15,6 +15,7 @@
  */
 package com.agentsflex.solon.llm.qwen;
 
+import com.agentsflex.core.llm.Llm;
 import com.agentsflex.llm.qwen.QwenLlm;
 import com.agentsflex.llm.qwen.QwenLlmConfig;
 import org.noear.solon.annotation.Bean;
@@ -29,9 +30,9 @@ import org.noear.solon.annotation.Inject;
 @Condition(onClass = QwenLlm.class)
 public class QwenAutoConfiguration {
 
-    @Bean(typed = true)
+    @Bean
     @Condition(onMissingBean = QwenLlm.class)
-    public QwenLlm qwenLlm(@Inject("${agents-flex.llm.qwen}") QwenLlmConfig config) {
+    public Llm qwenLlm(@Inject("${agents-flex.llm.qwen}") QwenLlmConfig config) {
         return new QwenLlm(config);
     }
 
