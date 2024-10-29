@@ -16,14 +16,33 @@
 package com.agentsflex.core.chain.node;
 
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.ChainNode;
 
+import java.util.Collections;
 import java.util.Map;
 
-public class StartNode extends ChainNode {
+public class StartNode extends BaseNode {
     @Override
     protected Map<String, Object> execute(Chain chain) {
-        //execute nothing
-        return null;
+        if (inputInputParameters != null) {
+            return getParameters(chain);
+        }
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public String toString() {
+        return "StartNode{" +
+            "description='" + description + '\'' +
+            ", inputInputParameters=" + inputInputParameters +
+            ", outputKeys=" + outputKeys +
+            ", id='" + id + '\'' +
+            ", name='" + name + '\'' +
+            ", async=" + async +
+            ", inwardEdges=" + inwardEdges +
+            ", outwardEdges=" + outwardEdges +
+            ", condition=" + condition +
+            ", memory=" + memory +
+            ", nodeStatus=" + nodeStatus +
+            '}';
     }
 }

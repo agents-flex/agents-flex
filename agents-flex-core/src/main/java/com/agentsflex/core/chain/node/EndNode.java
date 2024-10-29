@@ -16,11 +16,11 @@
 package com.agentsflex.core.chain.node;
 
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.ChainNode;
 
+import java.util.Collections;
 import java.util.Map;
 
-public class EndNode extends ChainNode {
+public class EndNode extends BaseNode {
     private boolean normal = true;
     private String message;
 
@@ -51,6 +51,25 @@ public class EndNode extends ChainNode {
         } else {
             chain.stopError(message);
         }
-        return null;
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public String toString() {
+        return "EndNode{" +
+            "normal=" + normal +
+            ", message='" + message + '\'' +
+            ", description='" + description + '\'' +
+            ", inputInputParameters=" + inputInputParameters +
+            ", outputKeys=" + outputKeys +
+            ", id='" + id + '\'' +
+            ", name='" + name + '\'' +
+            ", async=" + async +
+            ", inwardEdges=" + inwardEdges +
+            ", outwardEdges=" + outwardEdges +
+            ", condition=" + condition +
+            ", memory=" + memory +
+            ", nodeStatus=" + nodeStatus +
+            '}';
     }
 }

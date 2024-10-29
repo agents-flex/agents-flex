@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-document-parser</artifactId>
-        <version>1.0.0-beta.13</version>
+        <version>1.0.0-beta.13-snapshot</version>
     </parent>
 
     <artifactId>agents-flex-document-parser-pdfbox</artifactId>
@@ -21,7 +21,7 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-beta.13</version>
+            <version>1.0.0-beta.13-snapshot</version>
         </dependency>
 
         <dependency>

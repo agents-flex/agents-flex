@@ -15,10 +15,8 @@
  */
 package com.agentsflex.core.chain;
 
-import com.agentsflex.core.agent.Agent;
-import com.agentsflex.core.agent.Output;
 import com.agentsflex.core.chain.event.*;
-import com.agentsflex.core.chain.node.AgentNode;
+import com.agentsflex.core.chain.node.BaseNode;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.NamedThreadPools;
 import com.agentsflex.core.util.StringUtil;
@@ -30,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 public class Chain extends ChainNode {
     public static final String CTX_EXEC_COUNT = "_exec_count";
     protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
+    protected Map<String, Object> executeResult = null;
     protected List<ChainOutputListener> outputListeners = new ArrayList<>();
     protected List<ChainNode> nodes;
     protected List<ChainEdge> edges;
@@ -53,12 +52,12 @@ public class Chain extends ChainNode {
         this.eventListeners = eventListeners;
     }
 
-    public synchronized void registerEventListener(Class<? extends ChainEvent> eventClass, ChainEventListener listener) {
+    public synchronized void addEventListener(Class<? extends ChainEvent> eventClass, ChainEventListener listener) {
         List<ChainEventListener> chainEventListeners = eventListeners.computeIfAbsent(eventClass, k -> new ArrayList<>());
         chainEventListeners.add(listener);
     }
 
-    public synchronized void registerEventListener(ChainEventListener listener) {
+    public synchronized void addEventListener(ChainEventListener listener) {
         List<ChainEventListener> chainEventListeners = eventListeners.computeIfAbsent(ChainEvent.class, k -> new ArrayList<>());
         chainEventListeners.add(listener);
     }
@@ -86,7 +85,7 @@ public class Chain extends ChainNode {
         this.outputListeners = outputListeners;
     }
 
-    public void registerOutputListener(ChainOutputListener outputListener) {
+    public void addOutputListener(ChainOutputListener outputListener) {
         if (this.outputListeners == null) {
             this.outputListeners = new ArrayList<>();
         }
@@ -108,7 +107,7 @@ public class Chain extends ChainNode {
         }
 
         if (chainNode instanceof ChainEventListener) {
-            registerEventListener((ChainEventListener) chainNode);
+            addEventListener((ChainEventListener) chainNode);
         }
 
         if (chainNode.getId() == null) {
@@ -128,10 +127,6 @@ public class Chain extends ChainNode {
             this.children = new ArrayList<>();
         }
         this.children.add(child);
-    }
-
-    public void addNode(Agent agent) {
-        addNode(new AgentNode(agent));
     }
 
     public ChainStatus getStatus() {
@@ -190,37 +185,35 @@ public class Chain extends ChainNode {
     }
 
 
-    public void execute(Object variable) {
-        this.execute(Output.DEFAULT_VALUE_KEY, variable);
-    }
-
-    public void execute(String key, Object variable) {
-        Map<String, Object> variables = new HashMap<>(1);
-        variables.put(key, variable);
-        this.execute(variables);
-    }
-
-    public <T> T executeForResult(Object variable) throws ChainException {
-        return executeForResult(Output.DEFAULT_VALUE_KEY, variable);
-    }
-
-    public <T> T executeForResult(String key, Object variable) throws ChainException {
-        Map<String, Object> variables = new HashMap<>(1);
-        variables.put(key, variable);
-        this.execute(variables);
-
-        if (this.status != ChainStatus.FINISHED_NORMAL) {
-            throw new ChainException(this.message);
-        }
-        //noinspection unchecked
-        return (T) this.getMemory().get(Output.DEFAULT_VALUE_KEY);
-    }
-
-
     public void execute(Map<String, Object> variables) {
         runInLifeCycle(variables, this::executeInternal);
     }
 
+
+    public Map<String, Object> executeForResult(Map<String, Object> variables) {
+        runInLifeCycle(variables, this::executeInternal);
+        return this.executeResult;
+    }
+
+
+    public List<InputParameter> getInputParameters() {
+        List<ChainNode> startNodes = this.getStartNodes();
+        if (startNodes == null || startNodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<InputParameter> inputParameters = new ArrayList<>();
+        for (ChainNode node : startNodes) {
+            if (node instanceof BaseNode) {
+                List<InputParameter> nodeInputInputParameters = ((BaseNode) node).getInputInputParameters();
+                if (nodeInputInputParameters != null) inputParameters.addAll(nodeInputInputParameters);
+            } else if (node instanceof Chain) {
+                List<InputParameter> chainInputParameters = ((Chain) node).getInputParameters();
+                if (chainInputParameters != null) inputParameters.addAll(chainInputParameters);
+            }
+        }
+        return inputParameters;
+    }
 
     protected void executeInternal() {
         List<ChainNode> currentNodes = getStartNodes();
@@ -230,8 +223,8 @@ public class Chain extends ChainNode {
             Integer execCount = (Integer) currentNode.getMemory().get(CTX_EXEC_COUNT);
             if (execCount == null) execCount = 0;
 
-            ChainCondition nodeCondition = currentNode.getCondition();
-            if (nodeCondition != null && !nodeCondition.check(this, this.getMemory())) {
+            NodeCondition nodeCondition = currentNode.getCondition();
+            if (nodeCondition != null && !nodeCondition.check(this, currentNode)) {
                 continue;
             }
 
@@ -243,6 +236,7 @@ public class Chain extends ChainNode {
                     break;
                 }
                 executeResult = executeNode(currentNode);
+                this.executeResult = executeResult;
             } finally {
                 ChainContext.clearNode();
                 currentNode.getMemory().put(CTX_EXEC_COUNT, execCount + 1);
@@ -250,7 +244,9 @@ public class Chain extends ChainNode {
             }
 
             if (executeResult != null && !executeResult.isEmpty()) {
-                this.memory.putAll(executeResult);
+                executeResult.forEach((s, o) -> {
+                    Chain.this.memory.put(currentNode.id + "." + s, o);
+                });
             }
 
             if (this.getStatus() != ChainStatus.RUNNING) {
@@ -265,10 +261,10 @@ public class Chain extends ChainNode {
                     if (nextNode == null) {
                         continue;
                     }
-                    ChainCondition condition = chainEdge.getCondition();
+                    EdgeCondition condition = chainEdge.getCondition();
                     if (condition == null) {
                         currentNodes.add(nextNode);
-                    } else if (condition.check(this, this.getMemory())) {
+                    } else if (condition.check(this, chainEdge)) {
                         currentNodes.add(nextNode);
                     }
                 }
@@ -346,11 +342,11 @@ public class Chain extends ChainNode {
     }
 
 
-    private void notifyOutput(Agent agent, Object response) {
+    private void notifyOutput(ChainNode node, Object response) {
         for (ChainOutputListener inputListener : outputListeners) {
-            inputListener.onOutput(this, agent, response);
+            inputListener.onOutput(this, node, response);
         }
-        if (parent != null) parent.notifyOutput(agent, response);
+        if (parent != null) parent.notifyOutput(node, response);
     }
 
     public void stopNormal(String message) {
@@ -363,8 +359,8 @@ public class Chain extends ChainNode {
         setStatus(ChainStatus.FINISHED_ABNORMAL);
     }
 
-    public void output(Agent agent, Object response) {
-        notifyOutput(agent, response);
+    public void output(ChainNode node, Object response) {
+        notifyOutput(node, response);
     }
 
     public String getMessage() {

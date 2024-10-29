@@ -13,36 +13,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.agent;
+package com.agentsflex.core.chain.node;
 
+import com.agentsflex.core.chain.InputParameter;
+import com.agentsflex.core.chain.OutputKey;
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.prompt.TextPrompt;
-import com.agentsflex.core.prompt.template.TextPromptTemplate;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.prompt.TextPrompt;
+import com.agentsflex.core.prompt.template.TextPromptTemplate;
+import com.agentsflex.core.util.Maps;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class LLMAgent extends Agent {
+public class LLMNode extends BaseNode {
 
     protected Llm llm;
     protected ChatOptions chatOptions = ChatOptions.DEFAULT;
     protected String prompt;
     protected TextPromptTemplate promptTemplate;
 
-    public LLMAgent() {
+    public LLMNode() {
     }
 
 
-    public LLMAgent(Llm llm, String prompt) {
+    public LLMNode(Llm llm, String prompt) {
         this.llm = llm;
         this.prompt = prompt;
         this.promptTemplate = new TextPromptTemplate(prompt);
+        this.initInputParameter();
     }
 
 
@@ -61,6 +65,7 @@ public class LLMAgent extends Agent {
     public void setPrompt(String prompt) {
         this.prompt = prompt;
         this.promptTemplate = new TextPromptTemplate(prompt);
+        this.initInputParameter();
     }
 
     public ChatOptions getChatOptions() {
@@ -75,29 +80,29 @@ public class LLMAgent extends Agent {
     }
 
 
-    @Override
-    public List<Parameter> defineInputParameter() {
+    public void initInputParameter() {
         if (this.promptTemplate == null) {
-            return null;
+            return;
         }
 
         Set<String> keys = this.promptTemplate.getKeys();
         if (keys == null || keys.isEmpty()) {
-            return null;
+            return;
         }
 
-        List<Parameter> parameters = new ArrayList<>(keys.size());
+        List<InputParameter> inputParameters = new ArrayList<>(keys.size());
         for (String key : keys) {
-            Parameter parameter = new Parameter(key, true);
-            parameters.add(parameter);
+            InputParameter inputParameter = new InputParameter(key, true);
+            inputParameters.add(inputParameter);
         }
-        return parameters;
+        this.inputInputParameters = inputParameters;
     }
 
 
     @Override
-    public Output execute(Map<String, Object> variables, Chain chain) {
-        TextPrompt textPrompt = promptTemplate.format(variables);
+    protected Map<String, Object> execute(Chain chain) {
+        Map<String, Object> parameters = getParameters(chain);
+        TextPrompt textPrompt = promptTemplate.format(parameters);
         AiMessageResponse response = llm.chat(textPrompt, chatOptions);
 
         if (chain != null) {
@@ -110,7 +115,7 @@ public class LLMAgent extends Agent {
     }
 
 
-    protected Output onError(AiMessageResponse response, Chain chain) {
+    protected Map<String, Object> onError(AiMessageResponse response, Chain chain) {
         if (chain != null) {
             chain.stopError(response.getErrorMessage());
         }
@@ -118,22 +123,34 @@ public class LLMAgent extends Agent {
     }
 
 
-    protected Output onMessage(AiMessage aiMessage) {
+    protected Map<String, Object> onMessage(AiMessage aiMessage) {
         List<OutputKey> outputKeys = getOutputKeys();
         if (outputKeys != null && outputKeys.size() == 1) {
-            return Output.of(outputKeys.get(0), aiMessage.getContent());
+            return Maps.of("content", aiMessage.getContent()).build();
         }
 
-        return Output.ofDefault(aiMessage.getContent());
+        return Maps.of("content", aiMessage.getContent()).build();
     }
+
 
     @Override
     public String toString() {
-        return "LLMAgent{" +
+        return "LLMNode{" +
             "llm=" + llm +
+            ", chatOptions=" + chatOptions +
             ", prompt='" + prompt + '\'' +
-            ", id=" + id +
+            ", promptTemplate=" + promptTemplate +
+            ", description='" + description + '\'' +
+            ", inputInputParameters=" + inputInputParameters +
+            ", outputKeys=" + outputKeys +
+            ", id='" + id + '\'' +
             ", name='" + name + '\'' +
+            ", async=" + async +
+            ", inwardEdges=" + inwardEdges +
+            ", outwardEdges=" + outwardEdges +
+            ", condition=" + condition +
+            ", memory=" + memory +
+            ", nodeStatus=" + nodeStatus +
             '}';
     }
 }

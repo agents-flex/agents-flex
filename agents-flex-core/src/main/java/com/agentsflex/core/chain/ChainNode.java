@@ -31,7 +31,7 @@ public abstract class ChainNode implements Serializable {
     protected List<ChainEdge> inwardEdges;
     protected List<ChainEdge> outwardEdges;
 
-    protected ChainCondition condition;
+    protected NodeCondition condition;
 
     protected ContextMemory memory = new DefaultContextMemory();
     protected ChainNodeStatus nodeStatus = ChainNodeStatus.READY;
@@ -76,11 +76,11 @@ public abstract class ChainNode implements Serializable {
         this.outwardEdges = outwardEdges;
     }
 
-    public ChainCondition getCondition() {
+    public NodeCondition getCondition() {
         return condition;
     }
 
-    public void setCondition(ChainCondition condition) {
+    public void setCondition(NodeCondition condition) {
         this.condition = condition;
     }
 

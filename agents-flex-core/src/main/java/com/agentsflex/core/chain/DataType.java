@@ -15,10 +15,37 @@
  */
 package com.agentsflex.core.chain;
 
-import com.agentsflex.core.memory.ContextMemory;
+public enum DataType {
+    String("String"),
+    Number("Number"),
+    Boolean("Boolean"),
+    Object("Object"),
+    Array("Array"),
+    File("File"),
+//    URI("URI"),
+    ;
 
-public interface ChainCondition {
+    private final String value;
 
-    boolean check(Chain chain, ContextMemory memory);
+    DataType(String value) {
+        this.value = value;
+    }
 
+    public String getValue() {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    public static DataType ofValue(String value) {
+        for (DataType type : DataType.values()) {
+            if (type.value.equalsIgnoreCase(value)) {
+                return type;
+            }
+        }
+        return null;
+    }
 }

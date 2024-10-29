@@ -13,29 +13,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.test;
+package com.agentsflex.core.chain.node;
 
-import com.agentsflex.core.agent.Agent;
-import com.agentsflex.core.agent.Output;
-import com.agentsflex.core.agent.Parameter;
 import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.util.StringUtil;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
-public class SimpleAgent1 extends Agent {
+public abstract class CodeNode extends BaseNode {
+    protected String code;
 
+    public String getCode() {
+        return code;
+    }
 
-    @Override
-    public List<Parameter> defineInputParameter() {
-        List<Parameter> parameters = new ArrayList<>();
-        parameters.add(new Parameter("key1", true));
-        return parameters;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     @Override
-    public Output execute(Map<String, Object> variables, Chain chain) {
-        return new Output().set("result1", "SimpleAgent1" + variables.get("key1"));
+    protected Map<String, Object> execute(Chain chain) {
+        if (StringUtil.noText(code)) {
+            throw new IllegalStateException("Code is null or blank.");
+        }
+
+        return executeCode(this.code, chain);
     }
+
+    protected abstract Map<String, Object> executeCode(String code, Chain chain);
 }

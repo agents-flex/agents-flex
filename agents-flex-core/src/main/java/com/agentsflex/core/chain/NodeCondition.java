@@ -13,8 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package com.agentsflex.core.chain;
 
-/**
- * Agent 代理
- */
-package com.agentsflex.core.agent;
+public interface NodeCondition {
+
+    boolean check(Chain chain, ChainNode node);
+
+}

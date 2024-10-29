@@ -6,7 +6,7 @@
 
     <groupId>com.agentsflex</groupId>
     <artifactId>parent</artifactId>
-    <version>1.0.0-beta.13</version>
+    <version>1.0.0-beta.13-snapshot</version>
     <packaging>pom</packaging>
 
     <name>agents-flex</name>
@@ -64,7 +64,7 @@
         <fastjson.version>2.0.47</fastjson.version>
         <solon.version>3.0.2</solon.version>
         <spring-boot.version>2.7.18</spring-boot.version>
-        <agents-flex.version>1.0.0-beta.13</agents-flex.version>
+        <agents-flex.version>1.0.0-beta.13-snapshot</agents-flex.version>
     </properties>
 
 

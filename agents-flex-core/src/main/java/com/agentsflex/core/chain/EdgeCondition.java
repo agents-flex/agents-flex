@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.chain;
 
-public interface ChainOutputListener {
-    void onOutput(Chain chain, ChainNode node, Object outputMessage);
+public interface EdgeCondition {
+
+    boolean check(Chain chain, ChainEdge edge);
+
 }

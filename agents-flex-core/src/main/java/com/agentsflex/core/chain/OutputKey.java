@@ -13,11 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.agent;
+package com.agentsflex.core.chain;
 
 public class OutputKey {
     private String key;
-    private String type;
+    private DataType type;
     private String description;
 
     public OutputKey() {
@@ -27,13 +27,12 @@ public class OutputKey {
         this.key = key;
     }
 
-    public OutputKey(String key, String type) {
+    public OutputKey(String key, DataType type) {
         this.key = key;
         this.type = type;
     }
 
-
-    public OutputKey(String key, String type, String description) {
+    public OutputKey(String key, DataType type, String description) {
         this.key = key;
         this.type = type;
         this.description = description;
@@ -47,11 +46,11 @@ public class OutputKey {
         this.key = key;
     }
 
-    public String getType() {
+    public DataType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(DataType type) {
         this.type = type;
     }
 

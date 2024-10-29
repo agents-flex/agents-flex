@@ -16,28 +16,17 @@
 package com.agentsflex.chain.node;
 
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.ChainNode;
+import com.agentsflex.core.chain.node.CodeNode;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class GroovyExecNode extends ChainNode {
-
-    private String express;
-
-
-    public String getExpress() {
-        return express;
-    }
-
-    public void setExpress(String express) {
-        this.express = express;
-    }
+public class GroovyExecNode extends CodeNode {
 
     @Override
-    protected Map<String, Object> execute(Chain chain) {
+    protected Map<String, Object> executeCode(String code, Chain chain) {
         Binding binding = new Binding();
         Map<String, Object> all = chain.getMemory().getAll();
         if (all != null) {
@@ -49,7 +38,7 @@ public class GroovyExecNode extends ChainNode {
 
         binding.setVariable("chain", chain);
         GroovyShell shell = new GroovyShell(binding);
-        shell.evaluate(express);
+        shell.evaluate(code);
         return result;
     }
 }

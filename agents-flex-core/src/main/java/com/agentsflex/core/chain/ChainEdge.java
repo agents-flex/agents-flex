@@ -18,7 +18,7 @@ package com.agentsflex.core.chain;
 public class ChainEdge {
     private String source;
     private String target;
-    private ChainCondition condition;
+    private EdgeCondition condition;
     private int weight;
     private boolean isDefault;
 
@@ -38,11 +38,11 @@ public class ChainEdge {
         this.target = target;
     }
 
-    public ChainCondition getCondition() {
+    public EdgeCondition getCondition() {
         return condition;
     }
 
-    public void setCondition(ChainCondition condition) {
+    public void setCondition(EdgeCondition condition) {
         this.condition = condition;
     }
 
