@@ -19,6 +19,7 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.functions.Function;
 import com.agentsflex.core.functions.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.FunctionMessageParser;
@@ -30,6 +31,8 @@ import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.HashUtil;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -64,7 +67,15 @@ public class SparkLlmUtil {
 
 
     public static AiMessageParser getAiMessageParser() {
-        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
+        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser(){
+            @Override
+            public AiMessage parse(JSONObject rootJson) {
+                if (!rootJson.containsKey("payload")) {
+                    throw new JSONException("json not contains payload: " + rootJson);
+                }
+                return super.parse(rootJson);
+            }
+        };
         aiMessageParser.setContentPath("$.payload.choices.text[0].content");
         aiMessageParser.setIndexPath("$.payload.choices.text[0].index");
         aiMessageParser.setStatusPath("$.payload.choices.status");
