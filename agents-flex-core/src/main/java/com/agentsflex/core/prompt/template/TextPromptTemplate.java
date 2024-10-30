@@ -87,6 +87,10 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
     }
 
     public TextPrompt format(Map<String, Object> params) {
+        return new TextPrompt(formatToString(params));
+    }
+
+    public String formatToString(Map<String, Object> params) {
         StringBuilder result = new StringBuilder();
         for (String part : parts) {
             if (part.charAt(0) == '{' && part.charAt(part.length() - 1) == '}') {
@@ -99,7 +103,7 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
                 result.append(part);
             }
         }
-        return new TextPrompt(result.toString());
+        return result.toString();
     }
 
     public Set<String> getKeys() {

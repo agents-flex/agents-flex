@@ -21,6 +21,7 @@ import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.prompt.TextPrompt;
 import com.agentsflex.core.prompt.template.TextPromptTemplate;
 import com.agentsflex.core.util.Maps;
@@ -93,16 +94,18 @@ public class LLMNode extends BaseNode {
     protected Map<String, Object> execute(Chain chain) {
         Map<String, Object> parameters = getParameters(chain);
 
-        if (userPromptTemplate == null){
+        if (userPromptTemplate == null) {
             chain.stopError("user prompt is null or empty");
             return Collections.emptyMap();
         }
 
-
-
-
-
         TextPrompt userPrompt = userPromptTemplate.format(parameters);
+
+        if (systemPromptTemplate != null) {
+            String systemPrompt = systemPromptTemplate.formatToString(parameters);
+            userPrompt.setSystemMessage(SystemMessage.of(systemPrompt));
+        }
+
         AiMessageResponse response = llm.chat(userPrompt, chatOptions);
 
         if (chain != null) {
