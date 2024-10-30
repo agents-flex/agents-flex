@@ -60,7 +60,7 @@ public class EndNode extends BaseNode {
             "normal=" + normal +
             ", message='" + message + '\'' +
             ", description='" + description + '\'' +
-            ", inputInputParameters=" + inputInputParameters +
+            ", inputParameters=" + inputParameters +
             ", outputKeys=" + outputKeys +
             ", id='" + id + '\'' +
             ", name='" + name + '\'' +

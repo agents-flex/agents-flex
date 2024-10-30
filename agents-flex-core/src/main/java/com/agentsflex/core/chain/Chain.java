@@ -205,8 +205,8 @@ public class Chain extends ChainNode {
         List<InputParameter> inputParameters = new ArrayList<>();
         for (ChainNode node : startNodes) {
             if (node instanceof BaseNode) {
-                List<InputParameter> nodeInputInputParameters = ((BaseNode) node).getInputInputParameters();
-                if (nodeInputInputParameters != null) inputParameters.addAll(nodeInputInputParameters);
+                List<InputParameter> nodeInputParameters = ((BaseNode) node).getInputParameters();
+                if (nodeInputParameters != null) inputParameters.addAll(nodeInputParameters);
             } else if (node instanceof Chain) {
                 List<InputParameter> chainInputParameters = ((Chain) node).getInputParameters();
                 if (chainInputParameters != null) inputParameters.addAll(chainInputParameters);

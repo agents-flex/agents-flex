@@ -29,7 +29,7 @@ import java.util.Map;
 public abstract class BaseNode extends ChainNode {
 
     protected String description;
-    protected List<InputParameter> inputInputParameters;
+    protected List<InputParameter> inputParameters;
     protected List<OutputKey> outputKeys;
 
 
@@ -41,19 +41,19 @@ public abstract class BaseNode extends ChainNode {
         this.description = description;
     }
 
-    public List<InputParameter> getInputInputParameters() {
-        return inputInputParameters;
+    public List<InputParameter> getInputParameters() {
+        return inputParameters;
     }
 
-    public void setInputInputParameters(List<InputParameter> inputInputParameters) {
-        this.inputInputParameters = inputInputParameters;
+    public void setInputParameters(List<InputParameter> inputParameters) {
+        this.inputParameters = inputParameters;
     }
 
     public void addInputParameter(InputParameter inputParameter) {
-        if (inputInputParameters == null) {
-            inputInputParameters = new java.util.ArrayList<>();
+        if (inputParameters == null) {
+            inputParameters = new java.util.ArrayList<>();
         }
-        inputInputParameters.add(inputParameter);
+        inputParameters.add(inputParameter);
     }
 
     public List<OutputKey> getOutputKeys() {
@@ -75,24 +75,24 @@ public abstract class BaseNode extends ChainNode {
     public Map<String, Object> getParameters(Chain chain) {
         Map<String, Object> variables = new HashMap<>();
 
-        if (this.inputInputParameters != null) {
-            for (InputParameter inputInputParameter : this.inputInputParameters) {
-                RefType refType = inputInputParameter.getRefType();
+        if (this.inputParameters != null) {
+            for (InputParameter parameter : this.inputParameters) {
+                RefType refType = parameter.getRefType();
                 Object value = null;
                 if (refType == RefType.INPUT) {
-                    value = inputInputParameter.getRef();
+                    value = parameter.getRef();
                 } else if (refType == RefType.REF) {
-                    value = chain.get(inputInputParameter.getRef());
+                    value = chain.get(parameter.getRef());
                 } else {
-                    value = chain.get(inputInputParameter.getName());
+                    value = chain.get(parameter.getName());
                 }
 
-                if (inputInputParameter.isRequired() &&
+                if (parameter.isRequired() &&
                     (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
-                    chain.stopError(this.getName() + " Missing required parameter:" + inputInputParameter.getName());
+                    chain.stopError(this.getName() + " Missing required parameter:" + parameter.getName());
                 }
 
-                variables.put(inputInputParameter.getName(), value);
+                variables.put(parameter.getName(), value);
             }
         }
 

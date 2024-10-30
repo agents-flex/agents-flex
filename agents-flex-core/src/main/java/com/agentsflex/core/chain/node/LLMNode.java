@@ -15,9 +15,8 @@
  */
 package com.agentsflex.core.chain.node;
 
-import com.agentsflex.core.chain.InputParameter;
-import com.agentsflex.core.chain.OutputKey;
 import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.OutputKey;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
@@ -25,28 +24,30 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.TextPrompt;
 import com.agentsflex.core.prompt.template.TextPromptTemplate;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.StringUtil;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class LLMNode extends BaseNode {
 
     protected Llm llm;
     protected ChatOptions chatOptions = ChatOptions.DEFAULT;
-    protected String prompt;
-    protected TextPromptTemplate promptTemplate;
+    protected String userPrompt;
+    protected TextPromptTemplate userPromptTemplate;
+
+    protected String systemPrompt;
+    protected TextPromptTemplate systemPromptTemplate;
 
     public LLMNode() {
     }
 
 
-    public LLMNode(Llm llm, String prompt) {
+    public LLMNode(Llm llm, String userPrompt) {
         this.llm = llm;
-        this.prompt = prompt;
-        this.promptTemplate = new TextPromptTemplate(prompt);
-        this.initInputParameter();
+        this.userPrompt = userPrompt;
+        this.userPromptTemplate = new TextPromptTemplate(userPrompt);
     }
 
 
@@ -58,14 +59,22 @@ public class LLMNode extends BaseNode {
         this.llm = llm;
     }
 
-    public String getPrompt() {
-        return prompt;
+    public String getUserPrompt() {
+        return userPrompt;
     }
 
-    public void setPrompt(String prompt) {
-        this.prompt = prompt;
-        this.promptTemplate = new TextPromptTemplate(prompt);
-        this.initInputParameter();
+    public void setUserPrompt(String userPrompt) {
+        this.userPrompt = userPrompt;
+        this.userPromptTemplate = new TextPromptTemplate(userPrompt);
+    }
+
+    public String getSystemPrompt() {
+        return systemPrompt;
+    }
+
+    public void setSystemPrompt(String systemPrompt) {
+        this.systemPrompt = systemPrompt;
+        this.systemPromptTemplate = StringUtil.hasText(systemPrompt) ? new TextPromptTemplate(systemPrompt) : null;
     }
 
     public ChatOptions getChatOptions() {
@@ -80,30 +89,21 @@ public class LLMNode extends BaseNode {
     }
 
 
-    public void initInputParameter() {
-        if (this.promptTemplate == null) {
-            return;
-        }
-
-        Set<String> keys = this.promptTemplate.getKeys();
-        if (keys == null || keys.isEmpty()) {
-            return;
-        }
-
-        List<InputParameter> inputParameters = new ArrayList<>(keys.size());
-        for (String key : keys) {
-            InputParameter inputParameter = new InputParameter(key, true);
-            inputParameters.add(inputParameter);
-        }
-        this.inputInputParameters = inputParameters;
-    }
-
-
     @Override
     protected Map<String, Object> execute(Chain chain) {
         Map<String, Object> parameters = getParameters(chain);
-        TextPrompt textPrompt = promptTemplate.format(parameters);
-        AiMessageResponse response = llm.chat(textPrompt, chatOptions);
+
+        if (userPromptTemplate == null){
+            chain.stopError("user prompt is null or empty");
+            return Collections.emptyMap();
+        }
+
+
+
+
+
+        TextPrompt userPrompt = userPromptTemplate.format(parameters);
+        AiMessageResponse response = llm.chat(userPrompt, chatOptions);
 
         if (chain != null) {
             chain.output(this, response);
@@ -138,10 +138,10 @@ public class LLMNode extends BaseNode {
         return "LLMNode{" +
             "llm=" + llm +
             ", chatOptions=" + chatOptions +
-            ", prompt='" + prompt + '\'' +
-            ", promptTemplate=" + promptTemplate +
+            ", prompt='" + userPrompt + '\'' +
+            ", promptTemplate=" + userPromptTemplate +
             ", description='" + description + '\'' +
-            ", inputInputParameters=" + inputInputParameters +
+            ", inputParameters=" + inputParameters +
             ", outputKeys=" + outputKeys +
             ", id='" + id + '\'' +
             ", name='" + name + '\'' +
