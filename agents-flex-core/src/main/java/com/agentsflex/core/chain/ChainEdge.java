@@ -16,11 +16,20 @@
 package com.agentsflex.core.chain;
 
 public class ChainEdge {
+    private String id;
     private String source;
     private String target;
     private EdgeCondition condition;
     private int weight;
     private boolean isDefault;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public String getSource() {
         return source;

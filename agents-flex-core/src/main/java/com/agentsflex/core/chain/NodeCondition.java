@@ -17,6 +17,6 @@ package com.agentsflex.core.chain;
 
 public interface NodeCondition {
 
-    boolean check(Chain chain, ChainNode node);
+    boolean check(Chain chain, NodeContext context);
 
 }

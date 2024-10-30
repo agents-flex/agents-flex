@@ -18,15 +18,16 @@ package com.agentsflex.core.chain;
 import com.agentsflex.core.chain.event.*;
 import com.agentsflex.core.chain.node.BaseNode;
 import com.agentsflex.core.util.CollectionUtil;
+import com.agentsflex.core.util.MapUtil;
 import com.agentsflex.core.util.NamedThreadPools;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 
 public class Chain extends ChainNode {
-    public static final String CTX_EXEC_COUNT = "_exec_count";
     protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
     protected Map<String, Object> executeResult = null;
     protected List<ChainOutputListener> outputListeners = new ArrayList<>();
@@ -37,6 +38,7 @@ public class Chain extends ChainNode {
     protected Chain parent;
     protected List<Chain> children;
     protected ExecutorService asyncNodeExecutors = NamedThreadPools.newFixedThreadPool("chain-executor");
+    protected Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<>();
 
 
     public Chain() {
@@ -91,7 +93,6 @@ public class Chain extends ChainNode {
         }
         this.outputListeners.add(outputListener);
     }
-
 
     public List<ChainNode> getNodes() {
         return nodes;
@@ -215,16 +216,30 @@ public class Chain extends ChainNode {
         return inputParameters;
     }
 
+    public NodeContext getNodeContext(String nodeId) {
+        return MapUtil.computeIfAbsent(nodeContexts, nodeId, k -> new NodeContext());
+    }
+
     protected void executeInternal() {
         List<ChainNode> currentNodes = getStartNodes();
-        while (CollectionUtil.hasItems(currentNodes)) {
-            ChainNode currentNode = currentNodes.remove(0);
+        if (currentNodes == null || currentNodes.isEmpty()) {
+            return;
+        }
 
-            Integer execCount = (Integer) currentNode.getMemory().get(CTX_EXEC_COUNT);
-            if (execCount == null) execCount = 0;
+        List<ExecuteNode> waitingExecuteNodes = new ArrayList<>();
+        for (ChainNode currentNode : currentNodes) {
+            waitingExecuteNodes.add(new ExecuteNode(currentNode, null, ""));
+        }
+
+        while (CollectionUtil.hasItems(waitingExecuteNodes)) {
+            ExecuteNode executeNode = waitingExecuteNodes.remove(0);
+            ChainNode currentNode = executeNode.currentNode;
+
+            NodeContext nodeContext = getNodeContext(currentNode.getId());
+            nodeContext.recordTrigger(executeNode);
 
             NodeCondition nodeCondition = currentNode.getCondition();
-            if (nodeCondition != null && !nodeCondition.check(this, currentNode)) {
+            if (nodeCondition != null && !nodeCondition.check(this, nodeContext)) {
                 continue;
             }
 
@@ -235,11 +250,11 @@ public class Chain extends ChainNode {
                 if (this.getStatus() != ChainStatus.RUNNING) {
                     break;
                 }
+                nodeContext.recordExecute(executeNode);
                 executeResult = executeNode(currentNode);
                 this.executeResult = executeResult;
             } finally {
                 ChainContext.clearNode();
-                currentNode.getMemory().put(CTX_EXEC_COUNT, execCount + 1);
                 notifyEvent(new OnNodeFinishedEvent(currentNode, executeResult));
             }
 
@@ -263,9 +278,9 @@ public class Chain extends ChainNode {
                     }
                     EdgeCondition condition = chainEdge.getCondition();
                     if (condition == null) {
-                        currentNodes.add(nextNode);
+                        waitingExecuteNodes.add(new ExecuteNode(nextNode, currentNode, chainEdge.getId()));
                     } else if (condition.check(this, chainEdge)) {
-                        currentNodes.add(nextNode);
+                        waitingExecuteNodes.add(new ExecuteNode(nextNode, currentNode, chainEdge.getId()));
                     }
                 }
             }
@@ -408,6 +423,19 @@ public class Chain extends ChainNode {
 
     public void setAsyncNodeExecutors(ExecutorService asyncNodeExecutors) {
         this.asyncNodeExecutors = asyncNodeExecutors;
+    }
+
+    public static class ExecuteNode {
+
+        final ChainNode currentNode;
+        final ChainNode prevNode;
+        final String fromEdgeId;
+
+        public ExecuteNode(ChainNode currentNode, ChainNode prevNode, String fromEdgeId) {
+            this.currentNode = currentNode;
+            this.prevNode = prevNode;
+            this.fromEdgeId = fromEdgeId;
+        }
     }
 
     @Override
