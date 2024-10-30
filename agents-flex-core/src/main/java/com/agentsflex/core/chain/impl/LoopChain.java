@@ -15,15 +15,14 @@
  */
 package com.agentsflex.core.chain.impl;
 
-import com.agentsflex.core.chain.ChainEvent;
 import com.agentsflex.core.chain.ChainEdge;
-import com.agentsflex.core.chain.ChainNode;
-import com.agentsflex.core.chain.event.OnNodeFinishedEvent;
+import com.agentsflex.core.chain.NodeContext;
 import com.agentsflex.core.chain.node.StartNode;
 
 public class LoopChain extends SequentialChain {
 
     private int maxLoopCount = Integer.MAX_VALUE;
+    private int executeCount = 0;
 
     public LoopChain() {
         this.addNode(new StartNode());
@@ -53,14 +52,10 @@ public class LoopChain extends SequentialChain {
     }
 
     @Override
-    public void notifyEvent(ChainEvent event) {
-        super.notifyEvent(event);
-        if (event instanceof OnNodeFinishedEvent){
-            ChainNode node = ((OnNodeFinishedEvent) event).getNode();
-            Integer exeCount = (Integer) node.getMemory().get(CTX_EXEC_COUNT);
-            if (exeCount != null && exeCount > maxLoopCount){
-                stopNormal("Loop to the maxLoopCount limit");
-            }
+    protected void onNodeExecuteAfter(NodeContext nodeContext) {
+        if (executeCount++ >= maxLoopCount) {
+            stopNormal("Loop to the maxLoopCount limit");
         }
     }
+
 }

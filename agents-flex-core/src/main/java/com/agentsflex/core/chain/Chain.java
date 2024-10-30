@@ -234,34 +234,42 @@ public class Chain extends ChainNode {
         while (CollectionUtil.hasItems(waitingExecuteNodes)) {
             ExecuteNode executeNode = waitingExecuteNodes.remove(0);
             ChainNode currentNode = executeNode.currentNode;
-
             NodeContext nodeContext = getNodeContext(currentNode.getId());
-            nodeContext.recordTrigger(executeNode);
-
-            NodeCondition nodeCondition = currentNode.getCondition();
-            if (nodeCondition != null && !nodeCondition.check(this, nodeContext)) {
-                continue;
-            }
-
-            Map<String, Object> executeResult = null;
             try {
-                ChainContext.setNode(currentNode);
-                notifyEvent(new OnNodeStartEvent(currentNode));
-                if (this.getStatus() != ChainStatus.RUNNING) {
-                    break;
-                }
-                nodeContext.recordExecute(executeNode);
-                executeResult = executeNode(currentNode);
-                this.executeResult = executeResult;
-            } finally {
-                ChainContext.clearNode();
-                notifyEvent(new OnNodeFinishedEvent(currentNode, executeResult));
-            }
+                onNodeExecuteBefore(nodeContext);
 
-            if (executeResult != null && !executeResult.isEmpty()) {
-                executeResult.forEach((s, o) -> {
-                    Chain.this.memory.put(currentNode.id + "." + s, o);
-                });
+
+                nodeContext.recordTrigger(executeNode);
+
+                NodeCondition nodeCondition = currentNode.getCondition();
+                if (nodeCondition != null && !nodeCondition.check(this, nodeContext)) {
+                    continue;
+                }
+
+                Map<String, Object> executeResult = null;
+                try {
+                    ChainContext.setNode(currentNode);
+                    notifyEvent(new OnNodeStartEvent(currentNode));
+                    if (this.getStatus() != ChainStatus.RUNNING) {
+                        break;
+                    }
+                    onNodeExecuteStart(nodeContext);
+                    nodeContext.recordExecute(executeNode);
+                    executeResult = executeNode(currentNode);
+                    this.executeResult = executeResult;
+                } finally {
+                    onNodeExecuteEnd(nodeContext);
+                    ChainContext.clearNode();
+                    notifyEvent(new OnNodeFinishedEvent(currentNode, executeResult));
+                }
+
+                if (executeResult != null && !executeResult.isEmpty()) {
+                    executeResult.forEach((s, o) -> {
+                        Chain.this.memory.put(currentNode.id + "." + s, o);
+                    });
+                }
+            } finally {
+                onNodeExecuteAfter(nodeContext);
             }
 
             if (this.getStatus() != ChainStatus.RUNNING) {
@@ -287,11 +295,37 @@ public class Chain extends ChainNode {
         }
     }
 
+    protected void onNodeExecuteAfter(NodeContext nodeContext) {
+
+    }
+
+    protected void onNodeExecuteEnd(NodeContext nodeContext) {
+
+    }
+
+    protected void onNodeExecuteStart(NodeContext nodeContext) {
+
+    }
+
+    protected void onNodeExecuteBefore(NodeContext nodeContext) {
+
+    }
+
 
     private Map<String, Object> executeNode(ChainNode currentNode) {
         Map<String, Object> executeResult = null;
         if (currentNode.isAsync()) {
-            asyncNodeExecutors.execute(() -> currentNode.execute(Chain.this));
+            Chain currentChain = ChainContext.getCurrentChain();
+            asyncNodeExecutors.execute(() -> {
+                try {
+                    ChainContext.setChain(currentChain);
+                    ChainContext.setNode(currentNode);
+                    currentNode.execute(Chain.this);
+                } finally {
+                    ChainContext.clearNode();
+                    ChainContext.clearChain();
+                }
+            });
         } else {
             executeResult = currentNode.execute(this);
         }
