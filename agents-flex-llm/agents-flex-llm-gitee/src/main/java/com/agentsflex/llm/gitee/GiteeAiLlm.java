@@ -86,7 +86,7 @@ public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
 //                , functionMessageParser.parse(jsonObject));
             throw new UnsupportedOperationException("Gitee AI not support function call");
         } else {
-            messageResponse = new AiMessageResponse(aiMessageParser.parse(jsonObject));
+            messageResponse = new AiMessageResponse(response, aiMessageParser.parse(jsonObject));
         }
 
         if (error != null && !error.isEmpty()) {

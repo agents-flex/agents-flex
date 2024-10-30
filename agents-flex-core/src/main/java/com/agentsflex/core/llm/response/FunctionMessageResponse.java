@@ -26,8 +26,8 @@ public class FunctionMessageResponse extends AiMessageResponse {
     private final FunctionMessage functionMessage;
     private final Object functionResult;
 
-    public FunctionMessageResponse(List<Function> functions, FunctionMessage functionMessage) {
-        super(functionMessage);
+    public FunctionMessageResponse(String response,List<Function> functions, FunctionMessage functionMessage) {
+        super(response,functionMessage);
 
         this.functions = functions;
         this.functionMessage = functionMessage;

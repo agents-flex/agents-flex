@@ -145,7 +145,9 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
                 } else {
                     AiMessage aiMessage = new AiMessage();
                     aiMessage.setContent(response.getMessage().getFullContent());
-                    messageResponse[0] = new AiMessageResponse(aiMessage);
+
+                    ((AiMessageResponse) response).setMessage(aiMessage);
+                    messageResponse[0] = ((AiMessageResponse) response);
                 }
             }
 

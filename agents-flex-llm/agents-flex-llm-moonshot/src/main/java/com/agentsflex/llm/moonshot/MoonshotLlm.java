@@ -80,7 +80,7 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
         if (prompt instanceof FunctionPrompt) {
             throw new IllegalStateException("Moonshot not support function calling");
         } else {
-            messageResponse = new AiMessageResponse(aiMessageParser.parse(jsonObject));
+            messageResponse = new AiMessageResponse(response, aiMessageParser.parse(jsonObject));
         }
 
         if (error != null && !error.isEmpty()) {

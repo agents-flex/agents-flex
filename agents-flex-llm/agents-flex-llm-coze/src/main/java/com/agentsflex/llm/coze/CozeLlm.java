@@ -99,6 +99,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         String error = jsonObject.getString("msg");
 
         CozeChatContext cozeChat = jsonObject.getObject("data", (Type) CozeChatContext.class);
+        cozeChat.setResponse(response);
 
         if (!error.isEmpty() && !Objects.equals(code, "0")) {
             listener.onFailure(cozeChat, new Throwable(error));
@@ -149,6 +150,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
                 String type = data.getString("type");
                 if ("completed".equalsIgnoreCase(status)) {
                     context = JSON.parseObject(line, CozeChatContext.class);
+                    context.setResponse(line);
                     listener.onStop(context);
                     continue;
                 }
@@ -229,6 +231,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
     public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Message[] messages = new Message[1];
+        String[] responses = new String[1];
         Throwable[] failureThrowable = new Throwable[1];
 
         this.botChat(prompt, new CozeRequestListener() {
@@ -238,12 +241,14 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
                 if (isCompleted) {
                     AiMessage answer = getChatAnswer(context);
                     messages[0] = answer;
+                    responses[0] = context.getResponse();
                 }
             }
 
             @Override
             public void onFailure(CozeChatContext context, Throwable throwable) {
                 failureThrowable[0] = throwable;
+                responses[0] = context.getResponse();
                 latch.countDown();
             }
 
@@ -259,8 +264,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
             throw new RuntimeException(e);
         }
 
-        AbstractBaseMessageResponse<?> response;
-        response = new AiMessageResponse((AiMessage) messages[0]);
+        AbstractBaseMessageResponse<?> response = new AiMessageResponse(responses[0], (AiMessage) messages[0]);
 
         if (messages[0] == null || failureThrowable[0] != null) {
             response.setError(true);
@@ -277,7 +281,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         this.botChat(prompt, new CozeRequestListener() {
             @Override
             public void onMessage(CozeChatContext context) {
-                AiMessageResponse response = new AiMessageResponse(context.getMessage());
+                AiMessageResponse response = new AiMessageResponse(context.getResponse(), context.getMessage());
                 listener.onMessage(context, (R) response);
             }
 

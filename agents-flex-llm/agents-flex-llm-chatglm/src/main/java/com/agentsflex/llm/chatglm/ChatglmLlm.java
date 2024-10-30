@@ -110,10 +110,10 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         AbstractBaseMessageResponse<?> messageResponse;
 
         if (prompt instanceof FunctionPrompt) {
-            messageResponse = new FunctionMessageResponse(((FunctionPrompt) prompt).getFunctions()
+            messageResponse = new FunctionMessageResponse(response, ((FunctionPrompt) prompt).getFunctions()
                 , functionMessageParser.parse(jsonObject));
         } else {
-            messageResponse = new AiMessageResponse(aiMessageParser.parse(jsonObject));
+            messageResponse = new AiMessageResponse(response, aiMessageParser.parse(jsonObject));
         }
 
         if (error != null && !error.isEmpty()) {

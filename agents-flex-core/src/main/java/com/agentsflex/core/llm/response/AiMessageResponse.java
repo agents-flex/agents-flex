@@ -18,22 +18,37 @@ package com.agentsflex.core.llm.response;
 import com.agentsflex.core.message.AiMessage;
 
 public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
-    private AiMessage aiMessage;
+    private String response;
+    private AiMessage message;
 
-    public AiMessageResponse(AiMessage aiMessage) {
-        this.aiMessage = aiMessage;
+    public AiMessageResponse(String response, AiMessage message) {
+        this.response = response;
+        this.message = message;
+    }
+
+    public String getResponse() {
+        return response;
+    }
+
+    public void setResponse(String response) {
+        this.response = response;
     }
 
     @Override
     public AiMessage getMessage() {
-        return aiMessage;
+        return message;
+    }
+
+    public void setMessage(AiMessage message) {
+        this.message = message;
     }
 
     @Override
     public String toString() {
         return "AiMessageResponse{" +
-            "aiMessage=" + aiMessage +
-            ", isError=" + error +
+            "response='" + response + '\'' +
+            ", message=" + message +
+            ", error=" + error +
             ", errorMessage='" + errorMessage + '\'' +
             ", errorType='" + errorType + '\'' +
             ", errorCode='" + errorCode + '\'' +

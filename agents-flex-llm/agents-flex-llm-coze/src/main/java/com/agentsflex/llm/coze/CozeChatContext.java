@@ -41,6 +41,8 @@ public class CozeChatContext extends ChatContext {
 
     private AiMessage message;
 
+    private String response;
+
     public CozeChatContext(Llm llm, LlmClient client) {
         super(llm, client);
     }
@@ -108,5 +110,13 @@ public class CozeChatContext extends ChatContext {
 
     public AiMessage getMessage() {
         return message;
+    }
+
+    public String getResponse() {
+        return response;
+    }
+
+    public void setResponse(String response) {
+        this.response = response;
     }
 }

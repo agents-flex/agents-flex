@@ -83,16 +83,16 @@ public class BaseLlmClientListener implements LlmClientListener {
         if (isFunctionCalling) {
             FunctionMessage functionMessage = functionMessageParser.parse(jsonObject);
             List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
-            MessageResponse<?> r = new FunctionMessageResponse(functions, functionMessage);
+            MessageResponse<?> functionMessageResponse = new FunctionMessageResponse(response, functions, functionMessage);
             //noinspection unchecked
-            streamResponseListener.onMessage(context, r);
+            streamResponseListener.onMessage(context, functionMessageResponse);
         } else {
             lastAiMessage = messageParser.parse(jsonObject);
             fullMessage.append(lastAiMessage.getContent());
             lastAiMessage.setFullContent(fullMessage.toString());
-            MessageResponse<?> r = new AiMessageResponse(lastAiMessage);
+            MessageResponse<?> aiMessageResponse = new AiMessageResponse(response, lastAiMessage);
             //noinspection unchecked
-            streamResponseListener.onMessage(context, r);
+            streamResponseListener.onMessage(context, aiMessageResponse);
         }
     }
 
