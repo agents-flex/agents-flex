@@ -22,12 +22,15 @@ import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.SystemMessage;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 public class FunctionPrompt extends Prompt<FunctionMessageResponse> {
+
+    private SystemMessage systemMessage;
     private final ChatMemory memory = new DefaultChatMemory();
     private final List<Function> functions = new ArrayList<>();
 
@@ -61,9 +64,25 @@ public class FunctionPrompt extends Prompt<FunctionMessageResponse> {
         functions.addAll(Functions.from(funcObject, methodNames));
     }
 
+    public SystemMessage getSystemMessage() {
+        return systemMessage;
+    }
+
+    public void setSystemMessage(SystemMessage systemMessage) {
+        this.systemMessage = systemMessage;
+    }
+
+    public ChatMemory getMemory() {
+        return memory;
+    }
+
     @Override
     public List<Message> toMessages() {
-        return memory.getMessages();
+        List<Message> messages = memory.getMessages();
+        if (systemMessage != null){
+            messages.add(0, systemMessage);
+        }
+        return messages;
     }
 
     public List<Function> getFunctions() {

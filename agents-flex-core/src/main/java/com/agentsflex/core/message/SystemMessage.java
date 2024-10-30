@@ -24,5 +24,7 @@ public class SystemMessage extends AbstractTextMessage {
         this.content = content;
     }
 
-
+    public static SystemMessage of(String content) {
+        return new SystemMessage(content);
+    }
 }
