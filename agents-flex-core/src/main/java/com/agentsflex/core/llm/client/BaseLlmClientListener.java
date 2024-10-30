@@ -79,22 +79,24 @@ public class BaseLlmClientListener implements LlmClientListener {
             return;
         }
 
-        JSONObject jsonObject = JSON.parseObject(response);
-
-
-        if (isFunctionCalling) {
-            FunctionMessage functionMessage = functionMessageParser.parse(jsonObject);
-            List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
-            FunctionMessageResponse functionMessageResponse = new FunctionMessageResponse(response, functions, functionMessage);
-            //noinspection unchecked
-            streamResponseListener.onMessage(context, functionMessageResponse);
-        } else {
-            lastAiMessage = messageParser.parse(jsonObject);
-            fullMessage.append(lastAiMessage.getContent());
-            lastAiMessage.setFullContent(fullMessage.toString());
-            AiMessageResponse aiMessageResponse = new AiMessageResponse(response, lastAiMessage);
-            //noinspection unchecked
-            streamResponseListener.onMessage(context, aiMessageResponse);
+        try {
+            JSONObject jsonObject = JSON.parseObject(response);
+            if (isFunctionCalling) {
+                FunctionMessage functionMessage = functionMessageParser.parse(jsonObject);
+                List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
+                FunctionMessageResponse functionMessageResponse = new FunctionMessageResponse(response, functions, functionMessage);
+                //noinspection unchecked
+                streamResponseListener.onMessage(context, functionMessageResponse);
+            } else {
+                lastAiMessage = messageParser.parse(jsonObject);
+                fullMessage.append(lastAiMessage.getContent());
+                lastAiMessage.setFullContent(fullMessage.toString());
+                AiMessageResponse aiMessageResponse = new AiMessageResponse(response, lastAiMessage);
+                //noinspection unchecked
+                streamResponseListener.onMessage(context, aiMessageResponse);
+            }
+        } catch (Exception err) {
+            streamResponseListener.onFailure(context, err);
         }
     }
 
