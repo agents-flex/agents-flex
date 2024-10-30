@@ -91,6 +91,13 @@ public class LLMNode extends BaseNode {
         this.chatOptions = chatOptions;
     }
 
+    public String getOutType() {
+        return outType;
+    }
+
+    public void setOutType(String outType) {
+        this.outType = outType;
+    }
 
     @Override
     protected Map<String, Object> execute(Chain chain) {
@@ -129,7 +136,7 @@ public class LLMNode extends BaseNode {
                 }
                 Map<String, Object> map = new HashMap<>();
                 for (OutputKey outputKey : this.outputKeys) {
-                    map.put(outputKey.getKey(), jsonObject.get(outputKey.getKey()));
+                    map.put(outputKey.getName(), jsonObject.get(outputKey.getName()));
                 }
                 return map;
             }

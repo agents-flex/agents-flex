@@ -15,43 +15,49 @@
  */
 package com.agentsflex.core.chain;
 
-public class OutputKey {
-    private String key;
-    private DataType type;
-    private String description;
+import java.io.Serializable;
+
+public class OutputKey implements Serializable {
+    protected String name;
+    protected String description;
+    protected DataType dataType;
+    protected String ref;
+    protected RefType refType;
+
+
 
     public OutputKey() {
     }
 
-    public OutputKey(String key) {
-        this.key = key;
+    public OutputKey(String name) {
+        this.name = name;
     }
 
-    public OutputKey(String key, DataType type) {
-        this.key = key;
-        this.type = type;
+    public OutputKey(String name, DataType dataType) {
+        this.name = name;
+        this.dataType = dataType;
     }
 
-    public OutputKey(String key, DataType type, String description) {
-        this.key = key;
-        this.type = type;
+    public OutputKey(String name, DataType dataType, String description) {
+        this.name = name;
+        this.dataType = dataType;
         this.description = description;
     }
 
-    public String getKey() {
-        return key;
+    public String getName() {
+        return name;
     }
 
-    public void setKey(String key) {
-        this.key = key;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public DataType getType() {
-        return type;
+    public DataType getDataType() {
+        return dataType;
     }
 
-    public void setType(DataType type) {
-        this.type = type;
+    public void setDataType(DataType dataType) {
+        this.dataType = dataType;
     }
 
     public String getDescription() {
@@ -60,5 +66,21 @@ public class OutputKey {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getRef() {
+        return ref;
+    }
+
+    public void setRef(String ref) {
+        this.ref = ref;
+    }
+
+    public RefType getRefType() {
+        return refType;
+    }
+
+    public void setRefType(RefType refType) {
+        this.refType = refType;
     }
 }

@@ -16,8 +16,12 @@
 package com.agentsflex.core.chain.node;
 
 import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.OutputKey;
+import com.agentsflex.core.chain.RefType;
+import com.agentsflex.core.util.StringUtil;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class EndNode extends BaseNode {
@@ -46,11 +50,27 @@ public class EndNode extends BaseNode {
 
     @Override
     public Map<String, Object> execute(Chain chain) {
-        if (normal) {
-            chain.stopNormal(message);
-        } else {
-            chain.stopError(message);
+        if (StringUtil.hasText(message)) {
+            if (normal) {
+                chain.stopNormal(message);
+            } else {
+                chain.stopError(message);
+            }
         }
+
+        if (this.outputKeys != null) {
+            Map<String, Object> output = new HashMap<>();
+            for (OutputKey outputKey : this.outputKeys) {
+                if (outputKey.getRefType() == RefType.REF) {
+                    output.put(outputKey.getName(), chain.get(outputKey.getRef()));
+                } else if (outputKey.getRefType() == RefType.INPUT) {
+                    output.put(outputKey.getName(), outputKey.getRef());
+                }
+            }
+            return output;
+        }
+
+
         return Collections.emptyMap();
     }
 

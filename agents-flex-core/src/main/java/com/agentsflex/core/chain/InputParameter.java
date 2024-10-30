@@ -15,18 +15,19 @@
  */
 package com.agentsflex.core.chain;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class InputParameter {
-    private String name;
-    private String description;
-    private DataType dataType;
-    private String ref;
-    private RefType refType;
-    private boolean required;
+public class InputParameter implements Serializable {
+    protected String name;
+    protected String description;
+    protected DataType dataType;
+    protected String ref;
+    protected RefType refType;
+    protected boolean required;
 
-    private List<InputParameter> children;
+    protected List<InputParameter> children;
 
     public InputParameter() {
     }
