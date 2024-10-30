@@ -19,7 +19,6 @@ import com.agentsflex.core.functions.Function;
 import com.agentsflex.core.llm.ChatContext;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.StreamResponseListener;
-import com.agentsflex.core.llm.MessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.message.AiMessage;
@@ -48,7 +47,7 @@ public class BaseLlmClientListener implements LlmClientListener {
 
     public BaseLlmClientListener(Llm llm
         , LlmClient client
-        , StreamResponseListener streamResponseListener
+        , StreamResponseListener<?> streamResponseListener
         , Prompt prompt
         , AiMessageParser messageParser
         , FunctionMessageParser functionMessageParser) {
@@ -79,18 +78,21 @@ public class BaseLlmClientListener implements LlmClientListener {
         if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim())) {
             return;
         }
+
         JSONObject jsonObject = JSON.parseObject(response);
+
+
         if (isFunctionCalling) {
             FunctionMessage functionMessage = functionMessageParser.parse(jsonObject);
             List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
-            MessageResponse<?> functionMessageResponse = new FunctionMessageResponse(response, functions, functionMessage);
+            FunctionMessageResponse functionMessageResponse = new FunctionMessageResponse(response, functions, functionMessage);
             //noinspection unchecked
             streamResponseListener.onMessage(context, functionMessageResponse);
         } else {
             lastAiMessage = messageParser.parse(jsonObject);
             fullMessage.append(lastAiMessage.getContent());
             lastAiMessage.setFullContent(fullMessage.toString());
-            MessageResponse<?> aiMessageResponse = new AiMessageResponse(response, lastAiMessage);
+            AiMessageResponse aiMessageResponse = new AiMessageResponse(response, lastAiMessage);
             //noinspection unchecked
             streamResponseListener.onMessage(context, aiMessageResponse);
         }

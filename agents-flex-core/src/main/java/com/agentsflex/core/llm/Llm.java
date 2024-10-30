@@ -37,11 +37,11 @@ public interface Llm extends EmbeddingModel {
         return response != null && response.getMessage() != null ? response.getMessage().getContent() : null;
     }
 
-    default <R extends MessageResponse<?>> R chat(Prompt<R> prompt) {
+    default <R extends AiMessageResponse> R chat(Prompt<R> prompt) {
         return chat(prompt, ChatOptions.DEFAULT);
     }
 
-    <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options);
+    <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options);
 
     default void chatStream(String prompt, StreamResponseListener<AiMessageResponse> listener) {
         this.chatStream(new TextPrompt(prompt), listener, ChatOptions.DEFAULT);
@@ -52,10 +52,10 @@ public interface Llm extends EmbeddingModel {
     }
 
     //chatStream
-    default <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener) {
+    default <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener) {
         this.chatStream(prompt, listener, ChatOptions.DEFAULT);
     }
 
-    <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options);
+    <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options);
 
 }

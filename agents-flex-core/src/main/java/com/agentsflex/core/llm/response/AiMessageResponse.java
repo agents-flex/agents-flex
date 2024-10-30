@@ -18,6 +18,7 @@ package com.agentsflex.core.llm.response;
 import com.agentsflex.core.message.AiMessage;
 
 public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
+    
     private String response;
     private AiMessage message;
 

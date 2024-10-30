@@ -15,7 +15,9 @@
  */
 package com.agentsflex.core.llm;
 
-public interface StreamResponseListener<R extends MessageResponse<?>> {
+import com.agentsflex.core.llm.response.AiMessageResponse;
+
+public interface StreamResponseListener<R extends AiMessageResponse> {
 
     default void onStart(ChatContext context) {
     }

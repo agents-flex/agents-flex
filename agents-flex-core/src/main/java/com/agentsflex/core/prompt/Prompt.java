@@ -15,14 +15,14 @@
  */
 package com.agentsflex.core.prompt;
 
+import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.util.Metadata;
-import com.agentsflex.core.llm.MessageResponse;
 
 import java.util.List;
 
 
-public abstract class Prompt<M extends MessageResponse<?>> extends Metadata {
+public abstract class Prompt<M extends AiMessageResponse> extends Metadata {
 
     public abstract List<Message> toMessages();
 

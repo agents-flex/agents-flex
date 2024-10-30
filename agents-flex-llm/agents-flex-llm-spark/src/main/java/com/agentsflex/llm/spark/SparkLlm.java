@@ -16,7 +16,10 @@
 package com.agentsflex.llm.spark;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.*;
+import com.agentsflex.core.llm.BaseLlm;
+import com.agentsflex.core.llm.ChatContext;
+import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
 import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.llm.client.LlmClient;
@@ -25,7 +28,6 @@ import com.agentsflex.core.llm.client.impl.WebSocketClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionMessage;
 import com.agentsflex.core.parser.AiMessageParser;
@@ -107,7 +109,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
+    public <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Throwable[] failureThrowable = new Throwable[1];
         AbstractBaseMessageResponse<?>[] messageResponse = {null};
@@ -132,7 +134,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     }
 
 
-    private <R extends MessageResponse<?>> void waitResponse(Prompt<R> prompt
+    private <R extends AiMessageResponse> void waitResponse(Prompt<R> prompt
         , ChatOptions options
         , AbstractBaseMessageResponse<?>[] messageResponse
         , CountDownLatch latch
@@ -141,13 +143,13 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
             @Override
             public void onMessage(ChatContext context, R response) {
                 if (response.getMessage() instanceof FunctionMessage) {
-                    messageResponse[0] = (FunctionMessageResponse) response;
+                    messageResponse[0] = response;
                 } else {
                     AiMessage aiMessage = new AiMessage();
                     aiMessage.setContent(response.getMessage().getFullContent());
 
-                    ((AiMessageResponse) response).setMessage(aiMessage);
-                    messageResponse[0] = ((AiMessageResponse) response);
+                    response.setMessage(aiMessage);
+                    messageResponse[0] = response;
                 }
             }
 
@@ -173,12 +175,10 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
+    public <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
-
         String payload = SparkLlmUtil.promptToPayload(prompt, config, options);
-
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
         llmClient.start(url, null, payload, clientListener, config);
     }

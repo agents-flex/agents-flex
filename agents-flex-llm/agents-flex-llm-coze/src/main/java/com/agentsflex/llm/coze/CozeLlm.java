@@ -18,7 +18,6 @@ package com.agentsflex.llm.coze;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.BaseLlm;
 import com.agentsflex.core.llm.ChatOptions;
-import com.agentsflex.core.llm.MessageResponse;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
@@ -64,7 +63,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         return headers;
     }
 
-    private <R extends MessageResponse<?>> void botChat(Prompt<R> prompt, CozeRequestListener listener, ChatOptions chatOptions, boolean stream) {
+    private <R extends AiMessageResponse> void botChat(Prompt<R> prompt, CozeRequestListener listener, ChatOptions chatOptions, boolean stream) {
         String botId = config.getDefaultBotId();
         String userId = config.getDefaultUserId();
         String conversationId = config.getDefaultConversationId();
@@ -228,7 +227,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
+    public <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Message[] messages = new Message[1];
         String[] responses = new String[1];
@@ -277,7 +276,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
     }
 
     @Override
-    public <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
+    public <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
         this.botChat(prompt, new CozeRequestListener() {
             @Override
             public void onMessage(CozeChatContext context) {

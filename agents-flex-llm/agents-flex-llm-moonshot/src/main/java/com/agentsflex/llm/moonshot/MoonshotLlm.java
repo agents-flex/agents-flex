@@ -18,7 +18,6 @@ package com.agentsflex.llm.moonshot;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.BaseLlm;
 import com.agentsflex.core.llm.ChatOptions;
-import com.agentsflex.core.llm.MessageResponse;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
 import com.agentsflex.core.llm.client.HttpClient;
@@ -55,7 +54,7 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<?>> R chat(Prompt<R> prompt, ChatOptions options) {
+    public <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
@@ -96,7 +95,7 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
 
 
     @Override
-    public <R extends MessageResponse<?>> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
+    public <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
