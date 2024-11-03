@@ -1,5 +1,6 @@
 package com.agentsflex.core.prompt;
 
+import com.agentsflex.core.functions.Function;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
@@ -15,6 +16,11 @@ public class FunctionPrompt extends Prompt {
     public FunctionPrompt(String message, Class<?> functionsClass) {
         this.humanMessage = new HumanMessage(message);
         this.humanMessage.addFunctions(functionsClass);
+    }
+
+    public FunctionPrompt(String message, List<Function> functions) {
+        this.humanMessage = new HumanMessage(message);
+        this.humanMessage.addFunctions(functions);
     }
 
     public SystemMessage getSystemMessage() {

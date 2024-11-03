@@ -30,4 +30,12 @@ public class FunctionCaller {
     public Object call() {
         return this.function.invoke(this.functionCall.getArgs());
     }
+
+    public Function getFunction() {
+        return function;
+    }
+
+    public FunctionCall getFunctionCall() {
+        return functionCall;
+    }
 }
