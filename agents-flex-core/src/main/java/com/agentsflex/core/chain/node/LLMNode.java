@@ -124,7 +124,7 @@ public class LLMNode extends BaseNode {
         }
 
         if (outType == null || outType.equalsIgnoreCase("text") || outType.equalsIgnoreCase("markdown")) {
-            return Maps.of("output", response.getMessage().getContent()).build();
+            return Maps.of("output", response.getMessage().getContent());
         } else {
             if (this.outputKeys != null) {
                 JSONObject jsonObject;

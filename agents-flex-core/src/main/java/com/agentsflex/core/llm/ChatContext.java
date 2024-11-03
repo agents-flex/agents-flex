@@ -21,6 +21,9 @@ public class ChatContext {
     private Llm llm;
     private LlmClient client;
 
+    public ChatContext() {
+    }
+
     public ChatContext(Llm llm, LlmClient client) {
         this.llm = llm;
         this.client = client;

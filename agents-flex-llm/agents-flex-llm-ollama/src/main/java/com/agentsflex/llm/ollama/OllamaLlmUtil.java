@@ -17,21 +17,22 @@ package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
-import java.util.Base64;
-import java.util.Map;
+import java.util.*;
 
 public class OllamaLlmUtil {
 
@@ -60,33 +61,52 @@ public class OllamaLlmUtil {
     public static AiMessageParser getAiMessageParser() {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         aiMessageParser.setContentPath("$.message.content");
-        aiMessageParser.setStatusPath("$.done");
+        aiMessageParser.setTotalTokensPath("$.eval_count");
+        aiMessageParser.setCompletionTokensPath("$.prompt_eval_count");
+
         aiMessageParser.setStatusParser(content -> {
-            if (content != null && (boolean) content) {
+            Boolean done = (Boolean) JSONPath.eval(content, "$.done");
+            if (done != null && done) {
                 return MessageStatus.END;
             }
             return MessageStatus.MIDDLE;
         });
 
-        aiMessageParser.setTotalTokensPath("$.eval_count");
-        aiMessageParser.setCompletionTokensPath("$.prompt_eval_count");
+        aiMessageParser.setCallsParser(content -> {
+            JSONArray toolCalls = (JSONArray) JSONPath.eval(content, "$.message.tool_calls");
+            if (toolCalls == null || toolCalls.isEmpty()) {
+                return Collections.emptyList();
+            }
+            List<FunctionCall> functionCalls = new ArrayList<>();
+            for (int i = 0; i < toolCalls.size(); i++) {
+                JSONObject jsonObject = toolCalls.getJSONObject(i);
+                JSONObject functionObject = jsonObject.getJSONObject("function");
+                if (functionObject != null) {
+                    FunctionCall functionCall = new FunctionCall();
+                    functionCall.setName(functionObject.getString("name"));
+                    Object arguments = functionObject.get("arguments");
+                    if (arguments instanceof Map) {
+                        //noinspection unchecked
+                        functionCall.setArgs((Map<String, Object>) arguments);
+                    } else if (arguments instanceof String) {
+                        //noinspection unchecked
+                        functionCall.setArgs(JSON.parseObject(arguments.toString(), Map.class));
+                    }
+                    functionCalls.add(functionCall);
+                }
+            }
+            return functionCalls;
+        });
         return aiMessageParser;
     }
 
-    public static FunctionMessageParser getFunctionMessageParser() {
-        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
-        functionMessageParser.setFunctionNamePath("$.message.tool_calls[0].function.name");
-        functionMessageParser.setFunctionArgsPath("$.message.tool_calls[0].function.arguments");
-        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
-        return functionMessageParser;
-    }
 
-
-    public static String promptToPayload(Prompt<?> prompt, OllamaLlmConfig config, ChatOptions options, boolean stream) {
+    public static String promptToPayload(Prompt prompt, OllamaLlmConfig config, ChatOptions options, boolean stream) {
+        List<Message> messages = prompt.toMessages();
         return Maps.of("model", config.getModel())
-            .put("messages", promptFormat.toMessagesJsonObject(prompt))
+            .put("messages", promptFormat.toMessagesJsonObject(messages))
             .putIf(!stream, "stream", stream)
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
             .putIfNotEmpty("options.seed", options.getSeed())
             .putIfNotEmpty("options.top_k", options.getTopK())
             .putIfNotEmpty("options.top_p", options.getTopP())

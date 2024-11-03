@@ -25,12 +25,8 @@ import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
-import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.StringUtil;
@@ -47,7 +43,6 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
     private final HttpClient httpClient = new HttpClient();
     public AiMessageParser aiMessageParser = OpenAiLLmUtil.getAiMessageParser(false);
     public AiMessageParser streamMessageParser = OpenAiLLmUtil.getAiMessageParser(true);
-    public FunctionMessageParser functionMessageParser = OpenAiLLmUtil.getFunctionMessageParser();
 
     public static OpenAiLlm of(String apiKey) {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
@@ -67,7 +62,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
     }
 
     @Override
-    public <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options) {
+    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
@@ -85,22 +80,14 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
             System.out.println(">>>>receive payload:" + response);
         }
 
-
         if (StringUtil.noText(response)) {
-            return null;
+            return AiMessageResponse.error(prompt, response, "no content for response.");
         }
 
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
-        AbstractBaseMessageResponse<?> messageResponse;
-
-        if (prompt instanceof FunctionPrompt) {
-            messageResponse = new FunctionMessageResponse(response, ((FunctionPrompt) prompt).getFunctions()
-                , functionMessageParser.parse(jsonObject));
-        } else {
-            messageResponse = new AiMessageResponse(response, aiMessageParser.parse(jsonObject));
-        }
+        AiMessageResponse messageResponse  = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
@@ -109,13 +96,12 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
             messageResponse.setErrorCode(error.getString("code"));
         }
 
-        //noinspection unchecked
-        return (R) messageResponse;
+        return messageResponse;
     }
 
 
     @Override
-    public <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
+    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -123,7 +109,7 @@ public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
 
         String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options, true);
         String endpoint = config.getEndpoint();
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser, functionMessageParser);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
         llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
     }
 

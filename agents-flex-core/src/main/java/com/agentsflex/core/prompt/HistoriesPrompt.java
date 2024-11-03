@@ -15,7 +15,6 @@
  */
 package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.AbstractTextMessage;
@@ -26,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-public class HistoriesPrompt extends Prompt<AiMessageResponse> {
+public class HistoriesPrompt extends Prompt {
 
     private ChatMemory memory = new DefaultChatMemory();
 
@@ -123,7 +122,7 @@ public class HistoriesPrompt extends Prompt<AiMessageResponse> {
         if (systemMessage != null) {
             messages.add(0, systemMessage);
         }
-        
+
         return messages;
     }
 }

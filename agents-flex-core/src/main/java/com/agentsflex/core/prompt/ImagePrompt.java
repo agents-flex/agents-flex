@@ -59,6 +59,7 @@ public class ImagePrompt extends TextPrompt {
 
 
     public static class TextAndImageMessage extends HumanMessage {
+
         private final ImagePrompt prompt;
 
         public TextAndImageMessage(ImagePrompt prompt) {
@@ -72,8 +73,8 @@ public class ImagePrompt extends TextPrompt {
         @Override
         public Object getMessageContent() {
             List<Map<String, Object>> messageContent = new ArrayList<>();
-            messageContent.add(Maps.of("type", "text").put("text", prompt.content).build());
-            messageContent.add(Maps.of("type", "image_url").put("image_url", Maps.of("url", prompt.imageUrl).build()).build());
+            messageContent.add(Maps.of("type", "text").put("text", prompt.content));
+            messageContent.add(Maps.of("type", "image_url").put("image_url", Maps.of("url", prompt.imageUrl)));
             return messageContent;
         }
     }

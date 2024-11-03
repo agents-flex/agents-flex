@@ -18,19 +18,24 @@ package com.agentsflex.llm.qwen;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
+import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class QwenLlmUtil {
 
@@ -39,55 +44,72 @@ public class QwenLlmUtil {
     public static AiMessageParser getAiMessageParser() {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         aiMessageParser.setContentPath("$.output.choices[0].message.content");
-        aiMessageParser.setStatusPath("$.output.choices[0].finish_reason");
         aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
-        aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
         aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
         aiMessageParser.setPromptTokensPath("$.usage.input_tokens");
         aiMessageParser.setCompletionTokensPath("$.usage.output_tokens");
+
+        aiMessageParser.setStatusParser(content -> {
+            Object finishReason = JSONPath.eval(content, "$.output.choices[0].finish_reason");
+            if (finishReason != null) {
+                return MessageStatus.END;
+            }
+            return MessageStatus.MIDDLE;
+        });
+
+        aiMessageParser.setCallsParser(content -> {
+            JSONArray toolCalls = (JSONArray) JSONPath.eval(content, "$.output.choices[0].message.tool_calls");
+            if (toolCalls == null || toolCalls.isEmpty()) {
+                return Collections.emptyList();
+            }
+            List<FunctionCall> functionCalls = new ArrayList<>();
+            for (int i = 0; i < toolCalls.size(); i++) {
+                JSONObject jsonObject = toolCalls.getJSONObject(i);
+                JSONObject functionObject = jsonObject.getJSONObject("function");
+                if (functionObject != null) {
+                    FunctionCall functionCall = new FunctionCall();
+                    functionCall.setName(functionObject.getString("name"));
+                    Object arguments = functionObject.get("arguments");
+                    if (arguments instanceof Map) {
+                        //noinspection unchecked
+                        functionCall.setArgs((Map<String, Object>) arguments);
+                    } else if (arguments instanceof String) {
+                        //noinspection unchecked
+                        functionCall.setArgs(JSON.parseObject(arguments.toString(), Map.class));
+                    }
+                    functionCalls.add(functionCall);
+                }
+            }
+            return functionCalls;
+        });
+
         return aiMessageParser;
     }
 
 
-    public static FunctionMessageParser getFunctionMessageParser() {
-        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
-        functionMessageParser.setFunctionNamePath("$.output.choices[0].message.tool_calls[0].function.name");
-        functionMessageParser.setFunctionArgsPath("$.output.choices[0].message.tool_calls[0].function.arguments");
-        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
-        return functionMessageParser;
-    }
-
-
-    public static MessageStatus parseMessageStatus(String status) {
-        return "stop".equals(status) ? MessageStatus.END : MessageStatus.MIDDLE;
-    }
-
-
-    public static String promptToPayload(Prompt<?> prompt, QwenLlmConfig config, ChatOptions options) {
+    public static String promptToPayload(Prompt prompt, QwenLlmConfig config, ChatOptions options) {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
-        Maps.Builder root = Maps.of("model", config.getModel())
-            .put("input", Maps.of("messages", promptFormat.toMessagesJsonObject(prompt)))
+
+        List<Message> messages = prompt.toMessages();
+        return Maps.of("model", config.getModel())
+            .put("input", Maps.of("messages", promptFormat.toMessagesJsonObject(messages)))
             .put("parameters", Maps.of("result_format", "message")
-                .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
+                .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
                 .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
                 .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
                 .putIfNotNull("top_p", options.getTopP())
                 .putIfNotNull("top_k", options.getTopK())
                 .putIfNotEmpty("stop", options.getStop())
-            );
-
-
-        return JSON.toJSONString(root.build());
+            ).toJSON();
     }
 
     public static String promptToEnabledPayload(Document text, EmbeddingOptions options, QwenLlmConfig config) {
         // https://help.aliyun.com/zh/model-studio/developer-reference/text-embedding-synchronous-api?spm=a2c4g.11186623.0.nextDoc.100230b7arAV4X#e6bf7ae0fedrb
-
-        List<String> list=new ArrayList<>();
+        List<String> list = new ArrayList<>();
         list.add(text.getContent());
-        Maps.Builder root = Maps.of("model", config.getModel())
-            .put("input", Maps.of("texts",list));
-        return JSON.toJSONString(root.build());
+        return Maps.of("model", config.getModel())
+            .put("input", Maps.of("texts", list))
+            .toJSON();
     }
 
     public static String createEmbedURL(QwenLlmConfig config) {

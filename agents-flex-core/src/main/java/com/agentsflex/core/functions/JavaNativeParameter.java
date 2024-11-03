@@ -13,9 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.parser;
+package com.agentsflex.core.functions;
 
-import com.agentsflex.core.message.FunctionMessage;
+public class JavaNativeParameter extends Parameter {
 
-public interface FunctionMessageParser extends JSONObjectParser<FunctionMessage> {
+    protected Class<?> typeClass;
+
+    public Class<?> getTypeClass() {
+        return typeClass;
+    }
+
+    public void setTypeClass(Class<?> typeClass) {
+        this.typeClass = typeClass;
+    }
 }

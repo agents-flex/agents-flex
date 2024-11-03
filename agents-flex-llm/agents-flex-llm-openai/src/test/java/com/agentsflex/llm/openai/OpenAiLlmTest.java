@@ -5,7 +5,6 @@ import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.ImagePrompt;
 import org.junit.Test;
@@ -32,8 +31,7 @@ public class OpenAiLlmTest {
 //        config.setDebug(true);
 
         Llm llm = new OpenAiLlm(config);
-//        String response = llm.chat("请问你叫什么名字");
-        llm.chatStream("你叫什么名字", new StreamResponseListener<AiMessageResponse>() {
+        llm.chatStream("你叫什么名字", new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
@@ -54,7 +52,7 @@ public class OpenAiLlmTest {
 //        config.setDebug(true);
 
         Llm llm = new OpenAiLlm(config);
-        llm.chatStream("who are you", new StreamResponseListener<AiMessageResponse>() {
+        llm.chatStream("who are you", new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
@@ -72,20 +70,19 @@ public class OpenAiLlmTest {
     @Test()
     public void testChatWithImage() {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
-        config.setApiKey("sk-5gqOclb****0");
+        config.setApiKey("sk-5gqOcl*****");
         config.setModel("gpt-4-turbo");
 
+
+        //APIKey: sk-5gqOclbt0OpCHRe49fCfAe7194624d27A32a8aB25a9e2c30 ---- 建议选择GPT-4相关版本使用 ---- API域名输入：https://api.mctools.online ---- 参考商品详情页下载对应客户端配置教程使用
         Llm llm = new OpenAiLlm(config);
         ImagePrompt prompt = new ImagePrompt("What's in this image?");
         prompt.setImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
 
 
-//        llm.chatStream(prompt, (StreamResponseListener<AiMessageResponse, AiMessage>)
-//            (context, response) -> System.out.println(response.getMessage().getContent())
-//        );
-
         AiMessageResponse response = llm.chat(prompt);
         System.out.println(response);
+        System.out.println(response.getMessage().getContent());
 
         try {
             Thread.sleep(12000);
@@ -103,11 +100,9 @@ public class OpenAiLlmTest {
         OpenAiLlm llm = new OpenAiLlm(config);
 
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
-        FunctionMessageResponse response = llm.chat(prompt);
+        AiMessageResponse response = llm.chat(prompt);
 
-        Object result = response.getFunctionResult();
-
-        System.out.println(result);
+        System.out.println(response.callFunctions());
         // "Today it will be dull and overcast in 北京"
     }
 }

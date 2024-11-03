@@ -26,12 +26,8 @@ import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.impl.DnjsonClient;
 import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
-import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.Maps;
@@ -46,9 +42,8 @@ import java.util.Map;
 public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
     private HttpClient httpClient = new HttpClient();
-    private DnjsonClient dnjsonClient = new DnjsonClient();
+    private final DnjsonClient dnjsonClient = new DnjsonClient();
     public AiMessageParser aiMessageParser = OllamaLlmUtil.getAiMessageParser();
-    public FunctionMessageParser functionMessageParser = OllamaLlmUtil.getFunctionMessageParser();
 
 
     public OllamaLlm(OllamaLlmConfig config) {
@@ -94,7 +89,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
     }
 
     @Override
-    public <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options) {
+    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
@@ -102,38 +97,31 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         String endpoint = config.getEndpoint();
         String payload = OllamaLlmUtil.promptToPayload(prompt, config, options, false);
         String response = httpClient.post(endpoint + "/api/chat", headers, payload);
-        if (StringUtil.noText(response)) {
-            return null;
-        }
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
 
+        if (StringUtil.noText(response)) {
+            return AiMessageResponse.error(prompt, response, "no content for response.");
+        }
+
         JSONObject jsonObject = JSON.parseObject(response);
         String error = jsonObject.getString("error");
 
-        AbstractBaseMessageResponse<?> messageResponse;
-
-        if (prompt instanceof FunctionPrompt) {
-            messageResponse = new FunctionMessageResponse(response, ((FunctionPrompt) prompt).getFunctions()
-                , functionMessageParser.parse(jsonObject));
-        } else {
-            messageResponse = new AiMessageResponse(response, aiMessageParser.parse(jsonObject));
-        }
+        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
             messageResponse.setErrorMessage(error);
         }
 
-        //noinspection unchecked
-        return (R) messageResponse;
+        return messageResponse;
     }
 
 
     @Override
-    public <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
+    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -142,7 +130,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         String payload = OllamaLlmUtil.promptToPayload(prompt, config, options, true);
 
         String endpoint = config.getEndpoint();
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, null);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser);
         dnjsonClient.start(endpoint + "/api/chat", headers, payload, clientListener, config);
     }
 

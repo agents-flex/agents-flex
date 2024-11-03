@@ -16,23 +16,31 @@
 package com.agentsflex.core.parser.impl;
 
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.Parser;
+import com.agentsflex.core.parser.JSONObjectParser;
 import com.agentsflex.core.util.StringUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 
 public class DefaultAiMessageParser implements AiMessageParser {
 
     private String contentPath;
     private String indexPath;
-    private String statusPath;
     private String totalTokensPath;
     private String promptTokensPath;
     private String completionTokensPath;
-    private Parser<Object, MessageStatus> statusParser;
+    private JSONObjectParser<MessageStatus> statusParser;
+    private JSONObjectParser<List<FunctionCall>> callsParser;
 
     public String getContentPath() {
         return contentPath;
@@ -48,14 +56,6 @@ public class DefaultAiMessageParser implements AiMessageParser {
 
     public void setIndexPath(String indexPath) {
         this.indexPath = indexPath;
-    }
-
-    public String getStatusPath() {
-        return statusPath;
-    }
-
-    public void setStatusPath(String statusPath) {
-        this.statusPath = statusPath;
     }
 
     public String getTotalTokensPath() {
@@ -82,12 +82,20 @@ public class DefaultAiMessageParser implements AiMessageParser {
         this.completionTokensPath = completionTokensPath;
     }
 
-    public Parser<Object, MessageStatus> getStatusParser() {
+    public JSONObjectParser<MessageStatus> getStatusParser() {
         return statusParser;
     }
 
-    public void setStatusParser(Parser<Object, MessageStatus> statusParser) {
+    public void setStatusParser(JSONObjectParser<MessageStatus> statusParser) {
         this.statusParser = statusParser;
+    }
+
+    public JSONObjectParser<List<FunctionCall>> getCallsParser() {
+        return callsParser;
+    }
+
+    public void setCallsParser(JSONObjectParser<List<FunctionCall>> callsParser) {
+        this.callsParser = callsParser;
     }
 
     @Override
@@ -119,14 +127,65 @@ public class DefaultAiMessageParser implements AiMessageParser {
             aiMessage.setTotalTokens(aiMessage.getPromptTokens() + aiMessage.getCompletionTokens());
         }
 
-        if (StringUtil.hasText(this.statusPath)) {
-            Object statusString = JSONPath.eval(rootJson, this.statusPath);
-            if (this.statusParser != null) {
-                aiMessage.setStatus(this.statusParser.parse(statusString));
-            }
+        if (this.statusParser != null) {
+            aiMessage.setStatus(this.statusParser.parse(rootJson));
         }
 
+        if (callsParser != null) {
+            aiMessage.setCalls(callsParser.parse(rootJson));
+        }
 
         return aiMessage;
+    }
+
+
+    public static DefaultAiMessageParser getChatGPTMessageParser(boolean isStream) {
+        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
+        if (isStream) {
+            aiMessageParser.setContentPath("$.choices[0].delta.content");
+        } else {
+            aiMessageParser.setContentPath("$.choices[0].message.content");
+        }
+
+        aiMessageParser.setIndexPath("$.choices[0].index");
+        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
+        aiMessageParser.setPromptTokensPath("$.usage.prompt_tokens");
+        aiMessageParser.setCompletionTokensPath("$.usage.completion_tokens");
+
+        aiMessageParser.setStatusParser(content -> {
+            Object finishReason = JSONPath.eval(content, "$.choices[0].finish_reason");
+            if (finishReason != null) {
+                return MessageStatus.END;
+            }
+            return MessageStatus.MIDDLE;
+        });
+
+        aiMessageParser.setCallsParser(content -> {
+            JSONArray toolCalls = (JSONArray) JSONPath.eval(content, "$.choices[0].message.tool_calls");
+            if (toolCalls == null || toolCalls.isEmpty()) {
+                return Collections.emptyList();
+            }
+            List<FunctionCall> functionCalls = new ArrayList<>();
+            for (int i = 0; i < toolCalls.size(); i++) {
+                JSONObject jsonObject = toolCalls.getJSONObject(i);
+                JSONObject functionObject = jsonObject.getJSONObject("function");
+                if (functionObject != null) {
+                    FunctionCall functionCall = new FunctionCall();
+                    functionCall.setName(functionObject.getString("name"));
+                    Object arguments = functionObject.get("arguments");
+                    if (arguments instanceof Map) {
+                        //noinspection unchecked
+                        functionCall.setArgs((Map<String, Object>) arguments);
+                    } else if (arguments instanceof String) {
+                        //noinspection unchecked
+                        functionCall.setArgs(JSON.parseObject(arguments.toString(), Map.class));
+                    }
+                    functionCalls.add(functionCall);
+                }
+            }
+            return functionCalls;
+        });
+
+        return aiMessageParser;
     }
 }

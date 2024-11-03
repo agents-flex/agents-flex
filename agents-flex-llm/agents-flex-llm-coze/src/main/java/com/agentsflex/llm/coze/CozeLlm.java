@@ -21,7 +21,6 @@ import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -63,7 +62,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         return headers;
     }
 
-    private <R extends AiMessageResponse> void botChat(Prompt<R> prompt, CozeRequestListener listener, ChatOptions chatOptions, boolean stream) {
+    private void botChat(Prompt prompt, CozeRequestListener listener, ChatOptions chatOptions, boolean stream) {
         String botId = config.getDefaultBotId();
         String userId = config.getDefaultUserId();
         String conversationId = config.getDefaultConversationId();
@@ -83,8 +82,9 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
             url += "?conversation_id=" + conversationId;
         }
         String response = httpClient.post(url, buildHeader(), payload);
+
         if (config.isDebug()) {
-            System.out.println(">>>>request payload:" + payload);
+            System.out.println(">>>>receive payload:" + response);
         }
 
         // stream mode
@@ -98,12 +98,19 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         String error = jsonObject.getString("msg");
 
         CozeChatContext cozeChat = jsonObject.getObject("data", (Type) CozeChatContext.class);
-        cozeChat.setResponse(response);
 
         if (!error.isEmpty() && !Objects.equals(code, "0")) {
+            if (cozeChat == null) {
+                cozeChat = new CozeChatContext();
+                cozeChat.setLlm(this);
+                cozeChat.setResponse(response);
+            }
             listener.onFailure(cozeChat, new Throwable(error));
             listener.onStop(cozeChat);
             return;
+        } else if (cozeChat != null) {
+            cozeChat.setLlm(this);
+            cozeChat.setResponse(response);
         }
 
         // try to check status
@@ -133,7 +140,9 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
     private void handleStreamResponse(String response, CozeRequestListener listener) {
         ByteArrayInputStream inputStream = new ByteArrayInputStream(response.getBytes(Charset.defaultCharset()));
         BufferedReader br = new BufferedReader(new InputStreamReader(inputStream, Charset.defaultCharset()));
-        CozeChatContext context = new CozeChatContext(this, null);
+        CozeChatContext context = new CozeChatContext();
+        context.setLlm(this);
+
         List<AiMessage> messageList = new ArrayList<>();
         try {
             String line;
@@ -227,7 +236,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
 
 
     @Override
-    public <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options) {
+    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Message[] messages = new Message[1];
         String[] responses = new String[1];
@@ -263,7 +272,7 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
             throw new RuntimeException(e);
         }
 
-        AbstractBaseMessageResponse<?> response = new AiMessageResponse(responses[0], (AiMessage) messages[0]);
+        AiMessageResponse response = new AiMessageResponse(prompt, responses[0], (AiMessage) messages[0]);
 
         if (messages[0] == null || failureThrowable[0] != null) {
             response.setError(true);
@@ -272,16 +281,16 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
             }
         }
 
-        return (R) response;
+        return response;
     }
 
     @Override
-    public <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
+    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         this.botChat(prompt, new CozeRequestListener() {
             @Override
             public void onMessage(CozeChatContext context) {
-                AiMessageResponse response = new AiMessageResponse(context.getResponse(), context.getMessage());
-                listener.onMessage(context, (R) response);
+                AiMessageResponse response = new AiMessageResponse(prompt, context.getResponse(), context.getMessage());
+                listener.onMessage(context, response);
             }
 
             @Override

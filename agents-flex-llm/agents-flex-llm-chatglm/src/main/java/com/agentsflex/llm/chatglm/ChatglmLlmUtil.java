@@ -16,11 +16,10 @@
 package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
@@ -35,6 +34,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ChatglmLlmUtil {
@@ -85,44 +85,23 @@ public class ChatglmLlmUtil {
     }
 
     public static AiMessageParser getAiMessageParser(boolean isStream) {
-        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        if (isStream) {
-            aiMessageParser.setContentPath("$.choices[0].delta.content");
-        } else {
-            aiMessageParser.setContentPath("$.choices[0].message.content");
-        }
-
-        aiMessageParser.setIndexPath("$.choices[0].index");
-        aiMessageParser.setStatusPath("$.choices[0].finish_reason");
-        aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
-        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
-        aiMessageParser.setPromptTokensPath("$.usage.prompt_tokens");
-        aiMessageParser.setCompletionTokensPath("$.usage.completion_tokens");
-        return aiMessageParser;
+        return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
     }
 
 
-    public static FunctionMessageParser getFunctionMessageParser() {
-        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
-        functionMessageParser.setFunctionNamePath("$.choices[0].message.tool_calls[0].function.name");
-        functionMessageParser.setFunctionArgsPath("$.choices[0].message.tool_calls[0].function.arguments");
-        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
-        return functionMessageParser;
-    }
+    public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config, boolean withStream, ChatOptions options) {
+        List<Message> messages = prompt.toMessages();
 
-
-    public static String promptToPayload(Prompt<?> prompt, ChatglmLlmConfig config, boolean withStream, ChatOptions options) {
-        Maps.Builder builder = Maps.of("model", config.getModel())
-            .put("messages", promptFormat.toMessagesJsonObject(prompt))
+        return Maps.of("model", config.getModel())
+            .put("messages", promptFormat.toMessagesJsonObject(messages))
             .putIf(withStream, "stream", true)
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(prompt))
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
             .putIfContainsKey("tools", "tool_choice", "auto")
             .putIfNotNull("top_p", options.getTopP())
             .putIfNotEmpty("stop", options.getStop())
             .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
-            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens());
-        return JSON.toJSONString(builder.build());
-
+            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
+            .toJSON();
     }
 
 

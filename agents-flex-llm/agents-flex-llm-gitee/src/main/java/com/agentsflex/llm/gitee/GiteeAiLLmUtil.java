@@ -16,67 +16,31 @@
 package com.agentsflex.llm.gitee;
 
 import com.agentsflex.core.llm.ChatOptions;
-import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
-import com.alibaba.fastjson.JSON;
-
-import java.util.Map;
 
 public class GiteeAiLLmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
     public static AiMessageParser getAiMessageParser(boolean isStream) {
-        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        if (isStream) {
-            aiMessageParser.setContentPath("$.choices[0].delta.content");
-        } else {
-            aiMessageParser.setContentPath("$.choices[0].message.content");
-        }
-
-        aiMessageParser.setIndexPath("$.choices[0].index");
-        aiMessageParser.setStatusPath("$.choices[0].finish_reason");
-        aiMessageParser.setStatusParser(content -> parseMessageStatus((String) content));
-        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
-        aiMessageParser.setPromptTokensPath("$.usage.prompt_tokens");
-        aiMessageParser.setCompletionTokensPath("$.usage.completion_tokens");
-
-        return aiMessageParser;
+        return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
     }
 
 
-    public static FunctionMessageParser getFunctionMessageParser() {
-        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
-        functionMessageParser.setFunctionNamePath("$.choices[0].message.tool_calls[0].function.name");
-        functionMessageParser.setFunctionArgsPath("$.choices[0].message.tool_calls[0].function.arguments");
-        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
-        return functionMessageParser;
-    }
-
-
-    public static MessageStatus parseMessageStatus(String status) {
-        return "stop".equals(status) ? MessageStatus.END : MessageStatus.MIDDLE;
-    }
-
-
-    public static String promptToPayload(Prompt<?> prompt, GiteeAiLlmConfig config, ChatOptions options, boolean withStream) {
-        Map<String, Object> build = Maps.of("messages", promptFormat.toMessagesJsonObject(prompt))
+    public static String promptToPayload(Prompt prompt, GiteeAiLlmConfig config, ChatOptions options, boolean withStream) {
+        return Maps.of("messages", promptFormat.toMessagesJsonObject(prompt.toMessages()))
             .putIf(withStream, "stream", withStream)
             .putIfNotNull("max_tokens", options.getMaxTokens())
             .putIfNotNull("temperature", options.getTemperature())
             .putIfNotNull("top_p", options.getTopP())
             .putIfNotNull("top_k", options.getTopK())
             .putIfNotEmpty("stop", options.getStop())
-            .build();
-
-        return JSON.toJSONString(build);
+            .toJSON();
     }
 
 

@@ -11,8 +11,7 @@ public class MapsTest {
     @Test
     public void testMaps() {
         Map<String, Object> map1 = Maps.of("key", "value")
-            .put("options.aaa", 1)
-            .build();
+            .put("options.aaa", 1);
 
         Assert.assertEquals(1, ((Map<?, ?>) map1.get("options")).get("aaa"));
         System.out.println(map1);

@@ -16,9 +16,8 @@
 package com.agentsflex.llm.coze;
 
 import com.agentsflex.core.llm.ChatContext;
-import com.agentsflex.core.llm.Llm;
-import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.message.AiMessage;
+
 import java.util.Map;
 
 /**
@@ -42,10 +41,6 @@ public class CozeChatContext extends ChatContext {
     private AiMessage message;
 
     private String response;
-
-    public CozeChatContext(Llm llm, LlmClient client) {
-        super(llm, client);
-    }
 
 
     public String getId() {

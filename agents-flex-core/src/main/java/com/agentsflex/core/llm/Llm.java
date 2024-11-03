@@ -26,9 +26,7 @@ import com.agentsflex.core.prompt.TextPrompt;
 public interface Llm extends EmbeddingModel {
 
     default String chat(String prompt) {
-        AbstractBaseMessageResponse<AiMessage> response = chat(new TextPrompt(prompt), ChatOptions.DEFAULT);
-        if (response != null && response.isError()) throw new LlmException(response.getErrorMessage());
-        return response != null && response.getMessage() != null ? response.getMessage().getContent() : null;
+        return chat(prompt, ChatOptions.DEFAULT);
     }
 
     default String chat(String prompt, ChatOptions options) {
@@ -37,25 +35,25 @@ public interface Llm extends EmbeddingModel {
         return response != null && response.getMessage() != null ? response.getMessage().getContent() : null;
     }
 
-    default <R extends AiMessageResponse> R chat(Prompt<R> prompt) {
+    default AiMessageResponse chat(Prompt prompt) {
         return chat(prompt, ChatOptions.DEFAULT);
     }
 
-    <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options);
+    AiMessageResponse chat(Prompt prompt, ChatOptions options);
 
-    default void chatStream(String prompt, StreamResponseListener<AiMessageResponse> listener) {
+    default void chatStream(String prompt, StreamResponseListener listener) {
         this.chatStream(new TextPrompt(prompt), listener, ChatOptions.DEFAULT);
     }
 
-    default void chatStream(String prompt, StreamResponseListener<AiMessageResponse> listener, ChatOptions options) {
+    default void chatStream(String prompt, StreamResponseListener listener, ChatOptions options) {
         this.chatStream(new TextPrompt(prompt), listener, options);
     }
 
     //chatStream
-    default <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener) {
+    default void chatStream(Prompt prompt, StreamResponseListener listener) {
         this.chatStream(prompt, listener, ChatOptions.DEFAULT);
     }
 
-    <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options);
+    void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options);
 
 }

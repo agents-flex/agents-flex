@@ -63,7 +63,7 @@ public class CozeLlmTest {
     @Test
     public void testChatStream() {
         TextPrompt prompt = new TextPrompt(textPrompt);
-        llm.chatStream(prompt, new StreamResponseListener<AiMessageResponse>() {
+        llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
                 AiMessage message = response.getMessage();

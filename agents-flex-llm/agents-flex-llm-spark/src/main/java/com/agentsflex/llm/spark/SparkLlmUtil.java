@@ -20,19 +20,17 @@ import com.agentsflex.core.functions.Function;
 import com.agentsflex.core.functions.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.HashUtil;
 import com.agentsflex.core.util.Maps;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.*;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -54,20 +52,21 @@ public class SparkLlmUtil {
                         if (parameter.isRequired()) {
                             requiredProperties.add(parameter.getName());
                         }
-                        propertiesMap.put(parameter.getName(), Maps.of("type", parameter.getType()).put("description", parameter.getDescription()).build());
+                        propertiesMap.put(parameter.getName(), Maps.of("type", parameter.getType()).put("description", parameter.getDescription()));
                     }
                 }
 
-                Maps.Builder builder = Maps.of("name", function.getName()).put("description", function.getDescription())
+                Maps builder = Maps.of("name", function.getName())
+                    .put("description", function.getDescription())
                     .put("parameters", Maps.of("type", "object").put("properties", propertiesMap).put("required", requiredProperties));
-                functionsJsonArray.add(builder.build());
+                functionsJsonArray.add(builder);
             }
         }
     };
 
 
     public static AiMessageParser getAiMessageParser() {
-        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser(){
+        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser() {
             @Override
             public AiMessage parse(JSONObject rootJson) {
                 if (!rootJson.containsKey("payload")) {
@@ -78,53 +77,80 @@ public class SparkLlmUtil {
         };
         aiMessageParser.setContentPath("$.payload.choices.text[0].content");
         aiMessageParser.setIndexPath("$.payload.choices.text[0].index");
-        aiMessageParser.setStatusPath("$.payload.choices.status");
+//        aiMessageParser.setStatusPath("$.payload.choices.status");
         aiMessageParser.setCompletionTokensPath("$.payload.usage.text.completion_tokens");
         aiMessageParser.setPromptTokensPath("$.payload.usage.text.prompt_tokens");
         aiMessageParser.setTotalTokensPath("$.payload.usage.text.total_tokens");
-        aiMessageParser.setStatusParser(content -> parseMessageStatus((Integer) content));
+//        aiMessageParser.setStatusParser(content -> parseMessageStatus((Integer) content));
+
+
+        aiMessageParser.setStatusParser(content -> {
+            Integer status = (Integer) JSONPath.eval(content, "$.payload.choices.status");
+            if (status == null) {
+                return MessageStatus.UNKNOW;
+            }
+            switch (status) {
+                case 0:
+                    return MessageStatus.START;
+                case 1:
+                    return MessageStatus.MIDDLE;
+                case 2:
+                    return MessageStatus.END;
+            }
+            return MessageStatus.UNKNOW;
+
+//            if (finishReason != null) {
+//                return MessageStatus.END;
+//            }
+//            return MessageStatus.MIDDLE;
+        });
+
+        aiMessageParser.setCallsParser(content -> {
+            JSONArray toolCalls = (JSONArray) JSONPath.eval(content, "$.payload.choices.text");
+            if (toolCalls == null || toolCalls.isEmpty()) {
+                return Collections.emptyList();
+            }
+            List<FunctionCall> functionCalls = new ArrayList<>();
+            for (int i = 0; i < toolCalls.size(); i++) {
+                JSONObject jsonObject = toolCalls.getJSONObject(i);
+                JSONObject functionObject = jsonObject.getJSONObject("function_call");
+                if (functionObject != null) {
+                    FunctionCall functionCall = new FunctionCall();
+                    functionCall.setName(functionObject.getString("name"));
+                    Object arguments = functionObject.get("arguments");
+                    if (arguments instanceof Map) {
+                        //noinspection unchecked
+                        functionCall.setArgs((Map<String, Object>) arguments);
+                    } else if (arguments instanceof String) {
+                        //noinspection unchecked
+                        functionCall.setArgs(JSON.parseObject(arguments.toString(), Map.class));
+                    }
+                    functionCalls.add(functionCall);
+                }
+            }
+            return functionCalls;
+        });
+
         return aiMessageParser;
-    }
-
-
-    public static FunctionMessageParser getFunctionMessageParser() {
-        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
-        functionMessageParser.setFunctionNamePath("$.payload.choices.text[0].function_call.name");
-        functionMessageParser.setFunctionArgsPath("$.payload.choices.text[0].function_call.arguments");
-        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
-        return functionMessageParser;
     }
 
 
     public static String promptToPayload(Prompt prompt, SparkLlmConfig config, ChatOptions options) {
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
-        Maps.Builder root = Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()));
+        List<Message> messages = prompt.toMessages();
+        Maps root = Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()));
         root.put("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
                 .putIf(options.getTemperature() > 0, "temperature", options.getTemperature())
                 .putIf(options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
                 .putIfNotNull("top_k", options.getTopK())
             )
         );
-        root.put("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(prompt)))
-            .putIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(prompt)))
+        root.put("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(messages)))
+            .putIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1))))
         );
-        return JSON.toJSONString(root.build());
+        return JSON.toJSONString(root);
     }
 
-    public static MessageStatus parseMessageStatus(Integer status) {
-        if (status == null) {
-            return MessageStatus.UNKNOW;
-        }
-        switch (status) {
-            case 0:
-                return MessageStatus.START;
-            case 1:
-                return MessageStatus.MIDDLE;
-            case 2:
-                return MessageStatus.END;
-        }
-        return MessageStatus.UNKNOW;
-    }
 
     public static String createURL(SparkLlmConfig config) {
         SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss '+0000'", Locale.US);
@@ -161,13 +187,15 @@ public class SparkLlmUtil {
                 return "generalv3";
             case "v2.1":
                 return "generalv2";
+            case "v1.1":
+                return "lite";
             default:
                 return "general";
         }
     }
 
     public static String embedPayload(SparkLlmConfig config, Document document) {
-        String text = Maps.of("messages", Collections.singletonList(Maps.of("content", document.getContent()).put("role", "user").build())).toJSON();
+        String text = Maps.of("messages", Collections.singletonList(Maps.of("content", document.getContent()).put("role", "user"))).toJSON();
         String textBase64 = Base64.getEncoder().encodeToString(text.getBytes());
 
         return Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()).put("status", 3))
@@ -178,7 +206,6 @@ public class SparkLlmUtil {
 
 
     ///   http://emb-cn-huabei-1.xf-yun.com/
-
     public static String createEmbedURL(SparkLlmConfig config) {
         SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss '+0000'", Locale.US);
         sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));

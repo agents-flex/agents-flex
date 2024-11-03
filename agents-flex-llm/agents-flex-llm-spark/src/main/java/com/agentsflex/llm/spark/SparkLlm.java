@@ -29,9 +29,7 @@ import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionMessage;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.SleepUtil;
@@ -49,7 +47,6 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
     private static final Logger logger = LoggerFactory.getLogger(SparkLlm.class);
     public AiMessageParser aiMessageParser = SparkLlmUtil.getAiMessageParser();
-    public FunctionMessageParser functionMessageParser = SparkLlmUtil.getFunctionMessageParser();
 
     private final HttpClient httpClient = new HttpClient();
 
@@ -107,21 +104,20 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
     }
 
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options) {
+    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Throwable[] failureThrowable = new Throwable[1];
-        AbstractBaseMessageResponse<?>[] messageResponse = {null};
+        AiMessageResponse[] messageResponse = {null};
 
         waitResponse(prompt, options, messageResponse, latch, failureThrowable);
 
-        AbstractBaseMessageResponse<?> response = messageResponse[0];
+        AiMessageResponse response = messageResponse[0];
         Throwable fialureThrowable = failureThrowable[0];
 
         if (response == null) {
             if (fialureThrowable != null) {
-                response = new AiMessageResponse("", null);
+                response = new AiMessageResponse(prompt, "", null);
             } else {
                 return null;
             }
@@ -136,27 +132,22 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
             response.setError(false);
         }
 
-        return (R) response;
+        return response;
     }
 
 
-    private <R extends AiMessageResponse> void waitResponse(Prompt<R> prompt
+    private void waitResponse(Prompt prompt
         , ChatOptions options
         , AbstractBaseMessageResponse<?>[] messageResponse
         , CountDownLatch latch
         , Throwable[] failureThrowable) {
-        chatStream(prompt, new StreamResponseListener<R>() {
+        chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, R response) {
-                if (response.getMessage() instanceof FunctionMessage) {
-                    messageResponse[0] = response;
-                } else {
-                    AiMessage aiMessage = new AiMessage();
-                    aiMessage.setContent(response.getMessage().getFullContent());
+            public void onMessage(ChatContext context, AiMessageResponse response) {
+                AiMessage message = response.getMessage();
+                if (message != null) message.setContent(message.getFullContent());
 
-                    response.setMessage(aiMessage);
-                    messageResponse[0] = response;
-                }
+                messageResponse[0] = response;
             }
 
             @Override
@@ -181,11 +172,11 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
 
     @Override
-    public <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
+    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         LlmClient llmClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
         String payload = SparkLlmUtil.promptToPayload(prompt, config, options);
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser, functionMessageParser);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser);
         llmClient.start(url, null, payload, clientListener, config);
     }
 

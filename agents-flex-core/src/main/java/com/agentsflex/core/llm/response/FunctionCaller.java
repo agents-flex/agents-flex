@@ -13,26 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.llm;
+package com.agentsflex.core.llm.response;
 
-import com.agentsflex.core.llm.response.AiMessageResponse;
-import org.slf4j.Logger;
+import com.agentsflex.core.functions.Function;
+import com.agentsflex.core.message.FunctionCall;
 
-public interface StreamResponseListener {
+public class FunctionCaller {
+    private final Function function;
+    private final FunctionCall functionCall;
 
-    Logger logger = org.slf4j.LoggerFactory.getLogger(StreamResponseListener.class);
-
-    default void onStart(ChatContext context) {
+    public FunctionCaller(Function function, FunctionCall functionCall) {
+        this.function = function;
+        this.functionCall = functionCall;
     }
 
-    void onMessage(ChatContext context, AiMessageResponse response);
-
-    default void onStop(ChatContext context) {
-    }
-
-    default void onFailure(ChatContext context, Throwable throwable) {
-        if (throwable != null) {
-            logger.error(throwable.toString(), throwable);
-        }
+    public Object call() {
+        return this.function.invoke(this.functionCall.getArgs());
     }
 }

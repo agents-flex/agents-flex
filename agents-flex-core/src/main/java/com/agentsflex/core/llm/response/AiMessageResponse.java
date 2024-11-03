@@ -15,16 +15,36 @@
  */
 package com.agentsflex.core.llm.response;
 
+import com.agentsflex.core.functions.Function;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.prompt.Prompt;
+import com.agentsflex.core.util.CollectionUtil;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
-    
+
+    private Prompt prompt;
     private String response;
     private AiMessage message;
 
-    public AiMessageResponse(String response, AiMessage message) {
+    public AiMessageResponse(Prompt prompt, String response, AiMessage message) {
+        this.prompt = prompt;
         this.response = response;
         this.message = message;
+    }
+
+    public Prompt getPrompt() {
+        return prompt;
+    }
+
+    public void setPrompt(Prompt prompt) {
+        this.prompt = prompt;
     }
 
     public String getResponse() {
@@ -44,10 +64,60 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
         this.message = message;
     }
 
+
+    public List<FunctionCaller> getFunctionCallers() {
+        if (this.message == null) {
+            return Collections.emptyList();
+        }
+
+        List<FunctionCall> calls = message.getCalls();
+        if (calls == null || calls.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(prompt.toMessages());
+        Map<String, Function> funcMap = humanMessage.getFunctionMap();
+
+        if (funcMap == null || funcMap.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<FunctionCaller> functionCallers = new ArrayList<>(calls.size());
+        for (FunctionCall call : calls) {
+            Function function = funcMap.get(call.getName());
+            if (function != null) {
+                functionCallers.add(new FunctionCaller(function, call));
+            }
+        }
+        return functionCallers;
+    }
+
+
+    public List<Object> callFunctions() {
+        List<FunctionCaller> functionCallers = getFunctionCallers();
+        if (CollectionUtil.noItems(functionCallers)) {
+            return Collections.emptyList();
+        }
+        List<Object> results = new ArrayList<>();
+        for (FunctionCaller functionCaller : functionCallers) {
+            results.add(functionCaller.call());
+        }
+        return results;
+    }
+
+    public static AiMessageResponse error(Prompt prompt, String response, String errorMessage) {
+        AiMessageResponse errorResp = new AiMessageResponse(prompt, response, null);
+        errorResp.setError(true);
+        errorResp.setErrorMessage(errorMessage);
+        return errorResp;
+    }
+
+
     @Override
     public String toString() {
         return "AiMessageResponse{" +
-            "response='" + response + '\'' +
+            "prompt=" + prompt +
+            ", response='" + response + '\'' +
             ", message=" + message +
             ", error=" + error +
             ", errorMessage='" + errorMessage + '\'' +

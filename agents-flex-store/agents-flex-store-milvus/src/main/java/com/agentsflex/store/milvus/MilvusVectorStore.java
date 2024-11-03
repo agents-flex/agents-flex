@@ -161,7 +161,7 @@ public class MilvusVectorStore extends DocumentStore {
             .indexType(IndexParam.IndexType.IVF_FLAT)
             .metricType(IndexParam.MetricType.COSINE)
             .indexName("vector")
-            .extraParams(Maps.of("nlist", 1024).build())
+            .extraParams(Maps.of("nlist", 1024))
             .build();
         indexParams.add(vectorIndex);
 

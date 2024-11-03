@@ -15,7 +15,6 @@
  */
 package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
@@ -24,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class TextPrompt extends Prompt<AiMessageResponse> {
+public class TextPrompt extends Prompt {
 
     private SystemMessage systemMessage;
     protected String content;

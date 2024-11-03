@@ -2,12 +2,12 @@ package com.agentsflex.llm.chatglm.test;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.llm.chatglm.ChatglmLlm;
-import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
+import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.llm.chatglm.ChatglmLlm;
+import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -44,11 +44,9 @@ public class ChatGlmTest {
         Llm llm = new ChatglmLlm(config);
 
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
-        FunctionMessageResponse response = llm.chat(prompt);
+        AiMessageResponse response = llm.chat(prompt);
 
-        Object result = response.getFunctionResult();
-
-        System.out.println(result);
+        System.out.println(response.callFunctions());
     }
 
 }

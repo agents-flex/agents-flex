@@ -2,8 +2,8 @@ package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.ImagePrompt;
@@ -12,7 +12,7 @@ import org.junit.Test;
 
 public class OllamaLlmTest {
 
-    @Test
+    @Test(expected = LlmException.class)
     public void testChat() {
         OllamaLlmConfig config = new OllamaLlmConfig();
         config.setEndpoint("http://localhost:11434");
@@ -61,13 +61,10 @@ public class OllamaLlmTest {
 
         Llm llm = new OllamaLlm(config);
 
-
         FunctionPrompt prompt = new FunctionPrompt("What's the weather like in Beijing?", WeatherFunctions.class);
-        FunctionMessageResponse response = llm.chat(prompt);
+        AiMessageResponse response = llm.chat(prompt);
 
-        Object result = response == null ? null : response.getFunctionResult();
-
-        System.out.println(result);
+        System.out.println(response.callFunctions());
     }
 
 

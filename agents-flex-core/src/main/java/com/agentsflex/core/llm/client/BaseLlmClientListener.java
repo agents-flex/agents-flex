@@ -15,56 +15,37 @@
  */
 package com.agentsflex.core.llm.client;
 
-import com.agentsflex.core.functions.Function;
 import com.agentsflex.core.llm.ChatContext;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionMessage;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
-import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
-import java.util.List;
-
 public class BaseLlmClientListener implements LlmClientListener {
 
     private final StreamResponseListener streamResponseListener;
     private final Prompt prompt;
     private final AiMessageParser messageParser;
-    private final FunctionMessageParser functionMessageParser;
     private final StringBuilder fullMessage = new StringBuilder();
     private AiMessage lastAiMessage;
-    private boolean isFunctionCalling = false;
     private final ChatContext context;
 
     public BaseLlmClientListener(Llm llm
         , LlmClient client
-        , StreamResponseListener<?> streamResponseListener
+        , StreamResponseListener streamResponseListener
         , Prompt prompt
-        , AiMessageParser messageParser
-        , FunctionMessageParser functionMessageParser) {
+        , AiMessageParser messageParser) {
 
         this.streamResponseListener = streamResponseListener;
         this.prompt = prompt;
         this.messageParser = messageParser;
-        this.functionMessageParser = functionMessageParser;
         this.context = new ChatContext(llm, client);
-
-        if (prompt instanceof FunctionPrompt) {
-            if (functionMessageParser == null) {
-                throw new IllegalArgumentException("Can not support Function Calling");
-            } else {
-                isFunctionCalling = true;
-            }
-        }
     }
 
 
@@ -81,20 +62,11 @@ public class BaseLlmClientListener implements LlmClientListener {
 
         try {
             JSONObject jsonObject = JSON.parseObject(response);
-            if (isFunctionCalling) {
-                FunctionMessage functionMessage = functionMessageParser.parse(jsonObject);
-                List<Function> functions = ((FunctionPrompt) prompt).getFunctions();
-                FunctionMessageResponse functionMessageResponse = new FunctionMessageResponse(response, functions, functionMessage);
-                //noinspection unchecked
-                streamResponseListener.onMessage(context, functionMessageResponse);
-            } else {
-                lastAiMessage = messageParser.parse(jsonObject);
-                fullMessage.append(lastAiMessage.getContent());
-                lastAiMessage.setFullContent(fullMessage.toString());
-                AiMessageResponse aiMessageResponse = new AiMessageResponse(response, lastAiMessage);
-                //noinspection unchecked
-                streamResponseListener.onMessage(context, aiMessageResponse);
-            }
+            lastAiMessage = messageParser.parse(jsonObject);
+            fullMessage.append(lastAiMessage.getContent());
+            lastAiMessage.setFullContent(fullMessage.toString());
+            AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
+            streamResponseListener.onMessage(context, aiMessageResponse);
         } catch (Exception err) {
             streamResponseListener.onFailure(context, err);
         }
@@ -115,6 +87,5 @@ public class BaseLlmClientListener implements LlmClientListener {
     public void onFailure(LlmClient client, Throwable throwable) {
         streamResponseListener.onFailure(context, throwable);
     }
-
 
 }

@@ -16,12 +16,11 @@
 package com.agentsflex.core.functions;
 
 public class Parameter {
-    private String name;
-    private String type;
-    private Class<?> typeClass;
-    private String description;
-    private String[] enums;
-    private boolean required = false;
+    protected String name;
+    protected String type;
+    protected String description;
+    protected String[] enums;
+    protected boolean required = false;
 
     public String getName() {
         return name;
@@ -37,14 +36,6 @@ public class Parameter {
 
     public void setType(String type) {
         this.type = type;
-    }
-
-    public Class<?> getTypeClass() {
-        return typeClass;
-    }
-
-    public void setTypeClass(Class<?> typeClass) {
-        this.typeClass = typeClass;
     }
 
     public String getDescription() {

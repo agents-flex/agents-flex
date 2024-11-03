@@ -15,22 +15,20 @@
  */
 package com.agentsflex.core.message;
 
+import java.io.Serializable;
 import java.util.Map;
 
-public class FunctionMessage extends AiMessage{
+public class FunctionCall implements Serializable {
 
-    public FunctionMessage() {
+    private String name;
+    private Map<String, Object> args;
+
+    public String getName() {
+        return name;
     }
 
-    private String functionName;
-    private Map<String,Object> args;
-
-    public String getFunctionName() {
-        return functionName;
-    }
-
-    public void setFunctionName(String functionName) {
-        this.functionName = functionName;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Map<String, Object> getArgs() {
@@ -39,15 +37,5 @@ public class FunctionMessage extends AiMessage{
 
     public void setArgs(Map<String, Object> args) {
         this.args = args;
-    }
-
-    @Override
-    public String toString() {
-        return "FunctionMessage{" +
-            "functionName='" + functionName + '\'' +
-            ", args=" + args +
-            ", content='" + content + '\'' +
-            ", metadataMap=" + metadataMap +
-            '}';
     }
 }

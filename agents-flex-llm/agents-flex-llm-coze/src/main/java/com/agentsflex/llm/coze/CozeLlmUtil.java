@@ -18,15 +18,14 @@ package com.agentsflex.llm.coze;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.parser.impl.DefaultFunctionMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
-import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONPath;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,33 +44,28 @@ public class CozeLlmUtil {
     public static AiMessageParser getAiMessageParser() {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         aiMessageParser.setContentPath("$.content");
-        aiMessageParser.setStatusPath("$.done");
+        aiMessageParser.setTotalTokensPath("$.usage.token_count");
+        aiMessageParser.setCompletionTokensPath("$.usage.output_count");
+        aiMessageParser.setPromptTokensPath("$.usage.input_count");
+
         aiMessageParser.setStatusParser(content -> {
-            if (content != null && (boolean) content) {
+            Boolean done = (Boolean) JSONPath.eval(content, "$.done");
+            if (done != null && done){
                 return MessageStatus.END;
             }
             return MessageStatus.MIDDLE;
         });
-
-        aiMessageParser.setTotalTokensPath("$.usage.token_count");
-        aiMessageParser.setCompletionTokensPath("$.usage.output_count");
-        aiMessageParser.setPromptTokensPath("$.usage.input_count");
         return aiMessageParser;
     }
 
-    public static FunctionMessageParser getFunctionMessageParser() {
-        DefaultFunctionMessageParser functionMessageParser = new DefaultFunctionMessageParser();
-        // TODO: function params
-        functionMessageParser.setFunctionArgsParser(JSON::parseObject);
-        return functionMessageParser;
-    }
 
-    public static String promptToPayload(Prompt<?> prompt, String botId, String userId, Map<String, String> customVariables, boolean stream) {
+    public static String promptToPayload(Prompt prompt, String botId, String userId, Map<String, String> customVariables, boolean stream) {
+        List<Message> messages = prompt.toMessages();
         return Maps.of()
             .put("bot_id", botId)
             .put("user_id", userId)
             .put("auto_save_history", true)
-            .put("additional_messages", promptFormat.toMessagesJsonObject(prompt))
+            .put("additional_messages", promptFormat.toMessagesJsonObject(messages))
             .put("stream", stream)
             .putIf(customVariables != null, "custom_variables", customVariables)
             .toJSON();

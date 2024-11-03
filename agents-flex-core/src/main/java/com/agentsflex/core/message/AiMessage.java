@@ -16,6 +16,8 @@
 package com.agentsflex.core.message;
 
 
+import java.util.List;
+
 public class AiMessage extends AbstractTextMessage {
 
     private Integer index;
@@ -24,6 +26,8 @@ public class AiMessage extends AbstractTextMessage {
     private Integer completionTokens;
     private Integer totalTokens;
     private String fullContent;
+    // functionName: <argName: argValue>
+    private List<FunctionCall> calls;
 
     public Integer getIndex() {
         return index;
@@ -78,13 +82,24 @@ public class AiMessage extends AbstractTextMessage {
         return getFullContent();
     }
 
+    public List<FunctionCall> getCalls() {
+        return calls;
+    }
+
+    public void setCalls(List<FunctionCall> calls) {
+        this.calls = calls;
+    }
+
     @Override
     public String toString() {
         return "AiMessage{" +
             "index=" + index +
             ", status=" + status +
+            ", promptTokens=" + promptTokens +
+            ", completionTokens=" + completionTokens +
             ", totalTokens=" + totalTokens +
             ", fullContent='" + fullContent + '\'' +
+            ", calls=" + calls +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';

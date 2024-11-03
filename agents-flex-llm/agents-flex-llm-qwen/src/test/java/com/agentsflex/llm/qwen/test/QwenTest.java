@@ -1,9 +1,9 @@
 package com.agentsflex.llm.qwen.test;
 
 import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.llm.qwen.QwenLlm;
 import com.agentsflex.llm.qwen.QwenLlmConfig;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import org.junit.Test;
@@ -21,9 +21,6 @@ public class QwenTest {
             System.out.println(">>>> " + message.getContent());
         });
 
-//        String chat = llm.chat("你叫什么名字？");
-//        System.out.println(chat);
-
         Thread.sleep(10000);
     }
 
@@ -37,11 +34,9 @@ public class QwenTest {
         Llm llm = new QwenLlm(config);
 
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
-        FunctionMessageResponse response = llm.chat(prompt);
+        AiMessageResponse response = llm.chat(prompt);
 
-        Object result = response.getFunctionResult();
-
-        System.out.println(result);
+        System.out.println(response.callFunctions());
         // "Today it will be dull and overcast in 北京"
     }
 }

@@ -15,12 +15,58 @@
  */
 package com.agentsflex.core.message;
 
+import com.agentsflex.core.functions.Function;
+import com.agentsflex.core.functions.JavaNativeFunctions;
+
+import java.util.*;
+
 public class HumanMessage extends AbstractTextMessage {
+
+    private List<Function> functions;
 
     public HumanMessage() {
     }
 
     public HumanMessage(String content) {
         setContent(content);
+    }
+
+    public void addFunction(Function function) {
+        if (this.functions == null)
+            this.functions = new java.util.ArrayList<>();
+        this.functions.add(function);
+    }
+
+    public void addFunctions(Collection<Function> functions) {
+        if (this.functions == null)
+            this.functions = new java.util.ArrayList<>();
+        this.functions.addAll(functions);
+    }
+
+    public void addFunctions(Class<?> funcClass, String... methodNames) {
+        if (this.functions == null)
+            this.functions = new java.util.ArrayList<>();
+        this.functions.addAll(JavaNativeFunctions.from(funcClass, methodNames));
+    }
+
+    public void addFunctions(Object funcObject, String... methodNames) {
+        if (this.functions == null)
+            this.functions = new java.util.ArrayList<>();
+        this.functions.addAll(JavaNativeFunctions.from(funcObject, methodNames));
+    }
+
+    public List<Function> getFunctions() {
+        return functions;
+    }
+
+    public Map<String, Function> getFunctionMap() {
+        if (functions == null) {
+            return Collections.emptyMap();
+        }
+        Map<String, Function> map = new HashMap<>(functions.size());
+        for (Function function : functions) {
+            map.put(function.getName(), function);
+        }
+        return map;
     }
 }

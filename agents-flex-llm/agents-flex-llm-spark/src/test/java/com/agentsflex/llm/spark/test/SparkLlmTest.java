@@ -2,7 +2,8 @@ package com.agentsflex.llm.spark.test;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
+import com.agentsflex.core.llm.exception.LlmException;
+import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.HistoriesPrompt;
@@ -15,26 +16,27 @@ import java.util.Scanner;
 
 public class SparkLlmTest {
 
-    @Test()
-    public void testSimple() {
+    private static SparkLlm getSparkLLM() {
         SparkLlmConfig config = new SparkLlmConfig();
         config.setAppId("****");
         config.setApiKey("****");
         config.setApiSecret("****");
 
-        Llm llm = new SparkLlm(config);
+
+        config.setDebug(true);
+        return new SparkLlm(config);
+    }
+
+    @Test(expected = LlmException.class)
+    public void testSimple() {
+        Llm llm = getSparkLLM();
         String result = llm.chat("你好，请问你是谁？");
         System.out.println(result);
     }
 
     @Test
     public void testEmbedding() {
-        SparkLlmConfig config = new SparkLlmConfig();
-        config.setAppId("****");
-        config.setApiKey("****");
-        config.setApiSecret("****");
-
-        Llm llm = new SparkLlm(config);
+        Llm llm = getSparkLLM();
         VectorData vectorData = llm.embed(Document.of("你好，请问你是谁？"));
         System.out.println(vectorData);
     }
@@ -42,31 +44,16 @@ public class SparkLlmTest {
 
     @Test
     public void testFunctionCalling() throws InterruptedException {
-        SparkLlmConfig config = new SparkLlmConfig();
-        config.setAppId("****");
-        config.setApiKey("****");
-        config.setApiSecret("****");
-        config.setDebug(true);
-
-
-        Llm llm = new SparkLlm(config);
-
+        Llm llm = getSparkLLM();
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
-        FunctionMessageResponse response = llm.chat(prompt);
+        AiMessageResponse response = llm.chat(prompt);
 
-        Object result = response == null ? null : response.getFunctionResult();
-
-        System.out.println(result);
+        System.out.println(response.callFunctions());
     }
 
 
     public static void main(String[] args) {
-        SparkLlmConfig config = new SparkLlmConfig();
-        config.setAppId("****");
-        config.setApiKey("****");
-        config.setApiSecret("****");
-
-        Llm llm = new SparkLlm(config);
+        Llm llm = getSparkLLM();
 
         HistoriesPrompt prompt = new HistoriesPrompt();
 

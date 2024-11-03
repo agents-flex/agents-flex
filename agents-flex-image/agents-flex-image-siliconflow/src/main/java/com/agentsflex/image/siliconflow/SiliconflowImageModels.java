@@ -31,7 +31,7 @@ public class SiliconflowImageModels {
         .put(Stable_Diffusion_Turbo, "/v1/stabilityai/sd-turbo/text-to-image")
         .put(Stable_Diffusion_XL_Turbo, "/v1/stabilityai/sdxl-turbo/text-to-image")
         .put(Stable_Diffusion_XL_Lighting, "/v1/ByteDance/SDXL-Lightning/text-to-image")
-        .build();
+        ;
 
     public static String getPath(String model) {
         return (String) modelsPathMapping.get(model);

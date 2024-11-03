@@ -25,12 +25,8 @@ import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.llm.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.FunctionMessageParser;
-import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.Maps;
@@ -47,8 +43,6 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
     private HttpClient httpClient = new HttpClient();
     public AiMessageParser aiMessageParser = ChatglmLlmUtil.getAiMessageParser(false);
     public AiMessageParser aiStreamMessageParser = ChatglmLlmUtil.getAiMessageParser(true);
-    public FunctionMessageParser functionMessageParser = ChatglmLlmUtil.getFunctionMessageParser();
-
 
     public ChatglmLlm(ChatglmLlmConfig config) {
         super(config);
@@ -67,7 +61,9 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
         String endpoint = config.getEndpoint();
-        String payload = Maps.of("model", "embedding-2").put("input", document.getContent()).toJSON();
+        String payload = Maps.of("model", "embedding-2")
+            .put("input", document.getContent())
+            .toJSON();
         String response = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
 
         if (config.isDebug()) {
@@ -86,7 +82,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
 
     @Override
-    public <R extends AiMessageResponse> R chat(Prompt<R> prompt, ChatOptions options) {
+    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
@@ -100,20 +96,13 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         }
 
         if (StringUtil.noText(response)) {
-            return null;
+            return AiMessageResponse.error(prompt, response, "no content for response.");
         }
 
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
-        AbstractBaseMessageResponse<?> messageResponse;
-
-        if (prompt instanceof FunctionPrompt) {
-            messageResponse = new FunctionMessageResponse(response, ((FunctionPrompt) prompt).getFunctions()
-                , functionMessageParser.parse(jsonObject));
-        } else {
-            messageResponse = new AiMessageResponse(response, aiMessageParser.parse(jsonObject));
-        }
+        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
@@ -122,13 +111,12 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
             messageResponse.setErrorCode(error.getString("code"));
         }
 
-        //noinspection unchecked
-        return (R) messageResponse;
+        return messageResponse;
     }
 
 
     @Override
-    public <R extends AiMessageResponse> void chatStream(Prompt<R> prompt, StreamResponseListener<R> listener, ChatOptions options) {
+    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -137,9 +125,8 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         String payload = ChatglmLlmUtil.promptToPayload(prompt, config, true, options);
 
         String endpoint = config.getEndpoint();
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser, functionMessageParser);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser);
         llmClient.start(endpoint + "/api/paas/v4/chat/completions", headers, payload, clientListener, config);
     }
-
 
 }
