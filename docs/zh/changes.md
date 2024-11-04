@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-beta.13-snapshot 20241026
+## v1.0.0-rc.0 20241026
 - feat: add plugin for solon framework
 - refactor: optimize VectorStore delete methods
 - refactor: optimize RedisVectorStore for sort by desc

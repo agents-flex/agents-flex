@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-document-parser</artifactId>
-        <version>1.0.0-beta.13-snapshot</version>
+        <version>1.0.0-rc.0</version>
     </parent>
 
     <artifactId>agents-flex-document-parser-poi</artifactId>
@@ -23,7 +23,7 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-beta.13-snapshot</version>
+            <version>1.0.0-rc.0</version>
         </dependency>
 
         <dependency>
