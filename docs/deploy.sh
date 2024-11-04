@@ -5,6 +5,7 @@ set -e
 
 # copy changes.md
 cp ../changes.md ./zh/
+cp ../changes.md ./
 
 # build
 npm run docs:build

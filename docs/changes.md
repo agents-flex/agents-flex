@@ -1,6 +1,18 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-rc.0 20241026
+## v1.0.0-rc.0 20241104
+- refactor: refactor llm apis
+- refactor: refactor chain and nodes
+- refactor: optimize agents-flex-solon-plugin @noear_admin
+
+---
+- 重构：重构 llm api
+- 重构：重构 chain 链路 及其相关节点
+- 优化：优化 agents-flex-solon-plugin @noear_admin
+
+
+
+## v1.0.0-beta.13 20241026
 - feat: add plugin for solon framework
 - refactor: optimize VectorStore delete methods
 - refactor: optimize RedisVectorStore for sort by desc
