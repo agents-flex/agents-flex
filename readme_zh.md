@@ -10,6 +10,10 @@
 
 ---
 
+<a href="https://mp.weixin.qq.com/s/1pTQ9m3C4ebfSQdyWUAyaQ">
+<img src="./docs/assets/images/aiadmin.gif" alt=""/>
+</a>
+
 ## 基本能力
 
 - LLM 的访问能力
