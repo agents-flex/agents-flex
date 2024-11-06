@@ -26,13 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class JavaNativeFunction implements Function {
+public class JavaNativeFunction extends BaseFunction {
+
     private Class<?> clazz;
     private Object object;
     private Method method;
-    private String name;
-    private String description;
-    private JavaNativeParameter[] parameters;
 
     public Class<?> getClazz() {
         return clazz;
@@ -83,36 +81,13 @@ public class JavaNativeFunction implements Function {
         return parameter;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public JavaNativeParameter[] getParameters() {
-        return parameters;
-    }
-
-    public void setParameters(JavaNativeParameter[] parameters) {
-        this.parameters = parameters;
-    }
-
     public Object invoke(Map<String, Object> argsMap) {
         try {
             Object[] args = new Object[this.parameters.length];
             for (int i = 0; i < this.parameters.length; i++) {
-                Object value = argsMap.get(this.parameters[i].getName());
-                args[i] = ConvertService.convert(value, this.parameters[i].getTypeClass());
+                JavaNativeParameter parameter = (JavaNativeParameter) this.parameters[i];
+                Object value = argsMap.get(parameter.getName());
+                args[i] = ConvertService.convert(value, parameter.getTypeClass());
             }
             return method.invoke(object, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
