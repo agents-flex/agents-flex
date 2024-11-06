@@ -77,12 +77,9 @@ public class SparkLlmUtil {
         };
         aiMessageParser.setContentPath("$.payload.choices.text[0].content");
         aiMessageParser.setIndexPath("$.payload.choices.text[0].index");
-//        aiMessageParser.setStatusPath("$.payload.choices.status");
         aiMessageParser.setCompletionTokensPath("$.payload.usage.text.completion_tokens");
         aiMessageParser.setPromptTokensPath("$.payload.usage.text.prompt_tokens");
         aiMessageParser.setTotalTokensPath("$.payload.usage.text.total_tokens");
-//        aiMessageParser.setStatusParser(content -> parseMessageStatus((Integer) content));
-
 
         aiMessageParser.setStatusParser(content -> {
             Integer status = (Integer) JSONPath.eval(content, "$.payload.choices.status");
@@ -98,11 +95,6 @@ public class SparkLlmUtil {
                     return MessageStatus.END;
             }
             return MessageStatus.UNKNOW;
-
-//            if (finishReason != null) {
-//                return MessageStatus.END;
-//            }
-//            return MessageStatus.MIDDLE;
         });
 
         aiMessageParser.setCallsParser(content -> {
@@ -181,6 +173,8 @@ public class SparkLlmUtil {
 
     private static String getDomain(String version) {
         switch (version) {
+            case "v4.0":
+                return "4.0Ultra";
             case "v3.5":
                 return "generalv3.5";
             case "v3.1":
