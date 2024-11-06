@@ -28,17 +28,37 @@ public class GroovyExecNode extends CodeNode {
     @Override
     protected Map<String, Object> executeCode(String code, Chain chain) {
         Binding binding = new Binding();
-        Map<String, Object> all = chain.getMemory().getAll();
-        if (all != null) {
-            all.forEach(binding::setVariable);
+
+        Map<String, Object> parameters = getParameters(chain);
+        if (parameters != null) {
+            parameters.forEach(binding::setVariable);
         }
 
         Map<String, Object> result = new HashMap<>();
         binding.setVariable("_result", result);
+        binding.setVariable("_chain", chain);
 
-        binding.setVariable("chain", chain);
         GroovyShell shell = new GroovyShell(binding);
         shell.evaluate(code);
+
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "GroovyExecNode{" +
+            "inwardEdges=" + inwardEdges +
+            ", code='" + code + '\'' +
+            ", description='" + description + '\'' +
+            ", inputParameters=" + inputParameters +
+            ", outputKeys=" + outputKeys +
+            ", id='" + id + '\'' +
+            ", name='" + name + '\'' +
+            ", async=" + async +
+            ", outwardEdges=" + outwardEdges +
+            ", condition=" + condition +
+            ", memory=" + memory +
+            ", nodeStatus=" + nodeStatus +
+            '}';
     }
 }

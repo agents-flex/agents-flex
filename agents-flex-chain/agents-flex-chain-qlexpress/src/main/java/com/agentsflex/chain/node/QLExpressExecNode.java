@@ -30,14 +30,36 @@ public class QLExpressExecNode extends CodeNode {
         Map<String, Object> result = new HashMap<>();
         ExpressRunner runner = new ExpressRunner();
         DefaultContext<String, Object> context = new DefaultContext<>();
-        context.putAll(chain.getMemory().getAll());
-        context.put("chain", chain);
+
+        Map<String, Object> parameters = getParameters(chain);
+        if (parameters != null) context.putAll(parameters);
+
+        context.put("_chain", chain);
         context.put("_result", result);
+
         try {
             runner.execute(code, context, null, true, false);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "QLExpressExecNode{" +
+            "code='" + code + '\'' +
+            ", description='" + description + '\'' +
+            ", inputParameters=" + inputParameters +
+            ", outputKeys=" + outputKeys +
+            ", id='" + id + '\'' +
+            ", name='" + name + '\'' +
+            ", async=" + async +
+            ", inwardEdges=" + inwardEdges +
+            ", outwardEdges=" + outwardEdges +
+            ", condition=" + condition +
+            ", memory=" + memory +
+            ", nodeStatus=" + nodeStatus +
+            '}';
     }
 }
