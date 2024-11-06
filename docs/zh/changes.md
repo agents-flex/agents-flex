@@ -1,13 +1,26 @@
 # Agents-Flex ChangeLog
 
+
+## v1.0.0-rc.1 20241106
+- refactor: add BaseFunction.java
+- fix: spark LLM can not support v4.0
+- fix: fix code node can not get the parameters
+
+---
+- 优化：新增 BaseFunction 类
+- 修复：修复星火大模型不支持 v4.0 的问题
+- 修复：修复代码节点无法获取参数的问题
+
+
+
 ## v1.0.0-rc.0 20241104
 - refactor: refactor llm apis
 - refactor: refactor chain and nodes
 - refactor: optimize agents-flex-solon-plugin @noear_admin
 
 ---
-- 重构：重构 llm api
-- 重构：重构 chain 链路 及其相关节点
+- 优化：重构 llm api
+- 优化：重构 chain 链路 及其相关节点
 - 优化：优化 agents-flex-solon-plugin @noear_admin
 
 

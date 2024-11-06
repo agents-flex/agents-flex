@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>parent</artifactId>
-        <version>1.0.0-rc.0</version>
+        <version>1.0.0-rc.1</version>
     </parent>
 
     <artifactId>agents-flex-image</artifactId>
