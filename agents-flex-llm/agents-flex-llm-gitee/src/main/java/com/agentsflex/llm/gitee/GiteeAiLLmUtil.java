@@ -16,12 +16,15 @@
 package com.agentsflex.llm.gitee;
 
 import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
+
+import java.util.List;
 
 public class GiteeAiLLmUtil {
 
@@ -31,17 +34,20 @@ public class GiteeAiLLmUtil {
         return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
     }
 
-
     public static String promptToPayload(Prompt prompt, GiteeAiLlmConfig config, ChatOptions options, boolean withStream) {
-        return Maps.of("messages", promptFormat.toMessagesJsonObject(prompt.toMessages()))
+        List<Message> messages = prompt.toMessages();
+        return Maps.of()
+            .put("messages", promptFormat.toMessagesJsonObject(messages))
             .putIf(withStream, "stream", withStream)
             .putIfNotNull("max_tokens", options.getMaxTokens())
             .putIfNotNull("temperature", options.getTemperature())
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
             .putIfNotNull("top_p", options.getTopP())
             .putIfNotNull("top_k", options.getTopK())
             .putIfNotEmpty("stop", options.getStop())
+            .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
+            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
             .toJSON();
     }
-
 
 }

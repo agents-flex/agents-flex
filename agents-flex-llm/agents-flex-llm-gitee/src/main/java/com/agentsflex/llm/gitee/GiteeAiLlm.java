@@ -61,6 +61,10 @@ public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
         }
 
         String payload = GiteeAiLLmUtil.promptToPayload(prompt, config, options, false);
+        if (config.isDebug()) {
+            System.out.println(">>>>send payload:" + payload);
+        }
+
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + "/api/serverless/" + config.getModel() + "/chat/completions", headers, payload);
         if (config.isDebug()) {
