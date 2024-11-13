@@ -23,6 +23,7 @@ import java.util.*;
 public class HumanMessage extends AbstractTextMessage {
 
     private List<Function> functions;
+    private String toolChoice;
 
     public HumanMessage() {
     }
@@ -68,5 +69,17 @@ public class HumanMessage extends AbstractTextMessage {
             map.put(function.getName(), function);
         }
         return map;
+    }
+
+    public void setFunctions(List<Function> functions) {
+        this.functions = functions;
+    }
+
+    public String getToolChoice() {
+        return toolChoice;
+    }
+
+    public void setToolChoice(String toolChoice) {
+        this.toolChoice = toolChoice;
     }
 }

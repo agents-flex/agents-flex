@@ -16,12 +16,14 @@
 package com.agentsflex.llm.gitee;
 
 import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
 
 import java.util.List;
@@ -36,12 +38,14 @@ public class GiteeAiLLmUtil {
 
     public static String promptToPayload(Prompt prompt, GiteeAiLlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
+        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
         return Maps.of()
             .put("messages", promptFormat.toMessagesJsonObject(messages))
             .putIf(withStream, "stream", withStream)
             .putIfNotNull("max_tokens", options.getMaxTokens())
             .putIfNotNull("temperature", options.getTemperature())
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
+            .putIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
             .putIfNotNull("top_p", options.getTopP())
             .putIfNotNull("top_k", options.getTopK())
             .putIfNotEmpty("stop", options.getStop())

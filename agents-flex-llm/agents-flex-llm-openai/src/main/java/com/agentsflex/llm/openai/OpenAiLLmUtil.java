@@ -18,12 +18,14 @@ package com.agentsflex.llm.openai;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
+import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
 
 import java.util.List;
@@ -48,11 +50,12 @@ public class OpenAiLLmUtil {
 
     public static String promptToPayload(Prompt prompt, OpenAiLlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
+        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
         return Maps.of("model", config.getModel())
-            .put("messages", promptFormat.toMessagesJsonObject(prompt.toMessages()))
+            .put("messages", promptFormat.toMessagesJsonObject(messages))
             .putIf(withStream, "stream", true)
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
-            .putIfContainsKey("tools", "tool_choice", "auto")
+            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
+            .putIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
             .putIfNotNull("top_p", options.getTopP())
             .putIfNotEmpty("stop", options.getStop())
             .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
