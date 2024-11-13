@@ -10,10 +10,6 @@
 
 ---
 
-<a href="https://mp.weixin.qq.com/s/1pTQ9m3C4ebfSQdyWUAyaQ">
-<img src="./docs/assets/images/aiadmin.gif" alt=""/>
-</a>
-
 ## 基本能力
 
 - LLM 的访问能力
@@ -30,9 +26,6 @@
   - 解析器（Parser）
     - PoiParser
     - PdfBoxParser
-- Agent
-  - LLM Agent
-  - IOAgent
 - Chain 执行链
     - SequentialChain 顺序执行链
     - ParallelChain 并发（并行）执行链
@@ -40,10 +33,6 @@
     - ChainNode
         - AgentNode Agent 执行节点
         - EndNode 终点节点
-        - RouterNode 路由节点
-          - GroovyRouterNode Groovy 规则路由
-          - QLExpressRouterNode QLExpress 规则路由
-          - LLMRouterNode LLM路由（由 AI 自行判断路由规则）
 
 
 
