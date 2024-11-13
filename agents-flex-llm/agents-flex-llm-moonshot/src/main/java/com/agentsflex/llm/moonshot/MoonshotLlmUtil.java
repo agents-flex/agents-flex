@@ -32,23 +32,22 @@ public class MoonshotLlmUtil {
     }
 
 
-
     /**
      * 将给定的Prompt转换为特定的payload格式，用于与语言模型进行交互。
      *
-     * @param prompt 需要转换为payload的Prompt对象，包含了对话的具体内容。
-     * @param config 用于配置Moonshot LLM行为的配置对象，例如指定使用的模型。
-     * @param isStream 指示payload是否应该以流的形式进行处理。
+     * @param prompt      需要转换为payload的Prompt对象，包含了对话的具体内容。
+     * @param config      用于配置Moonshot LLM行为的配置对象，例如指定使用的模型。
+     * @param isStream    指示payload是否应该以流的形式进行处理。
      * @param chatOptions 包含了对话选项的配置，如温度和最大令牌数等。
      * @return 返回一个字符串形式的payload，供进一步的处理或发送给语言模型。
      */
     public static String promptToPayload(Prompt prompt, MoonshotLlmConfig config, Boolean isStream, ChatOptions chatOptions) {
         // 构建payload的根结构，包括模型信息、流式处理标志、对话选项和格式化后的prompt消息。
         return Maps.of("model", config.getModel())
-            .put("stream", isStream)
-            .put("temperature", chatOptions.getTemperature())
-            .put("max_tokens", chatOptions.getMaxTokens())
-            .put("messages", promptFormat.toMessagesJsonObject(prompt.toMessages()))
+            .set("stream", isStream)
+            .set("temperature", chatOptions.getTemperature())
+            .set("max_tokens", chatOptions.getMaxTokens())
+            .set("messages", promptFormat.toMessagesJsonObject(prompt.toMessages()))
             .toJSON();
     }
 }

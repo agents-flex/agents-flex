@@ -61,7 +61,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         }
 
         String payload = Maps.of("model", options.getModelOrDefault(config.getModel()))
-            .put("input", document.getContent())
+            .set("input", document.getContent())
             .toJSON();
 
         String endpoint = config.getEndpoint();

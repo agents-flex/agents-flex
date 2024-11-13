@@ -40,17 +40,17 @@ public class GiteeAiLLmUtil {
         List<Message> messages = prompt.toMessages();
         HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
         return Maps.of()
-            .put("messages", promptFormat.toMessagesJsonObject(messages))
-            .putIf(withStream, "stream", withStream)
-            .putIfNotNull("max_tokens", options.getMaxTokens())
-            .putIfNotNull("temperature", options.getTemperature())
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
-            .putIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
-            .putIfNotNull("top_p", options.getTopP())
-            .putIfNotNull("top_k", options.getTopK())
-            .putIfNotEmpty("stop", options.getStop())
-            .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
-            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
+            .set("messages", promptFormat.toMessagesJsonObject(messages))
+            .setIf(withStream, "stream", withStream)
+            .setIfNotNull("max_tokens", options.getMaxTokens())
+            .setIfNotNull("temperature", options.getTemperature())
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
+            .setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
+            .setIfNotNull("top_p", options.getTopP())
+            .setIfNotNull("top_k", options.getTopK())
+            .setIfNotEmpty("stop", options.getStop())
+            .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
+            .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
             .toJSON();
     }
 

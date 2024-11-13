@@ -57,8 +57,8 @@ public class SparkLlmUtil {
                 }
 
                 Maps builder = Maps.of("name", function.getName())
-                    .put("description", function.getDescription())
-                    .put("parameters", Maps.of("type", "object").put("properties", propertiesMap).put("required", requiredProperties));
+                    .set("description", function.getDescription())
+                    .set("parameters", Maps.of("type", "object").set("properties", propertiesMap).set("required", requiredProperties));
                 functionsJsonArray.add(builder);
             }
         }
@@ -132,13 +132,13 @@ public class SparkLlmUtil {
         List<Message> messages = prompt.toMessages();
         Maps root = Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()));
         root.put("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
-                .putIf(options.getTemperature() > 0, "temperature", options.getTemperature())
-                .putIf(options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
-                .putIfNotNull("top_k", options.getTopK())
+                .setIf(options.getTemperature() > 0, "temperature", options.getTemperature())
+                .setIf(options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
+                .setIfNotNull("top_k", options.getTopK())
             )
         );
         root.put("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(messages)))
-            .putIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1))))
+            .setIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1))))
         );
         return JSON.toJSONString(root);
     }
@@ -192,9 +192,9 @@ public class SparkLlmUtil {
         String text = Maps.of("messages", Collections.singletonList(Maps.of("content", document.getContent()).put("role", "user"))).toJSON();
         String textBase64 = Base64.getEncoder().encodeToString(text.getBytes());
 
-        return Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()).put("status", 3))
-            .put("parameter", Maps.of("emb", Maps.of("domain", "para").put("feature", Maps.of("encoding", "utf8").put("compress", "raw").put("format", "plain"))))
-            .put("payload", Maps.of("messages", Maps.of("encoding", "utf8").put("compress", "raw").put("format", "json").put("status", 3).put("text", textBase64)))
+        return Maps.of("header", Maps.of("app_id", config.getAppId()).set("uid", UUID.randomUUID()).set("status", 3))
+            .set("parameter", Maps.of("emb", Maps.of("domain", "para").put("feature", Maps.of("encoding", "utf8").set("compress", "raw").set("format", "plain"))))
+            .set("payload", Maps.of("messages", Maps.of("encoding", "utf8").set("compress", "raw").set("format", "json").set("status", 3).set("text", textBase64)))
             .toJSON();
     }
 

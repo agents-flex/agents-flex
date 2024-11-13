@@ -43,7 +43,7 @@ public class StabilityImageModel implements ImageModel {
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
         Map<String, Object> payload = Maps.of("prompt", request.getPrompt())
-            .putIfNotNull("output_format", "jpeg");
+            .setIfNotNull("output_format", "jpeg");
 
         String url = config.getEndpoint() + "/v2beta/stable-image/generate/sd3";
 

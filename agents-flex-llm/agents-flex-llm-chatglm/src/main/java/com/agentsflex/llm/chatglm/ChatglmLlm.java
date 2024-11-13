@@ -62,7 +62,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
         String endpoint = config.getEndpoint();
         String payload = Maps.of("model", "embedding-2")
-            .put("input", document.getContent())
+            .set("input", document.getContent())
             .toJSON();
         String response = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
 

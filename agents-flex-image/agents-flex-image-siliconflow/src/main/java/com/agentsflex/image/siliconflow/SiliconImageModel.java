@@ -41,11 +41,11 @@ public class SiliconImageModel implements ImageModel {
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
         String payload = Maps.of("prompt", request.getPrompt())
-            .putIfNotEmpty("negative_prompt", request.getNegativePrompt())
-            .putOrDefault("image_size", request.getSize(), config.getImageSize())
-            .putOrDefault("batch_size", request.getN(), 1)
-            .putOrDefault("num_inference_steps", request.getOption("num_inference_steps"), config.getNumInferenceSteps())
-            .putOrDefault("guidance_scale", request.getOption("guidance_scale"), config.getGuidanceScale())
+            .setIfNotEmpty("negative_prompt", request.getNegativePrompt())
+            .setOrDefault("image_size", request.getSize(), config.getImageSize())
+            .setOrDefault("batch_size", request.getN(), 1)
+            .setOrDefault("num_inference_steps", request.getOption("num_inference_steps"), config.getNumInferenceSteps())
+            .setOrDefault("guidance_scale", request.getOption("guidance_scale"), config.getGuidanceScale())
             .toJSON();
 
         String url = config.getEndpoint() + SiliconflowImageModels.getPath(config.getModel());

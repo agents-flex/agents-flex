@@ -104,14 +104,14 @@ public class OllamaLlmUtil {
     public static String promptToPayload(Prompt prompt, OllamaLlmConfig config, ChatOptions options, boolean stream) {
         List<Message> messages = prompt.toMessages();
         return Maps.of("model", config.getModel())
-            .put("messages", promptFormat.toMessagesJsonObject(messages))
-            .putIf(!stream, "stream", stream)
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
-            .putIfNotEmpty("options.seed", options.getSeed())
-            .putIfNotEmpty("options.top_k", options.getTopK())
-            .putIfNotEmpty("options.top_p", options.getTopP())
-            .putIfNotEmpty("options.temperature", options.getTemperature())
-            .putIfNotEmpty("options.stop", options.getStop())
+            .set("messages", promptFormat.toMessagesJsonObject(messages))
+            .setIf(!stream, "stream", stream)
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
+            .setIfNotEmpty("options.seed", options.getSeed())
+            .setIfNotEmpty("options.top_k", options.getTopK())
+            .setIfNotEmpty("options.top_p", options.getTopP())
+            .setIfNotEmpty("options.temperature", options.getTemperature())
+            .setIfNotEmpty("options.stop", options.getStop())
             .toJSON();
     }
 

@@ -36,19 +36,24 @@ public class Maps extends HashMap<String, Object> {
     }
 
     public static Maps ofNotNull(String key, Object value) {
-        return new Maps().putIfNotNull(key, value);
+        return new Maps().setIfNotNull(key, value);
     }
 
     public static Maps ofNotEmpty(String key, Object value) {
-        return new Maps().putIfNotEmpty(key, value);
+        return new Maps().setIfNotEmpty(key, value);
     }
 
     public static Maps ofNotEmpty(String key, Maps value) {
-        return new Maps().putIfNotEmpty(key, value);
+        return new Maps().setIfNotEmpty(key, value);
     }
 
 
-    public Maps put(String key, Object value) {
+    public Maps set(String key, Object value) {
+        super.put(key, value);
+        return this;
+    }
+
+    public Maps setChild(String key, Object value) {
         if (key.contains(".")) {
             String[] keys = key.split("\\.");
             Map<String, Object> currentMap = this;
@@ -71,37 +76,57 @@ public class Maps extends HashMap<String, Object> {
         return this;
     }
 
-    public Maps putOrDefault(String key, Object value, Object orDefault) {
+    public Maps setOrDefault(String key, Object value, Object orDefault) {
         if (isNullOrEmpty(value)) {
-            return this.put(key, orDefault);
+            return this.set(key, orDefault);
         } else {
-            return this.put(key, value);
+            return this.set(key, value);
         }
     }
 
-    public Maps putIf(boolean condition, String key, Object value) {
+    public Maps setIf(boolean condition, String key, Object value) {
         if (condition) put(key, value);
         return this;
     }
 
-    public Maps putIf(Function<Maps, Boolean> func, String key, Object value) {
+    public Maps setIf(Function<Maps, Boolean> func, String key, Object value) {
         if (func.apply(this)) put(key, value);
         return this;
     }
 
-    public Maps putIfNotNull(String key, Object value) {
+    public Maps setIfNotNull(String key, Object value) {
         if (value != null) put(key, value);
         return this;
     }
 
-    public Maps putIfNotEmpty(String key, Object value) {
+    public Maps setIfNotEmpty(String key, Object value) {
         if (!isNullOrEmpty(value)) {
             put(key, value);
         }
         return this;
     }
 
-    private boolean isNullOrEmpty(Object value) {
+
+    public Maps setIfContainsKey(String checkKey, String key, Object value) {
+        if (this.containsKey(checkKey)) {
+            this.put(key, value);
+        }
+        return this;
+    }
+
+    public Maps setIfNotContainsKey(String checkKey, String key, Object value) {
+        if (!this.containsKey(checkKey)) {
+            this.put(key, value);
+        }
+        return this;
+    }
+
+    public String toJSON() {
+        return JSON.toJSONString(this);
+    }
+
+
+    private static boolean isNullOrEmpty(Object value) {
         if (value == null) {
             return true;
         }
@@ -124,23 +149,5 @@ public class Maps extends HashMap<String, Object> {
         return false;
     }
 
-
-    public Maps putIfContainsKey(String checkKey, String key, Object value) {
-        if (this.containsKey(checkKey)) {
-            this.put(key, value);
-        }
-        return this;
-    }
-
-    public Maps putIfNotContainsKey(String checkKey, String key, Object value) {
-        if (!this.containsKey(checkKey)) {
-            this.put(key, value);
-        }
-        return this;
-    }
-
-    public String toJSON() {
-        return JSON.toJSONString(this);
-    }
 
 }

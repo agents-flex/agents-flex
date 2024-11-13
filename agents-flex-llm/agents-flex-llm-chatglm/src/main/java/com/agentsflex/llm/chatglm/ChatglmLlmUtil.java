@@ -95,14 +95,14 @@ public class ChatglmLlmUtil {
         List<Message> messages = prompt.toMessages();
         HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
         return Maps.of("model", config.getModel())
-            .put("messages", promptFormat.toMessagesJsonObject(messages))
-            .putIf(withStream, "stream", true)
-            .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
-            .putIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
-            .putIfNotNull("top_p", options.getTopP())
-            .putIfNotEmpty("stop", options.getStop())
-            .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
-            .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
+            .set("messages", promptFormat.toMessagesJsonObject(messages))
+            .setIf(withStream, "stream", true)
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
+            .setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
+            .setIfNotNull("top_p", options.getTopP())
+            .setIfNotEmpty("stop", options.getStop())
+            .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
+            .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
             .toJSON();
     }
 

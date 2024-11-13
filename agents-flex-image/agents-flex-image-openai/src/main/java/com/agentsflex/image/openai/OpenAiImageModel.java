@@ -42,9 +42,9 @@ public class OpenAiImageModel implements ImageModel {
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
         String payload = Maps.of("model", config.getModel())
-            .put("prompt", request.getPrompt())
-            .putIfNotNull("n", request.getN())
-            .put("size", request.getSize())
+            .set("prompt", request.getPrompt())
+            .setIfNotNull("n", request.getN())
+            .set("size", request.getSize())
             .toJSON();
 
 

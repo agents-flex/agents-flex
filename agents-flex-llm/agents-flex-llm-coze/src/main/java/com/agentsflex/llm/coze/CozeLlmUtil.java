@@ -62,12 +62,12 @@ public class CozeLlmUtil {
     public static String promptToPayload(Prompt prompt, String botId, String userId, Map<String, String> customVariables, boolean stream) {
         List<Message> messages = prompt.toMessages();
         return Maps.of()
-            .put("bot_id", botId)
-            .put("user_id", userId)
-            .put("auto_save_history", true)
-            .put("additional_messages", promptFormat.toMessagesJsonObject(messages))
-            .put("stream", stream)
-            .putIf(customVariables != null, "custom_variables", customVariables)
+            .set("bot_id", botId)
+            .set("user_id", userId)
+            .set("auto_save_history", true)
+            .set("additional_messages", promptFormat.toMessagesJsonObject(messages))
+            .set("stream", stream)
+            .setIf(customVariables != null, "custom_variables", customVariables)
             .toJSON();
     }
 

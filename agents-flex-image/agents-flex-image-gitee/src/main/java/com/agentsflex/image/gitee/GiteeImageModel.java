@@ -37,8 +37,8 @@ public class GiteeImageModel implements ImageModel {
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
         String payload = Maps.of("inputs", request.getPrompt())
-            .putIfNotNull("width", request.getWidth())
-            .putIfNotNull("height", request.getHeight())
+            .setIfNotNull("width", request.getWidth())
+            .setIfNotNull("height", request.getHeight())
             .toJSON();
 
         String url = config.getEndpoint() + "/api/serverless/" + config.getModel() + "/text-to-image";

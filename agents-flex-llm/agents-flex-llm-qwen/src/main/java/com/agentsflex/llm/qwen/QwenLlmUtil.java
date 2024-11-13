@@ -92,14 +92,14 @@ public class QwenLlmUtil {
 
         List<Message> messages = prompt.toMessages();
         return Maps.of("model", config.getModel())
-            .put("input", Maps.of("messages", promptFormat.toMessagesJsonObject(messages)))
-            .put("parameters", Maps.of("result_format", "message")
-                .putIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
-                .putIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
-                .putIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
-                .putIfNotNull("top_p", options.getTopP())
-                .putIfNotNull("top_k", options.getTopK())
-                .putIfNotEmpty("stop", options.getStop())
+            .set("input", Maps.of("messages", promptFormat.toMessagesJsonObject(messages)))
+            .set("parameters", Maps.of("result_format", "message")
+                .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
+                .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
+                .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
+                .setIfNotNull("top_p", options.getTopP())
+                .setIfNotNull("top_k", options.getTopK())
+                .setIfNotEmpty("stop", options.getStop())
             ).toJSON();
     }
 
@@ -108,7 +108,7 @@ public class QwenLlmUtil {
         List<String> list = new ArrayList<>();
         list.add(text.getContent());
         return Maps.of("model", config.getModel())
-            .put("input", Maps.of("texts", list))
+            .set("input", Maps.of("texts", list))
             .toJSON();
     }
 
