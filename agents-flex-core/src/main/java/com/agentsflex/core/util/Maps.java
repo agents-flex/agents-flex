@@ -143,11 +143,6 @@ public class Maps extends HashMap<String, Object> {
             return true;
         }
 
-        if (value instanceof String && ((String) value).trim().isEmpty()) {
-            return true;
-        }
-        return false;
+        return value instanceof String && ((String) value).trim().isEmpty();
     }
-
-
 }

@@ -72,7 +72,7 @@ public abstract class BaseNode extends ChainNode {
     }
 
 
-    public Map<String, Object> getChainInputParameters(Chain chain, List<InputParameter> inputParameters) {
+    public Map<String, Object> getChainParameters(Chain chain, List<InputParameter> inputParameters) {
         Map<String, Object> variables = new HashMap<>();
         if (inputParameters != null) {
             for (InputParameter parameter : inputParameters) {
@@ -96,6 +96,6 @@ public abstract class BaseNode extends ChainNode {
     }
 
     public Map<String, Object> getParameters(Chain chain) {
-        return getChainInputParameters(chain, this.inputParameters);
+        return getChainParameters(chain, this.inputParameters);
     }
 }
