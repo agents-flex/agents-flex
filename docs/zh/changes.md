@@ -1,7 +1,7 @@
 # Agents-Flex ChangeLog
 
 
-## v1.0.0-rc.1 20241106
+## v1.0.0-rc.2 20241106
 - refactor: add BaseFunction.java
 - fix: spark LLM can not support v4.0
 - fix: fix code node can not get the parameters

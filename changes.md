@@ -1,6 +1,19 @@
 # Agents-Flex ChangeLog
 
 
+
+## v1.0.0-rc.2 20241118
+- feat: Gitee AI adds support for Function Calling
+- feat: HumanMessage adds support for toolChoice configuration
+- refactor: Optimize editing node BaseNode and Maps tool classes
+
+---
+- 新增: Gitee AI 添加对 Function Calling 的支持
+- 新增: HumanMessage 添加 toolChoice 配置的支持
+- 优化: 优化编辑节点 BaseNode 和 Maps 工具类
+
+
+
 ## v1.0.0-rc.1 20241106
 - refactor: add BaseFunction.java
 - fix: spark LLM can not support v4.0
