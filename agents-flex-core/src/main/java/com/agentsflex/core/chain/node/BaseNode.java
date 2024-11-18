@@ -72,13 +72,12 @@ public abstract class BaseNode extends ChainNode {
     }
 
 
-    public Map<String, Object> getParameters(Chain chain) {
+    public Map<String, Object> getChainInputParameters(Chain chain, List<InputParameter> inputParameters) {
         Map<String, Object> variables = new HashMap<>();
-
-        if (this.inputParameters != null) {
-            for (InputParameter parameter : this.inputParameters) {
+        if (inputParameters != null) {
+            for (InputParameter parameter : inputParameters) {
                 RefType refType = parameter.getRefType();
-                Object value = null;
+                Object value;
                 if (refType == RefType.INPUT) {
                     value = parameter.getRef();
                 } else if (refType == RefType.REF) {
@@ -86,16 +85,17 @@ public abstract class BaseNode extends ChainNode {
                 } else {
                     value = chain.get(parameter.getName());
                 }
-
                 if (parameter.isRequired() &&
                     (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
                     chain.stopError(this.getName() + " Missing required parameter:" + parameter.getName());
                 }
-
                 variables.put(parameter.getName(), value);
             }
         }
-
         return variables;
+    }
+
+    public Map<String, Object> getParameters(Chain chain) {
+        return getChainInputParameters(chain, this.inputParameters);
     }
 }
