@@ -82,7 +82,6 @@ public class OpenAiLlmTest {
 
         AiMessageResponse response = llm.chat(prompt);
         System.out.println(response);
-        System.out.println(response.getMessage().getContent());
 
         try {
             Thread.sleep(12000);
