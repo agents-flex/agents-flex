@@ -52,7 +52,7 @@ public class SparkLlmUtil {
                         if (parameter.isRequired()) {
                             requiredProperties.add(parameter.getName());
                         }
-                        propertiesMap.put(parameter.getName(), Maps.of("type", parameter.getType()).put("description", parameter.getDescription()));
+                        propertiesMap.put(parameter.getName(), Maps.of("type", parameter.getType()).set("description", parameter.getDescription()));
                     }
                 }
 
@@ -130,14 +130,14 @@ public class SparkLlmUtil {
     public static String promptToPayload(Prompt prompt, SparkLlmConfig config, ChatOptions options) {
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
         List<Message> messages = prompt.toMessages();
-        Maps root = Maps.of("header", Maps.of("app_id", config.getAppId()).put("uid", UUID.randomUUID()));
-        root.put("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
+        Maps root = Maps.of("header", Maps.of("app_id", config.getAppId()).set("uid", UUID.randomUUID()));
+        root.set("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
                 .setIf(options.getTemperature() > 0, "temperature", options.getTemperature())
                 .setIf(options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
                 .setIfNotNull("top_k", options.getTopK())
             )
         );
-        root.put("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(messages)))
+        root.set("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(messages)))
             .setIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1))))
         );
         return JSON.toJSONString(root);
@@ -189,11 +189,11 @@ public class SparkLlmUtil {
     }
 
     public static String embedPayload(SparkLlmConfig config, Document document) {
-        String text = Maps.of("messages", Collections.singletonList(Maps.of("content", document.getContent()).put("role", "user"))).toJSON();
+        String text = Maps.of("messages", Collections.singletonList(Maps.of("content", document.getContent()).set("role", "user"))).toJSON();
         String textBase64 = Base64.getEncoder().encodeToString(text.getBytes());
 
         return Maps.of("header", Maps.of("app_id", config.getAppId()).set("uid", UUID.randomUUID()).set("status", 3))
-            .set("parameter", Maps.of("emb", Maps.of("domain", "para").put("feature", Maps.of("encoding", "utf8").set("compress", "raw").set("format", "plain"))))
+            .set("parameter", Maps.of("emb", Maps.of("domain", "para").set("feature", Maps.of("encoding", "utf8").set("compress", "raw").set("format", "plain"))))
             .set("payload", Maps.of("messages", Maps.of("encoding", "utf8").set("compress", "raw").set("format", "json").set("status", 3).set("text", textBase64)))
             .toJSON();
     }
