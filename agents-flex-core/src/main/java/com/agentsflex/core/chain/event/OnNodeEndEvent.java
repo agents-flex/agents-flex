@@ -15,18 +15,18 @@
  */
 package com.agentsflex.core.chain.event;
 
-import com.agentsflex.core.chain.ChainEvent;
+import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.chain.ChainNode;
 
 import java.util.Map;
 
-public class OnNodeEndEvent implements ChainEvent {
+public class OnNodeEndEvent extends BaseChainEvent {
 
-    private ChainNode node;
-    private Map<String, Object> result;
+    private final ChainNode node;
+    private final Map<String, Object> result;
 
-
-    public OnNodeEndEvent(ChainNode node, Map<String, Object> result) {
+    public OnNodeEndEvent(Chain chain, ChainNode node, Map<String, Object> result) {
+        super(chain);
         this.node = node;
         this.result = result;
     }
@@ -35,22 +35,15 @@ public class OnNodeEndEvent implements ChainEvent {
         return node;
     }
 
-    public void setNode(ChainNode node) {
-        this.node = node;
-    }
-
     public Map<String, Object> getResult() {
         return result;
-    }
-
-    public void setResult(Map<String, Object> result) {
-        this.result = result;
     }
 
     @Override
     public String toString() {
         return "OnNodeEndEvent{" +
-            "node=" + node +
+            "chain=" + chain +
+            ", node=" + node +
             ", result=" + result +
             '}';
     }

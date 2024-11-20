@@ -16,43 +16,27 @@
 package com.agentsflex.core.chain.event;
 
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.ChainEvent;
 import com.agentsflex.core.chain.ChainStatus;
 
-public class OnStatusChangeEvent implements ChainEvent {
+public class OnStatusChangeEvent extends BaseChainEvent {
 
-    private Chain chain;
-    private ChainStatus status;
-    private ChainStatus before;
+    private final ChainStatus status;
+    private final ChainStatus before;
 
-    public OnStatusChangeEvent(Chain chain,ChainStatus status, ChainStatus before) {
+    public OnStatusChangeEvent(Chain chain, ChainStatus status, ChainStatus before) {
+        super(chain);
         this.status = status;
         this.before = before;
-    }
-
-    public Chain getChain() {
-        return chain;
-    }
-
-    public void setChain(Chain chain) {
-        this.chain = chain;
     }
 
     public ChainStatus getStatus() {
         return status;
     }
 
-    public void setStatus(ChainStatus status) {
-        this.status = status;
-    }
-
     public ChainStatus getBefore() {
         return before;
     }
 
-    public void setBefore(ChainStatus before) {
-        this.before = before;
-    }
 
     @Override
     public String toString() {

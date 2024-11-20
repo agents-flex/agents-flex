@@ -256,7 +256,7 @@ public class Chain extends ChainNode {
                 Map<String, Object> executeResult = null;
                 try {
                     ChainContext.setNode(currentNode);
-                    notifyEvent(new OnNodeStartEvent(currentNode));
+                    notifyEvent(new OnNodeStartEvent(this, currentNode));
                     if (this.getStatus() != ChainStatus.RUNNING) {
                         break;
                     }
@@ -267,7 +267,7 @@ public class Chain extends ChainNode {
                 } finally {
                     onNodeExecuteEnd(nodeContext);
                     ChainContext.clearNode();
-                    notifyEvent(new OnNodeEndEvent(currentNode, executeResult));
+                    notifyEvent(new OnNodeEndEvent(this, currentNode, executeResult));
                 }
 
                 if (executeResult != null && !executeResult.isEmpty()) {
@@ -378,13 +378,13 @@ public class Chain extends ChainNode {
         }
         try {
             ChainContext.setChain(this);
-            notifyEvent(new OnChainStartEvent());
+            notifyEvent(new OnChainStartEvent(this));
             try {
                 setStatus(ChainStatus.RUNNING);
                 runnable.run();
             } catch (Exception e) {
                 setStatus(ChainStatus.ERROR);
-                notifyEvent(new OnErrorEvent(e));
+                notifyEvent(new OnErrorEvent(this, e));
             }
             if (status == ChainStatus.RUNNING) {
                 setStatus(ChainStatus.FINISHED_NORMAL);
@@ -393,7 +393,7 @@ public class Chain extends ChainNode {
             }
         } finally {
             ChainContext.clearChain();
-            notifyEvent(new OnChainEndEvent());
+            notifyEvent(new OnChainEndEvent(this));
         }
     }
 

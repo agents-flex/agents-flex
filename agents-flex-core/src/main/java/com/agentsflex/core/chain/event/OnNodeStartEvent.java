@@ -15,14 +15,15 @@
  */
 package com.agentsflex.core.chain.event;
 
-import com.agentsflex.core.chain.ChainEvent;
+import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.chain.ChainNode;
 
-public class OnNodeStartEvent implements ChainEvent {
+public class OnNodeStartEvent extends BaseChainEvent {
 
-    private ChainNode node;
+    private final ChainNode node;
 
-    public OnNodeStartEvent(ChainNode node) {
+    public OnNodeStartEvent(Chain chain, ChainNode node) {
+        super(chain);
         this.node = node;
     }
 
@@ -30,9 +31,6 @@ public class OnNodeStartEvent implements ChainEvent {
         return node;
     }
 
-    public void setNode(ChainNode node) {
-        this.node = node;
-    }
 
     @Override
     public String toString() {

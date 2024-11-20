@@ -15,8 +15,18 @@
  */
 package com.agentsflex.core.chain.event;
 
-import com.agentsflex.core.chain.ChainEvent;
+import com.agentsflex.core.chain.Chain;
 
-public class OnChainStartEvent implements ChainEvent {
+public class OnChainStartEvent extends BaseChainEvent {
 
+    public OnChainStartEvent(Chain chain) {
+        super(chain);
+    }
+
+    @Override
+    public String toString() {
+        return "OnChainStartEvent{" +
+            "chain=" + chain +
+            '}';
+    }
 }

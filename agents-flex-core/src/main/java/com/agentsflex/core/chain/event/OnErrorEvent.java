@@ -15,28 +15,27 @@
  */
 package com.agentsflex.core.chain.event;
 
-import com.agentsflex.core.chain.ChainEvent;
+import com.agentsflex.core.chain.Chain;
 
-public class OnErrorEvent implements ChainEvent {
+public class OnErrorEvent extends BaseChainEvent {
 
-    private Exception exception;
+    private final Exception exception;
 
-    public OnErrorEvent(Exception exception) {
+    public OnErrorEvent(Chain chain, Exception exception) {
+        super(chain);
         this.exception = exception;
     }
+
 
     public Exception getException() {
         return exception;
     }
 
-    public void setException(Exception exception) {
-        this.exception = exception;
-    }
-
     @Override
     public String toString() {
         return "OnErrorEvent{" +
-            "exception=" + exception +
+            "chain=" + chain +
+            ", exception=" + exception +
             '}';
     }
 }

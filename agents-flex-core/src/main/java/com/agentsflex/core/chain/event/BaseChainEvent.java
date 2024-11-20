@@ -16,17 +16,17 @@
 package com.agentsflex.core.chain.event;
 
 import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.ChainEvent;
 
-public class OnChainEndEvent extends BaseChainEvent {
+public class BaseChainEvent implements ChainEvent {
 
-    public OnChainEndEvent(Chain chain) {
-        super(chain);
+    protected final Chain chain;
+
+    public BaseChainEvent(Chain chain) {
+        this.chain = chain;
     }
 
-    @Override
-    public String toString() {
-        return "OnChainEndEvent{" +
-            "chain=" + chain +
-            '}';
+    public Chain getChain() {
+        return chain;
     }
 }
