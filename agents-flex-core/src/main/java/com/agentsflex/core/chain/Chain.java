@@ -192,7 +192,14 @@ public class Chain extends ChainNode {
 
 
     public Map<String, Object> executeForResult(Map<String, Object> variables) {
+
         runInLifeCycle(variables, this::executeInternal);
+
+        if (this.status == ChainStatus.FINISHED_ABNORMAL) {
+            if (this.message == null) this.message = "Chain execute error";
+            throw new ChainException(this.message);
+        }
+
         return this.executeResult;
     }
 
