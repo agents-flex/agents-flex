@@ -139,7 +139,7 @@ public class Chain extends ChainNode {
         this.status = status;
 
         if (before != status) {
-            notifyEvent(new OnStatusChangeEvent(this.status, before));
+            notifyEvent(new OnStatusChangeEvent(this, this.status, before));
         }
     }
 
@@ -260,7 +260,7 @@ public class Chain extends ChainNode {
                 } finally {
                     onNodeExecuteEnd(nodeContext);
                     ChainContext.clearNode();
-                    notifyEvent(new OnNodeFinishedEvent(currentNode, executeResult));
+                    notifyEvent(new OnNodeEndEvent(currentNode, executeResult));
                 }
 
                 if (executeResult != null && !executeResult.isEmpty()) {
@@ -371,7 +371,7 @@ public class Chain extends ChainNode {
         }
         try {
             ChainContext.setChain(this);
-            notifyEvent(new OnStartEvent());
+            notifyEvent(new OnChainStartEvent());
             try {
                 setStatus(ChainStatus.RUNNING);
                 runnable.run();
@@ -386,7 +386,7 @@ public class Chain extends ChainNode {
             }
         } finally {
             ChainContext.clearChain();
-            notifyEvent(new OnFinishedEvent());
+            notifyEvent(new OnChainEndEvent());
         }
     }
 

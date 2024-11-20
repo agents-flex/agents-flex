@@ -17,6 +17,6 @@ package com.agentsflex.core.chain.event;
 
 import com.agentsflex.core.chain.ChainEvent;
 
-public class OnFinishedEvent implements ChainEvent {
+public class OnChainStartEvent implements ChainEvent {
 
 }

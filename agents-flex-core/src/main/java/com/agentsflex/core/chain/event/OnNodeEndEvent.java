@@ -20,13 +20,13 @@ import com.agentsflex.core.chain.ChainNode;
 
 import java.util.Map;
 
-public class OnNodeFinishedEvent implements ChainEvent {
+public class OnNodeEndEvent implements ChainEvent {
 
     private ChainNode node;
     private Map<String, Object> result;
 
 
-    public OnNodeFinishedEvent(ChainNode node, Map<String, Object> result) {
+    public OnNodeEndEvent(ChainNode node, Map<String, Object> result) {
         this.node = node;
         this.result = result;
     }
@@ -49,7 +49,7 @@ public class OnNodeFinishedEvent implements ChainEvent {
 
     @Override
     public String toString() {
-        return "OnNodeFinishedEvent{" +
+        return "OnNodeEndEvent{" +
             "node=" + node +
             ", result=" + result +
             '}';

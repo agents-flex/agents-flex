@@ -15,17 +15,27 @@
  */
 package com.agentsflex.core.chain.event;
 
+import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.chain.ChainEvent;
 import com.agentsflex.core.chain.ChainStatus;
 
 public class OnStatusChangeEvent implements ChainEvent {
 
+    private Chain chain;
     private ChainStatus status;
     private ChainStatus before;
 
-    public OnStatusChangeEvent(ChainStatus status, ChainStatus before) {
+    public OnStatusChangeEvent(Chain chain,ChainStatus status, ChainStatus before) {
         this.status = status;
         this.before = before;
+    }
+
+    public Chain getChain() {
+        return chain;
+    }
+
+    public void setChain(Chain chain) {
+        this.chain = chain;
     }
 
     public ChainStatus getStatus() {
@@ -47,7 +57,8 @@ public class OnStatusChangeEvent implements ChainEvent {
     @Override
     public String toString() {
         return "OnStatusChangeEvent{" +
-            "status=" + status +
+            "chain=" + chain +
+            ", status=" + status +
             ", before=" + before +
             '}';
     }
