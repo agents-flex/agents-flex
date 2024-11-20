@@ -18,101 +18,49 @@ package com.agentsflex.llm.qwen;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONPath;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public class QwenLlmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
-    public static AiMessageParser getAiMessageParser() {
-        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        aiMessageParser.setContentPath("$.output.choices[0].message.content");
-        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
-        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
-        aiMessageParser.setPromptTokensPath("$.usage.input_tokens");
-        aiMessageParser.setCompletionTokensPath("$.usage.output_tokens");
-
-        aiMessageParser.setStatusParser(content -> {
-            Object finishReason = JSONPath.eval(content, "$.output.choices[0].finish_reason");
-            if (finishReason != null) {
-                return MessageStatus.END;
-            }
-            return MessageStatus.MIDDLE;
-        });
-
-        aiMessageParser.setCallsParser(content -> {
-            JSONArray toolCalls = (JSONArray) JSONPath.eval(content, "$.output.choices[0].message.tool_calls");
-            if (toolCalls == null || toolCalls.isEmpty()) {
-                return Collections.emptyList();
-            }
-            List<FunctionCall> functionCalls = new ArrayList<>();
-            for (int i = 0; i < toolCalls.size(); i++) {
-                JSONObject jsonObject = toolCalls.getJSONObject(i);
-                JSONObject functionObject = jsonObject.getJSONObject("function");
-                if (functionObject != null) {
-                    FunctionCall functionCall = new FunctionCall();
-                    functionCall.setName(functionObject.getString("name"));
-                    Object arguments = functionObject.get("arguments");
-                    if (arguments instanceof Map) {
-                        //noinspection unchecked
-                        functionCall.setArgs((Map<String, Object>) arguments);
-                    } else if (arguments instanceof String) {
-                        //noinspection unchecked
-                        functionCall.setArgs(JSON.parseObject(arguments.toString(), Map.class));
-                    }
-                    functionCalls.add(functionCall);
-                }
-            }
-            return functionCalls;
-        });
-
-        return aiMessageParser;
+    public static AiMessageParser getAiMessageParser(boolean isStream) {
+        return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
     }
 
 
-    public static String promptToPayload(Prompt prompt, QwenLlmConfig config, ChatOptions options) {
+    public static String promptToPayload(Prompt prompt, QwenLlmConfig config, ChatOptions options, boolean withStream) {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
-
         List<Message> messages = prompt.toMessages();
+        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
         return Maps.of("model", config.getModel())
-            .set("input", Maps.of("messages", promptFormat.toMessagesJsonObject(messages)))
-            .set("parameters", Maps.of("result_format", "message")
-                .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
-                .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
-                .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
-                .setIfNotNull("top_p", options.getTopP())
-                .setIfNotNull("top_k", options.getTopK())
-                .setIfNotEmpty("stop", options.getStop())
-            ).toJSON();
-    }
-
-    public static String promptToEnabledPayload(Document text, EmbeddingOptions options, QwenLlmConfig config) {
-        // https://help.aliyun.com/zh/model-studio/developer-reference/text-embedding-synchronous-api?spm=a2c4g.11186623.0.nextDoc.100230b7arAV4X#e6bf7ae0fedrb
-        List<String> list = new ArrayList<>();
-        list.add(text.getContent());
-        return Maps.of("model", config.getModel())
-            .set("input", Maps.of("texts", list))
+            .set("messages", promptFormat.toMessagesJsonObject(messages))
+            .setIf(withStream, "stream", true)
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
+            .setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
+            .setIfNotNull("top_p", options.getTopP())
+            .setIfNotEmpty("stop", options.getStop())
+            .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
+            .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
             .toJSON();
     }
 
-    public static String createEmbedURL(QwenLlmConfig config) {
-        return "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding";
+    public static String promptToEnabledPayload(Document text, EmbeddingOptions options, QwenLlmConfig config) {
+        //https://help.aliyun.com/zh/model-studio/developer-reference/embedding-interfaces-compatible-with-openai?spm=a2c4g.11186623.0.i3
+        return Maps.of("model", options.getModelOrDefault(config.getDefaultEmbeddingModel()))
+            .set("encoding_format", "float")
+            .set("input", text.getContent())
+            .toJSON();
     }
+
 }

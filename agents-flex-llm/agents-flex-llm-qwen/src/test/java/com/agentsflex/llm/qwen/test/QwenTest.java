@@ -1,7 +1,9 @@
 package com.agentsflex.llm.qwen.test;
 
+import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.store.VectorData;
 import com.agentsflex.llm.qwen.QwenLlm;
 import com.agentsflex.llm.qwen.QwenLlmConfig;
 import com.agentsflex.core.message.AiMessage;
@@ -12,8 +14,10 @@ public class QwenTest {
 
     public static void main(String[] args) throws InterruptedException {
         QwenLlmConfig config = new QwenLlmConfig();
+
+        //https://bailian.console.aliyun.com/?apiKey=1#/api-key
         config.setApiKey("sk-28a6be3236****");
-        config.setModel("qwen-turbo");
+        config.setModel("qwen-plus");
 
         Llm llm = new QwenLlm(config);
         llm.chatStream("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
@@ -38,5 +42,19 @@ public class QwenTest {
 
         System.out.println(response.callFunctions());
         // "Today it will be dull and overcast in 北京"
+    }
+
+
+    @Test
+    public void testEmbedding() throws InterruptedException {
+        QwenLlmConfig config = new QwenLlmConfig();
+        config.setApiKey("sk-28a6be3236****");
+        config.setModel("qwen-turbo");
+
+        Llm llm = new QwenLlm(config);
+        VectorData vectorData = llm.embed(Document.of("test"));
+
+
+        System.out.println(vectorData);
     }
 }

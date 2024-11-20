@@ -19,12 +19,20 @@ import com.agentsflex.core.llm.LlmConfig;
 
 public class QwenLlmConfig extends LlmConfig {
 
-	private static final String DEFAULT_MODEL = "qwen-turbo";
-	private static final String DEFAULT_ENDPOINT = "https://dashscope.aliyuncs.com";
+    private static final String DEFAULT_MODEL = "qwen-turbo";
+    private static final String DEFAULT_ENDPOINT = "https://dashscope.aliyuncs.com";
+    private String defaultEmbeddingModel = "text-embedding-v1";
 
-	public QwenLlmConfig() {
-		setEndpoint(DEFAULT_ENDPOINT);
-		setModel(DEFAULT_MODEL);
-	}
+    public QwenLlmConfig() {
+        setEndpoint(DEFAULT_ENDPOINT);
+        setModel(DEFAULT_MODEL);
+    }
 
+    public String getDefaultEmbeddingModel() {
+        return defaultEmbeddingModel;
+    }
+
+    public void setDefaultEmbeddingModel(String defaultEmbeddingModel) {
+        this.defaultEmbeddingModel = defaultEmbeddingModel;
+    }
 }
