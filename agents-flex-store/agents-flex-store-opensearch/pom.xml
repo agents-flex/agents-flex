@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-store</artifactId>
-        <version>1.0.0-rc.2</version>
+        <version>1.0.0-rc.3</version>
     </parent>
 
     <artifactId>agents-flex-store-opensearch</artifactId>
@@ -24,7 +24,7 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-rc.2</version>
+            <version>1.0.0-rc.3</version>
         </dependency>
 
         <dependency>

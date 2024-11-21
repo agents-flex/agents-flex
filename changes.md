@@ -1,6 +1,19 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.0-rc.3 20241126
+- refactor: optimize Chain.executeForResult() method
+- refactor: optimize Chain events
+- fix: fixed Spark payload build error
+- fix: fixed qwen model unable to embed
+
+---
+- 优化: 优化 Chain.executeForResult() 方法
+- 优化: 优化 Chain 的相关 event 事件
+- 修复: 修复星火大模型 payload 构建错误
+- 修复: 修复 qwen 大模型无法使用 Embedding 的问题
+
+
 
 ## v1.0.0-rc.2 20241118
 - feat: Gitee AI adds support for Function Calling
