@@ -1,7 +1,33 @@
 # Agents-Flex ChangeLog
 
 
-## v1.0.0-rc.3 20241106
+## v1.0.0-rc.3 20241126
+- refactor: optimize Chain.executeForResult() method
+- refactor: optimize Chain events
+- fix: fixed Spark payload build error
+- fix: fixed qwen model unable to embed
+
+---
+- 优化: 优化 Chain.executeForResult() 方法
+- 优化: 优化 Chain 的相关 event 事件
+- 修复: 修复星火大模型 payload 构建错误
+- 修复: 修复 qwen 大模型无法使用 Embedding 的问题
+
+
+
+## v1.0.0-rc.2 20241118
+- feat: Gitee AI adds support for Function Calling
+- feat: HumanMessage adds support for toolChoice configuration
+- refactor: Optimize editing node BaseNode and Maps tool classes
+
+---
+- 新增: Gitee AI 添加对 Function Calling 的支持
+- 新增: HumanMessage 添加 toolChoice 配置的支持
+- 优化: 优化编辑节点 BaseNode 和 Maps 工具类
+
+
+
+## v1.0.0-rc.1 20241106
 - refactor: add BaseFunction.java
 - fix: spark LLM can not support v4.0
 - fix: fix code node can not get the parameters
