@@ -22,3 +22,4 @@ yarn.lock
 /docs/.vitepress/dist/
 /docs/pnpm-lock.yaml
 application-dev.yml
+.flattened-pom.xml
