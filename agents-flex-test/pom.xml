@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>parent</artifactId>
-        <version>1.0.0-rc.3</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>agents-flex-test</artifactId>
@@ -15,13 +15,11 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-spring-boot-starter</artifactId>
-            <version>${agents-flex.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-spark</artifactId>
-            <version>${agents-flex.version}</version>
         </dependency>
 
         <dependency>
@@ -33,7 +31,6 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-milvus</artifactId>
-            <version>1.0.0-beta.1</version>
         </dependency>
     </dependencies>
 

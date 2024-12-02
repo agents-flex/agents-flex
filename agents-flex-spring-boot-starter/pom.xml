@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>parent</artifactId>
-        <version>1.0.0-rc.3</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>agents-flex-spring-boot-starter</artifactId>
@@ -42,7 +42,6 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>${agents-flex.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -55,37 +54,31 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-chatglm</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-ollama</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-openai</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-qwen</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-spark</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-moonshot</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <!--llm end-->
@@ -94,25 +87,21 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-aliyun</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-qcloud</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-elasticsearch</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-opensearch</artifactId>
-            <version>${agents-flex.version}</version>
             <optional>true</optional>
         </dependency>
         <!--store end-->
