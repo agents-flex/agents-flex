@@ -23,6 +23,7 @@ import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import kotlin.collections.ArrayDeque;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPooled;
@@ -72,7 +73,7 @@ public class RedisVectorStore extends DocumentStore {
 
         FTCreateParams ftCreateParams = FTCreateParams.createParams()
             .on(IndexDataType.JSON)
-            .addPrefix(this.config.getStorePrefix());
+            .addPrefix(getPrefix(indexName));
 
         jedis.ftCreate(indexName, ftCreateParams, schemaFields());
         redisIndexesCache.add(indexName);
@@ -120,7 +121,7 @@ public class RedisVectorStore extends DocumentStore {
                 fields.put("text", document.getContent());
                 fields.put("vector", document.getVector());
 
-                String key = config.getStorePrefix() + document.getId();
+                String key = getPrefix(indexName) + document.getId();
                 pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);
             }
 
@@ -139,9 +140,10 @@ public class RedisVectorStore extends DocumentStore {
 
     @Override
     public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+        String indexName = createIndexName(options);
         try (Pipeline pipeline = this.jedis.pipelined()) {
             for (Object id : ids) {
-                String key = config.getStorePrefix() + id;
+                String key = getPrefix(indexName) + id;
                 pipeline.jsonDel(key);
             }
 
@@ -187,14 +189,17 @@ public class RedisVectorStore extends DocumentStore {
             .returnFields("text", "vector", "score")
             // 按照 score 排序，降序, 相似度越高的越靠前
             .setSortBy("score", false)
+            .limit(0, wrapper.getMaxResults())
             .dialect(2);
+
+        int keyPrefixLen = this.getPrefix(indexName).length();
 
         // 执行搜索
         SearchResult searchResult = jedis.ftSearch(indexName, query);
         List<redis.clients.jedis.search.Document> searchDocuments = searchResult.getDocuments();
         List<Document> documents = new ArrayDeque<>(searchDocuments.size());
         for (redis.clients.jedis.search.Document document : searchDocuments) {
-            String id = document.getId().substring(this.config.getStorePrefix().length());
+            String id = document.getId().substring(keyPrefixLen);
             Document doc = new Document();
             doc.setId(id);
             doc.setContent(document.getString("text"));
@@ -216,6 +221,11 @@ public class RedisVectorStore extends DocumentStore {
 
     private String createIndexName(StoreOptions options) {
         return options.getCollectionNameOrDefault(config.getDefaultCollectionName());
+    }
+
+    @NotNull
+    private String getPrefix(String indexName) {
+        return this.config.getStorePrefix() + indexName + ":";
     }
 
 

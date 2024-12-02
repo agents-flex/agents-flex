@@ -34,12 +34,16 @@ public class Test {
 //        sparkLlmConfig.setApiKey("****");
 //        sparkLlmConfig.setApiSecret("****");
 
+        sparkLlmConfig.setAppId("9e868ce4");
+        sparkLlmConfig.setApiKey("a15d512f688abe35982932ce2f294121");
+        sparkLlmConfig.setApiSecret("N2Y5OTgwMDM4ODJkNWUxZjgwZWE1MzFj");
+
 
         Llm llm = new SparkLlm(sparkLlmConfig);
 
         RedisVectorStoreConfig config = new RedisVectorStoreConfig();
         config.setUri("redis://localhost:6379");
-        config.setDefaultCollectionName("test04");
+        config.setDefaultCollectionName("test05");
 
         RedisVectorStore store = new RedisVectorStore(config);
         store.setEmbeddingModel(llm);
