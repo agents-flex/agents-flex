@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.agentsflex</groupId>
         <artifactId>agents-flex-llm</artifactId>
-        <version>1.0.0-rc.3</version>
+        <version>${revision}</version>
     </parent>
     <artifactId>agents-flex-llm-moonshot</artifactId>
 
@@ -19,7 +19,6 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
-            <version>1.0.0-rc.3</version>
             <scope>compile</scope>
         </dependency>
 
