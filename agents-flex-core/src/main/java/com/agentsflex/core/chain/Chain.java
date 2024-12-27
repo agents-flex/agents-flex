@@ -39,6 +39,7 @@ public class Chain extends ChainNode {
     protected List<Chain> children;
     protected ExecutorService asyncNodeExecutors = NamedThreadPools.newFixedThreadPool("chain-executor");
     protected Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<>();
+    protected Exception exception;
 
 
     public Chain() {
@@ -196,8 +197,16 @@ public class Chain extends ChainNode {
         runInLifeCycle(variables, this::executeInternal);
 
         if (this.status == ChainStatus.FINISHED_ABNORMAL) {
-            if (this.message == null) this.message = "Chain execute error";
-            throw new ChainException(this.message);
+            if (this.exception != null) {
+                if (this.exception instanceof RuntimeException) {
+                    throw (RuntimeException) this.exception;
+                } else {
+                    throw new ChainException(this.exception);
+                }
+            } else {
+                if (this.message == null) this.message = "Chain execute error";
+                throw new ChainException(this.message);
+            }
         }
 
         return this.executeResult;
@@ -383,6 +392,7 @@ public class Chain extends ChainNode {
                 setStatus(ChainStatus.RUNNING);
                 runnable.run();
             } catch (Exception e) {
+                this.exception = e;
                 setStatus(ChainStatus.ERROR);
                 notifyEvent(new OnErrorEvent(this, e));
             }
