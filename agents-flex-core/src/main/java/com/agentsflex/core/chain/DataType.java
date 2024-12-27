@@ -16,13 +16,17 @@
 package com.agentsflex.core.chain;
 
 public enum DataType {
+    Object("Object"),
     String("String"),
     Number("Number"),
     Boolean("Boolean"),
-    Object("Object"),
-    Array("Array"),
     File("File"),
-//    URI("URI"),
+
+    Array_Object("Array<Object>"),
+    Array_String("Array<String>"),
+    Array_Number("Array<Number>"),
+    Array_Boolean("Array<Boolean>"),
+    Array_File("Array<File>"),
     ;
 
     private final String value;

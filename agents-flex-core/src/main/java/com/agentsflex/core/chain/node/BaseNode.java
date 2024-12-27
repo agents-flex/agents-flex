@@ -15,11 +15,7 @@
  */
 package com.agentsflex.core.chain.node;
 
-import com.agentsflex.core.chain.InputParameter;
-import com.agentsflex.core.chain.OutputKey;
-import com.agentsflex.core.chain.RefType;
-import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.ChainNode;
+import com.agentsflex.core.chain.*;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.HashMap;
@@ -89,6 +85,15 @@ public abstract class BaseNode extends ChainNode {
                     (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
                     chain.stopError(this.getName() + " Missing required parameter:" + parameter.getName());
                 }
+                if (value == null || value instanceof String) {
+                    value = value == null ? "" : ((String) value).trim();
+                    if (parameter.getDataType() == DataType.Boolean) {
+                        value = "true".equalsIgnoreCase((String) value) || "1".equalsIgnoreCase((String) value);
+                    } else if (parameter.getDataType() == DataType.Number) {
+                        value = Long.parseLong((String) value);
+                    }
+                }
+
                 variables.put(parameter.getName(), value);
             }
         }
