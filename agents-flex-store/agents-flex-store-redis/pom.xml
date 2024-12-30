@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-store-redis</name>
     <artifactId>agents-flex-store-redis</artifactId>
 
     <properties>

@@ -9,12 +9,15 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-chain</name>
+    <artifactId>agents-flex-chain</artifactId>
+
+
     <packaging>pom</packaging>
     <modules>
         <module>agents-flex-chain-groovy</module>
     </modules>
 
-    <artifactId>agents-flex-chain</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

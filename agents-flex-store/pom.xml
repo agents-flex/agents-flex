@@ -9,7 +9,9 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-store</name>
     <artifactId>agents-flex-store</artifactId>
+    
     <packaging>pom</packaging>
     <modules>
         <module>agents-flex-store-qcloud</module>

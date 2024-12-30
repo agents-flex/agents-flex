@@ -9,8 +9,9 @@
         <version>${revision}</version>
     </parent>
 
-    <groupId>com.agentsflex</groupId>
+    <name>agents-flex-bom</name>
     <artifactId>agents-flex-bom</artifactId>
+
     <packaging>pom</packaging>
 
     <properties>

@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-image-stability</name>
     <artifactId>agents-flex-image-stability</artifactId>
 
     <properties>

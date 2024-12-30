@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-store-milvus</name>
     <artifactId>agents-flex-store-milvus</artifactId>
 
     <properties>

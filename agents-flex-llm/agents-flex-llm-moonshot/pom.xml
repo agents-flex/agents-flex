@@ -8,6 +8,8 @@
         <artifactId>agents-flex-llm</artifactId>
         <version>${revision}</version>
     </parent>
+
+    <name>agents-flex-llm-moonshot</name>
     <artifactId>agents-flex-llm-moonshot</artifactId>
 
     <properties>

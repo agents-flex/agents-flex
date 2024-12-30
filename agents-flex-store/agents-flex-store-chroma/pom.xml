@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-store-chroma</name>
     <artifactId>agents-flex-store-chroma</artifactId>
 
     <properties>

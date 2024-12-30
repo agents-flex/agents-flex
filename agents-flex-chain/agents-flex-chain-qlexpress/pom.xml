@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-chain-qlexpress</name>
     <artifactId>agents-flex-chain-qlexpress</artifactId>
 
     <properties>

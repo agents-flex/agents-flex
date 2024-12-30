@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-spring-boot-starter</name>
     <artifactId>agents-flex-spring-boot-starter</artifactId>
 
     <dependencyManagement>

@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-document-parser-pdfbox</name>
     <artifactId>agents-flex-document-parser-pdfbox</artifactId>
 
     <properties>

@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-store-aliyun</name>
     <artifactId>agents-flex-store-aliyun</artifactId>
 
     <properties>

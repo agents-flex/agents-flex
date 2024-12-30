@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-llm-qwen</name>
     <artifactId>agents-flex-llm-qwen</artifactId>
 
     <properties>

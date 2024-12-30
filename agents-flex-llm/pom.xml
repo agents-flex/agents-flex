@@ -9,7 +9,9 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-llm</name>
     <artifactId>agents-flex-llm</artifactId>
+
     <packaging>pom</packaging>
     <modules>
         <module>agents-flex-llm-openai</module>

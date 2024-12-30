@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-solon-plugin</name>
     <artifactId>agents-flex-solon-plugin</artifactId>
 
     <dependencyManagement>

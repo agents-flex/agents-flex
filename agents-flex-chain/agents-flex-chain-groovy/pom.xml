@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-chain-groovy</name>
     <artifactId>agents-flex-chain-groovy</artifactId>
 
     <properties>

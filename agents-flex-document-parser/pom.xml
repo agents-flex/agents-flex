@@ -9,7 +9,7 @@
         <version>${revision}</version>
     </parent>
 
-    <groupId>com.agentsflex</groupId>
+    <name>agents-flex-document-parser</name>
     <artifactId>agents-flex-document-parser</artifactId>
     <packaging>pom</packaging>
 

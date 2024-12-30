@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-store-opensearch</name>
     <artifactId>agents-flex-store-opensearch</artifactId>
 
     <properties>

@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-llm-spark</name>
     <artifactId>agents-flex-llm-spark</artifactId>
 
     <properties>
