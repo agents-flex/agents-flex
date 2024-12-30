@@ -1,5 +1,18 @@
 # Agents-Flex ChangeLog
 
+## v1.0.0-rc.4 20241230
+- refactor: Use pom to build and only manage versions
+- refactor: Optimize the relevant code of RedisVectorStore
+- refactor: BaseNode.getChainParameters() method
+- refactor: Optimize Chain.executeForResult method
+
+---
+- 优化: 采用 pom方式构建并只做版本统一管理
+- 优化: 优化 RedisVectorStore 的相关代码
+- 优化: BaseNode.getChainParameters() 方法
+- 优化: 优化 Chain.executeForResult 方法
+
+
 
 ## v1.0.0-rc.3 20241126
 - refactor: optimize Chain.executeForResult() method
