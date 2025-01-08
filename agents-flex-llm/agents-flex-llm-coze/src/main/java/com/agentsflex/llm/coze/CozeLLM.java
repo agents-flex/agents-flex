@@ -16,7 +16,7 @@
 package com.agentsflex.llm.coze;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLlm;
+import com.agentsflex.core.llm.BaseLLM;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.HttpClient;
@@ -46,12 +46,12 @@ import java.util.stream.Collectors;
 /**
  * @author yulsh
  */
-public class CozeLlm extends BaseLlm<CozeLlmConfig> {
+public class CozeLLM extends BaseLLM<CozeLlmConfig> {
 
     private final HttpClient httpClient = new HttpClient();
     private final AiMessageParser aiMessageParser = CozeLlmUtil.getAiMessageParser();
 
-    public CozeLlm(CozeLlmConfig config) {
+    public CozeLLM(CozeLlmConfig config) {
         super(config);
     }
 

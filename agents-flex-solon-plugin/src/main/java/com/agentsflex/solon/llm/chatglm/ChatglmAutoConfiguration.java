@@ -16,7 +16,7 @@
 package com.agentsflex.solon.llm.chatglm;
 
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.llm.chatglm.ChatglmLlm;
+import com.agentsflex.llm.chatglm.ChatglmLLM;
 import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
 import org.noear.solon.annotation.Bean;
 import org.noear.solon.annotation.Condition;
@@ -27,12 +27,12 @@ import org.noear.solon.annotation.Inject;
  * 智谱清言 自动配置
  */
 @Configuration
-@Condition(onClass = ChatglmLlm.class)
+@Condition(onClass = ChatglmLLM.class)
 public class ChatglmAutoConfiguration {
 
     @Bean
-    @Condition(onMissingBean = ChatglmLlm.class)
+    @Condition(onMissingBean = ChatglmLLM.class)
     public Llm chatglmLlm(@Inject("${agents-flex.llm.chatglm}") ChatglmLlmConfig config) {
-        return new ChatglmLlm(config);
+        return new ChatglmLLM(config);
     }
 }

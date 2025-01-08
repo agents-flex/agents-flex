@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.moonshot;
+package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLlm;
+import com.agentsflex.core.llm.BaseLLM;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
@@ -29,23 +29,55 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
+public class ChatglmLLM extends BaseLLM<ChatglmLlmConfig> {
 
+    private HttpClient httpClient = new HttpClient();
+    public AiMessageParser aiMessageParser = ChatglmLlmUtil.getAiMessageParser(false);
+    public AiMessageParser aiStreamMessageParser = ChatglmLlmUtil.getAiMessageParser(true);
 
-    HttpClient httpClient = new HttpClient();
-
-    public AiMessageParser aiMessageParser = MoonshotLlmUtil.getAiMessageParser(false);
-    public AiMessageParser aiStreamMessageParser = MoonshotLlmUtil.getAiMessageParser(true);
-
-    public MoonshotLlm(MoonshotLlmConfig config) {
+    public ChatglmLLM(ChatglmLlmConfig config) {
         super(config);
+    }
+
+    /**
+     * 文档参考：https://open.bigmodel.cn/dev/api#text_embedding
+     *
+     * @param document 文档内容
+     * @return 返回向量数据
+     */
+    @Override
+    public VectorData embed(Document document, EmbeddingOptions options) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
+
+        String endpoint = config.getEndpoint();
+        String payload = Maps.of("model", "embedding-2")
+            .set("input", document.getContent())
+            .toJSON();
+        String response = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
+
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+
+        VectorData vectorData = new VectorData();
+        vectorData.setVector(JSONPath.read(response, "$.data[0].embedding", double[].class));
+
+        return vectorData;
     }
 
 
@@ -53,11 +85,11 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + config.getApiKey());
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
         String endpoint = config.getEndpoint();
-        String payload = MoonshotLlmUtil.promptToPayload(prompt, config, false, options);
-        String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false, options);
+        String response = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
@@ -78,6 +110,7 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
             messageResponse.setErrorType(error.getString("type"));
             messageResponse.setErrorCode(error.getString("code"));
         }
+
         return messageResponse;
     }
 
@@ -87,18 +120,13 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
-        String payload = MoonshotLlmUtil.promptToPayload(prompt, config, true, options);
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser);
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, true, options);
+
         String endpoint = config.getEndpoint();
-        llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
-    }
-
-
-    @Override
-    public VectorData embed(Document document, EmbeddingOptions options) {
-        throw new IllegalStateException("Moonshot can not support embedding");
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser);
+        llmClient.start(endpoint + "/api/paas/v4/chat/completions", headers, payload, clientListener, config);
     }
 
 }

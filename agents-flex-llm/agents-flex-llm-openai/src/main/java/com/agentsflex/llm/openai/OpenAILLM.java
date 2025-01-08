@@ -16,7 +16,7 @@
 package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLlm;
+import com.agentsflex.core.llm.BaseLLM;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
@@ -38,26 +38,26 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class OpenAiLlm extends BaseLlm<OpenAiLlmConfig> {
+public class OpenAILLM extends BaseLLM<OpenAILLMConfig> {
 
     private final HttpClient httpClient = new HttpClient();
     public AiMessageParser aiMessageParser = OpenAiLLmUtil.getAiMessageParser(false);
     public AiMessageParser streamMessageParser = OpenAiLLmUtil.getAiMessageParser(true);
 
-    public static OpenAiLlm of(String apiKey) {
-        OpenAiLlmConfig config = new OpenAiLlmConfig();
+    public static OpenAILLM of(String apiKey) {
+        OpenAILLMConfig config = new OpenAILLMConfig();
         config.setApiKey(apiKey);
-        return new OpenAiLlm(config);
+        return new OpenAILLM(config);
     }
 
-    public static OpenAiLlm of(String apiKey, String endpoint) {
-        OpenAiLlmConfig config = new OpenAiLlmConfig();
+    public static OpenAILLM of(String apiKey, String endpoint) {
+        OpenAILLMConfig config = new OpenAILLMConfig();
         config.setApiKey(apiKey);
         config.setEndpoint(endpoint);
-        return new OpenAiLlm(config);
+        return new OpenAILLM(config);
     }
 
-    public OpenAiLlm(OpenAiLlmConfig config) {
+    public OpenAILLM(OpenAILLMConfig config) {
         super(config);
     }
 
