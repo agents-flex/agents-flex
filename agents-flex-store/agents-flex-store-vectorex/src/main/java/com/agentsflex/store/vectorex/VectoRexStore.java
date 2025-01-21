@@ -86,7 +86,7 @@ public class VectoRexStore extends DocumentStore {
         scalarFields.add(id);
         scalarFields.add(content);
         List<VectorFiled> vectorFiles = new ArrayList();
-        VectorFiled vector = VectorFiled.builder().name("vector").metricType(MetricType.FLOAT_COSINE_DISTANCE).dimensions(3).build();
+        VectorFiled vector = VectorFiled.builder().name("vector").metricType(MetricType.FLOAT_COSINE_DISTANCE).dimensions(this.getEmbeddingModel().dimensions()).build();
         vectorFiles.add(vector);
         ServerResponse<Void> response = client.createCollection(VectoRexCollectionReq.builder().collectionName(collectionName).scalarFields(scalarFields).vectorFileds(vectorFiles).build());
         return response.isSuccess();
