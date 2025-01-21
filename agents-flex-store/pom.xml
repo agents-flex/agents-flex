@@ -11,7 +11,7 @@
 
     <name>agents-flex-store</name>
     <artifactId>agents-flex-store</artifactId>
-    
+
     <packaging>pom</packaging>
     <modules>
         <module>agents-flex-store-qcloud</module>
@@ -21,6 +21,8 @@
         <module>agents-flex-store-redis</module>
         <module>agents-flex-store-opensearch</module>
         <module>agents-flex-store-elasticsearch</module>
+        <module>agents-flex-store-vectorex</module>
+
     </modules>
 
     <properties>
