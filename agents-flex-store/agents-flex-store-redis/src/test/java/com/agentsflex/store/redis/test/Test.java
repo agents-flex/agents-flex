@@ -19,7 +19,7 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
-import com.agentsflex.llm.spark.SparkLlm;
+import com.agentsflex.llm.spark.SparkLLM;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import com.agentsflex.store.redis.RedisVectorStore;
 import com.agentsflex.store.redis.RedisVectorStoreConfig;
@@ -39,7 +39,7 @@ public class Test {
         sparkLlmConfig.setApiSecret("N2Y5OTgwMDM4ODJkNWUxZjgwZWE1MzFj");
 
 
-        Llm llm = new SparkLlm(sparkLlmConfig);
+        Llm llm = new SparkLLM(sparkLlmConfig);
 
         RedisVectorStoreConfig config = new RedisVectorStoreConfig();
         config.setUri("redis://localhost:6379");

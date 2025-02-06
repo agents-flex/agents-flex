@@ -8,7 +8,7 @@ import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.store.VectorData;
-import com.agentsflex.llm.spark.SparkLlm;
+import com.agentsflex.llm.spark.SparkLLM;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import org.junit.Test;
 
@@ -16,7 +16,7 @@ import java.util.Scanner;
 
 public class SparkLlmTest {
 
-    private static SparkLlm getSparkLLM() {
+    private static SparkLLM getSparkLLM() {
         SparkLlmConfig config = new SparkLlmConfig();
         config.setAppId("****");
         config.setApiKey("****");
@@ -24,7 +24,7 @@ public class SparkLlmTest {
 
 
         config.setDebug(true);
-        return new SparkLlm(config);
+        return new SparkLLM(config);
     }
 
     @Test(expected = LlmException.class)

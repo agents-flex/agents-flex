@@ -16,7 +16,7 @@
 package com.agentsflex.solon.llm.qwen;
 
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.llm.qwen.QwenLlm;
+import com.agentsflex.llm.qwen.QwenLLM;
 import com.agentsflex.llm.qwen.QwenLlmConfig;
 import org.noear.solon.annotation.Bean;
 import org.noear.solon.annotation.Condition;
@@ -27,13 +27,13 @@ import org.noear.solon.annotation.Inject;
  * 通义千问 自动配置
  */
 @Configuration
-@Condition(onClass = QwenLlm.class)
+@Condition(onClass = QwenLLM.class)
 public class QwenAutoConfiguration {
 
     @Bean
-    @Condition(onMissingBean = QwenLlm.class)
+    @Condition(onMissingBean = QwenLLM.class)
     public Llm qwenLlm(@Inject("${agents-flex.llm.qwen}") QwenLlmConfig config) {
-        return new QwenLlm(config);
+        return new QwenLLM(config);
     }
 
 }

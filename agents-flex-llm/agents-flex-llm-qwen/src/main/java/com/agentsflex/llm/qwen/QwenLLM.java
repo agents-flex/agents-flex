@@ -16,7 +16,7 @@
 package com.agentsflex.llm.qwen;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLlm;
+import com.agentsflex.core.llm.BaseLLM;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
@@ -37,7 +37,7 @@ import com.alibaba.fastjson.JSONPath;
 import java.util.HashMap;
 import java.util.Map;
 
-public class QwenLlm extends BaseLlm<QwenLlmConfig> {
+public class QwenLLM extends BaseLLM<QwenLlmConfig> {
 
 
     HttpClient httpClient = new HttpClient();
@@ -46,7 +46,7 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
     public AiMessageParser streamMessageParser = QwenLlmUtil.getAiMessageParser(true);
 
 
-    public QwenLlm(QwenLlmConfig config) {
+    public QwenLLM(QwenLlmConfig config) {
         super(config);
     }
 
