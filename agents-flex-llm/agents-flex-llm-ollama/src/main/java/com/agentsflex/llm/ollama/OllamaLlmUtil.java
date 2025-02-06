@@ -16,7 +16,6 @@
 package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.llm.ChatOptions;
-import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
@@ -32,11 +31,13 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class OllamaLlmUtil {
 
-    private static final HttpClient imageHttpClient = new HttpClient();
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat() {
         @Override
@@ -44,18 +45,13 @@ public class OllamaLlmUtil {
             if (message instanceof ImagePrompt.TextAndImageMessage) {
                 ImagePrompt prompt = ((ImagePrompt.TextAndImageMessage) message).getPrompt();
                 map.put("content", prompt.getContent());
-                map.put("images", new String[]{imageUrlToBase64(prompt.getImageUrl())});
+//                map.put("images", new String[]{ImageUtil.imageUrlToBase64(prompt.getImageUrl())});
+                map.put("images", new String[]{prompt.getImageBase64()});
             } else {
                 super.buildMessageContent(message, map);
             }
         }
     };
-
-
-    private static String imageUrlToBase64(String imageUrl) {
-        byte[] bytes = imageHttpClient.getBytes(imageUrl);
-        return Base64.getEncoder().encodeToString(bytes);
-    }
 
 
     public static AiMessageParser getAiMessageParser() {

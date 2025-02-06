@@ -17,13 +17,22 @@ package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
+import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.StringUtil;
 
-import java.util.*;
+import java.io.File;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class ImagePrompt extends TextPrompt {
 
     private String imageUrl;
+    private File imageFile;
+    private String imageBase64;
 
     public ImagePrompt(String content) {
         super(content);
@@ -34,12 +43,52 @@ public class ImagePrompt extends TextPrompt {
         this.imageUrl = imageUrl;
     }
 
+    public ImagePrompt(String content, File imageFile) {
+        super(content);
+        this.imageFile = imageFile;
+    }
+
+    public ImagePrompt(String content, InputStream imageStream) {
+        super(content);
+        this.imageBase64 = ImageUtil.imageStreamToBase64(imageStream);
+    }
+
     public String getImageUrl() {
         return imageUrl;
     }
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public File getImageFile() {
+        return imageFile;
+    }
+
+    public void setImageFile(File imageFile) {
+        this.imageFile = imageFile;
+    }
+
+    public String getImageBase64() {
+        if (imageBase64 != null) {
+            return imageBase64;
+        }
+
+        if (StringUtil.hasText(imageUrl)) {
+            imageBase64 = ImageUtil.imageUrlToBase64(imageUrl);
+            return imageBase64;
+        }
+
+        if (imageFile != null) {
+            imageBase64 = ImageUtil.imageFileToBase64(imageFile);
+            return imageBase64;
+        }
+
+        return null;
+    }
+
+    public void setImageBase64(String imageBase64) {
+        this.imageBase64 = imageBase64;
     }
 
     @Override
@@ -74,7 +123,7 @@ public class ImagePrompt extends TextPrompt {
         public Object getMessageContent() {
             List<Map<String, Object>> messageContent = new ArrayList<>();
             messageContent.add(Maps.of("type", "text").set("text", prompt.content));
-            messageContent.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", prompt.imageUrl)));
+            messageContent.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", prompt.getImageBase64())));
             return messageContent;
         }
     }
