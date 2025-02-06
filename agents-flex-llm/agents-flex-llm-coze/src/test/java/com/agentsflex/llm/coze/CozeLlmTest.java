@@ -29,7 +29,7 @@ public class CozeLlmTest {
     String userId = "changeit";
     String textPrompt = "你是谁？告诉我你能干什么事情？并列出5点你能做的事情";
     CozeLlmConfig config;
-    CozeLlm llm;
+    CozeLLM llm;
     CozeChatOptions options;
 
     public CozeLlmTest() {
@@ -37,7 +37,7 @@ public class CozeLlmTest {
         config.setApiKey(token);
         config.setDebug(true);
 
-        llm  = new CozeLlm(config);
+        llm  = new CozeLLM(config);
         options = new CozeChatOptions();
         options.setBotId(botId);
         options.setUserId(userId);

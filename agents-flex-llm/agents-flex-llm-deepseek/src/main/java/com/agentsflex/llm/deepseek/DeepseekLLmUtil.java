@@ -13,10 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.openai;
+package com.agentsflex.llm.deepseek;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
@@ -27,10 +28,11 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.llm.openai.OpenAiLlmConfig;
 
 import java.util.List;
 
-public class OpenAiLLmUtil {
+public class DeepseekLLmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
@@ -39,7 +41,7 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToEmbeddingsPayload(Document text, EmbeddingOptions options, OpenAILLMConfig config) {
+    public static String promptToEmbeddingsPayload(Document text, EmbeddingOptions options, OpenAiLlmConfig config) {
         // https://platform.openai.com/docs/api-reference/making-requests
         return Maps.of("model", options.getModelOrDefault(config.getDefaultEmbeddingModel()))
             .set("encoding_format", "float")
@@ -48,14 +50,14 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, OpenAILLMConfig config, ChatOptions options, boolean withStream) {
+    public static String promptToPayload(Prompt prompt, LlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
         HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
         return Maps.of("model", config.getModel())
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
-            .setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
+            //.setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotEmpty("stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())

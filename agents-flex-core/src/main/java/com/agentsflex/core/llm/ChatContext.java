@@ -16,10 +16,15 @@
 package com.agentsflex.core.llm;
 
 import com.agentsflex.core.llm.client.LlmClient;
+import com.agentsflex.core.message.AiMessage;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class ChatContext {
     private Llm llm;
     private LlmClient client;
+    private final Map<String, Object> params = new HashMap<>();
 
     public ChatContext() {
     }
@@ -43,5 +48,22 @@ public class ChatContext {
 
     public void setClient(LlmClient client) {
         this.client = client;
+    }
+
+    public void addLastAiMessage(AiMessage aiMessageContent) {
+        addParam("lastAiMessage", aiMessageContent);
+    }
+
+    public AiMessage getLastAiMessage() {
+        return getParam("lastAiMessage");
+    }
+
+    public ChatContext addParam(String key, Object value) {
+        params.put(key, value);
+        return this;
+    }
+
+    public <T> T getParam(String key) {
+        return (T) params.get(key);
     }
 }

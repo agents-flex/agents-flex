@@ -27,6 +27,8 @@ import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
+import java.util.Objects;
+
 public class BaseLlmClientListener implements LlmClientListener {
 
     private final StreamResponseListener streamResponseListener;
@@ -63,7 +65,13 @@ public class BaseLlmClientListener implements LlmClientListener {
         try {
             JSONObject jsonObject = JSON.parseObject(response);
             lastAiMessage = messageParser.parse(jsonObject);
-            fullMessage.append(lastAiMessage.getContent());
+            String content = lastAiMessage.getContent();
+
+            // 第一个和最后一个content都为null
+            if (Objects.nonNull(content)) {
+                fullMessage.append(content);
+            }
+
             lastAiMessage.setFullContent(fullMessage.toString());
             AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
             streamResponseListener.onMessage(context, aiMessageResponse);
@@ -79,7 +87,7 @@ public class BaseLlmClientListener implements LlmClientListener {
                 ((HistoriesPrompt) this.prompt).addMessage(lastAiMessage);
             }
         }
-
+        context.addLastAiMessage(lastAiMessage);
         streamResponseListener.onStop(context);
     }
 

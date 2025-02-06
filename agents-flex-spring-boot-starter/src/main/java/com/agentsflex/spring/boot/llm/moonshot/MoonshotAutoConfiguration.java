@@ -1,6 +1,6 @@
 package com.agentsflex.spring.boot.llm.moonshot;
 
-import com.agentsflex.llm.moonshot.MoonshotLlm;
+import com.agentsflex.llm.moonshot.MoonshotLLM;
 import com.agentsflex.llm.moonshot.MoonshotLlmConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -14,19 +14,19 @@ import org.springframework.context.annotation.Configuration;
  * @author lidong
  * @since 2024-06-25
  */
-@ConditionalOnClass(MoonshotLlm.class)
+@ConditionalOnClass(MoonshotLLM.class)
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(MoonshotProperties.class)
 public class MoonshotAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public MoonshotLlm moonshotLlm(MoonshotProperties properties) {
+    public MoonshotLLM moonshotLlm(MoonshotProperties properties) {
         MoonshotLlmConfig config = new MoonshotLlmConfig();
         config.setApiKey(properties.getApiKey());
         config.setEndpoint(properties.getEndpoint());
         config.setModel(properties.getModel());
-        return new MoonshotLlm(config);
+        return new MoonshotLLM(config);
     }
 
 }
