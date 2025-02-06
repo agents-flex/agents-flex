@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.openai;
+package com.agentsflex.llm.gitee;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLLM;
+import com.agentsflex.core.llm.BaseLlm;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
@@ -29,35 +29,23 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class OpenAILLM extends BaseLLM<OpenAILLMConfig> {
+public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
 
     private final HttpClient httpClient = new HttpClient();
-    public AiMessageParser aiMessageParser = OpenAiLLmUtil.getAiMessageParser(false);
-    public AiMessageParser streamMessageParser = OpenAiLLmUtil.getAiMessageParser(true);
+    public AiMessageParser aiMessageParser = GiteeAiLlmUtil.getAiMessageParser(false);
+    public AiMessageParser streamMessageParser = GiteeAiLlmUtil.getAiMessageParser(true);
 
-    public static OpenAILLM of(String apiKey) {
-        OpenAILLMConfig config = new OpenAILLMConfig();
-        config.setApiKey(apiKey);
-        return new OpenAILLM(config);
-    }
 
-    public static OpenAILLM of(String apiKey, String endpoint) {
-        OpenAILLMConfig config = new OpenAILLMConfig();
-        config.setApiKey(apiKey);
-        config.setEndpoint(endpoint);
-        return new OpenAILLM(config);
-    }
-
-    public OpenAILLM(OpenAILLMConfig config) {
+    public GiteeAiLlm(GiteeAiLlmConfig config) {
         super(config);
     }
 
@@ -72,10 +60,13 @@ public class OpenAILLM extends BaseLLM<OpenAILLMConfig> {
             headersConfig.accept(headers);
         }
 
-        String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options, false);
-        String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
+        String payload = GiteeAiLlmUtil.promptToPayload(prompt, config, options, false);
+        if (config.isDebug()) {
+            System.out.println(">>>>send payload:" + payload);
+        }
 
+        String endpoint = config.getEndpoint();
+        String response = httpClient.post(endpoint + "/api/serverless/" + config.getModel() + "/chat/completions", headers, payload);
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
@@ -87,7 +78,7 @@ public class OpenAILLM extends BaseLLM<OpenAILLMConfig> {
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
-        AiMessageResponse messageResponse  = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
+        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
@@ -107,10 +98,10 @@ public class OpenAILLM extends BaseLLM<OpenAILLMConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToPayload(prompt, config, options, true);
+        String payload = GiteeAiLlmUtil.promptToPayload(prompt, config, options, true);
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
-        llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
+        llmClient.start(endpoint + "/api/serverless/" + config.getModel() + "/chat/completions", headers, payload, clientListener, config);
     }
 
 
@@ -120,10 +111,10 @@ public class OpenAILLM extends BaseLLM<OpenAILLMConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLLmUtil.promptToEmbeddingsPayload(document, options, config);
+        String payload = Maps.of("inputs", document.getContent()).toJSON();
         String endpoint = config.getEndpoint();
-        // https://platform.openai.com/docs/api-reference/embeddings/create
-        String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);
+        String embeddingModel = options.getModelOrDefault(config.getDefaultEmbeddingModal());
+        String response = httpClient.post(endpoint + "/api/serverless/" + embeddingModel + "/embeddings", headers, payload);
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
@@ -134,7 +125,7 @@ public class OpenAILLM extends BaseLLM<OpenAILLMConfig> {
         }
 
         VectorData vectorData = new VectorData();
-        double[] embedding = JSONPath.read(response, "$.data[0].embedding", double[].class);
+        double[] embedding = JSONObject.parseObject(response, double[].class);
         vectorData.setVector(embedding);
 
         return vectorData;

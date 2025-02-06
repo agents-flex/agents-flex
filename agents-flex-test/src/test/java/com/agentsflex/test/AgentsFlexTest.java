@@ -1,6 +1,6 @@
 package com.agentsflex.test;
 
-import com.agentsflex.llm.spark.SparkLLM;
+import com.agentsflex.llm.spark.SparkLlm;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,7 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 class AgentsFlexTest {
 
     @Autowired
-    private SparkLLM sparkLlm;
+    private SparkLlm sparkLlm;
 
     @Test
     void testLlm() {

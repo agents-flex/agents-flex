@@ -1,6 +1,17 @@
 /*
- * @(#) DeepseekLlm Created by tony on 2025-01-17 15:25
- * @copyright © 2018-2024 博信数科科技. All rights reserved.
+ *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package com.agentsflex.llm.deepseek;
 
@@ -19,7 +30,7 @@ import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.llm.openai.OpenAiLLmUtil;
+import com.agentsflex.llm.openai.OpenAiLlmUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
@@ -35,8 +46,8 @@ public class DeepseekLlm extends BaseLlm<DeepseekConfig> {
 
     private final Map<String, String> headers = new HashMap<>();
     private final HttpClient httpClient = new HttpClient();
-    private final AiMessageParser aiMessageParser = OpenAiLLmUtil.getAiMessageParser(false);
-    private final AiMessageParser streamMessageParser = OpenAiLLmUtil.getAiMessageParser(true);
+    private final AiMessageParser aiMessageParser = OpenAiLlmUtil.getAiMessageParser(false);
+    private final AiMessageParser streamMessageParser = OpenAiLlmUtil.getAiMessageParser(true);
 
     public DeepseekLlm(DeepseekConfig config) {
         super(config);
@@ -59,7 +70,7 @@ public class DeepseekLlm extends BaseLlm<DeepseekConfig> {
             headersConfig.accept(headers);
         }
 
-        String payload = DeepseekLLmUtil.promptToPayload(prompt, config, options, false);
+        String payload = DeepseekLlmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + "/chat/completions", headers, payload);
 
@@ -88,7 +99,7 @@ public class DeepseekLlm extends BaseLlm<DeepseekConfig> {
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener streamResponseListener, ChatOptions chatOptions) {
         LlmClient llmClient = new SseClient();
-        String payload = DeepseekLLmUtil.promptToPayload(prompt, config, chatOptions, true);
+        String payload = DeepseekLlmUtil.promptToPayload(prompt, config, chatOptions, true);
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, streamResponseListener, prompt, streamMessageParser);
         llmClient.start(endpoint + "/chat/completions", headers, payload, clientListener, config);

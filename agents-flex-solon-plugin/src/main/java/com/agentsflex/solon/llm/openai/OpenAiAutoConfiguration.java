@@ -16,8 +16,8 @@
 package com.agentsflex.solon.llm.openai;
 
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.llm.openai.OpenAILLM;
-import com.agentsflex.llm.openai.OpenAILLMConfig;
+import com.agentsflex.llm.openai.OpenAILlm;
+import com.agentsflex.llm.openai.OpenAILlmConfig;
 import org.noear.solon.annotation.Bean;
 import org.noear.solon.annotation.Condition;
 import org.noear.solon.annotation.Configuration;
@@ -27,13 +27,13 @@ import org.noear.solon.annotation.Inject;
  * openai 自动配置
  */
 @Configuration
-@Condition(onClass = OpenAILLM.class)
+@Condition(onClass = OpenAILlm.class)
 public class OpenAiAutoConfiguration {
 
     @Bean
-    @Condition(onMissingBean = OpenAILLM.class)
-    public Llm openAiLlm(@Inject("${agents-flex.llm.openai}") OpenAILLMConfig config) {
-        return new OpenAILLM(config);
+    @Condition(onMissingBean = OpenAILlm.class)
+    public Llm openAiLlm(@Inject("${agents-flex.llm.openai}") OpenAILlmConfig config) {
+        return new OpenAILlm(config);
     }
 
 }

@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.qwen;
+package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLLM;
+import com.agentsflex.core.llm.BaseLlm;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
@@ -36,20 +36,30 @@ import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
-public class QwenLLM extends BaseLLM<QwenLlmConfig> {
+public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
 
+    private final HttpClient httpClient = new HttpClient();
+    public AiMessageParser aiMessageParser = OpenAiLlmUtil.getAiMessageParser(false);
+    public AiMessageParser streamMessageParser = OpenAiLlmUtil.getAiMessageParser(true);
 
-    HttpClient httpClient = new HttpClient();
-
-    public AiMessageParser aiMessageParser = QwenLlmUtil.getAiMessageParser(false);
-    public AiMessageParser streamMessageParser = QwenLlmUtil.getAiMessageParser(true);
-
-
-    public QwenLLM(QwenLlmConfig config) {
-        super(config);
+    public static OpenAILlm of(String apiKey) {
+        OpenAILlmConfig config = new OpenAILlmConfig();
+        config.setApiKey(apiKey);
+        return new OpenAILlm(config);
     }
 
+    public static OpenAILlm of(String apiKey, String endpoint) {
+        OpenAILlmConfig config = new OpenAILlmConfig();
+        config.setApiKey(apiKey);
+        config.setEndpoint(endpoint);
+        return new OpenAILlm(config);
+    }
+
+    public OpenAILlm(OpenAILlmConfig config) {
+        super(config);
+    }
 
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
@@ -57,10 +67,14 @@ public class QwenLLM extends BaseLLM<QwenLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
+        Consumer<Map<String, String>> headersConfig = config.getHeadersConfig();
+        if (headersConfig != null) {
+            headersConfig.accept(headers);
+        }
 
-        String payload = QwenLlmUtil.promptToPayload(prompt, config, options, false);
+        String payload = OpenAiLlmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + "/compatible-mode/v1/chat/completions", headers, payload);
+        String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
@@ -73,7 +87,7 @@ public class QwenLLM extends BaseLLM<QwenLlmConfig> {
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
-        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
+        AiMessageResponse messageResponse  = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
@@ -92,25 +106,24 @@ public class QwenLLM extends BaseLLM<QwenLlmConfig> {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
-        headers.put("X-DashScope-SSE", "enable"); //stream
 
-        String payload = QwenLlmUtil.promptToPayload(prompt, config, options, true);
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
-
+        String payload = OpenAiLlmUtil.promptToPayload(prompt, config, options, true);
         String endpoint = config.getEndpoint();
-        llmClient.start(endpoint + "/compatible-mode/v1/chat/completions", headers, payload, clientListener, config);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
+        llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
     }
 
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        String payload = QwenLlmUtil.promptToEnabledPayload(document, options, config);
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String url = config.getEndpoint() + "/compatible-mode/v1/embeddings";
-        String response = httpClient.post(url, headers, payload);
+        String payload = OpenAiLlmUtil.promptToEmbeddingsPayload(document, options, config);
+        String endpoint = config.getEndpoint();
+        // https://platform.openai.com/docs/api-reference/embeddings/create
+        String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
@@ -126,5 +139,6 @@ public class QwenLLM extends BaseLLM<QwenLlmConfig> {
 
         return vectorData;
     }
+
 
 }

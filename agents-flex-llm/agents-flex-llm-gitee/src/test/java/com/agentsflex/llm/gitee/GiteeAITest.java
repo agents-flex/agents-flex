@@ -10,7 +10,7 @@ public class GiteeAITest {
         GiteeAiLlmConfig config = new GiteeAiLlmConfig();
         config.setApiKey("your-api-key");
 
-        GiteeAiLLM llm = new GiteeAiLLM(config);
+        GiteeAiLlm llm = new GiteeAiLlm(config);
         String result = llm.chat("你好");
         System.out.println(result);
     }
@@ -21,7 +21,7 @@ public class GiteeAITest {
         config.setApiKey("your-api-key");
         config.setModel("Qwen2.5-72B-Instruct");
 
-        GiteeAiLLM llm = new GiteeAiLLM(config);
+        GiteeAiLlm llm = new GiteeAiLlm(config);
 
 
         FunctionPrompt prompt = new FunctionPrompt("What's the weather like in Beijing?", WeatherFunctions.class);

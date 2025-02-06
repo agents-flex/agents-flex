@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.gitee;
+package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLLM;
+import com.agentsflex.core.llm.BaseLlm;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
@@ -33,40 +33,64 @@ import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
-public class GiteeAiLLM extends BaseLLM<GiteeAiLlmConfig> {
+public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
-    private final HttpClient httpClient = new HttpClient();
-    public AiMessageParser aiMessageParser = GiteeAiLLmUtil.getAiMessageParser(false);
-    public AiMessageParser streamMessageParser = GiteeAiLLmUtil.getAiMessageParser(true);
+    private HttpClient httpClient = new HttpClient();
+    public AiMessageParser aiMessageParser = ChatglmLlmUtil.getAiMessageParser(false);
+    public AiMessageParser aiStreamMessageParser = ChatglmLlmUtil.getAiMessageParser(true);
 
-
-    public GiteeAiLLM(GiteeAiLlmConfig config) {
+    public ChatglmLlm(ChatglmLlmConfig config) {
         super(config);
     }
+
+    /**
+     * 文档参考：https://open.bigmodel.cn/dev/api#text_embedding
+     *
+     * @param document 文档内容
+     * @return 返回向量数据
+     */
+    @Override
+    public VectorData embed(Document document, EmbeddingOptions options) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
+
+        String endpoint = config.getEndpoint();
+        String payload = Maps.of("model", "embedding-2")
+            .set("input", document.getContent())
+            .toJSON();
+        String response = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
+
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+
+        VectorData vectorData = new VectorData();
+        vectorData.setVector(JSONPath.read(response, "$.data[0].embedding", double[].class));
+
+        return vectorData;
+    }
+
 
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
-
-        Consumer<Map<String, String>> headersConfig = config.getHeadersConfig();
-        if (headersConfig != null) {
-            headersConfig.accept(headers);
-        }
-
-        String payload = GiteeAiLLmUtil.promptToPayload(prompt, config, options, false);
-        if (config.isDebug()) {
-            System.out.println(">>>>send payload:" + payload);
-        }
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
         String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + "/api/serverless/" + config.getModel() + "/chat/completions", headers, payload);
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false, options);
+        String response = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
+
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
@@ -96,40 +120,13 @@ public class GiteeAiLLM extends BaseLLM<GiteeAiLlmConfig> {
         LlmClient llmClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
-        String payload = GiteeAiLLmUtil.promptToPayload(prompt, config, options, true);
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, true, options);
+
         String endpoint = config.getEndpoint();
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
-        llmClient.start(endpoint + "/api/serverless/" + config.getModel() + "/chat/completions", headers, payload, clientListener, config);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser);
+        llmClient.start(endpoint + "/api/paas/v4/chat/completions", headers, payload, clientListener, config);
     }
-
-
-    @Override
-    public VectorData embed(Document document, EmbeddingOptions options) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
-
-        String payload = Maps.of("inputs", document.getContent()).toJSON();
-        String endpoint = config.getEndpoint();
-        String embeddingModel = options.getModelOrDefault(config.getDefaultEmbeddingModal());
-        String response = httpClient.post(endpoint + "/api/serverless/" + embeddingModel + "/embeddings", headers, payload);
-
-        if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
-        }
-
-        if (StringUtil.noText(response)) {
-            return null;
-        }
-
-        VectorData vectorData = new VectorData();
-        double[] embedding = JSONObject.parseObject(response, double[].class);
-        vectorData.setVector(embedding);
-
-        return vectorData;
-    }
-
 
 }

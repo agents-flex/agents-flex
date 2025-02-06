@@ -16,7 +16,7 @@
 package com.agentsflex.llm.spark;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLLM;
+import com.agentsflex.core.llm.BaseLlm;
 import com.agentsflex.core.llm.ChatContext;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
@@ -43,15 +43,15 @@ import java.nio.ByteOrder;
 import java.util.Base64;
 import java.util.concurrent.CountDownLatch;
 
-public class SparkLLM extends BaseLLM<SparkLlmConfig> {
+public class SparkLlm extends BaseLlm<SparkLlmConfig> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SparkLLM.class);
+    private static final Logger logger = LoggerFactory.getLogger(SparkLlm.class);
     public AiMessageParser aiMessageParser = SparkLlmUtil.getAiMessageParser();
 
     private final HttpClient httpClient = new HttpClient();
 
 
-    public SparkLLM(SparkLlmConfig config) {
+    public SparkLlm(SparkLlmConfig config) {
         super(config);
     }
 

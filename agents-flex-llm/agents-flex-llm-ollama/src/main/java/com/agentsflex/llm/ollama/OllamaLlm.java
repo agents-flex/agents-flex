@@ -16,7 +16,7 @@
 package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLLM;
+import com.agentsflex.core.llm.BaseLlm;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
@@ -39,14 +39,14 @@ import com.alibaba.fastjson.JSONPath;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OllamaLLM extends BaseLLM<OllamaLlmConfig> {
+public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
     private HttpClient httpClient = new HttpClient();
     private final DnjsonClient dnjsonClient = new DnjsonClient();
     public AiMessageParser aiMessageParser = OllamaLlmUtil.getAiMessageParser();
 
 
-    public OllamaLLM(OllamaLlmConfig config) {
+    public OllamaLlm(OllamaLlmConfig config) {
         super(config);
     }
 

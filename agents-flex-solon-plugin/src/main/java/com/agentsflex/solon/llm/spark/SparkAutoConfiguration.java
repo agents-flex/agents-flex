@@ -16,7 +16,7 @@
 package com.agentsflex.solon.llm.spark;
 
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.llm.spark.SparkLLM;
+import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import org.noear.solon.annotation.Bean;
 import org.noear.solon.annotation.Condition;
@@ -27,13 +27,13 @@ import org.noear.solon.annotation.Inject;
  * 讯飞星火 自动配置
  */
 @Configuration
-@Condition(onClass = SparkLLM.class)
+@Condition(onClass = SparkLlm.class)
 public class SparkAutoConfiguration {
 
     @Bean
-    @Condition(onMissingBean = SparkLLM.class)
+    @Condition(onMissingBean = SparkLlm.class)
     public Llm sparkLlm(@Inject("${agents-flex.llm.spark}") SparkLlmConfig config) {
-        return new SparkLLM(config);
+        return new SparkLlm(config);
     }
 
 }

@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.moonshot;
+package com.agentsflex.llm.qwen;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.BaseLLM;
+import com.agentsflex.core.llm.BaseLlm;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
@@ -32,19 +32,21 @@ import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class MoonshotLLM extends BaseLLM<MoonshotLlmConfig> {
+public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
 
     HttpClient httpClient = new HttpClient();
 
-    public AiMessageParser aiMessageParser = MoonshotLlmUtil.getAiMessageParser(false);
-    public AiMessageParser aiStreamMessageParser = MoonshotLlmUtil.getAiMessageParser(true);
+    public AiMessageParser aiMessageParser = QwenLlmUtil.getAiMessageParser(false);
+    public AiMessageParser streamMessageParser = QwenLlmUtil.getAiMessageParser(true);
 
-    public MoonshotLLM(MoonshotLlmConfig config) {
+
+    public QwenLlm(QwenLlmConfig config) {
         super(config);
     }
 
@@ -53,11 +55,12 @@ public class MoonshotLLM extends BaseLLM<MoonshotLlmConfig> {
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + config.getApiKey());
+        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
+
+        String payload = QwenLlmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
-        String payload = MoonshotLlmUtil.promptToPayload(prompt, config, false, options);
-        String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
+        String response = httpClient.post(endpoint + "/compatible-mode/v1/chat/completions", headers, payload);
 
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
@@ -78,6 +81,7 @@ public class MoonshotLLM extends BaseLLM<MoonshotLlmConfig> {
             messageResponse.setErrorType(error.getString("type"));
             messageResponse.setErrorCode(error.getString("code"));
         }
+
         return messageResponse;
     }
 
@@ -88,17 +92,39 @@ public class MoonshotLLM extends BaseLLM<MoonshotLlmConfig> {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+        headers.put("X-DashScope-SSE", "enable"); //stream
 
-        String payload = MoonshotLlmUtil.promptToPayload(prompt, config, true, options);
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser);
+        String payload = QwenLlmUtil.promptToPayload(prompt, config, options, true);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
+
         String endpoint = config.getEndpoint();
-        llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
+        llmClient.start(endpoint + "/compatible-mode/v1/chat/completions", headers, payload, clientListener, config);
     }
 
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        throw new IllegalStateException("Moonshot can not support embedding");
+        String payload = QwenLlmUtil.promptToEnabledPayload(document, options, config);
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+
+        String url = config.getEndpoint() + "/compatible-mode/v1/embeddings";
+        String response = httpClient.post(url, headers, payload);
+
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
+        }
+
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+
+        VectorData vectorData = new VectorData();
+        double[] embedding = JSONPath.read(response, "$.data[0].embedding", double[].class);
+        vectorData.setVector(embedding);
+
+        return vectorData;
     }
 
 }

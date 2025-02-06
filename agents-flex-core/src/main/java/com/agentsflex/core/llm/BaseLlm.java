@@ -15,11 +15,11 @@
  */
 package com.agentsflex.core.llm;
 
-public abstract class BaseLLM<T extends LlmConfig> implements Llm {
+public abstract class BaseLlm<T extends LlmConfig> implements Llm {
 
     protected T config;
 
-    public BaseLLM(T config) {
+    public BaseLlm(T config) {
         this.config = config;
     }
 

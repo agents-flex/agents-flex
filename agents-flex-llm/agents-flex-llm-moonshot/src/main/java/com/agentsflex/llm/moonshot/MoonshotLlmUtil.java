@@ -35,9 +35,9 @@ public class MoonshotLlmUtil {
     /**
      * 将给定的Prompt转换为特定的payload格式，用于与语言模型进行交互。
      *
-     * @param prompt      需要转换为payload的Prompt对象，包含了对话的具体内容。
-     * @param config      用于配置Moonshot LLM行为的配置对象，例如指定使用的模型。
-     * @param isStream    指示payload是否应该以流的形式进行处理。
+     * @param prompt      需要转换为 payload 的 Prompt 对象，包含了对话的具体内容。
+     * @param config      用于配置 Moonshot LLM 行为的配置对象，例如指定使用的模型。
+     * @param isStream    指示 payload 是否应该以流的形式进行处理。
      * @param chatOptions 包含了对话选项的配置，如温度和最大令牌数等。
      * @return 返回一个字符串形式的payload，供进一步的处理或发送给语言模型。
      */

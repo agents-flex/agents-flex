@@ -17,7 +17,7 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.llm.LlmConfig;
 
-public class OpenAILLMConfig extends LlmConfig {
+public class OpenAILlmConfig extends LlmConfig {
 
     private static final String DEFAULT_MODEL = "gpt-3.5-turbo";
     private static final String DEFAULT_EMBEDDING_MODEL = "text-embedding-ada-002";
@@ -33,7 +33,7 @@ public class OpenAILLMConfig extends LlmConfig {
         this.defaultEmbeddingModel = defaultEmbeddingModel;
     }
 
-    public OpenAILLMConfig() {
+    public OpenAILlmConfig() {
         setEndpoint(DEFAULT_ENDPOINT);
         setModel(DEFAULT_MODEL);
     }

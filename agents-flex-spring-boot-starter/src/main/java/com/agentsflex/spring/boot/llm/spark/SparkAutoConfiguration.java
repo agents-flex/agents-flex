@@ -1,6 +1,6 @@
 package com.agentsflex.spring.boot.llm.spark;
 
-import com.agentsflex.llm.spark.SparkLLM;
+import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -14,20 +14,20 @@ import org.springframework.context.annotation.Configuration;
  * @author 王帅
  * @since 2024-04-10
  */
-@ConditionalOnClass(SparkLLM.class)
+@ConditionalOnClass(SparkLlm.class)
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(SparkProperties.class)
 public class SparkAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public SparkLLM sparkLlm(SparkProperties properties) {
+    public SparkLlm sparkLlm(SparkProperties properties) {
         SparkLlmConfig config = new SparkLlmConfig();
         config.setAppId(properties.getAppId());
         config.setApiKey(properties.getApiKey());
         config.setApiSecret(properties.getApiSecret());
         config.setVersion(properties.getVersion());
-        return new SparkLLM(config);
+        return new SparkLlm(config);
     }
 
 }

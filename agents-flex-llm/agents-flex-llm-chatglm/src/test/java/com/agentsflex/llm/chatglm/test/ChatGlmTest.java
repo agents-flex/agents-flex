@@ -6,7 +6,7 @@ import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.store.VectorData;
-import com.agentsflex.llm.chatglm.ChatglmLLM;
+import com.agentsflex.llm.chatglm.ChatglmLlm;
 import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
 import org.junit.Test;
 
@@ -18,7 +18,7 @@ public class ChatGlmTest {
         ChatglmLlmConfig config = new ChatglmLlmConfig();
         config.setApiKey("**.***********************");
 
-        Llm llm = new ChatglmLLM(config);
+        Llm llm = new ChatglmLlm(config);
         llm.chatStream("你叫什么名字", (context, response) -> System.out.println(response.getMessage().getContent()));
     }
 
@@ -28,7 +28,7 @@ public class ChatGlmTest {
         ChatglmLlmConfig config = new ChatglmLlmConfig();
         config.setApiKey("**.***********************");
 
-        Llm llm = new ChatglmLLM(config);
+        Llm llm = new ChatglmLlm(config);
         Document document = new Document();
         document.setContent("你好");
         VectorData embeddings = llm.embed(document, EmbeddingOptions.DEFAULT);
@@ -41,7 +41,7 @@ public class ChatGlmTest {
         ChatglmLlmConfig config = new ChatglmLlmConfig();
         config.setApiKey("**.***********************");
 
-        Llm llm = new ChatglmLLM(config);
+        Llm llm = new ChatglmLlm(config);
 
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);

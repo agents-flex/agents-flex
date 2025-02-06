@@ -8,7 +8,7 @@ import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.store.VectorData;
-import com.agentsflex.llm.spark.SparkLLM;
+import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import org.junit.Test;
 
@@ -16,7 +16,7 @@ import java.util.Scanner;
 
 public class SparkLlmTest {
 
-    private static SparkLLM getSparkLLM() {
+    private static SparkLlm getSparkLlm() {
         SparkLlmConfig config = new SparkLlmConfig();
         config.setAppId("****");
         config.setApiKey("****");
@@ -24,19 +24,19 @@ public class SparkLlmTest {
 
 
         config.setDebug(true);
-        return new SparkLLM(config);
+        return new SparkLlm(config);
     }
 
     @Test(expected = LlmException.class)
     public void testSimple() {
-        Llm llm = getSparkLLM();
+        Llm llm = getSparkLlm();
         String result = llm.chat("你好，请问你是谁？");
         System.out.println(result);
     }
 
     @Test
     public void testEmbedding() {
-        Llm llm = getSparkLLM();
+        Llm llm = getSparkLlm();
         VectorData vectorData = llm.embed(Document.of("你好，请问你是谁？"));
         System.out.println(vectorData);
     }
@@ -44,7 +44,7 @@ public class SparkLlmTest {
 
     @Test
     public void testFunctionCalling() throws InterruptedException {
-        Llm llm = getSparkLLM();
+        Llm llm = getSparkLlm();
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
@@ -53,7 +53,7 @@ public class SparkLlmTest {
 
 
     public static void main(String[] args) {
-        Llm llm = getSparkLLM();
+        Llm llm = getSparkLlm();
 
         HistoriesPrompt prompt = new HistoriesPrompt();
 

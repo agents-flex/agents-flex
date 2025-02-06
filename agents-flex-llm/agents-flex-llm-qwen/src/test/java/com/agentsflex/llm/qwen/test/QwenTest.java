@@ -4,7 +4,7 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.store.VectorData;
-import com.agentsflex.llm.qwen.QwenLLM;
+import com.agentsflex.llm.qwen.QwenLlm;
 import com.agentsflex.llm.qwen.QwenLlmConfig;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
@@ -19,7 +19,7 @@ public class QwenTest {
         config.setApiKey("sk-28a6be3236****");
         config.setModel("qwen-plus");
 
-        Llm llm = new QwenLLM(config);
+        Llm llm = new QwenLlm(config);
         llm.chatStream("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
             AiMessage message = response.getMessage();
             System.out.println(">>>> " + message.getContent());
@@ -35,7 +35,7 @@ public class QwenTest {
         config.setApiKey("sk-28a6be3236****");
         config.setModel("qwen-turbo");
 
-        Llm llm = new QwenLLM(config);
+        Llm llm = new QwenLlm(config);
 
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
@@ -51,7 +51,7 @@ public class QwenTest {
         config.setApiKey("sk-28a6be3236****");
         config.setModel("qwen-turbo");
 
-        Llm llm = new QwenLLM(config);
+        Llm llm = new QwenLlm(config);
         VectorData vectorData = llm.embed(Document.of("test"));
 
 

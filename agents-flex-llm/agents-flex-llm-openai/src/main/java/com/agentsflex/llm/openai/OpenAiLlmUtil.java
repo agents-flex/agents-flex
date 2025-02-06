@@ -30,7 +30,7 @@ import com.agentsflex.core.util.Maps;
 
 import java.util.List;
 
-public class OpenAiLLmUtil {
+public class OpenAiLlmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
@@ -39,7 +39,7 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToEmbeddingsPayload(Document text, EmbeddingOptions options, OpenAILLMConfig config) {
+    public static String promptToEmbeddingsPayload(Document text, EmbeddingOptions options, OpenAILlmConfig config) {
         // https://platform.openai.com/docs/api-reference/making-requests
         return Maps.of("model", options.getModelOrDefault(config.getDefaultEmbeddingModel()))
             .set("encoding_format", "float")
@@ -48,7 +48,7 @@ public class OpenAiLLmUtil {
     }
 
 
-    public static String promptToPayload(Prompt prompt, OpenAILLMConfig config, ChatOptions options, boolean withStream) {
+    public static String promptToPayload(Prompt prompt, OpenAILlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
         HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
         return Maps.of("model", config.getModel())

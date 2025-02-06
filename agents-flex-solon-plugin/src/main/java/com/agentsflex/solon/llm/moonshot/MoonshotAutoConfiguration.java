@@ -16,7 +16,7 @@
 package com.agentsflex.solon.llm.moonshot;
 
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.llm.moonshot.MoonshotLLM;
+import com.agentsflex.llm.moonshot.MoonshotLlm;
 import com.agentsflex.llm.moonshot.MoonshotLlmConfig;
 import org.noear.solon.annotation.Bean;
 import org.noear.solon.annotation.Condition;
@@ -27,13 +27,13 @@ import org.noear.solon.annotation.Inject;
  * 月之暗面 自动配置
  */
 @Configuration
-@Condition(onClass = MoonshotLLM.class)
+@Condition(onClass = MoonshotLlm.class)
 public class MoonshotAutoConfiguration {
 
     @Bean
-    @Condition(onMissingBean = MoonshotLLM.class)
+    @Condition(onMissingBean = MoonshotLlm.class)
     public Llm moonshotLlm(@Inject("agents-flex.llm.moonshot") MoonshotLlmConfig config) {
-        return new MoonshotLLM(config);
+        return new MoonshotLlm(config);
     }
 
 }

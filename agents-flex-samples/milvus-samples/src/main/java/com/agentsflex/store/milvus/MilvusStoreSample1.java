@@ -2,7 +2,7 @@ package com.agentsflex.store.milvus;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.llm.spark.SparkLLM;
+import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
@@ -17,7 +17,7 @@ public class MilvusStoreSample1 {
         sparkLlmConfig.setApiKey("****");
         sparkLlmConfig.setApiSecret("****");
 
-        Llm llm = new SparkLLM(sparkLlmConfig);
+        Llm llm = new SparkLlm(sparkLlmConfig);
 
         MilvusVectorStoreConfig config = new MilvusVectorStoreConfig();
         config.setUri("http://127.0.0.1:19530");

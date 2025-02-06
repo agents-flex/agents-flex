@@ -9,7 +9,7 @@ public class GiteeAiEmbeddingTest {
         GiteeAiLlmConfig config = new GiteeAiLlmConfig();
         config.setApiKey("your-api-key");
 
-        GiteeAiLLM llm = new GiteeAiLLM(config);
+        GiteeAiLlm llm = new GiteeAiLlm(config);
         VectorData result = llm.embed(Document.of("你好"));
         System.out.println(result);
     }

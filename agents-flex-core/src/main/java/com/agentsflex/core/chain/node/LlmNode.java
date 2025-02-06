@@ -32,7 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class LLMNode extends BaseNode {
+public class LlmNode extends BaseNode {
 
     protected Llm llm;
     protected ChatOptions chatOptions = ChatOptions.DEFAULT;
@@ -43,11 +43,11 @@ public class LLMNode extends BaseNode {
     protected TextPromptTemplate systemPromptTemplate;
     protected String outType = "text"; //text markdown json
 
-    public LLMNode() {
+    public LlmNode() {
     }
 
 
-    public LLMNode(Llm llm, String userPrompt) {
+    public LlmNode(Llm llm, String userPrompt) {
         this.llm = llm;
         this.userPrompt = userPrompt;
         this.userPromptTemplate = new TextPromptTemplate(userPrompt);
@@ -148,11 +148,14 @@ public class LLMNode extends BaseNode {
 
     @Override
     public String toString() {
-        return "LLMNode{" +
+        return "LlmNode{" +
             "llm=" + llm +
             ", chatOptions=" + chatOptions +
-            ", prompt='" + userPrompt + '\'' +
-            ", promptTemplate=" + userPromptTemplate +
+            ", userPrompt='" + userPrompt + '\'' +
+            ", userPromptTemplate=" + userPromptTemplate +
+            ", systemPrompt='" + systemPrompt + '\'' +
+            ", systemPromptTemplate=" + systemPromptTemplate +
+            ", outType='" + outType + '\'' +
             ", description='" + description + '\'' +
             ", inputParameters=" + inputParameters +
             ", outputKeys=" + outputKeys +

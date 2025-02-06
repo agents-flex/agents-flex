@@ -13,9 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.gitee;
+package com.agentsflex.llm.deepseek;
 
 import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
@@ -28,7 +29,7 @@ import com.agentsflex.core.util.Maps;
 
 import java.util.List;
 
-public class GiteeAiLLmUtil {
+public class DeepseekLlmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 
@@ -36,22 +37,22 @@ public class GiteeAiLLmUtil {
         return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
     }
 
-    public static String promptToPayload(Prompt prompt, GiteeAiLlmConfig config, ChatOptions options, boolean withStream) {
+
+
+    public static String promptToPayload(Prompt prompt, LlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
         HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
-        return Maps.of()
+        return Maps.of("model", config.getModel())
             .set("messages", promptFormat.toMessagesJsonObject(messages))
-            .setIf(withStream, "stream", withStream)
-            .setIfNotNull("max_tokens", options.getMaxTokens())
-            .setIfNotNull("temperature", options.getTemperature())
+            .setIf(withStream, "stream", true)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
-            .setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
+            //.setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
             .setIfNotNull("top_p", options.getTopP())
-            .setIfNotNull("top_k", options.getTopK())
             .setIfNotEmpty("stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
             .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
             .toJSON();
     }
+
 
 }

@@ -19,7 +19,7 @@ public class OllamaLlmTest {
         config.setModel("llama3");
         config.setDebug(true);
 
-        Llm llm = new OllamaLLM(config);
+        Llm llm = new OllamaLlm(config);
         String chat = llm.chat("who are your");
         System.out.println(chat);
     }
@@ -32,7 +32,7 @@ public class OllamaLlmTest {
         config.setModel("llama3");
         config.setDebug(true);
 
-        Llm llm = new OllamaLLM(config);
+        Llm llm = new OllamaLlm(config);
         llm.chatStream("who are your", (context, response) -> System.out.println(response.getMessage().getContent()));
 
         Thread.sleep(20000);
@@ -46,7 +46,7 @@ public class OllamaLlmTest {
         config.setModel("llama3.1");
         config.setDebug(true);
 
-        Llm llm = new OllamaLLM(config);
+        Llm llm = new OllamaLlm(config);
         VectorData vectorData = llm.embed(Document.of("hello world"));
         System.out.println(vectorData);
     }
@@ -59,7 +59,7 @@ public class OllamaLlmTest {
         config.setModel("llama3.1");
         config.setDebug(true);
 
-        Llm llm = new OllamaLLM(config);
+        Llm llm = new OllamaLlm(config);
 
         FunctionPrompt prompt = new FunctionPrompt("What's the weather like in Beijing?", WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
@@ -75,7 +75,7 @@ public class OllamaLlmTest {
         config.setModel("llava");
         config.setDebug(true);
 
-        Llm llm = new OllamaLLM(config);
+        Llm llm = new OllamaLlm(config);
 
         ImagePrompt imagePrompt = new ImagePrompt("What's in the picture?", "https://agentsflex.com/assets/images/logo.png");
 
