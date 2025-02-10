@@ -23,6 +23,7 @@
         <module>agents-flex-llm-coze</module>
         <module>agents-flex-llm-gitee</module>
         <module>agents-flex-llm-deepseek</module>
+        <module>agents-flex-llm-qianfan</module>
     </modules>
 
     <properties>
