@@ -184,6 +184,11 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-llm-deepseek</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-llm-gitee</artifactId>
                 <version>${revision}</version>
             </dependency>
@@ -262,6 +267,11 @@
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-store-redis</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-store-vectorex</artifactId>
                 <version>${revision}</version>
             </dependency>
             <!--store end-->

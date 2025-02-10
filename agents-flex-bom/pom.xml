@@ -12,13 +12,141 @@
     <name>agents-flex-bom</name>
     <artifactId>agents-flex-bom</artifactId>
 
-    <packaging>pom</packaging>
-
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+
+        <!--document parser start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-document-parser-poi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-document-parser-pdfbox</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-document-parser-omniparse</artifactId>
+        </dependency>
+        <!--document parser end-->
+
+
+        <!--image model start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-gitee</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-siliconflow</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-stability</artifactId>
+        </dependency>
+        <!--image model end-->
+
+
+        <!--llm start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-chatglm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-coze</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-deepseek</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-gitee</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-moonshot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-ollama</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-qwen</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-llm-spark</artifactId>
+        </dependency>
+        <!--llm end-->
+
+        <!--chains start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-chain-qlexpress</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-chain-groovy</artifactId>
+        </dependency>
+        <!--chains end-->
+
+
+        <!--store start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-aliyun</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-chroma</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-elasticsearch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-milvus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-opensearch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-qcloud</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-vectorex</artifactId>
+        </dependency>
+        <!--store end-->
+
+    </dependencies>
 
     <build>
         <plugins>
