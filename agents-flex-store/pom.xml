@@ -22,7 +22,6 @@
         <module>agents-flex-store-opensearch</module>
         <module>agents-flex-store-elasticsearch</module>
         <module>agents-flex-store-vectorex</module>
-
     </modules>
 
     <properties>
