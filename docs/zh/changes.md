@@ -1,6 +1,20 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-rc.5 20241230
+## v1.0.0-rc.5 20250210
+- feat: Added support for VectoRex vector database
+- feat: Added support for DeepSeek large models
+- feat: ImagePrompt adds support for local files, Stream and Base64 configurations
+- refactor: agents-flex-bom facilitates one-click import of all modules
+
+---
+- 新增：添加 VectoRex 向量数据库的支持
+- 新增：增加 DeepSeek 大模型的支持
+- 新增：ImagePrompt 添加本地文件、Stream 和 Base64 配置的支持
+- 优化：agents-flex-bom 方便一键导入所有模块
+
+
+
+## v1.0.0-rc.4 20241230
 - refactor: Use pom to build and only manage versions
 - refactor: Optimize the relevant code of RedisVectorStore
 - refactor: BaseNode.getChainParameters() method

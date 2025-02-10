@@ -17,9 +17,9 @@ hero:
       link: /zh/intro/what-is-agentsflex
 
 features:
-  - title: LLMs Connector
-    details: Agents-Flex 内置了丰富的对接大模型的网络协议，比如 HTTP、SSE、WS 等，其简单灵活的设计，使得开发者可以使用其轻易的对接各种大模型，包括 OpenAI、文心一言、星火大模型、通义千问等等。
-  - title: Prompt
+  - title: LLMs (大语言模型)
+    details: Agents-Flex 支持市场上了常见的大语言模型，支持 Ollama 部署模型，也内置了丰富的对接大模型的网络协议，比如 HTTP、SSE、WS 等，使得开发者可以使用其轻易的对接各种自有大模型。
+  - title: Prompt（提示词）
     details: Agents-Flex 提供了丰富的大语言模型开发模板以及 Prompt Framework 的支持，比如 FEW-SHOT、CRISPE、BROKE、ICIO 等。另外，Prompt Template 我们也可以自定义自己独特的内容。
   - title: Function Calling
     details: Agents-Flex 内置了非常灵活的 Function Calling 组件，包括本地方法的定义、解析、通过 LLMs 回调、并执行本地方法到结果，开发者几行代码就可以完成 Function Calling。
@@ -31,8 +31,6 @@ features:
     details: Agents-Flex 内置了非常丰富的 Embedding 能力和扩展，我们可以通过去实现 Embedding 接口，来扩充自己的私有 Embedding 算法和支持 。
   - title: Vector Store
     details: Agents-Flex 内置了多种向量数据库支持、当然，我们可以自己去实现 VectorStore 接口，来扩充自己的私有 VectorStore 服务 。
-  - title: Agent
-    details: Agents-Flex 定义了 Agent 的抽象实现，开发者可以通过 Agents Chain 来实现更多的交互。
   - title: Chain
     details: Agents-Flex 的 Chain 包含了同步顺序执行 Chain，异步执行 Chain 以及循环执行 Chain，帮助开发面对多种不同场景 。
 ---

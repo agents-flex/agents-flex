@@ -77,7 +77,7 @@ export default defineConfig({
                             {text: 'Embedding 嵌入', link: '/zh/core/embedding'},
                             {text: 'Store 存储', link: '/zh/core/store'},
                             {text: 'Document 文档', link: '/zh/core/document'},
-                            {text: 'Agent 智能体', link: '/zh/core/agent'},
+                            {text: 'Image 图片生成', link: '/zh/core/image'},
                             {text: 'Chain 执行链', link: '/zh/core/chain'},
                         ]
                     },
@@ -135,7 +135,6 @@ export default defineConfig({
                     {text: 'Embedding', link: '/core/embedding'},
                     {text: 'Store', link: '/core/store'},
                     {text: 'Document', link: '/core/document'},
-                    {text: 'Agent', link: '/core/agent'},
                     {text: 'Chain', link: '/core/chain'},
                 ]
             },

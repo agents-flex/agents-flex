@@ -17,10 +17,10 @@ hero:
       link: /intro/what-is-agentsflex
 
 features:
-  - title: LLMs Connector
-    details: Agents-Flex includes a variety of network protocols for connecting LLMs, such as HTTP, SSE and WS. Its simple and flexible design allows developers to easily connect to various LLMs, including OpenAI, LLama, and Others AI.
+  - title: LLMs
+    details: Agents-Flex supports common large language models on the market, supports the Ollama deployment model, and also has built-in rich network protocols for docking large models, such as HTTP, SSE, WS, etc., so that developers can use it to easily dock various large models.
   - title: Prompt
-    details: Agents-Flex provides a rich set of development templates and Prompt Frameworks, including FEW-SHOT, CRISPE, BROKE, and ICIO. Developers can also customize their own unique prompt templates.
+    details: Agents-Flex provides a wealth of large language model development templates and support for Prompt Framework, such as FEW-SHOT, CRISPE, BROKE, ICIO, etc. In addition, Prompt Template we can also customize our own unique content.
   - title: Function Calling
     details: Agents-Flex has a very flexible Function Calling component. It supports local method definitions, parsing, callbacks through LLMs, and executing local methods to obtain results.
   - title: Document
@@ -31,8 +31,6 @@ features:
     details: Agents-Flex includes extensive embedding capabilities and extensions. Developers can implement the Embedding interface to expand their private embedding algorithms and support.
   - title: Vector Store
     details: Agents-Flex supports multiple vector databases. Developers can also implement the VectorStore interface to expand their private VectorStore services.
-  - title: Agent
-    details: Agents-Flex defines an abstract implementation of Agents. Developers can use the Agents Chain to create more interactive applications.
   - title: Chain
     details: Agents-Flex’s Chain includes sequential Chains, asynchronous Chains, and loop Chains, helping developers handle various scenarios.
 ---

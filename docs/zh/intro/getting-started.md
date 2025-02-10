@@ -32,8 +32,24 @@ implementation 'com.agentsflex:agents-flex-bom:1.0.0-rc.5'
 ```java
 public class Main {
     public static void main(String[] args) {
+        Llm llm = OpenAiLlm.of("sk-rts5NF6n*******");
+        String response = llm.chat("what is your name?");
+
+        System.out.println(response);
+    }
+}
+```
+
+
+或者，我们为 `OpenAiLlm` 添加更多的配置：
+
+```java
+public class Main {
+    public static void main(String[] args) {
         OpenAiLlmConfig config = new OpenAiLlmConfig();
+        config.setEndpoint("https://api.openai.com");
         config.setApiKey("sk-rts5NF6n*******");
+        config.setModel("gpt-3.5-turbo");
 
         Llm llm = new OpenAiLlm(config);
         String response = llm.chat("请问你叫什么名字");
@@ -43,35 +59,6 @@ public class Main {
 }
 ```
 
-以上代码可以通过 `OpenAiLlm.of` 简化创建 LLM 对象：
-
-
-```java
-public class Main {
-    public static void main(String[] args) {
-        Llm llm = OpenAiLlm.of("sk-rts5NF6n*******");
-        String response = llm.chat("what is your name?");
-
-        System.out.println(response);
-    }
-}
-```
-
-或者使用科大讯飞的星火大模型：
-
-```java
-public class Main {
-    public static void main(String[] args) {
-        SparkLlmConfig config = new SparkLlmConfig();
-        config.setAppId("****");
-        config.setApiKey("****");
-        config.setApiSecret("****");
-
-        Llm llm = new SparkLlm(config);
-        String response = llm.chat("请问你叫什么名字");
-    }
-}
-```
 
 ## 流式（Stream）对话
 
@@ -82,10 +69,10 @@ public class Main {
     public static void main(String[] args) {
         Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
 
-        llm.chatStream("what is your name?", new StreamResponseListener<AiMessageResponse, AiMessage>() {
+        llm.chatStream("what is your name?", new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
-                System.out.println(">>>> " + response.getMessage().getContent());
+                System.out.println(response.getMessage().getContent());
             }
         });
 

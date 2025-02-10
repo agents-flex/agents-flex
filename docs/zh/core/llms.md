@@ -4,90 +4,166 @@ Agents-Flex 提供了关于大语言模型的抽象实现接口 `Llm.java`，它
 
 针对不同的厂商，Agents-Flex 提供了不同的实现类以及通信协议，其中通信协议包括了 `HTTP`、`SSE` 以及 `WebSocket` 等客户端。
 
-## chat 对话
+## 大模型支持
 
-在 AI 大语言模型 chat 对话中，我们需要关注几个不同的场景，分别是：
+目前，Agents-Flex 已支持以下的大语言模型：
 
-- 简单对话
-- 历史对话
-- Function Calling 方法调用
+- OpenAI（ChatGPT，以及所有的兼容 OpenAI 接口的大模型）
+- ChatGLM（智普大模型）
+- Coze （调用 Coze 的智能体）
+- DeepSeek
+- Gitee AI
+- Moonshot（月之暗面）
+- Ollama（通过 Ollama 部署的所有大模型）
+- Qianfan（百度千帆部署的大模型）
+- Qwen（千问大模型，阿里云百炼平台部署的大模型）
+- Spark（星火大模型）
 
-而以上的能力又通过 prompt（提示词）来决定的，因此，Agents-Flex 提供了三种 prompt 的实现，分别是：
 
-- SimplePrompt：用于简单对话的场景
-- HistoriesPrompt：用于历史对话的场景
-- FunctionPrompt：用于 Function Calling 的场景
-
-而提示词和大模型交互的过程中，是需要通过消息来交互的，因此，Agents-Flex 也提供了不同的消息实现，他们分别是：
-
-- AiMessage：大模型响应的消息，除了消息内容以外，还会带有消耗 token 的数据等。
-- FunctionMessage：是 AiMessage 的子类，当我们在 chat 方法中传入 FunctionPrompt 时，返回的应该是 FunctionMessage。
-- HumanMessage：人类消息，也就是在对话时用户输入的消息。
-- SystemMessage：系统消息，常用于告知大语言模型的角色，用于 prompt 微调的场景。
-
-### 示例代码
-
-**简单对话**
-
+## 简单对话
 ```java
-public static void main(String[] args) {
-    Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+ @Test()
+public void testChat() {
+    OpenAILlmConfig config = new OpenAILlmConfig();
 
-    Prompt prompt = new SimplePrompt("what is your name?");
-    String response = llm.chat(prompt);
+    // 设置你的 OpenAI API Key
+    config.setApiKey("sk-rts5NF6n*******");
+
+    Llm llm = new OpenAILlm(config);
+    String response = llm.chat("请问你叫什么名字");
 
     System.out.println(response);
 }
 ```
 
-**历史对话**
+## 流式对话
 
 ```java
-public static void main(String[] args) {
-    Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+@Test()
+public void testChatStream() {
+    OpenAILlmConfig config = new OpenAILlmConfig();
 
-    HistoriesPrompt prompt = new HistoriesPrompt();
-    prompt.addMessage(new SystemMessage("你现在是一个数据库开发工程师...."));
-    prompt.addMessage(new HumanMessage("请根据 DDL 内容，给出...."));
+    // 设置你的 OpenAI API Key
+    config.setApiKey("sk-rts5NF6n*******");
 
-    String response = llm.chat(prompt);
+    Llm llm = new OpenAILlm(config);
+    llm.chatStream("你叫什么名字", new StreamResponseListener() {
+        @Override
+        public void onMessage(ChatContext context, AiMessageResponse response) {
+            System.out.println(response.getMessage().getContent());
+        }
+    });
+}
+```
 
+## 图片识别对话
+
+```java
+ @Test()
+public void testChatWithImage() {
+    OpenAILlmConfig config = new OpenAILlmConfig();
+
+    // 设置你的 OpenAI API Key
+    config.setApiKey("sk-5gqOcl*****");
+    config.setModel("gpt-4-turbo");
+
+
+    Llm llm = new OpenAILlm(config);
+    ImagePrompt prompt = new ImagePrompt("What's in this image?");
+    prompt.setImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
+
+    //或者 prompt.setImageFile(new File("/your-image-path.png"))
+    //或者 prompt.setImageStream(imageInputStream)
+    //或者 prompt.setImageBase64("image base64 data....")
+
+    AiMessageResponse response = llm.chat(prompt);
     System.out.println(response);
 }
 ```
 
-**Function Calling**
-
-工具类定义：
+## 方法调用（Function Calling）
 
 ```java
-public class WeatherUtil {
+@Test()
+public void testFunctionCalling() throws InterruptedException {
+    OpenAILlmConfig config = new OpenAILlmConfig();
+    config.setApiKey("sk-rts5NF6n*******");
+
+    OpenAILlm llm = new OpenAILlm(config);
+
+    FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+    AiMessageResponse response = llm.chat(prompt);
+
+    System.out.println(response.callFunctions());
+    // "Today it will be dull and overcast in 北京"
+}
+```
+
+`WeatherFunctions.class` 代码如下：
+
+```java
+public class WeatherFunctions {
 
     @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
-    public static String getWeatherInfo(
-        @FunctionParam(name = "city", description = "the city name") String name) {
-        //在这里，我们应该通过第三方接口调用 api 信息
-        return name + "的天气是阴转多云。 ";
+    public static String getWeatherInfo( @FunctionParam(name = "city", description = "the city name") String name) {
+        return "Today it will be dull and overcast in " + name;
     }
 }
 ```
 
-创建 FunctionPrompt 通过 chat 方法传给大模型：
+
+## 历史对话
 
 ```java
 public static void main(String[] args) {
-    OpenAiLlmConfig config = new OpenAiLlmConfig();
+    OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAiLlm llm = new OpenAiLlm(config);
+    OpenAILlm llm = new OpenAILlm(config);
 
-    FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
-    FunctionResultResponse response = llm.chat(prompt);
+    //第一步：创建一个 HistoriesPrompt
+    HistoriesPrompt prompt = new HistoriesPrompt();
 
-    //执行工具类方法得到结果
-    Object result = response.getFunctionResult();
+    System.out.println("您想问什么？");
+    Scanner scanner = new Scanner(System.in);
+    String userInput = scanner.nextLine();
 
-    System.out.println(result);
-    //"北京的天气是阴转多云。 "
+    while (userInput != null) {
+
+        // 第二步：将用户输入添加到 HistoriesPrompt 中
+        prompt.addMessage(new HumanMessage(userInput));
+
+        // 第三步：调用 chatStream 方法，进行对话
+        llm.chatStream(prompt, (context, response) -> {
+            System.out.println(">>>> " + response.getMessage().getContent());
+        });
+
+        userInput = scanner.nextLine();
+    }
 }
 ```
+
+关于 HistoriesPrompt 更多的配置：
+
+```java
+HistoriesPrompt prompt = new HistoriesPrompt();
+
+//设置系统消息
+prompt.setSystemMessage(new SystemMessage('你是一个数据库开发工程师....'));
+
+//设置最大历史消息数量
+prompt.setMaxAttachedMessageCount(10);
+
+//设置是否开启历史消息截断
+prompt.setHistoryMessageTruncateEnable(true);
+
+//设置历史消息截断长度
+prompt.setHistoryMessageTruncateLength(true);
+
+//自定义历史消息截断处理器
+prompt.setHistoryMessageTruncateProcessor(...);
+
+//设置历史消息存储器
+prompt.setMemory(...);
+```
+
