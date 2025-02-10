@@ -35,7 +35,7 @@ public class OllamaLlmTest {
         Llm llm = new OllamaLlm(config);
         llm.chatStream("who are your", (context, response) -> System.out.println(response.getMessage().getContent()));
 
-        Thread.sleep(20000);
+        Thread.sleep(2000);
     }
 
 

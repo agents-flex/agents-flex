@@ -3,6 +3,7 @@ package com.agentsflex.llm.qianfan;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
+import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.store.VectorData;
@@ -20,7 +21,7 @@ public class QianFanLlmTest {
         config.setDebug(true);
     }
 
-    @Test()
+    @Test(expected = LlmException.class)
     public void testChat() {
         Llm llm = new QianFanLlm(config);
         String response = llm.chat("请问你叫什么名字");
@@ -32,8 +33,7 @@ public class QianFanLlmTest {
     public void testChatStream() throws InterruptedException {
         Llm llm = new QianFanLlm(config);
         llm.chatStream("who are your", (context, response) -> System.out.print(response.getMessage().getContent()));
-
-        Thread.sleep(20000);
+        Thread.sleep(2000);
     }
 
 

@@ -60,7 +60,7 @@ public class OpenAILlmTest {
         });
 
         try {
-            Thread.sleep(20000);
+            Thread.sleep(2000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
