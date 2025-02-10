@@ -23,7 +23,7 @@ public class OpenAILlmTest {
     }
 
     @Test()
-    public void testChat01() {
+    public void testChatStream() {
         OpenAILlmConfig config = new OpenAILlmConfig();
         config.setApiKey("sk-alQ9N********");
         config.setEndpoint("https://api.moonshot.cn");
@@ -74,7 +74,6 @@ public class OpenAILlmTest {
         config.setModel("gpt-4-turbo");
 
 
-        //APIKey: sk-5gqOclbt0OpCHRe49fCfAe7194624d27A32a8aB25a9e2c30 ---- 建议选择GPT-4相关版本使用 ---- API域名输入：https://api.mctools.online ---- 参考商品详情页下载对应客户端配置教程使用
         Llm llm = new OpenAILlm(config);
         ImagePrompt prompt = new ImagePrompt("What's in this image?");
         prompt.setImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
@@ -82,12 +81,6 @@ public class OpenAILlmTest {
 
         AiMessageResponse response = llm.chat(prompt);
         System.out.println(response);
-
-        try {
-            Thread.sleep(12000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
 

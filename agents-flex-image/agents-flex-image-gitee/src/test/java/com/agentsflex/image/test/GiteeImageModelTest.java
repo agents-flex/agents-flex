@@ -17,6 +17,7 @@ package com.agentsflex.image.test;
 
 import com.agentsflex.core.image.GenerateImageRequest;
 import com.agentsflex.core.image.Image;
+import com.agentsflex.core.image.ImageModel;
 import com.agentsflex.core.image.ImageResponse;
 import com.agentsflex.image.gitee.GiteeImageModel;
 import com.agentsflex.image.gitee.GiteeImageModelConfig;
@@ -31,12 +32,12 @@ public class GiteeImageModelTest {
         GiteeImageModelConfig config = new GiteeImageModelConfig();
         config.setApiKey("****");
 
-        GiteeImageModel openAiImageModel = new GiteeImageModel(config);
+        ImageModel imageModel = new GiteeImageModel(config);
 
         GenerateImageRequest request = new GenerateImageRequest();
         request.setPrompt("A cute little tiger standing in the high-speed train");
         request.setSize(1024,1024);
-        ImageResponse generate = openAiImageModel.generate(request);
+        ImageResponse generate = imageModel.generate(request);
         if (generate != null && generate.getImages() != null){
             int index = 0;
             for (Image image : generate.getImages()) {

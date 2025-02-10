@@ -28,11 +28,11 @@ public class OpenAiImageModelTest {
         OpenAiImageModelConfig config = new OpenAiImageModelConfig();
         config.setApiKey("sk-5gqOclb****");
 
-        OpenAiImageModel openAiImageModel = new OpenAiImageModel(config);
+        OpenAiImageModel imageModel = new OpenAiImageModel(config);
 
         GenerateImageRequest request = new GenerateImageRequest();
         request.setPrompt("A cute little tiger standing in the high-speed train");
-        ImageResponse generate = openAiImageModel.generate(request);
+        ImageResponse generate = imageModel.generate(request);
         System.out.println(generate);
     }
 }
