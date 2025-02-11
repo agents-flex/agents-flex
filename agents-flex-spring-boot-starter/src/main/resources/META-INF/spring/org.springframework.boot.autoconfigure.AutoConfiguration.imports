@@ -5,3 +5,4 @@ com.agentsflex.spring.boot.llm.spark.SparkAutoConfiguration
 com.agentsflex.spring.boot.llm.moonshot.MoonshotAutoConfiguration
 com.agentsflex.spring.boot.store.aliyun.AliyunAutoConfiguration
 com.agentsflex.spring.boot.store.qcloud.QCloudStoreAutoConfiguration
+com.agentsflex.spring.boot.llm.ollama.OllamaAutoConfiguration
