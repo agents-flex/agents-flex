@@ -28,11 +28,11 @@ import org.noear.solon.annotation.Inject;
  */
 @Configuration
 @Condition(onClass = OpenAILlm.class)
-public class OpenAiAutoConfiguration {
+public class OpenAIAutoConfiguration {
 
     @Bean
     @Condition(onMissingBean = OpenAILlm.class)
-    public Llm openAiLlm(@Inject("${agents-flex.llm.openai}") OpenAILlmConfig config) {
+    public Llm openAILlm(@Inject("${agents-flex.llm.openai}") OpenAILlmConfig config) {
         return new OpenAILlm(config);
     }
 

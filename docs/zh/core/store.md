@@ -31,7 +31,7 @@ storeConfig.setDatabase("...");
 DocumentStore store = new AliyunVectorStore(storeConfig);
 
 //创建 Embedding 模型，
-EmbeddingModel llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+EmbeddingModel llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
 //为 store 配置 Embedding 模型
 store.setEmbeddingModel(llm);

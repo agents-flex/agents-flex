@@ -27,7 +27,7 @@ Agents-Flex 适用于聊天、图像生成、Embedding 模型、Function Calling
 ```java
 @Test
 public void testChat() {
-    OpenAiLlm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+    OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
     String response = llm.chat("what is your name?");
 
     System.out.println(response);
@@ -48,7 +48,7 @@ public class WeatherUtil {
 
 
     public static void main(String[] args) {
-        OpenAiLlm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+        OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
         FunctionResultResponse response = llm.chat(prompt);

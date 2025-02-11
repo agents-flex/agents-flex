@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @since 2024-04-10
  */
 @ConfigurationProperties(prefix = "agents-flex.llm.openai")
-public class OpenAiProperties {
+public class OpenAIProperties {
 
     private String model = "gpt-3.5-turbo";
     private String endpoint = "https://api.openai.com";

@@ -1,6 +1,6 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
   com.agentsflex.spring.boot.llm.chatglm.ChatglmAutoConfiguration,\
-  com.agentsflex.spring.boot.llm.openai.OpenAiAutoConfiguration,\
+  com.agentsflex.spring.boot.llm.openai.OpenAIAutoConfiguration,\
   com.agentsflex.spring.boot.llm.qwen.QwenAutoConfiguration,\
   com.agentsflex.spring.boot.llm.spark.SparkAutoConfiguration,\
   com.agentsflex.spring.boot.llm.moonshot.MoonshotAutoConfiguration,\

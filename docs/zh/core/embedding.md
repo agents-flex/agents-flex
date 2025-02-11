@@ -7,7 +7,7 @@ Embedding 我们可以简单的理解为：有一种算法（或模型），能�
 ## 示例代码
 
 ```java
-Llm llm = OpenAiLlm.of("sk-rts5NF6n*******");
+Llm llm = OpenAILlm.of("sk-rts5NF6n*******");
 VectorData embeddings = llm.embed(Document.of("some document text"));
 System.out.println(Arrays.toString(embeddings.getVector()));
 ```

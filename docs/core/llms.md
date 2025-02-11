@@ -33,7 +33,7 @@ During the interaction between prompts and LLMs, messages are exchanged. Therefo
 
 ```java
 public static void main(String[] args) {
-    Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
     Prompt prompt = new SimplePrompt("what is your name?");
     String response = llm.chat(prompt);
@@ -46,7 +46,7 @@ public static void main(String[] args) {
 
 ```java
 public static void main(String[] args) {
-    Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
     HistoriesPrompt prompt = new HistoriesPrompt();
     prompt.addMessage(new SystemMessage("You are now a database development engineer...."));
@@ -78,10 +78,10 @@ Create FunctionPrompt and pass it to the LLMs through the `chat` method:
 
 ```java
 public static void main(String[] args) {
-    OpenAiLlmConfig config = new OpenAiLlmConfig();
+    OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAiLlm llm = new OpenAiLlm(config);
+    OpenAILlm llm = new OpenAILlm(config);
 
     FunctionPrompt prompt = new FunctionPrompt("how's the weather in New York?", WeatherUtil.class);
     FunctionResultResponse response = llm.chat(prompt);

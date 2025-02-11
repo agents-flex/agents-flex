@@ -57,9 +57,9 @@ public void testGenImage(){
 public void testGenImage(){
 
     //Or use OpenAI ImageModel
-    OpenAiImageModelConfig config = new OpenAiImageModelConfig();
+    OpenAIImageModelConfig config = new OpenAIImageModelConfig();
     config.setApiKey("sk-5gqOclb****");
-    ImageModel imageModel = new OpenAiImageModel(config);
+    ImageModel imageModel = new OpenAIImageModel(config);
 
 
     GenerateImageRequest request = new GenerateImageRequest();
@@ -86,7 +86,7 @@ public void testGenImage(){
     SiliconflowImageModelConfig config = new SiliconflowImageModelConfig();
     config.setModel(SiliconflowImageModels.Stable_Diffusion_XL);
     config.setApiKey("sk-****");
-    ImageModel imageModel = new OpenAiImageModel(config);
+    ImageModel imageModel = new OpenAIImageModel(config);
 
 
     GenerateImageRequest request = new GenerateImageRequest();

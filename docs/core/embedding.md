@@ -7,7 +7,7 @@ Embedding can be understood simply as follows: there is an algorithm (or model) 
 ## Samples
 
 ```java
-Llm llm = OpenAiLlm.of("sk-rts5NF6n*******");
+Llm llm = OpenAILlm.of("sk-rts5NF6n*******");
 VectorData embeddings = llm.embed(Document.of("some document text"));
 System.out.println(Arrays.toString(embeddings.getVector()));
 ```

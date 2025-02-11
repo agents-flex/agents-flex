@@ -39,15 +39,15 @@
 
 ## 简单对话
 
-使用 OpenAi 大语言模型:
+使用 OpenAI 大语言模型:
 
 ```java
  @Test
 public void testChat() {
-    OpenAiLlmConfig config = new OpenAiLlmConfig();
+    OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    Llm llm = new OpenAiLlm(config);
+    Llm llm = new OpenAILlm(config);
     String response = llm.chat("请问你叫什么名字");
 
     System.out.println(response);
@@ -142,10 +142,10 @@ public class WeatherUtil {
 ```java
  public static void main(String[] args) {
 
-    OpenAiLlmConfig config = new OpenAiLlmConfig();
+    OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAiLlm llm = new OpenAiLlm(config);
+    OpenAILlm llm = new OpenAILlm(config);
 
     FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
     FunctionResultResponse response = llm.chat(prompt);

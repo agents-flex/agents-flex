@@ -30,7 +30,7 @@ import com.agentsflex.core.util.Maps;
 
 import java.util.List;
 
-public class OpenAiLlmUtil {
+public class OpenAILlmUtil {
 
     private static final PromptFormat promptFormat = new DefaultPromptFormat();
 

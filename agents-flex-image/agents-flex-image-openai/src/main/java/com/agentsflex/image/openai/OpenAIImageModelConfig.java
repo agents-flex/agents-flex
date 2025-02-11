@@ -17,7 +17,7 @@ package com.agentsflex.image.openai;
 
 import java.io.Serializable;
 
-public class OpenAiImageModelConfig implements Serializable {
+public class OpenAIImageModelConfig implements Serializable {
     private String endpoint = "https://api.openai.com";
     private String model = "dall-e-3";
     private String apiKey;

@@ -33,13 +33,13 @@ public class SiliconflowImageModelTest {
         config.setModel(SiliconflowImageModels.Stable_Diffusion_XL);
         config.setApiKey("sk-****");
 
-        SiliconImageModel openAiImageModel = new SiliconImageModel(config);
+        SiliconImageModel imageModel = new SiliconImageModel(config);
 
         GenerateImageRequest request = new GenerateImageRequest();
         request.setPrompt("A cute little tiger standing in the high-speed train");
         request.setSize(1024,1024);
         request.setN(4);
-        ImageResponse generate = openAiImageModel.generate(request);
+        ImageResponse generate = imageModel.generate(request);
         if (generate != null && generate.getImages() != null){
             int index = 0;
             for (Image image : generate.getImages()) {

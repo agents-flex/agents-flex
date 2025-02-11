@@ -26,12 +26,12 @@ import com.alibaba.fastjson.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OpenAiImageModel implements ImageModel {
+public class OpenAIImageModel implements ImageModel {
 
-    private OpenAiImageModelConfig config;
+    private OpenAIImageModelConfig config;
     private HttpClient httpClient = new HttpClient();
 
-    public OpenAiImageModel(OpenAiImageModelConfig config) {
+    public OpenAIImageModel(OpenAIImageModelConfig config) {
         this.config = config;
     }
 

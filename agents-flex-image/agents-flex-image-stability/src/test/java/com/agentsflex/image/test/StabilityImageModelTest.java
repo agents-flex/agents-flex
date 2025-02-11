@@ -28,11 +28,11 @@ public class StabilityImageModelTest {
         StabilityImageModelConfig config = new StabilityImageModelConfig();
         config.setApiKey("sk-5gqOcl*****");
 
-        StabilityImageModel openAiImageModel = new StabilityImageModel(config);
+        StabilityImageModel imageModel = new StabilityImageModel(config);
 
         GenerateImageRequest request = new GenerateImageRequest();
         request.setPrompt("A cute little tiger standing in the high-speed train");
-        ImageResponse generate = openAiImageModel.generate(request);
+        ImageResponse generate = imageModel.generate(request);
         System.out.println(generate);
     }
 }

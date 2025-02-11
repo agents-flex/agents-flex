@@ -16,12 +16,12 @@ import org.springframework.context.annotation.Configuration;
  */
 @ConditionalOnClass(OpenAILlm.class)
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(OpenAiProperties.class)
-public class OpenAiAutoConfiguration {
+@EnableConfigurationProperties(OpenAIProperties.class)
+public class OpenAIAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public OpenAILlm openAiLlm(OpenAiProperties properties) {
+    public OpenAILlm openAiLlm(OpenAIProperties properties) {
         OpenAILlmConfig config = new OpenAILlmConfig();
         config.setApiKey(properties.getApiKey());
         config.setApiSecret(properties.getApiSecret());

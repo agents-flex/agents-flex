@@ -40,15 +40,15 @@
 
 ## 簡単なチャット
 
-OpenAi LLMを使用:
+OpenAI LLMを使用:
 
 ```java
  @Test
 public void testChat() {
-    OpenAiLlmConfig config = new OpenAiLlmConfig();
+    OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    Llm llm = new OpenAiLlm(config);
+    Llm llm = new OpenAILlm(config);
     String response = llm.chat("あなたの名前は何ですか？");
 
     System.out.println(response);
@@ -143,10 +143,10 @@ public class WeatherUtil {
 
 ```java
  public static void main(String[] args) {
-    OpenAiLlmConfig config = new OpenAiLlmConfig();
+    OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAiLlm llm = new OpenAiLlm(config);
+    OpenAILlm llm = new OpenAILlm(config);
 
     FunctionPrompt prompt = new FunctionPrompt("今日の北京の天気はどうですか？", WeatherUtil.class);
     FunctionResultResponse response = llm.chat(prompt);

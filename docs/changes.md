@@ -170,7 +170,7 @@
 - feat: add SpringBoot3 auto config support @songyinyin
 - feat: add openSearch store support @songyinyin
 - fix: fix config error in QwenAutoConfiguration @songyinyin
-- fix: NPE in OpenAiLLmUtil.promptToEmbeddingsPayload
+- fix: NPE in OpenAILLmUtil.promptToEmbeddingsPayload
 - fix: fix FunctionMessageResponse error in BaseLlmClientListener, @imayou
 - refactor: update bom module
 - refactor: optimize SparkLlm.java
@@ -181,7 +181,7 @@
 - 新增: 添加对 SpringBoot3 自动配置的支持 @songyinyin
 - 新增: 添加使用 openSearch 用于向量数据存储的支持 @songyinyin
 - 修复: 修复 QwenAutoConfiguration 配置错误的问题  @songyinyin
-- 修复: 修复 OpenAiLLmUtil.promptToEmbeddingsPayload 空指针异常的问题
+- 修复: 修复 OpenAILLmUtil.promptToEmbeddingsPayload 空指针异常的问题
 - 修复: 修复 FunctionMessageResponse 在某些情况下出错的问题, @imayou
 - 优化: 更新重构 bom 模块
 - 优化: 优化 SparkLlm.java 的相关代码
@@ -276,7 +276,7 @@
 
 
 ## v1.0.0-beta.4 20240531
-- feat: OpenAiLlm support embedding model config
+- feat: OpenAILlm support embedding model config
 - feat: add get dimensions method in EmbeddingModel
 - feat: SparkLlm support embedding
 - feat: optimize MilvusVectorStore
@@ -289,7 +289,7 @@
 
 
 ---
-- 新增：OpenAiLlm 添加自定义 embedding 模型的支持
+- 新增：OpenAILlm 添加自定义 embedding 模型的支持
 - 新增：EmbeddingModel 添加获取向量维度的支持
 - 新增：SparkLlm 星火大模型添加对 embedding 的支持
 - 新增：添加 Milvus 向量数据库的支持

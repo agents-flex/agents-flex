@@ -4,7 +4,7 @@
 
 ```java
 public static void main(String[] args) {
-    Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
     Prompt prompt = new SimplePrompt("what is your name?");
     String response = llm.chat(prompt);

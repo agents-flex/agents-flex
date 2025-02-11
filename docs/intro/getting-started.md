@@ -32,10 +32,10 @@ implementation 'com.agentsflex:agents-flex-bom:1.0.0-rc.5'
 ```java
 public class Main {
     public static void main(String[] args) {
-        OpenAiLlmConfig config = new OpenAiLlmConfig();
+        OpenAILlmConfig config = new OpenAILlmConfig();
         config.setApiKey("sk-rts5NF6n*******");
 
-        Llm llm = new OpenAiLlm(config);
+        Llm llm = new OpenAILlm(config);
         String response = llm.chat("What is your name?");
 
         System.out.println(response);
@@ -43,13 +43,13 @@ public class Main {
 }
 ```
 
-Simplify LLM object creation using `OpenAiLlm.of`:
+Simplify LLM object creation using `OpenAILlm.of`:
 
 
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+        Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
         String response = llm.chat("what is your name?");
 
         System.out.println(response);
@@ -65,7 +65,7 @@ Streaming Conversation requires calling the `chatStream` method, and passing the
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+        Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
         llm.chatStream("what is your name?", new StreamResponseListener<AiMessageResponse, AiMessage>() {
             @Override

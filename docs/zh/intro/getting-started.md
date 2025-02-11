@@ -32,7 +32,7 @@ implementation 'com.agentsflex:agents-flex-bom:1.0.0-rc.5'
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = OpenAiLlm.of("sk-rts5NF6n*******");
+        Llm llm = OpenAILlm.of("sk-rts5NF6n*******");
         String response = llm.chat("what is your name?");
 
         System.out.println(response);
@@ -41,17 +41,17 @@ public class Main {
 ```
 
 
-或者，我们为 `OpenAiLlm` 添加更多的配置：
+或者，我们为 `OpenAILlm` 添加更多的配置：
 
 ```java
 public class Main {
     public static void main(String[] args) {
-        OpenAiLlmConfig config = new OpenAiLlmConfig();
+        OpenAILlmConfig config = new OpenAILlmConfig();
         config.setEndpoint("https://api.openai.com");
         config.setApiKey("sk-rts5NF6n*******");
         config.setModel("gpt-3.5-turbo");
 
-        Llm llm = new OpenAiLlm(config);
+        Llm llm = new OpenAILlm(config);
         String response = llm.chat("请问你叫什么名字");
 
         System.out.println(response);
@@ -67,7 +67,7 @@ public class Main {
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+        Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
         llm.chatStream("what is your name?", new StreamResponseListener() {
             @Override

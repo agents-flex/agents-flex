@@ -17,18 +17,18 @@ package com.agentsflex.image.test;
 
 import com.agentsflex.core.image.GenerateImageRequest;
 import com.agentsflex.core.image.ImageResponse;
-import com.agentsflex.image.openai.OpenAiImageModel;
-import com.agentsflex.image.openai.OpenAiImageModelConfig;
+import com.agentsflex.image.openai.OpenAIImageModel;
+import com.agentsflex.image.openai.OpenAIImageModelConfig;
 import org.junit.Test;
 
-public class OpenAiImageModelTest {
+public class OpenAIImageModelTest {
 
     @Test
     public void testGenImage(){
-        OpenAiImageModelConfig config = new OpenAiImageModelConfig();
+        OpenAIImageModelConfig config = new OpenAIImageModelConfig();
         config.setApiKey("sk-5gqOclb****");
 
-        OpenAiImageModel imageModel = new OpenAiImageModel(config);
+        OpenAIImageModel imageModel = new OpenAIImageModel(config);
 
         GenerateImageRequest request = new GenerateImageRequest();
         request.setPrompt("A cute little tiger standing in the high-speed train");

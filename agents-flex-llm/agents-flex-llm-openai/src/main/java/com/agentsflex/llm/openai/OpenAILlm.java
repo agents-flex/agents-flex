@@ -41,8 +41,8 @@ import java.util.function.Consumer;
 public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
 
     private final HttpClient httpClient = new HttpClient();
-    public AiMessageParser aiMessageParser = OpenAiLlmUtil.getAiMessageParser(false);
-    public AiMessageParser streamMessageParser = OpenAiLlmUtil.getAiMessageParser(true);
+    public AiMessageParser aiMessageParser = OpenAILlmUtil.getAiMessageParser(false);
+    public AiMessageParser streamMessageParser = OpenAILlmUtil.getAiMessageParser(true);
 
     public static OpenAILlm of(String apiKey) {
         OpenAILlmConfig config = new OpenAILlmConfig();
@@ -72,7 +72,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
             headersConfig.accept(headers);
         }
 
-        String payload = OpenAiLlmUtil.promptToPayload(prompt, config, options, false);
+        String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
 
@@ -107,7 +107,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLlmUtil.promptToPayload(prompt, config, options, true);
+        String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, true);
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
         llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
@@ -120,7 +120,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
-        String payload = OpenAiLlmUtil.promptToEmbeddingsPayload(document, options, config);
+        String payload = OpenAILlmUtil.promptToEmbeddingsPayload(document, options, config);
         String endpoint = config.getEndpoint();
         // https://platform.openai.com/docs/api-reference/embeddings/create
         String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);

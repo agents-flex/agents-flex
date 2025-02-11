@@ -6,7 +6,7 @@
 
 ```java
 public static void main(String[] args) {
-    Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
     HistoriesPrompt prompt = new HistoriesPrompt();
     pormpt.addMessage(new HumanMessage("你叫什么名字？"));
@@ -22,7 +22,7 @@ public static void main(String[] args) {
 public static void main(String[] args) {
     System.out.println("请开始向 AI 提问！");
 
-    Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
     HistoriesPrompt prompt = new HistoriesPrompt();
 
     Scanner scanner = new Scanner(System.in);
@@ -66,7 +66,7 @@ public class DatabaseChatMemory implements ChatMemory {
 ```java
 public static void main(String[] args) {
 
-    Llm llm = new OpenAiLlm.of("sk-rts5NF6n*******");
+    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
 
     HistoriesPrompt prompt = new HistoriesPrompt(new DatabaseChatMemory());
     prompt.addMessage(new HumanMessage("user new question...."));
