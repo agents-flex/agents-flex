@@ -21,7 +21,7 @@ public class OpenAIAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public OpenAILlm openAiLlm(OpenAIProperties properties) {
+    public OpenAILlm openAILlm(OpenAIProperties properties) {
         OpenAILlmConfig config = new OpenAILlmConfig();
         config.setApiKey(properties.getApiKey());
         config.setApiSecret(properties.getApiSecret());
