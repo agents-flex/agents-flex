@@ -167,3 +167,38 @@ prompt.setHistoryMessageTruncateProcessor(...);
 prompt.setMemory(...);
 ```
 
+## 历史对话 + 方法调用
+
+```java
+public static void main(String[] args) {
+    OpenAILlmConfig config = new OpenAILlmConfig();
+    config.setApiKey("sk-rts5NF6n*******");
+
+    OpenAILlm llm = new OpenAILlm(config);
+
+    //第一步：创建一个 HistoriesPrompt
+    HistoriesPrompt prompt = new HistoriesPrompt();
+
+    System.out.println("您想问什么？");
+    Scanner scanner = new Scanner(System.in);
+    String userInput = scanner.nextLine();
+
+    while (userInput != null) {
+
+        // 第二步：创建 HumanMessage，并添加方法调用
+        HumanMessage humanMessage = new HumanMessage(userInput);
+        humanMessage.addFunctions(WeatherFunctions.class);
+
+
+        // 第三步：将 HumanMessage 添加到 HistoriesPrompt 中
+        prompt.addMessage(humanMessage);
+
+        // 第四步：调用 chatStream 方法，进行对话
+        llm.chatStream(prompt, (context, response) -> {
+            System.out.println(">>>> " + response.getMessage().getContent());
+        });
+
+        userInput = scanner.nextLine();
+    }
+}
+```
