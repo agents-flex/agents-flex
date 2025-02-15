@@ -11,4 +11,12 @@ public class WeatherFunctions {
     ) {
         return "Today it will be dull and overcast in " + name;
     }
+
+
+    @FunctionDef(name = "get_the_temperature", description = "get the temperature")
+    public static String getTemperature(
+        @FunctionParam(name = "city", description = "the city name") String name
+    ) {
+        return "The temperature in " + name + " is 15°C";
+    }
 }
