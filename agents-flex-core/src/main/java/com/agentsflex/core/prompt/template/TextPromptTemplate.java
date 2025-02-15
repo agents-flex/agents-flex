@@ -34,6 +34,10 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
     };
 
     public TextPromptTemplate(String template) {
+        if (template == null) {
+            throw new NullPointerException("template can not be null");
+        }
+
         boolean isCurrentInKeyword = false;
         StringBuilder keyword = null;
         StringBuilder content = null;
