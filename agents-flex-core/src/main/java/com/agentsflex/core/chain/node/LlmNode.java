@@ -107,7 +107,6 @@ public class LlmNode extends BaseNode {
         Map<String, Object> parameters = getParameters(chain);
 
         if (userPromptTemplate == null) {
-            chain.stopError("user prompt is null or empty");
             return Collections.emptyMap();
         }
 
