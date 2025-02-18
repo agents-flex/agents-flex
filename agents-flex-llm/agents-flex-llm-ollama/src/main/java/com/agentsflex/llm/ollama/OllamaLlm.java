@@ -27,6 +27,7 @@ import com.agentsflex.core.llm.client.impl.DnjsonClient;
 import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
@@ -109,7 +110,8 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         JSONObject jsonObject = JSON.parseObject(response);
         String error = jsonObject.getString("error");
 
-        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
+        AiMessage aiMessage = aiMessageParser.parse(jsonObject);
+        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessage);
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);

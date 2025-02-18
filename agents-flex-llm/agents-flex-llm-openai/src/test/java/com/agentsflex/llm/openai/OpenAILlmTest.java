@@ -7,6 +7,7 @@ import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.ImagePrompt;
+import com.agentsflex.core.prompt.ToolPrompt;
 import org.junit.Test;
 
 public class OpenAILlmTest {
@@ -44,6 +45,7 @@ public class OpenAILlmTest {
             throw new RuntimeException(e);
         }
     }
+
     @Test
     public void testChatOllama() {
         OpenAILlmConfig config = new OpenAILlmConfig();
@@ -85,7 +87,7 @@ public class OpenAILlmTest {
 
 
     @Test()
-    public void testFunctionCalling() throws InterruptedException {
+    public void testFunctionCalling1() throws InterruptedException {
         OpenAILlmConfig config = new OpenAILlmConfig();
         config.setApiKey("sk-rts5NF6n*******");
 
@@ -95,6 +97,24 @@ public class OpenAILlmTest {
         AiMessageResponse response = llm.chat(prompt);
 
         System.out.println(response.callFunctions());
-        // "Today it will be dull and overcast in 北京"
+        // 阴转多云
+    }
+
+    @Test()
+    public void testFunctionCalling2() throws InterruptedException {
+        OpenAILlmConfig config = new OpenAILlmConfig();
+        config.setApiKey("sk-rts5NF6n*******");
+
+        OpenAILlm llm = new OpenAILlm(config);
+
+        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        AiMessageResponse response = llm.chat(prompt);
+
+        if (response.isFunctionCall()) {
+            AiMessageResponse response1 = llm.chat(ToolPrompt.of(response));
+            System.out.println(response1.getMessage().getContent());
+        } else {
+            System.out.println(response.getMessage().getContent());
+        }
     }
 }

@@ -15,36 +15,15 @@
  */
 package com.agentsflex.core.message;
 
-import java.io.Serializable;
-import java.util.Map;
+public class ToolMessage extends AbstractTextMessage{
 
-public class FunctionCall implements Serializable {
+    private String toolCallId;
 
-    private String id;
-    private String name;
-    private Map<String, Object> args;
-
-    public String getId() {
-        return id;
+    public String getToolCallId() {
+        return toolCallId;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Map<String, Object> getArgs() {
-        return args;
-    }
-
-    public void setArgs(Map<String, Object> args) {
-        this.args = args;
+    public void setToolCallId(String toolCallId) {
+        this.toolCallId = toolCallId;
     }
 }

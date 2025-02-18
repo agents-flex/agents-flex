@@ -22,6 +22,7 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
@@ -88,6 +89,10 @@ public class HistoriesPrompt extends Prompt {
         memory.addMessage(message);
     }
 
+    public void addMessages(Collection<Message> messages) {
+        memory.addMessages(messages);
+    }
+
     public ChatMemory getMemory() {
         return memory;
     }
@@ -125,4 +130,6 @@ public class HistoriesPrompt extends Prompt {
 
         return messages;
     }
+
+
 }

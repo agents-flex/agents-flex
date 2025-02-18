@@ -7,6 +7,6 @@ public class WeatherFunctions {
 
     @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
     public static String getWeatherInfo( @FunctionParam(name = "city", description = "the city name") String name) {
-        return "Today it will be dull and overcast in " + name;
+        return "阴转多云";
     }
 }

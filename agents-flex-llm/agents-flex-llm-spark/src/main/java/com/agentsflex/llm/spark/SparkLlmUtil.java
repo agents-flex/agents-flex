@@ -108,6 +108,7 @@ public class SparkLlmUtil {
                 JSONObject functionObject = jsonObject.getJSONObject("function_call");
                 if (functionObject != null) {
                     FunctionCall functionCall = new FunctionCall();
+                    functionCall.setId(jsonObject.getString("id"));
                     functionCall.setName(functionObject.getString("name"));
                     Object arguments = functionObject.get("arguments");
                     if (arguments instanceof Map) {

@@ -12,6 +12,7 @@ public class FunctionPrompt extends Prompt {
 
     private SystemMessage systemMessage;
     private HumanMessage humanMessage;
+    private boolean autoCall = true;
 
     public FunctionPrompt(String message, Class<?> functionsClass) {
         this.humanMessage = new HumanMessage(message);
@@ -39,10 +40,18 @@ public class FunctionPrompt extends Prompt {
         this.humanMessage = humanMessage;
     }
 
+    public boolean isAutoCall() {
+        return autoCall;
+    }
+
+    public void setAutoCall(boolean autoCall) {
+        this.autoCall = autoCall;
+    }
+
     @Override
     public List<Message> toMessages() {
         List<Message> messages = new ArrayList<>();
-        if (systemMessage != null){
+        if (systemMessage != null) {
             messages.add(0, systemMessage);
         }
 

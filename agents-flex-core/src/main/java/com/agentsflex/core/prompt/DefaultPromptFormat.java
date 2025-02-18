@@ -17,10 +17,10 @@ package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.functions.Function;
 import com.agentsflex.core.functions.Parameter;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.HumanMessage;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.SystemMessage;
+import com.agentsflex.core.message.*;
+import com.agentsflex.core.util.Maps;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,7 +30,7 @@ import java.util.Map;
 public class DefaultPromptFormat implements PromptFormat {
 
     @Override
-    public Object toMessagesJsonObject(List<Message> messages ) {
+    public Object toMessagesJsonObject(List<Message> messages) {
         if (messages == null || messages.isEmpty()) {
             return null;
         }
@@ -48,12 +48,35 @@ public class DefaultPromptFormat implements PromptFormat {
                 map.put("role", "user");
             } else if (message instanceof AiMessage) {
                 map.put("role", "assistant");
+                buildToolCalls(map, (AiMessage) message);
             } else if (message instanceof SystemMessage) {
                 map.put("role", "system");
+            } else if (message instanceof ToolMessage) {
+                map.put("role", "tool");
+                map.put("tool_call_id", ((ToolMessage) message).getToolCallId());
             }
             buildMessageContent(message, map);
             messageJsonArray.add(map);
         });
+    }
+
+    private void buildToolCalls(Map<String, Object> map, AiMessage aiMessage) {
+        List<FunctionCall> calls = aiMessage.getCalls();
+        if (calls != null && !calls.isEmpty()) {
+            List<Map<String, Object>> toolCalls = new ArrayList<>();
+            for (FunctionCall call : calls) {
+                Maps toolCall = new Maps();
+                toolCall.set("id", call.getId())
+                    .set("type", "function")
+                    .set("function", Maps.of("name", call.getName())
+                        .set("arguments", JSON.toJSONString(call.getArgs(), SerializerFeature.DisableCircularReferenceDetect))
+//                            .set("arguments", call.getArgs())
+                    );
+
+                toolCalls.add(toolCall);
+            }
+            map.put("tool_calls", toolCalls);
+        }
     }
 
 

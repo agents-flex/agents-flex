@@ -64,6 +64,14 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
         this.message = message;
     }
 
+    public boolean isFunctionCall() {
+        if (this.message == null) {
+            return false;
+        }
+        List<FunctionCall> calls = message.getCalls();
+        return calls != null && !calls.isEmpty();
+    }
+
 
     public List<FunctionCaller> getFunctionCallers() {
         if (this.message == null) {

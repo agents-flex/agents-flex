@@ -18,7 +18,6 @@ package com.agentsflex.llm.qwen;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
@@ -27,6 +26,7 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.MessageUtil;
 
 import java.util.List;
 
@@ -42,12 +42,12 @@ public class QwenLlmUtil {
     public static String promptToPayload(Prompt prompt, QwenLlmConfig config, ChatOptions options, boolean withStream) {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
         List<Message> messages = prompt.toMessages();
-        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
+        Message message = CollectionUtil.lastItem(messages);
         return Maps.of("model", config.getModel())
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
-            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
-            .setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
+            .setIfContainsKey("tools", "tool_choice", MessageUtil.getToolChoice(message))
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotEmpty("stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())

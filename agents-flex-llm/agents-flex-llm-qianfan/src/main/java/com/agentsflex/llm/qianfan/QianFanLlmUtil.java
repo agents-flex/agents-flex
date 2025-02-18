@@ -5,7 +5,6 @@ import com.agentsflex.core.functions.Function;
 import com.agentsflex.core.functions.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
@@ -14,6 +13,7 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.MessageUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 public class QianFanLlmUtil {
-    private static final PromptFormat promptFormat = new DefaultPromptFormat(){
+    private static final PromptFormat promptFormat = new DefaultPromptFormat() {
         @Override
         protected void buildFunctionJsonArray(List<Map<String, Object>> functionsJsonArray, List<Function> functions) {
             for (Function function : functions) {
@@ -49,7 +49,7 @@ public class QianFanLlmUtil {
                     Map<String, Object> parameterObj = new HashMap<>();
                     parameterObj.put("type", parameter.getType());
                     parameterObj.put("description", parameter.getDescription());
-                    if(parameter.getEnums().length>0){
+                    if (parameter.getEnums().length > 0) {
                         parameterObj.put("enum", parameter.getEnums());
                     }
                     if (parameter.isRequired()) {
@@ -79,21 +79,19 @@ public class QianFanLlmUtil {
         documents.add(text.getContent());
         return Maps.of("model", options.getModelOrDefault(config.getEmbeddingModel()))
             .set("encoding_format", "float")
-            .set("input",documents)
+            .set("input", documents)
             .toJSON();
     }
 
 
-
-
     public static String promptToPayload(Prompt prompt, QianFanLlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
-        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
+        Message message = CollectionUtil.lastItem(messages);
         return Maps.of("model", config.getModel())
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
-            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
-            .setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
+            .setIfContainsKey("tools", "tool_choice", MessageUtil.getToolChoice(message))
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotEmpty("stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())

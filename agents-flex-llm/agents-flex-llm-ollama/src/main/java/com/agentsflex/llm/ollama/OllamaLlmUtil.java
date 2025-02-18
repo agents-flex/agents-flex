@@ -25,6 +25,7 @@ import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -79,6 +80,7 @@ public class OllamaLlmUtil {
                 JSONObject functionObject = jsonObject.getJSONObject("function");
                 if (functionObject != null) {
                     FunctionCall functionCall = new FunctionCall();
+                    functionCall.setId(jsonObject.getString("id"));
                     functionCall.setName(functionObject.getString("name"));
                     Object arguments = functionObject.get("arguments");
                     if (arguments instanceof Map) {
@@ -102,7 +104,7 @@ public class OllamaLlmUtil {
         return Maps.of("model", config.getModel())
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(!stream, "stream", stream)
-            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1)))
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(CollectionUtil.lastItem(messages)))
             .setIfNotEmpty("options.seed", options.getSeed())
             .setIfNotEmpty("options.top_k", options.getTopK())
             .setIfNotEmpty("options.top_p", options.getTopP())

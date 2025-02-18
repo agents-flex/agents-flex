@@ -13,38 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.message;
+package com.agentsflex.core.util;
 
-import java.io.Serializable;
-import java.util.Map;
+import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.message.Message;
 
-public class FunctionCall implements Serializable {
-
-    private String id;
-    private String name;
-    private Map<String, Object> args;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Map<String, Object> getArgs() {
-        return args;
-    }
-
-    public void setArgs(Map<String, Object> args) {
-        this.args = args;
+public class MessageUtil {
+    public static String getToolChoice(Message message) {
+        if (message instanceof HumanMessage) {
+            return ((HumanMessage) message).getToolChoice();
+        }
+        return null;
     }
 }
