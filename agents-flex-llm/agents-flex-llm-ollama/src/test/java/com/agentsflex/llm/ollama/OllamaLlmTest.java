@@ -85,7 +85,6 @@ public class OllamaLlmTest {
             AiMessageResponse response1 = llm.chat(ToolPrompt.of(response));
             System.out.println(response1.getMessage().getContent());
         }
-
     }
 
 

@@ -60,7 +60,7 @@ public class DefaultPromptFormat implements PromptFormat {
         });
     }
 
-    private void buildToolCalls(Map<String, Object> map, AiMessage aiMessage) {
+    protected void buildToolCalls(Map<String, Object> map, AiMessage aiMessage) {
         List<FunctionCall> calls = aiMessage.getCalls();
         if (calls != null && !calls.isEmpty()) {
             List<Map<String, Object>> toolCalls = new ArrayList<>();
@@ -69,14 +69,17 @@ public class DefaultPromptFormat implements PromptFormat {
                 toolCall.set("id", call.getId())
                     .set("type", "function")
                     .set("function", Maps.of("name", call.getName())
-                        .set("arguments", JSON.toJSONString(call.getArgs(), SerializerFeature.DisableCircularReferenceDetect))
-//                            .set("arguments", call.getArgs())
+                        .set("arguments", buildToolCallsArguments(call.getArgs()))
                     );
 
                 toolCalls.add(toolCall);
             }
             map.put("tool_calls", toolCalls);
         }
+    }
+
+    protected Object buildToolCallsArguments(Map<String, Object> arguments) {
+        return JSON.toJSONString(arguments, SerializerFeature.DisableCircularReferenceDetect);
     }
 
 

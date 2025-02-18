@@ -52,6 +52,11 @@ public class OllamaLlmUtil {
                 super.buildMessageContent(message, map);
             }
         }
+
+        @Override
+        protected Object buildToolCallsArguments(Map<String, Object> arguments) {
+            return arguments;
+        }
     };
 
 
