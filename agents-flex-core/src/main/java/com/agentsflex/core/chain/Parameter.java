@@ -16,42 +16,50 @@
 package com.agentsflex.core.chain;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-public class InputParameter implements Serializable {
+public class Parameter implements Serializable {
+    protected String id;
     protected String name;
     protected String description;
     protected DataType dataType;
     protected String ref;
     protected RefType refType;
+    protected String value;
     protected boolean required;
+    protected List<Parameter> children;
 
-    protected List<InputParameter> children;
-
-    public InputParameter() {
+    public Parameter() {
     }
 
-    public InputParameter(String name) {
+    public Parameter(String name) {
         this.name = name;
     }
 
-    public InputParameter(String name, DataType dataType) {
+    public Parameter(String name, DataType dataType) {
         this.name = name;
         this.dataType = dataType;
     }
 
-    public InputParameter(String name, boolean required) {
+    public Parameter(String name, boolean required) {
         this.name = name;
         this.required = required;
     }
 
-    public InputParameter(String name, DataType dataType, boolean required) {
+    public Parameter(String name, DataType dataType, boolean required) {
         this.name = name;
         this.dataType = dataType;
         this.required = required;
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public String getName() {
         return name;
@@ -93,6 +101,14 @@ public class InputParameter implements Serializable {
         this.refType = refType;
     }
 
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
+
     public boolean isRequired() {
         return required;
     }
@@ -101,29 +117,38 @@ public class InputParameter implements Serializable {
         this.required = required;
     }
 
-    public List<InputParameter> getChildren() {
+    public List<Parameter> getChildren() {
         return children;
     }
 
-    public void setChildren(List<InputParameter> children) {
+    public void setChildren(List<Parameter> children) {
         this.children = children;
     }
 
-    public void addChild(InputParameter inputParameter) {
-        if (this.children == null) {
-            this.children = new ArrayList<>();
+    public void addChild(Parameter parameter) {
+        if (children == null) {
+            children = new java.util.ArrayList<>();
         }
-        this.children.add(inputParameter);
+        children.add(parameter);
+    }
+
+    public void addChildren(Collection<Parameter> parameters) {
+        if (children == null) {
+            children = new java.util.ArrayList<>();
+        }
+        children.addAll(parameters);
     }
 
     @Override
     public String toString() {
-        return "InputParameter{" +
-            "name='" + name + '\'' +
+        return "Parameter{" +
+            "id='" + id + '\'' +
+            ", name='" + name + '\'' +
             ", description='" + description + '\'' +
             ", dataType=" + dataType +
             ", ref='" + ref + '\'' +
             ", refType=" + refType +
+            ", value='" + value + '\'' +
             ", required=" + required +
             ", children=" + children +
             '}';

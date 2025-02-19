@@ -16,7 +16,7 @@
 package com.agentsflex.core.chain.node;
 
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.OutputKey;
+import com.agentsflex.core.chain.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
@@ -128,7 +128,7 @@ public class LlmNode extends BaseNode {
         if (outType == null || outType.equalsIgnoreCase("text") || outType.equalsIgnoreCase("markdown")) {
             return Maps.of("output", response.getMessage().getContent());
         } else {
-            if (this.outputKeys != null) {
+            if (this.outputDefs != null) {
                 JSONObject jsonObject;
                 try {
                     jsonObject = JSON.parseObject(response.getResponse());
@@ -137,8 +137,8 @@ public class LlmNode extends BaseNode {
                     return Collections.emptyMap();
                 }
                 Map<String, Object> map = new HashMap<>();
-                for (OutputKey outputKey : this.outputKeys) {
-                    map.put(outputKey.getName(), jsonObject.get(outputKey.getName()));
+                for (Parameter outputDef : this.outputDefs) {
+                    map.put(outputDef.getName(), jsonObject.get(outputDef.getName()));
                 }
                 return map;
             }
@@ -159,8 +159,8 @@ public class LlmNode extends BaseNode {
             ", systemPromptTemplate=" + systemPromptTemplate +
             ", outType='" + outType + '\'' +
             ", description='" + description + '\'' +
-            ", inputParameters=" + inputParameters +
-            ", outputKeys=" + outputKeys +
+            ", parameters=" + parameters +
+            ", outputDefs=" + outputDefs +
             ", id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", async=" + async +

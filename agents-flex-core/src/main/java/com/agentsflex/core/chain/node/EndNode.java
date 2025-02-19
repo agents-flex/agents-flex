@@ -16,7 +16,7 @@
 package com.agentsflex.core.chain.node;
 
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.OutputKey;
+import com.agentsflex.core.chain.Parameter;
 import com.agentsflex.core.chain.RefType;
 import com.agentsflex.core.util.StringUtil;
 
@@ -58,13 +58,13 @@ public class EndNode extends BaseNode {
             }
         }
 
-        if (this.outputKeys != null) {
+        if (this.outputDefs != null) {
             Map<String, Object> output = new HashMap<>();
-            for (OutputKey outputKey : this.outputKeys) {
-                if (outputKey.getRefType() == RefType.REF) {
-                    output.put(outputKey.getName(), chain.get(outputKey.getRef()));
-                } else if (outputKey.getRefType() == RefType.INPUT) {
-                    output.put(outputKey.getName(), outputKey.getRef());
+            for (Parameter outputDef : this.outputDefs) {
+                if (outputDef.getRefType() == RefType.REF) {
+                    output.put(outputDef.getName(), chain.get(outputDef.getRef()));
+                } else if (outputDef.getRefType() == RefType.INPUT) {
+                    output.put(outputDef.getName(), outputDef.getRef());
                 }
             }
             return output;
@@ -80,8 +80,8 @@ public class EndNode extends BaseNode {
             "normal=" + normal +
             ", message='" + message + '\'' +
             ", description='" + description + '\'' +
-            ", inputParameters=" + inputParameters +
-            ", outputKeys=" + outputKeys +
+            ", parameters=" + parameters +
+            ", outputDefs=" + outputDefs +
             ", id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", async=" + async +

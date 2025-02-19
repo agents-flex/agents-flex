@@ -18,6 +18,7 @@ package com.agentsflex.core.chain.node;
 import com.agentsflex.core.chain.*;
 import com.agentsflex.core.util.StringUtil;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,8 +26,8 @@ import java.util.Map;
 public abstract class BaseNode extends ChainNode {
 
     protected String description;
-    protected List<InputParameter> inputParameters;
-    protected List<OutputKey> outputKeys;
+    protected List<Parameter> parameters;
+    protected List<Parameter> outputDefs;
 
 
     public String getDescription() {
@@ -37,41 +38,50 @@ public abstract class BaseNode extends ChainNode {
         this.description = description;
     }
 
-    public List<InputParameter> getInputParameters() {
-        return inputParameters;
+    public List<Parameter> getParameters() {
+        return parameters;
     }
 
-    public void setInputParameters(List<InputParameter> inputParameters) {
-        this.inputParameters = inputParameters;
+    public void setParameters(List<Parameter> parameters) {
+        this.parameters = parameters;
     }
 
-    public void addInputParameter(InputParameter inputParameter) {
-        if (inputParameters == null) {
-            inputParameters = new java.util.ArrayList<>();
+    public void addInputParameter(Parameter parameter) {
+        if (parameters == null) {
+            parameters = new java.util.ArrayList<>();
         }
-        inputParameters.add(inputParameter);
+        parameters.add(parameter);
     }
 
-    public List<OutputKey> getOutputKeys() {
-        return outputKeys;
+
+    public List<Parameter> getOutputDefs() {
+        return outputDefs;
     }
 
-    public void setOutputKeys(List<OutputKey> outputKeys) {
-        this.outputKeys = outputKeys;
+    public void setOutputDefs(List<Parameter> outputDefs) {
+        this.outputDefs = outputDefs;
     }
 
-    public void addOutputKey(OutputKey outputKey) {
-        if (outputKeys == null) {
-            outputKeys = new java.util.ArrayList<>();
+    public void addOutputDef(Parameter parameter){
+        if (outputDefs == null) {
+            outputDefs = new java.util.ArrayList<>();
         }
-        outputKeys.add(outputKey);
+        outputDefs.add(parameter);
+    }
+
+    public void addOutputDefs(Collection<Parameter> parameters){
+        if (outputDefs == null) {
+            outputDefs = new java.util.ArrayList<>();
+        }
+        outputDefs.addAll(parameters);
     }
 
 
-    public Map<String, Object> getChainParameters(Chain chain, List<InputParameter> inputParameters) {
+
+    public Map<String, Object> getChainParameters(Chain chain, List<Parameter> parameters) {
         Map<String, Object> variables = new HashMap<>();
-        if (inputParameters != null) {
-            for (InputParameter parameter : inputParameters) {
+        if (parameters != null) {
+            for (Parameter parameter : parameters) {
                 RefType refType = parameter.getRefType();
                 Object value;
                 if (refType == RefType.INPUT) {
@@ -101,6 +111,6 @@ public abstract class BaseNode extends ChainNode {
     }
 
     public Map<String, Object> getParameters(Chain chain) {
-        return getChainParameters(chain, this.inputParameters);
+        return getChainParameters(chain, this.parameters);
     }
 }

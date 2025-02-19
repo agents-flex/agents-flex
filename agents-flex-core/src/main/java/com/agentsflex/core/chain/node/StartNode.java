@@ -23,7 +23,7 @@ import java.util.Map;
 public class StartNode extends BaseNode {
     @Override
     protected Map<String, Object> execute(Chain chain) {
-        if (inputParameters != null) {
+        if (parameters != null) {
             return getParameters(chain);
         }
         return Collections.emptyMap();
@@ -33,8 +33,8 @@ public class StartNode extends BaseNode {
     public String toString() {
         return "StartNode{" +
             "description='" + description + '\'' +
-            ", inputParameters=" + inputParameters +
-            ", outputKeys=" + outputKeys +
+            ", parameters=" + parameters +
+            ", outputDefs=" + outputDefs +
             ", id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", async=" + async +

@@ -213,23 +213,23 @@ public class Chain extends ChainNode {
     }
 
 
-    public List<InputParameter> getInputParameters() {
+    public List<Parameter> getParameters() {
         List<ChainNode> startNodes = this.getStartNodes();
         if (startNodes == null || startNodes.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<InputParameter> inputParameters = new ArrayList<>();
+        List<Parameter> parameters = new ArrayList<>();
         for (ChainNode node : startNodes) {
             if (node instanceof BaseNode) {
-                List<InputParameter> nodeInputParameters = ((BaseNode) node).getInputParameters();
-                if (nodeInputParameters != null) inputParameters.addAll(nodeInputParameters);
+                List<Parameter> nodeParameters = ((BaseNode) node).getParameters();
+                if (nodeParameters != null) parameters.addAll(nodeParameters);
             } else if (node instanceof Chain) {
-                List<InputParameter> chainInputParameters = ((Chain) node).getInputParameters();
-                if (chainInputParameters != null) inputParameters.addAll(chainInputParameters);
+                List<Parameter> chainParameters = ((Chain) node).getParameters();
+                if (chainParameters != null) parameters.addAll(chainParameters);
             }
         }
-        return inputParameters;
+        return parameters;
     }
 
     public NodeContext getNodeContext(String nodeId) {
