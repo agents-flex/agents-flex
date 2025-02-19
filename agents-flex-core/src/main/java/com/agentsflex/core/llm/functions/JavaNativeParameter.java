@@ -13,17 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.functions;
+package com.agentsflex.core.llm.functions;
 
-import java.util.Map;
+public class JavaNativeParameter extends Parameter {
 
-public interface Function {
+    protected Class<?> typeClass;
 
-     String getName();
+    public Class<?> getTypeClass() {
+        return typeClass;
+    }
 
-     String getDescription();
-
-     Parameter[] getParameters();
-
-     Object invoke(Map<String, Object> argsMap) ;
+    public void setTypeClass(Class<?> typeClass) {
+        this.typeClass = typeClass;
+    }
 }

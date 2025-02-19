@@ -311,7 +311,7 @@
 
 ---
 - 新增：为 Agent 添加 description 属性，方便用于 AI 自动编排的场景
-- 新增：Agent 添加对 outputKeys 的定义支持
+- 新增：Agent 添加对 outputDefs 的定义支持
 - 新增：添加 DocumentIdGenerator 用于在对文档存储时自动生成 id 的功能
 - 新增：StoreOptions 添加多个 partitionName 配置的支持
 - 新增：当 Document 保存成功时，自动返回保存的 id

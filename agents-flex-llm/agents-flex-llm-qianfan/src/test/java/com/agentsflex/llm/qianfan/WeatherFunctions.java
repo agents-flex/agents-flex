@@ -1,7 +1,7 @@
 package com.agentsflex.llm.qianfan;
 
-import com.agentsflex.core.functions.annotation.FunctionDef;
-import com.agentsflex.core.functions.annotation.FunctionParam;
+import com.agentsflex.core.llm.functions.annotation.FunctionDef;
+import com.agentsflex.core.llm.functions.annotation.FunctionParam;
 
 public class WeatherFunctions {
 

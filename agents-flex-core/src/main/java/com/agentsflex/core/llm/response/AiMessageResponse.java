@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.llm.response;
 
-import com.agentsflex.core.functions.Function;
+import com.agentsflex.core.llm.functions.Function;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.message.HumanMessage;

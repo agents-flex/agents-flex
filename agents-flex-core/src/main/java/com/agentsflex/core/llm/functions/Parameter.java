@@ -13,18 +13,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.functions;
-
+package com.agentsflex.core.llm.functions;
 
 import java.io.Serializable;
 
-public abstract class BaseFunction implements Function, Serializable {
+public class Parameter implements Serializable {
 
     protected String name;
+    protected String type;
     protected String description;
-    protected Parameter[] parameters;
+    protected String[] enums;
+    protected boolean required = false;
 
-    @Override
     public String getName() {
         return name;
     }
@@ -33,7 +33,14 @@ public abstract class BaseFunction implements Function, Serializable {
         this.name = name;
     }
 
-    @Override
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -42,12 +49,19 @@ public abstract class BaseFunction implements Function, Serializable {
         this.description = description;
     }
 
-    @Override
-    public Parameter[] getParameters() {
-        return parameters;
+    public String[] getEnums() {
+        return enums;
     }
 
-    public void setParameters(Parameter[] parameters) {
-        this.parameters = parameters;
+    public void setEnums(String[] enums) {
+        this.enums = enums;
+    }
+
+    public boolean isRequired() {
+        return required;
+    }
+
+    public void setRequired(boolean required) {
+        this.required = required;
     }
 }

@@ -1,8 +1,8 @@
 package com.agentsflex.llm.qianfan;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.functions.Function;
-import com.agentsflex.core.functions.Parameter;
+import com.agentsflex.core.llm.functions.Function;
+import com.agentsflex.core.llm.functions.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.message.Message;

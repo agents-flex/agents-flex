@@ -13,14 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.functions.annotation;
+package com.agentsflex.core.llm.functions;
 
-import java.lang.annotation.*;
+import java.util.Map;
 
-@Inherited
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
-public @interface FunctionDef {
-    String name() default "";
-    String description();
+public interface Function {
+
+     String getName();
+
+     String getDescription();
+
+     Parameter[] getParameters();
+
+     Object invoke(Map<String, Object> argsMap) ;
 }

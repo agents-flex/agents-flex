@@ -15,8 +15,8 @@
  */
 package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.functions.Function;
-import com.agentsflex.core.functions.Parameter;
+import com.agentsflex.core.llm.functions.Function;
+import com.agentsflex.core.llm.functions.Parameter;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;

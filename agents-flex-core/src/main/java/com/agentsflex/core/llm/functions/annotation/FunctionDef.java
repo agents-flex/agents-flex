@@ -13,17 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.functions;
+package com.agentsflex.core.llm.functions.annotation;
 
-public class JavaNativeParameter extends Parameter {
+import java.lang.annotation.*;
 
-    protected Class<?> typeClass;
-
-    public Class<?> getTypeClass() {
-        return typeClass;
-    }
-
-    public void setTypeClass(Class<?> typeClass) {
-        this.typeClass = typeClass;
-    }
+@Inherited
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD})
+public @interface FunctionDef {
+    String name() default "";
+    String description();
 }

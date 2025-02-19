@@ -50,8 +50,8 @@ public class GroovyExecNode extends CodeNode {
             "inwardEdges=" + inwardEdges +
             ", code='" + code + '\'' +
             ", description='" + description + '\'' +
-            ", inputParameters=" + inputParameters +
-            ", outputKeys=" + outputKeys +
+            ", parameters=" + parameters +
+            ", outputDefs=" + outputDefs +
             ", id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", async=" + async +

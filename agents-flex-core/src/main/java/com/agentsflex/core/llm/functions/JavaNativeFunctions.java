@@ -13,9 +13,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.functions;
+package com.agentsflex.core.llm.functions;
 
-import com.agentsflex.core.functions.annotation.FunctionDef;
+import com.agentsflex.core.llm.functions.annotation.FunctionDef;
 import com.agentsflex.core.util.ArrayUtil;
 import com.agentsflex.core.util.ClassUtil;
 

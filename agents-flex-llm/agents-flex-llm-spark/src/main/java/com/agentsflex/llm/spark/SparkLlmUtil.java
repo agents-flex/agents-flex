@@ -16,8 +16,8 @@
 package com.agentsflex.llm.spark;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.functions.Function;
-import com.agentsflex.core.functions.Parameter;
+import com.agentsflex.core.llm.functions.Function;
+import com.agentsflex.core.llm.functions.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionCall;

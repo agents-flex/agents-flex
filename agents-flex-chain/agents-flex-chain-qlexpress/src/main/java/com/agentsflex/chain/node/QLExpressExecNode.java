@@ -50,8 +50,8 @@ public class QLExpressExecNode extends CodeNode {
         return "QLExpressExecNode{" +
             "code='" + code + '\'' +
             ", description='" + description + '\'' +
-            ", inputParameters=" + inputParameters +
-            ", outputKeys=" + outputKeys +
+            ", parameters=" + parameters +
+            ", outputDefs=" + outputDefs +
             ", id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", async=" + async +
