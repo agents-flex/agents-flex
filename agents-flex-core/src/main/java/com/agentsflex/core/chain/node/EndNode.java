@@ -66,6 +66,10 @@ public class EndNode extends BaseNode {
                 } else if (outputDef.getRefType() == RefType.INPUT) {
                     output.put(outputDef.getName(), outputDef.getRef());
                 }
+                // default is ref type
+                else if (StringUtil.hasText(outputDef.getRef())) {
+                    output.put(outputDef.getName(), chain.get(outputDef.getRef()));
+                }
             }
             return output;
         }
