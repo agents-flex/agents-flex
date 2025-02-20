@@ -56,6 +56,29 @@ public void testChatStream() {
 }
 ```
 
+## 流式对话之停止对话
+
+```java
+@Test()
+public void testChatStream() {
+    OpenAILlmConfig config = new OpenAILlmConfig();
+
+    // 设置你的 OpenAI API Key
+    config.setApiKey("sk-rts5NF6n*******");
+
+    Llm llm = new OpenAILlm(config);
+    llm.chatStream("你叫什么名字", new StreamResponseListener() {
+        @Override
+        public void onMessage(ChatContext context, AiMessageResponse response) {
+            System.out.println(response.getMessage().getContent());
+
+            //停止对话
+            context.getClient().stop();
+        }
+    });
+}
+```
+
 ## 图片识别对话
 
 ```java
