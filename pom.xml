@@ -380,8 +380,8 @@
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <version>2.10.4</version>
                         <configuration>
-                            <windowtitle>Mybatis-Flex</windowtitle>
-                            <doctitle>Mybatis-Flex</doctitle>
+                            <windowtitle>Agents-Flex</windowtitle>
+                            <doctitle>Agents-Flex</doctitle>
                             <show>private</show>
                             <detectLinks>false</detectLinks>
                             <detectOfflineLinks>true</detectOfflineLinks>
