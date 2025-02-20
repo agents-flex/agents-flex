@@ -1,5 +1,31 @@
 # Agents-Flex ChangeLog
 
+## v1.0.0-rc.6 20250220
+- feat: Springboot's automatic configuration class for Ollama
+- feat: Added ToolPrompt function to facilitate the use with Function Call
+- refactor: Change openAi to openAI
+- refactor: Optimize LlmNode and TextPromptTemplate
+- refactor: Upgrade related dependencies to the latest version
+- refactor: Optimize the empty user prompt words defined during the LlmNode runtime
+- refactor: Move the package name of functions to the directory llm (destructive update!!!)
+- refactor: Refactor InputParameter and OutputKey to merge into Parameter (destructive update!!!)
+- fix: Use the openai interface to connect to the local ollama to build a large model, and multiple function definitions are called abnormally
+- fix: Fix the problem that agents-flex-bom cannot pull group code
+
+---
+- 新增：Springboot 对 Ollama 的自动配置类
+- 新增：新增 ToolPrompt 功能，方便配合 Function Call 的使用
+- 优化：修改 openAi 为 openAI
+- 优化：优化 LlmNode 和 TextPromptTemplate
+- 优化：升级相关依赖到最新版本
+- 优化：优化  LlmNode 运行期定义空的用户提示词
+- 优化：移动 functions 的包名到目录 llm（破坏性更新 !!!）
+- 优化：重构 InputParameter 和 OutputKey 合并到 Parameter（破坏性更新 !!!）
+- 修复：使用 openai 接口对接本地 ollama 搭建大模型，多个函数定义调用异常
+- 修复：修复 agents-flex-bom 无法拉群代码的问题
+
+
+
 ## v1.0.0-rc.5 20250210
 - feat: Added support for VectoRex vector database
 - feat: Added support for DeepSeek large models
