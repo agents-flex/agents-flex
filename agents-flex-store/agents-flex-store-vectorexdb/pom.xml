@@ -9,8 +9,8 @@
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-store-vectorex</name>
-    <artifactId>agents-flex-store-vectorex</artifactId>
+    <name>agents-flex-store-vectorexdb</name>
+    <artifactId>agents-flex-store-vectorexdb</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -27,13 +27,13 @@
 
         <dependency>
             <groupId>io.github.javpower</groupId>
-            <artifactId>vectorex-client</artifactId>
+            <artifactId>vectorex-core</artifactId>
             <version>1.5.3</version>
         </dependency>
 
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-spark</artifactId>
+            <artifactId>agents-flex-llm-openai</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
