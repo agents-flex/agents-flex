@@ -28,7 +28,7 @@
         <dependency>
             <groupId>io.github.javpower</groupId>
             <artifactId>vectorex-client</artifactId>
-            <version>1.4.0</version>
+            <version>1.5.3</version>
         </dependency>
 
         <dependency>
