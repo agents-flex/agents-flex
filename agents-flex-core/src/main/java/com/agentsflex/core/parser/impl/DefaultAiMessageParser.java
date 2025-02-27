@@ -35,6 +35,7 @@ import java.util.Map;
 public class DefaultAiMessageParser implements AiMessageParser {
 
     private String contentPath;
+    private String reasoningContentPath;
     private String indexPath;
     private String totalTokensPath;
     private String promptTokensPath;
@@ -48,6 +49,14 @@ public class DefaultAiMessageParser implements AiMessageParser {
 
     public void setContentPath(String contentPath) {
         this.contentPath = contentPath;
+    }
+
+    public String getReasoningContentPath() {
+        return reasoningContentPath;
+    }
+
+    public void setReasoningContentPath(String reasoningContentPath) {
+        this.reasoningContentPath = reasoningContentPath;
     }
 
     public String getIndexPath() {
@@ -106,6 +115,10 @@ public class DefaultAiMessageParser implements AiMessageParser {
             aiMessage.setContent((String) JSONPath.eval(rootJson, this.contentPath));
         }
 
+        if (StringUtil.hasText(this.reasoningContentPath)) {
+            aiMessage.setReasoningContent((String) JSONPath.eval(rootJson, this.reasoningContentPath));
+        }
+
         if (StringUtil.hasText(this.indexPath)) {
             aiMessage.setIndex((Integer) JSONPath.eval(rootJson, this.indexPath));
         }
@@ -143,6 +156,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         if (isStream) {
             aiMessageParser.setContentPath("$.choices[0].delta.content");
+            aiMessageParser.setReasoningContentPath("$.choices[0].delta.reasoning_content");
         } else {
             aiMessageParser.setContentPath("$.choices[0].message.content");
         }
