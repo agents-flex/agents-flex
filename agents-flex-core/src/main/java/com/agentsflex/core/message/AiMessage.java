@@ -26,6 +26,7 @@ public class AiMessage extends AbstractTextMessage {
     private Integer completionTokens;
     private Integer totalTokens;
     private String fullContent;
+    private String reasoningContent;
     // functionName: <argName: argValue>
     private List<FunctionCall> calls;
 
@@ -75,6 +76,14 @@ public class AiMessage extends AbstractTextMessage {
 
     public void setFullContent(String fullContent) {
         this.fullContent = fullContent;
+    }
+
+    public String getReasoningContent() {
+        return reasoningContent;
+    }
+
+    public void setReasoningContent(String reasoningContent) {
+        this.reasoningContent = reasoningContent;
     }
 
     @Override
