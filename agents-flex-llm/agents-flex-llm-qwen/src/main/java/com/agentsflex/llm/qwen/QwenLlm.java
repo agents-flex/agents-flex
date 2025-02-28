@@ -39,8 +39,7 @@ import java.util.Map;
 
 public class QwenLlm extends BaseLlm<QwenLlmConfig> {
 
-
-    HttpClient httpClient = new HttpClient();
+    private final HttpClient httpClient = new HttpClient();
 
     public AiMessageParser aiMessageParser = QwenLlmUtil.getAiMessageParser(false);
     public AiMessageParser streamMessageParser = QwenLlmUtil.getAiMessageParser(true);
