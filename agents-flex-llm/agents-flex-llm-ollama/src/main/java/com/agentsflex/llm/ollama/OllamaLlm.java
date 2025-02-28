@@ -21,10 +21,8 @@ import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.client.BaseLlmClientListener;
 import com.agentsflex.core.llm.client.HttpClient;
-import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.impl.DnjsonClient;
-import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
@@ -43,7 +41,6 @@ import java.util.Map;
 public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
     private HttpClient httpClient = new HttpClient();
-    private final DnjsonClient dnjsonClient = new DnjsonClient();
     public AiMessageParser aiMessageParser = OllamaLlmUtil.getAiMessageParser();
 
 
@@ -124,7 +121,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
 
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
-        LlmClient llmClient = new SseClient();
+        DnjsonClient dnjsonClient = new DnjsonClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
@@ -132,7 +129,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         String payload = OllamaLlmUtil.promptToPayload(prompt, config, options, true);
 
         String endpoint = config.getEndpoint();
-        LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiMessageParser);
+        LlmClientListener clientListener = new BaseLlmClientListener(this, dnjsonClient, listener, prompt, aiMessageParser);
         dnjsonClient.start(endpoint + "/api/chat", headers, payload, clientListener, config);
     }
 
