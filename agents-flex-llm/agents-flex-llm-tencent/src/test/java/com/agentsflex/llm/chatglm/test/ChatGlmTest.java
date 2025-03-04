@@ -51,8 +51,8 @@ public class ChatGlmTest {
     @Test
     public void testEmbedding() {
         TencentLlmConfig config = new TencentLlmConfig();
-        config.setApiSecret("AKIDLYZN1iJjwBLNCoERXQ6YqvofR2Rj1ABI");
-        config.setApiKey("EJH4U4lcHjVBlEWebOzBMM9lBOOP1Tkq");
+        config.setApiSecret("******");
+        config.setApiKey("***********");
         Llm llm = new TencentlmLlm(config);
         Document document = new Document();
         document.setContent("你好");
