@@ -24,6 +24,7 @@ import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.impl.DnjsonClient;
+import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
@@ -96,7 +97,7 @@ public class TencentlmLlm extends BaseLlm<TencentLlmConfig> {
 
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
-        LlmClient llmClient = new DnjsonClient();
+        LlmClient llmClient = new SseClient();
         String payload = TencentLlmUtil.promptToPayload(prompt, config, true, options);
         Map<String, String> headers = TencentLlmUtil.createAuthorizationToken(config,"ChatCompletions", payload);
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser);

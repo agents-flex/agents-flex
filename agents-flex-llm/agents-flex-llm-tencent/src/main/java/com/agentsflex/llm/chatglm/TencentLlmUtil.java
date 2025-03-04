@@ -16,8 +16,7 @@
 package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.core.llm.ChatOptions;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.MessageStatus;
+import com.agentsflex.core.message.*;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
@@ -45,7 +44,17 @@ public class TencentLlmUtil {
         @Override
         protected void buildMessageContent(Message message, Map<String, Object> map) {
             map.clear();
-            map.put("Role", "user");
+            if (message instanceof HumanMessage) {
+                map.put("Role", "user");
+            } else if (message instanceof AiMessage) {
+                map.put("Role", "assistant");
+                buildToolCalls(map, (AiMessage) message);
+            } else if (message instanceof SystemMessage) {
+                map.put("Role", "system");
+            } else if (message instanceof ToolMessage) {
+                map.put("Role", "tool");
+                map.put("Tool_call_id", ((ToolMessage) message).getToolCallId());
+            }
             if (message instanceof ImagePrompt.TextAndImageMessage) {
                 ImagePrompt prompt = ((ImagePrompt.TextAndImageMessage) message).getPrompt();
                 List<Map<String, Object>> list = new ArrayList<>();
@@ -136,32 +145,28 @@ public class TencentLlmUtil {
 
     public static AiMessageParser getAiMessageParser(boolean isStream) {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        aiMessageParser.setIndexPath("$.Response.choices[0].Index");
-        if(isStream){
-            aiMessageParser.setContentPath("$.Response.Choices[0].Delta.Content");
-        }else{
-            aiMessageParser.setContentPath("$.Response.Choices[0].Message.Content");
+        String data;
+        if (isStream){
+            data = "";
+        } else {
+            data = "Response.";
         }
-        aiMessageParser.setTotalTokensPath("$.Response.Usage.TotalTokens");
-        aiMessageParser.setCompletionTokensPath("$.Response.Usage.CompletionTokens");
-        aiMessageParser.setPromptTokensPath("$.Response.Usage.PromptTokens");
+        aiMessageParser.setIndexPath("$."+data+"choices[0].Index");
         if(isStream){
-            aiMessageParser.setStatusParser(content -> {
-                String done = (String) JSONPath.eval(content, "$.Response.FinishReason");
-                if (StringUtil.hasText(done)) {
-                    return MessageStatus.END;
-                }
-                return MessageStatus.MIDDLE;
-            });
+            aiMessageParser.setContentPath("$."+data+"Choices[0].Delta.Content");
         }else{
-            aiMessageParser.setStatusParser(content -> {
-                String done = (String) JSONPath.eval(content, "$.Response.Choices[0].FinishReason");
-                if (StringUtil.hasText(done)) {
-                    return MessageStatus.END;
-                }
-                return MessageStatus.MIDDLE;
-            });
+            aiMessageParser.setContentPath("$."+data+"Choices[0].Message.Content");
         }
+        aiMessageParser.setTotalTokensPath("$."+data+"Usage.TotalTokens");
+        aiMessageParser.setCompletionTokensPath("$."+data+"Usage.CompletionTokens");
+        aiMessageParser.setPromptTokensPath("$."+data+"Usage.PromptTokens");
+        aiMessageParser.setStatusParser(content -> {
+            String done = (String) JSONPath.eval(content, "$."+data+"Choices[0].FinishReason");
+            if (StringUtil.hasText(done)) {
+                return MessageStatus.END;
+            }
+            return MessageStatus.MIDDLE;
+        });
         return aiMessageParser;
     }
 
