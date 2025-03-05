@@ -27,8 +27,8 @@ public class TencentImageModelTest {
     @Test
     public void testGenImage(){
         TencentImageModelConfig config = new TencentImageModelConfig();
-        config.setSecretId("AKIDLYZN1iJjwBLNCoERXQ6YqvofR2Rj1ABI");
-        config.setSecretKey("EJH4U4lcHjVBlEWebOzBMM9lBOOP1Tkq");
+        config.setSecretId("*************");
+        config.setSecretKey("*************");
         ImageModel imageModel = new TencentImageModel(config);
 
         GenerateImageRequest request = new GenerateImageRequest();

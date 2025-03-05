@@ -17,8 +17,8 @@ public class TencentlmLlmTest {
 
     public static void main(String[] args) throws Exception {
         TencentLlmConfig config = new TencentLlmConfig();
-        config.setApiSecret("AKIDLYZN1iJjwBLNCoERXQ6YqvofR2Rj1ABI");
-        config.setApiKey("EJH4U4lcHjVBlEWebOzBMM9lBOOP1Tkq");
+        config.setApiSecret("**************");
+        config.setApiKey("****************");
         Llm llm = new TencentlmLlm(config);
         String response = llm.chat("你好");
         System.out.println(response);
