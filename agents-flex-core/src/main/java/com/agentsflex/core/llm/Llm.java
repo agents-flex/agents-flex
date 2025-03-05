@@ -31,7 +31,9 @@ public interface Llm extends EmbeddingModel {
 
     default String chat(String prompt, ChatOptions options) {
         AbstractBaseMessageResponse<AiMessage> response = chat(new TextPrompt(prompt), options);
-        if (response != null && response.isError()) throw new LlmException(response.getErrorMessage());
+        if (response != null && response.isError()) {
+            throw new LlmException(response.getErrorMessage());
+        }
         return response != null && response.getMessage() != null ? response.getMessage().getContent() : null;
     }
 

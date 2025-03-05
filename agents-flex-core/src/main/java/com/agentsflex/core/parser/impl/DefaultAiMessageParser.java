@@ -108,7 +108,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
     }
 
     @Override
-    public AiMessage parse(JSONObject rootJson) {
+    public AiMessage  parse(JSONObject rootJson) {
         AiMessage aiMessage = new AiMessage();
 
         if (StringUtil.hasText(this.contentPath)) {

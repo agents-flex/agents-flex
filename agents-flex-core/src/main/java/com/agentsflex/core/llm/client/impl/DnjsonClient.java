@@ -19,6 +19,7 @@ import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.OkHttpClientUtil;
+import com.agentsflex.core.util.StringUtil;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -90,12 +91,18 @@ public class DnjsonClient implements LlmClient, Callback {
             return;
         }
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(body.byteStream()))) {
-            String s = reader.readLine();
-            while (s != null) {
+            String line = reader.readLine();
+            while (StringUtil.hasText(line)) {
+                System.out.println("line======="+line);
                 try {
-                    this.listener.onMessage(this, s);
+                    if (!StringUtil.notJsonObject(line)){
+                        this.listener.onMessage(this, line);
+                    }
+                    if (!StringUtil.notJsonObject("{" + line + "}")) {
+                        this.listener.onMessage(this, "{" + line + "}");
+                    }
                 } finally {
-                    s = reader.readLine();
+                    line = reader.readLine();
                 }
             }
         } finally {
