@@ -19,13 +19,14 @@ import com.agentsflex.core.llm.LlmConfig;
 
 public class TencentLlmConfig extends LlmConfig {
 
-	private static final String DEFAULT_MODEL = "hunyuan-lite";
-	private static final String DEFAULT_ENDPOINT = "hunyuan.tencentcloudapi.com";
+    private static final String DEFAULT_MODEL = "hunyuan-lite";
+    private static final String DEFAULT_ENDPOINT = "https://hunyuan.tencentcloudapi.com";
     private String service = "hunyuan";
-	public TencentLlmConfig() {
-		setEndpoint(DEFAULT_ENDPOINT);
-		setModel(DEFAULT_MODEL);
-	}
+
+    public TencentLlmConfig() {
+        setEndpoint(DEFAULT_ENDPOINT);
+        setModel(DEFAULT_MODEL);
+    }
 
     public String getService() {
         return service;
@@ -33,5 +34,15 @@ public class TencentLlmConfig extends LlmConfig {
 
     public void setService(String service) {
         this.service = service;
+    }
+
+    public String getHost() {
+        String endpoint = getEndpoint();
+        if (endpoint.toLowerCase().startsWith("https://")) {
+            endpoint = endpoint.substring(8);
+        } else if (endpoint.toLowerCase().startsWith("http://")) {
+            endpoint = endpoint.substring(7);
+        }
+        return endpoint;
     }
 }

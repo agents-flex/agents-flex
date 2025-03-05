@@ -23,7 +23,6 @@ import com.agentsflex.core.llm.client.BaseLlmClientListener;
 import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
-import com.agentsflex.core.llm.client.impl.DnjsonClient;
 import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
@@ -58,7 +57,7 @@ public class TencentlmLlm extends BaseLlm<TencentLlmConfig> {
     public VectorData embed(Document document, EmbeddingOptions options) {
         String payload = Maps.of("Input", document.getContent()).toJSON();
         Map<String, String> headers = TencentLlmUtil.createAuthorizationToken(config, "GetEmbedding", payload);
-        String response = httpClient.post("https://" + config.getEndpoint(), headers, payload);
+        String response = httpClient.post(config.getEndpoint(), headers, payload);
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
@@ -70,11 +69,12 @@ public class TencentlmLlm extends BaseLlm<TencentLlmConfig> {
         return vectorData;
     }
 
+
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         String payload = TencentLlmUtil.promptToPayload(prompt, config, false, options);
         Map<String, String> headers = TencentLlmUtil.createAuthorizationToken(config, "ChatCompletions", payload);
-        String response = httpClient.post("https://" + config.getEndpoint(), headers, payload);
+        String response = httpClient.post(config.getEndpoint(), headers, payload);
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
@@ -99,9 +99,9 @@ public class TencentlmLlm extends BaseLlm<TencentLlmConfig> {
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
         String payload = TencentLlmUtil.promptToPayload(prompt, config, true, options);
-        Map<String, String> headers = TencentLlmUtil.createAuthorizationToken(config,"ChatCompletions", payload);
+        Map<String, String> headers = TencentLlmUtil.createAuthorizationToken(config, "ChatCompletions", payload);
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser);
-        llmClient.start("https://" + config.getEndpoint(), headers, payload, clientListener, config);
+        llmClient.start(config.getEndpoint(), headers, payload, clientListener, config);
     }
 
 }

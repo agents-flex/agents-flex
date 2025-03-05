@@ -90,7 +90,7 @@ public class TencentLlmUtil {
     public static Map<String, String> createAuthorizationToken(TencentLlmConfig config, String action, String payload) {
         try {
             String service = config.getService();
-            String host = config.getEndpoint();
+            String host = config.getHost();
             String version = "2023-09-01";
             String algorithm = "TC3-HMAC-SHA256";
             String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
@@ -146,22 +146,22 @@ public class TencentLlmUtil {
     public static AiMessageParser getAiMessageParser(boolean isStream) {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         String data;
-        if (isStream){
+        if (isStream) {
             data = "";
         } else {
             data = "Response.";
         }
-        aiMessageParser.setIndexPath("$."+data+"choices[0].Index");
-        if(isStream){
-            aiMessageParser.setContentPath("$."+data+"Choices[0].Delta.Content");
-        }else{
-            aiMessageParser.setContentPath("$."+data+"Choices[0].Message.Content");
+        aiMessageParser.setIndexPath("$." + data + "choices[0].Index");
+        if (isStream) {
+            aiMessageParser.setContentPath("$." + data + "Choices[0].Delta.Content");
+        } else {
+            aiMessageParser.setContentPath("$." + data + "Choices[0].Message.Content");
         }
-        aiMessageParser.setTotalTokensPath("$."+data+"Usage.TotalTokens");
-        aiMessageParser.setCompletionTokensPath("$."+data+"Usage.CompletionTokens");
-        aiMessageParser.setPromptTokensPath("$."+data+"Usage.PromptTokens");
+        aiMessageParser.setTotalTokensPath("$." + data + "Usage.TotalTokens");
+        aiMessageParser.setCompletionTokensPath("$." + data + "Usage.CompletionTokens");
+        aiMessageParser.setPromptTokensPath("$." + data + "Usage.PromptTokens");
         aiMessageParser.setStatusParser(content -> {
-            String done = (String) JSONPath.eval(content, "$."+data+"Choices[0].FinishReason");
+            String done = (String) JSONPath.eval(content, "$." + data + "Choices[0].FinishReason");
             if (StringUtil.hasText(done)) {
                 return MessageStatus.END;
             }
