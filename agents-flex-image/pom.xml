@@ -18,6 +18,7 @@
         <module>agents-flex-image-gitee</module>
         <module>agents-flex-image-siliconflow</module>
 		<module>agents-flex-image-tencent</module>
+        <module>agents-flex-image-volcengine</module>
     </modules>
 
     <properties>
