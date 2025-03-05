@@ -17,6 +17,7 @@
         <module>agents-flex-image-stability</module>
         <module>agents-flex-image-gitee</module>
         <module>agents-flex-image-siliconflow</module>
+		<module>agents-flex-image-tencent</module>
     </modules>
 
     <properties>
