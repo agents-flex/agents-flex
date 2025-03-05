@@ -93,12 +93,10 @@ public class DnjsonClient implements LlmClient, Callback {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(body.byteStream()))) {
             String line = reader.readLine();
             while (StringUtil.hasText(line)) {
-                System.out.println("line======="+line);
                 try {
-                    if (!StringUtil.notJsonObject(line)){
+                    if (StringUtil.isJsonObject(line)) {
                         this.listener.onMessage(this, line);
-                    }
-                    if (!StringUtil.notJsonObject("{" + line + "}")) {
+                    } else {
                         this.listener.onMessage(this, "{" + line + "}");
                     }
                 } finally {
