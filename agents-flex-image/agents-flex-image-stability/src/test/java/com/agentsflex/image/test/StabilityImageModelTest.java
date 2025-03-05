@@ -17,8 +17,8 @@ package com.agentsflex.image.test;
 
 import com.agentsflex.core.image.GenerateImageRequest;
 import com.agentsflex.core.image.ImageResponse;
-import com.agentsflex.image.stability.StabilityImageModel;
-import com.agentsflex.image.stability.StabilityImageModelConfig;
+import com.agentsflex.image.tencent.StabilityImageModel;
+import com.agentsflex.image.tencent.StabilityImageModelConfig;
 import org.junit.Test;
 
 public class StabilityImageModelTest {

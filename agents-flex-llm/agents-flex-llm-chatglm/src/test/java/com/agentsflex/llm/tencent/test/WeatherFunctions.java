@@ -1,4 +1,4 @@
-package com.agentsflex.llm.chatglm.test;
+package com.agentsflex.llm.tencent.test;
 
 import com.agentsflex.core.llm.functions.annotation.FunctionDef;
 import com.agentsflex.core.llm.functions.annotation.FunctionParam;

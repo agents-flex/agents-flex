@@ -1,7 +1,7 @@
 package com.agentsflex.spring.boot.llm.chatglm;
 
-import com.agentsflex.llm.chatglm.ChatglmLlm;
-import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
+import com.agentsflex.llm.tencent.ChatglmLlm;
+import com.agentsflex.llm.tencent.ChatglmLlmConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

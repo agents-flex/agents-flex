@@ -1,4 +1,4 @@
-package com.agentsflex.llm.chatglm.test;
+package com.agentsflex.llm.tencent.test;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
@@ -6,8 +6,8 @@ import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.store.VectorData;
-import com.agentsflex.llm.chatglm.ChatglmLlm;
-import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
+import com.agentsflex.llm.tencent.ChatglmLlm;
+import com.agentsflex.llm.tencent.ChatglmLlmConfig;
 import org.junit.Test;
 
 import java.util.Arrays;

@@ -16,8 +16,8 @@
 package com.agentsflex.solon.llm.chatglm;
 
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.llm.chatglm.ChatglmLlm;
-import com.agentsflex.llm.chatglm.ChatglmLlmConfig;
+import com.agentsflex.llm.tencent.ChatglmLlm;
+import com.agentsflex.llm.tencent.ChatglmLlmConfig;
 import org.noear.solon.annotation.Bean;
 import org.noear.solon.annotation.Condition;
 import org.noear.solon.annotation.Configuration;

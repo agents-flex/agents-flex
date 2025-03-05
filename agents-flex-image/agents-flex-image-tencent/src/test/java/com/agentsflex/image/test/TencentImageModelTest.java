@@ -18,8 +18,8 @@ package com.agentsflex.image.test;
 import com.agentsflex.core.image.GenerateImageRequest;
 import com.agentsflex.core.image.ImageModel;
 import com.agentsflex.core.image.ImageResponse;
-import com.agentsflex.image.stability.TencentImageModel;
-import com.agentsflex.image.stability.TencentImageModelConfig;
+import com.agentsflex.image.tencent.TencentImageModel;
+import com.agentsflex.image.tencent.TencentImageModelConfig;
 import org.junit.Test;
 
 public class TencentImageModelTest {

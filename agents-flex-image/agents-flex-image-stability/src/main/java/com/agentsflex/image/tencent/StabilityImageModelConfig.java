@@ -13,14 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.image.stability;
+package com.agentsflex.image.tencent;
 
-public class TencentImageModelConfig {
-    private String endpoint = "hunyuan.tencentcloudapi.com";
-    private String secretId;
-    private String secretKey;
-
-    private String region = "ap-guangzhou";
+public class StabilityImageModelConfig {
+    private String endpoint = "https://api.stability.ai/";
+    private String apiKey;
 
     public String getEndpoint() {
         return endpoint;
@@ -30,27 +27,11 @@ public class TencentImageModelConfig {
         this.endpoint = endpoint;
     }
 
-    public String getSecretId() {
-        return secretId;
+    public String getApiKey() {
+        return apiKey;
     }
 
-    public void setSecretId(String secretId) {
-        this.secretId = secretId;
-    }
-
-    public String getSecretKey() {
-        return secretKey;
-    }
-
-    public void setSecretKey(String secretKey) {
-        this.secretKey = secretKey;
-    }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public void setRegion(String region) {
-        this.region = region;
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
     }
 }

@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.chatglm;
+package com.agentsflex.llm.tencent;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.BaseLlm;
@@ -23,7 +23,6 @@ import com.agentsflex.core.llm.client.BaseLlmClientListener;
 import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
-import com.agentsflex.core.llm.client.impl.DnjsonClient;
 import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
@@ -36,61 +35,82 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 
+import java.util.HashMap;
 import java.util.Map;
 
-public class TencentlmLlm extends BaseLlm<TencentLlmConfig> {
+public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
 
     private HttpClient httpClient = new HttpClient();
-    public AiMessageParser aiMessageParser = TencentLlmUtil.getAiMessageParser(false);
-    public AiMessageParser aiStreamMessageParser = TencentLlmUtil.getAiMessageParser(true);
+    public AiMessageParser aiMessageParser = ChatglmLlmUtil.getAiMessageParser(false);
+    public AiMessageParser aiStreamMessageParser = ChatglmLlmUtil.getAiMessageParser(true);
 
-    public TencentlmLlm(TencentLlmConfig config) {
+    public ChatglmLlm(ChatglmLlmConfig config) {
         super(config);
     }
 
     /**
-     * 文档参考：https://cloud.tencent.com/document/product/1729/101841
+     * 文档参考：https://open.bigmodel.cn/dev/api#text_embedding
      *
      * @param document 文档内容
      * @return 返回向量数据
      */
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        String payload = Maps.of("Input", document.getContent()).toJSON();
-        Map<String, String> headers = TencentLlmUtil.createAuthorizationToken(config, "GetEmbedding", payload);
-        String response = httpClient.post("https://" + config.getEndpoint(), headers, payload);
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
+
+        String endpoint = config.getEndpoint();
+        String payload = Maps.of("model", "embedding-2")
+            .set("input", document.getContent())
+            .toJSON();
+        String response = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
+
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
+
         if (StringUtil.noText(response)) {
             return null;
         }
+
         VectorData vectorData = new VectorData();
-        vectorData.setVector(JSONPath.read(response, "$.Response.Data[0].Embedding", double[].class));
+        vectorData.setVector(JSONPath.read(response, "$.data[0].embedding", double[].class));
+
         return vectorData;
     }
 
+
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
-        String payload = TencentLlmUtil.promptToPayload(prompt, config, false, options);
-        Map<String, String> headers = TencentLlmUtil.createAuthorizationToken(config, "ChatCompletions", payload);
-        String response = httpClient.post("https://" + config.getEndpoint(), headers, payload);
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
+
+        String endpoint = config.getEndpoint();
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false, options);
+        String response = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
+
         if (config.isDebug()) {
             System.out.println(">>>>receive payload:" + response);
         }
+
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(prompt, response, "no content for response.");
         }
 
         JSONObject jsonObject = JSON.parseObject(response);
-        JSONObject error = jsonObject.getJSONObject("Response").getJSONObject("Error");
+        JSONObject error = jsonObject.getJSONObject("error");
+
         AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
+
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
-            messageResponse.setErrorMessage(error.getString("Message"));
+            messageResponse.setErrorMessage(error.getString("message"));
             messageResponse.setErrorType(error.getString("type"));
-            messageResponse.setErrorCode(error.getString("Code"));
+            messageResponse.setErrorCode(error.getString("code"));
         }
+
         return messageResponse;
     }
 
@@ -98,10 +118,15 @@ public class TencentlmLlm extends BaseLlm<TencentLlmConfig> {
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         LlmClient llmClient = new SseClient();
-        String payload = TencentLlmUtil.promptToPayload(prompt, config, true, options);
-        Map<String, String> headers = TencentLlmUtil.createAuthorizationToken(config,"ChatCompletions", payload);
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
+
+        String payload = ChatglmLlmUtil.promptToPayload(prompt, config, true, options);
+
+        String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, aiStreamMessageParser);
-        llmClient.start("https://" + config.getEndpoint(), headers, payload, clientListener, config);
+        llmClient.start(endpoint + "/api/paas/v4/chat/completions", headers, payload, clientListener, config);
     }
 
 }

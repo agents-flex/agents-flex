@@ -13,25 +13,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.image.stability;
+package com.agentsflex.llm.tencent;
 
-public class StabilityImageModelConfig {
-    private String endpoint = "https://api.stability.ai/";
-    private String apiKey;
+import com.agentsflex.core.llm.LlmConfig;
 
-    public String getEndpoint() {
-        return endpoint;
+public class TencentLlmConfig extends LlmConfig {
+
+	private static final String DEFAULT_MODEL = "hunyuan-lite";
+	private static final String DEFAULT_ENDPOINT = "hunyuan.tencentcloudapi.com";
+    private String service = "hunyuan";
+	public TencentLlmConfig() {
+		setEndpoint(DEFAULT_ENDPOINT);
+		setModel(DEFAULT_MODEL);
+	}
+
+    public String getService() {
+        return service;
     }
 
-    public void setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
+    public void setService(String service) {
+        this.service = service;
     }
 }
