@@ -23,6 +23,7 @@ public class TencentlmLlmTest {
         String response = llm.chat("你好");
         System.out.println(response);
 
+
 //        TencentLlmConfig config = new TencentLlmConfig();
 //        config.setApiSecret("**************");
 //        config.setApiKey("**************");
