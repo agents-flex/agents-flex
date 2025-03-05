@@ -21,7 +21,7 @@ public class VolcengineLlmTest {
     @Test
     public void testChat() {
         VolcengineLlmConfig config = new VolcengineLlmConfig();
-        config.setApiKey("c82e5c77-51f6-4c2d-8afc-716de8814d6a");
+        config.setApiKey("********************************");
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setDefaultChatApi("/api/v3/chat/completions");
         config.setModel("doubao-1-5-vision-pro-32k-250115");
@@ -35,7 +35,7 @@ public class VolcengineLlmTest {
     @Test()
     public void testChatStream() {
         VolcengineLlmConfig config = new VolcengineLlmConfig();
-        config.setApiKey("c82e5c77-51f6-4c2d-8afc-716de8814d6a");
+        config.setApiKey("*************************");
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setDefaultChatApi("/api/v3/chat/completions");
         config.setModel("doubao-1-5-vision-pro-32k-250115");
@@ -59,7 +59,7 @@ public class VolcengineLlmTest {
     @Test()
     public void testChatWithImage() {
         VolcengineLlmConfig config = new VolcengineLlmConfig();
-        config.setApiKey("c82e5c77-51f6-4c2d-8afc-716de8814d6a");
+        config.setApiKey("***************************");
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setDefaultChatApi("/api/v3/chat/completions");
         config.setModel("doubao-1-5-vision-pro-32k-250115");
