@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.chatglm;
+package com.agentsflex.llm.tencent;
 
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.message.*;
