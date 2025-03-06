@@ -6,14 +6,20 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson2.JSON;
 import org.junit.Test;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 public class VolcengineImageTest {
     @Test
     public void testGenImage(){
         VolcengineImageModelConfig config = new VolcengineImageModelConfig();
-        config.setAccessKey("AKLTNmU0M2RkNWZkMmZmNDQwYWI2NTZiMjA1ODYxY2M3MjE");
-        config.setSecretKey("TkdObFpXSTFZMlJtWldReE5EVTRPRGt4TkRsaE1EVTRaalpsTnpnMllURQ==");
+        config.setAccessKey("*********************");
+        config.setSecretKey("*********************");
 
         VolcengineImageModel imageModel = new VolcengineImageModel(config);
+
+        GenerateImageRequest request = new GenerateImageRequest();
 
         JSONObject req=new JSONObject();
         //请求Body(查看接口文档请求参数-请求示例，将请求参数内容复制到此)参考通用2.1-文生图
@@ -43,7 +49,10 @@ public class VolcengineImageTest {
         subData.put("opacity", 0.3);
         subData.put("logo_text_content", "wangyangyang");
         req.put("logo_info",subData);
-        String generate = imageModel.generateVolcengineImage(req);
+
+        request.setOptions(req);
+
+        ImageResponse generate = imageModel.generate(request);
         System.out.println(generate);
     }
 }
