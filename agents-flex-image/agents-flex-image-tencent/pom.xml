@@ -28,11 +28,6 @@
             <version>LATEST</version>
         </dependency>
         <dependency>
-            <groupId>com.tencentcloudapi</groupId>
-            <artifactId>tencentcloud-sdk-java-hunyuan</artifactId>
-            <version>LATEST</version>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>

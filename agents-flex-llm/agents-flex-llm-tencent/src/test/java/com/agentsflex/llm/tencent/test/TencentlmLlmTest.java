@@ -17,12 +17,16 @@ public class TencentlmLlmTest {
 
     public static void main(String[] args) throws Exception {
         TencentLlmConfig config = new TencentLlmConfig();
-        config.setApiSecret("**************");
-        config.setApiKey("****************");
+        config.setApiSecret("******************");
+        config.setApiKey("******************");
         Llm llm = new TencentlmLlm(config);
-        String response = llm.chat("你好");
-        System.out.println(response);
-
+        for (int i =0;i<5;i++) {
+            int finalI = i;
+            new Thread(() -> {
+                String response = llm.chat("你好");
+                System.out.println(response + finalI);
+            }).start();
+        }
 
 //        TencentLlmConfig config = new TencentLlmConfig();
 //        config.setApiSecret("**************");

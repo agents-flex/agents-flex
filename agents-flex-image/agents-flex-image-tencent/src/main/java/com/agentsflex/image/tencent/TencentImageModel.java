@@ -16,28 +16,27 @@
 package com.agentsflex.image.tencent;
 
 import com.agentsflex.core.image.*;
+import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.util.Maps;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.tencentcloudapi.common.AbstractModel;
-import com.tencentcloudapi.common.Credential;
-import com.tencentcloudapi.common.exception.TencentCloudSDKException;
-import com.tencentcloudapi.common.profile.ClientProfile;
-import com.tencentcloudapi.common.profile.HttpProfile;
-import com.tencentcloudapi.hunyuan.v20230901.HunyuanClient;
-import com.tencentcloudapi.hunyuan.v20230901.models.QueryHunyuanImageJobRequest;
-import com.tencentcloudapi.hunyuan.v20230901.models.QueryHunyuanImageJobResponse;
-import com.tencentcloudapi.hunyuan.v20230901.models.SubmitHunyuanImageJobRequest;
-import com.tencentcloudapi.hunyuan.v20230901.models.SubmitHunyuanImageJobResponse;
+import com.tencentcloudapi.common.DatatypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.Objects;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class TencentImageModel implements ImageModel {
     private static final Logger LOG = LoggerFactory.getLogger(TencentImageModel.class);
     private final TencentImageModelConfig config;
+    private final HttpClient httpClient = new HttpClient();
 
     public TencentImageModel(TencentImageModelConfig config) {
         this.config = config;
@@ -46,16 +45,21 @@ public class TencentImageModel implements ImageModel {
     @Override
     public ImageResponse generate(GenerateImageRequest request) {
         try {
-            SubmitHunyuanImageJobResponse resp = getSubmitHunyuanImageJobResponse(request);
-            // 输出json格式的字符串回包
-            String respJson = AbstractModel.toJsonString(resp);
-            Map<String, Object> resultMap = AbstractModel.fromJsonString(respJson, Maps.class);
-            if (Objects.isNull(resultMap.get("JobId"))) {
-                return ImageResponse.error("response is no text");
+            String payload = promptToPayload(request);
+            Map<String, String> headers = createAuthorizationToken("SubmitHunyuanImageJob", payload);
+            String response = httpClient.post(config.getEndpoint(), headers, payload);
+            JSONObject jsonObject = JSON.parseObject(response);
+            JSONObject error = jsonObject.getJSONObject("Response").getJSONObject("Error");
+            if (error != null && !error.isEmpty()) {
+                return ImageResponse.error(error.getString("Message"));
             }
-            String jobId = (String) resultMap.get("JobId");
-            return getImage(jobId);
-        } catch (TencentCloudSDKException e) {
+            Object jobId = jsonObject.getJSONObject("Response").get("JobId");
+            if (Objects.isNull(jobId)) {
+                return ImageResponse.error("response is no jobId");
+            }
+            String id = (String) jobId;
+            return getImage(id);
+        } catch (Exception e) {
             return ImageResponse.error(e.toString());
         }
     }
@@ -70,22 +74,6 @@ public class TencentImageModel implements ImageModel {
         throw new IllegalStateException("TencentImageModel Can not support vary image.");
     }
 
-    private SubmitHunyuanImageJobResponse getSubmitHunyuanImageJobResponse(GenerateImageRequest request) throws TencentCloudSDKException {
-        HunyuanClient client = getHunyuanClient();
-        SubmitHunyuanImageJobRequest req = new SubmitHunyuanImageJobRequest();
-        //设置参数
-        req.setPrompt(request.getPrompt());
-        req.setNegativePrompt(request.getNegativePrompt());
-        req.setStyle(request.getStyle());
-        //生成图分辨率
-        req.setResolution(request.getQuality());
-        //图片生成数量
-        if (null != request.getN()) {
-            req.setNum(request.getN().longValue());
-        }
-        // 返回的resp是一个SubmitHunyuanImageJobResponse的实例，与请求对象对应
-        return client.SubmitHunyuanImageJob(req);
-    }
 
     private static final Object LOCK = new Object();
 
@@ -114,17 +102,16 @@ public class TencentImageModel implements ImageModel {
 
     public ImageResponse callService(String jobId) {
         try {
-            HunyuanClient client = getHunyuanClient();
-            // 实例化一个请求对象,每个接口都会对应一个request对象
-            QueryHunyuanImageJobRequest req = new QueryHunyuanImageJobRequest();
-            req.setJobId(jobId);
-            QueryHunyuanImageJobResponse resp = client.QueryHunyuanImageJob(req);
-            // 输出json格式的字符串回包
-            String respJson = AbstractModel.toJsonString(resp);
-            JSONObject resultJson = JSONObject.parseObject(respJson);
-//            LOG.info("返回结果状态：：：：{}",resultJson.get("JobStatusCode"));
+            String payload = Maps.of("JobId", jobId).toJSON();
+            Map<String, String> headers = createAuthorizationToken("QueryHunyuanImageJob", payload);
+            String resp = httpClient.post(config.getEndpoint(), headers, payload);
+            JSONObject resultJson = JSONObject.parseObject(resp).getJSONObject("Response");
+            JSONObject error = resultJson.getJSONObject("Error");
+            if (error != null && !error.isEmpty()) {
+                return ImageResponse.error(error.getString("Message"));
+            }
             if (Objects.isNull(resultJson.get("JobStatusCode"))) {
-                return null;
+                return ImageResponse.error("response is no JobStatusCode");
             }
             Integer jobStatusCode = resultJson.getInteger("JobStatusCode");
             if (Objects.equals(5, jobStatusCode)) {
@@ -144,21 +131,102 @@ public class TencentImageModel implements ImageModel {
                 //处理错误
                 return ImageResponse.error(resultJson.getString("JobErrorMsg"));
             }
-        } catch (TencentCloudSDKException e) {
+        } catch (Exception e) {
             return ImageResponse.error(e.toString());
         }
         return null;
     }
 
-    private HunyuanClient getHunyuanClient() {
-        Credential cred = new Credential(config.getSecretId(), config.getSecretKey());
-        // 实例化一个http选项，可选的，没有特殊需求可以跳过
-        HttpProfile httpProfile = new HttpProfile();
-        // 实例化一个client选项，可选的，没有特殊需求可以跳过
-        ClientProfile clientProfile = new ClientProfile();
-        clientProfile.setHttpProfile(httpProfile);
-        // 实例化要请求产品的client对象,clientProfile是可选的
-        return new HunyuanClient(cred, config.getRegion(), clientProfile);
+
+    public static String promptToPayload(GenerateImageRequest request) {
+        return Maps.of("Prompt", request.getPrompt())
+            .setIfNotEmpty("NegativePrompt", request.getNegativePrompt())
+            .setIfNotEmpty("Style", request.getSize())
+            .setIfNotEmpty("Resolution", request.getQuality())
+            .setIfNotEmpty("Num", request.getN())
+            .setIfNotEmpty(request.getOptions())
+            .toJSON();
+    }
+
+
+    private final static Charset UTF8 = StandardCharsets.UTF_8;
+    private final static String CT_JSON = "application/json; charset=utf-8";
+
+    public static byte[] hmac256(byte[] key, String msg) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, mac.getAlgorithm());
+        mac.init(secretKeySpec);
+        return mac.doFinal(msg.getBytes(UTF8));
+    }
+
+    public static String sha256Hex(String s) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] d = md.digest(s.getBytes(UTF8));
+        return DatatypeConverter.printHexBinary(d).toLowerCase();
+    }
+
+    /**
+     * @return java.util.Map<java.lang.String, java.lang.String>
+     * @Author sunch
+     * @Description 封装参数
+     * @Date 17:34 2025/3/5
+     * @Param [action, payload]
+     */
+    public Map<String, String> createAuthorizationToken(String action, String payload) {
+        try {
+            String service = config.getService();
+            String host = config.getHost();
+            String version = "2023-09-01";
+            String algorithm = "TC3-HMAC-SHA256";
+            String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            // 注意时区，否则容易出错
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            String date = sdf.format(new Date(Long.parseLong(timestamp + "000")));
+
+            // ************* 步骤 1：拼接规范请求串 *************
+            String httpRequestMethod = "POST";
+            String canonicalUri = "/";
+            String canonicalQueryString = "";
+            String canonicalHeaders = "content-type:application/json; charset=utf-8\n"
+                + "host:" + host + "\n" + "x-tc-action:" + action.toLowerCase() + "\n";
+            String signedHeaders = "content-type;host;x-tc-action";
+
+            String hashedRequestPayload = sha256Hex(payload);
+            String canonicalRequest = httpRequestMethod + "\n" + canonicalUri + "\n" + canonicalQueryString + "\n"
+                + canonicalHeaders + "\n" + signedHeaders + "\n" + hashedRequestPayload;
+//            System.out.println(canonicalRequest);
+
+            // ************* 步骤 2：拼接待签名字符串 *************
+            String credentialScope = date + "/" + service + "/" + "tc3_request";
+            String hashedCanonicalRequest = sha256Hex(canonicalRequest);
+            String stringToSign = algorithm + "\n" + timestamp + "\n" + credentialScope + "\n" + hashedCanonicalRequest;
+//            System.out.println(stringToSign);
+
+            // ************* 步骤 3：计算签名 *************
+            byte[] secretDate = hmac256(("TC3" + config.getApiKey()).getBytes(UTF8), date);
+            byte[] secretService = hmac256(secretDate, service);
+            byte[] secretSigning = hmac256(secretService, "tc3_request");
+            String signature = DatatypeConverter.printHexBinary(hmac256(secretSigning, stringToSign)).toLowerCase();
+//            System.out.println(signature);
+
+            // ************* 步骤 4：拼接 Authorization *************
+            String authorization = algorithm + " " + "Credential=" + config.getApiSecret() + "/" + credentialScope + ", "
+                + "SignedHeaders=" + signedHeaders + ", " + "Signature=" + signature;
+//            System.out.println(authorization);
+
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Authorization", authorization);
+            headers.put("Content-Type", CT_JSON);
+            headers.put("Host", host);
+            headers.put("X-TC-Action", action);
+            headers.put("X-TC-Timestamp", timestamp);
+            headers.put("X-TC-Version", version);
+            headers.put("X-TC-Region", config.getRegion());
+            return headers;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

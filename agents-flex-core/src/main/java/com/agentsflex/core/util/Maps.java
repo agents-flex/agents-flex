@@ -107,6 +107,13 @@ public class Maps extends HashMap<String, Object> {
         return this;
     }
 
+    public Maps setIfNotEmpty(Map<String, Object> source) {
+        if (!isNullOrEmpty(source)) {
+            this.putAll(source);
+        }
+        return this;
+    }
+
 
     public Maps setIfContainsKey(String checkKey, String key, Object value) {
         if (this.containsKey(checkKey)) {

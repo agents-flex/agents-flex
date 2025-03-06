@@ -18,23 +18,47 @@ package com.agentsflex.image.test;
 import com.agentsflex.core.image.GenerateImageRequest;
 import com.agentsflex.core.image.ImageModel;
 import com.agentsflex.core.image.ImageResponse;
+import com.agentsflex.core.util.Maps;
 import com.agentsflex.image.tencent.TencentImageModel;
 import com.agentsflex.image.tencent.TencentImageModelConfig;
 import org.junit.Test;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 public class TencentImageModelTest {
 
     @Test
-    public void testGenImage(){
-        TencentImageModelConfig config = new TencentImageModelConfig();
-        config.setSecretId("*************");
-        config.setSecretKey("*************");
-        ImageModel imageModel = new TencentImageModel(config);
+    public void testGenImage() throws InterruptedException {
+        Thread thread = new Thread(() -> {
+            TencentImageModelConfig config = new TencentImageModelConfig();
+            config.setApiSecret("*****************");
+            config.setApiKey("*****************");
+            ImageModel imageModel = new TencentImageModel(config);
+            GenerateImageRequest request = new GenerateImageRequest();
+            request.setPrompt("雨中, 竹林,  小路");
+            request.setN(1);
+            ImageResponse generate = imageModel.generate(request);
+            System.out.println(generate);
+            System.out.flush();
+        });
 
-        GenerateImageRequest request = new GenerateImageRequest();
-        request.setPrompt("雨中, 竹林,  小路");
-        request.setN(2);
-        ImageResponse generate = imageModel.generate(request);
-        System.out.println(generate);
+        Thread thread2 = new Thread(() -> {
+            TencentImageModelConfig config = new TencentImageModelConfig();
+            config.setApiSecret("*****************");
+            config.setApiKey("*****************");
+            ImageModel imageModel = new TencentImageModel(config);
+            GenerateImageRequest request = new GenerateImageRequest();
+            request.setPrompt("雨中, 竹林,  小路, 人生");
+            request.setN(1);
+            ImageResponse generate = imageModel.generate(request);
+            System.out.println(generate);
+            System.out.flush();
+        });
+        thread.start();
+        thread2.start();
+        thread.join();
+        thread2.join();
     }
 }

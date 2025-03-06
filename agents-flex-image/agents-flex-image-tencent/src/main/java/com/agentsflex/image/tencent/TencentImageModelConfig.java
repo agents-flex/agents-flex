@@ -16,9 +16,12 @@
 package com.agentsflex.image.tencent;
 
 public class TencentImageModelConfig {
-    private String endpoint = "hunyuan.tencentcloudapi.com";
-    private String secretId;
-    private String secretKey;
+    private String endpoint = "https://hunyuan.tencentcloudapi.com";
+    private String apiKey;
+
+    private String apiSecret;
+
+    private String service = "hunyuan";
 
     private String region = "ap-guangzhou";
 
@@ -30,21 +33,6 @@ public class TencentImageModelConfig {
         this.endpoint = endpoint;
     }
 
-    public String getSecretId() {
-        return secretId;
-    }
-
-    public void setSecretId(String secretId) {
-        this.secretId = secretId;
-    }
-
-    public String getSecretKey() {
-        return secretKey;
-    }
-
-    public void setSecretKey(String secretKey) {
-        this.secretKey = secretKey;
-    }
 
     public String getRegion() {
         return region;
@@ -52,5 +40,39 @@ public class TencentImageModelConfig {
 
     public void setRegion(String region) {
         this.region = region;
+    }
+
+    public String getService() {
+        return service;
+    }
+
+    public void setService(String service) {
+        this.service = service;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
+
+    public String getApiSecret() {
+        return apiSecret;
+    }
+
+    public void setApiSecret(String apiSecret) {
+        this.apiSecret = apiSecret;
+    }
+
+    public String getHost() {
+        String endpoint = getEndpoint();
+        if (endpoint.toLowerCase().startsWith("https://")) {
+            endpoint = endpoint.substring(8);
+        } else if (endpoint.toLowerCase().startsWith("http://")) {
+            endpoint = endpoint.substring(7);
+        }
+        return endpoint;
     }
 }
