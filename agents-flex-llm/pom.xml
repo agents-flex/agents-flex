@@ -26,6 +26,7 @@
         <module>agents-flex-llm-qianfan</module>
 		<module>agents-flex-llm-tencent</module>
         <module>agents-flex-llm-volcengine</module>
+	    <module>agents-flex-llm-vllm</module>
     </modules>
 
     <properties>
