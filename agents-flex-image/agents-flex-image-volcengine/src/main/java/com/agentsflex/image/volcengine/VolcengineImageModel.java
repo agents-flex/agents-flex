@@ -13,6 +13,7 @@ import com.volcengine.service.visual.impl.VisualServiceImpl;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class VolcengineImageModel implements ImageModel {
 
@@ -23,31 +24,42 @@ public class VolcengineImageModel implements ImageModel {
         this.config = config;
     }
 
-    /**
-     * 生成图片，采用sdk方式,调用同步接口
-     * @author <wangyangyang>
-     * @param req
-     * @return
-     */
-    public String generateVolcengineImage(JSONObject req) {
-        IVisualService visualService = VisualServiceImpl.getInstance();
-
-        visualService.setAccessKey(config.getAccessKey());
-        visualService.setSecretKey(config.getSecretKey());
-
-        Object response = null;
-        try {
-            response = visualService.cvProcess(req);
-            return JSON.toJSONString(response);
-        } catch(Exception e) {
-            throw new RuntimeException("图像生成过程中发生错误",e);
-        }
-    }
 
     @Override
     public ImageResponse generate(GenerateImageRequest request) {
         IVisualService visualService = VisualServiceImpl.getInstance();
 
+        visualService.setAccessKey(config.getAccessKey());
+        visualService.setSecretKey(config.getSecretKey());
+
+        JSONObject req = new JSONObject(request.getOptions());
+        ImageResponse responseimage = new ImageResponse();
+        Object response = null;
+        try {
+            response = visualService.cvProcess(req);
+
+            if (response instanceof JSONObject) {
+                JSONObject jsonResponse = (JSONObject) response;
+                // 获取"data"对象
+                JSONObject dataObject = jsonResponse.getJSONObject("data");
+                // 获取"image_urls"数组
+                JSONArray imageUrlsArray = dataObject.getJSONArray("image_urls");
+                // 遍历并打印"image_urls"数组中的每个URL
+                for (int i = 0; i < imageUrlsArray.size(); i++) {
+                    responseimage.addImage(imageUrlsArray.getString(i));
+                }
+
+            }
+            return responseimage;
+        } catch(Exception e) {
+           return responseimage.error(e.getMessage());
+        }
+    }
+
+    @Override
+    public ImageResponse img2imggenerate(GenerateImageRequest request) {
+        IVisualService visualService = VisualServiceImpl.getInstance();
+        // call below method if you dont set ak and sk in ～/.vcloud/config
         visualService.setAccessKey(config.getAccessKey());
         visualService.setSecretKey(config.getSecretKey());
 
@@ -70,7 +82,7 @@ public class VolcengineImageModel implements ImageModel {
             }
             return responseimage;
         } catch(Exception e) {
-            throw new RuntimeException("图像生成过程中发生错误",e);
+            return responseimage.error(e.getMessage());
         }
     }
 

@@ -65,6 +65,11 @@ public class TencentImageModel implements ImageModel {
     }
 
     @Override
+    public ImageResponse img2imggenerate(GenerateImageRequest request) {
+        return null;
+    }
+
+    @Override
     public ImageResponse edit(EditImageRequest request) {
         throw new IllegalStateException("TencentImageModel Can not support edit image.");
     }

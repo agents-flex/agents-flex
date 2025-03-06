@@ -19,6 +19,8 @@ public interface ImageModel {
 
     ImageResponse generate(GenerateImageRequest request);
 
+    ImageResponse img2imggenerate(GenerateImageRequest request);
+
     ImageResponse edit(EditImageRequest request);
 
     ImageResponse vary(VaryImageRequest request);

@@ -6,6 +6,12 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson2.JSON;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -14,8 +20,8 @@ public class VolcengineImageTest {
     @Test
     public void testGenImage(){
         VolcengineImageModelConfig config = new VolcengineImageModelConfig();
-        config.setAccessKey("*********************");
-        config.setSecretKey("*********************");
+        config.setAccessKey("AKLTZTkxMTg2OGE3NTgyNGVkNWFmNTFlNTcwOTUyYWU1ZmI");
+        config.setSecretKey("TURFek5EaG1ZV1F5WWpJd05EUTFPVGhrTnpoa05HRTROamMxTVRBMlpERQ==");
 
         VolcengineImageModel imageModel = new VolcengineImageModel(config);
 
@@ -54,5 +60,41 @@ public class VolcengineImageTest {
 
         ImageResponse generate = imageModel.generate(request);
         System.out.println(generate);
+    }
+
+
+
+
+    @Test
+    public void testImg2ImgXLSft() throws IOException {
+        VolcengineImageModelConfig config = new VolcengineImageModelConfig();
+        config.setAccessKey("*********************");
+        config.setSecretKey("*********************");
+
+        VolcengineImageModel imageModel = new VolcengineImageModel(config);
+
+        GenerateImageRequest request = new GenerateImageRequest();
+
+        JSONObject req=new JSONObject();
+        req.put("req_key","i2i_xl_sft");
+        List<String> images=new ArrayList<>();
+        // 将图片读取为字节数组
+        byte[] imageBytes = Files.readAllBytes(Paths.get("*************.png"));
+
+        // 将字节数组编码为Base64
+        String base64String = Base64.getEncoder().encodeToString(imageBytes);
+
+        images.add(base64String);
+//        images.add("https://ark-project.tos-cn-beijing.volces.com/doc_image/ark_demo_img_1.png");
+        req.put("binary_data_base64",images);
+        req.put("prompt","根据图片内容生成风格、服装及发型一样的亚洲美女图片");
+        req.put("return_url",true);
+        request.setOptions(req);
+
+        ImageResponse generate = imageModel.img2imggenerate(request);
+        System.out.println(generate);
+
+
+
     }
 }
