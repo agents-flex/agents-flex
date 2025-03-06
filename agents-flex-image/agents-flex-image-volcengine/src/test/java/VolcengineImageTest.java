@@ -20,8 +20,8 @@ public class VolcengineImageTest {
     @Test
     public void testGenImage(){
         VolcengineImageModelConfig config = new VolcengineImageModelConfig();
-        config.setAccessKey("AKLTZTkxMTg2OGE3NTgyNGVkNWFmNTFlNTcwOTUyYWU1ZmI");
-        config.setSecretKey("TURFek5EaG1ZV1F5WWpJd05EUTFPVGhrTnpoa05HRTROamMxTVRBMlpERQ==");
+        config.setAccessKey("*********************");
+        config.setSecretKey("*********************");
 
         VolcengineImageModel imageModel = new VolcengineImageModel(config);
 
