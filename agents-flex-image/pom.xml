@@ -20,6 +20,7 @@
 		<module>agents-flex-image-tencent</module>
         <module>agents-flex-image-volcengine</module>
 		<module>agents-flex-image-qwen</module>
+        <module>agents-flex-image-qianfan</module>
     </modules>
 
     <properties>
