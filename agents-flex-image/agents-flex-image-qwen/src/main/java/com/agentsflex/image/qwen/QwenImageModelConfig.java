@@ -13,11 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.image.tencent;
+package com.agentsflex.image.qwen;
 
-public class StabilityImageModelConfig {
-    private String endpoint = "https://api.stability.ai/";
+public class QwenImageModelConfig {
+    private String endpoint = "https://dashscope.aliyuncs.com";
+
+    private String model = "flux-schnell";
+
     private String apiKey;
+
 
     public String getEndpoint() {
         return endpoint;
@@ -25,6 +29,14 @@ public class StabilityImageModelConfig {
 
     public void setEndpoint(String endpoint) {
         this.endpoint = endpoint;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
     }
 
     public String getApiKey() {

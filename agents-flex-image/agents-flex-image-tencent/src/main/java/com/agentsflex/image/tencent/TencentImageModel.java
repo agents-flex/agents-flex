@@ -60,7 +60,7 @@ public class TencentImageModel implements ImageModel {
             String id = (String) jobId;
             return getImage(id);
         } catch (Exception e) {
-            return ImageResponse.error(e.toString());
+            return ImageResponse.error(e.getMessage());
         }
     }
 
@@ -137,7 +137,7 @@ public class TencentImageModel implements ImageModel {
                 return ImageResponse.error(resultJson.getString("JobErrorMsg"));
             }
         } catch (Exception e) {
-            return ImageResponse.error(e.toString());
+            return ImageResponse.error(e.getMessage());
         }
         return null;
     }

@@ -13,17 +13,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.tencent;
+package com.agentsflex.image.stability;
 
-import com.agentsflex.core.llm.LlmConfig;
+public class StabilityImageModelConfig {
+    private String endpoint = "https://api.stability.ai/";
+    private String apiKey;
 
-public class ChatglmLlmConfig extends LlmConfig {
+    public String getEndpoint() {
+        return endpoint;
+    }
 
-	private static final String DEFAULT_MODEL = "glm-4";
-	private static final String DEFAULT_ENDPOINT = "https://open.bigmodel.cn";
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+    }
 
-	public ChatglmLlmConfig() {
-		setEndpoint(DEFAULT_ENDPOINT);
-		setModel(DEFAULT_MODEL);
-	}
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
 }

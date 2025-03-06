@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.image.tencent;
+package com.agentsflex.image.stability;
 
 import com.agentsflex.core.image.*;
 import com.agentsflex.core.llm.client.HttpClient;
