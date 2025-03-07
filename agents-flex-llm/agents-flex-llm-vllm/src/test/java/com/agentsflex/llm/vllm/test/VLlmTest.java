@@ -1,9 +1,14 @@
 package com.agentsflex.llm.vllm.test;
 
-import com.agentsflex.core.llm.ChatOptions;
+import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
+import com.agentsflex.core.prompt.HistoriesPrompt;
+import com.agentsflex.core.prompt.ImagePrompt;
+import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.llm.vllm.VLlmLlm;
 import com.agentsflex.llm.vllm.VLlmLlmConfig;
 import org.junit.Test;
@@ -14,16 +19,18 @@ public class VLlmTest {
         VLlmLlmConfig config = new VLlmLlmConfig();
 
         //https://docs.vllm.ai/en/latest/api/inference_params.html
-        config.setApiKey("*****************");
-
+        config.setApiKey("*************************************");
+        config.setModel("qwen2.5-vl-7b");
         Llm llm = new VLlmLlm(config);
-        String result = llm.chat("你好",new ChatOptions());
-        System.out.println(result);
+        HistoriesPrompt prompt = new HistoriesPrompt();
+        ImagePrompt imagePrompt = new ImagePrompt("这个图片干什么的");
+        imagePrompt.setImageBase64("data:image/jpeg;base64," + ImageUtil.imageUrlToBase64("https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241022/emyrja/dog_and_girl.jpeg"));
+        prompt.addMessage(new ImagePrompt.TextAndImageMessage(imagePrompt));
 
-//        llm.chatStream("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
-//            AiMessage message = response.getMessage();
-//            System.out.println(">>>> " + message.getContent());
-//        });
+        llm.chatStream(prompt, (context, response) -> {
+            AiMessage message = response.getMessage();
+            System.out.println(">>>> " + message.getContent());
+        });
 
         Thread.sleep(10000);
     }
@@ -43,5 +50,14 @@ public class VLlmTest {
         // "Today it will be dull and overcast in 北京"
     }
 
+
+    @Test
+    public void testEmbedding() throws InterruptedException {
+        VLlmLlmConfig config = new VLlmLlmConfig();
+        config.setApiKey("********************");
+        Llm llm = new VLlmLlm(config);
+        VectorData vectorData = llm.embed(Document.of("test"));
+        System.out.println(vectorData);
+    }
 
 }

@@ -28,6 +28,7 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -94,7 +95,23 @@ public class VLlmLlm extends BaseLlm<VLlmLlmConfig> {
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        String payload = VLlmLlmUtil.promptToEnabledPayload(document, options, config);
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
+        String url = config.getEndpoint() + "/v1/embeddings";
+        String response = httpClient.post(url, headers, payload);
+        if (config.isDebug()) {
+            System.out.println(">>>>receive payload:" + response);
+        }
+        if (StringUtil.noText(response)) {
+            return null;
+        }
+        VectorData vectorData = new VectorData();
+        double[] embedding = JSONPath.read(response, "$.data[0].embedding", double[].class);
+        vectorData.setVector(embedding);
+        return vectorData;
     }
+
 
 }
