@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class OllamaProperties {
 
     private String model;
-    private String endpoint = "http://localhost:11434/";
+    private String endpoint = "http://localhost:11434";
     private String apiKey;
 
     public String getModel() {
