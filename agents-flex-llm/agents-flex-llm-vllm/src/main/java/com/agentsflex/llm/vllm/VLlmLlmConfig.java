@@ -19,8 +19,8 @@ import com.agentsflex.core.llm.LlmConfig;
 public class VLlmLlmConfig extends LlmConfig {
 
     private static final String DEFAULT_MODEL = "DeepSeek-R1-7B";
-    private static final String DEFAULT_ENDPOINT = "http://js2.blockelite.cn:14158";
-    private String defaultEmbeddingModel = "text-embedding-v1";
+    private static final String DEFAULT_ENDPOINT = "http://js2.blockelite.cn:14388";
+    private String defaultEmbeddingModel = "bge-base-en-v1.5";
 
     public VLlmLlmConfig() {
         setEndpoint(DEFAULT_ENDPOINT);
