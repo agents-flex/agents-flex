@@ -53,6 +53,11 @@ public class GiteeImageModel implements ImageModel {
         return response;
     }
 
+    @Override
+    public ImageResponse img2imggenerate(GenerateImageRequest request) {
+        return null;
+    }
+
 
     @Override
     public ImageResponse edit(EditImageRequest request) {

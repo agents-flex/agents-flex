@@ -13,36 +13,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.llm.chatglm;
+package com.agentsflex.llm.vllm;
 
 import com.agentsflex.core.llm.LlmConfig;
 
-public class TencentLlmConfig extends LlmConfig {
+public class VLlmLlmConfig extends LlmConfig {
 
-    private static final String DEFAULT_MODEL = "hunyuan-lite";
-    private static final String DEFAULT_ENDPOINT = "https://hunyuan.tencentcloudapi.com";
-    private String service = "hunyuan";
+    private static final String DEFAULT_MODEL = "DeepSeek-R1-7B";
+    private static final String DEFAULT_ENDPOINT = "http://js2.blockelite.cn:14388";
+    private String defaultEmbeddingModel = "bge-base-en-v1.5";
 
-    public TencentLlmConfig() {
+    public VLlmLlmConfig() {
         setEndpoint(DEFAULT_ENDPOINT);
         setModel(DEFAULT_MODEL);
     }
 
-    public String getService() {
-        return service;
+    public String getDefaultEmbeddingModel() {
+        return defaultEmbeddingModel;
     }
 
-    public void setService(String service) {
-        this.service = service;
-    }
-
-    public String getHost() {
-        String endpoint = getEndpoint();
-        if (endpoint.toLowerCase().startsWith("https://")) {
-            endpoint = endpoint.substring(8);
-        } else if (endpoint.toLowerCase().startsWith("http://")) {
-            endpoint = endpoint.substring(7);
-        }
-        return endpoint;
+    public void setDefaultEmbeddingModel(String defaultEmbeddingModel) {
+        this.defaultEmbeddingModel = defaultEmbeddingModel;
     }
 }

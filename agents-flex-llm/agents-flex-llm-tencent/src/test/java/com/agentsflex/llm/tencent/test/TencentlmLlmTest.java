@@ -1,35 +1,32 @@
-package com.agentsflex.llm.chatglm.test;
+package com.agentsflex.llm.tencent.test;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.ChatContext;
 import com.agentsflex.core.llm.Llm;
-import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.HumanMessage;
-import com.agentsflex.core.message.Message;
 import com.agentsflex.core.prompt.FunctionPrompt;
-import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.store.VectorData;
-import com.agentsflex.llm.chatglm.TencentLlmConfig;
-import com.agentsflex.llm.chatglm.TencentlmLlm;
+import com.agentsflex.llm.tencent.TencentLlmConfig;
+import com.agentsflex.llm.tencent.TencentlmLlm;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
-public class ChatGlmTest {
+public class TencentlmLlmTest {
 
 
     public static void main(String[] args) throws Exception {
         TencentLlmConfig config = new TencentLlmConfig();
-        config.setApiSecret("**************");
-        config.setApiKey("**************");
+        config.setApiSecret("******************");
+        config.setApiKey("******************");
         Llm llm = new TencentlmLlm(config);
-        String response = llm.chat("你好");
-        System.out.println(response);
+        for (int i =0;i<5;i++) {
+            int finalI = i;
+            new Thread(() -> {
+                String response = llm.chat("你好");
+                System.out.println(response + finalI);
+            }).start();
+        }
 
 //        TencentLlmConfig config = new TencentLlmConfig();
 //        config.setApiSecret("**************");
