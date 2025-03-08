@@ -1,4 +1,4 @@
-package com.agentsflex.llm.vllm;/*
+/*
  *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +13,7 @@ package com.agentsflex.llm.vllm;/*
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package com.agentsflex.llm.vllm;
 
 import com.agentsflex.core.llm.LlmConfig;
 
