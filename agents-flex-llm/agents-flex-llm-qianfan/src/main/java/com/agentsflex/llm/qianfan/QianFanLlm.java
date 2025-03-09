@@ -14,6 +14,7 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -53,8 +54,7 @@ public class QianFanLlm extends BaseLlm<QianFanLlmConfig> {
         String response = httpClient.post(endpoint + "/chat/completions", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>the input:" + payload);
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {
@@ -92,8 +92,8 @@ public class QianFanLlm extends BaseLlm<QianFanLlmConfig> {
         String response = httpClient.post(config.getEndpoint() + "/embeddings", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>the input:" + payload);
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>the input:" + payload);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {

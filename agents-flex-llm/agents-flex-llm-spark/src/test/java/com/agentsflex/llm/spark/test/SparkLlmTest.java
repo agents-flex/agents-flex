@@ -8,6 +8,7 @@ import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import org.junit.Test;
@@ -57,7 +58,7 @@ public class SparkLlmTest {
 
         HistoriesPrompt prompt = new HistoriesPrompt();
 
-        System.out.println("您想问什么？");
+        LogUtil.println("您想问什么？");
         Scanner scanner = new Scanner(System.in);
         String userInput = scanner.nextLine();
 
@@ -66,7 +67,7 @@ public class SparkLlmTest {
             prompt.addMessage(new HumanMessage(userInput));
 
             llm.chatStream(prompt, (context, response) -> {
-                System.out.println(">>>> " + response.getMessage().getContent());
+                LogUtil.println(">>>> " + response.getMessage().getContent());
             });
 
             userInput = scanner.nextLine();

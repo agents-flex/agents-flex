@@ -19,6 +19,7 @@ import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.OkHttpClientUtil;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
@@ -56,7 +57,7 @@ public class DnjsonClient implements LlmClient, Callback {
         this.okHttpClient = OkHttpClientUtil.buildDefaultClient();
 
         if (this.config.isDebug()) {
-            System.out.println(">>>>send payload:" + payload);
+            LogUtil.println(">>>>send payload:" + payload);
         }
 
 

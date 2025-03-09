@@ -3,18 +3,15 @@ import com.agentsflex.core.image.ImageResponse;
 import com.agentsflex.image.volcengine.VolcengineImageModel;
 import com.agentsflex.image.volcengine.VolcengineImageModelConfig;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson2.JSON;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class VolcengineImageTest {
     @Test
@@ -65,7 +62,7 @@ public class VolcengineImageTest {
 
 
 
-    @Test
+    @Test( )
     public void testImg2ImgXLSft() throws IOException {
         VolcengineImageModelConfig config = new VolcengineImageModelConfig();
         config.setAccessKey("*********************");
@@ -78,8 +75,10 @@ public class VolcengineImageTest {
         JSONObject req=new JSONObject();
         req.put("req_key","i2i_xl_sft");
         List<String> images=new ArrayList<>();
+
+        File file = new File(System.getProperty("user.dir"), "../../testresource/ark_demo_img_1.png");
         // 将图片读取为字节数组
-        byte[] imageBytes = Files.readAllBytes(Paths.get("*************.png"));
+        byte[] imageBytes = Files.readAllBytes(Paths.get(file.toURI()));
 
         // 将字节数组编码为Base64
         String base64String = Base64.getEncoder().encodeToString(imageBytes);

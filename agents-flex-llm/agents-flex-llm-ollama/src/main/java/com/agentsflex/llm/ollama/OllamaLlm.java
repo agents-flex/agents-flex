@@ -29,6 +29,7 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
@@ -67,7 +68,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         String response = httpClient.post(endpoint + "/api/embed", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {
@@ -97,7 +98,7 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         String response = httpClient.post(endpoint + "/api/chat", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {

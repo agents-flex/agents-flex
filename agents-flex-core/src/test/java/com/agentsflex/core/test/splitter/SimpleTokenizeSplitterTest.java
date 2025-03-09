@@ -17,6 +17,7 @@ package com.agentsflex.core.test.splitter;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.splitter.SimpleTokenizeSplitter;
+import com.agentsflex.core.util.LogUtil;
 import org.junit.Test;
 
 import java.util.List;
@@ -34,7 +35,7 @@ public class SimpleTokenizeSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {
-            System.out.println(">>>>>" + chunk.getContent());
+            LogUtil.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -44,7 +45,7 @@ public class SimpleTokenizeSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {
-            System.out.println(">>>>>" + chunk.getContent());
+            LogUtil.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -54,7 +55,7 @@ public class SimpleTokenizeSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text2));
 
         for (Document chunk : chunks) {
-            System.out.println(">>>>>" + chunk.getContent());
+            LogUtil.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -64,7 +65,7 @@ public class SimpleTokenizeSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text2));
 
         for (Document chunk : chunks) {
-            System.out.println(">>>>>" + chunk.getContent());
+            LogUtil.println(">>>>>" + chunk.getContent());
         }
     }
 

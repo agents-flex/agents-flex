@@ -19,6 +19,7 @@ import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.OkHttpClientUtil;
+import com.agentsflex.core.util.LogUtil;
 import okhttp3.*;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
@@ -60,7 +61,7 @@ public class SseClient extends EventSourceListener implements LlmClient {
         this.eventSource = factory.newEventSource(request, this);
 
         if (this.config.isDebug()) {
-            System.out.println(">>>>send payload:" + payload);
+            LogUtil.println(">>>>send payload:" + payload);
         }
 
         this.listener.onStart(this);
@@ -80,7 +81,7 @@ public class SseClient extends EventSourceListener implements LlmClient {
     @Override
     public void onEvent(@NotNull EventSource eventSource, @Nullable String id, @Nullable String type, @NotNull String data) {
         if (this.config.isDebug()) {
-            System.out.println(">>>>receive payload:" + data);
+            LogUtil.println(">>>>receive payload:" + data);
         }
         this.listener.onMessage(this, data);
     }

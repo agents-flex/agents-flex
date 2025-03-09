@@ -19,6 +19,7 @@ import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.client.LlmClient;
 import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.OkHttpClientUtil;
+import com.agentsflex.core.util.LogUtil;
 import okhttp3.*;
 import okio.ByteString;
 import org.jetbrains.annotations.NotNull;
@@ -49,7 +50,7 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
         this.webSocket = client.newWebSocket(request, this);
 
         if (this.config.isDebug()) {
-            System.out.println(">>>>send payload:" + payload);
+            LogUtil.println(">>>>send payload:" + payload);
         }
     }
 
@@ -73,7 +74,7 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
     @Override
     public void onMessage(WebSocket webSocket, String text) {
         if (this.config.isDebug()) {
-            System.out.println(">>>>receive payload:" + text);
+            LogUtil.println(">>>>receive payload:" + text);
         }
         this.listener.onMessage(this, text);
     }

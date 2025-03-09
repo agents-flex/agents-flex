@@ -33,7 +33,7 @@
 //        Chain chain = new SequentialChain(agent1, agent2);
 //        chain.registerInputListener((chain1, parameters) -> {
 //            Parameter parameter = parameters.get(0);
-//            System.out.println("请输入 " + parameter.getName());
+//            LogUtil.println("请输入 " + parameter.getName());
 //
 //            Scanner scanner = new Scanner(System.in);
 //            String userInput = scanner.nextLine();
@@ -47,7 +47,7 @@
 //        chain.execute(new HashMap<>());
 //
 //        for (Map.Entry<String, Object> entry : chain.getMemory().getAll().entrySet()) {
-//            System.out.println("执行结果" + entry);
+//            LogUtil.println("执行结果" + entry);
 //        }
 //    }
 //}

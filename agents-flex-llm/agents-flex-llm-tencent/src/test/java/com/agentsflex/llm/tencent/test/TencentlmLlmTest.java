@@ -45,17 +45,17 @@ public class TencentlmLlmTest {
 //        llm.chatStream(prompt, new StreamResponseListener() {
 //            @Override
 //            public void onMessage(ChatContext context, AiMessageResponse response) {
-//                System.out.println("onMessage=====" + response.getMessage().getContent());
+//                LogUtil.println("onMessage=====" + response.getMessage().getContent());
 //            }
 //
 //            @Override
 //            public void onStop(ChatContext context) {
-//                System.out.println("停止");
+//                LogUtil.println("停止");
 //            }
 //
 //            @Override
 //            public void onFailure(ChatContext context, Throwable throwable) {
-//                System.out.println("出错" + throwable.getMessage());
+//                LogUtil.println("出错" + throwable.getMessage());
 //            }
 //        });
     }

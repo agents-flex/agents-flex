@@ -114,7 +114,7 @@ public class OpenAILlmTest {
             AiMessageResponse response1 = llm.chat(ToolPrompt.of(response));
             System.out.println(response1.getMessage().getContent());
         } else {
-            System.out.println(response.getMessage().getContent());
+            System.out.println(response);
         }
     }
 }

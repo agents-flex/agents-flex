@@ -29,6 +29,7 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -77,7 +78,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {
@@ -126,7 +127,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {

@@ -3,11 +3,12 @@ package com.agentsflex.llm.qwen.test;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.store.VectorData;
-import com.agentsflex.llm.qwen.QwenLlm;
-import com.agentsflex.llm.qwen.QwenLlmConfig;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
+import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LogUtil;
+import com.agentsflex.llm.qwen.QwenLlm;
+import com.agentsflex.llm.qwen.QwenLlmConfig;
 import org.junit.Test;
 
 public class QwenTest {
@@ -22,7 +23,7 @@ public class QwenTest {
         Llm llm = new QwenLlm(config);
         llm.chatStream("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
             AiMessage message = response.getMessage();
-            System.out.println(">>>> " + message.getContent());
+            LogUtil.println(">>>> " + message.getContent());
         });
 
         Thread.sleep(10000);

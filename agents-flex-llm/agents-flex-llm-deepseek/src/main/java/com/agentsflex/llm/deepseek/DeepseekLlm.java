@@ -29,6 +29,7 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.agentsflex.llm.openai.OpenAILlmUtil;
 import com.alibaba.fastjson.JSON;
@@ -75,7 +76,7 @@ public class DeepseekLlm extends BaseLlm<DeepseekConfig> {
         String response = httpClient.post(endpoint + "/chat/completions", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {

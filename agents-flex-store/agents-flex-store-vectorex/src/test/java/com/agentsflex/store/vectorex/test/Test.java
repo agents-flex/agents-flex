@@ -19,6 +19,7 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.llm.spark.SparkLlm;
 import com.agentsflex.llm.spark.SparkLlmConfig;
 import com.agentsflex.store.vectorex.VectoRexStore;
@@ -62,7 +63,7 @@ public class Test {
 
 
         StoreResult result = store.delete("1");
-        System.out.println("-------delete-----" + result);
+        LogUtil.println("-------delete-----" + result);
         search = store.search(sw);
         System.out.println(search);
     }

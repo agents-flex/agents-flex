@@ -29,6 +29,7 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
@@ -62,13 +63,13 @@ public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
 
         String payload = GiteeAiLlmUtil.promptToPayload(prompt, config, options, false);
         if (config.isDebug()) {
-            System.out.println(">>>>send payload:" + payload);
+            LogUtil.println(">>>>send payload:" + payload);
         }
 
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + "/api/serverless/" + config.getModel() + "/chat/completions", headers, payload);
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {
@@ -117,7 +118,7 @@ public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
         String response = httpClient.post(endpoint + "/api/serverless/" + embeddingModel + "/embeddings", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {

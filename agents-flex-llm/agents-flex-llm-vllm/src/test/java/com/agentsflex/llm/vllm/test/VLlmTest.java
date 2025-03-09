@@ -9,6 +9,7 @@ import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.ImageUtil;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.llm.vllm.VLlmLlm;
 import com.agentsflex.llm.vllm.VLlmLlmConfig;
 import org.junit.Test;
@@ -29,7 +30,7 @@ public class VLlmTest {
 
         llm.chatStream(prompt, (context, response) -> {
             AiMessage message = response.getMessage();
-            System.out.println(">>>> " + message.getContent());
+            LogUtil.println(">>>> " + message.getContent());
         });
 
         Thread.sleep(10000);

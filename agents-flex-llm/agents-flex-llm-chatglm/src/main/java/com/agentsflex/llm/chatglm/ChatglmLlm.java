@@ -29,6 +29,7 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
@@ -67,7 +68,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         String response = httpClient.post(endpoint + "/api/paas/v4/embeddings", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {
@@ -92,7 +93,7 @@ public class ChatglmLlm extends BaseLlm<ChatglmLlmConfig> {
         String response = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
 
         if (config.isDebug()) {
-            System.out.println(">>>>receive payload:" + response);
+            LogUtil.println(">>>>receive payload:" + response);
         }
 
         if (StringUtil.noText(response)) {

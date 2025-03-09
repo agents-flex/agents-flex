@@ -18,7 +18,7 @@ public class VolcengineLlmTest {
     }
 
     // 单轮对话
-    @Test
+    @Test(expected = LlmException.class)
     public void testChat() {
         VolcengineLlmConfig config = new VolcengineLlmConfig();
         config.setApiKey("********************************");
