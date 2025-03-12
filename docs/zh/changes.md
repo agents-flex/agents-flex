@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-rc.6 20250220
+## v1.0.0-rc.7 20250220
 - feat: Springboot's automatic configuration class for Ollama
 - feat: Added ToolPrompt function to facilitate the use with Function Call
 - refactor: Change openAi to openAI
