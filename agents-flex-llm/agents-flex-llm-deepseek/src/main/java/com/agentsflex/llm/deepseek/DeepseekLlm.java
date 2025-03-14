@@ -31,7 +31,6 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.llm.openai.OpenAILlmUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
@@ -47,8 +46,8 @@ public class DeepseekLlm extends BaseLlm<DeepseekConfig> {
 
     private final Map<String, String> headers = new HashMap<>();
     private final HttpClient httpClient = new HttpClient();
-    private final AiMessageParser aiMessageParser = OpenAILlmUtil.getAiMessageParser(false);
-    private final AiMessageParser streamMessageParser = OpenAILlmUtil.getAiMessageParser(true);
+    private final AiMessageParser aiMessageParser = DeepseekLlmUtil.getAiMessageParser(false);
+    private final AiMessageParser streamMessageParser = DeepseekLlmUtil.getAiMessageParser(true);
 
     public DeepseekLlm(DeepseekConfig config) {
         super(config);

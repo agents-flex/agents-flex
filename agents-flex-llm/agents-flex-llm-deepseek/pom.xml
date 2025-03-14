@@ -22,10 +22,6 @@
             <artifactId>agents-flex-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-openai</artifactId>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
