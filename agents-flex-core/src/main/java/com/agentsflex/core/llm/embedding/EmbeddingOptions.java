@@ -24,11 +24,24 @@ public class EmbeddingOptions {
         this.model = model;
     }
 
+    /**
+     * 嵌入编码格式，可用通常为float, base64
+     */
+    private String encodingFormat;
 
     @Override
     public String toString() {
         return "EmbeddingOptions{" +
             "model='" + model + '\'' +
+            "encodingFormat='" + encodingFormat + '\'' +
             '}';
+    }
+
+    public String getEncodingFormat() {
+        return encodingFormat;
+    }
+
+    public void setEncodingFormat(String encodingFormat) {
+        this.encodingFormat = encodingFormat;
     }
 }
