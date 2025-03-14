@@ -19,7 +19,6 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
-import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
@@ -41,15 +40,13 @@ public class SiliconflowLlmUtil {
     }
 
 
-
     public static String promptToPayload(Prompt prompt, LlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
-        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
+        Message message = CollectionUtil.lastItem(messages);
         return Maps.of("model", config.getModel())
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
-            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))
-            //.setIfContainsKey("tools", "tool_choice", humanMessage.getToolChoice())
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotNull("top_k", options.getTopK())
             .setIfNotEmpty("stop", options.getStop())
