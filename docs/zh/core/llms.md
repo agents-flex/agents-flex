@@ -181,7 +181,7 @@ prompt.setMaxAttachedMessageCount(10);
 prompt.setHistoryMessageTruncateEnable(true);
 
 //设置历史消息截断长度
-prompt.setHistoryMessageTruncateLength(true);
+prompt.setHistoryMessageTruncateLength(1000);
 
 //自定义历史消息截断处理器
 prompt.setHistoryMessageTruncateProcessor(...);
