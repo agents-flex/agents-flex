@@ -1,6 +1,34 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-rc.7 20250220
+## v1.0.0-rc.7 20250312
+- feat: Added the function of adding reasoning content to the return message, supporting deepseek's reasoning return, thanks @rirch
+- feat: Added support for vectorexdb embedded version, no need to deploy database separately, thanks @javpower
+- feat: Added support for accessing Tencent's large model language, Wensheng graph model and vectorization interface, thanks @sunchanghuilinqing
+- feat: Support for docking Doubao doubao-1-5-vision-pro-32k multimodal model and Wensheng graph, thanks @wang110wyy
+- feat: Added Wensheng graph model of Alibaba Bailian platform, thanks @sunchanghuilinqing
+- feat: Added VLLM-based large model access, thanks @sunchanghuilinqing
+- feat: Added LogUtil for log output
+- feat: Optimized the relevant code logic of DnjsonClient
+- fix: The problem of too long uid of Spark large model, thanks @wu-zhihao
+- fix: ChatStream of Ollama Llm An error occurred when actively closing the stream
+- fix: Fixed an issue where the endpoint configuration of OllamaProperties was incorrect by default
+
+---
+- 新增：添加在在返回消息中增加推理内容的功能，支持 deepseek 的推理返回，感谢 @rirch
+- 新增：添加 vectorexdb 内嵌版本支持，无需额外部署数据库，感谢 @javpower
+- 新增：添加接入腾讯大模型语言、文生图模型与向量化接口的支持，感谢 @sunchanghuilinqing
+- 新增：对接豆包 doubao-1-5-vision-pro-32k 多模态模型以及文生图的支持，感谢 @wang110wyy
+- 新增：新增阿里百炼平台的文生图模型，感谢 @sunchanghuilinqing
+- 新增：新增基于 VLLM 部署大模型接入，感谢 @sunchanghuilinqing
+- 新增：新增 LogUtil 用于输出日志
+- 优化：优化 DnjsonClient 的相关代码逻辑
+- 修复：星火大模型的 uid 太长的问题，感谢 @wu-zhihao
+- 修复：Ollama Llm 的 chatStream 主动关闭流时发生错误的问题
+- 修复：修复默认情况下 OllamaProperties 的 endpoint 配置错误的问题
+
+
+
+## v1.0.0-rc.6 20250220
 - feat: Springboot's automatic configuration class for Ollama
 - feat: Added ToolPrompt function to facilitate the use with Function Call
 - refactor: Change openAi to openAI
