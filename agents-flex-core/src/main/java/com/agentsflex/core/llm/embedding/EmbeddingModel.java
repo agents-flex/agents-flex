@@ -20,6 +20,10 @@ import com.agentsflex.core.store.VectorData;
 
 public interface EmbeddingModel {
 
+    default VectorData embed(String text) {
+        return embed(Document.of(text), EmbeddingOptions.DEFAULT);
+    }
+    
     default VectorData embed(Document document) {
         return embed(document, EmbeddingOptions.DEFAULT);
     }
