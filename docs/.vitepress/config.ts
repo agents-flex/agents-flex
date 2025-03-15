@@ -61,6 +61,7 @@ export default defineConfig({
                         text: '快速开始',
                         items: [
                             {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
+                            {text: '核心概念', link: '/zh/intro/concepts'},
                             {text: '快速开始', link: '/zh/intro/getting-started'},
                             {text: 'Maven 依赖', link: '/zh/intro/maven'},
                             {text: '微信交流群', link: '/zh/intro/communication'},
