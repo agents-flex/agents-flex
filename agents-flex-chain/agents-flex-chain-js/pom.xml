@@ -18,6 +18,16 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-scriptengine</artifactId>
+            <version>20.2.0</version> <!-- 根据实际版本调整 -->
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js</artifactId>
+            <version>20.2.0</version>
+        </dependency>
+        <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
             <scope>compile</scope>

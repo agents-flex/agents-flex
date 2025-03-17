@@ -14,16 +14,24 @@ public class JsExecNode extends CodeNode {
 
     @Override
     protected Map<String, Object> executeCode(String code, Chain chain) {
-        // 创建脚本引擎管理器
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = manager.getEngineByName("JavaScript");
-        // 创建绑定上下文
+        // 创建脚本引擎
+        ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
+
+        if (engine == null) {
+            throw new RuntimeException("未找到GraalJS引擎，请确认依赖配置");
+        }
+
+        // 配置引擎参数（通过Bindings）
         Bindings bindings = engine.createBindings();
+        bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", true);
+
         // 获取并注入参数
         Map<String, Object> parameters = getParameters(chain);
         if (parameters != null) {
             bindings.putAll(parameters);
         }
+
         // 创建结果容器并注入上下文
         Map<String, Object> result = new HashMap<>();
         bindings.put("_chain", chain);
@@ -33,7 +41,7 @@ public class JsExecNode extends CodeNode {
             // 执行JavaScript代码
             engine.eval(code, bindings);
         } catch (ScriptException e) {
-            throw new RuntimeException("JavaScript执行失败", e);
+            throw new RuntimeException("GraalJS执行失败", e);
         }
 
         return result;
