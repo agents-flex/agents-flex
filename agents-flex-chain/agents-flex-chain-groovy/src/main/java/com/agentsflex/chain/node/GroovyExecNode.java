@@ -39,10 +39,7 @@ public class GroovyExecNode extends CodeNode {
         binding.setVariable("_chain", chain);
 
         GroovyShell shell = new GroovyShell(binding);
-        Object exeResult = shell.evaluate(code);
-        if (result.isEmpty() && exeResult instanceof Map) {
-            result = (Map<String, Object>) exeResult;
-        }
+        shell.evaluate(code);
         return result;
     }
 
