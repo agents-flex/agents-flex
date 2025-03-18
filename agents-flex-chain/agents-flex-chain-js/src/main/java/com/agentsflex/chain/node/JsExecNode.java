@@ -41,7 +41,7 @@ public class JsExecNode extends CodeNode {
             // 执行JavaScript代码
             engine.eval(code, bindings);
         } catch (ScriptException e) {
-            throw new RuntimeException("GraalJS执行失败", e);
+            throw new RuntimeException("GraalJS 执行失败", e);
         }
 
         return result;
