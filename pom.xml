@@ -50,7 +50,6 @@
         <module>agents-flex-solon-plugin</module>
         <module>agents-flex-spring-boot-starter</module>
         <module>agents-flex-chain</module>
-        <module>agents-flex-chain/agents-flex-chain-qlexpress</module>
         <module>agents-flex-image</module>
     </modules>
 
@@ -233,6 +232,11 @@
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-chain-groovy</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-chain-js</artifactId>
                 <version>${revision}</version>
             </dependency>
             <!--chains end-->

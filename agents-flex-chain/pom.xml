@@ -16,6 +16,8 @@
     <packaging>pom</packaging>
     <modules>
         <module>agents-flex-chain-groovy</module>
+        <module>agents-flex-chain-qlexpress</module>
+        <module>agents-flex-chain-js</module>
     </modules>
 
 

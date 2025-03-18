@@ -112,6 +112,10 @@
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-chain-groovy</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-chain-js</artifactId>
+        </dependency>
         <!--chains end-->
 
 
