@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-rc.7 20250312
+## v1.0.0-rc.8 20250312
 - feat: Added the function of adding reasoning content to the return message, supporting deepseek's reasoning return, thanks @rirch
 - feat: Added support for vectorexdb embedded version, no need to deploy database separately, thanks @javpower
 - feat: Added support for accessing Tencent's large model language, Wensheng graph model and vectorization interface, thanks @sunchanghuilinqing

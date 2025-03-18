@@ -1,5 +1,19 @@
 # Agents-Flex ChangeLog
 
+## v1.0.0-rc.8 20250318
+- feat: Added LLM support for siliconflow, thanks @daxian1218
+- feat: Chain's dynamic code node supports running Javascript scripts, thanks @hhongda
+- feat: Removed deepseek's invalid dependency on openai module, thanks @daxian1218
+- feat: Optimized EmbeddingModel and added direct embedding of String
+
+---
+- 新增：新增 LLM 对 siliconflow（硅基流动）的支持，感谢 @daxian1218
+- 新增：Chain 的动态代码节点支持运行 Javascript 脚本，感谢 @hhongda
+- 优化：移除 deepseek 无效的依赖 openai 模块，感谢 @daxian1218
+- 优化：优化 EmbeddingModel，添加直接对 String 的 embed
+
+
+
 ## v1.0.0-rc.7 20250312
 - feat: Added the function of adding reasoning content to the return message, supporting deepseek's reasoning return, thanks @rirch
 - feat: Added support for vectorexdb embedded version, no need to deploy database separately, thanks @javpower
