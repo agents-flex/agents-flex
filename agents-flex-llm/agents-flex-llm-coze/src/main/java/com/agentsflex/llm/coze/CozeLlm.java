@@ -192,7 +192,10 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         String url = String.format("%s/v3/chat/retrieve?chat_id=%s&conversation_id=%s", config.getEndpoint(), chatId, conversationId);
         String response = httpClient.get(url, buildHeader());
         JSONObject resObj = JSON.parseObject(response);
-        return resObj.getObject("data", (Type) CozeChatContext.class);
+        // 需要返回最新的response信息，否则会导致调用方获取不到conversation_id等完整信息
+        CozeChatContext cozeChatContext = resObj.getObject("data", (Type) CozeChatContext.class);
+        cozeChatContext.setResponse(response);
+        return cozeChatContext;
     }
 
     private JSONArray fetchMessageList(CozeChatContext cozeChat) {
@@ -220,11 +223,20 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
             .map(JSONObject.class::cast)
             .filter(obj -> "answer".equals(obj.getString("type")))
             .collect(Collectors.toList());
-
         JSONObject answer = !objects.isEmpty() ? objects.get(0) : null;
         if (answer != null) {
+            /*
+             * coze上的工作流一个请求可以返回多条消息，需要全部返回，用3个换行符进行分隔
+             * 使用3个换行符的原因：
+             *   若调用方不关心多条消息，不太影响直接展示；
+             *   若调用方关心多条消息，可以进行分割处理且3个换行符能减少误分隔的概率；
+             */
+            StringBuilder sb = new StringBuilder(answer.getString("content"));
+            for (int i = 1; i < objects.size(); i++) {
+                sb.append("\n\n\n").append(objects.get(i).getString("content"));
+            }
             answer.put("usage", cozeChat.getUsage());
-            answer.put("content", answer.getString("content"));
+            answer.put("content", sb.toString());
             return aiMessageParser.parse(answer);
         }
         return null;
