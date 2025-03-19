@@ -79,6 +79,43 @@ public void testChatStream() {
 }
 ```
 
+
+## 流式对话之更多的监听
+
+```java
+@Test()
+public void testChatStream() {
+    OpenAILlmConfig config = new OpenAILlmConfig();
+
+    // 设置你的 OpenAI API Key
+    config.setApiKey("sk-rts5NF6n*******");
+
+    Llm llm = new OpenAILlm(config);
+    llm.chatStream("你叫什么名字", new StreamResponseListener() {
+        @Override
+        public void onMessage(ChatContext context, AiMessageResponse response) {
+            AiMessage message = response.getMessage();
+            System.out.print(message.getContent());
+        }
+
+        @Override
+        public void onStart(ChatContext context) {
+            // 开始获得消息
+        }
+
+        @Override
+        public void onStop(ChatContext context) {
+            // llm 停止发送
+        }
+
+        @Override
+        public void onFailure(ChatContext context, Throwable throwable) {
+            // 发生错误了
+        }
+    });
+}
+```
+
 ## 图片识别对话
 
 ```java

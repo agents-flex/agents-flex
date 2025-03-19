@@ -74,6 +74,7 @@ public class Main {
             public void onMessage(ChatContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
             }
+
         });
 
         System.out.println(response);

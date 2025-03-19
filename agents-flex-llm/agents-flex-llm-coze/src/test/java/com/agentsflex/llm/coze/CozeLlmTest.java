@@ -77,10 +77,15 @@ public class CozeLlmTest {
 
             @Override
             public void onStop(ChatContext context) {
-                // stop 后才能拿到 token 用量等信息
+                // 停止了
                 CozeChatContext ccc = (CozeChatContext) context;
                 System.out.println(ccc.getUsage());
                 StreamResponseListener.super.onStop(context);
+            }
+
+            @Override
+            public void onFailure(ChatContext context, Throwable throwable) {
+                //发生错误了
             }
         }, options);
     }
