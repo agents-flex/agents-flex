@@ -29,9 +29,9 @@ public class GroovyExecNode extends CodeNode {
     protected Map<String, Object> executeCode(String code, Chain chain) {
         Binding binding = new Binding();
 
-        Map<String, Object> parameters = getParameters(chain);
-        if (parameters != null) {
-            parameters.forEach(binding::setVariable);
+        Map<String, Object> parameterValues = getParameterValues(chain);
+        if (parameterValues != null) {
+            parameterValues.forEach(binding::setVariable);
         }
 
         Map<String, Object> result = new HashMap<>();

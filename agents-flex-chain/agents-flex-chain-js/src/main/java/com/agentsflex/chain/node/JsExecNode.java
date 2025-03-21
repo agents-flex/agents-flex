@@ -27,9 +27,9 @@ public class JsExecNode extends CodeNode {
         bindings.put("polyglot.js.allowHostClassLookup", true);
 
         // 获取并注入参数
-        Map<String, Object> parameters = getParameters(chain);
-        if (parameters != null) {
-            bindings.putAll(parameters);
+        Map<String, Object> parameterValues = getParameterValues(chain);
+        if (parameterValues != null) {
+            bindings.putAll(parameterValues);
         }
 
         // 创建结果容器并注入上下文
