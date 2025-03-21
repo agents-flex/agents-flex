@@ -13,29 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain.event;
+package com.agentsflex.core.chain;
 
-import com.agentsflex.core.chain.Chain;
-
-public class OnErrorEvent extends BaseChainEvent {
-
-    private final Exception exception;
-
-    public OnErrorEvent(Chain chain, Exception exception) {
-        super(chain);
-        this.exception = exception;
-    }
-
-
-    public Exception getException() {
-        return exception;
-    }
-
-    @Override
-    public String toString() {
-        return "OnErrorEvent{" +
-            "chain=" + chain +
-            ", exception=" + exception +
-            '}';
-    }
+public interface ChainErrorListener {
+    void onError(Chain chain, Throwable error);
 }
