@@ -159,6 +159,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
             aiMessageParser.setReasoningContentPath("$.choices[0].delta.reasoning_content");
         } else {
             aiMessageParser.setContentPath("$.choices[0].message.content");
+            aiMessageParser.setReasoningContentPath("$.choices[0].message.reasoning_content");
         }
 
         aiMessageParser.setIndexPath("$.choices[0].index");
