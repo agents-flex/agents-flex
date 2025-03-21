@@ -23,6 +23,7 @@
         <module>agents-flex-store-elasticsearch</module>
         <module>agents-flex-store-vectorex</module>
         <module>agents-flex-store-vectorexdb</module>
+        <module>agents-flex-store-pgvector</module>
     </modules>
 
     <properties>
