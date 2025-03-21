@@ -24,7 +24,7 @@ public class StartNode extends BaseNode {
     @Override
     protected Map<String, Object> execute(Chain chain) {
         if (parameters != null) {
-            return getParameters(chain);
+            return getParameterValues(chain);
         }
         return Collections.emptyMap();
     }

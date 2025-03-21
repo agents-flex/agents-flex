@@ -104,16 +104,16 @@ public class LlmNode extends BaseNode {
 
     @Override
     protected Map<String, Object> execute(Chain chain) {
-        Map<String, Object> parameters = getParameters(chain);
+        Map<String, Object> parameterValues = getParameterValues(chain);
 
         if (userPromptTemplate == null) {
             return Collections.emptyMap();
         }
 
-        TextPrompt userPrompt = userPromptTemplate.format(parameters);
+        TextPrompt userPrompt = userPromptTemplate.format(parameterValues);
 
         if (systemPromptTemplate != null) {
-            String systemPrompt = systemPromptTemplate.formatToString(parameters);
+            String systemPrompt = systemPromptTemplate.formatToString(parameterValues);
             userPrompt.setSystemMessage(SystemMessage.of(systemPrompt));
         }
 

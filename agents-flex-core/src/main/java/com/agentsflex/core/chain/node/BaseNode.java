@@ -15,11 +15,11 @@
  */
 package com.agentsflex.core.chain.node;
 
-import com.agentsflex.core.chain.*;
-import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.ChainNode;
+import com.agentsflex.core.chain.Parameter;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,12 +38,16 @@ public abstract class BaseNode extends ChainNode {
         this.description = description;
     }
 
-    public List<Parameter> getParameters() {
+    public List<Parameter> getParameterValues() {
         return parameters;
     }
 
     public void setParameters(List<Parameter> parameters) {
         this.parameters = parameters;
+    }
+
+    public List<Parameter> getParameters() {
+        return parameters;
     }
 
     public void addInputParameter(Parameter parameter) {
@@ -62,55 +66,21 @@ public abstract class BaseNode extends ChainNode {
         this.outputDefs = outputDefs;
     }
 
-    public void addOutputDef(Parameter parameter){
+    public void addOutputDef(Parameter parameter) {
         if (outputDefs == null) {
             outputDefs = new java.util.ArrayList<>();
         }
         outputDefs.add(parameter);
     }
 
-    public void addOutputDefs(Collection<Parameter> parameters){
+    public void addOutputDefs(Collection<Parameter> parameters) {
         if (outputDefs == null) {
             outputDefs = new java.util.ArrayList<>();
         }
         outputDefs.addAll(parameters);
     }
 
-
-
-    public Map<String, Object> getChainParameters(Chain chain, List<Parameter> parameters) {
-        Map<String, Object> variables = new HashMap<>();
-        if (parameters != null) {
-            for (Parameter parameter : parameters) {
-                RefType refType = parameter.getRefType();
-                Object value;
-                if (refType == RefType.INPUT) {
-                    value = parameter.getRef();
-                } else if (refType == RefType.REF) {
-                    value = chain.get(parameter.getRef());
-                } else {
-                    value = chain.get(parameter.getName());
-                }
-                if (parameter.isRequired() &&
-                    (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
-                    chain.stopError(this.getName() + " Missing required parameter:" + parameter.getName());
-                }
-                if (value == null || value instanceof String) {
-                    value = value == null ? "" : ((String) value).trim();
-                    if (parameter.getDataType() == DataType.Boolean) {
-                        value = "true".equalsIgnoreCase((String) value) || "1".equalsIgnoreCase((String) value);
-                    } else if (parameter.getDataType() == DataType.Number) {
-                        value = Long.parseLong((String) value);
-                    }
-                }
-
-                variables.put(parameter.getName(), value);
-            }
-        }
-        return variables;
-    }
-
-    public Map<String, Object> getParameters(Chain chain) {
-        return getChainParameters(chain, this.parameters);
+    public Map<String, Object> getParameterValues(Chain chain) {
+        return chain.getParameterValues(this);
     }
 }
