@@ -25,7 +25,7 @@ import com.agentsflex.store.redis.RedisVectorStoreConfig;
 
 import java.util.List;
 
-public class Test {
+public class Test02 {
     public static void main(String[] args) {
 
         SparkLlmConfig sparkLlmConfig = new SparkLlmConfig();
@@ -42,25 +42,13 @@ public class Test {
         RedisVectorStore store = new RedisVectorStore(config);
         store.setEmbeddingModel(llm);
 
-        Document document = new Document();
-        document.setContent("你好");
-        document.setId(1);
-        store.store(document);
-
-
-        Document document2 = new Document();
-        document2.setContent("Agents-Flex 是一个优雅的 LLM（大语言模型）应用开发框架");
-        document2.setId(2);
-        store.store(document2);
-
-
-        Document document3 = new Document();
-        document3.setContent("明天不下雨");
-        document3.setId(3);
-        store.store(document3);
+//        Document document = new Document();
+//        document.setContent("你好");
+//        document.setId(1);
+//        store.store(document);
 
         SearchWrapper sw = new SearchWrapper();
-        sw.setText("明天下雨吗");
+        sw.setText("天气怎么样");
 
         List<Document> search = store.search(sw);
         System.out.println(search);

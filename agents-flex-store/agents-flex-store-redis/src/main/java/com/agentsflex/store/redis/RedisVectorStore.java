@@ -45,10 +45,10 @@ import java.util.*;
 
 public class RedisVectorStore extends DocumentStore {
 
-    private final RedisVectorStoreConfig config;
-    private final JedisPooled jedis;
-    private final Set<String> redisIndexesCache = new HashSet<>();
-    private static final Logger logger = LoggerFactory.getLogger(RedisVectorStore.class);
+    protected final RedisVectorStoreConfig config;
+    protected final JedisPooled jedis;
+    protected final Set<String> redisIndexesCache = new HashSet<>();
+    protected static final Logger logger = LoggerFactory.getLogger(RedisVectorStore.class);
 
 
     public RedisVectorStore(RedisVectorStoreConfig config) {
@@ -59,7 +59,7 @@ public class RedisVectorStore extends DocumentStore {
     }
 
 
-    private void createSchemaIfNecessary(String indexName) {
+    protected void createSchemaIfNecessary(String indexName) {
         if (redisIndexesCache.contains(indexName)) {
             return;
         }
@@ -80,7 +80,7 @@ public class RedisVectorStore extends DocumentStore {
     }
 
 
-    private Iterable<SchemaField> schemaFields() {
+    protected Iterable<SchemaField> schemaFields() {
         Map<String, Object> vectorAttrs = new HashMap<>();
         //支持  COSINE: 余弦距离 , IP: 内积距离, L2: 欧几里得距离
         vectorAttrs.put("DISTANCE_METRIC", "COSINE");
@@ -100,7 +100,7 @@ public class RedisVectorStore extends DocumentStore {
         return fields;
     }
 
-    private String jsonPath(String field) {
+    protected String jsonPath(String field) {
         return "$." + field;
     }
 
@@ -120,6 +120,12 @@ public class RedisVectorStore extends DocumentStore {
                 java.util.Map<String, Object> fields = new HashMap<>();
                 fields.put("text", document.getContent());
                 fields.put("vector", document.getVector());
+
+                //put all metadata
+                Map<String, Object> metadataMap = document.getMetadataMap();
+                if (metadataMap != null) {
+                    fields.putAll(metadataMap);
+                }
 
                 String key = getPrefix(indexName) + document.getId();
                 pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);
@@ -183,12 +189,21 @@ public class RedisVectorStore extends DocumentStore {
             floatBuffer.put(v.floatValue());
         }
 
+
+        List<String> returnFields = new ArrayList<>();
+        returnFields.add("text");
+        returnFields.add("vector");
+        returnFields.add("score");
+
+        if (wrapper.getOutputFields() != null) {
+            returnFields.addAll(wrapper.getOutputFields());
+        }
+
         // 使用 KNN 算法进行向量相似度搜索
         Query query = new Query("*=>[KNN " + wrapper.getMaxResults() + " @vector $BLOB AS score]")
             .addParam("BLOB", vectorBytes)
-            .returnFields("text", "vector", "score")
-            // 按照 score 排序，降序, 相似度越高的越靠前
-            .setSortBy("score", false)
+            .returnFields(returnFields.toArray(new String[0]))
+            .setSortBy("score", true)
             .limit(0, wrapper.getMaxResults())
             .dialect(2);
 
@@ -208,23 +223,31 @@ public class RedisVectorStore extends DocumentStore {
                 double[] doubles = JSON.parseObject(vector.toString(), double[].class);
                 doc.setVector(doubles);
             }
+
+            if (wrapper.getOutputFields() != null) {
+                for (String field : wrapper.getOutputFields()) {
+                    doc.addMetadata(field, document.getString(field));
+                }
+            }
+
             doc.addMetadata("score", 1 - similarityScore(document));
+
             documents.add(doc);
         }
         return documents;
     }
 
-    private float similarityScore(redis.clients.jedis.search.Document doc) {
+    protected float similarityScore(redis.clients.jedis.search.Document doc) {
         return (2 - Float.parseFloat(doc.getString("score"))) / 2;
     }
 
 
-    private String createIndexName(StoreOptions options) {
+    protected String createIndexName(StoreOptions options) {
         return options.getCollectionNameOrDefault(config.getDefaultCollectionName());
     }
 
     @NotNull
-    private String getPrefix(String indexName) {
+    protected String getPrefix(String indexName) {
         return this.config.getStorePrefix() + indexName + ":";
     }
 
