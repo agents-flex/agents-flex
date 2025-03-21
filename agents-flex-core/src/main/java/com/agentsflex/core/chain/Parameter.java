@@ -28,6 +28,7 @@ public class Parameter implements Serializable {
     protected RefType refType;
     protected String value;
     protected boolean required;
+    protected String defaultValue;
     protected List<Parameter> children;
 
     public Parameter() {
@@ -107,6 +108,14 @@ public class Parameter implements Serializable {
 
     public void setValue(String value) {
         this.value = value;
+    }
+
+    public String getDefaultValue() {
+        return defaultValue;
+    }
+
+    public void setDefaultValue(String defaultValue) {
+        this.defaultValue = defaultValue;
     }
 
     public boolean isRequired() {

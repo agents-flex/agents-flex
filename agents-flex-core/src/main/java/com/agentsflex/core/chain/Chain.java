@@ -28,18 +28,27 @@ import java.util.concurrent.ExecutorService;
 
 
 public class Chain extends ChainNode {
+    protected Chain parent;
+    protected List<Chain> children;
+
+    protected List<ChainNode> nodes;
+    protected List<ChainEdge> edges;
+
     protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
     protected Map<String, Object> executeResult = null;
     protected List<ChainOutputListener> outputListeners = new ArrayList<>();
-    protected List<ChainNode> nodes;
-    protected List<ChainEdge> edges;
-    protected ChainStatus status = ChainStatus.READY;
-    protected String message;
-    protected Chain parent;
-    protected List<Chain> children;
+    protected List<ChainErrorListener> errorListeners = new ArrayList<>();
+    protected List<ChainSuspendListener> suspendListeners = new ArrayList<>();
+
+
     protected ExecutorService asyncNodeExecutors = NamedThreadPools.newFixedThreadPool("chain-executor");
     protected Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<>();
+
+    protected List<ChainNode> suspendNodes;
+    protected List<Parameter> suspendForParameters;
+    protected ChainStatus status = ChainStatus.READY;
     protected Exception exception;
+    protected String message;
 
 
     public Chain() {
@@ -79,6 +88,21 @@ public class Chain extends ChainNode {
         }
     }
 
+    public synchronized void addErrorListener(ChainErrorListener listener) {
+        this.errorListeners.add(listener);
+    }
+
+    public synchronized void removeErrorListener(ChainErrorListener listener) {
+        this.errorListeners.remove(listener);
+    }
+
+    public synchronized void addSuspendListener(ChainSuspendListener listener) {
+        this.suspendListeners.add(listener);
+    }
+
+    public synchronized void removeSuspendListener(ChainSuspendListener listener) {
+        this.suspendListeners.remove(listener);
+    }
 
     public List<ChainOutputListener> getOutputListeners() {
         return outputListeners;
@@ -222,7 +246,7 @@ public class Chain extends ChainNode {
         List<Parameter> parameters = new ArrayList<>();
         for (ChainNode node : startNodes) {
             if (node instanceof BaseNode) {
-                List<Parameter> nodeParameters = ((BaseNode) node).getParameters();
+                List<Parameter> nodeParameters = ((BaseNode) node).getParameterValues();
                 if (nodeParameters != null) parameters.addAll(nodeParameters);
             } else if (node instanceof Chain) {
                 List<Parameter> chainParameters = ((Chain) node).getParameters();
@@ -230,6 +254,50 @@ public class Chain extends ChainNode {
             }
         }
         return parameters;
+    }
+
+    public Map<String, Object> getParameterValues(BaseNode node) {
+        Map<String, Object> variables = new HashMap<>();
+        List<Parameter> parameters = node.getParameters();
+        if (parameters != null) {
+            for (Parameter parameter : parameters) {
+                RefType refType = parameter.getRefType();
+                Object value;
+                if (refType == RefType.FIXED) {
+                    value = parameter.getValue();
+                } else if (refType == RefType.REF) {
+                    value = this.get(parameter.getRef());
+                    if (value == null && parameter.getDefaultValue() != null) {
+                        value = parameter.getDefaultValue();
+                    }
+                } else {
+                    value = this.get(parameter.getName());
+                }
+
+                if (parameter.isRequired() &&
+                    (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
+                    if (refType == RefType.FIXED || refType == RefType.REF) {
+                        throw new ChainException(node.getName() + " Missing required parameter:" + parameter.getName());
+                    } else {
+                        this.addSuspendForParameter(parameter);
+                        this.suspend(node);
+                        throw new ChainSuspendException(node.getName() + " Missing required parameter:" + parameter.getName());
+                    }
+                }
+
+                if (value == null || value instanceof String) {
+                    value = value == null ? "" : ((String) value).trim();
+                    if (parameter.getDataType() == DataType.Boolean) {
+                        value = "true".equalsIgnoreCase((String) value) || "1".equalsIgnoreCase((String) value);
+                    } else if (parameter.getDataType() == DataType.Number) {
+                        value = Long.parseLong((String) value);
+                    }
+                }
+
+                variables.put(parameter.getName(), value);
+            }
+        }
+        return variables;
     }
 
     public NodeContext getNodeContext(String nodeId) {
@@ -354,6 +422,10 @@ public class Chain extends ChainNode {
             return null;
         }
 
+        if (CollectionUtil.hasItems(this.suspendNodes)) {
+            return this.suspendNodes;
+        }
+
         List<ChainNode> nodes = new ArrayList<>();
 
         for (ChainNode node : this.nodes) {
@@ -391,10 +463,12 @@ public class Chain extends ChainNode {
             try {
                 setStatus(ChainStatus.RUNNING);
                 runnable.run();
+            } catch (ChainSuspendException cse) {
+                notifySuspend();
             } catch (Exception e) {
                 this.exception = e;
                 setStatus(ChainStatus.ERROR);
-                notifyEvent(new OnErrorEvent(this, e));
+                notifyError(e);
             }
             if (status == ChainStatus.RUNNING) {
                 setStatus(ChainStatus.FINISHED_NORMAL);
@@ -402,8 +476,11 @@ public class Chain extends ChainNode {
                 setStatus(ChainStatus.FINISHED_ABNORMAL);
             }
         } finally {
-            ChainContext.clearChain();
-            notifyEvent(new OnChainEndEvent(this));
+            if (status == ChainStatus.FINISHED_NORMAL
+                || status == ChainStatus.FINISHED_ABNORMAL) {
+                ChainContext.clearChain();
+                notifyEvent(new OnChainEndEvent(this));
+            }
         }
     }
 
@@ -415,19 +492,39 @@ public class Chain extends ChainNode {
         if (parent != null) parent.notifyOutput(node, response);
     }
 
+
+    private void notifySuspend() {
+        for (ChainSuspendListener suspendListener : suspendListeners) {
+            suspendListener.onSuspend(this);
+        }
+        if (parent != null) parent.notifySuspend();
+    }
+
+
+    private void notifyError(Throwable error) {
+        for (ChainErrorListener errorListener : errorListeners) {
+            errorListener.onError(this, error);
+        }
+        if (parent != null) parent.notifyError(error);
+    }
+
+
     public void stopNormal(String message) {
         this.message = message;
         setStatus(ChainStatus.FINISHED_NORMAL);
     }
+
 
     public void stopError(String message) {
         this.message = message;
         setStatus(ChainStatus.FINISHED_ABNORMAL);
     }
 
+
     public void output(ChainNode node, Object response) {
         notifyOutput(node, response);
     }
+
 
     public String getMessage() {
         return message;
@@ -474,6 +571,38 @@ public class Chain extends ChainNode {
 
     public void setAsyncNodeExecutors(ExecutorService asyncNodeExecutors) {
         this.asyncNodeExecutors = asyncNodeExecutors;
+    }
+
+    public List<Parameter> getSuspendForParameters() {
+        return suspendForParameters;
+    }
+
+    public void setSuspendForParameters(List<Parameter> suspendForParameters) {
+        this.suspendForParameters = suspendForParameters;
+    }
+
+    public void addSuspendForParameter(Parameter suspendForParameter) {
+        if (this.suspendForParameters == null) {
+            this.suspendForParameters = new ArrayList<>();
+        }
+        this.suspendForParameters.add(suspendForParameter);
+    }
+
+    public void suspend(ChainNode node) {
+        try {
+            if (suspendNodes == null) {
+                suspendNodes = new ArrayList<>();
+            }
+            if (!suspendNodes.contains(node)) {
+                suspendNodes.add(node);
+            }
+        } finally {
+            setStatus(ChainStatus.SUSPEND);
+        }
+    }
+
+    public void resume(Map<String, Object> variables) {
+        this.execute(variables);
     }
 
     public static class ExecuteNode {

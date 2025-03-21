@@ -5,6 +5,7 @@ import com.alibaba.fastjson.annotation.JSONType;
 @JSONType(typeName = "RefType")
 public enum RefType {
     REF("ref"),
+    FIXED("fixed"),
     INPUT("input"),
     ;
 
