@@ -17,9 +17,9 @@ package com.agentsflex.core.chain.event;
 
 import com.agentsflex.core.chain.Chain;
 
-public class OnChainStartEvent extends BaseChainEvent {
+public class ChainStartEvent extends BaseChainEvent {
 
-    public OnChainStartEvent(Chain chain) {
+    public ChainStartEvent(Chain chain) {
         super(chain);
     }
 

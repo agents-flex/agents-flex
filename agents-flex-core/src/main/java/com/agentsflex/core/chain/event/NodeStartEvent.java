@@ -18,11 +18,11 @@ package com.agentsflex.core.chain.event;
 import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.chain.ChainNode;
 
-public class OnNodeStartEvent extends BaseChainEvent {
+public class NodeStartEvent extends BaseChainEvent {
 
     private final ChainNode node;
 
-    public OnNodeStartEvent(Chain chain, ChainNode node) {
+    public NodeStartEvent(Chain chain, ChainNode node) {
         super(chain);
         this.node = node;
     }

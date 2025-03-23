@@ -20,12 +20,12 @@ import com.agentsflex.core.chain.ChainNode;
 
 import java.util.Map;
 
-public class OnNodeEndEvent extends BaseChainEvent {
+public class NodeEndEvent extends BaseChainEvent {
 
     private final ChainNode node;
     private final Map<String, Object> result;
 
-    public OnNodeEndEvent(Chain chain, ChainNode node, Map<String, Object> result) {
+    public NodeEndEvent(Chain chain, ChainNode node, Map<String, Object> result) {
         super(chain);
         this.node = node;
         this.result = result;

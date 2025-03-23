@@ -164,7 +164,7 @@ public class Chain extends ChainNode {
         this.status = status;
 
         if (before != status) {
-            notifyEvent(new OnStatusChangeEvent(this, this.status, before));
+            notifyEvent(new ChainStatusChangeEvent(this, this.status, before));
         }
     }
 
@@ -210,15 +210,16 @@ public class Chain extends ChainNode {
         return this.memory.getAll();
     }
 
-
     public void execute(Map<String, Object> variables) {
-        runInLifeCycle(variables, this::executeInternal);
+        runInLifeCycle(variables,
+            new ChainStartEvent(this),
+            this::executeInternal);
     }
 
 
     public Map<String, Object> executeForResult(Map<String, Object> variables) {
 
-        runInLifeCycle(variables, this::executeInternal);
+        runInLifeCycle(variables, new ChainStartEvent(this), this::executeInternal);
 
         if (this.status == ChainStatus.FINISHED_ABNORMAL) {
             if (this.exception != null) {
@@ -333,7 +334,7 @@ public class Chain extends ChainNode {
                 Map<String, Object> executeResult = null;
                 try {
                     ChainContext.setNode(currentNode);
-                    notifyEvent(new OnNodeStartEvent(this, currentNode));
+                    notifyEvent(new NodeStartEvent(this, currentNode));
                     if (this.getStatus() != ChainStatus.RUNNING) {
                         break;
                     }
@@ -344,7 +345,7 @@ public class Chain extends ChainNode {
                 } finally {
                     onNodeExecuteEnd(nodeContext);
                     ChainContext.clearNode();
-                    notifyEvent(new OnNodeEndEvent(this, currentNode, executeResult));
+                    notifyEvent(new NodeEndEvent(this, currentNode, executeResult));
                 }
 
                 if (executeResult != null && !executeResult.isEmpty()) {
@@ -453,13 +454,13 @@ public class Chain extends ChainNode {
     }
 
 
-    protected void runInLifeCycle(Map<String, Object> variables, Runnable runnable) {
+    protected void runInLifeCycle(Map<String, Object> variables, ChainEvent startEvent, Runnable runnable) {
         if (variables != null) {
             this.memory.putAll(variables);
         }
         try {
             ChainContext.setChain(this);
-            notifyEvent(new OnChainStartEvent(this));
+            notifyEvent(startEvent);
             try {
                 setStatus(ChainStatus.RUNNING);
                 runnable.run();
@@ -476,11 +477,8 @@ public class Chain extends ChainNode {
                 setStatus(ChainStatus.FINISHED_ABNORMAL);
             }
         } finally {
-            if (status == ChainStatus.FINISHED_NORMAL
-                || status == ChainStatus.FINISHED_ABNORMAL) {
-                ChainContext.clearChain();
-                notifyEvent(new OnChainEndEvent(this));
-            }
+            ChainContext.clearChain();
+            notifyEvent(new ChainEndEvent(this));
         }
     }
 
@@ -602,8 +600,11 @@ public class Chain extends ChainNode {
     }
 
     public void resume(Map<String, Object> variables) {
-        this.execute(variables);
+        runInLifeCycle(variables,
+            new ChainResumeEvent(this),
+            this::executeInternal);
     }
+
 
     public static class ExecuteNode {
 

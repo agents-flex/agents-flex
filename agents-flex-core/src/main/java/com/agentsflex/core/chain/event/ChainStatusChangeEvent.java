@@ -16,17 +16,34 @@
 package com.agentsflex.core.chain.event;
 
 import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.ChainStatus;
 
-public class OnChainEndEvent extends BaseChainEvent {
+public class ChainStatusChangeEvent extends BaseChainEvent {
 
-    public OnChainEndEvent(Chain chain) {
+    private final ChainStatus status;
+    private final ChainStatus before;
+
+    public ChainStatusChangeEvent(Chain chain, ChainStatus status, ChainStatus before) {
         super(chain);
+        this.status = status;
+        this.before = before;
     }
+
+    public ChainStatus getStatus() {
+        return status;
+    }
+
+    public ChainStatus getBefore() {
+        return before;
+    }
+
 
     @Override
     public String toString() {
-        return "OnChainEndEvent{" +
+        return "OnStatusChangeEvent{" +
             "chain=" + chain +
+            ", status=" + status +
+            ", before=" + before +
             '}';
     }
 }
