@@ -27,7 +27,8 @@ public abstract class ChainNode implements Serializable {
 
     protected String id;
     protected String name;
-    protected boolean async;
+    protected boolean async = false;
+    protected boolean awaitAsyncResult = true;
     protected List<ChainEdge> inwardEdges;
     protected List<ChainEdge> outwardEdges;
 
@@ -58,6 +59,14 @@ public abstract class ChainNode implements Serializable {
 
     public void setAsync(boolean async) {
         this.async = async;
+    }
+
+    public boolean isAwaitAsyncResult() {
+        return awaitAsyncResult;
+    }
+
+    public void setAwaitAsyncResult(boolean awaitAsyncResult) {
+        this.awaitAsyncResult = awaitAsyncResult;
     }
 
     public List<ChainEdge> getInwardEdges() {

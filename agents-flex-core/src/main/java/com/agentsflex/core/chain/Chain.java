@@ -24,7 +24,9 @@ import com.agentsflex.core.util.StringUtil;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 
 public class Chain extends ChainNode {
@@ -282,7 +284,7 @@ public class Chain extends ChainNode {
                     } else {
                         this.addSuspendForParameter(parameter);
                         this.suspend(node);
-                        throw new ChainSuspendException(node.getName() + " Missing required parameter:" + parameter.getName());
+                        throw new ChainSuspendException(node.getClass() + " Missing required parameter:" + parameter.getName());
                     }
                 }
 
@@ -398,23 +400,39 @@ public class Chain extends ChainNode {
 
 
     private Map<String, Object> executeNode(ChainNode currentNode) {
-        Map<String, Object> executeResult = null;
         if (currentNode.isAsync()) {
             Chain currentChain = ChainContext.getCurrentChain();
-            asyncNodeExecutors.execute(() -> {
+            Future<Map<String, Object>> future = asyncNodeExecutors.submit(() -> {
                 try {
                     ChainContext.setChain(currentChain);
                     ChainContext.setNode(currentNode);
-                    currentNode.execute(Chain.this);
+                    return currentNode.execute(Chain.this);
                 } finally {
                     ChainContext.clearNode();
                     ChainContext.clearChain();
                 }
             });
-        } else {
-            executeResult = currentNode.execute(this);
+            if (currentNode.isAwaitAsyncResult()) {
+                try {
+                    return future.get();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                } catch (ExecutionException e) {
+                    if (e.getCause() instanceof ChainSuspendException) {
+                        throw (ChainSuspendException) e.getCause();
+                    } else if (e.getCause() instanceof RuntimeException) {
+                        throw (RuntimeException) e.getCause();
+                    } else {
+                        throw new RuntimeException(e.getCause());
+                    }
+                }
+            }
         }
-        return executeResult;
+        // not async node
+        else {
+            return currentNode.execute(this);
+        }
+        return null;
     }
 
 
