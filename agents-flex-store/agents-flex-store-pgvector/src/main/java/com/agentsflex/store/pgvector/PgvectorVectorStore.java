@@ -23,6 +23,7 @@ import com.agentsflex.core.store.StoreResult;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.postgresql.ds.PGSimpleDataSource;
+import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +32,7 @@ import java.util.*;
 
 public class PgvectorVectorStore extends DocumentStore {
     private static final Logger logger = LoggerFactory.getLogger(PgvectorVectorStore.class);
-    public static final double DEFAULT_SIMILARITY_THRESHOLD = 0.7;
+    public static final double DEFAULT_SIMILARITY_THRESHOLD = 0.3;
     private final PGSimpleDataSource dataSource;
     private final String defaultCollectionName;
     private final PgvectorVectorStoreConfig config;
@@ -164,15 +165,17 @@ public class PgvectorVectorStore extends DocumentStore {
         }
 
         sql.append(" from ").append(options.getCollectionNameOrDefault(defaultCollectionName));
-        sql.append(" where vector <=> ? > ? LIMIT ?");
+        sql.append(" where vector <=> ? < ? order by vector <=> ? LIMIT ?");
 
         try (Connection connection = getConnection()){
             // 使用余弦距离计算最相似的文档
             PreparedStatement stmt = connection.prepareStatement(sql.toString());
 
-            stmt.setObject(1, PgvectorUtil.toPgVector(searchWrapper.getVector()));
+            PGobject vector = PgvectorUtil.toPgVector(searchWrapper.getVector());
+            stmt.setObject(1, vector);
             stmt.setObject(2, Optional.ofNullable(searchWrapper.getMinScore()).orElse(DEFAULT_SIMILARITY_THRESHOLD));
-            stmt.setObject(3, searchWrapper.getMaxResults());
+            stmt.setObject(3, vector);
+            stmt.setObject(4, searchWrapper.getMaxResults());
 
             ResultSet resultSet = stmt.executeQuery();
             List<Document> documents = new ArrayList<>();
