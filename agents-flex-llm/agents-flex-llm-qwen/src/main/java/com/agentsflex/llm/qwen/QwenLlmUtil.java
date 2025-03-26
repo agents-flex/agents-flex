@@ -46,6 +46,7 @@ public class QwenLlmUtil {
         return Maps.of("model", config.getModel())
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
+            .setIf(withStream, "stream_options", Maps.of("include_usage", true))
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
             .setIfContainsKey("tools", "tool_choice", MessageUtil.getToolChoice(message))
             .setIfNotNull("top_p", options.getTopP())
