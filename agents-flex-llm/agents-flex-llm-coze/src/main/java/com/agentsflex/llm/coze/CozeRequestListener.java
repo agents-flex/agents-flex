@@ -20,6 +20,8 @@ package com.agentsflex.llm.coze;
  */
 public interface CozeRequestListener{
 
+    void onStart(CozeChatContext context);
+
     void onMessage(CozeChatContext context);
 
     void onFailure(CozeChatContext context, Throwable throwable);
