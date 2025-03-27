@@ -144,8 +144,15 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
         CozeChatContext context = new CozeChatContext();
         context.setLlm(this);
 
+        // 记录completed消息，在处理完answer消息后再进行处理
+        CozeChatContext completedContext = null;
+
+
         List<AiMessage> messageList = new ArrayList<>();
         try {
+            // 在处理消息前，先进行初始化，保持与其他LLM流式处理流程一致
+            listener.onStart(context);
+
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty() || !line.startsWith("data:") || line.contains("[DONE]")) {
@@ -158,9 +165,8 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
                 String status = data.getString("status");
                 String type = data.getString("type");
                 if ("completed".equalsIgnoreCase(status)) {
-                    context = JSON.parseObject(line, CozeChatContext.class);
-                    context.setResponse(line);
-                    listener.onStop(context);
+                    completedContext = JSON.parseObject(line, CozeChatContext.class);
+                    completedContext.setResponse(line);
                     continue;
                 }
                 // N 条answer，最后一条是完整的
@@ -178,6 +184,10 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
                     listener.onMessage(context);
                     Thread.sleep(10);
                 }
+            }
+
+            if (completedContext != null) {
+                listener.onStop(completedContext);
             }
         } catch (IOException ex) {
             listener.onFailure(context, ex.getCause());
@@ -257,6 +267,10 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
 
         this.botChat(prompt, new CozeRequestListener() {
             @Override
+            public void onStart(CozeChatContext context) {
+            }
+
+            @Override
             public void onMessage(CozeChatContext context) {
                 boolean isCompleted = Objects.equals(context.getStatus(), "completed");
                 if (isCompleted) {
@@ -300,6 +314,11 @@ public class CozeLlm extends BaseLlm<CozeLlmConfig> {
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         this.botChat(prompt, new CozeRequestListener() {
+            @Override
+            public void onStart(CozeChatContext context) {
+                listener.onStart(context);
+            }
+
             @Override
             public void onMessage(CozeChatContext context) {
                 AiMessageResponse response = new AiMessageResponse(prompt, context.getResponse(), context.getMessage());
