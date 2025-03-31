@@ -1,6 +1,35 @@
 # Agents-Flex ChangeLog
 
-## v1.0.0-rc.8 20250318
+
+## v1.0.0-rc.9 20250331
+- feat: Added support for vector database Pgvector, thanks @daxian1218
+- feat: Chain added "SUSPEND" state and ChainSuspendListener listener
+- feat: Chain's RefType added "fixed" type.
+- feat: Chain's Parameter added "defaultValue"
+- feat: Chain added ChainResumeEvent event
+- feat: ChainNode added "awaitAsyncResult" property configuration
+- refactor: Return the complete response and answer information of coze chat to obtain complete information such as conversation_id, thanks @knowpigxia
+- refactor: Optimize the implementation details of RedisVectorStore
+- refactor: Chain removed OnErrorEvent and added ChainErrorListener instead
+- refactor: Rename BaseNode's "getParameters" method to "getParameterValues"
+- refactor: Rename Chain's event and remove the On prefix
+
+---
+- 新增：新增向量数据库 Pgvector 的支持，感谢 @daxian1218
+- 新增：Chain 新增 "SUSPEND" 状态以及 ChainSuspendListener 监听
+- 新增：Chain 的 RefType 新增  "fixed" 类型。
+- 新增：Chain 的 Parameter 新增 "defaultValue"
+- 新增：Chain 新增 ChainResumeEvent 事件
+- 新增：ChainNode 新增  "awaitAsyncResult" 属性配置
+- 优化：返回 coze chat 完整的 response、answer 信息，以便获取 conversation_id 等完整信息，感谢 @knowpigxia
+- 优化：优化 RedisVectorStore 的实现细节
+- 优化：Chain 移除 OnErrorEvent 并新增 ChainErrorListener 代替
+- 优化：重命名 BaseNode 的 "getParameters" 方法为 "getParameterValues"
+- 优化：重命名 Chain 的事件，移除 On 前缀
+
+
+
+## v1.0.0-rc.9 20250318
 - feat: Added LLM support for siliconflow, thanks @daxian1218
 - feat: Chain's dynamic code node supports running Javascript scripts, thanks @hhongda
 - feat: Removed deepseek's invalid dependency on openai module, thanks @daxian1218
