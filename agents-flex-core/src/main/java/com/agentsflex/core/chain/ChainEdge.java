@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.chain;
 
+import java.util.UUID;
+
 public class ChainEdge {
     private String id;
     private String source;
@@ -22,6 +24,14 @@ public class ChainEdge {
     private EdgeCondition condition;
     private int weight;
     private boolean isDefault;
+
+    public ChainEdge() {
+        this.id = UUID.randomUUID().toString();
+    }
+
+    public ChainEdge(String id) {
+        this.id = id;
+    }
 
     public String getId() {
         return id;
