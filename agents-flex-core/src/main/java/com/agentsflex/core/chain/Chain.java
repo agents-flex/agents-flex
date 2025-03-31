@@ -249,7 +249,7 @@ public class Chain extends ChainNode {
         List<Parameter> parameters = new ArrayList<>();
         for (ChainNode node : startNodes) {
             if (node instanceof BaseNode) {
-                List<Parameter> nodeParameters = ((BaseNode) node).getParameterValues();
+                List<Parameter> nodeParameters = ((BaseNode) node).getParameters();
                 if (nodeParameters != null) parameters.addAll(nodeParameters);
             } else if (node instanceof Chain) {
                 List<Parameter> chainParameters = ((Chain) node).getParameters();
@@ -260,45 +260,49 @@ public class Chain extends ChainNode {
     }
 
     public Map<String, Object> getParameterValues(BaseNode node) {
+        return getParameterValues(node, node.getParameters());
+    }
+
+    public Map<String, Object> getParameterValues(BaseNode node, List<Parameter> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return Collections.emptyMap();
+        }
         Map<String, Object> variables = new HashMap<>();
-        List<Parameter> parameters = node.getParameters();
-        if (parameters != null) {
-            for (Parameter parameter : parameters) {
-                RefType refType = parameter.getRefType();
-                Object value;
-                if (refType == RefType.FIXED) {
-                    value = parameter.getValue();
-                } else if (refType == RefType.REF) {
-                    value = this.get(parameter.getRef());
-                    if (value == null && parameter.getDefaultValue() != null) {
-                        value = parameter.getDefaultValue();
-                    }
-                } else {
-                    value = this.get(parameter.getName());
+        for (Parameter parameter : parameters) {
+            RefType refType = parameter.getRefType();
+            Object value;
+            if (refType == RefType.FIXED) {
+                value = parameter.getValue();
+            } else if (refType == RefType.REF) {
+                value = this.get(parameter.getRef());
+                if (value == null && parameter.getDefaultValue() != null) {
+                    value = parameter.getDefaultValue();
                 }
-
-                if (parameter.isRequired() &&
-                    (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
-                    if (refType == RefType.FIXED || refType == RefType.REF) {
-                        throw new ChainException(node.getName() + " Missing required parameter:" + parameter.getName());
-                    } else {
-                        this.addSuspendForParameter(parameter);
-                        this.suspend(node);
-                        throw new ChainSuspendException(node.getClass() + " Missing required parameter:" + parameter.getName());
-                    }
-                }
-
-                if (value == null || value instanceof String) {
-                    value = value == null ? "" : ((String) value).trim();
-                    if (parameter.getDataType() == DataType.Boolean) {
-                        value = "true".equalsIgnoreCase((String) value) || "1".equalsIgnoreCase((String) value);
-                    } else if (parameter.getDataType() == DataType.Number) {
-                        value = Long.parseLong((String) value);
-                    }
-                }
-
-                variables.put(parameter.getName(), value);
+            } else {
+                value = this.get(parameter.getName());
             }
+
+            if (parameter.isRequired() &&
+                (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
+                if (refType == RefType.FIXED || refType == RefType.REF) {
+                    throw new ChainException(node.getName() + " Missing required parameter:" + parameter.getName());
+                } else {
+                    this.addSuspendForParameter(parameter);
+                    this.suspend(node);
+                    throw new ChainSuspendException(node.getClass() + " Missing required parameter:" + parameter.getName());
+                }
+            }
+
+            if (value == null || value instanceof String) {
+                value = value == null ? "" : ((String) value).trim();
+                if (parameter.getDataType() == DataType.Boolean) {
+                    value = "true".equalsIgnoreCase((String) value) || "1".equalsIgnoreCase((String) value);
+                } else if (parameter.getDataType() == DataType.Number) {
+                    value = Long.parseLong((String) value);
+                }
+            }
+
+            variables.put(parameter.getName(), value);
         }
         return variables;
     }

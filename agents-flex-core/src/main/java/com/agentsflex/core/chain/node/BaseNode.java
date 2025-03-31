@@ -15,13 +15,11 @@
  */
 package com.agentsflex.core.chain.node;
 
-import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.chain.ChainNode;
 import com.agentsflex.core.chain.Parameter;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 public abstract class BaseNode extends ChainNode {
 
@@ -36,10 +34,6 @@ public abstract class BaseNode extends ChainNode {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public List<Parameter> getParameterValues() {
-        return parameters;
     }
 
     public void setParameters(List<Parameter> parameters) {
@@ -78,9 +72,5 @@ public abstract class BaseNode extends ChainNode {
             outputDefs = new java.util.ArrayList<>();
         }
         outputDefs.addAll(parameters);
-    }
-
-    public Map<String, Object> getParameterValues(Chain chain) {
-        return chain.getParameterValues(this);
     }
 }

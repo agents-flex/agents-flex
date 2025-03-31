@@ -31,7 +31,7 @@ public class QLExpressExecNode extends CodeNode {
         ExpressRunner runner = new ExpressRunner();
         DefaultContext<String, Object> context = new DefaultContext<>();
 
-        Map<String, Object> parameterValues = getParameterValues(chain);
+        Map<String, Object> parameterValues = chain.getParameterValues(this);
         if (parameterValues != null) context.putAll(parameterValues);
 
         context.put("_chain", chain);

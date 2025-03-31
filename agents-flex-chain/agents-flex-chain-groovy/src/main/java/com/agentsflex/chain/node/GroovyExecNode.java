@@ -29,7 +29,7 @@ public class GroovyExecNode extends CodeNode {
     protected Map<String, Object> executeCode(String code, Chain chain) {
         Binding binding = new Binding();
 
-        Map<String, Object> parameterValues = getParameterValues(chain);
+        Map<String, Object> parameterValues = chain.getParameterValues(this);
         if (parameterValues != null) {
             parameterValues.forEach(binding::setVariable);
         }

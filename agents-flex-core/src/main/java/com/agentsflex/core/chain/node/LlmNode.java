@@ -104,7 +104,7 @@ public class LlmNode extends BaseNode {
 
     @Override
     protected Map<String, Object> execute(Chain chain) {
-        Map<String, Object> parameterValues = getParameterValues(chain);
+        Map<String, Object> parameterValues = chain.getParameterValues(this);
 
         if (userPromptTemplate == null) {
             return Collections.emptyMap();

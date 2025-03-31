@@ -17,16 +17,12 @@ package com.agentsflex.core.chain.node;
 
 import com.agentsflex.core.chain.Chain;
 
-import java.util.Collections;
 import java.util.Map;
 
 public class StartNode extends BaseNode {
     @Override
     protected Map<String, Object> execute(Chain chain) {
-        if (parameters != null) {
-            return getParameterValues(chain);
-        }
-        return Collections.emptyMap();
+        return chain.getParameterValues(this);
     }
 
     @Override

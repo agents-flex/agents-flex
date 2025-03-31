@@ -10,7 +10,7 @@ public class TestNode extends BaseNode {
 
     @Override
     protected Map<String, Object> execute(Chain chain) {
-        Map<String, Object> parameterValues = getParameterValues(chain);
+        Map<String, Object> parameterValues = chain.getParameterValues(this);
         return Collections.emptyMap();
     }
 }
