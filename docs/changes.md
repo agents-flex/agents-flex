@@ -29,7 +29,7 @@
 
 
 
-## v1.0.0-rc.9 20250318
+## v1.0.0-rc.8 20250318
 - feat: Added LLM support for siliconflow, thanks @daxian1218
 - feat: Chain's dynamic code node supports running Javascript scripts, thanks @hhongda
 - feat: Removed deepseek's invalid dependency on openai module, thanks @daxian1218
