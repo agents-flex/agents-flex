@@ -64,7 +64,7 @@ public class NodeContext {
     public boolean isUpstreamFullyExecuted() {
         List<ChainEdge> inwardEdges = currentNode.getInwardEdges();
         if (inwardEdges == null || inwardEdges.isEmpty()) {
-            return false;
+            return true;
         }
 
         List<String> shouldBeTriggerIds = inwardEdges.stream().map(ChainEdge::getId).collect(Collectors.toList());
