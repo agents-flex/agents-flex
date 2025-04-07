@@ -38,6 +38,10 @@ public class HistoriesPrompt extends Prompt {
     private int historyMessageTruncateLength = 1000;
     private Function<String, String> historyMessageTruncateProcessor;
 
+    // 临时消息不回存入 memory，只会当做 “过程消息” 参与大模型交互
+    // 比如用于 Function call 等场景
+    private List<Message> temporaryMessages;
+
     public SystemMessage getSystemMessage() {
         return systemMessage;
     }
@@ -89,6 +93,13 @@ public class HistoriesPrompt extends Prompt {
         memory.addMessage(message);
     }
 
+    public void addMessageTemporary(Message message) {
+        if (temporaryMessages == null) {
+            temporaryMessages = new ArrayList<>();
+        }
+        temporaryMessages.add(message);
+    }
+
     public void addMessages(Collection<Message> messages) {
         memory.addMessages(messages);
     }
@@ -99,6 +110,19 @@ public class HistoriesPrompt extends Prompt {
 
     public void setMemory(ChatMemory memory) {
         this.memory = memory;
+    }
+
+    public List<Message> getTemporaryMessages() {
+        return temporaryMessages;
+    }
+
+    public void setTemporaryMessages(List<Message> temporaryMessages) {
+        this.temporaryMessages = temporaryMessages;
+    }
+
+    public void clearTemporaryMessages() {
+        temporaryMessages.clear();
+        temporaryMessages = null;
     }
 
     @Override
@@ -126,6 +150,10 @@ public class HistoriesPrompt extends Prompt {
 
         if (systemMessage != null) {
             messages.add(0, systemMessage);
+        }
+
+        if (temporaryMessages != null) {
+            messages.addAll(temporaryMessages);
         }
 
         return messages;
