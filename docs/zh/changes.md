@@ -1,6 +1,20 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.0 20250407
+- fix: fixed NodeContext.isUpstreamFullyExecuted() method
+- feat: add "concurrencyLimitSleepMillis" config for SparkLlm
+- feat: openai add chatPath config and embed path config
+- feat: HistoriesPrompt add temporaryMessages config
+
+---
+- 修复：NodeContext.isUpstreamFullyExecuted() 方法判断错误的问题
+- 新增: SparkLlm 添加 concurrencyLimitSleepMillis 配置
+- 新增: openai 添加 chatPath 配置和 embed path 配置
+- 新增: HistoriesPrompt 添加 temporaryMessages 配置
+
+
+
 ## v1.0.0-rc.9 20250331
 - feat: Added support for vector database Pgvector, thanks @daxian1218
 - feat: Chain added "SUSPEND" state and ChainSuspendListener listener
