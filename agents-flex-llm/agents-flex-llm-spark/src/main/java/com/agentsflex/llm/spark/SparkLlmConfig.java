@@ -23,6 +23,7 @@ public class SparkLlmConfig extends LlmConfig {
     private String apiSecret;
     private  String apiKey ;
     private  String version = "v3.5";
+    private int concurrencyLimitSleepMillis = 200;
 
 
     public String getAppId() {
@@ -55,5 +56,13 @@ public class SparkLlmConfig extends LlmConfig {
 
     public void setVersion(String version) {
         this.version = version;
+    }
+
+    public int getConcurrencyLimitSleepMillis() {
+        return concurrencyLimitSleepMillis;
+    }
+
+    public void setConcurrencyLimitSleepMillis(int concurrencyLimitSleepMillis) {
+        this.concurrencyLimitSleepMillis = concurrencyLimitSleepMillis;
     }
 }

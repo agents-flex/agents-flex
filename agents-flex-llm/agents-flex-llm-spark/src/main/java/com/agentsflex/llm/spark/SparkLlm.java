@@ -65,6 +65,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         String payload = SparkLlmUtil.embedPayload(config, document);
         String resp = httpClient.post(SparkLlmUtil.createEmbedURL(config), null, payload);
         if (StringUtil.noText(resp)) {
+            logger.error("Could not get embed data" + document);
             return null;
         }
 
@@ -77,7 +78,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
         if (code != 0) {
             //11202	授权错误：秒级流控超限。秒级并发超过授权路数限制
             if (code.equals(11202) && tryTimes < 3) {
-                SleepUtil.sleep(200);
+                SleepUtil.sleep(config.getConcurrencyLimitSleepMillis());
                 return embed(document, options, tryTimes + 1);
             } else {
                 logger.error(resp);
