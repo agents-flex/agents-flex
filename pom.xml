@@ -63,8 +63,8 @@
         <slf4j.version>1.7.29</slf4j.version>
         <junit.version>4.13.2</junit.version>
         <okhttp.version>4.9.3</okhttp.version>
-        <fastjson.version>2.0.55</fastjson.version>
-        <solon.version>3.0.8</solon.version>
+        <fastjson.version>2.0.57</fastjson.version>
+        <solon.version>3.1.2</solon.version>
         <spring-boot.version>2.7.18</spring-boot.version>
     </properties>
 
