@@ -99,7 +99,7 @@ public class MoonshotLlm extends BaseLlm<MoonshotLlmConfig> {
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions options) {
-        throw new IllegalStateException("Moonshot can not support embedding");
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
 }

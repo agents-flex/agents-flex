@@ -112,6 +112,6 @@ public class DeepseekLlm extends BaseLlm<DeepseekConfig> {
 
     @Override
     public VectorData embed(Document document, EmbeddingOptions embeddingOptions) {
-        return null;
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 }
