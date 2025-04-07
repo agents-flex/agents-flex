@@ -24,6 +24,8 @@ public class OpenAILlmConfig extends LlmConfig {
     private static final String DEFAULT_ENDPOINT = "https://api.openai.com";
 
     private String defaultEmbeddingModel = DEFAULT_EMBEDDING_MODEL;
+    private String chatPath = "/v1/chat/completions";
+    private String embedPath = "/v1/embeddings";
 
     public String getDefaultEmbeddingModel() {
         return defaultEmbeddingModel;
@@ -31,6 +33,22 @@ public class OpenAILlmConfig extends LlmConfig {
 
     public void setDefaultEmbeddingModel(String defaultEmbeddingModel) {
         this.defaultEmbeddingModel = defaultEmbeddingModel;
+    }
+
+    public String getChatPath() {
+        return chatPath;
+    }
+
+    public void setChatPath(String chatPath) {
+        this.chatPath = chatPath;
+    }
+
+    public String getEmbedPath() {
+        return embedPath;
+    }
+
+    public void setEmbedPath(String embedPath) {
+        this.embedPath = embedPath;
     }
 
     public OpenAILlmConfig() {

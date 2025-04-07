@@ -75,7 +75,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
 
         String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + "/v1/chat/completions", headers, payload);
+        String response = httpClient.post(endpoint + config.getChatPath(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
@@ -88,7 +88,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
-        AiMessageResponse messageResponse  = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
+        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
@@ -111,7 +111,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, true);
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
-        llmClient.start(endpoint + "/v1/chat/completions", headers, payload, clientListener, config);
+        llmClient.start(endpoint + config.getChatPath(), headers, payload, clientListener, config);
     }
 
 
@@ -124,7 +124,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         String payload = OpenAILlmUtil.promptToEmbeddingsPayload(document, options, config);
         String endpoint = config.getEndpoint();
         // https://platform.openai.com/docs/api-reference/embeddings/create
-        String response = httpClient.post(endpoint + "/v1/embeddings", headers, payload);
+        String response = httpClient.post(endpoint + config.getEmbedPath(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
