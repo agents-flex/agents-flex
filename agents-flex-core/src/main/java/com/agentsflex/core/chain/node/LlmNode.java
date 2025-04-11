@@ -23,6 +23,7 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.prompt.TextPrompt;
 import com.agentsflex.core.prompt.template.TextPromptTemplate;
+import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
@@ -126,7 +127,12 @@ public class LlmNode extends BaseNode {
         }
 
         if (outType == null || outType.equalsIgnoreCase("text") || outType.equalsIgnoreCase("markdown")) {
-            return Maps.of("output", response.getMessage().getContent());
+            if (CollectionUtil.noItems(this.outputDefs)) {
+                return Maps.of("output", response.getMessage().getContent());
+            } else {
+                Parameter parameter = this.outputDefs.get(0);
+                return Maps.of(parameter.getName(), response.getMessage().getContent());
+            }
         } else {
             if (this.outputDefs != null) {
                 JSONObject jsonObject;
