@@ -1,6 +1,16 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.1 20250411
+- fix: LlmNode can not return the correct result if outType is text
+- fix: TextPromptTemplate can not parse `{{}}`
+
+---
+- 修复：修复 LlmNode 当配置 outType 时，不能返回正确结果的问题
+- 修复：TextPromptTemplate 无法可以解析 `{{}}` 的问题
+
+
+
 ## v1.0.0 20250407
 - fix: fixed NodeContext.isUpstreamFullyExecuted() method
 - feat: add "concurrencyLimitSleepMillis" config for SparkLlm
