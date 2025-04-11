@@ -44,7 +44,11 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
 
         for (int index = 0; index < template.length(); index++) {
             char c = template.charAt(index);
-            if (c == '{' && !isCurrentInKeyword) {
+            if (c == '{') {
+                if (isCurrentInKeyword) {
+                    parts.add("{");
+                }
+
                 isCurrentInKeyword = true;
                 keyword = new StringBuilder("{");
 
