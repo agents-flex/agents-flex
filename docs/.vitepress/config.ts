@@ -23,132 +23,72 @@ const gitee_icon_svg = '\n' +
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
     title: "Agents-Flex",
-    titleTemplate: ':title - Agents-Flex Official website',
-    description: "A Java framework for LLM applications",
+    // titleTemplate: ':title - Agents-Flex Official website',
+    // description: "A Java framework for LLM applications",
+    titleTemplate: ':title - Agents-Flex 官方网站',
+    description: "一个优雅的 LLM（大语言模型）应用开发框架",
     lastUpdated: true,
     appearance:"dark",
 
-    // logo: '/assets/images/logo02.png',
-
-    locales:{
-        root: {
-            label: 'English',
-            lang: 'en'
-        },
-        zh:{
-            titleTemplate: ':title - Agents-Flex 官方网站',
-            description: "一个优雅的 LLM（大语言模型）应用开发框架",
-            label: '简体中文',
-            lang: 'zh', // 可选，将作为 `lang` 属性添加到 `html` 标签中
-
-            themeConfig: {
-                outline: {
-                    label: "章节"
-                },
-                editLink: {
-                    pattern: 'https://github.com/agents-flex/agents-flex/edit/main/docs/:path',
-                    text: '编辑当前页面'
-                },
-
-                nav: [
-                    {text: '首页', link: '/'},
-                    {text: '帮助文档', link: '/zh/intro/what-is-agentsflex'},
-                    {text: 'ChangeLog', link: 'https://github.com/agents-flex/agents-flex/blob/main/changes.md'},
-                ],
-
-                sidebar: [
-                    {
-                        text: '快速开始',
-                        items: [
-                            {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
-                            {text: '核心概念', link: '/zh/intro/concepts'},
-                            {text: '快速开始', link: '/zh/intro/getting-started'},
-                            {text: 'Maven 依赖', link: '/zh/intro/maven'},
-                            {text: '微信交流群', link: '/zh/intro/communication'},
-                        ]
-                    },
-                    {
-                        text: '核心模块',
-                        items: [
-                            {text: 'LLMs 大语言模型', link: '/zh/core/llms'},
-                            // {text: 'Prompt 提示词', link: '/zh/core/prompt'},
-                            // {text: 'Chat 对话', link: '/zh/core/chat'},
-                            // {text: 'Function Calling 方法调用', link: '/zh/core/function-calling'},
-                            {text: 'Memory 记忆', link: '/zh/core/memory'},
-                            {text: 'Embedding 嵌入', link: '/zh/core/embedding'},
-                            {text: 'Store 存储', link: '/zh/core/store'},
-                            {text: 'Document 文档', link: '/zh/core/document'},
-                            {text: 'Image 图片生成', link: '/zh/core/image'},
-                            {text: 'Chain 执行链', link: '/zh/core/chain'},
-                        ]
-                    },
-                    {
-                        text: '基础示例',
-                        items: [
-                            {text: '简单对话', link: '/zh/samples/chat'},
-                            {text: '历史对话', link: '/zh/samples/chat-with-memory'},
-                            {text: 'RAG 应用', link: '/zh/samples/rag'},
-                        ]
-                    }
-                ],
-            }
-
-        },
-    },
 
     themeConfig: {
-        // logo: '/assets/images/logo.png',
         search: {
             provider: 'local'
-        },
-        editLink: {
-            pattern: 'https://github.com/agents-flex/agents-flex/edit/main/docs/:path'
         },
         socialLinks: [
             { icon: {svg:gitee_icon_svg}, link: 'https://gitee.com/agents-flex/agents-flex' },
             { icon: 'github', link: 'https://github.com/agents-flex/agents-flex' },
         ],
 
+        outline: {
+            label: "章节"
+        },
+        editLink: {
+            pattern: 'https://gitee.com/agents-flex/agents-flex/edit/main/docs/:path',
+            text: '编辑当前页面'
+        },
+
         nav: [
-            {text: 'Home', link: '/'},
-            {text: 'Document', link: '/intro/what-is-agentsflex'},
-            {text: 'ChangeLog', link: 'https://github.com/agents-flex/agents-flex/blob/main/changes.md'},
+            {text: '首页', link: '/'},
+            {text: '帮助文档', link: '/zh/intro/what-is-agentsflex'},
+            {text: 'ChangeLog', link: '/changes.md'},
         ],
 
         sidebar: [
             {
-                text: 'Quick Start',
+                text: '快速开始',
                 items: [
-                    {text: 'What is Agents-Flex', link: '/intro/what-is-agentsflex'},
-                    {text: 'Quick Start', link: '/intro/getting-started'},
-                    {text: 'Maven Dependencies', link: '/intro/maven'},
-                    {text: 'Communication', link: '/intro/communication'},
+                    {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
+                    {text: '核心概念', link: '/zh/intro/concepts'},
+                    {text: '快速开始', link: '/zh/intro/getting-started'},
+                    {text: 'Maven 依赖', link: '/zh/intro/maven'},
+                    {text: '微信交流群', link: '/zh/intro/communication'},
                 ]
             },
             {
-                text: 'Core Modules',
+                text: '核心模块',
                 items: [
-                    {text: 'LLMs', link: '/core/llms'},
+                    {text: 'LLMs 大语言模型', link: '/zh/core/llms'},
                     // {text: 'Prompt 提示词', link: '/zh/core/prompt'},
                     // {text: 'Chat 对话', link: '/zh/core/chat'},
                     // {text: 'Function Calling 方法调用', link: '/zh/core/function-calling'},
-                    {text: 'Memory', link: '/core/memory'},
-                    {text: 'Embedding', link: '/core/embedding'},
-                    {text: 'Store', link: '/core/store'},
-                    {text: 'Document', link: '/core/document'},
-                    {text: 'Chain', link: '/core/chain'},
+                    {text: 'Memory 记忆', link: '/zh/core/memory'},
+                    {text: 'Embedding 嵌入', link: '/zh/core/embedding'},
+                    {text: 'Store 存储', link: '/zh/core/store'},
+                    {text: 'Document 文档', link: '/zh/core/document'},
+                    {text: 'Image 图片生成', link: '/zh/core/image'},
+                    {text: 'Chain 执行链', link: '/zh/core/chain'},
                 ]
             },
             {
-                text: 'Samples',
+                text: '基础示例',
                 items: [
-                    {text: 'Simple Chat', link: '/samples/chat'},
-                    {text: 'Chat With Histories', link: '/samples/chat-with-memory'},
-                    {text: 'RAG Application', link: '/samples/rag'},
+                    {text: '简单对话', link: '/zh/samples/chat'},
+                    {text: '历史对话', link: '/zh/samples/chat-with-memory'},
+                    {text: 'RAG 应用', link: '/zh/samples/rag'},
                 ]
             }
         ],
-
         footer: {
             message: 'Released under the Apache License.',
             copyright: 'Copyright © 2022-present Agents-Flex. ' +
