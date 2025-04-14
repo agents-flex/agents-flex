@@ -79,7 +79,7 @@ public static void main(String[] args) {
 
 The above code implements Agents orchestration as shown in the diagram below:
 
-![](../assets/images/chians-01.png)
+![](../../assets/images/chians-01.png)
 
 The data flow is as follows: `agent3` --> `agent4` --> `chain1`, and within `chain1`, there is the process of `agent1` --> `agent2`.
 

@@ -71,7 +71,7 @@ public static void main(String[] args) {
 
 The above code implements the Agents arrangement shown in the diagram below:
 
-![](../assets/images/chians-01.png)
+![](../../assets/images/chians-01.png)
 
 
 ---
