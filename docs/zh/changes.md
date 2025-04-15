@@ -1,5 +1,16 @@
 # Agents-Flex ChangeLog
 
+## v1.0.2 20250412
+- feat: add JavascriptStringCondition
+- refactor: move "description" property to ChainNode
+- test: add ChainConditionStringTest
+
+---
+- 新增：添加 JavascriptStringCondition 条件
+- 重构：移动 "description" 属性到 ChainNode
+- 测试：添加 ChainConditionStringTest 测试
+
+
 
 ## v1.0.1 20250411
 - fix: LlmNode can not return the correct result if outType is text
