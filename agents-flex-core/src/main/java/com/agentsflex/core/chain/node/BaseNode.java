@@ -23,18 +23,9 @@ import java.util.List;
 
 public abstract class BaseNode extends ChainNode {
 
-    protected String description;
     protected List<Parameter> parameters;
     protected List<Parameter> outputDefs;
 
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
 
     public void setParameters(List<Parameter> parameters) {
         this.parameters = parameters;
