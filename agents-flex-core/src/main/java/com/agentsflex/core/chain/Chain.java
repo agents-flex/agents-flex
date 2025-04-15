@@ -329,7 +329,6 @@ public class Chain extends ChainNode {
             try {
                 onNodeExecuteBefore(nodeContext);
 
-
                 nodeContext.recordTrigger(executeNode);
 
                 NodeCondition nodeCondition = currentNode.getCondition();
@@ -376,9 +375,7 @@ public class Chain extends ChainNode {
                         continue;
                     }
                     EdgeCondition condition = chainEdge.getCondition();
-                    if (condition == null) {
-                        waitingExecuteNodes.add(new ExecuteNode(nextNode, currentNode, chainEdge.getId()));
-                    } else if (condition.check(this, chainEdge)) {
+                    if (condition == null || condition.check(this, chainEdge)) {
                         waitingExecuteNodes.add(new ExecuteNode(nextNode, currentNode, chainEdge.getId()));
                     }
                 }
