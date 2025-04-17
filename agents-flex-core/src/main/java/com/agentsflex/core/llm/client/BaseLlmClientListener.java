@@ -34,6 +34,7 @@ public class BaseLlmClientListener implements LlmClientListener {
     private final StreamResponseListener streamResponseListener;
     private final Prompt prompt;
     private final AiMessageParser messageParser;
+    private final StringBuilder fullReasoningContent = new StringBuilder();
     private final StringBuilder fullMessage = new StringBuilder();
     private AiMessage lastAiMessage;
     private final ChatContext context;
@@ -65,13 +66,17 @@ public class BaseLlmClientListener implements LlmClientListener {
         try {
             JSONObject jsonObject = JSON.parseObject(response);
             lastAiMessage = messageParser.parse(jsonObject);
+            String reasoningContent = lastAiMessage.getReasoningContent();
             String content = lastAiMessage.getContent();
 
             // 第一个和最后一个content都为null
             if (Objects.nonNull(content)) {
                 fullMessage.append(content);
             }
-
+            if (Objects.nonNull(reasoningContent)) {
+                fullReasoningContent.append(reasoningContent);
+            }
+            lastAiMessage.setReasoningContent(fullReasoningContent.toString());
             lastAiMessage.setFullContent(fullMessage.toString());
             AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
             streamResponseListener.onMessage(context, aiMessageResponse);
