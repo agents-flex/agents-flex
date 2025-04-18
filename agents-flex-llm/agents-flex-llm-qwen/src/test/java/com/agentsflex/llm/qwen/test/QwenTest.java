@@ -7,6 +7,8 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.LogUtil;
+import com.agentsflex.llm.qwen.QwenChatOptions;
+import com.agentsflex.llm.qwen.QwenChatOptions.SearchOptions;
 import com.agentsflex.llm.qwen.QwenLlm;
 import com.agentsflex.llm.qwen.QwenLlmConfig;
 import org.junit.Test;
@@ -29,6 +31,21 @@ public class QwenTest {
         Thread.sleep(10000);
     }
 
+    @Test
+    public void testForcedSearch() throws InterruptedException {
+        QwenLlmConfig config = new QwenLlmConfig();
+        config.setApiKey("sk-28a6be3236****");
+        config.setModel("qwen-max");
+
+        Llm llm = new QwenLlm(config);
+        QwenChatOptions options = new QwenChatOptions();
+        options.setEnableSearch(true);
+        options.setSearchOptions(new SearchOptions().setForcedSearch(true));
+
+        String responseStr = llm.chat("今天是几号？", options);
+
+        System.out.println(responseStr);
+    }
 
     @Test
     public void testFunctionCalling() throws InterruptedException {

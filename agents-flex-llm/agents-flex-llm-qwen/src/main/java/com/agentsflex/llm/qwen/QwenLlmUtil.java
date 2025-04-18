@@ -43,7 +43,7 @@ public class QwenLlmUtil {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
         List<Message> messages = prompt.toMessages();
         Message message = CollectionUtil.lastItem(messages);
-        return Maps.of("model", config.getModel())
+        Maps params = Maps.of("model", config.getModel())
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
             .setIf(withStream, "stream_options", Maps.of("include_usage", true))
@@ -52,8 +52,20 @@ public class QwenLlmUtil {
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotEmpty("stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
-            .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
-            .toJSON();
+            .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens());
+
+        if (options instanceof QwenChatOptions) {
+            QwenChatOptions op = (QwenChatOptions)options;
+            params.setIf(CollectionUtil.hasItems(op.getModalities()), "modalities", op.getModalities());
+            params.setIf(op.getPresencePenalty() != null, "presence_penalty", op.getPresencePenalty());
+            params.setIf(op.getResponseFormat() != null, "response_format", op.getResponseFormat());
+            params.setIf(op.getN() != null, "n", op.getN());
+            params.setIf(op.getParallelToolCalls() != null, "parallel_tool_calls", op.getParallelToolCalls());
+            params.setIf(op.getTranslationOptions() != null, "translation_options", op.getTranslationOptions());
+            params.setIf(op.getEnableSearch() != null, "enable_search", op.getEnableSearch());
+            params.setIf(op.getEnableSearch() != null && op.getEnableSearch() && op.getSearchOptions() != null, "search_options", op.getSearchOptions());
+        }
+        return params.toJSON();
     }
 
     public static String promptToEnabledPayload(Document text, EmbeddingOptions options, QwenLlmConfig config) {
