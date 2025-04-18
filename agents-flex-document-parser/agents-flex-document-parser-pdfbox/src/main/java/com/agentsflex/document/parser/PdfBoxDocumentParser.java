@@ -15,6 +15,11 @@
  */
 package com.agentsflex.document.parser;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentParser;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -24,6 +29,10 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class PdfBoxDocumentParser implements DocumentParser {
+
+    /**
+     * 返回整个文档的内容
+     */
     @Override
     public Document parse(InputStream stream) {
         try (PDDocument pdfDocument = PDDocument.load(stream)) {
@@ -34,4 +43,36 @@ public class PdfBoxDocumentParser implements DocumentParser {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * 返回每页文档的内容
+     */
+    public List<Document> parseWithPage(InputStream inputStream) {
+        try (PDDocument pdfDocument = PDDocument.load(inputStream)) {
+            return getDocuments(pdfDocument);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private List<Document> getDocuments(PDDocument pdDocument) throws IOException {
+        List<Document> documents = new ArrayList<>();
+        int pageCount = pdDocument.getNumberOfPages();
+        for (int pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setStartPage(pageNumber);
+            stripper.setEndPage(pageNumber);
+            String content = stripper.getText(pdDocument);
+
+            Document document = new Document();
+            document.setContent(content);
+
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("pageNumber", pageNumber);
+            document.setMetadataMap(metadata);
+            documents.add(document);
+        }
+        return documents;
+    }
+
 }

@@ -22,6 +22,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.List;
 
 public class PdfBoxDocumentParserTest {
 
@@ -33,4 +34,14 @@ public class PdfBoxDocumentParserTest {
         Document document = parser.parse(stream);
         System.out.println(document);
     }
+
+    @Test
+    public void testParserPdfWithPage() throws FileNotFoundException {
+        File file = new File(System.getProperty("user.dir"), "../../testresource/a.pdf");
+        FileInputStream stream = new FileInputStream(file);
+        PdfBoxDocumentParser parser = new PdfBoxDocumentParser();
+        List<Document> documents = parser.parseWithPage(stream);
+        System.out.println(documents);
+    }
+
 }
