@@ -14,7 +14,8 @@
 
     <properties>
         <opensearch.version>2.13.0</opensearch.version>
-        <httpclient5.version>5.3.1</httpclient5.version>
+        <httpclient5.version>5.1.4</httpclient5.version>
+        <httpcore5-h2>5.1.4</httpcore5-h2>
 
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
@@ -43,6 +44,12 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents.core5</groupId>
+            <artifactId>httpcore5-h2</artifactId>
+            <version>${httpcore5-h2}</version>  <!-- 版本需与 httpclient5 一致 -->
         </dependency>
     </dependencies>
 

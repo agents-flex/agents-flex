@@ -15,11 +15,6 @@
  */
 package com.agentsflex.document.parser;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentParser;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -27,6 +22,8 @@ import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PdfBoxDocumentParser implements DocumentParser {
 
@@ -67,9 +64,7 @@ public class PdfBoxDocumentParser implements DocumentParser {
             Document document = new Document();
             document.setContent(content);
 
-            Map<String, Object> metadata = new HashMap<>();
-            metadata.put("pageNumber", pageNumber);
-            document.setMetadataMap(metadata);
+            document.addMetadata("pageNumber", pageNumber);
             documents.add(document);
         }
         return documents;
