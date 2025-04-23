@@ -159,10 +159,6 @@ public class WeatherUtil {
 ```
 
 
-## コミュニケーション
-
-- Twitter: https://twitter.com/yangfuhai
-
 ## モジュール
 
 ![](./docs/assets/images/modules.jpg)

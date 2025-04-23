@@ -159,9 +159,6 @@ public class WeatherUtil {
 ```
 
 
-## Communication
-
-- Twitter: https://twitter.com/yangfuhai
 
 ## Modules
 

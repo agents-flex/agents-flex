@@ -266,7 +266,7 @@ public class WeatherUtil {
 
 ## 交流群
 
-![](./docs/assets/images/wechat-group.png)
+请添加微信：fuh99777 添加好友，备注 AF，拉你加交流群。
 
 
 
