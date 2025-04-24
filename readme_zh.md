@@ -264,10 +264,9 @@ public class WeatherUtil {
 
 
 
-## 交流群
+## Star 用户专属交流群
 
-请添加微信：fuh99777 添加好友，备注 AF，拉你加交流群。
-
+![](./docs/assets/images/wechat-group.jpg)
 
 
 ## 模块构成
