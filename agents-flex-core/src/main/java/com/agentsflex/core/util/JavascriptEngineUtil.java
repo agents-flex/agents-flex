@@ -68,7 +68,7 @@ public class JavascriptEngineUtil {
         }
 
         String resultStr = result.toString().toLowerCase().trim();
-        return !"0".equals(resultStr) && !"false".equals(resultStr);
+        return !"0".equals(resultStr) && !"false".equalsIgnoreCase(resultStr);
     }
 
 

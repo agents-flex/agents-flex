@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 
 public class Chain extends ChainNode {
@@ -36,8 +37,9 @@ public class Chain extends ChainNode {
     protected List<ChainNode> nodes;
     protected List<ChainEdge> edges;
 
-    protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
     protected Map<String, Object> executeResult = null;
+
+    protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
     protected List<ChainOutputListener> outputListeners = new ArrayList<>();
     protected List<ChainErrorListener> errorListeners = new ArrayList<>();
     protected List<ChainSuspendListener> suspendListeners = new ArrayList<>();
@@ -55,6 +57,25 @@ public class Chain extends ChainNode {
 
     public Chain() {
         this.id = UUID.randomUUID().toString();
+    }
+
+    public Chain(ChainHolder holder) {
+        this.id = holder.getId();
+        this.name = holder.getName();
+        this.description = holder.getDescription();
+        this.parent = holder.getParent() == null ? null : new Chain(holder.getParent());
+        this.children = holder.getChildren() == null ? null : holder.getChildren().stream().map(Chain::new)
+            .collect(Collectors.toList());
+
+        this.nodes = holder.getNodes();
+        this.edges = holder.getEdges();
+
+        this.executeResult = holder.getExecuteResult();
+        this.nodeContexts = holder.getNodeContexts();
+        this.suspendNodes = holder.getSuspendNodes();
+        this.suspendForParameters = holder.getSuspendForParameters();
+        this.status = holder.getStatus();
+        this.message = holder.getMessage();
     }
 
 
@@ -162,6 +183,10 @@ public class Chain extends ChainNode {
     }
 
     public void setStatus(ChainStatus status) {
+        this.status = status;
+    }
+
+    public void setStatusAndNotifyEvent(ChainStatus status) {
         ChainStatus before = this.status;
         this.status = status;
 
@@ -169,6 +194,7 @@ public class Chain extends ChainNode {
             notifyEvent(new ChainStatusChangeEvent(this, this.status, before));
         }
     }
+
 
     public Chain getParent() {
         return parent;
@@ -198,6 +224,55 @@ public class Chain extends ChainNode {
         if (parent != null) parent.notifyEvent(event);
     }
 
+
+    public Map<String, Object> getExecuteResult() {
+        return executeResult;
+    }
+
+    public void setExecuteResult(Map<String, Object> executeResult) {
+        this.executeResult = executeResult;
+    }
+
+    public List<ChainErrorListener> getErrorListeners() {
+        return errorListeners;
+    }
+
+    public void setErrorListeners(List<ChainErrorListener> errorListeners) {
+        this.errorListeners = errorListeners;
+    }
+
+    public List<ChainSuspendListener> getSuspendListeners() {
+        return suspendListeners;
+    }
+
+    public void setSuspendListeners(List<ChainSuspendListener> suspendListeners) {
+        this.suspendListeners = suspendListeners;
+    }
+
+    public Map<String, NodeContext> getNodeContexts() {
+        return nodeContexts;
+    }
+
+    public void setNodeContexts(Map<String, NodeContext> nodeContexts) {
+        this.nodeContexts = nodeContexts;
+    }
+
+    public List<ChainNode> getSuspendNodes() {
+        return suspendNodes;
+    }
+
+    public void setSuspendNodes(List<ChainNode> suspendNodes) {
+        this.suspendNodes = suspendNodes;
+    }
+
+    public Exception getException() {
+        return exception;
+    }
+
+    public void setException(Exception exception) {
+        this.exception = exception;
+    }
+
     public Object get(String key) {
         return this.memory.get(key);
     }
@@ -220,19 +295,30 @@ public class Chain extends ChainNode {
 
 
     public Map<String, Object> executeForResult(Map<String, Object> variables) {
+        return executeForResult(variables, false);
+    }
 
-        runInLifeCycle(variables, new ChainStartEvent(this), this::executeInternal);
+    public Map<String, Object> executeForResult(Map<String, Object> variables, boolean ignoreError) {
+        if (this.status == ChainStatus.SUSPEND) {
+            this.resume(variables);
+        } else {
+            runInLifeCycle(variables, new ChainStartEvent(this), this::executeInternal);
+        }
 
-        if (this.status == ChainStatus.FINISHED_ABNORMAL) {
-            if (this.exception != null) {
-                if (this.exception instanceof RuntimeException) {
-                    throw (RuntimeException) this.exception;
+        if (!ignoreError) {
+            if (this.status == ChainStatus.FINISHED_ABNORMAL) {
+                if (this.exception != null) {
+                    if (this.exception instanceof RuntimeException) {
+                        throw (RuntimeException) this.exception;
+                    } else {
+                        throw new ChainException(this.exception);
+                    }
                 } else {
-                    throw new ChainException(this.exception);
+                    if (this.message == null) this.message = "Chain execute error";
+                    throw new ChainException(this.message);
                 }
-            } else {
-                if (this.message == null) this.message = "Chain execute error";
-                throw new ChainException(this.message);
+            } else if (this.status == ChainStatus.SUSPEND && this.exception != null) {
+                throw (ChainSuspendException) this.exception;
             }
         }
 
@@ -481,19 +567,20 @@ public class Chain extends ChainNode {
             ChainContext.setChain(this);
             notifyEvent(startEvent);
             try {
-                setStatus(ChainStatus.RUNNING);
+                setStatusAndNotifyEvent(ChainStatus.RUNNING);
                 runnable.run();
             } catch (ChainSuspendException cse) {
                 notifySuspend();
+                this.exception = cse;
             } catch (Exception e) {
                 this.exception = e;
-                setStatus(ChainStatus.ERROR);
+                setStatusAndNotifyEvent(ChainStatus.ERROR);
                 notifyError(e);
             }
             if (status == ChainStatus.RUNNING) {
-                setStatus(ChainStatus.FINISHED_NORMAL);
+                setStatusAndNotifyEvent(ChainStatus.FINISHED_NORMAL);
             } else if (status == ChainStatus.ERROR) {
-                setStatus(ChainStatus.FINISHED_ABNORMAL);
+                setStatusAndNotifyEvent(ChainStatus.FINISHED_ABNORMAL);
             }
         } finally {
             ChainContext.clearChain();
@@ -528,13 +615,13 @@ public class Chain extends ChainNode {
 
     public void stopNormal(String message) {
         this.message = message;
-        setStatus(ChainStatus.FINISHED_NORMAL);
+        setStatusAndNotifyEvent(ChainStatus.FINISHED_NORMAL);
     }
 
 
     public void stopError(String message) {
         this.message = message;
-        setStatus(ChainStatus.FINISHED_ABNORMAL);
+        setStatusAndNotifyEvent(ChainStatus.FINISHED_ABNORMAL);
     }
 
 
@@ -614,7 +701,7 @@ public class Chain extends ChainNode {
                 suspendNodes.add(node);
             }
         } finally {
-            setStatus(ChainStatus.SUSPEND);
+            setStatusAndNotifyEvent(ChainStatus.SUSPEND);
         }
     }
 
