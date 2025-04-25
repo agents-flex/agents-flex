@@ -69,7 +69,6 @@ public class NodeContext {
 
         List<String> shouldBeTriggerIds = inwardEdges.stream().map(ChainEdge::getId).collect(Collectors.toList());
         return triggerEdgeIds.size() >= shouldBeTriggerIds.size()
-//            && triggerEdgeIds.containsAll(shouldBeTriggerIds);
             && shouldBeTriggerIds.parallelStream().allMatch(triggerEdgeIds::contains);
     }
 
