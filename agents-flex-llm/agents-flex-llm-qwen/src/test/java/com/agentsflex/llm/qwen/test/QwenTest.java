@@ -2,6 +2,7 @@ package com.agentsflex.llm.qwen.test;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.FunctionPrompt;
@@ -31,7 +32,7 @@ public class QwenTest {
         Thread.sleep(10000);
     }
 
-    @Test
+    @Test(expected = LlmException.class)
     public void testForcedSearch() throws InterruptedException {
         QwenLlmConfig config = new QwenLlmConfig();
         config.setApiKey("sk-28a6be3236****");
