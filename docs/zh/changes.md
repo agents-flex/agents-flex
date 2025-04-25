@@ -1,5 +1,14 @@
 # Agents-Flex ChangeLog
 
+
+## v1.0.3 20250425
+- 新增: deepseek-r1 推理过程增量输出改为完整输出和内容的输出保持一致，感谢 @liutf
+- 新增: 增加 QwenChatOptions，让通义千问支持更多的参数，感谢 @liutf
+- 新增：新增 ChainHolder，用于序列化 ChainNode，以支持分布式执行
+- 优化：优化 Chain，在暂停时抛出异常
+
+
+
 ## v1.0.2 20250412
 - feat: add JavascriptStringCondition
 - refactor: move "description" property to ChainNode
