@@ -23,6 +23,7 @@ import java.util.Arrays;
 public class VectorData extends Metadata {
 
     private double[] vector;
+    private Double score;
 
     public double[] getVector() {
         return vector;
@@ -32,11 +33,20 @@ public class VectorData extends Metadata {
         this.vector = vector;
     }
 
+    public Double getScore() {
+        return score;
+    }
+
+    public void setScore(Double score) {
+        this.score = score;
+    }
+
     @Override
     public String toString() {
         return "VectorData{" +
-            "metadataMap=" + metadataMap +
-            ", vector=" + Arrays.toString(vector) +
+            "vector=" + Arrays.toString(vector) +
+            ", score=" + score +
+            ", metadataMap=" + metadataMap +
             '}';
     }
 }

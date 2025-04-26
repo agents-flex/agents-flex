@@ -230,8 +230,7 @@ public class RedisVectorStore extends DocumentStore {
                 }
             }
 
-            doc.addMetadata("score", 1 - similarityScore(document));
-
+            doc.setScore(1.0d - similarityScore(document));
             documents.add(doc);
         }
         return documents;
