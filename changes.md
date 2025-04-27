@@ -1,5 +1,10 @@
 # Agents-Flex ChangeLog
 
+## v1.0.4 20250427
+- 新增: 为 VectorData 添加 score 属性，统一文档 score 字段
+- 优化：重构 Chain 的异步执行逻辑
+
+
 
 ## v1.0.3 20250425
 - 新增: deepseek-r1 推理过程增量输出改为完整输出和内容的输出保持一致，感谢 @liutf

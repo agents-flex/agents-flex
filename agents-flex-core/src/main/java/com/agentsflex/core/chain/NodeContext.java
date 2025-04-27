@@ -22,8 +22,6 @@ import java.util.stream.Collectors;
 
 public class NodeContext {
 
-    private final ChainNode node;
-    private final Chain chain;
     public ChainNode currentNode;
     public ChainNode prevNode;
     public String fromEdgeId;
@@ -33,19 +31,6 @@ public class NodeContext {
 
     private AtomicInteger executeCount = new AtomicInteger(0);
     private List<String> executeEdgeIds = new ArrayList<>();
-
-    public NodeContext(ChainNode node, Chain chain) {
-        this.node = node;
-        this.chain = chain;
-    }
-
-    public ChainNode getNode() {
-        return node;
-    }
-
-    public Chain getChain() {
-        return chain;
-    }
 
     public ChainNode getCurrentNode() {
         return currentNode;

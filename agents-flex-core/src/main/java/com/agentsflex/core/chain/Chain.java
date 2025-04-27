@@ -388,7 +388,7 @@ public class Chain extends ChainNode {
     }
 
     public NodeContext getNodeContext(ChainNode chainNode) {
-        return MapUtil.computeIfAbsent(nodeContexts, chainNode.getId(), k -> new NodeContext(chainNode, this));
+        return MapUtil.computeIfAbsent(nodeContexts, chainNode.getId(), k -> new NodeContext());
     }
 
     protected void executeInternal() {
