@@ -26,7 +26,6 @@ public abstract class BaseNode extends ChainNode {
     protected List<Parameter> parameters;
     protected List<Parameter> outputDefs;
 
-
     public void setParameters(List<Parameter> parameters) {
         this.parameters = parameters;
     }

@@ -16,7 +16,6 @@
 package com.agentsflex.core.chain;
 
 import com.agentsflex.core.chain.event.*;
-import com.agentsflex.core.chain.node.BaseNode;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.MapUtil;
 import com.agentsflex.core.util.NamedThreadPools;
@@ -24,9 +23,8 @@ import com.agentsflex.core.util.StringUtil;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+import java.util.concurrent.Phaser;
 import java.util.stream.Collectors;
 
 
@@ -46,6 +44,7 @@ public class Chain extends ChainNode {
 
 
     protected ExecutorService asyncNodeExecutors = NamedThreadPools.newFixedThreadPool("chain-executor");
+    protected Phaser phaser = new Phaser(1);
     protected Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<>();
 
     protected List<ChainNode> suspendNodes;
@@ -283,8 +282,7 @@ public class Chain extends ChainNode {
 
     @Override
     protected Map<String, Object> execute(Chain parent) {
-        this.execute(parent.getMemory().getAll());
-        return this.memory.getAll();
+        return executeForResult(parent.getMemory().getAll());
     }
 
     public void execute(Map<String, Object> variables) {
@@ -326,6 +324,7 @@ public class Chain extends ChainNode {
     }
 
 
+    @Override
     public List<Parameter> getParameters() {
         List<ChainNode> startNodes = this.getStartNodes();
         if (startNodes == null || startNodes.isEmpty()) {
@@ -334,22 +333,17 @@ public class Chain extends ChainNode {
 
         List<Parameter> parameters = new ArrayList<>();
         for (ChainNode node : startNodes) {
-            if (node instanceof BaseNode) {
-                List<Parameter> nodeParameters = ((BaseNode) node).getParameters();
-                if (nodeParameters != null) parameters.addAll(nodeParameters);
-            } else if (node instanceof Chain) {
-                List<Parameter> chainParameters = ((Chain) node).getParameters();
-                if (chainParameters != null) parameters.addAll(chainParameters);
-            }
+            List<Parameter> nodeParameters = node.getParameters();
+            if (nodeParameters != null) parameters.addAll(nodeParameters);
         }
         return parameters;
     }
 
-    public Map<String, Object> getParameterValues(BaseNode node) {
+    public Map<String, Object> getParameterValues(ChainNode node) {
         return getParameterValues(node, node.getParameters());
     }
 
-    public Map<String, Object> getParameterValues(BaseNode node, List<Parameter> parameters) {
+    public Map<String, Object> getParameterValues(ChainNode node, List<Parameter> parameters) {
         if (parameters == null || parameters.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -393,8 +387,8 @@ public class Chain extends ChainNode {
         return variables;
     }
 
-    public NodeContext getNodeContext(String nodeId) {
-        return MapUtil.computeIfAbsent(nodeContexts, nodeId, k -> new NodeContext());
+    public NodeContext getNodeContext(ChainNode chainNode) {
+        return MapUtil.computeIfAbsent(nodeContexts, chainNode.getId(), k -> new NodeContext(chainNode, this));
     }
 
     protected void executeInternal() {
@@ -403,69 +397,96 @@ public class Chain extends ChainNode {
             return;
         }
 
-        List<ExecuteNode> waitingExecuteNodes = new ArrayList<>();
+        List<ExecuteNode> executeNodes = new ArrayList<>();
         for (ChainNode currentNode : currentNodes) {
-            waitingExecuteNodes.add(new ExecuteNode(currentNode, null, ""));
+            executeNodes.add(new ExecuteNode(currentNode, null, ""));
         }
 
-        while (CollectionUtil.hasItems(waitingExecuteNodes)) {
-            ExecuteNode executeNode = waitingExecuteNodes.remove(0);
+        doExecuteNodes(executeNodes);
+    }
+
+
+    protected void doExecuteNodes(List<ExecuteNode> executeNodes) {
+        for (ExecuteNode executeNode : executeNodes) {
             ChainNode currentNode = executeNode.currentNode;
-            NodeContext nodeContext = getNodeContext(currentNode.getId());
-            try {
-                onNodeExecuteBefore(nodeContext);
-
-                nodeContext.recordTrigger(executeNode);
-
-                NodeCondition nodeCondition = currentNode.getCondition();
-                if (nodeCondition != null && !nodeCondition.check(this, nodeContext)) {
-                    continue;
-                }
-
-                Map<String, Object> executeResult = null;
-                try {
-                    ChainContext.setNode(currentNode);
-                    notifyEvent(new NodeStartEvent(this, currentNode));
-                    if (this.getStatus() != ChainStatus.RUNNING) {
-                        break;
+            if (currentNode.isAsync()) {
+                phaser.register();
+                asyncNodeExecutors.execute(() -> {
+                    try {
+                        doExecuteNode(executeNode);
+                    } finally {
+                        phaser.arriveAndDeregister();
                     }
-                    onNodeExecuteStart(nodeContext);
-                    nodeContext.recordExecute(executeNode);
-                    executeResult = executeNode(currentNode);
-                    this.executeResult = executeResult;
-                } finally {
-                    onNodeExecuteEnd(nodeContext);
-                    ChainContext.clearNode();
-                    notifyEvent(new NodeEndEvent(this, currentNode, executeResult));
-                }
+                });
+            } else {
+                doExecuteNode(executeNode);
+            }
+        }
+    }
 
-                if (executeResult != null && !executeResult.isEmpty()) {
-                    executeResult.forEach((s, o) -> {
-                        Chain.this.memory.put(currentNode.id + "." + s, o);
-                    });
+
+    protected void doExecuteNode(ExecuteNode executeNode) {
+        if (this.getStatus() != ChainStatus.RUNNING) {
+            return;
+        }
+        ChainNode currentNode = executeNode.currentNode;
+        NodeContext nodeContext = getNodeContext(currentNode);
+        try {
+            onNodeExecuteBefore(nodeContext);
+            nodeContext.recordTrigger(executeNode);
+            NodeCondition nodeCondition = currentNode.getCondition();
+            if (nodeCondition != null && !nodeCondition.check(this, nodeContext)) {
+                return;
+            }
+
+            Map<String, Object> executeResult = null;
+            try {
+                ChainContext.setNode(currentNode);
+                notifyEvent(new NodeStartEvent(this, currentNode));
+                if (this.getStatus() != ChainStatus.RUNNING) {
+                    return;
+                }
+                onNodeExecuteStart(nodeContext);
+                try {
+                    executeResult = currentNode.execute(this);
+                } finally {
+                    nodeContext.recordExecute(executeNode);
+                    this.executeResult = executeResult;
                 }
             } finally {
-                onNodeExecuteAfter(nodeContext);
+                onNodeExecuteEnd(nodeContext);
+                ChainContext.clearNode();
+                notifyEvent(new NodeEndEvent(this, currentNode, executeResult));
             }
 
-            if (this.getStatus() != ChainStatus.RUNNING) {
-                break;
+            if (executeResult != null && !executeResult.isEmpty()) {
+                executeResult.forEach((s, o) -> {
+                    Chain.this.memory.put(currentNode.id + "." + s, o);
+                });
             }
+        } finally {
+            onNodeExecuteAfter(nodeContext);
+        }
 
-            List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
+        if (this.getStatus() != ChainStatus.RUNNING) {
+            return;
+        }
 
-            if (CollectionUtil.hasItems(outwardEdges)) {
-                for (ChainEdge chainEdge : outwardEdges) {
-                    ChainNode nextNode = getNodeById(chainEdge.getTarget());
-                    if (nextNode == null) {
-                        continue;
-                    }
-                    EdgeCondition condition = chainEdge.getCondition();
-                    if (condition == null || condition.check(this, chainEdge)) {
-                        waitingExecuteNodes.add(new ExecuteNode(nextNode, currentNode, chainEdge.getId()));
-                    }
+        List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
+
+        if (CollectionUtil.hasItems(outwardEdges)) {
+            List<Chain.ExecuteNode> nextExecuteNodes = new ArrayList<>(outwardEdges.size());
+            for (ChainEdge chainEdge : outwardEdges) {
+                ChainNode nextNode = getNodeById(chainEdge.getTarget());
+                if (nextNode == null) {
+                    continue;
+                }
+                EdgeCondition condition = chainEdge.getCondition();
+                if (condition == null || condition.check(this, chainEdge)) {
+                    nextExecuteNodes.add(new ExecuteNode(nextNode, currentNode, chainEdge.getId()));
                 }
             }
+            doExecuteNodes(nextExecuteNodes);
         }
     }
 
@@ -485,44 +506,6 @@ public class Chain extends ChainNode {
 
     }
 
-
-    private Map<String, Object> executeNode(ChainNode currentNode) {
-        if (currentNode.isAsync()) {
-            Chain currentChain = ChainContext.getCurrentChain();
-            Future<Map<String, Object>> future = asyncNodeExecutors.submit(() -> {
-                try {
-                    ChainContext.setChain(currentChain);
-                    ChainContext.setNode(currentNode);
-                    return currentNode.execute(Chain.this);
-                } finally {
-                    ChainContext.clearNode();
-                    ChainContext.clearChain();
-                }
-            });
-            if (currentNode.isAwaitAsyncResult()) {
-                try {
-                    return future.get();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    if (e.getCause() instanceof ChainSuspendException) {
-                        throw (ChainSuspendException) e.getCause();
-                    } else if (e.getCause() instanceof RuntimeException) {
-                        throw (RuntimeException) e.getCause();
-                    } else {
-                        throw new RuntimeException(e.getCause());
-                    }
-                }
-            }
-        }
-        // not async node
-        else {
-            return currentNode.execute(this);
-        }
-        return null;
-    }
-
-
     private List<ChainNode> getStartNodes() {
         if (this.nodes == null || this.nodes.isEmpty()) {
             return null;
@@ -539,7 +522,6 @@ public class Chain extends ChainNode {
                 nodes.add(node);
             }
         }
-
         return nodes;
     }
 
@@ -577,11 +559,15 @@ public class Chain extends ChainNode {
                 setStatusAndNotifyEvent(ChainStatus.ERROR);
                 notifyError(e);
             }
+
+            this.phaser.arriveAndAwaitAdvance();
+
             if (status == ChainStatus.RUNNING) {
                 setStatusAndNotifyEvent(ChainStatus.FINISHED_NORMAL);
             } else if (status == ChainStatus.ERROR) {
                 setStatusAndNotifyEvent(ChainStatus.FINISHED_ABNORMAL);
             }
+
         } finally {
             ChainContext.clearChain();
             notifyEvent(new ChainEndEvent(this));
