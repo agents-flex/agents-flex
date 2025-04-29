@@ -27,6 +27,7 @@ import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
 
 import java.util.List;
+import java.util.Optional;
 
 public class VolcengineLlmUtil {
 
@@ -45,7 +46,7 @@ public class VolcengineLlmUtil {
             toolChoice = ((HumanMessage) message).getToolChoice();
         }
 
-        return Maps.of("model", config.getModel())
+        return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))

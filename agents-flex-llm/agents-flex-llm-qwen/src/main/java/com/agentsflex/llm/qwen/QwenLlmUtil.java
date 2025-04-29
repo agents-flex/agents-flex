@@ -29,6 +29,7 @@ import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
 
 import java.util.List;
+import java.util.Optional;
 
 public class QwenLlmUtil {
 
@@ -43,7 +44,7 @@ public class QwenLlmUtil {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
         List<Message> messages = prompt.toMessages();
         Message message = CollectionUtil.lastItem(messages);
-        Maps params = Maps.of("model", config.getModel())
+        Maps params = Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
             .setIf(withStream, "stream_options", Maps.of("include_usage", true))

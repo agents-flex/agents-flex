@@ -28,6 +28,7 @@ import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
 
 import java.util.List;
+import java.util.Optional;
 
 public class DeepseekLlmUtil {
 
@@ -42,7 +43,7 @@ public class DeepseekLlmUtil {
     public static String promptToPayload(Prompt prompt, LlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
         HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(messages);
-        return Maps.of("model", config.getModel())
+        return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(humanMessage))

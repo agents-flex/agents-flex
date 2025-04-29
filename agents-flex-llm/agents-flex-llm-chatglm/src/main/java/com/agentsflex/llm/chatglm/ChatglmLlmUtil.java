@@ -38,6 +38,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class ChatglmLlmUtil {
 
@@ -94,7 +95,7 @@ public class ChatglmLlmUtil {
     public static String promptToPayload(Prompt prompt, ChatglmLlmConfig config, boolean withStream, ChatOptions options) {
         List<Message> messages = prompt.toMessages();
         Message message = CollectionUtil.lastItem(messages);
-        return Maps.of("model", config.getModel())
+        return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
