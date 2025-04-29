@@ -1,5 +1,7 @@
 package com.agentsflex.llm.qwen.test;
 
+import java.util.concurrent.TimeUnit;
+
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
@@ -93,9 +95,34 @@ public class QwenTest {
         Llm llm = new QwenLlm(config);
         llm.chatStream("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
             AiMessage message = response.getMessage();
-            LogUtil.println(">>>> " + message.getReasoningContent() + ">>>> " + message.getContent());
+            System.err.println(message.getReasoningContent());
+            System.out.println(message.getFullContent());
+            System.out.println();
         }, options);
         Thread.sleep(10000);
+    }
+
+    /**
+     * 测试千问3 开启思考模式的开关
+     */
+    @Test
+    public void testQwen3Thinking() throws InterruptedException {
+        QwenLlmConfig config = new QwenLlmConfig();
+        config.setApiKey("sk-28a6be3236****");
+        config.setModel("qwen3-235b-a22b");
+
+        Llm llm = new QwenLlm(config);
+        QwenChatOptions options = new QwenChatOptions();
+        options.setEnableThinking(false);
+        //options.setThinkingBudget(1024);
+
+        llm.chatStream("你是谁", (context, response) -> {
+            AiMessage message = response.getMessage();
+            System.err.println(message.getReasoningContent());
+            System.out.println(message.getFullContent());
+            System.out.println();
+        }, options);
+        TimeUnit.MINUTES.sleep(3);
     }
 
 }
