@@ -25,6 +25,11 @@ public class Document extends VectorData {
     private Object id;
 
     /**
+     * Document title
+     */
+    private String title;
+
+    /**
      * Document Content
      */
     private String content;
@@ -43,6 +48,14 @@ public class Document extends VectorData {
 
     public void setId(Object id) {
         this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     public String getContent() {
