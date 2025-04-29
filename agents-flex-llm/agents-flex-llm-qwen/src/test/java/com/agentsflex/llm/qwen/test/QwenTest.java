@@ -1,6 +1,7 @@
 package com.agentsflex.llm.qwen.test;
 
 import com.agentsflex.core.document.Document;
+import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.AiMessageResponse;
@@ -63,7 +64,6 @@ public class QwenTest {
         // "Today it will be dull and overcast in 北京"
     }
 
-
     @Test
     public void testEmbedding() throws InterruptedException {
         QwenLlmConfig config = new QwenLlmConfig();
@@ -73,7 +73,29 @@ public class QwenTest {
         Llm llm = new QwenLlm(config);
         VectorData vectorData = llm.embed(Document.of("test"));
 
-
         System.out.println(vectorData);
     }
+
+    /**
+     * 动态替换模型
+     */
+    @Test
+    public void testDynamicModel() throws InterruptedException {
+        // 默认模型
+        QwenLlmConfig config = new QwenLlmConfig();
+        config.setApiKey("sk-28a6be3236****");
+        config.setModel("qwen-turbo");
+
+        // 运行时动态替换模型
+        ChatOptions options = new QwenChatOptions();
+        options.setModel("deepseek-r1");
+
+        Llm llm = new QwenLlm(config);
+        llm.chatStream("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
+            AiMessage message = response.getMessage();
+            LogUtil.println(">>>> " + message.getReasoningContent() + ">>>> " + message.getContent());
+        }, options);
+        Thread.sleep(10000);
+    }
+
 }

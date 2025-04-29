@@ -37,6 +37,7 @@ import com.alibaba.fastjson.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
@@ -67,7 +68,8 @@ public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
         }
 
         String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + "/api/serverless/" + config.getModel() + "/chat/completions", headers, payload);
+        String model = Optional.ofNullable(options.getModel()).orElse(config.getModel());
+        String response = httpClient.post(endpoint + "/api/serverless/" + model + "/chat/completions", headers, payload);
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
         }
@@ -101,8 +103,9 @@ public class GiteeAiLlm extends BaseLlm<GiteeAiLlmConfig> {
 
         String payload = GiteeAiLlmUtil.promptToPayload(prompt, config, options, true);
         String endpoint = config.getEndpoint();
+        String model = Optional.ofNullable(options.getModel()).orElse(config.getModel());
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
-        llmClient.start(endpoint + "/api/serverless/" + config.getModel() + "/chat/completions", headers, payload, clientListener, config);
+        llmClient.start(endpoint + "/api/serverless/" + model + "/chat/completions", headers, payload, clientListener, config);
     }
 
 

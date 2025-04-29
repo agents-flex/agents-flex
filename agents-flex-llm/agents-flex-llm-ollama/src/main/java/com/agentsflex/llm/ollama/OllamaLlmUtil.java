@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class OllamaLlmUtil {
 
@@ -106,7 +107,7 @@ public class OllamaLlmUtil {
 
     public static String promptToPayload(Prompt prompt, OllamaLlmConfig config, ChatOptions options, boolean stream) {
         List<Message> messages = prompt.toMessages();
-        return Maps.of("model", config.getModel())
+        return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(!stream, "stream", stream)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(CollectionUtil.lastItem(messages)))

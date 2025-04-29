@@ -35,13 +35,21 @@ public class ChatOptions {
         }
     };
 
-
+    private String model;
     private String seed;
     private Float temperature = 0.8f;
     private Float topP;
     private Integer topK;
     private Integer maxTokens;
     private List<String> stop;
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
 
     public String getSeed() {
         return seed;

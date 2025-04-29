@@ -29,6 +29,7 @@ import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
 
 import java.util.List;
+import java.util.Optional;
 
 public class VLlmLlmUtil {
 
@@ -42,7 +43,7 @@ public class VLlmLlmUtil {
     public static String promptToPayload(Prompt prompt, VLlmLlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
         Message message = CollectionUtil.lastItem(messages);
-        return Maps.of("model", config.getModel())
+        return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", withStream)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))

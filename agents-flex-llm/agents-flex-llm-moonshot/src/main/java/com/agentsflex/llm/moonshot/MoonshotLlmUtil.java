@@ -15,6 +15,8 @@
  */
 package com.agentsflex.llm.moonshot;
 
+import java.util.Optional;
+
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
@@ -43,7 +45,7 @@ public class MoonshotLlmUtil {
      */
     public static String promptToPayload(Prompt prompt, MoonshotLlmConfig config, Boolean isStream, ChatOptions chatOptions) {
         // 构建payload的根结构，包括模型信息、流式处理标志、对话选项和格式化后的prompt消息。
-        return Maps.of("model", config.getModel())
+        return Maps.of("model", Optional.ofNullable(chatOptions.getModel()).orElse(config.getModel()))
             .set("stream", isStream)
             .set("temperature", chatOptions.getTemperature())
             .set("max_tokens", chatOptions.getMaxTokens())

@@ -174,7 +174,7 @@ public class TencentLlmUtil {
     public static String promptToPayload(Prompt prompt, TencentLlmConfig config, boolean withStream, ChatOptions options) {
         List<Message> messages = prompt.toMessages();
         Message message = CollectionUtil.lastItem(messages);
-        return Maps.of("Model", config.getModel())
+        return Maps.of("Model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("Messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "Stream", withStream)
             .setIfNotEmpty("Tools", promptFormat.toFunctionsJsonObject(message))
