@@ -15,12 +15,12 @@
  */
 package com.agentsflex.core.test;
 
+import java.util.Arrays;
+
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.condition.Connector;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.Arrays;
 
 public class SearchWrapperTest {
 
@@ -37,7 +37,6 @@ public class SearchWrapperTest {
         System.out.println(rw.toFilterExpression());
     }
 
-
     @Test
     public void test02() {
         SearchWrapper rw = new SearchWrapper();
@@ -48,4 +47,25 @@ public class SearchWrapperTest {
 
         System.out.println(rw.toFilterExpression());
     }
+
+    @Test
+    public void test03() {
+        SearchWrapper rw = new SearchWrapper();
+        rw.eq("ak", "av")
+            // and ( 子条件 )
+            .andCriteria(rw1 -> {
+                rw1.eq("bk", "bv").in("x1", Arrays.asList("1", "2"));
+            })
+            // or ( 子条件 )
+            .orCriteria(rw1 -> {
+                rw1.eq("ck", "cv").eq("ck1", "cv1");
+            })
+            .eq("a", "b");
+
+        String expr = "ak = \"av\" AND (bk = \"bv\" AND x1 IN (\"1\",\"2\")) OR (ck = \"cv\" AND ck1 = \"cv1\") AND a = \"b\"";
+        Assert.assertEquals(expr, rw.toFilterExpression());
+
+        System.out.println(rw.toFilterExpression());
+    }
+
 }

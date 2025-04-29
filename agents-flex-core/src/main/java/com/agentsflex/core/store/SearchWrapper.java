@@ -302,6 +302,23 @@ public class SearchWrapper extends VectorData {
         return this;
     }
 
+    public SearchWrapper andCriteria(Consumer<SearchWrapper> consumer) {
+        return group(consumer);
+    }
+
+    public SearchWrapper orCriteria(Consumer<SearchWrapper> consumer) {
+        SearchWrapper newWrapper = new SearchWrapper();
+        consumer.accept(newWrapper);
+        Condition condition = newWrapper.condition;
+        if (condition != null) {
+            if (this.condition == null) {
+                this.condition = new Group(condition);
+            } else {
+                this.condition.connect(new Group(condition), Connector.OR);
+            }
+        }
+        return this;
+    }
 
     /**
      * Convert to expressions for filtering conditions, with different expression requirements for each vendor.
