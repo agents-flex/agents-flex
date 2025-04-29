@@ -73,6 +73,19 @@ public class QwenChatOptions extends ChatOptions {
     private Boolean enableSearch;
 
     /**
+     * 是否开启思考模式，适用于 Qwen3 模型。
+     * Qwen3 商业版模型默认值为 False，Qwen3 开源版模型默认值为 True。
+     */
+    private Boolean enableThinking;
+
+    /**
+     * 思考模式预算，适用于 Qwen3 模型。
+     * 思考过程的最大长度，只在 enable_thinking 为true时生效。适用于 Qwen3 的商业版与开源版模型。
+     * 详情请参见限制思考长度：https://help.aliyun.com/zh/model-studio/deep-thinking#e7c0002fe4meu
+     */
+    private Integer thinkingBudget;
+
+    /**
      * 联网搜索的策略。
      * 仅当enable_search为true时生效。
      */
@@ -309,6 +322,22 @@ public class QwenChatOptions extends ChatOptions {
     public QwenChatOptions setEnableSearch(Boolean enableSearch) {
         this.enableSearch = enableSearch;
         return this;
+    }
+
+    public Boolean getEnableThinking() {
+        return enableThinking;
+    }
+
+    public void setEnableThinking(Boolean enableThinking) {
+        this.enableThinking = enableThinking;
+    }
+
+    public Integer getThinkingBudget() {
+        return thinkingBudget;
+    }
+
+    public void setThinkingBudget(Integer thinkingBudget) {
+        this.thinkingBudget = thinkingBudget;
     }
 
     public SearchOptions getSearchOptions() {
