@@ -1,5 +1,21 @@
 # Agents-Flex ChangeLog
 
+## v1.0.5 20250430
+- 新增: 允许通过 ChatOptions 在运行时动态替换模型名称
+- 新增：增加是否开启思考模式参数，适用于 Qwen3 模型
+- 新增：Document 增加文档标题
+- 新增：增强知识库查询条件
+- 新增：优化 Chain 的 get 逻辑，支持获取对象的属性内容
+- 测试：添加通过 OpenAI 的 API 调用 Gitee 进行图片识别
+- 测试：添加 chain 的数据获取测试
+
+
+
+## v1.0.4 20250427
+- 新增: 为 VectorData 添加 score 属性，统一文档 score 字段
+- 优化：重构 Chain 的异步执行逻辑
+
+
 
 ## v1.0.3 20250425
 - 新增: deepseek-r1 推理过程增量输出改为完整输出和内容的输出保持一致，感谢 @liutf
