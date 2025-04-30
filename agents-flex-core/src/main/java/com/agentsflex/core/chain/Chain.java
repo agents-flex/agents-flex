@@ -296,7 +296,6 @@ public class Chain extends ChainNode {
             return null;
         }
 
-        // 构建逐级 key 查找
         int matchedLevels = 0;
         for (int i = parts.size(); i > 0; i--) {
             String tryKey = String.join(".", parts.subList(0, i));
@@ -312,9 +311,21 @@ public class Chain extends ChainNode {
             return null;
         }
 
+        if (result instanceof Collection) {
+            List<Object> results = new ArrayList<>();
+            for (Object item : ((Collection<?>) result)) {
+                results.add(getResult(parts, matchedLevels, item));
+            }
+            return results;
+        }
+
+        return getResult(parts, matchedLevels, result);
+
+    }
+
+    private static Object getResult(List<String> parts, int matchedLevels, Object result) {
         List<String> remainingParts = parts.subList(matchedLevels, parts.size());
         String jsonPath = "$." + String.join(".", remainingParts);
-
         try {
             return JSONPath.eval(result, jsonPath);
         } catch (Exception e) {
@@ -322,8 +333,8 @@ public class Chain extends ChainNode {
         }
 
         return null;
-
     }
+
 
     @Override
     protected Map<String, Object> execute(Chain parent) {
