@@ -20,6 +20,9 @@ import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.MapUtil;
 import com.agentsflex.core.util.NamedThreadPools;
 import com.agentsflex.core.util.StringUtil;
+import com.alibaba.fastjson.JSONPath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +32,7 @@ import java.util.stream.Collectors;
 
 
 public class Chain extends ChainNode {
+    private static final Logger log = LoggerFactory.getLogger(Chain.class);
     protected Chain parent;
     protected List<Chain> children;
 
@@ -272,12 +276,53 @@ public class Chain extends ChainNode {
         this.exception = exception;
     }
 
-    public Object get(String key) {
-        return this.memory.get(key);
+    public void set(String key, Object value) {
+        this.memory.put(key, value);
     }
 
-    public Object getGlobal(String key) {
-        return this.memory.get(key);
+
+    public Object get(String key) {
+        if (StringUtil.noText(key)) {
+            return null;
+        }
+
+        Object result = memory.get(key);
+        if (result != null) {
+            return result;
+        }
+
+        List<String> parts = Arrays.asList(key.split("\\."));
+        if (parts.isEmpty()) {
+            return null;
+        }
+
+        // 构建逐级 key 查找
+        int matchedLevels = 0;
+        for (int i = parts.size(); i > 0; i--) {
+            String tryKey = String.join(".", parts.subList(0, i));
+            Object tempResult = memory.get(tryKey);
+            if (tempResult != null) {
+                result = tempResult;
+                matchedLevels = i;
+                break;
+            }
+        }
+
+        if (result == null) {
+            return null;
+        }
+
+        List<String> remainingParts = parts.subList(matchedLevels, parts.size());
+        String jsonPath = "$." + String.join(".", remainingParts);
+
+        try {
+            return JSONPath.eval(result, jsonPath);
+        } catch (Exception e) {
+            log.error(e.toString(), e);
+        }
+
+        return null;
+
     }
 
     @Override
