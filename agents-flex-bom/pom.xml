@@ -51,11 +51,27 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-qianfan</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-qwen</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-image-siliconflow</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-image-stability</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-tencent</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-volcengine</artifactId>
         </dependency>
         <!--image model end-->
 
@@ -171,26 +187,4 @@
         <!--store end-->
 
     </dependencies>
-
-<!--    <build>-->
-<!--        <plugins>-->
-<!--            <plugin>-->
-<!--                <groupId>org.codehaus.mojo</groupId>-->
-<!--                <artifactId>flatten-maven-plugin</artifactId>-->
-<!--                <version>${maven-flatten.version}</version>-->
-<!--                <configuration>-->
-<!--                    <updatePomFile>true</updatePomFile>-->
-<!--                    <flattenMode>oss</flattenMode>-->
-<!--                    <pomElements>-->
-<!--                        <dependencyManagement>expand</dependencyManagement>-->
-<!--                        <pluginManagement>remove</pluginManagement>-->
-<!--                        <dependencies>remove</dependencies>-->
-<!--                        <properties>remove</properties>-->
-<!--                        <repositories>remove</repositories>-->
-<!--                    </pomElements>-->
-<!--                </configuration>-->
-<!--            </plugin>-->
-<!--        </plugins>-->
-<!--    </build>-->
-
 </project>
