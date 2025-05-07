@@ -174,7 +174,15 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-pgvector</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-qcloud</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-qdrant</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
@@ -183,6 +191,10 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-vectorex</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-vectorexdb</artifactId>
         </dependency>
         <!--store end-->
 
