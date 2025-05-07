@@ -252,6 +252,13 @@ public class MilvusVectorStore extends DocumentStore {
 
                     doc.setContent((String) entity.get("content"));
 
+                    // 根据 metric 类型计算相似度
+                    double distance = result.getDistance();
+
+                    //当 metricType 类 COSINE 时，相识度计算为 1.0 - distance;
+                    double similarity = 1.0 - distance;
+                    doc.setScore(similarity);
+
                     JSONObject object = (JSONObject) entity.get("metadata");
                     doc.addMetadata(object);
 
