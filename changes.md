@@ -2,7 +2,7 @@
 
 ## v1.0.6 20250507
 - 新增: 增加 qdrant 向量数据库支持
-- 优化: 重构 TextPromptTemplate，使其支持 {{ name }} {{user.name}} {{user.name ?? 'default'}} 等语法
+- 优化: 重构 TextPromptTemplate，使其支持更多的语法
 - 优化: 优化 pom 管理
 
 
