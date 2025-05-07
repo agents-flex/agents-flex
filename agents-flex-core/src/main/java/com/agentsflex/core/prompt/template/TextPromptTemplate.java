@@ -16,122 +16,183 @@
 package com.agentsflex.core.prompt.template;
 
 import com.agentsflex.core.prompt.TextPrompt;
+import com.alibaba.fastjson.JSONPath;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
 
-    private final Set<String> keys = new HashSet<>();
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
 
-    private final List<String> parts = new ArrayList<String>() {
-        @Override
-        public boolean add(String string) {
-            if (string.charAt(0) == '{' && string.length() > 2 && string.charAt(string.length() - 1) == '}') {
-                keys.add(string.substring(1, string.length() - 1));
-            }
-            return super.add(string);
-        }
-    };
+    private final String originalTemplate;
+    private final List<TemplateToken> tokens;
 
+    /**
+     * 构造函数：初始化时解析模板内容
+     *
+     * @param template 模板字符串
+     */
     public TextPromptTemplate(String template) {
-        if (template == null) {
-            throw new NullPointerException("template can not be null");
-        }
-
-        boolean isCurrentInKeyword = false;
-        StringBuilder keyword = null;
-        StringBuilder content = null;
-
-        for (int index = 0; index < template.length(); index++) {
-            char c = template.charAt(index);
-            if (c == '{') {
-                if (isCurrentInKeyword) {
-                    parts.add("{");
-                }
-
-                isCurrentInKeyword = true;
-                keyword = new StringBuilder("{");
-
-                if (content != null) {
-                    parts.add(content.toString());
-                    content = null;
-                }
-                continue;
-            }
-
-            if (c == '}' && isCurrentInKeyword) {
-                isCurrentInKeyword = false;
-                keyword.append("}");
-                parts.add(keyword.toString());
-                keyword = null;
-                continue;
-            }
-
-            if (isCurrentInKeyword) {
-                if (!Character.isWhitespace(c)) {
-                    keyword.append(c);
-                }
-                continue;
-            }
-
-            if (content == null) {
-                content = new StringBuilder();
-            }
-            content.append(c);
-        }
-
-        if (keyword != null) {
-            parts.add(keyword.toString());
-        }
-
-        if (content != null) {
-            parts.add(content.toString());
-        }
+        this.originalTemplate = template != null ? template : "";
+        this.tokens = parseTemplate(this.originalTemplate);
     }
 
-
+    /**
+     * 创建 TextPromptTemplate 实例
+     */
     public static TextPromptTemplate create(String template) {
         return new TextPromptTemplate(template);
     }
 
-    public TextPrompt format(Map<String, Object> params) {
-        return new TextPrompt(formatToString(params));
+    /**
+     * 格式化模板
+     */
+    public TextPrompt format(Map<String, Object> rootMap) {
+        return new TextPrompt(formatToString(rootMap));
     }
 
-    public String formatToString(Map<String, Object> params) {
-        StringBuilder result = new StringBuilder();
-        for (String part : parts) {
-            if (part.charAt(0) == '{' && part.charAt(part.length() - 1) == '}') {
-                if (part.length() > 2) {
-                    String key = part.substring(1, part.length() - 1);
-                    Object value = getParams(key, params);
-                    result.append(value == null ? "" : value);
-                }
+    /**
+     * 格式化模板
+     */
+    public String formatToString(Map<String, Object> rootMap) {
+        if (tokens.isEmpty()) return "";
+
+        if (rootMap == null) {
+            rootMap = Collections.emptyMap();
+        }
+
+        StringBuilder sb = new StringBuilder(originalTemplate.length() + 256);
+
+        for (TemplateToken token : tokens) {
+            if (token.isStatic()) {
+                sb.append(token.content);
             } else {
-                result.append(part);
+                Object value = getValueByJsonPath(rootMap, token.expression);
+                String replacement = value != null ? value.toString() : token.defaultValue;
+                sb.append(replacement);
             }
         }
-        return result.toString();
+
+        return sb.toString();
     }
 
-    public Set<String> getKeys() {
-        return keys;
+    /**
+     * 解析模板为 Token 列表
+     */
+    private List<TemplateToken> parseTemplate(String template) {
+        List<TemplateToken> result = new ArrayList<>();
+
+        if (template == null || template.isEmpty()) return result;
+
+        Matcher matcher = PLACEHOLDER_PATTERN.matcher(template);
+        int lastEnd = 0;
+
+        while (matcher.find()) {
+            int start = matcher.start();
+            int end = matcher.end();
+
+            // 添加前面的静态文本
+            if (start > lastEnd) {
+                result.add(TemplateToken.staticText(template.substring(lastEnd, start)));
+            }
+
+            // 解析占位符
+            String content = matcher.group(1);
+            ParseResult parseResult = parseExpressionWithDefault(content);
+            result.add(TemplateToken.dynamic(parseResult.expression, parseResult.defaultValue));
+
+            lastEnd = end;
+        }
+
+        // 添加结尾的静态文本
+        if (lastEnd < template.length()) {
+            result.add(TemplateToken.staticText(template.substring(lastEnd)));
+        }
+
+        return result;
     }
 
-    public List<String> getParts() {
-        return parts;
+    /**
+     * 解析带默认值的表达式，如 "user.name ?? '匿名'"
+     */
+    private ParseResult parseExpressionWithDefault(String content) {
+        String[] parts = content.split("\\s*\\?\\?\\s*", 2);
+        if (parts.length == 2) {
+            String expr = parts[0].trim();
+            String defaultValue = unquote(parts[1].trim());
+            return new ParseResult(expr, defaultValue);
+        } else {
+            return new ParseResult(content.trim(), null);
+        }
     }
 
-    private Object getParams(String keysString, Map<String, Object> params) {
-        //todo 支持通过 "." 访问属性或者方法
-        return params != null ? params.get(keysString) : null;
+    /**
+     * 去掉字符串两边的引号（单引号或双引号）
+     */
+    private String unquote(String str) {
+        if ((str.startsWith("'") && str.endsWith("'")) ||
+            (str.startsWith("\"") && str.endsWith("\""))) {
+            return str.substring(1, str.length() - 1);
+        }
+        return str;
     }
 
-    @Override
-    public String toString() {
-        return "SimplePromptTemplate{" +
-            "keys=" + keys +
-            ", parts=" + parts +
-            '}';
+    /**
+     * 使用 FastJSON JSONPath 获取嵌套值
+     */
+    private Object getValueByJsonPath(Map<String, Object> root, String path) {
+        try {
+            return JSONPath.eval(root, "$." + path);
+        } catch (Exception e) {
+            return null;
+        }
     }
+
+    /**
+     * Token 类型定义
+     */
+    private static class TemplateToken {
+        boolean isStatic;
+        String content;
+        String expression;
+        String defaultValue;
+
+        private TemplateToken(boolean isStatic, String content, String expression, String defaultValue) {
+            this.isStatic = isStatic;
+            this.content = content;
+            this.expression = expression;
+            this.defaultValue = defaultValue == null ? "" : defaultValue;
+        }
+
+        static TemplateToken staticText(String text) {
+            return new TemplateToken(true, text, null, null);
+        }
+
+        static TemplateToken dynamic(String expr, String defaultValue) {
+            return new TemplateToken(false, null, expr, defaultValue);
+        }
+
+        boolean isStatic() {
+            return isStatic;
+        }
+    }
+
+    /**
+     * 内部类：用于保存解析后的表达式和默认值
+     */
+    private static class ParseResult {
+        String expression;
+        String defaultValue;
+
+        ParseResult(String expression, String defaultValue) {
+            this.expression = expression;
+            this.defaultValue = defaultValue;
+        }
+    }
+
 }
