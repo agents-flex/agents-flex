@@ -16,18 +16,21 @@
 package com.agentsflex.core.prompt.template;
 
 import com.agentsflex.core.prompt.TextPrompt;
+import com.agentsflex.core.util.MapUtil;
 import com.alibaba.fastjson.JSONPath;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
 
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
+    private static final Map<String, TextPromptTemplate> CACHES = new ConcurrentHashMap<>();
 
     private final String originalTemplate;
     private final List<TemplateToken> tokens;
@@ -46,7 +49,7 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
      * 创建 TextPromptTemplate 实例
      */
     public static TextPromptTemplate create(String template) {
-        return new TextPromptTemplate(template);
+        return MapUtil.computeIfAbsent(CACHES, template, k -> new TextPromptTemplate(template));
     }
 
     /**
