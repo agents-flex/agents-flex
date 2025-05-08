@@ -23,7 +23,7 @@ public class Parameter implements Serializable {
     protected String id;
     protected String name;
     protected String description;
-    protected DataType dataType;
+    protected DataType dataType = DataType.String;
     protected String ref;
     protected RefType refType;
     protected String value;
