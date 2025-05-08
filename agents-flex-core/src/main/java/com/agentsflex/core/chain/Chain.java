@@ -414,7 +414,7 @@ public class Chain extends ChainNode {
             Object value;
             if (refType == RefType.FIXED) {
                 if (formatArgs != null && !formatArgs.isEmpty()) {
-                    value = TextPromptTemplate.create(parameter.getValue()).format(formatArgs);
+                    value = TextPromptTemplate.create(parameter.getValue()).formatToString(formatArgs);
                 } else {
                     value = parameter.getValue();
                 }
