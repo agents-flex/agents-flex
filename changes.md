@@ -1,5 +1,15 @@
 # Agents-Flex ChangeLog
 
+
+
+## v1.0.7 20250508
+- 新增: 添加 Milvus 的相识度返回
+- 新增: Chain.getParameterValues 添加对固定数据格式填充的能力
+- 优化: Parameter 添加 dataType 默认数据
+- 优化: TextPromptTemplate.create 添加缓存以提高性能
+
+
+
 ## v1.0.6 20250507
 - 新增: 增加 qdrant 向量数据库支持
 - 优化: 重构 TextPromptTemplate，使其支持更多的语法
