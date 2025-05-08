@@ -16,6 +16,7 @@
 package com.agentsflex.core.chain;
 
 import com.agentsflex.core.chain.event.*;
+import com.agentsflex.core.prompt.template.TextPromptTemplate;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.MapUtil;
 import com.agentsflex.core.util.NamedThreadPools;
@@ -400,6 +401,10 @@ public class Chain extends ChainNode {
     }
 
     public Map<String, Object> getParameterValues(ChainNode node, List<Parameter> parameters) {
+        return getParameterValues(node, parameters, null);
+    }
+
+    public Map<String, Object> getParameterValues(ChainNode node, List<Parameter> parameters, Map<String, Object> formatArgs) {
         if (parameters == null || parameters.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -408,7 +413,11 @@ public class Chain extends ChainNode {
             RefType refType = parameter.getRefType();
             Object value;
             if (refType == RefType.FIXED) {
-                value = parameter.getValue();
+                if (formatArgs != null && !formatArgs.isEmpty()) {
+                    value = TextPromptTemplate.create(parameter.getValue()).format(formatArgs);
+                } else {
+                    value = parameter.getValue();
+                }
             } else if (refType == RefType.REF) {
                 value = this.get(parameter.getRef());
                 if (value == null && parameter.getDefaultValue() != null) {
