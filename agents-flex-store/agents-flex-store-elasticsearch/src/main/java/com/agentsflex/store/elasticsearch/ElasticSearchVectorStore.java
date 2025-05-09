@@ -135,7 +135,12 @@ public class ElasticSearchVectorStore extends DocumentStore {
 
     @Override
     public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
-        String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
+        String indexName;
+        if (StringUtil.hasText(options.getCollectionName())){
+            indexName = options.getCollectionName();
+        } else {
+            indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
+        }
         createIndexIfNotExist(indexName);
         return saveOrUpdate(documents, indexName);
     }
