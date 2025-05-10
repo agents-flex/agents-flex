@@ -25,11 +25,11 @@ public class PromptTemplateTest {
         map.put("useName", "Michael");
         map.put("aaa", "星期3");
         TextPromptTemplate promptTemplate = TextPromptTemplate.create("你好，{{  useName }}  今天是星期 :{{aaa   }}}----- {a}aa");
-        String string = promptTemplate
-            .format(map).toString();
+        String string = promptTemplate.formatToString(map);
         System.out.println(string);
-
     }
+
+
     @Test
     public void test003() {
         String templateStr = "你好 {{ user.name ?? '匿名' }}，欢迎来到 {{ site ?? 'AgentsFlex.com' }}！";

@@ -69,7 +69,7 @@ export default defineConfig({
                 text: '核心模块',
                 items: [
                     {text: 'LLMs 大语言模型', link: '/zh/core/llms'},
-                    // {text: 'Prompt 提示词', link: '/zh/core/prompt'},
+                    {text: 'Prompt 提示词', link: '/zh/core/prompt'},
                     // {text: 'Chat 对话', link: '/zh/core/chat'},
                     // {text: 'Function Calling 方法调用', link: '/zh/core/function-calling'},
                     {text: 'Memory 记忆', link: '/zh/core/memory'},
