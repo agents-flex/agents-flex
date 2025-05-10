@@ -52,7 +52,7 @@ public class LlmNode extends BaseNode {
         this.llm = llm;
         this.userPrompt = userPrompt;
         this.userPromptTemplate = StringUtil.hasText(userPrompt)
-            ? new TextPromptTemplate(userPrompt) : null;
+            ? TextPromptTemplate.of(userPrompt) : null;
     }
 
 
@@ -71,7 +71,7 @@ public class LlmNode extends BaseNode {
     public void setUserPrompt(String userPrompt) {
         this.userPrompt = userPrompt;
         this.userPromptTemplate = StringUtil.hasText(userPrompt)
-            ? new TextPromptTemplate(userPrompt) : null;
+            ? TextPromptTemplate.of(userPrompt) : null;
     }
 
     public String getSystemPrompt() {
@@ -81,7 +81,7 @@ public class LlmNode extends BaseNode {
     public void setSystemPrompt(String systemPrompt) {
         this.systemPrompt = systemPrompt;
         this.systemPromptTemplate = StringUtil.hasText(systemPrompt)
-            ? new TextPromptTemplate(systemPrompt) : null;
+            ? TextPromptTemplate.of(systemPrompt) : null;
     }
 
     public ChatOptions getChatOptions() {

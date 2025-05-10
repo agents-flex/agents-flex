@@ -48,8 +48,9 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
     /**
      * 创建 TextPromptTemplate 实例
      */
-    public static TextPromptTemplate create(String template) {
-        return MapUtil.computeIfAbsent(CACHES, template, k -> new TextPromptTemplate(template));
+    public static TextPromptTemplate of(String template) {
+        String finalTemplate = template != null ? template : "";
+        return MapUtil.computeIfAbsent(CACHES, finalTemplate, k -> new TextPromptTemplate(finalTemplate));
     }
 
     /**
