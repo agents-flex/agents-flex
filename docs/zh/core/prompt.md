@@ -144,7 +144,7 @@ TextPromptTemplate 文本提示词模板，用于格式化提示词内容。
 
 ```java
 @Test
-public void test002() {
+public void test() {
     Map<String, Object> map = new HashMap<>();
     map.put("useName", "Michael");
     map.put("aaa", "星期3");
@@ -163,7 +163,7 @@ public void test002() {
 
 ```java
 @Test
-public void test003() {
+public void test() {
     String templateStr = "你好 {{ user.name ?? '匿名' }}，" +
         "欢迎来到 {{ site ?? 'AgentsFlex.com' }}！";
     TextPromptTemplate template = new TextPromptTemplate(templateStr);
@@ -183,3 +183,32 @@ public void test003() {
 }
 ```
 
+### 模板缓存
+
+每次执行 `new TextPromptTemplate(templateStr)` 时，都会创建一个新的模板对象，同时会进行模板解析，有一定的性能开销，所以建议使用模板缓存，减少模板解析的次数。
+
+在 Agents-Flex 中，内置了 `TextPromptTemplate.of(templateStr)` 方法，用于缓存模板对象，避免重复解析模板。
+
+示例代码：
+
+```java 5
+@Test
+public void test() {
+    String templateStr = "你好 {{ user.name ?? '匿名' }}，" +
+        "欢迎来到 {{ site ?? 'AgentsFlex.com' }}！";
+    TextPromptTemplate template = TextPromptTemplate.of(templateStr);
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("site", "AIFlowy.tech");
+
+    Map<String, Object> user = new HashMap<>();
+    user.put("name", "Michael");
+    params.put("user", user);
+
+    System.out.println(template.format(params));
+    // 输出：你好 Michael，欢迎来到 AIFlowy.tech！
+
+    System.out.println(template.format(new HashMap<>()));
+    // 输出：你好 匿名，欢迎来到 AgentsFlex.com！
+}
+```
