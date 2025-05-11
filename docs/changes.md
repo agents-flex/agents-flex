@@ -1,6 +1,15 @@
 # Agents-Flex ChangeLog
 
 
+## v1.0.8 20250511
+- 优化：优化 elasticSearch 用户自定义集合名称就用用户自定义集合，没有传就用默认集合名称
+- 优化：从命名 TextPromptTemplate.create 方法名称为 TextPromptTemplate.of，更加符合 “缓存” 的特征
+- 修复：修复 openSearch 存储报错问题
+- 文档：添加提示词相关文档
+- 文档：添加 “模板缓存” 的相关文档
+- 测试：添加 milvus 向量存储用法示例测试类，感谢 @lyg
+
+
 
 ## v1.0.7 20250508
 - 新增: 添加 Milvus 的相识度返回
