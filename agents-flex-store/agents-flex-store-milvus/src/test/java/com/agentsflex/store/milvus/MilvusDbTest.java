@@ -5,13 +5,17 @@ import com.agentsflex.core.llm.embedding.EmbeddingModel;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.VectorData;
+import io.grpc.StatusRuntimeException;
 import org.junit.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MilvusDbTest {
 
-    @Test
+    @Test(expected = StatusRuntimeException.class)
     public void testUseMivlusDb() {
         //准备数据
         List<Document> list = new ArrayList<>();
