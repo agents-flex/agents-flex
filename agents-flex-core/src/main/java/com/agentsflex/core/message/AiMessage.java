@@ -29,6 +29,7 @@ public class AiMessage extends AbstractTextMessage {
     private String reasoningContent;
     // functionName: <argName: argValue>
     private List<FunctionCall> calls;
+    private String fullReasoningContent;
 
     public Integer getIndex() {
         return index;
@@ -97,6 +98,14 @@ public class AiMessage extends AbstractTextMessage {
 
     public void setCalls(List<FunctionCall> calls) {
         this.calls = calls;
+    }
+
+    public String getFullReasoningContent() {
+        return fullReasoningContent;
+    }
+
+    public void setFullReasoningContent(String fullReasoningContent) {
+        this.fullReasoningContent = fullReasoningContent;
     }
 
     @Override

@@ -76,7 +76,7 @@ public class BaseLlmClientListener implements LlmClientListener {
             if (Objects.nonNull(reasoningContent)) {
                 fullReasoningContent.append(reasoningContent);
             }
-            lastAiMessage.setReasoningContent(fullReasoningContent.toString());
+            lastAiMessage.setFullReasoningContent(fullReasoningContent.toString());
             lastAiMessage.setFullContent(fullMessage.toString());
             AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
             streamResponseListener.onMessage(context, aiMessageResponse);
