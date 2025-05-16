@@ -1,5 +1,14 @@
 # Agents-Flex ChangeLog
 
+
+## v1.1.0 20250516
+- 优化：增强 LLM 的 markdown 包裹优化
+- 优化：重命名 StringUtil.obtainFirstHasText 方法名称为  getFirstWithText
+- 修复：修复大模型节点，返回 json 内容时不正确的问题
+- 修复：修复 EndNode 在输出固定值时出现 NPE 的问题
+
+
+
 ## v1.0.9 20250513
 - 新增: Chain 添加 reset 方法，使之调用后可以执行多次
 - 优化：不允许设置默认 EmbeddingOptions 配置的 encodingFormat
