@@ -25,12 +25,10 @@
             <scope>compile</scope>
         </dependency>
 
-
-
         <dependency>
             <groupId>com.tencentcloudapi</groupId>
             <artifactId>tencentcloud-sdk-java-common</artifactId>
-            <version>LATEST</version>
+            <version>3.1.1261</version>
         </dependency>
 
         <!-- Uncomment this next dependency if you are using:
