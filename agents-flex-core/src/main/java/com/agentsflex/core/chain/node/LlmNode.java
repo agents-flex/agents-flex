@@ -20,6 +20,7 @@ import com.agentsflex.core.chain.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.prompt.TextPrompt;
 import com.agentsflex.core.prompt.template.TextPromptTemplate;
@@ -121,23 +122,42 @@ public class LlmNode extends BaseNode {
         AiMessageResponse response = llm.chat(userPrompt, chatOptions);
         chain.output(this, response);
 
+        if (response == null) {
+            return Collections.emptyMap();
+        }
+
         if (response.isError()) {
             chain.stopError(response.getErrorMessage());
             return Collections.emptyMap();
         }
 
+        AiMessage aiMessage = response.getMessage();
+        if (aiMessage == null) {
+            return Collections.emptyMap();
+        }
+
+
+        String responseContent = aiMessage.getContent();
+        if (StringUtil.noText(responseContent)) {
+            chain.stopError("Can not get response content: " + response.getResponse());
+            return Collections.emptyMap();
+        } else {
+            responseContent = responseContent.trim();
+        }
+
+
         if (outType == null || outType.equalsIgnoreCase("text") || outType.equalsIgnoreCase("markdown")) {
             if (CollectionUtil.noItems(this.outputDefs)) {
-                return Maps.of("output", response.getMessage().getContent());
+                return Maps.of("output", responseContent);
             } else {
                 Parameter parameter = this.outputDefs.get(0);
-                return Maps.of(parameter.getName(), response.getMessage().getContent());
+                return Maps.of(parameter.getName(), responseContent);
             }
         } else {
             if (this.outputDefs != null) {
                 JSONObject jsonObject;
                 try {
-                    jsonObject = JSON.parseObject(response.getResponse());
+                    jsonObject = JSON.parseObject(unWrapMarkdown(responseContent));
                 } catch (Exception e) {
                     chain.stopError("Can not parse json: " + response.getResponse() + " " + e.getMessage());
                     return Collections.emptyMap();
@@ -151,6 +171,32 @@ public class LlmNode extends BaseNode {
 
             return Collections.emptyMap();
         }
+    }
+
+
+    /**
+     * 移除 ``` 或者 ```json 等
+     *
+     * @param markdown json内容
+     * @return 方法 json 内容
+     */
+    private String unWrapMarkdown(String markdown) {
+        // 移除开头的 ```json 或 ```
+        if (markdown.startsWith("```")) {
+            int newlineIndex = markdown.indexOf('\n');
+            if (newlineIndex != -1) {
+                markdown = markdown.substring(newlineIndex + 1);
+            } else {
+                // 如果没有换行符，直接去掉 ``` 部分
+                markdown = markdown.substring(3);
+            }
+        }
+
+        // 移除结尾的 ```
+        if (markdown.endsWith("```")) {
+            markdown = markdown.substring(0, markdown.length() - 3);
+        }
+        return markdown.trim();
     }
 
 
