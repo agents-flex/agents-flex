@@ -146,14 +146,7 @@ public class LlmNode extends BaseNode {
         }
 
 
-        if (outType == null || outType.equalsIgnoreCase("text") || outType.equalsIgnoreCase("markdown")) {
-            if (CollectionUtil.noItems(this.outputDefs)) {
-                return Maps.of("output", responseContent);
-            } else {
-                Parameter parameter = this.outputDefs.get(0);
-                return Maps.of(parameter.getName(), responseContent);
-            }
-        } else {
+        if ("json".equalsIgnoreCase(outType)) {
             if (this.outputDefs != null) {
                 JSONObject jsonObject;
                 try {
@@ -168,8 +161,17 @@ public class LlmNode extends BaseNode {
                 }
                 return map;
             }
-
             return Collections.emptyMap();
+        }
+
+//        if (outType == null || outType.equalsIgnoreCase("text") || outType.equalsIgnoreCase("markdown")) {
+        else {
+            if (CollectionUtil.noItems(this.outputDefs)) {
+                return Maps.of("output", responseContent);
+            } else {
+                Parameter parameter = this.outputDefs.get(0);
+                return Maps.of(parameter.getName(), responseContent);
+            }
         }
     }
 
@@ -180,7 +182,7 @@ public class LlmNode extends BaseNode {
      * @param markdown json内容
      * @return 方法 json 内容
      */
-    private String unWrapMarkdown(String markdown) {
+    public static String unWrapMarkdown(String markdown) {
         // 移除开头的 ```json 或 ```
         if (markdown.startsWith("```")) {
             int newlineIndex = markdown.indexOf('\n');
