@@ -23,7 +23,6 @@ import com.agentsflex.core.util.StringUtil;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 public class EndNode extends BaseNode {
     private boolean normal = true;
@@ -67,7 +66,7 @@ public class EndNode extends BaseNode {
                 } else if (outputDef.getRefType() == RefType.INPUT) {
                     output.put(outputDef.getName(), outputDef.getRef());
                 } else if (outputDef.getRefType() == RefType.FIXED) {
-                    output.put(outputDef.getName(), Optional.of(outputDef.getValue()).orElse(outputDef.getDefaultValue()));
+                    output.put(outputDef.getName(), StringUtil.getFirstWithText(outputDef.getValue(), outputDef.getDefaultValue()));
                 }
                 // default is ref type
                 else if (StringUtil.hasText(outputDef.getRef())) {
