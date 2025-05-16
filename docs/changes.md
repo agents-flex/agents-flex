@@ -1,5 +1,11 @@
 # Agents-Flex ChangeLog
 
+## v1.0.9 20250513
+- 新增: Chain 添加 reset 方法，使之调用后可以执行多次
+- 优化：不允许设置默认 EmbeddingOptions 配置的 encodingFormat
+- 优化：修改模型思考过程的设置，让 content 和 reasoningContent 输出内容一致，感谢 @Alex
+
+
 
 ## v1.0.8 20250511
 - 优化：优化 elasticSearch 用户自定义集合名称就用用户自定义集合，没有传就用默认集合名称
