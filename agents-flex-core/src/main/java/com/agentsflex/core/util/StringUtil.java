@@ -43,10 +43,13 @@ public class StringUtil {
         return false;
     }
 
-    public static String obtainFirstHasText(String... strings) {
-        for (String string : strings) {
-            if (hasText(string)) {
-                return string;
+    public static String getFirstWithText(String... strings) {
+        if (strings == null) {
+            return null;
+        }
+        for (String str : strings) {
+            if (hasText(str)) {
+                return str;
             }
         }
         return null;
