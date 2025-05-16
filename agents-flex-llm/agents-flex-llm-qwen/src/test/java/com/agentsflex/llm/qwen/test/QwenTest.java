@@ -1,7 +1,5 @@
 package com.agentsflex.llm.qwen.test;
 
-import java.util.concurrent.TimeUnit;
-
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
@@ -122,7 +120,7 @@ public class QwenTest {
             System.out.println(message.getFullContent());
             System.out.println();
         }, options);
-        TimeUnit.MINUTES.sleep(3);
+        Thread.sleep(10000);
     }
 
 }
