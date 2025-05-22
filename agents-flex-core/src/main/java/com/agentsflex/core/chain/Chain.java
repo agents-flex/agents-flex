@@ -547,7 +547,7 @@ public class Chain extends ChainNode {
                     this.executeResult = executeResult;
                 }
             } catch (Throwable error) {
-                notifyNodeError(error, currentNode, nodeContext);
+                notifyNodeError(error, currentNode, executeResult);
                 throw error;
             } finally {
                 onNodeExecuteEnd(nodeContext);
@@ -695,11 +695,11 @@ public class Chain extends ChainNode {
     }
 
 
-    private void notifyNodeError(Throwable error, ChainNode node, NodeContext context) {
+    private void notifyNodeError(Throwable error, ChainNode node, Map<String, Object> executeResult) {
         for (NodeErrorListener errorListener : nodeErrorListeners) {
-            errorListener.onError(error, node, context, this);
+            errorListener.onError(error, node, executeResult, this);
         }
-        if (parent != null) parent.notifyNodeError(error, node, context);
+        if (parent != null) parent.notifyNodeError(error, node, executeResult);
     }
 
 

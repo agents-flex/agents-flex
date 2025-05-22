@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.chain;
 
+import java.util.Map;
+
 public interface NodeErrorListener {
-    void onError(Throwable error, ChainNode node, NodeContext context, Chain chain);
+    void onError(Throwable error, ChainNode node, Map<String, Object> nodeResult, Chain chain);
 }
