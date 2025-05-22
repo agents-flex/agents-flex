@@ -44,7 +44,8 @@ public class Chain extends ChainNode {
 
     protected Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>(0);
     protected List<ChainOutputListener> outputListeners = new ArrayList<>();
-    protected List<ChainErrorListener> errorListeners = new ArrayList<>();
+    protected List<ChainErrorListener> chainErrorListeners = new ArrayList<>();
+    protected List<NodeErrorListener> nodeErrorListeners = new ArrayList<>();
     protected List<ChainSuspendListener> suspendListeners = new ArrayList<>();
 
 
@@ -116,11 +117,19 @@ public class Chain extends ChainNode {
     }
 
     public synchronized void addErrorListener(ChainErrorListener listener) {
-        this.errorListeners.add(listener);
+        this.chainErrorListeners.add(listener);
     }
 
     public synchronized void removeErrorListener(ChainErrorListener listener) {
-        this.errorListeners.remove(listener);
+        this.chainErrorListeners.remove(listener);
+    }
+
+    public synchronized void addNodeErrorListener(NodeErrorListener listener) {
+        this.nodeErrorListeners.add(listener);
+    }
+
+    public synchronized void removeNodeErrorListener(NodeErrorListener listener) {
+        this.nodeErrorListeners.remove(listener);
     }
 
     public synchronized void addSuspendListener(ChainSuspendListener listener) {
@@ -237,12 +246,20 @@ public class Chain extends ChainNode {
         this.executeResult = executeResult;
     }
 
-    public List<ChainErrorListener> getErrorListeners() {
-        return errorListeners;
+    public List<ChainErrorListener> getChainErrorListeners() {
+        return chainErrorListeners;
     }
 
-    public void setErrorListeners(List<ChainErrorListener> errorListeners) {
-        this.errorListeners = errorListeners;
+    public void setChainErrorListeners(List<ChainErrorListener> chainErrorListeners) {
+        this.chainErrorListeners = chainErrorListeners;
+    }
+
+    public List<NodeErrorListener> getNodeErrorListeners() {
+        return nodeErrorListeners;
+    }
+
+    public void setNodeErrorListeners(List<NodeErrorListener> nodeErrorListeners) {
+        this.nodeErrorListeners = nodeErrorListeners;
     }
 
     public List<ChainSuspendListener> getSuspendListeners() {
@@ -275,6 +292,14 @@ public class Chain extends ChainNode {
 
     public void setException(Exception exception) {
         this.exception = exception;
+    }
+
+    public Phaser getPhaser() {
+        return phaser;
+    }
+
+    public void setPhaser(Phaser phaser) {
+        this.phaser = phaser;
     }
 
     public void set(String key, Object value) {
@@ -420,21 +445,24 @@ public class Chain extends ChainNode {
                 }
             } else if (refType == RefType.REF) {
                 value = this.get(parameter.getRef());
-                if (value == null && parameter.getDefaultValue() != null) {
-                    value = parameter.getDefaultValue();
-                }
             } else {
                 value = this.get(parameter.getName());
             }
 
+            if (value == null && parameter.getDefaultValue() != null) {
+                value = parameter.getDefaultValue();
+            }
+
             if (parameter.isRequired() &&
                 (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
-                if (refType == RefType.FIXED || refType == RefType.REF) {
-                    throw new ChainException(node.getName() + " Missing required parameter:" + parameter.getName());
-                } else {
+                if (refType == RefType.INPUT) {
                     this.addSuspendForParameter(parameter);
                     this.suspend(node);
                     throw new ChainSuspendException(node.getClass() + " Missing required parameter:" + parameter.getName());
+                }
+                // else if (refType == RefType.FIXED || refType == RefType.REF) {
+                else {
+                    throw new ChainException(node.getName() + " Missing required parameter:" + parameter.getName());
                 }
             }
 
@@ -518,6 +546,9 @@ public class Chain extends ChainNode {
                     nodeContext.recordExecute(executeNode);
                     this.executeResult = executeResult;
                 }
+            } catch (Throwable error) {
+                notifyNodeError(error, currentNode, nodeContext);
+                throw error;
             } finally {
                 onNodeExecuteEnd(nodeContext);
                 ChainContext.clearNode();
@@ -657,10 +688,18 @@ public class Chain extends ChainNode {
 
 
     private void notifyError(Throwable error) {
-        for (ChainErrorListener errorListener : errorListeners) {
-            errorListener.onError(this, error);
+        for (ChainErrorListener errorListener : chainErrorListeners) {
+            errorListener.onError(error, this);
         }
         if (parent != null) parent.notifyError(error);
+    }
+
+
+    private void notifyNodeError(Throwable error, ChainNode node, NodeContext context) {
+        for (NodeErrorListener errorListener : nodeErrorListeners) {
+            errorListener.onError(error, node, context, this);
+        }
+        if (parent != null) parent.notifyNodeError(error, node, context);
     }
 
 
