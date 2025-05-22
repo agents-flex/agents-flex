@@ -1,6 +1,13 @@
 # Agents-Flex ChangeLog
 
 
+## v1.1.1 20250522
+- 新增：新增 NodeErrorListener 用于监听 node 的错误情况
+- 优化：重构 ChainErrorListener 的参数顺序
+- 优化：优化 getParameterValues 的默认值获取
+
+
+
 ## v1.1.0 20250516
 - 优化：增强 LLM 的 markdown 包裹优化
 - 优化：重命名 StringUtil.obtainFirstHasText 方法名称为  getFirstWithText
