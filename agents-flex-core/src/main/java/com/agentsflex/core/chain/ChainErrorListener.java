@@ -16,5 +16,5 @@
 package com.agentsflex.core.chain;
 
 public interface ChainErrorListener {
-    void onError(Chain chain, Throwable error);
+    void onError(Throwable error, Chain chain);
 }
