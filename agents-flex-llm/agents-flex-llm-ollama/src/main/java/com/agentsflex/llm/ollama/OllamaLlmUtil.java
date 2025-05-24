@@ -48,7 +48,7 @@ public class OllamaLlmUtil {
                 ImagePrompt prompt = ((ImagePrompt.TextAndImageMessage) message).getPrompt();
                 map.put("content", prompt.getContent());
 //                map.put("images", new String[]{ImageUtil.imageUrlToBase64(prompt.getImageUrl())});
-                map.put("images", new String[]{prompt.getImageBase64()});
+                map.put("images", new String[]{prompt.toImageBase64()});
             } else {
                 super.buildMessageContent(message, map);
             }
