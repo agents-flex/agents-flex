@@ -20,13 +20,17 @@ import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class BaseLlmClientListener implements LlmClientListener {
@@ -38,6 +42,8 @@ public class BaseLlmClientListener implements LlmClientListener {
     private final StringBuilder fullMessage = new StringBuilder();
     private AiMessage lastAiMessage;
     private final ChatContext context;
+    private final List<FunctionCallRecord> functionCallRecords = new ArrayList<>(0);
+    private FunctionCallRecord functionCallRecord;
 
     public BaseLlmClientListener(Llm llm
         , LlmClient client
@@ -60,6 +66,10 @@ public class BaseLlmClientListener implements LlmClientListener {
     @Override
     public void onMessage(LlmClient client, String response) {
         if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim())) {
+            //兼容在某些情况下，llm 没有出现 finish_reason: "tool_calls" 的响应
+            if (!this.functionCallRecords.isEmpty()) {
+                invokeOnMessageForFunctionCall(response);
+            }
             return;
         }
 
@@ -76,12 +86,53 @@ public class BaseLlmClientListener implements LlmClientListener {
             if (Objects.nonNull(reasoningContent)) {
                 fullReasoningContent.append(reasoningContent);
             }
+
             lastAiMessage.setFullReasoningContent(fullReasoningContent.toString());
             lastAiMessage.setFullContent(fullMessage.toString());
-            AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
-            streamResponseListener.onMessage(context, aiMessageResponse);
+
+            String functionName = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].function.name");
+            if (StringUtil.hasText(functionName)) {
+                functionCallRecord = new FunctionCallRecord();
+                functionCallRecord.name = functionName;
+                functionCallRecord.id = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].id");
+
+                // 第一次都没有 arguments
+                // currentFunctionCallJSON.arguments += (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
+
+                functionCallRecords.add(functionCallRecord);
+                streamResponseListener.onMatchedFunction(functionName, context);
+            } else if (functionCallRecord != null) {
+                String arguments = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
+                if (arguments != null) {
+                    functionCallRecord.arguments += arguments;
+                } else {
+                    String finishReason = (String) JSONPath.eval(jsonObject, "$.choices[0].finish_reason");
+                    if ("tool_calls".equals(finishReason)) {
+                        functionCallRecord = null;
+                        invokeOnMessageForFunctionCall(response);
+                    }
+                }
+            } else {
+                AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
+                streamResponseListener.onMessage(context, aiMessageResponse);
+            }
         } catch (Exception err) {
             streamResponseListener.onFailure(context, err);
+        }
+    }
+
+    private void invokeOnMessageForFunctionCall(String response) {
+        List<FunctionCall> calls = new ArrayList<>(functionCallRecords.size());
+        for (FunctionCallRecord record : functionCallRecords) {
+            calls.add(record.toFunctionCall());
+        }
+        lastAiMessage.setCalls(calls);
+        AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
+
+        try {
+            streamResponseListener.onMessage(context, aiMessageResponse);
+        } finally {
+            functionCallRecords.clear();
         }
     }
 
@@ -99,6 +150,20 @@ public class BaseLlmClientListener implements LlmClientListener {
     @Override
     public void onFailure(LlmClient client, Throwable throwable) {
         streamResponseListener.onFailure(context, throwable);
+    }
+
+    static class FunctionCallRecord {
+        String id;
+        String name;
+        String arguments = "";
+
+        public FunctionCall toFunctionCall() {
+            FunctionCall functionCall = new FunctionCall();
+            functionCall.setId(id);
+            functionCall.setName(name);
+            functionCall.setArgs(JSON.parseObject(arguments));
+            return functionCall;
+        }
     }
 
 }
