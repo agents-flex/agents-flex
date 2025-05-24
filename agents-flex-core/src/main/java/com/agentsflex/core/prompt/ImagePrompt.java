@@ -149,13 +149,5 @@ public class ImagePrompt extends TextPrompt {
             return messageContent;
         }
 
-        @Override
-        public String toString() {
-            return "TextAndImageMessage{" +
-                "prompt=" + prompt +
-                ", content='" + content + '\'' +
-                ", metadataMap=" + metadataMap +
-                '}';
-        }
     }
 }

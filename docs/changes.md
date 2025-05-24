@@ -1,6 +1,19 @@
 # Agents-Flex ChangeLog
 
 
+## v1.1.2 20250524
+- 新增: StreamResponseListener 添加 onMatchedFunction 方法
+- 新增: 添加 openai 兼容 api 的其他第三方 api 测试
+- 优化: 添加 FunctionPrompt 的 toString 方法
+- 优化: 优化 ImagePrompt 的方法
+- 优化: 优化 ToolPrompt 支持多个方法调用
+- 优化: 优化 Stream 模型下的 Function Call
+- 优化: 优化 SseClient 的 tryToStop 方法
+- 优化: 优化 FunctionCall 以及添加 toString 方法
+- 优化: 优化 OpenAILlm.java
+
+
+
 ## v1.1.1 20250522
 - 新增：新增 NodeErrorListener 用于监听 node 的错误情况
 - 优化：重构 ChainErrorListener 的参数顺序
