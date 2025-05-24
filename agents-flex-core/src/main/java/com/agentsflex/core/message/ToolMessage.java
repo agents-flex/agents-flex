@@ -26,4 +26,13 @@ public class ToolMessage extends AbstractTextMessage{
     public void setToolCallId(String toolCallId) {
         this.toolCallId = toolCallId;
     }
+
+    @Override
+    public String toString() {
+        return "ToolMessage{" +
+            "toolCallId='" + toolCallId + '\'' +
+            ", content='" + content + '\'' +
+            ", metadataMap=" + metadataMap +
+            '}';
+    }
 }

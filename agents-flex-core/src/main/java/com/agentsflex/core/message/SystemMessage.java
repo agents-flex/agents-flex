@@ -27,4 +27,12 @@ public class SystemMessage extends AbstractTextMessage {
     public static SystemMessage of(String content) {
         return new SystemMessage(content);
     }
+
+    @Override
+    public String toString() {
+        return "SystemMessage{" +
+            "content='" + content + '\'' +
+            ", metadataMap=" + metadataMap +
+            '}';
+    }
 }
