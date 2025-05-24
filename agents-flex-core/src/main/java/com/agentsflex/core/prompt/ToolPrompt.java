@@ -36,31 +36,37 @@ public class ToolPrompt extends Prompt {
 
     public static ToolPrompt of(AiMessageResponse response, HistoriesPrompt withHistories) {
         List<FunctionCaller> functionCallers = response.getFunctionCallers();
-        FunctionCaller functionCaller = functionCallers.get(0);
+        List<ToolMessage> toolMessages = new ArrayList<>(functionCallers.size());
 
-        ToolMessage toolMessage = new ToolMessage();
-        toolMessage.setToolCallId(functionCaller.getFunctionCall().getId());
-        if (StringUtil.noText(toolMessage.getToolCallId())) {
-            toolMessage.setToolCallId(functionCaller.getFunctionCall().getName());
+        for (FunctionCaller functionCaller : functionCallers) {
+            ToolMessage toolMessage = new ToolMessage();
+            toolMessage.setToolCallId(functionCaller.getFunctionCall().getId());
+            if (StringUtil.noText(toolMessage.getToolCallId())) {
+                toolMessage.setToolCallId(functionCaller.getFunctionCall().getName());
+            }
+            Object object = functionCaller.call();
+            if (object instanceof CharSequence || object instanceof Number) {
+                toolMessage.setContent(object.toString());
+            } else {
+                toolMessage.setContent(JSON.toJSONString(object));
+            }
+            toolMessages.add(toolMessage);
         }
-        Object object = functionCaller.call();
-        if (object instanceof CharSequence || object instanceof Number) {
-            toolMessage.setContent(object.toString());
-        } else {
-            toolMessage.setContent(JSON.toJSONString(object));
-        }
+
 
         if (withHistories != null) {
             withHistories.addMessages(response.getPrompt().toMessages());
             withHistories.addMessage(response.getMessage());
-            withHistories.addMessage(toolMessage);
+            for (ToolMessage toolMessage : toolMessages) {
+                withHistories.addMessage(toolMessage);
+            }
             return new HistoriesToolPrompt(withHistories);
         } else {
             ToolPrompt toolPrompt = new ToolPrompt();
             toolPrompt.messages = new ArrayList<>();
             toolPrompt.messages.addAll(response.getPrompt().toMessages());
             toolPrompt.messages.add(response.getMessage());
-            toolPrompt.messages.add(toolMessage);
+            toolPrompt.messages.addAll(toolMessages);
             return toolPrompt;
         }
     }
