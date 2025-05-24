@@ -200,12 +200,12 @@ public class LlmNode extends BaseNode {
     public static Map<String, Object> getExecuteResultMap(List<Parameter> outputDefs, JSONObject data) {
         Map<String, Object> result = new HashMap<>();
         outputDefs.forEach(output -> {
-            result.put(output.getName(), getOutputDefData(output, data,false));
+            result.put(output.getName(), getOutputDefData(output, data, false));
         });
         return result;
     }
 
-    private static Object getOutputDefData(Parameter output, JSONObject data,boolean sub) {
+    private static Object getOutputDefData(Parameter output, JSONObject data, boolean sub) {
         String name = output.getName();
         DataType dataType = output.getDataType();
         switch (dataType) {
@@ -217,18 +217,18 @@ public class LlmNode extends BaseNode {
                 List<Object> subResultList = new ArrayList<>();
                 Object dataObj = data.get(name);
                 if (dataObj instanceof JSONArray) {
-                    JSONArray contentFields=((JSONArray) dataObj);
+                    JSONArray contentFields = ((JSONArray) dataObj);
                     if (!contentFields.isEmpty()) {
                         contentFields.forEach(field -> {
                             if (field instanceof JSONObject) {
-                                subResultList.add(getChildrenResult(output.getChildren(), (JSONObject) field,sub));
+                                subResultList.add(getChildrenResult(output.getChildren(), (JSONObject) field, sub));
                             }
                         });
                     }
                 }
                 return subResultList;
             case Object:
-                return  (output.getChildren() != null && !output.getChildren().isEmpty()) ? getChildrenResult(output.getChildren(),sub?data:(JSONObject) data.get(name),sub) :data.get(name);
+                return (output.getChildren() != null && !output.getChildren().isEmpty()) ? getChildrenResult(output.getChildren(), sub ? data : (JSONObject) data.get(name), sub) : data.get(name);
             case String:
             case Number:
             case Boolean:
@@ -238,7 +238,7 @@ public class LlmNode extends BaseNode {
             case Array_Number:
             case Array_Boolean:
                 Object arrayObj = data.get(name);
-                if(arrayObj instanceof JSONArray) {
+                if (arrayObj instanceof JSONArray) {
                     ((JSONArray) arrayObj).removeIf(o -> arrayRemoveFlag(dataType, o));
                     return arrayObj;
                 }
@@ -250,17 +250,17 @@ public class LlmNode extends BaseNode {
 
     private static boolean arrayRemoveFlag(DataType dataType, Object arrayObj) {
         boolean removeFlag = false;
-        if(DataType.Array_String == dataType){
-            if(!(arrayObj instanceof String)){
-                removeFlag=true;
+        if (DataType.Array_String == dataType) {
+            if (!(arrayObj instanceof String)) {
+                removeFlag = true;
             }
-        }else if(DataType.Array_Number == dataType){
-            if(!(arrayObj instanceof Number)){
-                removeFlag=true;
+        } else if (DataType.Array_Number == dataType) {
+            if (!(arrayObj instanceof Number)) {
+                removeFlag = true;
             }
-        }else{
-            if(!(arrayObj instanceof Boolean)){
-                removeFlag=true;
+        } else {
+            if (!(arrayObj instanceof Boolean)) {
+                removeFlag = true;
             }
         }
         return removeFlag;
@@ -270,16 +270,15 @@ public class LlmNode extends BaseNode {
         Map<String, Object> childrenResult = new HashMap<>();
         children.forEach(child -> {
             String childName = child.getName();
-            Object subData = getOutputDefData(child, data,sub);
-            if((subData instanceof JSONObject) && (child.getChildren() != null && !child.getChildren().isEmpty())) {
-                getChildrenResult(child.getChildren(), (JSONObject)subData,true);
-            }else{
+            Object subData = getOutputDefData(child, data, sub);
+            if ((subData instanceof JSONObject) && (child.getChildren() != null && !child.getChildren().isEmpty())) {
+                getChildrenResult(child.getChildren(), (JSONObject) subData, true);
+            } else {
                 childrenResult.put(childName, subData);
             }
         });
         return childrenResult;
     }
-
 
 
     @Override
