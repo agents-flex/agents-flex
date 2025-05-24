@@ -16,6 +16,7 @@
 package com.agentsflex.core.chain.node;
 
 import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.DataType;
 import com.agentsflex.core.chain.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
@@ -28,11 +29,10 @@ import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class LlmNode extends BaseNode {
 
@@ -155,11 +155,7 @@ public class LlmNode extends BaseNode {
                     chain.stopError("Can not parse json: " + response.getResponse() + " " + e.getMessage());
                     return Collections.emptyMap();
                 }
-                Map<String, Object> map = new HashMap<>();
-                for (Parameter outputDef : this.outputDefs) {
-                    map.put(outputDef.getName(), jsonObject.get(outputDef.getName()));
-                }
-                return map;
+                return getExecuteResultMap(outputDefs, jsonObject);
             }
             return Collections.emptyMap();
         }
@@ -200,6 +196,90 @@ public class LlmNode extends BaseNode {
         }
         return markdown.trim();
     }
+
+    public static Map<String, Object> getExecuteResultMap(List<Parameter> outputDefs, JSONObject data) {
+        Map<String, Object> result = new HashMap<>();
+        outputDefs.forEach(output -> {
+            result.put(output.getName(), getOutputDefData(output, data,false));
+        });
+        return result;
+    }
+
+    private static Object getOutputDefData(Parameter output, JSONObject data,boolean sub) {
+        String name = output.getName();
+        DataType dataType = output.getDataType();
+        switch (dataType) {
+            case Array:
+            case Array_Object:
+                if (output.getChildren() == null || output.getChildren().isEmpty()) {
+                    return data.get(name);
+                }
+                List<Object> subResultList = new ArrayList<>();
+                Object dataObj = data.get(name);
+                if (dataObj instanceof JSONArray) {
+                    JSONArray contentFields=((JSONArray) dataObj);
+                    if (!contentFields.isEmpty()) {
+                        contentFields.forEach(field -> {
+                            if (field instanceof JSONObject) {
+                                subResultList.add(getChildrenResult(output.getChildren(), (JSONObject) field,sub));
+                            }
+                        });
+                    }
+                }
+                return subResultList;
+            case Object:
+                return  (output.getChildren() != null && !output.getChildren().isEmpty()) ? getChildrenResult(output.getChildren(),sub?data:(JSONObject) data.get(name),sub) :data.get(name);
+            case String:
+            case Number:
+            case Boolean:
+                Object obj = data.get(name);
+                return (DataType.String == dataType) ? (obj instanceof String ? obj : "") : (DataType.Number == dataType) ? (obj instanceof Number ? obj : 0) : obj instanceof Boolean ? obj : false;
+            case Array_String:
+            case Array_Number:
+            case Array_Boolean:
+                Object arrayObj = data.get(name);
+                if(arrayObj instanceof JSONArray) {
+                    ((JSONArray) arrayObj).removeIf(o -> arrayRemoveFlag(dataType, o));
+                    return arrayObj;
+                }
+                return Collections.emptyList();
+            default:
+                return ""; // FILE和其他不支持的类型，默认空字符串
+        }
+    }
+
+    private static boolean arrayRemoveFlag(DataType dataType, Object arrayObj) {
+        boolean removeFlag = false;
+        if(DataType.Array_String == dataType){
+            if(!(arrayObj instanceof String)){
+                removeFlag=true;
+            }
+        }else if(DataType.Array_Number == dataType){
+            if(!(arrayObj instanceof Number)){
+                removeFlag=true;
+            }
+        }else{
+            if(!(arrayObj instanceof Boolean)){
+                removeFlag=true;
+            }
+        }
+        return removeFlag;
+    }
+
+    private static Map<String, Object> getChildrenResult(List<Parameter> children, JSONObject data, boolean sub) {
+        Map<String, Object> childrenResult = new HashMap<>();
+        children.forEach(child -> {
+            String childName = child.getName();
+            Object subData = getOutputDefData(child, data,sub);
+            if((subData instanceof JSONObject) && (child.getChildren() != null && !child.getChildren().isEmpty())) {
+                getChildrenResult(child.getChildren(), (JSONObject)subData,true);
+            }else{
+                childrenResult.put(childName, subData);
+            }
+        });
+        return childrenResult;
+    }
+
 
 
     @Override
