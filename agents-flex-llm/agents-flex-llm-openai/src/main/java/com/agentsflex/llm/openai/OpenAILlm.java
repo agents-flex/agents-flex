@@ -112,9 +112,6 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
         String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, true);
-        if (config.isDebug()) {
-            LogUtil.println(">>>>send payload:" + payload);
-        }
         String endpoint = config.getEndpoint();
         LlmClientListener clientListener = new BaseLlmClientListener(this, llmClient, listener, prompt, streamMessageParser);
         llmClient.start(endpoint + config.getChatPath(), headers, payload, clientListener, config);

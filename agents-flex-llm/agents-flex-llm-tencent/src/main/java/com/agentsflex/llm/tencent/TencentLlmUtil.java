@@ -48,7 +48,13 @@ public class TencentLlmUtil {
                 map.put("Role", "user");
             } else if (message instanceof AiMessage) {
                 map.put("Role", "assistant");
-                buildToolCalls(map, (AiMessage) message);
+                map.put("Content", "");
+                AiMessage aiMessage = (AiMessage) message;
+                List<FunctionCall> calls = aiMessage.getCalls();
+                if (calls != null && !calls.isEmpty()) {
+                    buildToolCalls(map, calls);
+                    return;
+                }
             } else if (message instanceof SystemMessage) {
                 map.put("Role", "system");
             } else if (message instanceof ToolMessage) {

@@ -27,7 +27,7 @@ import java.util.List;
 
 public class ToolPrompt extends Prompt {
 
-    private List<Message> messages;
+    protected List<Message> messages;
 
     public static ToolPrompt of(AiMessageResponse response) {
         return of(response, null);
@@ -36,12 +36,14 @@ public class ToolPrompt extends Prompt {
 
     public static ToolPrompt of(AiMessageResponse response, HistoriesPrompt withHistories) {
         List<FunctionCaller> functionCallers = response.getFunctionCallers();
-        List<ToolMessage> toolMessages = new ArrayList<>(functionCallers.size());
+        List<Message> toolMessages = new ArrayList<>(functionCallers.size());
 
         for (FunctionCaller functionCaller : functionCallers) {
             ToolMessage toolMessage = new ToolMessage();
-            toolMessage.setToolCallId(functionCaller.getFunctionCall().getId());
-            if (StringUtil.noText(toolMessage.getToolCallId())) {
+            String callId = functionCaller.getFunctionCall().getId();
+            if (StringUtil.hasText(callId)) {
+                toolMessage.setToolCallId(callId);
+            } else {
                 toolMessage.setToolCallId(functionCaller.getFunctionCall().getName());
             }
             Object object = functionCaller.call();
@@ -57,15 +59,19 @@ public class ToolPrompt extends Prompt {
         if (withHistories != null) {
             withHistories.addMessages(response.getPrompt().toMessages());
             withHistories.addMessage(response.getMessage());
-            for (ToolMessage toolMessage : toolMessages) {
-                withHistories.addMessage(toolMessage);
-            }
+            withHistories.addMessages(toolMessages);
             return new HistoriesToolPrompt(withHistories);
         } else {
             ToolPrompt toolPrompt = new ToolPrompt();
             toolPrompt.messages = new ArrayList<>();
+
+            //用户问题
             toolPrompt.messages.addAll(response.getPrompt().toMessages());
+
+            // 模型返回
             toolPrompt.messages.add(response.getMessage());
+
+            // 执行结果
             toolPrompt.messages.addAll(toolMessages);
             return toolPrompt;
         }
@@ -82,11 +88,28 @@ public class ToolPrompt extends Prompt {
         public List<Message> toMessages() {
             return historiesPrompt.toMessages();
         }
+
+        @Override
+        public String toString() {
+            return "HistoriesToolPrompt{" +
+                "historiesPrompt=" + historiesPrompt +
+                ", messages=" + messages +
+                ", metadataMap=" + metadataMap +
+                '}';
+        }
     }
 
 
     @Override
     public List<Message> toMessages() {
         return messages;
+    }
+
+    @Override
+    public String toString() {
+        return "ToolPrompt{" +
+            "messages=" + messages +
+            ", metadataMap=" + metadataMap +
+            '}';
     }
 }

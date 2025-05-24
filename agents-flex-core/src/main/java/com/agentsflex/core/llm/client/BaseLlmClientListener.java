@@ -128,7 +128,6 @@ public class BaseLlmClientListener implements LlmClientListener {
         }
         lastAiMessage.setCalls(calls);
         AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
-
         try {
             streamResponseListener.onMessage(context, aiMessageResponse);
         } finally {

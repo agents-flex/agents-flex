@@ -48,7 +48,15 @@ public class DefaultPromptFormat implements PromptFormat {
                 map.put("role", "user");
             } else if (message instanceof AiMessage) {
                 map.put("role", "assistant");
-                buildToolCalls(map, (AiMessage) message);
+                AiMessage aiMessage = (AiMessage) message;
+                List<FunctionCall> calls = aiMessage.getCalls();
+                if (calls != null && !calls.isEmpty()) {
+                    map.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
+                    buildToolCalls(map, calls);
+                    //不需要 build content 了
+                    messageJsonArray.add(map);
+                    return;
+                }
             } else if (message instanceof SystemMessage) {
                 map.put("role", "system");
             } else if (message instanceof ToolMessage) {
@@ -60,22 +68,19 @@ public class DefaultPromptFormat implements PromptFormat {
         });
     }
 
-    protected void buildToolCalls(Map<String, Object> map, AiMessage aiMessage) {
-        List<FunctionCall> calls = aiMessage.getCalls();
-        if (calls != null && !calls.isEmpty()) {
-            List<Map<String, Object>> toolCalls = new ArrayList<>();
-            for (FunctionCall call : calls) {
-                Maps toolCall = new Maps();
-                toolCall.set("id", call.getId())
-                    .set("type", "function")
-                    .set("function", Maps.of("name", call.getName())
-                        .set("arguments", buildToolCallsArguments(call.getArgs()))
-                    );
+    protected void buildToolCalls(Map<String, Object> map, List<FunctionCall> calls) {
+        List<Map<String, Object>> toolCalls = new ArrayList<>();
+        for (FunctionCall call : calls) {
+            Maps toolCall = new Maps();
+            toolCall.set("id", call.getId())
+                .set("type", "function")
+                .set("function", Maps.of("name", call.getName())
+                    .set("arguments", buildToolCallsArguments(call.getArgs()))
+                );
 
-                toolCalls.add(toolCall);
-            }
-            map.put("tool_calls", toolCalls);
+            toolCalls.add(toolCall);
         }
+        map.put("tool_calls", toolCalls);
     }
 
     protected Object buildToolCallsArguments(Map<String, Object> arguments) {

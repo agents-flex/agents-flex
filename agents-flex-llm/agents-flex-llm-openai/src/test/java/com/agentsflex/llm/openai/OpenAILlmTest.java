@@ -186,6 +186,43 @@ public class OpenAILlmTest {
         TimeUnit.SECONDS.sleep(5);
     }
 
+    @Test()
+    public void testFunctionCalling444() throws InterruptedException {
+        OpenAILlmConfig config = new OpenAILlmConfig();
+        config.setDebug(true);
+        config.setEndpoint("https://ark.cn-beijing.volces.com");
+        config.setChatPath("/api/v3/chat/completions");
+        config.setModel("deepseek-v3-250324");
+        config.setApiKey("2d57a");
+
+        OpenAILlm llm = new OpenAILlm(config);
+
+
+        FunctionPrompt prompt = new FunctionPrompt("北京和上海的天气怎么样", WeatherFunctions.class);
+        llm.chatStream(prompt, new StreamResponseListener() {
+            @Override
+            public void onMessage(ChatContext context, AiMessageResponse response) {
+//                System.out.println("onMessage >>>>>" + response);
+                if (response.isFunctionCall()) {
+                    System.out.println(":::::::: start....");
+                    llm.chatStream(ToolPrompt.of(response), new StreamResponseListener() {
+                        @Override
+                        public void onMessage(ChatContext context, AiMessageResponse response) {
+                            String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+                            System.out.println(":::"+msg);
+                        }
+                    });
+                } else {
+                    String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+                    System.out.println(">>>"+msg);
+                }
+            }
+        });
+
+        TimeUnit.SECONDS.sleep(25);
+
+    }
+
 
     @Test()
     public void testFunctionCalling5() throws InterruptedException {
@@ -193,7 +230,7 @@ public class OpenAILlmTest {
         config.setDebug(true);
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
-        config.setApiKey("PXW1G");
+        config.setApiKey("PXW1");
 
         OpenAILlm llm = new OpenAILlm(config);
 
@@ -208,6 +245,42 @@ public class OpenAILlmTest {
         TimeUnit.SECONDS.sleep(5);
     }
 
+
+    @Test()
+    public void testFunctionCalling55() throws InterruptedException {
+        OpenAILlmConfig config = new OpenAILlmConfig();
+        config.setDebug(true);
+        config.setEndpoint("https://ai.gitee.com");
+        config.setModel("Qwen3-32B");
+        config.setApiKey("PXW1");
+
+        OpenAILlm llm = new OpenAILlm(config);
+
+        FunctionPrompt prompt = new FunctionPrompt("/no_think 北京和上海的天气怎么样", WeatherFunctions.class);
+//        FunctionPrompt prompt = new FunctionPrompt("上海的天气怎么样", WeatherFunctions.class);
+        llm.chatStream(prompt, new StreamResponseListener() {
+            @Override
+            public void onMessage(ChatContext context, AiMessageResponse response) {
+//                System.out.println("onMessage >>>>>" + response);
+                if (response.isFunctionCall()) {
+                    System.out.println(":::::::: start....");
+                    llm.chatStream(ToolPrompt.of(response), new StreamResponseListener() {
+                        @Override
+                        public void onMessage(ChatContext context, AiMessageResponse response) {
+                            String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+                            System.out.println(":::"+msg);
+                        }
+                    });
+                } else {
+                    String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+                    System.out.println(">>>"+msg);
+                }
+            }
+        });
+
+        TimeUnit.SECONDS.sleep(25);
+    }
+
     @Test()
     public void testFunctionCalling6() throws InterruptedException {
         OpenAILlmConfig config = new OpenAILlmConfig();
@@ -218,10 +291,10 @@ public class OpenAILlmTest {
 
         OpenAILlm llm = new OpenAILlm(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("北京和上海的天气怎么样", WeatherFunctions.class);
+        FunctionPrompt prompt = new FunctionPrompt("/nothink 北京和上海的天气怎么样", WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
-        System.out.println(response);
+        System.out.println(llm.chat(ToolPrompt.of(response)));
 
     }
 }
