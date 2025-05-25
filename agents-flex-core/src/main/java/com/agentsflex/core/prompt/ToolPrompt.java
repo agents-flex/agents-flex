@@ -27,7 +27,7 @@ import java.util.List;
 
 public class ToolPrompt extends Prompt {
 
-    private List<Message> messages;
+    protected List<Message> messages;
 
     public static ToolPrompt of(AiMessageResponse response) {
         return of(response, null);
@@ -36,31 +36,43 @@ public class ToolPrompt extends Prompt {
 
     public static ToolPrompt of(AiMessageResponse response, HistoriesPrompt withHistories) {
         List<FunctionCaller> functionCallers = response.getFunctionCallers();
-        FunctionCaller functionCaller = functionCallers.get(0);
+        List<Message> toolMessages = new ArrayList<>(functionCallers.size());
 
-        ToolMessage toolMessage = new ToolMessage();
-        toolMessage.setToolCallId(functionCaller.getFunctionCall().getId());
-        if (StringUtil.noText(toolMessage.getToolCallId())) {
-            toolMessage.setToolCallId(functionCaller.getFunctionCall().getName());
+        for (FunctionCaller functionCaller : functionCallers) {
+            ToolMessage toolMessage = new ToolMessage();
+            String callId = functionCaller.getFunctionCall().getId();
+            if (StringUtil.hasText(callId)) {
+                toolMessage.setToolCallId(callId);
+            } else {
+                toolMessage.setToolCallId(functionCaller.getFunctionCall().getName());
+            }
+            Object object = functionCaller.call();
+            if (object instanceof CharSequence || object instanceof Number) {
+                toolMessage.setContent(object.toString());
+            } else {
+                toolMessage.setContent(JSON.toJSONString(object));
+            }
+            toolMessages.add(toolMessage);
         }
-        Object object = functionCaller.call();
-        if (object instanceof CharSequence || object instanceof Number) {
-            toolMessage.setContent(object.toString());
-        } else {
-            toolMessage.setContent(JSON.toJSONString(object));
-        }
+
 
         if (withHistories != null) {
             withHistories.addMessages(response.getPrompt().toMessages());
             withHistories.addMessage(response.getMessage());
-            withHistories.addMessage(toolMessage);
+            withHistories.addMessages(toolMessages);
             return new HistoriesToolPrompt(withHistories);
         } else {
             ToolPrompt toolPrompt = new ToolPrompt();
             toolPrompt.messages = new ArrayList<>();
+
+            //用户问题
             toolPrompt.messages.addAll(response.getPrompt().toMessages());
+
+            // 模型返回
             toolPrompt.messages.add(response.getMessage());
-            toolPrompt.messages.add(toolMessage);
+
+            // 执行结果
+            toolPrompt.messages.addAll(toolMessages);
             return toolPrompt;
         }
     }
@@ -76,11 +88,28 @@ public class ToolPrompt extends Prompt {
         public List<Message> toMessages() {
             return historiesPrompt.toMessages();
         }
+
+        @Override
+        public String toString() {
+            return "HistoriesToolPrompt{" +
+                "historiesPrompt=" + historiesPrompt +
+                ", messages=" + messages +
+                ", metadataMap=" + metadataMap +
+                '}';
+        }
     }
 
 
     @Override
     public List<Message> toMessages() {
         return messages;
+    }
+
+    @Override
+    public String toString() {
+        return "ToolPrompt{" +
+            "messages=" + messages +
+            ", metadataMap=" + metadataMap +
+            '}';
     }
 }

@@ -1,6 +1,41 @@
 # Agents-Flex ChangeLog
 
 
+## v1.1.2 20250524
+- 新增: StreamResponseListener 添加 onMatchedFunction 方法
+- 新增: 添加 openai 兼容 api 的其他第三方 api 测试
+- 优化: 添加 FunctionPrompt 的 toString 方法
+- 优化: 优化 ImagePrompt 的方法
+- 优化: 优化 ToolPrompt 支持多个方法调用
+- 优化: 优化 Stream 模型下的 Function Call
+- 优化: 优化 SseClient 的 tryToStop 方法
+- 优化: 优化 FunctionCall 以及添加 toString 方法
+- 优化: 优化 OpenAILlm.java
+
+
+
+## v1.1.1 20250522
+- 新增：新增 NodeErrorListener 用于监听 node 的错误情况
+- 优化：重构 ChainErrorListener 的参数顺序
+- 优化：优化 getParameterValues 的默认值获取
+
+
+
+## v1.1.0 20250516
+- 优化：增强 LLM 的 markdown 包裹优化
+- 优化：重命名 StringUtil.obtainFirstHasText 方法名称为  getFirstWithText
+- 修复：修复大模型节点，返回 json 内容时不正确的问题
+- 修复：修复 EndNode 在输出固定值时出现 NPE 的问题
+
+
+
+## v1.0.9 20250513
+- 新增: Chain 添加 reset 方法，使之调用后可以执行多次
+- 优化：不允许设置默认 EmbeddingOptions 配置的 encodingFormat
+- 优化：修改模型思考过程的设置，让 content 和 reasoningContent 输出内容一致，感谢 @Alex
+
+
+
 ## v1.0.8 20250511
 - 优化：优化 elasticSearch 用户自定义集合名称就用用户自定义集合，没有传就用默认集合名称
 - 优化：从命名 TextPromptTemplate.create 方法名称为 TextPromptTemplate.of，更加符合 “缓存” 的特征

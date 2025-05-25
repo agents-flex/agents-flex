@@ -82,4 +82,14 @@ public class HumanMessage extends AbstractTextMessage {
     public void setToolChoice(String toolChoice) {
         this.toolChoice = toolChoice;
     }
+
+    @Override
+    public String toString() {
+        return "HumanMessage{" +
+            "functions=" + functions +
+            ", toolChoice='" + toolChoice + '\'' +
+            ", content='" + content + '\'' +
+            ", metadataMap=" + metadataMap +
+            '}';
+    }
 }

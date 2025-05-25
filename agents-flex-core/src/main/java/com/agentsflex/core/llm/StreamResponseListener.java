@@ -30,6 +30,9 @@ public interface StreamResponseListener {
     default void onStop(ChatContext context) {
     }
 
+    default void onMatchedFunction(String functionName, ChatContext context) {
+    }
+
     default void onFailure(ChatContext context, Throwable throwable) {
         if (throwable != null) {
             logger.error(throwable.toString(), throwable);

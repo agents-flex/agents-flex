@@ -101,7 +101,7 @@ public class SseClient extends EventSourceListener implements LlmClient {
     }
 
 
-    private boolean tryToStop() {
+    private void tryToStop() {
         if (!this.isStop) {
             try {
                 this.isStop = true;
@@ -114,8 +114,6 @@ public class SseClient extends EventSourceListener implements LlmClient {
                     okHttpClient.dispatcher().executorService().shutdown();
                 }
             }
-            return true;
         }
-        return false;
     }
 }

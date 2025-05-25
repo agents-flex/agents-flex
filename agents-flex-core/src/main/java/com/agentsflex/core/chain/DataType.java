@@ -16,6 +16,7 @@
 package com.agentsflex.core.chain;
 
 public enum DataType {
+    Array("Array"),
     Object("Object"),
     String("String"),
     Number("Number"),

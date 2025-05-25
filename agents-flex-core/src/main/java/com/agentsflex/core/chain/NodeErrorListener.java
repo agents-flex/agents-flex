@@ -13,26 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.message;
+package com.agentsflex.core.chain;
 
-public class SystemMessage extends AbstractTextMessage {
+import java.util.Map;
 
-    public SystemMessage() {
-    }
-
-    public SystemMessage(String content) {
-        this.content = content;
-    }
-
-    public static SystemMessage of(String content) {
-        return new SystemMessage(content);
-    }
-
-    @Override
-    public String toString() {
-        return "SystemMessage{" +
-            "content='" + content + '\'' +
-            ", metadataMap=" + metadataMap +
-            '}';
-    }
+public interface NodeErrorListener {
+    void onError(Throwable error, ChainNode node, Map<String, Object> nodeResult, Chain chain);
 }

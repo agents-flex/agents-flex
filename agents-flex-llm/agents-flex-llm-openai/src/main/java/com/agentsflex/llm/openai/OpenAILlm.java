@@ -74,6 +74,9 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         }
 
         String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, false);
+        if (config.isDebug()) {
+            LogUtil.println(">>>>send payload:" + payload);
+        }
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + config.getChatPath(), headers, payload);
 

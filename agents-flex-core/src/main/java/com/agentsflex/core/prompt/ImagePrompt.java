@@ -70,6 +70,32 @@ public class ImagePrompt extends TextPrompt {
     }
 
     public String getImageBase64() {
+        return imageBase64;
+    }
+
+    public void setImageBase64(String imageBase64) {
+        this.imageBase64 = imageBase64;
+    }
+
+
+    public String toUrl() {
+        if (StringUtil.hasText(imageUrl)) {
+            return imageUrl;
+        }
+
+        if (imageBase64 != null) {
+            return imageBase64;
+        }
+
+        if (imageFile != null) {
+            imageBase64 = ImageUtil.imageFileToBase64(imageFile);
+            return imageBase64;
+        }
+        return null;
+    }
+
+
+    public String toImageBase64() {
         if (imageBase64 != null) {
             return imageBase64;
         }
@@ -85,10 +111,6 @@ public class ImagePrompt extends TextPrompt {
         }
 
         return null;
-    }
-
-    public void setImageBase64(String imageBase64) {
-        this.imageBase64 = imageBase64;
     }
 
     @Override
@@ -123,8 +145,9 @@ public class ImagePrompt extends TextPrompt {
         public Object getMessageContent() {
             List<Map<String, Object>> messageContent = new ArrayList<>();
             messageContent.add(Maps.of("type", "text").set("text", prompt.content));
-            messageContent.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", prompt.getImageBase64())));
+            messageContent.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", prompt.toUrl())));
             return messageContent;
         }
+
     }
 }

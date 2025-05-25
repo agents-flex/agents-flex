@@ -48,7 +48,13 @@ public class TencentLlmUtil {
                 map.put("Role", "user");
             } else if (message instanceof AiMessage) {
                 map.put("Role", "assistant");
-                buildToolCalls(map, (AiMessage) message);
+                map.put("Content", "");
+                AiMessage aiMessage = (AiMessage) message;
+                List<FunctionCall> calls = aiMessage.getCalls();
+                if (calls != null && !calls.isEmpty()) {
+                    buildToolCalls(map, calls);
+                    return;
+                }
             } else if (message instanceof SystemMessage) {
                 map.put("Role", "system");
             } else if (message instanceof ToolMessage) {
@@ -58,7 +64,7 @@ public class TencentLlmUtil {
             if (message instanceof ImagePrompt.TextAndImageMessage) {
                 ImagePrompt prompt = ((ImagePrompt.TextAndImageMessage) message).getPrompt();
                 List<Map<String, Object>> list = new ArrayList<>();
-                list.add(Maps.of("Type", "image_url").set("Text", prompt.getContent()).set("ImageUrl", Maps.of("Url", prompt.getImageBase64())));
+                list.add(Maps.of("Type", "image_url").set("Text", prompt.getContent()).set("ImageUrl", Maps.of("Url", prompt.toUrl())));
                 map.put("Contents", list);
             } else {
                 map.put("Content", message.getMessageContent());

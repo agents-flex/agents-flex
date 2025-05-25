@@ -24,6 +24,15 @@ public class FunctionCall implements Serializable {
     private String name;
     private Map<String, Object> args;
 
+    public FunctionCall() {
+    }
+
+    public FunctionCall(String id, String name, Map<String, Object> args) {
+        this.id = id;
+        this.name = name;
+        this.args = args;
+    }
+
     public String getId() {
         return id;
     }
@@ -46,5 +55,14 @@ public class FunctionCall implements Serializable {
 
     public void setArgs(Map<String, Object> args) {
         this.args = args;
+    }
+
+    @Override
+    public String toString() {
+        return "FunctionCall{" +
+            "id='" + id + '\'' +
+            ", name='" + name + '\'' +
+            ", args=" + args +
+            '}';
     }
 }

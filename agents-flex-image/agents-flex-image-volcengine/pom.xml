@@ -28,21 +28,21 @@
         <dependency>
             <groupId>com.volcengine</groupId>
             <artifactId>volcengine-java-sdk-ark-runtime</artifactId>
-            <version>LATEST</version>
+            <version>0.2.9</version>
         </dependency>
 
         <dependency>
             <groupId>com.volcengine</groupId>
             <artifactId>volc-sdk-java</artifactId>
-            <version>LATEST</version>
+            <version>1.0.221</version>
         </dependency>
-
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>

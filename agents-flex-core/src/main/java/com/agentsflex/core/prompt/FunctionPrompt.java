@@ -58,4 +58,14 @@ public class FunctionPrompt extends Prompt {
         messages.add(humanMessage);
         return messages;
     }
+
+    @Override
+    public String toString() {
+        return "FunctionPrompt{" +
+            "systemMessage=" + systemMessage +
+            ", humanMessage=" + humanMessage +
+            ", autoCall=" + autoCall +
+            ", metadataMap=" + metadataMap +
+            '}';
+    }
 }
