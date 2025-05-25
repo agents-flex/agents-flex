@@ -776,6 +776,32 @@ public class Chain extends ChainNode {
         }
     }
 
+    public void reset() {
+        //node
+        this.memory.clear();
+        this.nodeStatus = ChainNodeStatus.READY;
+
+
+        //chain
+        this.status = ChainStatus.READY;
+        this.executeResult = null;
+        this.message = null;
+        this.exception = null;
+        this.nodeContexts.clear();
+
+
+        if (this.suspendNodes != null) {
+            this.suspendNodes.clear();
+        }
+
+        if (this.suspendForParameters != null) {
+            this.suspendForParameters.clear();
+        }
+
+        this.asyncNodeExecutors = NamedThreadPools.newFixedThreadPool("chain-executor");
+        this.phaser = new Phaser(1);
+    }
+
     @Override
     public String toString() {
         return "Chain{" +
