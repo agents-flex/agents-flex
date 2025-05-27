@@ -43,6 +43,11 @@ public class ChatOptions {
     private Integer maxTokens;
     private List<String> stop;
 
+    /**
+     * 是否开启思考模式，适用于 Qwen3 等模型模型。
+     */
+    private Boolean enableThinking;
+
     public String getModel() {
         return model;
     }
@@ -97,5 +102,13 @@ public class ChatOptions {
 
     public void setStop(List<String> stop) {
         this.stop = stop;
+    }
+
+    public Boolean getEnableThinking() {
+        return enableThinking;
+    }
+
+    public void setEnableThinking(Boolean enableThinking) {
+        this.enableThinking = enableThinking;
     }
 }

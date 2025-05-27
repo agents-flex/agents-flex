@@ -73,6 +73,11 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
             headersConfig.accept(headers);
         }
 
+        // 非流式返回，比如 Qwen3 等必须设置 false，否则自动流式返回了
+        if (options.getEnableThinking() == null) {
+            options.setEnableThinking(false);
+        }
+
         String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, false);
         if (config.isDebug()) {
             LogUtil.println(">>>>send payload:" + payload);

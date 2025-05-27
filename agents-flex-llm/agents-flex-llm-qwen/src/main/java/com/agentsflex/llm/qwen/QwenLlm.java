@@ -57,6 +57,8 @@ public class QwenLlm extends BaseLlm<QwenLlmConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
+        //非流式返回，需要设置为 false
+        options.setEnableThinking(false);
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
