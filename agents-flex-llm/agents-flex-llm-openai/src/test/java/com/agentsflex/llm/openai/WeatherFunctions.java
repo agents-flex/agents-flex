@@ -10,6 +10,8 @@ public class WeatherFunctions {
 
     @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
     public static String getWeatherInfo(@FunctionParam(name = "city", description = "the city name") String name) {
+
+        System.out.println(">>>>>>>>>>>>>>!!!!!!" + name);
         if (currentIndex >= weathers.length) {
             currentIndex = 0;
         }
@@ -17,8 +19,8 @@ public class WeatherFunctions {
     }
 
 
-    @FunctionDef(name = "get_city_ip", description = "get the city ip address")
-    public static String getIPAddress(@FunctionParam(name = "city", description = "the city name") String name) {
-        return "127.0.0.1";
-    }
+//    @FunctionDef(name = "get_city_ip", description = "get the city ip address")
+//    public static String getIPAddress(@FunctionParam(name = "city", description = "the city name") String name) {
+//        return "127.0.0.1";
+//    }
 }

@@ -1,5 +1,10 @@
 # Agents-Flex ChangeLog
 
+## v1.1.3 20250527
+- 修复：修复阿里云百炼 text-embedding-v3 向量化使用 milvus 使用默认向量模型导致两次维度不一致问题
+- 修复：qwen3 非流式返回设置 enable_thinking 为 false
+
+
 
 ## v1.1.2 20250524
 - 新增: StreamResponseListener 添加 onMatchedFunction 方法

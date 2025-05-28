@@ -193,7 +193,7 @@ public class OpenAILlmTest {
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setChatPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
-        config.setApiKey("2d57a");
+        config.setApiKey("2d57aa75-5772-4320-a00b-fbab3dd940a3");
 
         OpenAILlm llm = new OpenAILlm(config);
 
@@ -202,7 +202,31 @@ public class OpenAILlmTest {
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
-//                System.out.println("onMessage >>>>>" + response);
+
+
+//                if (response.isFunctionCall()) {
+//                    List<FunctionCaller> functionCallers = response.getFunctionCallers();
+//                    boolean isEmitter = false;
+//                    boolean isComplete = false;
+//                    for (FunctionCaller functionCaller : functionCallers) {
+//                        Object result = functionCaller.call();
+//                        if (result != null){
+//                            isEmitter = true;
+//                            // sentEmiiter(....)
+//                        }
+////                        if (result == null){
+////                            continue;
+////                        }
+//                        System.out.println(result);
+//                    }
+//
+//
+//                    if (!isEmitter){
+//                        // ......
+//                    }
+//                }
+
+                System.out.println("onMessage >>>>>" + response);
                 if (response.isFunctionCall()) {
                     System.out.println(":::::::: start....");
                     llm.chatStream(ToolPrompt.of(response), new StreamResponseListener() {
