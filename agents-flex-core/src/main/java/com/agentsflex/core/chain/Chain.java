@@ -539,6 +539,8 @@ public class Chain extends ChainNode {
                 if (this.getStatus() != ChainStatus.RUNNING) {
                     return;
                 }
+
+                currentNode.setNodeStatus(ChainNodeStatus.RUNNING);
                 onNodeExecuteStart(nodeContext);
                 try {
                     executeResult = currentNode.execute(this);
@@ -547,9 +549,11 @@ public class Chain extends ChainNode {
                     this.executeResult = executeResult;
                 }
             } catch (Throwable error) {
+                currentNode.setNodeStatus(ChainNodeStatus.ERROR);
                 notifyNodeError(error, currentNode, executeResult);
                 throw error;
             } finally {
+                currentNode.setNodeStatusFinished();
                 onNodeExecuteEnd(nodeContext);
                 ChainContext.clearNode();
                 notifyEvent(new NodeEndEvent(this, currentNode, executeResult));

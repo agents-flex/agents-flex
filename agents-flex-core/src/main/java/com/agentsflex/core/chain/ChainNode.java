@@ -110,6 +110,14 @@ public abstract class ChainNode implements Serializable {
         this.nodeStatus = nodeStatus;
     }
 
+    public void setNodeStatusFinished() {
+        if (this.nodeStatus == ChainNodeStatus.ERROR) {
+            this.setNodeStatus(ChainNodeStatus.FINISHED_ABNORMAL);
+        } else {
+            this.setNodeStatus(ChainNodeStatus.FINISHED_NORMAL);
+        }
+    }
+
     protected void addOutwardEdge(ChainEdge edge) {
         if (this.outwardEdges == null) {
             this.outwardEdges = new ArrayList<>();
@@ -127,7 +135,7 @@ public abstract class ChainNode implements Serializable {
 
     protected abstract Map<String, Object> execute(Chain chain);
 
-    public List<Parameter> getParameters(){
+    public List<Parameter> getParameters() {
         return null;
     }
 }

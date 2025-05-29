@@ -27,4 +27,12 @@ public enum ChainNodeStatus {
     ChainNodeStatus(int value) {
         this.value = value;
     }
+
+    public int getValue() {
+        return value;
+    }
+
+    public boolean isFinished() {
+        return this.value >= FINISHED_NORMAL.value;
+    }
 }
