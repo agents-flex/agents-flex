@@ -1,5 +1,14 @@
 # Agents-Flex ChangeLog
 
+
+## v1.1.4 20250530
+- 新增: 为 ChainStartEvent 和 ChainResumeEvent 添加获取初始化参数的功能
+- 优化: 优化 JsExecNode 在每次执行脚本时新建一个独立 Context
+- 优化: 优化 Event 的 toString
+- 修复 node 的状态在执行时未自动变化的问题
+
+
+
 ## v1.1.3 20250527
 - 修复：修复阿里云百炼 text-embedding-v3 向量化使用 milvus 使用默认向量模型导致两次维度不一致问题
 - 修复：qwen3 非流式返回设置 enable_thinking 为 false
