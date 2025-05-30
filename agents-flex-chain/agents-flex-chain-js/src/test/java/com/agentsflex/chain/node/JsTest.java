@@ -1,15 +1,21 @@
 package com.agentsflex.chain.node;
 
+import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.util.Maps;
+import org.junit.Test;
+
 import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class JsTest {
 
-    public static void main(String[] args) throws ScriptException {
+    @Test
+    public void testStatic() throws ScriptException {
         // 创建脚本引擎
         ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
 
@@ -44,5 +50,27 @@ public class JsTest {
         }
 
         System.err.println(result);
+    }
+
+    @Test
+    public void testNode() throws InterruptedException {
+        for (int i = 0; i < 10; i++) {
+            final int i1 = i;
+            new Thread(() -> {
+                JsExecNode chainNode = new JsExecNode();
+                String jsCode =
+//                    "_result.put('code', userName);\n" +
+                        "_result.put('data', '返回数据');\n";
+                chainNode.setCode(jsCode);
+
+                Chain chain = new Chain();
+                chain.addNode(chainNode);
+
+                System.out.println(">>>>>execute before");
+                Map<String, Object> result = chain.executeForResult(Maps.of("userName", "测试用户" + i1));
+                System.out.println(">>>>>result:" + result);
+            }).start();
+        }
+        TimeUnit.SECONDS.sleep(2);
     }
 }
