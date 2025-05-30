@@ -41,10 +41,10 @@ public class NodeEndEvent extends BaseChainEvent {
 
     @Override
     public String toString() {
-        return "OnNodeEndEvent{" +
-            "chain=" + chain +
-            ", node=" + node +
+        return "NodeEndEvent{" +
+            "node=" + node +
             ", result=" + result +
+            ", chain=" + chain +
             '}';
     }
 }

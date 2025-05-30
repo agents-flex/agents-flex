@@ -40,10 +40,10 @@ public class ChainStatusChangeEvent extends BaseChainEvent {
 
     @Override
     public String toString() {
-        return "OnStatusChangeEvent{" +
-            "chain=" + chain +
-            ", status=" + status +
+        return "ChainStatusChangeEvent{" +
+            "status=" + status +
             ", before=" + before +
+            ", chain=" + chain +
             '}';
     }
 }

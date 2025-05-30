@@ -34,8 +34,9 @@ public class NodeStartEvent extends BaseChainEvent {
 
     @Override
     public String toString() {
-        return "OnNodeStartEvent{" +
+        return "NodeStartEvent{" +
             "node=" + node +
+            ", chain=" + chain +
             '}';
     }
 }

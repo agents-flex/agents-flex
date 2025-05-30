@@ -25,7 +25,7 @@ public class ChainEndEvent extends BaseChainEvent {
 
     @Override
     public String toString() {
-        return "OnChainEndEvent{" +
+        return "ChainEndEvent{" +
             "chain=" + chain +
             '}';
     }
