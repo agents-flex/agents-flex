@@ -17,16 +17,26 @@ package com.agentsflex.core.chain.event;
 
 import com.agentsflex.core.chain.Chain;
 
+import java.util.Map;
+
 public class ChainResumeEvent extends BaseChainEvent {
 
-    public ChainResumeEvent(Chain chain) {
+    private final Map<String, Object> variables;
+
+    public ChainResumeEvent(Chain chain, Map<String, Object> variables) {
         super(chain);
+        this.variables = variables;
+    }
+
+    public Map<String, Object> getVariables() {
+        return variables;
     }
 
     @Override
     public String toString() {
-        return "OnChainResumeEvent{" +
-            "chain=" + chain +
+        return "ChainResumeEvent{" +
+            "variables=" + variables +
+            ", chain=" + chain +
             '}';
     }
 }

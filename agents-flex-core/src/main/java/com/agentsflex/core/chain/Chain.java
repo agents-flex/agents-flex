@@ -369,7 +369,7 @@ public class Chain extends ChainNode {
 
     public void execute(Map<String, Object> variables) {
         runInLifeCycle(variables,
-            new ChainStartEvent(this),
+            new ChainStartEvent(this, variables),
             this::executeInternal);
     }
 
@@ -382,7 +382,7 @@ public class Chain extends ChainNode {
         if (this.status == ChainStatus.SUSPEND) {
             this.resume(variables);
         } else {
-            runInLifeCycle(variables, new ChainStartEvent(this), this::executeInternal);
+            runInLifeCycle(variables, new ChainStartEvent(this, variables), this::executeInternal);
         }
 
         if (!ignoreError) {
@@ -801,7 +801,7 @@ public class Chain extends ChainNode {
 
     public void resume(Map<String, Object> variables) {
         runInLifeCycle(variables,
-            new ChainResumeEvent(this),
+            new ChainResumeEvent(this, variables),
             this::executeInternal);
     }
 
