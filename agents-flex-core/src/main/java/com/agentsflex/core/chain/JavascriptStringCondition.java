@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.chain;
 
-import com.agentsflex.core.util.JavascriptEngineUtil;
+import com.agentsflex.core.util.JsConditionUtil;
 import com.agentsflex.core.util.Maps;
 
 public class JavascriptStringCondition implements NodeCondition, EdgeCondition {
@@ -38,11 +38,11 @@ public class JavascriptStringCondition implements NodeCondition, EdgeCondition {
 
     @Override
     public boolean check(Chain chain, ChainEdge edge) {
-        return JavascriptEngineUtil.eval(code, chain, Maps.of("_edge", edge));
+        return JsConditionUtil.eval(code, chain, Maps.of("_edge", edge));
     }
 
     @Override
     public boolean check(Chain chain, NodeContext context) {
-        return JavascriptEngineUtil.eval(code, chain, Maps.of("_context", context));
+        return JsConditionUtil.eval(code, chain, Maps.of("_context", context));
     }
 }

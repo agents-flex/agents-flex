@@ -1,7 +1,23 @@
+/*
+ *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package com.agentsflex.chain.node;
 
 import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.chain.node.CodeNode;
+import com.agentsflex.core.util.graalvm.JsInteropUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -11,11 +27,12 @@ import java.util.Map;
 
 public class JsExecNode extends CodeNode {
 
-    // 可复用的 Context 构建器（每次执行脚本时新建一个独立 Context）
+    // 使用 Context.Builder 构建上下文，线程安全
     private static final Context.Builder CONTEXT_BUILDER = Context.newBuilder("js")
-        .allowHostAccess(HostAccess.ALL)
-        .allowHostClassLookup(s -> true)
-        .option("js.ecmascript-version", "2021"); // 可选 ECMAScript 版本
+        .option("engine.WarnInterpreterOnly", "false")
+        .allowHostAccess(HostAccess.ALL)       // 允许访问 Java 对象的方法和字段
+        .allowHostClassLookup(className -> false) // 禁止动态加载任意 Java 类
+        .option("js.ecmascript-version", "2021");  // 使用较新的 ECMAScript 版本
 
 
     @Override
@@ -23,18 +40,18 @@ public class JsExecNode extends CodeNode {
         try (Context context = CONTEXT_BUILDER.build()) {
             Value bindings = context.getBindings("js");
 
-//            Map<String, Object> all = chain.getMemory().getAll();
-//            all.forEach((key, value) -> {
-//                if (!key.contains(".")) {
-//                    bindings.putMember(key, value);
-//                }
-//            });
+            Map<String, Object> all = chain.getMemory().getAll();
+            all.forEach((key, value) -> {
+                if (!key.contains(".")) {
+                    bindings.putMember(key, JsInteropUtils.wrapJavaValueForJS(context, value));
+                }
+            });
 
             // 注入参数
             Map<String, Object> parameterValues = chain.getParameterValues(this);
             if (parameterValues != null) {
                 for (Map.Entry<String, Object> entry : parameterValues.entrySet()) {
-                    bindings.putMember(entry.getKey(), entry.getValue());
+                    bindings.putMember(entry.getKey(), JsInteropUtils.wrapJavaValueForJS(context, entry.getValue()));
                 }
             }
 
