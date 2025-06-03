@@ -1,5 +1,9 @@
 # Agents-Flex ChangeLog
 
+## v1.1.5 20250603
+- 修复： 修复 CodeNode 的 js 无法通过 "." 调用 map 数据的问题
+
+
 
 ## v1.1.4 20250530
 - 新增: 为 ChainStartEvent 和 ChainResumeEvent 添加获取初始化参数的功能
