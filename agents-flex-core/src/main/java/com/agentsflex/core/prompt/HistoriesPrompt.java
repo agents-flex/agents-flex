@@ -148,7 +148,8 @@ public class HistoriesPrompt extends Prompt {
             }
         }
 
-        if (systemMessage != null) {
+        Message firstMessage = messages.get(0);
+        if (!(firstMessage instanceof SystemMessage) && systemMessage != null) {
             messages.add(0, systemMessage);
         }
 
