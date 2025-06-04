@@ -43,7 +43,6 @@
         <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
         <module>agents-flex-test</module>
-        <module>agents-flex-samples</module>
         <module>agents-flex-llm</module>
         <module>agents-flex-store</module>
         <module>agents-flex-document-parser</module>

@@ -193,7 +193,7 @@ public class OpenAILlmTest {
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setChatPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
-        config.setApiKey("2d57aa75-5772-4320-a00b-fbab3dd940a3");
+        config.setApiKey("2d57");
 
         OpenAILlm llm = new OpenAILlm(config);
 
