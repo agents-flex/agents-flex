@@ -2,6 +2,8 @@
 
 ## v1.1.6 20250604
 - 修复：使用 qwen-plus 调用 function_call 没有正确拼接大模型返回的参数问题
+- 修复: 修复 DeepseekLlmUtil 类型转换错误
+- 修复: HistoriesPrompt 的 toMessages 可能多次添加 systemMessage 的问题
 
 
 
