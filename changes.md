@@ -1,7 +1,12 @@
 # Agents-Flex ChangeLog
 
+## v1.1.6 20250604
+- 修复：使用 qwen-plus 调用 function_call 没有正确拼接大模型返回的参数问题
+
+
+
 ## v1.1.5 20250603
-- 修复： 修复 CodeNode 的 js 无法通过 "." 调用 map 数据的问题
+- 修复：修复 CodeNode 的 js 无法通过 "." 调用 map 数据的问题
 
 
 
@@ -9,7 +14,7 @@
 - 新增: 为 ChainStartEvent 和 ChainResumeEvent 添加获取初始化参数的功能
 - 优化: 优化 JsExecNode 在每次执行脚本时新建一个独立 Context
 - 优化: 优化 Event 的 toString
-- 修复 node 的状态在执行时未自动变化的问题
+- 修复： node 的状态在执行时未自动变化的问题
 
 
 
