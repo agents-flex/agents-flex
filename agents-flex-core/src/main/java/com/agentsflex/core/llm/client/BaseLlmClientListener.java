@@ -96,13 +96,11 @@ public class BaseLlmClientListener implements LlmClientListener {
                 functionCallRecord.name = functionName;
                 functionCallRecord.id = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].id");
 
-                // 第一次都没有 arguments
-                // currentFunctionCallJSON.arguments += (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
                 String arguments = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
-
-                if (arguments != null){
+                if (arguments != null) {
                     functionCallRecord.arguments += arguments;
                 }
+
                 functionCallRecords.add(functionCallRecord);
                 streamResponseListener.onMatchedFunction(functionName, context);
             } else if (functionCallRecord != null) {
