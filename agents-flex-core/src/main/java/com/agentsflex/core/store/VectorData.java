@@ -23,6 +23,10 @@ import java.util.Arrays;
 public class VectorData extends Metadata {
 
     private double[] vector;
+
+    /**
+     * 0 ~ 1, 数值越大，相似度越高
+     */
     private Double score;
 
     public double[] getVector() {
