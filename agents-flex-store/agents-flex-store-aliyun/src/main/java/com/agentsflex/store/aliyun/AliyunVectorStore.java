@@ -200,9 +200,12 @@ public class AliyunVectorStore extends DocumentStore {
             document.setVector(jsonObject.getObject("vector", double[].class));
             // 阿里云数据采用余弦相似度计算 jsonObject.getDoubleValue("score") 表示余弦距离，
             // 原始余弦距离范围是[0, 2]，0表示最相似，2表示最不相似
-            double distance = jsonObject.getDoubleValue("score");
-            double score = distance / 2.0;
-            document.setScore(score);
+            Double distance = jsonObject.getDouble("score");
+            if (distance != null) {
+                double score = distance / 2.0;
+                document.setScore(score);
+            }
+
 
             JSONObject fields = jsonObject.getJSONObject("fields");
             document.addMetadata(fields);
