@@ -1,5 +1,12 @@
 # Agents-Flex ChangeLog
 
+
+## v1.1.8 20250605
+- 新增：阿里云增加余弦相似度得分回显
+- 修复: 修正 Milvus 下 COSINE 相似度计算方法
+
+
+
 ## v1.1.7 20250604
 - 修复：使用 qwen-plus 调用 function_call 没有正确拼接大模型返回的参数问题
 - 修复: 修复 DeepseekLlmUtil 类型转换错误
