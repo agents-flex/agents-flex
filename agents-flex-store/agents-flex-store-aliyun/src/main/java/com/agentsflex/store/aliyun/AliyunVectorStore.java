@@ -203,7 +203,7 @@ public class AliyunVectorStore extends DocumentStore {
             Double distance = jsonObject.getDouble("score");
             if (distance != null) {
                 double score = distance / 2.0;
-                document.setScore(score);
+                document.setScore(1.0d - score);
             }
 
 
