@@ -253,11 +253,17 @@ public class MilvusVectorStore extends DocumentStore {
                     doc.setContent((String) entity.get("content"));
 
                     // 根据 metric 类型计算相似度
-                    double distance = result.getDistance();
+                    Float distance = result.getDistance();
+                    if (distance != null) {
+                        // 根据 https://milvus.io/docs/zh/single-vector-search.md#Single-Vector-Search
+                        // 适用的度量类型和相应的距离范围表
+                        // 当 metricType 类 COSINE 时，数值越大，表示相似度越高。相似度即为 distance 值;
 
-                    // 根据 https://milvus.io/docs/zh/single-vector-search.md 适用的度量类型和相应的距离范围表
-                    // 当 metricType 类 COSINE 时，数值越大，表示相似度越高。相似度即为 distance 值;
-                    doc.setScore(distance);
+                        // distance 的范围是 [-1, 1], 需要统一转换为 [0, 1]
+                        double score = (distance + 1) / 2;
+                        doc.setScore(score);
+                    }
+
 
                     JSONObject object = (JSONObject) entity.get("metadata");
                     doc.addMetadata(object);
