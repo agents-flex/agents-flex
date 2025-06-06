@@ -15,24 +15,11 @@ import java.util.Map;
 
 public class MilvusDbTest {
 
-    @Test(expected = StatusRuntimeException.class)
-    public void testUseMivlusDb() {
-        //准备数据
-        List<Document> list = new ArrayList<>();
-        Document doc1 = new Document();
-        doc1.setId(1);
-        doc1.setContent("test1--6");
-//        doc1.setVector(new double[]{5.2, 4.4});
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("test1-6666", "test1-666");
-        doc1.setMetadataMap(metadata);
-        list.add(doc1);
-        Document doc2 = new Document();
-        doc2.setId(2);
-        doc2.setContent("test2");
-        doc2.setVector(new double[]{5.2, 3.9});
-        list.add(doc2);
-
+    /**
+     * Create a MilvusVectorStore with standard test configuration
+     */
+    private MilvusVectorStore createTestStore() {
+        // Create configuration
         MilvusVectorStoreConfig config = new MilvusVectorStoreConfig();
         config.setUri("http://localhost:19530");
         config.setUsername("root");
@@ -40,29 +27,99 @@ public class MilvusDbTest {
         config.setAutoCreateCollection(true);
         config.setDefaultCollectionName("milve_test");
 
+        // Create store
         MilvusVectorStore store = new MilvusVectorStore(config);
+        
+        // Add embedding model
         store.setEmbeddingModel(new EmbeddingModel() {
             @Override
             public VectorData embed(Document document, EmbeddingOptions options) {
-                //如果文档没有vectorData，则使用此方法返回文档的vectorData
+                // Generate vector for document
                 VectorData vectorData = new VectorData();
-                vectorData.setVector(new double[]{1, 2});
+                vectorData.setVector(new double[]{Math.random(), Math.random()});
                 return vectorData;
             }
+
+            @Override
+            public int dimensions() {
+                return 2;
+            }
         });
+        
+        return store;
+    }
 
-        //新增数据，第一次可以自动创建集合
-        //milvus不支持主键去重
-        store.store(list);
+    /**
+     * Create test documents
+     */
+    private List<Document> createTestDocuments() {
+        List<Document> list = new ArrayList<>();
+        
+        Document doc1 = new Document();
+        doc1.setId(1);
+        doc1.setContent("Technical document content");
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("test1-6666", "test1-666");
+        doc1.setMetadataMap(metadata);
+        list.add(doc1);
+        
+        Document doc2 = new Document();
+        doc2.setId(2);
+        doc2.setContent("Lifestyle document content");
+        Map<String, Object> metadata2 = new HashMap<>();
+        metadata2.put("test2-7777", "test2-777");
+        doc2.setMetadataMap(metadata2);
+        list.add(doc2);
+        
+        return list;
+    }
 
-        //查找数据
-        SearchWrapper rw = new SearchWrapper();
-        rw.eq("id", "1");
-        List<Document> search = store.search(rw);
-        System.out.println("search = " + search);
 
-        //删除数据
-//        store.delete("1","2");
+
+    @Test(expected = StatusRuntimeException.class)
+    public void testUseMivlusDb() {
+        MilvusVectorStore store = createTestStore();
+        List<Document> documents = createTestDocuments();
+
+        // Store data
+        store.store(documents);
+        System.out.println("Data storage completed");
+
+        // Delete data
+        // store.delete(1, 2);
+    }
+
+    @Test(expected = StatusRuntimeException.class)
+    public void testVectorSearch() {
+        MilvusVectorStore store = createTestStore();
+
+        // Test vector search (using text)
+        SearchWrapper wrapper = new SearchWrapper();
+        wrapper.setText("Lifestyle");
+        wrapper.setMaxResults(10);
+
+        List<Document> results = store.search(wrapper);
+        System.out.println("Vector search results count: " + results.size());
+        for (Document doc : results) {
+            System.out.println("Vector search result - ID: " + doc.getId() + 
+                ", Score: " + doc.getScore() + ", Content: " + doc.getContent());
+        }
+    }
+
+    @Test(expected = StatusRuntimeException.class)
+    public void testNonVectorSearch() {
+        MilvusVectorStore store = createTestStore();
+
+        // Test non-vector search (condition query)
+        SearchWrapper wrapper = new SearchWrapper();
+        wrapper.eq("id", 1);
+
+        List<Document> results = store.search(wrapper);
+        System.out.println("Non-vector search results count: " + results.size());
+        for (Document doc : results) {
+            System.out.println("Non-vector search result - ID: " + doc.getId() + 
+                ", Content: " + doc.getContent());
+        }
     }
 
 }
