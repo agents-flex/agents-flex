@@ -267,8 +267,6 @@ public class MilvusVectorStore extends DocumentStore {
 
                     JSONObject object = (JSONObject) entity.get("metadata");
                     doc.addMetadata(object);
-
-                    doc.addMetadata(entity);
                     documents.add(doc);
                 }
             }
