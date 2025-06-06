@@ -12,6 +12,7 @@ public class OllamaProperties {
     private String model;
     private String endpoint = "http://localhost:11434";
     private String apiKey;
+    private Boolean think = true;
 
     public String getModel() {
         return model;
@@ -35,6 +36,14 @@ public class OllamaProperties {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public Boolean getThink() {
+        return think;
+    }
+
+    public void setThink(Boolean think) {
+        this.think = think;
     }
 
 }

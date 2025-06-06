@@ -19,5 +19,17 @@ import com.agentsflex.core.llm.LlmConfig;
 
 public class OllamaLlmConfig extends LlmConfig {
 
+    /**
+     * 是否开启思考模式，适用于 Qwen3 等模型模型。
+     */
+    private Boolean enableThinking;
+
+    public Boolean getEnableThinking() {
+        return enableThinking;
+    }
+
+    public void setEnableThinking(Boolean enableThinking) {
+        this.enableThinking = enableThinking;
+    }
 
 }
