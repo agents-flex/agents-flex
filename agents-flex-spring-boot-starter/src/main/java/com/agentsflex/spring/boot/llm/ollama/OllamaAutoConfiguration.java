@@ -28,6 +28,7 @@ public class OllamaAutoConfiguration {
         config.setApiKey(properties.getApiKey());
         config.setEndpoint(properties.getEndpoint());
         config.setModel(properties.getModel());
+        config.setEnableThinking(properties.getThink());
         return new OllamaLlm(config);
     }
 
