@@ -294,8 +294,6 @@ public class MilvusVectorStore extends DocumentStore {
             JSONObject jsonObject = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
             dict.put("metadata", jsonObject);
             data.add(dict);
-
-            data.add(dict);
         }
 
         UpsertReq upsertReq = UpsertReq.builder()
