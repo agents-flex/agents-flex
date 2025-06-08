@@ -49,6 +49,7 @@
         <module>agents-flex-spring-boot-starter</module>
         <module>agents-flex-chain</module>
         <module>agents-flex-image</module>
+        <module>agents-flex-rerank</module>
     </modules>
 
     <properties>
@@ -277,6 +278,20 @@
                 <version>${revision}</version>
             </dependency>
             <!--chains end-->
+
+            <!-- rerank start -->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-rerank</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-rerank-gitee</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- rerank end -->
 
 
             <!--store start-->
