@@ -33,11 +33,9 @@ import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.exception.MilvusClientException;
 import io.milvus.v2.service.collection.request.CreateCollectionReq;
 import io.milvus.v2.service.collection.request.GetLoadStateReq;
-import io.milvus.v2.service.vector.request.DeleteReq;
-import io.milvus.v2.service.vector.request.InsertReq;
-import io.milvus.v2.service.vector.request.SearchReq;
-import io.milvus.v2.service.vector.request.UpsertReq;
+import io.milvus.v2.service.vector.request.*;
 import io.milvus.v2.service.vector.response.InsertResp;
+import io.milvus.v2.service.vector.response.QueryResp;
 import io.milvus.v2.service.vector.response.SearchResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -214,35 +212,96 @@ public class MilvusVectorStore extends DocumentStore {
             ? Arrays.asList("id", "vector", "content", "metadata")
             : Arrays.asList("id", "content", "metadata");
 
-        SearchReq.SearchReqBuilder<?, ?> builder = SearchReq.builder();
-        if (StringUtil.hasText(options.getPartitionName())) {
-            builder.partitionNames(options.getPartitionNamesOrEmpty());
-        }
+        // 判断是否为向量查询
+        if (searchWrapper.getVector() != null && searchWrapper.getVector().length > 0) {
+            // 向量查询 - 使用SearchReq
+            SearchReq.SearchReqBuilder<?, ?> builder = SearchReq.builder();
+            if (StringUtil.hasText(options.getPartitionName())) {
+                builder.partitionNames(options.getPartitionNamesOrEmpty());
+            }
 
-        SearchReq searchReq = builder
-            .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
-            .consistencyLevel(ConsistencyLevel.STRONG)
-            .outputFields(outputFields)
-            .topK(searchWrapper.getMaxResults())
-            .annsField("vector")
-            .data(Collections.singletonList(VectorUtil.toFloatList(searchWrapper.getVector())))
-            .filter(searchWrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT))
-            .build();
+            SearchReq searchReq = builder
+                .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
+                .consistencyLevel(ConsistencyLevel.STRONG)
+                .outputFields(outputFields)
+                .topK(searchWrapper.getMaxResults())
+                .annsField("vector")
+                .data(Collections.singletonList(VectorUtil.toFloatList(searchWrapper.getVector())))
+                .filter(searchWrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT))
+                .build();
 
-        try {
-            SearchResp resp = client.search(searchReq);
-            // Parse and convert search results to Document list
-            List<List<SearchResp.SearchResult>> results = resp.getSearchResults();
-            List<Document> documents = new ArrayList<>();
-            for (List<SearchResp.SearchResult> resultList : results) {
-                for (SearchResp.SearchResult result : resultList) {
+            try {
+                SearchResp resp = client.search(searchReq);
+                // Parse and convert search results to Document list
+                List<List<SearchResp.SearchResult>> results = resp.getSearchResults();
+                List<Document> documents = new ArrayList<>();
+                for (List<SearchResp.SearchResult> resultList : results) {
+                    for (SearchResp.SearchResult result : resultList) {
+                        Map<String, Object> entity = result.getEntity();
+                        if (entity == null || entity.isEmpty()) {
+                            continue;
+                        }
+
+                        Document doc = new Document();
+                        doc.setId(result.getId());
+
+                        Object vectorObj = entity.get("vector");
+                        if (vectorObj instanceof List) {
+                            //noinspection unchecked
+                            doc.setVector(VectorUtil.convertToVector((List<Float>) vectorObj));
+                        }
+
+                        doc.setContent((String) entity.get("content"));
+
+                        // 根据 metric 类型计算相似度
+                        Float distance = result.getDistance();
+                        if (distance != null) {
+                            // 根据 https://milvus.io/docs/zh/single-vector-search.md#Single-Vector-Search
+                            // 适用的度量类型和相应的距离范围表
+                            // 当 metricType 类 COSINE 时，数值越大，表示相似度越高。相似度即为 distance 值;
+
+                            // distance 的范围是 [-1, 1], 需要统一转换为 [0, 1]
+                            double score = (distance + 1) / 2;
+                            doc.setScore(score);
+                        }
+
+                        JSONObject object = (JSONObject) entity.get("metadata");
+                        doc.addMetadata(object);
+                        documents.add(doc);
+                    }
+                }
+                return documents;
+            } catch (Exception e) {
+                logger.error("Error searching in Milvus", e);
+                return Collections.emptyList();
+            }
+        } else {
+            // 非向量查询 - 使用QueryReq
+            QueryReq.QueryReqBuilder<?, ?> builder = QueryReq.builder();
+            if (StringUtil.hasText(options.getPartitionName())) {
+                builder.partitionNames(options.getPartitionNamesOrEmpty());
+            }
+
+            QueryReq queryReq = builder
+                .collectionName(options.getCollectionNameOrDefault(defaultCollectionName))
+                .consistencyLevel(ConsistencyLevel.STRONG)
+                .outputFields(outputFields)
+                .filter(searchWrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT))
+                .build();
+
+            try {
+                QueryResp resp = client.query(queryReq);
+                List<QueryResp.QueryResult> results = resp.getQueryResults();
+                List<Document> documents = new ArrayList<>();
+
+                for (QueryResp.QueryResult result : results) {
                     Map<String, Object> entity = result.getEntity();
                     if (entity == null || entity.isEmpty()) {
                         continue;
                     }
 
                     Document doc = new Document();
-                    doc.setId(result.getId());
+                    doc.setId(result.getEntity().get("id"));
 
                     Object vectorObj = entity.get("vector");
                     if (vectorObj instanceof List) {
@@ -252,30 +311,15 @@ public class MilvusVectorStore extends DocumentStore {
 
                     doc.setContent((String) entity.get("content"));
 
-                    // 根据 metric 类型计算相似度
-                    Float distance = result.getDistance();
-                    if (distance != null) {
-                        // 根据 https://milvus.io/docs/zh/single-vector-search.md#Single-Vector-Search
-                        // 适用的度量类型和相应的距离范围表
-                        // 当 metricType 类 COSINE 时，数值越大，表示相似度越高。相似度即为 distance 值;
-
-                        // distance 的范围是 [-1, 1], 需要统一转换为 [0, 1]
-                        double score = (distance + 1) / 2;
-                        doc.setScore(score);
-                    }
-
-
                     JSONObject object = (JSONObject) entity.get("metadata");
                     doc.addMetadata(object);
-
-                    doc.addMetadata(entity);
                     documents.add(doc);
                 }
+                return documents;
+            } catch (Exception e) {
+                logger.error("Error querying in Milvus", e);
+                return Collections.emptyList();
             }
-            return documents;
-        } catch (Exception e) {
-            logger.error("Error searching in Milvus", e);
-            return Collections.emptyList();
         }
     }
 
@@ -295,8 +339,6 @@ public class MilvusVectorStore extends DocumentStore {
             Map<String, Object> metadatas = doc.getMetadataMap();
             JSONObject jsonObject = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
             dict.put("metadata", jsonObject);
-            data.add(dict);
-
             data.add(dict);
         }
 

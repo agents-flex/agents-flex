@@ -109,6 +109,7 @@ public class OllamaLlmUtil {
         List<Message> messages = prompt.toMessages();
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
+            .set("think", Optional.ofNullable(options.getEnableThinking()).orElse(config.getEnableThinking()))
             .setIf(!stream, "stream", stream)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(CollectionUtil.lastItem(messages)))
             .setIfNotEmpty("options.seed", options.getSeed())

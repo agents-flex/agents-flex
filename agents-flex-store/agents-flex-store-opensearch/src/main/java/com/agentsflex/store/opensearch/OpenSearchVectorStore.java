@@ -239,8 +239,7 @@ public class OpenSearchVectorStore extends DocumentStore {
                 .params("field", JsonData.of("vector"))
                 .params("query_value", JsonData.of(wrapper.getVector()))
                 .params("space_type", JsonData.of("cosinesimil"))
-            )))
-            .boost(0.5f));
+            ))));
 
         try {
             SearchResponse<Document> response = client.search(
