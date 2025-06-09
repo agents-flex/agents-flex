@@ -135,6 +135,18 @@
         </dependency>
         <!--llm end-->
 
+
+        <!--rerank start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-rerank-default</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-rerank-gitee</artifactId>
+        </dependency>
+        <!--rerank end-->
+
         <!--chains start-->
         <dependency>
             <groupId>com.agentsflex</groupId>

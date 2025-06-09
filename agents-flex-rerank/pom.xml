@@ -8,12 +8,13 @@
         <artifactId>parent</artifactId>
         <version>${revision}</version>
     </parent>
-    
+
     <name>agents-flex-rerank</name>
     <artifactId>agents-flex-rerank</artifactId>
 
     <packaging>pom</packaging>
     <modules>
+        <module>agents-flex-rerank-default</module>
         <module>agents-flex-rerank-gitee</module>
     </modules>
 

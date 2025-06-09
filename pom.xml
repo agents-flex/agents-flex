@@ -288,6 +288,12 @@
 
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-rerank-default</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-rerank-gitee</artifactId>
                 <version>${revision}</version>
             </dependency>

@@ -15,124 +15,12 @@
  */
 package com.agentsflex.rerank.gitee;
 
-import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.client.HttpClient;
-import com.agentsflex.core.llm.rerank.BaseRerankModel;
-import com.agentsflex.core.llm.rerank.RerankException;
-import com.agentsflex.core.llm.rerank.RerankOptions;
-import com.agentsflex.core.util.LogUtil;
-import com.agentsflex.core.util.Maps;
-import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.agentsflex.rerank.DefaultRerankModel;
+import com.agentsflex.rerank.DefaultRerankModelConfig;
 
-import java.util.*;
+public class GiteeRerankModel extends DefaultRerankModel {
 
-public class GiteeRerankModel extends BaseRerankModel<GiteeRerankModelConfig> {
-
-    private HttpClient httpClient = new HttpClient();
-
-    public GiteeRerankModel(GiteeRerankModelConfig config) {
+    public GiteeRerankModel(DefaultRerankModelConfig config) {
         super(config);
-    }
-
-
-    public HttpClient getHttpClient() {
-        return httpClient;
-    }
-
-    public void setHttpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
-    }
-
-    @Override
-    public List<Document> rerank(String query, List<Document> documents, RerankOptions options) {
-
-        String url = getConfig().getEndpoint() + getConfig().getBasePath();
-
-        Map<String, String> headers = new HashMap<>(2);
-        headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
-
-        List<String> payloadDocuments = new ArrayList<>(documents.size());
-        for (Document document : documents) {
-            payloadDocuments.add(document.getContent());
-        }
-
-        String payload = Maps.of("model", options.getModelOrDefault(getConfig().getModel()))
-            .set("query", query)
-            .set("documents", payloadDocuments)
-            .toJSON();
-
-        if (getConfig().isDebug()) {
-            LogUtil.println(">>>>send payload:" + payload);
-        }
-
-        String response = httpClient.post(url, headers, payload);
-        if (getConfig().isDebug()) {
-            LogUtil.println(">>>>receive payload:" + response);
-        }
-
-        if (StringUtil.noText(response)) {
-            throw new RerankException("empty response");
-        }
-
-        //{
-        //  "model": "Qwen3-Reranker-4B",
-        //  "usage": {
-        //    "totalTokens": 0,
-        //    "promptTokens": 0
-        //  },
-        //  "results": [
-        //    {
-        //      "index": 0,
-        //      "document": {
-        //        "text": "Use pandas: `import pandas as pd; df = pd.read_csv('data.csv')`"
-        //      },
-        //      "relevance_score": 0.95654296875
-        //    },
-        //    {
-        //      "index": 3,
-        //      "document": {
-        //        "text": "CSV means Comma Separated Values. Python files can be opened using read() method."
-        //      },
-        //      "relevance_score": 0.822265625
-        //    },
-        //    {
-        //      "index": 1,
-        //      "document": {
-        //        "text": "You can read CSV files with numpy.loadtxt()"
-        //      },
-        //      "relevance_score": 0.310791015625
-        //    },
-        //    {
-        //      "index": 2,
-        //      "document": {
-        //        "text": "To write JSON files, use json.dump() in Python"
-        //      },
-        //      "relevance_score": 0.00009608268737792969
-        //    }
-        //  ]
-        //}
-        JSONObject jsonObject = JSON.parseObject(response);
-        JSONArray results = jsonObject.getJSONArray("results");
-
-        if (results == null || results.isEmpty()) {
-            throw new RerankException("empty results");
-        }
-
-
-        for (int i = 0; i < results.size(); i++) {
-            JSONObject result = results.getJSONObject(i);
-            int index = result.getIntValue("index");
-            Document document = documents.get(index);
-            document.setScore(result.getDoubleValue("relevance_score"));
-        }
-
-        // 对 documents 排序， score 越大的越靠前
-        documents.sort(Comparator.comparingDouble(Document::getScore).reversed());
-
-        return documents;
     }
 }

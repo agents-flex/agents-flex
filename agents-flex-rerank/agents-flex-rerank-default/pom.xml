@@ -9,8 +9,8 @@
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-rerank-gitee</name>
-    <artifactId>agents-flex-rerank-gitee</artifactId>
+    <name>agents-flex-rerank-default</name>
+    <artifactId>agents-flex-rerank-default</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -23,12 +23,6 @@
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-rerank-default</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

@@ -15,17 +15,16 @@
  */
 package com.agentsflex.rerank.gitee;
 
-import com.agentsflex.core.llm.rerank.RerankConfig;
+import com.agentsflex.rerank.DefaultRerankModelConfig;
 
-public class GiteeRerankModelConfig extends RerankConfig {
+public class GiteeRerankModelConfig extends DefaultRerankModelConfig {
 
     private static final String DEFAULT_ENDPOINT = "https://ai.gitee.com";
     private static final String DEFAULT_BASE_PATH = "/v1/rerank";
-    private static final String DEFAULT_MODEL = "Qwen3-Reranker-4B";
+    private static final String DEFAULT_MODEL = "Qwen3-Reranker-8B";
 
     public GiteeRerankModelConfig() {
         super();
-
         setEndpoint(DEFAULT_ENDPOINT);
         setBasePath(DEFAULT_BASE_PATH);
         setModel(DEFAULT_MODEL);
