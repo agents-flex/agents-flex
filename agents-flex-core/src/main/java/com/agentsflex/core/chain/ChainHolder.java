@@ -22,6 +22,7 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class ChainHolder implements Serializable {
@@ -40,7 +41,7 @@ public class ChainHolder implements Serializable {
 
     private Map<String, NodeContext> nodeContexts;
 
-    private List<ChainNode> suspendNodes;
+    protected Map<String,ChainNode> suspendNodes=new ConcurrentHashMap<>();
     private List<Parameter> suspendForParameters;
     private ChainStatus status;
     private String message;
@@ -160,11 +161,11 @@ public class ChainHolder implements Serializable {
         this.nodeContexts = nodeContexts;
     }
 
-    public List<ChainNode> getSuspendNodes() {
+    public Map<String, ChainNode> getSuspendNodes() {
         return suspendNodes;
     }
 
-    public void setSuspendNodes(List<ChainNode> suspendNodes) {
+    public void setSuspendNodes(Map<String, ChainNode> suspendNodes) {
         this.suspendNodes = suspendNodes;
     }
 

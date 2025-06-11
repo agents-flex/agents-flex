@@ -53,7 +53,7 @@ public class Chain extends ChainNode {
     protected Phaser phaser = new Phaser(1);
     protected Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<>();
 
-    protected List<ChainNode> suspendNodes;
+    protected Map<String,ChainNode> suspendNodes=new ConcurrentHashMap<>();
     protected List<Parameter> suspendForParameters;
     protected ChainStatus status = ChainStatus.READY;
     protected Exception exception;
@@ -278,11 +278,11 @@ public class Chain extends ChainNode {
         this.nodeContexts = nodeContexts;
     }
 
-    public List<ChainNode> getSuspendNodes() {
+    public Map<String, ChainNode> getSuspendNodes() {
         return suspendNodes;
     }
 
-    public void setSuspendNodes(List<ChainNode> suspendNodes) {
+    public void setSuspendNodes(Map<String, ChainNode> suspendNodes) {
         this.suspendNodes = suspendNodes;
     }
 
@@ -543,6 +543,7 @@ public class Chain extends ChainNode {
                 currentNode.setNodeStatus(ChainNodeStatus.RUNNING);
                 onNodeExecuteStart(nodeContext);
                 try {
+                    suspendNodes.remove(currentNode.getId());
                     executeResult = currentNode.execute(this);
                 } finally {
                     nodeContext.recordExecute(executeNode);
@@ -611,8 +612,8 @@ public class Chain extends ChainNode {
             return null;
         }
 
-        if (CollectionUtil.hasItems(this.suspendNodes)) {
-            return this.suspendNodes;
+        if (!this.suspendNodes.isEmpty()) {
+            return suspendNodes.values().stream().collect(Collectors.toList());
         }
 
         List<ChainNode> nodes = new ArrayList<>();
@@ -788,12 +789,7 @@ public class Chain extends ChainNode {
 
     public void suspend(ChainNode node) {
         try {
-            if (suspendNodes == null) {
-                suspendNodes = new ArrayList<>();
-            }
-            if (!suspendNodes.contains(node)) {
-                suspendNodes.add(node);
-            }
+            suspendNodes.putIfAbsent(node.getId(), node);
         } finally {
             setStatusAndNotifyEvent(ChainStatus.SUSPEND);
         }
