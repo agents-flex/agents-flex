@@ -1,14 +1,9 @@
 # Agents-Flex ChangeLog
 
-## v1.1.9 20250608
-- 新增：新增 rerank 模型的相关模块
-- 新增：Milvus 支持非向量查询功能
-- 优化：重构 MilvusDbTest，增加非向量搜索测试用例
-- 优化：适配 Ollama 0.9.0 的思考模式
-- 优化：redisSearch, openSearch 相似度归一化，便于用户查看
-- 修复：修复了 updateInternal 方法中重复添加 data.add(dict) 的问题
-- 修复：修复 Milvus Document metadata 格式不一致问题
-
+## v1.2.0 20250614
+- 新增：新增 "default" rerank 模型，用于对接多个不同的 rerank 服务
+- 新增：新增 ReAct Agent
+- 优化：挂起-恢复执行逻辑优化，每次执行节点移除挂起节点列表中该节点
 
 
 ## v1.1.8 20250605
