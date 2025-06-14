@@ -4,10 +4,14 @@ import com.agentsflex.core.llm.ChatContext;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.exception.LlmException;
+import com.agentsflex.core.llm.functions.JavaNativeFunctions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.prompt.ToolPrompt;
+import com.agentsflex.core.react.ReActAgent;
+import com.agentsflex.core.react.ReActAgentListener;
+import com.agentsflex.core.react.ReActStep;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -233,12 +237,12 @@ public class OpenAILlmTest {
                         @Override
                         public void onMessage(ChatContext context, AiMessageResponse response) {
                             String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
-                            System.out.println(":::"+msg);
+                            System.out.println(":::" + msg);
                         }
                     });
                 } else {
                     String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
-                    System.out.println(">>>"+msg);
+                    System.out.println(">>>" + msg);
                 }
             }
         });
@@ -292,12 +296,12 @@ public class OpenAILlmTest {
                         @Override
                         public void onMessage(ChatContext context, AiMessageResponse response) {
                             String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
-                            System.out.println(":::"+msg);
+                            System.out.println(":::" + msg);
                         }
                     });
                 } else {
                     String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
-                    System.out.println(">>>"+msg);
+                    System.out.println(">>>" + msg);
                 }
             }
         });
@@ -321,4 +325,95 @@ public class OpenAILlmTest {
         System.out.println(llm.chat(ToolPrompt.of(response)));
 
     }
+
+
+    @Test()
+    public void testReAct1() throws InterruptedException {
+        OpenAILlmConfig config = new OpenAILlmConfig();
+//        config.setDebug(true);
+        config.setEndpoint("https://ai.gitee.com");
+        config.setModel("Qwen3-32B");
+        config.setApiKey("****");
+
+        OpenAILlm llm = new OpenAILlm(config);
+
+        JavaNativeFunctions functions = JavaNativeFunctions.from(WeatherFunctions.class);
+//        ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
+        ReActAgent reActAgent  = new ReActAgent(llm, functions, "介绍一下北京");
+        reActAgent.addListener(new ReActAgentListener() {
+
+            @Override
+            public void onActionStart(ReActStep step) {
+                System.out.println(">>>>>>"+step.getThought());
+                System.out.println("正在调用工具 >>>>> " + step.getAction() + ":" + step.getActionInput());
+            }
+
+            @Override
+            public void onActionEnd(ReActStep step, Object result) {
+                System.out.println("工具调用结束 >>>>> " + step.getAction() + ":" + step.getActionInput() + ">>>>结果：" + result);
+            }
+
+            @Override
+            public void onFinalAnswer(String finalAnswer) {
+                System.out.println("onFinalAnswer >>>>>" + finalAnswer);
+            }
+
+            @Override
+            public void onNonActionResponse(AiMessageResponse response) {
+                System.out.println("onNonActionResponse >>>>>" + response.getMessage().getContent());
+            }
+        });
+
+        reActAgent.run();
+    }
+
+
+    @Test()
+    public void testReAct2() throws InterruptedException {
+        OpenAILlmConfig config = new OpenAILlmConfig();
+//        config.setDebug(true);
+        config.setEndpoint("https://ai.gitee.com");
+        config.setModel("Qwen2-72B-Instruct");
+        config.setApiKey("****");
+
+        OpenAILlm llm = new OpenAILlm(config);
+
+        JavaNativeFunctions functions = JavaNativeFunctions.from(WeatherFunctions.class);
+        ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
+        reActAgent.setStreamable(true);
+        reActAgent.addListener(new ReActAgentListener() {
+
+            @Override
+            public void onChatResponseStream(ChatContext context, AiMessageResponse response) {
+//                System.out.print(response.getMessage().getContent());
+            }
+
+            @Override
+            public void onActionStart(ReActStep step) {
+                System.out.println(">>>>>>"+step.getThought());
+                System.out.println("正在调用工具 >>>>> " + step.getAction() + ":" + step.getActionInput());
+            }
+
+            @Override
+            public void onActionEnd(ReActStep step, Object result) {
+                System.out.println("工具调用结束 >>>>> " + step.getAction() + ":" + step.getActionInput() + ">>>>结果：" + result);
+            }
+
+            @Override
+            public void onFinalAnswer(String finalAnswer) {
+                System.out.println("onFinalAnswer >>>>>" + finalAnswer);
+            }
+
+            @Override
+            public void onNonActionResponseStream(ChatContext context) {
+                System.out.println("onNonActionResponseStream >>>>>" + context);
+            }
+        });
+
+        reActAgent.run();
+
+        TimeUnit.SECONDS.sleep(60);
+    }
+
+
 }

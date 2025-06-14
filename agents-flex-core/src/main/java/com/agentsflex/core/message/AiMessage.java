@@ -31,6 +31,14 @@ public class AiMessage extends AbstractTextMessage {
     private List<FunctionCall> calls;
     private String fullReasoningContent;
 
+    public AiMessage() {
+        super();
+    }
+
+    public AiMessage(String content) {
+       this.fullContent = content;
+    }
+
     public Integer getIndex() {
         return index;
     }
