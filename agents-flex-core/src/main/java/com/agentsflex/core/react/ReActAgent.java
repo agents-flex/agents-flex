@@ -238,9 +238,21 @@ public class ReActAgent {
 
             @Override
             public void onStop(ChatContext context) {
-                String content = context.getLastAiMessage().getFullContent();
-//                AiMessage aiMessage = new AiMessage(content);
-//                historiesPrompt.addMessage(aiMessage);
+                AiMessage lastAiMessage = context.getLastAiMessage();
+                if (lastAiMessage == null) {
+                    notifyOnError(new RuntimeException("没有收到任何回复"));
+                    return;
+                }
+
+                String content = lastAiMessage.getFullContent();
+                if (StringUtil.noText(content)) {
+                    notifyOnError(new RuntimeException("没有收到任何回复"));
+                    return;
+                }
+
+                // Stream 模型下，消息会自动被添加到  historiesPrompt 中
+                // AiMessage aiMessage = new AiMessage(content);
+                // historiesPrompt.addMessage(aiMessage);
 
                 if (isReActAction(content)) {
                     if (processReActSteps(content)) {

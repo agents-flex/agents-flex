@@ -33,7 +33,7 @@ public class DefaultRerankModelTest {
         config.setEndpoint("https://ai.gitee.com");
         config.setBasePath("/v1/rerank");
         config.setModel("Qwen3-Reranker-8B");
-        config.setApiKey("P07AGYTQBNHREVNGDCM8XATPJLY8RVESLLLNWCNR");
+        config.setApiKey("*****");
 
         DefaultRerankModel model = new DefaultRerankModel(config);
         List<Document> documents = new ArrayList<>();
