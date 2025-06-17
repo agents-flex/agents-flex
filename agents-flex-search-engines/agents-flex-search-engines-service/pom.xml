@@ -1,0 +1,22 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.agentsflex</groupId>
+        <artifactId>agents-flex-search-engines</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>agents-flex-search-engines-service</artifactId>
+    <name>Archetype - agents-flex-search-document</name>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+
+    </dependencies>
+</project>

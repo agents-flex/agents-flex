@@ -210,5 +210,19 @@
         </dependency>
         <!--store end-->
 
+        <!--search engines start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-search-engines-service</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-search-engines-es</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-search-engines-lucene</artifactId>
+        </dependency>
+        <!--search engines end-->
     </dependencies>
 </project>
