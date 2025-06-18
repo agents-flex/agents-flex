@@ -1,7 +1,7 @@
 # Agents-Flex ChangeLog
 
 
-## v1.2.1 20250618
+## v1.2.2 20250618
 - 新增：新增 es 和 lucene 搜索引擎
 
 
