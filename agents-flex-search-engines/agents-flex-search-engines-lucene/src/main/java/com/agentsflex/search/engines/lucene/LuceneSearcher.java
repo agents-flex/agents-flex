@@ -1,10 +1,26 @@
+/*
+ *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package com.agentsflex.search.engines.lucene;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.search.engines.config.SearcherConfig;
 import com.agentsflex.search.engines.service.DocumentSearcher;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.document.*;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -32,22 +48,21 @@ public class LuceneSearcher implements DocumentSearcher {
     private Directory directory;
     private IndexWriter indexWriter;
 
-
-    public LuceneSearcher(SearcherConfig searcherConfig) {
-        Objects.requireNonNull(searcherConfig, "SearcherConfig 不能为 null");
+    public LuceneSearcher(LuceneConfig config) {
+        Objects.requireNonNull(config, "LuceneConfig 不能为 null");
 
         this.analyzer = createAnalyzer();
 
         try {
-            String indexDirPath = searcherConfig.getIndexDirPath(); // 索引目录路径
+            String indexDirPath = config.getIndexDirPath(); // 索引目录路径
             File indexDir = new File(indexDirPath);
-            if (!indexDir.exists()) {
-                indexDir.mkdirs();
+            if (!indexDir.exists() && !indexDir.mkdirs()) {
+                throw new IllegalStateException("can not mkdirs for path: " + indexDirPath);
             }
 
             this.directory = FSDirectory.open(indexDir.toPath());
-            IndexWriterConfig config = new IndexWriterConfig(analyzer);
-            this.indexWriter = new IndexWriter(directory, config);
+            IndexWriterConfig indexWriterConfig = new IndexWriterConfig(analyzer);
+            this.indexWriter = new IndexWriter(directory, indexWriterConfig);
         } catch (IOException e) {
             Log.error("初始化 Lucene 索引失败", e);
             throw new RuntimeException(e);
@@ -132,8 +147,7 @@ public class LuceneSearcher implements DocumentSearcher {
                 resultDoc.setContent(doc.get("content"));
                 resultDoc.setTitle(doc.get("title"));
 
-                // 如果你不想要 score，可以不设置
-                resultDoc.setScore((double) scoreDoc.score); // 注释掉这行即可避免 score 被赋值
+                resultDoc.setScore((double) scoreDoc.score);
 
                 results.add(resultDoc);
             }

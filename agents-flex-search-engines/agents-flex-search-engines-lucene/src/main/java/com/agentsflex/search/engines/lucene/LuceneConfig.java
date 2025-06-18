@@ -13,19 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.search.engines.service;
+package com.agentsflex.search.engines.lucene;
 
-import com.agentsflex.core.document.Document;
+public class LuceneConfig {
+    // lucene 目录
+    private String indexDirPath;
 
-import java.util.List;
+    public String getIndexDirPath() {
+        return indexDirPath;
+    }
 
-public interface DocumentSearcher {
-
-    boolean addDocument(Document document);
-
-    boolean deleteDocument(Object id);
-
-    boolean updateDocument(Document document);
-
-    List<Document> searchDocuments(String keyword);
+    public void setIndexDirPath(String indexDirPath) {
+        this.indexDirPath = indexDirPath;
+    }
 }
