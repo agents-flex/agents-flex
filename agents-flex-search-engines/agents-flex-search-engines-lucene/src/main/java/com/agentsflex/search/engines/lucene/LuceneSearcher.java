@@ -4,13 +4,17 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.search.engines.config.SearcherConfig;
 import com.agentsflex.search.engines.service.DocumentSearcher;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.lionsoul.jcseg.ISegment;
+import org.lionsoul.jcseg.analyzer.JcsegAnalyzer;
+import org.lionsoul.jcseg.dic.DictionaryFactory;
+import org.lionsoul.jcseg.segmenter.SegmenterConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,21 +22,24 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class LuceneSearcher implements DocumentSearcher {
 
     private static final Logger Log = LoggerFactory.getLogger(LuceneSearcher.class);
 
-    private final String indexDirPath;
-    private final Analyzer analyzer;
+    private Analyzer analyzer;
     private Directory directory;
     private IndexWriter indexWriter;
 
+
     public LuceneSearcher(SearcherConfig searcherConfig) {
-        this.indexDirPath = searcherConfig.getIndexDirPath(); // 使用 indexName 作为索引目录路径
-        this.analyzer = new StandardAnalyzer(); // 可替换为你需要的分词器
+        Objects.requireNonNull(searcherConfig, "SearcherConfig 不能为 null");
+
+        this.analyzer = createAnalyzer();
 
         try {
+            String indexDirPath = searcherConfig.getIndexDirPath(); // 索引目录路径
             File indexDir = new File(indexDirPath);
             if (!indexDir.exists()) {
                 indexDir.mkdirs();
@@ -67,8 +74,6 @@ public class LuceneSearcher implements DocumentSearcher {
         } catch (Exception e) {
             Log.error("添加文档失败", e);
             return false;
-        } finally {
-            close();
         }
     }
 
@@ -84,8 +89,6 @@ public class LuceneSearcher implements DocumentSearcher {
         } catch (IOException e) {
             Log.error("删除文档失败", e);
             return false;
-        } finally {
-            close();
         }
     }
 
@@ -110,8 +113,6 @@ public class LuceneSearcher implements DocumentSearcher {
         } catch (IOException e) {
             Log.error("更新文档失败", e);
             return false;
-        } finally {
-            close();
         }
     }
 
@@ -121,8 +122,7 @@ public class LuceneSearcher implements DocumentSearcher {
 
         try (IndexReader reader = DirectoryReader.open(directory)) {
             IndexSearcher searcher = new IndexSearcher(reader);
-            QueryParser parser = new QueryParser("content", analyzer); // 默认在 content 字段搜索
-            Query query = parser.parse(keyWord);
+            Query query = buildQuery(keyWord);
 
             TopDocs topDocs = searcher.search(query, 10);
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
@@ -139,11 +139,36 @@ public class LuceneSearcher implements DocumentSearcher {
             }
         } catch (Exception e) {
             Log.error("搜索文档失败", e);
-        } finally {
-            close();
         }
 
         return results;
+    }
+
+    private static Query buildQuery(String keyword) {
+        try {
+            Analyzer analyzer = createAnalyzer();
+
+            QueryParser queryParser1 = new QueryParser("title", analyzer);
+            Query termQuery1 = queryParser1.parse(keyword);
+            BooleanClause booleanClause1 = new BooleanClause(termQuery1, BooleanClause.Occur.SHOULD);
+
+            QueryParser queryParser2 = new QueryParser("content", analyzer);
+            Query termQuery2 = queryParser2.parse(keyword);
+            BooleanClause booleanClause2 = new BooleanClause(termQuery2, BooleanClause.Occur.SHOULD);
+
+            BooleanQuery.Builder builder = new BooleanQuery.Builder();
+            builder.add(booleanClause1).add(booleanClause2);
+
+            return builder.build();
+        } catch (ParseException e) {
+            Log.error(e.toString(), e);
+        }
+        return null;
+    }
+
+    private static Analyzer createAnalyzer() {
+        SegmenterConfig config = new SegmenterConfig(true);
+        return new JcsegAnalyzer(ISegment.Type.NLP, config, DictionaryFactory.createSingletonDictionary(config));
     }
 
     public void close() {

@@ -13,16 +13,18 @@ public class ElasticSearcherTest {
         SearcherConfig searcherConfig = new SearcherConfig();
         searcherConfig.setHost("https://127.0.0.1:9200");
         searcherConfig.setUserName("elastic");
-        searcherConfig.setPassword("zZWr1Oiek1SUeSpOnvMc");
+        searcherConfig.setPassword("Cn_=EEwD1s8jgVaaDHWE");
         searcherConfig.setIndexName("aiknowledge");
         ElasticSearcher esUtil = new ElasticSearcher(searcherConfig);
         Document document = new Document();
-        document.setContent("商家");
+        document.setContent("平台客服工具：是指拼多多平台开发并向商家提供的功能或工具，商家通过其专属账号登录平台客服工具后，可以与平台消费者取得\\n\" +\n" +
+            "                \"联系并为消费者提供客户服务");
         document.setId(BigInteger.valueOf(1));
 //        esUtil.updateDocument(document);
 //        esUtil.addDocument(document);
-        List<Document> res = esUtil.searchDocuments("交流时间");
+        List<Document> res = esUtil.searchDocuments("消费者");
 //        esUtil.deleteDocument(1);
+
         esUtil.close();
     }
 }

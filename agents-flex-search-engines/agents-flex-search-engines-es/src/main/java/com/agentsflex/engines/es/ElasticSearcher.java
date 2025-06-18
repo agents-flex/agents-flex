@@ -32,21 +32,25 @@ import java.util.*;
 public class ElasticSearcher implements DocumentSearcher {
     protected Logger Log = LoggerFactory.getLogger(ElasticSearcher.class);
 
-    private static String HOST = "https://localhost:9200";
-    private static  String USERNAME = "elastic";
-    private static  String PASSWORD = "elastic";
-    private static  String INDEXNAME;
+    private String host;
+    private String userName;
+    private String password;
+    private String indexName;
 
     private final ElasticsearchClient client;
     private final ElasticsearchTransport transport;
     private final RestClient restClient;
+
     public ElasticSearcher(SearcherConfig searcherConfig)  {
-        HOST = searcherConfig.getHost();
-        USERNAME = searcherConfig.getUserName();
-        PASSWORD = searcherConfig.getPassword();
-        INDEXNAME = searcherConfig.getIndexName();
+        if (searcherConfig.getHost().isEmpty()){
+            Log.error("elasticSearch host 不能为空");
+        }
+        host = searcherConfig.getHost();
+        userName = searcherConfig.getUserName();
+        password = searcherConfig.getPassword();
+        indexName = searcherConfig.getIndexName();
         try {
-            this.restClient = buildRestClient(); // 修改 build 方法返回 RestClient
+            this.restClient = buildRestClient();
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         } catch (KeyManagementException e) {
@@ -74,11 +78,11 @@ public class ElasticSearcher implements DocumentSearcher {
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(
             AuthScope.ANY,
-            new UsernamePasswordCredentials(USERNAME, PASSWORD));
+            new UsernamePasswordCredentials(userName, password));
 
-        HttpHost host = HttpHost.create(HOST);
+        HttpHost httpHost = HttpHost.create(host);
 
-        return RestClient.builder(HttpHost.create(String.valueOf(host)))
+        return RestClient.builder(HttpHost.create(String.valueOf(httpHost)))
             .setHttpClientConfigCallback(httpClientBuilder -> {
                 httpClientBuilder.setSSLContext(sslContext);
                 httpClientBuilder.setSSLHostnameVerifier((hostname, session) -> true);
@@ -117,7 +121,7 @@ public class ElasticSearcher implements DocumentSearcher {
             String documentId = document.getId().toString();
             // 构建 IndexOperation
             IndexOperation<?> indexOp = IndexOperation.of(i -> i
-                .index(INDEXNAME)
+                .index(indexName)
                 .id(documentId)
                 .document(JsonData.of(source))
             );
@@ -148,7 +152,7 @@ public class ElasticSearcher implements DocumentSearcher {
         try {
             // 使用DeleteRequest直接删除
             DeleteRequest request = DeleteRequest.of(d -> d
-                .index(INDEXNAME)
+                .index(indexName)
                 .id(id.toString())
             );
 
@@ -169,7 +173,7 @@ public class ElasticSearcher implements DocumentSearcher {
         try {
             UpdateRequest<Document, Object> request =
                 UpdateRequest.of(u -> u
-                    .index(INDEXNAME)
+                    .index(indexName)
                     .id(document.getId().toString())
                     .doc(document)  // 直接使用Document对象
                 );
@@ -184,16 +188,11 @@ public class ElasticSearcher implements DocumentSearcher {
     // 搜索文档
     @Override
     public List<Document> searchDocuments(String keyWord) {
-//        SearchRequest request = SearchRequest.of(s -> s
-//                .index(INDEXNAME)
-//                .query(q -> q.matchAll(m -> m))
-//        );
-
         SearchRequest request = SearchRequest.of(s -> s
-            .index(INDEXNAME)
-            .size(10)
+            .index(indexName)
             .query(q -> q
                 .match(m -> m
+                    .field("title")
                     .field("content")
                     .query(keyWord)
                 )
