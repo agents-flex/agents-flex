@@ -89,6 +89,8 @@ public class LuceneSearcher implements DocumentSearcher {
         } catch (Exception e) {
             Log.error("添加文档失败", e);
             return false;
+        } finally {
+            close();
         }
     }
 
@@ -104,6 +106,8 @@ public class LuceneSearcher implements DocumentSearcher {
         } catch (IOException e) {
             Log.error("删除文档失败", e);
             return false;
+        } finally {
+            close();
         }
     }
 
@@ -128,6 +132,8 @@ public class LuceneSearcher implements DocumentSearcher {
         } catch (IOException e) {
             Log.error("更新文档失败", e);
             return false;
+        } finally {
+            close();
         }
     }
 
@@ -139,7 +145,7 @@ public class LuceneSearcher implements DocumentSearcher {
             IndexSearcher searcher = new IndexSearcher(reader);
             Query query = buildQuery(keyWord);
 
-            TopDocs topDocs = searcher.search(query, 10);
+            TopDocs topDocs = searcher.search(query, Integer.MAX_VALUE);
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
                 org.apache.lucene.document.Document doc = searcher.doc(scoreDoc.doc);
                 Document resultDoc = new Document();
@@ -153,6 +159,8 @@ public class LuceneSearcher implements DocumentSearcher {
             }
         } catch (Exception e) {
             Log.error("搜索文档失败", e);
+        } finally {
+            close();
         }
 
         return results;

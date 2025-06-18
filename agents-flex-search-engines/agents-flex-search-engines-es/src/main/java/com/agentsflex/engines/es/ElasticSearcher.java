@@ -63,7 +63,7 @@ public class ElasticSearcher implements DocumentSearcher {
         userName = esConfig.getUserName();
         password = esConfig.getPassword();
         indexName = esConfig.getIndexName();
-        
+
         try {
             this.restClient = buildRestClient();
         } catch (NoSuchAlgorithmException e) {
@@ -159,6 +159,8 @@ public class ElasticSearcher implements DocumentSearcher {
         } catch (Exception e) {
             Log.error(e.getMessage());
             return false;
+        } finally {
+            close();
         }
     }
 
@@ -180,6 +182,8 @@ public class ElasticSearcher implements DocumentSearcher {
         } catch (Exception e) {
             Log.error("Error deleting document with id: " + id, e);
             return false;
+        } finally {
+            close();
         }
     }
 
@@ -201,6 +205,8 @@ public class ElasticSearcher implements DocumentSearcher {
         } catch (Exception e) {
             Log.error("Error updating document with id: " + document.getId(), e);
             return false;
+        } finally {
+            close();
         }
     }
 
@@ -225,6 +231,8 @@ public class ElasticSearcher implements DocumentSearcher {
             Log.error(e.getMessage());
             e.printStackTrace();
             return null;
+        } finally {
+            close();
         }
         List<Document> results = new ArrayList<>();
         response.hits().hits().forEach(hit -> results.add(hit.source()));
