@@ -13,18 +13,30 @@ public class ElasticSearcherTest {
         ESConfig searcherConfig = new ESConfig();
         searcherConfig.setHost("https://127.0.0.1:9200");
         searcherConfig.setUserName("elastic");
-        searcherConfig.setPassword("Cn_=EEwD1s8jgVaaDHWE");
+        searcherConfig.setPassword("elastic");
         searcherConfig.setIndexName("aiknowledge");
         ElasticSearcher esUtil = new ElasticSearcher(searcherConfig);
-        Document document = new Document();
-        document.setContent("平台客服工具：是指拼多多平台开发并向商家提供的功能或工具，商家通过其专属账号登录平台客服工具后，可以与平台消费者取得\\n\" +\n" +
+        Document document1 = new Document();
+        document1.setContent("平台客服工具：是指拼多多平台开发并向商家提供的功能或工具，商家通过其专属账号登录平台客服工具后，可以与平台消费者取得\\n\" +\n" +
             "                \"联系并为消费者提供客户服务");
-        document.setId(BigInteger.valueOf(1));
-//        esUtil.updateDocument(document);
-//        esUtil.addDocument(document);
-        List<Document> res = esUtil.searchDocuments("消费者");
+        document1.setId(BigInteger.valueOf(1));
+        esUtil.addDocument(document1);
+
+        Document document2 = new Document();
+        document2.setId(2);
+        document2.setContent("document 2 的内容");
+        document2.setTitle("document 2");
+        esUtil.addDocument(document2);
+
+        System.out.println("查询开始--------");
+        List<Document> res = esUtil.searchDocuments("客服");
+        res.forEach(System.out::println);
+        System.out.println("查询结束--------");
+
+        document1.setTitle("document 3");
+        esUtil.updateDocument(document1);
+
 //        esUtil.deleteDocument(1);
 
-        esUtil.close();
     }
 }

@@ -1,18 +1,3 @@
-/*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
- *  <p>
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  <p>
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  <p>
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 package com.agentsflex.engine.es;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -34,45 +19,21 @@ import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.*;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 
-public class ElasticSearcher implements DocumentSearcher, AutoCloseable  {
+public class ElasticSearcher implements DocumentSearcher {
+
     private static final Logger LOG = LoggerFactory.getLogger(ElasticSearcher.class);
 
-    private String host;
-    private String userName;
-    private String password;
-    private String indexName;
-
-    private final ElasticsearchClient client;
-    private final ElasticsearchTransport transport;
-    private final RestClient restClient;
+    private final ESConfig esConfig;
 
     public ElasticSearcher(ESConfig esConfig) {
-        if (esConfig.getHost().isEmpty()) {
-            LOG.error("elasticSearch host 不能为空");
-        }
-        host = esConfig.getHost();
-        userName = esConfig.getUserName();
-        password = esConfig.getPassword();
-        indexName = esConfig.getIndexName();
-
-        try {
-            this.restClient = buildRestClient();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        } catch (KeyManagementException e) {
-            throw new RuntimeException(e);
-        }
-        this.transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
-        this.client = new ElasticsearchClient(transport);
+        this.esConfig = esConfig;
     }
 
     // 忽略SSL的client构建逻辑
@@ -97,11 +58,9 @@ public class ElasticSearcher implements DocumentSearcher, AutoCloseable  {
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(
             AuthScope.ANY,
-            new UsernamePasswordCredentials(userName, password));
+            new UsernamePasswordCredentials(esConfig.getUserName(), esConfig.getPassword()));
 
-        HttpHost httpHost = HttpHost.create(host);
-
-        return RestClient.builder(HttpHost.create(String.valueOf(httpHost)))
+        return RestClient.builder(HttpHost.create(esConfig.getHost()))
             .setHttpClientConfigCallback(httpClientBuilder -> {
                 httpClientBuilder.setSSLContext(sslContext);
                 httpClientBuilder.setSSLHostnameVerifier((hostname, session) -> true);
@@ -111,11 +70,10 @@ public class ElasticSearcher implements DocumentSearcher, AutoCloseable  {
             .build();
     }
 
+
+
     /**
      * 添加文档到Elasticsearch
-     *
-     * @param document 要添加的文档对象
-     * @return 添加成功返回true，失败返回false
      */
     @Override
     public boolean addDocument(Document document) {
@@ -123,42 +81,75 @@ public class ElasticSearcher implements DocumentSearcher, AutoCloseable  {
             return false;
         }
 
+        RestClient restClient = null;
+        ElasticsearchTransport transport = null;
+        ElasticsearchClient client = null;
+
         try {
-            // 构建文档内容Map
+            restClient = buildRestClient();
+            transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+            client = new ElasticsearchClient(transport);
+
             Map<String, Object> source = new HashMap<>();
             source.put("id", document.getId());
             source.put("content", document.getContent());
-
             if (document.getTitle() != null) {
                 source.put("title", document.getTitle());
             }
 
-            // 获取文档ID
-            if (document.getId() == null) {
-                LOG.error("Document id is null");
-                return false;
-            }
             String documentId = document.getId().toString();
-            // 构建 IndexOperation
             IndexOperation<?> indexOp = IndexOperation.of(i -> i
-                .index(indexName)
+                .index(esConfig.getIndexName())
                 .id(documentId)
                 .document(JsonData.of(source))
             );
 
-            // 将 IndexOperation 转换为 BulkOperation
             BulkOperation bulkOp = BulkOperation.of(b -> b.index(indexOp));
-
-            // 构建 BulkRequest
             BulkRequest request = BulkRequest.of(b -> b.operations(Collections.singletonList(bulkOp)));
-
-            // 执行批量请求并检查结果
             BulkResponse response = client.bulk(request);
             return !response.errors();
 
         } catch (Exception e) {
-            LOG.error(e.getMessage());
+            LOG.error(e.getMessage(), e);
             return false;
+        } finally {
+            closeResources(restClient, transport);
+        }
+    }
+
+    @Override
+    public List<Document> searchDocuments(String keyword, int count) {
+        RestClient restClient = null;
+        ElasticsearchTransport transport = null;
+        ElasticsearchClient client = null;
+
+        try {
+            restClient = buildRestClient();
+            transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+            client = new ElasticsearchClient(transport);
+
+            SearchRequest request = SearchRequest.of(s -> s
+                .index(esConfig.getIndexName())
+                .size(count)
+                .query(q -> q
+                    .match(m -> m
+                        .field("title")
+                        .field("content")
+                        .query(keyword)
+                    )
+                )
+            );
+
+            SearchResponse<Document> response = client.search(request, Document.class);
+            List<Document> results = new ArrayList<>();
+            response.hits().hits().forEach(hit -> results.add(hit.source()));
+            return results;
+
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e);
+            return Collections.emptyList();
+        } finally {
+            closeResources(restClient, transport);
         }
     }
 
@@ -168,18 +159,28 @@ public class ElasticSearcher implements DocumentSearcher, AutoCloseable  {
             return false;
         }
 
+        RestClient restClient = null;
+        ElasticsearchTransport transport = null;
+        ElasticsearchClient client = null;
+
         try {
-            // 使用DeleteRequest直接删除
+            restClient = buildRestClient();
+            transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+            client = new ElasticsearchClient(transport);
+
             DeleteRequest request = DeleteRequest.of(d -> d
-                .index(indexName)
+                .index(esConfig.getIndexName())
                 .id(id.toString())
             );
 
             DeleteResponse response = client.delete(request);
             return response.result() == co.elastic.clients.elasticsearch._types.Result.Deleted;
+
         } catch (Exception e) {
             LOG.error("Error deleting document with id: " + id, e);
             return false;
+        } finally {
+            closeResources(restClient, transport);
         }
     }
 
@@ -189,61 +190,48 @@ public class ElasticSearcher implements DocumentSearcher, AutoCloseable  {
             return false;
         }
 
+        RestClient restClient = null;
+        ElasticsearchTransport transport = null;
+        ElasticsearchClient client = null;
+
         try {
-            UpdateRequest<Document, Object> request =
-                UpdateRequest.of(u -> u
-                    .index(indexName)
-                    .id(document.getId().toString())
-                    .doc(document)  // 直接使用Document对象
-                );
+            restClient = buildRestClient();
+            transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+            client = new ElasticsearchClient(transport);
+
+            UpdateRequest<Document, Object> request = UpdateRequest.of(u -> u
+                .index(esConfig.getIndexName())
+                .id(document.getId().toString())
+                .doc(document)
+            );
+
             UpdateResponse<Document> response = client.update(request, Object.class);
             return response.result() == co.elastic.clients.elasticsearch._types.Result.Updated;
+
         } catch (Exception e) {
             LOG.error("Error updating document with id: " + document.getId(), e);
             return false;
+        } finally {
+            closeResources(restClient, transport);
         }
     }
 
-    // 搜索文档
-    @Override
-    public List<Document> searchDocuments(String keyword, int count) {
-        SearchRequest request = SearchRequest.of(s -> s
-            .index(indexName)
-            .size(count)
-            .query(q -> q
-                .match(m -> m
-                    .field("title")
-                    .field("content")
-                    .query(keyword)
-                )
-            )
-        );
 
-        SearchResponse<Document> response = null;
-        try {
-            response = client.search(request, Document.class);
-        } catch (IOException e) {
-            LOG.error(e.getMessage());
-            return null;
-        }
-        List<Document> results = new ArrayList<>();
-        response.hits().hits().forEach(hit -> results.add(hit.source()));
-        return results;
-    }
-
-
-    // 关闭连接
-    @Override
-    public void close() {
+    private void closeResources(RestClient restClient, ElasticsearchTransport transport) {
         try {
             if (transport != null) {
                 transport.close();
             }
+        } catch (IOException e) {
+            LOG.error("Error closing transport", e);
+        }
+
+        try {
             if (restClient != null) {
                 restClient.close();
             }
         } catch (IOException e) {
-            LOG.error("Error closing Elasticsearch connection", e);
+            LOG.error("Error closing restClient", e);
         }
     }
 }
