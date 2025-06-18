@@ -1,5 +1,10 @@
 # Agents-Flex ChangeLog
 
+
+## v1.2.1 20250618
+- 新增：新增 es 和 lucene 搜索引擎
+
+
 ## v1.2.0 20250614
 - 新增：新增 "default" rerank 模型，用于对接多个不同的 rerank 服务
 - 新增：新增 ReAct Agent
