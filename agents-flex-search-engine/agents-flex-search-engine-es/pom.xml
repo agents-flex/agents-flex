@@ -3,18 +3,17 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>agents-flex-search-engines</artifactId>
+        <artifactId>agents-flex-search-engine</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-search-engines-es</name>
-    <artifactId>agents-flex-search-engines-es</artifactId>
+    <name>agents-flex-search-engine-es</name>
+    <artifactId>agents-flex-search-engine-es</artifactId>
 
     <dependencies>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-search-engines-service</artifactId>
-            <version>${revision}</version>
+            <artifactId>agents-flex-search-engine-service</artifactId>
         </dependency>
 
         <dependency>

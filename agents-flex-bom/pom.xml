@@ -213,15 +213,15 @@
         <!--search engines start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-search-engines-service</artifactId>
+            <artifactId>agents-flex-search-engine-service</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-search-engines-es</artifactId>
+            <artifactId>agents-flex-search-engine-es</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-search-engines-lucene</artifactId>
+            <artifactId>agents-flex-search-engine-lucene</artifactId>
         </dependency>
         <!--search engines end-->
     </dependencies>

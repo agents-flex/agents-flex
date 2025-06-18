@@ -3,12 +3,12 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>agents-flex-search-engines</artifactId>
+        <artifactId>agents-flex-search-engine</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-search-engines-lucene</name>
-    <artifactId>agents-flex-search-engines-lucene</artifactId>
+    <name>agents-flex-search-engine-lucene</name>
+    <artifactId>agents-flex-search-engine-lucene</artifactId>
 
     <properties>
         <jcseg.version>2.6.3</jcseg.version>
@@ -46,7 +46,7 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-search-engines-service</artifactId>
+            <artifactId>agents-flex-search-engine-service</artifactId>
         </dependency>
     </dependencies>
 </project>

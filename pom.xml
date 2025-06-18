@@ -50,7 +50,7 @@
         <module>agents-flex-chain</module>
         <module>agents-flex-image</module>
         <module>agents-flex-rerank</module>
-        <module>agents-flex-search-engines</module>
+        <module>agents-flex-search-engine</module>
     </modules>
 
     <properties>
@@ -370,17 +370,22 @@
             <!--starter start-->
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-search-engines-service</artifactId>
+                <artifactId>agents-flex-search-engine</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-search-engines-es</artifactId>
+                <artifactId>agents-flex-search-engine-service</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-search-engines-lucene</artifactId>
+                <artifactId>agents-flex-search-engine-es</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-search-engine-lucene</artifactId>
                 <version>${revision}</version>
             </dependency>
             <!--starter end-->

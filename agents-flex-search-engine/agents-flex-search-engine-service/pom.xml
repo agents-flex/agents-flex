@@ -4,12 +4,12 @@
 
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>agents-flex-search-engines</artifactId>
+        <artifactId>agents-flex-search-engine</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-search-engines-service</name>
-    <artifactId>agents-flex-search-engines-service</artifactId>
+    <name>agents-flex-search-engine-service</name>
+    <artifactId>agents-flex-search-engine-service</artifactId>
 
     <dependencies>
         <dependency>

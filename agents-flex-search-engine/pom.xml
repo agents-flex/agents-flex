@@ -7,14 +7,14 @@
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-search-engines</name>
-    <artifactId>agents-flex-search-engines</artifactId>
+    <name>agents-flex-search-engine</name>
+    <artifactId>agents-flex-search-engine</artifactId>
 
     <packaging>pom</packaging>
 
     <modules>
-        <module>agents-flex-search-engines-service</module>
-        <module>agents-flex-search-engines-es</module>
-        <module>agents-flex-search-engines-lucene</module>
+        <module>agents-flex-search-engine-service</module>
+        <module>agents-flex-search-engine-es</module>
+        <module>agents-flex-search-engine-lucene</module>
     </modules>
 </project>
