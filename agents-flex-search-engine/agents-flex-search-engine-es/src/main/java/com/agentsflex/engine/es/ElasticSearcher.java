@@ -43,7 +43,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 
-public class ElasticSearcher implements DocumentSearcher {
+public class ElasticSearcher implements DocumentSearcher, AutoCloseable  {
     private static final Logger LOG = LoggerFactory.getLogger(ElasticSearcher.class);
 
     private String host;
@@ -159,8 +159,6 @@ public class ElasticSearcher implements DocumentSearcher {
         } catch (Exception e) {
             LOG.error(e.getMessage());
             return false;
-        } finally {
-            close();
         }
     }
 
@@ -182,8 +180,6 @@ public class ElasticSearcher implements DocumentSearcher {
         } catch (Exception e) {
             LOG.error("Error deleting document with id: " + id, e);
             return false;
-        } finally {
-            close();
         }
     }
 
@@ -205,8 +201,6 @@ public class ElasticSearcher implements DocumentSearcher {
         } catch (Exception e) {
             LOG.error("Error updating document with id: " + document.getId(), e);
             return false;
-        } finally {
-            close();
         }
     }
 
@@ -231,8 +225,6 @@ public class ElasticSearcher implements DocumentSearcher {
         } catch (IOException e) {
             LOG.error(e.getMessage());
             return null;
-        } finally {
-            close();
         }
         List<Document> results = new ArrayList<>();
         response.hits().hits().forEach(hit -> results.add(hit.source()));
@@ -241,6 +233,7 @@ public class ElasticSearcher implements DocumentSearcher {
 
 
     // 关闭连接
+    @Override
     public void close() {
         try {
             if (transport != null) {
