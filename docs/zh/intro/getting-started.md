@@ -19,7 +19,7 @@
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>1.0.0-rc.10</version>
+    <version>1.2.2</version>
 </dependency>
 ```
 
