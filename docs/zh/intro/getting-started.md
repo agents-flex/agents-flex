@@ -13,6 +13,8 @@
 
 **第 1 步：创建 Java 项目，并添加 Maven 依赖**
 
+<span style="color: red;">**以下的 xml maven 依赖示例中，可能并非最新的 Agents-Flex 版本**</span>，请自行查看最新版本，并修改版本号。最新版本查看地址：https://search.maven.org/artifact/com.agentsflex/parent
+
 ```xml
 <dependency>
     <groupId>com.agentsflex</groupId>
