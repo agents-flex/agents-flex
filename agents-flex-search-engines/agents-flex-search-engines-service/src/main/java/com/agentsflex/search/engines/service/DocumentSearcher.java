@@ -27,5 +27,9 @@ public interface DocumentSearcher {
 
     boolean updateDocument(Document document);
 
-    List<Document> searchDocuments(String keyword);
+    default List<Document> searchDocuments(String keyword) {
+        return searchDocuments(keyword, 10);
+    }
+
+    List<Document> searchDocuments(String keyword, int count);
 }

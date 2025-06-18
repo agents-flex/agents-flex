@@ -27,6 +27,7 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.jetbrains.annotations.NotNull;
 import org.lionsoul.jcseg.ISegment;
 import org.lionsoul.jcseg.analyzer.JcsegAnalyzer;
 import org.lionsoul.jcseg.dic.DictionaryFactory;
@@ -42,17 +43,12 @@ import java.util.Objects;
 
 public class LuceneSearcher implements DocumentSearcher {
 
-    private static final Logger Log = LoggerFactory.getLogger(LuceneSearcher.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LuceneSearcher.class);
 
-    private Analyzer analyzer;
     private Directory directory;
-    private IndexWriter indexWriter;
 
     public LuceneSearcher(LuceneConfig config) {
         Objects.requireNonNull(config, "LuceneConfig 不能为 null");
-
-        this.analyzer = createAnalyzer();
-
         try {
             String indexDirPath = config.getIndexDirPath(); // 索引目录路径
             File indexDir = new File(indexDirPath);
@@ -61,10 +57,8 @@ public class LuceneSearcher implements DocumentSearcher {
             }
 
             this.directory = FSDirectory.open(indexDir.toPath());
-            IndexWriterConfig indexWriterConfig = new IndexWriterConfig(analyzer);
-            this.indexWriter = new IndexWriter(directory, indexWriterConfig);
         } catch (IOException e) {
-            Log.error("初始化 Lucene 索引失败", e);
+            LOG.error("初始化 Lucene 索引失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -73,7 +67,9 @@ public class LuceneSearcher implements DocumentSearcher {
     public boolean addDocument(Document document) {
         if (document == null || document.getContent() == null) return false;
 
+        IndexWriter indexWriter = null;
         try {
+            indexWriter = createIndexWriter();
 
             org.apache.lucene.document.Document luceneDoc = new org.apache.lucene.document.Document();
             luceneDoc.add(new StringField("id", document.getId().toString(), Field.Store.YES));
@@ -83,31 +79,35 @@ public class LuceneSearcher implements DocumentSearcher {
                 luceneDoc.add(new TextField("title", document.getTitle(), Field.Store.YES));
             }
 
+
             indexWriter.addDocument(luceneDoc);
             indexWriter.commit();
             return true;
         } catch (Exception e) {
-            Log.error("添加文档失败", e);
+            LOG.error("添加文档失败", e);
             return false;
         } finally {
-            close();
+            close(indexWriter);
         }
     }
+
 
     @Override
     public boolean deleteDocument(Object id) {
         if (id == null) return false;
 
+        IndexWriter indexWriter = null;
         try {
+            indexWriter = createIndexWriter();
             Term term = new Term("id", id.toString());
             indexWriter.deleteDocuments(term);
             indexWriter.commit();
             return true;
         } catch (IOException e) {
-            Log.error("删除文档失败", e);
+            LOG.error("删除文档失败", e);
             return false;
         } finally {
-            close();
+            close(indexWriter);
         }
     }
 
@@ -115,7 +115,9 @@ public class LuceneSearcher implements DocumentSearcher {
     public boolean updateDocument(Document document) {
         if (document == null || document.getId() == null) return false;
 
+        IndexWriter indexWriter = null;
         try {
+            indexWriter = createIndexWriter();
             Term term = new Term("id", document.getId().toString());
 
             org.apache.lucene.document.Document luceneDoc = new org.apache.lucene.document.Document();
@@ -130,22 +132,20 @@ public class LuceneSearcher implements DocumentSearcher {
             indexWriter.commit();
             return true;
         } catch (IOException e) {
-            Log.error("更新文档失败", e);
+            LOG.error("更新文档失败", e);
             return false;
         } finally {
-            close();
+            close(indexWriter);
         }
     }
 
     @Override
-    public List<Document> searchDocuments(String keyWord) {
+    public List<Document> searchDocuments(String keyword, int count) {
         List<Document> results = new ArrayList<>();
-
         try (IndexReader reader = DirectoryReader.open(directory)) {
             IndexSearcher searcher = new IndexSearcher(reader);
-            Query query = buildQuery(keyWord);
-
-            TopDocs topDocs = searcher.search(query, Integer.MAX_VALUE);
+            Query query = buildQuery(keyword);
+            TopDocs topDocs = searcher.search(query, count);
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
                 org.apache.lucene.document.Document doc = searcher.doc(scoreDoc.doc);
                 Document resultDoc = new Document();
@@ -158,9 +158,7 @@ public class LuceneSearcher implements DocumentSearcher {
                 results.add(resultDoc);
             }
         } catch (Exception e) {
-            Log.error("搜索文档失败", e);
-        } finally {
-            close();
+            LOG.error("搜索文档失败", e);
         }
 
         return results;
@@ -170,39 +168,45 @@ public class LuceneSearcher implements DocumentSearcher {
         try {
             Analyzer analyzer = createAnalyzer();
 
-            QueryParser queryParser1 = new QueryParser("title", analyzer);
-            Query termQuery1 = queryParser1.parse(keyword);
-            BooleanClause booleanClause1 = new BooleanClause(termQuery1, BooleanClause.Occur.SHOULD);
+            QueryParser titleQueryParser = new QueryParser("title", analyzer);
+            Query titleQuery = titleQueryParser.parse(keyword);
+            BooleanClause titleBooleanClause = new BooleanClause(titleQuery, BooleanClause.Occur.SHOULD);
 
-            QueryParser queryParser2 = new QueryParser("content", analyzer);
-            Query termQuery2 = queryParser2.parse(keyword);
-            BooleanClause booleanClause2 = new BooleanClause(termQuery2, BooleanClause.Occur.SHOULD);
+            QueryParser contentQueryParser = new QueryParser("content", analyzer);
+            Query contentQuery = contentQueryParser.parse(keyword);
+            BooleanClause contentBooleanClause = new BooleanClause(contentQuery, BooleanClause.Occur.SHOULD);
 
             BooleanQuery.Builder builder = new BooleanQuery.Builder();
-            builder.add(booleanClause1).add(booleanClause2);
-
+            builder.add(titleBooleanClause)
+                .add(contentBooleanClause);
             return builder.build();
         } catch (ParseException e) {
-            Log.error(e.toString(), e);
+            LOG.error(e.toString(), e);
         }
         return null;
     }
+
+
+    @NotNull
+    private IndexWriter createIndexWriter() throws IOException {
+        Analyzer analyzer = createAnalyzer();
+        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(analyzer);
+        return new IndexWriter(directory, indexWriterConfig);
+    }
+
 
     private static Analyzer createAnalyzer() {
         SegmenterConfig config = new SegmenterConfig(true);
         return new JcsegAnalyzer(ISegment.Type.NLP, config, DictionaryFactory.createSingletonDictionary(config));
     }
 
-    public void close() {
+    public void close(IndexWriter indexWriter) {
         try {
             if (indexWriter != null) {
                 indexWriter.close();
             }
-            if (directory != null) {
-                directory.close();
-            }
         } catch (IOException e) {
-            Log.error("关闭 Lucene 失败", e);
+            LOG.error("关闭 Lucene 失败", e);
         }
     }
 }

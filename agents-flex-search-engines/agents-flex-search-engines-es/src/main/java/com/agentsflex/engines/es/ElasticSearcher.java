@@ -44,7 +44,7 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 
 public class ElasticSearcher implements DocumentSearcher {
-    protected Logger Log = LoggerFactory.getLogger(ElasticSearcher.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ElasticSearcher.class);
 
     private String host;
     private String userName;
@@ -57,7 +57,7 @@ public class ElasticSearcher implements DocumentSearcher {
 
     public ElasticSearcher(ESConfig esConfig) {
         if (esConfig.getHost().isEmpty()) {
-            Log.error("elasticSearch host 不能为空");
+            LOG.error("elasticSearch host 不能为空");
         }
         host = esConfig.getHost();
         userName = esConfig.getUserName();
@@ -135,7 +135,7 @@ public class ElasticSearcher implements DocumentSearcher {
 
             // 获取文档ID
             if (document.getId() == null) {
-                Log.error("Document id is null");
+                LOG.error("Document id is null");
                 return false;
             }
             String documentId = document.getId().toString();
@@ -157,7 +157,7 @@ public class ElasticSearcher implements DocumentSearcher {
             return !response.errors();
 
         } catch (Exception e) {
-            Log.error(e.getMessage());
+            LOG.error(e.getMessage());
             return false;
         } finally {
             close();
@@ -180,7 +180,7 @@ public class ElasticSearcher implements DocumentSearcher {
             DeleteResponse response = client.delete(request);
             return response.result() == co.elastic.clients.elasticsearch._types.Result.Deleted;
         } catch (Exception e) {
-            Log.error("Error deleting document with id: " + id, e);
+            LOG.error("Error deleting document with id: " + id, e);
             return false;
         } finally {
             close();
@@ -203,7 +203,7 @@ public class ElasticSearcher implements DocumentSearcher {
             UpdateResponse<Document> response = client.update(request, Object.class);
             return response.result() == co.elastic.clients.elasticsearch._types.Result.Updated;
         } catch (Exception e) {
-            Log.error("Error updating document with id: " + document.getId(), e);
+            LOG.error("Error updating document with id: " + document.getId(), e);
             return false;
         } finally {
             close();
@@ -212,14 +212,15 @@ public class ElasticSearcher implements DocumentSearcher {
 
     // 搜索文档
     @Override
-    public List<Document> searchDocuments(String keyWord) {
+    public List<Document> searchDocuments(String keyword, int count) {
         SearchRequest request = SearchRequest.of(s -> s
             .index(indexName)
+            .size(count)
             .query(q -> q
                 .match(m -> m
                     .field("title")
                     .field("content")
-                    .query(keyWord)
+                    .query(keyword)
                 )
             )
         );
@@ -228,8 +229,7 @@ public class ElasticSearcher implements DocumentSearcher {
         try {
             response = client.search(request, Document.class);
         } catch (IOException e) {
-            Log.error(e.getMessage());
-            e.printStackTrace();
+            LOG.error(e.getMessage());
             return null;
         } finally {
             close();
@@ -250,7 +250,7 @@ public class ElasticSearcher implements DocumentSearcher {
                 restClient.close();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error("Error closing Elasticsearch connection", e);
         }
     }
 }
