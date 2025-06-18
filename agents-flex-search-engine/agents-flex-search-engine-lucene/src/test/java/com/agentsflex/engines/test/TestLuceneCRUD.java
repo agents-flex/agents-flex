@@ -16,8 +16,8 @@
 package com.agentsflex.engines.test;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.search.engines.lucene.LuceneConfig;
-import com.agentsflex.search.engines.lucene.LuceneSearcher;
+import com.agentsflex.search.engine.lucene.LuceneConfig;
+import com.agentsflex.search.engine.lucene.LuceneSearcher;
 
 import java.util.List;
 

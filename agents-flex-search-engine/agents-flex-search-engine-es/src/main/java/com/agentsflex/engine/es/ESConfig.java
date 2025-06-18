@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.engines.es;
+package com.agentsflex.engine.es;
 
 public class ESConfig {
     private String host;

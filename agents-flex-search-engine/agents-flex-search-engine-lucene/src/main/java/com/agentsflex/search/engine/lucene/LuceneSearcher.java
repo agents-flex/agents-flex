@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.search.engines.lucene;
+package com.agentsflex.search.engine.lucene;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.search.engines.service.DocumentSearcher;
+import com.agentsflex.search.engine.service.DocumentSearcher;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;

@@ -1,8 +1,8 @@
 package com.agentsflex.search.engines.es;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.engines.es.ESConfig;
-import com.agentsflex.engines.es.ElasticSearcher;
+import com.agentsflex.engine.es.ESConfig;
+import com.agentsflex.engine.es.ElasticSearcher;
 
 import java.math.BigInteger;
 import java.util.List;
