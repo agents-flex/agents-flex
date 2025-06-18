@@ -33,6 +33,16 @@
             <version>8.11.1</version>
         </dependency>
         <dependency>
+            <groupId>org.lionsoul</groupId>
+            <artifactId>jcseg-core</artifactId>
+            <version>2.6.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lionsoul</groupId>
+            <artifactId>jcseg-analyzer</artifactId>
+            <version>2.6.3</version>
+        </dependency>
+        <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-search-engines-service</artifactId>
         </dependency>

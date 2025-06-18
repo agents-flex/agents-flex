@@ -10,48 +10,55 @@ public class TestLuceneCRUD {
     public static void main(String[] args) {
         // 1. 配置 Lucene 索引路径
         SearcherConfig config = new SearcherConfig();
-        config.setIndexDirPath("./lucene_index"); // 设置索引目录路径
-
+        config.setIndexDirPath("./2lucene_index"); // 设置索引目录路径
         // 2. 创建 LuceneSearcher 实例
         LuceneSearcher luceneSearcher = new LuceneSearcher(config);
 
         // 文档ID（用于更新和删除）
-        String docId = "1";
-
         try {
             // ---- Step 1: 添加文档 ----
             System.out.println("【添加文档】");
-            Document doc = new Document();
-            doc.setId(docId);
-            doc.setContent("这是初始的测试内容");
-            doc.setTitle("初始标题");
+            Document doc1 = new Document();
+            doc1.setId(1);
+            doc1.setTitle("利润最大化的原则");
+            doc1.setContent("平台客服工具：是指拼多多平台开发并向商家提供的功能或工具，商家通过其专属账号登录平台客服工具后，可以与平台消费者取得\n" +
+                "联系并为消费者提供客户服务");
 
-            boolean addSuccess = luceneSearcher.addDocument(doc);
-            System.out.println("添加文档结果：" + (addSuccess ? "成功" : "失败"));
+            boolean addSuccess = luceneSearcher.addDocument(doc1);
+            System.out.println("添加文档1结果：" + (addSuccess ? "成功" : "失败"));
+
+
+            Document doc2 = new Document();
+            doc2.setId(2);
+            doc2.setTitle("企业获取报酬的活动");
+            doc2.setContent("研究如何最合理地分配稀缺资源及不同的用途");
+
+            boolean addSuccess1 = luceneSearcher.addDocument(doc2);
+            System.out.println("添加文档2结果：" + (addSuccess1 ? "成功" : "失败"));
 
             // 查询添加后的结果
-            testSearch(luceneSearcher, "测试");
+            testSearch(luceneSearcher, "报酬");
 
             // ---- Step 2: 更新文档 ----
             System.out.println("\n【更新文档】");
             Document updatedDoc = new Document();
-            updatedDoc.setId(docId);
-            updatedDoc.setContent("这是更新后的测试内容");
-            updatedDoc.setTitle("更新后的标题");
+            updatedDoc.setId(1);
+            updatedDoc.setContent("平台客服工具：是指拼多多平台开发并向商家提供的功能或工具，商家通过其专属账号登录平台客服工具后，可以与平台消费者取得\n" +
+                "联系并为消费者提供客户服务2");
 
             boolean updateSuccess = luceneSearcher.updateDocument(updatedDoc);
             System.out.println("更新文档结果：" + (updateSuccess ? "成功" : "失败"));
 
             // 查询更新后的结果
-            testSearch(luceneSearcher, "更新");
+            testSearch(luceneSearcher, "消费者");
 
             // ---- Step 3: 删除文档 ----
             System.out.println("\n【删除文档】");
-            boolean deleteSuccess = luceneSearcher.deleteDocument(docId);
+            boolean deleteSuccess = luceneSearcher.deleteDocument(2);
             System.out.println("删除文档结果：" + (deleteSuccess ? "成功" : "失败"));
 
             // 查询删除后的结果
-            testSearch(luceneSearcher, "测试");
+            testSearch(luceneSearcher, "报酬");
 
         } finally {
             // 关闭资源
