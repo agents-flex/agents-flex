@@ -6,8 +6,9 @@
         <artifactId>agents-flex-search-engines</artifactId>
         <version>${revision}</version>
     </parent>
+
+    <name>agents-flex-search-engines-es</name>
     <artifactId>agents-flex-search-engines-es</artifactId>
-    <name>Archetype - agents-flex-search-engines-es</name>
 
     <dependencies>
         <dependency>

@@ -8,15 +8,13 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-search-engines-service</name>
     <artifactId>agents-flex-search-engines-service</artifactId>
-    <name>Archetype - agents-flex-search-document</name>
 
     <dependencies>
-
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-core</artifactId>
         </dependency>
-
     </dependencies>
 </project>
