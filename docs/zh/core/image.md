@@ -26,26 +26,25 @@ Agents-Flex 图片生成模型支持如下：
 ## 示例代码
 
 ```java
- @Test
-public void testGenImage(){
+public static void main(String[] args) {
     GiteeImageModelConfig config = new GiteeImageModelConfig();
     config.setApiKey("****");
 
-    //第一步：创建一个 ImageModel
+    // 第一步：创建一个 ImageModel
     ImageModel imageModel = new GiteeImageModel(config);
 
-    //第二步：创建图片生成提示词和参数
+    // 第二步：创建图片生成提示词和参数
     GenerateImageRequest request = new GenerateImageRequest();
     request.setPrompt("A cute little tiger standing in the high-speed train");
     request.setSize(1024, 1024);
 
-    //第三步：通过大模型生成图片
+    // 第三步：通过大模型生成图片
     ImageResponse generate = imageModel.generate(request);
     System.out.println(generate);
 
     int index = 0;
     for (Image image : generate.getImages()) {
-        //第四步：将图片保存到本地
+        // 第四步：将图片保存到本地
         image.writeToFile(new File("/image-path/"+(index++)+".jpg"));
     }
 }
@@ -54,14 +53,13 @@ public void testGenImage(){
 或者使用 OpenAI ImageModel
 
 ```java 5-7
- @Test
-public void testGenImage(){
+public static void main(String[] args) {
 
-    //或者使用 OpenAI ImageModel
+    // 或者使用 OpenAI ImageModel
     OpenAIImageModelConfig config = new OpenAIImageModelConfig();
     config.setApiKey("sk-5gqOclb****");
-    ImageModel imageModel = new OpenAIImageModel(config);
 
+    ImageModel imageModel = new OpenAIImageModel(config);
 
     GenerateImageRequest request = new GenerateImageRequest();
     request.setPrompt("A cute little tiger standing in the high-speed train");
@@ -81,15 +79,14 @@ public void testGenImage(){
 
 
 ```java 5-8
- @Test
-public void testGenImage(){
+public static void main(String[] args) {
 
-    //或者使用 SiliconFlowImageModel
+    // 或者使用 SiliconFlowImageModel
     SiliconflowImageModelConfig config = new SiliconflowImageModelConfig();
     config.setModel(SiliconflowImageModels.Stable_Diffusion_XL);
     config.setApiKey("sk-****");
-    ImageModel imageModel = new OpenAIImageModel(config);
 
+    ImageModel imageModel = new OpenAIImageModel(config);
 
     GenerateImageRequest request = new GenerateImageRequest();
     request.setPrompt("A cute little tiger standing in the high-speed train");

@@ -19,7 +19,7 @@ import java.io.Serializable;
 
 public class GiteeImageModelConfig implements Serializable {
     private String endpoint = "https://ai.gitee.com";
-    private String model = GiteeImageModels.flux_1_schnell;
+    private String model = "flux-1-schnell";
     private String apiKey;
 
 

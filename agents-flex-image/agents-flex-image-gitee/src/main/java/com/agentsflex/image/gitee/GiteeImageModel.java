@@ -18,6 +18,10 @@ package com.agentsflex.image.gitee;
 import com.agentsflex.core.image.*;
 import com.agentsflex.core.llm.client.HttpClient;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.StringUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,19 +40,30 @@ public class GiteeImageModel implements ImageModel {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
-        String payload = Maps.of("inputs", request.getPrompt())
-            .setIfNotNull("width", request.getWidth())
-            .setIfNotNull("height", request.getHeight())
+        String payload = Maps.of("model", config.getModel())
+            .set("prompt", request.getPrompt())
+            .setIfNotNull("n", request.getN())
+            .set("size", request.getSize())
+            .set("response_format", "url")
             .toJSON();
 
-        String url = config.getEndpoint() + "/api/serverless/" + config.getModel() + "/text-to-image";
-        byte[] imageBytes = httpClient.postBytes(url, headers, payload);
-        if (imageBytes == null || imageBytes.length == 0) {
-            return ImageResponse.error("can not read the image bytes.");
+        String url = config.getEndpoint() + "/v1/images/generations";
+        String responseJson = httpClient.post(url, headers, payload);
+
+        if (StringUtil.noText(responseJson)) {
+            return ImageResponse.error("response is no text");
         }
 
+        JSONObject root = JSON.parseObject(responseJson);
+        JSONArray images = root.getJSONArray("data");
+        if (images == null || images.isEmpty()) {
+            return ImageResponse.error("image data is empty: " + responseJson);
+        }
         ImageResponse response = new ImageResponse();
-        response.addImage(imageBytes);
+        for (int i = 0; i < images.size(); i++) {
+            JSONObject imageObj = images.getJSONObject(i);
+            response.addImage(imageObj.getString("url"));
+        }
 
         return response;
     }
@@ -61,12 +76,12 @@ public class GiteeImageModel implements ImageModel {
 
     @Override
     public ImageResponse edit(EditImageRequest request) {
-        throw new IllegalStateException("GiteeImageModel Can not support edit image.");
+        throw new UnsupportedOperationException("GiteeImageModel Can not support edit image.");
     }
 
     @Override
     public ImageResponse vary(VaryImageRequest request) {
-        throw new IllegalStateException("GiteeImageModel Can not support vary image.");
+        throw new UnsupportedOperationException("GiteeImageModel Can not support vary image.");
     }
 
 }
