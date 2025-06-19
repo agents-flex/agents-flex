@@ -16,9 +16,8 @@ TextPrompt 是最基本的提示词，用于向大语言模型发送文本指令
 
 示例代码：
 
-```java 8-9
-@Test()
-public void testChat() {
+```java
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
@@ -37,9 +36,8 @@ FunctionPrompt 用于向大语言模型发送带有 Function Calling 的提示�
 
 示例代码：
 
-```java 8-9
-@Test()
-public void testFunctionCalling() throws InterruptedException {
+```java
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
@@ -59,9 +57,8 @@ ImagePrompt 用于向大语言模型发送带有图像的提示词。
 
 示例代码：
 
-```java 8-10
-@Test()
-public void testChatWithImage() {
+```java
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-5gqOcl*****");
     config.setModel("gpt-4-turbo");
@@ -81,9 +78,8 @@ ToolPrompt 用于向大语言模型发送带有工具调用的提示词。
 
 示例代码：
 
-```java 12
-@Test()
-public void testFunctionCalling2() throws InterruptedException {
+```java
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
@@ -143,8 +139,7 @@ TextPromptTemplate 文本提示词模板，用于格式化提示词内容。
 示例代码：
 
 ```java
-@Test
-public void test() {
+public static void main(String[] args) {
     Map<String, Object> map = new HashMap<>();
     map.put("useName", "Michael");
     map.put("aaa", "星期3");
@@ -162,8 +157,7 @@ public void test() {
 示例代码：
 
 ```java
-@Test
-public void test() {
+public static void main(String[] args) {
     String templateStr = "你好 {{ user.name ?? '匿名' }}，" +
         "欢迎来到 {{ site ?? 'AgentsFlex.com' }}！";
     TextPromptTemplate template = new TextPromptTemplate(templateStr);
@@ -191,9 +185,8 @@ public void test() {
 
 示例代码：
 
-```java 5
-@Test
-public void test() {
+```java
+public static void main(String[] args) {
     String templateStr = "你好 {{ user.name ?? '匿名' }}，" +
         "欢迎来到 {{ site ?? 'AgentsFlex.com' }}！";
     TextPromptTemplate template = TextPromptTemplate.of(templateStr);
