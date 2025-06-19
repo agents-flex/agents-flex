@@ -140,6 +140,11 @@
                 <version>${revision}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-bom</artifactId>
+                <version>${revision}</version>
+            </dependency>
 
             <!--document parser start-->
             <dependency>

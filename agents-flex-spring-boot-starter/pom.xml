@@ -42,70 +42,9 @@
 
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-core</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-simple</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>agents-flex-bom</artifactId>
         </dependency>
 
-        <!--llm start-->
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-chatglm</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-ollama</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-openai</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-qwen</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-spark</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-moonshot</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <!--llm end-->
-
-        <!--store start-->
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-store-aliyun</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-store-qcloud</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-store-elasticsearch</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-store-opensearch</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <!--store end-->
     </dependencies>
 
 </project>

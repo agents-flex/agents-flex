@@ -1,20 +1,14 @@
-package com.agentsflex.spring.boot.llm.openai;
+package com.agentsflex.spring.boot.llm.deepseek;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/**
- * @author 王帅
- * @since 2024-04-10
- */
-@ConfigurationProperties(prefix = "agents-flex.llm.openai")
-public class OpenAIProperties {
+@ConfigurationProperties(prefix = "agents-flex.llm.deepseek")
+public class DeepSeekProperties {
 
-    private String model = "gpt-3.5-turbo";
-    private String endpoint = "https://api.openai.com";
+    private String model = "deepseek-chat";
+    private String endpoint = "https://api.deepseek.com";
     private String apiKey;
     private String apiSecret;
-    private String chatPath = "/v1/chat/completions";
-    private String embedPath = "/v1/embeddings";
 
     public String getModel() {
         return model;
@@ -46,21 +40,5 @@ public class OpenAIProperties {
 
     public void setApiSecret(String apiSecret) {
         this.apiSecret = apiSecret;
-    }
-
-    public String getChatPath() {
-        return chatPath;
-    }
-
-    public void setChatPath(String chatPath) {
-        this.chatPath = chatPath;
-    }
-
-    public String getEmbedPath() {
-        return embedPath;
-    }
-
-    public void setEmbedPath(String embedPath) {
-        this.embedPath = embedPath;
     }
 }
