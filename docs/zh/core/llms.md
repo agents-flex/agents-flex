@@ -22,8 +22,7 @@ Agents-Flex 提供了关于大语言模型的抽象实现接口 `Llm.java`，它
 
 ## 简单对话
 ```java
- @Test()
-public void testChat() {
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
 
     // 设置你的 OpenAI API Key
@@ -39,19 +38,21 @@ public void testChat() {
 ## 流式对话
 
 ```java
-@Test()
-public void testChatStream() {
-    OpenAILlmConfig config = new OpenAILlmConfig();
+public static void main(String[] args) {
 
+    OpenAILlmConfig config = new OpenAILlmConfig();
     // 设置你的 OpenAI API Key
     config.setApiKey("sk-rts5NF6n*******");
 
     Llm llm = new OpenAILlm(config);
+
     llm.chatStream("你叫什么名字", new StreamResponseListener() {
+
         @Override
         public void onMessage(ChatContext context, AiMessageResponse response) {
             System.out.println(response.getMessage().getContent());
         }
+
     });
 }
 ```
@@ -59,8 +60,7 @@ public void testChatStream() {
 ## 流式对话之停止对话
 
 ```java
-@Test()
-public void testChatStream() {
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
 
     // 设置你的 OpenAI API Key
@@ -83,8 +83,7 @@ public void testChatStream() {
 ## 流式对话之更多的监听
 
 ```java
-@Test()
-public void testChatStream() {
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
 
     // 设置你的 OpenAI API Key
@@ -95,22 +94,22 @@ public void testChatStream() {
         @Override
         public void onMessage(ChatContext context, AiMessageResponse response) {
             AiMessage message = response.getMessage();
-            System.out.print(message.getContent());
+            System.out.println(message.getContent());
         }
 
         @Override
         public void onStart(ChatContext context) {
-            // 开始获得消息
+            System.out.println("开始");
         }
 
         @Override
         public void onStop(ChatContext context) {
-            // llm 停止发送
+            System.out.println("结束");
         }
 
         @Override
         public void onFailure(ChatContext context, Throwable throwable) {
-            // 发生错误了
+            System.out.println("错误");
         }
     });
 }
@@ -119,8 +118,7 @@ public void testChatStream() {
 ## 图片识别对话
 
 ```java
- @Test()
-public void testChatWithImage() {
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
 
     // 设置你的 OpenAI API Key
@@ -144,8 +142,7 @@ public void testChatWithImage() {
 ## 方法调用（Function Calling）
 
 ```java
-@Test()
-public void testFunctionCalling() throws InterruptedException {
+public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
@@ -249,13 +246,35 @@ public static void main(String[] args) {
         HumanMessage humanMessage = new HumanMessage(userInput);
         humanMessage.addFunctions(WeatherFunctions.class);
 
-
         // 第三步：将 HumanMessage 添加到 HistoriesPrompt 中
         prompt.addMessage(humanMessage);
 
         // 第四步：调用 chatStream 方法，进行对话
-        llm.chatStream(prompt, (context, response) -> {
-            System.out.println(">>>> " + response.getMessage().getContent());
+        llm.chatStream(prompt, new StreamResponseListener() {
+            @Override
+            public void onMessage(ChatContext context, AiMessageResponse response) {
+                boolean functionCall = response.isFunctionCall();
+                if (functionCall) {
+                    System.out.println("do func >>> ");
+                    StringBuilder text = new StringBuilder("调用工具结果如下：\n");
+                    List<FunctionCaller> callers = response.getFunctionCallers();
+                    for (FunctionCaller caller : callers) {
+                        String name = caller.getFunction().getName();
+                        Object callRes = caller.call();
+                        text.append("调用[").append(name).append("]的结果为：").append(callRes).append("\n");
+                    }
+                    HumanMessage msg = new HumanMessage(text.toString());
+                    prompt.addMessage(msg);
+                    llm.chatStream(prompt, new StreamResponseListener() {
+                        @Override
+                        public void onMessage(ChatContext context, AiMessageResponse response) {
+                            System.out.println("after func >>>> " + response.getMessage().getContent());
+                        }
+                    });
+                } else {
+                    System.out.println("normal >>>> " + response.getMessage().getContent());
+                }
+            }
         });
 
         userInput = scanner.nextLine();
