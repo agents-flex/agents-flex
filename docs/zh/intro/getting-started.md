@@ -26,7 +26,7 @@
 或者使用 Gradle:
 
 ```java
-implementation 'com.agentsflex:agents-flex-bom:1.0.0-rc.10'
+implementation 'com.agentsflex:agents-flex-bom:1.2.2'
 ```
 
 **第 2 步：创建一个带有 Main 方法的 Java 类**
