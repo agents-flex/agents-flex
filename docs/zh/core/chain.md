@@ -1,87 +1,92 @@
 # Chain 执行链
 
-执行链，是有多个 Node 进行编排、组合形成的一个链条⛓。
+执行链（Chain）是由多个节点（Node）按照一定顺序编排、组合而成的链条，用于实现复杂任务的自动化执行。
 
-在 Chain 执行链中，一般情况下是由开始节点、中间节点、结束节点组成。
+在执行链中，通常包含开始节点、中间节点和结束节点。通过合理组织这些节点，可以实现各种复杂的业务逻辑。
 
-agents-flex 中内置了多种节点，
-可配合 [tinyflow](https://www.tinyflow.cn/zh/core/node.html)
-一起使用，获得更多节点功能。
-
-两者结合的具体案例可参考
-[AIFlowy](https://aiflowy.tech/zh/product/workflow/what_is_workflow.html)
-工作流部分的文档。
+在 agents-flex 中，内置了多种节点类型，可以满足不同场景的需求。此外，还可以与 [Tinyflow](https://www.tinyflow.cn/zh/core/node.html) 结合使用，进一步扩展节点功能，获取更多强大的节点类型。关于两者结合的具体案例，可以参考 [AIFlowy](https://aiflowy.tech/zh/product/workflow/what_is_workflow.html) 工作流部分的文档。
 
 ## 简单示例
+
+以下是一个简单的执行链示例，展示了如何创建包含开始节点、中间节点和结束节点的执行链，并设置节点之间的连接关系，最后执行该执行链：
+
 ```java
 public static void main(String[] args) {
+    // 创建执行链
+    Chain chain = new Chain();
 
-        // 创建执行链
-        Chain chain = new Chain();
+    // 创建开始节点
+    StartNode startNode = new StartNode();
+    startNode.setId("1");
+    chain.addNode(startNode);
 
-        // 创建开始节点
-        StartNode startNode = new StartNode();
-        startNode.setId("1");
-        chain.addNode(startNode);
+    // 创建中间节点（动态代码节点）
+    JsExecNode jsExecNode = new JsExecNode();
+    jsExecNode.setId("2");
+    jsExecNode.setCode("console.log('hello world')");
+    chain.addNode(jsExecNode);
 
-        // 创建中间节点
-        JsExecNode jsExecNode = new JsExecNode();
-        jsExecNode.setId("2");
-        jsExecNode.setCode("console.log('hello world')");
-        chain.addNode(jsExecNode);
+    // 创建结束节点
+    EndNode endNode = new EndNode();
+    endNode.setId("3");
+    endNode.setMessage("success");
+    chain.addNode(endNode);
 
-        // 创建结束节点
-        EndNode endNode = new EndNode();
-        endNode.setId("3");
-        endNode.setMessage("success");
-        chain.addNode(endNode);
+    // 创建 1-2 的边
+    ChainEdge edge12 = new ChainEdge();
+    edge12.setSource("1");
+    edge12.setTarget("2");
+    chain.addEdge(edge12);
 
-        // 创建 1-2 的边
-        ChainEdge edge12 = new ChainEdge();
-        edge12.setSource("1");
-        edge12.setTarget("2");
-        chain.addEdge(edge12);
+    // 创建 2-3 的边
+    ChainEdge edge23 = new ChainEdge();
+    edge23.setSource("2");
+    edge23.setTarget("3");
+    chain.addEdge(edge23);
 
-        // 创建 2-3 的边
-        ChainEdge edge23 = new ChainEdge();
-        edge23.setSource("2");
-        edge23.setTarget("3");
-        chain.addEdge(edge23);
-
-        // 1 -> 2 -> 3
-        Map<String, Object> result = chain.executeForResult(new HashMap<>());
-        System.out.println(result);
-
-    }
-```
-## 节点
-在 agents-flex 中，所有节点都继承 `com.agentsflex.core.chain.node.BaseNode`
-除公共参数外，每个节点各自的参数不同。
-### 大模型节点
-```java
-public class LlmNode extends BaseNode {
-    // 大模型
-    protected Llm llm;
-    // 聊天参数
-    protected ChatOptions chatOptions = ChatOptions.DEFAULT;
-    // 用户提示词
-    protected String userPrompt;
-    // 用户提示词模板
-    protected TextPromptTemplate userPromptTemplate;
-    // 系统提示词
-    protected String systemPrompt;
-    // 系统提示词模板
-    protected TextPromptTemplate systemPromptTemplate;
-    // 输出类型
-    protected String outType = "text"; //text markdown json
-    ......
+    // 执行执行链
+    Map<String, Object> result = chain.executeForResult(new HashMap<>());
+    System.out.println(result);
 }
 ```
-### 动态代码节点
-可以动态执行代码，增加了灵活度。
+
+## 节点
+
+在 agents-flex 中，所有节点都继承自 `com.agentsflex.core.chain.node.BaseNode` 类。除了公共参数外，每个节点类型还具有各自的特定参数。以下是两种常见节点类型的介绍：
+
+### 大模型节点（LlmNode）
+
+大模型节点用于调用大型语言模型（LLM），实现如文本生成、问答等复杂功能。其主要参数包括：
+
+- `llm`：大模型实例。
+- `chatOptions`：聊天参数，默认为 `ChatOptions.DEFAULT`。
+- `userPrompt`：用户提示词。
+- `userPromptTemplate`：用户提示词模板。
+- `systemPrompt`：系统提示词。
+- `systemPromptTemplate`：系统提示词模板。
+- `outType`：输出类型，可选值包括 `text`、`markdown`、`json` 等。
+
+代码如下：
+
+```java
+public class LlmNode extends BaseNode {
+    protected Llm llm;
+    protected ChatOptions chatOptions = ChatOptions.DEFAULT;
+    protected String userPrompt;
+    protected TextPromptTemplate userPromptTemplate;
+    protected String systemPrompt;
+    protected TextPromptTemplate systemPromptTemplate;
+    protected String outType = "text"; //text markdown json
+    // 其他相关代码...
+}
+```
+
+### 动态代码节点（CodeNode）
+
+动态代码节点允许用户编写自定义代码逻辑，并在执行链中动态执行，从而增加了执行链的灵活性。其核心参数为 `code`，表示要执行的代码。示例代码如下：
+
 ```java
 public abstract class CodeNode extends BaseNode {
-    // 代码
     protected String code;
 
     public String getCode() {
@@ -97,27 +102,99 @@ public abstract class CodeNode extends BaseNode {
         if (StringUtil.noText(code)) {
             throw new IllegalStateException("Code is null or blank.");
         }
-
         return executeCode(this.code, chain);
     }
+
     // 不同语言有不同的实现
     protected abstract Map<String, Object> executeCode(String code, Chain chain);
 }
 ```
-目前支持三种语言：
-- JavaScript
-- Groovy
-- QLExpress
 
-## 边
-`com.agentsflex.core.chain.ChainEdge`
-边是用来连接节点的，保证了节点之间的执行顺序。
+目前支持以下几种语言：
+- JavaScript（`com.agentsflex.chain.node.JsExecNode`）
+- Groovy（`com.agentsflex.chain.node.GroovyExecNode`）
+- QLExpress（`com.agentsflex.chain.node.QLExpressExecNode`）
 
-可通过 `setCondition` 方法设置条件，只有满足条件时，才会执行到下一个节点。
+## 边（ChainEdge）
+
+边（`com.agentsflex.core.chain.ChainEdge`）用于连接节点，确保节点按照指定的顺序执行。可以通过调用 `setCondition` 方法为边设置执行条件，只有当满足条件时，才会执行下一个节点。
 
 ## 执行条件
 
-无论是`节点`还是`边`，都可以设置执行条件。
+在 agents-flex 中，节点和边都可以设置执行条件。执行条件通过 `com.agentsflex.core.chain.JavascriptStringCondition` 类实现，这意味着可以直接使用 JavaScript 代码来定义条件逻辑。
 
-在 agents-flex 中，是通过 `com.agentsflex.core.chain.JavascriptStringCondition` 来添加执行条件的。
-这也就意味着可以直接使用 `JavaScript` 代码来设置条件。
+示例：
+```java
+public static void main(String[] args) {
+    Chain chain = new Chain();
+
+    TestNode a = new TestNode();
+    a.setId("a");
+    chain.addNode(a);
+
+    TestNode b = new TestNode(){
+        @Override
+        protected Map<String, Object> execute(Chain chain) {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println("b");
+            return Maps.of();
+        }
+    };
+    b.setId("b");
+    // 设置 b 节点为异步执行
+    b.setAsync(true);
+
+    chain.addNode(b);
+
+    TestNode c = new TestNode();
+    c.setId("c");
+    chain.addNode(c);
+
+    TestNode d = new TestNode() {
+        @Override
+        protected Map<String, Object> execute(Chain chain) {
+            System.out.println("d: "+ Thread.currentThread().getId());
+            return Maps.of();
+        }
+    };
+    d.setId("d");
+    // 此处设置 d 节点的条件为上游节点执行完毕后才执行
+    d.setCondition(new JavascriptStringCondition("_context.isUpstreamFullyExecuted()"));
+    chain.addNode(d);
+
+    ChainEdge ab = new ChainEdge();
+    ab.setSource("a");
+    ab.setTarget("b");
+    chain.addEdge(ab);
+
+    ChainEdge ac = new ChainEdge();
+    ac.setSource("a");
+    ac.setTarget("c");
+    chain.addEdge(ac);
+
+
+    ChainEdge bd = new ChainEdge();
+    bd.setSource("b");
+    bd.setTarget("d");
+    chain.addEdge(bd);
+
+    ChainEdge cd = new ChainEdge();
+    cd.setSource("c");
+    cd.setTarget("d");
+    chain.addEdge(cd);
+
+    /**
+     * 最终执行顺序：
+     *      B
+     *   ↗   ↘
+     * A         D
+     *   ↘   ↗
+     *      C
+     */
+    chain.executeForResult(new HashMap<>());
+}
+```
