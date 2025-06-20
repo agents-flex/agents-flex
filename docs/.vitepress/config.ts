@@ -41,7 +41,8 @@ export default defineConfig({
         ],
 
         outline: {
-            label: "章节"
+            label: '当前页导航',
+            level: 'deep'
         },
         editLink: {
             pattern: 'https://gitee.com/agents-flex/agents-flex/edit/main/docs/:path',
@@ -77,17 +78,18 @@ export default defineConfig({
                     {text: 'Store 存储', link: '/zh/core/store'},
                     {text: 'Document 文档', link: '/zh/core/document'},
                     {text: 'Image 图片生成', link: '/zh/core/image'},
+                    {text: 'SearchEngine 搜索引擎', link: '/zh/core/search-engine'},
                     {text: 'Chain 执行链', link: '/zh/core/chain'},
                 ]
             },
-            {
-                text: '基础示例',
-                items: [
-                    {text: '简单对话', link: '/zh/samples/chat'},
-                    {text: '历史对话', link: '/zh/samples/chat-with-memory'},
-                    {text: 'RAG 应用', link: '/zh/samples/rag'},
-                ]
-            }
+            // {
+            //     text: '基础示例',
+            //     items: [
+            //         {text: '简单对话', link: '/zh/samples/chat'},
+            //         {text: '历史对话', link: '/zh/samples/chat-with-memory'},
+            //         {text: 'RAG 应用', link: '/zh/samples/rag'},
+            //     ]
+            // }
         ],
         footer: {
             message: 'Released under the Apache License.',
