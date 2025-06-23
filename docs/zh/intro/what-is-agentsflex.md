@@ -8,7 +8,8 @@ Agents-Flex 适用于聊天、图像生成、音频生成、视频生成、Embed
 作者的其他开源框架，还包含了：
 - MyBatis-Flex：https://mybatis-flex.com (一个优雅的 MyBatis ORM 增强框架)
 - AiEditor：https://aieditor.com.cn （一个面向 AI 的下一代富文本编辑器）
-- Tinyflow ：https://tinyflow.cn (一个 AI 工作流编排解决方案、类似 Dify、Coze、腾讯元宝等产品的 AI 工作流编排功能)
+- Tinyflow ：https://tinyflow.cn (一个 AI 工作流编排解决方案、类似 Dify、Coze、腾讯元器等产品的 AI 工作流编排功能)
+- AIFlowy：https://aiflowy.tech (一个基于 Java 开发的企业级的开源 AI 应用开发平台，整合了 MyBatis-Flex、Tinyflow、Agents-Flex 等框架，可以看作是以上开源产品的最佳实践)
 
 ## Agents-Flex 和其他框架对比
 
