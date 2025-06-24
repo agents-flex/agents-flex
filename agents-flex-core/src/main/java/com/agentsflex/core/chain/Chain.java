@@ -53,7 +53,7 @@ public class Chain extends ChainNode {
     protected Phaser phaser = new Phaser(1);
     protected Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<>();
 
-    protected Map<String,ChainNode> suspendNodes=new ConcurrentHashMap<>();
+    protected Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
     protected List<Parameter> suspendForParameters;
     protected ChainStatus status = ChainStatus.READY;
     protected Exception exception;
@@ -573,10 +573,51 @@ public class Chain extends ChainNode {
             return;
         }
 
-        List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
+        // 继续执行下一个节点
+        if (!currentNode.isLoopEnable()) {
+            doExecuteNextNodes(currentNode);
+            return;
+        }
 
+
+        // 检查是否达到最大循环次数
+        if (currentNode.getMaxLoopCount() > 0 && nodeContext.getExecuteCount() >= currentNode.getMaxLoopCount()) {
+            doExecuteNextNodes(currentNode);
+            return;
+        }
+
+        // 检查跳出条件
+        NodeCondition breakCondition = currentNode.getLoopBreakCondition();
+        if (breakCondition != null && breakCondition.check(this, nodeContext)) {
+            doExecuteNextNodes(currentNode);
+            return;
+        }
+
+
+        // 等待间隔
+        long loopIntervalMs = currentNode.getLoopIntervalMs();
+        if (loopIntervalMs > 0) {
+            try {
+                Thread.sleep(loopIntervalMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); // 恢复中断状态
+            }
+        }
+
+        // 继续执行当前节点
+        doExecuteNode(executeNode);
+    }
+
+
+    /**
+     * 执行后续节点（可能有多个）
+     *
+     * @param currentNode 当前节点
+     */
+    private void doExecuteNextNodes(ChainNode currentNode) {
+        List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
         if (CollectionUtil.hasItems(outwardEdges)) {
-            List<Chain.ExecuteNode> nextExecuteNodes = new ArrayList<>(outwardEdges.size());
+            List<ExecuteNode> nextExecuteNodes = new ArrayList<>(outwardEdges.size());
             for (ChainEdge chainEdge : outwardEdges) {
                 ChainNode nextNode = getNodeById(chainEdge.getTarget());
                 if (nextNode == null) {

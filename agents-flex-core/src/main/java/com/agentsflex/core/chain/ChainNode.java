@@ -38,6 +38,13 @@ public abstract class ChainNode implements Serializable {
     protected ContextMemory memory = new DefaultContextMemory();
     protected ChainNodeStatus nodeStatus = ChainNodeStatus.READY;
 
+
+    // 循环执行相关属性
+    protected boolean loopEnable = false;           // 是否启用循环执行
+    protected long loopIntervalMs = 1000;            // 循环间隔时间（毫秒）
+    protected NodeCondition loopBreakCondition;      // 跳出循环的条件表达式（如：Groovy/SpEL 表达式）
+    protected int maxLoopCount = 0;                  // 0 表示不限制循环次数
+
     public String getId() {
         return id;
     }
@@ -132,6 +139,37 @@ public abstract class ChainNode implements Serializable {
         this.inwardEdges.add(edge);
     }
 
+    public boolean isLoopEnable() {
+        return loopEnable;
+    }
+
+    public void setLoopEnable(boolean loopEnable) {
+        this.loopEnable = loopEnable;
+    }
+
+    public long getLoopIntervalMs() {
+        return loopIntervalMs;
+    }
+
+    public void setLoopIntervalMs(long loopIntervalMs) {
+        this.loopIntervalMs = loopIntervalMs;
+    }
+
+    public NodeCondition getLoopBreakCondition() {
+        return loopBreakCondition;
+    }
+
+    public void setLoopBreakCondition(NodeCondition loopBreakCondition) {
+        this.loopBreakCondition = loopBreakCondition;
+    }
+
+    public int getMaxLoopCount() {
+        return maxLoopCount;
+    }
+
+    public void setMaxLoopCount(int maxLoopCount) {
+        this.maxLoopCount = maxLoopCount;
+    }
 
     protected abstract Map<String, Object> execute(Chain chain);
 
