@@ -42,7 +42,7 @@ public abstract class ChainNode implements Serializable {
     // 循环执行相关属性
     protected boolean loopEnable = false;           // 是否启用循环执行
     protected long loopIntervalMs = 1000;            // 循环间隔时间（毫秒）
-    protected NodeCondition loopBreakCondition;      // 跳出循环的条件表达式（如：Groovy/SpEL 表达式）
+    protected NodeCondition loopBreakCondition;      // 跳出循环的条件
     protected int maxLoopCount = 0;                  // 0 表示不限制循环次数
 
     public String getId() {
