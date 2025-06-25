@@ -41,7 +41,7 @@ public class OkHttpClientUtil {
 
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
             .connectTimeout(1, TimeUnit.MINUTES)
-            .readTimeout(1, TimeUnit.MINUTES);
+            .readTimeout(5, TimeUnit.MINUTES);
 
         String proxyHost = System.getProperty("https.proxyHost");
         String proxyPort = System.getProperty("https.proxyPort");
