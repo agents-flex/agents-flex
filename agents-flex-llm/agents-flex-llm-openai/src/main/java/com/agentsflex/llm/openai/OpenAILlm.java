@@ -41,9 +41,33 @@ import java.util.function.Consumer;
 
 public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
 
-    private final HttpClient httpClient = new HttpClient();
-    public AiMessageParser aiMessageParser = OpenAILlmUtil.getAiMessageParser(false);
-    public AiMessageParser streamMessageParser = OpenAILlmUtil.getAiMessageParser(true);
+    private HttpClient httpClient = new HttpClient();
+    private AiMessageParser aiMessageParser = OpenAILlmUtil.getAiMessageParser(false);
+    private AiMessageParser streamMessageParser = OpenAILlmUtil.getAiMessageParser(true);
+
+    public HttpClient getHttpClient() {
+        return httpClient;
+    }
+
+    public void setHttpClient(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
+
+    public AiMessageParser getAiMessageParser() {
+        return aiMessageParser;
+    }
+
+    public void setAiMessageParser(AiMessageParser aiMessageParser) {
+        this.aiMessageParser = aiMessageParser;
+    }
+
+    public AiMessageParser getStreamMessageParser() {
+        return streamMessageParser;
+    }
+
+    public void setStreamMessageParser(AiMessageParser streamMessageParser) {
+        this.streamMessageParser = streamMessageParser;
+    }
 
     public static OpenAILlm of(String apiKey) {
         OpenAILlmConfig config = new OpenAILlmConfig();
