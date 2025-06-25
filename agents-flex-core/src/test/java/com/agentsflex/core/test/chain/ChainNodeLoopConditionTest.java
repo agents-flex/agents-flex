@@ -42,7 +42,7 @@ public class ChainNodeLoopConditionTest {
 //        });
 
 
-        b.setLoopBreakCondition(new JavascriptStringCondition("_context.getExecuteCount() > 4"));
+        b.setLoopBreakCondition(new JsCodeCondition("_context.getExecuteCount() > 4"));
 
 
         chain.addNode(b);

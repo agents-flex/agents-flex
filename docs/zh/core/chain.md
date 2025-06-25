@@ -194,7 +194,7 @@ public static void main(String[] args) {
 ```
 ## 执行条件
 
-在 agents-flex 中，节点和边都可以设置执行条件。执行条件通过 `com.agentsflex.core.chain.JavascriptStringCondition` 类实现，这意味着可以直接使用 JavaScript 代码来定义条件逻辑。
+在 agents-flex 中，节点和边都可以设置执行条件。执行条件通过 `com.agentsflex.core.chain.JsCodeCondition` 类实现，这意味着可以直接使用 JavaScript 代码来定义条件逻辑。
 
 示例：
 ```java

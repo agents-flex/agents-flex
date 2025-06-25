@@ -18,13 +18,13 @@ package com.agentsflex.core.chain;
 import com.agentsflex.core.util.JsConditionUtil;
 import com.agentsflex.core.util.Maps;
 
-public class JavascriptStringCondition implements NodeCondition, EdgeCondition {
+public class JsCodeCondition implements NodeCondition, EdgeCondition {
     private String code;
 
-    public JavascriptStringCondition() {
+    public JsCodeCondition() {
     }
 
-    public JavascriptStringCondition(String code) {
+    public JsCodeCondition(String code) {
         this.code = code;
     }
 

@@ -48,7 +48,7 @@ public class ChainAsyncStringTest {
         };
         d.setId("d");
 
-        d.setCondition(new JavascriptStringCondition("_context.isUpstreamFullyExecuted()"));
+        d.setCondition(new JsCodeCondition("_context.isUpstreamFullyExecuted()"));
         chain.addNode(d);
 
         ChainEdge ab = new ChainEdge();
