@@ -19,8 +19,9 @@ import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.*;
-import java.io.IOException;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
@@ -36,7 +37,7 @@ public class ElasticSearcher implements DocumentSearcher {
         this.esConfig = esConfig;
     }
 
-    // 忽略SSL的client构建逻辑
+    // 忽略 SSL 的 client 构建逻辑
     private RestClient buildRestClient() throws NoSuchAlgorithmException, KeyManagementException {
         TrustManager[] trustAllCerts = new TrustManager[]{
             new X509TrustManager() {
@@ -71,7 +72,6 @@ public class ElasticSearcher implements DocumentSearcher {
     }
 
 
-
     /**
      * 添加文档到Elasticsearch
      */
@@ -83,12 +83,10 @@ public class ElasticSearcher implements DocumentSearcher {
 
         RestClient restClient = null;
         ElasticsearchTransport transport = null;
-        ElasticsearchClient client = null;
-
         try {
             restClient = buildRestClient();
             transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
-            client = new ElasticsearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
 
             Map<String, Object> source = new HashMap<>();
             source.put("id", document.getId());
@@ -113,7 +111,7 @@ public class ElasticSearcher implements DocumentSearcher {
             LOG.error(e.getMessage(), e);
             return false;
         } finally {
-            closeResources(restClient, transport);
+            closeResources(transport, restClient);
         }
     }
 
@@ -121,12 +119,11 @@ public class ElasticSearcher implements DocumentSearcher {
     public List<Document> searchDocuments(String keyword, int count) {
         RestClient restClient = null;
         ElasticsearchTransport transport = null;
-        ElasticsearchClient client = null;
 
         try {
             restClient = buildRestClient();
             transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
-            client = new ElasticsearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
 
             SearchRequest request = SearchRequest.of(s -> s
                 .index(esConfig.getIndexName())
@@ -149,7 +146,7 @@ public class ElasticSearcher implements DocumentSearcher {
             LOG.error(e.getMessage(), e);
             return Collections.emptyList();
         } finally {
-            closeResources(restClient, transport);
+            closeResources(transport, restClient);
         }
     }
 
@@ -161,12 +158,10 @@ public class ElasticSearcher implements DocumentSearcher {
 
         RestClient restClient = null;
         ElasticsearchTransport transport = null;
-        ElasticsearchClient client = null;
-
         try {
             restClient = buildRestClient();
             transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
-            client = new ElasticsearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
 
             DeleteRequest request = DeleteRequest.of(d -> d
                 .index(esConfig.getIndexName())
@@ -180,7 +175,7 @@ public class ElasticSearcher implements DocumentSearcher {
             LOG.error("Error deleting document with id: " + id, e);
             return false;
         } finally {
-            closeResources(restClient, transport);
+            closeResources(transport, restClient);
         }
     }
 
@@ -192,12 +187,11 @@ public class ElasticSearcher implements DocumentSearcher {
 
         RestClient restClient = null;
         ElasticsearchTransport transport = null;
-        ElasticsearchClient client = null;
 
         try {
             restClient = buildRestClient();
             transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
-            client = new ElasticsearchClient(transport);
+            ElasticsearchClient client = new ElasticsearchClient(transport);
 
             UpdateRequest<Document, Object> request = UpdateRequest.of(u -> u
                 .index(esConfig.getIndexName())
@@ -207,31 +201,23 @@ public class ElasticSearcher implements DocumentSearcher {
 
             UpdateResponse<Document> response = client.update(request, Object.class);
             return response.result() == co.elastic.clients.elasticsearch._types.Result.Updated;
-
         } catch (Exception e) {
             LOG.error("Error updating document with id: " + document.getId(), e);
             return false;
         } finally {
-            closeResources(restClient, transport);
+            closeResources(transport, restClient);
         }
     }
 
 
-    private void closeResources(RestClient restClient, ElasticsearchTransport transport) {
-        try {
-            if (transport != null) {
-                transport.close();
+    private void closeResources(AutoCloseable... closeables) {
+        for (AutoCloseable closeable : closeables) {
+            try {
+                if (closeable != null)
+                    closeable.close();
+            } catch (Exception e) {
+                LOG.error("Error closing resource", e);
             }
-        } catch (IOException e) {
-            LOG.error("Error closing transport", e);
-        }
-
-        try {
-            if (restClient != null) {
-                restClient.close();
-            }
-        } catch (IOException e) {
-            LOG.error("Error closing restClient", e);
         }
     }
 }
