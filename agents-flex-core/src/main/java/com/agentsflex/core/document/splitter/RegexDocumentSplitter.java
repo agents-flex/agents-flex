@@ -40,6 +40,9 @@ public class RegexDocumentSplitter implements DocumentSplitter {
         String[] textArray = document.getContent().split(regex);
         List<Document> chunks = new ArrayList<>(textArray.length);
         for (String textString : textArray) {
+            if (textString.isEmpty()){
+                continue;
+            }
             Document newDocument = new Document();
             newDocument.addMetadata(document.getMetadataMap());
             newDocument.setContent(textString);

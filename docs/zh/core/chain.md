@@ -83,7 +83,8 @@ public class LlmNode extends BaseNode {
 
 ### 动态代码节点（CodeNode）
 
-动态代码节点允许用户编写自定义代码逻辑，并在执行链中动态执行，从而增加了执行链的灵活性。其核心参数为 `code`，表示要执行的代码。示例代码如下：
+动态代码节点允许用户编写自定义代码逻辑，并在执行链中动态执行，从而增加了执行链的灵活性。
+其核心参数为 `code`，表示要执行的代码。代码如下：
 
 ```java
 public abstract class CodeNode extends BaseNode {
@@ -119,6 +120,78 @@ public abstract class CodeNode extends BaseNode {
 
 边（`com.agentsflex.core.chain.ChainEdge`）用于连接节点，确保节点按照指定的顺序执行。可以通过调用 `setCondition` 方法为边设置执行条件，只有当满足条件时，才会执行下一个节点。
 
+## 异步执行
+`ChainNode` 中有一个属性 `async`，用于设置节点是否为异步执行，默认值为 `false`。
+设置为 `true` 后，节点将运行在单独的线程中。
+## 循环执行
+在 agents-flex 中，节点可以设置成循环执行，即重复执行该节点直到满足条件为止。
+
+节点配置属性如下：
+```java
+    // 是否启用循环执行
+    protected boolean loopEnable = false;
+    // 循环间隔时间（毫秒）
+    protected long loopIntervalMs = 1000;
+    // 跳出循环的条件表达式（如：Groovy/SpEL 表达式）
+    protected NodeCondition loopBreakCondition;
+    // 0 表示不限制循环次数
+    protected int maxLoopCount = 0;
+```
+示例代码：
+```java
+public static void main(String[] args) {
+
+        Chain chain = new Chain();
+
+        ChainNode a = new ChainNode() {
+            @Override
+            protected Map<String, Object> execute(Chain chain) {
+                System.out.println("a 节点 >>> execute!");
+                return Maps.of();
+            }
+        };
+        a.setId("a");
+        chain.addNode(a);
+
+        ChainNode b = new ChainNode() {
+            @Override
+            protected Map<String, Object> execute(Chain chain) {
+                System.out.println("b 节点 >>> execute!");
+                // 模拟请求执行结果，并存入内存。
+                getMemory().put("result", getRes());
+                return Maps.of();
+            }
+        };
+        b.setId("b");
+        // 节点 b 开启循环执行
+        b.setLoopEnable(true);
+        // 循环间隔 500ms
+        b.setLoopIntervalMs(500);
+        // 设置循环结束条件
+        b.setLoopBreakCondition(new NodeCondition() {
+            @Override
+            public boolean check(Chain chain, NodeContext context) {
+                ContextMemory memory = context.getCurrentNode().getMemory();
+                // 当结果为5时，结束循环。
+                return (int) memory.get("result") == 5;
+            }
+        });
+
+        chain.addNode(b);
+
+        ChainEdge ab = new ChainEdge();
+        ab.setSource("a");
+        ab.setTarget("b");
+
+        chain.addEdge(ab);
+
+        chain.executeForResult(new HashMap<>());
+    }
+
+    public static int getRes() {
+        return new Random().nextInt(10);
+    }
+```
 ## 执行条件
 
 在 agents-flex 中，节点和边都可以设置执行条件。执行条件通过 `com.agentsflex.core.chain.JavascriptStringCondition` 类实现，这意味着可以直接使用 JavaScript 代码来定义条件逻辑。
