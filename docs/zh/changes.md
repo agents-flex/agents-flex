@@ -1,5 +1,19 @@
 # Agents-Flex ChangeLog
 
+## v1.2.3 20250626
+- 新增：节点添加循环执行的配置能力
+- 新增：新增 starter 中 deepseek 的配置支持，openai 可以指定 chatpath 属性
+- 新增：OpenAILlm 支持自定义 HttpClient
+- 优化：优化 bom 模块依赖冲突 close #ICG2TD
+- 优化：优化 ReActAgent 代码，新增更多的监听支持
+- 优化：优化 OkHttpClientUtil 的默认参数
+- 优化：重命名 JavascriptStringCondition 为 JsCodeCondition
+- 修复：修复 Gitee 生成图片错误的问题
+- 文档：更新 chain 的相关文档
+- 文档：更新优化 LLM 示例代码
+- 文档：优化 prompt 示例代码
+- 文档：节点循环示例代码
+
 
 ## v1.2.2 20250618
 - 新增：新增 es 和 lucene 搜索引擎

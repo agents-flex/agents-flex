@@ -265,7 +265,6 @@ public class ReActAgent {
                         // 递归继续执行下一个 ReAct 步骤
                         startNextReActStepStream();
                     }
-
                 } else if (isFinalAnswer(content)) {
                     String flag = reActStepParser.getFinalAnswerFlag();
                     String answer = content.substring(content.indexOf(flag) + flag.length());
