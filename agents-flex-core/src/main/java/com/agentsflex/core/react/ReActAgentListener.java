@@ -16,7 +16,10 @@
 package com.agentsflex.core.react;
 
 import com.agentsflex.core.llm.ChatContext;
+import com.agentsflex.core.llm.functions.Function;
 import com.agentsflex.core.llm.response.AiMessageResponse;
+
+import java.util.List;
 
 /**
  * ReActAgent 的监听器接口，用于监听执行过程中的关键事件。
@@ -87,6 +90,35 @@ public interface ReActAgentListener {
     default void onMaxIterationsReached() {
     }
 
+
+    /**
+     * 当解析步骤时发生错误时触发
+     *
+     * @param content 错误内容
+     */
+    default void onStepParseError(String content) {
+
+    }
+
+    /**
+     * 当未匹配到任何工具时触发
+     *
+     * @param step      当前步骤
+     * @param functions 可用的工具列表
+     */
+    default void onActionNotMatched(ReActStep step, List<Function> functions) {
+
+    }
+
+    /**
+     * 当工具执行错误时触发
+     *
+     * @param e 错误对象
+     */
+    default void onActionError(Exception e) {
+
+    }
+
     /**
      * 当发生异常时触发
      *
@@ -94,5 +126,4 @@ public interface ReActAgentListener {
      */
     default void onError(Exception error) {
     }
-
 }

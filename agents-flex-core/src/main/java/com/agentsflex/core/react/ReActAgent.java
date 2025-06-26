@@ -26,13 +26,20 @@ import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * ReActAgent 是一个通用的 ReAct 模式 Agent，支持 Reasoning + Action 的交互方式。
  */
 public class ReActAgent {
+
+    private static final Logger log = LoggerFactory.getLogger(ReActAgent.class);
 
     private static final String DEFAULT_PROMPT_TEMPLATE =
         "你是一个 ReAct Agent，结合 Reasoning（推理）和 Action（行动）来解决问题。\n" +
@@ -190,7 +197,7 @@ public class ReActAgent {
             }
 
         } catch (Exception e) {
-            System.err.println("运行 ReAct Agent 出错：" + e.getMessage());
+            log.error("运行 ReAct Agent 出错：" + e);
             notifyOnError(e);
         }
     }
@@ -222,7 +229,6 @@ public class ReActAgent {
 
     private void startNextReActStepStream() {
         if (iterationCount >= maxIterations) {
-            System.out.println("达到最大迭代次数，未能得出最终答案。");
             notifyOnMaxIterationsReached();
             return;
         }
@@ -250,7 +256,7 @@ public class ReActAgent {
                     return;
                 }
 
-                // Stream 模型下，消息会自动被添加到  historiesPrompt 中
+                // Stream 模式下，消息会自动被添加到  historiesPrompt 中，无需手动添加
                 // AiMessage aiMessage = new AiMessage(content);
                 // historiesPrompt.addMessage(aiMessage);
 
@@ -316,14 +322,12 @@ public class ReActAgent {
     private boolean processReActSteps(String content) {
         List<ReActStep> reActSteps = reActStepParser.parse(content);
         if (reActSteps.isEmpty()) {
-            System.err.println("未检测到有效的 Action 步骤，可能内容格式不正确，内容为:\n" + content);
+            notifyOnStepParseError(content);
             return false;
         }
 
         for (ReActStep step : reActSteps) {
-
-
-            boolean actionExecuted = false;
+            boolean stepExecuted = false;
             for (Function function : functions) {
                 if (function.getName().equals(step.getAction())) {
                     try {
@@ -334,28 +338,29 @@ public class ReActAgent {
                         notifyOnActionEnd(step, result);
 
                         String observation = buildObservationString(step, result);
-//                        HumanMessage humanMessage = new HumanMessage("Observation：" + observation + "\n请继续推理下一步。");
                         HumanMessage humanMessage = new HumanMessage(observation + "\n请继续推理下一步。");
                         humanMessage.addMetadata("type", "reActObservation");
 
                         historiesPrompt.addMessage(humanMessage);
-                        actionExecuted = true;
+                        stepExecuted = true;
                     } catch (Exception e) {
-                        System.err.println("调用工具出错：" + e.getMessage());
-                        notifyOnError(e);
+                        log.error(e.toString(), e);
+                        notifyOnActionError(e);
                     }
                     break;
                 }
             }
 
-            if (!actionExecuted) {
-                System.err.println("找不到匹配的工具：" + step.getAction());
+            if (!stepExecuted) {
+                notifyOnActionNotMatched(step, functions);
                 return false;
             }
         }
 
+
         return true;
     }
+
 
     // ========== 通知监听器的方法 ==========
     private void notifyOnChatResponse(AiMessageResponse response) {
@@ -403,6 +408,25 @@ public class ReActAgent {
     private void notifyOnMaxIterationsReached() {
         for (ReActAgentListener l : listeners) {
             l.onMaxIterationsReached();
+        }
+    }
+
+    private void notifyOnStepParseError(String content) {
+        for (ReActAgentListener l : listeners) {
+            l.onStepParseError(content);
+        }
+    }
+
+    private void notifyOnActionNotMatched(ReActStep step, List<Function> functions) {
+        for (ReActAgentListener l : listeners) {
+            l.onActionNotMatched(step, functions);
+        }
+    }
+
+
+    private void notifyOnActionError(Exception e) {
+        for (ReActAgentListener l : listeners) {
+            l.onActionError(e);
         }
     }
 
