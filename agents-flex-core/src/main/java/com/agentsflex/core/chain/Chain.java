@@ -539,7 +539,6 @@ public class Chain extends ChainNode {
                 if (this.getStatus() != ChainStatus.RUNNING) {
                     return;
                 }
-
                 currentNode.setNodeStatus(ChainNodeStatus.RUNNING);
                 onNodeExecuteStart(nodeContext);
                 try {
@@ -550,6 +549,7 @@ public class Chain extends ChainNode {
                     this.executeResult = executeResult;
                 }
             } catch (Throwable error) {
+                log.error(error.toString(), error);
                 currentNode.setNodeStatus(ChainNodeStatus.ERROR);
                 notifyNodeError(error, currentNode, executeResult);
                 throw error;
@@ -654,7 +654,7 @@ public class Chain extends ChainNode {
         }
 
         if (!this.suspendNodes.isEmpty()) {
-            return suspendNodes.values().stream().collect(Collectors.toList());
+            return new ArrayList<>(suspendNodes.values());
         }
 
         List<ChainNode> nodes = new ArrayList<>();
@@ -885,13 +885,23 @@ public class Chain extends ChainNode {
     @Override
     public String toString() {
         return "Chain{" +
-            "id='" + id + '\'' +
-            ", memory=" + memory +
+            "parent=" + parent +
+            ", children=" + children +
+            ", nodes=" + nodes +
+            ", edges=" + edges +
+            ", executeResult=" + executeResult +
             ", eventListeners=" + eventListeners +
             ", outputListeners=" + outputListeners +
-            ", nodes=" + nodes +
-            ", lines=" + edges +
+            ", chainErrorListeners=" + chainErrorListeners +
+            ", nodeErrorListeners=" + nodeErrorListeners +
+            ", suspendListeners=" + suspendListeners +
+            ", asyncNodeExecutors=" + asyncNodeExecutors +
+            ", phaser=" + phaser +
+            ", nodeContexts=" + nodeContexts +
+            ", suspendNodes=" + suspendNodes +
+            ", suspendForParameters=" + suspendForParameters +
             ", status=" + status +
+            ", exception=" + exception +
             ", message='" + message + '\'' +
             '}';
     }
