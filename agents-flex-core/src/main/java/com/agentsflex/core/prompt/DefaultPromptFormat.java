@@ -123,32 +123,40 @@ public class DefaultPromptFormat implements PromptFormat {
 
             Map<String, Object> parametersObj = new HashMap<>();
             functionObj.put("parameters", parametersObj);
-
             parametersObj.put("type", "object");
 
             Map<String, Object> propertiesObj = new HashMap<>();
             parametersObj.put("properties", propertiesObj);
 
-            List<String> requiredProperties = new ArrayList<>();
-
-            for (Parameter parameter : function.getParameters()) {
-                Map<String, Object> parameterObj = new HashMap<>();
-                parameterObj.put("type", parameter.getType());
-                parameterObj.put("description", parameter.getDescription());
-                parameterObj.put("enum", parameter.getEnums());
-
-                if (parameter.isRequired()) {
-                    requiredProperties.add(parameter.getName());
-                }
-
-                propertiesObj.put(parameter.getName(), parameterObj);
-            }
-
-            if (!requiredProperties.isEmpty()) {
-                parametersObj.put("required", requiredProperties);
-            }
+            addParameters(function.getParameters(), propertiesObj, parametersObj);
 
             functionsJsonArray.add(functionRoot);
+        }
+    }
+
+    private static void addParameters(Parameter[] parameters, Map<String, Object> propertiesObj, Map<String, Object> parametersObj) {
+        List<String> requiredProperties = new ArrayList<>();
+        for (Parameter parameter : parameters) {
+            Map<String, Object> parameterObj = new HashMap<>();
+            parameterObj.put("type", parameter.getType());
+            parameterObj.put("description", parameter.getDescription());
+            parameterObj.put("enum", parameter.getEnums());
+            if (parameter.isRequired()) {
+                requiredProperties.add(parameter.getName());
+            }
+
+            List<Parameter> children = parameter.getChildren();
+            if (children != null && !children.isEmpty() && "object".equalsIgnoreCase(parameter.getType())) {
+                Map<String, Object> childrenObj = new HashMap<>();
+                parameterObj.put("properties", childrenObj);
+                addParameters(children.toArray(new Parameter[0]), childrenObj, parameterObj);
+            }
+
+            propertiesObj.put(parameter.getName(), parameterObj);
+        }
+
+        if (!requiredProperties.isEmpty()) {
+            parametersObj.put("required", requiredProperties);
         }
     }
 

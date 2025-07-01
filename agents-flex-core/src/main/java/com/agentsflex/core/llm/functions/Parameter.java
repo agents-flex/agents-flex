@@ -16,6 +16,7 @@
 package com.agentsflex.core.llm.functions;
 
 import java.io.Serializable;
+import java.util.List;
 
 public class Parameter implements Serializable {
 
@@ -24,6 +25,7 @@ public class Parameter implements Serializable {
     protected String description;
     protected String[] enums;
     protected boolean required = false;
+    protected List<Parameter> children;
 
     public String getName() {
         return name;
@@ -63,5 +65,24 @@ public class Parameter implements Serializable {
 
     public void setRequired(boolean required) {
         this.required = required;
+    }
+
+    public List<Parameter> getChildren() {
+        return children;
+    }
+
+    public void setChildren(List<Parameter> children) {
+        this.children = children;
+        if (children != null) {
+            this.type = "object";
+        }
+    }
+
+    public void addChild(Parameter parameter) {
+        if (children == null) {
+            children = new java.util.ArrayList<>();
+        }
+        children.add(parameter);
+        this.type = "object";
     }
 }
