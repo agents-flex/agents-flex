@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.prompt;
 
+import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 
 import java.util.List;
@@ -23,5 +24,5 @@ public interface PromptFormat {
 
     Object toMessagesJsonObject(List<Message> messages);
 
-    Object toFunctionsJsonObject(Message humanMessage);
+    Object toFunctionsJsonObject(HumanMessage humanMessage);
 }

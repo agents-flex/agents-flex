@@ -19,10 +19,7 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.functions.Function;
 import com.agentsflex.core.llm.functions.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionCall;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.MessageStatus;
+import com.agentsflex.core.message.*;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
@@ -30,6 +27,7 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.HashUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.MessageUtil;
 import com.alibaba.fastjson.*;
 
 import java.io.UnsupportedEncodingException;
@@ -131,6 +129,7 @@ public class SparkLlmUtil {
     public static String promptToPayload(Prompt prompt, SparkLlmConfig config, ChatOptions options) {
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
         List<Message> messages = prompt.toMessages();
+        HumanMessage message = MessageUtil.findLastHumanMessage(messages);
         Maps root = Maps.of("header", Maps.of("app_id", config.getAppId()).set("uid", UUID.randomUUID().toString().replaceAll("-","")));
         root.set("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
                 .setIf(options.getTemperature() > 0, "temperature", options.getTemperature())
@@ -139,7 +138,7 @@ public class SparkLlmUtil {
             )
         );
         root.set("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(messages)))
-            .setIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(messages.get(messages.size() - 1))))
+            .setIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(message)))
         );
         return JSON.toJSONString(root);
     }

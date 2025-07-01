@@ -19,14 +19,15 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.LlmConfig;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
+import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
-import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.MessageUtil;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,7 +43,7 @@ public class SiliconflowLlmUtil {
 
     public static String promptToPayload(Prompt prompt, LlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
-        Message message = CollectionUtil.lastItem(messages);
+        HumanMessage message = MessageUtil.findLastHumanMessage(messages);
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)

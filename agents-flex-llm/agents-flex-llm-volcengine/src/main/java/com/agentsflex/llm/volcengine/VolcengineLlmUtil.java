@@ -23,8 +23,8 @@ import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
-import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.MessageUtil;
 
 import java.util.List;
 import java.util.Optional;
@@ -39,18 +39,13 @@ public class VolcengineLlmUtil {
 
     public static String promptToPayload(Prompt prompt, VolcengineLlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
-        Message message = CollectionUtil.lastItem(messages);
-
-        String toolChoice = null;
-        if (message instanceof HumanMessage) {
-            toolChoice = ((HumanMessage) message).getToolChoice();
-        }
+        HumanMessage message = MessageUtil.findLastHumanMessage(messages);
 
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
-            .setIfContainsKey("tools", "tool_choice", toolChoice)
+            .setIfContainsKey("tools", "tool_choice", MessageUtil.getToolChoice(message))
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotEmpty("stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())

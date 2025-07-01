@@ -17,6 +17,7 @@ package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
@@ -25,18 +26,14 @@ import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
-import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.MessageUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class OllamaLlmUtil {
 
@@ -107,11 +104,12 @@ public class OllamaLlmUtil {
 
     public static String promptToPayload(Prompt prompt, OllamaLlmConfig config, ChatOptions options, boolean stream) {
         List<Message> messages = prompt.toMessages();
+        HumanMessage message = MessageUtil.findLastHumanMessage(messages);
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .set("think", Optional.ofNullable(options.getEnableThinking()).orElse(config.getEnableThinking()))
             .setIf(!stream, "stream", stream)
-            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(CollectionUtil.lastItem(messages)))
+            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
             .setIfNotEmpty("options.seed", options.getSeed())
             .setIfNotEmpty("options.top_k", options.getTopK())
             .setIfNotEmpty("options.top_p", options.getTopP())

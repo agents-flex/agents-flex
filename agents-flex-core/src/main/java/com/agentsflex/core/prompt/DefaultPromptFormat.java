@@ -93,12 +93,11 @@ public class DefaultPromptFormat implements PromptFormat {
     }
 
     @Override
-    public Object toFunctionsJsonObject(Message message) {
-        if (!(message instanceof HumanMessage)) {
+    public Object toFunctionsJsonObject(HumanMessage message) {
+        if (message == null) {
             return null;
         }
-
-        List<Function> functions = ((HumanMessage) message).getFunctions();
+        List<Function> functions = message.getFunctions();
         if (functions == null || functions.isEmpty()) {
             return null;
         }

@@ -18,6 +18,7 @@ package com.agentsflex.llm.qwen;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
+import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
@@ -43,7 +44,7 @@ public class QwenLlmUtil {
     public static String promptToPayload(Prompt prompt, QwenLlmConfig config, ChatOptions options, boolean withStream) {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
         List<Message> messages = prompt.toMessages();
-        Message message = CollectionUtil.lastItem(messages);
+        HumanMessage message = MessageUtil.findLastHumanMessage(messages);
         Maps params = Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
