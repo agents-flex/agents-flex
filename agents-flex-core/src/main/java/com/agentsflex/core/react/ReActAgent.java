@@ -80,6 +80,13 @@ public class ReActAgent {
     private ReActStepParser reActStepParser = ReActStepParser.DEFAULT; // 默认解析器
     private final HistoriesPrompt historiesPrompt;
 
+
+    // 是否继续执行当 JSON 解析出错时
+    private boolean continueOnActionJsonParseError = true;
+
+    // 是否继续执行当 Function 调用出错时
+    private boolean continueOnActionInvokeError = true;
+
     // 监听器集合
     private final List<ReActAgentListener> listeners = new ArrayList<>();
 
@@ -171,6 +178,22 @@ public class ReActAgent {
 
     public void setIterationCount(int iterationCount) {
         this.iterationCount = iterationCount;
+    }
+
+    public boolean isContinueOnActionJsonParseError() {
+        return continueOnActionJsonParseError;
+    }
+
+    public void setContinueOnActionJsonParseError(boolean continueOnActionJsonParseError) {
+        this.continueOnActionJsonParseError = continueOnActionJsonParseError;
+    }
+
+    public boolean isContinueOnActionInvokeError() {
+        return continueOnActionInvokeError;
+    }
+
+    public void setContinueOnActionInvokeError(boolean continueOnActionInvokeError) {
+        this.continueOnActionInvokeError = continueOnActionInvokeError;
     }
 
     /**
@@ -340,6 +363,13 @@ public class ReActAgent {
                                 parameters = Collections.emptyMap();
                             }
                         } catch (Exception e) {
+                            log.error(e.toString(), e);
+                            notifyOnActionJsonParserError(step, e);
+
+                            if (!continueOnActionJsonParseError) {
+                                return false;
+                            }
+
                             String errorMsg = "JSON 解析失败: " + e.getMessage() + ". 原始内容: " + step.getActionInput();
                             log.error(errorMsg, e);
                             String observation = "Action：" + step.getAction() + "\n"
@@ -363,7 +393,11 @@ public class ReActAgent {
                         stepExecuted = true;
                     } catch (Exception e) {
                         log.error(e.toString(), e);
-                        notifyOnActionError(e);
+                        notifyOnActionInvokeError(e);
+
+                        if (!continueOnActionInvokeError) {
+                            return false;
+                        }
 
                         // 将错误信息反馈给 AI，让其修正
                         String observation = buildObservationString(step, "Error: " + e.getMessage()) + "\n"
@@ -450,10 +484,15 @@ public class ReActAgent {
         }
     }
 
-
-    private void notifyOnActionError(Exception e) {
+    private void notifyOnActionJsonParserError(ReActStep step, Exception e) {
         for (ReActAgentListener l : listeners) {
-            l.onActionError(e);
+            l.onActionJsonParserError(step, e);
+        }
+    }
+
+    private void notifyOnActionInvokeError(Exception e) {
+        for (ReActAgentListener l : listeners) {
+            l.onActionInvokeError(e);
         }
     }
 

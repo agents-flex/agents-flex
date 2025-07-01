@@ -115,7 +115,17 @@ public interface ReActAgentListener {
      *
      * @param e 错误对象
      */
-    default void onActionError(Exception e) {
+    default void onActionInvokeError(Exception e) {
+
+    }
+
+    /**
+     * 当工具返回的 JSON 格式错误时触发
+     *
+     * @param step  当前步骤
+     * @param error 错误对象
+     */
+    default void onActionJsonParserError(ReActStep step, Exception error) {
 
     }
 
@@ -126,4 +136,6 @@ public interface ReActAgentListener {
      */
     default void onError(Exception error) {
     }
+
+
 }
