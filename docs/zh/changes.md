@@ -1,5 +1,14 @@
 # Agents-Flex ChangeLog
 
+
+## v1.2.4 20250701
+- 新增：在节点执行出错时，添加必要的错误日志输出
+- 新增：大模型 Parameter 添加子 Parameter 的配置支持
+- 新增：ReActAgent 添加 continueOnActionJsonParseError 和 continueOnActionInvokeError 配置
+- 修复：修复 EmbeddingModel.dimensions() 错误信息不友好的问题
+- 修复：function call第二次请求模型时缺少了tools信息 close #ICG584
+
+
 ## v1.2.3 20250626
 - 新增：节点添加循环执行的配置能力
 - 新增：新增 starter 中 deepseek 的配置支持，openai 可以指定 chatpath 属性
