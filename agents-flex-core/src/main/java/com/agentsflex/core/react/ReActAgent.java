@@ -331,8 +331,27 @@ public class ReActAgent {
                 if (function.getName().equals(step.getAction())) {
                     try {
                         notifyOnActionStart(step);
-                        Map<String, Object> parameters = StringUtil.hasText(step.getActionInput())
-                            ? JSON.parseObject(step.getActionInput()) : Collections.emptyMap();
+
+                        Map<String, Object> parameters;
+                        try {
+                            if (StringUtil.hasText(step.getActionInput())) {
+                                parameters = JSON.parseObject(step.getActionInput());
+                            } else {
+                                parameters = Collections.emptyMap();
+                            }
+                        } catch (Exception e) {
+                            String errorMsg = "JSON 解析失败: " + e.getMessage() + ". 原始内容: " + step.getActionInput();
+                            log.error(errorMsg, e);
+                            String observation = "Action：" + step.getAction() + "\n"
+                                + "Action Input：" + step.getActionInput() + "\n"
+                                + "Error：JSON 解析失败 - " + e.getMessage() + "\n"
+                                + "请检查你的 Action Input 格式是否正确，并纠正 JSON 内容重新生成响应。\n";
+                            HumanMessage humanMessage = new HumanMessage(observation + "请继续推理下一步。");
+                            humanMessage.addMetadata("type", "reActObservation");
+                            historiesPrompt.addMessage(humanMessage);
+                            return true; // 继续让 AI 修正
+                        }
+
                         Object result = function.invoke(parameters);
                         notifyOnActionEnd(step, result);
 
@@ -345,6 +364,15 @@ public class ReActAgent {
                     } catch (Exception e) {
                         log.error(e.toString(), e);
                         notifyOnActionError(e);
+
+                        // 将错误信息反馈给 AI，让其修正
+                        String observation = buildObservationString(step, "Error: " + e.getMessage()) + "\n"
+                            + "请根据错误信息调整参数并重新尝试。\n";
+                        HumanMessage humanMessage = new HumanMessage(observation + "请继续推理下一步。");
+                        humanMessage.addMetadata("type", "reActObservation");
+                        historiesPrompt.addMessage(humanMessage);
+
+                        return true;
                     }
                     break;
                 }
