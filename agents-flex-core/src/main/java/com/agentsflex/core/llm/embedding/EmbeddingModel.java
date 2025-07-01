@@ -16,6 +16,7 @@
 package com.agentsflex.core.llm.embedding;
 
 import com.agentsflex.core.document.Document;
+import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.store.VectorData;
 
 public interface EmbeddingModel {
@@ -23,7 +24,7 @@ public interface EmbeddingModel {
     default VectorData embed(String text) {
         return embed(Document.of(text), EmbeddingOptions.DEFAULT);
     }
-    
+
     default VectorData embed(Document document) {
         return embed(document, EmbeddingOptions.DEFAULT);
     }
@@ -31,6 +32,14 @@ public interface EmbeddingModel {
     VectorData embed(Document document, EmbeddingOptions options);
 
     default int dimensions() {
-        return embed(Document.of("dimensions")).getVector().length;
+        VectorData vectorData = embed(Document.of("agents-flex"));
+        if (vectorData == null) {
+            throw new LlmException("Embedding model does not contain vector data, maybe config is not correct.");
+        }
+        double[] vector = vectorData.getVector();
+        if (vector == null || vector.length == 0) {
+            throw new LlmException("Embedding model does not contain vector data, maybe config is not correct.");
+        }
+        return vector.length;
     }
 }
