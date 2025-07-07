@@ -19,7 +19,6 @@ import com.agentsflex.core.util.Metadata;
 
 public abstract class Message extends Metadata {
 
-
     public abstract Object getMessageContent();
 
 }

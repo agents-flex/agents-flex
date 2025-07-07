@@ -15,18 +15,15 @@
  */
 package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.message.HumanImageMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.util.ImageUtil;
-import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 
 import java.io.File;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public class ImagePrompt extends TextPrompt {
 
@@ -115,7 +112,7 @@ public class ImagePrompt extends TextPrompt {
 
     @Override
     public List<Message> toMessages() {
-        return Collections.singletonList(new TextAndImageMessage(this));
+        return Collections.singletonList(new HumanImageMessage(this));
     }
 
 
@@ -128,26 +125,4 @@ public class ImagePrompt extends TextPrompt {
             '}';
     }
 
-
-    public static class TextAndImageMessage extends HumanMessage {
-
-        private final ImagePrompt prompt;
-
-        public TextAndImageMessage(ImagePrompt prompt) {
-            this.prompt = prompt;
-        }
-
-        public ImagePrompt getPrompt() {
-            return prompt;
-        }
-
-        @Override
-        public Object getMessageContent() {
-            List<Map<String, Object>> messageContent = new ArrayList<>();
-            messageContent.add(Maps.of("type", "text").set("text", prompt.content));
-            messageContent.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", prompt.toUrl())));
-            return messageContent;
-        }
-
-    }
 }

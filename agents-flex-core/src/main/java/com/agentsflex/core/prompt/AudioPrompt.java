@@ -15,15 +15,12 @@
  */
 package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.message.HumanAudioMessage;
 import com.agentsflex.core.message.Message;
-import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 
 public class AudioPrompt extends TextPrompt {
@@ -57,7 +54,7 @@ public class AudioPrompt extends TextPrompt {
 
     @Override
     public List<Message> toMessages() {
-        return Collections.singletonList(new TextAndAudioMessage(this));
+        return Collections.singletonList(new HumanAudioMessage(this));
     }
 
 
@@ -70,25 +67,4 @@ public class AudioPrompt extends TextPrompt {
             '}';
     }
 
-    public static class TextAndAudioMessage extends HumanMessage {
-
-        private final AudioPrompt prompt;
-
-        public TextAndAudioMessage(AudioPrompt prompt) {
-            this.prompt = prompt;
-        }
-
-        public AudioPrompt getPrompt() {
-            return prompt;
-        }
-
-        @Override
-        public Object getMessageContent() {
-            List<Map<String, Object>> messageContent = new ArrayList<>();
-            messageContent.add(Maps.of("type", "text").set("text", prompt.content));
-            messageContent.add(Maps.of("type", "audio_url").set("audio_url", Maps.of("url", prompt.toUrl())));
-            return messageContent;
-        }
-
-    }
 }
