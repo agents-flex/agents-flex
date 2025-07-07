@@ -16,10 +16,7 @@
 package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.llm.ChatOptions;
-import com.agentsflex.core.message.FunctionCall;
-import com.agentsflex.core.message.HumanMessage;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.MessageStatus;
+import com.agentsflex.core.message.*;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.prompt.DefaultPromptFormat;
@@ -41,8 +38,8 @@ public class OllamaLlmUtil {
     private static final PromptFormat promptFormat = new DefaultPromptFormat() {
         @Override
         protected void buildMessageContent(Message message, Map<String, Object> map) {
-            if (message instanceof ImagePrompt.TextAndImageMessage) {
-                ImagePrompt prompt = ((ImagePrompt.TextAndImageMessage) message).getPrompt();
+            if (message instanceof HumanImageMessage) {
+                ImagePrompt prompt = ((HumanImageMessage) message).getPrompt();
                 map.put("content", prompt.getContent());
 //                map.put("images", new String[]{ImageUtil.imageUrlToBase64(prompt.getImageUrl())});
                 map.put("images", new String[]{prompt.toImageBase64()});

@@ -5,6 +5,7 @@ import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.exception.LlmException;
 import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.message.HumanImageMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.util.ImageUtil;
@@ -71,7 +72,7 @@ public class VolcengineLlmTest {
         System.out.println(prompt.getImageUrl());
 
 
-        Message message = new ImagePrompt.TextAndImageMessage(prompt);
+        Message message = new HumanImageMessage(prompt);
         prompt.addMetadata("message", message);
 
         AiMessageResponse response = llm.chat(prompt);

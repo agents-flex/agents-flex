@@ -60,8 +60,8 @@ public class TencentLlmUtil {
                 map.put("Role", "tool");
                 map.put("Tool_call_id", ((ToolMessage) message).getToolCallId());
             }
-            if (message instanceof ImagePrompt.TextAndImageMessage) {
-                ImagePrompt prompt = ((ImagePrompt.TextAndImageMessage) message).getPrompt();
+            if (message instanceof HumanImageMessage) {
+                ImagePrompt prompt = ((HumanImageMessage) message).getPrompt();
                 List<Map<String, Object>> list = new ArrayList<>();
                 list.add(Maps.of("Type", "image_url").set("Text", prompt.getContent()).set("ImageUrl", Maps.of("Url", prompt.toUrl())));
                 map.put("Contents", list);
