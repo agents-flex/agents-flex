@@ -22,7 +22,7 @@ import com.agentsflex.core.llm.functions.Function;
 import com.agentsflex.core.llm.functions.Parameter;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.message.Message;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
@@ -79,6 +79,7 @@ public class ReActAgent {
     private String promptTemplate = DEFAULT_PROMPT_TEMPLATE;
     private ReActStepParser reActStepParser = ReActStepParser.DEFAULT; // 默认解析器
     private final HistoriesPrompt historiesPrompt;
+    private ReActMessageBuilder messageBuilder = new ReActMessageBuilder();
 
 
     // 是否继续执行当 JSON 解析出错时
@@ -196,6 +197,14 @@ public class ReActAgent {
         this.continueOnActionInvokeError = continueOnActionInvokeError;
     }
 
+    public ReActMessageBuilder getMessageBuilder() {
+        return messageBuilder;
+    }
+
+    public void setMessageBuilder(ReActMessageBuilder messageBuilder) {
+        this.messageBuilder = messageBuilder;
+    }
+
     /**
      * 运行 ReAct Agent 流程
      */
@@ -206,11 +215,7 @@ public class ReActAgent {
                 .replace("{tools}", toolsDescription)
                 .replace("{user_input}", userQuery);
 
-            HumanMessage message = new HumanMessage(prompt);
-            message.addMetadata("tools", functions);
-            message.addMetadata("user_input", userQuery);
-            message.addMetadata("type", "reActWrapper");
-
+            Message message = messageBuilder.buildStartMessage(prompt, functions, userQuery);
             historiesPrompt.addMessage(message);
 
             if (this.isStreamable()) {
@@ -334,13 +339,6 @@ public class ReActAgent {
     }
 
 
-    private String buildObservationString(ReActStep step, Object result) {
-        return "Action：" + step.getAction() + "\n" +
-            "Action Input：" + step.getActionInput() + "\n" +
-            "Action Result：" + result + "\n";
-    }
-
-
     private boolean processReActSteps(String content) {
         List<ReActStep> reActSteps = reActStepParser.parse(content);
         if (reActSteps.isEmpty()) {
@@ -370,26 +368,16 @@ public class ReActAgent {
                                 return false;
                             }
 
-                            String errorMsg = "JSON 解析失败: " + e.getMessage() + ". 原始内容: " + step.getActionInput();
-                            log.error(errorMsg, e);
-                            String observation = "Action：" + step.getAction() + "\n"
-                                + "Action Input：" + step.getActionInput() + "\n"
-                                + "Error：JSON 解析失败 - " + e.getMessage() + "\n"
-                                + "请检查你的 Action Input 格式是否正确，并纠正 JSON 内容重新生成响应。\n";
-                            HumanMessage humanMessage = new HumanMessage(observation + "请继续推理下一步。");
-                            humanMessage.addMetadata("type", "reActObservation");
-                            historiesPrompt.addMessage(humanMessage);
+                            Message message = messageBuilder.buildJsonParserErrorMessage(e, step);
+                            historiesPrompt.addMessage(message);
                             return true; // 继续让 AI 修正
                         }
 
                         Object result = function.invoke(parameters);
                         notifyOnActionEnd(step, result);
 
-                        String observation = buildObservationString(step, result);
-                        HumanMessage humanMessage = new HumanMessage(observation + "\n请继续推理下一步。");
-                        humanMessage.addMetadata("type", "reActObservation");
-
-                        historiesPrompt.addMessage(humanMessage);
+                        Message message = messageBuilder.buildObservationMessage(step, result);
+                        historiesPrompt.addMessage(message);
                         stepExecuted = true;
                     } catch (Exception e) {
                         log.error(e.toString(), e);
@@ -399,13 +387,8 @@ public class ReActAgent {
                             return false;
                         }
 
-                        // 将错误信息反馈给 AI，让其修正
-                        String observation = buildObservationString(step, "Error: " + e.getMessage()) + "\n"
-                            + "请根据错误信息调整参数并重新尝试。\n";
-                        HumanMessage humanMessage = new HumanMessage(observation + "请继续推理下一步。");
-                        humanMessage.addMetadata("type", "reActObservation");
-                        historiesPrompt.addMessage(humanMessage);
-
+                        Message message = messageBuilder.buildActionErrorMessage(step, e);
+                        historiesPrompt.addMessage(message);
                         return true;
                     }
                     break;
