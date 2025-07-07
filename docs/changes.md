@@ -1,5 +1,11 @@
 # Agents-Flex ChangeLog
 
+## v1.2.5 20250707
+- 新增：新增 Audio 多模态的支持
+- 新增：新增 ReActMessageBuilder，允许用户构建自定义的消息
+- 优化：feat: 修改 TextAndImageMessage 和 TextAndAudioMessage 为 HumanImageMessage 和 HumanAudioMessage
+- 修复：DeepseekLlm 无法自动注入，配置 factories 文件
+
 
 ## v1.2.4 20250701
 - 新增：在节点执行出错时，添加必要的错误日志输出
