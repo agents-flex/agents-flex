@@ -15,8 +15,10 @@
  */
 package com.agentsflex.core.chain;
 
+import java.util.Map;
+
 public interface NodeCondition {
 
-    boolean check(Chain chain, NodeContext context);
+    boolean check(Chain chain, NodeContext context, Map<String, Object> executeResult);
 
 }

@@ -15,8 +15,10 @@
  */
 package com.agentsflex.core.chain;
 
+import java.util.Map;
+
 public interface EdgeCondition {
 
-    boolean check(Chain chain, ChainEdge edge);
+    boolean check(Chain chain, ChainEdge edge, Map<String, Object> executeResult);
 
 }

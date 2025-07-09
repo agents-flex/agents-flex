@@ -71,7 +71,6 @@ public class JsConditionUtil {
         });
 
         // 添加 _chain 和 initMap 变量
-        variables.put("_chain", chain);
         variables.putAll(initMap);
 
         return variables;

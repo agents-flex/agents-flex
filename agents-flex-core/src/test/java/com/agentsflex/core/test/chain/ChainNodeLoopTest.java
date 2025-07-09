@@ -56,7 +56,7 @@ public class ChainNodeLoopTest {
         d.setId("d");
         d.setCondition(new NodeCondition() {
             @Override
-            public boolean check(Chain chain, NodeContext context) {
+            public boolean check(Chain chain, NodeContext context, Map<String, Object> executeResult) {
                 System.out.println("d check >>>> " + context.isUpstreamFullyExecuted());
                 return context.isUpstreamFullyExecuted();
             }
