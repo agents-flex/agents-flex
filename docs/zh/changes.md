@@ -1,5 +1,11 @@
 # Agents-Flex ChangeLog
 
+
+## v1.2.6 20250709
+- 新增: Chain 新增 getNodeExecuteResult 方法
+- 优化：优化重构 EdgeCondition 和 NodeCondition 方法
+
+
 ## v1.2.5 20250707
 - 新增：新增 Audio 多模态的支持
 - 新增：新增 ReActMessageBuilder，允许用户构建自定义的消息
