@@ -518,21 +518,46 @@ public class Chain extends ChainNode {
     }
 
 
+    /**
+     * 获取节点执行结果
+     *
+     * @param nodeId 节点ID
+     * @return 执行结果
+     */
+    public Map<String, Object> getNodeExecuteResult(String nodeId) {
+        Map<String, Object> all = getMemory().getAll();
+        Map<String, Object> result = new HashMap<>();
+        all.forEach((k, v) -> {
+            if (k.startsWith(nodeId)) {
+                String newKey = k.substring(nodeId.length() + 1);
+                result.put(newKey, v);
+            }
+        });
+        return result;
+    }
+
+
     protected void doExecuteNode(ExecuteNode executeNode) {
         if (this.getStatus() != ChainStatus.RUNNING) {
             return;
         }
         ChainNode currentNode = executeNode.currentNode;
         NodeContext nodeContext = getNodeContext(currentNode);
+
+        Map<String, Object> executeResult = null;
+
         try {
             onNodeExecuteBefore(nodeContext);
             nodeContext.recordTrigger(executeNode);
             NodeCondition nodeCondition = currentNode.getCondition();
-            if (nodeCondition != null && !nodeCondition.check(this, nodeContext)) {
-                return;
+            if (nodeCondition != null) {
+                ChainNode prevNode = executeNode.prevNode;
+                Map<String, Object> prevNodeExecuteResult = prevNode != null ? getNodeExecuteResult(prevNode.id) : Collections.emptyMap();
+                if (!nodeCondition.check(this, nodeContext, prevNodeExecuteResult)) {
+                    return;
+                }
             }
 
-            Map<String, Object> executeResult = null;
             try {
                 ChainContext.setNode(currentNode);
                 notifyEvent(new NodeStartEvent(this, currentNode));
@@ -575,21 +600,21 @@ public class Chain extends ChainNode {
 
         // 继续执行下一个节点
         if (!currentNode.isLoopEnable()) {
-            doExecuteNextNodes(currentNode);
+            doExecuteNextNodes(currentNode, executeResult);
             return;
         }
 
 
         // 检查是否达到最大循环次数
         if (currentNode.getMaxLoopCount() > 0 && nodeContext.getExecuteCount() >= currentNode.getMaxLoopCount()) {
-            doExecuteNextNodes(currentNode);
+            doExecuteNextNodes(currentNode, executeResult);
             return;
         }
 
         // 检查跳出条件
         NodeCondition breakCondition = currentNode.getLoopBreakCondition();
-        if (breakCondition != null && breakCondition.check(this, nodeContext)) {
-            doExecuteNextNodes(currentNode);
+        if (breakCondition != null && breakCondition.check(this, nodeContext, executeResult)) {
+            doExecuteNextNodes(currentNode, executeResult);
             return;
         }
 
@@ -612,9 +637,10 @@ public class Chain extends ChainNode {
     /**
      * 执行后续节点（可能有多个）
      *
-     * @param currentNode 当前节点
+     * @param currentNode   当前节点
+     * @param executeResult
      */
-    private void doExecuteNextNodes(ChainNode currentNode) {
+    private void doExecuteNextNodes(ChainNode currentNode, Map<String, Object> executeResult) {
         List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
         if (CollectionUtil.hasItems(outwardEdges)) {
             List<ExecuteNode> nextExecuteNodes = new ArrayList<>(outwardEdges.size());
@@ -624,7 +650,7 @@ public class Chain extends ChainNode {
                     continue;
                 }
                 EdgeCondition condition = chainEdge.getCondition();
-                if (condition == null || condition.check(this, chainEdge)) {
+                if (condition == null || condition.check(this, chainEdge, executeResult)) {
                     nextExecuteNodes.add(new ExecuteNode(nextNode, currentNode, chainEdge.getId()));
                 }
             }
