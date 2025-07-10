@@ -13,10 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain;
+package com.agentsflex.core.chain.listener;
 
-import java.util.Map;
+import com.agentsflex.core.chain.Chain;
+import com.agentsflex.core.chain.ChainEvent;
 
-public interface NodeErrorListener {
-    void onError(Throwable error, ChainNode node, Map<String, Object> nodeResult, Chain chain);
+public interface ChainEventListener {
+    void onEvent(ChainEvent event, Chain chain);
 }

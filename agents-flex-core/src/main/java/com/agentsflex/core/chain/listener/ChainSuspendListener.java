@@ -13,8 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain;
+package com.agentsflex.core.chain.listener;
 
-public interface ChainEventListener {
-    void onEvent(ChainEvent event, Chain chain);
+import com.agentsflex.core.chain.Chain;
+
+public interface ChainSuspendListener {
+    void onSuspend(Chain chain);
 }

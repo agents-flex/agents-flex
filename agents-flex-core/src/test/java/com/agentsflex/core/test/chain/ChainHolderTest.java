@@ -1,6 +1,7 @@
 package com.agentsflex.core.test.chain;
 
 import com.agentsflex.core.chain.*;
+import com.agentsflex.core.chain.listener.ChainSuspendListener;
 import com.agentsflex.core.util.Maps;
 import org.junit.Test;
 

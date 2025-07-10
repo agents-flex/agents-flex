@@ -13,7 +13,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.chain;
+package com.agentsflex.core.chain.listener;
+
+import com.agentsflex.core.chain.Chain;
 
 public interface ChainErrorListener {
     void onError(Throwable error, Chain chain);
