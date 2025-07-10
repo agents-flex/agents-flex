@@ -434,6 +434,7 @@ public class Chain extends ChainNode {
             return Collections.emptyMap();
         }
         Map<String, Object> variables = new HashMap<>();
+        List<Parameter> suspendParameters = null;
         for (Parameter parameter : parameters) {
             RefType refType = parameter.getRefType();
             Object value;
@@ -456,9 +457,10 @@ public class Chain extends ChainNode {
             if (parameter.isRequired() &&
                 (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
                 if (refType == RefType.INPUT) {
-                    this.addSuspendForParameter(parameter);
-                    this.suspend(node);
-                    throw new ChainSuspendException(node.getClass() + " Missing required parameter:" + parameter.getName());
+                    if (suspendParameters == null) {
+                        suspendParameters = new ArrayList<>();
+                    }
+                    suspendParameters.add(parameter);
                 }
                 // else if (refType == RefType.FIXED || refType == RefType.REF) {
                 else {
@@ -477,6 +479,13 @@ public class Chain extends ChainNode {
 
             variables.put(parameter.getName(), value);
         }
+
+        if (suspendParameters != null && !suspendParameters.isEmpty()) {
+            this.setSuspendForParameters(suspendParameters);
+            this.suspend(node);
+            throw new ChainSuspendException(node.getClass() + " Missing required parameter:" + suspendParameters.get(0).getName());
+        }
+
         return variables;
     }
 
@@ -847,14 +856,14 @@ public class Chain extends ChainNode {
         this.suspendForParameters = suspendForParameters;
     }
 
-    public void addSuspendForParameter(Parameter suspendForParameter) {
+    public synchronized void addSuspendForParameter(Parameter suspendForParameter) {
         if (this.suspendForParameters == null) {
             this.suspendForParameters = new ArrayList<>();
         }
         this.suspendForParameters.add(suspendForParameter);
     }
 
-    public void suspend(ChainNode node) {
+    public synchronized void suspend(ChainNode node) {
         try {
             suspendNodes.putIfAbsent(node.getId(), node);
         } finally {
