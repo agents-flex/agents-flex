@@ -27,15 +27,18 @@ public class QLExpressExecNode extends CodeNode {
 
     @Override
     protected Map<String, Object> executeCode(String code, Chain chain) {
-        Map<String, Object> result = new HashMap<>();
+
         ExpressRunner runner = new ExpressRunner();
         DefaultContext<String, Object> context = new DefaultContext<>();
 
         Map<String, Object> parameterValues = chain.getParameterValues(this);
         if (parameterValues != null) context.putAll(parameterValues);
 
-        context.put("_chain", chain);
+        Map<String, Object> result = new HashMap<>();
         context.put("_result", result);
+        context.put("_chain", chain);
+        context.put("_context", chain.getNodeContext(this));
+
 
         try {
             runner.execute(code, context, null, true, false);

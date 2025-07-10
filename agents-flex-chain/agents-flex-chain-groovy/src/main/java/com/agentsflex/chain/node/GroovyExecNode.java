@@ -37,6 +37,7 @@ public class GroovyExecNode extends CodeNode {
         Map<String, Object> result = new HashMap<>();
         binding.setVariable("_result", result);
         binding.setVariable("_chain", chain);
+        binding.setVariable("_context", chain.getNodeContext(this));
 
         GroovyShell shell = new GroovyShell(binding);
         shell.evaluate(code);

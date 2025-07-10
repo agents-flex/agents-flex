@@ -55,12 +55,11 @@ public class JsExecNode extends CodeNode {
                 }
             }
 
-            // 创建结果容器
             Map<String, Object> result = new HashMap<>();
-
-            // 注入上下文对象
-            bindings.putMember("_chain", chain);
             bindings.putMember("_result", result);
+            bindings.putMember("_chain", chain);
+            bindings.putMember("_context", chain.getNodeContext(this));
+
 
             // 执行脚本
             context.eval("js", code);
