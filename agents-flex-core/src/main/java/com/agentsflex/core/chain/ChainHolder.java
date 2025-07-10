@@ -41,7 +41,7 @@ public class ChainHolder implements Serializable {
 
     private Map<String, NodeContext> nodeContexts;
 
-    protected Map<String,ChainNode> suspendNodes=new ConcurrentHashMap<>();
+    protected Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
     private List<Parameter> suspendForParameters;
     private ChainStatus status;
     private String message;

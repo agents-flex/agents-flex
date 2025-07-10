@@ -918,6 +918,14 @@ public class Chain extends ChainNode {
         this.phaser = new Phaser(1);
     }
 
+    public String toJSON() {
+        return ChainHolder.fromChain(this).toJSON();
+    }
+
+    public static Chain fromJSON(String jsonString) {
+        return ChainHolder.fromJSON(jsonString).toChain();
+    }
+
     @Override
     public String toString() {
         return "Chain{" +
