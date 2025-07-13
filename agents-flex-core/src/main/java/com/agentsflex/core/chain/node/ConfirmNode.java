@@ -53,49 +53,64 @@ public class ConfirmNode extends BaseNode {
     }
 
     public void setConfirms(List<ConfirmParameter> confirms) {
+        if (confirms != null) {
+            for (ConfirmParameter confirm : confirms) {
+                confirm.setRefType(RefType.INPUT);
+                confirm.setName(confirm.getName());
+            }
+        }
         this.confirms = confirms;
     }
 
 
     @Override
     protected Map<String, Object> execute(Chain chain) {
-        // “确认 和 取消” 的参数
-        ConfirmParameter parameter = new ConfirmParameter();
-        parameter.setRefType(RefType.INPUT);
-        parameter.setId("confirm");
-        parameter.setName("confirm__" + randomUUID);
-        parameter.setRequired(true);
 
-        List<Object> inputData = new ArrayList<>();
-        inputData.add("confirm");
-        inputData.add("cancel");
-
-        parameter.setInputData(inputData);
-        parameter.setInputDataType("text");
-        parameter.setInputActionType("confirm_cancel");
-
-        List<Parameter> parameters = new ArrayList<>();
-        parameters.add(parameter);
+        List<ConfirmParameter> confirmParameters = new ArrayList<>();
+        addConfirmParameter(confirmParameters);
 
         if (confirms != null) {
             for (ConfirmParameter confirm : confirms) {
-                confirm.setRefType(RefType.INPUT);
-                confirm.setName(confirm.getName() + "__" + randomUUID);
-                parameters.add(confirm);
+                ConfirmParameter clone = confirm.clone();
+                clone.setName(confirm.getName() + "__" + randomUUID);
+                clone.setRefType(RefType.INPUT);
+                confirmParameters.add(clone);
             }
         }
 
         Map<String, Object> values;
         try {
-            values = chain.getParameterValues(this, parameters);
+            values = chain.getParameterValues(this, confirmParameters);
         } catch (ChainSuspendException e) {
             chain.setMessage(message);
+
+            if (confirms != null) {
+
+                List<Parameter> newParameters = new ArrayList<>();
+                for (ConfirmParameter confirm : confirms) {
+                    Parameter clone = confirm.clone();
+                    clone.setName(confirm.getName() + "__" + randomUUID);
+                    clone.setRefType(RefType.REF); //固定为 REF
+                    newParameters.add(clone);
+                }
+
+                Map<String, Object> parameterValues = chain.getParameterValues(this, newParameters, null, true);
+
+                // 设置 inputData，方便前端给用户进行选择
+                for (ConfirmParameter confirmParameter : confirmParameters) {
+                    if (confirmParameter.getSelectionData() == null) {
+                        confirmParameter.setSelectionDataObject(parameterValues.get(confirmParameter.getName()));
+                    }
+                }
+            }
+
             throw e;
         }
 
+
         Map<String, Object> results = new HashMap<>(values.size());
         values.forEach((key, value) -> {
-            int index = key.indexOf("__");
+            int index = key.lastIndexOf("__");
             if (index >= 0) {
                 results.put(key.substring(0, index), value);
             } else {
@@ -107,45 +122,103 @@ public class ConfirmNode extends BaseNode {
     }
 
 
-    public static class ConfirmParameter extends Parameter {
+    private void addConfirmParameter(List<ConfirmParameter> parameters) {
+        // “确认 和 取消” 的参数
+        ConfirmParameter parameter = new ConfirmParameter();
+        parameter.setRefType(RefType.INPUT);
+        parameter.setId("confirm");
+        parameter.setName("confirm__" + randomUUID);
+        parameter.setRequired(true);
+
+        List<Object> selectionData = new ArrayList<>();
+        selectionData.add("yes");
+        selectionData.add("no");
+
+        parameter.setSelectionData(selectionData);
+        parameter.setSelectionDataType("text");
+        parameter.setSelectionMode("confirm");
+        parameters.add(parameter);
+    }
+
+
+    public static class ConfirmParameter extends Parameter implements Cloneable {
 
         /**
-         * 输入数据，进在 refType 为 INPUT 时有效
+         * 用户需要确认选择的数据列表，进在 refType 为 INPUT 时有效
          */
-        protected List<Object> inputData;
+        protected List<Object> selectionData;
 
         /**
          * 数据类型：文字内容、图片、音频、视频、文件
          */
-        protected String inputDataType;
+        protected String selectionDataType;
 
         /**
-         * 用户输入的选择模式，例如："single" 或 "multiple" 或者 “confirm_cancel”
+         * 用户输入的选择模式，例如："single" 或 "multiple" 或者 “confirm”
          */
-        protected String inputActionType;
+        protected String selectionMode;
 
-        public List<Object> getInputData() {
-            return inputData;
+        public List<Object> getSelectionData() {
+            return selectionData;
         }
 
-        public void setInputData(List<Object> inputData) {
-            this.inputData = inputData;
+        public void setSelectionData(List<Object> selectionData) {
+            this.selectionData = selectionData;
         }
 
-        public String getInputDataType() {
-            return inputDataType;
+        public void setSelectionDataObject(Object selectionData) {
+            if (selectionData == null) {
+                this.selectionData = null;
+            } else if (selectionData instanceof Collection) {
+                this.selectionData = new ArrayList<>();
+                this.selectionData.addAll((Collection<?>) selectionData);
+            } else if (selectionData.getClass().isArray()) {
+                this.selectionData = new ArrayList<>();
+                this.selectionData.addAll(Arrays.asList((Object[]) selectionData));
+            } else {
+                this.selectionData = new ArrayList<>(1);
+                this.selectionData.add(selectionData);
+            }
         }
 
-        public void setInputDataType(String inputDataType) {
-            this.inputDataType = inputDataType;
+        public String getSelectionDataType() {
+            return selectionDataType;
         }
 
-        public String getInputActionType() {
-            return inputActionType;
+        public void setSelectionDataType(String selectionDataType) {
+            this.selectionDataType = selectionDataType;
         }
 
-        public void setInputActionType(String inputActionType) {
-            this.inputActionType = inputActionType;
+        public String getSelectionMode() {
+            return selectionMode;
+        }
+
+        public void setSelectionMode(String selectionMode) {
+            this.selectionMode = selectionMode;
+        }
+
+        @Override
+        public String toString() {
+            return "ConfirmParameter{" +
+                "selectionData=" + selectionData +
+                ", selectionDataType='" + selectionDataType + '\'' +
+                ", selectionMode='" + selectionMode + '\'' +
+                ", id='" + id + '\'' +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", dataType=" + dataType +
+                ", ref='" + ref + '\'' +
+                ", refType=" + refType +
+                ", value='" + value + '\'' +
+                ", required=" + required +
+                ", defaultValue='" + defaultValue + '\'' +
+                ", children=" + children +
+                '}';
+        }
+
+        @Override
+        public ConfirmParameter clone() {
+            return (ConfirmParameter) super.clone();
         }
     }
 

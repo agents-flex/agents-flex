@@ -6,6 +6,7 @@ import com.agentsflex.core.chain.node.ConfirmNode;
 import com.agentsflex.core.util.Maps;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,19 @@ public class ConfirmNodeTest {
             @Override
             protected Map<String, Object> execute(Chain chain) {
                 System.out.println("b-->>execute");
-                return Maps.of();
+
+                Map<String, Object> image1 = new HashMap<>();
+                image1.put("src", "https://image1");
+
+                Map<String, Object> image2 = new HashMap<>();
+                image2.put("src", "https://image2");
+
+                List<Map<String, Object>> images = new ArrayList<>();
+                images.add(image1);
+                images.add(image2);
+
+
+                return Maps.of("images", images);
             }
         };
         b.setId("b");
@@ -41,6 +54,16 @@ public class ConfirmNodeTest {
         ConfirmNode c = new ConfirmNode();
         c.setMessage("请确认 xx 是否正确？");
         c.setId("c");
+
+        ConfirmNode.ConfirmParameter p = new ConfirmNode.ConfirmParameter();
+        p.setName("image");
+        p.setRef("b.images.src");
+        p.setRequired(true);
+
+        List<ConfirmNode.ConfirmParameter> confirms = new ArrayList<>();
+        confirms.add(p);
+        c.setConfirms(confirms);
+
         chain.addNode(c);
 
         ChainNode d = new ChainNode() {
@@ -79,7 +102,7 @@ public class ConfirmNodeTest {
         try {
             // A→B→C（ConfirmNode）→D
             chain.executeForResult(new HashMap<>());
-        }catch (ChainSuspendException e){
+        } catch (ChainSuspendException e) {
             List<Parameter> suspendForParameters = chain.getSuspendForParameters();
             System.out.println("suspendForParameters:" + suspendForParameters);
 
@@ -87,14 +110,15 @@ public class ConfirmNodeTest {
             String json = chain.toJSON();
             Chain newChain = Chain.fromJSON(json);
 
-            Map<String,Object> data = new HashMap<>();
+            Map<String, Object> data = new HashMap<>();
             for (Parameter parameter : suspendForParameters) {
-                data.put(parameter.getName(), "yes");
+                if (parameter instanceof ConfirmNode.ConfirmParameter) {
+                    data.put(parameter.getName(), ((ConfirmNode.ConfirmParameter) parameter).getSelectionData().get(0));
+                }
             }
             newChain.resume(data);
             System.out.println("result:: " + newChain.getMemory().getAll());
         }
-
 
     }
 }
