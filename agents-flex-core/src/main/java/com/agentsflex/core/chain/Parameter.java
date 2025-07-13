@@ -16,10 +16,11 @@
 package com.agentsflex.core.chain;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class Parameter implements Serializable {
+public class Parameter implements Serializable, Cloneable {
     protected String id;
     protected String name;
     protected String description;
@@ -161,5 +162,21 @@ public class Parameter implements Serializable {
             ", required=" + required +
             ", children=" + children +
             '}';
+    }
+
+    @Override
+    public Parameter clone() {
+        try {
+            Parameter clone = (Parameter) super.clone();
+            if (this.children != null) {
+                clone.children = new ArrayList<>(this.children.size());
+                for (Parameter child : this.children) {
+                    clone.children.add(child.clone()); // 递归克隆
+                }
+            }
+            return clone;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
     }
 }
