@@ -24,8 +24,21 @@ import java.util.*;
 
 public class ConfirmNode extends BaseNode {
 
+    private String randomUUID;
     private String message;
     private List<ConfirmParameter> confirms;
+
+    public ConfirmNode() {
+        this.randomUUID = UUID.randomUUID().toString();
+    }
+
+    public String getRandomUUID() {
+        return randomUUID;
+    }
+
+    public void setRandomUUID(String randomUUID) {
+        this.randomUUID = randomUUID;
+    }
 
     public String getMessage() {
         return message;
@@ -46,12 +59,11 @@ public class ConfirmNode extends BaseNode {
 
     @Override
     protected Map<String, Object> execute(Chain chain) {
-
         // “确认 和 取消” 的参数
         ConfirmParameter parameter = new ConfirmParameter();
         parameter.setRefType(RefType.INPUT);
         parameter.setId("confirm");
-        parameter.setName("confirm__" + UUID.randomUUID());
+        parameter.setName("confirm__" + randomUUID);
         parameter.setRequired(true);
 
         List<Object> inputData = new ArrayList<>();
@@ -68,7 +80,7 @@ public class ConfirmNode extends BaseNode {
         if (confirms != null) {
             for (ConfirmParameter confirm : confirms) {
                 confirm.setRefType(RefType.INPUT);
-                confirm.setName(confirm.getName() + "__" + UUID.randomUUID());
+                confirm.setName(confirm.getName() + "__" + randomUUID);
                 parameters.add(confirm);
             }
         }
