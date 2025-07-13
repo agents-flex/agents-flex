@@ -426,11 +426,16 @@ public class Chain extends ChainNode {
         return getParameterValues(node, node.getParameters());
     }
 
-    public Map<String, Object> getParameterValues(ChainNode node, List<Parameter> parameters) {
+    public Map<String, Object> getParameterValues(ChainNode node, List<? extends Parameter> parameters) {
         return getParameterValues(node, parameters, null);
     }
 
-    public Map<String, Object> getParameterValues(ChainNode node, List<Parameter> parameters, Map<String, Object> formatArgs) {
+    public Map<String, Object> getParameterValues(ChainNode node, List<? extends Parameter> parameters, Map<String, Object> formatArgs) {
+        return getParameterValues(node, parameters, formatArgs, false);
+    }
+
+    public Map<String, Object> getParameterValues(ChainNode node, List<? extends Parameter> parameters, Map<String, Object> formatArgs
+        , boolean ignoreRequired) {
         if (parameters == null || parameters.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -462,9 +467,10 @@ public class Chain extends ChainNode {
                         suspendParameters = new ArrayList<>();
                     }
                     suspendParameters.add(parameter);
+                    continue;
                 }
                 // else if (refType == RefType.FIXED || refType == RefType.REF) {
-                else {
+                else if (!ignoreRequired) {
                     throw new ChainException(node.getName() + " Missing required parameter:" + parameter.getName());
                 }
             }
