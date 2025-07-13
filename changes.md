@@ -1,5 +1,12 @@
 # Agents-Flex ChangeLog
 
+## v1.2.7 20250713
+- 新增：代码执行节点添加 “_context” 对象
+- 新增：新增 Chain.toJSON() 和 Chain.fromJSON() 方法
+- 新增：新增 ConfirmNode 用于支持用户手动确认的场景
+- 优化：优化 Chain.getParameterValues 方法
+- 优化：移动 Chain 监听器的相关类到 listener 包里去
+
 
 ## v1.2.6 20250709
 - 新增: Chain 新增 getNodeExecuteResult 方法
