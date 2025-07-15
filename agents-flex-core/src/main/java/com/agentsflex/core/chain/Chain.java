@@ -434,8 +434,12 @@ public class Chain extends ChainNode {
         return getParameterValues(node, parameters, formatArgs, false);
     }
 
+    private boolean isNullOrBlank(Object value) {
+        return value instanceof String && StringUtil.noText((String) value);
+    }
+
     public Map<String, Object> getParameterValues(ChainNode node, List<? extends Parameter> parameters, Map<String, Object> formatArgs
-        , boolean ignoreRequired) {
+        , boolean getValueOnly) {
         if (parameters == null || parameters.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -460,23 +464,24 @@ public class Chain extends ChainNode {
                 value = parameter.getDefaultValue();
             }
 
-            if (parameter.isRequired() &&
-                (value == null || (value instanceof String && StringUtil.noText((String) value)))) {
-                if (refType == RefType.INPUT) {
+            if (refType == RefType.INPUT && isNullOrBlank(value)) {
+                if (!getValueOnly) {
                     if (suspendParameters == null) {
                         suspendParameters = new ArrayList<>();
                     }
                     suspendParameters.add(parameter);
                     continue;
                 }
-                // else if (refType == RefType.FIXED || refType == RefType.REF) {
-                else if (!ignoreRequired) {
+            }
+
+            if (parameter.isRequired() && isNullOrBlank(value)) {
+                if (!getValueOnly) {
                     throw new ChainException(node.getName() + " Missing required parameter:" + parameter.getName());
                 }
             }
 
-            if (value == null || value instanceof String) {
-                value = value == null ? "" : ((String) value).trim();
+            if (value instanceof String) {
+                value = ((String) value).trim();
                 if (parameter.getDataType() == DataType.Boolean) {
                     value = "true".equalsIgnoreCase((String) value) || "1".equalsIgnoreCase((String) value);
                 } else if (parameter.getDataType() == DataType.Number) {
