@@ -495,7 +495,20 @@ public class Chain extends ChainNode {
         if (suspendParameters != null && !suspendParameters.isEmpty()) {
             this.setSuspendForParameters(suspendParameters);
             this.suspend(node);
-            throw new ChainSuspendException(node.getClass() + " Missing required parameter:" + suspendParameters.get(0).getName());
+
+            // 构建参数名称列表
+            String missingParams = suspendParameters.stream()
+                .map(Parameter::getName)
+                .collect(Collectors.joining("', '", "'", "'"));
+
+            String errorMessage = String.format(
+                "Node '%s' (type: %s) is suspended. Waiting for input parameters: %s.",
+                StringUtil.getFirstWithText(node.getName(), node.getId()),
+                node.getClass().getSimpleName(),
+                missingParams
+            );
+
+            throw new ChainSuspendException(errorMessage);
         }
 
         return variables;
