@@ -1,5 +1,13 @@
 # Agents-Flex ChangeLog
 
+## v1.2.8 20250715
+- 新增: ReActAgent 添加 ChatOptions 的设置能力
+- 新增: ConfirmParameter 添加更多的配置参数支持
+- 优化: 优化 getParameterValues 的错误信息
+- 优化: 移除 chain 非必要的 error 日志
+- 优化: 优化 Chain.getParameterValues
+
+
 ## v1.2.7 20250713
 - 新增：代码执行节点添加 “_context” 对象
 - 新增：新增 Chain.toJSON() 和 Chain.fromJSON() 方法
