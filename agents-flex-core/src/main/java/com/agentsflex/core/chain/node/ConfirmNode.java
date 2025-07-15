@@ -148,6 +148,16 @@ public class ConfirmNode extends BaseNode {
         protected List<Object> selectionData;
 
         /**
+         * 用户界面上显示的提示文字，用于引导用户进行选择
+         */
+        protected String formLabel;
+
+        /**
+         * 用户界面上显示的描述文字，用于引导用户进行选择
+         */
+        protected String formDescription;
+
+        /**
          * 数据类型：文字内容、图片、音频、视频、文件
          */
         protected String selectionDataType;
@@ -156,6 +166,7 @@ public class ConfirmNode extends BaseNode {
          * 用户输入的选择模式，例如："single" 或 "multiple" 或者 “confirm”
          */
         protected String selectionMode;
+
 
         public List<Object> getSelectionData() {
             return selectionData;
@@ -180,6 +191,22 @@ public class ConfirmNode extends BaseNode {
             }
         }
 
+        public String getFormLabel() {
+            return formLabel;
+        }
+
+        public void setFormLabel(String formLabel) {
+            this.formLabel = formLabel;
+        }
+
+        public String getFormDescription() {
+            return formDescription;
+        }
+
+        public void setFormDescription(String formDescription) {
+            this.formDescription = formDescription;
+        }
+
         public String getSelectionDataType() {
             return selectionDataType;
         }
@@ -196,10 +223,13 @@ public class ConfirmNode extends BaseNode {
             this.selectionMode = selectionMode;
         }
 
+
         @Override
         public String toString() {
             return "ConfirmParameter{" +
                 "selectionData=" + selectionData +
+                ", formLabel='" + formLabel + '\'' +
+                ", formDescription='" + formDescription + '\'' +
                 ", selectionDataType='" + selectionDataType + '\'' +
                 ", selectionMode='" + selectionMode + '\'' +
                 ", id='" + id + '\'' +
