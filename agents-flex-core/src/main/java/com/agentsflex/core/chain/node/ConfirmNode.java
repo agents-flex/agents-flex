@@ -85,7 +85,6 @@ public class ConfirmNode extends BaseNode {
             chain.setMessage(message);
 
             if (confirms != null) {
-
                 List<Parameter> newParameters = new ArrayList<>();
                 for (ConfirmParameter confirm : confirms) {
                     Parameter clone = confirm.clone();
