@@ -595,7 +595,6 @@ public class Chain extends ChainNode {
                     this.executeResult = executeResult;
                 }
             } catch (Throwable error) {
-                log.error(error.toString(), error);
                 currentNode.setNodeStatus(ChainNodeStatus.ERROR);
                 notifyNodeError(error, currentNode, executeResult);
                 throw error;
