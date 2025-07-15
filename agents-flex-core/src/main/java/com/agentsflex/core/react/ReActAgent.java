@@ -16,6 +16,7 @@
 package com.agentsflex.core.react;
 
 import com.agentsflex.core.llm.ChatContext;
+import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.StreamResponseListener;
 import com.agentsflex.core.llm.functions.Function;
@@ -79,6 +80,7 @@ public class ReActAgent {
     private String promptTemplate = DEFAULT_PROMPT_TEMPLATE;
     private ReActStepParser reActStepParser = ReActStepParser.DEFAULT; // 默认解析器
     private final HistoriesPrompt historiesPrompt;
+    private ChatOptions chatOptions = ChatOptions.DEFAULT;
     private ReActMessageBuilder messageBuilder = new ReActMessageBuilder();
 
 
@@ -205,6 +207,14 @@ public class ReActAgent {
         this.messageBuilder = messageBuilder;
     }
 
+    public ChatOptions getChatOptions() {
+        return chatOptions;
+    }
+
+    public void setChatOptions(ChatOptions chatOptions) {
+        this.chatOptions = chatOptions;
+    }
+
     /**
      * 运行 ReAct Agent 流程
      */
@@ -232,7 +242,7 @@ public class ReActAgent {
 
     private void startNextReactStepNormal() {
         for (int i = 0; i < maxIterations; i++) {
-            AiMessageResponse response = llm.chat(historiesPrompt);
+            AiMessageResponse response = llm.chat(historiesPrompt, chatOptions);
             String content = response.getMessage().getContent();
             historiesPrompt.addMessage(new AiMessage(content));
 
@@ -307,7 +317,7 @@ public class ReActAgent {
             public void onFailure(ChatContext context, Throwable throwable) {
                 notifyOnError((Exception) throwable);
             }
-        });
+        }, chatOptions);
     }
 
 
