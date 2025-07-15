@@ -435,7 +435,7 @@ public class Chain extends ChainNode {
     }
 
     private boolean isNullOrBlank(Object value) {
-        return value instanceof String && StringUtil.noText((String) value);
+        return value == null || value instanceof String && StringUtil.noText((String) value);
     }
 
     public Map<String, Object> getParameterValues(ChainNode node, List<? extends Parameter> parameters, Map<String, Object> formatArgs
