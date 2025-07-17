@@ -74,6 +74,9 @@ public class ConfirmNodeTest {
             }
         };
         d.setId("d");
+//        d.setLoopEnable(true);
+//        d.setMaxLoopCount(3);
+//        d.setLoopIntervalMs(1000L * 5);
         chain.addNode(d);
 
         ChainEdge ab = new ChainEdge();
@@ -108,6 +111,7 @@ public class ConfirmNodeTest {
 
 
             String json = chain.toJSON();
+            System.out.println("json:" + json);
             Chain newChain = Chain.fromJSON(json);
 
             Map<String, Object> data = new HashMap<>();

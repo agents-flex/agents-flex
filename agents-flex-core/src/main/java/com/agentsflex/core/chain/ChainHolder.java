@@ -16,10 +16,18 @@
 package com.agentsflex.core.chain;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.parser.DefaultJSONParser;
 import com.alibaba.fastjson.parser.Feature;
+import com.alibaba.fastjson.parser.ParserConfig;
+import com.alibaba.fastjson.parser.deserializer.ObjectDeserializer;
+import com.alibaba.fastjson.serializer.JSONSerializer;
+import com.alibaba.fastjson.serializer.ObjectSerializer;
+import com.alibaba.fastjson.serializer.SerializeConfig;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,11 +85,15 @@ public class ChainHolder implements Serializable {
 
 
     public static ChainHolder fromJSON(String jsonString) {
-        return JSON.parseObject(jsonString, ChainHolder.class, Feature.SupportAutoType);
+        ParserConfig config = new ParserConfig();
+        config.putDeserializer(Chain.class, new ChainDeserializer());
+        return JSON.parseObject(jsonString, ChainHolder.class, config, Feature.SupportAutoType);
     }
 
     public String toJSON() {
-        return JSON.toJSONString(this, SerializerFeature.WriteClassName);
+        SerializeConfig config = new SerializeConfig();
+        config.put(Chain.class, new ChainSerializer());
+        return JSON.toJSONString(this, config, SerializerFeature.WriteClassName);
     }
 
     public Chain toChain() {
@@ -191,6 +203,27 @@ public class ChainHolder implements Serializable {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public static class ChainSerializer implements ObjectSerializer {
+        @Override
+        public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+            if (object == null) {
+                serializer.writeNull();
+                return;
+            }
+            Chain chain = (Chain) object;
+            serializer.write(chain.toJSON());
+        }
+    }
+
+    public static class ChainDeserializer implements ObjectDeserializer {
+        @Override
+        public <T> T deserialze(DefaultJSONParser parser, Type type, Object fieldName) {
+            String value = parser.parseObject(String.class);
+            //noinspection unchecked
+            return (T) Chain.fromJSON(value);
+        }
     }
 
     @Override
