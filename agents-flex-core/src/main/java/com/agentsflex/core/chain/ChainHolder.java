@@ -31,7 +31,6 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class ChainHolder implements Serializable {
 
@@ -39,8 +38,8 @@ public class ChainHolder implements Serializable {
     private String name;
     private String description;
 
-    private ChainHolder parent;
-    private List<ChainHolder> children;
+//    private ChainHolder parent;
+//    private List<ChainHolder> children;
 
     private List<ChainNode> nodes;
     private List<ChainEdge> edges;
@@ -64,9 +63,9 @@ public class ChainHolder implements Serializable {
         holder.name = chain.getName();
         holder.description = chain.getDescription();
 
-        holder.parent = chain.getParent() == null ? null : fromChain(chain.getParent());
-        holder.children = chain.getChildren() == null ? null : chain.getChildren().stream().map(ChainHolder::fromChain)
-            .collect(Collectors.toList());
+//        holder.parent = chain.getParent() == null ? null : fromChain(chain.getParent());
+//        holder.children = chain.getChildren() == null ? null : chain.getChildren().stream().map(ChainHolder::fromChain)
+//            .collect(Collectors.toList());
 
         holder.nodes = chain.getNodes();
         holder.edges = chain.getEdges();
@@ -125,21 +124,21 @@ public class ChainHolder implements Serializable {
         this.description = description;
     }
 
-    public ChainHolder getParent() {
-        return parent;
-    }
-
-    public void setParent(ChainHolder parent) {
-        this.parent = parent;
-    }
-
-    public List<ChainHolder> getChildren() {
-        return children;
-    }
-
-    public void setChildren(List<ChainHolder> children) {
-        this.children = children;
-    }
+//    public ChainHolder getParent() {
+//        return parent;
+//    }
+//
+//    public void setParent(ChainHolder parent) {
+//        this.parent = parent;
+//    }
+//
+//    public List<ChainHolder> getChildren() {
+//        return children;
+//    }
+//
+//    public void setChildren(List<ChainHolder> children) {
+//        this.children = children;
+//    }
 
     public List<ChainNode> getNodes() {
         return nodes;
@@ -232,8 +231,8 @@ public class ChainHolder implements Serializable {
             "id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", description='" + description + '\'' +
-            ", parent=" + parent +
-            ", children=" + children +
+//            ", parent=" + parent +
+//            ", children=" + children +
             ", nodes=" + nodes +
             ", edges=" + edges +
             ", executeResult=" + executeResult +
