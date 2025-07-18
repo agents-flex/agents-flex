@@ -35,8 +35,6 @@ import java.util.stream.Collectors;
 
 public class Chain extends ChainNode {
     private static final Logger log = LoggerFactory.getLogger(Chain.class);
-    protected Chain parent;
-    protected List<Chain> children;
 
     protected List<ChainNode> nodes;
     protected List<ChainEdge> edges;
@@ -69,9 +67,6 @@ public class Chain extends ChainNode {
         this.id = holder.getId();
         this.name = holder.getName();
         this.description = holder.getDescription();
-        this.parent = holder.getParent() == null ? null : new Chain(holder.getParent());
-        this.children = holder.getChildren() == null ? null : holder.getChildren().stream().map(Chain::new)
-            .collect(Collectors.toList());
 
         this.nodes = holder.getNodes();
         this.edges = holder.getEdges();
@@ -176,21 +171,9 @@ public class Chain extends ChainNode {
         if (chainNode.getId() == null) {
             chainNode.setId(UUID.randomUUID().toString());
         }
-
-        if (chainNode instanceof Chain) {
-            ((Chain) chainNode).parent = this;
-            this.addChild((Chain) chainNode);
-        }
-
         nodes.add(chainNode);
     }
 
-    private void addChild(Chain child) {
-        if (this.children == null) {
-            this.children = new ArrayList<>();
-        }
-        this.children.add(child);
-    }
 
     public ChainStatus getStatus() {
         return status;
@@ -209,24 +192,6 @@ public class Chain extends ChainNode {
         }
     }
 
-
-    public Chain getParent() {
-        return parent;
-    }
-
-    public void setParent(Chain parent) {
-        this.parent = parent;
-    }
-
-    public List<Chain> getChildren() {
-        return children;
-    }
-
-    public void setChildren(List<Chain> children) {
-        this.children = children;
-    }
-
-
     public void notifyEvent(ChainEvent event) {
         for (Map.Entry<Class<?>, List<ChainEventListener>> entry : eventListeners.entrySet()) {
             if (entry.getKey().isInstance(event)) {
@@ -235,7 +200,6 @@ public class Chain extends ChainNode {
                 }
             }
         }
-        if (parent != null) parent.notifyEvent(event);
     }
 
 
@@ -671,7 +635,7 @@ public class Chain extends ChainNode {
      * 执行后续节点（可能有多个）
      *
      * @param currentNode   当前节点
-     * @param executeResult
+     * @param executeResult 执行结果
      */
     private void doExecuteNextNodes(ChainNode currentNode, Map<String, Object> executeResult) {
         List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
@@ -780,7 +744,6 @@ public class Chain extends ChainNode {
         for (ChainOutputListener inputListener : outputListeners) {
             inputListener.onOutput(this, node, response);
         }
-        if (parent != null) parent.notifyOutput(node, response);
     }
 
 
@@ -788,7 +751,6 @@ public class Chain extends ChainNode {
         for (ChainSuspendListener suspendListener : suspendListeners) {
             suspendListener.onSuspend(this);
         }
-        if (parent != null) parent.notifySuspend();
     }
 
 
@@ -796,7 +758,6 @@ public class Chain extends ChainNode {
         for (ChainErrorListener errorListener : chainErrorListeners) {
             errorListener.onError(error, this);
         }
-        if (parent != null) parent.notifyError(error);
     }
 
 
@@ -804,7 +765,6 @@ public class Chain extends ChainNode {
         for (NodeErrorListener errorListener : nodeErrorListeners) {
             errorListener.onError(error, node, executeResult, this);
         }
-        if (parent != null) parent.notifyNodeError(error, node, executeResult);
     }
 
 
@@ -952,8 +912,6 @@ public class Chain extends ChainNode {
     @Override
     public String toString() {
         return "Chain{" +
-            "parent=" + parent +
-            ", children=" + children +
             ", nodes=" + nodes +
             ", edges=" + edges +
             ", executeResult=" + executeResult +

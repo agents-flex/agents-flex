@@ -38,9 +38,6 @@ public class ChainHolder implements Serializable {
     private String name;
     private String description;
 
-//    private ChainHolder parent;
-//    private List<ChainHolder> children;
-
     private List<ChainNode> nodes;
     private List<ChainEdge> edges;
 
@@ -62,10 +59,6 @@ public class ChainHolder implements Serializable {
         holder.id = chain.getId();
         holder.name = chain.getName();
         holder.description = chain.getDescription();
-
-//        holder.parent = chain.getParent() == null ? null : fromChain(chain.getParent());
-//        holder.children = chain.getChildren() == null ? null : chain.getChildren().stream().map(ChainHolder::fromChain)
-//            .collect(Collectors.toList());
 
         holder.nodes = chain.getNodes();
         holder.edges = chain.getEdges();
