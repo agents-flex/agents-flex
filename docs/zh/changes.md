@@ -1,5 +1,11 @@
 # Agents-Flex ChangeLog
 
+
+## v1.2.9 20250718
+- 优化：优化 parent 和 children 的过度设计，使之逻辑更加简洁
+- 修复：修复 Node 包含子的 chain 时，会导致 json 解析错误的问题
+
+
 ## v1.2.8 20250715
 - 新增: ReActAgent 添加 ChatOptions 的设置能力
 - 新增: ConfirmParameter 添加更多的配置参数支持
