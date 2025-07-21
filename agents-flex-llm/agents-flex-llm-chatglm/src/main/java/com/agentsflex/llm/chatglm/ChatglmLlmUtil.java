@@ -104,6 +104,7 @@ public class ChatglmLlmUtil {
             .setIfNotEmpty("stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
             .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
+            .setIfNotEmpty(options.getExtra())
             .toJSON();
     }
 

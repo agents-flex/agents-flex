@@ -57,7 +57,7 @@ public class QwenLlmUtil {
             .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens());
 
         if (options instanceof QwenChatOptions) {
-            QwenChatOptions op = (QwenChatOptions)options;
+            QwenChatOptions op = (QwenChatOptions) options;
             params.setIf(CollectionUtil.hasItems(op.getModalities()), "modalities", op.getModalities());
             params.setIf(op.getPresencePenalty() != null, "presence_penalty", op.getPresencePenalty());
             params.setIf(op.getResponseFormat() != null, "response_format", op.getResponseFormat());
@@ -69,6 +69,7 @@ public class QwenLlmUtil {
             params.setIf(op.getEnableThinking() != null, "enable_thinking", op.getEnableThinking());
             params.setIf(op.getEnableThinking() != null && op.getEnableThinking() && op.getThinkingBudget() != null, "thinking_budget", op.getThinkingBudget());
         }
+        params.setIfNotEmpty(options.getExtra());
         return params.toJSON();
     }
 

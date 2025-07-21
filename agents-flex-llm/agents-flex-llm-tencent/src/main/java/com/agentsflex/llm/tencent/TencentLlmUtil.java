@@ -187,6 +187,7 @@ public class TencentLlmUtil {
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotEmpty("Stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
+            .setIfNotEmpty(options.getExtra())
             .toJSON();
     }
 

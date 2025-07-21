@@ -112,6 +112,7 @@ public class OllamaLlmUtil {
             .setIfNotEmpty("options.top_p", options.getTopP())
             .setIfNotEmpty("options.temperature", options.getTemperature())
             .setIfNotEmpty("options.stop", options.getStop())
+            .setIfNotEmpty(options.getExtra())
             .toJSON();
     }
 

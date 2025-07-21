@@ -16,7 +16,10 @@
 package com.agentsflex.core.llm;
 
 
+import com.agentsflex.core.util.Maps;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * 每个大模型都可以有自己的实现类
@@ -47,6 +50,11 @@ public class ChatOptions {
      * 是否开启思考模式，适用于 Qwen3 等模型模型。
      */
     private Boolean enableThinking;
+
+    /**
+     * 额外的参数，用于传递给模型。
+     */
+    private Map<String, Object> extra;
 
     public String getModel() {
         return model;
@@ -110,5 +118,21 @@ public class ChatOptions {
 
     public void setEnableThinking(Boolean enableThinking) {
         this.enableThinking = enableThinking;
+    }
+
+    public Map<String, Object> getExtra() {
+        return extra;
+    }
+
+    public void setExtra(Map<String, Object> extra) {
+        this.extra = extra;
+    }
+
+    public void addExtra(String key, Object value) {
+        if (extra == null) {
+            extra = Maps.of(key, value);
+        } else {
+            extra.put(key, value);
+        }
     }
 }

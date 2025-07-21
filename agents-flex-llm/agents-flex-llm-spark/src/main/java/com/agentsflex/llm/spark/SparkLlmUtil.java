@@ -130,7 +130,7 @@ public class SparkLlmUtil {
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
         List<Message> messages = prompt.toMessages();
         HumanMessage message = MessageUtil.findLastHumanMessage(messages);
-        Maps root = Maps.of("header", Maps.of("app_id", config.getAppId()).set("uid", UUID.randomUUID().toString().replaceAll("-","")));
+        Maps root = Maps.of("header", Maps.of("app_id", config.getAppId()).set("uid", UUID.randomUUID().toString().replaceAll("-", "")));
         root.set("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))
                 .setIf(options.getTemperature() > 0, "temperature", options.getTemperature())
                 .setIf(options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
@@ -140,6 +140,7 @@ public class SparkLlmUtil {
         root.set("payload", Maps.of("message", Maps.of("text", promptFormat.toMessagesJsonObject(messages)))
             .setIfNotEmpty("functions", Maps.ofNotNull("text", promptFormat.toFunctionsJsonObject(message)))
         );
+        root.setIfNotEmpty(options.getExtra());
         return JSON.toJSONString(root);
     }
 

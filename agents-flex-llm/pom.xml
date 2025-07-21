@@ -19,7 +19,6 @@
         <module>agents-flex-llm-qwen</module>
         <module>agents-flex-llm-chatglm</module>
         <module>agents-flex-llm-ollama</module>
-        <module>agents-flex-llm-moonshot</module>
         <module>agents-flex-llm-coze</module>
         <module>agents-flex-llm-gitee</module>
         <module>agents-flex-llm-deepseek</module>

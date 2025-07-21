@@ -52,7 +52,8 @@ public class OpenAILlmUtil {
     public static String promptToPayload(Prompt prompt, OpenAILlmConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
         HumanMessage message = MessageUtil.findLastHumanMessage(messages);
-        return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
+        return Maps
+            .of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", promptFormat.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
             .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
@@ -61,6 +62,7 @@ public class OpenAILlmUtil {
             .setIfNotEmpty("stop", options.getStop())
             .setIf(map -> !map.containsKey("tools") && options.getTemperature() > 0, "temperature", options.getTemperature())
             .setIf(map -> !map.containsKey("tools") && options.getMaxTokens() != null, "max_tokens", options.getMaxTokens())
+            .setIfNotEmpty(options.getExtra())
             .toJSON();
     }
 
