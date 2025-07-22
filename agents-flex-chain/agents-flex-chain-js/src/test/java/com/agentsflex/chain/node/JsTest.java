@@ -42,8 +42,8 @@ public class JsTest {
         bindings.put("_result", result);
         // 使用Map的put方法
         String jsCode =
-            "_result.put('code', userName);\n" +
-                "_result.put('data', '返回数据');\n";
+            "_result.code = userName;\n" +
+                "_result.data = '返回数据';\n";
         try {
             // 执行JavaScript代码
             engine.eval(jsCode, bindings);
@@ -61,8 +61,8 @@ public class JsTest {
 
         JsExecNode chainNode = new JsExecNode();
         String jsCode =
-            "_result.put('userName', user?.name);\n" +
-                "_result.put('data', user?.p.greet());\n";
+            "_result.userName = user?.name;\n" +
+                "_result.data =  user?.p.greet();\n";
         chainNode.setCode(jsCode);
 
         Chain chain = new Chain();
@@ -82,8 +82,8 @@ public class JsTest {
             new Thread(() -> {
                 JsExecNode chainNode = new JsExecNode();
                 String jsCode =
-                    "_result.put('userName', user?.name);\n" +
-                        "_result.put('data', user?.p.greet());\n";
+                    "_result.userName = user?.name;\n" +
+                        "_result.data = user?.p.greet();\n";
                 chainNode.setCode(jsCode);
 
                 Chain chain = new Chain();
