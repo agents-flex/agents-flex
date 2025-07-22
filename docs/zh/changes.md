@@ -1,5 +1,8 @@
 # Agents-Flex ChangeLog
 
+## v1.3.0 20250722
+- 新增：ChatOptions 新增 extra 配置，用于自定义大模型的参数内容
+
 
 ## v1.2.9 20250718
 - 优化：优化 parent 和 children 的过度设计，使之逻辑更加简洁
