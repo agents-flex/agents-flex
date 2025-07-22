@@ -17,8 +17,11 @@ package com.agentsflex.core.util;
 
 import com.agentsflex.core.chain.Chain;
 import com.agentsflex.core.util.graalvm.JsInteropUtils;
-import org.graalvm.polyglot.*;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Value;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -41,6 +44,7 @@ public class JsConditionUtil {
      */
     public static boolean eval(String code, Chain chain, Map<String, Object> initMap) {
         try (Context context = CONTEXT_BUILDER.build()) {
+            Map<String, Object> _result = new HashMap<>();
             Value bindings = context.getBindings("js");
 
             // 合并上下文变量
@@ -49,9 +53,12 @@ public class JsConditionUtil {
                 bindings.putMember(key, JsInteropUtils.wrapJavaValueForJS(context, value));
             });
 
-            // 执行脚本并获取结果
-            Value result = context.eval("js", code);
-            return toBoolean(result);
+            bindings.putMember("_result", _result);
+            code = "_result.value = " + code;
+
+            context.eval("js", code);
+            Object value = _result.get("value");
+            return toBoolean(value);
         } catch (Exception e) {
             throw new RuntimeException("JavaScript 执行失败: " + e.getMessage(), e);
         }
@@ -79,16 +86,34 @@ public class JsConditionUtil {
     /**
      * 将任意对象转换为布尔值
      */
-    private static boolean toBoolean(Value value) {
-        if (value.isBoolean()) {
-            return value.asBoolean();
-        } else if (value.isNumber()) {
-            return value.asDouble() != 0;
-        } else if (value.isString()) {
-            String str = value.asString().trim().toLowerCase();
-            return !str.isEmpty() && !"0".equals(str) && !"false".equals(str);
-        } else {
-            return !value.isNull();
+    private static boolean toBoolean(Object value) {
+        if (value == null) {
+            return false;
         }
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue() != 0;
+        }
+        if (value instanceof String) {
+            String str = ((String) value).trim().toLowerCase();
+            return !str.isEmpty() && !"0".equals(str) && !"false".equals(str);
+        }
+        if (value instanceof Value) {
+            Value v = (Value) value;
+            if (v.isBoolean()) {
+                return v.asBoolean();
+            } else if (v.isNumber()) {
+                return v.asDouble() != 0;
+            } else if (v.isString()) {
+                String str = v.asString().trim().toLowerCase();
+                return !str.isEmpty() && !"0".equals(str) && !"false".equals(str);
+            } else {
+                return !v.isNull();
+            }
+        }
+        return true;
     }
+
 }

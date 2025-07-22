@@ -60,6 +60,34 @@ public class NodeContext {
         return executeEdgeIds;
     }
 
+    public void setCurrentNode(ChainNode currentNode) {
+        this.currentNode = currentNode;
+    }
+
+    public void setPrevNode(ChainNode prevNode) {
+        this.prevNode = prevNode;
+    }
+
+    public void setFromEdgeId(String fromEdgeId) {
+        this.fromEdgeId = fromEdgeId;
+    }
+
+    public void setTriggerCount(AtomicInteger triggerCount) {
+        this.triggerCount = triggerCount;
+    }
+
+    public void setTriggerEdgeIds(List<String> triggerEdgeIds) {
+        this.triggerEdgeIds = triggerEdgeIds;
+    }
+
+    public void setExecuteCount(AtomicInteger executeCount) {
+        this.executeCount = executeCount;
+    }
+
+    public void setExecuteEdgeIds(List<String> executeEdgeIds) {
+        this.executeEdgeIds = executeEdgeIds;
+    }
+
     public boolean isUpstreamFullyExecuted() {
         List<ChainEdge> inwardEdges = currentNode.getInwardEdges();
         if (inwardEdges == null || inwardEdges.isEmpty()) {

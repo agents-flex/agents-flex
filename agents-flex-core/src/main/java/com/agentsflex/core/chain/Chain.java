@@ -546,14 +546,9 @@ public class Chain extends ChainNode {
 
         try {
             onNodeExecuteBefore(nodeContext);
-            nodeContext.recordTrigger(executeNode);
-            NodeCondition nodeCondition = currentNode.getCondition();
-            if (nodeCondition != null) {
-                ChainNode prevNode = executeNode.prevNode;
-                Map<String, Object> prevNodeExecuteResult = prevNode != null ? getNodeExecuteResult(prevNode.id) : Collections.emptyMap();
-                if (!nodeCondition.check(this, nodeContext, prevNodeExecuteResult)) {
-                    return;
-                }
+
+            if (shouldSkipCurrentNode(executeNode, nodeContext, currentNode)) {
+                return;
             }
 
             try {
@@ -628,6 +623,34 @@ public class Chain extends ChainNode {
 
         // 继续执行当前节点
         doExecuteNode(executeNode);
+    }
+
+
+    /**
+     * 记录节点触发，并检查当前节点的执行条件是否未通过。
+     * 若条件未通过，则返回 true，表示应跳过该节点的执行。
+     *
+     * @param executeNode 当前正在执行的节点
+     * @param nodeContext 节点上下文，用于记录触发信息
+     * @param currentNode 当前链路节点配置
+     * @return 如果条件不满足（需要跳过），返回 true；否则返回 false
+     */
+    private synchronized boolean shouldSkipCurrentNode(ExecuteNode executeNode, NodeContext nodeContext, ChainNode currentNode) {
+
+        // record trigger 和 check 必须在同步块内执行，
+        // 否则会导致并发问题：全部节点触发了 trigger，但是 check 还未开始执行
+        nodeContext.recordTrigger(executeNode);
+
+        NodeCondition condition = currentNode.getCondition();
+        if (condition == null) {
+            return false; // 无条件则不应跳过
+        }
+
+        ChainNode prevNode = executeNode.prevNode;
+        Map<String, Object> prevNodeExecuteResult = prevNode != null ? getNodeExecuteResult(prevNode.id) : Collections.emptyMap();
+
+        // 返回 true 表示条件不满足，应跳过当前节点
+        return !condition.check(this, nodeContext, prevNodeExecuteResult);
     }
 
 

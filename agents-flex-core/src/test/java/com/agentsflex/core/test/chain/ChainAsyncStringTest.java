@@ -12,15 +12,19 @@ public class ChainAsyncStringTest {
     @Test
     public void test() {
 
+        System.out.println("start: "+ Thread.currentThread().getId());
+
         Chain chain = new Chain();
 
         TestNode a = new TestNode();
         a.setId("a");
         chain.addNode(a);
 
+        /// //bbbbb
         TestNode b = new TestNode(){
             @Override
             protected Map<String, Object> execute(Chain chain) {
+                System.out.println("b: "+ Thread.currentThread().getId());
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
@@ -35,10 +39,27 @@ public class ChainAsyncStringTest {
 
         chain.addNode(b);
 
-        TestNode c = new TestNode();
+
+        /// //////cccccc
+        TestNode c = new TestNode(){
+            @Override
+            protected Map<String, Object> execute(Chain chain) {
+                System.out.println("c: "+ Thread.currentThread().getId());
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("c");
+                return Maps.of();
+            }
+        };
         c.setId("c");
+        c.setAsync(true);
         chain.addNode(c);
 
+
+        /// /////dddd
         TestNode d = new TestNode() {
             @Override
             protected Map<String, Object> execute(Chain chain) {
@@ -72,10 +93,15 @@ public class ChainAsyncStringTest {
         cd.setTarget("d");
         chain.addEdge(cd);
 
-
         // A→B→D
         //  ↘C↗
         chain.executeForResult(new HashMap<>());
+
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 }
