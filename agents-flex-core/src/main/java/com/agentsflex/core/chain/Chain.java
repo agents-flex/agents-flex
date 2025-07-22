@@ -478,8 +478,8 @@ public class Chain extends ChainNode {
         return variables;
     }
 
-    public NodeContext getNodeContext(ChainNode chainNode) {
-        return MapUtil.computeIfAbsent(nodeContexts, chainNode.getId(), k -> new NodeContext());
+    public NodeContext getNodeContext(String nodeId) {
+        return MapUtil.computeIfAbsent(nodeContexts, nodeId, k -> new NodeContext());
     }
 
     protected void executeInternal() {
@@ -540,7 +540,7 @@ public class Chain extends ChainNode {
             return;
         }
         ChainNode currentNode = executeNode.currentNode;
-        NodeContext nodeContext = getNodeContext(currentNode);
+        NodeContext nodeContext = getNodeContext(currentNode.id);
 
         Map<String, Object> executeResult = null;
 

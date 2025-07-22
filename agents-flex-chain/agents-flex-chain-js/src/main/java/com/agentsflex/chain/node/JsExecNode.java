@@ -58,7 +58,7 @@ public class JsExecNode extends CodeNode {
             Map<String, Object> result = new HashMap<>();
             bindings.putMember("_result", result);
             bindings.putMember("_chain", chain);
-            bindings.putMember("_context", chain.getNodeContext(this));
+            bindings.putMember("_context", chain.getNodeContext(this.id));
 
 
             // 执行脚本

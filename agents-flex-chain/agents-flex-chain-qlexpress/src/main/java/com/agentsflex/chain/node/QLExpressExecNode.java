@@ -37,7 +37,7 @@ public class QLExpressExecNode extends CodeNode {
         Map<String, Object> result = new HashMap<>();
         context.put("_result", result);
         context.put("_chain", chain);
-        context.put("_context", chain.getNodeContext(this));
+        context.put("_context", chain.getNodeContext(this.id));
 
 
         try {
