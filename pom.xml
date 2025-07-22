@@ -232,11 +232,6 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-moonshot</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-llm-ollama</artifactId>
                 <version>${revision}</version>
             </dependency>
