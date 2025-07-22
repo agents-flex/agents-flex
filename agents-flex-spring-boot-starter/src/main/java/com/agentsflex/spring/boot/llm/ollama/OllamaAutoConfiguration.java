@@ -1,7 +1,5 @@
 package com.agentsflex.spring.boot.llm.ollama;
 
-import com.agentsflex.llm.moonshot.MoonshotLlm;
-import com.agentsflex.llm.moonshot.MoonshotLlmConfig;
 import com.agentsflex.llm.ollama.OllamaLlm;
 import com.agentsflex.llm.ollama.OllamaLlmConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
