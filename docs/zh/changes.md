@@ -3,6 +3,7 @@
 ## v1.3.1 20250722
 - 新增：ChatOptions 新增 extra 配置，用于自定义大模型的参数内容
 - 修复：节点异步执行的情况下，可能出现 check 不正确的问题
+- 修复：jsExecNode 无法转换结果为 JsonObject 的问题
 - 优化：优化 getNodeContext 方法，只需要传入 id 值
 - 优化：移除 Moonshot ，使用 openai 替代
 

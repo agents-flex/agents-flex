@@ -22,7 +22,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class JsExecNode extends CodeNode {
@@ -55,16 +54,24 @@ public class JsExecNode extends CodeNode {
                 }
             }
 
-            Map<String, Object> result = new HashMap<>();
-            bindings.putMember("_result", result);
             bindings.putMember("_chain", chain);
             bindings.putMember("_context", chain.getNodeContext(this.id));
 
 
-            // 执行脚本
+            // 在 JS 中创建 _result 对象
+            context.eval("js", "var _result = {};");
+
+            // 注入 _chain 和 _context
+            bindings.putMember("_chain", chain);
+            bindings.putMember("_context", chain.getNodeContext(this.id));
+
+            // 执行用户脚本
             context.eval("js", code);
 
-            return result;
+            Value resultValue = bindings.getMember("_result");
+
+            return GraalToFastjsonUtils.toJSONObject(resultValue);
+
         } catch (Exception e) {
             throw new RuntimeException("Polyglot JS 脚本执行失败: " + e.getMessage(), e);
         }
