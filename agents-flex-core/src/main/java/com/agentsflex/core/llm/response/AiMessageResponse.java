@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
 
@@ -83,7 +84,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
             return Collections.emptyList();
         }
 
-        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(prompt.toMessages());
+        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(prompt.toMessages().stream().filter(m -> m instanceof HumanMessage).collect(Collectors.toList()));
         Map<String, Function> funcMap = humanMessage.getFunctionMap();
 
         if (funcMap == null || funcMap.isEmpty()) {
