@@ -29,7 +29,10 @@ public class NamedThreadPools {
 
 
     public static ExecutorService newFixedThreadPool(int nThreads, String name) {
-        return Executors.newFixedThreadPool(nThreads, new NamedThreadFactory(name));
+        return new ThreadPoolExecutor(nThreads, nThreads,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(nThreads * 2),
+            new NamedThreadFactory(name));
     }
 
 
