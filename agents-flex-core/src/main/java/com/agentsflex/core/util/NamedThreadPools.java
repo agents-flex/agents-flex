@@ -43,9 +43,9 @@ public class NamedThreadPools {
 
     public static ExecutorService newCachedThreadPool(ThreadFactory threadFactory) {
         return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
-                60L, TimeUnit.SECONDS,
-                new SynchronousQueue<Runnable>(),
-                threadFactory);
+            60L, TimeUnit.SECONDS,
+            new SynchronousQueue<Runnable>(),
+            threadFactory);
     }
 
 
@@ -55,7 +55,7 @@ public class NamedThreadPools {
 
 
     public static ScheduledExecutorService newScheduledThreadPool(
-            int corePoolSize, ThreadFactory threadFactory) {
+        int corePoolSize, ThreadFactory threadFactory) {
         return new ScheduledThreadPoolExecutor(corePoolSize, threadFactory);
     }
 }
