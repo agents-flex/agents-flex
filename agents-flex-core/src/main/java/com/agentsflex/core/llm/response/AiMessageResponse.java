@@ -21,12 +21,12 @@ import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.CollectionUtil;
+import com.agentsflex.core.util.MessageUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
 
@@ -84,7 +84,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
             return Collections.emptyList();
         }
 
-        HumanMessage humanMessage = (HumanMessage) CollectionUtil.lastItem(prompt.toMessages().stream().filter(m -> m instanceof HumanMessage).collect(Collectors.toList()));
+        HumanMessage humanMessage = MessageUtil.findLastHumanMessage(prompt.toMessages());
         Map<String, Function> funcMap = humanMessage.getFunctionMap();
 
         if (funcMap == null || funcMap.isEmpty()) {
