@@ -22,6 +22,7 @@ import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.MapUtil;
 import com.agentsflex.core.util.NamedThreadPools;
 import com.agentsflex.core.util.StringUtil;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -450,6 +451,8 @@ public class Chain extends ChainNode {
                     value = "true".equalsIgnoreCase((String) value) || "1".equalsIgnoreCase((String) value);
                 } else if (parameter.getDataType() == DataType.Number) {
                     value = Long.parseLong((String) value);
+                } else if (parameter.getDataType() == DataType.Array) {
+                    value = JSON.parseArray((String) value);
                 }
             }
 
