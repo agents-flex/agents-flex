@@ -1,5 +1,11 @@
 # Agents-Flex ChangeLog
 
+## v1.3.2 20250731
+- 优化：优化 AiMessageResponse.getFunctionCallers 方法
+- 修复：多轮 function call 时,获取最后一条 HumanMessage 错误的问题
+- 修复：Chain 的 Parameter 类型为 Array 时，内容固定值无法解析的问题
+
+
 ## v1.3.1 20250722
 - 新增：ChatOptions 新增 extra 配置，用于自定义大模型的参数内容
 - 修复：节点异步执行的情况下，可能出现 check 不正确的问题
