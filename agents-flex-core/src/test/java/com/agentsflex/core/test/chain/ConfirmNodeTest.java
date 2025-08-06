@@ -55,12 +55,12 @@ public class ConfirmNodeTest {
         c.setMessage("请确认 xx 是否正确？");
         c.setId("c");
 
-        ConfirmNode.ConfirmParameter p = new ConfirmNode.ConfirmParameter();
+        Parameter p = new Parameter();
         p.setName("image");
         p.setRef("b.images.src");
         p.setRequired(true);
 
-        List<ConfirmNode.ConfirmParameter> confirms = new ArrayList<>();
+        List<Parameter> confirms = new ArrayList<>();
         confirms.add(p);
         c.setConfirms(confirms);
 
@@ -116,9 +116,7 @@ public class ConfirmNodeTest {
 
             Map<String, Object> data = new HashMap<>();
             for (Parameter parameter : suspendForParameters) {
-                if (parameter instanceof ConfirmNode.ConfirmParameter) {
-                    data.put(parameter.getName(), ((ConfirmNode.ConfirmParameter) parameter).getSelectionData().get(0));
-                }
+                data.put(parameter.getName(), parameter.getEnums().get(0));
             }
             newChain.resume(data);
             System.out.println("result:: " + newChain.getMemory().getAll());

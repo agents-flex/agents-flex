@@ -17,6 +17,7 @@ package com.agentsflex.core.chain;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -25,12 +26,43 @@ public class Parameter implements Serializable, Cloneable {
     protected String name;
     protected String description;
     protected DataType dataType = DataType.String;
+
+    /**
+     * 数据类型：文字内容、图片、音频、视频、文件
+     */
+    protected String contentType;
     protected String ref;
     protected RefType refType;
     protected String value;
     protected boolean required;
     protected String defaultValue;
     protected List<Parameter> children;
+
+    /**
+     * 枚举值列表
+     */
+    protected List<Object> enums;
+
+    /**
+     * 用户输入的表单类型，例如："input"  "textarea"  "select"  "radio"  "checkbox"  等等
+     */
+    protected String formType;
+
+    /**
+     * 用户界面上显示的提示文字，用于引导用户进行选择
+     */
+    protected String formLabel;
+
+    /**
+     * 用户界面上显示的描述文字，用于引导用户进行选择
+     */
+    protected String formDescription;
+
+    /**
+     * 表单的其他属性
+     */
+    protected String formAttrs;
+
 
     public Parameter() {
     }
@@ -85,6 +117,14 @@ public class Parameter implements Serializable, Cloneable {
 
     public void setDataType(DataType dataType) {
         this.dataType = dataType;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
     }
 
     public String getRef() {
@@ -149,6 +189,61 @@ public class Parameter implements Serializable, Cloneable {
         children.addAll(parameters);
     }
 
+    public List<Object> getEnums() {
+        return enums;
+    }
+
+    public void setEnums(List<Object> enums) {
+        this.enums = enums;
+    }
+
+    public void setEnumsObject(Object enumsObject) {
+        if (enumsObject == null) {
+            this.enums = null;
+        } else if (enumsObject instanceof Collection) {
+            this.enums = new ArrayList<>();
+            this.enums.addAll((Collection<?>) enumsObject);
+        } else if (enumsObject.getClass().isArray()) {
+            this.enums = new ArrayList<>();
+            this.enums.addAll(Arrays.asList((Object[]) enumsObject));
+        } else {
+            this.enums = new ArrayList<>(1);
+            this.enums.add(enumsObject);
+        }
+    }
+
+    public String getFormType() {
+        return formType;
+    }
+
+    public void setFormType(String formType) {
+        this.formType = formType;
+    }
+
+    public String getFormLabel() {
+        return formLabel;
+    }
+
+    public void setFormLabel(String formLabel) {
+        this.formLabel = formLabel;
+    }
+
+    public String getFormDescription() {
+        return formDescription;
+    }
+
+    public void setFormDescription(String formDescription) {
+        this.formDescription = formDescription;
+    }
+
+    public String getFormAttrs() {
+        return formAttrs;
+    }
+
+    public void setFormAttrs(String formAttrs) {
+        this.formAttrs = formAttrs;
+    }
+
     @Override
     public String toString() {
         return "Parameter{" +
@@ -156,11 +251,18 @@ public class Parameter implements Serializable, Cloneable {
             ", name='" + name + '\'' +
             ", description='" + description + '\'' +
             ", dataType=" + dataType +
+            ", contentType='" + contentType + '\'' +
             ", ref='" + ref + '\'' +
             ", refType=" + refType +
             ", value='" + value + '\'' +
             ", required=" + required +
+            ", defaultValue='" + defaultValue + '\'' +
             ", children=" + children +
+            ", enums=" + enums +
+            ", formType='" + formType + '\'' +
+            ", formLabel='" + formLabel + '\'' +
+            ", formDescription='" + formDescription + '\'' +
+            ", formAttrs='" + formAttrs + '\'' +
             '}';
     }
 
@@ -173,6 +275,10 @@ public class Parameter implements Serializable, Cloneable {
                 for (Parameter child : this.children) {
                     clone.children.add(child.clone()); // 递归克隆
                 }
+            }
+            if (this.enums != null) {
+                clone.enums = new ArrayList<>(this.enums.size());
+                clone.enums.addAll(this.enums);
             }
             return clone;
         } catch (CloneNotSupportedException e) {
