@@ -1,5 +1,9 @@
 # Agents-Flex ChangeLog
 
+## v1.3.3 20250806
+- 优化：优化合并 ConfirmParameter 到 Parameter，以支持更多的场景
+
+
 ## v1.3.2 20250731
 - 优化：优化 AiMessageResponse.getFunctionCallers 方法
 - 修复：多轮 function call 时,获取最后一条 HumanMessage 错误的问题
