@@ -53,6 +53,12 @@ public class Parameter implements Serializable, Cloneable {
      */
     protected String formLabel;
 
+
+    /**
+     * 表单的提示文字，用于引导用户进行选择或填写
+     */
+    protected String formPlaceholder;
+
     /**
      * 用户界面上显示的描述文字，用于引导用户进行选择
      */
@@ -228,6 +234,14 @@ public class Parameter implements Serializable, Cloneable {
         this.formLabel = formLabel;
     }
 
+    public String getFormPlaceholder() {
+        return formPlaceholder;
+    }
+
+    public void setFormPlaceholder(String formPlaceholder) {
+        this.formPlaceholder = formPlaceholder;
+    }
+
     public String getFormDescription() {
         return formDescription;
     }
@@ -261,6 +275,7 @@ public class Parameter implements Serializable, Cloneable {
             ", enums=" + enums +
             ", formType='" + formType + '\'' +
             ", formLabel='" + formLabel + '\'' +
+            ", formPlaceholder='" + formPlaceholder + '\'' +
             ", formDescription='" + formDescription + '\'' +
             ", formAttrs='" + formAttrs + '\'' +
             '}';
