@@ -186,6 +186,9 @@ public abstract class ChainNode implements Serializable {
         this.computeCost = computeCost;
     }
 
+    public ChainNodeValidResult validate() throws Exception {
+        return ChainNodeValidResult.ok();
+    }
 
     protected abstract Map<String, Object> execute(Chain chain);
 
