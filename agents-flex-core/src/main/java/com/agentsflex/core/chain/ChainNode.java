@@ -45,6 +45,9 @@ public abstract class ChainNode implements Serializable {
     protected NodeCondition loopBreakCondition;      // 跳出循环的条件
     protected int maxLoopCount = 0;                  // 0 表示不限制循环次数
 
+    // 算力消耗定义，积分消耗
+    protected long computeCost = 0;
+
     public String getId() {
         return id;
     }
@@ -171,9 +174,19 @@ public abstract class ChainNode implements Serializable {
         this.maxLoopCount = maxLoopCount;
     }
 
-    protected abstract Map<String, Object> execute(Chain chain);
-
     public List<Parameter> getParameters() {
         return null;
     }
+
+    public long getComputeCost() {
+        return computeCost;
+    }
+
+    public void setComputeCost(long computeCost) {
+        this.computeCost = computeCost;
+    }
+
+
+    protected abstract Map<String, Object> execute(Chain chain);
+
 }

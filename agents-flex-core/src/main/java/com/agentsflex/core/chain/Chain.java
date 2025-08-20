@@ -537,6 +537,10 @@ public class Chain extends ChainNode {
         return result;
     }
 
+    private synchronized void addComputeCost(long computeCost) {
+        this.computeCost += computeCost;
+    }
+
 
     protected void doExecuteNode(ExecuteNode executeNode) {
         if (this.getStatus() != ChainStatus.RUNNING) {
@@ -565,6 +569,7 @@ public class Chain extends ChainNode {
                 try {
                     suspendNodes.remove(currentNode.getId());
                     executeResult = currentNode.execute(this);
+                    addComputeCost(currentNode.getComputeCost());
                 } finally {
                     nodeContext.recordExecute(executeNode);
                     this.executeResult = executeResult;
@@ -914,6 +919,8 @@ public class Chain extends ChainNode {
         this.exception = null;
         this.nodeContexts.clear();
 
+        //算力消耗
+        this.computeCost = 0;
 
         if (this.suspendNodes != null) {
             this.suspendNodes.clear();
