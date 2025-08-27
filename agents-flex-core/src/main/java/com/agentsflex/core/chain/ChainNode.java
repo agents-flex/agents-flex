@@ -38,6 +38,8 @@ public abstract class ChainNode implements Serializable {
     protected ContextMemory memory = new DefaultContextMemory();
     protected ChainNodeStatus nodeStatus = ChainNodeStatus.READY;
 
+    protected ChainNodeValidator validator;
+
 
     // 循环执行相关属性
     protected boolean loopEnable = false;           // 是否启用循环执行
@@ -128,6 +130,14 @@ public abstract class ChainNode implements Serializable {
         }
     }
 
+    public ChainNodeValidator getValidator() {
+        return validator;
+    }
+
+    public void setValidator(ChainNodeValidator validator) {
+        this.validator = validator;
+    }
+
     protected void addOutwardEdge(ChainEdge edge) {
         if (this.outwardEdges == null) {
             this.outwardEdges = new ArrayList<>();
@@ -187,7 +197,7 @@ public abstract class ChainNode implements Serializable {
     }
 
     public ChainNodeValidResult validate() throws Exception {
-        return ChainNodeValidResult.ok();
+        return validator != null ? validator.validate(this) : ChainNodeValidResult.ok();
     }
 
     protected abstract Map<String, Object> execute(Chain chain);
