@@ -943,9 +943,30 @@ public class Chain extends ChainNode {
     }
 
     @Override
+    public ChainNodeValidResult validate() throws Exception {
+        if (this.validator != null) {
+            return this.validator.validate(this);
+        }
+
+        if (this.nodes == null || this.nodes.isEmpty()) {
+            return ChainNodeValidResult.fail("Chain nodes can not be empty.");
+        }
+
+        Map<String, Object> details = new HashMap<>();
+        for (ChainNode node : this.nodes) {
+            ChainNodeValidResult nodeResult = node.validate();
+            if (nodeResult != null && !nodeResult.isSuccess()) {
+                details.put(node.getId(), nodeResult);
+            }
+        }
+
+        return details.isEmpty() ? ChainNodeValidResult.ok() : ChainNodeValidResult.fail("", details);
+    }
+
+    @Override
     public String toString() {
         return "Chain{" +
-            ", nodes=" + nodes +
+            "nodes=" + nodes +
             ", edges=" + edges +
             ", executeResult=" + executeResult +
             ", eventListeners=" + eventListeners +
