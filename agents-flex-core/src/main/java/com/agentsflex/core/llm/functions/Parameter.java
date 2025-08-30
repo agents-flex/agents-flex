@@ -16,6 +16,7 @@
 package com.agentsflex.core.llm.functions;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Parameter implements Serializable {
@@ -73,16 +74,12 @@ public class Parameter implements Serializable {
 
     public void setChildren(List<Parameter> children) {
         this.children = children;
-        if (children != null) {
-            this.type = "object";
-        }
     }
 
     public void addChild(Parameter parameter) {
         if (children == null) {
-            children = new java.util.ArrayList<>();
+            children = new ArrayList<>();
         }
         children.add(parameter);
-        this.type = "object";
     }
 }
