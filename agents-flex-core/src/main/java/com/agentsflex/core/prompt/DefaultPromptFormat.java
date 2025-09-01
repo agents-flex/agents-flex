@@ -17,15 +17,11 @@ package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.llm.functions.Function;
 import com.agentsflex.core.llm.functions.Parameter;
-import com.agentsflex.core.message.*;
-import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.message.*;import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class DefaultPromptFormat implements PromptFormat {
 
@@ -73,10 +69,10 @@ public class DefaultPromptFormat implements PromptFormat {
         for (FunctionCall call : calls) {
             Maps toolCall = new Maps();
             toolCall.set("id", call.getId())
-                .set("type", "function")
-                .set("function", Maps.of("name", call.getName())
-                    .set("arguments", buildToolCallsArguments(call.getArgs()))
-                );
+                    .set("type", "function")
+                    .set("function", Maps.of("name", call.getName())
+                            .set("arguments", buildToolCallsArguments(call.getArgs()))
+                    );
 
             toolCalls.add(toolCall);
         }
@@ -145,10 +141,17 @@ public class DefaultPromptFormat implements PromptFormat {
             }
 
             List<Parameter> children = parameter.getChildren();
-            if (children != null && !children.isEmpty() && "object".equalsIgnoreCase(parameter.getType())) {
-                Map<String, Object> childrenObj = new HashMap<>();
-                parameterObj.put("properties", childrenObj);
-                addParameters(children.toArray(new Parameter[0]), childrenObj, parameterObj);
+            if (children != null && !children.isEmpty()) {
+                if ("object".equalsIgnoreCase(parameter.getType())) {
+                    Map<String, Object> childrenObj = new HashMap<>();
+                    parameterObj.put("properties", childrenObj);
+                    addParameters(children.toArray(new Parameter[0]), childrenObj, parameterObj);
+                }
+                if ("array".equalsIgnoreCase(parameter.getType())) {
+                    Map<String, Object> itemsObj = new HashMap<>();
+                    parameterObj.put("items", itemsObj);
+                    handleArrayItems(children, itemsObj);
+                }
             }
 
             propertiesObj.put(parameter.getName(), parameterObj);
@@ -159,4 +162,35 @@ public class DefaultPromptFormat implements PromptFormat {
         }
     }
 
+    private static void handleArrayItems(List<Parameter> children, Map<String, Object> itemsObj) {
+        if (children.size() == 1 && children.get(0).getName() == null) {
+            // 单值数组，数组元素是基础类型
+            Parameter firstChild = children.get(0);
+            itemsObj.put("type", firstChild.getType());
+            itemsObj.put("description", firstChild.getDescription());
+            itemsObj.put("enum", firstChild.getEnums());
+            // 如果基础类型本身也是数组，需要递归处理
+            List<Parameter> grandchildren = firstChild.getChildren();
+            if (grandchildren != null && !grandchildren.isEmpty()) {
+                if ("array".equalsIgnoreCase(firstChild.getType())) {
+                    Map<String, Object> nestedItemsObj = new HashMap<>();
+                    itemsObj.put("items", nestedItemsObj);
+                    handleArrayItems(grandchildren, nestedItemsObj);
+                } else if ("object".equalsIgnoreCase(firstChild.getType())) {
+                    Map<String, Object> nestedProperties = new HashMap<>();
+                    itemsObj.put("properties", nestedProperties);
+                    addParameters(grandchildren.toArray(new Parameter[0]), nestedProperties, itemsObj);
+                }
+            }
+        } else {
+            // 复杂数组，数组元素是对象或其他复杂类型
+            Map<String, Object> tempProperties = new HashMap<>();
+            addParameters(children.toArray(new Parameter[0]), tempProperties, itemsObj);
+
+            if (!tempProperties.isEmpty()) {
+                itemsObj.put("type", "object");
+                itemsObj.put("properties", tempProperties);
+            }
+        }
+    }
 }
