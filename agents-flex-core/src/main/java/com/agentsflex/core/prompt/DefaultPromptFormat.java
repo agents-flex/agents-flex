@@ -17,7 +17,8 @@ package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.llm.functions.Function;
 import com.agentsflex.core.llm.functions.Parameter;
-import com.agentsflex.core.message.*;import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.message.*;
+import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
@@ -69,10 +70,10 @@ public class DefaultPromptFormat implements PromptFormat {
         for (FunctionCall call : calls) {
             Maps toolCall = new Maps();
             toolCall.set("id", call.getId())
-                    .set("type", "function")
-                    .set("function", Maps.of("name", call.getName())
-                            .set("arguments", buildToolCallsArguments(call.getArgs()))
-                    );
+                .set("type", "function")
+                .set("function", Maps.of("name", call.getName())
+                    .set("arguments", buildToolCallsArguments(call.getArgs()))
+                );
 
             toolCalls.add(toolCall);
         }

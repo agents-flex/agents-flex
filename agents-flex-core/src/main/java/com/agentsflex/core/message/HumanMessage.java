@@ -38,9 +38,10 @@ public class HumanMessage extends AbstractTextMessage {
         this.functions.add(function);
     }
 
-    public void addFunctions(Collection<Function> functions) {
-        if (this.functions == null)
+    public void addFunctions(Collection<? extends Function> functions) {
+        if (this.functions == null) {
             this.functions = new java.util.ArrayList<>();
+        }
         this.functions.addAll(functions);
     }
 
@@ -71,8 +72,12 @@ public class HumanMessage extends AbstractTextMessage {
         return map;
     }
 
-    public void setFunctions(List<Function> functions) {
-        this.functions = functions;
+    public void setFunctions(List<? extends Function> functions) {
+        if (functions == null) {
+            this.functions = null;
+        } else {
+            this.functions = new ArrayList<>(functions);
+        }
     }
 
     public String getToolChoice() {
