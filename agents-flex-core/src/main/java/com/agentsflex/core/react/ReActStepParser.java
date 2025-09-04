@@ -26,7 +26,7 @@ public interface ReActStepParser {
         private final Pattern STEP_PATTERN = Pattern.compile(
             "Thought: (.*?)\n" +
                 "Action: (.*?)\n" +
-                "Action Input: (\\{.*?})",
+                "Action Input: (\\{[\\s\\S]*})",
             Pattern.DOTALL
         );
 
