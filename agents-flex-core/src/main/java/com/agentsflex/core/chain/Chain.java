@@ -408,7 +408,7 @@ public class Chain extends ChainNode {
         if (parameters == null || parameters.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<String, Object> variables = new HashMap<>();
+        Map<String, Object> variables = new LinkedHashMap<>();
         List<Parameter> suspendParameters = null;
         for (Parameter parameter : parameters) {
             RefType refType = parameter.getRefType();
