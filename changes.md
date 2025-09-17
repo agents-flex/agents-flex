@@ -1,5 +1,17 @@
 # Agents-Flex ChangeLog
 
+## v1.3.5 20250917
+- 新增: 新增 ChainNodeValidator 用于给 Node 自定义其验证器
+- 新增: 新增 ChainNode.validate 方法，用于校验其数据是否完善
+- 新增: 工作流执行新增节点算力消耗的定义
+- 新增: getParameterValues 通过 LinkedHashMap 返回属性，支持参数顺序
+- 优化：优化 HumanMessage 类的函数处理逻辑
+- 优化: 重构 Chain 的验证逻辑
+- 修复: 修复 Parameter 为非必填，但是也必须输入参数的问题
+- 修复: 在 js 执行节点可能出现 java.lang.NoClassDefFoundError: com/ibm/icu/number/Notation 错误的问题
+- 修复：正则表达式 `Action Input: (\{.<em>?})` 在匹配时会漏掉最后一个 `"}"` 的问题，感谢 @狂野流星
+
+
 ## v1.3.4 20250817
 - 新增：Parameter 新增 formPlaceholder 属性
 
