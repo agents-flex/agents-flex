@@ -430,7 +430,7 @@ public class Chain extends ChainNode {
             }
 
             if (refType == RefType.INPUT && isNullOrBlank(value)) {
-                if (!getValueOnly) {
+                if (!getValueOnly && parameter.isRequired()) {
                     if (suspendParameters == null) {
                         suspendParameters = new ArrayList<>();
                     }
