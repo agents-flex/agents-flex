@@ -403,8 +403,11 @@ public class Chain extends ChainNode {
         return value == null || value instanceof String && StringUtil.noText((String) value);
     }
 
-    public Map<String, Object> getParameterValues(ChainNode node, List<? extends Parameter> parameters, Map<String, Object> formatArgs
-        , boolean getValueOnly) {
+    public Map<String, Object> getParameterValuesOnly(ChainNode node, List<? extends Parameter> parameters, Map<String, Object> formatArg) {
+        return getParameterValues(node, parameters, formatArg, true);
+    }
+
+    public Map<String, Object> getParameterValues(ChainNode node, List<? extends Parameter> parameters, Map<String, Object> formatArgs, boolean getValueOnly) {
         if (parameters == null || parameters.isEmpty()) {
             return Collections.emptyMap();
         }

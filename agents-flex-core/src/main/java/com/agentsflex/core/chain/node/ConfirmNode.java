@@ -56,6 +56,7 @@ public class ConfirmNode extends BaseNode {
         if (confirms != null) {
             for (Parameter confirm : confirms) {
                 confirm.setRefType(RefType.INPUT);
+                confirm.setRequired(true); // 必填，才能正确通过 getParameterValuesOnly 获取参数值
                 confirm.setName(confirm.getName());
             }
         }
@@ -89,11 +90,12 @@ public class ConfirmNode extends BaseNode {
                 for (Parameter confirm : confirms) {
                     Parameter clone = confirm.clone();
                     clone.setName(confirm.getName() + "__" + randomUUID);
-                    clone.setRefType(RefType.REF); //固定为 REF
+                    clone.setRefType(RefType.REF); // 固定为 REF
                     newParameters.add(clone);
                 }
 
-                Map<String, Object> parameterValues = chain.getParameterValues(this, newParameters, null, true);
+                // 获取参数值，不会触发 ChainSuspendException 错误
+                Map<String, Object> parameterValues = chain.getParameterValuesOnly(this, newParameters, null);
 
                 // 设置 enums，方便前端给用户进行选择
                 for (Parameter confirmParameter : confirmParameters) {
