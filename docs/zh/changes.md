@@ -1,5 +1,10 @@
 # Agents-Flex ChangeLog
 
+
+## v1.3.6 20250924
+- 修复： ConfirmNode 必须勾选必填才能正确进行数据确认的问题
+
+
 ## v1.3.5 20250917
 - 新增: 新增 ChainNodeValidator 用于给 Node 自定义其验证器
 - 新增: 新增 ChainNode.validate 方法，用于校验其数据是否完善
