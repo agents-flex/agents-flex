@@ -37,9 +37,9 @@ public class ChromaVectorStore extends DocumentStore {
 
     private static final Logger logger = LoggerFactory.getLogger(ChromaVectorStore.class);
     private final String baseUrl;
-    private final String defaultCollectionName;
-    private final String defaultTenant;
-    private final String defaultDatabase;
+    private final String collectionName;
+    private final String tenant;
+    private final String database;
     private final ChromaVectorStoreConfig config;
     private final ExpressionAdaptor expressionAdaptor;
     private final HttpClient httpClient;
@@ -51,10 +51,9 @@ public class ChromaVectorStore extends DocumentStore {
     public ChromaVectorStore(ChromaVectorStoreConfig config) {
         Objects.requireNonNull(config, "ChromaVectorStoreConfig cannot be null");
         this.baseUrl = config.getBaseUrl();
-        this.defaultTenant = config.getTenant() != null ? config.getTenant() : "default_tenant";
-        this.defaultDatabase = config.getDatabase() != null ? config.getDatabase() : "default_database";
-        this.defaultCollectionName = config.getCollectionName() != null ? 
-            config.getCollectionName() : "default_collection";
+        this.tenant = config.getTenant();
+        this.database = config.getDatabase();
+        this.collectionName = config.getCollectionName();
         this.config = config;
         this.expressionAdaptor = ChromaExpressionAdaptor.DEFAULT;
         
@@ -64,12 +63,12 @@ public class ChromaVectorStore extends DocumentStore {
         // 验证配置的有效性
         validateConfig();
         
-        // 确保租户和数据库存在
-        ensureTenantAndDatabaseExists();
-        
         // 如果配置了自动创建集合，检查并创建集合
         if (config.isAutoCreateCollection()) {
             try {
+                // 确保租户和数据库存在
+                ensureTenantAndDatabaseExists();
+                // 确保集合存在
                 ensureCollectionExists();
             } catch (Exception e) {
                 logger.warn("Failed to ensure collection exists: {}. Will retry on first operation.", e.getMessage());
@@ -98,11 +97,11 @@ public class ChromaVectorStore extends DocumentStore {
     private void ensureTenantAndDatabaseExists() {
         try {
             // 检查并创建租户
-            if (defaultTenant != null && !defaultTenant.isEmpty()) {
+            if (tenant != null && !tenant.isEmpty()) {
                 ensureTenantExists();
                 
                 // 检查并创建数据库（如果租户已设置）
-                if (defaultDatabase != null && !defaultDatabase.isEmpty()) {
+                if (database != null && !database.isEmpty()) {
                     ensureDatabaseExists();
                 }
             }
@@ -115,25 +114,25 @@ public class ChromaVectorStore extends DocumentStore {
      * 确保租户存在，如果不存在则创建
      */
     private void ensureTenantExists() throws IOException {
-        String tenantUrl = baseUrl + BASE_API + "/tenants/" + defaultTenant;
+        String tenantUrl = baseUrl + BASE_API + "/tenants/" + tenant;
         Map<String, String> headers = createHeaders();
         
         try {
             // 尝试获取租户信息
             String responseBody = executeWithRetry(() -> httpClient.get(tenantUrl, headers));
-            logger.debug("Successfully verified tenant '{}' exists", defaultTenant);
+            logger.debug("Successfully verified tenant '{}' exists", tenant);
         } catch (IOException e) {
             // 如果获取失败，尝试创建租户
-            logger.info("Creating tenant '{}' as it does not exist", defaultTenant);
+            logger.info("Creating tenant '{}' as it does not exist", tenant);
             
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("name", defaultTenant);
+            requestBody.put("name", tenant);
             
             String createTenantUrl = baseUrl + BASE_API + "/tenants";
             String jsonRequestBody = safeJsonSerialize(requestBody);
             
             String responseBody = executeWithRetry(() -> httpClient.post(createTenantUrl, headers, jsonRequestBody));
-            logger.info("Successfully created tenant '{}'", defaultTenant);
+            logger.info("Successfully created tenant '{}'", tenant);
         }
     }
     
@@ -141,32 +140,32 @@ public class ChromaVectorStore extends DocumentStore {
      * 确保数据库存在，如果不存在则创建
      */
     private void ensureDatabaseExists() throws IOException {
-        if (defaultTenant == null || defaultTenant.isEmpty()) {
+        if (tenant == null || tenant.isEmpty()) {
             throw new IllegalStateException("Cannot create database without tenant");
         }
         
-        String databaseUrl = baseUrl + BASE_API + "/tenants/" + defaultTenant + "/databases/" + defaultDatabase;
+        String databaseUrl = baseUrl + BASE_API + "/tenants/" + tenant + "/databases/" + database;
         Map<String, String> headers = createHeaders();
         
         try {
             // 尝试获取数据库信息
             String responseBody = executeWithRetry(() -> httpClient.get(databaseUrl, headers));
             logger.debug("Successfully verified database '{}' exists in tenant '{}'", 
-                defaultDatabase, defaultTenant);
+                database, tenant);
         } catch (IOException e) {
             // 如果获取失败，尝试创建数据库
             logger.info("Creating database '{}' in tenant '{}' as it does not exist", 
-                defaultDatabase, defaultTenant);
+                database, tenant);
             
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("name", defaultDatabase);
+            requestBody.put("name", database);
             
-            String createDatabaseUrl = baseUrl + BASE_API + "/tenants/" + defaultTenant + "/databases";
+            String createDatabaseUrl = baseUrl + BASE_API + "/tenants/" + tenant + "/databases";
             String jsonRequestBody = safeJsonSerialize(requestBody);
             
             String responseBody = executeWithRetry(() -> httpClient.post(createDatabaseUrl, headers, jsonRequestBody));
             logger.info("Successfully created database '{}' in tenant '{}'", 
-                defaultDatabase, defaultTenant);
+                database, tenant);
         }
     }
     
@@ -216,7 +215,7 @@ public class ChromaVectorStore extends DocumentStore {
         Map<String, String> headers = createHeaders();
             
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("name", defaultCollectionName);
+        requestBody.put("name", collectionName);
             
         String jsonRequestBody = safeJsonSerialize(requestBody);
             
@@ -236,7 +235,7 @@ public class ChromaVectorStore extends DocumentStore {
                 throw new IOException("Failed to create collection: " + responseMap.get("error"));
             }
             
-            logger.info("Collection '{}' created successfully", defaultCollectionName);
+            logger.info("Collection '{}' created successfully", collectionName);
         } catch (Exception e) {
             throw new IOException("Failed to process collection creation response: " + e.getMessage(), e);
         }
@@ -647,12 +646,12 @@ public class ChromaVectorStore extends DocumentStore {
         }
         
         // 添加租户和数据库信息（如果配置了）
-        if (defaultTenant != null && !defaultTenant.isEmpty()) {
-            headers.put("X-Chroma-Tenant", defaultTenant);
+        if (tenant != null && !tenant.isEmpty()) {
+            headers.put("X-Chroma-Tenant", tenant);
         }
         
-        if (defaultDatabase != null && !defaultDatabase.isEmpty()) {
-            headers.put("X-Chroma-Database", defaultDatabase);
+        if (database != null && !database.isEmpty()) {
+            headers.put("X-Chroma-Database", database);
         }
         
         return headers;
@@ -728,7 +727,7 @@ public class ChromaVectorStore extends DocumentStore {
     }
     
     private String getCollectionName(StoreOptions options) {
-        return options != null ? options.getCollectionNameOrDefault(defaultCollectionName) : defaultCollectionName;
+        return options != null ? options.getCollectionNameOrDefault(collectionName) : collectionName;
     }
     
     /**
@@ -737,11 +736,11 @@ public class ChromaVectorStore extends DocumentStore {
     private String buildCollectionUrl(String collectionId, String operation) {
         StringBuilder urlBuilder = new StringBuilder(baseUrl).append(BASE_API);
         
-        if (defaultTenant != null && !defaultTenant.isEmpty()) {
-            urlBuilder.append("/tenants/").append(defaultTenant);
+        if (tenant != null && !tenant.isEmpty()) {
+            urlBuilder.append("/tenants/").append(tenant);
             
-            if (defaultDatabase != null && !defaultDatabase.isEmpty()) {
-                urlBuilder.append("/databases/").append(defaultDatabase);
+            if (database != null && !database.isEmpty()) {
+                urlBuilder.append("/databases/").append(database);
             }
         }
         
@@ -763,13 +762,13 @@ public class ChromaVectorStore extends DocumentStore {
     private void ensureCollectionExists() throws IOException {
         try {
             // 尝试获取默认集合ID，如果能获取到则说明集合存在
-            getCollectionId(defaultCollectionName);
-            logger.debug("Collection '{}' exists", defaultCollectionName);
+            getCollectionId(collectionName);
+            logger.debug("Collection '{}' exists", collectionName);
         } catch (IOException e) {
             // 如果获取集合ID失败，说明集合不存在，需要创建
-            logger.info("Collection '{}' does not exist, creating...", defaultCollectionName);
+            logger.info("Collection '{}' does not exist, creating...", collectionName);
             createCollection();
-            logger.info("Collection '{}' created successfully", defaultCollectionName);
+            logger.info("Collection '{}' created successfully", collectionName); 
         }
     }
     
@@ -779,11 +778,11 @@ public class ChromaVectorStore extends DocumentStore {
     private String buildCollectionsUrl() {
         StringBuilder urlBuilder = new StringBuilder(baseUrl).append(BASE_API);
         
-        if (defaultTenant != null && !defaultTenant.isEmpty()) {
-            urlBuilder.append("/tenants/").append(defaultTenant);
+        if (tenant != null && !tenant.isEmpty()) {
+            urlBuilder.append("/tenants/").append(tenant);
             
-            if (defaultDatabase != null && !defaultDatabase.isEmpty()) {
-                urlBuilder.append("/databases/").append(defaultDatabase);
+            if (database != null && !database.isEmpty()) {
+                urlBuilder.append("/databases/").append(database);
             }
         }
         

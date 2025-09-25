@@ -28,7 +28,6 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
 
@@ -39,6 +38,8 @@ import static org.junit.Assert.*;
 public class ChromaVectorStoreTest {
 
     private static ChromaVectorStore store;
+    private static String testTenant = "default_tenant";
+    private static String testDatabase = "default_database";
     private static String testCollectionName = "test_collection";
     private static boolean isChromaAvailable = false;
     private static boolean useMock = false; // 设置为true可以在没有真实Chroma服务器时使用模拟模式
@@ -53,6 +54,8 @@ public class ChromaVectorStoreTest {
         config.setHost("localhost");
         config.setPort(8000);
         config.setCollectionName(testCollectionName);
+        config.setTenant(testTenant);
+        config.setDatabase(testDatabase);
         config.setAutoCreateCollection(true);
         
         // 初始化存储实例
@@ -267,7 +270,7 @@ public class ChromaVectorStoreTest {
             
             // 执行更新
             StoreResult result = store.updateInternal(Arrays.asList(updatedDoc), StoreOptions.DEFAULT);
-            
+
             // 验证更新是否成功
             assertTrue("Update operation should be successful", result.isSuccess());
             

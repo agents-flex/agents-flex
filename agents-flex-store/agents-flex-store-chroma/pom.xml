@@ -25,23 +25,16 @@
             <artifactId>agents-flex-core</artifactId>
         </dependency>
 
-        <dependency>
+        <!-- <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-        </dependency>
-        
-        <!-- 使用OkHttp作为HTTP客户端 -->
-        <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>okhttp</artifactId>
-            <version>${okhttp.version}</version>
         </dependency>
         
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
-        </dependency>
+        </dependency> -->
         
         <!-- 测试依赖 -->
         <dependency>
