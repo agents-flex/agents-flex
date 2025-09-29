@@ -17,6 +17,7 @@ package com.agentsflex.core.prompt.template;
 
 import com.agentsflex.core.prompt.TextPrompt;
 import com.agentsflex.core.util.MapUtil;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONPath;
 
 import java.util.ArrayList;
@@ -60,10 +61,15 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
         return new TextPrompt(formatToString(rootMap));
     }
 
+    public String formatToString(Map<String, Object> rootMap) {
+        return formatToString(rootMap, false);
+    }
+
     /**
      * 格式化模板
      */
-    public String formatToString(Map<String, Object> rootMap) {
+
+    public String formatToString(Map<String, Object> rootMap, boolean escapeJson) {
         if (tokens.isEmpty()) return "";
 
         if (rootMap == null) {
@@ -76,7 +82,7 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
             if (token.isStatic()) {
                 sb.append(token.content);
             } else {
-                Object value = getValueByJsonPath(rootMap, token.expression);
+                Object value = getValueByJsonPath(rootMap, token.expression, escapeJson);
                 String replacement = value != null ? value.toString() : token.defaultValue;
                 sb.append(replacement);
             }
@@ -149,12 +155,24 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
     /**
      * 使用 FastJSON JSONPath 获取嵌套值
      */
-    private Object getValueByJsonPath(Map<String, Object> root, String path) {
+    private Object getValueByJsonPath(Map<String, Object> root, String path, boolean escapeJson) {
         try {
-            return JSONPath.eval(root, "$." + path);
+            Object value = JSONPath.eval(root, "$." + path);
+            if (escapeJson && value instanceof String) {
+                return escapeJsonString(value.toString());
+            }
+            return value;
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static String escapeJsonString(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+        String quotedString = JSON.toJSONString(input);
+        return quotedString.substring(1, quotedString.length() - 1);
     }
 
     /**
