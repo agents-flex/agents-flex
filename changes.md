@@ -1,6 +1,11 @@
 # Agents-Flex ChangeLog
 
 
+## v1.3.7 20250929
+- 新增：支持 Chroma 向量数据库（1.1.10），目前只支持单租户，单数据库（有默认且可配置），感谢 @joe.wen
+- 新增：TextPromptTemplate.formatToString 添加 escapeJson 参数配置的支持
+
+
 ## v1.3.6 20250924
 - 修复： ConfirmNode 必须勾选必填才能正确进行数据确认的问题
 
