@@ -16,23 +16,25 @@
 package com.agentsflex.core.chain.node;
 
 import com.agentsflex.core.chain.Chain;
-import com.agentsflex.core.chain.DataType;
 import com.agentsflex.core.chain.Parameter;
 import com.agentsflex.core.llm.ChatOptions;
 import com.agentsflex.core.llm.Llm;
 import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.SystemMessage;
+import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.prompt.TextPrompt;
 import com.agentsflex.core.prompt.template.TextPromptTemplate;
 import com.agentsflex.core.util.CollectionUtil;
+import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 
-import java.util.*;
+import java.io.File;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class LlmNode extends BaseNode {
 
@@ -44,6 +46,7 @@ public class LlmNode extends BaseNode {
     protected String systemPrompt;
     protected TextPromptTemplate systemPromptTemplate;
     protected String outType = "text"; //text markdown json
+    protected List<Parameter> images;
 
     public LlmNode() {
     }
@@ -104,6 +107,14 @@ public class LlmNode extends BaseNode {
         this.outType = outType;
     }
 
+    public List<Parameter> getImages() {
+        return images;
+    }
+
+    public void setImages(List<Parameter> images) {
+        this.images = images;
+    }
+
     @Override
     protected Map<String, Object> execute(Chain chain) {
         Map<String, Object> parameterValues = chain.getParameterValues(this);
@@ -118,6 +129,21 @@ public class LlmNode extends BaseNode {
             String systemPrompt = systemPromptTemplate.formatToString(parameterValues);
             userPrompt.setSystemMessage(SystemMessage.of(systemPrompt));
         }
+
+
+        if (images != null && !images.isEmpty()) {
+            Map<String, Object> filesMap = chain.getParameterValues(this, images);
+            ImagePrompt imagePrompt = new ImagePrompt(userPrompt);
+            filesMap.forEach((s, o) -> {
+                if (o instanceof String) {
+                    imagePrompt.addImageUrl((String) o);
+                } else if (o instanceof File) {
+                    imagePrompt.addImageBase64(ImageUtil.imageFileToBase64((File) o));
+                }
+            });
+            userPrompt = imagePrompt;
+        }
+
 
         AiMessageResponse response = llm.chat(userPrompt, chatOptions);
         chain.output(this, response);
@@ -147,17 +173,32 @@ public class LlmNode extends BaseNode {
 
 
         if ("json".equalsIgnoreCase(outType)) {
-            if (this.outputDefs != null) {
-                JSONObject jsonObject;
-                try {
-                    jsonObject = JSON.parseObject(unWrapMarkdown(responseContent));
-                } catch (Exception e) {
-                    chain.stopError("Can not parse json: " + response.getResponse() + " " + e.getMessage());
-                    return Collections.emptyMap();
-                }
-                return getExecuteResultMap(outputDefs, jsonObject);
+            Object jsonObjectOrArray;
+            try {
+                jsonObjectOrArray = JSON.parse(unWrapMarkdown(responseContent));
+            } catch (Exception e) {
+                chain.stopError("Can not parse json: " + response.getResponse() + " " + e.getMessage());
+                return Collections.emptyMap();
             }
-            return Collections.emptyMap();
+
+
+            if (CollectionUtil.noItems(this.outputDefs)) {
+                return Maps.of("root", jsonObjectOrArray);
+            } else {
+                Parameter parameter = this.outputDefs.get(0);
+                return Maps.of(parameter.getName(), jsonObjectOrArray);
+            }
+//            if (this.outputDefs != null) {
+//                JSONObject jsonObject;
+//                try {
+//                    jsonObject = JSON.parseObject(unWrapMarkdown(responseContent));
+//                } catch (Exception e) {
+//                    chain.stopError("Can not parse json: " + response.getResponse() + " " + e.getMessage());
+//                    return Collections.emptyMap();
+//                }
+//                return getExecuteResultMap(outputDefs, jsonObject);
+//            }
+//            return Collections.emptyMap();
         }
 
 //        if (outType == null || outType.equalsIgnoreCase("text") || outType.equalsIgnoreCase("markdown")) {
@@ -197,88 +238,88 @@ public class LlmNode extends BaseNode {
         return markdown.trim();
     }
 
-    public static Map<String, Object> getExecuteResultMap(List<Parameter> outputDefs, JSONObject data) {
-        Map<String, Object> result = new HashMap<>();
-        outputDefs.forEach(output -> {
-            result.put(output.getName(), getOutputDefData(output, data, false));
-        });
-        return result;
-    }
+//    public static Map<String, Object> getExecuteResultMap(List<Parameter> outputDefs, JSONObject data) {
+//        Map<String, Object> result = new HashMap<>();
+//        outputDefs.forEach(output -> {
+//            result.put(output.getName(), getOutputDefData(output, data, false));
+//        });
+//        return result;
+//    }
 
-    private static Object getOutputDefData(Parameter output, JSONObject data, boolean sub) {
-        String name = output.getName();
-        DataType dataType = output.getDataType();
-        switch (dataType) {
-            case Array:
-            case Array_Object:
-                if (output.getChildren() == null || output.getChildren().isEmpty()) {
-                    return data.get(name);
-                }
-                List<Object> subResultList = new ArrayList<>();
-                Object dataObj = data.get(name);
-                if (dataObj instanceof JSONArray) {
-                    JSONArray contentFields = ((JSONArray) dataObj);
-                    if (!contentFields.isEmpty()) {
-                        contentFields.forEach(field -> {
-                            if (field instanceof JSONObject) {
-                                subResultList.add(getChildrenResult(output.getChildren(), (JSONObject) field, sub));
-                            }
-                        });
-                    }
-                }
-                return subResultList;
-            case Object:
-                return (output.getChildren() != null && !output.getChildren().isEmpty()) ? getChildrenResult(output.getChildren(), sub ? data : (JSONObject) data.get(name), sub) : data.get(name);
-            case String:
-            case Number:
-            case Boolean:
-                Object obj = data.get(name);
-                return (DataType.String == dataType) ? (obj instanceof String ? obj : "") : (DataType.Number == dataType) ? (obj instanceof Number ? obj : 0) : obj instanceof Boolean ? obj : false;
-            case Array_String:
-            case Array_Number:
-            case Array_Boolean:
-                Object arrayObj = data.get(name);
-                if (arrayObj instanceof JSONArray) {
-                    ((JSONArray) arrayObj).removeIf(o -> arrayRemoveFlag(dataType, o));
-                    return arrayObj;
-                }
-                return Collections.emptyList();
-            default:
-                return ""; // FILE和其他不支持的类型，默认空字符串
-        }
-    }
+//    private static Object getOutputDefData(Parameter output, JSONObject data, boolean sub) {
+//        String name = output.getName();
+//        DataType dataType = output.getDataType();
+//        switch (dataType) {
+//            case Array:
+//            case Array_Object:
+//                if (output.getChildren() == null || output.getChildren().isEmpty()) {
+//                    return data.get(name);
+//                }
+//                List<Object> subResultList = new ArrayList<>();
+//                Object dataObj = data.get(name);
+//                if (dataObj instanceof JSONArray) {
+//                    JSONArray contentFields = ((JSONArray) dataObj);
+//                    if (!contentFields.isEmpty()) {
+//                        contentFields.forEach(field -> {
+//                            if (field instanceof JSONObject) {
+//                                subResultList.add(getChildrenResult(output.getChildren(), (JSONObject) field, sub));
+//                            }
+//                        });
+//                    }
+//                }
+//                return subResultList;
+//            case Object:
+//                return (output.getChildren() != null && !output.getChildren().isEmpty()) ? getChildrenResult(output.getChildren(), sub ? data : (JSONObject) data.get(name), sub) : data.get(name);
+//            case String:
+//            case Number:
+//            case Boolean:
+//                Object obj = data.get(name);
+//                return (DataType.String == dataType) ? (obj instanceof String ? obj : "") : (DataType.Number == dataType) ? (obj instanceof Number ? obj : 0) : obj instanceof Boolean ? obj : false;
+//            case Array_String:
+//            case Array_Number:
+//            case Array_Boolean:
+//                Object arrayObj = data.get(name);
+//                if (arrayObj instanceof JSONArray) {
+//                    ((JSONArray) arrayObj).removeIf(o -> arrayRemoveFlag(dataType, o));
+//                    return arrayObj;
+//                }
+//                return Collections.emptyList();
+//            default:
+//                return ""; // FILE和其他不支持的类型，默认空字符串
+//        }
+//    }
 
-    private static boolean arrayRemoveFlag(DataType dataType, Object arrayObj) {
-        boolean removeFlag = false;
-        if (DataType.Array_String == dataType) {
-            if (!(arrayObj instanceof String)) {
-                removeFlag = true;
-            }
-        } else if (DataType.Array_Number == dataType) {
-            if (!(arrayObj instanceof Number)) {
-                removeFlag = true;
-            }
-        } else {
-            if (!(arrayObj instanceof Boolean)) {
-                removeFlag = true;
-            }
-        }
-        return removeFlag;
-    }
+//    private static boolean arrayRemoveFlag(DataType dataType, Object arrayObj) {
+//        boolean removeFlag = false;
+//        if (DataType.Array_String == dataType) {
+//            if (!(arrayObj instanceof String)) {
+//                removeFlag = true;
+//            }
+//        } else if (DataType.Array_Number == dataType) {
+//            if (!(arrayObj instanceof Number)) {
+//                removeFlag = true;
+//            }
+//        } else {
+//            if (!(arrayObj instanceof Boolean)) {
+//                removeFlag = true;
+//            }
+//        }
+//        return removeFlag;
+//    }
 
-    private static Map<String, Object> getChildrenResult(List<Parameter> children, JSONObject data, boolean sub) {
-        Map<String, Object> childrenResult = new HashMap<>();
-        children.forEach(child -> {
-            String childName = child.getName();
-            Object subData = getOutputDefData(child, data, sub);
-            if ((subData instanceof JSONObject) && (child.getChildren() != null && !child.getChildren().isEmpty())) {
-                getChildrenResult(child.getChildren(), (JSONObject) subData, true);
-            } else {
-                childrenResult.put(childName, subData);
-            }
-        });
-        return childrenResult;
-    }
+//    private static Map<String, Object> getChildrenResult(List<Parameter> children, JSONObject data, boolean sub) {
+//        Map<String, Object> childrenResult = new HashMap<>();
+//        children.forEach(child -> {
+//            String childName = child.getName();
+//            Object subData = getOutputDefData(child, data, sub);
+//            if ((subData instanceof JSONObject) && (child.getChildren() != null && !child.getChildren().isEmpty())) {
+//                getChildrenResult(child.getChildren(), (JSONObject) subData, true);
+//            } else {
+//                childrenResult.put(childName, subData);
+//            }
+//        });
+//        return childrenResult;
+//    }
 
 
     @Override

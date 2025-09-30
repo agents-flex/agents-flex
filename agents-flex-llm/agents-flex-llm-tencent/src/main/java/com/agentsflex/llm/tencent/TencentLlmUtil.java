@@ -63,7 +63,13 @@ public class TencentLlmUtil {
             if (message instanceof HumanImageMessage) {
                 ImagePrompt prompt = ((HumanImageMessage) message).getPrompt();
                 List<Map<String, Object>> list = new ArrayList<>();
-                list.add(Maps.of("Type", "image_url").set("Text", prompt.getContent()).set("ImageUrl", Maps.of("Url", prompt.toUrl())));
+                List<String> imageUrls = prompt.getImageUrls();
+                if (imageUrls != null) {
+                    for (String imageUrl : imageUrls) {
+                        list.add(Maps.of("Type", "image_url").set("Text", prompt.getContent()).set("ImageUrl", Maps.of("Url", imageUrl)));
+                    }
+                }
+
                 map.put("Contents", list);
             } else {
                 map.put("Content", message.getMessageContent());
