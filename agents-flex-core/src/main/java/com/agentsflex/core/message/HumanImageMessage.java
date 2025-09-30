@@ -38,8 +38,25 @@ public class HumanImageMessage extends HumanMessage {
     public Object getMessageContent() {
         List<Map<String, Object>> messageContent = new ArrayList<>();
         messageContent.add(Maps.of("type", "text").set("text", prompt.getContent()));
-        messageContent.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", prompt.toUrl())));
+        messageContent.addAll(buildImageContent());
         return messageContent;
     }
 
+
+    public List<Map<String, Object>> buildImageContent() {
+        List<Map<String, Object>> result = new ArrayList<>(1);
+        List<String> imageUrls = prompt.getImageUrls();
+        if (imageUrls != null) {
+            for (String url : imageUrls) {
+                result.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", url)));
+            }
+        }
+        List<String> imageBase64s = prompt.getImageBase64s();
+        if (imageBase64s != null) {
+            for (String base64 : imageBase64s) {
+                result.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", base64)));
+            }
+        }
+        return result;
+    }
 }
