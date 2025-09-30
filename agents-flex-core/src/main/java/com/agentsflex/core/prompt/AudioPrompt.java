@@ -17,15 +17,15 @@ package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.message.HumanAudioMessage;
 import com.agentsflex.core.message.Message;
-import com.agentsflex.core.util.StringUtil;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 
 public class AudioPrompt extends TextPrompt {
 
-    private String audioUrl;
+    private List<String> audioUrls;
 
     public AudioPrompt(String content) {
         super(content);
@@ -33,24 +33,29 @@ public class AudioPrompt extends TextPrompt {
 
     public AudioPrompt(String content, String audioUrl) {
         super(content);
-        this.audioUrl = audioUrl;
+        this.audioUrls = new ArrayList<>(1);
+        this.audioUrls.add(audioUrl);
     }
 
-    public String getAudioUrl() {
-        return audioUrl;
+    public AudioPrompt(String content, List<String> audioUrls) {
+        super(content);
+        this.audioUrls = audioUrls;
     }
 
-    public void setAudioUrl(String audioUrl) {
-        this.audioUrl = audioUrl;
+    public List<String> getAudioUrls() {
+        return audioUrls;
     }
 
-    public String toUrl() {
-        if (StringUtil.hasText(audioUrl)) {
-            return audioUrl;
+    public void setAudioUrls(List<String> audioUrls) {
+        this.audioUrls = audioUrls;
+    }
+
+    public void addAudioUrl(String audioUrl) {
+        if (audioUrls == null) {
+            audioUrls = new ArrayList<>(1);
         }
-        return null;
+        audioUrls.add(audioUrl);
     }
-
 
     @Override
     public List<Message> toMessages() {
@@ -61,10 +66,9 @@ public class AudioPrompt extends TextPrompt {
     @Override
     public String toString() {
         return "AudioPrompt{" +
-            "audioUrl='" + audioUrl + '\'' +
+            "audioUrls=" + audioUrls +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';
     }
-
 }

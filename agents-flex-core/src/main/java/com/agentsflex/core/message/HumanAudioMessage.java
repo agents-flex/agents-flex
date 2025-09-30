@@ -38,8 +38,20 @@ public class HumanAudioMessage extends HumanMessage {
     public Object getMessageContent() {
         List<Map<String, Object>> messageContent = new ArrayList<>();
         messageContent.add(Maps.of("type", "text").set("text", prompt.getContent()));
-        messageContent.add(Maps.of("type", "audio_url").set("audio_url", Maps.of("url", prompt.toUrl())));
+        messageContent.addAll(buildAudioContent());
         return messageContent;
+    }
+
+
+    public List<Map<String, Object>> buildAudioContent() {
+        List<Map<String, Object>> result = new ArrayList<>(1);
+        List<String> audioUrls = prompt.getAudioUrls();
+        if (audioUrls != null) {
+            for (String url : audioUrls) {
+                result.add(Maps.of("type", "audio_url").set("audio_url", Maps.of("url", url)));
+            }
+        }
+        return result;
     }
 
 }
