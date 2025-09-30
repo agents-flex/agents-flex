@@ -18,18 +18,18 @@ package com.agentsflex.core.prompt;
 import com.agentsflex.core.message.HumanImageMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.util.ImageUtil;
-import com.agentsflex.core.util.StringUtil;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 public class ImagePrompt extends TextPrompt {
 
-    private String imageUrl;
-    private File imageFile;
-    private String imageBase64;
+    private List<String> imageUrls;
+    private List<String> imageBase64s;
 
     public ImagePrompt(String content) {
         super(content);
@@ -37,78 +37,84 @@ public class ImagePrompt extends TextPrompt {
 
     public ImagePrompt(String content, String imageUrl) {
         super(content);
-        this.imageUrl = imageUrl;
+        this.imageUrls = new ArrayList<>(1);
+        this.imageUrls.add(imageUrl);
     }
 
     public ImagePrompt(String content, File imageFile) {
         super(content);
-        this.imageFile = imageFile;
+        this.imageBase64s = new ArrayList<>(1);
+        this.imageBase64s.add(ImageUtil.imageFileToBase64(imageFile));
     }
 
     public ImagePrompt(String content, InputStream imageStream) {
         super(content);
-        this.imageBase64 = ImageUtil.imageStreamToBase64(imageStream);
+        this.imageBase64s = new ArrayList<>(1);
+        this.imageBase64s.add(ImageUtil.imageStreamToBase64(imageStream));
     }
 
-    public String getImageUrl() {
-        return imageUrl;
+    public ImagePrompt(TextPrompt textPrompt) {
+        super(textPrompt.getContent());
+        setSystemMessage(textPrompt.getSystemMessage());
     }
 
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
+    public ImagePrompt(TextPrompt textPrompt, String imageUrl) {
+        super(textPrompt.getContent());
+        setSystemMessage(textPrompt.getSystemMessage());
+        this.imageUrls = new ArrayList<>(1);
+        this.imageUrls.add(imageUrl);
     }
 
-    public File getImageFile() {
-        return imageFile;
+    public ImagePrompt(TextPrompt textPrompt, Collection<String> imageUrls) {
+        super(textPrompt.getContent());
+        setSystemMessage(textPrompt.getSystemMessage());
+        this.imageUrls = new ArrayList<>(imageUrls.size());
+        this.imageUrls.addAll(imageUrls);
     }
 
-    public void setImageFile(File imageFile) {
-        this.imageFile = imageFile;
+    public List<String> getImageUrls() {
+        return imageUrls;
     }
 
-    public String getImageBase64() {
-        return imageBase64;
+    public void setImageUrls(List<String> imageUrls) {
+        this.imageUrls = imageUrls;
     }
 
-    public void setImageBase64(String imageBase64) {
-        this.imageBase64 = imageBase64;
-    }
-
-
-    public String toUrl() {
-        if (StringUtil.hasText(imageUrl)) {
-            return imageUrl;
+    public void addImageUrl(String imageUrl) {
+        if (this.imageUrls == null) {
+            this.imageUrls = new ArrayList<>(1);
         }
-
-        if (imageBase64 != null) {
-            return imageBase64;
-        }
-
-        if (imageFile != null) {
-            imageBase64 = ImageUtil.imageFileToBase64(imageFile);
-            return imageBase64;
-        }
-        return null;
+        this.imageUrls.add(imageUrl);
     }
 
-
-    public String toImageBase64() {
-        if (imageBase64 != null) {
-            return imageBase64;
-        }
-
-        if (StringUtil.hasText(imageUrl)) {
-            imageBase64 = ImageUtil.imageUrlToBase64(imageUrl);
-            return imageBase64;
-        }
-
-        if (imageFile != null) {
-            imageBase64 = ImageUtil.imageFileToBase64(imageFile);
-            return imageBase64;
-        }
-
-        return null;
+    public List<String> getImageBase64s() {
+        return imageBase64s;
     }
+
+    public void setImageBase64s(List<String> imageBase64s) {
+        this.imageBase64s = imageBase64s;
+    }
+
+    public void addImageBase64(String imageBase64) {
+        if (this.imageBase64s == null) {
+            this.imageBase64s = new ArrayList<>(1);
+        }
+        this.imageBase64s.add(imageBase64);
+    }
+
+    public List<String> buildAllToBase64s() {
+        List<String> allBase64s = new ArrayList<>();
+        if (imageUrls != null) {
+            for (String imageUrl : imageUrls) {
+                allBase64s.add(ImageUtil.imageUrlToBase64(imageUrl));
+            }
+        }
+        if (imageBase64s != null) {
+            allBase64s.addAll(imageBase64s);
+        }
+        return allBase64s;
+    }
+
 
     @Override
     public List<Message> toMessages() {
@@ -118,11 +124,6 @@ public class ImagePrompt extends TextPrompt {
 
     @Override
     public String toString() {
-        return "ImagePrompt{" +
-            "imageUrl='" + imageUrl + '\'' +
-            ", content='" + content + '\'' +
-            ", metadataMap=" + metadataMap +
-            '}';
+        return "ImagePrompt{" + "imageUrls=" + imageUrls + ", imageBase64s=" + imageBase64s + '}';
     }
-
 }
