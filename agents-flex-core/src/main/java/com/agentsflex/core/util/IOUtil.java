@@ -49,14 +49,14 @@ public class IOUtil {
     }
 
     public static void copy(InputStream inputStream, BufferedSink sink) throws IOException {
-        byte[] buffer = new byte[1024];
+        byte[] buffer = new byte[2048];
         for (int len; (len = inputStream.read(buffer)) != -1; ) {
             sink.write(buffer, 0, len);
         }
     }
 
     public static void copy(InputStream inputStream, OutputStream outStream) throws IOException {
-        byte[] buffer = new byte[1024];
+        byte[] buffer = new byte[2048];
         for (int len; (len = inputStream.read(buffer)) != -1; ) {
             outStream.write(buffer, 0, len);
         }
