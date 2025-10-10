@@ -20,7 +20,6 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.util.ImageUtil;
 
 import java.io.File;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,13 +43,7 @@ public class ImagePrompt extends TextPrompt {
     public ImagePrompt(String content, File imageFile) {
         super(content);
         this.imageBase64s = new ArrayList<>(1);
-        this.imageBase64s.add(ImageUtil.imageFileToBase64(imageFile));
-    }
-
-    public ImagePrompt(String content, InputStream imageStream) {
-        super(content);
-        this.imageBase64s = new ArrayList<>(1);
-        this.imageBase64s.add(ImageUtil.imageStreamToBase64(imageStream));
+        this.imageBase64s.add(ImageUtil.imageFileToDataUri(imageFile));
     }
 
     public ImagePrompt(TextPrompt textPrompt) {
@@ -87,6 +80,10 @@ public class ImagePrompt extends TextPrompt {
         this.imageUrls.add(imageUrl);
     }
 
+    public void addImageFile(File imageFile) {
+        addImageBase64(ImageUtil.imageFileToDataUri(imageFile));
+    }
+
     public List<String> getImageBase64s() {
         return imageBase64s;
     }
@@ -106,7 +103,7 @@ public class ImagePrompt extends TextPrompt {
         List<String> allBase64s = new ArrayList<>();
         if (imageUrls != null) {
             for (String imageUrl : imageUrls) {
-                allBase64s.add(ImageUtil.imageUrlToBase64(imageUrl));
+                allBase64s.add(ImageUtil.imageUrlToDataUri(imageUrl));
             }
         }
         if (imageBase64s != null) {

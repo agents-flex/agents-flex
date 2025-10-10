@@ -65,7 +65,7 @@ public static void main(String[] args) {
     Llm llm = new OpenAILlm(config);
 
     ImagePrompt prompt = new ImagePrompt("What's in this image?");
-    prompt.setImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
+    prompt.addImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
     AiMessageResponse response = llm.chat(prompt);
 
     System.out.println(response);

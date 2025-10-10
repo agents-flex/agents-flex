@@ -57,13 +57,18 @@ public class OpenAILlmTest {
         OpenAILlmConfig config = new OpenAILlmConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3");
-//        config.setDebug(true);
+        config.setDebug(true);
 
         Llm llm = new OpenAILlm(config);
         llm.chatStream("who are you", new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
+            }
+
+            @Override
+            public void onStop(ChatContext context) {
+                System.out.println("stop!!!!");
             }
         });
 
@@ -84,7 +89,7 @@ public class OpenAILlmTest {
 
         Llm llm = new OpenAILlm(config);
         ImagePrompt prompt = new ImagePrompt("What's in this image?");
-        prompt.setImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
+        prompt.addImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
 
 
         AiMessageResponse response = llm.chat(prompt);

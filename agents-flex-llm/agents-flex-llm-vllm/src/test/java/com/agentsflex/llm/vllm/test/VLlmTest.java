@@ -9,7 +9,6 @@ import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.store.VectorData;
-import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.llm.vllm.VLlmLlm;
 import com.agentsflex.llm.vllm.VLlmLlmConfig;
@@ -26,7 +25,7 @@ public class VLlmTest {
         Llm llm = new VLlmLlm(config);
         HistoriesPrompt prompt = new HistoriesPrompt();
         ImagePrompt imagePrompt = new ImagePrompt("这个图片干什么的");
-        imagePrompt.setImageBase64("data:image/jpeg;base64," + ImageUtil.imageUrlToBase64("https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241022/emyrja/dog_and_girl.jpeg"));
+        imagePrompt.addImageUrl("https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241022/emyrja/dog_and_girl.jpeg");
         prompt.addMessage(new HumanImageMessage(imagePrompt));
 
         llm.chatStream(prompt, (context, response) -> {

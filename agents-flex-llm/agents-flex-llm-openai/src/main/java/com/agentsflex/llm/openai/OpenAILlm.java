@@ -106,8 +106,8 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         if (config.isDebug()) {
             LogUtil.println(">>>>send payload:" + payload);
         }
-        String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + config.getChatPath(), headers, payload);
+        String url = config.getEndpoint() + config.getChatPath();
+        String response = httpClient.post(url, headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);

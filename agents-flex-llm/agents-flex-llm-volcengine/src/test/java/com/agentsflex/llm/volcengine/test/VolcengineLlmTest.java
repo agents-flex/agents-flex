@@ -8,7 +8,6 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.message.HumanImageMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.prompt.ImagePrompt;
-import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.llm.volcengine.VolcengineLlm;
 import com.agentsflex.llm.volcengine.VolcengineLlmConfig;
 import org.junit.Test;
@@ -68,8 +67,8 @@ public class VolcengineLlmTest {
 
         Llm llm = new VolcengineLlm(config);
         ImagePrompt prompt = new ImagePrompt("这个图片说的是什么?");
-        prompt.setImageBase64("data:image/png;base64," + ImageUtil.imageUrlToBase64("https://ark-project.tos-cn-beijing.volces.com/doc_image/ark_demo_img_1.png"));
-        System.out.println(prompt.getImageUrl());
+        prompt.addImageUrl("https://ark-project.tos-cn-beijing.volces.com/doc_image/ark_demo_img_1.png");
+        System.out.println(prompt.getImageUrls());
 
 
         Message message = new HumanImageMessage(prompt);

@@ -138,7 +138,7 @@ public class LlmNode extends BaseNode {
                 if (o instanceof String) {
                     imagePrompt.addImageUrl((String) o);
                 } else if (o instanceof File) {
-                    imagePrompt.addImageBase64(ImageUtil.imageFileToBase64((File) o));
+                    imagePrompt.addImageBase64(ImageUtil.imageFileToDataUri((File) o));
                 }
             });
             userPrompt = imagePrompt;
