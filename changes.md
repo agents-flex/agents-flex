@@ -5,6 +5,7 @@
 - 新增：大模型节点添加图片识别的能力
 - 新增：大模型节点支持多种 json 格式输出
 - 优化：优化 okHttpclient 的请求机制，更轻量化
+- 优化：优化 OkHttpClientUtil 的配置支持环境变量
 - 优化：ImageUtil 支持自动添加 base64 url 前缀
 
 
