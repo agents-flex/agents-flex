@@ -28,39 +28,62 @@ import java.util.Map;
 
 public class WebSocketClient extends WebSocketListener implements LlmClient {
 
+    private OkHttpClient okHttpClient;
     private WebSocket webSocket;
     private LlmClientListener listener;
     private LlmConfig config;
     private boolean isStop = false;
     private String payload;
 
+
+    public WebSocketClient() {
+        this(OkHttpClientUtil.buildDefaultClient());
+    }
+
+    public WebSocketClient(OkHttpClient okHttpClient) {
+        if (okHttpClient == null) {
+            throw new IllegalArgumentException("OkHttpClient must not be null");
+        }
+        this.okHttpClient = okHttpClient;
+    }
+
+    public OkHttpClient getOkHttpClient() {
+        return okHttpClient;
+    }
+
+    public void setOkHttpClient(OkHttpClient okHttpClient) {
+        this.okHttpClient = okHttpClient;
+    }
+
     @Override
     public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener, LlmConfig config) {
+        if (isStop) {
+            throw new IllegalStateException("WebSocketClient has been stopped and cannot be reused.");
+        }
+
         this.listener = listener;
         this.payload = payload;
         this.config = config;
-
-        OkHttpClient client = OkHttpClientUtil.buildDefaultClient();
-
-        Request request = new Request.Builder()
-            .url(url)
-            .build();
-
         this.isStop = false;
-        this.webSocket = client.newWebSocket(request, this);
 
-        if (this.config.isDebug()) {
+        Request.Builder builder = new Request.Builder().url(url);
+        if (headers != null && !headers.isEmpty()) {
+            headers.forEach(builder::addHeader);
+        }
+
+        Request request = builder.build();
+
+        // 创建 WebSocket 连接
+        this.webSocket = okHttpClient.newWebSocket(request, this);
+
+        if (config != null && config.isDebug()) {
             LogUtil.println(">>>>send payload:" + payload);
         }
     }
 
     @Override
     public void stop() {
-        try {
-            tryToStop();
-        } finally {
-            tryToCloseWebSocket();
-        }
+        closeWebSocketAndNotify();
     }
 
 
@@ -86,50 +109,53 @@ public class WebSocketClient extends WebSocketListener implements LlmClient {
 
     @Override
     public void onClosing(WebSocket webSocket, int code, String reason) {
-        try {
-            tryToStop();
-        } finally {
-            tryToCloseWebSocket();
-        }
+        closeWebSocketAndNotify();
     }
 
     @Override
     public void onFailure(WebSocket webSocket, Throwable t, Response response) {
         try {
-            try {
-                Throwable failureThrowable = Util.getFailureThrowable(t, response);
-                this.listener.onFailure(this, failureThrowable);
-            } finally {
-                tryToStop();
-            }
+            Throwable failureThrowable = Util.getFailureThrowable(t, response);
+            this.listener.onFailure(this, failureThrowable);
         } finally {
-            tryToCloseWebSocket();
+            closeWebSocketAndNotify();
         }
     }
 
     @Override
     public void onClosed(@NotNull WebSocket webSocket, int code, @NotNull String reason) {
-        try {
-            tryToStop();
-        } finally {
-            tryToCloseWebSocket();
-        }
+        closeWebSocketAndNotify();
     }
 
 
-    private void tryToCloseWebSocket() {
-        if (this.webSocket != null) {
-            this.webSocket.close(1000, "");
-            this.webSocket = null;
-        }
-    }
+    /**
+     * 安全关闭 WebSocket 并通知监听器（确保只执行一次）
+     */
+    private void closeWebSocketAndNotify() {
+        if (isStop) return;
+        synchronized (this) {
+            if (isStop) return;
+            isStop = true;
 
-    private boolean tryToStop() {
-        if (!this.isStop) {
-            this.isStop = true;
-            this.listener.onStop(this);
-            return true;
+            // 先通知 onStop
+            if (this.listener != null) {
+                try {
+                    this.listener.onStop(this);
+                } catch (Exception e) {
+                    LogUtil.warn(e.getMessage(), e);
+                }
+            }
+
+            // 再关闭 WebSocket（幂等：close 多次无害，但避免空指针）
+            if (this.webSocket != null) {
+                try {
+                    this.webSocket.close(1000, ""); // 正常关闭
+                } catch (Exception e) {
+                    // 忽略关闭异常（连接可能已断）
+                } finally {
+                    this.webSocket = null;
+                }
+            }
         }
-        return false;
     }
 }

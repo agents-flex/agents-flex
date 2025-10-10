@@ -24,21 +24,42 @@ import java.util.concurrent.TimeUnit;
 
 public class OkHttpClientUtil {
 
-    private static OkHttpClient.Builder okHttpClientBuilder;
+    // 使用 volatile + 双重检查锁实现线程安全的懒加载单例
+    private static volatile OkHttpClient defaultClient;
+    private static volatile OkHttpClient.Builder customBuilder;
 
-    public static OkHttpClient.Builder getOkHttpClientBuilder() {
-        return okHttpClientBuilder;
-    }
-
-    public static void setOkHttpClientBuilder(OkHttpClient.Builder okHttpClientBuilder) {
-        OkHttpClientUtil.okHttpClientBuilder = okHttpClientBuilder;
-    }
-
-    public static OkHttpClient buildDefaultClient() {
-        if (okHttpClientBuilder != null) {
-            return okHttpClientBuilder.build();
+    /**
+     * 设置自定义 OkHttpClient.Builder（必须在首次调用 buildDefaultClient() 前设置）
+     */
+    public static void setOkHttpClientBuilder(OkHttpClient.Builder builder) {
+        if (defaultClient != null) {
+            throw new IllegalStateException("OkHttpClient has already been initialized. " +
+                "Please set the builder before first usage.");
         }
+        customBuilder = builder;
+    }
 
+    /**
+     * 获取默认的 OkHttpClient 单例（线程安全）
+     */
+    public static OkHttpClient buildDefaultClient() {
+        if (defaultClient == null) {
+            synchronized (OkHttpClientUtil.class) {
+                if (defaultClient == null) {
+                    OkHttpClient.Builder builder = customBuilder != null
+                        ? customBuilder
+                        : createDefaultBuilder();
+                    defaultClient = builder.build();
+                }
+            }
+        }
+        return defaultClient;
+    }
+
+    /**
+     * 创建默认的 OkHttpClient.Builder（含超时和代理配置）
+     */
+    private static OkHttpClient.Builder createDefaultBuilder() {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
             .connectTimeout(1, TimeUnit.MINUTES)
             .readTimeout(5, TimeUnit.MINUTES);
@@ -47,10 +68,16 @@ public class OkHttpClientUtil {
         String proxyPort = System.getProperty("https.proxyPort");
 
         if (StringUtil.hasText(proxyHost) && StringUtil.hasText(proxyPort)) {
-            InetSocketAddress inetSocketAddress = new InetSocketAddress(proxyHost.trim(), Integer.parseInt(proxyPort.trim()));
-            builder.proxy(new Proxy(Proxy.Type.HTTP, inetSocketAddress));
+            try {
+                int port = Integer.parseInt(proxyPort.trim());
+                InetSocketAddress address = new InetSocketAddress(proxyHost.trim(), port);
+                builder.proxy(new Proxy(Proxy.Type.HTTP, address));
+            } catch (NumberFormatException e) {
+                // 忽略无效的代理端口，使用默认无代理配置
+                // 可选：记录警告日志
+            }
         }
 
-        return builder.build();
+        return builder;
     }
 }

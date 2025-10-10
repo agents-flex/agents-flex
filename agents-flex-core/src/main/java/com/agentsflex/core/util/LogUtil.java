@@ -16,7 +16,19 @@ public class LogUtil {
         logger.info(message);
     }
 
+    public static void println(String message, Object... args) {
+        logger.info(String.format(message, args));
+    }
+
+    public static void warn(String s, Exception e) {
+        logger.warn(s + ": " + e.getMessage());
+    }
+
     interface Logger {
         void info(String message);
+
+        default void warn(String message) {
+            info(message);
+        }
     }
 }

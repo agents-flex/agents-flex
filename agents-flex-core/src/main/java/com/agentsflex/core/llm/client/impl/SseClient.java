@@ -37,6 +37,25 @@ public class SseClient extends EventSourceListener implements LlmClient {
     private LlmConfig config;
     private boolean isStop = false;
 
+    public SseClient() {
+        this(OkHttpClientUtil.buildDefaultClient());
+    }
+
+    public SseClient(OkHttpClient okHttpClient) {
+        if (okHttpClient == null) {
+            throw new IllegalArgumentException("OkHttpClient must not be null");
+        }
+        this.okHttpClient = okHttpClient;
+    }
+
+    public OkHttpClient getOkHttpClient() {
+        return okHttpClient;
+    }
+
+    public void setOkHttpClient(OkHttpClient okHttpClient) {
+        this.okHttpClient = okHttpClient;
+    }
+
     @Override
     public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener, LlmConfig config) {
         this.listener = listener;
@@ -55,16 +74,17 @@ public class SseClient extends EventSourceListener implements LlmClient {
         Request request = builder.post(body).build();
 
 
-        this.okHttpClient = OkHttpClientUtil.buildDefaultClient();
-
         EventSource.Factory factory = EventSources.createFactory(this.okHttpClient);
         this.eventSource = factory.newEventSource(request, this);
 
-        if (this.config.isDebug()) {
+        if (this.config != null && this.config.isDebug()) {
             LogUtil.println(">>>>send payload:" + payload);
         }
 
-        this.listener.onStart(this);
+        if (this.listener != null) {
+            this.listener.onStart(this);
+        }
+
     }
 
     @Override
@@ -109,9 +129,7 @@ public class SseClient extends EventSourceListener implements LlmClient {
             } finally {
                 if (eventSource != null) {
                     eventSource.cancel();
-                }
-                if (okHttpClient != null) {
-                    okHttpClient.dispatcher().executorService().shutdown();
+                    eventSource = null;
                 }
             }
         }

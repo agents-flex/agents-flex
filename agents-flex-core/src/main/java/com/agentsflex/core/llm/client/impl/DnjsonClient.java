@@ -38,90 +38,137 @@ public class DnjsonClient implements LlmClient, Callback {
     private LlmConfig config;
     private boolean isStop = false;
 
+    public DnjsonClient() {
+        this(OkHttpClientUtil.buildDefaultClient());
+    }
+
+    public DnjsonClient(OkHttpClient okHttpClient) {
+        if (okHttpClient == null) {
+            throw new IllegalArgumentException("OkHttpClient must not be null");
+        }
+        this.okHttpClient = okHttpClient;
+    }
+
+    public OkHttpClient getOkHttpClient() {
+        return okHttpClient;
+    }
+
+    public void setOkHttpClient(OkHttpClient okHttpClient) {
+        this.okHttpClient = okHttpClient;
+    }
+
     @Override
     public void start(String url, Map<String, String> headers, String payload, LlmClientListener listener, LlmConfig config) {
+        if (isStop) {
+            throw new IllegalStateException("DnjsonClient has been stopped and cannot be reused.");
+        }
+
         this.listener = listener;
         this.config = config;
         this.isStop = false;
 
-        Request.Builder rBuilder = new Request.Builder()
-            .url(url);
-
+        Request.Builder builder = new Request.Builder().url(url);
         if (headers != null && !headers.isEmpty()) {
-            headers.forEach(rBuilder::addHeader);
+            headers.forEach(builder::addHeader);
         }
 
         RequestBody body = RequestBody.create(payload, JSON_TYPE);
-        rBuilder.post(body);
+        Request request = builder.post(body).build();
 
-        this.okHttpClient = OkHttpClientUtil.buildDefaultClient();
-
-        if (this.config.isDebug()) {
-            LogUtil.println(">>>>send payload:" + payload);
+        if (config != null && config.isDebug()) {
+            LogUtil.println(">>>> send payload: {}", payload);
         }
 
+        if (this.listener != null) {
+            try {
+                this.listener.onStart(this);
+            } catch (Exception e) {
+                LogUtil.warn("Error in listener.onStart", e);
+                return; // 可选：是否继续请求？
+            }
+        }
 
-        this.listener.onStart(this);
-        this.okHttpClient.newCall(rBuilder.build()).enqueue(this);
+        // 发起异步请求
+        okHttpClient.newCall(request).enqueue(this);
     }
 
     @Override
     public void stop() {
-        tryToStop();
+        // 注意：OkHttp 的 Call 无法取消已开始的 onResponse
+        // 所以 stop() 主要用于标记状态，防止后续回调处理
+        markAsStopped();
     }
 
 
     @Override
     public void onFailure(@NotNull Call call, @NotNull IOException e) {
         try {
-            this.listener.onFailure(this, Util.getFailureThrowable(e, null));
+            if (listener != null && !isStop) {
+                Throwable error = Util.getFailureThrowable(e, null);
+                listener.onFailure(this, error);
+            }
+        } catch (Exception ex) {
+            LogUtil.warn("Error in listener.onFailure", ex);
         } finally {
-            tryToStop();
+            markAsStopped();
         }
     }
 
     @Override
     public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-        if (!response.isSuccessful()) {
-            tryToStop();
-            return;
-        }
-        ResponseBody body = response.body();
-        if (body == null) {
-            tryToStop();
-            return;
-        }
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(body.byteStream()))) {
-            String line = reader.readLine();
-            while (StringUtil.hasText(line)) {
-                try {
-                    if (StringUtil.isJsonObject(line)) {
-                        this.listener.onMessage(this, line);
-                    } else {
-                        this.listener.onMessage(this, "{" + line + "}");
+        try {
+            if (!response.isSuccessful()) {
+                if (listener != null && !isStop) {
+                    Throwable error = Util.getFailureThrowable(null, response);
+                    listener.onFailure(this, error);
+                }
+                return;
+            }
+
+            ResponseBody body = response.body();
+            if (body == null || isStop) {
+                return;
+            }
+
+            // 使用 try-with-resources 确保流关闭
+            try (ResponseBody responseBody = body;
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(responseBody.byteStream()))) {
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (isStop) break; // 支持中途 stop()
+
+                    if (!StringUtil.hasText(line)) continue;
+
+                    String jsonLine = StringUtil.isJsonObject(line) ? line : "{" + line + "}";
+
+                    if (listener != null && !isStop) {
+                        try {
+                            listener.onMessage(this, jsonLine);
+                        } catch (Exception e) {
+                            LogUtil.warn("Error in listener.onMessage", e);
+                        }
                     }
-                } finally {
-                    line = reader.readLine();
                 }
             }
         } finally {
-            tryToStop();
+            markAsStopped();
         }
     }
 
 
-    private boolean tryToStop() {
-        if (!this.isStop) {
-            try {
-                this.isStop = true;
-                this.listener.onStop(this);
-            } finally {
-                if (okHttpClient != null) {
-                    okHttpClient.dispatcher().executorService().shutdown();
+    private void markAsStopped() {
+        if (isStop) return;
+        synchronized (this) {
+            if (isStop) return;
+            isStop = true;
+            if (listener != null) {
+                try {
+                    listener.onStop(this);
+                } catch (Exception e) {
+                    LogUtil.warn("Error in listener.onStop", e);
                 }
             }
-            return true;
         }
-        return false;
     }
 }
