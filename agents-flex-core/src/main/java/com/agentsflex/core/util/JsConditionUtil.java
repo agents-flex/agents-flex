@@ -64,6 +64,77 @@ public class JsConditionUtil {
         }
     }
 
+
+    public static long evalLong(String code, Chain chain, Map<String, Object> initMap) {
+        try (Context context = CONTEXT_BUILDER.build()) {
+            Map<String, Object> _result = new HashMap<>();
+            Value bindings = context.getBindings("js");
+
+            // 合并上下文变量
+            Map<String, Object> contextVariables = collectContextVariables(chain, initMap);
+            contextVariables.forEach((key, value) -> {
+                bindings.putMember(key, JsInteropUtils.wrapJavaValueForJS(context, value));
+            });
+
+            bindings.putMember("_result", _result);
+            code = "_result.value = " + code;
+
+            context.eval("js", code);
+            Object value = _result.get("value");
+            return toLong(value);
+        } catch (Exception e) {
+            throw new RuntimeException("JavaScript 执行失败: " + e.getMessage(), e);
+        }
+    }
+
+
+    /**
+     * 将任意对象安全转换为 long 类型
+     */
+    private static long toLong(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+
+        if (value instanceof String) {
+            String str = ((String) value).trim();
+            if (str.isEmpty()) {
+                return 0L;
+            }
+            try {
+                // 支持整数和浮点字符串（如 "123", "45.67"）
+                return Double.valueOf(str).longValue();
+            } catch (NumberFormatException e) {
+                throw new RuntimeException("无法将字符串 \"" + str + "\" 转换为 long", e);
+            }
+        }
+
+        if (value instanceof Value) {
+            Value v = (Value) value;
+            if (v.isNumber()) {
+                return v.asLong(); // GraalVM 的 asLong() 会自动处理 double/integer
+            } else if (v.isString()) {
+                return toLong(v.asString());
+            } else if (v.isNull()) {
+                return 0L;
+            } else {
+                throw new RuntimeException("无法将 JS 值 " + v + " 转换为 long");
+            }
+        }
+
+        // 兜底：尝试 toString 后解析
+        try {
+            String str = value.toString().trim();
+            return str.isEmpty() ? 0L : Double.valueOf(str).longValue();
+        } catch (Exception e) {
+            throw new RuntimeException("无法将对象 " + value + " 转换为 long", e);
+        }
+    }
+
     /**
      * 收集上下文中的变量
      */

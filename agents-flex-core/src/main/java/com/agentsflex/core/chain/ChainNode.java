@@ -17,14 +17,20 @@ package com.agentsflex.core.chain;
 
 import com.agentsflex.core.memory.ContextMemory;
 import com.agentsflex.core.memory.DefaultContextMemory;
+import com.agentsflex.core.util.JsConditionUtil;
+import com.agentsflex.core.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public abstract class ChainNode implements Serializable {
 
+    private static final Logger log = LoggerFactory.getLogger(ChainNode.class);
     protected String id;
     protected String name;
     protected String description;
@@ -49,6 +55,7 @@ public abstract class ChainNode implements Serializable {
 
     // 算力消耗定义，积分消耗
     protected long computeCost = 0;
+    protected String computeCostExpr;
 
     public String getId() {
         return id;
@@ -194,6 +201,42 @@ public abstract class ChainNode implements Serializable {
 
     public void setComputeCost(long computeCost) {
         this.computeCost = computeCost;
+    }
+
+
+    public String getComputeCostExpr() {
+        return computeCostExpr;
+    }
+
+    public void setComputeCostExpr(String computeCostExpr) {
+        if (computeCostExpr != null) {
+            computeCostExpr = computeCostExpr.trim();
+        }
+        this.computeCostExpr = computeCostExpr;
+    }
+
+    public long calculateComputeCost(Chain chain, Map<String, Object> result) {
+        if (StringUtil.noText(computeCostExpr)) {
+            return 0;
+        }
+        if (computeCostExpr.startsWith("{{") && computeCostExpr.endsWith("}}")) {
+            String expr = computeCostExpr.substring(2, computeCostExpr.length() - 2);
+            return doCalculateComputeCost(expr, chain, result);
+        } else {
+            try {
+                return Long.parseLong(computeCostExpr);
+            } catch (NumberFormatException e) {
+                log.error(e.toString(), e);
+            }
+            return 0;
+        }
+    }
+
+    protected long doCalculateComputeCost(String expr, Chain chain, Map<String, Object> result) {
+        Map<String, Object> parameterValues = chain.getParameterValuesOnly(this, this.getParameters(), null);
+        Map<String, Object> newMap = new HashMap<>(result);
+        newMap.putAll(parameterValues);
+        return JsConditionUtil.evalLong(expr, chain, newMap);
     }
 
     public ChainNodeValidResult validate() throws Exception {

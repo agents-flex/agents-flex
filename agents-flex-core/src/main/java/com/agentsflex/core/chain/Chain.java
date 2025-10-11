@@ -585,7 +585,7 @@ public class Chain extends ChainNode {
                 try {
                     suspendNodes.remove(currentNode.getId());
                     executeResult = currentNode.execute(this);
-                    addComputeCost(currentNode.getComputeCost());
+                    addComputeCost(currentNode.calculateComputeCost(this, executeResult));
                 } finally {
                     nodeContext.recordExecute(executeNode);
                     this.executeResult = executeResult;
