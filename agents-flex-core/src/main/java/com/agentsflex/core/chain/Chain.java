@@ -18,10 +18,7 @@ package com.agentsflex.core.chain;
 import com.agentsflex.core.chain.event.*;
 import com.agentsflex.core.chain.listener.*;
 import com.agentsflex.core.prompt.template.TextPromptTemplate;
-import com.agentsflex.core.util.CollectionUtil;
-import com.agentsflex.core.util.MapUtil;
-import com.agentsflex.core.util.NamedThreadPools;
-import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.core.util.*;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONPath;
 import org.slf4j.Logger;
@@ -274,6 +271,22 @@ public class Chain extends ChainNode {
 
 
     public Object get(String key) {
+        if (StringUtil.noText(key)) {
+            return null;
+        }
+        // 尝试解析三目表达式
+        TernaryExpr ternary = TernaryExpr.of(key);
+        if (ternary != null) {
+            Object conditionValue = doGet(ternary.getCondition()); // 使用原始逻辑求值条件
+            boolean isTrue = TernaryExpr.isTruthy(conditionValue);
+            return doGet(isTrue ? ternary.getTrueExpr() : ternary.getFalseExpr());
+        }
+        // 不是表达式，直接走原始逻辑
+        return doGet(key);
+    }
+
+
+    public Object doGet(String key) {
         if (StringUtil.noText(key)) {
             return null;
         }
