@@ -194,7 +194,11 @@ public class Chain extends ChainNode {
         for (Map.Entry<Class<?>, List<ChainEventListener>> entry : eventListeners.entrySet()) {
             if (entry.getKey().isInstance(event)) {
                 for (ChainEventListener chainEventListener : entry.getValue()) {
-                    chainEventListener.onEvent(event, this);
+                    try {
+                        chainEventListener.onEvent(event, this);
+                    } catch (Exception e) {
+                        log.error(e.toString(), e);
+                    }
                 }
             }
         }
@@ -789,28 +793,44 @@ public class Chain extends ChainNode {
 
     private void notifyOutput(ChainNode node, Object response) {
         for (ChainOutputListener inputListener : outputListeners) {
-            inputListener.onOutput(this, node, response);
+            try {
+                inputListener.onOutput(this, node, response);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
 
     private void notifySuspend() {
         for (ChainSuspendListener suspendListener : suspendListeners) {
-            suspendListener.onSuspend(this);
+            try {
+                suspendListener.onSuspend(this);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
 
     private void notifyError(Throwable error) {
         for (ChainErrorListener errorListener : chainErrorListeners) {
-            errorListener.onError(error, this);
+            try {
+                errorListener.onError(error, this);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
 
     private void notifyNodeError(Throwable error, ChainNode node, Map<String, Object> executeResult) {
         for (NodeErrorListener errorListener : nodeErrorListeners) {
-            errorListener.onError(error, node, executeResult, this);
+            try {
+                errorListener.onError(error, node, executeResult, this);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
