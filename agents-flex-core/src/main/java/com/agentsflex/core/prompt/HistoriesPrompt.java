@@ -131,7 +131,7 @@ public class HistoriesPrompt extends Prompt {
         if (messages == null) messages = new ArrayList<>();
 
         if (messages.size() > maxAttachedMessageCount) {
-            messages = messages.subList(messages.size() - maxAttachedMessageCount, messages.size());
+            messages = new ArrayList<>(messages.subList(messages.size() - maxAttachedMessageCount, messages.size()));
         }
 
         if (historyMessageTruncateEnable) {
