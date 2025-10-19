@@ -47,4 +47,24 @@ public class PromptTemplateTest {
         System.out.println(template.format(new HashMap<>()));
         // 输出：你好 匿名，欢迎来到 AgentsFlex.com！
     }
+
+    @Test
+    public void test004() {
+        String jsonTemplate = "{\n" +
+            "\"prompt\":\"{{prompt}}\",\n" +
+            "\"image_url\":\"{{image}}\"\n" +
+            "}";
+
+        String prompt = jsonTemplate;
+        String image = "";
+        TextPromptTemplate template = new TextPromptTemplate(jsonTemplate);
+
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("prompt", prompt);
+        params.put("image", image);
+
+        System.out.println(template.formatToString(params, true));
+
+    }
 }

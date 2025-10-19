@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 
 public class Chain extends ChainNode {
     private static final Logger log = LoggerFactory.getLogger(Chain.class);
+    public static final int DEFAULT_MAX_LOOP_NODE_EXECUTIONS = 1000;
 
     protected List<ChainNode> nodes;
     protected List<ChainEdge> edges;
@@ -53,6 +54,7 @@ public class Chain extends ChainNode {
     protected Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
     protected List<Parameter> suspendForParameters;
     protected ChainStatus status = ChainStatus.READY;
+    protected int loopNodeExecutionLimit = DEFAULT_MAX_LOOP_NODE_EXECUTIONS;
     protected Exception exception;
     protected String message;
 
@@ -74,6 +76,7 @@ public class Chain extends ChainNode {
         this.suspendNodes = holder.getSuspendNodes();
         this.suspendForParameters = holder.getSuspendForParameters();
         this.status = holder.getStatus();
+        this.loopNodeExecutionLimit = holder.getLoopNodeExecutionLimit();
         this.message = holder.getMessage();
     }
 
@@ -624,6 +627,12 @@ public class Chain extends ChainNode {
             return;
         }
 
+        // 检查是否达到最大执行次数, 防止用户配置的不当造成死循环
+        if (nodeContext.getExecuteCount() >= this.loopNodeExecutionLimit) {
+            doExecuteNextNodes(currentNode, executeResult);
+            return;
+        }
+
 
         // 检查是否达到最大循环次数
         if (currentNode.getMaxLoopCount() > 0 && nodeContext.getExecuteCount() >= currentNode.getMaxLoopCount()) {
@@ -851,6 +860,13 @@ public class Chain extends ChainNode {
         notifyOutput(node, response);
     }
 
+    public int getLoopNodeExecutionLimit() {
+        return loopNodeExecutionLimit;
+    }
+
+    public void setLoopNodeExecutionLimit(int loopNodeExecutionLimit) {
+        this.loopNodeExecutionLimit = loopNodeExecutionLimit;
+    }
 
     public String getMessage() {
         return message;

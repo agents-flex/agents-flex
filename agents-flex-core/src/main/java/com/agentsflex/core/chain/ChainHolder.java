@@ -48,6 +48,7 @@ public class ChainHolder implements Serializable {
     protected Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
     private List<Parameter> suspendForParameters;
     private ChainStatus status;
+    private int loopNodeExecutionLimit = Chain.DEFAULT_MAX_LOOP_NODE_EXECUTIONS;
     private String message;
 
     public ChainHolder() {
@@ -69,7 +70,7 @@ public class ChainHolder implements Serializable {
         holder.suspendNodes = chain.getSuspendNodes();
         holder.suspendForParameters = chain.getSuspendForParameters();
         holder.status = chain.getStatus();
-
+        holder.loopNodeExecutionLimit = chain.getLoopNodeExecutionLimit();
         holder.message = chain.getMessage();
 
         return holder;
@@ -187,6 +188,14 @@ public class ChainHolder implements Serializable {
 
     public void setStatus(ChainStatus status) {
         this.status = status;
+    }
+
+    public int getLoopNodeExecutionLimit() {
+        return loopNodeExecutionLimit;
+    }
+
+    public void setLoopNodeExecutionLimit(int loopNodeExecutionLimit) {
+        this.loopNodeExecutionLimit = loopNodeExecutionLimit;
     }
 
     public String getMessage() {
