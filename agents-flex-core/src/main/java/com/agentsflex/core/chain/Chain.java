@@ -335,7 +335,7 @@ public class Chain extends ChainNode {
 
     }
 
-    private static Object getResult(List<String> parts, int matchedLevels, Object result) {
+    protected static Object getResult(List<String> parts, int matchedLevels, Object result) {
         List<String> remainingParts = parts.subList(matchedLevels, parts.size());
         String jsonPath = "$." + String.join(".", remainingParts);
         try {
@@ -419,7 +419,7 @@ public class Chain extends ChainNode {
         return getParameterValues(node, parameters, formatArgs, false);
     }
 
-    private boolean isNullOrBlank(Object value) {
+    protected boolean isNullOrBlank(Object value) {
         return value == null || value instanceof String && StringUtil.noText((String) value);
     }
 
@@ -560,7 +560,7 @@ public class Chain extends ChainNode {
         return result;
     }
 
-    private synchronized void addComputeCost(long computeCost) {
+    protected synchronized void addComputeCost(long computeCost) {
         this.computeCost += computeCost;
     }
 
@@ -672,7 +672,7 @@ public class Chain extends ChainNode {
      * @param currentNode 当前链路节点配置
      * @return 如果条件不满足（需要跳过），返回 true；否则返回 false
      */
-    private synchronized boolean shouldSkipCurrentNode(ExecuteNode executeNode, NodeContext nodeContext, ChainNode currentNode) {
+    protected synchronized boolean shouldSkipCurrentNode(ExecuteNode executeNode, NodeContext nodeContext, ChainNode currentNode) {
 
         // record trigger 和 check 必须在同步块内执行，
         // 否则会导致并发问题：全部节点触发了 trigger，但是 check 还未开始执行
@@ -697,7 +697,7 @@ public class Chain extends ChainNode {
      * @param currentNode   当前节点
      * @param executeResult 执行结果
      */
-    private void doExecuteNextNodes(ChainNode currentNode, Map<String, Object> executeResult) {
+    protected void doExecuteNextNodes(ChainNode currentNode, Map<String, Object> executeResult) {
         List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
         if (CollectionUtil.hasItems(outwardEdges)) {
             List<ExecuteNode> nextExecuteNodes = new ArrayList<>(outwardEdges.size());
@@ -731,7 +731,7 @@ public class Chain extends ChainNode {
 
     }
 
-    private List<ChainNode> getStartNodes() {
+    protected List<ChainNode> getStartNodes() {
         if (this.nodes == null || this.nodes.isEmpty()) {
             return null;
         }
@@ -751,7 +751,7 @@ public class Chain extends ChainNode {
     }
 
 
-    private ChainNode getNodeById(String id) {
+    protected ChainNode getNodeById(String id) {
         if (id == null || StringUtil.noText(id)) {
             return null;
         }
@@ -800,7 +800,7 @@ public class Chain extends ChainNode {
     }
 
 
-    private void notifyOutput(ChainNode node, Object response) {
+    protected void notifyOutput(ChainNode node, Object response) {
         for (ChainOutputListener inputListener : outputListeners) {
             try {
                 inputListener.onOutput(this, node, response);
@@ -811,7 +811,7 @@ public class Chain extends ChainNode {
     }
 
 
-    private void notifySuspend() {
+    protected void notifySuspend() {
         for (ChainSuspendListener suspendListener : suspendListeners) {
             try {
                 suspendListener.onSuspend(this);
@@ -822,7 +822,7 @@ public class Chain extends ChainNode {
     }
 
 
-    private void notifyError(Throwable error) {
+    protected void notifyError(Throwable error) {
         for (ChainErrorListener errorListener : chainErrorListeners) {
             try {
                 errorListener.onError(error, this);
@@ -833,7 +833,7 @@ public class Chain extends ChainNode {
     }
 
 
-    private void notifyNodeError(Throwable error, ChainNode node, Map<String, Object> executeResult) {
+    protected void notifyNodeError(Throwable error, ChainNode node, Map<String, Object> executeResult) {
         for (NodeErrorListener errorListener : nodeErrorListeners) {
             try {
                 errorListener.onError(error, node, executeResult, this);
