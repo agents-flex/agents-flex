@@ -224,6 +224,7 @@ public abstract class ChainNode implements Serializable {
         if (StringUtil.noText(computeCostExpr)) {
             return 0;
         }
+
         if (computeCostExpr.startsWith("{{") && computeCostExpr.endsWith("}}")) {
             String expr = computeCostExpr.substring(2, computeCostExpr.length() - 2);
             return doCalculateComputeCost(expr, chain, result);
