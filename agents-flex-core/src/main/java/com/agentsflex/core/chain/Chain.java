@@ -561,6 +561,9 @@ public class Chain extends ChainNode {
     }
 
     protected synchronized void addComputeCost(long computeCost) {
+        if (this.computeCost == null) {
+            this.computeCost = 0L;
+        }
         this.computeCost += computeCost;
     }
 
@@ -972,7 +975,7 @@ public class Chain extends ChainNode {
         this.nodeContexts.clear();
 
         //算力消耗
-        this.computeCost = 0;
+        this.computeCost = 0L;
 
         if (this.suspendNodes != null) {
             this.suspendNodes.clear();

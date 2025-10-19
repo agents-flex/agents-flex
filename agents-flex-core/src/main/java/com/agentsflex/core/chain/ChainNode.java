@@ -54,7 +54,7 @@ public abstract class ChainNode implements Serializable {
     protected int maxLoopCount = 0;                  // 0 表示不限制循环次数
 
     // 算力消耗定义，积分消耗
-    protected long computeCost = 0;
+    protected Long computeCost;
     protected String computeCostExpr;
 
     public String getId() {
@@ -195,11 +195,11 @@ public abstract class ChainNode implements Serializable {
         return null;
     }
 
-    public long getComputeCost() {
+    public Long getComputeCost() {
         return computeCost;
     }
 
-    public void setComputeCost(long computeCost) {
+    public void setComputeCost(Long computeCost) {
         this.computeCost = computeCost;
     }
 
@@ -216,6 +216,11 @@ public abstract class ChainNode implements Serializable {
     }
 
     public long calculateComputeCost(Chain chain, Map<String, Object> result) {
+        //允许动态设置算力消耗，比如在 for 循环节点等
+        if (this.computeCost != null) {
+            return this.computeCost;
+        }
+
         if (StringUtil.noText(computeCostExpr)) {
             return 0;
         }
