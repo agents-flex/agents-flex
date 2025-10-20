@@ -203,6 +203,16 @@ public abstract class ChainNode implements Serializable {
         this.computeCost = computeCost;
     }
 
+    protected synchronized void addComputeCost(Long computeCost) {
+        if (this.computeCost == null) {
+            this.computeCost = 0L;
+        }
+        if (computeCost == null) {
+            computeCost = 0L;
+        }
+        this.computeCost += computeCost;
+    }
+
 
     public String getComputeCostExpr() {
         return computeCostExpr;

@@ -45,9 +45,11 @@ public class ChainHolder implements Serializable {
 
     private Map<String, NodeContext> nodeContexts;
 
-    protected Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
+    private Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
     private List<Parameter> suspendForParameters;
     private ChainStatus status;
+
+    private Long computeCost;
     private int loopNodeExecutionLimit = Chain.DEFAULT_MAX_LOOP_NODE_EXECUTIONS;
     private String message;
 
@@ -70,6 +72,7 @@ public class ChainHolder implements Serializable {
         holder.suspendNodes = chain.getSuspendNodes();
         holder.suspendForParameters = chain.getSuspendForParameters();
         holder.status = chain.getStatus();
+        holder.computeCost = chain.getComputeCost();
         holder.loopNodeExecutionLimit = chain.getLoopNodeExecutionLimit();
         holder.message = chain.getMessage();
 
@@ -190,6 +193,14 @@ public class ChainHolder implements Serializable {
         this.status = status;
     }
 
+    public Long getComputeCost() {
+        return computeCost;
+    }
+
+    public void setComputeCost(Long computeCost) {
+        this.computeCost = computeCost;
+    }
+
     public int getLoopNodeExecutionLimit() {
         return loopNodeExecutionLimit;
     }
@@ -227,14 +238,13 @@ public class ChainHolder implements Serializable {
         }
     }
 
+
     @Override
     public String toString() {
         return "ChainHolder{" +
             "id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", description='" + description + '\'' +
-//            ", parent=" + parent +
-//            ", children=" + children +
             ", nodes=" + nodes +
             ", edges=" + edges +
             ", executeResult=" + executeResult +
@@ -242,6 +252,8 @@ public class ChainHolder implements Serializable {
             ", suspendNodes=" + suspendNodes +
             ", suspendForParameters=" + suspendForParameters +
             ", status=" + status +
+            ", computeCost=" + computeCost +
+            ", loopNodeExecutionLimit=" + loopNodeExecutionLimit +
             ", message='" + message + '\'' +
             '}';
     }

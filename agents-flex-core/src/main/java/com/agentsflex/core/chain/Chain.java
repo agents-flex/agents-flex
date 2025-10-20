@@ -61,6 +61,7 @@ public class Chain extends ChainNode {
 
     public Chain() {
         this.id = UUID.randomUUID().toString();
+        this.computeCost = 0L;
     }
 
     public Chain(ChainHolder holder) {
@@ -76,6 +77,7 @@ public class Chain extends ChainNode {
         this.suspendNodes = holder.getSuspendNodes();
         this.suspendForParameters = holder.getSuspendForParameters();
         this.status = holder.getStatus();
+        this.computeCost = holder.getComputeCost();
         this.loopNodeExecutionLimit = holder.getLoopNodeExecutionLimit();
         this.message = holder.getMessage();
     }
@@ -558,13 +560,6 @@ public class Chain extends ChainNode {
             }
         });
         return result;
-    }
-
-    protected synchronized void addComputeCost(long computeCost) {
-        if (this.computeCost == null) {
-            this.computeCost = 0L;
-        }
-        this.computeCost += computeCost;
     }
 
 
