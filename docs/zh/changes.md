@@ -1,5 +1,9 @@
 # Agents-Flex ChangeLog
 
+## v1.4.0 20251020
+- 修复： computeCost 可能等于 null 而出现 NPE 的问题
+
+
 ## v1.3.9 20251019
 - 新增: 添加 Chain 关于算力消耗配置的功能
 - 新增: Chain 添加 loopNodeExecutionLimit 配置，保护由于用户配置不当可能造成死循环执行的问题
