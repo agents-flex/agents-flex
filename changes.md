@@ -1,5 +1,10 @@
 # Agents-Flex ChangeLog
 
+## v1.4.1 20251023
+- 新增：prompt 格式化新增 `{{ aa ?? bb ?? 'default'}}` 取值语法
+- 优化：优化 chain.get 方法获取数据的性能
+
+
 ## v1.4.0 20251020
 - 修复： computeCost 可能等于 null 而出现 NPE 的问题
 
