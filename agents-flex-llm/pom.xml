@@ -20,7 +20,6 @@
         <module>agents-flex-llm-chatglm</module>
         <module>agents-flex-llm-ollama</module>
         <module>agents-flex-llm-coze</module>
-        <module>agents-flex-llm-gitee</module>
         <module>agents-flex-llm-deepseek</module>
         <module>agents-flex-llm-qianfan</module>
 		<module>agents-flex-llm-tencent</module>

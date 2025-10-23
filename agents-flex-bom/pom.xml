@@ -133,10 +133,6 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-gitee</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-llm-ollama</artifactId>
         </dependency>
         <dependency>

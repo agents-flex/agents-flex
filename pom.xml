@@ -227,11 +227,6 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-gitee</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-llm-ollama</artifactId>
                 <version>${revision}</version>
             </dependency>
