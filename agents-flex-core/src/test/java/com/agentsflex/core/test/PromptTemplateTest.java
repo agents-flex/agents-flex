@@ -9,17 +9,6 @@ import java.util.Map;
 public class PromptTemplateTest {
 
     @Test
-    public void test001() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("x", "abc");
-        TextPromptTemplate promptTemplate = TextPromptTemplate.of("你好，{}  今天是星期 :{{x}}{{ x }}--xx--{{x }---{{  x }}--}}--{ x} }");
-        String string = promptTemplate
-            .format(map).toString();
-        System.out.println(string);
-
-    }
-
-    @Test
     public void test002() {
         Map<String, Object> map = new HashMap<>();
         map.put("useName", "Michael");
@@ -52,11 +41,11 @@ public class PromptTemplateTest {
     public void test004() {
         String jsonTemplate = "{\n" +
             "\"prompt\":\"{{prompt}}\",\n" +
-            "\"image_url\":\"{{image}}\"\n" +
+            "\"image_url\":\"{{image }}\"\n" +
             "}";
 
         String prompt = jsonTemplate;
-        String image = "";
+        String image = "http://image.jpg";
         TextPromptTemplate template = new TextPromptTemplate(jsonTemplate);
 
 
@@ -65,6 +54,24 @@ public class PromptTemplateTest {
         params.put("image", image);
 
         System.out.println(template.formatToString(params, true));
+    }
 
+
+    @Test
+    public void test005() {
+        String jsonTemplate = "{\n" +
+            "\"prompt\":\"{{prompt}}\",\n" +
+            "\"image_url\":\"{{image ?? ccc ?? 'haha'}}\"\n" +
+            "}";
+
+        String prompt = "你好";
+        TextPromptTemplate template = new TextPromptTemplate(jsonTemplate);
+
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("prompt", prompt);
+//        params.put("image", image);
+
+        System.out.println(template.formatToString(params, true));
     }
 }
