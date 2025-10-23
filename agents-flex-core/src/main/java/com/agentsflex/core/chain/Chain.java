@@ -283,22 +283,6 @@ public class Chain extends ChainNode {
         if (StringUtil.noText(key)) {
             return null;
         }
-        // 尝试解析三目表达式
-        TernaryExpr ternary = TernaryExpr.of(key);
-        if (ternary != null) {
-            Object conditionValue = doGet(ternary.getCondition()); // 使用原始逻辑求值条件
-            boolean isTrue = TernaryExpr.isTruthy(conditionValue);
-            return doGet(isTrue ? ternary.getTrueExpr() : ternary.getFalseExpr());
-        }
-        // 不是表达式，直接走原始逻辑
-        return doGet(key);
-    }
-
-
-    public Object doGet(String key) {
-        if (StringUtil.noText(key)) {
-            return null;
-        }
 
         Object result = memory.get(key);
         if (result != null) {
