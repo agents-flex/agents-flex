@@ -22,12 +22,19 @@ public class AiMessage extends AbstractTextMessage {
 
     private Integer index;
     private MessageStatus status;
+
+    // API 返回的 token 信息（可选）
     private Integer promptTokens;
     private Integer completionTokens;
     private Integer totalTokens;
+
+    // 本地计算的 token 信息（新增）
+    private Integer localPromptTokens;      // 对话历史（system + user + previous ai）的 token 数
+    private Integer localCompletionTokens;  // 当前 AI 回复内容的 token 数
+    private Integer localTotalTokens;       // 通常 = localPromptTokens + localCompletionTokens
+
     private String fullContent;
     private String reasoningContent;
-    // functionName: <argName: argValue>
     private List<FunctionCall> calls;
     private String fullReasoningContent;
 
@@ -36,7 +43,7 @@ public class AiMessage extends AbstractTextMessage {
     }
 
     public AiMessage(String content) {
-       this.fullContent = content;
+        this.fullContent = content;
     }
 
     public Integer getIndex() {
@@ -79,6 +86,30 @@ public class AiMessage extends AbstractTextMessage {
         this.totalTokens = totalTokens;
     }
 
+    public Integer getLocalPromptTokens() {
+        return localPromptTokens;
+    }
+
+    public void setLocalPromptTokens(Integer localPromptTokens) {
+        this.localPromptTokens = localPromptTokens;
+    }
+
+    public Integer getLocalCompletionTokens() {
+        return localCompletionTokens;
+    }
+
+    public void setLocalCompletionTokens(Integer localCompletionTokens) {
+        this.localCompletionTokens = localCompletionTokens;
+    }
+
+    public Integer getLocalTotalTokens() {
+        return localTotalTokens;
+    }
+
+    public void setLocalTotalTokens(Integer localTotalTokens) {
+        this.localTotalTokens = localTotalTokens;
+    }
+
     public String getFullContent() {
         return fullContent;
     }
@@ -116,6 +147,31 @@ public class AiMessage extends AbstractTextMessage {
         this.fullReasoningContent = fullReasoningContent;
     }
 
+    /**
+     * 获取有效的总 token 数
+     *
+     * @return 有限返回模型计算的 token 数；否则返回本地计算的 token 数
+     */
+    public int getEffectiveTotalTokens() {
+        if (this.totalTokens != null) {
+            return this.totalTokens;
+        }
+
+        if (this.promptTokens != null && this.completionTokens != null) {
+            return this.promptTokens + this.completionTokens;
+        }
+
+        if (this.localTotalTokens != null) {
+            return this.localTotalTokens;
+        }
+
+        if (this.localPromptTokens != null && this.localCompletionTokens != null) {
+            return this.localPromptTokens + this.localCompletionTokens;
+        }
+
+        return 0;
+    }
+
     @Override
     public String toString() {
         return "AiMessage{" +
@@ -124,8 +180,13 @@ public class AiMessage extends AbstractTextMessage {
             ", promptTokens=" + promptTokens +
             ", completionTokens=" + completionTokens +
             ", totalTokens=" + totalTokens +
+            ", localPromptTokens=" + localPromptTokens +
+            ", localCompletionTokens=" + localCompletionTokens +
+            ", localTotalTokens=" + localTotalTokens +
             ", fullContent='" + fullContent + '\'' +
+            ", reasoningContent='" + reasoningContent + '\'' +
             ", calls=" + calls +
+            ", fullReasoningContent='" + fullReasoningContent + '\'' +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';

@@ -26,9 +26,11 @@ import com.agentsflex.core.llm.client.LlmClientListener;
 import com.agentsflex.core.llm.client.impl.SseClient;
 import com.agentsflex.core.llm.embedding.EmbeddingOptions;
 import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.LocalTokenCounter;
 import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson.JSON;
@@ -120,7 +122,9 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
-        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessageParser.parse(jsonObject));
+        AiMessage aiMessage = aiMessageParser.parse(jsonObject);
+        LocalTokenCounter.computeAndSetLocalTokens(prompt.toMessages(), aiMessage);
+        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessage);
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);
