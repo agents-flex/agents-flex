@@ -548,10 +548,17 @@ public class Chain extends ChainNode {
 
 
     protected void doExecuteNode(ExecuteNode executeNode) {
+        ChainNode currentNode = executeNode.currentNode;
+
+        if (this.getStatus() == ChainStatus.SUSPEND) {
+            this.suspendNodes.put(currentNode.getId(), currentNode);
+            return;
+        }
+
         if (this.getStatus() != ChainStatus.RUNNING) {
             return;
         }
-        ChainNode currentNode = executeNode.currentNode;
+
         NodeContext nodeContext = getNodeContext(currentNode.id);
 
         Map<String, Object> executeResult = null;
@@ -599,9 +606,9 @@ public class Chain extends ChainNode {
             onNodeExecuteAfter(nodeContext);
         }
 
-        if (this.getStatus() != ChainStatus.RUNNING) {
-            return;
-        }
+//        if (this.getStatus() != ChainStatus.RUNNING) {
+//            return;
+//        }
 
         // 继续执行下一个节点
         if (!currentNode.isLoopEnable()) {
@@ -912,6 +919,10 @@ public class Chain extends ChainNode {
         this.suspendForParameters.add(suspendForParameter);
     }
 
+    public synchronized void suspend() {
+        setStatusAndNotifyEvent(ChainStatus.SUSPEND);
+    }
+
     public synchronized void suspend(ChainNode node) {
         try {
             suspendNodes.putIfAbsent(node.getId(), node);
@@ -928,7 +939,6 @@ public class Chain extends ChainNode {
 
 
     public static class ExecuteNode {
-
         final ChainNode currentNode;
         final ChainNode prevNode;
         final String fromEdgeId;
