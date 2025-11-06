@@ -20,8 +20,6 @@ public class ChainEdge {
     private String source;
     private String target;
     private EdgeCondition condition;
-    private int weight;
-    private boolean isDefault;
 
     public ChainEdge() {
     }
@@ -60,21 +58,5 @@ public class ChainEdge {
 
     public void setCondition(EdgeCondition condition) {
         this.condition = condition;
-    }
-
-    public int getWeight() {
-        return weight;
-    }
-
-    public void setWeight(int weight) {
-        this.weight = weight;
-    }
-
-    public boolean isDefault() {
-        return isDefault;
-    }
-
-    public void setDefault(boolean aDefault) {
-        isDefault = aDefault;
     }
 }
