@@ -9,9 +9,9 @@ import com.agentsflex.core.llm.response.AiMessageResponse;
 import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.ImagePrompt;
 import com.agentsflex.core.prompt.ToolPrompt;
-import com.agentsflex.core.react.ReActAgent;
-import com.agentsflex.core.react.ReActAgentListener;
-import com.agentsflex.core.react.ReActStep;
+import com.agentsflex.core.agents.react.ReActAgent;
+import com.agentsflex.core.agents.react.ReActAgentListener;
+import com.agentsflex.core.agents.react.ReActStep;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;

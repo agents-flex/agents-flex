@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.react;
+package com.agentsflex.core.agents.react;
 
 import com.agentsflex.core.llm.ChatContext;
 import com.agentsflex.core.llm.functions.Function;
