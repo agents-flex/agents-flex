@@ -43,9 +43,9 @@ public class ChainHolder implements Serializable {
 
     private Map<String, Object> executeResult;
 
-    private Map<String, NodeContext> nodeContexts;
+    private ConcurrentHashMap<String, NodeContext> nodeContexts;
 
-    private Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ChainNode> suspendNodes;
     private List<Parameter> suspendForParameters;
     private ChainStatus status;
 
@@ -67,9 +67,9 @@ public class ChainHolder implements Serializable {
         holder.edges = chain.getEdges();
 
         holder.executeResult = chain.getExecuteResult();
-        holder.nodeContexts = chain.getNodeContexts();
+        holder.nodeContexts = (ConcurrentHashMap<String, NodeContext>) chain.getNodeContexts();
 
-        holder.suspendNodes = chain.getSuspendNodes();
+        holder.suspendNodes = (ConcurrentHashMap<String, ChainNode>) chain.getSuspendNodes();
         holder.suspendForParameters = chain.getSuspendForParameters();
         holder.status = chain.getStatus();
         holder.computeCost = chain.getComputeCost();
@@ -165,7 +165,7 @@ public class ChainHolder implements Serializable {
         return nodeContexts;
     }
 
-    public void setNodeContexts(Map<String, NodeContext> nodeContexts) {
+    public void setNodeContexts(ConcurrentHashMap<String, NodeContext> nodeContexts) {
         this.nodeContexts = nodeContexts;
     }
 
@@ -173,7 +173,7 @@ public class ChainHolder implements Serializable {
         return suspendNodes;
     }
 
-    public void setSuspendNodes(Map<String, ChainNode> suspendNodes) {
+    public void setSuspendNodes(ConcurrentHashMap<String, ChainNode> suspendNodes) {
         this.suspendNodes = suspendNodes;
     }
 
