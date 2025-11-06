@@ -162,19 +162,30 @@ public class Chain extends ChainNode {
         this.nodes = chainNodes;
     }
 
-    public void addNode(ChainNode chainNode) {
+    public void addNode(ChainNode node) {
         if (nodes == null) {
             this.nodes = new ArrayList<>();
         }
 
-        if (chainNode instanceof ChainEventListener) {
-            addEventListener((ChainEventListener) chainNode);
+        if (node instanceof ChainEventListener) {
+            addEventListener((ChainEventListener) node);
         }
 
-        if (chainNode.getId() == null) {
-            chainNode.setId(UUID.randomUUID().toString());
+        if (StringUtil.noText(node.getId())) {
+            node.setId(UUID.randomUUID().toString());
         }
-        nodes.add(chainNode);
+
+        nodes.add(node);
+
+        if (this.edges != null) {
+            for (ChainEdge edge : edges) {
+                if (node.getId().equals(edge.getSource())) {
+                    node.addOutwardEdge(edge);
+                } else if (node.getId().equals(edge.getTarget())) {
+                    node.addInwardEdge(edge);
+                }
+            }
+        }
     }
 
 
@@ -870,9 +881,20 @@ public class Chain extends ChainNode {
         this.edges = edges;
     }
 
+    public void addEdge(String fromNodeId, String toNodeId) {
+        ChainEdge edge = new ChainEdge();
+        edge.setId(UUID.randomUUID().toString());
+        edge.setSource(fromNodeId);
+        edge.setTarget(toNodeId);
+        addEdge(edge);
+    }
+
     public void addEdge(ChainEdge edge) {
         if (this.edges == null) {
             this.edges = new ArrayList<>();
+        }
+        if (StringUtil.noText(edge.getId())) {
+            edge.setId(UUID.randomUUID().toString());
         }
         this.edges.add(edge);
 
