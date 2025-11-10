@@ -121,6 +121,7 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
         Span span = TRACER.spanBuilder("OpenAILlm.chat")
             .setAttribute("llm.model", modelName)
             .setAttribute("llm.provider", "openai")
+            .setAttribute("llm.apiKey", config.getApiKey())
             .startSpan();
 
         long startTime = System.nanoTime();
@@ -173,10 +174,10 @@ public class OpenAILlm extends BaseLlm<OpenAILlmConfig> {
                 messageResponse.setErrorType(error.getString("type"));
                 messageResponse.setErrorCode(error.getString("code"));
             } else {
+                span.setAttribute("llm.total_tokens", aiMessage.getEffectiveTotalTokens());
                 span.setAttribute("llm.response", aiMessage.getContent() != null ?
                     aiMessage.getContent().substring(0, Math.min(aiMessage.getContent().length(), 500)) : "");
             }
-
             return messageResponse;
         } catch (Exception e) {
             success = false;
