@@ -53,9 +53,7 @@ public class HtmlExtractor implements FileExtractor {
         SUPPORTED_EXTENSIONS = Collections.unmodifiableSet(extensions);
     }
 
-    // ========================
-    // 噪音过滤规则（可扩展）
-    // ========================
+    // 噪音过滤规则
     private static final Set<String> DEFAULT_SELECTORS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
         "script", "style", "noscript",
         "nav", "header", "footer", "aside",
@@ -105,9 +103,6 @@ public class HtmlExtractor implements FileExtractor {
         CUSTOM_CLASS_KEYWORDS.add(keyword.toLowerCase());
     }
 
-    // ========================
-    // 核心提取逻辑
-    // ========================
     @Override
     public boolean supports(DocumentSource source) {
         String mimeType = source.getMimeType();
@@ -232,11 +227,11 @@ public class HtmlExtractor implements FileExtractor {
     }
 
 
-    private String repeat(String str, int times) {
+    private String repeat(String string, int times) {
         if (times <= 0) return "";
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < times; i++) {
-            sb.append(str);
+            sb.append(string);
         }
         return sb.toString();
     }

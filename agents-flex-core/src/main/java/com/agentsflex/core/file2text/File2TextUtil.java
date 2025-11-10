@@ -34,27 +34,27 @@ public class File2TextUtil {
         File2TextUtil.file2TextService = file2TextService;
     }
 
-    public static String extractTextFromHttpUrl(String httpUrl) {
+    public static String readFromHttpUrl(String httpUrl) {
         return file2TextService.extractTextFromSource(new HttpDocumentSource(httpUrl));
     }
 
-    public static String extractTextFromHttpUrl(String httpUrl, String fileName) {
+    public static String readFromHttpUrl(String httpUrl, String fileName) {
         return file2TextService.extractTextFromSource(new HttpDocumentSource(httpUrl, fileName));
     }
 
-    public static String extractTextFromHttpUrl(String httpUrl, String fileName, String mimeType) {
+    public static String readFromHttpUrl(String httpUrl, String fileName, String mimeType) {
         return file2TextService.extractTextFromSource(new HttpDocumentSource(httpUrl, fileName, mimeType));
     }
 
-    public static String extractTextFromFile(File file) {
+    public static String readFromFile(File file) {
         return file2TextService.extractTextFromSource(new FileDocumentSource(file));
     }
 
-    public static String extractTextFromStream(InputStream is, String fileName, String mimeType) {
+    public static String readFromStream(InputStream is, String fileName, String mimeType) {
         return file2TextService.extractTextFromSource(new ByteStreamDocumentSource(is, fileName, mimeType));
     }
 
-    public static String extractTextFromBytes(byte[] bytes, String fileName, String mimeType) {
+    public static String readFromBytes(byte[] bytes, String fileName, String mimeType) {
         return file2TextService.extractTextFromSource(new ByteArrayDocumentSource(bytes, fileName, mimeType));
     }
 
