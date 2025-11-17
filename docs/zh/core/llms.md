@@ -243,11 +243,11 @@ public static void main(String[] args) {
     while (userInput != null) {
 
         // 第二步：创建 HumanMessage，并添加方法调用
-        HumanMessage humanMessage = new HumanMessage(userInput);
-        humanMessage.addFunctions(WeatherFunctions.class);
+        HumanMessage userMessage = new HumanMessage(userInput);
+        userMessage.addFunctions(WeatherFunctions.class);
 
         // 第三步：将 HumanMessage 添加到 HistoriesPrompt 中
-        prompt.addMessage(humanMessage);
+        prompt.addMessage(userMessage);
 
         // 第四步：调用 chatStream 方法，进行对话
         chatModel.chatStream(prompt, new StreamResponseListener() {

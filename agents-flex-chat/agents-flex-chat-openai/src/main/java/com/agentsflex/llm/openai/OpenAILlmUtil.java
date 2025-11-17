@@ -15,14 +15,14 @@
  */
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.prompt.DefaultPromptFormat;
+import com.agentsflex.core.message.OpenAIMessageFormat;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.message.MessageFormat;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
 
@@ -31,7 +31,7 @@ import java.util.Optional;
 
 public class OpenAILlmUtil {
 
-    private static final PromptFormat promptFormat = new DefaultPromptFormat();
+    private static final MessageFormat MESSAGE_FORMAT = new OpenAIMessageFormat();
 
     public static AiMessageParser getAiMessageParser(boolean isStream) {
         return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
@@ -40,12 +40,12 @@ public class OpenAILlmUtil {
 
     public static String promptToPayload(Prompt prompt, OpenAIChatConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
-        HumanMessage message = MessageUtil.findLastHumanMessage(messages);
+        UserMessage message = MessageUtil.findLastHumanMessage(messages);
         return Maps
             .of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
-            .set("messages", promptFormat.toMessagesJsonObject(messages))
+            .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)
-            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
+            .setIfNotEmpty("tools", MESSAGE_FORMAT.toFunctionsJsonObject(message))
             .setIfContainsKey("tools", "tool_choice", MessageUtil.getToolChoice(message))
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotEmpty("stop", options.getStop())

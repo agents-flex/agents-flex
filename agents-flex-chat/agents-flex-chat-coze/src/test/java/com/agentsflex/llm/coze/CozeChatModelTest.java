@@ -19,7 +19,7 @@ import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.prompt.TextPrompt;
+import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Test;
 
 public class CozeChatModelTest {
@@ -46,7 +46,7 @@ public class CozeChatModelTest {
 
     @Test
     public void testChat() {
-        TextPrompt prompt = new TextPrompt(textPrompt);
+        SimplePrompt prompt = new SimplePrompt(textPrompt);
         AiMessageResponse response = llm.chat(prompt, options);
 
         if (response.isError()){
@@ -62,7 +62,7 @@ public class CozeChatModelTest {
 
     @Test
     public void testChatStream() {
-        TextPrompt prompt = new TextPrompt(textPrompt);
+        SimplePrompt prompt = new SimplePrompt(textPrompt);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {

@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.message;
 
-public class ToolMessage extends AbstractTextMessage{
+public class ToolMessage extends AbstractTextMessage {
 
     private String toolCallId;
 
@@ -26,6 +26,7 @@ public class ToolMessage extends AbstractTextMessage{
     public void setToolCallId(String toolCallId) {
         this.toolCallId = toolCallId;
     }
+
 
     @Override
     public String toString() {

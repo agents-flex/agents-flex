@@ -3,13 +3,11 @@ package com.agentsflex.llm.volcengine.test;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.message.HumanImageMessage;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.prompt.ImagePrompt;
-import com.agentsflex.llm.volcengine.VolcengineChatModel;
+import com.agentsflex.core.model.exception.ModelException;
+import com.agentsflex.core.prompt.SimplePrompt;
 import com.agentsflex.llm.volcengine.VolcengineChatConfig;
+import com.agentsflex.llm.volcengine.VolcengineChatModel;
 import org.junit.Test;
 
 public class VolcengineChatModelTest {
@@ -66,13 +64,10 @@ public class VolcengineChatModelTest {
 
 
         ChatModel chatModel = new VolcengineChatModel(config);
-        ImagePrompt prompt = new ImagePrompt("这个图片说的是什么?");
-        prompt.addImageUrl("https://ark-project.tos-cn-beijing.volces.com/doc_image/ark_demo_img_1.png");
-        System.out.println(prompt.getImageUrls());
+        SimplePrompt prompt = new SimplePrompt("这个图片说的是什么?");
+        prompt.getUserMessage().addImageUrl("https://ark-project.tos-cn-beijing.volces.com/doc_image/ark_demo_img_1.png");
+        System.out.println(prompt.getUserMessage().getImageUrls());
 
-
-        Message message = new HumanImageMessage(prompt);
-        prompt.addMetadata("message", message);
 
         AiMessageResponse response = chatModel.chat(prompt);
         System.out.println(response);

@@ -15,8 +15,8 @@
  */
 package com.agentsflex.core.agents.react;
 
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.functions.Function;
-import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 
 import java.util.List;
@@ -33,7 +33,7 @@ public class ReActMessageBuilder {
      * @return 返回 HumanMessage
      */
     public Message buildStartMessage(String prompt, List<Function> functions, String userQuery) {
-        HumanMessage message = new HumanMessage(prompt);
+        UserMessage message = new UserMessage(prompt);
         message.addMetadata("tools", functions);
         message.addMetadata("user_input", userQuery);
         message.addMetadata("type", "reActWrapper");
@@ -54,9 +54,9 @@ public class ReActMessageBuilder {
             + "Action Input：" + step.getActionInput() + "\n"
             + "Error：" + errorMsg + "\n"
             + "请检查你的 Action Input 格式是否正确，并纠正 JSON 内容重新生成响应。\n";
-        HumanMessage humanMessage = new HumanMessage(observation + "请继续推理下一步。");
-        humanMessage.addMetadata("type", "reActObservation");
-        return humanMessage;
+        UserMessage userMessage = new UserMessage(observation + "请继续推理下一步。");
+        userMessage.addMetadata("type", "reActObservation");
+        return userMessage;
     }
 
     /**
@@ -68,9 +68,9 @@ public class ReActMessageBuilder {
      */
     public Message buildObservationMessage(ReActStep step, Object result) {
         String observation = buildObservationString(step, result);
-        HumanMessage humanMessage = new HumanMessage(observation + "\n请继续推理下一步。");
-        humanMessage.addMetadata("type", "reActObservation");
-        return humanMessage;
+        UserMessage userMessage = new UserMessage(observation + "\n请继续推理下一步。");
+        userMessage.addMetadata("type", "reActObservation");
+        return userMessage;
     }
 
 
@@ -98,8 +98,8 @@ public class ReActMessageBuilder {
         // 将错误信息反馈给 AI，让其修正
         String observation = buildObservationString(step, "Error: " + e.getMessage()) + "\n"
             + "请根据错误信息调整参数并重新尝试。\n";
-        HumanMessage humanMessage = new HumanMessage(observation + "请继续推理下一步。");
-        humanMessage.addMetadata("type", "reActObservation");
-        return humanMessage;
+        UserMessage userMessage = new UserMessage(observation + "请继续推理下一步。");
+        userMessage.addMetadata("type", "reActObservation");
+        return userMessage;
     }
 }

@@ -19,10 +19,9 @@ import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.prompt.DefaultPromptFormat;
-import com.agentsflex.core.prompt.ImagePrompt;
+import com.agentsflex.core.message.OpenAIMessageFormat;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.message.MessageFormat;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
 import com.agentsflex.core.util.StringUtil;
@@ -39,11 +38,11 @@ import java.util.*;
 
 public class TencentChatUtil {
 
-    private static final PromptFormat promptFormat = new DefaultPromptFormat() {
+    private static final MessageFormat MESSAGE_FORMAT = new OpenAIMessageFormat() {
         @Override
         protected void buildMessageContent(Message message, Map<String, Object> map) {
             map.clear();
-            if (message instanceof HumanMessage) {
+            if (message instanceof UserMessage) {
                 map.put("Role", "user");
             } else if (message instanceof AiMessage) {
                 map.put("Role", "assistant");
@@ -60,20 +59,7 @@ public class TencentChatUtil {
                 map.put("Role", "tool");
                 map.put("Tool_call_id", ((ToolMessage) message).getToolCallId());
             }
-            if (message instanceof HumanImageMessage) {
-                ImagePrompt prompt = ((HumanImageMessage) message).getPrompt();
-                List<Map<String, Object>> list = new ArrayList<>();
-                List<String> imageUrls = prompt.getImageUrls();
-                if (imageUrls != null) {
-                    for (String imageUrl : imageUrls) {
-                        list.add(Maps.of("Type", "image_url").set("Text", prompt.getContent()).set("ImageUrl", Maps.of("Url", imageUrl)));
-                    }
-                }
-
-                map.put("Contents", list);
-            } else {
-                map.put("Content", message.getMessageContent());
-            }
+            map.put("Content", message.getMessageContent());
         }
 
         @Override
@@ -184,11 +170,11 @@ public class TencentChatUtil {
 
     public static String promptToPayload(Prompt prompt, TencentChatConfig config, boolean withStream, ChatOptions options) {
         List<Message> messages = prompt.toMessages();
-        HumanMessage message = MessageUtil.findLastHumanMessage(messages);
+        UserMessage message = MessageUtil.findLastHumanMessage(messages);
         return Maps.of("Model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
-            .set("Messages", promptFormat.toMessagesJsonObject(messages))
+            .set("Messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
             .setIf(withStream, "Stream", withStream)
-            .setIfNotEmpty("Tools", promptFormat.toFunctionsJsonObject(message))
+            .setIfNotEmpty("Tools", MESSAGE_FORMAT.toFunctionsJsonObject(message))
             .setIfContainsKey("Tools", "ToolChoice", MessageUtil.getToolChoice(message))
             .setIfNotNull("top_p", options.getTopP())
             .setIfNotEmpty("Stop", options.getStop())

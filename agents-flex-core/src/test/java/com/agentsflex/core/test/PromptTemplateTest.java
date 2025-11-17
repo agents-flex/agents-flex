@@ -1,6 +1,6 @@
 package com.agentsflex.core.test;
 
-import com.agentsflex.core.prompt.template.TextPromptTemplate;
+import com.agentsflex.core.prompt.PromptTemplate;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -13,8 +13,8 @@ public class PromptTemplateTest {
         Map<String, Object> map = new HashMap<>();
         map.put("useName", "Michael");
         map.put("aaa", "星期3");
-        TextPromptTemplate promptTemplate = TextPromptTemplate.of("你好，{{  useName }}  今天是星期 :{{aaa   }}}----- {a}aa");
-        String string = promptTemplate.formatToString(map);
+        PromptTemplate promptTemplate = PromptTemplate.of("你好，{{  useName }}  今天是星期 :{{aaa   }}}----- {a}aa");
+        String string = promptTemplate.format(map);
         System.out.println(string);
     }
 
@@ -22,7 +22,7 @@ public class PromptTemplateTest {
     @Test
     public void test003() {
         String templateStr = "你好 {{ user.name ?? '匿名' }}，欢迎来到 {{ site ?? 'AgentsFlex.com' }}！";
-        TextPromptTemplate template = new TextPromptTemplate(templateStr);
+        PromptTemplate template = new PromptTemplate(templateStr);
 
         Map<String, Object> params = new HashMap<>();
         Map<String, Object> user = new HashMap<>();
@@ -46,14 +46,14 @@ public class PromptTemplateTest {
 
         String prompt = jsonTemplate;
         String image = "http://image.jpg";
-        TextPromptTemplate template = new TextPromptTemplate(jsonTemplate);
+        PromptTemplate template = new PromptTemplate(jsonTemplate);
 
 
         Map<String, Object> params = new HashMap<>();
         params.put("prompt", prompt);
         params.put("image", image);
 
-        System.out.println(template.formatToString(params, true));
+        System.out.println(template.format(params, true));
     }
 
 
@@ -65,13 +65,13 @@ public class PromptTemplateTest {
             "}";
 
         String prompt = "你好";
-        TextPromptTemplate template = new TextPromptTemplate(jsonTemplate);
+        PromptTemplate template = new PromptTemplate(jsonTemplate);
 
 
         Map<String, Object> params = new HashMap<>();
         params.put("prompt", prompt);
 //        params.put("image", image);
 
-        System.out.println(template.formatToString(params, true));
+        System.out.println(template.format(params, true));
     }
 }

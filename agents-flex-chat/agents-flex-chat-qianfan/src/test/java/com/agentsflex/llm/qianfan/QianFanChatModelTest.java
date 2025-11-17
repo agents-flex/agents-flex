@@ -1,16 +1,11 @@
 package com.agentsflex.llm.qianfan;
 
-import com.agentsflex.core.document.Document;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.embedding.EmbeddingOptions;
-import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.prompt.FunctionPrompt;
-import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.model.exception.ModelException;
+import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.Arrays;
 
 public class QianFanChatModelTest {
     QianFanChatConfig config = new QianFanChatConfig();
@@ -40,18 +35,11 @@ public class QianFanChatModelTest {
     @Test()
     public void testFunctionChat() {
         ChatModel chatModel = new QianFanChatModel(config);
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
         System.out.println(response.callFunctions());
     }
 
-    @Test()
-    public void testEmb() {
-        ChatModel chatModel = new QianFanChatModel(config);
-        Document document = new Document();
-        document.setContent("你好");
-        VectorData embeddings = chatModel.embed(document, EmbeddingOptions.DEFAULT);
-        System.out.println(Arrays.toString(embeddings.getVector()));
-    }
 }

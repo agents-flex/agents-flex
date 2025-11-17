@@ -2,7 +2,7 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.prompt.ImagePrompt;
+import com.agentsflex.core.prompt.SimplePrompt;
 
 public class GiteeAiImageTest {
 
@@ -17,8 +17,8 @@ public class GiteeAiImageTest {
 
         ChatModel chatModel = new OpenAIChatModel(config);
 
-        ImagePrompt prompt = new ImagePrompt("请识别并输入 markdown，请用中文输出");
-        prompt.addImageUrl("http://www.codeformat.cn/static/images/logo.png");
+        SimplePrompt prompt = new SimplePrompt("请识别并输入 markdown，请用中文输出");
+        prompt.getUserMessage().addImageUrl("http://www.codeformat.cn/static/images/logo.png");
 //        prompt.addImageFile(new File("/Users/michael/Desktop/lxs.jpeg"));
 
         AiMessageResponse response = chatModel.chat(prompt);

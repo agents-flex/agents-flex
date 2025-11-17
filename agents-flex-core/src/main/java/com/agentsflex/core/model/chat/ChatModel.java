@@ -20,7 +20,7 @@ import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.model.chat.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.prompt.TextPrompt;
+import com.agentsflex.core.prompt.SimplePrompt;
 
 public interface ChatModel {
 
@@ -29,7 +29,7 @@ public interface ChatModel {
     }
 
     default String chat(String prompt, ChatOptions options) {
-        AbstractBaseMessageResponse<AiMessage> response = chat(new TextPrompt(prompt), options);
+        AbstractBaseMessageResponse<AiMessage> response = chat(new SimplePrompt(prompt), options);
         if (response != null && response.isError()) {
             throw new ModelException(response.getErrorMessage());
         }
@@ -43,11 +43,11 @@ public interface ChatModel {
     AiMessageResponse chat(Prompt prompt, ChatOptions options);
 
     default void chatStream(String prompt, StreamResponseListener listener) {
-        this.chatStream(new TextPrompt(prompt), listener, ChatOptions.DEFAULT);
+        this.chatStream(new SimplePrompt(prompt), listener, ChatOptions.DEFAULT);
     }
 
     default void chatStream(String prompt, StreamResponseListener listener, ChatOptions options) {
-        this.chatStream(new TextPrompt(prompt), listener, options);
+        this.chatStream(new SimplePrompt(prompt), listener, options);
     }
 
     //chatStream

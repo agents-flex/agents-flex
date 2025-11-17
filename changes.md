@@ -9,4 +9,8 @@
 - 修改 LLMClient 为 StreamClient
 - 修改 LLMClientListener 为 StreamClientListener
 - 修改 LLMConfig 为 ChatConfig
+- 重命名 PromptFormat 为 MessageFormat
+- 重命名 TextPromptTemplate 为 PromptTemplate
+- 重命名 TextPrompt 为 SimplePrompt
+- 重命名 HumanMessage 等合并为 UserMessage
 

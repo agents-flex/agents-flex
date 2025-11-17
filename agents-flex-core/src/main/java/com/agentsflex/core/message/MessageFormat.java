@@ -13,12 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.prompt.template;
+package com.agentsflex.core.message;
 
-import java.util.Map;
+import java.util.List;
 
-public interface PromptTemplate<R> {
+public interface MessageFormat {
 
-     R format(Map<String, Object> params);
+    Object toMessagesJsonObject(List<Message> messages);
 
+    Object toFunctionsJsonObject(UserMessage userMessage);
 }

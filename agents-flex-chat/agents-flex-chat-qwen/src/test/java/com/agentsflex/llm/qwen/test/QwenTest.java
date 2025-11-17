@@ -1,18 +1,16 @@
 package com.agentsflex.llm.qwen.test;
 
-import com.agentsflex.core.document.Document;
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.prompt.FunctionPrompt;
-import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.model.exception.ModelException;
+import com.agentsflex.core.prompt.SimplePrompt;
 import com.agentsflex.core.util.LogUtil;
+import com.agentsflex.llm.qwen.QwenChatConfig;
+import com.agentsflex.llm.qwen.QwenChatModel;
 import com.agentsflex.llm.qwen.QwenChatOptions;
 import com.agentsflex.llm.qwen.QwenChatOptions.SearchOptions;
-import com.agentsflex.llm.qwen.QwenChatModel;
-import com.agentsflex.llm.qwen.QwenChatConfig;
 import org.junit.Test;
 
 public class QwenTest {
@@ -57,23 +55,12 @@ public class QwenTest {
 
         ChatModel chatModel = new QwenChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
         System.out.println(response.callFunctions());
         // "Today it will be dull and overcast in 北京"
-    }
-
-    @Test
-    public void testEmbedding() throws InterruptedException {
-        QwenChatConfig config = new QwenChatConfig();
-        config.setApiKey("sk-28a6be3236****");
-        config.setModel("qwen-turbo");
-
-        ChatModel chatModel = new QwenChatModel(config);
-        VectorData vectorData = chatModel.embed(Document.of("test"));
-
-        System.out.println(vectorData);
     }
 
     /**

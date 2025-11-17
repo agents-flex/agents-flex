@@ -19,10 +19,9 @@ import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.prompt.DefaultPromptFormat;
-import com.agentsflex.core.prompt.ImagePrompt;
+import com.agentsflex.core.message.OpenAIMessageFormat;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.message.MessageFormat;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
 import com.alibaba.fastjson2.JSON;
@@ -35,22 +34,22 @@ import java.util.*;
 public class OllamaLlmUtil {
 
 
-    private static final PromptFormat promptFormat = new DefaultPromptFormat() {
-        @Override
-        protected void buildMessageContent(Message message, Map<String, Object> map) {
-            if (message instanceof HumanImageMessage) {
-                ImagePrompt prompt = ((HumanImageMessage) message).getPrompt();
-                map.put("content", prompt.getContent());
-                map.put("images", prompt.buildAllToBase64s());
-            } else {
-                super.buildMessageContent(message, map);
-            }
-        }
-
-        @Override
-        protected Object buildToolCallsArguments(Map<String, Object> arguments) {
-            return arguments;
-        }
+    private static final MessageFormat MESSAGE_FORMAT = new OpenAIMessageFormat() {
+//        @Override
+//        protected void buildMessageContent(Message message, Map<String, Object> map) {
+//            if (message instanceof UserImageMessage) {
+//                ImagePrompt prompt = ((UserImageMessage) message).getPrompt();
+//                map.put("content", prompt.getContent());
+//                map.put("images", prompt.buildAllToBase64s());
+//            } else {
+//                super.buildMessageContent(message, map);
+//            }
+//        }
+//
+//        @Override
+//        protected Object buildToolCallsArguments(Map<String, Object> arguments) {
+//            return arguments;
+//        }
     };
 
 
@@ -100,12 +99,12 @@ public class OllamaLlmUtil {
 
     public static String promptToPayload(Prompt prompt, OllamaChatConfig config, ChatOptions options, boolean stream) {
         List<Message> messages = prompt.toMessages();
-        HumanMessage message = MessageUtil.findLastHumanMessage(messages);
+        UserMessage message = MessageUtil.findLastHumanMessage(messages);
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
-            .set("messages", promptFormat.toMessagesJsonObject(messages))
+            .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
             .set("think", Optional.ofNullable(options.getEnableThinking()).orElse(config.getEnableThinking()))
             .setIf(!stream, "stream", stream)
-            .setIfNotEmpty("tools", promptFormat.toFunctionsJsonObject(message))
+            .setIfNotEmpty("tools", MESSAGE_FORMAT.toFunctionsJsonObject(message))
             .setIfNotEmpty("options.seed", options.getSeed())
             .setIfNotEmpty("options.top_k", options.getTopK())
             .setIfNotEmpty("options.top_p", options.getTopP())

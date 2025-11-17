@@ -15,29 +15,29 @@
  */
 package com.agentsflex.core.util;
 
-import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.message.Message;
 
 import java.util.List;
 
 public class MessageUtil {
 
-    public static HumanMessage findLastHumanMessage(List<Message> messages) {
+    public static UserMessage findLastHumanMessage(List<Message> messages) {
         if (messages == null || messages.isEmpty()) {
             return null;
         }
         for (int i = messages.size() - 1; i >= 0; i--) {
             Message message = messages.get(i);
-            if (message instanceof HumanMessage) {
-                return (HumanMessage) message;
+            if (message instanceof UserMessage) {
+                return (UserMessage) message;
             }
         }
         return null;
     }
 
     public static String getToolChoice(Message message) {
-        if (message instanceof HumanMessage) {
-            return ((HumanMessage) message).getToolChoice();
+        if (message instanceof UserMessage) {
+            return ((UserMessage) message).getToolChoice();
         }
         return null;
     }

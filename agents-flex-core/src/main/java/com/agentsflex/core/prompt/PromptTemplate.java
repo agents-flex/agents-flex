@@ -13,9 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.prompt.template;
+package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.prompt.TextPrompt;
 import com.agentsflex.core.util.MapUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONPath;
@@ -37,7 +36,7 @@ import java.util.regex.Pattern;
  * <p>
  * 支持缓存模板与 JSONPath 编译结果，提升性能。
  */
-public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
+public class PromptTemplate {
 
     /**
      * 匹配 {{ expression }} 的正则表达式
@@ -48,7 +47,7 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
     /**
      * 模板缓存（按原始模板字符串）
      */
-    private static final Map<String, TextPromptTemplate> TEMPLATE_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, PromptTemplate> TEMPLATE_CACHE = new ConcurrentHashMap<>();
 
     /**
      * JSONPath 编译缓存，避免重复编译
@@ -65,7 +64,7 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
      */
     private final List<TemplateToken> tokens;
 
-    public TextPromptTemplate(String template) {
+    public PromptTemplate(String template) {
         this.originalTemplate = template != null ? template : "";
         this.tokens = Collections.unmodifiableList(parseTemplate(this.originalTemplate));
     }
@@ -73,9 +72,9 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
     /**
      * 从缓存中获取或新建模板实例
      */
-    public static TextPromptTemplate of(String template) {
+    public static PromptTemplate of(String template) {
         String finalTemplate = template != null ? template : "";
-        return MapUtil.computeIfAbsent(TEMPLATE_CACHE, finalTemplate, k -> new TextPromptTemplate(finalTemplate));
+        return MapUtil.computeIfAbsent(TEMPLATE_CACHE, finalTemplate, k -> new PromptTemplate(finalTemplate));
     }
 
     /**
@@ -86,19 +85,12 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
         JSONPATH_CACHE.clear();
     }
 
-    /**
-     * 直接格式化为 TextPrompt 对象
-     */
-    @Override
-    public TextPrompt format(Map<String, Object> rootMap) {
-        return new TextPrompt(formatToString(rootMap));
-    }
 
     /**
      * 将模板格式化为字符串
      */
-    public String formatToString(Map<String, Object> rootMap) {
-        return formatToString(rootMap, false);
+    public String format(Map<String, Object> rootMap) {
+        return format(rootMap, false);
     }
 
     /**
@@ -107,7 +99,7 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
      * @param rootMap             数据上下文
      * @param escapeForJsonOutput 是否对结果进行 JSON 字符串转义
      */
-    public String formatToString(Map<String, Object> rootMap, boolean escapeForJsonOutput) {
+    public String format(Map<String, Object> rootMap, boolean escapeForJsonOutput) {
         if (tokens.isEmpty()) return originalTemplate;
         if (rootMap == null) rootMap = Collections.emptyMap();
 

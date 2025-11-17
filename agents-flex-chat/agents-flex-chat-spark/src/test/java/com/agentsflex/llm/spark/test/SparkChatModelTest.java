@@ -1,16 +1,14 @@
 package com.agentsflex.llm.spark.test;
 
-import com.agentsflex.core.document.Document;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.message.HumanMessage;
-import com.agentsflex.core.prompt.FunctionPrompt;
+import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.HistoriesPrompt;
-import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.prompt.SimplePrompt;
 import com.agentsflex.core.util.LogUtil;
-import com.agentsflex.llm.spark.SparkChatModel;
 import com.agentsflex.llm.spark.SparkChatConfig;
+import com.agentsflex.llm.spark.SparkChatModel;
 import org.junit.Test;
 
 import java.util.Scanner;
@@ -35,18 +33,13 @@ public class SparkChatModelTest {
         System.out.println(result);
     }
 
-    @Test
-    public void testEmbedding() {
-        ChatModel chatModel = getSparkLlm();
-        VectorData vectorData = chatModel.embed(Document.of("你好，请问你是谁？"));
-        System.out.println(vectorData);
-    }
 
 
     @Test
     public void testFunctionCalling() throws InterruptedException {
         ChatModel chatModel = getSparkLlm();
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
         System.out.println(response.callFunctions());
@@ -64,7 +57,7 @@ public class SparkChatModelTest {
 
         while (userInput != null) {
 
-            prompt.addMessage(new HumanMessage(userInput));
+            prompt.addMessage(new UserMessage(userInput));
 
             chatModel.chatStream(prompt, (context, response) -> {
                 LogUtil.println(">>>> " + response.getMessage().getContent());

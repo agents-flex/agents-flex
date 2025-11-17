@@ -1,16 +1,11 @@
 package com.agentsflex.llm.tencent.test;
 
-import com.agentsflex.core.document.Document;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.embedding.EmbeddingOptions;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.prompt.FunctionPrompt;
-import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.prompt.SimplePrompt;
 import com.agentsflex.llm.tencent.TencentChatConfig;
 import com.agentsflex.llm.tencent.TencentChatModel;
 import org.junit.Test;
-
-import java.util.Arrays;
 
 public class TencentChatModelTest {
 
@@ -61,17 +56,6 @@ public class TencentChatModelTest {
     }
 
 
-    @Test
-    public void testEmbedding() {
-        TencentChatConfig config = new TencentChatConfig();
-        config.setApiSecret("******");
-        config.setApiKey("***********");
-        ChatModel chatModel = new TencentChatModel(config);
-        Document document = new Document();
-        document.setContent("你好");
-        VectorData embeddings = chatModel.embed(document, EmbeddingOptions.DEFAULT);
-        System.out.println(Arrays.toString(embeddings.getVector()));
-    }
 
 
     @Test
@@ -82,7 +66,8 @@ public class TencentChatModelTest {
 
         ChatModel chatModel = new TencentChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
         System.out.println(response.callFunctions());

@@ -15,13 +15,16 @@
  */
 package com.agentsflex.core.model.chat.response;
 
+import com.agentsflex.core.message.ToolMessage;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionCall;
-import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.MessageUtil;
+import com.agentsflex.core.util.StringUtil;
+import com.alibaba.fastjson2.JSON;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -84,8 +87,8 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
             return Collections.emptyList();
         }
 
-        HumanMessage humanMessage = MessageUtil.findLastHumanMessage(prompt.toMessages());
-        Map<String, Function> funcMap = humanMessage.getFunctionMap();
+        UserMessage userMessage = MessageUtil.findLastHumanMessage(prompt.toMessages());
+        Map<String, Function> funcMap = userMessage.getFunctionMap();
 
         if (funcMap == null || funcMap.isEmpty()) {
             return Collections.emptyList();
@@ -112,6 +115,28 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
             results.add(functionCaller.call());
         }
         return results;
+    }
+
+    public List<ToolMessage> buildToolMessages() {
+        List<FunctionCaller> functionCallers = getFunctionCallers();
+        List<ToolMessage> toolMessages = new ArrayList<>(functionCallers.size());
+        for (FunctionCaller functionCaller : functionCallers) {
+            ToolMessage toolMessage = new ToolMessage();
+            String callId = functionCaller.getFunctionCall().getId();
+            if (StringUtil.hasText(callId)) {
+                toolMessage.setToolCallId(callId);
+            } else {
+                toolMessage.setToolCallId(functionCaller.getFunctionCall().getName());
+            }
+            Object object = functionCaller.call();
+            if (object instanceof CharSequence || object instanceof Number) {
+                toolMessage.setContent(object.toString());
+            } else {
+                toolMessage.setContent(JSON.toJSONString(object));
+            }
+            toolMessages.add(toolMessage);
+        }
+        return toolMessages;
     }
 
     public static AiMessageResponse error(Prompt prompt, String response, String errorMessage) {

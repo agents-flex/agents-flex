@@ -1,16 +1,16 @@
 package com.agentsflex.llm.deepseek;
 
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.functions.annotation.FunctionDef;
 import com.agentsflex.core.model.chat.functions.annotation.FunctionParam;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.message.SystemMessage;
-import com.agentsflex.core.prompt.FunctionPrompt;
 import com.agentsflex.core.prompt.HistoriesPrompt;
+import com.agentsflex.core.prompt.SimplePrompt;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.Scanner;
@@ -50,10 +50,10 @@ public class DeepseekTest {
         String userInput = scanner.nextLine();
         while (userInput != null) {
             // 第二步：创建 HumanMessage，并添加方法调用
-            HumanMessage humanMessage = new HumanMessage(userInput);
-            humanMessage.addFunctions(DeepseekTest.class);
+            UserMessage userMessage = new UserMessage(userInput);
+            userMessage.addFunctions(DeepseekTest.class);
             // 第三步：将 HumanMessage 添加到 HistoriesPrompt 中
-            prompt.addMessage(humanMessage);
+            prompt.addMessage(userMessage);
             // 第四步：调用 chatStream 方法，进行对话
             chatModel.chatStream(prompt, new StreamResponseListener() {
                 @Override
@@ -80,7 +80,8 @@ public class DeepseekTest {
 
     public static void functionCall() {
         ChatModel chatModel = getLLM();
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", DeepseekTest.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(DeepseekTest.class);
         AiMessageResponse response = chatModel.chat(prompt);
         System.out.println(response.callFunctions());
     }

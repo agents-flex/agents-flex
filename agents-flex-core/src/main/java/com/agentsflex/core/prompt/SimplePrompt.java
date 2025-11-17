@@ -15,32 +15,26 @@
  */
 package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
+import com.agentsflex.core.message.ToolMessage;
+import com.agentsflex.core.message.UserMessage;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-public class TextPrompt extends Prompt {
 
-    private SystemMessage systemMessage;
-    protected String content;
+public class SimplePrompt extends Prompt {
 
-    public TextPrompt() {
+    protected SystemMessage systemMessage;
+    protected UserMessage userMessage;
+    protected List<ToolMessage> toolMessages;
+
+    public SimplePrompt() {
     }
 
-    public TextPrompt(String content) {
-        this.content = content;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
+    public SimplePrompt(String content) {
+        this.userMessage = new UserMessage(content);
     }
 
     public SystemMessage getSystemMessage() {
@@ -51,22 +45,33 @@ public class TextPrompt extends Prompt {
         this.systemMessage = systemMessage;
     }
 
-    @Override
-    public List<Message> toMessages() {
-        if (systemMessage != null) {
-            ArrayList<Message> messages = new ArrayList<>();
-            messages.add(systemMessage);
-            messages.add(new HumanMessage(content));
-            return messages;
-        }
-        return Collections.singletonList(new HumanMessage(content));
+    public UserMessage getUserMessage() {
+        return userMessage;
+    }
+
+    public void setUserMessage(UserMessage userMessage) {
+        this.userMessage = userMessage;
+    }
+
+    public List<ToolMessage> getToolMessages() {
+        return toolMessages;
+    }
+
+    public void setToolMessages(List<ToolMessage> toolMessages) {
+        this.toolMessages = toolMessages;
     }
 
     @Override
-    public String toString() {
-        return "TextPrompt{" +
-            "content='" + content + '\'' +
-            ", metadataMap=" + metadataMap +
-            '}';
+    public List<Message> toMessages() {
+        List<Message> messages = new ArrayList<>(2);
+        if (systemMessage != null) {
+            messages.add(systemMessage);
+        }
+        messages.add(userMessage);
+
+        if (toolMessages != null) {
+            messages.addAll(toolMessages);
+        }
+        return messages;
     }
 }

@@ -13,17 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.prompt;
+package com.agentsflex.core.message;
 
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.Parameter;
-import com.agentsflex.core.message.*;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson2.JSON;
 
 import java.util.*;
 
-public class DefaultPromptFormat implements PromptFormat {
+public class OpenAIMessageFormat implements MessageFormat {
 
     @Override
     public Object toMessagesJsonObject(List<Message> messages) {
@@ -40,7 +39,7 @@ public class DefaultPromptFormat implements PromptFormat {
     protected void buildMessageJsonArray(List<Map<String, Object>> messageJsonArray, List<Message> messages) {
         messages.forEach(message -> {
             Map<String, Object> map = new HashMap<>(2);
-            if (message instanceof HumanMessage) {
+            if (message instanceof UserMessage) {
                 map.put("role", "user");
             } else if (message instanceof AiMessage) {
                 map.put("role", "assistant");
@@ -90,7 +89,7 @@ public class DefaultPromptFormat implements PromptFormat {
     }
 
     @Override
-    public Object toFunctionsJsonObject(HumanMessage message) {
+    public Object toFunctionsJsonObject(UserMessage message) {
         if (message == null) {
             return null;
         }

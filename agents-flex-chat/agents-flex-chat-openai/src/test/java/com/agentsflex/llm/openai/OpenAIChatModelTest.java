@@ -1,17 +1,15 @@
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.exception.ModelException;
-import com.agentsflex.core.model.chat.functions.JavaNativeFunctions;
-import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.prompt.FunctionPrompt;
-import com.agentsflex.core.prompt.ImagePrompt;
-import com.agentsflex.core.prompt.ToolPrompt;
 import com.agentsflex.core.agents.react.ReActAgent;
 import com.agentsflex.core.agents.react.ReActAgentListener;
 import com.agentsflex.core.agents.react.ReActStep;
+import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.chat.functions.JavaNativeFunctions;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.exception.ModelException;
+import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -88,8 +86,8 @@ public class OpenAIChatModelTest {
 
 
         ChatModel chatModel = new OpenAIChatModel(config);
-        ImagePrompt prompt = new ImagePrompt("What's in this image?");
-        prompt.addImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
+        SimplePrompt prompt = new SimplePrompt("What's in this image?");
+        prompt.getUserMessage().addImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
 
 
         AiMessageResponse response = chatModel.chat(prompt);
@@ -104,7 +102,8 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
         System.out.println(response.callFunctions());
@@ -118,11 +117,13 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
         if (response.isFunctionCall()) {
-            AiMessageResponse response1 = llm.chat(ToolPrompt.of(response));
+            prompt.setToolMessages(response.buildToolMessages());
+            AiMessageResponse response1 = llm.chat(prompt);
             System.out.println(response1.getMessage().getContent());
         } else {
             System.out.println(response);
@@ -140,11 +141,13 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
         if (response.isFunctionCall()) {
-            AiMessageResponse response1 = llm.chat(ToolPrompt.of(response));
+            prompt.setToolMessages(response.buildToolMessages());
+            AiMessageResponse response1 = llm.chat(prompt);
             System.out.println(response1.getMessage().getContent());
         } else {
             System.out.println(response);
@@ -162,7 +165,8 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
@@ -184,7 +188,8 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("北京和上海的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
@@ -207,7 +212,8 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
 
-        FunctionPrompt prompt = new FunctionPrompt("北京和上海的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("北京和上海的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
@@ -238,7 +244,8 @@ public class OpenAIChatModelTest {
                 System.out.println("onMessage >>>>>" + response);
                 if (response.isFunctionCall()) {
                     System.out.println(":::::::: start....");
-                    llm.chatStream(ToolPrompt.of(response), new StreamResponseListener() {
+                    prompt.setToolMessages(response.buildToolMessages());
+                    llm.chatStream(prompt, new StreamResponseListener() {
                         @Override
                         public void onMessage(ChatContext context, AiMessageResponse response) {
                             String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
@@ -267,7 +274,8 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("北京和上海的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("北京和上海的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
@@ -289,7 +297,8 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("/no_think 北京和上海的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("/no_think 北京和上海的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
 //        FunctionPrompt prompt = new FunctionPrompt("上海的天气怎么样", WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
@@ -297,7 +306,8 @@ public class OpenAIChatModelTest {
 //                System.out.println("onMessage >>>>>" + response);
                 if (response.isFunctionCall()) {
                     System.out.println(":::::::: start....");
-                    llm.chatStream(ToolPrompt.of(response), new StreamResponseListener() {
+                    prompt.setToolMessages(response.buildToolMessages());
+                    llm.chatStream(prompt, new StreamResponseListener() {
                         @Override
                         public void onMessage(ChatContext context, AiMessageResponse response) {
                             String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
@@ -324,10 +334,13 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        FunctionPrompt prompt = new FunctionPrompt("/nothink 北京和上海的天气怎么样", WeatherFunctions.class);
+        SimplePrompt prompt = new SimplePrompt("/no_think 北京和上海的天气怎么样");
+        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
-        System.out.println(llm.chat(ToolPrompt.of(response)));
+        prompt.setToolMessages(response.buildToolMessages());
+
+        System.out.println(llm.chat(prompt));
 
     }
 

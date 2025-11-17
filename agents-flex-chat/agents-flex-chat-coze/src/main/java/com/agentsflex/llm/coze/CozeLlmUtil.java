@@ -19,9 +19,9 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.prompt.DefaultPromptFormat;
+import com.agentsflex.core.message.OpenAIMessageFormat;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.prompt.PromptFormat;
+import com.agentsflex.core.message.MessageFormat;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson2.JSONPath;
 
@@ -33,7 +33,7 @@ import java.util.Map;
  */
 public class CozeLlmUtil {
 
-    private static final PromptFormat promptFormat = new DefaultPromptFormat() {
+    private static final MessageFormat MESSAGE_FORMAT = new OpenAIMessageFormat() {
         @Override
         protected void buildMessageContent(Message message, Map<String, Object> map) {
             map.put("content_type", "text");
@@ -65,7 +65,7 @@ public class CozeLlmUtil {
             .set("bot_id", botId)
             .set("user_id", userId)
             .set("auto_save_history", true)
-            .set("additional_messages", promptFormat.toMessagesJsonObject(messages))
+            .set("additional_messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
             .set("stream", stream)
             .setIf(customVariables != null, "custom_variables", customVariables)
             .toJSON();
