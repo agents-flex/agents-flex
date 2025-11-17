@@ -1,5 +1,18 @@
 # Agents-Flex ChangeLog
 
+## v1.4.2 20251117
+- 新增：新增本地 Token 计算的相关内容，方便在某些情况下无法获取外部 token 时使用
+- 新增: 新增 file2text 模块
+- 新增: Chain 支持主动去 暂停执行 或 恢复执行
+- 新增：feat: 新增可观测的相关能力
+- 优化：重构移动 ReAct 的包到 agents 目录下
+- 优化：优化 Chain.addEdge 自动为没有 id 的 edge 添加 id
+- 优化：Chain.addNode 自动为 node 添加 inwardEdges 和 outwardEdges
+- 优化：优化 ChainHolder 的属性类型定义，方便准确序列化
+- 优化：ChainEdge 移除无用的定义
+
+
+
 ## v1.4.1 20251023
 - 新增：prompt 格式化新增 `{{ aa ?? bb ?? 'default'}}` 取值语法
 - 优化：优化 chain.get 方法获取数据的性能
