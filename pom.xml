@@ -44,9 +44,7 @@
         <module>agents-flex-core</module>
         <module>agents-flex-llm</module>
         <module>agents-flex-store</module>
-        <module>agents-flex-document-parser</module>
         <module>agents-flex-spring-boot-starter</module>
-        <module>agents-flex-chain</module>
         <module>agents-flex-image</module>
         <module>agents-flex-rerank</module>
         <module>agents-flex-search-engine</module>
@@ -54,7 +52,7 @@
 
     <properties>
         <!-- Agents-Flex Version -->
-        <revision>1.4.2</revision>
+        <revision>2.0.0-beta.1</revision>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <maven-flatten.version>1.3.0</maven-flatten.version>
@@ -146,24 +144,6 @@
                 <artifactId>agents-flex-bom</artifactId>
                 <version>${revision}</version>
             </dependency>
-
-            <!--document parser start-->
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-document-parser-poi</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-document-parser-pdfbox</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-document-parser-omniparse</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <!--document parser end-->
 
 
             <!--image model start-->
@@ -272,24 +252,6 @@
                 <version>${revision}</version>
             </dependency>
             <!--llm end-->
-
-            <!--chains start-->
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chain-qlexpress</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chain-groovy</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chain-js</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <!--chains end-->
 
             <!-- rerank start -->
             <dependency>

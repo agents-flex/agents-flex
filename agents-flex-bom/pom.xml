@@ -56,21 +56,6 @@
             </exclusions>
         </dependency>
 
-        <!--document parser start-->
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-document-parser-poi</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-document-parser-pdfbox</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-document-parser-omniparse</artifactId>
-        </dependency>
-        <!--document parser end-->
-
 
         <!--image model start-->
         <dependency>
@@ -180,22 +165,6 @@
             <artifactId>agents-flex-rerank-gitee</artifactId>
         </dependency>
         <!--rerank end-->
-
-        <!--chains start-->
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chain-qlexpress</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chain-groovy</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chain-js</artifactId>
-        </dependency>
-        <!--chains end-->
-
 
         <!--store start-->
         <dependency>
