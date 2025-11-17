@@ -24,11 +24,11 @@ import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.prompt.Prompt;
+import com.agentsflex.core.util.JSONUtil;
 import com.agentsflex.core.util.LocalTokenCounter;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import com.alibaba.fastjson2.JSONPath;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,13 +91,13 @@ public class BaseLlmClientListener implements LlmClientListener {
             lastAiMessage.setFullReasoningContent(fullReasoningContent.toString());
             lastAiMessage.setFullContent(fullMessage.toString());
 
-            String functionName = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].function.name");
+            String functionName = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.name");
             if (StringUtil.hasText(functionName)) {
                 functionCallRecord = new FunctionCallRecord();
                 functionCallRecord.name = functionName;
-                functionCallRecord.id = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].id");
+                functionCallRecord.id = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].id");
 
-                String arguments = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
+                String arguments = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
                 if (arguments != null) {
                     functionCallRecord.arguments += arguments;
                 }
@@ -105,11 +105,11 @@ public class BaseLlmClientListener implements LlmClientListener {
                 functionCallRecords.add(functionCallRecord);
                 streamResponseListener.onMatchedFunction(functionName, context);
             } else if (functionCallRecord != null) {
-                String arguments = (String) JSONPath.eval(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
+                String arguments = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
                 if (arguments != null) {
                     functionCallRecord.arguments += arguments;
                 } else {
-                    String finishReason = (String) JSONPath.eval(jsonObject, "$.choices[0].finish_reason");
+                    String finishReason = JSONUtil.readString(jsonObject, "$.choices[0].finish_reason");
                     if ("tool_calls".equals(finishReason)) {
                         functionCallRecord = null;
                         invokeOnMessageForFunctionCall(response);
