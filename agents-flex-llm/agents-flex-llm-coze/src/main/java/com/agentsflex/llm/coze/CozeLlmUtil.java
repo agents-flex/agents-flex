@@ -23,7 +23,7 @@ import com.agentsflex.core.prompt.DefaultPromptFormat;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
-import com.alibaba.fastjson.JSONPath;
+import com.alibaba.fastjson2.JSONPath;
 
 import java.util.List;
 import java.util.Map;

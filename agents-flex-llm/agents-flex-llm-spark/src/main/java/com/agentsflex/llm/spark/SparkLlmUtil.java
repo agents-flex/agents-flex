@@ -28,7 +28,7 @@ import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.HashUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
-import com.alibaba.fastjson.*;
+import com.alibaba.fastjson2.*;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;

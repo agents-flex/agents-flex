@@ -32,9 +32,11 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.JSONUtil;
 import com.agentsflex.core.util.SleepUtil;
 import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson.JSONPath;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +71,8 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
             return null;
         }
 
-        Integer code = JSONPath.read(resp, "$.header.code", Integer.class);
+        JSONObject jsonObject = JSON.parseObject(resp);
+        Integer code = JSONUtil.readInteger(jsonObject, "$.header.code");
         if (code == null) {
             logger.error(resp);
             return null;
@@ -86,7 +89,7 @@ public class SparkLlm extends BaseLlm<SparkLlmConfig> {
             }
         }
 
-        String text = JSONPath.read(resp, "$.payload.feature.text", String.class);
+        String text = JSONUtil.readString(jsonObject, "$.payload.feature.text");
         if (StringUtil.noText(text)) {
             logger.error(resp);
             return null;

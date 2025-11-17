@@ -29,12 +29,12 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.store.VectorData;
+import com.agentsflex.core.util.JSONUtil;
 import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONPath;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -76,13 +76,14 @@ public class OllamaLlm extends BaseLlm<OllamaLlmConfig> {
         }
         VectorData vectorData = new VectorData();
 
-        double[] embedding = JSONPath.read(response, "$.embeddings[0]", double[].class);
+        JSONObject jsonObject = JSON.parseObject(response);
+        double[] embedding = JSONUtil.readDoubleArray(jsonObject, "$.embeddings[0]");
         vectorData.setVector(embedding);
 
-        vectorData.addMetadata("total_duration", JSONPath.read(response, "$.total_duration", Long.class));
-        vectorData.addMetadata("load_duration", JSONPath.read(response, "$.load_duration", Long.class));
-        vectorData.addMetadata("prompt_eval_count", JSONPath.read(response, "$.prompt_eval_count", Integer.class));
-        vectorData.addMetadata("model", JSONPath.read(response, "$.model", String.class));
+        vectorData.addMetadata("total_duration", JSONUtil.readLong(jsonObject, "$.total_duration"));
+        vectorData.addMetadata("load_duration", JSONUtil.readLong(jsonObject, "$.load_duration"));
+        vectorData.addMetadata("prompt_eval_count", JSONUtil.readInteger(jsonObject, "$.prompt_eval_count"));
+        vectorData.addMetadata("model", JSONUtil.readString(jsonObject, "$.model"));
 
         return vectorData;
     }

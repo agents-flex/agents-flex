@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.parser;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 
 public interface JSONObjectParser<T> extends Parser<JSONObject, T> {
 

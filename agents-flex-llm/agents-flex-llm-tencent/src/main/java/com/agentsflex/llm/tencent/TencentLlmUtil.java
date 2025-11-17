@@ -26,7 +26,7 @@ import com.agentsflex.core.prompt.PromptFormat;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
 import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson.JSONPath;
+import com.alibaba.fastjson2.JSONPath;
 import com.tencentcloudapi.common.DatatypeConverter;
 
 import javax.crypto.Mac;

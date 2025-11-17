@@ -19,8 +19,7 @@ import com.agentsflex.core.llm.functions.Function;
 import com.agentsflex.core.llm.functions.Parameter;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.util.Maps;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.alibaba.fastjson2.JSON;
 
 import java.util.*;
 
@@ -81,7 +80,8 @@ public class DefaultPromptFormat implements PromptFormat {
     }
 
     protected Object buildToolCallsArguments(Map<String, Object> arguments) {
-        return JSON.toJSONString(arguments, SerializerFeature.DisableCircularReferenceDetect);
+//        return JSON.toJSONString(arguments, SerializerFeature.DisableCircularReferenceDetect);
+        return JSON.toJSONString(arguments);
     }
 
 

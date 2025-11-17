@@ -21,7 +21,7 @@ import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson2.JSON;
 import kotlin.collections.ArrayDeque;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;

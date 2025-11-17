@@ -17,7 +17,6 @@
         <module>agents-flex-store-qcloud</module>
         <module>agents-flex-store-aliyun</module>
         <module>agents-flex-store-chroma</module>
-        <module>agents-flex-store-milvus</module>
         <module>agents-flex-store-redis</module>
         <module>agents-flex-store-opensearch</module>
         <module>agents-flex-store-elasticsearch</module>

@@ -17,9 +17,9 @@ package com.agentsflex.core.prompt.template;
 
 import com.agentsflex.core.prompt.TextPrompt;
 import com.agentsflex.core.util.MapUtil;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONPath;
-import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONPath;
+import com.alibaba.fastjson2.JSONWriter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -129,7 +129,7 @@ public class TextPromptTemplate implements PromptTemplate<TextPrompt> {
                     "Missing value for expression: \"%s\"%nTemplate: %s%nProvided parameters:%n%s",
                     token.rawExpression,
                     originalTemplate,
-                    JSON.toJSONString(rootMap, SerializerFeature.PrettyFormat)
+                    JSON.toJSONString(rootMap, JSONWriter.Feature.PrettyFormat)
                 ));
             }
             sb.append(value);
