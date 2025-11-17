@@ -5,7 +5,7 @@ import com.agentsflex.core.model.chat.functions.annotation.FunctionParam;
 import com.agentsflex.core.model.client.HttpClient;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import com.alibaba.fastjson2.serializer.SerializerFeature;
+import com.alibaba.fastjson2.JSONWriter;
 
 public class WeatherFunctions {
 
@@ -19,6 +19,6 @@ public class WeatherFunctions {
     ) {
         String response = new HttpClient().get("http://t.weather.sojson.com/api/weather/city/" + getCityCode(name));
         JSONObject jsonObject = JSONObject.parseObject(response);
-        return JSON.toJSONString(jsonObject, SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue);
+        return JSON.toJSONString(jsonObject, JSONWriter.Feature.PrettyFormat, JSONWriter.Feature.WriteMapNullValue);
     }
 }

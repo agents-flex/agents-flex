@@ -6,12 +6,14 @@ import com.agentsflex.core.agents.react.ReActStep;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.functions.JavaNativeFunctions;
+import com.agentsflex.core.model.chat.functions.Function;
+import com.agentsflex.core.model.chat.functions.JavaNativeFunctionBuilder;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class OpenAIChatModelTest {
@@ -355,7 +357,7 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        JavaNativeFunctions functions = JavaNativeFunctions.from(WeatherFunctions.class);
+        List<Function> functions = JavaNativeFunctionBuilder.from(WeatherFunctions.class);
 //        ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
         ReActAgent reActAgent  = new ReActAgent(llm, functions, "介绍一下北京");
         reActAgent.addListener(new ReActAgentListener() {
@@ -396,7 +398,7 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        JavaNativeFunctions functions = JavaNativeFunctions.from(WeatherFunctions.class);
+        List<Function> functions = JavaNativeFunctionBuilder.from(WeatherFunctions.class);
         ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
         reActAgent.setStreamable(true);
         reActAgent.addListener(new ReActAgentListener() {

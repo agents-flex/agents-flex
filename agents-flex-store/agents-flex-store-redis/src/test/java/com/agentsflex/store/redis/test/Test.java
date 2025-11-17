@@ -39,8 +39,10 @@ public class Test {
         config.setUri("redis://localhost:6379");
         config.setDefaultCollectionName("test005");
 
+
+
         RedisVectorStore store = new RedisVectorStore(config);
-        store.setEmbeddingModel(chatModel);
+//        store.setEmbeddingModel(chatModel);
 
         Document document = new Document();
         document.setContent("你好");

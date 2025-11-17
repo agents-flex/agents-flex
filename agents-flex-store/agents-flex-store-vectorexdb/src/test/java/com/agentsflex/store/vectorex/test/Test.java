@@ -41,7 +41,7 @@ public class Test {
         VectoRexStoreConfig config = new VectoRexStoreConfig();
         config.setDefaultCollectionName("test05");
         VectoRexStore store = new VectoRexStore(config);
-        store.setEmbeddingModel(chatModel);
+//        store.setEmbeddingModel(chatModel);
 
         Document document = new Document();
         document.setContent("你好");

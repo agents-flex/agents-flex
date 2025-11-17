@@ -24,17 +24,17 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JavaNativeFunctions extends ArrayList<Function> {
+public class JavaNativeFunctionBuilder extends ArrayList<Function> {
 
-    public static JavaNativeFunctions from(Object object, String... methodNames) {
+    public static List<Function> from(Object object, String... methodNames) {
         return from(object.getClass(), object, methodNames);
     }
 
-    public static JavaNativeFunctions from(Class<?> clazz, String... methodNames) {
+    public static List<Function> from(Class<?> clazz, String... methodNames) {
         return from(clazz, null, methodNames);
     }
 
-    private static JavaNativeFunctions from(Class<?> clazz, Object object, String... methodNames) {
+    private static List<Function> from(Class<?> clazz, Object object, String... methodNames) {
         clazz = ClassUtil.getUsefulClass(clazz);
         List<Method> methodList = ClassUtil.getAllMethods(clazz, method -> {
             if (object == null && !Modifier.isStatic(method.getModifiers())) {
@@ -49,7 +49,7 @@ public class JavaNativeFunctions extends ArrayList<Function> {
             return true;
         });
 
-        JavaNativeFunctions javaNativeFunctions = new JavaNativeFunctions();
+        List<Function> functions = new ArrayList<>();
 
         for (Method method : methodList) {
             JavaNativeFunction function = new JavaNativeFunction();
@@ -60,10 +60,10 @@ public class JavaNativeFunctions extends ArrayList<Function> {
                 function.setObject(object);
             }
 
-            javaNativeFunctions.add(function);
+            functions.add(function);
         }
 
-        return javaNativeFunctions;
+        return functions;
     }
 
 

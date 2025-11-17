@@ -48,7 +48,7 @@ public class Test {
         config.setUsername("");
         config.setPassword("");
         VectoRexStore store = new VectoRexStore(config);
-        store.setEmbeddingModel(chatModel);
+//        store.setEmbeddingModel(chatModel);
 
         Document document = new Document();
         document.setContent("你好");

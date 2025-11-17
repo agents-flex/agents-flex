@@ -16,7 +16,7 @@
 package com.agentsflex.core.message;
 
 import com.agentsflex.core.model.chat.functions.Function;
-import com.agentsflex.core.model.chat.functions.JavaNativeFunctions;
+import com.agentsflex.core.model.chat.functions.JavaNativeFunctionBuilder;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.Maps;
@@ -57,13 +57,13 @@ public class UserMessage extends AbstractTextMessage {
     public void addFunctions(Class<?> funcClass, String... methodNames) {
         if (this.functions == null)
             this.functions = new java.util.ArrayList<>();
-        this.functions.addAll(JavaNativeFunctions.from(funcClass, methodNames));
+        this.functions.addAll(JavaNativeFunctionBuilder.from(funcClass, methodNames));
     }
 
     public void addFunctions(Object funcObject, String... methodNames) {
         if (this.functions == null)
             this.functions = new java.util.ArrayList<>();
-        this.functions.addAll(JavaNativeFunctions.from(funcObject, methodNames));
+        this.functions.addAll(JavaNativeFunctionBuilder.from(funcObject, methodNames));
     }
 
     public List<Function> getFunctions() {
