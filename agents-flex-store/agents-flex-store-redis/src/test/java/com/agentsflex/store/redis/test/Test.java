@@ -16,10 +16,10 @@
 package com.agentsflex.store.redis.test;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.store.SearchWrapper;
-import com.agentsflex.llm.spark.SparkLlm;
-import com.agentsflex.llm.spark.SparkLlmConfig;
+import com.agentsflex.llm.spark.SparkChatModel;
+import com.agentsflex.llm.spark.SparkChatConfig;
 import com.agentsflex.store.redis.RedisVectorStore;
 import com.agentsflex.store.redis.RedisVectorStoreConfig;
 
@@ -28,19 +28,19 @@ import java.util.List;
 public class Test {
     public static void main(String[] args) {
 
-        SparkLlmConfig sparkLlmConfig = new SparkLlmConfig();
+        SparkChatConfig sparkLlmConfig = new SparkChatConfig();
         sparkLlmConfig.setAppId("****");
         sparkLlmConfig.setApiKey("****");
         sparkLlmConfig.setApiSecret("****");
 
-        Llm llm = new SparkLlm(sparkLlmConfig);
+        ChatModel chatModel = new SparkChatModel(sparkLlmConfig);
 
         RedisVectorStoreConfig config = new RedisVectorStoreConfig();
         config.setUri("redis://localhost:6379");
         config.setDefaultCollectionName("test005");
 
         RedisVectorStore store = new RedisVectorStore(config);
-        store.setEmbeddingModel(llm);
+        store.setEmbeddingModel(chatModel);
 
         Document document = new Document();
         document.setContent("你好");

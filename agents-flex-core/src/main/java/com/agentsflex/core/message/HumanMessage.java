@@ -15,8 +15,8 @@
  */
 package com.agentsflex.core.message;
 
-import com.agentsflex.core.llm.functions.Function;
-import com.agentsflex.core.llm.functions.JavaNativeFunctions;
+import com.agentsflex.core.model.chat.functions.Function;
+import com.agentsflex.core.model.chat.functions.JavaNativeFunctions;
 
 import java.util.*;
 

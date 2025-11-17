@@ -15,12 +15,12 @@
  */
 package com.agentsflex.core.store;
 
-import com.agentsflex.core.llm.embedding.EmbeddingModel;
+import com.agentsflex.core.model.embedding.EmbeddingModel;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentSplitter;
 import com.agentsflex.core.document.id.DocumentIdGenerator;
 import com.agentsflex.core.document.id.DocumentIdGeneratorFactory;
-import com.agentsflex.core.llm.exception.LlmException;
+import com.agentsflex.core.model.exception.ModelException;
 
 import java.util.Collection;
 import java.util.List;
@@ -116,7 +116,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
         if (wrapper.getVector() == null && embeddingModel != null && wrapper.isWithVector()) {
             VectorData vectorData = embeddingModel.embed(Document.of(wrapper.getText()), options.getEmbeddingOptions());
             if (vectorData == null) {
-                throw new LlmException("Embedding model does not contain vector data");
+                throw new ModelException("Embedding model does not contain vector data");
             }
             wrapper.setVector(vectorData.getVector());
         }

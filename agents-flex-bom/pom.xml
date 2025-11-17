@@ -103,56 +103,48 @@
         <!--image model end-->
 
 
-        <!--llm start-->
+        <!--chatModel start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-chatglm</artifactId>
+            <artifactId>agents-flex-chat-chatglm</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-coze</artifactId>
+            <artifactId>agents-flex-chat-coze</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-deepseek</artifactId>
+            <artifactId>agents-flex-chat-deepseek</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-ollama</artifactId>
+            <artifactId>agents-flex-chat-ollama</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-openai</artifactId>
+            <artifactId>agents-flex-chat-openai</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-qianfan</artifactId>
+            <artifactId>agents-flex-chat-qianfan</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-qwen</artifactId>
+            <artifactId>agents-flex-chat-qwen</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-siliconflow</artifactId>
+            <artifactId>agents-flex-chat-spark</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-spark</artifactId>
+            <artifactId>agents-flex-chat-tencent</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-tencent</artifactId>
+            <artifactId>agents-flex-chat-volcengine</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-vllm</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-volcengine</artifactId>
-        </dependency>
-        <!--llm end-->
+        <!--chatModel end-->
 
 
         <!--rerank start-->

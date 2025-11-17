@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.util;
 
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
 
 import java.io.File;
 import java.net.URLConnection;

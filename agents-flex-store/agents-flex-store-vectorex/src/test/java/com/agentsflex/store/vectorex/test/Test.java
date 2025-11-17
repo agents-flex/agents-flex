@@ -16,12 +16,12 @@
 package com.agentsflex.store.vectorex.test;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.LogUtil;
-import com.agentsflex.llm.spark.SparkLlm;
-import com.agentsflex.llm.spark.SparkLlmConfig;
+import com.agentsflex.llm.spark.SparkChatModel;
+import com.agentsflex.llm.spark.SparkChatConfig;
 import com.agentsflex.store.vectorex.VectoRexStore;
 import com.agentsflex.store.vectorex.VectoRexStoreConfig;
 
@@ -30,7 +30,7 @@ import java.util.List;
 public class Test {
     public static void main(String[] args) {
 
-        SparkLlmConfig sparkLlmConfig = new SparkLlmConfig();
+        SparkChatConfig sparkLlmConfig = new SparkChatConfig();
 //        sparkLlmConfig.setAppId("****");
 //        sparkLlmConfig.setApiKey("****");
 //        sparkLlmConfig.setApiSecret("****");
@@ -40,7 +40,7 @@ public class Test {
         sparkLlmConfig.setApiSecret("N2Y5OTgwMDM4ODJkNWUxZjgwZWE1MzFj");
 
 
-        Llm llm = new SparkLlm(sparkLlmConfig);
+        ChatModel chatModel = new SparkChatModel(sparkLlmConfig);
 
         VectoRexStoreConfig config = new VectoRexStoreConfig();
         config.setUri("https://localhost:8230");
@@ -48,7 +48,7 @@ public class Test {
         config.setUsername("");
         config.setPassword("");
         VectoRexStore store = new VectoRexStore(config);
-        store.setEmbeddingModel(llm);
+        store.setEmbeddingModel(chatModel);
 
         Document document = new Document();
         document.setContent("你好");

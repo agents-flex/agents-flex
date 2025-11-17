@@ -21,10 +21,10 @@ public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    Llm llm = new OpenAILlm(config);
+    Llm chatModel = new OpenAILlm(config);
 
     TextPrompt prompt = new TextPrompt("请问你叫什么名字");
-    String response = llm.chat(prompt);
+    String response = chatModel.chat(prompt);
 
     System.out.println(response);
 }
@@ -41,10 +41,10 @@ public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAILlm llm = new OpenAILlm(config);
+    OpenAILlm chatModel = new OpenAILlm(config);
 
     FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
-    AiMessageResponse response = llm.chat(prompt);
+    AiMessageResponse response = chatModel.chat(prompt);
 
     System.out.println(response.callFunctions());
     // "Today it will be dull and overcast in 北京"
@@ -62,11 +62,11 @@ public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-5gqOcl*****");
     config.setModel("gpt-4-turbo");
-    Llm llm = new OpenAILlm(config);
+    Llm chatModel = new OpenAILlm(config);
 
     ImagePrompt prompt = new ImagePrompt("What's in this image?");
     prompt.addImageUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
-    AiMessageResponse response = llm.chat(prompt);
+    AiMessageResponse response = chatModel.chat(prompt);
 
     System.out.println(response);
 }
@@ -83,13 +83,13 @@ public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAILlm llm = new OpenAILlm(config);
+    OpenAILlm chatModel = new OpenAILlm(config);
 
     FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
-    AiMessageResponse response = llm.chat(prompt);
+    AiMessageResponse response = chatModel.chat(prompt);
 
     if (response.isFunctionCall()) {
-        AiMessageResponse response1 = llm.chat(ToolPrompt.of(response));
+        AiMessageResponse response1 = chatModel.chat(ToolPrompt.of(response));
         System.out.println(response1.getMessage().getContent());
     } else {
         System.out.println(response);
@@ -108,7 +108,7 @@ public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAILlm llm = new OpenAILlm(config);
+    OpenAILlm chatModel = new OpenAILlm(config);
 
     //第一步：创建一个 HistoriesPrompt
     HistoriesPrompt prompt = new HistoriesPrompt();
@@ -123,7 +123,7 @@ public static void main(String[] args) {
         prompt.addMessage(new HumanMessage(userInput));
 
         // 第三步：调用 chatStream 方法，进行对话
-        llm.chatStream(prompt, (context, response) -> {
+        chatModel.chatStream(prompt, (context, response) -> {
             System.out.println(">>>> " + response.getMessage().getContent());
         });
 

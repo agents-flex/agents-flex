@@ -15,13 +15,13 @@
  */
 package com.agentsflex.core.agents.react;
 
-import com.agentsflex.core.llm.ChatContext;
-import com.agentsflex.core.llm.ChatOptions;
-import com.agentsflex.core.llm.Llm;
-import com.agentsflex.core.llm.StreamResponseListener;
-import com.agentsflex.core.llm.functions.Function;
-import com.agentsflex.core.llm.functions.Parameter;
-import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.core.model.chat.ChatOptions;
+import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.chat.functions.Function;
+import com.agentsflex.core.model.chat.functions.Parameter;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.prompt.HistoriesPrompt;
@@ -71,7 +71,7 @@ public class ReActAgent {
     // 默认最大迭代次数
     private static final int DEFAULT_MAX_ITERATIONS = 5;
 
-    private final Llm llm;
+    private final ChatModel chatModel;
     private final List<Function> functions;
     private final String userQuery;
 
@@ -95,15 +95,15 @@ public class ReActAgent {
 
     private int iterationCount = 0;
 
-    public ReActAgent(Llm llm, List<Function> functions, String userQuery) {
-        this.llm = llm;
+    public ReActAgent(ChatModel chatModel, List<Function> functions, String userQuery) {
+        this.chatModel = chatModel;
         this.functions = functions;
         this.userQuery = userQuery;
         this.historiesPrompt = new HistoriesPrompt();
     }
 
-    public ReActAgent(Llm llm, List<Function> functions, String userQuery, HistoriesPrompt historiesPrompt) {
-        this.llm = llm;
+    public ReActAgent(ChatModel chatModel, List<Function> functions, String userQuery, HistoriesPrompt historiesPrompt) {
+        this.chatModel = chatModel;
         this.functions = functions;
         this.userQuery = userQuery;
         this.historiesPrompt = historiesPrompt;
@@ -123,8 +123,8 @@ public class ReActAgent {
         listeners.remove(listener);
     }
 
-    public Llm getLlm() {
-        return llm;
+    public ChatModel getLlm() {
+        return chatModel;
     }
 
     public List<Function> getFunctions() {
@@ -242,7 +242,7 @@ public class ReActAgent {
 
     private void startNextReactStepNormal() {
         for (int i = 0; i < maxIterations; i++) {
-            AiMessageResponse response = llm.chat(historiesPrompt, chatOptions);
+            AiMessageResponse response = chatModel.chat(historiesPrompt, chatOptions);
             String content = response.getMessage().getContent();
             historiesPrompt.addMessage(new AiMessage(content));
 
@@ -273,7 +273,7 @@ public class ReActAgent {
 
         iterationCount++;
 
-        llm.chatStream(historiesPrompt, new StreamResponseListener() {
+        chatModel.chatStream(historiesPrompt, new StreamResponseListener() {
 
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {

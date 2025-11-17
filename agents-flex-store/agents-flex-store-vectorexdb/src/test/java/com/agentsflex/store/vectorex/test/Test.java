@@ -16,12 +16,12 @@
 package com.agentsflex.store.vectorex.test;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.Llm;
+import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.LogUtil;
-import com.agentsflex.llm.openai.OpenAILlm;
-import com.agentsflex.llm.openai.OpenAILlmConfig;
+import com.agentsflex.llm.openai.OpenAIChatModel;
+import com.agentsflex.llm.openai.OpenAIChatConfig;
 import com.agentsflex.store.vectorex.VectoRexStore;
 import com.agentsflex.store.vectorex.VectoRexStoreConfig;
 
@@ -30,18 +30,18 @@ import java.util.List;
 public class Test {
     public static void main(String[] args) {
 
-        OpenAILlmConfig  openAILlmConfig= new OpenAILlmConfig();
+        OpenAIChatConfig openAILlmConfig= new OpenAIChatConfig();
         openAILlmConfig.setApiKey("");
         openAILlmConfig.setEndpoint("");
         openAILlmConfig.setModel("");
 
-        Llm llm = new OpenAILlm(openAILlmConfig);
+        ChatModel chatModel = new OpenAIChatModel(openAILlmConfig);
 
 
         VectoRexStoreConfig config = new VectoRexStoreConfig();
         config.setDefaultCollectionName("test05");
         VectoRexStore store = new VectoRexStore(config);
-        store.setEmbeddingModel(llm);
+        store.setEmbeddingModel(chatModel);
 
         Document document = new Document();
         document.setContent("你好");

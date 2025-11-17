@@ -34,8 +34,8 @@ implementation 'com.agentsflex:agents-flex-bom:1.2.2'
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = OpenAILlm.of("sk-rts5NF6n*******");
-        String response = llm.chat("what is your name?");
+        Llm chatModel = OpenAILlm.of("sk-rts5NF6n*******");
+        String response = chatModel.chat("what is your name?");
 
         System.out.println(response);
     }
@@ -53,8 +53,8 @@ public class Main {
         config.setApiKey("sk-rts5NF6n*******");
         config.setModel("gpt-3.5-turbo");
 
-        Llm llm = new OpenAILlm(config);
-        String response = llm.chat("请问你叫什么名字");
+        Llm chatModel = new OpenAILlm(config);
+        String response = chatModel.chat("请问你叫什么名字");
 
         System.out.println(response);
     }
@@ -69,9 +69,9 @@ public class Main {
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+        Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
-        llm.chatStream("what is your name?", new StreamResponseListener() {
+        chatModel.chatStream("what is your name?", new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());

@@ -15,7 +15,7 @@
  */
 package com.agentsflex.image.volcengine;
 
-import com.agentsflex.core.image.*;
+import com.agentsflex.core.model.image.*;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.volcengine.service.visual.IVisualService;

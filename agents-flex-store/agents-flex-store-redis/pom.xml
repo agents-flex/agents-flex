@@ -33,7 +33,7 @@
 
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-spark</artifactId>
+            <artifactId>agents-flex-chat-spark</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

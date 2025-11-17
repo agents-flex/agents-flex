@@ -58,7 +58,7 @@ public static void main(String[] args) {
 
 大模型节点用于调用大型语言模型（LLM），实现如文本生成、问答等复杂功能。其主要参数包括：
 
-- `llm`：大模型实例。
+- `chatModel`：大模型实例。
 - `chatOptions`：聊天参数，默认为 `ChatOptions.DEFAULT`。
 - `userPrompt`：用户提示词。
 - `userPromptTemplate`：用户提示词模板。
@@ -70,7 +70,7 @@ public static void main(String[] args) {
 
 ```java
 public class LlmNode extends BaseNode {
-    protected Llm llm;
+    protected Llm chatModel;
     protected ChatOptions chatOptions = ChatOptions.DEFAULT;
     protected String userPrompt;
     protected TextPromptTemplate userPromptTemplate;

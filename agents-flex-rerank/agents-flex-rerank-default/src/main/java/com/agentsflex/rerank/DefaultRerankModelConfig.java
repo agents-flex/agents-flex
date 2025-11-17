@@ -15,9 +15,10 @@
  */
 package com.agentsflex.rerank;
 
-import com.agentsflex.core.llm.rerank.RerankConfig;
 
-public class DefaultRerankModelConfig extends RerankConfig {
+import com.agentsflex.core.model.config.BaseModelConfig;
+
+public class DefaultRerankModelConfig extends BaseModelConfig {
 
     private String resultsJsonPath = "$.results";
     private String indexJsonKey = "index";

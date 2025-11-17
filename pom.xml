@@ -42,12 +42,13 @@
     <modules>
         <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
-        <module>agents-flex-llm</module>
+        <module>agents-flex-chat</module>
         <module>agents-flex-store</module>
         <module>agents-flex-spring-boot-starter</module>
         <module>agents-flex-image</module>
         <module>agents-flex-rerank</module>
         <module>agents-flex-search-engine</module>
+        <module>agents-flex-embedding</module>
     </modules>
 
     <properties>
@@ -190,68 +191,58 @@
             <!--image model end-->
 
 
-            <!--llm start-->
+            <!--chatModel start-->
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-chatglm</artifactId>
+                <artifactId>agents-flex-chat-chatglm</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-coze</artifactId>
+                <artifactId>agents-flex-chat-coze</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-deepseek</artifactId>
+                <artifactId>agents-flex-chat-deepseek</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-ollama</artifactId>
+                <artifactId>agents-flex-chat-ollama</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-openai</artifactId>
+                <artifactId>agents-flex-chat-openai</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-qianfan</artifactId>
+                <artifactId>agents-flex-chat-qianfan</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-qwen</artifactId>
+                <artifactId>agents-flex-chat-qwen</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-siliconflow</artifactId>
+                <artifactId>agents-flex-chat-spark</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-spark</artifactId>
+                <artifactId>agents-flex-chat-tencent</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-tencent</artifactId>
+                <artifactId>agents-flex-chat-volcengine</artifactId>
                 <version>${revision}</version>
             </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-vllm</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-volcengine</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <!--llm end-->
+            <!--chatModel end-->
 
             <!-- rerank start -->
             <dependency>

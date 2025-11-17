@@ -16,7 +16,7 @@
 package com.agentsflex.rereank.gitee;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.rerank.RerankException;
+import com.agentsflex.core.model.rerank.RerankException;
 import com.agentsflex.rerank.gitee.GiteeRerankModel;
 import com.agentsflex.rerank.gitee.GiteeRerankModelConfig;
 import org.junit.Test;

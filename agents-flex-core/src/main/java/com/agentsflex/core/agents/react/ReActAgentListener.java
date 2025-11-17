@@ -15,9 +15,9 @@
  */
 package com.agentsflex.core.agents.react;
 
-import com.agentsflex.core.llm.ChatContext;
-import com.agentsflex.core.llm.functions.Function;
-import com.agentsflex.core.llm.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.functions.Function;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
 
 import java.util.List;
 

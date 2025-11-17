@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.agents.react;
 
-import com.agentsflex.core.llm.functions.Function;
+import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.message.HumanMessage;
 import com.agentsflex.core.message.Message;
 

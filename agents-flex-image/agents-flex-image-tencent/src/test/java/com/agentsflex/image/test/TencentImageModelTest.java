@@ -15,17 +15,12 @@
  */
 package com.agentsflex.image.test;
 
-import com.agentsflex.core.image.GenerateImageRequest;
-import com.agentsflex.core.image.ImageModel;
-import com.agentsflex.core.image.ImageResponse;
-import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.model.image.GenerateImageRequest;
+import com.agentsflex.core.model.image.ImageModel;
+import com.agentsflex.core.model.image.ImageResponse;
 import com.agentsflex.image.tencent.TencentImageModel;
 import com.agentsflex.image.tencent.TencentImageModelConfig;
 import org.junit.Test;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class TencentImageModelTest {
 

@@ -15,9 +15,9 @@
  */
 package com.agentsflex.image.siliconflow.test;
 
-import com.agentsflex.core.image.GenerateImageRequest;
-import com.agentsflex.core.image.Image;
-import com.agentsflex.core.image.ImageResponse;
+import com.agentsflex.core.model.image.GenerateImageRequest;
+import com.agentsflex.core.model.image.Image;
+import com.agentsflex.core.model.image.ImageResponse;
 import com.agentsflex.image.siliconflow.SiliconImageModel;
 import com.agentsflex.image.siliconflow.SiliconflowImageModelConfig;
 import com.agentsflex.image.siliconflow.SiliconflowImageModels;

@@ -15,8 +15,8 @@
  */
 package com.agentsflex.image.qwen;
 
-import com.agentsflex.core.image.*;
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.image.*;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesis;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisParam;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisResult;

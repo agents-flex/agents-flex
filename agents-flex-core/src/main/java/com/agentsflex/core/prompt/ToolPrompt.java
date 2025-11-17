@@ -15,8 +15,8 @@
  */
 package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.llm.response.AiMessageResponse;
-import com.agentsflex.core.llm.response.FunctionCaller;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.response.FunctionCaller;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.util.StringUtil;

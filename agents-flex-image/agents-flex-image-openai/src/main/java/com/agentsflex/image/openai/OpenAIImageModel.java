@@ -15,8 +15,8 @@
  */
 package com.agentsflex.image.openai;
 
-import com.agentsflex.core.image.*;
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.image.*;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
@@ -26,12 +26,13 @@ import com.alibaba.fastjson2.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OpenAIImageModel implements ImageModel {
+public class OpenAIImageModel extends BaseImageModel<OpenAIImageModelConfig> {
 
     private OpenAIImageModelConfig config;
     private HttpClient httpClient = new HttpClient();
 
     public OpenAIImageModel(OpenAIImageModelConfig config) {
+        super(config);
         this.config = config;
     }
 

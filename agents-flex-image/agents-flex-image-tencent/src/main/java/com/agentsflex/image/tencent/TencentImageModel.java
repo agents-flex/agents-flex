@@ -15,8 +15,8 @@
  */
 package com.agentsflex.image.tencent;
 
-import com.agentsflex.core.image.*;
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.image.*;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;

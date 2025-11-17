@@ -380,7 +380,7 @@
 - refactor: Optimize LlmNode and TextPromptTemplate
 - refactor: Upgrade related dependencies to the latest version
 - refactor: Optimize the empty user prompt words defined during the LlmNode runtime
-- refactor: Move the package name of functions to the directory llm (destructive update!!!)
+- refactor: Move the package name of functions to the directory chatModel (destructive update!!!)
 - refactor: Refactor InputParameter and OutputKey to merge into Parameter (destructive update!!!)
 - fix: Use the openai interface to connect to the local ollama to build a large model, and multiple function definitions are called abnormally
 - fix: Fix the problem that agents-flex-bom cannot pull group code
@@ -392,7 +392,7 @@
 - 优化：优化 LlmNode 和 TextPromptTemplate
 - 优化：升级相关依赖到最新版本
 - 优化：优化  LlmNode 运行期定义空的用户提示词
-- 优化：移动 functions 的包名到目录 llm（破坏性更新 !!!）
+- 优化：移动 functions 的包名到目录 chatModel（破坏性更新 !!!）
 - 优化：重构 InputParameter 和 OutputKey 合并到 Parameter（破坏性更新 !!!）
 - 修复：使用 openai 接口对接本地 ollama 搭建大模型，多个函数定义调用异常
 - 修复：修复 agents-flex-bom 无法拉群代码的问题
@@ -466,12 +466,12 @@
 
 
 ## v1.0.0-rc.0 20241104
-- refactor: refactor llm apis
+- refactor: refactor chatModel apis
 - refactor: refactor chain and nodes
 - refactor: optimize agents-flex-solon-plugin @noear_admin
 
 ---
-- 优化：重构 llm api
+- 优化：重构 chatModel api
 - 优化：重构 chain 链路 及其相关节点
 - 优化：优化 agents-flex-solon-plugin @noear_admin
 
@@ -626,7 +626,7 @@
 - feat: add openai，stability AI and gitee-sd3 AI support
 - feat: add moonshot support
 - feat: add chain dsl support
-- refactor: optimize llm clients
+- refactor: optimize chatModel clients
 - refactor: optimize SparkLLM
 - refactor: optimize slf4j dependencies
 - refactor: optimize Agent define
@@ -640,7 +640,7 @@
 - 新增：新增 OmniParseDocumentParser 文档解析器
 - 新增：新增 openai、stability ai 以及 gitee ai 对图片生成的支持
 - 新增：新增月之暗面的支持
-- 优化：优化  llm 客户端的细节
+- 优化：优化  chatModel 客户端的细节
 - 优化：优化星火大模型的细节
 - 优化：优化 slf4j 依赖的细节
 - 优化：优化 Agent 和 Chain 的定义细节
@@ -654,7 +654,7 @@
 - feat: add ImagePrompt to send image to LLM
 - feat: chatOptions add topP/topK and stop config
 - refactor: rename TextMessage.java to AbstractTextMessage.java
-- refactor: refactor llm methods
+- refactor: refactor chatModel methods
 - refactor: refactor FunctionMessageResponse.java
 - refactor: optimize HttpClient.java And SseClient.java
 - fix: fix function calling error in QwenLLM

@@ -28,8 +28,8 @@ Agents-Flex 适用于聊天、图像生成、音频生成、视频生成、Embed
 ```java
 @Test
 public void testChat() {
-    OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
-    String response = llm.chat("what is your name?");
+    OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
+    String response = chatModel.chat("what is your name?");
 
     System.out.println(response);
 }
@@ -49,10 +49,10 @@ public class WeatherUtil {
 
 
     public static void main(String[] args) {
-        OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+        OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
         FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
-        AiMessageResponse response = llm.chat(prompt);
+        AiMessageResponse response = chatModel.chat(prompt);
 
         System.out.println(response.callFunctions());
         //"北京的天气是阴转多云。 "

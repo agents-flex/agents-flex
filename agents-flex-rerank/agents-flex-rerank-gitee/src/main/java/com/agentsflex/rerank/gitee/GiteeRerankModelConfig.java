@@ -26,7 +26,7 @@ public class GiteeRerankModelConfig extends DefaultRerankModelConfig {
     public GiteeRerankModelConfig() {
         super();
         setEndpoint(DEFAULT_ENDPOINT);
-        setBasePath(DEFAULT_BASE_PATH);
+        setRequestPath(DEFAULT_BASE_PATH);
         setModel(DEFAULT_MODEL);
     }
 }

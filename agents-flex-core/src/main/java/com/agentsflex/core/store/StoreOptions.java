@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.store;
 
-import com.agentsflex.core.llm.embedding.EmbeddingOptions;
+import com.agentsflex.core.model.embedding.EmbeddingOptions;
 import com.agentsflex.core.util.Metadata;
 import com.agentsflex.core.util.StringUtil;
 

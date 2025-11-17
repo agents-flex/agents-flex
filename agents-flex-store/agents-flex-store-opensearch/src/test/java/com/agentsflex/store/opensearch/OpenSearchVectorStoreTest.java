@@ -16,8 +16,8 @@
 package com.agentsflex.store.opensearch;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.embedding.EmbeddingModel;
-import com.agentsflex.core.llm.embedding.EmbeddingOptions;
+import com.agentsflex.core.model.embedding.EmbeddingModel;
+import com.agentsflex.core.model.embedding.EmbeddingOptions;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.VectorData;

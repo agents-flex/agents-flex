@@ -16,7 +16,7 @@
 package com.agentsflex.rereank.gitee;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.rerank.RerankException;
+import com.agentsflex.core.model.rerank.RerankException;
 import com.agentsflex.rerank.DefaultRerankModel;
 import com.agentsflex.rerank.DefaultRerankModelConfig;
 import org.junit.Test;
@@ -31,7 +31,7 @@ public class DefaultRerankModelTest {
 
         DefaultRerankModelConfig config = new DefaultRerankModelConfig();
         config.setEndpoint("https://ai.gitee.com");
-        config.setBasePath("/v1/rerank");
+        config.setRequestPath("/v1/rerank");
         config.setModel("Qwen3-Reranker-8B");
         config.setApiKey("*****");
 

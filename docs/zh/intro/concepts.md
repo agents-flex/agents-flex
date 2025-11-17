@@ -17,8 +17,8 @@
 **示例代码：**
 
 ```java
-Llm llm = OpenAILlm.of("sk-rts5NF6n*******");
-String response = llm.chat("what is your name?");
+Llm chatModel = OpenAILlm.of("sk-rts5NF6n*******");
+String response = chatModel.chat("what is your name?");
 
 System.out.println(response);
 ```
@@ -44,10 +44,10 @@ System.out.println(response);
 **示例代码（简单调用）：**
 
 ```java 3
-Llm llm = OpenAILlm.of("sk-rts5NF6n*******");
+Llm chatModel = OpenAILlm.of("sk-rts5NF6n*******");
 
 TextPrompt prompt = new TextPrompt("what is your name?");
-String response = llm.chat(prompt);
+String response = chatModel.chat(prompt);
 
 System.out.println(response);
 ```
@@ -55,13 +55,13 @@ System.out.println(response);
 **示例代码（Function Calling）：**
 
 ```java 3-5
-OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
 FunctionPrompt prompt = new FunctionPrompt(
     "今天北京的天气怎么样"
     , WeatherUtil.class);
 
-AiMessageResponse response = llm.chat(prompt);
+AiMessageResponse response = chatModel.chat(prompt);
 System.out.println(response.callFunctions());
 ```
 
@@ -103,8 +103,8 @@ System.out.println(promptTemplate.format(map));
 **示例代码：**
 
 ```java
-Llm llm = OpenAILlm.of("sk-rts5NF6n*******");
-VectorData embeddings = llm.embed("some document text");
+Llm chatModel = OpenAILlm.of("sk-rts5NF6n*******");
+VectorData embeddings = chatModel.embed("some document text");
 System.out.println(Arrays.toString(embeddings.getVector()));
 ```
 
@@ -130,8 +130,8 @@ config.setDefaultCollectionName("test05");
 DocumentStore store = new RedisVectorStore(config);
 
 // 为 RedisVectorStore 设置嵌入模型
-Llm llm = OpenAILlm.of("sk-rts5NF6n*******");
-store.setEmbeddingModel(llm);
+Llm chatModel = OpenAILlm.of("sk-rts5NF6n*******");
+store.setEmbeddingModel(chatModel);
 
 
 Document document = new Document();

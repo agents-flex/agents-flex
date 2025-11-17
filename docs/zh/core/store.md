@@ -31,10 +31,10 @@ storeConfig.setDatabase("...");
 DocumentStore store = new AliyunVectorStore(storeConfig);
 
 //创建 Embedding 模型，
-EmbeddingModel llm = new OpenAILlm.of("sk-rts5NF6n*******");
+EmbeddingModel chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
 //为 store 配置 Embedding 模型
-store.setEmbeddingModel(llm);
+store.setEmbeddingModel(chatModel);
 ```
 
 完成以上的设置，我们就可以愉快的使用 store 来对向量数据进行 `增删改查` 了。

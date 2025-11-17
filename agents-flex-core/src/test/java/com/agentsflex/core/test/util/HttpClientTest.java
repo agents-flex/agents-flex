@@ -1,6 +1,6 @@
 package com.agentsflex.core.test.util;
 
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
 
 public class HttpClientTest {
 

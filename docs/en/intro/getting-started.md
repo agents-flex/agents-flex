@@ -35,8 +35,8 @@ public class Main {
         OpenAILlmConfig config = new OpenAILlmConfig();
         config.setApiKey("sk-rts5NF6n*******");
 
-        Llm llm = new OpenAILlm(config);
-        String response = llm.chat("What is your name?");
+        Llm chatModel = new OpenAILlm(config);
+        String response = chatModel.chat("What is your name?");
 
         System.out.println(response);
     }
@@ -49,8 +49,8 @@ Simplify LLM object creation using `OpenAILlm.of`:
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
-        String response = llm.chat("what is your name?");
+        Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
+        String response = chatModel.chat("what is your name?");
 
         System.out.println(response);
     }
@@ -65,9 +65,9 @@ Streaming Conversation requires calling the `chatStream` method, and passing the
 ```java
 public class Main {
     public static void main(String[] args) {
-        Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+        Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
-        llm.chatStream("what is your name?", new StreamResponseListener<AiMessageResponse, AiMessage>() {
+        chatModel.chatStream("what is your name?", new StreamResponseListener<AiMessageResponse, AiMessage>() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
                 System.out.println(">>>> " + response.getMessage().getContent());

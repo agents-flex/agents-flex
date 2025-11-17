@@ -15,10 +15,10 @@
  */
 package com.agentsflex.image.test;
 
-import com.agentsflex.core.image.GenerateImageRequest;
-import com.agentsflex.core.image.Image;
-import com.agentsflex.core.image.ImageModel;
-import com.agentsflex.core.image.ImageResponse;
+import com.agentsflex.core.model.image.GenerateImageRequest;
+import com.agentsflex.core.model.image.Image;
+import com.agentsflex.core.model.image.ImageModel;
+import com.agentsflex.core.model.image.ImageResponse;
 import com.agentsflex.image.gitee.GiteeImageModel;
 import com.agentsflex.image.gitee.GiteeImageModelConfig;
 import org.junit.Test;

@@ -21,8 +21,8 @@ With Agents-Flex, chat functionality can be implemented in just two lines of cod
 ```java
 @Test
 public void testChat() {
-    OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
-    String response = llm.chat("what is your name?");
+    OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
+    String response = chatModel.chat("what is your name?");
 
     System.out.println(response);
 }
@@ -42,10 +42,10 @@ public class WeatherUtil {
 
 
     public static void main(String[] args) {
-        OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+        OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
         FunctionPrompt prompt = new FunctionPrompt("What's the weather like in Beijing today?", WeatherUtil.class);
-        FunctionResultResponse response = llm.chat(prompt);
+        FunctionResultResponse response = chatModel.chat(prompt);
 
         Object result = response.getFunctionResult();
 

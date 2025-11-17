@@ -33,10 +33,10 @@ During the interaction between prompts and LLMs, messages are exchanged. Therefo
 
 ```java
 public static void main(String[] args) {
-    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+    Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
     Prompt prompt = new SimplePrompt("what is your name?");
-    String response = llm.chat(prompt);
+    String response = chatModel.chat(prompt);
 
     System.out.println(response);
 }
@@ -46,13 +46,13 @@ public static void main(String[] args) {
 
 ```java
 public static void main(String[] args) {
-    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+    Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
     HistoriesPrompt prompt = new HistoriesPrompt();
     prompt.addMessage(new SystemMessage("You are now a database development engineer...."));
     prompt.addMessage(new HumanMessage("Please provide the DDL content for...."));
 
-    String response = llm.chat(prompt);
+    String response = chatModel.chat(prompt);
 
     System.out.println(response);
 }
@@ -81,10 +81,10 @@ public static void main(String[] args) {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAILlm llm = new OpenAILlm(config);
+    OpenAILlm chatModel = new OpenAILlm(config);
 
     FunctionPrompt prompt = new FunctionPrompt("how's the weather in New York?", WeatherUtil.class);
-    FunctionResultResponse response = llm.chat(prompt);
+    FunctionResultResponse response = chatModel.chat(prompt);
 
     //Execute utility class method to obtain result.
     Object result = response.getFunctionResult();

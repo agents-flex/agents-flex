@@ -16,7 +16,7 @@
 package com.agentsflex.store.aliyun;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;

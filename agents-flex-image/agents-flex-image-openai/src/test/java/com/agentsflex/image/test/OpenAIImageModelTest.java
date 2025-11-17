@@ -15,8 +15,8 @@
  */
 package com.agentsflex.image.test;
 
-import com.agentsflex.core.image.GenerateImageRequest;
-import com.agentsflex.core.image.ImageResponse;
+import com.agentsflex.core.model.image.GenerateImageRequest;
+import com.agentsflex.core.model.image.ImageResponse;
 import com.agentsflex.image.openai.OpenAIImageModel;
 import com.agentsflex.image.openai.OpenAIImageModelConfig;
 import org.junit.Test;

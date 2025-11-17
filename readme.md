@@ -47,8 +47,8 @@ public void testChat() {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    Llm llm = new OpenAILlm(config);
-    String response = llm.chat("请问你叫什么名字");
+    Llm chatModel = new OpenAILlm(config);
+    String response = chatModel.chat("请问你叫什么名字");
 
     System.out.println(response);
 }
@@ -63,8 +63,8 @@ public void testChat() {
     config.setApiKey("sk-28a6be3236****");
     config.setModel("qwen-turbo");
 
-    Llm llm = new QwenLlm(config);
-    String response = llm.chat("请问你叫什么名字");
+    Llm chatModel = new QwenLlm(config);
+    String response = chatModel.chat("请问你叫什么名字");
 
     System.out.println(response);
 }
@@ -80,8 +80,8 @@ public void testChat() {
     config.setApiKey("****");
     config.setApiSecret("****");
 
-    Llm llm = new SparkLlm(config);
-    String response = llm.chat("请问你叫什么名字");
+    Llm chatModel = new SparkLlm(config);
+    String response = chatModel.chat("请问你叫什么名字");
 
     System.out.println(response);
 }
@@ -97,7 +97,7 @@ public static void main(String[] args) {
     config.setApiKey("****");
     config.setApiSecret("****");
 
-    Llm llm = new SparkLlm(config);
+    Llm chatModel = new SparkLlm(config);
 
     HistoriesPrompt prompt = new HistoriesPrompt();
 
@@ -109,7 +109,7 @@ public static void main(String[] args) {
 
         prompt.addMessage(new HumanMessage(userInput));
 
-        llm.chatStream(prompt, (context, response) -> {
+        chatModel.chatStream(prompt, (context, response) -> {
             System.out.println(">>>> " + response.getMessage().getContent());
         });
 
@@ -145,10 +145,10 @@ public class WeatherUtil {
     OpenAILlmConfig config = new OpenAILlmConfig();
     config.setApiKey("sk-rts5NF6n*******");
 
-    OpenAILlm llm = new OpenAILlm(config);
+    OpenAILlm chatModel = new OpenAILlm(config);
 
     FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
-    FunctionResultResponse response = llm.chat(prompt);
+    FunctionResultResponse response = chatModel.chat(prompt);
 
     Object result = response.getFunctionResult();
 

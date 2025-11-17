@@ -1,7 +1,7 @@
 package com.agentsflex.spring.boot.llm.openai;
 
-import com.agentsflex.llm.openai.OpenAILlm;
-import com.agentsflex.llm.openai.OpenAILlmConfig;
+import com.agentsflex.llm.openai.OpenAIChatModel;
+import com.agentsflex.llm.openai.OpenAIChatConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -14,22 +14,22 @@ import org.springframework.context.annotation.Configuration;
  * @author 王帅
  * @since 2024-04-10
  */
-@ConditionalOnClass(OpenAILlm.class)
+@ConditionalOnClass(OpenAIChatModel.class)
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(OpenAIProperties.class)
 public class OpenAIAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public OpenAILlm openAILlm(OpenAIProperties properties) {
-        OpenAILlmConfig config = new OpenAILlmConfig();
+    public OpenAIChatModel openAILlm(OpenAIProperties properties) {
+        OpenAIChatConfig config = new OpenAIChatConfig();
         config.setApiKey(properties.getApiKey());
         config.setApiSecret(properties.getApiSecret());
         config.setEndpoint(properties.getEndpoint());
         config.setModel(properties.getModel());
         config.setChatPath(properties.getChatPath());
         config.setEmbedPath(properties.getEmbedPath());
-        return new OpenAILlm(config);
+        return new OpenAIChatModel(config);
     }
 
 }
