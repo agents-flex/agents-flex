@@ -100,13 +100,17 @@ public class HttpClient {
     }
 
     public String multipartString(String url, Map<String, String> headers, Map<String, Object> payload) {
-        return tracedCall(url, "POST", headers, payload, (u, m, h, p) -> {
+        return tracedCall(url, "POST", headers, payload, (u, m, h, p, s) -> {
             //noinspection unchecked
             try (Response response = multipart(u, h, (Map<String, Object>) p);
                  ResponseBody body = response.body()) {
                 if (body != null) {
                     return body.string();
                 }
+            } catch (IOException ioe) {
+                LOG.error("HTTP multipartString failed: " + u, ioe);
+                s.setStatus(StatusCode.ERROR, ioe.getMessage());
+                s.recordException(ioe);
             } catch (Exception e) {
                 LOG.error(e.toString(), e);
                 throw e;
@@ -116,13 +120,17 @@ public class HttpClient {
     }
 
     public byte[] multipartBytes(String url, Map<String, String> headers, Map<String, Object> payload) {
-        return tracedCall(url, "POST", headers, payload, (u, m, h, p) -> {
+        return tracedCall(url, "POST", headers, payload, (u, m, h, p, s) -> {
             //noinspection unchecked
             try (Response response = multipart(u, h, (Map<String, Object>) p);
                  ResponseBody body = response.body()) {
                 if (body != null) {
                     return body.bytes();
                 }
+            } catch (IOException ioe) {
+                LOG.error("HTTP multipartBytes failed: " + u, ioe);
+                s.setStatus(StatusCode.ERROR, ioe.getMessage());
+                s.recordException(ioe);
             } catch (Exception e) {
                 LOG.error(e.toString(), e);
                 throw e;
@@ -133,28 +141,36 @@ public class HttpClient {
 
     // ===== Internal execution methods =====
 
-    public String executeString(String url, String method, Map<String, String> headers, Object payload) {
+    public String executeString(String url, String method, Map<String, String> headers, Object payload, Span span) {
         try (Response response = execute0(url, method, headers, payload);
              ResponseBody body = response.body()) {
             if (body != null) {
                 return body.string();
             }
-        } catch (IOException e) {
-            LOG.error("HTTP executeString failed: " + url, e);
-            throw new RuntimeException("HTTP request failed", e); // 包装为运行时异常
+        } catch (IOException ioe) {
+            LOG.error("HTTP executeString failed: " + url, ioe);
+            span.setStatus(StatusCode.ERROR, ioe.getMessage());
+            span.recordException(ioe);
+        } catch (Exception e) {
+            LOG.error(e.toString(), e);
+            throw e;
         }
         return null;
     }
 
-    public byte[] executeBytes(String url, String method, Map<String, String> headers, Object payload) {
+    public byte[] executeBytes(String url, String method, Map<String, String> headers, Object payload, Span span) {
         try (Response response = execute0(url, method, headers, payload);
              ResponseBody body = response.body()) {
             if (body != null) {
                 return body.bytes();
             }
-        } catch (IOException e) {
-            LOG.error("HTTP executeBytes failed: " + url, e);
-            throw new RuntimeException("HTTP request failed", e);
+        } catch (IOException ioe) {
+            LOG.error("HTTP executeBytes failed: " + url, ioe);
+            span.setStatus(StatusCode.ERROR, ioe.getMessage());
+            span.recordException(ioe);
+        } catch (Exception e) {
+            LOG.error(e.toString(), e);
+            throw e;
         }
         return null;
     }
@@ -227,7 +243,7 @@ public class HttpClient {
     // ===== Observability wrapper =====
     @FunctionalInterface
     private interface HttpClientCall<T> {
-        T call(String url, String method, Map<String, String> headers, Object payload) throws Exception;
+        T call(String url, String method, Map<String, String> headers, Object payload, Span span) throws Exception;
     }
 
     private <T> T tracedCall(String url, String method, Map<String, String> headers, Object payload, HttpClientCall<T> call) {
@@ -242,7 +258,7 @@ public class HttpClient {
         boolean success = true;
 
         try (Scope scope = span.makeCurrent()) {
-            return call.call(url, method, headers, payload);
+            return call.call(url, method, headers, payload, span);
         } catch (Exception e) {
             success = false;
             span.setStatus(StatusCode.ERROR, e.getMessage());
