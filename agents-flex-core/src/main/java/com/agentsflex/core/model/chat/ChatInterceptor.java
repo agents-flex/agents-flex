@@ -111,33 +111,6 @@ public interface ChatInterceptor {
         // 默认空实现，子类可选择性重写
     }
 
-    /**
-     * 流式响应监听器包装方法。
-     * <p>
-     * 用于对流式聊天（streaming）场景中的 {@link StreamResponseListener} 进行包装，
-     * 从而实现对每条流式消息的拦截、转换或增强。
-     * <p>
-     * 框架会将前一个拦截器返回的监听器作为 {@code original} 传入，
-     * 最终传给 {@link BaseChatModel#doChatStream} 的是最后一个拦截器返回的监听器。
-     * <p>
-     * 典型用途：
-     * <ul>
-     *   <li>实时过滤或脱敏流式消息内容</li>
-     *   <li>统计流式 token 速率</li>
-     *   <li>将流式消息转发到 WebSocket 或 SSE 客户端</li>
-     * </ul>
-     *
-     * @param original 被包装的原始监听器（或上一个拦截器返回的监听器）
-     * @param prompt   实际用于调用的 Prompt
-     * @param options  实际用于调用的 ChatOptions
-     * @return 包装后的监听器；若不包装，应返回 {@code original}
-     */
-    default StreamResponseListener wrapStreamListener(
-        StreamResponseListener original,
-        Prompt prompt,
-        ChatOptions options) {
-        return original;
-    }
 
     /**
      * {@code preHandle} 方法的返回值载体类。

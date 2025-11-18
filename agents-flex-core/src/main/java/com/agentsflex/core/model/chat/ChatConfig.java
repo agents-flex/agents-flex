@@ -24,10 +24,12 @@ import java.util.function.Consumer;
 public class ChatConfig extends BaseModelConfig {
 
     private String apiSecret;
+
     private Boolean supportImage;
     private Boolean supportAudio;
     private Boolean supportVideo;
     private Boolean supportFunctionCall;
+    private boolean observabilityEnabled = true; // 默认开启
 
     private boolean debug;
     private Consumer<Map<String, String>> headersConfig;
@@ -102,5 +104,13 @@ public class ChatConfig extends BaseModelConfig {
 
     public boolean isSupportFunctionCall() {
         return supportFunctionCall == null || supportFunctionCall;
+    }
+
+    public boolean isObservabilityEnabled() {
+        return observabilityEnabled;
+    }
+
+    public void setObservabilityEnabled(boolean observabilityEnabled) {
+        this.observabilityEnabled = observabilityEnabled;
     }
 }
