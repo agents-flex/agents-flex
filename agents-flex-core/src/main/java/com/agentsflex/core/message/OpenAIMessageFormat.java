@@ -20,7 +20,10 @@ import com.agentsflex.core.model.chat.functions.Parameter;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson2.JSON;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class OpenAIMessageFormat implements MessageFormat {
 

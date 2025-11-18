@@ -51,19 +51,21 @@ public class UserMessage extends AbstractTextMessage {
         if (this.functions == null) {
             this.functions = new java.util.ArrayList<>();
         }
-        this.functions.addAll(functions);
+        if (functions != null) {
+            this.functions.addAll(functions);
+        }
     }
 
-    public void addFunctions(Class<?> funcClass, String... methodNames) {
+    public void addFunctionsFromClass(Class<?> funcClass, String... methodNames) {
         if (this.functions == null)
             this.functions = new java.util.ArrayList<>();
-        this.functions.addAll(JavaNativeFunctionBuilder.from(funcClass, methodNames));
+        this.functions.addAll(JavaNativeFunctionBuilder.fromClass(funcClass, methodNames));
     }
 
-    public void addFunctions(Object funcObject, String... methodNames) {
+    public void addFunctionsFromObject(Object funcObject, String... methodNames) {
         if (this.functions == null)
             this.functions = new java.util.ArrayList<>();
-        this.functions.addAll(JavaNativeFunctionBuilder.from(funcObject, methodNames));
+        this.functions.addAll(JavaNativeFunctionBuilder.fromObject(funcObject, methodNames));
     }
 
     public List<Function> getFunctions() {
