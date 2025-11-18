@@ -243,22 +243,27 @@ public class ReActAgent {
     private void startNextReactStepNormal() {
         for (int i = 0; i < maxIterations; i++) {
             AiMessageResponse response = chatModel.chat(historiesPrompt, chatOptions);
-            String content = response.getMessage().getContent();
-            historiesPrompt.addMessage(new AiMessage(content));
-
             notifyOnChatResponse(response);
 
+            String content = response.getMessage().getContent();
+            AiMessage message = new AiMessage(content);
+
             if (isReActAction(content)) {
+                message.addMetadata("type", "reActAction");
+                historiesPrompt.addMessage(message);
                 if (!processReActSteps(content)) {
                     break;
                 }
             } else if (isFinalAnswer(content)) {
                 String flag = reActStepParser.getFinalAnswerFlag();
                 String answer = content.substring(content.indexOf(flag) + flag.length());
+                message.addMetadata("type", "reActFinalAnswer");
+                historiesPrompt.addMessage(message);
                 notifyOnFinalAnswer(answer);
                 break;
             } else {
-                //  不是Action
+                historiesPrompt.addMessage(message);
+                //  不是 Action
                 notifyOnNonActionResponse(response);
                 break;
             }
@@ -294,20 +299,23 @@ public class ReActAgent {
                     return;
                 }
 
-                // Stream 模式下，消息会自动被添加到  historiesPrompt 中，无需手动添加
-                // AiMessage aiMessage = new AiMessage(content);
-                // historiesPrompt.addMessage(aiMessage);
+                AiMessage aiMessage = new AiMessage(content);
 
                 if (isReActAction(content)) {
+                    aiMessage.addMetadata("type", "reActAction");
+                    historiesPrompt.addMessage(aiMessage);
                     if (processReActSteps(content)) {
                         // 递归继续执行下一个 ReAct 步骤
                         startNextReActStepStream();
                     }
                 } else if (isFinalAnswer(content)) {
+                    aiMessage.addMetadata("type", "reActFinalAnswer");
+                    historiesPrompt.addMessage(aiMessage);
                     String flag = reActStepParser.getFinalAnswerFlag();
                     String answer = content.substring(content.indexOf(flag) + flag.length());
                     notifyOnFinalAnswer(answer);
                 } else {
+                    historiesPrompt.addMessage(aiMessage);
                     //  不是 Action
                     notifyOnNonActionResponseStream(context);
                 }

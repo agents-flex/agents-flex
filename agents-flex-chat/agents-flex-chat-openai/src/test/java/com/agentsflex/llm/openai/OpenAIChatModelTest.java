@@ -3,6 +3,7 @@ package com.agentsflex.llm.openai;
 import com.agentsflex.core.agents.react.ReActAgent;
 import com.agentsflex.core.agents.react.ReActAgentListener;
 import com.agentsflex.core.agents.react.ReActStep;
+import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
@@ -359,12 +360,12 @@ public class OpenAIChatModelTest {
 
         List<Function> functions = JavaNativeFunctionBuilder.fromClass(WeatherFunctions.class);
 //        ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
-        ReActAgent reActAgent  = new ReActAgent(llm, functions, "介绍一下北京");
+        ReActAgent reActAgent = new ReActAgent(llm, functions, "介绍一下北京");
         reActAgent.addListener(new ReActAgentListener() {
 
             @Override
             public void onActionStart(ReActStep step) {
-                System.out.println(">>>>>>"+step.getThought());
+                System.out.println(">>>>>>" + step.getThought());
                 System.out.println("正在调用工具 >>>>> " + step.getAction() + ":" + step.getActionInput());
             }
 
@@ -410,7 +411,7 @@ public class OpenAIChatModelTest {
 
             @Override
             public void onActionStart(ReActStep step) {
-                System.out.println(">>>>>>"+step.getThought());
+                System.out.println(">>>>>>" + step.getThought());
                 System.out.println("正在调用工具 >>>>> " + step.getAction() + ":" + step.getActionInput());
             }
 
@@ -422,6 +423,8 @@ public class OpenAIChatModelTest {
             @Override
             public void onFinalAnswer(String finalAnswer) {
                 System.out.println("onFinalAnswer >>>>>" + finalAnswer);
+                ChatMemory memory = reActAgent.getHistoriesPrompt().getMemory();
+                System.out.println(memory);
             }
 
             @Override
@@ -432,7 +435,7 @@ public class OpenAIChatModelTest {
 
         reActAgent.run();
 
-        TimeUnit.SECONDS.sleep(60);
+        TimeUnit.SECONDS.sleep(30);
     }
 
 
