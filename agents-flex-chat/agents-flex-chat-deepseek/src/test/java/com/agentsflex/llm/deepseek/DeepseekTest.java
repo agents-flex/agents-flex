@@ -1,9 +1,9 @@
 package com.agentsflex.llm.deepseek;
 
 import com.agentsflex.core.message.UserMessage;
-import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.functions.annotation.FunctionDef;
 import com.agentsflex.core.model.chat.functions.annotation.FunctionParam;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
@@ -51,13 +51,13 @@ public class DeepseekTest {
         while (userInput != null) {
             // 第二步：创建 HumanMessage，并添加方法调用
             UserMessage userMessage = new UserMessage(userInput);
-            userMessage.addFunctions(DeepseekTest.class);
+            userMessage.addFunctionsFromClass(DeepseekTest.class);
             // 第三步：将 HumanMessage 添加到 HistoriesPrompt 中
             prompt.addMessage(userMessage);
             // 第四步：调用 chatStream 方法，进行对话
             chatModel.chatStream(prompt, new StreamResponseListener() {
                 @Override
-                public void onMessage(ChatContext context, AiMessageResponse response) {
+                public void onMessage(StreamContext context, AiMessageResponse response) {
                     if (StringUtil.hasText(response.getMessage().getContent())) {
                         System.out.print(response.getMessage().getContent());
                     }
@@ -68,7 +68,7 @@ public class DeepseekTest {
                 }
 
                 @Override
-                public void onStop(ChatContext context) {
+                public void onStop(StreamContext context) {
                     System.out.println("stop!!!------");
                 }
             });
@@ -81,7 +81,7 @@ public class DeepseekTest {
     public static void functionCall() {
         ChatModel chatModel = getLLM();
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.getUserMessage().addFunctions(DeepseekTest.class);
+        prompt.getUserMessage().addFunctionsFromClass(DeepseekTest.class);
         AiMessageResponse response = chatModel.chat(prompt);
         System.out.println(response.callFunctions());
     }

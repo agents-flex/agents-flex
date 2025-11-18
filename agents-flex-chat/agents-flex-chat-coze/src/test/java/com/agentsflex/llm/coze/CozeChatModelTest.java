@@ -15,8 +15,8 @@
  */
 package com.agentsflex.llm.coze;
 
-import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamContext;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.prompt.SimplePrompt;
@@ -65,26 +65,26 @@ public class CozeChatModelTest {
         SimplePrompt prompt = new SimplePrompt(textPrompt);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 AiMessage message = response.getMessage();
                 System.out.print(message.getContent());
             }
 
             @Override
-            public void onStart(ChatContext context) {
+            public void onStart(StreamContext context) {
                 StreamResponseListener.super.onStart(context);
             }
 
             @Override
-            public void onStop(ChatContext context) {
+            public void onStop(StreamContext context) {
                 // 停止了
-                CozeChatContext ccc = (CozeChatContext) context;
+                CozeStreamContext ccc = (CozeStreamContext) context;
                 System.out.println(ccc.getUsage());
                 StreamResponseListener.super.onStop(context);
             }
 
             @Override
-            public void onFailure(ChatContext context, Throwable throwable) {
+            public void onFailure(StreamContext context, Throwable throwable) {
                 //发生错误了
             }
         }, options);

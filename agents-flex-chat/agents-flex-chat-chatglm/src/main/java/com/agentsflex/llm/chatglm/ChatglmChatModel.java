@@ -17,7 +17,7 @@ package com.agentsflex.llm.chatglm;
 
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.BaseStreamClientListener;
 import com.agentsflex.core.model.client.HttpClient;
@@ -46,7 +46,7 @@ public class ChatglmChatModel extends BaseChatModel<ChatglmChatConfig> {
 
 
     @Override
-    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+    public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
@@ -80,7 +80,7 @@ public class ChatglmChatModel extends BaseChatModel<ChatglmChatConfig> {
 
 
     @Override
-    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+    public void doChatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         StreamClient streamClient = new SseClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

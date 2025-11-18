@@ -42,7 +42,7 @@ public class QwenLlmUtil {
     public static String promptToPayload(Prompt prompt, QwenChatConfig config, ChatOptions options, boolean withStream) {
         // https://help.aliyun.com/zh/dashscope/developer-reference/api-details?spm=a2c4g.11186623.0.0.1ff6fa70jCgGRc#b8ebf6b25eul6
         List<Message> messages = prompt.toMessages();
-        UserMessage message = MessageUtil.findLastHumanMessage(messages);
+        UserMessage message = MessageUtil.findLastUserMessage(messages);
         Maps params = Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)

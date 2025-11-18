@@ -2,7 +2,7 @@ package com.agentsflex.llm.qianfan;
 
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.BaseStreamClientListener;
 import com.agentsflex.core.model.client.HttpClient;
@@ -44,7 +44,7 @@ public class QianFanChatModel extends BaseChatModel<QianFanChatConfig> {
     }
 
     @Override
-    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+    public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
         String payload = QianFanLlmUtil.promptToPayload(prompt, config, options, false);
         String endpoint = config.getEndpoint();
         String response = httpClient.post(endpoint + "/chat/completions", headers, payload);
@@ -73,7 +73,7 @@ public class QianFanChatModel extends BaseChatModel<QianFanChatConfig> {
     }
 
     @Override
-    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+    public void doChatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         StreamClient streamClient = new SseClient();
         String payload = QianFanLlmUtil.promptToPayload(prompt, config, options, true);
         StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, listener, prompt, streamMessageParser);

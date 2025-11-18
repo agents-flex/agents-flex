@@ -17,9 +17,9 @@ package com.agentsflex.llm.spark;
 
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.BaseChatModel;
-import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.BaseStreamClientListener;
@@ -44,7 +44,7 @@ public class SparkChatModel extends BaseChatModel<SparkChatConfig> {
     }
 
     @Override
-    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+    public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Throwable[] failureThrowable = new Throwable[1];
         AiMessageResponse[] messageResponse = {null};
@@ -82,7 +82,7 @@ public class SparkChatModel extends BaseChatModel<SparkChatConfig> {
         , Throwable[] failureThrowable) {
         chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 AiMessage message = response.getMessage();
                 if (message != null) message.setContent(message.getFullContent());
 
@@ -90,13 +90,13 @@ public class SparkChatModel extends BaseChatModel<SparkChatConfig> {
             }
 
             @Override
-            public void onStop(ChatContext context) {
+            public void onStop(StreamContext context) {
                 StreamResponseListener.super.onStop(context);
                 latch.countDown();
             }
 
             @Override
-            public void onFailure(ChatContext context, Throwable throwable) {
+            public void onFailure(StreamContext context, Throwable throwable) {
                 logger.error(throwable.toString(), throwable);
                 failureThrowable[0] = throwable;
             }
@@ -111,7 +111,7 @@ public class SparkChatModel extends BaseChatModel<SparkChatConfig> {
 
 
     @Override
-    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+    public void doChatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         StreamClient streamClient = new WebSocketClient();
         String url = SparkLlmUtil.createURL(config);
         String payload = SparkLlmUtil.promptToPayload(prompt, config, options);

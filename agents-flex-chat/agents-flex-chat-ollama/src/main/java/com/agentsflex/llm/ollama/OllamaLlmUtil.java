@@ -99,7 +99,7 @@ public class OllamaLlmUtil {
 
     public static String promptToPayload(Prompt prompt, OllamaChatConfig config, ChatOptions options, boolean stream) {
         List<Message> messages = prompt.toMessages();
-        UserMessage message = MessageUtil.findLastHumanMessage(messages);
+        UserMessage message = MessageUtil.findLastUserMessage(messages);
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
             .set("think", Optional.ofNullable(options.getEnableThinking()).orElse(config.getEnableThinking()))

@@ -15,13 +15,11 @@
  */
 package com.agentsflex.llm.tencent;
 
-import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.message.*;
+import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.message.OpenAIMessageFormat;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.message.MessageFormat;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
 import com.agentsflex.core.util.StringUtil;
@@ -170,7 +168,7 @@ public class TencentChatUtil {
 
     public static String promptToPayload(Prompt prompt, TencentChatConfig config, boolean withStream, ChatOptions options) {
         List<Message> messages = prompt.toMessages();
-        UserMessage message = MessageUtil.findLastHumanMessage(messages);
+        UserMessage message = MessageUtil.findLastUserMessage(messages);
         return Maps.of("Model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("Messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
             .setIf(withStream, "Stream", withStream)

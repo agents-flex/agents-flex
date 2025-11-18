@@ -19,7 +19,7 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.parser.AiMessageParser;
@@ -95,11 +95,11 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
         String code = jsonObject.getString("code");
         String error = jsonObject.getString("msg");
 
-        CozeChatContext cozeChat = jsonObject.getObject("data", (Type) CozeChatContext.class);
+        CozeStreamContext cozeChat = jsonObject.getObject("data", (Type) CozeStreamContext.class);
 
         if (!error.isEmpty() && !Objects.equals(code, "0")) {
             if (cozeChat == null) {
-                cozeChat = new CozeChatContext();
+                cozeChat = new CozeStreamContext();
                 cozeChat.setLlm(this);
                 cozeChat.setResponse(response);
             }
@@ -138,11 +138,11 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
     private void handleStreamResponse(String response, CozeRequestListener listener) {
         ByteArrayInputStream inputStream = new ByteArrayInputStream(response.getBytes(Charset.defaultCharset()));
         BufferedReader br = new BufferedReader(new InputStreamReader(inputStream, Charset.defaultCharset()));
-        CozeChatContext context = new CozeChatContext();
+        CozeStreamContext context = new CozeStreamContext();
         context.setLlm(this);
 
         // 记录completed消息，在处理完answer消息后再进行处理
-        CozeChatContext completedContext = null;
+        CozeStreamContext completedContext = null;
 
 
         List<AiMessage> messageList = new ArrayList<>();
@@ -162,7 +162,7 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
                 String status = data.getString("status");
                 String type = data.getString("type");
                 if ("completed".equalsIgnoreCase(status)) {
-                    completedContext = JSON.parseObject(line, CozeChatContext.class);
+                    completedContext = JSON.parseObject(line, CozeStreamContext.class);
                     completedContext.setResponse(line);
                     continue;
                 }
@@ -193,19 +193,19 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
         }
     }
 
-    private CozeChatContext checkStatus(CozeChatContext cozeChat) {
+    private CozeStreamContext checkStatus(CozeStreamContext cozeChat) {
         String chatId = cozeChat.getId();
         String conversationId = cozeChat.getConversationId();
         String url = String.format("%s/v3/chat/retrieve?chat_id=%s&conversation_id=%s", config.getEndpoint(), chatId, conversationId);
         String response = httpClient.get(url, buildHeader());
         JSONObject resObj = JSON.parseObject(response);
         // 需要返回最新的response信息，否则会导致调用方获取不到conversation_id等完整信息
-        CozeChatContext cozeChatContext = resObj.getObject("data", (Type) CozeChatContext.class);
+        CozeStreamContext cozeChatContext = resObj.getObject("data", (Type) CozeStreamContext.class);
         cozeChatContext.setResponse(response);
         return cozeChatContext;
     }
 
-    private JSONArray fetchMessageList(CozeChatContext cozeChat) {
+    private JSONArray fetchMessageList(CozeStreamContext cozeChat) {
         String chatId = cozeChat.getId();
         String conversationId = cozeChat.getConversationId();
         String endpoint = config.getEndpoint();
@@ -221,7 +221,7 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
         return messageList;
     }
 
-    public AiMessage getChatAnswer(CozeChatContext cozeChat) {
+    public AiMessage getChatAnswer(CozeStreamContext cozeChat) {
         JSONArray messageList = fetchMessageList(cozeChat);
         if (messageList == null || messageList.isEmpty()) {
             return null;
@@ -250,7 +250,7 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
     }
 
     @Override
-    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+    public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         Message[] messages = new Message[1];
         String[] responses = new String[1];
@@ -258,11 +258,11 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
 
         this.botChat(prompt, new CozeRequestListener() {
             @Override
-            public void onStart(CozeChatContext context) {
+            public void onStart(CozeStreamContext context) {
             }
 
             @Override
-            public void onMessage(CozeChatContext context) {
+            public void onMessage(CozeStreamContext context) {
                 boolean isCompleted = Objects.equals(context.getStatus(), "completed");
                 if (isCompleted) {
                     AiMessage answer = getChatAnswer(context);
@@ -272,14 +272,14 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
             }
 
             @Override
-            public void onFailure(CozeChatContext context, Throwable throwable) {
+            public void onFailure(CozeStreamContext context, Throwable throwable) {
                 failureThrowable[0] = throwable;
                 responses[0] = context.getResponse();
                 latch.countDown();
             }
 
             @Override
-            public void onStop(CozeChatContext context) {
+            public void onStop(CozeStreamContext context) {
                 latch.countDown();
             }
         }, options, false);
@@ -303,26 +303,26 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
     }
 
     @Override
-    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+    public void doChatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         this.botChat(prompt, new CozeRequestListener() {
             @Override
-            public void onStart(CozeChatContext context) {
+            public void onStart(CozeStreamContext context) {
                 listener.onStart(context);
             }
 
             @Override
-            public void onMessage(CozeChatContext context) {
+            public void onMessage(CozeStreamContext context) {
                 AiMessageResponse response = new AiMessageResponse(prompt, context.getResponse(), context.getMessage());
                 listener.onMessage(context, response);
             }
 
             @Override
-            public void onFailure(CozeChatContext context, Throwable throwable) {
+            public void onFailure(CozeStreamContext context, Throwable throwable) {
                 listener.onFailure(context, throwable);
             }
 
             @Override
-            public void onStop(CozeChatContext context) {
+            public void onStop(CozeStreamContext context) {
                 listener.onStop(context);
             }
         }, options, true);

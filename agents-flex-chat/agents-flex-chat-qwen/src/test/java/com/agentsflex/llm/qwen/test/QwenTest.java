@@ -56,7 +56,7 @@ public class QwenTest {
         ChatModel chatModel = new QwenChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
         System.out.println(response.callFunctions());

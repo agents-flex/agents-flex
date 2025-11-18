@@ -1,8 +1,8 @@
 package com.agentsflex.llm.volcengine.test;
 
-import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;
@@ -41,7 +41,7 @@ public class VolcengineChatModelTest {
         ChatModel chatModel = new VolcengineChatModel(config);
         chatModel.chatStream("你叫什么名字", new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
             }
         });

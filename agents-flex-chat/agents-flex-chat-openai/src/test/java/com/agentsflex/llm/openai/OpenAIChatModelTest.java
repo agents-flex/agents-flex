@@ -3,9 +3,9 @@ package com.agentsflex.llm.openai;
 import com.agentsflex.core.agents.react.ReActAgent;
 import com.agentsflex.core.agents.react.ReActAgentListener;
 import com.agentsflex.core.agents.react.ReActStep;
-import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.JavaNativeFunctionBuilder;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
@@ -40,7 +40,7 @@ public class OpenAIChatModelTest {
         ChatModel chatModel = new OpenAIChatModel(config);
         chatModel.chatStream("你叫什么名字", new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
             }
         });
@@ -62,12 +62,12 @@ public class OpenAIChatModelTest {
         ChatModel chatModel = new OpenAIChatModel(config);
         chatModel.chatStream("who are you", new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
             }
 
             @Override
-            public void onStop(ChatContext context) {
+            public void onStop(StreamContext context) {
                 System.out.println("stop!!!!");
             }
         });
@@ -105,7 +105,7 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
         System.out.println(response.callFunctions());
@@ -120,7 +120,7 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
         if (response.isFunctionCall()) {
@@ -144,7 +144,7 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
         if (response.isFunctionCall()) {
@@ -168,10 +168,10 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 System.out.println(" onMessage >>>>>" + response.isFunctionCall());
             }
         });
@@ -191,10 +191,10 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 System.out.println(" onMessage >>>>>" + response.isFunctionCall());
             }
         });
@@ -215,10 +215,10 @@ public class OpenAIChatModelTest {
 
 
         SimplePrompt prompt = new SimplePrompt("北京和上海的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
 
 
 //                if (response.isFunctionCall()) {
@@ -249,7 +249,7 @@ public class OpenAIChatModelTest {
                     prompt.setToolMessages(response.buildToolMessages());
                     llm.chatStream(prompt, new StreamResponseListener() {
                         @Override
-                        public void onMessage(ChatContext context, AiMessageResponse response) {
+                        public void onMessage(StreamContext context, AiMessageResponse response) {
                             String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
                             System.out.println(":::" + msg);
                         }
@@ -277,10 +277,10 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("北京和上海的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 System.out.println("onMessage >>>>>" + response);
             }
         });
@@ -300,18 +300,18 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("/no_think 北京和上海的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
 //        FunctionPrompt prompt = new FunctionPrompt("上海的天气怎么样", WeatherFunctions.class);
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
 //                System.out.println("onMessage >>>>>" + response);
                 if (response.isFunctionCall()) {
                     System.out.println(":::::::: start....");
                     prompt.setToolMessages(response.buildToolMessages());
                     llm.chatStream(prompt, new StreamResponseListener() {
                         @Override
-                        public void onMessage(ChatContext context, AiMessageResponse response) {
+                        public void onMessage(StreamContext context, AiMessageResponse response) {
                             String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
                             System.out.println(":::" + msg);
                         }
@@ -337,7 +337,7 @@ public class OpenAIChatModelTest {
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("/no_think 北京和上海的天气怎么样");
-        prompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
         prompt.setToolMessages(response.buildToolMessages());
@@ -357,7 +357,7 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        List<Function> functions = JavaNativeFunctionBuilder.from(WeatherFunctions.class);
+        List<Function> functions = JavaNativeFunctionBuilder.fromClass(WeatherFunctions.class);
 //        ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
         ReActAgent reActAgent  = new ReActAgent(llm, functions, "介绍一下北京");
         reActAgent.addListener(new ReActAgentListener() {
@@ -398,13 +398,13 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        List<Function> functions = JavaNativeFunctionBuilder.from(WeatherFunctions.class);
+        List<Function> functions = JavaNativeFunctionBuilder.fromClass(WeatherFunctions.class);
         ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
         reActAgent.setStreamable(true);
         reActAgent.addListener(new ReActAgentListener() {
 
             @Override
-            public void onChatResponseStream(ChatContext context, AiMessageResponse response) {
+            public void onChatResponseStream(StreamContext context, AiMessageResponse response) {
 //                System.out.print(response.getMessage().getContent());
             }
 
@@ -425,7 +425,7 @@ public class OpenAIChatModelTest {
             }
 
             @Override
-            public void onNonActionResponseStream(ChatContext context) {
+            public void onNonActionResponseStream(StreamContext context) {
                 System.out.println("onNonActionResponseStream >>>>>" + context);
             }
         });

@@ -16,12 +16,12 @@
 package com.agentsflex.llm.coze;
 
 import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.MessageFormat;
 import com.agentsflex.core.message.MessageStatus;
+import com.agentsflex.core.message.OpenAIMessageFormat;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.message.OpenAIMessageFormat;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.message.MessageFormat;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson2.JSONPath;
 
@@ -50,7 +50,7 @@ public class CozeLlmUtil {
 
         aiMessageParser.setStatusParser(content -> {
             Boolean done = (Boolean) JSONPath.eval(content, "$.done");
-            if (done != null && done){
+            if (done != null && done) {
                 return MessageStatus.END;
             }
             return MessageStatus.MIDDLE;

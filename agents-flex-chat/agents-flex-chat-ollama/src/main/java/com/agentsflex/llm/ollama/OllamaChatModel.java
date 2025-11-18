@@ -18,7 +18,7 @@ package com.agentsflex.llm.ollama;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.BaseStreamClientListener;
 import com.agentsflex.core.model.client.HttpClient;
@@ -46,7 +46,7 @@ public class OllamaChatModel extends BaseChatModel<OllamaChatConfig> {
 
 
     @Override
-    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+    public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
@@ -79,7 +79,7 @@ public class OllamaChatModel extends BaseChatModel<OllamaChatConfig> {
 
 
     @Override
-    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+    public void doChatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         DnjsonClient dnjsonStreamClient = new DnjsonClient();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

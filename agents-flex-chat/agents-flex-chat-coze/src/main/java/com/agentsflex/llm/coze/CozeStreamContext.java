@@ -15,7 +15,7 @@
  */
 package com.agentsflex.llm.coze;
 
-import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.message.AiMessage;
 
 import java.util.Map;
@@ -23,7 +23,7 @@ import java.util.Map;
 /**
  * @author yulsh
  */
-public class CozeChatContext extends ChatContext {
+public class CozeStreamContext extends StreamContext {
 
     private String id;
     private String conversationId;

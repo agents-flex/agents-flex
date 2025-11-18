@@ -17,7 +17,7 @@ package com.agentsflex.llm.tencent;
 
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.BaseStreamClientListener;
 import com.agentsflex.core.model.client.HttpClient;
@@ -45,7 +45,7 @@ public class TencentChatModel extends BaseChatModel<TencentChatConfig> {
 
 
     @Override
-    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+    public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
         String payload = TencentChatUtil.promptToPayload(prompt, config, false, options);
         Map<String, String> headers = TencentChatUtil.createAuthorizationToken(config, "ChatCompletions", payload);
         String response = httpClient.post(config.getEndpoint(), headers, payload);
@@ -70,7 +70,7 @@ public class TencentChatModel extends BaseChatModel<TencentChatConfig> {
 
 
     @Override
-    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+    public void doChatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         StreamClient streamClient = new SseClient();
         String payload = TencentChatUtil.promptToPayload(prompt, config, true, options);
         Map<String, String> headers = TencentChatUtil.createAuthorizationToken(config, "ChatCompletions", payload);

@@ -40,7 +40,7 @@ public class OpenAILlmUtil {
 
     public static String promptToPayload(Prompt prompt, OpenAIChatConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
-        UserMessage message = MessageUtil.findLastHumanMessage(messages);
+        UserMessage message = MessageUtil.findLastUserMessage(messages);
         return Maps
             .of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))

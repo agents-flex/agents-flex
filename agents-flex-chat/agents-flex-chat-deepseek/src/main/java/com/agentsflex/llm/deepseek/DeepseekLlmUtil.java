@@ -41,7 +41,7 @@ public class DeepseekLlmUtil {
 
     public static String promptToPayload(Prompt prompt, ChatConfig config, ChatOptions options, boolean withStream) {
         List<Message> messages = prompt.toMessages();
-        UserMessage userMessage = MessageUtil.findLastHumanMessage(messages);
+        UserMessage userMessage = MessageUtil.findLastUserMessage(messages);
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
             .setIf(withStream, "stream", true)

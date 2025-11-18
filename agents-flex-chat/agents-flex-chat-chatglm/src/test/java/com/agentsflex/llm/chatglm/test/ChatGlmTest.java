@@ -27,7 +27,7 @@ public class ChatGlmTest {
         ChatModel chatModel = new ChatglmChatModel(config);
 
         SimplePrompt simplePrompt = new SimplePrompt("今天北京的天气怎么样");
-        simplePrompt.getUserMessage().addFunctions(WeatherFunctions.class);
+        simplePrompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
 
 //        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(simplePrompt);
