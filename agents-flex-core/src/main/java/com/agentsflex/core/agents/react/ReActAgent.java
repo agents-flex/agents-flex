@@ -418,80 +418,132 @@ public class ReActAgent {
 
     // ========== 通知监听器的方法 ==========
     private void notifyOnChatResponse(AiMessageResponse response) {
-        for (ReActAgentListener l : listeners) {
-            l.onChatResponse(response);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onChatResponse(response);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnNonActionResponse(AiMessageResponse response) {
-        for (ReActAgentListener l : listeners) {
-            l.onNonActionResponse(response);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onNonActionResponse(response);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnNonActionResponseStream(ChatContext context) {
-        for (ReActAgentListener l : listeners) {
-            l.onNonActionResponseStream(context);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onNonActionResponseStream(context);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnChatResponseStream(ChatContext context, AiMessageResponse response) {
-        for (ReActAgentListener l : listeners) {
-            l.onChatResponseStream(context, response);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onChatResponseStream(context, response);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnFinalAnswer(String finalAnswer) {
-        for (ReActAgentListener l : listeners) {
-            l.onFinalAnswer(finalAnswer);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onFinalAnswer(finalAnswer);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnActionStart(ReActStep reActStep) {
-        for (ReActAgentListener l : listeners) {
-            l.onActionStart(reActStep);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onActionStart(reActStep);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnActionEnd(ReActStep reActStep, Object result) {
-        for (ReActAgentListener l : listeners) {
-            l.onActionEnd(reActStep, result);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onActionEnd(reActStep, result);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnMaxIterationsReached() {
-        for (ReActAgentListener l : listeners) {
-            l.onMaxIterationsReached();
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onMaxIterationsReached();
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnStepParseError(String content) {
-        for (ReActAgentListener l : listeners) {
-            l.onStepParseError(content);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onStepParseError(content);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnActionNotMatched(ReActStep step, List<Function> functions) {
-        for (ReActAgentListener l : listeners) {
-            l.onActionNotMatched(step, functions);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onActionNotMatched(step, functions);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
         }
     }
 
     private void notifyOnActionJsonParserError(ReActStep step, Exception e) {
-        for (ReActAgentListener l : listeners) {
-            l.onActionJsonParserError(step, e);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onActionJsonParserError(step, e);
+            } catch (Exception e1) {
+                log.error(e.toString(), e1);
+            }
         }
     }
 
     private void notifyOnActionInvokeError(Exception e) {
-        for (ReActAgentListener l : listeners) {
-            l.onActionInvokeError(e);
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onActionInvokeError(e);
+            } catch (Exception e1) {
+                log.error(e.toString(), e1);
+            }
         }
     }
 
-    private void notifyOnError(Exception error) {
-        for (ReActAgentListener l : listeners) {
-            l.onError(error);
+    private void notifyOnError(Exception e) {
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onError(e);
+            } catch (Exception e1) {
+                log.error(e.toString(), e1);
+            }
         }
     }
 }
