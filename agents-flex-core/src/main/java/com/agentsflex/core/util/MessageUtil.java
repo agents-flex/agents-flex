@@ -22,7 +22,7 @@ import java.util.List;
 
 public class MessageUtil {
 
-    public static UserMessage findLastHumanMessage(List<Message> messages) {
+    public static UserMessage findLastUserMessage(List<Message> messages) {
         if (messages == null || messages.isEmpty()) {
             return null;
         }

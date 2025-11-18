@@ -19,8 +19,11 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.model.chat.functions.Function;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 
@@ -31,12 +34,105 @@ public class SimplePrompt extends Prompt {
     protected List<ToolMessage> toolMessages;
 
     public SimplePrompt() {
+        this.userMessage = new UserMessage();
     }
 
     public SimplePrompt(String content) {
         this.userMessage = new UserMessage(content);
     }
 
+
+    /// /// functions
+    public void addFunction(Function function) {
+        userMessage.addFunction(function);
+    }
+
+    public void addFunctions(Collection<? extends Function> functions) {
+        userMessage.addFunctions(functions);
+    }
+
+    public void addFunctionsFromClass(Class<?> funcClass, String... methodNames) {
+        userMessage.addFunctionsFromClass(funcClass, methodNames);
+    }
+
+    public void addFunctionsFromObject(Object funcObject, String... methodNames) {
+        userMessage.addFunctionsFromObject(funcObject, methodNames);
+    }
+
+
+    public List<Function> getFunctions() {
+        return userMessage.getFunctions();
+    }
+
+
+    public String getToolChoice() {
+        return userMessage.getToolChoice();
+    }
+
+    public void setToolChoice(String toolChoice) {
+        userMessage.setToolChoice(toolChoice);
+    }
+
+
+    /// /// Audio
+    public List<String> getAudioUrls() {
+        return userMessage.getAudioUrls();
+    }
+
+    public void setAudioUrls(List<String> audioUrls) {
+        userMessage.setAudioUrls(audioUrls);
+    }
+
+    public void addAudioUrl(String audioUrl) {
+        userMessage.addAudioUrl(audioUrl);
+    }
+
+
+    /// ///  Video
+    public List<String> getVideoUrls() {
+        return userMessage.getVideoUrls();
+    }
+
+    public void setVideoUrls(List<String> videoUrls) {
+        userMessage.setVideoUrls(videoUrls);
+    }
+
+    public void addVideoUrl(String videoUrl) {
+        userMessage.addVideoUrl(videoUrl);
+    }
+
+
+    /// /// Images
+    public List<String> getImageUrls() {
+        return userMessage.getImageUrls();
+    }
+
+    public void setImageUrls(List<String> imageUrls) {
+        userMessage.setImageUrls(imageUrls);
+    }
+
+    public void addImageUrl(String imageUrl) {
+        userMessage.addImageUrl(imageUrl);
+    }
+
+    public void addImageFile(File imageFile) {
+        userMessage.addImageFile(imageFile);
+    }
+
+    public List<String> getImageBase64s() {
+        return userMessage.getImageBase64s();
+    }
+
+    public void setImageBase64s(List<String> imageBase64s) {
+        userMessage.setImageBase64s(imageBase64s);
+    }
+
+    public void addImageBase64(String imageBase64) {
+        userMessage.addImageBase64(imageBase64);
+    }
+
+
+    /// ////getter setter
     public SystemMessage getSystemMessage() {
         return systemMessage;
     }
@@ -68,7 +164,6 @@ public class SimplePrompt extends Prompt {
             messages.add(systemMessage);
         }
         messages.add(userMessage);
-
         if (toolMessages != null) {
             messages.addAll(toolMessages);
         }
