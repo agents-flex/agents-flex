@@ -24,8 +24,12 @@ import java.util.function.Consumer;
 public class ChatConfig extends BaseModelConfig {
 
     private String apiSecret;
-    private boolean debug;
+    private Boolean supportImage;
+    private Boolean supportAudio;
+    private Boolean supportVideo;
+    private Boolean supportFunctionCall;
 
+    private boolean debug;
     private Consumer<Map<String, String>> headersConfig;
 
     public boolean isDebug() {
@@ -50,5 +54,53 @@ public class ChatConfig extends BaseModelConfig {
 
     public void setHeadersConfig(Consumer<Map<String, String>> headersConfig) {
         this.headersConfig = headersConfig;
+    }
+
+    public Boolean getSupportImage() {
+        return supportImage;
+    }
+
+    public void setSupportImage(Boolean supportImage) {
+        this.supportImage = supportImage;
+    }
+
+    public boolean isSupportImage() {
+        return supportImage != false;
+    }
+
+    public Boolean getSupportAudio() {
+        return supportAudio;
+    }
+
+    public void setSupportAudio(Boolean supportAudio) {
+        this.supportAudio = supportAudio;
+    }
+
+    public boolean isSupportAudio() {
+        return supportAudio != false;
+    }
+
+    public Boolean getSupportVideo() {
+        return supportVideo;
+    }
+
+    public void setSupportVideo(Boolean supportVideo) {
+        this.supportVideo = supportVideo;
+    }
+
+    public boolean isSupportVideo() {
+        return supportVideo != false;
+    }
+
+    public Boolean getSupportFunctionCall() {
+        return supportFunctionCall;
+    }
+
+    public void setSupportFunctionCall(Boolean supportFunctionCall) {
+        this.supportFunctionCall = supportFunctionCall;
+    }
+
+    public boolean isSupportFunctionCall() {
+        return supportFunctionCall != false;
     }
 }

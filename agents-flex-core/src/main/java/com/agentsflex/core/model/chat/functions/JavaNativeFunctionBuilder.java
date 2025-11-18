@@ -26,11 +26,11 @@ import java.util.List;
 
 public class JavaNativeFunctionBuilder extends ArrayList<Function> {
 
-    public static List<Function> from(Object object, String... methodNames) {
+    public static List<Function> fromObject(Object object, String... methodNames) {
         return from(object.getClass(), object, methodNames);
     }
 
-    public static List<Function> from(Class<?> clazz, String... methodNames) {
+    public static List<Function> fromClass(Class<?> clazz, String... methodNames) {
         return from(clazz, null, methodNames);
     }
 
