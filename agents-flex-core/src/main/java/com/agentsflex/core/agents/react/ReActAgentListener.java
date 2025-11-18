@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.agents.react;
 
-import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 
@@ -40,7 +40,7 @@ public interface ReActAgentListener {
      * @param context  上下文信息
      * @param response 原始响应内容
      */
-    default void onChatResponseStream(ChatContext context, AiMessageResponse response) {
+    default void onChatResponseStream(StreamContext context, AiMessageResponse response) {
     }
 
 
@@ -55,7 +55,7 @@ public interface ReActAgentListener {
     /**
      * 当未命中工具时触发
      */
-    default void onNonActionResponseStream(ChatContext context) {
+    default void onNonActionResponseStream(StreamContext context) {
     }
 
 

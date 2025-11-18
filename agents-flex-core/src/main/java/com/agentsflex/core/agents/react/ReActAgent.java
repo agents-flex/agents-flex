@@ -15,10 +15,10 @@
  */
 package com.agentsflex.core.agents.react;
 
-import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.Parameter;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
@@ -276,12 +276,12 @@ public class ReActAgent {
         chatModel.chatStream(historiesPrompt, new StreamResponseListener() {
 
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 notifyOnChatResponseStream(context, response);
             }
 
             @Override
-            public void onStop(ChatContext context) {
+            public void onStop(StreamContext context) {
                 AiMessage lastAiMessage = context.getLastAiMessage();
                 if (lastAiMessage == null) {
                     notifyOnError(new RuntimeException("没有收到任何回复"));
@@ -314,7 +314,7 @@ public class ReActAgent {
             }
 
             @Override
-            public void onFailure(ChatContext context, Throwable throwable) {
+            public void onFailure(StreamContext context, Throwable throwable) {
                 notifyOnError((Exception) throwable);
             }
         }, chatOptions);
@@ -437,7 +437,7 @@ public class ReActAgent {
         }
     }
 
-    private void notifyOnNonActionResponseStream(ChatContext context) {
+    private void notifyOnNonActionResponseStream(StreamContext context) {
         for (ReActAgentListener listener : listeners) {
             try {
                 listener.onNonActionResponseStream(context);
@@ -447,7 +447,7 @@ public class ReActAgent {
         }
     }
 
-    private void notifyOnChatResponseStream(ChatContext context, AiMessageResponse response) {
+    private void notifyOnChatResponseStream(StreamContext context, AiMessageResponse response) {
         for (ReActAgentListener listener : listeners) {
             try {
                 listener.onChatResponseStream(context, response);
