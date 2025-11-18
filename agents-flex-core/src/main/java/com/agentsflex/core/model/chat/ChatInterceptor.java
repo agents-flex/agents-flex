@@ -17,7 +17,6 @@
 package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.prompt.Prompt;
 
 /**

@@ -18,7 +18,7 @@ package com.agentsflex.core.agents.react;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.client.StreamResponseListener;
+import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.Parameter;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;

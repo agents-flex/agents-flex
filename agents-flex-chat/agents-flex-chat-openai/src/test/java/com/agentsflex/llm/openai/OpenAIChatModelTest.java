@@ -5,7 +5,7 @@ import com.agentsflex.core.agents.react.ReActAgentListener;
 import com.agentsflex.core.agents.react.ReActStep;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.client.StreamResponseListener;
+import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.JavaNativeFunctionBuilder;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;

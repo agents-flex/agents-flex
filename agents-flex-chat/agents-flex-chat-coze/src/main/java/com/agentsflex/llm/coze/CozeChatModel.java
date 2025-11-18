@@ -19,7 +19,7 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.client.StreamResponseListener;
+import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.parser.AiMessageParser;

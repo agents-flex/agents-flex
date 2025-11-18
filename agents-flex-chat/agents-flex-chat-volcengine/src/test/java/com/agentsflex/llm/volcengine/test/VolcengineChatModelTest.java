@@ -2,7 +2,7 @@ package com.agentsflex.llm.volcengine.test;
 
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.client.StreamResponseListener;
+import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;

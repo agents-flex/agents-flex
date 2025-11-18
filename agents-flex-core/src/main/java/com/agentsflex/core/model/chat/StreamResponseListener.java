@@ -13,9 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.client;
+package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.client.StreamContext;
 import org.slf4j.Logger;
 
 public interface StreamResponseListener {

@@ -16,7 +16,6 @@
 package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.model.chat.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;

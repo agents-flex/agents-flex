@@ -18,7 +18,6 @@ package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.client.StreamResponseListener;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.observability.Observability;
@@ -71,7 +70,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
 
     // ===== 实例字段 =====
     protected final T config;
-    private final List<ChatInterceptor> allInterceptors; // 全局拦截器 + 实例拦截器的合并列表
+    private List<ChatInterceptor> interceptors; // 全局拦截器 + 实例拦截器的合并列表
 
     /**
      * 构造一个聊天模型实例，不使用实例级拦截器。
@@ -93,13 +92,33 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      */
     public BaseChatModel(T config, List<ChatInterceptor> interceptors) {
         this.config = config;
-        // 合并全局拦截器和实例拦截器
-        List<ChatInterceptor> combined = new ArrayList<>();
-        combined.addAll(GlobalChatInterceptors.getInterceptors()); // 全局拦截器
-        if (interceptors != null) {
-            combined.addAll(interceptors); // 实例拦截器
+        this.interceptors = interceptors;
+    }
+
+    public void addInterceptor(ChatInterceptor interceptor) {
+        if (interceptors == null) {
+            interceptors = new ArrayList<>();
         }
-        this.allInterceptors = Collections.unmodifiableList(combined);
+        interceptors.add(interceptor);
+    }
+
+    public void addInterceptors(List<ChatInterceptor> interceptors) {
+        if (this.interceptors == null) {
+            this.interceptors = new ArrayList<>();
+        }
+        this.interceptors.addAll(interceptors);
+    }
+
+    public void removeInterceptor(ChatInterceptor interceptor) {
+        if (interceptors != null) {
+            interceptors.remove(interceptor);
+        }
+    }
+
+    public void clearInterceptors() {
+        if (interceptors != null) {
+            interceptors.clear();
+        }
     }
 
     /**
@@ -120,7 +139,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         Prompt currentPrompt = prompt;
         ChatOptions currentOptions = options;
 
-        for (ChatInterceptor interceptor : allInterceptors) {
+        for (ChatInterceptor interceptor : interceptors) {
             try {
                 ChatInterceptor.PreHandleResult result = interceptor.preHandle(currentPrompt, currentOptions, this);
                 if (result != null) {
@@ -140,7 +159,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
     private AiMessageResponse firePostHandle(Prompt originalPrompt, ChatOptions originalOptions,
                                              AiMessageResponse response, boolean success) {
         AiMessageResponse finalResponse = response;
-        for (ChatInterceptor interceptor : allInterceptors) {
+        for (ChatInterceptor interceptor : interceptors) {
             try {
                 AiMessageResponse modified = interceptor.postHandle(originalPrompt, originalOptions, finalResponse, success);
                 if (modified != null) {
@@ -158,7 +177,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      */
     private void fireAfterCompletion(Prompt prompt, ChatOptions options,
                                      AiMessageResponse response, Throwable ex) {
-        for (ChatInterceptor interceptor : allInterceptors) {
+        for (ChatInterceptor interceptor : interceptors) {
             try {
                 interceptor.afterCompletion(prompt, options, response, ex);
             } catch (Exception e) {
@@ -173,7 +192,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
     private StreamResponseListener fireWrapStreamListener(StreamResponseListener original,
                                                           Prompt prompt, ChatOptions options) {
         StreamResponseListener current = original;
-        for (ChatInterceptor interceptor : allInterceptors) {
+        for (ChatInterceptor interceptor : interceptors) {
             try {
                 current = interceptor.wrapStreamListener(current, prompt, options);
             } catch (Exception e) {
@@ -219,6 +238,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         ChatInterceptor.PreHandleResult preResult = firePreHandle(originalPrompt, originalOptions);
         Prompt currentPrompt = preResult.getPrompt();
         ChatOptions currentOptions = preResult.getOptions();
+        AiMessageResponse finalResponse = null;
 
         try (ChatContextHolder.ChatContextScope ignored = ChatContextHolder.beginChat(config, currentOptions, currentPrompt, span);
              Scope ignored1 = span.makeCurrent()) {
@@ -227,7 +247,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
             boolean callSuccess = (response != null) && !response.isError();
 
             // 执行 postHandle 拦截器链
-            AiMessageResponse finalResponse = firePostHandle(originalPrompt, originalOptions, response, callSuccess);
+            finalResponse = firePostHandle(originalPrompt, originalOptions, response, callSuccess);
 
             // 设置 Span 属性（使用最终响应）
             if (finalResponse != null && !finalResponse.isError()) {
@@ -247,7 +267,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         } catch (Exception e) {
             success = false;
             // 执行 afterCompletion 拦截器链（异常场景）
-            fireAfterCompletion(currentPrompt, currentOptions, null, e);
+            fireAfterCompletion(currentPrompt, currentOptions, finalResponse, e);
             span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR, e.getMessage());
             span.recordException(e);
             throw e;
@@ -301,8 +321,6 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
                 }
                 span.end();
                 recordMetrics(provider, model, operation, false, startTimeNanos);
-                // 执行 afterCompletion（失败场景）
-                fireAfterCompletion(currentPrompt, currentOptions, null, throwable);
                 listenerAfterInterceptors.onFailure(context, throwable);
             }
 

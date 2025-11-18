@@ -3,7 +3,7 @@ package com.agentsflex.llm.deepseek;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.client.StreamResponseListener;
+import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.functions.annotation.FunctionDef;
 import com.agentsflex.core.model.chat.functions.annotation.FunctionParam;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
