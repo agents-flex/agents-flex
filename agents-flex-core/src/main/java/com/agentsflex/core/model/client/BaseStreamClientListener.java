@@ -15,13 +15,12 @@
  */
 package com.agentsflex.core.model.client;
 
+import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.JSONUtil;
 import com.agentsflex.core.util.LocalTokenCounter;
@@ -141,11 +140,11 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     @Override
     public void onStop(StreamClient client) {
-        if (lastAiMessage != null) {
-            if (this.prompt instanceof HistoriesPrompt) {
-                ((HistoriesPrompt) this.prompt).addMessage(lastAiMessage);
-            }
-        }
+//        if (lastAiMessage != null) {
+//            if (this.prompt instanceof HistoriesPrompt) {
+//                ((HistoriesPrompt) this.prompt).addMessage(lastAiMessage);
+//            }
+//        }
         context.addLastAiMessage(lastAiMessage);
         streamResponseListener.onStop(context);
     }

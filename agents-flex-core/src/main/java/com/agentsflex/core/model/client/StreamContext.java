@@ -58,9 +58,8 @@ public class StreamContext {
         return getParam("lastAiMessage");
     }
 
-    public StreamContext addParam(String key, Object value) {
+    public void addParam(String key, Object value) {
         params.put(key, value);
-        return this;
     }
 
     public <T> T getParam(String key) {
