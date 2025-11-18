@@ -65,7 +65,7 @@ public class ChatConfig extends BaseModelConfig {
     }
 
     public boolean isSupportImage() {
-        return supportImage != false;
+        return supportImage == null || supportImage;
     }
 
     public Boolean getSupportAudio() {
@@ -77,7 +77,7 @@ public class ChatConfig extends BaseModelConfig {
     }
 
     public boolean isSupportAudio() {
-        return supportAudio != false;
+        return supportAudio == null || supportAudio;
     }
 
     public Boolean getSupportVideo() {
@@ -89,7 +89,7 @@ public class ChatConfig extends BaseModelConfig {
     }
 
     public boolean isSupportVideo() {
-        return supportVideo != false;
+        return supportVideo == null || supportVideo;
     }
 
     public Boolean getSupportFunctionCall() {
@@ -101,6 +101,6 @@ public class ChatConfig extends BaseModelConfig {
     }
 
     public boolean isSupportFunctionCall() {
-        return supportFunctionCall != false;
+        return supportFunctionCall == null || supportFunctionCall;
     }
 }

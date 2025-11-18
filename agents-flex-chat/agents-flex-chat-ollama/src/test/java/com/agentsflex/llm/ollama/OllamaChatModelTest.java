@@ -46,7 +46,7 @@ public class OllamaChatModelTest {
         ChatModel chatModel = new OllamaChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("What's the weather like in Beijing?");
-        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
+        prompt.addFunctionsFromClass(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
         System.out.println(response.callFunctions());
@@ -63,7 +63,7 @@ public class OllamaChatModelTest {
         ChatModel chatModel = new OllamaChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("What's the weather like in Beijing?");
-        prompt.getUserMessage().addFunctionsFromClass(WeatherFunctions.class);
+        prompt.addFunctionsFromClass(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
         if (response.isFunctionCall()) {
@@ -84,7 +84,7 @@ public class OllamaChatModelTest {
         ChatModel chatModel = new OllamaChatModel(config);
 
         SimplePrompt imagePrompt = new SimplePrompt("What's in the picture?");
-        imagePrompt.getUserMessage().addImageUrl("https://agentsflex.com/assets/images/logo.png");
+        imagePrompt.addImageUrl("https://agentsflex.com/assets/images/logo.png");
 
         AiMessageResponse response = chatModel.chat(imagePrompt);
         AiMessage message = response == null ? null : response.getMessage();

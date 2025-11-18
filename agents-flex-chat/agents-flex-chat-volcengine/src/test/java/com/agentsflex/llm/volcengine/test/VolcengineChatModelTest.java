@@ -65,8 +65,8 @@ public class VolcengineChatModelTest {
 
         ChatModel chatModel = new VolcengineChatModel(config);
         SimplePrompt prompt = new SimplePrompt("这个图片说的是什么?");
-        prompt.getUserMessage().addImageUrl("https://ark-project.tos-cn-beijing.volces.com/doc_image/ark_demo_img_1.png");
-        System.out.println(prompt.getUserMessage().getImageUrls());
+        prompt.addImageUrl("https://ark-project.tos-cn-beijing.volces.com/doc_image/ark_demo_img_1.png");
+        System.out.println(prompt.getImageUrls());
 
 
         AiMessageResponse response = chatModel.chat(prompt);

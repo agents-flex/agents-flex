@@ -25,14 +25,9 @@ public class LocalTokenCounter {
             return;
         }
 
-        // 1. 计算 prompt tokens：除最后一条 AI 消息外的所有消息
-//        List<Message> promptMessages = messages.subList(0, messages.size() - 1);
         int promptTokenCount = countMessagesTokens(messages);
-
-        // 2. 计算 completion tokens：仅当前 AI 消息的内容
         int completionTokenCount = countAiMessageCompletionTokens(aiMessage);
 
-        // 3. 设置字段
         aiMessage.setLocalPromptTokens(promptTokenCount);
         aiMessage.setLocalCompletionTokens(completionTokenCount);
         aiMessage.setLocalTotalTokens(promptTokenCount + completionTokenCount);

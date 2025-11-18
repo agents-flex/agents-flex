@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.message;
 
+import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.JavaNativeFunctionBuilder;
 import com.agentsflex.core.util.CollectionUtil;
@@ -188,9 +190,21 @@ public class UserMessage extends AbstractTextMessage {
             || CollectionUtil.hasItems(imageUrls) || CollectionUtil.hasItems(imageBase64s)) {
             List<Map<String, Object>> messageContent = new ArrayList<>();
             messageContent.add(Maps.of("type", "text").set("text", getContent()));
-            messageContent.addAll(buildAudioContent());
-            messageContent.addAll(buildVideoContent());
-            messageContent.addAll(buildImageContent());
+
+            ChatContextHolder.ChatContext chatContext = ChatContextHolder.currentContext();
+            ChatConfig config = chatContext != null ? chatContext.getConfig() : null;
+
+            if ((config == null || config.isSupportAudio()) && CollectionUtil.hasItems(audioUrls)) {
+                messageContent.addAll(buildAudioContent());
+            }
+
+            if ((config == null || config.isSupportVideo()) && CollectionUtil.hasItems(videoUrls)) {
+                messageContent.addAll(buildVideoContent());
+            }
+
+            if ((config == null || config.isSupportImage()) && CollectionUtil.hasItems(imageUrls)) {
+                messageContent.addAll(buildImageContent());
+            }
             return messageContent;
         } else {
             return super.getMessageContent();

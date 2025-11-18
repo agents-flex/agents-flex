@@ -81,7 +81,7 @@ public class DeepseekTest {
     public static void functionCall() {
         ChatModel chatModel = getLLM();
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.getUserMessage().addFunctionsFromClass(DeepseekTest.class);
+        prompt.addFunctionsFromClass(DeepseekTest.class);
         AiMessageResponse response = chatModel.chat(prompt);
         System.out.println(response.callFunctions());
     }

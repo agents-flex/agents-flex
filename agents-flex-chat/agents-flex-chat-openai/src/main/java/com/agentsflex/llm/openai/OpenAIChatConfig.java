@@ -19,6 +19,7 @@ import com.agentsflex.core.model.chat.ChatConfig;
 
 public class OpenAIChatConfig extends ChatConfig {
 
+    private static final String DEFAULT_PROVIDER = "openai";
     private static final String DEFAULT_MODEL = "gpt-3.5-turbo";
     private static final String DEFAULT_EMBEDDING_MODEL = "text-embedding-ada-002";
     private static final String DEFAULT_ENDPOINT = "https://api.openai.com";
@@ -52,6 +53,7 @@ public class OpenAIChatConfig extends ChatConfig {
     }
 
     public OpenAIChatConfig() {
+        setProvider(DEFAULT_PROVIDER);
         setEndpoint(DEFAULT_ENDPOINT);
         setModel(DEFAULT_MODEL);
     }

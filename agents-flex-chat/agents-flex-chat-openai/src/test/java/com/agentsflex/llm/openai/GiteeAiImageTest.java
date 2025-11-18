@@ -13,7 +13,7 @@ public class GiteeAiImageTest {
     @NotNull
     private static OpenAIChatConfig getOpenAIChatConfig() {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setApiKey("PXW1GXEKF8ZNQ1NP0UCYN5SUFASW4KI3YLQL7D12");
+        config.setApiKey("PXW1GXE******L7D12");
 //        config.setModel("InternVL3-78B");
         config.setModel("Qwen3-32B");
         config.setEndpoint("https://ai.gitee.com");
@@ -27,7 +27,7 @@ public class GiteeAiImageTest {
         ChatModel chatModel = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("请识别并输入 markdown，请用中文输出");
-        prompt.getUserMessage().addImageUrl("http://www.codeformat.cn/static/images/logo.png");
+        prompt.addImageUrl("http://www.codeformat.cn/static/images/logo.png");
 
         AiMessageResponse response = chatModel.chat(prompt);
         System.out.println(response.getMessage().getContent());
@@ -35,6 +35,7 @@ public class GiteeAiImageTest {
     @Test
     public  void testChat()  {
         OpenAIChatConfig config = getOpenAIChatConfig();
+        config.setSupportImage(false);
         ChatModel chatModel = new OpenAIChatModel(config);
 
         SimplePrompt prompt = new SimplePrompt("你叫什么名字");
