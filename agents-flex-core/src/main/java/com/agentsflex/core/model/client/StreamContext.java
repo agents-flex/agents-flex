@@ -13,23 +13,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat;
+package com.agentsflex.core.model.client;
 
-import com.agentsflex.core.model.client.StreamClient;
+import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.message.AiMessage;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class ChatContext {
+public class StreamContext {
     private ChatModel chatModel;
     private StreamClient client;
     private final Map<String, Object> params = new HashMap<>();
 
-    public ChatContext() {
+    public StreamContext() {
     }
 
-    public ChatContext(ChatModel chatModel, StreamClient client) {
+    public StreamContext(ChatModel chatModel, StreamClient client) {
         this.chatModel = chatModel;
         this.client = client;
     }
@@ -58,7 +58,7 @@ public class ChatContext {
         return getParam("lastAiMessage");
     }
 
-    public ChatContext addParam(String key, Object value) {
+    public StreamContext addParam(String key, Object value) {
         params.put(key, value);
         return this;
     }

@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat;
+package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import org.slf4j.Logger;
@@ -22,18 +22,18 @@ public interface StreamResponseListener {
 
     Logger logger = org.slf4j.LoggerFactory.getLogger(StreamResponseListener.class);
 
-    default void onStart(ChatContext context) {
+    default void onStart(StreamContext context) {
     }
 
-    void onMessage(ChatContext context, AiMessageResponse response);
+    void onMessage(StreamContext context, AiMessageResponse response);
 
-    default void onStop(ChatContext context) {
+    default void onStop(StreamContext context) {
     }
 
-    default void onMatchedFunction(String functionName, ChatContext context) {
+    default void onMatchedFunction(String functionName, StreamContext context) {
     }
 
-    default void onFailure(ChatContext context, Throwable throwable) {
+    default void onFailure(StreamContext context, Throwable throwable) {
         if (throwable != null) {
             logger.error(throwable.toString(), throwable);
         }

@@ -15,9 +15,7 @@
  */
 package com.agentsflex.core.model.client;
 
-import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionCall;
@@ -42,7 +40,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     private final StringBuilder fullReasoningContent = new StringBuilder();
     private final StringBuilder fullMessage = new StringBuilder();
     private AiMessage lastAiMessage;
-    private final ChatContext context;
+    private final StreamContext context;
     private final List<FunctionCallRecord> functionCallRecords = new ArrayList<>(0);
     private FunctionCallRecord functionCallRecord;
 
@@ -55,7 +53,7 @@ public class BaseStreamClientListener implements StreamClientListener {
         this.streamResponseListener = streamResponseListener;
         this.prompt = prompt;
         this.messageParser = messageParser;
-        this.context = new ChatContext(chatModel, client);
+        this.context = new StreamContext(chatModel, client);
     }
 
 

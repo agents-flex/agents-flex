@@ -20,12 +20,21 @@ import java.util.Map;
 import java.util.Set;
 
 public class BaseModelConfig implements Serializable {
+    protected String provider;
     protected String endpoint;
     protected String requestPath;
     protected String model;
     protected String apiKey;
     protected Map<String, String> properties;
     protected Set<String> features;
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
 
     public String getEndpoint() {
         return endpoint;
