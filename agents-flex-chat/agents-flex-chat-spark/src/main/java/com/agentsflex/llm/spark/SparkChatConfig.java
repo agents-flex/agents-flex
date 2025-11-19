@@ -20,27 +20,27 @@ import com.agentsflex.core.model.chat.ChatConfig;
 public class SparkChatConfig extends ChatConfig {
 
     public String getAppId() {
-        return properties != null ? properties.get("appId") : null;
+        return getCustomPropertyString("appId");
     }
 
     public void setAppId(String appId) {
-        this.addProperty("appId", appId);
+        this.putCustomProperty("appId", appId);
     }
 
     public String getApiSecret() {
-        return properties != null ? properties.get("apiSecret") : null;
+        return getCustomPropertyString("apiSecret");
     }
 
     public void setApiSecret(String apiSecret) {
-        addProperty("apiSecret", apiSecret);
+        this.putCustomProperty("apiSecret", apiSecret);
     }
 
     public String getVersion() {
-        return properties != null ? properties.get("version") : null;
+        return getCustomPropertyString("version");
     }
 
     public void setVersion(String version) {
-        addProperty("version", version);
+        this.putCustomProperty("version", version);
     }
 
 }

@@ -24,7 +24,6 @@ public class QwenAutoConfiguration {
     public QwenChatModel qwenLlm(QwenProperties properties) {
         QwenChatConfig config = new QwenChatConfig();
         config.setApiKey(properties.getApiKey());
-        config.setApiSecret(properties.getApiSecret());
         config.setEndpoint(properties.getEndpoint());
         config.setModel(properties.getModel());
         return new QwenChatModel(config);

@@ -12,7 +12,6 @@ public class ChatglmProperties {
     private String model = "glm-4";
     private String endpoint = "https://open.bigmodel.cn";
     private String apiKey;
-    private String apiSecret;
 
     public String getModel() {
         return model;
@@ -36,14 +35,6 @@ public class ChatglmProperties {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
-    }
-
-    public String getApiSecret() {
-        return apiSecret;
-    }
-
-    public void setApiSecret(String apiSecret) {
-        this.apiSecret = apiSecret;
     }
 
 }

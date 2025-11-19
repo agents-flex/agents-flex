@@ -24,7 +24,6 @@ public class ChatglmAutoConfiguration {
     public ChatglmChatModel chatglmLlm(ChatglmProperties properties) {
         ChatglmChatConfig config = new ChatglmChatConfig();
         config.setApiKey(properties.getApiKey());
-        config.setApiSecret(properties.getApiSecret());
         config.setEndpoint(properties.getEndpoint());
         config.setModel(properties.getModel());
         return new ChatglmChatModel(config);

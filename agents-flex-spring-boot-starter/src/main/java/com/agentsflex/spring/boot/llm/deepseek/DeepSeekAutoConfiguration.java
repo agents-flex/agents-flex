@@ -24,7 +24,6 @@ public class DeepSeekAutoConfiguration {
         config.setModel(properties.getModel());
         config.setEndpoint(properties.getEndpoint());
         config.setApiKey(properties.getApiKey());
-        config.setApiSecret(properties.getApiSecret());
         return new DeepseekChatModel(config);
     }
 

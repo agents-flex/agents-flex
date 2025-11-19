@@ -93,6 +93,10 @@ public class BaseModelConfig implements Serializable {
         throw new ClassCastException("Property '" + key + "' is not of type " + type.getSimpleName());
     }
 
+    public String getCustomPropertyString(String key) {
+        return getCustomProperty(key, String.class);
+    }
+
     // ---------- Utility: Full URL ----------
 
     public String getFullUrl() {
