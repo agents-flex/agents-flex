@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.message;
 
+import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.Parameter;
 import com.agentsflex.core.util.Maps;
@@ -98,6 +100,14 @@ public class OpenAIMessageFormat implements MessageFormat {
         }
         List<Function> functions = message.getFunctions();
         if (functions == null || functions.isEmpty()) {
+            return null;
+        }
+
+        ChatContextHolder.ChatContext chatContext = ChatContextHolder.currentContext();
+        ChatConfig config = chatContext != null ? chatContext.getConfig() : null;
+
+        // 大模型不支持 Function Calling
+        if (config != null && !config.isSupportFunctionCall()) {
             return null;
         }
 
