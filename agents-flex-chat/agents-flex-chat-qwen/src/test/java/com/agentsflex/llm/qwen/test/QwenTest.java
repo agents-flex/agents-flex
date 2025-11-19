@@ -98,7 +98,7 @@ public class QwenTest {
 
         ChatModel chatModel = new QwenChatModel(config);
         QwenChatOptions options = new QwenChatOptions();
-        options.setEnableThinking(false);
+        options.setThinkingEnabled(false);
         //options.setThinkingBudget(1024);
 
         chatModel.chatStream("你是谁", (context, response) -> {

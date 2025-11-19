@@ -48,7 +48,7 @@ public class TencentChatModel extends BaseChatModel<TencentChatConfig> {
     public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
         String payload = TencentChatUtil.promptToPayload(prompt, config, false, options);
         Map<String, String> headers = TencentChatUtil.createAuthorizationToken(config, "ChatCompletions", payload);
-        String response = httpClient.post(config.getEndpoint(), headers, payload);
+        String response = httpClient.post(config.getFullUrl(), headers, payload);
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
         }
@@ -75,7 +75,7 @@ public class TencentChatModel extends BaseChatModel<TencentChatConfig> {
         String payload = TencentChatUtil.promptToPayload(prompt, config, true, options);
         Map<String, String> headers = TencentChatUtil.createAuthorizationToken(config, "ChatCompletions", payload);
         StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, listener, prompt, aiStreamMessageParser);
-        streamClient.start(config.getEndpoint(), headers, payload, clientListener, config);
+        streamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
     }
 
 }

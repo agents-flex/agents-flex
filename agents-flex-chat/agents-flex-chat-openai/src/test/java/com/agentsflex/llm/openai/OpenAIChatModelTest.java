@@ -138,7 +138,7 @@ public class OpenAIChatModelTest {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setDebug(true);
         config.setEndpoint("https://ark.cn-beijing.volces.com");
-        config.setChatPath("/api/v3/chat/completions");
+        config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
         config.setApiKey("2d57a");
 
@@ -162,7 +162,7 @@ public class OpenAIChatModelTest {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setDebug(true);
         config.setEndpoint("https://ark.cn-beijing.volces.com");
-        config.setChatPath("/api/v3/chat/completions");
+        config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
         config.setApiKey("2d57aa75");
 
@@ -185,7 +185,7 @@ public class OpenAIChatModelTest {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setDebug(true);
         config.setEndpoint("https://ark.cn-beijing.volces.com");
-        config.setChatPath("/api/v3/chat/completions");
+        config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
         config.setApiKey("2d5");
 
@@ -208,7 +208,7 @@ public class OpenAIChatModelTest {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setDebug(true);
         config.setEndpoint("https://ark.cn-beijing.volces.com");
-        config.setChatPath("/api/v3/chat/completions");
+        config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
         config.setApiKey("2d57");
 

@@ -23,17 +23,18 @@ import java.util.function.Consumer;
 
 public class ChatConfig extends BaseModelConfig {
 
-    private String apiSecret;
+    protected Boolean supportImage;
+    protected Boolean supportImageBase64Only; // 某些模型仅支持 base64 格式图片，比如 Ollama 部署的模型，或者某些本地化模型
+    protected Boolean supportAudio;
+    protected Boolean supportVideo;
+    protected Boolean supportFunctionCall;
+    protected Boolean supportThinking;
 
-    private Boolean supportImage;
-    private Boolean supportImageBase64Only; // 某些模型仅支持 base64 格式图片，比如 Ollama 部署的模型，或者某些本地化模型
-    private Boolean supportAudio;
-    private Boolean supportVideo;
-    private Boolean supportFunctionCall;
-    private boolean observabilityEnabled = true; // 默认开启
+    protected boolean observabilityEnabled = true; // 默认开启
+    protected boolean thinkingEnabled = false; // 默认关闭
 
-    private boolean debug;
-    private Consumer<Map<String, String>> headersConfig;
+    protected boolean debug;
+    protected Consumer<Map<String, String>> headersConfig;
 
     public boolean isDebug() {
         return debug;
@@ -41,14 +42,6 @@ public class ChatConfig extends BaseModelConfig {
 
     public void setDebug(boolean debug) {
         this.debug = debug;
-    }
-
-    public String getApiSecret() {
-        return apiSecret;
-    }
-
-    public void setApiSecret(String apiSecret) {
-        this.apiSecret = apiSecret;
     }
 
     public Consumer<Map<String, String>> getHeadersConfig() {
@@ -119,6 +112,26 @@ public class ChatConfig extends BaseModelConfig {
         return supportFunctionCall == null || supportFunctionCall;
     }
 
+    public Boolean getSupportThinking() {
+        return supportThinking;
+    }
+
+    public void setSupportThinking(Boolean supportThinking) {
+        this.supportThinking = supportThinking;
+    }
+
+    public boolean isSupportThinking() {
+        return supportThinking == null || supportThinking;
+    }
+
+    public boolean isThinkingEnabled() {
+        return thinkingEnabled;
+    }
+
+    public void setThinkingEnabled(boolean thinkingEnabled) {
+        this.thinkingEnabled = thinkingEnabled;
+    }
+
     public boolean isObservabilityEnabled() {
         return observabilityEnabled;
     }
@@ -126,4 +139,5 @@ public class ChatConfig extends BaseModelConfig {
     public void setObservabilityEnabled(boolean observabilityEnabled) {
         this.observabilityEnabled = observabilityEnabled;
     }
+
 }

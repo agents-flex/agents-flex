@@ -21,40 +21,14 @@ public class OpenAIChatConfig extends ChatConfig {
 
     private static final String DEFAULT_PROVIDER = "openai";
     private static final String DEFAULT_MODEL = "gpt-3.5-turbo";
-    private static final String DEFAULT_EMBEDDING_MODEL = "text-embedding-ada-002";
     private static final String DEFAULT_ENDPOINT = "https://api.openai.com";
+    private static final String DEFAULT_REQUEST_PATH = "/v1/chat/completions";
 
-    private String defaultEmbeddingModel = DEFAULT_EMBEDDING_MODEL;
-    private String chatPath = "/v1/chat/completions";
-    private String embedPath = "/v1/embeddings";
-
-    public String getDefaultEmbeddingModel() {
-        return defaultEmbeddingModel;
-    }
-
-    public void setDefaultEmbeddingModel(String defaultEmbeddingModel) {
-        this.defaultEmbeddingModel = defaultEmbeddingModel;
-    }
-
-    public String getChatPath() {
-        return chatPath;
-    }
-
-    public void setChatPath(String chatPath) {
-        this.chatPath = chatPath;
-    }
-
-    public String getEmbedPath() {
-        return embedPath;
-    }
-
-    public void setEmbedPath(String embedPath) {
-        this.embedPath = embedPath;
-    }
 
     public OpenAIChatConfig() {
         setProvider(DEFAULT_PROVIDER);
         setEndpoint(DEFAULT_ENDPOINT);
+        setRequestPath(DEFAULT_REQUEST_PATH);
         setModel(DEFAULT_MODEL);
     }
 

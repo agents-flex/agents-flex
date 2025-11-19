@@ -61,9 +61,7 @@ public class VolcengineChatModel extends BaseChatModel<VolcengineChatConfig> {
         }
 
         String payload = VolcengineUtil.promptToPayload(prompt, config, options, false);
-        String endpoint = config.getEndpoint();
-        String defaultChatApi = config.getDefaultChatApi();
-        String response = httpClient.post(endpoint + defaultChatApi, headers, payload);
+        String response = httpClient.post(config.getFullUrl(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
@@ -94,9 +92,7 @@ public class VolcengineChatModel extends BaseChatModel<VolcengineChatConfig> {
         Map<String, String> headers = buildHeader();
 
         String payload = VolcengineUtil.promptToPayload(prompt, config, options, true);
-        String endpoint = config.getEndpoint();
-        String defaultChatApi = config.getDefaultChatApi();
         StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, listener, prompt, streamMessageParser);
-        streamClient.start(endpoint + defaultChatApi, headers, payload, clientListener, config);
+        streamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
     }
 }

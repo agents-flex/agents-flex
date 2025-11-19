@@ -21,9 +21,11 @@ public class QwenChatConfig extends ChatConfig {
 
     private static final String DEFAULT_MODEL = "qwen-turbo";
     private static final String DEFAULT_ENDPOINT = "https://dashscope.aliyuncs.com";
+    private static final String DEFAULT_REQUEST_PATH = "/compatible-mode/v1/chat/completions";
 
     public QwenChatConfig() {
         setEndpoint(DEFAULT_ENDPOINT);
+        setRequestPath(DEFAULT_REQUEST_PATH);
         setModel(DEFAULT_MODEL);
     }
 

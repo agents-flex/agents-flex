@@ -65,7 +65,7 @@ public class QianFanLlmUtil {
 
 
     public static AiMessageParser getAiMessageParser(boolean isStream) {
-        return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
+        return DefaultAiMessageParser.getOpenAIMessageParser(isStream);
     }
 
 

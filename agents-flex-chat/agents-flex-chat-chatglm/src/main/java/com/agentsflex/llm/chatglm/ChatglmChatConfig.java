@@ -21,9 +21,11 @@ public class ChatglmChatConfig extends ChatConfig {
 
 	private static final String DEFAULT_MODEL = "glm-4";
 	private static final String DEFAULT_ENDPOINT = "https://open.bigmodel.cn";
+    private static final String DEFAULT_REQUEST_PATH = "/api/paas/v4/chat/completions";
 
 	public ChatglmChatConfig() {
 		setEndpoint(DEFAULT_ENDPOINT);
+        setRequestPath(DEFAULT_REQUEST_PATH);
 		setModel(DEFAULT_MODEL);
 	}
 }

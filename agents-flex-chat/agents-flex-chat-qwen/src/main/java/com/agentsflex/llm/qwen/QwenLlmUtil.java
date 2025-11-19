@@ -35,7 +35,7 @@ public class QwenLlmUtil {
     private static final MessageFormat MESSAGE_FORMAT = new OpenAIMessageFormat();
 
     public static AiMessageParser getAiMessageParser(boolean isStream) {
-        return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
+        return DefaultAiMessageParser.getOpenAIMessageParser(isStream);
     }
 
 
@@ -64,8 +64,8 @@ public class QwenLlmUtil {
             params.setIf(op.getTranslationOptions() != null, "translation_options", op.getTranslationOptions());
             params.setIf(op.getEnableSearch() != null, "enable_search", op.getEnableSearch());
             params.setIf(op.getEnableSearch() != null && op.getEnableSearch() && op.getSearchOptions() != null, "search_options", op.getSearchOptions());
-            params.setIf(op.getEnableThinking() != null, "enable_thinking", op.getEnableThinking());
-            params.setIf(op.getEnableThinking() != null && op.getEnableThinking() && op.getThinkingBudget() != null, "thinking_budget", op.getThinkingBudget());
+            params.setIf(op.getThinkingEnabled() != null, "enable_thinking", op.getThinkingEnabled());
+            params.setIf(op.getThinkingEnabled() != null && op.getThinkingEnabled() && op.getThinkingBudget() != null, "thinking_budget", op.getThinkingBudget());
         }
         params.setIfNotEmpty(options.getExtra());
         return params.toJSON();

@@ -102,7 +102,7 @@ public class OllamaLlmUtil {
         UserMessage message = MessageUtil.findLastUserMessage(messages);
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
-            .set("think", Optional.ofNullable(options.getEnableThinking()).orElse(config.getEnableThinking()))
+            .set("think", config.isSupportThinking() ? Optional.ofNullable(options.getThinkingEnabled()).orElse(config.isThinkingEnabled()) : null)
             .setIf(!stream, "stream", stream)
             .setIfNotEmpty("tools", MESSAGE_FORMAT.toFunctionsJsonObject(message))
             .setIfNotEmpty("options.seed", options.getSeed())

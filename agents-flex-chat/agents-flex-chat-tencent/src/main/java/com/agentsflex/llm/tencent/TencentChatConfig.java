@@ -17,6 +17,8 @@ package com.agentsflex.llm.tencent;
 
 import com.agentsflex.core.model.chat.ChatConfig;
 
+import java.util.Map;
+
 public class TencentChatConfig extends ChatConfig {
 
     private static final String DEFAULT_MODEL = "hunyuan-lite";
@@ -44,5 +46,10 @@ public class TencentChatConfig extends ChatConfig {
             endpoint = endpoint.substring(7);
         }
         return endpoint;
+    }
+
+    public String getApiSecret() {
+        Map<String, Object> customProperties = getCustomProperties();
+        return customProperties != null ? (String) customProperties.get("apiSecret") : null;
     }
 }

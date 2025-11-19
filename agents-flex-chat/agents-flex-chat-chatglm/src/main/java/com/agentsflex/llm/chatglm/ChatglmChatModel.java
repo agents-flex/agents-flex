@@ -51,9 +51,8 @@ public class ChatglmChatModel extends BaseChatModel<ChatglmChatConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", ChatglmLlmUtil.createAuthorizationToken(config));
 
-        String endpoint = config.getEndpoint();
         String payload = ChatglmLlmUtil.promptToPayload(prompt, config, false, options);
-        String response = httpClient.post(endpoint + "/api/paas/v4/chat/completions", headers, payload);
+        String response = httpClient.post(config.getFullUrl(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
@@ -88,9 +87,8 @@ public class ChatglmChatModel extends BaseChatModel<ChatglmChatConfig> {
 
         String payload = ChatglmLlmUtil.promptToPayload(prompt, config, true, options);
 
-        String endpoint = config.getEndpoint();
         StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, listener, prompt, aiStreamMessageParser);
-        streamClient.start(endpoint + "/api/paas/v4/chat/completions", headers, payload, clientListener, config);
+        streamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
     }
 
 }

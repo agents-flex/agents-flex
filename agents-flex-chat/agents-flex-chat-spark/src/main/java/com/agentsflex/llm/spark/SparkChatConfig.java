@@ -19,50 +19,28 @@ import com.agentsflex.core.model.chat.ChatConfig;
 
 public class SparkChatConfig extends ChatConfig {
 
-    private String appId;
-    private String apiSecret;
-    private  String apiKey ;
-    private  String version = "v3.5";
-    private int concurrencyLimitSleepMillis = 200;
-
-
     public String getAppId() {
-        return appId;
+        return properties != null ? properties.get("appId") : null;
     }
 
     public void setAppId(String appId) {
-        this.appId = appId;
+        this.addProperty("appId", appId);
     }
 
     public String getApiSecret() {
-        return apiSecret;
+        return properties != null ? properties.get("apiSecret") : null;
     }
 
     public void setApiSecret(String apiSecret) {
-        this.apiSecret = apiSecret;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
+        addProperty("apiSecret", apiSecret);
     }
 
     public String getVersion() {
-        return version;
+        return properties != null ? properties.get("version") : null;
     }
 
     public void setVersion(String version) {
-        this.version = version;
+        addProperty("version", version);
     }
 
-    public int getConcurrencyLimitSleepMillis() {
-        return concurrencyLimitSleepMillis;
-    }
-
-    public void setConcurrencyLimitSleepMillis(int concurrencyLimitSleepMillis) {
-        this.concurrencyLimitSleepMillis = concurrencyLimitSleepMillis;
-    }
 }

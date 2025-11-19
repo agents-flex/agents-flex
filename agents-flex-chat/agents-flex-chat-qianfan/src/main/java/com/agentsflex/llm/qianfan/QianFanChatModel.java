@@ -46,8 +46,7 @@ public class QianFanChatModel extends BaseChatModel<QianFanChatConfig> {
     @Override
     public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
         String payload = QianFanLlmUtil.promptToPayload(prompt, config, options, false);
-        String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + "/chat/completions", headers, payload);
+        String response = httpClient.post(config.getFullUrl(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
@@ -77,7 +76,7 @@ public class QianFanChatModel extends BaseChatModel<QianFanChatConfig> {
         StreamClient streamClient = new SseClient();
         String payload = QianFanLlmUtil.promptToPayload(prompt, config, options, true);
         StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, listener, prompt, streamMessageParser);
-        streamClient.start(config.getEndpoint() + "/chat/completions", headers, payload, clientListener, config);
+        streamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
     }
 
 }

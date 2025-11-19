@@ -51,9 +51,8 @@ public class OllamaChatModel extends BaseChatModel<OllamaChatConfig> {
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
-        String endpoint = config.getEndpoint();
         String payload = OllamaLlmUtil.promptToPayload(prompt, config, options, false);
-        String response = httpClient.post(endpoint + "/api/chat", headers, payload);
+        String response = httpClient.post(config.getFullUrl(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
@@ -87,9 +86,8 @@ public class OllamaChatModel extends BaseChatModel<OllamaChatConfig> {
 
         String payload = OllamaLlmUtil.promptToPayload(prompt, config, options, true);
 
-        String endpoint = config.getEndpoint();
         StreamClientListener clientListener = new BaseStreamClientListener(this, dnjsonStreamClient, listener, prompt, aiMessageParser);
-        dnjsonStreamClient.start(endpoint + "/api/chat", headers, payload, clientListener, config);
+        dnjsonStreamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
     }
 
     public HttpClient getHttpClient() {

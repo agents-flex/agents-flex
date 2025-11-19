@@ -24,11 +24,9 @@ public class OpenAIAutoConfiguration {
     public OpenAIChatModel openAILlm(OpenAIProperties properties) {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setApiKey(properties.getApiKey());
-        config.setApiSecret(properties.getApiSecret());
         config.setEndpoint(properties.getEndpoint());
         config.setModel(properties.getModel());
-        config.setChatPath(properties.getChatPath());
-        config.setEmbedPath(properties.getEmbedPath());
+        config.setRequestPath(properties.getRequestPath());
         return new OpenAIChatModel(config);
     }
 

@@ -54,11 +54,10 @@ public class QwenChatModel extends BaseChatModel<QwenChatConfig> {
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
         //非流式返回，需要设置为 false
-        options.setEnableThinking(false);
+        options.setThinkingEnabled(false);
 
         String payload = QwenLlmUtil.promptToPayload(prompt, config, options, false);
-        String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + "/compatible-mode/v1/chat/completions", headers, payload);
+        String response = httpClient.post(config.getFullUrl(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
@@ -95,11 +94,8 @@ public class QwenChatModel extends BaseChatModel<QwenChatConfig> {
         String payload = QwenLlmUtil.promptToPayload(prompt, config, options, true);
         StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, listener, prompt, streamMessageParser);
 
-        String endpoint = config.getEndpoint();
-        streamClient.start(endpoint + "/compatible-mode/v1/chat/completions", headers, payload, clientListener, config);
+        streamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
     }
-
-
 
 
 }

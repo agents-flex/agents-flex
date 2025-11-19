@@ -1,32 +1,20 @@
-/*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
- *  <p>
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  <p>
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  <p>
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 package com.agentsflex.core.model.config;
 
 import java.io.Serializable;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class BaseModelConfig implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     protected String provider;
     protected String endpoint;
     protected String requestPath;
     protected String model;
     protected String apiKey;
-    protected Map<String, String> properties;
-    protected Set<String> features;
+
+    protected Map<String, Object> customProperties;
+
+    // ---------- Getters and Setters ----------
 
     public String getProvider() {
         return provider;
@@ -41,6 +29,9 @@ public class BaseModelConfig implements Serializable {
     }
 
     public void setEndpoint(String endpoint) {
+        if (endpoint != null && endpoint.endsWith("/")) {
+            endpoint = endpoint.substring(0, endpoint.length() - 1);
+        }
         this.endpoint = endpoint;
     }
 
@@ -49,6 +40,9 @@ public class BaseModelConfig implements Serializable {
     }
 
     public void setRequestPath(String requestPath) {
+        if (requestPath != null && !requestPath.startsWith("/")) {
+            requestPath = "/" + requestPath;
+        }
         this.requestPath = requestPath;
     }
 
@@ -68,23 +62,73 @@ public class BaseModelConfig implements Serializable {
         this.apiKey = apiKey;
     }
 
-    public Map<String, String> getProperties() {
-        return properties;
+    // ---------- Custom Properties ----------
+
+    public Map<String, Object> getCustomProperties() {
+        return customProperties == null
+            ? Collections.emptyMap()
+            : Collections.unmodifiableMap(customProperties);
     }
 
-    public void setProperties(Map<String, String> properties) {
-        this.properties = properties;
+    public void setCustomProperties(Map<String, Object> customProperties) {
+        this.customProperties = customProperties == null
+            ? null
+            : new HashMap<>(customProperties);
     }
 
-    public Set<String> getFeatures() {
-        return features;
+    public void putCustomProperty(String key, Object value) {
+        if (customProperties == null) {
+            customProperties = new HashMap<>();
+        }
+        customProperties.put(key, value);
     }
 
-    public void setFeatures(Set<String> features) {
-        this.features = features;
+    @SuppressWarnings("unchecked")
+    public <T> T getCustomProperty(String key, Class<T> type) {
+        Object value = customProperties == null ? null : customProperties.get(key);
+        if (value == null) return null;
+        if (type.isInstance(value)) {
+            return type.cast(value);
+        }
+        throw new ClassCastException("Property '" + key + "' is not of type " + type.getSimpleName());
     }
 
-    public boolean isSupport(String feature) {
-        return features != null && features.contains(feature);
+    // ---------- Utility: Full URL ----------
+
+    public String getFullUrl() {
+        return (endpoint != null ? endpoint : "") +
+            (requestPath != null ? requestPath : "");
+    }
+
+    // ---------- Object Methods ----------
+
+    @Override
+    public String toString() {
+        return "BaseModelConfig{" +
+            "provider='" + provider + '\'' +
+            ", endpoint='" + endpoint + '\'' +
+            ", requestPath='" + requestPath + '\'' +
+            ", model='" + model + '\'' +
+            ", apiKey='[REDACTED]'" +
+            ", customProperties=" + (customProperties == null ? "null" : customProperties.toString()) +
+            '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        BaseModelConfig that = (BaseModelConfig) o;
+        return Objects.equals(provider, that.provider) &&
+            Objects.equals(endpoint, that.endpoint) &&
+            Objects.equals(requestPath, that.requestPath) &&
+            Objects.equals(model, that.model) &&
+            Objects.equals(apiKey, that.apiKey) &&
+            Objects.equals(customProperties, that.customProperties);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(provider, endpoint, requestPath, model, apiKey, customProperties);
     }
 }

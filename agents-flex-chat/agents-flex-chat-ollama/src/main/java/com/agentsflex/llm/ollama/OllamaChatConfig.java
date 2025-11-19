@@ -19,17 +19,10 @@ import com.agentsflex.core.model.chat.ChatConfig;
 
 public class OllamaChatConfig extends ChatConfig {
 
-    /**
-     * 是否开启思考模式，适用于 Qwen3 等模型模型。
-     */
-    private Boolean enableThinking;
-
-    public Boolean getEnableThinking() {
-        return enableThinking;
-    }
-
-    public void setEnableThinking(Boolean enableThinking) {
-        this.enableThinking = enableThinking;
+    public OllamaChatConfig() {
+        setProvider("ollama");
+        setEndpoint("http://localhost:11434");
+        setRequestPath("/api/chat");
     }
 
 }

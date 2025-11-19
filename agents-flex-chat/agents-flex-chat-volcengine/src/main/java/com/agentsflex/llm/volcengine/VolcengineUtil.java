@@ -34,7 +34,7 @@ public class VolcengineUtil {
     private static final MessageFormat MESSAGE_FORMAT = new OpenAIMessageFormat();
 
     public static AiMessageParser getAiMessageParser(boolean isStream) {
-        return DefaultAiMessageParser.getChatGPTMessageParser(isStream);
+        return DefaultAiMessageParser.getOpenAIMessageParser(isStream);
     }
 
     public static String promptToPayload(Prompt prompt, VolcengineChatConfig config, ChatOptions options, boolean withStream) {

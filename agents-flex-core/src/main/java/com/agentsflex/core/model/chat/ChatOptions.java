@@ -49,7 +49,7 @@ public class ChatOptions {
     /**
      * 是否开启思考模式，适用于 Qwen3 等模型模型。
      */
-    private Boolean enableThinking;
+    private Boolean thinkingEnabled;
 
     /**
      * 额外的参数，用于传递给模型。
@@ -112,12 +112,12 @@ public class ChatOptions {
         this.stop = stop;
     }
 
-    public Boolean getEnableThinking() {
-        return enableThinking;
+    public Boolean getThinkingEnabled() {
+        return thinkingEnabled;
     }
 
-    public void setEnableThinking(Boolean enableThinking) {
-        this.enableThinking = enableThinking;
+    public void setThinkingEnabled(Boolean thinkingEnabled) {
+        this.thinkingEnabled = thinkingEnabled;
     }
 
     public Map<String, Object> getExtra() {

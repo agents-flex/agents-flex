@@ -93,16 +93,16 @@ public class OpenAIChatModel extends BaseChatModel<OpenAIChatConfig> {
         }
 
         // 非流式返回，比如 Qwen3 等必须设置 false，否则自动流式返回了
-        if (options.getEnableThinking() == null) {
-            options.setEnableThinking(false);
+        if (options.getThinkingEnabled() == null) {
+            options.setThinkingEnabled(false);
         }
 
         String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, false);
         if (config.isDebug()) {
             LogUtil.println(">>>>send payload:" + payload);
         }
-        String url = config.getEndpoint() + config.getChatPath();
-        String response = httpClient.post(url, headers, payload);
+
+        String response = httpClient.post(config.getFullUrl(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
@@ -137,11 +137,8 @@ public class OpenAIChatModel extends BaseChatModel<OpenAIChatConfig> {
         headers.put("Authorization", "Bearer " + getConfig().getApiKey());
 
         String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, true);
-        String endpoint = config.getEndpoint();
-
-
         StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, listener, prompt, streamMessageParser);
-        streamClient.start(endpoint + config.getChatPath(), headers, payload, clientListener, config);
+        streamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
     }
 
 

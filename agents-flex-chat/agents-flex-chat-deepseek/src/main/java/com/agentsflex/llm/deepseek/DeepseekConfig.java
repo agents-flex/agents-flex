@@ -25,15 +25,12 @@ public class DeepseekConfig extends ChatConfig {
 
     private static final String DEFAULT_MODEL = "deepseek-chat";
     private static final String DEFAULT_ENDPOINT = "https://api.deepseek.com";
+    private static final String DEFAULT_REQUEST_PATH = "/chat/completions";
 
     public DeepseekConfig() {
         setEndpoint(DEFAULT_ENDPOINT);
+        setRequestPath(DEFAULT_REQUEST_PATH);
         setModel(DEFAULT_MODEL);
-    }
-
-    public DeepseekConfig(String model) {
-        this();
-        setModel(model);
     }
 
 }

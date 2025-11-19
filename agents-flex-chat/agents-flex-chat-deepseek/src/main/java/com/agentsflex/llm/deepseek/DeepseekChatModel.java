@@ -68,8 +68,7 @@ public class DeepseekChatModel extends BaseChatModel<DeepseekConfig> {
         }
 
         String payload = DeepseekLlmUtil.promptToPayload(prompt, config, options, false);
-        String endpoint = config.getEndpoint();
-        String response = httpClient.post(endpoint + "/chat/completions", headers, payload);
+        String response = httpClient.post(config.getFullUrl(), headers, payload);
 
         if (config.isDebug()) {
             LogUtil.println(">>>>receive payload:" + response);
@@ -97,9 +96,8 @@ public class DeepseekChatModel extends BaseChatModel<DeepseekConfig> {
     public void doChatStream(Prompt prompt, StreamResponseListener streamResponseListener, ChatOptions chatOptions) {
         StreamClient streamClient = new SseClient();
         String payload = DeepseekLlmUtil.promptToPayload(prompt, config, chatOptions, true);
-        String endpoint = config.getEndpoint();
         StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, streamResponseListener, prompt, streamMessageParser);
-        streamClient.start(endpoint + "/chat/completions", headers, payload, clientListener, config);
+        streamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
     }
 
     @Override

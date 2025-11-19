@@ -11,12 +11,16 @@ public class JSONUtil {
 
     private static final Map<String, JSONPath> jsonPaths = new ConcurrentHashMap<>();
 
+    public static JSONPath getJsonPath(String path) {
+        return MapUtil.computeIfAbsent(jsonPaths, path, JSONPath::of);
+    }
+
     public static double[] readDoubleArray(JSONObject jsonObject, String path) {
         if (jsonObject == null || path == null) {
             return null;
         }
 
-        JSONPath jsonPath = jsonPaths.computeIfAbsent(path, JSONPath::of);
+        JSONPath jsonPath = getJsonPath(path);
         Object result = jsonPath.eval(jsonObject);
 
         if (result == null) {
@@ -52,7 +56,7 @@ public class JSONUtil {
             return null;
         }
 
-        JSONPath jsonPath = jsonPaths.computeIfAbsent(path, JSONPath::of);
+        JSONPath jsonPath = getJsonPath(path);
         Object result = jsonPath.eval(jsonObject);
 
         if (result == null) {
@@ -70,7 +74,7 @@ public class JSONUtil {
         if (jsonObject == null || path == null) {
             return null;
         }
-        JSONPath jsonPath = jsonPaths.computeIfAbsent(path, JSONPath::of);
+        JSONPath jsonPath = getJsonPath(path);
         Object result = jsonPath.eval(jsonObject);
         if (result == null) {
             return null;
@@ -88,7 +92,7 @@ public class JSONUtil {
         if (jsonObject == null || path == null) {
             return null;
         }
-        JSONPath jsonPath = jsonPaths.computeIfAbsent(path, JSONPath::of);
+        JSONPath jsonPath = getJsonPath(path);
         Object result = jsonPath.eval(jsonObject);
         if (result == null) {
             return null;
