@@ -85,7 +85,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
 
         embedDocumentsIfNecessary(documents, options);
 
-        return storeInternal(documents, options);
+        return doStore(documents, options);
     }
 
     @Override
@@ -93,7 +93,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
         if (options == null) {
             options = StoreOptions.DEFAULT;
         }
-        return deleteInternal(ids, options);
+        return doDelete(ids, options);
     }
 
     @Override
@@ -103,7 +103,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
         }
 
         embedDocumentsIfNecessary(documents, options);
-        return updateInternal(documents, options);
+        return doUpdate(documents, options);
     }
 
 
@@ -121,7 +121,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
             wrapper.setVector(vectorData.getVector());
         }
 
-        return searchInternal(wrapper, options);
+        return doSearch(wrapper, options);
     }
 
 
@@ -140,11 +140,11 @@ public abstract class DocumentStore extends VectorStore<Document> {
     }
 
 
-    public abstract StoreResult storeInternal(List<Document> documents, StoreOptions options);
+    public abstract StoreResult doStore(List<Document> documents, StoreOptions options);
 
-    public abstract StoreResult deleteInternal(Collection<?> ids, StoreOptions options);
+    public abstract StoreResult doDelete(Collection<?> ids, StoreOptions options);
 
-    public abstract StoreResult updateInternal(List<Document> documents, StoreOptions options);
+    public abstract StoreResult doUpdate(List<Document> documents, StoreOptions options);
 
-    public abstract List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options);
+    public abstract List<Document> doSearch(SearchWrapper wrapper, StoreOptions options);
 }

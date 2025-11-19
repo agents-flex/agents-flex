@@ -242,7 +242,7 @@ public class ChromaVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         Objects.requireNonNull(documents, "Documents cannot be null");
 
         if (documents.isEmpty()) {
@@ -324,7 +324,7 @@ public class ChromaVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         Objects.requireNonNull(ids, "IDs cannot be null");
 
         if (ids.isEmpty()) {
@@ -382,7 +382,7 @@ public class ChromaVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         Objects.requireNonNull(documents, "Documents cannot be null");
 
         if (documents.isEmpty()) {
@@ -393,14 +393,14 @@ public class ChromaVectorStore extends DocumentStore {
         try {
             // Chroma doesn't support direct update, so we delete and re-add
             List<Object> ids = documents.stream().map(Document::getId).collect(Collectors.toList());
-            StoreResult deleteResult = deleteInternal(ids, options);
+            StoreResult deleteResult = doDelete(ids, options);
 
             if (!deleteResult.isSuccess()) {
                 logger.warn("Delete failed during update operation: {}", deleteResult.toString());
                 // 尝试继续添加，因为可能有些文档是新的
             }
 
-            StoreResult storeResult = storeInternal(documents, options);
+            StoreResult storeResult = doStore(documents, options);
 
             if (storeResult.isSuccess()) {
                 logger.debug("Successfully updated {} documents", documents.size());
@@ -414,7 +414,7 @@ public class ChromaVectorStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
         Objects.requireNonNull(wrapper, "SearchWrapper cannot be null");
 
         try {

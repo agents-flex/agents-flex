@@ -83,13 +83,13 @@ public class ElasticSearchVectorStoreTest {
         doc5.setContent("test5");
         doc5.setVector(new double[]{3.3, 4.5});
         list.add(doc5);
-        store.storeInternal(list, StoreOptions.DEFAULT);
+        store.doStore(list, StoreOptions.DEFAULT);
 
         // 可能要等一会 才能查出结果
         SearchWrapper searchWrapper = new SearchWrapper();
         searchWrapper.setVector(new double[]{5, 4});
         searchWrapper.setMaxResults(3);
-        List<Document> documents = store.searchInternal(searchWrapper, StoreOptions.DEFAULT);
+        List<Document> documents = store.doSearch(searchWrapper, StoreOptions.DEFAULT);
         for (Document document : documents) {
             System.out.printf("id=%s, content=%s, vector=%s, metadata=%s\n",
                 document.getId(), document.getContent(), Arrays.toString(document.getVector()), document.getMetadataMap());

@@ -53,7 +53,7 @@ public class VectoRexStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         List<Map<String, Object>> data=new ArrayList<>();
         for (Document doc : documents) {
             Map<String, Object> dict=new HashMap<>();
@@ -93,7 +93,7 @@ public class VectoRexStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         for (Object id : ids) {
             CollectionDataDelReq req = CollectionDataDelReq.builder().collectionName(options.getCollectionNameOrDefault(defaultCollectionName)).id((String) id).build();
             ServerResponse<Void> response = client.deleteCollectionData(req);
@@ -106,7 +106,7 @@ public class VectoRexStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
         ServerResponse<List<VectorSearchResult>> response = client.queryCollectionData(QueryBuilder.lambda(options.getCollectionNameOrDefault(defaultCollectionName)).vector("vector", Collections.singletonList(VectorUtil.toFloatList(searchWrapper.getVector()))).topK(searchWrapper.getMaxResults()));
         if(!response.isSuccess()){
             logger.error("Error searching in VectoRex", response.getMsg());
@@ -131,7 +131,7 @@ public class VectoRexStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.success();
         }

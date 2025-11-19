@@ -106,7 +106,7 @@ public class RedisVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         String indexName = createIndexName(options);
 
         if (StringUtil.noText(indexName)) {
@@ -145,7 +145,7 @@ public class RedisVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         String indexName = createIndexName(options);
         try (Pipeline pipeline = this.jedis.pipelined()) {
             for (Object id : ids) {
@@ -167,13 +167,13 @@ public class RedisVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
-        return storeInternal(documents, options);
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
+        return doStore(documents, options);
     }
 
 
     @Override
-    public List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
         String indexName = createIndexName(options);
 
         if (StringUtil.noText(indexName)) {

@@ -76,7 +76,7 @@ public class PgvectorVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
 
         // 表名
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
@@ -127,7 +127,7 @@ public class PgvectorVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         StringBuilder sql = new StringBuilder("DELETE FROM " + options.getCollectionNameOrDefault(defaultCollectionName) + " WHERE id IN (");
         for (int i = 0; i < ids.size(); i++) {
             sql.append("?");
@@ -156,7 +156,7 @@ public class PgvectorVectorStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
         StringBuilder sql = new StringBuilder("select ");
         if (searchWrapper.isOutputVector()) {
             sql.append("id, vector, content, metadata");
@@ -201,7 +201,7 @@ public class PgvectorVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.success();
         }

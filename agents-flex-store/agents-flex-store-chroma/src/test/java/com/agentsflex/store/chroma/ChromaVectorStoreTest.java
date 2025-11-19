@@ -151,7 +151,7 @@ public class ChromaVectorStoreTest {
 
         // 存储文档
         try {
-            StoreResult result = store.storeInternal(documents, StoreOptions.DEFAULT);
+            StoreResult result = store.doStore(documents, StoreOptions.DEFAULT);
             System.out.println("Store result: " + result);
 
             // 验证存储是否成功
@@ -198,7 +198,7 @@ public class ChromaVectorStoreTest {
 
         try {
             // 首先存储一些测试文档
-            store.storeInternal(documents, StoreOptions.DEFAULT);
+            store.doStore(documents, StoreOptions.DEFAULT);
 
             // 创建搜索包装器
             SearchWrapper searchWrapper = new SearchWrapper();
@@ -207,7 +207,7 @@ public class ChromaVectorStoreTest {
             searchWrapper.setMaxResults(3);
 
             // 执行搜索
-            List<Document> searchResults = store.searchInternal(searchWrapper, StoreOptions.DEFAULT);
+            List<Document> searchResults = store.doSearch(searchWrapper, StoreOptions.DEFAULT);
 
             // 验证搜索结果
             assertNotNull("Search results should not be null", searchResults);
@@ -261,7 +261,7 @@ public class ChromaVectorStoreTest {
 
         try {
             // 首先存储一些测试文档
-            store.storeInternal(documents, StoreOptions.DEFAULT);
+            store.doStore(documents, StoreOptions.DEFAULT);
 
             // 修改文档内容
             Document updatedDoc = documents.get(0);
@@ -269,7 +269,7 @@ public class ChromaVectorStoreTest {
             updatedDoc.setContent(originalContent + " [UPDATED]");
 
             // 执行更新
-            StoreResult result = store.updateInternal(Arrays.asList(updatedDoc), StoreOptions.DEFAULT);
+            StoreResult result = store.doUpdate(Arrays.asList(updatedDoc), StoreOptions.DEFAULT);
 
             // 验证更新是否成功
             assertTrue("Update operation should be successful", result.isSuccess());
@@ -279,7 +279,7 @@ public class ChromaVectorStoreTest {
             searchWrapper.setVector(updatedDoc.getVector());
             searchWrapper.setMaxResults(1);
 
-            List<Document> searchResults = store.searchInternal(searchWrapper, StoreOptions.DEFAULT);
+            List<Document> searchResults = store.doSearch(searchWrapper, StoreOptions.DEFAULT);
             assertTrue("Should find the updated document", !searchResults.isEmpty());
             assertEquals("Document content should be updated",
                 updatedDoc.getContent(), searchResults.get(0).getContent());
@@ -322,14 +322,14 @@ public class ChromaVectorStoreTest {
 
         try {
             // 首先存储一些测试文档
-            store.storeInternal(documents, StoreOptions.DEFAULT);
+            store.doStore(documents, StoreOptions.DEFAULT);
 
             // 获取要删除的文档ID
             List<Object> idsToDelete = new ArrayList<>();
             idsToDelete.add(documents.get(0).getId());
 
             // 执行删除
-            StoreResult result = store.deleteInternal(idsToDelete, StoreOptions.DEFAULT);
+            StoreResult result = store.doDelete(idsToDelete, StoreOptions.DEFAULT);
 
             // 验证删除是否成功
             assertTrue("Delete operation should be successful", result.isSuccess());
@@ -339,7 +339,7 @@ public class ChromaVectorStoreTest {
             searchWrapper.setVector(documents.get(0).getVector());
             searchWrapper.setMaxResults(10);
 
-            List<Document> searchResults = store.searchInternal(searchWrapper, StoreOptions.DEFAULT);
+            List<Document> searchResults = store.doSearch(searchWrapper, StoreOptions.DEFAULT);
 
             // 检查结果中是否包含已删除的文档
             boolean deletedDocFound = searchResults.stream()

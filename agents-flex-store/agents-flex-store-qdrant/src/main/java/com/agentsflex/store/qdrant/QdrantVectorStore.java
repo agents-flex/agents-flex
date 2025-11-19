@@ -82,7 +82,7 @@ public class QdrantVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         List<PointStruct> points = new ArrayList<>();
         int size = 1024;
         for (Document doc : documents) {
@@ -119,7 +119,7 @@ public class QdrantVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         try {
             String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
             List<PointId> pointIds = ids.stream()
@@ -133,7 +133,7 @@ public class QdrantVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         try {
             List<PointStruct> points = new ArrayList<>();
             for (Document doc : documents) {
@@ -156,7 +156,7 @@ public class QdrantVectorStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
         List<Document> documents = new ArrayList<>();
         try {
             String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
