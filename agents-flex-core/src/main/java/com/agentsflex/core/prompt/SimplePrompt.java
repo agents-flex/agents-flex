@@ -119,16 +119,8 @@ public class SimplePrompt extends Prompt {
         userMessage.addImageFile(imageFile);
     }
 
-    public List<String> getImageBase64s() {
-        return userMessage.getImageBase64s();
-    }
-
-    public void setImageBase64s(List<String> imageBase64s) {
-        userMessage.setImageBase64s(imageBase64s);
-    }
-
-    public void addImageBase64(String imageBase64) {
-        userMessage.addImageBase64(imageBase64);
+    public void addImageBytes(byte[] imageBytes, String mimeType) {
+        userMessage.addImageBytes(imageBytes, mimeType);
     }
 
 

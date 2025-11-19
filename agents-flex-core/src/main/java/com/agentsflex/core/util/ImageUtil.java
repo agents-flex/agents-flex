@@ -59,7 +59,7 @@ public class ImageUtil {
         try {
             byte[] bytes = imageHttpClient.getBytes(imageUrl);
             String mimeType = guessMimeTypeFromName(imageUrl);
-            return toDataUri(bytes, mimeType);
+            return imageBytesToDataUri(bytes, mimeType);
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to convert image URL to Data URI: " + imageUrl, e);
         }
@@ -74,7 +74,7 @@ public class ImageUtil {
         Objects.requireNonNull(imageFile, "Image file must not be null");
         byte[] bytes = IOUtil.readBytes(imageFile);
         String mimeType = guessMimeTypeFromName(imageFile.getName());
-        return toDataUri(bytes, mimeType);
+        return imageBytesToDataUri(bytes, mimeType);
     }
 
 
@@ -106,8 +106,7 @@ public class ImageUtil {
         return mime != null ? mime : "image/jpeg";
     }
 
-    // ========== Data URI 构造 ==========
-    private static String toDataUri(byte[] data, String mimeType) {
+    public static String imageBytesToDataUri(byte[] data, String mimeType) {
         String base64 = Base64.getEncoder().encodeToString(data);
         return mimeType + ";base64," + base64;
     }

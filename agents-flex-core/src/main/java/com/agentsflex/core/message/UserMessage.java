@@ -31,7 +31,7 @@ public class UserMessage extends AbstractTextMessage {
     private List<String> audioUrls;
     private List<String> videoUrls;
     private List<String> imageUrls;
-    private List<String> imageBase64s;
+//    private List<String> imageBase64s;
 
     private List<Function> functions;
     private String toolChoice;
@@ -153,41 +153,19 @@ public class UserMessage extends AbstractTextMessage {
     }
 
     public void addImageFile(File imageFile) {
-        addImageBase64(ImageUtil.imageFileToDataUri(imageFile));
+        addImageUrl(ImageUtil.imageFileToDataUri(imageFile));
     }
 
-    public List<String> getImageBase64s() {
-        return imageBase64s;
+    public void addImageBytes(byte[] imageBytes, String mimeType) {
+        addImageUrl(ImageUtil.imageBytesToDataUri(imageBytes, mimeType));
     }
 
-    public void setImageBase64s(List<String> imageBase64s) {
-        this.imageBase64s = imageBase64s;
-    }
-
-    public void addImageBase64(String imageBase64) {
-        if (this.imageBase64s == null) {
-            this.imageBase64s = new ArrayList<>(1);
-        }
-        this.imageBase64s.add(imageBase64);
-    }
-
-    public List<String> buildAllToBase64s() {
-        List<String> allBase64s = new ArrayList<>();
-        if (imageUrls != null) {
-            for (String imageUrl : imageUrls) {
-                allBase64s.add(ImageUtil.imageUrlToDataUri(imageUrl));
-            }
-        }
-        if (imageBase64s != null) {
-            allBase64s.addAll(imageBase64s);
-        }
-        return allBase64s;
-    }
 
     @Override
     public Object getMessageContent() {
-        if (CollectionUtil.hasItems(audioUrls) || CollectionUtil.hasItems(videoUrls)
-            || CollectionUtil.hasItems(imageUrls) || CollectionUtil.hasItems(imageBase64s)) {
+        if (CollectionUtil.hasItems(audioUrls)
+            || CollectionUtil.hasItems(videoUrls)
+            || CollectionUtil.hasItems(imageUrls)) {
             List<Map<String, Object>> messageContent = new ArrayList<>();
             messageContent.add(Maps.of("type", "text").set("text", getContent()));
 
@@ -203,7 +181,7 @@ public class UserMessage extends AbstractTextMessage {
             }
 
             if ((config == null || config.isSupportImage()) && CollectionUtil.hasItems(imageUrls)) {
-                messageContent.addAll(buildImageContent());
+                messageContent.addAll(buildImageContent(config));
             }
             return messageContent;
         } else {
@@ -214,10 +192,8 @@ public class UserMessage extends AbstractTextMessage {
 
     public List<Map<String, Object>> buildAudioContent() {
         List<Map<String, Object>> result = new ArrayList<>(1);
-        if (audioUrls != null) {
-            for (String url : audioUrls) {
-                result.add(Maps.of("type", "audio_url").set("audio_url", Maps.of("url", url)));
-            }
+        for (String url : audioUrls) {
+            result.add(Maps.of("type", "audio_url").set("audio_url", Maps.of("url", url)));
         }
         return result;
     }
@@ -225,26 +201,21 @@ public class UserMessage extends AbstractTextMessage {
 
     public List<Map<String, Object>> buildVideoContent() {
         List<Map<String, Object>> result = new ArrayList<>(1);
-        if (videoUrls != null) {
-            for (String url : videoUrls) {
-                result.add(Maps.of("type", "video_url").set("video_url", Maps.of("url", url)));
-            }
+        for (String url : videoUrls) {
+            result.add(Maps.of("type", "video_url").set("video_url", Maps.of("url", url)));
         }
         return result;
     }
 
 
-    public List<Map<String, Object>> buildImageContent() {
+    public List<Map<String, Object>> buildImageContent(ChatConfig config) {
         List<Map<String, Object>> result = new ArrayList<>(1);
-        if (imageUrls != null) {
-            for (String url : imageUrls) {
-                result.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", url)));
+        for (String url : imageUrls) {
+            if (config != null && config.isSupportImageBase64Only()
+                && url.toLowerCase().startsWith("http")) {
+                url = ImageUtil.imageUrlToDataUri(url);
             }
-        }
-        if (imageBase64s != null) {
-            for (String base64 : imageBase64s) {
-                result.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", base64)));
-            }
+            result.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", url)));
         }
         return result;
     }
@@ -256,7 +227,6 @@ public class UserMessage extends AbstractTextMessage {
             "audioUrls=" + audioUrls +
             ", videoUrls=" + videoUrls +
             ", imageUrls=" + imageUrls +
-            ", imageBase64s=" + imageBase64s +
             ", functions=" + functions +
             ", toolChoice='" + toolChoice + '\'' +
             ", content='" + content + '\'' +
