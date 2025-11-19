@@ -191,7 +191,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         final long startTimeNanos = observabilityEnabled ? System.nanoTime() : 0;
         boolean success = true;
 
-        try (ChatContextHolder.ChatContextScope contextScope = ChatContextHolder.beginChat(config, currentOptions, currentPrompt, span)) {
+        try (ChatContextHolder.ChatContextScope ignored = ChatContextHolder.beginChat(config, currentOptions, currentPrompt, span)) {
             AiMessageResponse response = doChat(currentPrompt, currentOptions);
             boolean callSuccess = (response != null) && !response.isError();
             AiMessageResponse finalResponse = firePostHandle(originalPrompt, originalOptions, response, callSuccess);
@@ -298,7 +298,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
             }
         };
 
-        try (ChatContextHolder.ChatContextScope contextScope = ChatContextHolder.beginChat(config, currentOptions, currentPrompt, span)) {
+        try (ChatContextHolder.ChatContextScope ignored = ChatContextHolder.beginChat(config, currentOptions, currentPrompt, span)) {
             doChatStream(currentPrompt, wrappedListener, currentOptions);
         } catch (Exception e) {
             success.set(false);
