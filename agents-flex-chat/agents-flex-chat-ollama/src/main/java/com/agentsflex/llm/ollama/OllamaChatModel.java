@@ -19,6 +19,7 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.BaseStreamClientListener;
 import com.agentsflex.core.model.client.HttpClient;
@@ -26,7 +27,6 @@ import com.agentsflex.core.model.client.StreamClientListener;
 import com.agentsflex.core.model.client.impl.DnjsonClient;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -52,12 +52,9 @@ public class OllamaChatModel extends BaseChatModel<OllamaChatConfig> {
         headers.put("Authorization", "Bearer " + config.getApiKey());
 
         String payload = OllamaLlmUtil.promptToPayload(prompt, config, options, false);
+        ChatMessageLogUtil.logRequest(config, payload);
         String response = httpClient.post(config.getFullUrl(), headers, payload);
-
-        if (config.isDebug()) {
-            LogUtil.println(">>>>receive payload:" + response);
-        }
-
+        ChatMessageLogUtil.logResponse(config, response);
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(prompt, response, "no content for response.");
         }

@@ -13,7 +13,7 @@ public class QianFanChatModelTest {
     @Before
     public void setUp() {
         config.setApiKey("***");
-        config.setDebug(true);
+        config.setLogEnabled(true);
     }
 
     @Test(expected = ModelException.class)

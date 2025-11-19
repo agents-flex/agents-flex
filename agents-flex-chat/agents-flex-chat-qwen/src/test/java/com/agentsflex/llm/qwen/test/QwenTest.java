@@ -6,7 +6,7 @@ import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;
-import com.agentsflex.core.util.LogUtil;
+
 import com.agentsflex.llm.qwen.QwenChatConfig;
 import com.agentsflex.llm.qwen.QwenChatModel;
 import com.agentsflex.llm.qwen.QwenChatOptions;
@@ -25,7 +25,7 @@ public class QwenTest {
         ChatModel chatModel = new QwenChatModel(config);
         chatModel.chatStream("请写一个小兔子战胜大灰狼的故事", (context, response) -> {
             AiMessage message = response.getMessage();
-            LogUtil.println(">>>> " + message.getContent());
+            System.out.println(">>>> " + message.getContent());
         });
 
         Thread.sleep(10000);

@@ -69,7 +69,7 @@ public class Test {
 
 
 //        StoreResult result = store.delete("1");
-//        LogUtil.println("-------delete-----" + result);
+//        System.out.println("-------delete-----" + result);
 //        search = store.search(sw);
 //        System.out.println(search);
     }

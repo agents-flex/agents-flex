@@ -16,13 +16,15 @@
 package com.agentsflex.core.model.client.impl;
 
 import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
+import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.client.StreamClient;
 import com.agentsflex.core.model.client.StreamClientListener;
-import com.agentsflex.core.model.client.OkHttpClientUtil;
-import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -31,6 +33,7 @@ import java.util.Map;
 
 public class DnjsonClient implements StreamClient, Callback {
 
+    private static final Logger log = LoggerFactory.getLogger(DnjsonClient.class);
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
     private OkHttpClient okHttpClient;
@@ -75,15 +78,13 @@ public class DnjsonClient implements StreamClient, Callback {
         RequestBody body = RequestBody.create(payload, JSON_TYPE);
         Request request = builder.post(body).build();
 
-        if (config != null && config.isDebug()) {
-            LogUtil.println(">>>> send payload: {}", payload);
-        }
+        ChatMessageLogUtil.logRequest(config, payload);
 
         if (this.listener != null) {
             try {
                 this.listener.onStart(this);
             } catch (Exception e) {
-                LogUtil.warn("Error in listener.onStart", e);
+                log.warn("Error in listener.onStart", e);
                 return; // 可选：是否继续请求？
             }
         }
@@ -108,7 +109,7 @@ public class DnjsonClient implements StreamClient, Callback {
                 listener.onFailure(this, error);
             }
         } catch (Exception ex) {
-            LogUtil.warn("Error in listener.onFailure", ex);
+            log.warn("Error in listener.onFailure", ex);
         } finally {
             markAsStopped();
         }
@@ -146,7 +147,7 @@ public class DnjsonClient implements StreamClient, Callback {
                         try {
                             listener.onMessage(this, jsonLine);
                         } catch (Exception e) {
-                            LogUtil.warn("Error in listener.onMessage", e);
+                            log.warn("Error in listener.onMessage", e);
                         }
                     }
                 }
@@ -166,7 +167,7 @@ public class DnjsonClient implements StreamClient, Callback {
                 try {
                     listener.onStop(this);
                 } catch (Exception e) {
-                    LogUtil.warn("Error in listener.onStop", e);
+                    log.warn("Error in listener.onStop", e);
                 }
             }
         }

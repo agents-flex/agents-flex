@@ -41,8 +41,8 @@ public class BaseStreamClientListener implements StreamClientListener {
     private final StringBuilder fullMessage = new StringBuilder();
     private AiMessage lastAiMessage;
     private final StreamContext context;
-    private final List<FunctionCallRecord> functionCallRecords = new ArrayList<>(0);
-    private FunctionCallRecord functionCallRecord;
+    private final List<FunctionCallInfo> functionCallInfos = new ArrayList<>(0);
+    private FunctionCallInfo functionCallInfo;
 
     public BaseStreamClientListener(ChatModel chatModel
         , StreamClient client
@@ -66,7 +66,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     public void onMessage(StreamClient client, String response) {
         if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim())) {
             //兼容在某些情况下，llm 没有出现 finish_reason: "tool_calls" 的响应
-            if (!this.functionCallRecords.isEmpty()) {
+            if (!this.functionCallInfos.isEmpty()) {
                 invokeOnMessageForFunctionCall(response);
             }
             return;
@@ -91,25 +91,25 @@ public class BaseStreamClientListener implements StreamClientListener {
 
             String functionName = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.name");
             if (StringUtil.hasText(functionName)) {
-                functionCallRecord = new FunctionCallRecord();
-                functionCallRecord.name = functionName;
-                functionCallRecord.id = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].id");
+                functionCallInfo = new FunctionCallInfo();
+                functionCallInfo.name = functionName;
+                functionCallInfo.id = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].id");
 
                 String arguments = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
                 if (arguments != null) {
-                    functionCallRecord.arguments += arguments;
+                    functionCallInfo.arguments += arguments;
                 }
 
-                functionCallRecords.add(functionCallRecord);
+                functionCallInfos.add(functionCallInfo);
                 streamResponseListener.onMatchedFunction(functionName, context);
-            } else if (functionCallRecord != null) {
+            } else if (functionCallInfo != null) {
                 String arguments = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
                 if (arguments != null) {
-                    functionCallRecord.arguments += arguments;
+                    functionCallInfo.arguments += arguments;
                 } else {
                     String finishReason = JSONUtil.readString(jsonObject, "$.choices[0].finish_reason");
                     if ("tool_calls".equals(finishReason)) {
-                        functionCallRecord = null;
+                        functionCallInfo = null;
                         invokeOnMessageForFunctionCall(response);
                     }
                 }
@@ -124,8 +124,8 @@ public class BaseStreamClientListener implements StreamClientListener {
     }
 
     private void invokeOnMessageForFunctionCall(String response) {
-        List<FunctionCall> calls = new ArrayList<>(functionCallRecords.size());
-        for (FunctionCallRecord record : functionCallRecords) {
+        List<FunctionCall> calls = new ArrayList<>(functionCallInfos.size());
+        for (FunctionCallInfo record : functionCallInfos) {
             calls.add(record.toFunctionCall());
         }
         lastAiMessage.setCalls(calls);
@@ -134,7 +134,7 @@ public class BaseStreamClientListener implements StreamClientListener {
             LocalTokenCounter.computeAndSetLocalTokens(prompt.toMessages(), lastAiMessage);
             streamResponseListener.onMessage(context, aiMessageResponse);
         } finally {
-            functionCallRecords.clear();
+            functionCallInfos.clear();
         }
     }
 
@@ -154,7 +154,7 @@ public class BaseStreamClientListener implements StreamClientListener {
         streamResponseListener.onFailure(context, throwable);
     }
 
-    static class FunctionCallRecord {
+    static class FunctionCallInfo {
         String id;
         String name;
         String arguments = "";

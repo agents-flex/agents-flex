@@ -6,7 +6,6 @@ import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.prompt.SimplePrompt;
-import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.llm.spark.SparkChatConfig;
 import com.agentsflex.llm.spark.SparkChatModel;
 import org.junit.Test;
@@ -22,7 +21,7 @@ public class SparkChatModelTest {
         config.setApiSecret("****");
 
 
-        config.setDebug(true);
+        config.setLogEnabled(true);
         return new SparkChatModel(config);
     }
 
@@ -51,7 +50,7 @@ public class SparkChatModelTest {
 
         HistoriesPrompt prompt = new HistoriesPrompt();
 
-        LogUtil.println("您想问什么？");
+        System.out.println("您想问什么？");
         Scanner scanner = new Scanner(System.in);
         String userInput = scanner.nextLine();
 
@@ -60,7 +59,7 @@ public class SparkChatModelTest {
             prompt.addMessage(new UserMessage(userInput));
 
             chatModel.chatStream(prompt, (context, response) -> {
-                LogUtil.println(">>>> " + response.getMessage().getContent());
+                System.out.println(">>>> " + response.getMessage().getContent());
             });
 
             userInput = scanner.nextLine();

@@ -14,7 +14,7 @@ public class OllamaChatModelTest {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3");
-        config.setDebug(true);
+        config.setLogEnabled(true);
 
         ChatModel chatModel = new OllamaChatModel(config);
         String chat = chatModel.chat("who are your");
@@ -27,7 +27,7 @@ public class OllamaChatModelTest {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3");
-        config.setDebug(true);
+        config.setLogEnabled(true);
 
         ChatModel chatModel = new OllamaChatModel(config);
         chatModel.chatStream("who are your", (context, response) -> System.out.println(response.getMessage().getContent()));
@@ -41,7 +41,7 @@ public class OllamaChatModelTest {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3.1");
-        config.setDebug(true);
+        config.setLogEnabled(true);
 
         ChatModel chatModel = new OllamaChatModel(config);
 
@@ -58,7 +58,7 @@ public class OllamaChatModelTest {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3.1");
-        config.setDebug(true);
+        config.setLogEnabled(true);
 
         ChatModel chatModel = new OllamaChatModel(config);
 
@@ -79,7 +79,7 @@ public class OllamaChatModelTest {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llava");
-        config.setDebug(true);
+        config.setLogEnabled(true);
 
         ChatModel chatModel = new OllamaChatModel(config);
 

@@ -58,7 +58,7 @@ public class OpenAIChatModelTest {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3");
-        config.setDebug(true);
+        config.setLogEnabled(true);
 
         ChatModel chatModel = new OpenAIChatModel(config);
         chatModel.chatStream("who are you", new StreamResponseListener() {
@@ -136,7 +136,7 @@ public class OpenAIChatModelTest {
     @Test()
     public void testFunctionCalling3() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setDebug(true);
+        config.setLogEnabled(true);
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
@@ -160,7 +160,7 @@ public class OpenAIChatModelTest {
     @Test()
     public void testFunctionCalling4() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setDebug(true);
+        config.setLogEnabled(true);
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
@@ -183,7 +183,7 @@ public class OpenAIChatModelTest {
     @Test()
     public void testFunctionCalling44() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setDebug(true);
+        config.setLogEnabled(true);
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
@@ -206,7 +206,7 @@ public class OpenAIChatModelTest {
     @Test()
     public void testFunctionCalling444() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setDebug(true);
+        config.setLogEnabled(true);
         config.setEndpoint("https://ark.cn-beijing.volces.com");
         config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
@@ -270,7 +270,7 @@ public class OpenAIChatModelTest {
     @Test()
     public void testFunctionCalling5() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setDebug(true);
+        config.setLogEnabled(true);
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
         config.setApiKey("PXW1");
@@ -293,7 +293,7 @@ public class OpenAIChatModelTest {
     @Test()
     public void testFunctionCalling55() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setDebug(true);
+        config.setLogEnabled(true);
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
         config.setApiKey("PXW1");
@@ -330,7 +330,7 @@ public class OpenAIChatModelTest {
     @Test()
     public void testFunctionCalling6() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setDebug(true);
+        config.setLogEnabled(true);
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
         config.setApiKey("PXW1");

@@ -35,7 +35,7 @@ public class CozeChatModelTest {
     public CozeChatModelTest() {
         config = new CozeChatConfig();
         config.setApiKey(token);
-        config.setDebug(true);
+        config.setLogEnabled(true);
 
         llm  = new CozeChatModel(config);
         options = new CozeChatOptions();

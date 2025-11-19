@@ -20,11 +20,11 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.util.LogUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
@@ -79,11 +79,10 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
         if (StringUtil.hasText(conversationId)) {
             url += "?conversation_id=" + conversationId;
         }
-        String response = httpClient.post(url, buildHeader(), payload);
 
-        if (config.isDebug()) {
-            LogUtil.println(">>>>receive payload:" + response);
-        }
+        ChatMessageLogUtil.logRequest(config, payload);
+        String response = httpClient.post(url, buildHeader(), payload);
+        ChatMessageLogUtil.logResponse(config, response);
 
         // stream mode
         if (stream) {

@@ -16,18 +16,20 @@
 package com.agentsflex.core.model.client.impl;
 
 import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
+import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.client.StreamClient;
 import com.agentsflex.core.model.client.StreamClientListener;
-import com.agentsflex.core.model.client.OkHttpClientUtil;
-import com.agentsflex.core.util.LogUtil;
 import okhttp3.*;
 import okio.ByteString;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class WebSocketClient extends WebSocketListener implements StreamClient {
-
+    private static final Logger log = LoggerFactory.getLogger(WebSocketClient.class);
     private OkHttpClient okHttpClient;
     private WebSocket webSocket;
     private StreamClientListener listener;
@@ -75,10 +77,7 @@ public class WebSocketClient extends WebSocketListener implements StreamClient {
 
         // 创建 WebSocket 连接
         this.webSocket = okHttpClient.newWebSocket(request, this);
-
-        if (config != null && config.isDebug()) {
-            LogUtil.println(">>>>send payload:" + payload);
-        }
+        ChatMessageLogUtil.logRequest(config, payload);
     }
 
     @Override
@@ -96,9 +95,7 @@ public class WebSocketClient extends WebSocketListener implements StreamClient {
 
     @Override
     public void onMessage(WebSocket webSocket, String text) {
-        if (this.config.isDebug()) {
-            LogUtil.println(">>>>receive payload:" + text);
-        }
+        ChatMessageLogUtil.logResponse(config, text);
         this.listener.onMessage(this, text);
     }
 
@@ -142,7 +139,7 @@ public class WebSocketClient extends WebSocketListener implements StreamClient {
                 try {
                     this.listener.onStop(this);
                 } catch (Exception e) {
-                    LogUtil.warn(e.getMessage(), e);
+                    log.warn(e.getMessage(), e);
                 }
             }
 

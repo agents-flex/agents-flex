@@ -36,7 +36,7 @@ public class DeepseekTest {
         deepseekConfig.setEndpoint("https://api.siliconflow.cn/v1");
         deepseekConfig.setApiKey("*********************");
         deepseekConfig.setModel("Pro/deepseek-ai/DeepSeek-V3");
-        deepseekConfig.setDebug(true);
+        deepseekConfig.setLogEnabled(true);
         return new DeepseekChatModel(deepseekConfig);
     }
 

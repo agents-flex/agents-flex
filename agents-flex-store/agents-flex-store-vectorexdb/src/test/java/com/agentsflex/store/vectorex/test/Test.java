@@ -19,7 +19,7 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
-import com.agentsflex.core.util.LogUtil;
+
 import com.agentsflex.llm.openai.OpenAIChatModel;
 import com.agentsflex.llm.openai.OpenAIChatConfig;
 import com.agentsflex.store.vectorex.VectoRexStore;
@@ -56,7 +56,7 @@ public class Test {
 
 
         StoreResult result = store.delete("1");
-        LogUtil.println("-------delete-----" + result);
+        System.out.println("-------delete-----" + result);
         search = store.search(sw);
         System.out.println(search);
     }

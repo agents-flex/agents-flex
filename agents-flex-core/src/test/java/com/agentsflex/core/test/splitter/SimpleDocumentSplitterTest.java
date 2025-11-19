@@ -17,7 +17,7 @@ package com.agentsflex.core.test.splitter;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.splitter.SimpleDocumentSplitter;
-import com.agentsflex.core.util.LogUtil;
+
 import org.junit.Test;
 
 import java.util.List;
@@ -35,7 +35,7 @@ public class SimpleDocumentSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {
-            LogUtil.println(">>>>>" + chunk.getContent());
+            System.out.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -45,7 +45,7 @@ public class SimpleDocumentSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {
-            LogUtil.println(">>>>>" + chunk.getContent());
+            System.out.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -55,7 +55,7 @@ public class SimpleDocumentSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text2));
 
         for (Document chunk : chunks) {
-            LogUtil.println(">>>>>" + chunk.getContent());
+            System.out.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -65,7 +65,7 @@ public class SimpleDocumentSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text2));
 
         for (Document chunk : chunks) {
-            LogUtil.println(">>>>>" + chunk.getContent());
+            System.out.println(">>>>>" + chunk.getContent());
         }
     }
 

@@ -33,15 +33,15 @@ public class ChatConfig extends BaseModelConfig {
     protected boolean observabilityEnabled = true; // 默认开启
     protected boolean thinkingEnabled = false; // 默认关闭
 
-    protected boolean debug;
+    protected boolean logEnabled = true;
     protected Consumer<Map<String, String>> headersConfig;
 
-    public boolean isDebug() {
-        return debug;
+    public boolean isLogEnabled() {
+        return logEnabled;
     }
 
-    public void setDebug(boolean debug) {
-        this.debug = debug;
+    public void setLogEnabled(boolean logEnabled) {
+        this.logEnabled = logEnabled;
     }
 
     public Consumer<Map<String, String>> getHeadersConfig() {

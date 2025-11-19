@@ -17,7 +17,7 @@ public class GiteeAiImageTest {
 //        config.setModel("InternVL3-78B");
         config.setModel("Qwen3-32B");
         config.setEndpoint("https://ai.gitee.com");
-        config.setDebug(true);
+        config.setLogEnabled(true);
         return config;
     }
 
