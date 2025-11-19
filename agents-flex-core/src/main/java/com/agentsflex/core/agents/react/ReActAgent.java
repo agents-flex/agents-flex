@@ -123,7 +123,7 @@ public class ReActAgent {
         listeners.remove(listener);
     }
 
-    public ChatModel getLlm() {
+    public ChatModel getChatModel() {
         return chatModel;
     }
 
@@ -219,6 +219,7 @@ public class ReActAgent {
      * 运行 ReAct Agent 流程
      */
     public void run() {
+        this.iterationCount = 0;
         try {
             String toolsDescription = buildToolsDescription(functions);
             String prompt = promptTemplate
