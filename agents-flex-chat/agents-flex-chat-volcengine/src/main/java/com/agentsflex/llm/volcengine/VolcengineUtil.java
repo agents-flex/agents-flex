@@ -38,7 +38,7 @@ public class VolcengineUtil {
     }
 
     public static String promptToPayload(Prompt prompt, VolcengineChatConfig config, ChatOptions options, boolean withStream) {
-        List<Message> messages = prompt.toMessages();
+        List<Message> messages = prompt.getMessages();
         UserMessage message = MessageUtil.findLastUserMessage(messages);
 
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))

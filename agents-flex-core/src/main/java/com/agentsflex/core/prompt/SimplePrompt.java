@@ -150,7 +150,7 @@ public class SimplePrompt extends Prompt {
     }
 
     @Override
-    public List<Message> toMessages() {
+    public List<Message> getMessages() {
         List<Message> messages = new ArrayList<>(2);
         if (systemMessage != null) {
             messages.add(systemMessage);

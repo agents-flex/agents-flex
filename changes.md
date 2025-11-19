@@ -5,6 +5,8 @@
 - 移除 documentParser 模块
 - 移除 DocumentLoader 模块
 - 新增 file2text 模块
+- 新增 observability 模块
+- 新增 RAG 执行 AI 对文档进行拆分
 - 修改 LLM 为 ChatModel
 - 修改 LLMClient 为 StreamClient
 - 修改 LLMClientListener 为 StreamClientListener

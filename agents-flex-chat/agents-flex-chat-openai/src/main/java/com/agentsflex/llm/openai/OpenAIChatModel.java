@@ -115,7 +115,7 @@ public class OpenAIChatModel extends BaseChatModel<OpenAIChatConfig> {
         JSONObject error = jsonObject.getJSONObject("error");
 
         AiMessage aiMessage = aiMessageParser.parse(jsonObject);
-        LocalTokenCounter.computeAndSetLocalTokens(prompt.toMessages(), aiMessage);
+        LocalTokenCounter.computeAndSetLocalTokens(prompt.getMessages(), aiMessage);
         AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessage);
 
         if (error != null && !error.isEmpty()) {

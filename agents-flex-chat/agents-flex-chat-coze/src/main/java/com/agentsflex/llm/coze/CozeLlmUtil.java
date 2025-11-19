@@ -60,7 +60,7 @@ public class CozeLlmUtil {
 
 
     public static String promptToPayload(Prompt prompt, String botId, String userId, Map<String, String> customVariables, boolean stream) {
-        List<Message> messages = prompt.toMessages();
+        List<Message> messages = prompt.getMessages();
         return Maps.of()
             .set("bot_id", botId)
             .set("user_id", userId)

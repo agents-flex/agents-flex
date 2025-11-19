@@ -127,7 +127,7 @@ public class SparkLlmUtil {
 
     public static String promptToPayload(Prompt prompt, SparkChatConfig config, ChatOptions options) {
         // https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
-        List<Message> messages = prompt.toMessages();
+        List<Message> messages = prompt.getMessages();
         UserMessage message = MessageUtil.findLastUserMessage(messages);
         Maps root = Maps.of("header", Maps.of("app_id", config.getAppId()).set("uid", UUID.randomUUID().toString().replaceAll("-", "")));
         root.set("parameter", Maps.of("chat", Maps.of("domain", getDomain(config.getVersion()))

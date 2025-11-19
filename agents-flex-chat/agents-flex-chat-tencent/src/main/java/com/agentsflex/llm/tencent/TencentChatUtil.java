@@ -167,7 +167,7 @@ public class TencentChatUtil {
 
 
     public static String promptToPayload(Prompt prompt, TencentChatConfig config, boolean withStream, ChatOptions options) {
-        List<Message> messages = prompt.toMessages();
+        List<Message> messages = prompt.getMessages();
         UserMessage message = MessageUtil.findLastUserMessage(messages);
         return Maps.of("Model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("Messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))

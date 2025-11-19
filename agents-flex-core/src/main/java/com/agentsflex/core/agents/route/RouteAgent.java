@@ -116,7 +116,7 @@ public class RouteAgent {
     }
 
     private String buildContextSummary(HistoriesPrompt history) {
-        List<Message> messages = history.toMessages();
+        List<Message> messages = history.getMessages();
         if (messages == null || messages.isEmpty()) {
             return "（无历史对话）";
         }
@@ -126,7 +126,7 @@ public class RouteAgent {
         for (int i = start; i < messages.size(); i++) {
             Message msg = messages.get(i);
             String role = msg instanceof AiMessage ? "AI" : "User";
-            String content = msg.getMessageContent() != null ? msg.getMessageContent().toString() : "";
+            String content = msg.getTextContent() != null ? msg.getTextContent() : "";
             sb.append(role).append(": ").append(content.trim()).append("\n");
         }
         return sb.toString().trim();

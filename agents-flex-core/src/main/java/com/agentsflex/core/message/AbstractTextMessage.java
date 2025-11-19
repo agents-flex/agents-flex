@@ -14,6 +14,11 @@ public class AbstractTextMessage extends Message{
 
     @Override
     public Object getMessageContent() {
-        return getContent();
+        return content;
+    }
+
+    @Override
+    public String getTextContent() {
+        return content;
     }
 }

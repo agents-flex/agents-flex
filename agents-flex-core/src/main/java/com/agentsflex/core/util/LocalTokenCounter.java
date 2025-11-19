@@ -67,7 +67,7 @@ public class LocalTokenCounter {
         // 注意：更精确的做法应按 OpenAI 的 message format 模拟（含 role、name 等）
         String fullPromptText = messages.stream()
             .map(msg -> {
-                Object content = msg.getMessageContent();
+                Object content = msg.getTextContent();
                 return content != null ? content.toString() : "";
             })
             .collect(Collectors.joining("\n"));

@@ -15,6 +15,8 @@
  */
 package com.agentsflex.llm.ollama;
 
+import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.parser.AiMessageParser;
@@ -35,21 +37,22 @@ public class OllamaLlmUtil {
 
 
     private static final MessageFormat MESSAGE_FORMAT = new OpenAIMessageFormat() {
-//        @Override
-//        protected void buildMessageContent(Message message, Map<String, Object> map) {
-//            if (message instanceof UserImageMessage) {
-//                ImagePrompt prompt = ((UserImageMessage) message).getPrompt();
-//                map.put("content", prompt.getContent());
-//                map.put("images", prompt.buildAllToBase64s());
-//            } else {
-//                super.buildMessageContent(message, map);
-//            }
-//        }
-//
-//        @Override
-//        protected Object buildToolCallsArguments(Map<String, Object> arguments) {
-//            return arguments;
-//        }
+        @Override
+        protected void buildMessageContent(Message message, Map<String, Object> map) {
+            if (message instanceof UserMessage) {
+                map.put("content", message.getTextContent());
+                ChatContextHolder.ChatContext chatContext = ChatContextHolder.currentContext();
+                ChatConfig config = chatContext == null ? null : chatContext.getConfig();
+                map.put("images", ((UserMessage) message).getImageUrlsForChat(config));
+            } else {
+                super.buildMessageContent(message, map);
+            }
+        }
+
+        @Override
+        protected Object buildToolCallsArguments(Map<String, Object> arguments) {
+            return arguments;
+        }
     };
 
 
@@ -98,7 +101,7 @@ public class OllamaLlmUtil {
 
 
     public static String promptToPayload(Prompt prompt, OllamaChatConfig config, ChatOptions options, boolean stream) {
-        List<Message> messages = prompt.toMessages();
+        List<Message> messages = prompt.getMessages();
         UserMessage message = MessageUtil.findLastUserMessage(messages);
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))

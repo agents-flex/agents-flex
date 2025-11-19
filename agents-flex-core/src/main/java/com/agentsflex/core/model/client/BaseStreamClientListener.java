@@ -114,7 +114,7 @@ public class BaseStreamClientListener implements StreamClientListener {
                     }
                 }
             } else {
-                LocalTokenCounter.computeAndSetLocalTokens(prompt.toMessages(), lastAiMessage);
+                LocalTokenCounter.computeAndSetLocalTokens(prompt.getMessages(), lastAiMessage);
                 AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
                 streamResponseListener.onMessage(context, aiMessageResponse);
             }
@@ -131,7 +131,7 @@ public class BaseStreamClientListener implements StreamClientListener {
         lastAiMessage.setCalls(calls);
         AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
         try {
-            LocalTokenCounter.computeAndSetLocalTokens(prompt.toMessages(), lastAiMessage);
+            LocalTokenCounter.computeAndSetLocalTokens(prompt.getMessages(), lastAiMessage);
             streamResponseListener.onMessage(context, aiMessageResponse);
         } finally {
             functionCallInfos.clear();

@@ -87,7 +87,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
             return Collections.emptyList();
         }
 
-        UserMessage userMessage = MessageUtil.findLastUserMessage(prompt.toMessages());
+        UserMessage userMessage = MessageUtil.findLastUserMessage(prompt.getMessages());
         Map<String, Function> funcMap = userMessage.getFunctionMap();
 
         if (funcMap == null || funcMap.isEmpty()) {

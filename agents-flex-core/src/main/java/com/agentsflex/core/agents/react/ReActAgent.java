@@ -182,7 +182,7 @@ public class ReActAgent implements IAgent {
     }
 
     public ReActAgentState getState() {
-        state.messageHistory = historiesPrompt.toMessages();
+        state.messageHistory = historiesPrompt.getMessages();
         return state;
     }
 

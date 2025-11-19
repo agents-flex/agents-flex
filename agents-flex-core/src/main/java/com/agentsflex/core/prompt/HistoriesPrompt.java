@@ -126,7 +126,7 @@ public class HistoriesPrompt extends Prompt {
     }
 
     @Override
-    public List<Message> toMessages() {
+    public List<Message> getMessages() {
         List<Message> messages = memory.getMessages();
         if (messages == null) messages = new ArrayList<>();
 

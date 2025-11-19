@@ -92,7 +92,7 @@ public class ChatglmLlmUtil {
 
 
     public static String promptToPayload(Prompt prompt, ChatglmChatConfig config, boolean withStream, ChatOptions options) {
-        List<Message> messages = prompt.toMessages();
+        List<Message> messages = prompt.getMessages();
         UserMessage message = MessageUtil.findLastUserMessage(messages);
         return Maps.of("model", Optional.ofNullable(options.getModel()).orElse(config.getModel()))
             .set("messages", MESSAGE_FORMAT.toMessagesJsonObject(messages))
