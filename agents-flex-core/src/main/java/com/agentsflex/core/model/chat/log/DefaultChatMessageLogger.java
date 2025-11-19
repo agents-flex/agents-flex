@@ -5,7 +5,7 @@ import com.agentsflex.core.model.chat.ChatConfig;
 
 import java.util.function.Consumer;
 
-public class DefaultChatMessageLogger implements ChatMessageLogger {
+public class DefaultChatMessageLogger implements IChatMessageLogger {
 
     private final Consumer<String> logConsumer;
 

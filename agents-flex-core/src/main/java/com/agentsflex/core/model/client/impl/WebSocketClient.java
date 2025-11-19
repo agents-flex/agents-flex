@@ -16,7 +16,7 @@
 package com.agentsflex.core.model.client.impl;
 
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
+import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.client.StreamClient;
 import com.agentsflex.core.model.client.StreamClientListener;
@@ -77,7 +77,7 @@ public class WebSocketClient extends WebSocketListener implements StreamClient {
 
         // 创建 WebSocket 连接
         this.webSocket = okHttpClient.newWebSocket(request, this);
-        ChatMessageLogUtil.logRequest(config, payload);
+        ChatMessageLogger.logRequest(config, payload);
     }
 
     @Override
@@ -95,7 +95,7 @@ public class WebSocketClient extends WebSocketListener implements StreamClient {
 
     @Override
     public void onMessage(WebSocket webSocket, String text) {
-        ChatMessageLogUtil.logResponse(config, text);
+        ChatMessageLogger.logResponse(config, text);
         this.listener.onMessage(this, text);
     }
 

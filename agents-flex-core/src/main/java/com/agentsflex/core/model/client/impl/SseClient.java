@@ -16,7 +16,7 @@
 package com.agentsflex.core.model.client.impl;
 
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
+import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.client.StreamClient;
 import com.agentsflex.core.model.client.StreamClientListener;
@@ -77,7 +77,7 @@ public class SseClient extends EventSourceListener implements StreamClient {
         EventSource.Factory factory = EventSources.createFactory(this.okHttpClient);
         this.eventSource = factory.newEventSource(request, this);
 
-        ChatMessageLogUtil.logRequest(config, payload);
+        ChatMessageLogger.logRequest(config, payload);
 
         if (this.listener != null) {
             this.listener.onStart(this);
@@ -98,7 +98,7 @@ public class SseClient extends EventSourceListener implements StreamClient {
 
     @Override
     public void onEvent(@NotNull EventSource eventSource, @Nullable String id, @Nullable String type, @NotNull String data) {
-        ChatMessageLogUtil.logResponse(config, data);
+        ChatMessageLogger.logResponse(config, data);
         this.listener.onMessage(this, data);
     }
 

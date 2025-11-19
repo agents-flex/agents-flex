@@ -18,7 +18,7 @@ package com.agentsflex.llm.deepseek;
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
+import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.BaseStreamClientListener;
 import com.agentsflex.core.model.client.HttpClient;
@@ -68,9 +68,9 @@ public class DeepseekChatModel extends BaseChatModel<DeepseekConfig> {
         }
 
         String payload = DeepseekLlmUtil.promptToPayload(prompt, config, options, false);
-        ChatMessageLogUtil.logRequest(config, payload);
+        ChatMessageLogger.logRequest(config, payload);
         String response = httpClient.post(config.getFullUrl(), headers, payload);
-        ChatMessageLogUtil.logResponse(config, response);
+        ChatMessageLogger.logResponse(config, response);
 
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(prompt, response, "no content for response.");

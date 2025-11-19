@@ -20,7 +20,7 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
+import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.parser.AiMessageParser;
@@ -80,9 +80,9 @@ public class CozeChatModel extends BaseChatModel<CozeChatConfig> {
             url += "?conversation_id=" + conversationId;
         }
 
-        ChatMessageLogUtil.logRequest(config, payload);
+        ChatMessageLogger.logRequest(config, payload);
         String response = httpClient.post(url, buildHeader(), payload);
-        ChatMessageLogUtil.logResponse(config, response);
+        ChatMessageLogger.logResponse(config, response);
 
         // stream mode
         if (stream) {

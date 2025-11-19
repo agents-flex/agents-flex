@@ -16,7 +16,7 @@
 package com.agentsflex.core.model.client.impl;
 
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.log.ChatMessageLogUtil;
+import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.client.StreamClient;
 import com.agentsflex.core.model.client.StreamClientListener;
@@ -78,7 +78,7 @@ public class DnjsonClient implements StreamClient, Callback {
         RequestBody body = RequestBody.create(payload, JSON_TYPE);
         Request request = builder.post(body).build();
 
-        ChatMessageLogUtil.logRequest(config, payload);
+        ChatMessageLogger.logRequest(config, payload);
 
         if (this.listener != null) {
             try {
