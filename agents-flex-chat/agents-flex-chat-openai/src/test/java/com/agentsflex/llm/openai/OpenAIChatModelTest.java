@@ -2,8 +2,10 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.agents.react.ReActAgent;
 import com.agentsflex.core.agents.react.ReActAgentListener;
+import com.agentsflex.core.agents.react.ReActAgentState;
 import com.agentsflex.core.agents.react.ReActStep;
 import com.agentsflex.core.memory.ChatMemory;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
@@ -385,7 +387,7 @@ public class OpenAIChatModelTest {
             }
         });
 
-        reActAgent.run();
+        reActAgent.execute();
     }
 
 
@@ -395,18 +397,29 @@ public class OpenAIChatModelTest {
 //        config.setDebug(true);
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen2-72B-Instruct");
-        config.setApiKey("****");
+        config.setApiKey("*****");
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
         List<Function> functions = JavaNativeFunctionBuilder.fromClass(WeatherFunctions.class);
-        ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
-        reActAgent.setStreamable(true);
+        ReActAgent reActAgent = new ReActAgent(llm, functions, "今天的天气怎么样？");
+//        reActAgent.setStreamable(true);
         reActAgent.addListener(new ReActAgentListener() {
 
             @Override
             public void onChatResponseStream(StreamContext context, AiMessageResponse response) {
 //                System.out.print(response.getMessage().getContent());
+            }
+
+            @Override
+            public void onRequestUserInput(String question) {
+                System.out.println("onRequestUserInput>>>" + question);
+
+                ReActAgentState state = reActAgent.getState();
+                state.addMessage(new UserMessage("我在北京市"));
+                ReActAgent newAgent = new ReActAgent(llm, functions, state);
+                newAgent.addListener(this);
+                newAgent.execute();
             }
 
             @Override
@@ -433,7 +446,7 @@ public class OpenAIChatModelTest {
             }
         });
 
-        reActAgent.run();
+        reActAgent.execute();
 
         TimeUnit.SECONDS.sleep(30);
     }
