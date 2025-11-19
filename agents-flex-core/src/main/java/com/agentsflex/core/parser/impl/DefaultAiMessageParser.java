@@ -20,7 +20,7 @@ import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.JSONObjectParser;
-import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.core.util.JSONUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -34,61 +34,61 @@ import java.util.Map;
 
 public class DefaultAiMessageParser implements AiMessageParser {
 
-    private String contentPath;
-    private String reasoningContentPath;
-    private String indexPath;
-    private String totalTokensPath;
-    private String promptTokensPath;
-    private String completionTokensPath;
+    private JSONPath contentPath;
+    private JSONPath reasoningContentPath;
+    private JSONPath indexPath;
+    private JSONPath totalTokensPath;
+    private JSONPath promptTokensPath;
+    private JSONPath completionTokensPath;
     private JSONObjectParser<MessageStatus> statusParser;
     private JSONObjectParser<List<FunctionCall>> callsParser;
 
-    public String getContentPath() {
+    public JSONPath getContentPath() {
         return contentPath;
     }
 
     public void setContentPath(String contentPath) {
-        this.contentPath = contentPath;
+        this.contentPath = JSONUtil.getJsonPath(contentPath);
     }
 
-    public String getReasoningContentPath() {
+    public JSONPath getReasoningContentPath() {
         return reasoningContentPath;
     }
 
     public void setReasoningContentPath(String reasoningContentPath) {
-        this.reasoningContentPath = reasoningContentPath;
+        this.reasoningContentPath = JSONUtil.getJsonPath(reasoningContentPath);
     }
 
-    public String getIndexPath() {
+    public JSONPath getIndexPath() {
         return indexPath;
     }
 
     public void setIndexPath(String indexPath) {
-        this.indexPath = indexPath;
+        this.indexPath = JSONUtil.getJsonPath(indexPath);
     }
 
-    public String getTotalTokensPath() {
+    public JSONPath getTotalTokensPath() {
         return totalTokensPath;
     }
 
     public void setTotalTokensPath(String totalTokensPath) {
-        this.totalTokensPath = totalTokensPath;
+        this.totalTokensPath = JSONUtil.getJsonPath(totalTokensPath);
     }
 
-    public String getPromptTokensPath() {
+    public JSONPath getPromptTokensPath() {
         return promptTokensPath;
     }
 
     public void setPromptTokensPath(String promptTokensPath) {
-        this.promptTokensPath = promptTokensPath;
+        this.promptTokensPath = JSONUtil.getJsonPath(promptTokensPath);
     }
 
-    public String getCompletionTokensPath() {
+    public JSONPath getCompletionTokensPath() {
         return completionTokensPath;
     }
 
     public void setCompletionTokensPath(String completionTokensPath) {
-        this.completionTokensPath = completionTokensPath;
+        this.completionTokensPath = JSONUtil.getJsonPath(completionTokensPath);
     }
 
     public JSONObjectParser<MessageStatus> getStatusParser() {
@@ -111,29 +111,29 @@ public class DefaultAiMessageParser implements AiMessageParser {
     public AiMessage parse(JSONObject rootJson) {
         AiMessage aiMessage = new AiMessage();
 
-        if (StringUtil.hasText(this.contentPath)) {
-            aiMessage.setContent((String) JSONPath.eval(rootJson, this.contentPath));
+        if (this.contentPath != null) {
+            aiMessage.setContent((String) this.contentPath.eval(rootJson));
         }
 
-        if (StringUtil.hasText(this.reasoningContentPath)) {
-            aiMessage.setReasoningContent((String) JSONPath.eval(rootJson, this.reasoningContentPath));
+        if (this.reasoningContentPath != null) {
+            aiMessage.setReasoningContent((String) this.reasoningContentPath.eval(rootJson));
         }
 
-        if (StringUtil.hasText(this.indexPath)) {
-            aiMessage.setIndex((Integer) JSONPath.eval(rootJson, this.indexPath));
+        if (this.indexPath != null) {
+            aiMessage.setIndex((Integer) this.indexPath.eval(rootJson));
         }
 
 
-        if (StringUtil.hasText(promptTokensPath)) {
-            aiMessage.setPromptTokens((Integer) JSONPath.eval(rootJson, this.promptTokensPath));
+        if (this.promptTokensPath != null) {
+            aiMessage.setPromptTokens((Integer) this.promptTokensPath.eval(rootJson));
         }
 
-        if (StringUtil.hasText(completionTokensPath)) {
-            aiMessage.setCompletionTokens((Integer) JSONPath.eval(rootJson, this.completionTokensPath));
+        if (this.completionTokensPath != null) {
+            aiMessage.setCompletionTokens((Integer) this.completionTokensPath.eval(rootJson));
         }
 
-        if (StringUtil.hasText(this.totalTokensPath)) {
-            aiMessage.setTotalTokens((Integer) JSONPath.eval(rootJson, this.totalTokensPath));
+        if (this.totalTokensPath != null) {
+            aiMessage.setTotalTokens((Integer) this.totalTokensPath.eval(rootJson));
         }
         //some LLMs like Ollama not response the total tokens
         else if (aiMessage.getPromptTokens() != null && aiMessage.getCompletionTokens() != null) {
@@ -152,7 +152,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
     }
 
 
-    public static DefaultAiMessageParser getChatGPTMessageParser(boolean isStream) {
+    public static DefaultAiMessageParser getOpenAIMessageParser(boolean isStream) {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
         if (isStream) {
             aiMessageParser.setContentPath("$.choices[0].delta.content");
@@ -168,7 +168,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
         aiMessageParser.setCompletionTokensPath("$.usage.completion_tokens");
 
         aiMessageParser.setStatusParser(content -> {
-            Object finishReason = JSONPath.eval(content, "$.choices[0].finish_reason");
+            Object finishReason = JSONUtil.getJsonPath("$.choices[0].finish_reason").eval(content);
             if (finishReason != null) {
                 return MessageStatus.END;
             }
@@ -176,7 +176,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
         });
 
         aiMessageParser.setCallsParser(content -> {
-            JSONArray toolCalls = (JSONArray) JSONPath.eval(content, "$.choices[0].message.tool_calls");
+            JSONArray toolCalls = (JSONArray) JSONUtil.getJsonPath("$.choices[0].message.tool_calls").eval(content);
             if (toolCalls == null || toolCalls.isEmpty()) {
                 return Collections.emptyList();
             }
@@ -194,7 +194,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
                         functionCall.setArgs((Map<String, Object>) arguments);
                     } else if (arguments instanceof String) {
                         //noinspection unchecked
-                        functionCall.setArgs(JSON.parseObject(arguments.toString(), Map.class));
+                        functionCall.setArgs(JSON.parseObject((String) arguments, Map.class));
                     }
                     functionCalls.add(functionCall);
                 }
