@@ -141,6 +141,21 @@ public class UserMessage extends AbstractTextMessage {
         return imageUrls;
     }
 
+    public List<String> getImageUrlsForChat(ChatConfig config) {
+        if (this.imageUrls == null) {
+            return null;
+        }
+        List<String> result = new ArrayList<>(this.imageUrls.size());
+        for (String url : imageUrls) {
+            if (config != null && config.isSupportImageBase64Only()
+                && url.toLowerCase().startsWith("http")) {
+                url = ImageUtil.imageUrlToDataUri(url);
+            }
+            result.add(url);
+        }
+        return result;
+    }
+
     public void setImageUrls(List<String> imageUrls) {
         this.imageUrls = imageUrls;
     }
@@ -210,11 +225,7 @@ public class UserMessage extends AbstractTextMessage {
 
     public List<Map<String, Object>> buildImageContent(ChatConfig config) {
         List<Map<String, Object>> result = new ArrayList<>(1);
-        for (String url : imageUrls) {
-            if (config != null && config.isSupportImageBase64Only()
-                && url.toLowerCase().startsWith("http")) {
-                url = ImageUtil.imageUrlToDataUri(url);
-            }
+        for (String url : getImageUrlsForChat(config)) {
             result.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", url)));
         }
         return result;
