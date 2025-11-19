@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.agents.react;
 
+import com.agentsflex.core.agents.IAgent;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
@@ -38,7 +39,7 @@ import java.util.Map;
 /**
  * ReActAgent 是一个通用的 ReAct 模式 Agent，支持 Reasoning + Action 的交互方式。
  */
-public class ReActAgent {
+public class ReActAgent implements IAgent {
 
     private static final Logger log = LoggerFactory.getLogger(ReActAgent.class);
 
@@ -188,6 +189,7 @@ public class ReActAgent {
     /**
      * 运行 ReAct Agent 流程
      */
+    @Override
     public void execute() {
         try {
             List<Message> messageHistory = state.getMessageHistory();

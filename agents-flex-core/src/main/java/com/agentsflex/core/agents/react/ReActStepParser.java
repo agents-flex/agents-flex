@@ -123,7 +123,6 @@ public interface ReActStepParser {
         return content.contains("Action:") && content.contains("Action Input:");
     }
 
-    // 示例：检测是否为 Request
     default boolean isRequest(String content) {
         return content.contains("Request:");
     }
