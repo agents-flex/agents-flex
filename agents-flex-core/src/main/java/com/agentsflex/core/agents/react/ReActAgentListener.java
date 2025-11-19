@@ -67,6 +67,14 @@ public interface ReActAgentListener {
     default void onFinalAnswer(String finalAnswer) {
     }
 
+
+    /**
+     * 当需要用户输入时触发
+     */
+    default void onRequestUserInput(String question) {
+
+    }
+
     /**
      * 当调用工具前触发
      *

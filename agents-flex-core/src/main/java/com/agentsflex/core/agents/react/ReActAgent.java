@@ -56,6 +56,10 @@ public class ReActAgent {
             "在 ReAct 模式下，如果你已获得足够信息可以直接回答用户，请输出：\n" +
             "Final Answer: [你的回答]\n" +
             "\n" +
+            "如果你发现用户的问题缺少关键信息（例如时间、地点、具体目标、主体信息等），且无法通过工具获取，\n" +
+            "请主动向用户提问，格式如下：\n" +
+            "Request: [你希望用户澄清的问题]" +
+            "\n" +
             "注意事项：\n" +
             "1. 每次只能选择一个工具并执行一个动作。\n" +
             "2. 在未收到工具执行结果前，不要自行假设其输出。\n" +
@@ -68,45 +72,49 @@ public class ReActAgent {
             "### 用户问题如下：\n" +
             "{user_input}";
 
-    // 默认最大迭代次数
-    private static final int DEFAULT_MAX_ITERATIONS = 5;
+    private static final int DEFAULT_MAX_ITERATIONS = 20;
 
     private final ChatModel chatModel;
     private final List<Function> functions;
-    private final String userQuery;
+    private final ReActAgentState state;
 
-    private boolean streamable = false;
-    private int maxIterations = DEFAULT_MAX_ITERATIONS;
-    private String promptTemplate = DEFAULT_PROMPT_TEMPLATE;
     private ReActStepParser reActStepParser = ReActStepParser.DEFAULT; // 默认解析器
     private final HistoriesPrompt historiesPrompt;
     private ChatOptions chatOptions = ChatOptions.DEFAULT;
     private ReActMessageBuilder messageBuilder = new ReActMessageBuilder();
 
-
-    // 是否继续执行当 JSON 解析出错时
-    private boolean continueOnActionJsonParseError = true;
-
-    // 是否继续执行当 Function 调用出错时
-    private boolean continueOnActionInvokeError = true;
-
     // 监听器集合
     private final List<ReActAgentListener> listeners = new ArrayList<>();
 
-    private int iterationCount = 0;
 
     public ReActAgent(ChatModel chatModel, List<Function> functions, String userQuery) {
         this.chatModel = chatModel;
         this.functions = functions;
-        this.userQuery = userQuery;
+        this.state = new ReActAgentState();
+        this.state.userQuery = userQuery;
+        this.state.promptTemplate = DEFAULT_PROMPT_TEMPLATE;
+        this.state.maxIterations = DEFAULT_MAX_ITERATIONS;
         this.historiesPrompt = new HistoriesPrompt();
     }
 
     public ReActAgent(ChatModel chatModel, List<Function> functions, String userQuery, HistoriesPrompt historiesPrompt) {
         this.chatModel = chatModel;
         this.functions = functions;
-        this.userQuery = userQuery;
+        this.state = new ReActAgentState();
+        this.state.userQuery = userQuery;
+        this.state.promptTemplate = DEFAULT_PROMPT_TEMPLATE;
+        this.state.maxIterations = DEFAULT_MAX_ITERATIONS;
         this.historiesPrompt = historiesPrompt;
+    }
+
+    public ReActAgent(ChatModel chatModel, List<Function> functions, ReActAgentState state) {
+        this.chatModel = chatModel;
+        this.functions = functions;
+        this.state = state;
+        this.historiesPrompt = new HistoriesPrompt();
+        if (state.messageHistory != null) {
+            this.historiesPrompt.addMessages(state.messageHistory);
+        }
     }
 
     /**
@@ -131,25 +139,6 @@ public class ReActAgent {
         return functions;
     }
 
-    public String getUserQuery() {
-        return userQuery;
-    }
-
-    public int getMaxIterations() {
-        return maxIterations;
-    }
-
-    public void setMaxIterations(int maxIterations) {
-        this.maxIterations = maxIterations;
-    }
-
-    public String getPromptTemplate() {
-        return promptTemplate;
-    }
-
-    public void setPromptTemplate(String promptTemplate) {
-        this.promptTemplate = promptTemplate;
-    }
 
     public ReActStepParser getReActStepParser() {
         return reActStepParser;
@@ -164,39 +153,15 @@ public class ReActAgent {
     }
 
     public boolean isStreamable() {
-        return streamable;
+        return this.state.streamable;
     }
 
     public void setStreamable(boolean streamable) {
-        this.streamable = streamable;
+        this.state.streamable = streamable;
     }
 
     public HistoriesPrompt getHistoriesPrompt() {
         return historiesPrompt;
-    }
-
-    public int getIterationCount() {
-        return iterationCount;
-    }
-
-    public void setIterationCount(int iterationCount) {
-        this.iterationCount = iterationCount;
-    }
-
-    public boolean isContinueOnActionJsonParseError() {
-        return continueOnActionJsonParseError;
-    }
-
-    public void setContinueOnActionJsonParseError(boolean continueOnActionJsonParseError) {
-        this.continueOnActionJsonParseError = continueOnActionJsonParseError;
-    }
-
-    public boolean isContinueOnActionInvokeError() {
-        return continueOnActionInvokeError;
-    }
-
-    public void setContinueOnActionInvokeError(boolean continueOnActionInvokeError) {
-        this.continueOnActionInvokeError = continueOnActionInvokeError;
     }
 
     public ReActMessageBuilder getMessageBuilder() {
@@ -215,26 +180,31 @@ public class ReActAgent {
         this.chatOptions = chatOptions;
     }
 
+    public ReActAgentState getState() {
+        state.messageHistory = historiesPrompt.toMessages();
+        return state;
+    }
+
     /**
      * 运行 ReAct Agent 流程
      */
-    public void run() {
-        this.iterationCount = 0;
+    public void execute() {
         try {
-            String toolsDescription = buildToolsDescription(functions);
-            String prompt = promptTemplate
-                .replace("{tools}", toolsDescription)
-                .replace("{user_input}", userQuery);
+            List<Message> messageHistory = state.getMessageHistory();
+            if (messageHistory == null || messageHistory.isEmpty()) {
+                String toolsDescription = buildToolsDescription(functions);
+                String prompt = state.promptTemplate
+                    .replace("{tools}", toolsDescription)
+                    .replace("{user_input}", state.userQuery);
 
-            Message message = messageBuilder.buildStartMessage(prompt, functions, userQuery);
-            historiesPrompt.addMessage(message);
-
+                Message message = messageBuilder.buildStartMessage(prompt, functions, state.userQuery);
+                historiesPrompt.addMessage(message);
+            }
             if (this.isStreamable()) {
                 startNextReActStepStream();
             } else {
                 startNextReactStepNormal();
             }
-
         } catch (Exception e) {
             log.error("运行 ReAct Agent 出错：" + e);
             notifyOnError(e);
@@ -242,42 +212,64 @@ public class ReActAgent {
     }
 
     private void startNextReactStepNormal() {
-        for (int i = 0; i < maxIterations; i++) {
+        while (state.iterationCount < state.maxIterations) {
+
+            state.iterationCount++;
+
             AiMessageResponse response = chatModel.chat(historiesPrompt, chatOptions);
             notifyOnChatResponse(response);
 
             String content = response.getMessage().getContent();
             AiMessage message = new AiMessage(content);
 
-            if (isReActAction(content)) {
+            // 请求用户输入
+            if (isRequestUserInput(content)) {
+                String question = extractRequestQuestion(content);
+                message.addMetadata("type", "reActRequest");
+                historiesPrompt.addMessage(message);
+                notifyOnRequestUserInput(question); // 新增监听器回调
+                break; // 暂停执行，等待用户回复
+            }
+            //  ReAct 动作
+            else if (isReActAction(content)) {
                 message.addMetadata("type", "reActAction");
                 historiesPrompt.addMessage(message);
                 if (!processReActSteps(content)) {
                     break;
                 }
-            } else if (isFinalAnswer(content)) {
+            }
+
+            // 最终答案
+            else if (isFinalAnswer(content)) {
                 String flag = reActStepParser.getFinalAnswerFlag();
                 String answer = content.substring(content.indexOf(flag) + flag.length());
                 message.addMetadata("type", "reActFinalAnswer");
                 historiesPrompt.addMessage(message);
                 notifyOnFinalAnswer(answer);
                 break;
-            } else {
+            }
+            //  不是 Action
+            else {
                 historiesPrompt.addMessage(message);
-                //  不是 Action
                 notifyOnNonActionResponse(response);
                 break;
             }
         }
+
+        // 显式通知达到最大迭代
+        if (state.iterationCount >= state.maxIterations) {
+            notifyOnMaxIterationsReached();
+        }
     }
 
+
     private void startNextReActStepStream() {
-        if (iterationCount >= maxIterations) {
+        if (state.iterationCount >= state.maxIterations) {
             notifyOnMaxIterationsReached();
             return;
         }
 
-        iterationCount++;
+        state.iterationCount++;
 
         chatModel.chatStream(historiesPrompt, new StreamResponseListener() {
 
@@ -300,23 +292,35 @@ public class ReActAgent {
                     return;
                 }
 
-                AiMessage aiMessage = new AiMessage(content);
+                AiMessage message = new AiMessage(content);
 
-                if (isReActAction(content)) {
-                    aiMessage.addMetadata("type", "reActAction");
-                    historiesPrompt.addMessage(aiMessage);
+                // 请求用户输入
+                if (isRequestUserInput(content)) {
+                    String question = extractRequestQuestion(content);
+                    message.addMetadata("type", "reActRequest");
+                    historiesPrompt.addMessage(message);
+                    notifyOnRequestUserInput(question); // 新增监听器回调
+                }
+
+                //  ReAct 动作
+                else if (isReActAction(content)) {
+                    message.addMetadata("type", "reActAction");
+                    historiesPrompt.addMessage(message);
                     if (processReActSteps(content)) {
                         // 递归继续执行下一个 ReAct 步骤
                         startNextReActStepStream();
                     }
-                } else if (isFinalAnswer(content)) {
-                    aiMessage.addMetadata("type", "reActFinalAnswer");
-                    historiesPrompt.addMessage(aiMessage);
+                }
+
+                // 最终答案
+                else if (isFinalAnswer(content)) {
+                    message.addMetadata("type", "reActFinalAnswer");
+                    historiesPrompt.addMessage(message);
                     String flag = reActStepParser.getFinalAnswerFlag();
                     String answer = content.substring(content.indexOf(flag) + flag.length());
                     notifyOnFinalAnswer(answer);
                 } else {
-                    historiesPrompt.addMessage(aiMessage);
+                    historiesPrompt.addMessage(message);
                     //  不是 Action
                     notifyOnNonActionResponseStream(context);
                 }
@@ -336,6 +340,14 @@ public class ReActAgent {
 
     private boolean isReActAction(String content) {
         return reActStepParser.isReActAction(content);
+    }
+
+    private boolean isRequestUserInput(String content) {
+        return reActStepParser.isRequest(content);
+    }
+
+    private String extractRequestQuestion(String content) {
+        return reActStepParser.extractRequestQuestion(content);
     }
 
     // ========== 内部辅助方法 ==========
@@ -383,7 +395,7 @@ public class ReActAgent {
                             log.error(e.toString(), e);
                             notifyOnActionJsonParserError(step, e);
 
-                            if (!continueOnActionJsonParseError) {
+                            if (!state.continueOnActionJsonParseError) {
                                 return false;
                             }
 
@@ -402,7 +414,7 @@ public class ReActAgent {
                         log.error(e.toString(), e);
                         notifyOnActionInvokeError(e);
 
-                        if (!continueOnActionInvokeError) {
+                        if (!state.continueOnActionInvokeError) {
                             return false;
                         }
 
@@ -470,6 +482,16 @@ public class ReActAgent {
         for (ReActAgentListener listener : listeners) {
             try {
                 listener.onFinalAnswer(finalAnswer);
+            } catch (Exception e) {
+                log.error(e.toString(), e);
+            }
+        }
+    }
+
+    private void notifyOnRequestUserInput(String question) {
+        for (ReActAgentListener listener : listeners) {
+            try {
+                listener.onRequestUserInput(question);
             } catch (Exception e) {
                 log.error(e.toString(), e);
             }

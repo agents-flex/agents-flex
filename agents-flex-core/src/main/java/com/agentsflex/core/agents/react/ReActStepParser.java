@@ -31,6 +31,7 @@ public interface ReActStepParser {
 
         String currentThought = null;
         String currentAction = null;
+        String currentRequest = null;
         StringBuilder currentActionInput = new StringBuilder();
         boolean inActionInput = false;
 
@@ -120,6 +121,15 @@ public interface ReActStepParser {
 
     default boolean isReActAction(String content) {
         return content.contains("Action:") && content.contains("Action Input:");
+    }
+
+    // 示例：检测是否为 Request
+    default boolean isRequest(String content) {
+        return content.contains("Request:");
+    }
+
+    default String extractRequestQuestion(String content) {
+        return content.trim().substring("Request:".length()).trim();
     }
 
     default String getFinalAnswerFlag() {
