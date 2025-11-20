@@ -15,28 +15,33 @@
  */
 package com.agentsflex.core.message;
 
+import com.agentsflex.core.util.StringUtil;
 
-import java.util.List;
+import java.util.*;
 
 public class AiMessage extends AbstractTextMessage {
 
     private Integer index;
-    private MessageStatus status;
-
-    // API 返回的 token 信息（可选）
     private Integer promptTokens;
     private Integer completionTokens;
     private Integer totalTokens;
-
-    // 本地计算的 token 信息（新增）
-    private Integer localPromptTokens;      // 对话历史（system + user + previous ai）的 token 数
-    private Integer localCompletionTokens;  // 当前 AI 回复内容的 token 数
-    private Integer localTotalTokens;       // 通常 = localPromptTokens + localCompletionTokens
-
-    private String fullContent;
+    private Integer localPromptTokens;
+    private Integer localCompletionTokens;
+    private Integer localTotalTokens;
     private String reasoningContent;
     private List<FunctionCall> calls;
+
+    private String fullContent;
     private String fullReasoningContent;
+
+    /**
+     * LLM 响应结束的原因（如 "stop", "length", "tool_calls" 等），
+     * 符合 OpenAI 等主流 API 的 finish_reason 语义。
+     */
+    private String finishReason;
+
+    // 同 reasoningContent，只是某些框架会返回这个字段，而不是 finishReason
+    private String stopReason;
 
     public AiMessage() {
         super();
@@ -46,20 +51,76 @@ public class AiMessage extends AbstractTextMessage {
         this.fullContent = content;
     }
 
+    public void merge(AiMessage delta) {
+        if (delta.content != null) {
+            if (this.content == null) this.content = "";
+            this.content += delta.content;
+            this.fullContent = this.content;
+        }
+
+        if (delta.reasoningContent != null) {
+            if (this.reasoningContent == null) this.reasoningContent = "";
+            this.reasoningContent += delta.reasoningContent;
+            this.fullReasoningContent = this.reasoningContent;
+        }
+
+        if (delta.calls != null && !delta.calls.isEmpty()) {
+            if (this.calls == null) this.calls = new ArrayList<>();
+            mergeFunctionCalls(delta.calls);
+        }
+        if (delta.index != null) this.index = delta.index;
+        if (delta.promptTokens != null) this.promptTokens = delta.promptTokens;
+        if (delta.completionTokens != null) this.completionTokens = delta.completionTokens;
+        if (delta.totalTokens != null) this.totalTokens = delta.totalTokens;
+        if (delta.localPromptTokens != null) this.localPromptTokens = delta.localPromptTokens;
+        if (delta.localCompletionTokens != null) this.localCompletionTokens = delta.localCompletionTokens;
+        if (delta.localTotalTokens != null) this.localTotalTokens = delta.localTotalTokens;
+        if (delta.finishReason != null) this.finishReason = delta.finishReason;
+        if (delta.stopReason != null) this.stopReason = delta.stopReason;
+    }
+
+    private void mergeFunctionCalls(List<FunctionCall> deltaCalls) {
+        if (deltaCalls == null || deltaCalls.isEmpty()) return;
+
+        if (this.calls == null || this.calls.isEmpty()) {
+            this.calls = new ArrayList<>(deltaCalls);
+            return;
+        }
+
+        FunctionCall lastCall = this.calls.get(this.calls.size() - 1);
+
+        // 正常情况下 delta 部分只有 1 条
+        FunctionCall deltaCall = deltaCalls.get(0);
+        if (lastCall.getId() != null && deltaCall.getId() != null ||
+            (lastCall.getName() != null && deltaCall.getName() != null)) {
+            this.calls.add(deltaCall);
+        } else {
+            mergeSingleCall(lastCall, deltaCall);
+        }
+    }
+
+    private void mergeSingleCall(FunctionCall existing, FunctionCall delta) {
+        if (delta.getArgsString() != null) {
+            if (existing.getArgsString() == null) {
+                existing.setArgsString("");
+            }
+            existing.setArgsString(existing.getArgsString() + delta.getArgsString());
+        }
+        if (delta.getId() != null) {
+            existing.setId(delta.getId());
+        }
+        if (delta.getName() != null) {
+            existing.setName(delta.getName());
+        }
+    }
+
+    // ===== Getters & Setters (保持原有不变) =====
     public Integer getIndex() {
         return index;
     }
 
     public void setIndex(Integer index) {
         this.index = index;
-    }
-
-    public MessageStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(MessageStatus status) {
-        this.status = status;
     }
 
     public Integer getPromptTokens() {
@@ -126,6 +187,22 @@ public class AiMessage extends AbstractTextMessage {
         this.reasoningContent = reasoningContent;
     }
 
+    public String getFinishReason() {
+        return finishReason;
+    }
+
+    public void setFinishReason(String finishReason) {
+        this.finishReason = finishReason;
+    }
+
+    public String getStopReason() {
+        return stopReason;
+    }
+
+    public void setStopReason(String stopReason) {
+        this.stopReason = stopReason;
+    }
+
     @Override
     public Object getMessageContent() {
         return fullContent;
@@ -152,46 +229,38 @@ public class AiMessage extends AbstractTextMessage {
         this.fullReasoningContent = fullReasoningContent;
     }
 
-    /**
-     * 获取有效的总 token 数
-     *
-     * @return 有限返回模型计算的 token 数；否则返回本地计算的 token 数
-     */
     public int getEffectiveTotalTokens() {
-        if (this.totalTokens != null) {
-            return this.totalTokens;
-        }
-
+        if (this.totalTokens != null) return this.totalTokens;
         if (this.promptTokens != null && this.completionTokens != null) {
             return this.promptTokens + this.completionTokens;
         }
-
-        if (this.localTotalTokens != null) {
-            return this.localTotalTokens;
-        }
-
+        if (this.localTotalTokens != null) return this.localTotalTokens;
         if (this.localPromptTokens != null && this.localCompletionTokens != null) {
             return this.localPromptTokens + this.localCompletionTokens;
         }
-
         return 0;
+    }
+
+    public boolean isLastMessage() {
+        return StringUtil.hasText(this.finishReason) || StringUtil.hasText(this.stopReason);
     }
 
     @Override
     public String toString() {
         return "AiMessage{" +
             "index=" + index +
-            ", status=" + status +
             ", promptTokens=" + promptTokens +
             ", completionTokens=" + completionTokens +
             ", totalTokens=" + totalTokens +
             ", localPromptTokens=" + localPromptTokens +
             ", localCompletionTokens=" + localCompletionTokens +
             ", localTotalTokens=" + localTotalTokens +
-            ", fullContent='" + fullContent + '\'' +
             ", reasoningContent='" + reasoningContent + '\'' +
             ", calls=" + calls +
+            ", fullContent='" + fullContent + '\'' +
             ", fullReasoningContent='" + fullReasoningContent + '\'' +
+            ", finishReason='" + finishReason + '\'' +
+            ", stopReason='" + stopReason + '\'' +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';

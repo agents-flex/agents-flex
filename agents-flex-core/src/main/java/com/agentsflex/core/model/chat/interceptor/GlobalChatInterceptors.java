@@ -14,8 +14,10 @@
  *  limitations under the License.
  */
 
-package com.agentsflex.core.model.chat;
+package com.agentsflex.core.model.chat.interceptor;
 
+
+import com.agentsflex.core.model.chat.BaseChatModel;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -85,7 +87,7 @@ public final class GlobalChatInterceptors {
      *
      * @return 不可变的全局拦截器列表
      */
-    static List<ChatInterceptor> getInterceptors() {
+    public static List<ChatInterceptor> getInterceptors() {
         return Collections.unmodifiableList(GLOBAL_INTERCEPTORS);
     }
 

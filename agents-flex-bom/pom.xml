@@ -106,14 +106,6 @@
         <!--chatModel start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chat-chatglm</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chat-coze</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-chat-deepseek</artifactId>
         </dependency>
         <dependency>

@@ -17,9 +17,7 @@
         <module>agents-flex-chat-openai</module>
         <module>agents-flex-chat-spark</module>
         <module>agents-flex-chat-qwen</module>
-        <module>agents-flex-chat-chatglm</module>
         <module>agents-flex-chat-ollama</module>
-        <module>agents-flex-chat-coze</module>
         <module>agents-flex-chat-deepseek</module>
         <module>agents-flex-chat-qianfan</module>
 		<module>agents-flex-chat-tencent</module>

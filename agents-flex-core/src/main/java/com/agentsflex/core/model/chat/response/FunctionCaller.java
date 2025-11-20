@@ -28,7 +28,7 @@ public class FunctionCaller {
     }
 
     public Object call() {
-        return this.function.invoke(this.functionCall.getArgs());
+        return this.function.invoke(this.functionCall.getArgsMap());
     }
 
     public Function getFunction() {

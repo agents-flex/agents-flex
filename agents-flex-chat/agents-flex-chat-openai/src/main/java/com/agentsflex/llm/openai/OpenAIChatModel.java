@@ -15,64 +15,57 @@
  */
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.BaseChatModel;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.log.ChatMessageLogger;
-import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.client.BaseStreamClientListener;
-import com.agentsflex.core.model.client.HttpClient;
-import com.agentsflex.core.model.client.StreamClient;
-import com.agentsflex.core.model.client.StreamClientListener;
-import com.agentsflex.core.model.client.impl.SseClient;
-import com.agentsflex.core.parser.AiMessageParser;
+import com.agentsflex.core.model.client.ChatClient;
+import com.agentsflex.core.model.client.OpenAIChatClient;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.util.LocalTokenCounter;
-import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Consumer;
-
+/**
+ * OpenAI 聊天模型实现。
+ * <p>
+ * 该类封装了 OpenAI API 的具体调用细节，包括：
+ * <ul>
+ *   <li>请求体构建（支持同步/流式）</li>
+ *   <li>HTTP 客户端管理</li>
+ *   <li>解析器配置（同步/流式使用不同解析器）</li>
+ * </ul>
+ * <p>
+ * 所有横切逻辑（监控、日志、拦截）由 {@link BaseChatModel} 的责任链处理，
+ * 本类只关注 OpenAI 协议特有的实现细节。
+ */
 public class OpenAIChatModel extends BaseChatModel<OpenAIChatConfig> {
 
-    private HttpClient httpClient = new HttpClient();
-    private AiMessageParser aiMessageParser = OpenAILlmUtil.getAiMessageParser(false);
-    private AiMessageParser streamMessageParser = OpenAILlmUtil.getAiMessageParser(true);
-
-    public HttpClient getHttpClient() {
-        return httpClient;
+    /**
+     * 构造 OpenAI 聊天模型实例。
+     * <p>
+     *
+     * @param config OpenAI 聊天配置
+     */
+    public OpenAIChatModel(OpenAIChatConfig config) {
+        super(config);
     }
 
-    public void setHttpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
-    }
-
-    public AiMessageParser getAiMessageParser() {
-        return aiMessageParser;
-    }
-
-    public void setAiMessageParser(AiMessageParser aiMessageParser) {
-        this.aiMessageParser = aiMessageParser;
-    }
-
-    public AiMessageParser getStreamMessageParser() {
-        return streamMessageParser;
-    }
-
-    public void setStreamMessageParser(AiMessageParser streamMessageParser) {
-        this.streamMessageParser = streamMessageParser;
-    }
-
+    /**
+     * 工厂方法：通过 API Key 创建实例。
+     *
+     * @param apiKey OpenAI API Key
+     * @return OpenAI 聊天模型实例
+     */
     public static OpenAIChatModel of(String apiKey) {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setApiKey(apiKey);
         return new OpenAIChatModel(config);
     }
 
+    /**
+     * 工厂方法：通过 API Key 和自定义 Endpoint 创建实例。
+     *
+     * @param apiKey   OpenAI API Key
+     * @param endpoint 自定义 API Endpoint（如 Azure OpenAI）
+     * @return OpenAI 聊天模型实例
+     */
     public static OpenAIChatModel of(String apiKey, String endpoint) {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setApiKey(apiKey);
@@ -80,64 +73,37 @@ public class OpenAIChatModel extends BaseChatModel<OpenAIChatConfig> {
         return new OpenAIChatModel(config);
     }
 
-    public OpenAIChatModel(OpenAIChatConfig config) {
-        super(config);
-    }
-
+    /**
+     * 构建 OpenAI 请求体。
+     * <p>
+     * 使用 {@link OpenAILlmUtil} 将 Prompt 转换为 OpenAI API 格式的 JSON。
+     *
+     * @param prompt    用户提示
+     * @param options   聊天选项
+     * @param streaming 是否为流式请求
+     * @return OpenAI API 格式的 JSON 请求体
+     */
     @Override
-    public AiMessageResponse doChat(Prompt prompt, ChatOptions options) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
-
-        Consumer<Map<String, String>> headersConfig = config.getHeadersConfig();
-        if (headersConfig != null) {
-            headersConfig.accept(headers);
-        }
-
-        // 非流式返回，比如 Qwen3 等必须设置 false，否则自动流式返回了
-        if (options.getThinkingEnabled() == null) {
-            options.setThinkingEnabled(false);
-        }
-
-        String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, false);
-        ChatMessageLogger.logRequest(config, payload);
-
-        String response = httpClient.post(config.getFullUrl(), headers, payload);
-
-        ChatMessageLogger.logResponse(config, response);
-
-        if (StringUtil.noText(response)) {
-            return AiMessageResponse.error(prompt, response, "no content for response.");
-        }
-
-        JSONObject jsonObject = JSON.parseObject(response);
-        JSONObject error = jsonObject.getJSONObject("error");
-
-        AiMessage aiMessage = aiMessageParser.parse(jsonObject);
-        LocalTokenCounter.computeAndSetLocalTokens(prompt.getMessages(), aiMessage);
-        AiMessageResponse messageResponse = new AiMessageResponse(prompt, response, aiMessage);
-
-        if (error != null && !error.isEmpty()) {
-            messageResponse.setError(true);
-            messageResponse.setErrorMessage(error.getString("message"));
-            messageResponse.setErrorType(error.getString("type"));
-            messageResponse.setErrorCode(error.getString("code"));
-        }
-        return messageResponse;
+    protected String buildRequestBody(Prompt prompt, ChatOptions options, boolean streaming) {
+        return OpenAILlmUtil.promptToPayload(prompt, getConfig(), options, streaming);
     }
 
 
+    /**
+     * 创建 OpenAI 协议客户端。
+     * <p>
+     * 根据上下文中的流式标志选择合适的解析器，
+     * 并传递所有必要参数给 {@link OpenAIChatClient}。
+     *
+     * @param context 聊天上下文（可能已被拦截器修改）
+     * @return OpenAI 协议客户端
+     */
     @Override
-    public void doChatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
-        StreamClient streamClient = new SseClient();
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + getConfig().getApiKey());
-
-        String payload = OpenAILlmUtil.promptToPayload(prompt, config, options, true);
-        StreamClientListener clientListener = new BaseStreamClientListener(this, streamClient, listener, prompt, streamMessageParser);
-        streamClient.start(config.getFullUrl(), headers, payload, clientListener, config);
+    public ChatClient buildClient(ChatContext context) {
+        return new OpenAIChatClient(
+            this,
+            context
+        );
     }
 
 

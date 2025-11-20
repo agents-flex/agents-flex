@@ -13,67 +13,64 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package com.agentsflex.core.model.chat;
 
-import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
+import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
+import com.agentsflex.core.model.chat.interceptor.StreamChain;
+import com.agentsflex.core.model.chat.interceptor.SyncChain;
+//import com.agentsflex.core.model.chat.interceptor.impl.ObservabilityInterceptor;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.client.StreamContext;
+import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.observability.Observability;
 
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.metrics.LongCounter;
-import io.opentelemetry.api.metrics.DoubleHistogram;
-import io.opentelemetry.api.metrics.Meter;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.*;
 
 /**
- * 支持 OpenTelemetry 监控（可开关）、线程上下文管理与拦截器链的聊天模型基类（JDK 8 兼容）。
+ * 支持责任链、统一上下文和协议客户端的聊天模型基类。
  * <p>
  * 该类为所有具体的 LLM 实现（如 OpenAI、Qwen、Ollama）提供统一入口，并集成：
  * <ul>
- *   <li>分布式追踪（Span）—— 可通过 {@link ChatConfig#setObservabilityEnabled(boolean)} 关闭</li>
- *   <li>指标上报（QPS、延迟、错误率）—— 同上</li>
- *   <li>线程上下文（通过 {@link ChatContextHolder}）</li>
- *   <li>拦截器链（支持全局和实例级）</li>
+ *   <li><b>责任链模式</b>：通过 {@link ChatInterceptor} 实现请求拦截、监控、日志等横切逻辑</li>
+ *   <li><b>线程上下文管理</b>：通过 {@link ChatContextHolder} 在整个调用链中传递上下文信息</li>
+ *   <li><b>协议执行抽象</b>：通过 {@link ChatClient} 解耦协议细节，支持 HTTP/gRPC/WebSocket 等</li>
+ *   <li><b>可观测性</b>：自动集成 OpenTelemetry（通过 {@link ObservabilityInterceptor}）</li>
+ * </ul>
+ *
+ * <h2>架构流程</h2>
+ * <ol>
+ *   <li>调用 {@link #chat(Prompt, ChatOptions)} 或 {@link #chatStream(Prompt, StreamResponseListener, ChatOptions)}</li>
+ *   <li>构建请求上下文（URL/Headers/Body）并初始化 {@link ChatContext}</li>
+ *   <li>构建责任链：可观测性拦截器 → 全局拦截器 → 用户拦截器</li>
+ *   <li>责任链执行：每个拦截器可修改 {@link ChatContext}，最后由 {@link ChatClient} 执行实际调用</li>
+ *   <li>结果返回给调用方</li>
+ * </ol>
+ *
+ * <h2>子类实现指南</h2>
+ * <ul>
+ *   <li>必须实现 {@link #buildRequestBody(Prompt, ChatOptions, boolean)}：构建 LLM 特定的请求体</li>
+ *   <li>必须实现 {@link #buildClient(ChatContext)}：根据上下文创建具体的 {@link ChatClient}</li>
+ *   <li>可选重写 {@link #buildRequestUrl()} 和 {@link #buildHeaders(Prompt, ChatOptions)}：自定义 URL 和 Headers</li>
  * </ul>
  *
  * @param <T> 具体的配置类型，必须是 {@link ChatConfig} 的子类
  */
 public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
 
-    // ===== OpenTelemetry 全局监控指标（所有 LLM 共享）=====
-    private static final Tracer TRACER = Observability.getTracer();
-    private static final Meter METER = Observability.getMeter();
-
-    private static final LongCounter LLM_REQUEST_COUNT = METER.counterBuilder("llm.request.count")
-        .setDescription("Total number of LLM requests")
-        .build();
-
-    private static final DoubleHistogram LLM_LATENCY_HISTOGRAM = METER.histogramBuilder("llm.request.latency")
-        .setDescription("LLM request latency in seconds")
-        .setUnit("s")
-        .build();
-
-    private static final LongCounter LLM_ERROR_COUNT = METER.counterBuilder("llm.request.error.count")
-        .setDescription("Total number of LLM request errors")
-        .build();
-
-    // ===== 实例字段 =====
+    /**
+     * 聊天模型配置，包含 API Key、Endpoint、Model 等信息
+     */
     protected final T config;
-    private List<ChatInterceptor> interceptors;
+
+    /**
+     * 拦截器链，按执行顺序存储（可观测性 → 全局 → 用户）
+     */
+    private final List<ChatInterceptor> interceptors;
 
     /**
      * 构造一个聊天模型实例，不使用实例级拦截器。
+     *
+     * @param config 聊天模型配置
      */
     public BaseChatModel(T config) {
         this(config, Collections.emptyList());
@@ -81,259 +78,221 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
 
     /**
      * 构造一个聊天模型实例，并指定实例级拦截器。
+     * <p>
      * 实例级拦截器会与全局拦截器（通过 {@link GlobalChatInterceptors} 注册）合并，
-     * 执行顺序为：全局拦截器 → 实例拦截器。
+     * 执行顺序为：可观测性拦截器 → 全局拦截器 → 实例拦截器。
+     *
+     * @param config           聊天模型配置
+     * @param userInterceptors 实例级拦截器列表
      */
-    public BaseChatModel(T config, List<ChatInterceptor> interceptors) {
+    public BaseChatModel(T config, List<ChatInterceptor> userInterceptors) {
         this.config = config;
-        this.interceptors = interceptors != null ? new ArrayList<>(interceptors) : new ArrayList<>();
-        // 合并全局拦截器
-        if (GlobalChatInterceptors.size() > 0) {
-            this.interceptors.addAll(0, GlobalChatInterceptors.getInterceptors());
+        this.interceptors = buildInterceptorChain(userInterceptors);
+    }
+
+    /**
+     * 构建完整的拦截器链。
+     * <p>
+     * 执行顺序：
+     * 1. 可观测性拦截器（最外层，最早执行）
+     * 2. 全局拦截器（通过 GlobalChatInterceptors 注册）
+     * 3. 用户拦截器（实例级）
+     *
+     * @param userInterceptors 用户提供的拦截器列表
+     * @return 按执行顺序排列的拦截器链
+     */
+    private List<ChatInterceptor> buildInterceptorChain(List<ChatInterceptor> userInterceptors) {
+        List<ChatInterceptor> chain = new ArrayList<>();
+
+        // 1. 可观测性拦截器（最外层）
+        // 仅在配置启用时添加，负责 OpenTelemetry 追踪和指标上报
+        if (config.isObservabilityEnabled()) {
+//            chain.add(new ObservabilityInterceptor());
         }
-    }
 
-    // ===== 拦截器管理方法 =====
-    public void addInterceptor(ChatInterceptor interceptor) {
-        if (interceptors == null) interceptors = new ArrayList<>();
-        interceptors.add(interceptor);
-    }
+        // 2. 全局拦截器（通过 GlobalChatInterceptors 注册）
+        // 适用于所有聊天模型实例的通用逻辑（如全局日志、认证）
+        chain.addAll(GlobalChatInterceptors.getInterceptors());
 
-    public void addInterceptors(List<ChatInterceptor> interceptors) {
-        if (this.interceptors == null) this.interceptors = new ArrayList<>();
-        this.interceptors.addAll(interceptors);
-    }
-
-    public void removeInterceptor(ChatInterceptor interceptor) {
-        if (interceptors != null) interceptors.remove(interceptor);
-    }
-
-    public void clearInterceptors() {
-        if (interceptors != null) interceptors.clear();
-    }
-
-    public T getConfig() {
-        return config;
-    }
-
-    private boolean isObservabilityEnabled() {
-        return config != null && config.isObservabilityEnabled();
-    }
-
-    // ===== 拦截器执行方法=====
-    private ChatInterceptor.PreHandleResult firePreHandle(Prompt prompt, ChatOptions options) {
-        Prompt currentPrompt = prompt;
-        ChatOptions currentOptions = options;
-        for (ChatInterceptor interceptor : interceptors) {
-            try {
-                ChatInterceptor.PreHandleResult result = interceptor.preHandle(currentPrompt, currentOptions, this);
-                if (result != null) {
-                    currentPrompt = result.getPrompt() != null ? result.getPrompt() : currentPrompt;
-                    currentOptions = result.getOptions() != null ? result.getOptions() : currentOptions;
-                }
-            } catch (Exception e) {
-                handleInterceptorError(e, "preHandle", interceptor);
-            }
+        // 3. 用户拦截器（实例级）
+        // 适用于当前实例的特定逻辑
+        if (userInterceptors != null) {
+            chain.addAll(userInterceptors);
         }
-        return new ChatInterceptor.PreHandleResult(currentPrompt, currentOptions);
+
+        return chain;
     }
 
-    private AiMessageResponse firePostHandle(Prompt originalPrompt, ChatOptions originalOptions,
-                                             AiMessageResponse response, boolean success) {
-        AiMessageResponse finalResponse = response;
-        for (ChatInterceptor interceptor : interceptors) {
-            try {
-                AiMessageResponse modified = interceptor.postHandle(originalPrompt, originalOptions, finalResponse, success);
-                if (modified != null) finalResponse = modified;
-            } catch (Exception e) {
-                handleInterceptorError(e, "postHandle", interceptor);
-            }
-        }
-        return finalResponse;
-    }
-
-    private void fireAfterCompletion(Prompt prompt, ChatOptions options,
-                                     AiMessageResponse response, Throwable ex) {
-        for (ChatInterceptor interceptor : interceptors) {
-            try {
-                interceptor.afterCompletion(prompt, options, response, ex);
-            } catch (Exception e) {
-                handleInterceptorError(e, "afterCompletion", interceptor);
-            }
-        }
-    }
-
-
-    protected void handleInterceptorError(Exception e, String methodName, ChatInterceptor interceptor) {
-        // 静默处理，避免影响主流程
-    }
-
-    // ===== 非流式聊天 =====
+    /**
+     * 执行同步聊天请求。
+     * <p>
+     * 流程：
+     * 1. 构建请求上下文（URL/Headers/Body）
+     * 2. 初始化线程上下文 {@link ChatContext}
+     * 3. 构建并执行责任链
+     * 4. 返回 LLM 响应
+     *
+     * @param prompt  用户输入的提示
+     * @param options 聊天选项（如流式开关、超时等）
+     * @return LLM 响应结果
+     */
     @Override
-    public AiMessageResponse chat(Prompt originalPrompt, ChatOptions originalOptions) {
-        ChatInterceptor.PreHandleResult preResult = firePreHandle(originalPrompt, originalOptions);
-        Prompt currentPrompt = preResult.getPrompt();
-        ChatOptions currentOptions = preResult.getOptions();
+    public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+        // 构建请求体（由子类实现）
+        String requestBody = buildRequestBody(prompt, options, false);
+        // 构建请求头（可由子类重写）
+        Map<String, String> requestHeaders = buildHeaders(prompt, options);
 
-        final boolean observabilityEnabled = isObservabilityEnabled();
-        final String provider = config.getProvider();
-        final String model = config.getModel();
-        final String operation = "chat";
+        // 初始化聊天上下文（自动清理）
+        try (ChatContextHolder.ChatContextScope scope =
+                 ChatContextHolder.beginChat(config, options, prompt,
+                     buildRequestUrl(), requestHeaders, requestBody)) {
 
-        final Span span = observabilityEnabled ?
-            TRACER.spanBuilder(provider + "." + operation)
-                .setAttribute("llm.provider", provider)
-                .setAttribute("llm.model", model)
-                .setAttribute("llm.operation", operation)
-                .startSpan() : null;
-
-        final Scope scope = observabilityEnabled ? span.makeCurrent() : null;
-        final long startTimeNanos = observabilityEnabled ? System.nanoTime() : 0;
-        boolean success = true;
-
-        try (ChatContextHolder.ChatContextScope ignored = ChatContextHolder.beginChat(config, currentOptions, currentPrompt, span)) {
-            AiMessageResponse response = doChat(currentPrompt, currentOptions);
-            boolean callSuccess = (response != null) && !response.isError();
-            AiMessageResponse finalResponse = firePostHandle(originalPrompt, originalOptions, response, callSuccess);
-
-            if (span != null && finalResponse != null && !finalResponse.isError()) {
-                AiMessage aiMessage = finalResponse.getMessage();
-                if (aiMessage != null) {
-                    span.setAttribute("llm.total_tokens", aiMessage.getEffectiveTotalTokens());
-                    String content = aiMessage.getContent();
-                    if (content != null) {
-                        span.setAttribute("llm.response",
-                            content.substring(0, Math.min(content.length(), 500)));
-                    }
-                }
-            }
-            return finalResponse;
-        } catch (Exception e) {
-            success = false;
-            if (span != null) {
-                span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR, e.getMessage());
-                span.recordException(e);
-            }
-            fireAfterCompletion(currentPrompt, currentOptions, null, e);
-            throw e;
-        } finally {
-            if (span != null) {
-                span.end();
-                if (scope != null) scope.close();
-                recordMetrics(provider, model, operation, success, startTimeNanos);
-            }
-        }
-    }
-
-    @Override
-    public void chatStream(Prompt originalPrompt, StreamResponseListener originalListener, ChatOptions originalOptions) {
-        ChatInterceptor.PreHandleResult preResult = firePreHandle(originalPrompt, originalOptions);
-        Prompt currentPrompt = preResult.getPrompt();
-        ChatOptions currentOptions = preResult.getOptions();
-
-        final boolean observabilityEnabled = isObservabilityEnabled();
-        final String provider = config.getProvider();
-        final String model = config.getModel();
-        final String operation = "chatStream";
-
-        final Span span = observabilityEnabled ?
-            TRACER.spanBuilder(provider + "." + operation)
-                .setAttribute("llm.provider", provider)
-                .setAttribute("llm.model", model)
-                .setAttribute("llm.operation", operation)
-                .startSpan() : null;
-
-        final Scope scope = observabilityEnabled ? span.makeCurrent() : null;
-        final long startTimeNanos = observabilityEnabled ? System.nanoTime() : 0;
-        final AtomicBoolean success = new AtomicBoolean(true);
-
-        StreamResponseListener wrappedListener = new StreamResponseListener() {
-            private AiMessageResponse response;
-            private Throwable exception;
-
-            @Override
-            public void onStop(StreamContext context) {
-                if (span != null) {
-                    span.end();
-                    if (scope != null) scope.close();
-                    recordMetrics(provider, model, operation, success.get(), startTimeNanos);
-                }
-                fireAfterCompletion(currentPrompt, currentOptions, response, exception);
-                originalListener.onStop(context);
-            }
-
-            @Override
-            public void onFailure(StreamContext context, Throwable throwable) {
-                this.exception = throwable;
-                success.set(false);
-                if (span != null) {
-                    if (throwable != null) {
-                        span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR, throwable.getMessage());
-                        span.recordException(throwable);
-                    }
-                    span.end();
-                    if (scope != null) scope.close();
-                    recordMetrics(provider, model, operation, false, startTimeNanos);
-                }
-                originalListener.onFailure(context, throwable);
-            }
-
-            @Override
-            public void onStart(StreamContext context) {
-                originalListener.onStart(context);
-            }
-
-            @Override
-            public void onMessage(StreamContext context, AiMessageResponse response) {
-                this.response = response;
-                originalListener.onMessage(context, response);
-            }
-
-            @Override
-            public void onMatchedFunction(String functionName, StreamContext context) {
-                if (span != null) {
-                    span.setAttribute("llm.function_call", functionName);
-                }
-                originalListener.onMatchedFunction(functionName, context);
-            }
-        };
-
-        try (ChatContextHolder.ChatContextScope ignored = ChatContextHolder.beginChat(config, currentOptions, currentPrompt, span)) {
-            doChatStream(currentPrompt, wrappedListener, currentOptions);
-        } catch (Exception e) {
-            success.set(false);
-            if (span != null) {
-                span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR, e.getMessage());
-                span.recordException(e);
-                span.end();
-                if (scope != null) scope.close();
-                recordMetrics(provider, model, operation, false, startTimeNanos);
-            }
-            fireAfterCompletion(currentPrompt, currentOptions, null, e);
-            throw e;
+            // 构建同步责任链并执行
+            SyncChain chain = buildSyncChain(0);
+            return chain.proceed(this, scope.context);
         }
     }
 
     /**
-     * 仅在监控行为启用时调用。
+     * 执行流式聊天请求。
+     * <p>
+     * 流程与同步请求类似，但返回结果通过回调方式分片返回。
+     *
+     * @param prompt   用户输入的提示
+     * @param listener 流式响应监听器
+     * @param options  聊天选项
      */
-    private void recordMetrics(String provider, String model, String operation, boolean success, long startTimeNanos) {
-        double latencySeconds = (System.nanoTime() - startTimeNanos) / 1_000_000_000.0;
-        Attributes attrs = Attributes.of(
-            AttributeKey.stringKey("llm.provider"), provider,
-            AttributeKey.stringKey("llm.model"), model,
-            AttributeKey.stringKey("llm.operation"), operation,
-            AttributeKey.stringKey("llm.success"), String.valueOf(success)
-        );
-        LLM_REQUEST_COUNT.add(1, attrs);
-        LLM_LATENCY_HISTOGRAM.record(latencySeconds, attrs);
-        if (!success) {
-            LLM_ERROR_COUNT.add(1, attrs);
+    @Override
+    public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+        String requestBody = buildRequestBody(prompt, options, true);
+        Map<String, String> requestHeaders = buildHeaders(prompt, options);
+
+        try (ChatContextHolder.ChatContextScope scope =
+                 ChatContextHolder.beginChat(config, options, prompt,
+                     buildRequestUrl(), requestHeaders, requestBody)) {
+
+            StreamChain chain = buildStreamChain(0);
+            chain.proceed(this, scope.context, listener);
         }
     }
 
-    // ===== 子类必须实现 =====
-    public abstract AiMessageResponse doChat(Prompt prompt, ChatOptions options);
+    /**
+     * 构建请求 URL。
+     * <p>
+     * 默认实现返回 {@code config.getFullUrl()}，子类可重写以支持特殊 URL 格式。
+     *
+     * @return 请求目标地址
+     */
+    protected String buildRequestUrl() {
+        return config.getFullUrl();
+    }
 
-    public abstract void doChatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options);
+    /**
+     * 构建请求头。
+     * <p>
+     * 默认实现包含 Content-Type 和 Authorization，子类可重写以添加自定义头。
+     *
+     * @param prompt  用户提示
+     * @param options 聊天选项
+     * @return 请求头映射
+     */
+    protected Map<String, String> buildHeaders(Prompt prompt, ChatOptions options) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + config.getApiKey());
+        return headers;
+    }
+
+    /**
+     * 构建请求体。
+     * <p>
+     * <b>子类必须实现此方法</b>，根据 LLM 协议格式化请求体。
+     *
+     * @param prompt    用户提示
+     * @param options   聊天选项
+     * @param streaming 是否为流式请求
+     * @return 序列化后的请求体（通常是 JSON 字符串）
+     */
+    protected abstract String buildRequestBody(Prompt prompt, ChatOptions options, boolean streaming);
+
+    /**
+     * 构建同步责任链。
+     * <p>
+     * 递归构建拦截器链，链尾节点负责创建并调用 {@link ChatClient}。
+     *
+     * @param index 当前拦截器索引
+     * @return 同步责任链
+     */
+    private SyncChain buildSyncChain(int index) {
+        // 链尾：执行实际 LLM 调用
+        if (index >= interceptors.size()) {
+            return (model, context) -> {
+                // 创建协议客户端（由子类实现）
+                ChatClient client = buildClient(context);
+                // 执行同步调用
+                return client.chat();
+            };
+        }
+
+        // 递归构建下一个节点
+        ChatInterceptor current = interceptors.get(index);
+        SyncChain next = buildSyncChain(index + 1);
+
+        // 当前节点：执行拦截器逻辑
+        return (model, context) -> current.intercept(model, context, next);
+    }
+
+    /**
+     * 构建流式责任链。
+     * <p>
+     * 与同步链类似，但支持流式监听器。
+     *
+     * @param index 当前拦截器索引
+     * @return 流式责任链
+     */
+    private StreamChain buildStreamChain(int index) {
+        if (index >= interceptors.size()) {
+            return (model, context, listener) -> {
+                ChatClient client = buildClient(context);
+                client.chatStream(listener);
+            };
+        }
+
+        ChatInterceptor current = interceptors.get(index);
+        StreamChain next = buildStreamChain(index + 1);
+        return (model, context, listener) -> current.interceptStream(model, context, listener, next);
+    }
+
+    /**
+     * 动态添加拦截器。
+     * <p>
+     * 新拦截器会被添加到链的末尾（在用户拦截器区域）。
+     *
+     * @param interceptor 要添加的拦截器
+     */
+    public void addInterceptor(ChatInterceptor interceptor) {
+        interceptors.add(interceptor);
+    }
+
+    /**
+     * 获取聊天模型配置。
+     *
+     * @return 聊天配置对象
+     */
+    public T getConfig() {
+        return config;
+    }
+
+    /**
+     * 创建协议客户端。
+     * <p>
+     * <b>子类必须实现此方法</b>，根据 {@link ChatContext} 创建具体的 {@link ChatClient} 实例。
+     * <p>
+     * 注意：此方法会在责任链末端被调用，此时 {@link ChatContext} 可能已被拦截器修改。
+     *
+     * @param context 聊天上下文（包含完整的请求信息）
+     * @return 协议客户端实例
+     */
+    public abstract ChatClient buildClient(ChatContext context);
 }

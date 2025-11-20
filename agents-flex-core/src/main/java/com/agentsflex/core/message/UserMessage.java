@@ -16,6 +16,7 @@
 package com.agentsflex.core.message;
 
 import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.JavaNativeFunctionBuilder;
@@ -184,7 +185,7 @@ public class UserMessage extends AbstractTextMessage {
             List<Map<String, Object>> messageContent = new ArrayList<>();
             messageContent.add(Maps.of("type", "text").set("text", getContent()));
 
-            ChatContextHolder.ChatContext chatContext = ChatContextHolder.currentContext();
+            ChatContext chatContext = ChatContextHolder.currentContext();
             ChatConfig config = chatContext != null ? chatContext.getConfig() : null;
 
             if ((config == null || config.isSupportAudio()) && CollectionUtil.hasItems(audioUrls)) {

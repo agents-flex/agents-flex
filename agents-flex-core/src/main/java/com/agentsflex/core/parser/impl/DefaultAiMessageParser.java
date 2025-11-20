@@ -17,7 +17,6 @@ package com.agentsflex.core.parser.impl;
 
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionCall;
-import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.JSONObjectParser;
 import com.agentsflex.core.util.JSONUtil;
@@ -40,7 +39,8 @@ public class DefaultAiMessageParser implements AiMessageParser {
     private JSONPath totalTokensPath;
     private JSONPath promptTokensPath;
     private JSONPath completionTokensPath;
-    private JSONObjectParser<MessageStatus> statusParser;
+    private JSONPath finishReasonPath;
+    private JSONPath stopReasonPath;
     private JSONObjectParser<List<FunctionCall>> callsParser;
 
     public JSONPath getContentPath() {
@@ -91,12 +91,20 @@ public class DefaultAiMessageParser implements AiMessageParser {
         this.completionTokensPath = JSONUtil.getJsonPath(completionTokensPath);
     }
 
-    public JSONObjectParser<MessageStatus> getStatusParser() {
-        return statusParser;
+    public JSONPath getFinishReasonPath() {
+        return finishReasonPath;
     }
 
-    public void setStatusParser(JSONObjectParser<MessageStatus> statusParser) {
-        this.statusParser = statusParser;
+    public void setFinishReasonPath(String finishReasonPath) {
+        this.finishReasonPath = JSONUtil.getJsonPath(finishReasonPath);
+    }
+
+    public JSONPath getStopReasonPath() {
+        return stopReasonPath;
+    }
+
+    public void setStopReasonPath(String stopReasonPath) {
+        this.stopReasonPath = JSONUtil.getJsonPath(stopReasonPath);
     }
 
     public JSONObjectParser<List<FunctionCall>> getCallsParser() {
@@ -132,16 +140,20 @@ public class DefaultAiMessageParser implements AiMessageParser {
             aiMessage.setCompletionTokens((Integer) this.completionTokensPath.eval(rootJson));
         }
 
+        if (this.finishReasonPath != null) {
+            aiMessage.setFinishReason((String) this.finishReasonPath.eval(rootJson));
+        }
+
+        if (this.stopReasonPath != null) {
+            aiMessage.setStopReason((String) this.stopReasonPath.eval(rootJson));
+        }
+
         if (this.totalTokensPath != null) {
             aiMessage.setTotalTokens((Integer) this.totalTokensPath.eval(rootJson));
         }
         //some LLMs like Ollama not response the total tokens
         else if (aiMessage.getPromptTokens() != null && aiMessage.getCompletionTokens() != null) {
             aiMessage.setTotalTokens(aiMessage.getPromptTokens() + aiMessage.getCompletionTokens());
-        }
-
-        if (this.statusParser != null) {
-            aiMessage.setStatus(this.statusParser.parse(rootJson));
         }
 
         if (callsParser != null) {
@@ -166,17 +178,13 @@ public class DefaultAiMessageParser implements AiMessageParser {
         aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
         aiMessageParser.setPromptTokensPath("$.usage.prompt_tokens");
         aiMessageParser.setCompletionTokensPath("$.usage.completion_tokens");
+        aiMessageParser.setFinishReasonPath("$.choices[0].finish_reason");
+        aiMessageParser.setStopReasonPath("$.choices[0].stop_reason");
 
-        aiMessageParser.setStatusParser(content -> {
-            Object finishReason = JSONUtil.getJsonPath("$.choices[0].finish_reason").eval(content);
-            if (finishReason != null) {
-                return MessageStatus.END;
-            }
-            return MessageStatus.MIDDLE;
-        });
 
         aiMessageParser.setCallsParser(content -> {
-            JSONArray toolCalls = (JSONArray) JSONUtil.getJsonPath("$.choices[0].message.tool_calls").eval(content);
+            String jsonPath = isStream ? "$.choices[0].delta.tool_calls" : "$.choices[0].message.tool_calls";
+            JSONArray toolCalls = (JSONArray) JSONUtil.getJsonPath(jsonPath).eval(content);
             if (toolCalls == null || toolCalls.isEmpty()) {
                 return Collections.emptyList();
             }
@@ -190,11 +198,9 @@ public class DefaultAiMessageParser implements AiMessageParser {
                     functionCall.setName(functionObject.getString("name"));
                     Object arguments = functionObject.get("arguments");
                     if (arguments instanceof Map) {
-                        //noinspection unchecked
-                        functionCall.setArgs((Map<String, Object>) arguments);
+                        functionCall.setArgsString(JSON.toJSONString(arguments));
                     } else if (arguments instanceof String) {
-                        //noinspection unchecked
-                        functionCall.setArgs(JSON.parseObject((String) arguments, Map.class));
+                        functionCall.setArgsString((String) arguments);
                     }
                     functionCalls.add(functionCall);
                 }

@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.message;
 
+import com.alibaba.fastjson2.JSON;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -22,15 +24,15 @@ public class FunctionCall implements Serializable {
 
     private String id;
     private String name;
-    private Map<String, Object> args;
+    private String argsString;
 
     public FunctionCall() {
     }
 
-    public FunctionCall(String id, String name, Map<String, Object> args) {
+    public FunctionCall(String id, String name, String argsString) {
         this.id = id;
         this.name = name;
-        this.args = args;
+        this.argsString = argsString;
     }
 
     public String getId() {
@@ -49,12 +51,26 @@ public class FunctionCall implements Serializable {
         this.name = name;
     }
 
-    public Map<String, Object> getArgs() {
-        return args;
+    public String getArgsString() {
+        return argsString;
     }
 
-    public void setArgs(Map<String, Object> args) {
-        this.args = args;
+    public void setArgsString(String argsString) {
+        this.argsString = argsString;
+    }
+
+    public Map<String, Object> getArgsMap() {
+        if (argsString == null || argsString.isEmpty()) {
+            return null;
+        }
+        try {
+            String jsonStr = argsString.trim();
+            if (!jsonStr.startsWith("{")) jsonStr = "{" + jsonStr;
+            if (!jsonStr.endsWith("}")) jsonStr = jsonStr + "}";
+            return JSON.parseObject(jsonStr);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
@@ -62,7 +78,7 @@ public class FunctionCall implements Serializable {
         return "FunctionCall{" +
             "id='" + id + '\'' +
             ", name='" + name + '\'' +
-            ", args=" + args +
+            ", argsString='" + argsString + '\'' +
             '}';
     }
 }

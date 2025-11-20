@@ -31,9 +31,6 @@ public interface StreamResponseListener {
     default void onStop(StreamContext context) {
     }
 
-    default void onMatchedFunction(String functionName, StreamContext context) {
-    }
-
     default void onFailure(StreamContext context, Throwable throwable) {
         if (throwable != null) {
             logger.error(throwable.toString(), throwable);

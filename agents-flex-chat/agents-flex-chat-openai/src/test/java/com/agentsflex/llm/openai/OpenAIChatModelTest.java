@@ -275,7 +275,7 @@ public class OpenAIChatModelTest {
         config.setLogEnabled(true);
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
-        config.setApiKey("PXW1");
+        config.setApiKey("PXW1G******7D12");
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -284,11 +284,11 @@ public class OpenAIChatModelTest {
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
-                System.out.println("onMessage >>>>>" + response);
+//                System.out.println("onMessage >>>>>" + response);
             }
         });
 
-        TimeUnit.SECONDS.sleep(5);
+        TimeUnit.SECONDS.sleep(1115);
     }
 
 

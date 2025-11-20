@@ -15,11 +15,11 @@
  */
 package com.agentsflex.core.model.chat.response;
 
+import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.functions.Function;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.MessageUtil;

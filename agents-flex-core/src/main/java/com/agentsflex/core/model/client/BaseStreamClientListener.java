@@ -22,40 +22,34 @@ import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.util.JSONUtil;
-import com.agentsflex.core.util.LocalTokenCounter;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BaseStreamClientListener implements StreamClientListener {
 
     private final StreamResponseListener streamResponseListener;
     private final Prompt prompt;
     private final AiMessageParser messageParser;
-    private final StringBuilder fullReasoningContent = new StringBuilder();
-    private final StringBuilder fullMessage = new StringBuilder();
-    private AiMessage lastAiMessage;
     private final StreamContext context;
-    private final List<FunctionCallInfo> functionCallInfos = new ArrayList<>(0);
-    private FunctionCallInfo functionCallInfo;
+    private final AiMessage fullMessage = new AiMessage();
+    private final AtomicBoolean finishedFlag = new AtomicBoolean(false);
 
-    public BaseStreamClientListener(ChatModel chatModel
-        , StreamClient client
-        , StreamResponseListener streamResponseListener
-        , Prompt prompt
-        , AiMessageParser messageParser) {
+    public BaseStreamClientListener(
+        ChatModel chatModel,
+        StreamClient client,
+        StreamResponseListener streamResponseListener,
+        Prompt prompt,
+        AiMessageParser messageParser) {
 
         this.streamResponseListener = streamResponseListener;
         this.prompt = prompt;
         this.messageParser = messageParser;
         this.context = new StreamContext(chatModel, client);
     }
-
 
     @Override
     public void onStart(StreamClient client) {
@@ -64,108 +58,68 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     @Override
     public void onMessage(StreamClient client, String response) {
-        if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim())) {
-            //兼容在某些情况下，llm 没有出现 finish_reason: "tool_calls" 的响应
-            if (!this.functionCallInfos.isEmpty()) {
-                invokeOnMessageForFunctionCall(response);
+        if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim()) || finishedFlag.get()) {
+            if (finishedFlag.compareAndSet(false, true)) {
+                notifyLastMessageAndStop(response);
             }
             return;
         }
 
         try {
             JSONObject jsonObject = JSON.parseObject(response);
-            lastAiMessage = messageParser.parse(jsonObject);
-            String reasoningContent = lastAiMessage.getReasoningContent();
-            String content = lastAiMessage.getContent();
+            AiMessage delta = messageParser.parse(jsonObject);
+            fullMessage.merge(delta); //核心：一行合并所有增量
 
-            // 第一个和最后一个content都为null
-            if (Objects.nonNull(content)) {
-                fullMessage.append(content);
-            }
-            if (Objects.nonNull(reasoningContent)) {
-                fullReasoningContent.append(reasoningContent);
-            }
+            delta.setFullContent(fullMessage.getContent());
+            delta.setFullReasoningContent(fullMessage.getReasoningContent());
 
-            lastAiMessage.setFullReasoningContent(fullReasoningContent.toString());
-            lastAiMessage.setFullContent(fullMessage.toString());
-
-            String functionName = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.name");
-            if (StringUtil.hasText(functionName)) {
-                functionCallInfo = new FunctionCallInfo();
-                functionCallInfo.name = functionName;
-                functionCallInfo.id = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].id");
-
-                String arguments = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
-                if (arguments != null) {
-                    functionCallInfo.arguments += arguments;
+            //最后 1 条消息
+            if (delta.isLastMessage()) {
+                if (finishedFlag.compareAndSet(false, true)) {
+                    notifyLastMessageAndStop(response);
                 }
-
-                functionCallInfos.add(functionCallInfo);
-                streamResponseListener.onMatchedFunction(functionName, context);
-            } else if (functionCallInfo != null) {
-                String arguments = JSONUtil.readString(jsonObject, "$.choices[0].delta.tool_calls[0].function.arguments");
-                if (arguments != null) {
-                    functionCallInfo.arguments += arguments;
-                } else {
-                    String finishReason = JSONUtil.readString(jsonObject, "$.choices[0].finish_reason");
-                    if ("tool_calls".equals(finishReason)) {
-                        functionCallInfo = null;
-                        invokeOnMessageForFunctionCall(response);
-                    }
-                }
-            } else {
-                LocalTokenCounter.computeAndSetLocalTokens(prompt.getMessages(), lastAiMessage);
-                AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
-                streamResponseListener.onMessage(context, aiMessageResponse);
+            }
+            //输出内容
+            else if (hasContent(delta)) {
+                AiMessageResponse resp = new AiMessageResponse(prompt, response, delta);
+                streamResponseListener.onMessage(context, resp);
             }
         } catch (Exception err) {
             streamResponseListener.onFailure(context, err);
+            onStop(this.context.getClient());
         }
     }
 
-    private void invokeOnMessageForFunctionCall(String response) {
-        List<FunctionCall> calls = new ArrayList<>(functionCallInfos.size());
-        for (FunctionCallInfo record : functionCallInfos) {
-            calls.add(record.toFunctionCall());
-        }
-        lastAiMessage.setCalls(calls);
-        AiMessageResponse aiMessageResponse = new AiMessageResponse(prompt, response, lastAiMessage);
-        try {
-            LocalTokenCounter.computeAndSetLocalTokens(prompt.getMessages(), lastAiMessage);
-            streamResponseListener.onMessage(context, aiMessageResponse);
-        } finally {
-            functionCallInfos.clear();
-        }
+    private void notifyLastMessageAndStop(String response) {
+        AiMessageResponse resp = new AiMessageResponse(prompt, response, fullMessage);
+        streamResponseListener.onMessage(context, resp);
+        onStop(this.context.getClient());
     }
+
 
     @Override
     public void onStop(StreamClient client) {
-//        if (lastAiMessage != null) {
-//            if (this.prompt instanceof HistoriesPrompt) {
-//                ((HistoriesPrompt) this.prompt).addMessage(lastAiMessage);
-//            }
-//        }
-        context.addLastAiMessage(lastAiMessage);
+        context.setAiMessage(fullMessage);
         streamResponseListener.onStop(context);
     }
 
     @Override
     public void onFailure(StreamClient client, Throwable throwable) {
+        context.setThrowable(throwable);
         streamResponseListener.onFailure(context, throwable);
     }
 
-    static class FunctionCallInfo {
-        String id;
-        String name;
-        String arguments = "";
-
-        public FunctionCall toFunctionCall() {
-            FunctionCall functionCall = new FunctionCall();
-            functionCall.setId(id);
-            functionCall.setName(name);
-            functionCall.setArgs(JSON.parseObject(arguments));
-            return functionCall;
-        }
+    private boolean hasContent(AiMessage delta) {
+        return delta.getContent() != null ||
+            delta.getReasoningContent() != null ||
+            (delta.getCalls() != null && !delta.getCalls().isEmpty());
     }
 
+    private boolean isFunctionCallExists(String id) {
+        if (fullMessage.getCalls() == null || id == null) return false;
+        for (FunctionCall call : fullMessage.getCalls()) {
+            if (Objects.equals(call.getId(), id)) return true;
+        }
+        return false;
+    }
 }

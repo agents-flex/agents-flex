@@ -16,11 +16,11 @@
 package com.agentsflex.core.message;
 
 import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.Parameter;
 import com.agentsflex.core.util.Maps;
-import com.alibaba.fastjson2.JSON;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -75,17 +75,12 @@ public class OpenAIMessageFormat implements MessageFormat {
             toolCall.set("id", call.getId())
                 .set("type", "function")
                 .set("function", Maps.of("name", call.getName())
-                    .set("arguments", buildToolCallsArguments(call.getArgs()))
+                    .set("arguments", call.getArgsString())
                 );
 
             toolCalls.add(toolCall);
         }
         map.put("tool_calls", toolCalls);
-    }
-
-    protected Object buildToolCallsArguments(Map<String, Object> arguments) {
-//        return JSON.toJSONString(arguments, SerializerFeature.DisableCircularReferenceDetect);
-        return JSON.toJSONString(arguments);
     }
 
 
@@ -103,7 +98,7 @@ public class OpenAIMessageFormat implements MessageFormat {
             return null;
         }
 
-        ChatContextHolder.ChatContext chatContext = ChatContextHolder.currentContext();
+        ChatContext chatContext = ChatContextHolder.currentContext();
         ChatConfig config = chatContext != null ? chatContext.getConfig() : null;
 
         // 大模型不支持 Function Calling

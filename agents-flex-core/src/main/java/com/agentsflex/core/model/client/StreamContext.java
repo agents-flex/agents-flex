@@ -15,16 +15,14 @@
  */
 package com.agentsflex.core.model.client;
 
-import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.message.AiMessage;
-
-import java.util.HashMap;
-import java.util.Map;
+import com.agentsflex.core.model.chat.ChatModel;
 
 public class StreamContext {
     private ChatModel chatModel;
     private StreamClient client;
-    private final Map<String, Object> params = new HashMap<>();
+    private AiMessage aiMessage;
+    private Throwable throwable;
 
     public StreamContext() {
     }
@@ -50,19 +48,31 @@ public class StreamContext {
         this.client = client;
     }
 
-    public void addLastAiMessage(AiMessage aiMessageContent) {
-        addParam("lastAiMessage", aiMessageContent);
+    public ChatModel getChatModel() {
+        return chatModel;
     }
 
-    public AiMessage getLastAiMessage() {
-        return getParam("lastAiMessage");
+    public void setChatModel(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
-    public void addParam(String key, Object value) {
-        params.put(key, value);
+    public AiMessage getAiMessage() {
+        return aiMessage;
     }
 
-    public <T> T getParam(String key) {
-        return (T) params.get(key);
+    public void setAiMessage(AiMessage aiMessage) {
+        this.aiMessage = aiMessage;
+    }
+
+    public Throwable getThrowable() {
+        return throwable;
+    }
+
+    public void setThrowable(Throwable throwable) {
+        this.throwable = throwable;
+    }
+
+    public boolean isError() {
+        return throwable != null;
     }
 }

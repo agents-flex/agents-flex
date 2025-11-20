@@ -15,23 +15,21 @@
  */
 package com.agentsflex.llm.ollama;
 
+import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.MessageFormat;
+import com.agentsflex.core.message.OpenAIMessageFormat;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.message.*;
-import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
-import com.agentsflex.core.message.OpenAIMessageFormat;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.message.MessageFormat;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONArray;
-import com.alibaba.fastjson2.JSONObject;
-import com.alibaba.fastjson2.JSONPath;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class OllamaLlmUtil {
 
@@ -41,7 +39,7 @@ public class OllamaLlmUtil {
         protected void buildMessageContent(Message message, Map<String, Object> map) {
             if (message instanceof UserMessage) {
                 map.put("content", message.getTextContent());
-                ChatContextHolder.ChatContext chatContext = ChatContextHolder.currentContext();
+                ChatContext chatContext = ChatContextHolder.currentContext();
                 ChatConfig config = chatContext == null ? null : chatContext.getConfig();
                 map.put("images", ((UserMessage) message).getImageUrlsForChat(config));
             } else {
@@ -55,49 +53,6 @@ public class OllamaLlmUtil {
         }
     };
 
-
-    public static AiMessageParser getAiMessageParser() {
-        DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        aiMessageParser.setContentPath("$.message.content");
-        aiMessageParser.setTotalTokensPath("$.eval_count");
-        aiMessageParser.setCompletionTokensPath("$.prompt_eval_count");
-
-        aiMessageParser.setStatusParser(content -> {
-            Boolean done = (Boolean) JSONPath.eval(content, "$.done");
-            if (done != null && done) {
-                return MessageStatus.END;
-            }
-            return MessageStatus.MIDDLE;
-        });
-
-        aiMessageParser.setCallsParser(content -> {
-            JSONArray toolCalls = (JSONArray) JSONPath.eval(content, "$.message.tool_calls");
-            if (toolCalls == null || toolCalls.isEmpty()) {
-                return Collections.emptyList();
-            }
-            List<FunctionCall> functionCalls = new ArrayList<>();
-            for (int i = 0; i < toolCalls.size(); i++) {
-                JSONObject jsonObject = toolCalls.getJSONObject(i);
-                JSONObject functionObject = jsonObject.getJSONObject("function");
-                if (functionObject != null) {
-                    FunctionCall functionCall = new FunctionCall();
-                    functionCall.setId(jsonObject.getString("id"));
-                    functionCall.setName(functionObject.getString("name"));
-                    Object arguments = functionObject.get("arguments");
-                    if (arguments instanceof Map) {
-                        //noinspection unchecked
-                        functionCall.setArgs((Map<String, Object>) arguments);
-                    } else if (arguments instanceof String) {
-                        //noinspection unchecked
-                        functionCall.setArgs(JSON.parseObject(arguments.toString(), Map.class));
-                    }
-                    functionCalls.add(functionCall);
-                }
-            }
-            return functionCalls;
-        });
-        return aiMessageParser;
-    }
 
 
     public static String promptToPayload(Prompt prompt, OllamaChatConfig config, ChatOptions options, boolean stream) {
