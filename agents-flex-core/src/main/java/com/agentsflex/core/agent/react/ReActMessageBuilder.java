@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.agents.react;
+package com.agentsflex.core.agent.react;
 
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.tool.Tool;

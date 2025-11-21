@@ -2,9 +2,9 @@
  * Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
  * Licensed under the Apache License, Version 2.0.
  */
-package com.agentsflex.core.agents.route;
+package com.agentsflex.core.agent.route;
 
-import com.agentsflex.core.agents.IAgent;
+import com.agentsflex.core.agent.IAgent;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.ChatModel;
@@ -45,7 +45,7 @@ public class RouteAgent {
             "{user_input}";
 
     private final ChatModel chatModel;
-    private final AgentRegistry agentRegistry;
+    private final RouteAgentRegistry routeAgentRegistry;
     private final String userQuery;
     private final HistoriesPrompt conversationHistory;
 
@@ -54,10 +54,10 @@ public class RouteAgent {
     private boolean enableKeywordRouting = true;
     private boolean enableLlmRouting = true;
 
-    public RouteAgent(ChatModel chatModel, AgentRegistry agentRegistry,
+    public RouteAgent(ChatModel chatModel, RouteAgentRegistry routeAgentRegistry,
                       String userQuery, HistoriesPrompt conversationHistory) {
         this.chatModel = chatModel;
-        this.agentRegistry = agentRegistry;
+        this.routeAgentRegistry = routeAgentRegistry;
         this.userQuery = userQuery;
         this.conversationHistory = conversationHistory;
     }
@@ -72,7 +72,7 @@ public class RouteAgent {
         try {
             // 1. 关键字快速匹配
             if (enableKeywordRouting) {
-                String agentName = agentRegistry.findAgentByKeyword(userQuery);
+                String agentName = routeAgentRegistry.findAgentByKeyword(userQuery);
                 if (agentName != null) {
                     log.debug("关键字匹配命中 Agent: {}", agentName);
                     return createAgent(agentName);
@@ -82,7 +82,7 @@ public class RouteAgent {
             // 2. LLM 智能路由
             if (enableLlmRouting) {
                 String contextSummary = buildContextSummary(conversationHistory);
-                String agentDescriptions = agentRegistry.getAgentDescriptions();
+                String agentDescriptions = routeAgentRegistry.getAgentDescriptions();
                 String prompt = routingPromptTemplate
                     .replace("{agent_descriptions}", agentDescriptions)
                     .replace("{conversation_context}", contextSummary)
@@ -107,7 +107,7 @@ public class RouteAgent {
     }
 
     private IAgent createAgent(String agentName) {
-        AgentFactory factory = agentRegistry.getAgentFactory(agentName);
+        RouteAgentFactory factory = routeAgentRegistry.getAgentFactory(agentName);
         if (factory == null) {
             log.warn("Agent 不存在: {}, 返回 null", agentName);
             return null;

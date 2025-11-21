@@ -13,28 +13,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.agents.react;
+package com.agentsflex.core.agent.react;
 
-import com.agentsflex.core.agents.IAgent;
-import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.client.StreamContext;
+import com.agentsflex.core.agent.IAgent;
+import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.Message;
+import com.agentsflex.core.model.chat.tool.*;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson2.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /**
  * ReActAgent 是一个通用的 ReAct 模式 Agent，支持 Reasoning + Action 的交互方式。
@@ -87,6 +84,9 @@ public class ReActAgent implements IAgent {
     // 监听器集合
     private final List<ReActAgentListener> listeners = new ArrayList<>();
 
+    // 拦截器集合
+    private final List<ToolInterceptor> interceptors = new ArrayList<>();
+
 
     public ReActAgent(ChatModel chatModel, List<Tool> tools, String userQuery) {
         this.chatModel = chatModel;
@@ -130,6 +130,18 @@ public class ReActAgent implements IAgent {
      */
     public void removeListener(ReActAgentListener listener) {
         listeners.remove(listener);
+    }
+
+    public void addInterceptor(ToolInterceptor interceptor) {
+        interceptors.add(interceptor);
+    }
+
+    public void addInterceptors(List<ToolInterceptor> interceptors) {
+        this.interceptors.addAll(interceptors);
+    }
+
+    public void removeInterceptor(ToolInterceptor interceptor) {
+        interceptors.remove(interceptor);
     }
 
     public ChatModel getChatModel() {
@@ -385,28 +397,27 @@ public class ReActAgent implements IAgent {
                     try {
                         notifyOnActionStart(step);
 
-                        Map<String, Object> parameters;
+                        Object result = null;
                         try {
-                            if (StringUtil.hasText(step.getActionInput())) {
-                                parameters = JSON.parseObject(step.getActionInput());
-                            } else {
-                                parameters = Collections.emptyMap();
-                            }
+                            ToolCall toolCall = new ToolCall();
+                            toolCall.setId("react_call_" + state.iterationCount + "_" + System.currentTimeMillis());
+                            toolCall.setName(step.getAction());
+                            toolCall.setArgsString(step.getActionInput());
+
+                            ToolExecutor executor = new ToolExecutor(tool, toolCall, interceptors);
+
+                            // 方便子Agent 获取当前的 ReActAgent
+                            executor.addInterceptor((context, chain) -> {
+                                context.setAttribute(ReActAgentTool.PARENT_AGENT_KEY, ReActAgent.this);
+                                return chain.proceed(context);
+                            });
+
+                            result = executor.execute();
                         } catch (Exception e) {
-                            log.error(e.toString(), e);
-                            notifyOnActionJsonParserError(step, e);
-
-                            if (!state.continueOnActionJsonParseError) {
-                                return false;
-                            }
-
-                            Message message = messageBuilder.buildJsonParserErrorMessage(e, step);
-                            historiesPrompt.addMessage(message);
-                            return true; // 继续让 AI 修正
+                            throw new RuntimeException(e);
+                        } finally {
+                            notifyOnActionEnd(step, result);
                         }
-
-                        Object result = tool.invoke(parameters);
-                        notifyOnActionEnd(step, result);
 
                         Message message = messageBuilder.buildObservationMessage(step, result);
                         historiesPrompt.addMessage(message);

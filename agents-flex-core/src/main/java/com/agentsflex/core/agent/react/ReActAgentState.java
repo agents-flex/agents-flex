@@ -1,4 +1,4 @@
-package com.agentsflex.core.agents.react;
+package com.agentsflex.core.agent.react;
 
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
@@ -20,7 +20,6 @@ public class ReActAgentState implements Serializable {
     int maxIterations;
     boolean streamable;
     String promptTemplate;
-    boolean continueOnActionJsonParseError;
     boolean continueOnActionInvokeError;
 
     public String getUserQuery() {
@@ -76,14 +75,6 @@ public class ReActAgentState implements Serializable {
 
     public void setPromptTemplate(String promptTemplate) {
         this.promptTemplate = promptTemplate;
-    }
-
-    public boolean isContinueOnActionJsonParseError() {
-        return continueOnActionJsonParseError;
-    }
-
-    public void setContinueOnActionJsonParseError(boolean continueOnActionJsonParseError) {
-        this.continueOnActionJsonParseError = continueOnActionJsonParseError;
     }
 
     public boolean isContinueOnActionInvokeError() {

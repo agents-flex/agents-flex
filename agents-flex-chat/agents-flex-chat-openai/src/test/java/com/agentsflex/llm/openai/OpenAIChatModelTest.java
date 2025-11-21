@@ -1,9 +1,9 @@
 package com.agentsflex.llm.openai;
 
-import com.agentsflex.core.agents.react.ReActAgent;
-import com.agentsflex.core.agents.react.ReActAgentListener;
-import com.agentsflex.core.agents.react.ReActAgentState;
-import com.agentsflex.core.agents.react.ReActStep;
+import com.agentsflex.core.agent.react.ReActAgent;
+import com.agentsflex.core.agent.react.ReActAgentListener;
+import com.agentsflex.core.agent.react.ReActAgentState;
+import com.agentsflex.core.agent.react.ReActStep;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.client.StreamContext;

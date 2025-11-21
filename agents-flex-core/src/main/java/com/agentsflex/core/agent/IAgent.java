@@ -1,4 +1,4 @@
-package com.agentsflex.core.agents;
+package com.agentsflex.core.agent;
 
 public interface IAgent {
 

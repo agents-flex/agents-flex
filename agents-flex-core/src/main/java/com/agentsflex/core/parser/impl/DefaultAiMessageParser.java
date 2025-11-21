@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 
-public class DefaultAiMessageParser implements AiMessageParser {
+public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
 
     private JSONPath contentPath;
     private JSONPath deltaContentPath;
@@ -236,7 +236,6 @@ public class DefaultAiMessageParser implements AiMessageParser {
 
         aiMessageParser.setToolCallsJsonPath(JSONUtil.getJsonPath("$.choices[0].message.tool_calls"));
         aiMessageParser.setDeltaToolCallsJsonPath(JSONUtil.getJsonPath("$.choices[0].delta.tool_calls"));
-
 
         aiMessageParser.setCallsParser(toolCalls -> {
             if (toolCalls == null || toolCalls.isEmpty()) {
