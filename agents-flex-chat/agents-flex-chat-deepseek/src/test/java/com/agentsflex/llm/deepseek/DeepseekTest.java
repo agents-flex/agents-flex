@@ -4,8 +4,8 @@ import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.functions.annotation.FunctionDef;
-import com.agentsflex.core.model.chat.functions.annotation.FunctionParam;
+import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
+import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.message.SystemMessage;
@@ -18,13 +18,13 @@ import java.util.Scanner;
 public class DeepseekTest {
 
 
-    @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
-    public static String getWeatherInfo(@FunctionParam(name = "city", description = "城市名称") String name) {
+    @ToolDef(name = "get_the_weather_info", description = "get the weather info")
+    public static String getWeatherInfo(@ToolParam(name = "city", description = "城市名称") String name) {
         //在这里，我们应该通过第三方接口调用 api 信息
         return name + "的天气是阴转多云。 ";
     }
 
-    @FunctionDef(name = "get_holiday_balance", description = "获取假期余额")
+    @ToolDef(name = "get_holiday_balance", description = "获取假期余额")
     public static String getHolidayBalance() {
         //在这里，我们应该通过第三方接口调用 api 信息
         String username = "michael";
@@ -51,7 +51,7 @@ public class DeepseekTest {
         while (userInput != null) {
             // 第二步：创建 HumanMessage，并添加方法调用
             UserMessage userMessage = new UserMessage(userInput);
-            userMessage.addFunctionsFromClass(DeepseekTest.class);
+            userMessage.addToolsFromClass(DeepseekTest.class);
             // 第三步：将 HumanMessage 添加到 HistoriesPrompt 中
             prompt.addMessage(userMessage);
             // 第四步：调用 chatStream 方法，进行对话
@@ -61,7 +61,7 @@ public class DeepseekTest {
                     if (StringUtil.hasText(response.getMessage().getContent())) {
                         System.out.print(response.getMessage().getContent());
                     }
-                    if (response.getMessage().getStatus() == MessageStatus.END) {
+                    if (response.getMessage().isLastMessage()) {
                         System.out.println(response);
                         System.out.println("------");
                     }
@@ -81,9 +81,9 @@ public class DeepseekTest {
     public static void functionCall() {
         ChatModel chatModel = getLLM();
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
-        prompt.addFunctionsFromClass(DeepseekTest.class);
+        prompt.addToolsFromClass(DeepseekTest.class);
         AiMessageResponse response = chatModel.chat(prompt);
-        System.out.println(response.getFunctionResults());
+        System.out.println(response.getToolResults());
     }
 
     public static void main(String[] args) {

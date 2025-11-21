@@ -13,11 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat.functions;
+package com.agentsflex.core.model.chat.tool;
 
 import com.agentsflex.core.convert.ConvertService;
-import com.agentsflex.core.model.chat.functions.annotation.FunctionDef;
-import com.agentsflex.core.model.chat.functions.annotation.FunctionParam;
+import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
+import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.InvocationTargetException;
@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class JavaNativeFunction extends BaseFunction {
+public class JavaNativeTool extends BaseTool {
 
     private Class<?> clazz;
     private Object object;
@@ -55,9 +55,9 @@ public class JavaNativeFunction extends BaseFunction {
     public void setMethod(Method method) {
         this.method = method;
 
-        FunctionDef functionDef = method.getAnnotation(FunctionDef.class);
-        this.name = functionDef.name();
-        this.description = functionDef.description();
+        ToolDef toolDef = method.getAnnotation(ToolDef.class);
+        this.name = toolDef.name();
+        this.description = toolDef.description();
 
         List<JavaNativeParameter> parameterList = new ArrayList<>();
         java.lang.reflect.Parameter[] methodParameters = method.getParameters();
@@ -70,14 +70,14 @@ public class JavaNativeFunction extends BaseFunction {
 
     @NotNull
     private static JavaNativeParameter getParameter(java.lang.reflect.Parameter methodParameter) {
-        FunctionParam functionParam = methodParameter.getAnnotation(FunctionParam.class);
+        ToolParam toolParam = methodParameter.getAnnotation(ToolParam.class);
         JavaNativeParameter parameter = new JavaNativeParameter();
-        parameter.setName(functionParam.name());
-        parameter.setDescription(functionParam.description());
+        parameter.setName(toolParam.name());
+        parameter.setDescription(toolParam.description());
         parameter.setType(methodParameter.getType().getSimpleName().toLowerCase());
         parameter.setTypeClass(methodParameter.getType());
-        parameter.setRequired(functionParam.required());
-        parameter.setEnums(functionParam.enums());
+        parameter.setRequired(toolParam.required());
+        parameter.setEnums(toolParam.enums());
         return parameter;
     }
 

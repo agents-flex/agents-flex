@@ -2,7 +2,7 @@
 
 Agents-Flex is an AI application development framework developed in Java, designed to simplify AI application development. It draws inspiration from LangChain, LlamaIndex, and the author's best practices as a frontline AI application developer, providing API support across AI service providers that is portable and not limited to Java development frameworks.
 
-Agents-Flex is suitable for various scenarios, including chat, image generation, embedding models, function calling, and RAG applications, and supports both synchronous and streaming API options.
+Agents-Flex is suitable for various scenarios, including chat, image generation, embedding models, tool calling, and RAG applications, and supports both synchronous and streaming API options.
 
 
 ## Comparison between Agents-Flex and other frameworks

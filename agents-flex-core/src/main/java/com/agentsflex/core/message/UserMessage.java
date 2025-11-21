@@ -16,8 +16,8 @@
 package com.agentsflex.core.message;
 
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.functions.Function;
-import com.agentsflex.core.model.chat.functions.JavaNativeFunctionBuilder;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.JavaNativeToolBuilder;
 import com.agentsflex.core.util.ImageUtil;
 
 import java.io.File;
@@ -28,7 +28,7 @@ public class UserMessage extends AbstractTextMessage {
     private List<String> audioUrls;
     private List<String> videoUrls;
     private List<String> imageUrls;
-    private List<Function> functions;
+    private List<Tool> tools;
     private String toolChoice;
 
     public UserMessage() {
@@ -38,53 +38,53 @@ public class UserMessage extends AbstractTextMessage {
         setContent(content);
     }
 
-    public void addFunction(Function function) {
-        if (this.functions == null)
-            this.functions = new java.util.ArrayList<>();
-        this.functions.add(function);
+    public void addTool(Tool tool) {
+        if (this.tools == null)
+            this.tools = new java.util.ArrayList<>();
+        this.tools.add(tool);
     }
 
-    public void addFunctions(Collection<? extends Function> functions) {
-        if (this.functions == null) {
-            this.functions = new java.util.ArrayList<>();
+    public void addTools(Collection<? extends Tool> functions) {
+        if (this.tools == null) {
+            this.tools = new java.util.ArrayList<>();
         }
         if (functions != null) {
-            this.functions.addAll(functions);
+            this.tools.addAll(functions);
         }
     }
 
-    public void addFunctionsFromClass(Class<?> funcClass, String... methodNames) {
-        if (this.functions == null)
-            this.functions = new java.util.ArrayList<>();
-        this.functions.addAll(JavaNativeFunctionBuilder.fromClass(funcClass, methodNames));
+    public void addToolsFromClass(Class<?> funcClass, String... methodNames) {
+        if (this.tools == null)
+            this.tools = new java.util.ArrayList<>();
+        this.tools.addAll(JavaNativeToolBuilder.fromClass(funcClass, methodNames));
     }
 
-    public void addFunctionsFromObject(Object funcObject, String... methodNames) {
-        if (this.functions == null)
-            this.functions = new java.util.ArrayList<>();
-        this.functions.addAll(JavaNativeFunctionBuilder.fromObject(funcObject, methodNames));
+    public void addToolsFromObject(Object funcObject, String... methodNames) {
+        if (this.tools == null)
+            this.tools = new java.util.ArrayList<>();
+        this.tools.addAll(JavaNativeToolBuilder.fromObject(funcObject, methodNames));
     }
 
-    public List<Function> getFunctions() {
-        return functions;
+    public List<Tool> getTools() {
+        return tools;
     }
 
-    public Map<String, Function> getFunctionMap() {
-        if (functions == null) {
+    public Map<String, Tool> getToolsMap() {
+        if (tools == null) {
             return Collections.emptyMap();
         }
-        Map<String, Function> map = new HashMap<>(functions.size());
-        for (Function function : functions) {
-            map.put(function.getName(), function);
+        Map<String, Tool> map = new HashMap<>(tools.size());
+        for (Tool tool : tools) {
+            map.put(tool.getName(), tool);
         }
         return map;
     }
 
-    public void setFunctions(List<? extends Function> functions) {
-        if (functions == null) {
-            this.functions = null;
+    public void setTools(List<? extends Tool> tools) {
+        if (tools == null) {
+            this.tools = null;
         } else {
-            this.functions = new ArrayList<>(functions);
+            this.tools = new ArrayList<>(tools);
         }
     }
 
@@ -177,7 +177,7 @@ public class UserMessage extends AbstractTextMessage {
             "audioUrls=" + audioUrls +
             ", videoUrls=" + videoUrls +
             ", imageUrls=" + imageUrls +
-            ", functions=" + functions +
+            ", functions=" + tools +
             ", toolChoice='" + toolChoice + '\'' +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +

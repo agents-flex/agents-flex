@@ -1,4 +1,4 @@
-package com.agentsflex.core.model.chat.functions;
+package com.agentsflex.core.model.chat.tool;
 
 
 /**
@@ -6,7 +6,7 @@ package com.agentsflex.core.model.chat.functions;
  * <p>
  * 通过责任链模式组合多个拦截器，最终由链尾执行实际函数调用。
  */
-public interface FunctionInterceptor {
+public interface ToolInterceptor {
 
     /**
      * 拦截函数调用。
@@ -16,5 +16,5 @@ public interface FunctionInterceptor {
      * @return 函数调用结果
      * @throws Exception 通常由实际函数或拦截器抛出
      */
-    Object intercept(FunctionContext context, FunctionChain chain) throws Exception;
+    Object intercept(ToolContext context, ToolChain chain) throws Exception;
 }

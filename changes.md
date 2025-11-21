@@ -11,6 +11,7 @@
 - 修改 LLMClient 为 StreamClient
 - 修改 LLMClientListener 为 StreamClientListener
 - 修改 LLMConfig 为 ChatConfig
+- 修改 Function 为 Tool
 - 重命名 PromptFormat 为 MessageFormat
 - 重命名 TextPromptTemplate 为 PromptTemplate
 - 重命名 TextPrompt 为 SimplePrompt

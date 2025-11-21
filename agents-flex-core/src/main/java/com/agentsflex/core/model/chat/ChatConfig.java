@@ -27,7 +27,7 @@ public class ChatConfig extends BaseModelConfig {
     protected Boolean supportImageBase64Only; // 某些模型仅支持 base64 格式图片，比如 Ollama 部署的模型，或者某些本地化模型
     protected Boolean supportAudio;
     protected Boolean supportVideo;
-    protected Boolean supportFunctionCall;
+    protected Boolean supportTool;
     protected Boolean supportThinking;
 
     protected boolean observabilityEnabled = true; // 默认开启
@@ -100,16 +100,12 @@ public class ChatConfig extends BaseModelConfig {
         return supportVideo == null || supportVideo;
     }
 
-    public Boolean getSupportFunctionCall() {
-        return supportFunctionCall;
+    public void setSupportTool(Boolean supportTool) {
+        this.supportTool = supportTool;
     }
 
-    public void setSupportFunctionCall(Boolean supportFunctionCall) {
-        this.supportFunctionCall = supportFunctionCall;
-    }
-
-    public boolean isSupportFunctionCall() {
-        return supportFunctionCall == null || supportFunctionCall;
+    public boolean getSupportTool() {
+        return supportTool == null || supportTool;
     }
 
     public Boolean getSupportThinking() {

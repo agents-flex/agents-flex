@@ -1,7 +1,7 @@
-package com.agentsflex.core.model.chat.functions;
+package com.agentsflex.core.model.chat.tool;
 
 
-import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.message.ToolCall;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -10,30 +10,30 @@ import java.util.Map;
 /**
  * 函数调用上下文，贯穿整个拦截链。
  */
-public class FunctionContext implements Serializable {
-    private final Function function;
-    private final FunctionCall functionCall;
+public class ToolContext implements Serializable {
+    private final Tool tool;
+    private final ToolCall toolCall;
     private final Map<String, Object> attributes = new HashMap<>();
 
     private Object result;
     private Throwable throwable;
 
 
-    public FunctionContext(Function function, FunctionCall functionCall) {
-        this.function = function;
-        this.functionCall = functionCall;
+    public ToolContext(Tool tool, ToolCall toolCall) {
+        this.tool = tool;
+        this.toolCall = toolCall;
     }
 
-    public Function getFunction() {
-        return function;
+    public Tool getTool() {
+        return tool;
     }
 
-    public FunctionCall getFunctionCall() {
-        return functionCall;
+    public ToolCall getToolCall() {
+        return toolCall;
     }
 
     public Map<String, Object> getArgsMap() {
-        return functionCall.getArgsMap();
+        return toolCall.getArgsMap();
     }
 
 

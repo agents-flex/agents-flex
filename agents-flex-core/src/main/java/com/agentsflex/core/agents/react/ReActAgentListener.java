@@ -16,7 +16,7 @@
 package com.agentsflex.core.agents.react;
 
 import com.agentsflex.core.model.client.StreamContext;
-import com.agentsflex.core.model.chat.functions.Function;
+import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 
 import java.util.List;
@@ -112,9 +112,9 @@ public interface ReActAgentListener {
      * 当未匹配到任何工具时触发
      *
      * @param step      当前步骤
-     * @param functions 可用的工具列表
+     * @param tools 可用的工具列表
      */
-    default void onActionNotMatched(ReActStep step, List<Function> functions) {
+    default void onActionNotMatched(ReActStep step, List<Tool> tools) {
 
     }
 

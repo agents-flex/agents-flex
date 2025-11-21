@@ -17,8 +17,8 @@ package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.functions.Function;
-import com.agentsflex.core.model.chat.functions.Parameter;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.Maps;
@@ -84,16 +84,16 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         objectMap.put("role", "assistant");
         objectMap.put("content", message.getTextContent());
 
-        List<FunctionCall> calls = message.getFunctionCalls();
+        List<ToolCall> calls = message.getToolCalls();
         if (calls != null && !calls.isEmpty()) {
             objectMap.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
             buildAIMessageToolCalls(objectMap, calls);
         }
     }
 
-    protected void buildAIMessageToolCalls(Map<String, Object> objectMap, List<FunctionCall> calls) {
+    protected void buildAIMessageToolCalls(Map<String, Object> objectMap, List<ToolCall> calls) {
         List<Map<String, Object>> toolCalls = new ArrayList<>();
-        for (FunctionCall call : calls) {
+        for (ToolCall call : calls) {
             Maps toolCall = new Maps();
             toolCall.set("id", call.getId())
                 .set("type", "function")
@@ -150,35 +150,35 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
      * 将函数定义列表序列化为模型所需的工具（tools）或函数（functions）格式。
      * 例如 OpenAI 的 [{"type": "function", "function": {...}}, ...]
      *
-     * @param functions 函数定义列表，可能为 null 或空
+     * @param tools 函数定义列表，可能为 null 或空
      * @return 序列化后的函数定义数组，若输入为空则返回空列表
      */
     @Override
-    public List<Map<String, Object>> serializeFunctions(List<Function> functions, ChatConfig config) {
-        if (functions == null || functions.isEmpty()) {
+    public List<Map<String, Object>> serializeTools(List<Tool> tools, ChatConfig config) {
+        if (tools == null || tools.isEmpty()) {
             return null;
         }
 
         // 大模型不支持 Function Calling
-        if (config != null && !config.isSupportFunctionCall()) {
+        if (config != null && !config.getSupportTool()) {
             return null;
         }
 
-        return buildFunctionList(functions);
+        return buildToolList(tools);
     }
 
 
-    protected List<Map<String, Object>> buildFunctionList(List<Function> functions) {
+    protected List<Map<String, Object>> buildToolList(List<Tool> tools) {
         List<Map<String, Object>> functionList = new ArrayList<>();
-        for (Function function : functions) {
+        for (Tool tool : tools) {
             Map<String, Object> functionRoot = new HashMap<>();
             functionRoot.put("type", "function");
 
             Map<String, Object> functionObj = new HashMap<>();
             functionRoot.put("function", functionObj);
 
-            functionObj.put("name", function.getName());
-            functionObj.put("description", function.getDescription());
+            functionObj.put("name", tool.getName());
+            functionObj.put("description", tool.getDescription());
 
 
             Map<String, Object> parametersObj = new HashMap<>();
@@ -188,7 +188,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
             Map<String, Object> propertiesObj = new HashMap<>();
             parametersObj.put("properties", propertiesObj);
 
-            addParameters(function.getParameters(), propertiesObj, parametersObj);
+            addParameters(tool.getParameters(), propertiesObj, parametersObj);
 
             functionList.add(functionRoot);
         }

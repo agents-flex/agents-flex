@@ -13,21 +13,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat.functions;
+package com.agentsflex.core.model.chat.tool;
+
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
-public class Parameter implements Serializable {
+public abstract class BaseTool implements Tool, Serializable {
 
     protected String name;
-    protected String type;
     protected String description;
-    protected String[] enums;
-    protected boolean required = false;
-    protected List<Parameter> children;
+    protected Parameter[] parameters;
 
+    @Override
     public String getName() {
         return name;
     }
@@ -36,14 +33,7 @@ public class Parameter implements Serializable {
         this.name = name;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
+    @Override
     public String getDescription() {
         return description;
     }
@@ -52,34 +42,12 @@ public class Parameter implements Serializable {
         this.description = description;
     }
 
-    public String[] getEnums() {
-        return enums;
+    @Override
+    public Parameter[] getParameters() {
+        return parameters;
     }
 
-    public void setEnums(String[] enums) {
-        this.enums = enums;
-    }
-
-    public boolean isRequired() {
-        return required;
-    }
-
-    public void setRequired(boolean required) {
-        this.required = required;
-    }
-
-    public List<Parameter> getChildren() {
-        return children;
-    }
-
-    public void setChildren(List<Parameter> children) {
-        this.children = children;
-    }
-
-    public void addChild(Parameter parameter) {
-        if (children == null) {
-            children = new ArrayList<>();
-        }
-        children.add(parameter);
+    public void setParameters(Parameter[] parameters) {
+        this.parameters = parameters;
     }
 }

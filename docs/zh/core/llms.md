@@ -253,8 +253,8 @@ public static void main(String[] args) {
         chatModel.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(ChatContext context, AiMessageResponse response) {
-                boolean functionCall = response.isFunctionCall();
-                if (functionCall) {
+                boolean toolCall = response.isFunctionCall();
+                if (toolCall) {
                     System.out.println("do func >>> ");
                     StringBuilder text = new StringBuilder("调用工具结果如下：\n");
                     List<FunctionCaller> callers = response.getFunctionCallers();

@@ -29,7 +29,7 @@ public class AiMessage extends AbstractTextMessage {
     private Integer localCompletionTokens;
     private Integer localTotalTokens;
     private String reasoningContent;
-    private List<FunctionCall> functionCalls;
+    private List<ToolCall> toolCalls;
 
     private String fullContent;
     private String fullReasoningContent;
@@ -42,6 +42,8 @@ public class AiMessage extends AbstractTextMessage {
 
     // 同 reasoningContent，只是某些框架会返回这个字段，而不是 finishReason
     private String stopReason;
+
+    private Boolean finished;
 
     public AiMessage() {
         super();
@@ -64,9 +66,9 @@ public class AiMessage extends AbstractTextMessage {
             this.fullReasoningContent = this.reasoningContent;
         }
 
-        if (delta.functionCalls != null && !delta.functionCalls.isEmpty()) {
-            if (this.functionCalls == null) this.functionCalls = new ArrayList<>();
-            mergeFunctionCalls(delta.functionCalls);
+        if (delta.toolCalls != null && !delta.toolCalls.isEmpty()) {
+            if (this.toolCalls == null) this.toolCalls = new ArrayList<>();
+            mergeToolCalls(delta.toolCalls);
         }
         if (delta.index != null) this.index = delta.index;
         if (delta.promptTokens != null) this.promptTokens = delta.promptTokens;
@@ -79,27 +81,27 @@ public class AiMessage extends AbstractTextMessage {
         if (delta.stopReason != null) this.stopReason = delta.stopReason;
     }
 
-    private void mergeFunctionCalls(List<FunctionCall> deltaCalls) {
+    private void mergeToolCalls(List<ToolCall> deltaCalls) {
         if (deltaCalls == null || deltaCalls.isEmpty()) return;
 
-        if (this.functionCalls == null || this.functionCalls.isEmpty()) {
-            this.functionCalls = new ArrayList<>(deltaCalls);
+        if (this.toolCalls == null || this.toolCalls.isEmpty()) {
+            this.toolCalls = new ArrayList<>(deltaCalls);
             return;
         }
 
-        FunctionCall lastCall = this.functionCalls.get(this.functionCalls.size() - 1);
+        ToolCall lastCall = this.toolCalls.get(this.toolCalls.size() - 1);
 
         // 正常情况下 delta 部分只有 1 条
-        FunctionCall deltaCall = deltaCalls.get(0);
+        ToolCall deltaCall = deltaCalls.get(0);
         if (lastCall.getId() != null && deltaCall.getId() != null ||
             (lastCall.getName() != null && deltaCall.getName() != null)) {
-            this.functionCalls.add(deltaCall);
+            this.toolCalls.add(deltaCall);
         } else {
             mergeSingleCall(lastCall, deltaCall);
         }
     }
 
-    private void mergeSingleCall(FunctionCall existing, FunctionCall delta) {
+    private void mergeSingleCall(ToolCall existing, ToolCall delta) {
         if (delta.getArgsString() != null) {
             if (existing.getArgsString() == null) {
                 existing.setArgsString("");
@@ -208,12 +210,12 @@ public class AiMessage extends AbstractTextMessage {
         return fullContent;
     }
 
-    public List<FunctionCall> getFunctionCalls() {
-        return functionCalls;
+    public List<ToolCall> getToolCalls() {
+        return toolCalls;
     }
 
-    public void setFunctionCalls(List<FunctionCall> functionCalls) {
-        this.functionCalls = functionCalls;
+    public void setToolCalls(List<ToolCall> toolCalls) {
+        this.toolCalls = toolCalls;
     }
 
     public String getFullReasoningContent() {
@@ -236,8 +238,18 @@ public class AiMessage extends AbstractTextMessage {
         return 0;
     }
 
+    public Boolean getFinished() {
+        return finished;
+    }
+
+    public void setFinished(Boolean finished) {
+        this.finished = finished;
+    }
+
     public boolean isLastMessage() {
-        return StringUtil.hasText(this.finishReason) || StringUtil.hasText(this.stopReason);
+        return (finished != null && finished)
+            || StringUtil.hasText(this.finishReason)
+            || StringUtil.hasText(this.stopReason);
     }
 
     @Override
@@ -251,7 +263,7 @@ public class AiMessage extends AbstractTextMessage {
             ", localCompletionTokens=" + localCompletionTokens +
             ", localTotalTokens=" + localTotalTokens +
             ", reasoningContent='" + reasoningContent + '\'' +
-            ", calls=" + functionCalls +
+            ", calls=" + toolCalls +
             ", fullContent='" + fullContent + '\'' +
             ", fullReasoningContent='" + fullReasoningContent + '\'' +
             ", finishReason='" + finishReason + '\'' +

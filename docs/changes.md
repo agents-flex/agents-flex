@@ -72,7 +72,7 @@
 
 ## v1.3.2 20250731
 - 优化：优化 AiMessageResponse.getFunctionCallers 方法
-- 修复：多轮 function call 时,获取最后一条 HumanMessage 错误的问题
+- 修复：多轮 tool call 时,获取最后一条 HumanMessage 错误的问题
 - 修复：Chain 的 Parameter 类型为 Array 时，内容固定值无法解析的问题
 
 
@@ -122,7 +122,7 @@
 - 新增：大模型 Parameter 添加子 Parameter 的配置支持
 - 新增：ReActAgent 添加 continueOnActionJsonParseError 和 continueOnActionInvokeError 配置
 - 修复：修复 EmbeddingModel.dimensions() 错误信息不友好的问题
-- 修复：function call第二次请求模型时缺少了tools信息 close #ICG584
+- 修复：tool call第二次请求模型时缺少了tools信息 close #ICG584
 
 
 ## v1.2.3 20250626
@@ -346,7 +346,7 @@
 
 
 ## v1.0.0-rc.7 20250312
-- feat: Added the function of adding reasoning content to the return message, supporting deepseek's reasoning return, thanks @rirch
+- feat: Added the tool of adding reasoning content to the return message, supporting deepseek's reasoning return, thanks @rirch
 - feat: Added support for vectorexdb embedded version, no need to deploy database separately, thanks @javpower
 - feat: Added support for accessing Tencent's large model language, Wensheng graph model and vectorization interface, thanks @sunchanghuilinqing
 - feat: Support for docking Doubao doubao-1-5-vision-pro-32k multimodal model and Wensheng graph, thanks @wang110wyy
@@ -375,14 +375,14 @@
 
 ## v1.0.0-rc.6 20250220
 - feat: Springboot's automatic configuration class for Ollama
-- feat: Added ToolPrompt function to facilitate the use with Function Call
+- feat: Added ToolPrompt tool to facilitate the use with Function Call
 - refactor: Change openAi to openAI
 - refactor: Optimize LlmNode and TextPromptTemplate
 - refactor: Upgrade related dependencies to the latest version
 - refactor: Optimize the empty user prompt words defined during the LlmNode runtime
-- refactor: Move the package name of functions to the directory chatModel (destructive update!!!)
+- refactor: Move the package name of tools to the directory chatModel (destructive update!!!)
 - refactor: Refactor InputParameter and OutputKey to merge into Parameter (destructive update!!!)
-- fix: Use the openai interface to connect to the local ollama to build a large model, and multiple function definitions are called abnormally
+- fix: Use the openai interface to connect to the local ollama to build a large model, and multiple tool definitions are called abnormally
 - fix: Fix the problem that agents-flex-bom cannot pull group code
 
 ---
@@ -392,7 +392,7 @@
 - 优化：优化 LlmNode 和 TextPromptTemplate
 - 优化：升级相关依赖到最新版本
 - 优化：优化  LlmNode 运行期定义空的用户提示词
-- 优化：移动 functions 的包名到目录 chatModel（破坏性更新 !!!）
+- 优化：移动 tools 的包名到目录 chatModel（破坏性更新 !!!）
 - 优化：重构 InputParameter 和 OutputKey 合并到 Parameter（破坏性更新 !!!）
 - 修复：使用 openai 接口对接本地 ollama 搭建大模型，多个函数定义调用异常
 - 修复：修复 agents-flex-bom 无法拉群代码的问题
@@ -515,7 +515,7 @@
 - feat: ChatOptions add "seed" property
 - feat: Maps can put a child map by key
 - feat: Ollama add options config
-- feat: Ollama function calling support
+- feat: Ollama tool calling support
 - feat: add StringUtil.isJsonObject method
 - refactor: BaseImageRequest add extend options property
 - refactor: make ImagePrompt to extends HumanMessage
@@ -657,7 +657,7 @@
 - refactor: refactor chatModel methods
 - refactor: refactor FunctionMessageResponse.java
 - refactor: optimize HttpClient.java And SseClient.java
-- fix: fix function calling error in QwenLLM
+- fix: fix tool calling error in QwenLLM
 - test: add chat with image test
 
 
@@ -667,7 +667,7 @@
 - 优化：重命名 TextMessage 为 AbstractTextMessage
 - 优化：重构 LLM 的方法定义，使之更加简单易用
 - 优化：优化 HttpClient.java 和 SseClient.java 的相关代码
-- 修复：通义千问 QwenLLM 在 function calling 下无法正常调用的问题
+- 修复：通义千问 QwenLLM 在 tool calling 下无法正常调用的问题
 - 测试：添加发送图片相关的测试内容
 
 

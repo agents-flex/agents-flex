@@ -16,7 +16,7 @@
 package com.agentsflex.core.parser.impl;
 
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.JSONArrayParser;
@@ -48,7 +48,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
     private JSONPath toolCallsJsonPath;
     private JSONPath deltaToolCallsJsonPath;
 
-    private JSONArrayParser<List<FunctionCall>> callsParser;
+    private JSONArrayParser<List<ToolCall>> callsParser;
 
     public JSONPath getContentPath() {
         return contentPath;
@@ -146,11 +146,11 @@ public class DefaultAiMessageParser implements AiMessageParser {
         this.deltaToolCallsJsonPath = deltaToolCallsJsonPath;
     }
 
-    public JSONArrayParser<List<FunctionCall>> getCallsParser() {
+    public JSONArrayParser<List<ToolCall>> getCallsParser() {
         return callsParser;
     }
 
-    public void setCallsParser(JSONArrayParser<List<FunctionCall>> callsParser) {
+    public void setCallsParser(JSONArrayParser<List<ToolCall>> callsParser) {
         this.callsParser = callsParser;
     }
 
@@ -212,7 +212,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
         }
 
         if (toolCallsJsonArray != null && this.callsParser != null) {
-            aiMessage.setFunctionCalls(this.callsParser.parse(toolCallsJsonArray));
+            aiMessage.setToolCalls(this.callsParser.parse(toolCallsJsonArray));
         }
 
         return aiMessage;
@@ -242,24 +242,24 @@ public class DefaultAiMessageParser implements AiMessageParser {
             if (toolCalls == null || toolCalls.isEmpty()) {
                 return Collections.emptyList();
             }
-            List<FunctionCall> functionCalls = new ArrayList<>();
+            List<ToolCall> toolInfos = new ArrayList<>();
             for (int i = 0; i < toolCalls.size(); i++) {
                 JSONObject jsonObject = toolCalls.getJSONObject(i);
                 JSONObject functionObject = jsonObject.getJSONObject("function");
                 if (functionObject != null) {
-                    FunctionCall functionCall = new FunctionCall();
-                    functionCall.setId(jsonObject.getString("id"));
-                    functionCall.setName(functionObject.getString("name"));
+                    ToolCall toolCall = new ToolCall();
+                    toolCall.setId(jsonObject.getString("id"));
+                    toolCall.setName(functionObject.getString("name"));
                     Object arguments = functionObject.get("arguments");
                     if (arguments instanceof Map) {
-                        functionCall.setArgsString(JSON.toJSONString(arguments));
+                        toolCall.setArgsString(JSON.toJSONString(arguments));
                     } else if (arguments instanceof String) {
-                        functionCall.setArgsString((String) arguments);
+                        toolCall.setArgsString((String) arguments);
                     }
-                    functionCalls.add(functionCall);
+                    toolInfos.add(toolCall);
                 }
             }
-            return functionCalls;
+            return toolInfos;
         });
 
         return aiMessageParser;

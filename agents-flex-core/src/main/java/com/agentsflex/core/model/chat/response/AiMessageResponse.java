@@ -16,13 +16,13 @@
 package com.agentsflex.core.model.chat.response;
 
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.functions.Function;
-import com.agentsflex.core.model.chat.functions.FunctionInterceptor;
-import com.agentsflex.core.model.chat.functions.FunctionInvoker;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.ToolInterceptor;
+import com.agentsflex.core.model.chat.tool.ToolExecutor;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.MessageUtil;
 import com.agentsflex.core.util.StringUtil;
@@ -56,79 +56,79 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
         return message;
     }
 
-    public boolean isFunctionCall() {
+    public boolean isTool() {
         if (this.message == null) {
             return false;
         }
-        List<FunctionCall> functionCalls = message.getFunctionCalls();
-        return functionCalls != null && !functionCalls.isEmpty();
+        List<ToolCall> toolCalls = message.getToolCalls();
+        return toolCalls != null && !toolCalls.isEmpty();
     }
 
 
-    public List<FunctionInvoker> getFunctionInvokers(FunctionInterceptor... interceptors) {
+    public List<ToolExecutor> getToolExecutors(ToolInterceptor... interceptors) {
         if (this.message == null) {
             return Collections.emptyList();
         }
 
-        List<FunctionCall> calls = message.getFunctionCalls();
+        List<ToolCall> calls = message.getToolCalls();
         if (calls == null || calls.isEmpty()) {
             return Collections.emptyList();
         }
 
         UserMessage userMessage = MessageUtil.findLastUserMessage(getContext().getPrompt().getMessages());
-        Map<String, Function> funcMap = userMessage.getFunctionMap();
+        Map<String, Tool> funcMap = userMessage.getToolsMap();
 
         if (funcMap == null || funcMap.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<FunctionInvoker> functionInvokers = new ArrayList<>(calls.size());
-        for (FunctionCall call : calls) {
-            Function function = funcMap.get(call.getName());
-            if (function != null) {
-                FunctionInvoker invoker = new FunctionInvoker(function, call);
+        List<ToolExecutor> toolExecutors = new ArrayList<>(calls.size());
+        for (ToolCall call : calls) {
+            Tool tool = funcMap.get(call.getName());
+            if (tool != null) {
+                ToolExecutor invoker = new ToolExecutor(tool, call);
                 if (interceptors != null && interceptors.length > 0) {
                     invoker.addInterceptors(Arrays.asList(interceptors));
                 }
-                functionInvokers.add(invoker);
+                toolExecutors.add(invoker);
             }
         }
-        return functionInvokers;
+        return toolExecutors;
     }
 
 
-    public List<Object> getFunctionResults(FunctionInterceptor... interceptors) {
-        List<FunctionInvoker> functionInvokers = getFunctionInvokers(interceptors);
+    public List<Object> getToolResults(ToolInterceptor... interceptors) {
+        List<ToolExecutor> toolExecutors = getToolExecutors(interceptors);
 
-        for (FunctionInvoker functionInvoker : functionInvokers) {
-            functionInvoker.addInterceptors(Arrays.asList(interceptors));
+        for (ToolExecutor toolExecutor : toolExecutors) {
+            toolExecutor.addInterceptors(Arrays.asList(interceptors));
         }
 
         List<Object> results = new ArrayList<>();
-        for (FunctionInvoker functionInvoker : functionInvokers) {
-            results.add(functionInvoker.invoke());
+        for (ToolExecutor toolExecutor : toolExecutors) {
+            results.add(toolExecutor.execute());
         }
         return results;
     }
 
 
-    public List<ToolMessage> getToolMessages(FunctionInterceptor... interceptors) {
-        List<FunctionInvoker> functionInvokers = getFunctionInvokers(interceptors);
+    public List<ToolMessage> getToolMessages(ToolInterceptor... interceptors) {
+        List<ToolExecutor> toolExecutors = getToolExecutors(interceptors);
 
-        if (CollectionUtil.noItems(functionInvokers)) {
+        if (CollectionUtil.noItems(toolExecutors)) {
             return Collections.emptyList();
         }
 
-        List<ToolMessage> toolMessages = new ArrayList<>(functionInvokers.size());
-        for (FunctionInvoker functionInvoker : functionInvokers) {
+        List<ToolMessage> toolMessages = new ArrayList<>(toolExecutors.size());
+        for (ToolExecutor toolExecutor : toolExecutors) {
             ToolMessage toolMessage = new ToolMessage();
-            String callId = functionInvoker.getFunctionCall().getId();
+            String callId = toolExecutor.getToolCall().getId();
             if (StringUtil.hasText(callId)) {
                 toolMessage.setToolCallId(callId);
             } else {
-                toolMessage.setToolCallId(functionInvoker.getFunctionCall().getName());
+                toolMessage.setToolCallId(toolExecutor.getToolCall().getName());
             }
-            Object result = functionInvoker.invoke();
+            Object result = toolExecutor.execute();
             if (result instanceof CharSequence || result instanceof Number) {
                 toolMessage.setContent(result.toString());
             } else {

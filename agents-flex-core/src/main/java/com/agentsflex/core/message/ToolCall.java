@@ -20,16 +20,16 @@ import com.alibaba.fastjson2.JSON;
 import java.io.Serializable;
 import java.util.Map;
 
-public class FunctionCall implements Serializable {
+public class ToolCall implements Serializable {
 
     private String id;
     private String name;
     private String argsString;
 
-    public FunctionCall() {
+    public ToolCall() {
     }
 
-    public FunctionCall(String id, String name, String argsString) {
+    public ToolCall(String id, String name, String argsString) {
         this.id = id;
         this.name = name;
         this.argsString = argsString;
@@ -75,7 +75,7 @@ public class FunctionCall implements Serializable {
 
     @Override
     public String toString() {
-        return "FunctionCall{" +
+        return "ToolCall{" +
             "id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", argsString='" + argsString + '\'' +

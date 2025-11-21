@@ -13,9 +13,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat.functions;
+package com.agentsflex.core.model.chat.tool;
 
-import com.agentsflex.core.model.chat.functions.annotation.FunctionDef;
+import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.util.ArrayUtil;
 import com.agentsflex.core.util.ClassUtil;
 
@@ -24,23 +24,23 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JavaNativeFunctionBuilder extends ArrayList<Function> {
+public class JavaNativeToolBuilder extends ArrayList<Tool> {
 
-    public static List<Function> fromObject(Object object, String... methodNames) {
+    public static List<Tool> fromObject(Object object, String... methodNames) {
         return from(object.getClass(), object, methodNames);
     }
 
-    public static List<Function> fromClass(Class<?> clazz, String... methodNames) {
+    public static List<Tool> fromClass(Class<?> clazz, String... methodNames) {
         return from(clazz, null, methodNames);
     }
 
-    private static List<Function> from(Class<?> clazz, Object object, String... methodNames) {
+    private static List<Tool> from(Class<?> clazz, Object object, String... methodNames) {
         clazz = ClassUtil.getUsefulClass(clazz);
         List<Method> methodList = ClassUtil.getAllMethods(clazz, method -> {
             if (object == null && !Modifier.isStatic(method.getModifiers())) {
                 return false;
             }
-            if (method.getAnnotation(FunctionDef.class) == null) {
+            if (method.getAnnotation(ToolDef.class) == null) {
                 return false;
             }
             if (methodNames.length > 0) {
@@ -49,10 +49,10 @@ public class JavaNativeFunctionBuilder extends ArrayList<Function> {
             return true;
         });
 
-        List<Function> functions = new ArrayList<>();
+        List<Tool> tools = new ArrayList<>();
 
         for (Method method : methodList) {
-            JavaNativeFunction function = new JavaNativeFunction();
+            JavaNativeTool function = new JavaNativeTool();
             function.setClazz(clazz);
             function.setMethod(method);
 
@@ -60,10 +60,10 @@ public class JavaNativeFunctionBuilder extends ArrayList<Function> {
                 function.setObject(object);
             }
 
-            functions.add(function);
+            tools.add(function);
         }
 
-        return functions;
+        return tools;
     }
 
 

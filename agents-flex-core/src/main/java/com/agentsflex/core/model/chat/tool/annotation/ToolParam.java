@@ -13,17 +13,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat.functions;
+package com.agentsflex.core.model.chat.tool.annotation;
 
-public class JavaNativeParameter extends Parameter {
+import java.lang.annotation.*;
 
-    protected Class<?> typeClass;
+@Inherited
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.PARAMETER})
+public @interface ToolParam {
+    String name();
 
-    public Class<?> getTypeClass() {
-        return typeClass;
-    }
+    String description();
 
-    public void setTypeClass(Class<?> typeClass) {
-        this.typeClass = typeClass;
-    }
+    String[] enums() default {};
+
+    boolean required() default false;
+
 }

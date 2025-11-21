@@ -16,7 +16,6 @@
 package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
@@ -26,7 +25,6 @@ import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BaseStreamClientListener implements StreamClientListener {
@@ -90,6 +88,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     }
 
     private void notifyLastMessageAndStop(String response) {
+        fullMessage.setFinished(true);
         AiMessageResponse resp = new AiMessageResponse(chatContext, response, fullMessage);
         streamResponseListener.onMessage(context, resp);
         onStop(this.context.getClient());
@@ -111,14 +110,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     private boolean hasContent(AiMessage delta) {
         return delta.getContent() != null ||
             delta.getReasoningContent() != null ||
-            (delta.getFunctionCalls() != null && !delta.getFunctionCalls().isEmpty());
+            (delta.getToolCalls() != null && !delta.getToolCalls().isEmpty());
     }
 
-    private boolean isFunctionCallExists(String id) {
-        if (fullMessage.getFunctionCalls() == null || id == null) return false;
-        for (FunctionCall call : fullMessage.getFunctionCalls()) {
-            if (Objects.equals(call.getId(), id)) return true;
-        }
-        return false;
-    }
 }

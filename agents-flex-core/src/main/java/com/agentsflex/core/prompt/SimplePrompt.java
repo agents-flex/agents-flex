@@ -19,7 +19,7 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
-import com.agentsflex.core.model.chat.functions.Function;
+import com.agentsflex.core.model.chat.tool.Tool;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -42,26 +42,26 @@ public class SimplePrompt extends Prompt {
     }
 
 
-    /// /// functions
-    public void addFunction(Function function) {
-        userMessage.addFunction(function);
+    /// /// Tools
+    public void addTool(Tool tool) {
+        userMessage.addTool(tool);
     }
 
-    public void addFunctions(Collection<? extends Function> functions) {
-        userMessage.addFunctions(functions);
+    public void addTools(Collection<? extends Tool> Tools) {
+        userMessage.addTools(Tools);
     }
 
-    public void addFunctionsFromClass(Class<?> funcClass, String... methodNames) {
-        userMessage.addFunctionsFromClass(funcClass, methodNames);
+    public void addToolsFromClass(Class<?> funcClass, String... methodNames) {
+        userMessage.addToolsFromClass(funcClass, methodNames);
     }
 
-    public void addFunctionsFromObject(Object funcObject, String... methodNames) {
-        userMessage.addFunctionsFromObject(funcObject, methodNames);
+    public void addToolsFromObject(Object funcObject, String... methodNames) {
+        userMessage.addToolsFromObject(funcObject, methodNames);
     }
 
 
-    public List<Function> getFunctions() {
-        return userMessage.getFunctions();
+    public List<Tool> getTools() {
+        return userMessage.getTools();
     }
 
 

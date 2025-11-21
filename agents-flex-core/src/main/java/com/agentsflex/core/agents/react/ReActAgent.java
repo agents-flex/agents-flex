@@ -16,12 +16,12 @@
 package com.agentsflex.core.agents.react;
 
 import com.agentsflex.core.agents.IAgent;
+import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.functions.Function;
-import com.agentsflex.core.model.chat.functions.Parameter;
+import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -76,7 +76,7 @@ public class ReActAgent implements IAgent {
     private static final int DEFAULT_MAX_ITERATIONS = 20;
 
     private final ChatModel chatModel;
-    private final List<Function> functions;
+    private final List<Tool> tools;
     private final ReActAgentState state;
 
     private ReActStepParser reActStepParser = ReActStepParser.DEFAULT; // 默认解析器
@@ -88,9 +88,9 @@ public class ReActAgent implements IAgent {
     private final List<ReActAgentListener> listeners = new ArrayList<>();
 
 
-    public ReActAgent(ChatModel chatModel, List<Function> functions, String userQuery) {
+    public ReActAgent(ChatModel chatModel, List<Tool> tools, String userQuery) {
         this.chatModel = chatModel;
-        this.functions = functions;
+        this.tools = tools;
         this.state = new ReActAgentState();
         this.state.userQuery = userQuery;
         this.state.promptTemplate = DEFAULT_PROMPT_TEMPLATE;
@@ -98,9 +98,9 @@ public class ReActAgent implements IAgent {
         this.historiesPrompt = new HistoriesPrompt();
     }
 
-    public ReActAgent(ChatModel chatModel, List<Function> functions, String userQuery, HistoriesPrompt historiesPrompt) {
+    public ReActAgent(ChatModel chatModel, List<Tool> tools, String userQuery, HistoriesPrompt historiesPrompt) {
         this.chatModel = chatModel;
-        this.functions = functions;
+        this.tools = tools;
         this.state = new ReActAgentState();
         this.state.userQuery = userQuery;
         this.state.promptTemplate = DEFAULT_PROMPT_TEMPLATE;
@@ -108,9 +108,9 @@ public class ReActAgent implements IAgent {
         this.historiesPrompt = historiesPrompt;
     }
 
-    public ReActAgent(ChatModel chatModel, List<Function> functions, ReActAgentState state) {
+    public ReActAgent(ChatModel chatModel, List<Tool> tools, ReActAgentState state) {
         this.chatModel = chatModel;
-        this.functions = functions;
+        this.tools = tools;
         this.state = state;
         this.historiesPrompt = new HistoriesPrompt();
         if (state.messageHistory != null) {
@@ -136,10 +136,9 @@ public class ReActAgent implements IAgent {
         return chatModel;
     }
 
-    public List<Function> getFunctions() {
-        return functions;
+    public List<Tool> getTools() {
+        return tools;
     }
-
 
     public ReActStepParser getReActStepParser() {
         return reActStepParser;
@@ -194,12 +193,12 @@ public class ReActAgent implements IAgent {
         try {
             List<Message> messageHistory = state.getMessageHistory();
             if (messageHistory == null || messageHistory.isEmpty()) {
-                String toolsDescription = buildToolsDescription(functions);
+                String toolsDescription = buildToolsDescription(tools);
                 String prompt = state.promptTemplate
                     .replace("{tools}", toolsDescription)
                     .replace("{user_input}", state.userQuery);
 
-                Message message = messageBuilder.buildStartMessage(prompt, functions, state.userQuery);
+                Message message = messageBuilder.buildStartMessage(prompt, tools, state.userQuery);
                 historiesPrompt.addMessage(message);
             }
             if (this.isStreamable()) {
@@ -354,11 +353,11 @@ public class ReActAgent implements IAgent {
 
     // ========== 内部辅助方法 ==========
 
-    private String buildToolsDescription(List<Function> functions) {
+    private String buildToolsDescription(List<Tool> tools) {
         StringBuilder sb = new StringBuilder();
-        for (Function function : functions) {
-            sb.append(" - ").append(function.getName()).append("(");
-            Parameter[] parameters = function.getParameters();
+        for (Tool tool : tools) {
+            sb.append(" - ").append(tool.getName()).append("(");
+            Parameter[] parameters = tool.getParameters();
             for (int i = 0; i < parameters.length; i++) {
                 Parameter param = parameters[i];
                 sb.append(param.getName()).append(": ").append(param.getType());
@@ -366,7 +365,7 @@ public class ReActAgent implements IAgent {
                     sb.append(", ");
                 }
             }
-            sb.append("): ").append(function.getDescription()).append("\n");
+            sb.append("): ").append(tool.getDescription()).append("\n");
         }
         return sb.toString();
     }
@@ -381,8 +380,8 @@ public class ReActAgent implements IAgent {
 
         for (ReActStep step : reActSteps) {
             boolean stepExecuted = false;
-            for (Function function : functions) {
-                if (function.getName().equals(step.getAction())) {
+            for (Tool tool : tools) {
+                if (tool.getName().equals(step.getAction())) {
                     try {
                         notifyOnActionStart(step);
 
@@ -406,7 +405,7 @@ public class ReActAgent implements IAgent {
                             return true; // 继续让 AI 修正
                         }
 
-                        Object result = function.invoke(parameters);
+                        Object result = tool.invoke(parameters);
                         notifyOnActionEnd(step, result);
 
                         Message message = messageBuilder.buildObservationMessage(step, result);
@@ -429,7 +428,7 @@ public class ReActAgent implements IAgent {
             }
 
             if (!stepExecuted) {
-                notifyOnActionNotMatched(step, functions);
+                notifyOnActionNotMatched(step, tools);
                 return false;
             }
         }
@@ -540,10 +539,10 @@ public class ReActAgent implements IAgent {
         }
     }
 
-    private void notifyOnActionNotMatched(ReActStep step, List<Function> functions) {
+    private void notifyOnActionNotMatched(ReActStep step, List<Tool> tools) {
         for (ReActAgentListener listener : listeners) {
             try {
-                listener.onActionNotMatched(step, functions);
+                listener.onActionNotMatched(step, tools);
             } catch (Exception e) {
                 log.error(e.toString(), e);
             }

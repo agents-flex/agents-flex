@@ -13,17 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat.functions;
+package com.agentsflex.core.model.chat.tool.annotation;
 
-import java.util.Map;
+import java.lang.annotation.*;
 
-public interface Function {
-
-     String getName();
-
-     String getDescription();
-
-     Parameter[] getParameters();
-
-     Object invoke(Map<String, Object> argsMap) ;
+@Inherited
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD})
+public @interface ToolDef {
+    String name() default "";
+    String description();
 }

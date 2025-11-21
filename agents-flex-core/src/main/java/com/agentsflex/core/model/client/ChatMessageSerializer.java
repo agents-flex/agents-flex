@@ -17,7 +17,7 @@ package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.functions.Function;
+import com.agentsflex.core.model.chat.tool.Tool;
 
 import java.util.List;
 import java.util.Map;
@@ -42,8 +42,8 @@ public interface ChatMessageSerializer {
      * 将函数定义列表序列化为模型所需的工具（tools）或函数（functions）格式。
      * 例如 OpenAI 的 [{"type": "function", "function": {...}}, ...]
      *
-     * @param functions 函数定义列表，可能为 null 或空
+     * @param tools 函数定义列表，可能为 null 或空
      * @return 序列化后的函数定义数组，若输入为空则返回空列表
      */
-    List<Map<String, Object>> serializeFunctions(List<Function> functions, ChatConfig config);
+    List<Map<String, Object>> serializeTools(List<Tool> tools, ChatConfig config);
 }

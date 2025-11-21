@@ -13,18 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat.functions;
-
+package com.agentsflex.core.model.chat.tool;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
-public abstract class BaseFunction implements Function, Serializable {
+public class Parameter implements Serializable {
 
     protected String name;
+    protected String type;
     protected String description;
-    protected Parameter[] parameters;
+    protected String[] enums;
+    protected boolean required = false;
+    protected List<Parameter> children;
 
-    @Override
     public String getName() {
         return name;
     }
@@ -33,7 +36,14 @@ public abstract class BaseFunction implements Function, Serializable {
         this.name = name;
     }
 
-    @Override
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -42,12 +52,34 @@ public abstract class BaseFunction implements Function, Serializable {
         this.description = description;
     }
 
-    @Override
-    public Parameter[] getParameters() {
-        return parameters;
+    public String[] getEnums() {
+        return enums;
     }
 
-    public void setParameters(Parameter[] parameters) {
-        this.parameters = parameters;
+    public void setEnums(String[] enums) {
+        this.enums = enums;
+    }
+
+    public boolean isRequired() {
+        return required;
+    }
+
+    public void setRequired(boolean required) {
+        this.required = required;
+    }
+
+    public List<Parameter> getChildren() {
+        return children;
+    }
+
+    public void setChildren(List<Parameter> children) {
+        this.children = children;
+    }
+
+    public void addChild(Parameter parameter) {
+        if (children == null) {
+            children = new ArrayList<>();
+        }
+        children.add(parameter);
     }
 }

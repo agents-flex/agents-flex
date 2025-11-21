@@ -16,7 +16,7 @@
 package com.agentsflex.core.agents.react;
 
 import com.agentsflex.core.message.UserMessage;
-import com.agentsflex.core.model.chat.functions.Function;
+import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.message.Message;
 
 import java.util.List;
@@ -28,13 +28,13 @@ public class ReActMessageBuilder {
      * 构建 ReAct 开始消息
      *
      * @param prompt    提示词
-     * @param functions 函数列表
+     * @param tools 函数列表
      * @param userQuery 用户问题
      * @return 返回 HumanMessage
      */
-    public Message buildStartMessage(String prompt, List<Function> functions, String userQuery) {
+    public Message buildStartMessage(String prompt, List<Tool> tools, String userQuery) {
         UserMessage message = new UserMessage(prompt);
-        message.addMetadata("tools", functions);
+        message.addMetadata("tools", tools);
         message.addMetadata("user_input", userQuery);
         message.addMetadata("type", "reActWrapper");
         return message;
