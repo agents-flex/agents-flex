@@ -111,12 +111,12 @@ public class BaseStreamClientListener implements StreamClientListener {
     private boolean hasContent(AiMessage delta) {
         return delta.getContent() != null ||
             delta.getReasoningContent() != null ||
-            (delta.getCalls() != null && !delta.getCalls().isEmpty());
+            (delta.getFunctionCalls() != null && !delta.getFunctionCalls().isEmpty());
     }
 
     private boolean isFunctionCallExists(String id) {
-        if (fullMessage.getCalls() == null || id == null) return false;
-        for (FunctionCall call : fullMessage.getCalls()) {
+        if (fullMessage.getFunctionCalls() == null || id == null) return false;
+        for (FunctionCall call : fullMessage.getFunctionCalls()) {
             if (Objects.equals(call.getId(), id)) return true;
         }
         return false;

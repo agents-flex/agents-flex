@@ -59,7 +59,7 @@ public class QwenTest {
         prompt.addFunctionsFromClass(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
-        System.out.println(response.callFunctions());
+        System.out.println(response.getFunctionResults());
         // "Today it will be dull and overcast in 北京"
     }
 

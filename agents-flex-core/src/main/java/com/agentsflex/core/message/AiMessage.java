@@ -29,7 +29,7 @@ public class AiMessage extends AbstractTextMessage {
     private Integer localCompletionTokens;
     private Integer localTotalTokens;
     private String reasoningContent;
-    private List<FunctionCall> calls;
+    private List<FunctionCall> functionCalls;
 
     private String fullContent;
     private String fullReasoningContent;
@@ -64,9 +64,9 @@ public class AiMessage extends AbstractTextMessage {
             this.fullReasoningContent = this.reasoningContent;
         }
 
-        if (delta.calls != null && !delta.calls.isEmpty()) {
-            if (this.calls == null) this.calls = new ArrayList<>();
-            mergeFunctionCalls(delta.calls);
+        if (delta.functionCalls != null && !delta.functionCalls.isEmpty()) {
+            if (this.functionCalls == null) this.functionCalls = new ArrayList<>();
+            mergeFunctionCalls(delta.functionCalls);
         }
         if (delta.index != null) this.index = delta.index;
         if (delta.promptTokens != null) this.promptTokens = delta.promptTokens;
@@ -82,18 +82,18 @@ public class AiMessage extends AbstractTextMessage {
     private void mergeFunctionCalls(List<FunctionCall> deltaCalls) {
         if (deltaCalls == null || deltaCalls.isEmpty()) return;
 
-        if (this.calls == null || this.calls.isEmpty()) {
-            this.calls = new ArrayList<>(deltaCalls);
+        if (this.functionCalls == null || this.functionCalls.isEmpty()) {
+            this.functionCalls = new ArrayList<>(deltaCalls);
             return;
         }
 
-        FunctionCall lastCall = this.calls.get(this.calls.size() - 1);
+        FunctionCall lastCall = this.functionCalls.get(this.functionCalls.size() - 1);
 
         // 正常情况下 delta 部分只有 1 条
         FunctionCall deltaCall = deltaCalls.get(0);
         if (lastCall.getId() != null && deltaCall.getId() != null ||
             (lastCall.getName() != null && deltaCall.getName() != null)) {
-            this.calls.add(deltaCall);
+            this.functionCalls.add(deltaCall);
         } else {
             mergeSingleCall(lastCall, deltaCall);
         }
@@ -208,12 +208,12 @@ public class AiMessage extends AbstractTextMessage {
         return fullContent;
     }
 
-    public List<FunctionCall> getCalls() {
-        return calls;
+    public List<FunctionCall> getFunctionCalls() {
+        return functionCalls;
     }
 
-    public void setCalls(List<FunctionCall> calls) {
-        this.calls = calls;
+    public void setFunctionCalls(List<FunctionCall> functionCalls) {
+        this.functionCalls = functionCalls;
     }
 
     public String getFullReasoningContent() {
@@ -251,7 +251,7 @@ public class AiMessage extends AbstractTextMessage {
             ", localCompletionTokens=" + localCompletionTokens +
             ", localTotalTokens=" + localTotalTokens +
             ", reasoningContent='" + reasoningContent + '\'' +
-            ", calls=" + calls +
+            ", calls=" + functionCalls +
             ", fullContent='" + fullContent + '\'' +
             ", fullReasoningContent='" + fullReasoningContent + '\'' +
             ", finishReason='" + finishReason + '\'' +

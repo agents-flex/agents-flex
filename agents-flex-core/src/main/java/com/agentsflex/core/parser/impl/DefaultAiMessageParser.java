@@ -212,7 +212,7 @@ public class DefaultAiMessageParser implements AiMessageParser {
         }
 
         if (toolCallsJsonArray != null && this.callsParser != null) {
-            aiMessage.setCalls(this.callsParser.parse(toolCallsJsonArray));
+            aiMessage.setFunctionCalls(this.callsParser.parse(toolCallsJsonArray));
         }
 
         return aiMessage;

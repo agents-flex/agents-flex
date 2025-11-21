@@ -84,7 +84,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         objectMap.put("role", "assistant");
         objectMap.put("content", message.getTextContent());
 
-        List<FunctionCall> calls = message.getCalls();
+        List<FunctionCall> calls = message.getFunctionCalls();
         if (calls != null && !calls.isEmpty()) {
             objectMap.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
             buildAIMessageToolCalls(objectMap, calls);
