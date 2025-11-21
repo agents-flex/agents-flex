@@ -49,6 +49,7 @@
         <module>agents-flex-rerank</module>
         <module>agents-flex-search-engine</module>
         <module>agents-flex-embedding</module>
+        <module>agents-flex-tool</module>
     </modules>
 
     <properties>
@@ -219,27 +220,7 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chat-qianfan</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-chat-qwen</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chat-spark</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chat-tencent</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chat-volcengine</artifactId>
                 <version>${revision}</version>
             </dependency>
             <!--chatModel end-->
