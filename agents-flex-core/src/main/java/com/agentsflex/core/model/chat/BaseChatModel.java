@@ -19,6 +19,7 @@ import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
 import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
 import com.agentsflex.core.model.chat.interceptor.StreamChain;
 import com.agentsflex.core.model.chat.interceptor.SyncChain;
+import com.agentsflex.core.model.chat.interceptor.impl.ObservabilityInterceptor;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestInfo;
@@ -103,7 +104,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         // 1. 可观测性拦截器（最外层）
         // 仅在配置启用时添加，负责 OpenTelemetry 追踪和指标上报
         if (config.isObservabilityEnabled()) {
-//            chain.add(new ObservabilityInterceptor());
+            chain.add(new ObservabilityInterceptor());
         }
 
         // 2. 全局拦截器（通过 GlobalChatInterceptors 注册）
