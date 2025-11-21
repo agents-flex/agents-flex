@@ -81,7 +81,7 @@ public class ReActAgent implements IAgent {
 
     private ReActStepParser reActStepParser = ReActStepParser.DEFAULT; // 默认解析器
     private final HistoriesPrompt historiesPrompt;
-    private ChatOptions chatOptions = ChatOptions.DEFAULT;
+    private ChatOptions chatOptions;
     private ReActMessageBuilder messageBuilder = new ReActMessageBuilder();
 
     // 监听器集合
@@ -282,7 +282,7 @@ public class ReActAgent implements IAgent {
 
             @Override
             public void onStop(StreamContext context) {
-                AiMessage lastAiMessage = context.getLastAiMessage();
+                AiMessage lastAiMessage = context.getAiMessage();
                 if (lastAiMessage == null) {
                     notifyOnError(new RuntimeException("没有收到任何回复"));
                     return;

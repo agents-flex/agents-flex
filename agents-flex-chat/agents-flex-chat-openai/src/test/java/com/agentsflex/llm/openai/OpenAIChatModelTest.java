@@ -275,7 +275,7 @@ public class OpenAIChatModelTest {
         config.setLogEnabled(true);
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
-        config.setApiKey("PXW1G******7D12");
+        config.setApiKey("PXW1GXEKF8ZNQ1NP0UCYN5SUFASW4KI3YLQL7D12");
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 

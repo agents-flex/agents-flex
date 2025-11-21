@@ -19,9 +19,10 @@ import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
 import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
 import com.agentsflex.core.model.chat.interceptor.StreamChain;
 import com.agentsflex.core.model.chat.interceptor.SyncChain;
-//import com.agentsflex.core.model.chat.interceptor.impl.ObservabilityInterceptor;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.ChatClient;
+import com.agentsflex.core.model.client.ChatRequestInfo;
+import com.agentsflex.core.model.client.ChatRequestInfoBuilder;
 import com.agentsflex.core.prompt.Prompt;
 
 import java.util.*;
@@ -46,13 +47,6 @@ import java.util.*;
  *   <li>结果返回给调用方</li>
  * </ol>
  *
- * <h2>子类实现指南</h2>
- * <ul>
- *   <li>必须实现 {@link #buildRequestBody(Prompt, ChatOptions, boolean)}：构建 LLM 特定的请求体</li>
- *   <li>必须实现 {@link #buildClient(ChatContext)}：根据上下文创建具体的 {@link ChatClient}</li>
- *   <li>可选重写 {@link #buildRequestUrl()} 和 {@link #buildHeaders(Prompt, ChatOptions)}：自定义 URL 和 Headers</li>
- * </ul>
- *
  * @param <T> 具体的配置类型，必须是 {@link ChatConfig} 的子类
  */
 public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
@@ -61,6 +55,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      * 聊天模型配置，包含 API Key、Endpoint、Model 等信息
      */
     protected final T config;
+    protected final ChatRequestInfoBuilder requestBuilder;
 
     /**
      * 拦截器链，按执行顺序存储（可观测性 → 全局 → 用户）
@@ -72,8 +67,8 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      *
      * @param config 聊天模型配置
      */
-    public BaseChatModel(T config) {
-        this(config, Collections.emptyList());
+    public BaseChatModel(T config, ChatRequestInfoBuilder requestBuilder) {
+        this(config, requestBuilder, Collections.emptyList());
     }
 
     /**
@@ -85,8 +80,9 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      * @param config           聊天模型配置
      * @param userInterceptors 实例级拦截器列表
      */
-    public BaseChatModel(T config, List<ChatInterceptor> userInterceptors) {
+    public BaseChatModel(T config, ChatRequestInfoBuilder requestBuilder, List<ChatInterceptor> userInterceptors) {
         this.config = config;
+        this.requestBuilder = requestBuilder;
         this.interceptors = buildInterceptorChain(userInterceptors);
     }
 
@@ -138,16 +134,18 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      */
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
-        // 构建请求体（由子类实现）
-        String requestBody = buildRequestBody(prompt, options, false);
-        // 构建请求头（可由子类重写）
-        Map<String, String> requestHeaders = buildHeaders(prompt, options);
+        if (options == null) {
+            options = new ChatOptions();
+        }
+        // 强制关闭流式
+        options.setStreaming(false);
+
+
+        ChatRequestInfo request = requestBuilder.buildRequest(prompt, config, options);
 
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(config, options, prompt,
-                     buildRequestUrl(), requestHeaders, requestBody)) {
-
+                 ChatContextHolder.beginChat(config, options, prompt, request)) {
             // 构建同步责任链并执行
             SyncChain chain = buildSyncChain(0);
             return chain.proceed(this, scope.context);
@@ -165,28 +163,21 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      */
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
-        String requestBody = buildRequestBody(prompt, options, true);
-        Map<String, String> requestHeaders = buildHeaders(prompt, options);
+        if (options == null) {
+            options = new ChatOptions();
+        }
+        options.setStreaming(true);
+
+        ChatRequestInfo request = requestBuilder.buildRequest(prompt, config, options);
 
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(config, options, prompt,
-                     buildRequestUrl(), requestHeaders, requestBody)) {
+                 ChatContextHolder.beginChat(config, options, prompt, request)) {
 
             StreamChain chain = buildStreamChain(0);
             chain.proceed(this, scope.context, listener);
         }
     }
 
-    /**
-     * 构建请求 URL。
-     * <p>
-     * 默认实现返回 {@code config.getFullUrl()}，子类可重写以支持特殊 URL 格式。
-     *
-     * @return 请求目标地址
-     */
-    protected String buildRequestUrl() {
-        return config.getFullUrl();
-    }
 
     /**
      * 构建请求头。
@@ -204,17 +195,6 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         return headers;
     }
 
-    /**
-     * 构建请求体。
-     * <p>
-     * <b>子类必须实现此方法</b>，根据 LLM 协议格式化请求体。
-     *
-     * @param prompt    用户提示
-     * @param options   聊天选项
-     * @param streaming 是否为流式请求
-     * @return 序列化后的请求体（通常是 JSON 字符串）
-     */
-    protected abstract String buildRequestBody(Prompt prompt, ChatOptions options, boolean streaming);
 
     /**
      * 构建同步责任链。

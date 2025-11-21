@@ -16,8 +16,8 @@
 package com.agentsflex.llm.ollama;
 
 import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.MessageFormat;
-import com.agentsflex.core.message.OpenAIMessageFormat;
+import com.agentsflex.core.model.client.ChatMessageSerializer;
+import com.agentsflex.core.model.client.OpenAIChatMessageSerializer;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatConfig;
 import com.agentsflex.core.model.chat.ChatContext;
@@ -34,7 +34,7 @@ import java.util.Optional;
 public class OllamaLlmUtil {
 
 
-    private static final MessageFormat MESSAGE_FORMAT = new OpenAIMessageFormat() {
+    private static final ChatMessageSerializer MESSAGE_FORMAT = new OpenAIChatMessageSerializer() {
         @Override
         protected void buildMessageContent(Message message, Map<String, Object> map) {
             if (message instanceof UserMessage) {
@@ -47,10 +47,6 @@ public class OllamaLlmUtil {
             }
         }
 
-        @Override
-        protected Object buildToolCallsArguments(Map<String, Object> arguments) {
-            return arguments;
-        }
     };
 
 

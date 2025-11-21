@@ -27,6 +27,11 @@ public class Metadata implements Serializable {
         return metadataMap != null ? metadataMap.get(key) : null;
     }
 
+    public Object getMetadata(String key, Object defaultValue) {
+        Object value = getMetadata(key);
+        return value != null ? value : defaultValue;
+    }
+
     public void addMetadata(String key, Object value) {
         if (metadataMap == null) {
             metadataMap = new HashMap<>();

@@ -204,11 +204,6 @@ public class AiMessage extends AbstractTextMessage {
     }
 
     @Override
-    public Object getMessageContent() {
-        return fullContent;
-    }
-
-    @Override
     public String getTextContent() {
         return fullContent;
     }

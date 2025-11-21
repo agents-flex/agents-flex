@@ -23,26 +23,9 @@ import com.agentsflex.core.util.Metadata;
  *
  * <p>该类继承自 {@link Metadata}，允许附加任意元数据（如来源、时间戳、追踪ID等）。
  *
- * @see #getMessageContent()
  * @see #getTextContent()
  */
 public abstract class Message extends Metadata {
-
-    /**
-     * 获取消息的原始内容对象。
-     *
-     * <p>该方法返回与模型交互时使用的完整内容表示，可能为以下类型之一：
-     * <ul>
-     *   <li>{@code String}：表示纯文本消息；</li>
-     *   <li>{@code List<?>} 或其他结构化对象：表示多模态内容（如包含文本、图像URL、嵌入等）；</li>
-     *   <li>自定义数据结构：取决于具体 LLM 提供商的消息格式。</li>
-     * </ul>
-     *
-     * <p>调用方应根据实际场景对返回值进行类型判断或转换。
-     *
-     * @return 消息的原始内容对象，可能为 {@code String}、列表或其他结构化数据，具体取决于实现。
-     */
-    public abstract Object getMessageContent();
 
     /**
      * 提取消息中的纯文本部分。

@@ -16,13 +16,9 @@
 package com.agentsflex.core.message;
 
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.JavaNativeFunctionBuilder;
-import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.ImageUtil;
-import com.agentsflex.core.util.Maps;
 
 import java.io.File;
 import java.util.*;
@@ -32,8 +28,6 @@ public class UserMessage extends AbstractTextMessage {
     private List<String> audioUrls;
     private List<String> videoUrls;
     private List<String> imageUrls;
-//    private List<String> imageBase64s;
-
     private List<Function> functions;
     private String toolChoice;
 
@@ -174,62 +168,6 @@ public class UserMessage extends AbstractTextMessage {
 
     public void addImageBytes(byte[] imageBytes, String mimeType) {
         addImageUrl(ImageUtil.imageBytesToDataUri(imageBytes, mimeType));
-    }
-
-
-    @Override
-    public Object getMessageContent() {
-        if (CollectionUtil.hasItems(audioUrls)
-            || CollectionUtil.hasItems(videoUrls)
-            || CollectionUtil.hasItems(imageUrls)) {
-            List<Map<String, Object>> messageContent = new ArrayList<>();
-            messageContent.add(Maps.of("type", "text").set("text", getContent()));
-
-            ChatContext chatContext = ChatContextHolder.currentContext();
-            ChatConfig config = chatContext != null ? chatContext.getConfig() : null;
-
-            if ((config == null || config.isSupportAudio()) && CollectionUtil.hasItems(audioUrls)) {
-                messageContent.addAll(buildAudioContent());
-            }
-
-            if ((config == null || config.isSupportVideo()) && CollectionUtil.hasItems(videoUrls)) {
-                messageContent.addAll(buildVideoContent());
-            }
-
-            if ((config == null || config.isSupportImage()) && CollectionUtil.hasItems(imageUrls)) {
-                messageContent.addAll(buildImageContent(config));
-            }
-            return messageContent;
-        } else {
-            return super.getMessageContent();
-        }
-    }
-
-
-    public List<Map<String, Object>> buildAudioContent() {
-        List<Map<String, Object>> result = new ArrayList<>(1);
-        for (String url : audioUrls) {
-            result.add(Maps.of("type", "audio_url").set("audio_url", Maps.of("url", url)));
-        }
-        return result;
-    }
-
-
-    public List<Map<String, Object>> buildVideoContent() {
-        List<Map<String, Object>> result = new ArrayList<>(1);
-        for (String url : videoUrls) {
-            result.add(Maps.of("type", "video_url").set("video_url", Maps.of("url", url)));
-        }
-        return result;
-    }
-
-
-    public List<Map<String, Object>> buildImageContent(ChatConfig config) {
-        List<Map<String, Object>> result = new ArrayList<>(1);
-        for (String url : getImageUrlsForChat(config)) {
-            result.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", url)));
-        }
-        return result;
     }
 
 

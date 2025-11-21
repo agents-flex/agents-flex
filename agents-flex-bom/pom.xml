@@ -118,23 +118,7 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chat-qianfan</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-chat-qwen</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chat-spark</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chat-tencent</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chat-volcengine</artifactId>
         </dependency>
         <!--chatModel end-->
 

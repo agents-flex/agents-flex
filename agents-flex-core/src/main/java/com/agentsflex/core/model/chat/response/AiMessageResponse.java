@@ -19,8 +19,8 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.functions.Function;
-import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.MessageUtil;
 import com.agentsflex.core.util.StringUtil;
@@ -33,39 +33,28 @@ import java.util.Map;
 
 public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
 
-    private Prompt prompt;
-    private String response;
-    private AiMessage message;
+    private final ChatContext context;
+    private final String response;
+    private final AiMessage message;
 
-    public AiMessageResponse(Prompt prompt, String response, AiMessage message) {
-        this.prompt = prompt;
+    public AiMessageResponse(ChatContext context, String response, AiMessage message) {
+        this.context = context;
         this.response = response;
         this.message = message;
     }
 
-    public Prompt getPrompt() {
-        return prompt;
-    }
 
-    public void setPrompt(Prompt prompt) {
-        this.prompt = prompt;
+    public ChatContext getContext() {
+        return context;
     }
 
     public String getResponse() {
         return response;
     }
 
-    public void setResponse(String response) {
-        this.response = response;
-    }
-
     @Override
     public AiMessage getMessage() {
         return message;
-    }
-
-    public void setMessage(AiMessage message) {
-        this.message = message;
     }
 
     public boolean isFunctionCall() {
@@ -87,7 +76,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
             return Collections.emptyList();
         }
 
-        UserMessage userMessage = MessageUtil.findLastUserMessage(prompt.getMessages());
+        UserMessage userMessage = MessageUtil.findLastUserMessage(getContext().getPrompt().getMessages());
         Map<String, Function> funcMap = userMessage.getFunctionMap();
 
         if (funcMap == null || funcMap.isEmpty()) {
@@ -139,8 +128,8 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
         return toolMessages;
     }
 
-    public static AiMessageResponse error(Prompt prompt, String response, String errorMessage) {
-        AiMessageResponse errorResp = new AiMessageResponse(prompt, response, null);
+    public static AiMessageResponse error(ChatContext context, String response, String errorMessage) {
+        AiMessageResponse errorResp = new AiMessageResponse(context, response, null);
         errorResp.setError(true);
         errorResp.setErrorMessage(errorMessage);
         return errorResp;
@@ -150,7 +139,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
     @Override
     public String toString() {
         return "AiMessageResponse{" +
-            "prompt=" + prompt +
+            "context=" + context +
             ", response='" + response + '\'' +
             ", message=" + message +
             ", error=" + error +

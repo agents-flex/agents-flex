@@ -73,21 +73,6 @@ public class OpenAIChatModel extends BaseChatModel<OpenAIChatConfig> {
         return new OpenAIChatModel(config);
     }
 
-    /**
-     * 构建 OpenAI 请求体。
-     * <p>
-     * 使用 {@link OpenAILlmUtil} 将 Prompt 转换为 OpenAI API 格式的 JSON。
-     *
-     * @param prompt    用户提示
-     * @param options   聊天选项
-     * @param streaming 是否为流式请求
-     * @return OpenAI API 格式的 JSON 请求体
-     */
-    @Override
-    protected String buildRequestBody(Prompt prompt, ChatOptions options, boolean streaming) {
-        return OpenAILlmUtil.promptToPayload(prompt, getConfig(), options, streaming);
-    }
-
 
     /**
      * 创建 OpenAI 协议客户端。

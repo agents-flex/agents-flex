@@ -13,13 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.message;
+package com.agentsflex.core.parser;
 
-import java.util.List;
+import com.alibaba.fastjson2.JSONArray;
 
-public interface MessageFormat {
+public interface JSONArrayParser<T> extends Parser<JSONArray, T> {
 
-    Object toMessagesJsonObject(List<Message> messages);
-
-    Object toFunctionsJsonObject(UserMessage userMessage);
 }

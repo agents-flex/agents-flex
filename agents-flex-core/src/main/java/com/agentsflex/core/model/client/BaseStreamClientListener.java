@@ -17,11 +17,11 @@ package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.FunctionCall;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BaseStreamClientListener implements StreamClientListener {
 
     private final StreamResponseListener streamResponseListener;
-    private final Prompt prompt;
+    private final ChatContext chatContext;
     private final AiMessageParser messageParser;
     private final StreamContext context;
     private final AiMessage fullMessage = new AiMessage();
@@ -40,15 +40,14 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     public BaseStreamClientListener(
         ChatModel chatModel,
+        ChatContext chatContext,
         StreamClient client,
         StreamResponseListener streamResponseListener,
-        Prompt prompt,
         AiMessageParser messageParser) {
-
         this.streamResponseListener = streamResponseListener;
-        this.prompt = prompt;
+        this.chatContext = chatContext;
         this.messageParser = messageParser;
-        this.context = new StreamContext(chatModel, client);
+        this.context = new StreamContext(chatModel, chatContext, client);
     }
 
     @Override
@@ -67,7 +66,7 @@ public class BaseStreamClientListener implements StreamClientListener {
 
         try {
             JSONObject jsonObject = JSON.parseObject(response);
-            AiMessage delta = messageParser.parse(jsonObject);
+            AiMessage delta = messageParser.parse(jsonObject, chatContext);
             fullMessage.merge(delta); //核心：一行合并所有增量
 
             delta.setFullContent(fullMessage.getContent());
@@ -81,7 +80,7 @@ public class BaseStreamClientListener implements StreamClientListener {
             }
             //输出内容
             else if (hasContent(delta)) {
-                AiMessageResponse resp = new AiMessageResponse(prompt, response, delta);
+                AiMessageResponse resp = new AiMessageResponse(chatContext, response, delta);
                 streamResponseListener.onMessage(context, resp);
             }
         } catch (Exception err) {
@@ -91,7 +90,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     }
 
     private void notifyLastMessageAndStop(String response) {
-        AiMessageResponse resp = new AiMessageResponse(prompt, response, fullMessage);
+        AiMessageResponse resp = new AiMessageResponse(chatContext, response, fullMessage);
         streamResponseListener.onMessage(context, resp);
         onStop(this.context.getClient());
     }

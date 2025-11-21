@@ -5,6 +5,7 @@
 package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.StringUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -16,21 +17,6 @@ import java.util.Map;
  */
 public class ChatOptions {
 
-    /**
-     * 默认的 ChatOptions 实例，不可修改。
-     * 尝试设置 temperature 或 maxTokens 将抛出 IllegalStateException。
-     */
-    public static final ChatOptions DEFAULT = new ChatOptions() {
-        @Override
-        public void setTemperature(Float temperature) {
-            throw new IllegalStateException("Can not set temperature to the default instance.");
-        }
-
-        @Override
-        public void setMaxTokens(Integer maxTokens) {
-            throw new IllegalStateException("Can not set maxTokens to the default instance.");
-        }
-    };
 
     /**
      * 指定使用的大模型名称。
@@ -108,6 +94,14 @@ public class ChatOptions {
      */
     private Map<String, Object> extra;
 
+
+    /**
+     * 是否为流式请求。
+     * 这个不允许用户设置，由 Framework 自动设置（用户设置也可能被修改）。
+     * 用户调用 chat 或者 chatStream 方法时，会自动设置这个字段。
+     */
+    private boolean streaming;
+
     // ===== 构造函数 =====
     public ChatOptions() {
     }
@@ -130,6 +124,10 @@ public class ChatOptions {
         return model;
     }
 
+    public String getModelOrDefault(String defaultModel) {
+        return StringUtil.hasText(model) ? model : defaultModel;
+    }
+
     public void setModel(String model) {
         this.model = model;
     }
@@ -147,6 +145,9 @@ public class ChatOptions {
     }
 
     public void setTemperature(Float temperature) {
+        if (temperature < 0) {
+            throw new IllegalArgumentException("temperature must be greater than 0");
+        }
         this.temperature = temperature;
     }
 
@@ -155,6 +156,9 @@ public class ChatOptions {
     }
 
     public void setTopP(Float topP) {
+        if (topP < 0 || topP > 1) {
+            throw new IllegalArgumentException("topP must be between 0 and 1");
+        }
         this.topP = topP;
     }
 
@@ -163,6 +167,9 @@ public class ChatOptions {
     }
 
     public void setTopK(Integer topK) {
+        if (topK < 0) {
+            throw new IllegalArgumentException("topK must be greater than 0");
+        }
         this.topK = topK;
     }
 
@@ -171,6 +178,9 @@ public class ChatOptions {
     }
 
     public void setMaxTokens(Integer maxTokens) {
+        if (maxTokens < 0) {
+            throw new IllegalArgumentException("maxTokens must be greater than 0");
+        }
         this.maxTokens = maxTokens;
     }
 
@@ -210,6 +220,14 @@ public class ChatOptions {
         } else {
             extra.put(key, value);
         }
+    }
+
+    public boolean isStreaming() {
+        return streaming;
+    }
+
+    public void setStreaming(boolean streaming) {
+        this.streaming = streaming;
     }
 
     // ===== Builder 模式 =====

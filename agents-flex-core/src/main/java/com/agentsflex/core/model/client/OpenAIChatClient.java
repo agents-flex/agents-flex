@@ -35,42 +35,34 @@ import com.alibaba.fastjson2.JSONObject;
  */
 public class OpenAIChatClient extends ChatClient {
 
-    private AiMessageParser syncParser;
-    private AiMessageParser streamParser;
+    protected AiMessageParser aiMessageParser;
 
     public OpenAIChatClient(
         BaseChatModel<?> chatModel,
         ChatContext context) {
         super(chatModel, context);
-        this.syncParser = DefaultAiMessageParser.getOpenAIMessageParser(false);
-        this.streamParser = DefaultAiMessageParser.getOpenAIMessageParser(true);
     }
 
-    public AiMessageParser getSyncParser() {
-        return syncParser;
+    public AiMessageParser getAiMessageParser() {
+        if (aiMessageParser == null) {
+            aiMessageParser = DefaultAiMessageParser.getOpenAIMessageParser();
+        }
+        return aiMessageParser;
     }
 
-    public void setSyncParser(AiMessageParser syncParser) {
-        this.syncParser = syncParser;
-    }
-
-    public AiMessageParser getStreamParser() {
-        return streamParser;
-    }
-
-    public void setStreamParser(AiMessageParser streamParser) {
-        this.streamParser = streamParser;
+    public void setAiMessageParser(AiMessageParser aiMessageParser) {
+        this.aiMessageParser = aiMessageParser;
     }
 
     @Override
     public AiMessageResponse chat() {
         HttpClient httpClient = new HttpClient();
-        String response = httpClient.post(context.getRequestUrl(), context.getRequestHeaders(), context.getRequestBody());
+        ChatRequestInfo requestInfo = context.getRequestInfo();
+        String response = httpClient.post(requestInfo.getUrl(), requestInfo.getHeaders(), requestInfo.getBody());
 
         if (StringUtil.noText(response)) {
-            return AiMessageResponse.error(context.getPrompt(), response, "no content for response.");
+            return AiMessageResponse.error(context, response, "no content for response.");
         }
-
         return parseResponse(response);
     }
 
@@ -79,12 +71,14 @@ public class OpenAIChatClient extends ChatClient {
         StreamClient streamClient = new SseClient();
         StreamClientListener clientListener = new BaseStreamClientListener(
             chatModel,
+            context,
             streamClient,
             listener,
-            context.getPrompt(),
-            streamParser
+            getAiMessageParser()
         );
-        streamClient.start(context.getRequestUrl(), context.getRequestHeaders(), context.getRequestBody()
+
+        ChatRequestInfo requestInfo = context.getRequestInfo();
+        streamClient.start(requestInfo.getUrl(), requestInfo.getHeaders(), requestInfo.getBody()
             , clientListener, chatModel.getConfig());
     }
 
@@ -93,9 +87,9 @@ public class OpenAIChatClient extends ChatClient {
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
-        AiMessage aiMessage = syncParser.parse(jsonObject);
+        AiMessage aiMessage = getAiMessageParser().parse(jsonObject, context);
         LocalTokenCounter.computeAndSetLocalTokens(context.getPrompt().getMessages(), aiMessage);
-        AiMessageResponse messageResponse = new AiMessageResponse(context.getPrompt(), response, aiMessage);
+        AiMessageResponse messageResponse = new AiMessageResponse(context, response, aiMessage);
 
         if (error != null && !error.isEmpty()) {
             messageResponse.setError(true);

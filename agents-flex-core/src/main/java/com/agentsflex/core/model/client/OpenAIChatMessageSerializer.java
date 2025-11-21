@@ -13,13 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.message;
+package com.agentsflex.core.model.client;
 
+import com.agentsflex.core.message.*;
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.functions.Function;
 import com.agentsflex.core.model.chat.functions.Parameter;
+import com.agentsflex.core.util.CollectionUtil;
+import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.Maps;
 
 import java.util.ArrayList;
@@ -27,48 +28,70 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAIMessageFormat implements MessageFormat {
+public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
 
+    /**
+     * 将消息列表序列化为模型所需的聊天消息数组格式。
+     * 例如 OpenAI 的 [{"role": "user", "content": "..."}, ...]
+     *
+     * @param messages 消息列表，不可为 null
+     * @return 序列化后的消息数组，若输入为空则返回空列表
+     */
     @Override
-    public Object toMessagesJsonObject(List<Message> messages) {
+    public List<Map<String, Object>> serializeMessages(List<Message> messages, ChatConfig config) {
         if (messages == null || messages.isEmpty()) {
             return null;
         }
 
-        List<Map<String, Object>> messageJsonArray = new ArrayList<>(messages.size());
-        buildMessageJsonArray(messageJsonArray, messages);
-
-        return messageJsonArray;
+        return buildMessageList(messages, config);
     }
 
-    protected void buildMessageJsonArray(List<Map<String, Object>> messageJsonArray, List<Message> messages) {
+    protected List<Map<String, Object>> buildMessageList(List<Message> messages, ChatConfig config) {
+        List<Map<String, Object>> messageList = new ArrayList<>(messages.size());
         messages.forEach(message -> {
-            Map<String, Object> map = new HashMap<>(2);
+            Map<String, Object> objectMap = new HashMap<>(2);
             if (message instanceof UserMessage) {
-                map.put("role", "user");
+                buildUserMessageObject(objectMap, (UserMessage) message, config);
             } else if (message instanceof AiMessage) {
-                map.put("role", "assistant");
-                AiMessage aiMessage = (AiMessage) message;
-                List<FunctionCall> calls = aiMessage.getCalls();
-                if (calls != null && !calls.isEmpty()) {
-                    map.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
-                    buildToolCalls(map, calls);
-                    //不需要 build content 了
-                    messageJsonArray.add(map);
-                    return;
-                }
+                buildAIMessageObject(objectMap, (AiMessage) message, config);
             } else if (message instanceof SystemMessage) {
-                map.put("role", "system");
+                buildSystemMessageObject(objectMap, (SystemMessage) message, config);
             } else if (message instanceof ToolMessage) {
-                map.put("role", "tool");
-                map.put("tool_call_id", ((ToolMessage) message).getToolCallId());
+                buildToolMessageObject(objectMap, (ToolMessage) message, config);
             }
-            buildMessageContent(message, map);
-            messageJsonArray.add(map);
+            messageList.add(objectMap);
         });
+        return messageList;
     }
 
-    protected void buildToolCalls(Map<String, Object> map, List<FunctionCall> calls) {
+    protected void buildToolMessageObject(Map<String, Object> objectMap, ToolMessage message, ChatConfig config) {
+        objectMap.put("role", "tool");
+        objectMap.put("content", message.getTextContent());
+        objectMap.put("tool_call_id", message.getToolCallId());
+    }
+
+    protected void buildSystemMessageObject(Map<String, Object> objectMap, SystemMessage message, ChatConfig config) {
+        objectMap.put("role", "system");
+        objectMap.put("content", message.getTextContent());
+    }
+
+    protected void buildUserMessageObject(Map<String, Object> objectMap, UserMessage message, ChatConfig config) {
+        objectMap.put("role", "user");
+        objectMap.put("content", buildUserMessageContent(message, config));
+    }
+
+    protected void buildAIMessageObject(Map<String, Object> objectMap, AiMessage message, ChatConfig config) {
+        objectMap.put("role", "assistant");
+        objectMap.put("content", message.getTextContent());
+
+        List<FunctionCall> calls = message.getCalls();
+        if (calls != null && !calls.isEmpty()) {
+            objectMap.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
+            buildAIMessageToolCalls(objectMap, calls);
+        }
+    }
+
+    protected void buildAIMessageToolCalls(Map<String, Object> objectMap, List<FunctionCall> calls) {
         List<Map<String, Object>> toolCalls = new ArrayList<>();
         for (FunctionCall call : calls) {
             Maps toolCall = new Maps();
@@ -77,42 +100,76 @@ public class OpenAIMessageFormat implements MessageFormat {
                 .set("function", Maps.of("name", call.getName())
                     .set("arguments", call.getArgsString())
                 );
-
             toolCalls.add(toolCall);
         }
-        map.put("tool_calls", toolCalls);
+        objectMap.put("tool_calls", toolCalls);
     }
 
 
-    protected void buildMessageContent(Message message, Map<String, Object> map) {
-        map.put("content", message.getMessageContent());
-    }
+    protected Object buildUserMessageContent(UserMessage userMessage, ChatConfig config) {
+        String content = userMessage.getTextContent();
+        List<String> imageUrls = userMessage.getImageUrls();
+        List<String> audioUrls = userMessage.getAudioUrls();
+        List<String> videoUrls = userMessage.getVideoUrls();
 
-    @Override
-    public Object toFunctionsJsonObject(UserMessage message) {
-        if (message == null) {
-            return null;
+        if (CollectionUtil.hasItems(imageUrls) || CollectionUtil.hasItems(audioUrls) || CollectionUtil.hasItems(videoUrls)) {
+
+            List<Map<String, Object>> messageContent = new ArrayList<>();
+            messageContent.add(Maps.of("type", "text").set("text", content));
+
+            if (CollectionUtil.hasItems(imageUrls)) {
+                for (String url : imageUrls) {
+                    if (config.isSupportImageBase64Only()
+                        && url.toLowerCase().startsWith("http")) {
+                        url = ImageUtil.imageUrlToDataUri(url);
+                    }
+                    messageContent.add(Maps.of("type", "image_url").set("image_url", Maps.of("url", url)));
+                }
+            }
+
+            if (CollectionUtil.hasItems(audioUrls)) {
+                for (String url : audioUrls) {
+                    messageContent.add(Maps.of("type", "audio_url").set("audio_url", Maps.of("url", url)));
+                }
+            }
+
+            if (CollectionUtil.hasItems(videoUrls)) {
+                for (String url : videoUrls) {
+                    messageContent.add(Maps.of("type", "video_url").set("video_url", Maps.of("url", url)));
+                }
+            }
+
+            return messageContent;
+        } else {
+            return content;
         }
-        List<Function> functions = message.getFunctions();
+    }
+
+
+    /**
+     * 将函数定义列表序列化为模型所需的工具（tools）或函数（functions）格式。
+     * 例如 OpenAI 的 [{"type": "function", "function": {...}}, ...]
+     *
+     * @param functions 函数定义列表，可能为 null 或空
+     * @return 序列化后的函数定义数组，若输入为空则返回空列表
+     */
+    @Override
+    public List<Map<String, Object>> serializeFunctions(List<Function> functions, ChatConfig config) {
         if (functions == null || functions.isEmpty()) {
             return null;
         }
-
-        ChatContext chatContext = ChatContextHolder.currentContext();
-        ChatConfig config = chatContext != null ? chatContext.getConfig() : null;
 
         // 大模型不支持 Function Calling
         if (config != null && !config.isSupportFunctionCall()) {
             return null;
         }
 
-        List<Map<String, Object>> functionsJsonArray = new ArrayList<>();
-        buildFunctionJsonArray(functionsJsonArray, functions);
-
-        return functionsJsonArray;
+        return buildFunctionList(functions);
     }
 
-    protected void buildFunctionJsonArray(List<Map<String, Object>> functionsJsonArray, List<Function> functions) {
+
+    protected List<Map<String, Object>> buildFunctionList(List<Function> functions) {
+        List<Map<String, Object>> functionList = new ArrayList<>();
         for (Function function : functions) {
             Map<String, Object> functionRoot = new HashMap<>();
             functionRoot.put("type", "function");
@@ -133,11 +190,13 @@ public class OpenAIMessageFormat implements MessageFormat {
 
             addParameters(function.getParameters(), propertiesObj, parametersObj);
 
-            functionsJsonArray.add(functionRoot);
+            functionList.add(functionRoot);
         }
+
+        return functionList;
     }
 
-    private static void addParameters(Parameter[] parameters, Map<String, Object> propertiesObj, Map<String, Object> parametersObj) {
+    protected void addParameters(Parameter[] parameters, Map<String, Object> propertiesObj, Map<String, Object> parametersObj) {
         List<String> requiredProperties = new ArrayList<>();
         for (Parameter parameter : parameters) {
             Map<String, Object> parameterObj = new HashMap<>();
@@ -170,7 +229,7 @@ public class OpenAIMessageFormat implements MessageFormat {
         }
     }
 
-    private static void handleArrayItems(List<Parameter> children, Map<String, Object> itemsObj) {
+    protected void handleArrayItems(List<Parameter> children, Map<String, Object> itemsObj) {
         if (children.size() == 1 && children.get(0).getName() == null) {
             // 单值数组，数组元素是基础类型
             Parameter firstChild = children.get(0);
@@ -202,3 +261,4 @@ public class OpenAIMessageFormat implements MessageFormat {
         }
     }
 }
+

@@ -15,13 +15,9 @@
     <packaging>pom</packaging>
     <modules>
         <module>agents-flex-chat-openai</module>
-        <module>agents-flex-chat-spark</module>
         <module>agents-flex-chat-qwen</module>
         <module>agents-flex-chat-ollama</module>
         <module>agents-flex-chat-deepseek</module>
-        <module>agents-flex-chat-qianfan</module>
-		<module>agents-flex-chat-tencent</module>
-        <module>agents-flex-chat-volcengine</module>
     </modules>
 
     <properties>

@@ -16,6 +16,9 @@
 package com.agentsflex.core.parser;
 
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.model.chat.ChatContext;
+import com.alibaba.fastjson2.JSONObject;
 
-public interface AiMessageParser extends JSONObjectParser<AiMessage> {
+public interface AiMessageParser {
+    AiMessage parse(JSONObject jsonObject, ChatContext context);
 }

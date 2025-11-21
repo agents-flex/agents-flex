@@ -16,9 +16,8 @@
 
 package com.agentsflex.core.model.chat;
 
+import com.agentsflex.core.model.client.ChatRequestInfo;
 import com.agentsflex.core.prompt.Prompt;
-
-import java.util.Map;
 
 /**
  * 聊天上下文管理器，用于在当前线程中保存聊天相关的上下文信息。
@@ -44,38 +43,22 @@ public final class ChatContextHolder {
      * @param config         聊天配置
      * @param options        聊天选项
      * @param prompt         用户提示
-     * @param requestUrl     请求目标地址
-     *                       <ul>
-     *                         <li>HTTP: 完整 URL（如 "https://api.openai.com/v1/chat/completions"）</li>
-     *                         <li>gRPC: 目标地址（如 "llm-service:50051"）</li>
-     *                         <li>WebSocket: 连接 URI</li>
-     *                         <li>本地模型: 模型文件路径</li>
-     *                       </ul>
-     * @param requestHeaders 传输层元数据
-     *                       <ul>
-     *                         <li>HTTP: 请求头（Headers）</li>
-     *                         <li>gRPC: Metadata</li>
-     *                         <li>WebSocket: 握手头或自定义属性</li>
-     *                         <li>本地模型: 可为 null</li>
-     *                       </ul>
-     * @param requestBody    序列化后的请求体（通常是 JSON 字符串）
+     * @param request 请求信息构建起
      * @return 可用于 try-with-resources 的作用域对象
      */
     public static ChatContextScope beginChat(
         ChatConfig config,
         ChatOptions options,
         Prompt prompt,
-        String requestUrl,
-        Map<String, String> requestHeaders,
-        String requestBody) {
+        ChatRequestInfo request) {
         ChatContext ctx = new ChatContext();
         ctx.config = config;
         ctx.options = options;
         ctx.prompt = prompt;
-        ctx.requestUrl = requestUrl;
-        ctx.requestHeaders = requestHeaders;
-        ctx.requestBody = requestBody;
+        ctx.requestInfo = request;
+
         CONTEXT_HOLDER.set(ctx);
+
         return new ChatContextScope(ctx);
     }
 

@@ -35,10 +35,4 @@ public class MessageUtil {
         return null;
     }
 
-    public static String getToolChoice(Message message) {
-        if (message instanceof UserMessage) {
-            return ((UserMessage) message).getToolChoice();
-        }
-        return null;
-    }
 }

@@ -50,7 +50,7 @@ public class RouteAgent {
     private final HistoriesPrompt conversationHistory;
 
     private String routingPromptTemplate = DEFAULT_ROUTING_PROMPT_TEMPLATE;
-    private ChatOptions chatOptions = ChatOptions.DEFAULT;
+    private ChatOptions chatOptions;
     private boolean enableKeywordRouting = true;
     private boolean enableLlmRouting = true;
 

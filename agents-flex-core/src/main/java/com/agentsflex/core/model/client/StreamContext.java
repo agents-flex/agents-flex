@@ -16,44 +16,34 @@
 package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
 
 public class StreamContext {
-    private ChatModel chatModel;
-    private StreamClient client;
+    private final ChatModel chatModel;
+    private final ChatContext chatContext;
+    private final StreamClient client;
     private AiMessage aiMessage;
     private Throwable throwable;
 
-    public StreamContext() {
-    }
 
-    public StreamContext(ChatModel chatModel, StreamClient client) {
+    public StreamContext(ChatModel chatModel, ChatContext context, StreamClient client) {
         this.chatModel = chatModel;
+        this.chatContext = context;
         this.client = client;
     }
 
-    public ChatModel getLlm() {
-        return chatModel;
-    }
-
-    public void setLlm(ChatModel chatModel) {
-        this.chatModel = chatModel;
-    }
-
-    public StreamClient getClient() {
-        return client;
-    }
-
-    public void setClient(StreamClient client) {
-        this.client = client;
-    }
 
     public ChatModel getChatModel() {
         return chatModel;
     }
 
-    public void setChatModel(ChatModel chatModel) {
-        this.chatModel = chatModel;
+    public ChatContext getChatContext() {
+        return chatContext;
+    }
+
+    public StreamClient getClient() {
+        return client;
     }
 
     public AiMessage getAiMessage() {

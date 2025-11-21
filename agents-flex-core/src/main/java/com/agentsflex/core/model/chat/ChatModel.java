@@ -25,7 +25,7 @@ import com.agentsflex.core.prompt.SimplePrompt;
 public interface ChatModel {
 
     default String chat(String prompt) {
-        return chat(prompt, ChatOptions.DEFAULT);
+        return chat(prompt, new ChatOptions());
     }
 
     default String chat(String prompt, ChatOptions options) {
@@ -37,13 +37,13 @@ public interface ChatModel {
     }
 
     default AiMessageResponse chat(Prompt prompt) {
-        return chat(prompt, ChatOptions.DEFAULT);
+        return chat(prompt, new ChatOptions());
     }
 
     AiMessageResponse chat(Prompt prompt, ChatOptions options);
 
     default void chatStream(String prompt, StreamResponseListener listener) {
-        this.chatStream(new SimplePrompt(prompt), listener, ChatOptions.DEFAULT);
+        this.chatStream(new SimplePrompt(prompt), listener, new ChatOptions());
     }
 
     default void chatStream(String prompt, StreamResponseListener listener, ChatOptions options) {
@@ -52,7 +52,7 @@ public interface ChatModel {
 
     //chatStream
     default void chatStream(Prompt prompt, StreamResponseListener listener) {
-        this.chatStream(prompt, listener, ChatOptions.DEFAULT);
+        this.chatStream(prompt, listener, new ChatOptions());
     }
 
     void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options);
