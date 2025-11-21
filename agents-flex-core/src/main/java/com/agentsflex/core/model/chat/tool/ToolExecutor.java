@@ -13,7 +13,6 @@ public class ToolExecutor {
 
     private final Tool tool;
     private final ToolCall toolCall;
-    private final ToolContext context;
     private List<ToolInterceptor> interceptors;
 
     public ToolExecutor(Tool tool, ToolCall toolCall) {
@@ -24,7 +23,6 @@ public class ToolExecutor {
                         List<ToolInterceptor> userInterceptors) {
         this.tool = tool;
         this.toolCall = toolCall;
-        this.context = new ToolContext(tool, toolCall);
         this.interceptors = buildInterceptorChain(userInterceptors);
     }
 
@@ -67,13 +65,10 @@ public class ToolExecutor {
      * @throws RuntimeException 包装原始异常
      */
     public Object execute() {
-        try {
+        try (ToolContextHolder.ToolContextScope scope = ToolContextHolder.beginExecute(tool, toolCall)) {
             ToolChain chain = buildChain(0);
-            Object result = chain.proceed(context);
-            context.setResult(result);
-            return result;
+            return chain.proceed(scope.context);
         } catch (Exception e) {
-            context.setThrowable(e);
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;
             } else {
@@ -92,8 +87,6 @@ public class ToolExecutor {
         return ctx -> current.intercept(ctx, next);
     }
 
-    // ——— 辅助方法 ———
-
 
     public Tool getTool() {
         return tool;
@@ -107,7 +100,4 @@ public class ToolExecutor {
         return interceptors;
     }
 
-    public ToolContext getContext() {
-        return context;
-    }
 }

@@ -17,10 +17,8 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.OpenAIChatClient;
-import com.agentsflex.core.prompt.Prompt;
 
 /**
  * OpenAI 聊天模型实现。

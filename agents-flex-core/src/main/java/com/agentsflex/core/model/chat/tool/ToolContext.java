@@ -15,9 +15,6 @@ public class ToolContext implements Serializable {
     private final ToolCall toolCall;
     private final Map<String, Object> attributes = new HashMap<>();
 
-    private Object result;
-    private Throwable throwable;
-
 
     public ToolContext(Tool tool, ToolCall toolCall) {
         this.tool = tool;
@@ -51,23 +48,4 @@ public class ToolContext implements Serializable {
     }
 
 
-    public Object getResult() {
-        return result;
-    }
-
-    public void setResult(Object result) {
-        this.result = result;
-    }
-
-    public Throwable getThrowable() {
-        return throwable;
-    }
-
-    public void setThrowable(Throwable throwable) {
-        this.throwable = throwable;
-    }
-
-    public boolean hasException() {
-        return throwable != null;
-    }
 }
