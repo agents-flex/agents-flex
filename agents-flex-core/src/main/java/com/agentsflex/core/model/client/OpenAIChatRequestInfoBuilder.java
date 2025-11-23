@@ -56,7 +56,7 @@ public class OpenAIChatRequestInfoBuilder implements ChatRequestInfoBuilder {
 
         return map
             .set("messages", chatMessageSerializer.serializeMessages(messages, config))
-            .setIfNotEmpty("tools", chatMessageSerializer.serializeTools(userMessage == null ? null : userMessage.getFunctions(), config))
+            .setIfNotEmpty("tools", chatMessageSerializer.serializeTools(userMessage, config))
             .setIfContainsKey("tools", "tool_choice", userMessage != null ? userMessage.getToolChoice() : null)
             .toJSON();
 

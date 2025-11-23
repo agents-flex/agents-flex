@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatConfig;
 import com.agentsflex.core.model.chat.tool.Tool;
 
@@ -46,4 +47,8 @@ public interface ChatMessageSerializer {
      * @return 序列化后的函数定义数组，若输入为空则返回空列表
      */
     List<Map<String, Object>> serializeTools(List<Tool> tools, ChatConfig config);
+
+    default List<Map<String, Object>> serializeTools(UserMessage userMessage, ChatConfig config) {
+        return serializeTools(userMessage == null ? null : userMessage.getTools(), config);
+    }
 }
