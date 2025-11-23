@@ -12,20 +12,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAIChatRequestInfoBuilder implements ChatRequestInfoBuilder {
+public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
     private final ChatMessageSerializer chatMessageSerializer;
 
-    public OpenAIChatRequestInfoBuilder() {
+    public OpenAIChatRequestSpecBuilder() {
         this(new OpenAIChatMessageSerializer());
     }
 
-    public OpenAIChatRequestInfoBuilder(ChatMessageSerializer chatMessageSerializer) {
+    public OpenAIChatRequestSpecBuilder(ChatMessageSerializer chatMessageSerializer) {
         this.chatMessageSerializer = chatMessageSerializer;
     }
 
     @Override
-    public ChatRequestInfo buildRequest(Prompt prompt, ChatConfig config, ChatOptions options) {
+    public ChatRequestSpec buildRequest(Prompt prompt, ChatConfig config, ChatOptions options) {
 
         // 1. 构建 payload JSON 字符串（复用你原有的逻辑）
         String body = buildRequestBody(prompt, config, options);
@@ -38,7 +38,7 @@ public class OpenAIChatRequestInfoBuilder implements ChatRequestInfoBuilder {
         // 3 . 构建 URL
         String url = config.getFullUrl();
 
-        return new ChatRequestInfo(url, headers, body);
+        return new ChatRequestSpec(url, headers, body);
     }
 
 

@@ -57,8 +57,8 @@ public class OpenAIChatClient extends ChatClient {
     @Override
     public AiMessageResponse chat() {
         HttpClient httpClient = new HttpClient();
-        ChatRequestInfo requestInfo = context.getRequestInfo();
-        String response = httpClient.post(requestInfo.getUrl(), requestInfo.getHeaders(), requestInfo.getBody());
+        ChatRequestSpec requestSpec = context.getRequestSpec();
+        String response = httpClient.post(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody());
 
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(context, response, "no content for response.");
@@ -77,8 +77,8 @@ public class OpenAIChatClient extends ChatClient {
             getAiMessageParser()
         );
 
-        ChatRequestInfo requestInfo = context.getRequestInfo();
-        streamClient.start(requestInfo.getUrl(), requestInfo.getHeaders(), requestInfo.getBody()
+        ChatRequestSpec requestSpec = context.getRequestSpec();
+        streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody()
             , clientListener, chatModel.getConfig());
     }
 

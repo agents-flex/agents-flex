@@ -2,12 +2,15 @@ package com.agentsflex.core.model.client;
 
 import java.util.Map;
 
-public class ChatRequestInfo {
+public class ChatRequestSpec {
     private String url;
     private Map<String, String> headers;
     private String body; // JSON 字符串
 
-    public ChatRequestInfo(String url, Map<String, String> headers, String body) {
+    public ChatRequestSpec() {
+    }
+
+    public ChatRequestSpec(String url, Map<String, String> headers, String body) {
         this.url = url;
         this.headers = headers;
         this.body = body;

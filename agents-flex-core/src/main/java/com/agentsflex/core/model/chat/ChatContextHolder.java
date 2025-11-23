@@ -16,7 +16,7 @@
 
 package com.agentsflex.core.model.chat;
 
-import com.agentsflex.core.model.client.ChatRequestInfo;
+import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.prompt.Prompt;
 
 /**
@@ -50,12 +50,12 @@ public final class ChatContextHolder {
         ChatConfig config,
         ChatOptions options,
         Prompt prompt,
-        ChatRequestInfo request) {
+        ChatRequestSpec request) {
         ChatContext ctx = new ChatContext();
         ctx.config = config;
         ctx.options = options;
         ctx.prompt = prompt;
-        ctx.requestInfo = request;
+        ctx.requestSpec = request;
 
         CONTEXT_HOLDER.set(ctx);
 

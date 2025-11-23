@@ -1,6 +1,6 @@
 package com.agentsflex.core.model.chat;
 
-import com.agentsflex.core.model.client.ChatRequestInfo;
+import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.prompt.Prompt;
 
 public class ChatContext {
@@ -8,7 +8,7 @@ public class ChatContext {
     ChatConfig config;
     ChatOptions options;
     Prompt prompt;
-    ChatRequestInfo requestInfo;
+    ChatRequestSpec requestSpec;
 
     public ChatConfig getConfig() {
         return config;
@@ -34,11 +34,11 @@ public class ChatContext {
         this.prompt = prompt;
     }
 
-    public ChatRequestInfo getRequestInfo() {
-        return requestInfo;
+    public ChatRequestSpec getRequestSpec() {
+        return requestSpec;
     }
 
-    public void setRequestInfo(ChatRequestInfo requestInfo) {
-        this.requestInfo = requestInfo;
+    public void setRequestSpec(ChatRequestSpec requestSpec) {
+        this.requestSpec = requestSpec;
     }
 }

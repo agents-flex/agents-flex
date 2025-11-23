@@ -22,8 +22,8 @@ import com.agentsflex.core.model.chat.interceptor.SyncChain;
 import com.agentsflex.core.model.chat.interceptor.impl.ObservabilityInterceptor;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.ChatClient;
-import com.agentsflex.core.model.client.ChatRequestInfo;
-import com.agentsflex.core.model.client.ChatRequestInfoBuilder;
+import com.agentsflex.core.model.client.ChatRequestSpec;
+import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 import com.agentsflex.core.prompt.Prompt;
 
 import java.util.*;
@@ -56,7 +56,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      * 聊天模型配置，包含 API Key、Endpoint、Model 等信息
      */
     protected final T config;
-    protected final ChatRequestInfoBuilder requestBuilder;
+    protected final ChatRequestSpecBuilder requestBuilder;
 
     /**
      * 拦截器链，按执行顺序存储（可观测性 → 全局 → 用户）
@@ -68,7 +68,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      *
      * @param config 聊天模型配置
      */
-    public BaseChatModel(T config, ChatRequestInfoBuilder requestBuilder) {
+    public BaseChatModel(T config, ChatRequestSpecBuilder requestBuilder) {
         this(config, requestBuilder, Collections.emptyList());
     }
 
@@ -81,7 +81,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      * @param config           聊天模型配置
      * @param userInterceptors 实例级拦截器列表
      */
-    public BaseChatModel(T config, ChatRequestInfoBuilder requestBuilder, List<ChatInterceptor> userInterceptors) {
+    public BaseChatModel(T config, ChatRequestSpecBuilder requestBuilder, List<ChatInterceptor> userInterceptors) {
         this.config = config;
         this.requestBuilder = requestBuilder;
         this.interceptors = buildInterceptorChain(userInterceptors);
@@ -142,7 +142,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         options.setStreaming(false);
 
 
-        ChatRequestInfo request = requestBuilder.buildRequest(prompt, config, options);
+        ChatRequestSpec request = requestBuilder.buildRequest(prompt, config, options);
 
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
@@ -169,7 +169,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         }
         options.setStreaming(true);
 
-        ChatRequestInfo request = requestBuilder.buildRequest(prompt, config, options);
+        ChatRequestSpec request = requestBuilder.buildRequest(prompt, config, options);
 
         try (ChatContextHolder.ChatContextScope scope =
                  ChatContextHolder.beginChat(config, options, prompt, request)) {

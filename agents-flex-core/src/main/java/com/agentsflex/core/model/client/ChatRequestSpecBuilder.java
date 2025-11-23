@@ -4,6 +4,6 @@ import com.agentsflex.core.model.chat.ChatConfig;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.prompt.Prompt;
 
-public interface ChatRequestInfoBuilder {
-    ChatRequestInfo buildRequest(Prompt prompt, ChatConfig config, ChatOptions options);
+public interface ChatRequestSpecBuilder {
+    ChatRequestSpec buildRequest(Prompt prompt, ChatConfig config, ChatOptions options);
 }
