@@ -56,7 +56,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
         return message;
     }
 
-    public boolean isTool() {
+    public boolean hasToolCalls() {
         if (this.message == null) {
             return false;
         }
@@ -97,7 +97,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
     }
 
 
-    public List<Object> getToolResults(ToolInterceptor... interceptors) {
+    public List<Object> executeToolCallsAndGetResults(ToolInterceptor... interceptors) {
         List<ToolExecutor> toolExecutors = getToolExecutors(interceptors);
 
         for (ToolExecutor toolExecutor : toolExecutors) {
@@ -112,7 +112,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
     }
 
 
-    public List<ToolMessage> getToolMessages(ToolInterceptor... interceptors) {
+    public List<ToolMessage> executeToolCallsAndGetToolMessages(ToolInterceptor... interceptors) {
         List<ToolExecutor> toolExecutors = getToolExecutors(interceptors);
 
         if (CollectionUtil.noItems(toolExecutors)) {

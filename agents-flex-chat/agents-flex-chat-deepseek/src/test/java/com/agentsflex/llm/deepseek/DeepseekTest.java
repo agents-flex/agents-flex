@@ -83,7 +83,7 @@ public class DeepseekTest {
         SimplePrompt prompt = new SimplePrompt("今天北京的天气怎么样");
         prompt.addToolsFromClass(DeepseekTest.class);
         AiMessageResponse response = chatModel.chat(prompt);
-        System.out.println(response.getToolResults());
+        System.out.println(response.executeToolCallsAndGetResults());
     }
 
     public static void main(String[] args) {

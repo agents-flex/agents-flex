@@ -111,7 +111,7 @@ public class OpenAIChatModelTest {
         prompt.addToolsFromClass(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
-        System.out.println(response.getToolResults());
+        System.out.println(response.executeToolCallsAndGetResults());
         // 阴转多云
     }
 
@@ -126,8 +126,8 @@ public class OpenAIChatModelTest {
         prompt.addToolsFromClass(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
-        if (response.isTool()) {
-            prompt.setToolMessages(response.getToolMessages());
+        if (response.hasToolCalls()) {
+            prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
             AiMessageResponse response1 = llm.chat(prompt);
             System.out.println(response1.getMessage().getContent());
         } else {
@@ -150,8 +150,8 @@ public class OpenAIChatModelTest {
         prompt.addToolsFromClass(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
-        if (response.isTool()) {
-            prompt.setToolMessages(response.getToolMessages());
+        if (response.hasToolCalls()) {
+            prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
             AiMessageResponse response1 = llm.chat(prompt);
             System.out.println(response1.getMessage().getContent());
         } else {
@@ -175,7 +175,7 @@ public class OpenAIChatModelTest {
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
-                System.out.println(" onMessage >>>>>" + response.isTool());
+                System.out.println(" onMessage >>>>>" + response.hasToolCalls());
             }
         });
 
@@ -198,7 +198,7 @@ public class OpenAIChatModelTest {
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
-                System.out.println(" onMessage >>>>>" + response.isTool());
+                System.out.println(" onMessage >>>>>" + response.hasToolCalls());
             }
         });
 
@@ -247,9 +247,9 @@ public class OpenAIChatModelTest {
 //                }
 
                 System.out.println("onMessage >>>>>" + response);
-                if (response.isTool()) {
+                if (response.hasToolCalls()) {
                     System.out.println(":::::::: start....");
-                    prompt.setToolMessages(response.getToolMessages());
+                    prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
                     llm.chatStream(prompt, new StreamResponseListener() {
                         @Override
                         public void onMessage(StreamContext context, AiMessageResponse response) {
@@ -309,9 +309,9 @@ public class OpenAIChatModelTest {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
 //                System.out.println("onMessage >>>>>" + response);
-                if (response.isTool()) {
+                if (response.hasToolCalls()) {
                     System.out.println(":::::::: start....");
-                    prompt.setToolMessages(response.getToolMessages());
+                    prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
                     llm.chatStream(prompt, new StreamResponseListener() {
                         @Override
                         public void onMessage(StreamContext context, AiMessageResponse response) {
@@ -343,7 +343,7 @@ public class OpenAIChatModelTest {
         prompt.addToolsFromClass(WeatherFunctions.class);
         AiMessageResponse response = llm.chat(prompt);
 
-        prompt.setToolMessages(response.getToolMessages());
+        prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
 
         System.out.println(llm.chat(prompt));
 

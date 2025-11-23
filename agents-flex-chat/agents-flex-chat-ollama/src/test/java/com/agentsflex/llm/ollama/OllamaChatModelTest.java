@@ -49,7 +49,7 @@ public class OllamaChatModelTest {
         prompt.addToolsFromClass(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
-        System.out.println(response.getToolResults());
+        System.out.println(response.executeToolCallsAndGetResults());
     }
 
 
@@ -66,8 +66,8 @@ public class OllamaChatModelTest {
         prompt.addToolsFromClass(WeatherFunctions.class);
         AiMessageResponse response = chatModel.chat(prompt);
 
-        if (response.isTool()) {
-            prompt.setToolMessages(response.getToolMessages());
+        if (response.hasToolCalls()) {
+            prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
             AiMessageResponse response1 = chatModel.chat(prompt);
             System.out.println(response1.getMessage().getContent());
         }
