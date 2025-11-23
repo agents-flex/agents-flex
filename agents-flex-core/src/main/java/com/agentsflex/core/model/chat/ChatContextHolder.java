@@ -40,22 +40,23 @@ public final class ChatContextHolder {
      * 开始一次聊天上下文，并设置传输层请求信息。
      * 适用于远程 LLM 模型（如 HTTP/gRPC/WebSocket）。
      *
-     * @param config         聊天配置
-     * @param options        聊天选项
-     * @param prompt         用户提示
+     * @param config  聊天配置
+     * @param options 聊天选项
+     * @param prompt  用户提示
      * @param request 请求信息构建起
      * @return 可用于 try-with-resources 的作用域对象
      */
     public static ChatContextScope beginChat(
-        ChatConfig config,
-        ChatOptions options,
         Prompt prompt,
-        ChatRequestSpec request) {
+        ChatOptions options,
+        ChatRequestSpec request,
+        ChatConfig config) {
+
         ChatContext ctx = new ChatContext();
-        ctx.config = config;
-        ctx.options = options;
         ctx.prompt = prompt;
+        ctx.options = options;
         ctx.requestSpec = request;
+        ctx.config = config;
 
         CONTEXT_HOLDER.set(ctx);
 

@@ -142,11 +142,11 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         options.setStreaming(false);
 
 
-        ChatRequestSpec request = requestBuilder.buildRequest(prompt, config, options);
+        ChatRequestSpec request = requestBuilder.buildRequest(prompt, options, config);
 
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(config, options, prompt, request)) {
+                 ChatContextHolder.beginChat(prompt, options, request, config)) {
             // 构建同步责任链并执行
             SyncChain chain = buildSyncChain(0);
             return chain.proceed(this, scope.context);
@@ -169,10 +169,10 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         }
         options.setStreaming(true);
 
-        ChatRequestSpec request = requestBuilder.buildRequest(prompt, config, options);
+        ChatRequestSpec request = requestBuilder.buildRequest(prompt, options, config);
 
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(config, options, prompt, request)) {
+                 ChatContextHolder.beginChat(prompt, options, request, config)) {
 
             StreamChain chain = buildStreamChain(0);
             chain.proceed(this, scope.context, listener);

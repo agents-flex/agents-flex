@@ -25,22 +25,25 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
     }
 
     @Override
-    public ChatRequestSpec buildRequest(Prompt prompt, ChatConfig config, ChatOptions options) {
+    public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, ChatConfig config) {
 
-        // 1. 构建 payload JSON 字符串（复用你原有的逻辑）
+        String url = buildRequestUrl(prompt, options, config);
+        Map<String, String> headers = buildRequestHeaders(prompt, options, config);
         String body = buildRequestBody(prompt, config, options);
-
-        // 2. 构建 headers
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + config.getApiKey());
-
-        // 3 . 构建 URL
-        String url = config.getFullUrl();
 
         return new ChatRequestSpec(url, headers, body);
     }
 
+    protected String buildRequestUrl(Prompt prompt, ChatOptions options, ChatConfig config) {
+        return config.getFullUrl();
+    }
+
+    private Map<String, String> buildRequestHeaders(Prompt prompt, ChatOptions options, ChatConfig config) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Authorization", "Bearer " + config.getApiKey());
+        return headers;
+    }
 
     protected String buildRequestBody(Prompt prompt, ChatConfig config, ChatOptions options) {
         List<Message> messages = prompt.getMessages();
