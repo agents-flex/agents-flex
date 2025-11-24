@@ -26,7 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
-public class HistoriesPrompt extends Prompt {
+public class MemoryPrompt extends Prompt {
 
     private ChatMemory memory = new DefaultChatMemory();
 
@@ -82,10 +82,10 @@ public class HistoriesPrompt extends Prompt {
         this.historyMessageTruncateProcessor = historyMessageTruncateProcessor;
     }
 
-    public HistoriesPrompt() {
+    public MemoryPrompt() {
     }
 
-    public HistoriesPrompt(ChatMemory memory) {
+    public MemoryPrompt(ChatMemory memory) {
         this.memory = memory;
     }
 
@@ -127,37 +127,60 @@ public class HistoriesPrompt extends Prompt {
 
     @Override
     public List<Message> getMessages() {
-        List<Message> messages = memory.getMessages();
-        if (messages == null) messages = new ArrayList<>();
-
-        if (messages.size() > maxAttachedMessageCount) {
-            messages = new ArrayList<>(messages.subList(messages.size() - maxAttachedMessageCount, messages.size()));
+        List<Message> originalMessages = memory.getMessages();
+        if (originalMessages == null) {
+            originalMessages = new ArrayList<>();
         }
 
+        // 1. 截取最近的 N 条消息（不包含 system message）
+        List<Message> selectedMessages;
+        if (originalMessages.size() > maxAttachedMessageCount) {
+            int fromIndex = originalMessages.size() - maxAttachedMessageCount;
+            selectedMessages = new ArrayList<>(originalMessages.subList(fromIndex, originalMessages.size()));
+        } else {
+            selectedMessages = new ArrayList<>(originalMessages);
+        }
+
+        // 2. 对文本消息进行截断处理（基于副本，不修改原始消息）
         if (historyMessageTruncateEnable) {
-            for (Message message : messages) {
-                if (message instanceof AbstractTextMessage) {
-                    String content = ((AbstractTextMessage) message).getContent();
+            for (int i = 0; i < selectedMessages.size(); i++) {
+                Message msg = selectedMessages.get(i);
+                if (msg instanceof AbstractTextMessage) {
+                    AbstractTextMessage<?> textMsg = (AbstractTextMessage<?>) msg;
+                    String content = textMsg.getContent();
+                    if (content == null) continue;
+
+                    // 应用自定义处理器或默认截断
                     if (historyMessageTruncateProcessor != null) {
                         content = historyMessageTruncateProcessor.apply(content);
                     } else if (content.length() > historyMessageTruncateLength) {
                         content = content.substring(0, historyMessageTruncateLength);
                     }
-                    ((AbstractTextMessage) message).setContent(content);
+
+                    // 创建新实例，避免修改原始消息
+                    AbstractTextMessage<?> copied = textMsg.copy();
+                    copied.setContent(content);
+                    selectedMessages.set(i, copied);
                 }
             }
         }
 
-        Message firstMessage = messages.get(0);
-        if (!(firstMessage instanceof SystemMessage) && systemMessage != null) {
-            messages.add(0, systemMessage);
+        // 3. 插入系统消息（如果需要）
+        if (systemMessage != null) {
+            if (selectedMessages.isEmpty() || !(selectedMessages.get(0) instanceof SystemMessage)) {
+                selectedMessages.add(0, systemMessage);
+            }
         }
 
-        if (temporaryMessages != null) {
-            messages.addAll(temporaryMessages);
+        // 4. 添加临时消息（如果存在）
+        if (temporaryMessages != null && !temporaryMessages.isEmpty()) {
+            selectedMessages.addAll(new ArrayList<>(temporaryMessages));
+            // 使用后自动清理，符合“临时”语义
+            temporaryMessages.clear();
+            temporaryMessages = null;
         }
 
-        return messages;
+        return selectedMessages;
     }
 
 
