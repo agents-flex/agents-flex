@@ -437,7 +437,7 @@ public class OpenAIChatModelTest {
             @Override
             public void onFinalAnswer(String finalAnswer) {
                 System.out.println("onFinalAnswer >>>>>" + finalAnswer);
-                ChatMemory memory = reActAgent.getHistoriesPrompt().getMemory();
+                ChatMemory memory = reActAgent.getMemoryPrompt().getMemory();
                 System.out.println(memory);
             }
 

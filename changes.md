@@ -15,5 +15,6 @@
 - 重命名 PromptFormat 为 MessageFormat
 - 重命名 TextPromptTemplate 为 PromptTemplate
 - 重命名 TextPrompt 为 SimplePrompt
+- 重命名 HistoriesPrompt 为 MemoryPrompt
 - 重命名 HumanMessage 等合并为 UserMessage
 

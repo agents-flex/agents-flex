@@ -15,25 +15,12 @@
 - LLM 的访问能力
 - Prompt、Prompt Template 定义加载的能力
 - Function Calling 定义、调用和执行等能力
-- 记忆的能力（Memory）
+- Memory 记忆的能力（Memory）
 - Embedding
 - Vector Store
-- 文档处理
-  - 加载器（Loader）
-    - Http
-    - FileSystem
-  - 分割器（Splitter）
-  - 解析器（Parser）
-    - PoiParser
-    - PdfBoxParser
-- Chain 执行链
-    - SequentialChain 顺序执行链
-    - ParallelChain 并发（并行）执行链
-    - LoopChain 循环执行连
-    - ChainNode
-        - AgentNode Agent 执行节点
-        - EndNode 终点节点
-
+- file2text 文档读取
+- splitter 文档分割
+- 可观测（基于 OpenTelemetry）
 
 
 
@@ -157,110 +144,6 @@ public class WeatherUtil {
 }
 ```
 
-## 生态支持
-
-### 大语言模型
-
-
-| 大语言模型名称                       | 支持情况   | 描述    |
-|-------------------------------|--------|-------|
-| ChatGPT                       | ✅ 已支持  | -     |
-| Ollama 部署模型                   | ✅ 已支持  | -     |
-| 星火大模型                         | ✅ 已支持  | -     |
-| 通义千问                          | ✅ 已支持  | -     |
-| 智普 ChatGLM                    | ✅ 已支持  | -     |
-| 月之暗面 Moonshot                 | ✅ 已支持  | -     |
-| 扣子 Coze                       | ✅ 已支持  | -     |
-| GiteeAI - Qwen2-7B-Instruct   | ✅ 已支持  | -     |
-| GiteeAI - Qwen2-72B-Instruct  | ✅ 已支持  | -     |
-| GiteeAI - Yi-1.5-34B-Chat     | ✅ 已支持  | -     |
-| GiteeAI - glm-4-9b-chat       | ✅ 已支持  | -     |
-| 文心一言                          | 计划中... | 期待 PR |
-
-
-### 图片生成模型
-
-
-| 大语言模型名称                                     | 支持情况   | 描述    |
-|---------------------------------------------|--------|-------|
-| Openai                                      | ✅ 已支持  | -     |
-| Stability                                   | ✅ 已支持  | -     |
-| GiteeAI - stable-diffusion-3-medium         | ✅ 已支持  | -     |
-| GiteeAI - FLUX.1-schnell                    | ✅ 已支持  | -     |
-| GiteeAI - stable-diffusion-xl-base-1.0      | ✅ 已支持  | -     |
-| GiteeAI - Kolors                            | ✅ 已支持  | -     |
-| SiliconFlow - Flux.1-schnell                | ✅ 已支持  | -     |
-| SiliconFlow - Stable Diffusion 3            | ✅ 已支持  | -     |
-| SiliconFlow - Stable Diffusion XL           | ✅ 已支持  | -     |
-| SiliconFlow - Stable Diffusion 2.1          | ✅ 已支持  | -     |
-| SiliconFlow - Stable Diffusion Turbo        | ✅ 已支持  | -     |
-| SiliconFlow - Stable Diffusion XL Turbo     | ✅ 已支持  | -     |
-| SiliconFlow - Stable Diffusion XL Lighting  | ✅ 已支持  | -     |
-| 更多                                          |计划中... | 期待 PR |
-
-
-
-### Function Calling 方法调用
-
-| 大语言模型名称                     | 支持情况   | 描述    |
-|-----------------------------|--------|-------|
-| Openai                      | ✅ 已支持  | -     |
-| 星火大模型                       | ✅ 已支持  | -     |
-| 智普 ChatGLM                  | ✅ 已支持  | -     |
-| Ollama                      | ✅ 已支持  | -     |
-| 通义千问                        | ✅ 已支持  | -     |
-| 更多                          |计划中... | 期待 PR |
-
-
-### 多模态
-
-| 大语言模型名称                     | 支持情况   | 描述    |
-|-----------------------------|--------|-------|
-| Openai                      | ✅ 已支持  | -     |
-| Ollama                      | ✅ 已支持  | -     |
-| 更多                          |计划中... | 期待 PR |
-
-
-### 向量化模型
-
-| 大语言模型名称                     | 支持情况   | 描述    |
-|-----------------------------|--------|-------|
-| Openai                      | ✅ 已支持  | -     |
-| 星火大模型                       | ✅ 已支持  | -     |
-| 智普 ChatGLM                  | ✅ 已支持  | -     |
-| Ollama                      | ✅ 已支持  | -     |
-| 通义千问                        | ✅ 已支持  | -     |
-| GiteeAI - bge-small-zh-v1.5 | ✅ 已支持  | -     |
-| GiteeAI - bge-large-zh-v1.5 | ✅ 已支持  | -     |
-| GiteeAI - bge-m3            | ✅ 已支持  | -     |
-| 更多                          |计划中... | 期待 PR |
-
-
-### 向量存储（向量数据库）
-
-| 向量数据库名称       | 支持情况   | 描述 |
-|---------------|--------|----|
-| Milvus        | ✅ 已支持  | -  |
-| 阿里云向量数据存储服务   | ✅ 已支持  | -  |
-| 腾讯云向量数据存储服务   | ✅ 已支持  | -  |
-| OpenSearch    | ✅ 已支持  | -  |
-| ElasticSearch | ✅ 已支持  | -  |
-| Redis         | ✅ 已支持  | -  |
-| Chroma        | ✅ 已支持  | -  |
-| Cassandra     | 计划中... | 期待 PR  |
-| Gemfire       | 计划中... | 期待 PR  |
-| Weaviate      | 计划中... | 期待 PR  |
-
-
-### 文档解析器
-
-
-| 向量数据库名称       | 支持情况   | 描述           |
-|---------------|--------|--------------|
-| PDFBox        | ✅ 已支持  | 用于解析 PDF 文档  |
-| POI           | ✅ 已支持  | 用于解析 Word 文档 |
-| OmniParse     | ✅ 已支持  | 更丰富的解析能力     |
-| 更多           |计划中... | 期待 PR |
 
 
 

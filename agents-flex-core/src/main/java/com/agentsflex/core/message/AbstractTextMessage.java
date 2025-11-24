@@ -15,7 +15,10 @@
  */
 package com.agentsflex.core.message;
 
-public class AbstractTextMessage extends Message{
+import com.agentsflex.core.util.Copyable;
+
+public abstract class AbstractTextMessage<T extends AbstractTextMessage<?>>
+    extends Message implements Copyable<T> {
 
     protected String content;
 
@@ -31,4 +34,12 @@ public class AbstractTextMessage extends Message{
     public String getTextContent() {
         return content;
     }
+
+    /**
+     * 创建并返回当前对象的副本。
+     *
+     * @return 一个新的、内容相同但内存独立的对象
+     */
+    @Override
+    public abstract T copy();
 }

@@ -15,12 +15,13 @@
  */
 package com.agentsflex.core.message;
 
+import com.agentsflex.core.util.Copyable;
 import com.alibaba.fastjson2.JSON;
 
 import java.io.Serializable;
 import java.util.Map;
 
-public class ToolCall implements Serializable {
+public class ToolCall implements Serializable, Copyable<ToolCall> {
 
     private String id;
     private String name;
@@ -80,5 +81,19 @@ public class ToolCall implements Serializable {
             ", name='" + name + '\'' +
             ", argsString='" + argsString + '\'' +
             '}';
+    }
+
+    /**
+     * 创建并返回当前对象的副本。
+     *
+     * @return 一个新的、内容相同但内存独立的对象
+     */
+    @Override
+    public ToolCall copy() {
+        ToolCall copy = new ToolCall();
+        copy.id = this.id;
+        copy.name = this.name;
+        copy.argsString = this.argsString;
+        return copy;
     }
 }

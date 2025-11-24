@@ -13,16 +13,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.agent.route;
-
-import com.agentsflex.core.agent.IAgent;
-import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.prompt.MemoryPrompt;
+package com.agentsflex.core.util;
 
 /**
- * ReActAgent 工厂接口，支持不同 Agent 的定制化创建。
+ * 表示对象支持创建一个独立副本（深拷贝语义）。
+ * 修改副本不应影响原对象，反之亦然。
+ *
+ * @param <T> 副本的具体类型，通常为当前类自身
  */
-@FunctionalInterface
-public interface RouteAgentFactory {
-    IAgent create(ChatModel chatModel, String userQuery, MemoryPrompt memoryPrompt);
+public interface Copyable<T> {
+    /**
+     * 创建并返回当前对象的副本。
+     *
+     * @return 一个新的、内容相同但内存独立的对象
+     */
+    T copy();
 }

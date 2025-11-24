@@ -20,7 +20,7 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.prompt.HistoriesPrompt;
+import com.agentsflex.core.prompt.MemoryPrompt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +58,7 @@ public class RouteAgent {
     private final ChatModel chatModel;
     private final RouteAgentRegistry routeAgentRegistry;
     private final String userQuery;
-    private final HistoriesPrompt conversationHistory;
+    private final MemoryPrompt conversationHistory;
 
     private String routingPromptTemplate = DEFAULT_ROUTING_PROMPT_TEMPLATE;
     private ChatOptions chatOptions;
@@ -66,7 +66,7 @@ public class RouteAgent {
     private boolean enableLlmRouting = true;
 
     public RouteAgent(ChatModel chatModel, RouteAgentRegistry routeAgentRegistry,
-                      String userQuery, HistoriesPrompt conversationHistory) {
+                      String userQuery, MemoryPrompt conversationHistory) {
         this.chatModel = chatModel;
         this.routeAgentRegistry = routeAgentRegistry;
         this.userQuery = userQuery;
@@ -126,7 +126,7 @@ public class RouteAgent {
         return factory.create(chatModel, userQuery, conversationHistory);
     }
 
-    private String buildContextSummary(HistoriesPrompt history) {
+    private String buildContextSummary(MemoryPrompt history) {
         List<Message> messages = history.getMessages();
         if (messages == null || messages.isEmpty()) {
             return "（无历史对话）";

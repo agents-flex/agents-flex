@@ -26,7 +26,7 @@ import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.*;
 import com.agentsflex.core.model.chat.tool.ToolInterceptor;
 import com.agentsflex.core.model.client.StreamContext;
-import com.agentsflex.core.prompt.HistoriesPrompt;
+import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +80,7 @@ public class ReActAgent implements IAgent {
     private final ReActAgentState state;
 
     private ReActStepParser reActStepParser = ReActStepParser.DEFAULT; // 默认解析器
-    private final HistoriesPrompt historiesPrompt;
+    private final MemoryPrompt memoryPrompt;
     private ChatOptions chatOptions;
     private ReActMessageBuilder messageBuilder = new ReActMessageBuilder();
 
@@ -98,26 +98,26 @@ public class ReActAgent implements IAgent {
         this.state.userQuery = userQuery;
         this.state.promptTemplate = DEFAULT_PROMPT_TEMPLATE;
         this.state.maxIterations = DEFAULT_MAX_ITERATIONS;
-        this.historiesPrompt = new HistoriesPrompt();
+        this.memoryPrompt = new MemoryPrompt();
     }
 
-    public ReActAgent(ChatModel chatModel, List<Tool> tools, String userQuery, HistoriesPrompt historiesPrompt) {
+    public ReActAgent(ChatModel chatModel, List<Tool> tools, String userQuery, MemoryPrompt memoryPrompt) {
         this.chatModel = chatModel;
         this.tools = tools;
         this.state = new ReActAgentState();
         this.state.userQuery = userQuery;
         this.state.promptTemplate = DEFAULT_PROMPT_TEMPLATE;
         this.state.maxIterations = DEFAULT_MAX_ITERATIONS;
-        this.historiesPrompt = historiesPrompt;
+        this.memoryPrompt = memoryPrompt;
     }
 
     public ReActAgent(ChatModel chatModel, List<Tool> tools, ReActAgentState state) {
         this.chatModel = chatModel;
         this.tools = tools;
         this.state = state;
-        this.historiesPrompt = new HistoriesPrompt();
+        this.memoryPrompt = new MemoryPrompt();
         if (state.messageHistory != null) {
-            this.historiesPrompt.addMessages(state.messageHistory);
+            this.memoryPrompt.addMessages(state.messageHistory);
         }
     }
 
@@ -175,8 +175,9 @@ public class ReActAgent implements IAgent {
         this.state.streamable = streamable;
     }
 
-    public HistoriesPrompt getHistoriesPrompt() {
-        return historiesPrompt;
+
+    public MemoryPrompt getMemoryPrompt() {
+        return memoryPrompt;
     }
 
     public ReActMessageBuilder getMessageBuilder() {
@@ -196,7 +197,7 @@ public class ReActAgent implements IAgent {
     }
 
     public ReActAgentState getState() {
-        state.messageHistory = historiesPrompt.getMessages();
+        state.messageHistory = memoryPrompt.getMessages();
         return state;
     }
 
@@ -214,7 +215,7 @@ public class ReActAgent implements IAgent {
                     .replace("{user_input}", state.userQuery);
 
                 Message message = messageBuilder.buildStartMessage(prompt, tools, state.userQuery);
-                historiesPrompt.addMessage(message);
+                memoryPrompt.addMessage(message);
             }
             if (this.isStreamable()) {
                 startNextReActStepStream();
@@ -232,7 +233,7 @@ public class ReActAgent implements IAgent {
 
             state.iterationCount++;
 
-            AiMessageResponse response = chatModel.chat(historiesPrompt, chatOptions);
+            AiMessageResponse response = chatModel.chat(memoryPrompt, chatOptions);
             notifyOnChatResponse(response);
 
             String content = response.getMessage().getContent();
@@ -242,14 +243,14 @@ public class ReActAgent implements IAgent {
             if (isRequestUserInput(content)) {
                 String question = extractRequestQuestion(content);
                 message.addMetadata("type", "reActRequest");
-                historiesPrompt.addMessage(message);
+                memoryPrompt.addMessage(message);
                 notifyOnRequestUserInput(question); // 新增监听器回调
                 break; // 暂停执行，等待用户回复
             }
             //  ReAct 动作
             else if (isReActAction(content)) {
                 message.addMetadata("type", "reActAction");
-                historiesPrompt.addMessage(message);
+                memoryPrompt.addMessage(message);
                 if (!processReActSteps(content)) {
                     break;
                 }
@@ -260,13 +261,13 @@ public class ReActAgent implements IAgent {
                 String flag = reActStepParser.getFinalAnswerFlag();
                 String answer = content.substring(content.indexOf(flag) + flag.length());
                 message.addMetadata("type", "reActFinalAnswer");
-                historiesPrompt.addMessage(message);
+                memoryPrompt.addMessage(message);
                 notifyOnFinalAnswer(answer);
                 break;
             }
             //  不是 Action
             else {
-                historiesPrompt.addMessage(message);
+                memoryPrompt.addMessage(message);
                 notifyOnNonActionResponse(response);
                 break;
             }
@@ -287,7 +288,7 @@ public class ReActAgent implements IAgent {
 
         state.iterationCount++;
 
-        chatModel.chatStream(historiesPrompt, new StreamResponseListener() {
+        chatModel.chatStream(memoryPrompt, new StreamResponseListener() {
 
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
@@ -314,14 +315,14 @@ public class ReActAgent implements IAgent {
                 if (isRequestUserInput(content)) {
                     String question = extractRequestQuestion(content);
                     message.addMetadata("type", "reActRequest");
-                    historiesPrompt.addMessage(message);
+                    memoryPrompt.addMessage(message);
                     notifyOnRequestUserInput(question); // 新增监听器回调
                 }
 
                 //  ReAct 动作
                 else if (isReActAction(content)) {
                     message.addMetadata("type", "reActAction");
-                    historiesPrompt.addMessage(message);
+                    memoryPrompt.addMessage(message);
                     if (processReActSteps(content)) {
                         // 递归继续执行下一个 ReAct 步骤
                         startNextReActStepStream();
@@ -331,12 +332,12 @@ public class ReActAgent implements IAgent {
                 // 最终答案
                 else if (isFinalAnswer(content)) {
                     message.addMetadata("type", "reActFinalAnswer");
-                    historiesPrompt.addMessage(message);
+                    memoryPrompt.addMessage(message);
                     String flag = reActStepParser.getFinalAnswerFlag();
                     String answer = content.substring(content.indexOf(flag) + flag.length());
                     notifyOnFinalAnswer(answer);
                 } else {
-                    historiesPrompt.addMessage(message);
+                    memoryPrompt.addMessage(message);
                     //  不是 Action
                     notifyOnNonActionResponseStream(context);
                 }
@@ -404,7 +405,7 @@ public class ReActAgent implements IAgent {
                         }
 
                         Message message = messageBuilder.buildObservationMessage(step, result);
-                        historiesPrompt.addMessage(message);
+                        memoryPrompt.addMessage(message);
                         stepExecuted = true;
                     } catch (Exception e) {
                         log.error(e.toString(), e);
@@ -415,7 +416,7 @@ public class ReActAgent implements IAgent {
                         }
 
                         Message message = messageBuilder.buildActionErrorMessage(step, e);
-                        historiesPrompt.addMessage(message);
+                        memoryPrompt.addMessage(message);
                         return true;
                     }
                     break;

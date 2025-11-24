@@ -23,7 +23,7 @@ import com.agentsflex.core.util.ImageUtil;
 import java.io.File;
 import java.util.*;
 
-public class UserMessage extends AbstractTextMessage {
+public class UserMessage extends AbstractTextMessage<UserMessage> {
 
     private List<String> audioUrls;
     private List<String> videoUrls;
@@ -182,5 +182,29 @@ public class UserMessage extends AbstractTextMessage {
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';
+    }
+
+    /**
+     * 创建并返回当前对象的副本。
+     *
+     * @return 一个新的、内容相同但内存独立的对象
+     */
+    @Override
+    public UserMessage copy() {
+        UserMessage copy = new UserMessage();
+        copy.content = this.content;
+        copy.toolChoice = this.toolChoice;
+
+        // 深拷贝集合
+        if (this.audioUrls != null) copy.audioUrls = new ArrayList<>(this.audioUrls);
+        if (this.videoUrls != null) copy.videoUrls = new ArrayList<>(this.videoUrls);
+        if (this.imageUrls != null) copy.imageUrls = new ArrayList<>(this.imageUrls);
+        if (this.tools != null) copy.tools = new ArrayList<>(this.tools);
+
+        if (this.metadataMap != null) {
+            copy.metadataMap = new HashMap<>(this.metadataMap);
+        }
+
+        return copy;
     }
 }

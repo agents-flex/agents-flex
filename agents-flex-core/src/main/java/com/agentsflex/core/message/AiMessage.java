@@ -19,7 +19,7 @@ import com.agentsflex.core.util.StringUtil;
 
 import java.util.*;
 
-public class AiMessage extends AbstractTextMessage {
+public class AiMessage extends AbstractTextMessage<AiMessage> {
 
     private Integer index;
     private Integer promptTokens;
@@ -208,6 +208,52 @@ public class AiMessage extends AbstractTextMessage {
     @Override
     public String getTextContent() {
         return fullContent;
+    }
+
+    /**
+     * 创建并返回当前对象的副本。
+     *
+     * @return 一个新的、内容相同但内存独立的对象
+     */
+    @Override
+    public AiMessage copy() {
+        AiMessage copy = new AiMessage();
+        // 基本字段
+        copy.content = this.content;
+        copy.fullContent = this.fullContent;
+        copy.reasoningContent = this.reasoningContent;
+        copy.fullReasoningContent = this.fullReasoningContent;
+        copy.finishReason = this.finishReason;
+        copy.stopReason = this.stopReason;
+        copy.finished = this.finished;
+
+        // Token 字段
+        copy.index = this.index;
+        copy.promptTokens = this.promptTokens;
+        copy.completionTokens = this.completionTokens;
+        copy.totalTokens = this.totalTokens;
+        copy.localPromptTokens = this.localPromptTokens;
+        copy.localCompletionTokens = this.localCompletionTokens;
+        copy.localTotalTokens = this.localTotalTokens;
+
+        // ToolCalls: 深拷贝 List 和每个 ToolCall
+        if (this.toolCalls != null) {
+            copy.toolCalls = new ArrayList<>();
+            for (ToolCall tc : this.toolCalls) {
+                if (tc != null) {
+                    copy.toolCalls.add(tc.copy());
+                } else {
+                    copy.toolCalls.add(null);
+                }
+            }
+        }
+
+        // Metadata
+        if (this.metadataMap != null) {
+            copy.metadataMap = new HashMap<>(this.metadataMap);
+        }
+
+        return copy;
     }
 
     public List<ToolCall> getToolCalls() {

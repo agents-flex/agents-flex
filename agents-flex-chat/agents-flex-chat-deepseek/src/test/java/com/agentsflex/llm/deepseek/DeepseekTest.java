@@ -8,7 +8,7 @@ import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.message.SystemMessage;
-import com.agentsflex.core.prompt.HistoriesPrompt;
+import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.prompt.SimplePrompt;
 import com.agentsflex.core.util.StringUtil;
 
@@ -41,7 +41,7 @@ public class DeepseekTest {
 
     public static void chatHr() {
         ChatModel chatModel = getLLM();
-        HistoriesPrompt prompt = new HistoriesPrompt();
+        MemoryPrompt prompt = new MemoryPrompt();
         // 加入system
         prompt.addMessage(new SystemMessage("你是一个人事助手小智，专注于为用户提供高效、精准的信息查询和问题解答服务。"));
         System.out.println("我是小智，你的人事小助手！请尽情吩咐小智！");
