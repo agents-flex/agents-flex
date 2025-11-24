@@ -24,6 +24,7 @@ import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.*;
+import com.agentsflex.core.model.chat.tool.ToolInterceptor;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.util.StringUtil;

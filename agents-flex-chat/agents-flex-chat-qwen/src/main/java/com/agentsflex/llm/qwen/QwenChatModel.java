@@ -16,8 +16,8 @@
 package com.agentsflex.llm.qwen;
 
 import com.agentsflex.core.model.chat.OpenAICompatibleChatModel;
-import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
-import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
+import com.agentsflex.core.model.chat.ChatInterceptor;
+import com.agentsflex.core.model.chat.GlobalChatInterceptors;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 
 import java.util.List;

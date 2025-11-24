@@ -43,6 +43,9 @@ public final class Observability {
     private static volatile boolean shutdownHookRegistered = false;
     private static volatile Throwable initError = null;
 
+    private static volatile Boolean observabilityEnabled;
+    private static volatile java.util.Set<String> excludedTools;
+
     private Observability() {
     }
 
@@ -103,6 +106,61 @@ public final class Observability {
             }
         }
     }
+
+
+    /**
+     * 全局可观测性开关。默认开启。
+     * 可通过系统属性 {@code agentsflex.otel.enabled} 控制（true/false）。
+     */
+    public static boolean isEnabled() {
+        if (observabilityEnabled != null) {
+            return observabilityEnabled;
+        }
+        synchronized (Observability.class) {
+            if (observabilityEnabled != null) {
+                return observabilityEnabled;
+            }
+            // 默认 true，与现有行为一致
+            String prop = System.getProperty("agentsflex.otel.enabled", "true");
+            observabilityEnabled = Boolean.parseBoolean(prop);
+            return observabilityEnabled;
+        }
+    }
+
+    /**
+     * 判断指定工具是否被排除在可观测性之外。
+     * 可通过系统属性 {@code agentsflex.otel.tool.excluded} 配置（逗号分隔，如 "heartbeat,debug"）。
+     */
+    public static boolean isToolExcluded(String toolName) {
+        if (toolName == null || toolName.isEmpty()) {
+            return false;
+        }
+
+        java.util.Set<String> excluded = excludedTools;
+        if (excluded != null) {
+            return excluded.contains(toolName);
+        }
+
+        synchronized (Observability.class) {
+            if (excludedTools != null) {
+                return excludedTools.contains(toolName);
+            }
+
+            String prop = System.getProperty("agentsflex.otel.tool.excluded", "");
+            java.util.Set<String> set = new java.util.HashSet<>();
+            if (!prop.trim().isEmpty()) {
+                for (String name : prop.split(",")) {
+                    name = name.trim();
+                    if (!name.isEmpty()) {
+                        set.add(name);
+                    }
+                }
+            }
+            excludedTools = java.util.Collections.unmodifiableSet(set);
+            return excludedTools.contains(toolName);
+        }
+    }
+
 
     private static long getMetricExportIntervalSeconds() {
         String prop = System.getProperty("agentsflex.otel.metric.export.interval", "60");

@@ -1,8 +1,5 @@
-package com.agentsflex.core.model.chat.interceptor;
+package com.agentsflex.core.model.chat;
 
-import com.agentsflex.core.model.chat.BaseChatModel;
-import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 
 /**

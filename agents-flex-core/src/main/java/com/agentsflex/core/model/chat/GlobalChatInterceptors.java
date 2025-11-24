@@ -14,10 +14,8 @@
  *  limitations under the License.
  */
 
-package com.agentsflex.core.model.chat.interceptor;
+package com.agentsflex.core.model.chat;
 
-
-import com.agentsflex.core.model.chat.BaseChatModel;
 
 import java.util.ArrayList;
 import java.util.Collections;

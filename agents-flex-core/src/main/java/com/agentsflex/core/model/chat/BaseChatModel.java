@@ -15,11 +15,6 @@
  */
 package com.agentsflex.core.model.chat;
 
-import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
-import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
-import com.agentsflex.core.model.chat.interceptor.StreamChain;
-import com.agentsflex.core.model.chat.interceptor.SyncChain;
-import com.agentsflex.core.model.chat.interceptor.impl.ObservabilityInterceptor;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpec;
@@ -36,7 +31,7 @@ import java.util.*;
  *   <li><b>责任链模式</b>：通过 {@link ChatInterceptor} 实现请求拦截、监控、日志等横切逻辑</li>
  *   <li><b>线程上下文管理</b>：通过 {@link ChatContextHolder} 在整个调用链中传递上下文信息</li>
  *   <li><b>协议执行抽象</b>：通过 {@link ChatClient} 解耦协议细节，支持 HTTP/gRPC/WebSocket 等</li>
- *   <li><b>可观测性</b>：自动集成 OpenTelemetry（通过 {@link ObservabilityInterceptor}）</li>
+ *   <li><b>可观测性</b>：自动集成 OpenTelemetry（通过 {@link ChatObservabilityInterceptor}）</li>
  * </ul>
  *
  * <h2>架构流程</h2>
@@ -104,7 +99,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         // 1. 可观测性拦截器（最外层）
         // 仅在配置启用时添加，负责 OpenTelemetry 追踪和指标上报
         if (config.isObservabilityEnabled()) {
-            chain.add(new ObservabilityInterceptor());
+            chain.add(new ChatObservabilityInterceptor());
         }
 
         // 2. 全局拦截器（通过 GlobalChatInterceptors 注册）

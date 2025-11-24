@@ -17,8 +17,8 @@ package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.OpenAICompatibleChatModel;
-import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
-import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
+import com.agentsflex.core.model.chat.ChatInterceptor;
+import com.agentsflex.core.model.chat.GlobalChatInterceptors;
 
 import java.util.List;
 

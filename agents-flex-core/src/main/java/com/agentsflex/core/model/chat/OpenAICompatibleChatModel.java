@@ -1,7 +1,5 @@
 package com.agentsflex.core.model.chat;
 
-import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
-import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
 import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 import com.agentsflex.core.model.client.OpenAIChatClient;

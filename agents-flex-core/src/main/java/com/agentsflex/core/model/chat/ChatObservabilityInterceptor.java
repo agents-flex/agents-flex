@@ -1,13 +1,6 @@
-package com.agentsflex.core.model.chat.interceptor.impl;
+package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.model.chat.BaseChatModel;
-import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
-import com.agentsflex.core.model.chat.interceptor.StreamChain;
-import com.agentsflex.core.model.chat.interceptor.SyncChain;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.observability.Observability;
@@ -23,7 +16,7 @@ import io.opentelemetry.context.Scope;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class ObservabilityInterceptor implements ChatInterceptor {
+public class ChatObservabilityInterceptor implements ChatInterceptor {
 
     private static final Tracer TRACER = Observability.getTracer();
     private static final Meter METER = Observability.getMeter();
@@ -44,14 +37,11 @@ public class ObservabilityInterceptor implements ChatInterceptor {
     private static final int MAX_RESPONSE_LENGTH_FOR_SPAN = 500;
 
     @Override
-    public AiMessageResponse intercept(
-        BaseChatModel<?> chatModel,
-        ChatContext context,
-        SyncChain chain) {
+    public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
 
         ChatConfig config = chatModel.getConfig();
 
-        if (config == null || !config.isObservabilityEnabled()) {
+        if (config == null || !config.isObservabilityEnabled() || !Observability.isEnabled()) {
             return chain.proceed(chatModel, context);
         }
 
