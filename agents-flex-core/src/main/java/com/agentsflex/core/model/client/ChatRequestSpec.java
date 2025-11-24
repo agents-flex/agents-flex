@@ -6,6 +6,8 @@ public class ChatRequestSpec {
     private String url;
     private Map<String, String> headers;
     private String body; // JSON 字符串
+    private int retryCount = 3;
+    private int retryInitialDelayMs = 1000;
 
     public ChatRequestSpec() {
     }
@@ -52,5 +54,21 @@ public class ChatRequestSpec {
 
     public void setBody(String body) {
         this.body = body;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public int getRetryInitialDelayMs() {
+        return retryInitialDelayMs;
+    }
+
+    public void setRetryInitialDelayMs(int retryInitialDelayMs) {
+        this.retryInitialDelayMs = retryInitialDelayMs;
     }
 }

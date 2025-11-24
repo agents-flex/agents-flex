@@ -69,7 +69,6 @@ public class HttpClient {
         this.okHttpClient = okHttpClient;
     }
 
-    // ===== Public API with Observability =====
 
     public String get(String url) {
         return tracedCall(url, "GET", null, null, this::executeString);

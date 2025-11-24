@@ -24,6 +24,7 @@ import com.agentsflex.core.model.client.impl.SseClient;
 import com.agentsflex.core.parser.AiMessageParser;
 import com.agentsflex.core.parser.impl.DefaultAiMessageParser;
 import com.agentsflex.core.util.LocalTokenCounter;
+import com.agentsflex.core.util.Retryer;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -35,10 +36,34 @@ import com.alibaba.fastjson2.JSONObject;
  */
 public class OpenAIChatClient extends ChatClient {
 
+    protected HttpClient httpClient;
+    protected StreamClient streamClient;
     protected AiMessageParser<JSONObject> aiMessageParser;
 
     public OpenAIChatClient(BaseChatModel<?> chatModel, ChatContext context) {
         super(chatModel, context);
+    }
+
+    public HttpClient getHttpClient() {
+        if (httpClient == null) {
+            httpClient = new HttpClient();
+        }
+        return httpClient;
+    }
+
+    public void setHttpClient(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
+
+    public StreamClient getStreamClient() {
+        if (streamClient == null) {
+            streamClient = new SseClient();
+        }
+        return streamClient;
+    }
+
+    public void setStreamClient(StreamClient streamClient) {
+        this.streamClient = streamClient;
     }
 
     public AiMessageParser<JSONObject> getAiMessageParser() {
@@ -52,17 +77,22 @@ public class OpenAIChatClient extends ChatClient {
         this.aiMessageParser = aiMessageParser;
     }
 
+
     @Override
     public AiMessageResponse chat() {
-        HttpClient httpClient = new HttpClient();
+        HttpClient httpClient = getHttpClient();
         ChatRequestSpec requestSpec = context.getRequestSpec();
-        String response = httpClient.post(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody());
+
+        String response = Retryer.retry(() -> httpClient.post(requestSpec.getUrl(),
+            requestSpec.getHeaders(),
+            requestSpec.getBody()), requestSpec.getRetryCount(), requestSpec.getRetryInitialDelayMs());
 
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(context, response, "no content for response.");
         }
         return parseResponse(response);
     }
+
 
     protected AiMessageResponse parseResponse(String response) {
         JSONObject jsonObject = JSON.parseObject(response);
@@ -83,10 +113,9 @@ public class OpenAIChatClient extends ChatClient {
     }
 
 
-
     @Override
     public void chatStream(StreamResponseListener listener) {
-        StreamClient streamClient = new SseClient();
+        StreamClient streamClient = getStreamClient();
         StreamClientListener clientListener = new BaseStreamClientListener(
             chatModel,
             context,
@@ -96,8 +125,10 @@ public class OpenAIChatClient extends ChatClient {
         );
 
         ChatRequestSpec requestSpec = context.getRequestSpec();
-        streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody()
-            , clientListener, chatModel.getConfig());
+        Retryer.retry(() -> streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody()
+                , clientListener, chatModel.getConfig())
+            , requestSpec.getRetryCount()
+            , requestSpec.getRetryInitialDelayMs());
     }
 
 

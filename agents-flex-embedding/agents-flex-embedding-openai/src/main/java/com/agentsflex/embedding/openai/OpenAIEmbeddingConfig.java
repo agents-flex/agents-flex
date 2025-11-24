@@ -31,4 +31,45 @@ public class OpenAIEmbeddingConfig extends BaseModelConfig {
         this.setRequestPath(DEFAULT_REQUEST_PATH);
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String model = DEFAULT_EMBEDDING_MODEL;
+        private String endpoint = DEFAULT_ENDPOINT;
+        private String requestPath = DEFAULT_REQUEST_PATH;
+        private String apiKey;
+
+        public Builder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public Builder endpoint(String endpoint) {
+            this.endpoint = endpoint;
+            return this;
+        }
+
+        public Builder requestPath(String requestPath) {
+            this.requestPath = requestPath;
+            return this;
+        }
+
+        public Builder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public OpenAIEmbeddingConfig build() {
+            OpenAIEmbeddingConfig config = new OpenAIEmbeddingConfig();
+            config.setModel(this.model);
+            config.setEndpoint(this.endpoint);
+            config.setRequestPath(this.requestPath);
+            if (this.apiKey != null) {
+                config.setApiKey(this.apiKey);
+            }
+            return config;
+        }
+    }
 }

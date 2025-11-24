@@ -23,7 +23,8 @@ public class OpenAIChatModelTest {
     @Test()
     public void testChat() {
 
-        String output = OpenAIChatConfig.builder().endpoint("https://ai.gitee.com")
+        String output = OpenAIChatConfig.builder()
+            .endpoint("https://ai.gitee.com")
             .provider("GiteeAI")
             .model("Qwen3-32B")
             .apiKey("PXW1****D12")
