@@ -15,13 +15,13 @@
  */
 package com.agentsflex.llm.ollama;
 
-import com.agentsflex.core.model.chat.OpenAIStyleChatModel;
+import com.agentsflex.core.model.chat.OpenAICompatibleChatModel;
 import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
 import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
 
 import java.util.List;
 
-public class OllamaChatModel extends OpenAIStyleChatModel<OllamaChatConfig> {
+public class OllamaChatModel extends OpenAICompatibleChatModel<OllamaChatConfig> {
 
     /**
      * 构造一个聊天模型实例，不使用实例级拦截器。

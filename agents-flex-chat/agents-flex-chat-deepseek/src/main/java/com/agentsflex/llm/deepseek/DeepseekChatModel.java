@@ -15,7 +15,7 @@
  */
 package com.agentsflex.llm.deepseek;
 
-import com.agentsflex.core.model.chat.OpenAIStyleChatModel;
+import com.agentsflex.core.model.chat.OpenAICompatibleChatModel;
 import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
 import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
 
@@ -25,7 +25,7 @@ import java.util.List;
  * @author huangjf
  * @version : v1.0
  */
-public class DeepseekChatModel extends OpenAIStyleChatModel<DeepseekConfig> {
+public class DeepseekChatModel extends OpenAICompatibleChatModel<DeepseekConfig> {
 
 
     /**

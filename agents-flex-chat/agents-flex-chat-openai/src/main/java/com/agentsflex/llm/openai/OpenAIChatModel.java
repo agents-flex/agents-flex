@@ -16,7 +16,7 @@
 package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.model.chat.BaseChatModel;
-import com.agentsflex.core.model.chat.OpenAIStyleChatModel;
+import com.agentsflex.core.model.chat.OpenAICompatibleChatModel;
 import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
 import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
 
@@ -35,7 +35,7 @@ import java.util.List;
  * 所有横切逻辑（监控、日志、拦截）由 {@link BaseChatModel} 的责任链处理，
  * 本类只关注 OpenAI 协议特有的实现细节。
  */
-public class OpenAIChatModel extends OpenAIStyleChatModel<OpenAIChatConfig> {
+public class OpenAIChatModel extends OpenAICompatibleChatModel<OpenAIChatConfig> {
 
 
     /**

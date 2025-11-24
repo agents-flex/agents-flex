@@ -9,13 +9,13 @@ import com.agentsflex.core.model.client.OpenAIChatRequestSpecBuilder;
 
 import java.util.List;
 
-public class OpenAIStyleChatModel<T extends ChatConfig> extends BaseChatModel<T> {
+public class OpenAICompatibleChatModel<T extends ChatConfig> extends BaseChatModel<T> {
     /**
      * 构造一个聊天模型实例，不使用实例级拦截器。
      *
      * @param config 聊天模型配置
      */
-    public OpenAIStyleChatModel(T config) {
+    public OpenAICompatibleChatModel(T config) {
         super(config);
     }
 
@@ -28,7 +28,7 @@ public class OpenAIStyleChatModel<T extends ChatConfig> extends BaseChatModel<T>
      * @param config           聊天模型配置
      * @param userInterceptors 实例级拦截器列表
      */
-    public OpenAIStyleChatModel(T config, List<ChatInterceptor> userInterceptors) {
+    public OpenAICompatibleChatModel(T config, List<ChatInterceptor> userInterceptors) {
         super(config, userInterceptors);
     }
 

@@ -15,14 +15,14 @@
  */
 package com.agentsflex.llm.qwen;
 
-import com.agentsflex.core.model.chat.OpenAIStyleChatModel;
+import com.agentsflex.core.model.chat.OpenAICompatibleChatModel;
 import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
 import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 
 import java.util.List;
 
-public class QwenChatModel extends OpenAIStyleChatModel<QwenChatConfig> {
+public class QwenChatModel extends OpenAICompatibleChatModel<QwenChatConfig> {
 
 
     /**
