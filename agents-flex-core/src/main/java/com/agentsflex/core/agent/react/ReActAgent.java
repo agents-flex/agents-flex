@@ -38,6 +38,8 @@ import java.util.List;
  */
 public class ReActAgent implements IAgent {
 
+    public static final String PARENT_AGENT_KEY = "__parent_react_agent";
+
     private static final Logger log = LoggerFactory.getLogger(ReActAgent.class);
 
     private static final String DEFAULT_PROMPT_TEMPLATE =
@@ -205,7 +207,7 @@ public class ReActAgent implements IAgent {
         try {
             List<Message> messageHistory = state.getMessageHistory();
             if (messageHistory == null || messageHistory.isEmpty()) {
-                String toolsDescription = buildToolsDescription(tools);
+                String toolsDescription = Util.buildToolsDescription(tools);
                 String prompt = state.promptTemplate
                     .replace("{tools}", toolsDescription)
                     .replace("{user_input}", state.userQuery);
@@ -363,25 +365,6 @@ public class ReActAgent implements IAgent {
         return reActStepParser.extractRequestQuestion(content);
     }
 
-    // ========== 内部辅助方法 ==========
-
-    private String buildToolsDescription(List<Tool> tools) {
-        StringBuilder sb = new StringBuilder();
-        for (Tool tool : tools) {
-            sb.append(" - ").append(tool.getName()).append("(");
-            Parameter[] parameters = tool.getParameters();
-            for (int i = 0; i < parameters.length; i++) {
-                Parameter param = parameters[i];
-                sb.append(param.getName()).append(": ").append(param.getType());
-                if (i < parameters.length - 1) {
-                    sb.append(", ");
-                }
-            }
-            sb.append("): ").append(tool.getDescription()).append("\n");
-        }
-        return sb.toString();
-    }
-
 
     private boolean processReActSteps(String content) {
         List<ReActStep> reActSteps = reActStepParser.parse(content);
@@ -406,9 +389,9 @@ public class ReActAgent implements IAgent {
 
                             ToolExecutor executor = new ToolExecutor(tool, toolCall, interceptors);
 
-                            // 方便子Agent 获取当前的 ReActAgent
+                            // 方便 “子Agent” 或者 tool， 获取当前的 ReActAgent
                             executor.addInterceptor((context, chain) -> {
-                                context.setAttribute(ReActAgentTool.PARENT_AGENT_KEY, ReActAgent.this);
+                                context.setAttribute(PARENT_AGENT_KEY, ReActAgent.this);
                                 return chain.proceed(context);
                             });
 

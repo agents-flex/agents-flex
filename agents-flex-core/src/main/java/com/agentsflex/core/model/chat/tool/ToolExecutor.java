@@ -28,10 +28,9 @@ public class ToolExecutor {
 
     private List<ToolInterceptor> buildInterceptorChain(
         List<ToolInterceptor> userInterceptors) {
-        List<ToolInterceptor> chain = new ArrayList<>();
 
         // 1. 全局拦截器
-        chain.addAll(GlobalToolInterceptors.getInterceptors());
+        List<ToolInterceptor> chain = new ArrayList<>(GlobalToolInterceptors.getInterceptors());
 
         // 2. 用户拦截器
         if (userInterceptors != null) {
