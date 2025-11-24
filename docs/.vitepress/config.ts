@@ -71,6 +71,7 @@ export default defineConfig({
                 items: [
                     {text: '快速开始', link: '/zh/core/llms'},
                     {text: 'ChatModel', link: '/zh/core/llms'},
+                    {text: 'ChatConfig', link: '/zh/core/llms'},
                     {text: '提示词', link: '/zh/core/chat'},
                     {text: '提示词模板', link: '/zh/core/chat1'},
                     {text: 'Message 消息', link: '/zh/core/function-calling'},
@@ -109,6 +110,7 @@ export default defineConfig({
                 items: [
                     {text: '文档概念', link: '/zh/core/llms'},
                     {text: '向量存储', link: '/zh/core/llms'},
+                    {text: 'SearchWrapper', link: '/zh/core/llms'},
                     {text: 'file2text', link: '/zh/core/llms'},
                     {text: '文档分割', link: '/zh/core/llms'},
                     {text: '搜索引擎', link: '/zh/core/llms'},
