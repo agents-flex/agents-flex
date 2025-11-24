@@ -31,7 +31,7 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     private final StreamResponseListener streamResponseListener;
     private final ChatContext chatContext;
-    private final AiMessageParser messageParser;
+    private final AiMessageParser<JSONObject> messageParser;
     private final StreamContext context;
     private final AiMessage fullMessage = new AiMessage();
     private final AtomicBoolean finishedFlag = new AtomicBoolean(false);
@@ -41,7 +41,7 @@ public class BaseStreamClientListener implements StreamClientListener {
         ChatContext chatContext,
         StreamClient client,
         StreamResponseListener streamResponseListener,
-        AiMessageParser messageParser) {
+        AiMessageParser<JSONObject> messageParser) {
         this.streamResponseListener = streamResponseListener;
         this.chatContext = chatContext;
         this.messageParser = messageParser;

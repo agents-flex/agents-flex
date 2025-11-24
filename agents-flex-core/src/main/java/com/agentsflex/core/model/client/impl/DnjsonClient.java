@@ -145,6 +145,7 @@ public class DnjsonClient implements StreamClient, Callback {
 
                     if (listener != null && !isStop) {
                         try {
+                            ChatMessageLogger.logResponse(config, jsonLine);
                             listener.onMessage(this, jsonLine);
                         } catch (Exception e) {
                             log.warn("Error in listener.onMessage", e);

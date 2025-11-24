@@ -33,12 +33,12 @@ import java.util.*;
 public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
 
     private final ChatContext context;
-    private final String response;
+    private final String rawText;
     private final AiMessage message;
 
-    public AiMessageResponse(ChatContext context, String response, AiMessage message) {
+    public AiMessageResponse(ChatContext context, String rawText, AiMessage message) {
         this.context = context;
-        this.response = response;
+        this.rawText = rawText;
         this.message = message;
     }
 
@@ -47,8 +47,8 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
         return context;
     }
 
-    public String getResponse() {
-        return response;
+    public String getRawText() {
+        return rawText;
     }
 
     @Override
@@ -140,8 +140,8 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
     }
 
 
-    public static AiMessageResponse error(ChatContext context, String response, String errorMessage) {
-        AiMessageResponse errorResp = new AiMessageResponse(context, response, null);
+    public static AiMessageResponse error(ChatContext context, String rawText, String errorMessage) {
+        AiMessageResponse errorResp = new AiMessageResponse(context, rawText, null);
         errorResp.setError(true);
         errorResp.setErrorMessage(errorMessage);
         return errorResp;
@@ -152,7 +152,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
     public String toString() {
         return "AiMessageResponse{" +
             "context=" + context +
-            ", response='" + response + '\'' +
+            ", rawText='" + rawText + '\'' +
             ", message=" + message +
             ", error=" + error +
             ", errorMessage='" + errorMessage + '\'' +

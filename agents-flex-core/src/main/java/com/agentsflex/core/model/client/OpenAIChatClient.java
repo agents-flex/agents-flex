@@ -37,9 +37,7 @@ public class OpenAIChatClient extends ChatClient {
 
     protected AiMessageParser<JSONObject> aiMessageParser;
 
-    public OpenAIChatClient(
-        BaseChatModel<?> chatModel,
-        ChatContext context) {
+    public OpenAIChatClient(BaseChatModel<?> chatModel, ChatContext context) {
         super(chatModel, context);
     }
 
@@ -66,6 +64,26 @@ public class OpenAIChatClient extends ChatClient {
         return parseResponse(response);
     }
 
+    protected AiMessageResponse parseResponse(String response) {
+        JSONObject jsonObject = JSON.parseObject(response);
+        JSONObject error = jsonObject.getJSONObject("error");
+
+        AiMessageResponse messageResponse;
+        if (error != null && !error.isEmpty()) {
+            String message = error.getString("message");
+            messageResponse = AiMessageResponse.error(context, response, message);
+            messageResponse.setErrorType(error.getString("type"));
+            messageResponse.setErrorCode(error.getString("code"));
+        } else {
+            AiMessage aiMessage = getAiMessageParser().parse(jsonObject, context);
+            LocalTokenCounter.computeAndSetLocalTokens(context.getPrompt().getMessages(), aiMessage);
+            messageResponse = new AiMessageResponse(context, response, aiMessage);
+        }
+        return messageResponse;
+    }
+
+
+
     @Override
     public void chatStream(StreamResponseListener listener) {
         StreamClient streamClient = new SseClient();
@@ -83,20 +101,4 @@ public class OpenAIChatClient extends ChatClient {
     }
 
 
-    protected AiMessageResponse parseResponse(String response) {
-        JSONObject jsonObject = JSON.parseObject(response);
-        JSONObject error = jsonObject.getJSONObject("error");
-
-        AiMessage aiMessage = getAiMessageParser().parse(jsonObject, context);
-        LocalTokenCounter.computeAndSetLocalTokens(context.getPrompt().getMessages(), aiMessage);
-        AiMessageResponse messageResponse = new AiMessageResponse(context, response, aiMessage);
-
-        if (error != null && !error.isEmpty()) {
-            messageResponse.setError(true);
-            messageResponse.setErrorMessage(error.getString("message"));
-            messageResponse.setErrorType(error.getString("type"));
-            messageResponse.setErrorCode(error.getString("code"));
-        }
-        return messageResponse;
-    }
 }

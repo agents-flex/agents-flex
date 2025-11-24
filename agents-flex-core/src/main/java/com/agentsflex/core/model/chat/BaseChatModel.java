@@ -15,13 +15,16 @@
  */
 package com.agentsflex.core.model.chat;
 
+import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 import com.agentsflex.core.prompt.Prompt;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 支持责任链、统一上下文和协议客户端的聊天模型基类。
@@ -187,8 +190,14 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         // 链尾：执行实际 LLM 调用
         if (index >= interceptors.size()) {
             return (model, context) -> {
-                // 执行同步调用
-                return getChatClient().chat();
+                AiMessageResponse aiMessageResponse = null;
+                try {
+                    ChatMessageLogger.logRequest(model.getConfig(), context.getRequestSpec().getBody());
+                    aiMessageResponse = getChatClient().chat();
+                    return aiMessageResponse;
+                } finally {
+                    ChatMessageLogger.logResponse(model.getConfig(), aiMessageResponse == null ? "" : aiMessageResponse.getRawText());
+                }
             };
         }
 

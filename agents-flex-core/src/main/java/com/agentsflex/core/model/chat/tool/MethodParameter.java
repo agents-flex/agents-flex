@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
-public class JavaNativeParameter extends Parameter {
+public class MethodParameter extends Parameter {
 
     protected Class<?> typeClass;
 

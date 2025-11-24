@@ -17,7 +17,7 @@ package com.agentsflex.core.message;
 
 import com.agentsflex.core.model.chat.ChatConfig;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.JavaNativeToolBuilder;
+import com.agentsflex.core.model.chat.tool.ToolScanner;
 import com.agentsflex.core.util.ImageUtil;
 
 import java.io.File;
@@ -56,13 +56,13 @@ public class UserMessage extends AbstractTextMessage {
     public void addToolsFromClass(Class<?> funcClass, String... methodNames) {
         if (this.tools == null)
             this.tools = new java.util.ArrayList<>();
-        this.tools.addAll(JavaNativeToolBuilder.fromClass(funcClass, methodNames));
+        this.tools.addAll(ToolScanner.scan(funcClass, methodNames));
     }
 
     public void addToolsFromObject(Object funcObject, String... methodNames) {
         if (this.tools == null)
             this.tools = new java.util.ArrayList<>();
-        this.tools.addAll(JavaNativeToolBuilder.fromObject(funcObject, methodNames));
+        this.tools.addAll(ToolScanner.scan(funcObject, methodNames));
     }
 
     public List<Tool> getTools() {

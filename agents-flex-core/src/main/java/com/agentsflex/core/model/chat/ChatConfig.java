@@ -32,8 +32,8 @@ public class ChatConfig extends BaseModelConfig {
 
     protected boolean observabilityEnabled = true; // 默认开启
     protected boolean thinkingEnabled = false; // 默认关闭
-
     protected boolean logEnabled = true;
+
     protected Consumer<Map<String, String>> headersConfig;
 
     public boolean isLogEnabled() {

@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class JavaNativeTool extends BaseTool {
+public class MethodTool extends BaseTool {
 
     private Class<?> clazz;
     private Object object;
@@ -59,19 +59,19 @@ public class JavaNativeTool extends BaseTool {
         this.name = toolDef.name();
         this.description = toolDef.description();
 
-        List<JavaNativeParameter> parameterList = new ArrayList<>();
+        List<MethodParameter> parameterList = new ArrayList<>();
         java.lang.reflect.Parameter[] methodParameters = method.getParameters();
         for (java.lang.reflect.Parameter methodParameter : methodParameters) {
-            JavaNativeParameter parameter = getParameter(methodParameter);
+            MethodParameter parameter = getParameter(methodParameter);
             parameterList.add(parameter);
         }
-        this.parameters = parameterList.toArray(new JavaNativeParameter[]{});
+        this.parameters = parameterList.toArray(new MethodParameter[]{});
     }
 
     @NotNull
-    private static JavaNativeParameter getParameter(java.lang.reflect.Parameter methodParameter) {
+    private static MethodParameter getParameter(java.lang.reflect.Parameter methodParameter) {
         ToolParam toolParam = methodParameter.getAnnotation(ToolParam.class);
-        JavaNativeParameter parameter = new JavaNativeParameter();
+        MethodParameter parameter = new MethodParameter();
         parameter.setName(toolParam.name());
         parameter.setDescription(toolParam.description());
         parameter.setType(methodParameter.getType().getSimpleName().toLowerCase());
@@ -85,7 +85,7 @@ public class JavaNativeTool extends BaseTool {
         try {
             Object[] args = new Object[this.parameters.length];
             for (int i = 0; i < this.parameters.length; i++) {
-                JavaNativeParameter parameter = (JavaNativeParameter) this.parameters[i];
+                MethodParameter parameter = (MethodParameter) this.parameters[i];
                 Object value = argsMap.get(parameter.getName());
                 args[i] = ConvertService.convert(value, parameter.getTypeClass());
             }
