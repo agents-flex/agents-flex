@@ -17,10 +17,19 @@
 **示例代码：**
 
 ```java
-Llm chatModel = OpenAILlm.of("sk-rts5NF6n*******");
-String response = chatModel.chat("what is your name?");
+@Test()
+public void testChat() {
 
-System.out.println(response);
+    String output = OpenAIChatConfig.builder()
+        .endpoint("https://ai.gitee.com")
+        .provider("GiteeAI")
+        .model("Qwen3-32B")
+        .apiKey("PXW1****D12")
+        .buildModel()
+        .chat("你叫什么名字");
+
+    System.out.println(output);
+}
 ```
 
 ## 提示词（Prompt）
@@ -35,35 +44,29 @@ System.out.println(response);
 
 面对不同的场景，Agents-Flex 提供了多种提示词的实现。
 
-- TextPrompt: 用于简单文本的提示词。
-- FunctionPrompt: 用于函数调用的提示词。
-- ImagePrompt: 用于图像的提示词。
-- HistoriesPrompt: 用于历史对话的提示词。
-- ToolPrompt: 用于调用工具确认的提示词。
+- SimplePrompt: 用于一次性对话的场景。
+- MemoryPrompt: 用于多轮对话的场景。
 
-**示例代码（简单调用）：**
+**示例代码（简单对话）：**
 
-```java 3
-Llm chatModel = OpenAILlm.of("sk-rts5NF6n*******");
+```java 11
+@Test()
+public void testChat() {
 
-TextPrompt prompt = new TextPrompt("what is your name?");
-String response = chatModel.chat(prompt);
+    OpenAIChatModel chatModel =  OpenAIChatConfig.builder()
+        .endpoint("https://ai.gitee.com")
+        .provider("GiteeAI")
+        .model("Qwen3-32B")
+        .apiKey("PXW1****D12")
+        .buildModel();
 
-System.out.println(response);
+    SimplePrompt prompt = new SimplePrompt("你叫什么名字");
+    AiMessageResponse response = chatModel.chat(prompt);
+
+    System.out.println(response.getMessage().getContent());
+}
 ```
 
-**示例代码（Function Calling）：**
-
-```java 3-5
-OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
-
-FunctionPrompt prompt = new FunctionPrompt(
-    "今天北京的天气怎么样"
-    , WeatherUtil.class);
-
-AiMessageResponse response = chatModel.chat(prompt);
-System.out.println(response.callFunctions());
-```
 
 ## 提示词模板（Prompt Template）
 
@@ -78,7 +81,7 @@ System.out.println(response.callFunctions());
 **示例代码：**
 
 ```java
-TextPromptTemplate promptTemplate = TextPromptTemplate.create(
+PromptTemplate promptTemplate = PromptTemplate.of(
     "你好，{name}  今天是:{x}"
 );
 
@@ -89,6 +92,26 @@ map.put("x","星期五");
 System.out.println(promptTemplate.format(map));
 // 你好，michael  今天是:星期五
 ```
+
+支持对象、map 等数据类型进行格式化。
+
+```java
+PromptTemplate promptTemplate = PromptTemplate.of(
+    "你好，{user.name}  今天是:{x}"
+);
+
+User user = new User();
+user.setName("michael");
+
+Map<String ,Object> map = new HashMap<>();
+map.put("user",user);
+map.put("x","星期五");
+
+System.out.println(promptTemplate.format(map));
+// 你好，michael  今天是:星期五
+```
+
+
 
 ## 嵌入（Embedding）
 

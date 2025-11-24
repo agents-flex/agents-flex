@@ -1,72 +1,90 @@
 # Agents-Flex 是什么？
 
 Agents-Flex 是一个 Java 开发的 AI 应用开发框架，是为了简化 AI 应用开发而生。 其灵感来源 LangChain、 LlamaIndex 以及作者作为一线 AI 应用开发工程师的最佳实践，提供了跨
-AI 服务商的、可移植的、可编排、不限 Java 开发框架的 API 支持。
+AI 服务商的、可移植的、不限 Java 开发框架的 API 支持。
 
-Agents-Flex 适用于聊天、图像生成、音频生成、视频生成、Embedding 模型、Function Calling 以及 RAG 应用、智能体编排等场景，支持同步以及流式（Stream）的 API 选择。
+Agents-Flex 适用于聊天、图像生成、Embedding、Function Calling 以及 RAG 应用等场景，支持同步以及流式（Stream）的 API 选择。
 
-作者的其他开源框架，还包含了：
-- MyBatis-Flex：https://mybatis-flex.com (一个优雅的 MyBatis ORM 增强框架)
-- AiEditor：https://aieditor.com.cn （一个面向 AI 的下一代富文本编辑器）
-- Tinyflow ：https://tinyflow.cn (一个 AI 工作流编排解决方案、类似 Dify、Coze、腾讯元器等产品的 AI 工作流编排功能)
-- AIFlowy：https://aiflowy.tech (一个基于 Java 开发的企业级的开源 AI 应用开发平台，整合了 MyBatis-Flex、Tinyflow、Agents-Flex 等框架，可以看作是以上开源产品的最佳实践)
+作者还开源了其他 AI 框架或产品：
 
-## Agents-Flex 和其他框架对比
+- Tinyflow ：https://tinyflow.cn (一个 AI 工作流编排解决方案、 AI 工作流编排组件)
+- AIFlowy：https://aiflowy.tech (一个基于 Java 开发的企业级的开源 AI 应用开发平台，对标 Dify、Coze、腾讯元器等产品)
+- AiEditor：https://aieditor.com.cn （一个面向 AI 的下一代富文本编辑器，用于 AI 创作、AI 公文写作等场景）
 
-### 1、更具有普适性
 
-相比 `Spring-AI`、`LangChain4j` 而言，Agents-Flex 更具有普适性。
+## Agents-Flex 的特点
 
-> 1) `Spring-AI` 要求的 JDK 版本必须是 `JDK 17+`，而 Agents-Flex 只需要 `JDK 8+`。
-> 2) `Spring-AI` 要求必须在 Spring 框架下使用，而 Agents-Flex 支持与任何的 JAVA 框架搭配使用，并提供了 `spring-boot-starter` 的支持。
-> 3) `Spring-AI`、`LangChain4j` 普遍不支持国内的大模型、Embedding 模型以及向量数据库，而 Agents-Flex 对国产模型更加友好。
+### 1、简单易用
 
-### 2、更简易的 API 设计
-
-使用 Agents-Flex 两行代码即可实现聊天功能：
+几行代码即可实现聊天功能：
 
 ```java
-@Test
+@Test()
 public void testChat() {
-    OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
-    String response = chatModel.chat("what is your name?");
 
-    System.out.println(response);
+    String output = OpenAIChatConfig.builder()
+        .endpoint("https://ai.gitee.com")
+        .provider("GiteeAI")
+        .model("Qwen3-32B")
+        .apiKey("PXW1****D12")
+        .buildModel()
+        .chat("你叫什么名字");
+
+    System.out.println(output);
 }
 ```
 
-Function Calling 也只需要几行代码：
+### 2、完善的可观测能力
 
-```java
-public class WeatherUtil {
+Agents-Flex 内置了基于 OpenTelemetry 的端到端可观测性支持，覆盖 LLM 调用 与 工具（Tool）执行 的全链路追踪与指标监控，适用于生产环境的可观测性治理需求。
 
-    @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
-    public static String getWeatherInfo(
-        @FunctionParam(name = "city", description = "the city name")String name ) {
-        //在这里，我们应该通过第三方接口调用 api 信息
-        return name + "的天气是阴转多云。 ";
-    }
+**核心能力包括：**
 
-
-    public static void main(String[] args) {
-        OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
-
-        FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
-        AiMessageResponse response = chatModel.chat(prompt);
-
-        System.out.println(response.callFunctions());
-        //"北京的天气是阴转多云。 "
-    }
-}
-```
-
-### 3、更强大的智能体编排
-
-我们知道，一个强大的 AI 应用，往往是需要灵活的编排能力来完成的， 相比 Agents-Flex 而言，`Spring-AI`、`LangChain4j` 几乎没有编排的能力。
+- **自动埋点**：无需手动编码即可自动记录 LLM 请求次数、延迟、错误率等关键指标。
+- **链路追踪**：为每次 LLM 调用和工具调用创建 Span，支持与现有 OpenTelemetry 后端（如 Jaeger、Tempo、Datadog、Prometheus + Grafana 等）无缝对接。
+- **流式与同步统一支持**：无论是普通 `chat()` 调用还是流式响应（Stream），都能完整追踪，保证监控一致性。
+- **指标分类维度丰富**：所有指标均按 `llm.provider`、`llm.model`、`llm.operation`、`tool.name` 等维度打标，便于聚合分析。
+- **动态开关与排除机制**：
+    - 通过系统属性 `agentsflex.otel.enabled=false` 全局关闭可观测性。
+    - 通过 `agentsflex.otel.tool.excluded=heartbeat,debug` 排除特定工具的监控，避免噪声。
+- **敏感信息自动脱敏**：在工具调用监控中，自动识别并脱敏如 `password`、`token`、`secret` 等敏感字段，保障日志安全。
+- **灵活导出方式**：
+    - 默认使用 `logging` 导出器，便于本地调试。
+    - 支持切换为 `otlp` 导出器，对接生产级可观测后端（通过 `agentsflex.otel.exporter.type=otlp`）。
+- **资源自动注册**：自动设置 `service.name=agents-flex` 和 `service.version`，便于在 APM 平台识别服务实例。
 
 
+### 3. 高度可扩展的责任链架构
 
-### 4、开源地址
+Agents-Flex 采用 **责任链模式（Chain of Responsibility）** 统一管理 LLM 调用与工具执行的横切逻辑，使核心业务逻辑与非功能性需求（如监控、日志、鉴权、重试等）完全解耦。
 
-Gitee：https://gitee.com/agents-flex/agents-flex
-Github: https://github.com/agents-flex/agents-flex
+- **LLM 调用链**：
+  通过 `ChatInterceptor` 接口，支持在同步（`chat()`）和流式（`chatStream()`）调用中插入自定义逻辑。
+  默认链路为：**可观测性拦截器 → 全局拦截器 → 实例级拦截器 → 实际 HTTP/gRPC 调用**。
+
+- **工具调用链**：
+  通过 `ToolInterceptor` 接口，对 Function Calling（工具调用）进行统一拦截，支持监控、参数校验、权限控制等。
+
+- **动态扩展**：
+  开发者可通过 `addInterceptor()` 在运行时动态插入拦截器，无需修改原有模型或工具实现，极大提升灵活性。
+
+### 4. 协议与实现解耦，轻松支持多模型厂商
+
+通过 `ChatClient` 和 `ChatRequestSpecBuilder` 抽象，Agents-Flex 实现了 **协议层与模型层的完全解耦**：
+
+- **`ChatClient`**：负责实际网络通信（HTTP/gRPC/WebSocket），不同厂商（OpenAI、Qwen、Moonshot、Ollama 等）只需实现该接口。
+- **`ChatRequestSpecBuilder`**：负责根据 Prompt 和配置生成符合各厂商格式的请求体（如 OpenAI 的 messages 结构、Qwen 的 input 字段等）。
+
+这意味着：
+- 新增一个 LLM 厂商，**只需实现两个组件**，无需改动核心框架。
+- 同一应用中可**混合使用多个模型**（如用 GPT-4 生成内容，用 Qwen 做摘要），切换成本极低。
+
+### 5. 流式与同步 API 统一体验
+
+无论是同步调用 `chat()` 还是流式调用 `chatStream()`，Agents-Flex 都提供**一致的拦截器接口、上下文管理和可观测性支持**：
+
+- 同一个 `ChatObservabilityInterceptor` 同时处理两种模式；
+- `ChatContext` 在两种模式下结构一致；
+- 日志、监控、错误处理逻辑无需重复编写。
+
+>  这对构建现代 AI 应用（如 Web 聊天界面 + 后台批处理）至关重要，避免“两套代码、两套监控”的维护困境。

@@ -67,29 +67,71 @@ export default defineConfig({
                 ]
             },
             {
-                text: '核心模块',
+                text: '对话模块',
                 items: [
-                    {text: 'LLMs 大语言模型', link: '/zh/core/llms'},
-                    {text: 'Prompt 提示词', link: '/zh/core/prompt'},
-                    // {text: 'Chat 对话', link: '/zh/core/chat'},
-                    // {text: 'Function Calling 方法调用', link: '/zh/core/function-calling'},
-                    {text: 'Memory 记忆', link: '/zh/core/memory'},
-                    {text: 'Embedding 嵌入', link: '/zh/core/embedding'},
-                    {text: 'Store 存储', link: '/zh/core/store'},
-                    {text: 'Document 文档', link: '/zh/core/document'},
-                    {text: 'Image 图片生成', link: '/zh/core/image'},
-                    {text: 'SearchEngine 搜索引擎', link: '/zh/core/search-engine'},
-                    {text: 'Chain 执行链', link: '/zh/core/chain'},
+                    {text: '快速开始', link: '/zh/core/llms'},
+                    {text: 'ChatModel', link: '/zh/core/llms'},
+                    {text: '提示词', link: '/zh/core/chat'},
+                    {text: '提示词模板', link: '/zh/core/chat1'},
+                    {text: 'Message 消息', link: '/zh/core/function-calling'},
+                    {text: 'Memory 记忆', link: '/zh/core/function-calling'},
+                    {text: 'Tool 工具调用', link: '/zh/core/function-calling'},
+                    {text: 'Tool 拦截器', link: '/zh/core/function-calling'},
+                    {text: 'MCP 调用', link: '/zh/core/function-calling'},
+                    {text: 'ChatClient', link: '/zh/core/memory'},
+                    {text: 'ChatRequestSpecBuilder', link: '/zh/core/memory'},
+                    {text: 'ChatMessageSerializer', link: '/zh/core/memory'},
+                    {text: 'AiMessageParser', link: '/zh/core/memory'},
+                    {text: '对话拦截器', link: '/zh/core/embedding'},
+                    {text: '对话上下文', link: '/zh/core/store'},
+                    {text: '错误重试', link: '/zh/core/document'},
+                    {text: '日志', link: '/zh/core/document'},
+                    {text: '常见问题', link: '/zh/core/document'},
                 ]
             },
-            // {
-            //     text: '基础示例',
-            //     items: [
-            //         {text: '简单对话', link: '/zh/samples/chat'},
-            //         {text: '历史对话', link: '/zh/samples/chat-with-memory'},
-            //         {text: 'RAG 应用', link: '/zh/samples/rag'},
-            //     ]
-            // }
+            {
+                text: '智能体',
+                items: [
+                    {text: 'ReAct Agent', link: '/zh/core/llms'},
+                    {text: 'Route Agent（多智能体路由）', link: '/zh/core/llms'},
+                ]
+            },
+            {
+                text: '其他模型',
+                items: [
+                    {text: '图片模型', link: '/zh/core/llms'},
+                    {text: 'Rerank 重排模型', link: '/zh/core/llms'},
+                    {text: 'Embedding 重排模型', link: '/zh/core/llms'},
+                ]
+            },
+            {
+                text: 'RAG 模块',
+                items: [
+                    {text: '文档概念', link: '/zh/core/llms'},
+                    {text: '向量存储', link: '/zh/core/llms'},
+                    {text: 'file2text', link: '/zh/core/llms'},
+                    {text: '文档分割', link: '/zh/core/llms'},
+                    {text: '搜索引擎', link: '/zh/core/llms'},
+                ]
+            },
+            {
+                text: '可观测',
+                items: [
+                    {text: 'Observability', link: '/zh/core/llms'},
+                    {text: '模型可观测', link: '/zh/core/llms'},
+                    {text: '工具调用可观测', link: '/zh/core/llms'},
+                ]
+            },
+            {
+                text: '内置工具类',
+                items: [
+                    {text: 'Maps', link: '/zh/core/llms'},
+                    {text: 'Retryer', link: '/zh/core/llms'},
+                    {text: 'ToolScanner', link: '/zh/core/llms'},
+                    {text: 'LocalTokenCounter', link: '/zh/core/chat'},
+                    {text: '其他', link: '/zh/core/chat1'},
+                ]
+            },
         ],
         footer: {
             message: 'Released under the Apache License.',
