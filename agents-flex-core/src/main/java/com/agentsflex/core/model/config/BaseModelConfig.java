@@ -14,7 +14,6 @@ public class BaseModelConfig implements Serializable {
 
     protected Map<String, Object> customProperties;
 
-    // ---------- Getters and Setters ----------
 
     public String getProvider() {
         return provider;

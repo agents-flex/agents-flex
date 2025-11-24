@@ -6,13 +6,12 @@ import com.agentsflex.core.agent.react.ReActAgentState;
 import com.agentsflex.core.agent.react.ReActStep;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.message.UserMessage;
-import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
-import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.JavaNativeToolBuilder;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.exception.ModelException;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.ToolScanner;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Test;
 
@@ -21,15 +20,17 @@ import java.util.concurrent.TimeUnit;
 
 public class OpenAIChatModelTest {
 
-    @Test(expected = ModelException.class)
+    @Test()
     public void testChat() {
-        OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setApiKey("sk-rts5NF6n*******");
 
-        ChatModel chatModel = new OpenAIChatModel(config);
-        String response = chatModel.chat("请问你叫什么名字");
+        String output = OpenAIChatConfig.builder().endpoint("https://ai.gitee.com")
+            .provider("GiteeAI")
+            .model("Qwen3-32B")
+            .apiKey("PXW1****D12")
+            .buildModel()
+            .chat("你叫什么名字");
 
-        System.out.println(response);
+        System.out.println(output);
     }
 
     @Test()
@@ -360,7 +361,7 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        List<Tool> tools = JavaNativeToolBuilder.fromClass(WeatherFunctions.class);
+        List<Tool> tools = ToolScanner.scan(WeatherFunctions.class);
 //        ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
         ReActAgent reActAgent = new ReActAgent(llm, tools, "介绍一下北京");
         reActAgent.addListener(new ReActAgentListener() {
@@ -401,7 +402,7 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        List<Tool> tools = JavaNativeToolBuilder.fromClass(WeatherFunctions.class);
+        List<Tool> tools = ToolScanner.scan(WeatherFunctions.class);
         ReActAgent reActAgent = new ReActAgent(llm, tools, "今天的天气怎么样？");
 //        reActAgent.setStreamable(true);
         reActAgent.addListener(new ReActAgentListener() {
