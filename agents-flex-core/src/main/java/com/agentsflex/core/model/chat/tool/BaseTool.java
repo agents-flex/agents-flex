@@ -15,7 +15,6 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
-
 import java.io.Serializable;
 
 public abstract class BaseTool implements Tool, Serializable {

@@ -16,7 +16,6 @@
 
 package com.agentsflex.core.model.chat;
 
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,10 +34,14 @@ import java.util.List;
  */
 public final class GlobalChatInterceptors {
 
-    /** 全局拦截器列表，使用 synchronized 保证线程安全 */
+    /**
+     * 全局拦截器列表，使用 synchronized 保证线程安全
+     */
     private static final List<ChatInterceptor> GLOBAL_INTERCEPTORS = new ArrayList<>();
 
-    /** 私有构造函数，防止实例化 */
+    /**
+     * 私有构造函数，防止实例化
+     */
     private GlobalChatInterceptors() {
         // 工具类，禁止实例化
     }

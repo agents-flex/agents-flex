@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.model.client.ChatRequestSpec;
@@ -22,7 +21,6 @@ import com.agentsflex.core.prompt.Prompt;
 /**
  * 聊天上下文管理器，用于在当前线程中保存聊天相关的上下文信息。
  * <p>
- * 典型用法：在 {@link BaseChatModel} 的 {@code doChat}/{@code doChatStream} 中设置上下文，
  * 供日志、监控、拦截器等模块使用。
  * <p>
  * 支持同步和流式调用，通过 {@link ChatContextScope} 实现自动清理。
