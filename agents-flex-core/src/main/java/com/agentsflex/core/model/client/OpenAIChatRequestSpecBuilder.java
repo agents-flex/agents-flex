@@ -14,7 +14,7 @@ import java.util.Map;
 
 public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
-    private final ChatMessageSerializer chatMessageSerializer;
+    protected ChatMessageSerializer chatMessageSerializer;
 
     public OpenAIChatRequestSpecBuilder() {
         this(new OpenAIChatMessageSerializer());
@@ -38,7 +38,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         return config.getFullUrl();
     }
 
-    private Map<String, String> buildRequestHeaders(Prompt prompt, ChatOptions options, ChatConfig config) {
+    protected Map<String, String> buildRequestHeaders(Prompt prompt, ChatOptions options, ChatConfig config) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
@@ -63,5 +63,13 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
             .setIfContainsKey("tools", "tool_choice", userMessage != null ? userMessage.getToolChoice() : null)
             .toJSON();
 
+    }
+
+    public ChatMessageSerializer getChatMessageSerializer() {
+        return chatMessageSerializer;
+    }
+
+    public void setChatMessageSerializer(ChatMessageSerializer chatMessageSerializer) {
+        this.chatMessageSerializer = chatMessageSerializer;
     }
 }

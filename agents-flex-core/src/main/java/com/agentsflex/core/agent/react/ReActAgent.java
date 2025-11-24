@@ -560,16 +560,6 @@ public class ReActAgent implements IAgent {
         }
     }
 
-    private void notifyOnActionJsonParserError(ReActStep step, Exception e) {
-        for (ReActAgentListener listener : listeners) {
-            try {
-                listener.onActionJsonParserError(step, e);
-            } catch (Exception e1) {
-                log.error(e.toString(), e1);
-            }
-        }
-    }
-
     private void notifyOnActionInvokeError(Exception e) {
         for (ReActAgentListener listener : listeners) {
             try {

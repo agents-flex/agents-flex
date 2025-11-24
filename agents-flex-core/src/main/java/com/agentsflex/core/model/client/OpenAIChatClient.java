@@ -35,7 +35,7 @@ import com.alibaba.fastjson2.JSONObject;
  */
 public class OpenAIChatClient extends ChatClient {
 
-    protected AiMessageParser aiMessageParser;
+    protected AiMessageParser<JSONObject> aiMessageParser;
 
     public OpenAIChatClient(
         BaseChatModel<?> chatModel,
@@ -43,14 +43,14 @@ public class OpenAIChatClient extends ChatClient {
         super(chatModel, context);
     }
 
-    public AiMessageParser getAiMessageParser() {
+    public AiMessageParser<JSONObject> getAiMessageParser() {
         if (aiMessageParser == null) {
             aiMessageParser = DefaultAiMessageParser.getOpenAIMessageParser();
         }
         return aiMessageParser;
     }
 
-    public void setAiMessageParser(AiMessageParser aiMessageParser) {
+    public void setAiMessageParser(AiMessageParser<JSONObject> aiMessageParser) {
         this.aiMessageParser = aiMessageParser;
     }
 

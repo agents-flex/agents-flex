@@ -56,7 +56,8 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      * 聊天模型配置，包含 API Key、Endpoint、Model 等信息
      */
     protected final T config;
-    protected final ChatRequestSpecBuilder requestBuilder;
+    protected ChatClient chatClient;
+    protected ChatRequestSpecBuilder chatRequestSpecBuilder;
 
     /**
      * 拦截器链，按执行顺序存储（可观测性 → 全局 → 用户）
@@ -68,8 +69,8 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      *
      * @param config 聊天模型配置
      */
-    public BaseChatModel(T config, ChatRequestSpecBuilder requestBuilder) {
-        this(config, requestBuilder, Collections.emptyList());
+    public BaseChatModel(T config, ChatRequestSpecBuilder chatRequestSpecBuilder) {
+        this(config, chatRequestSpecBuilder, Collections.emptyList());
     }
 
     /**
@@ -81,9 +82,9 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      * @param config           聊天模型配置
      * @param userInterceptors 实例级拦截器列表
      */
-    public BaseChatModel(T config, ChatRequestSpecBuilder requestBuilder, List<ChatInterceptor> userInterceptors) {
+    public BaseChatModel(T config, ChatRequestSpecBuilder chatRequestSpecBuilder, List<ChatInterceptor> userInterceptors) {
         this.config = config;
-        this.requestBuilder = requestBuilder;
+        this.chatRequestSpecBuilder = chatRequestSpecBuilder;
         this.interceptors = buildInterceptorChain(userInterceptors);
     }
 
@@ -142,7 +143,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         options.setStreaming(false);
 
 
-        ChatRequestSpec request = requestBuilder.buildRequest(prompt, options, config);
+        ChatRequestSpec request = chatRequestSpecBuilder.buildRequest(prompt, options, config);
 
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
@@ -169,7 +170,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         }
         options.setStreaming(true);
 
-        ChatRequestSpec request = requestBuilder.buildRequest(prompt, options, config);
+        ChatRequestSpec request = chatRequestSpecBuilder.buildRequest(prompt, options, config);
 
         try (ChatContextHolder.ChatContextScope scope =
                  ChatContextHolder.beginChat(prompt, options, request, config)) {
@@ -209,10 +210,8 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         // 链尾：执行实际 LLM 调用
         if (index >= interceptors.size()) {
             return (model, context) -> {
-                // 创建协议客户端（由子类实现）
-                ChatClient client = buildClient(context);
                 // 执行同步调用
-                return client.chat();
+                return chatClient.chat();
             };
         }
 
@@ -235,14 +234,38 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
     private StreamChain buildStreamChain(int index) {
         if (index >= interceptors.size()) {
             return (model, context, listener) -> {
-                ChatClient client = buildClient(context);
-                client.chatStream(listener);
+                chatClient.chatStream(listener);
             };
         }
 
         ChatInterceptor current = interceptors.get(index);
         StreamChain next = buildStreamChain(index + 1);
         return (model, context, listener) -> current.interceptStream(model, context, listener, next);
+    }
+
+
+    public T getConfig() {
+        return config;
+    }
+
+    public ChatClient getChatClient() {
+        return chatClient;
+    }
+
+    public void setChatClient(ChatClient chatClient) {
+        this.chatClient = chatClient;
+    }
+
+    public ChatRequestSpecBuilder getChatRequestSpecBuilder() {
+        return chatRequestSpecBuilder;
+    }
+
+    public void setChatRequestSpecBuilder(ChatRequestSpecBuilder chatRequestSpecBuilder) {
+        this.chatRequestSpecBuilder = chatRequestSpecBuilder;
+    }
+
+    public List<ChatInterceptor> getInterceptors() {
+        return interceptors;
     }
 
     /**
@@ -256,24 +279,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         interceptors.add(interceptor);
     }
 
-    /**
-     * 获取聊天模型配置。
-     *
-     * @return 聊天配置对象
-     */
-    public T getConfig() {
-        return config;
+    public void addInterceptor(int index, ChatInterceptor interceptor) {
+        interceptors.add(index, interceptor);
     }
-
-    /**
-     * 创建协议客户端。
-     * <p>
-     * <b>子类必须实现此方法</b>，根据 {@link ChatContext} 创建具体的 {@link ChatClient} 实例。
-     * <p>
-     * 注意：此方法会在责任链末端被调用，此时 {@link ChatContext} 可能已被拦截器修改。
-     *
-     * @param context 聊天上下文（包含完整的请求信息）
-     * @return 协议客户端实例
-     */
-    public abstract ChatClient buildClient(ChatContext context);
 }

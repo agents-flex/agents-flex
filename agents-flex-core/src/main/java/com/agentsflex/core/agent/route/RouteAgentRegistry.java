@@ -1,7 +1,5 @@
 package com.agentsflex.core.agent.route;
 
-
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -9,8 +7,6 @@ import java.util.Map;
  * Agent 注册中心，用于管理所有可用的 ReActAgent 工厂。
  */
 public class RouteAgentRegistry {
-
-    public static final String DEFAULT_AGENT_NAME = "default";
 
     private final Map<String, RouteAgentFactory> agentFactories = new HashMap<>();
     private final Map<String, String> agentDescriptions = new HashMap<>();
