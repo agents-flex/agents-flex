@@ -196,9 +196,14 @@ public class ChatOptions {
         return thinkingEnabled;
     }
 
+    public Boolean getThinkingEnabledOrDefault(Boolean defaultValue) {
+        return thinkingEnabled != null ? thinkingEnabled : defaultValue;
+    }
+
     public void setThinkingEnabled(Boolean thinkingEnabled) {
         this.thinkingEnabled = thinkingEnabled;
     }
+
 
     public Map<String, Object> getExtra() {
         return extra;

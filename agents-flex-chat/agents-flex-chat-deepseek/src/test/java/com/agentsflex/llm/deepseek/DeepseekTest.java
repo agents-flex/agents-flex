@@ -7,7 +7,6 @@ import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.message.MessageStatus;
 import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.prompt.HistoriesPrompt;
 import com.agentsflex.core.prompt.SimplePrompt;

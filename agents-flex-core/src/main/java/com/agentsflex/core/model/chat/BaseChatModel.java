@@ -69,8 +69,8 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      *
      * @param config 聊天模型配置
      */
-    public BaseChatModel(T config, ChatRequestSpecBuilder chatRequestSpecBuilder) {
-        this(config, chatRequestSpecBuilder, Collections.emptyList());
+    public BaseChatModel(T config) {
+        this(config, Collections.emptyList());
     }
 
     /**
@@ -82,9 +82,8 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
      * @param config           聊天模型配置
      * @param userInterceptors 实例级拦截器列表
      */
-    public BaseChatModel(T config, ChatRequestSpecBuilder chatRequestSpecBuilder, List<ChatInterceptor> userInterceptors) {
+    public BaseChatModel(T config, List<ChatInterceptor> userInterceptors) {
         this.config = config;
-        this.chatRequestSpecBuilder = chatRequestSpecBuilder;
         this.interceptors = buildInterceptorChain(userInterceptors);
     }
 
@@ -143,7 +142,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         options.setStreaming(false);
 
 
-        ChatRequestSpec request = chatRequestSpecBuilder.buildRequest(prompt, options, config);
+        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(prompt, options, config);
 
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
@@ -170,7 +169,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         }
         options.setStreaming(true);
 
-        ChatRequestSpec request = chatRequestSpecBuilder.buildRequest(prompt, options, config);
+        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(prompt, options, config);
 
         try (ChatContextHolder.ChatContextScope scope =
                  ChatContextHolder.beginChat(prompt, options, request, config)) {
@@ -178,23 +177,6 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
             StreamChain chain = buildStreamChain(0);
             chain.proceed(this, scope.context, listener);
         }
-    }
-
-
-    /**
-     * 构建请求头。
-     * <p>
-     * 默认实现包含 Content-Type 和 Authorization，子类可重写以添加自定义头。
-     *
-     * @param prompt  用户提示
-     * @param options 聊天选项
-     * @return 请求头映射
-     */
-    protected Map<String, String> buildHeaders(Prompt prompt, ChatOptions options) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Authorization", "Bearer " + config.getApiKey());
-        return headers;
     }
 
 
@@ -211,7 +193,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
         if (index >= interceptors.size()) {
             return (model, context) -> {
                 // 执行同步调用
-                return chatClient.chat();
+                return getChatClient().chat();
             };
         }
 
@@ -234,7 +216,7 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
     private StreamChain buildStreamChain(int index) {
         if (index >= interceptors.size()) {
             return (model, context, listener) -> {
-                chatClient.chatStream(listener);
+                getChatClient().chatStream(listener);
             };
         }
 

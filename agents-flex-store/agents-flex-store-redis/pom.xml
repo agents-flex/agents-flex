@@ -31,11 +31,6 @@
             <version>5.2.0</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-chat-spark</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
 </project>

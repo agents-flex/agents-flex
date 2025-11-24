@@ -16,9 +16,11 @@
 package com.agentsflex.llm.openai;
 
 import com.agentsflex.core.model.chat.BaseChatModel;
-import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.client.ChatClient;
-import com.agentsflex.core.model.client.OpenAIChatClient;
+import com.agentsflex.core.model.chat.OpenAIStyleChatModel;
+import com.agentsflex.core.model.chat.interceptor.ChatInterceptor;
+import com.agentsflex.core.model.chat.interceptor.GlobalChatInterceptors;
+
+import java.util.List;
 
 /**
  * OpenAI 聊天模型实现。
@@ -33,61 +35,28 @@ import com.agentsflex.core.model.client.OpenAIChatClient;
  * 所有横切逻辑（监控、日志、拦截）由 {@link BaseChatModel} 的责任链处理，
  * 本类只关注 OpenAI 协议特有的实现细节。
  */
-public class OpenAIChatModel extends BaseChatModel<OpenAIChatConfig> {
+public class OpenAIChatModel extends OpenAIStyleChatModel<OpenAIChatConfig> {
+
 
     /**
-     * 构造 OpenAI 聊天模型实例。
-     * <p>
+     * 构造一个聊天模型实例，不使用实例级拦截器。
      *
-     * @param config OpenAI 聊天配置
+     * @param config 聊天模型配置
      */
     public OpenAIChatModel(OpenAIChatConfig config) {
         super(config);
     }
 
     /**
-     * 工厂方法：通过 API Key 创建实例。
-     *
-     * @param apiKey OpenAI API Key
-     * @return OpenAI 聊天模型实例
-     */
-    public static OpenAIChatModel of(String apiKey) {
-        OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setApiKey(apiKey);
-        return new OpenAIChatModel(config);
-    }
-
-    /**
-     * 工厂方法：通过 API Key 和自定义 Endpoint 创建实例。
-     *
-     * @param apiKey   OpenAI API Key
-     * @param endpoint 自定义 API Endpoint（如 Azure OpenAI）
-     * @return OpenAI 聊天模型实例
-     */
-    public static OpenAIChatModel of(String apiKey, String endpoint) {
-        OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setApiKey(apiKey);
-        config.setEndpoint(endpoint);
-        return new OpenAIChatModel(config);
-    }
-
-
-    /**
-     * 创建 OpenAI 协议客户端。
+     * 构造一个聊天模型实例，并指定实例级拦截器。
      * <p>
-     * 根据上下文中的流式标志选择合适的解析器，
-     * 并传递所有必要参数给 {@link OpenAIChatClient}。
+     * 实例级拦截器会与全局拦截器（通过 {@link GlobalChatInterceptors} 注册）合并，
+     * 执行顺序为：可观测性拦截器 → 全局拦截器 → 实例拦截器。
      *
-     * @param context 聊天上下文（可能已被拦截器修改）
-     * @return OpenAI 协议客户端
+     * @param config           聊天模型配置
+     * @param userInterceptors 实例级拦截器列表
      */
-    @Override
-    public ChatClient buildClient(ChatContext context) {
-        return new OpenAIChatClient(
-            this,
-            context
-        );
+    public OpenAIChatModel(OpenAIChatConfig config, List<ChatInterceptor> userInterceptors) {
+        super(config, userInterceptors);
     }
-
-
 }

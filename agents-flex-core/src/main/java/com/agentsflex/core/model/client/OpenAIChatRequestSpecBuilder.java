@@ -29,7 +29,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
         String url = buildRequestUrl(prompt, options, config);
         Map<String, String> headers = buildRequestHeaders(prompt, options, config);
-        String body = buildRequestBody(prompt, config, options);
+        String body = buildRequestBody(prompt, options, config);
 
         return new ChatRequestSpec(url, headers, body);
     }
@@ -45,17 +45,12 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         return headers;
     }
 
-    protected String buildRequestBody(Prompt prompt, ChatConfig config, ChatOptions options) {
+
+    protected String buildRequestBody(Prompt prompt, ChatOptions options, ChatConfig config) {
         List<Message> messages = prompt.getMessages();
         UserMessage userMessage = MessageUtil.findLastUserMessage(messages);
 
-        Maps map = Maps.of("model", options.getModelOrDefault(config.getModel()))
-            .setIf(options.isStreaming(), "stream", true)
-            .setIfNotNull("top_p", options.getTopP())
-            .setIfNotNull("top_k", options.getTopK())
-            .setIfNotNull("temperature", options.getTemperature())
-            .setIfNotNull("max_tokens", options.getMaxTokens())
-            .setIfNotEmpty("stop", options.getStop());
+        Maps map = buildBaseParamsOfRequestBody(prompt, options, config);
 
         return map
             .set("messages", chatMessageSerializer.serializeMessages(messages, config))
@@ -63,6 +58,17 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
             .setIfContainsKey("tools", "tool_choice", userMessage != null ? userMessage.getToolChoice() : null)
             .toJSON();
 
+    }
+
+
+    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options, ChatConfig config) {
+        return Maps.of("model", options.getModelOrDefault(config.getModel()))
+            .setIf(options.isStreaming(), "stream", true)
+            .setIfNotNull("top_p", options.getTopP())
+            .setIfNotNull("top_k", options.getTopK())
+            .setIfNotNull("temperature", options.getTemperature())
+            .setIfNotNull("max_tokens", options.getMaxTokens())
+            .setIfNotEmpty("stop", options.getStop());
     }
 
     public ChatMessageSerializer getChatMessageSerializer() {
