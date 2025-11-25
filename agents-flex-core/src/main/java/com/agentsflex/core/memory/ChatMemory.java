@@ -21,7 +21,8 @@ import java.util.Collection;
 import java.util.List;
 
 public interface ChatMemory extends Memory {
-    List<Message> getMessages();
+
+    List<Message> getMessages(int count);
 
     void addMessage(Message message);
 

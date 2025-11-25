@@ -39,8 +39,16 @@ public class DefaultChatMemory implements ChatMemory {
     }
 
     @Override
-    public List<Message> getMessages() {
-        return messages;
+    public List<Message> getMessages(int count) {
+        if (count <= 0) {
+            throw new IllegalArgumentException("count must be greater than 0");
+        }
+        if (count >= messages.size()) {
+            // 返回副本，避免修改原始消息
+            return new ArrayList<>(messages);
+        } else {
+            return messages.subList(messages.size() - count, messages.size());
+        }
     }
 
     @Override

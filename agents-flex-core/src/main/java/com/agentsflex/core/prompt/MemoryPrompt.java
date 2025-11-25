@@ -137,24 +137,14 @@ public class MemoryPrompt extends Prompt {
 
     @Override
     public List<Message> getMessages() {
-        List<Message> originalMessages = memory.getMessages();
-        if (originalMessages == null) {
-            originalMessages = new ArrayList<>();
+        List<Message> messages = memory.getMessages(maxAttachedMessageCount);
+        if (messages == null) {
+            messages = new ArrayList<>();
         }
 
-        // 1. 截取最近的 N 条消息（不包含 system message）
-        List<Message> selectedMessages;
-        if (originalMessages.size() > maxAttachedMessageCount) {
-            int fromIndex = originalMessages.size() - maxAttachedMessageCount;
-            selectedMessages = new ArrayList<>(originalMessages.subList(fromIndex, originalMessages.size()));
-        } else {
-            selectedMessages = new ArrayList<>(originalMessages);
-        }
-
-        // 2. 对文本消息进行截断处理（基于副本，不修改原始消息）
         if (historyMessageTruncateEnable) {
-            for (int i = 0; i < selectedMessages.size(); i++) {
-                Message msg = selectedMessages.get(i);
+            for (int i = 0; i < messages.size(); i++) {
+                Message msg = messages.get(i);
                 if (msg instanceof AbstractTextMessage) {
                     AbstractTextMessage<?> textMsg = (AbstractTextMessage<?>) msg;
                     String content = textMsg.getContent();
@@ -170,27 +160,28 @@ public class MemoryPrompt extends Prompt {
                     // 创建新实例，避免修改原始消息
                     AbstractTextMessage<?> copied = textMsg.copy();
                     copied.setContent(content);
-                    selectedMessages.set(i, copied);
+                    messages.set(i, copied);
                 }
             }
         }
 
-        // 3. 插入系统消息（如果需要）
+        // 插入系统消息
         if (systemMessage != null) {
-            if (selectedMessages.isEmpty() || !(selectedMessages.get(0) instanceof SystemMessage)) {
-                selectedMessages.add(0, systemMessage);
+            if (messages.isEmpty() || !(messages.get(0) instanceof SystemMessage)) {
+                messages.add(0, systemMessage);
             }
         }
 
-        // 4. 添加临时消息（如果存在）
+        //  添加临时消息（如果存在）
         if (temporaryMessages != null && !temporaryMessages.isEmpty()) {
-            selectedMessages.addAll(new ArrayList<>(temporaryMessages));
-            // 使用后自动清理，符合“临时”语义
+            messages.addAll(new ArrayList<>(temporaryMessages));
+
+            // 使用后自动清理
             temporaryMessages.clear();
             temporaryMessages = null;
         }
 
-        return selectedMessages;
+        return messages;
     }
 
 
