@@ -106,6 +106,11 @@ public class ChatOptions {
     private Map<String, Object> extra;
 
 
+    protected Boolean retryEnabled; // 默认开启错误重试
+    protected Integer retryCount;
+    protected Integer retryInitialDelayMs;
+
+
     /**
      * 是否为流式请求。
      * 这个不允许用户设置，由 Framework 自动设置（用户设置也可能被修改）。
@@ -127,6 +132,9 @@ public class ChatOptions {
         this.stop = builder.stop;
         this.thinkingEnabled = builder.thinkingEnabled;
         this.extra = builder.extra;
+        this.retryEnabled = builder.retryEnabled;
+        this.retryCount = builder.retryCount;
+        this.retryInitialDelayMs = builder.retryInitialDelayMs;
     }
 
     // ===== Getter / Setter =====
@@ -238,6 +246,43 @@ public class ChatOptions {
         }
     }
 
+    public Boolean getRetryEnabled() {
+        return retryEnabled;
+    }
+
+    public boolean getRetryEnabledOrDefault(boolean defaultValue) {
+        return retryEnabled != null ? retryEnabled : defaultValue;
+    }
+
+    public void setRetryEnabled(Boolean retryEnabled) {
+        this.retryEnabled = retryEnabled;
+    }
+
+    public Integer getRetryCount() {
+        return retryCount;
+    }
+
+    public int getRetryCountOrDefault(int defaultValue) {
+        return retryCount != null ? retryCount : defaultValue;
+    }
+
+
+    public void setRetryCount(Integer retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public Integer getRetryInitialDelayMs() {
+        return retryInitialDelayMs;
+    }
+
+    public int getRetryInitialDelayMsOrDefault(int defaultValue) {
+        return retryInitialDelayMs != null ? retryInitialDelayMs : defaultValue;
+    }
+
+    public void setRetryInitialDelayMs(Integer retryInitialDelayMs) {
+        this.retryInitialDelayMs = retryInitialDelayMs;
+    }
+
     public boolean isStreaming() {
         return streaming;
     }
@@ -270,6 +315,9 @@ public class ChatOptions {
         private List<String> stop;
         private Boolean thinkingEnabled;
         private Map<String, Object> extra;
+        private Boolean retryEnabled;
+        private int retryCount = 3;
+        private int retryInitialDelayMs = 1000;
 
         public Builder model(String model) {
             this.model = model;
@@ -322,6 +370,21 @@ public class ChatOptions {
             } else {
                 this.extra.put(key, value);
             }
+            return this;
+        }
+
+        public Builder retryEnabled(Boolean retryEnabled) {
+            this.retryEnabled = retryEnabled;
+            return this;
+        }
+
+        public Builder retryCount(int retryCount) {
+            this.retryCount = retryCount;
+            return this;
+        }
+
+        public Builder retryInitialDelayMs(int retryInitialDelayMs) {
+            this.retryInitialDelayMs = retryInitialDelayMs;
             return this;
         }
 

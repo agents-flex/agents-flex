@@ -17,9 +17,6 @@ package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.model.config.BaseModelConfig;
 
-import java.util.Map;
-import java.util.function.Consumer;
-
 public class ChatConfig extends BaseModelConfig {
 
     protected Boolean supportImage;
@@ -33,7 +30,11 @@ public class ChatConfig extends BaseModelConfig {
     protected boolean thinkingEnabled = false; // 默认关闭
     protected boolean logEnabled = true;
 
-    protected Consumer<Map<String, String>> headersConfig;
+
+    protected boolean retryEnabled = true; // 默认开启错误重试
+    protected int retryCount = 3;
+    protected int retryInitialDelayMs = 1000;
+
 
     public boolean isLogEnabled() {
         return logEnabled;
@@ -43,13 +44,6 @@ public class ChatConfig extends BaseModelConfig {
         this.logEnabled = logEnabled;
     }
 
-    public Consumer<Map<String, String>> getHeadersConfig() {
-        return headersConfig;
-    }
-
-    public void setHeadersConfig(Consumer<Map<String, String>> headersConfig) {
-        this.headersConfig = headersConfig;
-    }
 
     public Boolean getSupportImage() {
         return supportImage;
@@ -135,4 +129,27 @@ public class ChatConfig extends BaseModelConfig {
         this.observabilityEnabled = observabilityEnabled;
     }
 
+    public boolean isRetryEnabled() {
+        return retryEnabled;
+    }
+
+    public void setRetryEnabled(boolean retryEnabled) {
+        this.retryEnabled = retryEnabled;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public int getRetryInitialDelayMs() {
+        return retryInitialDelayMs;
+    }
+
+    public void setRetryInitialDelayMs(int retryInitialDelayMs) {
+        this.retryInitialDelayMs = retryInitialDelayMs;
+    }
 }
