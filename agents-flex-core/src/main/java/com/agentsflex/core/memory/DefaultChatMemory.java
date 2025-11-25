@@ -48,5 +48,10 @@ public class DefaultChatMemory implements ChatMemory {
         messages.add(message);
     }
 
+    @Override
+    public void clear() {
+        messages.clear();
+    }
+
 
 }

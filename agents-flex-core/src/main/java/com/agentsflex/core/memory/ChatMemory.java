@@ -30,4 +30,6 @@ public interface ChatMemory extends Memory {
             addMessage(message);
         }
     }
+
+    void clear();
 }
