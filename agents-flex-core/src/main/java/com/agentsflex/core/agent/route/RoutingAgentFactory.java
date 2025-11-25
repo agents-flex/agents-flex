@@ -23,6 +23,6 @@ import com.agentsflex.core.prompt.MemoryPrompt;
  * ReActAgent 工厂接口，支持不同 Agent 的定制化创建。
  */
 @FunctionalInterface
-public interface RouteAgentFactory {
+public interface RoutingAgentFactory {
     IAgent create(ChatModel chatModel, String userQuery, MemoryPrompt memoryPrompt);
 }

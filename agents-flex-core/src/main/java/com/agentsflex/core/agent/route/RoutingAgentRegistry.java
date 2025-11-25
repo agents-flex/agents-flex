@@ -16,27 +16,34 @@
 package com.agentsflex.core.agent.route;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * Agent 注册中心，用于管理所有可用的 ReActAgent 工厂。
  */
-public class RouteAgentRegistry {
+public class RoutingAgentRegistry {
 
-    private final Map<String, RouteAgentFactory> agentFactories = new HashMap<>();
+    private final Map<String, RoutingAgentFactory> agentFactories = new HashMap<>();
     private final Map<String, String> agentDescriptions = new HashMap<>();
     private final Map<String, String> keywordToAgent = new HashMap<>();
 
     /**
      * 注册 Agent，并可选绑定关键字（用于快速匹配）
      */
-    public void register(String name, String description, RouteAgentFactory factory, String... keywords) {
+    public void register(String name, String description, RoutingAgentFactory factory) {
+        register(name, description, null, factory);
+    }
+
+    public void register(String name, String description, List<String> keywords, RoutingAgentFactory factory) {
         agentFactories.put(name, factory);
         agentDescriptions.put(name, description);
 
-        for (String kw : keywords) {
-            if (kw != null && !kw.trim().isEmpty()) {
-                keywordToAgent.put(kw.trim().toLowerCase(), name);
+        if (keywords != null && !keywords.isEmpty()) {
+            for (String kw : keywords) {
+                if (kw != null && !kw.trim().isEmpty()) {
+                    keywordToAgent.put(kw.trim().toLowerCase(), name);
+                }
             }
         }
     }
@@ -54,7 +61,7 @@ public class RouteAgentRegistry {
     }
 
 
-    public RouteAgentFactory getAgentFactory(String name) {
+    public RoutingAgentFactory getAgentFactory(String name) {
         return agentFactories.get(name);
     }
 

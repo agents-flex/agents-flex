@@ -33,9 +33,9 @@ import java.util.List;
  * - 不处理 Direct Answer，一律返回 null
  * - 支持关键字快速匹配 + LLM 智能路由
  */
-public class RouteAgent {
+public class RoutingAgent {
 
-    private static final Logger log = LoggerFactory.getLogger(RouteAgent.class);
+    private static final Logger log = LoggerFactory.getLogger(RoutingAgent.class);
 
     private static final String DEFAULT_ROUTING_PROMPT_TEMPLATE =
         "你是一个智能路由助手，请严格按以下规则响应：\n" +
@@ -56,21 +56,21 @@ public class RouteAgent {
             "{user_input}";
 
     private final ChatModel chatModel;
-    private final RouteAgentRegistry routeAgentRegistry;
+    private final RoutingAgentRegistry routingAgentRegistry;
     private final String userQuery;
-    private final MemoryPrompt conversationHistory;
+    private final MemoryPrompt memoryPrompt;
 
     private String routingPromptTemplate = DEFAULT_ROUTING_PROMPT_TEMPLATE;
     private ChatOptions chatOptions;
     private boolean enableKeywordRouting = true;
     private boolean enableLlmRouting = true;
 
-    public RouteAgent(ChatModel chatModel, RouteAgentRegistry routeAgentRegistry,
-                      String userQuery, MemoryPrompt conversationHistory) {
+    public RoutingAgent(ChatModel chatModel, RoutingAgentRegistry routingAgentRegistry,
+                        String userQuery, MemoryPrompt memoryPrompt) {
         this.chatModel = chatModel;
-        this.routeAgentRegistry = routeAgentRegistry;
+        this.routingAgentRegistry = routingAgentRegistry;
         this.userQuery = userQuery;
-        this.conversationHistory = conversationHistory;
+        this.memoryPrompt = memoryPrompt;
     }
 
     /**
@@ -83,7 +83,7 @@ public class RouteAgent {
         try {
             // 1. 关键字快速匹配
             if (enableKeywordRouting) {
-                String agentName = routeAgentRegistry.findAgentByKeyword(userQuery);
+                String agentName = routingAgentRegistry.findAgentByKeyword(userQuery);
                 if (agentName != null) {
                     log.debug("关键字匹配命中 Agent: {}", agentName);
                     return createAgent(agentName);
@@ -92,8 +92,8 @@ public class RouteAgent {
 
             // 2. LLM 智能路由
             if (enableLlmRouting) {
-                String contextSummary = buildContextSummary(conversationHistory);
-                String agentDescriptions = routeAgentRegistry.getAgentDescriptions();
+                String contextSummary = buildContextSummary(memoryPrompt);
+                String agentDescriptions = routingAgentRegistry.getAgentDescriptions();
                 String prompt = routingPromptTemplate
                     .replace("{agent_descriptions}", agentDescriptions)
                     .replace("{conversation_context}", contextSummary)
@@ -118,12 +118,12 @@ public class RouteAgent {
     }
 
     private IAgent createAgent(String agentName) {
-        RouteAgentFactory factory = routeAgentRegistry.getAgentFactory(agentName);
+        RoutingAgentFactory factory = routingAgentRegistry.getAgentFactory(agentName);
         if (factory == null) {
             log.warn("Agent 不存在: {}, 返回 null", agentName);
             return null;
         }
-        return factory.create(chatModel, userQuery, conversationHistory);
+        return factory.create(chatModel, userQuery, memoryPrompt);
     }
 
     private String buildContextSummary(MemoryPrompt history) {
@@ -143,7 +143,6 @@ public class RouteAgent {
         return sb.toString().trim();
     }
 
-    // ===== 配置方法 =====
 
     public void setEnableKeywordRouting(boolean enable) {
         this.enableKeywordRouting = enable;
