@@ -23,7 +23,8 @@ import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.chat.tool.*;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.ToolExecutor;
 import com.agentsflex.core.model.chat.tool.ToolInterceptor;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.MemoryPrompt;
@@ -88,7 +89,7 @@ public class ReActAgent implements IAgent {
     private final List<ReActAgentListener> listeners = new ArrayList<>();
 
     // 拦截器集合
-    private final List<ToolInterceptor> interceptors = new ArrayList<>();
+    private final List<ToolInterceptor> toolInterceptors = new ArrayList<>();
 
 
     public ReActAgent(ChatModel chatModel, List<Tool> tools, String userQuery) {
@@ -135,16 +136,12 @@ public class ReActAgent implements IAgent {
         listeners.remove(listener);
     }
 
-    public void addInterceptor(ToolInterceptor interceptor) {
-        interceptors.add(interceptor);
+    public void addToolInterceptor(ToolInterceptor interceptor) {
+        toolInterceptors.add(interceptor);
     }
 
-    public void addInterceptors(List<ToolInterceptor> interceptors) {
-        this.interceptors.addAll(interceptors);
-    }
-
-    public void removeInterceptor(ToolInterceptor interceptor) {
-        interceptors.remove(interceptor);
+    public List<ToolInterceptor> getToolInterceptors() {
+        return toolInterceptors;
     }
 
     public ChatModel getChatModel() {
@@ -389,7 +386,7 @@ public class ReActAgent implements IAgent {
                             toolCall.setName(step.getAction());
                             toolCall.setArgsString(step.getActionInput());
 
-                            ToolExecutor executor = new ToolExecutor(tool, toolCall, interceptors);
+                            ToolExecutor executor = new ToolExecutor(tool, toolCall, toolInterceptors);
 
                             // 方便 “子Agent” 或者 tool， 获取当前的 ReActAgent
                             executor.addInterceptor((context, chain) -> {
