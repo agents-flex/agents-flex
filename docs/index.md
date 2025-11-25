@@ -11,7 +11,7 @@ hero:
   actions:
     - theme: brand
       text: 快速开始
-      link: /zh/intro/getting-started
+      link: /zh/chat/getting-started
     - theme: alt
       text: 帮助文档
       link: /zh/intro/what-is-agentsflex
