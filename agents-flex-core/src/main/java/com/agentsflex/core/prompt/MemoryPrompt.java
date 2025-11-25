@@ -125,6 +125,16 @@ public class MemoryPrompt extends Prompt {
         temporaryMessages = null;
     }
 
+    /**
+     * 清空所有消息
+     */
+    public void clear() {
+        memory.clear();
+        if (temporaryMessages != null) {
+            temporaryMessages.clear();
+        }
+    }
+
     @Override
     public List<Message> getMessages() {
         List<Message> originalMessages = memory.getMessages();
