@@ -21,7 +21,6 @@ import com.agentsflex.core.util.StringUtil;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  * OpenAI 聊天模型的配置类，支持通过 Builder 模式创建配置或直接构建 {@link OpenAIChatModel}。
@@ -166,12 +165,6 @@ public class OpenAIChatConfig extends ChatConfig {
             return this;
         }
 
-        public Builder headersConfig(Consumer<Map<String, String>> headersConfig) {
-            config.setHeadersConfig(headersConfig);
-            return this;
-        }
-
-        // --- Build methods ---
 
         /**
          * 构建 {@link OpenAIChatConfig} 配置对象。
