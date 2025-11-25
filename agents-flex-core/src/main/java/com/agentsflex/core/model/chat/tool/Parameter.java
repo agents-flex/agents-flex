@@ -28,6 +28,7 @@ public class Parameter implements Serializable {
     protected boolean required = false;
     protected List<Parameter> children;
 
+    // --- getters and setters (keep your existing ones) ---
     public String getName() {
         return name;
     }
@@ -53,11 +54,11 @@ public class Parameter implements Serializable {
     }
 
     public String[] getEnums() {
-        return enums;
+        return enums != null ? enums.clone() : null; // defensive copy
     }
 
     public void setEnums(String[] enums) {
-        this.enums = enums;
+        this.enums = enums != null ? enums.clone() : null;
     }
 
     public boolean isRequired() {
@@ -69,11 +70,11 @@ public class Parameter implements Serializable {
     }
 
     public List<Parameter> getChildren() {
-        return children;
+        return children != null ? new ArrayList<>(children) : null; // defensive copy
     }
 
     public void setChildren(List<Parameter> children) {
-        this.children = children;
+        this.children = children != null ? new ArrayList<>(children) : null;
     }
 
     public void addChild(Parameter parameter) {
@@ -81,5 +82,70 @@ public class Parameter implements Serializable {
             children = new ArrayList<>();
         }
         children.add(parameter);
+    }
+
+    // --- Static builder factory method ---
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    // --- Builder inner class ---
+    public static class Builder {
+        private String name;
+        private String type;
+        private String description;
+        private String[] enums;
+        private boolean required = false;
+        private List<Parameter> children;
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder type(String type) {
+            this.type = type;
+            return this;
+        }
+
+        public Builder description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        public Builder enums(String... enums) {
+            this.enums = enums != null ? enums.clone() : null;
+            return this;
+        }
+
+        public Builder required(boolean required) {
+            this.required = required;
+            return this;
+        }
+
+        public Builder addChild(Parameter child) {
+            if (this.children == null) {
+                this.children = new ArrayList<>();
+            }
+            this.children.add(child);
+            return this;
+        }
+
+        public Builder children(List<Parameter> children) {
+            this.children = children != null ? new ArrayList<>(children) : null;
+            return this;
+        }
+
+        public Parameter build() {
+            Parameter param = new Parameter();
+            param.setName(name);
+            param.setType(type);
+            param.setDescription(description);
+            param.setEnums(enums); // uses defensive copy internally
+            param.setRequired(required);
+            param.setChildren(children); // uses defensive copy internally
+            return param;
+        }
     }
 }
