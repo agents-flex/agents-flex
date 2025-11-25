@@ -6,16 +6,18 @@ public class ChatRequestSpec {
     private String url;
     private Map<String, String> headers;
     private String body; // JSON 字符串
-    private int retryCount = 3;
-    private int retryInitialDelayMs = 1000;
+    private int retryCount;
+    private int retryInitialDelayMs;
 
     public ChatRequestSpec() {
     }
 
-    public ChatRequestSpec(String url, Map<String, String> headers, String body) {
+    public ChatRequestSpec(String url, Map<String, String> headers, String body, int retryCount, int retryInitialDelayMs) {
         this.url = url;
         this.headers = headers;
         this.body = body;
+        this.retryCount = retryCount;
+        this.retryInitialDelayMs = retryInitialDelayMs;
     }
 
     public String getUrl() {

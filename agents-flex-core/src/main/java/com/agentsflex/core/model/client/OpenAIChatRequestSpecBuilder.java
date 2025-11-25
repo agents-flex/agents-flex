@@ -31,7 +31,11 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         Map<String, String> headers = buildRequestHeaders(prompt, options, config);
         String body = buildRequestBody(prompt, options, config);
 
-        return new ChatRequestSpec(url, headers, body);
+        boolean retryEnabled = options.getRetryEnabledOrDefault(config.isRetryEnabled());
+        int retryCountOrDefault = options.getRetryCountOrDefault(config.getRetryCount());
+        int retryInitialDelayMsOrDefault = options.getRetryInitialDelayMsOrDefault(config.getRetryInitialDelayMs());
+
+        return new ChatRequestSpec(url, headers, body, retryEnabled ? retryCountOrDefault : 0, retryEnabled ? retryInitialDelayMsOrDefault : 0);
     }
 
     protected String buildRequestUrl(Prompt prompt, ChatOptions options, ChatConfig config) {
