@@ -4,17 +4,17 @@
 
 ## 概述
 
-Agents-Flex 提供了**统一、可插拔的请求日志系统**，用于记录所有与大语言模型（LLM）服务的交互细节，包括：
+Agents-Flex 提供了**统一、可插拔的对话请求日志系统**，用于记录所有与大语言模型（LLM）服务的交互细节，包括：
 
 - **请求日志**：发送给 LLM 的原始请求体（JSON）
 - **响应日志**：LLM 返回的原始响应体（JSON）
 
 该系统设计目标：
 
-- ✅ **开箱即用**：默认输出到 `System.out`
-- ✅ **灵活替换**：支持自定义日志实现（如 SLF4J、Log4j、文件、数据库等）
-- ✅ **按需启用**：通过 `ChatConfig.isLogEnabled()` 控制开关
-- ✅ **上下文丰富**：自动附加 `provider/model` 信息，便于排查
+- **开箱即用**：默认输出到 `System.out`（可自定义输出目标）
+- **灵活替换**：支持自定义日志实现（如 SLF4J、Log4j、文件、数据库等）
+- **按需启用**：通过 `ChatConfig.isLogEnabled()` 控制开关
+- **上下文丰富**：自动附加 `provider/model` 信息，便于排查
 
 
 ## 核心组件
@@ -51,7 +51,7 @@ public final class ChatMessageLogger {
 - **单例模式**：全局唯一日志器实例
 - **线程安全**：`setLogger()` 是线程安全的（适合应用启动时初始化）
 
-> ✅ **调用方式**：所有内部组件通过 `ChatMessageLogger.logRequest(...)` 记录日志。
+> **调用方式**：所有内部组件通过 `ChatMessageLogger.logRequest(...)` 记录日志。
 
 
 ### `DefaultChatMessageLogger` 默认实现
@@ -205,7 +205,7 @@ config.setLogEnabled(false); // 完全关闭日志
 
 ## 最佳实践
 
-### ✅ 推荐做法
+### 推荐做法
 - **开发/测试环境**：启用日志，便于调试
 - **生产环境**：默认关闭，按需开启（如排查问题）
 - **自定义 logger**：集成到现有日志体系（如 SLF4J + Logback）

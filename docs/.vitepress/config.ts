@@ -79,7 +79,7 @@ export default defineConfig({
                     {text: 'Memory 记忆', link: '/zh/chat/memory'},
                     {text: 'Tool 工具调用', link: '/zh/chat/tool'},
                     {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
-                    {text: 'MCP 调用', link: '/zh/core/function-calling'},
+                    {text: 'MCP 调用', link: '/zh/chat/mcp'},
                     {text: 'ChatClient', link: '/zh/chat/chat-client'},
                     {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
                     {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
@@ -96,40 +96,48 @@ export default defineConfig({
                 ]
             },
             {
-                text: '其他模型',
+                text: '更多模型',
                 items: [
-                    {text: '图片模型', link: '/zh/core/llms'},
-                    {text: 'Rerank 重排模型', link: '/zh/core/llms'},
-                    {text: 'Embedding 重排模型', link: '/zh/core/llms'},
+                    // {text: '图片模型', link: '/zh/models/image'},
+                    {text: 'Rerank 重排模型', link: '/zh/models/rerank'},
+                    {text: 'Embedding 重排模型', link: '/zh/models/embedding'},
                 ]
             },
             {
                 text: 'RAG 模块',
                 items: [
-                    {text: '文档概念', link: '/zh/core/llms'},
-                    {text: '向量存储', link: '/zh/core/llms'},
-                    {text: 'SearchWrapper', link: '/zh/core/llms'},
-                    {text: 'file2text', link: '/zh/core/llms'},
-                    {text: '文档分割', link: '/zh/core/llms'},
-                    {text: '搜索引擎', link: '/zh/core/llms'},
+                    {text: '文档概念', link: '/zh/rag/document'},
+                    {text: '向量存储 (Vector Store)', link: '/zh/rag/vector-store'},
+                    {text: 'SearchWrapper', link: '/zh/rag/search-wrapper'},
+                    {text: 'file2text', link: '/zh/rag/file2text'},
+                    {text: '文档分割 Splitter', link: '/zh/rag/splitter'},
+                    {text: '搜索引擎', link: '/zh/rag/search-engine'},
                 ]
             },
             {
                 text: '可观测',
                 items: [
-                    {text: 'Observability', link: '/zh/core/llms'},
-                    {text: '模型可观测', link: '/zh/core/llms'},
-                    {text: '工具调用可观测', link: '/zh/core/llms'},
+                    {text: 'Observability', link: '/zh/observability/observability'},
+                    {text: '模型可观测', link: '/zh/observability/model'},
+                    {text: '工具调用可观测', link: '/zh/observability/tool'},
                 ]
             },
             {
                 text: '内置工具类',
                 items: [
-                    {text: 'Maps', link: '/zh/core/llms'},
-                    {text: 'Retryer', link: '/zh/core/llms'},
-                    {text: 'ToolScanner', link: '/zh/core/llms'},
-                    {text: 'LocalTokenCounter', link: '/zh/core/chat'},
-                    {text: '其他', link: '/zh/core/chat1'},
+                    {text: 'Maps', link: '/zh/util/maps'},
+                    {text: 'Retryer', link: '/zh/util/retryer'},
+                    {text: 'ToolScanner', link: '/zh/util/tool-scanner'},
+                    {text: 'Tool.Builder', link: '/zh/util/tool-builder'},
+                    {text: 'LocalTokenCounter', link: '/zh/util/local-token-counter'},
+                    {text: '其他工具类', link: '/zh/util/others'},
+                ]
+            },
+            {
+                text: '其他',
+                items: [
+                    {text: 'v1.x 升级', link: '/zh/other/v1-upgrade'},
+                    {text: '工作流编排', link: '/zh/other/chain'},
                 ]
             },
         ],
