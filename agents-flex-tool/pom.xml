@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-tool</name>
     <artifactId>agents-flex-tool</artifactId>
     <packaging>pom</packaging>
     <modules>

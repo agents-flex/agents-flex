@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-tool-javascript</name>
     <artifactId>agents-flex-tool-javascript</artifactId>
 
     <properties>

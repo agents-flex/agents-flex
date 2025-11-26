@@ -9,7 +9,7 @@
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-model</name>
+    <name>agents-flex-chat</name>
     <artifactId>agents-flex-chat</artifactId>
 
     <packaging>pom</packaging>

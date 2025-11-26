@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>agents-flex-tool-python</name>
     <artifactId>agents-flex-tool-python</artifactId>
 
     <properties>
