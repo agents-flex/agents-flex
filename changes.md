@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v2.0.0-beta.1
+## v2.0.0-beta.1 20251126
 - 移除 Chain 模块，合并到 Tinyflow
 - 移除 documentParser 模块
 - 移除 DocumentLoader 模块

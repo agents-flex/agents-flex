@@ -1,21 +1,21 @@
-<h4 align="right"><a href="./readme.md">English</a> | <strong>简体中文</strong> | <a href="./readme_ja.md">日本語</a></h4>
-
 <p align="center">
     <img src="./docs/assets/images/banner.png"/>
 </p>
 
 
 
-# Agents-Flex： 一个基于 Java 的 LLM（大语言模型）应用开发框架。
+# Agents-Flex： 一个轻量的 Java AI 应用开发框架
 
 ---
 
 ## 基本能力
 
 - LLM 的访问能力
+- LLM Chat 拦截器
 - Prompt、Prompt Template 定义加载的能力
-- Function Calling 定义、调用和执行等能力
-- Memory 记忆的能力（Memory）
+- Tool 方法定义、调用和执行等能力
+- Tool 方法执行拦截器
+- Memory 记忆的能力
 - Embedding
 - Vector Store
 - file2text 文档读取
@@ -24,127 +24,32 @@
 
 
 
-## 简单对话
-
-使用 OpenAI 大语言模型:
-
-```java
- @Test
-public void testChat() {
-    OpenAILlmConfig config = new OpenAILlmConfig();
-    config.setApiKey("sk-rts5NF6n*******");
-
-    Llm chatModel = new OpenAILlm(config);
-    String response = chatModel.chat("请问你叫什么名字");
-
-    System.out.println(response);
-}
-```
-
-使用 “通义千问” 大语言模型:
-
-```java
-@Test
-public void testChat() {
-    QwenLlmConfig config = new QwenLlmConfig();
-    config.setApiKey("sk-28a6be3236****");
-    config.setModel("qwen-turbo");
-
-    Llm chatModel = new QwenLlm(config);
-    String response = chatModel.chat("请问你叫什么名字");
-
-    System.out.println(response);
-}
-```
-
-使用 “讯飞星火” 大语言模型:
-
-```java
-@Test
-public void testChat() {
-    SparkLlmConfig config = new SparkLlmConfig();
-    config.setAppId("****");
-    config.setApiKey("****");
-    config.setApiSecret("****");
-
-    Llm chatModel = new SparkLlm(config);
-    String response = chatModel.chat("请问你叫什么名字");
-
-    System.out.println(response);
-}
-```
-
-## 历史对话示例
-
+## Hello World
 
 ```java
 public static void main(String[] args) {
-    SparkLlmConfig config = new SparkLlmConfig();
-    config.setAppId("****");
-    config.setApiKey("****");
-    config.setApiSecret("****");
+    OpenAIChatModel chatModel = OpenAIChatConfig.builder()
+        .provider("GiteeAI")
+        .endpoint("https://ai.gitee.com")
+        .requestPath("/v1/chat/completions")
+        .apiKey("P****QL7D12")
+        .model("Qwen3-32B")
+        .buildModel();
 
-    Llm chatModel = new SparkLlm(config);
-
-    HistoriesPrompt prompt = new HistoriesPrompt();
-
-    System.out.println("您想问什么？");
-    Scanner scanner = new Scanner(System.in);
-    String userInput = scanner.nextLine();
-
-    while (userInput != null) {
-
-        prompt.addMessage(new HumanMessage(userInput));
-
-        chatModel.chatStream(prompt, (context, response) -> {
-            System.out.println(">>>> " + response.getMessage().getContent());
-        });
-
-        userInput = scanner.nextLine();
-    }
+    String output = chatModel.chat("如何才能更幽默?");
+    System.out.println(output);
 }
 ```
 
+控制台输出：
 
-
-## Function Calling
-
-- 第一步: 通过注解定义本地方法
-
-```java
-public class WeatherUtil {
-
-    @FunctionDef(name = "get_the_weather_info", description = "get the weather info")
-    public static String getWeatherInfo(
-        @FunctionParam(name = "city", description = "the city name") String name
-    ) {
-        //在这里，我们应该通过第三方接口调用 api 信息
-        return name + "的天气是阴转多云。 ";
-    }
-}
+```text
+[GiteeAI/Qwen3-32B] >>>> request: {"temperature":0.5,"messages":[{"content":"如何才能更幽默?","role":"user"}],"model":"Qwen3-32B"}
+[GiteeAI/Qwen3-32B] <<<< response: {"id":"chatcmpl-46a3bacc483d4e5cb73c75061579fc00","object":"chat.completion","created":1764148724,"model":"Qwen/Qwen3-32B","choices":[{"index":0,"message":{"role":"assistant","reasoning_content...
+幽默是一种让人愉悦的社交能力，它不仅能活跃气氛，还能拉近人与人之间的距离.....
 ```
 
-- 第二步: 通过 Prompt、Functions 传入给大模型，然后得到结果
-
-```java
- public static void main(String[] args) {
-
-    OpenAILlmConfig config = new OpenAILlmConfig();
-    config.setApiKey("sk-rts5NF6n*******");
-
-    OpenAILlm chatModel = new OpenAILlm(config);
-
-    FunctionPrompt prompt = new FunctionPrompt("今天北京的天气怎么样", WeatherUtil.class);
-    FunctionResultResponse response = chatModel.chat(prompt);
-
-    Object result = response.getFunctionResult();
-
-    System.out.println(result);
-    //"北京的天气是阴转多云。 "
-}
-```
-
-
+第一行和第二行是 Agents-Flex  框架的日志信息，第三行是 `System.out.println(output)` 的输出 。
 
 
 ## Star 用户专属交流群
@@ -152,6 +57,3 @@ public class WeatherUtil {
 ![](./docs/assets/images/wechat-group.jpg)
 
 
-## 模块构成
-
-![](./docs/assets/images/modules.jpg)
