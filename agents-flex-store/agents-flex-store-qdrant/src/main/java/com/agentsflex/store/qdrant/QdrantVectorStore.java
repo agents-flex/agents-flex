@@ -22,20 +22,15 @@ import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.core.util.VectorUtil;
 import io.grpc.Grpc;
+import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import io.qdrant.client.QdrantClient;
-import io.grpc.ManagedChannel;
 import io.qdrant.client.QdrantGrpcClient;
 import io.qdrant.client.grpc.Collections;
 import io.qdrant.client.grpc.JsonWithInt;
 import io.qdrant.client.grpc.Points;
-import io.qdrant.client.grpc.Points.Filter;
-import io.qdrant.client.grpc.Points.PointId;
-import io.qdrant.client.grpc.Points.PointStruct;
-import io.qdrant.client.grpc.Points.QueryPoints;
-import io.qdrant.client.grpc.Points.ScoredPoint;
+import io.qdrant.client.grpc.Points.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -91,7 +86,7 @@ public class QdrantVectorStore extends DocumentStore {
             payload.put("content", value(doc.getContent()));
             points.add(PointStruct.newBuilder()
                 .setId(id(Long.parseLong(doc.getId().toString())))
-                .setVectors(vectors(VectorUtil.toFloatArray(doc.getVector())))
+                .setVectors(vectors(doc.getVector()))
                 .putAllPayload(payload)
                 .build());
         }
@@ -141,7 +136,7 @@ public class QdrantVectorStore extends DocumentStore {
                 payload.put("content", value(doc.getContent()));
                 points.add(PointStruct.newBuilder()
                     .setId(id(Long.parseLong(doc.getId().toString())))
-                    .setVectors(vectors(VectorUtil.toFloatArray(doc.getVector())))
+                    .setVectors(vectors(doc.getVector()))
                     .putAllPayload(payload)
                     .build());
             }
@@ -166,7 +161,7 @@ public class QdrantVectorStore extends DocumentStore {
                 .setWithVectors(Points.WithVectorsSelector.newBuilder().setEnable(true).build())
                 .setWithPayload(enable(true));
             if (wrapper.getVector() != null) {
-                query.setQuery(nearest(VectorUtil.toFloatArray(wrapper.getVector())));
+                query.setQuery(nearest(wrapper.getVector()));
             }
             if (StringUtil.hasText(wrapper.getText())) {
                 query.setFilter(Filter.newBuilder().addMust(matchKeyword("content", wrapper.getText())));
@@ -175,7 +170,7 @@ public class QdrantVectorStore extends DocumentStore {
             for (ScoredPoint point : data) {
                 Document doc = new Document();
                 doc.setId(point.getId().getNum());
-                doc.setVector(VectorUtil.convertToVector(point.getVectors().getVector().getDataList()));
+                doc.setVector(point.getVectors().getVector().getDataList());
                 doc.setContent(point.getPayloadMap().get("content").getStringValue());
                 documents.add(doc);
             }

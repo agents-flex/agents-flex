@@ -16,6 +16,7 @@
 package com.agentsflex.core.message;
 
 import com.agentsflex.core.util.Copyable;
+import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson2.JSON;
 
 import java.io.Serializable;
@@ -25,15 +26,15 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
 
     private String id;
     private String name;
-    private String argsString;
+    private String arguments;
 
     public ToolCall() {
     }
 
-    public ToolCall(String id, String name, String argsString) {
+    public ToolCall(String id, String name, String arguments) {
         this.id = id;
         this.name = name;
-        this.argsString = argsString;
+        this.arguments = arguments;
     }
 
     public String getId() {
@@ -52,20 +53,20 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
         this.name = name;
     }
 
-    public String getArgsString() {
-        return argsString;
+    public String getArguments() {
+        return arguments;
     }
 
-    public void setArgsString(String argsString) {
-        this.argsString = argsString;
+    public void setArguments(String arguments) {
+        this.arguments = arguments;
     }
 
     public Map<String, Object> getArgsMap() {
-        if (argsString == null || argsString.isEmpty()) {
+        if (arguments == null || arguments.isEmpty()) {
             return null;
         }
         try {
-            String jsonStr = argsString.trim();
+            String jsonStr = arguments.trim();
             if (!jsonStr.startsWith("{")) jsonStr = "{" + jsonStr;
             if (!jsonStr.endsWith("}")) jsonStr = jsonStr + "}";
             return JSON.parseObject(jsonStr);
@@ -79,8 +80,15 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
         return "ToolCall{" +
             "id='" + id + '\'' +
             ", name='" + name + '\'' +
-            ", argsString='" + argsString + '\'' +
+            ", arguments='" + arguments + '\'' +
             '}';
+    }
+
+    public String toJsonString() {
+        return Maps.of("id", id)
+            .set("name", name)
+            .set("arguments", arguments)
+            .toJSON();
     }
 
     /**
@@ -93,7 +101,7 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
         ToolCall copy = new ToolCall();
         copy.id = this.id;
         copy.name = this.name;
-        copy.argsString = this.argsString;
+        copy.arguments = this.arguments;
         return copy;
     }
 }

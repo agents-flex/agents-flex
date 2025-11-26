@@ -20,7 +20,6 @@ import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
-import com.agentsflex.core.util.VectorUtil;
 import io.github.javpower.vectorexclient.VectorRexClient;
 import io.github.javpower.vectorexclient.builder.QueryBuilder;
 import io.github.javpower.vectorexclient.entity.MetricType;
@@ -43,32 +42,32 @@ public class VectoRexStore extends DocumentStore {
     private final VectoRexStoreConfig config;
     private final VectorRexClient client;
     private final String defaultCollectionName;
-    private boolean isCreateCollection=false;
+    private boolean isCreateCollection = false;
     private static final Logger logger = LoggerFactory.getLogger(VectoRexStore.class);
 
     public VectoRexStore(VectoRexStoreConfig config) {
         this.config = config;
-        this.defaultCollectionName=config.getDefaultCollectionName();
-        this.client = new VectorRexClient(config.getUri(),config.getUsername(),config.getPassword());
+        this.defaultCollectionName = config.getDefaultCollectionName();
+        this.client = new VectorRexClient(config.getUri(), config.getUsername(), config.getPassword());
     }
 
     @Override
     public StoreResult doStore(List<Document> documents, StoreOptions options) {
-        List<Map<String, Object>> data=new ArrayList<>();
+        List<Map<String, Object>> data = new ArrayList<>();
         for (Document doc : documents) {
-            Map<String, Object> dict=new HashMap<>();
-            dict.put("id",String.valueOf(doc.getId()));
+            Map<String, Object> dict = new HashMap<>();
+            dict.put("id", String.valueOf(doc.getId()));
             dict.put("content", doc.getContent());
-            dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
+            dict.put("vector", doc.getVectorAsList());
             data.add(dict);
         }
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        if(config.isAutoCreateCollection()&&!isCreateCollection){
+        if (config.isAutoCreateCollection() && !isCreateCollection) {
             ServerResponse<List<VectoRexEntity>> collections = client.getCollections();
             if (collections.getData() == null || collections.getData().stream().noneMatch(e -> e.getCollectionName().equals(collectionName))) {
                 createCollection(collectionName);
-            }else {
-                isCreateCollection=true;
+            } else {
+                isCreateCollection = true;
             }
         }
         for (Map<String, Object> map : data) {
@@ -107,8 +106,9 @@ public class VectoRexStore extends DocumentStore {
 
     @Override
     public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
-        ServerResponse<List<VectorSearchResult>> response = client.queryCollectionData(QueryBuilder.lambda(options.getCollectionNameOrDefault(defaultCollectionName)).vector("vector", Collections.singletonList(VectorUtil.toFloatList(searchWrapper.getVector()))).topK(searchWrapper.getMaxResults()));
-        if(!response.isSuccess()){
+        ServerResponse<List<VectorSearchResult>> response = client.queryCollectionData(QueryBuilder.lambda(options.getCollectionNameOrDefault(defaultCollectionName))
+            .vector("vector", Collections.singletonList(searchWrapper.getVectorAsList())).topK(searchWrapper.getMaxResults()));
+        if (!response.isSuccess()) {
             logger.error("Error searching in VectoRex", response.getMsg());
             return Collections.emptyList();
         }
@@ -117,13 +117,13 @@ public class VectoRexStore extends DocumentStore {
         for (VectorSearchResult result : data) {
             DbData dd = result.getData();
             Map<String, Object> metadata = dd.getMetadata();
-            Document doc=new Document();
+            Document doc = new Document();
             doc.setId(result.getId());
             doc.setContent((String) metadata.get("content"));
             Object vectorObj = metadata.get("vector");
             if (vectorObj instanceof List) {
                 //noinspection unchecked
-                doc.setVector(VectorUtil.convertToVector((List<Float>) vectorObj));
+                doc.setVector((List<Float>) vectorObj);
             }
             documents.add(doc);
         }
@@ -135,12 +135,12 @@ public class VectoRexStore extends DocumentStore {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.success();
         }
-        List<Map<String, Object>> data=new ArrayList<>();
+        List<Map<String, Object>> data = new ArrayList<>();
         for (Document doc : documents) {
-            Map<String, Object> dict=new HashMap<>();
-            dict.put("id",String.valueOf(doc.getId()));
+            Map<String, Object> dict = new HashMap<>();
+            dict.put("id", String.valueOf(doc.getId()));
             dict.put("content", doc.getContent());
-            dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
+            dict.put("vector", doc.getVectorAsList());
             data.add(dict);
         }
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);

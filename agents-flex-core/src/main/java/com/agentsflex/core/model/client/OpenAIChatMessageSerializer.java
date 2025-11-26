@@ -98,7 +98,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
             toolCall.set("id", call.getId())
                 .set("type", "function")
                 .set("function", Maps.of("name", call.getName())
-                    .set("arguments", call.getArgsString())
+                    .set("arguments", call.getArguments())
                 );
             toolCalls.add(toolCall);
         }

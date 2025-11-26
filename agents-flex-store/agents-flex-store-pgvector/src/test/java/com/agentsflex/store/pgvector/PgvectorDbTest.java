@@ -28,8 +28,8 @@ public class PgvectorDbTest {
         PgvectorVectorStore store = new PgvectorVectorStore(config);
         Document doc = new Document("测试数据");
         // 初始化 vector 为长度为 1024 的全是 1 的数组
-        double[] vector = new double[1024];
-        Arrays.fill(vector, 1.0);
+        float[] vector = new float[1024];
+        Arrays.fill(vector, 1.0f);
 
         doc.setVector(vector);
         doc.setMetadataMap(Maps.of("test", "test"));
@@ -54,8 +54,8 @@ public class PgvectorDbTest {
         for (int i = 0; i < 100; i++) {
             Document doc = new Document("测试数据" + i);
             // 初始化 vector 为长度为 1024 的全是 1 的数组
-            double[] vector = new double[1024];
-            Arrays.fill(vector, Math.random());
+            float[] vector = new float[1024];
+            Arrays.fill(vector, (float) Math.random());
 
             doc.setVector(vector);
             doc.setMetadataMap(Maps.of("test", "test" + i));
@@ -79,8 +79,8 @@ public class PgvectorDbTest {
         config.setDefaultCollectionName("test");
         PgvectorVectorStore store = new PgvectorVectorStore(config);
 
-        double[] vector = new double[1024];
-        Arrays.fill(vector, 1.0);
+        float[] vector = new float[1024];
+        Arrays.fill(vector, 1.0f);
 
         SearchWrapper searchWrapper = new SearchWrapper().text("测试数据");
         searchWrapper.setVector(vector);
@@ -107,8 +107,8 @@ public class PgvectorDbTest {
         Document document = new Document("测试数据");
         document.setId("145314895749100ae8306079519b3393");
         document.setMetadataMap(Maps.of("test", "test0"));
-        double[] vector = new double[1024];
-        Arrays.fill(vector, 1.1);
+        float[] vector = new float[1024];
+        Arrays.fill(vector, 1.1f);
         document.setVector(vector);
         StoreResult update = store.update(document);
         System.out.println(update);

@@ -45,7 +45,7 @@ public class ElasticSearchVectorStoreTest {
             @Override
             public VectorData embed(Document document, EmbeddingOptions options) {
                 VectorData vectorData = new VectorData();
-                vectorData.setVector(new double[]{0, 0});
+                vectorData.setVector(new float[]{0, 0});
                 return vectorData;
             }
         });
@@ -61,33 +61,33 @@ public class ElasticSearchVectorStoreTest {
         Document doc1 = new Document();
         doc1.setId(1);
         doc1.setContent("test1");
-        doc1.setVector(new double[]{5.2, 4.4});
+        doc1.setVector(new float[]{5.2f, 4.4f});
         list.add(doc1);
         Document doc2 = new Document();
         doc2.setId(2);
         doc2.setContent("test2");
-        doc2.setVector(new double[]{5.2, 3.9});
+        doc2.setVector(new float[]{5.2f, 3.9f});
         list.add(doc2);
         Document doc3 = new Document();
         doc3.setId(3);
         doc3.setContent("test3");
-        doc3.setVector(new double[]{4.9, 3.4});
+        doc3.setVector(new float[]{4.9f, 3.4f});
         list.add(doc3);
         Document doc4 = new Document();
         doc4.setId(4);
         doc4.setContent("test4");
-        doc4.setVector(new double[]{4.2, 4.6});
+        doc4.setVector(new float[]{4.2f, 4.6f});
         list.add(doc4);
         Document doc5 = new Document();
         doc5.setId(5);
         doc5.setContent("test5");
-        doc5.setVector(new double[]{3.3, 4.5});
+        doc5.setVector(new float[]{3.3f, 4.5f});
         list.add(doc5);
         store.doStore(list, StoreOptions.DEFAULT);
 
         // 可能要等一会 才能查出结果
         SearchWrapper searchWrapper = new SearchWrapper();
-        searchWrapper.setVector(new double[]{5, 4});
+        searchWrapper.setVector(new float[]{5, 4});
         searchWrapper.setMaxResults(3);
         List<Document> documents = store.doSearch(searchWrapper, StoreOptions.DEFAULT);
         for (Document document : documents) {

@@ -17,24 +17,90 @@ package com.agentsflex.core.store;
 
 import com.agentsflex.core.util.Metadata;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 
 public class VectorData extends Metadata {
 
-    private double[] vector;
+    private float[] vector;
 
     /**
      * 0 ~ 1, 数值越大，相似度越高
      */
     private Double score;
 
-    public double[] getVector() {
+    public float[] getVector() {
         return vector;
     }
 
-    public void setVector(double[] vector) {
+    public List<Float> getVectorAsList() {
+        if (vector == null) {
+            return null;
+        }
+        List<Float> result = new ArrayList<>(vector.length);
+        for (float v : vector) {
+            result.add(v);
+        }
+        return result;
+    }
+
+    public List<Double> getVectorAsDoubleList() {
+        if (vector == null) {
+            return null;
+        }
+        List<Double> result = new ArrayList<>(vector.length);
+        for (float v : vector) {
+            result.add((double) v);
+        }
+        return result;
+    }
+
+    public double[] getVectorAsDoubleArray() {
+        if (vector == null) {
+            return null;
+        }
+        double[] result = new double[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            result[i] = vector[i];
+        }
+        return result;
+    }
+
+
+    public void setVector(float[] vector) {
         this.vector = vector;
+    }
+
+    public void setVector(Float[] vector) {
+        this.vector = new float[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            this.vector[i] = vector[i];
+        }
+    }
+
+    public void setVector(double[] vector) {
+        this.vector = new float[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            this.vector[i] = (float) vector[i];
+        }
+    }
+
+    public void setVector(Double[] vector) {
+        this.vector = new float[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            this.vector[i] = vector[i].floatValue();
+        }
+    }
+
+    public void setVector(Collection<? extends Number> vector) {
+        this.vector = new float[vector.size()];
+        int index = 0;
+        for (Number num : vector) {
+            this.vector[index++] = num.floatValue();
+        }
     }
 
     public Double getScore() {

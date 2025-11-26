@@ -369,9 +369,9 @@ public class ChromaVectorStoreTest {
             doc.setTitle("Test Document " + i);
 
             // 创建一个简单的向量，向量维度为10
-            double[] vector = new double[10];
+            float[] vector = new float[10];
             for (int j = 0; j < vector.length; j++) {
-                vector[j] = i + j * 0.1;
+                vector[j] = i + j * 0.1f;
             }
             doc.setVector(vector);
 

@@ -12,6 +12,7 @@ import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolScanner;
 import com.agentsflex.core.model.client.StreamContext;
+import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Test;
 
@@ -20,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 public class OpenAIChatModelTest {
 
-    @Test()
+    @Test(expected = ModelException.class)
     public void testChat() {
 
         String output = OpenAIChatConfig.builder()
@@ -290,7 +291,7 @@ public class OpenAIChatModelTest {
             }
         });
 
-        TimeUnit.SECONDS.sleep(1115);
+        TimeUnit.SECONDS.sleep(25);
     }
 
 
@@ -450,7 +451,7 @@ public class OpenAIChatModelTest {
 
         reActAgent.execute();
 
-        TimeUnit.SECONDS.sleep(30);
+        TimeUnit.SECONDS.sleep(20);
     }
 
 

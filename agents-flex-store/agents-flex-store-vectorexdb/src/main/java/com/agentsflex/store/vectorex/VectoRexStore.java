@@ -21,7 +21,6 @@ import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.CollectionUtil;
-import com.agentsflex.core.util.VectorUtil;
 import com.google.common.collect.Lists;
 import io.github.javpower.vectorex.keynote.core.DbData;
 import io.github.javpower.vectorex.keynote.core.VectorData;
@@ -54,11 +53,11 @@ public class VectoRexStore extends DocumentStore {
             Map<String, Object> dict=new HashMap<>();
             dict.put("id",String.valueOf(doc.getId()));
             dict.put("content", doc.getContent());
-            dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
+            dict.put("vector", doc.getVector());
             DbData dbData=new DbData();
             dbData.setId(String.valueOf(doc.getId()));
             dbData.setMetadata(dict);
-            VectorData vd=new VectorData(dbData.getId(),VectorUtil.toFloatArray(doc.getVector()));
+            VectorData vd=new VectorData(dbData.getId(),doc.getVector());
             vd.setName("vector");
             dbData.setVectorFiled(Lists.newArrayList(vd));
             data.add(dbData);
@@ -111,7 +110,7 @@ public class VectoRexStore extends DocumentStore {
 
     @Override
     public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
-        List<VectorSearchResult> data = client.getStore(options.getCollectionNameOrDefault(defaultCollectionName)).search("vector", VectorUtil.toFloatList(searchWrapper.getVector()), searchWrapper.getMaxResults(), null);
+        List<VectorSearchResult> data = client.getStore(options.getCollectionNameOrDefault(defaultCollectionName)).search("vector", searchWrapper.getVectorAsList(), searchWrapper.getMaxResults(), null);
         List<Document> documents = new ArrayList<>();
         for (VectorSearchResult result : data) {
             DbData dd = result.getData();
@@ -122,7 +121,7 @@ public class VectoRexStore extends DocumentStore {
             Object vectorObj = metadata.get("vector");
             if (vectorObj instanceof List) {
                 //noinspection unchecked
-                doc.setVector(VectorUtil.convertToVector((List<Float>) vectorObj));
+                doc.setVector((List<Float>) vectorObj);
             }
             documents.add(doc);
         }
@@ -138,11 +137,11 @@ public class VectoRexStore extends DocumentStore {
             Map<String, Object> dict=new HashMap<>();
             dict.put("id",String.valueOf(doc.getId()));
             dict.put("content", doc.getContent());
-            dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
+            dict.put("vector", doc.getVector());
             DbData dbData=new DbData();
             dbData.setId(String.valueOf(doc.getId()));
             dbData.setMetadata(dict);
-            VectorData vd=new VectorData(dbData.getId(),VectorUtil.toFloatArray(doc.getVector()));
+            VectorData vd=new VectorData(dbData.getId(),doc.getVector());
             vd.setName("vector");
             dbData.setVectorFiled(Lists.newArrayList(vd));
             client.getStore(options.getCollectionNameOrDefault(defaultCollectionName)).update(dbData);

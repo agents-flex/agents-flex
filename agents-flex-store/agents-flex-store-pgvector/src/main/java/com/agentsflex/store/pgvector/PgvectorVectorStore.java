@@ -88,7 +88,7 @@ public class PgvectorVectorStore extends DocumentStore {
                 JSONObject jsonObject = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
                 pstmt.setString(1, String.valueOf(doc.getId()));
                 pstmt.setString(2, doc.getContent());
-                pstmt.setObject(3, PgvectorUtil.toPgVector(doc.getVector()));
+                pstmt.setObject(3, PgvectorUtil.toPgVector(doc.getVectorAsDoubleArray()));
                 pstmt.setString(4, jsonObject.toString());
                 pstmt.addBatch();
             }
@@ -171,7 +171,7 @@ public class PgvectorVectorStore extends DocumentStore {
             // 使用余弦距离计算最相似的文档
             PreparedStatement stmt = connection.prepareStatement(sql.toString());
 
-            PGobject vector = PgvectorUtil.toPgVector(searchWrapper.getVector());
+            PGobject vector = PgvectorUtil.toPgVector(searchWrapper.getVectorAsDoubleArray());
             stmt.setObject(1, vector);
             stmt.setObject(2, Optional.ofNullable(searchWrapper.getMinScore()).orElse(DEFAULT_SIMILARITY_THRESHOLD));
             stmt.setObject(3, vector);
@@ -214,7 +214,7 @@ public class PgvectorVectorStore extends DocumentStore {
                 Map<String, Object> metadatas = doc.getMetadataMap();
                 JSONObject metadataJson = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
                 pstmt.setString(1, doc.getContent());
-                pstmt.setObject(2, PgvectorUtil.toPgVector(doc.getVector()));
+                pstmt.setObject(2, PgvectorUtil.toPgVector(doc.getVectorAsDoubleArray()));
                 pstmt.setString(3, metadataJson.toString());
                 pstmt.setString(4, String.valueOf(doc.getId()));
                 pstmt.addBatch();

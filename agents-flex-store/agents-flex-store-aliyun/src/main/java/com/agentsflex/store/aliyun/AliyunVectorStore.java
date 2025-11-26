@@ -197,7 +197,7 @@ public class AliyunVectorStore extends DocumentStore {
             JSONObject jsonObject = output.getJSONObject(i);
             Document document = new Document();
             document.setId(jsonObject.getString("id"));
-            document.setVector(jsonObject.getObject("vector", double[].class));
+            document.setVector(jsonObject.getObject("vector", float[].class));
             // 阿里云数据采用余弦相似度计算 jsonObject.getDoubleValue("score") 表示余弦距离，
             // 原始余弦距离范围是[0, 2]，0表示最相似，2表示最不相似
             Double distance = jsonObject.getDouble("score");

@@ -251,9 +251,9 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
                     toolCall.setName(functionObject.getString("name"));
                     Object arguments = functionObject.get("arguments");
                     if (arguments instanceof Map) {
-                        toolCall.setArgsString(JSON.toJSONString(arguments));
+                        toolCall.setArguments(JSON.toJSONString(arguments));
                     } else if (arguments instanceof String) {
-                        toolCall.setArgsString((String) arguments);
+                        toolCall.setArguments((String) arguments);
                     }
                     toolInfos.add(toolCall);
                 }

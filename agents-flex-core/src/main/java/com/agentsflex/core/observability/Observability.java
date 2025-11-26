@@ -35,6 +35,8 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +46,8 @@ import java.util.concurrent.TimeUnit;
  * 支持 Tracing（链路追踪）和 Metrics（指标）。
  */
 public final class Observability {
+    private static final Logger logger = LoggerFactory.getLogger(Observability.class);
+
 
     // === Tracing 相关 ===
     private static volatile Tracer globalTracer;
@@ -61,7 +65,21 @@ public final class Observability {
     private static volatile Boolean observabilityEnabled;
     private static volatile java.util.Set<String> excludedTools;
 
+
+    // === 自定义 Exporter 支持 ===
+    private static volatile SpanExporter customSpanExporter;
+    private static volatile MetricExporter customMetricExporter;
+
+
     private Observability() {
+    }
+
+    /**
+     * 注入自定义 Exporter
+     */
+    public static void setCustomExporters(SpanExporter spanExporter, MetricExporter metricExporter) {
+        customSpanExporter = spanExporter;
+        customMetricExporter = metricExporter;
     }
 
     private static void init() {
@@ -82,7 +100,7 @@ public final class Observability {
 
 
                 // 1. 创建 Span 相关组件
-                SpanExporter spanExporter = createSpanExporter();
+                SpanExporter spanExporter = customSpanExporter != null ? customSpanExporter : createSpanExporter();
                 SpanProcessor spanProcessor = createSpanProcessor(spanExporter);
                 tracerProvider = SdkTracerProvider.builder()
                     .addSpanProcessor(spanProcessor)
@@ -90,7 +108,7 @@ public final class Observability {
                     .build();
 
                 // 2. 创建 Metric 相关组件
-                MetricExporter metricExporter = createMetricExporter();
+                MetricExporter metricExporter = customMetricExporter != null ? customMetricExporter : createMetricExporter();
                 meterProvider = SdkMeterProvider.builder()
                     .registerMetricReader(PeriodicMetricReader.builder(metricExporter)
                         .setInterval(Duration.ofSeconds(getMetricExportIntervalSeconds())) // 默认每60秒导出一次
@@ -200,8 +218,19 @@ public final class Observability {
             case "otlp":
                 return OtlpGrpcSpanExporter.getDefault();
             case "logging":
-            default:
                 return LoggingSpanExporter.create();
+            default:
+                return createSpanExporterByClassName(exporterType);
+        }
+    }
+
+    private static SpanExporter createSpanExporterByClassName(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            return (SpanExporter) clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            logger.warn("Failed to create MetricExporter by className: " + className + ", use LoggingSpanExporter to replaced", e);
+            return LoggingSpanExporter.create();
         }
     }
 
@@ -225,8 +254,19 @@ public final class Observability {
             case "otlp":
                 return OtlpGrpcMetricExporter.getDefault();
             case "logging":
-            default:
                 return LoggingMetricExporter.create();
+            default:
+                return createMetricExporterByClassName(exporterType);
+        }
+    }
+
+    public static MetricExporter createMetricExporterByClassName(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            return (MetricExporter) clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            logger.warn("Failed to create MetricExporter by className: " + className + ", use LoggingMetricExporter to replaced", e);
+            return LoggingMetricExporter.create();
         }
     }
 

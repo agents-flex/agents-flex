@@ -265,9 +265,7 @@ public class ChromaVectorStore extends DocumentStore {
                 ids.add(String.valueOf(doc.getId()));
 
                 if (doc.getVector() != null) {
-                    List<Double> embedding = Arrays.stream(doc.getVector())
-                            .boxed()
-                            .collect(Collectors.toList());
+                    List<Double> embedding = doc.getVectorAsDoubleList();
                     embeddings.add(embedding);
                 } else {
                     embeddings.add(null);
@@ -433,9 +431,7 @@ public class ChromaVectorStore extends DocumentStore {
 
             // 设置查询向量
             if (wrapper.getVector() != null) {
-                List<Double> queryEmbedding = Arrays.stream(wrapper.getVector())
-                        .boxed()
-                        .collect(Collectors.toList());
+                List<Double> queryEmbedding = wrapper.getVectorAsDoubleList();
                 requestBody.put("query_embeddings", Collections.singletonList(queryEmbedding));
                 logger.debug("Performing vector search with dimension: {}", queryEmbedding.size());
             } else if (wrapper.getText() != null) {
@@ -453,10 +449,10 @@ public class ChromaVectorStore extends DocumentStore {
                     // Chroma的where条件是JSON对象，需要解析
                     Object whereObj = parseJsonResponse(whereClause);
 
-            Map<String, Object> whereMap = null;
-            if (whereObj instanceof Map) {
-                whereMap = (Map<String, Object>) whereObj;
-            }
+                    Map<String, Object> whereMap = null;
+                    if (whereObj instanceof Map) {
+                        whereMap = (Map<String, Object>) whereObj;
+                    }
                     requestBody.put("where", whereMap);
                     logger.debug("Search with filter condition: {}", whereClause);
                 } catch (Exception e) {
@@ -521,8 +517,8 @@ public class ChromaVectorStore extends DocumentStore {
 
             // 设置查询向量
             List<Double> queryEmbedding = Arrays.stream(vector)
-                    .boxed()
-                    .collect(Collectors.toList());
+                .boxed()
+                .collect(Collectors.toList());
             requestBody.put("query_embeddings", Collections.singletonList(queryEmbedding));
 
             // 设置返回数量
@@ -594,8 +590,7 @@ public class ChromaVectorStore extends DocumentStore {
                 }
 
                 if (embeddings != null && i < embeddings.size() && embeddings.get(i) != null) {
-                    double[] vector = embeddings.get(i).stream().mapToDouble(Double::doubleValue).toArray();
-                    doc.setVector(vector);
+                    doc.setVector(embeddings.get(i));
                 }
 
                 // 设置相似度分数（距离越小越相似）

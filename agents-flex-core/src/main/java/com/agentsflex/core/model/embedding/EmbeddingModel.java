@@ -36,7 +36,7 @@ public interface EmbeddingModel {
         if (vectorData == null) {
             throw new ModelException("Embedding model does not contain vector data, maybe config is not correct.");
         }
-        double[] vector = vectorData.getVector();
+        float[] vector = vectorData.getVector();
         if (vector == null || vector.length == 0) {
             throw new ModelException("Embedding model does not contain vector data, maybe config is not correct.");
         }

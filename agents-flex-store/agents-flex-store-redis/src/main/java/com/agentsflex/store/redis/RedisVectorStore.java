@@ -185,8 +185,8 @@ public class RedisVectorStore extends DocumentStore {
         // 创建查询向量
         byte[] vectorBytes = new byte[wrapper.getVector().length * 4];
         FloatBuffer floatBuffer = ByteBuffer.wrap(vectorBytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
-        for (Double v : wrapper.getVector()) {
-            floatBuffer.put(v.floatValue());
+        for (Float v : wrapper.getVector()) {
+            floatBuffer.put(v);
         }
 
 
@@ -220,7 +220,7 @@ public class RedisVectorStore extends DocumentStore {
             doc.setContent(document.getString("text"));
             Object vector = document.get("vector");
             if (vector != null) {
-                double[] doubles = JSON.parseObject(vector.toString(), double[].class);
+                float[] doubles = JSON.parseObject(vector.toString(), float[].class);
                 doc.setVector(doubles);
             }
 

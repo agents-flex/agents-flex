@@ -102,11 +102,11 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
     }
 
     private void mergeSingleCall(ToolCall existing, ToolCall delta) {
-        if (delta.getArgsString() != null) {
-            if (existing.getArgsString() == null) {
-                existing.setArgsString("");
+        if (delta.getArguments() != null) {
+            if (existing.getArguments() == null) {
+                existing.setArguments("");
             }
-            existing.setArgsString(existing.getArgsString() + delta.getArgsString());
+            existing.setArguments(existing.getArguments() + delta.getArguments());
         }
         if (delta.getId() != null) {
             existing.setId(delta.getId());

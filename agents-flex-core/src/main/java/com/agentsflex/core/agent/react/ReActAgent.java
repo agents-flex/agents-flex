@@ -384,7 +384,7 @@ public class ReActAgent implements IAgent {
                             ToolCall toolCall = new ToolCall();
                             toolCall.setId("react_call_" + state.iterationCount + "_" + System.currentTimeMillis());
                             toolCall.setName(step.getAction());
-                            toolCall.setArgsString(step.getActionInput());
+                            toolCall.setArguments(step.getActionInput());
 
                             ToolExecutor executor = new ToolExecutor(tool, toolCall, toolInterceptors);
 

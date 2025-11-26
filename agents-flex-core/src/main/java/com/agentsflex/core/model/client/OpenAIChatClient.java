@@ -83,9 +83,10 @@ public class OpenAIChatClient extends ChatClient {
         HttpClient httpClient = getHttpClient();
         ChatRequestSpec requestSpec = context.getRequestSpec();
 
-        String response = Retryer.retry(() -> httpClient.post(requestSpec.getUrl(),
+        String response = requestSpec.getRetryCount() > 0 ? Retryer.retry(() -> httpClient.post(requestSpec.getUrl(),
             requestSpec.getHeaders(),
-            requestSpec.getBody()), requestSpec.getRetryCount(), requestSpec.getRetryInitialDelayMs());
+            requestSpec.getBody()), requestSpec.getRetryCount(), requestSpec.getRetryInitialDelayMs())
+            : httpClient.post(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody());
 
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(context, response, "no content for response.");
@@ -125,10 +126,15 @@ public class OpenAIChatClient extends ChatClient {
         );
 
         ChatRequestSpec requestSpec = context.getRequestSpec();
-        Retryer.retry(() -> streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody()
-                , clientListener, chatModel.getConfig())
-            , requestSpec.getRetryCount()
-            , requestSpec.getRetryInitialDelayMs());
+        if (requestSpec.getRetryCount() > 0) {
+            Retryer.retry(() -> streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody()
+                    , clientListener, chatModel.getConfig())
+                , requestSpec.getRetryCount()
+                , requestSpec.getRetryInitialDelayMs());
+        } else {
+            streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody()
+                , clientListener, chatModel.getConfig());
+        }
     }
 
 

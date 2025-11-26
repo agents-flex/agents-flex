@@ -9,7 +9,6 @@ import org.junit.Test;
 public class GiteeAiImageTest {
 
 
-
     @NotNull
     private static OpenAIChatConfig getOpenAIChatConfig() {
         OpenAIChatConfig config = new OpenAIChatConfig();
@@ -22,7 +21,7 @@ public class GiteeAiImageTest {
     }
 
     @Test
-    public  void testImage()  {
+    public void testImage() {
         OpenAIChatConfig config = getOpenAIChatConfig();
         ChatModel chatModel = new OpenAIChatModel(config);
 
@@ -30,10 +29,13 @@ public class GiteeAiImageTest {
         prompt.addImageUrl("http://www.codeformat.cn/static/images/logo.png");
 
         AiMessageResponse response = chatModel.chat(prompt);
-        System.out.println(response.getMessage().getContent());
+        if (!response.isError()) {
+            System.out.println(response.getMessage().getContent());
+        }
     }
+
     @Test
-    public  void testChat()  {
+    public void testChat() {
         OpenAIChatConfig config = getOpenAIChatConfig();
         config.setSupportImage(false);
         ChatModel chatModel = new OpenAIChatModel(config);
@@ -42,7 +44,10 @@ public class GiteeAiImageTest {
         prompt.addImageUrl("http://www.codeformat.cn/static/images/logo.png");
 
         AiMessageResponse response = chatModel.chat(prompt);
-        System.out.println(response.getMessage().getContent());
+        if (!response.isError()) {
+            System.out.println(response.getMessage().getContent());
+        }
+
     }
 
 }
