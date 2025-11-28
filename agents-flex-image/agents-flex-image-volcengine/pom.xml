@@ -46,7 +46,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>999.0.0-HEAD-jre-SNAPSHOT</version>
+            <version>33.5.0-jre</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
