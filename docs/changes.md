@@ -1,5 +1,8 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-beta.2 20251202
+- 修复：修复 Maven 依赖异常，更新版本号，感谢 @jieven
+
 ## v2.0.0-beta.1 20251126
 - 移除 Chain 模块，合并到 Tinyflow
 - 移除 documentParser 模块
