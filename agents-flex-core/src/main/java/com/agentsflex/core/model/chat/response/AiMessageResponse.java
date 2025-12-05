@@ -86,11 +86,11 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
         for (ToolCall call : calls) {
             Tool tool = funcMap.get(call.getName());
             if (tool != null) {
-                ToolExecutor invoker = new ToolExecutor(tool, call);
+                ToolExecutor executor = new ToolExecutor(tool, call);
                 if (interceptors != null && interceptors.length > 0) {
-                    invoker.addInterceptors(Arrays.asList(interceptors));
+                    executor.addInterceptors(Arrays.asList(interceptors));
                 }
-                toolExecutors.add(invoker);
+                toolExecutors.add(executor);
             }
         }
         return toolExecutors;
