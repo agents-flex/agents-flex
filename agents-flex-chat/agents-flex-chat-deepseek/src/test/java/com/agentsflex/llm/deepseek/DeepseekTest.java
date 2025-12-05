@@ -60,7 +60,7 @@ public class DeepseekTest {
                     if (StringUtil.hasText(response.getMessage().getContent())) {
                         System.out.print(response.getMessage().getContent());
                     }
-                    if (response.getMessage().isLastMessage()) {
+                    if (response.getMessage().isFinalDelta()) {
                         System.out.println(response);
                         System.out.println("------");
                     }

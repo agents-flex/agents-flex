@@ -292,11 +292,18 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
         this.finished = finished;
     }
 
-    public boolean isLastMessage() {
+
+    /**
+     * 判断当前对象是否为最终的 delta 对象。
+     *
+     * @return true 表示当前对象为最终的 delta 对象，否则为 false
+     */
+    public boolean isFinalDelta() {
         return (finished != null && finished)
             || StringUtil.hasText(this.finishReason)
             || StringUtil.hasText(this.stopReason);
     }
+
 
     @Override
     public String toString() {
@@ -309,11 +316,12 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
             ", localCompletionTokens=" + localCompletionTokens +
             ", localTotalTokens=" + localTotalTokens +
             ", reasoningContent='" + reasoningContent + '\'' +
-            ", calls=" + toolCalls +
+            ", toolCalls=" + toolCalls +
             ", fullContent='" + fullContent + '\'' +
             ", fullReasoningContent='" + fullReasoningContent + '\'' +
             ", finishReason='" + finishReason + '\'' +
             ", stopReason='" + stopReason + '\'' +
+            ", finished=" + finished +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';

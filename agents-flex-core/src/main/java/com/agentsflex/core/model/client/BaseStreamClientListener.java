@@ -65,13 +65,13 @@ public class BaseStreamClientListener implements StreamClientListener {
         try {
             JSONObject jsonObject = JSON.parseObject(response);
             AiMessage delta = messageParser.parse(jsonObject, chatContext);
-            fullMessage.merge(delta); //核心：一行合并所有增量
+            fullMessage.merge(delta); //合并所有增量
 
             delta.setFullContent(fullMessage.getContent());
             delta.setFullReasoningContent(fullMessage.getReasoningContent());
 
             //最后 1 条消息
-            if (delta.isLastMessage()) {
+            if (delta.isFinalDelta()) {
                 if (finishedFlag.compareAndSet(false, true)) {
                     notifyLastMessageAndStop(response);
                 }
