@@ -164,7 +164,7 @@ public class ChatOptions {
     }
 
     public void setTemperature(Float temperature) {
-        if (temperature < 0) {
+        if (temperature != null && temperature < 0) {
             throw new IllegalArgumentException("temperature must be greater than 0");
         }
         this.temperature = temperature;
@@ -175,7 +175,7 @@ public class ChatOptions {
     }
 
     public void setTopP(Float topP) {
-        if (topP < 0 || topP > 1) {
+        if (topP != null && (topP < 0 || topP > 1)) {
             throw new IllegalArgumentException("topP must be between 0 and 1");
         }
         this.topP = topP;
@@ -186,7 +186,7 @@ public class ChatOptions {
     }
 
     public void setTopK(Integer topK) {
-        if (topK < 0) {
+        if (topK != null && topK < 0) {
             throw new IllegalArgumentException("topK must be greater than 0");
         }
         this.topK = topK;
@@ -197,7 +197,7 @@ public class ChatOptions {
     }
 
     public void setMaxTokens(Integer maxTokens) {
-        if (maxTokens < 0) {
+        if (maxTokens != null && maxTokens < 0) {
             throw new IllegalArgumentException("maxTokens must be greater than 0");
         }
         this.maxTokens = maxTokens;
