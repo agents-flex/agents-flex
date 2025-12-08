@@ -123,6 +123,22 @@
         <!--chatModel end-->
 
 
+        <!--embedding start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-embedding-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-embedding-ollama</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-embedding-qwen</artifactId>
+        </dependency>
+        <!--embedding end-->
+
+
         <!--rerank start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
