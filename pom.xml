@@ -264,6 +264,25 @@
             </dependency>
             <!-- rerank end -->
 
+            <!--embedding start-->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-embedding-openai</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-embedding-qwen</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-embedding-ollama</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!--embedding end-->
 
             <!--store start-->
             <dependency>
