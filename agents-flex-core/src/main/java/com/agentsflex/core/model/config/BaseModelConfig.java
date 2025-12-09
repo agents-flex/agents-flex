@@ -65,6 +65,7 @@ public class BaseModelConfig implements Serializable {
     }
 
     public void setModel(String model) {
+        if (model != null) model = model.trim();
         this.model = model;
     }
 

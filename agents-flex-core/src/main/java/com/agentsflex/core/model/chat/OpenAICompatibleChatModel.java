@@ -48,7 +48,7 @@ public class OpenAICompatibleChatModel<T extends ChatConfig> extends BaseChatMod
     @Override
     public ChatClient getChatClient() {
         if (this.chatClient == null) {
-            this.chatClient = buildChatClient(ChatContextHolder.currentContext());
+            this.chatClient = buildChatClient();
         }
         return this.chatClient;
     }
@@ -65,7 +65,7 @@ public class OpenAICompatibleChatModel<T extends ChatConfig> extends BaseChatMod
         return new OpenAIChatRequestSpecBuilder();
     }
 
-    protected ChatClient buildChatClient(ChatContext context) {
-        return new OpenAIChatClient(this, context);
+    protected ChatClient buildChatClient() {
+        return new OpenAIChatClient(this);
     }
 }

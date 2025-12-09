@@ -5,6 +5,7 @@ import com.agentsflex.core.agent.react.ReActAgentListener;
 import com.agentsflex.core.agent.react.ReActAgentState;
 import com.agentsflex.core.agent.react.ReActStep;
 import com.agentsflex.core.memory.ChatMemory;
+import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
@@ -212,10 +213,12 @@ public class OpenAIChatModelTest {
     public void testFunctionCalling444() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setLogEnabled(true);
-        config.setEndpoint("https://ark.cn-beijing.volces.com");
-        config.setRequestPath("/api/v3/chat/completions");
-        config.setModel("deepseek-v3-250324");
-        config.setApiKey("2d57");
+        config.setEndpoint("https://ai.gitee.com");
+//        config.setRequestPath("/api/v3/chat/completions");
+//        config.setModel("Qwen3-32B");
+        config.setModel("DeepSeek-V3.2");
+        config.setApiKey("PXW1G***L7D12");
+//        config.setLogEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -226,38 +229,22 @@ public class OpenAIChatModelTest {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
 
-
-//                if (response.isFunctionCall()) {
-//                    List<FunctionCaller> functionCallers = response.getFunctionCallers();
-//                    boolean isEmitter = false;
-//                    boolean isComplete = false;
-//                    for (FunctionCaller functionCaller : functionCallers) {
-//                        Object result = functionCaller.call();
-//                        if (result != null){
-//                            isEmitter = true;
-//                            // sentEmiiter(....)
-//                        }
-////                        if (result == null){
-////                            continue;
-////                        }
-//                        System.out.println(result);
-//                    }
-//
-//
-//                    if (!isEmitter){
-//                        // ......
-//                    }
-//                }
-
-                System.out.println("onMessage >>>>>" + response);
-                if (response.hasToolCalls()) {
+//                System.out.println("onMessage11 >>>>>" + response);
+                if (response.getMessage().isFinalDelta() && response.hasToolCalls()) {
                     System.out.println(":::::::: start....");
-                    prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
+                    List<ToolMessage> toolMessages = response.executeToolCallsAndGetToolMessages();
+                    prompt.setAiMessage(response.getMessage());
+                    prompt.setToolMessages(toolMessages);
                     llm.chatStream(prompt, new StreamResponseListener() {
                         @Override
                         public void onMessage(StreamContext context, AiMessageResponse response) {
                             String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
-                            System.out.println(":::" + msg);
+                            System.out.println(":::22" + msg);
+                        }
+
+                        @Override
+                        public void onStop(StreamContext context) {
+                            System.out.println("onStop >>>>>");
                         }
                     });
                 } else {

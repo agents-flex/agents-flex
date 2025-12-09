@@ -15,10 +15,7 @@
  */
 package com.agentsflex.core.prompt;
 
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.SystemMessage;
-import com.agentsflex.core.message.ToolMessage;
-import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.message.*;
 import com.agentsflex.core.model.chat.tool.Tool;
 
 import java.io.File;
@@ -31,6 +28,7 @@ public class SimplePrompt extends Prompt {
 
     protected SystemMessage systemMessage;
     protected UserMessage userMessage;
+    protected AiMessage aiMessage;
     protected List<ToolMessage> toolMessages;
 
     public SimplePrompt() {
@@ -141,6 +139,14 @@ public class SimplePrompt extends Prompt {
         this.userMessage = userMessage;
     }
 
+    public AiMessage getAiMessage() {
+        return aiMessage;
+    }
+
+    public void setAiMessage(AiMessage aiMessage) {
+        this.aiMessage = aiMessage;
+    }
+
     public List<ToolMessage> getToolMessages() {
         return toolMessages;
     }
@@ -156,6 +162,11 @@ public class SimplePrompt extends Prompt {
             messages.add(systemMessage);
         }
         messages.add(userMessage);
+
+        if (aiMessage != null) {
+            messages.add(aiMessage);
+        }
+
         if (toolMessages != null) {
             messages.addAll(toolMessages);
         }

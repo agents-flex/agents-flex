@@ -18,6 +18,7 @@ package com.agentsflex.core.model.client;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.impl.SseClient;
@@ -37,11 +38,10 @@ import com.alibaba.fastjson2.JSONObject;
 public class OpenAIChatClient extends ChatClient {
 
     protected HttpClient httpClient;
-    protected StreamClient streamClient;
     protected AiMessageParser<JSONObject> aiMessageParser;
 
-    public OpenAIChatClient(BaseChatModel<?> chatModel, ChatContext context) {
-        super(chatModel, context);
+    public OpenAIChatClient(BaseChatModel<?> chatModel) {
+        super(chatModel);
     }
 
     public HttpClient getHttpClient() {
@@ -56,15 +56,10 @@ public class OpenAIChatClient extends ChatClient {
     }
 
     public StreamClient getStreamClient() {
-        if (streamClient == null) {
-            streamClient = new SseClient();
-        }
-        return streamClient;
+        // SseClient 默认实现是每次请求需要新建一个 SseClient 对象，方便进行 stop 调用
+        return new SseClient();
     }
 
-    public void setStreamClient(StreamClient streamClient) {
-        this.streamClient = streamClient;
-    }
 
     public AiMessageParser<JSONObject> getAiMessageParser() {
         if (aiMessageParser == null) {
@@ -81,6 +76,7 @@ public class OpenAIChatClient extends ChatClient {
     @Override
     public AiMessageResponse chat() {
         HttpClient httpClient = getHttpClient();
+        ChatContext context = ChatContextHolder.currentContext();
         ChatRequestSpec requestSpec = context.getRequestSpec();
 
         String response = requestSpec.getRetryCount() > 0 ? Retryer.retry(() -> httpClient.post(requestSpec.getUrl(),
@@ -91,11 +87,11 @@ public class OpenAIChatClient extends ChatClient {
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(context, response, "no content for response.");
         }
-        return parseResponse(response);
+        return parseResponse(response, context);
     }
 
 
-    protected AiMessageResponse parseResponse(String response) {
+    protected AiMessageResponse parseResponse(String response, ChatContext context) {
         JSONObject jsonObject = JSON.parseObject(response);
         JSONObject error = jsonObject.getJSONObject("error");
 
@@ -117,6 +113,7 @@ public class OpenAIChatClient extends ChatClient {
     @Override
     public void chatStream(StreamResponseListener listener) {
         StreamClient streamClient = getStreamClient();
+        ChatContext context = ChatContextHolder.currentContext();
         StreamClientListener clientListener = new BaseStreamClientListener(
             chatModel,
             context,
