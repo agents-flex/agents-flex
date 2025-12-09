@@ -112,10 +112,10 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
             }
             existing.setArguments(existing.getArguments() + delta.getArguments());
         }
-        if (delta.getId() != null) {
+        if (StringUtil.hasText(delta.getId())) {
             existing.setId(delta.getId());
         }
-        if (delta.getName() != null) {
+        if (StringUtil.hasText(delta.getName())) {
             existing.setName(delta.getName());
         }
     }
