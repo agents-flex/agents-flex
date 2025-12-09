@@ -65,13 +65,21 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
         if (arguments == null || arguments.isEmpty()) {
             return null;
         }
+
+        String jsonStr = arguments.trim();
+
         try {
-            String jsonStr = arguments.trim();
-            if (!jsonStr.startsWith("{")) jsonStr = "{" + jsonStr;
-            if (!jsonStr.endsWith("}")) jsonStr = jsonStr + "}";
             return JSON.parseObject(jsonStr);
         } catch (Exception e) {
-            return null;
+            if (jsonStr.contains("{") && jsonStr.contains("}")) {
+                String json = jsonStr.substring(jsonStr.indexOf("{"), jsonStr.lastIndexOf("}") + 1);
+                return JSON.parseObject(json);
+            }
+
+            if (!jsonStr.startsWith("{")) jsonStr = "{" + jsonStr;
+            if (!jsonStr.endsWith("}")) jsonStr = jsonStr + "}";
+
+            return JSON.parseObject(jsonStr);
         }
     }
 
