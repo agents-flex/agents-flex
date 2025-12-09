@@ -93,10 +93,14 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
 
         // 正常情况下 delta 部分只有 1 条
         ToolCall deltaCall = deltaCalls.get(0);
-        if (lastCall.getId() != null && deltaCall.getId() != null ||
-            (lastCall.getName() != null && deltaCall.getName() != null)) {
+
+        // 新增
+        if (StringUtil.hasText(deltaCall.getId(), deltaCall.getId())
+            || StringUtil.hasText(deltaCall.getName(), deltaCall.getName())) {
             this.toolCalls.add(deltaCall);
-        } else {
+        }
+        // 合并
+        else {
             mergeSingleCall(lastCall, deltaCall);
         }
     }
