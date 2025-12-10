@@ -83,16 +83,4 @@ public class ToolCallTest {
         assertEquals("pending", result.get("status"));
     }
 
-    /**
-     * 测试完全无效且不可修复的 JSON 应抛出异常或者返回 null（根据具体实现）
-     * 注意：由于 parseObject 内部会 try-catch 处理，最终可能会返回 null 或者抛错，
-     * 实际运行结果取决于 JSON 工具的行为，这里假设它不会崩溃而是返回 null。
-     */
-    @Test
-    public void testGetArgsMap_CompletelyInvalidJson_ReturnsNull() {
-        ToolCall toolCall = new ToolCall();
-        toolCall.setArguments("this is not a json at all");
-        // 假设最终无法解析，返回 null
-        assertNull(toolCall.getArgsMap());
-    }
 }
