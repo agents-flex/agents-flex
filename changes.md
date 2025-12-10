@@ -1,5 +1,15 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-beta.4 20251210
+- fix(core):优化AI消息增量更新的空值判断
+- fix(core):修复工具调用合并逻辑
+- chore(deps): 移除嵌入模型相关依赖配置
+- fix(message):优化 ToolCall 参数解析逻辑
+- feat(core):优化聊天模型和客户端实现
+- fix: embedding module packaging
+- feat(bom): 添加嵌入模型依赖项
+
+
 ## v2.0.0-beta.2 20251202
 - 修复：修复 Maven 依赖异常，更新版本号，感谢 @jieven
 
