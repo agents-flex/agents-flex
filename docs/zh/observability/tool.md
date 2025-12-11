@@ -67,10 +67,10 @@
 
 ## 3. 可观测性配置说明
 
-| 配置项                                      | 默认值      | 说明                      |        |     |      |            |      |         |          |
-| - | -- | -- | - |-----| - | - | - | - | -- |
-| `Observability.isEnabled()`              | true     | 全局开关，可关闭所有工具可观测性        |        |     |      |            |      |         |          |
-| `Observability.isToolExcluded(toolName)` | false    | 可排除指定工具不上报 Span/Metrics |        |     |      |            |      |         |          |
+| 配置项                                      | 默认值      | 说明                      |
+| - | -- | -- |
+| `Observability.isEnabled()`              | true     | 全局开关，可关闭所有工具可观测性        |
+| `Observability.isToolExcluded(toolName)` | false    | 可排除指定工具不上报 Span/Metrics |
 
 **Metrics 标签**：
 

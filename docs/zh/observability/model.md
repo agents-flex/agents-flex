@@ -81,7 +81,7 @@ chatModel.chatStream(prompt, new StreamResponseListener() {
 ## 3. 配置说明
 
 | 配置项                            | 默认值  | 说明                          |
-|  | - |  |
+| - | - |-----------------------------|
 | `observabilityEnabled`         | true | 是否启用可观测性（Tracing + Metrics） |
 | `MAX_RESPONSE_LENGTH_FOR_SPAN` | 500  | Span 中存储响应内容的最大长度（字符数）      |
 
