@@ -78,6 +78,7 @@ export default defineConfig({
                     {text: 'Message 消息', link: '/zh/chat/message'},
                     {text: 'Memory 记忆', link: '/zh/chat/memory'},
                     {text: 'Tool 工具调用', link: '/zh/chat/tool'},
+                    {text: 'Tool 构建', link: '/zh/chat/tool-build'},
                     {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
                     {text: 'MCP 调用', link: '/zh/chat/mcp'},
                     {text: 'ChatClient', link: '/zh/chat/chat-client'},
