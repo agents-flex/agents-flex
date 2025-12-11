@@ -1,4 +1,4 @@
-# Chain 和 工作流变化 / Tinyflow 集成指南
+# Chain 和 Tinyflow (工作流) 集成指南
 <div v-pre>
 
 
