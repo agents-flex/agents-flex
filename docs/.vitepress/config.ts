@@ -101,7 +101,7 @@ export default defineConfig({
                 items: [
                     // {text: '图片模型', link: '/zh/models/image'},
                     {text: 'Rerank 重排模型', link: '/zh/models/rerank'},
-                    {text: 'Embedding 重排模型', link: '/zh/models/embedding'},
+                    {text: 'Embedding 嵌入模型', link: '/zh/models/embedding'},
                 ]
             },
             {
