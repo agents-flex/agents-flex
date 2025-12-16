@@ -65,21 +65,27 @@ public class BaseStreamClientListener implements StreamClientListener {
         try {
             JSONObject jsonObject = JSON.parseObject(response);
             AiMessage delta = messageParser.parse(jsonObject, chatContext);
-            fullMessage.merge(delta); //合并所有增量
 
+            //合并 增量 delta 到 fullMessage
+            fullMessage.merge(delta);
+
+            // 设置 delta 全内容
             delta.setFullContent(fullMessage.getContent());
             delta.setFullReasoningContent(fullMessage.getReasoningContent());
 
-            //最后 1 条消息
-            if (delta.isFinalDelta()) {
+            //输出内容
+            if (hasContent(delta)) {
+                AiMessageResponse resp = new AiMessageResponse(chatContext, response, delta);
+                streamResponseListener.onMessage(context, resp);
+            }
+
+            // 在一些平台中，比如阿里云 【百炼】平台，倒数第 2 条为 "finish_reason":"stop", 最后 1 条内容为 usage 的内容,
+            // 文档：https://bailian.console.aliyun.com/?tab=api#/api/?type=model&url=2712576
+            // 因此，当 fullMessage 已经是 finalDelta 时，则认为已经结束（倒数第2条 delta 会让 fullMessage 为 finalDelta）
+            if (!delta.isFinalDelta() && fullMessage.isFinalDelta()) {
                 if (finishedFlag.compareAndSet(false, true)) {
                     notifyLastMessageAndStop(response);
                 }
-            }
-            //输出内容
-            else if (hasContent(delta)) {
-                AiMessageResponse resp = new AiMessageResponse(chatContext, response, delta);
-                streamResponseListener.onMessage(context, resp);
             }
         } catch (Exception err) {
             streamResponseListener.onFailure(context, err);
@@ -88,10 +94,13 @@ public class BaseStreamClientListener implements StreamClientListener {
     }
 
     private void notifyLastMessageAndStop(String response) {
-        fullMessage.setFinished(true);
-        AiMessageResponse resp = new AiMessageResponse(chatContext, response, fullMessage);
-        streamResponseListener.onMessage(context, resp);
-        onStop(this.context.getClient());
+        try {
+            fullMessage.setFinished(true);
+            AiMessageResponse resp = new AiMessageResponse(chatContext, response, fullMessage);
+            streamResponseListener.onMessage(context, resp);
+        } finally {
+            onStop(this.context.getClient());
+        }
     }
 
 

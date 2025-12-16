@@ -39,9 +39,9 @@ public class OpenAIChatModelTest {
     @Test()
     public void testChatStream() {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setApiKey("sk-alQ9N********");
-        config.setEndpoint("https://api.moonshot.cn");
-        config.setModel("moonshot-v1-8k");
+        config.setApiKey("xxx");
+        config.setEndpoint("https://ai.gitee.com");
+        config.setModel("Qwen3-32B");
 //        config.setDebug(true);
 
         ChatModel chatModel = new OpenAIChatModel(config);
