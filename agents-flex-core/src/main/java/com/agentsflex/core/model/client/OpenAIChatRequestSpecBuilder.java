@@ -69,14 +69,18 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         List<Message> messages = prompt.getMessages();
         UserMessage userMessage = MessageUtil.findLastUserMessage(messages);
 
-        Maps map = buildBaseParamsOfRequestBody(prompt, options, config);
+        Maps baseParams = buildBaseParamsOfRequestBody(prompt, options, config);
 
-        return map
+        Maps result = baseParams
             .set("messages", chatMessageSerializer.serializeMessages(messages, config))
             .setIfNotEmpty("tools", chatMessageSerializer.serializeTools(userMessage, config))
-            .setIfContainsKey("tools", "tool_choice", userMessage != null ? userMessage.getToolChoice() : null)
-            .toJSON();
+            .setIfContainsKey("tools", "tool_choice", userMessage != null ? userMessage.getToolChoice() : null);
 
+        if (options.getExtra() != null) {
+            result.putAll(options.getExtra());
+        }
+
+        return result.toJSON();
     }
 
 
