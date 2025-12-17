@@ -76,6 +76,10 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
             .setIfNotEmpty("tools", chatMessageSerializer.serializeTools(userMessage, config))
             .setIfContainsKey("tools", "tool_choice", userMessage != null ? userMessage.getToolChoice() : null);
 
+        if (options.isStreaming() && options.getIncludeUsageOrDefault(true)) {
+            result.set("stream_options", Maps.of("include_usage", true));
+        }
+
         if (options.getExtra() != null) {
             result.putAll(options.getExtra());
         }

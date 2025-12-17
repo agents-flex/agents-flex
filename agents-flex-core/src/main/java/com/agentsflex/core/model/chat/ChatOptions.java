@@ -99,6 +99,13 @@ public class ChatOptions {
     private Boolean thinkingEnabled;
 
     /**
+     * 是否返回 Usage 信息, 仅在 stream 模式下有效。
+     * 适用于支持该特性的模型（如 Qwen3），开启后模型会返回 Usage 信息。
+     * 默认为 true。
+     */
+    private Boolean includeUsage;
+
+    /**
      * 额外的模型参数，用于传递模型特有或未明确暴露的配置。
      * 例如：{"response_format": "json", "presence_penalty": 0.5}
      * 使用 addExtra() 方法可方便地添加单个参数。
@@ -131,6 +138,7 @@ public class ChatOptions {
         this.maxTokens = builder.maxTokens;
         this.stop = builder.stop;
         this.thinkingEnabled = builder.thinkingEnabled;
+        this.includeUsage = builder.includeUsage;
         this.extra = builder.extra;
         this.retryEnabled = builder.retryEnabled;
         this.retryCount = builder.retryCount;
@@ -221,6 +229,18 @@ public class ChatOptions {
 
     public void setThinkingEnabled(Boolean thinkingEnabled) {
         this.thinkingEnabled = thinkingEnabled;
+    }
+
+    public Boolean getIncludeUsage() {
+        return includeUsage;
+    }
+
+    public Boolean getIncludeUsageOrDefault(Boolean defaultValue) {
+        return includeUsage != null ? includeUsage : defaultValue;
+    }
+
+    public void setIncludeUsage(Boolean includeUsage) {
+        this.includeUsage = includeUsage;
     }
 
 
@@ -314,6 +334,7 @@ public class ChatOptions {
         private Integer maxTokens;
         private List<String> stop;
         private Boolean thinkingEnabled;
+        private Boolean includeUsage;
         private Map<String, Object> extra;
         private Boolean retryEnabled;
         private int retryCount = 3;
@@ -356,6 +377,11 @@ public class ChatOptions {
 
         public Builder thinkingEnabled(Boolean thinkingEnabled) {
             this.thinkingEnabled = thinkingEnabled;
+            return this;
+        }
+
+        public Builder includeUsage(Boolean includeUsage) {
+            this.includeUsage = includeUsage;
             return this;
         }
 
