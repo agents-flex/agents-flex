@@ -35,6 +35,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     private final StreamContext context;
     private final AiMessage fullMessage = new AiMessage();
     private final AtomicBoolean finishedFlag = new AtomicBoolean(false);
+    private final AtomicBoolean stoppedFlag = new AtomicBoolean(false);
 
     public BaseStreamClientListener(
         ChatModel chatModel,
@@ -93,11 +94,17 @@ public class BaseStreamClientListener implements StreamClientListener {
         }
     }
 
-    private void notifyLastMessageAndStop(String response) {
-        try {
+    private void notifyLastMessage(String response) {
+        if (finishedFlag.compareAndSet(false, true)) {
             fullMessage.setFinished(true);
             AiMessageResponse resp = new AiMessageResponse(chatContext, response, fullMessage);
             streamResponseListener.onMessage(context, resp);
+        }
+    }
+
+    private void notifyLastMessageAndStop(String response) {
+        try {
+            notifyLastMessage(response);
         } finally {
             onStop(this.context.getClient());
         }
@@ -106,8 +113,14 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     @Override
     public void onStop(StreamClient client) {
-        context.setAiMessage(fullMessage);
-        streamResponseListener.onStop(context);
+
+        // onStop 在 sse 的 onClosed 中会被调用，可以用于在 onMessage 出现异常时进行兜底
+        notifyLastMessage(null);
+
+        if (stoppedFlag.compareAndSet(false, true)) {
+            context.setAiMessage(fullMessage);
+            streamResponseListener.onStop(context);
+        }
     }
 
     @Override
