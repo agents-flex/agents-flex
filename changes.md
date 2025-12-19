@@ -1,5 +1,16 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-beta.5 20251219
+- test(openai): remove unnecessary thread sleep in chat model tests
+- feat(chat): add includeUsage option for streaming responses
+- feat(openai): add stream chat test for bailian model
+- feat(core): add stopped flag and improve stream listener logic
+- fix(stream): handle final delta correctly in stream client listener and Wrapped final message notification in try-finally block
+- feat(openai): add support for extra options in chat request
+- docs(models): update embedding model translation
+
+
+
 ## v2.0.0-beta.4 20251210
 - fix(core):优化AI消息增量更新的空值判断
 - fix(core):修复工具调用合并逻辑

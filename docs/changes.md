@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v2.0.0-beta.4 20251210
+## v2.0.0-beta.5 20251210
 - fix(core):优化AI消息增量更新的空值判断
 - fix(core):修复工具调用合并逻辑
 - chore(deps): 移除嵌入模型相关依赖配置
