@@ -673,7 +673,7 @@ public class Chain extends ChainNode {
      * @return 如果条件不满足（需要跳过），返回 true；否则返回 false
      */
     protected synchronized boolean shouldSkipCurrentNode(ExecuteNode executeNode, NodeContext nodeContext, ChainNode currentNode) {
-
+        nodeContext.chain = this;
         // record trigger 和 check 必须在同步块内执行，
         // 否则会导致并发问题：全部节点触发了 trigger，但是 check 还未开始执行
         nodeContext.recordTrigger(executeNode);
