@@ -328,7 +328,10 @@ public class OpenAIChatModelTest {
         config.setLogEnabled(true);
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
+//        config.setModel("DeepSeek-V3");
+//        config.setSupportToolMessage(false);
         config.setApiKey("PXW1");
+
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -341,6 +344,7 @@ public class OpenAIChatModelTest {
             public void onMessage(StreamContext context, AiMessageResponse response) {
                 if (response.getMessage().isFinalDelta() && response.hasToolCalls()) {
                     System.out.println(":::::::: start....");
+                    prompt.setAiMessage(response.getMessage());
                     prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
                     llm.chatStream(prompt, new StreamResponseListener() {
                         @Override
