@@ -160,7 +160,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         }
 
         // 大模型不支持 Function Calling
-        if (config != null && !config.getSupportTool()) {
+        if (config != null && !config.isSupportTool()) {
             return null;
         }
 
