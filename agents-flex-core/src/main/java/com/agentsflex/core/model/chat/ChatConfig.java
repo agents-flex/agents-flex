@@ -24,7 +24,7 @@ public class ChatConfig extends BaseModelConfig {
     protected Boolean supportAudio;
     protected Boolean supportVideo;
     protected Boolean supportTool;
-//    protected Boolean supportToolMessage;
+    protected Boolean supportToolMessage;
     protected Boolean supportThinking;
 
     protected boolean observabilityEnabled = true; // 默认开启
@@ -106,17 +106,17 @@ public class ChatConfig extends BaseModelConfig {
         return supportTool == null || supportTool;
     }
 
-//    public Boolean getSupportToolMessage() {
-//        return supportToolMessage;
-//    }
-//
-//    public void setSupportToolMessage(Boolean supportToolMessage) {
-//        this.supportToolMessage = supportToolMessage;
-//    }
-//
-//    public boolean isSupportToolMessage() {
-//        return supportToolMessage == null || supportToolMessage;
-//    }
+    public Boolean getSupportToolMessage() {
+        return supportToolMessage;
+    }
+
+    public void setSupportToolMessage(Boolean supportToolMessage) {
+        this.supportToolMessage = supportToolMessage;
+    }
+
+    public boolean isSupportToolMessage() {
+        return supportToolMessage == null || supportToolMessage;
+    }
 
     public Boolean getSupportThinking() {
         return supportThinking;

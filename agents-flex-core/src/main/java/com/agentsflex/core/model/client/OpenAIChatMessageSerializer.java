@@ -65,9 +65,20 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
     }
 
     protected void buildToolMessageObject(Map<String, Object> objectMap, ToolMessage message, ChatConfig config) {
-        objectMap.put("role", "tool");
-        objectMap.put("content", message.getTextContent());
-        objectMap.put("tool_call_id", message.getToolCallId());
+        if (config.isSupportToolMessage()) {
+            objectMap.put("role", "tool");
+            objectMap.put("content", message.getTextContent());
+            objectMap.put("tool_call_id", message.getToolCallId());
+        }
+        // 部分模型（如 DeepSeek V3）不支持原生 tool message 格式，
+        // 此处将 tool message 转换为 system message 格式以确保兼容性
+        else {
+            objectMap.put("role", "system");
+            Map<String, Object> contentMap = new HashMap<>();
+            contentMap.put("content", message.getTextContent());
+            contentMap.put("tool_call_id", message.getToolCallId());
+            objectMap.put("content", contentMap);
+        }
     }
 
     protected void buildSystemMessageObject(Map<String, Object> objectMap, SystemMessage message, ChatConfig config) {
