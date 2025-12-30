@@ -1,5 +1,18 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-beta.6 20251230
+- refactor(core):   Replace clearFullMessage with finalizeFullMessage to properly handle content
+- fix(stream): clear full message content on stream completion
+- test(openai): update OpenAI chat model test configuration and weather function
+- refactor(OpenAIChatMessageSerializer): update tool message handling and serialization
+- feat(chat): add tool message support with compatibility for models that don't support native format
+- refactor(chat): update ChatConfig tool support methods and remove unused field
+- test(utils): add ChatModelTestUtils for stream testing
+- refactor(stream): simplify message handling and stop logic in BaseStreamClientListener
+- refactor(message): update AiMessage delta completion logic
+
+
+
 ## v2.0.0-beta.5 20251219
 - test(openai): remove unnecessary thread sleep in chat model tests
 - feat(chat): add includeUsage option for streaming responses
