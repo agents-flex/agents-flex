@@ -303,8 +303,11 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
      * @return true 表示当前对象为最终的 delta 对象，否则为 false
      */
     public boolean isFinalDelta() {
-        return (finished != null && finished)
-            || StringUtil.hasText(this.finishReason)
+        return (finished != null && finished);
+    }
+
+    public boolean hasFinishOrStopReason() {
+        return StringUtil.hasText(this.finishReason)
             || StringUtil.hasText(this.stopReason);
     }
 
