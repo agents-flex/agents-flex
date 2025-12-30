@@ -22,11 +22,9 @@ import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.Maps;
+import com.alibaba.fastjson2.JSON;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
 
@@ -74,10 +72,10 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         // 此处将 tool message 转换为 system message 格式以确保兼容性
         else {
             objectMap.put("role", "system");
-            Map<String, Object> contentMap = new HashMap<>();
-            contentMap.put("content", message.getTextContent());
+            Map<String, Object> contentMap = new LinkedHashMap<>();
             contentMap.put("tool_call_id", message.getToolCallId());
-            objectMap.put("content", contentMap);
+            contentMap.put("content", message.getTextContent());
+            objectMap.put("content", JSON.toJSONString(contentMap));
         }
     }
 
@@ -97,12 +95,17 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
 
         List<ToolCall> calls = message.getToolCalls();
         if (calls != null && !calls.isEmpty()) {
-            objectMap.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
-            buildAIMessageToolCalls(objectMap, calls);
+            if (config.isSupportToolMessage()) {
+                objectMap.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
+                buildAIMessageToolCalls(objectMap, calls, false);
+            } else {
+                objectMap.put("role", "system");
+                buildAIMessageToolCalls(objectMap, calls, true);
+            }
         }
     }
 
-    protected void buildAIMessageToolCalls(Map<String, Object> objectMap, List<ToolCall> calls) {
+    protected void buildAIMessageToolCalls(Map<String, Object> objectMap, List<ToolCall> calls, boolean buildToContent) {
         List<Map<String, Object>> toolCalls = new ArrayList<>();
         for (ToolCall call : calls) {
             Maps toolCall = new Maps();
@@ -113,7 +116,12 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
                 );
             toolCalls.add(toolCall);
         }
-        objectMap.put("tool_calls", toolCalls);
+
+        if (buildToContent) {
+            objectMap.put("content", JSON.toJSONString(toolCalls));
+        } else {
+            objectMap.put("tool_calls", toolCalls);
+        }
     }
 
 
