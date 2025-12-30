@@ -57,9 +57,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     @Override
     public void onMessage(StreamClient client, String response) {
         if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim()) || finishedFlag.get()) {
-            if (finishedFlag.compareAndSet(false, true)) {
-                notifyLastMessageAndStop(response);
-            }
+            notifyLastMessageAndStop(response);
             return;
         }
 
@@ -79,15 +77,6 @@ public class BaseStreamClientListener implements StreamClientListener {
                 AiMessageResponse resp = new AiMessageResponse(chatContext, response, delta);
                 streamResponseListener.onMessage(context, resp);
             }
-
-            // 在一些平台中，比如阿里云 【百炼】平台，倒数第 2 条为 "finish_reason":"stop", 最后 1 条内容为 usage 的内容,
-            // 文档：https://bailian.console.aliyun.com/?tab=api#/api/?type=model&url=2712576
-            // 因此，当 fullMessage 已经是 finalDelta 时，则认为已经结束（倒数第2条 delta 会让 fullMessage 为 finalDelta）
-            if (!delta.isFinalDelta() && fullMessage.isFinalDelta()) {
-                if (finishedFlag.compareAndSet(false, true)) {
-                    notifyLastMessageAndStop(response);
-                }
-            }
         } catch (Exception err) {
             streamResponseListener.onFailure(context, err);
             onStop(this.context.getClient());
@@ -106,20 +95,24 @@ public class BaseStreamClientListener implements StreamClientListener {
         try {
             notifyLastMessage(response);
         } finally {
-            onStop(this.context.getClient());
+            if (stoppedFlag.compareAndSet(false, true)) {
+                context.setAiMessage(fullMessage);
+                streamResponseListener.onStop(context);
+            }
         }
     }
 
 
     @Override
     public void onStop(StreamClient client) {
-
-        // onStop 在 sse 的 onClosed 中会被调用，可以用于在 onMessage 出现异常时进行兜底
-        notifyLastMessage(null);
-
-        if (stoppedFlag.compareAndSet(false, true)) {
-            context.setAiMessage(fullMessage);
-            streamResponseListener.onStop(context);
+        try {
+            // onStop 在 sse 的 onClosed 中会被调用，可以用于在 onMessage 出现异常时进行兜底
+            notifyLastMessage(null);
+        } finally {
+            if (stoppedFlag.compareAndSet(false, true)) {
+                context.setAiMessage(fullMessage);
+                streamResponseListener.onStop(context);
+            }
         }
     }
 
