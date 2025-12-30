@@ -85,6 +85,7 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     private void notifyLastMessage(String response) {
         if (finishedFlag.compareAndSet(false, true)) {
+            clearFullMessage();
             fullMessage.setFinished(true);
             AiMessageResponse resp = new AiMessageResponse(chatContext, response, fullMessage);
             streamResponseListener.onMessage(context, resp);
@@ -96,6 +97,7 @@ public class BaseStreamClientListener implements StreamClientListener {
             notifyLastMessage(response);
         } finally {
             if (stoppedFlag.compareAndSet(false, true)) {
+                clearFullMessage();
                 context.setAiMessage(fullMessage);
                 streamResponseListener.onStop(context);
             }
@@ -110,10 +112,16 @@ public class BaseStreamClientListener implements StreamClientListener {
             notifyLastMessage(null);
         } finally {
             if (stoppedFlag.compareAndSet(false, true)) {
+                clearFullMessage();
                 context.setAiMessage(fullMessage);
                 streamResponseListener.onStop(context);
             }
         }
+    }
+
+    private void clearFullMessage() {
+        fullMessage.setContent(null);
+        fullMessage.setReasoningContent(null);
     }
 
     @Override
