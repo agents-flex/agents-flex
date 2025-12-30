@@ -41,24 +41,25 @@ public class OpenAIChatModelTest {
     @Test()
     public void testChatStream() {
         OpenAIChatConfig config = new OpenAIChatConfig();
-        config.setApiKey("xxx");
+        config.setApiKey("PXW1GXE***");
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
-//        config.setDebug(true);
+        config.setLogEnabled(true);
 
         ChatModel chatModel = new OpenAIChatModel(config);
-        chatModel.chatStream("你叫什么名字", new StreamResponseListener() {
+
+        ChatModelTestUtils.waitForStream(chatModel, "你叫什么名字", new StreamResponseListener() {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
                 System.out.println(response.getMessage().getContent());
             }
+
+            @Override
+            public void onStop(StreamContext context) {
+                System.out.println("stop!!!!");
+            }
         });
 
-//        try {
-//            Thread.sleep(2000);
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
-//        }
     }
 
 
@@ -333,12 +334,12 @@ public class OpenAIChatModelTest {
 
         SimplePrompt prompt = new SimplePrompt("/no_think 北京和上海的天气怎么样");
         prompt.addToolsFromClass(WeatherFunctions.class);
-//        FunctionPrompt prompt = new FunctionPrompt("上海的天气怎么样", WeatherFunctions.class);
+
+
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
-//                System.out.println("onMessage >>>>>" + response);
-                if (response.hasToolCalls()) {
+                if (response.getMessage().isFinalDelta() && response.hasToolCalls()) {
                     System.out.println(":::::::: start....");
                     prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
                     llm.chatStream(prompt, new StreamResponseListener() {
