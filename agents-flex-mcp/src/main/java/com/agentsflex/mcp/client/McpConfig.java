@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.mcp;
+package com.agentsflex.mcp.client;
 
 import java.util.Collections;
 import java.util.List;

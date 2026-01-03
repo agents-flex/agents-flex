@@ -1,4 +1,4 @@
-package com.agentsflex.core.mcp;
+package com.agentsflex.mcp.client;
 
 public class McpCallException extends RuntimeException {
 

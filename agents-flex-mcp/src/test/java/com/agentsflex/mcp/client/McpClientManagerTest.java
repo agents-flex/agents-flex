@@ -1,4 +1,4 @@
-package com.agentsflex.core.mcp;
+package com.agentsflex.mcp.client;
 
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Tool;

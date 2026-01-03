@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.mcp;
+package com.agentsflex.mcp.client;
 
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -112,7 +112,7 @@ public class McpTool implements Tool {
         } catch (Exception e) {
             throw new McpCallException("MCP Tool call exception, tool name: " + mcpOriginalTool.name(), e);
         }
-        
+
         if (callToolResult.isError() != null && callToolResult.isError()) {
             throw new McpCallException("MCP Tool call exception, tool name: " + mcpOriginalTool.name() + ", info: " + callToolResult.structuredContent());
         }
