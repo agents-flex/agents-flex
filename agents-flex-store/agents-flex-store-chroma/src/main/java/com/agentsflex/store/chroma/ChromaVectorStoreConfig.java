@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import java.util.Map;
  */
 public class ChromaVectorStoreConfig implements DocumentStoreConfig {
     private static final Logger logger = LoggerFactory.getLogger(ChromaVectorStoreConfig.class);
-    
+
     private String host = "localhost";
     private int port = 8000;
     private String collectionName;
@@ -177,14 +177,14 @@ public class ChromaVectorStoreConfig implements DocumentStoreConfig {
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(5000);
-            
+
             if (apiKey != null && !apiKey.isEmpty()) {
                 connection.setRequestProperty("X-Chroma-Token", apiKey);
             }
-            
+
             int responseCode = connection.getResponseCode();
             connection.disconnect();
-            
+
             return responseCode == 200;
         } catch (IOException e) {
             logger.warn("Chroma database is not available: {}", e.getMessage());

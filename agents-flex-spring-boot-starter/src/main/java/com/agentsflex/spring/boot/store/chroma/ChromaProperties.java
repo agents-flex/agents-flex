@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -26,17 +26,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ChromaProperties {
 
     private String host = "localhost";
-    
+
     private int port = 8000;
-    
+
     private String collectionName = "default_collection";
-    
+
     private boolean autoCreateCollection = true;
-    
+
     private String apiKey;
-    
+
     private String tenant = "default_tenant";
-    
+
     private String database = "default_database";
 
     public String getHost() {
