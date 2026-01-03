@@ -4,7 +4,8 @@
 
 
 > 本文档面向 Java 开发者，介绍如何在 Agents-Flex 项目中集成并使用 Model Context Protocol (MCP) 客户端，以调用外部 MCP 工具服务。
-
+>
+> **注意事项：MCP 模块要求必须 JDK 17+，** 其他模块要求 JDK 8+。因此，如果您的需要用到 MCP 模块，请务必确认你的项目已配置 JDK 17+。
 
 
 ## 1. 概述
