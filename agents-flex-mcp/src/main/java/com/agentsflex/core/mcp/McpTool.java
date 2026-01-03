@@ -106,7 +106,17 @@ public class McpTool implements Tool {
 
     @Override
     public Object invoke(Map<String, Object> argsMap) {
-        McpSchema.CallToolResult callToolResult = mcpClient.callTool(new McpSchema.CallToolRequest(mcpOriginalTool.name(), argsMap));
+        McpSchema.CallToolResult callToolResult;
+        try {
+            callToolResult = mcpClient.callTool(new McpSchema.CallToolRequest(mcpOriginalTool.name(), argsMap));
+        } catch (Exception e) {
+            throw new McpCallException("MCP Tool call exception, tool name: " + mcpOriginalTool.name(), e);
+        }
+        
+        if (callToolResult.isError() != null && callToolResult.isError()) {
+            throw new McpCallException("MCP Tool call exception, tool name: " + mcpOriginalTool.name() + ", info: " + callToolResult.structuredContent());
+        }
+
         List<McpSchema.Content> content = callToolResult.content();
         if (content == null || content.isEmpty()) {
             return null;
