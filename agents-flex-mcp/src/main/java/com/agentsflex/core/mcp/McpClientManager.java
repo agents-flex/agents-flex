@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.mcp;
 
+import com.agentsflex.core.model.chat.tool.Tool;
 import com.alibaba.fastjson2.JSON;
 import io.modelcontextprotocol.client.McpSyncClient;
 import org.slf4j.Logger;
@@ -145,13 +146,20 @@ public class McpClientManager implements AutoCloseable {
         }
     }
 
-
     public McpSyncClient getClient(String name) {
         McpClientDescriptor desc = descriptorRegistry.get(name);
         if (desc == null) {
             throw new IllegalArgumentException("MCP client not found: " + name);
         }
         return desc.getClient();
+    }
+
+    public Tool getMcpTool(String name, String toolName) {
+        McpClientDescriptor desc = descriptorRegistry.get(name);
+        if (desc == null) {
+            throw new IllegalArgumentException("MCP client not found: " + name);
+        }
+        return desc.getMcpTool(toolName);
     }
 
     public boolean isClientOnline(String name) {

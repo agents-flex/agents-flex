@@ -15,8 +15,10 @@
  */
 package com.agentsflex.core.mcp;
 
+import com.agentsflex.core.model.chat.tool.Tool;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
+import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +57,19 @@ public class McpClientDescriptor {
             initialize();
         }
         return client;
+    }
+
+
+    public Tool getMcpTool(String toolName) {
+        McpSyncClient client = getClient();
+        McpSchema.ListToolsResult listToolsResult = client.listTools();
+        for (McpSchema.Tool tool : listToolsResult.tools()) {
+            if (tool.name().equals(toolName)) {
+                return new McpTool(getClient(), tool);
+            }
+        }
+
+        return null;
     }
 
     private synchronized void initialize() {
