@@ -50,6 +50,7 @@
         <module>agents-flex-search-engine</module>
         <module>agents-flex-embedding</module>
         <module>agents-flex-tool</module>
+        <module>agents-flex-mcp</module>
     </modules>
 
     <properties>
@@ -376,6 +377,13 @@
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-exporter-otlp</artifactId>
                 <version>${opentelemetry.version}</version>
+            </dependency>
+
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-mcp</artifactId>
+                <version>${revision}</version>
             </dependency>
 
         </dependencies>
