@@ -26,6 +26,7 @@ public class Parameter implements Serializable {
     protected String description;
     protected String[] enums;
     protected boolean required = false;
+    protected Object defaultValue;
     protected List<Parameter> children;
 
     // --- getters and setters (keep your existing ones) ---
@@ -69,6 +70,14 @@ public class Parameter implements Serializable {
         this.required = required;
     }
 
+    public Object getDefaultValue() {
+        return defaultValue;
+    }
+
+    public void setDefaultValue(Object defaultValue) {
+        this.defaultValue = defaultValue;
+    }
+
     public List<Parameter> getChildren() {
         return children != null ? new ArrayList<>(children) : null; // defensive copy
     }
@@ -97,6 +106,7 @@ public class Parameter implements Serializable {
         private String description;
         private String[] enums;
         private boolean required = false;
+        private Object defaultValue;
         private List<Parameter> children;
 
         public Builder name(String name) {
@@ -124,6 +134,11 @@ public class Parameter implements Serializable {
             return this;
         }
 
+        public Builder defaultValue(Object defaultValue) {
+            this.defaultValue = defaultValue;
+            return this;
+        }
+
         public Builder addChild(Parameter child) {
             if (this.children == null) {
                 this.children = new ArrayList<>();
@@ -144,6 +159,7 @@ public class Parameter implements Serializable {
             param.setDescription(description);
             param.setEnums(enums); // uses defensive copy internally
             param.setRequired(required);
+            param.setDefaultValue(defaultValue);
             param.setChildren(children); // uses defensive copy internally
             return param;
         }
