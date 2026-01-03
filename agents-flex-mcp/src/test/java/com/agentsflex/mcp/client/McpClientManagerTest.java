@@ -121,7 +121,7 @@ class McpClientManagerTest {
 
         // Test client retrieval
         // 测试客户端获取
-        McpSyncClient client = mcpClientManager.getClient("test-server");
+        McpSyncClient client = mcpClientManager.getMcpClient("test-server");
         assertNotNull(client, "Client should not be null");
         assertSame(mockClient, client, "Should return the mocked client");
 
@@ -138,9 +138,9 @@ class McpClientManagerTest {
 
     @Test
     @DisplayName("Test getClient with non-existent client - 获取不存在客户端测试")
-    void testGetClientNonExistent() {
+    void testGetMcpClientNonExistent() {
         assertThrows(IllegalArgumentException.class, () -> {
-            mcpClientManager.getClient("non-existent-server");
+            mcpClientManager.getMcpClient("non-existent-server");
         }, "Should throw IllegalArgumentException for non-existent client");
     }
 
@@ -389,10 +389,11 @@ class McpClientManagerTest {
 
         ToolExecutor toolExecutor = new ToolExecutor(mcpTool
             , new ToolCall("add", "add", "{\"a\":1,\"b\":2}"));
-        Object execute = toolExecutor.execute();
 
-        assertEquals("The sum of 1 and 2 is 3.", execute);
+        Object result = toolExecutor.execute();
 
-        System.out.println(execute);
+        assertEquals("The sum of 1 and 2 is 3.", result);
+
+        System.out.println(result);
     }
 }

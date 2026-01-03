@@ -151,7 +151,7 @@ public class McpClientManager implements AutoCloseable {
         }
     }
 
-    public McpSyncClient getClient(String name) {
+    public McpSyncClient getMcpClient(String name) {
         McpClientDescriptor desc = descriptorRegistry.get(name);
         if (desc == null) {
             throw new IllegalArgumentException("MCP client not found: " + name);
