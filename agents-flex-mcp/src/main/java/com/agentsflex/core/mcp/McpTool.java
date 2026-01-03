@@ -17,7 +17,6 @@ package com.agentsflex.core.mcp;
 
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.util.Maps;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -108,6 +107,15 @@ public class McpTool implements Tool {
     @Override
     public Object invoke(Map<String, Object> argsMap) {
         McpSchema.CallToolResult callToolResult = mcpClient.callTool(new McpSchema.CallToolRequest(mcpOriginalTool.name(), argsMap));
-        return Maps.of("result", callToolResult.content());
+        List<McpSchema.Content> content = callToolResult.content();
+        if (content == null || content.isEmpty()) {
+            return null;
+        }
+
+        if (content.size() == 1 && content.get(0) instanceof McpSchema.TextContent) {
+            return ((McpSchema.TextContent) content.get(0)).text();
+        }
+
+        return content;
     }
 }
