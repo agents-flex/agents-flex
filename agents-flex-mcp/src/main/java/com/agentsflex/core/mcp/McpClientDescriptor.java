@@ -31,7 +31,7 @@ public class McpClientDescriptor {
     private static final Logger log = LoggerFactory.getLogger(McpClientDescriptor.class);
 
     private final String name;
-    private final McpRootConfig.ServerSpec spec;
+    private final McpConfig.ServerSpec spec;
     private final Map<String, String> resolvedEnv;
 
     private volatile McpSyncClient client;
@@ -43,7 +43,7 @@ public class McpClientDescriptor {
     private volatile Instant lastPingTime = Instant.EPOCH;
     private static final long MIN_PING_INTERVAL_MS = 5_000;
 
-    public McpClientDescriptor(String name, McpRootConfig.ServerSpec spec, Map<String, String> resolvedEnv) {
+    public McpClientDescriptor(String name, McpConfig.ServerSpec spec, Map<String, String> resolvedEnv) {
         this.name = name;
         this.spec = spec;
         this.resolvedEnv = new HashMap<>(resolvedEnv);
@@ -191,7 +191,7 @@ public class McpClientDescriptor {
         return name;
     }
 
-    public McpRootConfig.ServerSpec getSpec() {
+    public McpConfig.ServerSpec getSpec() {
         return spec;
     }
 

@@ -24,7 +24,7 @@ import java.util.Map;
 public class HttpSseTransportFactory implements McpTransportFactory {
 
     @Override
-    public CloseableTransport create(McpRootConfig.ServerSpec spec, Map<String, String> resolvedEnv) {
+    public CloseableTransport create(McpConfig.ServerSpec spec, Map<String, String> resolvedEnv) {
         String url = spec.getUrl();
         if (url == null || url.isEmpty()) {
             throw new IllegalArgumentException("URL is required for HTTP SSE transport");

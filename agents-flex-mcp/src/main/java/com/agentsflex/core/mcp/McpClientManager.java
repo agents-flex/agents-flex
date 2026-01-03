@@ -40,16 +40,16 @@ public class McpClientManager implements AutoCloseable {
 
     private final Map<String, McpClientDescriptor> descriptorRegistry = new ConcurrentHashMap<>();
     private final ScheduledExecutorService healthChecker;
-    private final long healthCheckIntervalMs = 10_000;
 
 
-    private static final String CONFIG_RESOURCE_PROPERTY = "mcp.config.resource";
-    private static final String DEFAULT_CONFIG_RESOURCE = "mcp-server.json";
+    private static final String CONFIG_RESOURCE_PROPERTY = "mcp.config.servers-resource";
+    private static final String DEFAULT_CONFIG_RESOURCE = "mcp-servers.json";
 
     private McpClientManager() {
         this.healthChecker = Executors.newSingleThreadScheduledExecutor(r ->
             new Thread(r, "mcp-health-checker")
         );
+        long healthCheckIntervalMs = 10_000;
         this.healthChecker.scheduleAtFixedRate(
             this::performHealthCheck,
             healthCheckIntervalMs,
@@ -98,8 +98,8 @@ public class McpClientManager implements AutoCloseable {
 
 
     public void registerFromJson(String json) {
-        McpRootConfig root = JSON.parseObject(json, McpRootConfig.class);
-        registerFromConfig(root.getMcp());
+        McpConfig mcpConfig = JSON.parseObject(json, McpConfig.class);
+        registerFromConfig(mcpConfig);
     }
 
     public void registerFromFile(Path filePath) throws IOException {
@@ -119,10 +119,15 @@ public class McpClientManager implements AutoCloseable {
         }
     }
 
-    private void registerFromConfig(McpRootConfig.McpConfig config) {
-        for (Map.Entry<String, McpRootConfig.ServerSpec> entry : config.getServers().entrySet()) {
+    private void registerFromConfig(McpConfig config) {
+        if (config == null || config.getMcpServers() == null) {
+            log.warn("MCP config is empty, skipping.");
+            return;
+        }
+
+        for (Map.Entry<String, McpConfig.ServerSpec> entry : config.getMcpServers().entrySet()) {
             String name = entry.getKey();
-            McpRootConfig.ServerSpec spec = entry.getValue();
+            McpConfig.ServerSpec spec = entry.getValue();
 
             if (descriptorRegistry.containsKey(name)) {
                 log.warn("MCP client '{}' already registered, skipping.", name);

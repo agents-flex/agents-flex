@@ -25,7 +25,7 @@ import java.util.Map;
 public class StdioTransportFactory implements McpTransportFactory {
 
     @Override
-    public CloseableTransport create(McpRootConfig.ServerSpec spec, Map<String, String> resolvedEnv) {
+    public CloseableTransport create(McpConfig.ServerSpec spec, Map<String, String> resolvedEnv) {
 //        ProcessBuilder pb = new ProcessBuilder();
 //        List<String> args = spec.getArgs();
 //        if (args != null && !args.isEmpty()) {

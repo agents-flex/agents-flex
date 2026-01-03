@@ -19,5 +19,5 @@ import java.util.Map;
 
 @FunctionalInterface
 public interface McpTransportFactory {
-    CloseableTransport create(McpRootConfig.ServerSpec spec, Map<String, String> resolvedEnv);
+    CloseableTransport create(McpConfig.ServerSpec spec, Map<String, String> resolvedEnv);
 }
