@@ -1,5 +1,25 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-beta.7 20260104
+- refactor(docs): update MCP client method name in documentation
+- docs(chat): update MCP documentation with JDK version requirements
+- chore(build): set maven compiler properties to Java 8
+- docs(chat): add comprehensive MCP client integration guide
+- refactor(client): rename getClient to getMcpClient for clarity
+- refactor(mcp): move client-related classes to dedicated package
+- test(mcp): add comprehensive unit tests for McpClientManager
+- feat(config): add MCP server configuration file and Added mcp-servers.json with everything server configuration for test
+- refactor(mcp): replace McpRootConfig with McpConfig for server specifications
+- feat(mcp): add exception handling for MCP tool calls
+- fix(mcp): handle null and single text content in tool invocation
+- feat(mcp): add MCP tool retrieval functionality
+- feat(mcp): add McpTool implementation for MCP tool integration
+- feat(tool): add defaultValue property to Parameter class
+- chore(license): Updated copyright year from 2025 to 2026
+- (mcp):feat add Model Context Protocol client management module
+
+
+
 ## v2.0.0-beta.6 20251230
 - refactor(core):   Replace clearFullMessage with finalizeFullMessage to properly handle content
 - fix(stream): clear full message content on stream completion
