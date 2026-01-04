@@ -93,10 +93,10 @@ public final class Observability {
 
             try {
                 OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
-                String className = openTelemetry.getClass().getName();
+                String propagatorsClassName = openTelemetry.getPropagators().getTextMapPropagator().getClass().getSimpleName();
 
                 // 检查是否已经被其他组件（如 SpringBoot）注册了 OpenTelemetry SDK
-                if (!"io.opentelemetry.api.DefaultOpenTelemetry".equals(className)) {
+                if (!"NoopTextMapPropagator".equals(propagatorsClassName)) {
                     logger.info("OpenTelemetry SDK already registered globally. Reusing existing instance.");
                     globalTracer = GlobalOpenTelemetry.getTracer("agents-flex");
                     globalMeter = GlobalOpenTelemetry.getMeter("agents-flex");
