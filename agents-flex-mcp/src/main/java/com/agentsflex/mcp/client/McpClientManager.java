@@ -130,8 +130,12 @@ public class McpClientManager implements AutoCloseable {
             McpConfig.ServerSpec spec = entry.getValue();
 
             if (descriptorRegistry.containsKey(name)) {
-                log.warn("MCP client '{}' already registered, skipping.", name);
-                continue;
+                try {
+                    McpClientDescriptor desc = descriptorRegistry.get(name);
+                    desc.close();
+                } finally {
+                    descriptorRegistry.remove(name);
+                }
             }
 
             Map<String, String> resolvedEnv = new HashMap<>();
