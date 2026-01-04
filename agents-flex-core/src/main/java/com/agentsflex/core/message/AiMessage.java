@@ -95,7 +95,7 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
         ToolCall deltaCall = deltaCalls.get(0);
 
         // 新增
-        if (shouldNewCall(lastCall, deltaCall)) {
+        if (isNewCall(deltaCall, lastCall)) {
             this.toolCalls.add(deltaCall);
         }
         // 合并
@@ -104,16 +104,16 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
         }
     }
 
-    private boolean shouldNewCall(ToolCall lastCall, ToolCall deltaCall) {
+    private boolean isNewCall(ToolCall deltaCall, ToolCall lastCall) {
         if (StringUtil.noText(deltaCall.getId()) && StringUtil.noText(deltaCall.getName())) {
             return false;
         }
 
-        if (StringUtil.hasText(lastCall.getId())) {
+        if (StringUtil.hasText(deltaCall.getId())) {
             return !deltaCall.getId().equals(lastCall.getId());
         }
 
-        if (StringUtil.hasText(lastCall.getName())) {
+        if (StringUtil.hasText(deltaCall.getName())) {
             return !deltaCall.getName().equals(lastCall.getName());
         }
 
