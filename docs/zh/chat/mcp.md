@@ -63,7 +63,7 @@ MCP 客户端模块支持以下传输方式：
 
 ```java
 // 获取 MCP 客户端（懒加载）
-McpSyncClient client = McpClientManager.getInstance().getClient("calculator");
+McpSyncClient client = McpClientManager.getInstance().getMcpClient("calculator");
 
 // 或直接获取封装后的 Tool（推荐）
 Tool weatherTool = McpClientManager.getInstance().getMcpTool("weather-api", "getWeather");
@@ -190,7 +190,7 @@ void testCallTool() {
 
 - **作用**：封装一个 MCP 服务的连接状态、传输层、客户端实例。
 - **特性**：
-    - 懒初始化（首次 `getClient()` 时创建）
+    - 懒初始化（首次 `getMcpClient()` 时创建）
     - 支持多线程安全初始化（避免重复创建）
     - 内置 `ping` 健康检查机制（`isAlive()`）
     - 使用 `CloseableTransport` 抽象底层通信（如进程、HTTP 连接）
