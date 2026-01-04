@@ -92,6 +92,17 @@ public final class Observability {
 
             try {
 
+                // 检查是否已经被其他组件（如 SpringBoot）注册了 OpenTelemetry SDK
+                if (GlobalOpenTelemetry.get() instanceof OpenTelemetrySdk) {
+                    logger.info("OpenTelemetry SDK already registered globally. Reusing existing instance.");
+                    globalTracer = GlobalOpenTelemetry.getTracer("agents-flex");
+                    globalMeter = GlobalOpenTelemetry.getMeter("agents-flex");
+                    initialized = true;
+                    // 注意：此处不需要注册 shutdown hook，由 GlobalOpenTelemetry 初始化的组件去关闭，比如 Spring 会管理生命周期
+                    return;
+                }
+
+
                 Resource resource = Resource.getDefault()
                     .merge(Resource.create(Attributes.of(
                         AttributeKey.stringKey("service.name"), "agents-flex",
