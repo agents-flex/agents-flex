@@ -1,6 +1,12 @@
 # Agents-Flex ChangeLog
 
 ## v2.0.0-beta.8 20260104
+- fix(observability): correct OpenTelemetry propagator detection logic
+- fix(observability): improve OpenTelemetry SDK registration check
+- feat(observability): add OpenTelemetry SDK reuse check
+
+
+## v2.0.0-beta.7 20260104
 - refactor(docs): update MCP client method name in documentation
 - docs(chat): update MCP documentation with JDK version requirements
 - chore(build): set maven compiler properties to Java 8
