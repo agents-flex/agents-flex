@@ -17,6 +17,7 @@ package com.agentsflex.core.observability;
 
 import com.agentsflex.core.Consts;
 import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.Meter;
@@ -91,15 +92,19 @@ public final class Observability {
             }
 
             try {
+                OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
+                String className = openTelemetry.getClass().getName();
 
                 // 检查是否已经被其他组件（如 SpringBoot）注册了 OpenTelemetry SDK
-                if (GlobalOpenTelemetry.get() instanceof OpenTelemetrySdk) {
+                if (!"io.opentelemetry.api.DefaultOpenTelemetry".equals(className)) {
                     logger.info("OpenTelemetry SDK already registered globally. Reusing existing instance.");
                     globalTracer = GlobalOpenTelemetry.getTracer("agents-flex");
                     globalMeter = GlobalOpenTelemetry.getMeter("agents-flex");
                     initialized = true;
                     // 注意：此处不需要注册 shutdown hook，由 GlobalOpenTelemetry 初始化的组件去关闭，比如 Spring 会管理生命周期
                     return;
+                } else {
+                    GlobalOpenTelemetry.resetForTest();
                 }
 
 
