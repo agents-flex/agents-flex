@@ -200,16 +200,9 @@ class McpClientManagerTest {
     void testRegisterFromResourceNonExistent() {
         String resourcePath = "non-existent-config.json";
 
-        try (MockedStatic<ClassLoader> classLoaderMock = Mockito.mockStatic(ClassLoader.class)) {
-            ClassLoader mockClassLoader = mock(ClassLoader.class);
-
-            classLoaderMock.when(() -> McpClientManager.class.getClassLoader()).thenReturn(mockClassLoader);
-            when(mockClassLoader.getResourceAsStream(resourcePath)).thenReturn(null);
-
-            assertThrows(IllegalArgumentException.class, () -> {
-                mcpClientManager.registerFromResource(resourcePath);
-            }, "Should throw IllegalArgumentException for non-existent resource");
-        }
+        assertThrows(IllegalArgumentException.class, () -> {
+            mcpClientManager.registerFromResource(resourcePath);
+        }, "Should throw IllegalArgumentException for non-existent resource");
     }
 
     @Test
