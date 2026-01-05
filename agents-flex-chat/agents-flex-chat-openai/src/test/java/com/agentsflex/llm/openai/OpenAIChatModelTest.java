@@ -5,10 +5,10 @@ import com.agentsflex.core.agent.react.ReActAgentListener;
 import com.agentsflex.core.agent.react.ReActAgentState;
 import com.agentsflex.core.agent.react.ReActStep;
 import com.agentsflex.core.memory.ChatMemory;
+import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -16,7 +16,6 @@ import com.agentsflex.core.model.chat.tool.ToolScanner;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;
-import com.agentsflex.core.util.Maps;
 import org.junit.Test;
 
 import java.util.List;
@@ -63,7 +62,6 @@ public class OpenAIChatModelTest {
     }
 
 
-
     @Test()
     public void testChatStreamBailian() {
         OpenAIChatConfig config = new OpenAIChatConfig();
@@ -71,32 +69,32 @@ public class OpenAIChatModelTest {
         config.setEndpoint("https://dashscope.aliyuncs.com");
         config.setRequestPath("/compatible-mode/v1/chat/completions");
         config.setModel("qwen3-max");
-//        config.setDebug(true);
-
-        ChatOptions options = ChatOptions.builder()
-            .temperature(0.7f)
-            .topP(0.9f)
-            .addExtra("stream_options", Maps.of("include_usage",true))
-            .build();
-
         ChatModel chatModel = new OpenAIChatModel(config);
-        chatModel.chatStream("你叫什么名字", new StreamResponseListener() {
+
+        SimplePrompt prompt = new SimplePrompt("北京的天气如何？");
+        prompt.addToolsFromClass(WeatherFunctions.class);
+
+        ChatModelTestUtils.waitForStream(chatModel, prompt, new StreamResponseListener() {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
-                System.out.println(response.getMessage().getContent());
+                if (response.getMessage().getContent() == null) {
+                    System.out.println(response.getMessage());
+                }
+
+                if (response.getMessage().isFinalDelta()) {
+                    List<ToolCall> toolCalls = response.getMessage().getToolCalls();
+                    System.out.println(toolCalls);
+                }
+
+                System.out.println(">>>>>" + response.getMessage().getContent());
             }
 
             @Override
             public void onStop(StreamContext context) {
                 System.out.println("stop!!!!");
             }
-        },options);
+        });
 
-//        try {
-//            Thread.sleep(20000);
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
-//        }
     }
 
     @Test
