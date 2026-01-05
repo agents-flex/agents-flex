@@ -1,5 +1,13 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-beta.9 20260105
+- refactor(stream): remove content check in stream client listener
+- fix(mcp): handle duplicate client registration properly prevent resource leaks when client is re-registered
+- refactor(message): rename shouldNewCall method to isNewCall for clarity
+- refactor(message): optimize tool call comparison logic in AiMessage
+- test(openai): update OpenAI chat model test with tool call support
+
+
 ## v2.0.0-beta.8 20260104
 - fix(observability): correct OpenTelemetry propagator detection logic
 - fix(observability): improve OpenTelemetry SDK registration check
