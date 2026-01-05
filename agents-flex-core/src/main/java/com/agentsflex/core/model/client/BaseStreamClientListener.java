@@ -73,10 +73,8 @@ public class BaseStreamClientListener implements StreamClientListener {
             delta.setFullReasoningContent(fullMessage.getReasoningContent());
 
             //输出内容
-            if (hasContent(delta)) {
-                AiMessageResponse resp = new AiMessageResponse(chatContext, response, delta);
-                streamResponseListener.onMessage(context, resp);
-            }
+            AiMessageResponse resp = new AiMessageResponse(chatContext, response, delta);
+            streamResponseListener.onMessage(context, resp);
         } catch (Exception err) {
             streamResponseListener.onFailure(context, err);
             onStop(this.context.getClient());
@@ -133,12 +131,6 @@ public class BaseStreamClientListener implements StreamClientListener {
     public void onFailure(StreamClient client, Throwable throwable) {
         context.setThrowable(throwable);
         streamResponseListener.onFailure(context, throwable);
-    }
-
-    private boolean hasContent(AiMessage delta) {
-        return delta.getContent() != null ||
-            delta.getReasoningContent() != null ||
-            (delta.getToolCalls() != null && !delta.getToolCalls().isEmpty());
     }
 
 }
