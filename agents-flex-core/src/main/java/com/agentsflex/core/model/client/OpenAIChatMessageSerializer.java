@@ -216,6 +216,9 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
     }
 
     protected void addParameters(Parameter[] parameters, Map<String, Object> propertiesObj, Map<String, Object> parametersObj) {
+        if (parameters == null || parameters.length == 0) {
+            return;
+        }
         List<String> requiredProperties = new ArrayList<>();
         for (Parameter parameter : parameters) {
             Map<String, Object> parameterObj = new HashMap<>();
