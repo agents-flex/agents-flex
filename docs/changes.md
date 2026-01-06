@@ -1,5 +1,9 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-rc.1 20260106
+- fix(OpenAIChatMessageSerializer): Added null check for parameters array to prevent NPE
+
+
 ## v2.0.0-beta.9 20260105
 - refactor(stream): remove content check in stream client listener
 - fix(mcp): handle duplicate client registration properly prevent resource leaks when client is re-registered
