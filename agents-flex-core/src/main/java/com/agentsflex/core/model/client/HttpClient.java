@@ -177,7 +177,11 @@ public class HttpClient {
     private Response execute0(String url, String method, Map<String, String> headers, Object payload) throws IOException {
         Request.Builder builder = new Request.Builder().url(url);
         if (headers != null && !headers.isEmpty()) {
-            headers.forEach(builder::addHeader);
+            headers.forEach((key, value) -> {
+                if (key != null && value != null) {
+                    builder.addHeader(key, value);
+                }
+            });
         }
 
         Request request;

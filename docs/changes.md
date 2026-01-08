@@ -2,6 +2,7 @@
 
 ## v2.0.0-rc.2 20260108
 - fix(deps): update POI dependencies and remove slf4j-simple
+- fix(http): add null check for request headers in HttpClient
 
 
 ## v2.0.0-rc.1 20260106
