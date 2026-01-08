@@ -1,5 +1,9 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-rc.2 20260108
+- fix(deps): update POI dependencies and remove slf4j-simple
+
+
 ## v2.0.0-rc.1 20260106
 - fix(OpenAIChatMessageSerializer): Added null check for parameters array to prevent NPE
 
