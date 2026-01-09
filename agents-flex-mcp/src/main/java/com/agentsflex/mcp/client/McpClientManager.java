@@ -222,4 +222,15 @@ public class McpClientManager implements AutoCloseable {
         log.info("McpClientManager closed.");
     }
 
+    public McpClientDescriptor getMcpClientDescriptor(String name) {
+        return descriptorRegistry.get(name);
+    }
+
+    public Map<String, McpClientDescriptor> getDescriptorRegistry() {
+        return descriptorRegistry;
+    }
+
+    public ScheduledExecutorService getHealthChecker() {
+        return healthChecker;
+    }
 }
