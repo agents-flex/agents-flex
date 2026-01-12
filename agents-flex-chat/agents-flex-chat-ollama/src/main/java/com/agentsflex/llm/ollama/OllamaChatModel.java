@@ -18,6 +18,8 @@ package com.agentsflex.llm.ollama;
 import com.agentsflex.core.model.chat.OpenAICompatibleChatModel;
 import com.agentsflex.core.model.chat.ChatInterceptor;
 import com.agentsflex.core.model.chat.GlobalChatInterceptors;
+import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
+
 
 import java.util.List;
 
@@ -45,5 +47,10 @@ public class OllamaChatModel extends OpenAICompatibleChatModel<OllamaChatConfig>
         super(config, userInterceptors);
     }
 
+
+    @Override
+    public ChatRequestSpecBuilder getChatRequestSpecBuilder() {
+        return new OllamaRequestSpecBuilder();
+    }
 
 }
