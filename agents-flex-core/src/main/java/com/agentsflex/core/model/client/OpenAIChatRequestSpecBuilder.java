@@ -95,7 +95,9 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
             .setIfNotNull("top_k", options.getTopK())
             .setIfNotNull("temperature", options.getTemperature())
             .setIfNotNull("max_tokens", options.getMaxTokens())
-            .setIfNotEmpty("stop", options.getStop());
+            .setIfNotEmpty("stop", options.getStop())
+            .setIfNotEmpty("response_format", options.getResponseFormat());
+
     }
 
     public ChatMessageSerializer getChatMessageSerializer() {

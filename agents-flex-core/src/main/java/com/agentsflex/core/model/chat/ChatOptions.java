@@ -118,6 +118,8 @@ public class ChatOptions {
     protected Integer retryInitialDelayMs;
 
 
+    private Map<String, Object> responseFormat;
+
     /**
      * 是否为流式请求。
      * 这个不允许用户设置，由 Framework 自动设置（用户设置也可能被修改）。
@@ -143,6 +145,7 @@ public class ChatOptions {
         this.retryEnabled = builder.retryEnabled;
         this.retryCount = builder.retryCount;
         this.retryInitialDelayMs = builder.retryInitialDelayMs;
+        this.responseFormat = builder.responseFormat;
     }
 
     // ===== Getter / Setter =====
@@ -303,6 +306,14 @@ public class ChatOptions {
         this.retryInitialDelayMs = retryInitialDelayMs;
     }
 
+    public Map<String, Object> getResponseFormat() {
+        return responseFormat;
+    }
+
+    public void setResponseFormat(Map<String, Object> responseFormat) {
+        this.responseFormat = responseFormat;
+    }
+
     public boolean isStreaming() {
         return streaming;
     }
@@ -311,7 +322,6 @@ public class ChatOptions {
         this.streaming = streaming;
     }
 
-    // ===== Builder 模式 =====
 
     /**
      * 创建 ChatOptions 的 Builder 实例。
@@ -326,6 +336,7 @@ public class ChatOptions {
      * ChatOptions 的构建器类，支持链式调用。
      */
     public static final class Builder {
+
         private String model;
         private String seed;
         private Float temperature = 0.5f;
@@ -339,6 +350,7 @@ public class ChatOptions {
         private Boolean retryEnabled;
         private int retryCount = 3;
         private int retryInitialDelayMs = 1000;
+        public Map<String, Object> responseFormat;
 
         public Builder model(String model) {
             this.model = model;
@@ -411,6 +423,21 @@ public class ChatOptions {
 
         public Builder retryInitialDelayMs(int retryInitialDelayMs) {
             this.retryInitialDelayMs = retryInitialDelayMs;
+            return this;
+        }
+
+        public Builder responseFormat(Map<String, Object> responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public Builder responseFormatToJsonObject() {
+            this.responseFormat = Maps.of("type", "json_object");
+            return this;
+        }
+
+        public Builder responseFormatToJsonSchema(Map<String, Object> json_schema) {
+            this.responseFormat = Maps.of("type", "json_schema").set("json_schema", json_schema);
             return this;
         }
 
