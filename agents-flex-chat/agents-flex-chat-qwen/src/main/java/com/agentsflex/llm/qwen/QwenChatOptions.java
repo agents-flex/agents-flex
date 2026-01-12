@@ -32,14 +32,6 @@ public class QwenChatOptions extends ChatOptions {
     private Float presencePenalty;
 
     /**
-     * 返回内容的格式。（可选） 默认值为{"type": "text"}
-     * 可选值：{"type": "text"}或{"type": "json_object"}。
-     * 设置为{"type": "json_object"}时会输出标准格式的JSON字符串。
-     * 支持的模型和使用方法请参见结构化输出: https://help.aliyun.com/zh/model-studio/json-mode
-     */
-    private ResponseFormat responseFormat;
-
-    /**
      * 生成响应的个数，取值范围是1-4。
      * 对于需要生成多个响应的场景（如创意写作、广告文案等），可以设置较大的 n 值。
      * <pre>
@@ -70,7 +62,6 @@ public class QwenChatOptions extends ChatOptions {
      * 当前支持 qwen-max、qwen-plus、qwen-turbo
      */
     private Boolean enableSearch;
-
 
 
     /**
@@ -202,23 +193,6 @@ public class QwenChatOptions extends ChatOptions {
         }
     }
 
-    public static class ResponseFormat {
-        /**
-         * 返回内容的格式。
-         * 可选值："text" 或 "json_object"
-         * 默认值为 "text"
-         */
-        private String type;
-
-        public String getType() {
-            return type;
-        }
-
-        public ResponseFormat setType(String type) {
-            this.type = type;
-            return this;
-        }
-    }
 
     public static class SearchOptions {
         /**
@@ -271,15 +245,6 @@ public class QwenChatOptions extends ChatOptions {
 
     public QwenChatOptions setPresencePenalty(Float presencePenalty) {
         this.presencePenalty = presencePenalty;
-        return this;
-    }
-
-    public ResponseFormat getResponseFormat() {
-        return responseFormat;
-    }
-
-    public QwenChatOptions setResponseFormat(ResponseFormat responseFormat) {
-        this.responseFormat = responseFormat;
         return this;
     }
 
