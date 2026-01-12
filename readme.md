@@ -15,6 +15,7 @@
 - Prompt、Prompt Template 定义加载的能力
 - Tool 方法定义、调用和执行等能力
 - Tool 方法执行拦截器
+- MCP 调用、响应拦截器、监控、缓存
 - Memory 记忆的能力
 - Embedding
 - Vector Store
