@@ -28,6 +28,7 @@ import com.agentsflex.core.util.LocalTokenCounter;
 import com.agentsflex.core.util.Retryer;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONObject;
 
 /**
@@ -87,7 +88,11 @@ public class OpenAIChatClient extends ChatClient {
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(context, response, "no content for response.");
         }
-        return parseResponse(response, context);
+        try {
+            return parseResponse(response, context);
+        } catch (JSONException e) {
+            return AiMessageResponse.error(context, response, "invalid json response.");
+        }
     }
 
 
