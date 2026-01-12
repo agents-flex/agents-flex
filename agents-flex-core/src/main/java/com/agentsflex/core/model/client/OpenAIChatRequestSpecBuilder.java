@@ -92,7 +92,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         return Maps.of("model", options.getModelOrDefault(config.getModel()))
             .setIf(options.isStreaming(), "stream", true)
             .setIfNotNull("top_p", options.getTopP())
-            .setIfNotNull("top_k", options.getTopK())
+//            .setIfNotNull("top_k", options.getTopK()) // openAI 不支持 top_k 标识
             .setIfNotNull("temperature", options.getTemperature())
             .setIfNotNull("max_tokens", options.getMaxTokens())
             .setIfNotEmpty("stop", options.getStop())
