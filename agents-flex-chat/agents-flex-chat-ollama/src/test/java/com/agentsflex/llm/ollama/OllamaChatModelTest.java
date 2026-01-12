@@ -17,8 +17,8 @@ public class OllamaChatModelTest {
         config.setLogEnabled(true);
 
         ChatModel chatModel = new OllamaChatModel(config);
-        String chat = chatModel.chat("who are your");
-        System.out.println(chat);
+        String chat = chatModel.chat("Why is the sky blue?");
+        System.out.println(">>>" + chat);
     }
 
 
@@ -30,7 +30,7 @@ public class OllamaChatModelTest {
         config.setLogEnabled(true);
 
         ChatModel chatModel = new OllamaChatModel(config);
-        chatModel.chatStream("who are your", (context, response) -> System.out.println(response.getMessage().getContent()));
+        chatModel.chatStream("Why is the sky blue?", (context, response) -> System.out.println(response.getMessage().getContent()));
 
         Thread.sleep(2000);
     }

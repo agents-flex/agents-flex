@@ -19,10 +19,14 @@ import com.agentsflex.core.model.chat.ChatConfig;
 
 public class OllamaChatConfig extends ChatConfig {
 
+    private static final String DEFAULT_PROVIDER = "ollama";
+    private static final String DEFAULT_ENDPOINT = "https://localhost:11434";
+    private static final String DEFAULT_REQUEST_PATH = "/v1/chat/completions";
+
     public OllamaChatConfig() {
-        setProvider("ollama");
-        setEndpoint("http://localhost:11434");
-        setRequestPath("/api/chat");
+        setProvider(DEFAULT_PROVIDER);
+        setEndpoint(DEFAULT_ENDPOINT);
+        setRequestPath(DEFAULT_REQUEST_PATH);
     }
 
 }
