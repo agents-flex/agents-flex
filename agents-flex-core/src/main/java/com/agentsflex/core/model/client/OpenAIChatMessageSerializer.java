@@ -22,6 +22,7 @@ import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 
 import java.util.*;
@@ -98,6 +99,11 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
             if (config.isSupportToolMessage()) {
                 objectMap.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
                 buildAIMessageToolCalls(objectMap, calls, false);
+
+                // 兼容性处理，在 ToolMessage 中，需要将 reasoning_content 添加到 payload 中，比如 deepseek 模型
+                if (config.isNeedReasoningContentForToolMessage() && StringUtil.hasText(message.getReasoningContent())) {
+                    objectMap.put("reasoning_content", message.getReasoningContent());
+                }
             } else {
                 objectMap.put("role", "system");
                 buildAIMessageToolCalls(objectMap, calls, true);

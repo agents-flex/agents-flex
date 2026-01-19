@@ -27,6 +27,10 @@ public class ChatConfig extends BaseModelConfig {
     protected Boolean supportToolMessage;
     protected Boolean supportThinking;
 
+    // 在调用工具的时候，是否需要推理结果作为 reasoning_content 传给大模型， 比如 Deepseek
+    // 参考文档： https://api-docs.deepseek.com/zh-cn/guides/thinking_mode#%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8
+    protected Boolean needReasoningContentForToolMessage;
+
     protected boolean observabilityEnabled = true; // 默认开启
     protected boolean thinkingEnabled = false; // 默认关闭
     protected boolean logEnabled = true;
@@ -128,6 +132,24 @@ public class ChatConfig extends BaseModelConfig {
 
     public boolean isSupportThinking() {
         return supportThinking == null || supportThinking;
+    }
+
+    public Boolean getNeedReasoningContentForToolMessage() {
+        return needReasoningContentForToolMessage;
+    }
+
+    public void setNeedReasoningContentForToolMessage(Boolean needReasoningContentForToolMessage) {
+        this.needReasoningContentForToolMessage = needReasoningContentForToolMessage;
+    }
+
+    /**
+     * 是否需要推理结果作为 reasoning_content 传给大模型
+     * 比如 Deepseek 在工具调佣的时候，需要推理结果作为 reasoning_content 传给大模型
+     *
+     * @return 默认值为 false
+     */
+    public boolean isNeedReasoningContentForToolMessage() {
+        return needReasoningContentForToolMessage != null && needReasoningContentForToolMessage;
     }
 
     public boolean isThinkingEnabled() {
