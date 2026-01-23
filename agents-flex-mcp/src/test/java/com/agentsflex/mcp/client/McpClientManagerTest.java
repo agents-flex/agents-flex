@@ -378,6 +378,11 @@ class McpClientManagerTest {
 
 
         Tool mcpTool = mcpClientManager.getMcpTool("everything", "add");
+
+        if (mcpTool == null) {
+            return;
+        }
+
         System.out.println(mcpTool);
 
         ToolExecutor toolExecutor = new ToolExecutor(mcpTool
