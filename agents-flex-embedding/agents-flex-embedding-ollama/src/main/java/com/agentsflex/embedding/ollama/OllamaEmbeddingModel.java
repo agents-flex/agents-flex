@@ -57,7 +57,9 @@ public class OllamaEmbeddingModel extends BaseEmbeddingModel<OllamaEmbeddingConf
 
         String payload = Maps.of("model", options.getModelOrDefault(config.getModel()))
             .set("input", document.getContent())
+            .setIfNotEmpty("dimensions", options.getDimensions())
             .toJSON();
+
 
         String endpoint = config.getEndpoint();
         // https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings

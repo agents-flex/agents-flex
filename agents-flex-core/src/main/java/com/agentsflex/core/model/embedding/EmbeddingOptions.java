@@ -39,6 +39,10 @@ public class EmbeddingOptions {
      */
     private String encodingFormat;
 
+    private Integer dimensions;
+
+    private String user;
+
 
     public String getModel() {
         return model;
@@ -57,16 +61,37 @@ public class EmbeddingOptions {
         return encodingFormat;
     }
 
+    public String getEncodingFormatOrDefault(String defaultEncodingFormat) {
+        return StringUtil.noText(encodingFormat) ? defaultEncodingFormat : encodingFormat;
+    }
+
     public void setEncodingFormat(String encodingFormat) {
         this.encodingFormat = encodingFormat;
     }
 
+    public Integer getDimensions() {
+        return dimensions;
+    }
+
+    public void setDimensions(Integer dimensions) {
+        this.dimensions = dimensions;
+    }
+
+    public String getUser() {
+        return user;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
+    }
 
     @Override
     public String toString() {
         return "EmbeddingOptions{" +
             "model='" + model + '\'' +
             ", encodingFormat='" + encodingFormat + '\'' +
+            ", dimensions=" + dimensions +
+            ", user='" + user + '\'' +
             '}';
     }
 }

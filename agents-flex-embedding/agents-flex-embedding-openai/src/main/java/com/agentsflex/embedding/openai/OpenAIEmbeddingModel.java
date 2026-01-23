@@ -70,8 +70,10 @@ public class OpenAIEmbeddingModel extends BaseEmbeddingModel<OpenAIEmbeddingConf
     public static String promptToEmbeddingsPayload(Document text, EmbeddingOptions options, OpenAIEmbeddingConfig config) {
         // https://platform.openai.com/docs/api-reference/making-requests
         return Maps.of("model", options.getModelOrDefault(config.getModel()))
-            .set("encoding_format", "float")
+            .set("encoding_format", options.getEncodingFormatOrDefault("float"))
             .set("input", text.getContent())
+            .setIfNotEmpty("user", options.getUser())
+            .setIfNotEmpty("dimensions", options.getDimensions())
             .toJSON();
     }
 }

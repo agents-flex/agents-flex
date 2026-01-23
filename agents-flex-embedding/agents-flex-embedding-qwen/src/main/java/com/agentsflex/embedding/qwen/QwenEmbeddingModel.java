@@ -70,8 +70,10 @@ public class QwenEmbeddingModel extends BaseEmbeddingModel<QwenEmbeddingConfig> 
     public static String promptToEmbeddingsPayload(Document text, EmbeddingOptions options, QwenEmbeddingConfig config) {
         //https://help.aliyun.com/zh/model-studio/developer-reference/embedding-interfaces-compatible-with-openai?spm=a2c4g.11186623.0.i3
         return Maps.of("model", options.getModelOrDefault(config.getModel()))
-            .set("encoding_format", "float")
+            .set("encoding_format", options.getEncodingFormatOrDefault("float"))
             .set("input", text.getContent())
+            .setIfNotEmpty("user", options.getUser())
+            .setIfNotEmpty("dimensions", options.getDimensions())
             .toJSON();
     }
 }
