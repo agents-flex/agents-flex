@@ -1,5 +1,12 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-rc.4 20260123
+- fix: Optimizing Alibaba Cloud vector database vector failure prompt
+- feat(embedding): add dimensions and user support to embedding options
+- feat(document): add MarkdownHeaderSplitter for hierarchical document splitting
+- feat(chat): add reasoning content support for tool messages in chat configuration
+
+
 ## v2.0.0-rc.3 20260112
 - feat(readme): add MCP capabilities to the list of features
 - fix(openai): remove unsupported top_k parameter from openai request
@@ -12,7 +19,7 @@
 - feat(mcp): add methods to access client descriptor and health checker
 
 
-## v2.0.0-rc.3 20260108
+## v2.0.0-rc.4 20260108
 - fix(deps): update POI dependencies and remove slf4j-simple
 - fix(http): add null check for request headers in HttpClient
 
