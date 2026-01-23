@@ -79,7 +79,10 @@ public class AliyunVectorStore extends DocumentStore {
 
         JSONObject jsonObject = JSON.parseObject(response);
         Integer code = jsonObject.getInteger("code");
-        if (code != null && code == 0) {
+        String message = jsonObject.getString("message");
+
+        if (code != null && code == 0 && "Success".equals(message)) {
+
             return StoreResult.successWithIds(documents);
         } else {
             LOG.error("delete vector fail: " + response);
