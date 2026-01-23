@@ -80,11 +80,36 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
             result.set("stream_options", Maps.of("include_usage", true));
         }
 
+        buildThinkingBody(options, config, result);
+
         if (options.getExtra() != null) {
             result.putAll(options.getExtra());
         }
 
         return result.toJSON();
+    }
+
+    protected void buildThinkingBody(ChatOptions options, ChatConfig config, Maps result) {
+        if (!config.isSupportThinking()) {
+            return;
+        }
+        Boolean thinkingEnabled = options.getThinkingEnabled();
+        if (thinkingEnabled == null) {
+            return;
+        }
+        switch (config.getThinkingProtocol()) {
+            case "qwen":
+                result.set("enable_thinking", thinkingEnabled);
+                break;
+            case "deepseek":
+                result.set("thinking", Maps.of("type", thinkingEnabled ? "enabled" : "disabled"));
+                break;
+            case "ollama":
+                result.set("thinking", thinkingEnabled);
+            case "none":
+            default:
+                // do nothing
+        }
     }
 
 

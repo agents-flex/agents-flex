@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.model.config.BaseModelConfig;
+import com.agentsflex.core.util.StringUtil;
 
 public class ChatConfig extends BaseModelConfig {
 
@@ -33,6 +34,7 @@ public class ChatConfig extends BaseModelConfig {
 
     protected boolean observabilityEnabled = true; // 默认开启
     protected boolean thinkingEnabled = false; // 默认关闭
+    protected String thinkingProtocol = "none"; // "deepseek" "qwen" "ollama" "none"
     protected boolean logEnabled = true;
 
 
@@ -158,6 +160,17 @@ public class ChatConfig extends BaseModelConfig {
 
     public void setThinkingEnabled(boolean thinkingEnabled) {
         this.thinkingEnabled = thinkingEnabled;
+    }
+
+    public String getThinkingProtocol() {
+        if (StringUtil.noText(thinkingProtocol)) {
+            return "none";
+        }
+        return thinkingProtocol;
+    }
+
+    public void setThinkingProtocol(String thinkingProtocol) {
+        this.thinkingProtocol = thinkingProtocol;
     }
 
     public boolean isObservabilityEnabled() {
