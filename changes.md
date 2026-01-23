@@ -19,7 +19,7 @@
 - feat(mcp): add methods to access client descriptor and health checker
 
 
-## v2.0.0-rc.4 20260108
+## v2.0.0-rc.2 20260108
 - fix(deps): update POI dependencies and remove slf4j-simple
 - fix(http): add null check for request headers in HttpClient
 
