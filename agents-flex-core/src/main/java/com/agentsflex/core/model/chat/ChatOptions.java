@@ -141,7 +141,7 @@ public class ChatOptions {
         this.stop = builder.stop;
         this.thinkingEnabled = builder.thinkingEnabled;
         this.includeUsage = builder.includeUsage;
-        this.extraBody = builder.extra;
+        this.extraBody = builder.extraBody;
         this.retryEnabled = builder.retryEnabled;
         this.retryCount = builder.retryCount;
         this.retryInitialDelayMs = builder.retryInitialDelayMs;
@@ -346,7 +346,7 @@ public class ChatOptions {
         private List<String> stop;
         private Boolean thinkingEnabled;
         private Boolean includeUsage;
-        private Map<String, Object> extra;
+        private Map<String, Object> extraBody;
         private Boolean retryEnabled;
         private int retryCount = 3;
         private int retryInitialDelayMs = 1000;
@@ -397,16 +397,16 @@ public class ChatOptions {
             return this;
         }
 
-        public Builder extra(Map<String, Object> extra) {
-            this.extra = extra;
+        public Builder extraBody(Map<String, Object> extra) {
+            this.extraBody = extra;
             return this;
         }
 
-        public Builder addExtra(String key, Object value) {
-            if (this.extra == null) {
-                this.extra = Maps.of(key, value);
+        public Builder addExtraBody(String key, Object value) {
+            if (this.extraBody == null) {
+                this.extraBody = Maps.of(key, value);
             } else {
-                this.extra.put(key, value);
+                this.extraBody.put(key, value);
             }
             return this;
         }
