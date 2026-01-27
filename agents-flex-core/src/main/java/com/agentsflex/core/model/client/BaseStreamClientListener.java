@@ -36,6 +36,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     private final AiMessage fullMessage = new AiMessage();
     private final AtomicBoolean finishedFlag = new AtomicBoolean(false);
     private final AtomicBoolean stoppedFlag = new AtomicBoolean(false);
+    private final AtomicBoolean isFailure = new AtomicBoolean(false);
 
     public BaseStreamClientListener(
         ChatModel chatModel,
@@ -92,7 +93,9 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     private void notifyLastMessageAndStop(String response) {
         try {
+
             notifyLastMessage(response);
+
         } finally {
             if (stoppedFlag.compareAndSet(false, true)) {
                 context.setAiMessage(fullMessage);
@@ -105,8 +108,10 @@ public class BaseStreamClientListener implements StreamClientListener {
     @Override
     public void onStop(StreamClient client) {
         try {
-            // onStop 在 sse 的 onClosed 中会被调用，可以用于在 onMessage 出现异常时进行兜底
-            notifyLastMessage(null);
+            if (!isFailure.get()) {
+                // onStop 在 sse 的 onClosed 中会被调用，可以用于在 onMessage 出现异常时进行兜底
+                notifyLastMessage(null);
+            }
         } finally {
             if (stoppedFlag.compareAndSet(false, true)) {
                 context.setAiMessage(fullMessage);
@@ -129,8 +134,10 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     @Override
     public void onFailure(StreamClient client, Throwable throwable) {
-        context.setThrowable(throwable);
-        streamResponseListener.onFailure(context, throwable);
+        if (isFailure.compareAndSet(false, true)) {
+            context.setThrowable(throwable);
+            streamResponseListener.onFailure(context, throwable);
+        }
     }
 
 }
