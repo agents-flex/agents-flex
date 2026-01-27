@@ -70,27 +70,27 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         List<Message> messages = prompt.getMessages();
         UserMessage userMessage = MessageUtil.findLastUserMessage(messages);
 
-        Maps baseParams = buildBaseParamsOfRequestBody(prompt, options, config);
+        Maps baseBodyJsonMap = buildBaseParamsOfRequestBody(prompt, options, config);
 
-        Maps result = baseParams
+        Maps bodyJsonMap = baseBodyJsonMap
             .set("messages", chatMessageSerializer.serializeMessages(messages, config))
             .setIfNotEmpty("tools", chatMessageSerializer.serializeTools(userMessage, config))
             .setIfContainsKey("tools", "tool_choice", userMessage != null ? userMessage.getToolChoice() : null);
 
         if (options.isStreaming() && options.getIncludeUsageOrDefault(true)) {
-            result.set("stream_options", Maps.of("include_usage", true));
+            bodyJsonMap.set("stream_options", Maps.of("include_usage", true));
         }
 
-        buildThinkingBody(options, config, result);
+        buildThinkingBody(options, config, bodyJsonMap);
 
         if (options.getExtraBody() != null) {
-            result.putAll(options.getExtraBody());
+            bodyJsonMap.putAll(options.getExtraBody());
         }
 
-        return result.toJSON();
+        return bodyJsonMap.toJSON();
     }
 
-    protected void buildThinkingBody(ChatOptions options, ChatConfig config, Maps result) {
+    protected void buildThinkingBody(ChatOptions options, ChatConfig config, Maps bodyJsonMap) {
         if (!config.isSupportThinking()) {
             return;
         }
@@ -113,13 +113,13 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
         switch (thinkingProtocol) {
             case "qwen":
-                result.set("enable_thinking", thinkingEnabled);
+                bodyJsonMap.set("enable_thinking", thinkingEnabled);
                 break;
             case "deepseek":
-                result.set("thinking", Maps.of("type", thinkingEnabled ? "enabled" : "disabled"));
+                bodyJsonMap.set("thinking", Maps.of("type", thinkingEnabled ? "enabled" : "disabled"));
                 break;
             case "ollama":
-                result.set("thinking", thinkingEnabled);
+                bodyJsonMap.set("thinking", thinkingEnabled);
             case "none":
             default:
                 // do nothing
