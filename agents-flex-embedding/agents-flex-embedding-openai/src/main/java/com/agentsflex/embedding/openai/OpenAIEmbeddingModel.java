@@ -19,11 +19,13 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.model.embedding.BaseEmbeddingModel;
 import com.agentsflex.core.model.embedding.EmbeddingOptions;
+import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.JSONUtil;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,11 +58,17 @@ public class OpenAIEmbeddingModel extends BaseEmbeddingModel<OpenAIEmbeddingConf
         String response = httpClient.post(endpoint + config.getRequestPath(), headers, payload);
 
         if (StringUtil.noText(response)) {
-            return null;
+            throw new ModelException("response is null or empty.");
+        }
+
+        JSONObject jsonObject = JSON.parseObject(response);
+        String errorMessage = JSONUtil.detectErrorMessage(jsonObject);
+        if (errorMessage != null) {
+            throw new ModelException(errorMessage);
         }
 
         VectorData vectorData = new VectorData();
-        double[] embedding = JSONUtil.readDoubleArray(JSON.parseObject(response), "$.data[0].embedding");
+        double[] embedding = JSONUtil.readDoubleArray(jsonObject, "$.data[0].embedding");
         vectorData.setVector(embedding);
 
         return vectorData;

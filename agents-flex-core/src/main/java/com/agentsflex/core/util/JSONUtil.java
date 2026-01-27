@@ -120,4 +120,14 @@ public class JSONUtil {
         }
         throw new IllegalArgumentException("Invalid JSON path result type: " + result.getClass().getName());
     }
+
+    public static String detectErrorMessage(JSONObject jsonObject) {
+        JSONObject errorObject = jsonObject.getJSONObject("error");
+        if (errorObject == null) {
+            return null;
+        }
+        String errorMessage = errorObject.getString("message");
+        String errorCode = errorObject.getString("code");
+        return errorCode == null ? errorMessage : (errorCode + ": " + errorMessage);
+    }
 }

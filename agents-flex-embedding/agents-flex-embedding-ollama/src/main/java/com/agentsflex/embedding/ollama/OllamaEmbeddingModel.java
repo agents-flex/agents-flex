@@ -19,6 +19,7 @@ import com.agentsflex.core.document.Document;
 import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.model.embedding.BaseEmbeddingModel;
 import com.agentsflex.core.model.embedding.EmbeddingOptions;
+import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.store.VectorData;
 import com.agentsflex.core.util.JSONUtil;
 import com.agentsflex.core.util.Maps;
@@ -66,11 +67,17 @@ public class OllamaEmbeddingModel extends BaseEmbeddingModel<OllamaEmbeddingConf
         String response = httpClient.post(endpoint + "/api/embed", headers, payload);
 
         if (StringUtil.noText(response)) {
-            return null;
+            throw new ModelException("response is null or empty.");
         }
-        VectorData vectorData = new VectorData();
 
         JSONObject jsonObject = JSON.parseObject(response);
+        String errorMessage = JSONUtil.detectErrorMessage(jsonObject);
+        if (errorMessage != null) {
+            throw new ModelException(errorMessage);
+        }
+
+        VectorData vectorData = new VectorData();
+
         double[] embedding = JSONUtil.readDoubleArray(jsonObject, "$.embeddings[0]");
         vectorData.setVector(embedding);
 
