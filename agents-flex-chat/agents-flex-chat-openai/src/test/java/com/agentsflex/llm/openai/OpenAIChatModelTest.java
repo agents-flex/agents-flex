@@ -9,6 +9,7 @@ import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -45,6 +46,8 @@ public class OpenAIChatModelTest {
         config.setModel("Qwen3-32B");
         config.setLogEnabled(true);
 
+        ChatOptions options = ChatOptions.builder().thinkingEnabled(false).build();
+
         ChatModel chatModel = new OpenAIChatModel(config);
 
         ChatModelTestUtils.waitForStream(chatModel, "你叫什么名字", new StreamResponseListener() {
@@ -54,10 +57,15 @@ public class OpenAIChatModelTest {
             }
 
             @Override
+            public void onFailure(StreamContext context, Throwable throwable) {
+                System.out.println("onFailure>>>>" + throwable);
+            }
+
+            @Override
             public void onStop(StreamContext context) {
                 System.out.println("stop!!!!");
             }
-        });
+        }, options);
 
     }
 
@@ -76,6 +84,11 @@ public class OpenAIChatModelTest {
 
         ChatModelTestUtils.waitForStream(chatModel, prompt, new StreamResponseListener() {
             @Override
+            public void onFailure(StreamContext context, Throwable throwable) {
+                System.out.println("onFailure>>>>" + throwable);
+            }
+
+            @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
                 if (response.getMessage().getContent() == null) {
                     System.out.println(response.getMessage());
@@ -86,7 +99,7 @@ public class OpenAIChatModelTest {
                     System.out.println(toolCalls);
                 }
 
-                System.out.println(">>>>>" + response.getMessage().getContent());
+                System.out.println("onMessage >>>>>" + response.getMessage().getContent());
             }
 
             @Override
