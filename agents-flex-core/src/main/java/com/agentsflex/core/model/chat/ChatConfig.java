@@ -16,7 +16,6 @@
 package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.model.config.BaseModelConfig;
-import com.agentsflex.core.util.StringUtil;
 
 public class ChatConfig extends BaseModelConfig {
 
@@ -163,9 +162,6 @@ public class ChatConfig extends BaseModelConfig {
     }
 
     public String getThinkingProtocol() {
-        if (StringUtil.noText(thinkingProtocol)) {
-            return "none";
-        }
         return thinkingProtocol;
     }
 
