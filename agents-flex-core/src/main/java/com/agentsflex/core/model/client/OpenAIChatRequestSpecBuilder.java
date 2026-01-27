@@ -22,7 +22,6 @@ import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.MessageUtil;
-import com.agentsflex.core.util.StringUtil;
 
 import java.util.HashMap;
 import java.util.List;
@@ -100,14 +99,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         }
 
         String thinkingProtocol = config.getThinkingProtocol();
-
-        // 未配置 thinkingProtocol
-        if (StringUtil.noText(thinkingProtocol)
-            || "none".equals(thinkingProtocol)) {
-            thinkingProtocol = guessThinkingProtocol(options, config);
-        }
-
-        if (thinkingProtocol == null) {
+        if (thinkingProtocol == null || "none".equals(thinkingProtocol)) {
             return;
         }
 
@@ -120,28 +112,9 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
                 break;
             case "ollama":
                 bodyJsonMap.set("thinking", thinkingEnabled);
-            case "none":
             default:
                 // do nothing
         }
-    }
-
-    protected String guessThinkingProtocol(ChatOptions options, ChatConfig config) {
-        String provider = config.getProvider();
-        if (provider != null && provider.contains("ollama")) {
-            return "ollama";
-        }
-
-        String modelOrDefault = options.getModelOrDefault(config.getModel());
-        if (modelOrDefault.contains("deepseek")) {
-            return "deepseek";
-        }
-
-        if (modelOrDefault.contains("qwen")) {
-            return "qwen";
-        }
-
-        return null;
     }
 
 
