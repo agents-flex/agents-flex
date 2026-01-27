@@ -1,5 +1,17 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-rc.5 20260127
+- feat(core): add JSON error message detection and enhance embedding model error handling
+- feat(test): add ChatOptions support and enhance stream testing utilities
+- refactor(chat): rename extra field to extraBody in ChatOptions
+- fix(stream): handle failure flag properly in stream client listener
+- refactor(core): remove unused string utility and simplify thinking protocol logic
+- refactor(chat): rename variable for clarity in OpenAI request builder
+- refactor(chat): rename extra field to extraBody in ChatOptions
+- refactor(chat): remove default thinking protocol handling and add dynamic protocol detection
+- feat(chat): add thinking protocol support for chat configurations
+
+
 ## v2.0.0-rc.4 20260123
 - fix: Optimizing Alibaba Cloud vector database vector failure prompt
 - feat(embedding): add dimensions and user support to embedding options
