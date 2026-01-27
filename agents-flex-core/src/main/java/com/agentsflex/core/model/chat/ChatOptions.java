@@ -108,9 +108,9 @@ public class ChatOptions {
     /**
      * 额外的模型参数，用于传递模型特有或未明确暴露的配置。
      * 例如：{"response_format": "json", "presence_penalty": 0.5}
-     * 使用 addExtra() 方法可方便地添加单个参数。
+     * 使用 addExtraBody() 方法可方便地添加单个参数。
      */
-    private Map<String, Object> extra;
+    private Map<String, Object> extraBody;
 
 
     protected Boolean retryEnabled; // 默认开启错误重试
@@ -141,7 +141,7 @@ public class ChatOptions {
         this.stop = builder.stop;
         this.thinkingEnabled = builder.thinkingEnabled;
         this.includeUsage = builder.includeUsage;
-        this.extra = builder.extra;
+        this.extraBody = builder.extra;
         this.retryEnabled = builder.retryEnabled;
         this.retryCount = builder.retryCount;
         this.retryInitialDelayMs = builder.retryInitialDelayMs;
@@ -247,12 +247,12 @@ public class ChatOptions {
     }
 
 
-    public Map<String, Object> getExtra() {
-        return extra;
+    public Map<String, Object> getExtraBody() {
+        return extraBody;
     }
 
-    public void setExtra(Map<String, Object> extra) {
-        this.extra = extra;
+    public void setExtraBody(Map<String, Object> extraBody) {
+        this.extraBody = extraBody;
     }
 
     /**
@@ -261,11 +261,11 @@ public class ChatOptions {
      * @param key   参数名
      * @param value 参数值
      */
-    public void addExtra(String key, Object value) {
-        if (extra == null) {
-            extra = Maps.of(key, value);
+    public void addExtraBody(String key, Object value) {
+        if (extraBody == null) {
+            extraBody = Maps.of(key, value);
         } else {
-            extra.put(key, value);
+            extraBody.put(key, value);
         }
     }
 

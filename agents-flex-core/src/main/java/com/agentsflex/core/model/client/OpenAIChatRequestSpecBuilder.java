@@ -83,8 +83,8 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
         buildThinkingBody(options, config, result);
 
-        if (options.getExtra() != null) {
-            result.putAll(options.getExtra());
+        if (options.getExtraBody() != null) {
+            result.putAll(options.getExtraBody());
         }
 
         return result.toJSON();
