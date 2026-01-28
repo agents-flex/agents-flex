@@ -6,7 +6,6 @@
 
 # Agents-Flex: A Lightweight Java AI Application Development Framework
 
----
 
 ## Basic Capabilities
 
