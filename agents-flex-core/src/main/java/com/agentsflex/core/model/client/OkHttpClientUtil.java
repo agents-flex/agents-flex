@@ -16,11 +16,11 @@
 package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.util.StringUtil;
-import okhttp3.ConnectionPool;
-import okhttp3.OkHttpClient;
+import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.concurrent.TimeUnit;
@@ -125,6 +125,36 @@ public class OkHttpClientUtil {
         return null;
     }
 
+    // 新增：获取代理用户名
+    private static String getProxyUsername() {
+        String username = getPropertyOrEnv("proxy.username", "PROXY_USERNAME", null);
+        if (StringUtil.hasText(username)) return username.trim();
+
+        // 兼容 Java 标准代理属性
+        username = System.getProperty("https.proxyUser");
+        if (StringUtil.hasText(username)) return username.trim();
+
+        username = System.getProperty("http.proxyUser");
+        if (StringUtil.hasText(username)) return username.trim();
+
+        return null;
+    }
+
+    // 新增：获取代理密码
+    private static String getProxyPassword() {
+        String password = getPropertyOrEnv("proxy.password", "PROXY_PASSWORD", null);
+        if (StringUtil.hasText(password)) return password.trim();
+
+        // 兼容 Java 标准代理属性
+        password = System.getProperty("https.proxyPassword");
+        if (StringUtil.hasText(password)) return password.trim();
+
+        password = System.getProperty("http.proxyPassword");
+        if (StringUtil.hasText(password)) return password.trim();
+
+        return null;
+    }
+
     // ==================== 工具方法 ====================
 
     private static int getIntConfig(String sysPropKey, String envKey, int defaultValue) {
@@ -176,10 +206,48 @@ public class OkHttpClientUtil {
                 int port = Integer.parseInt(proxyPort);
                 InetSocketAddress address = new InetSocketAddress(proxyHost, port);
                 builder.proxy(new Proxy(Proxy.Type.HTTP, address));
-                log.debug("HTTP proxy configured via config: {}:{}", proxyHost, port);
+
+                // 配置代理认证
+                String username = getProxyUsername();
+                String password = getProxyPassword();
+
+                if (StringUtil.hasText(username) && StringUtil.hasText(password)) {
+                    configureProxyAuthenticator(builder, username, password);
+                    log.debug("HTTP proxy with authentication configured: {}@{}:{}",
+                        username, proxyHost, port);
+                } else {
+                    log.debug("HTTP proxy configured (no authentication): {}:{}", proxyHost, port);
+                }
             } catch (NumberFormatException e) {
                 log.warn("Invalid proxy port '{}'. Proxy will be ignored.", proxyPort, e);
             }
         }
+    }
+
+    // 配置代理认证器
+    private static void configureProxyAuthenticator(OkHttpClient.Builder builder, String username, String password) {
+        builder.proxyAuthenticator(new Authenticator() {
+            @Override
+            public Request authenticate(Route route, Response response) throws IOException {
+                // 检查是否是代理认证挑战
+                if (response.code() != 407) {
+                    return null; // 不是代理认证，不处理
+                }
+
+                // 如果已经尝试过认证，直接放弃，防止死循环
+                if (response.request().header("Proxy-Authorization") != null) {
+                    log.error("Proxy authentication failed for user: {}", username);
+                    return null;
+                }
+
+                // 生成 Basic 认证凭证 (格式: "Basic base64(username:password)")
+                String credential = Credentials.basic(username, password);
+
+                // 添加 Proxy-Authorization 头并重新发送请求
+                return response.request().newBuilder()
+                    .header("Proxy-Authorization", credential)
+                    .build();
+            }
+        });
     }
 }
