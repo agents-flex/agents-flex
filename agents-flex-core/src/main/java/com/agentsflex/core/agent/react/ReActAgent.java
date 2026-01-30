@@ -294,7 +294,7 @@ public class ReActAgent implements IAgent {
 
             @Override
             public void onStop(StreamContext context) {
-                AiMessage lastAiMessage = context.getAiMessage();
+                AiMessage lastAiMessage = context.getFullMessage();
                 if (lastAiMessage == null) {
                     notifyOnError(new RuntimeException("没有收到任何回复"));
                     return;

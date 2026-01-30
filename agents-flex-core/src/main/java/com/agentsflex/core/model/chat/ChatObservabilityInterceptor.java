@@ -144,7 +144,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             public void onStop(StreamContext context) {
                 boolean success = !context.isError();
                 if (success) {
-                    enrichSpan(span, context.getAiMessage());
+                    enrichSpan(span, context.getFullMessage());
                 }
                 safeRecord(success, null);
                 originalListener.onStop(context);

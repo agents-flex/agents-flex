@@ -23,7 +23,7 @@ public class StreamContext {
     private final ChatModel chatModel;
     private final ChatContext chatContext;
     private final StreamClient client;
-    private AiMessage aiMessage;
+    private AiMessage fullMessage;
     private Throwable throwable;
 
 
@@ -46,12 +46,12 @@ public class StreamContext {
         return client;
     }
 
-    public AiMessage getAiMessage() {
-        return aiMessage;
+    public AiMessage getFullMessage() {
+        return fullMessage;
     }
 
-    public void setAiMessage(AiMessage aiMessage) {
-        this.aiMessage = aiMessage;
+    public void setFullMessage(AiMessage fullMessage) {
+        this.fullMessage = fullMessage;
     }
 
     public Throwable getThrowable() {

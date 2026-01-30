@@ -77,7 +77,7 @@ public class BaseStreamClientListener implements StreamClientListener {
             AiMessageResponse resp = new AiMessageResponse(chatContext, response, delta);
             streamResponseListener.onMessage(context, resp);
         } catch (Exception err) {
-            streamResponseListener.onFailure(context, err);
+            onFailure(this.context.getClient(), err);
             onStop(this.context.getClient());
         }
     }
@@ -85,7 +85,6 @@ public class BaseStreamClientListener implements StreamClientListener {
     private void notifyLastMessage(String response) {
         if (finishedFlag.compareAndSet(false, true)) {
             finalizeFullMessage();
-            fullMessage.setFinished(true);
             AiMessageResponse resp = new AiMessageResponse(chatContext, response, fullMessage);
             streamResponseListener.onMessage(context, resp);
         }
@@ -93,12 +92,9 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     private void notifyLastMessageAndStop(String response) {
         try {
-
             notifyLastMessage(response);
-
         } finally {
             if (stoppedFlag.compareAndSet(false, true)) {
-                context.setAiMessage(fullMessage);
                 streamResponseListener.onStop(context);
             }
         }
@@ -114,7 +110,6 @@ public class BaseStreamClientListener implements StreamClientListener {
             }
         } finally {
             if (stoppedFlag.compareAndSet(false, true)) {
-                context.setAiMessage(fullMessage);
                 streamResponseListener.onStop(context);
             }
         }
@@ -129,6 +124,10 @@ public class BaseStreamClientListener implements StreamClientListener {
 
         fullMessage.setFullReasoningContent(currentReasoningContent);
         fullMessage.setReasoningContent(null);
+
+        fullMessage.setFinished(true);
+
+        context.setFullMessage(fullMessage);
     }
 
 
