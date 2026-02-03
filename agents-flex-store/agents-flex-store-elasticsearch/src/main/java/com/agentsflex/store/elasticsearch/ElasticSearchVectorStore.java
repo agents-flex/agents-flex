@@ -62,8 +62,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static java.util.stream.Collectors.toList;
+import java.util.stream.Collectors;
 
 /**
  * es 向量存储：<a href="https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/introduction.html">elasticsearch-java</a>
@@ -162,12 +161,13 @@ public class ElasticSearchVectorStore extends DocumentStore {
         return saveOrUpdate(documents, indexName);
     }
 
-    @Override
     public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
+        // 最小匹配分数，无值则默认0
         Double minScore = wrapper.getMinScore();
+        // 获取索引名，无指定则使用配置的默认索引
         String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
 
-        // https://www.elastic.co/guide/en/elasticsearch/reference/current/knn-search.html
+        // 公式：(cosineSimilarity + 1.0) / 2  将相似度映射到 0~1 区间
         ScriptScoreQuery scriptScoreQuery = ScriptScoreQuery.of(fn -> fn
             .minScore(minScore == null ? 0 : minScore.floatValue())
             .query(Query.of(q -> q.matchAll(m -> m)))
@@ -178,22 +178,19 @@ public class ElasticSearchVectorStore extends DocumentStore {
         );
 
         try {
-            SearchResponse<Document> response = client.search(
+            SearchResponse<JsonData> response = client.search(
                 SearchRequest.of(s -> s.index(indexName)
                     .query(n -> n.scriptScore(scriptScoreQuery))
                     .size(wrapper.getMaxResults())),
-                Document.class
+                JsonData.class
             );
+
             return response.hits().hits().stream()
-                .filter(s -> s.source() != null)
-                .map(s -> {
-                    Document source = s.source();
-                    source.setScore(s.score());
-                    return source;
-                })
-                .collect(toList());
+                .filter(hit -> hit.source() != null) // 过滤_source为空的无效结果
+                .map(hit -> parseFromJsonData(hit.source(), hit.score()))
+                .collect(Collectors.toList());
         } catch (IOException e) {
-            log.error("[I/O Elasticsearch Exception]", e);
+            log.error("[es/search] Elasticsearch I/O exception occurred", e);
             throw new StoreException(e.getMessage());
         }
     }
@@ -238,5 +235,48 @@ public class ElasticSearchVectorStore extends DocumentStore {
         properties.put("content", Property.of(p -> p.text(TextProperty.of(t -> t))));
         properties.put("vector", Property.of(p -> p.denseVector(DenseVectorProperty.of(d -> d.dims(dimension)))));
         return TypeMapping.of(c -> c.properties(properties));
+    }
+
+    private Document parseFromJsonData(JsonData source, Double score) {
+        Document document = new Document();
+        Map<String, Object> dataMap = source.to(Map.class);
+
+        document.setId(dataMap.get("id"));
+        document.setTitle((String) dataMap.get("title"));
+        document.setContent((String) dataMap.get("content"));
+        document.setScore(score);
+
+        Object vectorObj = dataMap.get("vector");
+        if (vectorObj instanceof List<?>) {
+            List<?> vectorList = (List<?>) vectorObj;
+            float[] vector = new float[vectorList.size()];
+            for (int i = 0; i < vectorList.size(); i++) {
+                Object val = vectorList.get(i);
+                if (val instanceof Number) {
+                    vector[i] = ((Number) val).floatValue();
+                }
+            }
+            document.setVector(vector);
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> metadataMap = (Map<String, Object>) dataMap.get("metadataMap");
+        if (metadataMap != null && !metadataMap.isEmpty()) {
+            document.setMetadataMap(metadataMap);
+        } else {
+            Map<String, Object> otherMetadata = new HashMap<>();
+            for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
+                String key = entry.getKey();
+                if (!"id".equals(key) && !"title".equals(key)
+                    && !"content".equals(key) && !"vector".equals(key)) {
+                    otherMetadata.put(key, entry.getValue());
+                }
+            }
+            if (!otherMetadata.isEmpty()) {
+                document.setMetadataMap(otherMetadata);
+            }
+        }
+
+        return document;
     }
 }
