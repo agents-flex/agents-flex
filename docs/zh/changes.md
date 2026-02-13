@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v2.0.0-rc.6 20260127
+## v2.0.0-rc.7 20260127
 - fix(core): update message retrieval and context handling in streaming components
 - feat(http): add proxy authentication support to OkHttpClientUtil
 - feat(github): add issue templates for bug reports and documentation feedback
