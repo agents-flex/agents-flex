@@ -23,16 +23,26 @@ import java.util.List;
 
 public class StoreResult extends Metadata {
     private final boolean success;
+    private String failReason;
     private List<Object> ids;
 
     public StoreResult(boolean success) {
         this.success = success;
+        this.failReason = "";
     }
 
+    public StoreResult(boolean success, String failReason) {
+        this.success = success;
+        this.failReason = failReason == null ? "" : failReason;
+    }
 
     public boolean isSuccess() {
         return success;
     }
+
+    public String getFailReason() {return failReason;}
+
+    public void setFailReason(String failReason) {this.failReason = failReason;}
 
     public List<Object> ids() {
         return ids;
@@ -40,6 +50,10 @@ public class StoreResult extends Metadata {
 
     public static StoreResult fail() {
         return new StoreResult(false);
+    }
+
+    public static StoreResult fail(String failReason) {
+        return new StoreResult(false, failReason);
     }
 
     public static StoreResult success() {
@@ -60,6 +74,7 @@ public class StoreResult extends Metadata {
         return "StoreResult{" +
             "success=" + success +
             ", ids=" + ids +
+            ", failReason='" + failReason + '\'' +
             '}';
     }
 }

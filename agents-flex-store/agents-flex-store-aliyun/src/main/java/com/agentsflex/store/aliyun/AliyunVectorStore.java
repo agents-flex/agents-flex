@@ -86,7 +86,7 @@ public class AliyunVectorStore extends DocumentStore {
             return StoreResult.successWithIds(documents);
         } else {
             LOG.error("delete vector fail: " + response);
-            return StoreResult.fail();
+            return StoreResult.fail(message);
         }
     }
 
