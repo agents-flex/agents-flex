@@ -1,5 +1,10 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-rc.7 20260213
+- feat: Alibaba Cloud vector failure returns reason for failure
+- fix: ElasticSearch retrieval failure issue
+
+
 ## v2.0.0-rc.7 20260127
 - fix(core): update message retrieval and context handling in streaming components
 - feat(http): add proxy authentication support to OkHttpClientUtil
