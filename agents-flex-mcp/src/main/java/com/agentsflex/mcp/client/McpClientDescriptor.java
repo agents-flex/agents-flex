@@ -178,6 +178,7 @@ public class McpClientDescriptor {
         switch (transportType.toLowerCase()) {
             case "stdio":
                 return new StdioTransportFactory();
+            case "sse":
             case "http-sse":
             case "ssehttp":
                 return new HttpSseTransportFactory();
