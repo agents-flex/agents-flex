@@ -1,11 +1,24 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-rc.8 20260225
+- refactor(client): update reflection field access in HttpStreamTransportFactory
+- feat(client): add environment variables support to stdio transport factory
+- feat(client): add http transport factory support
+- refactor(client): remove hardcoded request timeout in McpClientDescriptor
+- refactor(client): simplify StdioTransportFactory implementation
+- feat(client): enhance HTTP SSE transport with header customization and URL trimming
+- chore(build): ignore .env files in version control
+- chore(build): update MCP version and remove unused dependency
+- test(client): add unit tests for MDLMcpClientManager
+- refactor(mcp): update JSON mapper and enhance transport configuration
+- docs(agent): update ReAct agent prompt template documentation
+
 ## v2.0.0-rc.7 20260213
 - feat: Alibaba Cloud vector failure returns reason for failure
 - fix: ElasticSearch retrieval failure issue
 
 
-## v2.0.0-rc.7 20260127
+## v2.0.0-rc.6 20260127
 - fix(core): update message retrieval and context handling in streaming components
 - feat(http): add proxy authentication support to OkHttpClientUtil
 - feat(github): add issue templates for bug reports and documentation feedback
