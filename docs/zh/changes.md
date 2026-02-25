@@ -1,5 +1,9 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0-rc.9 20260225
+- refactor(mcp): replace hardcoded "stdio" with DEFAULT_TRANSPORT_TYPE constant
+- feat(mcp): add SSE transport support
+
 ## v2.0.0-rc.8 20260225
 - refactor(client): update reflection field access in HttpStreamTransportFactory
 - feat(client): add environment variables support to stdio transport factory
