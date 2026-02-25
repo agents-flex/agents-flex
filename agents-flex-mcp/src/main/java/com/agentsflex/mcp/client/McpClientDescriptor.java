@@ -92,7 +92,7 @@ public class McpClientDescriptor {
             this.managedTransport = transport;
 
             McpSyncClient mcpSyncClient = McpClient.sync(transport.getTransport())
-                .requestTimeout(java.time.Duration.ofSeconds(10))
+//                .requestTimeout(java.time.Duration.ofSeconds(20)) // default 20 seconds
                 .build();
 
             mcpSyncClient.initialize();
