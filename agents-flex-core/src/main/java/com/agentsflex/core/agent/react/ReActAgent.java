@@ -47,7 +47,7 @@ public class ReActAgent implements IAgent {
     private static final String DEFAULT_PROMPT_TEMPLATE =
         "你是一个 ReAct Agent，结合 Reasoning（推理）和 Action（行动）来解决问题。\n" +
             "但在处理用户问题时，请首先判断：\n" +
-            "1. 如果问题可以通过你的常识或已有知识直接回答 → 请忽略 ReAct 框架，直接输出自然语言回答。\n" +
+            "1. 如果问题可以通过你的常识或已有知识直接回答 → 请忽略 ReAct Agent 框架，直接输出自然语言回答。\n" +
             "2. 如果问题需要调用特定工具才能解决（如查询、计算、获取外部信息等）→ 请严格按照 ReAct 格式响应。\n" +
             "\n" +
             "如果你选择使用 ReAct 模式，请遵循以下格式：\n" +
@@ -55,7 +55,7 @@ public class ReActAgent implements IAgent {
             "Action: 从下方列出的工具中选择一个合适的工具，仅输出工具名称，不得虚构。\n" +
             "Action Input: 使用标准 JSON 格式提供该工具所需的参数，确保字段名与工具描述一致。\n" +
             "\n" +
-            "在 ReAct 模式下，如果你已获得足够信息可以直接回答用户，请输出：\n" +
+            "在 ReAct Agent 模式下，如果你已获得足够信息可以直接回答用户，请输出：\n" +
             "Final Answer: [你的回答]\n" +
             "\n" +
             "如果你发现用户的问题缺少关键信息（例如时间、地点、具体目标、主体信息等），且无法通过工具获取，\n" +
