@@ -28,11 +28,18 @@ public class HttpSseTransportFactory implements McpTransportFactory {
         String url = spec.getUrl();
         if (url == null || url.isEmpty()) {
             throw new IllegalArgumentException("URL is required for HTTP SSE transport");
+        } else {
+            url = url.trim();
         }
 
 
         HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder(url)
             .jsonMapper(McpJsonDefaults.getMapper())
+            .customizeRequest(request -> {
+                if (spec.getHeaders() != null) {
+                    spec.getHeaders().forEach(request::setHeader);
+                }
+            })
             .build();
 
         return new CloseableTransport() {
