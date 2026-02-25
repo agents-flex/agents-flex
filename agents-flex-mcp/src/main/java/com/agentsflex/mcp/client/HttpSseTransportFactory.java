@@ -16,7 +16,7 @@
 package com.agentsflex.mcp.client;
 
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
-import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.spec.McpClientTransport;
 
 import java.util.Map;
@@ -31,7 +31,8 @@ public class HttpSseTransportFactory implements McpTransportFactory {
         }
 
 
-        HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder(url).jsonMapper(McpJsonMapper.getDefault())
+        HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder(url)
+            .jsonMapper(McpJsonDefaults.getMapper())
             .build();
 
         return new CloseableTransport() {

@@ -151,7 +151,7 @@ public class McpClientManager implements AutoCloseable {
 
             McpClientDescriptor descriptor = new McpClientDescriptor(name, spec, resolvedEnv);
             descriptorRegistry.put(name, descriptor);
-            log.info("Registered MCP client: {} (transport: {})", name, spec.getTransport());
+            log.info("Registered MCP client: {} (transport: {})", name, spec.getTransportOrType());
         }
     }
 

@@ -27,10 +27,29 @@ public class HttpStreamTransportFactory implements McpTransportFactory {
         String url = spec.getUrl();
         if (url == null || url.isEmpty()) {
             throw new IllegalArgumentException("URL is required for HTTP Stream transport");
+        } else {
+            url = url.trim();
         }
 
-        HttpClientStreamableHttpTransport transport = HttpClientStreamableHttpTransport.builder(url)
-            .build();
+
+        HttpClientStreamableHttpTransport.Builder builder = HttpClientStreamableHttpTransport.builder(url)
+//            .endpoint("") 不允许设置为空字符串
+            .customizeRequest(request -> {
+                if (spec.getHeaders() != null) {
+                    spec.getHeaders().forEach(request::setHeader);
+                }
+            });
+
+        // 通过 反射设置 builder.endpoint 为空字符串
+        try {
+            java.lang.reflect.Field endpointField = HttpClientStreamableHttpTransport.Builder.class.getDeclaredField("endpoint");
+            endpointField.setAccessible(true);
+            endpointField.set(builder, "");
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        HttpClientStreamableHttpTransport transport = builder.build();
 
         return new CloseableTransport() {
             @Override

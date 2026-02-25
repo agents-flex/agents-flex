@@ -87,16 +87,16 @@ public class McpClientDescriptor {
         }
 
         try {
-            McpTransportFactory factory = getTransportFactory(spec.getTransport());
+            McpTransportFactory factory = getTransportFactory(spec.getTransportOrType());
             CloseableTransport transport = factory.create(spec, resolvedEnv);
             this.managedTransport = transport;
 
-            McpSyncClient c = McpClient.sync(transport.getTransport())
+            McpSyncClient mcpSyncClient = McpClient.sync(transport.getTransport())
                 .requestTimeout(java.time.Duration.ofSeconds(10))
                 .build();
 
-            c.initialize();
-            this.client = c;
+            mcpSyncClient.initialize();
+            this.client = mcpSyncClient;
             this.alive = true;
             log.info("MCP client initialized: {}", name);
 
@@ -179,8 +179,10 @@ public class McpClientDescriptor {
             case "stdio":
                 return new StdioTransportFactory();
             case "http-sse":
+            case "ssehttp":
                 return new HttpSseTransportFactory();
             case "http-stream":
+            case "streamablehttp":
                 return new HttpStreamTransportFactory();
             default:
                 throw new IllegalArgumentException("Unsupported transport: " + transportType);

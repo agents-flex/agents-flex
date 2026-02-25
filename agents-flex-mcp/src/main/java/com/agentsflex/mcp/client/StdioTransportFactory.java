@@ -17,7 +17,7 @@ package com.agentsflex.mcp.client;
 
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.spec.McpClientTransport;
 
 import java.util.Map;
@@ -57,7 +57,7 @@ public class StdioTransportFactory implements McpTransportFactory {
                 .args(spec.getArgs())
                 .build();
 
-            StdioClientTransport transport = new StdioClientTransport(parameters, McpJsonMapper.getDefault());
+            StdioClientTransport transport = new StdioClientTransport(parameters, McpJsonDefaults.getMapper());
 
 
             return new CloseableTransport() {
