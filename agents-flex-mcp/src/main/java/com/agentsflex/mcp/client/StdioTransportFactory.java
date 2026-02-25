@@ -29,6 +29,7 @@ public class StdioTransportFactory implements McpTransportFactory {
         try {
             ServerParameters parameters = ServerParameters.builder(spec.getCommand())
                 .args(spec.getArgs())
+                .env(resolvedEnv)
                 .build();
 
             StdioClientTransport transport = new StdioClientTransport(parameters, McpJsonDefaults.getMapper());
