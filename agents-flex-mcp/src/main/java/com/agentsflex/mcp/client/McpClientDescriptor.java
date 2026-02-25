@@ -176,7 +176,7 @@ public class McpClientDescriptor {
 
     private McpTransportFactory getTransportFactory(String transportType) {
         switch (transportType.toLowerCase()) {
-            case "stdio":
+            case McpConfig.DEFAULT_TRANSPORT_TYPE:
                 return new StdioTransportFactory();
             case "sse":
             case "http-sse":

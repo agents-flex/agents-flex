@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 public class McpConfig {
+    public static final String DEFAULT_TRANSPORT_TYPE = "stdio";
 
     private List<InputSpec> inputs = Collections.emptyList();
     private Map<String, ServerSpec> mcpServers = Collections.emptyMap();
@@ -100,7 +101,7 @@ public class McpConfig {
 
         public String getTransportOrType() {
             String result = StringUtil.hasText(transport) ? transport : type;
-            return StringUtil.hasText(result) ? result : "stdio";
+            return StringUtil.hasText(result) ? result : DEFAULT_TRANSPORT_TYPE;
         }
 
         public String getCommand() {
