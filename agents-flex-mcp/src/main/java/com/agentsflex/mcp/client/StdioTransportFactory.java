@@ -26,39 +26,12 @@ public class StdioTransportFactory implements McpTransportFactory {
 
     @Override
     public CloseableTransport create(McpConfig.ServerSpec spec, Map<String, String> resolvedEnv) {
-//        ProcessBuilder pb = new ProcessBuilder();
-//        List<String> args = spec.getArgs();
-//        if (args != null && !args.isEmpty()) {
-//            pb.command(spec.getCommand(), args.toArray(new String[0]));
-//        } else {
-//            pb.command(spec.getCommand());
-//        }
-//        if (!resolvedEnv.isEmpty()) {
-//            pb.environment().putAll(resolvedEnv);
-//        }
-//        pb.redirectErrorStream(true);
-
         try {
-//            Process process = pb.start();
-//            OutputStream stdin = process.getOutputStream();
-//            InputStream stdout = process.getInputStream();
-
-//            StdioClientTransport transport = new StdioClientTransport(
-//                stdin, stdout, McpJsonMapper.getDefault(), () -> {}
-//            );
-
-
-//            ServerParameters params = ServerParameters.builder("npx")
-//                .args("-y", "@modelcontextprotocol/server-everything")
-//                .build();
-
-
             ServerParameters parameters = ServerParameters.builder(spec.getCommand())
                 .args(spec.getArgs())
                 .build();
 
             StdioClientTransport transport = new StdioClientTransport(parameters, McpJsonDefaults.getMapper());
-
 
             return new CloseableTransport() {
                 @Override
@@ -73,17 +46,6 @@ public class StdioTransportFactory implements McpTransportFactory {
                     } catch (Exception e) {
                         // ignore
                     }
-//                    if (process.isAlive()) {
-//                        process.destroy();
-//                        try {
-//                            if (!process.waitFor(3, TimeUnit.SECONDS)) {
-//                                process.destroyForcibly();
-//                            }
-//                        } catch (InterruptedException ex) {
-//                            Thread.currentThread().interrupt();
-//                            process.destroyForcibly();
-//                        }
-//                    }
                 }
             };
         } catch (Exception e) {
