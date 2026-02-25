@@ -18,6 +18,7 @@ package com.agentsflex.mcp.client;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.spec.McpClientTransport;
 
+import java.lang.reflect.Field;
 import java.util.Map;
 
 public class HttpStreamTransportFactory implements McpTransportFactory {
@@ -41,8 +42,9 @@ public class HttpStreamTransportFactory implements McpTransportFactory {
             });
 
         // 通过 反射设置 builder.endpoint 为空字符串
+        // builder 不允许设置为空字符串
         try {
-            java.lang.reflect.Field endpointField = HttpClientStreamableHttpTransport.Builder.class.getDeclaredField("endpoint");
+            Field endpointField = HttpClientStreamableHttpTransport.Builder.class.getDeclaredField("endpoint");
             endpointField.setAccessible(true);
             endpointField.set(builder, "");
         } catch (NoSuchFieldException | IllegalAccessException e) {
