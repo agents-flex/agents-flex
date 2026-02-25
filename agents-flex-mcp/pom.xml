@@ -16,7 +16,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <mcp.version>0.17.0</mcp.version>
+        <mcp.version>1.0.0</mcp.version>
     </properties>
 
 
@@ -35,11 +35,11 @@
             <artifactId>mcp</artifactId>
             <version>${mcp.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.modelcontextprotocol.sdk</groupId>
-            <artifactId>mcp-json</artifactId>
-            <version>${mcp.version}</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.modelcontextprotocol.sdk</groupId>-->
+<!--            <artifactId>mcp-json</artifactId>-->
+<!--            <version>${mcp.version}</version>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
             <artifactId>mcp-json-jackson2</artifactId>
