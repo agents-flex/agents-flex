@@ -181,6 +181,7 @@ public class McpClientDescriptor {
             case "http-sse":
             case "ssehttp":
                 return new HttpSseTransportFactory();
+            case "http":
             case "http-stream":
             case "streamablehttp":
                 return new HttpStreamTransportFactory();
