@@ -291,6 +291,11 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-skills</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-store-pgvector</artifactId>
                 <version>${revision}</version>
             </dependency>
@@ -385,6 +390,24 @@
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-mcp</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+
+            <!-- demos -->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>demos</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>helloworld</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>skills-demo</artifactId>
                 <version>${revision}</version>
             </dependency>
 

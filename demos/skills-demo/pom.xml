@@ -24,13 +24,13 @@
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-tool-commons</artifactId>
-            <version>2.0.0-rc.9</version>
+            <version>${revision}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-skills</artifactId>
-            <version>2.0.0-rc.9</version>
+            <version>${revision}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
