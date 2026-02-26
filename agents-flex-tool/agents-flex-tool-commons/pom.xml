@@ -10,7 +10,13 @@
     </parent>
 
     <name>agents-flex-tool-shell</name>
-    <artifactId>agents-flex-tool-shell</artifactId>
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+    </dependencies>
+    <artifactId>agents-flex-tool-commons</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

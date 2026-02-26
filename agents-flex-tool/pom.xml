@@ -15,7 +15,7 @@
     <modules>
         <module>agents-flex-tool-python</module>
         <module>agents-flex-tool-javascript</module>
-        <module>agents-flex-tool-shell</module>
+        <module>agents-flex-tool-commons</module>
     </modules>
 
     <properties>
