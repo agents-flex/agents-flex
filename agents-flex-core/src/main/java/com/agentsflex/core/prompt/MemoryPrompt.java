@@ -17,9 +17,7 @@ package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.DefaultChatMemory;
-import com.agentsflex.core.message.AbstractTextMessage;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.SystemMessage;
+import com.agentsflex.core.message.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,6 +42,10 @@ public class MemoryPrompt extends Prompt {
 
     public SystemMessage getSystemMessage() {
         return systemMessage;
+    }
+
+    public void setSystemMessage(String content) {
+        this.systemMessage = new SystemMessage(content);
     }
 
     public void setSystemMessage(SystemMessage systemMessage) {
@@ -93,6 +95,14 @@ public class MemoryPrompt extends Prompt {
         memory.addMessage(message);
     }
 
+    public void addUserMessage(String content) {
+        this.addMessage(new UserMessage(content));
+    }
+
+    public void addAiMessage(String content) {
+        this.addMessage(new AiMessage(content));
+    }
+
     public void addMessageTemporary(Message message) {
         if (temporaryMessages == null) {
             temporaryMessages = new ArrayList<>();
@@ -100,7 +110,7 @@ public class MemoryPrompt extends Prompt {
         temporaryMessages.add(message);
     }
 
-    public void addMessages(Collection<Message> messages) {
+    public void addMessages(Collection<? extends Message> messages) {
         memory.addMessages(messages);
     }
 
