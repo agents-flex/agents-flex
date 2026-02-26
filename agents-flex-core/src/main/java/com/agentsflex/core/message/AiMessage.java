@@ -275,6 +275,10 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
         return copy;
     }
 
+    public boolean hasToolCalls() {
+        return toolCalls != null && !toolCalls.isEmpty();
+    }
+
     public List<ToolCall> getToolCalls() {
         return toolCalls;
     }
