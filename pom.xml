@@ -51,6 +51,8 @@
         <module>agents-flex-embedding</module>
         <module>agents-flex-tool</module>
         <module>agents-flex-mcp</module>
+        <module>agents-flex-skills</module>
+        <module>demos</module>
     </modules>
 
     <properties>
@@ -504,6 +506,9 @@
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
+                    <excludeArtifacts>
+                        <excludeArtifact>demos</excludeArtifact>
+                    </excludeArtifacts>
                 </configuration>
             </plugin>
 
