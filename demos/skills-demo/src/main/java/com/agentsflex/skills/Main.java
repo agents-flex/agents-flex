@@ -34,10 +34,7 @@ public class Main {
         MemoryPrompt prompt = new MemoryPrompt();
         prompt.setSystemMessage("Always use the available skills to assist the user in their requests.");
 
-        UserMessage userMessage = new UserMessage("Explain reinforcement learning in simple terms and use.\n" +
-            "Use required skills.\n" +
-            "Then use the Youtube video https://youtu.be/vXtfdGphr3c?si=xy8U2Al_Um5vE4Jd transcript to support your answer.\n" +
-            "Use absolute paths for the skills and scripts. Do not ask me for more details.");
+        UserMessage userMessage = new UserMessage("帮我把 “Hello world” 这个内容成一个 PDF 文件。");
 
 
         Tool skillsTool = SkillsTool.builder()
@@ -63,6 +60,8 @@ public class Main {
                         prompt.addMessages(toolMessages);
                     }
                     chatModel.chatStream(prompt, this);
+                }else if(response.getMessage().isFinalDelta() && !response.getMessage().hasToolCalls()){
+                    System.out.println(">>>>>>> 结束 <<<<<<<<<");
                 }
             }
         };
