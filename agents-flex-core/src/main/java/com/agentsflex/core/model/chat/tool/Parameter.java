@@ -22,7 +22,7 @@ import java.util.List;
 public class Parameter implements Serializable {
 
     protected String name;
-    protected String type;
+    protected String type = "string";
     protected String description;
     protected String[] enums;
     protected boolean required = false;
@@ -102,7 +102,7 @@ public class Parameter implements Serializable {
     // --- Builder inner class ---
     public static class Builder {
         private String name;
-        private String type;
+        private String type = "string";
         private String description;
         private String[] enums;
         private boolean required = false;
