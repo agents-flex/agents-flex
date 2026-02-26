@@ -15,6 +15,7 @@
 - Tool method definition, invocation, and execution capabilities
 - Tool method execution interceptor
 - MCP invocation, response interceptor, monitoring, and caching
+- Skills
 - Memory capabilities
 - Embedding
 - Vector Store
