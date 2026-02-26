@@ -26,7 +26,7 @@ public interface ChatMemory extends Memory {
 
     void addMessage(Message message);
 
-    default void addMessages(Collection<Message> messages){
+    default void addMessages(Collection<? extends Message> messages){
         for (Message message : messages) {
             addMessage(message);
         }
