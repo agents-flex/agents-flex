@@ -16,6 +16,7 @@
     <modules>
         <module>helloworld</module>
         <module>skills-demo</module>
+        <module>data-demo</module>
     </modules>
 
     <properties>
