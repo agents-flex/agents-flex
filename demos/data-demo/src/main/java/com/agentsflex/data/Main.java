@@ -26,6 +26,7 @@ public class Main {
         dataSource.setUsername("root");
         dataSource.setPassword("123456");
         dataSource.setName("aiflowy_v1");
+//        dataSource.setDescription();
 
         dataSource.buildTables();
 
@@ -44,6 +45,7 @@ public class Main {
         MemoryPrompt prompt = new MemoryPrompt();
 
         UserMessage userMessage = new UserMessage("系统中有哪些姓张的用户呢？");
+//        UserMessage userMessage = new UserMessage("系统中有多少个用户呢？");
 
 
         List<Tool> tools = DataTools.builder()
