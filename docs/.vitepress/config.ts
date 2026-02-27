@@ -81,6 +81,7 @@ export default defineConfig({
                     {text: 'Tool 构建', link: '/zh/chat/tool-build'},
                     {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
                     {text: 'MCP 调用', link: '/zh/chat/mcp'},
+                    {text: 'Skills', link: '/zh/chat/skills'},
                     {text: 'ChatClient', link: '/zh/chat/chat-client'},
                     {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
                     {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
