@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2022-2025, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,12 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.convert;
 
-public class LongConverter  implements IConverter<Long> {
-    @Override
-    public Long convert(String text) {
-        return Long.parseLong(text);
-    }
-}
-
+/**
+ * SQL 方言。
+ */
+package com.agentsflex.data.jdbc.dialect;

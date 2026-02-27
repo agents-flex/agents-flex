@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2022-2025, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,7 +13,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.convert;
+package com.agentsflex.data.jdbc.dialect.impl;
 
-public class ConvertException extends RuntimeException{
+
+import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.data.jdbc.dialect.AbstractJdbcDialect;
+
+/**
+ * @author michael
+ */
+public class MySqlJdbcDialect extends AbstractJdbcDialect {
+    @Override
+    protected String forBuildColumnsSql(String schema, String tableName) {
+        return "SELECT * FROM `" + (StringUtil.hasText(schema) ? schema + "`.`" : "") + tableName + "` WHERE 1 = 2";
+    }
 }
