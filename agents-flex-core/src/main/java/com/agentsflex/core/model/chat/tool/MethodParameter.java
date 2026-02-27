@@ -15,15 +15,17 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
+import java.lang.reflect.Type;
+
 public class MethodParameter extends Parameter {
 
-    protected Class<?> typeClass;
+    protected Type typeClass;
 
-    public Class<?> getTypeClass() {
+    public Type getTypeClass() {
         return typeClass;
     }
 
-    public void setTypeClass(Class<?> typeClass) {
+    public void setTypeClass(Type typeClass) {
         this.typeClass = typeClass;
     }
 }

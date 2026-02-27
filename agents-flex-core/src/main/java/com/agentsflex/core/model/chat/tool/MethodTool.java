@@ -15,13 +15,17 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
-import com.agentsflex.core.convert.ConvertService;
 import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
+import com.agentsflex.core.util.TypeConverter;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,21 +65,23 @@ public class MethodTool extends BaseTool {
 
         List<MethodParameter> parameterList = new ArrayList<>();
         java.lang.reflect.Parameter[] methodParameters = method.getParameters();
+        Type[] genericParameterTypes = method.getGenericParameterTypes();
+        int index = 0;
         for (java.lang.reflect.Parameter methodParameter : methodParameters) {
-            MethodParameter parameter = getParameter(methodParameter);
+            MethodParameter parameter = getParameter(methodParameter, genericParameterTypes[index++]);
             parameterList.add(parameter);
         }
         this.parameters = parameterList.toArray(new MethodParameter[]{});
     }
 
     @NotNull
-    private static MethodParameter getParameter(java.lang.reflect.Parameter methodParameter) {
+    private static MethodParameter getParameter(Parameter methodParameter, Type genericParameterType) {
         ToolParam toolParam = methodParameter.getAnnotation(ToolParam.class);
         MethodParameter parameter = new MethodParameter();
         parameter.setName(toolParam.name());
         parameter.setDescription(toolParam.description());
         parameter.setType(methodParameter.getType().getSimpleName().toLowerCase());
-        parameter.setTypeClass(methodParameter.getType());
+        parameter.setTypeClass(genericParameterType);
         parameter.setRequired(toolParam.required());
         parameter.setEnums(toolParam.enums());
         return parameter;
@@ -87,7 +93,13 @@ public class MethodTool extends BaseTool {
             for (int i = 0; i < this.parameters.length; i++) {
                 MethodParameter parameter = (MethodParameter) this.parameters[i];
                 Object value = argsMap.get(parameter.getName());
-                args[i] = ConvertService.convert(value, parameter.getTypeClass());
+                if (value instanceof JSONArray) {
+                    args[i] = ((JSONArray) value).to(parameter.getTypeClass());
+                } else if (value instanceof JSONObject) {
+                    args[i] = ((JSONObject) value).to(parameter.getTypeClass());
+                } else {
+                    args[i] = TypeConverter.convert(value, parameter.getTypeClass());
+                }
             }
             return method.invoke(object, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
