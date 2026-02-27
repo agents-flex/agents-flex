@@ -53,6 +53,7 @@
         <module>agents-flex-mcp</module>
         <module>agents-flex-skills</module>
         <module>demos</module>
+        <module>agents-flex-data</module>
     </modules>
 
     <properties>
@@ -408,6 +409,11 @@
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>skills-demo</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>data-demo</artifactId>
                 <version>${revision}</version>
             </dependency>
 
