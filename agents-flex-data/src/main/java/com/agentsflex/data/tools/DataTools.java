@@ -7,6 +7,7 @@ import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import com.agentsflex.data.entity.ColumnInfo;
 import com.agentsflex.data.entity.DataSourceInfo;
+import com.agentsflex.data.entity.JdbcDataSourceInfo;
 import com.agentsflex.data.entity.TableInfo;
 import com.agentsflex.data.util.JdbcQueryUtil;
 import com.alibaba.fastjson2.JSON;
@@ -459,6 +460,12 @@ public class DataTools {
         }
 
         public List<Tool> buildTools() {
+            for (DataSourceInfo dataSourceInfo : this.dataSourceInfos) {
+               if (dataSourceInfo instanceof JdbcDataSourceInfo){
+                   ((JdbcDataSourceInfo) dataSourceInfo).buildTables();
+               }
+            }
+
             DataTools dataTools = new DataTools(this.dataSourceInfos);
             List<Tool> tools = new ArrayList<>();
             tools.add(dataTools.buildListTablesTool());

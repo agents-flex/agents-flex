@@ -20,17 +20,6 @@ public class Main {
 
     public static void main(String[] args) {
 
-        JdbcDataSourceInfo dataSource = new JdbcDataSourceInfo();
-//        dataSource.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/aiflowy_v1?useInformationSchema=true&characterEncoding=utf-8");
-        dataSource.setJdbcUrl("jdbc:mysql://192.168.2.10:3306/aiflowy-v2?useInformationSchema=true&characterEncoding=utf-8");
-        dataSource.setUsername("root");
-        dataSource.setPassword("123456");
-        dataSource.setName("aiflowy_v1");
-//        dataSource.setDescription();
-
-        dataSource.buildTables();
-
-
         OpenAIChatModel chatModel = OpenAIChatConfig.builder()
             .provider("GiteeAI")
             .endpoint("https://ai.gitee.com")
@@ -45,8 +34,15 @@ public class Main {
         MemoryPrompt prompt = new MemoryPrompt();
 
         UserMessage userMessage = new UserMessage("系统中有哪些姓张的用户呢？");
-//        UserMessage userMessage = new UserMessage("系统中有多少个用户呢？");
 
+
+        JdbcDataSourceInfo dataSource = new JdbcDataSourceInfo();
+//        dataSource.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/aiflowy_v1?useInformationSchema=true&characterEncoding=utf-8");
+        dataSource.setJdbcUrl("jdbc:mysql://192.168.2.10:3306/aiflowy-v2?useInformationSchema=true&characterEncoding=utf-8");
+        dataSource.setUsername("root");
+        dataSource.setPassword("123456");
+        dataSource.setName("aiflowy_v1");
+//        dataSource.setDescription();
 
         List<Tool> tools = DataTools.builder()
             .addDataSourceInfo(dataSource)
@@ -76,6 +72,7 @@ public class Main {
                 }
             }
         };
+
         chatModel.chatStream(prompt, listener);
 
         try {
