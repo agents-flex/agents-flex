@@ -33,25 +33,25 @@ public class SkillsTool {
 
     private static final String TOOL_DESCRIPTION_TEMPLATE = "Execute a skill within the main conversation\n" +
         "\n" +
-        "\t\t\t<skills_instructions>\n" +
-        "\t\t\tWhen users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.\n" +
+        "<skills_instructions>\n" +
+        "When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.\n" +
         "\n" +
-        "\t\t\tHow to use skills:\n" +
-        "\t\t\t- Invoke skills using this tool with the skill name only (no arguments)\n" +
-        "\t\t\t- When you invoke a skill, you will see <command-message>The \"{name}\" skill is loading</command-message>\n" +
-        "\t\t\t- The skill's prompt will expand and provide detailed instructions on how to complete the task\n" +
+        "How to use skills:\n" +
+        "- Invoke skills using this tool with the skill name only (no arguments)\n" +
+        "- When you invoke a skill, you will see <command-message>The \"{name}\" skill is loading</command-message>\n" +
+        "- The skill's prompt will expand and provide detailed instructions on how to complete the task\n" +
         "\n" +
-        "\t\t\tNOTE: Response always starts start with the base directory of the skill execution environment. You can use this to retrieve additional files of call shell commands.\n" +
-        "\t\t\tSkill description follows after the base directory line.\n" +
+        "NOTE: Response always starts start with the base directory of the skill execution environment. You can use this to retrieve additional files of call shell commands.\n" +
+        "Skill description follows after the base directory line.\n" +
         "\n" +
-        "\t\t\tImportant:\n" +
-        "\t\t\t- Only use skills listed in <available_skills> below\n" +
-        "\t\t\t- Do not invoke a skill that is already running\n" +
-        "\t\t\t</skills_instructions>\n" +
+        "Important:\n" +
+        "- Only use skills listed in <available_skills> below\n" +
+        "- Do not invoke a skill that is already running\n" +
+        "</skills_instructions>\n" +
         "\n" +
-        "\t\t\t<available_skills>\n" +
-        "\t\t\t%s\n" +
-        "\t\t\t</available_skills>";
+        "<available_skills>\n" +
+        "%s\n" +
+        "</available_skills>";
 
 
     public static Builder builder() {
@@ -87,7 +87,6 @@ public class SkillsTool {
         }
 
         public Tool build() {
-
             String skillsXml = this.skills.stream().map(s -> s.toXml()).collect(Collectors.joining("\n"));
             return Tool.builder()
                 .name("Skill")
@@ -114,10 +113,6 @@ public class SkillsTool {
 
                     return "Skill not found: " + command;
                 }).build();
-
         }
-
     }
-
-
 }
