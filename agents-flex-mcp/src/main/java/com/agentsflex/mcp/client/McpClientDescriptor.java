@@ -183,11 +183,13 @@ public class McpClientDescriptor {
             case "ssehttp":
                 return new HttpSseTransportFactory();
             case "http":
+            case "streamable":
             case "http-stream":
             case "streamablehttp":
                 return new HttpStreamTransportFactory();
             default:
-                throw new IllegalArgumentException("Unsupported transport: " + transportType);
+                throw new IllegalArgumentException("Unsupported transport type: " + transportType + ", only support: " + McpConfig.DEFAULT_TRANSPORT_TYPE
+                    + ", sse, http-sse, ssehttp, http, streamable, http-stream, streamablehttp.");
         }
     }
 
