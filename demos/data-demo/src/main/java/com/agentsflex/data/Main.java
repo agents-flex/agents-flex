@@ -25,15 +25,15 @@ public class Main {
             .endpoint("https://ai.gitee.com")
             .requestPath("/v1/chat/completions")
             .apiKey(System.getenv("GITEE_APIKEY"))
-            .model("Qwen3.5-35B-A3B")
-//            .model("Qwen3-32B")
-            .thinkingEnabled(false)
-//            .logEnabled(false)
+//            .model("Qwen3.5-35B-A3B")
+            .model("Qwen3-32B")
+//            .thinkingEnabled(false)
+            .logEnabled(false)
             .buildModel();
 
         MemoryPrompt prompt = new MemoryPrompt();
 
-        UserMessage userMessage = new UserMessage("系统中有哪些姓张的用户呢？");
+        UserMessage userMessage = new UserMessage("系统中有哪些姓李的用户呢？");
 
 
         JdbcDataSourceInfo dataSource = new JdbcDataSourceInfo();
@@ -56,19 +56,25 @@ public class Main {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
                 String content = StringUtil.hasText(response.getMessage().getContent()) ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
-                System.out.println(">>>>> " + content);
+                if (content != null)
+                    System.out.print( content);
 
-                if (response.getMessage().isFinalDelta() && response.getMessage().getToolCalls() != null) {
-                    System.out.println("----------");
+                if (response.getMessage().isFinalDelta() && response.getMessage().hasToolCalls()) {
+                    System.out.println("\n----------");
                     prompt.addMessage(response.getMessage());
                     for (ToolCall toolCall : response.getMessage().getToolCalls()) {
                         System.out.println(">>>>> " + toolCall.getName() + ": " + toolCall.getArguments());
                         List<ToolMessage> toolMessages = response.executeToolCallsAndGetToolMessages();
+
+                        for (ToolMessage toolMessage : toolMessages) {
+                            System.out.println("<<<<< " + toolMessage.getToolCallId() + ": " + toolMessage.getContent());
+                        }
+
                         prompt.addMessages(toolMessages);
                     }
                     chatModel.chatStream(prompt, this);
                 } else if (response.getMessage().isFinalDelta() && !response.getMessage().hasToolCalls()) {
-                    System.out.println(">>>>>>> 结束 <<<<<<<<<");
+                    System.out.println("\n>>>>>>> 结束 <<<<<<<<<");
                 }
             }
         };
