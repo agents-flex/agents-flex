@@ -33,6 +33,7 @@ public interface StreamResponseListener {
 
     default void onFailure(StreamContext context, Throwable throwable) {
         if (throwable != null) {
+            throwable.printStackTrace();
             logger.error(throwable.toString(), throwable);
         }
     }
