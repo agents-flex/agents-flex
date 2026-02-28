@@ -69,20 +69,18 @@ public class SseClient extends EventSourceListener implements StreamClient {
             headers.forEach(builder::addHeader);
         }
 
-        MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
-        RequestBody body = RequestBody.create(payload, mediaType);
-        Request request = builder.post(body).build();
-
-
-        EventSource.Factory factory = EventSources.createFactory(this.okHttpClient);
-        this.eventSource = factory.newEventSource(request, this);
-
         ChatMessageLogger.logRequest(config, payload);
 
         if (this.listener != null) {
             this.listener.onStart(this);
         }
 
+        MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
+        RequestBody body = RequestBody.create(payload, mediaType);
+        Request request = builder.post(body).build();
+
+        EventSource.Factory factory = EventSources.createFactory(this.okHttpClient);
+        this.eventSource = factory.newEventSource(request, this);
     }
 
     @Override
