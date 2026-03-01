@@ -16,9 +16,9 @@
 package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatConfig;
 import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.prompt.Prompt;
 
 import java.util.List;
 import java.util.Map;
@@ -48,7 +48,7 @@ public interface ChatMessageSerializer {
      */
     List<Map<String, Object>> serializeTools(List<Tool> tools, ChatConfig config);
 
-    default List<Map<String, Object>> serializeTools(UserMessage userMessage, ChatConfig config) {
-        return serializeTools(userMessage == null ? null : userMessage.getTools(), config);
+    default List<Map<String, Object>> serializeTools(Prompt prompt, ChatConfig config) {
+        return serializeTools(prompt == null ? null : prompt.getTools(), config);
     }
 }

@@ -16,84 +16,25 @@
 package com.agentsflex.core.message;
 
 import com.agentsflex.core.model.chat.ChatConfig;
-import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.ToolScanner;
 import com.agentsflex.core.util.ImageUtil;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 public class UserMessage extends AbstractTextMessage<UserMessage> {
 
     private List<String> audioUrls;
     private List<String> videoUrls;
     private List<String> imageUrls;
-    private List<Tool> tools;
-    private String toolChoice;
+
 
     public UserMessage() {
     }
 
     public UserMessage(String content) {
         setContent(content);
-    }
-
-    public void addTool(Tool tool) {
-        if (this.tools == null)
-            this.tools = new java.util.ArrayList<>();
-        this.tools.add(tool);
-    }
-
-    public void addTools(Collection<? extends Tool> functions) {
-        if (this.tools == null) {
-            this.tools = new java.util.ArrayList<>();
-        }
-        if (functions != null) {
-            this.tools.addAll(functions);
-        }
-    }
-
-    public void addToolsFromClass(Class<?> funcClass, String... methodNames) {
-        if (this.tools == null)
-            this.tools = new java.util.ArrayList<>();
-        this.tools.addAll(ToolScanner.scan(funcClass, methodNames));
-    }
-
-    public void addToolsFromObject(Object funcObject, String... methodNames) {
-        if (this.tools == null)
-            this.tools = new java.util.ArrayList<>();
-        this.tools.addAll(ToolScanner.scan(funcObject, methodNames));
-    }
-
-    public List<Tool> getTools() {
-        return tools;
-    }
-
-    public Map<String, Tool> getToolsMap() {
-        if (tools == null) {
-            return Collections.emptyMap();
-        }
-        Map<String, Tool> map = new HashMap<>(tools.size());
-        for (Tool tool : tools) {
-            map.put(tool.getName(), tool);
-        }
-        return map;
-    }
-
-    public void setTools(List<? extends Tool> tools) {
-        if (tools == null) {
-            this.tools = null;
-        } else {
-            this.tools = new ArrayList<>(tools);
-        }
-    }
-
-    public String getToolChoice() {
-        return toolChoice;
-    }
-
-    public void setToolChoice(String toolChoice) {
-        this.toolChoice = toolChoice;
     }
 
 
@@ -177,8 +118,6 @@ public class UserMessage extends AbstractTextMessage<UserMessage> {
             "audioUrls=" + audioUrls +
             ", videoUrls=" + videoUrls +
             ", imageUrls=" + imageUrls +
-            ", functions=" + tools +
-            ", toolChoice='" + toolChoice + '\'' +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';
@@ -193,13 +132,11 @@ public class UserMessage extends AbstractTextMessage<UserMessage> {
     public UserMessage copy() {
         UserMessage copy = new UserMessage();
         copy.content = this.content;
-        copy.toolChoice = this.toolChoice;
 
         // 深拷贝集合
         if (this.audioUrls != null) copy.audioUrls = new ArrayList<>(this.audioUrls);
         if (this.videoUrls != null) copy.videoUrls = new ArrayList<>(this.videoUrls);
         if (this.imageUrls != null) copy.imageUrls = new ArrayList<>(this.imageUrls);
-        if (this.tools != null) copy.tools = new ArrayList<>(this.tools);
 
         if (this.metadataMap != null) {
             copy.metadataMap = new HashMap<>(this.metadataMap);

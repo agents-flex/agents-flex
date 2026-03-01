@@ -16,11 +16,9 @@
 package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.message.*;
-import com.agentsflex.core.model.chat.tool.Tool;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 
@@ -37,38 +35,6 @@ public class SimplePrompt extends Prompt {
 
     public SimplePrompt(String content) {
         this.userMessage = new UserMessage(content);
-    }
-
-
-    /// /// Tools
-    public void addTool(Tool tool) {
-        userMessage.addTool(tool);
-    }
-
-    public void addTools(Collection<? extends Tool> Tools) {
-        userMessage.addTools(Tools);
-    }
-
-    public void addToolsFromClass(Class<?> funcClass, String... methodNames) {
-        userMessage.addToolsFromClass(funcClass, methodNames);
-    }
-
-    public void addToolsFromObject(Object funcObject, String... methodNames) {
-        userMessage.addToolsFromObject(funcObject, methodNames);
-    }
-
-
-    public List<Tool> getTools() {
-        return userMessage.getTools();
-    }
-
-
-    public String getToolChoice() {
-        return userMessage.getToolChoice();
-    }
-
-    public void setToolChoice(String toolChoice) {
-        userMessage.setToolChoice(toolChoice);
     }
 
 

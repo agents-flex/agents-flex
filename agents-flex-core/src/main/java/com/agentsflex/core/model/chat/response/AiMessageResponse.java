@@ -18,13 +18,12 @@ package com.agentsflex.core.model.chat.response;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
-import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.ToolInterceptor;
 import com.agentsflex.core.model.chat.tool.ToolExecutor;
+import com.agentsflex.core.model.chat.tool.ToolInterceptor;
+import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.CollectionUtil;
-import com.agentsflex.core.util.MessageUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 
@@ -75,18 +74,18 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
             return Collections.emptyList();
         }
 
-        UserMessage userMessage = MessageUtil.findLastUserMessage(getContext().getPrompt().getMessages());
-        Map<String, Tool> funcMap = userMessage.getToolsMap();
+        Prompt prompt = getContext().getPrompt();
+        Map<String, Tool> toolsMap = prompt.getToolsMap();
 
-        if (funcMap == null || funcMap.isEmpty()) {
+        if (toolsMap == null || toolsMap.isEmpty()) {
             return Collections.emptyList();
         }
 
         List<ToolExecutor> toolExecutors = new ArrayList<>(calls.size());
-        for (ToolCall call : calls) {
-            Tool tool = funcMap.get(call.getName());
+        for (ToolCall toolCall : calls) {
+            Tool tool = toolsMap.get(toolCall.getName());
             if (tool != null) {
-                ToolExecutor executor = new ToolExecutor(tool, call);
+                ToolExecutor executor = new ToolExecutor(tool, toolCall);
                 if (interceptors != null && interceptors.length > 0) {
                     executor.addInterceptors(Arrays.asList(interceptors));
                 }
