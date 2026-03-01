@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v2.0.0-rc.9 20260225
+## v2.0.0 20260225
 - refactor(mcp): replace hardcoded "stdio" with DEFAULT_TRANSPORT_TYPE constant
 - feat(mcp): add SSE transport support
 
