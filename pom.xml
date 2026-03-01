@@ -52,8 +52,8 @@
         <module>agents-flex-tool</module>
         <module>agents-flex-mcp</module>
         <module>agents-flex-skills</module>
-        <module>demos</module>
         <module>agents-flex-data</module>
+<!--        <module>demos</module>-->
     </modules>
 
     <properties>

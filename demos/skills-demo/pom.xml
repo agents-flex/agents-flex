@@ -9,6 +9,7 @@
         <version>${revision}</version>
     </parent>
 
+    <name>skills-demo</name>
     <artifactId>skills-demo</artifactId>
 
     <properties>
