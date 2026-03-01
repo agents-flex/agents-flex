@@ -4,7 +4,7 @@
 
 
 
-# Agents-Flex： 一个轻量的 Java AI 应用开发框架
+# Agents-Flex： 一个轻量的 Java AI 智能体开发框架
 
 ---
 

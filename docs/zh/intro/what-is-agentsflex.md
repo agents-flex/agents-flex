@@ -1,12 +1,12 @@
 
 # Agents-Flex
 
-**轻量 · 高性能 · 跨厂商的 Java AI 应用开发框架。**
+**轻量 · 高性能 · 跨厂商的 Java AI 智能体开发框架。**
 
 
 ## Agents-Flex 简介
 
-**Agents-Flex 是一个由 Java 编写的、轻量且高性能的 AI 应用开发框架**，用于统一封装各大 LLM 厂商（OpenAI、Qwen、DeepSeek、Moonshot、Ollama 等）的 API，极大简化构建 AI 应用的开发成本。
+**Agents-Flex 是一个由 Java 编写的、轻量且高性能的 AI 智能体开发框架**，用于统一封装各大 LLM 厂商（OpenAI、Qwen、DeepSeek、Moonshot、Ollama 等）的 API，极大简化构建 AI 应用的开发成本。
 
 框架的灵感来源于 LangChain、LlamaIndex，并结合作者在实际企业级 AI 应用中的工程经验，提供：
 
