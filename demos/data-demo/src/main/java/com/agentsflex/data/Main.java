@@ -34,7 +34,7 @@ public class Main {
         MemoryPrompt prompt = new MemoryPrompt();
 
         UserMessage userMessage = new UserMessage("系统中有哪些姓李的用户呢？");
-
+        prompt.addMessage(userMessage);
 
         JdbcDataSourceInfo dataSource = new JdbcDataSourceInfo();
 //        dataSource.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/aiflowy_v1?useInformationSchema=true&characterEncoding=utf-8");
@@ -48,9 +48,8 @@ public class Main {
             .addDataSourceInfo(dataSource)
             .buildTools();
 
-        userMessage.addTools(tools);
+        prompt.addTools(tools);
 
-        prompt.addMessage(userMessage);
 
         StreamResponseListener listener = new StreamResponseListener() {
             @Override

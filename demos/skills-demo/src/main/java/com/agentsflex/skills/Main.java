@@ -40,8 +40,8 @@ public class Main {
         Tool skillsTool = SkillsTool.builder()
             .addSkillsDirectory("/Users/michael/git/agents-flex_2.x/demos/skills-demo/src/main/resources/.claude/skills")
             .build();
-        userMessage.addTool(skillsTool);
-        userMessage.addTools(CommonTools.getAllCommonsTools());
+        prompt.addTool(skillsTool);
+        prompt.addTools(CommonTools.getAllCommonsTools());
 
         prompt.addMessage(userMessage);
 

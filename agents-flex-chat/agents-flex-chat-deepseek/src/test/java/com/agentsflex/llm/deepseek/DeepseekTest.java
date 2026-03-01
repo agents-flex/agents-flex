@@ -50,7 +50,7 @@ public class DeepseekTest {
         while (userInput != null) {
             // 第二步：创建 HumanMessage，并添加方法调用
             UserMessage userMessage = new UserMessage(userInput);
-            userMessage.addToolsFromClass(DeepseekTest.class);
+            prompt.addToolsFromClass(DeepseekTest.class);
             // 第三步：将 HumanMessage 添加到 HistoriesPrompt 中
             prompt.addMessage(userMessage);
             // 第四步：调用 chatStream 方法，进行对话
