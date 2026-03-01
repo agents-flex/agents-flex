@@ -83,7 +83,18 @@ public class MethodTool extends BaseTool {
         parameter.setType(methodParameter.getType().getSimpleName().toLowerCase());
         parameter.setTypeClass(genericParameterType);
         parameter.setRequired(toolParam.required());
-        parameter.setEnums(toolParam.enums());
+
+        String[] enums = toolParam.enums();
+        if (enums != null && enums.length > 0) {
+            parameter.setEnums(enums);
+        } else if (genericParameterType instanceof Class && ((Class<?>) genericParameterType).isEnum()) {
+            Object[] enumConstants = ((Class<?>) genericParameterType).getEnumConstants();
+            String[] enumNames = new String[enumConstants.length];
+            for (int i = 0; i < enumConstants.length; i++) {
+                enumNames[i] = ((Enum<?>) enumConstants[i]).name();
+            }
+            parameter.setEnums(enumNames);
+        }
         return parameter;
     }
 

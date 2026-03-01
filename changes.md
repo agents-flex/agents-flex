@@ -37,11 +37,13 @@
 - fix(tool): set default type to string for Parameter class
 - refactor(memory): update addMessages method signature to use wildcard type
 - chore(samples): remove hello world sample project and related files
+- feat(tool): enhance MethodTool to automatically extract enum values from parameter types
 
 
 ## v2.0.0-rc.9 20260225
 - refactor(mcp): replace hardcoded "stdio" with DEFAULT_TRANSPORT_TYPE constant
 - feat(mcp): add SSE transport support
+
 
 ## v2.0.0-rc.8 20260225
 - refactor(client): update reflection field access in HttpStreamTransportFactory
@@ -55,6 +57,7 @@
 - test(client): add unit tests for MDLMcpClientManager
 - refactor(mcp): update JSON mapper and enhance transport configuration
 - docs(agent): update ReAct agent prompt template documentation
+
 
 ## v2.0.0-rc.7 20260213
 - feat: Alibaba Cloud vector failure returns reason for failure

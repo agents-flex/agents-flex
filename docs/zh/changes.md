@@ -1,8 +1,49 @@
 # Agents-Flex ChangeLog
 
-## v2.0.0 20260225
+## v2.0.0 20260301
+- docs(readme): update documentation with comprehensive framework overview
+- docs(intro): update framework description from application to agent development
+- docs(homepage): update homepage content to reflect new framework features
+- docs(chat): update MCP documentation with configuration structure and protocol details
+- docs(chat): update skills documentation title
+- docs(nav): add Text2SQL documentation to navigation menu Michael
+- fix(config): update model configuration to use Qwen3.5-35B-A3B
+- perf(prompt): increase max attached message count limit
+- fix(demo): update model configuration and improve stream output handling
+- refactor(SseClient): reorder method execution sequence
+- fix(chat): add stack trace printing in stream response failure handling
+- chore(i18n): translate Chinese comments and strings to English in DataTools
+- feat(mcp): add streamable transport support to MCP client
+- feat(data): initialize JDBC data source tables during tool building
+- style(data-demo): comment out unused datasource description and user query
+- chore(project): update copyright and add data module
+- feat(demos): add data demo module with JDBC integration
+- feat(data): add agents-flex-data module
+- style(skills): remove excessive indentation from tool description template
+- feat(util): add high-performance type converter utility
+- feat(util): add numeric string validation method
+- feat(tool): enhance method parameter type handling with generic support
+- refactor(convert): remove converter implementations and service
+- docs(chat): add comprehensive skills documentation for AgentsFlex framework
+- docs(readme): add skills capability to documentation
+- fix(skills): update demo to handle PDF generation and improve response handling
+- feat(message): add hasToolCalls method to AiMessage
+- chore(deps): update dependency versions to use revision property
+- feat(skills): add AI tutor skill with YouTube transcript capability
+- feat(project): add demos module with helloworld example
+- feat(skill): add skills module
+- feat(tool): replace shell module with commons module for enhanced tooling
+- refactor(prompt): simplify message imports and enhance MemoryPrompt API
+- fix(tool): set default type to string for Parameter class
+- refactor(memory): update addMessages method signature to use wildcard type
+- chore(samples): remove hello world sample project and related files
+- feat(tool): enhance MethodTool to automatically extract enum values from parameter types
+
+
+## v2.0.0-rc.9 20260225
 - refactor(mcp): replace hardcoded "stdio" with DEFAULT_TRANSPORT_TYPE constant
 - feat(mcp): add SSE transport support
+
 
 ## v2.0.0-rc.8 20260225
 - refactor(client): update reflection field access in HttpStreamTransportFactory
@@ -16,6 +57,7 @@
 - test(client): add unit tests for MDLMcpClientManager
 - refactor(mcp): update JSON mapper and enhance transport configuration
 - docs(agent): update ReAct agent prompt template documentation
+
 
 ## v2.0.0-rc.7 20260213
 - feat: Alibaba Cloud vector failure returns reason for failure
