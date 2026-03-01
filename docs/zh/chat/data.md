@@ -68,7 +68,9 @@ public class SmartQueryDemo {
 
         // 4. 发起会话
         MemoryPrompt prompt = new MemoryPrompt();
-        prompt.addMessage(new UserMessage("查一下用户表有哪些字段？").addTools(tools));
+        prompt.addTools(tools);
+
+        prompt.addMessage(new UserMessage("查一下用户表有哪些字段？"));
 
         // 5. 流式响应 (含自动工具调用闭环)
         chatModel.chatStream(prompt, new StreamResponseListener() {

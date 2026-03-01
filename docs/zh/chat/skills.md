@@ -229,7 +229,7 @@ export GITEE_APIKEY="your-api-key-here"
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-core</artifactId>
-    <version>2.x</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 
@@ -268,17 +268,17 @@ public class SkillsQuickStart {
         UserMessage userMessage = new UserMessage(
             "帮我把 'Hello world' 这个内容生成一个 PDF 文件。"
         );
+        prompt.addMessage(userMessage);
 
         // 注册 SkillsTool (加载自定义技能)
         Tool skillsTool = SkillsTool.builder()
             .addSkillsDirectory("/path/to/.claude/skills")
             .build();
-        userMessage.addTool(skillsTool);
+        prompt.addTool(skillsTool);
 
         // 注册内置通用工具
-        userMessage.addTools(CommonTools.getAllCommonsTools());
+        prompt.addTools(CommonTools.getAllCommonsTools());
 
-        prompt.addMessage(userMessage);
 
         // 4. 发起流式对话
         chatModel.chatStream(prompt, new StreamResponseListener() {
