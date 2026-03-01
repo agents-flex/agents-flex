@@ -1,4 +1,4 @@
-# MCP 帮助文档
+# MCP 开发文档
 <div v-pre>
 
 
@@ -18,10 +18,46 @@ MCP 客户端模块支持以下传输方式：
 - `http-stream`：基于分块传输编码的 HTTP 流
 
 
+## 2. 配置文件结构
 
-## 2. 快速开始
+MCP 配置文件通常为 **JSON** 格式。根对象包含 `mcpServers` 字段，每个子项代表一个服务实例。
 
-### 2.1 添加依赖
+### 2.1 标准结构
+```JSON
+{
+  "mcpServers": {
+    "<服务唯一标识>": {
+      "command": "<启动命令>",
+      "args": ["<参数 1>", "<参数 2>"],
+      "env": {
+        "<环境变量名>": "<环境变量值>"
+      },
+      "cwd": "<工作目录>",
+      "type": "<传输类型>",
+      "url": "<远程地址>",
+      "headers": { ... }
+    }
+  }
+}
+```
+
+### 2.2 核心参数详解
+
+| 参数名 | 类型 | 必填 | 适用模式 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| **command** | String | ✅ (STDIO) | STDIO | 启动命令 (如 `node`, `npx`, `python`, `docker`)。 |
+| **args** | Array | ❌ | STDIO | 传递给命令的参数列表。 |
+| **env** | Object | ❌ | 全部 | 环境变量。**敏感信息 (API Key) 请在此配置**。 |
+| **cwd** | String | ❌ | STDIO | 命令执行的工作目录。 |
+| **type** | String | ❌ | 远程 | 传输协议类型 (`sse`, `http`)。部分客户端可自动识别。 |
+| **url** | String | ✅ (远程) | 远程 | 远程服务地址 (如 `http://localhost:8080/sse`)。 |
+| **headers** | Object | ❌ | 远程 | HTTP 请求头，常用于携带认证 Token。 |
+
+
+
+## 3. 快速开始
+
+### 3.1 添加依赖
 确保你的项目已引入 Agents-Flex 核心模块及 MCP 客户端模块：
 
 ```xml
@@ -32,7 +68,7 @@ MCP 客户端模块支持以下传输方式：
 </dependency>
 ```
 
-### 2.2 配置 MCP 服务
+### 3.2 配置 MCP 服务
 
 在 `src/main/resources/` 目录下创建配置文件 `mcp-servers.json`（默认路径）：
 
@@ -59,7 +95,7 @@ MCP 客户端模块支持以下传输方式：
 > -Dmcp.config.servers-resource=my-mcp-config.json
 > ```
 
-### 2.3 在代码中调用 MCP 工具
+### 3.3 在代码中调用 MCP 工具
 
 ```java
 // 获取 MCP 客户端（懒加载）
@@ -99,9 +135,87 @@ void testCallTool() {
 
 
 
-## 3. 核心组件说明
+## 4. 传输协议模式详解
 
-### 3.1 `McpClientManager`（单例）
+MCP 支持三种主要传输模式，请根据部署场景选择。
+
+### 4.1 STDIO 模式 (本地进程)
+**适用场景**：服务与客户端在同一台机器，追求最低延迟，配置最简单。
+**原理**：通过标准输入输出 (stdin/stdout) 进行通信。
+
+```JSON
+{
+  "mcpServers": {
+    "local-files": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/data"]
+    }
+  }
+}
+```
+> **⚠️ 注意**：
+> - **Linux/Mac**: 命令使用 `npx`
+> - **Windows**: 命令使用 `npx.cmd`
+
+### 4.2 SSE 模式 (Server-Sent Events)
+**适用场景**：服务部署在远程服务器、Docker 容器或独立进程中。
+**原理**：客户端通过 HTTP 长连接接收事件，通过 POST 发送消息。
+
+```JSON
+{
+  "mcpServers": {
+    "remote-weather": {
+      "type": "http-sse", // 或者  “ssehttp” 或者 "sse"
+      "url": "http://192.168.1.100:8080/sse",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    }
+  }
+}
+```
+
+### 4.3 Streamable HTTP 模式 (流式 HTTP)
+**适用场景**：高性能远程调用，双向流式通信，新兴标准。
+**原理**：基于 HTTP 协议的双向流，效率优于传统 SSE。
+
+```JSON
+{
+  "mcpServers": {
+    "stream-service": {
+      "type": "http-stream", // 或者 "streamablehttp" 或者 "http"
+      "url": "http://192.168.1.100:8080/mcp"
+    }
+  }
+}
+```
+
+### 4.4 混合配置示例
+您可以在一个文件中同时配置本地工具和远程服务。
+
+```JSON
+{
+  "mcpServers": {
+    "local-files": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/docs"]
+    },
+    "remote-db": {
+      "type": "http-sse",
+      "url": "http://10.0.0.5:3000/sse"
+    },
+    "cloud-tool": {
+      "type": "http-stream",
+      "url": "https://api.cloud.com/mcp"
+    }
+  }
+}
+```
+
+
+## 5. 核心组件说明
+
+### 5.1 `McpClientManager`（单例）
 
 - **作用**：MCP 客户端的中央注册与生命周期管理器。
 - **特性**：
@@ -124,7 +238,7 @@ void testCallTool() {
 
 
 
-### 3.2 `McpConfig`
+### 5.2 `McpConfig`
 
 配置映射类，对应 JSON 结构：
 
@@ -150,7 +264,7 @@ public class McpConfig {
 
 
 
-### 3.3 `McpTool`
+### 5.3 `McpTool`
 
 - **作用**：将 MCP 协议中的 `Tool` 自动适配为 Agents-Flex 的 `com.agentsflex.core.model.chat.tool.Tool` 接口。
 - **功能**：
@@ -186,7 +300,7 @@ void testCallTool() {
 ```
 
 
-### 3.4 `McpClientDescriptor`
+### 5.4 `McpClientDescriptor`
 
 - **作用**：封装一个 MCP 服务的连接状态、传输层、客户端实例。
 - **特性**：
@@ -197,9 +311,9 @@ void testCallTool() {
 
 
 
-## 4. 高级用法
+## 6. 高级用法
 
-### 4.1 动态注册 MCP 服务
+### 6.1 动态注册 MCP 服务
 
 ```java
 String jsonConfig = """
@@ -218,7 +332,7 @@ McpClientManager.getInstance().registerFromJson(jsonConfig);
 
 支持从 JSON 字符串、文件路径（`registerFromFile`）或 classpath 资源（`registerFromResource`）注册。
 
-### 4.2 运行时重载配置
+### 6.2 运行时重载配置
 
 ```java
 // 关闭所有现有连接并重新加载 mcp-servers.json
@@ -227,13 +341,13 @@ McpClientManager.reloadConfig();
 
 适用于配置热更新场景。
 
-### 4.3 自定义传输工厂
+### 6.3 自定义传输工厂
 
 当前支持的传输类型由 `McpTransportFactory` 决定。如需扩展（如 WebSocket），可实现新工厂并修改 `McpClientDescriptor.getTransportFactory()` 的 switch 分支。
 
 
 
-## 5. 异常处理
+## 7. 异常处理
 
 - **MCP 调用失败**：抛出 `McpCallException`（RuntimeException），包含工具名和错误详情。
 - **初始化失败**：`getMcpClient()` 或 `getMcpTool()` 可能抛出 `RuntimeException`，日志中会记录详细错误。
@@ -243,7 +357,7 @@ McpClientManager.reloadConfig();
 
 
 
-## 6. 资源管理与关闭
+## 8. 资源管理与关闭
 
 - `McpClientManager` 实现了 `AutoCloseable`，推荐在应用关闭时调用 `close()`。
 - JVM Shutdown Hook 已自动注册，通常无需手动关闭。
@@ -251,7 +365,7 @@ McpClientManager.reloadConfig();
 
 
 
-## 7. 示例：完整工作流
+## 9. 示例：完整工作流
 
 ```java
 // 1. 系统属性注入敏感信息（可选）
@@ -281,7 +395,7 @@ try {
 
 
 
-## 8. 注意事项
+## 10. 注意事项
 
 - **线程安全**：所有公开方法均为线程安全。
 - **性能**：工具调用为同步阻塞，建议在异步上下文中使用。
