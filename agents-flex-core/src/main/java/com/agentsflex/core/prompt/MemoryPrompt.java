@@ -30,7 +30,7 @@ public class MemoryPrompt extends Prompt {
 
     private SystemMessage systemMessage;
 
-    private int maxAttachedMessageCount = 10;
+    private int maxAttachedMessageCount = 100;
 
     private boolean historyMessageTruncateEnable = false;
     private int historyMessageTruncateLength = 1000;
