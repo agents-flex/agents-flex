@@ -25,8 +25,8 @@ public class Main {
             .endpoint("https://ai.gitee.com")
             .requestPath("/v1/chat/completions")
             .apiKey(System.getenv("GITEE_APIKEY"))
-//            .model("Qwen3.5-35B-A3B")
-            .model("Qwen3-32B")
+            .model("Qwen3.5-35B-A3B")
+//            .model("Qwen3-32B")
 //            .thinkingEnabled(false)
             .logEnabled(false)
             .buildModel();
