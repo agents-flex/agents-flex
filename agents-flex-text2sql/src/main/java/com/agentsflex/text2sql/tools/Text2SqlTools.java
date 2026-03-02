@@ -18,11 +18,9 @@ package com.agentsflex.text2sql.tools;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolScanner;
-import com.agentsflex.text2sql.core.SqlContext;
-import com.agentsflex.text2sql.core.SqlRewriteContext;
-import com.agentsflex.text2sql.core.SqlRewriter;
-import com.agentsflex.text2sql.core.SqlValidationContext;
-import com.agentsflex.text2sql.core.SqlValidator;
+import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
+import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
+import com.agentsflex.text2sql.core.*;
 import com.agentsflex.text2sql.entity.ColumnInfo;
 import com.agentsflex.text2sql.entity.DataSourceInfo;
 import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
@@ -31,7 +29,6 @@ import com.agentsflex.text2sql.util.JdbcQueryUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
 
-import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -93,10 +90,10 @@ public class Text2SqlTools {
     // ========================================================================
 
     public Tool buildListTablesTool() {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder dataSourceAndDescriptions = new StringBuilder();
         if (!dataSourceInfos.isEmpty()) {
             for (DataSourceInfo dataSourceInfo : dataSourceInfos) {
-                sb.append("<data_source>\n")
+                dataSourceAndDescriptions.append("<data_source>\n")
                     .append("  <name>").append(dataSourceInfo.genName()).append("</name>\n")
                     .append("  <description>").append(
                         dataSourceInfo.genDescription() != null ?
@@ -104,7 +101,7 @@ public class Text2SqlTools {
                     .append("</data_source>\n");
             }
         } else {
-            sb.append("<!-- No available data sources -->\n");
+            dataSourceAndDescriptions.append("<!-- No available data sources -->\n");
         }
 
         String description =
@@ -118,7 +115,7 @@ public class Text2SqlTools {
                 "- Match names strictly, case-sensitive, do not fabricate\n" +
                 "- If the user does not specify a data source, first list available options for selection\n\n" +
                 "<available_data_sources>\n" +
-                sb +
+                dataSourceAndDescriptions +
                 "</available_data_sources>";
 
         return Tool.builder()
@@ -179,13 +176,13 @@ public class Text2SqlTools {
     // [Step 2] listTableColumns - Get table schema (Returns Markdown string)
     // ========================================================================
 
-    @com.agentsflex.core.model.chat.tool.annotation.ToolDef(
+    @ToolDef(
         name = "listTableColumns",
         description = "[Step 2] Get field structure description for the specified table. Returns table schema text in Markdown format, including: field name, data type, length, nullable, primary key, auto-increment, field comment. Must call this tool to confirm column names before writing SQL."
     )
     public String listTableColumns(
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "dataSourceName", description = "Data source name, must be from the available_data_sources list") String dataSourceName,
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "tableName", description = "Table name, must be from the return result of listTables, case-sensitive") String tableName
+        @ToolParam(name = "dataSourceName", description = "Data source name, must be from the available_data_sources list") String dataSourceName,
+        @ToolParam(name = "tableName", description = "Table name, must be from the return result of listTables, case-sensitive") String tableName
     ) {
         if (dataSourceName == null || dataSourceName.trim().isEmpty()) {
             return ERROR_PREFIX + "dataSourceName cannot be empty, please select from available_data_sources";
@@ -241,14 +238,14 @@ public class Text2SqlTools {
     // [Execute Query] queryDataList - Return multi-row results (JSON string)
     // ========================================================================
 
-    @com.agentsflex.core.model.chat.tool.annotation.ToolDef(
+    @ToolDef(
         name = "queryDataList",
         description = "[Execute Query - List] Execute SQL query and return multi-row results. Suitable for querying lists, multiple records scenarios. Returns JSON array string. Security restriction: SELECT read-only statements only, UPDATE/DELETE/INSERT/DROP operations are prohibited. Dynamic values must use ? placeholders."
     )
     public String queryDataList(
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "sql", description = "Standard SQL SELECT statement. If containing dynamic values, must use '?' as placeholder, direct string concatenation is prohibited to prevent SQL injection. Recommended to add reasonable LIMIT to restrict returned rows") String sql,
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
+        @ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
+        @ToolParam(name = "sql", description = "Standard SQL SELECT statement. If containing dynamic values, must use '?' as placeholder, direct string concatenation is prohibited to prevent SQL injection. Recommended to add reasonable LIMIT to restrict returned rows") String sql,
+        @ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
     ) {
         // 1. 基础安全校验
         String validateError = validateSqlReadOnly(sql);
@@ -257,17 +254,29 @@ public class Text2SqlTools {
         }
 
         // 2. 获取数据源
-        DataSource dataSource = getDataSource(dataSourceName);
-        if (dataSource == null) {
+        DataSourceInfo dsInfo = findDataSource(dataSourceName);
+        if (dsInfo == null) {
             return ERROR_PREFIX + "Invalid data source name: '" + dataSourceName + "', available: [" + getAvailableDataSourceNames() + "]";
         }
 
         // 3. 执行自定义验证器链
-        SqlValidationContext validationCtx = new SqlValidationContext(dataSourceName, sql, params, null);
+        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, params);
         for (SqlValidator validator : sqlValidators) {
-            String error = validator.validate(validationCtx);
-            if (error != null) {
-                return ERROR_PREFIX + "Validation failed: " + error;
+            ValidationResult result = validator.validate(validationCtx);
+            if (result != null && result.isFailed() && !result.hasWarning()) {
+                // 结构化错误信息，可携带错误码和建议
+                String errorMsg = "Validation failed: " + result.getMessage();
+                if (result.getCode() != null) {
+                    errorMsg += " [Code: " + result.getCode() + "]";
+                }
+                if (result.getSuggestion() != null) {
+                    errorMsg += " Suggestion: " + result.getSuggestion();
+                }
+                return ERROR_PREFIX + errorMsg;
+            }
+            // 记录警告日志
+            if (result != null && result.hasWarning()) {
+                System.err.println("[SqlValidator] Warning: " + result.getMessage());
             }
         }
 
@@ -282,7 +291,7 @@ public class Text2SqlTools {
 
         // 5. 使用重写后的 SQL 执行查询
         try {
-            List<Map<String, Object>> result = JdbcQueryUtil.query(dataSource,
+            List<Map<String, Object>> result = JdbcQueryUtil.query(dsInfo.getDataSource(),
                 current.getSql(), current.getParams());
             return JSON.toJSONString(result, JSONWriter.Feature.PrettyFormat);
         } catch (SQLException e) {
@@ -295,14 +304,14 @@ public class Text2SqlTools {
     // [Execute Query] querySingleRow - Return single-row result (JSON string)
     // ========================================================================
 
-    @com.agentsflex.core.model.chat.tool.annotation.ToolDef(
+    @ToolDef(
         name = "querySingleRow",
         description = "[Execute Query - Single Row] Execute SQL query and return single-row result. Suitable for querying details by ID, getting the latest record, etc. Returns JSON object string. If multiple rows exist, only the first row is returned. Security restriction: SELECT read-only statements only."
     )
     public String querySingleRow(
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "sql", description = "Standard SQL SELECT statement. If containing dynamic values, must use '?' as placeholder, direct string concatenation is prohibited to prevent SQL injection. Recommended to add LIMIT 1") String sql,
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
+        @ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
+        @ToolParam(name = "sql", description = "Standard SQL SELECT statement. If containing dynamic values, must use '?' as placeholder, direct string concatenation is prohibited to prevent SQL injection. Recommended to add LIMIT 1") String sql,
+        @ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
     ) {
         // 1. 基础安全校验
         String validateError = validateSqlReadOnly(sql);
@@ -311,17 +320,29 @@ public class Text2SqlTools {
         }
 
         // 2. 获取数据源
-        DataSource dataSource = getDataSource(dataSourceName);
-        if (dataSource == null) {
+        DataSourceInfo dsInfo = findDataSource(dataSourceName);
+        if (dsInfo == null) {
             return ERROR_PREFIX + "Invalid data source name: '" + dataSourceName + "', available: [" + getAvailableDataSourceNames() + "]";
         }
 
         // 3. 执行自定义验证器链
-        SqlValidationContext validationCtx = new SqlValidationContext(dataSourceName, sql, params, null);
+        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, params);
         for (SqlValidator validator : sqlValidators) {
-            String error = validator.validate(validationCtx);
-            if (error != null) {
-                return ERROR_PREFIX + "Validation failed: " + error;
+            ValidationResult result = validator.validate(validationCtx);
+            if (result != null && result.isFailed() && !result.hasWarning()) {
+                // 结构化错误信息，可携带错误码和建议
+                String errorMsg = "Validation failed: " + result.getMessage();
+                if (result.getCode() != null) {
+                    errorMsg += " [Code: " + result.getCode() + "]";
+                }
+                if (result.getSuggestion() != null) {
+                    errorMsg += " Suggestion: " + result.getSuggestion();
+                }
+                return ERROR_PREFIX + errorMsg;
+            }
+            // 记录警告日志
+            if (result != null && result.hasWarning()) {
+                System.err.println("[SqlValidator] Warning: " + result.getMessage());
             }
         }
 
@@ -336,7 +357,7 @@ public class Text2SqlTools {
 
         // 5. 使用重写后的 SQL 执行查询
         try {
-            Map<String, Object> result = JdbcQueryUtil.queryOne(dataSource, sql, safeParams(params));
+            Map<String, Object> result = JdbcQueryUtil.queryOne(dsInfo.getDataSource(), sql, safeParams(params));
             if (result == null) {
                 return "Query result is empty (no matching records)";
             }
@@ -351,14 +372,14 @@ public class Text2SqlTools {
     // [Execute Query] querySingleValue - Return single value (String format)
     // ========================================================================
 
-    @com.agentsflex.core.model.chat.tool.annotation.ToolDef(
+    @ToolDef(
         name = "querySingleValue",
         description = "[Execute Query - Single Value] Execute SQL query and return a single value. Suitable for COUNT statistics, SUM aggregation, AVG average, getting single configuration items, etc. Returns String representation of the value. Expected SQL returns single column, single row. Security restriction: SELECT read-only statements only."
     )
     public String querySingleValue(
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "sql", description = "Standard SQL SELECT statement, expected to return single column, single row. If containing dynamic values, must use '?' as placeholder") String sql,
-        @com.agentsflex.core.model.chat.tool.annotation.ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
+        @ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
+        @ToolParam(name = "sql", description = "Standard SQL SELECT statement, expected to return single column, single row. If containing dynamic values, must use '?' as placeholder") String sql,
+        @ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
     ) {
         // 1. 基础安全校验
         String validateError = validateSqlReadOnly(sql);
@@ -367,17 +388,29 @@ public class Text2SqlTools {
         }
 
         // 2. 获取数据源
-        DataSource dataSource = getDataSource(dataSourceName);
-        if (dataSource == null) {
+        DataSourceInfo dsInfo = findDataSource(dataSourceName);
+        if (dsInfo == null) {
             return ERROR_PREFIX + "Invalid data source name: '" + dataSourceName + "', available: [" + getAvailableDataSourceNames() + "]";
         }
 
         // 3. 执行自定义验证器链
-        SqlValidationContext validationCtx = new SqlValidationContext(dataSourceName, sql, params, null);
+        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, params);
         for (SqlValidator validator : sqlValidators) {
-            String error = validator.validate(validationCtx);
-            if (error != null) {
-                return ERROR_PREFIX + "Validation failed: " + error;
+            ValidationResult result = validator.validate(validationCtx);
+            if (result != null && result.isFailed() && !result.hasWarning()) {
+                // 结构化错误信息，可携带错误码和建议
+                String errorMsg = "Validation failed: " + result.getMessage();
+                if (result.getCode() != null) {
+                    errorMsg += " [Code: " + result.getCode() + "]";
+                }
+                if (result.getSuggestion() != null) {
+                    errorMsg += " Suggestion: " + result.getSuggestion();
+                }
+                return ERROR_PREFIX + errorMsg;
+            }
+            // 记录警告日志
+            if (result != null && result.hasWarning()) {
+                System.err.println("[SqlValidator] Warning: " + result.getMessage());
             }
         }
 
@@ -392,7 +425,7 @@ public class Text2SqlTools {
 
         // 5. 使用重写后的 SQL 执行查询
         try {
-            Object result = JdbcQueryUtil.queryValue(dataSource, current.getSql(), current.getParams());
+            Object result = JdbcQueryUtil.queryValue(dsInfo.getDataSource(), current.getSql(), current.getParams());
             if (result == null) {
                 return "Query result is empty (NULL)";
             }
@@ -432,10 +465,6 @@ public class Text2SqlTools {
         return null;
     }
 
-    private DataSource getDataSource(String dataSourceName) {
-        DataSourceInfo info = findDataSource(dataSourceName);
-        return info != null ? info.getDataSource() : null;
-    }
 
     private String getAvailableDataSourceNames() {
         if (dataSourceInfos.isEmpty()) {

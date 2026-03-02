@@ -18,8 +18,11 @@ package com.agentsflex.text2sql.core.impl;
 
 import com.agentsflex.text2sql.core.SqlValidationContext;
 import com.agentsflex.text2sql.core.SqlValidator;
+import com.agentsflex.text2sql.core.ValidationResult;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,16 +37,25 @@ public class SensitiveColumnValidator implements SqlValidator {
         this.forbiddenColumns = Arrays.asList(columns);
     }
 
+    public SensitiveColumnValidator(Collection<String> columns) {
+        this.forbiddenColumns = new ArrayList<>(columns);
+    }
+
     @Override
-    public String validate(SqlValidationContext context) {
+    public ValidationResult validate(SqlValidationContext context) {
         String sql = context.getOriginalSql().toLowerCase();
         for (String col : forbiddenColumns) {
             Pattern pattern = Pattern.compile("\\b" + col.toLowerCase() + "\\b");
             Matcher matcher = pattern.matcher(sql);
             if (matcher.find()) {
-                return "Access to sensitive column '" + col + "' is prohibited";
+                // ✅ 返回结构化错误，带错误码和建议
+                return ValidationResult.fail(
+                    "Access to sensitive column '" + col + "' is prohibited",
+                    "SEC_001",
+                    "Please remove '" + col + "' from SELECT clause or contact admin for permission"
+                );
             }
         }
-        return null;
+        return ValidationResult.pass();
     }
 }

@@ -15,6 +15,8 @@
  */
 package com.agentsflex.text2sql.core;
 
+import com.agentsflex.text2sql.entity.DataSourceInfo;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,21 +24,19 @@ import java.util.List;
  * SQL 验证上下文（包含额外元数据）
  */
 public class SqlValidationContext {
-    private final String dataSourceName;
+    private final DataSourceInfo dataSourceInfo;
     private final String originalSql;
     private final List<Object> originalParams;
-    private final Object caller; // 可选：调用方标识（如 userId）
 
-    public SqlValidationContext(String dataSourceName, String sql,
-                                List<Object> params, Object caller) {
-        this.dataSourceName = dataSourceName;
+    public SqlValidationContext(DataSourceInfo dataSourceInfo, String sql,
+                                List<Object> params) {
+        this.dataSourceInfo = dataSourceInfo;
         this.originalSql = sql;
         this.originalParams = params != null ? new ArrayList<>(params) : new ArrayList<>();
-        this.caller = caller;
     }
 
-    public String getDataSourceName() {
-        return dataSourceName;
+    public DataSourceInfo getDataSourceInfo() {
+        return dataSourceInfo;
     }
 
     public String getOriginalSql() {
@@ -47,7 +47,4 @@ public class SqlValidationContext {
         return new ArrayList<>(originalParams);
     }
 
-    public Object getCaller() {
-        return caller;
-    }
 }

@@ -17,6 +17,7 @@ package com.agentsflex.text2sql.core.impl;
 
 import com.agentsflex.text2sql.core.SqlValidationContext;
 import com.agentsflex.text2sql.core.SqlValidator;
+import com.agentsflex.text2sql.core.ValidationResult;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,7 +33,7 @@ public class JoinCountValidator implements SqlValidator {
     }
 
     @Override
-    public String validate(SqlValidationContext context) {
+    public ValidationResult validate(SqlValidationContext context) {
         String sql = context.getOriginalSql();
         Pattern pattern = Pattern.compile("\\bJOIN\\b", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(sql);
@@ -42,8 +43,12 @@ public class JoinCountValidator implements SqlValidator {
         }
 
         if (joinCount > maxJoinCount) {
-            return "Too many JOINs (max " + maxJoinCount + ", found " + joinCount + "), please optimize query";
+            return ValidationResult.fail(
+                "Too many JOINs (max " + maxJoinCount + ", found " + joinCount + ")",
+                "PERF_001",
+                "Consider breaking query into multiple steps or using materialized views"
+            );
         }
-        return null;
+        return ValidationResult.pass();
     }
 }

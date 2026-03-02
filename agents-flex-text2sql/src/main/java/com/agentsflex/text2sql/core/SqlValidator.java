@@ -31,12 +31,12 @@ import java.util.function.Function;
  */
 @FunctionalInterface
 public interface SqlValidator {
-    String validate(SqlValidationContext context);
+    ValidationResult validate(SqlValidationContext context);
 
     /**
      * 快捷创建：从 Function 转换
      */
-    static SqlValidator of(Function<SqlValidationContext, String> func) {
+    static SqlValidator of(Function<SqlValidationContext, ValidationResult> func) {
         return func::apply;
     }
 }
