@@ -42,7 +42,7 @@ public class Main {
         dataSource.setUsername("root");
         dataSource.setPassword("123456");
         dataSource.setName("aiflowy_v1");
-        dataSource.addTableName("aaaa");
+//        dataSource.addTableName("aaaa");
 //        dataSource.setDescription();
 
         List<Tool> tools = Text2SqlTools.builder()
