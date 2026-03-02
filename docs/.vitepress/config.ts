@@ -82,7 +82,7 @@ export default defineConfig({
                     {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
                     {text: 'MCP 调用', link: '/zh/chat/mcp'},
                     {text: 'Skills', link: '/zh/chat/skills'},
-                    {text: '智能问数 (Text2SQL)', link: '/zh/chat/text2sql'},
+                    {text: 'Text2SQL 智能问数', link: '/zh/chat/text2sql'},
                     {text: 'ChatClient', link: '/zh/chat/chat-client'},
                     {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
                     {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
