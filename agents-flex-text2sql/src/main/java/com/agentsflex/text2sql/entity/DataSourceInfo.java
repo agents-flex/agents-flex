@@ -32,5 +32,4 @@ public abstract class DataSourceInfo extends BaseInfo {
         this.tables = tables;
     }
 
-
 }

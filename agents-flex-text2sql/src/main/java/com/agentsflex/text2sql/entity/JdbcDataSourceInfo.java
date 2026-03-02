@@ -20,10 +20,8 @@ import com.agentsflex.text2sql.jdbc.dialect.IDialect;
 import com.agentsflex.text2sql.util.DataSourceBuilder;
 
 import javax.sql.DataSource;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 public class JdbcDataSourceInfo extends DataSourceInfo {
 
@@ -37,8 +35,8 @@ public class JdbcDataSourceInfo extends DataSourceInfo {
 
     // 指定特定的表名
     private IDialect dialect = IDialect.DEFAULT;
-    private Function<TableInfo, Boolean> tableFilter;
-    private Function<ColumnInfo, Boolean> columnFilter;
+    private Set<String> tableNames;
+    private Set<String> ignoreColumns;
 
 
     @Override
@@ -90,7 +88,7 @@ public class JdbcDataSourceInfo extends DataSourceInfo {
     }
 
     public void buildTables() {
-        new JdbcTableBuilder(this, dialect).build(this.tableFilter, this.columnFilter);
+        new JdbcTableBuilder(this, dialect).build(this.tableNames, this.ignoreColumns);
     }
 
     public void setDataSource(DataSource dataSource) {
@@ -106,19 +104,47 @@ public class JdbcDataSourceInfo extends DataSourceInfo {
         this.dialect = dialect;
     }
 
-    public Function<TableInfo, Boolean> getTableFilter() {
-        return tableFilter;
+    public Set<String> getTableNames() {
+        return tableNames;
     }
 
-    public void setTableFilter(Function<TableInfo, Boolean> tableFilter) {
-        this.tableFilter = tableFilter;
+    public void setTableNames(Set<String> tableNames) {
+        this.tableNames = tableNames;
     }
 
-    public Function<ColumnInfo, Boolean> getColumnFilter() {
-        return columnFilter;
+    public void addTableName(String tableName) {
+        if (this.tableNames == null) {
+            this.tableNames = new HashSet<>();
+        }
+        this.tableNames.add(tableName);
     }
 
-    public void setColumnFilter(Function<ColumnInfo, Boolean> columnFilter) {
-        this.columnFilter = columnFilter;
+    public void addTableNames(Collection<String> tableNames) {
+        if (this.tableNames == null) {
+            this.tableNames = new HashSet<>();
+        }
+        this.tableNames.addAll(tableNames);
+    }
+
+    public Set<String> getIgnoreColumns() {
+        return ignoreColumns;
+    }
+
+    public void setIgnoreColumns(Set<String> ignoreColumns) {
+        this.ignoreColumns = ignoreColumns;
+    }
+
+    public void addIgnoreColumn(String ignoreColumn) {
+        if (this.ignoreColumns == null) {
+            this.ignoreColumns = new HashSet<>();
+        }
+        this.ignoreColumns.add(ignoreColumn);
+    }
+
+    public void addIgnoreColumns(Collection<String> ignoreColumns) {
+        if (this.ignoreColumns == null) {
+            this.ignoreColumns = new HashSet<>();
+        }
+        this.ignoreColumns.addAll(ignoreColumns);
     }
 }

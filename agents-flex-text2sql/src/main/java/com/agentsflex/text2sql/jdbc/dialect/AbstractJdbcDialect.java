@@ -20,9 +20,9 @@ import com.agentsflex.text2sql.entity.ColumnInfo;
 import com.agentsflex.text2sql.entity.TableInfo;
 
 import java.sql.*;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * 默认方言抽象类。
@@ -32,7 +32,7 @@ import java.util.function.Function;
 public abstract class AbstractJdbcDialect implements IDialect {
 
     @Override
-    public void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Function<ColumnInfo, Boolean> columnFilter) throws SQLException {
+    public void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Collection<String> ignoreColumns) throws SQLException {
         Map<String, String> columnRemarks = buildColumnRemarks(schemaName, table, dbMeta, conn);
 
         String sql = forBuildColumnsSql(table.getSchema(), table.getName());
@@ -42,8 +42,15 @@ public abstract class AbstractJdbcDialect implements IDialect {
             int columnCount = columnMetaData.getColumnCount();
 
             for (int i = 1; i <= columnCount; i++) {
+
+                String columnName = columnMetaData.getColumnName(i);
+
+                if (ignoreColumns != null && !ignoreColumns.isEmpty() && ignoreColumns.contains(columnName)) {
+                    continue;
+                }
+
                 ColumnInfo column = new ColumnInfo();
-                column.setName(columnMetaData.getColumnName(i));
+                column.setName(columnName);
 
                 column.setType(columnMetaData.getColumnTypeName(i));
                 column.setLength(columnMetaData.getColumnDisplaySize(i));
@@ -59,10 +66,6 @@ public abstract class AbstractJdbcDialect implements IDialect {
 
 //                String jdbcType = columnMetaData.getColumnClassName(i);
 //                column.setPropertyType(JdbcTypeMapping.getType(jdbcType, table, column));
-
-                if (columnFilter != null && Boolean.TRUE.equals(columnFilter.apply(column))) {
-                    continue;
-                }
 
                 table.addColumn(column);
             }

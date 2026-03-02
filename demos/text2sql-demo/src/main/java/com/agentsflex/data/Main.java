@@ -9,10 +9,10 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
-import com.agentsflex.text2sql.tools.Text2SqlTools;
 import com.agentsflex.llm.openai.OpenAIChatConfig;
 import com.agentsflex.llm.openai.OpenAIChatModel;
+import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
+import com.agentsflex.text2sql.tools.Text2SqlTools;
 
 import java.util.List;
 
@@ -42,6 +42,7 @@ public class Main {
         dataSource.setUsername("root");
         dataSource.setPassword("123456");
         dataSource.setName("aiflowy_v1");
+        dataSource.addTableName("aaaa");
 //        dataSource.setDescription();
 
         List<Tool> tools = Text2SqlTools.builder()
@@ -56,7 +57,7 @@ public class Main {
             public void onMessage(StreamContext context, AiMessageResponse response) {
                 String content = StringUtil.hasText(response.getMessage().getContent()) ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
                 if (content != null)
-                    System.out.print( content);
+                    System.out.print(content);
 
                 if (response.getMessage().isFinalDelta() && response.getMessage().hasToolCalls()) {
                     System.out.println("\n----------");

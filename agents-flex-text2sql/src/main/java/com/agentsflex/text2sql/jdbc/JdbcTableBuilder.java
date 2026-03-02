@@ -15,7 +15,6 @@
  */
 package com.agentsflex.text2sql.jdbc;
 
-import com.agentsflex.text2sql.entity.ColumnInfo;
 import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
 import com.agentsflex.text2sql.entity.TableInfo;
 import com.agentsflex.text2sql.jdbc.dialect.IDialect;
@@ -25,8 +24,8 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
 /**
  * 代码生成器。
@@ -48,10 +47,10 @@ public class JdbcTableBuilder {
     }
 
 
-    public void build(Function<TableInfo, Boolean> tableFilter, Function<ColumnInfo, Boolean> columnFilter) {
+    public void build(Collection<String> tableNames, Collection<String> ignoreColumns) {
         try (Connection conn = dataSource.getDataSource().getConnection()) {
             DatabaseMetaData dbMeta = conn.getMetaData();
-            List<TableInfo> tableInfos = buildTables(dbMeta, conn, tableFilter, columnFilter);
+            List<TableInfo> tableInfos = buildTables(dbMeta, conn, tableNames, ignoreColumns);
             dataSource.setTables(tableInfos);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -67,12 +66,16 @@ public class JdbcTableBuilder {
         }
     }
 
-    protected List<TableInfo> buildTables(DatabaseMetaData dbMeta, Connection conn, Function<TableInfo, Boolean> tableFilter, Function<ColumnInfo, Boolean> columnFilter) throws SQLException {
+    protected List<TableInfo> buildTables(DatabaseMetaData dbMeta, Connection conn, Collection<String> tableNames, Collection<String> ignoreColumns) throws SQLException {
         String schemaName = dataSource.getSchema();
         List<TableInfo> tables = new ArrayList<>();
         try (ResultSet rs = getTablesResultSet(dbMeta, conn, schemaName)) {
             while (rs.next()) {
                 String tableName = rs.getString("TABLE_NAME");
+
+                if (tableNames !=null && !tableNames.isEmpty() && !tableNames.contains(tableName)){
+                    continue;
+                }
 
                 TableInfo table = new TableInfo();
 
@@ -84,11 +87,7 @@ public class JdbcTableBuilder {
 
                 buildPrimaryKey(dbMeta, conn, table);
 
-                dialect.buildTableColumns(schemaName, table, dbMeta, conn, columnFilter);
-
-                if (tableFilter != null && Boolean.TRUE.equals(tableFilter.apply(table))) {
-                    continue;
-                }
+                dialect.buildTableColumns(schemaName, table, dbMeta, conn, ignoreColumns);
 
                 tables.add(table);
             }

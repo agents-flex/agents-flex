@@ -22,7 +22,7 @@ import com.agentsflex.text2sql.jdbc.dialect.IDialect;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.*;
-import java.util.function.Function;
+import java.util.Collection;
 
 /**
  * Sqlite 方言实现。
@@ -32,7 +32,7 @@ import java.util.function.Function;
 public class SqliteDialect implements IDialect {
 
     @Override
-    public void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Function<ColumnInfo, Boolean> columnFilter) throws SQLException {
+    public void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Collection<String> ignoreColumns) throws SQLException {
         Statement statement = conn.createStatement();
         ResultSet rs = statement.executeQuery("pragma table_info(" + table.getName() + ")");
 
@@ -50,7 +50,7 @@ public class SqliteDialect implements IDialect {
             String type = rs.getString(3);
 //            column.setType(type2ClassName(type));
 
-            if (columnFilter != null && Boolean.TRUE.equals(columnFilter.apply(column))) {
+            if (ignoreColumns != null && !ignoreColumns.isEmpty() && ignoreColumns.contains(column.getName())) {
                 continue;
             }
 

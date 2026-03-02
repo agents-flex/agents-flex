@@ -16,7 +16,6 @@
 package com.agentsflex.text2sql.jdbc.dialect;
 
 
-import com.agentsflex.text2sql.entity.ColumnInfo;
 import com.agentsflex.text2sql.entity.TableInfo;
 import com.agentsflex.text2sql.jdbc.dialect.impl.*;
 
@@ -24,10 +23,11 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.function.Function;
+import java.util.Collection;
 
 /**
  * 方言接口。
+ *
  * @author michael
  * @author Suomm
  */
@@ -62,12 +62,12 @@ public interface IDialect {
      * 构建表和列的信息。
      *
      * @param schemaName
-     * @param table        存入的表对象
-     * @param dbMeta       数据库元数据
-     * @param conn         连接
+     * @param table      存入的表对象
+     * @param dbMeta     数据库元数据
+     * @param conn       连接
      * @throws SQLException 发生 SQL 异常时抛出
      */
-    void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Function<ColumnInfo, Boolean> columnFilter) throws SQLException;
+    void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Collection<String> ignoreColumns) throws SQLException;
 
     /**
      * 获取表的描述信息。
