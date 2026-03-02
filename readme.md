@@ -99,7 +99,7 @@ agents-flex/
 ├── agents-flex-tool                   # 🔧 Function Calling engine: method definition/parsing/execution
 ├── agents-flex-mcp                    # 🔗 MCP protocol support: standardized context & tool connection (New)
 ├── agents-flex-skills                 # 🎯 AI Skills: capability encapsulation & dynamic loading (New)
-├── agents-flex-data                   # 📊 Text2SQL & natural language data analysis (New)
+├── agents-flex-text2sql                   # 📊 Text2SQL & natural language data analysis (New)
 ├── agents-flex-embedding              # 🔢 Embedding service: model integration & vector generation
 ├── agents-flex-store                  # 🗄️ Storage extensions: VectorStore/Memory persistence implementations
 ├── agents-flex-search-engine          # 🔍 Search engine integration: ES/DB/custom retrieval sources

@@ -9,8 +9,8 @@
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-data</name>
-    <artifactId>agents-flex-data</artifactId>
+    <name>agents-flex-text2sql</name>
+    <artifactId>agents-flex-text2sql</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

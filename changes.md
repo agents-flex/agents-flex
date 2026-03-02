@@ -18,7 +18,7 @@
 - style(data-demo): comment out unused datasource description and user query
 - chore(project): update copyright and add data module
 - feat(demos): add data demo module with JDBC integration
-- feat(data): add agents-flex-data module
+- feat(data): add agents-flex-text2sql module
 - style(skills): remove excessive indentation from tool description template
 - feat(util): add high-performance type converter utility
 - feat(util): add numeric string validation method

@@ -101,7 +101,7 @@ agents-flex/
 ├── agents-flex-tool                   # 🔧 Function Calling 引擎：方法定义/解析/执行
 ├── agents-flex-mcp                    # 🔗 MCP 协议支持：标准化上下文与工具连接（新增）
 ├── agents-flex-skills                 # 🎯 AI Skills ：能力封装与动态加载（新增）
-├── agents-flex-data                   # 📄 智能问数
+├── agents-flex-text2sql                   # 📄 智能问数
 ├── agents-flex-embedding              # 🔢 Embedding 服务：模型对接与向量生成
 ├── agents-flex-store                  # 🗄️ 存储扩展：VectorStore/Memory 持久化实现
 ├── agents-flex-search-engine          # 🔍 搜索引擎集成：ES/DB/自定义检索源

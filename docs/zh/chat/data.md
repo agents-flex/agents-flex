@@ -38,7 +38,7 @@
 </dependency>
 <dependency>
     <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-data</artifactId>
+    <artifactId>agents-flex-text2sql</artifactId>
     <version>2.0.0</version>
 </dependency>
 ```
