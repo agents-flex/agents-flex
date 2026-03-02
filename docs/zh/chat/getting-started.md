@@ -19,14 +19,14 @@
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>2.0.0</version>
+    <version>2.0.1</version>
 </dependency>
 ```
 
 或者使用 Gradle:
 
 ```java
-implementation 'com.agentsflex:agents-flex-bom:2.0.0'
+implementation 'com.agentsflex:agents-flex-bom:2.0.1'
 ```
 
 
