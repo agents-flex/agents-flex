@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
  */
 package com.agentsflex.core.message;
 
-public class ToolMessage extends AbstractTextMessage{
+import java.util.HashMap;
+
+public class ToolMessage extends AbstractTextMessage<ToolMessage> {
 
     private String toolCallId;
 
@@ -27,6 +29,7 @@ public class ToolMessage extends AbstractTextMessage{
         this.toolCallId = toolCallId;
     }
 
+
     @Override
     public String toString() {
         return "ToolMessage{" +
@@ -34,5 +37,21 @@ public class ToolMessage extends AbstractTextMessage{
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';
+    }
+
+    /**
+     * 创建并返回当前对象的副本。
+     *
+     * @return 一个新的、内容相同但内存独立的对象
+     */
+    @Override
+    public ToolMessage copy() {
+        ToolMessage copy = new ToolMessage();
+        copy.content = this.content;
+        copy.toolCallId = this.toolCallId;
+        if (this.metadataMap != null) {
+            copy.metadataMap = new HashMap<>(this.metadataMap);
+        }
+        return copy;
     }
 }

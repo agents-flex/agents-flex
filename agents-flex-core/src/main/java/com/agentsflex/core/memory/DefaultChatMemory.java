@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -39,13 +39,26 @@ public class DefaultChatMemory implements ChatMemory {
     }
 
     @Override
-    public List<Message> getMessages() {
-        return messages;
+    public List<Message> getMessages(int count) {
+        if (count <= 0) {
+            throw new IllegalArgumentException("count must be greater than 0");
+        }
+        if (count >= messages.size()) {
+            // 返回副本，避免修改原始消息
+            return new ArrayList<>(messages);
+        } else {
+            return messages.subList(messages.size() - count, messages.size());
+        }
     }
 
     @Override
     public void addMessage(Message message) {
         messages.add(message);
+    }
+
+    @Override
+    public void clear() {
+        messages.clear();
     }
 
 

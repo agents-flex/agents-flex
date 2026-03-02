@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package com.agentsflex.rereank.gitee;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.rerank.RerankException;
+import com.agentsflex.core.model.rerank.RerankException;
 import com.agentsflex.rerank.DefaultRerankModel;
 import com.agentsflex.rerank.DefaultRerankModelConfig;
 import org.junit.Test;
@@ -31,7 +31,7 @@ public class DefaultRerankModelTest {
 
         DefaultRerankModelConfig config = new DefaultRerankModelConfig();
         config.setEndpoint("https://ai.gitee.com");
-        config.setBasePath("/v1/rerank");
+        config.setRequestPath("/v1/rerank");
         config.setModel("Qwen3-Reranker-8B");
         config.setApiKey("*****");
 

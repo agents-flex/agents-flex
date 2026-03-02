@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 package com.agentsflex.core.parser;
 
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.model.chat.ChatContext;
 
-public interface AiMessageParser extends JSONObjectParser<AiMessage> {
+public interface AiMessageParser<T> {
+    AiMessage parse(T jsonObject, ChatContext context);
 }

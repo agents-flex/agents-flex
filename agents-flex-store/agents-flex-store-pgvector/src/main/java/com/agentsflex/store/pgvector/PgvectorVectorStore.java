@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
@@ -76,7 +76,7 @@ public class PgvectorVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
 
         // 表名
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
@@ -88,7 +88,7 @@ public class PgvectorVectorStore extends DocumentStore {
                 JSONObject jsonObject = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
                 pstmt.setString(1, String.valueOf(doc.getId()));
                 pstmt.setString(2, doc.getContent());
-                pstmt.setObject(3, PgvectorUtil.toPgVector(doc.getVector()));
+                pstmt.setObject(3, PgvectorUtil.toPgVector(doc.getVectorAsDoubleArray()));
                 pstmt.setString(4, jsonObject.toString());
                 pstmt.addBatch();
             }
@@ -127,7 +127,7 @@ public class PgvectorVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         StringBuilder sql = new StringBuilder("DELETE FROM " + options.getCollectionNameOrDefault(defaultCollectionName) + " WHERE id IN (");
         for (int i = 0; i < ids.size(); i++) {
             sql.append("?");
@@ -156,7 +156,7 @@ public class PgvectorVectorStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
         StringBuilder sql = new StringBuilder("select ");
         if (searchWrapper.isOutputVector()) {
             sql.append("id, vector, content, metadata");
@@ -171,7 +171,7 @@ public class PgvectorVectorStore extends DocumentStore {
             // 使用余弦距离计算最相似的文档
             PreparedStatement stmt = connection.prepareStatement(sql.toString());
 
-            PGobject vector = PgvectorUtil.toPgVector(searchWrapper.getVector());
+            PGobject vector = PgvectorUtil.toPgVector(searchWrapper.getVectorAsDoubleArray());
             stmt.setObject(1, vector);
             stmt.setObject(2, Optional.ofNullable(searchWrapper.getMinScore()).orElse(DEFAULT_SIMILARITY_THRESHOLD));
             stmt.setObject(3, vector);
@@ -201,7 +201,7 @@ public class PgvectorVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.success();
         }
@@ -214,7 +214,7 @@ public class PgvectorVectorStore extends DocumentStore {
                 Map<String, Object> metadatas = doc.getMetadataMap();
                 JSONObject metadataJson = JSON.parseObject(JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
                 pstmt.setString(1, doc.getContent());
-                pstmt.setObject(2, PgvectorUtil.toPgVector(doc.getVector()));
+                pstmt.setObject(2, PgvectorUtil.toPgVector(doc.getVectorAsDoubleArray()));
                 pstmt.setString(3, metadataJson.toString());
                 pstmt.setString(4, String.valueOf(doc.getId()));
                 pstmt.addBatch();

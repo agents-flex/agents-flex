@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -69,4 +69,17 @@ public class StringUtil {
     }
 
 
+    public static boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) return false;
+        int len = str.length(), i = 0;
+        if (str.charAt(0) == '+' || str.charAt(0) == '-') {
+            if (len == 1) return false;
+            i = 1;
+        }
+        for (; i < len; i++) {
+            char c = str.charAt(i);
+            if (c < '0' || c > '9') return false;
+        }
+        return true;
+    }
 }

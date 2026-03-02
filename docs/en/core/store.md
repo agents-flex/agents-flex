@@ -34,10 +34,10 @@ storeConfig.setDatabase("...");
 DocumentStore store = new AliyunVectorStore(storeConfig);
 
 //Create an embedding model，
-EmbeddingModel llm = new OpenAILlm.of("sk-rts5NF6n*******");
+EmbeddingModel chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
 //Configuring the embedding model for the store
-store.setEmbeddingModel(llm);
+store.setEmbeddingModel(chatModel);
 ```
 
 With the above setup completed, we can happily use the store to perform  `CRUD ` operations on vector data.

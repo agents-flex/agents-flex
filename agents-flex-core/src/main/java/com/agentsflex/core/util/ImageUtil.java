@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.util;
 
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
 
 import java.io.File;
 import java.net.URLConnection;
@@ -59,7 +59,7 @@ public class ImageUtil {
         try {
             byte[] bytes = imageHttpClient.getBytes(imageUrl);
             String mimeType = guessMimeTypeFromName(imageUrl);
-            return toDataUri(bytes, mimeType);
+            return imageBytesToDataUri(bytes, mimeType);
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to convert image URL to Data URI: " + imageUrl, e);
         }
@@ -74,7 +74,7 @@ public class ImageUtil {
         Objects.requireNonNull(imageFile, "Image file must not be null");
         byte[] bytes = IOUtil.readBytes(imageFile);
         String mimeType = guessMimeTypeFromName(imageFile.getName());
-        return toDataUri(bytes, mimeType);
+        return imageBytesToDataUri(bytes, mimeType);
     }
 
 
@@ -106,8 +106,7 @@ public class ImageUtil {
         return mime != null ? mime : "image/jpeg";
     }
 
-    // ========== Data URI 构造 ==========
-    private static String toDataUri(byte[] data, String mimeType) {
+    public static String imageBytesToDataUri(byte[] data, String mimeType) {
         String base64 = Base64.getEncoder().encodeToString(data);
         return mimeType + ";base64," + base64;
     }

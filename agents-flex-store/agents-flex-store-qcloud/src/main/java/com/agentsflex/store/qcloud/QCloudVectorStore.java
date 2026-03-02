@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 package com.agentsflex.store.qcloud;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
@@ -45,7 +45,7 @@ public class QCloudVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.success();
         }
@@ -78,7 +78,7 @@ public class QCloudVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());
@@ -100,7 +100,7 @@ public class QCloudVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.success();
         }
@@ -126,7 +126,7 @@ public class QCloudVectorStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer account=" + config.getAccount() + "&api_key=" + config.getApiKey());

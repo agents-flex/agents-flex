@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -165,7 +165,7 @@ public class OpenSearchVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
         String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
         createIndexIfNotExist(indexName);
@@ -201,7 +201,7 @@ public class OpenSearchVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
         for (Object id : ids) {
@@ -212,7 +212,7 @@ public class OpenSearchVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
         String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
         for (Document document : documents) {
@@ -225,7 +225,7 @@ public class OpenSearchVectorStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
         Double minScore = wrapper.getMinScore();
         String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
 

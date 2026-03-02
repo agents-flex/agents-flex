@@ -4,10 +4,10 @@
 
 ```java
 public static void main(String[] args) {
-    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+    Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
     Prompt prompt = new SimplePrompt("what is your name?");
-    String response = llm.chat(prompt);
+    String response = chatModel.chat(prompt);
 
     System.out.println(response);
 }

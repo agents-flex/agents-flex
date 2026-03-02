@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
  */
 package com.agentsflex.core.store;
 
-import com.agentsflex.core.llm.embedding.EmbeddingModel;
+import com.agentsflex.core.model.embedding.EmbeddingModel;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentSplitter;
 import com.agentsflex.core.document.id.DocumentIdGenerator;
 import com.agentsflex.core.document.id.DocumentIdGeneratorFactory;
-import com.agentsflex.core.llm.exception.LlmException;
+import com.agentsflex.core.model.exception.ModelException;
 
 import java.util.Collection;
 import java.util.List;
@@ -85,7 +85,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
 
         embedDocumentsIfNecessary(documents, options);
 
-        return storeInternal(documents, options);
+        return doStore(documents, options);
     }
 
     @Override
@@ -93,7 +93,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
         if (options == null) {
             options = StoreOptions.DEFAULT;
         }
-        return deleteInternal(ids, options);
+        return doDelete(ids, options);
     }
 
     @Override
@@ -103,7 +103,7 @@ public abstract class DocumentStore extends VectorStore<Document> {
         }
 
         embedDocumentsIfNecessary(documents, options);
-        return updateInternal(documents, options);
+        return doUpdate(documents, options);
     }
 
 
@@ -116,12 +116,12 @@ public abstract class DocumentStore extends VectorStore<Document> {
         if (wrapper.getVector() == null && embeddingModel != null && wrapper.isWithVector()) {
             VectorData vectorData = embeddingModel.embed(Document.of(wrapper.getText()), options.getEmbeddingOptions());
             if (vectorData == null) {
-                throw new LlmException("Embedding model does not contain vector data");
+                throw new ModelException("Embedding model does not contain vector data");
             }
             wrapper.setVector(vectorData.getVector());
         }
 
-        return searchInternal(wrapper, options);
+        return doSearch(wrapper, options);
     }
 
 
@@ -140,11 +140,11 @@ public abstract class DocumentStore extends VectorStore<Document> {
     }
 
 
-    public abstract StoreResult storeInternal(List<Document> documents, StoreOptions options);
+    public abstract StoreResult doStore(List<Document> documents, StoreOptions options);
 
-    public abstract StoreResult deleteInternal(Collection<?> ids, StoreOptions options);
+    public abstract StoreResult doDelete(Collection<?> ids, StoreOptions options);
 
-    public abstract StoreResult updateInternal(List<Document> documents, StoreOptions options);
+    public abstract StoreResult doUpdate(List<Document> documents, StoreOptions options);
 
-    public abstract List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options);
+    public abstract List<Document> doSearch(SearchWrapper wrapper, StoreOptions options);
 }

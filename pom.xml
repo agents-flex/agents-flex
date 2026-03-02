@@ -42,19 +42,23 @@
     <modules>
         <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
-        <module>agents-flex-llm</module>
+        <module>agents-flex-chat</module>
         <module>agents-flex-store</module>
-        <module>agents-flex-document-parser</module>
         <module>agents-flex-spring-boot-starter</module>
-        <module>agents-flex-chain</module>
         <module>agents-flex-image</module>
         <module>agents-flex-rerank</module>
         <module>agents-flex-search-engine</module>
+        <module>agents-flex-embedding</module>
+        <module>agents-flex-tool</module>
+        <module>agents-flex-mcp</module>
+        <module>agents-flex-skills</module>
+        <module>agents-flex-text2sql</module>
+        <module>demos</module>
     </modules>
 
     <properties>
         <!-- Agents-Flex Version -->
-        <revision>1.4.2</revision>
+        <revision>2.0.0</revision>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <maven-flatten.version>1.3.0</maven-flatten.version>
@@ -62,7 +66,7 @@
         <slf4j.version>1.7.29</slf4j.version>
         <junit.version>4.13.2</junit.version>
         <okhttp.version>4.9.3</okhttp.version>
-        <fastjson.version>2.0.58</fastjson.version>
+        <fastjson2.version>2.0.58</fastjson2.version>
         <spring-boot.version>2.7.18</spring-boot.version>
         <kotlin.version>1.8.22</kotlin.version>
         <opentelemetry.version>1.51.0</opentelemetry.version>
@@ -99,9 +103,9 @@
             </dependency>
 
             <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
-                <version>${fastjson.version}</version>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
+                <version>${fastjson2.version}</version>
             </dependency>
 
             <dependency>
@@ -146,24 +150,6 @@
                 <artifactId>agents-flex-bom</artifactId>
                 <version>${revision}</version>
             </dependency>
-
-            <!--document parser start-->
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-document-parser-poi</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-document-parser-pdfbox</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-document-parser-omniparse</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <!--document parser end-->
 
 
             <!--image model start-->
@@ -210,86 +196,38 @@
             <!--image model end-->
 
 
-            <!--llm start-->
+            <!--chatModel start-->
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-chatglm</artifactId>
+                <artifactId>agents-flex-chat-chatglm</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-coze</artifactId>
+                <artifactId>agents-flex-chat-coze</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-deepseek</artifactId>
+                <artifactId>agents-flex-chat-deepseek</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-ollama</artifactId>
+                <artifactId>agents-flex-chat-ollama</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-openai</artifactId>
+                <artifactId>agents-flex-chat-openai</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-qianfan</artifactId>
+                <artifactId>agents-flex-chat-qwen</artifactId>
                 <version>${revision}</version>
             </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-qwen</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-siliconflow</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-spark</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-tencent</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-vllm</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-llm-volcengine</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <!--llm end-->
-
-            <!--chains start-->
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chain-qlexpress</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chain-groovy</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-chain-js</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <!--chains end-->
+            <!--chatModel end-->
 
             <!-- rerank start -->
             <dependency>
@@ -311,6 +249,25 @@
             </dependency>
             <!-- rerank end -->
 
+            <!--embedding start-->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-embedding-openai</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-embedding-qwen</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-embedding-ollama</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!--embedding end-->
 
             <!--store start-->
             <dependency>
@@ -330,12 +287,12 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-store-milvus</artifactId>
+                <artifactId>agents-flex-store-opensearch</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-store-opensearch</artifactId>
+                <artifactId>agents-flex-skills</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
@@ -428,6 +385,36 @@
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-exporter-otlp</artifactId>
                 <version>${opentelemetry.version}</version>
+            </dependency>
+
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-mcp</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+
+            <!-- demos -->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>demos</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>helloworld</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>skills-demo</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>text2sql-demo</artifactId>
+                <version>${revision}</version>
             </dependency>
 
         </dependencies>
@@ -529,13 +516,19 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.6</version>
+                <version>3.2.7</version>
                 <executions>
                     <execution>
                         <phase>verify</phase>
                         <goals>
                             <goal>sign</goal>
                         </goals>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -548,6 +541,12 @@
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
+                    <excludeArtifacts>
+                        <excludeArtifact>demos</excludeArtifact>
+                        <excludeArtifact>helloworld</excludeArtifact>
+                        <excludeArtifact>text2sql-demo</excludeArtifact>
+                        <excludeArtifact>skills-demo</excludeArtifact>
+                    </excludeArtifacts>
                 </configuration>
             </plugin>
 

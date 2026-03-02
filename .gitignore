@@ -1,6 +1,7 @@
 **/target/
 **/node_modules/
 .idea
+.env
 *.iml
 .project
 .settings

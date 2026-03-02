@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,34 +15,15 @@
  */
 package com.agentsflex.image.openai;
 
-import java.io.Serializable;
+import com.agentsflex.core.model.config.BaseModelConfig;
 
-public class OpenAIImageModelConfig implements Serializable {
-    private String endpoint = "https://api.openai.com";
-    private String model = "dall-e-3";
-    private String apiKey;
+public class OpenAIImageModelConfig extends BaseModelConfig {
+    private static final String endpoint = "https://api.openai.com";
+    private static final String model = "dall-e-3";
 
-    public String getEndpoint() {
-        return endpoint;
+    public OpenAIImageModelConfig() {
+        setEndpoint(endpoint);
+        setModel(model);
     }
 
-    public void setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
-    }
-
-    public String getModel() {
-        return model;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
-    }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,17 +15,12 @@
  */
 package com.agentsflex.image.test;
 
-import com.agentsflex.core.image.GenerateImageRequest;
-import com.agentsflex.core.image.ImageModel;
-import com.agentsflex.core.image.ImageResponse;
-import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.model.image.GenerateImageRequest;
+import com.agentsflex.core.model.image.ImageModel;
+import com.agentsflex.core.model.image.ImageResponse;
 import com.agentsflex.image.tencent.TencentImageModel;
 import com.agentsflex.image.tencent.TencentImageModelConfig;
 import org.junit.Test;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class TencentImageModelTest {
 

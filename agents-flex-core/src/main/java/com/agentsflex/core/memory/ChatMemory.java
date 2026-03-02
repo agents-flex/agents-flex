@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -21,13 +21,16 @@ import java.util.Collection;
 import java.util.List;
 
 public interface ChatMemory extends Memory {
-    List<Message> getMessages();
+
+    List<Message> getMessages(int count);
 
     void addMessage(Message message);
 
-    default void addMessages(Collection<Message> messages){
+    default void addMessages(Collection<? extends Message> messages){
         for (Message message : messages) {
             addMessage(message);
         }
     }
+
+    void clear();
 }

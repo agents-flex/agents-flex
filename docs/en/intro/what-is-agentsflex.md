@@ -2,7 +2,7 @@
 
 Agents-Flex is an AI application development framework developed in Java, designed to simplify AI application development. It draws inspiration from LangChain, LlamaIndex, and the author's best practices as a frontline AI application developer, providing API support across AI service providers that is portable and not limited to Java development frameworks.
 
-Agents-Flex is suitable for various scenarios, including chat, image generation, embedding models, function calling, and RAG applications, and supports both synchronous and streaming API options.
+Agents-Flex is suitable for various scenarios, including chat, image generation, embedding models, tool calling, and RAG applications, and supports both synchronous and streaming API options.
 
 
 ## Comparison between Agents-Flex and other frameworks
@@ -21,8 +21,8 @@ With Agents-Flex, chat functionality can be implemented in just two lines of cod
 ```java
 @Test
 public void testChat() {
-    OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
-    String response = llm.chat("what is your name?");
+    OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
+    String response = chatModel.chat("what is your name?");
 
     System.out.println(response);
 }
@@ -42,10 +42,10 @@ public class WeatherUtil {
 
 
     public static void main(String[] args) {
-        OpenAILlm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+        OpenAILlm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
         FunctionPrompt prompt = new FunctionPrompt("What's the weather like in Beijing today?", WeatherUtil.class);
-        FunctionResultResponse response = llm.chat(prompt);
+        FunctionResultResponse response = chatModel.chat(prompt);
 
         Object result = response.getFunctionResult();
 

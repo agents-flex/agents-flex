@@ -61,35 +61,88 @@ export default defineConfig({
                 items: [
                     {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
                     {text: '核心概念', link: '/zh/intro/concepts'},
-                    {text: '快速开始', link: '/zh/intro/getting-started'},
                     {text: 'Maven 依赖', link: '/zh/intro/maven'},
                     {text: '微信交流群', link: '/zh/intro/communication'},
                 ]
             },
             {
-                text: '核心模块',
+                text: '对话模块',
                 items: [
-                    {text: 'LLMs 大语言模型', link: '/zh/core/llms'},
-                    {text: 'Prompt 提示词', link: '/zh/core/prompt'},
-                    // {text: 'Chat 对话', link: '/zh/core/chat'},
-                    // {text: 'Function Calling 方法调用', link: '/zh/core/function-calling'},
-                    {text: 'Memory 记忆', link: '/zh/core/memory'},
-                    {text: 'Embedding 嵌入', link: '/zh/core/embedding'},
-                    {text: 'Store 存储', link: '/zh/core/store'},
-                    {text: 'Document 文档', link: '/zh/core/document'},
-                    {text: 'Image 图片生成', link: '/zh/core/image'},
-                    {text: 'SearchEngine 搜索引擎', link: '/zh/core/search-engine'},
-                    {text: 'Chain 执行链', link: '/zh/core/chain'},
+                    {text: '快速开始', link: '/zh/chat/getting-started'},
+                    {text: 'ChatModel', link: '/zh/chat/chat-model'},
+                    {text: 'ChatConfig', link: '/zh/chat/chat-config'},
+                    {text: '对话拦截器', link: '/zh/chat/chat-interceptor'},
+                    {text: '对话上下文', link: '/zh/chat/chat-context'},
+                    {text: 'Prompt 提示词', link: '/zh/chat/prompt'},
+                    {text: '提示词模板', link: '/zh/chat/prompt-template'},
+                    {text: 'Message 消息', link: '/zh/chat/message'},
+                    {text: 'Memory 记忆', link: '/zh/chat/memory'},
+                    {text: 'Tool 工具调用', link: '/zh/chat/tool'},
+                    {text: 'Tool 构建', link: '/zh/chat/tool-build'},
+                    {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
+                    {text: 'MCP 调用', link: '/zh/chat/mcp'},
+                    {text: 'Skills', link: '/zh/chat/skills'},
+                    {text: '智能问数 (Text2SQL)', link: '/zh/chat/text2sql'},
+                    {text: 'ChatClient', link: '/zh/chat/chat-client'},
+                    {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
+                    {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
+                    {text: 'AiMessageParser', link: '/zh/chat/ai-message-parser'},
+                    {text: '错误重试', link: '/zh/chat/retry'},
+                    {text: '日志', link: '/zh/chat/logger'},
                 ]
             },
-            // {
-            //     text: '基础示例',
-            //     items: [
-            //         {text: '简单对话', link: '/zh/samples/chat'},
-            //         {text: '历史对话', link: '/zh/samples/chat-with-memory'},
-            //         {text: 'RAG 应用', link: '/zh/samples/rag'},
-            //     ]
-            // }
+            {
+                text: '智能体',
+                items: [
+                    {text: 'ReAct Agent', link: '/zh/agent/react-agent'},
+                    {text: 'Routing Agent（多智能体路由）', link: '/zh/agent/routing-agent'},
+                ]
+            },
+            {
+                text: '更多模型',
+                items: [
+                    // {text: '图片模型', link: '/zh/models/image'},
+                    {text: 'Rerank 重排模型', link: '/zh/models/rerank'},
+                    {text: 'Embedding 嵌入模型', link: '/zh/models/embedding'},
+                ]
+            },
+            {
+                text: 'RAG 模块',
+                items: [
+                    {text: '文档概念', link: '/zh/rag/document'},
+                    {text: '向量存储 (Vector Store)', link: '/zh/rag/vector-store'},
+                    {text: 'SearchWrapper', link: '/zh/rag/search-wrapper'},
+                    {text: 'file2text', link: '/zh/rag/file2text'},
+                    {text: '文档分割 Splitter', link: '/zh/rag/splitter'},
+                    {text: '搜索引擎', link: '/zh/rag/search-engine'},
+                ]
+            },
+            {
+                text: '可观测',
+                items: [
+                    {text: 'Observability', link: '/zh/observability/observability'},
+                    {text: '模型可观测', link: '/zh/observability/model'},
+                    {text: '工具调用可观测', link: '/zh/observability/tool'},
+                ]
+            },
+            {
+                text: '内置工具类',
+                items: [
+                    {text: 'Maps', link: '/zh/util/maps'},
+                    {text: 'Retryer', link: '/zh/util/retryer'},
+                    {text: 'ToolScanner', link: '/zh/util/tool-scanner'},
+                    {text: 'Tool.Builder', link: '/zh/util/tool-builder'},
+                    {text: 'LocalTokenCounter', link: '/zh/util/local-token-counter'},
+                    {text: '其他工具类', link: '/zh/util/others'},
+                ]
+            },
+            {
+                text: '其他',
+                items: [
+                    {text: 'v1.x 升级', link: '/zh/other/v1-upgrade'},
+                    {text: '工作流编排', link: '/zh/other/chain'},
+                ]
+            },
         ],
         footer: {
             message: 'Released under the Apache License.',

@@ -1,7 +1,23 @@
+/*
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package com.agentsflex.core.observability;
 
 import com.agentsflex.core.Consts;
 import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.Meter;
@@ -20,6 +36,8 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +47,8 @@ import java.util.concurrent.TimeUnit;
  * 支持 Tracing（链路追踪）和 Metrics（指标）。
  */
 public final class Observability {
+    private static final Logger logger = LoggerFactory.getLogger(Observability.class);
+
 
     // === Tracing 相关 ===
     private static volatile Tracer globalTracer;
@@ -43,7 +63,24 @@ public final class Observability {
     private static volatile boolean shutdownHookRegistered = false;
     private static volatile Throwable initError = null;
 
+    private static volatile Boolean observabilityEnabled;
+    private static volatile java.util.Set<String> excludedTools;
+
+
+    // === 自定义 Exporter 支持 ===
+    private static volatile SpanExporter customSpanExporter;
+    private static volatile MetricExporter customMetricExporter;
+
+
     private Observability() {
+    }
+
+    /**
+     * 注入自定义 Exporter
+     */
+    public static void setCustomExporters(SpanExporter spanExporter, MetricExporter metricExporter) {
+        customSpanExporter = spanExporter;
+        customMetricExporter = metricExporter;
     }
 
     private static void init() {
@@ -55,6 +92,21 @@ public final class Observability {
             }
 
             try {
+                OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
+                String propagatorsClassName = openTelemetry.getPropagators().getTextMapPropagator().getClass().getSimpleName();
+
+                // 检查是否已经被其他组件（如 SpringBoot）注册了 OpenTelemetry SDK
+                if (!"NoopTextMapPropagator".equals(propagatorsClassName)) {
+                    logger.info("OpenTelemetry SDK already registered globally. Reusing existing instance.");
+                    globalTracer = GlobalOpenTelemetry.getTracer("agents-flex");
+                    globalMeter = GlobalOpenTelemetry.getMeter("agents-flex");
+                    initialized = true;
+                    // 注意：此处不需要注册 shutdown hook，由 GlobalOpenTelemetry 初始化的组件去关闭，比如 Spring 会管理生命周期
+                    return;
+                } else {
+                    GlobalOpenTelemetry.resetForTest();
+                }
+
 
                 Resource resource = Resource.getDefault()
                     .merge(Resource.create(Attributes.of(
@@ -64,7 +116,7 @@ public final class Observability {
 
 
                 // 1. 创建 Span 相关组件
-                SpanExporter spanExporter = createSpanExporter();
+                SpanExporter spanExporter = customSpanExporter != null ? customSpanExporter : createSpanExporter();
                 SpanProcessor spanProcessor = createSpanProcessor(spanExporter);
                 tracerProvider = SdkTracerProvider.builder()
                     .addSpanProcessor(spanProcessor)
@@ -72,7 +124,7 @@ public final class Observability {
                     .build();
 
                 // 2. 创建 Metric 相关组件
-                MetricExporter metricExporter = createMetricExporter();
+                MetricExporter metricExporter = customMetricExporter != null ? customMetricExporter : createMetricExporter();
                 meterProvider = SdkMeterProvider.builder()
                     .registerMetricReader(PeriodicMetricReader.builder(metricExporter)
                         .setInterval(Duration.ofSeconds(getMetricExportIntervalSeconds())) // 默认每60秒导出一次
@@ -104,6 +156,61 @@ public final class Observability {
         }
     }
 
+
+    /**
+     * 全局可观测性开关。默认开启。
+     * 可通过系统属性 {@code agentsflex.otel.enabled} 控制（true/false）。
+     */
+    public static boolean isEnabled() {
+        if (observabilityEnabled != null) {
+            return observabilityEnabled;
+        }
+        synchronized (Observability.class) {
+            if (observabilityEnabled != null) {
+                return observabilityEnabled;
+            }
+            // 默认 true，与现有行为一致
+            String prop = System.getProperty("agentsflex.otel.enabled", "true");
+            observabilityEnabled = Boolean.parseBoolean(prop);
+            return observabilityEnabled;
+        }
+    }
+
+    /**
+     * 判断指定工具是否被排除在可观测性之外。
+     * 可通过系统属性 {@code agentsflex.otel.tool.excluded} 配置（逗号分隔，如 "heartbeat,debug"）。
+     */
+    public static boolean isToolExcluded(String toolName) {
+        if (toolName == null || toolName.isEmpty()) {
+            return false;
+        }
+
+        java.util.Set<String> excluded = excludedTools;
+        if (excluded != null) {
+            return excluded.contains(toolName);
+        }
+
+        synchronized (Observability.class) {
+            if (excludedTools != null) {
+                return excludedTools.contains(toolName);
+            }
+
+            String prop = System.getProperty("agentsflex.otel.tool.excluded", "");
+            java.util.Set<String> set = new java.util.HashSet<>();
+            if (!prop.trim().isEmpty()) {
+                for (String name : prop.split(",")) {
+                    name = name.trim();
+                    if (!name.isEmpty()) {
+                        set.add(name);
+                    }
+                }
+            }
+            excludedTools = java.util.Collections.unmodifiableSet(set);
+            return excludedTools.contains(toolName);
+        }
+    }
+
+
     private static long getMetricExportIntervalSeconds() {
         String prop = System.getProperty("agentsflex.otel.metric.export.interval", "60");
         try {
@@ -127,8 +234,19 @@ public final class Observability {
             case "otlp":
                 return OtlpGrpcSpanExporter.getDefault();
             case "logging":
-            default:
                 return LoggingSpanExporter.create();
+            default:
+                return createSpanExporterByClassName(exporterType);
+        }
+    }
+
+    private static SpanExporter createSpanExporterByClassName(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            return (SpanExporter) clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            logger.warn("Failed to create MetricExporter by className: " + className + ", use LoggingSpanExporter to replaced", e);
+            return LoggingSpanExporter.create();
         }
     }
 
@@ -152,8 +270,19 @@ public final class Observability {
             case "otlp":
                 return OtlpGrpcMetricExporter.getDefault();
             case "logging":
-            default:
                 return LoggingMetricExporter.create();
+            default:
+                return createMetricExporterByClassName(exporterType);
+        }
+    }
+
+    public static MetricExporter createMetricExporterByClassName(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            return (MetricExporter) clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            logger.warn("Failed to create MetricExporter by className: " + className + ", use LoggingMetricExporter to replaced", e);
+            return LoggingMetricExporter.create();
         }
     }
 

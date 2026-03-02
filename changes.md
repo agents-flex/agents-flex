@@ -1,5 +1,205 @@
 # Agents-Flex ChangeLog
 
+## v2.0.0 20260301
+- docs(readme): update documentation with comprehensive framework overview
+- docs(intro): update framework description from application to agent development
+- docs(homepage): update homepage content to reflect new framework features
+- docs(chat): update MCP documentation with configuration structure and protocol details
+- docs(chat): update skills documentation title
+- docs(nav): add Text2SQL documentation to navigation menu Michael
+- fix(config): update model configuration to use Qwen3.5-35B-A3B
+- perf(prompt): increase max attached message count limit
+- fix(demo): update model configuration and improve stream output handling
+- refactor(SseClient): reorder method execution sequence
+- fix(chat): add stack trace printing in stream response failure handling
+- chore(i18n): translate Chinese comments and strings to English in DataTools
+- feat(mcp): add streamable transport support to MCP client
+- feat(data): initialize JDBC data source tables during tool building
+- style(data-demo): comment out unused datasource description and user query
+- chore(project): update copyright and add data module
+- feat(demos): add data demo module with JDBC integration
+- feat(data): add agents-flex-text2sql module
+- style(skills): remove excessive indentation from tool description template
+- feat(util): add high-performance type converter utility
+- feat(util): add numeric string validation method
+- feat(tool): enhance method parameter type handling with generic support
+- refactor(convert): remove converter implementations and service
+- docs(chat): add comprehensive skills documentation for AgentsFlex framework
+- docs(readme): add skills capability to documentation
+- fix(skills): update demo to handle PDF generation and improve response handling
+- feat(message): add hasToolCalls method to AiMessage
+- chore(deps): update dependency versions to use revision property
+- feat(skills): add AI tutor skill with YouTube transcript capability
+- feat(project): add demos module with helloworld example
+- feat(skill): add skills module
+- feat(tool): replace shell module with commons module for enhanced tooling
+- refactor(prompt): simplify message imports and enhance MemoryPrompt API
+- fix(tool): set default type to string for Parameter class
+- refactor(memory): update addMessages method signature to use wildcard type
+- chore(samples): remove hello world sample project and related files
+- feat(tool): enhance MethodTool to automatically extract enum values from parameter types
+
+
+## v2.0.0-rc.9 20260225
+- refactor(mcp): replace hardcoded "stdio" with DEFAULT_TRANSPORT_TYPE constant
+- feat(mcp): add SSE transport support
+
+
+## v2.0.0-rc.8 20260225
+- refactor(client): update reflection field access in HttpStreamTransportFactory
+- feat(client): add environment variables support to stdio transport factory
+- feat(client): add http transport factory support
+- refactor(client): remove hardcoded request timeout in McpClientDescriptor
+- refactor(client): simplify StdioTransportFactory implementation
+- feat(client): enhance HTTP SSE transport with header customization and URL trimming
+- chore(build): ignore .env files in version control
+- chore(build): update MCP version and remove unused dependency
+- test(client): add unit tests for MDLMcpClientManager
+- refactor(mcp): update JSON mapper and enhance transport configuration
+- docs(agent): update ReAct agent prompt template documentation
+
+
+## v2.0.0-rc.7 20260213
+- feat: Alibaba Cloud vector failure returns reason for failure
+- fix: ElasticSearch retrieval failure issue
+
+
+## v2.0.0-rc.6 20260127
+- fix(core): update message retrieval and context handling in streaming components
+- feat(http): add proxy authentication support to OkHttpClientUtil
+- feat(github): add issue templates for bug reports and documentation feedback
+
+
+## v2.0.0-rc.5 20260127
+- feat(core): add JSON error message detection and enhance embedding model error handling
+- feat(test): add ChatOptions support and enhance stream testing utilities
+- refactor(chat): rename extra field to extraBody in ChatOptions
+- fix(stream): handle failure flag properly in stream client listener
+- refactor(core): remove unused string utility and simplify thinking protocol logic
+- refactor(chat): rename variable for clarity in OpenAI request builder
+- refactor(chat): rename extra field to extraBody in ChatOptions
+- refactor(chat): remove default thinking protocol handling and add dynamic protocol detection
+- feat(chat): add thinking protocol support for chat configurations
+
+
+## v2.0.0-rc.4 20260123
+- fix: Optimizing Alibaba Cloud vector database vector failure prompt
+- feat(embedding): add dimensions and user support to embedding options
+- feat(document): add MarkdownHeaderSplitter for hierarchical document splitting
+- feat(chat): add reasoning content support for tool messages in chat configuration
+
+
+## v2.0.0-rc.3 20260112
+- feat(readme): add MCP capabilities to the list of features
+- fix(openai): remove unsupported top_k parameter from openai request
+- fix(openai): handle JSON parsing errors in OpenAI chat client
+- refactor(ollama): update configuration defaults and parameter naming
+- chore(ollama): clean up request spec builder code
+- refactor(qwen): remove response format option from QwenChatOptions
+- feat(chat): add response format support to chat options
+- chore(build): remove mvn17.sh script
+- feat(mcp): add methods to access client descriptor and health checker
+
+
+## v2.0.0-rc.2 20260108
+- fix(deps): update POI dependencies and remove slf4j-simple
+- fix(http): add null check for request headers in HttpClient
+
+
+## v2.0.0-rc.1 20260106
+- fix(OpenAIChatMessageSerializer): Added null check for parameters array to prevent NPE
+
+
+## v2.0.0-beta.9 20260105
+- refactor(stream): remove content check in stream client listener
+- fix(mcp): handle duplicate client registration properly prevent resource leaks when client is re-registered
+- refactor(message): rename shouldNewCall method to isNewCall for clarity
+- refactor(message): optimize tool call comparison logic in AiMessage
+- test(openai): update OpenAI chat model test with tool call support
+
+
+## v2.0.0-beta.8 20260104
+- fix(observability): correct OpenTelemetry propagator detection logic
+- fix(observability): improve OpenTelemetry SDK registration check
+- feat(observability): add OpenTelemetry SDK reuse check
+
+
+## v2.0.0-beta.7 20260104
+- refactor(docs): update MCP client method name in documentation
+- docs(chat): update MCP documentation with JDK version requirements
+- chore(build): set maven compiler properties to Java 8
+- docs(chat): add comprehensive MCP client integration guide
+- refactor(client): rename getClient to getMcpClient for clarity
+- refactor(mcp): move client-related classes to dedicated package
+- test(mcp): add comprehensive unit tests for McpClientManager
+- feat(config): add MCP server configuration file and Added mcp-servers.json with everything server configuration for test
+- refactor(mcp): replace McpRootConfig with McpConfig for server specifications
+- feat(mcp): add exception handling for MCP tool calls
+- fix(mcp): handle null and single text content in tool invocation
+- feat(mcp): add MCP tool retrieval functionality
+- feat(mcp): add McpTool implementation for MCP tool integration
+- feat(tool): add defaultValue property to Parameter class
+- chore(license): Updated copyright year from 2025 to 2026
+- (mcp):feat add Model Context Protocol client management module
+
+
+
+## v2.0.0-beta.6 20251230
+- refactor(core):   Replace clearFullMessage with finalizeFullMessage to properly handle content
+- fix(stream): clear full message content on stream completion
+- test(openai): update OpenAI chat model test configuration and weather function
+- refactor(OpenAIChatMessageSerializer): update tool message handling and serialization
+- feat(chat): add tool message support with compatibility for models that don't support native format
+- refactor(chat): update ChatConfig tool support methods and remove unused field
+- test(utils): add ChatModelTestUtils for stream testing
+- refactor(stream): simplify message handling and stop logic in BaseStreamClientListener
+- refactor(message): update AiMessage delta completion logic
+
+
+
+## v2.0.0-beta.5 20251219
+- test(openai): remove unnecessary thread sleep in chat model tests
+- feat(chat): add includeUsage option for streaming responses
+- feat(openai): add stream chat test for bailian model
+- feat(core): add stopped flag and improve stream listener logic
+- fix(stream): handle final delta correctly in stream client listener and Wrapped final message notification in try-finally block
+- feat(openai): add support for extra options in chat request
+- docs(models): update embedding model translation
+
+
+
+## v2.0.0-beta.4 20251210
+- fix(core):优化AI消息增量更新的空值判断
+- fix(core):修复工具调用合并逻辑
+- chore(deps): 移除嵌入模型相关依赖配置
+- fix(message):优化 ToolCall 参数解析逻辑
+- feat(core):优化聊天模型和客户端实现
+- fix: embedding module packaging
+- feat(bom): 添加嵌入模型依赖项
+
+
+## v2.0.0-beta.2 20251202
+- 修复：修复 Maven 依赖异常，更新版本号，感谢 @jieven
+
+## v2.0.0-beta.1 20251126
+- 移除 Chain 模块，合并到 Tinyflow
+- 移除 documentParser 模块
+- 移除 DocumentLoader 模块
+- 新增 file2text 模块
+- 新增 observability 模块
+- 新增 RAG 执行 AI 对文档进行拆分
+- 修改 LLM 为 ChatModel
+- 修改 LLMClient 为 StreamClient
+- 修改 LLMClientListener 为 StreamClientListener
+- 修改 LLMConfig 为 ChatConfig
+- 修改 Function 为 Tool
+- 重命名 PromptFormat 为 MessageFormat
+- 重命名 TextPromptTemplate 为 PromptTemplate
+- 重命名 TextPrompt 为 SimplePrompt
+- 重命名 HistoriesPrompt 为 MemoryPrompt
+- 重命名 HumanMessage 等合并为 UserMessage
+
+
 ## v1.4.2 20251117
 - 新增：新增本地 Token 计算的相关内容，方便在某些情况下无法获取外部 token 时使用
 - 新增: 新增 file2text 模块
@@ -72,7 +272,7 @@
 
 ## v1.3.2 20250731
 - 优化：优化 AiMessageResponse.getFunctionCallers 方法
-- 修复：多轮 function call 时,获取最后一条 HumanMessage 错误的问题
+- 修复：多轮 tool call 时,获取最后一条 HumanMessage 错误的问题
 - 修复：Chain 的 Parameter 类型为 Array 时，内容固定值无法解析的问题
 
 
@@ -122,7 +322,7 @@
 - 新增：大模型 Parameter 添加子 Parameter 的配置支持
 - 新增：ReActAgent 添加 continueOnActionJsonParseError 和 continueOnActionInvokeError 配置
 - 修复：修复 EmbeddingModel.dimensions() 错误信息不友好的问题
-- 修复：function call第二次请求模型时缺少了tools信息 close #ICG584
+- 修复：tool call第二次请求模型时缺少了tools信息 close #ICG584
 
 
 ## v1.2.3 20250626
@@ -346,7 +546,7 @@
 
 
 ## v1.0.0-rc.7 20250312
-- feat: Added the function of adding reasoning content to the return message, supporting deepseek's reasoning return, thanks @rirch
+- feat: Added the tool of adding reasoning content to the return message, supporting deepseek's reasoning return, thanks @rirch
 - feat: Added support for vectorexdb embedded version, no need to deploy database separately, thanks @javpower
 - feat: Added support for accessing Tencent's large model language, Wensheng graph model and vectorization interface, thanks @sunchanghuilinqing
 - feat: Support for docking Doubao doubao-1-5-vision-pro-32k multimodal model and Wensheng graph, thanks @wang110wyy
@@ -375,14 +575,14 @@
 
 ## v1.0.0-rc.6 20250220
 - feat: Springboot's automatic configuration class for Ollama
-- feat: Added ToolPrompt function to facilitate the use with Function Call
+- feat: Added ToolPrompt tool to facilitate the use with Function Call
 - refactor: Change openAi to openAI
 - refactor: Optimize LlmNode and TextPromptTemplate
 - refactor: Upgrade related dependencies to the latest version
 - refactor: Optimize the empty user prompt words defined during the LlmNode runtime
-- refactor: Move the package name of functions to the directory llm (destructive update!!!)
+- refactor: Move the package name of tools to the directory chatModel (destructive update!!!)
 - refactor: Refactor InputParameter and OutputKey to merge into Parameter (destructive update!!!)
-- fix: Use the openai interface to connect to the local ollama to build a large model, and multiple function definitions are called abnormally
+- fix: Use the openai interface to connect to the local ollama to build a large model, and multiple tool definitions are called abnormally
 - fix: Fix the problem that agents-flex-bom cannot pull group code
 
 ---
@@ -392,7 +592,7 @@
 - 优化：优化 LlmNode 和 TextPromptTemplate
 - 优化：升级相关依赖到最新版本
 - 优化：优化  LlmNode 运行期定义空的用户提示词
-- 优化：移动 functions 的包名到目录 llm（破坏性更新 !!!）
+- 优化：移动 tools 的包名到目录 chatModel（破坏性更新 !!!）
 - 优化：重构 InputParameter 和 OutputKey 合并到 Parameter（破坏性更新 !!!）
 - 修复：使用 openai 接口对接本地 ollama 搭建大模型，多个函数定义调用异常
 - 修复：修复 agents-flex-bom 无法拉群代码的问题
@@ -466,12 +666,12 @@
 
 
 ## v1.0.0-rc.0 20241104
-- refactor: refactor llm apis
+- refactor: refactor chatModel apis
 - refactor: refactor chain and nodes
 - refactor: optimize agents-flex-solon-plugin @noear_admin
 
 ---
-- 优化：重构 llm api
+- 优化：重构 chatModel api
 - 优化：重构 chain 链路 及其相关节点
 - 优化：优化 agents-flex-solon-plugin @noear_admin
 
@@ -515,7 +715,7 @@
 - feat: ChatOptions add "seed" property
 - feat: Maps can put a child map by key
 - feat: Ollama add options config
-- feat: Ollama function calling support
+- feat: Ollama tool calling support
 - feat: add StringUtil.isJsonObject method
 - refactor: BaseImageRequest add extend options property
 - refactor: make ImagePrompt to extends HumanMessage
@@ -626,7 +826,7 @@
 - feat: add openai，stability AI and gitee-sd3 AI support
 - feat: add moonshot support
 - feat: add chain dsl support
-- refactor: optimize llm clients
+- refactor: optimize chatModel clients
 - refactor: optimize SparkLLM
 - refactor: optimize slf4j dependencies
 - refactor: optimize Agent define
@@ -640,7 +840,7 @@
 - 新增：新增 OmniParseDocumentParser 文档解析器
 - 新增：新增 openai、stability ai 以及 gitee ai 对图片生成的支持
 - 新增：新增月之暗面的支持
-- 优化：优化  llm 客户端的细节
+- 优化：优化  chatModel 客户端的细节
 - 优化：优化星火大模型的细节
 - 优化：优化 slf4j 依赖的细节
 - 优化：优化 Agent 和 Chain 的定义细节
@@ -654,10 +854,10 @@
 - feat: add ImagePrompt to send image to LLM
 - feat: chatOptions add topP/topK and stop config
 - refactor: rename TextMessage.java to AbstractTextMessage.java
-- refactor: refactor llm methods
+- refactor: refactor chatModel methods
 - refactor: refactor FunctionMessageResponse.java
 - refactor: optimize HttpClient.java And SseClient.java
-- fix: fix function calling error in QwenLLM
+- fix: fix tool calling error in QwenLLM
 - test: add chat with image test
 
 
@@ -667,7 +867,7 @@
 - 优化：重命名 TextMessage 为 AbstractTextMessage
 - 优化：重构 LLM 的方法定义，使之更加简单易用
 - 优化：优化 HttpClient.java 和 SseClient.java 的相关代码
-- 修复：通义千问 QwenLLM 在 function calling 下无法正常调用的问题
+- 修复：通义千问 QwenLLM 在 tool calling 下无法正常调用的问题
 - 测试：添加发送图片相关的测试内容
 
 

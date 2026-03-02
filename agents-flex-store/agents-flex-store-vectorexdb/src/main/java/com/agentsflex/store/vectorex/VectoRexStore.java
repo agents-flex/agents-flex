@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.CollectionUtil;
-import com.agentsflex.core.util.VectorUtil;
 import com.google.common.collect.Lists;
 import io.github.javpower.vectorex.keynote.core.DbData;
 import io.github.javpower.vectorex.keynote.core.VectorData;
@@ -48,17 +47,17 @@ public class VectoRexStore extends DocumentStore {
         this.client = new VectoRexClient(config.getUri());
     }
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         List<DbData> data=new ArrayList<>();
         for (Document doc : documents) {
             Map<String, Object> dict=new HashMap<>();
             dict.put("id",String.valueOf(doc.getId()));
             dict.put("content", doc.getContent());
-            dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
+            dict.put("vector", doc.getVector());
             DbData dbData=new DbData();
             dbData.setId(String.valueOf(doc.getId()));
             dbData.setMetadata(dict);
-            VectorData vd=new VectorData(dbData.getId(),VectorUtil.toFloatArray(doc.getVector()));
+            VectorData vd=new VectorData(dbData.getId(),doc.getVector());
             vd.setName("vector");
             dbData.setVectorFiled(Lists.newArrayList(vd));
             data.add(dbData);
@@ -103,15 +102,15 @@ public class VectoRexStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         client.getStore(options.getCollectionNameOrDefault(defaultCollectionName)).deleteAll((List<String>) ids);
         return StoreResult.success();
 
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper searchWrapper, StoreOptions options) {
-        List<VectorSearchResult> data = client.getStore(options.getCollectionNameOrDefault(defaultCollectionName)).search("vector", VectorUtil.toFloatList(searchWrapper.getVector()), searchWrapper.getMaxResults(), null);
+    public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
+        List<VectorSearchResult> data = client.getStore(options.getCollectionNameOrDefault(defaultCollectionName)).search("vector", searchWrapper.getVectorAsList(), searchWrapper.getMaxResults(), null);
         List<Document> documents = new ArrayList<>();
         for (VectorSearchResult result : data) {
             DbData dd = result.getData();
@@ -122,7 +121,7 @@ public class VectoRexStore extends DocumentStore {
             Object vectorObj = metadata.get("vector");
             if (vectorObj instanceof List) {
                 //noinspection unchecked
-                doc.setVector(VectorUtil.convertToVector((List<Float>) vectorObj));
+                doc.setVector((List<Float>) vectorObj);
             }
             documents.add(doc);
         }
@@ -130,7 +129,7 @@ public class VectoRexStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.success();
         }
@@ -138,11 +137,11 @@ public class VectoRexStore extends DocumentStore {
             Map<String, Object> dict=new HashMap<>();
             dict.put("id",String.valueOf(doc.getId()));
             dict.put("content", doc.getContent());
-            dict.put("vector", VectorUtil.toFloatList(doc.getVector()));
+            dict.put("vector", doc.getVector());
             DbData dbData=new DbData();
             dbData.setId(String.valueOf(doc.getId()));
             dbData.setMetadata(dict);
-            VectorData vd=new VectorData(dbData.getId(),VectorUtil.toFloatArray(doc.getVector()));
+            VectorData vd=new VectorData(dbData.getId(),doc.getVector());
             vd.setName("vector");
             dbData.setVectorFiled(Lists.newArrayList(vd));
             client.getStore(options.getCollectionNameOrDefault(defaultCollectionName)).update(dbData);

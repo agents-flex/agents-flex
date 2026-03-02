@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 package com.agentsflex.core.parser.impl;
 
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.FunctionCall;
-import com.agentsflex.core.message.MessageStatus;
+import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.parser.AiMessageParser;
-import com.agentsflex.core.parser.JSONObjectParser;
-import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONPath;
+import com.agentsflex.core.parser.JSONArrayParser;
+import com.agentsflex.core.util.JSONUtil;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
+import com.alibaba.fastjson2.JSONPath;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,174 +32,233 @@ import java.util.List;
 import java.util.Map;
 
 
-public class DefaultAiMessageParser implements AiMessageParser {
+public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
 
-    private String contentPath;
-    private String reasoningContentPath;
-    private String indexPath;
-    private String totalTokensPath;
-    private String promptTokensPath;
-    private String completionTokensPath;
-    private JSONObjectParser<MessageStatus> statusParser;
-    private JSONObjectParser<List<FunctionCall>> callsParser;
+    private JSONPath contentPath;
+    private JSONPath deltaContentPath;
+    private JSONPath reasoningContentPath;
+    private JSONPath deltaReasoningContentPath;
+    private JSONPath indexPath;
+    private JSONPath totalTokensPath;
+    private JSONPath promptTokensPath;
+    private JSONPath completionTokensPath;
+    private JSONPath finishReasonPath;
+    private JSONPath stopReasonPath;
 
-    public String getContentPath() {
+    private JSONPath toolCallsJsonPath;
+    private JSONPath deltaToolCallsJsonPath;
+
+    private JSONArrayParser<List<ToolCall>> callsParser;
+
+    public JSONPath getContentPath() {
         return contentPath;
     }
 
-    public void setContentPath(String contentPath) {
+    public void setContentPath(JSONPath contentPath) {
         this.contentPath = contentPath;
     }
 
-    public String getReasoningContentPath() {
+    public JSONPath getDeltaContentPath() {
+        return deltaContentPath;
+    }
+
+    public void setDeltaContentPath(JSONPath deltaContentPath) {
+        this.deltaContentPath = deltaContentPath;
+    }
+
+    public JSONPath getReasoningContentPath() {
         return reasoningContentPath;
     }
 
-    public void setReasoningContentPath(String reasoningContentPath) {
+    public void setReasoningContentPath(JSONPath reasoningContentPath) {
         this.reasoningContentPath = reasoningContentPath;
     }
 
-    public String getIndexPath() {
+    public JSONPath getDeltaReasoningContentPath() {
+        return deltaReasoningContentPath;
+    }
+
+    public void setDeltaReasoningContentPath(JSONPath deltaReasoningContentPath) {
+        this.deltaReasoningContentPath = deltaReasoningContentPath;
+    }
+
+    public JSONPath getIndexPath() {
         return indexPath;
     }
 
-    public void setIndexPath(String indexPath) {
+    public void setIndexPath(JSONPath indexPath) {
         this.indexPath = indexPath;
     }
 
-    public String getTotalTokensPath() {
+    public JSONPath getTotalTokensPath() {
         return totalTokensPath;
     }
 
-    public void setTotalTokensPath(String totalTokensPath) {
+    public void setTotalTokensPath(JSONPath totalTokensPath) {
         this.totalTokensPath = totalTokensPath;
     }
 
-    public String getPromptTokensPath() {
+    public JSONPath getPromptTokensPath() {
         return promptTokensPath;
     }
 
-    public void setPromptTokensPath(String promptTokensPath) {
+    public void setPromptTokensPath(JSONPath promptTokensPath) {
         this.promptTokensPath = promptTokensPath;
     }
 
-    public String getCompletionTokensPath() {
+    public JSONPath getCompletionTokensPath() {
         return completionTokensPath;
     }
 
-    public void setCompletionTokensPath(String completionTokensPath) {
+    public void setCompletionTokensPath(JSONPath completionTokensPath) {
         this.completionTokensPath = completionTokensPath;
     }
 
-    public JSONObjectParser<MessageStatus> getStatusParser() {
-        return statusParser;
+    public JSONPath getFinishReasonPath() {
+        return finishReasonPath;
     }
 
-    public void setStatusParser(JSONObjectParser<MessageStatus> statusParser) {
-        this.statusParser = statusParser;
+    public void setFinishReasonPath(JSONPath finishReasonPath) {
+        this.finishReasonPath = finishReasonPath;
     }
 
-    public JSONObjectParser<List<FunctionCall>> getCallsParser() {
+    public JSONPath getStopReasonPath() {
+        return stopReasonPath;
+    }
+
+    public void setStopReasonPath(JSONPath stopReasonPath) {
+        this.stopReasonPath = stopReasonPath;
+    }
+
+    public JSONPath getToolCallsJsonPath() {
+        return toolCallsJsonPath;
+    }
+
+    public void setToolCallsJsonPath(JSONPath toolCallsJsonPath) {
+        this.toolCallsJsonPath = toolCallsJsonPath;
+    }
+
+    public JSONPath getDeltaToolCallsJsonPath() {
+        return deltaToolCallsJsonPath;
+    }
+
+    public void setDeltaToolCallsJsonPath(JSONPath deltaToolCallsJsonPath) {
+        this.deltaToolCallsJsonPath = deltaToolCallsJsonPath;
+    }
+
+    public JSONArrayParser<List<ToolCall>> getCallsParser() {
         return callsParser;
     }
 
-    public void setCallsParser(JSONObjectParser<List<FunctionCall>> callsParser) {
+    public void setCallsParser(JSONArrayParser<List<ToolCall>> callsParser) {
         this.callsParser = callsParser;
     }
 
     @Override
-    public AiMessage parse(JSONObject rootJson) {
+    public AiMessage parse(JSONObject rootJson, ChatContext context) {
         AiMessage aiMessage = new AiMessage();
 
-        if (StringUtil.hasText(this.contentPath)) {
-            aiMessage.setContent((String) JSONPath.eval(rootJson, this.contentPath));
+        JSONArray toolCallsJsonArray = null;
+        if (context.getOptions().isStreaming()) {
+            if (this.deltaContentPath != null) {
+                aiMessage.setContent((String) this.deltaContentPath.eval(rootJson));
+            }
+            if (this.deltaReasoningContentPath != null) {
+                aiMessage.setReasoningContent((String) this.deltaReasoningContentPath.eval(rootJson));
+            }
+            if (this.deltaToolCallsJsonPath != null) {
+                toolCallsJsonArray = (JSONArray) this.deltaToolCallsJsonPath.eval(rootJson);
+            }
+        } else {
+            if (this.contentPath != null) {
+                aiMessage.setContent((String) this.contentPath.eval(rootJson));
+            }
+
+            if (this.reasoningContentPath != null) {
+                aiMessage.setReasoningContent((String) this.reasoningContentPath.eval(rootJson));
+            }
+            if (this.toolCallsJsonPath != null) {
+                toolCallsJsonArray = (JSONArray) this.toolCallsJsonPath.eval(rootJson);
+            }
         }
 
-        if (StringUtil.hasText(this.reasoningContentPath)) {
-            aiMessage.setReasoningContent((String) JSONPath.eval(rootJson, this.reasoningContentPath));
+
+        if (this.indexPath != null) {
+            aiMessage.setIndex((Integer) this.indexPath.eval(rootJson));
         }
 
-        if (StringUtil.hasText(this.indexPath)) {
-            aiMessage.setIndex((Integer) JSONPath.eval(rootJson, this.indexPath));
+        if (this.promptTokensPath != null) {
+            aiMessage.setPromptTokens((Integer) this.promptTokensPath.eval(rootJson));
         }
 
-
-        if (StringUtil.hasText(promptTokensPath)) {
-            aiMessage.setPromptTokens((Integer) JSONPath.eval(rootJson, this.promptTokensPath));
+        if (this.completionTokensPath != null) {
+            aiMessage.setCompletionTokens((Integer) this.completionTokensPath.eval(rootJson));
         }
 
-        if (StringUtil.hasText(completionTokensPath)) {
-            aiMessage.setCompletionTokens((Integer) JSONPath.eval(rootJson, this.completionTokensPath));
+        if (this.finishReasonPath != null) {
+            aiMessage.setFinishReason((String) this.finishReasonPath.eval(rootJson));
         }
 
-        if (StringUtil.hasText(this.totalTokensPath)) {
-            aiMessage.setTotalTokens((Integer) JSONPath.eval(rootJson, this.totalTokensPath));
+        if (this.stopReasonPath != null) {
+            aiMessage.setStopReason((String) this.stopReasonPath.eval(rootJson));
+        }
+
+        if (this.totalTokensPath != null) {
+            aiMessage.setTotalTokens((Integer) this.totalTokensPath.eval(rootJson));
         }
         //some LLMs like Ollama not response the total tokens
         else if (aiMessage.getPromptTokens() != null && aiMessage.getCompletionTokens() != null) {
             aiMessage.setTotalTokens(aiMessage.getPromptTokens() + aiMessage.getCompletionTokens());
         }
 
-        if (this.statusParser != null) {
-            aiMessage.setStatus(this.statusParser.parse(rootJson));
-        }
-
-        if (callsParser != null) {
-            aiMessage.setCalls(callsParser.parse(rootJson));
+        if (toolCallsJsonArray != null && this.callsParser != null) {
+            aiMessage.setToolCalls(this.callsParser.parse(toolCallsJsonArray));
         }
 
         return aiMessage;
     }
 
 
-    public static DefaultAiMessageParser getChatGPTMessageParser(boolean isStream) {
+    public static DefaultAiMessageParser getOpenAIMessageParser() {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
-        if (isStream) {
-            aiMessageParser.setContentPath("$.choices[0].delta.content");
-            aiMessageParser.setReasoningContentPath("$.choices[0].delta.reasoning_content");
-        } else {
-            aiMessageParser.setContentPath("$.choices[0].message.content");
-            aiMessageParser.setReasoningContentPath("$.choices[0].message.reasoning_content");
-        }
+        aiMessageParser.setContentPath(JSONUtil.getJsonPath("$.choices[0].message.content"));
+        aiMessageParser.setDeltaContentPath(JSONUtil.getJsonPath("$.choices[0].delta.content"));
 
-        aiMessageParser.setIndexPath("$.choices[0].index");
-        aiMessageParser.setTotalTokensPath("$.usage.total_tokens");
-        aiMessageParser.setPromptTokensPath("$.usage.prompt_tokens");
-        aiMessageParser.setCompletionTokensPath("$.usage.completion_tokens");
+        aiMessageParser.setReasoningContentPath(JSONUtil.getJsonPath("$.choices[0].message.reasoning_content"));
+        aiMessageParser.setDeltaReasoningContentPath(JSONUtil.getJsonPath("$.choices[0].delta.reasoning_content"));
 
-        aiMessageParser.setStatusParser(content -> {
-            Object finishReason = JSONPath.eval(content, "$.choices[0].finish_reason");
-            if (finishReason != null) {
-                return MessageStatus.END;
-            }
-            return MessageStatus.MIDDLE;
-        });
+        aiMessageParser.setIndexPath(JSONUtil.getJsonPath("$.choices[0].index"));
+        aiMessageParser.setTotalTokensPath(JSONUtil.getJsonPath("$.usage.total_tokens"));
+        aiMessageParser.setPromptTokensPath(JSONUtil.getJsonPath("$.usage.prompt_tokens"));
+        aiMessageParser.setCompletionTokensPath(JSONUtil.getJsonPath("$.usage.completion_tokens"));
+        aiMessageParser.setFinishReasonPath(JSONUtil.getJsonPath("$.choices[0].finish_reason"));
+        aiMessageParser.setStopReasonPath(JSONUtil.getJsonPath("$.choices[0].stop_reason"));
 
-        aiMessageParser.setCallsParser(content -> {
-            JSONArray toolCalls = (JSONArray) JSONPath.eval(content, "$.choices[0].message.tool_calls");
+        aiMessageParser.setToolCallsJsonPath(JSONUtil.getJsonPath("$.choices[0].message.tool_calls"));
+        aiMessageParser.setDeltaToolCallsJsonPath(JSONUtil.getJsonPath("$.choices[0].delta.tool_calls"));
+
+        aiMessageParser.setCallsParser(toolCalls -> {
             if (toolCalls == null || toolCalls.isEmpty()) {
                 return Collections.emptyList();
             }
-            List<FunctionCall> functionCalls = new ArrayList<>();
+            List<ToolCall> toolInfos = new ArrayList<>();
             for (int i = 0; i < toolCalls.size(); i++) {
                 JSONObject jsonObject = toolCalls.getJSONObject(i);
                 JSONObject functionObject = jsonObject.getJSONObject("function");
                 if (functionObject != null) {
-                    FunctionCall functionCall = new FunctionCall();
-                    functionCall.setId(jsonObject.getString("id"));
-                    functionCall.setName(functionObject.getString("name"));
+                    ToolCall toolCall = new ToolCall();
+                    toolCall.setId(jsonObject.getString("id"));
+                    toolCall.setName(functionObject.getString("name"));
                     Object arguments = functionObject.get("arguments");
                     if (arguments instanceof Map) {
-                        //noinspection unchecked
-                        functionCall.setArgs((Map<String, Object>) arguments);
+                        toolCall.setArguments(JSON.toJSONString(arguments));
                     } else if (arguments instanceof String) {
-                        //noinspection unchecked
-                        functionCall.setArgs(JSON.parseObject(arguments.toString(), Map.class));
+                        toolCall.setArguments((String) arguments);
                     }
-                    functionCalls.add(functionCall);
+                    toolInfos.add(toolCall);
                 }
             }
-            return functionCalls;
+            return toolInfos;
         });
 
         return aiMessageParser;

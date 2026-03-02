@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,28 +15,35 @@
  */
 package com.agentsflex.core.message;
 
+import com.agentsflex.core.util.StringUtil;
 
-import java.util.List;
+import java.util.*;
 
-public class AiMessage extends AbstractTextMessage {
+public class AiMessage extends AbstractTextMessage<AiMessage> {
 
     private Integer index;
-    private MessageStatus status;
-
-    // API 返回的 token 信息（可选）
     private Integer promptTokens;
     private Integer completionTokens;
     private Integer totalTokens;
-
-    // 本地计算的 token 信息（新增）
-    private Integer localPromptTokens;      // 对话历史（system + user + previous ai）的 token 数
-    private Integer localCompletionTokens;  // 当前 AI 回复内容的 token 数
-    private Integer localTotalTokens;       // 通常 = localPromptTokens + localCompletionTokens
+    private Integer localPromptTokens;
+    private Integer localCompletionTokens;
+    private Integer localTotalTokens;
+    private String reasoningContent;
+    private List<ToolCall> toolCalls;
 
     private String fullContent;
-    private String reasoningContent;
-    private List<FunctionCall> calls;
     private String fullReasoningContent;
+
+    /**
+     * LLM 响应结束的原因（如 "stop", "length", "tool_calls" 等），
+     * 符合 OpenAI 等主流 API 的 finish_reason 语义。
+     */
+    private String finishReason;
+
+    // 同 reasoningContent，只是某些框架会返回这个字段，而不是 finishReason
+    private String stopReason;
+
+    private Boolean finished;
 
     public AiMessage() {
         super();
@@ -46,20 +53,95 @@ public class AiMessage extends AbstractTextMessage {
         this.fullContent = content;
     }
 
+    public void merge(AiMessage delta) {
+        if (delta.content != null) {
+            if (this.content == null) this.content = "";
+            this.content += delta.content;
+            this.fullContent = this.content;
+        }
+
+        if (delta.reasoningContent != null) {
+            if (this.reasoningContent == null) this.reasoningContent = "";
+            this.reasoningContent += delta.reasoningContent;
+            this.fullReasoningContent = this.reasoningContent;
+        }
+
+        if (delta.toolCalls != null && !delta.toolCalls.isEmpty()) {
+            if (this.toolCalls == null) this.toolCalls = new ArrayList<>();
+            mergeToolCalls(delta.toolCalls);
+        }
+        if (delta.index != null) this.index = delta.index;
+        if (delta.promptTokens != null) this.promptTokens = delta.promptTokens;
+        if (delta.completionTokens != null) this.completionTokens = delta.completionTokens;
+        if (delta.totalTokens != null) this.totalTokens = delta.totalTokens;
+        if (delta.localPromptTokens != null) this.localPromptTokens = delta.localPromptTokens;
+        if (delta.localCompletionTokens != null) this.localCompletionTokens = delta.localCompletionTokens;
+        if (delta.localTotalTokens != null) this.localTotalTokens = delta.localTotalTokens;
+        if (delta.finishReason != null) this.finishReason = delta.finishReason;
+        if (delta.stopReason != null) this.stopReason = delta.stopReason;
+    }
+
+    private void mergeToolCalls(List<ToolCall> deltaCalls) {
+        if (deltaCalls == null || deltaCalls.isEmpty()) return;
+
+        if (this.toolCalls == null || this.toolCalls.isEmpty()) {
+            this.toolCalls = new ArrayList<>(deltaCalls);
+            return;
+        }
+
+        ToolCall lastCall = this.toolCalls.get(this.toolCalls.size() - 1);
+
+        // 正常情况下 delta 部分只有 1 条
+        ToolCall deltaCall = deltaCalls.get(0);
+
+        // 新增
+        if (isNewCall(deltaCall, lastCall)) {
+            this.toolCalls.add(deltaCall);
+        }
+        // 合并
+        else {
+            mergeSingleCall(lastCall, deltaCall);
+        }
+    }
+
+    private boolean isNewCall(ToolCall deltaCall, ToolCall lastCall) {
+        if (StringUtil.noText(deltaCall.getId()) && StringUtil.noText(deltaCall.getName())) {
+            return false;
+        }
+
+        if (StringUtil.hasText(deltaCall.getId())) {
+            return !deltaCall.getId().equals(lastCall.getId());
+        }
+
+        if (StringUtil.hasText(deltaCall.getName())) {
+            return !deltaCall.getName().equals(lastCall.getName());
+        }
+
+        return false;
+    }
+
+    private void mergeSingleCall(ToolCall existing, ToolCall delta) {
+        if (delta.getArguments() != null) {
+            if (existing.getArguments() == null) {
+                existing.setArguments("");
+            }
+            existing.setArguments(existing.getArguments() + delta.getArguments());
+        }
+        if (StringUtil.hasText(delta.getId())) {
+            existing.setId(delta.getId());
+        }
+        if (StringUtil.hasText(delta.getName())) {
+            existing.setName(delta.getName());
+        }
+    }
+
+    // ===== Getters & Setters (保持原有不变) =====
     public Integer getIndex() {
         return index;
     }
 
     public void setIndex(Integer index) {
         this.index = index;
-    }
-
-    public MessageStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(MessageStatus status) {
-        this.status = status;
     }
 
     public Integer getPromptTokens() {
@@ -126,17 +208,83 @@ public class AiMessage extends AbstractTextMessage {
         this.reasoningContent = reasoningContent;
     }
 
+    public String getFinishReason() {
+        return finishReason;
+    }
+
+    public void setFinishReason(String finishReason) {
+        this.finishReason = finishReason;
+    }
+
+    public String getStopReason() {
+        return stopReason;
+    }
+
+    public void setStopReason(String stopReason) {
+        this.stopReason = stopReason;
+    }
+
     @Override
-    public Object getMessageContent() {
-        return getFullContent();
+    public String getTextContent() {
+        return fullContent;
     }
 
-    public List<FunctionCall> getCalls() {
-        return calls;
+    /**
+     * 创建并返回当前对象的副本。
+     *
+     * @return 一个新的、内容相同但内存独立的对象
+     */
+    @Override
+    public AiMessage copy() {
+        AiMessage copy = new AiMessage();
+        // 基本字段
+        copy.content = this.content;
+        copy.fullContent = this.fullContent;
+        copy.reasoningContent = this.reasoningContent;
+        copy.fullReasoningContent = this.fullReasoningContent;
+        copy.finishReason = this.finishReason;
+        copy.stopReason = this.stopReason;
+        copy.finished = this.finished;
+
+        // Token 字段
+        copy.index = this.index;
+        copy.promptTokens = this.promptTokens;
+        copy.completionTokens = this.completionTokens;
+        copy.totalTokens = this.totalTokens;
+        copy.localPromptTokens = this.localPromptTokens;
+        copy.localCompletionTokens = this.localCompletionTokens;
+        copy.localTotalTokens = this.localTotalTokens;
+
+        // ToolCalls: 深拷贝 List 和每个 ToolCall
+        if (this.toolCalls != null) {
+            copy.toolCalls = new ArrayList<>();
+            for (ToolCall tc : this.toolCalls) {
+                if (tc != null) {
+                    copy.toolCalls.add(tc.copy());
+                } else {
+                    copy.toolCalls.add(null);
+                }
+            }
+        }
+
+        // Metadata
+        if (this.metadataMap != null) {
+            copy.metadataMap = new HashMap<>(this.metadataMap);
+        }
+
+        return copy;
     }
 
-    public void setCalls(List<FunctionCall> calls) {
-        this.calls = calls;
+    public boolean hasToolCalls() {
+        return toolCalls != null && !toolCalls.isEmpty();
+    }
+
+    public List<ToolCall> getToolCalls() {
+        return toolCalls;
+    }
+
+    public void setToolCalls(List<ToolCall> toolCalls) {
+        this.toolCalls = toolCalls;
     }
 
     public String getFullReasoningContent() {
@@ -147,46 +295,59 @@ public class AiMessage extends AbstractTextMessage {
         this.fullReasoningContent = fullReasoningContent;
     }
 
-    /**
-     * 获取有效的总 token 数
-     *
-     * @return 有限返回模型计算的 token 数；否则返回本地计算的 token 数
-     */
     public int getEffectiveTotalTokens() {
-        if (this.totalTokens != null) {
-            return this.totalTokens;
-        }
-
+        if (this.totalTokens != null) return this.totalTokens;
         if (this.promptTokens != null && this.completionTokens != null) {
             return this.promptTokens + this.completionTokens;
         }
-
-        if (this.localTotalTokens != null) {
-            return this.localTotalTokens;
-        }
-
+        if (this.localTotalTokens != null) return this.localTotalTokens;
         if (this.localPromptTokens != null && this.localCompletionTokens != null) {
             return this.localPromptTokens + this.localCompletionTokens;
         }
-
         return 0;
     }
+
+    public Boolean getFinished() {
+        return finished;
+    }
+
+    public void setFinished(Boolean finished) {
+        this.finished = finished;
+    }
+
+
+    /**
+     * 判断当前对象是否为最终的 delta 对象。
+     *
+     * @return true 表示当前对象为最终的 delta 对象，否则为 false
+     */
+    public boolean isFinalDelta() {
+        return (finished != null && finished);
+    }
+
+    public boolean hasFinishOrStopReason() {
+        return StringUtil.hasText(this.finishReason)
+            || StringUtil.hasText(this.stopReason);
+    }
+
 
     @Override
     public String toString() {
         return "AiMessage{" +
             "index=" + index +
-            ", status=" + status +
             ", promptTokens=" + promptTokens +
             ", completionTokens=" + completionTokens +
             ", totalTokens=" + totalTokens +
             ", localPromptTokens=" + localPromptTokens +
             ", localCompletionTokens=" + localCompletionTokens +
             ", localTotalTokens=" + localTotalTokens +
-            ", fullContent='" + fullContent + '\'' +
             ", reasoningContent='" + reasoningContent + '\'' +
-            ", calls=" + calls +
+            ", toolCalls=" + toolCalls +
+            ", fullContent='" + fullContent + '\'' +
             ", fullReasoningContent='" + fullReasoningContent + '\'' +
+            ", finishReason='" + finishReason + '\'' +
+            ", stopReason='" + stopReason + '\'' +
+            ", finished=" + finished +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';

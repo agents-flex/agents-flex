@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,9 +15,9 @@
  */
 package com.agentsflex.image.siliconflow.test;
 
-import com.agentsflex.core.image.GenerateImageRequest;
-import com.agentsflex.core.image.Image;
-import com.agentsflex.core.image.ImageResponse;
+import com.agentsflex.core.model.image.GenerateImageRequest;
+import com.agentsflex.core.model.image.Image;
+import com.agentsflex.core.model.image.ImageResponse;
 import com.agentsflex.image.siliconflow.SiliconImageModel;
 import com.agentsflex.image.siliconflow.SiliconflowImageModelConfig;
 import com.agentsflex.image.siliconflow.SiliconflowImageModels;

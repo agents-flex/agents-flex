@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ public class ChromaAutoConfiguration {
         config.setApiKey(properties.getApiKey());
         config.setTenant(properties.getTenant());
         config.setDatabase(properties.getDatabase());
-        
+
         return new ChromaVectorStore(config);
     }
 }

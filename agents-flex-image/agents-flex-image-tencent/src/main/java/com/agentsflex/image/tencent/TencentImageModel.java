@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
  */
 package com.agentsflex.image.tencent;
 
-import com.agentsflex.core.image.*;
-import com.agentsflex.core.llm.client.HttpClient;
+import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.image.*;
 import com.agentsflex.core.util.Maps;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import com.tencentcloudapi.common.DatatypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

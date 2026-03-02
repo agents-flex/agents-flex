@@ -33,7 +33,7 @@
 
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-llm-openai</artifactId>
+            <artifactId>agents-flex-chat-openai</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package com.agentsflex.core.test.splitter;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.splitter.SimpleDocumentSplitter;
-import com.agentsflex.core.util.LogUtil;
+
 import org.junit.Test;
 
 import java.util.List;
@@ -35,7 +35,7 @@ public class SimpleDocumentSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {
-            LogUtil.println(">>>>>" + chunk.getContent());
+            System.out.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -45,7 +45,7 @@ public class SimpleDocumentSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text));
 
         for (Document chunk : chunks) {
-            LogUtil.println(">>>>>" + chunk.getContent());
+            System.out.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -55,7 +55,7 @@ public class SimpleDocumentSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text2));
 
         for (Document chunk : chunks) {
-            LogUtil.println(">>>>>" + chunk.getContent());
+            System.out.println(">>>>>" + chunk.getContent());
         }
     }
 
@@ -65,7 +65,7 @@ public class SimpleDocumentSplitterTest {
         List<Document> chunks = splitter.split(Document.of(text2));
 
         for (Document chunk : chunks) {
-            LogUtil.println(">>>>>" + chunk.getContent());
+            System.out.println(">>>>>" + chunk.getContent());
         }
     }
 

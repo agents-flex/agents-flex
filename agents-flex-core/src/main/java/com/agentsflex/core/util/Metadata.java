@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -25,6 +25,11 @@ public class Metadata implements Serializable {
 
     public Object getMetadata(String key) {
         return metadataMap != null ? metadataMap.get(key) : null;
+    }
+
+    public Object getMetadata(String key, Object defaultValue) {
+        Object value = getMetadata(key);
+        return value != null ? value : defaultValue;
     }
 
     public void addMetadata(String key, Object value) {

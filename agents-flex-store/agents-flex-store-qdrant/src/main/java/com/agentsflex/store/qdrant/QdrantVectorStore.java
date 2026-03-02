@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -22,20 +22,15 @@ import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.core.util.VectorUtil;
 import io.grpc.Grpc;
+import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import io.qdrant.client.QdrantClient;
-import io.grpc.ManagedChannel;
 import io.qdrant.client.QdrantGrpcClient;
 import io.qdrant.client.grpc.Collections;
 import io.qdrant.client.grpc.JsonWithInt;
 import io.qdrant.client.grpc.Points;
-import io.qdrant.client.grpc.Points.Filter;
-import io.qdrant.client.grpc.Points.PointId;
-import io.qdrant.client.grpc.Points.PointStruct;
-import io.qdrant.client.grpc.Points.QueryPoints;
-import io.qdrant.client.grpc.Points.ScoredPoint;
+import io.qdrant.client.grpc.Points.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -82,7 +77,7 @@ public class QdrantVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         List<PointStruct> points = new ArrayList<>();
         int size = 1024;
         for (Document doc : documents) {
@@ -91,7 +86,7 @@ public class QdrantVectorStore extends DocumentStore {
             payload.put("content", value(doc.getContent()));
             points.add(PointStruct.newBuilder()
                 .setId(id(Long.parseLong(doc.getId().toString())))
-                .setVectors(vectors(VectorUtil.toFloatArray(doc.getVector())))
+                .setVectors(vectors(doc.getVector()))
                 .putAllPayload(payload)
                 .build());
         }
@@ -119,7 +114,7 @@ public class QdrantVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         try {
             String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
             List<PointId> pointIds = ids.stream()
@@ -133,7 +128,7 @@ public class QdrantVectorStore extends DocumentStore {
     }
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
         try {
             List<PointStruct> points = new ArrayList<>();
             for (Document doc : documents) {
@@ -141,7 +136,7 @@ public class QdrantVectorStore extends DocumentStore {
                 payload.put("content", value(doc.getContent()));
                 points.add(PointStruct.newBuilder()
                     .setId(id(Long.parseLong(doc.getId().toString())))
-                    .setVectors(vectors(VectorUtil.toFloatArray(doc.getVector())))
+                    .setVectors(vectors(doc.getVector()))
                     .putAllPayload(payload)
                     .build());
             }
@@ -156,7 +151,7 @@ public class QdrantVectorStore extends DocumentStore {
     }
 
     @Override
-    public List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
         List<Document> documents = new ArrayList<>();
         try {
             String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
@@ -166,7 +161,7 @@ public class QdrantVectorStore extends DocumentStore {
                 .setWithVectors(Points.WithVectorsSelector.newBuilder().setEnable(true).build())
                 .setWithPayload(enable(true));
             if (wrapper.getVector() != null) {
-                query.setQuery(nearest(VectorUtil.toFloatArray(wrapper.getVector())));
+                query.setQuery(nearest(wrapper.getVector()));
             }
             if (StringUtil.hasText(wrapper.getText())) {
                 query.setFilter(Filter.newBuilder().addMust(matchKeyword("content", wrapper.getText())));
@@ -175,7 +170,7 @@ public class QdrantVectorStore extends DocumentStore {
             for (ScoredPoint point : data) {
                 Document doc = new Document();
                 doc.setId(point.getId().getNum());
-                doc.setVector(VectorUtil.convertToVector(point.getVectors().getVector().getDataList()));
+                doc.setVector(point.getVectors().getVector().getDataList());
                 doc.setContent(point.getPayloadMap().get("content").getStringValue());
                 documents.add(doc);
             }

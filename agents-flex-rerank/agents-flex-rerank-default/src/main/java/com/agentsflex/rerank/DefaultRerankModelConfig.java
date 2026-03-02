@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,9 +15,10 @@
  */
 package com.agentsflex.rerank;
 
-import com.agentsflex.core.llm.rerank.RerankConfig;
 
-public class DefaultRerankModelConfig extends RerankConfig {
+import com.agentsflex.core.model.config.BaseModelConfig;
+
+public class DefaultRerankModelConfig extends BaseModelConfig {
 
     private String resultsJsonPath = "$.results";
     private String indexJsonKey = "index";

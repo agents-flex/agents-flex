@@ -12,9 +12,7 @@ public class OpenAIProperties {
     private String model = "gpt-3.5-turbo";
     private String endpoint = "https://api.openai.com";
     private String apiKey;
-    private String apiSecret;
-    private String chatPath = "/v1/chat/completions";
-    private String embedPath = "/v1/embeddings";
+    private String requestPath = "/v1/chat/completions";
 
     public String getModel() {
         return model;
@@ -40,27 +38,11 @@ public class OpenAIProperties {
         this.apiKey = apiKey;
     }
 
-    public String getApiSecret() {
-        return apiSecret;
+    public String getRequestPath() {
+        return requestPath;
     }
 
-    public void setApiSecret(String apiSecret) {
-        this.apiSecret = apiSecret;
-    }
-
-    public String getChatPath() {
-        return chatPath;
-    }
-
-    public void setChatPath(String chatPath) {
-        this.chatPath = chatPath;
-    }
-
-    public String getEmbedPath() {
-        return embedPath;
-    }
-
-    public void setEmbedPath(String embedPath) {
-        this.embedPath = embedPath;
+    public void setRequestPath(String requestPath) {
+        this.requestPath = requestPath;
     }
 }

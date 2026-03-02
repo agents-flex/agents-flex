@@ -1,8 +1,8 @@
-import com.agentsflex.core.image.GenerateImageRequest;
-import com.agentsflex.core.image.ImageResponse;
+import com.agentsflex.core.model.image.GenerateImageRequest;
+import com.agentsflex.core.model.image.ImageResponse;
 import com.agentsflex.image.volcengine.VolcengineImageModel;
 import com.agentsflex.image.volcengine.VolcengineImageModelConfig;
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 import org.junit.Test;
 
 import java.io.File;

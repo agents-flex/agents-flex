@@ -8,7 +8,6 @@ public class DeepSeekProperties {
     private String model = "deepseek-chat";
     private String endpoint = "https://api.deepseek.com";
     private String apiKey;
-    private String apiSecret;
 
     public String getModel() {
         return model;
@@ -34,11 +33,4 @@ public class DeepSeekProperties {
         this.apiKey = apiKey;
     }
 
-    public String getApiSecret() {
-        return apiSecret;
-    }
-
-    public void setApiSecret(String apiSecret) {
-        this.apiSecret = apiSecret;
-    }
 }

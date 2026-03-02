@@ -12,7 +12,6 @@ public class QwenProperties {
     private String model = "qwen-turbo";
     private String endpoint = "https://dashscope.aliyuncs.com";
     private String apiKey;
-    private String apiSecret;
 
     public String getModel() {
         return model;
@@ -36,14 +35,6 @@ public class QwenProperties {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
-    }
-
-    public String getApiSecret() {
-        return apiSecret;
-    }
-
-    public void setApiSecret(String apiSecret) {
-        this.apiSecret = apiSecret;
     }
 
 }

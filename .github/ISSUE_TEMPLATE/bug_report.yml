@@ -1,0 +1,28 @@
+name: Bug Report
+description: Found a bug in the Agents-flex? Report it here to help us improve.
+
+labels: ["Open Source", "Needs Triage"]
+type: "Bug"
+
+body:
+    - type: markdown
+      attributes:
+          value: '### Please provide details to help us diagnose the bug.'
+    - type: textarea
+      id: problem
+      attributes:
+          label: Bug Description
+          description: Provide a clear and concise description of what the bug is.
+          placeholder: 'The issue occurs when...'
+      validations:
+          required: true
+    - type: checkboxes
+      attributes:
+          label: Dependency Updates
+          description: 'Have you updated your dependencies? This can often resolve issues.'
+          options:
+              - label: Yes, I've updated all my dependencies.
+                required: true
+    - type: markdown
+      attributes:
+          value: 'Thank you for helping us improve our open-source projects by reporting this issue!'

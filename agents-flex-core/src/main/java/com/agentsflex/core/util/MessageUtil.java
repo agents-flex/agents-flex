@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,30 +15,24 @@
  */
 package com.agentsflex.core.util;
 
-import com.agentsflex.core.message.HumanMessage;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.message.Message;
 
 import java.util.List;
 
 public class MessageUtil {
 
-    public static HumanMessage findLastHumanMessage(List<Message> messages) {
+    public static UserMessage findLastUserMessage(List<Message> messages) {
         if (messages == null || messages.isEmpty()) {
             return null;
         }
         for (int i = messages.size() - 1; i >= 0; i--) {
             Message message = messages.get(i);
-            if (message instanceof HumanMessage) {
-                return (HumanMessage) message;
+            if (message instanceof UserMessage) {
+                return (UserMessage) message;
             }
         }
         return null;
     }
 
-    public static String getToolChoice(Message message) {
-        if (message instanceof HumanMessage) {
-            return ((HumanMessage) message).getToolChoice();
-        }
-        return null;
-    }
 }

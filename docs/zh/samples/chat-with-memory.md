@@ -6,12 +6,12 @@
 
 ```java
 public static void main(String[] args) {
-    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+    Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
     HistoriesPrompt prompt = new HistoriesPrompt();
     pormpt.addMessage(new HumanMessage("你叫什么名字？"));
 
-    String response = llm.chat(prompt);
+    String response = chatModel.chat(prompt);
     System.out.println(response);
 }
 ```
@@ -22,7 +22,7 @@ public static void main(String[] args) {
 public static void main(String[] args) {
     System.out.println("请开始向 AI 提问！");
 
-    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+    Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
     HistoriesPrompt prompt = new HistoriesPrompt();
 
     Scanner scanner = new Scanner(System.in);
@@ -31,7 +31,7 @@ public static void main(String[] args) {
 
         prompt.addMessage(new HumanMessage(userInput));
 
-        llm.chatStream(prompt, (context, response) -> {
+        chatModel.chatStream(prompt, (context, response) -> {
             System.out.println(">>>> " + response.getMessage().getContent());
         });
 
@@ -66,12 +66,12 @@ public class DatabaseChatMemory implements ChatMemory {
 ```java
 public static void main(String[] args) {
 
-    Llm llm = new OpenAILlm.of("sk-rts5NF6n*******");
+    Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
     HistoriesPrompt prompt = new HistoriesPrompt(new DatabaseChatMemory());
     prompt.addMessage(new HumanMessage("user new question...."));
 
-    llm.chat(prompt);
+    chatModel.chat(prompt);
     //....
 }
 ```

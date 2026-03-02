@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.util.StringUtil;
-import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson2.JSON;
 import kotlin.collections.ArrayDeque;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -106,7 +106,7 @@ public class RedisVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult storeInternal(List<Document> documents, StoreOptions options) {
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
         String indexName = createIndexName(options);
 
         if (StringUtil.noText(indexName)) {
@@ -145,7 +145,7 @@ public class RedisVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult deleteInternal(Collection<?> ids, StoreOptions options) {
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         String indexName = createIndexName(options);
         try (Pipeline pipeline = this.jedis.pipelined()) {
             for (Object id : ids) {
@@ -167,13 +167,13 @@ public class RedisVectorStore extends DocumentStore {
 
 
     @Override
-    public StoreResult updateInternal(List<Document> documents, StoreOptions options) {
-        return storeInternal(documents, options);
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
+        return doStore(documents, options);
     }
 
 
     @Override
-    public List<Document> searchInternal(SearchWrapper wrapper, StoreOptions options) {
+    public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
         String indexName = createIndexName(options);
 
         if (StringUtil.noText(indexName)) {
@@ -185,8 +185,8 @@ public class RedisVectorStore extends DocumentStore {
         // 创建查询向量
         byte[] vectorBytes = new byte[wrapper.getVector().length * 4];
         FloatBuffer floatBuffer = ByteBuffer.wrap(vectorBytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
-        for (Double v : wrapper.getVector()) {
-            floatBuffer.put(v.floatValue());
+        for (Float v : wrapper.getVector()) {
+            floatBuffer.put(v);
         }
 
 
@@ -220,7 +220,7 @@ public class RedisVectorStore extends DocumentStore {
             doc.setContent(document.getString("text"));
             Object vector = document.get("vector");
             if (vector != null) {
-                double[] doubles = JSON.parseObject(vector.toString(), double[].class);
+                float[] doubles = JSON.parseObject(vector.toString(), float[].class);
                 doc.setVector(doubles);
             }
 
