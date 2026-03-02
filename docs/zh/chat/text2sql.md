@@ -1,4 +1,4 @@
-# Agents-Flex 智能问数（text2sql）开发文档
+# 智能问数（text2sql）开发文档
 
 
 ## 1. 概述 (Overview)
@@ -268,7 +268,7 @@ StreamResponseListener listener = new StreamResponseListener() {
 ```
 
 
-## 4. 扩展开发指南 🆕
+## 4. 扩展开发指南
 
 ### 4.1 SqlValidator 开发规范
 
@@ -281,10 +281,10 @@ public interface SqlValidator {
      * @param context 验证上下文，包含原始 SQL、参数、数据源、调用方等信息
      * @return null 表示验证通过；非 null 表示验证失败，返回错误信息
      */
-    String validate(SqlValidationContext context);
+    ValidationResult validate(SqlValidationContext context);
 
     // 快捷创建：支持 Lambda 表达式
-    static SqlValidator of(Function<SqlValidationContext, String> func) {
+    static SqlValidator of(Function<SqlValidationContext, ValidationResult> func) {
         return func::apply;
     }
 }
@@ -296,7 +296,6 @@ public class SqlValidationContext {
     public String getDataSourceName();  // 数据源名称
     public String getOriginalSql();     // 原始 SQL（重写前）
     public List<Object> getOriginalParams(); // 原始参数
-    public Object getCaller();          // 调用方标识（如 userId/tenantId）
 }
 ```
 
@@ -307,9 +306,9 @@ public class SqlValidationContext {
 .addSqlValidator(ctx -> {
     // 禁止查询包含 "password" 字段的 SQL
     if (ctx.getOriginalSql().toLowerCase().contains("password")) {
-        return "Access to column 'password' is prohibited";
+        return ValidationResult.fail("Access to column 'password' is prohibited");
     }
-    return null; // 验证通过
+    return ValidationResult.pass(); // 验证通过
 })
 ```
 
@@ -323,10 +322,12 @@ public class BusinessRuleValidator implements SqlValidator {
         long joinCount = Pattern.compile("\\bJOIN\\b", Pattern.CASE_INSENSITIVE)
             .matcher(sql).results().count();
 
-        if (joinCount > 3) {
-            return "Too many JOINs (max 3), please optimize query";
-        }
-        return null;
+        return joinCount > 3
+            ? ValidationResult.fail(
+                "Too many JOINs: " + joinCount,
+                "PERF_001",
+                "Break query into CTEs or use application-side aggregation")
+            : ValidationResult.pass();
     }
 }
 ```
@@ -364,7 +365,6 @@ public interface SqlRewriter {
 public class SqlRewriteContext {
     public String getDataSourceName();      // 数据源名称
     public SqlContext getCurrentSql();      // 当前 SQL（可能已被前置重写器修改）
-    public Object getCaller();              // 调用方标识
 }
 
 public class SqlContext {
@@ -472,7 +472,7 @@ public class TenantSqlRewriter implements SqlRewriter {
 > 💡 **最佳实践**：建议通过 `ThreadLocal<RequestContext>` 或框架级上下文传递调用方信息，避免参数透传污染业务代码。
 
 
-## 5. 内置扩展组件 🎁
+## 5. 内置扩展组件
 
 框架提供开箱即用的常用实现，位于 `com.agentsflex.text2sql.core.impl` 包：
 
@@ -494,9 +494,9 @@ List<Tool> tools = Text2SqlTools.builder()
     .addSqlValidator(ctx -> {
         // 自定义：禁止跨库查询
         if (ctx.getOriginalSql().contains(".")) {
-            return "Cross-database query is not allowed";
+            return ValidationResult.fail("Cross-database query is not allowed");
         }
-        return null;
+        return ValidationResult.pass();
     })
 
     // 🏢 业务层
@@ -547,9 +547,9 @@ List<Tool> tools = Text2SqlTools.builder()
     String sql = ctx.getOriginalSql().toLowerCase();
     // 简单检查：如果 WHERE 中没有时间条件，拒绝执行
     if (!sql.contains("create_time") && !sql.contains("updated_at")) {
-        return "Query must include time filter (create_time/updated_at)";
+        return ValidationResult.fail("Query must include time filter (create_time/updated_at)");
     }
-    return null;
+    return ValidationResult.pass();
 })
 ```
 
@@ -640,8 +640,8 @@ prompt.addMessage(new SystemMessage(
 ```java
 @FunctionalInterface
 public interface SqlValidator {
-    String validate(SqlValidationContext context);
-    static SqlValidator of(Function<SqlValidationContext, String> func);
+    ValidationResult validate(SqlValidationContext context);
+    static SqlValidator of(Function<SqlValidationContext, ValidationResult> func);
 }
 ```
 
