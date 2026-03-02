@@ -685,18 +685,10 @@ export MAX_QUERY_LIMIT="1000"
 ### 8.4 参考资源
 - 📚 Agents-Flex 官方文档：https://gitee.com/agents-flex/agents-flex
 - 🧠 AI Skills 渐进式披露架构详解: https://agentsflex.com/zh/chat/skills.html
-- 🔐 SQL 安全最佳实践: https://agentsflex.com/zh/text2sql/security.html
-- 🧩 扩展组件源码: `com.agentsflex.text2sql.core.impl`
 
 
 > **⚠️ 重要提示**
 > 1. 本文档涉及数据库直接操作权限，生产环境部署前请务必经过安全团队审计。
 > 2. 自定义 `SqlRewriter` 时请确保 SQL 语法正确，避免生成非法 SQL 导致执行失败。
 > 3. 验证器/重写器的执行顺序会影响最终效果，请根据业务需求合理注册。
-> 4. 所有扩展组件应进行充分单元测试，确保幂等性和边界条件处理。
-
-> **📞 技术支持**
-> - 框架问题：提交 Issue 至 [Gitee 仓库](https://gitee.com/agents-flex/agents-flex)
-> - 安全咨询：security@agentsflex.com
-> - 社区交流：加入 Agents-Flex 开发者微信群
 
