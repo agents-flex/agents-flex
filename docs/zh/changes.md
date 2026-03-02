@@ -1,12 +1,24 @@
 # Agents-Flex ChangeLog
 
+## v2.0.1 20260302
+- docs(nav): update Text2SQL menu item text in Chinese documentation
+- refactor(text2sql-demo): remove unused table name configuration
+- docs(chat): update text2sql development documentation
+- feat(text2sql): enhance SQL validation with structured results
+- chore(build): update maven configuration and exclude demo modules from publish
+- refactor(text2sql): replace filter functions with collection-based table and column filtering
+- docs(chat): update text2sql documentation references
+- feat(text2sql): add SQL validation and rewriting components with entity refactoring
+- chore(project): rename data module to text2sql
+
+
 ## v2.0.0 20260301
 - docs(readme): update documentation with comprehensive framework overview
 - docs(intro): update framework description from application to agent development
 - docs(homepage): update homepage content to reflect new framework features
 - docs(chat): update MCP documentation with configuration structure and protocol details
 - docs(chat): update skills documentation title
-- docs(nav): add Text2SQL documentation to navigation menu Michael
+- docs(nav): add Text2SQL documentation to navigation menu
 - fix(config): update model configuration to use Qwen3.5-35B-A3B
 - perf(prompt): increase max attached message count limit
 - fix(demo): update model configuration and improve stream output handling
