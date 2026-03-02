@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,16 +13,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.data.jdbc.dialect;
+package com.agentsflex.text2sql.jdbc.dialect;
 
 
-import com.agentsflex.data.entity.TableInfo;
-import com.agentsflex.data.jdbc.dialect.impl.*;
+import com.agentsflex.text2sql.entity.ColumnInfo;
+import com.agentsflex.text2sql.entity.TableInfo;
+import com.agentsflex.text2sql.jdbc.dialect.impl.*;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.function.Function;
 
 /**
  * 方言接口。
@@ -65,7 +67,7 @@ public interface IDialect {
      * @param conn         连接
      * @throws SQLException 发生 SQL 异常时抛出
      */
-    void buildTableColumns(String schemaName, TableInfo table,  DatabaseMetaData dbMeta, Connection conn) throws SQLException;
+    void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Function<ColumnInfo, Boolean> columnFilter) throws SQLException;
 
     /**
      * 获取表的描述信息。

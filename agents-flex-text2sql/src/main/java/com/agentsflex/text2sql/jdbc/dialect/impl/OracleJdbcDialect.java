@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.data.jdbc.dialect.impl;
+package com.agentsflex.text2sql.jdbc.dialect.impl;
 
 import com.agentsflex.core.util.ClassUtil;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.data.entity.TableInfo;
-import com.agentsflex.data.jdbc.dialect.AbstractJdbcDialect;
+import com.agentsflex.text2sql.entity.TableInfo;
+import com.agentsflex.text2sql.jdbc.dialect.AbstractJdbcDialect;
 import com.alibaba.druid.pool.DruidPooledConnection;
 import com.zaxxer.hikari.pool.HikariProxyConnection;
 import oracle.jdbc.driver.OracleConnection;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,8 +13,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package com.agentsflex.text2sql.core;
 
 /**
- * SQL 方言。
+ * SQL 重写上下文
  */
-package com.agentsflex.data.jdbc.dialect;
+public class SqlRewriteContext {
+    private final String dataSourceName;
+    private final SqlContext currentSql;
+
+    public SqlRewriteContext(String dataSourceName, SqlContext currentSql) {
+        this.dataSourceName = dataSourceName;
+        this.currentSql = currentSql;
+    }
+
+    public String getDataSourceName() {
+        return dataSourceName;
+    }
+
+    public SqlContext getCurrentSql() {
+        return currentSql;
+    }
+
+}

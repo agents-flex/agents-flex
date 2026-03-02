@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,24 +13,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.data.jdbc.dialect.impl;
+package com.agentsflex.text2sql.jdbc.dialect.impl;
 
-import com.agentsflex.data.entity.ColumnInfo;
-import com.agentsflex.data.entity.TableInfo;
-import com.agentsflex.data.jdbc.dialect.IDialect;
+import com.agentsflex.text2sql.entity.ColumnInfo;
+import com.agentsflex.text2sql.entity.TableInfo;
+import com.agentsflex.text2sql.jdbc.dialect.IDialect;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.*;
+import java.util.function.Function;
 
 /**
  * Sqlite 方言实现。
+ *
  * @author michael
  */
 public class SqliteDialect implements IDialect {
 
     @Override
-    public void buildTableColumns(String schemaName, TableInfo table,  DatabaseMetaData dbMeta, Connection conn) throws SQLException {
+    public void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Function<ColumnInfo, Boolean> columnFilter) throws SQLException {
         Statement statement = conn.createStatement();
         ResultSet rs = statement.executeQuery("pragma table_info(" + table.getName() + ")");
 
@@ -47,6 +49,10 @@ public class SqliteDialect implements IDialect {
 
             String type = rs.getString(3);
 //            column.setType(type2ClassName(type));
+
+            if (columnFilter != null && Boolean.TRUE.equals(columnFilter.apply(column))) {
+                continue;
+            }
 
             table.addColumn(column);
         }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.data.jdbc;
+package com.agentsflex.text2sql.jdbc;
 
-import com.agentsflex.data.entity.JdbcDataSourceInfo;
-import com.agentsflex.data.entity.TableInfo;
-import com.agentsflex.data.jdbc.dialect.IDialect;
+import com.agentsflex.text2sql.entity.ColumnInfo;
+import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
+import com.agentsflex.text2sql.entity.TableInfo;
+import com.agentsflex.text2sql.jdbc.dialect.IDialect;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -25,6 +26,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * 代码生成器。
@@ -46,10 +48,10 @@ public class JdbcTableBuilder {
     }
 
 
-    public void build() {
+    public void build(Function<TableInfo, Boolean> tableFilter, Function<ColumnInfo, Boolean> columnFilter) {
         try (Connection conn = dataSource.getDataSource().getConnection()) {
             DatabaseMetaData dbMeta = conn.getMetaData();
-            List<TableInfo> tableInfos = buildTables(dbMeta, conn);
+            List<TableInfo> tableInfos = buildTables(dbMeta, conn, tableFilter, columnFilter);
             dataSource.setTables(tableInfos);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -65,7 +67,7 @@ public class JdbcTableBuilder {
         }
     }
 
-    protected List<TableInfo> buildTables(DatabaseMetaData dbMeta, Connection conn) throws SQLException {
+    protected List<TableInfo> buildTables(DatabaseMetaData dbMeta, Connection conn, Function<TableInfo, Boolean> tableFilter, Function<ColumnInfo, Boolean> columnFilter) throws SQLException {
         String schemaName = dataSource.getSchema();
         List<TableInfo> tables = new ArrayList<>();
         try (ResultSet rs = getTablesResultSet(dbMeta, conn, schemaName)) {
@@ -82,7 +84,11 @@ public class JdbcTableBuilder {
 
                 buildPrimaryKey(dbMeta, conn, table);
 
-                dialect.buildTableColumns(schemaName, table, dbMeta, conn);
+                dialect.buildTableColumns(schemaName, table, dbMeta, conn, columnFilter);
+
+                if (tableFilter != null && Boolean.TRUE.equals(tableFilter.apply(table))) {
+                    continue;
+                }
 
                 tables.add(table);
             }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022-2025, Agents-Flex (fuhai999@gmail.com).
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
  *  <p>
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,15 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.data.jdbc.dialect;
+package com.agentsflex.text2sql.jdbc.dialect;
 
 
-import com.agentsflex.data.entity.ColumnInfo;
-import com.agentsflex.data.entity.TableInfo;
+import com.agentsflex.text2sql.entity.ColumnInfo;
+import com.agentsflex.text2sql.entity.TableInfo;
 
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * 默认方言抽象类。
@@ -31,7 +32,7 @@ import java.util.Map;
 public abstract class AbstractJdbcDialect implements IDialect {
 
     @Override
-    public void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn) throws SQLException {
+    public void buildTableColumns(String schemaName, TableInfo table, DatabaseMetaData dbMeta, Connection conn, Function<ColumnInfo, Boolean> columnFilter) throws SQLException {
         Map<String, String> columnRemarks = buildColumnRemarks(schemaName, table, dbMeta, conn);
 
         String sql = forBuildColumnsSql(table.getSchema(), table.getName());
@@ -58,6 +59,10 @@ public abstract class AbstractJdbcDialect implements IDialect {
 
 //                String jdbcType = columnMetaData.getColumnClassName(i);
 //                column.setPropertyType(JdbcTypeMapping.getType(jdbcType, table, column));
+
+                if (columnFilter != null && Boolean.TRUE.equals(columnFilter.apply(column))) {
+                    continue;
+                }
 
                 table.addColumn(column);
             }

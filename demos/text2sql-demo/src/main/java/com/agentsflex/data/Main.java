@@ -9,8 +9,8 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.data.entity.JdbcDataSourceInfo;
-import com.agentsflex.data.tools.DataTools;
+import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
+import com.agentsflex.text2sql.tools.Text2SqlTools;
 import com.agentsflex.llm.openai.OpenAIChatConfig;
 import com.agentsflex.llm.openai.OpenAIChatModel;
 
@@ -33,7 +33,7 @@ public class Main {
 
         MemoryPrompt prompt = new MemoryPrompt();
 
-        UserMessage userMessage = new UserMessage("系统中有哪些姓李的用户呢？");
+        UserMessage userMessage = new UserMessage("系统中有哪些姓杨的用户呢？并告知我其部门是什么！");
         prompt.addMessage(userMessage);
 
         JdbcDataSourceInfo dataSource = new JdbcDataSourceInfo();
@@ -44,7 +44,7 @@ public class Main {
         dataSource.setName("aiflowy_v1");
 //        dataSource.setDescription();
 
-        List<Tool> tools = DataTools.builder()
+        List<Tool> tools = Text2SqlTools.builder()
             .addDataSourceInfo(dataSource)
             .buildTools();
 
