@@ -6,12 +6,14 @@ import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.ToolScanner;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
 import com.agentsflex.llm.openai.OpenAIChatConfig;
 import com.agentsflex.llm.openai.OpenAIChatModel;
 import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
+import com.agentsflex.text2sql.tools.ChartConfigTool;
 import com.agentsflex.text2sql.tools.Text2SqlTools;
 
 import java.util.List;
@@ -33,7 +35,8 @@ public class Main {
 
         MemoryPrompt prompt = new MemoryPrompt();
 
-        UserMessage userMessage = new UserMessage("系统中有哪些姓杨的用户呢？并告知我其部门是什么！");
+//        UserMessage userMessage = new UserMessage("系统中有哪些姓杨的用户呢？并告知我其部门是什么！");
+        UserMessage userMessage = new UserMessage("帮我统计一下用户的增长情况，并用图表展现出来。");
         prompt.addMessage(userMessage);
 
         JdbcDataSourceInfo dataSource = new JdbcDataSourceInfo();
@@ -50,6 +53,9 @@ public class Main {
             .buildTools();
 
         prompt.addTools(tools);
+
+
+        prompt.addTools(ToolScanner.scan(new ChartConfigTool()));
 
 
         StreamResponseListener listener = new StreamResponseListener() {
