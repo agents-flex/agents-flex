@@ -104,16 +104,30 @@ public class Text2SqlTools {
             dataSourceAndDescriptions.append("<!-- No available data sources -->\n");
         }
 
+
         String description =
-            "[Query Process - Step 1] Retrieve a list of all table names under the specified data source.\n\n" +
-                "## Use Cases:\n" +
-                "- When the user requests data query but is uncertain about table names\n" +
-                "- When you need to confirm which tables are available under a specific data source\n" +
-                "- Before writing SQL, you need to confirm whether the target table exists\n\n" +
-                "## Important Rules:\n" +
-                "- dataSourceName must be selected from the <available_data_sources> list below\n" +
-                "- Match names strictly, case-sensitive, do not fabricate\n" +
-                "- If the user does not specify a data source, first list available options for selection\n\n" +
+            "[Query Process - Step 1] Retrieve all table names under the specified data source.\n\n" +
+
+                "=== STRICT EXECUTION PROTOCOL ===\n" +
+                "You MUST follow this workflow:\n" +
+                "Step 1 → Call listTables (this tool)\n" +
+                "Step 2 → Call listTableColumns\n" +
+                "Step 3 → Call queryDataList / querySingleRow / querySingleValue\n\n" +
+
+                "Do NOT skip Step 2 before writing SQL.\n" +
+                "Do NOT fabricate table names.\n\n" +
+
+                "=== When to Use ===\n" +
+                "- User requests data query but table is unknown\n" +
+                "- Need to confirm available tables before writing SQL\n" +
+                "- Need to validate table existence\n\n" +
+
+                "=== Rules ===\n" +
+                "- dataSourceName MUST come from <available_data_sources>\n" +
+                "- Match name strictly (case-sensitive)\n" +
+                "- Never invent data source names\n" +
+                "- If user does not specify data source, list options first\n\n" +
+
                 "<available_data_sources>\n" +
                 dataSourceAndDescriptions +
                 "</available_data_sources>";
@@ -125,7 +139,11 @@ public class Text2SqlTools {
                 Parameter.builder()
                     .name("dataSourceName")
                     .type("string")
-                    .description("The name of the data source, must be obtained from available_data_sources, do not fabricate.")
+                    .description("Name of the target data source.\n" +
+                        "- Must match exactly one of the available_data_sources.\n" +
+                        "- This is a TOP-LEVEL argument.\n" +
+                        "- NEVER place this value inside SQL.\n" +
+                        "- NEVER place this value inside parameters.\n")
                     .required(true)
                     .build()
             ).function(argsMap -> {
@@ -178,11 +196,30 @@ public class Text2SqlTools {
 
     @ToolDef(
         name = "listTableColumns",
-        description = "[Step 2] Get field structure description for the specified table. Returns table schema text in Markdown format, including: field name, data type, length, nullable, primary key, auto-increment, field comment. Must call this tool to confirm column names before writing SQL."
+        description = "[Step 2 - Schema Confirmation] Retrieve full column structure of the specified table.\n\n" +
+
+            "You MUST call this tool before writing SQL.\n" +
+            "Never fabricate column names.\n" +
+            "All SQL must strictly use returned Field Name values.\n\n" +
+
+            "Returns Markdown table including:\n" +
+            "- Field Name\n" +
+            "- Data Type\n" +
+            "- Primary Key\n" +
+            "- Auto Increment\n" +
+            "- Comment\n\n" +
+
+            "If table does not exist, error will be returned."
     )
     public String listTableColumns(
-        @ToolParam(name = "dataSourceName", description = "Data source name, must be from the available_data_sources list") String dataSourceName,
-        @ToolParam(name = "tableName", description = "Table name, must be from the return result of listTables, case-sensitive") String tableName
+        @ToolParam(name = "dataSourceName", description = "Data source name.\n" +
+            "- Must come from available_data_sources.\n" +
+            "- Must match exactly.\n" +
+            "- Do NOT fabricate.") String dataSourceName,
+        @ToolParam(name = "tableName", description = "Target table name.\n" +
+            "- Must be selected from the result of listTables.\n" +
+            "- Case-sensitive.\n" +
+            "- Do NOT invent table names.\n") String tableName
     ) {
         if (dataSourceName == null || dataSourceName.trim().isEmpty()) {
             return ERROR_PREFIX + "dataSourceName cannot be empty, please select from available_data_sources";
@@ -240,12 +277,48 @@ public class Text2SqlTools {
 
     @ToolDef(
         name = "queryDataList",
-        description = "[Execute Query - List] Execute SQL query and return multi-row results. Suitable for querying lists, multiple records scenarios. Returns JSON array string. Security restriction: SELECT read-only statements only, UPDATE/DELETE/INSERT/DROP operations are prohibited. Dynamic values must use ? placeholders."
+        description = "[Step 3 - Execute Query: Multiple Rows]\n\n" +
+
+            "Use this tool when:\n" +
+            "- User expects a list of records\n" +
+            "- Multiple rows may be returned\n" +
+            "- Pagination or LIMIT is appropriate\n\n" +
+
+            "Do NOT use when:\n" +
+            "- Only one record is expected\n" +
+            "- Aggregation (COUNT/SUM/etc) is requested\n\n" +
+
+            "=== SQL Rules ===\n" +
+            "- SQL MUST start with SELECT or WITH\n" +
+            "- INSERT/UPDATE/DELETE/DROP/ALTER/CREATE are strictly prohibited\n" +
+            "- Use '?' for ALL dynamic values\n" +
+            "- Avoid SELECT * unless explicitly required\n" +
+            "- Strongly recommended to include LIMIT\n\n" +
+
+            "=== Parameter Structure Rules (STRICT) ===\n" +
+            "- dataSourceName is a top-level argument\n" +
+            "- dataSourceName MUST NOT appear inside parameters\n" +
+            "- parameters ONLY contains values replacing '?' placeholders\n" +
+            "- The number of parameters MUST equal number of '?' in SQL\n" +
+            "- If SQL has no '?', parameters MUST be []\n"
     )
     public String queryDataList(
-        @ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
-        @ToolParam(name = "sql", description = "Standard SQL SELECT statement. If containing dynamic values, must use '?' as placeholder, direct string concatenation is prohibited to prevent SQL injection. Recommended to add reasonable LIMIT to restrict returned rows") String sql,
-        @ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
+        @ToolParam(name = "dataSourceName", description = "Target data source.\n" +
+            "- Must match available_data_sources.\n" +
+            "- TOP-LEVEL field only.\n" +
+            "- NEVER include inside parameters.\n") String dataSourceName,
+        @ToolParam(name = "sql", description = "SQL query string.\n" +
+            "- Must start with SELECT or WITH.\n" +
+            "- Must use '?' placeholders for dynamic values.\n" +
+            "- Never concatenate user input.\n" +
+            "- Do NOT include dataSourceName here.\n" +
+            "- Prefer explicit column names instead of SELECT *.\n") String sql,
+        @ToolParam(name = "parameters", description = "Array of values replacing '?' placeholders in SQL.\n" +
+            "- Order must match '?' order in SQL.\n" +
+            "- Count must equal number of '?'.\n" +
+            "- Only include actual data values.\n" +
+            "- NEVER include table names, column names, SQL fragments, or dataSourceName.\n" +
+            "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
         // 1. 基础安全校验
         String validateError = validateSqlReadOnly(sql);
@@ -260,7 +333,7 @@ public class Text2SqlTools {
         }
 
         // 3. 执行自定义验证器链
-        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, params);
+        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, parameters);
         for (SqlValidator validator : sqlValidators) {
             ValidationResult result = validator.validate(validationCtx);
             if (result != null && result.isFailed() && !result.hasWarning()) {
@@ -281,7 +354,7 @@ public class Text2SqlTools {
         }
 
         // 4. 执行自定义重写器链
-        SqlContext current = new SqlContext(sql, safeParams(params));
+        SqlContext current = new SqlContext(sql, safeParams(parameters));
         for (SqlRewriter rewriter : sqlRewriters) {
             current = rewriter.rewrite(new SqlRewriteContext(dataSourceName, current));
             if (current == null) {
@@ -306,12 +379,43 @@ public class Text2SqlTools {
 
     @ToolDef(
         name = "querySingleRow",
-        description = "[Execute Query - Single Row] Execute SQL query and return single-row result. Suitable for querying details by ID, getting the latest record, etc. Returns JSON object string. If multiple rows exist, only the first row is returned. Security restriction: SELECT read-only statements only."
+        description = "[Step 3 - Execute Query: Single Row]\n\n" +
+
+            "Use when:\n" +
+            "- Querying by primary key or unique field\n" +
+            "- Only one record is expected\n" +
+            "- Fetching detail information\n\n" +
+
+            "Do NOT use for aggregation queries.\n\n" +
+
+            "=== SQL Rules ===\n" +
+            "- SELECT or WITH only\n" +
+            "- Strongly recommended to include LIMIT 1\n" +
+            "- Use '?' placeholders for dynamic values\n" +
+            "- Avoid SELECT * unless necessary\n\n" +
+
+            "=== Parameter Structure Rules ===\n" +
+            "- dataSourceName must be top-level\n" +
+            "- Must NOT appear inside parameters\n" +
+            "- parameters strictly correspond to '?' placeholders\n"
     )
     public String querySingleRow(
-        @ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
-        @ToolParam(name = "sql", description = "Standard SQL SELECT statement. If containing dynamic values, must use '?' as placeholder, direct string concatenation is prohibited to prevent SQL injection. Recommended to add LIMIT 1") String sql,
-        @ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
+        @ToolParam(name = "dataSourceName", description = "Target data source.\n" +
+            "- Must match available_data_sources.\n" +
+            "- TOP-LEVEL field only.\n" +
+            "- NEVER include inside parameters.\n") String dataSourceName,
+        @ToolParam(name = "sql", description = "SQL query string.\n" +
+            "- Must start with SELECT or WITH.\n" +
+            "- Must use '?' placeholders for dynamic values.\n" +
+            "- Never concatenate user input.\n" +
+            "- Do NOT include dataSourceName here.\n" +
+            "- Prefer explicit column names instead of SELECT *.\n") String sql,
+        @ToolParam(name = "parameters", description = "Array of values replacing '?' placeholders in SQL.\n" +
+            "- Order must match '?' order in SQL.\n" +
+            "- Count must equal number of '?'.\n" +
+            "- Only include actual data values.\n" +
+            "- NEVER include table names, column names, SQL fragments, or dataSourceName.\n" +
+            "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
         // 1. 基础安全校验
         String validateError = validateSqlReadOnly(sql);
@@ -326,7 +430,7 @@ public class Text2SqlTools {
         }
 
         // 3. 执行自定义验证器链
-        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, params);
+        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, parameters);
         for (SqlValidator validator : sqlValidators) {
             ValidationResult result = validator.validate(validationCtx);
             if (result != null && result.isFailed() && !result.hasWarning()) {
@@ -347,7 +451,7 @@ public class Text2SqlTools {
         }
 
         // 4. 执行自定义重写器链
-        SqlContext current = new SqlContext(sql, safeParams(params));
+        SqlContext current = new SqlContext(sql, safeParams(parameters));
         for (SqlRewriter rewriter : sqlRewriters) {
             current = rewriter.rewrite(new SqlRewriteContext(dataSourceName, current));
             if (current == null) {
@@ -357,7 +461,7 @@ public class Text2SqlTools {
 
         // 5. 使用重写后的 SQL 执行查询
         try {
-            Map<String, Object> result = JdbcQueryUtil.queryOne(dsInfo.getDataSource(), sql, safeParams(params));
+            Map<String, Object> result = JdbcQueryUtil.queryOne(dsInfo.getDataSource(), sql, safeParams(parameters));
             if (result == null) {
                 return "Query result is empty (no matching records)";
             }
@@ -374,12 +478,42 @@ public class Text2SqlTools {
 
     @ToolDef(
         name = "querySingleValue",
-        description = "[Execute Query - Single Value] Execute SQL query and return a single value. Suitable for COUNT statistics, SUM aggregation, AVG average, getting single configuration items, etc. Returns String representation of the value. Expected SQL returns single column, single row. Security restriction: SELECT read-only statements only."
+        description = "[Step 3 - Execute Query: Single Value]\n\n" +
+
+            "Use when:\n" +
+            "- COUNT, SUM, AVG, MAX, MIN\n" +
+            "- Checking existence\n" +
+            "- Query returns exactly one column and one row\n\n" +
+
+            "Do NOT use for full record retrieval.\n\n" +
+
+            "=== SQL Rules ===\n" +
+            "- SELECT or WITH only\n" +
+            "- Must return exactly one column\n" +
+            "- Use '?' placeholders for dynamic values\n\n" +
+
+            "=== Parameter Structure Rules ===\n" +
+            "- dataSourceName must be top-level\n" +
+            "- Must NOT appear inside parameters\n" +
+            "- parameters strictly correspond to '?' placeholders\n"
     )
     public String querySingleValue(
-        @ToolParam(name = "dataSourceName", description = "Data source name") String dataSourceName,
-        @ToolParam(name = "sql", description = "Standard SQL SELECT statement, expected to return single column, single row. If containing dynamic values, must use '?' as placeholder") String sql,
-        @ToolParam(name = "params", description = "List of parameter values corresponding to '?' placeholders in SQL, order must match placeholders. Pass empty list [] if no parameters") List<Object> params
+        @ToolParam(name = "dataSourceName", description = "Target data source.\n" +
+            "- Must match available_data_sources.\n" +
+            "- TOP-LEVEL field only.\n" +
+            "- NEVER include inside parameters.\n") String dataSourceName,
+        @ToolParam(name = "sql", description = "SQL query string.\n" +
+            "- Must start with SELECT or WITH.\n" +
+            "- Must use '?' placeholders for dynamic values.\n" +
+            "- Never concatenate user input.\n" +
+            "- Do NOT include dataSourceName here.\n" +
+            "- Prefer explicit column names instead of SELECT *.\n") String sql,
+        @ToolParam(name = "parameters", description = "Array of values replacing '?' placeholders in SQL.\n" +
+            "- Order must match '?' order in SQL.\n" +
+            "- Count must equal number of '?'.\n" +
+            "- Only include actual data values.\n" +
+            "- NEVER include table names, column names, SQL fragments, or dataSourceName.\n" +
+            "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
         // 1. 基础安全校验
         String validateError = validateSqlReadOnly(sql);
@@ -394,7 +528,7 @@ public class Text2SqlTools {
         }
 
         // 3. 执行自定义验证器链
-        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, params);
+        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, parameters);
         for (SqlValidator validator : sqlValidators) {
             ValidationResult result = validator.validate(validationCtx);
             if (result != null && result.isFailed() && !result.hasWarning()) {
@@ -415,7 +549,7 @@ public class Text2SqlTools {
         }
 
         // 4. 执行自定义重写器链
-        SqlContext current = new SqlContext(sql, safeParams(params));
+        SqlContext current = new SqlContext(sql, safeParams(parameters));
         for (SqlRewriter rewriter : sqlRewriters) {
             current = rewriter.rewrite(new SqlRewriteContext(dataSourceName, current));
             if (current == null) {
