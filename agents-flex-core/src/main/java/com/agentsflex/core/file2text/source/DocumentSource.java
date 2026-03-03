@@ -19,6 +19,7 @@ package com.agentsflex.core.file2text.source;
 import java.io.InputStream;
 
 public interface DocumentSource {
+
     String getFileName();
 
     String getMimeType();

@@ -85,6 +85,12 @@
             <scope>compile</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.ibm.icu</groupId>
+            <artifactId>icu4j</artifactId>
+            <version>77.1</version>
+        </dependency>
+
 
         <!-- OpenTelemetry API -->
         <dependency>

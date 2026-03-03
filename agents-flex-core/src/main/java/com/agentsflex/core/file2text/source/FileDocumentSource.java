@@ -21,6 +21,7 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 
 public class FileDocumentSource implements DocumentSource {
+
     private final File file;
     private final String mimeType;
 

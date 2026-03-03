@@ -83,7 +83,6 @@ public class DocExtractor implements FileExtractor {
                     text.append(clean).append("\n");
                 }
             }
-
             return text.toString().trim();
         } catch (Exception e) {
             throw new IOException("Failed to extract .doc file: " + e.getMessage(), e);

@@ -17,6 +17,7 @@ package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
 import com.agentsflex.core.file2text.source.DocumentSource;
+import com.agentsflex.core.file2text.util.EncodingDetectUtil;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -25,7 +26,6 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -125,7 +125,7 @@ public class HtmlExtractor implements FileExtractor {
     @Override
     public String extractText(DocumentSource source) throws IOException {
         try (InputStream is = source.openStream()) {
-            String html = readToString(is, StandardCharsets.UTF_8);
+            String html = EncodingDetectUtil.readToString(is);
             if (html.trim().isEmpty()) {
                 return "";
             }
@@ -313,18 +313,6 @@ public class HtmlExtractor implements FileExtractor {
         text.append("[Table End]\n");
     }
 
-    private String readToString(InputStream is, java.nio.charset.Charset charset) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        try (java.io.InputStreamReader reader = new java.io.InputStreamReader(is, charset);
-             java.io.BufferedReader br = new java.io.BufferedReader(reader)) {
-            char[] buffer = new char[8192];
-            int read;
-            while ((read = br.read(buffer)) != -1) {
-                sb.append(buffer, 0, read);
-            }
-        }
-        return sb.toString();
-    }
 
     @Override
     public int getOrder() {

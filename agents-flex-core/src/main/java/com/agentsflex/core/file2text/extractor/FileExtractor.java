@@ -32,7 +32,6 @@ public interface FileExtractor {
 
     String extractText(DocumentSource source) throws IOException;
 
-
     default int getOrder() {
         return 100;
     }

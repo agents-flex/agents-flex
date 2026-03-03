@@ -18,11 +18,9 @@ package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
 import com.agentsflex.core.file2text.source.DocumentSource;
+import com.agentsflex.core.file2text.util.EncodingDetectUtil;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -79,17 +77,9 @@ public class PlainTextExtractor implements FileExtractor {
     }
 
     @Override
-    public String extractText(DocumentSource source) throws IOException {
+    public String extractText(DocumentSource source) {
         try (InputStream is = source.openStream()) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf-8"))) {
-                StringBuilder text = new StringBuilder();
-                char[] buffer = new char[8192];
-                int read;
-                while ((read = reader.read(buffer)) != -1) {
-                    text.append(buffer, 0, read);
-                }
-                return text.toString().trim();
-            }
+            return EncodingDetectUtil.readToString(is);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
