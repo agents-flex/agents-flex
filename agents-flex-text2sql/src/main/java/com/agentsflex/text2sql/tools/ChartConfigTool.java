@@ -78,18 +78,18 @@ public class ChartConfigTool {
                 "```\n\n" +
 
                 "### ✅ CORRECT (Copy This):\n" +
-                "```markdown\n" +
-                "6 月 -12 月活跃用户呈波动趋势。\n\n" +
+                "\n" +
+                "(some title)\n\n" +
                 "```echarts\n" +
                 "option = {\n" +
-                "  title: { text: '用户增长', left: 'center' },\n" +
+                "  title: { text: '(chart title)', left: 'center' },\n" +
                 "  tooltip: { trigger: 'axis' },\n" +
                 "  xAxis: { type: 'category',  ['2025-06', '2025-12'] },\n" +
                 "  yAxis: { type: 'value' },\n" +
                 "  series: [{ type: 'line',  [2, 2, 1, 2] }]\n" +
                 "};\n" +
                 "```\n" +
-                "```\n\n" +
+                "(some description or analyze)\n\n" +
 
                 "## 🎯 When to Call This Tool:\n" +
                 "- ✅ User asks for: chart/graph/visualization/plot/trend\n" +
