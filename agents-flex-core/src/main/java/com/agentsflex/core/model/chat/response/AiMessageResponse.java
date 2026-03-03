@@ -59,8 +59,7 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
         if (this.message == null) {
             return false;
         }
-        List<ToolCall> toolCalls = message.getToolCalls();
-        return toolCalls != null && !toolCalls.isEmpty();
+        return message.hasToolCalls();
     }
 
 
