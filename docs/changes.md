@@ -1,5 +1,13 @@
 # Agents-Flex ChangeLog
 
+## v2.0.2 20260304
+- feat(file2text): add encoding detection utility for file extraction
+- fix(template): update ChartConfigTool markdown template format
+- feat(text2sql): add chart configuration tool for data visualization
+- refactor(text2sql): enhance tool descriptions and parameter validation for SQL query tools
+- refactor(core): simplify tool calls check in AiMessageResponse
+
+
 ## v2.0.1 20260302
 - docs(nav): update Text2SQL menu item text in Chinese documentation
 - refactor(text2sql-demo): remove unused table name configuration
