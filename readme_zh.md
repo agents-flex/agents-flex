@@ -46,13 +46,13 @@ Agents-Flex 专为 Java 工程师与架构师设计，提供**轻量、模块化
 
 ```xml
 <dependency>
-    <groupId>io.agentsflex</groupId>
+    <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-core</artifactId>
     <version>2.0.1</version>
 </dependency>
 <!-- 按需引入扩展模块 -->
 <dependency>
-    <groupId>io.agentsflex</groupId>
+    <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-mcp</artifactId>
     <version>2.0.1</version>
 </dependency>
