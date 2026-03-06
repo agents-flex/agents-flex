@@ -38,12 +38,15 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class LuceneSearcher implements DocumentSearcher {
 
     private static final Logger LOG = LoggerFactory.getLogger(LuceneSearcher.class);
+    private static final String METADATA_FIELD_PREFIX = "metadata.";
 
     private Directory directory;
 
@@ -78,6 +81,7 @@ public class LuceneSearcher implements DocumentSearcher {
             if (document.getTitle() != null) {
                 luceneDoc.add(new TextField("title", document.getTitle(), Field.Store.YES));
             }
+            addMetadataFields(luceneDoc, document.getMetadataMap());
 
 
             indexWriter.addDocument(luceneDoc);
@@ -127,6 +131,7 @@ public class LuceneSearcher implements DocumentSearcher {
             if (document.getTitle() != null) {
                 luceneDoc.add(new TextField("title", document.getTitle(), Field.Store.YES));
             }
+            addMetadataFields(luceneDoc, document.getMetadataMap());
 
             indexWriter.updateDocument(term, luceneDoc);
             indexWriter.commit();
@@ -141,10 +146,15 @@ public class LuceneSearcher implements DocumentSearcher {
 
     @Override
     public List<Document> searchDocuments(String keyword, int count) {
+        return searchDocuments(keyword, count, null);
+    }
+
+    @Override
+    public List<Document> searchDocuments(String keyword, int count, Map<String, Object> metadataFilters) {
         List<Document> results = new ArrayList<>();
         try (IndexReader reader = DirectoryReader.open(directory)) {
             IndexSearcher searcher = new IndexSearcher(reader);
-            Query query = buildQuery(keyword);
+            Query query = buildQuery(keyword, metadataFilters);
             TopDocs topDocs = searcher.search(query, count);
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
                 org.apache.lucene.document.Document doc = searcher.doc(scoreDoc.doc);
@@ -152,6 +162,7 @@ public class LuceneSearcher implements DocumentSearcher {
                 resultDoc.setId(doc.get("id"));
                 resultDoc.setContent(doc.get("content"));
                 resultDoc.setTitle(doc.get("title"));
+                resultDoc.setMetadataMap(extractMetadata(doc));
 
                 resultDoc.setScore((double) scoreDoc.score);
 
@@ -164,26 +175,82 @@ public class LuceneSearcher implements DocumentSearcher {
         return results;
     }
 
-    private static Query buildQuery(String keyword) {
+    private static Query buildQuery(String keyword, Map<String, Object> metadataFilters) {
+        Query textQuery = buildTextQuery(keyword);
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+        if (textQuery != null) {
+            builder.add(textQuery, BooleanClause.Occur.MUST);
+        } else {
+            builder.add(new MatchAllDocsQuery(), BooleanClause.Occur.MUST);
+        }
+        addMetadataFilterClauses(builder, metadataFilters);
+        return builder.build();
+    }
+
+    private static Query buildTextQuery(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+
         try {
             Analyzer analyzer = createAnalyzer();
-
             QueryParser titleQueryParser = new QueryParser("title", analyzer);
             Query titleQuery = titleQueryParser.parse(keyword);
-            BooleanClause titleBooleanClause = new BooleanClause(titleQuery, BooleanClause.Occur.SHOULD);
 
             QueryParser contentQueryParser = new QueryParser("content", analyzer);
             Query contentQuery = contentQueryParser.parse(keyword);
-            BooleanClause contentBooleanClause = new BooleanClause(contentQuery, BooleanClause.Occur.SHOULD);
 
             BooleanQuery.Builder builder = new BooleanQuery.Builder();
-            builder.add(titleBooleanClause)
-                .add(contentBooleanClause);
+            builder.add(titleQuery, BooleanClause.Occur.SHOULD);
+            builder.add(contentQuery, BooleanClause.Occur.SHOULD);
             return builder.build();
         } catch (ParseException e) {
-            LOG.error(e.toString(), e);
+            LOG.error("build text query error, keyword: {}", keyword, e);
         }
-        return null;
+        return new MatchAllDocsQuery();
+    }
+
+    private static void addMetadataFilterClauses(BooleanQuery.Builder builder, Map<String, Object> metadataFilters) {
+        if (metadataFilters == null || metadataFilters.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, Object> entry : metadataFilters.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            if (key == null || key.trim().isEmpty() || value == null) {
+                continue;
+            }
+            String metadataFieldName = METADATA_FIELD_PREFIX + key;
+            Query filterQuery = new TermQuery(new Term(metadataFieldName, String.valueOf(value)));
+            builder.add(filterQuery, BooleanClause.Occur.FILTER);
+        }
+    }
+
+    private static void addMetadataFields(org.apache.lucene.document.Document luceneDoc, Map<String, Object> metadataMap) {
+        if (metadataMap == null || metadataMap.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            if (key == null || key.trim().isEmpty() || value == null) {
+                continue;
+            }
+            luceneDoc.add(new StringField(METADATA_FIELD_PREFIX + key, String.valueOf(value), Field.Store.YES));
+        }
+    }
+
+    private static Map<String, Object> extractMetadata(org.apache.lucene.document.Document luceneDoc) {
+        Map<String, Object> metadataMap = new HashMap<>();
+        for (IndexableField field : luceneDoc.getFields()) {
+            String fieldName = field.name();
+            if (!fieldName.startsWith(METADATA_FIELD_PREFIX)) {
+                continue;
+            }
+            String metadataKey = fieldName.substring(METADATA_FIELD_PREFIX.length());
+            metadataMap.put(metadataKey, luceneDoc.get(fieldName));
+        }
+        return metadataMap;
     }
 
 

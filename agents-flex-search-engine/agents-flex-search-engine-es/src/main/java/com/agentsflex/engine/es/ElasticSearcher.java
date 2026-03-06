@@ -94,6 +94,9 @@ public class ElasticSearcher implements DocumentSearcher {
             if (document.getTitle() != null) {
                 source.put("title", document.getTitle());
             }
+            if (document.getMetadataMap() != null && !document.getMetadataMap().isEmpty()) {
+                source.put("metadataMap", document.getMetadataMap());
+            }
 
             String documentId = document.getId().toString();
             IndexOperation<?> indexOp = IndexOperation.of(i -> i
@@ -117,6 +120,11 @@ public class ElasticSearcher implements DocumentSearcher {
 
     @Override
     public List<Document> searchDocuments(String keyword, int count) {
+        return searchDocuments(keyword, count, null);
+    }
+
+    @Override
+    public List<Document> searchDocuments(String keyword, int count, Map<String, Object> metadataFilters) {
         RestClient restClient = null;
         ElasticsearchTransport transport = null;
 
@@ -129,11 +137,18 @@ public class ElasticSearcher implements DocumentSearcher {
                 .index(esConfig.getIndexName())
                 .size(count)
                 .query(q -> q
-                    .match(m -> m
-                        .field("title")
-                        .field("content")
-                        .query(keyword)
-                    )
+                    .bool(b -> {
+                        if (keyword == null || keyword.trim().isEmpty()) {
+                            b.must(m -> m.matchAll(ma -> ma));
+                        } else {
+                            b.must(m -> m.multiMatch(mm -> mm
+                                .query(keyword)
+                                .fields("title", "content")
+                            ));
+                        }
+                        appendMetadataFilters(b, metadataFilters);
+                        return b;
+                    })
                 )
             );
 
@@ -193,19 +208,48 @@ public class ElasticSearcher implements DocumentSearcher {
             transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
             ElasticsearchClient client = new ElasticsearchClient(transport);
 
-            UpdateRequest<Document, Object> request = UpdateRequest.of(u -> u
+            Map<String, Object> source = new HashMap<>();
+            source.put("id", document.getId());
+            source.put("content", document.getContent());
+            if (document.getTitle() != null) {
+                source.put("title", document.getTitle());
+            }
+            if (document.getMetadataMap() != null && !document.getMetadataMap().isEmpty()) {
+                source.put("metadataMap", document.getMetadataMap());
+            }
+
+            IndexRequest<JsonData> request = IndexRequest.of(u -> u
                 .index(esConfig.getIndexName())
                 .id(document.getId().toString())
-                .doc(document)
+                .document(JsonData.of(source))
             );
 
-            UpdateResponse<Document> response = client.update(request, Object.class);
-            return response.result() == co.elastic.clients.elasticsearch._types.Result.Updated;
+            IndexResponse response = client.index(request);
+            return response.result() == co.elastic.clients.elasticsearch._types.Result.Updated
+                || response.result() == co.elastic.clients.elasticsearch._types.Result.Created;
         } catch (Exception e) {
             LOG.error("Error updating document with id: " + document.getId(), e);
             return false;
         } finally {
             closeResources(transport, restClient);
+        }
+    }
+
+    private void appendMetadataFilters(co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery.Builder boolBuilder,
+                                       Map<String, Object> metadataFilters) {
+        if (metadataFilters == null || metadataFilters.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, Object> entry : metadataFilters.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            if (key == null || key.trim().isEmpty() || value == null) {
+                continue;
+            }
+
+            String field = "metadataMap." + key + ".keyword";
+            boolBuilder.filter(f -> f.term(t -> t.field(field).value(String.valueOf(value))));
         }
     }
 

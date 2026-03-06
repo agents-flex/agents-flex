@@ -18,6 +18,7 @@ package com.agentsflex.search.engine.service;
 import com.agentsflex.core.document.Document;
 
 import java.util.List;
+import java.util.Map;
 
 public interface DocumentSearcher {
 
@@ -29,6 +30,14 @@ public interface DocumentSearcher {
 
     default List<Document> searchDocuments(String keyword) {
         return searchDocuments(keyword, 10);
+    }
+
+    default List<Document> searchDocuments(String keyword, Map<String, Object> metadataFilters) {
+        return searchDocuments(keyword, 10, metadataFilters);
+    }
+
+    default List<Document> searchDocuments(String keyword, int count, Map<String, Object> metadataFilters) {
+        return searchDocuments(keyword, count);
     }
 
     List<Document> searchDocuments(String keyword, int count);
