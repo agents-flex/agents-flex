@@ -36,8 +36,8 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
 
     private JSONPath contentPath;
     private JSONPath deltaContentPath;
-    private JSONPath reasoningContentPath;
-    private JSONPath deltaReasoningContentPath;
+    private JSONPath[] reasoningContentPaths;
+    private JSONPath[] deltaReasoningContentPaths;
     private JSONPath indexPath;
     private JSONPath totalTokensPath;
     private JSONPath promptTokensPath;
@@ -66,20 +66,20 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
         this.deltaContentPath = deltaContentPath;
     }
 
-    public JSONPath getReasoningContentPath() {
-        return reasoningContentPath;
+    public JSONPath[] getReasoningContentPaths() {
+        return reasoningContentPaths;
     }
 
-    public void setReasoningContentPath(JSONPath reasoningContentPath) {
-        this.reasoningContentPath = reasoningContentPath;
+    public void setReasoningContentPaths(JSONPath[] reasoningContentPaths) {
+        this.reasoningContentPaths = reasoningContentPaths;
     }
 
-    public JSONPath getDeltaReasoningContentPath() {
-        return deltaReasoningContentPath;
+    public JSONPath[] getDeltaReasoningContentPaths() {
+        return deltaReasoningContentPaths;
     }
 
-    public void setDeltaReasoningContentPath(JSONPath deltaReasoningContentPath) {
-        this.deltaReasoningContentPath = deltaReasoningContentPath;
+    public void setDeltaReasoningContentPaths(JSONPath[] deltaReasoningContentPaths) {
+        this.deltaReasoningContentPaths = deltaReasoningContentPaths;
     }
 
     public JSONPath getIndexPath() {
@@ -163,8 +163,14 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
             if (this.deltaContentPath != null) {
                 aiMessage.setContent((String) this.deltaContentPath.eval(rootJson));
             }
-            if (this.deltaReasoningContentPath != null) {
-                aiMessage.setReasoningContent((String) this.deltaReasoningContentPath.eval(rootJson));
+            if (this.deltaReasoningContentPaths != null) {
+                for (JSONPath deltaReasoningContentPath : this.deltaReasoningContentPaths) {
+                    String result = (String) deltaReasoningContentPath.eval(rootJson);
+                    if (result != null) {
+                        aiMessage.setReasoningContent(result);
+                        break;
+                    }
+                }
             }
             if (this.deltaToolCallsJsonPath != null) {
                 toolCallsJsonArray = (JSONArray) this.deltaToolCallsJsonPath.eval(rootJson);
@@ -174,8 +180,14 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
                 aiMessage.setContent((String) this.contentPath.eval(rootJson));
             }
 
-            if (this.reasoningContentPath != null) {
-                aiMessage.setReasoningContent((String) this.reasoningContentPath.eval(rootJson));
+            if (this.reasoningContentPaths != null) {
+                for (JSONPath reasoningContentPath : this.reasoningContentPaths) {
+                    String result = (String) reasoningContentPath.eval(rootJson);
+                    if (result != null) {
+                        aiMessage.setReasoningContent(result);
+                        break;
+                    }
+                }
             }
             if (this.toolCallsJsonPath != null) {
                 toolCallsJsonArray = (JSONArray) this.toolCallsJsonPath.eval(rootJson);
@@ -224,8 +236,16 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
         aiMessageParser.setContentPath(JSONUtil.getJsonPath("$.choices[0].message.content"));
         aiMessageParser.setDeltaContentPath(JSONUtil.getJsonPath("$.choices[0].delta.content"));
 
-        aiMessageParser.setReasoningContentPath(JSONUtil.getJsonPath("$.choices[0].message.reasoning_content"));
-        aiMessageParser.setDeltaReasoningContentPath(JSONUtil.getJsonPath("$.choices[0].delta.reasoning_content"));
+        // 兼容最新版本的 vllm 输出
+        aiMessageParser.setReasoningContentPaths(new JSONPath[]{
+            JSONUtil.getJsonPath("$.choices[0].message.reasoning_content"),
+            JSONUtil.getJsonPath("$.choices[0].message.reasoning"),
+        });
+
+        aiMessageParser.setDeltaReasoningContentPaths(new JSONPath[]{
+            JSONUtil.getJsonPath("$.choices[0].delta.reasoning_content"),
+            JSONUtil.getJsonPath("$.choices[0].delta.reasoning"),
+        });
 
         aiMessageParser.setIndexPath(JSONUtil.getJsonPath("$.choices[0].index"));
         aiMessageParser.setTotalTokensPath(JSONUtil.getJsonPath("$.usage.total_tokens"));
