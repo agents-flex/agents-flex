@@ -1,5 +1,6 @@
 package com.agentsflex.data;
 
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
@@ -25,8 +26,8 @@ public class Main {
             .endpoint("https://ai.gitee.com")
             .requestPath("/v1/chat/completions")
             .apiKey(System.getenv("GITEE_APIKEY"))
-            .model("Qwen3.5-35B-A3B")
-//            .model("Qwen3-32B")
+//            .model("Qwen3.5-35B-A3B")
+            .model("Qwen3-32B")
 //            .thinkingEnabled(false)
             .logEnabled(false)
             .buildModel();
@@ -56,9 +57,35 @@ public class Main {
         StreamResponseListener listener = new StreamResponseListener() {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
-                String content = StringUtil.hasText(response.getMessage().getContent()) ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
-                if (content != null)
-                    System.out.print(content);
+//                String content = StringUtil.hasText(response.getMessage().getContent()) ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+//                if (content != null)
+//                    System.out.print(content);
+
+                String content = response.getMessage().getContent();
+                String reasoningContent = response.getMessage().getReasoningContent();
+                System.out.println(">>>>>raw:" + response.getRawText());
+//                if ("\n\n".equals(content)){
+//                    System.out.println("!!!!!");
+//                }
+
+//                if ("\n\n".equals(content) && "\n\n".equalsIgnoreCase(reasoningContent) && StringUtil.hasText(reasoningContent) && )
+
+
+                AiMessage aiMessage = response.getMessage();
+                if ("".equals(aiMessage.getContent())
+                    && "".equals(aiMessage.getFullContent())
+                    && StringUtil.noText(aiMessage.getFullReasoningContent())) {
+                    return;  // ignore 一般情况第一条消息
+                }
+
+                if ("\n\n".equals(aiMessage.getContent())
+                    && "\n\n".equals(aiMessage.getFullContent())
+                    && StringUtil.hasText(aiMessage.getFullReasoningContent())) {
+                    return; // ignore 一般情况下是 reasoning 和 tool_call 间隔消息，忽略
+                }
+
+
+                System.out.println(">>>>>content:" + content + "----" + reasoningContent + "<<<<<");
 
                 if (response.getMessage().isFinalDelta() && response.getMessage().hasToolCalls()) {
                     System.out.println("\n----------");

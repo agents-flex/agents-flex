@@ -229,7 +229,7 @@ export GITEE_APIKEY="your-api-key-here"
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-core</artifactId>
-    <version>2.0.2</version>
+    <version>2.0.3</version>
 </dependency>
 ```
 

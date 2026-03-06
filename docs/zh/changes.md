@@ -1,5 +1,10 @@
 # Agents-Flex ChangeLog
 
+## v2.0.3 20260306
+- feat: Search engines support element data filtering
+- feat(parser): Support latest vllm output format with multiple possible reasoning field names
+
+
 ## v2.0.2 20260304
 - feat(file2text): add encoding detection utility for file extraction
 - fix(template): update ChartConfigTool markdown template format
