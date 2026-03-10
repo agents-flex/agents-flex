@@ -34,7 +34,7 @@ public class ChromaVectorStoreConfig implements DocumentStoreConfig {
 
     private String host = "localhost";
     private int port = 8000;
-    private String collectionName;
+    private String collectionName = "agents-flex-store";
     private boolean autoCreateCollection = true;
     private String apiKey;
     private String tenant;
