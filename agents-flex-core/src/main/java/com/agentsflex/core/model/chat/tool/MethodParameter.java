@@ -17,8 +17,19 @@ package com.agentsflex.core.model.chat.tool;
 
 import java.lang.reflect.Type;
 
+/**
+ * 方法参数，继承 Parameter 并增加类型信息
+ *
+ * @author fuhai
+ * @since 2023/10/01
+ */
 public class MethodParameter extends Parameter {
 
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 参数的完整类型信息（支持泛型）
+     */
     protected Type typeClass;
 
     public Type getTypeClass() {

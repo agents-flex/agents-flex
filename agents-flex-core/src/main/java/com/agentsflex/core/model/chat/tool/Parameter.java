@@ -15,11 +15,24 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
+import com.agentsflex.core.util.JsonSchemaTypeMapper;
+import org.jetbrains.annotations.Nullable;
+
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * 工具方法参数定义
+ *
+ * @author fuhai
+ * @since 2023/10/01
+ */
 public class Parameter implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     protected String name;
     protected String type = "string";
@@ -29,7 +42,14 @@ public class Parameter implements Serializable {
     protected Object defaultValue;
     protected List<Parameter> children;
 
-    // --- getters and setters (keep your existing ones) ---
+    /**
+     * object 类型的属性定义（仅当字段有 @ToolParam 时解析）
+     * key: 字段名, value: 字段的 schema map（由序列化器直接使用）
+     */
+    protected Map<String, Object> properties;
+
+    // =============== Getters and Setters ===============
+
     public String getName() {
         return name;
     }
@@ -54,11 +74,12 @@ public class Parameter implements Serializable {
         this.description = description;
     }
 
+    @Nullable
     public String[] getEnums() {
-        return enums != null ? enums.clone() : null; // defensive copy
+        return enums != null ? enums.clone() : null;
     }
 
-    public void setEnums(String[] enums) {
+    public void setEnums(@Nullable String[] enums) {
         this.enums = enums != null ? enums.clone() : null;
     }
 
@@ -70,19 +91,21 @@ public class Parameter implements Serializable {
         this.required = required;
     }
 
+    @Nullable
     public Object getDefaultValue() {
         return defaultValue;
     }
 
-    public void setDefaultValue(Object defaultValue) {
+    public void setDefaultValue(@Nullable Object defaultValue) {
         this.defaultValue = defaultValue;
     }
 
+    @Nullable
     public List<Parameter> getChildren() {
-        return children != null ? new ArrayList<>(children) : null; // defensive copy
+        return children != null ? new ArrayList<>(children) : null;
     }
 
-    public void setChildren(List<Parameter> children) {
+    public void setChildren(@Nullable List<Parameter> children) {
         this.children = children != null ? new ArrayList<>(children) : null;
     }
 
@@ -93,13 +116,21 @@ public class Parameter implements Serializable {
         children.add(parameter);
     }
 
-    // --- Static builder factory method ---
+    @Nullable
+    public Map<String, Object> getProperties() {
+        return properties != null ? new LinkedHashMap<>(properties) : null;
+    }
+
+    public void setProperties(@Nullable Map<String, Object> properties) {
+        this.properties = properties != null ? new LinkedHashMap<>(properties) : null;
+    }
+
+    // =============== Builder ===============
 
     public static Builder builder() {
         return new Builder();
     }
 
-    // --- Builder inner class ---
     public static class Builder {
         private String name;
         private String type = "string";
@@ -108,6 +139,7 @@ public class Parameter implements Serializable {
         private boolean required = false;
         private Object defaultValue;
         private List<Parameter> children;
+        private Map<String, Object> properties;
 
         public Builder name(String name) {
             this.name = name;
@@ -116,6 +148,11 @@ public class Parameter implements Serializable {
 
         public Builder type(String type) {
             this.type = type;
+            return this;
+        }
+
+        public Builder typeOfClass(Class<?> type) {
+            this.type = JsonSchemaTypeMapper.mapToSchemaType(type);
             return this;
         }
 
@@ -152,15 +189,21 @@ public class Parameter implements Serializable {
             return this;
         }
 
+        public Builder properties(Map<String, Object> properties) {
+            this.properties = properties != null ? new LinkedHashMap<>(properties) : null;
+            return this;
+        }
+
         public Parameter build() {
             Parameter param = new Parameter();
             param.setName(name);
             param.setType(type);
             param.setDescription(description);
-            param.setEnums(enums); // uses defensive copy internally
+            param.setEnums(enums);
             param.setRequired(required);
             param.setDefaultValue(defaultValue);
-            param.setChildren(children); // uses defensive copy internally
+            param.setChildren(children);
+            param.setProperties(properties);
             return param;
         }
     }

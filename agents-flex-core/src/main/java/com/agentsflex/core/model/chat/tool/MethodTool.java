@@ -17,24 +17,44 @@ package com.agentsflex.core.model.chat.tool;
 
 import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
+import com.agentsflex.core.util.JsonSchemaTypeMapper;
 import com.agentsflex.core.util.TypeConverter;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+/**
+ * 基于反射的方法工具实现
+ *
+ * @author fuhai
+ * @since 2023/10/01
+ */
 public class MethodTool extends BaseTool {
 
     private Class<?> clazz;
     private Object object;
     private Method method;
+
+    /**
+     * 线程本地缓存，防止循环引用导致栈溢出
+     */
+    private static final ThreadLocal<Set<Class<?>>> RESOLVING_PROPERTIES =
+        ThreadLocal.withInitial(HashSet::new);
 
     public Class<?> getClazz() {
         return clazz;
@@ -64,10 +84,10 @@ public class MethodTool extends BaseTool {
         this.description = toolDef.description();
 
         List<MethodParameter> parameterList = new ArrayList<>();
-        java.lang.reflect.Parameter[] methodParameters = method.getParameters();
+        Parameter[] methodParameters = method.getParameters();
         Type[] genericParameterTypes = method.getGenericParameterTypes();
         int index = 0;
-        for (java.lang.reflect.Parameter methodParameter : methodParameters) {
+        for (Parameter methodParameter : methodParameters) {
             MethodParameter parameter = getParameter(methodParameter, genericParameterTypes[index++]);
             parameterList.add(parameter);
         }
@@ -80,20 +100,24 @@ public class MethodTool extends BaseTool {
         MethodParameter parameter = new MethodParameter();
         parameter.setName(toolParam.name());
         parameter.setDescription(toolParam.description());
+
         Class<?> paramType = methodParameter.getType();
-        parameter.setType(mapJavaTypeToJsonSchemaType(paramType));
+        String schemaType = JsonSchemaTypeMapper.mapToSchemaType(paramType);
+
+        parameter.setType(schemaType);
         parameter.setTypeClass(genericParameterType);
         parameter.setRequired(toolParam.required());
 
-        // For array/collection types, set up the items schema
-        if ("array".equals(parameter.getType())) {
-            String arrayItemType = getArrayItemType(genericParameterType);
+        // 处理数组/集合类型的 items
+        if ("array".equals(schemaType)) {
+            String arrayItemType = JsonSchemaTypeMapper.resolveArrayItemType(genericParameterType);
             MethodParameter itemParam = new MethodParameter();
             itemParam.setType(arrayItemType);
             itemParam.setDescription("Array items");
             parameter.addChild(itemParam);
         }
 
+        // 处理枚举
         String[] enums = toolParam.enums();
         if (enums != null && enums.length > 0) {
             parameter.setEnums(enums);
@@ -105,7 +129,116 @@ public class MethodTool extends BaseTool {
             }
             parameter.setEnums(enumNames);
         }
+
+        // 如果类型是 object，解析其带注解的属性
+        if ("object".equals(schemaType)) {
+            Map<String, Object> properties = resolveAnnotatedProperties(paramType);
+            if (!properties.isEmpty()) {
+                parameter.setProperties(properties);
+            }
+        }
+
         return parameter;
+    }
+
+    /**
+     * 递归解析实体类中带 @ToolParam 注解的字段
+     *
+     * @param clazz 要解析的类
+     * @return 字段名 → schema map 的映射
+     */
+    @NotNull
+    private static Map<String, Object> resolveAnnotatedProperties(@NotNull Class<?> clazz) {
+
+        // 防止循环引用：如果当前类正在解析中，返回空避免死循环
+        if (RESOLVING_PROPERTIES.get().contains(clazz)) {
+            return Collections.emptyMap();
+        }
+        RESOLVING_PROPERTIES.get().add(clazz);
+
+        try {
+            Map<String, Object> properties = new LinkedHashMap<>();
+
+            // 遍历所有字段（包括父类）
+            for (Field field : getAllFields(clazz)) {
+                // 跳过 static/transient/合成字段
+                int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers) ||
+                    Modifier.isTransient(modifiers) ||
+                    field.isSynthetic()) {
+                    continue;
+                }
+
+                // 只解析有 @ToolParam 注解的字段
+                if (!field.isAnnotationPresent(ToolParam.class)) {
+                    continue;
+                }
+
+                ToolParam param = field.getAnnotation(ToolParam.class);
+                String fieldName = param.name();  // 使用注解指定的名称
+                Class<?> fieldType = field.getType();
+                Type genericType = field.getGenericType();
+
+                // 构建字段的 schema
+                Map<String, Object> fieldSchema = new LinkedHashMap<>();
+                fieldSchema.put("type", JsonSchemaTypeMapper.mapToSchemaType(fieldType));
+
+                // 描述
+                if (!param.description().isEmpty()) {
+                    fieldSchema.put("description", param.description());
+                }
+
+                // 枚举：优先使用注解配置，其次自动提取枚举类值
+                if (param.enums().length > 0) {
+                    fieldSchema.put("enum", Arrays.asList(param.enums()));
+                } else if (fieldType.isEnum()) {
+                    Object[] constants = fieldType.getEnumConstants();
+                    String[] names = new String[constants.length];
+                    for (int i = 0; i < constants.length; i++) {
+                        names[i] = ((Enum<?>) constants[i]).name();
+                    }
+                    fieldSchema.put("enum", Arrays.asList(names));
+                }
+
+                // 递归：如果字段类型是 object 且有 @ToolParam，继续解析其属性
+                if ("object".equals(fieldSchema.get("type"))) {
+                    Map<String, Object> nestedProps = resolveAnnotatedProperties(fieldType);
+                    if (!nestedProps.isEmpty()) {
+                        fieldSchema.put("properties", nestedProps);
+                    }
+                }
+
+                // 数组元素类型
+                if ("array".equals(fieldSchema.get("type"))) {
+                    String itemType = JsonSchemaTypeMapper.resolveArrayItemType(genericType);
+                    Map<String, Object> items = new LinkedHashMap<>();
+                    items.put("type", itemType);
+                    fieldSchema.put("items", items);
+                }
+
+                properties.put(fieldName, fieldSchema);
+            }
+
+            return properties;
+
+        } finally {
+            // 解析完成后移除，避免影响其他解析
+            RESOLVING_PROPERTIES.get().remove(clazz);
+        }
+    }
+
+    /**
+     * 获取类及其父类的所有字段
+     */
+    @NotNull
+    private static List<Field> getAllFields(@NotNull Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            Collections.addAll(fields, current.getDeclaredFields());
+            current = current.getSuperclass();
+        }
+        return fields;
     }
 
     public Object invoke(Map<String, Object> argsMap) {
@@ -126,86 +259,5 @@ public class MethodTool extends BaseTool {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    /**
-     * Maps Java types to JSON Schema types
-     * Valid JSON Schema types: string, number, integer, boolean, object, array, null
-     */
-    private static String mapJavaTypeToJsonSchemaType(Class<?> javaType) {
-        if (javaType == null) {
-            return "string";
-        }
-
-        // Handle array types
-        if (javaType.isArray()) {
-            return "array";
-        }
-
-        String typeName = javaType.getSimpleName();
-
-        // Map collection types to array
-        if (java.util.List.class.isAssignableFrom(javaType) ||
-            java.util.Collection.class.isAssignableFrom(javaType)) {
-            return "array";
-        }
-
-        // Map numeric types
-        switch (typeName) {
-            case "int":
-            case "Integer":
-            case "Long":
-            case "long":
-            case "Short":
-            case "short":
-            case "Byte":
-            case "byte":
-                return "integer";
-            case "Float":
-            case "float":
-            case "Double":
-            case "double":
-                return "number";
-            case "Boolean":
-            case "boolean":
-                return "boolean";
-            case "String":
-            case "string":
-                return "string";
-            case "Object":
-            case "object":
-                return "object";
-            default:
-                // For Map and other complex types, default to object
-                if (java.util.Map.class.isAssignableFrom(javaType)) {
-                    return "object";
-                }
-                // Default to string for unknown types
-                return "string";
-        }
-    }
-
-    /**
-     * Determines the JSON Schema type for array items based on generic type info
-     */
-    private static String getArrayItemType(Type genericType) {
-        if (genericType == null) {
-            return "string";
-        }
-
-        // Handle ParameterizedType (e.g., List<String>, List<Object>)
-        if (genericType instanceof java.lang.reflect.ParameterizedType) {
-            java.lang.reflect.ParameterizedType pType = (java.lang.reflect.ParameterizedType) genericType;
-            Type[] typeArgs = pType.getActualTypeArguments();
-            if (typeArgs.length > 0) {
-                Type itemType = typeArgs[0];
-                if (itemType instanceof Class) {
-                    return mapJavaTypeToJsonSchemaType((Class<?>) itemType);
-                }
-            }
-        }
-
-        // For raw List or List<Object>, default to object (most permissive)
-        return "object";
     }
 }

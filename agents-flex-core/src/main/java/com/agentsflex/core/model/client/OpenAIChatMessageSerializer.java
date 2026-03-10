@@ -235,17 +235,24 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
                 requiredProperties.add(parameter.getName());
             }
 
-            List<Parameter> children = parameter.getChildren();
-            if (children != null && !children.isEmpty()) {
-                if ("object".equalsIgnoreCase(parameter.getType())) {
-                    Map<String, Object> childrenObj = new HashMap<>();
-                    parameterObj.put("properties", childrenObj);
-                    addParameters(children.toArray(new Parameter[0]), childrenObj, parameterObj);
-                }
-                if ("array".equalsIgnoreCase(parameter.getType())) {
-                    Map<String, Object> itemsObj = new HashMap<>();
-                    parameterObj.put("items", itemsObj);
-                    handleArrayItems(children, itemsObj);
+            // 优先处理 properties 字段（来自 @ToolParam 注解解析）
+            if (parameter.getProperties() != null && !parameter.getProperties().isEmpty()) {
+                parameterObj.put("properties", parameter.getProperties());
+            }
+            // 原有逻辑：处理 children（兼容旧代码）
+            else {
+                List<Parameter> children = parameter.getChildren();
+                if (children != null && !children.isEmpty()) {
+                    if ("object".equalsIgnoreCase(parameter.getType())) {
+                        Map<String, Object> childrenObj = new HashMap<>();
+                        parameterObj.put("properties", childrenObj);
+                        addParameters(children.toArray(new Parameter[0]), childrenObj, parameterObj);
+                    }
+                    if ("array".equalsIgnoreCase(parameter.getType())) {
+                        Map<String, Object> itemsObj = new HashMap<>();
+                        parameterObj.put("items", itemsObj);
+                        handleArrayItems(children, itemsObj);
+                    }
                 }
             }
 
