@@ -22,6 +22,8 @@ import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.store.condition.ExpressionAdaptor;
 import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.util.StringUtil;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +39,7 @@ public class ChromaVectorStore extends DocumentStore {
 
     private static final Logger logger = LoggerFactory.getLogger(ChromaVectorStore.class);
     private final String baseUrl;
-    private final String collectionName;
+    private final String defaultCollectionName;
     private final String tenant;
     private final String database;
     private final ChromaVectorStoreConfig config;
@@ -53,7 +55,7 @@ public class ChromaVectorStore extends DocumentStore {
         this.baseUrl = config.getBaseUrl();
         this.tenant = config.getTenant();
         this.database = config.getDatabase();
-        this.collectionName = config.getCollectionName();
+        this.defaultCollectionName = config.getCollectionName();
         this.config = config;
         this.expressionAdaptor = ChromaExpressionAdaptor.DEFAULT;
 
@@ -68,8 +70,6 @@ public class ChromaVectorStore extends DocumentStore {
             try {
                 // 确保租户和数据库存在
                 ensureTenantAndDatabaseExists();
-                // 确保集合存在
-                ensureCollectionExists();
             } catch (Exception e) {
                 logger.warn("Failed to ensure collection exists: {}. Will retry on first operation.", e.getMessage());
             }
@@ -119,20 +119,25 @@ public class ChromaVectorStore extends DocumentStore {
 
         try {
             // 尝试获取租户信息
-            String responseBody = executeWithRetry(() -> httpClient.get(tenantUrl, headers));
-            logger.debug("Successfully verified tenant '{}' exists", tenant);
+            Response response = executeWithRetry(() -> httpClient.getResponse(tenantUrl, headers));
+            if (response.code() == 404) {
+                // 如果获取失败，尝试创建租户
+                logger.info("Creating tenant '{}' as it does not exist", tenant);
+
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("name", tenant);
+
+                String createTenantUrl = baseUrl + BASE_API + "/tenants";
+                String jsonRequestBody = safeJsonSerialize(requestBody);
+
+                String responseBody =
+                    executeWithRetry(() -> httpClient.post(createTenantUrl, headers, jsonRequestBody));
+                logger.info("Successfully created tenant '{}'", tenant);
+            } else {
+                logger.debug("Successfully verified tenant '{}' exists", tenant);
+            }
         } catch (IOException e) {
-            // 如果获取失败，尝试创建租户
-            logger.info("Creating tenant '{}' as it does not exist", tenant);
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("name", tenant);
-
-            String createTenantUrl = baseUrl + BASE_API + "/tenants";
-            String jsonRequestBody = safeJsonSerialize(requestBody);
-
-            String responseBody = executeWithRetry(() -> httpClient.post(createTenantUrl, headers, jsonRequestBody));
-            logger.info("Successfully created tenant '{}'", tenant);
+            logger.error("Can't connect url:" + tenantUrl);
         }
     }
 
@@ -149,23 +154,25 @@ public class ChromaVectorStore extends DocumentStore {
 
         try {
             // 尝试获取数据库信息
-            String responseBody = executeWithRetry(() -> httpClient.get(databaseUrl, headers));
-            logger.debug("Successfully verified database '{}' exists in tenant '{}'",
-                database, tenant);
+            Response response = executeWithRetry(() -> httpClient.getResponse(databaseUrl, headers));
+            if (response.code() == 404) {
+                logger.info("Creating database '{}' in tenant '{}' as it does not exist", database, tenant);
+
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("name", database);
+
+                String createDatabaseUrl = baseUrl + BASE_API + "/tenants/" + tenant + "/databases";
+                String jsonRequestBody = safeJsonSerialize(requestBody);
+
+                String responseBody =
+                    executeWithRetry(() -> httpClient.post(createDatabaseUrl, headers, jsonRequestBody));
+                logger.info("Successfully created database '{}' in tenant '{}'", database, tenant);
+            } else {
+                logger.debug("Successfully verified database '{}' exists in tenant '{}'", database, tenant);
+            }
         } catch (IOException e) {
             // 如果获取失败，尝试创建数据库
-            logger.info("Creating database '{}' in tenant '{}' as it does not exist",
-                database, tenant);
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("name", database);
-
-            String createDatabaseUrl = baseUrl + BASE_API + "/tenants/" + tenant + "/databases";
-            String jsonRequestBody = safeJsonSerialize(requestBody);
-
-            String responseBody = executeWithRetry(() -> httpClient.post(createDatabaseUrl, headers, jsonRequestBody));
-            logger.info("Successfully created database '{}' in tenant '{}'",
-                database, tenant);
+            logger.error("Can't connect url:" + databaseUrl);
         }
     }
 
@@ -209,7 +216,7 @@ public class ChromaVectorStore extends DocumentStore {
         throw new IOException("Collection not found: " + collectionName);
     }
 
-    private void createCollection() throws IOException {
+    private void createCollection(String collectionName) throws IOException {
         // 构建创建集合的API URL，包含tenant和database
         String createCollectionUrl = buildCollectionsUrl();
         Map<String, String> headers = createHeaders();
@@ -252,9 +259,8 @@ public class ChromaVectorStore extends DocumentStore {
 
         try {
             // 确保集合存在
-            ensureCollectionExists();
-
             String collectionName = getCollectionName(options);
+            ensureCollectionExists(collectionName);
 
             List<String> ids = new ArrayList<>();
             List<List<Double>> embeddings = new ArrayList<>();
@@ -332,9 +338,8 @@ public class ChromaVectorStore extends DocumentStore {
 
         try {
             // 确保集合存在
-            ensureCollectionExists();
-
             String collectionName = getCollectionName(options);
+            ensureCollectionExists(collectionName);
 
             List<String> stringIds = ids.stream()
                 .map(Object::toString)
@@ -417,9 +422,8 @@ public class ChromaVectorStore extends DocumentStore {
 
         try {
             // 确保集合存在
-            ensureCollectionExists();
-
             String collectionName = getCollectionName(options);
+            ensureCollectionExists(collectionName);
 
             int limit = wrapper.getMaxResults() > 0 ? wrapper.getMaxResults() : 10;
 
@@ -509,9 +513,8 @@ public class ChromaVectorStore extends DocumentStore {
 
         try {
             // 确保集合存在
-            ensureCollectionExists();
-
             String collectionName = getCollectionName(options);
+            ensureCollectionExists(collectionName);
 
             Map<String, Object> requestBody = new HashMap<>();
 
@@ -722,8 +725,9 @@ public class ChromaVectorStore extends DocumentStore {
     }
 
     private String getCollectionName(StoreOptions options) {
-        return options != null ? options.getCollectionNameOrDefault(collectionName) : collectionName;
-    }
+        return options != null
+            ? options.getCollectionNameOrDefault(defaultCollectionName)
+            : defaultCollectionName;    }
 
     /**
      * 构建特定集合操作的URL，包含tenant和database
@@ -754,16 +758,19 @@ public class ChromaVectorStore extends DocumentStore {
     /**
      * 确保集合存在，如果不存在则创建
      */
-    private void ensureCollectionExists() throws IOException {
+    private void ensureCollectionExists(String collectionName) throws IOException {
+        String finalCollectionName =
+            StringUtil.hasText(collectionName) ? collectionName : defaultCollectionName;
+
         try {
             // 尝试获取默认集合ID，如果能获取到则说明集合存在
-            getCollectionId(collectionName);
-            logger.debug("Collection '{}' exists", collectionName);
+            getCollectionId(finalCollectionName);
+            logger.debug("Collection '{}' exists", finalCollectionName);
         } catch (IOException e) {
             // 如果获取集合ID失败，说明集合不存在，需要创建
-            logger.info("Collection '{}' does not exist, creating...", collectionName);
-            createCollection();
-            logger.info("Collection '{}' created successfully", collectionName);
+            logger.info("Collection '{}' does not exist, creating...", finalCollectionName);
+            createCollection(finalCollectionName);
+            logger.info("Collection '{}' created successfully", finalCollectionName);
         }
     }
 

@@ -82,6 +82,10 @@ public class HttpClient {
         return tracedCall(url, "GET", headers, null, this::executeString);
     }
 
+    public Response getResponse(String url, Map<String, String> headers) {
+        return tracedCall(url, "GET", headers, null, this::executeResponse);
+    }
+
     public String post(String url, Map<String, String> headers, String payload) {
         return tracedCall(url, "POST", headers, payload, this::executeString);
     }
@@ -165,6 +169,23 @@ public class HttpClient {
             }
         } catch (IOException ioe) {
             LOG.error("HTTP executeBytes failed: " + url, ioe);
+            span.setStatus(StatusCode.ERROR, ioe.getMessage());
+            span.recordException(ioe);
+        } catch (Exception e) {
+            LOG.error(e.toString(), e);
+            throw e;
+        }
+        return null;
+    }
+
+    public Response executeResponse(
+        String url, String method, Map<String, String> headers, Object payload, Span span) {
+        try (Response response = execute0(url, method, headers, payload)) {
+            if (response != null) {
+                return response;
+            }
+        } catch (IOException ioe) {
+            LOG.error("HTTP executeString failed: " + url, ioe);
             span.setStatus(StatusCode.ERROR, ioe.getMessage());
             span.recordException(ioe);
         } catch (Exception e) {
