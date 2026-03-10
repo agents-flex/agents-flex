@@ -9,6 +9,7 @@ import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.agentsflex.core.document.Document;
+import com.agentsflex.core.util.StringUtil;
 import com.agentsflex.search.engine.service.DocumentSearcher;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -16,6 +17,7 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,36 +41,48 @@ public class ElasticSearcher implements DocumentSearcher {
 
     // 忽略 SSL 的 client 构建逻辑
     private RestClient buildRestClient() throws NoSuchAlgorithmException, KeyManagementException {
-        TrustManager[] trustAllCerts = new TrustManager[]{
-            new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() {
-                    return null;
+        String host = esConfig.getHost();
+        RestClientBuilder restClientBuilder = RestClient.builder(HttpHost.create(host));
+        boolean useSsl = StringUtil.hasText(host) && host.trim().toLowerCase(Locale.ROOT).startsWith("https://");
+        boolean useBasicAuth = StringUtil.hasText(esConfig.getUserName());
+        SSLContext sslContext = null;
+        if (useSsl) {
+            TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                    }
+
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                    }
                 }
+            };
+            sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+        }
 
-                public void checkClientTrusted(X509Certificate[] certs, String authType) {
+        if (useSsl || useBasicAuth) {
+            final SSLContext finalSslContext = sslContext;
+            restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
+                if (useSsl) {
+                    httpClientBuilder.setSSLContext(finalSslContext);
+                    httpClientBuilder.setSSLHostnameVerifier((hostname, session) -> true);
                 }
-
-                public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                if (useBasicAuth) {
+                    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                    credentialsProvider.setCredentials(
+                        AuthScope.ANY,
+                        new UsernamePasswordCredentials(esConfig.getUserName(), esConfig.getPassword()));
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
                 }
-            }
-        };
-
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-
-        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(
-            AuthScope.ANY,
-            new UsernamePasswordCredentials(esConfig.getUserName(), esConfig.getPassword()));
-
-        return RestClient.builder(HttpHost.create(esConfig.getHost()))
-            .setHttpClientConfigCallback(httpClientBuilder -> {
-                httpClientBuilder.setSSLContext(sslContext);
-                httpClientBuilder.setSSLHostnameVerifier((hostname, session) -> true);
-                httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
                 return httpClientBuilder;
-            })
-            .build();
+            });
+        }
+
+        return restClientBuilder.build();
     }
 
 
@@ -141,9 +155,11 @@ public class ElasticSearcher implements DocumentSearcher {
                         if (keyword == null || keyword.trim().isEmpty()) {
                             b.must(m -> m.matchAll(ma -> ma));
                         } else {
-                            b.must(m -> m.multiMatch(mm -> mm
-                                .query(keyword)
-                                .fields("title", "content")
+                            b.must(m -> m.bool(bb -> bb
+                                .should(shouldQuery -> shouldQuery.multiMatch(mm -> mm
+                                    .query(keyword)
+                                    .fields("title", "content")
+                                ))
                             ));
                         }
                         appendMetadataFilters(b, metadataFilters);
@@ -152,9 +168,13 @@ public class ElasticSearcher implements DocumentSearcher {
                 )
             );
 
-            SearchResponse<Document> response = client.search(request, Document.class);
+            SearchResponse<JsonData> response = client.search(request, JsonData.class);
             List<Document> results = new ArrayList<>();
-            response.hits().hits().forEach(hit -> results.add(hit.source()));
+            response.hits().hits().forEach(hit -> {
+                if(hit.source() != null){
+                    results.add(parseFromJsonData(hit.source()));
+                }
+            });
             return results;
 
         } catch (Exception e) {
@@ -251,6 +271,23 @@ public class ElasticSearcher implements DocumentSearcher {
             String field = "metadataMap." + key + ".keyword";
             boolBuilder.filter(f -> f.term(t -> t.field(field).value(String.valueOf(value))));
         }
+    }
+
+    private Document parseFromJsonData(JsonData source) {
+        Map<String, Object> dataMap = source.to(Map.class);
+        Document document = new Document();
+        document.setId(dataMap.get("id"));
+        document.setTitle((String) dataMap.get("title"));
+        document.setContent((String) dataMap.get("content"));
+        document.setScore((Double) dataMap.get("score"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> metadataMap = (Map<String, Object>) dataMap.get("metadataMap");
+        if (metadataMap != null && !metadataMap.isEmpty()) {
+            document.setMetadataMap(metadataMap);
+        }
+
+        return document;
     }
 
 
