@@ -236,8 +236,9 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
             }
 
             // 优先处理 properties 字段（来自 @ToolParam 注解解析）
-            if (parameter.getProperties() != null && !parameter.getProperties().isEmpty()) {
-                parameterObj.put("properties", parameter.getProperties());
+            Map<String, Object> properties = parameter.getProperties();
+            if (properties != null && !properties.isEmpty()) {
+                parameterObj.put("properties", properties);
             }
             // 原有逻辑：处理 children（兼容旧代码）
             else {
