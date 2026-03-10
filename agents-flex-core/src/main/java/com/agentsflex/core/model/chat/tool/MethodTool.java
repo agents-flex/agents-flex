@@ -80,9 +80,19 @@ public class MethodTool extends BaseTool {
         MethodParameter parameter = new MethodParameter();
         parameter.setName(toolParam.name());
         parameter.setDescription(toolParam.description());
-        parameter.setType(methodParameter.getType().getSimpleName().toLowerCase());
+        Class<?> paramType = methodParameter.getType();
+        parameter.setType(mapJavaTypeToJsonSchemaType(paramType));
         parameter.setTypeClass(genericParameterType);
         parameter.setRequired(toolParam.required());
+
+        // For array/collection types, set up the items schema
+        if ("array".equals(parameter.getType())) {
+            String arrayItemType = getArrayItemType(genericParameterType);
+            MethodParameter itemParam = new MethodParameter();
+            itemParam.setType(arrayItemType);
+            itemParam.setDescription("Array items");
+            parameter.addChild(itemParam);
+        }
 
         String[] enums = toolParam.enums();
         if (enums != null && enums.length > 0) {
@@ -116,5 +126,86 @@ public class MethodTool extends BaseTool {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Maps Java types to JSON Schema types
+     * Valid JSON Schema types: string, number, integer, boolean, object, array, null
+     */
+    private static String mapJavaTypeToJsonSchemaType(Class<?> javaType) {
+        if (javaType == null) {
+            return "string";
+        }
+
+        // Handle array types
+        if (javaType.isArray()) {
+            return "array";
+        }
+
+        String typeName = javaType.getSimpleName();
+
+        // Map collection types to array
+        if (java.util.List.class.isAssignableFrom(javaType) ||
+            java.util.Collection.class.isAssignableFrom(javaType)) {
+            return "array";
+        }
+
+        // Map numeric types
+        switch (typeName) {
+            case "int":
+            case "Integer":
+            case "Long":
+            case "long":
+            case "Short":
+            case "short":
+            case "Byte":
+            case "byte":
+                return "integer";
+            case "Float":
+            case "float":
+            case "Double":
+            case "double":
+                return "number";
+            case "Boolean":
+            case "boolean":
+                return "boolean";
+            case "String":
+            case "string":
+                return "string";
+            case "Object":
+            case "object":
+                return "object";
+            default:
+                // For Map and other complex types, default to object
+                if (java.util.Map.class.isAssignableFrom(javaType)) {
+                    return "object";
+                }
+                // Default to string for unknown types
+                return "string";
+        }
+    }
+
+    /**
+     * Determines the JSON Schema type for array items based on generic type info
+     */
+    private static String getArrayItemType(Type genericType) {
+        if (genericType == null) {
+            return "string";
+        }
+
+        // Handle ParameterizedType (e.g., List<String>, List<Object>)
+        if (genericType instanceof java.lang.reflect.ParameterizedType) {
+            java.lang.reflect.ParameterizedType pType = (java.lang.reflect.ParameterizedType) genericType;
+            Type[] typeArgs = pType.getActualTypeArguments();
+            if (typeArgs.length > 0) {
+                Type itemType = typeArgs[0];
+                if (itemType instanceof Class) {
+                    return mapJavaTypeToJsonSchemaType((Class<?>) itemType);
+                }
+            }
+        }
+
+        // For raw List or List<Object>, default to object (most permissive)
+        return "object";
     }
 }
