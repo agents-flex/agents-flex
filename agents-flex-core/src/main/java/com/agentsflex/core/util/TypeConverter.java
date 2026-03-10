@@ -617,7 +617,7 @@ public class TypeConverter {
             String json = JSON.toJSONString(value, SERIAL_FEATURES);
             return JSON.parseObject(json, toType);
         } catch (RuntimeException e) {
-            throw new ConversionException("复杂类型转换失败: " + toType.getTypeName(), e);
+            throw new ConversionException("复杂类型转换失败: " + toType.getTypeName() + ", JSON 内容: " + JSON.toJSONString(value, SERIAL_FEATURES), e);
         } catch (Error e) {
             // Error 不应被捕获，直接抛出
             throw e;
@@ -636,7 +636,7 @@ public class TypeConverter {
             String json = JSON.toJSONString(value, SERIAL_FEATURES);
             return JSON.parseObject(json, targetType);
         } catch (RuntimeException e) {
-            throw new ConversionException("JSON 转换失败: " + targetType.getName(), e);
+            throw new ConversionException("JSON 转换失败: " + targetType.getName() + ", JSON 内容: " + JSON.toJSONString(value, SERIAL_FEATURES), e);
         } catch (Error e) {
             throw e;
         }

@@ -338,7 +338,7 @@ public class OpenAIChatModelTest {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setLogEnabled(true);
         config.setEndpoint("https://ai.gitee.com");
-        config.setModel("Qwen3-32B");
+        config.setModel("Qwen3.5-35B-A3B");
 //        config.setModel("DeepSeek-V3");
 //        config.setSupportToolMessage(false);
         config.setApiKey("PXW1");
@@ -373,6 +373,50 @@ public class OpenAIChatModelTest {
 
         TimeUnit.SECONDS.sleep(25);
     }
+
+
+    @Test()
+    public void testFunctionCalling56() throws InterruptedException {
+        OpenAIChatConfig config = new OpenAIChatConfig();
+        config.setLogEnabled(true);
+        config.setEndpoint("https://ai.gitee.com");
+        config.setModel("Qwen3.5-35B-A3B");
+        config.setApiKey("PXW1");
+//        config.setModel("DeepSeek-V3");
+//        config.setSupportToolMessage(false);
+
+
+        OpenAIChatModel llm = new OpenAIChatModel(config);
+
+        SimplePrompt prompt = new SimplePrompt("/no_think 北京和上海的天气怎么样");
+        prompt.addToolsFromClass(WeatherFunctions1.class);
+
+
+        llm.chatStream(prompt, new StreamResponseListener() {
+            @Override
+            public void onMessage(StreamContext context, AiMessageResponse response) {
+                if (response.getMessage().isFinalDelta() && response.hasToolCalls()) {
+                    System.out.println(":::::::: start....");
+                    prompt.setAiMessage(response.getMessage());
+                    prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
+                    llm.chatStream(prompt, new StreamResponseListener() {
+                        @Override
+                        public void onMessage(StreamContext context, AiMessageResponse response) {
+                            String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+                            System.out.println(":::" + msg);
+                        }
+                    });
+                } else {
+                    String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+                    System.out.println(">>>" + msg);
+                }
+            }
+        });
+
+        TimeUnit.SECONDS.sleep(25);
+    }
+
+
 
     @Test()
     public void testFunctionCalling6() throws InterruptedException {

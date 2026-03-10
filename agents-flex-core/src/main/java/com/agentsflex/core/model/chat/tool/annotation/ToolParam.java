@@ -19,7 +19,7 @@ import java.lang.annotation.*;
 
 @Inherited
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER})
+@Target({ElementType.PARAMETER, ElementType.FIELD})
 public @interface ToolParam {
     String name();
 
@@ -28,5 +28,4 @@ public @interface ToolParam {
     String[] enums() default {};
 
     boolean required() default false;
-
 }
