@@ -1,5 +1,15 @@
 # Agents-Flex ChangeLog
 
+## v2.0.4 20260312
+- feat(text2sql): optimize table building logic for JDBC data sources
+- refactor(core): optimize OpenAI chat message serializer parameter handling
+- feat(openai): add location-based weather tool functionality
+- feat(tools): enhance method tool parameter handling with JSON Schema mapping
+- feat(tool): enhance MethodTool with proper JSON Schema type mapping
+- fixed: es search bug, by nottyjay 2026/3/10 13:52
+- fixed: chromadb bug, by nottyjay 2026/3/10 11:57
+
+
 ## v2.0.3 20260306
 - feat: Search engines support element data filtering
 - feat(parser): Support latest vllm output format with multiple possible reasoning field names
