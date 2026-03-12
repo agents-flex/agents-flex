@@ -745,7 +745,10 @@ public class Text2SqlTools {
         public List<Tool> buildTools() {
             for (DataSourceInfo dataSourceInfo : this.dataSourceInfos) {
                 if (dataSourceInfo instanceof JdbcDataSourceInfo) {
-                    ((JdbcDataSourceInfo) dataSourceInfo).buildTables();
+                    List<TableInfo> tables = dataSourceInfo.getTables();
+                    if (tables == null || tables.isEmpty()) {
+                        ((JdbcDataSourceInfo) dataSourceInfo).buildTables();
+                    }
                 }
             }
 
