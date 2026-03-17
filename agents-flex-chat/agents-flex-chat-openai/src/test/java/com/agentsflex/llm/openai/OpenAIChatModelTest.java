@@ -541,4 +541,51 @@ public class OpenAIChatModelTest {
     }
 
 
+
+    @Test()
+    public void testBailian() throws InterruptedException {
+        OpenAIChatConfig config = new OpenAIChatConfig();
+        config.setLogEnabled(true);
+        config.setEndpoint("https://dashscope.aliyuncs.com");
+        config.setRequestPath("/compatible-mode/v1/chat/completions");
+        config.setModel("qwen3.5-plus");
+//        config.setModel("DeepSeek-V3");
+//        config.setSupportToolMessage(false);
+        config.setLogEnabled(false);
+        config.setApiKey("sk-");
+
+
+        OpenAIChatModel llm = new OpenAIChatModel(config);
+
+        SimplePrompt prompt = new SimplePrompt("这个学生默写的化学公式，你帮忙最大程度识别出来，然后判断他写的是对是错，如果错的，你给出正确答案。 输出时，请按 Latex 进行输出。");
+
+        llm.chatStream(prompt, new StreamResponseListener() {
+            @Override
+            public void onMessage(StreamContext context, AiMessageResponse response) {
+
+                String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+                System.out.println(msg);
+
+//                if (response.getMessage().isFinalDelta() && response.hasToolCalls()) {
+//                    System.out.println(":::::::: start....");
+//                    prompt.setAiMessage(response.getMessage());
+//                    prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
+//                    llm.chatStream(prompt, new StreamResponseListener() {
+//                        @Override
+//                        public void onMessage(StreamContext context, AiMessageResponse response) {
+//                            String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+//                            System.out.println(":::" + msg);
+//                        }
+//                    });
+//                } else {
+//                    String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+//                    System.out.println(">>>" + msg);
+//                }
+            }
+        });
+
+        TimeUnit.SECONDS.sleep(25);
+    }
+
+
 }
