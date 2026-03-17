@@ -170,7 +170,7 @@ public class QdrantVectorStore extends DocumentStore {
             for (ScoredPoint point : data) {
                 Document doc = new Document();
                 doc.setId(point.getId().getNum());
-                doc.setVector(point.getVectors().getVector().getDataList());
+                doc.setVectorByNumbers(point.getVectors().getVector().getDataList());
                 doc.setContent(point.getPayloadMap().get("content").getStringValue());
                 documents.add(doc);
             }

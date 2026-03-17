@@ -123,7 +123,7 @@ public class VectoRexStore extends DocumentStore {
             Object vectorObj = metadata.get("vector");
             if (vectorObj instanceof List) {
                 //noinspection unchecked
-                doc.setVector((List<Float>) vectorObj);
+                doc.setVectorByNumbers((List<Float>) vectorObj);
             }
             documents.add(doc);
         }

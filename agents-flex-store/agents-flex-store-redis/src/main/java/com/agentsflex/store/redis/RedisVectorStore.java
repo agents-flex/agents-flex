@@ -220,8 +220,8 @@ public class RedisVectorStore extends DocumentStore {
             doc.setContent(document.getString("text"));
             Object vector = document.get("vector");
             if (vector != null) {
-                float[] doubles = JSON.parseObject(vector.toString(), float[].class);
-                doc.setVector(doubles);
+                float[] floats = JSON.parseObject(vector.toString(), float[].class);
+                doc.setVector(floats);
             }
 
             if (wrapper.getOutputFields() != null) {

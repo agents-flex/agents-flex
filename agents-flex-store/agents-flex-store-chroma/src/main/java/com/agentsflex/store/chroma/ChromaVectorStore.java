@@ -593,7 +593,7 @@ public class ChromaVectorStore extends DocumentStore {
                 }
 
                 if (embeddings != null && i < embeddings.size() && embeddings.get(i) != null) {
-                    doc.setVector(embeddings.get(i));
+                    doc.setVectorByNumbers(embeddings.get(i));
                 }
 
                 // 设置相似度分数（距离越小越相似）

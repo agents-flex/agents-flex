@@ -78,7 +78,7 @@ public class OllamaEmbeddingModel extends BaseEmbeddingModel<OllamaEmbeddingConf
 
         VectorData vectorData = new VectorData();
 
-        double[] embedding = JSONUtil.readDoubleArray(jsonObject, "$.embeddings[0]");
+        float[] embedding = JSONUtil.readFloatArray(jsonObject, "$.embeddings[0]");
         vectorData.setVector(embedding);
 
         vectorData.addMetadata("total_duration", JSONUtil.readLong(jsonObject, "$.total_duration"));

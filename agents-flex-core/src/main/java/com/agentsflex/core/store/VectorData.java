@@ -36,6 +36,10 @@ public class VectorData extends Metadata {
         return vector;
     }
 
+    public void setVector(float[] vector) {
+        this.vector = vector;
+    }
+
     public List<Float> getVectorAsList() {
         if (vector == null) {
             return null;
@@ -69,37 +73,15 @@ public class VectorData extends Metadata {
         return result;
     }
 
-
-    public void setVector(float[] vector) {
-        this.vector = vector;
-    }
-
-    public void setVector(Float[] vector) {
-        this.vector = new float[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            this.vector[i] = vector[i];
-        }
-    }
-
-    public void setVector(double[] vector) {
-        this.vector = new float[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            this.vector[i] = (float) vector[i];
-        }
-    }
-
-    public void setVector(Double[] vector) {
-        this.vector = new float[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            this.vector[i] = vector[i].floatValue();
-        }
-    }
-
-    public void setVector(Collection<? extends Number> vector) {
-        this.vector = new float[vector.size()];
-        int index = 0;
-        for (Number num : vector) {
-            this.vector[index++] = num.floatValue();
+    public void setVectorByNumbers(Collection<? extends Number> vector) {
+        if (vector == null || vector.isEmpty()) {
+            this.vector = null;
+        } else {
+            this.vector = new float[vector.size()];
+            int index = 0;
+            for (Number num : vector) {
+                this.vector[index++] = num.floatValue();
+            }
         }
     }
 

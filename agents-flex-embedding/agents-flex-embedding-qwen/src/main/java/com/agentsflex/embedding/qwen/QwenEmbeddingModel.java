@@ -68,7 +68,7 @@ public class QwenEmbeddingModel extends BaseEmbeddingModel<QwenEmbeddingConfig> 
         }
 
         VectorData vectorData = new VectorData();
-        double[] embedding = JSONUtil.readDoubleArray(jsonObject, "$.data[0].embedding");
+        float[] embedding = JSONUtil.readFloatArray(jsonObject, "$.data[0].embedding");
         vectorData.setVector(embedding);
 
         return vectorData;

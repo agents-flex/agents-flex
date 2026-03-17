@@ -30,7 +30,7 @@ public class JSONUtil {
         return MapUtil.computeIfAbsent(jsonPaths, path, JSONPath::of);
     }
 
-    public static double[] readDoubleArray(JSONObject jsonObject, String path) {
+    public static float[] readFloatArray(JSONObject jsonObject, String path) {
         if (jsonObject == null || path == null) {
             return null;
         }
@@ -44,17 +44,17 @@ public class JSONUtil {
 
         if (result instanceof List) {
             List<?> list = (List<?>) result;
-            double[] array = new double[list.size()];
+            float[] array = new float[list.size()];
             for (int i = 0; i < list.size(); i++) {
                 Object item = list.get(i);
                 if (item instanceof Number) {
-                    array[i] = ((Number) item).doubleValue();
+                    array[i] = ((Number) item).floatValue();
                 } else if (item == null) {
-                    array[i] = 0.0; // 或抛异常，根据需求
+                    array[i] = 0.0f; // 或抛异常，根据需求
                 } else {
                     // 尝试转换字符串？或报错
                     try {
-                        array[i] = Double.parseDouble(item.toString());
+                        array[i] = Float.parseFloat(item.toString());
                     } catch (NumberFormatException e) {
                         return null; // 或抛异常
                     }
