@@ -23,37 +23,50 @@ import java.util.List;
 
 public class StoreResult extends Metadata {
     private final boolean success;
-    private String failReason;
+    private Exception exception;
+    private String message;
     private List<Object> ids;
 
     public StoreResult(boolean success) {
         this.success = success;
-        this.failReason = "";
+        this.message = "";
     }
 
-    public StoreResult(boolean success, String failReason) {
+    public StoreResult(boolean success, String message) {
         this.success = success;
-        this.failReason = failReason == null ? "" : failReason;
+        this.message = message == null ? "" : message;
     }
 
     public boolean isSuccess() {
         return success;
     }
 
-    public String getFailReason() {return failReason;}
+    public String getMessage() {
+        return message;
+    }
 
-    public void setFailReason(String failReason) {this.failReason = failReason;}
+    public void setMessage(String message) {
+        this.message = message;
+    }
 
     public List<Object> ids() {
         return ids;
     }
 
-    public static StoreResult fail() {
-        return new StoreResult(false);
+    public static StoreResult fail(String message, Exception exception) {
+        StoreResult storeResult = new StoreResult(false);
+        storeResult.setMessage(message);
+        storeResult.exception = exception;
+        return storeResult;
     }
 
-    public static StoreResult fail(String failReason) {
-        return new StoreResult(false, failReason);
+    public static StoreResult fail(String message) {
+        return new StoreResult(false, message);
+    }
+
+
+    public static StoreResult fail() {
+        return new StoreResult(false);
     }
 
     public static StoreResult success() {
@@ -69,12 +82,30 @@ public class StoreResult extends Metadata {
         return result;
     }
 
+    public Exception getException() {
+        return exception;
+    }
+
+    public void setException(Exception exception) {
+        this.exception = exception;
+    }
+
+    public List<Object> getIds() {
+        return ids;
+    }
+
+    public void setIds(List<Object> ids) {
+        this.ids = ids;
+    }
+
     @Override
     public String toString() {
         return "StoreResult{" +
             "success=" + success +
+            ", exception=" + exception +
+            ", message='" + message + '\'' +
             ", ids=" + ids +
-            ", failReason='" + failReason + '\'' +
+            ", metadataMap=" + metadataMap +
             '}';
     }
 }
