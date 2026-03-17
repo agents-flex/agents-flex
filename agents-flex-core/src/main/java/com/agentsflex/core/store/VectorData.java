@@ -25,12 +25,12 @@ import java.util.List;
 
 public class VectorData extends Metadata {
 
-    private float[] vector;
+    protected float[] vector;
 
     /**
      * 0 ~ 1, 数值越大，相似度越高
      */
-    private Double score;
+    protected Double score;
 
     public float[] getVector() {
         return vector;
