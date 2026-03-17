@@ -20,6 +20,8 @@ import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
+import com.agentsflex.core.util.MapUtil;
+import com.agentsflex.core.util.StringUtil;
 import com.google.gson.*;
 import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.client.MilvusClientV2;
@@ -35,7 +37,6 @@ import io.milvus.v2.service.vector.request.SearchReq;
 import io.milvus.v2.service.vector.request.UpsertReq;
 import io.milvus.v2.service.vector.request.data.FloatVec;
 import io.milvus.v2.service.vector.response.SearchResp;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,14 +52,15 @@ import java.util.stream.Collectors;
  * 2. 支持主键类型自动识别（String 对应 VarChar, Number 对应 Int64）
  * 3. 集合存在性缓存，避免重复检查，提升性能
  * 4. 向量索引自动创建（HNSW 算法 + 可配置度量类型）
- * 5. 资源自动管理，防止连接泄漏
+ * 5. 资源自动管理：客户端连接由框架内部维护，用户无需手动关闭
  * 6. 修复 content/title 字段被误放入 $meta 的问题，支持双重解析策略
  * 7. 支持 contentField/titleField 自定义配置，适配不同业务场景
  * <p>
  * 使用说明：
  * 1. 通过 MilvusVectorStoreConfig 配置连接参数和集合参数
  * 2. 调用 create() 工厂方法或 Builder 模式创建实例
- * 3. 实例会自动管理连接生命周期，使用完毕后建议调用 close() 释放资源
+ * 3. 客户端连接由内部自动管理，无需手动调用 close()
+ * 4. 相同配置的多个实例会自动复用客户端连接，减少资源开销
  *
  * @author Agents-Flex Team
  * @since 2026-03-17
@@ -96,6 +98,12 @@ public class MilvusVectorStore extends DocumentStore {
     public static final String DEFAULT_TITLE_FIELD = "title";
 
     /**
+     * 静态客户端连接池，key 为连接配置的唯一标识
+     * 使用 ConcurrentHashMap 保证线程安全，相同配置的实例复用客户端
+     */
+    private static final ConcurrentHashMap<String, MilvusClientV2> clientPool = new ConcurrentHashMap<>();
+
+    /**
      * 集合存在性缓存，key 为集合名称，value 为是否存在标记
      * 使用 ConcurrentHashMap 保证线程安全，避免重复创建集合
      */
@@ -105,11 +113,6 @@ public class MilvusVectorStore extends DocumentStore {
      * Milvus 连接配置
      */
     private final ConnectConfig connectConfig;
-
-    /**
-     * Milvus 客户端实例，使用 volatile 保证可见性
-     */
-    private volatile MilvusClientV2 client;
 
     /**
      * 集合名称
@@ -168,6 +171,30 @@ public class MilvusVectorStore extends DocumentStore {
     private final Set<String> reservedFields;
 
     /**
+     * 连接配置的唯一标识，用于连接池复用
+     */
+    private final String poolKey;
+
+    /**
+     * 静态初始化：注册 JVM 关闭钩子，确保应用退出时清理资源
+     */
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            logger.info("Shutting down Milvus client pool");
+            for (MilvusClientV2 client : clientPool.values()) {
+                try {
+                    client.close();
+                    logger.debug("Closed Milvus client for pool key");
+                } catch (Exception e) {
+                    logger.warn("Failed to close Milvus client during shutdown", e);
+                }
+            }
+            clientPool.clear();
+            logger.info("Milvus client pool shutdown complete");
+        }));
+    }
+
+    /**
      * 工厂方法：根据配置创建 MilvusVectorStore 实例
      *
      * @param config 配置对象，不能为空
@@ -182,7 +209,7 @@ public class MilvusVectorStore extends DocumentStore {
             .uri(config.getEndpoint())
             .dbName(config.getDatabase());
 
-        if (StringUtils.isNotBlank(config.getToken())) {
+        if (StringUtil.hasText(config.getToken())) {
             connectBuilder.token(config.getToken());
         }
 
@@ -208,15 +235,15 @@ public class MilvusVectorStore extends DocumentStore {
      */
     private MilvusVectorStore(Builder builder) {
         this.connectConfig = Objects.requireNonNull(builder.connectConfig, "connectConfig cannot be null");
-        this.collectionName = StringUtils.isNotBlank(builder.collectionName)
+        this.collectionName = StringUtil.hasText(builder.collectionName)
             ? builder.collectionName : "agents_flex_store";
-        this.vectorField = StringUtils.isNotBlank(builder.vectorField)
+        this.vectorField = StringUtil.hasText(builder.vectorField)
             ? builder.vectorField : DEFAULT_VECTOR_FIELD;
-        this.idField = StringUtils.isNotBlank(builder.idField)
+        this.idField = StringUtil.hasText(builder.idField)
             ? builder.idField : DEFAULT_ID_FIELD;
-        this.contentField = StringUtils.isNotBlank(builder.contentField)
+        this.contentField = StringUtil.hasText(builder.contentField)
             ? builder.contentField : DEFAULT_CONTENT_FIELD;
-        this.titleField = StringUtils.isNotBlank(builder.titleField)
+        this.titleField = StringUtil.hasText(builder.titleField)
             ? builder.titleField : DEFAULT_TITLE_FIELD;
         this.dimension = builder.dimension;
         this.metricType = builder.metricType != null ? builder.metricType : IndexParam.MetricType.COSINE;
@@ -234,6 +261,9 @@ public class MilvusVectorStore extends DocumentStore {
             "$meta"
         ));
 
+        // 生成连接池 key，用于复用相同配置的客户端
+        this.poolKey = generatePoolKey(connectConfig);
+
         // 校验必要参数：自动创建集合时必须指定向量维度
         if (autoCreateCollection && dimension == null) {
             throw new IllegalArgumentException("dimension is required when autoCreateCollection is enabled");
@@ -241,20 +271,34 @@ public class MilvusVectorStore extends DocumentStore {
     }
 
     /**
-     * 获取 Milvus 客户端实例，使用双重检查锁定实现懒加载
+     * 生成连接池的唯一标识
+     * 基于连接配置的关键参数生成，相同配置的实例可复用客户端
+     *
+     * @param config 连接配置
+     * @return 唯一标识字符串
+     */
+    private String generatePoolKey(ConnectConfig config) {
+        // 使用 uri + dbName + token 的前 8 位作为 key，平衡唯一性和简洁性
+        String uri = config.getUri() != null ? config.getUri() : "";
+        String dbName = config.getDbName() != null ? config.getDbName() : "default";
+        String token = config.getToken() != null ? config.getToken() : "";
+        // token 可能较长，取前 8 位作为标识即可
+        String tokenHash = token.length() > 8 ? token.substring(0, 8) : token;
+        return uri + "|" + dbName + "|" + tokenHash;
+    }
+
+    /**
+     * 获取 Milvus 客户端实例，从连接池获取或创建
+     * 相同配置的多个 MilvusVectorStore 实例会复用同一个客户端
      *
      * @return MilvusClientV2 实例
      */
     private MilvusClientV2 getClient() {
-        if (client == null) {
-            synchronized (this) {
-                if (client == null) {
-                    client = new MilvusClientV2(connectConfig);
-                    logger.info("Milvus client connected to: {}", connectConfig.getUri());
-                }
-            }
-        }
-        return client;
+        return MapUtil.computeIfAbsent(clientPool, poolKey, key -> {
+            MilvusClientV2 client = new MilvusClientV2(connectConfig);
+            logger.info("Created Milvus client for pool key: {}", poolKey);
+            return client;
+        });
     }
 
     /**
@@ -334,36 +378,37 @@ public class MilvusVectorStore extends DocumentStore {
             .build());
 
         // 如果配置了 content 字段，显式添加到 schema
-        // 这样即使 enableDynamicField=true，content 也会作为顶层字段返回，不会被放入 $meta
-        if (StringUtils.isNotBlank(contentField)) {
+        // 设置 nullable=true，允许插入时不提供该字段（会自动填充空值）
+        if (StringUtil.hasText(contentField)) {
             fields.add(CreateCollectionReq.FieldSchema.builder()
                 .name(contentField)
-                .isNullable(true)
                 .dataType(DataType.VarChar)
                 .maxLength(65535)
+                .isNullable(true)
                 .build());
         }
 
         // 如果配置了 title 字段且不与 content 重复，显式添加到 schema
-        if (StringUtils.isNotBlank(titleField) && !titleField.equals(contentField)) {
+        // 设置 nullable=true，允许插入时不提供该字段（会自动填充空值）
+        if (StringUtil.hasText(titleField) && !titleField.equals(contentField)) {
             fields.add(CreateCollectionReq.FieldSchema.builder()
                 .name(titleField)
-                .isNullable(true)
                 .dataType(DataType.VarChar)
                 .maxLength(2048)
+                .isNullable(true)
                 .build());
         }
 
+        // 构建 Schema
         CreateCollectionReq.CollectionSchema schema = CreateCollectionReq.CollectionSchema.builder()
             .fieldSchemaList(fields)
             .enableDynamicField(enableDynamicField)
             .build();
 
-        // 构建创建集合请求
+        // 构建创建集合请求（enableDynamicField 只需在 schema 中设置一次）
         CreateCollectionReq createReq = CreateCollectionReq.builder()
             .collectionName(collectionName)
             .collectionSchema(schema)
-            .enableDynamicField(enableDynamicField)
             .build();
 
         milvusClient.createCollection(createReq);
@@ -449,13 +494,14 @@ public class MilvusVectorStore extends DocumentStore {
         }
 
         // 使用配置的字段名存储 content/title，确保与 schema 定义一致
-        if (StringUtils.isNotBlank(document.getContent())) {
+        // 即使为空也添加字段，避免 Milvus 报错 "field is not provided"
+        if (StringUtil.hasText(document.getContent())) {
             json.addProperty(contentField, document.getContent());
         } else {
             json.addProperty(contentField, "");
         }
 
-        if (StringUtils.isNotBlank(document.getTitle())) {
+        if (StringUtil.hasText(document.getTitle())) {
             json.addProperty(titleField, document.getTitle());
         } else {
             json.addProperty(titleField, "");
@@ -506,6 +552,7 @@ public class MilvusVectorStore extends DocumentStore {
     /**
      * 从 Milvus 搜索结果中提取字段值
      * 支持大小写不敏感匹配，兼容不同返回格式
+     * 空字符串视为无效值，返回 null
      *
      * @param entity    实体数据 Map
      * @param fieldName 目标字段名
@@ -518,13 +565,22 @@ public class MilvusVectorStore extends DocumentStore {
         // 优先精确匹配
         if (entity.containsKey(fieldName)) {
             Object value = entity.get(fieldName);
-            return value != null ? String.valueOf(value) : null;
+            if (value == null) {
+                return null;
+            }
+            String strValue = String.valueOf(value);
+            // 空字符串视为无效值，返回 null
+            return StringUtil.noText(strValue) ? null : strValue;
         }
         // 降级：大小写不敏感匹配，兼容 Milvus 可能返回不同大小写的字段名
         for (Map.Entry<String, Object> entry : entity.entrySet()) {
             if (fieldName.equalsIgnoreCase(entry.getKey())) {
                 Object value = entry.getValue();
-                return value != null ? String.valueOf(value) : null;
+                if (value == null) {
+                    return null;
+                }
+                String strValue = String.valueOf(value);
+                return StringUtil.noText(strValue) ? null : strValue;
             }
         }
         return null;
@@ -632,16 +688,16 @@ public class MilvusVectorStore extends DocumentStore {
         String title = extractFieldValue(entity, titleField);
 
         // 策略 2：如果顶层没有，尝试从 $meta 中解析（兼容 pure dynamic field 场景）
-        if (StringUtils.isBlank(content) || StringUtils.isBlank(title)) {
+        if (StringUtil.noText(content) || StringUtil.noText(title)) {
             Map<String, Object> metaFields = extractMetaFields(entity);
             if (!metaFields.isEmpty()) {
-                if (StringUtils.isBlank(content)) {
+                if (StringUtil.noText(content)) {
                     Object metaContent = metaFields.get(contentField);
                     if (metaContent != null) {
                         content = String.valueOf(metaContent);
                     }
                 }
-                if (StringUtils.isBlank(title)) {
+                if (StringUtil.noText(title)) {
                     Object metaTitle = metaFields.get(titleField);
                     if (metaTitle != null) {
                         title = String.valueOf(metaTitle);
@@ -657,11 +713,11 @@ public class MilvusVectorStore extends DocumentStore {
             }
         }
 
-        // 设置 content 和 title
-        if (StringUtils.isNotBlank(content)) {
+        // 设置 content 和 title（空字符串不设置，保持为 null）
+        if (StringUtil.hasText(content)) {
             document.setContent(content);
         }
-        if (StringUtils.isNotBlank(title)) {
+        if (StringUtil.hasText(title)) {
             document.setTitle(title);
         }
 
@@ -719,14 +775,11 @@ public class MilvusVectorStore extends DocumentStore {
                 .map(this::documentToJson)
                 .collect(Collectors.toList());
 
-
-            InsertReq insertReq = InsertReq.builder()
+            // 执行插入操作
+            milvusClient.insert(InsertReq.builder()
                 .collectionName(collectionName)
                 .data(dataList)
-                .build();
-
-            // 执行插入操作
-            milvusClient.insert(insertReq);
+                .build());
 
             return StoreResult.success();
         } catch (Exception e) {
@@ -763,7 +816,7 @@ public class MilvusVectorStore extends DocumentStore {
 
             // 添加过滤条件
             String filter = wrapper.toFilterExpression();
-            if (StringUtils.isNotBlank(filter)) {
+            if (StringUtil.hasText(filter)) {
                 searchBuilder.filter(filter);
             }
 
@@ -887,21 +940,6 @@ public class MilvusVectorStore extends DocumentStore {
             }
         }
         return inClause.append("]").toString();
-    }
-
-    /**
-     * 关闭资源，释放 Milvus 客户端连接
-     */
-    public void close() {
-        if (client != null) {
-            try {
-                client.close();
-                collectionCache.clear();
-                logger.info("Milvus client closed");
-            } catch (Exception e) {
-                logger.warn("Failed to close Milvus client", e);
-            }
-        }
     }
 
     /**
