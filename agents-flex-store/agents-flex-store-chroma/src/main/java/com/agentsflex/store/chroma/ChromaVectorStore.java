@@ -380,7 +380,7 @@ public class ChromaVectorStore extends DocumentStore {
             return StoreResult.success();
         } catch (Exception e) {
             logger.error("Error deleting documents from Chroma", e);
-            return StoreResult.fail();
+            return StoreResult.fail("Delete failed: " + e.getMessage(), e);
         }
     }
 
@@ -412,7 +412,7 @@ public class ChromaVectorStore extends DocumentStore {
             return storeResult;
         } catch (Exception e) {
             logger.error("Error updating documents in Chroma", e);
-            return StoreResult.fail();
+            return StoreResult.fail("Update failed: " + e.getMessage(), e);
         }
     }
 

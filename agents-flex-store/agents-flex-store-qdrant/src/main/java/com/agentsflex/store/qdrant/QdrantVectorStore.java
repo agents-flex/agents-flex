@@ -109,7 +109,7 @@ public class QdrantVectorStore extends DocumentStore {
             }
             return StoreResult.successWithIds(documents);
         } catch (Exception e) {
-            return StoreResult.fail();
+            return StoreResult.fail("Store failed: " + e.getMessage(), e);
         }
     }
 
@@ -123,7 +123,7 @@ public class QdrantVectorStore extends DocumentStore {
             client.deleteAsync(collectionName, pointIds).get();
             return StoreResult.success();
         } catch (Exception e) {
-            return StoreResult.fail();
+            return StoreResult.fail("Delete failed: " + e.getMessage(), e);
         }
     }
 
@@ -146,7 +146,7 @@ public class QdrantVectorStore extends DocumentStore {
             }
             return StoreResult.successWithIds(documents);
         } catch (Exception e) {
-            return StoreResult.fail();
+            return StoreResult.fail("Update failed: " + e.getMessage(), e);
         }
     }
 

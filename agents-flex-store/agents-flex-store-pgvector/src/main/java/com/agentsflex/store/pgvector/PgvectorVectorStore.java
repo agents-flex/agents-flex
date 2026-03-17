@@ -148,7 +148,7 @@ public class PgvectorVectorStore extends DocumentStore {
             connection.commit();
         } catch (Exception e) {
             logger.error("delete document error: " + e, e);
-            return StoreResult.fail();
+            return StoreResult.fail("Delete failed: " + e.getMessage(), e);
         }
 
         return StoreResult.success();
@@ -224,7 +224,7 @@ public class PgvectorVectorStore extends DocumentStore {
             connection.commit();
         } catch (Exception e) {
             logger.error("Error update in pgvector", e);
-            return StoreResult.fail();
+            return StoreResult.fail("Update failed: " + e.getMessage(), e);
         }
         return StoreResult.successWithIds(documents);
     }
