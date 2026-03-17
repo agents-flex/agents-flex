@@ -35,12 +35,6 @@ public class Document extends VectorData {
     private String content;
 
 
-    /**
-     * 得分，目前只有在 rerank 场景使用
-     */
-    private Double score;
-
-
     public Document() {
     }
 
@@ -72,17 +66,7 @@ public class Document extends VectorData {
         this.content = content;
     }
 
-    @Override
-    public Double getScore() {
-        return score;
-    }
-
-    @Override
-    public void setScore(Double score) {
-        this.score = score;
-    }
-
-    public static Document of(String content){
+    public static Document of(String content) {
         Document document = new Document();
         document.setContent(content);
         return document;
@@ -94,7 +78,9 @@ public class Document extends VectorData {
             "id=" + id +
             ", title='" + title + '\'' +
             ", content='" + content + '\'' +
+//            ", vector=" + Arrays.toString(vector) +
             ", score=" + score +
+            ", metadataMap=" + metadataMap +
             '}';
     }
 }
