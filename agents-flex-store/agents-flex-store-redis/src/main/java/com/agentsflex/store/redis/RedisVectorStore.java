@@ -230,9 +230,9 @@ public class RedisVectorStore extends DocumentStore {
                 }
             }
 
-            double distance = 1.0d - similarityScore(document);
+            float distance = 1.0f - similarityScore(document);
             // 相似度得分设置为0-1 ， 0表示最不相似， 1表示最相似
-            doc.setScore(1.0d - distance);
+            doc.setScore(1.0f - distance);
             documents.add(doc);
         }
         return documents;

@@ -598,7 +598,7 @@ public class ChromaVectorStore extends DocumentStore {
 
                 // 设置相似度分数（距离越小越相似）
                 if (distances != null && i < distances.size()) {
-                    double score = 1.0 - distances.get(i);
+                    float score = 1.0f - distances.get(i).floatValue();
                     // 确保分数在合理范围内
                     score = Math.max(0, Math.min(1, score));
                     doc.setScore(score);
@@ -727,7 +727,8 @@ public class ChromaVectorStore extends DocumentStore {
     private String getCollectionName(StoreOptions options) {
         return options != null
             ? options.getCollectionNameOrDefault(defaultCollectionName)
-            : defaultCollectionName;    }
+            : defaultCollectionName;
+    }
 
     /**
      * 构建特定集合操作的URL，包含tenant和database

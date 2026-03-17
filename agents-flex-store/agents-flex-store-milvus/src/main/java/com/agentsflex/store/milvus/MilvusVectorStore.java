@@ -257,7 +257,6 @@ public class MilvusVectorStore extends DocumentStore {
             idField.toLowerCase(),
             contentField.toLowerCase(),
             titleField.toLowerCase(),
-            "score",
             "$meta"
         ));
 
@@ -507,9 +506,6 @@ public class MilvusVectorStore extends DocumentStore {
             json.addProperty(titleField, "");
         }
 
-        if (document.getScore() != null) {
-            json.addProperty("score", document.getScore());
-        }
 
         // 动态字段存储其他元数据，排除已显式定义的字段和保留字段
         if (enableDynamicField && document.getMetadataMap() != null) {
@@ -676,7 +672,7 @@ public class MilvusVectorStore extends DocumentStore {
     private Document searchResultToDocument(SearchResp.SearchResult result) {
         Document document = new Document();
         document.setId(result.getId());
-        document.setScore(result.getScore() != null ? result.getScore().doubleValue() : null);
+        document.setScore(result.getScore() != null ? result.getScore() : null);
 
         Map<String, Object> entity = result.getEntity();
         if (entity == null || entity.isEmpty()) {

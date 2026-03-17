@@ -184,7 +184,7 @@ public class ChromaVectorStoreTest {
             // 模拟搜索结果，返回前3个文档
             List<Document> mockResults = new ArrayList<>(documents.subList(0, Math.min(3, documents.size())));
             for (int i = 0; i < mockResults.size(); i++) {
-                mockResults.get(i).setScore(1.0 - i * 0.1); // 模拟相似度分数
+                mockResults.get(i).setScore(1.0f - i * 0.1f); // 模拟相似度分数
             }
 
             // 验证模拟结果

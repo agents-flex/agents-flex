@@ -171,7 +171,7 @@ public class ElasticSearcher implements DocumentSearcher {
             SearchResponse<JsonData> response = client.search(request, JsonData.class);
             List<Document> results = new ArrayList<>();
             response.hits().hits().forEach(hit -> {
-                if(hit.source() != null){
+                if (hit.source() != null) {
                     results.add(parseFromJsonData(hit.source()));
                 }
             });
@@ -279,7 +279,7 @@ public class ElasticSearcher implements DocumentSearcher {
         document.setId(dataMap.get("id"));
         document.setTitle((String) dataMap.get("title"));
         document.setContent((String) dataMap.get("content"));
-        document.setScore((Double) dataMap.get("score"));
+        document.setScore(((Number) dataMap.get("score")).floatValue());
 
         @SuppressWarnings("unchecked")
         Map<String, Object> metadataMap = (Map<String, Object>) dataMap.get("metadataMap");

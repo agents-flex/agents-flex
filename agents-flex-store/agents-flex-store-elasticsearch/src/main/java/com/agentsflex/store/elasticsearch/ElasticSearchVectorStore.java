@@ -135,7 +135,7 @@ public class ElasticSearchVectorStore extends DocumentStore {
     @Override
     public StoreResult doStore(List<Document> documents, StoreOptions options) {
         String indexName;
-        if (StringUtil.hasText(options.getCollectionName())){
+        if (StringUtil.hasText(options.getCollectionName())) {
             indexName = options.getCollectionName();
         } else {
             indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
@@ -244,7 +244,7 @@ public class ElasticSearchVectorStore extends DocumentStore {
         document.setId(dataMap.get("id"));
         document.setTitle((String) dataMap.get("title"));
         document.setContent((String) dataMap.get("content"));
-        document.setScore(score);
+        document.setScore(score == null ? null : score.floatValue());
 
         Object vectorObj = dataMap.get("vector");
         if (vectorObj instanceof List<?>) {

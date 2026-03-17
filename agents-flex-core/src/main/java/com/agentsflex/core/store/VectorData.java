@@ -30,7 +30,7 @@ public class VectorData extends Metadata {
     /**
      * 0 ~ 1, 数值越大，相似度越高
      */
-    protected Double score;
+    protected Float score;
 
     public float[] getVector() {
         return vector;
@@ -103,11 +103,11 @@ public class VectorData extends Metadata {
         }
     }
 
-    public Double getScore() {
+    public Float getScore() {
         return score;
     }
 
-    public void setScore(Double score) {
+    public void setScore(Float score) {
         this.score = score;
     }
 

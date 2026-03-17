@@ -119,7 +119,7 @@ public class DefaultRerankModel extends BaseRerankModel<DefaultRerankModelConfig
             JSONObject result = results.getJSONObject(i);
             int index = result.getIntValue(config.getIndexJsonKey());
             Document document = documents.get(index);
-            document.setScore(result.getDoubleValue(config.getScoreJsonKey()));
+            document.setScore(result.getFloatValue(config.getScoreJsonKey()));
         }
 
         // 对 documents 排序， score 越大的越靠前

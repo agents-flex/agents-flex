@@ -252,7 +252,8 @@ public class OpenSearchVectorStore extends DocumentStore {
                 .filter(s -> s.source() != null)
                 .map(s -> {
                     Document source = s.source();
-                    source.setScore(s.score());
+                    Double score = s.score();
+                    source.setScore(score == null ? null : score.floatValue());
                     return source;
                 })
                 .collect(toList());

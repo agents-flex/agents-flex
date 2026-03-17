@@ -164,7 +164,7 @@ public class LuceneSearcher implements DocumentSearcher {
                 resultDoc.setTitle(doc.get("title"));
                 resultDoc.setMetadataMap(extractMetadata(doc));
 
-                resultDoc.setScore((double) scoreDoc.score);
+                resultDoc.setScore(scoreDoc.score);
 
                 results.add(resultDoc);
             }
