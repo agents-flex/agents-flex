@@ -1,0 +1,1128 @@
+/*
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package com.agentsflex.store.milvus;
+
+import com.agentsflex.core.document.Document;
+import com.agentsflex.core.store.DocumentStore;
+import com.agentsflex.core.store.SearchWrapper;
+import com.agentsflex.core.store.StoreOptions;
+import com.agentsflex.core.store.StoreResult;
+import com.google.gson.*;
+import io.milvus.v2.client.ConnectConfig;
+import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.common.DataType;
+import io.milvus.v2.common.IndexParam;
+import io.milvus.v2.service.collection.request.CreateCollectionReq;
+import io.milvus.v2.service.collection.request.DescribeCollectionReq;
+import io.milvus.v2.service.collection.request.LoadCollectionReq;
+import io.milvus.v2.service.index.request.CreateIndexReq;
+import io.milvus.v2.service.vector.request.DeleteReq;
+import io.milvus.v2.service.vector.request.InsertReq;
+import io.milvus.v2.service.vector.request.SearchReq;
+import io.milvus.v2.service.vector.request.UpsertReq;
+import io.milvus.v2.service.vector.request.data.FloatVec;
+import io.milvus.v2.service.vector.response.SearchResp;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+/**
+ * Milvus 向量存储实现（Gson 版本）- 支持自动创建集合
+ * <p>
+ * 核心特性：
+ * 1. 首次操作时自动创建 Collection，无需手动初始化
+ * 2. 支持主键类型自动识别（String 对应 VarChar, Number 对应 Int64）
+ * 3. 集合存在性缓存，避免重复检查，提升性能
+ * 4. 向量索引自动创建（HNSW 算法 + 可配置度量类型）
+ * 5. 资源自动管理，防止连接泄漏
+ * 6. 修复 content/title 字段被误放入 $meta 的问题，支持双重解析策略
+ * 7. 支持 contentField/titleField 自定义配置，适配不同业务场景
+ * <p>
+ * 使用说明：
+ * 1. 通过 MilvusVectorStoreConfig 配置连接参数和集合参数
+ * 2. 调用 create() 工厂方法或 Builder 模式创建实例
+ * 3. 实例会自动管理连接生命周期，使用完毕后建议调用 close() 释放资源
+ *
+ * @author Agents-Flex Team
+ * @since 2026-03-17
+ */
+public class MilvusVectorStore extends DocumentStore {
+
+    /**
+     * 日志记录器
+     */
+    private static final Logger logger = LoggerFactory.getLogger(MilvusVectorStore.class);
+
+    /**
+     * Gson 实例，用于 JSON 序列化/反序列化，线程安全
+     */
+    private static final Gson GSON = new Gson();
+
+    /**
+     * 默认向量字段名称
+     */
+    public static final String DEFAULT_VECTOR_FIELD = "vector";
+
+    /**
+     * 默认主键字段名称
+     */
+    public static final String DEFAULT_ID_FIELD = "id";
+
+    /**
+     * 默认内容字段名称
+     */
+    public static final String DEFAULT_CONTENT_FIELD = "content";
+
+    /**
+     * 默认标题字段名称
+     */
+    public static final String DEFAULT_TITLE_FIELD = "title";
+
+    /**
+     * 集合存在性缓存，key 为集合名称，value 为是否存在标记
+     * 使用 ConcurrentHashMap 保证线程安全，避免重复创建集合
+     */
+    private final ConcurrentHashMap<String, Boolean> collectionCache = new ConcurrentHashMap<>();
+
+    /**
+     * Milvus 连接配置
+     */
+    private final ConnectConfig connectConfig;
+
+    /**
+     * Milvus 客户端实例，使用 volatile 保证可见性
+     */
+    private volatile MilvusClientV2 client;
+
+    /**
+     * 集合名称
+     */
+    private final String collectionName;
+
+    /**
+     * 向量字段名称
+     */
+    private final String vectorField;
+
+    /**
+     * 主键字段名称
+     */
+    private final String idField;
+
+    /**
+     * 内容字段名称，支持自定义配置
+     */
+    private final String contentField;
+
+    /**
+     * 标题字段名称，支持自定义配置
+     */
+    private final String titleField;
+
+    /**
+     * 向量维度，创建集合时必须指定
+     */
+    private final Integer dimension;
+
+    /**
+     * 相似度度量类型，默认 COSINE
+     */
+    private final IndexParam.MetricType metricType;
+
+    /**
+     * 是否启用动态字段存储元数据
+     */
+    private final boolean enableDynamicField;
+
+    /**
+     * 默认搜索返回数量（topK）
+     */
+    private final int defaultTopK;
+
+    /**
+     * 是否自动创建集合
+     */
+    private final boolean autoCreateCollection;
+
+    /**
+     * 保留字段集合，用于判断哪些字段不应放入 metadata
+     * 使用 HashSet 提升查找性能，字段名统一转小写存储以支持大小写不敏感匹配
+     */
+    private final Set<String> reservedFields;
+
+    /**
+     * 工厂方法：根据配置创建 MilvusVectorStore 实例
+     *
+     * @param config 配置对象，不能为空
+     * @return MilvusVectorStore 实例
+     * @throws IllegalArgumentException 如果配置无效
+     */
+    public static MilvusVectorStore create(MilvusVectorStoreConfig config) {
+        Objects.requireNonNull(config, "config cannot be null");
+        config.checkAvailable();
+
+        ConnectConfig.ConnectConfigBuilder connectBuilder = ConnectConfig.builder()
+            .uri(config.getEndpoint())
+            .dbName(config.getDatabase());
+
+        if (StringUtils.isNotBlank(config.getToken())) {
+            connectBuilder.token(config.getToken());
+        }
+
+        return new Builder()
+            .connectConfig(connectBuilder.build())
+            .collectionName(config.getDefaultCollectionName())
+            .vectorField(config.getVectorField())
+            .idField(config.getIdField())
+            .contentField(config.getContentField())
+            .titleField(config.getTitleField())
+            .dimension(config.getDimension())
+            .metricType(IndexParam.MetricType.valueOf(config.getMetricType()))
+            .enableDynamicField(config.isEnableDynamicField())
+            .defaultTopK(config.getDefaultTopK())
+            .autoCreateCollection(true)
+            .build();
+    }
+
+    /**
+     * 私有构造函数，通过 Builder 模式创建实例
+     *
+     * @param builder Builder 对象
+     */
+    private MilvusVectorStore(Builder builder) {
+        this.connectConfig = Objects.requireNonNull(builder.connectConfig, "connectConfig cannot be null");
+        this.collectionName = StringUtils.isNotBlank(builder.collectionName)
+            ? builder.collectionName : "agents_flex_store";
+        this.vectorField = StringUtils.isNotBlank(builder.vectorField)
+            ? builder.vectorField : DEFAULT_VECTOR_FIELD;
+        this.idField = StringUtils.isNotBlank(builder.idField)
+            ? builder.idField : DEFAULT_ID_FIELD;
+        this.contentField = StringUtils.isNotBlank(builder.contentField)
+            ? builder.contentField : DEFAULT_CONTENT_FIELD;
+        this.titleField = StringUtils.isNotBlank(builder.titleField)
+            ? builder.titleField : DEFAULT_TITLE_FIELD;
+        this.dimension = builder.dimension;
+        this.metricType = builder.metricType != null ? builder.metricType : IndexParam.MetricType.COSINE;
+        this.enableDynamicField = builder.enableDynamicField;
+        this.defaultTopK = builder.defaultTopK > 0 ? builder.defaultTopK : 10;
+        this.autoCreateCollection = builder.autoCreateCollection;
+
+        // 预构建保留字段集合，统一转小写存储，支持大小写不敏感匹配
+        this.reservedFields = new HashSet<>(Arrays.asList(
+            vectorField.toLowerCase(),
+            idField.toLowerCase(),
+            contentField.toLowerCase(),
+            titleField.toLowerCase(),
+            "score",
+            "$meta"
+        ));
+
+        // 校验必要参数：自动创建集合时必须指定向量维度
+        if (autoCreateCollection && dimension == null) {
+            throw new IllegalArgumentException("dimension is required when autoCreateCollection is enabled");
+        }
+    }
+
+    /**
+     * 获取 Milvus 客户端实例，使用双重检查锁定实现懒加载
+     *
+     * @return MilvusClientV2 实例
+     */
+    private MilvusClientV2 getClient() {
+        if (client == null) {
+            synchronized (this) {
+                if (client == null) {
+                    client = new MilvusClientV2(connectConfig);
+                    logger.info("Milvus client connected to: {}", connectConfig.getUri());
+                }
+            }
+        }
+        return client;
+    }
+
+    /**
+     * 确保集合存在，如果不存在则自动创建
+     * 使用缓存避免重复检查，使用同步块保证线程安全
+     */
+    private void ensureCollectionExists() {
+        if (!autoCreateCollection) {
+            return;
+        }
+
+        // 先查缓存，避免重复请求
+        if (Boolean.TRUE.equals(collectionCache.get(collectionName))) {
+            return;
+        }
+
+        synchronized (this) {
+            // 双重检查，避免并发创建
+            if (Boolean.TRUE.equals(collectionCache.get(collectionName))) {
+                return;
+            }
+
+            MilvusClientV2 milvusClient = getClient();
+            try {
+                // 检查集合是否存在
+                DescribeCollectionReq describeReq = DescribeCollectionReq.builder()
+                    .collectionName(collectionName)
+                    .build();
+                milvusClient.describeCollection(describeReq);
+
+                // 集合已存在，加入缓存
+                collectionCache.put(collectionName, true);
+                logger.debug("Collection '{}' already exists", collectionName);
+
+            } catch (Exception e) {
+                String errorMsg = e.getMessage();
+                // 判断是否为集合不存在的异常
+                if (errorMsg != null && (errorMsg.contains("collection not found") || errorMsg.contains("can't find collection"))) {
+                    // 集合不存在，创建新集合
+                    createCollection(milvusClient);
+                    collectionCache.put(collectionName, true);
+                    logger.info("Collection '{}' created successfully", collectionName);
+                } else {
+                    // 其他异常，抛出
+                    throw new RuntimeException("Failed to check collection: " + e.getMessage(), e);
+                }
+            }
+        }
+    }
+
+    /**
+     * 创建 Collection 和向量索引
+     * 显式添加 content/title 字段到 schema，确保查询时作为顶层字段返回
+     *
+     * @param milvusClient Milvus 客户端实例
+     */
+    private void createCollection(MilvusClientV2 milvusClient) {
+        // 自动识别主键类型，默认使用 VarChar 兼容性更好
+        DataType idType = inferPrimaryKeyType();
+
+        // 构建字段列表：主键 + 向量 + 可选的 content/title
+        List<CreateCollectionReq.FieldSchema> fields = new ArrayList<>();
+
+        // 添加主键字段
+        fields.add(CreateCollectionReq.FieldSchema.builder()
+            .name(idField)
+            .dataType(idType)
+            .isPrimaryKey(true)
+            .autoID(false)
+            .build());
+
+        // 添加向量字段
+        fields.add(CreateCollectionReq.FieldSchema.builder()
+            .name(vectorField)
+            .dataType(DataType.FloatVector)
+            .dimension(dimension)
+            .build());
+
+        // 如果配置了 content 字段，显式添加到 schema
+        // 这样即使 enableDynamicField=true，content 也会作为顶层字段返回，不会被放入 $meta
+        if (StringUtils.isNotBlank(contentField)) {
+            fields.add(CreateCollectionReq.FieldSchema.builder()
+                .name(contentField)
+                .isNullable(true)
+                .dataType(DataType.VarChar)
+                .maxLength(65535)
+                .build());
+        }
+
+        // 如果配置了 title 字段且不与 content 重复，显式添加到 schema
+        if (StringUtils.isNotBlank(titleField) && !titleField.equals(contentField)) {
+            fields.add(CreateCollectionReq.FieldSchema.builder()
+                .name(titleField)
+                .isNullable(true)
+                .dataType(DataType.VarChar)
+                .maxLength(2048)
+                .build());
+        }
+
+        CreateCollectionReq.CollectionSchema schema = CreateCollectionReq.CollectionSchema.builder()
+            .fieldSchemaList(fields)
+            .enableDynamicField(enableDynamicField)
+            .build();
+
+        // 构建创建集合请求
+        CreateCollectionReq createReq = CreateCollectionReq.builder()
+            .collectionName(collectionName)
+            .collectionSchema(schema)
+            .enableDynamicField(enableDynamicField)
+            .build();
+
+        milvusClient.createCollection(createReq);
+        logger.debug("Created collection: {} with fields: {}", collectionName,
+            fields.stream().map(CreateCollectionReq.FieldSchema::getName).collect(Collectors.toList()));
+
+        // 创建向量索引，提升查询性能
+        createVectorIndex(milvusClient);
+    }
+
+    /**
+     * 推断主键数据类型
+     * 当前默认返回 VarChar，可根据业务需求扩展支持 Int64
+     *
+     * @return DataType 枚举值
+     */
+    private DataType inferPrimaryKeyType() {
+        // 默认使用 VarChar，兼容性更好，支持 UUID 等字符串主键
+        return DataType.VarChar;
+    }
+
+    /**
+     * 创建向量索引
+     * 使用 HNSW 算法，适合高维向量的近似最近邻搜索
+     *
+     * @param milvusClient Milvus 客户端实例
+     */
+    private void createVectorIndex(MilvusClientV2 milvusClient) {
+        try {
+            IndexParam indexParam = IndexParam.builder()
+                .fieldName(vectorField)
+                .indexName(vectorField + "_idx")
+                .indexType(IndexParam.IndexType.HNSW)
+                .metricType(metricType)
+                .extraParams(new HashMap<String, Object>() {{
+                    put("M", 16);
+                    put("efConstruction", 64);
+                }})
+                .build();
+
+            milvusClient.createIndex(CreateIndexReq.builder()
+                .collectionName(collectionName)
+                .indexParams(Collections.singletonList(indexParam))
+                .build());
+
+            // 加载集合到内存，必需步骤，否则无法执行搜索
+            milvusClient.loadCollection(LoadCollectionReq.builder()
+                .collectionName(collectionName)
+                .build());
+
+            logger.debug("Vector index created and collection loaded for: {}", collectionName);
+        } catch (Exception e) {
+            // 索引创建失败不影响基本功能，记录警告日志
+            logger.warn("Failed to create vector index (search may be slower): {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 将 Document 对象转换为 JsonObject，用于存入 Milvus
+     *
+     * @param document 文档对象
+     * @return JsonObject 表示的文档数据
+     */
+    private JsonObject documentToJson(Document document) {
+        JsonObject json = new JsonObject();
+
+        // 设置主键 ID
+        if (document.getId() != null) {
+            if (document.getId() instanceof Number) {
+                json.addProperty(idField, ((Number) document.getId()).longValue());
+            } else {
+                json.addProperty(idField, document.getId().toString());
+            }
+        }
+
+        // 设置向量数据
+        if (document.getVector() != null) {
+            JsonArray vectorArray = new JsonArray();
+            for (float v : document.getVector()) {
+                vectorArray.add(v);
+            }
+            json.add(vectorField, vectorArray);
+        }
+
+        // 使用配置的字段名存储 content/title，确保与 schema 定义一致
+        if (StringUtils.isNotBlank(document.getContent())) {
+            json.addProperty(contentField, document.getContent());
+        } else {
+            json.addProperty(contentField, "");
+        }
+
+        if (StringUtils.isNotBlank(document.getTitle())) {
+            json.addProperty(titleField, document.getTitle());
+        } else {
+            json.addProperty(titleField, "");
+        }
+
+        if (document.getScore() != null) {
+            json.addProperty("score", document.getScore());
+        }
+
+        // 动态字段存储其他元数据，排除已显式定义的字段和保留字段
+        if (enableDynamicField && document.getMetadataMap() != null) {
+            for (Map.Entry<String, Object> entry : document.getMetadataMap().entrySet()) {
+                String key = entry.getKey();
+                // 排除保留字段和已显式定义的 content/title
+                if (isReservedField(key) || key.equals(contentField) || key.equals(titleField)) {
+                    continue;
+                }
+                Object value = entry.getValue();
+                if (value instanceof String) {
+                    json.addProperty(key, (String) value);
+                } else if (value instanceof Number) {
+                    json.addProperty(key, (Number) value);
+                } else if (value instanceof Boolean) {
+                    json.addProperty(key, (Boolean) value);
+                } else {
+                    // 复杂对象转为 JSON 字符串存储
+                    json.addProperty(key, GSON.toJson(value));
+                }
+            }
+        }
+        return json;
+    }
+
+    /**
+     * 判断字段是否为保留字段
+     * 使用小写比较，支持大小写不敏感匹配
+     *
+     * @param key 字段名
+     * @return 是否为保留字段
+     */
+    private boolean isReservedField(String key) {
+        if (key == null) {
+            return true;
+        }
+        return reservedFields.contains(key.toLowerCase());
+    }
+
+    /**
+     * 从 Milvus 搜索结果中提取字段值
+     * 支持大小写不敏感匹配，兼容不同返回格式
+     *
+     * @param entity    实体数据 Map
+     * @param fieldName 目标字段名
+     * @return 字段值字符串，如果不存在返回 null
+     */
+    private String extractFieldValue(Map<String, Object> entity, String fieldName) {
+        if (entity == null || fieldName == null) {
+            return null;
+        }
+        // 优先精确匹配
+        if (entity.containsKey(fieldName)) {
+            Object value = entity.get(fieldName);
+            return value != null ? String.valueOf(value) : null;
+        }
+        // 降级：大小写不敏感匹配，兼容 Milvus 可能返回不同大小写的字段名
+        for (Map.Entry<String, Object> entry : entity.entrySet()) {
+            if (fieldName.equalsIgnoreCase(entry.getKey())) {
+                Object value = entry.getValue();
+                return value != null ? String.valueOf(value) : null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 从 $meta 字段解析动态字段
+     * 兼容 pure dynamic field 场景，当 content/title 未显式定义在 schema 中时，会从 $meta 中解析
+     *
+     * @param entity 实体数据 Map
+     * @return 解析后的动态字段 Map
+     */
+    private Map<String, Object> extractMetaFields(Map<String, Object> entity) {
+        Map<String, Object> result = new HashMap<>();
+        if (entity == null) {
+            return result;
+        }
+
+        Object metaObj = entity.get("$meta");
+        if (metaObj == null) {
+            return result;
+        }
+
+        // 情况 1: $meta 已经是 Map（Milvus SDK 可能直接解析）
+        if (metaObj instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> metaMap = (Map<String, Object>) metaObj;
+            result.putAll(metaMap);
+        }
+        // 情况 2: $meta 是 JSON 字符串
+        else if (metaObj instanceof String) {
+            try {
+                JsonObject json = GSON.fromJson((String) metaObj, JsonObject.class);
+                if (json != null) {
+                    for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
+                        result.put(entry.getKey(), parseJsonValue(entry.getValue()));
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to parse $meta JSON: {}", metaObj, e);
+            }
+        }
+        // 情况 3: $meta 是 JsonObject 类型
+        else if (metaObj instanceof JsonObject) {
+            JsonObject json = (JsonObject) metaObj;
+            for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
+                result.put(entry.getKey(), parseJsonValue(entry.getValue()));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 解析 JsonElement 为 Java 对象
+     *
+     * @param element JsonElement 对象
+     * @return 解析后的 Java 对象
+     */
+    private Object parseJsonValue(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return null;
+        } else if (element.isJsonPrimitive()) {
+            JsonPrimitive prim = element.getAsJsonPrimitive();
+            if (prim.isBoolean()) {
+                return prim.getAsBoolean();
+            }
+            if (prim.isNumber()) {
+                return prim.getAsNumber();
+            }
+            return prim.getAsString();
+        } else if (element.isJsonArray()) {
+            // 简单处理：数组转为 List<String>，复杂场景可按需扩展
+            List<String> list = new ArrayList<>();
+            for (JsonElement e : element.getAsJsonArray()) {
+                list.add(e.getAsString());
+            }
+            return list;
+        } else if (element.isJsonObject()) {
+            // 嵌套对象转为 JSON 字符串存储
+            return GSON.toJson(element.getAsJsonObject());
+        }
+        return element.toString();
+    }
+
+    /**
+     * 将 Milvus 搜索结果转换为 Document 对象
+     * 采用双重解析策略：优先读取顶层字段，不存在则从 $meta 中解析
+     *
+     * @param result 搜索结果项
+     * @return Document 对象
+     */
+    private Document searchResultToDocument(SearchResp.SearchResult result) {
+        Document document = new Document();
+        document.setId(result.getId());
+        document.setScore(result.getScore() != null ? result.getScore().doubleValue() : null);
+
+        Map<String, Object> entity = result.getEntity();
+        if (entity == null || entity.isEmpty()) {
+            return document;
+        }
+
+        // 策略 1：优先从顶层字段读取 content/title
+        String content = extractFieldValue(entity, contentField);
+        String title = extractFieldValue(entity, titleField);
+
+        // 策略 2：如果顶层没有，尝试从 $meta 中解析（兼容 pure dynamic field 场景）
+        if (StringUtils.isBlank(content) || StringUtils.isBlank(title)) {
+            Map<String, Object> metaFields = extractMetaFields(entity);
+            if (!metaFields.isEmpty()) {
+                if (StringUtils.isBlank(content)) {
+                    Object metaContent = metaFields.get(contentField);
+                    if (metaContent != null) {
+                        content = String.valueOf(metaContent);
+                    }
+                }
+                if (StringUtils.isBlank(title)) {
+                    Object metaTitle = metaFields.get(titleField);
+                    if (metaTitle != null) {
+                        title = String.valueOf(metaTitle);
+                    }
+                }
+                // 将 $meta 中的其他字段加入 metadata（排除已提取的 content/title）
+                for (Map.Entry<String, Object> entry : metaFields.entrySet()) {
+                    String key = entry.getKey();
+                    if (!isReservedField(key) && !key.equals(contentField) && !key.equals(titleField)) {
+                        document.addMetadata(key, entry.getValue());
+                    }
+                }
+            }
+        }
+
+        // 设置 content 和 title
+        if (StringUtils.isNotBlank(content)) {
+            document.setContent(content);
+        }
+        if (StringUtils.isNotBlank(title)) {
+            document.setTitle(title);
+        }
+
+        // 提取向量数据
+        if (entity.containsKey(vectorField) && entity.get(vectorField) instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<?> vecList = (List<?>) entity.get(vectorField);
+            float[] vector = new float[vecList.size()];
+            for (int i = 0; i < vecList.size(); i++) {
+                Object val = vecList.get(i);
+                if (val instanceof Number) {
+                    vector[i] = ((Number) val).floatValue();
+                }
+            }
+            document.setVector(vector);
+        }
+
+        // 添加其他顶层非保留字段到 metadata（排除 $meta 本身）
+        if (enableDynamicField) {
+            for (Map.Entry<String, Object> entry : entity.entrySet()) {
+                String key = entry.getKey();
+                // 跳过：保留字段、$meta（已解析）、已设置的 content/title
+                if (key == null || isReservedField(key) || "$meta".equals(key)
+                    || key.equalsIgnoreCase(contentField) || key.equalsIgnoreCase(titleField)) {
+                    continue;
+                }
+                document.addMetadata(key, entry.getValue());
+            }
+        }
+
+        return document;
+    }
+
+    /**
+     * 存储文档到 Milvus
+     *
+     * @param documents 文档列表
+     * @param options   存储选项
+     * @return StoreResult 操作结果
+     */
+    @Override
+    public StoreResult doStore(List<Document> documents, StoreOptions options) {
+        if (documents == null || documents.isEmpty()) {
+            return StoreResult.success();
+        }
+
+        try {
+            // 确保集合存在
+            ensureCollectionExists();
+
+            MilvusClientV2 milvusClient = getClient();
+
+            // 转换文档为 JSON 列表
+            List<JsonObject> dataList = documents.stream()
+                .map(this::documentToJson)
+                .collect(Collectors.toList());
+
+
+            InsertReq insertReq = InsertReq.builder()
+                .collectionName(collectionName)
+                .data(dataList)
+                .build();
+
+            // 执行插入操作
+            milvusClient.insert(insertReq);
+
+            return StoreResult.success();
+        } catch (Exception e) {
+            logger.error("Failed to store documents to Milvus", e);
+            return StoreResult.fail("Store failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 搜索相似文档
+     *
+     * @param wrapper 搜索条件封装对象
+     * @param options 搜索选项
+     * @return 匹配的文档列表
+     */
+    @Override
+    public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
+        if (wrapper == null || wrapper.getVector() == null) {
+            return Collections.emptyList();
+        }
+
+        try {
+            // 确保集合存在
+            ensureCollectionExists();
+
+            MilvusClientV2 milvusClient = getClient();
+
+            // 构建搜索请求
+            SearchReq.SearchReqBuilder searchBuilder = SearchReq.builder()
+                .collectionName(collectionName)
+                .data(Collections.singletonList(new FloatVec(wrapper.getVector())))
+                .limit(wrapper.getMaxResults() != null ? wrapper.getMaxResults() : defaultTopK)
+                .outputFields(wrapper.getOutputFields() != null ? wrapper.getOutputFields() : Collections.singletonList("*"));
+
+            // 添加过滤条件
+            String filter = wrapper.toFilterExpression();
+            if (StringUtils.isNotBlank(filter)) {
+                searchBuilder.filter(filter);
+            }
+
+            // 添加分区名称
+            if (wrapper.getPartitionNames() != null && !wrapper.getPartitionNames().isEmpty()) {
+                searchBuilder.partitionNames(wrapper.getPartitionNames());
+            }
+
+            // 执行搜索
+            SearchResp response = milvusClient.search(searchBuilder.build());
+            List<List<SearchResp.SearchResult>> results = response.getSearchResults();
+
+            if (results == null || results.isEmpty() || results.get(0) == null) {
+                return Collections.emptyList();
+            }
+
+            // 转换搜索结果
+            return results.get(0).stream()
+                .map(this::searchResultToDocument)
+                .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            logger.error("Failed to search documents from Milvus", e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 更新文档
+     *
+     * @param documents 文档列表
+     * @param options   更新选项
+     * @return StoreResult 操作结果
+     */
+    @Override
+    public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
+        if (documents == null || documents.isEmpty()) {
+            return StoreResult.success();
+        }
+
+        try {
+            // 确保集合存在
+            ensureCollectionExists();
+
+            MilvusClientV2 milvusClient = getClient();
+
+            // 转换文档为 JSON 列表
+            List<JsonObject> dataList = documents.stream()
+                .map(this::documentToJson)
+                .collect(Collectors.toList());
+
+            // 执行 upsert 操作
+            milvusClient.upsert(UpsertReq.builder()
+                .collectionName(collectionName)
+                .data(dataList)
+                .build());
+
+            return StoreResult.success();
+        } catch (Exception e) {
+            logger.error("Failed to update documents in Milvus", e);
+            return StoreResult.fail("Update failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 删除文档
+     *
+     * @param ids     主键 ID 集合
+     * @param options 删除选项
+     * @return StoreResult 操作结果
+     */
+    @Override
+    public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
+        if (ids == null || ids.isEmpty()) {
+            return StoreResult.success();
+        }
+
+        try {
+            // 确保集合存在
+            ensureCollectionExists();
+
+            MilvusClientV2 milvusClient = getClient();
+
+            // 构建过滤表达式
+            List<Object> idList = new ArrayList<>(ids);
+            String filter = buildFilterExpression(idList);
+
+            // 执行删除操作
+            milvusClient.delete(DeleteReq.builder()
+                .collectionName(collectionName)
+                .filter(filter)
+                .build());
+
+            return StoreResult.success();
+        } catch (Exception e) {
+            logger.error("Failed to delete documents from Milvus", e);
+            return StoreResult.fail("Delete failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 构建删除操作的过滤表达式
+     *
+     * @param idList ID 列表
+     * @return 过滤表达式字符串
+     */
+    private String buildFilterExpression(List<Object> idList) {
+        if (idList.size() == 1) {
+            Object id = idList.get(0);
+            return id instanceof String
+                ? String.format("%s == '%s'", idField, id)
+                : String.format("%s == %s", idField, id);
+        }
+
+        StringBuilder inClause = new StringBuilder().append(idField).append(" in [");
+        for (int i = 0; i < idList.size(); i++) {
+            Object id = idList.get(i);
+            inClause.append(id instanceof String ? "'" + id + "'" : id);
+            if (i < idList.size() - 1) {
+                inClause.append(", ");
+            }
+        }
+        return inClause.append("]").toString();
+    }
+
+    /**
+     * 关闭资源，释放 Milvus 客户端连接
+     */
+    public void close() {
+        if (client != null) {
+            try {
+                client.close();
+                collectionCache.clear();
+                logger.info("Milvus client closed");
+            } catch (Exception e) {
+                logger.warn("Failed to close Milvus client", e);
+            }
+        }
+    }
+
+    /**
+     * 获取集合名称
+     *
+     * @return 集合名称
+     */
+    public String getCollectionName() {
+        return collectionName;
+    }
+
+    /**
+     * 获取向量字段名称
+     *
+     * @return 向量字段名称
+     */
+    public String getVectorField() {
+        return vectorField;
+    }
+
+    /**
+     * 获取内容字段名称
+     *
+     * @return 内容字段名称
+     */
+    public String getContentField() {
+        return contentField;
+    }
+
+    /**
+     * 获取标题字段名称
+     *
+     * @return 标题字段名称
+     */
+    public String getTitleField() {
+        return titleField;
+    }
+
+    /**
+     * 获取向量维度
+     *
+     * @return 向量维度
+     */
+    public Integer getDimension() {
+        return dimension;
+    }
+
+    /**
+     * Builder 模式构建器
+     */
+    public static class Builder {
+        private ConnectConfig connectConfig;
+        private String collectionName;
+        private String vectorField = DEFAULT_VECTOR_FIELD;
+        private String idField = DEFAULT_ID_FIELD;
+        private String contentField = DEFAULT_CONTENT_FIELD;
+        private String titleField = DEFAULT_TITLE_FIELD;
+        private Integer dimension;
+        private IndexParam.MetricType metricType = IndexParam.MetricType.COSINE;
+        private boolean enableDynamicField = true;
+        private int defaultTopK = 10;
+        private boolean autoCreateCollection = true;
+
+        /**
+         * 设置连接配置
+         *
+         * @param config ConnectConfig 对象
+         * @return Builder 实例
+         */
+        public Builder connectConfig(ConnectConfig config) {
+            this.connectConfig = config;
+            return this;
+        }
+
+        /**
+         * 设置 Milvus 服务地址
+         *
+         * @param uri 服务地址，格式：http://host:port
+         * @return Builder 实例
+         */
+        public Builder uri(String uri) {
+            this.connectConfig = ConnectConfig.builder()
+                .uri(uri)
+                .token(this.connectConfig != null ? this.connectConfig.getToken() : null)
+                .dbName(this.connectConfig != null ? this.connectConfig.getDbName() : null)
+                .build();
+            return this;
+        }
+
+        /**
+         * 设置认证 Token
+         *
+         * @param token 认证 Token
+         * @return Builder 实例
+         */
+        public Builder token(String token) {
+            this.connectConfig = ConnectConfig.builder()
+                .uri(this.connectConfig != null ? this.connectConfig.getUri() : null)
+                .token(token)
+                .dbName(this.connectConfig != null ? this.connectConfig.getDbName() : null)
+                .build();
+            return this;
+        }
+
+        /**
+         * 设置集合名称
+         *
+         * @param name 集合名称
+         * @return Builder 实例
+         */
+        public Builder collectionName(String name) {
+            this.collectionName = name;
+            return this;
+        }
+
+        /**
+         * 设置向量字段名称
+         *
+         * @param field 字段名称
+         * @return Builder 实例
+         */
+        public Builder vectorField(String field) {
+            this.vectorField = field;
+            return this;
+        }
+
+        /**
+         * 设置主键字段名称
+         *
+         * @param field 字段名称
+         * @return Builder 实例
+         */
+        public Builder idField(String field) {
+            this.idField = field;
+            return this;
+        }
+
+        /**
+         * 设置内容字段名称
+         *
+         * @param field 字段名称
+         * @return Builder 实例
+         */
+        public Builder contentField(String field) {
+            this.contentField = field;
+            return this;
+        }
+
+        /**
+         * 设置标题字段名称
+         *
+         * @param field 字段名称
+         * @return Builder 实例
+         */
+        public Builder titleField(String field) {
+            this.titleField = field;
+            return this;
+        }
+
+        /**
+         * 设置向量维度
+         *
+         * @param dim 向量维度
+         * @return Builder 实例
+         */
+        public Builder dimension(Integer dim) {
+            this.dimension = dim;
+            return this;
+        }
+
+        /**
+         * 设置相似度度量类型
+         *
+         * @param type MetricType 枚举值
+         * @return Builder 实例
+         */
+        public Builder metricType(IndexParam.MetricType type) {
+            this.metricType = type;
+            return this;
+        }
+
+        /**
+         * 设置是否启用动态字段
+         *
+         * @param enable 是否启用
+         * @return Builder 实例
+         */
+        public Builder enableDynamicField(boolean enable) {
+            this.enableDynamicField = enable;
+            return this;
+        }
+
+        /**
+         * 设置默认搜索返回数量
+         *
+         * @param topK 返回数量
+         * @return Builder 实例
+         */
+        public Builder defaultTopK(int topK) {
+            this.defaultTopK = topK;
+            return this;
+        }
+
+        /**
+         * 设置是否自动创建集合
+         *
+         * @param auto 是否自动创建
+         * @return Builder 实例
+         */
+        public Builder autoCreateCollection(boolean auto) {
+            this.autoCreateCollection = auto;
+            return this;
+        }
+
+        /**
+         * 构建 MilvusVectorStore 实例
+         *
+         * @return MilvusVectorStore 实例
+         */
+        public MilvusVectorStore build() {
+            return new MilvusVectorStore(this);
+        }
+    }
+}

@@ -24,6 +24,7 @@
         <module>agents-flex-store-vectorexdb</module>
         <module>agents-flex-store-pgvector</module>
         <module>agents-flex-store-qdrant</module>
+        <module>agents-flex-store-milvus</module>
     </modules>
 
     <properties>
