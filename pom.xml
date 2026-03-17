@@ -287,6 +287,11 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-store-milvus</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-store-opensearch</artifactId>
                 <version>${revision}</version>
             </dependency>
