@@ -62,14 +62,19 @@ public class MilvusVectorStoreConfigTest {
     public void testStoreSuccess() {
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
-            .defaultCollectionName("test_collection03")
+            .defaultCollectionName("test_collection05")
             .dimension(1536)
             .build();
 
+        Document doc1 = Document.of("文档内容 1");
+        doc1.addMetadata("key", "value1");
+
+        Document doc2 = Document.of("文档内容 2");
+        doc2.addMetadata("key", "value2");
+
         // 准备测试数据
         List<Document> documents = Arrays.asList(
-            Document.of("文档内容 1"),
-            Document.of("文档内容 2")
+            doc1, doc2
         );
 
         // 设置向量（模拟已嵌入）
@@ -87,20 +92,10 @@ public class MilvusVectorStoreConfigTest {
     public void testSearchSuccess() {
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
-            .defaultCollectionName("test_collection03")
+            .defaultCollectionName("test_collection05")
             .dimension(1536)
             .build();
 
-//        // 准备测试数据
-//        List<Document> documents = Arrays.asList(
-//            Document.of("文档内容 1"),
-//            Document.of("文档内容 2")
-//        );
-//
-//        // 设置向量（模拟已嵌入）
-//        for (Document doc : documents) {
-//            doc.setVector(new float[1536]);
-//        }
 
         MilvusVectorStore store = MilvusVectorStore.create(config);
         SearchWrapper wrapper = new SearchWrapper();
