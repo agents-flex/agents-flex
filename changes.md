@@ -1,5 +1,23 @@
 # Agents-Flex ChangeLog
 
+## v2.0.5 20260318
+- test(milvus): update test collection name and add document metadata
+- test(file2text): add test case for http xlsx to text conversion
+- feat(extractor): add Excel file extraction support
+- refactor(core): change vector data type from double to float and update setVector method
+- refactor(store): change score type from Double to Float across vector stores
+- refactor(store): optimize Milvus vector store connection management
+- feat(demo): enhance skills demo with logging and output improvements
+- test(openai): add Bailian Qwen model integration test
+- feat(store): add Milvus vector store implementation
+- fix(store): improve error handling in vector store operations
+- feat(store): add Milvus vector store implementation
+- refactor(store): change visibility of vector and score fields in VectorData
+- refactor(store): update StoreResult to use message and exception instead of failReason
+- feat(store): add partition names support to SearchWrapper
+- refactor(document): remove score field and update metadata handling
+
+
 ## v2.0.4 20260312
 - feat(text2sql): optimize table building logic for JDBC data sources
 - refactor(core): optimize OpenAI chat message serializer parameter handling
