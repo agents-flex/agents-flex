@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.util.Maps;
+import com.agentsflex.core.util.Metadata;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.List;
@@ -26,7 +27,7 @@ import java.util.Map;
  * 支持 Builder 模式，便于链式调用。
  * 注意：不同模型厂商对参数的支持和默认值可能不同。
  */
-public class ChatOptions {
+public class ChatOptions extends Metadata {
 
 
     /**
