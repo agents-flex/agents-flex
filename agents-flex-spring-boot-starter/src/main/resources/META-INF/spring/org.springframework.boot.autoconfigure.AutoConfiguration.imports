@@ -1,8 +1,9 @@
-com.agentsflex.spring.boot.chatModel.chatglm.ChatglmAutoConfiguration
-com.agentsflex.spring.boot.chatModel.openai.OpenAIAutoConfiguration
-com.agentsflex.spring.boot.chatModel.qwen.QwenAutoConfiguration
-com.agentsflex.spring.boot.chatModel.spark.SparkAutoConfiguration
-com.agentsflex.spring.boot.store.aliyun.AliyunAutoConfiguration
-com.agentsflex.spring.boot.store.qcloud.QCloudStoreAutoConfiguration
-com.agentsflex.spring.boot.chatModel.ollama.OllamaAutoConfiguration
-com.agentsflex.spring.boot.store.chroma.ChromaAutoConfiguration
+com.agentsflex.springboot.model.chat.deepseek.DeepSeekAutoConfiguration
+com.agentsflex.springboot.model.chat.ollama.OllamaAutoConfiguration
+com.agentsflex.springboot.model.chat.openai.OpenAIAutoConfiguration
+com.agentsflex.springboot.model.chat.qwen.QwenAutoConfiguration
+com.agentsflex.springboot.store.aliyun.AliyunAutoConfiguration
+com.agentsflex.springboot.store.chroma.ChromaAutoConfiguration
+com.agentsflex.springboot.store.elasticsearch.ElasticSearchAutoConfiguration
+com.agentsflex.springboot.store.opensearch.OpenSearchAutoConfiguration
+com.agentsflex.springboot.store.qcloud.QCloudStoreAutoConfiguration

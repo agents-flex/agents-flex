@@ -1,18 +1,18 @@
-package com.agentsflex.spring.boot.llm.openai;
+package com.agentsflex.springboot.model.chat.ollama;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * @author 王帅
- * @since 2024-04-10
+ * @author hustlelr
+ * @since 2025-02-11
  */
-@ConfigurationProperties(prefix = "agents-flex.llm.openai")
-public class OpenAIProperties {
+@ConfigurationProperties(prefix = "agents-flex.llm.ollama")
+public class OllamaProperties {
 
-    private String model = "gpt-3.5-turbo";
-    private String endpoint = "https://api.openai.com";
+    private String model;
+    private String endpoint = "http://localhost:11434";
     private String apiKey;
-    private String requestPath = "/v1/chat/completions";
+    private Boolean think;
 
     public String getModel() {
         return model;
@@ -38,11 +38,12 @@ public class OpenAIProperties {
         this.apiKey = apiKey;
     }
 
-    public String getRequestPath() {
-        return requestPath;
+    public Boolean getThink() {
+        return think;
     }
 
-    public void setRequestPath(String requestPath) {
-        this.requestPath = requestPath;
+    public void setThink(Boolean think) {
+        this.think = think;
     }
+
 }

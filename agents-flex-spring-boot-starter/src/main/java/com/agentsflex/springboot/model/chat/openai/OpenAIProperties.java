@@ -1,13 +1,18 @@
-package com.agentsflex.spring.boot.llm.deepseek;
+package com.agentsflex.springboot.model.chat.openai;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "agents-flex.llm.deepseek")
-public class DeepSeekProperties {
+/**
+ * @author 王帅
+ * @since 2024-04-10
+ */
+@ConfigurationProperties(prefix = "agents-flex.llm.openai")
+public class OpenAIProperties {
 
-    private String model = "deepseek-chat";
-    private String endpoint = "https://api.deepseek.com";
+    private String model = "gpt-3.5-turbo";
+    private String endpoint = "https://api.openai.com";
     private String apiKey;
+    private String requestPath = "/v1/chat/completions";
 
     public String getModel() {
         return model;
@@ -33,4 +38,11 @@ public class DeepSeekProperties {
         this.apiKey = apiKey;
     }
 
+    public String getRequestPath() {
+        return requestPath;
+    }
+
+    public void setRequestPath(String requestPath) {
+        this.requestPath = requestPath;
+    }
 }

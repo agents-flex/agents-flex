@@ -1,4 +1,4 @@
-package com.agentsflex.spring.boot.llm.qwen;
+package com.agentsflex.springboot.model.chat.qwen;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

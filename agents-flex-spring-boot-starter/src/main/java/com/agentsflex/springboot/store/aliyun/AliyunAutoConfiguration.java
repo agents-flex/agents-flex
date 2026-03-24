@@ -1,4 +1,4 @@
-package com.agentsflex.spring.boot.store.aliyun;
+package com.agentsflex.springboot.store.aliyun;
 
 import com.agentsflex.store.aliyun.AliyunVectorStore;
 import com.agentsflex.store.aliyun.AliyunVectorStoreConfig;

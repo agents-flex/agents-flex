@@ -1,4 +1,4 @@
-package com.agentsflex.spring.boot.llm.deepseek;
+package com.agentsflex.springboot.model.chat.deepseek;
 
 import com.agentsflex.model.chat.deepseek.DeepseekConfig;
 import com.agentsflex.model.chat.deepseek.DeepseekChatModel;

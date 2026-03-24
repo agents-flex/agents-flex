@@ -13,11 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.spring.boot.store.chroma;
+package com.agentsflex.springboot.store.chroma;
 
 import com.agentsflex.store.chroma.ChromaVectorStore;
 import com.agentsflex.store.chroma.ChromaVectorStoreConfig;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.spring.boot.store.chroma;
+package com.agentsflex.springboot.store.chroma;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

@@ -1,18 +1,13 @@
-package com.agentsflex.spring.boot.llm.ollama;
+package com.agentsflex.springboot.model.chat.deepseek;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/**
- * @author hustlelr
- * @since 2025-02-11
- */
-@ConfigurationProperties(prefix = "agents-flex.llm.ollama")
-public class OllamaProperties {
+@ConfigurationProperties(prefix = "agents-flex.llm.deepseek")
+public class DeepSeekProperties {
 
-    private String model;
-    private String endpoint = "http://localhost:11434";
+    private String model = "deepseek-chat";
+    private String endpoint = "https://api.deepseek.com";
     private String apiKey;
-    private Boolean think;
 
     public String getModel() {
         return model;
@@ -36,14 +31,6 @@ public class OllamaProperties {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
-    }
-
-    public Boolean getThink() {
-        return think;
-    }
-
-    public void setThink(Boolean think) {
-        this.think = think;
     }
 
 }

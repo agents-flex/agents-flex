@@ -1,4 +1,4 @@
-package com.agentsflex.spring.boot.store.qcloud;
+package com.agentsflex.springboot.store.qcloud;
 
 import com.agentsflex.store.qcloud.QCloudVectorStore;
 import com.agentsflex.store.qcloud.QCloudVectorStoreConfig;

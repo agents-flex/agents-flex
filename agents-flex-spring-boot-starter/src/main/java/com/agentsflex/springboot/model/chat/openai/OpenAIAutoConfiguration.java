@@ -1,7 +1,7 @@
-package com.agentsflex.spring.boot.llm.qwen;
+package com.agentsflex.springboot.model.chat.openai;
 
-import com.agentsflex.model.chat.qwen.QwenChatModel;
-import com.agentsflex.model.chat.qwen.QwenChatConfig;
+import com.agentsflex.model.chat.openai.OpenAIChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -14,19 +14,20 @@ import org.springframework.context.annotation.Configuration;
  * @author 王帅
  * @since 2024-04-10
  */
-@ConditionalOnClass(QwenChatModel.class)
+@ConditionalOnClass(OpenAIChatModel.class)
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(QwenProperties.class)
-public class QwenAutoConfiguration {
+@EnableConfigurationProperties(OpenAIProperties.class)
+public class OpenAIAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public QwenChatModel qwenLlm(QwenProperties properties) {
-        QwenChatConfig config = new QwenChatConfig();
+    public OpenAIChatModel openAILlm(OpenAIProperties properties) {
+        OpenAIChatConfig config = new OpenAIChatConfig();
         config.setApiKey(properties.getApiKey());
         config.setEndpoint(properties.getEndpoint());
         config.setModel(properties.getModel());
-        return new QwenChatModel(config);
+        config.setRequestPath(properties.getRequestPath());
+        return new OpenAIChatModel(config);
     }
 
 }

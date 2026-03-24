@@ -1,10 +1,10 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-  com.agentsflex.spring.boot.chatModel.chatglm.ChatglmAutoConfiguration,\
-  com.agentsflex.spring.boot.chatModel.openai.OpenAIAutoConfiguration,\
-  com.agentsflex.spring.boot.chatModel.qwen.QwenAutoConfiguration,\
-  com.agentsflex.spring.boot.chatModel.spark.SparkAutoConfiguration,\
-  com.agentsflex.spring.boot.store.aliyun.AliyunAutoConfiguration,\
-  com.agentsflex.spring.boot.store.qcloud.QCloudStoreAutoConfiguration,\
-  com.agentsflex.spring.boot.chatModel.ollama.OllamaAutoConfiguration,\
-  com.agentsflex.spring.boot.chatModel.deepseek.DeepSeekAutoConfiguration,\
-  com.agentsflex.spring.boot.store.chroma.ChromaAutoConfiguration
+  com.agentsflex.springboot.chat.model.deepseek.DeepSeekAutoConfiguration,\
+  com.agentsflex.springboot.chat.model.ollama.OllamaAutoConfiguration,\
+  com.agentsflex.springboot.chat.model.openai.OpenAIAutoConfiguration,\
+  com.agentsflex.springboot.chat.model.qwen.QwenAutoConfiguration,\
+  com.agentsflex.springboot.store.aliyun.AliyunAutoConfiguration,\
+  com.agentsflex.springboot.store.chroma.ChromaAutoConfiguration,\
+  com.agentsflex.springboot.store.elasticsearch.ElasticSearchAutoConfiguration,\
+  com.agentsflex.springboot.store.opensearch.OpenSearchAutoConfiguration,\
+  com.agentsflex.springboot.store.qcloud.QCloudStoreAutoConfiguration

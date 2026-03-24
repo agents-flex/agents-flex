@@ -1,4 +1,4 @@
-package com.agentsflex.spring.boot.store.aliyun;
+package com.agentsflex.springboot.store.qcloud;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -6,20 +6,21 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author 王帅
  * @since 2024-04-10
  */
-@ConfigurationProperties(prefix = "agents-flex.store.aliyun")
-public class AliyunProperties {
+@ConfigurationProperties(prefix = "agents-flex.store.qcloud")
+public class QCloudProperties {
 
-    private String endpoint;
+    private String host;
     private String apiKey;
+    private String account;
     private String database;
     private String defaultCollectionName;
 
-    public String getEndpoint() {
-        return endpoint;
+    public String getHost() {
+        return host;
     }
 
-    public void setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
+    public void setHost(String host) {
+        this.host = host;
     }
 
     public String getApiKey() {
@@ -28,6 +29,14 @@ public class AliyunProperties {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public String getAccount() {
+        return account;
+    }
+
+    public void setAccount(String account) {
+        this.account = account;
     }
 
     public String getDatabase() {

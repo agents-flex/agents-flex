@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.spring.boot.store.elasticsearch;
+package com.agentsflex.springboot.store.opensearch;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -21,8 +21,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author songyinyin
  * @since 2024/8/13 上午11:25
  */
-@ConfigurationProperties(prefix = "agents-flex.store.elasticsearch")
-public class ElasticSearchProperties {
+@ConfigurationProperties(prefix = "agents-flex.store.opensearch")
+public class OpenSearchProperties {
 
     private String serverUrl = "https://localhost:9200";
 
