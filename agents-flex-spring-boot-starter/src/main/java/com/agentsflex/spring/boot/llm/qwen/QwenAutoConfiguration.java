@@ -1,7 +1,7 @@
 package com.agentsflex.spring.boot.llm.qwen;
 
-import com.agentsflex.llm.qwen.QwenChatModel;
-import com.agentsflex.llm.qwen.QwenChatConfig;
+import com.agentsflex.model.chat.qwen.QwenChatModel;
+import com.agentsflex.model.chat.qwen.QwenChatConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

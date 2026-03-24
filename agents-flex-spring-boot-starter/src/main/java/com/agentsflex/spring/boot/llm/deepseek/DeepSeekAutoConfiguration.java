@@ -1,7 +1,7 @@
 package com.agentsflex.spring.boot.llm.deepseek;
 
-import com.agentsflex.llm.deepseek.DeepseekConfig;
-import com.agentsflex.llm.deepseek.DeepseekChatModel;
+import com.agentsflex.model.chat.deepseek.DeepseekConfig;
+import com.agentsflex.model.chat.deepseek.DeepseekChatModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

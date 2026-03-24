@@ -1,7 +1,7 @@
 package com.agentsflex.spring.boot.llm.ollama;
 
-import com.agentsflex.llm.ollama.OllamaChatModel;
-import com.agentsflex.llm.ollama.OllamaChatConfig;
+import com.agentsflex.model.chat.ollama.OllamaChatModel;
+import com.agentsflex.model.chat.ollama.OllamaChatConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

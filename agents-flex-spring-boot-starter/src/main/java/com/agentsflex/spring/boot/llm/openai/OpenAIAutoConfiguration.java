@@ -1,7 +1,7 @@
 package com.agentsflex.spring.boot.llm.openai;
 
-import com.agentsflex.llm.openai.OpenAIChatModel;
-import com.agentsflex.llm.openai.OpenAIChatConfig;
+import com.agentsflex.model.chat.openai.OpenAIChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

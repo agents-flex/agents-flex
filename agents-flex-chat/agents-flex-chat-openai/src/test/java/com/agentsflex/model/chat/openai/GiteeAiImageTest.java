@@ -1,0 +1,53 @@
+package com.agentsflex.model.chat.openai;
+
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.prompt.SimplePrompt;
+import org.jetbrains.annotations.NotNull;
+import org.junit.Test;
+
+public class GiteeAiImageTest {
+
+
+    @NotNull
+    private static OpenAIChatConfig getOpenAIChatConfig() {
+        OpenAIChatConfig config = new OpenAIChatConfig();
+        config.setApiKey("PXW1GXE******L7D12");
+//        config.setModel("InternVL3-78B");
+        config.setModel("Qwen3-32B");
+        config.setEndpoint("https://ai.gitee.com");
+        config.setLogEnabled(true);
+        return config;
+    }
+
+    @Test
+    public void testImage() {
+        OpenAIChatConfig config = getOpenAIChatConfig();
+        ChatModel chatModel = new OpenAIChatModel(config);
+
+        SimplePrompt prompt = new SimplePrompt("请识别并输入 markdown，请用中文输出");
+        prompt.addImageUrl("http://www.codeformat.cn/static/images/logo.png");
+
+        AiMessageResponse response = chatModel.chat(prompt);
+        if (!response.isError()) {
+            System.out.println(response.getMessage().getContent());
+        }
+    }
+
+    @Test
+    public void testChat() {
+        OpenAIChatConfig config = getOpenAIChatConfig();
+        config.setSupportImage(false);
+        ChatModel chatModel = new OpenAIChatModel(config);
+
+        SimplePrompt prompt = new SimplePrompt("你叫什么名字");
+        prompt.addImageUrl("http://www.codeformat.cn/static/images/logo.png");
+
+        AiMessageResponse response = chatModel.chat(prompt);
+        if (!response.isError()) {
+            System.out.println(response.getMessage().getContent());
+        }
+
+    }
+
+}

@@ -1,7 +1,7 @@
 package com.agentsflex.demo.helloworld;
 
-import com.agentsflex.llm.openai.OpenAIChatConfig;
-import com.agentsflex.llm.openai.OpenAIChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
+import com.agentsflex.model.chat.openai.OpenAIChatModel;
 
 public class Main {
 

@@ -20,8 +20,8 @@ import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
 
-import com.agentsflex.llm.openai.OpenAIChatModel;
-import com.agentsflex.llm.openai.OpenAIChatConfig;
+import com.agentsflex.model.chat.openai.OpenAIChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
 import com.agentsflex.store.vectorex.VectoRexStore;
 import com.agentsflex.store.vectorex.VectoRexStoreConfig;
 

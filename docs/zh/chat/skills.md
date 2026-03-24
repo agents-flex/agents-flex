@@ -240,8 +240,8 @@ package com.agentsflex.skills.demo;
 
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.prompt.MemoryPrompt;
-import com.agentsflex.llm.openai.OpenAIChatConfig;
-import com.agentsflex.llm.openai.OpenAIChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
+import com.agentsflex.model.chat.openai.OpenAIChatModel;
 import com.agentsflex.skill.SkillsTool;
 import com.agentsflex.tool.commons.CommonTools;
 

@@ -10,8 +10,8 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.llm.openai.OpenAIChatConfig;
-import com.agentsflex.llm.openai.OpenAIChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
+import com.agentsflex.model.chat.openai.OpenAIChatModel;
 import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
 import com.agentsflex.text2sql.tools.Text2SqlTools;
 
