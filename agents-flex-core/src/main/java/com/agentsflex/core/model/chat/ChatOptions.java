@@ -147,7 +147,10 @@ public class ChatOptions extends Metadata {
         this.retryCount = builder.retryCount;
         this.retryInitialDelayMs = builder.retryInitialDelayMs;
         this.responseFormat = builder.responseFormat;
-        this.metadataMap = builder.metadata;
+
+        if (builder.metadata != null && !builder.metadata.isEmpty()){
+            this.putMetadata(builder.metadata);
+        }
     }
 
     // ===== Getter / Setter =====
