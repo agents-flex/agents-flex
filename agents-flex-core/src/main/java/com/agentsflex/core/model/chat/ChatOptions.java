@@ -147,6 +147,7 @@ public class ChatOptions extends Metadata {
         this.retryCount = builder.retryCount;
         this.retryInitialDelayMs = builder.retryInitialDelayMs;
         this.responseFormat = builder.responseFormat;
+        this.metadataMap = builder.metadata;
     }
 
     // ===== Getter / Setter =====
@@ -352,6 +353,7 @@ public class ChatOptions extends Metadata {
         private int retryCount = 3;
         private int retryInitialDelayMs = 1000;
         public Map<String, Object> responseFormat;
+        public Map<String, Object> metadata;
 
         public Builder model(String model) {
             this.model = model;
@@ -439,6 +441,20 @@ public class ChatOptions extends Metadata {
 
         public Builder responseFormatToJsonSchema(Map<String, Object> json_schema) {
             this.responseFormat = Maps.of("type", "json_schema").set("json_schema", json_schema);
+            return this;
+        }
+
+        public Builder metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public Builder addMetadata(String key, Object value) {
+            if (this.metadata == null) {
+                this.metadata = Maps.of(key, value);
+            } else {
+                this.metadata.put(key, value);
+            }
             return this;
         }
 
