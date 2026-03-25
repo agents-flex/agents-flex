@@ -54,7 +54,7 @@ public class Metadata implements Serializable {
      * Internal storage: ConcurrentHashMap for thread-safety.
      * Lazily initialized to save memory when unused.
      */
-    protected volatile Map<String, Object> metadataMap;
+    protected Map<String, Object> metadataMap;
 
     /**
      * Gets the value associated with the specified key.
