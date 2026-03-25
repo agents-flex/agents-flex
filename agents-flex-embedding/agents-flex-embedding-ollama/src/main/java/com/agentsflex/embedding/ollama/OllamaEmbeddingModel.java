@@ -81,10 +81,10 @@ public class OllamaEmbeddingModel extends BaseEmbeddingModel<OllamaEmbeddingConf
         float[] embedding = JSONUtil.readFloatArray(jsonObject, "$.embeddings[0]");
         vectorData.setVector(embedding);
 
-        vectorData.addMetadata("total_duration", JSONUtil.readLong(jsonObject, "$.total_duration"));
-        vectorData.addMetadata("load_duration", JSONUtil.readLong(jsonObject, "$.load_duration"));
-        vectorData.addMetadata("prompt_eval_count", JSONUtil.readInteger(jsonObject, "$.prompt_eval_count"));
-        vectorData.addMetadata("model", JSONUtil.readString(jsonObject, "$.model"));
+        vectorData.putMetadata("total_duration", JSONUtil.readLong(jsonObject, "$.total_duration"));
+        vectorData.putMetadata("load_duration", JSONUtil.readLong(jsonObject, "$.load_duration"));
+        vectorData.putMetadata("prompt_eval_count", JSONUtil.readInteger(jsonObject, "$.prompt_eval_count"));
+        vectorData.putMetadata("model", JSONUtil.readString(jsonObject, "$.model"));
 
         return vectorData;
     }

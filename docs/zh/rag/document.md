@@ -42,8 +42,8 @@
 继承自 `Metadata`，文档支持任意键值对的元数据存储：
 
 ```java
-doc.addMetadata("source", "wiki");
-doc.addMetadata("tags", Arrays.asList("AI", "RAG"));
+doc.putMetadata("source", "wiki");
+doc.putMetadata("tags", Arrays.asList("AI", "RAG"));
 Object source = doc.getMetadata("source");
 ```
 

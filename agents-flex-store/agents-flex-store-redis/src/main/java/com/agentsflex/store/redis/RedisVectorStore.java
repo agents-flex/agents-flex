@@ -226,7 +226,7 @@ public class RedisVectorStore extends DocumentStore {
 
             if (wrapper.getOutputFields() != null) {
                 for (String field : wrapper.getOutputFields()) {
-                    doc.addMetadata(field, document.getString(field));
+                    doc.putMetadata(field, document.getString(field));
                 }
             }
 

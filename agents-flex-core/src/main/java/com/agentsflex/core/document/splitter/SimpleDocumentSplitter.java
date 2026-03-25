@@ -84,7 +84,7 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
             }
 
             Document newDocument = new Document();
-            newDocument.addMetadata(document.getMetadataMap());
+            newDocument.putMetadata(document.getMetadataMap());
             newDocument.setContent(chunk);
 
             //we should invoke setId after setContent

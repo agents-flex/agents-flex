@@ -67,10 +67,10 @@ public class MilvusVectorStoreConfigTest {
             .build();
 
         Document doc1 = Document.of("文档内容 1");
-        doc1.addMetadata("key", "value1");
+        doc1.putMetadata("key", "value1");
 
         Document doc2 = Document.of("文档内容 2");
-        doc2.addMetadata("key", "value2");
+        doc2.putMetadata("key", "value2");
 
         // 准备测试数据
         List<Document> documents = Arrays.asList(

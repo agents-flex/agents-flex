@@ -74,7 +74,7 @@ vectorStore.setDocumentSplitter(myDocumentSplitter);
 ```java
 Document doc = new Document();
 doc.setContent("This is a sample document about AI.");
-doc.addMetadata("author", "John Doe");
+doc.putMetadata("author", "John Doe");
 
 StoreResult result = vectorStore.store(doc);
 System.out.println("Store success: " + result.isSuccess());

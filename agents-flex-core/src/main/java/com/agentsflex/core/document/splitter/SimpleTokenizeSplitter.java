@@ -136,7 +136,7 @@ public class SimpleTokenizeSplitter implements DocumentSplitter {
             currentIndex = currentIndex + chunkSize - overlapSize;
 
             Document newDocument = new Document();
-            newDocument.addMetadata(document.getMetadataMap());
+            newDocument.putMetadata(document.getMetadataMap());
             newDocument.setContent(chunkText);
 
             //we should invoke setId after setContent

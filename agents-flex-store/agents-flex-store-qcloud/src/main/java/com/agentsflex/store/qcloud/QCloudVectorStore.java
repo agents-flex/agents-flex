@@ -162,14 +162,14 @@ public class QCloudVectorStore extends DocumentStore {
 
         JSONArray rootDocs = rootObject.getJSONArray("documents");
         for (int i = 0; i < rootDocs.size(); i++) {
-            JSONArray docs = rootDocs.getJSONArray(i);
-            for (int j = 0; j < docs.size(); j++) {
-                JSONObject doc = docs.getJSONObject(j);
-                Document vd = new Document();
-                vd.setId(doc.getString("id"));
-                doc.remove("id");
-                vd.addMetadata(doc);
-                result.add(vd);
+            JSONArray rootDocsJSONArray = rootDocs.getJSONArray(i);
+            for (int j = 0; j < rootDocsJSONArray.size(); j++) {
+                JSONObject docJSONObject = rootDocsJSONArray.getJSONObject(j);
+                Document document = new Document();
+                document.setId(docJSONObject.getString("id"));
+                docJSONObject.remove("id");
+                document.putMetadata(docJSONObject);
+                result.add(document);
             }
         }
         return result;

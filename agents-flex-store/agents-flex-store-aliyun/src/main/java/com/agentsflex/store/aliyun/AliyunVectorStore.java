@@ -210,7 +210,7 @@ public class AliyunVectorStore extends DocumentStore {
             }
 
             JSONObject fields = jsonObject.getJSONObject("fields");
-            document.addMetadata(fields);
+            document.putMetadata(fields);
 
             documents.add(document);
         }

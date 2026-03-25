@@ -44,7 +44,7 @@ public class RegexDocumentSplitter implements DocumentSplitter {
                 continue;
             }
             Document newDocument = new Document();
-            newDocument.addMetadata(document.getMetadataMap());
+            newDocument.putMetadata(document.getMetadataMap());
             newDocument.setContent(textString);
 
             //we should invoke setId after setContent

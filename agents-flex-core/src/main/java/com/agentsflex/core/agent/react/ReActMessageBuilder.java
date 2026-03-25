@@ -34,9 +34,9 @@ public class ReActMessageBuilder {
      */
     public Message buildStartMessage(String prompt, List<Tool> tools, String userQuery) {
         UserMessage message = new UserMessage(prompt);
-        message.addMetadata("tools", tools);
-        message.addMetadata("user_input", userQuery);
-        message.addMetadata("type", "reActWrapper");
+        message.putMetadata("tools", tools);
+        message.putMetadata("user_input", userQuery);
+        message.putMetadata("type", "reActWrapper");
         return message;
     }
 
@@ -55,7 +55,7 @@ public class ReActMessageBuilder {
             + "Error：" + errorMsg + "\n"
             + "请检查你的 Action Input 格式是否正确，并纠正 JSON 内容重新生成响应。\n";
         UserMessage userMessage = new UserMessage(observation + "请继续推理下一步。");
-        userMessage.addMetadata("type", "reActObservation");
+        userMessage.putMetadata("type", "reActObservation");
         return userMessage;
     }
 
@@ -69,7 +69,7 @@ public class ReActMessageBuilder {
     public Message buildObservationMessage(ReActStep step, Object result) {
         String observation = buildObservationString(step, result);
         UserMessage userMessage = new UserMessage(observation + "\n请继续推理下一步。");
-        userMessage.addMetadata("type", "reActObservation");
+        userMessage.putMetadata("type", "reActObservation");
         return userMessage;
     }
 
@@ -99,7 +99,7 @@ public class ReActMessageBuilder {
         String observation = buildObservationString(step, "Error: " + e.getMessage()) + "\n"
             + "请根据错误信息调整参数并重新尝试。\n";
         UserMessage userMessage = new UserMessage(observation + "请继续推理下一步。");
-        userMessage.addMetadata("type", "reActObservation");
+        userMessage.putMetadata("type", "reActObservation");
         return userMessage;
     }
 }

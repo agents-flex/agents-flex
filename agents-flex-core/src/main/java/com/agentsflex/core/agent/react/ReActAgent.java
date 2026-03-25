@@ -239,14 +239,14 @@ public class ReActAgent implements IAgent {
             // 请求用户输入
             if (isRequestUserInput(content)) {
                 String question = extractRequestQuestion(content);
-                message.addMetadata("type", "reActRequest");
+                message.putMetadata("type", "reActRequest");
                 memoryPrompt.addMessage(message);
                 notifyOnRequestUserInput(question); // 新增监听器回调
                 break; // 暂停执行，等待用户回复
             }
             //  ReAct 动作
             else if (isReActAction(content)) {
-                message.addMetadata("type", "reActAction");
+                message.putMetadata("type", "reActAction");
                 memoryPrompt.addMessage(message);
                 if (!processReActSteps(content)) {
                     break;
@@ -257,7 +257,7 @@ public class ReActAgent implements IAgent {
             else if (isFinalAnswer(content)) {
                 String flag = reActStepParser.getFinalAnswerFlag();
                 String answer = content.substring(content.indexOf(flag) + flag.length());
-                message.addMetadata("type", "reActFinalAnswer");
+                message.putMetadata("type", "reActFinalAnswer");
                 memoryPrompt.addMessage(message);
                 notifyOnFinalAnswer(answer);
                 break;
@@ -311,14 +311,14 @@ public class ReActAgent implements IAgent {
                 // 请求用户输入
                 if (isRequestUserInput(content)) {
                     String question = extractRequestQuestion(content);
-                    message.addMetadata("type", "reActRequest");
+                    message.putMetadata("type", "reActRequest");
                     memoryPrompt.addMessage(message);
                     notifyOnRequestUserInput(question); // 新增监听器回调
                 }
 
                 //  ReAct 动作
                 else if (isReActAction(content)) {
-                    message.addMetadata("type", "reActAction");
+                    message.putMetadata("type", "reActAction");
                     memoryPrompt.addMessage(message);
                     if (processReActSteps(content)) {
                         // 递归继续执行下一个 ReAct 步骤
@@ -328,7 +328,7 @@ public class ReActAgent implements IAgent {
 
                 // 最终答案
                 else if (isFinalAnswer(content)) {
-                    message.addMetadata("type", "reActFinalAnswer");
+                    message.putMetadata("type", "reActFinalAnswer");
                     memoryPrompt.addMessage(message);
                     String flag = reActStepParser.getFinalAnswerFlag();
                     String answer = content.substring(content.indexOf(flag) + flag.length());

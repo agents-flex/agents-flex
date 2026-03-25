@@ -703,7 +703,7 @@ public class MilvusVectorStore extends DocumentStore {
                 for (Map.Entry<String, Object> entry : metaFields.entrySet()) {
                     String key = entry.getKey();
                     if (!isReservedField(key) && !key.equals(contentField) && !key.equals(titleField)) {
-                        document.addMetadata(key, entry.getValue());
+                        document.putMetadata(key, entry.getValue());
                     }
                 }
             }
@@ -740,7 +740,7 @@ public class MilvusVectorStore extends DocumentStore {
                     || key.equalsIgnoreCase(contentField) || key.equalsIgnoreCase(titleField)) {
                     continue;
                 }
-                document.addMetadata(key, entry.getValue());
+                document.putMetadata(key, entry.getValue());
             }
         }
 

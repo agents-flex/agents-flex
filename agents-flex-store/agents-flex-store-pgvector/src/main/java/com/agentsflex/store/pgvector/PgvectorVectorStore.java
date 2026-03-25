@@ -183,7 +183,7 @@ public class PgvectorVectorStore extends DocumentStore {
                 Document doc = new Document();
                 doc.setId(resultSet.getString("id"));
                 doc.setContent(resultSet.getString("content"));
-                doc.addMetadata(JSON.parseObject(resultSet.getString("metadata")));
+                doc.putMetadata(JSON.parseObject(resultSet.getString("metadata")));
 
                 if (searchWrapper.isOutputVector()) {
                     String vectorStr = resultSet.getString("vector");
