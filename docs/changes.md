@@ -1,5 +1,14 @@
 # Agents-Flex ChangeLog
 
+## v2.0.6 20260325
+- fix(chat): handle null metadata in ChatOptions builder
+- refactor(core): replace addMetadata with putMetadata in document operations
+- feat(chat): add metadata support to ChatOptions
+- refactor(config): update package structure and configuration imports
+- refactor(model): move chat model classes from llm package to model.chat package
+- refactor(chat): extend ChatOptions from Metadata class
+
+
 ## v2.0.5 20260318
 - test(milvus): update test collection name and add document metadata
 - test(file2text): add test case for http xlsx to text conversion
