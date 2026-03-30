@@ -20,7 +20,7 @@ public class MilvusVectorStoreConfigTest {
             .token("root:Milvus")
             .database("default")
             .defaultCollectionName("test_collection")
-            .dimension(1536)
+            .defaultDimension(1536)
             .metricType("COSINE")
             .enableDynamicField(true)
             .defaultTopK(10)
@@ -42,7 +42,7 @@ public class MilvusVectorStoreConfigTest {
     public void testValidateSuccess() {
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
-            .dimension(1536)
+            .defaultDimension(1536)
             .metricType("COSINE")
             .build();
 
@@ -64,7 +64,7 @@ public class MilvusVectorStoreConfigTest {
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
             .defaultCollectionName("test_collection05")
-            .dimension(1536)
+            .defaultDimension(1536)
             .build();
 
         Document doc1 = Document.of("文档内容 1");
@@ -94,7 +94,7 @@ public class MilvusVectorStoreConfigTest {
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
             .defaultCollectionName("test_collection05")
-            .dimension(1536)
+            .defaultDimension(1536)
             .build();
 
 
@@ -113,7 +113,7 @@ public class MilvusVectorStoreConfigTest {
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
             .defaultCollectionName("test_collection_test")
-            .dimension(1536)
+            .defaultDimension(1536)
             .build();
 
 
@@ -138,7 +138,7 @@ public class MilvusVectorStoreConfigTest {
 
         MilvusVectorStore store33 = MilvusVectorStore.create(config);
         SearchWrapper wrapper33 = new SearchWrapper();
-        wrapper33.eq("id",doc1.getId());
+        wrapper33.eq("id", doc1.getId());
         wrapper33.setVector(new float[1536]);
 
         List<Document> search33 = store33.search(wrapper33);

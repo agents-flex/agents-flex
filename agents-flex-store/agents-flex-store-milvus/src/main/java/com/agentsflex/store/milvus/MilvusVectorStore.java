@@ -16,6 +16,7 @@
 package com.agentsflex.store.milvus;
 
 import com.agentsflex.core.document.Document;
+import com.agentsflex.core.model.embedding.EmbeddingModel;
 import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
@@ -142,7 +143,7 @@ public class MilvusVectorStore extends DocumentStore {
     /**
      * 向量维度，创建集合时必须指定
      */
-    private final Integer dimension;
+    private Integer defaultDimension;
 
     /**
      * 相似度度量类型，默认 COSINE
@@ -220,7 +221,7 @@ public class MilvusVectorStore extends DocumentStore {
             .idField(config.getIdField())
             .contentField(config.getContentField())
             .titleField(config.getTitleField())
-            .dimension(config.getDimension())
+            .defaultDimension(config.getDefaultDimension())
             .metricType(IndexParam.MetricType.valueOf(config.getMetricType()))
             .enableDynamicField(config.isEnableDynamicField())
             .defaultTopK(config.getDefaultTopK())
@@ -245,7 +246,7 @@ public class MilvusVectorStore extends DocumentStore {
             ? builder.contentField : DEFAULT_CONTENT_FIELD;
         this.titleField = StringUtil.hasText(builder.titleField)
             ? builder.titleField : DEFAULT_TITLE_FIELD;
-        this.dimension = builder.dimension;
+        this.defaultDimension = builder.defaultDimension;
         this.metricType = builder.metricType != null ? builder.metricType : IndexParam.MetricType.COSINE;
         this.enableDynamicField = builder.enableDynamicField;
         this.defaultTopK = builder.defaultTopK > 0 ? builder.defaultTopK : 10;
@@ -264,7 +265,7 @@ public class MilvusVectorStore extends DocumentStore {
         this.poolKey = generatePoolKey(connectConfig);
 
         // 校验必要参数：自动创建集合时必须指定向量维度
-        if (autoCreateCollection && dimension == null) {
+        if (autoCreateCollection && defaultDimension == null) {
             throw new IllegalArgumentException("dimension is required when autoCreateCollection is enabled");
         }
     }
@@ -371,6 +372,10 @@ public class MilvusVectorStore extends DocumentStore {
             .isPrimaryKey(true)
             .autoID(false)
             .build());
+
+
+        EmbeddingModel embeddingModel = this.getEmbeddingModel();
+        Integer dimension = embeddingModel != null ? embeddingModel.dimensions() : defaultDimension;
 
         // 添加向量字段
         fields.add(CreateCollectionReq.FieldSchema.builder()
@@ -992,8 +997,8 @@ public class MilvusVectorStore extends DocumentStore {
      *
      * @return 向量维度
      */
-    public Integer getDimension() {
-        return dimension;
+    public Integer getDefaultDimension() {
+        return defaultDimension;
     }
 
     /**
@@ -1006,7 +1011,7 @@ public class MilvusVectorStore extends DocumentStore {
         private String idField = DEFAULT_ID_FIELD;
         private String contentField = DEFAULT_CONTENT_FIELD;
         private String titleField = DEFAULT_TITLE_FIELD;
-        private Integer dimension;
+        private Integer defaultDimension;
         private IndexParam.MetricType metricType = IndexParam.MetricType.COSINE;
         private boolean enableDynamicField = true;
         private int defaultTopK = 10;
@@ -1114,8 +1119,8 @@ public class MilvusVectorStore extends DocumentStore {
          * @param dim 向量维度
          * @return Builder 实例
          */
-        public Builder dimension(Integer dim) {
-            this.dimension = dim;
+        public Builder defaultDimension(Integer dim) {
+            this.defaultDimension = dim;
             return this;
         }
 

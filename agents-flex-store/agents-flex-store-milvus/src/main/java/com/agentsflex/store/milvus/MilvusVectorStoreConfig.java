@@ -96,7 +96,7 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
     /**
      * 向量维度（必须与 Collection Schema 一致）
      */
-    private Integer dimension;
+    private Integer defaultDimension;
 
     /**
      * 相似度度量类型：COSINE / IP / L2
@@ -197,12 +197,12 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
         this.idField = idField;
     }
 
-    public Integer getDimension() {
-        return dimension;
+    public Integer getDefaultDimension() {
+        return defaultDimension;
     }
 
-    public void setDimension(Integer dimension) {
-        this.dimension = dimension;
+    public void setDefaultDimension(Integer defaultDimension) {
+        this.defaultDimension = defaultDimension;
     }
 
     public String getMetricType() {
@@ -277,8 +277,8 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
         if (!endpoint.startsWith("http://") && !endpoint.startsWith("https://")) {
             throw new IllegalArgumentException("Endpoint must start with http:// or https://");
         }
-        if (dimension != null && dimension <= 0) {
-            throw new IllegalArgumentException("Dimension must be greater than 0");
+        if (defaultDimension != null && defaultDimension <= 0) {
+            throw new IllegalArgumentException("default dimension must be greater than 0");
         }
         if (!isValidMetricType(metricType)) {
             throw new IllegalArgumentException("Invalid metricType: " + metricType +
@@ -295,14 +295,11 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
     }
 
 
-
-
     // ==================== 构建器模式 ====================
 
     public static Builder builder() {
         return new Builder();
     }
-
 
 
     public static class Builder {
@@ -338,8 +335,8 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             return this;
         }
 
-        public Builder dimension(Integer dimension) {
-            config.setDimension(dimension);
+        public Builder defaultDimension(Integer dimension) {
+            config.setDefaultDimension(dimension);
             return this;
         }
 
@@ -395,7 +392,7 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             ", defaultCollectionName='" + defaultCollectionName + '\'' +
             ", vectorField='" + vectorField + '\'' +
             ", idField='" + idField + '\'' +
-            ", dimension=" + dimension +
+            ", defaultDimension=" + defaultDimension +
             ", metricType='" + metricType + '\'' +
             ", enableDynamicField=" + enableDynamicField +
             ", defaultTopK=" + defaultTopK +
@@ -420,7 +417,8 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             return false;
         if (vectorField != null ? !vectorField.equals(that.vectorField) : that.vectorField != null) return false;
         if (idField != null ? !idField.equals(that.idField) : that.idField != null) return false;
-        if (dimension != null ? !dimension.equals(that.dimension) : that.dimension != null) return false;
+        if (defaultDimension != null ? !defaultDimension.equals(that.defaultDimension) : that.defaultDimension != null)
+            return false;
         if (metricType != null ? !metricType.equals(that.metricType) : that.metricType != null) return false;
         if (consistencyLevel != null ? !consistencyLevel.equals(that.consistencyLevel) : that.consistencyLevel != null)
             return false;
@@ -435,7 +433,7 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
         result = 31 * result + (defaultCollectionName != null ? defaultCollectionName.hashCode() : 0);
         result = 31 * result + (vectorField != null ? vectorField.hashCode() : 0);
         result = 31 * result + (idField != null ? idField.hashCode() : 0);
-        result = 31 * result + (dimension != null ? dimension.hashCode() : 0);
+        result = 31 * result + (defaultDimension != null ? defaultDimension.hashCode() : 0);
         result = 31 * result + (metricType != null ? metricType.hashCode() : 0);
         result = 31 * result + (enableDynamicField ? 1 : 0);
         result = 31 * result + defaultTopK;
