@@ -818,7 +818,7 @@ public class MilvusVectorStore extends DocumentStore {
                 .outputFields(wrapper.getOutputFields() != null ? wrapper.getOutputFields() : Collections.singletonList("*"));
 
             // 添加过滤条件
-            String filter = wrapper.toFilterExpression();
+            String filter = wrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT);
             if (StringUtil.hasText(filter)) {
                 searchReqBuilder.filter(filter);
             }

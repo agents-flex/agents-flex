@@ -136,6 +136,15 @@ public class MilvusVectorStoreConfigTest {
         System.out.println("search ====>" + search);
 
 
+        MilvusVectorStore store33 = MilvusVectorStore.create(config);
+        SearchWrapper wrapper33 = new SearchWrapper();
+        wrapper33.eq("id",doc1.getId());
+        wrapper33.setVector(new float[1536]);
+
+        List<Document> search33 = store33.search(wrapper33);
+        System.out.println("search33 ====>" + search33);
+
+
         MilvusVectorStore store3 = MilvusVectorStore.create(config);
         doc1.setContent("文档内容 1更新");
         doc1.putMetadata("key", "value1更新");
