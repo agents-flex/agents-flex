@@ -565,13 +565,13 @@ public class MilvusVectorStore extends DocumentStore {
         return json;
     }
 
-    private boolean isExtField(String key) {
+    private boolean isExtField(String fieldName) {
         if (extFields == null || extFields.isEmpty()) {
             return false;
         }
 
         for (CreateCollectionReq.FieldSchema extField : extFields) {
-            if (extField.getName().equals(key)) {
+            if (extField.getName().equals(fieldName)) {
                 return true;
             }
         }
@@ -761,32 +761,37 @@ public class MilvusVectorStore extends DocumentStore {
         if (StringUtil.hasText(content)) {
             document.setContent(content);
         }
+
         if (StringUtil.hasText(title)) {
             document.setTitle(title);
         }
 
         // 提取向量数据
-        if (entity.containsKey(vectorField) && entity.get(vectorField) instanceof List) {
-            List<?> vecList = (List<?>) entity.get(vectorField);
-            float[] vector = new float[vecList.size()];
-            for (int i = 0; i < vecList.size(); i++) {
-                Object val = vecList.get(i);
-                if (val instanceof Number) {
-                    vector[i] = ((Number) val).floatValue();
+
+        if (entity.containsKey(vectorField)) {
+            Object vectorListObject = entity.get(vectorField);
+            if (vectorListObject instanceof List) {
+                List<?> vecList = (List<?>) vectorListObject;
+                float[] vector = new float[vecList.size()];
+                for (int i = 0; i < vecList.size(); i++) {
+                    Object val = vecList.get(i);
+                    if (val instanceof Number) {
+                        vector[i] = ((Number) val).floatValue();
+                    }
                 }
+                document.setVector(vector);
             }
-            document.setVector(vector);
         }
 
         // 添加其他顶层非保留字段到 metadata（排除 $meta 本身）
         for (Map.Entry<String, Object> entry : entity.entrySet()) {
-            String key = entry.getKey();
+            String fieldName = entry.getKey();
             // 跳过：保留字段、$meta（已解析）、已设置的 content/title
-            if (key == null || isReservedField(key) || "$meta".equals(key)
-                || key.equalsIgnoreCase(contentField) || key.equalsIgnoreCase(titleField)) {
+            if (fieldName == null || isReservedField(fieldName) || "$meta".equals(fieldName)
+                || fieldName.equalsIgnoreCase(contentField) || fieldName.equalsIgnoreCase(titleField) || fieldName.equalsIgnoreCase(idField)) {
                 continue;
             }
-            document.putMetadata(key, entry.getValue());
+            document.putMetadata(fieldName, entry.getValue());
         }
 
         return document;
