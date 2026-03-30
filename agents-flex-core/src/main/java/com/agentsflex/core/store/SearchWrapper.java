@@ -65,8 +65,6 @@ public class SearchWrapper extends VectorData {
     private boolean outputVector = false;
 
 
-    private List<String> partitionNames;
-
 
     public String getText() {
         return text;
@@ -340,11 +338,4 @@ public class SearchWrapper extends VectorData {
         }
     }
 
-    public List<String> getPartitionNames() {
-        return partitionNames;
-    }
-
-    public void setPartitionNames(List<String> partitionNames) {
-        this.partitionNames = partitionNames;
-    }
 }
