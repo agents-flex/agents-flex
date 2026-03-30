@@ -1,5 +1,16 @@
 # Agents-Flex ChangeLog
 
+## v2.0.7 20260330
+- feat(milvus): add support for custom extension fields in vector store
+- refactor(milvus): rename dimension field to defaultDimension for clarity
+- feat(milvus): add expression adaptor support for vector store filtering
+- refactor(milvus): improve search request building and add comprehensive tests
+- fix(milvus): correct partition names condition check in search builder
+- chore(deps): update milvus-sdk-java dependency version
+- refactor(milvus): rename collectionName to defaultCollectionName and update method signatures
+- refactor(store): remove partition names from SearchWrapper
+
+
 ## v2.0.6 20260325
 - fix(chat): handle null metadata in ChatOptions builder
 - refactor(core): replace addMetadata with putMetadata in document operations
