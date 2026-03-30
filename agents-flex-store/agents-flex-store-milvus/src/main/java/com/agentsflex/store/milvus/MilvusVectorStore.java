@@ -811,7 +811,7 @@ public class MilvusVectorStore extends DocumentStore {
             String collectionName = options.getCollectionNameOrDefault(this.defaultCollectionName);
 
             // 构建搜索请求
-            SearchReq.SearchReqBuilder searchBuilder = SearchReq.builder()
+            SearchReq.SearchReqBuilder searchReqBuilder = SearchReq.builder()
                 .collectionName(collectionName)
                 .data(Collections.singletonList(new FloatVec(wrapper.getVector())))
                 .limit(wrapper.getMaxResults() != null ? wrapper.getMaxResults() : defaultTopK)
@@ -820,17 +820,18 @@ public class MilvusVectorStore extends DocumentStore {
             // 添加过滤条件
             String filter = wrapper.toFilterExpression();
             if (StringUtil.hasText(filter)) {
-                searchBuilder.filter(filter);
+                searchReqBuilder.filter(filter);
             }
 
             // 添加分区名称
             List<String> partitionNames = options.getPartitionNames();
             if (partitionNames != null && !partitionNames.isEmpty()) {
-                searchBuilder.partitionNames(partitionNames);
+                searchReqBuilder.partitionNames(partitionNames);
             }
 
             // 执行搜索
-            SearchResp response = milvusClient.search(searchBuilder.build());
+            SearchReq searchReq = searchReqBuilder.build();
+            SearchResp response = milvusClient.search(searchReq);
             List<List<SearchResp.SearchResult>> results = response.getSearchResults();
 
             if (results == null || results.isEmpty() || results.get(0) == null) {
