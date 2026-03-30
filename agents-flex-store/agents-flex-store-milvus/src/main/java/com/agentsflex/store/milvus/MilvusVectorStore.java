@@ -233,6 +233,7 @@ public class MilvusVectorStore extends DocumentStore {
             .enableDynamicField(config.isEnableDynamicField())
             .defaultTopK(config.getDefaultTopK())
             .autoCreateCollection(true)
+            .extFields(config.getExtFields())
             .build();
     }
 

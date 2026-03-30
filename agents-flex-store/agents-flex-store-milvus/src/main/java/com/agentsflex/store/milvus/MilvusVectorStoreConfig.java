@@ -376,6 +376,11 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             return this;
         }
 
+        public Builder extFields(List<CreateCollectionReq.FieldSchema> fieldSchemas) {
+            config.setExtFields(fieldSchemas);
+            return this;
+        }
+
         public MilvusVectorStoreConfig build() {
             config.checkAvailable();
             return config;
@@ -398,7 +403,7 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             ", enableDynamicField=" + enableDynamicField +
             ", defaultTopK=" + defaultTopK +
             ", consistencyLevel='" + consistencyLevel + '\'' +
-            ", extProperties=" + extFields +
+            ", extFields=" + extFields +
             '}';
     }
 
