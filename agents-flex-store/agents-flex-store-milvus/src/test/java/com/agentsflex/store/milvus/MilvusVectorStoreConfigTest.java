@@ -101,6 +101,7 @@ public class MilvusVectorStoreConfigTest {
         SearchWrapper wrapper = new SearchWrapper();
         wrapper.setText("文档");
         wrapper.setVector(new float[1536]);
+
         List<Document> search = store.search(wrapper);
 
         System.out.println(search);

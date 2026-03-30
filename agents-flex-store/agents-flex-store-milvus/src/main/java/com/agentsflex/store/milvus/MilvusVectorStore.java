@@ -117,7 +117,7 @@ public class MilvusVectorStore extends DocumentStore {
     /**
      * 集合名称
      */
-    private final String collectionName;
+    private final String defaultCollectionName;
 
     /**
      * 向量字段名称
@@ -215,7 +215,7 @@ public class MilvusVectorStore extends DocumentStore {
 
         return new Builder()
             .connectConfig(connectBuilder.build())
-            .collectionName(config.getDefaultCollectionName())
+            .defaultCollectionName(config.getDefaultCollectionName())
             .vectorField(config.getVectorField())
             .idField(config.getIdField())
             .contentField(config.getContentField())
@@ -235,8 +235,8 @@ public class MilvusVectorStore extends DocumentStore {
      */
     private MilvusVectorStore(Builder builder) {
         this.connectConfig = Objects.requireNonNull(builder.connectConfig, "connectConfig cannot be null");
-        this.collectionName = StringUtil.hasText(builder.collectionName)
-            ? builder.collectionName : "agents_flex_store";
+        this.defaultCollectionName = StringUtil.hasText(builder.defaultCollectionName)
+            ? builder.defaultCollectionName : "agents_flex_store";
         this.vectorField = StringUtil.hasText(builder.vectorField)
             ? builder.vectorField : DEFAULT_VECTOR_FIELD;
         this.idField = StringUtil.hasText(builder.idField)
@@ -304,10 +304,12 @@ public class MilvusVectorStore extends DocumentStore {
      * 确保集合存在，如果不存在则自动创建
      * 使用缓存避免重复检查，使用同步块保证线程安全
      */
-    private void ensureCollectionExists() {
+    private void ensureCollectionExists(StoreOptions options) {
         if (!autoCreateCollection) {
             return;
         }
+
+        String collectionName = options.getCollectionNameOrDefault(this.defaultCollectionName);
 
         // 先查缓存，避免重复请求
         if (Boolean.TRUE.equals(collectionCache.get(collectionName))) {
@@ -337,7 +339,7 @@ public class MilvusVectorStore extends DocumentStore {
                 // 判断是否为集合不存在的异常
                 if (errorMsg != null && (errorMsg.contains("collection not found") || errorMsg.contains("can't find collection"))) {
                     // 集合不存在，创建新集合
-                    createCollection(milvusClient);
+                    createCollection(milvusClient, collectionName);
                     collectionCache.put(collectionName, true);
                     logger.info("Collection '{}' created successfully", collectionName);
                 } else {
@@ -352,9 +354,10 @@ public class MilvusVectorStore extends DocumentStore {
      * 创建 Collection 和向量索引
      * 显式添加 content/title 字段到 schema，确保查询时作为顶层字段返回
      *
-     * @param milvusClient Milvus 客户端实例
+     * @param milvusClient   Milvus 客户端实例
+     * @param collectionName 集合名称
      */
-    private void createCollection(MilvusClientV2 milvusClient) {
+    private void createCollection(MilvusClientV2 milvusClient, String collectionName) {
         // 自动识别主键类型，默认使用 VarChar 兼容性更好
         DataType idType = inferPrimaryKeyType();
 
@@ -415,7 +418,7 @@ public class MilvusVectorStore extends DocumentStore {
             fields.stream().map(CreateCollectionReq.FieldSchema::getName).collect(Collectors.toList()));
 
         // 创建向量索引，提升查询性能
-        createVectorIndex(milvusClient);
+        createVectorIndex(milvusClient, collectionName);
     }
 
     /**
@@ -435,7 +438,7 @@ public class MilvusVectorStore extends DocumentStore {
      *
      * @param milvusClient Milvus 客户端实例
      */
-    private void createVectorIndex(MilvusClientV2 milvusClient) {
+    private void createVectorIndex(MilvusClientV2 milvusClient, String collectionName) {
         try {
             IndexParam indexParam = IndexParam.builder()
                 .fieldName(vectorField)
@@ -762,7 +765,7 @@ public class MilvusVectorStore extends DocumentStore {
 
         try {
             // 确保集合存在
-            ensureCollectionExists();
+            ensureCollectionExists(options);
 
             MilvusClientV2 milvusClient = getClient();
 
@@ -770,6 +773,8 @@ public class MilvusVectorStore extends DocumentStore {
             List<JsonObject> dataList = documents.stream()
                 .map(this::documentToJson)
                 .collect(Collectors.toList());
+
+            String collectionName = options.getCollectionNameOrDefault(this.defaultCollectionName);
 
             // 执行插入操作
             milvusClient.insert(InsertReq.builder()
@@ -799,9 +804,11 @@ public class MilvusVectorStore extends DocumentStore {
 
         try {
             // 确保集合存在
-            ensureCollectionExists();
+            ensureCollectionExists(options);
 
             MilvusClientV2 milvusClient = getClient();
+
+            String collectionName = options.getCollectionNameOrDefault(this.defaultCollectionName);
 
             // 构建搜索请求
             SearchReq.SearchReqBuilder searchBuilder = SearchReq.builder()
@@ -817,8 +824,9 @@ public class MilvusVectorStore extends DocumentStore {
             }
 
             // 添加分区名称
-            if (wrapper.getPartitionNames() != null && !wrapper.getPartitionNames().isEmpty()) {
-                searchBuilder.partitionNames(wrapper.getPartitionNames());
+            List<String> partitionNames = options.getPartitionNames();
+            if (partitionNames != null && partitionNames.isEmpty()) {
+                searchBuilder.partitionNames(partitionNames);
             }
 
             // 执行搜索
@@ -855,7 +863,7 @@ public class MilvusVectorStore extends DocumentStore {
 
         try {
             // 确保集合存在
-            ensureCollectionExists();
+            ensureCollectionExists(options);
 
             MilvusClientV2 milvusClient = getClient();
 
@@ -863,6 +871,8 @@ public class MilvusVectorStore extends DocumentStore {
             List<JsonObject> dataList = documents.stream()
                 .map(this::documentToJson)
                 .collect(Collectors.toList());
+
+            String collectionName = options.getCollectionNameOrDefault(this.defaultCollectionName);
 
             // 执行 upsert 操作
             milvusClient.upsert(UpsertReq.builder()
@@ -892,13 +902,15 @@ public class MilvusVectorStore extends DocumentStore {
 
         try {
             // 确保集合存在
-            ensureCollectionExists();
+            ensureCollectionExists(options);
 
             MilvusClientV2 milvusClient = getClient();
 
             // 构建过滤表达式
             List<Object> idList = new ArrayList<>(ids);
             String filter = buildFilterExpression(idList);
+
+            String collectionName = options.getCollectionNameOrDefault(this.defaultCollectionName);
 
             // 执行删除操作
             milvusClient.delete(DeleteReq.builder()
@@ -943,8 +955,8 @@ public class MilvusVectorStore extends DocumentStore {
      *
      * @return 集合名称
      */
-    public String getCollectionName() {
-        return collectionName;
+    public String getDefaultCollectionName() {
+        return defaultCollectionName;
     }
 
     /**
@@ -988,7 +1000,7 @@ public class MilvusVectorStore extends DocumentStore {
      */
     public static class Builder {
         private ConnectConfig connectConfig;
-        private String collectionName;
+        private String defaultCollectionName;
         private String vectorField = DEFAULT_VECTOR_FIELD;
         private String idField = DEFAULT_ID_FIELD;
         private String contentField = DEFAULT_CONTENT_FIELD;
@@ -1046,8 +1058,8 @@ public class MilvusVectorStore extends DocumentStore {
          * @param name 集合名称
          * @return Builder 实例
          */
-        public Builder collectionName(String name) {
-            this.collectionName = name;
+        public Builder defaultCollectionName(String name) {
+            this.defaultCollectionName = name;
             return this;
         }
 
