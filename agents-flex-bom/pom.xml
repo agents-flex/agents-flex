@@ -165,6 +165,10 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-milvus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-opensearch</artifactId>
         </dependency>
         <dependency>
