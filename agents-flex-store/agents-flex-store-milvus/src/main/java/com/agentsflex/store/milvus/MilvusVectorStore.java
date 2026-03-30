@@ -825,7 +825,7 @@ public class MilvusVectorStore extends DocumentStore {
 
             // 添加分区名称
             List<String> partitionNames = options.getPartitionNames();
-            if (partitionNames != null && partitionNames.isEmpty()) {
+            if (partitionNames != null && !partitionNames.isEmpty()) {
                 searchBuilder.partitionNames(partitionNames);
             }
 
