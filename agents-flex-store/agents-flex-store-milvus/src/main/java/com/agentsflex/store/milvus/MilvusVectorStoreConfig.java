@@ -17,11 +17,12 @@ package com.agentsflex.store.milvus;
 
 import com.agentsflex.core.store.DocumentStoreConfig;
 import com.alibaba.fastjson2.annotation.JSONField;
+import io.milvus.v2.service.collection.request.CreateCollectionReq;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Milvus 向量存储配置类
@@ -135,7 +136,7 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
     /**
      * 扩展属性（用于传递厂商特有参数或自定义配置）
      */
-    private Map<String, Object> extProperties;
+    private List<CreateCollectionReq.FieldSchema> extFields;
 
     // ==================== 构造函数 ====================
 
@@ -253,15 +254,15 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
         this.titleField = titleField;
     }
 
-    public Map<String, Object> getExtProperties() {
-        if (extProperties == null) {
-            extProperties = new HashMap<>();
+    public List<CreateCollectionReq.FieldSchema> getExtFields() {
+        if (extFields == null) {
+            extFields = new ArrayList<>();
         }
-        return extProperties;
+        return extFields;
     }
 
-    public void setExtProperties(Map<String, Object> extProperties) {
-        this.extProperties = extProperties;
+    public void setExtFields(List<CreateCollectionReq.FieldSchema> extFields) {
+        this.extFields = extFields;
     }
 
     // ==================== 接口方法实现 ====================
@@ -370,8 +371,8 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             return this;
         }
 
-        public Builder extProperty(String key, Object value) {
-            config.getExtProperties().put(key, value);
+        public Builder extField(CreateCollectionReq.FieldSchema fieldSchema) {
+            config.getExtFields().add(fieldSchema);
             return this;
         }
 
@@ -397,7 +398,7 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             ", enableDynamicField=" + enableDynamicField +
             ", defaultTopK=" + defaultTopK +
             ", consistencyLevel='" + consistencyLevel + '\'' +
-            ", extProperties=" + extProperties +
+            ", extProperties=" + extFields +
             '}';
     }
 
@@ -422,7 +423,7 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
         if (metricType != null ? !metricType.equals(that.metricType) : that.metricType != null) return false;
         if (consistencyLevel != null ? !consistencyLevel.equals(that.consistencyLevel) : that.consistencyLevel != null)
             return false;
-        return !(extProperties != null ? !extProperties.equals(that.extProperties) : that.extProperties != null);
+        return !(extFields != null ? !extFields.equals(that.extFields) : that.extFields != null);
     }
 
     @Override
@@ -438,7 +439,7 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
         result = 31 * result + (enableDynamicField ? 1 : 0);
         result = 31 * result + defaultTopK;
         result = 31 * result + (consistencyLevel != null ? consistencyLevel.hashCode() : 0);
-        result = 31 * result + (extProperties != null ? extProperties.hashCode() : 0);
+        result = 31 * result + (extFields != null ? extFields.hashCode() : 0);
         return result;
     }
 }

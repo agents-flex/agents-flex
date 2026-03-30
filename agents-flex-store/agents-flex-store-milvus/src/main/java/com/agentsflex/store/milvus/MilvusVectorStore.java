@@ -176,6 +176,13 @@ public class MilvusVectorStore extends DocumentStore {
      */
     private final String poolKey;
 
+
+    /**
+     * 额外的扩展字段
+     */
+    private List<CreateCollectionReq.FieldSchema> extFields;
+
+
     /**
      * 静态初始化：注册 JVM 关闭钩子，确保应用退出时清理资源
      */
@@ -251,6 +258,7 @@ public class MilvusVectorStore extends DocumentStore {
         this.enableDynamicField = builder.enableDynamicField;
         this.defaultTopK = builder.defaultTopK > 0 ? builder.defaultTopK : 10;
         this.autoCreateCollection = builder.autoCreateCollection;
+        this.extFields = builder.extFields;
 
         // 预构建保留字段集合，统一转小写存储，支持大小写不敏感匹配
         this.reservedFields = new HashSet<>(Arrays.asList(
@@ -263,11 +271,6 @@ public class MilvusVectorStore extends DocumentStore {
 
         // 生成连接池 key，用于复用相同配置的客户端
         this.poolKey = generatePoolKey(connectConfig);
-
-        // 校验必要参数：自动创建集合时必须指定向量维度
-        if (autoCreateCollection && defaultDimension == null) {
-            throw new IllegalArgumentException("dimension is required when autoCreateCollection is enabled");
-        }
     }
 
     /**
@@ -358,7 +361,7 @@ public class MilvusVectorStore extends DocumentStore {
      * @param milvusClient   Milvus 客户端实例
      * @param collectionName 集合名称
      */
-    private void createCollection(MilvusClientV2 milvusClient, String collectionName) {
+    protected void createCollection(MilvusClientV2 milvusClient, String collectionName) {
         // 自动识别主键类型，默认使用 VarChar 兼容性更好
         DataType idType = inferPrimaryKeyType();
 
@@ -406,6 +409,13 @@ public class MilvusVectorStore extends DocumentStore {
                 .build());
         }
 
+
+        // 添加扩展字段
+        if (this.extFields != null && !this.extFields.isEmpty()) {
+            fields.addAll(this.extFields);
+        }
+
+
         // 构建 Schema
         CreateCollectionReq.CollectionSchema schema = CreateCollectionReq.CollectionSchema.builder()
             .fieldSchemaList(fields)
@@ -443,7 +453,7 @@ public class MilvusVectorStore extends DocumentStore {
      *
      * @param milvusClient Milvus 客户端实例
      */
-    private void createVectorIndex(MilvusClientV2 milvusClient, String collectionName) {
+    protected void createVectorIndex(MilvusClientV2 milvusClient, String collectionName) {
         try {
             IndexParam indexParam = IndexParam.builder()
                 .fieldName(vectorField)
@@ -514,13 +524,28 @@ public class MilvusVectorStore extends DocumentStore {
             json.addProperty(titleField, "");
         }
 
+        if (this.extFields != null) {
+            for (CreateCollectionReq.FieldSchema extField : this.extFields) {
+                Object value = document.getMetadata(extField.getName());
+                if (value instanceof Number) {
+                    json.addProperty(extField.getName(), (Number) value);
+                } else if (value instanceof String) {
+                    json.addProperty(extField.getName(), (String) value);
+                } else if (value instanceof Boolean) {
+                    json.addProperty(extField.getName(), (Boolean) value);
+                } else if (value != null) {
+                    json.addProperty(extField.getName(), GSON.toJson(value));
+                }
+            }
+        }
+
 
         // 动态字段存储其他元数据，排除已显式定义的字段和保留字段
         if (enableDynamicField && document.getMetadataMap() != null) {
             for (Map.Entry<String, Object> entry : document.getMetadataMap().entrySet()) {
                 String key = entry.getKey();
                 // 排除保留字段和已显式定义的 content/title
-                if (isReservedField(key) || key.equals(contentField) || key.equals(titleField)) {
+                if (isReservedField(key) || isExtField(key) || key.equals(contentField) || key.equals(titleField)) {
                     continue;
                 }
                 Object value = entry.getValue();
@@ -530,13 +555,27 @@ public class MilvusVectorStore extends DocumentStore {
                     json.addProperty(key, (Number) value);
                 } else if (value instanceof Boolean) {
                     json.addProperty(key, (Boolean) value);
-                } else {
+                } else if (value != null) {
                     // 复杂对象转为 JSON 字符串存储
                     json.addProperty(key, GSON.toJson(value));
                 }
             }
         }
         return json;
+    }
+
+    private boolean isExtField(String key) {
+        if (extFields == null || extFields.isEmpty()) {
+            return false;
+        }
+
+        for (CreateCollectionReq.FieldSchema extField : extFields) {
+            if (extField.getName().equals(key)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -727,7 +766,6 @@ public class MilvusVectorStore extends DocumentStore {
 
         // 提取向量数据
         if (entity.containsKey(vectorField) && entity.get(vectorField) instanceof List) {
-            @SuppressWarnings("unchecked")
             List<?> vecList = (List<?>) entity.get(vectorField);
             float[] vector = new float[vecList.size()];
             for (int i = 0; i < vecList.size(); i++) {
@@ -740,16 +778,14 @@ public class MilvusVectorStore extends DocumentStore {
         }
 
         // 添加其他顶层非保留字段到 metadata（排除 $meta 本身）
-        if (enableDynamicField) {
-            for (Map.Entry<String, Object> entry : entity.entrySet()) {
-                String key = entry.getKey();
-                // 跳过：保留字段、$meta（已解析）、已设置的 content/title
-                if (key == null || isReservedField(key) || "$meta".equals(key)
-                    || key.equalsIgnoreCase(contentField) || key.equalsIgnoreCase(titleField)) {
-                    continue;
-                }
-                document.putMetadata(key, entry.getValue());
+        for (Map.Entry<String, Object> entry : entity.entrySet()) {
+            String key = entry.getKey();
+            // 跳过：保留字段、$meta（已解析）、已设置的 content/title
+            if (key == null || isReservedField(key) || "$meta".equals(key)
+                || key.equalsIgnoreCase(contentField) || key.equalsIgnoreCase(titleField)) {
+                continue;
             }
+            document.putMetadata(key, entry.getValue());
         }
 
         return document;
@@ -1016,6 +1052,7 @@ public class MilvusVectorStore extends DocumentStore {
         private boolean enableDynamicField = true;
         private int defaultTopK = 10;
         private boolean autoCreateCollection = true;
+        private List<CreateCollectionReq.FieldSchema> extFields;
 
         /**
          * 设置连接配置
@@ -1165,6 +1202,20 @@ public class MilvusVectorStore extends DocumentStore {
          */
         public Builder autoCreateCollection(boolean auto) {
             this.autoCreateCollection = auto;
+            return this;
+        }
+
+
+        public Builder extFields(List<CreateCollectionReq.FieldSchema> extFields) {
+            this.extFields = extFields;
+            return this;
+        }
+
+        public Builder extField(CreateCollectionReq.FieldSchema extField) {
+            if (this.extFields == null) {
+                this.extFields = new ArrayList<>();
+            }
+            this.extFields.add(extField);
             return this;
         }
 
