@@ -90,8 +90,11 @@ public class QdrantVectorStore extends DocumentStore {
     
     
     private PointId pointId(Object id) {
+    	if (id instanceof Long) {
+			return PointId.newBuilder().setNum((Long)id).build();
+		}
         return PointId.newBuilder().setUuid(id.toString()).build();
-      }
+    }
 
     @Override
     public StoreResult doStore(List<Document> documents, StoreOptions options) {
