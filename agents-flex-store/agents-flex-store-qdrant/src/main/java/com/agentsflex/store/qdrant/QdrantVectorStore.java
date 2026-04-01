@@ -87,6 +87,11 @@ public class QdrantVectorStore extends DocumentStore {
         }
         this.client = new QdrantClient(builder.build());
     }
+    
+    
+    private PointId pointId(Object id) {
+        return PointId.newBuilder().setUuid(id.toString()).build();
+      }
 
     @Override
     public StoreResult doStore(List<Document> documents, StoreOptions options) {
@@ -97,7 +102,7 @@ public class QdrantVectorStore extends DocumentStore {
             Map<String, JsonWithInt.Value> payload = new HashMap<>();
             payload.put("content", value(doc.getContent()));
             points.add(PointStruct.newBuilder()
-                .setId(id(Long.parseLong(doc.getId().toString())))
+                .setId(pointId(doc.getId()))
                 .setVectors(vectors(doc.getVector()))
                 .putAllPayload(payload)
                 .build());
@@ -130,7 +135,7 @@ public class QdrantVectorStore extends DocumentStore {
         try {
             String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
             List<PointId> pointIds = ids.stream()
-                .map(id -> id((Long) id))
+                .map(id -> pointId(id))
                 .collect(Collectors.toList());
             client.deleteAsync(collectionName, pointIds).get();
             return StoreResult.success();
@@ -147,7 +152,7 @@ public class QdrantVectorStore extends DocumentStore {
                 Map<String, JsonWithInt.Value> payload = new HashMap<>();
                 payload.put("content", value(doc.getContent()));
                 points.add(PointStruct.newBuilder()
-                    .setId(id(Long.parseLong(doc.getId().toString())))
+                    .setId(pointId(doc.getId()))
                     .setVectors(vectors(doc.getVector()))
                     .putAllPayload(payload)
                     .build());
@@ -181,7 +186,7 @@ public class QdrantVectorStore extends DocumentStore {
             List<ScoredPoint> data = client.queryAsync(query.build()).get();
             for (ScoredPoint point : data) {
                 Document doc = new Document();
-                doc.setId(point.getId().getNum());
+                doc.setId(point.getId().getUuid());
                 doc.setVectorByNumbers(point.getVectors().getVector().getDataList());
                 doc.setContent(point.getPayloadMap().get("content").getStringValue());
                 documents.add(doc);
