@@ -65,8 +65,20 @@ public class QdrantVectorStore extends DocumentStore {
             builder = QdrantGrpcClient.newBuilder(channel, true);
         } else {
             if (uri.contains(":")) {
-                uri = uri.split(":")[0];
-                port = Integer.parseInt(uri.split(":")[1]);
+            	String[] parts = uri.split(":", 2);
+            	if (parts.length == 2) {
+            	    uri = parts[0].trim();
+            	    try {
+            	        port = Integer.parseInt(parts[1].trim());
+            	        if (port < 1 || port > 65535) {
+            	            throw new IllegalArgumentException("Port number out of valid range (1-65535): " + port);
+            	        }
+            	    } catch (NumberFormatException e) {
+            	        throw new IllegalArgumentException("Invalid port format in URI: " + uri, e);
+            	    }
+            	} else {
+            	    throw new IllegalArgumentException("Invalid URI format. Expected format: host:port, current value: " + uri);
+            	}
             }
             builder = QdrantGrpcClient.newBuilder(uri, port, false);
         }
