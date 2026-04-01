@@ -38,7 +38,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static io.qdrant.client.ConditionFactory.matchKeyword;
-import static io.qdrant.client.PointIdFactory.id;
 import static io.qdrant.client.QueryFactory.nearest;
 import static io.qdrant.client.ValueFactory.value;
 import static io.qdrant.client.VectorsFactory.vectors;
@@ -189,7 +188,11 @@ public class QdrantVectorStore extends DocumentStore {
             List<ScoredPoint> data = client.queryAsync(query.build()).get();
             for (ScoredPoint point : data) {
                 Document doc = new Document();
-                doc.setId(point.getId().getUuid());
+                if (point.getId().hasUuid()) {
+                	doc.setId(point.getId().getUuid());
+				}else {
+					doc.setId(point.getId().getNum());
+				}
                 doc.setVectorByNumbers(point.getVectors().getVector().getDataList());
                 doc.setContent(point.getPayloadMap().get("content").getStringValue());
                 documents.add(doc);
