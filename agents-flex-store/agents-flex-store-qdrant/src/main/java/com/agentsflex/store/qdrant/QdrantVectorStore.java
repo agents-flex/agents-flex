@@ -50,8 +50,6 @@ public class QdrantVectorStore extends DocumentStore {
     private final QdrantClient            client;
     private final String                  defaultCollectionName;
     private       boolean                 isCreateCollection = false;
-    
-    
 
     public QdrantVectorStore(QdrantVectorStoreConfig config) throws IOException {
         this.config = config;
@@ -95,13 +93,11 @@ public class QdrantVectorStore extends DocumentStore {
         List<PointStruct> points = new ArrayList<>();
         int size = 1024;
         for (Document doc : documents) {
-        	UUID uuid = uuid(doc.getId());
-        	doc.setId(uuid);
             size = doc.getVector().length;
             Map<String, JsonWithInt.Value> payload = new HashMap<>();
             payload.put("content", value(doc.getContent()));
             points.add(PointStruct.newBuilder()
-                .setId(id(uuid))
+                .setId(id(Long.parseLong(doc.getId().toString())))
                 .setVectors(vectors(doc.getVector()))
                 .putAllPayload(payload)
                 .build());
@@ -129,29 +125,6 @@ public class QdrantVectorStore extends DocumentStore {
         }
     }
 
-	private UUID uuid(Object id) {
-		
-		return md5ToUuid(id.toString());
-	}
-	
-	private UUID md5ToUuid(String md5) {
-	    // 把 32 位 MD5 转成 16 字节 byte[]
-	    byte[] bytes = new byte[16];
-	    for (int i = 0; i < 16; i++) {
-	        bytes[i] = (byte) Integer.parseInt(md5.substring(i * 2, i * 2 + 2), 16);
-	    }
-	    // 拆成高 8 字节、低 8 字节
-	    long msb = 0;
-	    long lsb = 0;
-	    for (int i = 0; i < 8; i++) {
-	        msb = (msb << 8) | (bytes[i] & 0xff);
-	    }
-	    for (int i = 8; i < 16; i++) {
-	        lsb = (lsb << 8) | (bytes[i] & 0xff);
-	    }
-	    return new UUID(msb, lsb);
-	}
-
     @Override
     public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         try {
@@ -174,7 +147,7 @@ public class QdrantVectorStore extends DocumentStore {
                 Map<String, JsonWithInt.Value> payload = new HashMap<>();
                 payload.put("content", value(doc.getContent()));
                 points.add(PointStruct.newBuilder()
-                    .setId(id(uuid(doc)))
+                    .setId(id(Long.parseLong(doc.getId().toString())))
                     .setVectors(vectors(doc.getVector()))
                     .putAllPayload(payload)
                     .build());
