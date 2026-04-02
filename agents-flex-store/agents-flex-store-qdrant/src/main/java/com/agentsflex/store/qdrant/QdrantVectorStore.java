@@ -20,6 +20,7 @@ import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
+import com.agentsflex.core.store.condition.Condition;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.StringUtil;
 import io.grpc.Grpc;
@@ -29,6 +30,7 @@ import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import io.qdrant.client.grpc.Collections;
 import io.qdrant.client.grpc.JsonWithInt;
+import io.qdrant.client.grpc.JsonWithInt.Value;
 import io.qdrant.client.grpc.Points;
 import io.qdrant.client.grpc.Points.*;
 
@@ -38,7 +40,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static io.qdrant.client.ConditionFactory.matchKeyword;
-import static io.qdrant.client.PointIdFactory.id;
 import static io.qdrant.client.QueryFactory.nearest;
 import static io.qdrant.client.ValueFactory.value;
 import static io.qdrant.client.VectorsFactory.vectors;
@@ -87,6 +88,14 @@ public class QdrantVectorStore extends DocumentStore {
         }
         this.client = new QdrantClient(builder.build());
     }
+    
+    
+    private PointId pointId(Object id) {
+    	if (id instanceof Long) {
+			return PointId.newBuilder().setNum((Long)id).build();
+		}
+        return PointId.newBuilder().setUuid(id.toString()).build();
+    }
 
     @Override
     public StoreResult doStore(List<Document> documents, StoreOptions options) {
@@ -97,7 +106,7 @@ public class QdrantVectorStore extends DocumentStore {
             Map<String, JsonWithInt.Value> payload = new HashMap<>();
             payload.put("content", value(doc.getContent()));
             points.add(PointStruct.newBuilder()
-                .setId(id(Long.parseLong(doc.getId().toString())))
+                .setId(pointId(doc.getId()))
                 .setVectors(vectors(doc.getVector()))
                 .putAllPayload(payload)
                 .build());
@@ -130,7 +139,7 @@ public class QdrantVectorStore extends DocumentStore {
         try {
             String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
             List<PointId> pointIds = ids.stream()
-                .map(id -> id((Long) id))
+                .map(id -> pointId(id))
                 .collect(Collectors.toList());
             client.deleteAsync(collectionName, pointIds).get();
             return StoreResult.success();
@@ -147,7 +156,7 @@ public class QdrantVectorStore extends DocumentStore {
                 Map<String, JsonWithInt.Value> payload = new HashMap<>();
                 payload.put("content", value(doc.getContent()));
                 points.add(PointStruct.newBuilder()
-                    .setId(id(Long.parseLong(doc.getId().toString())))
+                    .setId(pointId(doc.getId()))
                     .setVectors(vectors(doc.getVector()))
                     .putAllPayload(payload)
                     .build());
@@ -175,24 +184,51 @@ public class QdrantVectorStore extends DocumentStore {
             if (wrapper.getVector() != null) {
                 query.setQuery(nearest(wrapper.getVector()));
             }
-            if (StringUtil.hasText(wrapper.getText())) {
-                query.setFilter(Filter.newBuilder().addMust(matchKeyword("content", wrapper.getText())));
-            }
+            if (wrapper.getCondition()!=null && wrapper.getCondition().isEffective()) {
+            	String expr = wrapper.getCondition().toExpression(QdrantExpressionAdaptor.DEFAULT);
+            	Filter filter = Filter.parseFrom(expr.getBytes());
+				query.setFilter(filter);
+			}
+            if (wrapper.getScore()!=null) {
+                query.setScoreThreshold(wrapper.getScore());
+			}
             List<ScoredPoint> data = client.queryAsync(query.build()).get();
             for (ScoredPoint point : data) {
-                Document doc = new Document();
-                doc.setId(point.getId().getNum());
+            	Document doc = new Document();
+                if (point.getId().hasUuid()) {
+                    	doc.setId(point.getId().getUuid());
+                }else {
+    					doc.setId(point.getId().getNum());
+    			}
+                Map<String, Value> payload = point.getPayloadMap();
+                for (Map.Entry<String, Value> entry : payload.entrySet()) {
+                    String key = entry.getKey();
+                    Value value = entry.getValue();
+                    doc.putMetadata(key, convertQdrantValue(value));
+                }
+                doc.setScore(point.getScore());
                 doc.setVectorByNumbers(point.getVectors().getVector().getDataList());
                 doc.setContent(point.getPayloadMap().get("content").getStringValue());
-                documents.add(doc);
+                documents.add(doc); 
             }
             return documents;
         } catch (Exception e) {
-            return documents;
+            throw new RuntimeException(e);
         }
     }
 
-    public QdrantClient getClient() {
+    private Object convertQdrantValue(Value value) {
+        switch (value.getKindCase()) {
+            case STRING_VALUE: return value.getStringValue();
+            case INTEGER_VALUE: return value.getIntegerValue();
+            case DOUBLE_VALUE: return value.getDoubleValue();
+            case BOOL_VALUE: return value.getBoolValue();
+            case NULL_VALUE: return null;
+            default: return value.toString();
+        }
+    }
+
+	public QdrantClient getClient() {
         return client;
     }
 }
