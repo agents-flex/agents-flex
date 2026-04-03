@@ -108,6 +108,6 @@ public class ImageUtil {
 
     public static String imageBytesToDataUri(byte[] data, String mimeType) {
         String base64 = Base64.getEncoder().encodeToString(data);
-        return mimeType + ";base64," + base64;
+        return "data:" + mimeType + ";base64," + base64;
     }
 }
