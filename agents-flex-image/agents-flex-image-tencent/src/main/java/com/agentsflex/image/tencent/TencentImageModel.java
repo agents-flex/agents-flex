@@ -146,7 +146,7 @@ public class TencentImageModel implements ImageModel {
     public static String promptToPayload(GenerateImageRequest request) {
         return Maps.of("Prompt", request.getPrompt())
             .setIfNotEmpty("NegativePrompt", request.getNegativePrompt())
-            .setIfNotEmpty("Style", request.getSize())
+            .setIfNotEmpty("Style", request.getSizeString())
             .setIfNotEmpty("Resolution", request.getQuality())
             .setIfNotEmpty("Num", request.getN())
             .setIfNotEmpty(request.getOptions())

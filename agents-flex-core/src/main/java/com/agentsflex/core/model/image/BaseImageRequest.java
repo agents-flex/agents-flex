@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.model.image;
 
+import com.agentsflex.core.util.StringUtil;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,6 +27,7 @@ public class BaseImageRequest {
     private String user;
     private Integer width;
     private Integer height;
+    private String sizeString;
     private Map<String, Object> options;
 
     public String getModel() {
@@ -72,11 +75,17 @@ public class BaseImageRequest {
         this.height = height;
     }
 
-    public String getSize() {
-        if (this.width == null || this.height == null) {
-            return null;
+    public void setSizeString(String sizeString) {
+        this.sizeString = sizeString;
+    }
+
+    public String getSizeString() {
+        if (StringUtil.hasText(sizeString)) {
+            return sizeString;
+        } else if (this.width != null && this.height != null) {
+            return this.width + "x" + this.height;
         }
-        return this.width + "x" + this.height;
+        return null;
     }
 
 

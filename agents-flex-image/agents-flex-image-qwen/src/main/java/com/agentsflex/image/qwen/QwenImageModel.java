@@ -43,7 +43,7 @@ public class QwenImageModel implements ImageModel {
                 ImageSynthesisParam.builder()
                     .apiKey(config.getApiKey())
                     .model(null != request.getModel() ? request.getModel() : config.getModel())
-                    .size(request.getSize())
+                    .size(request.getSizeString())
                     .prompt(request.getPrompt())
                     .seed(Integer.valueOf(String.valueOf(request.getOptionOrDefault("seed",1))))
                     .build();

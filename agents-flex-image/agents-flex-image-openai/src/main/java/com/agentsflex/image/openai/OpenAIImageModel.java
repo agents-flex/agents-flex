@@ -45,7 +45,7 @@ public class OpenAIImageModel extends BaseImageModel<OpenAIImageModelConfig> {
         String payload = Maps.of("model", config.getModel())
             .set("prompt", request.getPrompt())
             .setIfNotNull("n", request.getN())
-            .set("size", request.getSize())
+            .setIfNotEmpty("size", request.getSizeString())
             .toJSON();
 
 

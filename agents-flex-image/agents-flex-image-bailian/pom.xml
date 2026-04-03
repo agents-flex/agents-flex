@@ -5,29 +5,30 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>agents-flex-image</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-image</name>
-    <artifactId>agents-flex-image</artifactId>
-    <packaging>pom</packaging>
-    <modules>
-        <module>agents-flex-image-bailian</module>
-        <module>agents-flex-image-gitee</module>
-        <module>agents-flex-image-openai</module>
-        <module>agents-flex-image-qianfan</module>
-        <module>agents-flex-image-qwen</module>
-        <module>agents-flex-image-siliconflow</module>
-        <module>agents-flex-image-stability</module>
-		<module>agents-flex-image-tencent</module>
-        <module>agents-flex-image-volcengine</module>
-    </modules>
+    <name>agents-flex-image-bailian</name>
+    <artifactId>agents-flex-image-bailian</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
 
 </project>

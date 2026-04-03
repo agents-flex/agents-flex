@@ -43,7 +43,7 @@ public class GiteeImageModel implements ImageModel {
         String payload = Maps.of("model", config.getModel())
             .set("prompt", request.getPrompt())
             .setIfNotNull("n", request.getN())
-            .set("size", request.getSize())
+            .setIfNotEmpty("size", request.getSizeString())
             .set("response_format", "url")
             .toJSON();
 

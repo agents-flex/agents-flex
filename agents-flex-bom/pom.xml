@@ -60,6 +60,10 @@
         <!--image model start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-image-bailian</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-image-gitee</artifactId>
         </dependency>
         <dependency>

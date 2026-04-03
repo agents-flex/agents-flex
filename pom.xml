@@ -155,6 +155,11 @@
             <!--image model start-->
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-image-bailian</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-image-gitee</artifactId>
                 <version>${revision}</version>
             </dependency>

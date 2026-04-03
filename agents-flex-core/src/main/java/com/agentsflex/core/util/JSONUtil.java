@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.util;
 
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.JSONPath;
 
@@ -121,6 +122,41 @@ public class JSONUtil {
         throw new IllegalArgumentException("Invalid JSON path result type: " + result.getClass().getName());
     }
 
+
+    public static JSONArray getJSONArray(JSONObject jsonObject, String path) {
+        if (jsonObject == null || path == null) {
+            return null;
+        }
+        JSONPath jsonPath = getJsonPath(path);
+        Object result = jsonPath.eval(jsonObject);
+        if (result == null) {
+            return null;
+        }
+
+        if (!(result instanceof JSONArray)) {
+            throw new IllegalArgumentException("Invalid JSON path result type: " + result.getClass().getName());
+        }
+
+        return (JSONArray) result;
+    }
+
+    public static JSONObject getJSONObject(JSONObject jsonObject, String path) {
+        if (jsonObject == null || path == null) {
+            return null;
+        }
+        JSONPath jsonPath = getJsonPath(path);
+        Object result = jsonPath.eval(jsonObject);
+        if (result == null) {
+            return null;
+        }
+
+        if (!(result instanceof JSONObject)) {
+            throw new IllegalArgumentException("Invalid JSON path result type: " + result.getClass().getName());
+        }
+
+        return (JSONObject) result;
+    }
+
     public static String detectErrorMessage(JSONObject jsonObject) {
         JSONObject errorObject = jsonObject.getJSONObject("error");
         if (errorObject == null) {
@@ -130,4 +166,6 @@ public class JSONUtil {
         String errorCode = errorObject.getString("code");
         return errorCode == null ? errorMessage : (errorCode + ": " + errorMessage);
     }
+
+
 }
