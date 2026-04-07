@@ -3,6 +3,8 @@ package com.agentsflex.core.test;
 import com.agentsflex.core.file2text.File2TextUtil;
 import org.junit.Test;
 
+import java.io.File;
+
 public class File2TextUtilTest {
 
     @Test
@@ -12,5 +14,22 @@ public class File2TextUtilTest {
         String text = File2TextUtil.readFromHttpUrl(url);
 
         System.out.println(">>>>" + text);
+    }
+
+    @Test
+    public void testReadFromFile() {
+        String filePath = "/Users/michael/Desktop/11122.docx";
+        String text = File2TextUtil.readFromFile(new File(filePath));
+        System.out.println( text);
+
+        // 断言结果
+    }
+    @Test
+    public void testReadFromFile2() {
+        String filePath = "/Users/michael/Desktop/222.pdf";
+        String text = File2TextUtil.readFromFile(new File(filePath));
+        System.out.println( text);
+
+        // 断言结果
     }
 }
