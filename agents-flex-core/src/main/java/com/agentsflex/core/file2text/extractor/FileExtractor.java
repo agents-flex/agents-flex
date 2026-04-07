@@ -35,4 +35,10 @@ public interface FileExtractor {
     default int getOrder() {
         return 100;
     }
+
+    default String getExtension(String fileName) {
+        if (fileName == null || !fileName.contains(".")) return null;
+        int lastDot = fileName.lastIndexOf('.');
+        return fileName.substring(lastDot + 1).toLowerCase();
+    }
 }
