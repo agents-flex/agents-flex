@@ -284,9 +284,4 @@ public class ExcelExtractor implements FileExtractor {
         return 10;
     }
 
-    private String getExtension(String fileName) {
-        if (fileName == null || !fileName.contains(".")) return null;
-        int lastDot = fileName.lastIndexOf('.');
-        return fileName.substring(lastDot + 1);
-    }
 }

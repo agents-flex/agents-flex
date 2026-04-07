@@ -319,9 +319,4 @@ public class HtmlExtractor implements FileExtractor {
         return 12;
     }
 
-    private String getExtension(String fileName) {
-        if (fileName == null || !fileName.contains(".")) return null;
-        int lastDot = fileName.lastIndexOf('.');
-        return fileName.substring(lastDot + 1);
-    }
 }
