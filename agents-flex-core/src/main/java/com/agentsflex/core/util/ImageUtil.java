@@ -110,4 +110,25 @@ public class ImageUtil {
         String base64 = Base64.getEncoder().encodeToString(data);
         return "data:" + mimeType + ";base64," + base64;
     }
+
+
+    public static String getMimeTypeFromExtension(String ext) {
+        if (ext == null) return null;
+        switch (ext.toLowerCase()) {
+            case "jpg":
+            case "jpeg":
+                return "image/jpeg";
+            case "png":
+                return "image/png";
+            case "gif":
+                return "image/gif";
+            case "bmp":
+                return "image/bmp";
+            case "tif":
+            case "tiff":
+                return "image/tiff";
+            default:
+                return null;
+        }
+    }
 }
