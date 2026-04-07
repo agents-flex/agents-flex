@@ -15,9 +15,9 @@
  */
 package com.agentsflex.core.file2text.extractor.impl;
 
-
 import com.agentsflex.core.file2text.extractor.FileExtractor;
 import com.agentsflex.core.file2text.source.DocumentSource;
+import com.agentsflex.core.util.ImageUtil;
 import org.apache.poi.xwpf.usermodel.*;
 
 import java.io.IOException;
@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 /**
  * DOCX 文档提取器（.docx, .dotx）
- * 支持段落、表格、列表文本提取
+ * 支持段落、表格、列表文本提取，以及嵌入图片的 Base64 提取
  */
 public class DocxExtractor implements FileExtractor {
 
@@ -42,6 +42,8 @@ public class DocxExtractor implements FileExtractor {
         // 精确 MIME（可选）
         Set<String> mimeTypes = new HashSet<>();
         mimeTypes.add("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        // 也可以添加 template 类型
+        mimeTypes.add("application/vnd.openxmlformats-officedocument.wordprocessingml.template");
         KNOWN_MIME_TYPES = Collections.unmodifiableSet(mimeTypes);
 
         // 支持的扩展名
@@ -100,6 +102,7 @@ public class DocxExtractor implements FileExtractor {
                         .map(this::getCellText)
                         .map(String::trim)
                         .collect(Collectors.toList());
+                    // 注意：这里直接 append List 可能会输出 [col1, col2] 格式，视需求而定
                     text.append(cellTexts).append("\n");
                 }
                 text.append("[Table End]\n\n");
@@ -112,22 +115,44 @@ public class DocxExtractor implements FileExtractor {
         return text.toString().trim();
     }
 
+    /**
+     * 提取段落文本，包括其中嵌入的图片
+     */
     private String getParagraphText(XWPFParagraph paragraph) {
         StringBuilder text = new StringBuilder();
+
+        // 1. 提取普通文本 Run
         for (XWPFRun run : paragraph.getRuns()) {
             String runText = run.text();
             if (runText != null) {
                 text.append(runText);
             }
+
+            // 2. 提取图片 (Inline Images)
+            // XWPFRun 可能包含多个图片，虽然常见是一个
+            List<XWPFPicture> pictures = run.getEmbeddedPictures();
+            if (pictures != null && !pictures.isEmpty()) {
+                for (XWPFPicture picture : pictures) {
+                    String imageBase64 = extractImageAsBase64(picture);
+                    if (imageBase64 != null) {
+                        // 使用 Markdown 格式或自定义标签包裹图片
+                        // 这里使用 Markdown 格式，方便后续 LLM 理解或前端渲染
+                        text.append("\n![Image](").append(imageBase64).append(")\n");
+                    }
+                }
+            }
         }
+
+        // 注意：有些复杂的图片可能是锚定的 (Anchored)，不在 Run 中，而在 Paragraph 的底层 XML 中
+        // 如果需要更全面的支持，可以解析 paragraph.getCTP()，但通常 getEmbeddedPictures 覆盖了大部分场景
+
         return text.length() > 0 ? text.toString() : null;
     }
 
+    /**
+     * 提取单元格文本，递归处理段落和图片
+     */
     private String getCellText(XWPFTableCell cell) {
-        String simpleText = cell.getText();
-        if (simpleText != null && !simpleText.isEmpty()) {
-            return simpleText;
-        }
         StringBuilder text = new StringBuilder();
         for (XWPFParagraph p : cell.getParagraphs()) {
             String pt = getParagraphText(p);
@@ -138,14 +163,43 @@ public class DocxExtractor implements FileExtractor {
         return text.toString().trim();
     }
 
+    /**
+     * 将图片转换为 Base64 Data URI
+     */
+    private String extractImageAsBase64(XWPFPicture picture) {
+        try {
+            XWPFPictureData pictureData = picture.getPictureData();
+            if (pictureData == null) {
+                return null;
+            }
+
+
+            String fileName = pictureData.getFileName();
+            String extension = getExtension(fileName);
+
+            // 不支持 wmf 文件格式
+            if ("wmf".equalsIgnoreCase(extension) || "emf".equalsIgnoreCase(extension)) {
+                return null;
+            }
+
+            String mimeType = ImageUtil.getMimeTypeFromExtension(extension);
+            if (mimeType == null) {
+                mimeType = "image/png"; // 默认
+            }
+
+            byte[] data = pictureData.getData();
+            return ImageUtil.imageBytesToDataUri(data, mimeType);
+
+        } catch (Exception e) {
+            // 记录日志但不中断整个文档提取
+            System.err.println("Failed to extract image: " + e.getMessage());
+            return null;
+        }
+    }
+
     @Override
     public int getOrder() {
         return 10;
     }
 
-    private String getExtension(String fileName) {
-        if (fileName == null || !fileName.contains(".")) return null;
-        int lastDot = fileName.lastIndexOf('.');
-        return fileName.substring(lastDot + 1);
-    }
 }
