@@ -1,5 +1,20 @@
 # Agents-Flex ChangeLog
 
+## v2.0.8 20260409
+- test(file2text): add file to text utility test cases
+- feat(image): add MIME type detection from file extension
+- refactor(extractor): remove duplicate file extension extraction method
+- feat(extractor): enhance DOC and DOCX extractors with image support
+- feat(image): add Bailian image model support and enhance size handling
+- fix(image): correct image data URI format
+- refactor(config): update package structure for chat model auto configurations
+- fix: support num/uuid point id parsing in QdrantVectorStore doSearch
+- fix: support both Long and String ID for Qdrant point ID
+- fix: fix invalid long parsing for Qdrant ID and use setUuid for string IDs
+- fix: Qdrant ID conversion error by using UUID instead of raw string
+- fix: split error and index out of bounds in QdrantVectorStore
+
+
 ## v2.0.7 20260330
 - feat(milvus): add support for custom extension fields in vector store
 - refactor(milvus): rename dimension field to defaultDimension for clarity

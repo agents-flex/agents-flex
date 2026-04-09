@@ -17,8 +17,16 @@ public class File2TextUtilTest {
     }
 
     @Test
-    public void testReadFromFile() {
+    public void testReadFromDocxFile() {
         String filePath = "/Users/michael/Desktop/11122.docx";
+        String text = File2TextUtil.readFromFile(new File(filePath));
+        System.out.println( text);
+
+        // 断言结果
+    }
+    @Test
+    public void testReadFromDocFile() {
+        String filePath = "/Users/michael/Desktop/3333.doc";
         String text = File2TextUtil.readFromFile(new File(filePath));
         System.out.println( text);
 
