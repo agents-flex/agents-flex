@@ -443,7 +443,7 @@ public class MilvusVectorStore extends DocumentStore {
      *
      * @return DataType 枚举值
      */
-    private DataType inferPrimaryKeyType() {
+    protected DataType inferPrimaryKeyType() {
         // 默认使用 VarChar，兼容性更好，支持 UUID 等字符串主键
         return DataType.VarChar;
     }
@@ -494,11 +494,32 @@ public class MilvusVectorStore extends DocumentStore {
         JsonObject json = new JsonObject();
 
         // 设置主键 ID
-        if (document.getId() != null) {
-            if (document.getId() instanceof Number) {
-                json.addProperty(idField, ((Number) document.getId()).longValue());
+        Object documentId = document.getId();
+        if (documentId != null) {
+            DataType idType = this.inferPrimaryKeyType();
+            if (idType == DataType.VarChar || idType == DataType.String) {
+                json.addProperty(idField, documentId.toString());
+            } else if (idType == DataType.Int64) {
+                if (documentId instanceof Number) {
+                    json.addProperty(idField, ((Number) documentId).longValue());
+                } else {
+                    json.addProperty(idField, Long.parseLong(documentId.toString()));
+                }
+            } else if (idType == DataType.Int32) {
+                if (documentId instanceof Number) {
+                    json.addProperty(idField, ((Number) documentId).intValue());
+                } else {
+                    json.addProperty(idField, Integer.parseInt(documentId.toString()));
+                }
+            } else if (idType == DataType.Int16) {
+                if (documentId instanceof Number) {
+                    json.addProperty(idField, ((Number) documentId).shortValue());
+                } else {
+                    json.addProperty(idField, Short.parseShort(documentId.toString()));
+                }
             } else {
-                json.addProperty(idField, document.getId().toString());
+                // 抛出异常，因为主键类型不符合预期
+                throw new IllegalArgumentException("Unsupported primary key type for Milvus: " + idType);
             }
         }
 
