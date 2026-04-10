@@ -140,11 +140,11 @@ public abstract class DocumentStore extends VectorStore<Document> {
     }
 
 
-    public abstract StoreResult doStore(List<Document> documents, StoreOptions options);
+    protected abstract StoreResult doStore(List<Document> documents, StoreOptions options);
 
-    public abstract StoreResult doDelete(Collection<?> ids, StoreOptions options);
+    protected abstract StoreResult doDelete(Collection<?> ids, StoreOptions options);
 
-    public abstract StoreResult doUpdate(List<Document> documents, StoreOptions options);
+    protected abstract StoreResult doUpdate(List<Document> documents, StoreOptions options);
 
-    public abstract List<Document> doSearch(SearchWrapper wrapper, StoreOptions options);
+    protected abstract List<Document> doSearch(SearchWrapper wrapper, StoreOptions options);
 }
