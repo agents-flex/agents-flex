@@ -182,6 +182,11 @@ public class MilvusVectorStore extends DocumentStore {
      */
     private List<CreateCollectionReq.FieldSchema> extFields;
 
+    /**
+     * 主键类型
+     */
+    private DataType primaryKeyType = DataType.VarChar;
+
 
     /**
      * 静态初始化：注册 JVM 关闭钩子，确保应用退出时清理资源
@@ -234,6 +239,7 @@ public class MilvusVectorStore extends DocumentStore {
             .defaultTopK(config.getDefaultTopK())
             .autoCreateCollection(true)
             .extFields(config.getExtFields())
+            .primaryKeyType(config.getPrimaryKeyType())
             .build();
     }
 
@@ -260,6 +266,7 @@ public class MilvusVectorStore extends DocumentStore {
         this.defaultTopK = builder.defaultTopK > 0 ? builder.defaultTopK : 10;
         this.autoCreateCollection = builder.autoCreateCollection;
         this.extFields = builder.extFields;
+        this.primaryKeyType = builder.primaryKeyType != null ? builder.primaryKeyType : DataType.VarChar;
 
         // 预构建保留字段集合，统一转小写存储，支持大小写不敏感匹配
         this.reservedFields = new HashSet<>(Arrays.asList(
@@ -363,16 +370,13 @@ public class MilvusVectorStore extends DocumentStore {
      * @param collectionName 集合名称
      */
     protected void createCollection(MilvusClientV2 milvusClient, String collectionName) {
-        // 自动识别主键类型，默认使用 VarChar 兼容性更好
-        DataType idType = inferPrimaryKeyType();
-
         // 构建字段列表：主键 + 向量 + 可选的 content/title
         List<CreateCollectionReq.FieldSchema> fields = new ArrayList<>();
 
         // 添加主键字段
         fields.add(CreateCollectionReq.FieldSchema.builder()
             .name(idField)
-            .dataType(idType)
+            .dataType(this.primaryKeyType)
             .isPrimaryKey(true)
             .autoID(false)
             .build());
@@ -437,16 +441,16 @@ public class MilvusVectorStore extends DocumentStore {
         createVectorIndex(milvusClient, collectionName);
     }
 
-    /**
-     * 推断主键数据类型
-     * 当前默认返回 VarChar，可根据业务需求扩展支持 Int64
-     *
-     * @return DataType 枚举值
-     */
-    protected DataType inferPrimaryKeyType() {
-        // 默认使用 VarChar，兼容性更好，支持 UUID 等字符串主键
-        return DataType.VarChar;
-    }
+//    /**
+//     * 推断主键数据类型
+//     * 当前默认返回 VarChar，可根据业务需求扩展支持 Int64
+//     *
+//     * @return DataType 枚举值
+//     */
+//    protected DataType inferPrimaryKeyType() {
+//        // 默认使用 VarChar，兼容性更好，支持 UUID 等字符串主键
+//        return DataType.VarChar;
+//    }
 
     /**
      * 创建向量索引
@@ -496,22 +500,21 @@ public class MilvusVectorStore extends DocumentStore {
         // 设置主键 ID
         Object documentId = document.getId();
         if (documentId != null) {
-            DataType idType = this.inferPrimaryKeyType();
-            if (idType == DataType.VarChar || idType == DataType.String) {
+            if (this.primaryKeyType == DataType.VarChar || this.primaryKeyType == DataType.String) {
                 json.addProperty(idField, documentId.toString());
-            } else if (idType == DataType.Int64) {
+            } else if (this.primaryKeyType == DataType.Int64) {
                 if (documentId instanceof Number) {
                     json.addProperty(idField, ((Number) documentId).longValue());
                 } else {
                     json.addProperty(idField, Long.parseLong(documentId.toString()));
                 }
-            } else if (idType == DataType.Int32) {
+            } else if (this.primaryKeyType == DataType.Int32) {
                 if (documentId instanceof Number) {
                     json.addProperty(idField, ((Number) documentId).intValue());
                 } else {
                     json.addProperty(idField, Integer.parseInt(documentId.toString()));
                 }
-            } else if (idType == DataType.Int16) {
+            } else if (this.primaryKeyType == DataType.Int16) {
                 if (documentId instanceof Number) {
                     json.addProperty(idField, ((Number) documentId).shortValue());
                 } else {
@@ -519,7 +522,7 @@ public class MilvusVectorStore extends DocumentStore {
                 }
             } else {
                 // 抛出异常，因为主键类型不符合预期
-                throw new IllegalArgumentException("Unsupported primary key type for Milvus: " + idType);
+                throw new IllegalArgumentException("Unsupported primary key type for Milvus: " + this.primaryKeyType);
             }
         }
 
@@ -1080,6 +1083,7 @@ public class MilvusVectorStore extends DocumentStore {
         private int defaultTopK = 10;
         private boolean autoCreateCollection = true;
         private List<CreateCollectionReq.FieldSchema> extFields;
+        private DataType primaryKeyType = DataType.VarChar;
 
         /**
          * 设置连接配置
@@ -1243,6 +1247,11 @@ public class MilvusVectorStore extends DocumentStore {
                 this.extFields = new ArrayList<>();
             }
             this.extFields.add(extField);
+            return this;
+        }
+
+        public Builder primaryKeyType(DataType primaryKeyType) {
+            this.primaryKeyType = primaryKeyType;
             return this;
         }
 

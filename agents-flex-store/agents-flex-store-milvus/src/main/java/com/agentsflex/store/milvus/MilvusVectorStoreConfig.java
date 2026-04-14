@@ -17,6 +17,7 @@ package com.agentsflex.store.milvus;
 
 import com.agentsflex.core.store.DocumentStoreConfig;
 import com.alibaba.fastjson2.annotation.JSONField;
+import io.milvus.v2.common.DataType;
 import io.milvus.v2.service.collection.request.CreateCollectionReq;
 import org.apache.commons.lang3.StringUtils;
 
@@ -137,6 +138,12 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
      * 扩展属性（用于传递厂商特有参数或自定义配置）
      */
     private List<CreateCollectionReq.FieldSchema> extFields;
+
+
+    /**
+     * 主键字段类型
+     */
+    private DataType primaryKeyType = DataType.VarChar;
 
     // ==================== 构造函数 ====================
 
@@ -265,6 +272,14 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
         this.extFields = extFields;
     }
 
+    public DataType getPrimaryKeyType() {
+        return primaryKeyType;
+    }
+
+    public void setPrimaryKeyType(DataType primaryKeyType) {
+        this.primaryKeyType = primaryKeyType;
+    }
+
     // ==================== 接口方法实现 ====================
 
     public String getType() {
@@ -381,10 +396,16 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             return this;
         }
 
+        public Builder primaryKeyType(DataType primaryKeyType) {
+            config.setPrimaryKeyType(primaryKeyType);
+            return this;
+        }
+
         public MilvusVectorStoreConfig build() {
             config.checkAvailable();
             return config;
         }
+
     }
 
     // ==================== 脱敏 toString（防止敏感信息泄露） ====================
