@@ -557,14 +557,18 @@ public class OpenAIChatModelTest {
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
-        SimplePrompt prompt = new SimplePrompt("这个学生默写的化学公式，你帮忙最大程度识别出来，然后判断他写的是对是错，如果错的，你给出正确答案。 输出时，请按 Latex 进行输出。");
+        SimplePrompt prompt = new SimplePrompt("今天天气如何？");
+        prompt.addToolsFromClass(WeatherFunctions1.class);
 
         llm.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
 
-                String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
-                System.out.println(msg);
+                String content = response.getMessage().getContent();
+                String msg = content != null ? content : response.getMessage().getReasoningContent();
+
+                if (content != null)
+                System.out.println(content);
 
 //                if (response.getMessage().isFinalDelta() && response.hasToolCalls()) {
 //                    System.out.println(":::::::: start....");

@@ -19,6 +19,8 @@ package com.agentsflex.model.chat.openai;
 
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 
+import java.util.List;
+
 /**
  * 地理位置信息（嵌套对象）
  *
@@ -30,11 +32,14 @@ public class Location {
     @ToolParam(name = "city", description = "城市名称", required = true)
     private String city;
 
-    @ToolParam(name = "province", description = "省份/州")
+    @ToolParam(name = "province", description = "省份/州", required = true)
     private String province;
 
     @ToolParam(name = "country", description = "国家代码", enums = {"CN", "US", "JP", "UK"})
     private String country;
+
+    @ToolParam(name = "cities", description = "城市列表")
+    private List<City> cities;
 
     // ❌ 无 @ToolParam 注解 → 不会出现在 schema 中
     private String internalGeoHash;
@@ -63,6 +68,14 @@ public class Location {
 
     public void setCountry(String country) {
         this.country = country;
+    }
+
+    public List<City> getCities() {
+        return cities;
+    }
+
+    public void setCities(List<City> cities) {
+        this.cities = cities;
     }
 
     public String getInternalGeoHash() {
