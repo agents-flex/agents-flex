@@ -20,9 +20,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 工具方法参数定义
@@ -41,12 +39,7 @@ public class Parameter implements Serializable {
     protected boolean required = false;
     protected Object defaultValue;
     protected List<Parameter> children;
-
-    /**
-     * object 类型的属性定义（仅当字段有 @ToolParam 时解析）
-     * key: 字段名, value: 字段的 schema map（由序列化器直接使用）
-     */
-    protected Map<String, Object> properties;
+    protected Parameter itemsParameter; // 当 type = array 类型的属性定义，其 items 属性定义
 
     // =============== Getters and Setters ===============
 
@@ -116,14 +109,22 @@ public class Parameter implements Serializable {
         children.add(parameter);
     }
 
-    @Nullable
-    public Map<String, Object> getProperties() {
-        return properties != null ? new LinkedHashMap<>(properties) : null;
+    public Parameter getItemsParameter() {
+        return itemsParameter;
     }
 
-    public void setProperties(@Nullable Map<String, Object> properties) {
-        this.properties = properties != null ? new LinkedHashMap<>(properties) : null;
+    public void setItemsParameter(Parameter itemsParameter) {
+        this.itemsParameter = itemsParameter;
     }
+
+    public boolean isArrayType() {
+        return "array".equals(type);
+    }
+
+    public boolean isObjectType() {
+        return "object".equals(type);
+    }
+
 
     // =============== Builder ===============
 
@@ -139,7 +140,7 @@ public class Parameter implements Serializable {
         private boolean required = false;
         private Object defaultValue;
         private List<Parameter> children;
-        private Map<String, Object> properties;
+        private Parameter itemsParameter;
 
         public Builder name(String name) {
             this.name = name;
@@ -189,10 +190,11 @@ public class Parameter implements Serializable {
             return this;
         }
 
-        public Builder properties(Map<String, Object> properties) {
-            this.properties = properties != null ? new LinkedHashMap<>(properties) : null;
+        public Builder itemsParameter(Parameter itemsParameter) {
+            this.itemsParameter = itemsParameter;
             return this;
         }
+
 
         public Parameter build() {
             Parameter param = new Parameter();
@@ -203,7 +205,7 @@ public class Parameter implements Serializable {
             param.setRequired(required);
             param.setDefaultValue(defaultValue);
             param.setChildren(children);
-            param.setProperties(properties);
+            param.setItemsParameter(itemsParameter);
             return param;
         }
     }

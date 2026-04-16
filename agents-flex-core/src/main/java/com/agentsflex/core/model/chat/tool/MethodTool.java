@@ -23,20 +23,9 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 基于反射的方法工具实现
@@ -108,15 +97,6 @@ public class MethodTool extends BaseTool {
         parameter.setTypeClass(genericParameterType);
         parameter.setRequired(toolParam.required());
 
-        // 处理数组/集合类型的 items
-        if ("array".equals(schemaType)) {
-            String arrayItemType = JsonSchemaTypeMapper.resolveArrayItemType(genericParameterType);
-            MethodParameter itemParam = new MethodParameter();
-            itemParam.setType(arrayItemType);
-            itemParam.setDescription("Array items");
-            parameter.addChild(itemParam);
-        }
-
         // 处理枚举
         String[] enums = toolParam.enums();
         if (enums != null && enums.length > 0) {
@@ -130,16 +110,38 @@ public class MethodTool extends BaseTool {
             parameter.setEnums(enumNames);
         }
 
+        // 处理数组/集合类型的 items
+        if (parameter.isArrayType()) {
+            resolveItemsParameter(parameter, genericParameterType);
+        }
         // 如果类型是 object，解析其带注解的属性
-        if ("object".equals(schemaType)) {
-            Map<String, Object> properties = resolveAnnotatedProperties(paramType);
-            if (!properties.isEmpty()) {
-                parameter.setProperties(properties);
-            }
+        else if (parameter.isObjectType()) {
+            resolveChildren(parameter, paramType);
         }
 
         return parameter;
     }
+
+    private static void resolveItemsParameter(com.agentsflex.core.model.chat.tool.Parameter parentParameter, Type genericParameterType) {
+        MethodParameter itemsParameter = new MethodParameter();
+        itemsParameter.setTypeClass(genericParameterType);
+
+        if (genericParameterType instanceof ParameterizedType) {
+            Type actualTypeArgument = ((ParameterizedType) genericParameterType).getActualTypeArguments()[0];
+
+            String arrayItemType = JsonSchemaTypeMapper.resolveArrayItemType(actualTypeArgument);
+            itemsParameter.setType(arrayItemType);
+
+            if (itemsParameter.isObjectType()) {
+                resolveChildren(itemsParameter, (Class<?>) actualTypeArgument);
+            } else if (itemsParameter.isArrayType()) {
+                resolveItemsParameter(itemsParameter, actualTypeArgument);
+            }
+        }
+
+        parentParameter.setItemsParameter(itemsParameter);
+    }
+
 
     /**
      * 递归解析实体类中带 @ToolParam 注解的字段
@@ -147,18 +149,15 @@ public class MethodTool extends BaseTool {
      * @param clazz 要解析的类
      * @return 字段名 → schema map 的映射
      */
-    @NotNull
-    private static Map<String, Object> resolveAnnotatedProperties(@NotNull Class<?> clazz) {
+    private static void resolveChildren(com.agentsflex.core.model.chat.tool.Parameter parentParameter, @NotNull Class<?> clazz) {
 
         // 防止循环引用：如果当前类正在解析中，返回空避免死循环
         if (RESOLVING_PROPERTIES.get().contains(clazz)) {
-            return Collections.emptyMap();
+            return;
         }
         RESOLVING_PROPERTIES.get().add(clazz);
 
         try {
-            Map<String, Object> properties = new LinkedHashMap<>();
-
             // 遍历所有字段（包括父类）
             for (Field field : getAllFields(clazz)) {
                 // 跳过 static/transient/合成字段
@@ -174,52 +173,50 @@ public class MethodTool extends BaseTool {
                     continue;
                 }
 
-                ToolParam param = field.getAnnotation(ToolParam.class);
-                String fieldName = param.name();  // 使用注解指定的名称
+                ToolParam toolParam = field.getAnnotation(ToolParam.class);
+                String fieldName = toolParam.name();  // 使用注解指定的名称
                 Class<?> fieldType = field.getType();
                 Type genericType = field.getGenericType();
 
-                // 构建字段的 schema
-                Map<String, Object> fieldSchema = new LinkedHashMap<>();
-                fieldSchema.put("type", JsonSchemaTypeMapper.mapToSchemaType(fieldType));
+
+                MethodParameter childParameter = new MethodParameter();
+                childParameter.setName(fieldName);
+                childParameter.setTypeClass(genericType);
+
+                childParameter.setType(JsonSchemaTypeMapper.mapToSchemaType(fieldType));
 
                 // 描述
-                if (!param.description().isEmpty()) {
-                    fieldSchema.put("description", param.description());
+                if (!toolParam.description().isEmpty()) {
+                    childParameter.setDescription(toolParam.description());
                 }
 
                 // 枚举：优先使用注解配置，其次自动提取枚举类值
-                if (param.enums().length > 0) {
-                    fieldSchema.put("enum", Arrays.asList(param.enums()));
+                if (toolParam.enums().length > 0) {
+                    childParameter.setEnums(toolParam.enums());
                 } else if (fieldType.isEnum()) {
                     Object[] constants = fieldType.getEnumConstants();
                     String[] names = new String[constants.length];
                     for (int i = 0; i < constants.length; i++) {
                         names[i] = ((Enum<?>) constants[i]).name();
                     }
-                    fieldSchema.put("enum", Arrays.asList(names));
+                    childParameter.setEnums(names);
                 }
 
+                boolean required = toolParam.required();
+                childParameter.setRequired(required);
+
                 // 递归：如果字段类型是 object 且有 @ToolParam，继续解析其属性
-                if ("object".equals(fieldSchema.get("type"))) {
-                    Map<String, Object> nestedProps = resolveAnnotatedProperties(fieldType);
-                    if (!nestedProps.isEmpty()) {
-                        fieldSchema.put("properties", nestedProps);
-                    }
+                if (childParameter.isObjectType()) {
+                    resolveChildren(childParameter, fieldType);
                 }
 
                 // 数组元素类型
-                if ("array".equals(fieldSchema.get("type"))) {
-                    String itemType = JsonSchemaTypeMapper.resolveArrayItemType(genericType);
-                    Map<String, Object> items = new LinkedHashMap<>();
-                    items.put("type", itemType);
-                    fieldSchema.put("items", items);
+                if (childParameter.isArrayType()) {
+                    resolveItemsParameter(childParameter, genericType);
                 }
 
-                properties.put(fieldName, fieldSchema);
+                parentParameter.addChild(childParameter);
             }
-
-            return properties;
 
         } finally {
             // 解析完成后移除，避免影响其他解析
