@@ -1,4 +1,21 @@
+/*
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package com.agentsflex.wiki;
+
+import com.agentsflex.core.util.StringUtil;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -6,7 +23,6 @@ import java.util.stream.Collectors;
 public class Wiki {
 
     private String path;
-
     private String title;
     private String description;
     private String content;
@@ -80,12 +96,21 @@ public class Wiki {
     }
 
     public String toMarkdown() {
-        return "---\n" +
-            "path: " + this.path + "\n" +
-            "title: " + this.title + "\n" +
-            "description: " + this.description + "\n" +
-            (this.frontMatter == null ? "" : this.frontMatter.entrySet().stream().map(e -> String.format("%s: %s", e.getKey(), e.getValue())).collect(Collectors.joining("\n")) )+
-            "\n---\n" +
-            this.content;
+        StringBuilder markdown = new StringBuilder("---\n");
+        if (StringUtil.hasText(this.path)) {
+            markdown.append("path: ").append(this.path).append("\n");
+        }
+        if (StringUtil.hasText(this.title)) {
+            markdown.append("title: ").append(this.title).append("\n");
+        }
+        if (StringUtil.hasText(this.description)) {
+            markdown.append("description: ").append(this.description).append("\n");
+        }
+        if (this.frontMatter != null && !this.frontMatter.isEmpty()) {
+            markdown.append(this.frontMatter.entrySet().stream().map(e -> String.format("%s: %s", e.getKey(), e.getValue())).collect(Collectors.joining("\n"))).append("\n");
+        }
+        markdown.append("---\n");
+        markdown.append(this.content);
+        return markdown.toString();
     }
 }
