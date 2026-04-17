@@ -17,6 +17,7 @@
         <module>helloworld</module>
         <module>skills-demo</module>
         <module>text2sql-demo</module>
+        <module>wiki-demo</module>
     </modules>
 
     <properties>
