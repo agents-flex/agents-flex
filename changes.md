@@ -1,5 +1,13 @@
 # Agents-Flex ChangeLog
 
+## v2.0.9 20260417
+- feat(chat): add weather tool integration with location parameter enhancement
+- refactor(tool): refactor method tool parameter handling with improved array and object type support
+- feat(milvus): add configurable primary key type support
+- refactor(store): change document store methods visibility to protected
+- fix(milvus): correct primary key type handling in vector store
+
+
 ## v2.0.8 20260409
 - test(file2text): add file to text utility test cases
 - feat(image): add MIME type detection from file extension
