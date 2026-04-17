@@ -54,6 +54,7 @@
         <module>agents-flex-skills</module>
         <module>agents-flex-text2sql</module>
         <module>demos</module>
+        <module>agents-flex-wiki</module>
     </modules>
 
     <properties>
@@ -307,6 +308,11 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-wiki</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-store-pgvector</artifactId>
                 <version>${revision}</version>
             </dependency>
@@ -424,6 +430,11 @@
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>text2sql-demo</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>wiki-demo</artifactId>
                 <version>${revision}</version>
             </dependency>
 
