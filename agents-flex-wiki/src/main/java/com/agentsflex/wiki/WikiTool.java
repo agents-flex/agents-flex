@@ -65,6 +65,11 @@ public class WikiTool {
         return new Builder();
     }
 
+    public static String buildWikisXml(List<Wiki> wikis) {
+        String wikisXml = wikis.stream().map(Wiki::toXml).collect(Collectors.joining("\n"));
+        return String.format("<available_wikis>\n%s\n</available_wikis>", wikisXml);
+    }
+
     public static class Builder {
 
         private final List<Wiki> wikis = new ArrayList<>();
