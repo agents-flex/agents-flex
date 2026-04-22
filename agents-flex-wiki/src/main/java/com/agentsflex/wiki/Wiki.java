@@ -17,6 +17,7 @@ package com.agentsflex.wiki;
 
 import com.agentsflex.core.util.StringUtil;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -24,7 +25,7 @@ public class Wiki {
 
     private String path;
     private String title;
-    private String description;
+    private String summary;
     private String content;
 
     private Map<String, Object> frontMatter;
@@ -32,16 +33,21 @@ public class Wiki {
     public Wiki() {
     }
 
-    public Wiki(String path, String title, String description) {
+    public Wiki(String path, String title) {
         this.path = path;
         this.title = title;
-        this.description = description;
     }
 
-    public Wiki(String path, String title, String description, Map<String, Object> frontMatter) {
+    public Wiki(String path, String title, String summary) {
         this.path = path;
         this.title = title;
-        this.description = description;
+        this.summary = summary;
+    }
+
+    public Wiki(String path, String title, String summary, Map<String, Object> frontMatter) {
+        this.path = path;
+        this.title = title;
+        this.summary = summary;
         this.frontMatter = frontMatter;
     }
 
@@ -61,12 +67,12 @@ public class Wiki {
         this.title = title;
     }
 
-    public String getDescription() {
-        return description;
+    public String getSummary() {
+        return summary;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setSummary(String summary) {
+        this.summary = summary;
     }
 
     public String getContent() {
@@ -85,6 +91,13 @@ public class Wiki {
         this.frontMatter = frontMatter;
     }
 
+    public void addFrontMatter(String key, Object value) {
+        if (this.frontMatter == null) {
+            this.frontMatter = new HashMap<>();
+        }
+        this.frontMatter.put(key, value);
+    }
+
     public String toXml() {
         String frontMatterXml = this.frontMatter == null ? "" : this.frontMatter
             .entrySet()
@@ -92,7 +105,7 @@ public class Wiki {
             .map(e -> String.format("  <%s>%s</%s>", e.getKey(), e.getValue(), e.getKey()))
             .collect(Collectors.joining("\n"));
 
-        return String.format("<wiki>\n<path>%s</path>\n<title>%s</title>\n<description>%s</description>\n%s\n</wiki>", path, title, description, frontMatterXml);
+        return String.format("<wiki>\n<path>%s</path>\n<title>%s</title>\n<summary>%s</summary>\n%s\n</wiki>", path, title, summary, frontMatterXml);
     }
 
     public String toMarkdown() {
@@ -103,13 +116,13 @@ public class Wiki {
         if (StringUtil.hasText(this.title)) {
             markdown.append("title: ").append(this.title).append("\n");
         }
-        if (StringUtil.hasText(this.description)) {
-            markdown.append("description: ").append(this.description).append("\n");
+        if (StringUtil.hasText(this.summary)) {
+            markdown.append("summary: ").append(this.summary).append("\n");
         }
         if (this.frontMatter != null && !this.frontMatter.isEmpty()) {
             markdown.append(this.frontMatter.entrySet().stream().map(e -> String.format("%s: %s", e.getKey(), e.getValue())).collect(Collectors.joining("\n"))).append("\n");
         }
-        markdown.append("---\n");
+        markdown.append("---\n\n");
         markdown.append(this.content);
         return markdown.toString();
     }
