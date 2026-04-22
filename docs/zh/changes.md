@@ -1,5 +1,12 @@
 # Agents-Flex ChangeLog
 
+## v2.1.0 20260422
+- refactor(chat): rename needReasoningContentForToolMessage to preserveThinkingEnable
+- feat(wiki): add method to build XML representation of wikis
+- feat(wiki): add wiki module with Wiki entity and tool integration
+- refactor(skills): simplify stream mapping in SkillsTool
+
+
 ## v2.0.9 20260417
 - feat(chat): add weather tool integration with location parameter enhancement
 - refactor(tool): refactor method tool parameter handling with improved array and object type support
