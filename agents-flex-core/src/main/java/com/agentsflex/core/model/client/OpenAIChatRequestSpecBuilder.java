@@ -80,6 +80,10 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
             bodyJsonMap.set("stream_options", Maps.of("include_usage", true));
         }
 
+        if (config.isPreserveThinkingEnable()) {
+            bodyJsonMap.set("preserve_thinking", true);
+        }
+
         buildThinkingBody(options, config, bodyJsonMap);
 
         if (options.getExtraBody() != null) {

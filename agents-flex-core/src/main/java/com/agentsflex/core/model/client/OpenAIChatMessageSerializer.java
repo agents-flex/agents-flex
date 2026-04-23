@@ -100,8 +100,8 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
                 objectMap.put("content", ""); // 清空 content，在某模型下，会把思考的部分当做 content 的部分
                 buildAIMessageToolCalls(objectMap, calls, false);
 
-                // 兼容性处理，在 ToolMessage 中，需要将 reasoning_content 添加到 payload 中，比如 deepseek 模型
-                if (config.isNeedReasoningContentForToolMessage() && StringUtil.hasText(message.getReasoningContent())) {
+                // 兼容性处理，在 ToolMessage 中，需要将 reasoning_content 添加到 payload 中，比如 deepseek、qwen3.6 等模型
+                if (config.isPreserveThinkingEnable() && StringUtil.hasText(message.getReasoningContent())) {
                     objectMap.put("reasoning_content", message.getReasoningContent());
                 }
             } else {

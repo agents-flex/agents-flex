@@ -46,13 +46,13 @@ Agents-Flex is designed for Java engineers and architects, delivering a **lightw
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-core</artifactId>
-    <version>2.0.8</version>
+    <version>2.1.0</version>
 </dependency>
 <!-- Optional: Add extension modules as needed -->
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-mcp</artifactId>
-    <version>2.0.8</version>
+    <version>2.1.0</version>
 </dependency>
 ```
 

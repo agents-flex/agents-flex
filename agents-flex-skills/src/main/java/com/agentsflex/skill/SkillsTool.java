@@ -87,7 +87,7 @@ public class SkillsTool {
         }
 
         public Tool build() {
-            String skillsXml = this.skills.stream().map(s -> s.toXml()).collect(Collectors.joining("\n"));
+            String skillsXml = this.skills.stream().map(Skill::toXml).collect(Collectors.joining("\n"));
             return Tool.builder()
                 .name("Skill")
                 .description(String.format(this.toolDescriptionTemplate, skillsXml))

@@ -9,23 +9,20 @@
         <version>${revision}</version>
     </parent>
 
-    <name>demos</name>
-    <artifactId>demos</artifactId>
-    <packaging>pom</packaging>
-
-    <modules>
-        <module>helloworld</module>
-        <module>skills-demo</module>
-        <module>text2sql-demo</module>
-        <module>wiki-demo</module>
-    </modules>
+    <name>agents-flex-wiki</name>
+    <artifactId>agents-flex-wiki</artifactId>
 
     <properties>
-        <ignore.tests>true</ignore.tests>
-        <maven.test.skip>true</maven.test.skip>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+    </dependencies>
 
 </project>

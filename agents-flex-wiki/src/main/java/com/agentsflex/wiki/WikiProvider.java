@@ -13,9 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core;
+package com.agentsflex.wiki;
 
-public class Consts {
+public interface WikiProvider {
 
-    public static final String VERSION = "2.1.0";
+    Wiki getWiki(String path);
+
 }
