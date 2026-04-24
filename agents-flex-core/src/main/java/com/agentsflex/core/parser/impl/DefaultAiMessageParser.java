@@ -196,27 +196,27 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
 
 
         if (this.indexPath != null) {
-            aiMessage.setIndex((Integer) this.indexPath.eval(rootJson));
+            aiMessage.setIndex(JSONUtil.readInteger(rootJson, this.indexPath));
         }
 
         if (this.promptTokensPath != null) {
-            aiMessage.setPromptTokens((Integer) this.promptTokensPath.eval(rootJson));
+            aiMessage.setPromptTokens(JSONUtil.readInteger(rootJson, this.promptTokensPath));
         }
 
         if (this.completionTokensPath != null) {
-            aiMessage.setCompletionTokens((Integer) this.completionTokensPath.eval(rootJson));
+            aiMessage.setCompletionTokens(JSONUtil.readInteger(rootJson, this.completionTokensPath));
         }
 
         if (this.finishReasonPath != null) {
-            aiMessage.setFinishReason((String) this.finishReasonPath.eval(rootJson));
+            aiMessage.setFinishReason(JSONUtil.readString(rootJson, this.finishReasonPath));
         }
 
         if (this.stopReasonPath != null) {
-            aiMessage.setStopReason((String) this.stopReasonPath.eval(rootJson));
+            aiMessage.setStopReason(JSONUtil.readString(rootJson, this.stopReasonPath));
         }
 
         if (this.totalTokensPath != null) {
-            aiMessage.setTotalTokens((Integer) this.totalTokensPath.eval(rootJson));
+            aiMessage.setTotalTokens(JSONUtil.readInteger(rootJson, this.totalTokensPath));
         }
         //some LLMs like Ollama not response the total tokens
         else if (aiMessage.getPromptTokens() != null && aiMessage.getCompletionTokens() != null) {

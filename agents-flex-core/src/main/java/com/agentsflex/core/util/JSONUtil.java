@@ -157,6 +157,40 @@ public class JSONUtil {
         return (JSONObject) result;
     }
 
+
+    public static Integer readInteger(JSONObject jsonObject, JSONPath jsonPath) {
+        Object result = jsonPath.eval(jsonObject);
+        if (result instanceof Number) {
+            return ((Number) result).intValue();
+        } else if (result instanceof String) {
+            return Integer.parseInt((String) result);
+        } else if (result == null) {
+            return null;
+        }
+        throw new IllegalArgumentException("Invalid JSON path result type: " + result.getClass().getName());
+    }
+
+    public static Long readLong(JSONObject jsonObject, JSONPath jsonPath) {
+        Object result = jsonPath.eval(jsonObject);
+        if (result instanceof Number) {
+            return ((Number) result).longValue();
+        } else if (result instanceof String) {
+            return Long.getLong((String) result);
+        } else if (result == null) {
+            return null;
+        }
+        throw new IllegalArgumentException("Invalid JSON path result type: " + result.getClass().getName());
+    }
+
+    public static String readString(JSONObject jsonObject, JSONPath jsonPath) {
+        Object result = jsonPath.eval(jsonObject);
+        if (result == null) {
+            return null;
+        }
+        return result.toString();
+    }
+
+
     public static String detectErrorMessage(JSONObject jsonObject) {
         JSONObject errorObject = jsonObject.getJSONObject("error");
         if (errorObject == null) {
