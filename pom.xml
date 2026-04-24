@@ -351,7 +351,7 @@
             </dependency>
             <!--starter end-->
 
-            <!--starter start-->
+            <!--search start-->
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-search-engine</artifactId>
@@ -372,7 +372,35 @@
                 <artifactId>agents-flex-search-engine-lucene</artifactId>
                 <version>${revision}</version>
             </dependency>
-            <!--starter end-->
+            <!--search end-->
+
+            <!--search start-->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-tool</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-tool-commons</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-tool-javascript</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-tool-python</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-tool-shell</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!--search end-->
 
 
             <!-- OpenTelemetry API -->

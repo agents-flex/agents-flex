@@ -236,5 +236,45 @@
         </dependency>
         <!--search engines end-->
 
+        <!--search engines start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-tool-commons</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-tool-javascript</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-tool-python</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-tool-shell</artifactId>
+        </dependency>
+        <!--search engines end-->
+
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-mcp</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-text2sql</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-skills</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-wiki</artifactId>
+        </dependency>
+
     </dependencies>
 </project>
