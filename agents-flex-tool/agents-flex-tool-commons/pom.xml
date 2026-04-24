@@ -9,13 +9,7 @@
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-tool-shell</name>
-    <dependencies>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-core</artifactId>
-        </dependency>
-    </dependencies>
+    <name>agents-flex-tool-commons</name>
     <artifactId>agents-flex-tool-commons</artifactId>
 
     <properties>
@@ -23,5 +17,13 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+    </dependencies>
+
 
 </project>

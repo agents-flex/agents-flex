@@ -236,7 +236,7 @@
         </dependency>
         <!--search engines end-->
 
-        <!--search engines start-->
+        <!--tools engines start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-tool-commons</artifactId>
@@ -249,11 +249,7 @@
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-tool-python</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-tool-shell</artifactId>
-        </dependency>
-        <!--search engines end-->
+        <!--tools engines end-->
 
 
         <dependency>
