@@ -172,7 +172,7 @@ public class ElasticSearcher implements DocumentSearcher {
             List<Document> results = new ArrayList<>();
             response.hits().hits().forEach(hit -> {
                 if (hit.source() != null) {
-                    results.add(parseFromJsonData(hit.source()));
+                    results.add(parseFromJsonData(hit.source(), hit.score()));
                 }
             });
             return results;
@@ -273,13 +273,16 @@ public class ElasticSearcher implements DocumentSearcher {
         }
     }
 
-    private Document parseFromJsonData(JsonData source) {
+    private Document parseFromJsonData(JsonData source, Double hitScore) {
         Map<String, Object> dataMap = source.to(Map.class);
         Document document = new Document();
         document.setId(dataMap.get("id"));
         document.setTitle((String) dataMap.get("title"));
         document.setContent((String) dataMap.get("content"));
-        document.setScore(((Number) dataMap.get("score")).floatValue());
+
+        if (hitScore != null) {
+            document.setScore(hitScore.floatValue());
+        }
 
         @SuppressWarnings("unchecked")
         Map<String, Object> metadataMap = (Map<String, Object>) dataMap.get("metadataMap");
