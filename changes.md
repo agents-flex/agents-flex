@@ -1,5 +1,12 @@
 # Agents-Flex ChangeLog
 
+## v2.1.1 20260426
+- refactor(bom): update dependency management structure
+- feat(dependencies): add tool and search engine dependencies
+- refactor(parser): replace direct JSON path evaluation with JSON utility methods
+- fix: The issue of unassigned scores returned by the ES search engine
+
+
 ## v2.1.0 20260422
 - refactor(chat): rename needReasoningContentForToolMessage to preserveThinkingEnable
 - feat(wiki): add method to build XML representation of wikis
