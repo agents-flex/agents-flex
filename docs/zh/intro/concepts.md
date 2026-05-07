@@ -82,7 +82,7 @@ public void testChat() {
 
 ```java
 PromptTemplate promptTemplate = PromptTemplate.of(
-    "你好，{name}  今天是:{x}"
+    "你好，{{name}}  今天是:{{x}}"
 );
 
 Map<String ,Object> map = new HashMap<>();
@@ -97,7 +97,7 @@ System.out.println(promptTemplate.format(map));
 
 ```java
 PromptTemplate promptTemplate = PromptTemplate.of(
-    "你好，{user.name}  今天是:{x}"
+    "你好，{{user.name}}  今天是:{{x}}"
 );
 
 User user = new User();
