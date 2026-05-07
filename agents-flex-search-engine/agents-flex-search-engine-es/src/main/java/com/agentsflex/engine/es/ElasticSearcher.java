@@ -155,11 +155,9 @@ public class ElasticSearcher implements DocumentSearcher {
                         if (keyword == null || keyword.trim().isEmpty()) {
                             b.must(m -> m.matchAll(ma -> ma));
                         } else {
-                            b.must(m -> m.bool(bb -> bb
-                                .should(shouldQuery -> shouldQuery.multiMatch(mm -> mm
-                                    .query(keyword)
-                                    .fields("title", "content")
-                                ))
+                            b.must(m -> m.multiMatch(mm -> mm
+                                .query(keyword)
+                                .fields("title", "content")
                             ));
                         }
                         appendMetadataFilters(b, metadataFilters);
@@ -168,11 +166,12 @@ public class ElasticSearcher implements DocumentSearcher {
                 )
             );
 
-            SearchResponse<JsonData> response = client.search(request, JsonData.class);
+            SearchResponse<Document> response = client.search(request, Document.class);
             List<Document> results = new ArrayList<>();
             response.hits().hits().forEach(hit -> {
                 if (hit.source() != null) {
-                    results.add(parseFromJsonData(hit.source(), hit.score()));
+                    hit.source().setScore(hit.score() == null ? 0.f : hit.score().floatValue());
+                    results.add(hit.source());
                 }
             });
             return results;
@@ -272,27 +271,6 @@ public class ElasticSearcher implements DocumentSearcher {
             boolBuilder.filter(f -> f.term(t -> t.field(field).value(String.valueOf(value))));
         }
     }
-
-    private Document parseFromJsonData(JsonData source, Double hitScore) {
-        Map<String, Object> dataMap = source.to(Map.class);
-        Document document = new Document();
-        document.setId(dataMap.get("id"));
-        document.setTitle((String) dataMap.get("title"));
-        document.setContent((String) dataMap.get("content"));
-
-        if (hitScore != null) {
-            document.setScore(hitScore.floatValue());
-        }
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> metadataMap = (Map<String, Object>) dataMap.get("metadataMap");
-        if (metadataMap != null && !metadataMap.isEmpty()) {
-            document.setMetadataMap(metadataMap);
-        }
-
-        return document;
-    }
-
 
     private void closeResources(AutoCloseable... closeables) {
         for (AutoCloseable closeable : closeables) {
