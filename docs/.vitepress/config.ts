@@ -133,6 +133,7 @@ export default defineConfig({
                     {text: 'ToolScanner', link: '/zh/util/tool-scanner'},
                     {text: 'Tool.Builder', link: '/zh/util/tool-builder'},
                     {text: 'LocalTokenCounter', link: '/zh/util/local-token-counter'},
+                    {text: 'PromptTemplate', link: '/zh/util/prompt-template'},
                     {text: '其他工具类', link: '/zh/util/others'},
                 ]
             },
