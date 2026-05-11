@@ -4,7 +4,7 @@ layout: home
 hero:
     name: "Agents-Flex"
     text: "一个轻量的 AI 智能体开发框架"
-    tagline: Java 生态首选 | 支持 MCP、AI Skills 与智能问数
+    tagline: Java 生态首选 | 支持 MCP、智能问数与企业级可观测
     image:
         src: /assets/images/logo.png
         alt: Agents-Flex
@@ -23,6 +23,12 @@ features:
       details: 将复杂能力封装为可复用的 AI Skills，简化 Agent 构建流程，支持技能的快速编排与动态加载。
     - title: 智能问数 (Text2SQL)
       details: 内置自然语言查询数据库能力，支持 Text2SQL 与数据分析，让业务人员通过对话即可获取数据洞察。
+    - title: LLM 负载均衡与高可用
+      details: 提供企业级 LLM 路由策略，支持多模型负载均衡、故障自动转移与熔断重试，保障高并发下的服务稳定性。
+    - title: 全链路可观测
+      details: 内置强大的监控体系，支持 Token 消耗统计、链路追踪、耗时分析及敏感信息日志脱敏，让 AI 应用运行透明可控。
+    - title: LLM Wiki 知识树
+      details: 超越传统 RAG，支持 LLM Wiki 知识树与图谱集成，通过结构化数据关联提升模型对复杂领域知识的理解与推理能力。
     - title: LLMs (大语言模型)
       details: 支持市场主流大模型及 Ollama 本地部署，内置 HTTP、SSE、WS 等多种网络协议，轻松对接私有化模型。
     - title: Tool
@@ -35,6 +41,7 @@ features:
       details: 提供丰富的 Prompt Framework 支持（FEW-SHOT、CRISPE 等），支持模板自定义，优化模型输出质量。
     - title: Memory 管理
       details: 提供 MessageMemory 和 ContextMemory，灵活管理多轮对话历史与会话状态，支持自定义扩展以满足复杂场景。
+
 ---
 
 <style>
@@ -58,3 +65,4 @@ features:
   }
 }
 </style>
+

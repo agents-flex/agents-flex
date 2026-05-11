@@ -63,7 +63,7 @@ export default defineConfig({
                     {text: '核心概念', link: '/zh/intro/concepts'},
                     {text: 'Maven 依赖', link: '/zh/intro/maven'},
                     {text: '微信交流群', link: '/zh/intro/communication'},
-                    {text: '模型高可用', link: '/zh/intro/model-router'},
+                    {text: 'LLM 负载均衡/路由', link: '/zh/intro/model-router'},
                 ]
             },
             {
