@@ -63,6 +63,7 @@ export default defineConfig({
                     {text: '核心概念', link: '/zh/intro/concepts'},
                     {text: 'Maven 依赖', link: '/zh/intro/maven'},
                     {text: '微信交流群', link: '/zh/intro/communication'},
+                    {text: '模型高可用', link: '/zh/intro/model-router'},
                 ]
             },
             {
@@ -82,6 +83,7 @@ export default defineConfig({
                     {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
                     {text: 'MCP 调用', link: '/zh/chat/mcp'},
                     {text: 'Skills', link: '/zh/chat/skills'},
+                    {text: 'LLM Wiki 知识树', link: '/zh/chat/llm-wiki'},
                     {text: 'Text2SQL 智能问数', link: '/zh/chat/text2sql'},
                     {text: 'ChatClient', link: '/zh/chat/chat-client'},
                     {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
