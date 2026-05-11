@@ -15,9 +15,10 @@
  */
 package com.agentsflex.core.model.embedding;
 
+import com.agentsflex.core.util.Metadata;
 import com.agentsflex.core.util.StringUtil;
 
-public class EmbeddingOptions {
+public class EmbeddingOptions extends Metadata {
     public static final EmbeddingOptions DEFAULT = new EmbeddingOptions() {
         @Override
         public void setModel(String model) {
