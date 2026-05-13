@@ -60,6 +60,11 @@ public class PromptTemplate {
     private final String originalTemplate;
 
     /**
+     * 是否在变量不存在时抛出异常
+     */
+    private boolean failOnMissingVariable = true;
+
+    /**
      * 模板中拆分出的静态与动态 token 列表
      */
     private final List<TemplateToken> tokens;
@@ -85,6 +90,13 @@ public class PromptTemplate {
         JSONPATH_CACHE.clear();
     }
 
+    public boolean isFailOnMissingVariable() {
+        return failOnMissingVariable;
+    }
+
+    public void setFailOnMissingVariable(boolean failOnMissingVariable) {
+        this.failOnMissingVariable = failOnMissingVariable;
+    }
 
     /**
      * 将模板格式化为字符串
@@ -116,7 +128,7 @@ public class PromptTemplate {
             String value = evaluate(token.parseResult, rootMap, escapeForJsonOutput);
 
             // 没有兜底且值为空时抛出异常
-            if (!token.explicitEmptyFallback && value.isEmpty()) {
+            if (value.isEmpty() && !token.explicitEmptyFallback && failOnMissingVariable) {
                 throw new IllegalArgumentException(String.format(
                     "Missing value for expression: \"%s\"%nTemplate: %s%nProvided parameters:%n%s",
                     token.rawExpression,
@@ -135,7 +147,7 @@ public class PromptTemplate {
      */
     private List<TemplateToken> parseTemplate(String template) {
         List<TemplateToken> result = new ArrayList<>(template.length() / 8);
-        if (template == null || template.isEmpty()) return result;
+        if (template.isEmpty()) return result;
 
         Matcher matcher = PLACEHOLDER_PATTERN.matcher(template);
         int lastEnd = 0;
