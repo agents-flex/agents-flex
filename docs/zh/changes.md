@@ -1,5 +1,18 @@
 # Agents-Flex ChangeLog
 
+## v2.1.2 20260514
+- fix(prompt): correct failOnMissingVariable logic in template processing
+- feat(prompt): add keep expression on missing variable option
+- feat(prompt): add failOnMissingVariable option to PromptTemplate
+- docs(homepage): update homepage features and navigation links
+- docs(nav): add model router and LLM wiki documentation
+- feat(router): add model routing infrastructure with load balancing and circuit breaking
+- feat(embedding): add EmbeddingOptions class for embedding model configuration
+- fixed: Unknown type vector
+- docs(menu): add PromptTemplate to util menu and create documentation
+- feat: 优化搜索结构与最终document生成路径
+
+
 ## v2.1.1 20260426
 - refactor(bom): update dependency management structure
 - feat(dependencies): add tool and search engine dependencies
