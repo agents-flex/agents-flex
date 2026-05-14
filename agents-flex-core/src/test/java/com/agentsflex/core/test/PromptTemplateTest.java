@@ -85,7 +85,7 @@ public class PromptTemplateTest {
 
         String prompt = "你好";
         PromptTemplate template = new PromptTemplate(jsonTemplate);
-        template.setFailOnMissingVariable(false);
+//        template.setFailOnMissingVariable(false);
         template.setKeepExpressionOnMissingVariable(true);
 
 

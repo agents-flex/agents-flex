@@ -148,7 +148,7 @@ public class PromptTemplate {
                     value = "{{" + token.rawExpression + "}}";
                 }
                 // 抛出异常
-                else if (!failOnMissingVariable) {
+                else if (failOnMissingVariable) {
                     throw new IllegalArgumentException(String.format(
                         "Missing value for expression: \"%s\"%nTemplate: %s%nProvided parameters:%n%s",
                         token.rawExpression,
