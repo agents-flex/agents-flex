@@ -21,6 +21,7 @@ import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.store.exception.StoreException;
+import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import org.postgresql.PGConnection;
@@ -44,7 +45,7 @@ public class PgvectorVectorStore extends DocumentStore {
 
     public PgvectorVectorStore(PgvectorVectorStoreConfig config) {
         dataSource = new PGSimpleDataSource();
-        dataSource.setServerNames(new String[] {config.getHost() + ":" + config.getPort()});
+        dataSource.setServerNames(new String[]{config.getHost() + ":" + config.getPort()});
         dataSource.setUser(config.getUsername());
         dataSource.setPassword(config.getPassword());
         dataSource.setDatabaseName(config.getDatabaseName());
@@ -99,7 +100,10 @@ public class PgvectorVectorStore extends DocumentStore {
         }
     }
 
-    private void createCollectionIfNotExist(String collectionName, int dimensions) {
+    private void createCollectionIfNotExist(String collectionName, Integer dimensions) {
+        if (StringUtil.noText(collectionName) || dimensions == null) {
+            throw new IllegalArgumentException("collectionName or dimensions can not be null");
+        }
         try (CallableStatement statement =
                  connection.prepareCall(
                      "CREATE TABLE IF NOT EXISTS "
