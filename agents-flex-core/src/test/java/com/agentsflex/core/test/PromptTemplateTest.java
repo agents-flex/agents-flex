@@ -74,4 +74,25 @@ public class PromptTemplateTest {
 
         System.out.println(template.format(params, true));
     }
+
+
+    @Test
+    public void test006() {
+        String jsonTemplate = "{\n" +
+            "\"prompt\":\"{{prompt}}\",\n" +
+            "\"image_url\":\"{{image ?? aaa}}\"\n" +
+            "}";
+
+        String prompt = "你好";
+        PromptTemplate template = new PromptTemplate(jsonTemplate);
+        template.setFailOnMissingVariable(false);
+        template.setKeepExpressionOnMissingVariable(true);
+
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("prompt", prompt);
+//        params.put("image", image);
+
+        System.out.println(template.format(params, true));
+    }
 }

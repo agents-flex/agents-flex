@@ -65,6 +65,11 @@ public class PromptTemplate {
     private boolean failOnMissingVariable = true;
 
     /**
+     * 是否保留表达式，当变量不存在时返回表达式本身
+     */
+    private boolean keepExpressionOnMissingVariable = false;
+
+    /**
      * 模板中拆分出的静态与动态 token 列表
      */
     private final List<TemplateToken> tokens;
@@ -98,6 +103,14 @@ public class PromptTemplate {
         this.failOnMissingVariable = failOnMissingVariable;
     }
 
+    public boolean isKeepExpressionOnMissingVariable() {
+        return keepExpressionOnMissingVariable;
+    }
+
+    public void setKeepExpressionOnMissingVariable(boolean keepExpressionOnMissingVariable) {
+        this.keepExpressionOnMissingVariable = keepExpressionOnMissingVariable;
+    }
+
     /**
      * 将模板格式化为字符串
      */
@@ -128,13 +141,21 @@ public class PromptTemplate {
             String value = evaluate(token.parseResult, rootMap, escapeForJsonOutput);
 
             // 没有兜底且值为空时抛出异常
-            if (value.isEmpty() && !token.explicitEmptyFallback && failOnMissingVariable) {
-                throw new IllegalArgumentException(String.format(
-                    "Missing value for expression: \"%s\"%nTemplate: %s%nProvided parameters:%n%s",
-                    token.rawExpression,
-                    originalTemplate,
-                    JSON.toJSONString(rootMap, JSONWriter.Feature.PrettyFormat)
-                ));
+            if (value.isEmpty() && !token.explicitEmptyFallback) {
+
+                // 保留表达式
+                if (keepExpressionOnMissingVariable) {
+                    value = "{{" + token.rawExpression + "}}";
+                }
+                // 抛出异常
+                else if (!failOnMissingVariable) {
+                    throw new IllegalArgumentException(String.format(
+                        "Missing value for expression: \"%s\"%nTemplate: %s%nProvided parameters:%n%s",
+                        token.rawExpression,
+                        originalTemplate,
+                        JSON.toJSONString(rootMap, JSONWriter.Feature.PrettyFormat)
+                    ));
+                }
             }
             sb.append(value);
         }
