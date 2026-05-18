@@ -26,6 +26,7 @@ import com.agentsflex.core.util.MessageUtil;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
@@ -74,7 +75,9 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         Maps bodyJsonMap = baseBodyJsonMap
             .set("messages", chatMessageSerializer.serializeMessages(messages, config))
             .setIfNotEmpty("tools", chatMessageSerializer.serializeTools(prompt, config))
-            .setIfContainsKey("tools", "tool_choice", prompt.getToolChoice());
+            .setIf(maps -> prompt.getToolChoice() != null
+                && maps.containsKey("tools"), "tool_choice", prompt.getToolChoice());
+
 
         if (options.isStreaming() && options.getIncludeUsageOrDefault(true)) {
             bodyJsonMap.set("stream_options", Maps.of("include_usage", true));
