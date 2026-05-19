@@ -147,7 +147,6 @@ public class MethodTool extends BaseTool {
      * 递归解析实体类中带 @ToolParam 注解的字段
      *
      * @param clazz 要解析的类
-     * @return 字段名 → schema map 的映射
      */
     private static void resolveChildren(com.agentsflex.core.model.chat.tool.Parameter parentParameter, @NotNull Class<?> clazz) {
 
@@ -238,6 +237,7 @@ public class MethodTool extends BaseTool {
         return fields;
     }
 
+    @Override
     public Object invoke(Map<String, Object> argsMap) {
         try {
             Object[] args = new Object[this.parameters.length];
