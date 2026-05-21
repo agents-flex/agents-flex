@@ -148,11 +148,13 @@ public class ChatConfig extends BaseModelConfig {
         this.supportProviderTools = supportProviderTools;
     }
 
-    public void addSupportProviderTools(String tool) {
+    public void addSupportProviderTools(String... tools) {
         if (supportProviderTools == null) {
             supportProviderTools = new java.util.ArrayList<>();
         }
-        supportProviderTools.add(tool);
+        for (String tool : tools) {
+            supportProviderTools.add(tool);
+        }
     }
 
     public boolean isSupportProviderTools(String tool) {

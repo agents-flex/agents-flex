@@ -12,11 +12,13 @@ import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.tool.ProviderTool;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolScanner;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;
+import com.agentsflex.core.util.Maps;
 import org.junit.Test;
 
 import java.util.List;
@@ -99,6 +101,54 @@ public class OpenAIChatModelTest {
                     System.out.println(toolCalls);
                 }
 
+                System.out.println("onMessage >>>>>" + response.getMessage().getContent());
+            }
+
+            @Override
+            public void onStop(StreamContext context) {
+                System.out.println("stop!!!!");
+            }
+        });
+
+    }
+
+    @Test()
+    public void testChatStreamBailianSearch() {
+        OpenAIChatConfig config = new OpenAIChatConfig();
+        config.setApiKey("sk-32a*****502");
+        config.setEndpoint("https://dashscope.aliyuncs.com");
+        config.setRequestPath("/compatible-mode/v1/chat/completions");
+        config.setModel("qwen3-max-2026-01-23");
+        config.addSupportProviderTools("web_search", "web_extractor", "code_interpreter");
+        ChatModel chatModel = new OpenAIChatModel(config);
+
+        SimplePrompt prompt = new SimplePrompt("杭州明天天气如何");
+//        prompt.addToolsFromClass(WeatherFunctions.class);
+        prompt.addTools(ProviderTool.ofList("web_search", "web_extractor", "code_interpreter"));
+
+        ChatOptions options = new ChatOptions();
+        options.addExtraBody("enable_search", true);
+//        options.addExtraBody("search_options", Maps.of("forced_search",true));
+
+
+        ChatModelTestUtils.waitForStream(chatModel, prompt, new StreamResponseListener() {
+            @Override
+            public void onFailure(StreamContext context, Throwable throwable) {
+                System.out.println("onFailure>>>>" + throwable);
+            }
+
+            @Override
+            public void onMessage(StreamContext context, AiMessageResponse response) {
+                if (response.getMessage().getContent() == null) {
+                    System.out.println(response.getMessage());
+                }
+
+                if (response.getMessage().isFinalDelta()) {
+                    List<ToolCall> toolCalls = response.getMessage().getToolCalls();
+                    System.out.println(toolCalls);
+                }
+
+//                System.out.println("onMessage >>>>>" + response.getMessage().getReasoningContent());
                 System.out.println("onMessage >>>>>" + response.getMessage().getContent());
             }
 
@@ -417,7 +467,6 @@ public class OpenAIChatModelTest {
     }
 
 
-
     @Test()
     public void testFunctionCalling6() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
@@ -541,7 +590,6 @@ public class OpenAIChatModelTest {
     }
 
 
-
     @Test()
     public void testBailian() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
@@ -568,7 +616,7 @@ public class OpenAIChatModelTest {
                 String msg = content != null ? content : response.getMessage().getReasoningContent();
 
                 if (content != null)
-                System.out.println(content);
+                    System.out.println(content);
 
 //                if (response.getMessage().isFinalDelta() && response.hasToolCalls()) {
 //                    System.out.println(":::::::: start....");
