@@ -17,6 +17,7 @@ package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.tool.ProviderTool;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.util.CollectionUtil;
@@ -189,33 +190,43 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
             return null;
         }
 
-        return buildToolList(tools);
+        return buildToolList(tools, config);
     }
 
 
-    protected List<Map<String, Object>> buildToolList(List<Tool> tools) {
+    protected List<Map<String, Object>> buildToolList(List<Tool> tools, ChatConfig config) {
         List<Map<String, Object>> functionList = new ArrayList<>();
         for (Tool tool : tools) {
-            Map<String, Object> functionRoot = new HashMap<>();
-            functionRoot.put("type", "function");
 
-            Map<String, Object> functionObj = new HashMap<>();
-            functionRoot.put("function", functionObj);
+            // 模型预置工具
+            if (tool instanceof ProviderTool) {
+                if (config.isSupportProviderTools(tool.getName())) {
+                    functionList.add(Maps.of("type", tool.getName()));
+                }
+            }
+            // 自定义工具
+            else {
+                Map<String, Object> functionRoot = new HashMap<>();
+                functionRoot.put("type", "function");
 
-            functionObj.put("name", tool.getName());
-            functionObj.put("description", tool.getDescription());
+                Map<String, Object> functionObj = new HashMap<>();
+                functionRoot.put("function", functionObj);
+
+                functionObj.put("name", tool.getName());
+                functionObj.put("description", tool.getDescription());
 
 
-            Map<String, Object> parametersObj = new HashMap<>();
-            functionObj.put("parameters", parametersObj);
-            parametersObj.put("type", "object");
+                Map<String, Object> parametersObj = new HashMap<>();
+                functionObj.put("parameters", parametersObj);
+                parametersObj.put("type", "object");
 
-            Map<String, Object> propertiesObj = new HashMap<>();
-            parametersObj.put("properties", propertiesObj);
+                Map<String, Object> propertiesObj = new HashMap<>();
+                parametersObj.put("properties", propertiesObj);
 
-            addParameters(tool.getParameters(), propertiesObj, parametersObj);
+                addParameters(tool.getParameters(), propertiesObj, parametersObj);
 
-            functionList.add(functionRoot);
+                functionList.add(functionRoot);
+            }
         }
 
         return functionList;

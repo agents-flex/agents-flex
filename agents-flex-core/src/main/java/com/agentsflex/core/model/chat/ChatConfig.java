@@ -17,6 +17,8 @@ package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.model.config.BaseModelConfig;
 
+import java.util.List;
+
 public class ChatConfig extends BaseModelConfig {
 
     protected Boolean supportImage;
@@ -26,6 +28,9 @@ public class ChatConfig extends BaseModelConfig {
     protected Boolean supportTool;
     protected Boolean supportToolMessage;
     protected Boolean supportThinking;
+
+    // 支持的工具列表，比如网络搜索等，比如 https://help.aliyun.com/zh/model-studio/web-search
+    protected List<String> supportProviderTools;
 
     // 在调用工具的时候，是否需要推理结果作为 reasoning_content 传给大模型， 比如 Deepseek
     // 参考文档： https://api-docs.deepseek.com/zh-cn/guides/thinking_mode#%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8
@@ -133,6 +138,25 @@ public class ChatConfig extends BaseModelConfig {
 
     public boolean isSupportThinking() {
         return supportThinking == null || supportThinking;
+    }
+
+    public List<String> getSupportProviderTools() {
+        return supportProviderTools;
+    }
+
+    public void setSupportProviderTools(List<String> supportProviderTools) {
+        this.supportProviderTools = supportProviderTools;
+    }
+
+    public void addSupportProviderTools(String tool) {
+        if (supportProviderTools == null) {
+            supportProviderTools = new java.util.ArrayList<>();
+        }
+        supportProviderTools.add(tool);
+    }
+
+    public boolean isSupportProviderTools(String tool) {
+        return supportProviderTools != null && supportProviderTools.contains(tool);
     }
 
     public Boolean getPreserveThinkingEnable() {
