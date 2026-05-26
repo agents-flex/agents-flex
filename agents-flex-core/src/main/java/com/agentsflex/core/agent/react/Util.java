@@ -44,20 +44,22 @@ public class Util {
         for (Tool tool : tools) {
             sb.append("### 工具名称: ").append(tool.getName()).append("\n");
             sb.append("**描述**: ").append(tool.getDescription()).append("\n");
-            sb.append("**调用参数格式 (JSON 对象)**:\n");
-            sb.append("```json\n");
-
-            sb.append("{\n");
             Parameter[] rootParams = tool.getParameters();
-            for (int i = 0; i < rootParams.length; i++) {
-                appendParameter(sb, rootParams[i], 1);
-                if (i < rootParams.length - 1) {
-                    sb.append(",");
+            if (rootParams != null && rootParams.length > 0) {
+                sb.append("**调用参数格式 (JSON 对象)**:\n");
+                sb.append("```json\n");
+
+                sb.append("{\n");
+                for (int i = 0; i < rootParams.length; i++) {
+                    appendParameter(sb, rootParams[i], 1);
+                    if (i < rootParams.length - 1) {
+                        sb.append(",");
+                    }
+                    sb.append("\n");
                 }
-                sb.append("\n");
+                sb.append("}\n");
+                sb.append("```\n\n");
             }
-            sb.append("}\n");
-            sb.append("```\n\n");
         }
         return sb.toString();
     }
