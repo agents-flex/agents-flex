@@ -1,5 +1,14 @@
 # Agents-Flex ChangeLog
 
+## v2.1.3 20260526
+- feat(test): add Bailian search integration and provider tool enhancements
+- feat(chat): add provider tool support and enhance tool serialization
+- refactor(tool): update MethodTool parameter resolution and add override annotation
+- refactor(docs): update document module documentation structure
+- refactor(OpenAIChatRequestSpecBuilder): update tool choice condition logic
+- fix(chat): handle null responses and improve content extraction logic
+
+
 ## v2.1.2 20260514
 - fix(prompt): correct failOnMissingVariable logic in template processing
 - feat(prompt): add keep expression on missing variable option
