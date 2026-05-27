@@ -17,6 +17,7 @@ package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
@@ -110,7 +111,11 @@ public class BaseStreamClientListener implements StreamClientListener {
             }
         } finally {
             if (stoppedFlag.compareAndSet(false, true)) {
-                streamResponseListener.onStop(context);
+                try {
+                    streamResponseListener.onStop(context);
+                } finally {
+                    ChatContextHolder.clear();
+                }
             }
         }
     }
