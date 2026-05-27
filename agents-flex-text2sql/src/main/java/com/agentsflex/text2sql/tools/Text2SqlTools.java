@@ -243,20 +243,21 @@ public class Text2SqlTools {
             return ERROR_PREFIX + "No field definitions found under table '" + tableName + "', metadata may not be loaded correctly";
         }
 
-        return formatTableSchema(tableName, columns);
+        return formatTableSchema(targetTable, columns);
     }
 
     /**
      * Format ColumnInfo list into AI-friendly Markdown table
      */
-    private String formatTableSchema(String tableName, List<ColumnInfo> columns) {
+    private String formatTableSchema(TableInfo tableInfo, List<ColumnInfo> columns) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("📊 Table Schema: `").append(tableName).append("`\n")
-            .append("Total Fields: ").append(columns.size()).append("\n\n");
+        sb.append("📊 Table Schema (Table Name): `").append(tableInfo.getName()).append("`\n")
+            .append("Total Fields: ").append(columns.size()).append("\n\n")
+            .append("### Table Description: \n").append(safeStr(tableInfo.getDescription())).append("`\n\n");
 
         sb.append("| Field Name | Type | Primary Key | Auto Increment | Comment |\n")
-            .append("|------------|------|----------------|-------------------|---------|\n");
+            .append("|------------|------|-------------|----------------|---------|\n");
 
         for (ColumnInfo column : columns) {
             sb.append("| `").append(safeStr(column.genName())).append("`")
