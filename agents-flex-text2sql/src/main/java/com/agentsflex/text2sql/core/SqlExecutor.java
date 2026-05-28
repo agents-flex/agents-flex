@@ -15,26 +15,19 @@
  */
 package com.agentsflex.text2sql.core;
 
-import com.agentsflex.text2sql.entity.DataSourceInfo;
-
 /**
- * SQL 重写上下文
+ * Final SQL executor
+ *
+ * @author Michael Yang
  */
-public class SqlRewriteContext {
-    private final DataSourceInfo dataSourceInfo;
-    private final SqlContext currentSql;
-
-
-    public SqlRewriteContext(DataSourceInfo dataSourceInfo, SqlContext currentSql) {
-        this.dataSourceInfo = dataSourceInfo;
-        this.currentSql = currentSql;
-    }
-
-    public DataSourceInfo getDataSourceInfo() {
-        return dataSourceInfo;
-    }
-
-    public SqlContext getCurrentSql() {
-        return currentSql;
-    }
+@FunctionalInterface
+public interface SqlExecutor {
+    /**
+     * Execute SQL
+     *
+     * @param context SQL execute context
+     * @return execute result
+     * @throws Exception execute error
+     */
+    Object execute(SqlExecuteContext context) throws Exception;
 }

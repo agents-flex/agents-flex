@@ -16,38 +16,14 @@
 package com.agentsflex.text2sql.core;
 
 /**
- * SQL Interceptor
- * <p>
- * Used for:
- * - SQL audit
- * - SQL logging
- * - slow query statistics
- * - tracing
- * - metrics collection
- * - security monitoring
- * <p>
- * Execution order:
- * beforeQuery -> execute -> afterQuery/onError
+ * Unified SQL Interceptor
  *
  * @author Michael Yang
  */
 public interface SqlInterceptor {
 
     /**
-     * Called before SQL execution
+     * Intercept SQL execution
      */
-    default void beforeQuery(SqlExecuteContext context) {
-    }
-
-    /**
-     * Called after successful SQL execution
-     */
-    default void afterQuery(SqlExecuteContext context, Object result) {
-    }
-
-    /**
-     * Called when SQL execution fails
-     */
-    default void onError(SqlExecuteContext context, Exception e) {
-    }
+    Object intercept(SqlInvocation invocation) throws Exception;
 }

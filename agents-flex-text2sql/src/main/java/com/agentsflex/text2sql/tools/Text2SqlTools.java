@@ -29,7 +29,6 @@ import com.agentsflex.text2sql.util.JdbcQueryUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,13 +55,6 @@ public class Text2SqlTools {
     private static final String ERROR_PREFIX = "Error: ";
 
     private final List<DataSourceInfo> dataSourceInfos;
-
-    // SQL 验证器链（按注册顺序执行）
-    private final List<SqlValidator> sqlValidators;
-
-    // SQL 重写器链（按注册顺序执行）
-    private final List<SqlRewriter> sqlRewriters;
-
     /**
      * SQL interceptor chain
      */
@@ -72,23 +64,17 @@ public class Text2SqlTools {
      * 构造函数（向后兼容，无验证器/重写器）
      */
     public Text2SqlTools(List<DataSourceInfo> dataSourceInfos) {
-        this(dataSourceInfos, null, null, null);
+        this(dataSourceInfos, null);
     }
 
     /**
      * 构造函数（支持自定义验证器和重写器）
      *
      * @param dataSourceInfos 数据源列表
-     * @param sqlValidators   SQL 验证器链（可为 null）
-     * @param sqlRewriters    SQL 重写器链（可为 null）
      */
     public Text2SqlTools(List<DataSourceInfo> dataSourceInfos,
-                         List<SqlValidator> sqlValidators,
-                         List<SqlRewriter> sqlRewriters,
                          List<SqlInterceptor> sqlInterceptors) {
         this.dataSourceInfos = dataSourceInfos != null ? dataSourceInfos : new ArrayList<>();
-        this.sqlValidators = sqlValidators != null ? new ArrayList<>(sqlValidators) : new ArrayList<>();
-        this.sqlRewriters = sqlRewriters != null ? new ArrayList<>(sqlRewriters) : new ArrayList<>();
         this.sqlInterceptors = sqlInterceptors != null ? new ArrayList<>(sqlInterceptors) : new ArrayList<>();
     }
 
@@ -246,7 +232,7 @@ public class Text2SqlTools {
         }
 
 //        List<ColumnInfo> columns = targetTable.getColumns();
-        List<ColumnInfo> columns = targetDataSource.getTableColumns(targetTable);
+        List<ColumnInfo> columns = targetDataSource.resolveTableColumns(targetTable);
         if (columns == null || columns.isEmpty()) {
             return ERROR_PREFIX + "No field definitions found under table '" + tableName + "', metadata may not be loaded correctly";
         }
@@ -329,19 +315,18 @@ public class Text2SqlTools {
             "- NEVER include table names, column names, SQL fragments, or dataSourceName.\n" +
             "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
-
-        return executeQuery(
+        return (String) executeQuery(
             "queryDataList",
             dataSourceName,
             sql,
             parameters,
-            (ds, ctx) -> {
+            context -> {
 
                 List<Map<String, Object>> result =
                     JdbcQueryUtil.query(
-                        ds.getJdbcDataSource(),
-                        ctx.getSql(),
-                        ctx.getParams()
+                        context.getDataSource().getJdbcDataSource(),
+                        context.getSql(),
+                        context.getParameters()
                     );
 
                 return JSON.toJSONString(
@@ -397,22 +382,22 @@ public class Text2SqlTools {
             "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
 
-        return executeQuery(
+        return (String) executeQuery(
             "querySingleRow",
             dataSourceName,
             sql,
             parameters,
-            (ds, ctx) -> {
+            context -> {
 
                 Map<String, Object> result =
                     JdbcQueryUtil.queryOne(
-                        ds.getJdbcDataSource(),
-                        ctx.getSql(),
-                        ctx.getParams()
+                        context.getDataSource().getJdbcDataSource(),
+                        context.getSql(),
+                        context.getParameters()
                     );
 
                 if (result == null) {
-                    return "Query result is empty (no matching records)";
+                    return "Query result is empty";
                 }
 
                 return JSON.toJSONString(
@@ -467,25 +452,23 @@ public class Text2SqlTools {
             "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
 
-        return executeQuery(
+        return (String) executeQuery(
             "querySingleValue",
             dataSourceName,
             sql,
             parameters,
-            (ds, ctx) -> {
+            context -> {
 
                 Object result =
                     JdbcQueryUtil.queryValue(
-                        ds.getJdbcDataSource(),
-                        ctx.getSql(),
-                        ctx.getParams()
+                        context.getDataSource().getJdbcDataSource(),
+                        context.getSql(),
+                        context.getParameters()
                     );
 
-                if (result == null) {
-                    return "Query result is empty (NULL)";
-                }
-
-                return result.toString();
+                return result != null
+                    ? result.toString()
+                    : "NULL";
             }
         );
     }
@@ -494,93 +477,47 @@ public class Text2SqlTools {
     // Internal Utility Methods
     // ========================================================================
 
-
-    @SuppressWarnings("unchecked")
-    private <T> T executeQuery(
+    private Object executeQuery(
         String toolName,
         String dataSourceName,
         String sql,
         List<Object> parameters,
-        SqlExecutor<T> executor
+        SqlExecutor executor
     ) {
 
-        // 1. validate readonly
         String validateError = validateSqlReadOnly(sql);
-        if (validateError != null) {
-            return (T) (ERROR_PREFIX + validateError);
-        }
-
-        // 2. datasource
-        DataSourceInfo dsInfo = findDataSource(dataSourceName);
-        if (dsInfo == null) {
-            return (T) (ERROR_PREFIX +  "Invalid data source name: '" + dataSourceName
-                + "', available: [" + getAvailableDataSourceNames() + "]");
-        }
-
-        // 3. validator chain
-        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, parameters);
-        for (SqlValidator validator : sqlValidators) {
-            ValidationResult result = validator.validate(validationCtx);
-            if (result != null && result.isFailed() && !result.hasWarning()) {
-                String errorMsg = "Validation failed: " + result.getMessage();
-                if (result.getCode() != null) {
-                    errorMsg += " [Code: " + result.getCode() + "]";
-                }
-                if (result.getSuggestion() != null) {
-                    errorMsg += " Suggestion: " + result.getSuggestion();
-                }
-                return (T) (ERROR_PREFIX + errorMsg);
-            }
-            if (result != null && result.hasWarning()) {
-                System.err.println("[SqlValidator] Warning: " + result.getMessage());
-            }
-        }
-
-        // 4. rewrite chain
-        SqlContext current = new SqlContext(sql, safeParams(parameters));
-        for (SqlRewriter rewriter : sqlRewriters) {
-            current = rewriter.rewrite(
-                new SqlRewriteContext(dsInfo, current)
-            );
-            if (current == null) {
-                return (T) (ERROR_PREFIX + "SQL rewrite failed: rewriter returned null");
-            }
-        }
-
-        // 5. build execute context
-        SqlExecuteContext executeContext = new SqlExecuteContext();
-
-        executeContext.setToolName(toolName);
-        executeContext.setDataSource(dsInfo);
-        executeContext.setOriginalSql(sql);
-        executeContext.setRewrittenSql(current.getSql());
-        executeContext.setParameters(current.getParams());
-        executeContext.setStartTime(System.currentTimeMillis());
-
-        // 6. before interceptors
-        for (SqlInterceptor interceptor : sqlInterceptors) {
-            interceptor.beforeQuery(executeContext);
+        if (validateError == null) {
+            return ERROR_PREFIX + validateError;
         }
 
         try {
-
-            // 7. execute sql
-            T result = executor.execute(dsInfo, current);
-
-            // 8. after interceptors
-            for (SqlInterceptor interceptor : sqlInterceptors) {
-                interceptor.afterQuery(executeContext, result);
+            // datasource
+            DataSourceInfo dsInfo = findDataSource(dataSourceName);
+            if (dsInfo == null) {
+                return ERROR_PREFIX + "Invalid data source: " + dataSourceName;
             }
 
-            return result;
+            // context
+            SqlExecuteContext context = new SqlExecuteContext();
+
+            context.setToolName(toolName);
+            context.setDataSource(dsInfo);
+            context.setOriginalSql(sql);
+            context.setSql(sql);
+            context.setParameters(safeParams(parameters));
+            context.setStartTime(System.currentTimeMillis());
+
+            // invocation chain
+            SqlInvocation invocation = new SqlInvocation(
+                sqlInterceptors,
+                context,
+                executor
+            );
+
+            return invocation.proceed();
         } catch (Exception e) {
-            // 9. error interceptors
-            for (SqlInterceptor interceptor : sqlInterceptors) {
-                interceptor.onError(executeContext, e);
-            }
-
-            System.err.println("[DataTools] SQL execution exception: " + e.getMessage());
-            return (T) (ERROR_PREFIX + "SQL execution failed: " + e.getMessage());
+            System.err.println("[Text2SqlTools] Execute Error: " + e.getMessage());
+            return ERROR_PREFIX + e.getMessage();
         }
     }
 
@@ -686,10 +623,10 @@ public class Text2SqlTools {
     }
 
 
-    @FunctionalInterface
-    private interface SqlExecutor<T> {
-        T execute(DataSourceInfo ds, SqlContext sqlContext) throws SQLException;
-    }
+//    @FunctionalInterface
+//    private interface SqlExecutor<T> {
+//        T execute(DataSourceInfo ds, SqlContext sqlContext) throws SQLException;
+//    }
 
     // ========================================================================
     // Builder Pattern
@@ -701,8 +638,6 @@ public class Text2SqlTools {
 
     public static class Builder {
         private final List<DataSourceInfo> dataSourceInfos = new ArrayList<>();
-        private final List<SqlValidator> sqlValidators = new ArrayList<>();
-        private final List<SqlRewriter> sqlRewriters = new ArrayList<>();
         private final List<SqlInterceptor> sqlInterceptors = new ArrayList<>();
 
         public Builder addDataSourceInfo(DataSourceInfo dataSourceInfo) {
@@ -718,47 +653,6 @@ public class Text2SqlTools {
             }
             return this;
         }
-
-        /**
-         * Add SQL validator to the chain
-         * <p>
-         * Validators execute in registration order. Recommended order:
-         * <ol>
-         *   <li>Security validators (sensitive columns, permissions)</li>
-         *   <li>Business rule validators (JOIN limits, table access)</li>
-         *   <li>Performance validators (query complexity)</li>
-         * </ol>
-         */
-        public Builder addSqlValidator(SqlValidator validator) {
-            if (validator != null) this.sqlValidators.add(validator);
-            return this;
-        }
-
-        public Builder addSqlValidators(List<SqlValidator> validators) {
-            if (validators != null) this.sqlValidators.addAll(validators);
-            return this;
-        }
-
-        /**
-         * Add SQL rewriter to the chain
-         * <p>
-         * Rewriters execute in registration order. Recommended order:
-         * <ol>
-         *   <li>Security rewriters (permission filters)</li>
-         *   <li>Business rewriters (tenant isolation, soft delete)</li>
-         *   <li>Performance rewriters (LIMIT enforcement)</li>
-         * </ol>
-         */
-        public Builder addSqlRewriter(SqlRewriter rewriter) {
-            if (rewriter != null) this.sqlRewriters.add(rewriter);
-            return this;
-        }
-
-        public Builder addSqlRewriters(List<SqlRewriter> rewriters) {
-            if (rewriters != null) this.sqlRewriters.addAll(rewriters);
-            return this;
-        }
-
 
         public Builder addSqlInterceptor(SqlInterceptor interceptor) {
             if (interceptor != null) {
@@ -786,8 +680,6 @@ public class Text2SqlTools {
 
             Text2SqlTools text2SqlTools = new Text2SqlTools(
                 this.dataSourceInfos,
-                this.sqlValidators,
-                this.sqlRewriters,
                 this.sqlInterceptors);
 
             List<Tool> tools = new ArrayList<>();

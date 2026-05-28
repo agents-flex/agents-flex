@@ -13,32 +13,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.text2sql.core.impl;
+package com.agentsflex.text2sql.interceptor;
 
-import com.agentsflex.text2sql.core.SqlContext;
-import com.agentsflex.text2sql.core.SqlRewriteContext;
-import com.agentsflex.text2sql.core.SqlRewriter;
+import com.agentsflex.text2sql.core.SqlExecuteContext;
+import com.agentsflex.text2sql.core.SqlInterceptor;
+import com.agentsflex.text2sql.core.SqlInvocation;
 
 /**
- * 内置：强制 LIMIT 限制（防止全表扫描）
+ * LIMIT protection interceptor
+ *
+ * @author Michael Yang
  */
-public class LimitEnforcerRewriter implements SqlRewriter {
+public class LimitSqlInterceptor implements SqlInterceptor {
+
     private final int maxLimit;
 
-    public LimitEnforcerRewriter(int maxLimit) {
+    public LimitSqlInterceptor(int maxLimit) {
         this.maxLimit = maxLimit;
     }
 
     @Override
-    public SqlContext rewrite(SqlRewriteContext context) {
-        String sql = context.getCurrentSql().getSql();
-        String lower = sql.toLowerCase();
+    public Object intercept(SqlInvocation invocation) throws Exception {
 
-        if (lower.contains(" limit ")) {
-            return context.getCurrentSql();
+        SqlExecuteContext ctx = invocation.getContext();
+        String sql = ctx.getSql().toUpperCase();
+        if (!sql.contains("LIMIT")) {
+            ctx.setSql(ctx.getSql() + " LIMIT " + maxLimit);
         }
 
-        return context.getCurrentSql().with(sql + " LIMIT " + maxLimit,
-            context.getCurrentSql().getParams());
+        return invocation.proceed();
     }
 }

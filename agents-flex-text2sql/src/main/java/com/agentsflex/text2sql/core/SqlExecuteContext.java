@@ -29,8 +29,7 @@ import java.util.Map;
 public class SqlExecuteContext {
 
     /**
-     * Current tool name
-     * e.g. queryDataList/querySingleRow/querySingleValue
+     * Tool name
      */
     private String toolName;
 
@@ -45,9 +44,11 @@ public class SqlExecuteContext {
     private String originalSql;
 
     /**
-     * SQL after rewriter processing
+     * Current SQL
+     * <p>
+     * May be modified by interceptors
      */
-    private String rewrittenSql;
+    private String sql;
 
     /**
      * SQL parameters
@@ -55,19 +56,19 @@ public class SqlExecuteContext {
     private List<Object> parameters;
 
     /**
-     * Query start time
-     */
-    private long startTime;
-
-    /**
-     * Request trace id
+     * Request ID
      */
     private String requestId;
 
     /**
+     * Start time
+     */
+    private long startTime;
+
+    /**
      * Extension attributes
      */
-    private Map<String, Object> attributes = new HashMap<>();
+    private Map<String, Object> attributes;
 
     public String getToolName() {
         return toolName;
@@ -93,12 +94,12 @@ public class SqlExecuteContext {
         this.originalSql = originalSql;
     }
 
-    public String getRewrittenSql() {
-        return rewrittenSql;
+    public String getSql() {
+        return sql;
     }
 
-    public void setRewrittenSql(String rewrittenSql) {
-        this.rewrittenSql = rewrittenSql;
+    public void setSql(String sql) {
+        this.sql = sql;
     }
 
     public List<Object> getParameters() {
@@ -109,12 +110,30 @@ public class SqlExecuteContext {
         this.parameters = parameters;
     }
 
-    public long getStartTime() {
-        return startTime;
+    public void addParameter(Object parameter) {
+        if (this.parameters == null) {
+            this.parameters = new java.util.ArrayList<>();
+        }
+        this.parameters.add(parameter);
     }
 
-    public void setStartTime(long startTime) {
-        this.startTime = startTime;
+    public void addParameter(Object parameter, int index) {
+        if (this.parameters == null) {
+            this.parameters = new java.util.ArrayList<>();
+        }
+        this.parameters.add(index, parameter);
+    }
+
+    public void removeParameter(Object parameter) {
+        if (this.parameters != null) {
+            this.parameters.remove(parameter);
+        }
+    }
+
+    public void removeParameter(int index) {
+        if (this.parameters != null) {
+            this.parameters.remove(index);
+        }
     }
 
     public String getRequestId() {
@@ -125,6 +144,14 @@ public class SqlExecuteContext {
         this.requestId = requestId;
     }
 
+    public long getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
+
     public Map<String, Object> getAttributes() {
         return attributes;
     }
@@ -133,11 +160,14 @@ public class SqlExecuteContext {
         this.attributes = attributes;
     }
 
-    public void setAttribute(String key, Object value) {
+    public void addAttribute(String key, Object value) {
+        if (this.attributes == null) {
+            this.attributes = new HashMap<>();
+        }
         this.attributes.put(key, value);
     }
 
     public Object getAttribute(String key) {
-        return this.attributes.get(key);
+        return this.attributes == null ? null : this.attributes.get(key);
     }
 }

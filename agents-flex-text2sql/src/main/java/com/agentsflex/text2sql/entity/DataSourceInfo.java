@@ -68,7 +68,7 @@ public abstract class DataSourceInfo extends BaseInfo {
      * @param tableInfo 表信息
      * @return 列信息列表
      */
-    public List<ColumnInfo> getTableColumns(TableInfo tableInfo) {
+    public List<ColumnInfo> resolveTableColumns(TableInfo tableInfo) {
         // 优先使用自定义解析器
         if (columnResolver != null) {
             return columnResolver.apply(tableInfo);
