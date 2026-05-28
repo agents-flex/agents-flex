@@ -15,9 +15,10 @@
  */
 package com.agentsflex.text2sql.entity;
 
-import java.io.Serializable;
+import com.agentsflex.core.util.Metadata;
 
-public class BaseInfo implements Serializable {
+
+public class BaseInfo extends Metadata {
 
     protected String name;
     protected String description;
