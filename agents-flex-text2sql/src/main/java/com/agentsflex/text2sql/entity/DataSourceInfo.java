@@ -17,10 +17,23 @@ package com.agentsflex.text2sql.entity;
 
 import javax.sql.DataSource;
 import java.util.List;
+import java.util.function.Function;
 
 public abstract class DataSourceInfo extends BaseInfo {
 
     private List<TableInfo> tables;
+
+    /**
+     * 列信息解析器 (Column Resolver)
+     * <p>
+     * 允许用户自定义获取表字段的逻辑。
+     * 典型应用场景：
+     * 1. 权限控制：根据当前用户角色过滤敏感字段。
+     * 2. 动态脱敏：对特定字段进行标记或替换。
+     * </p>
+     * 如果未设置，则默认使用 {@link TableInfo#getColumns()}。
+     */
+    private Function<TableInfo, List<ColumnInfo>> columnResolver;
 
     public abstract DataSource getDataSource();
 
@@ -30,6 +43,30 @@ public abstract class DataSourceInfo extends BaseInfo {
 
     public void setTables(List<TableInfo> tables) {
         this.tables = tables;
+    }
+
+    public Function<TableInfo, List<ColumnInfo>> getColumnResolver() {
+        return columnResolver;
+    }
+
+    public void setColumnResolver(Function<TableInfo, List<ColumnInfo>> columnResolver) {
+        this.columnResolver = columnResolver;
+    }
+
+    /**
+     * 获取指定表的列信息
+     *
+     * @param tableInfo 表信息
+     * @return 列信息列表
+     */
+    public List<ColumnInfo> getTableColumns(TableInfo tableInfo) {
+        // 优先使用自定义解析器
+        if (columnResolver != null) {
+            return columnResolver.apply(tableInfo);
+        }
+
+        // 降级使用默认实现
+        return tableInfo.getColumns();
     }
 
 }

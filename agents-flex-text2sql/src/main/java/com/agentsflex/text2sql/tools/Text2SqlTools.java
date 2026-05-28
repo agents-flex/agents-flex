@@ -238,7 +238,8 @@ public class Text2SqlTools {
             return ERROR_PREFIX + "Table '" + tableName + "' does not exist, available tables: " + getAvailableTableNames(targetDataSource.getTables());
         }
 
-        List<ColumnInfo> columns = targetTable.getColumns();
+//        List<ColumnInfo> columns = targetTable.getColumns();
+        List<ColumnInfo> columns = targetDataSource.getTableColumns(targetTable);
         if (columns == null || columns.isEmpty()) {
             return ERROR_PREFIX + "No field definitions found under table '" + tableName + "', metadata may not be loaded correctly";
         }
@@ -357,7 +358,7 @@ public class Text2SqlTools {
         // 4. 执行自定义重写器链
         SqlContext current = new SqlContext(sql, safeParams(parameters));
         for (SqlRewriter rewriter : sqlRewriters) {
-            current = rewriter.rewrite(new SqlRewriteContext(dataSourceName, current));
+            current = rewriter.rewrite(new SqlRewriteContext(dsInfo, current));
             if (current == null) {
                 return ERROR_PREFIX + "SQL rewrite failed: rewriter returned null";
             }
@@ -454,7 +455,7 @@ public class Text2SqlTools {
         // 4. 执行自定义重写器链
         SqlContext current = new SqlContext(sql, safeParams(parameters));
         for (SqlRewriter rewriter : sqlRewriters) {
-            current = rewriter.rewrite(new SqlRewriteContext(dataSourceName, current));
+            current = rewriter.rewrite(new SqlRewriteContext(dsInfo, current));
             if (current == null) {
                 return ERROR_PREFIX + "SQL rewrite failed: rewriter returned null";
             }
@@ -552,7 +553,7 @@ public class Text2SqlTools {
         // 4. 执行自定义重写器链
         SqlContext current = new SqlContext(sql, safeParams(parameters));
         for (SqlRewriter rewriter : sqlRewriters) {
-            current = rewriter.rewrite(new SqlRewriteContext(dataSourceName, current));
+            current = rewriter.rewrite(new SqlRewriteContext(dsInfo, current));
             if (current == null) {
                 return ERROR_PREFIX + "SQL rewrite failed: rewriter returned null";
             }
