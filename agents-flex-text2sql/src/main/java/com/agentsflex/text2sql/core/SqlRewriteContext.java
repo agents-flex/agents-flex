@@ -15,24 +15,26 @@
  */
 package com.agentsflex.text2sql.core;
 
+import com.agentsflex.text2sql.entity.DataSourceInfo;
+
 /**
  * SQL 重写上下文
  */
 public class SqlRewriteContext {
-    private final String dataSourceName;
+    private final DataSourceInfo dataSourceInfo;
     private final SqlContext currentSql;
 
-    public SqlRewriteContext(String dataSourceName, SqlContext currentSql) {
-        this.dataSourceName = dataSourceName;
+
+    public SqlRewriteContext(DataSourceInfo dataSourceInfo, SqlContext currentSql) {
+        this.dataSourceInfo = dataSourceInfo;
         this.currentSql = currentSql;
     }
 
-    public String getDataSourceName() {
-        return dataSourceName;
+    public DataSourceInfo getDataSourceInfo() {
+        return dataSourceInfo;
     }
 
     public SqlContext getCurrentSql() {
         return currentSql;
     }
-
 }
