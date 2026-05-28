@@ -486,7 +486,7 @@ public class Text2SqlTools {
     ) {
 
         String validateError = validateSqlReadOnly(sql);
-        if (validateError == null) {
+        if (validateError != null) {
             return ERROR_PREFIX + validateError;
         }
 
