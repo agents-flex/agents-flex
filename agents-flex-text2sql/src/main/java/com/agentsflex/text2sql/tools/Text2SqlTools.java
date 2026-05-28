@@ -64,10 +64,15 @@ public class Text2SqlTools {
     private final List<SqlRewriter> sqlRewriters;
 
     /**
+     * SQL interceptor chain
+     */
+    private final List<SqlInterceptor> sqlInterceptors;
+
+    /**
      * 构造函数（向后兼容，无验证器/重写器）
      */
     public Text2SqlTools(List<DataSourceInfo> dataSourceInfos) {
-        this(dataSourceInfos, null, null);
+        this(dataSourceInfos, null, null, null);
     }
 
     /**
@@ -79,10 +84,12 @@ public class Text2SqlTools {
      */
     public Text2SqlTools(List<DataSourceInfo> dataSourceInfos,
                          List<SqlValidator> sqlValidators,
-                         List<SqlRewriter> sqlRewriters) {
+                         List<SqlRewriter> sqlRewriters,
+                         List<SqlInterceptor> sqlInterceptors) {
         this.dataSourceInfos = dataSourceInfos != null ? dataSourceInfos : new ArrayList<>();
         this.sqlValidators = sqlValidators != null ? new ArrayList<>(sqlValidators) : new ArrayList<>();
         this.sqlRewriters = sqlRewriters != null ? new ArrayList<>(sqlRewriters) : new ArrayList<>();
+        this.sqlInterceptors = sqlInterceptors != null ? new ArrayList<>(sqlInterceptors) : new ArrayList<>();
     }
 
     // ========================================================================
@@ -322,57 +329,27 @@ public class Text2SqlTools {
             "- NEVER include table names, column names, SQL fragments, or dataSourceName.\n" +
             "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
-        // 1. 基础安全校验
-        String validateError = validateSqlReadOnly(sql);
-        if (validateError != null) {
-            return ERROR_PREFIX + validateError;
-        }
 
-        // 2. 获取数据源
-        DataSourceInfo dsInfo = findDataSource(dataSourceName);
-        if (dsInfo == null) {
-            return ERROR_PREFIX + "Invalid data source name: '" + dataSourceName + "', available: [" + getAvailableDataSourceNames() + "]";
-        }
+        return executeQuery(
+            "queryDataList",
+            dataSourceName,
+            sql,
+            parameters,
+            (ds, ctx) -> {
 
-        // 3. 执行自定义验证器链
-        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, parameters);
-        for (SqlValidator validator : sqlValidators) {
-            ValidationResult result = validator.validate(validationCtx);
-            if (result != null && result.isFailed() && !result.hasWarning()) {
-                // 结构化错误信息，可携带错误码和建议
-                String errorMsg = "Validation failed: " + result.getMessage();
-                if (result.getCode() != null) {
-                    errorMsg += " [Code: " + result.getCode() + "]";
-                }
-                if (result.getSuggestion() != null) {
-                    errorMsg += " Suggestion: " + result.getSuggestion();
-                }
-                return ERROR_PREFIX + errorMsg;
+                List<Map<String, Object>> result =
+                    JdbcQueryUtil.query(
+                        ds.getJdbcDataSource(),
+                        ctx.getSql(),
+                        ctx.getParams()
+                    );
+
+                return JSON.toJSONString(
+                    result,
+                    JSONWriter.Feature.PrettyFormat
+                );
             }
-            // 记录警告日志
-            if (result != null && result.hasWarning()) {
-                System.err.println("[SqlValidator] Warning: " + result.getMessage());
-            }
-        }
-
-        // 4. 执行自定义重写器链
-        SqlContext current = new SqlContext(sql, safeParams(parameters));
-        for (SqlRewriter rewriter : sqlRewriters) {
-            current = rewriter.rewrite(new SqlRewriteContext(dsInfo, current));
-            if (current == null) {
-                return ERROR_PREFIX + "SQL rewrite failed: rewriter returned null";
-            }
-        }
-
-        // 5. 使用重写后的 SQL 执行查询
-        try {
-            List<Map<String, Object>> result = JdbcQueryUtil.query(dsInfo.getJdbcDataSource(),
-                current.getSql(), current.getParams());
-            return JSON.toJSONString(result, JSONWriter.Feature.PrettyFormat);
-        } catch (SQLException e) {
-            System.err.println("[DataTools] SQL execution exception: " + e.getMessage());
-            return ERROR_PREFIX + "SQL execution failed: " + e.getMessage() + ". Please check SQL syntax, table name, column name correctness";
-        }
+        );
     }
 
     // ========================================================================
@@ -419,59 +396,31 @@ public class Text2SqlTools {
             "- NEVER include table names, column names, SQL fragments, or dataSourceName.\n" +
             "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
-        // 1. 基础安全校验
-        String validateError = validateSqlReadOnly(sql);
-        if (validateError != null) {
-            return ERROR_PREFIX + validateError;
-        }
 
-        // 2. 获取数据源
-        DataSourceInfo dsInfo = findDataSource(dataSourceName);
-        if (dsInfo == null) {
-            return ERROR_PREFIX + "Invalid data source name: '" + dataSourceName + "', available: [" + getAvailableDataSourceNames() + "]";
-        }
+        return executeQuery(
+            "querySingleRow",
+            dataSourceName,
+            sql,
+            parameters,
+            (ds, ctx) -> {
 
-        // 3. 执行自定义验证器链
-        SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, parameters);
-        for (SqlValidator validator : sqlValidators) {
-            ValidationResult result = validator.validate(validationCtx);
-            if (result != null && result.isFailed() && !result.hasWarning()) {
-                // 结构化错误信息，可携带错误码和建议
-                String errorMsg = "Validation failed: " + result.getMessage();
-                if (result.getCode() != null) {
-                    errorMsg += " [Code: " + result.getCode() + "]";
+                Map<String, Object> result =
+                    JdbcQueryUtil.queryOne(
+                        ds.getJdbcDataSource(),
+                        ctx.getSql(),
+                        ctx.getParams()
+                    );
+
+                if (result == null) {
+                    return "Query result is empty (no matching records)";
                 }
-                if (result.getSuggestion() != null) {
-                    errorMsg += " Suggestion: " + result.getSuggestion();
-                }
-                return ERROR_PREFIX + errorMsg;
-            }
-            // 记录警告日志
-            if (result != null && result.hasWarning()) {
-                System.err.println("[SqlValidator] Warning: " + result.getMessage());
-            }
-        }
 
-        // 4. 执行自定义重写器链
-        SqlContext current = new SqlContext(sql, safeParams(parameters));
-        for (SqlRewriter rewriter : sqlRewriters) {
-            current = rewriter.rewrite(new SqlRewriteContext(dsInfo, current));
-            if (current == null) {
-                return ERROR_PREFIX + "SQL rewrite failed: rewriter returned null";
+                return JSON.toJSONString(
+                    result,
+                    JSONWriter.Feature.PrettyFormat
+                );
             }
-        }
-
-        // 5. 使用重写后的 SQL 执行查询
-        try {
-            Map<String, Object> result = JdbcQueryUtil.queryOne(dsInfo.getJdbcDataSource(), sql, safeParams(parameters));
-            if (result == null) {
-                return "Query result is empty (no matching records)";
-            }
-            return JSON.toJSONString(result, JSONWriter.Feature.PrettyFormat);
-        } catch (SQLException e) {
-            System.err.println("[DataTools] SQL execution exception: " + e.getMessage());
-            return ERROR_PREFIX + "SQL execution failed: " + e.getMessage() + ". Please check SQL syntax, table name, column name correctness";
-        }
+        );
     }
 
     // ========================================================================
@@ -517,24 +466,62 @@ public class Text2SqlTools {
             "- NEVER include table names, column names, SQL fragments, or dataSourceName.\n" +
             "- If sql no '?', must pass empty array [].\n") List<Object> parameters
     ) {
-        // 1. 基础安全校验
+
+        return executeQuery(
+            "querySingleValue",
+            dataSourceName,
+            sql,
+            parameters,
+            (ds, ctx) -> {
+
+                Object result =
+                    JdbcQueryUtil.queryValue(
+                        ds.getJdbcDataSource(),
+                        ctx.getSql(),
+                        ctx.getParams()
+                    );
+
+                if (result == null) {
+                    return "Query result is empty (NULL)";
+                }
+
+                return result.toString();
+            }
+        );
+    }
+
+    // ========================================================================
+    // Internal Utility Methods
+    // ========================================================================
+
+
+    @SuppressWarnings("unchecked")
+    private <T> T executeQuery(
+        String toolName,
+        String dataSourceName,
+        String sql,
+        List<Object> parameters,
+        SqlExecutor<T> executor
+    ) {
+
+        // 1. validate readonly
         String validateError = validateSqlReadOnly(sql);
         if (validateError != null) {
-            return ERROR_PREFIX + validateError;
+            return (T) (ERROR_PREFIX + validateError);
         }
 
-        // 2. 获取数据源
+        // 2. datasource
         DataSourceInfo dsInfo = findDataSource(dataSourceName);
         if (dsInfo == null) {
-            return ERROR_PREFIX + "Invalid data source name: '" + dataSourceName + "', available: [" + getAvailableDataSourceNames() + "]";
+            return (T) (ERROR_PREFIX +  "Invalid data source name: '" + dataSourceName
+                + "', available: [" + getAvailableDataSourceNames() + "]");
         }
 
-        // 3. 执行自定义验证器链
+        // 3. validator chain
         SqlValidationContext validationCtx = new SqlValidationContext(dsInfo, sql, parameters);
         for (SqlValidator validator : sqlValidators) {
             ValidationResult result = validator.validate(validationCtx);
             if (result != null && result.isFailed() && !result.hasWarning()) {
-                // 结构化错误信息，可携带错误码和建议
                 String errorMsg = "Validation failed: " + result.getMessage();
                 if (result.getCode() != null) {
                     errorMsg += " [Code: " + result.getCode() + "]";
@@ -542,39 +529,60 @@ public class Text2SqlTools {
                 if (result.getSuggestion() != null) {
                     errorMsg += " Suggestion: " + result.getSuggestion();
                 }
-                return ERROR_PREFIX + errorMsg;
+                return (T) (ERROR_PREFIX + errorMsg);
             }
-            // 记录警告日志
             if (result != null && result.hasWarning()) {
                 System.err.println("[SqlValidator] Warning: " + result.getMessage());
             }
         }
 
-        // 4. 执行自定义重写器链
+        // 4. rewrite chain
         SqlContext current = new SqlContext(sql, safeParams(parameters));
         for (SqlRewriter rewriter : sqlRewriters) {
-            current = rewriter.rewrite(new SqlRewriteContext(dsInfo, current));
+            current = rewriter.rewrite(
+                new SqlRewriteContext(dsInfo, current)
+            );
             if (current == null) {
-                return ERROR_PREFIX + "SQL rewrite failed: rewriter returned null";
+                return (T) (ERROR_PREFIX + "SQL rewrite failed: rewriter returned null");
             }
         }
 
-        // 5. 使用重写后的 SQL 执行查询
+        // 5. build execute context
+        SqlExecuteContext executeContext = new SqlExecuteContext();
+
+        executeContext.setToolName(toolName);
+        executeContext.setDataSource(dsInfo);
+        executeContext.setOriginalSql(sql);
+        executeContext.setRewrittenSql(current.getSql());
+        executeContext.setParameters(current.getParams());
+        executeContext.setStartTime(System.currentTimeMillis());
+
+        // 6. before interceptors
+        for (SqlInterceptor interceptor : sqlInterceptors) {
+            interceptor.beforeQuery(executeContext);
+        }
+
         try {
-            Object result = JdbcQueryUtil.queryValue(dsInfo.getJdbcDataSource(), current.getSql(), current.getParams());
-            if (result == null) {
-                return "Query result is empty (NULL)";
+
+            // 7. execute sql
+            T result = executor.execute(dsInfo, current);
+
+            // 8. after interceptors
+            for (SqlInterceptor interceptor : sqlInterceptors) {
+                interceptor.afterQuery(executeContext, result);
             }
-            return result.toString();
-        } catch (SQLException e) {
+
+            return result;
+        } catch (Exception e) {
+            // 9. error interceptors
+            for (SqlInterceptor interceptor : sqlInterceptors) {
+                interceptor.onError(executeContext, e);
+            }
+
             System.err.println("[DataTools] SQL execution exception: " + e.getMessage());
-            return ERROR_PREFIX + "SQL execution failed: " + e.getMessage() + ". Please check SQL syntax, table name, column name correctness";
+            return (T) (ERROR_PREFIX + "SQL execution failed: " + e.getMessage());
         }
     }
-
-    // ========================================================================
-    // Internal Utility Methods
-    // ========================================================================
 
     private DataSourceInfo findDataSource(String dataSourceName) {
         if (dataSourceInfos.isEmpty()) {
@@ -677,6 +685,12 @@ public class Text2SqlTools {
         return (nullable != null && nullable == 1) ? "✅" : "❌";
     }
 
+
+    @FunctionalInterface
+    private interface SqlExecutor<T> {
+        T execute(DataSourceInfo ds, SqlContext sqlContext) throws SQLException;
+    }
+
     // ========================================================================
     // Builder Pattern
     // ========================================================================
@@ -689,6 +703,7 @@ public class Text2SqlTools {
         private final List<DataSourceInfo> dataSourceInfos = new ArrayList<>();
         private final List<SqlValidator> sqlValidators = new ArrayList<>();
         private final List<SqlRewriter> sqlRewriters = new ArrayList<>();
+        private final List<SqlInterceptor> sqlInterceptors = new ArrayList<>();
 
         public Builder addDataSourceInfo(DataSourceInfo dataSourceInfo) {
             if (dataSourceInfo != null) {
@@ -744,6 +759,21 @@ public class Text2SqlTools {
             return this;
         }
 
+
+        public Builder addSqlInterceptor(SqlInterceptor interceptor) {
+            if (interceptor != null) {
+                this.sqlInterceptors.add(interceptor);
+            }
+            return this;
+        }
+
+        public Builder addSqlInterceptors(List<SqlInterceptor> interceptors) {
+            if (interceptors != null) {
+                this.sqlInterceptors.addAll(interceptors);
+            }
+            return this;
+        }
+
         public List<Tool> buildTools() {
             for (DataSourceInfo dataSourceInfo : this.dataSourceInfos) {
                 if (dataSourceInfo instanceof JdbcDataSourceInfo) {
@@ -755,7 +785,11 @@ public class Text2SqlTools {
             }
 
             Text2SqlTools text2SqlTools = new Text2SqlTools(
-                this.dataSourceInfos, this.sqlValidators, this.sqlRewriters);
+                this.dataSourceInfos,
+                this.sqlValidators,
+                this.sqlRewriters,
+                this.sqlInterceptors);
+
             List<Tool> tools = new ArrayList<>();
             tools.add(text2SqlTools.buildListTablesTool());
             tools.addAll(ToolScanner.scan(text2SqlTools));
