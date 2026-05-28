@@ -32,6 +32,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Text2SqlTools - AI Data Query Toolset
@@ -72,8 +73,7 @@ public class Text2SqlTools {
      *
      * @param dataSourceInfos 数据源列表
      */
-    public Text2SqlTools(List<DataSourceInfo> dataSourceInfos,
-                         List<SqlInterceptor> sqlInterceptors) {
+    public Text2SqlTools(List<DataSourceInfo> dataSourceInfos, List<SqlInterceptor> sqlInterceptors) {
         this.dataSourceInfos = dataSourceInfos != null ? dataSourceInfos : new ArrayList<>();
         this.sqlInterceptors = sqlInterceptors != null ? new ArrayList<>(sqlInterceptors) : new ArrayList<>();
     }
@@ -505,6 +505,7 @@ public class Text2SqlTools {
             context.setOriginalSql(sql);
             context.setSql(sql);
             context.setParameters(safeParams(parameters));
+            context.setRequestId(UUID.randomUUID().toString());
             context.setStartTime(System.currentTimeMillis());
 
             // invocation chain
@@ -606,27 +607,10 @@ public class Text2SqlTools {
         return params != null ? params : new ArrayList<>();
     }
 
-    // ========================================================================
-    // 🛠️ Formatting Utility Methods
-    // ========================================================================
-
     private String safeStr(String value) {
         return (value != null && !value.trim().isEmpty()) ? value.trim() : "-";
     }
 
-    private String safeNum(Integer value) {
-        return value != null ? value.toString() : "-";
-    }
-
-    private String formatNullable(Integer nullable) {
-        return (nullable != null && nullable == 1) ? "✅" : "❌";
-    }
-
-
-//    @FunctionalInterface
-//    private interface SqlExecutor<T> {
-//        T execute(DataSourceInfo ds, SqlContext sqlContext) throws SQLException;
-//    }
 
     // ========================================================================
     // Builder Pattern
@@ -678,9 +662,7 @@ public class Text2SqlTools {
                 }
             }
 
-            Text2SqlTools text2SqlTools = new Text2SqlTools(
-                this.dataSourceInfos,
-                this.sqlInterceptors);
+            Text2SqlTools text2SqlTools = new Text2SqlTools(this.dataSourceInfos, this.sqlInterceptors);
 
             List<Tool> tools = new ArrayList<>();
             tools.add(text2SqlTools.buildListTablesTool());
