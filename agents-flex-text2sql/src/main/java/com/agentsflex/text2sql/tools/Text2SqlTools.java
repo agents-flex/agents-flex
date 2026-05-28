@@ -366,7 +366,7 @@ public class Text2SqlTools {
 
         // 5. 使用重写后的 SQL 执行查询
         try {
-            List<Map<String, Object>> result = JdbcQueryUtil.query(dsInfo.getDataSource(),
+            List<Map<String, Object>> result = JdbcQueryUtil.query(dsInfo.getJdbcDataSource(),
                 current.getSql(), current.getParams());
             return JSON.toJSONString(result, JSONWriter.Feature.PrettyFormat);
         } catch (SQLException e) {
@@ -463,7 +463,7 @@ public class Text2SqlTools {
 
         // 5. 使用重写后的 SQL 执行查询
         try {
-            Map<String, Object> result = JdbcQueryUtil.queryOne(dsInfo.getDataSource(), sql, safeParams(parameters));
+            Map<String, Object> result = JdbcQueryUtil.queryOne(dsInfo.getJdbcDataSource(), sql, safeParams(parameters));
             if (result == null) {
                 return "Query result is empty (no matching records)";
             }
@@ -561,7 +561,7 @@ public class Text2SqlTools {
 
         // 5. 使用重写后的 SQL 执行查询
         try {
-            Object result = JdbcQueryUtil.queryValue(dsInfo.getDataSource(), current.getSql(), current.getParams());
+            Object result = JdbcQueryUtil.queryValue(dsInfo.getJdbcDataSource(), current.getSql(), current.getParams());
             if (result == null) {
                 return "Query result is empty (NULL)";
             }

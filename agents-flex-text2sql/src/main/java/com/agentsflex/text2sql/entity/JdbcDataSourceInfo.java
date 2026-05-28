@@ -15,6 +15,7 @@
  */
 package com.agentsflex.text2sql.entity;
 
+import com.agentsflex.core.util.MapUtil;
 import com.agentsflex.text2sql.jdbc.JdbcTableBuilder;
 import com.agentsflex.text2sql.jdbc.dialect.IDialect;
 import com.agentsflex.text2sql.util.DataSourceBuilder;
@@ -31,7 +32,7 @@ public class JdbcDataSourceInfo extends DataSourceInfo {
     private String username;
     private String password;
     private String schema;
-    private DataSource dataSource;
+    private DataSource jdbcDataSource;
 
     // 指定特定的表名
     private IDialect dialect = IDialect.DEFAULT;
@@ -40,13 +41,13 @@ public class JdbcDataSourceInfo extends DataSourceInfo {
 
 
     @Override
-    public DataSource getDataSource() {
-        if (dataSource != null) {
-            return dataSource;
+    public DataSource getJdbcDataSource() {
+        if (jdbcDataSource != null) {
+            return jdbcDataSource;
         }
 
-        String cacheKey = jdbcUrl + ":" + username + ":" + password;
-        return dataSourceMap.computeIfAbsent(cacheKey, s -> {
+        String cacheKey = jdbcUrl + "__" + username + "__" + password;
+        return MapUtil.computeIfAbsent(dataSourceMap, cacheKey, s -> {
             Map<String, String> properties = new HashMap<>();
             properties.put("url", jdbcUrl);
             properties.put("username", username);
@@ -91,8 +92,8 @@ public class JdbcDataSourceInfo extends DataSourceInfo {
         new JdbcTableBuilder(this, dialect).build(this.tableNames, this.ignoreColumns);
     }
 
-    public void setDataSource(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public void setJdbcDataSource(DataSource jdbcDataSource) {
+        this.jdbcDataSource = jdbcDataSource;
     }
 
 

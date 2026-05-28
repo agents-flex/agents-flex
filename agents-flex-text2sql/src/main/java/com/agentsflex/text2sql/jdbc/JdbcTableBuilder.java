@@ -48,7 +48,7 @@ public class JdbcTableBuilder {
 
 
     public void build(Collection<String> tableNames, Collection<String> ignoreColumns) {
-        try (Connection conn = dataSource.getDataSource().getConnection()) {
+        try (Connection conn = dataSource.getJdbcDataSource().getConnection()) {
             DatabaseMetaData dbMeta = conn.getMetaData();
             List<TableInfo> tableInfos = buildTables(dbMeta, conn, tableNames, ignoreColumns);
             dataSource.setTables(tableInfos);

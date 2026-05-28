@@ -35,7 +35,16 @@ public abstract class DataSourceInfo extends BaseInfo {
      */
     private Function<TableInfo, List<ColumnInfo>> columnResolver;
 
-    public abstract DataSource getDataSource();
+    /**
+     * 解析并获取底层的 JDBC 数据源
+     * <p>
+     * 子类必须实现此方法，以提供实际的数据库连接能力。
+     * 该方法可能被频繁调用，建议子类内部做好缓存或连接池管理。
+     * </p>
+     *
+     * @return javax.sql.DataSource 实例，不应为 null
+     */
+    public abstract DataSource getJdbcDataSource();
 
     public List<TableInfo> getTables() {
         return tables;
