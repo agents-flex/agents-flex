@@ -39,6 +39,7 @@ public class PgvectorVectorStore extends DocumentStore {
     public static final double DEFAULT_SIMILARITY_THRESHOLD = 0.3;
     private final PGSimpleDataSource dataSource;
     private final String defaultCollectionName;
+    private final Integer defaultVectorDimension;
     private final PgvectorVectorStoreConfig config;
 
     private Connection connection;
@@ -63,6 +64,7 @@ public class PgvectorVectorStore extends DocumentStore {
         }
 
         this.defaultCollectionName = config.getDefaultCollectionName();
+        this.defaultVectorDimension = config.getVectorDimension();
         this.config = config;
         try {
             connection = getConnection();
@@ -137,7 +139,7 @@ public class PgvectorVectorStore extends DocumentStore {
     public StoreResult doStore(List<Document> documents, StoreOptions options) {
         // 表名
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensions());
+        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensionsOrDefault(defaultVectorDimension));
         try {
             PreparedStatement pstmt =
                 connection.prepareStatement(
@@ -168,7 +170,7 @@ public class PgvectorVectorStore extends DocumentStore {
     @Override
     public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensions());
+        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensionsOrDefault(defaultVectorDimension));
 
         StringBuilder sql = new StringBuilder("DELETE FROM " + collectionName + " WHERE id IN (");
         for (int i = 0; i < ids.size(); i++) {
@@ -199,7 +201,7 @@ public class PgvectorVectorStore extends DocumentStore {
     @Override
     public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensions());
+        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensionsOrDefault(defaultVectorDimension));
         StringBuilder sql = new StringBuilder("select ");
         if (searchWrapper.isOutputVector()) {
             sql.append("id, vector, content, metadata");
@@ -249,7 +251,7 @@ public class PgvectorVectorStore extends DocumentStore {
         }
 
         String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensions());
+        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensionsOrDefault(defaultVectorDimension));
         StringBuilder sql = new StringBuilder("UPDATE " + collectionName + " SET ");
         sql.append("content = ?, vector = ?, metadata = ?::jsonb WHERE id = ?");
         try {

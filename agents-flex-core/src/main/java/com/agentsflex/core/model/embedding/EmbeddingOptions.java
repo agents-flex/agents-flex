@@ -74,6 +74,10 @@ public class EmbeddingOptions extends Metadata {
         return dimensions;
     }
 
+    public Integer getDimensionsOrDefault(Integer defaultDimensions) {
+        return dimensions == null ? defaultDimensions : dimensions;
+    }
+
     public void setDimensions(Integer dimensions) {
         this.dimensions = dimensions;
     }
