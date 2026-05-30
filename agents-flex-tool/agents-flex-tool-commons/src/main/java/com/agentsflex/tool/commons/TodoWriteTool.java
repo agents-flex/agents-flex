@@ -239,14 +239,21 @@ public class TodoWriteTool {
         "\t- activeForm: \"Fixing authentication bug\"\n" +
         "\n" +
         "When in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully.")
-	public String todoWrite(@ToolParam(name = "todos", description = "The list of todos to write or modify") Todos todos) { // @formatter:on
+	public String todoWrite(@ToolParam(name = "todoItems", description = "The todo items") List<Todos.TodoItem> todosItems) { // @formatter:on
+
+        Todos todos = new Todos(todosItems);
 
         // Validate the todos
         this.validateTodos(todos);
 
         this.todoListConsumer.handle(todos);
 
-        return "Todos have been modified successfully. Ensure that you continue to use the todo list to track your progress. Please proceed with the current tasks if applicable";
+        if (todosItems == null || todosItems.isEmpty() || todos.isComplete()) {
+            return "All todo items have been completed. Please respond to the user's questions based on the content.";
+        } else {
+            Todos.TodoItem inProgressItem = todos.getInProgressItem();
+            return "The todo items has been successfully updated. Please proceed to the current task:\n" + inProgressItem.content;
+        }
     }
 
     /**
@@ -299,6 +306,7 @@ public class TodoWriteTool {
 
     public static class Todos {
 
+        @ToolParam(name = "todos", description = "The list of todos to write or modify")
         private List<TodoItem> todos;
 
         public Todos(List<TodoItem> todos) {
@@ -313,10 +321,46 @@ public class TodoWriteTool {
             this.todos = todos;
         }
 
+        public String toMarkdown() {
+            StringBuilder builder = new StringBuilder();
+            for (TodoItem todo : todos) {
+                builder.append("- ").append(todo.content)
+                    .append(" (").append(todo.status).append(")\n");
+            }
+
+            return builder.toString();
+        }
+
+        public boolean isComplete() {
+            return todos.stream().allMatch(todo -> todo.status == Status.completed);
+        }
+
+        public TodoItem getInProgressItem() {
+            TodoItem todoItem = todos.stream()
+                .filter(todo -> todo.status == Status.in_progress)
+                .findFirst()
+                .orElse(null);
+
+            if (todoItem == null) {
+                todoItem = todos.stream()
+                    .filter(todo -> todo.status == Status.pending)
+                    .findFirst()
+                    .orElse(null);
+            }
+
+            return todoItem;
+        }
+
+
         public static class TodoItem {
 
+            @ToolParam(name = "content", description = "The content of the todo item")
             private String content;
+
+            @ToolParam(name = "status", description = "The status of the todo item")
             private Status status;
+
+            @ToolParam(name = "activeForm", description = "The active form of the todo item")
             private String activeForm;
 
             public TodoItem(String content, Status status, String activeForm) {
