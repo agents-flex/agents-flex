@@ -476,6 +476,12 @@
                 <artifactId>wiki-demo</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>todolist-demo</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
 
         </dependencies>
     </dependencyManagement>

@@ -5,22 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>demos</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <name>demos</name>
-    <artifactId>demos</artifactId>
-    <packaging>pom</packaging>
+    <name>todolist-demo</name>
+    <artifactId>todolist-demo</artifactId>
 
-    <modules>
-        <module>helloworld</module>
-        <module>skills-demo</module>
-        <module>text2sql-demo</module>
-        <module>wiki-demo</module>
-        <module>subagent-demo</module>
-        <module>todolist-demo</module>
-    </modules>
 
     <properties>
         <ignore.tests>true</ignore.tests>
@@ -31,4 +22,16 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-chat-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-tool-commons</artifactId>
+            <version>${revision}</version>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
 </project>
