@@ -18,6 +18,7 @@
         <module>skills-demo</module>
         <module>text2sql-demo</module>
         <module>wiki-demo</module>
+        <module>subagent-demo</module>
     </modules>
 
     <properties>
