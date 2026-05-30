@@ -81,6 +81,9 @@ public class JavaMethodTool extends BaseTool {
             Type genericType = genericTypes[i];
 
             ToolParam tp = p.getAnnotation(ToolParam.class);
+            if (tp == null){
+                throw new RuntimeException("@ToolParam annotation not fund in method:" + method.getName());
+            }
 
             TypedParameter param = new TypedParameter();
 
