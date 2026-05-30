@@ -14,6 +14,8 @@ public class CommonTools {
         tools.addAll(ToolScanner.scan(GlobTool.builder().build()));
         tools.addAll(ToolScanner.scan(FileSystemTools.builder().build()));
         tools.addAll(ToolScanner.scan(ShellTools.builder().build()));
+        tools.addAll(ToolScanner.scan(TodoWriteTool.builder().build()));
+        tools.addAll(ToolScanner.scan(WebFetchTool.builder().useDefaultProviders().build()));
         return tools;
     }
 }
