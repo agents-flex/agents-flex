@@ -19,6 +19,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TodoListDemo {
 
@@ -44,17 +45,27 @@ public class TodoListDemo {
             .requestPath("/v1/chat/completions")
             .apiKey(System.getenv("GITEE_APIKEY"))
             .model("Qwen3.5-35B-A3B")
+//            .model("Qwen3.7-Max")
 //            .model("Qwen3-32B")
 //            .thinkingEnabled(false)
 //            .logEnabled(false)
             .buildModel();
 
         MemoryPrompt prompt = new MemoryPrompt();
-        prompt.setSystemMessage("请注意使用 TodoWrite 来分解用户问题。");
-        UserMessage userMessage = new UserMessage("帮我总结一下 https://zhuanlan.zhihu.com/p/2012156966353515279 的内容。" +
-            "然后写几个不同的示例。");
+        prompt.setSystemMessage("请注意：在用户给出的问题中，请先使用 TodoWrite 来分解用户问题，然后再按步骤进行执行。");
+        UserMessage userMessage = new UserMessage("请分 3 步获取一下网址你的内容 https://agentsflex.com/zh/chat/chat-model.html  " +
+            "https://agentsflex.com/zh/chat/chat-config.html " +
+            "以及 https://agentsflex.com/zh/chat/chat-interceptor.html " +
+            "然后写几个不同的示例，注意，以上的网页内容不要一次性获取，请分批获取。");
 
-        prompt.addTools(ToolScanner.scan(TodoWriteTool.builder().build()));
+        AtomicReference<TodoWriteTool.Todos> todosRef = new AtomicReference<>();
+
+        prompt.addTools(ToolScanner.scan(TodoWriteTool.builder().todoEventHandler(new TodoWriteTool.TodoEventHandler() {
+            @Override
+            public void handle(TodoWriteTool.Todos todos) {
+                todosRef.set(todos);
+            }
+        }).build()));
         prompt.addTools(ToolScanner.scan(WebFetchTool.builder().useDefaultProviders().build()));
 
 
@@ -77,13 +88,23 @@ public class TodoListDemo {
                         System.out.println(">>>>> " + toolCall.getName() + ": " + JSON.toJSONString(toolCall.getArgsMap(), JSONWriter.Feature.PrettyFormat));
 
                         List<ToolMessage> toolMessages = response.executeToolCallsAndGetToolMessages();
-                        System.out.println(">>>>> Result: " + toolMessages.get(0).getContent());
+//                        System.out.println(">>>>> Result: " + toolMessages.get(0).getContent());
                         System.out.println("call tools start end----------\n\n");
+
+
                         prompt.addMessages(toolMessages);
                     }
                     chatModel.chatStream(prompt, this);
                 } else if (response.getMessage().isFinalDelta() && !response.getMessage().hasToolCalls()) {
-                    System.out.println("\n\n>>>>>>> 结束 <<<<<<<<<");
+                    TodoWriteTool.Todos todos = todosRef.get();
+                    if (todos != null && !todos.isComplete()) {
+                        UserMessage um = new UserMessage("请检查你的 todo list 是否已经完成。\n\n" + todos.toMarkdown());
+                        prompt.addMessageTemporary(um);
+                        chatModel.chatStream(prompt, this);
+                    } else {
+                        System.out.println("\n\n>>>>>>> 结束 <<<<<<<<<");
+                    }
+
                 }
             }
         };
