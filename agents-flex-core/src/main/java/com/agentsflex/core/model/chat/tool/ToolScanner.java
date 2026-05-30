@@ -65,7 +65,7 @@ public class ToolScanner {
 
         List<Tool> tools = new ArrayList<>();
         for (Method method : methodList) {
-            MethodTool tool = new MethodTool();
+            JavaMethodTool tool = new JavaMethodTool();
             tool.setClazz(clazz);
             tool.setMethod(method);
             if (!Modifier.isStatic(method.getModifiers())) {

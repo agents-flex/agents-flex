@@ -15,8 +15,6 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -30,43 +28,28 @@ public interface Tool {
 
     Object invoke(Map<String, Object> argsMap);
 
-    static Tool.Builder builder() {
-        return new Tool.Builder();
+    static MapBuilder builder() {
+        return new MapBuilder();
     }
 
-    class Builder {
-        private String name;
-        private String description;
-        private final List<Parameter> parameters = new ArrayList<>();
-        private Function<Map<String, Object>, Object> invoker;
-
-        public Builder name(String name) {
-            this.name = name;
-            return this;
-        }
-
-        public Builder description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public Builder addParameter(Parameter parameter) {
-            this.parameters.add(parameter);
-            return this;
-        }
-
-        public Builder function(Function<Map<String, Object>, Object> function) {
-            this.invoker = function;
-            return this;
-        }
-
-        public Tool build() {
-            FunctionTool tool = new FunctionTool();
-            tool.setName(name);
-            tool.setDescription(description);
-            tool.setParameters(parameters.toArray(new Parameter[0]));
-            tool.setInvoker(invoker);
-            return tool;
-        }
+    static MapBuilder builder(String name) {
+        return new MapBuilder().name(name);
     }
+
+    static MapBuilder builder(String name, String description) {
+        return new MapBuilder().name(name).description(description);
+    }
+
+    static <I> TypedBuilder<I> builder(String name, Function<I, ?> function) {
+        return new TypedBuilder<I>().name(name).function(function);
+    }
+
+    static <I> TypedBuilder<I> builder(String name, Class<I> inputType) {
+        return new TypedBuilder<I>().name(name).inputType(inputType);
+    }
+
+    static <I> TypedBuilder<I> builder(String name, Class<I> inputType, Function<I, ?> function) {
+        return new TypedBuilder<I>().name(name).inputType(inputType).function(function);
+    }
+
 }

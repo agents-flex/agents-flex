@@ -15,26 +15,28 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
-import java.util.Map;
-import java.util.function.Function;
+import java.lang.reflect.Type;
 
-public class FunctionTool extends BaseTool {
+/**
+ * 方法参数，继承 Parameter 并增加类型信息
+ *
+ * @author fuhai
+ * @since 2023/10/01
+ */
+public class TypedParameter extends Parameter {
 
-    private Function<Map<String, Object>, Object> invoker;
+    private static final long serialVersionUID = 1L;
 
-    public FunctionTool() {
+    /**
+     * 参数的完整类型信息（支持泛型）
+     */
+    protected Type typeClass;
+
+    public Type getTypeClass() {
+        return typeClass;
     }
 
-    @Override
-    public Object invoke(Map<String, Object> argsMap) {
-        if (invoker == null) {
-            throw new IllegalStateException("Tool invoker function is not set.");
-        }
-        return invoker.apply(argsMap);
-    }
-
-    // 允许外部设置 invoker（Builder 会用）
-    public void setInvoker(Function<Map<String, Object>, Object> invoker) {
-        this.invoker = invoker;
+    public void setTypeClass(Type typeClass) {
+        this.typeClass = typeClass;
     }
 }
