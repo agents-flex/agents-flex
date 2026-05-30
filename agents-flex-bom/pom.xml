@@ -272,5 +272,10 @@
             <artifactId>agents-flex-wiki</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-subagent</artifactId>
+        </dependency>
+
     </dependencies>
 </project>
