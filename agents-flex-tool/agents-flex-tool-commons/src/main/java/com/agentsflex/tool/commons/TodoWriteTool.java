@@ -16,6 +16,7 @@
 package com.agentsflex.tool.commons;
 
 import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
+import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import com.agentsflex.core.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -238,7 +239,7 @@ public class TodoWriteTool {
         "\t- activeForm: \"Fixing authentication bug\"\n" +
         "\n" +
         "When in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully.")
-	public String todoWrite(Todos todos) { // @formatter:on
+	public String todoWrite(@ToolParam(name = "todos", description = "The list of todos to write or modify") Todos todos) { // @formatter:on
 
         // Validate the todos
         this.validateTodos(todos);
