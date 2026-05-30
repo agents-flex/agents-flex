@@ -180,15 +180,7 @@ public class Metadata implements Serializable {
         }
     }
 
-    /**
-     * Returns an unmodifiable view of the internal metadata map.
-     * <p>
-     * Changes to this Metadata instance will be reflected in the returned view,
-     * but attempts to modify the view directly will throw {@link UnsupportedOperationException}.
-     *
-     * @return an unmodifiable map view (never null)
-     */
-    public Map<String, Object> asMap() {
+    private Map<String, Object> asMap() {
         Map<String, Object> map = metadataMap;
         return (map != null) ? Collections.unmodifiableMap(map) : Collections.emptyMap();
     }
