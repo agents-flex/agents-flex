@@ -85,6 +85,8 @@ export default defineConfig({
                     {text: 'Skills', link: '/zh/chat/skills'},
                     {text: 'LLM Wiki 知识树', link: '/zh/chat/llm-wiki'},
                     {text: 'Text2SQL 智能问数', link: '/zh/chat/text2sql'},
+                    {text: 'Text2SQL 拦截器', link: '/zh/chat/text2sql-interceptor'},
+                    {text: 'Subagent 子代理', link: '/zh/chat/subagent'},
                     {text: 'ChatClient', link: '/zh/chat/chat-client'},
                     {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
                     {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
