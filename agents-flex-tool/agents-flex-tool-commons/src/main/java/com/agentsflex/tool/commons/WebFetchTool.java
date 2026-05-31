@@ -4,10 +4,7 @@ import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.tool.commons.web.AdaptiveWebReaderRouter;
-import com.agentsflex.tool.commons.web.HttpReaderProvider;
-import com.agentsflex.tool.commons.web.JinaReaderProvider;
-import com.agentsflex.tool.commons.web.WebReaderProvider;
+import com.agentsflex.tool.commons.web.*;
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -25,10 +22,6 @@ import java.util.function.Function;
 public class WebFetchTool implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(WebFetchTool.class);
-
-    public static final String USER_AGENT =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
     private static final Duration CACHE_TTL = Duration.ofMinutes(15);
     private static final Set<String> ALLOWED_SCHEMES = new HashSet<>(Arrays.asList("http", "https"));
@@ -219,19 +212,14 @@ public class WebFetchTool implements AutoCloseable {
 
     private HttpResult executeGet(String url) throws IOException {
 
-        Request request = new Request.Builder()
-            .url(url)
-            .get()
-            .addHeader("User-Agent", USER_AGENT)
-            .addHeader("Accept", "text/html,application/xhtml+xml")
-            .build();
+        Request request = OKHttpUtil.defaultRequestBuilder(url).build();
 
         try (Response response = httpClient.newCall(request).execute()) {
 
             int code = response.code();
             ResponseBody body = response.body();
 
-            String text = (body != null) ? body.string() : null;
+            String text = (body != null) ? OKHttpUtil.decodeBody(body) : null;
 
             return new HttpResult(code, text);
         }

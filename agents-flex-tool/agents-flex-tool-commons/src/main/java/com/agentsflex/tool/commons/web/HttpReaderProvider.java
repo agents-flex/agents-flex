@@ -15,7 +15,10 @@
  */
 package com.agentsflex.tool.commons.web;
 
-import okhttp3.*;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 import java.io.IOException;
 
@@ -79,10 +82,7 @@ public class HttpReaderProvider implements WebReaderProvider {
     @Override
     public String read(String url) throws IOException {
 
-        Request request = new Request.Builder()
-            .url(url)
-            .get()
-            .build();
+        Request request = OKHttpUtil.defaultRequestBuilder(url).build();
 
         try (Response response = client.newCall(request).execute()) {
 
@@ -95,7 +95,7 @@ public class HttpReaderProvider implements WebReaderProvider {
                 throw new IOException("Empty body");
             }
 
-            return body.string();
+            return OKHttpUtil.decodeBody(body);
         }
     }
 }

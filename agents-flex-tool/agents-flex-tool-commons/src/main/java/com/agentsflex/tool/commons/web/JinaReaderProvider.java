@@ -15,10 +15,14 @@
  */
 package com.agentsflex.tool.commons.web;
 
-import com.agentsflex.tool.commons.WebFetchTool;
-import okhttp3.*;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Jina Reader Provider。
@@ -30,7 +34,7 @@ import java.io.IOException;
  * <pre>
  * https://r.jina.ai/
  * </pre>
- *
+ * <p>
  * 对网页内容进行提取。
  *
  * <h3>特点</h3>
@@ -48,6 +52,10 @@ public class JinaReaderProvider implements WebReaderProvider {
 
     private final OkHttpClient client;
 
+    private int defaultScore = 70;
+
+    private final Map<String, Integer> hostScores = new HashMap<>();
+
     public JinaReaderProvider(OkHttpClient client) {
         this.client = client;
     }
@@ -62,12 +70,35 @@ public class JinaReaderProvider implements WebReaderProvider {
         return true;
     }
 
+    public OkHttpClient getClient() {
+        return client;
+    }
+
+    public int getDefaultScore() {
+        return defaultScore;
+    }
+
+    public void setDefaultScore(int defaultScore) {
+        this.defaultScore = defaultScore;
+    }
+
+    public Map<String, Integer> getHostScores() {
+        return hostScores;
+    }
+
+    public void addHostScore(String host, int score) {
+        hostScores.put(host, score);
+    }
+
     @Override
     public int score(String url) {
-        if (url.contains("zhihu.com")) return 100;
-        if (url.contains("csdn.net")) return 90;
-        if (url.contains("medium.com")) return 95;
-        return 70;
+        String lowerUrl = url.toLowerCase();
+        for (Map.Entry<String, Integer> entry : hostScores.entrySet()) {
+            if (lowerUrl.contains(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return defaultScore;
     }
 
     @Override
@@ -77,11 +108,7 @@ public class JinaReaderProvider implements WebReaderProvider {
         }
 
         String jinaUrl = ENDPOINT + url;
-        Request request = new Request.Builder()
-            .url(jinaUrl)
-            .get()
-            .addHeader("User-Agent", WebFetchTool.USER_AGENT)
-            .build();
+        Request request = OKHttpUtil.defaultRequestBuilder(jinaUrl).build();
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
@@ -93,7 +120,7 @@ public class JinaReaderProvider implements WebReaderProvider {
                 throw new IOException("Empty Jina response");
             }
 
-            return body.string();
+            return OKHttpUtil.decodeBody(body);
         }
     }
 }
