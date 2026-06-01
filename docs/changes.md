@@ -1,5 +1,33 @@
 # Agents-Flex ChangeLog
 
+## v2.1.4 20260601
+- docs(menu): add subagent and text2sql interceptor menu items
+- refactor(web): refactor HTTP client utilities and reader providers
+- feat(demo): enhance todo list demo with step-by-step web content fetching
+- refactor(todo): update todoWriteTool parameter and response handling
+- feat(todo): add parameter annotation for todoWrite method
+- feat(tools): integrate TodoWriteTool and WebFetchTool into common tools
+- feat(demos): add todolist demo application
+- feat(web): add adaptive web reader router with scoring engine
+- fix(core): validate ToolParam annotation presence in JavaMethodTool
+- feat(tool): add TodoWrite tool for managing structured task lists
+- chore(demos): add maven deploy skip property to all demo modules
+- feat(demos): add subagent demo module
+- feat(subagent): add subagent framework with background task execution support
+- refactor(core): make Metadata.asMap method private
+- refactor(core): rename MethodTool to JavaMethodTool and update tool parameter handling
+- fix: Fix the bug where validateError always returns nul
+- refactor(text2sql): simplify constructor and remove unused formatting utilities
+- refactor(text2sql): replace validation and rewrite system with interceptor architecture
+- feat(core): add SQL audit interceptor and execution context support
+- feat(store): add default dimension fallback for embedding operations; close #49
+- refactor(text2sql): rename getDataSource to getJdbcDataSource for clarity
+- refactor(BaseInfo): replace Serializable with Metadata inheritance
+- feat(datasource): add custom column resolver functionality
+- refactor(text2sql): update SqlRewriteContext to use DataSourceInfo
+- fix(text2sql): correct table schema formatting with proper table info
+
+
 ## v2.1.3 20260526
 - feat(test): add Bailian search integration and provider tool enhancements
 - feat(chat): add provider tool support and enhance tool serialization
