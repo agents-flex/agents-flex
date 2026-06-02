@@ -20,6 +20,7 @@
         <module>wiki-demo</module>
         <module>subagent-demo</module>
         <module>todolist-demo</module>
+        <module>websearch-demo</module>
     </modules>
 
     <properties>
