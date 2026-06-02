@@ -55,6 +55,7 @@
         <module>agents-flex-text2sql</module>
         <module>agents-flex-wiki</module>
         <module>agents-flex-subagent</module>
+        <module>agents-flex-websearch</module>
         <module>demos</module>
     </modules>
 
@@ -320,6 +321,11 @@
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-subagent</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-websearch</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
