@@ -1,5 +1,13 @@
 # Agents-Flex ChangeLog
 
+## v2.1.5 20260603
+- docs(website): update documentation with new features and WebSearch support
+- docs(chat): add WebSearch documentation
+- chore(demos): update websearch demo version to use revision property
+- feat(demos): add websearch demo module
+- feat(websearch): add comprehensive web search functionality with multiple provider support
+
+
 ## v2.1.4 20260601
 - docs(menu): add subagent and text2sql interceptor menu items
 - refactor(web): refactor HTTP client utilities and reader providers

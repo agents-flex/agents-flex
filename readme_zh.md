@@ -50,18 +50,18 @@ Agents-Flex 专为 Java 工程师与架构师设计，提供**轻量、模块化
 <dependency>
 <groupId>com.agentsflex</groupId>
 <artifactId>agents-flex-core</artifactId>
-<version>2.1.4</version>
+<version>2.1.5</version>
 </dependency>
 <!-- 按需引入扩展模块 -->
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-websearch</artifactId>
-    <version>2.1.4</version>
+    <version>2.1.5</version>
 </dependency>
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-mcp</artifactId>
-    <version>2.1.4</version>
+    <version>2.1.5</version>
 </dependency>
 ```
 ### 2️⃣ Hello World
@@ -121,11 +121,11 @@ public class WebSearchDemo {
 **搜索结果示例**：
 
 ```markdown
-# Agents-Flex v2.1.4 发布 - 新增 WebSearch 支持
+# Agents-Flex v2.1.5 发布 - 新增 WebSearch 支持
 
 URL: https://github.com/agents-flex/agents-flex/releases
 
-Agents-Flex v2.1.4 版本新增了 WebSearch 网络搜索模块，
+Agents-Flex v2.1.5 版本新增了 WebSearch 网络搜索模块，
 支持 Bocha 和 Brave 搜索引擎，提供域名过滤功能...
 
 -----
