@@ -152,3 +152,79 @@ Agents-Flex is released under the **Apache License 2.0**. You are free to:
 - ✅ Contribute code to grow the ecosystem
 
 > Please retain the original copyright notice and indicate modifications when distributing. See [LICENSE](./LICENSE) for details.
+
+
+## ❓ FAQ
+
+### What is Agents-Flex?
+
+**Agents-Flex** is an elegant Java framework for LLM application development. It provides a lightweight, modular, and extensible AI agent development experience designed for Java engineers and architects to help enterprises rapidly build production-grade LLM applications.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **MCP Support** | Native integration with Model Context Protocol for standardized connection to external data sources and tools |
+| **AI Skills** | Encapsulate business capabilities into reusable, composable Skill units |
+| **Text2SQL** | Built-in Text2SQL and natural language data analysis capabilities |
+| **Model Integration** | Mainstream LLMs, Ollama local deploy, HTTP/SSE/WS protocols, multi-provider management |
+| **Tool Invocation** | Function Calling, MCP Tool Protocol, Local Method Reflection |
+| **Knowledge Enhancement** | Multi-format document loading, intelligent text splitting, vector store integration |
+
+### How to Install?
+
+Add Maven dependencies:
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-core</artifactId>
+    <version>2.1.3</version>
+</dependency>
+<!-- Optional: Add extension modules -->
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-mcp</artifactId>
+    <version>2.1.3</version>
+</dependency>
+```
+
+### Supported LLM Providers
+
+| Provider | Endpoint | Models |
+|----------|----------|--------|
+| **GiteeAI** | https://ai.gitee.com | Qwen3-32B, etc. |
+| **OpenAI** | https://api.openai.com | GPT-4, GPT-3.5-turbo |
+| **Ollama** | Local | llama3, mistral, etc. |
+| **Custom** | Custom endpoint | Any OpenAI-compatible API |
+
+### Requirements
+
+- Java 8 / 11 / 17 compatible
+- Maven or Gradle for dependency management
+- LLM API key (GiteeAI / OpenAI / Ollama)
+- Optional: Spring Boot for production
+
+### Module Overview
+
+| Module | Description |
+|--------|-------------|
+| `agents-flex-core` | Core abstractions: Model/Prompt/Memory/Tool SPI |
+| `agents-flex-chat` | Chat engine: sync/streaming/async |
+| `agents-flex-mcp` | MCP protocol support |
+| `agents-flex-skills` | AI Skills: capability encapsulation |
+| `agents-flex-text2sql` | Text2SQL & data analysis |
+| `agents-flex-spring-boot-starter` | Spring Boot auto-configuration |
+
+### License
+
+**Apache License 2.0** - Free for commercial use, modification, and contribution.
+
+### Help Resources
+
+- 📘 [Chinese Documentation](https://agentsflex.com)
+- 🧪 [Sample Projects](https://github.com/agents-flex/agents-flex/tree/main/demos)
+- 📋 [Changelog](https://github.com/agents-flex/agents-flex/blob/main/changes.md)
+- 🐛 [Issue Tracker](https://github.com/agents-flex/agents-flex/issues)
+- 💬 [Community Discussions](https://github.com/agents-flex/agents-flex/discussions)
+
