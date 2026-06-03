@@ -277,5 +277,10 @@
             <artifactId>agents-flex-subagent</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-websearch</artifactId>
+        </dependency>
+
     </dependencies>
 </project>
