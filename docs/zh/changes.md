@@ -1,5 +1,11 @@
 # Agents-Flex ChangeLog
 
+## v2.1.6 20260605
+- feat(chat): add conversation and account context identifiers
+- feat(chat): enable context attribute inheritance in continuous conversations
+- feat(chat): add context attributes support for chat operations
+
+
 ## v2.1.5 20260603
 - docs(website): update documentation with new features and WebSearch support
 - docs(chat): add WebSearch documentation
