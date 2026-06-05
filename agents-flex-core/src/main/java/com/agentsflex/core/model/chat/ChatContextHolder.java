@@ -62,6 +62,12 @@ public final class ChatContextHolder {
         ctx.attributes = new ConcurrentHashMap<>();
         if (options != null && options.getContextAttributes() != null) {
             ctx.attributes.putAll(options.getContextAttributes());
+        } else {
+            // 在连续对话的时候，默认使用上一次对话的属性
+            ChatContext prevContext = ChatContextHolder.currentContext();
+            if (prevContext != null && prevContext.attributes != null) {
+                ctx.attributes.putAll(prevContext.attributes);
+            }
         }
 
         CONTEXT_HOLDER.set(ctx);
