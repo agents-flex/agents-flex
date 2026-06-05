@@ -130,6 +130,8 @@ public class ChatOptions extends Metadata {
     private boolean streaming;
 
 
+    private Object contextConversationId;
+    private Object contextAccountId;
     private Map<String, Object> contextAttributes;
 
     // ===== 构造函数 =====
@@ -151,6 +153,9 @@ public class ChatOptions extends Metadata {
         this.retryCount = builder.retryCount;
         this.retryInitialDelayMs = builder.retryInitialDelayMs;
         this.responseFormat = builder.responseFormat;
+
+        this.contextConversationId = builder.contextConversationId;
+        this.contextAccountId = builder.contextAccountId;
         this.contextAttributes = builder.contextAttributes;
 
         if (builder.metadata != null && !builder.metadata.isEmpty()) {
@@ -332,6 +337,22 @@ public class ChatOptions extends Metadata {
         this.streaming = streaming;
     }
 
+    public Object getContextConversationId() {
+        return contextConversationId;
+    }
+
+    public void setContextConversationId(Object contextConversationId) {
+        this.contextConversationId = contextConversationId;
+    }
+
+    public Object getContextAccountId() {
+        return contextAccountId;
+    }
+
+    public void setContextAccountId(Object contextAccountId) {
+        this.contextAccountId = contextAccountId;
+    }
+
     public Map<String, Object> getContextAttributes() {
         return contextAttributes;
     }
@@ -354,6 +375,7 @@ public class ChatOptions extends Metadata {
      */
     public static final class Builder {
 
+
         private String model;
         private String seed;
         private Float temperature = 0.5f;
@@ -369,6 +391,10 @@ public class ChatOptions extends Metadata {
         private int retryInitialDelayMs = 1000;
         public Map<String, Object> responseFormat;
         public Map<String, Object> metadata;
+
+
+        public Object contextConversationId;
+        public Object contextAccountId;
         private Map<String, Object> contextAttributes;
 
         public Builder model(String model) {
@@ -471,6 +497,16 @@ public class ChatOptions extends Metadata {
             } else {
                 this.metadata.put(key, value);
             }
+            return this;
+        }
+
+        public Builder contextConversationId(Object contextConversationId) {
+            this.contextConversationId = contextConversationId;
+            return this;
+        }
+
+        public Builder contextAccountId(Object contextAccountId) {
+            this.contextAccountId = contextAccountId;
             return this;
         }
 

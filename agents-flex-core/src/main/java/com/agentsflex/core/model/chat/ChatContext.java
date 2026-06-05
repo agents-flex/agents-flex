@@ -26,6 +26,8 @@ public class ChatContext {
     ChatConfig config;
     ChatOptions options;
     ChatRequestSpec requestSpec;
+    Object conversationId;
+    Object accountId;
     Map<String, Object> attributes;
 
     public Prompt getPrompt() {
@@ -59,6 +61,22 @@ public class ChatContext {
 
     public void setRequestSpec(ChatRequestSpec requestSpec) {
         this.requestSpec = requestSpec;
+    }
+
+    public Object getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(Object conversationId) {
+        this.conversationId = conversationId;
+    }
+
+    public Object getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(Object accountId) {
+        this.accountId = accountId;
     }
 
     public Map<String, Object> getAttributes() {
