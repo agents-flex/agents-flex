@@ -19,6 +19,7 @@ import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.Metadata;
 import com.agentsflex.core.util.StringUtil;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -128,6 +129,9 @@ public class ChatOptions extends Metadata {
      */
     private boolean streaming;
 
+
+    private Map<String, Object> contextAttributes;
+
     // ===== 构造函数 =====
     public ChatOptions() {
     }
@@ -147,8 +151,9 @@ public class ChatOptions extends Metadata {
         this.retryCount = builder.retryCount;
         this.retryInitialDelayMs = builder.retryInitialDelayMs;
         this.responseFormat = builder.responseFormat;
+        this.contextAttributes = builder.contextAttributes;
 
-        if (builder.metadata != null && !builder.metadata.isEmpty()){
+        if (builder.metadata != null && !builder.metadata.isEmpty()) {
             this.putMetadata(builder.metadata);
         }
     }
@@ -327,6 +332,13 @@ public class ChatOptions extends Metadata {
         this.streaming = streaming;
     }
 
+    public Map<String, Object> getContextAttributes() {
+        return contextAttributes;
+    }
+
+    public void setContextAttributes(Map<String, Object> contextAttributes) {
+        this.contextAttributes = contextAttributes;
+    }
 
     /**
      * 创建 ChatOptions 的 Builder 实例。
@@ -357,6 +369,7 @@ public class ChatOptions extends Metadata {
         private int retryInitialDelayMs = 1000;
         public Map<String, Object> responseFormat;
         public Map<String, Object> metadata;
+        private Map<String, Object> contextAttributes;
 
         public Builder model(String model) {
             this.model = model;
@@ -457,6 +470,25 @@ public class ChatOptions extends Metadata {
                 this.metadata = Maps.of(key, value);
             } else {
                 this.metadata.put(key, value);
+            }
+            return this;
+        }
+
+        public Builder contextAttributes(Map<String, Object> contextAttributes) {
+            if (this.contextAttributes == null) {
+                this.contextAttributes = new HashMap<>();
+            }
+            if (contextAttributes != null) {
+                this.contextAttributes.putAll(contextAttributes);
+            }
+            return this;
+        }
+
+        public Builder addContextAttributes(String key, Object value) {
+            if (this.contextAttributes == null) {
+                this.contextAttributes = Maps.of(key, value);
+            } else {
+                this.contextAttributes.put(key, value);
             }
             return this;
         }

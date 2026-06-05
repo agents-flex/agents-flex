@@ -65,6 +65,13 @@ public class ChatContext {
         return attributes;
     }
 
+    public Object getAttribute(String key) {
+        if (attributes == null) {
+            return null;
+        }
+        return attributes.get(key);
+    }
+
     public void addAttribute(String key, Object value) {
         if (attributes == null) {
             attributes = new java.util.HashMap<>();
