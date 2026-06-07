@@ -28,21 +28,19 @@ public class ToolExecutor {
 
     private final Tool tool;
     private final ToolCall toolCall;
-    private List<ToolInterceptor> interceptors;
+    private final List<ToolInterceptor> interceptors;
 
     public ToolExecutor(Tool tool, ToolCall toolCall) {
         this(tool, toolCall, null);
     }
 
-    public ToolExecutor(Tool tool, ToolCall toolCall,
-                        List<ToolInterceptor> userInterceptors) {
+    public ToolExecutor(Tool tool, ToolCall toolCall, List<ToolInterceptor> userInterceptors) {
         this.tool = tool;
         this.toolCall = toolCall;
         this.interceptors = buildInterceptorChain(userInterceptors);
     }
 
-    private List<ToolInterceptor> buildInterceptorChain(
-        List<ToolInterceptor> userInterceptors) {
+    private List<ToolInterceptor> buildInterceptorChain(List<ToolInterceptor> userInterceptors) {
 
         // 1. 全局拦截器
         List<ToolInterceptor> chain = new ArrayList<>(GlobalToolInterceptors.getInterceptors());
@@ -59,15 +57,12 @@ public class ToolExecutor {
      * 动态添加拦截器（添加到链尾）
      */
     public void addInterceptor(ToolInterceptor interceptor) {
-        if (interceptors == null) {
-            interceptors = new ArrayList<>();
-        }
         this.interceptors.add(interceptor);
     }
 
     public void addInterceptors(List<ToolInterceptor> interceptors) {
-        if (interceptors == null) {
-            interceptors = new ArrayList<>();
+        if (interceptors == null || interceptors.isEmpty()) {
+            return;
         }
         this.interceptors.addAll(interceptors);
     }
