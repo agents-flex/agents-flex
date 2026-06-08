@@ -18,6 +18,7 @@ package com.agentsflex.wiki;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -27,6 +28,8 @@ public class Wiki {
     private String title;
     private String summary;
     private String content;
+
+    private List<Wiki> children;
 
     private Map<String, Object> frontMatter;
 
@@ -98,6 +101,28 @@ public class Wiki {
         this.frontMatter.put(key, value);
     }
 
+    public List<Wiki> getChildren() {
+        return children;
+    }
+
+    public void setChildren(List<Wiki> children) {
+        this.children = children;
+    }
+
+    public void addChild(Wiki child) {
+        if (this.children == null) {
+            this.children = new java.util.ArrayList<>();
+        }
+        this.children.add(child);
+    }
+
+    public void addChildren(List<Wiki> children) {
+        if (this.children == null) {
+            this.children = new java.util.ArrayList<>();
+        }
+        this.children.addAll(children);
+    }
+
     public String toXml() {
         String frontMatterXml = this.frontMatter == null ? "" : this.frontMatter
             .entrySet()
@@ -124,6 +149,12 @@ public class Wiki {
         }
         markdown.append("---\n\n");
         markdown.append(this.content);
+
+        if (this.children != null && !this.children.isEmpty()) {
+            markdown.append("\n\n## Children Wikis:\n");
+            markdown.append(WikiTool.buildWikisXml(this.children));
+        }
+
         return markdown.toString();
     }
 }
