@@ -16,6 +16,7 @@
 package com.agentsflex.websearch.baidu;
 
 import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.websearch.SearchException;
 import com.agentsflex.websearch.SearchProvider;
 import com.agentsflex.websearch.SearchRequest;
 import com.agentsflex.websearch.SearchResult;
@@ -112,7 +113,7 @@ public class BaiduQianfanSearchProvider implements SearchProvider {
     public List<SearchResult> search(SearchRequest request) {
 
         if (request == null || StringUtil.noText(request.getQuery())) {
-            return Collections.emptyList();
+            throw new RuntimeException("query keyword is null or blank.");
         }
 
         try {
@@ -134,8 +135,7 @@ public class BaiduQianfanSearchProvider implements SearchProvider {
             Integer errorCode = root.getInteger("error_code");
             if (errorCode != null && errorCode != 0) {
                 String errorMsg = root.getString("error_msg");
-                System.err.println("Baidu Qianfan Search Error: code=" + errorCode + ", msg=" + errorMsg);
-                return Collections.emptyList();
+                throw new SearchException("Baidu Qianfan Search Error: code=" + errorCode + ", msg=" + errorMsg);
             }
 
             JSONArray references = root.getJSONArray("references");
@@ -146,8 +146,7 @@ public class BaiduQianfanSearchProvider implements SearchProvider {
             return parse(references);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return Collections.emptyList();
+            throw new SearchException(e);
         }
     }
 

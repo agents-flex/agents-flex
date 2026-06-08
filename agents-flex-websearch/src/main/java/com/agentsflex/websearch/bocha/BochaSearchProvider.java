@@ -16,6 +16,7 @@
 package com.agentsflex.websearch.bocha;
 
 import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.websearch.SearchException;
 import com.agentsflex.websearch.SearchProvider;
 import com.agentsflex.websearch.SearchRequest;
 import com.agentsflex.websearch.SearchResult;
@@ -75,7 +76,7 @@ public class BochaSearchProvider implements SearchProvider {
     public List<SearchResult> search(SearchRequest request) {
 
         if (request == null || StringUtil.noText(request.getQuery())) {
-            return Collections.emptyList();
+            throw new RuntimeException("query keyword is null or blank.");
         }
 
         try {
@@ -101,8 +102,7 @@ public class BochaSearchProvider implements SearchProvider {
             return parse(arr);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return Collections.emptyList();
+            throw new SearchException(e);
         }
     }
 

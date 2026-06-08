@@ -18,6 +18,7 @@ package com.agentsflex.websearch;
 import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import com.agentsflex.core.util.StringUtil;
+import org.slf4j.Logger;
 
 import java.net.URI;
 import java.util.Collections;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class WebSearchTool {
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(WebSearchTool.class);
 
     private final SearchProvider provider;
 
@@ -64,8 +66,35 @@ public class WebSearchTool {
         request.setAllowedDomains(allowedDomains);
         request.setBlockedDomains(blockedDomains);
 
-        List<SearchResult> results = provider.search(request);
-        results = applyDomainFilter(results, allowedDomains, blockedDomains);
+        List<SearchResult> results;
+
+        try {
+            results = provider.search(request);
+        } catch (Exception e) {
+            log.error("An error occurred while searching for web content: " + e.getMessage(), e);
+            return "ERROR: An error occurred while searching for web content: " + e.getMessage();
+        }
+
+        if (results != null && !results.isEmpty()) {
+            results = applyDomainFilter(results, allowedDomains, blockedDomains);
+        }
+
+        if (results == null || results.isEmpty()) {
+            return "No search results were found.\n" +
+                "\n" +
+                "Original query: \n" + query +
+                "\n" +
+                "Possible reasons:\n" +
+                "- The query may be too specific.\n" +
+                "- The search provider returned no matching documents.\n" +
+                "- Domain filters may have excluded all results.\n" +
+                "\n" +
+                "Suggested actions:\n" +
+                "1. Broaden the search query.\n" +
+                "2. Remove or relax domain restrictions.\n" +
+                "3. Try alternative keywords.\n" +
+                "4. Retry the search with different wording.";
+        }
 
         return results.stream()
             .map(SearchResult::toMarkdown)
@@ -153,7 +182,6 @@ public class WebSearchTool {
             return url.toLowerCase();
         }
     }
-
 
 
     public static Builder builder() {

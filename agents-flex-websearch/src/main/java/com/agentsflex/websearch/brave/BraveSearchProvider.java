@@ -17,6 +17,7 @@ package com.agentsflex.websearch.brave;
 
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.websearch.SearchException;
 import com.agentsflex.websearch.SearchProvider;
 import com.agentsflex.websearch.SearchRequest;
 import com.agentsflex.websearch.SearchResult;
@@ -60,7 +61,7 @@ public class BraveSearchProvider implements SearchProvider {
     public List<SearchResult> search(SearchRequest request) {
 
         if (request == null || StringUtil.noText(request.getQuery())) {
-            return Collections.emptyList();
+            throw new RuntimeException("query keyword is null or blank.");
         }
 
         try {
@@ -88,8 +89,7 @@ public class BraveSearchProvider implements SearchProvider {
 
             return results;
         } catch (Exception e) {
-            e.printStackTrace();
-            return Collections.emptyList();
+            throw new SearchException(e);
         }
     }
 
@@ -97,9 +97,6 @@ public class BraveSearchProvider implements SearchProvider {
     private String execute(String query, int resultCount) throws IOException {
 
         HttpUrl base = HttpUrl.get(BASE_URL);
-        if (base == null) {
-            return "";
-        }
 
         HttpUrl url = base.newBuilder()
             .addQueryParameter("q", query)
