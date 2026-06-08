@@ -1,5 +1,16 @@
 # Agents-Flex ChangeLog
 
+## v2.1.7 20260608
+- docs(wiki): expand documentation with tree structure support
+- feat(wiki): add hierarchical structure support for wiki content
+- refactor(search): replace empty list returns with proper exception handling
+- docs(websearch): enhance documentation with detailed architecture and examples
+- test(websearch): switch from Bocha to Baidu Qianfan search provider
+- refactor(websearch): simplify search result processing in WebSearchTool
+- feat(baidu): add Baidu Qianfan Search Provider implementation
+- refactor(tools): make ToolExecutor interceptors immutable and improve initialization
+
+
 ## v2.1.6 20260605
 - feat(chat): add conversation and account context identifiers
 - feat(chat): enable context attribute inheritance in continuous conversations
