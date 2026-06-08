@@ -67,10 +67,9 @@ public class WebSearchTool {
         List<SearchResult> results = provider.search(request);
         results = applyDomainFilter(results, allowedDomains, blockedDomains);
 
-        String collect = results.stream()
+        return results.stream()
             .map(SearchResult::toMarkdown)
             .collect(Collectors.joining("\n\n-----\n\n"));
-        return collect;
     }
 
 
