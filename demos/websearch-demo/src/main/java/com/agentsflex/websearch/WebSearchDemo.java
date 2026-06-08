@@ -16,7 +16,7 @@ import com.agentsflex.model.chat.openai.OpenAIChatConfig;
 import com.agentsflex.model.chat.openai.OpenAIChatModel;
 import com.agentsflex.tool.commons.TodoWriteTool;
 import com.agentsflex.tool.commons.WebFetchTool;
-import com.agentsflex.websearch.bocha.BochaSearchProvider;
+import com.agentsflex.websearch.baidu.BaiduQianfanSearchProvider;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
 
@@ -46,9 +46,9 @@ public class WebSearchDemo {
             .endpoint("https://ai.gitee.com")
             .requestPath("/v1/chat/completions")
             .apiKey(System.getenv("GITEE_APIKEY"))
-            .model("Qwen3.5-35B-A3B")
+//            .model("Qwen3.5-35B-A3B")
 //            .model("Qwen3.7-Max")
-//            .model("Qwen3-32B")
+            .model("Qwen3-32B")
 //            .thinkingEnabled(false)
 //            .logEnabled(false)
             .buildModel();
@@ -68,7 +68,8 @@ public class WebSearchDemo {
 
         prompt.addTools(ToolScanner.scan(WebFetchTool.builder().useDefaultProviders().build()));
         prompt.addTools(ToolScanner.scan(WebSearchTool.builder()
-            .provider(new BochaSearchProvider(System.getenv("BOCHA_APIKEY")))
+//            .provider(new BochaSearchProvider(System.getenv("BOCHA_APIKEY")))
+            .provider(new BaiduQianfanSearchProvider(System.getenv("BAIDU_APIKEY")))
             .build()));
 
 
