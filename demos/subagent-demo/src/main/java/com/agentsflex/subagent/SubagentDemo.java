@@ -17,7 +17,7 @@ import com.alibaba.fastjson2.JSONWriter;
 
 import java.util.List;
 
-public class Main {
+public class SubagentDemo {
 
     public static void main(String[] args) throws InterruptedException {
         System.setProperty("agentsflex.otel.enabled", "false");
