@@ -33,15 +33,15 @@ public class SubagentTools {
         "</available_task_agents>\n" +
         "\n" +
         "\n" +
-        "IMPORTANT:\n" +
+        "CRITICAL RULES - YOU MUST FOLLOW THESE EXACTLY:\n" +
         "\n" +
         "When calling `execute_task` tool:\n" +
         "\n" +
-        "1. Read the available agents from `<available_task_agents>`.\n" +
-        "2. Use ONLY the value inside the `<name>` element.\n" +
-        "3. The value must match exactly.\n" +
-        "4. Never use text from `<description>`.\n" +
-        "5. If no suitable agent exists, do not invent a new agent name." +
+        "1. The `name` parameter MUST be the EXACT text from the `<name>` XML tag above.\n" +
+        "2. The `<name>` and `<description>` are DIFFERENT fields. NEVER use `<description>` text as the `name`.\n" +
+        "3. The `name` must match EXACTLY - no adding words, no removing words, no substitutions.\n" +
+        "4. If no suitable agent exists, do not invent a new agent name. Report that no suitable agent is available.\n" +
+        "5. WRONG example: if `<name>weather</name>` and `<description>Query weather forecast and meteorological information</description>`, you MUST use name=\"weather\", NOT name=\"weather forecast\" or name=\"query weather\"." +
         "\n" +
         "\n" +
         "Usage notes:\n" +
