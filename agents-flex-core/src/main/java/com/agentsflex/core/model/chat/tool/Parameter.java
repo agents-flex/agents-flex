@@ -20,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -208,5 +209,19 @@ public class Parameter implements Serializable {
             param.setItemsParameter(itemsParameter);
             return param;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "Parameter{" +
+            "name='" + name + '\'' +
+            ", type='" + type + '\'' +
+            ", description='" + description + '\'' +
+            ", enums=" + Arrays.toString(enums) +
+            ", required=" + required +
+            ", defaultValue=" + defaultValue +
+            ", children=" + children +
+            ", itemsParameter=" + itemsParameter +
+            '}';
     }
 }

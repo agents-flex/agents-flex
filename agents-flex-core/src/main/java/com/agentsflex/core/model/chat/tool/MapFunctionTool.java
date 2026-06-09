@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -36,5 +37,15 @@ public class MapFunctionTool extends BaseTool {
     // 允许外部设置 invoker（Builder 会用）
     public void setInvoker(Function<Map<String, Object>, Object> invoker) {
         this.invoker = invoker;
+    }
+
+    @Override
+    public String toString() {
+        return "MapFunctionTool{" +
+            "invoker=" + invoker +
+            ", name='" + name + '\'' +
+            ", description='" + description + '\'' +
+            ", parameters=" + Arrays.toString(parameters) +
+            '}';
     }
 }

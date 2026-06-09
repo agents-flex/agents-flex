@@ -133,4 +133,16 @@ public class JavaMethodTool extends BaseTool {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public String toString() {
+        return "JavaMethodTool{" +
+            "clazz=" + clazz +
+            ", object=" + object +
+            ", method=" + method +
+            ", name='" + name + '\'' +
+            ", description='" + description + '\'' +
+            ", parameters=" + Arrays.toString(parameters) +
+            '}';
+    }
 }

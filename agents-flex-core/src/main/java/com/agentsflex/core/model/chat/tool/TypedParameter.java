@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.chat.tool;
 
 import java.lang.reflect.Type;
+import java.util.Arrays;
 
 /**
  * 方法参数，继承 Parameter 并增加类型信息
@@ -38,5 +39,20 @@ public class TypedParameter extends Parameter {
 
     public void setTypeClass(Type typeClass) {
         this.typeClass = typeClass;
+    }
+
+    @Override
+    public String toString() {
+        return "TypedParameter{" +
+            "typeClass=" + typeClass +
+            ", name='" + name + '\'' +
+            ", type='" + type + '\'' +
+            ", description='" + description + '\'' +
+            ", enums=" + Arrays.toString(enums) +
+            ", required=" + required +
+            ", defaultValue=" + defaultValue +
+            ", children=" + children +
+            ", itemsParameter=" + itemsParameter +
+            '}';
     }
 }

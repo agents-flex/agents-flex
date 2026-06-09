@@ -18,6 +18,7 @@ package com.agentsflex.core.model.chat.tool;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -53,5 +54,16 @@ public class TypedFunctionTool<T> extends BaseTool {
 
     public void setFunction(Function<T, ?> function) {
         this.function = function;
+    }
+
+    @Override
+    public String toString() {
+        return "TypedFunctionTool{" +
+            "inputType=" + inputType +
+            ", function=" + function +
+            ", name='" + name + '\'' +
+            ", description='" + description + '\'' +
+            ", parameters=" + Arrays.toString(parameters) +
+            '}';
     }
 }

@@ -109,4 +109,13 @@ public class ToolExecutor {
         return interceptors;
     }
 
+
+    @Override
+    public String toString() {
+        return "ToolExecutor{" +
+            "tool=" + tool +
+            ", toolCall=" + toolCall +
+            ", interceptors=" + interceptors +
+            '}';
+    }
 }

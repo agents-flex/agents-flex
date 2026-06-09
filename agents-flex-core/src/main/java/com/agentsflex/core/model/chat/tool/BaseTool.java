@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.chat.tool;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 public abstract class BaseTool implements Tool, Serializable {
 
@@ -48,5 +49,14 @@ public abstract class BaseTool implements Tool, Serializable {
 
     public void setParameters(Parameter[] parameters) {
         this.parameters = parameters;
+    }
+
+    @Override
+    public String toString() {
+        return "BaseTool{" +
+            "name='" + name + '\'' +
+            ", description='" + description + '\'' +
+            ", parameters=" + Arrays.toString(parameters) +
+            '}';
     }
 }
