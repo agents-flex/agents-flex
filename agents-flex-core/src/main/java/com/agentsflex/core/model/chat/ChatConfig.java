@@ -226,4 +226,33 @@ public class ChatConfig extends BaseModelConfig {
     public void setRetryInitialDelayMs(int retryInitialDelayMs) {
         this.retryInitialDelayMs = retryInitialDelayMs;
     }
+
+
+    @Override
+    public String toString() {
+        return "ChatConfig{" +
+            "supportImage=" + supportImage +
+            ", supportImageBase64Only=" + supportImageBase64Only +
+            ", supportAudio=" + supportAudio +
+            ", supportVideo=" + supportVideo +
+            ", supportTool=" + supportTool +
+            ", supportToolMessage=" + supportToolMessage +
+            ", supportThinking=" + supportThinking +
+            ", supportProviderTools=" + supportProviderTools +
+            ", preserveThinkingEnable=" + preserveThinkingEnable +
+            ", observabilityEnabled=" + observabilityEnabled +
+            ", thinkingEnabled=" + thinkingEnabled +
+            ", thinkingProtocol='" + thinkingProtocol + '\'' +
+            ", logEnabled=" + logEnabled +
+            ", retryEnabled=" + retryEnabled +
+            ", retryCount=" + retryCount +
+            ", retryInitialDelayMs=" + retryInitialDelayMs +
+            ", provider='" + provider + '\'' +
+            ", endpoint='" + endpoint + '\'' +
+            ", requestPath='" + requestPath + '\'' +
+            ", model='" + model + '\'' +
+            ", apiKey='" + apiKey + '\'' +
+            ", customProperties=" + customProperties +
+            '}';
+    }
 }

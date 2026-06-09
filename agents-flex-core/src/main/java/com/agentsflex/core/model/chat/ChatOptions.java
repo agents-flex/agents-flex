@@ -538,4 +538,29 @@ public class ChatOptions extends Metadata {
             return new ChatOptions(this);
         }
     }
+
+    @Override
+    public String toString() {
+        return "ChatOptions{" +
+            "model='" + model + '\'' +
+            ", seed='" + seed + '\'' +
+            ", temperature=" + temperature +
+            ", topP=" + topP +
+            ", topK=" + topK +
+            ", maxTokens=" + maxTokens +
+            ", stop=" + stop +
+            ", thinkingEnabled=" + thinkingEnabled +
+            ", includeUsage=" + includeUsage +
+            ", extraBody=" + extraBody +
+            ", retryEnabled=" + retryEnabled +
+            ", retryCount=" + retryCount +
+            ", retryInitialDelayMs=" + retryInitialDelayMs +
+            ", responseFormat=" + responseFormat +
+            ", streaming=" + streaming +
+            ", contextConversationId=" + contextConversationId +
+            ", contextAccountId=" + contextAccountId +
+            ", contextAttributes=" + contextAttributes +
+            ", metadataMap=" + metadataMap +
+            '}';
+    }
 }

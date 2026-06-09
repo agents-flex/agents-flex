@@ -102,4 +102,16 @@ public class ChatContext {
     }
 
 
+    @Override
+    public String toString() {
+        return "ChatContext{" +
+            "prompt=" + prompt +
+            ", config=" + config +
+            ", options=" + options +
+            ", requestSpec=" + requestSpec +
+            ", conversationId=" + conversationId +
+            ", accountId=" + accountId +
+            ", attributes=" + attributes +
+            '}';
+    }
 }
