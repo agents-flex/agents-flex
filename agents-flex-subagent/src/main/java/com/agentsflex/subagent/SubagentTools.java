@@ -32,7 +32,16 @@ public class SubagentTools {
         "%s\n" +
         "</available_task_agents>\n" +
         "\n" +
-        "When using the `execute_task` tool, you must specify a Name from `<available_task_agents>` above to select which agent to use.\n" +
+        "\n" +
+        "IMPORTANT:\n" +
+        "\n" +
+        "When calling `execute_task` tool:\n" +
+        "\n" +
+        "1. Read the available agents from `<available_task_agents>`.\n" +
+        "2. Use ONLY the value inside the `<name>` element.\n" +
+        "3. The value must match exactly.\n" +
+        "4. Never use text from `<description>`.\n" +
+        "5. If no suitable agent exists, do not invent a new agent name." +
         "\n" +
         "\n" +
         "Usage notes:\n" +
@@ -49,26 +58,24 @@ public class SubagentTools {
         "- Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent\n" +
         "- If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.\n" +
         "- If the user specifies that they want you to run agents \"in parallel\", you MUST send a single message with multiple Task tool use content blocks. For example, if you need to launch both a code-reviewer agent and a test-runner agent in parallel, send a single message with both tool calls.\n" +
-        "\n" +
+        "\n\n" +
         "Example usage:\n" +
         "\n" +
         "<available_task_agents>\n" +
         "   <task_agent>\n" +
-        "          <name>code-reviewer</name>\n" +
-        "          <description>use this agent after you are done writing a signficant piece of code</description>\n" +
+        "      <name>code-reviewer</name>\n" +
+        "      <description>use this agent after you are done writing a signficant piece of code</description>\n" +
         "   </task_agent>\n" +
         "\n" +
         "   <task_agent>\n" +
-        "          <name>greeting-responder</name>\n" +
-        "          <description>use this agent when to respond to user greetings with a friendly joke</description>\n" +
+        "      <name>greeting-responder</name>\n" +
+        "      <description>use this agent when to respond to user greetings with a friendly joke</description>\n" +
         "   </task_agent>\n" +
         "</available_task_agents>" +
         "\n" +
         "<example>\n" +
         "user: \"Please write a function that checks if a number is prime\"\n" +
         "assistant: Sure let me write a function that checks if a number is prime\n" +
-        "assistant: First let me use the Write tool to write a function that checks if a number is prime\n" +
-        "assistant: I'm going to use the Write tool to write the following code:\n" +
         "<code>\n" +
         "function isPrime(n) {\n" +
         "if (n <= 1) return false\n" +
@@ -120,7 +127,7 @@ public class SubagentTools {
             String subagentName = subagentArgs.getName();
 
             if (!this.subagents.containsKey(subagentName)) {
-                return String.format("Error: Subagent '%s' not found, only supports %s", subagentName, this.subagents.keySet());
+                return String.format("Error: Subagent '%s' not found, only support the names: %s", subagentName, this.subagents.keySet());
             }
 
             SubagentDefinition subagentDefinition = subagents.get(subagentName);

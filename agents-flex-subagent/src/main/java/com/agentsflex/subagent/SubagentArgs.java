@@ -19,7 +19,7 @@ import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 
 public class SubagentArgs {
 
-    @ToolParam(name = "name", description = "The name of the agent to use", required = true)
+    @ToolParam(name = "name", description = "The name of the agent to use, do not use the description text.", required = true)
     private String name;
 
     @ToolParam(name = "description", description = "A short (3-5 word) description of the task", required = true)
