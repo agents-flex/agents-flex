@@ -105,7 +105,11 @@ public class ReActAgentState implements Serializable {
     }
 
     public static ReActAgentState fromJSON(String json) {
-        return JSON.parseObject(json, ReActAgentState.class, JSONReader.Feature.SupportClassForName);
+        // toJSON() writes @type markers via JSONWriter.Feature.WriteClassName. Reading them back to
+        // restore the concrete Message subtypes (UserMessage / AiMessage ...) in messageHistory
+        // requires SupportAutoType — its counterpart. SupportClassForName only covers Class-typed
+        // fields and leaves fastjson2 trying to instantiate the abstract Message, which fails.
+        return JSON.parseObject(json, ReActAgentState.class, JSONReader.Feature.SupportAutoType);
     }
 
 
