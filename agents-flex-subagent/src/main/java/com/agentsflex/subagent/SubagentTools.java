@@ -27,12 +27,12 @@ public class SubagentTools {
         "\n" +
         "The `execute_task` tool launches specialized agents (subprocesses) that autonomously handle complex tasks. Each agent type has specific capabilities and tools available to it.\n" +
         "\n" +
-        "Available task_agents:\n" +
-        "<task_agents>\n" +
+        "Available task agents:\n" +
+        "<available_task_agents>\n" +
         "%s\n" +
-        "</task_agents>\n" +
+        "</available_task_agents>\n" +
         "\n" +
-        "When using the `execute_task` tool, you must specify a name parameter from task_agents above to select which agent to use.\n" +
+        "When using the `execute_task` tool, you must specify a Name from `<available_task_agents>` above to select which agent to use.\n" +
         "\n" +
         "\n" +
         "Usage notes:\n" +
@@ -52,10 +52,17 @@ public class SubagentTools {
         "\n" +
         "Example usage:\n" +
         "\n" +
-        "<example_agent_descriptions>\n" +
-        "\"code-reviewer\": use this agent after you are done writing a signficant piece of code\n" +
-        "\"greeting-responder\": use this agent when to respond to user greetings with a friendly joke\n" +
-        "</example_agent_description>\n" +
+        "<available_task_agents>\n" +
+        "   <task_agent>\n" +
+        "          <name>code-reviewer</name>\n" +
+        "          <description>use this agent after you are done writing a signficant piece of code</description>\n" +
+        "   </task_agent>\n" +
+        "\n" +
+        "   <task_agent>\n" +
+        "          <name>greeting-responder</name>\n" +
+        "          <description>use this agent when to respond to user greetings with a friendly joke</description>\n" +
+        "   </task_agent>\n" +
+        "</available_task_agents>" +
         "\n" +
         "<example>\n" +
         "user: \"Please write a function that checks if a number is prime\"\n" +
@@ -75,7 +82,7 @@ public class SubagentTools {
         "Since a signficant piece of code was written and the task was completed, now use the code-reviewer agent to review the code\n" +
         "</commentary>\n" +
         "assistant: Now let me use the code-reviewer agent to review the code\n" +
-        "assistant: Uses the Task tool to launch the code-reviewer agent\n" +
+        "assistant: Uses the `execute_task` tool to launch the code-reviewer agent\n" +
         "</example>\n" +
         "\n" +
         "<example>\n" +
@@ -83,7 +90,7 @@ public class SubagentTools {
         "<commentary>\n" +
         "Since the user is greeting, use the greeting-responder agent to respond with a friendly joke\n" +
         "</commentary>\n" +
-        "assistant: \"I'm going to use the Task tool to launch the greeting-responder agent\"\n" +
+        "assistant: \"I'm going to use the `execute_task` tool to launch the greeting-responder agent\"\n" +
         "</example>";
 
 
@@ -229,7 +236,7 @@ public class SubagentTools {
         public List<Tool> build() {
             String subagentRegistrations = definitions.stream()
                 .map(SubagentDefinition::toXml)
-                .collect(Collectors.joining("\n"));
+                .collect(Collectors.joining("\n\n"));
 
             Tool executeTaskTool = Tool.builder("execute_task", new SubAgentFunction(definitions, taskRepository, subagentExecutor))
                 .inputType(SubagentArgs.class)

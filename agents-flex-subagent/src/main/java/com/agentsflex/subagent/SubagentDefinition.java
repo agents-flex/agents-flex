@@ -54,12 +54,12 @@ public class SubagentDefinition extends Metadata {
     public String toXml() {
         String frontMatterXml = this.frontMatter == null ? ""
             : this.frontMatter
-              .entrySet()
-              .stream()
-              .map(e -> String.format("  <%s>%s</%s>", e.getKey(), e.getValue(), e.getKey()))
-              .collect(Collectors.joining("\n"));
+            .entrySet()
+            .stream()
+            .map(e -> String.format("  <%s>%s</%s>", e.getKey(), e.getValue(), e.getKey()))
+            .collect(Collectors.joining("\n")) + "\n";
 
-        return String.format("<task_agent>\n<name>%s</name>\n<description>%s</description>\n%s\n</task_agent>"
+        return String.format("\t<task_agent>\n\t\t<name>%s</name>\n\t\t<description>%s</description>\n%s\t</task_agent>"
             , name, description, frontMatterXml);
     }
 
@@ -107,6 +107,13 @@ public class SubagentDefinition extends Metadata {
 
     }
 
-
-
+    @Override
+    public String toString() {
+        return "SubagentDefinition{" +
+            "name='" + name + '\'' +
+            ", description='" + description + '\'' +
+            ", frontMatter=" + frontMatter +
+            ", metadataMap=" + metadataMap +
+            '}';
+    }
 }
