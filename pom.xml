@@ -69,10 +69,10 @@
         <slf4j.version>1.7.29</slf4j.version>
         <junit.version>4.13.2</junit.version>
         <okhttp.version>4.9.3</okhttp.version>
-        <fastjson2.version>2.0.58</fastjson2.version>
+        <fastjson2.version>2.0.62</fastjson2.version>
         <spring-boot.version>2.7.18</spring-boot.version>
         <kotlin.version>1.8.22</kotlin.version>
-        <opentelemetry.version>1.51.0</opentelemetry.version>
+        <opentelemetry.version>1.63.0</opentelemetry.version>
     </properties>
 
 
