@@ -88,6 +88,7 @@ export default defineConfig({
                     {text: 'Text2SQL 拦截器', link: '/zh/chat/text2sql-interceptor'},
                     {text: 'Subagent 子代理', link: '/zh/chat/subagent'},
                     {text: 'WebSearch 搜索引擎', link: '/zh/chat/websearch'},
+                    {text: 'WebFetch 网页内容获取', link: '/zh/chat/webfetch'},
                     {text: 'ChatClient', link: '/zh/chat/chat-client'},
                     {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
                     {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
