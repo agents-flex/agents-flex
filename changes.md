@@ -1,5 +1,17 @@
 # Agents-Flex ChangeLog
 
+## v2.1.8 20260611
+- docs(chat): add WebFetch tool documentation and navigation entry
+- chore: Optimize AI recognition to call intelligent agent name logic
+- docs(subagent): update agent selection instructions and error messaging
+- chore(deps): update dependency versions in pom files
+- feat(chat): add toString methods to chat configuration classes
+- feat(tools): add toString implementations for tool classes
+- refactor(demos): rename Main class to SubagentDemo
+- fix(subagent): correct XML formatting and improve agent tool descriptions
+- fix(core): restore polymorphic Message deserialization in ReActAgentState.fromJSON
+
+
 ## v2.1.7 20260608
 - docs(wiki): expand documentation with tree structure support
 - feat(wiki): add hierarchical structure support for wiki content
