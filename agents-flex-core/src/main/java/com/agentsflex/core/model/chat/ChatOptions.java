@@ -59,7 +59,7 @@ public class ChatOptions extends Metadata {
      * </ul>
      * 默认值：0.5f
      */
-    private Float temperature = 0.5f;
+    private Float temperature;
 
     /**
      * Top-p（也称 nucleus sampling）控制生成时考虑的概率质量。
