@@ -40,6 +40,7 @@
     </scm>
 
     <modules>
+        <module>agents-flex-audio</module>
         <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
         <module>agents-flex-chat</module>
@@ -153,6 +154,22 @@
                 <artifactId>agents-flex-bom</artifactId>
                 <version>${revision}</version>
             </dependency>
+
+
+            <!--agents-flex audio start-->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-audio</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-audio-aliyun</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+
 
 
             <!--image model start-->
