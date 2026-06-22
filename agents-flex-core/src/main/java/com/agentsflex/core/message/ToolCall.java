@@ -18,11 +18,14 @@ package com.agentsflex.core.message;
 import com.agentsflex.core.util.Copyable;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson2.JSON;
+import org.slf4j.Logger;
 
 import java.io.Serializable;
 import java.util.Map;
 
 public class ToolCall implements Serializable, Copyable<ToolCall> {
+
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(ToolCall.class);
 
     private String id;
     private String name;
@@ -67,10 +70,10 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
         }
 
         String jsonStr = arguments.trim();
-
         try {
             return JSON.parseObject(jsonStr);
         } catch (Exception e) {
+            log.warn("can not parse json:" + jsonStr, e);
             if (jsonStr.contains("{") && jsonStr.contains("}")) {
                 String json = jsonStr.substring(jsonStr.indexOf("{"), jsonStr.lastIndexOf("}") + 1);
                 return JSON.parseObject(json);
