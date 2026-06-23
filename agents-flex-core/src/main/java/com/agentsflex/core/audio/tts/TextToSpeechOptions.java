@@ -16,9 +16,9 @@
 package com.agentsflex.core.audio.tts;
 
 import com.agentsflex.core.util.Metadata;
+import com.agentsflex.core.util.StringUtil;
 
 public class TextToSpeechOptions extends Metadata {
-
     /**
      * 语音合成模型
      */
@@ -75,12 +75,20 @@ public class TextToSpeechOptions extends Metadata {
         return speed;
     }
 
+    public Double getSpeedOrDefault(double defaultValue) {
+        return speed == null ? defaultValue : speed;
+    }
+
     public void setSpeed(Double speed) {
         this.speed = speed;
     }
 
     public Integer getVolume() {
         return volume;
+    }
+
+    public int getVolumeOrDefault(int defaultValue) {
+        return volume == null ? defaultValue : volume;
     }
 
     public void setVolume(Integer volume) {
@@ -91,8 +99,17 @@ public class TextToSpeechOptions extends Metadata {
         return sampleRate;
     }
 
+    public int getSampleRateOrDefault(int defaultValue) {
+        return sampleRate == null ? defaultValue : sampleRate;
+    }
+
     public void setSampleRate(Integer sampleRate) {
         this.sampleRate = sampleRate;
+    }
+
+
+    public String getFormatOrDefault(String defaultValue) {
+        return StringUtil.hasText(format) ? format : defaultValue;
     }
 
     @Override
@@ -107,4 +124,5 @@ public class TextToSpeechOptions extends Metadata {
             ", metadataMap=" + metadataMap +
             '}';
     }
+
 }

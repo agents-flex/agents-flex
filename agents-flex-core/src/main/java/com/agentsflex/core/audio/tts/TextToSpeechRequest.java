@@ -19,7 +19,19 @@ public class TextToSpeechRequest {
 
     private String text;
 
-    private TextToSpeechOptions options;
+    private TextToSpeechOptions options = new TextToSpeechOptions();
+
+    public TextToSpeechRequest() {
+    }
+
+    public TextToSpeechRequest(String text) {
+        this.text = text;
+    }
+
+    public TextToSpeechRequest(String text, TextToSpeechOptions options) {
+        this.text = text;
+        this.options = options;
+    }
 
     public String getText() {
         return text;

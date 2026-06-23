@@ -28,7 +28,7 @@ public class SpeechToTextRequest {
     private String audioUrl;
     private InputStream audioStream;
 
-    private SpeechToTextOptions options = SpeechToTextOptions.NULL;
+    private SpeechToTextOptions options = new SpeechToTextOptions();
 
     public File getAudioFile() {
         return audioFile;
@@ -62,7 +62,6 @@ public class SpeechToTextRequest {
         this.options = options;
     }
 
-
     public byte[] getAudioBytes() {
         if (audioFile != null) {
             return IOUtil.readBytes(audioFile);
@@ -81,6 +80,16 @@ public class SpeechToTextRequest {
             return null;
         }
         return Base64.getEncoder().encodeToString(audioBytes);
+    }
+
+    public String guessAudioFormat() {
+        String format = AudioFormatUtil.guess(audioFile);
+
+        if (format == null) {
+            format = AudioFormatUtil.guess(audioUrl);
+        }
+
+        return format;
     }
 
     @Override

@@ -22,7 +22,25 @@ import java.util.List;
 
 public class TextToSpeechResponse extends Metadata {
 
+    private boolean success = true;
+    private String message;
     private List<byte[]> results;
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
 
     public List<byte[]> getResults() {
         return results;
@@ -39,11 +57,12 @@ public class TextToSpeechResponse extends Metadata {
         results.add(bytesArray);
     }
 
-
     @Override
     public String toString() {
         return "TextToSpeechResponse{" +
-            "results=" + results +
+            "success=" + success +
+            ", message='" + message + '\'' +
+            ", results=" + results +
             ", metadataMap=" + metadataMap +
             '}';
     }

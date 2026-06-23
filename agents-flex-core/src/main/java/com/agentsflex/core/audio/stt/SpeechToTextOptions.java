@@ -16,9 +16,9 @@
 package com.agentsflex.core.audio.stt;
 
 import com.agentsflex.core.util.Metadata;
+import com.agentsflex.core.util.StringUtil;
 
 public class SpeechToTextOptions extends Metadata {
-    public static final SpeechToTextOptions NULL = new SpeechToTextOptions();
 
     /**
      * The output format (e.g., "mp3", "wav").
@@ -34,6 +34,10 @@ public class SpeechToTextOptions extends Metadata {
 
     public String getFormat() {
         return format;
+    }
+
+    public String getFormatOrDefault(String defaultValue) {
+        return StringUtil.hasText(format) ? format : defaultValue;
     }
 
     public void setFormat(String format) {

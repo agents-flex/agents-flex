@@ -19,6 +19,8 @@ import com.agentsflex.core.util.Metadata;
 
 public class SpeechToTextResponse extends Metadata {
 
+    private boolean success = true;
+    private String message;
     private String result;
 
     public static SpeechToTextResponse of(String result) {
@@ -27,11 +29,45 @@ public class SpeechToTextResponse extends Metadata {
         return response;
     }
 
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
     public String getResult() {
         return result;
     }
 
     public void setResult(String result) {
         this.result = result;
+    }
+
+    public void addResult(String result) {
+        if (this.result == null) {
+            this.result = result;
+        } else {
+            this.result = this.result + result;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "SpeechToTextResponse{" +
+            "success=" + success +
+            ", message='" + message + '\'' +
+            ", result='" + result + '\'' +
+            ", metadataMap=" + metadataMap +
+            '}';
     }
 }
