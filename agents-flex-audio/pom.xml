@@ -16,6 +16,7 @@
 
     <modules>
         <module>agents-flex-audio-aliyun</module>
+        <module>agents-flex-audio-tencent</module>
     </modules>
 
     <properties>

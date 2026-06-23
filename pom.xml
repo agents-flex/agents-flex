@@ -169,6 +169,12 @@
                 <version>${revision}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-audio-tencent</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
 
 
 
