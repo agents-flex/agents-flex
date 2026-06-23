@@ -4,7 +4,6 @@ import com.agentsflex.core.audio.stt.SpeechToTextModel;
 import com.agentsflex.core.audio.stt.SpeechToTextRequest;
 import com.agentsflex.core.audio.stt.SpeechToTextResponse;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
-import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -54,12 +53,10 @@ public class AliyunSpeechToTextModel implements SpeechToTextModel {
          * 3.语音识别接口请求路径：/stream/v1/FlashRecognizer
          * 4.设置必须请求参数：appkey、token、format、sample_rate
          */
-        String url = "https://nls-gateway-cn-shanghai.aliyuncs.com/stream/v1/FlashRecognizer";
+        String url = config.getEndpoint() + "/stream/v1/FlashRecognizer";
         url = url + "?appkey=" + config.getAppKey();
         url = url + "&token=" + token;
-
-        String format = StringUtil.getFirstWithText(request.getOptions().getFormat(), "MP3");
-        url = url + "&format=" + format;
+        url = url + "&format=" + request.getOptions().getFormatOrDefault("mp3").toUpperCase();
 
         Integer sampleRate = request.getOptions().getSampleRate();
         if (sampleRate == null) {
@@ -81,9 +78,9 @@ public class AliyunSpeechToTextModel implements SpeechToTextModel {
         RequestBody body = RequestBody.create(request.getAudioBytes());
         Request okHttpRequest = builder.method("POST", body).build();
 
-        StringBuilder text = new StringBuilder();
-        try (Response response = okHttpClient.newCall(okHttpRequest).execute()) {
-            ResponseBody responseBody = response.body();
+        SpeechToTextResponse response = new SpeechToTextResponse();
+        try (Response response1 = okHttpClient.newCall(okHttpRequest).execute()) {
+            ResponseBody responseBody = response1.body();
             if (responseBody == null) {
                 throw new IOException("No response body.");
             }
@@ -93,20 +90,22 @@ public class AliyunSpeechToTextModel implements SpeechToTextModel {
             String message = obj.getString("message");
             if (status == null || !status.equals(20000000)) {
                 log.error("语音识别失败：{}", obj);
-                throw new RuntimeException(message);
-            }
-            JSONArray sentences = obj.getJSONObject("flash_result")
-                .getJSONArray("sentences");
+                response.setSuccess(false);
+                response.setMessage(message);
+            } else {
+                JSONArray sentences = obj.getJSONObject("flash_result")
+                    .getJSONArray("sentences");
 
-            for (Object sentence : sentences) {
-                JSONObject json = (JSONObject) sentence;
-                String textString = json.getString("text");
-                text.append(textString);
+                for (Object sentence : sentences) {
+                    JSONObject json = (JSONObject) sentence;
+                    String textString = json.getString("text");
+                    response.addResult(textString);
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        return SpeechToTextResponse.of(text.toString());
+        return response;
     }
 }

@@ -158,21 +158,21 @@ public class AliyunStreamingTextToSpeechModel implements StreamingTextToSpeechMo
         synthesizer.setAppKey(config.getAppKey());
 
         //设置返回音频的编码格式。
-        synthesizer.setFormat(OutputFormatEnum.valueOf(options.getFormat().toUpperCase()));
+        synthesizer.setFormat(OutputFormatEnum.valueOf(options.getFormatOrDefault("mp3").toUpperCase()));
 
         //设置返回音频的采样率。
 //        synthesizer.setSampleRate(SampleRateEnum.SAMPLE_RATE_16K);
-        synthesizer.setSampleRate(options.getSampleRate());
+        synthesizer.setSampleRate(options.getSampleRateOrDefault(16000));
         //发音人。注意Java SDK不支持调用超高清场景对应的发音人（例如"zhiqi"），如需调用请使用restfulAPI方式。
         synthesizer.setVoice(options.getVoice());
 
         //音量，范围是0~100，可选，默认50。
-        synthesizer.setVolume(options.getVolume());
+        synthesizer.setVolume(options.getVolumeOrDefault(50));
         //语调，范围是-500~500，可选，默认是0。
         synthesizer.setPitchRate(0);
 
         //语速，范围是-500~500，默认是0。
-        synthesizer.setSpeechRate(options.getSpeed().intValue());
+        synthesizer.setSpeechRate(options.getSpeedOrDefault(0).intValue());
 
 
         return synthesizer;

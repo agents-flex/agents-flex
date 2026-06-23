@@ -39,7 +39,7 @@ public class AliyunTextToSpeechModel implements TextToSpeechModel {
     }
 
 
-    private SpeechSynthesizer getSpeechSynthesizer(TextToSpeechRequest request, TextToSpeechResponse response) throws Exception {
+    private SpeechSynthesizer getSpeechSynthesizer(TextToSpeechRequest request, TextToSpeechResponse resp) throws Exception {
         NlsClient nlsClient = new NlsClient(config.createToken());
         SpeechSynthesizer synthesizer = new SpeechSynthesizer(nlsClient, new SpeechSynthesizerListener() {
             /**
@@ -58,35 +58,38 @@ public class AliyunTextToSpeechModel implements TextToSpeechModel {
              */
             @Override
             public void onFail(SpeechSynthesizerResponse response) {
-
+                resp.setSuccess(false);
+                resp.setMessage(response.getStatusText());
             }
 
             @Override
             public void onMessage(ByteBuffer message) {
                 byte[] bytesArray = new byte[message.remaining()];
                 message.get(bytesArray, 0, bytesArray.length);
-                response.addResult(bytesArray);
+                resp.addResult(bytesArray);
             }
         });
+
+        synthesizer.setText(request.getText());
 
         synthesizer.setAppKey(config.getAppKey());
 
         //设置返回音频的编码格式。
-        synthesizer.setFormat(OutputFormatEnum.valueOf(request.getOptions().getFormat().toUpperCase()));
+        synthesizer.setFormat(OutputFormatEnum.valueOf(request.getOptions().getFormatOrDefault("mp3").toUpperCase()));
 
         //设置返回音频的采样率。
 //        synthesizer.setSampleRate(SampleRateEnum.SAMPLE_RATE_16K);
-        synthesizer.setSampleRate(request.getOptions().getSampleRate());
+        synthesizer.setSampleRate(request.getOptions().getSampleRateOrDefault(16000));
         //发音人。注意Java SDK不支持调用超高清场景对应的发音人（例如"zhiqi"），如需调用请使用restfulAPI方式。
         synthesizer.setVoice(request.getOptions().getVoice());
 
         //音量，范围是0~100，可选，默认50。
-        synthesizer.setVolume(request.getOptions().getVolume());
+        synthesizer.setVolume(request.getOptions().getVolumeOrDefault(50));
         //语调，范围是-500~500，可选，默认是0。
         synthesizer.setPitchRate(0);
 
         //语速，范围是-500~500，默认是0。
-        synthesizer.setSpeechRate(request.getOptions().getSpeed().intValue());
+        synthesizer.setSpeechRate(request.getOptions().getSpeedOrDefault(0).intValue());
 
 
         return synthesizer;
