@@ -17,6 +17,7 @@ package com.agentsflex.core.audio.tts;
 
 import com.agentsflex.core.util.Metadata;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +56,27 @@ public class TextToSpeechResponse extends Metadata {
             results = new ArrayList<>();
         }
         results.add(bytesArray);
+    }
+
+    public void writeTo(File file) {
+        if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
+            return;
+        }
+        try (FileOutputStream stream = new FileOutputStream(file)) {
+            writeTo(stream);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    public void writeTo(OutputStream outStream) {
+        try {
+            for (byte[] bytesArray : this.results) {
+                outStream.write(bytesArray);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Override
