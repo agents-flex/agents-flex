@@ -54,10 +54,10 @@ public class VolcStreamingTextToSpeechModel implements StreamingTextToSpeechMode
                 "X-Api-Key", config.getApiKey())
             //seed-tts-2.0:豆包语音合成大模型2.0，支持使用豆包语音合成模型2.0音色
             //seed-icl-2.0:豆包声音复刻大模型2.0，支持使用声音复刻接口克隆的音色，具体音色详见控制台>音色库
-            .set("X-Api-Resource-Id", "seed-tts-2.0")
+            .set("X-Api-Resource-Id", config.getResourceId())
             .set("X-Api-Connect-Id", UUID.randomUUID().toString());
 
-        String url = "wss://openspeech.bytedance.com/api/v3/tts/bidirection";
+        String url = config.getWebSocketUrl();
         client = new VolcWebSocketClient(url, headers, listeners);
         client.connect();
         try {
@@ -66,15 +66,14 @@ public class VolcStreamingTextToSpeechModel implements StreamingTextToSpeechMode
 
             sessionId = UUID.randomUUID().toString();
             uid = UUID.randomUUID().toString();
-            // 启动会话
+
             Map<String, Object> startReq = Maps.of(
                 "user", Maps.of("uid", uid),
-                "namespace", "BidirectionalTTS",
                 "req_params", Maps.of(
                     "speaker", options.getVoiceOrDefault("zh_female_vv_uranus_bigtts"),
                     "audio_params", Maps.of(
                         "format", options.getFormatOrDefault("mp3"),
-                        "sample_rate", 24000,
+                        "sample_rate", options.getSampleRateOrDefault(16000),
                         "enable_timestamp", true),
                     "additions", JSON.toJSONString(Maps.of(
                         "disable_markdown_filter", true,
@@ -108,7 +107,6 @@ public class VolcStreamingTextToSpeechModel implements StreamingTextToSpeechMode
 
         Map<String, Object> currentRequest = Maps.of(
             "user", Maps.of("uid", uid),
-            "namespace", "BidirectionalTTS",
             "req_params", currentReqParams,
             "event", EventType.TASK_REQUEST.getValue());
 

@@ -50,15 +50,20 @@ public class VolcTextToSpeechModel implements TextToSpeechModel {
 
     @Override
     public TextToSpeechResponse tts(TextToSpeechRequest request) {
-        String url = "https://openspeech.bytedance.com/api/v3/tts/unidirectional";
+        String apiKey = config.getApiKey();
+        if (StringUtil.noText(apiKey)) {
+            throw new IllegalArgumentException("apiKey is empty in VolcTextToSpeechConfig.");
+        }
+
+        String url = config.getHttpUrl();
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("X-Api-Key", config.getApiKey());
+        headers.put("X-Api-Key", apiKey);
 
         //请求的模型版本，可选值：
         //seed-tts-2.0:豆包语音合成大模型2.0，支持使用豆包语音合成模型2.0音色
         //seed-icl-2.0:豆包声音复刻大模型2.0，支持使用声音复刻接口克隆的音色，具体音色详见控制台>音色库
-        headers.put("X-Api-Resource-Id", "seed-tts-2.0");
+        headers.put("X-Api-Resource-Id", config.getResourceId());
         headers.put("X-Api-Request-Id", UUID.randomUUID().toString());
 
 
