@@ -56,6 +56,21 @@
             </exclusions>
         </dependency>
 
+        <!--audio model start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-audio-aliyun</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-audio-tencent</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-audio-volc</artifactId>
+        </dependency>
+        <!--audio model end-->
+
 
         <!--image model start-->
         <dependency>
