@@ -59,6 +59,10 @@ public class TextToSpeechOptions extends Metadata {
         return voice;
     }
 
+    public String getVoiceOrDefault(String defaultValue) {
+        return StringUtil.hasText(voice) ? voice : defaultValue;
+    }
+
     public void setVoice(String voice) {
         this.voice = voice;
     }
