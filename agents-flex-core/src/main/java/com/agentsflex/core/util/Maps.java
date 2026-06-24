@@ -35,6 +35,77 @@ public class Maps extends HashMap<String, Object> {
         return maps;
     }
 
+    public static Maps of(String key1, Object value1, String key2, Object value2) {
+        Maps maps = Maps.of();
+        maps.put(key1, value1);
+        maps.put(key2, value2);
+        return maps;
+    }
+
+    public static Maps of(String key1, Object value1, String key2, Object value2, String key3, Object value3) {
+        Maps maps = Maps.of();
+        maps.put(key1, value1);
+        maps.put(key2, value2);
+        maps.put(key3, value3);
+        return maps;
+    }
+
+    public static Maps of(String key1, Object value1, String key2, Object value2, String key3, Object value3, String key4, Object value4) {
+        Maps maps = Maps.of();
+        maps.put(key1, value1);
+        maps.put(key2, value2);
+        maps.put(key3, value3);
+        maps.put(key4, value4);
+        return maps;
+    }
+
+    public static Maps of(String key1, Object value1, String key2, Object value2, String key3, Object value3, String key4, Object value4, String key5, Object value5) {
+        Maps maps = Maps.of();
+        maps.put(key1, value1);
+        maps.put(key2, value2);
+        maps.put(key3, value3);
+        maps.put(key4, value4);
+        maps.put(key5, value5);
+        return maps;
+    }
+
+    public static Maps of(String key1, Object value1, String key2, Object value2, String key3, Object value3, String key4, Object value4, String key5, Object value5, String key6, Object value6) {
+        Maps maps = Maps.of();
+        maps.put(key1, value1);
+        maps.put(key2, value2);
+        maps.put(key3, value3);
+        maps.put(key4, value4);
+        maps.put(key5, value5);
+        maps.put(key6, value6);
+        return maps;
+    }
+
+    public static Maps of(String key1, Object value1, String key2, Object value2, String key3, Object value3, String key4, Object value4, String key5, Object value5, String key6, Object value6, String key7, Object value7) {
+        Maps maps = Maps.of();
+        maps.put(key1, value1);
+        maps.put(key2, value2);
+        maps.put(key3, value3);
+        maps.put(key4, value4);
+        maps.put(key5, value5);
+        maps.put(key6, value6);
+        maps.put(key7, value7);
+        return maps;
+    }
+
+    public static Maps of(String key1, Object value1, String key2, Object value2, String key3, Object value3, String key4, Object value4, String key5, Object value5, String key6, Object value6, String key7, Object value7, String key8, Object value8) {
+        Maps maps = Maps.of();
+        maps.put(key1, value1);
+        maps.put(key2, value2);
+        maps.put(key3, value3);
+        maps.put(key4, value4);
+        maps.put(key5, value5);
+        maps.put(key6, value6);
+        maps.put(key7, value7);
+        maps.put(key8, value8);
+        return maps;
+    }
+
+
     public static Maps ofNotNull(String key, Object value) {
         return new Maps().setIfNotNull(key, value);
     }
