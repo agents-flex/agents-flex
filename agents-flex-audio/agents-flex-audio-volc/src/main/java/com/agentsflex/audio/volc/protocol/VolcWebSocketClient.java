@@ -1,3 +1,18 @@
+/*
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package com.agentsflex.audio.volc.protocol;
 
 import com.agentsflex.core.audio.tts.StreamingTextToSpeechListener;
@@ -21,10 +36,11 @@ public class VolcWebSocketClient {
     private final List<StreamingTextToSpeechListener> listeners;
     private final CompletableFuture<Boolean> completeFuture = new CompletableFuture<>();
 
-    private OkHttpClient client;
+    private final OkHttpClient client;
     private WebSocket webSocket;
 
-    public VolcWebSocketClient(String serverUri, Map<String, Object> headers, List<StreamingTextToSpeechListener> listeners) {
+    public VolcWebSocketClient(OkHttpClient client, String serverUri, Map<String, Object> headers, List<StreamingTextToSpeechListener> listeners) {
+        this.client = client == null ? OkHttpClientUtil.buildDefaultClient() : client;
         this.serverUri = serverUri;
         this.headers = headers;
         this.listeners = listeners;
@@ -34,8 +50,6 @@ public class VolcWebSocketClient {
      * 建立 WebSocket 连接
      */
     public void connect() {
-        client = OkHttpClientUtil.buildDefaultClient();
-
         Request.Builder requestBuilder = new Request.Builder()
             .url(serverUri);
 
@@ -122,20 +136,16 @@ public class VolcWebSocketClient {
 
         @Override
         public void onClosing(WebSocket webSocket, int code, String reason) {
-            log.info("WebSocket closing: code={}, reason={}", code, reason);
             fireOnComplete();
         }
 
         @Override
         public void onClosed(WebSocket webSocket, int code, String reason) {
-            log.info("WebSocket closed: code={}, reason={}", code, reason);
             fireOnComplete();
         }
 
         @Override
         public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-            log.error("WebSocket error", t);
-            t.printStackTrace();
             for (StreamingTextToSpeechListener listener : listeners) {
                 try {
                     listener.onError(t);

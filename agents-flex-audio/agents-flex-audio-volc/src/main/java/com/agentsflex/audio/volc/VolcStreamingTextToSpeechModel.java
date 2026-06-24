@@ -1,3 +1,18 @@
+/*
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package com.agentsflex.audio.volc;
 
 import com.agentsflex.audio.volc.protocol.EventType;
@@ -9,8 +24,7 @@ import com.agentsflex.core.audio.tts.TextToSpeechOptions;
 import com.agentsflex.core.util.Maps;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import okhttp3.OkHttpClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,15 +37,26 @@ import java.util.UUID;
  */
 public class VolcStreamingTextToSpeechModel implements StreamingTextToSpeechModel {
 
-    private static final Logger log = LoggerFactory.getLogger(VolcStreamingTextToSpeechModel.class);
     private final VolcTextToSpeechConfig config;
     private final List<StreamingTextToSpeechListener> listeners = new ArrayList<>();
+    private OkHttpClient okHttpClient;
 
     private TextToSpeechOptions options;
     private VolcWebSocketClient client;
     private String sessionId;
     private String uid;
 
+    public VolcTextToSpeechConfig getConfig() {
+        return config;
+    }
+
+    public OkHttpClient getOkHttpClient() {
+        return okHttpClient;
+    }
+
+    public void setOkHttpClient(OkHttpClient okHttpClient) {
+        this.okHttpClient = okHttpClient;
+    }
 
     public VolcStreamingTextToSpeechModel(VolcTextToSpeechConfig config) {
         this.config = config;
@@ -58,7 +83,7 @@ public class VolcStreamingTextToSpeechModel implements StreamingTextToSpeechMode
             .set("X-Api-Connect-Id", UUID.randomUUID().toString());
 
         String url = config.getWebSocketUrl();
-        client = new VolcWebSocketClient(url, headers, listeners);
+        client = new VolcWebSocketClient(okHttpClient, url, headers, listeners);
         client.connect();
         try {
             client.sendStartConnection();
