@@ -127,6 +127,8 @@ public class VolcStreamingTextToSpeechModel implements StreamingTextToSpeechMode
             client.closeBlocking();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            client = null;
         }
     }
 
