@@ -60,7 +60,7 @@ public class TextToSpeechResponse extends Metadata {
 
     public void writeTo(File file) {
         if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
-            return;
+            throw new IllegalStateException("Can not mkdirs for path: " + file.getParentFile().getAbsolutePath());
         }
         try (FileOutputStream stream = new FileOutputStream(file)) {
             writeTo(stream);
