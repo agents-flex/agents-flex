@@ -5,20 +5,23 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>agents-flex-audio</artifactId>
         <version>${revision}</version>
     </parent>
-    <packaging>pom</packaging>
 
-    <name>agents-flex-audio</name>
-    <artifactId>agents-flex-audio</artifactId>
-
-
-    <modules>
-        <module>agents-flex-audio-aliyun</module>
-        <module>agents-flex-audio-tencent</module>
-        <module>agents-flex-audio-volc</module>
-    </modules>
+    <name>agents-flex-audio-volc</name>
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    <artifactId>agents-flex-audio-volc</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

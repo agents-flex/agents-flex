@@ -175,6 +175,12 @@
                 <version>${revision}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-audio-volc</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
 
 
 
