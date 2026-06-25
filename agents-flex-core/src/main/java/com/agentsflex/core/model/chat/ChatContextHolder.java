@@ -92,6 +92,17 @@ public final class ChatContextHolder {
         CONTEXT_HOLDER.remove();
     }
 
+    /**
+     * 手动设置当前线程的聊天上下文。
+     * <p>
+     * 通常由 {@link ChatContextScope} 自动调用，无需手动调用。
+     *
+     * @param context 聊天上下文
+     */
+    public static void set(ChatContext context) {
+        CONTEXT_HOLDER.set(context);
+    }
+
 
     /**
      * 用于 try-with-resources 的作用域对象，确保上下文自动清理。

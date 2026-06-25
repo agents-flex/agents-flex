@@ -53,17 +53,24 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     @Override
     public void onStart(StreamClient client) {
-        streamResponseListener.onStart(context);
+        try {
+            ChatContextHolder.set(chatContext);
+            streamResponseListener.onStart(context);
+        } finally {
+            ChatContextHolder.clear();
+        }
+
     }
 
     @Override
     public void onMessage(StreamClient client, String response) {
-        if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim()) || finishedFlag.get()) {
-            notifyLastMessageAndStop(response);
-            return;
-        }
-
         try {
+            ChatContextHolder.set(chatContext);
+            if (StringUtil.noText(response) || "[DONE]".equalsIgnoreCase(response.trim()) || finishedFlag.get()) {
+                notifyLastMessageAndStop(response);
+                return;
+            }
+
             JSONObject jsonObject = JSON.parseObject(response);
             AiMessage delta = messageParser.parse(jsonObject, chatContext);
 
@@ -80,6 +87,8 @@ public class BaseStreamClientListener implements StreamClientListener {
         } catch (Exception err) {
             onFailure(this.context.getClient(), err);
             onStop(this.context.getClient());
+        } finally {
+            ChatContextHolder.clear();
         }
     }
 
@@ -104,18 +113,19 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     @Override
     public void onStop(StreamClient client) {
+        ChatContextHolder.set(chatContext);
         try {
             if (!isFailure.get()) {
                 // onStop 在 sse 的 onClosed 中会被调用，可以用于在 onMessage 出现异常时进行兜底
                 notifyLastMessage(null);
             }
         } finally {
-            if (stoppedFlag.compareAndSet(false, true)) {
-                try {
+            try {
+                if (stoppedFlag.compareAndSet(false, true)) {
                     streamResponseListener.onStop(context);
-                } finally {
-                    ChatContextHolder.clear();
                 }
+            } finally {
+                ChatContextHolder.clear();
             }
         }
     }
@@ -138,9 +148,14 @@ public class BaseStreamClientListener implements StreamClientListener {
 
     @Override
     public void onFailure(StreamClient client, Throwable throwable) {
-        if (isFailure.compareAndSet(false, true)) {
-            context.setThrowable(throwable);
-            streamResponseListener.onFailure(context, throwable);
+        ChatContextHolder.set(chatContext);
+        try {
+            if (isFailure.compareAndSet(false, true)) {
+                context.setThrowable(throwable);
+                streamResponseListener.onFailure(context, throwable);
+            }
+        } finally {
+            ChatContextHolder.clear();
         }
     }
 
