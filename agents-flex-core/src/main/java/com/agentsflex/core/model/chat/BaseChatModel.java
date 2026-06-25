@@ -174,11 +174,6 @@ public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
             StreamChain chain = buildStreamChain(0);
             chain.proceed(this, scope.context, listener);
         }
-
-//        // 流式对话，scope 不用 try-with-resource 清理，在 OnStop 中自动清理
-//        ChatContextHolder.ChatContextScope scope = ChatContextHolder.beginChat(prompt, options, request, config);
-//        StreamChain chain = buildStreamChain(0);
-//        chain.proceed(this, scope.context, listener);
     }
 
 
