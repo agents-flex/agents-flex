@@ -105,6 +105,8 @@ export default defineConfig({
                     {text: '阿里云 TTS 和 STT', link: '/zh/audio/aliyun'},
                     {text: '腾讯云 TTS 和 STT', link: '/zh/audio/tencent'},
                     {text: '火山引擎 TTS 和 STT', link: '/zh/audio/volc'},
+                    {text: 'AudioStreamPlayer', link: '/zh/audio/audio-stream-player'},
+                    {text: '网页录音', link: '/zh/audio/audio-recorder'},
                 ]
             },
             {
