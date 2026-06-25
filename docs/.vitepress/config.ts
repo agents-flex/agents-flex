@@ -63,7 +63,6 @@ export default defineConfig({
                     {text: '核心概念', link: '/zh/intro/concepts'},
                     {text: 'Maven 依赖', link: '/zh/intro/maven'},
                     {text: '微信交流群', link: '/zh/intro/communication'},
-                    {text: 'LLM 负载均衡/路由', link: '/zh/intro/model-router'},
                 ]
             },
             {
@@ -93,6 +92,7 @@ export default defineConfig({
                     {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
                     {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
                     {text: 'AiMessageParser', link: '/zh/chat/ai-message-parser'},
+                    {text: 'LLM 负载均衡/高可用', link: '/zh/intro/model-router'},
                     {text: '错误重试', link: '/zh/chat/retry'},
                     {text: '日志', link: '/zh/chat/logger'},
                 ]
