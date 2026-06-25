@@ -1,5 +1,32 @@
 # Agents-Flex ChangeLog
 
+## v2.1.9 20260625
+- docs(audio): add documentation for audio streaming and recording features
+- test(openai): update OpenAI chat model test with context attributes and debug logging
+- fix(chat): resolve chat context management in streaming operations
+- docs(menu): add audio module section with tts/stt documentation
+- feat(bom): add audio model dependencies to flex bom
+- chore(license): add copyright headers to audio module files
+- fix(audio): ensure client cleanup in Volc streaming TTS model
+- test(volc): add file output functionality to audio streaming tests
+- feat(audio): add configurable resource ID and URL support for Volc TTS
+- fix(audio): throw exception when directory creation fails in TTS response
+- test(audio): add comprehensive tests for Volc audio services
+- feat(audio): add VolcEngine audio streaming protocol implementation
+- feat(util): add multiple key-value pair creation methods to Maps utility class
+- feat(audio): add getVoiceOrDefault method to TextToSpeechOptions
+- feat(audio): add file output capability to text-to-speech response
+- feat(audio): add audio format detection and enhance STT/TTS functionality
+- test(aliyun): add comprehensive audio functionality tests
+- feat(audio): add aliyun speech services with configurable endpoints
+- feat(audio): add Tencent audio services integration
+- feat(audio): add Aliyun audio services integration
+- feat(audio): add speech-to-text and text-to-speech model interfaces and implementations
+- feat(message): add logging for JSON parsing errors in ToolCall
+- refactor(chat): remove default temperature value in ChatOptions
+- docs: fix duplicate words in PDF forms guide
+
+
 ## v2.1.8 20260611
 - docs(chat): add WebFetch tool documentation and navigation entry
 - chore: Optimize AI recognition to call intelligent agent name logic
