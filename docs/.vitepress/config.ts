@@ -98,6 +98,16 @@ export default defineConfig({
                 ]
             },
             {
+                text: '语音模块',
+                items: [
+                    {text: 'TTS 和 STT', link: '/zh/audio/tts-stt'},
+                    {text: '快速开始', link: '/zh/audio/getting-started'},
+                    {text: '阿里云 TTS 和 STT', link: '/zh/audio/aliyun'},
+                    {text: '腾讯云 TTS 和 STT', link: '/zh/audio/tencent'},
+                    {text: '火山引擎 TTS 和 STT', link: '/zh/audio/volc'},
+                ]
+            },
+            {
                 text: '智能体',
                 items: [
                     {text: 'ReAct Agent', link: '/zh/agent/react-agent'},
