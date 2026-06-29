@@ -20,7 +20,6 @@ import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
-import com.agentsflex.core.store.condition.Condition;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.StringUtil;
 import io.grpc.Grpc;
@@ -39,7 +38,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.qdrant.client.ConditionFactory.matchKeyword;
 import static io.qdrant.client.QueryFactory.nearest;
 import static io.qdrant.client.ValueFactory.value;
 import static io.qdrant.client.VectorsFactory.vectors;
@@ -88,8 +86,8 @@ public class QdrantVectorStore extends DocumentStore {
         }
         this.client = new QdrantClient(builder.build());
     }
-    
-    
+
+
     private PointId pointId(Object id) {
     	if (id instanceof Long) {
 			return PointId.newBuilder().setNum((Long)id).build();
@@ -209,7 +207,7 @@ public class QdrantVectorStore extends DocumentStore {
                 doc.setScore(point.getScore());
                 doc.setVectorByNumbers(point.getVectors().getVector().getDataList());
                 doc.setContent(point.getPayloadMap().get("content").getStringValue());
-                documents.add(doc); 
+                documents.add(doc);
             }
             return documents;
         } catch (Exception e) {

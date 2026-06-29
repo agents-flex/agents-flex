@@ -17,21 +17,77 @@ package com.agentsflex.core.util;
 
 public class StringUtil {
 
-    public static boolean noText(String string) {
-        return !hasText(string);
-    }
 
     public static boolean hasText(String string) {
         return string != null && !string.isEmpty() && containsText(string);
     }
 
-    public static boolean hasText(String... strings) {
+
+    /**
+     * 所有字符串有内容时返回 true
+     */
+    public static boolean allHasText(String... strings) {
+        if (strings == null || strings.length == 0) {
+            return false;
+        }
         for (String string : strings) {
             if (!hasText(string)) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * 任意字符串有内容时返回 true
+     */
+    public static boolean anyHasText(String... strings) {
+        if (strings == null || strings.length == 0) {
+            return false;
+        }
+        for (String string : strings) {
+            if (hasText(string)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 字符串为 null 或者内部字符全部为 ' ', '\t', '\n', '\r' 这四类字符时返回 true
+     */
+    public static boolean noText(String string) {
+        return !hasText(string);
+    }
+
+    /**
+     * 只要有一个有内容，返回 false， 所有都没有内容时返回 true
+     */
+    public static boolean allNoText(String... strings) {
+        if (strings == null || strings.length == 0) {
+            return false;
+        }
+        for (String string : strings) {
+            if (hasText(string)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 只要有一个没内容，返回 true，所有都有内容时返回 false
+     */
+    public static boolean anyNoText(String... strings) {
+        if (strings == null || strings.length == 0) {
+            return false;
+        }
+        for (String string : strings) {
+            if (noText(string)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean containsText(CharSequence str) {
@@ -43,8 +99,8 @@ public class StringUtil {
         return false;
     }
 
-    public static String getFirstWithText(String... strings) {
-        if (strings == null) {
+    public static String firstHasText(String... strings) {
+        if (strings == null || strings.length == 0) {
             return null;
         }
         for (String str : strings) {
@@ -61,7 +117,7 @@ public class StringUtil {
         }
 
         jsonString = jsonString.trim();
-        return jsonString.startsWith("{") && jsonString.endsWith("}");
+        return jsonString.startsWith("{") && jsonString.endsWith("}") && jsonString.contains(":");
     }
 
     public static boolean notJsonObject(String jsonString) {

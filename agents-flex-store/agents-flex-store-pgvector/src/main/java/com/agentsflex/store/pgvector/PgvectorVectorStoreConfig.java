@@ -106,7 +106,7 @@ public class PgvectorVectorStoreConfig implements DocumentStoreConfig {
 
     @Override
     public boolean checkAvailable() {
-        return StringUtil.hasText(this.host, this.username, this.password, this.databaseName);
+        return StringUtil.allHasText(this.host, this.username, this.password, this.databaseName);
     }
 
     public int getVectorDimension() {

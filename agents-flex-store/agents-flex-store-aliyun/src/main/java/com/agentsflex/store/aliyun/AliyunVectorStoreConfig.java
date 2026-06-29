@@ -62,6 +62,6 @@ public class AliyunVectorStoreConfig implements DocumentStoreConfig {
 
     @Override
     public boolean checkAvailable() {
-        return StringUtil.hasText(this.endpoint, this.apiKey, this.database, this.defaultCollectionName);
+        return StringUtil.allHasText(this.endpoint, this.apiKey, this.database, this.defaultCollectionName);
     }
 }

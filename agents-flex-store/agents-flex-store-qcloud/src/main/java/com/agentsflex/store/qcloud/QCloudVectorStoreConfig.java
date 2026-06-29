@@ -69,7 +69,7 @@ public class QCloudVectorStoreConfig implements DocumentStoreConfig {
 
     @Override
     public boolean checkAvailable() {
-        return StringUtil.hasText(this.host, this.apiKey, this.account, this.database, this.defaultCollectionName);
+        return StringUtil.allHasText(this.host, this.apiKey, this.account, this.database, this.defaultCollectionName);
     }
 }
 
