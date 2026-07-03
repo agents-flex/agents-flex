@@ -228,3 +228,6 @@ Agents-Flex 采用 **Apache License 2.0** 协议，您可以：
 
 > 请保留原始版权声明，并在分发时注明修改内容。详情见 [LICENSE](./LICENSE)
 
+## 贡献用户
+
+<img src="https://contrib.rocks/image?repo=agents-flex/agents-flex" />
