@@ -181,6 +181,7 @@
     inset: 32px -60px auto auto;
     width: 520px;
     height: 520px;
+    max-width: 100%;
     border-radius: 999px;
     background: radial-gradient(circle, rgba(32, 199, 232, 0.22), rgba(11, 102, 255, 0.08) 48%, transparent 70%);
     pointer-events: none;
@@ -530,10 +531,14 @@
 
 @media (max-width: 640px) {
     .af-home {
-        width: calc(100vw - 62px);
-        max-width: calc(100vw - 62px);
+        width: calc(100vw - 48px);
+        max-width: calc(100vw - 48px);
         margin: 0;
         padding: 0;
+    }
+
+    .af-hero::before {
+        inset: 32px -22px auto auto;
     }
 
     .af-hero__visual img {
