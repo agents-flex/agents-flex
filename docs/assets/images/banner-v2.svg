@@ -1,0 +1,116 @@
+<svg width="2700" height="1023" viewBox="0 0 2700 1023" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="2700" y2="1023" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5FBFF"/>
+      <stop offset="0.42" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EEF8FF"/>
+    </linearGradient>
+    <linearGradient id="title" x1="448" y1="0" x2="2252" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#005CFF"/>
+      <stop offset="0.48" stop-color="#20C7E8"/>
+      <stop offset="1" stop-color="#075DFF"/>
+    </linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FFFFFF" stop-opacity="0.94"/>
+      <stop offset="1" stop-color="#E8F6FF" stop-opacity="0.82"/>
+    </linearGradient>
+    <filter id="softShadow" x="-30%" y="-40%" width="160%" height="190%">
+      <feDropShadow dx="0" dy="20" stdDeviation="26" flood-color="#1E8DFF" flood-opacity="0.12"/>
+    </filter>
+    <filter id="glow" x="-40%" y="-80%" width="180%" height="240%">
+      <feGaussianBlur stdDeviation="26" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.05 0 0 0 0 0.52 0 0 0 0 1 0 0 0 0.35 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+    <style>
+      .brand { font-family: "Avenir Next", "Inter", "PingFang SC", "Microsoft YaHei", sans-serif; font-weight: 850; }
+      .sans { font-family: "Inter", "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .mono { font-family: "SF Mono", "JetBrains Mono", "Menlo", monospace; }
+      .hand { font-family: "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive; }
+    </style>
+  </defs>
+
+  <rect width="2700" height="1023" fill="url(#bg)"/>
+
+  <circle cx="1350" cy="512" r="428" fill="#26BFFF" opacity="0.045"/>
+  <circle cx="2148" cy="176" r="234" fill="#0E7CFF" opacity="0.05"/>
+  <circle cx="338" cy="824" r="268" fill="#11BEEB" opacity="0.045"/>
+
+  <g opacity="0.58">
+    <rect x="352" y="272" width="66" height="66" rx="2" fill="#DCEBFF"/>
+    <rect x="2194" y="197" width="154" height="154" rx="3" fill="#D9EAFF"/>
+    <rect x="199" y="774" width="102" height="102" rx="3" fill="#D7E8FF"/>
+    <rect x="285" y="724" width="68" height="68" rx="3" fill="#D8E8FF"/>
+    <rect x="2162" y="754" width="68" height="68" rx="3" fill="#D2E7FF"/>
+  </g>
+
+  <g filter="url(#glow)">
+    <text x="1350" y="216" text-anchor="middle" class="brand" font-size="92" fill="#0B66FF" letter-spacing="-1">Agents-Flex</text>
+  </g>
+
+  <text x="1350" y="407" text-anchor="middle" class="sans" font-size="76" font-weight="850" fill="url(#title)">
+    Lightweight Java AI Agent Framework
+  </text>
+
+  <text x="1350" y="526" text-anchor="middle" class="sans" font-size="45" font-weight="560" fill="#1F2937" letter-spacing="1.2">
+    LLM Calls · Tool Calling · MCP · RAG Knowledge Base · LLM Wiki · Text2SQL
+  </text>
+
+  <g filter="url(#softShadow)">
+    <g transform="translate(351 577)">
+      <rect width="264" height="78" rx="39" fill="url(#chip)" stroke="#CFEAFF"/>
+      <circle cx="47" cy="39" r="18" fill="#0E7CFF" opacity="0.9"/>
+      <path d="M39 39h16M47 31v16" stroke="white" stroke-width="4" stroke-linecap="round"/>
+      <text x="82" y="49" class="mono" font-size="29" font-weight="700" fill="#1D4ED8">ChatModel</text>
+    </g>
+    <g transform="translate(642 660)">
+      <rect width="236" height="78" rx="39" fill="url(#chip)" stroke="#CFEAFF"/>
+      <circle cx="47" cy="39" r="18" fill="#12BFE8" opacity="0.92"/>
+      <path d="M37 43l8 8 18-23" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="82" y="49" class="mono" font-size="29" font-weight="700" fill="#0369A1">Tools</text>
+    </g>
+    <g transform="translate(935 594)">
+      <rect width="226" height="78" rx="39" fill="url(#chip)" stroke="#CFEAFF"/>
+      <circle cx="47" cy="39" r="18" fill="#2563EB" opacity="0.9"/>
+      <path d="M37 39h20M47 29v20" stroke="white" stroke-width="4" stroke-linecap="round"/>
+      <text x="82" y="49" class="mono" font-size="29" font-weight="700" fill="#1E40AF">MCP</text>
+    </g>
+    <g transform="translate(1220 670)">
+      <rect width="256" height="78" rx="39" fill="url(#chip)" stroke="#CFEAFF"/>
+      <circle cx="47" cy="39" r="18" fill="#06B6D4" opacity="0.92"/>
+      <path d="M36 35h22M36 43h22M40 27h14v24H40z" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="82" y="49" class="mono" font-size="29" font-weight="700" fill="#0E7490">RAG</text>
+    </g>
+    <g transform="translate(1531 594)">
+      <rect width="282" height="78" rx="39" fill="url(#chip)" stroke="#CFEAFF"/>
+      <circle cx="47" cy="39" r="18" fill="#0EA5E9" opacity="0.92"/>
+      <path d="M36 33h22v14H36zM40 29h14M40 51h14" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="82" y="49" class="mono" font-size="29" font-weight="700" fill="#0369A1">LLM Wiki</text>
+    </g>
+    <g transform="translate(1859 660)">
+      <rect width="292" height="78" rx="39" fill="url(#chip)" stroke="#CFEAFF"/>
+      <circle cx="47" cy="39" r="18" fill="#1D4ED8" opacity="0.9"/>
+      <path d="M36 34h22M36 43h22M36 52h14" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+      <text x="82" y="49" class="mono" font-size="29" font-weight="700" fill="#1E40AF">Text2SQL</text>
+    </g>
+    <g transform="translate(2170 577)">
+      <rect width="252" height="78" rx="39" fill="url(#chip)" stroke="#CFEAFF"/>
+      <circle cx="47" cy="39" r="18" fill="#22C55E" opacity="0.88"/>
+      <path d="M37 40c7-12 25-12 32 0M42 47c5-7 17-7 22 0" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <text x="82" y="49" class="mono" font-size="29" font-weight="700" fill="#166534">Router</text>
+    </g>
+  </g>
+
+  <text x="1350" y="935" text-anchor="middle" class="hand" font-size="42" fill="#2B2D33" opacity="0.9" letter-spacing="1.6">
+    Build production-ready AI applications freely and efficiently with Java
+  </text>
+
+  <g opacity="0.7">
+    <circle cx="482" cy="422" r="7" fill="#1DA1FF"/>
+    <circle cx="504" cy="422" r="7" fill="#1DA1FF" opacity="0.65"/>
+    <circle cx="526" cy="422" r="7" fill="#1DA1FF" opacity="0.35"/>
+    <circle cx="2236" cy="464" r="7" fill="#1DA1FF"/>
+    <circle cx="2258" cy="464" r="7" fill="#1DA1FF" opacity="0.65"/>
+    <circle cx="2280" cy="464" r="7" fill="#1DA1FF" opacity="0.35"/>
+  </g>
+</svg>

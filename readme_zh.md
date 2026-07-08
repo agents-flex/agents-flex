@@ -1,8 +1,10 @@
-<p align="center">
-    <img src="./docs/assets/images/banner-zh.png"/>
-</p>
+<h4 align="right"><a href="./readme.md">English</a> | <strong>简体中文</strong></h4>
 
 # Agents-Flex
+
+<p align="center">
+  <img src="./docs/assets/images/banner-zh-v2.png" alt="Agents-Flex 横幅"/>
+</p>
 
 Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它把大模型调用、Tool Calling、Agent、RAG、向量存储、Embedding、图像、音频、MCP、Skills、Text2SQL 等能力拆成清晰的模块，让开发者可以按需组合，而不是被某个固定运行时或应用框架绑定。
 
