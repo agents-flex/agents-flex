@@ -1,10 +1,10 @@
 <h4 align="right"><strong>English</strong> | <a href="./readme_zh.md">简体中文</a></h4>
 
-# Agents-Flex
-
 <p align="center">
   <img src="./docs/assets/images/banner-v2.png" alt="Agents-Flex banner"/>
 </p>
+
+# Agents-Flex
 
 Agents-Flex is a lightweight AI application development framework for the Java ecosystem. It organizes LLM calls, Tool Calling, Agents, RAG, vector stores, Embedding, image generation, audio, MCP, Skills, Text2SQL, and related capabilities into clear modules, so developers can compose only what they need without being locked into a specific runtime or application framework.
 
