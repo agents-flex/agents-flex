@@ -1,82 +1,134 @@
 ---
 layout: home
-
-hero:
-    name: "Agents-Flex"
-    text: "一个轻量的 AI 智能体开发框架"
-    tagline: Java 生态首选 | 支持 RAG、MCP、AI Skills、WebSearch、Subagent、LLM Wiki 与企业级可观测
-    image:
-        src: /assets/images/logo.png
-        alt: Agents-Flex
-    actions:
-        - theme: brand
-          text: 快速开始
-          link: /zh/chat/getting-started
-        - theme: alt
-          text: 帮助文档
-          link: /zh/intro/what-is-agentsflex
-        - theme: alt
-          text: GitHub
-          link: https://github.com/agents-flex/agents-flex
-
-features:
-    - title: 🌐 WebSearch 网络搜索
-      details: 内置多搜索引擎支持（Bocha、Brave），提供域名过滤、Markdown 格式化输出，无缝集成 LLM Tool 系统，让 Agent 具备实时网络检索能力。
-    - title: 🔗 MCP (Model Context Protocol)
-      details: 原生支持 Model Context Protocol，标准化连接外部数据与工具，打破模型孤岛，实现更广泛的上下文交互与工具编排。
-    - title: 🎯 AI Skills
-      details: 将复杂业务能力封装为可复用的 AI Skills，简化 Agent 构建流程，支持技能的快速编排、动态加载与技能市场共享。
-    - title: 📊 智能问数 (Text2SQL)
-      details: 内置自然语言查询数据库能力，支持 Text2SQL 生成、数据分析与可视化，让业务人员通过对话即可获取数据洞察。
-    - title: ⚖️ LLM 负载均衡与高可用
-      details: 提供企业级 LLM 路由策略，支持多模型负载均衡、故障自动转移与熔断重试，保障高并发下的服务稳定性。
-    - title: 🔍 全链路可观测
-      details: 内置强大的监控体系，支持 OpenTelemetry 集成、Token 消耗统计、分布式链路追踪、耗时分析及敏感信息日志脱敏。
-    - title: 📚 LLM Wiki 知识树
-      details: 超越传统 RAG，支持 LLM Wiki 知识树与图谱集成，通过结构化数据关联提升模型对复杂领域知识的理解与推理能力。
-    - title: 🧠 多模型集成 (LLMs)
-      details: 支持 OpenAI、Qwen、DeepSeek、Ollama 等主流大模型及本地部署，内置 HTTP、SSE、WS 等多种协议，轻松对接私有化模型。
-    - title: 🔧 灵活的工具调用 (Tool)
-      details: 内置 Function Calling 引擎，支持本地方法反射、MCP 协议工具、JavaScript/Python 脚本执行，几行代码即可实现工具调用。
-    - title: 📖 RAG 知识库
-      details: 提供 Loader、Parser、Splitter 完整链路，支持 PDF/Word/HTML 等多格式文档加载与智能切片，轻松构建企业级知识库应用。
-    - title: 🗄️ Vector & Embedding
-      details: 内置 PGVector、Milvus、Chroma、Redis 等多种向量数据库与 Embedding 实现，支持自定义扩展接口，为语义检索提供高效支持。
-    - title: 🎨 图像生成与理解
-      details: 支持 DALL·E、通义万相、文心一格等图像模型，提供文本到图像、图像到文本的双向能力，拓展多模态应用场景。
-    - title: 📝 Prompt 工程
-      details: 提供丰富的 Prompt Framework 支持（FEW-SHOT、CRISPE、ROLE-PLAY 等），支持模板自定义与版本管理，优化模型输出质量。
-    - title: 💭 Memory 管理
-      details: 提供 MessageMemory 和 ContextMemory，灵活管理多轮对话历史与会话状态，支持持久化存储与自定义扩展以满足复杂场景。
-    - title: 🔄 SubAgent 子智能体
-      details: 支持 hierarchical agent 架构，主 Agent 可委派任务给专业子 Agent，实现复杂任务的分解与协作执行。
-    - title: 🔎 搜索引擎集成
-      details: 支持 Elasticsearch、Lucene 等搜索引擎集成，提供统一的检索接口，为企业级全文检索与混合检索提供支持。
-    - title: 📈 ReRank 重排序
-      details: 内置智能重排序服务，优化 RAG 检索结果的相关性评分，提升最终答案的准确性与质量。
-    - title: ⚙️ Spring Boot 集成
-      details: 提供 agents-flex-spring-boot-starter，支持自动配置、属性注入与生产级部署，无缝融入现有 Java/Spring 生态系统。
-
 ---
-
-<style>
-:root {
-  --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #bd34fe 30%, #41d1ff);
-
-  --vp-home-hero-image-background-image: linear-gradient(-45deg, #bd34fe 50%, #47caff 50%);
-  --vp-home-hero-image-filter: blur(44px);
-}
-
-@media (min-width: 640px) {
-  :root {
-    --vp-home-hero-image-filter: blur(56px);
-  }
-}
-
-@media (min-width: 960px) {
-  :root {
-    --vp-home-hero-image-filter: blur(68px);
-  }
-}
-</style>
+<main class="af-home">
+  <section class="af-hero">
+    <div class="af-hero__copy">
+      <p class="af-eyebrow">Java-native AI Agent Framework</p>
+      <h1><span>轻量级、高性能的</span><span>Java  Agent 开发框架</span></h1>
+      <p class="af-hero__lead">Agents-Flex 为 Java 开发者统一模型调用、Tool Calling、RAG、MCP、Skills、Text2SQL、LLM Wiki 与可观测能力，帮助团队更快构建生产级 AI 应用。</p>
+      <div class="af-actions" aria-label="首页快捷入口">
+        <a class="af-button af-button--primary" href="/zh/chat/getting-started">快速开始</a>
+        <a class="af-button" href="/zh/intro/what-is-agentsflex">了解框架</a>
+        <a class="af-button" href="/zh/intro/maven">Maven 依赖</a>
+      </div>
+      <div class="af-metrics" aria-label="框架能力摘要">
+        <div><strong>Java 8+</strong><span>核心模块兼容</span></div>
+        <div><strong>20+</strong><span>模块化能力</span></div>
+        <div><strong>Apache-2.0</strong><span>开源协议</span></div>
+      </div>
+    </div>
+    <div class="af-hero__visual" aria-label="Agents-Flex 能力结构">
+      <img src="./assets/images/home-hero-visual.svg" alt="Agents-Flex Agent 编排与模块能力结构图" />
+    </div>
+  </section>
+  <section class="af-section af-section--intro">
+    <div class="af-section__heading">
+      <p class="af-kicker">Capability Map</p>
+      <h2>从模型到生产落地的一套 Java AI 工程栈</h2>
+      <p>不把 AI 应用拆成孤立功能点，而是按真实开发流程组织：先接模型，再接工具和知识，再处理多 Agent 协作、数据分析和生产可观测。</p>
+    </div>
+    <div class="af-capability-grid">
+      <article class="af-capability">
+        <span class="af-capability__tag">Model</span>
+        <h3>统一模型抽象</h3>
+        <p>通过 ChatModel、EmbeddingModel、ImageModel、RerankModel 等接口接入 OpenAI、Qwen、DeepSeek、Ollama 与私有化模型服务。</p>
+        <ul>
+          <li>同步与流式响应</li>
+          <li>HTTP / SSE / WebSocket</li>
+          <li>模型路由与标签选择</li>
+        </ul>
+      </article>
+      <article class="af-capability">
+        <span class="af-capability__tag">Agent</span>
+        <h3>工具与智能体编排</h3>
+        <p>从 Java 方法到 MCP 工具，从 Skills 到 Subagent，让 Agent 能调用业务能力、拆解任务并处理复杂流程。</p>
+        <ul>
+          <li>ToolScanner / Tool.Builder</li>
+          <li>MCP Client / AI Skills</li>
+          <li>ReAct / Routing / Subagent</li>
+        </ul>
+      </article>
+      <article class="af-capability">
+        <span class="af-capability__tag">Knowledge</span>
+        <h3>RAG 与结构化知识</h3>
+        <p>覆盖文档处理、Embedding、向量存储、检索、重排与 LLM Wiki，让 Agent 能同时处理扁平语义检索和层级知识导航。</p>
+        <ul>
+          <li>Loader / Parser / Splitter</li>
+          <li>Vector Store / SearchWrapper</li>
+          <li>WebSearch / LLM Wiki</li>
+        </ul>
+      </article>
+      <article class="af-capability">
+        <span class="af-capability__tag">Production</span>
+        <h3>生产级保障</h3>
+        <p>面向真实服务运行，提供高可用路由、重试熔断、调用链追踪、指标采集和 Spring Boot 自动配置。</p>
+        <ul>
+          <li>Load Balancing / Retry</li>
+          <li>OpenTelemetry Observability</li>
+          <li>Spring Boot Starter</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+  <section class="af-section">
+    <div class="af-section__heading">
+      <p class="af-kicker">Development Flow</p>
+      <h2>一条更贴近工程实践的开发路径</h2>
+    </div>
+    <div class="af-flow" aria-label="Agents-Flex 开发路径">
+      <div class="af-flow__item"><span>01</span><strong>接入模型</strong><p>配置 ChatModel，统一同步、流式和多模态调用入口。</p></div>
+      <div class="af-flow__item"><span>02</span><strong>暴露工具</strong><p>用注解或 Builder 将 Java 业务方法变成 Agent 可调用工具。</p></div>
+      <div class="af-flow__item"><span>03</span><strong>接入知识</strong><p>组合 RAG、WebSearch、LLM Wiki，为回答提供外部上下文。</p></div>
+      <div class="af-flow__item"><span>04</span><strong>编排 Agent</strong><p>用 ReAct、Routing、Subagent 处理多步骤和多角色任务。</p></div>
+      <div class="af-flow__item"><span>05</span><strong>上线观测</strong><p>接入路由、重试、熔断和 OpenTelemetry，稳定运行。</p></div>
+    </div>
+  </section>
+  <section class="af-section af-section--split">
+    <div>
+      <p class="af-kicker">Use Cases</p>
+      <h2>适合这些 AI 应用场景</h2>
+      <p class="af-section__text">Agents-Flex 更偏向“可集成、可扩展、可上线”的 Java 框架，而不是只能演示单轮对话的样例工程。</p>
+    </div>
+    <div class="af-usecases">
+      <a href="/zh/samples/chat">智能客服与聊天助手</a>
+      <a href="/zh/samples/rag">企业知识库与 RAG 问答</a>
+      <a href="/zh/chat/text2sql">智能问数与数据分析</a>
+      <a href="/zh/chat/mcp">MCP 工具连接与自动化</a>
+      <a href="/zh/chat/llm-wiki">层级文档导航与 LLM Wiki</a>
+      <a href="/zh/intro/model-router">多模型网关与高可用路由</a>
+    </div>
+  </section>
+  <section class="af-section af-section--code">
+    <div class="af-code-copy">
+      <p class="af-kicker">Quick Start</p>
+      <h2>几行代码完成一次模型调用</h2>
+      <p>Agents-Flex 不要求你重写现有应用结构。你可以先从一个 ChatModel 开始，再按需要加入工具、知识库、Agent 编排和可观测。</p>
+      <div class="af-actions">
+        <a class="af-button af-button--primary" href="/zh/chat/getting-started">查看快速开始</a>
+        <a class="af-button" href="/zh/chat/tool-build">学习 Tool 构建</a>
+      </div>
+    </div>
+    <pre class="af-code"><code>ChatModel model = OpenAIChatConfig.builder()&#10;    .endpoint("https://ai.gitee.com")&#10;    .provider("GiteeAI")&#10;    .model("Qwen3-32B")&#10;    .apiKey(System.getenv("GITEE_API_KEY"))&#10;    .buildModel();&#10;&#10;String answer = model.chat("介绍一下 Agents-Flex");&#10;System.out.println(answer);</code></pre>
+  </section>
+  <section class="af-section af-section--modules">
+    <div class="af-section__heading">
+      <p class="af-kicker">Ecosystem</p>
+      <h2>按需组合的模块生态</h2>
+    </div>
+    <div class="af-module-cloud" aria-label="Agents-Flex 模块列表">
+      <a href="/zh/chat/chat-model">Chat</a>
+      <a href="/zh/chat/tool">Tool</a>
+      <a href="/zh/chat/mcp">MCP</a>
+      <a href="/zh/chat/skills">Skills</a>
+      <a href="/zh/chat/subagent">Subagent</a>
+      <a href="/zh/chat/text2sql">Text2SQL</a>
+      <a href="/zh/chat/websearch">WebSearch</a>
+      <a href="/zh/chat/llm-wiki">LLM Wiki</a>
+      <a href="/zh/rag/vector-store">Vector Store</a>
+      <a href="/zh/models/embedding">Embedding</a>
+      <a href="/zh/models/rerank">Rerank</a>
+      <a href="/zh/observability/observability">Observability</a>
+    </div>
+  </section>
+</main>
