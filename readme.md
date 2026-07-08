@@ -3,230 +3,282 @@
 </p>
 
 
-<p align="center">
-    <strong>An Elegant Java Framework for LLM Application Development | Truly Open Source · Easy Integration · Production Ready</strong>
-</p>
+[中文文档](./readme_zh.md)
 
 
-## 🚀 Core Features
+# Agents-Flex
 
-Agents-Flex is designed for Java engineers and architects, delivering a **lightweight, modular, and extensible** AI agent development experience to help enterprises rapidly build production-grade LLM applications.
+Agents-Flex is a lightweight AI application development framework for the Java ecosystem. It organizes LLM calls, Tool Calling, Agents, RAG, vector stores, Embedding, image generation, audio, MCP, Skills, Text2SQL, and related capabilities into clear modules, so developers can compose only what they need without being locked into a specific runtime or application framework.
 
-### ✨ New Core Capabilities (v2.0+)
+It is suitable for building intelligent customer service, enterprise knowledge bases, natural-language data analysis, Agent workflows, model gateways, AI-assisted office tools, plugin-based tool systems, and Java services that need to connect to multiple model providers at the same time.
 
-| Feature | Description | Use Cases |
-|---------|-------------|-----------|
-| **MCP Support** | Native integration with Model Context Protocol for standardized connection to external data sources and tools | Cross-system context sharing, tool orchestration |
-| **AI Skills** | Encapsulate business capabilities into reusable, composable Skill units | Rapid domain Agent construction, skill marketplace |
-| **Text2SQL / Smart Data Query** | Built-in Text2SQL and natural language data analysis capabilities | Zero-code querying for business users, data insights |
+## Highlights
 
-### 🔧 Core Capabilities Matrix
+- **Java native**: Core modules are compatible with Java 8+ and can run in plain Java, Spring Boot, or other JVM stacks.
+- **Unified model abstractions**: `ChatModel`, `EmbeddingModel`, `ImageModel`, `RerankModel`, and other interfaces wrap provider-specific capabilities.
+- **Consistent sync and streaming APIs**: The same Prompt, Options, interceptor, and context mechanisms work for both normal chat and streaming output.
+- **Complete Tool Calling flow**: Supports annotation-based scanning, programmatic tool building, tool execution, tool message feedback, and tool-level observability.
+- **Built-in Agent capabilities**: Includes ReAct Agent, Routing Agent, Subagent, Skills, and other mechanisms for complex tasks.
+- **Full RAG building blocks**: Includes document models, parsing, splitting, Embedding, vector stores, retrieval, and Rerank support.
+- **Production-oriented design**: Includes model routing, retry, load balancing, circuit breaking, OpenTelemetry observability, and Text2SQL safety interceptors.
 
-```
-🧠 Model Integration    🔌 Tool Invocation        📚 Knowledge Enhancement
-├─ Mainstream LLMs      ├─ Function Calling        ├─ Multi-format Document Loading
-├─ Ollama Local Deploy  ├─ MCP Tool Protocol       ├─ Intelligent Text Splitting
-├─ HTTP/SSE/WS Protocols├─ Local Method Reflection ├─ Vector Store Integration
-├─ Multi-Provider Mgmt  ├─ Execution Interceptors  ├─ Custom Embedding Support
+## Modules
 
-⚙️ Engineering Support  🔍 Observability          🛡️ Enterprise-Grade Assurance
-├─ Prompt Template Engine├─ OpenTelemetry Integration├─ Sensitive Data Masking
-├─ Multi-turn Memory    ├─ Distributed Tracing    ├─ Safe Resource Shutdown
-├─ Async/Streaming Resp ├─ Structured Logging     ├─ Apache 2.0 License
-```
+| Module | Description |
+| --- | --- |
+| `agents-flex-core` | Core abstractions: Chat, Prompt, Message, Tool, Memory, Agent, Document, Store, Router, Observability |
+| `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |
+| `agents-flex-embedding` | Embedding model integrations: OpenAI, Ollama, Qwen |
+| `agents-flex-image` | Image model integrations: OpenAI, Qwen, Bailian, Gitee, Qianfan, SiliconFlow, Stability, Tencent, Volcengine |
+| `agents-flex-audio` | Speech-to-text and text-to-speech: Alibaba Cloud, Tencent Cloud, Volcengine |
+| `agents-flex-store` | Vector stores: Redis, Qdrant, Chroma, Pgvector, Milvus, OpenSearch, Elasticsearch, Alibaba Cloud, Tencent Cloud, VectoRex |
+| `agents-flex-search-engine` | Search engine wrappers: Lucene, Elasticsearch, and search service interfaces |
+| `agents-flex-rerank` | Rerank models: default implementation and Gitee Rerank |
+| `agents-flex-tool` | Common tools: file system, Shell, Grep, Glob, WebFetch, Python, JavaScript |
+| `agents-flex-mcp` | MCP client that converts external MCP tools into Agents-Flex `Tool` instances |
+| `agents-flex-skills` | File-system-based Skills loading with progressive disclosure |
+| `agents-flex-subagent` | Subagent definitions, background task execution, and output retrieval tools |
+| `agents-flex-text2sql` | Natural-language data analysis tools with progressive schema disclosure, read-only SQL checks, and interceptor chains |
+| `agents-flex-websearch` | Web search tools with Brave, Bocha, Baidu Qianfan, and custom search providers |
+| `agents-flex-wiki` | LLM Wiki support: organize knowledge as a navigable hierarchical Wiki tree with path-based recursive reading and progressive disclosure |
+| `agents-flex-spring-boot-starter` | Spring Boot auto-configuration for common models and vector stores |
+| `demos` | Example projects |
 
-> 💡 **Design Principles**: Zero-Intrusion Integration · Interface-Driven Extension · Configuration Over Code · Production-Friendly
+## Requirements
 
+- Most modules: JDK 8+
+- `agents-flex-mcp`: JDK 17+
+- Build tool: Maven
 
-## ⚡ Quick Start
+The current repository version is defined by the `revision` property in the root `pom.xml`; it is currently `2.1.9`.
 
-### 1️⃣ Add Dependencies (Maven)
+## Installation
+
+For plain Java projects, you can use the aggregate dependency:
 
 ```xml
 <dependency>
     <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-core</artifactId>
-    <version>2.1.9</version>
-</dependency>
-<!-- Optional: Add extension modules as needed -->
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-mcp</artifactId>
+    <artifactId>agents-flex-bom</artifactId>
     <version>2.1.9</version>
 </dependency>
 ```
 
-### 2️⃣ Hello World
+For Spring Boot projects, use the starter:
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-spring-boot-starter</artifactId>
+    <version>2.1.9</version>
+</dependency>
+```
+
+You can also depend on only the modules you need:
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-chat-openai</artifactId>
+    <version>2.1.9</version>
+</dependency>
+
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-store-redis</artifactId>
+    <version>2.1.9</version>
+</dependency>
+```
+
+## Quick Start
+
+The following example uses an OpenAI-compatible API. Replace `endpoint`, `model`, and `apiKey` with your own model service configuration.
 
 ```java
-public class QuickStart {
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
+
+public class ChatDemo {
     public static void main(String[] args) {
-        // 1. Configure the model (supports GiteeAI / OpenAI / Ollama, etc.)
-        OpenAIChatModel chatModel = OpenAIChatConfig.builder()
-            .provider("GiteeAI")
+        ChatModel chatModel = OpenAIChatConfig.builder()
             .endpoint("https://ai.gitee.com")
-            .requestPath("/v1/chat/completions")
-            .apiKey(System.getenv("GITEE_AI_KEY")) // ✅ Recommended: load from environment variable
+            .provider("GiteeAI")
             .model("Qwen3-32B")
+            .apiKey(System.getenv("GITEE_API_KEY"))
             .buildModel();
 
-        // 2. Start a conversation (sync/streaming/async all supported)
-        String response = chatModel.chat("Explain what humor is in a way that Java developers can understand?");
-
-        // 3. Output the result
-        System.out.println("🤖 Agents-Flex: " + response);
+        String reply = chatModel.chat("Introduce Agents-Flex in one sentence.");
+        System.out.println(reply);
     }
 }
 ```
 
-**Console Output Example**:
+Streaming output:
+
+```java
+import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.client.StreamContext;
+
+chatModel.chatStream("Explain the Chain of Responsibility pattern in Java.", new StreamResponseListener() {
+    @Override
+    public void onMessage(StreamContext context, AiMessageResponse response) {
+        System.out.print(response.getMessage().getContent());
+    }
+});
+```
+
+## Tool Calling
+
+Business methods can be exposed as tools with annotations:
+
+```java
+import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
+import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
+
+public class WeatherTools {
+    @ToolDef(name = "get_weather", description = "Query the weather for a given city")
+    public static String getWeather(
+        @ToolParam(name = "city", description = "City name", required = true) String city
+    ) {
+        return city + ": sunny";
+    }
+}
+```
+
+After registering the tool on a Prompt, the model can call it when needed:
+
+```java
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.prompt.SimplePrompt;
+
+SimplePrompt prompt = new SimplePrompt("What is the weather in Beijing today?");
+prompt.addToolsFromClass(WeatherTools.class);
+
+AiMessageResponse response = chatModel.chat(prompt);
+if (response.hasToolCalls()) {
+    prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
+    System.out.println(chatModel.chat(prompt).getMessage().getContent());
+}
+```
+
+If tools come from runtime configuration, a plugin system, or workflow nodes, you can also build them dynamically with `Tool.builder()`.
+
+## Agents And Orchestration
+
+Agents-Flex includes several mechanisms for complex tasks:
+
+- `ReActAgent`: Executes multi-step tasks with Thought / Action / Observation.
+- `RoutingAgent`: Routes requests to a more suitable Agent.
+- `SubagentTools`: Lets a parent Agent create subtasks with synchronous or background execution.
+- `SkillsTool`: Reads local Skills directories and loads specialized capability instructions and resources on demand.
+- `McpClientManager`: Connects to MCP Servers and wraps remote tools as `Tool` instances.
+
+These capabilities are built on the same `Tool`, `Prompt`, and `ChatModel` abstractions, making them easy to combine and replace.
+
+## RAG And Knowledge Bases
+
+RAG-related capabilities are distributed across multiple modules:
+
+- Document models: `Document`, `VectorData`, `Metadata`
+- Text processing: Loader, Parser, Splitter, File2Text
+- Vectorization: OpenAI, Ollama, and Qwen Embedding
+- Vector stores: Redis, Qdrant, Chroma, Pgvector, Milvus, OpenSearch, Elasticsearch, and more
+- Retrieval: `SearchWrapper`, `DocumentStore`, `VectorStore`
+- Relevance optimization: Rerank models
+
+A typical flow is: load documents, split text, generate Embeddings, write them to a vector store, retrieve relevant passages for a user question, and then let a ChatModel generate the final answer.
+
+## LLM Wiki
+
+LLM Wiki can be understood as a hierarchical knowledge base designed for Agents. Instead of slicing knowledge only into flat chunks, it organizes content as a Wiki tree with paths, titles, summaries, page bodies, and child pages. An Agent first sees summaries of available pages, then calls tools to read more specific child pages only when needed, enabling step-by-step navigation with less context.
+
+`agents-flex-wiki` provides the basic abstractions for this pattern: `Wiki`, `WikiProvider`, and `WikiTool`. `WikiTool` exposes the available child Wikis of the root or current node to the model, and reads content by path through `get_wiki_content(path)`. It is useful for documentation systems with clear chapter structures, where you want an Agent to browse knowledge like a table of contents. It can also be combined with traditional RAG, WebSearch, and Skills.
+
+## MCP, Skills, And Text2SQL
+
+`agents-flex-mcp` supports `stdio`, `http-sse`, and `http-stream` transports. It can load MCP services from `mcp-servers.json` and convert MCP tools into Agents-Flex tools.
+
+`agents-flex-skills` supports file-system-based Skills, which are useful for packaging repeatable professional tasks such as code review, document generation, file processing, and local knowledge retrieval.
+
+`agents-flex-text2sql` targets natural-language data analysis. It provides tools for listing data sources, inspecting table schemas, and executing SQL, with built-in read-only SQL checks, parameterized-query constraints, `LIMIT` control, tenant isolation, and audit extension points.
+
+## Model Routing And Observability
+
+The framework includes model routing, allowing multiple model instances to be combined into one `RoutedChatModel` or `RoutedEmbeddingModel`. It supports:
+
+- Least-active load balancing
+- Weighted random load balancing
+- Tag-based routing
+- Automatic retry
+- Circuit breaking and half-open recovery
+- Runtime metrics
+
+Observability is based on OpenTelemetry and supports tracing and metrics collection. You can switch between Logging, OTLP, or custom exporters with system properties:
+
+```bash
+-Dagentsflex.otel.enabled=true
+-Dagentsflex.otel.exporter.type=otlp
+-Dagentsflex.otel.metric.export.interval=30
+```
+
+## Spring Boot
+
+`agents-flex-spring-boot-starter` provides auto-configuration for:
+
+- Chat: OpenAI, Qwen, Ollama, DeepSeek
+- Store: Alibaba Cloud, Chroma, Elasticsearch, OpenSearch, Tencent Cloud
+
+It is designed for quickly integrating models and vector stores into existing Spring Boot services.
+
+## Repository Structure
+
 ```text
-[Agents-Flex] >>> [GiteeAI/Qwen3-32B] Request: {"model":"Qwen3-32B","messages":[...]}
-[Agents-Flex] <<< [GiteeAI/Qwen3-32B] Response: 200 OK (1.2s)
-🤖 Agents-Flex: Humor is like elegant exception handling in code—seemingly unexpected, yet meticulously designed...
+agents-flex-core/                 Core APIs and base implementations
+agents-flex-chat/                 Chat model integrations
+agents-flex-embedding/            Embedding model integrations
+agents-flex-image/                Image model integrations
+agents-flex-audio/                Audio model integrations
+agents-flex-store/                Vector store integrations
+agents-flex-search-engine/        Search engine integrations
+agents-flex-tool/                 Common tools
+agents-flex-mcp/                  MCP client
+agents-flex-skills/               Skills capability system
+agents-flex-subagent/             Subagents and background tasks
+agents-flex-text2sql/             Natural-language data analysis
+agents-flex-websearch/            Web search
+agents-flex-spring-boot-starter/  Spring Boot auto-configuration
+demos/                            Example projects
+docs/                             Chinese and English documentation
 ```
 
-> 📝 The `[Agents-Flex]` log prefix can be customized or disabled via `application.properties`. For production environments, SLF4J integration is recommended.
+## Local Build
 
-
-## 📦 Module Overview
-
-```
-agents-flex/
-├── agents-flex-bom                    # 📦 BOM dependency management for unified versioning
-├── agents-flex-core                   # 🧱 Core abstractions: Model/Prompt/Memory/Tool SPI
-├── agents-flex-chat                   # 💬 Chat engine: sync/streaming/async invocation
-├── agents-flex-tool                   # 🔧 Function Calling engine: method definition/parsing/execution
-├── agents-flex-mcp                    # 🔗 MCP protocol support: standardized context & tool connection (New)
-├── agents-flex-skills                 # 🎯 AI Skills: capability encapsulation & dynamic loading (New)
-├── agents-flex-text2sql                   # 📊 Text2SQL & natural language data analysis (New)
-├── agents-flex-embedding              # 🔢 Embedding service: model integration & vector generation
-├── agents-flex-store                  # 🗄️ Storage extensions: VectorStore/Memory persistence implementations
-├── agents-flex-search-engine          # 🔍 Search engine integration: ES/DB/custom retrieval sources
-├── agents-flex-rerank                 # 📈 Re-ranking service: improve RAG retrieval relevance
-├── agents-flex-image                  # 🖼️ Image capabilities: text-to-image / image-to-text model integration
-├── agents-flex-spring-boot-starter   # ⚙️ Spring Boot auto-configuration (Production Recommended)
-├── demos/                             # 🧪 Sample projects: MCP / Skills / Text2SQL demos
-├── docs/                              # 📚 Documentation source (VitePress)
-└── testresource/                      # 🧪 Test resource files
+```bash
+mvn clean install
 ```
 
-✅ **Production-Ready Recommendations**:
-- Use `agents-flex-spring-boot-starter` with a configuration center for API key management in production
-- Inject sensitive information (API Keys / DB passwords) via `@Value("${xxx}")` + encrypted configuration
-- Enable `management.endpoints.web.exposure.include=metrics,trace` for monitoring integration
-- For RAG scenarios, combine: `data` + `embedding` + `store` + `rerank` modules
+To build or test a single module with its dependencies:
 
-
-## 📚 Documentation & Resources
-
-| Type | Link | Description |
-|------|------|-------------|
-| 📘 Chinese Docs | [https://agentsflex.com](https://agentsflex.com) | Complete API guide + best practices |
-| 🧪 Sample Projects | [/demos](./demos) | MCP integration / Skills orchestration / Text2SQL demos |
-| 📋 Changelog | [/changes.md](./changes.md) | Version history and migration guide |
-| 🐛 Issue Tracker | [GitHub Issues](https://github.com/agents-flex/agents-flex/issues) | Bug reports / feature requests |
-| 💬 Community | [Join Discussion](https://github.com/agents-flex/agents-flex/discussions) | Q&A, ideas, and community support |
-
-
-
-## 🤝 Contributing
-
-We follow the [Apache Way](https://apache.org/theapacheway) and [Contributor Covenant](https://www.contributor-covenant.org/) guidelines:
-
-1. Fork the repo → Create a feature branch (`feature/xxx`)
-2. Code style: Run `mvn spotless:apply` for auto-formatting (Google Java Style)
-3. Add unit tests: Aim for ≥ 80% coverage on core modules
-4. Submit a PR linked to an issue, describing the motivation and impact of changes
-
-> 🌟 Especially welcome: Java 8/11/17 compatibility tests, enterprise use cases, and documentation translations
-
----
-
-## 📜 License
-
-Agents-Flex is released under the **Apache License 2.0**. You are free to:
-
-- ✅ Use commercially in your projects
-- ✅ Modify and deploy privately
-- ✅ Contribute code to grow the ecosystem
-
-> Please retain the original copyright notice and indicate modifications when distributing. See [LICENSE](./LICENSE) for details.
-
-
-## ❓ FAQ
-
-### What is Agents-Flex?
-
-**Agents-Flex** is an elegant Java framework for LLM application development. It provides a lightweight, modular, and extensible AI agent development experience designed for Java engineers and architects to help enterprises rapidly build production-grade LLM applications.
-
-### Key Features
-
-| Feature | Description |
-|---------|-------------|
-| **MCP Support** | Native integration with Model Context Protocol for standardized connection to external data sources and tools |
-| **AI Skills** | Encapsulate business capabilities into reusable, composable Skill units |
-| **Text2SQL** | Built-in Text2SQL and natural language data analysis capabilities |
-| **Model Integration** | Mainstream LLMs, Ollama local deploy, HTTP/SSE/WS protocols, multi-provider management |
-| **Tool Invocation** | Function Calling, MCP Tool Protocol, Local Method Reflection |
-| **Knowledge Enhancement** | Multi-format document loading, intelligent text splitting, vector store integration |
-
-### How to Install?
-
-Add Maven dependencies:
-
-```xml
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-core</artifactId>
-    <version>2.1.3</version>
-</dependency>
-<!-- Optional: Add extension modules -->
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-mcp</artifactId>
-    <version>2.1.3</version>
-</dependency>
+```bash
+mvn -pl agents-flex-chat/agents-flex-chat-openai -am test
 ```
 
-### Supported LLM Providers
+## Documentation
 
-| Provider | Endpoint | Models |
-|----------|----------|--------|
-| **GiteeAI** | https://ai.gitee.com | Qwen3-32B, etc. |
-| **OpenAI** | https://api.openai.com | GPT-4, GPT-3.5-turbo |
-| **Ollama** | Local | llama3, mistral, etc. |
-| **Custom** | Custom endpoint | Any OpenAI-compatible API |
+- Chinese documentation home: `docs/zh/index.md`
+- English documentation home: `docs/en/index.md`
+- Quick start: `docs/zh/chat/getting-started.md`
+- Maven dependencies: `docs/zh/intro/maven.md`
+- MCP: `docs/zh/chat/mcp.md`
+- Skills: `docs/zh/chat/skills.md`
+- Subagent: `docs/zh/chat/subagent.md`
+- Text2SQL: `docs/zh/chat/text2sql.md`
+- WebSearch: `docs/zh/chat/websearch.md`
 
-### Requirements
+## License
 
-- Java 8 / 11 / 17 compatible
-- Maven or Gradle for dependency management
-- LLM API key (GiteeAI / OpenAI / Ollama)
-- Optional: Spring Boot for production
-
-### Module Overview
-
-| Module | Description |
-|--------|-------------|
-| `agents-flex-core` | Core abstractions: Model/Prompt/Memory/Tool SPI |
-| `agents-flex-chat` | Chat engine: sync/streaming/async |
-| `agents-flex-mcp` | MCP protocol support |
-| `agents-flex-skills` | AI Skills: capability encapsulation |
-| `agents-flex-text2sql` | Text2SQL & data analysis |
-| `agents-flex-spring-boot-starter` | Spring Boot auto-configuration |
-
-### License
-
-**Apache License 2.0** - Free for commercial use, modification, and contribution.
-
-### Help Resources
-
-- 📘 [Chinese Documentation](https://agentsflex.com)
-- 🧪 [Sample Projects](https://github.com/agents-flex/agents-flex/tree/main/demos)
-- 📋 [Changelog](https://github.com/agents-flex/agents-flex/blob/main/changes.md)
-- 🐛 [Issue Tracker](https://github.com/agents-flex/agents-flex/issues)
-- 💬 [Community Discussions](https://github.com/agents-flex/agents-flex/discussions)
+Agents-Flex is open source under the Apache License 2.0. See `LICENSE` for details.
 
 ## Contributors
 

@@ -2,232 +2,284 @@
     <img src="./docs/assets/images/banner-zh.png"/>
 </p>
 
+# Agents-Flex
 
+Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它把大模型调用、Tool Calling、Agent、RAG、向量存储、Embedding、图像、音频、MCP、Skills、Text2SQL 等能力拆成清晰的模块，让开发者可以按需组合，而不是被某个固定运行时或应用框架绑定。
 
-<p align="center">
-    <strong>一个优雅的 Java LLM 应用开发框架 | 真开源 · 易集成 · 生产就绪</strong>
-</p>
+项目适合用于构建智能客服、企业知识库、智能问数、Agent 工作流、模型网关、AI 辅助办公、插件式工具系统，以及需要同时接入多个模型厂商的 Java 服务。
 
----
+## 核心特点
 
-## 🚀 核心特性
+- **Java 原生**：核心模块兼容 Java 8+，可以运行在普通 Java、Spring Boot 或其他 JVM 技术栈中。
+- **多模型统一抽象**：通过 `ChatModel`、`EmbeddingModel`、`ImageModel`、`RerankModel` 等接口封装不同厂商能力。
+- **同步与流式一致**：同一套 Prompt、Options、拦截器和上下文机制可用于普通对话与流式输出。
+- **Tool Calling 完整链路**：支持注解扫描、编程式构建、工具执行、工具消息回传和工具级可观测。
+- **Agent 能力内置**：提供 ReAct Agent、Routing Agent、Subagent、Skills 等面向复杂任务的能力。
+- **RAG 组件齐全**：包含文档、解析、切分、Embedding、向量存储、检索、Rerank 等常用模块。
+- **企业场景友好**：内置模型路由、重试、负载均衡、熔断、OpenTelemetry 可观测、Text2SQL 安全拦截器等能力。
 
-Agents-Flex 专为 Java 工程师与架构师设计，提供**轻量、模块化、可扩展**的 AI 智能体开发体验，助力企业快速构建生产级 LLM 应用。
+## 模块概览
 
-### ✨ 新增核心能力（v2.0+）
+| 模块 | 说明 |
+| --- | --- |
+| `agents-flex-core` | 核心抽象：Chat、Prompt、Message、Tool、Memory、Agent、Document、Store、Router、Observability |
+| `agents-flex-chat` | 聊天模型适配：OpenAI 兼容接口、Qwen、Ollama、DeepSeek、LiteLLM |
+| `agents-flex-embedding` | Embedding 模型适配：OpenAI、Ollama、Qwen |
+| `agents-flex-image` | 图像模型适配：OpenAI、Qwen、Bailian、Gitee、Qianfan、SiliconFlow、Stability、Tencent、Volcengine |
+| `agents-flex-audio` | 语音识别与语音合成：阿里云、腾讯云、火山引擎 |
+| `agents-flex-store` | 向量存储：Redis、Qdrant、Chroma、Pgvector、Milvus、OpenSearch、Elasticsearch、阿里云、腾讯云、VectoRex |
+| `agents-flex-search-engine` | 搜索引擎封装：Lucene、Elasticsearch、搜索服务接口 |
+| `agents-flex-rerank` | Rerank 模型：默认实现、Gitee Rerank |
+| `agents-flex-tool` | 通用工具：文件系统、Shell、Grep、Glob、WebFetch、Python、JavaScript |
+| `agents-flex-mcp` | MCP 客户端，可把外部 MCP 工具转换为 Agents-Flex `Tool` |
+| `agents-flex-skills` | 基于文件系统的 Skills 加载与渐进式披露机制 |
+| `agents-flex-subagent` | 子 Agent 定义、后台任务执行与结果获取工具 |
+| `agents-flex-text2sql` | 智能问数工具集，支持表结构渐进披露、只读 SQL 校验和拦截器链 |
+| `agents-flex-websearch` | 网络搜索工具，支持 Brave、Bocha、百度千帆与自定义搜索提供商 |
+| `agents-flex-wiki` | LLM Wiki 能力：把知识组织为可导航的层级 Wiki 树，支持按路径递归读取与渐进式披露 |
+| `agents-flex-spring-boot-starter` | Spring Boot 自动配置，覆盖常用模型与向量存储 |
+| `demos` | 示例工程 |
 
-| 特性 | 说明 | 应用场景 |
-|------|------|----------|
-| **WebSearch 网络搜索** | 内置多搜索引擎支持（Bocha、Brave），域名过滤与 Markdown 格式化输出 | Agent 实时网络检索、信息获取 |
-| **MCP 支持** | 原生集成 Model Context Protocol，标准化连接外部数据源与工具 | 跨系统上下文共享、工具编排 |
-| **AI Skills** | 将业务能力封装为可复用、可编排的 Skill 单元 | 快速构建领域 Agent、技能市场 |
-| **智能问数** | 内置 Text2SQL 与自然语言数据分析能力 | 业务人员零代码查询、数据洞察 |
+## 环境要求
 
-### 🔧 基础能力矩阵
+- 大部分模块：JDK 8+
+- `agents-flex-mcp`：JDK 17+
+- 构建工具：Maven
 
-```
+当前仓库版本见根 `pom.xml` 的 `revision` 属性，目前为 `2.1.9`。
 
-🌐 网络搜索        🧠 模型接入        🔌 工具调用          📚 知识增强
-├─ 多搜索引擎适配   ├─ 主流大模型适配     ├─ Function Calling ├─ 多格式文档加载
-├─ 域名白/黑名单    ├─ Ollama 本地部署   ├─ MCP 工具协议       ├─ 智能文本分割
-├─ Markdown 输出    ├─ HTTP/SSE/WS 协议  ├─ 本地方法反射执行   ├─ 向量存储集成
-└─ LLM Tool 集成   └─ 多 Provider 管理  └─ JS/Python 脚本     └─ 自定义 Embedding
+## 安装
 
-⚙️ 工程化支持      🔍 可观测性        🛡️ 企业级保障
-├─ Prompt 模板引擎  ├─ OpenTelemetry 集成 ├─ 敏感信息脱敏
-├─ 多轮记忆管理      ├─ 链路追踪与指标      ├─ 负载均衡与熔断
-├─ 异步/流式响应     ├─ 结构化日志输出      ├─ 资源安全关闭
-└─ Spring Boot 集成 └─ Token 消耗统计      └─ Apache 2.0 协议
-```
-> 💡 **设计原则**：零侵入集成 · 接口驱动扩展 · 配置优于编码 · 生产环境友好
-
-
-## ⚡ 快速开始
-
-### 1️⃣ 添加依赖（Maven）
+普通 Java 项目可以直接引入聚合依赖：
 
 ```xml
 <dependency>
     <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-core</artifactId>
-    <version>2.1.9</version>
-</dependency>
-<!-- 按需引入扩展模块 -->
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-websearch</artifactId>
-    <version>2.1.9</version>
-</dependency>
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-mcp</artifactId>
+    <artifactId>agents-flex-bom</artifactId>
     <version>2.1.9</version>
 </dependency>
 ```
-### 2️⃣ Hello World
+
+Spring Boot 项目可以使用 Starter：
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-spring-boot-starter</artifactId>
+    <version>2.1.9</version>
+</dependency>
+```
+
+也可以只引入需要的子模块，例如：
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-chat-openai</artifactId>
+    <version>2.1.9</version>
+</dependency>
+
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-store-redis</artifactId>
+    <version>2.1.9</version>
+</dependency>
+```
+
+## 快速开始
+
+下面示例使用 OpenAI 兼容接口。你可以把 `endpoint`、`model`、`apiKey` 替换成自己的模型服务配置。
 
 ```java
-public class QuickStart {
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
+
+public class ChatDemo {
     public static void main(String[] args) {
-        // 1. 配置模型（支持 GiteeAI / OpenAI / Ollama 等）
-        OpenAIChatModel chatModel = OpenAIChatConfig.builder()
-            .provider("GiteeAI")
+        ChatModel chatModel = OpenAIChatConfig.builder()
             .endpoint("https://ai.gitee.com")
-            .requestPath("/v1/chat/completions")
-            .apiKey(System.getenv("GITEE_AI_KEY")) // ✅ 建议从环境变量读取
+            .provider("GiteeAI")
             .model("Qwen3-32B")
+            .apiKey(System.getenv("GITEE_API_KEY"))
             .buildModel();
 
-        // 2. 发起对话（同步/流式/异步均支持）
-        String response = chatModel.chat("用 Java 开发者能理解的方式，解释什么是幽默？");
-
-        // 3. 输出结果
-        System.out.println("🤖 Agents-Flex: " + response);
+        String reply = chatModel.chat("用一句话介绍 Agents-Flex");
+        System.out.println(reply);
     }
 }
 ```
-**控制台输出示例**：
+
+流式输出：
+
+```java
+import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.client.StreamContext;
+
+chatModel.chatStream("解释一下 Java 中的责任链模式", new StreamResponseListener() {
+    @Override
+    public void onMessage(StreamContext context, AiMessageResponse response) {
+        System.out.print(response.getMessage().getContent());
+    }
+});
+```
+
+## Tool Calling
+
+业务方法可以通过注解暴露为工具：
+
+```java
+import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
+import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
+
+public class WeatherTools {
+    @ToolDef(name = "get_weather", description = "查询指定城市的天气")
+    public static String getWeather(
+        @ToolParam(name = "city", description = "城市名称", required = true) String city
+    ) {
+        return city + "：晴";
+    }
+}
+```
+
+注册到 Prompt 后，模型即可按需调用：
+
+```java
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.prompt.SimplePrompt;
+
+SimplePrompt prompt = new SimplePrompt("今天北京天气怎么样？");
+prompt.addToolsFromClass(WeatherTools.class);
+
+AiMessageResponse response = chatModel.chat(prompt);
+if (response.hasToolCalls()) {
+    prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
+    System.out.println(chatModel.chat(prompt).getMessage().getContent());
+}
+```
+
+如果工具来自运行时配置、插件系统或工作流节点，也可以使用 `Tool.builder()` 动态构建。
+
+## Agent 与任务编排
+
+Agents-Flex 内置多种面向复杂任务的机制：
+
+- `ReActAgent`：通过 Thought / Action / Observation 方式执行多步骤任务。
+- `RoutingAgent`：把请求分发给更适合的 Agent。
+- `SubagentTools`：让主 Agent 创建子任务，支持同步执行和后台任务。
+- `SkillsTool`：读取本地 Skills 目录，按需加载专业能力说明和资源。
+- `McpClientManager`：连接 MCP Server，并把远程工具封装成 `Tool`。
+
+这些能力都建立在同一个 `Tool`、`Prompt`、`ChatModel` 抽象之上，便于组合和替换。
+
+## RAG 与知识库
+
+RAG 相关能力分布在多个模块中：
+
+- 文档模型：`Document`、`VectorData`、`Metadata`
+- 文本处理：Loader、Parser、Splitter、File2Text
+- 向量化：OpenAI、Ollama、Qwen Embedding
+- 向量存储：Redis、Qdrant、Chroma、Pgvector、Milvus、OpenSearch、Elasticsearch 等
+- 检索增强：`SearchWrapper`、`DocumentStore`、`VectorStore`
+- 排序优化：Rerank 模型
+
+典型流程是：加载文档、切分文本、生成 Embedding、写入向量库、按用户问题检索相关片段，再交给 ChatModel 生成回答。
+
+## LLM Wiki
+
+LLM Wiki 可以理解为一种面向 Agent 的层级知识库：知识不只是被切成扁平片段，而是被组织成带路径、标题、摘要、正文和子页面的 Wiki 树。Agent 先看到当前可用页面的摘要，再按需要调用工具读取更具体的子页面，从而用较少上下文完成逐级导航。
+
+`agents-flex-wiki` 提供的 `Wiki`、`WikiProvider` 和 `WikiTool` 正是这个方向的基础封装：`WikiTool` 会把根节点或当前节点的可用子 Wiki 暴露给模型，并通过 `get_wiki_content(path)` 按路径读取内容。它适合文档体系清晰、章节关系明确、希望 Agent 像读文档目录一样逐步查资料的场景，也可以和传统 RAG、WebSearch、Skills 一起使用。
+
+## MCP、Skills 与智能问数
+
+`agents-flex-mcp` 支持 `stdio`、`http-sse`、`http-stream` 三类传输方式，可以从 `mcp-servers.json` 加载 MCP 服务，并将 MCP 工具转换为 Agents-Flex 工具。
+
+`agents-flex-skills` 支持基于文件系统的 Skills 机制，适合封装重复性的专业任务，例如代码审查、文档生成、文件处理和本地知识检索。
+
+`agents-flex-text2sql` 面向智能问数场景，提供数据源列表、表字段查询、SQL 执行等工具，并内置只读 SQL 校验、参数化查询约束、`LIMIT` 控制、租户隔离和审计扩展点。
+
+## 模型路由与可观测
+
+框架内置模型路由能力，可以把多个模型实例组合成一个 `RoutedChatModel` 或 `RoutedEmbeddingModel`。它支持：
+
+- 最少活跃数负载均衡
+- 加权随机负载均衡
+- 标签路由
+- 自动重试
+- 熔断与半开恢复
+- 运行时指标统计
+
+可观测能力基于 OpenTelemetry，支持链路追踪与指标采集。可以通过系统属性切换 Logging、OTLP 或自定义 Exporter：
+
+```bash
+-Dagentsflex.otel.enabled=true
+-Dagentsflex.otel.exporter.type=otlp
+-Dagentsflex.otel.metric.export.interval=30
+```
+
+## Spring Boot
+
+`agents-flex-spring-boot-starter` 提供自动配置，目前覆盖：
+
+- Chat：OpenAI、Qwen、Ollama、DeepSeek
+- Store：阿里云、Chroma、Elasticsearch、OpenSearch、腾讯云
+
+适合在已有 Spring Boot 服务中快速接入模型与向量存储配置。
+
+## 仓库结构
+
 ```text
-[Agents-Flex] >>> [GiteeAI/Qwen3-32B] Request: {"model":"Qwen3-32B","messages":[...]}
-[Agents-Flex] <<< [GiteeAI/Qwen3-32B] Response: 200 OK (1.2s)
-🤖 Agents-Flex: 幽默就像代码中的优雅异常处理——看似意外，实则精心设计...
+agents-flex-core/                 核心 API 与基础实现
+agents-flex-chat/                 聊天模型适配
+agents-flex-embedding/            Embedding 模型适配
+agents-flex-image/                图像模型适配
+agents-flex-audio/                语音模型适配
+agents-flex-store/                向量存储适配
+agents-flex-search-engine/        搜索引擎适配
+agents-flex-tool/                 通用工具集
+agents-flex-mcp/                  MCP 客户端
+agents-flex-skills/               Skills 能力系统
+agents-flex-subagent/             子 Agent 与后台任务
+agents-flex-text2sql/             智能问数
+agents-flex-websearch/            网络搜索
+agents-flex-spring-boot-starter/  Spring Boot 自动配置
+demos/                            示例工程
+docs/                             中英文文档
 ```
-> 📝 日志前缀 `[Agents-Flex]` 可通过 `application.properties` 自定义或关闭，生产环境建议配合 SLF4J 使用。
 
-### 3️⃣ WebSearch 网络搜索示例
+## 本地构建
 
-```java
-public class WebSearchDemo {
-    public static void main(String[] args) {
-        // 1. 创建 WebSearchTool（支持 Bocha、Brave 等搜索引擎）
-        WebSearchTool searchTool = WebSearchTool.builder()
-            .provider(new BochaSearchProvider(System.getenv("BOCHA_APIKEY")))
-            .maxResults(10)
-            .build();
-
-        // 2. 注册到 Agent 的工具集
-        MemoryPrompt prompt = new MemoryPrompt();
-        prompt.addTools(ToolScanner.scan(searchTool));
-
-        // 3. Agent 自动调用搜索工具
-        UserMessage message = new UserMessage("帮我搜索 Agents-Flex 框架的最新特性");
-        prompt.addMessage(message);
-
-        // 4. 执行对话（Agent 会自动调用 web_search 工具）
-        chatModel.chatStream(prompt, listener);
-    }
-}
+```bash
+mvn clean install
 ```
-**搜索结果示例**：
 
-```markdown
-# Agents-Flex v2.1.5 发布 - 新增 WebSearch 支持
+如果只想构建某个模块，可以使用 Maven 的 `-pl` 和 `-am`：
 
-URL: https://github.com/agents-flex/agents-flex/releases
-
-Agents-Flex v2.1.5 版本新增了 WebSearch 网络搜索模块，
-支持 Bocha 和 Brave 搜索引擎，提供域名过滤功能...
-
------
-
-# Agents-Flex 官方文档
-
-URL: https://agentsflex.com/zh/intro/what-is-agentsflex
-
-Agents-Flex 是一个优雅的 Java LLM 应用开发框架，
-支持 MCP、AI Skills、Text2SQL 等企业级特性...
+```bash
+mvn -pl agents-flex-chat/agents-flex-chat-openai -am test
 ```
-## 📦 模块概览
 
-```
-agents-flex/
-├── agents-flex-bom                    # 📦 BOM 依赖管理，统一模块版本
-├── agents-flex-core                   # 🧱 核心抽象：Model/Prompt/Memory/Tool SPI
-├── agents-flex-chat                   # 💬 聊天对话引擎：同步/流式/异步调用
-├── agents-flex-tool                   # 🔧 Function Calling 引擎：方法定义/解析/执行
-├── agents-flex-mcp                    # 🔗 MCP 协议支持：标准化上下文与工具连接（新增）
-├── agents-flex-skills                 # 🎯 AI Skills ：能力封装与动态加载（新增）
-├── agents-flex-text2sql               # 📊 智能问数：Text2SQL 与数据分析（新增）
-├── agents-flex-websearch              # 🌐 网络搜索：多搜索引擎集成与域名过滤（新增）
-├── agents-flex-subagent               # 🔄 子智能体：分层 Agent 架构与任务委派（新增）
-├── agents-flex-wiki                   # 📚 Wiki 知识树：结构化知识管理与图谱集成（新增）
-├── agents-flex-embedding              # 🔢 Embedding 服务：模型对接与向量生成
-├── agents-flex-store                  # 🗄️ 存储扩展：VectorStore/Memory 持久化实现
-├── agents-flex-search-engine          # 🔍 搜索引擎集成：ES/Lucene/自定义检索源
-├── agents-flex-rerank                 # 📈 重排序服务：提升 RAG 检索相关性
-├── agents-flex-image                  # 🖼️ 图像能力：文生图/图生文模型对接
-├── agents-flex-spring-boot-starter   # ⚙️ Spring Boot 自动配置（生产推荐）
-├── demos/                             # 🧪 示例项目：WebSearch/MCP/Skills/Text2SQL 实战
-├── docs/                              # 📚 文档源码（VitePress）
-└── testresource/                      # 🧪 测试资源文件
-```
-✅ **生产环境推荐**：
-- 使用 `agents-flex-spring-boot-starter` 配合配置中心管理 API Key
-- 通过 `@Value("${xxx}")` + 加密配置注入敏感信息（API Keys / 数据库密码）
-- 启用 `management.endpoints.web.exposure.include=metrics,trace` 集成监控
-- RAG 场景组合使用：`websearch` + `embedding` + `store` + `rerank` 模块
+## 文档
 
+- 中文文档入口：`docs/zh/index.md`
+- 快速开始：`docs/zh/chat/getting-started.md`
+- Maven 依赖：`docs/zh/intro/maven.md`
+- MCP：`docs/zh/chat/mcp.md`
+- Skills：`docs/zh/chat/skills.md`
+- Subagent：`docs/zh/chat/subagent.md`
+- Text2SQL：`docs/zh/chat/text2sql.md`
+- WebSearch：`docs/zh/chat/websearch.md`
 
-## 🎯 典型应用场景
+## 许可证
 
-### 场景 1：智能客服助手
-```java
-// 结合 RAG + WebSearch + Memory
-prompt.addTools(ToolScanner.scan(WebSearchTool.builder()
-    .provider(new BochaSearchProvider(apiKey))
-    .build()));
-prompt.addMemory(new MessageMemory()); // 多轮对话记忆
-```
-### 场景 2：数据分析助手
-```java
-// Text2SQL + 可视化
-Text2SQLTool sqlTool = new Text2SQLTool(dataSource);
-prompt.addTools(ToolScanner.scan(sqlTool));
-```
-### 场景 3：跨系统自动化
-```java
-// MCP + AI Skills
-MCPClient mcpClient = new MCPClient("https://mcp-server.example.com");
-prompt.addTools(mcpClient.discoverTools());
-```
-## 📚 文档与资源
-
-| 类型 | 链接                                                                 | 说明 |
-|------|--------------------------------------------------------------------|------|
-| 📘 中文文档 | [https://agentsflex.com](https://agentsflex.com)                 | 完整 API 指南 + 最佳实践 |
-| 🧪 示例仓库 | [/demos](./demos)                                                  | WebSearch/MCP/Skills/Text2SQL 实战 |
-| 📋 变更日志 | [/changes.md](./changes.md)                                        | 版本迭代记录与迁移指南 |
-| 🐛 问题反馈 | [GitHub Issues](https://github.com/agents-flex/agents-flex/issues) | Bug 报告 / 需求建议 |
-| 💬 社区讨论 | [Discussions](https://github.com/agents-flex/agents-flex/discussions) | Q&A、想法交流、社区支持 |
-
-
-### Star 用户专属交流群
-
-![](./docs/assets/images/wechat-group.jpg)
-
-
-## 🤝 贡献指南
-
-我们遵循 [Apache Way](https://apache.org/theapacheway) 与 [Contributor Covenant](https://www.contributor-covenant.org/) 准则：
-
-1. Fork 仓库 → 创建特性分支 (`feature/xxx`)
-2. 代码规范：`mvn spotless:apply` 自动格式化（基于 Google Java Style）
-3. 补充单元测试：核心模块覆盖率 ≥ 80%
-4. 提交 PR 并关联 Issue，描述变更动机与影响范围
-
-> 🌟 特别欢迎：Java 8/11/17 兼容性测试、企业场景案例、多语言文档翻译、新搜索引擎适配
-
-
-## 📜 开源协议
-
-Agents-Flex 采用 **Apache License 2.0** 协议，您可以：
-
-- ✅ 免费用于商业项目
-- ✅ 修改源码并私有化部署
-- ✅ 贡献代码共建生态
-
-> 请保留原始版权声明，并在分发时注明修改内容。详情见 [LICENSE](./LICENSE)
+Agents-Flex 使用 Apache License 2.0 协议开源，详见 `LICENSE`。
 
 ## 贡献用户
 
 <img src="https://contrib.rocks/image?repo=agents-flex/agents-flex" />
+
+
+## Star 用户专属交流群
+
+![](./docs/assets/images/wechat-group.jpg)
