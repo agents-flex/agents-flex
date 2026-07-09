@@ -17,6 +17,7 @@ import com.agentsflex.model.chat.openai.OpenAIChatModel;
 import com.agentsflex.tool.commons.TodoWriteTool;
 import com.agentsflex.tool.commons.WebFetchTool;
 import com.agentsflex.websearch.baidu.BaiduQianfanSearchProvider;
+import com.agentsflex.websearch.tavily.TavilySearchProvider;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
 
@@ -69,6 +70,7 @@ public class WebSearchDemo {
         prompt.addTools(ToolScanner.scan(WebFetchTool.builder().useDefaultProviders().build()));
         prompt.addTools(ToolScanner.scan(WebSearchTool.builder()
 //            .provider(new BochaSearchProvider(System.getenv("BOCHA_APIKEY")))
+//            .provider(new TavilySearchProvider(System.getenv("TAVILY_API_KEY")))
             .provider(new BaiduQianfanSearchProvider(System.getenv("BAIDU_APIKEY")))
             .build()));
 
