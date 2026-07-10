@@ -138,7 +138,9 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         List<String> audioUrls = userMessage.getAudioUrls();
         List<String> videoUrls = userMessage.getVideoUrls();
 
-        if (CollectionUtil.hasItems(imageUrls) || CollectionUtil.hasItems(audioUrls) || CollectionUtil.hasItems(videoUrls)) {
+        if ((CollectionUtil.hasItems(imageUrls) && config.isSupportImage())
+            || (CollectionUtil.hasItems(audioUrls) && config.isSupportAudio())
+            || (CollectionUtil.hasItems(videoUrls) && config.isSupportVideo())) {
 
             List<Map<String, Object>> messageContent = new ArrayList<>();
             messageContent.add(Maps.of("type", "text").set("text", content));
