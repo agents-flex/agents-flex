@@ -25,6 +25,7 @@ public class ChatConfig extends BaseModelConfig {
     protected Boolean supportImageBase64Only; // 某些模型仅支持 base64 格式图片，比如 Ollama 部署的模型，或者某些本地化模型
     protected Boolean supportAudio;
     protected Boolean supportVideo;
+    protected Boolean supportFile;
     protected Boolean supportTool;
     protected Boolean supportToolMessage;
     protected Boolean supportThinking;
@@ -102,6 +103,18 @@ public class ChatConfig extends BaseModelConfig {
 
     public boolean isSupportVideo() {
         return supportVideo != null && supportVideo;
+    }
+
+    public Boolean getSupportFile() {
+        return supportFile;
+    }
+
+    public void setSupportFile(Boolean supportFile) {
+        this.supportFile = supportFile;
+    }
+
+    public boolean isSupportFile() {
+        return supportFile != null && supportFile;
     }
 
     public void setSupportTool(Boolean supportTool) {

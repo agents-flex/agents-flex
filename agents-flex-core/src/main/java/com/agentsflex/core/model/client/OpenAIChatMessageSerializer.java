@@ -137,10 +137,13 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         List<String> imageUrls = userMessage.getImageUrls();
         List<String> audioUrls = userMessage.getAudioUrls();
         List<String> videoUrls = userMessage.getVideoUrls();
+        List<String> fileUrls = userMessage.getFileUrls();
 
         if ((CollectionUtil.hasItems(imageUrls) && config.isSupportImage())
             || (CollectionUtil.hasItems(audioUrls) && config.isSupportAudio())
-            || (CollectionUtil.hasItems(videoUrls) && config.isSupportVideo())) {
+            || (CollectionUtil.hasItems(videoUrls) && config.isSupportVideo())
+            || (CollectionUtil.hasItems(fileUrls) && config.isSupportFile())
+        ) {
 
             List<Map<String, Object>> messageContent = new ArrayList<>();
             messageContent.add(Maps.of("type", "text").set("text", content));
@@ -167,6 +170,11 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
                 }
             }
 
+            if (CollectionUtil.hasItems(fileUrls)) {
+                for (String url : fileUrls) {
+                    messageContent.add(Maps.of("type", "file_url").set("file_url", Maps.of("url", url)));
+                }
+            }
             return messageContent;
         } else {
             return content;

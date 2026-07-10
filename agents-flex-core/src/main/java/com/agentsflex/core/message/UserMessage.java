@@ -28,6 +28,7 @@ public class UserMessage extends AbstractTextMessage<UserMessage> {
     private List<String> audioUrls;
     private List<String> videoUrls;
     private List<String> imageUrls;
+    private List<String> fileUrls;
 
 
     public UserMessage() {
@@ -111,6 +112,20 @@ public class UserMessage extends AbstractTextMessage<UserMessage> {
         addImageUrl(ImageUtil.imageBytesToDataUri(imageBytes, mimeType));
     }
 
+    public List<String> getFileUrls() {
+        return fileUrls;
+    }
+
+    public void setFileUrls(List<String> fileUrls) {
+        this.fileUrls = fileUrls;
+    }
+
+    public void addFileUrl(String fileUrl) {
+        if (this.fileUrls == null) {
+            this.fileUrls = new ArrayList<>(1);
+        }
+        this.fileUrls.add(fileUrl);
+    }
 
     @Override
     public String toString() {
@@ -118,6 +133,7 @@ public class UserMessage extends AbstractTextMessage<UserMessage> {
             "audioUrls=" + audioUrls +
             ", videoUrls=" + videoUrls +
             ", imageUrls=" + imageUrls +
+            ", fileUrls=" + fileUrls +
             ", content='" + content + '\'' +
             ", metadataMap=" + metadataMap +
             '}';
