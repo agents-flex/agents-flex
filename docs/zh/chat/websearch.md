@@ -250,7 +250,31 @@ String results = searchTool.webSearch(
 ```
 
 
-#### 示例 3：与 LLM Agent 集成
+#### 示例 3：使用 Tavily Search
+
+```java
+import com.agentsflex.websearch.WebSearchTool;
+import com.agentsflex.websearch.tavily.TavilySearchProvider;
+
+// 创建 Tavily 搜索引擎提供商（需要 API Key）
+TavilySearchProvider provider = new TavilySearchProvider(
+    System.getenv("TAVILY_API_KEY")
+);
+
+// 创建搜索工具
+WebSearchTool searchTool = new WebSearchTool(provider);
+
+// 直接调用搜索
+String results = searchTool.webSearch(
+    "Java 17 new features",
+    null,  // 不限制域名
+    null   // 不屏蔽域名
+);
+
+System.out.println(results);
+```
+
+#### 示例 4：与 LLM Agent 集成
 
 ```java
 import com.agentsflex.core.agent.Agent;
@@ -288,6 +312,7 @@ System.out.println(response);
 export BRAVE_API_KEY="your-brave-search-api-key"
 export BOCHA_API_KEY="your-bocha-api-key"
 export BAIDU_QIANFAN_API_KEY="your-baidu-api-key"
+export TAVILY_API_KEY="your-tavily-api-key"
 ```
 
 
@@ -465,6 +490,7 @@ String results = tool.webSearch("Kubernetes deployment guide", null, null);
 | 百度千帆 | `baidu/BaiduQianfanSearchProvider.java` | https://cloud.baidu.com/doc/WENXINWORKSHOP/index.html        |
 | Bocha | `bocha/BochaSearchProvider.java` | https://bocha-ai.feishu.cn/wiki/HmtOw1z6vik14Fkdu5uc9VaInBb  |
 | Brave | `brave/BraveSearchProvider.java` | https://api.search.brave.com/app/documentation               |
+| Tavily | `tavily/TavilySearchProvider.java` | https://docs.tavily.com                                      |
 
 
 
