@@ -65,7 +65,7 @@ public class ChatConfig extends BaseModelConfig {
     }
 
     public boolean isSupportImage() {
-        return supportImage == null || supportImage;
+        return supportImage != null && supportImage;
     }
 
     public Boolean getSupportImageBase64Only() {
@@ -89,7 +89,7 @@ public class ChatConfig extends BaseModelConfig {
     }
 
     public boolean isSupportAudio() {
-        return supportAudio == null || supportAudio;
+        return supportAudio != null && supportAudio;
     }
 
     public Boolean getSupportVideo() {
@@ -101,7 +101,7 @@ public class ChatConfig extends BaseModelConfig {
     }
 
     public boolean isSupportVideo() {
-        return supportVideo == null || supportVideo;
+        return supportVideo != null && supportVideo;
     }
 
     public void setSupportTool(Boolean supportTool) {
