@@ -293,6 +293,8 @@ public class TypeConverter {
             }
             if (targetType == BigInteger.class) {
                 if (value instanceof BigInteger) return (BigInteger) value;
+                // BigDecimal 直接转 BigInteger,避免 longValue() 对超 long 范围的大数截断溢出
+                if (value instanceof BigDecimal) return ((BigDecimal) value).toBigInteger();
                 return BigInteger.valueOf(num.longValue());
             }
         }
