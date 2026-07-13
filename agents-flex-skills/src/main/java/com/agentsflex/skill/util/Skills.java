@@ -77,8 +77,8 @@ public class Skills {
             paths.filter(Files::isRegularFile)
                 .filter(path -> path.getFileName().toString().equals("SKILL.md"))
                 .forEach(path -> {
-                    try {
-                        String markdown = IOUtil.readUtf8(Files.newInputStream(path));
+                    try (InputStream inputStream = Files.newInputStream(path)) {
+                        String markdown = IOUtil.readUtf8(inputStream);
                         MarkdownParser parser = new MarkdownParser(markdown);
                         skills.add(new Skill(path.getParent().toString(), parser.getFrontMatter(),
                             parser.getContent()));
