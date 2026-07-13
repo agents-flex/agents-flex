@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.chat.tool;
 
 
+import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.observability.Observability;
 import com.alibaba.fastjson2.JSON;
 import io.opentelemetry.api.common.Attributes;
@@ -88,11 +89,9 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
         try (Scope ignored = span.makeCurrent()) {
 
             // 记录脱敏后的参数（JSON）
-            Map<String, Object> args = context.getArgsMap();
-            if (args != null && !args.isEmpty()) {
-                String safeArgsJson = safeToJson(args);
-                span.setAttribute("tool.arguments", safeArgsJson);
-            }
+            ToolCall toolCall = context.getToolCall();
+            String arguments = toolCall == null ? null : toolCall.getArguments();
+            span.setAttribute("tool.arguments", arguments);
 
             // 执行工具
             Object result = chain.proceed(context);
