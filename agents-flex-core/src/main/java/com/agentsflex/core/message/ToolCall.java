@@ -16,12 +16,15 @@
 package com.agentsflex.core.message;
 
 import com.agentsflex.core.util.Copyable;
+import com.agentsflex.core.util.JsonSanitizer;
 import com.agentsflex.core.util.Maps;
 import com.alibaba.fastjson2.JSON;
 import org.slf4j.Logger;
 
 import java.io.Serializable;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class ToolCall implements Serializable, Copyable<ToolCall> {
 
@@ -69,21 +72,39 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
             return null;
         }
 
-        String jsonStr = arguments.trim();
+        String originalJson = arguments.trim();
+        RuntimeException lastException;
         try {
-            return JSON.parseObject(jsonStr);
-        } catch (Exception e) {
-            log.warn("can not parse json:" + jsonStr, e);
-            if (jsonStr.contains("{") && jsonStr.contains("}")) {
-                String json = jsonStr.substring(jsonStr.indexOf("{"), jsonStr.lastIndexOf("}") + 1);
-                return JSON.parseObject(json);
+            return JSON.parseObject(originalJson);
+        } catch (RuntimeException e) {
+            lastException = e;
+        }
+
+        try {
+            return JSON.parseObject(JsonSanitizer.sanitize(originalJson));
+        } catch (RuntimeException e) {
+            lastException = e;
+        }
+
+        Set<String> candidates = new LinkedHashSet<>(JsonSanitizer.extractObjects(originalJson));
+        candidates.add(JsonSanitizer.completeObject(originalJson));
+
+        for (String candidate : candidates) {
+            try {
+                return JSON.parseObject(candidate);
+            } catch (RuntimeException e) {
+                lastException = e;
             }
 
-            if (!jsonStr.startsWith("{")) jsonStr = "{" + jsonStr;
-            if (!jsonStr.endsWith("}")) jsonStr = jsonStr + "}";
-
-            return JSON.parseObject(jsonStr);
+            try {
+                return JSON.parseObject(JsonSanitizer.sanitize(candidate));
+            } catch (RuntimeException e) {
+                lastException = e;
+            }
         }
+
+        log.warn("can not parse tool arguments: {}", originalJson, lastException);
+        throw lastException;
     }
 
     @Override
