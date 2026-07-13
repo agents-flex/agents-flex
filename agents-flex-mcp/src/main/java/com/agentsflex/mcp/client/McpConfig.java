@@ -101,7 +101,15 @@ public class McpConfig {
 
         public String getTransportOrType() {
             String result = StringUtil.hasText(transport) ? transport : type;
-            return StringUtil.hasText(result) ? result : DEFAULT_TRANSPORT_TYPE;
+            if (StringUtil.hasText(result)) {
+                return result;
+            }
+
+            if (StringUtil.hasText(url)) {
+                return "http";
+            }
+
+            return DEFAULT_TRANSPORT_TYPE;
         }
 
         public String getCommand() {
