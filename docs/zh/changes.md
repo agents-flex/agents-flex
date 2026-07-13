@@ -1,5 +1,28 @@
 # Agents-Flex ChangeLog
 
+## v2.2.0 20260713
+- refactor(config): handle url-based transport type fallback in McpConfig
+- refactor(mcp): update schema parsing to use Map instead of JsonSchema object
+- refactor(client): update HTTP transport customization and schema handling
+- chore(build): update mcp version from 1.1.3 to 2.0.0
+- feat(toolcall): enhance JSON parsing with JavaScript expression support
+- docs(getting-started): update agents-flex-bom version to 2.1.9
+- fix(core): prevent BigInteger overflow when converting BigDecima
+- feat(message): add file URL support to user messages and chat configuration
+- feat(openai): add media type support configuration for chat message serialization
+- fix(chat): correct boolean logic for media support checks
+- feat: add Tavily provider to websearch developer docs
+- feat: add Tavily as commented-out option in websearch demo
+- feat: add TavilySearchProvider to websearch module
+- style(docs): adjust responsive design and visual elements
+- docs(readme): update readme content structure
+- feat(docs): redesign homepage with custom theme and visual elements
+- docs(readme): update banners and add language toggle links
+- docs(readme): update documentation with comprehensive framework overview
+- feat: add LiteLLM as AI gateway provider
+- feat(util): add comprehensive string validation utilities and tests
+
+
 ## v2.1.9 20260625
 - docs(audio): add documentation for audio streaming and recording features
 - test(openai): update OpenAI chat model test with context attributes and debug logging
