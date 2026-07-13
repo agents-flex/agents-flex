@@ -44,10 +44,12 @@ public class DefaultChatMemory implements ChatMemory {
             throw new IllegalArgumentException("count must be greater than 0");
         }
         if (count >= messages.size()) {
-            // 返回副本，避免修改原始消息
+            // 返回副本，避免外部修改污染内部状态
             return new ArrayList<>(messages);
         } else {
-            return messages.subList(messages.size() - count, messages.size());
+            // 同样返回副本：subList() 返回的是原列表视图，
+            // 调用方对其 set/add/remove 会直接修改内部 messages
+            return new ArrayList<>(messages.subList(messages.size() - count, messages.size()));
         }
     }
 
