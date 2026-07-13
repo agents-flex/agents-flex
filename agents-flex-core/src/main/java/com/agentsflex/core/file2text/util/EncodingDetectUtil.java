@@ -113,6 +113,7 @@ public class EncodingDetectUtil {
         int read = pbis.read(detectBytes);
 
         String charsetName;
+        int bomLength = 0;
         if (read <= 0) {
             charsetName = StandardCharsets.UTF_8.name();
         } else {
@@ -120,6 +121,7 @@ public class EncodingDetectUtil {
             String bomCharset = detectBom(detectBytes, read);
             if (bomCharset != null) {
                 charsetName = bomCharset;
+                bomLength = detectBomLength(detectBytes, read);
             } else {
                 // 2. ICU4J 自动检测
                 charsetName = detectCharsetICU(detectBytes, read, confidenceThreshold);
@@ -128,7 +130,7 @@ public class EncodingDetectUtil {
 
         // 推回已读取字节，保证流式读取完整数据
         if (read > 0) {
-            pbis.unread(detectBytes, 0, read);
+            pbis.unread(detectBytes, bomLength, read - bomLength);
         }
 
         return new InputStreamReader(pbis, Charset.forName(charsetName));
@@ -155,17 +157,6 @@ public class EncodingDetectUtil {
      * BOM 检测（含 UTF-8/16/32）
      */
     private static String detectBom(byte[] bytes, int length) {
-        if (length >= 3 && (bytes[0] & 0xFF) == 0xEF
-            && (bytes[1] & 0xFF) == 0xBB
-            && (bytes[2] & 0xFF) == 0xBF) {
-            return StandardCharsets.UTF_8.name();
-        }
-        if (length >= 2 && (bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xFE) {
-            return "UTF-16LE";
-        }
-        if (length >= 2 && (bytes[0] & 0xFF) == 0xFE && (bytes[1] & 0xFF) == 0xFF) {
-            return "UTF-16BE";
-        }
         if (length >= 4 && (bytes[0] & 0xFF) == 0xFF
             && (bytes[1] & 0xFF) == 0xFE
             && (bytes[2] & 0xFF) == 0x00
@@ -178,7 +169,29 @@ public class EncodingDetectUtil {
             && (bytes[3] & 0xFF) == 0xFF) {
             return "UTF-32BE";
         }
+        if (length >= 3 && (bytes[0] & 0xFF) == 0xEF
+            && (bytes[1] & 0xFF) == 0xBB
+            && (bytes[2] & 0xFF) == 0xBF) {
+            return StandardCharsets.UTF_8.name();
+        }
+        if (length >= 2 && (bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xFE) {
+            return "UTF-16LE";
+        }
+        if (length >= 2 && (bytes[0] & 0xFF) == 0xFE && (bytes[1] & 0xFF) == 0xFF) {
+            return "UTF-16BE";
+        }
         return null;
+    }
+
+    private static int detectBomLength(byte[] bytes, int length) {
+        String charset = detectBom(bytes, length);
+        if ("UTF-32LE".equals(charset) || "UTF-32BE".equals(charset)) {
+            return 4;
+        }
+        if (StandardCharsets.UTF_8.name().equals(charset)) {
+            return 3;
+        }
+        return charset == null ? 0 : 2;
     }
 
     /**
