@@ -47,17 +47,17 @@ public class McpTool implements Tool {
 
     @Override
     public Parameter[] getParameters() {
-        McpSchema.JsonSchema inputSchema = mcpOriginalTool.inputSchema();
+        Map<String, Object> inputSchema = mcpOriginalTool.inputSchema();
         if (inputSchema == null) {
             return new Parameter[0];
         }
 
-        Map<String, Object> properties = inputSchema.properties();
+        @SuppressWarnings("unchecked") Map<String, Object> properties = (Map<String, Object>) inputSchema.get("properties");
         if (properties == null || properties.isEmpty()) {
             return new Parameter[0];
         }
 
-        List<String> required = inputSchema.required();
+        @SuppressWarnings("unchecked") List<String> required = (List<String>) inputSchema.get("required");
         if (required == null) required = Collections.emptyList();
 
         Parameter[] parameters = new Parameter[properties.size()];
