@@ -75,18 +75,21 @@ public final class Retryer {
             throw new IllegalArgumentException("Task must not be null");
         }
 
-        long deadline = totalTimeoutMs > 0 ? System.currentTimeMillis() + totalTimeoutMs : Long.MAX_VALUE;
+        long startNanos = System.nanoTime();
+        long timeoutNanos = totalTimeoutMs > 0
+            ? TimeUnit.MILLISECONDS.toNanos(totalTimeoutMs)
+            : Long.MAX_VALUE;
         long currentDelay = initialDelayMs;
         Exception lastException = null;
 
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
-            if (Thread.interrupted()) {
+            if (Thread.currentThread().isInterrupted()) {
                 throw new RetryException(
                     "Retry interrupted at attempt " + attempt + " for: " + operationName,
                     new InterruptedException());
             }
 
-            if (System.currentTimeMillis() > deadline) {
+            if (isTimedOut(startNanos, timeoutNanos)) {
                 throw new RetryException(
                     "Retry deadline exceeded after " + attempt + " attempts for: " + operationName,
                     new java.util.concurrent.TimeoutException());
@@ -94,9 +97,14 @@ public final class Retryer {
 
             try {
                 T result = task.call();
+                if (isTimedOut(startNanos, timeoutNanos)) {
+                    throw new RetryException(
+                        "Retry deadline exceeded after " + (attempt + 1) + " attempts for: " + operationName,
+                        new java.util.concurrent.TimeoutException());
+                }
                 if (attempt < maxRetries && retryOnResult.test(result)) {
                     lastException = new RuntimeException("Retry triggered by result predicate");
-                    sleepSafely(Math.min(currentDelay, deadline - System.currentTimeMillis()));
+                    sleepSafely(Math.min(currentDelay, remainingMillis(startNanos, timeoutNanos)));
                     if (exponentialBackoff) {
                         currentDelay = Math.min(currentDelay * 2, maxDelayMs);
                     }
@@ -106,7 +114,7 @@ public final class Retryer {
             } catch (Exception e) {
                 lastException = e;
                 if (attempt < maxRetries && retryOnException.test(e)) {
-                    sleepSafely(Math.min(currentDelay, deadline - System.currentTimeMillis()));
+                    sleepSafely(Math.min(currentDelay, remainingMillis(startNanos, timeoutNanos)));
                     if (exponentialBackoff) {
                         currentDelay = Math.min(currentDelay * 2, maxDelayMs);
                     }
@@ -147,6 +155,18 @@ public final class Retryer {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted during retry backoff", e);
         }
+    }
+
+    private boolean isTimedOut(long startNanos, long timeoutNanos) {
+        return timeoutNanos != Long.MAX_VALUE && System.nanoTime() - startNanos >= timeoutNanos;
+    }
+
+    private long remainingMillis(long startNanos, long timeoutNanos) {
+        if (timeoutNanos == Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        long remainingNanos = timeoutNanos - (System.nanoTime() - startNanos);
+        return remainingNanos <= 0 ? 0 : TimeUnit.NANOSECONDS.toMillis(remainingNanos);
     }
 
 
