@@ -1,6 +1,7 @@
 package com.agentsflex.mcp.client;
 
 import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutor;
 import io.modelcontextprotocol.client.McpSyncClient;
@@ -377,16 +378,17 @@ class McpClientManagerTest {
         });
 
 
-        Tool mcpTool = mcpClientManager.getMcpTool("everything", "add");
+        Tool mcpTool = mcpClientManager.getMcpTool("everything", "get-sum");
 
         if (mcpTool == null) {
             return;
         }
 
-        System.out.println(mcpTool);
+        Parameter[] parameters = mcpTool.getParameters();
+        System.out.println(parameters);
 
         ToolExecutor toolExecutor = new ToolExecutor(mcpTool
-            , new ToolCall("add", "add", "{\"a\":1,\"b\":2}"));
+            , new ToolCall("get-sum", "get-sum", "{\"a\":1,\"b\":2}"));
 
         Object result = toolExecutor.execute();
 

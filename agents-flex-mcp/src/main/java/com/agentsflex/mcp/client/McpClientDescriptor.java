@@ -22,6 +22,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -92,7 +93,10 @@ public class McpClientDescriptor {
             this.managedTransport = transport;
 
             McpSyncClient mcpSyncClient = McpClient.sync(transport.getTransport())
-//                .requestTimeout(java.time.Duration.ofSeconds(20)) // default 20 seconds
+                .requestTimeout(Duration.ofSeconds(20)) // default 20 seconds
+//                .roots(true)       // Enable roots capability
+//                .sampling()        // Enable sampling capability
+//                .elicitation()     // Enable elicitation capability
                 .build();
 
             mcpSyncClient.initialize();

@@ -35,9 +35,9 @@ public class HttpSseTransportFactory implements McpTransportFactory {
 
         HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder(url)
             .jsonMapper(McpJsonDefaults.getMapper())
-            .customizeRequest(request -> {
-                if (spec.getHeaders() != null) {
-                    spec.getHeaders().forEach(request::setHeader);
+            .httpRequestCustomizer((builder, method, endpoint, body, context) -> {
+                if (spec.getHeaders() != null){
+                    spec.getHeaders().forEach(builder::setHeader);
                 }
             })
             .build();

@@ -35,9 +35,9 @@ public class HttpStreamTransportFactory implements McpTransportFactory {
 
         HttpClientStreamableHttpTransport.Builder builder = HttpClientStreamableHttpTransport.builder(url)
 //            .endpoint("") 不允许设置为空字符串
-            .customizeRequest(request -> {
+            .httpRequestCustomizer((builder1, method, endpoint, body, context) -> {
                 if (spec.getHeaders() != null) {
-                    spec.getHeaders().forEach(request::setHeader);
+                    spec.getHeaders().forEach(builder1::header);
                 }
             });
 
