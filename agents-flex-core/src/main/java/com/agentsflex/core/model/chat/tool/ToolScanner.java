@@ -22,7 +22,9 @@ import com.agentsflex.core.util.ClassUtil;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 扫描带有 {@link ToolDef} 注解的方法，并将其转换为 {@link Tool} 实例。
@@ -52,26 +54,32 @@ public class ToolScanner {
     }
 
     private static List<Tool> doScan(Class<?> clazz, Object object, String... methodNames) {
-        clazz = ClassUtil.getUsefulClass(clazz);
-        List<Method> methodList = ClassUtil.getAllMethods(clazz, method -> {
-            if (object == null && !Modifier.isStatic(method.getModifiers())) {
-                return false;
-            }
-            if (method.getAnnotation(ToolDef.class) == null) {
-                return false;
-            }
-            return methodNames.length == 0 || ArrayUtil.contains(methodNames, method.getName());
-        });
-
         List<Tool> tools = new ArrayList<>();
-        for (Method method : methodList) {
-            JavaMethodTool tool = new JavaMethodTool();
-            tool.setClazz(clazz);
-            tool.setMethod(method);
-            if (!Modifier.isStatic(method.getModifiers())) {
-                tool.setObject(object);
+        Set<String> scannedSignatures = new HashSet<>();
+        for (Class<?> usefulClass : ClassUtil.getUsefulClasses(clazz)) {
+            List<Method> methodList = ClassUtil.getAllMethods(usefulClass, method -> {
+                if (object == null && !Modifier.isStatic(method.getModifiers())) {
+                    return false;
+                }
+                if (method.getAnnotation(ToolDef.class) == null) {
+                    return false;
+                }
+                return methodNames.length == 0 || ArrayUtil.contains(methodNames, method.getName());
+            });
+
+            for (Method method : methodList) {
+                String signature = method.getName() + java.util.Arrays.toString(method.getParameterTypes());
+                if (!scannedSignatures.add(signature)) {
+                    continue;
+                }
+                JavaMethodTool tool = new JavaMethodTool();
+                tool.setClazz(usefulClass);
+                tool.setMethod(method);
+                if (!Modifier.isStatic(method.getModifiers())) {
+                    tool.setObject(object);
+                }
+                tools.add(tool);
             }
-            tools.add(tool);
         }
         return tools;
     }

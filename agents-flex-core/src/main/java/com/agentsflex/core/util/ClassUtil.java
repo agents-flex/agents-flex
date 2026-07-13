@@ -65,25 +65,33 @@ public class ClassUtil {
         return Proxy.isProxyClass(clazz);
     }
 
-    private static <T> Class<T> getJdkProxySuperClass(Class<T> clazz) {
-        final Class<?> proxyClass = Proxy.getProxyClass(clazz.getClassLoader(), clazz.getInterfaces());
-        return (Class<T>) proxyClass.getInterfaces()[0];
+    public static <T> Class<T> getUsefulClass(Class<T> clazz) {
+        return (Class<T>) getUsefulClasses(clazz).get(0);
     }
 
-    public static <T> Class<T> getUsefulClass(Class<T> clazz) {
-        if (isProxy(clazz)) {
-            return getJdkProxySuperClass(clazz);
-        }
-
+    public static List<Class<?>> getUsefulClasses(Class<?> clazz) {
         //ControllerTest$ServiceTest$$EnhancerByGuice$$40471411#hello   -------> Guice
         //com.demo.blog.Blog$$EnhancerByCGLIB$$69a17158  ----> CGLIB
         //io.jboot.test.app.TestAppListener_$$_jvstb9f_0 ------> javassist
         final String name = clazz.getName();
-        if (name.contains(ENHANCER_BY) || name.contains(JAVASSIST_BY)) {
-            return (Class<T>) clazz.getSuperclass();
+        if (name.contains(ENHANCER_BY) || name.contains(JAVASSIST_BY) || isFrameworkProxy(clazz)) {
+            return Arrays.<Class<?>>asList(clazz.getSuperclass());
         }
 
-        return clazz;
+        if (Proxy.isProxyClass(clazz)) {
+            return Arrays.asList(clazz.getInterfaces());
+        }
+
+        return Arrays.<Class<?>>asList(clazz);
+    }
+
+    private static boolean isFrameworkProxy(Class<?> clazz) {
+        for (Class<?> cls : clazz.getInterfaces()) {
+            if (PROXY_CLASS_NAMES.contains(cls.getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
