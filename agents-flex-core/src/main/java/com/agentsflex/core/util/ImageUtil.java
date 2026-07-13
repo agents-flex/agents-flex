@@ -82,9 +82,17 @@ public class ImageUtil {
      * 根据文件名（或 URL）提取扩展名，并返回对应的 MIME 类型。
      * 优先使用内置映射，其次尝试 JDK 的 guessContentTypeFromName，最后 fallback 到 image/jpeg。
      */
-    private static String guessMimeTypeFromName(String name) {
+    static String guessMimeTypeFromName(String name) {
         if (name == null || name.isEmpty()) {
             return "image/jpeg";
+        }
+
+        int queryIndex = name.indexOf('?');
+        int fragmentIndex = name.indexOf('#');
+        int suffixIndex = queryIndex < 0 ? fragmentIndex
+            : fragmentIndex < 0 ? queryIndex : Math.min(queryIndex, fragmentIndex);
+        if (suffixIndex >= 0) {
+            name = name.substring(0, suffixIndex);
         }
 
         // 提取扩展名（最后一个 '.' 之后的部分）
@@ -114,7 +122,7 @@ public class ImageUtil {
 
     public static String getMimeTypeFromExtension(String ext) {
         if (ext == null) return null;
-        switch (ext.toLowerCase()) {
+        switch (ext.toLowerCase(Locale.ROOT)) {
             case "jpg":
             case "jpeg":
                 return "image/jpeg";
