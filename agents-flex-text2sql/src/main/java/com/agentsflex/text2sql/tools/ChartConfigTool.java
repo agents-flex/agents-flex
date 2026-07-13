@@ -153,8 +153,26 @@ public class ChartConfigTool {
             description = "🏷️ Optional: Chart title. Auto-generated from data if empty.")
         String title,
 
-        @ToolParam(name = "config",
-            description = "⚙️ Optional: Advanced ECharts config overrides. JSON object like {\"tooltip\":{\"formatter\":\"{b}: {c}\"}, \"legend\":{\"show\":true}}")
+        @ToolParam(
+            name = "config",
+            description = "⚙️ Optional: Advanced ECharts configuration overrides.\n" +
+                "\n" +
+                "Requirements:\n" +
+                "- Must be a valid JSON object.\n" +
+                "- Only JSON data types are allowed: object, array, string, number, boolean, null.\n" +
+                "- JavaScript functions are NOT supported. Never generate function expressions, arrow functions, or callbacks.\n" +
+                "- Properties requiring functions in ECharts should be omitted or replaced with string templates when supported.\n" +
+                "\n" +
+                "Example:\n" +
+                "{\n" +
+                "  \"tooltip\": {\n" +
+                "    \"formatter\": \"{b}: {c}\"\n" +
+                "  },\n" +
+                "  \"legend\": {\n" +
+                "    \"show\": true\n" +
+                "  }\n" +
+                "}"
+        )
         Map<String, Object> config
     ) {
         try {
