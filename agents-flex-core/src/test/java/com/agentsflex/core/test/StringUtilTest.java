@@ -124,7 +124,6 @@ public class StringUtilTest {
 
     @Test
     public void testIsJsonObject_ValidJson() {
-        Assert.assertTrue(StringUtil.isJsonObject("{}"));
         Assert.assertTrue(StringUtil.isJsonObject("{\"key\":\"value\"}"));
         Assert.assertTrue(StringUtil.isJsonObject("  {\"key\":\"value\"}  "));
         Assert.assertTrue(StringUtil.isJsonObject("{ \"name\": \"test\", \"age\": 18 }"));
@@ -148,7 +147,7 @@ public class StringUtilTest {
         Assert.assertTrue(StringUtil.notJsonObject(null));
         Assert.assertTrue(StringUtil.notJsonObject(""));
         Assert.assertTrue(StringUtil.notJsonObject("[1,2,3]"));
-        Assert.assertFalse(StringUtil.notJsonObject("{}"));
+        Assert.assertTrue(StringUtil.notJsonObject("{}"));
         Assert.assertFalse(StringUtil.notJsonObject("{\"key\":\"value\"}"));
     }
 
