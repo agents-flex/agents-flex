@@ -117,7 +117,7 @@ public class JSONUtil {
             return ((Number) result).longValue();
         }
         if (result instanceof String) {
-            return Long.getLong((String) result);
+            return Long.parseLong((String) result);
         }
         throw new IllegalArgumentException("Invalid JSON path result type: " + result.getClass().getName());
     }
@@ -175,7 +175,7 @@ public class JSONUtil {
         if (result instanceof Number) {
             return ((Number) result).longValue();
         } else if (result instanceof String) {
-            return Long.getLong((String) result);
+            return Long.parseLong((String) result);
         } else if (result == null) {
             return null;
         }
