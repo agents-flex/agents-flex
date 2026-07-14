@@ -121,6 +121,17 @@
         </dependency>
         <!--image model end-->
 
+        <!--video model start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-video-aliyun</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-video-volcengine</artifactId>
+        </dependency>
+        <!--video model end-->
+
 
         <!--chatModel start-->
         <dependency>

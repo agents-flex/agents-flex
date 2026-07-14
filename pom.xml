@@ -47,6 +47,7 @@
         <module>agents-flex-store</module>
         <module>agents-flex-spring-boot-starter</module>
         <module>agents-flex-image</module>
+        <module>agents-flex-video</module>
         <module>agents-flex-rerank</module>
         <module>agents-flex-search-engine</module>
         <module>agents-flex-embedding</module>
@@ -231,6 +232,19 @@
                 <version>${revision}</version>
             </dependency>
             <!--image model end-->
+
+            <!--video model start-->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-video-aliyun</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-video-volcengine</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!--video model end-->
 
 
             <!--chatModel start-->

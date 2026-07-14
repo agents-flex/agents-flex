@@ -110,6 +110,16 @@ export default defineConfig({
                 ]
             },
             {
+                text: '视频模块',
+                items: [
+                    {text: '视频生成', link: '/zh/video/video-generation'},
+                    {text: '快速开始', link: '/zh/video/getting-started'},
+                    {text: '阿里云视频生成', link: '/zh/video/aliyun'},
+                    {text: 'HappyHorse 视频生成', link: '/zh/video/happyhorse'},
+                    {text: '火山引擎视频生成', link: '/zh/video/volcengine'},
+                ]
+            },
+            {
                 text: '智能体',
                 items: [
                     {text: 'ReAct Agent', link: '/zh/agent/react-agent'},
