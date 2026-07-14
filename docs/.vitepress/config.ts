@@ -121,18 +121,23 @@ export default defineConfig({
                 ]
             },
             {
+                text: '图片模块',
+                items: [
+                    {text: '图片生成', link: '/zh/image/image-generation'},
+                    {text: '快速开始', link: '/zh/image/getting-started'},
+                    {text: '阿里云百炼', link: '/zh/image/aliyun'},
+                    {text: 'OpenAI 与兼容服务', link: '/zh/image/openai-compatible'},
+                    {text: '硅基流动', link: '/zh/image/siliconflow'},
+                    {text: 'Stability AI', link: '/zh/image/stability'},
+                    {text: '腾讯混元', link: '/zh/image/tencent'},
+                    {text: '火山引擎', link: '/zh/image/volcengine'},
+                ]
+            },
+            {
                 text: '智能体',
                 items: [
                     {text: 'ReAct Agent', link: '/zh/agent/react-agent'},
                     {text: 'Routing Agent（多智能体路由）', link: '/zh/agent/routing-agent'},
-                ]
-            },
-            {
-                text: '更多模型',
-                items: [
-                    // {text: '图片模型', link: '/zh/models/image'},
-                    {text: 'Rerank 重排模型', link: '/zh/models/rerank'},
-                    {text: 'Embedding 嵌入模型', link: '/zh/models/embedding'},
                 ]
             },
             {
@@ -144,6 +149,8 @@ export default defineConfig({
                     {text: 'file2text', link: '/zh/rag/file2text'},
                     {text: '文档分割 Splitter', link: '/zh/rag/splitter'},
                     {text: '搜索引擎', link: '/zh/rag/search-engine'},
+                    {text: 'Rerank 重排模型', link: '/zh/models/rerank'},
+                    {text: 'Embedding 嵌入模型', link: '/zh/models/embedding'},
                 ]
             },
             {
