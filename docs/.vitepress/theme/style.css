@@ -350,6 +350,17 @@
     border-radius: 12px;
 }
 
+.af-capability__visual {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    margin-bottom: 20px;
+    border: 1px solid var(--af-line);
+    border-radius: 8px;
+    object-fit: cover;
+}
+
 .af-capability__tag {
     display: inline-flex;
     padding: 6px 10px;
@@ -482,6 +493,50 @@
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
+.af-example-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 40px 28px;
+}
+
+.af-example {
+    min-width: 0;
+}
+
+.af-example__header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+    min-height: 86px;
+    margin-bottom: 14px;
+}
+
+.af-example__header h3 {
+    margin: 12px 0 0;
+    color: var(--af-ink);
+    font-size: 21px;
+    letter-spacing: 0;
+}
+
+.af-example__link {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 44px;
+    color: var(--af-blue);
+    font-size: 14px;
+    font-weight: 750;
+}
+
+.af-code--example {
+    width: 100%;
+    min-height: 360px;
+    margin-top: 0;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
 .af-module-cloud a {
     display: inline-flex;
     align-items: center;
@@ -575,7 +630,8 @@
 
     .af-metrics,
     .af-capability-grid,
-    .af-flow {
+    .af-flow,
+    .af-example-grid {
         grid-template-columns: 1fr;
     }
 
@@ -590,5 +646,13 @@
 
     .af-code {
         font-size: 13px;
+    }
+
+    .af-example__header {
+        min-height: auto;
+    }
+
+    .af-code--example {
+        min-height: auto;
     }
 }
