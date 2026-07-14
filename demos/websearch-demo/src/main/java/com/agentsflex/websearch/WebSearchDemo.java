@@ -4,7 +4,7 @@ package com.agentsflex.websearch;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.chat.log.IChatMessageLogger;
@@ -17,7 +17,6 @@ import com.agentsflex.model.chat.openai.OpenAIChatModel;
 import com.agentsflex.tool.commons.TodoWriteTool;
 import com.agentsflex.tool.commons.WebFetchTool;
 import com.agentsflex.websearch.baidu.BaiduQianfanSearchProvider;
-import com.agentsflex.websearch.tavily.TavilySearchProvider;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
 
@@ -31,13 +30,13 @@ public class WebSearchDemo {
 
         ChatMessageLogger.setLogger(new IChatMessageLogger() {
             @Override
-            public void logRequest(ChatConfig config, String message) {
+            public void logRequest(BaseChatConfig config, String message) {
 //                System.out.println("request >>>>> " + JSON.toJSONString(JSON.parseObject(message), JSONWriter.Feature.PrettyFormat));
                 System.out.println("request >>>>> " + message);
             }
 
             @Override
-            public void logResponse(ChatConfig config, String message) {
+            public void logResponse(BaseChatConfig config, String message) {
 
             }
         });

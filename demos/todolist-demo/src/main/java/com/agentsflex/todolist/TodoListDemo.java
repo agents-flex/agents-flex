@@ -3,7 +3,7 @@ package com.agentsflex.todolist;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.chat.log.IChatMessageLogger;
@@ -28,13 +28,13 @@ public class TodoListDemo {
 
         ChatMessageLogger.setLogger(new IChatMessageLogger() {
             @Override
-            public void logRequest(ChatConfig config, String message) {
+            public void logRequest(BaseChatConfig config, String message) {
 //                System.out.println("request >>>>> " + JSON.toJSONString(JSON.parseObject(message), JSONWriter.Feature.PrettyFormat));
                 System.out.println("request >>>>> " + message);
             }
 
             @Override
-            public void logResponse(ChatConfig config, String message) {
+            public void logResponse(BaseChatConfig config, String message) {
 
             }
         });
