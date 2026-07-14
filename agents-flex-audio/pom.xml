@@ -17,7 +17,7 @@
     <modules>
         <module>agents-flex-audio-aliyun</module>
         <module>agents-flex-audio-tencent</module>
-        <module>agents-flex-audio-volc</module>
+        <module>agents-flex-audio-volcengine</module>
     </modules>
 
     <properties>

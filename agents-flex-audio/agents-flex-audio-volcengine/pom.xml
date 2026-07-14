@@ -9,7 +9,7 @@
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-audio-volc</name>
+    <name>agents-flex-audio-volcengine</name>
     <dependencies>
         <dependency>
             <groupId>com.agentsflex</groupId>
@@ -21,7 +21,7 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-    <artifactId>agents-flex-audio-volc</artifactId>
+    <artifactId>agents-flex-audio-volcengine</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

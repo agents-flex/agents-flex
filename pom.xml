@@ -177,7 +177,7 @@
 
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-audio-volc</artifactId>
+                <artifactId>agents-flex-audio-volcengine</artifactId>
                 <version>${revision}</version>
             </dependency>
 
