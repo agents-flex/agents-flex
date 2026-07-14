@@ -193,7 +193,7 @@ public class MathCalculatorTools {
     // ========================================================================
 
     @ToolDef(
-        name = "calculateAggregate",
+        name = "calculate_aggregate",
         description = "" +
             "=== ⚠️ MANDATORY: Aggregate Calculations MUST Use This Tool ===\n\n" +
 
