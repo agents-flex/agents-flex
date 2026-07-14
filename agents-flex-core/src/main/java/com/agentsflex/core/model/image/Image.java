@@ -17,13 +17,14 @@ package com.agentsflex.core.model.image;
 
 import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.util.IOUtil;
+import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.StringUtil;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.Base64;
 
 public class Image {
+
 
     /**
      * The base64-encoded JSON of the generated image
@@ -40,15 +41,21 @@ public class Image {
      */
     private byte[] bytes;
 
+    /**
+     * The mime type of image
+     */
+    private String mimeType;
+
     public static Image ofUrl(String url) {
         Image image = new Image();
         image.setUrl(url);
         return image;
     }
 
-    public static Image ofBytes(byte[] bytes) {
+    public static Image ofBytes(byte[] bytes, String mimeType) {
         Image image = new Image();
         image.setBytes(bytes);
+        image.mimeType = mimeType;
         return image;
     }
 
@@ -80,6 +87,24 @@ public class Image {
         return bytes;
     }
 
+    public String getUrlOrBase64() {
+        if (StringUtil.hasText(this.url)) {
+            return this.url;
+        }
+
+        if (this.bytes != null && this.bytes.length > 0) {
+            return ImageUtil.imageBytesToDataUri(bytes, mimeType);
+        }
+
+        if (StringUtil.hasText(this.b64Json)) {
+            byte[] bytes = Base64.getDecoder().decode(b64Json);
+            return ImageUtil.imageBytesToDataUri(bytes, mimeType);
+        }
+
+        return null;
+    }
+
+
     public void writeToFile(File file) {
         if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
             throw new IllegalStateException("Can not mkdirs for path: " + file.getParentFile().getAbsolutePath());
@@ -100,7 +125,8 @@ public class Image {
         return "Image{" +
             "b64Json='" + b64Json + '\'' +
             ", url='" + url + '\'' +
-            ", bytes=" + Arrays.toString(bytes) +
+//            ", bytes=" + Arrays.toString(bytes) +
+            ", mimeType='" + mimeType + '\'' +
             '}';
     }
 }

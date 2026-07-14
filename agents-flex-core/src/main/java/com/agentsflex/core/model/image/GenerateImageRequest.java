@@ -15,11 +15,17 @@
  */
 package com.agentsflex.core.model.image;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class GenerateImageRequest extends BaseImageRequest {
     private String prompt;
     private String negativePrompt;
     private String quality;
     private String style;
+
+    // 参考图片
+    private List<Image> refImages;
 
     public String getPrompt() {
         return prompt;
@@ -51,6 +57,28 @@ public class GenerateImageRequest extends BaseImageRequest {
 
     public void setStyle(String style) {
         this.style = style;
+    }
+
+    public List<Image> getRefImages() {
+        return refImages;
+    }
+
+    public void setRefImages(List<Image> refImages) {
+        this.refImages = refImages;
+    }
+
+    public void addRefImage(Image image) {
+        if (this.refImages == null) {
+            this.refImages = new ArrayList<>();
+        } else {
+            this.refImages.add(image);
+        }
+    }
+
+    public void removeRefImage(Image image) {
+        if (this.refImages != null) {
+            this.refImages.remove(image);
+        }
     }
 }
 

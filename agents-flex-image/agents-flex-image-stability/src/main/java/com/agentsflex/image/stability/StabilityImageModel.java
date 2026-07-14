@@ -51,7 +51,7 @@ public class StabilityImageModel implements ImageModel {
              ResponseBody body = response.body()) {
             if (response.isSuccessful() && body != null) {
                 ImageResponse imageResponse = new ImageResponse();
-                imageResponse.addImage(body.bytes());
+                imageResponse.addImage(body.bytes(), "image/jpeg");
                 return imageResponse;
             }
         } catch (IOException e) {

@@ -51,12 +51,12 @@ public class ImageResponse extends Metadata {
         this.images.add(Image.ofUrl(url));
     }
 
-    public void addImage(byte[] bytes) {
+    public void addImage(byte[] bytes, String mimeType) {
         if (this.images == null) {
             this.images = new ArrayList<>();
         }
 
-        this.images.add(Image.ofBytes(bytes));
+        this.images.add(Image.ofBytes(bytes, mimeType));
     }
 
     public boolean isError() {
