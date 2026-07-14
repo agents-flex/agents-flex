@@ -35,7 +35,7 @@
 ```
 
 
-> **提示**：如果使用腾讯云，替换为 `agents-flex-audio-tencent`，使用火山引擎，替换为 `agents-flex-audio-volc`
+> **提示**：如果使用腾讯云，替换为 `agents-flex-audio-tencent`，使用火山引擎，替换为 `agents-flex-audio-volcengine`
 
 
 ## 第二步：配置 API 密钥

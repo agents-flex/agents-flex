@@ -5,7 +5,7 @@
 
 ## 概述
 
-`agents-flex-audio-volc` 是 Agents-Flex 框架的火山引擎音频服务实现模块，基于火山引擎智能语音服务提供：
+`agents-flex-audio-volcengine` 是 Agents-Flex 框架的火山引擎音频服务实现模块，基于火山引擎智能语音服务提供：
 
 - **语音识别（STT）**：将音频文件转换为文本，使用大模型识别引擎
 - **语音合成（TTS）**：将文本转换为自然流畅的语音，支持豆包语音大模型 2.0
@@ -26,7 +26,7 @@
 ## 模块架构
 
 ```
-agents-flex-audio-volc/
+agents-flex-audio-volcengine/
 ├── src/main/java/com/agentsflex/audio/volc/
 │   ├── BaseVolcConfig.java                # 基础配置类
 │   ├── VolcSpeechToTextConfig.java        # STT 配置类
@@ -114,7 +114,7 @@ source ~/.zshrc  # 或 source ~/.bashrc
     <!-- 火山引擎音频模块 -->
     <dependency>
         <groupId>com.agents-flex</groupId>
-        <artifactId>agents-flex-audio-volc</artifactId>
+        <artifactId>agents-flex-audio-volcengine</artifactId>
         <version>${agents-flex.version}</version>
     </dependency>
 </dependencies>
