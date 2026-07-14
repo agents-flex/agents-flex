@@ -46,9 +46,9 @@ import java.util.List;
  *   <li>结果返回给调用方</li>
  * </ol>
  *
- * @param <T> 具体的配置类型，必须是 {@link ChatConfig} 的子类
+ * @param <T> 具体的配置类型，必须是 {@link BaseChatConfig} 的子类
  */
-public abstract class BaseChatModel<T extends ChatConfig> implements ChatModel {
+public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatModel {
 
     /**
      * 聊天模型配置，包含 API Key、Endpoint、Model 等信息

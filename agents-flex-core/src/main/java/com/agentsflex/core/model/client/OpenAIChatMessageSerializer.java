@@ -16,7 +16,7 @@
 package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.*;
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.tool.ProviderTool;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.Parameter;
@@ -38,7 +38,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
      * @return 序列化后的消息数组，若输入为空则返回空列表
      */
     @Override
-    public List<Map<String, Object>> serializeMessages(List<Message> messages, ChatConfig config) {
+    public List<Map<String, Object>> serializeMessages(List<Message> messages, BaseChatConfig config) {
         if (messages == null || messages.isEmpty()) {
             return null;
         }
@@ -46,7 +46,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         return buildMessageList(messages, config);
     }
 
-    protected List<Map<String, Object>> buildMessageList(List<Message> messages, ChatConfig config) {
+    protected List<Map<String, Object>> buildMessageList(List<Message> messages, BaseChatConfig config) {
         List<Map<String, Object>> messageList = new ArrayList<>(messages.size());
         messages.forEach(message -> {
             Map<String, Object> objectMap = new HashMap<>(2);
@@ -64,7 +64,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         return messageList;
     }
 
-    protected void buildToolMessageObject(Map<String, Object> objectMap, ToolMessage message, ChatConfig config) {
+    protected void buildToolMessageObject(Map<String, Object> objectMap, ToolMessage message, BaseChatConfig config) {
         if (config.isSupportToolMessage()) {
             objectMap.put("role", "tool");
             objectMap.put("content", message.getTextContent());
@@ -81,17 +81,17 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         }
     }
 
-    protected void buildSystemMessageObject(Map<String, Object> objectMap, SystemMessage message, ChatConfig config) {
+    protected void buildSystemMessageObject(Map<String, Object> objectMap, SystemMessage message, BaseChatConfig config) {
         objectMap.put("role", "system");
         objectMap.put("content", message.getTextContent());
     }
 
-    protected void buildUserMessageObject(Map<String, Object> objectMap, UserMessage message, ChatConfig config) {
+    protected void buildUserMessageObject(Map<String, Object> objectMap, UserMessage message, BaseChatConfig config) {
         objectMap.put("role", "user");
         objectMap.put("content", buildUserMessageContent(message, config));
     }
 
-    protected void buildAIMessageObject(Map<String, Object> objectMap, AiMessage message, ChatConfig config) {
+    protected void buildAIMessageObject(Map<String, Object> objectMap, AiMessage message, BaseChatConfig config) {
         objectMap.put("role", "assistant");
         objectMap.put("content", message.getTextContent());
 
@@ -132,7 +132,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
     }
 
 
-    protected Object buildUserMessageContent(UserMessage userMessage, ChatConfig config) {
+    protected Object buildUserMessageContent(UserMessage userMessage, BaseChatConfig config) {
         String content = userMessage.getTextContent();
         List<String> imageUrls = userMessage.getImageUrls();
         List<String> audioUrls = userMessage.getAudioUrls();
@@ -190,7 +190,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
      * @return 序列化后的函数定义数组，若输入为空则返回空列表
      */
     @Override
-    public List<Map<String, Object>> serializeTools(List<Tool> tools, ChatConfig config) {
+    public List<Map<String, Object>> serializeTools(List<Tool> tools, BaseChatConfig config) {
         if (tools == null || tools.isEmpty()) {
             return null;
         }
@@ -204,7 +204,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
     }
 
 
-    protected List<Map<String, Object>> buildToolList(List<Tool> tools, ChatConfig config) {
+    protected List<Map<String, Object>> buildToolList(List<Tool> tools, BaseChatConfig config) {
         List<Map<String, Object>> functionList = new ArrayList<>();
         for (Tool tool : tools) {
 

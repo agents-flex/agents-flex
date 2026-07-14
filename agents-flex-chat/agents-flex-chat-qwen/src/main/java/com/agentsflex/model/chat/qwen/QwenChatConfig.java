@@ -15,9 +15,9 @@
  */
 package com.agentsflex.model.chat.qwen;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 
-public class QwenChatConfig extends ChatConfig {
+public class QwenChatConfig extends BaseChatConfig {
 
     private static final String DEFAULT_MODEL = "qwen-turbo";
     private static final String DEFAULT_ENDPOINT = "https://dashscope.aliyuncs.com";

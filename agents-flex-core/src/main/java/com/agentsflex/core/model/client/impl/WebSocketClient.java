@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.client.impl;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.client.StreamClient;
@@ -33,7 +33,7 @@ public class WebSocketClient extends WebSocketListener implements StreamClient {
     private OkHttpClient okHttpClient;
     private WebSocket webSocket;
     private StreamClientListener listener;
-    private ChatConfig config;
+    private BaseChatConfig config;
     private boolean isStop = false;
     private String payload;
 
@@ -58,7 +58,7 @@ public class WebSocketClient extends WebSocketListener implements StreamClient {
     }
 
     @Override
-    public void start(String url, Map<String, String> headers, String payload, StreamClientListener listener, ChatConfig config) {
+    public void start(String url, Map<String, String> headers, String payload, StreamClientListener listener, BaseChatConfig config) {
         if (isStop) {
             throw new IllegalStateException("WebSocketClient has been stopped and cannot be reused.");
         }

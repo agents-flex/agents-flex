@@ -50,7 +50,7 @@ public final class ChatContextHolder {
         Prompt prompt,
         ChatOptions options,
         ChatRequestSpec request,
-        ChatConfig config) {
+        BaseChatConfig config) {
 
         ChatContext ctx = new ChatContext();
         ctx.prompt = prompt;

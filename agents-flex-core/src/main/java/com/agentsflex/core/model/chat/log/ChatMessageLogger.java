@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.chat.log;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 
 public final class ChatMessageLogger {
 
@@ -30,11 +30,11 @@ public final class ChatMessageLogger {
         ChatMessageLogger.logger = logger;
     }
 
-    public static void logRequest(ChatConfig config, String message) {
+    public static void logRequest(BaseChatConfig config, String message) {
         logger.logRequest(config, message);
     }
 
-    public static void logResponse(ChatConfig config, String message) {
+    public static void logResponse(BaseChatConfig config, String message) {
         logger.logResponse(config, message);
     }
 }

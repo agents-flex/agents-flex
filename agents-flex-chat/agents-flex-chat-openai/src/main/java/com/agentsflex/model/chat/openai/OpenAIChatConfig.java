@@ -15,7 +15,7 @@
  */
 package com.agentsflex.model.chat.openai;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.ChatInterceptor;
 import com.agentsflex.core.util.StringUtil;
 
@@ -35,7 +35,7 @@ import java.util.Map;
  * <p>
  * 该配置类专为 OpenAI 兼容 API 设计，适用于 OpenAI 官方、Azure OpenAI 或其他兼容服务。
  */
-public class OpenAIChatConfig extends ChatConfig {
+public class OpenAIChatConfig extends BaseChatConfig {
 
     private static final String DEFAULT_PROVIDER = "openai";
     private static final String DEFAULT_MODEL = "gpt-3.5-turbo";

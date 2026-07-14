@@ -15,13 +15,13 @@
  */
 package com.agentsflex.core.model.client;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 
 import java.util.Map;
 
 public interface StreamClient {
 
-    void start(String url, Map<String, String> headers, String payload, StreamClientListener listener, ChatConfig config);
+    void start(String url, Map<String, String> headers, String payload, StreamClientListener listener, BaseChatConfig config);
 
     void stop();
 }

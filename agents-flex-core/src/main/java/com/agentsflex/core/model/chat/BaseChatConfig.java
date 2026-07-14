@@ -19,7 +19,7 @@ import com.agentsflex.core.model.config.BaseModelConfig;
 
 import java.util.List;
 
-public class ChatConfig extends BaseModelConfig {
+public class BaseChatConfig extends BaseModelConfig {
 
     protected Boolean supportImage;
     protected Boolean supportImageBase64Only; // 某些模型仅支持 base64 格式图片，比如 Ollama 部署的模型，或者某些本地化模型

@@ -22,7 +22,7 @@ import com.agentsflex.core.model.client.OpenAIChatRequestSpecBuilder;
 
 import java.util.List;
 
-public class OpenAICompatibleChatModel<T extends ChatConfig> extends BaseChatModel<T> {
+public class OpenAICompatibleChatModel<T extends BaseChatConfig> extends BaseChatModel<T> {
     /**
      * 构造一个聊天模型实例，不使用实例级拦截器。
      *

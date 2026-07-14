@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.client.impl;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.client.StreamClient;
@@ -34,7 +34,7 @@ public class SseClient extends EventSourceListener implements StreamClient {
     private OkHttpClient okHttpClient;
     private EventSource eventSource;
     private StreamClientListener listener;
-    private ChatConfig config;
+    private BaseChatConfig config;
     private boolean isStop = false;
 
     public SseClient() {
@@ -57,7 +57,7 @@ public class SseClient extends EventSourceListener implements StreamClient {
     }
 
     @Override
-    public void start(String url, Map<String, String> headers, String payload, StreamClientListener listener, ChatConfig config) {
+    public void start(String url, Map<String, String> headers, String payload, StreamClientListener listener, BaseChatConfig config) {
         this.listener = listener;
         this.config = config;
         this.isStop = false;

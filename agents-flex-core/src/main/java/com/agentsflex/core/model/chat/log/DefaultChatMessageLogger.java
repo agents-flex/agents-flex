@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.chat.log;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 
 import java.util.function.Consumer;
 
@@ -32,7 +32,7 @@ public class DefaultChatMessageLogger implements IChatMessageLogger {
     }
 
     @Override
-    public void logRequest(ChatConfig config, String message) {
+    public void logRequest(BaseChatConfig config, String message) {
         if (shouldLog(config)) {
             String provider = getProviderName(config);
             String model = getModelName(config);
@@ -41,7 +41,7 @@ public class DefaultChatMessageLogger implements IChatMessageLogger {
     }
 
     @Override
-    public void logResponse(ChatConfig config, String message) {
+    public void logResponse(BaseChatConfig config, String message) {
         if (shouldLog(config)) {
             String provider = getProviderName(config);
             String model = getModelName(config);
@@ -49,16 +49,16 @@ public class DefaultChatMessageLogger implements IChatMessageLogger {
         }
     }
 
-    private boolean shouldLog(ChatConfig config) {
+    private boolean shouldLog(BaseChatConfig config) {
         return config != null && config.isLogEnabled();
     }
 
-    private String getProviderName(ChatConfig config) {
+    private String getProviderName(BaseChatConfig config) {
         String provider = config.getProvider();
         return provider != null ? provider : "unknow";
     }
 
-    private String getModelName(ChatConfig config) {
+    private String getModelName(BaseChatConfig config) {
         String model = config.getModel();
         return model != null ? model : "unknow";
     }

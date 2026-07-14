@@ -15,13 +15,13 @@
  */
 package com.agentsflex.model.chat.deepseek;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 
 /**
  * @author huangjf
  * @version : v1.0
  */
-public class DeepseekConfig extends ChatConfig {
+public class DeepseekConfig extends BaseChatConfig {
 
     private static final String DEFAULT_MODEL = "deepseek-chat";
     private static final String DEFAULT_ENDPOINT = "https://api.deepseek.com";

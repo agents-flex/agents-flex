@@ -15,9 +15,9 @@
  */
 package com.agentsflex.model.chat.ollama;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 
-public class OllamaChatConfig extends ChatConfig {
+public class OllamaChatConfig extends BaseChatConfig {
 
     private static final String DEFAULT_PROVIDER = "ollama";
     private static final String DEFAULT_ENDPOINT = "https://localhost:11434";

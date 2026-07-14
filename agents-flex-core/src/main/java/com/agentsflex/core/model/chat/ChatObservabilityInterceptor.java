@@ -54,7 +54,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
     @Override
     public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
 
-        ChatConfig config = chatModel.getConfig();
+        BaseChatConfig config = chatModel.getConfig();
 
         if (config == null || !config.isObservabilityEnabled() || !Observability.isEnabled()) {
             return chain.proceed(chatModel, context);
@@ -100,7 +100,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         StreamResponseListener originalListener,
         StreamChain chain) {
 
-        ChatConfig config = chatModel.getConfig();
+        BaseChatConfig config = chatModel.getConfig();
 
         if (config == null || !config.isObservabilityEnabled()) {
             chain.proceed(chatModel, context, originalListener);

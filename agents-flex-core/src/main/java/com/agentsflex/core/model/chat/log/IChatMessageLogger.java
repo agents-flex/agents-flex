@@ -15,10 +15,10 @@
  */
 package com.agentsflex.core.model.chat.log;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 
 public interface IChatMessageLogger {
-    void logRequest(ChatConfig config, String message);
+    void logRequest(BaseChatConfig config, String message);
 
-    void logResponse(ChatConfig config, String message);
+    void logResponse(BaseChatConfig config, String message);
 }

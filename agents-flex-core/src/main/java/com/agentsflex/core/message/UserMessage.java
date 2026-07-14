@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.message;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.util.ImageUtil;
 
 import java.io.File;
@@ -78,7 +78,7 @@ public class UserMessage extends AbstractTextMessage<UserMessage> {
         return imageUrls;
     }
 
-    public List<String> getImageUrlsForChat(ChatConfig config) {
+    public List<String> getImageUrlsForChat(BaseChatConfig config) {
         if (this.imageUrls == null) {
             return null;
         }

@@ -17,7 +17,7 @@ package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.Maps;
@@ -26,7 +26,6 @@ import com.agentsflex.core.util.MessageUtil;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
@@ -41,7 +40,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
     }
 
     @Override
-    public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, ChatConfig config) {
+    public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, BaseChatConfig config) {
 
         String url = buildRequestUrl(prompt, options, config);
         Map<String, String> headers = buildRequestHeaders(prompt, options, config);
@@ -54,11 +53,11 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         return new ChatRequestSpec(url, headers, body, retryEnabled ? retryCountOrDefault : 0, retryEnabled ? retryInitialDelayMsOrDefault : 0);
     }
 
-    protected String buildRequestUrl(Prompt prompt, ChatOptions options, ChatConfig config) {
+    protected String buildRequestUrl(Prompt prompt, ChatOptions options, BaseChatConfig config) {
         return config.getFullUrl();
     }
 
-    protected Map<String, String> buildRequestHeaders(Prompt prompt, ChatOptions options, ChatConfig config) {
+    protected Map<String, String> buildRequestHeaders(Prompt prompt, ChatOptions options, BaseChatConfig config) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + config.getApiKey());
@@ -66,7 +65,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
     }
 
 
-    protected String buildRequestBody(Prompt prompt, ChatOptions options, ChatConfig config) {
+    protected String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
         List<Message> messages = prompt.getMessages();
         UserMessage userMessage = MessageUtil.findLastUserMessage(messages);
 
@@ -96,7 +95,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
         return bodyJsonMap.toJSON();
     }
 
-    protected void buildThinkingBody(ChatOptions options, ChatConfig config, Maps bodyJsonMap) {
+    protected void buildThinkingBody(ChatOptions options, BaseChatConfig config, Maps bodyJsonMap) {
         if (!config.isSupportThinking()) {
             return;
         }
@@ -125,7 +124,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
     }
 
 
-    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options, ChatConfig config) {
+    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
         return Maps.of("model", options.getModelOrDefault(config.getModel()))
             .setIf(options.isStreaming(), "stream", true)
             .setIfNotNull("top_p", options.getTopP())

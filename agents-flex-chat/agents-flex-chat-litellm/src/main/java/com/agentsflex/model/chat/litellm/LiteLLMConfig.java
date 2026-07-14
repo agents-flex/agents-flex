@@ -15,9 +15,9 @@
  */
 package com.agentsflex.model.chat.litellm;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 
-public class LiteLLMConfig extends ChatConfig {
+public class LiteLLMConfig extends BaseChatConfig {
 
     private static final String DEFAULT_ENDPOINT = "http://localhost:4000";
     private static final String DEFAULT_REQUEST_PATH = "/v1/chat/completions";

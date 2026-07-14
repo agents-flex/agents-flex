@@ -1,6 +1,6 @@
 package com.agentsflex.model.chat.qwen;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.client.OpenAIChatRequestSpecBuilder;
 import com.agentsflex.core.prompt.Prompt;
@@ -10,7 +10,7 @@ import com.agentsflex.core.util.Maps;
 public class QwenRequestSpecBuilder extends OpenAIChatRequestSpecBuilder {
 
     @Override
-    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options, ChatConfig config) {
+    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
         Maps params = super.buildBaseParamsOfRequestBody(prompt, options, config);
         if (options instanceof QwenChatOptions) {
             QwenChatOptions op = (QwenChatOptions) options;

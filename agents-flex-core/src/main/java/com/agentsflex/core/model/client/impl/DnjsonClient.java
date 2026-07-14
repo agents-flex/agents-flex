@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.client.impl;
 
-import com.agentsflex.core.model.chat.ChatConfig;
+import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.log.ChatMessageLogger;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.client.StreamClient;
@@ -38,7 +38,7 @@ public class DnjsonClient implements StreamClient, Callback {
 
     private OkHttpClient okHttpClient;
     private StreamClientListener listener;
-    private ChatConfig config;
+    private BaseChatConfig config;
     private boolean isStop = false;
 
     public DnjsonClient() {
@@ -61,7 +61,7 @@ public class DnjsonClient implements StreamClient, Callback {
     }
 
     @Override
-    public void start(String url, Map<String, String> headers, String payload, StreamClientListener listener, ChatConfig config) {
+    public void start(String url, Map<String, String> headers, String payload, StreamClientListener listener, BaseChatConfig config) {
         if (isStop) {
             throw new IllegalStateException("DnjsonClient has been stopped and cannot be reused.");
         }

@@ -23,7 +23,7 @@ import java.util.Map;
 public class ChatContext {
 
     Prompt prompt;
-    ChatConfig config;
+    BaseChatConfig config;
     ChatOptions options;
     ChatRequestSpec requestSpec;
     Object conversationId;
@@ -38,11 +38,11 @@ public class ChatContext {
         this.prompt = prompt;
     }
 
-    public ChatConfig getConfig() {
+    public BaseChatConfig getConfig() {
         return config;
     }
 
-    public void setConfig(ChatConfig config) {
+    public void setConfig(BaseChatConfig config) {
         this.config = config;
     }
 
