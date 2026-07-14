@@ -128,6 +128,10 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-video-gitee</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-video-volcengine</artifactId>
         </dependency>
         <!--video model end-->

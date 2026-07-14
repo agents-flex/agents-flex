@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>agents-flex-video-aliyun</module>
+        <module>agents-flex-video-gitee</module>
         <module>agents-flex-video-volcengine</module>
     </modules>
 </project>

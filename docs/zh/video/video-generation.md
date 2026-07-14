@@ -35,6 +35,7 @@ agents-flex-core
 
 agents-flex-video
 ├── agents-flex-video-aliyun
+├── agents-flex-video-gitee
 └── agents-flex-video-volcengine
 ```
 

@@ -35,6 +35,16 @@
 </dependency>
 ```
 
+Gitee AI 模力方舟：
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-video-gitee</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+```
+
 两个模块都会传递依赖 `agents-flex-core`，通常不需要再次显式引入。
 
 ## 第二步：配置 API Key
