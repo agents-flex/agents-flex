@@ -32,7 +32,7 @@ import java.util.Map;
 
 public class QwenEmbeddingModel extends BaseEmbeddingModel<QwenEmbeddingConfig> {
 
-    private AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
+    private AgentsFlexHttpClient agentsFlexHttpClient = AgentsFlexHttpClient.getDefault();
 
     public QwenEmbeddingModel(QwenEmbeddingConfig config) {
         super(config);

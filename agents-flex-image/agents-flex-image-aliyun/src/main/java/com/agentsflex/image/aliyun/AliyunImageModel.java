@@ -32,7 +32,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
      * @param config 阿里云图片模型配置
      */
     public AliyunImageModel(AliyunImageModelConfig config) {
-        this(config, new AgentsFlexHttpClient());
+        this(config, AgentsFlexHttpClient.getDefault());
     }
 
     /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */

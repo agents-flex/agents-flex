@@ -83,7 +83,7 @@ public class ChromaVectorStoreTest {
             String baseUrl = "http://" + config.getHost() + ":" + config.getPort();
             String healthCheckUrl = baseUrl + "/api/v2/heartbeat";
 
-            AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
+            AgentsFlexHttpClient agentsFlexHttpClient = AgentsFlexHttpClient.getDefault();
             System.out.println("Checking Chroma server connection at: " + healthCheckUrl);
 
             // 使用较短的超时时间进行健康检查

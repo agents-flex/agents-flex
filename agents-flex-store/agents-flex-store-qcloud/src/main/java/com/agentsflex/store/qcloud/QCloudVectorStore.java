@@ -36,7 +36,7 @@ public class QCloudVectorStore extends DocumentStore {
 
     private QCloudVectorStoreConfig config;
 
-    private final AgentsFlexHttpClient httpUtil = new AgentsFlexHttpClient();
+    private final AgentsFlexHttpClient httpUtil = AgentsFlexHttpClient.getDefault();
 
 
     public QCloudVectorStore(QCloudVectorStoreConfig config) {

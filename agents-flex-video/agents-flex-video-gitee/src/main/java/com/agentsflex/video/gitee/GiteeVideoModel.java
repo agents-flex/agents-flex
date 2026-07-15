@@ -32,7 +32,7 @@ public class GiteeVideoModel extends BaseVideoModel<GiteeVideoModelConfig> {
      * @param config 访问令牌、默认模型、服务地址和轮询参数
      */
     public GiteeVideoModel(GiteeVideoModelConfig config) {
-        this(config, new AgentsFlexHttpClient());
+        this(config, AgentsFlexHttpClient.getDefault());
     }
 
     GiteeVideoModel(GiteeVideoModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {

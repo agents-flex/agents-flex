@@ -32,7 +32,7 @@ import java.util.Map;
 
 public class OpenAIEmbeddingModel extends BaseEmbeddingModel<OpenAIEmbeddingConfig> {
 
-    private AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
+    private AgentsFlexHttpClient agentsFlexHttpClient = AgentsFlexHttpClient.getDefault();
 
     public OpenAIEmbeddingModel(OpenAIEmbeddingConfig config) {
         super(config);

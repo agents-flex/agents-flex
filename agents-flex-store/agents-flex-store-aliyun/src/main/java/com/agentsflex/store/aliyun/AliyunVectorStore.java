@@ -38,7 +38,7 @@ public class AliyunVectorStore extends DocumentStore {
 
     private AliyunVectorStoreConfig config;
 
-    private final AgentsFlexHttpClient httpUtil = new AgentsFlexHttpClient();
+    private final AgentsFlexHttpClient httpUtil = AgentsFlexHttpClient.getDefault();
 
     public AliyunVectorStore(AliyunVectorStoreConfig config) {
         this.config = config;

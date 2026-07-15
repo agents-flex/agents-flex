@@ -21,7 +21,7 @@ public class VolcengineVideoModel extends BaseVideoModel<VolcengineVideoModelCon
     private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     public VolcengineVideoModel(VolcengineVideoModelConfig config) {
-        this(config, new AgentsFlexHttpClient());
+        this(config, AgentsFlexHttpClient.getDefault());
     }
 
     VolcengineVideoModel(VolcengineVideoModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {

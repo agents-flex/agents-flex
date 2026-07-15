@@ -47,7 +47,7 @@ public class OpenAIChatClient extends ChatClient {
 
     public AgentsFlexHttpClient getHttpClient() {
         if (agentsFlexHttpClient == null) {
-            agentsFlexHttpClient = new AgentsFlexHttpClient();
+            agentsFlexHttpClient = AgentsFlexHttpClient.getDefault();
         }
         return agentsFlexHttpClient;
     }

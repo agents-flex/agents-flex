@@ -30,7 +30,7 @@ public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelCon
 
     /** 使用默认 HTTP 客户端创建火山引擎图片模型。 */
     public VolcengineImageModel(VolcengineImageModelConfig config) {
-        this(config, new AgentsFlexHttpClient());
+        this(config, AgentsFlexHttpClient.getDefault());
     }
 
     /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */

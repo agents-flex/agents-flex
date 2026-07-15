@@ -31,7 +31,7 @@ import java.util.*;
 
 public class DefaultRerankModel extends BaseRerankModel<DefaultRerankModelConfig> {
 
-    private AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
+    private AgentsFlexHttpClient agentsFlexHttpClient = AgentsFlexHttpClient.getDefault();
 
     public DefaultRerankModel(DefaultRerankModelConfig config) {
         super(config);

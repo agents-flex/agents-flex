@@ -24,7 +24,7 @@ abstract class AbstractAliyunVideoModel<T extends BaseVideoConfig> extends BaseV
     private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     protected AbstractAliyunVideoModel(T config) {
-        this(config, new AgentsFlexHttpClient());
+        this(config, AgentsFlexHttpClient.getDefault());
     }
 
     protected AbstractAliyunVideoModel(T config, AgentsFlexHttpClient agentsFlexHttpClient) {

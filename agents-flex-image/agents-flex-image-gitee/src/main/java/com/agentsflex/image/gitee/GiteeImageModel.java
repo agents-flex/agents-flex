@@ -36,7 +36,7 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
 
     /** 使用默认 HTTP 客户端创建 Gitee AI 图片模型。 */
     public GiteeImageModel(GiteeImageModelConfig config) {
-        this(config, new AgentsFlexHttpClient());
+        this(config, AgentsFlexHttpClient.getDefault());
     }
 
     /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */

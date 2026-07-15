@@ -60,7 +60,7 @@ public class ChromaVectorStore extends DocumentStore {
         this.expressionAdaptor = ChromaExpressionAdaptor.DEFAULT;
 
         // 创建并配置HttpClient实例
-        this.agentsFlexHttpClient = createHttpClient();
+        this.agentsFlexHttpClient = AgentsFlexHttpClient.getDefault();
 
         // 验证配置的有效性
         validateConfig();
@@ -76,10 +76,6 @@ public class ChromaVectorStore extends DocumentStore {
         }
     }
 
-    private AgentsFlexHttpClient createHttpClient() {
-        AgentsFlexHttpClient client = new AgentsFlexHttpClient();
-        return client;
-    }
 
     private void validateConfig() {
         if (baseUrl == null || baseUrl.isEmpty()) {

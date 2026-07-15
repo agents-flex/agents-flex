@@ -32,7 +32,7 @@ import java.util.Map;
 
 public class OllamaEmbeddingModel extends BaseEmbeddingModel<OllamaEmbeddingConfig> {
 
-    private AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
+    private AgentsFlexHttpClient agentsFlexHttpClient = AgentsFlexHttpClient.getDefault();
 
     public OllamaEmbeddingModel(OllamaEmbeddingConfig config) {
         super(config);

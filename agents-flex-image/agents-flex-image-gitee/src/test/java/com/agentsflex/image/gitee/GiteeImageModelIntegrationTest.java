@@ -81,7 +81,7 @@ public class GiteeImageModelIntegrationTest {
         assertTrue("Gitee AI did not return a source image URL",
             hasText(sourceResponse.getImage().getUrl()));
 
-        byte[] sourceBytes = new AgentsFlexHttpClient().getBytes(sourceResponse.getImage().getUrl());
+        byte[] sourceBytes = AgentsFlexHttpClient.getDefault().getBytes(sourceResponse.getImage().getUrl());
         assertNotNull("Could not download the generated source image", sourceBytes);
         assertTrue("Downloaded source image is empty", sourceBytes.length > 0);
 
