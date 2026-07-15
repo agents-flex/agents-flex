@@ -126,10 +126,6 @@ export default defineConfig({
                     {text: '图片生成', link: '/zh/image/image-generation'},
                     {text: '快速开始', link: '/zh/image/getting-started'},
                     {text: '阿里云百炼', link: '/zh/image/aliyun'},
-                    {text: 'OpenAI 与兼容服务', link: '/zh/image/openai-compatible'},
-                    {text: '硅基流动', link: '/zh/image/siliconflow'},
-                    {text: 'Stability AI', link: '/zh/image/stability'},
-                    {text: '腾讯混元', link: '/zh/image/tencent'},
                     {text: '火山引擎', link: '/zh/image/volcengine'},
                     {text: 'Gitee AI', link: '/zh/image/gitee'},
                 ]

@@ -22,15 +22,11 @@
 </dependency>
 ```
 
-| 服务商 | `artifactId` |
-| --- | --- |
-| 阿里云百炼 | `agents-flex-image-aliyun` |
-| OpenAI | `agents-flex-image-openai` |
-| 百度千帆 | `agents-flex-image-qianfan` |
-| 硅基流动 | `agents-flex-image-siliconflow` |
-| Stability AI | `agents-flex-image-stability` |
-| 腾讯混元 | `agents-flex-image-tencent` |
-| 火山引擎 | `agents-flex-image-volcengine` |
+| 服务商      | `artifactId`                   |
+|----------|--------------------------------|
+| 阿里云百炼    | `agents-flex-image-aliyun`     |
+| 火山引擎     | `agents-flex-image-volcengine` |
+| Gitee AI | `agents-flex-image-gitee`      |
 
 ## 第二步：配置密钥
 
