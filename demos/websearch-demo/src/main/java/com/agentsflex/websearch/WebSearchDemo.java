@@ -70,6 +70,7 @@ public class WebSearchDemo {
         prompt.addTools(ToolScanner.scan(WebSearchTool.builder()
 //            .provider(new BochaSearchProvider(System.getenv("BOCHA_APIKEY")))
 //            .provider(new TavilySearchProvider(System.getenv("TAVILY_API_KEY")))
+//            .provider(new FirecrawlSearchProvider(System.getenv("FIRECRAWL_API_KEY")))
             .provider(new BaiduQianfanSearchProvider(System.getenv("BAIDU_APIKEY")))
             .build()));
 

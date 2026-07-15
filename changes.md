@@ -1,6 +1,7 @@
 # Agents-Flex ChangeLog
 
 ## v2.2.0 20260713
+- feat(websearch): add Firecrawl Search provider
 - refactor(config): handle url-based transport type fallback in McpConfig
 - refactor(mcp): update schema parsing to use Map instead of JsonSchema object
 - refactor(client): update HTTP transport customization and schema handling
