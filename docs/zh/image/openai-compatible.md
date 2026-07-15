@@ -2,7 +2,7 @@
 
 # OpenAI 与兼容图片服务
 
-OpenAI、Gitee AI 和百度千帆适配器都提供 Bearer Token 鉴权的文生图调用。它们的 Config 和默认模型不同，需使用对应模块。
+OpenAI、Gitee AI 和百度千帆适配器都提供 Bearer Token 鉴权的图片调用。它们的 Config 和默认模型不同，需使用对应模块。
 
 ## OpenAI
 
@@ -42,7 +42,7 @@ ImageResponse response = new OpenAIImageModel(config).generate(request);
 ```java
 GiteeImageModelConfig config = new GiteeImageModelConfig();
 config.setApiKey(System.getenv("GITEE_AI_API_KEY"));
-config.setModel("flux-1-schnell");
+config.setModel(GiteeImageModels.FLUX_1_SCHNELL);
 
 GenerateImageRequest request = new GenerateImageRequest();
 request.setPrompt("一只小老虎站在高速列车里");
@@ -52,6 +52,8 @@ ImageResponse response = new GiteeImageModel(config).generate(request);
 ```
 
 默认端点是 `https://ai.gitee.com`，请求发送到 `/v1/images/generations`。
+
+Gitee AI 还支持同步图片编辑。向 `GenerateImageRequest` 添加一张 `inputImages` 后，适配器会自动调用 multipart 格式的 `/v1/images/edits`。完整参数见 [Gitee AI 图片生成与编辑](./gitee)。
 
 ## 百度千帆
 
@@ -78,6 +80,6 @@ ImageResponse response = new QianfanImageModel(config).generate(request);
 
 ## 能力边界
 
-三个适配器当前都支持文生图。OpenAI 和 Gitee 对编辑、变体会抛出 `UnsupportedOperationException`；其他未实现接口可能返回 `null`。应用层应显式限制可用操作。
+三个适配器都支持文生图。Gitee AI 还通过统一的同步 `generate()` 支持图片编辑；是否进入编辑模式由 `inputImages` 决定。不同供应商和模型的输入图数量、掩膜及输出数量限制并不相同，应用层应结合对应适配器文档进行校验。
 
 </div>

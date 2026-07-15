@@ -22,10 +22,12 @@ public abstract class BaseImageModel<T extends BaseModelConfig> implements Image
     protected T config;
 
     public BaseImageModel(T config) {
+        if (config == null) throw new IllegalArgumentException("config must not be null");
         this.config = config;
     }
 
     public T getConfig() {
         return config;
     }
+
 }

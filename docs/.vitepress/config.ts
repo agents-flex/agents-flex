@@ -131,6 +131,7 @@ export default defineConfig({
                     {text: 'Stability AI', link: '/zh/image/stability'},
                     {text: '腾讯混元', link: '/zh/image/tencent'},
                     {text: '火山引擎', link: '/zh/image/volcengine'},
+                    {text: 'Gitee AI', link: '/zh/image/gitee'},
                 ]
             },
             {

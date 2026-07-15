@@ -24,20 +24,6 @@
             <artifactId>agents-flex-core</artifactId>
         </dependency>
 
-        <!--火山方舟 Java SDK-->
-        <dependency>
-            <groupId>com.volcengine</groupId>
-            <artifactId>volcengine-java-sdk-ark-runtime</artifactId>
-            <version>2.0.18</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.volcengine</groupId>
-            <artifactId>volc-sdk-java</artifactId>
-            <version>1.0.221</version>
-        </dependency>
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

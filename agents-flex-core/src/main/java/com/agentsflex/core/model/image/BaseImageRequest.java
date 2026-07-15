@@ -119,4 +119,5 @@ public class BaseImageRequest {
     public Object getOptionOrDefault(String key, Object defaultValue) {
         return this.options == null ? defaultValue : this.options.getOrDefault(key, defaultValue);
     }
+
 }

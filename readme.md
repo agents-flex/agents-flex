@@ -27,7 +27,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | `agents-flex-core` | Core abstractions: Chat, Prompt, Message, Tool, Memory, Agent, Document, Store, Router, Observability |
 | `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |
 | `agents-flex-embedding` | Embedding model integrations: OpenAI, Ollama, Qwen |
-| `agents-flex-image` | Image model integrations: OpenAI, Qwen, Bailian, Gitee, Qianfan, SiliconFlow, Stability, Tencent, Volcengine |
+| `agents-flex-image` | Image model integrations: OpenAI, Qwen, Alibaba Cloud, Gitee, Qianfan, SiliconFlow, Stability, Tencent, Volcengine |
 | `agents-flex-video` | Asynchronous video generation and editing: Alibaba Cloud Model Studio and Volcengine Ark |
 | `agents-flex-audio` | Speech-to-text and text-to-speech: Alibaba Cloud, Tencent Cloud, Volcengine |
 | `agents-flex-store` | Vector stores: Redis, Qdrant, Chroma, Pgvector, Milvus, OpenSearch, Elasticsearch, Alibaba Cloud, Tencent Cloud, VectoRex |

@@ -24,7 +24,7 @@
 
 | 服务商 | `artifactId` |
 | --- | --- |
-| 阿里云百炼 | `agents-flex-image-bailian` |
+| 阿里云百炼 | `agents-flex-image-aliyun` |
 | OpenAI | `agents-flex-image-openai` |
 | 百度千帆 | `agents-flex-image-qianfan` |
 | 硅基流动 | `agents-flex-image-siliconflow` |
@@ -79,6 +79,10 @@ response.getImages().get(0).writeToFile(
 ### 图片 URL 为什么无法长期访问？
 
 服务商通常返回临时签名 URL。生成成功后应及时调用 `writeToFile()` 或转存到对象存储。
+
+### 供应商只提供异步接口怎么办？
+
+适配器会在 `generate()` 内部完成任务提交和轮询。对应用层而言，所有图片模型都是同步返回最终图片或错误。
 
 ### 尺寸参数为什么报错？
 

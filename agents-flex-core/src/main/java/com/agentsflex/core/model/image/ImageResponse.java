@@ -24,6 +24,7 @@ import java.util.List;
 public class ImageResponse extends Metadata {
     private List<Image> images;
     private boolean error;
+    private String errorCode;
     private String errorMessage;
 
 
@@ -59,6 +60,13 @@ public class ImageResponse extends Metadata {
         this.images.add(Image.ofBytes(bytes, mimeType));
     }
 
+    public void addImage(Image image) {
+        if (this.images == null) this.images = new ArrayList<>();
+        this.images.add(image);
+    }
+
+    public Image getImage() { return images == null || images.isEmpty() ? null : images.get(0); }
+
     public boolean isError() {
         return error;
     }
@@ -75,11 +83,14 @@ public class ImageResponse extends Metadata {
         this.errorMessage = errorMessage;
     }
 
+    public String getErrorCode() { return errorCode; }
+    public void setErrorCode(String errorCode) { this.errorCode = errorCode; }
     @Override
     public String toString() {
         return "ImageResponse{" +
             "images=" + images +
             ", error=" + error +
+            ", errorCode='" + errorCode + '\'' +
             ", errorMessage='" + errorMessage + '\'' +
             ", metadataMap=" + metadataMap +
             '}';

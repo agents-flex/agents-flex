@@ -15,35 +15,37 @@
  */
 package com.agentsflex.image.gitee;
 
-import java.io.Serializable;
+import com.agentsflex.core.model.image.BaseImageConfig;
 
-public class GiteeImageModelConfig implements Serializable {
-    private String endpoint = "https://ai.gitee.com";
-    private String model = "flux-1-schnell";
-    private String apiKey;
+public class GiteeImageModelConfig extends BaseImageConfig {
+    private String editPath = "/v1/images/edits";
 
-
-    public String getEndpoint() {
-        return endpoint;
+    public GiteeImageModelConfig() {
+        setProvider("gitee");
+        setEndpoint("https://ai.gitee.com");
+        setRequestPath("/v1/images/generations");
+        setModel(GiteeImageModels.FLUX_1_SCHNELL);
+        setSupportTextToImage(true);
+        setSupportImageToImage(true);
+        setSupportImageEditing(true);
+        setSupportMultipleInputImages(false);
+        setSupportMultipleOutputImages(true);
+        setSupportMask(true);
+        setMaxInputImages(1);
+        setMaxOutputImages(4);
     }
 
-    public void setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
+    public String getEditPath() {
+        return editPath;
     }
 
-    public String getModel() {
-        return model;
+    public void setEditPath(String editPath) {
+        if (editPath != null && !editPath.startsWith("/")) editPath = "/" + editPath;
+        this.editPath = editPath;
     }
 
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
+    public String getEditUrl() {
+        return (getEndpoint() == null ? "" : getEndpoint()) +
+            (editPath == null ? "" : editPath);
     }
 }

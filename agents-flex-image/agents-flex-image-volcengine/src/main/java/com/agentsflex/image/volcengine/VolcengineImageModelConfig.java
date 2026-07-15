@@ -1,40 +1,42 @@
 /*
- *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
- *  <p>
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  <p>
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  <p>
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ * Licensed under the Apache License, Version 2.0.
  */
 package com.agentsflex.image.volcengine;
 
-import java.io.Serializable;
+import com.agentsflex.core.model.image.BaseImageConfig;
 
-public class VolcengineImageModelConfig implements Serializable {
-
-    private String accessKey;
+/** Configuration for the Volcengine Ark Images API. */
+public class VolcengineImageModelConfig extends BaseImageConfig {
     private String secretKey;
 
-    public String getAccessKey() {
-        return accessKey;
+    public VolcengineImageModelConfig() {
+        setProvider("volcengine");
+        setEndpoint("https://ark.cn-beijing.volces.com");
+        setRequestPath("/api/v3/images/generations");
+        setModel(VolcengineImageModels.SEEDREAM_5_0_LITE);
+        setSupportTextToImage(true);
+        setSupportImageToImage(true);
+        setSupportImageEditing(true);
+        setSupportMultipleInputImages(true);
+        setSupportMultipleOutputImages(true);
+        setSupportWatermark(true);
+        setMaxInputImages(10);
     }
 
-    public void setAccessKey(String accessKey) {
-        this.accessKey = accessKey;
-    }
+    /** @deprecated Ark image generation now authenticates with an API key. */
+    @Deprecated
+    public String getAccessKey() { return getApiKey(); }
 
-    public String getSecretKey() {
-        return secretKey;
-    }
+    /** @deprecated Use {@link #setApiKey(String)}. */
+    @Deprecated
+    public void setAccessKey(String accessKey) { setApiKey(accessKey); }
 
-    public void setSecretKey(String secretKey) {
-        this.secretKey = secretKey;
-    }
+    /** @deprecated Retained only for source compatibility; it is not sent. */
+    @Deprecated
+    public String getSecretKey() { return secretKey; }
+
+    /** @deprecated Retained only for source compatibility; it is not sent. */
+    @Deprecated
+    public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
 }
