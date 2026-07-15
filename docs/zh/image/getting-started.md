@@ -92,6 +92,5 @@ response.getImages().get(0).writeToFile(
 
 - [图片生成核心概念](./image-generation)
 - [阿里云百炼](./aliyun)
-- [OpenAI 与兼容服务](./openai-compatible)
 
 </div>
