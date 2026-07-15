@@ -23,35 +23,55 @@ import com.agentsflex.core.util.StringUtil;
 import java.io.File;
 import java.util.Base64;
 
+/**
+ * 图片数据载体。
+ * <p>
+ * 图片可以由远程 URL、原始字节或 API 返回的 Base64 字符串表示。通常只需设置其中一种；
+ * 若同时存在多种表示，转换和落盘方法会按照各自文档声明的优先级选择。
+ */
 public class Image {
 
 
     /**
-     * The base64-encoded JSON of the generated image
+     * API {@code b64_json} 字段返回的纯 Base64 图片内容，不包含 Data URI 前缀。
      */
     private String b64Json;
 
     /**
-     * The URL of the generated image
+     * 可访问的远程图片 URL。
      */
     private String url;
 
     /**
-     * The data of image
+     * 图片文件的原始二进制内容。
      */
     private byte[] bytes;
 
     /**
-     * The mime type of image
+     * 图片 MIME 类型，例如 {@code image/png} 或 {@code image/jpeg}。
+     * <p>将字节或 Base64 转换为 Data URI 时会使用该值。</p>
      */
     private String mimeType;
 
+    /**
+     * 创建 URL 形式的图片对象。
+     *
+     * @param url 远程图片地址
+     * @return 图片对象
+     */
     public static Image ofUrl(String url) {
         Image image = new Image();
         image.setUrl(url);
         return image;
     }
 
+    /**
+     * 创建字节形式的图片对象。
+     *
+     * @param bytes    图片原始字节
+     * @param mimeType 图片 MIME 类型
+     * @return 图片对象
+     */
     public static Image ofBytes(byte[] bytes, String mimeType) {
         Image image = new Image();
         image.setBytes(bytes);
@@ -87,10 +107,24 @@ public class Image {
 
     public void setMimeType(String mimeType) { this.mimeType = mimeType; }
 
+    /**
+     * 直接读取当前保存的原始字节。
+     * <p>该方法不会下载 URL，也不会解码 {@link #b64Json}。</p>
+     *
+     * @return 原始字节；未设置时返回 {@code null}
+     */
     public byte[] readBytes() {
         return bytes;
     }
 
+    /**
+     * 获取适合放入 JSON 请求的图片字符串。
+     * <p>优先返回 URL；没有 URL 时，将原始字节或 Base64 内容转换为 Data URI。
+     * 三种表示均不存在时返回 {@code null}。</p>
+     *
+     * @return URL、Data URI 或 {@code null}
+     * @throws IllegalArgumentException 当 {@code b64Json} 不是合法 Base64 时抛出
+     */
     public String getUrlOrBase64() {
         if (StringUtil.hasText(this.url)) {
             return this.url;
@@ -109,6 +143,15 @@ public class Image {
     }
 
 
+    /**
+     * 将图片写入本地文件。
+     * <p>数据选择顺序为原始字节、Base64、远程 URL。目标父目录不存在时会尝试创建；
+     * URL 形式会在调用时发起网络下载。</p>
+     *
+     * @param file 目标文件
+     * @throws IllegalStateException 无法创建目标目录时抛出
+     * @throws IllegalArgumentException Base64 内容非法时抛出
+     */
     public void writeToFile(File file) {
         if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
             throw new IllegalStateException("Can not mkdirs for path: " + file.getParentFile().getAbsolutePath());
