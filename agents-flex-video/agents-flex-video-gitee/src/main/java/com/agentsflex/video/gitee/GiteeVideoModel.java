@@ -1,6 +1,6 @@
 package com.agentsflex.video.gitee;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.video.BaseVideoModel;
 import com.agentsflex.core.model.video.GenerateVideoRequest;
@@ -24,7 +24,7 @@ import java.util.Set;
  * 并将模力方舟统一的异步任务响应转换为 {@link VideoResponse}。
  */
 public class GiteeVideoModel extends BaseVideoModel<GiteeVideoModelConfig> {
-    private final HttpClient httpClient;
+    private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     /**
      * 使用指定配置创建模力方舟视频模型。
@@ -32,13 +32,13 @@ public class GiteeVideoModel extends BaseVideoModel<GiteeVideoModelConfig> {
      * @param config 访问令牌、默认模型、服务地址和轮询参数
      */
     public GiteeVideoModel(GiteeVideoModelConfig config) {
-        this(config, new HttpClient());
+        this(config, new AgentsFlexHttpClient());
     }
 
-    GiteeVideoModel(GiteeVideoModelConfig config, HttpClient httpClient) {
+    GiteeVideoModel(GiteeVideoModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
-        if (httpClient == null) throw new IllegalArgumentException("httpClient must not be null");
-        this.httpClient = httpClient;
+        if (agentsFlexHttpClient == null) throw new IllegalArgumentException("httpClient must not be null");
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     /**
@@ -61,11 +61,11 @@ public class GiteeVideoModel extends BaseVideoModel<GiteeVideoModelConfig> {
 
         String response;
         if (mode == Mode.IMAGE_VIDEO_TO_VIDEO) {
-            response = httpClient.multipartString(config.getImageVideoToVideoUrl(), headers(false),
+            response = agentsFlexHttpClient.multipartString(config.getImageVideoToVideoUrl(), headers(false),
                 buildImageVideoPayload(model, request));
         } else {
             JSONObject payload = buildJsonPayload(mode, model, request);
-            response = httpClient.post(submitUrl(mode), headers(true), payload.toJSONString());
+            response = agentsFlexHttpClient.post(submitUrl(mode), headers(true), payload.toJSONString());
         }
         return parseResponse(response, true);
     }
@@ -79,7 +79,7 @@ public class GiteeVideoModel extends BaseVideoModel<GiteeVideoModelConfig> {
     @Override
     public VideoResponse getResult(String taskId) {
         if (StringUtil.noText(taskId)) return VideoResponse.error("taskId must not be empty");
-        return parseResponse(httpClient.get(config.getQueryUrl(taskId), headers(false)), false);
+        return parseResponse(agentsFlexHttpClient.get(config.getQueryUrl(taskId), headers(false)), false);
     }
 
     private Mode resolveMode(GenerateVideoRequest request) {

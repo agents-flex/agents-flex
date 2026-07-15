@@ -16,7 +16,7 @@
 package com.agentsflex.embedding.openai;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.embedding.BaseEmbeddingModel;
 import com.agentsflex.core.model.embedding.EmbeddingOptions;
 import com.agentsflex.core.model.exception.ModelException;
@@ -32,18 +32,18 @@ import java.util.Map;
 
 public class OpenAIEmbeddingModel extends BaseEmbeddingModel<OpenAIEmbeddingConfig> {
 
-    private HttpClient httpClient = new HttpClient();
+    private AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
 
     public OpenAIEmbeddingModel(OpenAIEmbeddingConfig config) {
         super(config);
     }
 
-    public HttpClient getHttpClient() {
-        return httpClient;
+    public AgentsFlexHttpClient getHttpClient() {
+        return agentsFlexHttpClient;
     }
 
-    public void setHttpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
+    public void setHttpClient(AgentsFlexHttpClient agentsFlexHttpClient) {
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     @Override
@@ -55,7 +55,7 @@ public class OpenAIEmbeddingModel extends BaseEmbeddingModel<OpenAIEmbeddingConf
         String payload = promptToEmbeddingsPayload(document, options, config);
         String endpoint = config.getEndpoint();
         // https://platform.openai.com/docs/api-reference/embeddings/create
-        String response = httpClient.post(endpoint + config.getRequestPath(), headers, payload);
+        String response = agentsFlexHttpClient.post(endpoint + config.getRequestPath(), headers, payload);
 
         if (StringUtil.noText(response)) {
             throw new ModelException("response is null or empty.");

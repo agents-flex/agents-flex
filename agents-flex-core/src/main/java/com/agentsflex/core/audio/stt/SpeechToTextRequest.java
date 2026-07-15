@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.audio.stt;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.util.IOUtil;
 
 import java.io.File;
@@ -66,7 +66,7 @@ public class SpeechToTextRequest {
         if (audioFile != null) {
             return IOUtil.readBytes(audioFile);
         } else if (audioUrl != null) {
-            return new HttpClient().getBytes(audioUrl);
+            return AgentsFlexHttpClient.getDefault().getBytes(audioUrl);
         } else if (audioStream != null) {
             return IOUtil.readBytes(audioStream);
         } else {

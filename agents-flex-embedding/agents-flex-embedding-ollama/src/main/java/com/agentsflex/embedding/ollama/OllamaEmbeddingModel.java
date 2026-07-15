@@ -16,7 +16,7 @@
 package com.agentsflex.embedding.ollama;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.embedding.BaseEmbeddingModel;
 import com.agentsflex.core.model.embedding.EmbeddingOptions;
 import com.agentsflex.core.model.exception.ModelException;
@@ -32,18 +32,18 @@ import java.util.Map;
 
 public class OllamaEmbeddingModel extends BaseEmbeddingModel<OllamaEmbeddingConfig> {
 
-    private HttpClient httpClient = new HttpClient();
+    private AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
 
     public OllamaEmbeddingModel(OllamaEmbeddingConfig config) {
         super(config);
     }
 
-    public HttpClient getHttpClient() {
-        return httpClient;
+    public AgentsFlexHttpClient getHttpClient() {
+        return agentsFlexHttpClient;
     }
 
-    public void setHttpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
+    public void setHttpClient(AgentsFlexHttpClient agentsFlexHttpClient) {
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
 
@@ -64,7 +64,7 @@ public class OllamaEmbeddingModel extends BaseEmbeddingModel<OllamaEmbeddingConf
 
         String endpoint = config.getEndpoint();
         // https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
-        String response = httpClient.post(endpoint + "/api/embed", headers, payload);
+        String response = agentsFlexHttpClient.post(endpoint + "/api/embed", headers, payload);
 
         if (StringUtil.noText(response)) {
             throw new ModelException("response is null or empty.");

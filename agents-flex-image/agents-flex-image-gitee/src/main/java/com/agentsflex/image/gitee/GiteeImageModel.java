@@ -4,7 +4,7 @@
  */
 package com.agentsflex.image.gitee;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.BaseImageModel;
 import com.agentsflex.core.model.image.GenerateImageRequest;
 import com.agentsflex.core.model.image.Image;
@@ -32,18 +32,18 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
     public static final String OPTION_TASK_TYPES = "task_types";
 
     /** 执行 Gitee AI HTTP 请求的客户端；测试可通过包级构造方法注入替身。 */
-    private final HttpClient httpClient;
+    private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     /** 使用默认 HTTP 客户端创建 Gitee AI 图片模型。 */
     public GiteeImageModel(GiteeImageModelConfig config) {
-        this(config, new HttpClient());
+        this(config, new AgentsFlexHttpClient());
     }
 
     /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */
-    GiteeImageModel(GiteeImageModelConfig config, HttpClient httpClient) {
+    GiteeImageModel(GiteeImageModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
-        if (httpClient == null) throw new IllegalArgumentException("httpClient must not be null");
-        this.httpClient = httpClient;
+        if (agentsFlexHttpClient == null) throw new IllegalArgumentException("httpClient must not be null");
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     /**
@@ -71,7 +71,7 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
         JSONObject payload = new JSONObject();
         copyOptions(request, payload, false);
         putStandardFields(request, payload);
-        return httpClient.post(config.getFullUrl(), headers(true), payload.toJSONString());
+        return agentsFlexHttpClient.post(config.getFullUrl(), headers(true), payload.toJSONString());
     }
 
     /**
@@ -92,7 +92,7 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
         Object mask = request.getOption(OPTION_MASK);
         if (mask != null) payload.put(OPTION_MASK, toMultipartValue(mask, OPTION_MASK));
         normalizeTaskTypes(payload);
-        return httpClient.multipartString(config.getEditUrl(), headers(false), payload);
+        return agentsFlexHttpClient.multipartString(config.getEditUrl(), headers(false), payload);
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.agentsflex.image.aliyun;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.GenerateImageRequest;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.image.ImageBoundingBox;
@@ -20,7 +20,7 @@ public class AliyunImageModelTest {
 
     @Test
     public void shouldGenerateWan27FromMultipleImagesSynchronously() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunImageModel model = new AliyunImageModel(config(), http);
         GenerateImageRequest request = new GenerateImageRequest();
         request.setModel(AliyunImageModels.WAN_2_7_IMAGE_PRO);
@@ -58,7 +58,7 @@ public class AliyunImageModelTest {
 
     @Test
     public void shouldWaitForLegacyQwenTaskInsideGenerate() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunImageModel model = new AliyunImageModel(config(), http);
         GenerateImageRequest request = new GenerateImageRequest();
         request.setModel(AliyunImageModels.QWEN_IMAGE_PLUS);
@@ -80,7 +80,7 @@ public class AliyunImageModelTest {
 
     @Test
     public void shouldCallQwenEditingSynchronously() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunImageModel model = new AliyunImageModel(config(), http);
         GenerateImageRequest request = new GenerateImageRequest();
         request.setModel(AliyunImageModels.QWEN_IMAGE_EDIT_PLUS);
@@ -94,7 +94,7 @@ public class AliyunImageModelTest {
 
     @Test
     public void shouldRejectBoundingBoxesThatDoNotAlignWithInputImages() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunImageModel model = new AliyunImageModel(config(), http);
         GenerateImageRequest request = new GenerateImageRequest();
         request.addInputImage(Image.ofUrl("https://example.com/image.png"));
@@ -117,7 +117,7 @@ public class AliyunImageModelTest {
         return config;
     }
 
-    private static class StubHttpClient extends HttpClient {
+    private static class StubAgentsFlexHttpClient extends AgentsFlexHttpClient {
         String url;
         String postUrl;
         String queryUrl;

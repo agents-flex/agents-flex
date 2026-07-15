@@ -16,7 +16,7 @@
 package com.agentsflex.store.aliyun;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
@@ -38,7 +38,7 @@ public class AliyunVectorStore extends DocumentStore {
 
     private AliyunVectorStoreConfig config;
 
-    private final HttpClient httpUtil = new HttpClient();
+    private final AgentsFlexHttpClient httpUtil = new AgentsFlexHttpClient();
 
     public AliyunVectorStore(AliyunVectorStoreConfig config) {
         this.config = config;

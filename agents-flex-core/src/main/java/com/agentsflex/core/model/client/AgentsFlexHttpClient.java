@@ -19,12 +19,16 @@ import com.agentsflex.core.observability.Observability;
 import com.agentsflex.core.util.IOUtil;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.common.AttributesBuilder;
+import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.metrics.DoubleHistogram;
 import io.opentelemetry.api.metrics.LongCounter;
 import io.opentelemetry.api.metrics.Meter;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import okhttp3.*;
 import okio.BufferedSink;
@@ -34,13 +38,16 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.Objects;
 
-public class HttpClient {
-    private static final Logger LOG = LoggerFactory.getLogger(HttpClient.class);
+public class AgentsFlexHttpClient {
+    private static final Logger LOG = LoggerFactory.getLogger(AgentsFlexHttpClient.class);
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
+    private static final AgentsFlexHttpClient INSTANCE = new AgentsFlexHttpClient();
 
     // ===== Observability Components =====
     private static final Tracer TRACER = Observability.getTracer();
@@ -61,82 +68,105 @@ public class HttpClient {
 
     private final OkHttpClient okHttpClient;
 
-    public HttpClient() {
+    public static AgentsFlexHttpClient getDefault() {
+        return INSTANCE;
+    }
+
+    public AgentsFlexHttpClient() {
         this(OkHttpClientUtil.buildDefaultClient());
     }
 
-    public HttpClient(OkHttpClient okHttpClient) {
-        this.okHttpClient = okHttpClient;
+    public AgentsFlexHttpClient(OkHttpClient okHttpClient) {
+        this.okHttpClient = Objects.requireNonNull(okHttpClient, "okHttpClient must not be null");
     }
+
+
 
 
     public String get(String url) {
-        return tracedCall(url, "GET", null, null, this::executeString);
+        return executeObserved(url, "GET", null, null,
+            this::executeAndReadString);
     }
 
     public byte[] getBytes(String url) {
-        return tracedCall(url, "GET", null, null, this::executeBytes);
+        return executeObserved(url, "GET", null, null,
+            this::executeAndReadBytes);
     }
 
     public String get(String url, Map<String, String> headers) {
-        return tracedCall(url, "GET", headers, null, this::executeString);
+        return executeObserved(url, "GET", headers, null,
+            this::executeAndReadString);
     }
 
+    /**
+     * Executes a GET request and transfers ownership of the open response to the caller.
+     * The caller must close the returned response.
+     */
     public Response getResponse(String url, Map<String, String> headers) {
-        return tracedCall(url, "GET", headers, null, this::executeResponse);
+        return executeObserved(url, "GET", headers, null,
+            this::openResponse);
+    }
+
+    /**
+     * Executes a GET request and closes the response after reading its status code.
+     */
+    public int getStatusCode(String url, Map<String, String> headers) {
+        return executeObserved(url, "GET", headers, null, (u, m, h, p, s, observation) -> {
+            try {
+                try (Response response = executeRequest(u, m, h, p, observation)) {
+                    return response.code();
+                }
+            } catch (IOException ioe) {
+                throw recordAndWrapIOException("HTTP getStatusCode failed: " + u, ioe, s);
+            }
+        });
     }
 
     public String post(String url, Map<String, String> headers, String payload) {
-        return tracedCall(url, "POST", headers, payload, this::executeString);
+        return executeObserved(url, "POST", headers, payload,
+            this::executeAndReadString);
     }
 
     public byte[] postBytes(String url, Map<String, String> headers, String payload) {
-        return tracedCall(url, "POST", headers, payload, this::executeBytes);
+        return executeObserved(url, "POST", headers, payload,
+            this::executeAndReadBytes);
     }
 
     public String put(String url, Map<String, String> headers, String payload) {
-        return tracedCall(url, "PUT", headers, payload, this::executeString);
+        return executeObserved(url, "PUT", headers, payload,
+            this::executeAndReadString);
     }
 
     public String delete(String url, Map<String, String> headers, String payload) {
-        return tracedCall(url, "DELETE", headers, payload, this::executeString);
+        return executeObserved(url, "DELETE", headers, payload,
+            this::executeAndReadString);
     }
 
     public String multipartString(String url, Map<String, String> headers, Map<String, Object> payload) {
-        return tracedCall(url, "POST", headers, payload, (u, m, h, p, s) -> {
+        return executeObserved(url, "POST", headers, payload, (u, m, h, p, s, observation) -> {
             //noinspection unchecked
-            try (Response response = multipart(u, h, (Map<String, Object>) p);
+            try (Response response = executeMultipartRequest(u, h, (Map<String, Object>) p, observation);
                  ResponseBody body = response.body()) {
                 if (body != null) {
                     return body.string();
                 }
             } catch (IOException ioe) {
-                LOG.error("HTTP multipartString failed: " + u, ioe);
-                s.setStatus(StatusCode.ERROR, ioe.getMessage());
-                s.recordException(ioe);
-            } catch (Exception e) {
-                LOG.error(e.toString(), e);
-                throw e;
+                throw recordAndWrapIOException("HTTP multipartString failed: " + u, ioe, s);
             }
             return null;
         });
     }
 
     public byte[] multipartBytes(String url, Map<String, String> headers, Map<String, Object> payload) {
-        return tracedCall(url, "POST", headers, payload, (u, m, h, p, s) -> {
+        return executeObserved(url, "POST", headers, payload, (u, m, h, p, s, observation) -> {
             //noinspection unchecked
-            try (Response response = multipart(u, h, (Map<String, Object>) p);
+            try (Response response = executeMultipartRequest(u, h, (Map<String, Object>) p, observation);
                  ResponseBody body = response.body()) {
                 if (body != null) {
                     return body.bytes();
                 }
             } catch (IOException ioe) {
-                LOG.error("HTTP multipartBytes failed: " + u, ioe);
-                s.setStatus(StatusCode.ERROR, ioe.getMessage());
-                s.recordException(ioe);
-            } catch (Exception e) {
-                LOG.error(e.toString(), e);
-                throw e;
+                throw recordAndWrapIOException("HTTP multipartBytes failed: " + u, ioe, s);
             }
             return null;
         });
@@ -145,57 +175,55 @@ public class HttpClient {
     // ===== Internal execution methods =====
 
     public String executeString(String url, String method, Map<String, String> headers, Object payload, Span span) {
-        try (Response response = execute0(url, method, headers, payload);
+        return executeAndReadString(url, method, headers, payload, span, null);
+    }
+
+    private String executeAndReadString(String url, String method, Map<String, String> headers, Object payload,
+                                        Span span, RequestObservation observation) {
+        try (Response response = executeRequest(url, method, headers, payload, observation);
              ResponseBody body = response.body()) {
             if (body != null) {
                 return body.string();
             }
         } catch (IOException ioe) {
-            LOG.error("HTTP executeString failed: " + url, ioe);
-            span.setStatus(StatusCode.ERROR, ioe.getMessage());
-            span.recordException(ioe);
-        } catch (Exception e) {
-            LOG.error(e.toString(), e);
-            throw e;
+            throw recordAndWrapIOException("HTTP executeString failed: " + url, ioe, span);
         }
         return null;
     }
 
     public byte[] executeBytes(String url, String method, Map<String, String> headers, Object payload, Span span) {
-        try (Response response = execute0(url, method, headers, payload);
+        return executeAndReadBytes(url, method, headers, payload, span, null);
+    }
+
+    private byte[] executeAndReadBytes(String url, String method, Map<String, String> headers, Object payload,
+                                       Span span, RequestObservation observation) {
+        try (Response response = executeRequest(url, method, headers, payload, observation);
              ResponseBody body = response.body()) {
             if (body != null) {
                 return body.bytes();
             }
         } catch (IOException ioe) {
-            LOG.error("HTTP executeBytes failed: " + url, ioe);
-            span.setStatus(StatusCode.ERROR, ioe.getMessage());
-            span.recordException(ioe);
-        } catch (Exception e) {
-            LOG.error(e.toString(), e);
-            throw e;
+            throw recordAndWrapIOException("HTTP executeBytes failed: " + url, ioe, span);
         }
         return null;
     }
 
     public Response executeResponse(
         String url, String method, Map<String, String> headers, Object payload, Span span) {
-        try (Response response = execute0(url, method, headers, payload)) {
-            if (response != null) {
-                return response;
-            }
-        } catch (IOException ioe) {
-            LOG.error("HTTP executeString failed: " + url, ioe);
-            span.setStatus(StatusCode.ERROR, ioe.getMessage());
-            span.recordException(ioe);
-        } catch (Exception e) {
-            LOG.error(e.toString(), e);
-            throw e;
-        }
-        return null;
+        return openResponse(url, method, headers, payload, span, null);
     }
 
-    private Response execute0(String url, String method, Map<String, String> headers, Object payload) throws IOException {
+    private Response openResponse(String url, String method, Map<String, String> headers, Object payload,
+                                  Span span, RequestObservation observation) {
+        try {
+            return executeRequest(url, method, headers, payload, observation);
+        } catch (IOException ioe) {
+            throw recordAndWrapIOException("HTTP executeResponse failed: " + url, ioe, span);
+        }
+    }
+
+    private Response executeRequest(String url, String method, Map<String, String> headers, Object payload,
+                                    RequestObservation observation) throws IOException {
         Request.Builder builder = new Request.Builder().url(url);
         if (headers != null && !headers.isEmpty()) {
             headers.forEach((key, value) -> {
@@ -213,17 +241,28 @@ public class HttpClient {
             request = builder.method(method, body).build();
         }
 
+        request = propagateTraceContext(request.newBuilder()).build();
+
         Response response = okHttpClient.newCall(request).execute();
 
         // Inject status code into current span
-        injectStatusCodeToCurrentSpan(response);
+        recordResponseStatus(response, observation);
         return response;
     }
 
     public Response multipart(String url, Map<String, String> headers, Map<String, Object> payload) throws IOException {
+        return executeMultipartRequest(url, headers, payload, null);
+    }
+
+    private Response executeMultipartRequest(String url, Map<String, String> headers, Map<String, Object> payload,
+                                             RequestObservation observation) throws IOException {
         Request.Builder builder = new Request.Builder().url(url);
         if (headers != null && !headers.isEmpty()) {
-            headers.forEach(builder::addHeader);
+            headers.forEach((key, value) -> {
+                if (key != null && value != null) {
+                    builder.addHeader(key, value);
+                }
+            });
         }
 
         MultipartBody.Builder mbBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
@@ -243,21 +282,25 @@ public class HttpClient {
         });
 
         MultipartBody multipartBody = mbBuilder.build();
-        Request request = builder.post(multipartBody).build();
+        Request request = propagateTraceContext(builder.post(multipartBody)).build();
         Response response = okHttpClient.newCall(request).execute();
 
-        // Inject status code into current span (same as execute0)
-        injectStatusCodeToCurrentSpan(response);
+        // Record the status code for tracing and metrics.
+        recordResponseStatus(response, observation);
         return response;
     }
 
     // ===== Shared helper for span status code injection =====
 
-    private void injectStatusCodeToCurrentSpan(Response response) {
+    private void recordResponseStatus(Response response, RequestObservation observation) {
         Span currentSpan = Span.current();
+        int statusCode = response.code();
+        if (observation != null) {
+            observation.statusCode = statusCode;
+        }
         if (currentSpan != null && currentSpan != Span.getInvalid()) {
-            int statusCode = response.code();
             currentSpan.setAttribute("http.status_code", statusCode);
+            currentSpan.setAttribute("http.response.status_code", statusCode);
             if (statusCode >= 400) {
                 currentSpan.setStatus(StatusCode.ERROR, "HTTP " + statusCode);
             }
@@ -266,36 +309,49 @@ public class HttpClient {
 
     // ===== Observability wrapper =====
     @FunctionalInterface
-    private interface HttpClientCall<T> {
-        T call(String url, String method, Map<String, String> headers, Object payload, Span span) throws Exception;
+    private interface HttpRequestOperation<T> {
+        T execute(String url, String method, Map<String, String> headers, Object payload,
+                  Span span, RequestObservation observation) throws Exception;
     }
 
-    private <T> T tracedCall(String url, String method, Map<String, String> headers, Object payload, HttpClientCall<T> call) {
-        String host = extractHost(url);
+    private <T> T executeObserved(String url, String method, Map<String, String> headers, Object payload,
+                                  HttpRequestOperation<T> operation) {
+        Objects.requireNonNull(url, "url must not be null");
+        String host = extractServerAddress(url);
         Span span = TRACER.spanBuilder("http.client.request")
+            .setSpanKind(SpanKind.CLIENT)
             .setAttribute("http.method", method)
+            .setAttribute("http.request.method", method)
             .setAttribute("http.url", url)
             .setAttribute("server.address", host)
             .startSpan();
 
         long startTime = System.nanoTime();
-        boolean success = true;
+        boolean success = false;
+        RequestObservation observation = new RequestObservation();
 
         try (Scope scope = span.makeCurrent()) {
-            return call.call(url, method, headers, payload, span);
+            T result = operation.execute(url, method, headers, payload, span, observation);
+            success = observation.statusCode == null || observation.statusCode < 400;
+            return result;
         } catch (Exception e) {
-            success = false;
             span.setStatus(StatusCode.ERROR, e.getMessage());
             span.recordException(e);
+            if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            }
             throw new RuntimeException("HTTP request failed", e);
         } finally {
             span.end();
             double latency = (System.nanoTime() - startTime) / 1_000_000_000.0;
-            Attributes attrs = Attributes.of(
-                AttributeKey.stringKey("http.method"), method,
-                AttributeKey.stringKey("server.address"), host,
-                AttributeKey.stringKey("http.success"), String.valueOf(success)
-            );
+            AttributesBuilder attributesBuilder = Attributes.builder()
+                .put(AttributeKey.stringKey("http.method"), method)
+                .put(AttributeKey.stringKey("server.address"), host)
+                .put(AttributeKey.stringKey("http.success"), String.valueOf(success));
+            if (observation.statusCode != null) {
+                attributesBuilder.put(AttributeKey.longKey("http.response.status_code"), observation.statusCode.longValue());
+            }
+            Attributes attrs = attributesBuilder.build();
             HTTP_REQUEST_COUNT.add(1, attrs);
             HTTP_LATENCY_HISTOGRAM.record(latency, attrs);
             if (!success) {
@@ -305,10 +361,13 @@ public class HttpClient {
     }
 
     // ===== Utility =====
-    private static String extractHost(String url) {
+    private static String extractServerAddress(String url) {
         try {
             URI uri = new URI(url);
             String host = uri.getHost();
+            if (host == null) {
+                return "unknown";
+            }
             int port = uri.getPort();
             if (port != -1) {
                 return host + ":" + port;
@@ -317,6 +376,25 @@ public class HttpClient {
         } catch (URISyntaxException e) {
             return "unknown";
         }
+    }
+
+    private static UncheckedIOException recordAndWrapIOException(String message, IOException cause, Span span) {
+        LOG.error(message, cause);
+        if (span != null) {
+            span.setStatus(StatusCode.ERROR, cause.getMessage());
+            span.recordException(cause);
+        }
+        return new UncheckedIOException(message, cause);
+    }
+
+    private static Request.Builder propagateTraceContext(Request.Builder requestBuilder) {
+        GlobalOpenTelemetry.getPropagators().getTextMapPropagator().inject(
+            Context.current(), requestBuilder, (carrier, key, value) -> carrier.header(key, value));
+        return requestBuilder;
+    }
+
+    private static class RequestObservation {
+        private Integer statusCode;
     }
 
     // ===== Inner class =====
@@ -337,8 +415,8 @@ public class HttpClient {
         }
 
         @Override
-        public long contentLength() throws IOException {
-            return inputStream.available() == 0 ? -1 : inputStream.available();
+        public long contentLength() {
+            return -1;
         }
 
         @Override

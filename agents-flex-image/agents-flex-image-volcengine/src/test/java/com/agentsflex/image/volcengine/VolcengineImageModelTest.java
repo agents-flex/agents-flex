@@ -1,6 +1,6 @@
 package com.agentsflex.image.volcengine;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.GenerateImageRequest;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.image.ImageResponse;
@@ -18,7 +18,7 @@ public class VolcengineImageModelTest {
 
     @Test
     public void shouldBuildSeedreamMultiImageRequest() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         VolcengineImageModelConfig config = new VolcengineImageModelConfig();
         config.setApiKey("test-key");
         VolcengineImageModel model = new VolcengineImageModel(config, http);
@@ -46,7 +46,7 @@ public class VolcengineImageModelTest {
         assertEquals(4, payload.getJSONObject("sequential_image_generation_options").getIntValue("max_images"));
     }
 
-    private static class StubHttpClient extends HttpClient {
+    private static class StubAgentsFlexHttpClient extends AgentsFlexHttpClient {
         String url;
         String payload;
         Map<String, String> headers = Collections.emptyMap();

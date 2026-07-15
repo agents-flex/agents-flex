@@ -16,10 +16,10 @@
 package com.agentsflex.store.chroma;
 
 import com.agentsflex.core.document.Document;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
-import com.agentsflex.core.model.client.HttpClient;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -83,11 +83,11 @@ public class ChromaVectorStoreTest {
             String baseUrl = "http://" + config.getHost() + ":" + config.getPort();
             String healthCheckUrl = baseUrl + "/api/v2/heartbeat";
 
-            HttpClient httpClient = new HttpClient();
+            AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
             System.out.println("Checking Chroma server connection at: " + healthCheckUrl);
 
             // 使用较短的超时时间进行健康检查
-            String response = httpClient.get(healthCheckUrl);
+            String response = agentsFlexHttpClient.get(healthCheckUrl);
             if (response != null) {
                 System.out.println("Chroma server connection successful! Response: " + response);
                 return true;

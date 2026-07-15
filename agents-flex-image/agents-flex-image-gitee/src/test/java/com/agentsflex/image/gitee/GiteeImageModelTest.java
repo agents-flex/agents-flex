@@ -1,6 +1,6 @@
 package com.agentsflex.image.gitee;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.GenerateImageRequest;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.image.ImageResponse;
@@ -19,7 +19,7 @@ public class GiteeImageModelTest {
 
     @Test
     public void shouldGenerateImageWithJsonRequest() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeImageModel model = new GiteeImageModel(config(), http);
         GenerateImageRequest request = new GenerateImageRequest();
         request.setModel(GiteeImageModels.FLUX_1_DEV);
@@ -47,7 +47,7 @@ public class GiteeImageModelTest {
 
     @Test
     public void shouldEditImageWithMultipartRequest() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeImageModel model = new GiteeImageModel(config(), http);
         GenerateImageRequest request = new GenerateImageRequest();
         request.setModel(GiteeImageModels.QWEN_IMAGE_EDIT);
@@ -72,7 +72,7 @@ public class GiteeImageModelTest {
 
     @Test
     public void shouldUploadImageBytesForEditing() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeImageModel model = new GiteeImageModel(config(), http);
         GenerateImageRequest request = new GenerateImageRequest();
         request.addInputImage(Image.ofBytes(new byte[]{4, 5, 6}, "image/jpeg"));
@@ -84,7 +84,7 @@ public class GiteeImageModelTest {
 
     @Test
     public void shouldParseBase64Response() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         String b64 = java.util.Base64.getEncoder().encodeToString("image".getBytes(StandardCharsets.UTF_8));
         http.response = "{\"created\":1,\"data\":[{\"b64_json\":\"" + b64 + "\"}]}";
         GenerateImageRequest request = new GenerateImageRequest();
@@ -99,7 +99,7 @@ public class GiteeImageModelTest {
 
     @Test
     public void shouldParseErrorResponse() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         http.response = "{\"error\":{\"code\":\"InvalidParameter\",\"message\":\"invalid size\",\"type\":\"invalid_request_error\"}}";
 
         ImageResponse response = new GiteeImageModel(config(), http).generate(new GenerateImageRequest());
@@ -111,7 +111,7 @@ public class GiteeImageModelTest {
 
     @Test
     public void shouldRejectInvalidRequestsBeforeHttpCall() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeImageModel model = new GiteeImageModel(config(), http);
         GenerateImageRequest request = new GenerateImageRequest();
         request.setN(2);
@@ -128,7 +128,7 @@ public class GiteeImageModelTest {
 
     @Test
     public void shouldPreferRequestModelOverConfigModel() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GenerateImageRequest request = new GenerateImageRequest();
         request.setModel(GiteeImageModels.KOLORS);
 
@@ -143,7 +143,7 @@ public class GiteeImageModelTest {
         return config;
     }
 
-    private static class StubHttpClient extends HttpClient {
+    private static class StubAgentsFlexHttpClient extends AgentsFlexHttpClient {
         String url;
         String payload;
         Map<String, Object> multipart;

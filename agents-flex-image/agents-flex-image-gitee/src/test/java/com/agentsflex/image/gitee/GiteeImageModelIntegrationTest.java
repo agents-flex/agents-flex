@@ -1,6 +1,6 @@
 package com.agentsflex.image.gitee;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.GenerateImageRequest;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.image.ImageResponse;
@@ -81,7 +81,7 @@ public class GiteeImageModelIntegrationTest {
         assertTrue("Gitee AI did not return a source image URL",
             hasText(sourceResponse.getImage().getUrl()));
 
-        byte[] sourceBytes = new HttpClient().getBytes(sourceResponse.getImage().getUrl());
+        byte[] sourceBytes = new AgentsFlexHttpClient().getBytes(sourceResponse.getImage().getUrl());
         assertNotNull("Could not download the generated source image", sourceBytes);
         assertTrue("Downloaded source image is empty", sourceBytes.length > 0);
 

@@ -16,7 +16,7 @@
 package com.agentsflex.rerank;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.rerank.BaseRerankModel;
 import com.agentsflex.core.model.rerank.RerankException;
 import com.agentsflex.core.model.rerank.RerankOptions;
@@ -31,18 +31,18 @@ import java.util.*;
 
 public class DefaultRerankModel extends BaseRerankModel<DefaultRerankModelConfig> {
 
-    private HttpClient httpClient = new HttpClient();
+    private AgentsFlexHttpClient agentsFlexHttpClient = new AgentsFlexHttpClient();
 
     public DefaultRerankModel(DefaultRerankModelConfig config) {
         super(config);
     }
 
-    public HttpClient getHttpClient() {
-        return httpClient;
+    public AgentsFlexHttpClient getHttpClient() {
+        return agentsFlexHttpClient;
     }
 
-    public void setHttpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
+    public void setHttpClient(AgentsFlexHttpClient agentsFlexHttpClient) {
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     @Override
@@ -65,7 +65,7 @@ public class DefaultRerankModel extends BaseRerankModel<DefaultRerankModelConfig
             .set("documents", payloadDocuments)
             .toJSON();
 
-        String response = httpClient.post(url, headers, payload);
+        String response = agentsFlexHttpClient.post(url, headers, payload);
         if (StringUtil.noText(response)) {
             throw new RerankException("empty response");
         }

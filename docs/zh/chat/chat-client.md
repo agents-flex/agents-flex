@@ -51,7 +51,7 @@ public abstract class ChatClient {
 
 | 属性 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `httpClient` | `HttpClient` | `new HttpClient()` | 用于同步请求 |
+| `agentsFlexHttpClient` | `HttpClient` | `new HttpClient()` | 用于同步请求 |
 | `streamClient` | `StreamClient` | `new SseClient()` | 用于流式请求（SSE） |
 | `aiMessageParser` | `AiMessageParser<JSONObject>` | `DefaultAiMessageParser.getOpenAIMessageParser()` | 解析 OpenAI JSON 响应为 `AiMessage` |
 
@@ -81,7 +81,7 @@ OpenAIChatClient client = new OpenAIChatClient(model, context);
 client.setHttpClient(new MyCustomHttpClient());
 ```
 
-只要实现 `com.agentsflex.core.model.client.HttpClient` 接口即可。
+只要实现 `com.agentsflex.core.model.client.AgentsFlexHttpClient` 接口即可。
 
 ### 2 替换流式客户端
 

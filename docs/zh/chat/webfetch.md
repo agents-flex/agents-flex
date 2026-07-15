@@ -51,7 +51,7 @@ WebFetchTool 是 Agents-Flex 框架中的一个智能网页内容抓取工具，
 
 | 组件 | 类型 | 说明 |
 |------|------|------|
-| `httpClient` | OkHttpClient | 用于发起 HTTP 请求的客户端 |
+| `agentsFlexHttpClient` | OkHttpClient | 用于发起 HTTP 请求的客户端 |
 | `htmlConverter` | FlexmarkHtmlConverter | 将 HTML 转换为 Markdown |
 | `maxContentLength` | int | 最大内容长度（默认：100,000 字符） |
 | `maxCacheSize` | int | 最大缓存条目数（默认：100） |
@@ -370,7 +370,7 @@ OkHttpClient customClient = new OkHttpClient.Builder()
     .build();
 
 WebFetchTool tool = WebFetchTool.builder()
-    .httpClient(customClient)
+    .agentsFlexHttpClient(customClient)
     .maxContentLength(50_000)  // 限制为 50KB
     .maxCacheSize(200)         // 缓存 200 个条目
     .useDefaultProviders()
@@ -568,7 +568,7 @@ public int score(String url) {
 |------|------|--------|------|
 | `maxContentLength` | int | 100,000 | 最大内容长度（字符） |
 | `maxCacheSize` | int | 100 | 最大缓存条目数 |
-| `httpClient` | OkHttpClient | 默认客户端 | 自定义 HTTP 客户端 |
+| `agentsFlexHttpClient` | OkHttpClient | 默认客户端 | 自定义 HTTP 客户端 |
 | `providers` | `List<WebReaderProvider>` | 空（必填） | 阅读器提供者列表 |
 
 ### 6.2 常量
@@ -680,12 +680,12 @@ OkHttpClient sharedClient = new OkHttpClient.Builder()
     .build();
 
 WebFetchTool tool1 = WebFetchTool.builder()
-    .httpClient(sharedClient)
+    .agentsFlexHttpClient(sharedClient)
     .useDefaultProviders()
     .build();
 
 WebFetchTool tool2 = WebFetchTool.builder()
-    .httpClient(sharedClient)
+    .agentsFlexHttpClient(sharedClient)
     .useDefaultProviders()
     .build();
 ```
@@ -927,7 +927,7 @@ WebFetchTool tool2 = createTool(sharedClient);
 ```java
 // 每个工具创建自己的连接池
 WebFetchTool tool1 = WebFetchTool.builder()
-    .httpClient(new OkHttpClient())
+    .agentsFlexHttpClient(new OkHttpClient())
     .build();
 ```
 

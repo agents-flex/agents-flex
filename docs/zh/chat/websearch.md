@@ -375,26 +375,26 @@ public class GoogleSearchProvider implements SearchProvider {
 
     private final String apiKey;
     private final String cx;  // Custom Search Engine ID
-    private final OkHttpClient httpClient;
+    private final OkHttpClient agentsFlexHttpClient;
 
     public GoogleSearchProvider(String apiKey, String cx) {
         this(apiKey, cx, OkHttpClientUtil.buildDefaultClient());
     }
 
-    public GoogleSearchProvider(String apiKey, String cx, OkHttpClient httpClient) {
+    public GoogleSearchProvider(String apiKey, String cx, OkHttpClient agentsFlexHttpClient) {
         if (StringUtil.noText(apiKey)) {
             throw new IllegalArgumentException("apiKey must not be empty");
         }
         if (StringUtil.noText(cx)) {
             throw new IllegalArgumentException("cx must not be empty");
         }
-        if (httpClient == null) {
+        if (agentsFlexHttpClient == null) {
             throw new IllegalArgumentException("OkHttpClient must not be null");
         }
 
         this.apiKey = apiKey;
         this.cx = cx;
-        this.httpClient = httpClient;
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     @Override
@@ -438,7 +438,7 @@ public class GoogleSearchProvider implements SearchProvider {
             .get()
             .build();
 
-        try (Response response = httpClient.newCall(request).execute()) {
+        try (Response response = agentsFlexHttpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 return "";
             }

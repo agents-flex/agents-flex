@@ -16,7 +16,7 @@
 package com.agentsflex.store.qcloud;
 
 import com.agentsflex.core.document.Document;
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
@@ -36,7 +36,7 @@ public class QCloudVectorStore extends DocumentStore {
 
     private QCloudVectorStoreConfig config;
 
-    private final HttpClient httpUtil = new HttpClient();
+    private final AgentsFlexHttpClient httpUtil = new AgentsFlexHttpClient();
 
 
     public QCloudVectorStore(QCloudVectorStoreConfig config) {

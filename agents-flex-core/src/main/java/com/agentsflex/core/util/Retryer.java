@@ -231,6 +231,9 @@ public final class Retryer {
             e instanceof java.net.ConnectException ||
             e instanceof java.net.UnknownHostException ||
             e instanceof java.io.IOException ||
+            e instanceof java.io.UncheckedIOException ||
             (e.getCause() instanceof java.net.SocketTimeoutException) ||
-            (e.getCause() instanceof java.net.ConnectException);
+            (e.getCause() instanceof java.net.ConnectException) ||
+            (e.getCause() instanceof java.net.UnknownHostException) ||
+            (e.getCause() instanceof java.io.IOException);
 }

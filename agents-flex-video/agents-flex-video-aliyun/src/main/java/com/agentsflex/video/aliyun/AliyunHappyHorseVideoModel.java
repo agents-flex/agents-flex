@@ -1,6 +1,6 @@
 package com.agentsflex.video.aliyun;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.video.GenerateVideoRequest;
 import com.agentsflex.core.util.StringUtil;
@@ -27,8 +27,8 @@ public class AliyunHappyHorseVideoModel
         super(config);
     }
 
-    AliyunHappyHorseVideoModel(AliyunHappyHorseVideoModelConfig config, HttpClient httpClient) {
-        super(config, httpClient);
+    AliyunHappyHorseVideoModel(AliyunHappyHorseVideoModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
+        super(config, agentsFlexHttpClient);
     }
 
     @Override

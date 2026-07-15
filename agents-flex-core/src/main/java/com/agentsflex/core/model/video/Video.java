@@ -4,7 +4,7 @@
  */
 package com.agentsflex.core.model.video;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.util.IOUtil;
 import com.agentsflex.core.util.StringUtil;
 
@@ -72,7 +72,7 @@ public class Video {
     /**
      * 使用内存字节创建视频资源。
      *
-     * @param bytes 视频文件内容
+     * @param bytes    视频文件内容
      * @param mimeType 视频 MIME 类型
      * @return 视频资源
      */
@@ -95,7 +95,7 @@ public class Video {
         if (bytes != null && bytes.length > 0) {
             return bytes;
         }
-        return StringUtil.hasText(url) ? new HttpClient().getBytes(url) : null;
+        return StringUtil.hasText(url) ? AgentsFlexHttpClient.getDefault().getBytes(url) : null;
     }
 
     /**
@@ -118,20 +118,61 @@ public class Video {
         IOUtil.writeBytes(data, file);
     }
 
-    public String getUrl() { return url; }
-    public void setUrl(String url) { this.url = url; }
-    public byte[] getBytes() { return bytes; }
-    public void setBytes(byte[] bytes) { this.bytes = bytes; }
-    public String getMimeType() { return mimeType; }
-    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
-    public String getCoverUrl() { return coverUrl; }
-    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
-    public Integer getDuration() { return duration; }
-    public void setDuration(Integer duration) { this.duration = duration; }
-    public Integer getWidth() { return width; }
-    public void setWidth(Integer width) { this.width = width; }
-    public Integer getHeight() { return height; }
-    public void setHeight(Integer height) { this.height = height; }
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public byte[] getBytes() {
+        return bytes;
+    }
+
+    public void setBytes(byte[] bytes) {
+        this.bytes = bytes;
+    }
+
+    public String getMimeType() {
+        return mimeType;
+    }
+
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
+
+    public String getCoverUrl() {
+        return coverUrl;
+    }
+
+    public void setCoverUrl(String coverUrl) {
+        this.coverUrl = coverUrl;
+    }
+
+    public Integer getDuration() {
+        return duration;
+    }
+
+    public void setDuration(Integer duration) {
+        this.duration = duration;
+    }
+
+    public Integer getWidth() {
+        return width;
+    }
+
+    public void setWidth(Integer width) {
+        this.width = width;
+    }
+
+    public Integer getHeight() {
+        return height;
+    }
+
+    public void setHeight(Integer height) {
+        this.height = height;
+    }
 
     @Override
     public String toString() {

@@ -1,6 +1,6 @@
 package com.agentsflex.image.aliyun;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.BaseImageModel;
 import com.agentsflex.core.model.image.GenerateImageRequest;
 import com.agentsflex.core.model.image.Image;
@@ -24,7 +24,7 @@ import java.util.Map;
  */
 public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
     /** 执行百炼 HTTP 请求的客户端；测试可通过包级构造方法注入替身。 */
-    private final HttpClient httpClient;
+    private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     /**
      * 使用默认 HTTP 客户端创建阿里云图片模型。
@@ -32,13 +32,13 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
      * @param config 阿里云图片模型配置
      */
     public AliyunImageModel(AliyunImageModelConfig config) {
-        this(config, new HttpClient());
+        this(config, new AgentsFlexHttpClient());
     }
 
     /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */
-    AliyunImageModel(AliyunImageModelConfig config, HttpClient httpClient) {
+    AliyunImageModel(AliyunImageModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
-        this.httpClient = httpClient;
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     /**
@@ -56,7 +56,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
 
         boolean taskProtocol = requiresTaskProtocol(model);
         JSONObject payload = buildPayload(model, request);
-        String json = httpClient.post(submissionUrl(model, taskProtocol), headers(taskProtocol), payload.toJSONString());
+        String json = agentsFlexHttpClient.post(submissionUrl(model, taskProtocol), headers(taskProtocol), payload.toJSONString());
         return taskProtocol ? waitForTask(json) : parseResponse(json);
     }
 
@@ -258,7 +258,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
                 return ImageResponse.error("Interrupted while waiting for Aliyun image generation");
             }
 
-            String resultJson = httpClient.get(config.getQueryUrl(taskId), headers(false));
+            String resultJson = agentsFlexHttpClient.get(config.getQueryUrl(taskId), headers(false));
             ImageResponse response = parseResponse(resultJson);
             if (response.isError() || !response.getImages().isEmpty()) return response;
 

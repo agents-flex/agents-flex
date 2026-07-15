@@ -1,6 +1,6 @@
 package com.agentsflex.video.aliyun;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.video.GenerateVideoRequest;
 import com.agentsflex.core.model.video.Video;
@@ -19,7 +19,7 @@ public class AliyunHappyHorseVideoModelTest {
 
     @Test
     public void shouldBuildTextToVideoPayload() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunHappyHorseVideoModel model = model(http);
 
         GenerateVideoRequest request = new GenerateVideoRequest();
@@ -51,7 +51,7 @@ public class AliyunHappyHorseVideoModelTest {
 
     @Test
     public void shouldBuildFirstFrameImageToVideoPayload() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunHappyHorseVideoModel model = model(http);
 
         GenerateVideoRequest request = new GenerateVideoRequest();
@@ -76,7 +76,7 @@ public class AliyunHappyHorseVideoModelTest {
 
     @Test
     public void shouldBuildReferenceToVideoPayloadInReferenceOrder() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunHappyHorseVideoModel model = model(http);
 
         GenerateVideoRequest request = new GenerateVideoRequest();
@@ -99,7 +99,7 @@ public class AliyunHappyHorseVideoModelTest {
 
     @Test
     public void shouldBuildVideoEditPayloadAndMergeAudioSetting() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunHappyHorseVideoModel model = model(http);
 
         GenerateVideoRequest request = new GenerateVideoRequest();
@@ -126,7 +126,7 @@ public class AliyunHappyHorseVideoModelTest {
 
     @Test
     public void shouldRejectMoreThanNineReferenceImages() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunHappyHorseVideoModel model = model(http);
         GenerateVideoRequest request = new GenerateVideoRequest();
         request.setModel(AliyunVideoModels.HAPPYHORSE_1_1_R2V);
@@ -144,7 +144,7 @@ public class AliyunHappyHorseVideoModelTest {
 
     @Test
     public void shouldRejectVideoEditWithoutSourceVideo() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunHappyHorseVideoModel model = model(http);
         GenerateVideoRequest request = new GenerateVideoRequest();
         request.setModel(AliyunVideoModels.HAPPYHORSE_1_0_VIDEO_EDIT);
@@ -159,7 +159,7 @@ public class AliyunHappyHorseVideoModelTest {
 
     @Test
     public void shouldRejectMoreThanFiveVideoEditReferenceImages() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunHappyHorseVideoModel model = model(http);
         GenerateVideoRequest request = new GenerateVideoRequest();
         request.setModel(AliyunVideoModels.HAPPYHORSE_1_0_VIDEO_EDIT);
@@ -176,13 +176,13 @@ public class AliyunHappyHorseVideoModelTest {
         assertEquals(0, http.postCount);
     }
 
-    private AliyunHappyHorseVideoModel model(StubHttpClient http) {
+    private AliyunHappyHorseVideoModel model(StubAgentsFlexHttpClient http) {
         AliyunHappyHorseVideoModelConfig config = new AliyunHappyHorseVideoModelConfig();
         config.setApiKey("test-key");
         return new AliyunHappyHorseVideoModel(config, http);
     }
 
-    private static class StubHttpClient extends HttpClient {
+    private static class StubAgentsFlexHttpClient extends AgentsFlexHttpClient {
         String payload;
         int postCount;
 

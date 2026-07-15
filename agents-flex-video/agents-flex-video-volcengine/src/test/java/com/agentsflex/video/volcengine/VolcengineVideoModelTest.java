@@ -1,6 +1,6 @@
 package com.agentsflex.video.volcengine;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.video.GenerateVideoRequest;
 import com.agentsflex.core.model.video.VideoResponse;
@@ -17,7 +17,7 @@ import static org.junit.Assert.*;
 public class VolcengineVideoModelTest {
     @Test
     public void shouldSubmitAndQueryVideoTask() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         VolcengineVideoModelConfig config = new VolcengineVideoModelConfig();
         config.setApiKey("test-key");
         assertTrue(config.isSupportTextToVideo());
@@ -55,7 +55,7 @@ public class VolcengineVideoModelTest {
         assertEquals("https://example.com/last.png", result.getVideo().getCoverUrl());
     }
 
-    private static class StubHttpClient extends HttpClient {
+    private static class StubAgentsFlexHttpClient extends AgentsFlexHttpClient {
         String payload;
         Map<String, String> headers;
 

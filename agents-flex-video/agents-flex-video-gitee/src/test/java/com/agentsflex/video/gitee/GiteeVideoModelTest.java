@@ -1,6 +1,6 @@
 package com.agentsflex.video.gitee;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.video.GenerateVideoRequest;
 import com.agentsflex.core.model.video.Video;
@@ -19,7 +19,7 @@ public class GiteeVideoModelTest {
 
     @Test
     public void shouldSubmitTextVideoAndQueryResult() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeVideoModelConfig config = config();
         assertTrue(config.isSupportTextToVideo());
         assertTrue(config.isSupportImageToVideo());
@@ -50,7 +50,7 @@ public class GiteeVideoModelTest {
 
     @Test
     public void shouldSubmitImageToVideoAsJson() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeVideoModel model = new GiteeVideoModel(config(), http);
         GenerateVideoRequest request = new GenerateVideoRequest();
         request.setModel(GiteeVideoModels.LTX_2);
@@ -68,7 +68,7 @@ public class GiteeVideoModelTest {
 
     @Test
     public void shouldSubmitAudioVideoAsJson() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeVideoModel model = new GiteeVideoModel(config(), http);
         GenerateVideoRequest request = new GenerateVideoRequest();
         request.setModel(GiteeVideoModels.DUIX_HEYGEM);
@@ -86,7 +86,7 @@ public class GiteeVideoModelTest {
 
     @Test
     public void shouldSubmitImageVideoAsMultipart() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeVideoModel model = new GiteeVideoModel(config(), http);
         GenerateVideoRequest request = new GenerateVideoRequest();
         request.setModel(GiteeVideoModels.HAPPYHORSE_1_0);
@@ -107,7 +107,7 @@ public class GiteeVideoModelTest {
 
     @Test
     public void shouldRejectImageVideoUrlsBecauseEndpointRequiresFiles() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeVideoModel model = new GiteeVideoModel(config(), http);
         GenerateVideoRequest request = new GenerateVideoRequest();
         request.setFirstFrame(Image.ofUrl("https://example.com/reference.png"));
@@ -122,7 +122,7 @@ public class GiteeVideoModelTest {
 
     @Test
     public void shouldRejectReferenceImageWithoutSourceVideo() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         GiteeVideoModel model = new GiteeVideoModel(config(), http);
         GenerateVideoRequest request = new GenerateVideoRequest();
         request.addReferenceImage(Image.ofBytes(new byte[]{1}, "image/png"));
@@ -136,7 +136,7 @@ public class GiteeVideoModelTest {
 
     @Test
     public void shouldParseNestedVideoListWithoutDuplicates() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         http.queryResponse = "{\"task_id\":\"task-gitee\",\"status\":\"success\",\"output\":{" +
             "\"videos\":[{\"file_url\":\"https://example.com/a.mp4\"}]," +
             "\"data\":[{\"video_url\":\"https://example.com/a.mp4\"}," +
@@ -156,7 +156,7 @@ public class GiteeVideoModelTest {
         return config;
     }
 
-    private static class StubHttpClient extends HttpClient {
+    private static class StubAgentsFlexHttpClient extends AgentsFlexHttpClient {
         String url;
         String payload;
         Map<String, Object> multipart;

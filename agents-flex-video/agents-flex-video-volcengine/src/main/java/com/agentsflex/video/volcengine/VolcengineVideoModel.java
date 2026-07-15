@@ -1,6 +1,6 @@
 package com.agentsflex.video.volcengine;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.video.BaseVideoModel;
 import com.agentsflex.core.model.video.GenerateVideoRequest;
@@ -18,15 +18,15 @@ import java.util.List;
 import java.util.Map;
 
 public class VolcengineVideoModel extends BaseVideoModel<VolcengineVideoModelConfig> {
-    private final HttpClient httpClient;
+    private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     public VolcengineVideoModel(VolcengineVideoModelConfig config) {
-        this(config, new HttpClient());
+        this(config, new AgentsFlexHttpClient());
     }
 
-    VolcengineVideoModel(VolcengineVideoModelConfig config, HttpClient httpClient) {
+    VolcengineVideoModel(VolcengineVideoModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
-        this.httpClient = httpClient;
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     @Override
@@ -48,7 +48,7 @@ public class VolcengineVideoModel extends BaseVideoModel<VolcengineVideoModelCon
         putIfNotNull(payload, "generate_audio", request.getGenerateAudio());
         payload.putAll(request.getOptions());
 
-        String responseJson = httpClient.post(config.getFullUrl(), headers(), payload.toJSONString());
+        String responseJson = agentsFlexHttpClient.post(config.getFullUrl(), headers(), payload.toJSONString());
         return parseResponse(responseJson, true);
     }
 
@@ -93,7 +93,7 @@ public class VolcengineVideoModel extends BaseVideoModel<VolcengineVideoModelCon
     @Override
     public VideoResponse getResult(String taskId) {
         if (StringUtil.noText(taskId)) return VideoResponse.error("taskId must not be empty");
-        return parseResponse(httpClient.get(config.getQueryUrl(taskId), headers()), false);
+        return parseResponse(agentsFlexHttpClient.get(config.getQueryUrl(taskId), headers()), false);
     }
 
     private VideoResponse parseResponse(String json, boolean submitted) {

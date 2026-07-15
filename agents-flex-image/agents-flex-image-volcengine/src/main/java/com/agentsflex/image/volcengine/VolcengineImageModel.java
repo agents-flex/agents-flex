@@ -4,7 +4,7 @@
  */
 package com.agentsflex.image.volcengine;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.BaseImageModel;
 import com.agentsflex.core.model.image.GenerateImageRequest;
 import com.agentsflex.core.model.image.Image;
@@ -26,17 +26,17 @@ import java.util.Map;
  */
 public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelConfig> {
     /** 执行方舟 HTTP 请求的客户端；测试可通过包级构造方法注入替身。 */
-    private final HttpClient httpClient;
+    private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     /** 使用默认 HTTP 客户端创建火山引擎图片模型。 */
     public VolcengineImageModel(VolcengineImageModelConfig config) {
-        this(config, new HttpClient());
+        this(config, new AgentsFlexHttpClient());
     }
 
     /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */
-    VolcengineImageModel(VolcengineImageModelConfig config, HttpClient httpClient) {
+    VolcengineImageModel(VolcengineImageModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
-        this.httpClient = httpClient;
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     /**
@@ -71,7 +71,7 @@ public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelCon
         payload.put("stream", false);
         if (request.getOptions() != null) payload.putAll(request.getOptions());
 
-        String json = httpClient.post(config.getFullUrl(), headers(), payload.toJSONString());
+        String json = agentsFlexHttpClient.post(config.getFullUrl(), headers(), payload.toJSONString());
         return parseResponse(json, request.getOutputFormat());
     }
 

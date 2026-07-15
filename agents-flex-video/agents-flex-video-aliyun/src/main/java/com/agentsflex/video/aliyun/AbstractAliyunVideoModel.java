@@ -1,6 +1,6 @@
 package com.agentsflex.video.aliyun;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.video.BaseVideoConfig;
 import com.agentsflex.core.model.video.BaseVideoModel;
 import com.agentsflex.core.model.video.GenerateVideoRequest;
@@ -21,16 +21,16 @@ import java.util.Map;
  * @param <T> 具体模型族使用的配置类型
  */
 abstract class AbstractAliyunVideoModel<T extends BaseVideoConfig> extends BaseVideoModel<T> {
-    private final HttpClient httpClient;
+    private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     protected AbstractAliyunVideoModel(T config) {
-        this(config, new HttpClient());
+        this(config, new AgentsFlexHttpClient());
     }
 
-    protected AbstractAliyunVideoModel(T config, HttpClient httpClient) {
+    protected AbstractAliyunVideoModel(T config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
-        if (httpClient == null) throw new IllegalArgumentException("httpClient must not be null");
-        this.httpClient = httpClient;
+        if (agentsFlexHttpClient == null) throw new IllegalArgumentException("httpClient must not be null");
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     @Override
@@ -54,7 +54,7 @@ abstract class AbstractAliyunVideoModel<T extends BaseVideoConfig> extends BaseV
         if (!parameters.isEmpty()) payload.put("parameters", parameters);
         mergeOptionMap(request, "topLevel", payload);
 
-        String json = httpClient.post(config.getFullUrl(), headers(true), payload.toJSONString());
+        String json = agentsFlexHttpClient.post(config.getFullUrl(), headers(true), payload.toJSONString());
         return parseResponse(json, true);
     }
 
@@ -70,7 +70,7 @@ abstract class AbstractAliyunVideoModel<T extends BaseVideoConfig> extends BaseV
     @Override
     public final VideoResponse getResult(String taskId) {
         if (StringUtil.noText(taskId)) return VideoResponse.error("taskId must not be empty");
-        return parseResponse(httpClient.get(config.getQueryUrl(taskId), headers(false)), false);
+        return parseResponse(agentsFlexHttpClient.get(config.getQueryUrl(taskId), headers(false)), false);
     }
 
     protected static void putIfNotNull(JSONObject object, String key, Object value) {

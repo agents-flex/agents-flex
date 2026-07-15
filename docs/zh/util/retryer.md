@@ -72,7 +72,7 @@ Retryer 提供两种使用方式：
 
 ```java
 String result = Retryer.retry(
-    () -> httpClient.get("https://api.example.com/data"),
+    () -> agentsFlexHttpClient.get("https://api.example.com/data"),
     3,
     200
 );

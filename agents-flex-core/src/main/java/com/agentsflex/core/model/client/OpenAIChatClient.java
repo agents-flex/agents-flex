@@ -38,22 +38,22 @@ import com.alibaba.fastjson2.JSONObject;
  */
 public class OpenAIChatClient extends ChatClient {
 
-    protected HttpClient httpClient;
+    protected AgentsFlexHttpClient agentsFlexHttpClient;
     protected AiMessageParser<JSONObject> aiMessageParser;
 
     public OpenAIChatClient(BaseChatModel<?> chatModel) {
         super(chatModel);
     }
 
-    public HttpClient getHttpClient() {
-        if (httpClient == null) {
-            httpClient = new HttpClient();
+    public AgentsFlexHttpClient getHttpClient() {
+        if (agentsFlexHttpClient == null) {
+            agentsFlexHttpClient = new AgentsFlexHttpClient();
         }
-        return httpClient;
+        return agentsFlexHttpClient;
     }
 
-    public void setHttpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
+    public void setHttpClient(AgentsFlexHttpClient agentsFlexHttpClient) {
+        this.agentsFlexHttpClient = agentsFlexHttpClient;
     }
 
     public StreamClient getStreamClient() {
@@ -76,14 +76,14 @@ public class OpenAIChatClient extends ChatClient {
 
     @Override
     public AiMessageResponse chat() {
-        HttpClient httpClient = getHttpClient();
+        AgentsFlexHttpClient agentsFlexHttpClient = getHttpClient();
         ChatContext context = ChatContextHolder.currentContext();
         ChatRequestSpec requestSpec = context.getRequestSpec();
 
-        String response = requestSpec.getRetryCount() > 0 ? Retryer.retry(() -> httpClient.post(requestSpec.getUrl(),
+        String response = requestSpec.getRetryCount() > 0 ? Retryer.retry(() -> agentsFlexHttpClient.post(requestSpec.getUrl(),
             requestSpec.getHeaders(),
             requestSpec.getBody()), requestSpec.getRetryCount(), requestSpec.getRetryInitialDelayMs())
-            : httpClient.post(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody());
+            : agentsFlexHttpClient.post(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody());
 
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(context, response, "no content for response.");

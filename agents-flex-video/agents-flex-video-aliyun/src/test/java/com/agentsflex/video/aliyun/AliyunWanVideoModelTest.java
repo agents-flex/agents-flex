@@ -1,6 +1,6 @@
 package com.agentsflex.video.aliyun;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.image.Image;
 import com.agentsflex.core.model.video.GenerateVideoRequest;
 import com.agentsflex.core.model.video.VideoResponse;
@@ -17,7 +17,7 @@ import static org.junit.Assert.*;
 public class AliyunWanVideoModelTest {
     @Test
     public void shouldSubmitAndQueryVideoTask() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunWanVideoModelConfig config = new AliyunWanVideoModelConfig();
         config.setApiKey("test-key");
         assertTrue(config.isSupportTextToVideo());
@@ -54,7 +54,7 @@ public class AliyunWanVideoModelTest {
 
     @Test
     public void shouldRejectHappyHorseModel() {
-        StubHttpClient http = new StubHttpClient();
+        StubAgentsFlexHttpClient http = new StubAgentsFlexHttpClient();
         AliyunWanVideoModelConfig config = new AliyunWanVideoModelConfig();
         config.setApiKey("test-key");
         AliyunWanVideoModel model = new AliyunWanVideoModel(config, http);
@@ -70,7 +70,7 @@ public class AliyunWanVideoModelTest {
         assertNull(http.payload);
     }
 
-    private static class StubHttpClient extends HttpClient {
+    private static class StubAgentsFlexHttpClient extends AgentsFlexHttpClient {
         String payload;
         Map<String, String> headers;
 

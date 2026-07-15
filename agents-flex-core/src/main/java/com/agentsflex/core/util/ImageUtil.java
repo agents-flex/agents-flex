@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.util;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 
 import java.io.File;
 import java.net.URLConnection;
@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ImageUtil {
 
-    private static final HttpClient imageHttpClient = new HttpClient();
+    private static final AgentsFlexHttpClient IMAGE_AGENTS_FLEX_HTTP_CLIENT = new AgentsFlexHttpClient();
 
     // 手动维护的扩展名 -> MIME 类型映射（覆盖 JDK 未识别的格式）
     private static final Map<String, String> EXTENSION_TO_MIME = new ConcurrentHashMap<>();
@@ -57,7 +57,7 @@ public class ImageUtil {
     public static String imageUrlToDataUri(String imageUrl) {
         Objects.requireNonNull(imageUrl, "Image URL must not be null");
         try {
-            byte[] bytes = imageHttpClient.getBytes(imageUrl);
+            byte[] bytes = IMAGE_AGENTS_FLEX_HTTP_CLIENT.getBytes(imageUrl);
             String mimeType = guessMimeTypeFromName(imageUrl);
             return imageBytesToDataUri(bytes, mimeType);
         } catch (Exception e) {

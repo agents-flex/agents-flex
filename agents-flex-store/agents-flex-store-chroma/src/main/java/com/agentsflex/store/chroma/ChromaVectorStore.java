@@ -16,18 +16,18 @@
 package com.agentsflex.store.chroma;
 
 import com.agentsflex.core.document.Document;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.store.condition.ExpressionAdaptor;
-import com.agentsflex.core.model.client.HttpClient;
 import com.agentsflex.core.util.StringUtil;
-import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,7 +44,7 @@ public class ChromaVectorStore extends DocumentStore {
     private final String database;
     private final ChromaVectorStoreConfig config;
     private final ExpressionAdaptor expressionAdaptor;
-    private final HttpClient httpClient;
+    private final AgentsFlexHttpClient agentsFlexHttpClient;
     private final int MAX_RETRIES = 3;
     private final long RETRY_INTERVAL_MS = 1000;
 
@@ -60,7 +60,7 @@ public class ChromaVectorStore extends DocumentStore {
         this.expressionAdaptor = ChromaExpressionAdaptor.DEFAULT;
 
         // 创建并配置HttpClient实例
-        this.httpClient = createHttpClient();
+        this.agentsFlexHttpClient = createHttpClient();
 
         // 验证配置的有效性
         validateConfig();
@@ -76,8 +76,8 @@ public class ChromaVectorStore extends DocumentStore {
         }
     }
 
-    private HttpClient createHttpClient() {
-        HttpClient client = new HttpClient();
+    private AgentsFlexHttpClient createHttpClient() {
+        AgentsFlexHttpClient client = new AgentsFlexHttpClient();
         return client;
     }
 
@@ -119,8 +119,8 @@ public class ChromaVectorStore extends DocumentStore {
 
         try {
             // 尝试获取租户信息
-            Response response = executeWithRetry(() -> httpClient.getResponse(tenantUrl, headers));
-            if (response.code() == 404) {
+            int statusCode = executeWithRetry(() -> agentsFlexHttpClient.getStatusCode(tenantUrl, headers));
+            if (statusCode == 404) {
                 // 如果获取失败，尝试创建租户
                 logger.info("Creating tenant '{}' as it does not exist", tenant);
 
@@ -131,7 +131,7 @@ public class ChromaVectorStore extends DocumentStore {
                 String jsonRequestBody = safeJsonSerialize(requestBody);
 
                 String responseBody =
-                    executeWithRetry(() -> httpClient.post(createTenantUrl, headers, jsonRequestBody));
+                    executeWithRetry(() -> agentsFlexHttpClient.post(createTenantUrl, headers, jsonRequestBody));
                 logger.info("Successfully created tenant '{}'", tenant);
             } else {
                 logger.debug("Successfully verified tenant '{}' exists", tenant);
@@ -154,8 +154,8 @@ public class ChromaVectorStore extends DocumentStore {
 
         try {
             // 尝试获取数据库信息
-            Response response = executeWithRetry(() -> httpClient.getResponse(databaseUrl, headers));
-            if (response.code() == 404) {
+            int statusCode = executeWithRetry(() -> agentsFlexHttpClient.getStatusCode(databaseUrl, headers));
+            if (statusCode == 404) {
                 logger.info("Creating database '{}' in tenant '{}' as it does not exist", database, tenant);
 
                 Map<String, Object> requestBody = new HashMap<>();
@@ -165,7 +165,7 @@ public class ChromaVectorStore extends DocumentStore {
                 String jsonRequestBody = safeJsonSerialize(requestBody);
 
                 String responseBody =
-                    executeWithRetry(() -> httpClient.post(createDatabaseUrl, headers, jsonRequestBody));
+                    executeWithRetry(() -> agentsFlexHttpClient.post(createDatabaseUrl, headers, jsonRequestBody));
                 logger.info("Successfully created database '{}' in tenant '{}'", database, tenant);
             } else {
                 logger.debug("Successfully verified database '{}' exists in tenant '{}'", database, tenant);
@@ -183,7 +183,7 @@ public class ChromaVectorStore extends DocumentStore {
         String collectionsUrl = buildCollectionsUrl();
         Map<String, String> headers = createHeaders();
 
-        String responseBody = executeWithRetry(() -> httpClient.get(collectionsUrl, headers));
+        String responseBody = executeWithRetry(() -> agentsFlexHttpClient.get(collectionsUrl, headers));
         if (responseBody == null) {
             throw new IOException("Failed to get collections, no response");
         }
@@ -226,7 +226,7 @@ public class ChromaVectorStore extends DocumentStore {
 
         String jsonRequestBody = safeJsonSerialize(requestBody);
 
-        String responseBody = executeWithRetry(() -> httpClient.post(createCollectionUrl, headers, jsonRequestBody));
+        String responseBody = executeWithRetry(() -> agentsFlexHttpClient.post(createCollectionUrl, headers, jsonRequestBody));
         if (responseBody == null) {
             throw new IOException("Failed to create collection: no response");
         }
@@ -301,7 +301,7 @@ public class ChromaVectorStore extends DocumentStore {
 
             logger.debug("Storing {} documents to collection '{}'", documents.size(), collectionName);
 
-            String responseBody = executeWithRetry(() -> httpClient.post(collectionUrl, headers, jsonRequestBody));
+            String responseBody = executeWithRetry(() -> agentsFlexHttpClient.post(collectionUrl, headers, jsonRequestBody));
             if (responseBody == null) {
                 logger.error("Error storing documents: no response");
                 return StoreResult.fail();
@@ -358,7 +358,7 @@ public class ChromaVectorStore extends DocumentStore {
 
             logger.debug("Deleting {} documents from collection '{}'", ids.size(), collectionName);
 
-            String responseBody = executeWithRetry(() -> httpClient.post(collectionUrl, headers, jsonRequestBody));
+            String responseBody = executeWithRetry(() -> agentsFlexHttpClient.post(collectionUrl, headers, jsonRequestBody));
             if (responseBody == null) {
                 logger.error("Error deleting documents: no response");
                 return StoreResult.fail();
@@ -473,7 +473,7 @@ public class ChromaVectorStore extends DocumentStore {
 
             String jsonRequestBody = safeJsonSerialize(requestBody);
 
-            String responseBody = executeWithRetry(() -> httpClient.post(collectionUrl, headers, jsonRequestBody));
+            String responseBody = executeWithRetry(() -> agentsFlexHttpClient.post(collectionUrl, headers, jsonRequestBody));
             if (responseBody == null) {
                 logger.error("Error searching documents: no response");
                 return Collections.emptyList();
@@ -538,7 +538,7 @@ public class ChromaVectorStore extends DocumentStore {
 
             logger.debug("Performing direct vector search with dimension: {}", vector.length);
 
-            String responseBody = executeWithRetry(() -> httpClient.post(collectionUrl, headers, jsonRequestBody));
+            String responseBody = executeWithRetry(() -> agentsFlexHttpClient.post(collectionUrl, headers, jsonRequestBody));
             if (responseBody == null) {
                 logger.error("Error searching documents: no response");
                 return Collections.emptyList();
@@ -663,17 +663,21 @@ public class ChromaVectorStore extends DocumentStore {
             try {
                 attempts++;
                 return operation.execute();
-            } catch (IOException e) {
-                lastException = e;
+            } catch (IOException | UncheckedIOException e) {
+                IOException ioException = e instanceof UncheckedIOException
+                    ? ((UncheckedIOException) e).getCause()
+                    : (IOException) e;
+                lastException = ioException;
 
                 // 如果是最后一次尝试，则抛出异常
                 if (attempts >= MAX_RETRIES) {
-                    throw new IOException("Operation failed after " + MAX_RETRIES + " attempts: " + e.getMessage(), e);
+                    throw new IOException("Operation failed after " + MAX_RETRIES + " attempts: "
+                        + ioException.getMessage(), ioException);
                 }
 
                 // 记录重试信息
                 logger.warn("Operation failed (attempt {} of {}), retrying in {}ms: {}",
-                    attempts, MAX_RETRIES, RETRY_INTERVAL_MS, e.getMessage());
+                    attempts, MAX_RETRIES, RETRY_INTERVAL_MS, ioException.getMessage());
 
                 // 等待一段时间后重试
                 try {

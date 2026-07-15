@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.image;
 
-import com.agentsflex.core.model.client.HttpClient;
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.util.IOUtil;
 import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.StringUtil;
@@ -162,7 +162,7 @@ public class Image {
             byte[] bytes = Base64.getDecoder().decode(b64Json);
             IOUtil.writeBytes(bytes, file);
         } else if (StringUtil.hasText(this.url)) {
-            byte[] bytes = new HttpClient().getBytes(this.url);
+            byte[] bytes = AgentsFlexHttpClient.getDefault().getBytes(this.url);
             IOUtil.writeBytes(bytes, file);
         }
     }
