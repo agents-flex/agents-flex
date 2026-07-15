@@ -17,9 +17,15 @@ package com.agentsflex.image.gitee;
 
 import com.agentsflex.core.model.image.BaseImageConfig;
 
+/**
+ * Gitee AI 图片模型配置。
+ * <p>默认请求同步文生图接口；携带输入图片时，适配器会改用 {@link #editPath} 指定的编辑接口。</p>
+ */
 public class GiteeImageModelConfig extends BaseImageConfig {
+    /** 同步图片编辑接口路径。 */
     private String editPath = "/v1/images/edits";
 
+    /** 初始化 Gitee AI 默认端点、默认模型和已声明的图片能力。 */
     public GiteeImageModelConfig() {
         setProvider("gitee");
         setEndpoint("https://ai.gitee.com");
@@ -39,11 +45,13 @@ public class GiteeImageModelConfig extends BaseImageConfig {
         return editPath;
     }
 
+    /** 设置编辑接口路径；缺少前导斜杠时会自动补齐。 */
     public void setEditPath(String editPath) {
         if (editPath != null && !editPath.startsWith("/")) editPath = "/" + editPath;
         this.editPath = editPath;
     }
 
+    /** @return 由 endpoint 与 editPath 拼接出的完整图片编辑地址 */
     public String getEditUrl() {
         return (getEndpoint() == null ? "" : getEndpoint()) +
             (editPath == null ? "" : editPath);

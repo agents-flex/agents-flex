@@ -15,19 +15,36 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Qwen-Image and Wan image generation/editing adapter for Alibaba Model Studio. */
+/**
+ * 阿里云百炼图片模型适配器，统一支持千问图片模型与通义万相图片模型。
+ * <p>
+ * 对外始终实现同步 {@link #generate(GenerateImageRequest)}：新模型直接调用同步多模态接口；
+ * 仅提供异步协议的旧模型会在本类内部提交任务并轮询，直到获得最终图片或超时。
+ * </p>
+ */
 public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
+    /** 执行百炼 HTTP 请求的客户端；测试可通过包级构造方法注入替身。 */
     private final HttpClient httpClient;
 
+    /**
+     * 使用默认 HTTP 客户端创建阿里云图片模型。
+     *
+     * @param config 阿里云图片模型配置
+     */
     public AliyunImageModel(AliyunImageModelConfig config) {
         this(config, new HttpClient());
     }
 
+    /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */
     AliyunImageModel(AliyunImageModelConfig config, HttpClient httpClient) {
         super(config);
         this.httpClient = httpClient;
     }
 
+    /**
+     * 同步生成或编辑图片。
+     * <p>请求模型优先于配置模型；方法会根据模型族自动选择同步多模态协议或内部任务轮询协议。</p>
+     */
     @Override
     public ImageResponse generate(GenerateImageRequest request) {
         if (request == null) return ImageResponse.error("request must not be null");
@@ -43,6 +60,10 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return taskProtocol ? waitForTask(json) : parseResponse(json);
     }
 
+    /**
+     * 按模型协议构建百炼请求体。
+     * <p>旧图片合成协议使用普通 prompt 字段；新多模态协议使用 messages/content 结构。</p>
+     */
     private JSONObject buildPayload(String model, GenerateImageRequest request) {
         JSONObject root = new JSONObject();
         root.put("model", model);
@@ -83,6 +104,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return root;
     }
 
+    /** 将核心请求中的尺寸、数量、水印、随机种子和框选区域映射到 parameters。 */
     private JSONObject commonParameters(GenerateImageRequest request) {
         JSONObject parameters = new JSONObject();
         String size = StringUtil.hasText(request.getResolution()) ? request.getResolution() : toAliyunSize(request.getSizeString());
@@ -101,6 +123,11 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return parameters;
     }
 
+    /**
+     * 校验万相 2.7 的框选区域约束。
+     *
+     * @return 校验失败信息；校验通过时返回 {@code null}
+     */
     private String validateBoundingBoxes(String model, GenerateImageRequest request) {
         List<List<ImageBoundingBox>> boxes = request.getBoundingBoxes();
         if (boxes == null || boxes.isEmpty()) return null;
@@ -125,6 +152,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return null;
     }
 
+    /** 将核心层的矩形对象转换为百炼 {@code bbox_list} 坐标数组。 */
     private JSONArray toBboxList(List<List<ImageBoundingBox>> boundingBoxes) {
         JSONArray result = new JSONArray();
         for (List<ImageBoundingBox> imageBoxes : boundingBoxes) {
@@ -144,6 +172,11 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return result;
     }
 
+    /**
+     * 合并供应商扩展参数。
+     * <p>{@code input}、{@code parameters}、{@code topLevel} 三个特殊键可定向合并；
+     * 其他键默认写入 parameters。</p>
+     */
     @SuppressWarnings("unchecked")
     private void mergeScopedOptions(Map<String, Object> options, JSONObject input, JSONObject parameters, JSONObject root) {
         if (options == null) return;
@@ -160,6 +193,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         }
     }
 
+    /** 解析同步响应或任务查询响应，并保留供应商原始字段作为元数据。 */
     private ImageResponse parseResponse(String json) {
         if (StringUtil.noText(json)) return ImageResponse.error("response is empty");
         JSONObject root;
@@ -193,6 +227,10 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return response;
     }
 
+    /**
+     * 在适配器内部等待异步任务完成。
+     * <p>轮询间隔和总超时时间由配置控制；线程被中断时会恢复中断标记并返回错误响应。</p>
+     */
     private ImageResponse waitForTask(String submissionJson) {
         ImageResponse submission = parseResponse(submissionJson);
         if (submission.isError() || !submission.getImages().isEmpty()) return submission;
@@ -268,8 +306,10 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         if (StringUtil.hasText(url)) response.addImage(url);
     }
 
+    /** 判断指定模型是否只能通过任务协议获取最终图片。 */
     private boolean requiresTaskProtocol(String model) { return usesLegacySynthesisPayload(model); }
 
+    /** 根据模型族选择同步接口、旧千问合成接口或旧万相异步接口。 */
     private String submissionUrl(String model, boolean async) {
         if (!async) return config.getFullUrl();
         String value = model.toLowerCase();
@@ -279,6 +319,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return config.getAsyncUrl();
     }
 
+    /** 判断模型是否使用旧版图片合成请求结构。 */
     private boolean usesLegacySynthesisPayload(String model) {
         String value = model.toLowerCase();
         if (value.startsWith("wanx2.") || value.startsWith("wan2.1-") || value.startsWith("wan2.2-") ||
@@ -286,6 +327,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return value.equals("qwen-image") || value.startsWith("qwen-image-plus") || value.startsWith("qwen-image-max");
     }
 
+    /** 构建鉴权请求头；异步任务提交时额外携带 {@code X-DashScope-Async}。 */
     private Map<String, String> headers(boolean async) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -294,6 +336,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return headers;
     }
 
+    /** 将核心层的 {@code 宽x高} 转为旧百炼接口要求的 {@code 宽*高}。 */
     private static String toAliyunSize(String size) {
         return size == null ? null : size.replace('x', '*');
     }

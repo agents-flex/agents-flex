@@ -20,19 +20,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Adapter for Volcengine's OpenAI-style synchronous Images API. */
+/**
+ * 火山引擎方舟图片模型适配器。
+ * <p>通过 OpenAI 风格的同步 Images API 统一处理文生图、参考图生成、编辑和组图生成。</p>
+ */
 public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelConfig> {
+    /** 执行方舟 HTTP 请求的客户端；测试可通过包级构造方法注入替身。 */
     private final HttpClient httpClient;
 
+    /** 使用默认 HTTP 客户端创建火山引擎图片模型。 */
     public VolcengineImageModel(VolcengineImageModelConfig config) {
         this(config, new HttpClient());
     }
 
+    /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */
     VolcengineImageModel(VolcengineImageModelConfig config, HttpClient httpClient) {
         super(config);
         this.httpClient = httpClient;
     }
 
+    /**
+     * 同步生成或编辑图片。
+     * <p>将统一请求映射到方舟 Images API，并强制关闭流式响应以返回完整的最终图片。</p>
+     */
     @Override
     public ImageResponse generate(GenerateImageRequest request) {
         if (request == null) return ImageResponse.error("request must not be null");
@@ -65,6 +75,10 @@ public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelCon
         return parseResponse(json, request.getOutputFormat());
     }
 
+    /**
+     * 将输入图片写入方舟请求体。
+     * <p>单图使用字符串形式，多图使用数组形式；URL、字节和 Base64 均由 {@link Image#getUrlOrBase64()} 统一转换。</p>
+     */
     private void putImages(JSONObject payload, List<Image> inputImages) {
         if (inputImages == null || inputImages.isEmpty()) return;
         List<String> values = new ArrayList<>();
@@ -75,6 +89,11 @@ public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelCon
         else if (!values.isEmpty()) payload.put("image", values);
     }
 
+    /**
+     * 解析方舟 URL/Base64 图片响应及 OpenAI 风格错误对象。
+     *
+     * @param outputFormat Base64 解码后用于构造 MIME 类型的文件格式
+     */
     private ImageResponse parseResponse(String json, String outputFormat) {
         if (StringUtil.noText(json)) return ImageResponse.error("response is empty");
         JSONObject root;
@@ -110,6 +129,7 @@ public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelCon
         return response;
     }
 
+    /** 构建 JSON Content-Type 与 Bearer Token 鉴权请求头。 */
     private Map<String, String> headers() {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");

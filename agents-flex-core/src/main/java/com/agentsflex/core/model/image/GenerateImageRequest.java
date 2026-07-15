@@ -113,42 +113,6 @@ public class GenerateImageRequest extends BaseImageRequest {
         this.style = style;
     }
 
-    /**
-     * 获取参考图片列表，保留用于兼容旧调用方式。
-     *
-     * @return 与 {@link #getInputImages()} 相同的列表
-     */
-    public List<Image> getRefImages() {
-        return inputImages;
-    }
-
-    /**
-     * 设置参考图片列表，等价于 {@link #setInputImages(List)}。
-     *
-     * @param refImages 有序参考图片列表
-     */
-    public void setRefImages(List<Image> refImages) {
-        this.inputImages = refImages;
-    }
-
-    /**
-     * 追加一张参考图片，等价于 {@link #addInputImage(Image)}。
-     *
-     * @param image 参考图片
-     */
-    public void addRefImage(Image image) {
-        addInputImage(image);
-    }
-
-    /**
-     * 移除一张参考图片，等价于 {@link #removeInputImage(Image)}。
-     *
-     * @param image 要移除的图片对象
-     */
-    public void removeRefImage(Image image) {
-        removeInputImage(image);
-    }
-
     /** @return 有序输入图片列表；未设置时返回 {@code null} */
     public List<Image> getInputImages() { return inputImages; }
 
