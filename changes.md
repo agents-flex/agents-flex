@@ -17,7 +17,7 @@
 - feat: Introducing mathematical calculation tools into intelligent data analysis
 - feat(video): add video model support for agents-flex
 - feat(video): add comprehensive video generation model support
-- refactor(demos): update ChatConfig to BaseChatConfig in demo classes
+- refactor(demos): update ChatConfig to BaseChatConfig in demo classesde
 - refactor(core): Rename ChatConfig class to BaseChatConfig and replace ChatConfig with BaseChatConfig in core components
 - feat(image): add reference image support and update Volcengine integration
 - docs(audio): update volcengine module name reference
