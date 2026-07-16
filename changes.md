@@ -1,5 +1,38 @@
 # Agents-Flex ChangeLog
 
+## v2.2.1 20260716
+- refactor(http): use default http client instance across all model implementations
+- refactor(http): replace HttpClient with AgentsFlexHttpClient for enhanced observability
+- docs(image): remove OpenAI compatible services link from getting started
+- test(image): add volcengine homepage assets generation test
+- refactor(image): remove deprecated refImages methods and enhance documentation
+- docs(image): add comprehensive documentation for image model components
+- test(image): add integration tests for aliyun gitee and volcengine image models
+- feat(websearch): add Firecrawl Search provider
+- docs(image): remove deprecated image service documentation and update supported services
+- refactor(image): replace Bailian with Aliyun image provider and enhance core image functionality
+- docs(image): add comprehensive image module documentation with multiple provider guides
+- feat(docs): add multimodal capabilities showcase with image video and audio examples
+- feat(video): add Gitee AI video generation support
+- feat: Introducing mathematical calculation tools into intelligent data analysis
+- feat(video): add video model support for agents-flex
+- feat(video): add comprehensive video generation model support
+- refactor(demos): update ChatConfig to BaseChatConfig in demo classes
+- refactor(core): Rename ChatConfig class to BaseChatConfig and replace ChatConfig with BaseChatConfig in core components
+- feat(image): add reference image support and update Volcengine integration
+- docs(audio): update volcengine module name reference
+- rename(agents): rename volc module to volcengine
+- test(agents): add comprehensive test coverage for core utilities and tool scanning
+- refactor(skills): use try-with-resources for file input stream management
+- refactor(core): improve retry mechanism with nanosecond precision timing
+- fix(json): replace Long.getLong with Long.parseLong for string conversion
+- fix(image): handle URL query parameters and fragments in MIME type detection
+- refactor(tool): enhance tool scanning with duplicate prevention and proxy handling
+- refactor(file2text): optimize BOM detection and stream handling in encoding utility
+- docs(tools): update chart config tool parameter description
+
+
+
 ## v2.2.0 20260713
 - feat(websearch): add Firecrawl Search provider
 - refactor(config): handle url-based transport type fallback in McpConfig
