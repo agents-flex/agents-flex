@@ -1,6 +1,9 @@
 # Agents-Flex ChangeLog
 
 ## v2.2.1 20260716
+- docs(rag): update File2Text documentation with comprehensive guide Michael
+- feat(file2text): integrate Apache Tika for enhanced document parsing support
+- feat(file2text): enhance document extraction capabilities
 - refactor(http): use default http client instance across all model implementations
 - refactor(http): replace HttpClient with AgentsFlexHttpClient for enhanced observability
 - docs(image): remove OpenAI compatible services link from getting started
@@ -17,7 +20,7 @@
 - feat: Introducing mathematical calculation tools into intelligent data analysis
 - feat(video): add video model support for agents-flex
 - feat(video): add comprehensive video generation model support
-- refactor(demos): update ChatConfig to BaseChatConfig in demo classesde
+- refactor(demos): update ChatConfig to BaseChatConfig in demo classes
 - refactor(core): Rename ChatConfig class to BaseChatConfig and replace ChatConfig with BaseChatConfig in core components
 - feat(image): add reference image support and update Volcengine integration
 - docs(audio): update volcengine module name reference

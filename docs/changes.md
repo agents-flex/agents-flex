@@ -1,6 +1,9 @@
 # Agents-Flex ChangeLog
 
 ## v2.2.1 20260716
+- docs(rag): update File2Text documentation with comprehensive guide Michael
+- feat(file2text): integrate Apache Tika for enhanced document parsing support
+- feat(file2text): enhance document extraction capabilities
 - refactor(http): use default http client instance across all model implementations
 - refactor(http): replace HttpClient with AgentsFlexHttpClient for enhanced observability
 - docs(image): remove OpenAI compatible services link from getting started
