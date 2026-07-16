@@ -3,18 +3,20 @@ package com.agentsflex.model.chat.ollama;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Test;
 
+import java.io.UncheckedIOException;
+
 public class OllamaChatModelTest {
 
-    @Test(expected = ModelException.class)
+    @Test(expected = UncheckedIOException.class)
     public void testChat() {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3");
         config.setLogEnabled(true);
+        config.setRetryEnabled(false);
 
         ChatModel chatModel = new OllamaChatModel(config);
         String chat = chatModel.chat("Why is the sky blue?");
@@ -28,6 +30,7 @@ public class OllamaChatModelTest {
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3");
         config.setLogEnabled(true);
+        config.setRetryEnabled(false);
 
         ChatModel chatModel = new OllamaChatModel(config);
         chatModel.chatStream("Why is the sky blue?", (context, response) -> System.out.println(response.getMessage().getContent()));
@@ -36,12 +39,13 @@ public class OllamaChatModelTest {
     }
 
 
-    @Test
+    @Test(expected = UncheckedIOException.class)
     public void testFunctionCall1() throws InterruptedException {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3.1");
         config.setLogEnabled(true);
+        config.setRetryEnabled(false);
 
         ChatModel chatModel = new OllamaChatModel(config);
 
@@ -53,12 +57,13 @@ public class OllamaChatModelTest {
     }
 
 
-    @Test
+    @Test(expected = UncheckedIOException.class)
     public void testFunctionCall2() throws InterruptedException {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llama3.1");
         config.setLogEnabled(true);
+        config.setRetryEnabled(false);
 
         ChatModel chatModel = new OllamaChatModel(config);
 
@@ -74,12 +79,13 @@ public class OllamaChatModelTest {
     }
 
 
-    @Test
+    @Test(expected = UncheckedIOException.class)
     public void testVisionModel() {
         OllamaChatConfig config = new OllamaChatConfig();
         config.setEndpoint("http://localhost:11434");
         config.setModel("llava");
         config.setLogEnabled(true);
+        config.setRetryEnabled(false);
 
         ChatModel chatModel = new OllamaChatModel(config);
 

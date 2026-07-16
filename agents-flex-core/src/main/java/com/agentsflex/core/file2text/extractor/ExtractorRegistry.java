@@ -36,7 +36,9 @@ public class ExtractorRegistry {
         register(new DocxExtractor());
         register(new DocExtractor());
         register(new PptxExtractor());
+        register(new PptExtractor());
         register(new ExcelExtractor());
+        register(new TikaDocumentExtractor());
         register(new HtmlExtractor());
         register(new PlainTextExtractor());
     }

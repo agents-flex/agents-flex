@@ -25,8 +25,8 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * DOCX 文档提取器（.docx, .dotx）
@@ -42,14 +42,17 @@ public class DocxExtractor implements FileExtractor {
         // 精确 MIME（可选）
         Set<String> mimeTypes = new HashSet<>();
         mimeTypes.add("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-        // 也可以添加 template 类型
         mimeTypes.add("application/vnd.openxmlformats-officedocument.wordprocessingml.template");
+        mimeTypes.add("application/vnd.ms-word.document.macroenabled.12");
+        mimeTypes.add("application/vnd.ms-word.template.macroenabled.12");
         KNOWN_MIME_TYPES = Collections.unmodifiableSet(mimeTypes);
 
         // 支持的扩展名
         Set<String> extensions = new HashSet<>();
         extensions.add("docx");
         extensions.add("dotx");
+        extensions.add("docm");
+        extensions.add("dotm");
         SUPPORTED_EXTENSIONS = Collections.unmodifiableSet(extensions);
     }
 
@@ -57,21 +60,24 @@ public class DocxExtractor implements FileExtractor {
     public boolean supports(DocumentSource source) {
         String mimeType = source.getMimeType();
         String fileName = source.getFileName();
+        String normalizedMimeType = mimeType != null
+            ? mimeType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT)
+            : null;
 
         // 1. MIME 精确匹配
-        if (mimeType != null && KNOWN_MIME_TYPES.contains(mimeType)) {
+        if (normalizedMimeType != null && KNOWN_MIME_TYPES.contains(normalizedMimeType)) {
             return true;
         }
 
         // 2. MIME 前缀匹配
-        if (mimeType != null && mimeType.startsWith(MIME_PREFIX)) {
+        if (normalizedMimeType != null && normalizedMimeType.startsWith(MIME_PREFIX)) {
             return true;
         }
 
         // 3. 扩展名匹配
         if (fileName != null) {
             String ext = getExtension(fileName);
-            if (ext != null && SUPPORTED_EXTENSIONS.contains(ext.toLowerCase())) {
+            if (ext != null && SUPPORTED_EXTENSIONS.contains(ext.toLowerCase(Locale.ROOT))) {
                 return true;
             }
         }
@@ -86,26 +92,16 @@ public class DocxExtractor implements FileExtractor {
         try (InputStream is = source.openStream();
              XWPFDocument document = new XWPFDocument(is)) {
 
-            // 提取段落
-            for (XWPFParagraph paragraph : document.getParagraphs()) {
-                String paraText = getParagraphText(paragraph);
-                if (paraText != null && !paraText.trim().isEmpty()) {
-                    text.append(paraText).append("\n");
+            // 按文档中的原始顺序提取段落和表格
+            for (IBodyElement bodyElement : document.getBodyElements()) {
+                if (bodyElement instanceof XWPFParagraph) {
+                    String paragraphText = getParagraphText((XWPFParagraph) bodyElement);
+                    if (paragraphText != null && !paragraphText.trim().isEmpty()) {
+                        text.append(paragraphText).append('\n');
+                    }
+                } else if (bodyElement instanceof XWPFTable) {
+                    extractTable((XWPFTable) bodyElement, text);
                 }
-            }
-
-            // 提取表格
-            for (XWPFTable table : document.getTables()) {
-                text.append("\n[Table Start]\n");
-                for (XWPFTableRow row : table.getRows()) {
-                    List<String> cellTexts = row.getTableCells().stream()
-                        .map(this::getCellText)
-                        .map(String::trim)
-                        .collect(Collectors.toList());
-                    // 注意：这里直接 append List 可能会输出 [col1, col2] 格式，视需求而定
-                    text.append(cellTexts).append("\n");
-                }
-                text.append("[Table End]\n\n");
             }
 
         } catch (Exception e) {
@@ -157,10 +153,62 @@ public class DocxExtractor implements FileExtractor {
         for (XWPFParagraph p : cell.getParagraphs()) {
             String pt = getParagraphText(p);
             if (pt != null) {
-                text.append(pt).append(" ");
+                if (text.length() > 0) {
+                    text.append(' ');
+                }
+                text.append(pt);
             }
         }
         return text.toString().trim();
+    }
+
+    private void extractTable(XWPFTable table, StringBuilder text) {
+        List<XWPFTableRow> rows = table.getRows();
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+
+        int columnCount = 0;
+        for (XWPFTableRow row : rows) {
+            columnCount = Math.max(columnCount, row.getTableCells().size());
+        }
+        if (columnCount == 0) {
+            return;
+        }
+
+        text.append('\n');
+        appendTableRow(rows.get(0), columnCount, text);
+        text.append('|');
+        for (int column = 0; column < columnCount; column++) {
+            text.append(" --- |");
+        }
+        text.append('\n');
+
+        for (int row = 1; row < rows.size(); row++) {
+            appendTableRow(rows.get(row), columnCount, text);
+        }
+        text.append('\n');
+    }
+
+    private void appendTableRow(XWPFTableRow row, int columnCount, StringBuilder text) {
+        List<XWPFTableCell> cells = row.getTableCells();
+        text.append('|');
+        for (int column = 0; column < columnCount; column++) {
+            String value = column < cells.size() ? getCellText(cells.get(column)) : "";
+            text.append(' ').append(escapeMarkdownCell(value)).append(" |");
+        }
+        text.append('\n');
+    }
+
+    private String escapeMarkdownCell(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\")
+            .replace("|", "\\|")
+            .replace("\r", " ")
+            .replace("\n", " ")
+            .trim();
     }
 
     /**
@@ -174,20 +222,19 @@ public class DocxExtractor implements FileExtractor {
             }
 
 
-            String fileName = pictureData.getFileName();
-            String extension = getExtension(fileName);
-
-            // 不支持 wmf 文件格式
-            if ("wmf".equalsIgnoreCase(extension) || "emf".equalsIgnoreCase(extension)) {
-                return null;
+            String mimeType = pictureData.getPackagePart().getContentType();
+            if (mimeType == null || mimeType.trim().isEmpty()) {
+                String extension = getExtension(pictureData.getFileName());
+                mimeType = ImageUtil.getMimeTypeFromExtension(extension);
             }
-
-            String mimeType = ImageUtil.getMimeTypeFromExtension(extension);
-            if (mimeType == null) {
-                mimeType = "image/png"; // 默认
+            if (mimeType == null || mimeType.trim().isEmpty()) {
+                mimeType = "application/octet-stream";
             }
 
             byte[] data = pictureData.getData();
+            if (data == null || data.length == 0) {
+                return null;
+            }
             return ImageUtil.imageBytesToDataUri(data, mimeType);
 
         } catch (Exception e) {

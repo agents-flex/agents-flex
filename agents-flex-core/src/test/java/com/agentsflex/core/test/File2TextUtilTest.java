@@ -18,7 +18,7 @@ public class File2TextUtilTest {
 
     @Test
     public void testReadFromDocxFile() {
-        String filePath = "/Users/michael/Desktop/11122.docx";
+        String filePath = "/Users/michael/Desktop/未命名文件夹/test.docx";
         String text = File2TextUtil.readFromFile(new File(filePath));
         System.out.println( text);
 
@@ -34,7 +34,17 @@ public class File2TextUtilTest {
     }
     @Test
     public void testReadFromFile2() {
-        String filePath = "/Users/michael/Desktop/222.pdf";
+//        String filePath = "/Users/michael/Desktop/222.pdf";
+        String filePath = "/Users/michael/Desktop/未命名文件夹/test.pdf";
+        String text = File2TextUtil.readFromFile(new File(filePath));
+        System.out.println( text);
+
+        // 断言结果
+    }
+
+    @Test
+    public void testReadFromPpt() {
+        String filePath = "/Users/michael/Desktop/未命名文件夹/test.ppt";
         String text = File2TextUtil.readFromFile(new File(filePath));
         System.out.println( text);
 

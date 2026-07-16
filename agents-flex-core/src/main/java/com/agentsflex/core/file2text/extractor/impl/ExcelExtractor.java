@@ -25,10 +25,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 /**
- * Excel 文档提取器（.xlsx, .xlsm, .xls, .xltx）
+ * Excel 文档提取器（.xlsx, .xlsm, .xls, .xlt, .xltx, .xltm）
  * 输出格式：Markdown 表格，支持多 Sheet、公式计算、特殊字符转义
  */
 public class ExcelExtractor implements FileExtractor {
@@ -42,14 +43,17 @@ public class ExcelExtractor implements FileExtractor {
         mimeTypes.add("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         mimeTypes.add("application/vnd.openxmlformats-officedocument.spreadsheetml.template");
         mimeTypes.add("application/vnd.ms-excel");
-        mimeTypes.add("application/vnd.ms-excel.sheet.macroEnabled.12");
+        mimeTypes.add("application/vnd.ms-excel.sheet.macroenabled.12");
+        mimeTypes.add("application/vnd.ms-excel.template.macroenabled.12");
         KNOWN_MIME_TYPES = Collections.unmodifiableSet(mimeTypes);
 
         Set<String> extensions = new HashSet<>();
         extensions.add("xlsx");
         extensions.add("xlsm");
         extensions.add("xls");
+        extensions.add("xlt");
         extensions.add("xltx");
+        extensions.add("xltm");
         SUPPORTED_EXTENSIONS = Collections.unmodifiableSet(extensions);
     }
 
@@ -57,16 +61,19 @@ public class ExcelExtractor implements FileExtractor {
     public boolean supports(DocumentSource source) {
         String mimeType = source.getMimeType();
         String fileName = source.getFileName();
+        String normalizedMimeType = mimeType != null
+            ? mimeType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT)
+            : null;
 
-        if (mimeType != null && KNOWN_MIME_TYPES.contains(mimeType)) {
+        if (normalizedMimeType != null && KNOWN_MIME_TYPES.contains(normalizedMimeType)) {
             return true;
         }
-        if (mimeType != null && mimeType.startsWith(MIME_PREFIX)) {
+        if (normalizedMimeType != null && normalizedMimeType.startsWith(MIME_PREFIX)) {
             return true;
         }
         if (fileName != null) {
             String ext = getExtension(fileName);
-            if (ext != null && SUPPORTED_EXTENSIONS.contains(ext.toLowerCase())) {
+            if (ext != null && SUPPORTED_EXTENSIONS.contains(ext.toLowerCase(Locale.ROOT))) {
                 return true;
             }
         }
@@ -193,9 +200,10 @@ public class ExcelExtractor implements FileExtractor {
     private Workbook openWorkbook(InputStream inputStream, String fileName) throws IOException {
         String ext = fileName != null ? getExtension(fileName) : null;
 
-        if ("xls".equalsIgnoreCase(ext)) {
+        if ("xls".equalsIgnoreCase(ext) || "xlt".equalsIgnoreCase(ext)) {
             return new HSSFWorkbook(inputStream);
-        } else if ("xlsx".equalsIgnoreCase(ext) || "xlsm".equalsIgnoreCase(ext) || "xltx".equalsIgnoreCase(ext)) {
+        } else if ("xlsx".equalsIgnoreCase(ext) || "xlsm".equalsIgnoreCase(ext)
+            || "xltx".equalsIgnoreCase(ext) || "xltm".equalsIgnoreCase(ext)) {
             return new XSSFWorkbook(inputStream);
         }
 

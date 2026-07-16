@@ -24,6 +24,9 @@ import org.apache.poi.hwpf.usermodel.CharacterRun;
 import org.apache.poi.hwpf.usermodel.Paragraph;
 import org.apache.poi.hwpf.usermodel.Picture;
 import org.apache.poi.hwpf.usermodel.Range;
+import org.apache.poi.hwpf.usermodel.Table;
+import org.apache.poi.hwpf.usermodel.TableCell;
+import org.apache.poi.hwpf.usermodel.TableRow;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 
 import java.io.IOException;
@@ -35,7 +38,7 @@ import java.util.Set;
 /**
  * DOC 文档提取器（.doc）
  * 支持旧版 Word 97-2003 格式
- * 支持段落文本提取以及嵌入图片的 Base64 提取
+ * 支持段落、Markdown 表格以及嵌入图片的 Base64 提取
  */
 public class DocExtractor implements FileExtractor {
 
@@ -82,41 +85,24 @@ public class DocExtractor implements FileExtractor {
             Range range = doc.getRange();
             PicturesTable picturesTable = doc.getPicturesTable();
 
-            // 遍历所有段落
             int numParagraphs = range.numParagraphs();
             for (int i = 0; i < numParagraphs; i++) {
                 Paragraph paragraph = range.getParagraph(i);
 
-                // 遍历段落中的每个 CharacterRun
-                int numRuns = paragraph.numCharacterRuns();
-                for (int j = 0; j < numRuns; j++) {
-                    CharacterRun run = paragraph.getCharacterRun(j);
+                if (paragraph.isInTable()) {
+                    Table table = range.getTable(paragraph);
+                    extractTable(table, picturesTable, text);
 
-                    // 检查是否是图片占位符
-                    // 在 HWPF 中，图片通常由一个特殊的 CharacterRun 表示，其中包含 Picture 对象
-                    if (picturesTable.hasPicture(run)) {
-                        Picture picture = picturesTable.extractPicture(run, true);
-                        if (picture != null) {
-                            String imageBase64 = convertPictureToBase64(picture);
-                            if (imageBase64 != null) {
-                                text.append("\n![Image](").append(imageBase64).append(")\n");
-                            }
-                        }
-                    } else {
-                        // 普通文本
-                        String runText = run.text();
-                        if (runText != null) {
-                            // 清理一些常见的控制字符，但保留换行符逻辑由段落处理或手动添加
-                            // HWPF 的 run.text() 通常不包含段落末尾的换行符，除非是特定情况
-                            text.append(runText);
-                        }
+                    int tableEndOffset = table.getEndOffset();
+                    while (i + 1 < numParagraphs
+                        && range.getParagraph(i + 1).getStartOffset() < tableEndOffset) {
+                        i++;
                     }
+                    continue;
                 }
 
-                // 每个段落结束后添加换行符
-                // 注意：HWPF 的 Paragraph 文本有时已经包含 \r，这里为了统一格式，追加 \n
-                // 如果发现有重复换行，可以根据实际情况调整
-                text.append("\n");
+                appendParagraphContent(paragraph, picturesTable, text);
+                text.append('\n');
             }
 
             return text.toString().trim();
@@ -126,10 +112,107 @@ public class DocExtractor implements FileExtractor {
         }
     }
 
+    private void appendParagraphContent(Paragraph paragraph, PicturesTable picturesTable, StringBuilder text) {
+        int numRuns = paragraph.numCharacterRuns();
+        for (int i = 0; i < numRuns; i++) {
+            CharacterRun run = paragraph.getCharacterRun(i);
+            if (picturesTable.hasPicture(run)) {
+                Picture picture = picturesTable.extractPicture(run, true);
+                String imageDataUri = convertPictureToDataUri(picture);
+                if (imageDataUri != null) {
+                    text.append("\n![Image](").append(imageDataUri).append(")\n");
+                }
+            } else {
+                String runText = run.text();
+                if (runText != null) {
+                    text.append(cleanRunText(runText));
+                }
+            }
+        }
+    }
+
+    private String cleanRunText(String value) {
+        StringBuilder cleaned = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char character = value.charAt(i);
+            if (character == '\r' || character == '\u0007') {
+                continue;
+            }
+            if (character == '\u000B' || character == '\u000C') {
+                cleaned.append('\n');
+            } else if (character >= 0x20 || character == '\n' || character == '\t') {
+                cleaned.append(character);
+            }
+        }
+        return cleaned.toString();
+    }
+
+    private void extractTable(Table table, PicturesTable picturesTable, StringBuilder text) {
+        int rowCount = table.numRows();
+        if (rowCount == 0) {
+            return;
+        }
+
+        int columnCount = 0;
+        for (int row = 0; row < rowCount; row++) {
+            columnCount = Math.max(columnCount, table.getRow(row).numCells());
+        }
+        if (columnCount == 0) {
+            return;
+        }
+
+        text.append('\n');
+        appendTableRow(table.getRow(0), columnCount, picturesTable, text);
+        text.append('|');
+        for (int column = 0; column < columnCount; column++) {
+            text.append(" --- |");
+        }
+        text.append('\n');
+
+        for (int row = 1; row < rowCount; row++) {
+            appendTableRow(table.getRow(row), columnCount, picturesTable, text);
+        }
+        text.append('\n');
+    }
+
+    private void appendTableRow(TableRow row, int columnCount,
+                                PicturesTable picturesTable, StringBuilder text) {
+        text.append('|');
+        for (int column = 0; column < columnCount; column++) {
+            String value = column < row.numCells()
+                ? getCellText(row.getCell(column), picturesTable)
+                : "";
+            text.append(' ').append(escapeMarkdownCell(value)).append(" |");
+        }
+        text.append('\n');
+    }
+
+    private String getCellText(TableCell cell, PicturesTable picturesTable) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < cell.numParagraphs(); i++) {
+            if (text.length() > 0) {
+                text.append(' ');
+            }
+            appendParagraphContent(cell.getParagraph(i), picturesTable, text);
+        }
+        return text.toString().trim();
+    }
+
+    private String escapeMarkdownCell(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\")
+            .replace("|", "\\|")
+            .replace("\r", " ")
+            .replace("\n", " ")
+            .trim();
+    }
+
     /**
      * 将 HWPF Picture 对象转换为 Base64 Data URI
      */
-    private String convertPictureToBase64(Picture picture) {
+    private String convertPictureToDataUri(Picture picture) {
         try {
             if (picture == null) {
                 return null;
@@ -140,23 +223,8 @@ public class DocExtractor implements FileExtractor {
                 return null;
             }
 
-            // 获取建议的文件扩展名或 MIME 类型
-            // HWPF Picture 的 suggestFileExtension() 返回如 "wmf", "jpeg", "png" 等
             String ext = picture.suggestFileExtension();
-
-            // 过滤不支持的格式，特别是 WMF/EMF，浏览器和大多数 LLM 无法直接渲染
-            if ("wmf".equalsIgnoreCase(ext) || "emf".equalsIgnoreCase(ext)) {
-                // 可选：记录日志说明跳过了 WMF 图片
-                // System.err.println("Skipping unsupported WMF/EMF image in DOC");
-                return null;
-            }
-
-            String mimeType = ImageUtil.getMimeTypeFromExtension(ext);
-            if (mimeType == null) {
-                // 如果无法识别类型，尝试默认 PNG 或 JPEG，或者跳过
-                // 很多旧 DOC 图片是 JPEG 即使扩展名不明
-                mimeType = "image/jpeg";
-            }
+            String mimeType = getPictureMimeType(ext);
 
             return ImageUtil.imageBytesToDataUri(data, mimeType);
 
@@ -164,6 +232,18 @@ public class DocExtractor implements FileExtractor {
             System.err.println("Failed to convert DOC image to Base64: " + e.getMessage());
             return null;
         }
+    }
+
+    private String getPictureMimeType(String extension) {
+        if ("wmf".equalsIgnoreCase(extension)) {
+            return "image/x-wmf";
+        }
+        if ("emf".equalsIgnoreCase(extension)) {
+            return "image/x-emf";
+        }
+
+        String mimeType = ImageUtil.getMimeTypeFromExtension(extension);
+        return mimeType != null ? mimeType : "application/octet-stream";
     }
 
 

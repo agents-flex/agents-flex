@@ -64,12 +64,15 @@ System.out.println(text);
 
 | 提取器类                 | 支持类型                                     |
 | -- | - |
-| `DocExtractor`       | .doc (Word 97-2003)                      |
-| `DocxExtractor`      | .docx / .dotx                            |
+| `DocExtractor`       | .doc / .dot (Word 97-2003)               |
+| `DocxExtractor`      | .docx / .dotx / .docm / .dotm            |
 | `PdfTextExtractor`   | .pdf                                     |
-| `PptxExtractor`      | .pptx                                    |
-| `HtmlExtractor`      | .html / .htm                             |
-| `PlainTextExtractor` | .txt, .md, .csv, .json, .xml, .log 等文本文件 |
+| `PptExtractor`       | .ppt / .pps / .pot (PowerPoint 97-2003)  |
+| `PptxExtractor`      | .pptx / .ppsx / .potx / .pptm / .ppsm / .potm |
+| `ExcelExtractor`     | .xls / .xlt / .xlsx / .xlsm / .xltx / .xltm |
+| `TikaDocumentExtractor` | .rtf、OpenDocument、.eml / .msg、.epub    |
+| `HtmlExtractor`      | .html / .htm / .xhtml / .mhtml           |
+| `PlainTextExtractor` | .txt、.md、.csv、.tsv、代码及常见配置文件 |
 
 提取器通过 `getOrder()` 设置优先级，数值越小优先级越高。
 

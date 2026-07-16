@@ -23,11 +23,12 @@ import com.agentsflex.core.file2text.util.EncodingDetectUtil;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 /**
  * 纯文本文件提取器（支持 UTF-8、GBK、GB2312 编码自动检测）
- * 支持 .txt, .md, .log, .csv, .json, .xml 等文本格式
+ * 支持基础文本、TSV、常见代码和配置文件
  */
 public class PlainTextExtractor implements FileExtractor {
 
@@ -39,23 +40,23 @@ public class PlainTextExtractor implements FileExtractor {
         mimeTypes.add("text/plain");
         mimeTypes.add("text/markdown");
         mimeTypes.add("text/csv");
+        mimeTypes.add("text/tab-separated-values");
         mimeTypes.add("application/json");
         mimeTypes.add("application/xml");
+        mimeTypes.add("application/javascript");
+        mimeTypes.add("application/sql");
         SUPPORTED_MIME_TYPES = Collections.unmodifiableSet(mimeTypes);
 
         Set<String> extensions = new HashSet<>();
-        extensions.add("txt");
-        extensions.add("text");
-        extensions.add("md");
-        extensions.add("markdown");
-        extensions.add("log");
-        extensions.add("csv");
-        extensions.add("json");
-        extensions.add("xml");
-        extensions.add("yml");
-        extensions.add("yaml");
-        extensions.add("properties");
-        extensions.add("conf");
+        Collections.addAll(extensions,
+            "txt", "text", "md", "markdown", "log", "csv", "tsv",
+            "json", "xml", "yml", "yaml", "properties", "conf", "cfg", "config",
+            "ini", "toml", "env", "editorconfig", "gitignore", "gitattributes",
+            "java", "kt", "kts", "groovy", "scala", "py", "rb", "php",
+            "js", "mjs", "cjs", "jsx", "ts", "tsx", "vue", "svelte",
+            "c", "h", "cc", "cpp", "hpp", "cs", "go", "rs", "swift", "dart", "lua", "r",
+            "sh", "bash", "zsh", "fish", "bat", "cmd", "ps1",
+            "sql", "css", "scss", "sass", "less", "gradle");
         SUPPORTED_EXTENSIONS = Collections.unmodifiableSet(extensions);
     }
 
@@ -63,14 +64,24 @@ public class PlainTextExtractor implements FileExtractor {
     public boolean supports(DocumentSource source) {
         String mimeType = source.getMimeType();
         String fileName = source.getFileName();
+        String normalizedMimeType = mimeType != null
+            ? mimeType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT)
+            : null;
 
-        if (mimeType != null && (mimeType.startsWith("text/") || SUPPORTED_MIME_TYPES.contains(mimeType))) {
+        if (normalizedMimeType != null
+            && (normalizedMimeType.startsWith("text/") || SUPPORTED_MIME_TYPES.contains(normalizedMimeType))) {
             return true;
         }
 
         if (fileName != null) {
             String ext = getExtension(fileName);
-            return ext != null && SUPPORTED_EXTENSIONS.contains(ext.toLowerCase());
+            String normalizedFileName = fileName.trim().toLowerCase(Locale.ROOT);
+            if ("dockerfile".equals(normalizedFileName)
+                || "makefile".equals(normalizedFileName)
+                || "jenkinsfile".equals(normalizedFileName)) {
+                return true;
+            }
+            return ext != null && SUPPORTED_EXTENSIONS.contains(ext.toLowerCase(Locale.ROOT));
         }
 
         return false;
