@@ -197,6 +197,7 @@ public class OpenAIChatModelTest {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setApiKey("sk-5gqOcl*****");
         config.setModel("gpt-4-turbo");
+        config.setRetryEnabled(false);
 
 
         ChatModel chatModel = new OpenAIChatModel(config);
@@ -213,6 +214,7 @@ public class OpenAIChatModelTest {
     public void testFunctionCalling1() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setApiKey("sk-rts5NF6n*******");
+        config.setRetryEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -228,6 +230,7 @@ public class OpenAIChatModelTest {
     public void testFunctionCalling2() throws InterruptedException {
         OpenAIChatConfig config = new OpenAIChatConfig();
         config.setApiKey("sk-rts5NF6n*******");
+        config.setRetryEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -252,6 +255,7 @@ public class OpenAIChatModelTest {
         config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
         config.setApiKey("2d57a");
+        config.setRetryEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -299,6 +303,7 @@ public class OpenAIChatModelTest {
         config.setRequestPath("/api/v3/chat/completions");
         config.setModel("deepseek-v3-250324");
         config.setApiKey("2d5");
+        config.setRetryEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -323,6 +328,7 @@ public class OpenAIChatModelTest {
 //        config.setModel("Qwen3-32B");
         config.setModel("DeepSeek-V3.2");
         config.setApiKey("PXW1G***L7D12");
+        config.setRetryEnabled(false);
 //        config.setLogEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
@@ -371,6 +377,7 @@ public class OpenAIChatModelTest {
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
         config.setApiKey("PXW1G*********D12");
+        config.setRetryEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -396,6 +403,7 @@ public class OpenAIChatModelTest {
 //        config.setModel("DeepSeek-V3");
 //        config.setSupportToolMessage(false);
         config.setApiKey("PXW1");
+        config.setRetryEnabled(false);
 
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
@@ -436,6 +444,7 @@ public class OpenAIChatModelTest {
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3.5-35B-A3B");
         config.setApiKey("PXW1");
+        config.setRetryEnabled(false);
 //        config.setModel("DeepSeek-V3");
 //        config.setSupportToolMessage(false);
 
@@ -478,6 +487,7 @@ public class OpenAIChatModelTest {
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
         config.setApiKey("PXW1");
+        config.setRetryEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -499,6 +509,7 @@ public class OpenAIChatModelTest {
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen3-32B");
         config.setApiKey("****");
+        config.setRetryEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -540,6 +551,7 @@ public class OpenAIChatModelTest {
         config.setEndpoint("https://ai.gitee.com");
         config.setModel("Qwen2-72B-Instruct");
         config.setApiKey("*****");
+        config.setRetryEnabled(false);
 
         OpenAIChatModel llm = new OpenAIChatModel(config);
 
@@ -605,6 +617,7 @@ public class OpenAIChatModelTest {
 //        config.setSupportToolMessage(false);
         config.setLogEnabled(false);
         config.setApiKey("sk-");
+        config.setRetryEnabled(false);
 
 
         OpenAIChatModel llm = new OpenAIChatModel(config);

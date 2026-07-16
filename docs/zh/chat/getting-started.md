@@ -26,7 +26,7 @@
 或者使用 Gradle:
 
 ```java
-implementation 'com.agentsflex:agents-flex-bom:2.2.1'
+implementation 'com.agentsflex:agents-flex-bom:2.2.2'
 ```
 
 

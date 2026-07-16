@@ -1,6 +1,6 @@
 # Agents-Flex ChangeLog
 
-## v2.2.1 20260716
+## v2.2.2 20260716
 - docs(rag): update File2Text documentation with comprehensive guide Michael
 - feat(file2text): integrate Apache Tika for enhanced document parsing support
 - feat(file2text): enhance document extraction capabilities
