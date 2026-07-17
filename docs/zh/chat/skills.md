@@ -1,901 +1,936 @@
-# Skills 开发文档
+<div v-pre>
 
+# Skills 开发与 Sandbox 部署指南
 
-## 1. 概述
+## 概述
 
-### 1.1 什么是 Skills
+Agents-Flex Skills 是一套基于文件系统的模块化能力扩展机制。一个 Skill 不只是一个 Prompt，
+而是一份可以同时包含操作说明、脚本、参考资料和静态资源的可复用工作包。模型先根据元数据选择
+合适的 Skill，再按需读取完整说明，并通过 Bash、Read、Write、Edit、Glob、Grep 等工具执行任务。
 
-AgentsFlex Skills 是一套**基于文件系统的模块化能力扩展系统**，遵循 Agent Skills 行业标准。它允许开发者将重复性、专业化的工作流程封装为可复用的技能包，使 AI Agent 能够按需加载、精准调用外部能力。
+Skills 模块最重要的设计是 `SkillRuntime`：同一套 Skill 和同一组模型工具可以在本机、容器或远程
+Sandbox 中执行。切换 Runtime 不需要修改 Skill 内容，也不需要让模型学习不同的文件 API。
 
-```
-┌─────────────────────────────────────────┐
-│              Agent Core                 │
-├─────────────────────────────────────────┤
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐    │
-│  │  Shell  │ │  Grep   │ │  Glob   │    │  ← 内置工具
-│  └─────────┘ └─────────┘ └─────────┘    │
-│  ┌─────────────────────────────┐        │
-│  │   .claude/skills/           │        │
-│  │   ├── pdf_generator/        │        │  ← 自定义 Skills
-│  │   │   ├── SKILL.md          │        │
-│  │   │   ├── scripts/          │        │
-│  │   │   └── assets/           │        │
-│  │   └── code_review/          │        │
-│  └─────────────────────────────┘        │
-└─────────────────────────────────────────┘
-```
+### 为什么需要 Runtime
 
-### 1.2 核心价值
+如果直接在宿主机执行 Skill 脚本，脚本会继承当前 Java 进程的权限，可能读取本机文件、访问内网、
+执行系统命令或消耗大量 CPU 和内存。对于来自第三方的 Skill、用户可控输入或生产环境任务，这通常
+不是可接受的安全边界。
 
-| 特性 | 说明 | 收益 |
-|------|------|------|
-| 🎯 **渐进式披露** | 元数据→指令→资源，按需加载 | 节省 Token，提升注意力 |
-| 🔧 **模块化封装** | 每个 Skill 独立目录，职责单一 | 易维护、易复用、易测试 |
-| 📦 **文件系统驱动** | 基于 `.claude/skills` 目录自动发现 | 零配置接入，开箱即用 |
-| 🔒 **安全沙箱** | 路径校验、超时控制、命令白名单 | 企业级安全合规 |
-| 🌐 **标准兼容** | 遵循 Agent Skills 社区规范 | 与 Cursor/Codex/OpenCode 等生态互通 |
+`SkillRuntime` 把以下能力放到同一个执行边界内：
 
-### 1.3 适用场景
+- Skill 目录准备和远程上传；
+- Shell 命令执行、工作目录、环境变量和超时；
+- 文本文件读取、写入和精确编辑；
+- Glob 文件匹配和 Grep 内容搜索；
+- PPTX、PDF、图片、压缩包等二进制产物下载；
+- Runtime 或 Sandbox 生命周期管理。
 
-```java
-// ✅ 推荐场景
-- 代码仓库操作（git 工作流、代码审查）
-- 文件批量处理（格式转换、内容提取）
-- 本地知识检索（结合 Grep/Glob 工具）
-- 自动化脚本执行（构建、部署、测试）
-- 专业领域 SOP 封装（文档生成、数据分析）
+## 模块组成
 
-// ❌ 不推荐场景
-- 高频简单交互（直接使用 Prompt 更高效）
-- 跨网络远程 API 调用（建议使用 MCP 协议）
-- 实时流式数据处理（建议使用专用 Stream 工具）
-```
+```text
+agents-flex-skills
+├── Skill / Skills                       Skill 模型与发现加载
+├── SkillsTool                           Skill 工具和 Runtime 工具组装
+├── attachment/
+│   ├── FilePublishRequest                输入流和待发布文件信息
+│   ├── FilePublisher                     应用自定义文件发布接口
+│   └── PublishedFile                     URL、有效期和存储结果
+├── runtime/
+│   ├── SkillRuntime                     统一执行边界
+│   ├── SkillExecutionRequest            命令、目录、超时和环境变量
+│   ├── SkillExecutionResult             退出码、输出和超时状态
+│   ├── SkillRuntimeFileSystem            文本、二进制、列表和下载 API
+│   └── SkillRuntimeFiles                 远程上传过滤策略
+├── local/
+│   └── LocalSkillRuntime                宿主机实现
+└── tools/
+    ├── SkillRuntimeShellTools           Bash
+    ├── SkillRuntimeFileTools            Read / Write / Edit
+    ├── SkillRuntimeSearchTools          Glob / Grep
+    └── SkillRuntimeFilePublishTools     PublishFile（可选）
 
-
-## 2. 架构和概念
-
-### 2.1 架构设计
-
-```
-User Request
-     │
-     ▼
-┌─────────────────┐
-│  MemoryPrompt   │  ← 消息上下文管理
-└─────────────────┘
-     │
-     ▼
-┌─────────────────┐
-│  UserMessage    │  ← 携带可用 Tools/Skills
-│  + SkillsTool   │
-│  + CommonTools  │
-└─────────────────┘
-     │
-     ▼
-┌─────────────────┐
-│  OpenAIChatModel│  ← LLM 推理 & 工具决策
-│  (GiteeAI等)    │
-└─────────────────┘
-     │
-     ▼
-┌─────────────────┐
-│  Tool Execution │  ← 执行 Shell/Grep/Glob/FileSystem
-└─────────────────┘
-     │
-     ▼
-┌─────────────────┐
-│  ToolMessage    │  ← 工具结果回传，继续对话
-└─────────────────┘
+agents-flex-skills-sandbox
+├── agents-flex-skills-open-sandbox      OpenSandbox SDK 实现
+└── agents-flex-skills-aio-sandbox       AIO Sandbox HTTP API 实现
 ```
 
-### 2.2 关键组件
+| Maven 模块 | 用途 | 是否创建 Sandbox |
+| --- | --- | --- |
+| `agents-flex-skills` | 核心 API、工具和本地 Runtime | 否 |
+| `agents-flex-skills-open-sandbox` | 连接 OpenSandbox Server，按需创建 Sandbox 实例 | 是 |
+| `agents-flex-skills-aio-sandbox` | 连接已经运行的 AIO Sandbox 服务 | 否 |
 
-#### 2.2.1 SkillsTool
+## 一个 Skill 由什么组成
 
-```java
-public class SkillsTool {
+Skill 是一个目录，目录中必须包含 `SKILL.md`。其他目录是约定而不是强制要求，可以根据任务需要选择。
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-
-        private List<Skill> skills = new ArrayList<>();
-
-        private String toolDescriptionTemplate = TOOL_DESCRIPTION_TEMPLATE;
-
-        protected Builder() {
-
-        }
-
-        public Builder toolDescriptionTemplate(String template) {
-            this.toolDescriptionTemplate = template;
-            return this;
-        }
-
-
-        public Builder addSkillsDirectory(String skillsRootDirectory) {
-            this.addSkillsDirectories(Collections.singletonList(skillsRootDirectory));
-            return this;
-        }
-
-        public Builder addSkillsDirectories(List<String> skillsRootDirectories) {
-            for (String skillsRootDirectory : skillsRootDirectories) {
-                this.skills.addAll(Skills.loadDirectory(skillsRootDirectory));
-            }
-            return this;
-        }
-
-        public Tool build() {
-
-            String skillsXml = this.skills.stream().map(s -> s.toXml()).collect(Collectors.joining("\n"));
-            return Tool.builder()
-                .name("Skill")
-                .description(String.format(this.toolDescriptionTemplate, skillsXml))
-                .addParameter(
-                    Parameter.builder()
-                        .name("command")
-                        .type("string")
-                        .description("The skill name (no arguments). E.g., \"pdf\" or \"xlsx\"").build()
-                )
-                .function(stringStringMap -> {
-                    String command = (String) stringStringMap.get("command");
-                    Skill skill = null;
-                    for (Skill s : skills) {
-                        if (s.name().equals(command)) {
-                            skill = s;
-                            break;
-                        }
-                    }
-
-                    if (skill != null) {
-                        return String.format("Base directory for this skill: %s\n\n%s", skill.getBasePath(), skill.getContent());
-                    }
-
-                    return "Skill not found: " + command;
-                }).build();
-
-        }
-    }
-}
+```text
+.claude/skills/
+└── pptx/
+    ├── SKILL.md                 必需：元数据和完整操作说明
+    ├── scripts/                 可选：可执行脚本和确定性程序
+    │   └── create_report.py
+    ├── references/              可选：规范、API 文档、领域知识
+    │   └── style-guide.md
+    ├── assets/                  可选：模板、图片、字体等输入资源
+    │   └── template.pptx
+    └── LICENSE                  可选：许可证和第三方声明
 ```
 
-#### 2.2.2 CommonTools
+### SKILL.md
 
-```java
-/**
- * 内置通用工具集合，提供开箱即用的基础能力
- */
-public class CommonTools {
-
-    /**
-     * 获取所有内置工具实例
-     * @return Tool 列表
-     */
-    public static List<Tool> getAllCommonsTools() {
-        List<Tool> tools = new ArrayList<>();
-        tools.addAll(ToolScanner.scan(GrepTool.builder().build()));
-        tools.addAll(ToolScanner.scan(GlobTool.builder().build()));
-        tools.addAll(ToolScanner.scan(FileSystemTools.builder().build()));
-        tools.addAll(ToolScanner.scan(ShellTools.builder().build()));
-        return tools;
-    }
-}
-```
-
-### 2.3 渐进式披露机制
-
-```
-┌─────────────────────────────────────────┐
-│  Stage 1: Metadata Loading (启动时)      │
-│  • 仅加载 Skills 名称 + 简短描述          │
-│  • 消耗: ~100 Token/Skill                │
-│  • 作用: 让 AI 知道"有哪些能力可用"      │
-└─────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────┐
-│  Stage 2: Instruction Loading (触发时)   │
-│  • 用户请求匹配到具体 Skill              │
-│  • 加载 SKILL.md 完整指令                │
-│  • 消耗: ~1-3K Token (按需)              │
-│  • 作用: 让 AI 知道"这个能力怎么用"      │
-└─────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────┐
-│  Stage 3: Runtime Resources (执行时)     │
-│  • 加载 reference/scripts/assets         │
-│  • 脚本代码不进入 Prompt，直接执行        │
-│  • 消耗: 0 Token (脚本) + 执行结果        │
-│  • 作用: 让 AI"执行具体任务"             │
-└─────────────────────────────────────────┘
-```
-
-
-## 3. 快速开始
-
-### 3.1 环境准备
-
-```bash
-# 1. JDK 版本要求
-java -version  # 推荐 Java 17+ (兼容 Java 8)
-
-# 2. 配置 API Key (以 GiteeAI 为例)
-export GITEE_APIKEY="your-api-key-here"
-
-# 3. Maven 依赖
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-core</artifactId>
-    <version>2.2.2</version>
-</dependency>
-```
-
-### 3.2 最小可运行示例
-
-```java
-package com.agentsflex.skills.demo;
-
-import com.agentsflex.core.message.UserMessage;
-import com.agentsflex.core.prompt.MemoryPrompt;
-import com.agentsflex.model.chat.openai.OpenAIChatConfig;
-import com.agentsflex.model.chat.openai.OpenAIChatModel;
-import com.agentsflex.skill.SkillsTool;
-import com.agentsflex.tool.commons.CommonTools;
-
-public class SkillsQuickStart {
-
-    public static void main(String[] args) throws InterruptedException {
-        // 1. 配置聊天模型
-        OpenAIChatModel chatModel = OpenAIChatConfig.builder()
-            .provider("GiteeAI")
-            .endpoint("https://ai.gitee.com")
-            .requestPath("/v1/chat/completions")
-            .apiKey(System.getenv("GITEE_APIKEY"))
-            .model("Qwen3.5-35B-A3B")
-            .thinkingEnabled(false)
-            .buildModel();
-
-        // 2. 创建提示词上下文
-        MemoryPrompt prompt = new MemoryPrompt();
-        prompt.setSystemMessage(
-            "Always use the available skills to assist the user in their requests."
-        );
-
-        // 3. 创建用户消息并注册工具
-        UserMessage userMessage = new UserMessage(
-            "帮我把 'Hello world' 这个内容生成一个 PDF 文件。"
-        );
-        prompt.addMessage(userMessage);
-
-        // 注册 SkillsTool (加载自定义技能)
-        Tool skillsTool = SkillsTool.builder()
-            .addSkillsDirectory("/path/to/.claude/skills")
-            .build();
-        prompt.addTool(skillsTool);
-
-        // 注册内置通用工具
-        prompt.addTools(CommonTools.getAllCommonsTools());
-
-
-        // 4. 发起流式对话
-        chatModel.chatStream(prompt, new StreamResponseListener() {
-            @Override
-            public void onMessage(StreamContext context, AiMessageResponse response) {
-                String content = StringUtil.hasText(response.getMessage().getContent())
-                    ? response.getMessage().getContent()
-                    : response.getMessage().getReasoningContent();
-
-                System.out.println(">>>>> " + content);
-
-                // 处理工具调用
-                if (response.getMessage().isFinalDelta()
-                        && response.getMessage().getToolCalls() != null) {
-
-                    System.out.println("----------");
-                    prompt.addMessage(response.getMessage());
-
-                    for (ToolCall toolCall : response.getMessage().getToolCalls()) {
-                        System.out.println(">>>>> " + toolCall.getName()
-                            + ": " + toolCall.getArguments());
-
-                        // 执行工具并获取结果
-                        List<ToolMessage> toolMessages =
-                            response.executeToolCallsAndGetToolMessages();
-                        prompt.addMessages(toolMessages);
-                    }
-                    // 递归继续对话
-                    chatModel.chatStream(prompt, this);
-
-                } else if (response.getMessage().isFinalDelta()
-                        && !response.getMessage().hasToolCalls()) {
-                    System.out.println(">>>>>>> 结束 <<<<<<<<<");
-                }
-            }
-        });
-
-        // 等待异步执行完成
-        Thread.sleep(200000L);
-    }
-}
-```
-
-### 3.3 运行结果
-
-```
->>>>> 我将帮您创建一个 PDF 文件，首先确认 pandoc 工具是否可用...
-----------
->>>>> Bash: which pandoc
->>>>> /usr/local/bin/pandoc
-----------
->>>>> 工具可用，现在执行转换命令...
->>>>> Bash: echo "Hello world" | pandoc -o output.pdf
->>>>> 文件已创建成功！output.pdf (12KB)
->>>>>>> 结束 <<<<<<<<<
-```
-
-
-## 4. 内置工具参考
-
-### 4.1 ShellTools - 系统命令执行
-
-#### 4.1.1 Bash 命令
-
-```java
-@ToolDef(name = "Bash", description = "Executes a given bash command...")
-public String bash(
-    @ToolParam(name = "command") String command,           // 必需：要执行的命令
-    @ToolParam(name = "timeout", required = false)
-        Long timeout,                                       // 可选：超时(ms)，最大600000
-    @ToolParam(name = "description", required = false)
-        String description,                                 // 可选：5-10字简短描述
-    @ToolParam(name = "runInBackground", required = false)
-        Boolean runInBackground                             // 可选：是否后台执行
-)
-```
-
-**使用示例：**
-
-```java
-// 前台执行（默认）
-Bash(command = "git status", description = "Check git status")
-
-// 带超时控制
-Bash(command = "npm install", timeout = 300000L, description = "Install dependencies")
-
-// 后台执行 + 后续获取输出
-String result = Bash(command = "python server.py",
-                     runInBackground = true,
-                     description = "Start web server");
-// 返回: bash_id: shell_123456...
-// 后续用 BashOutput(bash_id="shell_123456") 获取输出
-```
-
-**安全规范：**
-
-| ✅ 推荐做法 | ❌ 禁止做法 |
-|------------|----------|
-| 路径含空格时用双引号包裹 | 直接拼接用户输入到命令 |
-| 使用专用工具替代 find/grep/cat | 使用 `find`/`grep`/`cat` 等命令 |
-| 创建文件前先 `ls` 验证父目录 | 执行 `rm -rf`/`git push --force` 等破坏性命令 |
-| 设置合理 timeout 防止阻塞 | 执行交互式命令（如 `vim`/`git rebase -i`） |
-
-#### 4.1.2 BashOutput - 获取后台输出
-
-```java
-@ToolDef(name = "BashOutput")
-public String bashOutput(
-    @ToolParam(name = "bash_id") String bash_id,    // 必需：后台进程ID
-    @ToolParam(name = "filter", required = false)
-        String filter                               // 可选：正则过滤输出行
-)
-```
-
-#### 4.1.3 KillShell - 终止后台进程
-
-```java
-@ToolDef(name = "KillShell")
-public String killShell(
-    @ToolParam(name = "bash_id") String bash_id     // 必需：要终止的进程ID
-)
-```
-
-
-### 4.2 GrepTool - 内容搜索
-
-#### 4.2.1 基本用法
-
-```java
-@ToolDef(name = "Grep", description = "Pure Java grep implementation...")
-public String grep(
-    @ToolParam(name = "pattern") String pattern,                    // 必需：正则表达式
-    @ToolParam(name = "path", required = false) String path,        // 可选：搜索路径
-    @ToolParam(name = "glob", required = false) String glob,        // 可选：文件过滤模式
-    @ToolParam(name = "type", required = false) String type,        // 可选：文件类型(java/js/py...)
-    @ToolParam(name = "outputMode", required = false)
-        OutputMode outputMode,                                      // 可选：输出模式
-    @ToolParam(name = "context", required = false) Integer context, // 可选：上下文行数
-    @ToolParam(name = "caseInsensitive", required = false)
-        Boolean caseInsensitive,                                    // 可选：忽略大小写
-    @ToolParam(name = "headLimit", required = false)
-        Integer headLimit                                           // 可选：结果数量限制
-)
-```
-
-#### 4.2.2 输出模式
-
-```java
-public enum OutputMode {
-    files_with_matches,  // 默认：只显示匹配文件路径
-    count,               // 显示每个文件的匹配数量
-    content              // 显示匹配内容及上下文
-}
-```
-
-#### 4.2.3 使用示例
-
-```java
-// 搜索 Java 文件中的错误日志
-Grep(pattern = "log.*Error", type = "java", outputMode = OutputMode.content)
-
-// 在指定目录搜索 TODO 标记
-Grep(pattern = "TODO", path = "/src", glob = "*.java")
-
-// 不区分大小写 + 限制结果数
-Grep(pattern = "exception", caseInsensitive = true, headLimit = 50)
-
-// 显示匹配行及前后3行上下文
-Grep(pattern = "NullPointerException", context = 3, showLineNumbers = true)
-```
-
-#### 4.2.4 支持的文件类型
-
-```
-java, js, ts, py, rust, go, cpp, c, rb, php, cs,
-xml, json, yaml, md, txt, sh, html, css, less, scss
-```
-
-
-### 4.3 GlobTool - 文件路径匹配
-
-#### 4.3.1 基本用法
-
-```java
-@ToolDef(name = "Glob", description = "Fast file pattern matching...")
-public String glob(
-    @ToolParam(name = "pattern") String pattern,  // 必需：Glob 模式
-    @ToolParam(name = "path", required = false)
-        String path                               // 可选：搜索根目录
-)
-```
-
-#### 4.3.2 使用示例
-
-```java
-// 查找所有 JavaScript 文件
-Glob(pattern = "**/*.js")
-
-// 在 src 目录查找 TypeScript 测试文件
-Glob(pattern = "**/*.test.ts", path = "/src")
-
-// 查找特定命名模式的配置文件
-Glob(pattern = "**/config*.yaml")
-```
-
-#### 4.3.3 特性
-
-- ✅ 结果按修改时间降序排列（最新优先）
-- ✅ 自动忽略 `.git/`, `node_modules/`, `target/`, `build/` 等目录
-- ✅ 支持 `**` 递归匹配和 `*`/`?` 通配符
-
-
-### 4.4 FileSystemTools - 文件读写编辑
-
-#### 4.4.1 Read - 读取文件
-
-```java
-@ToolDef(name = "Read")
-public String read(
-    @ToolParam(name = "filePath") String filePath,  // 必需：绝对路径
-    @ToolParam(name = "offset", required = false)
-        Integer offset,                             // 可选：起始行号(默认1)
-    @ToolParam(name = "limit", required = false)
-        Integer limit                               // 可选：读取行数(默认2000)
-)
-```
-
-**特性：**
-- 行号格式输出：`     1→public class Main {`
-- 长行自动截断（>2000字符）
-- 支持 PDF/图片/Jupyter Notebook 等多模态文件
-
-#### 4.4.2 Write - 写入文件
-
-```java
-@ToolDef(name = "Write")
-public String write(
-    @ToolParam(name = "filePath") String filePath,  // 必需：绝对路径
-    @ToolParam(name = "content") String content     // 必需：文件内容
-)
-```
-
-**注意事项：**
-- ⚠️ 写入已存在文件前**必须先 Read**（安全校验）
-- ⚠️ 自动创建父目录（如果不存在）
-- ⚠️ 不主动创建文档文件（除非用户明确要求）
-
-#### 4.4.3 Edit - 精确编辑文件
-
-```java
-@ToolDef(name = "Edit")
-public String edit(
-    @ToolParam(name = "filePath") String filePath,      // 必需：绝对路径
-    @ToolParam(name = "old_string") String old_string,  // 必需：要替换的原文
-    @ToolParam(name = "new_string") String new_string,  // 必需：替换后的内容
-    @ToolParam(name = "replace_all", required = false)
-        Boolean replace_all                             // 可选：替换所有匹配项
-)
-```
-
-**注意事项：**
-- ⚠️ 编辑前**必须先 Read**（确保内容最新）
-- ⚠️ `old_string` 必须在文件中**唯一**（或使用 `replace_all=true`）
-- ⚠️ 保持缩进格式一致（Tab/空格）
-
-
-## 5. 自定义 Skills 开发
-
-### 5.1 Skill 目录结构
-
-```
-.clause/skills/
-├── pdf_generator/              # Skill 名称（唯一标识）
-│   ├── SKILL.md               # 核心指令文件（必需）
-│   ├── reference/             # 参考文档（可选）
-│   │   ├── analysis.md
-│   │   └── creation.md
-│   ├── scripts/               # 可执行脚本（可选）
-│   │   └── generate.py
-│   └── assets/                # 静态资源（可选）
-│       └── template.html
-└── code_review/
-    ├── SKILL.md
-    └── scripts/
-        └── checkstyle.xml
-```
-
-### 5.2 SKILL.md 编写规范
+`SKILL.md` 由 YAML 风格的 front matter 和 Markdown 正文组成：
 
 ```markdown
 ---
-name: pdf_generator
-description: Generate PDF files from text content using pandoc.
-             Trigger when user asks to create/export/save as PDF.
-version: 1.0
-author: Your Name
+name: pptx
+description: Create and validate PowerPoint presentations. Use for PPT or PPTX tasks.
 ---
 
-## 目标
-将用户提供的文本内容转换为 PDF 格式文件，支持基础样式定制。
+# PPTX Creation
 
-## 使用步骤
-1. 确认用户想要生成的 PDF 内容、文件名和输出路径
-2. 检查 pandoc 工具是否可用: `which pandoc`
-3. 如果内容包含 Markdown 语法，直接使用 pandoc 转换
-4. 如果内容是纯文本，先包装为 Markdown 再转换
-5. 执行转换命令: `pandoc -o {output_path} <(echo "{content}")`
-6. 验证文件生成成功并返回文件路径
-
-## 注意事项
-- ❌ 不要直接执行 rm/delete 等删除命令
-- ❌ 不要覆盖用户未授权的文件
-- ⚠️ 如果 pandoc 不可用，提示用户安装或建议使用在线转换工具
-- ⚠️ 文件名包含空格时必须用双引号包裹
-- ✅ 生成成功后，建议用户用 Read 工具预览内容
-
-## 参数说明
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| content | string | ✅ | 要转换的文本内容 |
-| output_path | string | ✅ | PDF 输出路径（绝对路径） |
-| title | string | ❌ | PDF 标题（可选） |
+1. 使用 scripts/create_report.py 生成 PPTX。
+2. 输出必须放在 Skill 目录之外。
+3. 重新打开文件并验证页数、元数据和文本。
 ```
 
-### 5.3 加载自定义 Skills
+当前解析器支持简单的单行 `key: value`，以及单引号或双引号包裹的值。它不是完整 YAML 解析器，
+不要在 front matter 中使用嵌套对象、数组或块文本。
 
-```java
-// 方式1: 单个技能目录
-Tool skillsTool = SkillsTool.builder()
-    .addSkillsDirectory("/your-path/skills")
-    .build();
+关键字段：
 
-// 方式2: 多个技能目录
-Tool skillsTool = SkillsTool.builder()
-    .addSkillsDirectory("/project/skills")
-    .addSkillsDirectory("/shared/team-skills")
-    .build();
+| 字段 | 是否必需 | 说明 |
+| --- | --- | --- |
+| `name` | 是 | 模型调用 Skill 时使用的名称，同一工具集合中应唯一 |
+| `description` | 强烈建议 | 描述能力和触发场景，决定模型能否正确选择 Skill |
+| 其他字段 | 否 | 会进入 Skill XML 元数据，可用于版本、许可证等信息 |
 
-// 注册到 UserMessage
-UserMessage userMessage = new UserMessage("用户请求...");
-userMessage.addTool(skillsTool);
-userMessage.addTools(CommonTools.getAllCommonsTools());
+### scripts
+
+`scripts/` 适合放确定性、可复用且不应完全交给模型临时编写的程序，例如：
+
+- 生成 PDF、PPTX、Excel 或图片；
+- 代码格式化、构建和测试；
+- 数据清洗和格式转换；
+- 产物结构与元数据验证。
+
+脚本不会自动执行。`SKILL.md` 应说明运行命令、依赖、输入、输出和验收条件，模型再通过 Runtime 的
+`Bash` 工具执行。
+
+### references 与 assets
+
+`references/` 放文本参考资料，模型可以用 Read/Grep 按需读取。`assets/` 放模板、图片和其他输入资源，
+通常由脚本直接消费。大型参考资料不应全部复制进 `SKILL.md`，否则会失去渐进式披露的优势。
+
+## 渐进式披露
+
+Skills 的加载分为三个阶段：
+
+```text
+发现阶段
+  Skills.loadDirectory() 只解析 SKILL.md
+  SkillsTool 向模型暴露 name / description 等元数据
+        ↓
+选择阶段
+  模型调用 Skill(command="pptx")
+  工具返回 Runtime 名称、Skill 根目录和完整 SKILL.md 正文
+        ↓
+执行阶段
+  模型按说明使用 Bash / Read / Write / Edit / Glob / Grep
+  脚本和 assets 不进入 Prompt，只在 Runtime 内被访问
 ```
 
-## 6. Skills 配置与管理
+这种方式避免在会话开始时把所有脚本和参考资料塞入上下文。模型只知道“有哪些能力”，真正选中 Skill
+后才知道“如何完成任务”。
 
-### 6.1 工具参数配置
+## Runtime 执行流程
 
-| 工具 | 可配置参数 | 默认值 | 建议值 |
-|------|-----------|--------|--------|
-| GrepTool | maxOutputLength, maxDepth, maxLineLength, workingDirectory | 100000, 100, 10000, null | 根据项目规模调整 |
-| GlobTool | maxDepth, maxResults, workingDirectory | 100, 1000, null | maxResults≤500 避免过载 |
-| ShellTools | timeout(内部) | 120000ms | 长任务显式设置 timeout |
-| FileSystemTools | - | - | - |
-
-### 6.2 工作目录沙箱配置
-
-```java
-// 推荐：为工具设置工作目录，限制操作范围
-Path workspace = Paths.get("/safe/project/root");
-
-GrepTool grepTool = GrepTool.builder()
-    .workingDirectory(workspace)
-    .maxDepth(50)           // 限制遍历深度
-    .maxOutputLength(50000) // 限制输出长度
-    .build();
-
-GlobTool globTool = GlobTool.builder()
-    .workingDirectory(workspace)
-    .maxResults(500)        // 限制结果数量
-    .build();
-
-// ShellTools 通过命令中的路径隐式控制，建议在 Prompt 中强调使用绝对路径
+```text
+宿主机 Skills 目录
+        │ Skills.loadDirectory
+        ▼
+List<Skill>，basePath 是本机目录
+        │ SkillRuntime.prepare(List<Skill>)
+        ├──────── Local：直接返回路径副本
+        └──────── Remote：上传目录并重写 basePath
+                         │
+                         ▼
+模型获得 Runtime 内 Skill 路径
+        │
+        ├── Bash ────────────── SkillRuntime.execute
+        ├── Read/Write/Edit ─── SkillRuntimeFileSystem
+        ├── Glob/Grep ───────── listFiles + readText
+        └── 产物下载 ────────── openInputStream / download
 ```
 
-### 6.3 工具组合策略
+### prepare 是批量 API
+
+`SkillRuntime.prepare(List<Skill>)` 一次接收当前配置的全部 Skills，不是只准备一个 Skill。实现必须：
+
+1. 返回与输入数量相同的列表；
+2. 保留输入顺序；
+3. 不返回 `null` 元素；
+4. 让返回 Skill 的 `basePath` 在 Runtime 内真实可访问；
+5. 不直接修改调用方传入的 Skill 对象。
+
+OpenSandbox 和 AIO Runtime 会在准备阶段主动上传本机 Skill 目录。上传发生在
+`SkillsTool.build()` 或 `buildTools()` 期间，而不是等到模型第一次调用该 Skill 才开始。
+
+### Runtime 对比
+
+| 能力 | LocalSkillRuntime | OpenSandboxSkillRuntime | AioSandboxSkillRuntime |
+| --- | --- | --- | --- |
+| 命令位置 | 当前宿主机 | OpenSandbox 创建的容器 | 已运行的 AIO 容器/服务 |
+| Skill 上传 | 不上传 | 自动上传 | 自动上传 |
+| basePath | 本机绝对路径 | `/workspace/skills/...` | `/home/gem/workspace/skills/...` |
+| 文件读写 | JDK NIO | OpenSandbox Files SDK | AIO File HTTP API |
+| 二进制下载 | 本地文件流 | SDK `readStream` | `/v1/file/download` |
+| close 行为 | 无常驻资源 | kill 并关闭 Sandbox | 只清本地缓存，不停止服务 |
+| 隔离能力 | 无 | 取决于 OpenSandbox 配置 | 取决于 AIO Docker/部署配置 |
+
+## 添加 Maven 依赖
+
+### 本地 Runtime
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-skills</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+```
+
+### OpenSandbox
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-skills-open-sandbox</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+```
+
+该模块会传递依赖 `agents-flex-skills` 和 OpenSandbox Kotlin/Java SDK。OpenSandbox SDK 使用 Kotlin 与
+OkHttp 4.x；如果应用的依赖管理强制降级 Kotlin 或 OkHttp，需要检查最终依赖树。
+
+### AIO Sandbox
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-skills-aio-sandbox</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+```
+
+AIO 适配器直接调用 HTTP API，不要求额外安装官方 Python/TypeScript SDK。
+
+## 快速开始：LocalSkillRuntime
 
 ```java
-// 策略1: 全量加载（适合简单场景）
-List<Tool> tools = CommonTools.getAllCommonsTools();
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.skill.SkillsTool;
+import com.agentsflex.skill.local.LocalSkillRuntime;
 
-// 策略2: 按需加载（推荐，节省 Token）
-List<Tool> tools = new ArrayList<>();
-if (needFileSearch) {
-    tools.addAll(ToolScanner.scan(GrepTool.builder().build()));
-    tools.addAll(ToolScanner.scan(GlobTool.builder().build()));
+import java.util.List;
+
+try (LocalSkillRuntime runtime = new LocalSkillRuntime()) {
+    List<Tool> tools = SkillsTool.builder()
+        .addSkillsDirectory("/absolute/path/to/.claude/skills")
+        .runtime(runtime)
+        .buildTools();
+
+    prompt.addTools(tools);
+    // 把 prompt 交给支持 Tool Calling 的 ChatModel。
 }
-if (needFileEdit) {
-    tools.addAll(ToolScanner.scan(FileSystemTools.builder().build()));
-}
-if (needSystemCommand) {
-    tools.addAll(ToolScanner.scan(ShellTools.builder().build()));
-}
-
-// 策略3: 自定义工具 + 内置工具混合
-tools.add(SkillsTool.builder().addSkillsDirectory("/skills").build());
-tools.addAll(CommonTools.getAllCommonsTools());
 ```
 
+`buildTools()` 返回完整工具组：
 
-## 7. 安全与最佳实践
+| 工具名 | 作用 | 主要限制 |
+| --- | --- | --- |
+| `Skill` | 按名称加载 Skill 正文 | 只能选择已发现的 Skill |
+| `Bash` | 在 Runtime 内执行 Shell | 默认 120 秒，最大 600 秒，输出会截断 |
+| `Read` | 读取 UTF-8 文件并显示行号 | 最大 4 MiB，默认 2000 行 |
+| `Write` | 创建或覆盖 UTF-8 文件 | Runtime 负责创建父目录 |
+| `Edit` | 精确字符串替换 | 默认只允许唯一匹配 |
+| `Glob` | 按 glob 模式匹配文件 | 限制深度、文件数和结果数 |
+| `Grep` | 用 Java 正则搜索内容 | 跳过大文件和常见构建目录 |
+| `PublishFile` | 上传最终文件并返回用户可访问 URL | 仅配置 `FilePublisher` 后注册 |
 
-### 7.1 安全防护清单
+Local Runtime 没有安全隔离。不要因为工具名是 `Bash` 就误以为命令在容器中执行。
 
-| 风险类型 | 防护措施 | 代码示例 |
-|---------|---------|---------|
-| 路径遍历攻击 | 使用 `workingDirectory` + 绝对路径校验 | `Paths.get(path).normalize().startsWith(workspace)` |
-| 命令注入 | 避免字符串拼接，使用参数化命令 | `ProcessBuilder(commandParts)` 而非 `Runtime.exec(cmd)` |
-| 资源耗尽 | 设置 timeout/maxDepth/maxResults | `GrepTool.builder().maxDepth(50).build()` |
-| 敏感文件泄露 | 忽略 `.git/`/`.env`/`credentials*` 等 | `isIgnoredPath()` 内置白名单 |
-| 破坏性操作 | Prompt 中明确禁止 + 工具层校验 | Bash 工具描述中声明安全规范 |
+## 为什么不要混用 Commons Tools
 
-### 7.2 性能优化建议
+使用远程 Runtime 时，应注册：
 
 ```java
-// ✅ 并行执行独立任务（单次消息多 ToolCall）
-// 用户请求: "检查 git 状态并查看最近提交"
-// AI 可并行调用:
-Bash(command = "git status", description = "Check status")
-Bash(command = "git log -3", description = "Show recent commits")
-
-// ✅ 串行执行依赖任务（命令链）
-// 用户请求: "提交代码并推送"
-Bash(command = "git add . && git commit -m 'msg' && git push",
-     description = "Commit and push changes")
-
-// ✅ 精准搜索减少扫描范围
-// ❌ 低效: Grep(pattern="TODO", path="/")  // 全文件系统
-// ✅ 高效: Grep(pattern="TODO", path="/src", type="java", headLimit=100)
-
-// ✅ 大文件分块读取
-Read(filePath = "/large.log", offset = 1000, limit = 500)  // 读取第1000-1499行
+prompt.addTools(
+    SkillsTool.builder()
+        .addSkillsDirectory(skillsDirectory)
+        .runtime(runtime)
+        .buildTools()
+);
 ```
 
+不要同时注册指向宿主机的 `ShellTools`、`FileSystemTools`、`GlobTool` 或 `GrepTool`。这些 Commons
+工具本身仍然适用于非 Skills 场景，但如果与远程 Skills 工具混在同一次会话中，模型可能绕过 Sandbox
+读取或执行宿主机内容，破坏 Runtime 的安全边界。
 
-### 7.3 错误处理与日志
+## OpenSandbox 安装与配置
+
+OpenSandbox 官方架构由 OpenSandbox Server 和执行 Runtime 组成。本地快速开始使用 Docker Engine
+作为执行 Runtime：`opensandbox-server` 连接本机 Docker daemon，并按请求创建隔离容器。
+
+> OpenSandbox 官方当前推荐通过 PyPI/uvx 运行 Server，再由 Server 管理 Docker 容器。不要把 AIO 的
+> 单容器启动命令套用到 OpenSandbox。
+
+官方文档：
+
+- [OpenSandbox Quick Start](https://open-sandbox.ai/getting-started/)
+- [OpenSandbox Installation](https://open-sandbox.ai/getting-started/installation)
+- [OpenSandbox Configuration](https://open-sandbox.ai/getting-started/configuration)
+- [OpenSandbox Kotlin/Java SDK](https://open-sandbox.ai/sdks/kotlin)
+
+### 前置条件
+
+- Docker Engine 20.10+；
+- Python 3.10+；
+- `uv`，推荐使用；也可以使用 `pip`；
+- Linux、macOS，或 Windows WSL2。
+
+先确认 Docker daemon 可用：
+
+```bash
+docker version
+docker run --rm hello-world
+```
+
+### 使用 uvx 启动 OpenSandbox Server
+
+```bash
+# 生成使用 Docker Runtime 的配置文件
+uvx opensandbox-server init-config ~/.sandbox.toml --example docker
+
+# 启动 Server，默认读取 ~/.sandbox.toml
+uvx opensandbox-server
+```
+
+也可以先安装再执行：
+
+```bash
+uv pip install opensandbox-server
+opensandbox-server init-config ~/.sandbox.toml --example docker
+opensandbox-server
+```
+
+指定其他配置路径：
+
+```bash
+export SANDBOX_CONFIG_PATH=/opt/opensandbox/sandbox.toml
+opensandbox-server
+
+# 或者
+opensandbox-server --config /opt/opensandbox/sandbox.toml
+```
+
+### 验证服务
+
+```bash
+curl http://127.0.0.1:8080/health
+# 预期：{"status":"healthy"}
+```
+
+服务启动后还可以访问：
+
+- Swagger UI：`http://localhost:8080/docs`
+- ReDoc：`http://localhost:8080/redoc`
+
+### API Key
+
+编辑 `~/.sandbox.toml` 的 `[server]` 配置，为 `api_key` 设置随机高强度密钥。配置 API Key 后，除
+`/health`、`/docs` 和 `/redoc` 外的 API 都要求请求头：
+
+```text
+OPEN-SANDBOX-API-KEY: your-secret-api-key
+```
+
+验证鉴权：
+
+```bash
+curl \
+  -H "OPEN-SANDBOX-API-KEY: your-secret-api-key" \
+  http://localhost:8080/v1/sandboxes
+```
+
+生产环境必须启用 API Key。如果在 Docker/Kubernetes/CI 等非交互环境中明确选择无鉴权模式，
+OpenSandbox 要求设置 `OPENSANDBOX_INSECURE_SERVER=YES` 来确认风险；该模式不适合暴露到公网。
+
+### Java 配置
 
 ```java
-StreamResponseListener listener = new StreamResponseListener() {
-    @Override
-    public void onMessage(StreamContext context, AiMessageResponse response) {
-        try {
-            String content = StringUtil.hasText(response.getMessage().getContent())
-                ? response.getMessage().getContent()
-                : response.getMessage().getReasoningContent();
+import com.agentsflex.skill.runtime.SkillRuntime;
+import com.agentsflex.skill.runtime.opensandbox.OpenSandboxSkillRuntime;
+import com.alibaba.opensandbox.sandbox.config.ConnectionConfig;
 
-            // 输出 AI 响应
-            System.out.println(">>>>> " + content);
+import java.time.Duration;
 
-            // 处理工具调用
-            if (response.getMessage().isFinalDelta()
-                    && response.getMessage().getToolCalls() != null) {
-
-                System.out.println("----------");
-                prompt.addMessage(response.getMessage());
-
-                for (ToolCall toolCall : response.getMessage().getToolCalls()) {
-                    System.out.println(">>>>> " + toolCall.getName()
-                        + ": " + toolCall.getArguments());
-
-                    // 执行工具调用（内置异常处理）
-                    List<ToolMessage> toolMessages =
-                        response.executeToolCallsAndGetToolMessages();
-
-                    // 记录工具执行结果（可用于审计）
-                    for (ToolMessage msg : toolMessages) {
-                        log.debug("Tool result: {}", msg.getContent());
-                    }
-
-                    prompt.addMessages(toolMessages);
-                }
-                // 递归继续对话
-                chatModel.chatStream(prompt, this);
-
-            } else if (response.getMessage().isFinalDelta()
-                    && !response.getMessage().hasToolCalls()) {
-                System.out.println(">>>>>>> 结束 <<<<<<<<<");
-            }
-
-        } catch (Exception e) {
-            // 统一异常处理，避免中断对话流
-            log.error("Stream processing error", e);
-            System.out.println("Error: " + e.getMessage());
-        }
-    }
-};
-```
-
-
-## 8. 常见问题
-
-### 8.1 FAQ
-
-**Q1: Skills 工具调用后没有响应？**
-```
-排查步骤:
-1. 确认 SkillsTool 已正确添加到 UserMessage: userMessage.addTool(skillsTool)
-2. 检查技能目录路径是否正确且 SKILL.md 存在
-3. 确认 StreamResponseListener 已正确实现 onMessage 方法
-4. 查看日志: OpenAIChatConfig.builder().logEnabled(true) 开启详细日志
-5. 验证 API Key 有效且模型支持 function calling
-```
-
-**Q2: 如何限制工具的操作范围？**
-```java
-// 方案1: 使用 workingDirectory 限制文件系统操作
-GrepTool.builder()
-    .workingDirectory("/project/src")  // 仅允许在此目录下搜索
-    .maxDepth(20)                       // 限制递归深度
+ConnectionConfig connection = ConnectionConfig.builder()
+    .domain("localhost:8080")
+    .apiKey(System.getenv("OPEN_SANDBOX_API_KEY"))
     .build();
 
-// 方案2: 在 SystemMessage 中声明约束
-prompt.setSystemMessage(
-    "You can only operate files under /project directory. " +
-    "Never access /etc, /home, or other system paths."
+SkillRuntime runtime = OpenSandboxSkillRuntime.builder()
+    .connectionConfig(connection)
+    .image("python:3.11")
+    .remoteRoot("/workspace/skills")
+    .sandboxTimeout(Duration.ofMinutes(10))
+    .readyTimeout(Duration.ofSeconds(30))
+    .build();
+```
+
+完整使用时必须关闭 Runtime：
+
+```java
+try (SkillRuntime runtime = createOpenSandboxRuntime()) {
+    prompt.addTools(SkillsTool.builder()
+        .addSkillsDirectory(skillsDirectory)
+        .runtime(runtime)
+        .buildTools());
+    // 执行模型工具循环
+} // 自动 kill 并关闭本次创建的 Sandbox
+```
+
+### OpenSandbox 配置项
+
+| 配置 | 作用 |
+| --- | --- |
+| `connectionConfig` | Server 域名、协议与 API Key |
+| `image` | 每个 Sandbox 使用的镜像，必须包含 Skill 所需运行时 |
+| `remoteRoot` | Skill 上传根目录，必须是非根绝对路径 |
+| `sandboxTimeout` | Sandbox 最长存活时间 |
+| `readyTimeout` | 等待实例启动就绪的时间 |
+| `resources` | 传递 CPU、内存等资源限制 |
+| `environment` | 创建 Sandbox 时注入环境变量 |
+| `networkPolicy` | 出站网络策略 |
+
+镜像必须自行包含任务需要的程序，或允许任务安装依赖。例如 PPTX Demo 使用 `python3` 和
+`python-pptx`。生产环境推荐构建固定版本的专用镜像，不要在每次任务中临时从公网安装依赖。
+
+## AIO Sandbox Docker 安装与配置
+
+AIO Sandbox 是 All-in-One Sandbox。官方镜像同时提供 Shell、文件、浏览器、Jupyter、VNC、终端和
+Code Server 等服务。Agents-Flex 当前 Skills Runtime 使用其中的 Shell 与文件 API。
+
+官方文档：
+
+- [AIO Sandbox 快速开始](https://sandbox.agent-infra.com/zh/guide/start/quick-start)
+- [Shell 终端](https://sandbox.agent-infra.com/zh/guide/basic/shell)
+- [文件操作](https://sandbox.agent-infra.com/zh/guide/basic/file)
+- [鉴权](https://sandbox.agent-infra.com/zh/guide/basic/authentication)
+- [安全](https://sandbox.agent-infra.com/zh/guide/advanced/security)
+
+### 前置条件
+
+- 已安装并启动 Docker；
+- 至少 2 GiB 可用内存；
+- 宿主机 8080 端口可用，或选择其他本机端口。
+
+### 官方镜像启动
+
+```bash
+docker run --security-opt seccomp=unconfined --rm -it \
+  --name agentsflex-aio-sandbox \
+  -p 127.0.0.1:8080:8080 \
+  ghcr.io/agent-infra/sandbox:latest
+```
+
+中国大陆镜像：
+
+```bash
+docker run --security-opt seccomp=unconfined --rm -it \
+  --name agentsflex-aio-sandbox \
+  -p 127.0.0.1:8080:8080 \
+  enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest
+```
+
+生产环境应固定版本，避免 `latest` 在未验证的情况下变化。官方文档给出的版本格式示例：
+
+```bash
+docker run --security-opt seccomp=unconfined --rm -it \
+  --name agentsflex-aio-sandbox \
+  -p 127.0.0.1:8080:8080 \
+  ghcr.io/agent-infra/sandbox:1.11.0
+```
+
+如果 8080 被占用：
+
+```bash
+docker run --security-opt seccomp=unconfined --rm -it \
+  --name agentsflex-aio-sandbox \
+  -p 127.0.0.1:3000:8080 \
+  ghcr.io/agent-infra/sandbox:latest
+```
+
+此时 Java 的 `baseUrl` 应配置为 `http://localhost:3000`。
+
+### 为什么绑定 127.0.0.1
+
+`-p 127.0.0.1:8080:8080` 只允许宿主机访问。不要为了方便直接使用 `-p 8080:8080` 把未鉴权的
+Sandbox 暴露到所有网卡。云主机部署应保持 8080 为私有端口，通过带 TLS、鉴权和访问控制的反向
+代理或 Ingress 发布。
+
+### 验证 AIO
+
+```bash
+docker ps --filter name=agentsflex-aio-sandbox
+docker logs agentsflex-aio-sandbox
+```
+
+浏览器访问：
+
+- 仪表板：`http://localhost:8080/index.html`
+- OpenAPI：`http://localhost:8080/v1/docs`
+- 终端：`http://localhost:8080/terminal`
+- VNC：`http://localhost:8080/vnc/index.html?autoconnect=true`
+
+### Java 配置
+
+```java
+import com.agentsflex.skill.runtime.SkillRuntime;
+import com.agentsflex.skill.runtime.aiosandbox.AioSandboxSkillRuntime;
+
+import java.util.concurrent.TimeUnit;
+
+SkillRuntime runtime = AioSandboxSkillRuntime.builder()
+    .baseUrl("http://localhost:8080")
+    .remoteRoot("/home/gem/workspace/skills")
+    .httpTimeoutMillis((int) TimeUnit.MINUTES.toMillis(11))
+    .build();
+```
+
+`close()` 不会停止 AIO 容器。容器由部署系统或操作者管理：
+
+```bash
+docker stop agentsflex-aio-sandbox
+```
+
+### JWT 鉴权
+
+AIO 支持使用 Base64 编码的 RSA 公钥启用 JWT 鉴权。生成密钥：
+
+```bash
+openssl genrsa -out private_key.pem 2048
+openssl rsa -in private_key.pem -pubout -out public_key.pem
+
+# macOS/Linux 的 base64 参数可能不同；关键是得到不带换行的 Base64 公钥。
+export JWT_PUBLIC_KEY=$(base64 < public_key.pem | tr -d '\n')
+```
+
+把公钥作为容器环境变量传入：
+
+```bash
+docker run --security-opt seccomp=unconfined --rm -it \
+  --name agentsflex-aio-sandbox \
+  -e JWT_PUBLIC_KEY="$JWT_PUBLIC_KEY" \
+  -p 127.0.0.1:8080:8080 \
+  ghcr.io/agent-infra/sandbox:latest
+```
+
+业务服务使用私钥签发 RS256 JWT，然后配置到 Runtime：
+
+```java
+SkillRuntime runtime = AioSandboxSkillRuntime.builder()
+    .baseUrl("http://localhost:8080")
+    .bearerToken(jwt)
+    .build();
+```
+
+适配器会发送：
+
+```text
+Authorization: Bearer <JWT>
+```
+
+私钥只能保存在业务服务或密钥管理系统中，不能放进 Skill 目录、容器镜像或 Git 仓库。
+
+## Skill 上传规则与安全边界
+
+远程 Runtime 会上传每个已配置 Skill 的完整目录，而不只是 `SKILL.md`。默认过滤规则：
+
+- 不进入任何 `.git` 目录；
+- 不上传 `.env`；
+- 不上传 `.env.*`；
+- 不上传文件名以 `credentials` 开头的文件；
+- 文件树遍历不会跟随符号链接；
+- 尽可能保留脚本可执行权限。
+
+这些规则只能拦截常见误操作。诸如 `secret.json`、`id_rsa`、云厂商配置文件或业务数据并不会因为名字
+不同而自动识别。把 Skill 交给远程服务前，仍需审计整个目录。
+
+推荐做法：
+
+1. Skill 目录只存可公开或允许进入 Sandbox 的资源；
+2. 密钥通过 Runtime 环境变量、凭据服务或短期令牌注入；
+3. 为 Sandbox 配置最小出站网络策略；
+4. 限制 CPU、内存、进程数、磁盘和执行时间；
+5. 为不同用户或租户使用独立 Sandbox；
+6. 记录 Skill 名称、版本、命令、退出码和产物，不记录密钥值；
+7. 生产镜像固定 digest 或版本，并定期更新漏洞补丁。
+
+## 文本读取与二进制产物下载
+
+### 文本 API
+
+```java
+SkillRuntimeFileSystem files = runtime.getFileSystem();
+
+String text = files.readText("/runtime/path/report.txt", 1024 * 1024);
+files.writeText("/runtime/path/result.json", "{\"ok\":true}");
+SkillFileInfo info = files.stat("/runtime/path/result.json");
+List<SkillFileInfo> entries = files.listFiles("/runtime/path", 10, 1000);
+```
+
+### 读取小型二进制文件
+
+```java
+byte[] bytes = files.readBytes("/runtime/path/image.png", 5 * 1024 * 1024);
+```
+
+`maxBytes` 是强制内存上限。大型文件不要使用 `readBytes`。
+
+### 下载到本地文件
+
+```java
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+Path localFile = files.download(
+    "/runtime/output/report.pptx",
+    Paths.get("output/report.pptx")
 );
 
-// 方案3: 自定义 Tool 中增加路径校验
-if (!path.startsWith("/project")) {
-    return "Error: Access denied for path: " + path;
-}
+System.out.println(localFile.toAbsolutePath());
 ```
 
-**Q3: 后台任务如何监控和管理？**
-```
-流程:
-1. 启动后台任务:
-   Bash(command="python train.py", runInBackground=true)
-   → 返回: bash_id: shell_1709123456
+下载先写同目录 `.part` 临时文件，完成后再替换最终文件，避免失败时留下半个目标文件。
 
-2. 定期获取输出:
-   BashOutput(bash_id="shell_1709123456")
-   → 返回: 新增的 stdout/stderr 内容
+### 上传到第三方文件中心
 
-3. 按需终止任务:
-   KillShell(bash_id="shell_1709123456")
-
-💡 建议: 在 Prompt 中提醒 AI 对长任务设置 timeout，并定期用 BashOutput 检查进度
-```
-
-**Q4: 如何处理大文件或大量搜索结果？**
-```java
-// 方案1: 使用 offset/limit 分页读取
-Read(filePath="/large.log", offset=1, limit=2000)      // 第1页
-Read(filePath="/large.log", offset=2001, limit=2000)   // 第2页
-
-// 方案2: 使用 headLimit 限制搜索结果
-Grep(pattern="ERROR", headLimit=100)  // 最多返回100个匹配
-
-// 方案3: 组合过滤缩小范围
-Grep(pattern="ERROR", path="/logs", glob="*.log.2024-*", type="txt")
-```
-
-**Q5: 自定义 Skill 不生效？**
-```
-检查清单:
-□ 技能目录是否添加到 SkillsTool: .addSkillsDirectory("/path")
-□ SKILL.md 是否包含正确的 YAML frontmatter (name/description)
-□ description 是否足够具体，能被用户请求匹配到
-□ 技能目录权限是否可读 (chmod -R 755)
-□ 如果使用 scripts，脚本是否有执行权限 (chmod +x script.py)
-```
-
-### 8.2 调试技巧
+`download(String, OutputStream)` 不会关闭调用方传入的目标流，因此可以直接接对象存储 SDK：
 
 ```java
-// 1. 开启框架日志
-OpenAIChatConfig.builder()
-    .logEnabled(true)   // 输出请求/响应详情
-    .buildModel();
-
-// 2. 打印工具调用链
-for (ToolCall toolCall : response.getMessage().getToolCalls()) {
-    System.out.println("Tool: " + toolCall.getName());
-    System.out.println("Args: " + toolCall.getArguments());
-    System.out.println("Result: " +
-        response.executeToolCallsAndGetToolMessages().get(0).getContent());
-}
-
-// 3. 验证 Skills 加载
-SkillsTool skillsTool = SkillsTool.builder()
-    .addSkillsDirectory("/path/to/skills")
-    .build();
-// 可在 SkillsTool 内部添加日志: log.info("Loaded {} skills", skillList.size())
-
-// 4. 单元测试自定义 Tool
-@Test
-public void testPdfGenerator() {
-    PdfGeneratorTool tool = PdfGeneratorTool.builder().build();
-    String result = tool.generate("Hello", "/tmp/test.pdf", null);
-    assertTrue(result.contains("created successfully"));
+try (OutputStream objectStorage = objectStorageClient.openUpload(
+        "reports/runtime-report.pptx")) {
+    files.download("/runtime/output/report.pptx", objectStorage);
 }
 ```
 
-### 8.3 版本兼容性
+也可以直接读取流：
 
-| 组件 | 最低版本 | 推荐版本 | 说明 |
-|------|----------|----------|------|
-| JDK | 8 | 17+ | Java 8 兼容，但推荐 17+ 使用新特性 |
-| agents-flex-core | 2.0.0 | 2.x latest | Skills 功能从 2.0 开始支持 |
-| OpenAI API | v1 | v1 | 需支持 function calling 的模型 |
-| 模型推荐 | - | Qwen3.5-35B / GPT-4o | 复杂工具调用建议用大参数模型 |
+```java
+try (InputStream input = files.openInputStream("/runtime/output/report.pptx")) {
+    thirdPartyFileCenter.upload("runtime-report.pptx", input);
+}
+```
 
+调用方必须关闭 `openInputStream` 返回的流。对于远程 Runtime，关闭动作还会释放 HTTP 连接。
 
-## 9. 附录
+## 让 AI 主动发布文件 URL
 
+业务代码主动调用 `download()` 适合固定工作流。如果希望模型在生成并验证文件后主动完成交付，可以
+配置 `FilePublisher`。配置后，`SkillsTool.buildTools()` 会增加一个 `PublishFile` Tool；
+未配置时不会暴露该工具。
 
-### 工具参数速查表
+```java
+import com.agentsflex.skill.attachment.FilePublishRequest;
+import com.agentsflex.skill.attachment.FilePublisher;
+import com.agentsflex.skill.attachment.PublishedFile;
 
-| 工具 | 方法 | 必需参数 | 关键可选参数 |
-|------|------|----------|-------------|
-| ShellTools | bash | command | timeout, description, runInBackground |
-| ShellTools | bashOutput | bash_id | filter |
-| ShellTools | killShell | bash_id | - |
-| GrepTool | grep | pattern | path, glob, type, outputMode, context, headLimit |
-| GlobTool | glob | pattern | path |
-| FileSystemTools | read | filePath | offset, limit |
-| FileSystemTools | write | filePath, content | - |
-| FileSystemTools | edit | filePath, old_string, new_string | replace_all |
+FilePublisher publisher = new FilePublisher() {
+    @Override
+    public PublishedFile publish(FilePublishRequest request) {
+        String objectKey = attachmentCenter.upload(
+            request.getFileName(),
+            request.getContentType(),
+            request.getContentLength(),
+            request.getInputStream()
+        );
 
+        return PublishedFile.builder()
+            .url(attachmentCenter.createDownloadUrl(objectKey))
+            .storageKey(objectKey)
+            .fileName(request.getFileName())
+            .contentType(request.getContentType())
+            .contentLength(request.getContentLength())
+            .expiresAt(System.currentTimeMillis() + 60 * 60_000L)
+            .build();
+    }
+};
+
+prompt.addTools(SkillsTool.builder()
+    .addSkillsDirectory(skillsDirectory)
+    .runtime(runtime)
+    .filePublisher(publisher)
+    .buildTools());
+```
+
+模型完成文件后可以调用：
+
+```json
+{
+  "filePath": "/home/gem/workspace/skills/output/report.pptx",
+  "fileName": "runtime-report.pptx",
+  "contentType": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+}
+```
+
+Tool 会先通过 Runtime 文件系统确认路径存在且不是目录，再打开二进制流并构造
+`FilePublishRequest`。请求包含：
+
+| 字段 | 说明 |
+| --- | --- |
+| `inputStream` | Runtime 文件流，只能同步消费一次 |
+| `fileName` | 用户看到的文件名，Tool 会去掉目录部分 |
+| `contentType` | 模型指定或根据扩展名推断的 MIME 类型 |
+| `contentLength` | Runtime 报告的文件大小，未知时可以是 `-1` |
+| `sourcePath` | Runtime 内原始路径，用于审计和策略判断 |
+| `runtimeName` | `local`、`open-sandbox`、`aio-sandbox` 或自定义名称 |
+| `checksum` | 可选内容校验值 |
+| `metadata` | 租户、会话和业务分类等扩展信息 |
+
+流的生命周期约定：
+
+1. Publisher 必须在 `publish()` 返回前完整消费 InputStream；
+2. Publisher 不得关闭 InputStream；
+3. Publisher 不得缓存该流或交给异步线程继续读取；
+4. Tool 在 `publish()` 返回或抛出异常后自动关闭流；
+5. 异步上传实现应先同步落盘或改用独立的可重复打开内容源，而不是持有当前流。
+
+`FilePublisher` 也是最终的发布安全边界。应用实现至少应根据 `sourcePath`、租户和文件信息限制
+允许发布的目录、类型与大小；重新生成对象存储 Key；设置 URL 有效期；执行病毒或恶意文件扫描；
+不得直接信任模型提供的文件名。对于本机发布，实现可以先把流保存到受控静态目录，再根据应用配置的
+HTTP `baseUrl` 返回地址，但不应返回只有宿主机能够访问的 `file://` URL。
+
+## SkillsDemoMain：远程生成 PPTX 并下载
+
+仓库中的 `demos/skills-demo` 演示同一套 `pptx` Skill 在 Local、OpenSandbox 和 AIO Sandbox 中执行。
+默认任务会：
+
+1. 发现并批量准备 Skills；
+2. 在选定 Runtime 中运行 PPTX 生成器；
+3. 生成 5 页 16:9 PowerPoint；
+4. 验证页数、元数据、文本和文件大小；
+5. 让模型继续使用 Runtime 工具完成验收；
+6. 将远程 PPTX 下载到本机 `target/skills-demo-output`。
+
+先构建：
+
+```bash
+mvn -pl demos/skills-demo -am install -DskipTests
+export GITEE_APIKEY="your-gitee-ai-key"
+```
+
+### Local
+
+```bash
+SKILLS_RUNTIME=local \
+mvn -f demos/skills-demo/pom.xml exec:java
+```
+
+### OpenSandbox
+
+```bash
+export SKILLS_RUNTIME=open-sandbox
+export OPEN_SANDBOX_DOMAIN="localhost:8080"
+export OPEN_SANDBOX_API_KEY="your-open-sandbox-api-key"
+export OPEN_SANDBOX_IMAGE="python:3.11"
+
+mvn -f demos/skills-demo/pom.xml exec:java
+```
+
+### AIO Sandbox
+
+```bash
+export SKILLS_RUNTIME=aio-sandbox
+export AIO_SANDBOX_BASE_URL="http://localhost:8080"
+
+# 仅当 AIO 启用了 JWT 时设置
+export AIO_SANDBOX_TOKEN="your-jwt"
+
+mvn -f demos/skills-demo/pom.xml exec:java
+```
+
+### Demo 环境变量
+
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `SKILLS_RUNTIME` | `local` | `local`、`open-sandbox` 或 `aio-sandbox` |
+| `SKILLS_DIR` | classpath `.claude/skills` | 本机 Skills 根目录 |
+| `SKILLS_PROMPT` | PPTX 验收任务 | 自定义问题，可用 `${outputFile}` |
+| `SKILLS_OUTPUT_FILE` | Runtime 对应路径 | Runtime 内产物路径 |
+| `SKILLS_LOCAL_OUTPUT_FILE` | `target/skills-demo-output/<文件名>` | 下载后的本机路径 |
+| `SKILLS_DOWNLOAD_ENABLED` | `true` | 是否自动回收远程产物 |
+| `SKILLS_GENERATION_TIMEOUT_SECONDS` | `300` | PPTX 生成命令超时 |
+| `SKILLS_DEMO_TIMEOUT_SECONDS` | `900` | 整个模型工具会话超时 |
+| `OPEN_SANDBOX_REMOTE_ROOT` | `/workspace/skills` | OpenSandbox 上传根目录 |
+| `OPEN_SANDBOX_TIMEOUT_SECONDS` | `600` | OpenSandbox 生命周期 |
+| `OPEN_SANDBOX_READY_TIMEOUT_SECONDS` | `30` | OpenSandbox 启动等待时间 |
+| `AIO_SANDBOX_REMOTE_ROOT` | `/home/gem/workspace/skills` | AIO 上传根目录 |
+| `AIO_SANDBOX_HTTP_TIMEOUT_SECONDS` | `660` | AIO HTTP 读取超时 |
+
+指定本地下载位置：
+
+```bash
+export SKILLS_LOCAL_OUTPUT_FILE="$PWD/output/runtime-report.pptx"
+```
+
+自定义任务只有显式配置 `SKILLS_OUTPUT_FILE` 时才会自动下载，因为 Demo 无法从任意模型回答中可靠推断
+哪个文件是最终产物。
+
+## 自定义 SkillRuntime
+
+接入其他 Sandbox 时实现 `SkillRuntime` 和 `SkillRuntimeFileSystem`：
+
+```java
+public final class MySandboxRuntime implements SkillRuntime {
+    @Override
+    public String getName() {
+        return "my-sandbox";
+    }
+
+    @Override
+    public List<Skill> prepare(List<Skill> skills) {
+        // 1. 上传每个 Skill 目录
+        // 2. 返回数量和顺序一致、basePath 已改为远端路径的新列表
+    }
+
+    @Override
+    public String getDefaultWorkingDirectory() {
+        return "/workspace/skills";
+    }
+
+    @Override
+    public SkillRuntimeFileSystem getFileSystem() {
+        return fileSystem;
+    }
+
+    @Override
+    public SkillExecutionResult execute(SkillExecutionRequest request) {
+        // 映射 command、workingDirectory、environment 和 timeoutMillis
+    }
+
+    @Override
+    public void close() {
+        // 只释放当前 Runtime 真正拥有的资源
+    }
+}
+```
+
+实现检查清单：
+
+- `prepare` 支持多个 Skill，并保持数量和顺序；
+- 同一个 Skill 在同一 Runtime 内重复准备时应幂等；
+- 远程路径必须使用目标系统格式；
+- Shell 参数和路径必须正确转义，不能拼接未验证输入；
+- 超时后主动终止远端命令；
+- stdout/stderr 和退出码映射清晰；
+- 文本读取有大小上限；
+- 二进制下载使用流，不把大型文件全部加载到内存；
+- 下载失败不留下伪装成完整文件的本地产物；
+- `close` 幂等，并明确是否拥有远端实例生命周期；
+- 上传默认排除敏感文件且不跟随符号链接；
+- 为网络失败、404、非零退出码、超时和二进制文件编写测试。
+
+## 故障排查
+
+### Skill not found
+
+检查：
+
+1. 根目录是否真实存在；
+2. 文件名是否严格为 `SKILL.md`；
+3. front matter 是否包含 `name`；
+4. 模型调用名称是否与 `name` 完全一致；
+5. `SkillsTool` 是否添加了正确目录。
+
+### 远程路径仍然是本机路径
+
+这通常说明只加载了 `Skills.loadDirectory()`，但没有使用远程 Runtime 执行
+`prepare(List<Skill>)`。推荐统一通过 `SkillsTool.builder().runtime(runtime).buildTools()` 构建工具。
+
+### OpenSandbox 无法连接
+
+```bash
+curl http://127.0.0.1:8080/health
+```
+
+然后检查：
+
+- `OPEN_SANDBOX_DOMAIN` 是否只包含 SDK 需要的 domain/port；
+- API Key 是否与 Server 配置一致；
+- Docker daemon 是否运行；
+- Sandbox 镜像能否拉取；
+- `readyTimeout` 是否过短；
+- Server 日志是否显示资源或网络策略错误。
+
+### AIO 返回 Connection refused
+
+```bash
+docker ps --filter name=agentsflex-aio-sandbox
+docker logs agentsflex-aio-sandbox
+curl -I http://127.0.0.1:8080/v1/docs
+```
+
+如果映射到了 3000，`AIO_SANDBOX_BASE_URL` 也必须使用 3000。
+
+### AIO 返回 401
+
+- 服务启用了 `JWT_PUBLIC_KEY`，但 Runtime 没配置 `bearerToken`；
+- JWT 不是 RS256 或签名私钥不匹配；
+- JWT 已过期；
+- Token 字符串错误地包含了 `Bearer ` 前缀，Runtime 会自动添加该前缀。
+
+### 命令成功但找不到产物
+
+- 模型输出路径和下载路径是否完全一致；
+- 是否把产物错误地写进了只读 Skill 目录；
+- `SKILLS_OUTPUT_FILE` 是否是 Runtime 内绝对路径；
+- 自定义 Prompt 是否设置了 `SKILLS_OUTPUT_FILE`；
+- 生成程序是否在非零退出前留下了不完整文件。
+
+### 依赖安装失败
+
+Sandbox 可能没有公网访问权限，或者网络策略禁止访问包仓库。生产环境推荐把 Python、Node、LibreOffice、
+字体和所需库预装进固定镜像，而不是运行时执行 `pip install` 或 `npm install`。
+
+### Maven exec:java 完成后仍不退出
+
+如果业务输出和文件下载都已完成，但 Maven 仍等待，检查模型 SDK、OkHttp 或 OpenTelemetry 是否留下
+非 daemon 后台线程。应用服务应统一管理这些客户端生命周期；Demo 调试时也可以先关闭可观测导出。
+
+## 生产环境建议
+
+1. 默认选择远程 Sandbox，只有可信内部 Skill 才允许 Local Runtime；
+2. 为每个任务或租户建立清晰的 Sandbox 生命周期；
+3. 固定镜像版本和依赖版本，禁止未经验证的 `latest` 自动升级；
+4. 使用非 root 用户、只读基础文件系统和最小 Linux capabilities；
+5. 配置 CPU、内存、PID、磁盘和执行时间限制；
+6. 默认拒绝出站网络，只开放任务需要的域名；
+7. Server 端口只放在私网，通过 TLS 网关暴露；
+8. OpenSandbox 启用 API Key，AIO 启用 JWT；
+9. 密钥使用短期令牌或凭据系统注入，不写入 Skill；
+10. 对上传内容、执行命令、退出码、耗时和下载产物建立审计日志；
+11. 对产物进行类型、大小、恶意内容和压缩炸弹检查后再交付用户；
+12. 定期清理过期 Sandbox、上传目录、临时文件和本地下载缓存。
+
+## 相关资源
+
+- [Skills Demo README](https://github.com/agents-flex/agents-flex/tree/main/demos/skills-demo)
+- [OpenSandbox 官方文档](https://open-sandbox.ai/getting-started/)
+- [AIO Sandbox 官方文档](https://sandbox.agent-infra.com/zh/guide/start/quick-start)
+- [Tool 工具调用](./tool)
+- [Tool 构建](./tool-build)
+
+</div>

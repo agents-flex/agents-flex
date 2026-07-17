@@ -34,6 +34,12 @@ import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 /**
+ * Skill 发现与加载工具。
+ *
+ * <p>当前公开入口从一个或多个文件系统根目录递归查找 {@code SKILL.md}，解析 front
+ * matter 和正文，并把 {@code SKILL.md} 的父目录记录为 Skill 根目录。加载阶段只读取
+ * 描述文件，不执行任何脚本。</p>
+ *
  * @author Christian Tzolov
  * @author Micahel Yang
  */
@@ -41,6 +47,12 @@ import java.util.stream.Stream;
 public class Skills {
 
 
+    /**
+     * 从多个根目录加载全部 Skills。
+     *
+     * @param rootDirectories Skills 根目录列表
+     * @return 按目录依次合并的 Skill 列表
+     */
     public static List<Skill> loadDirectories(List<String> rootDirectories) {
         List<Skill> skills = new ArrayList<>();
         for (String rootDirectory : rootDirectories) {
@@ -50,14 +62,11 @@ public class Skills {
     }
 
     /**
-     * Recursively finds all SKILL.md files in the given root directory and returns their
-     * parsed contents.
+     * 递归查找指定目录下的全部 {@code SKILL.md} 并解析为 Skill。
      *
-     * @param rootDirectory the root directory to search for SKILL.md files
-     * @return a list of Skill objects containing the basePath, front-matter, and content
-     * of each SKILL.md file
-     * @throws RuntimeException if an I/O error occurs while reading the directory or
-     *                          files
+     * @param rootDirectory 用于搜索 {@code SKILL.md} 的根目录
+     * @return 包含根路径、front matter 和正文的 Skill 列表
+     * @throws RuntimeException 根目录不存在、不是目录或读取失败
      */
     public static List<Skill> loadDirectory(String rootDirectory) {
 
@@ -95,9 +104,10 @@ public class Skills {
 
 
     /**
-     * Scans all classpath JARs for SKILL.md files under the given prefix. Discovers JARs
-     * via {@code ClassLoader.getResources("META-INF/MANIFEST.MF")} — a technique used by
-     * Spring internally when standard classpath resolution is insufficient.
+     * 扫描 classpath JAR 中指定前缀下的 {@code SKILL.md}。
+     *
+     * <p>通过枚举 {@code META-INF/MANIFEST.MF} 定位 JAR，适用于普通 classpath 资源
+     * 枚举无法返回目录条目的场景。</p>
      */
     private static List<Skill> scanClasspathJarsForSkills(String classpathPrefix) throws IOException {
         String prefix = classpathPrefix.endsWith("/") ? classpathPrefix : classpathPrefix + "/";
@@ -124,11 +134,11 @@ public class Skills {
     }
 
     /**
-     * Scans a single JAR file for SKILL.md entries under the given prefix.
+     * 扫描单个 JAR 内指定前缀下的 Skill 定义。
      *
-     * @param jarFile     the JAR to scan
-     * @param entryPrefix the entry prefix to match (must end with '/')
-     * @return a list of Skill objects found in this JAR
+     * @param jarFile 待扫描 JAR
+     * @param entryPrefix 匹配前缀，必须以 {@code /} 结尾
+     * @return 在 JAR 中发现的 Skill 列表
      */
     private static List<Skill> scanJarForSkills(JarFile jarFile, String entryPrefix) throws IOException {
         List<Skill> skills = new ArrayList<>();
@@ -149,10 +159,10 @@ public class Skills {
     }
 
     /**
-     * Parses a SKILL.md file from an input stream into a {@link Skill}.
+     * 从输入流解析一个 {@code SKILL.md}。
      *
-     * @param is        the input stream containing the SKILL.md markdown content
-     * @param entryPath the JAR entry path — used to derive the base directory
+     * @param is Markdown 内容输入流
+     * @param entryPath JAR 条目路径，用于推导 Skill 根目录
      */
     private static Skill parseSkill(InputStream is, String entryPath) throws IOException {
         String markdown = IOUtil.readUtf8(is);
@@ -164,8 +174,7 @@ public class Skills {
     }
 
     /**
-     * Derives the JAR-internal base path from a resource URL by stripping the SKILL.md
-     * filename and the {@code jar:file:...!/} prefix.
+     * 从资源 URL 中去掉 {@code SKILL.md} 和 {@code jar:file:...!/} 前缀，得到 JAR 内路径。
      */
     private static String deriveBasePathFromUrl(URL skillUrl) {
         String urlStr = skillUrl.toString();

@@ -36,6 +36,9 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | `agents-flex-tool` | Common tools: file system, Shell, Grep, Glob, WebFetch, Python, JavaScript |
 | `agents-flex-mcp` | MCP client that converts external MCP tools into Agents-Flex `Tool` instances |
 | `agents-flex-skills` | File-system-based Skills loading with progressive disclosure |
+| `agents-flex-skills-sandbox` | Sandbox runtime integrations for isolated Skills execution |
+| `agents-flex-skills-open-sandbox` | Isolated Skills execution through the OpenSandbox runtime |
+| `agents-flex-skills-aio-sandbox` | Isolated Skills execution through an AIO Sandbox service |
 | `agents-flex-subagent` | Subagent definitions, background task execution, and output retrieval tools |
 | `agents-flex-text2sql` | Natural-language data analysis tools with progressive schema disclosure, read-only SQL checks, and interceptor chains |
 | `agents-flex-websearch` | Web search tools with Brave, Bocha, Baidu Qianfan, and custom search providers |
@@ -244,6 +247,9 @@ agents-flex-search-engine/        Search engine integrations
 agents-flex-tool/                 Common tools
 agents-flex-mcp/                  MCP client
 agents-flex-skills/               Skills capability system
+agents-flex-skills-sandbox/       Sandbox runtimes for Skills
+├── agents-flex-skills-open-sandbox/
+└── agents-flex-skills-aio-sandbox/
 agents-flex-subagent/             Subagents and background tasks
 agents-flex-text2sql/             Natural-language data analysis
 agents-flex-websearch/            Web search

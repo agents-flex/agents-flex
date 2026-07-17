@@ -1,0 +1,4 @@
+interface:
+  display_name: "PPTX Presentations"
+  short_description: "Create and validate PowerPoint presentation files"
+  default_prompt: "Use $pptx to create and verify a professional PowerPoint presentation."

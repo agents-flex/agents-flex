@@ -19,57 +19,48 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Parser for Markdown documents with optional YAML front matter.
- * <p>
- * This parser extracts YAML front matter (metadata) and content from Markdown documents.
- * Front matter is delimited by triple dashes (---) at the beginning of the document and
- * contains key-value pairs in YAML format.
- * <p>
- * Example Markdown with front matter:
+ * 解析带有可选 YAML front matter 的 Markdown 文档。
+ *
+ * <p>front matter 必须位于文件开头，并由两行 {@code ---} 包围。本解析器提取其中的
+ * 简单键值对作为元数据，同时保留分隔符之后的 Markdown 正文。</p>
+ *
+ * <p>示例：</p>
  *
  * <pre>{@code
  * ---
- * title: My Document
- * author: John Doe
- * date: 2024-01-15
+ * name: pdf
+ * description: Create PDF documents
  * ---
  *
  * # Heading
  *
- * Document content here.
+ * Skill instructions here.
  * }</pre>
- * <p>
- * The parser supports:
+ *
+ * <p>支持的语法：</p>
  * <ul>
- * <li>Front matter with key-value pairs separated by colons</li>
- * <li>Values with or without quotes (both single and double quotes are supported)</li>
- * <li>Documents without front matter (entire content is treated as body)</li>
- * <li>Empty or null markdown input</li>
+ * <li>使用第一个冒号分隔键和值的单行键值对；</li>
+ * <li>无引号、单引号或双引号包裹的值；</li>
+ * <li>不含 front matter 的普通 Markdown；</li>
+ * <li>{@code null} 或空输入。</li>
  * </ul>
+ *
+ * <p>这不是完整 YAML 解析器，不支持嵌套对象、数组、块文本等高级 YAML 语法。</p>
  *
  * @author Christian Tzolov
  */
 public class MarkdownParser {
 
-	/**
-	 * Map containing the parsed front matter key-value pairs.
-	 */
+	/** 已解析的 front matter 键值对。 */
 	private Map<String, Object> frontMatter;
 
-	/**
-	 * The content of the markdown document (everything after the front matter).
-	 */
+	/** front matter 结束后的 Markdown 正文。 */
 	private String content;
 
 	/**
-	 * Constructs a new MarkdownParser and parses the provided markdown content. Parses
-	 * the markdown content to extract front matter and body content.
-	 * <p>
-	 * Front matter must start with "---" at the beginning of the document and end with
-	 * another "---". Everything between these delimiters is parsed as front matter.
-	 * Everything after the closing delimiter is treated as content.
-	 * @param markdown the markdown string to parse, may contain front matter delimited by
-	 * triple dashes (---). Can be null or empty.
+	 * 创建解析器并立即解析输入内容。
+	 *
+	 * @param markdown 待解析 Markdown；可以为 {@code null} 或空字符串
 	 */
 	public MarkdownParser(String markdown) {
 
@@ -80,27 +71,26 @@ public class MarkdownParser {
 			return;
 		}
 
-		// Check if document starts with front-matter delimiter (---)
+		// 只有文件开头的 --- 才会被识别为 front matter 起始分隔符。
 		if (markdown.startsWith("---")) {
-			// Find the closing delimiter
+			// 查找结束分隔符。
 			int endIndex = markdown.indexOf("---", 3);
 
 			if (endIndex != -1) {
-				// Extract front-matter section
+				// 解析两个分隔符之间的元数据。
 				String frontMatterSection = markdown.substring(3, endIndex).trim();
 				parseFrontMatter(frontMatterSection);
 
-				// Extract remaining content (skip the closing --- and any following
-				// newlines)
+				// 跳过结束分隔符，并去掉正文首尾空白。
 				content = markdown.substring(endIndex + 3).trim();
 			}
 			else {
-				// No closing delimiter found, treat entire document as content
+				// 缺少结束分隔符时不猜测元数据，整份文档按正文处理。
 				content = markdown;
 			}
 		}
 		else {
-			// No front-matter, entire document is content
+			// 普通 Markdown 全部作为正文。
 			content = markdown;
 		}
 
@@ -116,13 +106,13 @@ public class MarkdownParser {
 				continue;
 			}
 
-			// Split on first colon
+			// 只按第一个冒号切分，值本身可以继续包含冒号。
 			int colonIndex = line.indexOf(':');
 			if (colonIndex > 0) {
 				String key = line.substring(0, colonIndex).trim();
 				String value = line.substring(colonIndex + 1).trim();
 
-				// Removes surrounding quotes from a value string if present.
+				// 去掉成对的单引号或双引号。
 				value = removeQuotes(value);
 
 				frontMatter.put(key, value);
@@ -140,24 +130,18 @@ public class MarkdownParser {
 	}
 
 	/**
-	 * Returns a copy of the parsed front matter as a map.
-	 * <p>
-	 * The returned map contains all key-value pairs extracted from the front matter
-	 * section. If no front matter was present or the input was null/empty, returns an
-	 * empty map.
-	 * @return a new map containing the front matter key-value pairs
+	 * 获取 front matter 的副本，调用方修改返回 Map 不会影响解析器内部状态。
+	 *
+	 * @return front matter 键值对；未提供元数据时为空 Map
 	 */
 	public Map<String, Object> getFrontMatter() {
 		return new HashMap<>(frontMatter);
 	}
 
 	/**
-	 * Returns the content portion of the markdown document.
-	 * <p>
-	 * This is everything after the closing front matter delimiter (---), with leading and
-	 * trailing whitespace trimmed. If no front matter was present, returns the entire
-	 * document. If the input was null or empty, returns an empty string.
-	 * @return the markdown content as a string
+	 * 获取去掉 front matter 后的 Markdown 正文。
+	 *
+	 * @return 正文；输入为空时返回空字符串
 	 */
 	public String getContent() {
 		return content;
