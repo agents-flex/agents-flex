@@ -16,8 +16,9 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
+import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
-import com.agentsflex.core.util.ImageUtil;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
@@ -92,9 +93,14 @@ public class PdfTextExtractor implements FileExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
+        return extractText(source, new Base64ExtractedImageHandler());
+    }
+
+    @Override
+    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
         try (InputStream is = source.openStream();
              PDDocument doc = PDDocument.load(is, MemoryUsageSetting.setupMixed(MAX_MAIN_MEMORY_BYTES))) {
-            PageContentExtractor extractor = new PageContentExtractor();
+            PageContentExtractor extractor = new PageContentExtractor(extractedImageHandler);
             extractor.setSortByPosition(true);
             extractor.setLineSeparator("\n");
             extractor.setPageStart("");
@@ -109,11 +115,13 @@ public class PdfTextExtractor implements FileExtractor {
         private final List<String> images = new ArrayList<>();
         private final Set<COSBase> seenImages = Collections.newSetFromMap(
             new IdentityHashMap<COSBase, Boolean>());
+        private final ExtractedImageHandler extractedImageHandler;
         private Writer documentOutput;
         private StringWriter pageOutput;
 
-        PageContentExtractor() throws IOException {
+        PageContentExtractor(ExtractedImageHandler extractedImageHandler) throws IOException {
             super();
+            this.extractedImageHandler = extractedImageHandler;
         }
 
         @Override
@@ -166,7 +174,7 @@ public class PdfTextExtractor implements FileExtractor {
             super.processOperator(operator, operands);
         }
 
-        private void captureImage(PDImage image) {
+        private void captureImage(PDImage image) throws IOException {
             COSBase imageObject = image.getCOSObject();
             if (!seenImages.add(imageObject)) {
                 return;
@@ -178,18 +186,27 @@ public class PdfTextExtractor implements FileExtractor {
                 return;
             }
 
+            byte[] imageBytes;
             try {
                 BufferedImage bufferedImage = image.getImage();
                 if (bufferedImage == null) {
                     return;
                 }
                 try (ByteArrayOutputStream imageOutput = new ByteArrayOutputStream()) {
-                    if (ImageIO.write(bufferedImage, "png", imageOutput)) {
-                        images.add(ImageUtil.imageBytesToDataUri(imageOutput.toByteArray(), "image/png"));
+                    if (!ImageIO.write(bufferedImage, "png", imageOutput)) {
+                        return;
                     }
+                    imageBytes = imageOutput.toByteArray();
                 }
             } catch (Exception e) {
                 log.warn("Failed to extract an image from PDF: {}", e.toString());
+                return;
+            }
+
+            String fileName = "page-" + getCurrentPageNo() + "-image-" + seenImages.size() + ".png";
+            String imageUrl = extractedImageHandler.handle(imageBytes, "image/png", fileName);
+            if (imageUrl != null && !imageUrl.trim().isEmpty()) {
+                images.add(imageUrl);
             }
         }
     }

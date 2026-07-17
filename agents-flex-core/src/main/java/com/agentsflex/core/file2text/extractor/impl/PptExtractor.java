@@ -16,8 +16,9 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
+import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
-import com.agentsflex.core.util.ImageUtil;
 import org.apache.poi.hslf.usermodel.HSLFGroupShape;
 import org.apache.poi.hslf.usermodel.HSLFPictureData;
 import org.apache.poi.hslf.usermodel.HSLFPictureShape;
@@ -67,6 +68,11 @@ public class PptExtractor implements FileExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
+        return extractText(source, new Base64ExtractedImageHandler());
+    }
+
+    @Override
+    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
         StringBuilder text = new StringBuilder();
 
         try (InputStream inputStream = source.openStream();
@@ -74,7 +80,7 @@ public class PptExtractor implements FileExtractor {
             List<HSLFSlide> slides = slideShow.getSlides();
             for (int i = 0; i < slides.size(); i++) {
                 text.append("\n--- Slide ").append(i + 1).append(" ---\n");
-                extractShapes(slides.get(i).getShapes(), text);
+                extractShapes(slides.get(i).getShapes(), text, extractedImageHandler);
             }
         } catch (Exception e) {
             throw new IOException("Failed to extract PPT: " + e.getMessage(), e);
@@ -83,24 +89,26 @@ public class PptExtractor implements FileExtractor {
         return text.toString().trim();
     }
 
-    private void extractShapes(List<HSLFShape> shapes, StringBuilder text) {
+    private void extractShapes(List<HSLFShape> shapes, StringBuilder text,
+                               ExtractedImageHandler extractedImageHandler) throws IOException {
         for (HSLFShape shape : shapes) {
             if (shape instanceof HSLFTable) {
                 extractTable((HSLFTable) shape, text);
             } else if (shape instanceof HSLFPictureShape) {
-                extractPicture((HSLFPictureShape) shape, text);
+                extractPicture((HSLFPictureShape) shape, text, extractedImageHandler);
             } else if (shape instanceof HSLFTextShape) {
                 String shapeText = ((HSLFTextShape) shape).getText();
                 if (shapeText != null && !shapeText.trim().isEmpty()) {
                     text.append(shapeText.trim()).append('\n');
                 }
             } else if (shape instanceof HSLFGroupShape) {
-                extractShapes(((HSLFGroupShape) shape).getShapes(), text);
+                extractShapes(((HSLFGroupShape) shape).getShapes(), text, extractedImageHandler);
             }
         }
     }
 
-    private void extractPicture(HSLFPictureShape pictureShape, StringBuilder text) {
+    private void extractPicture(HSLFPictureShape pictureShape, StringBuilder text,
+                                ExtractedImageHandler extractedImageHandler) throws IOException {
         HSLFPictureData pictureData = pictureShape.getPictureData();
         if (pictureData == null) {
             return;
@@ -115,9 +123,12 @@ public class PptExtractor implements FileExtractor {
         if (contentType == null || contentType.trim().isEmpty()) {
             contentType = "application/octet-stream";
         }
-        text.append("\n![Image](")
-            .append(ImageUtil.imageBytesToDataUri(data, contentType))
-            .append(")\n");
+        String extension = pictureData.getType() != null ? pictureData.getType().extension : "bin";
+        String fileName = "image-" + pictureData.getIndex() + "." + extension;
+        String imageUrl = extractedImageHandler.handle(data, contentType, fileName);
+        if (imageUrl != null && !imageUrl.trim().isEmpty()) {
+            text.append("\n![Image](").append(imageUrl).append(")\n");
+        }
     }
 
     private void extractTable(HSLFTable table, StringBuilder text) {

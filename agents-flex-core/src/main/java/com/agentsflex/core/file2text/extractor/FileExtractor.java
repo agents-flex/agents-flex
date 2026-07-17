@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.file2text.extractor;
 
+import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
 
 import java.io.IOException;
@@ -31,6 +32,15 @@ public interface FileExtractor {
     boolean supports(DocumentSource source);
 
     String extractText(DocumentSource source) throws IOException;
+
+    /**
+     * 使用指定的图片处理器提取文档内容。
+     * 不处理图片的自定义解析器只需实现 {@link #extractText(DocumentSource)}。
+     */
+    default String extractText(DocumentSource source,
+                               ExtractedImageHandler extractedImageHandler) throws IOException {
+        return extractText(source);
+    }
 
     default int getOrder() {
         return 100;

@@ -11,7 +11,11 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class DocxExtractorTest {
@@ -42,6 +46,28 @@ public class DocxExtractorTest {
         );
 
         assertTrue(text.contains("Document title"));
+    }
+
+    @Test
+    public void shouldRenderUrlReturnedByExtractedImageHandler() throws Exception {
+        AtomicBoolean processed = new AtomicBoolean();
+        File2TextService service = new File2TextService((bytes, mimeType, fileName) -> {
+            assertTrue(bytes.length > 0);
+            assertEquals("image/png", mimeType);
+            assertNotNull(fileName);
+            processed.set(true);
+            return "https://cdn.example.com/document-image.png";
+        });
+
+        String text = service.extractTextFromBytes(
+            createDocx(),
+            "sample.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        );
+
+        assertTrue(processed.get());
+        assertTrue(text.contains("![Image](https://cdn.example.com/document-image.png)"));
+        assertFalse(text.contains(";base64,"));
     }
 
     private byte[] createDocx() throws Exception {

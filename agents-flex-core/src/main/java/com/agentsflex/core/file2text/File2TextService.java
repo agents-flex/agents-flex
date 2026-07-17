@@ -18,6 +18,8 @@ package com.agentsflex.core.file2text;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
 import com.agentsflex.core.file2text.extractor.ExtractorRegistry;
+import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
+import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.*;
 
 import java.io.File;
@@ -28,17 +30,44 @@ import java.util.stream.Collectors;
 public class File2TextService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(File2TextService.class);
     private final ExtractorRegistry registry;
+    private volatile ExtractedImageHandler extractedImageHandler;
 
     public File2TextService() {
-        this(new ExtractorRegistry());
+        this(new ExtractorRegistry(), new Base64ExtractedImageHandler());
     }
 
     public File2TextService(ExtractorRegistry registry) {
+        this(registry, new Base64ExtractedImageHandler());
+    }
+
+    public File2TextService(ExtractedImageHandler extractedImageHandler) {
+        this(new ExtractorRegistry(), extractedImageHandler);
+    }
+
+    public File2TextService(ExtractorRegistry registry, ExtractedImageHandler extractedImageHandler) {
+        if (registry == null) {
+            throw new IllegalArgumentException("ExtractorRegistry cannot be null");
+        }
+        if (extractedImageHandler == null) {
+            throw new IllegalArgumentException("ExtractedImageHandler cannot be null");
+        }
         this.registry = registry;
+        this.extractedImageHandler = extractedImageHandler;
     }
 
     public ExtractorRegistry getRegistry() {
         return registry;
+    }
+
+    public ExtractedImageHandler getExtractedImageHandler() {
+        return extractedImageHandler;
+    }
+
+    public void setExtractedImageHandler(ExtractedImageHandler extractedImageHandler) {
+        if (extractedImageHandler == null) {
+            throw new IllegalArgumentException("ExtractedImageHandler cannot be null");
+        }
+        this.extractedImageHandler = extractedImageHandler;
     }
 
     public String extractTextFromHttpUrl(String httpUrl) {
@@ -79,6 +108,7 @@ public class File2TextService {
             throw new IllegalArgumentException("DocumentSource cannot be null");
         }
 
+        ExtractedImageHandler currentExtractedImageHandler = extractedImageHandler;
         try {
             // 获取可用的 Extractor（按优先级排序）
             List<FileExtractor> candidates = registry.findExtractors(source);
@@ -98,7 +128,7 @@ public class File2TextService {
                 try {
                     log.debug("Trying {} on {}", extractor.getClass().getSimpleName(), safeFileName(source));
 
-                    String text = extractor.extractText(source);
+                    String text = extractor.extractText(source, currentExtractedImageHandler);
                     if (text != null && !text.trim().isEmpty()) {
                         log.debug("Success with {}: extracted {} chars",
                             extractor.getClass().getSimpleName(), text.length());

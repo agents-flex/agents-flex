@@ -44,6 +44,18 @@ public class PptExtractorTest {
         assertTrue(text.contains("| Alice | 95 |"));
     }
 
+    @Test
+    public void shouldRenderUrlReturnedByExtractedImageHandler() throws Exception {
+        File2TextService service = new File2TextService(
+            (bytes, mimeType, fileName) -> "https://cdn.example.com/ppt-image.png");
+
+        String text = service.extractTextFromBytes(
+            createPpt(), "sample.ppt", "application/vnd.ms-powerpoint");
+
+        assertTrue(text.contains("![Image](https://cdn.example.com/ppt-image.png)"));
+        assertFalse(text.contains(";base64,"));
+    }
+
     private byte[] createPpt() throws Exception {
         System.setProperty("java.awt.headless", "true");
         try (HSLFSlideShow slideShow = new HSLFSlideShow();

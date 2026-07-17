@@ -16,6 +16,7 @@
 package com.agentsflex.core.file2text;
 
 
+import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.ByteArrayDocumentSource;
 import com.agentsflex.core.file2text.source.ByteStreamDocumentSource;
 import com.agentsflex.core.file2text.source.FileDocumentSource;
@@ -32,6 +33,10 @@ public class File2TextUtil {
             throw new IllegalArgumentException("File2TextService cannot be null");
         }
         File2TextUtil.file2TextService = file2TextService;
+    }
+
+    public static void setExtractedImageHandler(ExtractedImageHandler extractedImageHandler) {
+        file2TextService.setExtractedImageHandler(extractedImageHandler);
     }
 
     public static String readFromHttpUrl(String httpUrl) {

@@ -16,8 +16,9 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
+import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
-import com.agentsflex.core.util.ImageUtil;
 import org.apache.poi.xwpf.usermodel.*;
 
 import java.io.IOException;
@@ -30,7 +31,7 @@ import java.util.Set;
 
 /**
  * DOCX 文档提取器（.docx, .dotx）
- * 支持段落、表格、列表文本提取，以及嵌入图片的 Base64 提取
+ * 支持段落、表格、列表文本提取，以及嵌入图片处理
  */
 public class DocxExtractor implements FileExtractor {
 
@@ -87,6 +88,11 @@ public class DocxExtractor implements FileExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
+        return extractText(source, new Base64ExtractedImageHandler());
+    }
+
+    @Override
+    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
         StringBuilder text = new StringBuilder();
 
         try (InputStream is = source.openStream();
@@ -95,12 +101,12 @@ public class DocxExtractor implements FileExtractor {
             // 按文档中的原始顺序提取段落和表格
             for (IBodyElement bodyElement : document.getBodyElements()) {
                 if (bodyElement instanceof XWPFParagraph) {
-                    String paragraphText = getParagraphText((XWPFParagraph) bodyElement);
+                    String paragraphText = getParagraphText((XWPFParagraph) bodyElement, extractedImageHandler);
                     if (paragraphText != null && !paragraphText.trim().isEmpty()) {
                         text.append(paragraphText).append('\n');
                     }
                 } else if (bodyElement instanceof XWPFTable) {
-                    extractTable((XWPFTable) bodyElement, text);
+                    extractTable((XWPFTable) bodyElement, text, extractedImageHandler);
                 }
             }
 
@@ -114,7 +120,7 @@ public class DocxExtractor implements FileExtractor {
     /**
      * 提取段落文本，包括其中嵌入的图片
      */
-    private String getParagraphText(XWPFParagraph paragraph) {
+    private String getParagraphText(XWPFParagraph paragraph, ExtractedImageHandler extractedImageHandler) throws IOException {
         StringBuilder text = new StringBuilder();
 
         // 1. 提取普通文本 Run
@@ -129,11 +135,11 @@ public class DocxExtractor implements FileExtractor {
             List<XWPFPicture> pictures = run.getEmbeddedPictures();
             if (pictures != null && !pictures.isEmpty()) {
                 for (XWPFPicture picture : pictures) {
-                    String imageBase64 = extractImageAsBase64(picture);
-                    if (imageBase64 != null) {
+                    String imageUrl = processImage(picture, extractedImageHandler);
+                    if (imageUrl != null && !imageUrl.trim().isEmpty()) {
                         // 使用 Markdown 格式或自定义标签包裹图片
                         // 这里使用 Markdown 格式，方便后续 LLM 理解或前端渲染
-                        text.append("\n![Image](").append(imageBase64).append(")\n");
+                        text.append("\n![Image](").append(imageUrl).append(")\n");
                     }
                 }
             }
@@ -148,10 +154,10 @@ public class DocxExtractor implements FileExtractor {
     /**
      * 提取单元格文本，递归处理段落和图片
      */
-    private String getCellText(XWPFTableCell cell) {
+    private String getCellText(XWPFTableCell cell, ExtractedImageHandler extractedImageHandler) throws IOException {
         StringBuilder text = new StringBuilder();
         for (XWPFParagraph p : cell.getParagraphs()) {
-            String pt = getParagraphText(p);
+            String pt = getParagraphText(p, extractedImageHandler);
             if (pt != null) {
                 if (text.length() > 0) {
                     text.append(' ');
@@ -162,7 +168,7 @@ public class DocxExtractor implements FileExtractor {
         return text.toString().trim();
     }
 
-    private void extractTable(XWPFTable table, StringBuilder text) {
+    private void extractTable(XWPFTable table, StringBuilder text, ExtractedImageHandler extractedImageHandler) throws IOException {
         List<XWPFTableRow> rows = table.getRows();
         if (rows == null || rows.isEmpty()) {
             return;
@@ -177,7 +183,7 @@ public class DocxExtractor implements FileExtractor {
         }
 
         text.append('\n');
-        appendTableRow(rows.get(0), columnCount, text);
+        appendTableRow(rows.get(0), columnCount, text, extractedImageHandler);
         text.append('|');
         for (int column = 0; column < columnCount; column++) {
             text.append(" --- |");
@@ -185,16 +191,17 @@ public class DocxExtractor implements FileExtractor {
         text.append('\n');
 
         for (int row = 1; row < rows.size(); row++) {
-            appendTableRow(rows.get(row), columnCount, text);
+            appendTableRow(rows.get(row), columnCount, text, extractedImageHandler);
         }
         text.append('\n');
     }
 
-    private void appendTableRow(XWPFTableRow row, int columnCount, StringBuilder text) {
+    private void appendTableRow(XWPFTableRow row, int columnCount, StringBuilder text,
+                                ExtractedImageHandler extractedImageHandler) throws IOException {
         List<XWPFTableCell> cells = row.getTableCells();
         text.append('|');
         for (int column = 0; column < columnCount; column++) {
-            String value = column < cells.size() ? getCellText(cells.get(column)) : "";
+            String value = column < cells.size() ? getCellText(cells.get(column), extractedImageHandler) : "";
             text.append(' ').append(escapeMarkdownCell(value)).append(" |");
         }
         text.append('\n');
@@ -211,37 +218,23 @@ public class DocxExtractor implements FileExtractor {
             .trim();
     }
 
-    /**
-     * 将图片转换为 Base64 Data URI
-     */
-    private String extractImageAsBase64(XWPFPicture picture) {
-        try {
-            XWPFPictureData pictureData = picture.getPictureData();
-            if (pictureData == null) {
-                return null;
-            }
-
-
-            String mimeType = pictureData.getPackagePart().getContentType();
-            if (mimeType == null || mimeType.trim().isEmpty()) {
-                String extension = getExtension(pictureData.getFileName());
-                mimeType = ImageUtil.getMimeTypeFromExtension(extension);
-            }
-            if (mimeType == null || mimeType.trim().isEmpty()) {
-                mimeType = "application/octet-stream";
-            }
-
-            byte[] data = pictureData.getData();
-            if (data == null || data.length == 0) {
-                return null;
-            }
-            return ImageUtil.imageBytesToDataUri(data, mimeType);
-
-        } catch (Exception e) {
-            // 记录日志但不中断整个文档提取
-            System.err.println("Failed to extract image: " + e.getMessage());
+    private String processImage(XWPFPicture picture, ExtractedImageHandler extractedImageHandler) throws IOException {
+        XWPFPictureData pictureData = picture.getPictureData();
+        if (pictureData == null) {
             return null;
         }
+
+
+        String mimeType = pictureData.getPackagePart().getContentType();
+        if (mimeType == null || mimeType.trim().isEmpty()) {
+            mimeType = "application/octet-stream";
+        }
+
+        byte[] data = pictureData.getData();
+        if (data == null || data.length == 0) {
+            return null;
+        }
+        return extractedImageHandler.handle(data, mimeType, pictureData.getFileName());
     }
 
     @Override

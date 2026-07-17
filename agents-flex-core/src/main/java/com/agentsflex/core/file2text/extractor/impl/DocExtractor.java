@@ -16,6 +16,8 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
+import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
 import com.agentsflex.core.util.ImageUtil;
 import org.apache.poi.hwpf.HWPFDocument;
@@ -38,7 +40,7 @@ import java.util.Set;
 /**
  * DOC 文档提取器（.doc）
  * 支持旧版 Word 97-2003 格式
- * 支持段落、Markdown 表格以及嵌入图片的 Base64 提取
+ * 支持段落、Markdown 表格以及嵌入图片处理
  */
 public class DocExtractor implements FileExtractor {
 
@@ -77,6 +79,11 @@ public class DocExtractor implements FileExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
+        return extractText(source, new Base64ExtractedImageHandler());
+    }
+
+    @Override
+    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
         try (InputStream is = source.openStream();
              POIFSFileSystem fs = new POIFSFileSystem(is);
              HWPFDocument doc = new HWPFDocument(fs)) {
@@ -91,7 +98,7 @@ public class DocExtractor implements FileExtractor {
 
                 if (paragraph.isInTable()) {
                     Table table = range.getTable(paragraph);
-                    extractTable(table, picturesTable, text);
+                    extractTable(table, picturesTable, text, extractedImageHandler);
 
                     int tableEndOffset = table.getEndOffset();
                     while (i + 1 < numParagraphs
@@ -101,7 +108,7 @@ public class DocExtractor implements FileExtractor {
                     continue;
                 }
 
-                appendParagraphContent(paragraph, picturesTable, text);
+                appendParagraphContent(paragraph, picturesTable, text, extractedImageHandler);
                 text.append('\n');
             }
 
@@ -112,15 +119,16 @@ public class DocExtractor implements FileExtractor {
         }
     }
 
-    private void appendParagraphContent(Paragraph paragraph, PicturesTable picturesTable, StringBuilder text) {
+    private void appendParagraphContent(Paragraph paragraph, PicturesTable picturesTable,
+                                        StringBuilder text, ExtractedImageHandler extractedImageHandler) throws IOException {
         int numRuns = paragraph.numCharacterRuns();
         for (int i = 0; i < numRuns; i++) {
             CharacterRun run = paragraph.getCharacterRun(i);
             if (picturesTable.hasPicture(run)) {
                 Picture picture = picturesTable.extractPicture(run, true);
-                String imageDataUri = convertPictureToDataUri(picture);
-                if (imageDataUri != null) {
-                    text.append("\n![Image](").append(imageDataUri).append(")\n");
+                String imageUrl = processPicture(picture, extractedImageHandler);
+                if (imageUrl != null && !imageUrl.trim().isEmpty()) {
+                    text.append("\n![Image](").append(imageUrl).append(")\n");
                 }
             } else {
                 String runText = run.text();
@@ -147,7 +155,8 @@ public class DocExtractor implements FileExtractor {
         return cleaned.toString();
     }
 
-    private void extractTable(Table table, PicturesTable picturesTable, StringBuilder text) {
+    private void extractTable(Table table, PicturesTable picturesTable, StringBuilder text,
+                              ExtractedImageHandler extractedImageHandler) throws IOException {
         int rowCount = table.numRows();
         if (rowCount == 0) {
             return;
@@ -162,7 +171,7 @@ public class DocExtractor implements FileExtractor {
         }
 
         text.append('\n');
-        appendTableRow(table.getRow(0), columnCount, picturesTable, text);
+        appendTableRow(table.getRow(0), columnCount, picturesTable, text, extractedImageHandler);
         text.append('|');
         for (int column = 0; column < columnCount; column++) {
             text.append(" --- |");
@@ -170,30 +179,32 @@ public class DocExtractor implements FileExtractor {
         text.append('\n');
 
         for (int row = 1; row < rowCount; row++) {
-            appendTableRow(table.getRow(row), columnCount, picturesTable, text);
+            appendTableRow(table.getRow(row), columnCount, picturesTable, text, extractedImageHandler);
         }
         text.append('\n');
     }
 
     private void appendTableRow(TableRow row, int columnCount,
-                                PicturesTable picturesTable, StringBuilder text) {
+                                PicturesTable picturesTable, StringBuilder text,
+                                ExtractedImageHandler extractedImageHandler) throws IOException {
         text.append('|');
         for (int column = 0; column < columnCount; column++) {
             String value = column < row.numCells()
-                ? getCellText(row.getCell(column), picturesTable)
+                ? getCellText(row.getCell(column), picturesTable, extractedImageHandler)
                 : "";
             text.append(' ').append(escapeMarkdownCell(value)).append(" |");
         }
         text.append('\n');
     }
 
-    private String getCellText(TableCell cell, PicturesTable picturesTable) {
+    private String getCellText(TableCell cell, PicturesTable picturesTable,
+                               ExtractedImageHandler extractedImageHandler) throws IOException {
         StringBuilder text = new StringBuilder();
         for (int i = 0; i < cell.numParagraphs(); i++) {
             if (text.length() > 0) {
                 text.append(' ');
             }
-            appendParagraphContent(cell.getParagraph(i), picturesTable, text);
+            appendParagraphContent(cell.getParagraph(i), picturesTable, text, extractedImageHandler);
         }
         return text.toString().trim();
     }
@@ -209,29 +220,19 @@ public class DocExtractor implements FileExtractor {
             .trim();
     }
 
-    /**
-     * 将 HWPF Picture 对象转换为 Base64 Data URI
-     */
-    private String convertPictureToDataUri(Picture picture) {
-        try {
-            if (picture == null) {
-                return null;
-            }
-
-            byte[] data = picture.getContent();
-            if (data == null || data.length == 0) {
-                return null;
-            }
-
-            String ext = picture.suggestFileExtension();
-            String mimeType = getPictureMimeType(ext);
-
-            return ImageUtil.imageBytesToDataUri(data, mimeType);
-
-        } catch (Exception e) {
-            System.err.println("Failed to convert DOC image to Base64: " + e.getMessage());
+    private String processPicture(Picture picture, ExtractedImageHandler extractedImageHandler) throws IOException {
+        if (picture == null) {
             return null;
         }
+
+        byte[] data = picture.getContent();
+        if (data == null || data.length == 0) {
+            return null;
+        }
+
+        String ext = picture.suggestFileExtension();
+        String mimeType = getPictureMimeType(ext);
+        return extractedImageHandler.handle(data, mimeType, picture.suggestFullFileName());
     }
 
     private String getPictureMimeType(String extension) {

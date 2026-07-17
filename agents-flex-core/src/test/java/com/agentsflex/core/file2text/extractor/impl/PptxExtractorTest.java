@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 public class PptxExtractorTest {
 
@@ -46,6 +47,21 @@ public class PptxExtractorTest {
         );
 
         assertTrue(text.contains("PPTX title"));
+    }
+
+    @Test
+    public void shouldRenderUrlReturnedByExtractedImageHandler() throws Exception {
+        File2TextService service = new File2TextService(
+            (bytes, mimeType, fileName) -> "https://cdn.example.com/pptx-image.png");
+
+        String text = service.extractTextFromBytes(
+            createPptx(),
+            "sample.pptx",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        );
+
+        assertTrue(text.contains("![Image](https://cdn.example.com/pptx-image.png)"));
+        assertFalse(text.contains(";base64,"));
     }
 
     private byte[] createPptx() throws Exception {

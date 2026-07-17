@@ -14,6 +14,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 public class PdfTextExtractorTest {
 
@@ -36,6 +37,17 @@ public class PdfTextExtractorTest {
         assertTrue(text.contains("![Image](data:image/png;base64,"));
         assertTrue(text.contains("--- Page 2 ---"));
         assertTrue(text.contains("PDF second page"));
+    }
+
+    @Test
+    public void shouldRenderUrlReturnedByExtractedImageHandler() throws Exception {
+        File2TextService service = new File2TextService(
+            (bytes, mimeType, fileName) -> "https://cdn.example.com/pdf-image.png");
+
+        String text = service.extractTextFromBytes(createPdf(), "sample.pdf", "application/pdf");
+
+        assertTrue(text.contains("![Image](https://cdn.example.com/pdf-image.png)"));
+        assertFalse(text.contains(";base64,"));
     }
 
     private byte[] createPdf() throws Exception {
