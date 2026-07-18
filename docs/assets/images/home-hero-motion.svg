@@ -1,0 +1,115 @@
+<svg width="960" height="660" viewBox="0 0 960 660" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Agents-Flex 抽象动态能力流</title>
+  <desc>多条动态能力流在中央运行核心汇聚并重新分发，以抽象运动表达 Agents-Flex 的组合与编排能力。</desc>
+  <defs>
+    <filter id="af-motion-shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <style>
+    .af-motion-ring {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: af-motion-rotate 14s linear infinite;
+    }
+
+    .af-motion-ring-reverse {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: af-motion-rotate-reverse 22s linear infinite;
+    }
+
+    .af-motion-pulse {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: af-motion-pulse 3.2s ease-out infinite;
+    }
+
+    @keyframes af-motion-rotate {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes af-motion-rotate-reverse {
+      to { transform: rotate(-360deg); }
+    }
+
+    @keyframes af-motion-pulse {
+      0%, 40% { opacity: 0; transform: scale(0.82); }
+      56% { opacity: 0.42; }
+      100% { opacity: 0; transform: scale(1.28); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .af-motion-ring,
+      .af-motion-ring-reverse,
+      .af-motion-pulse {
+        animation: none;
+        transform: none;
+      }
+      .af-motion-particles { display: none; }
+      .af-motion-pulse { display: none; }
+    }
+  </style>
+
+  <rect width="960" height="660" rx="10" fill="#111410"/>
+
+  <g stroke="#222821" stroke-width="1">
+    <path d="M0 110H960M0 220H960M0 330H960M0 440H960M0 550H960"/>
+    <path d="M120 0V660M240 0V660M360 0V660M480 0V660M600 0V660M720 0V660M840 0V660"/>
+  </g>
+
+  <g stroke="#292F28" stroke-width="38" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-40 132C154 132 222 254 380 254C542 254 624 110 1000 110"/>
+    <path d="M-40 520C182 520 260 390 412 390C572 390 692 540 1000 540"/>
+    <path d="M280 -40C280 176 400 228 480 330C560 432 680 474 680 700"/>
+    <path d="M-40 320C180 320 248 330 350 330C600 330 722 300 1000 300"/>
+  </g>
+
+  <g fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path id="af-motion-route-a" d="M-40 132C154 132 222 254 380 254C542 254 624 110 1000 110" stroke="#3BE6D0"/>
+    <path id="af-motion-route-b" d="M-40 520C182 520 260 390 412 390C572 390 692 540 1000 540" stroke="#FF6B57"/>
+    <path id="af-motion-route-c" d="M280 -40C280 176 400 228 480 330C560 432 680 474 680 700" stroke="#F3C65A"/>
+    <path id="af-motion-route-d" d="M-40 320C180 320 248 330 350 330C600 330 722 300 1000 300" stroke="#E5FF5A"/>
+  </g>
+
+  <g opacity="0.72" stroke="#111410" stroke-width="5">
+    <circle cx="96" cy="132" r="13" fill="#3BE6D0"/>
+    <rect x="829" y="97" width="26" height="26" transform="rotate(45 842 110)" fill="#3BE6D0"/>
+    <circle cx="126" cy="520" r="13" fill="#FF6B57"/>
+    <rect x="842" y="527" width="26" height="26" rx="4" fill="#FF6B57"/>
+    <circle cx="280" cy="92" r="13" fill="#F3C65A"/>
+    <rect x="667" y="573" width="26" height="26" transform="rotate(45 680 586)" fill="#F3C65A"/>
+    <circle cx="112" cy="320" r="13" fill="#E5FF5A"/>
+    <rect x="838" y="287" width="26" height="26" rx="4" fill="#E5FF5A"/>
+  </g>
+
+  <g class="af-motion-particles">
+    <circle r="8" fill="#F7F8F3" stroke="#3BE6D0" stroke-width="4">
+      <animateMotion dur="7.2s" repeatCount="indefinite"><mpath href="#af-motion-route-a"/></animateMotion>
+    </circle>
+    <circle r="8" fill="#F7F8F3" stroke="#FF6B57" stroke-width="4">
+      <animateMotion dur="8.4s" begin="-2.8s" repeatCount="indefinite"><mpath href="#af-motion-route-b"/></animateMotion>
+    </circle>
+    <circle r="8" fill="#F7F8F3" stroke="#F3C65A" stroke-width="4">
+      <animateMotion dur="9.6s" begin="-5.2s" repeatCount="indefinite"><mpath href="#af-motion-route-c"/></animateMotion>
+    </circle>
+    <circle r="8" fill="#F7F8F3" stroke="#E5FF5A" stroke-width="4">
+      <animateMotion dur="6.8s" begin="-1.6s" repeatCount="indefinite"><mpath href="#af-motion-route-d"/></animateMotion>
+    </circle>
+  </g>
+
+  <g filter="url(#af-motion-shadow)">
+    <circle class="af-motion-pulse" cx="480" cy="330" r="126" fill="none" stroke="#F7F8F3" stroke-width="5"/>
+    <circle cx="480" cy="330" r="118" fill="#111410" stroke="#F7F8F3" stroke-width="4"/>
+    <circle class="af-motion-ring-reverse" cx="480" cy="330" r="100" fill="none" stroke="#4A5249" stroke-width="4" stroke-dasharray="22 10 4 10"/>
+    <circle class="af-motion-ring" cx="480" cy="330" r="78" fill="none" stroke="#F7F8F3" stroke-width="7" stroke-dasharray="28 14 5 14"/>
+    <circle cx="480" cy="330" r="48" fill="#F7F8F3"/>
+    <path d="M452 330L472 310L492 330L472 350Z" fill="#111410"/>
+    <path d="M468 330L488 310L508 330L488 350Z" fill="#3BE6D0"/>
+  </g>
+
+  <g fill="#F7F8F3">
+    <circle cx="44" cy="44" r="4"/><circle cx="64" cy="44" r="4"/><circle cx="84" cy="44" r="4"/>
+    <circle cx="876" cy="616" r="4"/><circle cx="896" cy="616" r="4"/><circle cx="916" cy="616" r="4"/>
+  </g>
+</svg>
