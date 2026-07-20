@@ -54,6 +54,7 @@
         <module>agents-flex-tool</module>
         <module>agents-flex-mcp</module>
         <module>agents-flex-skills</module>
+        <module>agents-flex-skills-artifact</module>
         <module>agents-flex-skills-sandbox</module>
         <module>agents-flex-text2sql</module>
         <module>agents-flex-wiki</module>
@@ -77,6 +78,10 @@
         <kotlin.version>1.8.22</kotlin.version>
         <opentelemetry.version>1.63.0</opentelemetry.version>
         <opensandbox.version>1.0.16</opensandbox.version>
+        <aliyun.oss.v2.version>0.5.0</aliyun.oss.v2.version>
+        <tencent.cos.version>5.6.273</tencent.cos.version>
+        <huawei.obs.version>3.26.6</huawei.obs.version>
+        <volcengine.tos.version>2.9.16</volcengine.tos.version>
     </properties>
 
 
@@ -330,6 +335,31 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-skills-artifact-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-skills-artifact-aliyun-oss</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-skills-artifact-tencent-cos</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-skills-artifact-huawei-obs</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-skills-artifact-volcengine-tos</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-skills-open-sandbox</artifactId>
                 <version>${revision}</version>
             </dependency>
@@ -342,6 +372,26 @@
                 <groupId>com.alibaba.opensandbox</groupId>
                 <artifactId>sandbox</artifactId>
                 <version>${opensandbox.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>alibabacloud-oss-v2</artifactId>
+                <version>${aliyun.oss.v2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.qcloud</groupId>
+                <artifactId>cos_api</artifactId>
+                <version>${tencent.cos.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.huaweicloud</groupId>
+                <artifactId>esdk-obs-java-bundle</artifactId>
+                <version>${huawei.obs.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.volcengine</groupId>
+                <artifactId>ve-tos-java-sdk</artifactId>
+                <version>${volcengine.tos.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
