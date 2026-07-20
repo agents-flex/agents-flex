@@ -644,36 +644,46 @@ try (InputStream input = files.openInputStream("/runtime/output/report.pptx")) {
 未配置时不会暴露该工具。
 
 ```java
-import com.agentsflex.skill.attachment.FilePublishRequest;
-import com.agentsflex.skill.attachment.FilePublisher;
-import com.agentsflex.skill.attachment.PublishedFile;
+import com.agentsflex.skill.file.FilePublishRequest;
+import com.agentsflex.skill.file.FilePublisher;
+import com.agentsflex.skill.file.PublishedFile;
 
 FilePublisher publisher = new FilePublisher() {
     @Override
     public PublishedFile publish(FilePublishRequest request) {
         String objectKey = attachmentCenter.upload(
-            request.getFileName(),
-            request.getContentType(),
-            request.getContentLength(),
-            request.getInputStream()
+                request.getFileName(),
+                request.getContentType(),
+                request.getContentLength(),
+                request.getInputStream()
         );
 
         return PublishedFile.builder()
-            .url(attachmentCenter.createDownloadUrl(objectKey))
-            .storageKey(objectKey)
-            .fileName(request.getFileName())
-            .contentType(request.getContentType())
-            .contentLength(request.getContentLength())
-            .expiresAt(System.currentTimeMillis() + 60 * 60_000L)
-            .build();
+                .url(attachmentCenter.createDownloadUrl(objectKey))
+                .storageKey(objectKey)
+                .fileName(request.getFileName())
+                .contentType(request.getContentType())
+                .contentLength(request.getContentLength())
+                .expiresAt(System.currentTimeMillis() + 60 * 60_000L)
+                .build();
     }
 };
 
-prompt.addTools(SkillsTool.builder()
-    .addSkillsDirectory(skillsDirectory)
-    .runtime(runtime)
-    .filePublisher(publisher)
-    .buildTools());
+prompt.
+
+addTools(SkillsTool.builder()
+    .
+
+addSkillsDirectory(skillsDirectory)
+    .
+
+runtime(runtime)
+    .
+
+filePublisher(publisher)
+    .
+
+buildTools());
 ```
 
 模型完成文件后可以调用：

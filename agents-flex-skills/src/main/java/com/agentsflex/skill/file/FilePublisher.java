@@ -4,7 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  */
-package com.agentsflex.skill.attachment;
+package com.agentsflex.skill.file;
 
 /**
  * 将 Skill Runtime 生成的文件发布为用户可访问 URL 的扩展接口。

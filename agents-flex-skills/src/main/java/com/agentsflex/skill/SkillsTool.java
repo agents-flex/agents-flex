@@ -19,7 +19,7 @@ package com.agentsflex.skill;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolScanner;
-import com.agentsflex.skill.attachment.FilePublisher;
+import com.agentsflex.skill.file.FilePublisher;
 import com.agentsflex.skill.local.LocalSkillRuntime;
 import com.agentsflex.skill.runtime.SkillRuntime;
 import com.agentsflex.skill.tools.SkillRuntimeFilePublishTools;
