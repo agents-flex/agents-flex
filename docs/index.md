@@ -4,26 +4,27 @@ layout: home
 <main class="af-home">
   <section class="af-hero">
     <div class="af-hero__copy">
-      <p class="af-eyebrow"><span aria-hidden="true"></span> Java AI Agent Framework / Spatial Workspace</p>
+      <p class="af-eyebrow"><span aria-hidden="true"></span> Java AI Agent Framework</p>
       <h1>
         <span class="af-hero__brand">Agents-flex</span>
-        <span class="af-hero__claim">轻量级、高性能的</span>
-        <span class="af-hero__descriptor">Java Agent 开发框架</span>
+        <span class="af-hero__claim">为 Java 构建可靠的 AI Agent</span>
       </h1>
-      <p class="af-hero__lead">Agents-Flex 为 Java 开发者统一大模型、图片生成、语音 TTS / STT、视频生成、Tool Calling、Skills、Sandbox、RAG 与 Agent 编排能力，帮助团队更快构建可上线的多模态 AI 应用。</p>
+      <p class="af-hero__lead">不只文本对话，更把图片、音频、视频模型，以及知识、工具、技能与多智能体协同，组织成真正能够完成任务的系统，并提供面向生产环境的路由、重试与可观测能力。</p>
       <div class="af-actions" aria-label="首页快捷入口">
         <a class="af-button af-button--primary" href="/zh/chat/getting-started">快速开始</a>
-        <a class="af-button" href="/zh/intro/what-is-agentsflex">了解框架</a>
-        <a class="af-button" href="/zh/intro/maven">Maven 依赖</a>
+        <a class="af-button af-button--secondary" href="/zh/intro/what-is-agentsflex">查看文档 <span aria-hidden="true">→</span></a>
       </div>
-      <div class="af-metrics" aria-label="框架能力摘要">
-        <div><strong>多模态</strong><span>统一对话、图片、语音与视频</span></div>
-        <div><strong>隔离执行</strong><span>Skills 可运行于本机或远程 Sandbox</span></div>
-        <div><strong>中国生态</strong><span>适配国产模型、云服务与私有化部署</span></div>
+      <div class="af-hero__meta" aria-label="框架核心能力">
+        <span>多模型（文本、图片、音频、视频）</span><i aria-hidden="true"></i><span>Tool Calling</span><i aria-hidden="true"></i><span>RAG</span><i aria-hidden="true"></i><span>MCP</span><i aria-hidden="true"></i><span>Skills &amp; Sandbox</span>
       </div>
     </div>
-    <div class="af-hero__visual" aria-label="Agents-Flex 能力结构">
-      <img src="./assets/images/home-hero-motion.svg" width="960" height="660" alt="空间界面风格的 Agents-Flex 工作区，以前后分层的悬浮平面展示模型、智能体、知识、技能与生产系统" />
+    <div class="af-hero__visual" aria-label="Agents-Flex Java 快速调用示例">
+      <div class="af-hero-code">
+        <div class="af-hero-code__bar"><span aria-hidden="true"><i></i><i></i><i></i></span><strong>QuickStart.java</strong><small>agents-flex</small></div>
+        <pre><code><span class="af-code-keyword">ChatModel</span> model = OpenAIChatConfig.builder()&#10;    .model(<span class="af-code-string">"Qwen3-32B"</span>)&#10;    .apiKey(System.getenv(<span class="af-code-string">"API_KEY"</span>))&#10;    .buildModel();&#10;&#10;<span class="af-code-keyword">String</span> answer = model.chat(&#10;    <span class="af-code-string">"分析这份产品需求"</span>&#10;);</code></pre>
+        <div class="af-hero-code__status"><span><i aria-hidden="true"></i> Model connected</span><strong>Java API</strong></div>
+        <img src="./assets/images/logo.png" width="120" height="94" alt="" />
+      </div>
     </div>
   </section>
   <section class="af-stack-stage">
@@ -116,7 +117,7 @@ layout: home
       <div class="af-multimodal-intro">
         <div>
           <p class="af-multimodal-overline"><span aria-hidden="true"></span> Multimodal Generation</p>
-          <h2 class="af-multimodal-title"><span>不止文本</span><span>统一构建 <em>图片</em>、<em>语音</em>与<em>视频</em></span></h2>
+          <h2 class="af-multimodal-title">不止文本，统一构建<br /><em>图片、语音与视频</em></h2>
         </div>
         <p>通过稳定的 Java 接口屏蔽不同服务商的请求与响应差异，让内容生成、实时语音交互和异步视频任务自然接入现有业务系统。</p>
       </div>
@@ -246,7 +247,7 @@ layout: home
     <div class="af-ecosystem-stage__inner">
       <header class="af-swiss-header">
         <div class="af-swiss-count"><span>AF / MODULES</span><strong>17</strong></div>
-        <div class="af-swiss-title"><p>JAVA AI ECOSYSTEM / 2026</p><h2>按需组合的<br />模块生态</h2></div>
+        <div class="af-swiss-title"><p>JAVA AI ECOSYSTEM / 2026</p><h2>按需组合的<br /><em>模块生态</em></h2></div>
         <p class="af-swiss-lead">从模型接入到隔离执行，每个模块保持清晰边界，并通过一致的 Java 接口组合成完整应用。</p>
       </header>
       <div class="af-swiss-grid" aria-label="Agents-Flex 可组合模块列表">
