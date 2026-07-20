@@ -19,6 +19,8 @@ package com.agentsflex.skill;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolScanner;
+import com.agentsflex.skill.artifact.SkillArtifact;
+import com.agentsflex.skill.artifact.SkillArtifactStore;
 import com.agentsflex.skill.file.FilePublisher;
 import com.agentsflex.skill.local.LocalSkillRuntime;
 import com.agentsflex.skill.runtime.SkillRuntime;
@@ -28,6 +30,7 @@ import com.agentsflex.skill.tools.SkillRuntimeSearchTools;
 import com.agentsflex.skill.tools.SkillRuntimeShellTools;
 import com.agentsflex.skill.util.Skills;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -232,6 +235,53 @@ public class SkillsTool {
          */
         public Builder addSkillsDirectories(List<String> skillsRootDirectories) {
             this.skills.addAll(Skills.loadDirectories(skillsRootDirectories));
+            return this;
+        }
+
+        /**
+         * 从 Artifact Store 加载一个已安装 Skill 的确定版本。
+         *
+         * <p>Store 会先把 Artifact 物化为当前节点可读的稳定目录，再沿用目录加载和
+         * Runtime prepare 流程。Artifact 名称必须与 {@code SKILL.md} 中的名称一致。</p>
+         *
+         * @param artifactStore Artifact 的存储与本地物化实现
+         * @param artifact 已安装 Skill 的确定版本
+         * @return 当前构建器
+         */
+        public Builder addSkillArtifact(SkillArtifactStore artifactStore, SkillArtifact artifact) {
+            if (artifactStore == null) {
+                throw new IllegalArgumentException("artifactStore must not be null");
+            }
+            if (artifact == null) {
+                throw new IllegalArgumentException("artifact must not be null");
+            }
+            String skillName = artifact.getName();
+            if (skillName == null || skillName.trim().isEmpty()) {
+                throw new IllegalArgumentException("artifact name must not be blank");
+            }
+
+            Path localDirectory = artifactStore.materialize(artifact);
+            if (localDirectory == null) {
+                throw new IllegalStateException("SkillArtifactStore.materialize must not return null");
+            }
+            return addSkillsDirectory(localDirectory.toString(), Collections.singleton(skillName.trim()));
+        }
+
+        /**
+         * 从同一个 Artifact Store 批量加载已安装 Skills。
+         *
+         * @param artifactStore Artifact 的存储与本地物化实现
+         * @param artifacts 已安装 Skill 版本列表
+         * @return 当前构建器
+         */
+        public Builder addSkillArtifacts(SkillArtifactStore artifactStore,
+                                         Collection<SkillArtifact> artifacts) {
+            if (artifacts == null) {
+                throw new IllegalArgumentException("artifacts must not be null");
+            }
+            for (SkillArtifact artifact : artifacts) {
+                addSkillArtifact(artifactStore, artifact);
+            }
             return this;
         }
 

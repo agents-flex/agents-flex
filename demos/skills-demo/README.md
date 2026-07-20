@@ -7,8 +7,8 @@
 - `aio-sandbox`：连接已经运行的 AIO Sandbox 服务执行。
 
 Demo 只注册 `SkillsTool.buildTools()` 返回的 `Skill`、`Bash`、`Read`、`Write`、`Edit`、`Glob` 和
-`Grep`。这些工具全部由所选 runtime 驱动；远端模式不会同时注册 `CommonTools` 中的本机文件、搜索或
-Shell 工具，因此模型无法绕过所选 runtime 在宿主机执行命令或读写文件。
+`Grep`。这些工具全部由所选 runtime 驱动；远端模式不会注册任何指向宿主机的文件、搜索或 Shell
+工具，因此模型无法绕过所选 runtime 在宿主机执行命令或读写文件。
 
 ## 准备
 
