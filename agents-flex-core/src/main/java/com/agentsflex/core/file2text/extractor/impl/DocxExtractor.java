@@ -16,6 +16,7 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.extractor.MarkdownFormatter;
 import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
 import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
@@ -23,6 +24,7 @@ import org.apache.poi.xwpf.usermodel.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -136,11 +138,7 @@ public class DocxExtractor implements FileExtractor {
             if (pictures != null && !pictures.isEmpty()) {
                 for (XWPFPicture picture : pictures) {
                     String imageUrl = processImage(picture, extractedImageHandler);
-                    if (imageUrl != null && !imageUrl.trim().isEmpty()) {
-                        // 使用 Markdown 格式或自定义标签包裹图片
-                        // 这里使用 Markdown 格式，方便后续 LLM 理解或前端渲染
-                        text.append("\n![Image](").append(imageUrl).append(")\n");
-                    }
+                    MarkdownFormatter.appendImage(text, imageUrl);
                 }
             }
         }
@@ -174,48 +172,15 @@ public class DocxExtractor implements FileExtractor {
             return;
         }
 
-        int columnCount = 0;
+        List<List<String>> tableRows = new ArrayList<>();
         for (XWPFTableRow row : rows) {
-            columnCount = Math.max(columnCount, row.getTableCells().size());
+            List<String> cells = new ArrayList<>();
+            for (XWPFTableCell cell : row.getTableCells()) {
+                cells.add(getCellText(cell, extractedImageHandler));
+            }
+            tableRows.add(cells);
         }
-        if (columnCount == 0) {
-            return;
-        }
-
-        text.append('\n');
-        appendTableRow(rows.get(0), columnCount, text, extractedImageHandler);
-        text.append('|');
-        for (int column = 0; column < columnCount; column++) {
-            text.append(" --- |");
-        }
-        text.append('\n');
-
-        for (int row = 1; row < rows.size(); row++) {
-            appendTableRow(rows.get(row), columnCount, text, extractedImageHandler);
-        }
-        text.append('\n');
-    }
-
-    private void appendTableRow(XWPFTableRow row, int columnCount, StringBuilder text,
-                                ExtractedImageHandler extractedImageHandler) throws IOException {
-        List<XWPFTableCell> cells = row.getTableCells();
-        text.append('|');
-        for (int column = 0; column < columnCount; column++) {
-            String value = column < cells.size() ? getCellText(cells.get(column), extractedImageHandler) : "";
-            text.append(' ').append(escapeMarkdownCell(value)).append(" |");
-        }
-        text.append('\n');
-    }
-
-    private String escapeMarkdownCell(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("\\", "\\\\")
-            .replace("|", "\\|")
-            .replace("\r", " ")
-            .replace("\n", " ")
-            .trim();
+        MarkdownFormatter.appendTable(text, tableRows);
     }
 
     private String processImage(XWPFPicture picture, ExtractedImageHandler extractedImageHandler) throws IOException {
@@ -234,7 +199,8 @@ public class DocxExtractor implements FileExtractor {
         if (data == null || data.length == 0) {
             return null;
         }
-        return extractedImageHandler.handle(data, mimeType, pictureData.getFileName());
+        return MarkdownFormatter.handleImage(extractedImageHandler, data, mimeType,
+            pictureData.getFileName());
     }
 
     @Override

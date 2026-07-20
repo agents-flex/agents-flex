@@ -16,6 +16,7 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.extractor.MarkdownFormatter;
 import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
 import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
@@ -150,7 +151,9 @@ public class PdfTextExtractor implements FileExtractor {
                 output.write('\n');
             }
             for (String image : images) {
-                output.write("\n![Image](" + image + ")\n");
+                output.write('\n');
+                output.write(MarkdownFormatter.formatImage(image));
+                output.write('\n');
             }
         }
 
@@ -204,7 +207,8 @@ public class PdfTextExtractor implements FileExtractor {
             }
 
             String fileName = "page-" + getCurrentPageNo() + "-image-" + seenImages.size() + ".png";
-            String imageUrl = extractedImageHandler.handle(imageBytes, "image/png", fileName);
+            String imageUrl = MarkdownFormatter.handleImage(extractedImageHandler, imageBytes,
+                "image/png", fileName);
             if (imageUrl != null && !imageUrl.trim().isEmpty()) {
                 images.add(imageUrl);
             }

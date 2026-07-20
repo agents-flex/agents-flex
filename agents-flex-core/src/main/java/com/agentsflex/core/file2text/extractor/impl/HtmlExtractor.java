@@ -16,6 +16,7 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.extractor.MarkdownFormatter;
 import com.agentsflex.core.file2text.source.DocumentSource;
 import com.agentsflex.core.file2text.util.EncodingDetectUtil;
 import org.jsoup.Jsoup;
@@ -300,17 +301,21 @@ public class HtmlExtractor implements FileExtractor {
     }
 
     private void extractTable(Element table, StringBuilder text) {
-        text.append("[Table Start]\n");
+        List<List<String>> tableRows = new ArrayList<>();
         Elements rows = table.select("tr");
         for (Element row : rows) {
-            Elements cells = row.select("td, th");
             List<String> cellTexts = new ArrayList<>();
-            for (Element cell : cells) {
-                cellTexts.add(cell.text().trim());
+            for (Element cell : row.children()) {
+                if ("td".equalsIgnoreCase(cell.tagName())
+                    || "th".equalsIgnoreCase(cell.tagName())) {
+                    cellTexts.add(cell.text().trim());
+                }
             }
-            text.append(String.join(" | ", cellTexts)).append("\n");
+            if (!cellTexts.isEmpty()) {
+                tableRows.add(cellTexts);
+            }
         }
-        text.append("[Table End]\n");
+        MarkdownFormatter.appendTable(text, tableRows);
     }
 
 

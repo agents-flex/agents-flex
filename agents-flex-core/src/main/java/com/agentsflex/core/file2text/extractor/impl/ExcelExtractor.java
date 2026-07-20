@@ -16,6 +16,7 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.extractor.MarkdownFormatter;
 import com.agentsflex.core.file2text.source.DocumentSource;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -23,8 +24,10 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -98,14 +101,13 @@ public class ExcelExtractor implements FileExtractor {
                 text.append("\n### ").append(escapeMarkdown(sheetName)).append("\n\n");
 
                 // 收集所有非空行数据，用于计算最大列数
-                java.util.List<java.util.List<String>> rowsData = new java.util.ArrayList<>();
-                int maxColumns = 0;
+                List<List<String>> rowsData = new ArrayList<>();
 
                 for (Row row : sheet) {
                     if (isRowEmpty(row)) {
                         continue;
                     }
-                    java.util.List<String> rowData = new java.util.ArrayList<>();
+                    List<String> rowData = new ArrayList<>();
                     short firstCellNum = row.getFirstCellNum();
                     short lastCellNum = row.getLastCellNum();
 
@@ -116,7 +118,6 @@ public class ExcelExtractor implements FileExtractor {
                     }
                     if (!rowData.isEmpty()) {
                         rowsData.add(rowData);
-                        maxColumns = Math.max(maxColumns, rowData.size());
                     }
                 }
 
@@ -126,7 +127,7 @@ public class ExcelExtractor implements FileExtractor {
                 }
 
                 // 输出 Markdown 表格
-                outputMarkdownTable(text, rowsData, maxColumns);
+                MarkdownFormatter.appendTable(text, rowsData);
             }
 
         } catch (Exception e) {
@@ -134,59 +135,6 @@ public class ExcelExtractor implements FileExtractor {
         }
 
         return text.toString().trim();
-    }
-
-    /**
-     * 输出 Markdown 格式表格
-     */
-    private void outputMarkdownTable(StringBuilder output,
-                                     java.util.List<java.util.List<String>> rowsData,
-                                     int maxColumns) {
-        // 输出表头行（第一行作为表头）
-        java.util.List<String> headerRow = rowsData.get(0);
-        output.append("| ");
-        for (int i = 0; i < maxColumns; i++) {
-            String cell = i < headerRow.size() ? escapeMarkdownCell(headerRow.get(i)) : "";
-            output.append(cell).append(" | ");
-        }
-        output.append("\n| ");
-
-        // 输出分隔行（默认左对齐 :---）
-        for (int i = 0; i < maxColumns; i++) {
-            output.append(":--- | ");
-        }
-        output.append("\n");
-
-        // 输出数据行
-        for (int r = 1; r < rowsData.size(); r++) {
-            java.util.List<String> rowData = rowsData.get(r);
-            output.append("| ");
-            for (int i = 0; i < maxColumns; i++) {
-                String cell = i < rowData.size() ? escapeMarkdownCell(rowData.get(i)) : "";
-                output.append(cell).append(" | ");
-            }
-            output.append("\n");
-        }
-        output.append("\n");
-    }
-
-    /**
-     * 转义单元格内容中的 Markdown 特殊字符
-     * 主要处理：| \ ` * _ [ ] < > 等，避免破坏表格结构
-     */
-    private String escapeMarkdownCell(String content) {
-        if (content == null || content.isEmpty()) {
-            return "";
-        }
-        // 先转义反斜杠，避免重复转义
-        String escaped = content.replace("\\", "\\\\");
-        // 转义管道符（表格分隔符）
-        escaped = escaped.replace("|", "\\|");
-        // 转义其他可能的 Markdown 语法字符（可选，根据需求开启）
-        // escaped = escaped.replace("*", "\\*").replace("_", "\\_").replace("`", "\\`");
-        // 移除换行符，避免破坏表格行结构
-        escaped = escaped.replace("\n", " ").replace("\r", " ");
-        return escaped.trim();
     }
 
     /**

@@ -16,6 +16,7 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.extractor.MarkdownFormatter;
 import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
 import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
@@ -33,8 +34,10 @@ import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -127,9 +130,7 @@ public class DocExtractor implements FileExtractor {
             if (picturesTable.hasPicture(run)) {
                 Picture picture = picturesTable.extractPicture(run, true);
                 String imageUrl = processPicture(picture, extractedImageHandler);
-                if (imageUrl != null && !imageUrl.trim().isEmpty()) {
-                    text.append("\n![Image](").append(imageUrl).append(")\n");
-                }
+                MarkdownFormatter.appendImage(text, imageUrl);
             } else {
                 String runText = run.text();
                 if (runText != null) {
@@ -162,39 +163,17 @@ public class DocExtractor implements FileExtractor {
             return;
         }
 
-        int columnCount = 0;
+        List<List<String>> rows = new ArrayList<>();
         for (int row = 0; row < rowCount; row++) {
-            columnCount = Math.max(columnCount, table.getRow(row).numCells());
+            TableRow tableRow = table.getRow(row);
+            List<String> cells = new ArrayList<>();
+            for (int column = 0; column < tableRow.numCells(); column++) {
+                cells.add(getCellText(tableRow.getCell(column), picturesTable,
+                    extractedImageHandler));
+            }
+            rows.add(cells);
         }
-        if (columnCount == 0) {
-            return;
-        }
-
-        text.append('\n');
-        appendTableRow(table.getRow(0), columnCount, picturesTable, text, extractedImageHandler);
-        text.append('|');
-        for (int column = 0; column < columnCount; column++) {
-            text.append(" --- |");
-        }
-        text.append('\n');
-
-        for (int row = 1; row < rowCount; row++) {
-            appendTableRow(table.getRow(row), columnCount, picturesTable, text, extractedImageHandler);
-        }
-        text.append('\n');
-    }
-
-    private void appendTableRow(TableRow row, int columnCount,
-                                PicturesTable picturesTable, StringBuilder text,
-                                ExtractedImageHandler extractedImageHandler) throws IOException {
-        text.append('|');
-        for (int column = 0; column < columnCount; column++) {
-            String value = column < row.numCells()
-                ? getCellText(row.getCell(column), picturesTable, extractedImageHandler)
-                : "";
-            text.append(' ').append(escapeMarkdownCell(value)).append(" |");
-        }
-        text.append('\n');
+        MarkdownFormatter.appendTable(text, rows);
     }
 
     private String getCellText(TableCell cell, PicturesTable picturesTable,
@@ -209,17 +188,6 @@ public class DocExtractor implements FileExtractor {
         return text.toString().trim();
     }
 
-    private String escapeMarkdownCell(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("\\", "\\\\")
-            .replace("|", "\\|")
-            .replace("\r", " ")
-            .replace("\n", " ")
-            .trim();
-    }
-
     private String processPicture(Picture picture, ExtractedImageHandler extractedImageHandler) throws IOException {
         if (picture == null) {
             return null;
@@ -232,7 +200,8 @@ public class DocExtractor implements FileExtractor {
 
         String ext = picture.suggestFileExtension();
         String mimeType = getPictureMimeType(ext);
-        return extractedImageHandler.handle(data, mimeType, picture.suggestFullFileName());
+        return MarkdownFormatter.handleImage(extractedImageHandler, data, mimeType,
+            picture.suggestFullFileName());
     }
 
     private String getPictureMimeType(String extension) {

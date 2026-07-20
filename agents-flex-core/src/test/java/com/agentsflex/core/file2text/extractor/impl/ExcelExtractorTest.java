@@ -46,5 +46,6 @@ public class ExcelExtractorTest {
     private void assertWorkbookText(String text) {
         assertTrue(text.contains("### Template"));
         assertTrue(text.contains("| Template value |"));
+        assertTrue(text.contains("| --- |"));
     }
 }

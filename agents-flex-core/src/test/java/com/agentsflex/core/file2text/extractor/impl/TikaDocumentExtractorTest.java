@@ -9,10 +9,14 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class TikaDocumentExtractorTest {
@@ -100,6 +104,51 @@ public class TikaDocumentExtractorTest {
         assertTrue(text.contains("OpenDocument paragraph"));
         assertTrue(text.contains("Name"));
         assertTrue(text.contains("Alice"));
+        assertTrue(text.contains("| --- | --- |"));
+    }
+
+    @Test
+    public void shouldUseConfiguredHandlerForEmbeddedOpenDocumentImage() throws Exception {
+        byte[] image = Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        String contentXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<office:document-content "
+            + "xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" "
+            + "xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" "
+            + "xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" "
+            + "xmlns:xlink=\"http://www.w3.org/1999/xlink\">"
+            + "<office:body><office:text><text:p>Before image</text:p>"
+            + "<draw:frame><draw:image xlink:href=\"Pictures/example.png\"/></draw:frame>"
+            + "</office:text></office:body></office:document-content>";
+        byte[] odt = createZip(
+            new Entry("mimetype", "application/vnd.oasis.opendocument.text"),
+            new Entry("content.xml", contentXml),
+            new Entry("META-INF/manifest.xml", "<?xml version=\"1.0\"?>"
+                + "<manifest:manifest xmlns:manifest=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\">"
+                + "<manifest:file-entry manifest:full-path=\"/\" "
+                + "manifest:media-type=\"application/vnd.oasis.opendocument.text\"/>"
+                + "<manifest:file-entry manifest:full-path=\"Pictures/example.png\" "
+                + "manifest:media-type=\"image/png\"/>"
+                + "</manifest:manifest>"),
+            new Entry("Pictures/example.png", image)
+        );
+        AtomicReference<String> mimeType = new AtomicReference<>();
+        AtomicReference<String> fileName = new AtomicReference<>();
+        AtomicReference<byte[]> imageBytes = new AtomicReference<>();
+        File2TextService service = new File2TextService((data, type, name) -> {
+            imageBytes.set(data);
+            mimeType.set(type);
+            fileName.set(name);
+            return "https://cdn.example.com/example.png";
+        });
+
+        String text = service.extractTextFromBytes(odt, "sample.odt",
+            "application/vnd.oasis.opendocument.text");
+
+        assertArrayEquals(image, imageBytes.get());
+        assertEquals("image/png", mimeType.get());
+        assertTrue(fileName.get().endsWith("example.png"));
+        assertTrue(text.contains("![Image](https://cdn.example.com/example.png)"));
     }
 
     @Test
@@ -154,7 +203,7 @@ public class TikaDocumentExtractorTest {
              ZipOutputStream zip = new ZipOutputStream(outputStream)) {
             for (Entry entry : entries) {
                 zip.putNextEntry(new ZipEntry(entry.name));
-                zip.write(entry.content.getBytes(StandardCharsets.UTF_8));
+                zip.write(entry.content);
                 zip.closeEntry();
             }
             zip.finish();
@@ -164,9 +213,13 @@ public class TikaDocumentExtractorTest {
 
     private static class Entry {
         private final String name;
-        private final String content;
+        private final byte[] content;
 
         private Entry(String name, String content) {
+            this(name, content.getBytes(StandardCharsets.UTF_8));
+        }
+
+        private Entry(String name, byte[] content) {
             this.name = name;
             this.content = content;
         }

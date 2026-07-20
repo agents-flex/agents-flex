@@ -16,6 +16,7 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.extractor.MarkdownFormatter;
 import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
 import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.DocumentSource;
@@ -31,6 +32,7 @@ import org.apache.poi.hslf.usermodel.HSLFTextShape;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -125,10 +127,7 @@ public class PptExtractor implements FileExtractor {
         }
         String extension = pictureData.getType() != null ? pictureData.getType().extension : "bin";
         String fileName = "image-" + pictureData.getIndex() + "." + extension;
-        String imageUrl = extractedImageHandler.handle(data, contentType, fileName);
-        if (imageUrl != null && !imageUrl.trim().isEmpty()) {
-            text.append("\n![Image](").append(imageUrl).append(")\n");
-        }
+        MarkdownFormatter.appendImage(text, extractedImageHandler, data, contentType, fileName);
     }
 
     private void extractTable(HSLFTable table, StringBuilder text) {
@@ -138,39 +137,16 @@ public class PptExtractor implements FileExtractor {
             return;
         }
 
-        text.append('\n');
-        appendTableRow(table, 0, columnCount, text);
-        text.append('|');
-        for (int column = 0; column < columnCount; column++) {
-            text.append(" --- |");
+        List<List<String>> rows = new ArrayList<>();
+        for (int row = 0; row < rowCount; row++) {
+            List<String> cells = new ArrayList<>();
+            for (int column = 0; column < columnCount; column++) {
+                HSLFTableCell cell = table.getCell(row, column);
+                cells.add(cell != null ? cell.getText() : "");
+            }
+            rows.add(cells);
         }
-        text.append('\n');
-
-        for (int row = 1; row < rowCount; row++) {
-            appendTableRow(table, row, columnCount, text);
-        }
-        text.append('\n');
-    }
-
-    private void appendTableRow(HSLFTable table, int row, int columnCount, StringBuilder text) {
-        text.append('|');
-        for (int column = 0; column < columnCount; column++) {
-            HSLFTableCell cell = table.getCell(row, column);
-            String value = cell != null ? cell.getText() : "";
-            text.append(' ').append(escapeMarkdownCell(value)).append(" |");
-        }
-        text.append('\n');
-    }
-
-    private String escapeMarkdownCell(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("\\", "\\\\")
-            .replace("|", "\\|")
-            .replace("\r", " ")
-            .replace("\n", " ")
-            .trim();
+        MarkdownFormatter.appendTable(text, rows);
     }
 
     @Override

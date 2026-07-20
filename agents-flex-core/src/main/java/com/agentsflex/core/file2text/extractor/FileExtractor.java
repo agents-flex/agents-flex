@@ -31,10 +31,16 @@ public interface FileExtractor {
      */
     boolean supports(DocumentSource source);
 
+    /**
+     * 提取 Markdown 风格文本。表格和图片应使用 {@link MarkdownFormatter} 输出，
+     * 以保持内置和自定义解析器的格式一致。
+     */
     String extractText(DocumentSource source) throws IOException;
 
     /**
-     * 使用指定的图片处理器提取文档内容。
+     * 使用指定的图片处理器提取文档内容。处理图片的解析器应通过
+     * {@link MarkdownFormatter#handleImage(ExtractedImageHandler, byte[], String, String)}
+     * 调用处理器并统一 MIME 类型、文件名和 Markdown 格式。
      * 不处理图片的自定义解析器只需实现 {@link #extractText(DocumentSource)}。
      */
     default String extractText(DocumentSource source,

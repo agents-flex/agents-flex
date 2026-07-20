@@ -16,6 +16,9 @@
 package com.agentsflex.core.file2text.extractor.impl;
 
 import com.agentsflex.core.file2text.extractor.FileExtractor;
+import com.agentsflex.core.file2text.extractor.MarkdownFormatter;
+import com.agentsflex.core.file2text.handler.Base64ExtractedImageHandler;
+import com.agentsflex.core.file2text.handler.ExtractedImageHandler;
 import com.agentsflex.core.file2text.source.ByteArrayDocumentSource;
 import com.agentsflex.core.file2text.source.DocumentSource;
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
@@ -112,6 +115,12 @@ public class TikaDocumentExtractor implements FileExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
+        return extractText(source, new Base64ExtractedImageHandler());
+    }
+
+    @Override
+    public String extractText(DocumentSource source,
+                              ExtractedImageHandler extractedImageHandler) throws IOException {
         Metadata metadata = new Metadata();
         if (source.getFileName() != null) {
             metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, source.getFileName());
@@ -126,7 +135,8 @@ public class TikaDocumentExtractor implements FileExtractor {
             AutoDetectParser parser = new AutoDetectParser();
             ParseContext context = new ParseContext();
             context.set(Parser.class, parser);
-            context.set(EmbeddedDocumentExtractor.class, new LimitedEmbeddedDocumentExtractor(context));
+            context.set(EmbeddedDocumentExtractor.class,
+                new LimitedEmbeddedDocumentExtractor(context, extractedImageHandler));
             parser.parse(inputStream, handler, metadata, context);
             byte[] xhtml = handler.toString().getBytes(StandardCharsets.UTF_8);
             return new HtmlExtractor().extractText(
@@ -183,12 +193,15 @@ public class TikaDocumentExtractor implements FileExtractor {
 
     private static class LimitedEmbeddedDocumentExtractor implements EmbeddedDocumentExtractor {
         private final ParsingEmbeddedDocumentExtractor delegate;
+        private final ExtractedImageHandler extractedImageHandler;
         private int depth;
         private int entryCount;
         private long totalBytes;
 
-        LimitedEmbeddedDocumentExtractor(ParseContext context) {
+        LimitedEmbeddedDocumentExtractor(ParseContext context,
+                                          ExtractedImageHandler extractedImageHandler) {
             this.delegate = new ParsingEmbeddedDocumentExtractor(context);
+            this.extractedImageHandler = extractedImageHandler;
             this.delegate.setWriteFileNameToContent(true);
         }
 
@@ -215,11 +228,35 @@ public class TikaDocumentExtractor implements FileExtractor {
 
             entryCount++;
             totalBytes += data.length;
+            if (isImage(metadata)) {
+                writeImage(data, handler, metadata);
+                return;
+            }
+
             depth++;
             try {
                 delegate.parseEmbedded(new ByteArrayInputStream(data), handler, metadata, outputHtml);
             } finally {
                 depth--;
+            }
+        }
+
+        private boolean isImage(Metadata metadata) {
+            String mimeType = metadata.get(HttpHeaders.CONTENT_TYPE);
+            return mimeType != null
+                && mimeType.toLowerCase(Locale.ROOT).startsWith("image/");
+        }
+
+        private void writeImage(byte[] data, ContentHandler handler, Metadata metadata)
+            throws IOException, SAXException {
+            String mimeType = metadata.get(HttpHeaders.CONTENT_TYPE);
+            String fileName = metadata.get(TikaCoreProperties.RESOURCE_NAME_KEY);
+            String imageUrl = MarkdownFormatter.handleImage(extractedImageHandler, data,
+                mimeType, fileName);
+            String imageMarkdown = MarkdownFormatter.formatImage(imageUrl);
+            if (!imageMarkdown.isEmpty()) {
+                char[] markdown = ("\n" + imageMarkdown + "\n").toCharArray();
+                handler.characters(markdown, 0, markdown.length);
             }
         }
 

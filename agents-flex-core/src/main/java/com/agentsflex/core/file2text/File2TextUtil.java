@@ -35,6 +35,10 @@ public class File2TextUtil {
         File2TextUtil.file2TextService = file2TextService;
     }
 
+    /**
+     * 设置 extractedImageHandler ，全局只需要配置 1 次。
+     * @param extractedImageHandler
+     */
     public static void setExtractedImageHandler(ExtractedImageHandler extractedImageHandler) {
         file2TextService.setExtractedImageHandler(extractedImageHandler);
     }
