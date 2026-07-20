@@ -29,8 +29,12 @@ import com.agentsflex.skill.tools.SkillRuntimeShellTools;
 import com.agentsflex.skill.util.Skills;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -165,6 +169,62 @@ public class SkillsTool {
         }
 
         /**
+         * 从一个本机 Skills 根目录中只添加指定名称的 Skill。
+         *
+         * <p>Skill 名称来自 {@code SKILL.md} front matter 中的 {@code name} 字段，
+         * 匹配区分大小写。筛选在 {@link SkillRuntime#prepare(List)} 之前完成，因此未选中的
+         * Skill 不会被上传到远程 Runtime，也不会出现在模型可见的工具描述中。</p>
+         *
+         * @param skillsRootDirectory 包含一个或多个 {@code SKILL.md} 的根目录
+         * @param skillNames 要加载的 Skill 名称，不能为空
+         * @return 当前构建器
+         * @throws IllegalArgumentException 名称为空、指定的 Skill 不存在或名称存在歧义
+         */
+        public Builder addSkillsDirectory(String skillsRootDirectory, String... skillNames) {
+            if (skillNames == null) {
+                throw new IllegalArgumentException("skillNames must not be null");
+            }
+            return addSkillsDirectory(skillsRootDirectory, Arrays.asList(skillNames));
+        }
+
+        /**
+         * 从一个本机 Skills 根目录中只添加指定名称的 Skill。
+         *
+         * @param skillsRootDirectory 包含一个或多个 {@code SKILL.md} 的根目录
+         * @param skillNames 要加载的 Skill 名称集合，不能为空
+         * @return 当前构建器
+         * @throws IllegalArgumentException 名称为空、指定的 Skill 不存在或名称存在歧义
+         */
+        public Builder addSkillsDirectory(String skillsRootDirectory, Collection<String> skillNames) {
+            Set<String> requestedNames = normalizeSkillNames(skillNames);
+            List<Skill> loadedSkills = Skills.loadDirectory(skillsRootDirectory);
+            List<Skill> selectedSkills = new ArrayList<>(requestedNames.size());
+            Set<String> matchedNames = new LinkedHashSet<>();
+
+            for (Skill skill : loadedSkills) {
+                String skillName = skill.name();
+                if (!requestedNames.contains(skillName)) {
+                    continue;
+                }
+                if (!matchedNames.add(skillName)) {
+                    throw new IllegalArgumentException("Multiple skills named '" + skillName
+                        + "' found under directory: " + skillsRootDirectory);
+                }
+                selectedSkills.add(skill);
+            }
+
+            Set<String> missingNames = new LinkedHashSet<>(requestedNames);
+            missingNames.removeAll(matchedNames);
+            if (!missingNames.isEmpty()) {
+                throw new IllegalArgumentException("Skills not found under directory '"
+                    + skillsRootDirectory + "': " + missingNames);
+            }
+
+            this.skills.addAll(selectedSkills);
+            return this;
+        }
+
+        /**
          * 批量添加多个本机 Skills 根目录。
          *
          * @param skillsRootDirectories Skills 根目录列表
@@ -173,6 +233,21 @@ public class SkillsTool {
         public Builder addSkillsDirectories(List<String> skillsRootDirectories) {
             this.skills.addAll(Skills.loadDirectories(skillsRootDirectories));
             return this;
+        }
+
+        private Set<String> normalizeSkillNames(Collection<String> skillNames) {
+            if (skillNames == null || skillNames.isEmpty()) {
+                throw new IllegalArgumentException("skillNames must not be empty");
+            }
+
+            Set<String> normalizedNames = new LinkedHashSet<>();
+            for (String skillName : skillNames) {
+                if (skillName == null || skillName.trim().isEmpty()) {
+                    throw new IllegalArgumentException("skillNames must not contain blank names");
+                }
+                normalizedNames.add(skillName.trim());
+            }
+            return normalizedNames;
         }
 
         /**

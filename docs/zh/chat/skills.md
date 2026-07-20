@@ -246,6 +246,24 @@ try (LocalSkillRuntime runtime = new LocalSkillRuntime()) {
 }
 ```
 
+如果一个根目录中包含大量 Skill，可以按 `SKILL.md` front matter 的 `name` 只加载需要的部分：
+
+```java
+List<Tool> tools = SkillsTool.builder()
+    .addSkillsDirectory(
+        "/absolute/path/to/.claude/skills",
+        "pdf",
+        "xlsx",
+        "pptx"
+    )
+    .runtime(runtime)
+    .buildTools();
+```
+
+名称匹配区分大小写。指定的 Skill 不存在，或者目录中存在多个同名 Skill 时，Builder 会立即抛出
+`IllegalArgumentException`。筛选发生在 `SkillRuntime.prepare()` 之前，因此未选中的 Skill 不会上传到远程
+Runtime，也不会出现在模型可见的 Skill 列表中。不传 Skill 名称时，原有重载仍会加载目录中的全部 Skill。
+
 `buildTools()` 返回完整工具组：
 
 | 工具名 | 作用 | 主要限制 |
