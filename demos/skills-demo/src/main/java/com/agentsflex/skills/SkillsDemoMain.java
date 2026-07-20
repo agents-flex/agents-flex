@@ -132,13 +132,15 @@ public class SkillsDemoMain {
         }
     }
 
-    /** 根据 {@code SKILLS_RUNTIME} 构建且只构建一个 Runtime。 */
+    /**
+     * 根据 {@code SKILLS_RUNTIME} 构建且只构建一个 Runtime。
+     */
     private static SkillRuntime createRuntime() {
         String name = environment("SKILLS_RUNTIME", "local").trim().toLowerCase(Locale.ROOT);
         if ("local".equals(name)) {
             return new LocalSkillRuntime();
         }
-        if ("open-sandbox".equalsIgnoreCase(name) || "opensandbox".equalsIgnoreCase(name)) {
+        if ("open-sandbox".equals(name) || "opensandbox".equals(name)) {
             ConnectionConfig connection = ConnectionConfig.builder()
                 .domain(requireEnvironment("OPEN_SANDBOX_DOMAIN"))
                 .apiKey(requireEnvironment("OPEN_SANDBOX_API_KEY"))
@@ -151,7 +153,7 @@ public class SkillsDemoMain {
                 .readyTimeout(Duration.ofSeconds(environmentLong("OPEN_SANDBOX_READY_TIMEOUT_SECONDS", 30L)))
                 .build();
         }
-        if ("aio-sandbox".equalsIgnoreCase(name) || "aio".equalsIgnoreCase(name)) {
+        if ("aio-sandbox".equals(name) || "aio".equals(name) || "aiosandbox".equals(name)) {
             return AioSandboxSkillRuntime.builder()
                 .baseUrl(environment("AIO_SANDBOX_BASE_URL", "http://localhost:8080"))
                 .bearerToken(System.getenv("AIO_SANDBOX_TOKEN"))
