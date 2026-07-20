@@ -5,19 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>agents-flex-tool</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-tool</name>
-    <artifactId>agents-flex-tool</artifactId>
-    <packaging>pom</packaging>
-    <modules>
-        <module>agents-flex-tool-python</module>
-        <module>agents-flex-tool-javascript</module>
-        <module>agents-flex-tool-webfetch</module>
-        <module>agents-flex-tool-todowrite</module>
-    </modules>
+    <name>agents-flex-tool-todowrite</name>
+    <artifactId>agents-flex-tool-todowrite</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -25,4 +18,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+    </dependencies>
 </project>

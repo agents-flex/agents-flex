@@ -1,10 +1,10 @@
-package com.agentsflex.tool.commons;
+package com.agentsflex.tool.webfetch;
 
 import com.agentsflex.core.model.chat.tool.annotation.ToolDef;
 import com.agentsflex.core.model.chat.tool.annotation.ToolParam;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.util.StringUtil;
-import com.agentsflex.tool.commons.web.*;
+import com.agentsflex.tool.webfetch.web.*;
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;

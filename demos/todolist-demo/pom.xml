@@ -29,7 +29,13 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-tool-commons</artifactId>
+            <artifactId>agents-flex-tool-webfetch</artifactId>
+            <version>${revision}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-tool-todowrite</artifactId>
             <version>${revision}</version>
             <scope>compile</scope>
         </dependency>

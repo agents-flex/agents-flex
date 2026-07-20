@@ -43,7 +43,7 @@ WebFetchTool 是 Agents-Flex 框架中的一个智能网页内容抓取工具，
 
 ### 2.1 WebFetchTool
 
-**位置**: `com.agentsflex.tool.commons.WebFetchTool`
+**位置**: `com.agentsflex.tool.webfetch.WebFetchTool`
 
 **职责**: 主入口类，负责编排带有缓存、验证和降级逻辑的网页内容抓取流程。
 
@@ -78,7 +78,7 @@ public String webFetch(String url)
 
 ### 2.2 AdaptiveWebReaderRouter（自适应 Web 阅读器路由器）
 
-**位置**: `com.agentsflex.tool.commons.web.AdaptiveWebReaderRouter`
+**位置**: `com.agentsflex.tool.webfetch.web.AdaptiveWebReaderRouter`
 
 **职责**: 根据静态评分和历史表现智能选择和排序 WebReaderProvider。
 
@@ -113,7 +113,7 @@ http              60           0.5          60  (60 × 1.0)
 
 ### 2.3 AdaptiveScoreEngine（自适应评分引擎）
 
-**位置**: `com.agentsflex.tool.commons.web.AdaptiveScoreEngine`
+**位置**: `com.agentsflex.tool.webfetch.web.AdaptiveScoreEngine`
 
 **职责**: 根据运行时性能指标动态调整提供者优先级。
 
@@ -129,7 +129,7 @@ http              60           0.5          60  (60 × 1.0)
 
 ### 2.4 ProviderMetrics（提供者指标统计）
 
-**位置**: `com.agentsflex.tool.commons.web.ProviderMetrics`
+**位置**: `com.agentsflex.tool.webfetch.web.ProviderMetrics`
 
 **职责**: 跟踪单个提供者的性能指标。
 
@@ -142,7 +142,7 @@ http              60           0.5          60  (60 × 1.0)
 
 ### 2.5 WebReaderProvider 接口
 
-**位置**: `com.agentsflex.tool.commons.web.WebReaderProvider`
+**位置**: `com.agentsflex.tool.webfetch.web.WebReaderProvider`
 
 **职责**: 定义内容读取实现的契约。
 
@@ -157,7 +157,7 @@ String read(String url);          // 执行读取操作
 
 ### 2.6 HttpReaderProvider（HTTP 阅读器提供者）
 
-**位置**: `com.agentsflex.tool.commons.web.HttpReaderProvider`
+**位置**: `com.agentsflex.tool.webfetch.web.HttpReaderProvider`
 
 **职责**: 直接通过 HTTP GET 请求获取网页原始内容。
 
@@ -186,7 +186,7 @@ return 50;  // 默认评分
 
 ### 2.7 JinaReaderProvider（Jina 阅读器提供者）
 
-**位置**: `com.agentsflex.tool.commons.web.JinaReaderProvider`
+**位置**: `com.agentsflex.tool.webfetch.web.JinaReaderProvider`
 
 **职责**: 使用 Jina AI 的阅读器服务（https://r.jina.ai/）进行内容提取。
 
@@ -207,7 +207,7 @@ provider.addHostScore("github.com", 85);
 
 ### 2.8 OKHttpUtil（HTTP 工具类）
 
-**位置**: `com.agentsflex.tool.commons.web.OKHttpUtil`
+**位置**: `com.agentsflex.tool.webfetch.web.OKHttpUtil`
 
 **职责**: 提供 HTTP 操作工具，具备智能字符集检测功能。
 
@@ -223,7 +223,7 @@ provider.addHostScore("github.com", 85);
 
 ### 2.9 ProviderCandidate（提供者候选对象）
 
-**位置**: `com.agentsflex.tool.commons.web.ProviderCandidate`
+**位置**: `com.agentsflex.tool.webfetch.web.ProviderCandidate`
 
 **职责**: 在路由过程中封装已排序的提供者候选项。
 
@@ -831,7 +831,7 @@ public void testCachePerformance() {
 **启用日志**:
 ```java
 // 添加 SLF4J 日志配置
-logging.level.com.agentsflex.tool.commons.WebFetchTool=DEBUG
+logging.level.com.agentsflex.tool.webfetch.WebFetchTool=DEBUG
 ```
 
 

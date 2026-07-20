@@ -13,8 +13,8 @@ import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.model.chat.openai.OpenAIChatConfig;
 import com.agentsflex.model.chat.openai.OpenAIChatModel;
-import com.agentsflex.tool.commons.TodoWriteTool;
-import com.agentsflex.tool.commons.WebFetchTool;
+import com.agentsflex.tool.todowrite.TodoWriteTool;
+import com.agentsflex.tool.webfetch.WebFetchTool;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
 

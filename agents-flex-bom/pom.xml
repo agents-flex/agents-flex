@@ -235,7 +235,11 @@
         <!--tools engines start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-tool-commons</artifactId>
+            <artifactId>agents-flex-tool-webfetch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-tool-todowrite</artifactId>
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
