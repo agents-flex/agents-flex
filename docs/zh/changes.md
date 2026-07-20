@@ -1,5 +1,20 @@
 # Agents-Flex ChangeLog
 
+## v2.2.3 20260720
+- feat(skills): add artifact storage support for multiple cloud providers
+- refactor(tool): replace tool-commons with specialized tool modules
+- feat(skills): add artifact store support for skill management
+- style(home): update homepage hero section styling and content
+- refactor(file2text): consolidate markdown formatting for tables and images across extractors
+- feat(skills): add selective skill loading by name from directory
+- refactor(skill): move file publishing classes from attachment to file package
+- docs(guides): update Chinese documentation with comprehensive guides
+- fix(skills): correct string comparison and add missing sandbox option
+- feat(theme): implement interactive cursor effects and redesign hero section
+- feat(file2text): add custom image handler support for document extractors
+- feat(skills): add sandbox runtimes and enhance skill discovery
+
+
 ## v2.2.2 20260716
 - docs(rag): update File2Text documentation with comprehensive guide Michael
 - feat(file2text): integrate Apache Tika for enhanced document parsing support
