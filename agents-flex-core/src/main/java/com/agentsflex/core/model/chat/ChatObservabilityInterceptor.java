@@ -19,6 +19,7 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.observability.Observability;
+import com.agentsflex.core.observability.ObservabilityRuntime;
 import com.agentsflex.core.observability.SensitiveDataSanitizer;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
@@ -32,23 +33,34 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 public class ChatObservabilityInterceptor implements ChatInterceptor {
     private static final int MAX_RESPONSE_LENGTH_FOR_SPAN = 500;
 
+    private static final Map<ObservabilityRuntime, Instruments> INSTRUMENTS = new WeakHashMap<>();
+
     private static final class Instruments {
-        private static final Tracer TRACER = Observability.getTracer();
-        private static final Meter METER = Observability.getMeter();
-        private static final LongCounter REQUEST_COUNT = METER.counterBuilder("llm.request.count")
+        private final Tracer tracer;
+        private final LongCounter requestCount;
+        private final DoubleHistogram latency;
+        private final LongCounter errorCount;
+
+        private Instruments(ObservabilityRuntime runtime) {
+            this.tracer = runtime.getTracer();
+            Meter meter = runtime.getMeter();
+            this.requestCount = meter.counterBuilder("llm.request.count")
             .setDescription("Total number of LLM requests")
             .build();
-        private static final DoubleHistogram LATENCY = METER.histogramBuilder("llm.request.latency")
-            .setDescription("LLM request latency in seconds")
-            .setUnit("s")
-            .build();
-        private static final LongCounter ERROR_COUNT = METER.counterBuilder("llm.request.error.count")
-            .setDescription("Total number of LLM request errors")
-            .build();
+            this.latency = meter.histogramBuilder("llm.request.latency")
+                .setDescription("LLM request latency in seconds")
+                .setUnit("s")
+                .build();
+            this.errorCount = meter.counterBuilder("llm.request.error.count")
+                .setDescription("Total number of LLM request errors")
+                .build();
+        }
     }
 
     @Override
@@ -61,7 +73,9 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         String provider = valueOrUnknown(config.getProvider());
         String model = valueOrUnknown(config.getModel());
         String operation = "chat";
-        Span span = startSpan(provider, model, operation);
+        Instruments instruments = instruments();
+        Span span = startSpan(instruments, provider, model, operation);
+        Observability.enrichSpan(span);
         enrichCorrelation(span, context);
         long startTimeNanos = System.nanoTime();
 
@@ -73,10 +87,10 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             } else {
                 span.setStatus(StatusCode.ERROR, response == null ? "Empty model response" : response.getErrorMessage());
             }
-            recordMetrics(provider, model, operation, success, startTimeNanos);
+            recordMetrics(instruments, provider, model, operation, success, startTimeNanos);
             return response;
         } catch (RuntimeException | Error error) {
-            recordError(span, error, provider, model, operation, startTimeNanos);
+            recordError(instruments, span, error, provider, model, operation, startTimeNanos);
             throw error;
         } finally {
             span.end();
@@ -96,7 +110,8 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         String model = valueOrUnknown(config.getModel());
         String operation = "chatStream";
         Context parentContext = Context.current();
-        Span span = Instruments.TRACER.spanBuilder(provider + "." + operation)
+        Instruments instruments = instruments();
+        Span span = instruments.tracer.spanBuilder(provider + "." + operation)
             .setParent(parentContext)
             .setAttribute("llm.provider", provider)
             .setAttribute("llm.model", model)
@@ -105,28 +120,30 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             .setAttribute("gen_ai.request.model", model)
             .setAttribute("gen_ai.operation.name", "chat")
             .startSpan();
+        Observability.enrichSpan(span);
         enrichCorrelation(span, context);
+        Context spanContext = parentContext.with(span);
         long startTimeNanos = System.nanoTime();
         AtomicBoolean recorded = new AtomicBoolean(false);
 
         StreamResponseListener wrappedListener = new StreamResponseListener() {
             @Override
             public void onStart(StreamContext streamContext) {
-                try (Scope ignored = span.makeCurrent()) {
+                try (Scope ignored = spanContext.makeCurrent()) {
                     originalListener.onStart(streamContext);
                 }
             }
 
             @Override
             public void onMessage(StreamContext streamContext, AiMessageResponse response) {
-                try (Scope ignored = span.makeCurrent()) {
+                try (Scope ignored = spanContext.makeCurrent()) {
                     originalListener.onMessage(streamContext, response);
                 }
             }
 
             @Override
             public void onFailure(StreamContext streamContext, Throwable throwable) {
-                try (Scope ignored = span.makeCurrent()) {
+                try (Scope ignored = spanContext.makeCurrent()) {
                     originalListener.onFailure(streamContext, throwable);
                 } finally {
                     finish(false, throwable);
@@ -137,7 +154,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             public void onStop(StreamContext streamContext) {
                 boolean success = !streamContext.isError();
                 Throwable callbackError = null;
-                try (Scope ignored = span.makeCurrent()) {
+                try (Scope ignored = spanContext.makeCurrent()) {
                     if (success) {
                         enrichSpan(span, streamContext.getFullMessage());
                     }
@@ -160,16 +177,16 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
                 } else if (!success) {
                     span.setStatus(StatusCode.ERROR, "Streaming model request failed");
                 }
-                recordMetrics(provider, model, operation, success, startTimeNanos);
+                recordMetrics(instruments, provider, model, operation, success, startTimeNanos);
                 span.end();
             }
         };
 
-        try (Scope ignored = span.makeCurrent()) {
+        try (Scope ignored = spanContext.makeCurrent()) {
             chain.proceed(chatModel, context, wrappedListener);
         } catch (RuntimeException | Error error) {
             if (recorded.compareAndSet(false, true)) {
-                recordError(span, error, provider, model, operation, startTimeNanos);
+                recordError(instruments, span, error, provider, model, operation, startTimeNanos);
                 span.end();
             }
             throw error;
@@ -180,8 +197,8 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         return config != null && config.isObservabilityEnabled() && Observability.isEnabled();
     }
 
-    private static Span startSpan(String provider, String model, String operation) {
-        return Instruments.TRACER.spanBuilder(provider + "." + operation)
+    private static Span startSpan(Instruments instruments, String provider, String model, String operation) {
+        return instruments.tracer.spanBuilder(provider + "." + operation)
             .setAttribute("llm.provider", provider)
             .setAttribute("llm.model", model)
             .setAttribute("llm.operation", operation)
@@ -218,14 +235,14 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         }
     }
 
-    private static void recordMetrics(String provider, String model, String operation,
+    private static void recordMetrics(Instruments instruments, String provider, String model, String operation,
                                       boolean success, long startTimeNanos) {
         double latencySeconds = (System.nanoTime() - startTimeNanos) / 1_000_000_000.0;
         Attributes attrs = baseMetricAttributes(provider, model, operation, success).build();
-        Instruments.REQUEST_COUNT.add(1, attrs);
-        Instruments.LATENCY.record(latencySeconds, attrs);
+        instruments.requestCount.add(1, attrs);
+        instruments.latency.record(latencySeconds, attrs);
         if (!success) {
-            Instruments.ERROR_COUNT.add(1, attrs);
+            instruments.errorCount.add(1, attrs);
         }
     }
 
@@ -241,11 +258,23 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             .put("gen_ai.operation.name", "chat");
     }
 
-    private static void recordError(Span span, Throwable error, String provider, String model,
+    private static void recordError(Instruments instruments, Span span, Throwable error, String provider, String model,
                                     String operation, long startTimeNanos) {
         span.setStatus(StatusCode.ERROR, error.getMessage());
         span.recordException(error);
-        recordMetrics(provider, model, operation, false, startTimeNanos);
+        recordMetrics(instruments, provider, model, operation, false, startTimeNanos);
+    }
+
+    private static Instruments instruments() {
+        ObservabilityRuntime runtime = Observability.currentRuntime();
+        synchronized (INSTRUMENTS) {
+            Instruments instruments = INSTRUMENTS.get(runtime);
+            if (instruments == null) {
+                instruments = new Instruments(runtime);
+                INSTRUMENTS.put(runtime, instruments);
+            }
+            return instruments;
+        }
     }
 
     private static String valueOrUnknown(String value) {

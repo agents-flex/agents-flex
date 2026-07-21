@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.observability.Observability;
+import com.agentsflex.core.observability.ObservabilityRuntime;
 import com.agentsflex.core.util.IOUtil;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -47,6 +48,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AgentsFlexHttpClient {
@@ -54,19 +56,28 @@ public class AgentsFlexHttpClient {
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
     private static final AgentsFlexHttpClient INSTANCE = new AgentsFlexHttpClient();
 
+    private static final Map<ObservabilityRuntime, Instruments> INSTRUMENTS = new WeakHashMap<>();
+
     private static final class Instruments {
-        private static final Tracer TRACER = Observability.getTracer();
-        private static final Meter METER = Observability.getMeter();
-        private static final LongCounter REQUEST_COUNT = METER.counterBuilder("http.client.request.count")
-            .setDescription("Total number of HTTP client requests")
-            .build();
-        private static final DoubleHistogram LATENCY = METER.histogramBuilder("http.client.request.duration")
-            .setDescription("HTTP client request duration in seconds")
-            .setUnit("s")
-            .build();
-        private static final LongCounter ERROR_COUNT = METER.counterBuilder("http.client.request.error.count")
-            .setDescription("Total number of HTTP client request errors")
-            .build();
+        private final Tracer tracer;
+        private final LongCounter requestCount;
+        private final DoubleHistogram latency;
+        private final LongCounter errorCount;
+
+        private Instruments(ObservabilityRuntime runtime) {
+            this.tracer = runtime.getTracer();
+            Meter meter = runtime.getMeter();
+            this.requestCount = meter.counterBuilder("http.client.request.count")
+                .setDescription("Total number of HTTP client requests")
+                .build();
+            this.latency = meter.histogramBuilder("http.client.request.duration")
+                .setDescription("HTTP client request duration in seconds")
+                .setUnit("s")
+                .build();
+            this.errorCount = meter.counterBuilder("http.client.request.error.count")
+                .setDescription("Total number of HTTP client request errors")
+                .build();
+        }
     }
 
     private final OkHttpClient okHttpClient;
@@ -330,7 +341,8 @@ public class AgentsFlexHttpClient {
         }
 
         String host = extractServerAddress(url);
-        Span span = createHttpSpan(url, method, host);
+        Instruments instruments = instruments();
+        Span span = createHttpSpan(instruments, url, method, host);
 
         long startTime = System.nanoTime();
         boolean success = false;
@@ -349,7 +361,7 @@ public class AgentsFlexHttpClient {
             throw new RuntimeException("HTTP request failed", e);
         } finally {
             span.end();
-            recordHttpMetrics(method, host, success, observation.statusCode, startTime);
+            recordHttpMetrics(instruments, method, host, success, observation.statusCode, startTime);
         }
     }
 
@@ -360,7 +372,8 @@ public class AgentsFlexHttpClient {
         }
 
         String host = extractServerAddress(url);
-        Span span = createHttpSpan(url, method, host);
+        Instruments instruments = instruments();
+        Span span = createHttpSpan(instruments, url, method, host);
         long startTime = System.nanoTime();
         RequestObservation observation = new RequestObservation();
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -370,24 +383,24 @@ public class AgentsFlexHttpClient {
             boolean statusSuccess = observation.statusCode == null || observation.statusCode < 400;
             ResponseBody body = response.body();
             if (body == null) {
-                completeHttpObservation(completed, span, method, host, statusSuccess,
+                completeHttpObservation(instruments, completed, span, method, host, statusSuccess,
                     observation.statusCode, startTime, null);
                 return response;
             }
             ResponseBody observedBody = new ObservedResponseBody(body, span, error ->
-                completeHttpObservation(completed, span, method, host,
+                completeHttpObservation(instruments, completed, span, method, host,
                     statusSuccess && error == null, observation.statusCode, startTime, error));
             return response.newBuilder().body(observedBody).build();
         } catch (RuntimeException | Error error) {
-            completeHttpObservation(completed, span, method, host, false,
+            completeHttpObservation(instruments, completed, span, method, host, false,
                 observation.statusCode, startTime, error);
             throw error;
         }
     }
 
-    private static Span createHttpSpan(String url, String method, String host) {
+    private static Span createHttpSpan(Instruments instruments, String url, String method, String host) {
         String safeUrl = sanitizeUrl(url);
-        return Instruments.TRACER.spanBuilder("http.client.request")
+        Span span = instruments.tracer.spanBuilder("http.client.request")
             .setSpanKind(SpanKind.CLIENT)
             .setAttribute("http.method", method)
             .setAttribute("http.request.method", method)
@@ -395,9 +408,12 @@ public class AgentsFlexHttpClient {
             .setAttribute("url.full", safeUrl)
             .setAttribute("server.address", host)
             .startSpan();
+        Observability.enrichSpan(span);
+        return span;
     }
 
-    private static void completeHttpObservation(AtomicBoolean completed, Span span, String method,
+    private static void completeHttpObservation(Instruments instruments, AtomicBoolean completed,
+                                                Span span, String method,
                                                 String host, boolean success, Integer statusCode,
                                                 long startTime, Throwable error) {
         if (!completed.compareAndSet(false, true)) {
@@ -408,10 +424,10 @@ public class AgentsFlexHttpClient {
             span.recordException(error);
         }
         span.end();
-        recordHttpMetrics(method, host, success, statusCode, startTime);
+        recordHttpMetrics(instruments, method, host, success, statusCode, startTime);
     }
 
-    private static void recordHttpMetrics(String method, String host, boolean success,
+    private static void recordHttpMetrics(Instruments instruments, String method, String host, boolean success,
                                           Integer statusCode, long startTime) {
         double latency = (System.nanoTime() - startTime) / 1_000_000_000.0;
         AttributesBuilder attributesBuilder = Attributes.builder()
@@ -422,10 +438,22 @@ public class AgentsFlexHttpClient {
             attributesBuilder.put(AttributeKey.longKey("http.response.status_code"), statusCode.longValue());
         }
         Attributes attrs = attributesBuilder.build();
-        Instruments.REQUEST_COUNT.add(1, attrs);
-        Instruments.LATENCY.record(latency, attrs);
+        instruments.requestCount.add(1, attrs);
+        instruments.latency.record(latency, attrs);
         if (!success) {
-            Instruments.ERROR_COUNT.add(1, attrs);
+            instruments.errorCount.add(1, attrs);
+        }
+    }
+
+    private static Instruments instruments() {
+        ObservabilityRuntime runtime = Observability.currentRuntime();
+        synchronized (INSTRUMENTS) {
+            Instruments instruments = INSTRUMENTS.get(runtime);
+            if (instruments == null) {
+                instruments = new Instruments(runtime);
+                INSTRUMENTS.put(runtime, instruments);
+            }
+            return instruments;
         }
     }
 

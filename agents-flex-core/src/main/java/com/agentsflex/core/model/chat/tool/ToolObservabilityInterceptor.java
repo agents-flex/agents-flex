@@ -17,6 +17,7 @@ package com.agentsflex.core.model.chat.tool;
 
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.observability.Observability;
+import com.agentsflex.core.observability.ObservabilityRuntime;
 import com.agentsflex.core.observability.SensitiveDataSanitizer;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
@@ -30,23 +31,34 @@ import io.opentelemetry.context.Scope;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 public class ToolObservabilityInterceptor implements ToolInterceptor {
     private static final int MAX_CONTENT_LENGTH_FOR_SPAN = 4000;
 
+    private static final Map<ObservabilityRuntime, Instruments> INSTRUMENTS = new WeakHashMap<>();
+
     private static final class Instruments {
-        private static final Tracer TRACER = Observability.getTracer();
-        private static final Meter METER = Observability.getMeter();
-        private static final LongCounter CALL_COUNT = METER.counterBuilder("tool.call.count")
-            .setDescription("Total number of tool calls")
-            .build();
-        private static final DoubleHistogram LATENCY = METER.histogramBuilder("tool.call.latency")
-            .setDescription("Tool call latency in seconds")
-            .setUnit("s")
-            .build();
-        private static final LongCounter ERROR_COUNT = METER.counterBuilder("tool.call.error.count")
-            .setDescription("Total number of tool call errors")
-            .build();
+        private final Tracer tracer;
+        private final LongCounter callCount;
+        private final DoubleHistogram latency;
+        private final LongCounter errorCount;
+
+        private Instruments(ObservabilityRuntime runtime) {
+            this.tracer = runtime.getTracer();
+            Meter meter = runtime.getMeter();
+            this.callCount = meter.counterBuilder("tool.call.count")
+                .setDescription("Total number of tool calls")
+                .build();
+            this.latency = meter.histogramBuilder("tool.call.latency")
+                .setDescription("Tool call latency in seconds")
+                .setUnit("s")
+                .build();
+            this.errorCount = meter.counterBuilder("tool.call.error.count")
+                .setDescription("Total number of tool call errors")
+                .build();
+        }
     }
 
     @Override
@@ -57,10 +69,12 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
             return chain.proceed(context);
         }
 
-        Span span = Instruments.TRACER.spanBuilder("tool." + toolName)
+        Instruments instruments = instruments();
+        Span span = instruments.tracer.spanBuilder("tool." + toolName)
             .setAttribute("tool.name", toolName)
             .setAttribute("gen_ai.tool.name", toolName)
             .startSpan();
+        Observability.enrichSpan(span);
         long startTimeNanos = System.nanoTime();
 
         try (Scope ignored = span.makeCurrent()) {
@@ -77,13 +91,13 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
             if (Observability.isContentCaptureEnabled() && result != null) {
                 span.setAttribute("tool.result", safeResult(result));
             }
-            recordMetrics(toolName, true, null, startTimeNanos);
+            recordMetrics(instruments, toolName, true, null, startTimeNanos);
             return result;
         } catch (RuntimeException | Error error) {
-            recordError(span, error, toolName, startTimeNanos);
+            recordError(instruments, span, error, toolName, startTimeNanos);
             throw error;
         } catch (Exception error) {
-            recordError(span, error, toolName, startTimeNanos);
+            recordError(instruments, span, error, toolName, startTimeNanos);
             throw error;
         } finally {
             span.end();
@@ -100,7 +114,8 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
         return SensitiveDataSanitizer.sanitizeObject(result, MAX_CONTENT_LENGTH_FOR_SPAN);
     }
 
-    private static void recordMetrics(String toolName, boolean success, String errorType, long startTimeNanos) {
+    private static void recordMetrics(Instruments instruments, String toolName, boolean success,
+                                      String errorType, long startTimeNanos) {
         double latencySeconds = (System.nanoTime() - startTimeNanos) / 1_000_000_000.0;
         AttributesBuilder builder = Attributes.builder()
             .put("tool.name", toolName)
@@ -109,16 +124,29 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
             builder.put("error.type", errorType);
         }
         Attributes attrs = builder.build();
-        Instruments.CALL_COUNT.add(1, attrs);
-        Instruments.LATENCY.record(latencySeconds, attrs);
+        instruments.callCount.add(1, attrs);
+        instruments.latency.record(latencySeconds, attrs);
         if (!success) {
-            Instruments.ERROR_COUNT.add(1, attrs);
+            instruments.errorCount.add(1, attrs);
         }
     }
 
-    private static void recordError(Span span, Throwable error, String toolName, long startTimeNanos) {
+    private static void recordError(Instruments instruments, Span span, Throwable error,
+                                    String toolName, long startTimeNanos) {
         span.setStatus(StatusCode.ERROR, error.getMessage());
         span.recordException(error);
-        recordMetrics(toolName, false, error.getClass().getName(), startTimeNanos);
+        recordMetrics(instruments, toolName, false, error.getClass().getName(), startTimeNanos);
+    }
+
+    private static Instruments instruments() {
+        ObservabilityRuntime runtime = Observability.currentRuntime();
+        synchronized (INSTRUMENTS) {
+            Instruments instruments = INSTRUMENTS.get(runtime);
+            if (instruments == null) {
+                instruments = new Instruments(runtime);
+                INSTRUMENTS.put(runtime, instruments);
+            }
+            return instruments;
+        }
     }
 }

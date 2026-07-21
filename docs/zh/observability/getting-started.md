@@ -13,6 +13,7 @@
 | 发送到 Collector、Jaeger、Tempo、APM 平台 | OTLP Exporter |
 | 复用 Java Agent、Spring 或应用已有 SDK | 默认全局 OpenTelemetry |
 | 写入 MySQL 等数据库 | JDBC Exporter |
+| 每次执行选择不同后端，或同时发送到多个后端 | Telemetry Route |
 
 所有初始化配置都应在创建 ChatModel、ToolExecutor 或首次使用 `AgentsFlexHttpClient` 之前完成。
 
@@ -109,6 +110,10 @@ Observability.setCustomExporters(
 
 完整表结构、业务关联字段和事务语义见 [JDBC 持久化](./jdbc)。
 
+如果宿主系统需要让自己的业务对象绑定一个或多个 APM 后端，不要为每个对象修改全局 SDK。应用可以保存
+`telemetryRouteId`，在执行入口通过 `Observability.useRuntime(...)` 选择路由。完整配置见
+[按执行上下文路由](./runtime-routing)。这个机制不依赖 `ReActAgent`、`IAgent` 或任何 Agents-Flex Agent 类型。
+
 ## 常用配置
 
 | 系统属性 | 默认值 | 说明 | 读取时机 |
@@ -137,6 +142,7 @@ Observability.shutdown();
 ## 下一步
 
 - [模型与 HTTP Span、Metrics](./model)
+- [按执行上下文路由到一个或多个后端](./runtime-routing)
 - [工具调用 Span、Metrics 与脱敏](./tool)
 - [故障排查与生产建议](./troubleshooting)
 

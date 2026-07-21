@@ -10,7 +10,7 @@ OpenTelemetry Exporter；它不提供 Trace 查询页面、告警系统或报表
 
 典型用途包括：
 
-- 查看一次 Agent 请求经过了哪些模型、HTTP 请求和工具调用；
+- 查看一次业务请求经过了哪些模型、HTTP 请求和工具调用；
 - 按 provider、model、tool 或 HTTP host 统计调用量、错误率和耗时；
 - 通过 conversation、account 或自定义属性关联业务请求；
 - 把数据导出到 OpenTelemetry Collector，或直接写入 JDBC 数据库；
@@ -24,6 +24,7 @@ Agents-Flex 的调用链。
 ```text
 agents-flex-core
 ├── Observability                       SDK 选择、全局开关和生命周期
+├── TelemetryRoute / Destination        按执行上下文选择一个或多个后端
 ├── ChatObservabilityInterceptor        同步与流式模型调用
 ├── ToolObservabilityInterceptor        ToolExecutor 工具调用
 └── AgentsFlexHttpClient                HTTP client Span、Metrics 和上下文传播
@@ -75,6 +76,7 @@ Agents-Flex 不会替换应用已经注册的全局 OpenTelemetry。没有显式
 | Agents-Flex 内建 Exporter | `logging` 或 `otlp` | Agents-Flex | 独立应用、快速接入 |
 | 显式注入 SDK | `Observability.setOpenTelemetry(...)` | 应用 | 需要自定义 Resource、Sampler、Processor |
 | 显式注入 Exporter | `Observability.setCustomExporters(...)` | Agents-Flex 管理 Provider | JDBC 或自定义持久化后端 |
+| 执行级路由 | `Observability.useRuntime(...)` | 应用通过 Registry 管理 Route | 不同业务对象选择不同后端，或同时发送到多个后端 |
 
 `setOpenTelemetry(...)` 和 `setCustomExporters(...)` 必须在首次模型或 HTTP 调用之前执行。初始化完成后
 再次设置会抛出 `IllegalStateException`，避免运行期间静默更换 SDK，造成一部分数据进入旧后端、另一部分
@@ -116,6 +118,7 @@ agentsflex.otel.capture.content=false
 ## 下一步
 
 - [快速开始](./getting-started)
+- [按执行上下文路由到一个或多个后端](./runtime-routing)
 - [模型与 HTTP 可观测](./model)
 - [工具调用可观测](./tool)
 - [JDBC 持久化](./jdbc)

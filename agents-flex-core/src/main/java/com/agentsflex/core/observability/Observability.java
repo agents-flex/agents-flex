@@ -21,7 +21,11 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.Meter;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.ContextKey;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.exporter.logging.LoggingMetricExporter;
 import io.opentelemetry.exporter.logging.LoggingSpanExporter;
@@ -59,6 +63,32 @@ public final class Observability {
     private static final Logger logger = LoggerFactory.getLogger(Observability.class);
     private static final String INSTRUMENTATION_SCOPE = "agents-flex";
     private static final OpenTelemetry NOOP = OpenTelemetry.noop();
+    private static final ContextKey<ObservabilityRuntime> RUNTIME_KEY =
+        ContextKey.named("agents-flex-observability-runtime");
+    private static final ContextKey<Attributes> EXECUTION_ATTRIBUTES_KEY =
+        ContextKey.named("agents-flex-observability-attributes");
+
+    private static final ObservabilityRuntime DEFAULT_RUNTIME = new ObservabilityRuntime() {
+        @Override
+        public String getId() {
+            return "agents-flex-global";
+        }
+
+        @Override
+        public OpenTelemetry getOpenTelemetry() {
+            return getDefaultOpenTelemetry();
+        }
+
+        @Override
+        public Tracer getTracer() {
+            return getDefaultTracer();
+        }
+
+        @Override
+        public Meter getMeter() {
+            return getDefaultMeter();
+        }
+    };
 
     private static volatile OpenTelemetry configuredOpenTelemetry;
     private static volatile OpenTelemetry activeOpenTelemetry;
@@ -276,7 +306,64 @@ public final class Observability {
         }
     }
 
+    /** Returns the runtime selected for the current execution, or the global fallback runtime. */
+    public static ObservabilityRuntime currentRuntime() {
+        ObservabilityRuntime runtime = Context.current().get(RUNTIME_KEY);
+        return runtime == null ? DEFAULT_RUNTIME : runtime;
+    }
+
+    /**
+     * Selects a runtime for the current synchronous scope. The returned scope must be closed on
+     * the same thread. Use OpenTelemetry Context wrapping when work moves to another thread.
+     */
+    public static Scope useRuntime(ObservabilityRuntime runtime) {
+        if (runtime == null) {
+            throw new IllegalArgumentException("runtime must not be null");
+        }
+        return Context.current().with(RUNTIME_KEY, runtime).makeCurrent();
+    }
+
+    /** Selects a runtime and adds fixed attributes to every span created inside the scope. */
+    public static Scope useRuntime(ObservabilityRuntime runtime, Attributes attributes) {
+        if (runtime == null) {
+            throw new IllegalArgumentException("runtime must not be null");
+        }
+        if (attributes == null) {
+            throw new IllegalArgumentException("attributes must not be null");
+        }
+        Attributes inherited = Context.current().get(EXECUTION_ATTRIBUTES_KEY);
+        Attributes merged = Attributes.builder()
+            .putAll(inherited == null ? Attributes.empty() : inherited)
+            .putAll(attributes)
+            .build();
+        return Context.current()
+            .with(RUNTIME_KEY, runtime)
+            .with(EXECUTION_ATTRIBUTES_KEY, merged)
+            .makeCurrent();
+    }
+
+    /** Applies attributes attached by {@link #useRuntime(ObservabilityRuntime, Attributes)}. */
+    public static void enrichSpan(Span span) {
+        Attributes attributes = Context.current().get(EXECUTION_ATTRIBUTES_KEY);
+        if (span == null || attributes == null || attributes.isEmpty()) {
+            return;
+        }
+        span.setAllAttributes(attributes);
+    }
+
     public static OpenTelemetry getOpenTelemetry() {
+        return currentRuntime().getOpenTelemetry();
+    }
+
+    public static Tracer getTracer() {
+        return currentRuntime().getTracer();
+    }
+
+    public static Meter getMeter() {
+        return currentRuntime().getMeter();
+    }
+
+    private static OpenTelemetry getDefaultOpenTelemetry() {
         if (!isEnabled()) {
             return NOOP;
         }
@@ -286,7 +373,7 @@ public final class Observability {
         return activeOpenTelemetry;
     }
 
-    public static Tracer getTracer() {
+    private static Tracer getDefaultTracer() {
         if (!isEnabled()) {
             return NOOP.getTracer(INSTRUMENTATION_SCOPE);
         }
@@ -298,7 +385,7 @@ public final class Observability {
         return tracer;
     }
 
-    public static Meter getMeter() {
+    private static Meter getDefaultMeter() {
         if (!isEnabled()) {
             return NOOP.getMeter(INSTRUMENTATION_SCOPE);
         }
