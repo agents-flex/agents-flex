@@ -133,13 +133,15 @@ Reader 和 Exporter；`TelemetryRouteRegistry.close()` 会关闭其中所有 rou
 
 ## 在业务执行入口绑定
 
-假设宿主系统自己的业务对象提供 ID、名称和 `telemetryRouteId`：
+假设宿主系统的 Bot 提供 `botId` 和 `telemetryRouteId`，当前请求还包含 conversation、account 和 turn：
 
 ```java
-TelemetryRoute route = routes.require(definition.getTelemetryRouteId());
+TelemetryRoute route = routes.require(bot.getTelemetryRouteId());
 Attributes executionAttributes = Attributes.builder()
-    .put("app.subject.id", definition.getId())
-    .put("app.subject.name", definition.getName())
+    .put(ObservabilityAttributeKeys.BOT_ID, bot.getId())
+    .put(ObservabilityAttributeKeys.CONVERSATION_ID, conversationId)
+    .put(ObservabilityAttributeKeys.ACCOUNT_ID, accountId)
+    .put(ObservabilityAttributeKeys.TURN_ID, turnId)
     .build();
 
 try (Scope ignored = Observability.useRuntime(route, executionAttributes)) {
@@ -148,11 +150,11 @@ try (Scope ignored = Observability.useRuntime(route, executionAttributes)) {
 ```
 
 Scope 内由 Agents-Flex 创建的 Chat、Tool 和 HTTP Span 都会使用该 route，并自动带上
-`app.subject.id`、`app.subject.name`。固定执行属性只附加到 Span，不附加到内置 Metrics，避免业务对象 ID
-造成高基数时间序列。
+`agentsflex.bot.id`、`gen_ai.conversation.id`、`enduser.id`、`agentsflex.turn.id`。固定执行属性只附加到
+Span，不附加到内置 Metrics，避免这些 ID 造成高基数时间序列。
 
-属性名由宿主系统定义。若查询系统需要按这些字段高频过滤，可以在 JDBC schema 中增加独立列或生成列及
-索引；Agents-Flex 不推断业务字段的存储结构。
+JDBC Exporter 会把这四个关联 ID 拆成独立列。其他宿主业务属性仍可自定义；若需要高频过滤，应由应用维护
+自己的 migration 和索引。
 
 `routes.require(...)` 在 route 不存在时会抛出异常，适合把错误配置阻止在执行入口。如果业务希望无配置时
 继续使用全局 OpenTelemetry，可以先调用 `routes.get(...)`，为空时不打开 runtime Scope。

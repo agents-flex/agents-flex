@@ -26,8 +26,14 @@ public class ChatContext {
     BaseChatConfig config;
     ChatOptions options;
     ChatRequestSpec requestSpec;
+    /** 宿主系统当前业务 Bot 的关联 ID。 */
+    Object botId;
+    /** 当前连续会话的关联 ID。 */
     Object conversationId;
+    /** 发起当前交互的账号关联 ID。 */
     Object accountId;
+    /** 当前会话中单轮用户交互的关联 ID。 */
+    Object turnId;
     Map<String, Object> attributes;
 
     public Prompt getPrompt() {
@@ -63,6 +69,14 @@ public class ChatContext {
         this.requestSpec = requestSpec;
     }
 
+    public Object getBotId() {
+        return botId;
+    }
+
+    public void setBotId(Object botId) {
+        this.botId = botId;
+    }
+
     public Object getConversationId() {
         return conversationId;
     }
@@ -77,6 +91,14 @@ public class ChatContext {
 
     public void setAccountId(Object accountId) {
         this.accountId = accountId;
+    }
+
+    public Object getTurnId() {
+        return turnId;
+    }
+
+    public void setTurnId(Object turnId) {
+        this.turnId = turnId;
     }
 
     public Map<String, Object> getAttributes() {
@@ -109,8 +131,10 @@ public class ChatContext {
             ", config=" + config +
             ", options=" + options +
             ", requestSpec=" + requestSpec +
+            ", botId=" + botId +
             ", conversationId=" + conversationId +
             ", accountId=" + accountId +
+            ", turnId=" + turnId +
             ", attributes=" + attributes +
             '}';
     }

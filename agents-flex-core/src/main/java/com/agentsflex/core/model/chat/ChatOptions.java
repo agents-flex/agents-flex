@@ -130,8 +130,14 @@ public class ChatOptions extends Metadata {
     private boolean streaming;
 
 
+    /** 宿主系统业务 Bot 的 ID，只用于调用链关联，不会传递给模型服务。 */
+    private Object contextBotId;
+    /** 当前会话 ID，只用于调用链关联，不会传递给模型服务。 */
     private Object contextConversationId;
+    /** 当前账号 ID，只用于调用链关联，不会传递给模型服务。 */
     private Object contextAccountId;
+    /** 当前会话中一次用户交互的 ID，只用于调用链关联，不会传递给模型服务。 */
+    private Object contextTurnId;
     private Map<String, Object> contextAttributes;
 
     // ===== 构造函数 =====
@@ -154,8 +160,10 @@ public class ChatOptions extends Metadata {
         this.retryInitialDelayMs = builder.retryInitialDelayMs;
         this.responseFormat = builder.responseFormat;
 
+        this.contextBotId = builder.contextBotId;
         this.contextConversationId = builder.contextConversationId;
         this.contextAccountId = builder.contextAccountId;
+        this.contextTurnId = builder.contextTurnId;
         this.contextAttributes = builder.contextAttributes;
 
         if (builder.metadata != null && !builder.metadata.isEmpty()) {
@@ -337,6 +345,14 @@ public class ChatOptions extends Metadata {
         this.streaming = streaming;
     }
 
+    public Object getContextBotId() {
+        return contextBotId;
+    }
+
+    public void setContextBotId(Object contextBotId) {
+        this.contextBotId = contextBotId;
+    }
+
     public Object getContextConversationId() {
         return contextConversationId;
     }
@@ -351,6 +367,14 @@ public class ChatOptions extends Metadata {
 
     public void setContextAccountId(Object contextAccountId) {
         this.contextAccountId = contextAccountId;
+    }
+
+    public Object getContextTurnId() {
+        return contextTurnId;
+    }
+
+    public void setContextTurnId(Object contextTurnId) {
+        this.contextTurnId = contextTurnId;
     }
 
     public Map<String, Object> getContextAttributes() {
@@ -393,8 +417,10 @@ public class ChatOptions extends Metadata {
         public Map<String, Object> metadata;
 
 
+        public Object contextBotId;
         public Object contextConversationId;
         public Object contextAccountId;
+        public Object contextTurnId;
         private Map<String, Object> contextAttributes;
 
         public Builder model(String model) {
@@ -500,6 +526,11 @@ public class ChatOptions extends Metadata {
             return this;
         }
 
+        public Builder contextBotId(Object contextBotId) {
+            this.contextBotId = contextBotId;
+            return this;
+        }
+
         public Builder contextConversationId(Object contextConversationId) {
             this.contextConversationId = contextConversationId;
             return this;
@@ -507,6 +538,11 @@ public class ChatOptions extends Metadata {
 
         public Builder contextAccountId(Object contextAccountId) {
             this.contextAccountId = contextAccountId;
+            return this;
+        }
+
+        public Builder contextTurnId(Object contextTurnId) {
+            this.contextTurnId = contextTurnId;
             return this;
         }
 
@@ -557,8 +593,10 @@ public class ChatOptions extends Metadata {
             ", retryInitialDelayMs=" + retryInitialDelayMs +
             ", responseFormat=" + responseFormat +
             ", streaming=" + streaming +
+            ", contextBotId=" + contextBotId +
             ", contextConversationId=" + contextConversationId +
             ", contextAccountId=" + contextAccountId +
+            ", contextTurnId=" + contextTurnId +
             ", contextAttributes=" + contextAttributes +
             ", metadataMap=" + metadataMap +
             '}';

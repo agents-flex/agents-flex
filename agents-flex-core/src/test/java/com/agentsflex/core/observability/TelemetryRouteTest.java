@@ -16,7 +16,6 @@
 package com.agentsflex.core.observability;
 
 import com.agentsflex.core.model.client.AgentsFlexHttpClient;
-import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.sdk.common.CompletableResultCode;
@@ -62,7 +61,8 @@ public class TelemetryRouteTest {
             .addDestination(destination("backend-b", spansB, metricsB))
             .build()) {
             try (Scope ignored = Observability.useRuntime(route, Attributes.of(
-                AttributeKey.stringKey("app.subject.id"), "subject-42"))) {
+                ObservabilityAttributeKeys.BOT_ID, "bot-42",
+                ObservabilityAttributeKeys.TURN_ID, "turn-7"))) {
                 observedClient().get("https://example.test/resource");
             }
             route.forceFlush().join(10, java.util.concurrent.TimeUnit.SECONDS);
@@ -70,10 +70,14 @@ public class TelemetryRouteTest {
             assertEquals(1, spansA.spans.size());
             assertEquals(1, spansB.spans.size());
             assertEquals(spansA.spans.get(0).getTraceId(), spansB.spans.get(0).getTraceId());
-            assertEquals("subject-42", spansA.spans.get(0).getAttributes()
-                .get(AttributeKey.stringKey("app.subject.id")));
-            assertEquals("subject-42", spansB.spans.get(0).getAttributes()
-                .get(AttributeKey.stringKey("app.subject.id")));
+            assertEquals("bot-42", spansA.spans.get(0).getAttributes()
+                .get(ObservabilityAttributeKeys.BOT_ID));
+            assertEquals("bot-42", spansB.spans.get(0).getAttributes()
+                .get(ObservabilityAttributeKeys.BOT_ID));
+            assertEquals("turn-7", spansA.spans.get(0).getAttributes()
+                .get(ObservabilityAttributeKeys.TURN_ID));
+            assertEquals("turn-7", spansB.spans.get(0).getAttributes()
+                .get(ObservabilityAttributeKeys.TURN_ID));
             assertFalse(metricsA.metrics.isEmpty());
             assertFalse(metricsB.metrics.isEmpty());
         }
@@ -88,12 +92,12 @@ public class TelemetryRouteTest {
         try (TelemetryRoute routeA = route("route-a", exporterA);
              TelemetryRoute routeB = route("route-b", exporterB)) {
             try (Scope ignoredA = Observability.useRuntime(routeA,
-                Attributes.of(AttributeKey.stringKey("app.subject.id"), "a"))) {
+                Attributes.of(ObservabilityAttributeKeys.BOT_ID, "a"))) {
                 assertSame(routeA, Observability.currentRuntime());
                 observedClient().get("https://a.example.test/resource");
 
                 try (Scope ignoredB = Observability.useRuntime(routeB,
-                    Attributes.of(AttributeKey.stringKey("app.subject.id"), "b"))) {
+                    Attributes.of(ObservabilityAttributeKeys.BOT_ID, "b"))) {
                     assertSame(routeB, Observability.currentRuntime());
                     observedClient().get("https://b.example.test/resource");
                 }
@@ -103,10 +107,10 @@ public class TelemetryRouteTest {
 
             assertEquals(1, exporterA.spans.size());
             assertEquals("a", exporterA.spans.get(0).getAttributes()
-                .get(AttributeKey.stringKey("app.subject.id")));
+                .get(ObservabilityAttributeKeys.BOT_ID));
             assertEquals(1, exporterB.spans.size());
             assertEquals("b", exporterB.spans.get(0).getAttributes()
-                .get(AttributeKey.stringKey("app.subject.id")));
+                .get(ObservabilityAttributeKeys.BOT_ID));
         }
     }
 

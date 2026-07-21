@@ -19,6 +19,7 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.observability.Observability;
+import com.agentsflex.core.observability.ObservabilityAttributeKeys;
 import com.agentsflex.core.observability.ObservabilityRuntime;
 import com.agentsflex.core.observability.SensitiveDataSanitizer;
 import io.opentelemetry.api.common.Attributes;
@@ -254,11 +255,18 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         if (context == null) {
             return;
         }
+        if (context.getBotId() != null) {
+            span.setAttribute(ObservabilityAttributeKeys.BOT_ID, String.valueOf(context.getBotId()));
+        }
         if (context.getConversationId() != null) {
-            span.setAttribute("gen_ai.conversation.id", String.valueOf(context.getConversationId()));
+            span.setAttribute(ObservabilityAttributeKeys.CONVERSATION_ID,
+                String.valueOf(context.getConversationId()));
         }
         if (context.getAccountId() != null) {
-            span.setAttribute("enduser.id", String.valueOf(context.getAccountId()));
+            span.setAttribute(ObservabilityAttributeKeys.ACCOUNT_ID, String.valueOf(context.getAccountId()));
+        }
+        if (context.getTurnId() != null) {
+            span.setAttribute(ObservabilityAttributeKeys.TURN_ID, String.valueOf(context.getTurnId()));
         }
     }
 

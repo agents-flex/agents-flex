@@ -39,15 +39,21 @@ final class JdbcTelemetryRepository {
     /** 从 Resource 中读取服务名时使用的标准 OTel 属性键。 */
     private static final AttributeKey<String> SERVICE_NAME = AttributeKey.stringKey("service.name");
 
-    /** 从 Span 属性中提取会话 ID 独立列时优先使用的 GenAI 语义属性键。 */
+    /** 与 core ObservabilityAttributeKeys 约定一致的 Bot ID wire key。 */
+    private static final AttributeKey<String> BOT_ID = AttributeKey.stringKey("agentsflex.bot.id");
+
+    /** 与 core ObservabilityAttributeKeys 约定一致的 Turn ID wire key。 */
+    private static final AttributeKey<String> TURN_ID = AttributeKey.stringKey("agentsflex.turn.id");
+
+    /** 与 core ObservabilityAttributeKeys 约定一致的 OpenTelemetry 会话 ID wire key。 */
     private static final AttributeKey<String> CONVERSATION_ID = AttributeKey.stringKey("gen_ai.conversation.id");
+
+    /** 与 core ObservabilityAttributeKeys 约定一致的最终用户 ID wire key。 */
+    private static final AttributeKey<String> ACCOUNT_ID = AttributeKey.stringKey("enduser.id");
 
     /** 为兼容旧版 Agents-Flex 数据而保留的会话 ID 属性键。 */
     private static final AttributeKey<String> LEGACY_CONVERSATION_ID =
         AttributeKey.stringKey("agentsflex.conversation.id");
-
-    /** 从 Span 属性中提取账号 ID 独立列时优先使用的标准属性键。 */
-    private static final AttributeKey<String> ACCOUNT_ID = AttributeKey.stringKey("enduser.id");
 
     /** 为兼容旧版 Agents-Flex 数据而保留的账号 ID 属性键。 */
     private static final AttributeKey<String> LEGACY_ACCOUNT_ID = AttributeKey.stringKey("agentsflex.account.id");
@@ -66,9 +72,9 @@ final class JdbcTelemetryRepository {
         this.spanInsertSql = "INSERT INTO " + spanTable + " (" +
             "trace_id,span_id,parent_span_id,trace_flags,trace_state,span_name,span_kind," +
             "start_epoch_nanos,end_epoch_nanos,duration_nanos,status_code,status_description," +
-            "service_name,conversation_id,account_id,scope_name,scope_version,attributes_json," +
+            "service_name,bot_id,conversation_id,account_id,turn_id,scope_name,scope_version,attributes_json," +
             "events_json,links_json,resource_attributes_json,total_attributes,total_events,total_links" +
-            ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         this.metricInsertSql = "INSERT INTO " + metricTable + " (" +
             "service_name,scope_name,scope_version,metric_name,metric_description,metric_unit,metric_type," +
             "aggregation_temporality,monotonic,start_epoch_nanos,epoch_nanos,value_long,value_double," +
@@ -122,8 +128,12 @@ final class JdbcTelemetryRepository {
         statement.setString(index++, span.getStatus().getStatusCode().name());
         setNullableString(statement, index++, span.getStatus().getDescription());
         setNullableString(statement, index++, span.getResource().getAttribute(SERVICE_NAME));
-        setNullableString(statement, index++, first(span.getAttributes(), CONVERSATION_ID, LEGACY_CONVERSATION_ID));
-        setNullableString(statement, index++, first(span.getAttributes(), ACCOUNT_ID, LEGACY_ACCOUNT_ID));
+        setNullableString(statement, index++, span.getAttributes().get(BOT_ID));
+        setNullableString(statement, index++, first(span.getAttributes(),
+            CONVERSATION_ID, LEGACY_CONVERSATION_ID));
+        setNullableString(statement, index++, first(span.getAttributes(),
+            ACCOUNT_ID, LEGACY_ACCOUNT_ID));
+        setNullableString(statement, index++, span.getAttributes().get(TURN_ID));
         InstrumentationScopeInfo scope = span.getInstrumentationScopeInfo();
         statement.setString(index++, scope.getName());
         setNullableString(statement, index++, scope.getVersion());

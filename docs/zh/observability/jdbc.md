@@ -72,14 +72,28 @@ Trace 通常对应多行 Span；一个 Metric 也会随导出周期产生多行 
 | `start_epoch_nanos`、`duration_nanos` | Span 时间 | 时间范围和耗时查询 |
 | `status_code` | OTel Status | 错误筛选 |
 | `service_name` | Resource `service.name` | 服务维度 |
+| `bot_id` | `agentsflex.bot.id` | 宿主系统业务 Bot 维度 |
 | `conversation_id` | `gen_ai.conversation.id` | 会话维度 |
 | `account_id` | `enduser.id` | 账号维度 |
+| `turn_id` | `agentsflex.turn.id` | 会话中的单轮交互维度 |
 | `attributes_json` | Span attributes | 自定义业务属性 |
 | `events_json`、`links_json` | Span events / links | 异常事件与跨链路关系 |
 | `resource_attributes_json` | Resource attributes | 实例、环境和服务元数据 |
 
-默认脚本在 trace、conversation、account、service、span name 和时间字段上建立索引，并用
+默认脚本在 trace、bot、conversation、turn、account、service、span name 和时间字段上建立索引，并用
 `(trace_id, span_id)` 唯一约束避免同一个 Span 被重复写入。
+
+已经执行过旧版建表脚本的数据库需要通过 migration 增加新列；`CREATE TABLE IF NOT EXISTS` 不会修改现有表：
+
+```sql
+ALTER TABLE agents_flex_otel_spans
+    ADD COLUMN bot_id VARCHAR(255) NULL AFTER service_name,
+    ADD COLUMN turn_id VARCHAR(255) NULL AFTER account_id,
+    ADD KEY idx_otel_span_bot_time (bot_id, start_epoch_nanos),
+    ADD KEY idx_otel_span_bot_conversation_time (bot_id, conversation_id, start_epoch_nanos),
+    ADD KEY idx_otel_span_bot_account_time (bot_id, account_id, start_epoch_nanos),
+    ADD KEY idx_otel_span_bot_turn_time (bot_id, turn_id, start_epoch_nanos);
+```
 
 ### Metric 表
 
@@ -128,7 +142,8 @@ Observability.setCustomExporters(
 
 ```sql
 SELECT trace_id, span_id, parent_span_id, span_name,
-       status_code, duration_nanos, service_name
+       status_code, duration_nanos, service_name,
+       bot_id, conversation_id, account_id, turn_id
 FROM agents_flex_otel_spans
 ORDER BY start_epoch_nanos DESC
 LIMIT 20;
@@ -166,12 +181,14 @@ JdbcTelemetryExporters exporters = JdbcTelemetryExporters.builder(dataSource)
 
 ## 关联业务请求
 
-模型调用可直接设置 conversation 和 account：
+模型调用可直接设置 bot、conversation、account 和 turn：
 
 ```java
 ChatOptions options = new ChatOptions();
+options.setContextBotId("bot-1");
 options.setContextConversationId("conversation-42");
 options.setContextAccountId("account-7");
+options.setContextTurnId("turn-3");
 
 chatModel.chat(prompt, options);
 ```
@@ -180,8 +197,10 @@ Chat Span 会设置：
 
 | ChatOptions | Span attribute | JDBC 列 |
 | --- | --- | --- |
+| `contextBotId` | `agentsflex.bot.id` | `bot_id` |
 | `contextConversationId` | `gen_ai.conversation.id` | `conversation_id` |
 | `contextAccountId` | `enduser.id` | `account_id` |
+| `contextTurnId` | `agentsflex.turn.id` | `turn_id` |
 
 额外业务字段可以在自定义 interceptor 中写入 Span：
 
@@ -205,6 +224,27 @@ WHERE conversation_id = 'conversation-42';
 
 再按 `trace_id` 查询所有 Span，并根据 `span_id`、`parent_span_id` 还原父子关系。调用树的组装、展示和权限
 控制属于用户自己的查询系统，不在 JDBC Exporter 的职责内。
+
+### 场景：按 Bot 计算会话和交互数
+
+当同一个 Turn 的所有 Span 都绑定了统一关联属性后，可以用去重统计避免 Chat、Tool、HTTP 多行重复计数：
+
+```sql
+SELECT bot_id,
+       COUNT(DISTINCT conversation_id) AS conversation_count,
+       COUNT(DISTINCT account_id) AS active_user_count,
+       COUNT(DISTINCT turn_id) AS interaction_count,
+       COUNT(DISTINCT turn_id) /
+           NULLIF(COUNT(DISTINCT conversation_id), 0) AS avg_interactions
+FROM agents_flex_otel_spans
+WHERE bot_id = 'bot-1'
+  AND start_epoch_nanos >= :start_epoch_nanos
+  AND start_epoch_nanos < :end_epoch_nanos
+GROUP BY bot_id;
+```
+
+该查询适合验证口径或数据量较小时使用。生产监控页面应按小时或天生成聚合表，避免每次打开页面都扫描原始
+Span。满意度来自业务反馈数据，费用还需要输入/输出 Token 和模型价格表，不能仅从现有 Span 行推断。
 
 ## 事务与失败语义
 

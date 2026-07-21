@@ -59,8 +59,10 @@ public final class ChatContextHolder {
         ctx.config = config;
 
         if (options != null) {
+            ctx.botId = options.getContextBotId();
             ctx.conversationId = options.getContextConversationId();
             ctx.accountId = options.getContextAccountId();
+            ctx.turnId = options.getContextTurnId();
         }
 
         // attributes

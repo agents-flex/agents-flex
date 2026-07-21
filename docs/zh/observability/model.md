@@ -65,8 +65,10 @@ agentsflex.otel.enabled=true
 | `gen_ai.operation.name` | 始终 | 当前为 `chat` |
 | `llm.total_tokens` | 有响应消息 | 框架计算的有效总 Token |
 | `gen_ai.usage.total_tokens` | 有响应消息 | 同一 Token 数据的 GenAI 属性 |
+| `agentsflex.bot.id` | ChatOptions 已设置 | 宿主系统业务 Bot ID |
 | `gen_ai.conversation.id` | ChatOptions 已设置 | 会话关联 ID |
 | `enduser.id` | ChatOptions 已设置 | 账号或最终用户关联 ID |
+| `agentsflex.turn.id` | ChatOptions 已设置 | 当前会话中的单次交互 ID |
 | `llm.response` | 开启内容采集且存在响应 | 最多 500 个字符 |
 
 当前 Chat interceptor 不把 Prompt 写入 Span。`agentsflex.otel.capture.content=true` 只会增加模型响应属性；
@@ -93,8 +95,8 @@ Metrics 属性包括：
 - `gen_ai.request.model`
 - `gen_ai.operation.name`
 
-conversation、account 和任意用户 ID 不进入 Metrics，避免时间序列基数随用户数量增长。这些关联信息只
-保留在 Span 中。
+bot、conversation、account、turn 和任意用户 ID 不进入内置 Metrics，避免时间序列基数快速增长。这些
+关联信息只保留在 Span 中。
 
 ### 如何结合 Span 和 Metric 判断问题
 
@@ -111,12 +113,14 @@ conversation、account 和任意用户 ID 不进入 Metrics，避免时间序列
 
 ## 业务关联字段
 
-使用 `ChatOptions` 设置会话和账号：
+使用 `ChatOptions` 设置 Bot、会话、账号和本轮交互：
 
 ```java
 ChatOptions options = new ChatOptions();
+options.setContextBotId("bot-1");
 options.setContextConversationId("conversation-42");
 options.setContextAccountId("account-7");
+options.setContextTurnId("turn-3");
 
 chatModel.chat(prompt, options);
 ```
@@ -126,6 +130,10 @@ chatModel.chat(prompt, options);
 ```java
 chatModel.chatStream(prompt, listener, options);
 ```
+
+这些字段会自动进入 Chat Span。需要让同一轮中的 Tool 和 HTTP Span 也携带这些属性时，应在业务执行外层
+通过 `Observability.useRuntime(route, attributes)` 绑定同一组属性，因为 Span Attribute 不会自动从父
+Span 复制到子 Span。
 
 如果还需要 tenant、workflow、request type 等查询维度，可以注册自定义 Chat interceptor。内置
 Observability interceptor 位于外层，所以用户 interceptor 中的 `Span.current()` 已经是当前模型 Span：

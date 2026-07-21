@@ -37,7 +37,8 @@ public class JdbcTelemetryExportersTest {
                 "trace_id VARCHAR(32),span_id VARCHAR(16),parent_span_id VARCHAR(16),trace_flags VARCHAR(2)," +
                 "trace_state CLOB,span_name VARCHAR(255),span_kind VARCHAR(32),start_epoch_nanos BIGINT," +
                 "end_epoch_nanos BIGINT,duration_nanos BIGINT,status_code VARCHAR(32),status_description VARCHAR(1024)," +
-                "service_name VARCHAR(255),conversation_id VARCHAR(255),account_id VARCHAR(255),scope_name VARCHAR(255)," +
+                "service_name VARCHAR(255),bot_id VARCHAR(255),conversation_id VARCHAR(255),account_id VARCHAR(255)," +
+                "turn_id VARCHAR(255),scope_name VARCHAR(255)," +
                 "scope_version VARCHAR(64),attributes_json CLOB,events_json CLOB,links_json CLOB," +
                 "resource_attributes_json CLOB,total_attributes INT,total_events INT,total_links INT)");
             statement.execute("CREATE TABLE agents_flex_otel_metrics (" +
@@ -59,20 +60,25 @@ public class JdbcTelemetryExportersTest {
             .build();
 
         Span span = provider.get("jdbc-test").spanBuilder("test-chat").startSpan();
+        span.setAttribute("agentsflex.bot.id", "bot-1");
         span.setAttribute("gen_ai.conversation.id", "conversation-42");
         span.setAttribute("enduser.id", "account-7");
+        span.setAttribute("agentsflex.turn.id", "turn-3");
         span.addEvent("response.received");
         span.end();
 
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement();
              ResultSet result = statement.executeQuery(
-                 "SELECT service_name,conversation_id,account_id,total_events FROM agents_flex_otel_spans")) {
+                 "SELECT service_name,bot_id,conversation_id,account_id,turn_id,total_events " +
+                     "FROM agents_flex_otel_spans")) {
             assertTrue(result.next());
             assertEquals("order-agent", result.getString(1));
-            assertEquals("conversation-42", result.getString(2));
-            assertEquals("account-7", result.getString(3));
-            assertEquals(1, result.getInt(4));
+            assertEquals("bot-1", result.getString(2));
+            assertEquals("conversation-42", result.getString(3));
+            assertEquals("account-7", result.getString(4));
+            assertEquals("turn-3", result.getString(5));
+            assertEquals(1, result.getInt(6));
         } finally {
             provider.shutdown().join(5, TimeUnit.SECONDS);
         }

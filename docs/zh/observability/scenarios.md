@@ -95,7 +95,8 @@ Metric 默认每 60 秒导出一次。刚发起请求后立即查询可能看不
 ```java
 Attributes attributes = Attributes.builder()
     .put("app.workflow.id", workflowId)
-    .put("app.subject.id", subjectId)
+    .put(ObservabilityAttributeKeys.BOT_ID, botId)
+    .put(ObservabilityAttributeKeys.TURN_ID, turnId)
     .build();
 
 try (Scope ignored = Observability.useRuntime(route, attributes)) {
@@ -131,19 +132,23 @@ agentsflex.otel.capture.content=true
 
 ```java
 ChatOptions options = new ChatOptions();
+options.setContextBotId("bot-1");
 options.setContextConversationId("conversation-42");
 options.setContextAccountId("account-7");
+options.setContextTurnId("turn-3");
 
 chatModel.chat(prompt, options);
 ```
 
 Chat Span 会包含：
 
+- `agentsflex.bot.id=bot-1`
 - `gen_ai.conversation.id=conversation-42`
 - `enduser.id=account-7`
+- `agentsflex.turn.id=turn-3`
 
-使用 JDBC Exporter 时，这两个值还会进入 Span 表的 `conversation_id` 和 `account_id` 独立列。用户自己的
-系统可以先按会话 ID 找到 `trace_id`，再按 trace ID 还原整条调用链。
+使用 JDBC Exporter 时，这四个值还会进入 Span 表的 `bot_id`、`conversation_id`、`account_id`、`turn_id`
+独立列。用户自己的系统可以先按 Bot 和会话 ID 找到 `trace_id`，再按 trace ID 还原整条调用链。
 
 ### 为什么不把会话 ID 放入 Metric
 
@@ -169,10 +174,16 @@ internal-testing  -> mysql-route
 执行时解析 Route：
 
 ```java
-TelemetryRoute route = routes.require(definition.getTelemetryRouteId());
+TelemetryRoute route = routes.require(bot.getTelemetryRouteId());
 
-try (Scope ignored = Observability.useRuntime(route, Attributes.of(
-    AttributeKey.stringKey("app.subject.id"), definition.getId()))) {
+Attributes attributes = Attributes.builder()
+    .put(ObservabilityAttributeKeys.BOT_ID, bot.getId())
+    .put(ObservabilityAttributeKeys.CONVERSATION_ID, conversationId)
+    .put(ObservabilityAttributeKeys.ACCOUNT_ID, accountId)
+    .put(ObservabilityAttributeKeys.TURN_ID, turnId)
+    .build();
+
+try (Scope ignored = Observability.useRuntime(route, attributes)) {
     chatModel.chat(prompt, options);
 }
 ```
@@ -229,6 +240,41 @@ ORDER BY start_epoch_nanos;
 ```
 
 查询只是示意，实际字段索引、租户权限、分页和数据保留由用户系统负责。Agents-Flex JDBC 模块只负责写入。
+
+## 场景八：为每个 Bot 展示独立统计面板
+
+### 关联模型
+
+每个 Bot 的统计不需要独立 SDK。所有数据通过四个 ID 关联：
+
+```text
+bot-1
+└── conversation-42
+    ├── turn-1
+    │   ├── Chat Span
+    │   ├── Tool Span
+    │   └── HTTP Span
+    └── turn-2
+        ├── Chat Span
+        └── HTTP Span
+```
+
+一个 Turn 表示一次用户交互，可以包含多次模型、工具和 HTTP 调用。统计互动数时应
+`COUNT(DISTINCT turn_id)`，不能直接统计 Chat Span 数量。
+
+### 面板指标来源
+
+| 面板指标 | 数据来源 |
+| --- | --- |
+| 全部会话数 | 按 `bot_id` 去重统计 `conversation_id` |
+| 活跃用户数 | 按 `bot_id` 去重统计 `account_id` |
+| 平均会话互动数 | 去重 Turn 数 ÷ 去重 Conversation 数 |
+| Token 输出速度 | 输出 Token 总数 ÷ 实际输出阶段耗时 |
+| 用户满意度 | 业务系统中的点赞、点踩或评分事件 |
+| 费用消耗 | 输入/输出 Token × 对应模型价格 |
+
+前三项可以基于新增 JDBC 关联列统计。Token 输出速度需要单独记录 completion token 和流式输出阶段耗时；
+满意度与模型价格属于业务数据，不应由 Agents-Flex 自动猜测。
 
 ## 从哪个场景开始
 
