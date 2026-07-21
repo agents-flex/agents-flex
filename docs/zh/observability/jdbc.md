@@ -2,6 +2,17 @@
 
 # JDBC 可观测数据持久化
 
+## 适合什么团队
+
+JDBC 方式适合以下情况：
+
+- 团队暂时没有 APM，但已有 MySQL/PostgreSQL 和内部管理系统；
+- 希望按 conversation、account 或 trace ID 在自己的系统中查询；
+- 需要把可观测数据保存到受自己控制的数据库；
+- 查询页面、权限和报表由现有业务系统实现。
+
+如果需要实时 Trace UI、复杂聚合、告警或长期高吞吐存储，专用 APM 或 Collector 后端通常更合适。
+
 ## 模块边界
 
 `agents-flex-observability-jdbc` 提供标准 OpenTelemetry `SpanExporter` 和 `MetricExporter`，把 Span 与
@@ -47,6 +58,9 @@ MySQL / PostgreSQL / 其他 JDBC 数据库
 
 建议把脚本纳入 Flyway、Liquibase 或应用已有的数据库迁移流程。Exporter 不会在启动时自动执行 DDL，
 避免运行账号需要建表权限，也避免框架绕过应用的 schema 版本管理。
+
+初学者可以把两张表理解为：Span 表保存“每一次调用步骤”，Metric 表保存“每个时间点的汇总数字”。一条
+Trace 通常对应多行 Span；一个 Metric 也会随导出周期产生多行 point。
 
 ### Span 表
 
@@ -108,6 +122,34 @@ Observability.setCustomExporters(
 -Dagentsflex.otel.metric.export.interval=30
 ```
 
+## 第一次写入后的验证
+
+执行一次模型调用后，可以先确认 Span 表是否有数据：
+
+```sql
+SELECT trace_id, span_id, parent_span_id, span_name,
+       status_code, duration_nanos, service_name
+FROM agents_flex_otel_spans
+ORDER BY start_epoch_nanos DESC
+LIMIT 20;
+```
+
+正常情况下会看到一个 Chat Span，以及模型实现产生的 HTTP Span。两者 `trace_id` 相同，HTTP 行的
+`parent_span_id` 等于 Chat 行的 `span_id`。
+
+Metrics 默认最多需要等待 60 秒：
+
+```sql
+SELECT metric_name, metric_type, epoch_nanos,
+       value_long, value_double, point_count, point_sum
+FROM agents_flex_otel_metrics
+ORDER BY epoch_nanos DESC
+LIMIT 20;
+```
+
+这些 SQL 只用于确认写入和理解表结构，不是 Agents-Flex 提供的查询 API。正式系统应自行处理租户隔离、
+查询权限、分页、聚合和索引。
+
 ## 自定义表名
 
 ```java
@@ -151,6 +193,19 @@ Span.current().setAttribute("app.workflow.id", workflowId);
 它们会保存在 `attributes_json`。如果某个字段是主要查询条件，应由应用维护自己的 migration，将其拆成
 独立列或生成列并建立索引；JDBC exporter 不推断任意业务属性的索引策略。
 
+### 场景：根据会话 ID 还原调用链
+
+客服收到 `conversation-42` 后，可以先找到 trace ID：
+
+```sql
+SELECT DISTINCT trace_id
+FROM agents_flex_otel_spans
+WHERE conversation_id = 'conversation-42';
+```
+
+再按 `trace_id` 查询所有 Span，并根据 `span_id`、`parent_span_id` 还原父子关系。调用树的组装、展示和权限
+控制属于用户自己的查询系统，不在 JDBC Exporter 的职责内。
+
 ## 事务与失败语义
 
 每次 OTel `export(Collection<...>)` 使用一个连接和一个数据库事务：
@@ -192,6 +247,7 @@ INSERT 使用标准 `PreparedStatement`，不依赖 MySQL driver API。适配 Po
 ## 相关文档
 
 - [Observability 快速开始](./getting-started)
+- [典型场景与实践](./scenarios)
 - [模型与 HTTP 可观测](./model)
 - [工具调用可观测](./tool)
 - [故障排查与生产建议](./troubleshooting)

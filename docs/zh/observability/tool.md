@@ -2,6 +2,11 @@
 
 # 工具调用可观测
 
+## 什么时候阅读这一页
+
+当系统使用搜索、天气、数据库、文件处理等 Tool，并需要回答“调用了哪个工具、花了多久、为什么失败”时，
+阅读本页。完全不使用 `ToolExecutor` 的项目可以跳过。
+
 ## 自动接入 ToolExecutor
 
 每个 `ToolExecutor` 默认在责任链最外层加入一个 `ToolObservabilityInterceptor`：
@@ -154,9 +159,30 @@ Object result = executor.execute();
 开启内容采集时，`tool.arguments` 中的 `apiKey` 会变成 `***`。工具收到的实际参数不会被修改；脱敏只作用
 于导出的观测副本。
 
+## 场景：天气工具偶发超时
+
+假设 `getWeather` 内部调用外部天气服务，用户偶尔得到失败响应。Trace 可能显示：
+
+```text
+tool.getWeather               10.1s  ERROR
+└── http.client.request       10.0s  ERROR
+    server.address=weather.example.com
+```
+
+结合数据可以逐步判断：
+
+1. Tool Span 与 HTTP Span 都接近 10 秒，说明主要耗时不是参数解析；
+2. HTTP Span 状态码为空且有 `SocketTimeoutException`，说明在收到响应前超时；
+3. 如果 `tool.call.error.count` 只在该工具上涨，可以排除所有工具共同故障；
+4. 如果相同 host 的 HTTP P95 同时上涨，应检查外部服务、网络和超时配置。
+
+如果工具内部没有使用 `AgentsFlexHttpClient` 或其他 OTel HTTP instrumentation，仍会看到 Tool Span 和异常，
+但不会自动得到内部 HTTP 子 Span。
+
 ## 相关文档
 
 - [Observability 模块概述](./observability)
+- [典型场景与实践](./scenarios)
 - [模型与 HTTP 可观测](./model)
 - [JDBC 持久化](./jdbc)
 - [故障排查与生产建议](./troubleshooting)

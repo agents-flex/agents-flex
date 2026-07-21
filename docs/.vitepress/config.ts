@@ -169,6 +169,8 @@ export default defineConfig({
                 text: '可观测',
                 items: [
                     {text: 'Observability 概述', link: '/zh/observability/observability'},
+                    {text: '零基础概念', link: '/zh/observability/concepts'},
+                    {text: '典型场景与实践', link: '/zh/observability/scenarios'},
                     {text: '快速开始', link: '/zh/observability/getting-started'},
                     {text: '按执行上下文路由', link: '/zh/observability/runtime-routing'},
                     {text: '模型与 HTTP 可观测', link: '/zh/observability/model'},

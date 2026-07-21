@@ -2,19 +2,70 @@
 
 # Observability 模块概述
 
-## Observability 解决什么问题
+## 这是什么
 
-Agents-Flex 的 Observability 基于 [OpenTelemetry](https://opentelemetry.io/)，用于记录模型请求、工具调用和
-框架 HTTP 请求的调用链与运行指标。它负责创建 Span、记录 Metrics、传播 Trace Context，并把数据交给
-OpenTelemetry Exporter；它不提供 Trace 查询页面、告警系统或报表 UI。
+当系统只有一次模型调用时，打印开始时间、结束时间和异常可能就够了。但实际 AI 应用通常还会调用工具、
+访问知识库、请求多个模型服务，并使用流式回调或线程池。用户只会说“回答很慢”或“刚才失败了”，开发者
+却需要判断问题发生在哪一步。
+
+Agents-Flex 的 Observability 基于 [OpenTelemetry](https://opentelemetry.io/)，自动为模型请求、工具调用和
+框架 HTTP 请求留下标准化运行线索。你可以用这些数据还原一次请求的调用过程，也可以观察一段时间内的
+请求量、错误率和延迟趋势。
+
+如果你此前没有接触过可观测，建议先阅读[零基础理解可观测](./concepts)。其中会解释 Trace、Span、Metric、
+Context 和 Exporter，不要求 OpenTelemetry 基础。
+
+## 它能帮你回答什么
 
 典型用途包括：
 
-- 查看一次业务请求经过了哪些模型、HTTP 请求和工具调用；
-- 按 provider、model、tool 或 HTTP host 统计调用量、错误率和耗时；
-- 通过 conversation、account 或自定义属性关联业务请求；
-- 把数据导出到 OpenTelemetry Collector，或直接写入 JDBC 数据库；
-- 在不记录 Prompt、模型响应和工具参数的前提下完成基础运行监控。
+- “这一次请求为什么用了 12 秒？”：查看 Trace 中每个 Chat、Tool 和 HTTP Span 的耗时；
+- “最近模型是不是整体变慢了？”：查看按 model/provider 聚合的延迟 Metric；
+- “工具为什么偶发失败？”：查看 Tool Span 的异常和子 HTTP Span 状态码；
+- “客服只有会话 ID，如何找到当时的调用？”：通过 conversation ID 查询 Span 和 trace ID；
+- “不同业务对象如何进入不同 APM？”：在执行入口选择 Telemetry Route；
+- “APM 和 MySQL 都需要数据怎么办？”：为一个 Route 配置多个独立 destination。
+
+完整的问题、接入方式和预期结论见[典型场景与实践](./scenarios)。
+
+## 使用前后有什么区别
+
+未接入时，开发者通常需要：
+
+1. 从大量日志中猜测哪些记录属于同一次请求；
+2. 分别计算模型、工具和 HTTP 的耗时；
+3. 尝试在本地复现生产环境的偶发错误；
+4. 临时增加日志后重新发布，再等待问题出现。
+
+接入后，一次请求可以直接呈现为调用树：
+
+```text
+业务请求
+├── openai.chat                 2.1s
+│   └── http.client.request     2.0s  200
+└── tool.getWeather             8.4s  ERROR
+    └── http.client.request     8.3s  504
+```
+
+同时，Metric 可以告诉你这是一个偶发问题，还是最近所有天气工具都在变慢。
+
+## Agents-Flex 做什么，不做什么
+
+Agents-Flex 负责：
+
+- 自动创建 Chat、Tool 和 HTTP Span；
+- 记录请求数、错误数和耗时 Metric；
+- 维护父子调用关系并传播 Trace Context；
+- 把数据交给 Logging、OTLP、JDBC 或用户自定义 Exporter；
+- 支持按一次执行选择后端，并向多个后端扇出。
+
+Agents-Flex 不负责：
+
+- 提供 Trace 查询页面、Dashboard、告警或报表 UI；
+- 管理 APM、Collector、数据库和连接池；
+- 决定用户系统中的数据访问权限和保留周期；
+- 保证遥测数据像业务消息一样永不丢失；
+- 自动理解宿主系统中的“智能体”等业务对象。
 
 Observability 是横切能力。模型、工具和 HTTP 客户端不依赖某一个具体后端，查询系统也不需要进入
 Agents-Flex 的调用链。
@@ -66,6 +117,15 @@ ChatModel / ToolExecutor / AgentsFlexHttpClient
 Agents-Flex 不会替换应用已经注册的全局 OpenTelemetry。没有显式配置 exporter 时，框架复用
 `GlobalOpenTelemetry`；如果应用也没有注册 SDK，API 会表现为 no-op，不产生导出数据。
 
+对于初学者，可以先把 Exporter 理解成“数据出口”：
+
+| 出口 | 最适合的阶段 | 是否提供查询页面 |
+| --- | --- | --- |
+| Logging | 第一次接入、本地验证 | 否，只输出日志 |
+| OTLP | 生产环境发送到 Collector/APM | 由后端提供 |
+| JDBC | 写入 MySQL 等数据库，由自己的系统查询 | 由用户系统提供 |
+| 自定义 Exporter | 已有内部遥测平台 | 取决于内部平台 |
+
 ## OpenTelemetry 所有权
 
 接入前应先确定谁负责创建和关闭 SDK。
@@ -94,6 +154,18 @@ Agents-Flex 不会替换应用已经注册的全局 OpenTelemetry。没有显式
 框架内置拦截器位于责任链外层。用户自定义 Chat 或 Tool interceptor 执行时，当前 Span 已经可通过
 `Span.current()` 获取，因此可以追加租户、任务类型等业务属性。
 
+## 最小接入路线
+
+第一次使用不需要先部署 APM：
+
+1. 设置 `agentsflex.otel.exporter.type=logging`；
+2. 正常执行一次 ChatModel；
+3. 在日志中找到 Chat Span 和它的 HTTP 子 Span；
+4. 等待 Metric 导出周期，观察请求计数和耗时；
+5. 确认数据符合预期后，再切换到 OTLP 或 JDBC。
+
+完整命令和验证方法见[快速开始](./getting-started)。
+
 ## 隐私默认值
 
 可观测数据经常会进入独立平台或数据库，应把它视为另一个数据安全边界。
@@ -117,6 +189,8 @@ agentsflex.otel.capture.content=false
 
 ## 下一步
 
+- [零基础理解 Trace、Span、Metric 和 Context](./concepts)
+- [用真实问题理解典型场景](./scenarios)
 - [快速开始](./getting-started)
 - [按执行上下文路由到一个或多个后端](./runtime-routing)
 - [模型与 HTTP 可观测](./model)

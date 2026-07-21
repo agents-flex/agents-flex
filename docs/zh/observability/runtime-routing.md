@@ -2,6 +2,21 @@
 
 # 按执行上下文路由可观测数据
 
+## 先判断是否真的需要 Route
+
+大多数只有一个遥测后端的应用不需要 Route，使用全局 Logging、OTLP 或 `setCustomExporters(...)` 即可。
+
+| 需求 | 推荐方式 |
+| --- | --- |
+| 整个应用都发送到同一个 APM | 全局 OTLP 或宿主 OpenTelemetry SDK |
+| 整个应用都写入同一个数据库 | 全局 `setCustomExporters(...)` |
+| 每次业务执行可能选择不同后端 | `TelemetryRoute` |
+| 同一次执行要同时发送到多个后端 | 一个 Route 配置多个 destination |
+| 后端很多且需要可靠重试、磁盘缓冲 | OTLP 到 Collector，由 Collector fan-out |
+
+初学者可以把 Route 理解为“本次执行的可观测数据出口组合”，把 destination 理解为“组合中的一个具体
+出口”。
+
 ## 适用场景
 
 宿主系统可能有自己的“智能体”或其他业务对象，每个对象绑定不同的 APM 配置，一次执行还可能需要同时把
@@ -38,6 +53,31 @@ Agents-Flex 不保存业务对象与 APM 的关系，也不修改 ChatModel 或 
 一个 route 只做一次采样决定，并让所有 destination 共享同一个 Resource、Trace ID 和 Span ID。每个 Span
 destination 使用自己的 `BatchSpanProcessor`，每个 Metric destination 使用自己的
 `PeriodicMetricReader`。一个后端变慢时，不会占用另一个后端的 Span 导出队列。
+
+## 从单后端 Route 开始理解
+
+下面创建一个只发送 Span 到 APM 的最小 Route：
+
+```java
+SpanExporter apmExporter = OtlpGrpcSpanExporter.builder()
+    .setEndpoint("http://apm-collector:4317")
+    .build();
+
+TelemetryRoute apmRoute = TelemetryRoute.builder("company-apm-route")
+    .serviceName("customer-service")
+    .addDestination(TelemetryDestination.builder("company-apm")
+        .spanExporter(apmExporter)
+        .spanProcessingMode(SpanProcessingMode.BATCH)
+        .build())
+    .build();
+```
+
+这里的两个 ID 用途不同：
+
+- `company-apm-route`：宿主业务对象保存并在执行时选择的 route ID；
+- `company-apm`：Route 内部的 destination ID，用于识别配置并防止重复。
+
+只配置 Span Exporter 是允许的，此时该 destination 不接收 Metrics。反过来也可以只配置 Metric Exporter。
 
 ## 创建多后端路由
 
@@ -82,6 +122,15 @@ TelemetryRouteRegistry routes = new TelemetryRouteRegistry()
 Exporter 实例应只归属于一个 destination。`TelemetryRoute` 关闭时，OTel Provider 会关闭它注册的 Processor、
 Reader 和 Exporter；`TelemetryRouteRegistry.close()` 会关闭其中所有 route，但不会关闭 JDBC `DataSource`。
 
+### 为什么不使用一个 CompositeExporter
+
+如果把两个后端串在同一个 Exporter 中，它们会共享同一批处理队列。MySQL 写入卡住时，后面的 APM 导出也
+可能被拖慢。Route 为每个 destination 创建独立 Processor/Reader，因此可以分别设置队列容量、批大小、
+超时和 Metric 周期。
+
+独立队列并不意味着完全没有资源影响：所有队列仍在同一个 JVM 中，过多 Route 或过大的队列仍会占用内存
+和调度线程。因此 Route 应在启动时复用，而不是每次请求创建。
+
 ## 在业务执行入口绑定
 
 假设宿主系统自己的业务对象提供 ID、名称和 `telemetryRouteId`：
@@ -107,6 +156,24 @@ Scope 内由 Agents-Flex 创建的 Chat、Tool 和 HTTP Span 都会使用该 rou
 
 `routes.require(...)` 在 route 不存在时会抛出异常，适合把错误配置阻止在执行入口。如果业务希望无配置时
 继续使用全局 OpenTelemetry，可以先调用 `routes.get(...)`，为空时不打开 runtime Scope。
+
+### 嵌套 Scope
+
+Scope 关闭后会恢复进入前的 Route，因此可以安全嵌套：
+
+```java
+try (Scope outer = Observability.useRuntime(routeA)) {
+    chatModel.chat(promptA, options); // 发送到 routeA
+
+    try (Scope inner = Observability.useRuntime(routeB)) {
+        chatModel.chat(promptB, options); // 发送到 routeB
+    }
+
+    chatModel.chat(promptC, options); // 再次发送到 routeA
+}
+```
+
+不要忘记 try-with-resources。Scope 未关闭会让同一线程后续请求错误地继承 Route。
 
 ## 异步与流式执行
 
@@ -139,9 +206,23 @@ routes.close();
 后端时，优先只发送到 OpenTelemetry Collector，再由 Collector fan-out。无论采用哪种方式，可观测导出
 失败都不应成为业务调用的成功条件。
 
+## 场景：APM 正常，但 MySQL 临时不可用
+
+一个 Route 同时配置 APM 和 MySQL destination 时：
+
+1. 同一个 Span 结束后分别进入两个 BatchSpanProcessor；
+2. APM 队列可以继续正常导出；
+3. JDBC Exporter 记录失败并把结果返回 OTel；
+4. 可观测失败不会让已经成功的模型调用变成业务失败；
+5. JDBC 的内存队列不是持久化消息队列，数据库长时间不可用时数据可能丢失。
+
+如果 MySQL 数据必须可靠送达，不应让业务请求同步等待数据库；应考虑 Collector、持久化队列或专门的数据
+管道。
+
 ## 相关文档
 
 - [Observability 概述](./observability)
+- [典型场景与实践](./scenarios)
 - [Observability 快速开始](./getting-started)
 - [JDBC 持久化](./jdbc)
 - [故障排查与生产建议](./troubleshooting)
