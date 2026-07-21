@@ -38,7 +38,7 @@
         * **Trace**：
 
             * 使用 OpenTelemetry `Span` 记录工具调用全链路
-            * 属性包括工具名、脱敏后的参数、调用结果
+            * 默认记录工具名；显式开启内容采集后记录脱敏参数和结果
         * **Metrics**：
 
             * 调用次数 (`tool.call.count`)
@@ -48,7 +48,7 @@
 
         * **参数脱敏**（自动隐藏 password/token 等敏感字段）
         * **结果安全处理**（文件、流、二进制类型特殊标识）
-        * **错误分类**（业务异常 vs 系统异常）
+        * **错误类型**（记录实际异常类名）
         * **全局/工具级开关**（可排除特定工具或关闭可观测）
 
 4. **上下文对象（ToolContext）**
@@ -71,12 +71,13 @@
 | - | -- | -- |
 | `Observability.isEnabled()`              | true     | 全局开关，可关闭所有工具可观测性        |
 | `Observability.isToolExcluded(toolName)` | false    | 可排除指定工具不上报 Span/Metrics |
+| `agentsflex.otel.capture.content`       | false    | 是否采集并脱敏工具参数和结果       |
 
 **Metrics 标签**：
 
 * `tool.name`：工具名称
 * `tool.success`：是否成功
-* `error.type`：业务异常或系统异常（失败时）
+* `error.type`：实际异常类名（失败时）
 
 
 ## 4. 总结

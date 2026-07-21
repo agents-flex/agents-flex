@@ -15,10 +15,9 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
-
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.observability.Observability;
-import com.alibaba.fastjson2.JSON;
+import com.agentsflex.core.observability.SensitiveDataSanitizer;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.api.metrics.DoubleHistogram;
@@ -31,153 +30,77 @@ import io.opentelemetry.context.Scope;
 
 import java.io.File;
 import java.io.InputStream;
-import java.util.Map;
-import java.util.regex.Pattern;
 
-/**
- * 增强版工具可观测性拦截器，支持：
- * - 全局/工具级开关
- * - JSON 结构化参数与结果
- * - 自动脱敏敏感字段
- * - 错误类型分类
- * - 类型安全结果处理
- */
 public class ToolObservabilityInterceptor implements ToolInterceptor {
+    private static final int MAX_CONTENT_LENGTH_FOR_SPAN = 4000;
 
-    private static final Tracer TRACER = Observability.getTracer();
-    private static final Meter METER = Observability.getMeter();
-
-    private static final LongCounter TOOL_CALL_COUNT = METER.counterBuilder("tool.call.count")
-        .setDescription("Total number of tool calls")
-        .build();
-
-    private static final DoubleHistogram TOOL_LATENCY_HISTOGRAM = METER.histogramBuilder("tool.call.latency")
-        .setDescription("Tool call latency in seconds")
-        .setUnit("s")
-        .build();
-
-    private static final LongCounter TOOL_ERROR_COUNT = METER.counterBuilder("tool.call.error.count")
-        .setDescription("Total number of tool call errors")
-        .build();
-
-    // 长度限制（OpenTelemetry 推荐单个 attribute ≤ 12KB，此处保守）
-    private static final int MAX_JSON_LENGTH_FOR_SPAN = 4000;
-
-    // 敏感字段正则（匹配 key，不区分大小写）
-    private static final Pattern SENSITIVE_KEY_PATTERN = Pattern.compile(
-        ".*(password|token|secret|key|auth|credential|cert|session).*",
-        Pattern.CASE_INSENSITIVE
-    );
-
+    private static final class Instruments {
+        private static final Tracer TRACER = Observability.getTracer();
+        private static final Meter METER = Observability.getMeter();
+        private static final LongCounter CALL_COUNT = METER.counterBuilder("tool.call.count")
+            .setDescription("Total number of tool calls")
+            .build();
+        private static final DoubleHistogram LATENCY = METER.histogramBuilder("tool.call.latency")
+            .setDescription("Tool call latency in seconds")
+            .setUnit("s")
+            .build();
+        private static final LongCounter ERROR_COUNT = METER.counterBuilder("tool.call.error.count")
+            .setDescription("Total number of tool call errors")
+            .build();
+    }
 
     @Override
     public Object intercept(ToolContext context, ToolChain chain) throws Exception {
         Tool tool = context.getTool();
         String toolName = tool.getName();
-
-        // 动态开关：全局关闭 或 工具在黑名单中
         if (!Observability.isEnabled() || Observability.isToolExcluded(toolName)) {
             return chain.proceed(context);
         }
 
-        Span span = TRACER.spanBuilder("tool." + toolName)
+        Span span = Instruments.TRACER.spanBuilder("tool." + toolName)
             .setAttribute("tool.name", toolName)
+            .setAttribute("gen_ai.tool.name", toolName)
             .startSpan();
-
         long startTimeNanos = System.nanoTime();
 
         try (Scope ignored = span.makeCurrent()) {
-
-            // 记录脱敏后的参数（JSON）
-            ToolCall toolCall = context.getToolCall();
-            String arguments = toolCall == null ? null : toolCall.getArguments();
-            span.setAttribute("tool.arguments", arguments);
-
-            // 执行工具
-            Object result = chain.proceed(context);
-
-            // 记录结果（成功）
-            if (result != null) {
-                String safeResult = safeToString(result);
-                if (safeResult.length() > MAX_JSON_LENGTH_FOR_SPAN) {
-                    safeResult = safeResult.substring(0, MAX_JSON_LENGTH_FOR_SPAN) + "...";
+            if (Observability.isContentCaptureEnabled()) {
+                ToolCall toolCall = context.getToolCall();
+                String arguments = toolCall == null ? null : toolCall.getArguments();
+                String safeArguments = SensitiveDataSanitizer.sanitizeJson(arguments, MAX_CONTENT_LENGTH_FOR_SPAN);
+                if (safeArguments != null) {
+                    span.setAttribute("tool.arguments", safeArguments);
                 }
-                span.setAttribute("tool.result", safeResult);
             }
 
+            Object result = chain.proceed(context);
+            if (Observability.isContentCaptureEnabled() && result != null) {
+                span.setAttribute("tool.result", safeResult(result));
+            }
             recordMetrics(toolName, true, null, startTimeNanos);
             return result;
-
-        } catch (Exception e) {
-            recordError(span, e, toolName, startTimeNanos);
-            throw e;
+        } catch (RuntimeException | Error error) {
+            recordError(span, error, toolName, startTimeNanos);
+            throw error;
+        } catch (Exception error) {
+            recordError(span, error, toolName, startTimeNanos);
+            throw error;
         } finally {
             span.end();
         }
     }
 
-    // 安全转为 JSON，自动脱敏
-    private String safeToJson(Object obj) {
-        try {
-            String json = JSON.toJSONString(obj);
-            return redactSensitiveFields(json);
-        } catch (Exception e) {
-            return "[JSON_SERIALIZATION_ERROR]";
-        }
-    }
-
-    // 简单脱敏：将敏感 key 对应的 value 替换为 "***"
-    private String redactSensitiveFields(String json) {
-        // 简单实现：按行处理（适用于格式化 JSON）
-        // 更严谨可用 JSON parser 遍历，但性能低；此处平衡安全与性能
-        String[] lines = json.split("\n");
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            int colon = line.indexOf(':');
-            if (colon > 0) {
-                String keyPart = line.substring(0, colon);
-                if (SENSITIVE_KEY_PATTERN.matcher(keyPart).matches()) {
-                    int valueStart = colon + 1;
-                    // 找到 value 开始和结束（简单处理 string/value）
-                    if (valueStart < line.length()) {
-                        char firstChar = line.charAt(valueStart);
-                        if (firstChar == '"' || firstChar == '\'') {
-                            // 字符串值
-                            int endQuote = line.indexOf(firstChar, valueStart + 1);
-                            if (endQuote > valueStart) {
-                                lines[i] = line.substring(0, valueStart + 1) + "***" + line.substring(endQuote);
-                            }
-                        } else {
-                            // 非字符串值（截至逗号或行尾）
-                            int endValue = line.indexOf(',', valueStart);
-                            if (endValue == -1) endValue = line.length();
-                            lines[i] = line.substring(0, valueStart) + " \"***\"" + line.substring(endValue);
-                        }
-                    }
-                }
-            }
-        }
-        return String.join("\n", lines);
-    }
-
-    // 类型安全的 toString
-    private String safeToString(Object obj) {
-        if (obj == null) {
-            return "null";
-        }
-        if (obj instanceof byte[]) {
+    private static String safeResult(Object result) {
+        if (result instanceof byte[]) {
             return "[binary_data]";
         }
-        if (obj instanceof InputStream || obj instanceof File) {
+        if (result instanceof InputStream || result instanceof File) {
             return "[stream_or_file]";
         }
-        if (obj instanceof Map || obj instanceof Iterable) {
-            return safeToJson(obj);
-        }
-        return obj.toString();
+        return SensitiveDataSanitizer.sanitizeObject(result, MAX_CONTENT_LENGTH_FOR_SPAN);
     }
 
-    private void recordMetrics(String toolName, boolean success, String errorType, long startTimeNanos) {
+    private static void recordMetrics(String toolName, boolean success, String errorType, long startTimeNanos) {
         double latencySeconds = (System.nanoTime() - startTimeNanos) / 1_000_000_000.0;
         AttributesBuilder builder = Attributes.builder()
             .put("tool.name", toolName)
@@ -186,20 +109,16 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
             builder.put("error.type", errorType);
         }
         Attributes attrs = builder.build();
-
-        TOOL_CALL_COUNT.add(1, attrs);
-        TOOL_LATENCY_HISTOGRAM.record(latencySeconds, attrs);
+        Instruments.CALL_COUNT.add(1, attrs);
+        Instruments.LATENCY.record(latencySeconds, attrs);
         if (!success) {
-            TOOL_ERROR_COUNT.add(1, attrs);
+            Instruments.ERROR_COUNT.add(1, attrs);
         }
     }
 
-    private void recordError(Span span, Exception e, String toolName, long startTimeNanos) {
-        span.setStatus(StatusCode.ERROR, e.getMessage());
-        span.recordException(e);
-
-        // 错误分类：业务异常（可预期） vs 系统异常（不可预期）
-        String errorType = e instanceof RuntimeException && !(e instanceof IllegalStateException) ? "business" : "system";
-        recordMetrics(toolName, false, errorType, startTimeNanos);
+    private static void recordError(Span span, Throwable error, String toolName, long startTimeNanos) {
+        span.setStatus(StatusCode.ERROR, error.getMessage());
+        span.recordException(error);
+        recordMetrics(toolName, false, error.getClass().getName(), startTimeNanos);
     }
 }

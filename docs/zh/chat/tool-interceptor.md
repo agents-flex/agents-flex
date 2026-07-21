@@ -100,7 +100,8 @@ Object result = executor.execute();
 
 ### 配置方式
 - **全局启用**：确保 `Observability.isEnabled() == true`（默认开启）
-- **排除特定工具**：`Observability.excludeTool("dangerous_tool")`
+- **排除特定工具**：设置 `agentsflex.otel.tool.excluded=dangerous_tool`
+- **采集参数和结果**：设置 `agentsflex.otel.capture.content=true`（默认关闭）
 
 ### 输出示例（Span Attributes）
 ```text

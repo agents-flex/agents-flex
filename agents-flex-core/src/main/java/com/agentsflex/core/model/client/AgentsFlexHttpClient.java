@@ -20,7 +20,6 @@ import com.agentsflex.core.util.IOUtil;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
-import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.metrics.DoubleHistogram;
 import io.opentelemetry.api.metrics.LongCounter;
 import io.opentelemetry.api.metrics.Meter;
@@ -31,7 +30,12 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import okhttp3.*;
+import okio.Buffer;
 import okio.BufferedSink;
+import okio.BufferedSource;
+import okio.ForwardingSource;
+import okio.Okio;
+import okio.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,28 +47,27 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AgentsFlexHttpClient {
     private static final Logger LOG = LoggerFactory.getLogger(AgentsFlexHttpClient.class);
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
     private static final AgentsFlexHttpClient INSTANCE = new AgentsFlexHttpClient();
 
-    // ===== Observability Components =====
-    private static final Tracer TRACER = Observability.getTracer();
-    private static final Meter METER = Observability.getMeter();
-
-    private static final LongCounter HTTP_REQUEST_COUNT = METER.counterBuilder("http.client.request.count")
-        .setDescription("Total number of HTTP client requests")
-        .build();
-
-    private static final DoubleHistogram HTTP_LATENCY_HISTOGRAM = METER.histogramBuilder("http.client.request.duration")
-        .setDescription("HTTP client request duration in seconds")
-        .setUnit("s")
-        .build();
-
-    private static final LongCounter HTTP_ERROR_COUNT = METER.counterBuilder("http.client.request.error.count")
-        .setDescription("Total number of HTTP client request errors")
-        .build();
+    private static final class Instruments {
+        private static final Tracer TRACER = Observability.getTracer();
+        private static final Meter METER = Observability.getMeter();
+        private static final LongCounter REQUEST_COUNT = METER.counterBuilder("http.client.request.count")
+            .setDescription("Total number of HTTP client requests")
+            .build();
+        private static final DoubleHistogram LATENCY = METER.histogramBuilder("http.client.request.duration")
+            .setDescription("HTTP client request duration in seconds")
+            .setUnit("s")
+            .build();
+        private static final LongCounter ERROR_COUNT = METER.counterBuilder("http.client.request.error.count")
+            .setDescription("Total number of HTTP client request errors")
+            .build();
+    }
 
     private final OkHttpClient okHttpClient;
 
@@ -103,8 +106,7 @@ public class AgentsFlexHttpClient {
      * The caller must close the returned response.
      */
     public Response getResponse(String url, Map<String, String> headers) {
-        return executeObserved(url, "GET", headers, null,
-            this::openResponse);
+        return openObservedResponse(url, "GET", headers, null);
     }
 
     /**
@@ -317,14 +319,18 @@ public class AgentsFlexHttpClient {
     private <T> T executeObserved(String url, String method, Map<String, String> headers, Object payload,
                                   HttpRequestOperation<T> operation) {
         Objects.requireNonNull(url, "url must not be null");
+        if (!Observability.isEnabled()) {
+            try {
+                return operation.execute(url, method, headers, payload, Span.getInvalid(), new RequestObservation());
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RuntimeException("HTTP request failed", e);
+            }
+        }
+
         String host = extractServerAddress(url);
-        Span span = TRACER.spanBuilder("http.client.request")
-            .setSpanKind(SpanKind.CLIENT)
-            .setAttribute("http.method", method)
-            .setAttribute("http.request.method", method)
-            .setAttribute("http.url", url)
-            .setAttribute("server.address", host)
-            .startSpan();
+        Span span = createHttpSpan(url, method, host);
 
         long startTime = System.nanoTime();
         boolean success = false;
@@ -343,20 +349,83 @@ public class AgentsFlexHttpClient {
             throw new RuntimeException("HTTP request failed", e);
         } finally {
             span.end();
-            double latency = (System.nanoTime() - startTime) / 1_000_000_000.0;
-            AttributesBuilder attributesBuilder = Attributes.builder()
-                .put(AttributeKey.stringKey("http.method"), method)
-                .put(AttributeKey.stringKey("server.address"), host)
-                .put(AttributeKey.stringKey("http.success"), String.valueOf(success));
-            if (observation.statusCode != null) {
-                attributesBuilder.put(AttributeKey.longKey("http.response.status_code"), observation.statusCode.longValue());
+            recordHttpMetrics(method, host, success, observation.statusCode, startTime);
+        }
+    }
+
+    private Response openObservedResponse(String url, String method, Map<String, String> headers, Object payload) {
+        Objects.requireNonNull(url, "url must not be null");
+        if (!Observability.isEnabled()) {
+            return openResponse(url, method, headers, payload, Span.getInvalid(), new RequestObservation());
+        }
+
+        String host = extractServerAddress(url);
+        Span span = createHttpSpan(url, method, host);
+        long startTime = System.nanoTime();
+        RequestObservation observation = new RequestObservation();
+        AtomicBoolean completed = new AtomicBoolean(false);
+
+        try (Scope ignored = span.makeCurrent()) {
+            Response response = openResponse(url, method, headers, payload, span, observation);
+            boolean statusSuccess = observation.statusCode == null || observation.statusCode < 400;
+            ResponseBody body = response.body();
+            if (body == null) {
+                completeHttpObservation(completed, span, method, host, statusSuccess,
+                    observation.statusCode, startTime, null);
+                return response;
             }
-            Attributes attrs = attributesBuilder.build();
-            HTTP_REQUEST_COUNT.add(1, attrs);
-            HTTP_LATENCY_HISTOGRAM.record(latency, attrs);
-            if (!success) {
-                HTTP_ERROR_COUNT.add(1, attrs);
-            }
+            ResponseBody observedBody = new ObservedResponseBody(body, span, error ->
+                completeHttpObservation(completed, span, method, host,
+                    statusSuccess && error == null, observation.statusCode, startTime, error));
+            return response.newBuilder().body(observedBody).build();
+        } catch (RuntimeException | Error error) {
+            completeHttpObservation(completed, span, method, host, false,
+                observation.statusCode, startTime, error);
+            throw error;
+        }
+    }
+
+    private static Span createHttpSpan(String url, String method, String host) {
+        String safeUrl = sanitizeUrl(url);
+        return Instruments.TRACER.spanBuilder("http.client.request")
+            .setSpanKind(SpanKind.CLIENT)
+            .setAttribute("http.method", method)
+            .setAttribute("http.request.method", method)
+            .setAttribute("http.url", safeUrl)
+            .setAttribute("url.full", safeUrl)
+            .setAttribute("server.address", host)
+            .startSpan();
+    }
+
+    private static void completeHttpObservation(AtomicBoolean completed, Span span, String method,
+                                                String host, boolean success, Integer statusCode,
+                                                long startTime, Throwable error) {
+        if (!completed.compareAndSet(false, true)) {
+            return;
+        }
+        if (error != null) {
+            span.setStatus(StatusCode.ERROR, error.getMessage());
+            span.recordException(error);
+        }
+        span.end();
+        recordHttpMetrics(method, host, success, statusCode, startTime);
+    }
+
+    private static void recordHttpMetrics(String method, String host, boolean success,
+                                          Integer statusCode, long startTime) {
+        double latency = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        AttributesBuilder attributesBuilder = Attributes.builder()
+            .put(AttributeKey.stringKey("http.method"), method)
+            .put(AttributeKey.stringKey("server.address"), host)
+            .put(AttributeKey.booleanKey("http.success"), success);
+        if (statusCode != null) {
+            attributesBuilder.put(AttributeKey.longKey("http.response.status_code"), statusCode.longValue());
+        }
+        Attributes attrs = attributesBuilder.build();
+        Instruments.REQUEST_COUNT.add(1, attrs);
+        Instruments.LATENCY.record(latency, attrs);
+        if (!success) {
+            Instruments.ERROR_COUNT.add(1, attrs);
         }
     }
 
@@ -378,6 +447,15 @@ public class AgentsFlexHttpClient {
         }
     }
 
+    private static String sanitizeUrl(String url) {
+        try {
+            URI uri = new URI(url);
+            return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), null, null).toString();
+        } catch (URISyntaxException e) {
+            return "unknown";
+        }
+    }
+
     private static UncheckedIOException recordAndWrapIOException(String message, IOException cause, Span span) {
         LOG.error(message, cause);
         if (span != null) {
@@ -388,13 +466,75 @@ public class AgentsFlexHttpClient {
     }
 
     private static Request.Builder propagateTraceContext(Request.Builder requestBuilder) {
-        GlobalOpenTelemetry.getPropagators().getTextMapPropagator().inject(
+        Observability.getOpenTelemetry().getPropagators().getTextMapPropagator().inject(
             Context.current(), requestBuilder, (carrier, key, value) -> carrier.header(key, value));
         return requestBuilder;
     }
 
     private static class RequestObservation {
         private Integer statusCode;
+    }
+
+    @FunctionalInterface
+    private interface ResponseCompletion {
+        void complete(Throwable error);
+    }
+
+    private static class ObservedResponseBody extends ResponseBody {
+        private final ResponseBody delegate;
+        private final Span span;
+        private final ResponseCompletion completion;
+        private BufferedSource source;
+
+        private ObservedResponseBody(ResponseBody delegate, Span span, ResponseCompletion completion) {
+            this.delegate = delegate;
+            this.span = span;
+            this.completion = completion;
+        }
+
+        @Override
+        public MediaType contentType() {
+            return delegate.contentType();
+        }
+
+        @Override
+        public long contentLength() {
+            return delegate.contentLength();
+        }
+
+        @Override
+        public BufferedSource source() {
+            if (source == null) {
+                Source forwardingSource = new ForwardingSource(delegate.source()) {
+                    @Override
+                    public long read(Buffer sink, long byteCount) throws IOException {
+                        try (Scope ignored = span.makeCurrent()) {
+                            long read = super.read(sink, byteCount);
+                            if (read == -1) {
+                                completion.complete(null);
+                            }
+                            return read;
+                        } catch (IOException error) {
+                            completion.complete(error);
+                            throw error;
+                        }
+                    }
+
+                    @Override
+                    public void close() throws IOException {
+                        try (Scope ignored = span.makeCurrent()) {
+                            super.close();
+                            completion.complete(null);
+                        } catch (IOException error) {
+                            completion.complete(error);
+                            throw error;
+                        }
+                    }
+                };
+                source = Okio.buffer(forwardingSource);
+            }
+            return source;
+        }
     }
 
     // ===== Inner class =====

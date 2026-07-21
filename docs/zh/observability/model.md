@@ -12,7 +12,7 @@
 
         * LLM 提供商（provider）、模型（model）、操作类型（operation）
         * 消耗 token 数量
-        * 响应文本（截断）
+        * 响应文本（仅在显式开启内容采集时记录并截断）
         * 异常信息
     * 支持同步请求和流式请求
 
@@ -83,6 +83,7 @@ chatModel.chatStream(prompt, new StreamResponseListener() {
 | 配置项                            | 默认值  | 说明                          |
 | - | - |-----------------------------|
 | `observabilityEnabled`         | true | 是否启用可观测性（Tracing + Metrics） |
+| `agentsflex.otel.capture.content` | false | 是否将模型响应写入 Span |
 | `MAX_RESPONSE_LENGTH_FOR_SPAN` | 500  | Span 中存储响应内容的最大长度（字符数）      |
 
 * Span 属性：
@@ -91,7 +92,7 @@ chatModel.chatStream(prompt, new StreamResponseListener() {
     * `llm.model`：模型名称
     * `llm.operation`：操作类型（chat/chatStream）
     * `llm.total_tokens`：消耗 token
-    * `llm.response`：响应文本（截断）
+    * `llm.response`：响应文本（需开启内容采集，截断）
 * Metrics 标签：
 
     * `llm.provider`、`llm.model`、`llm.operation`、`llm.success`
@@ -103,7 +104,7 @@ chatModel.chatStream(prompt, new StreamResponseListener() {
 ### 4.1 集成 Observability 系统
 
 ```java
-Observability.init(tracerProvider, meterProvider);
+Observability.setOpenTelemetry(openTelemetry);
 ```
 
 * 支持 OTLP、Prometheus、Jaeger 等
@@ -126,7 +127,7 @@ Observability.init(tracerProvider, meterProvider);
 
 ### 4.4 响应截断
 
-* Span 中的响应文本限制为 500 字符，避免追踪信息过大
+* 内容采集默认关闭；开启后 Span 中的响应文本限制为 500 字符
 * 可根据需求调整 `MAX_RESPONSE_LENGTH_FOR_SPAN`
 
 

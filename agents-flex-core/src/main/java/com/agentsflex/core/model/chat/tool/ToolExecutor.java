@@ -41,13 +41,21 @@ public class ToolExecutor {
     }
 
     private List<ToolInterceptor> buildInterceptorChain(List<ToolInterceptor> userInterceptors) {
-
-        // 1. 全局拦截器
         List<ToolInterceptor> chain = new ArrayList<>(GlobalToolInterceptors.getInterceptors());
-
-        // 2. 用户拦截器
         if (userInterceptors != null) {
             chain.addAll(userInterceptors);
+        }
+
+        // Keep the built-in observability interceptor outermost and avoid double registration.
+        boolean observabilityRegistered = false;
+        for (ToolInterceptor interceptor : chain) {
+            if (interceptor instanceof ToolObservabilityInterceptor) {
+                observabilityRegistered = true;
+                break;
+            }
+        }
+        if (!observabilityRegistered) {
+            chain.add(0, new ToolObservabilityInterceptor());
         }
 
         return chain;
