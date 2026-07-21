@@ -168,9 +168,12 @@ export default defineConfig({
             {
                 text: '可观测',
                 items: [
-                    {text: 'Observability', link: '/zh/observability/observability'},
-                    {text: '模型可观测', link: '/zh/observability/model'},
+                    {text: 'Observability 概述', link: '/zh/observability/observability'},
+                    {text: '快速开始', link: '/zh/observability/getting-started'},
+                    {text: '模型与 HTTP 可观测', link: '/zh/observability/model'},
                     {text: '工具调用可观测', link: '/zh/observability/tool'},
+                    {text: 'JDBC 持久化', link: '/zh/observability/jdbc'},
+                    {text: '故障排查与生产建议', link: '/zh/observability/troubleshooting'},
                 ]
             },
             {

@@ -62,6 +62,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         String model = valueOrUnknown(config.getModel());
         String operation = "chat";
         Span span = startSpan(provider, model, operation);
+        enrichCorrelation(span, context);
         long startTimeNanos = System.nanoTime();
 
         try (Scope ignored = span.makeCurrent()) {
@@ -104,6 +105,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             .setAttribute("gen_ai.request.model", model)
             .setAttribute("gen_ai.operation.name", "chat")
             .startSpan();
+        enrichCorrelation(span, context);
         long startTimeNanos = System.nanoTime();
         AtomicBoolean recorded = new AtomicBoolean(false);
 
@@ -201,6 +203,18 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         String content = message.getFullContent() != null ? message.getFullContent() : message.getContent();
         if (content != null) {
             span.setAttribute("llm.response", SensitiveDataSanitizer.truncate(content, MAX_RESPONSE_LENGTH_FOR_SPAN));
+        }
+    }
+
+    private static void enrichCorrelation(Span span, ChatContext context) {
+        if (context == null) {
+            return;
+        }
+        if (context.getConversationId() != null) {
+            span.setAttribute("gen_ai.conversation.id", String.valueOf(context.getConversationId()));
+        }
+        if (context.getAccountId() != null) {
+            span.setAttribute("enduser.id", String.valueOf(context.getAccountId()));
         }
     }
 

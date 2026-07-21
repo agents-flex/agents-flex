@@ -1,146 +1,194 @@
-# Chat Observability 对话可观测
 <div v-pre>
 
-## 1. 核心概念
+# 模型与 HTTP 可观测
 
-在 Agents-Flex 框架中，对话可观测性（Chat Observability）提供对 LLM 请求的 **端到端追踪和指标监控能力**。
-主要概念包括：
+## 自动拦截位置
 
-1. **Tracing（追踪）**
+`BaseChatModel` 在构建责任链时把 `ChatObservabilityInterceptor` 放在最外层，后面依次是全局 Chat
+interceptor、实例 interceptor 和实际模型客户端。因此一次标准模型调用会形成：
 
-    * 通过 OpenTelemetry `Span` 记录请求链路信息：
-
-        * LLM 提供商（provider）、模型（model）、操作类型（operation）
-        * 消耗 token 数量
-        * 响应文本（仅在显式开启内容采集时记录并截断）
-        * 异常信息
-    * 支持同步请求和流式请求
-
-2. **Metrics（指标）**
-
-    * 请求总数 (`llm.request.count`)
-    * 请求延迟 (`llm.request.latency`)
-    * 错误请求数 (`llm.request.error.count`)
-    * 支持按 provider、model、操作类型及成功/失败维度统计
-
-3. **责任链拦截器**
-
-    * `ChatObservabilityInterceptor` 位于责任链最外层
-    * 拦截器负责：
-
-        1. 在请求开始时创建 Span
-        2. 执行请求并记录成功或失败
-        3. 上报 Metrics
-    * 对同步和流式请求分别处理，确保 Span 和 Metrics 安全记录
-
-4. **流式请求处理**
-
-    * Span 在 `onStop` 或 `onFailure` 安全关闭
-    * 通过 `AtomicBoolean` 确保 Metrics 只记录一次
-    * 异常自动标记 `StatusCode.ERROR` 并记录异常信息
-
-
-
-## 2. 快速入门
-
-### 2.1 启用可观测性
-
-```java
-OpenAiChatConfig config = new OpenAiChatConfig();
-config.setObservabilityEnabled(true);  // 默认开启，可省略
-config.setApikey("sk-xxxx");
-
-OpenAIChatModel chatModel = new OpenAIChatModel(config);
+```text
+上游业务 Span（可选）
+└── provider.chat / provider.chatStream
+    ├── 用户 ChatInterceptor
+    └── http.client.request
+        └── 模型服务
 ```
 
-### 2.2 同步请求
+同步调用在 `chat(...)` 返回或抛出异常时结束模型 Span。流式调用在启动请求的线程中创建 Span，但不会把
+线程上下文留到异步阶段；每个回调只在自己的线程中临时恢复 Span，并在 `onStop` 或 `onFailure` 结束。
+因此流式耗时覆盖完整响应周期，而不是只统计发起 HTTP 请求所需的时间。
+
+## 开关关系
+
+模型可观测同时受两个开关控制：
 
 ```java
-AiMessageResponse response = chatModel.chat(prompt, new ChatOptions());
-// ChatObservabilityInterceptor 自动记录 Span 和 Metrics
+config.setObservabilityEnabled(true);
 ```
 
-### 2.3 流式请求
+```properties
+agentsflex.otel.enabled=true
+```
+
+| 全局开关 | 模型开关 | Chat Span/Metrics | `AgentsFlexHttpClient` Span/Metrics |
+| --- | --- | --- | --- |
+| `false` | 任意 | 关闭 | 关闭 |
+| `true` | `false` | 关闭 | 仍然开启 |
+| `true` | `true` | 开启 | 开启 |
+
+模型开关只控制 Chat interceptor。需要完全关闭框架观测时，应使用全局开关。
+
+## Chat Span
+
+同步 Span 名称为 `{provider}.chat`，流式 Span 名称为 `{provider}.chatStream`。provider 或 model 为空时
+使用 `unknown`，避免因配置缺失导致埋点异常。
+
+主要属性：
+
+| 属性 | 条件 | 说明 |
+| --- | --- | --- |
+| `llm.provider` | 始终 | 模型 Provider |
+| `llm.model` | 始终 | 模型名称 |
+| `llm.operation` | 始终 | `chat` 或 `chatStream` |
+| `gen_ai.provider.name` | 始终 | GenAI Provider 属性 |
+| `gen_ai.request.model` | 始终 | GenAI 请求模型属性 |
+| `gen_ai.operation.name` | 始终 | 当前为 `chat` |
+| `llm.total_tokens` | 有响应消息 | 框架计算的有效总 Token |
+| `gen_ai.usage.total_tokens` | 有响应消息 | 同一 Token 数据的 GenAI 属性 |
+| `gen_ai.conversation.id` | ChatOptions 已设置 | 会话关联 ID |
+| `enduser.id` | ChatOptions 已设置 | 账号或最终用户关联 ID |
+| `llm.response` | 开启内容采集且存在响应 | 最多 500 个字符 |
+
+当前 Chat interceptor 不把 Prompt 写入 Span。`agentsflex.otel.capture.content=true` 只会增加模型响应属性；
+是否允许响应离开业务系统仍应由应用的数据策略决定。
+
+返回 `null`、返回错误响应或抛出异常都会标记 Span 为 `ERROR`。抛出的异常还会通过
+`span.recordException(...)` 记录。
+
+## Chat Metrics
+
+| Metric | 类型 | 单位 | 说明 |
+| --- | --- | --- | --- |
+| `llm.request.count` | Counter | 次 | 模型请求总数 |
+| `llm.request.latency` | Histogram | 秒 | 同步或完整流式请求耗时 |
+| `llm.request.error.count` | Counter | 次 | 失败请求数 |
+
+Metrics 属性包括：
+
+- `llm.provider`
+- `llm.model`
+- `llm.operation`
+- `llm.success`，boolean
+- `gen_ai.provider.name`
+- `gen_ai.request.model`
+- `gen_ai.operation.name`
+
+conversation、account 和任意用户 ID 不进入 Metrics，避免时间序列基数随用户数量增长。这些关联信息只
+保留在 Span 中。
+
+## 业务关联字段
+
+使用 `ChatOptions` 设置会话和账号：
 
 ```java
-chatModel.chatStream(prompt, new StreamResponseListener() {
-    @Override
-    public void onStart(StreamContext ctx) {}
-    @Override
-    public void onMessage(StreamContext ctx, AiMessageResponse resp) {}
-    @Override
-    public void onFailure(StreamContext ctx, Throwable t) {}
-    @Override
-    public void onStop(StreamContext ctx) {}
-}, new ChatOptions());
-// Span 在 onStop/onFailure 安全结束，Metrics 自动上报
+ChatOptions options = new ChatOptions();
+options.setContextConversationId("conversation-42");
+options.setContextAccountId("account-7");
+
+chatModel.chat(prompt, options);
 ```
 
-
-
-## 3. 配置说明
-
-| 配置项                            | 默认值  | 说明                          |
-| - | - |-----------------------------|
-| `observabilityEnabled`         | true | 是否启用可观测性（Tracing + Metrics） |
-| `agentsflex.otel.capture.content` | false | 是否将模型响应写入 Span |
-| `MAX_RESPONSE_LENGTH_FOR_SPAN` | 500  | Span 中存储响应内容的最大长度（字符数）      |
-
-* Span 属性：
-
-    * `llm.provider`：LLM 提供商
-    * `llm.model`：模型名称
-    * `llm.operation`：操作类型（chat/chatStream）
-    * `llm.total_tokens`：消耗 token
-    * `llm.response`：响应文本（需开启内容采集，截断）
-* Metrics 标签：
-
-    * `llm.provider`、`llm.model`、`llm.operation`、`llm.success`
-
-
-
-## 4. 高级应用
-
-### 4.1 集成 Observability 系统
+流式调用使用相同配置：
 
 ```java
-Observability.setOpenTelemetry(openTelemetry);
+chatModel.chatStream(prompt, listener, options);
 ```
 
-* 支持 OTLP、Prometheus、Jaeger 等
-* 所有 LLM 请求自动上报 Trace 和 Metrics，无需手动改动业务代码
+如果还需要 tenant、workflow、request type 等查询维度，可以注册自定义 Chat interceptor。内置
+Observability interceptor 位于外层，所以用户 interceptor 中的 `Span.current()` 已经是当前模型 Span：
 
-### 4.2 异常和失败处理
+```java
+public final class TenantTraceInterceptor implements ChatInterceptor {
+    @Override
+    public AiMessageResponse intercept(
+        BaseChatModel<?> model, ChatContext context, SyncChain chain) {
 
-* `ChatObservabilityInterceptor` 会在异常发生时：
+        Span.current().setAttribute("app.tenant.id", resolveTenant(context));
+        return chain.proceed(model, context);
+    }
 
-    * 标记 Span 状态为 `StatusCode.ERROR`
-    * 记录异常信息
-    * 上报失败 Metrics
-* 流式请求也通过 `AtomicBoolean` 确保 Metrics 只记录一次
+    @Override
+    public void interceptStream(
+        BaseChatModel<?> model,
+        ChatContext context,
+        StreamResponseListener listener,
+        StreamChain chain) {
 
-### 4.3 性能监控
+        Span.current().setAttribute("app.tenant.id", resolveTenant(context));
+        chain.proceed(model, context, listener);
+    }
+}
 
-* 请求延迟通过 `LLM_LATENCY_HISTOGRAM` 记录（秒）
-* 可按 provider、model、操作类型维度分析性能
-* 错误率通过 `LLM_ERROR_COUNT` 统计
+GlobalChatInterceptors.addInterceptor(new TenantTraceInterceptor());
+```
 
-### 4.4 响应截断
+全局 interceptor 只会进入注册后创建的 ChatModel。建议在应用启动阶段完成注册，不要在并发请求期间修改
+全局列表。
 
-* 内容采集默认关闭；开启后 Span 中的响应文本限制为 500 字符
-* 可根据需求调整 `MAX_RESPONSE_LENGTH_FOR_SPAN`
+## HTTP Span
 
+`AgentsFlexHttpClient` 为 GET、POST、PUT、DELETE 和 multipart 请求创建 `CLIENT` Span，名称为
+`http.client.request`。在模型调用内部使用时，它会自动成为 Chat Span 的子节点。
 
+主要属性：
 
-## 5. 总结
+| 属性 | 说明 |
+| --- | --- |
+| `http.request.method` | HTTP 方法 |
+| `http.method` | 兼容属性 |
+| `url.full` | 已移除 user-info、query 和 fragment 的 URL |
+| `http.url` | 同一安全 URL 的兼容属性 |
+| `server.address` | host，显式端口存在时包含端口 |
+| `http.response.status_code` | HTTP 状态码 |
+| `http.status_code` | 兼容属性 |
 
-`ChatObservabilityInterceptor` 提供了完整的 **对话可观测方案**：
+状态码大于等于 400 时 Span 标记为 `ERROR`。IO 异常会记录异常并继续按现有客户端契约抛给调用方。
 
-* 自动创建 Span、记录请求链路
-* 自动上报请求数、延迟、错误等指标
-* 支持同步和流式请求
-* 自动处理异常与失败
-* 可集成到 OTLP、Prometheus、Jaeger 等监控平台
+`getResponse(...)` 把打开的 OkHttp `Response` 交给调用方，因此 Span 会持续到响应体读完、读取失败或
+`Response` 被关闭。调用方必须使用 try-with-resources；如果不关闭响应，HTTP Span 和连接都可能长时间
+占用。
 
+```java
+try (Response response = client.getResponse(url, headers)) {
+    String body = response.body() == null ? null : response.body().string();
+}
+```
+
+## HTTP Metrics
+
+| Metric | 类型 | 单位 | 说明 |
+| --- | --- | --- | --- |
+| `http.client.request.count` | Counter | 次 | HTTP 请求总数 |
+| `http.client.request.duration` | Histogram | 秒 | 请求耗时；开放响应包含响应体消费时间 |
+| `http.client.request.error.count` | Counter | 次 | 异常或状态码大于等于 400 的请求数 |
+
+HTTP Metrics 属性为 `http.method`、`server.address`、`http.success`，收到响应后还包含
+`http.response.status_code`。完整 URL 不进入 Metrics，避免路径参数和查询参数造成高基数。
+
+## Trace Context 传播
+
+HTTP 请求使用当前 OpenTelemetry 的 propagator 向请求头注入 Trace Context。Agents-Flex 自建 SDK 默认
+使用 W3C Trace Context；复用应用 SDK 时使用应用配置的 propagator。
+
+如果自定义 interceptor 把任务切换到其他线程或线程池，应用仍需按照 OpenTelemetry 规则显式传播
+`Context`。框架只保证自身流式回调和 HTTP 客户端的上下文边界，不会自动修复任意用户异步代码。
+
+## 相关文档
+
+- [快速开始](./getting-started)
+- [工具调用可观测](./tool)
+- [JDBC 持久化](./jdbc)
+- [故障排查与生产建议](./troubleshooting)
 
 </div>

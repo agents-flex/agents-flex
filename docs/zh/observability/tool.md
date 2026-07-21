@@ -1,99 +1,164 @@
-# Function Call/ Tool Call 可观测性
 <div v-pre>
 
-## 1. 核心概念
+# 工具调用可观测
 
-在 Agents-Flex 框架中，**工具函数调用（Function Call / Tool Call）可观测性**提供对每次函数调用的 **端到端追踪（Trace）** 和 **指标监控（Metrics）** 能力。
+## 自动接入 ToolExecutor
 
-主要概念：
+每个 `ToolExecutor` 默认在责任链最外层加入一个 `ToolObservabilityInterceptor`：
 
-1. **工具执行器（ToolExecutor）**
+```text
+ToolObservabilityInterceptor
+└── 全局 ToolInterceptor
+    └── 当前 ToolExecutor 的实例 interceptor
+        └── Tool.invoke(args)
+```
 
-    * 负责执行单个工具函数调用
-    * 支持 **责任链拦截器（Interceptor Chain）**，顺序：
+用户不需要手动执行：
 
-        1. 全局拦截器
-        2. 用户自定义拦截器
-        3. 实际函数调用
-    * 可动态添加拦截器
+```java
+GlobalToolInterceptors.addInterceptor(new ToolObservabilityInterceptor());
+```
 
-2. **责任链拦截器（ToolInterceptor）**
+如果全局或实例 interceptor 列表中已经存在该类型，`ToolExecutor` 不会再次自动添加，避免同一次调用产生
+两个工具 Span。正常项目应保留自动注册，只把权限、审计和业务属性等逻辑放入自定义 interceptor。
 
-    * 定义横切逻辑接口：
+## Tool Span
 
-      ```java
-      Object intercept(ToolContext context, ToolChain chain) throws Exception;
-      ```
-    * 常用于：
+每次执行创建一个名为 `tool.{toolName}` 的 Span。因为模型调用期间工具通常由应用在模型响应后执行，工具
+Span 是否属于模型 Span，取决于执行工具时是否仍有有效的 OpenTelemetry Context；不要仅依赖线程局部
+变量推断跨异步阶段的父子关系。
 
-        * 日志记录
-        * 权限校验
-        * 异常监控
-        * 可观测性上报
+主要属性：
 
-3. **可观测性拦截器（ToolObservabilityInterceptor）**
+| 属性 | 条件 | 说明 |
+| --- | --- | --- |
+| `tool.name` | 始终 | `Tool.getName()` |
+| `gen_ai.tool.name` | 始终 | GenAI 工具名称属性 |
+| `tool.arguments` | 开启内容采集 | 脱敏并限制长度的 JSON 参数 |
+| `tool.result` | 开启内容采集且结果非空 | 脱敏并限制长度的结果 |
 
-    * 实现 `ToolInterceptor`，自动完成：
+工具抛出 `Exception`、`RuntimeException` 或 `Error` 时，Span 会标记为 `ERROR` 并记录异常。Metric 的
+`error.type` 保存实际异常类名，例如 `java.net.SocketTimeoutException`，而不是根据异常继承关系猜测
+“业务异常”或“系统异常”。
 
-        * **Trace**：
+## Tool Metrics
 
-            * 使用 OpenTelemetry `Span` 记录工具调用全链路
-            * 默认记录工具名；显式开启内容采集后记录脱敏参数和结果
-        * **Metrics**：
+| Metric | 类型 | 单位 | 说明 |
+| --- | --- | --- | --- |
+| `tool.call.count` | Counter | 次 | 工具调用总数 |
+| `tool.call.latency` | Histogram | 秒 | 完整工具执行耗时 |
+| `tool.call.error.count` | Counter | 次 | 失败调用数 |
 
-            * 调用次数 (`tool.call.count`)
-            * 调用延迟 (`tool.call.latency`)
-            * 错误次数 (`tool.call.error.count`)
-    * 特性：
+Metrics 属性：
 
-        * **参数脱敏**（自动隐藏 password/token 等敏感字段）
-        * **结果安全处理**（文件、流、二进制类型特殊标识）
-        * **错误类型**（记录实际异常类名）
-        * **全局/工具级开关**（可排除特定工具或关闭可观测）
+- `tool.name`
+- `tool.success`，boolean
+- `error.type`，仅失败时存在
 
-4. **上下文对象（ToolContext）**
+不要把参数、账号、conversation ID 或 request ID 加入 Tool Metrics。它们通常具有高基数，应保留在 Span
+或业务审计记录中。
 
-    * 保存工具实例和调用参数
-    * 提供给责任链拦截器使用
+## 排除特定工具
 
+心跳、健康检查或高频内部工具可能不需要单独观测，可以通过系统属性排除：
 
+```bash
+-Dagentsflex.otel.tool.excluded=heartbeat,debug_cache
+```
 
-## 2. 启用可观测性
+工具名使用逗号分隔，配置项会去除首尾空格，匹配区分大小写。排除后不会创建 Span，也不会记录 Metrics，
+但工具仍然正常执行。
 
-* 默认情况下，`ToolObservabilityInterceptor` 已全局注册
-* 可通过 `Observability.isEnabled()` 或 `Observability.isToolExcluded(toolName)` 动态控制
+全局关闭：
 
+```bash
+-Dagentsflex.otel.enabled=false
+```
 
+排除配置和全局开关在每次工具调用时读取，新值不要求重建 `ToolExecutor`。
 
-## 3. 可观测性配置说明
+## 内容采集与脱敏
 
-| 配置项                                      | 默认值      | 说明                      |
-| - | -- | -- |
-| `Observability.isEnabled()`              | true     | 全局开关，可关闭所有工具可观测性        |
-| `Observability.isToolExcluded(toolName)` | false    | 可排除指定工具不上报 Span/Metrics |
-| `agentsflex.otel.capture.content`       | false    | 是否采集并脱敏工具参数和结果       |
+默认配置：
 
-**Metrics 标签**：
+```properties
+agentsflex.otel.capture.content=false
+```
 
-* `tool.name`：工具名称
-* `tool.success`：是否成功
-* `error.type`：实际异常类名（失败时）
+默认只记录工具名、耗时和状态。开启后：
 
+```bash
+-Dagentsflex.otel.capture.content=true
+```
 
-## 4. 总结
+参数处理流程：
 
-`ToolObservabilityInterceptor` + `ToolExecutor` 提供了完整的 **函数调用可观测方案**：
+```text
+ToolCall.arguments
+        │ JSON.parse
+        ├── 解析失败 ──> [UNPARSEABLE_CONTENT_REDACTED]
+        └── 解析成功
+              │ 递归遍历 object / array
+              │ 敏感 key 的 value 替换为 ***
+              └── JSON 序列化并限制为 4000 字符
+```
 
-* 自动追踪工具调用链路（Trace）
-* 自动收集调用次数、延迟、错误 Metrics
-* 支持参数脱敏、结果安全处理
-* 异常分类并上报
-* 可动态开关、可集成现有监控系统
-* 与责任链拦截器无缝结合，业务逻辑无需修改
+敏感 key 匹配不区分大小写，覆盖 password、passwd、token、secret、apiKey、authorization、auth、
+credential、cookie、session 和 cert 等常见名称。嵌套 object 和 array 会递归处理。
 
-通过该机制，开发者可以轻松实现 **全链路工具调用监控**，保证可追踪性、安全性和可维护性。
+结果处理规则：
 
+| 结果类型 | Span 中的值 |
+| --- | --- |
+| `byte[]` | `[binary_data]` |
+| `InputStream` 或 `File` | `[stream_or_file]` |
+| 普通对象 | JSON 序列化、递归脱敏、最多 4000 字符 |
+| 序列化失败 | `[SERIALIZATION_ERROR]` |
 
+脱敏只处理结构化字段名，无法判断普通字符串中是否包含姓名、手机号、业务正文或其他敏感信息。内容采集
+应该保持 opt-in，并由应用根据工具用途决定是否允许。
 
+## 添加业务属性
+
+内置可观测 interceptor 位于外层，因此用户 Tool interceptor 中可以给当前 Span 添加业务维度：
+
+```java
+public final class ToolTenantInterceptor implements ToolInterceptor {
+    @Override
+    public Object intercept(ToolContext context, ToolChain chain) throws Exception {
+        Span.current().setAttribute("app.tenant.id", currentTenantId());
+        Span.current().setAttribute("app.tool.category", classify(context.getTool()));
+        return chain.proceed(context);
+    }
+}
+
+GlobalToolInterceptors.addInterceptor(new ToolTenantInterceptor());
+```
+
+这类属性进入 Span，不会自动复制到 Metrics。全局 interceptor 应在应用启动时注册，避免运行期间并发修改
+全局列表。
+
+## 调用示例
+
+```java
+ToolCall call = new ToolCall(
+    "call-1",
+    "getWeather",
+    "{\"city\":\"Hangzhou\",\"apiKey\":\"secret\"}"
+);
+
+ToolExecutor executor = new ToolExecutor(getWeatherTool, call);
+Object result = executor.execute();
+```
+
+开启内容采集时，`tool.arguments` 中的 `apiKey` 会变成 `***`。工具收到的实际参数不会被修改；脱敏只作用
+于导出的观测副本。
+
+## 相关文档
+
+- [Observability 模块概述](./observability)
+- [模型与 HTTP 可观测](./model)
+- [JDBC 持久化](./jdbc)
+- [故障排查与生产建议](./troubleshooting)
 
 </div>

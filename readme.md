@@ -237,6 +237,7 @@ It is designed for quickly integrating models and vector stores into existing Sp
 
 ```text
 agents-flex-core/                 Core APIs and base implementations
+agents-flex-observability/        OpenTelemetry persistence exporters
 agents-flex-chat/                 Chat model integrations
 agents-flex-embedding/            Embedding model integrations
 agents-flex-image/                Image model integrations

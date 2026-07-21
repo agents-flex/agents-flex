@@ -43,6 +43,7 @@
         <module>agents-flex-audio</module>
         <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
+        <module>agents-flex-observability</module>
         <module>agents-flex-chat</module>
         <module>agents-flex-store</module>
         <module>agents-flex-spring-boot-starter</module>
@@ -514,6 +515,12 @@
                 <version>${revision}</version>
             </dependency>
             <!--search end-->
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-observability-jdbc</artifactId>
+                <version>${revision}</version>
+            </dependency>
 
 
             <!-- OpenTelemetry API -->

@@ -56,6 +56,11 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-observability-jdbc</artifactId>
+        </dependency>
+
         <!--audio model start-->
         <dependency>
             <groupId>com.agentsflex</groupId>
