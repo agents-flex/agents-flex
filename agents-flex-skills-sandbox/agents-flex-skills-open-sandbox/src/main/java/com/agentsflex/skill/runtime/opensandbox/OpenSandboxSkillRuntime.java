@@ -293,6 +293,22 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
         }
 
         /**
+         * 使用 OpenSandbox SDK Builder 配置 Sandbox 出站网络策略。
+         *
+         * @param configurer NetworkPolicy Builder 配置函数
+         * @return 当前构建器
+         */
+        public Builder networkPolicy(Consumer<NetworkPolicy.Builder> configurer) {
+            if (configurer == null) {
+                throw new IllegalArgumentException("network policy configurer must not be null");
+            }
+            NetworkPolicy.Builder builder = NetworkPolicy.builder();
+            configurer.accept(builder);
+            this.networkPolicy = builder.build();
+            return this;
+        }
+
+        /**
          * 校验必要参数并创建 Runtime。
          *
          * @return 尚未创建远端 Sandbox 的 Runtime

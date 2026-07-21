@@ -146,6 +146,7 @@ API Key 配置在 OpenSandbox SDK 的 `ConnectionConfig` 上，而不是
 ```java
 import com.agentsflex.skill.runtime.SkillRuntime;
 import com.agentsflex.skill.runtime.opensandbox.OpenSandboxSkillRuntime;
+import com.alibaba.opensandbox.sandbox.domain.models.sandboxes.NetworkPolicy;
 
 import java.time.Duration;
 
@@ -157,8 +158,14 @@ SkillRuntime runtime = OpenSandboxSkillRuntime.builder()
     .remoteRoot("/workspace/skills")
     .sandboxTimeout(Duration.ofMinutes(10))
     .readyTimeout(Duration.ofSeconds(30))
+    .networkPolicy(policy -> policy
+        .defaultAction(NetworkPolicy.DefaultAction.DENY))
     .build();
 ```
+
+`networkPolicy(...)` 同样支持直接传入已经构建的 `NetworkPolicy`，也支持通过回调配置 SDK Builder。
+上例默认拒绝所有出站网络；如果 Skill 需要访问包仓库或业务 API，应通过 `addEgress(...)` 或
+`egress(...)` 只添加必要规则。网络策略的实际执行能力取决于 OpenSandbox Server 使用的 Runtime。
 
 对应关系如下：
 
@@ -209,7 +216,7 @@ try (SkillRuntime runtime = createOpenSandboxRuntime()) {
 | `readyTimeout` | 等待实例启动就绪的时间 |
 | `resources` | 传递 CPU、内存等资源限制 |
 | `environment` | 创建 Sandbox 时注入环境变量 |
-| `networkPolicy` | 出站网络策略 |
+| `networkPolicy` | 出站网络策略；可以传入 `NetworkPolicy` 或配置 `NetworkPolicy.Builder` |
 
 镜像必须自行包含任务需要的程序，或允许任务安装依赖。例如 PPTX Demo 使用 `python3` 和
 `python-pptx`。生产环境推荐构建固定版本的专用镜像，不要在每次任务中临时从公网安装依赖。

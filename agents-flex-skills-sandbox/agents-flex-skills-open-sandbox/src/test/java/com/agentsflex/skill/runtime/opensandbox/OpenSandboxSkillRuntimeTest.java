@@ -1,6 +1,7 @@
 package com.agentsflex.skill.runtime.opensandbox;
 
 import com.alibaba.opensandbox.sandbox.config.ConnectionConfig;
+import com.alibaba.opensandbox.sandbox.domain.models.sandboxes.NetworkPolicy;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -33,6 +34,20 @@ public class OpenSandboxSkillRuntimeTest {
             .connectionConfig(connection -> connection
                 .domain("localhost:8080")
                 .apiKey("test-key"))
+            .build();
+
+        assertEquals("open-sandbox", runtime.getName());
+        runtime.close();
+    }
+
+    @Test
+    public void buildsNetworkPolicyWithConfigurer() {
+        OpenSandboxSkillRuntime runtime = OpenSandboxSkillRuntime.builder()
+            .connectionConfig(connection -> connection
+                .domain("localhost:8080")
+                .apiKey("test-key"))
+            .networkPolicy(policy -> policy
+                .defaultAction(NetworkPolicy.DefaultAction.DENY))
             .build();
 
         assertEquals("open-sandbox", runtime.getName());
