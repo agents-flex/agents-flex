@@ -22,7 +22,6 @@ import com.agentsflex.skill.runtime.opensandbox.OpenSandboxSkillRuntime;
 import com.agentsflex.skill.util.Skills;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
-import com.alibaba.opensandbox.sandbox.config.ConnectionConfig;
 
 import java.net.URL;
 import java.nio.file.Files;
@@ -141,12 +140,10 @@ public class SkillsDemoMain {
             return new LocalSkillRuntime();
         }
         if ("open-sandbox".equals(name) || "opensandbox".equals(name)) {
-            ConnectionConfig connection = ConnectionConfig.builder()
-                .domain(requireEnvironment("OPEN_SANDBOX_DOMAIN"))
-                .apiKey(requireEnvironment("OPEN_SANDBOX_API_KEY"))
-                .build();
             return OpenSandboxSkillRuntime.builder()
-                .connectionConfig(connection)
+                .connectionConfig(connection -> connection
+                    .domain(requireEnvironment("OPEN_SANDBOX_DOMAIN"))
+                    .apiKey(requireEnvironment("OPEN_SANDBOX_API_KEY")))
                 .image(environment("OPEN_SANDBOX_IMAGE", "python:3.11"))
                 .remoteRoot(environment("OPEN_SANDBOX_REMOTE_ROOT", "/workspace/skills"))
                 .sandboxTimeout(Duration.ofSeconds(environmentLong("OPEN_SANDBOX_TIMEOUT_SECONDS", 600L)))

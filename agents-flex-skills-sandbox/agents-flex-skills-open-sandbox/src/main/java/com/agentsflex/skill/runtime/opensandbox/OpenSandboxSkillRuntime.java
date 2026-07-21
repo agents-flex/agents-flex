@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * 在独立 OpenSandbox 实例中执行 Skills 的 Runtime。
@@ -230,6 +231,22 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
         /** @param connectionConfig OpenSandbox SDK 连接地址和 API Key */
         public Builder connectionConfig(ConnectionConfig connectionConfig) {
             this.connectionConfig = connectionConfig;
+            return this;
+        }
+
+        /**
+         * 使用 OpenSandbox SDK Builder 配置连接。
+         *
+         * @param configurer ConnectionConfig Builder 配置函数
+         * @return 当前构建器
+         */
+        public Builder connectionConfig(Consumer<ConnectionConfig.Builder> configurer) {
+            if (configurer == null) {
+                throw new IllegalArgumentException("connection configurer must not be null");
+            }
+            ConnectionConfig.Builder builder = ConnectionConfig.builder();
+            configurer.accept(builder);
+            this.connectionConfig = builder.build();
             return this;
         }
 

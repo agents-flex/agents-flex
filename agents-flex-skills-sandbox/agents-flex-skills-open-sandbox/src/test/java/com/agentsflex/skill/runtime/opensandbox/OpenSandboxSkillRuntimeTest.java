@@ -26,4 +26,16 @@ public class OpenSandboxSkillRuntimeTest {
         assertEquals("open-sandbox", runtime.getName());
         runtime.close();
     }
+
+    @Test
+    public void buildsConnectionConfigurationWithConfigurer() {
+        OpenSandboxSkillRuntime runtime = OpenSandboxSkillRuntime.builder()
+            .connectionConfig(connection -> connection
+                .domain("localhost:8080")
+                .apiKey("test-key"))
+            .build();
+
+        assertEquals("open-sandbox", runtime.getName());
+        runtime.close();
+    }
 }
