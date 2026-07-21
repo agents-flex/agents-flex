@@ -25,6 +25,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 把 OTel 中不适合固定关系型列表达的属性、事件、Link 和聚合细节序列化为 JSON。
+ *
+ * <p>使用 LinkedHashMap 保持稳定顺序，便于数据库内容比较和人工排查。这里只做结构转换，不负责业务内容
+ * 脱敏；敏感内容必须在写入 Span 属性之前由采集侧处理。</p>
+ */
 final class TelemetryJson {
     private TelemetryJson() {
     }
@@ -38,6 +44,7 @@ final class TelemetryJson {
     }
 
     static String events(List<EventData> events) {
+        // droppedAttributes 用于提示 SDK 因容量限制丢弃过属性，查询侧可据此判断数据是否完整。
         List<Map<String, Object>> values = new ArrayList<>();
         for (EventData event : events) {
             Map<String, Object> value = new LinkedHashMap<>();
@@ -51,6 +58,7 @@ final class TelemetryJson {
     }
 
     static String links(List<LinkData> links) {
+        // Link 指向同一或其他 Trace 中的 Span，不等同于 parentSpanId，因此完整保存在独立 JSON 字段。
         List<Map<String, Object>> values = new ArrayList<>();
         for (LinkData link : links) {
             Map<String, Object> value = new LinkedHashMap<>();

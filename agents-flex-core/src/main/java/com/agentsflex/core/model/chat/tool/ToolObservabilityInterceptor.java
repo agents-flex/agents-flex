@@ -34,15 +34,34 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+/**
+ * ToolExecutor 的 OpenTelemetry 拦截器，为每次工具调用创建 Span 并记录调用量、耗时和错误指标。
+ *
+ * <p>工具参数和返回值可能包含凭证、文件或大量业务内容，因此默认不采集；开启内容采集后仍会经过脱敏、
+ * 类型保护和长度限制。</p>
+ */
 public class ToolObservabilityInterceptor implements ToolInterceptor {
+    /** 工具参数或返回值写入 Span 属性时允许保留的最大字符数。 */
     private static final int MAX_CONTENT_LENGTH_FOR_SPAN = 4000;
 
+    /**
+     * runtime 到工具埋点 instrument 的弱键缓存。
+     * 每条 TelemetryRoute 必须使用自己的 Tracer/Meter；弱键兼顾 instrument 复用和 Route 下线后的回收。
+     */
     private static final Map<ObservabilityRuntime, Instruments> INSTRUMENTS = new WeakHashMap<>();
 
+    /** 某个 ObservabilityRuntime 专属的一组工具 Tracer 和 Metrics instrument。 */
     private static final class Instruments {
+        /** 创建工具调用 Span 的 Tracer。 */
         private final Tracer tracer;
+
+        /** 记录全部工具调用次数的 Counter。 */
         private final LongCounter callCount;
+
+        /** 记录工具调用耗时的 Histogram，单位为秒。 */
         private final DoubleHistogram latency;
+
+        /** 只记录失败工具调用次数的 Counter。 */
         private final LongCounter errorCount;
 
         private Instruments(ObservabilityRuntime runtime) {
@@ -77,6 +96,7 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
         Observability.enrichSpan(span);
         long startTimeNanos = System.nanoTime();
 
+        // 工具内部若继续调用模型或 HTTP，它们会自然成为当前工具 Span 的子节点。
         try (Scope ignored = span.makeCurrent()) {
             if (Observability.isContentCaptureEnabled()) {
                 ToolCall toolCall = context.getToolCall();
@@ -105,6 +125,7 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
     }
 
     private static String safeResult(Object result) {
+        // 二进制、文件和流既不适合序列化，也可能消耗大量内存，只记录稳定的类型占位符。
         if (result instanceof byte[]) {
             return "[binary_data]";
         }
@@ -140,6 +161,7 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
 
     private static Instruments instruments() {
         ObservabilityRuntime runtime = Observability.currentRuntime();
+        // WeakHashMap 非线程安全，必须同步完成“查找或创建”。
         synchronized (INSTRUMENTS) {
             Instruments instruments = INSTRUMENTS.get(runtime);
             if (instruments == null) {

@@ -24,10 +24,20 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * 将 OTel SDK 提交的一批完整 Span 写入 JDBC。
+ *
+ * <p>Exporter 本身不维护队列或重试状态，这些职责属于上游 SpanProcessor。数据库异常通过
+ * {@link CompletableResultCode} 报告给 OTel，而不是向业务调用栈继续抛出。</p>
+ */
 final class JdbcSpanExporter implements SpanExporter {
+    /** 记录数据库导出失败的日志记录器。 */
     private static final Logger logger = LoggerFactory.getLogger(JdbcSpanExporter.class);
 
+    /** 负责实际 SQL 映射和事务提交的共享 JDBC Repository。 */
     private final JdbcTelemetryRepository repository;
+
+    /** Exporter 是否已经 shutdown；使用原子变量兼容 OTel 调度线程与关闭线程并发。 */
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
     JdbcSpanExporter(JdbcTelemetryRepository repository) {
@@ -36,6 +46,7 @@ final class JdbcSpanExporter implements SpanExporter {
 
     @Override
     public CompletableResultCode export(Collection<SpanData> spans) {
+        // shutdown 后拒绝新数据，防止 Route 生命周期结束后仍继续访问数据库。
         if (shutdown.get()) {
             return CompletableResultCode.ofFailure();
         }
@@ -43,6 +54,7 @@ final class JdbcSpanExporter implements SpanExporter {
             return CompletableResultCode.ofSuccess();
         }
         try {
+            // Repository 保证整个 batch 共用一个事务，任何一条失败都会回滚本批次。
             repository.writeSpans(spans);
             return CompletableResultCode.ofSuccess();
         } catch (Throwable error) {
@@ -53,11 +65,13 @@ final class JdbcSpanExporter implements SpanExporter {
 
     @Override
     public CompletableResultCode flush() {
+        // Exporter 内部没有二级缓冲，数据在 export 返回前已提交，因此无需额外 flush。
         return CompletableResultCode.ofSuccess();
     }
 
     @Override
     public CompletableResultCode shutdown() {
+        // 这里只关闭 Exporter 的接收状态，不关闭由宿主应用拥有的 DataSource。
         shutdown.set(true);
         return CompletableResultCode.ofSuccess();
     }

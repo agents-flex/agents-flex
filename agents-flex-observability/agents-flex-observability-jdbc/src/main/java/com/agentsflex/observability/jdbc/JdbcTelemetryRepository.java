@@ -29,16 +29,36 @@ import java.sql.Types;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * JDBC 持久化的内部仓储，负责 SQL、字段映射和事务边界。
+ *
+ * <p>该类不做异步调度和重试。上游 Exporter 每调用一次 write 方法，就获取一个连接并以一个事务提交整个
+ * batch，保证不会出现半批成功、半批失败。</p>
+ */
 final class JdbcTelemetryRepository {
+    /** 从 Resource 中读取服务名时使用的标准 OTel 属性键。 */
     private static final AttributeKey<String> SERVICE_NAME = AttributeKey.stringKey("service.name");
+
+    /** 从 Span 属性中提取会话 ID 独立列时优先使用的 GenAI 语义属性键。 */
     private static final AttributeKey<String> CONVERSATION_ID = AttributeKey.stringKey("gen_ai.conversation.id");
+
+    /** 为兼容旧版 Agents-Flex 数据而保留的会话 ID 属性键。 */
     private static final AttributeKey<String> LEGACY_CONVERSATION_ID =
         AttributeKey.stringKey("agentsflex.conversation.id");
+
+    /** 从 Span 属性中提取账号 ID 独立列时优先使用的标准属性键。 */
     private static final AttributeKey<String> ACCOUNT_ID = AttributeKey.stringKey("enduser.id");
+
+    /** 为兼容旧版 Agents-Flex 数据而保留的账号 ID 属性键。 */
     private static final AttributeKey<String> LEGACY_ACCOUNT_ID = AttributeKey.stringKey("agentsflex.account.id");
 
+    /** 宿主应用提供的 DataSource；Repository 使用但不关闭它。 */
     private final DataSource dataSource;
+
+    /** 根据已校验 Span 表名生成的 INSERT SQL 模板。 */
     private final String spanInsertSql;
+
+    /** 根据已校验 Metric 表名生成的 INSERT SQL 模板。 */
     private final String metricInsertSql;
 
     JdbcTelemetryRepository(DataSource dataSource, String spanTable, String metricTable) {
@@ -57,6 +77,7 @@ final class JdbcTelemetryRepository {
     }
 
     void writeSpans(Collection<SpanData> spans) throws SQLException {
+        // PreparedStatement 在一个 batch 内复用，减少数据库往返和 SQL 解析开销。
         inTransaction(connection -> {
             try (PreparedStatement statement = connection.prepareStatement(spanInsertSql)) {
                 for (SpanData span : spans) {
@@ -69,6 +90,7 @@ final class JdbcTelemetryRepository {
     }
 
     void writeMetrics(Collection<MetricData> metrics) throws SQLException {
+        // OTel 的 MetricData 是“指标 + 多个 point”的聚合结构，先展开为与数据库行一一对应的记录。
         List<MetricPointRecord> records = MetricPointRecord.from(metrics);
         if (records.isEmpty()) {
             return;
@@ -85,6 +107,7 @@ final class JdbcTelemetryRepository {
     }
 
     private static void bindSpan(PreparedStatement statement, SpanData span) throws SQLException {
+        // 索引顺序必须与构造函数中的 INSERT 列严格一致。常用关联字段单独落列，其余属性保留为 JSON。
         int index = 1;
         statement.setString(index++, span.getTraceId());
         statement.setString(index++, span.getSpanId());
@@ -114,6 +137,7 @@ final class JdbcTelemetryRepository {
     }
 
     private static void bindMetric(PreparedStatement statement, MetricPointRecord record) throws SQLException {
+        // 标量值和常用聚合统计拆成列；桶边界、桶计数、分位数等可变结构保存在 data_json。
         MetricData metric = record.metric;
         int index = 1;
         setNullableString(statement, index++, metric.getResource().getAttribute(SERVICE_NAME));
@@ -140,6 +164,7 @@ final class JdbcTelemetryRepository {
 
     private void inTransaction(SqlWork work) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
+            // 兼容连接池预设的 autoCommit 状态，并在归还连接前恢复原值，避免污染后续借用者。
             boolean originalAutoCommit = connection.getAutoCommit();
             if (originalAutoCommit) {
                 connection.setAutoCommit(false);
@@ -148,6 +173,7 @@ final class JdbcTelemetryRepository {
                 work.execute(connection);
                 connection.commit();
             } catch (SQLException error) {
+                // rollback 失败作为 suppressed exception 附加，保留最初导致事务失败的 SQL 异常。
                 rollback(connection, error);
                 throw error;
             } finally {

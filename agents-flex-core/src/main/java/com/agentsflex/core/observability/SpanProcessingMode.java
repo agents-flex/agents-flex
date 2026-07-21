@@ -15,7 +15,17 @@
  */
 package com.agentsflex.core.observability;
 
+/**
+ * Span 从 SDK 交给 Exporter 时采用的处理方式。
+ */
 public enum SpanProcessingMode {
+    /**
+     * 先进入内存队列，再按批次异步导出。适合生产环境，可降低业务线程上的导出开销。
+     */
     BATCH,
+
+    /**
+     * Span 结束时立即调用 Exporter。主要用于本地调试、测试或无需缓冲的轻量后端。
+     */
     SIMPLE
 }

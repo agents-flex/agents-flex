@@ -51,17 +51,40 @@ import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Agents-Flex 内部统一使用的 HTTP 客户端，同时负责创建 HTTP CLIENT Span、记录指标并传播 Trace Context。
+ *
+ * <p>可观测实现会在请求开始时锁定当前 {@link ObservabilityRuntime} 对应的 instrument，确保即使响应体稍后
+ * 才被消费，Span 和 Metrics 仍发送到发起请求时选择的 Route。</p>
+ */
 public class AgentsFlexHttpClient {
+    /** HTTP 执行或响应体读取异常使用的日志记录器。 */
     private static final Logger LOG = LoggerFactory.getLogger(AgentsFlexHttpClient.class);
+
+    /** 非 GET 请求默认使用的 JSON 请求体媒体类型。 */
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
+
+    /** 使用默认 OkHttp 配置创建的共享客户端实例。 */
     private static final AgentsFlexHttpClient INSTANCE = new AgentsFlexHttpClient();
 
+    /**
+     * runtime 到 HTTP 埋点 instrument 的弱键缓存。
+     * 一个 runtime 对应一组 instrument，弱键避免动态下线的 Route 被静态缓存永久持有。
+     */
     private static final Map<ObservabilityRuntime, Instruments> INSTRUMENTS = new WeakHashMap<>();
 
+    /** 某个 ObservabilityRuntime 专属的一组 HTTP Tracer 和 Metrics instrument。 */
     private static final class Instruments {
+        /** 创建 HTTP CLIENT Span 的 Tracer。 */
         private final Tracer tracer;
+
+        /** 记录全部 HTTP 请求次数的 Counter。 */
         private final LongCounter requestCount;
+
+        /** 记录包含响应体消费时间在内的 HTTP 请求耗时 Histogram，单位为秒。 */
         private final DoubleHistogram latency;
+
+        /** 只记录网络异常或失败状态请求次数的 Counter。 */
         private final LongCounter errorCount;
 
         private Instruments(ObservabilityRuntime runtime) {
@@ -80,6 +103,7 @@ public class AgentsFlexHttpClient {
         }
     }
 
+    /** 实际执行网络请求的 OkHttpClient，由构造函数注入或使用框架默认配置创建。 */
     private final OkHttpClient okHttpClient;
 
     public static AgentsFlexHttpClient getDefault() {
@@ -254,11 +278,12 @@ public class AgentsFlexHttpClient {
             request = builder.method(method, body).build();
         }
 
+        // 使用当前 runtime 的 Propagator 注入 traceparent 等请求头，保证跨服务 Trace 连续。
         request = propagateTraceContext(request.newBuilder()).build();
 
         Response response = okHttpClient.newCall(request).execute();
 
-        // Inject status code into current span
+        // 同时保存到 RequestObservation，供 Span 结束后的 Metrics 判断成功状态。
         recordResponseStatus(response, observation);
         return response;
     }
@@ -298,12 +323,12 @@ public class AgentsFlexHttpClient {
         Request request = propagateTraceContext(builder.post(multipartBody)).build();
         Response response = okHttpClient.newCall(request).execute();
 
-        // Record the status code for tracing and metrics.
+        // 同时记录到 Span 和请求观察状态，供后续 Metrics 使用。
         recordResponseStatus(response, observation);
         return response;
     }
 
-    // ===== Shared helper for span status code injection =====
+    // ===== HTTP 状态记录 =====
 
     private void recordResponseStatus(Response response, RequestObservation observation) {
         Span currentSpan = Span.current();
@@ -320,7 +345,7 @@ public class AgentsFlexHttpClient {
         }
     }
 
-    // ===== Observability wrapper =====
+    // ===== 可观测执行包装 =====
     @FunctionalInterface
     private interface HttpRequestOperation<T> {
         T execute(String url, String method, Map<String, String> headers, Object payload,
@@ -348,6 +373,7 @@ public class AgentsFlexHttpClient {
         boolean success = false;
         RequestObservation observation = new RequestObservation();
 
+        // Scope 覆盖网络调用全过程，使传播器能从 Context.current() 取得当前 CLIENT Span。
         try (Scope scope = span.makeCurrent()) {
             T result = operation.execute(url, method, headers, payload, span, observation);
             success = observation.statusCode == null || observation.statusCode < 400;
@@ -376,6 +402,7 @@ public class AgentsFlexHttpClient {
         Span span = createHttpSpan(instruments, url, method, host);
         long startTime = System.nanoTime();
         RequestObservation observation = new RequestObservation();
+        // 开放响应的生命周期由调用方控制，关闭、读到 EOF 或读取失败都可能触发完成逻辑，必须保证只结束一次。
         AtomicBoolean completed = new AtomicBoolean(false);
 
         try (Scope ignored = span.makeCurrent()) {
@@ -387,6 +414,7 @@ public class AgentsFlexHttpClient {
                     observation.statusCode, startTime, null);
                 return response;
             }
+            // Span 不能在收到响应头时立即结束，因为响应体下载仍是请求耗时的一部分。
             ResponseBody observedBody = new ObservedResponseBody(body, span, error ->
                 completeHttpObservation(instruments, completed, span, method, host,
                     statusSuccess && error == null, observation.statusCode, startTime, error));
@@ -447,6 +475,7 @@ public class AgentsFlexHttpClient {
 
     private static Instruments instruments() {
         ObservabilityRuntime runtime = Observability.currentRuntime();
+        // WeakHashMap 非线程安全，instrument 的查找与首次创建必须原子化。
         synchronized (INSTRUMENTS) {
             Instruments instruments = INSTRUMENTS.get(runtime);
             if (instruments == null) {
@@ -457,7 +486,7 @@ public class AgentsFlexHttpClient {
         }
     }
 
-    // ===== Utility =====
+    // ===== 辅助方法 =====
     private static String extractServerAddress(String url) {
         try {
             URI uri = new URI(url);
@@ -476,6 +505,7 @@ public class AgentsFlexHttpClient {
     }
 
     private static String sanitizeUrl(String url) {
+        // URL 的 user-info、query 和 fragment 可能包含凭证或业务参数，只保留定位服务所需的安全部分。
         try {
             URI uri = new URI(url);
             return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), null, null).toString();
@@ -494,12 +524,14 @@ public class AgentsFlexHttpClient {
     }
 
     private static Request.Builder propagateTraceContext(Request.Builder requestBuilder) {
+        // 必须从当前 runtime 取得 Propagator，不能固定使用全局 SDK，否则执行级 Route 的传播配置会失效。
         Observability.getOpenTelemetry().getPropagators().getTextMapPropagator().inject(
             Context.current(), requestBuilder, (carrier, key, value) -> carrier.header(key, value));
         return requestBuilder;
     }
 
     private static class RequestObservation {
+        /** 收到的 HTTP 状态码；请求在收到响应前失败时保持为 null。 */
         private Integer statusCode;
     }
 
@@ -508,10 +540,21 @@ public class AgentsFlexHttpClient {
         void complete(Throwable error);
     }
 
+    /**
+     * 用装饰器跟踪开放响应体的真实消费边界。读到 EOF、读取异常或显式 close 都会通知完成回调，外层 CAS
+     * 负责去重。这里在读取期间恢复 Span，便于 OkHttp/下游代码读取 {@link Span#current()}。
+     */
     private static class ObservedResponseBody extends ResponseBody {
+        /** 原始响应体，所有媒体类型、长度和读取操作都委托给它。 */
         private final ResponseBody delegate;
+
+        /** 发起请求时创建的 CLIENT Span，在响应体读取和关闭期间恢复为当前 Span。 */
         private final Span span;
+
+        /** 响应体到达 EOF、关闭或读取失败时调用的完成通知。 */
         private final ResponseCompletion completion;
+
+        /** 对原始 source 的单例包装，确保多次调用 source() 不会重复创建完成监听器。 */
         private BufferedSource source;
 
         private ObservedResponseBody(ResponseBody delegate, Span span, ResponseCompletion completion) {
@@ -568,7 +611,10 @@ public class AgentsFlexHttpClient {
     // ===== Inner class =====
 
     public static class InputStreamRequestBody extends RequestBody {
+        /** 上传内容来源；该类不预读流，也不根据 available() 推断长度。 */
         private final InputStream inputStream;
+
+        /** 上传流对应的 HTTP Content-Type。 */
         private final MediaType contentType;
 
         public InputStreamRequestBody(MediaType contentType, InputStream inputStream) {

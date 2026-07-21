@@ -36,15 +36,36 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+/**
+ * ChatModel 的 OpenTelemetry 拦截器，负责同步与流式模型调用的 Span、请求计数、耗时和错误指标。
+ *
+ * <p>拦截器不固定绑定全局 Tracer/Meter，而是在每次请求开始时读取当前 {@link ObservabilityRuntime}。
+ * 因此宿主系统可以在调用外层使用 {@link Observability#useRuntime(ObservabilityRuntime)}
+ * 选择本次执行的遥测后端。</p>
+ */
 public class ChatObservabilityInterceptor implements ChatInterceptor {
+    /** 模型响应正文写入 Span 属性时允许保留的最大字符数。 */
     private static final int MAX_RESPONSE_LENGTH_FOR_SPAN = 500;
 
+    /**
+     * runtime 到模型埋点 instrument 的弱键缓存。
+     * OTel instrument 创建后可安全复用；按 runtime 缓存保证不同 Route 使用各自 Provider，弱键则使已经
+     * 下线且无其他引用的 Route 不会仅因静态缓存而长期滞留。
+     */
     private static final Map<ObservabilityRuntime, Instruments> INSTRUMENTS = new WeakHashMap<>();
 
+    /** 某个 ObservabilityRuntime 专属的一组模型 Tracer 和 Metrics instrument。 */
     private static final class Instruments {
+        /** 创建同步和流式模型 Span 的 Tracer。 */
         private final Tracer tracer;
+
+        /** 记录全部模型请求次数的 Counter，指标名为 llm.request.count。 */
         private final LongCounter requestCount;
+
+        /** 记录端到端模型请求耗时的 Histogram，单位为秒。 */
         private final DoubleHistogram latency;
+
+        /** 只记录失败模型请求次数的 Counter。 */
         private final LongCounter errorCount;
 
         private Instruments(ObservabilityRuntime runtime) {
@@ -79,6 +100,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         enrichCorrelation(span, context);
         long startTimeNanos = System.nanoTime();
 
+        // 让下游模型客户端创建的 HTTP Span 自动成为当前模型 Span 的子节点。
         try (Scope ignored = span.makeCurrent()) {
             AiMessageResponse response = chain.proceed(chatModel, context);
             boolean success = response != null && !response.isError();
@@ -109,6 +131,8 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         String provider = valueOrUnknown(config.getProvider());
         String model = valueOrUnknown(config.getModel());
         String operation = "chatStream";
+        // 流式回调可能在另一个线程且晚于本方法返回，因此必须捕获完整 Context，而不只是捕获 Span。
+        // 完整 Context 还包含执行级 TelemetryRoute 和由宿主应用绑定的固定属性。
         Context parentContext = Context.current();
         Instruments instruments = instruments();
         Span span = instruments.tracer.spanBuilder(provider + "." + operation)
@@ -124,6 +148,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         enrichCorrelation(span, context);
         Context spanContext = parentContext.with(span);
         long startTimeNanos = System.nanoTime();
+        // 某些客户端可能重复触发 onFailure/onStop，CAS 保证指标与 span.end() 只执行一次。
         AtomicBoolean recorded = new AtomicBoolean(false);
 
         StreamResponseListener wrappedListener = new StreamResponseListener() {
@@ -182,6 +207,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             }
         };
 
+        // 启动流式请求时也恢复 spanContext，使请求建立阶段产生的 HTTP Span 保持正确父子关系。
         try (Scope ignored = spanContext.makeCurrent()) {
             chain.proceed(chatModel, context, wrappedListener);
         } catch (RuntimeException | Error error) {
@@ -214,6 +240,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         }
         span.setAttribute("llm.total_tokens", message.getEffectiveTotalTokens());
         span.setAttribute("gen_ai.usage.total_tokens", message.getEffectiveTotalTokens());
+        // Token 数属于运行元数据，可默认记录；模型正文可能包含敏感数据，只能在显式开启后采集。
         if (!Observability.isContentCaptureEnabled()) {
             return;
         }
@@ -267,6 +294,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
 
     private static Instruments instruments() {
         ObservabilityRuntime runtime = Observability.currentRuntime();
+        // WeakHashMap 不是线程安全容器，查找和创建必须在同一临界区，避免并发重复注册 instrument。
         synchronized (INSTRUMENTS) {
             Instruments instruments = INSTRUMENTS.get(runtime);
             if (instruments == null) {
