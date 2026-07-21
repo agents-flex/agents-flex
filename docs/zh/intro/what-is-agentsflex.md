@@ -98,7 +98,7 @@ Agents-Flex 原生支持 [Model Context Protocol](../chat/mcp.md)，可以管理
 
 ### Skills：把经验变成可复用、可执行的能力包
 
-[Agents-Flex Skills](../chat/skills.md) 不只是另一段 System Prompt。一个 Skill 可以同时包含说明文档、脚本、模板、参考资料和其他资源，并采用渐进式披露方式，只在需要时把详细内容交给模型，减少上下文占用。
+[Agents-Flex Skills](../skills/overview.md) 不只是另一段 System Prompt。一个 Skill 可以同时包含说明文档、脚本、模板、参考资料和其他资源，并采用渐进式披露方式，只在需要时把详细内容交给模型，减少上下文占用。
 
 同一套 Skill 可以运行在本机 `LocalSkillRuntime`，也可以运行在 OpenSandbox 或 AIO Sandbox 中。框架为模型提供 Shell、文件读写、搜索与产物发布工具，并让 Runtime 明确划定执行和文件系统边界。
 
@@ -174,7 +174,7 @@ Agents-Flex 的核心保持对 Web 框架和 ORM 的独立。你可以在裸 Jav
 
 如果你只想验证一次模型调用，从 [快速开始](../chat/getting-started.md) 出发。
 
-如果你准备构建一个真正会行动的 Agent，继续阅读 [Tool](../chat/tool.md)、[ReAct Agent](../agent/react-agent.md)、[MCP](../chat/mcp.md)、[Skills](../chat/skills.md) 和 [Subagent](../chat/subagent.md)。
+如果你准备构建一个真正会行动的 Agent，继续阅读 [Tool](../chat/tool.md)、[ReAct Agent](../agent/react-agent.md)、[MCP](../chat/mcp.md)、[Skills](../skills/overview.md) 和 [Subagent](../chat/subagent.md)。
 
 如果你正在建设企业知识与数据能力，请进入 [RAG](../rag/document.md)、[LLM Wiki](../chat/llm-wiki.md) 和 [Text2SQL](../chat/text2sql.md)。
 

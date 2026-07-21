@@ -324,7 +324,7 @@ API Key 无效、过期，或者没有访问目标模型的权限。请先在服
 - 让模型调用 Java 方法或业务 API：[Tool 工具调用](./tool.md)
 - 构建推理与行动循环：[ReAct Agent](../agent/react-agent.md)
 - 连接标准化外部工具：[MCP](./mcp.md)
-- 加载可复用的脚本与能力包：[Skills](./skills.md)
+- 加载可复用的脚本与能力包：[Skills](../skills/overview.md)
 - 接入企业文档和向量数据库：[RAG](../rag/document.md)
 - 用自然语言安全查询数据库：[Text2SQL](./text2sql.md)
 - 在多个模型节点之间负载均衡和故障切换：[模型路由](../intro/model-router.md)

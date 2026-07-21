@@ -81,7 +81,6 @@ export default defineConfig({
                     {text: 'Tool 构建', link: '/zh/chat/tool-build'},
                     {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
                     {text: 'MCP 调用', link: '/zh/chat/mcp'},
-                    {text: 'Skills', link: '/zh/chat/skills'},
                     {text: 'LLM Wiki 知识树', link: '/zh/chat/llm-wiki'},
                     {text: 'Text2SQL 智能问数', link: '/zh/chat/text2sql'},
                     {text: 'Text2SQL 拦截器', link: '/zh/chat/text2sql-interceptor'},
@@ -95,6 +94,22 @@ export default defineConfig({
                     {text: 'LLM 负载均衡/高可用', link: '/zh/intro/model-router'},
                     {text: '错误重试', link: '/zh/chat/retry'},
                     {text: '日志', link: '/zh/chat/logger'},
+                ]
+            },
+            {
+                text: 'Skills 模块',
+                items: [
+                    {text: '概述', link: '/zh/skills/overview'},
+                    {text: 'Skill 目录与开发', link: '/zh/skills/skill-package'},
+                    {text: '快速开始', link: '/zh/skills/getting-started'},
+                    {text: 'Skill Runtime', link: '/zh/skills/runtime'},
+                    {text: 'Artifact Store', link: '/zh/skills/artifact-store'},
+                    {text: 'OpenSandbox', link: '/zh/skills/open-sandbox'},
+                    {text: 'AIO Sandbox', link: '/zh/skills/aio-sandbox'},
+                    {text: 'Skill 产物', link: '/zh/skills/files'},
+                    {text: '完整示例', link: '/zh/skills/demo'},
+                    {text: '自定义 Runtime', link: '/zh/skills/custom-runtime'},
+                    {text: '故障排查与生产建议', link: '/zh/skills/troubleshooting'},
                 ]
             },
             {

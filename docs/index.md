@@ -74,7 +74,7 @@ layout: home
         </div>
         <div class="af-skills-intro__copy">
           <p>操作说明、脚本、参考资料和模板组成可复用的 Skill。统一的 SkillRuntime 接管命令与文件能力，让同一套 Skill 可以在本机开发，也可以进入远程隔离环境运行。</p>
-          <a class="af-skills-link" href="/zh/chat/skills">阅读 Skills 与 Sandbox 指南 <span aria-hidden="true">→</span></a>
+          <a class="af-skills-link" href="/zh/skills/overview">阅读 Skills 与 Sandbox 指南 <span aria-hidden="true">→</span></a>
         </div>
       </div>
       <div class="af-runtime-motion" role="img" aria-label="Skill 工作包进入 SkillRuntime 核心后，按任务分流到本机或远程 Sandbox，并输出可下载或发布的产物">
@@ -186,7 +186,7 @@ layout: home
       <a href="/zh/samples/rag">企业知识库与 RAG 问答</a>
       <a href="/zh/chat/text2sql">智能问数与数据分析</a>
       <a href="/zh/chat/mcp">MCP 工具连接与自动化</a>
-      <a href="/zh/chat/skills">Skills 与 Sandbox 隔离执行</a>
+      <a href="/zh/skills/overview">Skills 与 Sandbox 隔离执行</a>
       <a href="/zh/core/image">营销素材与创意图片生成</a>
       <a href="/zh/audio/tts-stt">语音助手与音频转写</a>
       <a href="/zh/video/video-generation">短视频与动态内容生产</a>
@@ -254,9 +254,9 @@ layout: home
         <a class="af-swiss-module" href="/zh/chat/chat-model"><span><b>01</b> MODEL</span><strong>Chat</strong><i aria-hidden="true">→</i></a>
         <a class="af-swiss-module" href="/zh/chat/tool"><span><b>02</b> AGENT</span><strong>Tool</strong><i aria-hidden="true">→</i></a>
         <a class="af-swiss-module" href="/zh/chat/mcp"><span><b>03</b> PROTOCOL</span><strong>MCP</strong><i aria-hidden="true">→</i></a>
-        <a class="af-swiss-module" href="/zh/chat/skills"><span><b>04</b> RUNTIME</span><strong>Skills</strong><i aria-hidden="true">→</i></a>
-        <a class="af-swiss-module" href="/zh/chat/skills"><span><b>05</b> ISOLATE</span><strong>OpenSandbox</strong><i aria-hidden="true">→</i></a>
-        <a class="af-swiss-module" href="/zh/chat/skills"><span><b>06</b> ISOLATE</span><strong>AIO Sandbox</strong><i aria-hidden="true">→</i></a>
+        <a class="af-swiss-module" href="/zh/skills/overview"><span><b>04</b> RUNTIME</span><strong>Skills</strong><i aria-hidden="true">→</i></a>
+        <a class="af-swiss-module" href="/zh/skills/open-sandbox"><span><b>05</b> ISOLATE</span><strong>OpenSandbox</strong><i aria-hidden="true">→</i></a>
+        <a class="af-swiss-module" href="/zh/skills/aio-sandbox"><span><b>06</b> ISOLATE</span><strong>AIO Sandbox</strong><i aria-hidden="true">→</i></a>
         <a class="af-swiss-module" href="/zh/chat/subagent"><span><b>07</b> AGENT</span><strong>Subagent</strong><i aria-hidden="true">→</i></a>
         <a class="af-swiss-module" href="/zh/chat/text2sql"><span><b>08</b> DATA</span><strong>Text2SQL</strong><i aria-hidden="true">→</i></a>
         <a class="af-swiss-module" href="/zh/chat/websearch"><span><b>09</b> SEARCH</span><strong>WebSearch</strong><i aria-hidden="true">→</i></a>
