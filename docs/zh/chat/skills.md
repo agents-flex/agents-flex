@@ -64,7 +64,8 @@ agents-flex-skills-artifact
 ├── agents-flex-skills-artifact-aliyun-oss       阿里云 OSS SDK V2 适配器
 ├── agents-flex-skills-artifact-tencent-cos      腾讯云 COS 适配器
 ├── agents-flex-skills-artifact-huawei-obs       华为云 OBS 适配器
-└── agents-flex-skills-artifact-volcengine-tos   火山引擎 TOS 适配器
+├── agents-flex-skills-artifact-volcengine-tos   火山引擎 TOS 适配器
+└── agents-flex-skills-artifact-s3                AWS S3 与 S3-compatible 适配器
 ```
 
 | Maven 模块 | 用途 | 是否创建 Sandbox |
@@ -75,6 +76,7 @@ agents-flex-skills-artifact
 | `agents-flex-skills-artifact-tencent-cos` | 在腾讯云 COS 持久化 Skill ZIP，并缓存到当前节点 | 否 |
 | `agents-flex-skills-artifact-huawei-obs` | 在华为云 OBS 持久化 Skill ZIP，并缓存到当前节点 | 否 |
 | `agents-flex-skills-artifact-volcengine-tos` | 在火山引擎 TOS 持久化 Skill ZIP，并缓存到当前节点 | 否 |
+| `agents-flex-skills-artifact-s3` | 在 AWS S3 或 S3-compatible 存储中持久化 Skill ZIP | 否 |
 | `agents-flex-skills-open-sandbox` | 连接 OpenSandbox Server，按需创建 Sandbox 实例 | 是 |
 | `agents-flex-skills-aio-sandbox` | 连接已经运行的 AIO Sandbox 服务 | 否 |
 
@@ -308,6 +310,20 @@ Builder 需要配置 OBS Endpoint 和 Bucket；凭证可以来自环境变量、
 
 Builder 需要配置 TOS Region、Endpoint 和 Bucket；凭证可以来自环境变量、静态 AK/SK/Token 或
 `CredentialsProvider`。完整示例见模块 README。
+
+### S3 Artifact Store
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-skills-artifact-s3</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+```
+
+该模块使用 AWS SDK for Java V2，可连接 AWS S3、RustFS、MinIO、Ceph RGW 等 S3-compatible
+对象存储。AWS S3 可以只配置 Region 和 Bucket，并使用 SDK 默认凭证链；兼容存储通常还需要配置
+`endpoint(...)` 和 `forcePathStyle(true)`。完整示例见模块 README。
 
 ## 快速开始：LocalSkillRuntime
 

@@ -82,6 +82,7 @@
         <tencent.cos.version>5.6.273</tencent.cos.version>
         <huawei.obs.version>3.26.6</huawei.obs.version>
         <volcengine.tos.version>2.9.16</volcengine.tos.version>
+        <aws.sdk.version>2.48.4</aws.sdk.version>
     </properties>
 
 
@@ -360,6 +361,11 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-skills-artifact-s3</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-skills-open-sandbox</artifactId>
                 <version>${revision}</version>
             </dependency>
@@ -392,6 +398,11 @@
                 <groupId>com.volcengine</groupId>
                 <artifactId>ve-tos-java-sdk</artifactId>
                 <version>${volcengine.tos.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>s3</artifactId>
+                <version>${aws.sdk.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>

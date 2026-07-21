@@ -19,5 +19,6 @@
         <module>agents-flex-skills-artifact-tencent-cos</module>
         <module>agents-flex-skills-artifact-huawei-obs</module>
         <module>agents-flex-skills-artifact-volcengine-tos</module>
+        <module>agents-flex-skills-artifact-s3</module>
     </modules>
 </project>

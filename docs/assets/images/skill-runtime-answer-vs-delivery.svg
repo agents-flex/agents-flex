@@ -1,0 +1,73 @@
+<svg width="1400" height="788" viewBox="0 0 1400 788" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>从回答问题到交付结果</title>
+  <desc>左侧展示 Agent 返回冗长的 PPT 制作步骤，右侧展示 Agent 直接交付经过校验的周报 PPT 下载链接。</desc>
+  <defs>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" stroke="#252B26"/></pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity=".3"/></filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M1 1L10 6L1 11" fill="none" stroke="#E5FF5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+    <style>.sans{font-family:"Inter","PingFang SC","Microsoft YaHei",sans-serif}.mono{font-family:"JetBrains Mono","SFMono-Regular","Menlo",monospace}</style>
+  </defs>
+  <rect width="1400" height="788" fill="#111410"/><rect width="1400" height="788" fill="url(#grid)" opacity=".7"/>
+  <rect x="30" y="30" width="1340" height="728" rx="8" stroke="#343B35" stroke-width="2"/>
+  <g class="sans">
+    <text x="70" y="96" class="mono" font-size="15" font-weight="800" fill="#3BE6D0">THE DELIVERY GAP</text>
+    <text x="70" y="148" font-size="38" font-weight="800" fill="#F4F7EE">老板要的是 PPT，不是 PPT 教程</text>
+    <text x="70" y="184" font-size="18" fill="#929C94">同一个请求，两种完全不同的 Agent 价值。</text>
+  </g>
+
+  <g filter="url(#shadow)" class="sans">
+    <rect x="70" y="236" width="492" height="424" rx="8" fill="#171B18" stroke="#493530" stroke-width="2"/>
+    <rect x="96" y="264" width="104" height="30" rx="4" fill="#3A2823"/>
+    <text x="112" y="285" class="mono" font-size="13" font-weight="800" fill="#FF806D">ONLY CHAT</text>
+    <text x="96" y="338" font-size="25" font-weight="750" fill="#F4F7EE">会回答，但没有完成任务</text>
+    <rect x="96" y="374" width="440" height="214" rx="6" fill="#202622" stroke="#3D463F"/>
+    <circle cx="121" cy="402" r="8" fill="#FF806D"/>
+    <text x="141" y="408" font-size="16" font-weight="650" fill="#D9DFD8">下面是制作 PPT 的步骤：</text>
+    <g fill="#7F8981">
+      <rect x="121" y="442" width="356" height="8" rx="4"/><rect x="121" y="466" width="316" height="8" rx="4"/>
+      <rect x="121" y="490" width="374" height="8" rx="4"/><rect x="121" y="514" width="280" height="8" rx="4"/>
+      <rect x="121" y="538" width="332" height="8" rx="4"/>
+    </g>
+    <circle cx="503" cy="618" r="18" fill="#FF6B57"/><path d="M496 611L510 625M510 611L496 625" stroke="#111410" stroke-width="3" stroke-linecap="round"/>
+    <text x="96" y="627" class="mono" font-size="14" font-weight="700" fill="#FF806D">NO ARTIFACT</text>
+  </g>
+
+  <path d="M597 450H779" stroke="#E5FF5A" stroke-width="3" stroke-dasharray="7 8" marker-end="url(#arrow)"/>
+  <g class="sans">
+    <rect x="617" y="411" width="142" height="30" rx="4" fill="#E5FF5A"/>
+    <text x="688" y="432" text-anchor="middle" class="mono" font-size="13" font-weight="900" fill="#111410">SKILL RUNTIME</text>
+  </g>
+
+  <g filter="url(#shadow)" class="sans">
+    <rect x="812" y="236" width="518" height="424" rx="8" fill="#171B18" stroke="#2D655A" stroke-width="2"/>
+    <rect x="838" y="264" width="112" height="30" rx="4" fill="#233831"/>
+    <text x="854" y="285" class="mono" font-size="13" font-weight="800" fill="#3BE6D0">DELIVERED</text>
+    <text x="838" y="338" font-size="25" font-weight="750" fill="#F4F7EE">会执行，并交付可用成品</text>
+    <rect x="838" y="374" width="466" height="214" rx="6" fill="#202622" stroke="#3D463F"/>
+    <text x="864" y="412" font-size="16" font-weight="650" fill="#D9DFD8">本周经营分析已生成并通过校验。</text>
+    <g transform="translate(864 444)">
+      <rect width="80" height="104" rx="6" fill="#F4F7EE"/>
+      <path d="M54 0L80 26H54V0Z" fill="#D8DED6"/>
+      <rect x="13" y="15" width="28" height="28" rx="4" fill="#FF6B57"/>
+      <text x="27" y="35" text-anchor="middle" class="mono" font-size="12" font-weight="900" fill="#111410">P</text>
+      <text x="13" y="72" class="mono" font-size="12" font-weight="900" fill="#111410">WEEKLY</text>
+      <text x="13" y="89" class="mono" font-size="12" font-weight="900" fill="#111410">REPORT</text>
+    </g>
+    <g transform="translate(968 444)">
+      <text x="0" y="18" class="mono" font-size="14" font-weight="800" fill="#F4F7EE">weekly-report.pptx</text>
+      <text x="0" y="47" class="mono" font-size="13" fill="#8F9A91">10 pages · 4.8 MB</text>
+      <circle cx="9" cy="76" r="9" fill="#3BE6D0"/><path d="M5 76L8 79L13 73" stroke="#111410" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="27" y="81" class="mono" font-size="13" font-weight="700" fill="#3BE6D0">DATA CHECKED</text>
+    </g>
+    <rect x="838" y="606" width="466" height="34" rx="5" fill="#3BE6D0"/>
+    <path d="M862 615V630M856 624L862 630L868 624" stroke="#111410" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="884" y="628" class="mono" font-size="14" font-weight="900" fill="#111410">下载本周经营分析.pptx</text>
+  </g>
+
+  <g class="sans">
+    <text x="70" y="716" font-size="18" font-weight="650" fill="#8F9A91">过去：模型告诉你怎么做</text>
+    <circle cx="323" cy="710" r="4" fill="#E5FF5A"/>
+    <text x="347" y="716" font-size="18" font-weight="750" fill="#F4F7EE">现在：Agent 把成品交到你手上</text>
+    <text x="1330" y="716" text-anchor="end" class="mono" font-size="13" font-weight="700" fill="#69736B">AGENTS-FLEX</text>
+  </g>
+</svg>

@@ -1,0 +1,80 @@
+<svg width="1400" height="788" viewBox="0 0 1400 788" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>经营周报完整生产链路</title>
+  <desc>Skill Runtime 读取 Excel，调用 Python 清洗数据并生成图表，套用 PPT 模板，校验数字和页数，发布最终文件。</desc>
+  <defs>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" stroke="#252B26"/></pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000" flood-opacity=".3"/></filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M1 1L10 6L1 11" fill="none" stroke="#6C766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+    <style>.sans{font-family:"Inter","PingFang SC","Microsoft YaHei",sans-serif}.mono{font-family:"JetBrains Mono","SFMono-Regular","Menlo",monospace}</style>
+  </defs>
+  <rect width="1400" height="788" fill="#111410"/><rect width="1400" height="788" fill="url(#grid)" opacity=".7"/>
+  <rect x="30" y="30" width="1340" height="728" rx="8" stroke="#343B35" stroke-width="2"/>
+  <g class="sans">
+    <text x="70" y="96" class="mono" font-size="15" font-weight="800" fill="#3BE6D0">ONE REQUEST · FULL PIPELINE</text>
+    <text x="70" y="148" font-size="38" font-weight="800" fill="#F4F7EE">一句话背后，是一整条生产链路</text>
+    <text x="70" y="184" font-size="18" fill="#929C94">“帮我生成本周经营分析，套公司模板，检查数字，最后给我下载链接。”</text>
+  </g>
+
+  <path d="M183 419H1218" stroke="#3A433C" stroke-width="3" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)" class="sans">
+    <g transform="translate(70 306)">
+      <rect width="190" height="228" rx="8" fill="#171B18" stroke="#445048" stroke-width="2"/>
+      <rect x="24" y="24" width="54" height="64" rx="5" fill="#F4F7EE"/>
+      <path d="M60 24L78 42H60V24Z" fill="#D8DED6"/><rect x="34" y="47" width="22" height="22" rx="3" fill="#3BE6D0"/>
+      <path d="M39 52H51M39 58H51M39 64H51" stroke="#111410" stroke-width="2"/>
+      <text x="24" y="130" class="mono" font-size="13" font-weight="800" fill="#3BE6D0">01 / INPUT</text>
+      <text x="24" y="164" font-size="21" font-weight="750" fill="#F4F7EE">读取 Excel</text>
+      <text x="24" y="193" font-size="14" fill="#8F9A91">销售原始数据</text>
+    </g>
+    <g transform="translate(284 306)">
+      <rect width="190" height="228" rx="8" fill="#171B18" stroke="#445048" stroke-width="2"/>
+      <rect x="24" y="24" width="64" height="64" rx="5" fill="#E5FF5A"/>
+      <path d="M39 46L49 56L39 66M57 66H73" stroke="#111410" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="24" y="130" class="mono" font-size="13" font-weight="800" fill="#E5FF5A">02 / PROCESS</text>
+      <text x="24" y="164" font-size="21" font-weight="750" fill="#F4F7EE">Python 清洗</text>
+      <text x="24" y="193" font-size="14" fill="#8F9A91">统一指标口径</text>
+    </g>
+    <g transform="translate(498 306)">
+      <rect width="190" height="228" rx="8" fill="#171B18" stroke="#445048" stroke-width="2"/>
+      <rect x="24" y="24" width="64" height="64" rx="5" fill="#3BE6D0"/>
+      <path d="M38 72V59M51 72V42M64 72V51M77 72V35" stroke="#111410" stroke-width="4" stroke-linecap="round"/>
+      <text x="24" y="130" class="mono" font-size="13" font-weight="800" fill="#3BE6D0">03 / VISUALIZE</text>
+      <text x="24" y="164" font-size="21" font-weight="750" fill="#F4F7EE">生成图表</text>
+      <text x="24" y="193" font-size="14" fill="#8F9A91">销售额与区域排名</text>
+    </g>
+    <g transform="translate(712 306)">
+      <rect width="190" height="228" rx="8" fill="#171B18" stroke="#445048" stroke-width="2"/>
+      <rect x="24" y="24" width="64" height="64" rx="5" fill="#FF806D"/>
+      <rect x="37" y="38" width="38" height="28" rx="2" fill="#111410"/><rect x="42" y="43" width="12" height="18" fill="#F4F7EE"/><path d="M59 46H70M59 52H70M59 58H67" stroke="#F4F7EE" stroke-width="2"/>
+      <text x="24" y="130" class="mono" font-size="13" font-weight="800" fill="#FF806D">04 / COMPOSE</text>
+      <text x="24" y="164" font-size="21" font-weight="750" fill="#F4F7EE">套 PPT 模板</text>
+      <text x="24" y="193" font-size="14" fill="#8F9A91">品牌色与版式</text>
+    </g>
+    <g transform="translate(926 306)">
+      <rect width="190" height="228" rx="8" fill="#171B18" stroke="#445048" stroke-width="2"/>
+      <rect x="24" y="24" width="64" height="64" rx="5" fill="#F3C65A"/>
+      <path d="M56 37L73 43V54C73 65 65 73 56 77C47 73 39 65 39 54V43L56 37Z" fill="none" stroke="#111410" stroke-width="3"/><path d="M48 55L54 61L65 49" stroke="#111410" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="24" y="130" class="mono" font-size="13" font-weight="800" fill="#F3C65A">05 / VERIFY</text>
+      <text x="24" y="164" font-size="21" font-weight="750" fill="#F4F7EE">自动校验</text>
+      <text x="24" y="193" font-size="14" fill="#8F9A91">数字 · 页数 · 格式</text>
+    </g>
+    <g transform="translate(1140 306)">
+      <rect width="190" height="228" rx="8" fill="#233831" stroke="#3BE6D0" stroke-width="2"/>
+      <rect x="24" y="24" width="64" height="64" rx="5" fill="#3BE6D0"/>
+      <path d="M56 38V69M45 58L56 69L67 58" stroke="#111410" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="24" y="130" class="mono" font-size="13" font-weight="800" fill="#3BE6D0">06 / PUBLISH</text>
+      <text x="24" y="164" font-size="21" font-weight="750" fill="#F4F7EE">发布文件</text>
+      <text x="24" y="193" font-size="14" fill="#B8C4BA">返回下载链接</text>
+    </g>
+  </g>
+
+  <g class="sans">
+    <rect x="70" y="586" width="1260" height="84" rx="8" fill="#171B18" stroke="#3A433C"/>
+    <rect x="92" y="606" width="154" height="44" rx="5" fill="#E5FF5A"/>
+    <text x="169" y="634" text-anchor="middle" class="mono" font-size="14" font-weight="900" fill="#111410">SKILL RUNTIME</text>
+    <text x="276" y="634" font-size="17" font-weight="650" fill="#D9DFD8">模板、脚本、规则和验收流程，都来自团队已经验证过的最佳实践。</text>
+    <text x="1308" y="634" text-anchor="end" class="mono" font-size="13" font-weight="700" fill="#3BE6D0">ARTIFACT READY</text>
+    <text x="70" y="716" font-size="18" font-weight="750" fill="#F4F7EE">看似只回复一句“这是你的 PPT”，背后已经完成整条生产链路。</text>
+    <text x="1330" y="716" text-anchor="end" class="mono" font-size="13" font-weight="700" fill="#69736B">AGENTS-FLEX</text>
+  </g>
+</svg>

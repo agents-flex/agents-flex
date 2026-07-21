@@ -1,0 +1,226 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Agents-Flex Skill Runtime：Java Agent 最后一块拼图</title>
+  <desc>Agent Framework 将思考能力交给 Skill Runtime，Runtime 在安全沙箱中调用 Shell、Python、文件和团队 Skill，最终交付 PPT、报表和下载链接。</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" stroke="#252B26" stroke-width="1"/>
+    </pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    <filter id="runtimeGlow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="0" stdDeviation="18" flood-color="#E5FF5A" flood-opacity="0.18"/>
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <marker id="arrowCyan" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1 1L10 6L1 11" fill="none" stroke="#3BE6D0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowLight" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1 1L10 6L1 11" fill="none" stroke="#F4F7EE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .sans { font-family: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; }
+      .mono { font-family: "JetBrains Mono", "SFMono-Regular", "Menlo", "Consolas", monospace; }
+      .label { font-family: "JetBrains Mono", "SFMono-Regular", "Menlo", monospace; font-size: 15px; font-weight: 700; letter-spacing: 2px; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#111410"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.72"/>
+  <rect x="32" y="32" width="1536" height="836" rx="8" stroke="#343B35" stroke-width="2"/>
+
+  <!-- Header -->
+  <g class="sans">
+    <g transform="translate(76 76)">
+      <path d="M0 13L13 0L26 13L13 26Z" fill="#F4F7EE"/>
+      <path d="M10 13L23 0L36 13L23 26Z" fill="#3BE6D0"/>
+      <text x="52" y="21" font-size="20" font-weight="750" fill="#F4F7EE">AGENTS-FLEX</text>
+      <text x="214" y="21" class="mono" font-size="14" font-weight="700" fill="#7C867D">/ SKILL RUNTIME</text>
+    </g>
+    <text x="76" y="174" font-size="52" font-weight="800" fill="#F4F7EE">Java Agent 最后一块拼图</text>
+    <text x="76" y="216" font-size="21" font-weight="500" fill="#A7B0A8">Framework 负责思考，Runtime 负责执行，Agent 最终交付成品。</text>
+  </g>
+
+  <!-- Section labels -->
+  <text x="86" y="289" class="label" fill="#7C867D">01 / THINK</text>
+  <text x="620" y="289" class="label" fill="#E5FF5A">02 / EXECUTE</text>
+  <text x="1151" y="289" class="label" fill="#7C867D">03 / DELIVER</text>
+
+  <!-- Framework card -->
+  <g filter="url(#shadow)">
+    <rect x="76" y="310" width="430" height="368" rx="8" fill="#171B18" stroke="#3A433C" stroke-width="2"/>
+  </g>
+  <g class="sans">
+    <rect x="101" y="337" width="112" height="30" rx="4" fill="#233831"/>
+    <text x="116" y="358" class="mono" font-size="14" font-weight="700" fill="#3BE6D0">FRAMEWORK</text>
+    <text x="101" y="408" font-size="29" font-weight="750" fill="#F4F7EE">Agent 如何思考</text>
+    <text x="101" y="440" font-size="16" fill="#8F9A91">理解、推理、规划与调用能力</text>
+
+    <g class="mono" font-size="15" font-weight="650">
+      <g transform="translate(101 480)">
+        <rect width="112" height="48" rx="6" fill="#202622" stroke="#445048"/>
+        <circle cx="22" cy="24" r="5" fill="#3BE6D0"/>
+        <text x="38" y="30" fill="#D9DFD8">Chat</text>
+      </g>
+      <g transform="translate(225 480)">
+        <rect width="112" height="48" rx="6" fill="#202622" stroke="#445048"/>
+        <circle cx="22" cy="24" r="5" fill="#3BE6D0"/>
+        <text x="38" y="30" fill="#D9DFD8">Prompt</text>
+      </g>
+      <g transform="translate(349 480)">
+        <rect width="126" height="48" rx="6" fill="#202622" stroke="#445048"/>
+        <circle cx="22" cy="24" r="5" fill="#3BE6D0"/>
+        <text x="38" y="30" fill="#D9DFD8">Memory</text>
+      </g>
+      <g transform="translate(101 540)">
+        <rect width="112" height="48" rx="6" fill="#202622" stroke="#445048"/>
+        <circle cx="22" cy="24" r="5" fill="#3BE6D0"/>
+        <text x="38" y="30" fill="#D9DFD8">RAG</text>
+      </g>
+      <g transform="translate(225 540)">
+        <rect width="112" height="48" rx="6" fill="#202622" stroke="#445048"/>
+        <circle cx="22" cy="24" r="5" fill="#3BE6D0"/>
+        <text x="38" y="30" fill="#D9DFD8">Tools</text>
+      </g>
+      <g transform="translate(349 540)">
+        <rect width="126" height="48" rx="6" fill="#202622" stroke="#445048"/>
+        <circle cx="22" cy="24" r="5" fill="#3BE6D0"/>
+        <text x="38" y="30" fill="#D9DFD8">MCP</text>
+      </g>
+    </g>
+
+    <path d="M101 624H481" stroke="#303832" stroke-width="2"/>
+    <text x="101" y="651" class="mono" font-size="13" fill="#7C867D">OUTPUT</text>
+    <text x="171" y="651" class="mono" font-size="13" font-weight="700" fill="#D9DFD8">plan.json</text>
+  </g>
+
+  <!-- Flow: Framework to Runtime -->
+  <path d="M506 494H586" stroke="#3BE6D0" stroke-width="3" stroke-dasharray="7 8" marker-end="url(#arrowCyan)"/>
+  <circle cx="545" cy="494" r="6" fill="#111410" stroke="#3BE6D0" stroke-width="2"/>
+
+  <!-- Runtime puzzle piece -->
+  <g filter="url(#runtimeGlow)">
+    <path d="M606 310H752C752 337 774 359 801 359C828 359 850 337 850 310H1010V458C983 458 961 480 961 507C961 534 983 556 1010 556V678H850C850 651 828 629 801 629C774 629 752 651 752 678H606V556C633 556 655 534 655 507C655 480 633 458 606 458V310Z" fill="#E5FF5A"/>
+  </g>
+  <g class="sans">
+    <rect x="687" y="337" width="228" height="30" rx="4" fill="#111410"/>
+    <text x="801" y="358" text-anchor="middle" class="mono" font-size="14" font-weight="800" fill="#E5FF5A">THE MISSING LAYER</text>
+    <text x="801" y="413" text-anchor="middle" font-size="31" font-weight="850" fill="#111410">Skill Runtime</text>
+    <text x="801" y="442" text-anchor="middle" font-size="15" font-weight="650" fill="#3E4717">稳定 · 安全 · 可重复执行</text>
+
+    <g class="mono" font-size="14" font-weight="800" fill="#111410">
+      <g transform="translate(687 478)">
+        <rect width="105" height="44" rx="5" fill="#F4F7EE" fill-opacity="0.72" stroke="#111410" stroke-opacity="0.22"/>
+        <path d="M17 18L24 22L17 26M29 27H38" stroke="#111410" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="48" y="27">Shell</text>
+      </g>
+      <g transform="translate(804 478)">
+        <rect width="111" height="44" rx="5" fill="#F4F7EE" fill-opacity="0.72" stroke="#111410" stroke-opacity="0.22"/>
+        <path d="M17 17H38V28H17ZM21 13V17M34 28V32" stroke="#111410" stroke-width="2" stroke-linecap="round"/>
+        <text x="47" y="27">Python</text>
+      </g>
+      <g transform="translate(687 534)">
+        <rect width="105" height="44" rx="5" fill="#F4F7EE" fill-opacity="0.72" stroke="#111410" stroke-opacity="0.22"/>
+        <path d="M17 17H25L29 20H39V31H17Z" fill="none" stroke="#111410" stroke-width="2" stroke-linejoin="round"/>
+        <text x="48" y="27">Files</text>
+      </g>
+      <g transform="translate(804 534)">
+        <rect width="111" height="44" rx="5" fill="#F4F7EE" fill-opacity="0.72" stroke="#111410" stroke-opacity="0.22"/>
+        <path d="M27 14L38 18V25C38 31 33 34 27 37C21 34 16 31 16 25V18L27 14Z" fill="none" stroke="#111410" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M23 25L26 28L32 21" stroke="#111410" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="47" y="27">Sandbox</text>
+      </g>
+    </g>
+    <text x="801" y="608" text-anchor="middle" class="mono" font-size="13" font-weight="750" fill="#3E4717">Local / OpenSandbox / AIO Sandbox</text>
+  </g>
+
+  <!-- Flow: Runtime to deliverables -->
+  <path d="M1010 494H1113" stroke="#F4F7EE" stroke-width="3" stroke-dasharray="7 8" marker-end="url(#arrowLight)"/>
+  <circle cx="1054" cy="494" r="6" fill="#111410" stroke="#F4F7EE" stroke-width="2"/>
+
+  <!-- Deliverable stack -->
+  <g filter="url(#shadow)" class="sans">
+    <rect x="1140" y="310" width="384" height="368" rx="8" fill="#171B18" stroke="#3A433C" stroke-width="2"/>
+    <rect x="1165" y="337" width="92" height="30" rx="4" fill="#3A2823"/>
+    <text x="1180" y="358" class="mono" font-size="14" font-weight="700" fill="#FF806D">RESULT</text>
+    <text x="1165" y="408" font-size="29" font-weight="750" fill="#F4F7EE">Agent 交付成品</text>
+    <text x="1165" y="440" font-size="16" fill="#8F9A91">不是教程，而是可直接使用的文件</text>
+
+    <g transform="translate(1165 474)">
+      <rect width="101" height="126" rx="6" fill="#F4F7EE"/>
+      <path d="M69 0L101 32H69V0Z" fill="#D9DED6"/>
+      <rect x="16" y="17" width="32" height="32" rx="5" fill="#FF6B57"/>
+      <text x="32" y="39" text-anchor="middle" class="mono" font-size="13" font-weight="900" fill="#111410">P</text>
+      <text x="16" y="79" class="mono" font-size="16" font-weight="900" fill="#111410">WEEKLY</text>
+      <text x="16" y="100" class="mono" font-size="16" font-weight="900" fill="#111410">REPORT</text>
+      <rect x="16" y="110" width="56" height="4" fill="#FF6B57"/>
+    </g>
+
+    <g transform="translate(1282 474)">
+      <rect width="101" height="126" rx="6" fill="#F4F7EE"/>
+      <path d="M69 0L101 32H69V0Z" fill="#D9DED6"/>
+      <rect x="16" y="17" width="32" height="32" rx="5" fill="#3BE6D0"/>
+      <path d="M23 39V29M31 39V23M39 39V33" stroke="#111410" stroke-width="3" stroke-linecap="round"/>
+      <text x="16" y="79" class="mono" font-size="16" font-weight="900" fill="#111410">DATA</text>
+      <text x="16" y="100" class="mono" font-size="16" font-weight="900" fill="#111410">CHECKED</text>
+      <rect x="16" y="110" width="56" height="4" fill="#3BE6D0"/>
+    </g>
+
+    <g transform="translate(1399 474)">
+      <rect width="101" height="126" rx="6" fill="#F4F7EE"/>
+      <path d="M69 0L101 32H69V0Z" fill="#D9DED6"/>
+      <rect x="16" y="17" width="32" height="32" rx="5" fill="#F3C65A"/>
+      <path d="M32 22V40M24 32L32 40L40 32" stroke="#111410" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="16" y="79" class="mono" font-size="16" font-weight="900" fill="#111410">READY</text>
+      <text x="16" y="100" class="mono" font-size="16" font-weight="900" fill="#111410">TO SEND</text>
+      <rect x="16" y="110" width="56" height="4" fill="#F3C65A"/>
+    </g>
+
+    <g transform="translate(1165 619)">
+      <circle cx="12" cy="12" r="12" fill="#3BE6D0"/>
+      <path d="M7 12L11 16L18 8" stroke="#111410" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="36" y="17" class="mono" font-size="14" font-weight="750" fill="#D9DFD8">artifact://weekly-report.pptx</text>
+    </g>
+  </g>
+
+  <!-- Production rail -->
+  <g class="sans">
+    <path d="M76 740H1524" stroke="#343B35" stroke-width="2"/>
+    <text x="76" y="784" class="label" fill="#7C867D">PRODUCTION READY</text>
+
+    <g transform="translate(306 753)">
+      <rect width="184" height="54" rx="6" fill="#171B18" stroke="#445048"/>
+      <path d="M24 20H42V35H24ZM28 16H38" stroke="#3BE6D0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="56" y="33" class="mono" font-size="14" font-weight="700" fill="#D9DFD8">Skill Artifact</text>
+    </g>
+    <path d="M502 780H562" stroke="#59635B" stroke-width="2" marker-end="url(#arrowLight)"/>
+    <g transform="translate(578 753)">
+      <rect width="258" height="54" rx="6" fill="#171B18" stroke="#445048"/>
+      <path d="M24 33C19 33 16 30 16 26C16 22 19 19 23 19C25 14 30 12 35 14C38 15 40 18 41 21C46 21 49 24 49 28C49 31 46 33 42 33H24Z" fill="none" stroke="#F3C65A" stroke-width="2"/>
+      <text x="62" y="33" class="mono" font-size="14" font-weight="700" fill="#D9DFD8">OSS · COS · OBS · TOS</text>
+    </g>
+    <path d="M848 780H908" stroke="#59635B" stroke-width="2" marker-end="url(#arrowLight)"/>
+    <g transform="translate(924 753)">
+      <rect width="224" height="54" rx="6" fill="#171B18" stroke="#445048"/>
+      <path d="M19 18H45V36H19ZM25 23H39M25 29H39" stroke="#FF806D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="58" y="33" class="mono" font-size="14" font-weight="700" fill="#D9DFD8">K8s Node Cache</text>
+    </g>
+    <path d="M1160 780H1220" stroke="#59635B" stroke-width="2" marker-end="url(#arrowLight)"/>
+    <g transform="translate(1236 753)">
+      <rect width="288" height="54" rx="6" fill="#233831" stroke="#3BE6D0"/>
+      <circle cx="27" cy="27" r="10" fill="#3BE6D0"/>
+      <path d="M22 27L26 31L33 23" stroke="#111410" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="48" y="33" class="mono" font-size="14" font-weight="800" fill="#F4F7EE">SAFE DELIVERY</text>
+    </g>
+  </g>
+
+  <!-- Footer statement -->
+  <g class="sans">
+    <text x="76" y="846" font-size="17" font-weight="650" fill="#8F9A91">从 Prompt 到 Runtime</text>
+    <circle cx="262" cy="840" r="3" fill="#3BE6D0"/>
+    <text x="282" y="846" font-size="17" font-weight="650" fill="#8F9A91">从回答到交付</text>
+    <circle cx="436" cy="840" r="3" fill="#E5FF5A"/>
+    <text x="456" y="846" font-size="17" font-weight="650" fill="#F4F7EE">从 Demo 到生产</text>
+    <text x="1524" y="846" text-anchor="end" class="mono" font-size="13" font-weight="700" fill="#7C867D">agentsflex.com</text>
+  </g>
+</svg>
