@@ -90,14 +90,14 @@ public class AgentsFlexHttpClient {
         private Instruments(ObservabilityRuntime runtime) {
             this.tracer = runtime.getTracer();
             Meter meter = runtime.getMeter();
-            this.requestCount = meter.counterBuilder("http.client.request.count")
+            this.requestCount = meter.counterBuilder("agentsflex.http.client.request.count")
                 .setDescription("Total number of HTTP client requests")
                 .build();
             this.latency = meter.histogramBuilder("http.client.request.duration")
                 .setDescription("HTTP client request duration in seconds")
                 .setUnit("s")
                 .build();
-            this.errorCount = meter.counterBuilder("http.client.request.error.count")
+            this.errorCount = meter.counterBuilder("agentsflex.http.client.request.error.count")
                 .setDescription("Total number of HTTP client request errors")
                 .build();
         }
@@ -337,7 +337,6 @@ public class AgentsFlexHttpClient {
             observation.statusCode = statusCode;
         }
         if (currentSpan != null && currentSpan != Span.getInvalid()) {
-            currentSpan.setAttribute("http.status_code", statusCode);
             currentSpan.setAttribute("http.response.status_code", statusCode);
             if (statusCode >= 400) {
                 currentSpan.setStatus(StatusCode.ERROR, "HTTP " + statusCode);
@@ -430,9 +429,7 @@ public class AgentsFlexHttpClient {
         String safeUrl = sanitizeUrl(url);
         Span span = instruments.tracer.spanBuilder("http.client.request")
             .setSpanKind(SpanKind.CLIENT)
-            .setAttribute("http.method", method)
             .setAttribute("http.request.method", method)
-            .setAttribute("http.url", safeUrl)
             .setAttribute("url.full", safeUrl)
             .setAttribute("server.address", host)
             .startSpan();
@@ -459,9 +456,8 @@ public class AgentsFlexHttpClient {
                                           Integer statusCode, long startTime) {
         double latency = (System.nanoTime() - startTime) / 1_000_000_000.0;
         AttributesBuilder attributesBuilder = Attributes.builder()
-            .put(AttributeKey.stringKey("http.method"), method)
-            .put(AttributeKey.stringKey("server.address"), host)
-            .put(AttributeKey.booleanKey("http.success"), success);
+            .put(AttributeKey.stringKey("http.request.method"), method)
+            .put(AttributeKey.stringKey("server.address"), host);
         if (statusCode != null) {
             attributesBuilder.put(AttributeKey.longKey("http.response.status_code"), statusCode.longValue());
         }

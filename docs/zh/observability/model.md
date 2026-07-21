@@ -57,19 +57,26 @@ agentsflex.otel.enabled=true
 
 | 属性 | 条件 | 说明 |
 | --- | --- | --- |
-| `llm.provider` | 始终 | 模型 Provider |
-| `llm.model` | 始终 | 模型名称 |
-| `llm.operation` | 始终 | `chat` 或 `chatStream` |
-| `gen_ai.provider.name` | 始终 | GenAI Provider 属性 |
-| `gen_ai.request.model` | 始终 | GenAI 请求模型属性 |
+| `gen_ai.provider.name` | 始终 | 提供模型服务的厂商或平台 |
+| `gen_ai.request.model` | 始终 | 本次请求实际使用的模型；优先取 `ChatOptions.model` |
 | `gen_ai.operation.name` | 始终 | 当前为 `chat` |
-| `llm.total_tokens` | 有响应消息 | 框架计算的有效总 Token |
-| `gen_ai.usage.total_tokens` | 有响应消息 | 同一 Token 数据的 GenAI 属性 |
+| `gen_ai.request.max_tokens` | ChatOptions 已设置 | 最大输出 Token 数 |
+| `gen_ai.request.temperature` | ChatOptions 已设置 | temperature 参数 |
+| `gen_ai.request.top_p` | ChatOptions 已设置 | top-p 参数 |
+| `gen_ai.request.top_k` | ChatOptions 已设置 | top-k 参数 |
+| `gen_ai.request.stop_sequences` | ChatOptions 已设置且非空 | 停止序列数组 |
+| `gen_ai.usage.input_tokens` | 可取得 Usage | 输入 Token；优先服务端值，缺失时使用本地统计 |
+| `gen_ai.usage.output_tokens` | 可取得 Usage | 输出 Token；优先服务端值，缺失时使用本地统计 |
+| `gen_ai.response.finish_reasons` | 模型返回结束原因 | 例如 `stop`、`length`、`tool_calls` |
 | `agentsflex.bot.id` | ChatOptions 已设置 | 宿主系统业务 Bot ID |
 | `gen_ai.conversation.id` | ChatOptions 已设置 | 会话关联 ID |
 | `enduser.id` | ChatOptions 已设置 | 账号或最终用户关联 ID |
 | `agentsflex.turn.id` | ChatOptions 已设置 | 当前会话中的单次交互 ID |
-| `llm.response` | 开启内容采集且存在响应 | 最多 500 个字符 |
+| `agentsflex.gen_ai.response.content` | 开启内容采集且存在响应 | 脱敏后的响应正文，最多 500 个字符 |
+
+上述模型语义属性采用 OpenTelemetry GenAI 语义约定，便于不同 APM 识别同一种数据。响应正文没有使用看似标准的
+`gen_ai.*` 自定义名称，而是放在 `agentsflex.*` 下，避免与标准结构化消息属性产生冲突。旧的 `llm.*` 属性
+不再写入。
 
 当前 Chat interceptor 不把 Prompt 写入 Span。`agentsflex.otel.capture.content=true` 只会增加模型响应属性；
 是否允许响应离开业务系统仍应由应用的数据策略决定。
@@ -81,19 +88,18 @@ agentsflex.otel.enabled=true
 
 | Metric | 类型 | 单位 | 说明 |
 | --- | --- | --- | --- |
-| `llm.request.count` | Counter | 次 | 模型请求总数 |
-| `llm.request.latency` | Histogram | 秒 | 同步或完整流式请求耗时 |
-| `llm.request.error.count` | Counter | 次 | 失败请求数 |
+| `agentsflex.gen_ai.request.count` | Counter | 次 | 模型请求总数，Agents-Flex 扩展指标 |
+| `gen_ai.client.operation.duration` | Histogram | 秒 | 同步或完整流式请求耗时 |
+| `gen_ai.client.token.usage` | Histogram | Token | 输入或输出 Token 用量 |
+| `agentsflex.gen_ai.request.error.count` | Counter | 次 | 失败请求数，Agents-Flex 扩展指标 |
 
 Metrics 属性包括：
 
-- `llm.provider`
-- `llm.model`
-- `llm.operation`
-- `llm.success`，boolean
 - `gen_ai.provider.name`
 - `gen_ai.request.model`
 - `gen_ai.operation.name`
+- `gen_ai.token.type`，仅 Token 指标存在，值为 `input` 或 `output`
+- `error.type`，仅失败请求存在
 
 bot、conversation、account、turn 和任意用户 ID 不进入内置 Metrics，避免时间序列基数快速增长。这些
 关联信息只保留在 Span 中。
@@ -176,12 +182,9 @@ GlobalChatInterceptors.addInterceptor(new TenantTraceInterceptor());
 | 属性 | 说明 |
 | --- | --- |
 | `http.request.method` | HTTP 方法 |
-| `http.method` | 兼容属性 |
 | `url.full` | 已移除 user-info、query 和 fragment 的 URL |
-| `http.url` | 同一安全 URL 的兼容属性 |
 | `server.address` | host，显式端口存在时包含端口 |
 | `http.response.status_code` | HTTP 状态码 |
-| `http.status_code` | 兼容属性 |
 
 状态码大于等于 400 时 Span 标记为 `ERROR`。IO 异常会记录异常并继续按现有客户端契约抛给调用方。
 
@@ -199,11 +202,11 @@ try (Response response = client.getResponse(url, headers)) {
 
 | Metric | 类型 | 单位 | 说明 |
 | --- | --- | --- | --- |
-| `http.client.request.count` | Counter | 次 | HTTP 请求总数 |
+| `agentsflex.http.client.request.count` | Counter | 次 | HTTP 请求总数，Agents-Flex 扩展指标 |
 | `http.client.request.duration` | Histogram | 秒 | 请求耗时；开放响应包含响应体消费时间 |
-| `http.client.request.error.count` | Counter | 次 | 异常或状态码大于等于 400 的请求数 |
+| `agentsflex.http.client.request.error.count` | Counter | 次 | 异常或状态码大于等于 400 的请求数 |
 
-HTTP Metrics 属性为 `http.method`、`server.address`、`http.success`，收到响应后还包含
+HTTP Metrics 属性为 `http.request.method`、`server.address`，收到响应后还包含
 `http.response.status_code`。完整 URL 不进入 Metrics，避免路径参数和查询参数造成高基数。
 
 ## Trace Context 传播
@@ -223,7 +226,7 @@ openai.chatStream             10.0s
 └── http.client.request        1.0s 或持续到响应体关闭
 ```
 
-此时 `llm.request.latency` 记录完整 10 秒，因为用户实际等待到流结束；HTTP Span 的结束时间取决于客户端如何
+此时 `gen_ai.client.operation.duration` 记录完整 10 秒，因为用户实际等待到流结束；HTTP Span 的结束时间取决于客户端如何
 消费响应体。分析时不要把两者都简单理解为“模型服务器计算时间”。
 
 ## 相关文档

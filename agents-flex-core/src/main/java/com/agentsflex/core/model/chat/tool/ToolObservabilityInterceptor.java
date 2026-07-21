@@ -17,6 +17,7 @@ package com.agentsflex.core.model.chat.tool;
 
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.observability.Observability;
+import com.agentsflex.core.observability.ObservabilityAttributeKeys;
 import com.agentsflex.core.observability.ObservabilityRuntime;
 import com.agentsflex.core.observability.SensitiveDataSanitizer;
 import io.opentelemetry.api.common.Attributes;
@@ -67,14 +68,14 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
         private Instruments(ObservabilityRuntime runtime) {
             this.tracer = runtime.getTracer();
             Meter meter = runtime.getMeter();
-            this.callCount = meter.counterBuilder("tool.call.count")
+            this.callCount = meter.counterBuilder("agentsflex.gen_ai.tool.call.count")
                 .setDescription("Total number of tool calls")
                 .build();
-            this.latency = meter.histogramBuilder("tool.call.latency")
+            this.latency = meter.histogramBuilder("agentsflex.gen_ai.tool.call.duration")
                 .setDescription("Tool call latency in seconds")
                 .setUnit("s")
                 .build();
-            this.errorCount = meter.counterBuilder("tool.call.error.count")
+            this.errorCount = meter.counterBuilder("agentsflex.gen_ai.tool.call.error.count")
                 .setDescription("Total number of tool call errors")
                 .build();
         }
@@ -90,8 +91,7 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
 
         Instruments instruments = instruments();
         Span span = instruments.tracer.spanBuilder("tool." + toolName)
-            .setAttribute("tool.name", toolName)
-            .setAttribute("gen_ai.tool.name", toolName)
+            .setAttribute(ObservabilityAttributeKeys.GEN_AI_TOOL_NAME, toolName)
             .startSpan();
         Observability.enrichSpan(span);
         long startTimeNanos = System.nanoTime();
@@ -103,13 +103,13 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
                 String arguments = toolCall == null ? null : toolCall.getArguments();
                 String safeArguments = SensitiveDataSanitizer.sanitizeJson(arguments, MAX_CONTENT_LENGTH_FOR_SPAN);
                 if (safeArguments != null) {
-                    span.setAttribute("tool.arguments", safeArguments);
+                    span.setAttribute(ObservabilityAttributeKeys.GEN_AI_TOOL_ARGUMENTS, safeArguments);
                 }
             }
 
             Object result = chain.proceed(context);
             if (Observability.isContentCaptureEnabled() && result != null) {
-                span.setAttribute("tool.result", safeResult(result));
+                span.setAttribute(ObservabilityAttributeKeys.GEN_AI_TOOL_RESULT, safeResult(result));
             }
             recordMetrics(instruments, toolName, true, null, startTimeNanos);
             return result;
@@ -139,8 +139,7 @@ public class ToolObservabilityInterceptor implements ToolInterceptor {
                                       String errorType, long startTimeNanos) {
         double latencySeconds = (System.nanoTime() - startTimeNanos) / 1_000_000_000.0;
         AttributesBuilder builder = Attributes.builder()
-            .put("tool.name", toolName)
-            .put("tool.success", success);
+            .put(ObservabilityAttributeKeys.GEN_AI_TOOL_NAME, toolName);
         if (errorType != null) {
             builder.put("error.type", errorType);
         }

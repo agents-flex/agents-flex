@@ -61,16 +61,16 @@ business.ai.request             12.0s
 
 ### 使用的数据
 
-- `llm.request.latency`：按 provider、model、operation 查看 P50/P95/P99；
-- `llm.request.count`：确认请求量是否变化；
-- `llm.request.error.count`：计算失败率；
+- `gen_ai.client.operation.duration`：按 provider、model 查看 P50/P95/P99；
+- `agentsflex.gen_ai.request.count`：确认请求量是否变化；
+- `agentsflex.gen_ai.request.error.count`：计算失败率；
 - `http.client.request.duration`：判断慢在模型服务还是应用内部。
 
 例如监控平台可以构建以下视图：
 
 | 图表 | 分组 | 用途 |
 | --- | --- | --- |
-| 模型 P95 延迟 | model、operation | 比较不同模型和同步/流式调用 |
+| 模型 P95 延迟 | model | 比较不同模型的完整调用耗时 |
 | 模型错误率 | model | 发现某个模型单独异常 |
 | HTTP P95 延迟 | server.address | 判断具体远程服务是否变慢 |
 | 请求量 | provider | 排除流量上涨造成的容量问题 |
@@ -106,7 +106,7 @@ try (Scope ignored = Observability.useRuntime(route, attributes)) {
 
 然后在 Trace 中检查：
 
-- `tool.name`：具体失败工具；
+- `gen_ai.tool.name`：具体失败工具；
 - Span status：是否为 `ERROR`；
 - exception event：异常类型和堆栈；
 - 子 `http.client.request`：远程状态码和 host；

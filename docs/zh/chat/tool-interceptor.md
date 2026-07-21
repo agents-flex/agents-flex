@@ -105,15 +105,15 @@ Object result = executor.execute();
 
 ### 输出示例（Span Attributes）
 ```text
-tool.name = "getWeather"
-tool.arguments = {"city": "Beijing", "apiKey": "***"}
-tool.result = {"temperature": 22, "unit": "celsius"}
+gen_ai.tool.name = "getWeather"
+agentsflex.gen_ai.tool.arguments = {"city": "Beijing", "apiKey": "***"}
+agentsflex.gen_ai.tool.result = {"temperature": 22, "unit": "celsius"}
 ```
 
 > 📊 **上报指标**：
-> - `tool.call.count`：总调用次数
-> - `tool.call.latency`：调用延迟（秒）
-> - `tool.call.error.count`：错误次数
+> - `agentsflex.gen_ai.tool.call.count`：总调用次数
+> - `agentsflex.gen_ai.tool.call.duration`：调用延迟（秒）
+> - `agentsflex.gen_ai.tool.call.error.count`：错误次数
 
 
 ## 自定义拦截器开发指南

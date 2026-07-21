@@ -33,9 +33,11 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * ChatModel 的 OpenTelemetry 拦截器，负责同步与流式模型调用的 Span、请求计数、耗时和错误指标。
@@ -60,7 +62,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         /** 创建同步和流式模型 Span 的 Tracer。 */
         private final Tracer tracer;
 
-        /** 记录全部模型请求次数的 Counter，指标名为 llm.request.count。 */
+        /** 记录全部模型请求次数的 Agents-Flex Counter。 */
         private final LongCounter requestCount;
 
         /** 记录端到端模型请求耗时的 Histogram，单位为秒。 */
@@ -69,18 +71,25 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         /** 只记录失败模型请求次数的 Counter。 */
         private final LongCounter errorCount;
 
+        /** 按输入、输出类型记录 Token 用量的标准 GenAI Histogram。 */
+        private final DoubleHistogram tokenUsage;
+
         private Instruments(ObservabilityRuntime runtime) {
             this.tracer = runtime.getTracer();
             Meter meter = runtime.getMeter();
-            this.requestCount = meter.counterBuilder("llm.request.count")
-            .setDescription("Total number of LLM requests")
-            .build();
-            this.latency = meter.histogramBuilder("llm.request.latency")
+            this.requestCount = meter.counterBuilder("agentsflex.gen_ai.request.count")
+                .setDescription("Total number of LLM requests")
+                .build();
+            this.latency = meter.histogramBuilder("gen_ai.client.operation.duration")
                 .setDescription("LLM request latency in seconds")
                 .setUnit("s")
                 .build();
-            this.errorCount = meter.counterBuilder("llm.request.error.count")
+            this.errorCount = meter.counterBuilder("agentsflex.gen_ai.request.error.count")
                 .setDescription("Total number of LLM request errors")
+                .build();
+            this.tokenUsage = meter.histogramBuilder("gen_ai.client.token.usage")
+                .setDescription("Number of input and output tokens used by GenAI requests")
+                .setUnit("{token}")
                 .build();
         }
     }
@@ -93,10 +102,10 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         }
 
         String provider = valueOrUnknown(config.getProvider());
-        String model = valueOrUnknown(config.getModel());
+        String model = resolveModel(config, context);
         String operation = "chat";
         Instruments instruments = instruments();
-        Span span = startSpan(instruments, provider, model, operation);
+        Span span = startSpan(instruments, provider, model, operation, context);
         Observability.enrichSpan(span);
         enrichCorrelation(span, context);
         long startTimeNanos = System.nanoTime();
@@ -110,10 +119,12 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             } else {
                 span.setStatus(StatusCode.ERROR, response == null ? "Empty model response" : response.getErrorMessage());
             }
-            recordMetrics(instruments, provider, model, operation, success, startTimeNanos);
+            AiMessage message = response == null ? null : response.getMessage();
+            recordMetrics(instruments, provider, model, success,
+                success ? null : "model_response_error", message, startTimeNanos);
             return response;
         } catch (RuntimeException | Error error) {
-            recordError(instruments, span, error, provider, model, operation, startTimeNanos);
+            recordError(instruments, span, error, provider, model, startTimeNanos);
             throw error;
         } finally {
             span.end();
@@ -130,7 +141,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         }
 
         String provider = valueOrUnknown(config.getProvider());
-        String model = valueOrUnknown(config.getModel());
+        String model = resolveModel(config, context);
         String operation = "chatStream";
         // 流式回调可能在另一个线程且晚于本方法返回，因此必须捕获完整 Context，而不只是捕获 Span。
         // 完整 Context 还包含执行级 TelemetryRoute 和由宿主应用绑定的固定属性。
@@ -138,14 +149,12 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         Instruments instruments = instruments();
         Span span = instruments.tracer.spanBuilder(provider + "." + operation)
             .setParent(parentContext)
-            .setAttribute("llm.provider", provider)
-            .setAttribute("llm.model", model)
-            .setAttribute("llm.operation", operation)
-            .setAttribute("gen_ai.provider.name", provider)
-            .setAttribute("gen_ai.request.model", model)
-            .setAttribute("gen_ai.operation.name", "chat")
+            .setAttribute(ObservabilityAttributeKeys.GEN_AI_PROVIDER_NAME, provider)
+            .setAttribute(ObservabilityAttributeKeys.GEN_AI_REQUEST_MODEL, model)
+            .setAttribute(ObservabilityAttributeKeys.GEN_AI_OPERATION_NAME, "chat")
             .startSpan();
         Observability.enrichSpan(span);
+        enrichRequestParameters(span, context);
         enrichCorrelation(span, context);
         Context spanContext = parentContext.with(span);
         long startTimeNanos = System.nanoTime();
@@ -172,7 +181,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
                 try (Scope ignored = spanContext.makeCurrent()) {
                     originalListener.onFailure(streamContext, throwable);
                 } finally {
-                    finish(false, throwable);
+                    finish(false, throwable, streamContext == null ? null : streamContext.getFullMessage());
                 }
             }
 
@@ -189,11 +198,11 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
                     callbackError = error;
                     throw error;
                 } finally {
-                    finish(success && callbackError == null, callbackError);
+                    finish(success && callbackError == null, callbackError, streamContext.getFullMessage());
                 }
             }
 
-            private void finish(boolean success, Throwable error) {
+            private void finish(boolean success, Throwable error, AiMessage message) {
                 if (!recorded.compareAndSet(false, true)) {
                     return;
                 }
@@ -203,7 +212,9 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
                 } else if (!success) {
                     span.setStatus(StatusCode.ERROR, "Streaming model request failed");
                 }
-                recordMetrics(instruments, provider, model, operation, success, startTimeNanos);
+                String errorType = error != null ? error.getClass().getName()
+                    : success ? null : "stream_error";
+                recordMetrics(instruments, provider, model, success, errorType, message, startTimeNanos);
                 span.end();
             }
         };
@@ -213,7 +224,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             chain.proceed(chatModel, context, wrappedListener);
         } catch (RuntimeException | Error error) {
             if (recorded.compareAndSet(false, true)) {
-                recordError(instruments, span, error, provider, model, operation, startTimeNanos);
+                recordError(instruments, span, error, provider, model, startTimeNanos);
                 span.end();
             }
             throw error;
@@ -224,30 +235,67 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         return config != null && config.isObservabilityEnabled() && Observability.isEnabled();
     }
 
-    private static Span startSpan(Instruments instruments, String provider, String model, String operation) {
-        return instruments.tracer.spanBuilder(provider + "." + operation)
-            .setAttribute("llm.provider", provider)
-            .setAttribute("llm.model", model)
-            .setAttribute("llm.operation", operation)
-            .setAttribute("gen_ai.provider.name", provider)
-            .setAttribute("gen_ai.request.model", model)
-            .setAttribute("gen_ai.operation.name", "chat")
+    private static Span startSpan(Instruments instruments, String provider, String model, String operation,
+                                  ChatContext context) {
+        Span span = instruments.tracer.spanBuilder(provider + "." + operation)
+            .setAttribute(ObservabilityAttributeKeys.GEN_AI_PROVIDER_NAME, provider)
+            .setAttribute(ObservabilityAttributeKeys.GEN_AI_REQUEST_MODEL, model)
+            .setAttribute(ObservabilityAttributeKeys.GEN_AI_OPERATION_NAME, "chat")
             .startSpan();
+        enrichRequestParameters(span, context);
+        return span;
     }
 
     private static void enrichSpan(Span span, AiMessage message) {
         if (message == null) {
             return;
         }
-        span.setAttribute("llm.total_tokens", message.getEffectiveTotalTokens());
-        span.setAttribute("gen_ai.usage.total_tokens", message.getEffectiveTotalTokens());
+        Integer inputTokens = effectiveInputTokens(message);
+        Integer outputTokens = effectiveOutputTokens(message);
+        if (inputTokens != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_INPUT_TOKENS, inputTokens.longValue());
+        }
+        if (outputTokens != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_OUTPUT_TOKENS, outputTokens.longValue());
+        }
+        String finishReason = firstNonBlank(message.getFinishReason(), message.getStopReason());
+        if (finishReason != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_RESPONSE_FINISH_REASONS,
+                Collections.singletonList(finishReason));
+        }
         // Token 数属于运行元数据，可默认记录；模型正文可能包含敏感数据，只能在显式开启后采集。
         if (!Observability.isContentCaptureEnabled()) {
             return;
         }
         String content = message.getFullContent() != null ? message.getFullContent() : message.getContent();
         if (content != null) {
-            span.setAttribute("llm.response", SensitiveDataSanitizer.truncate(content, MAX_RESPONSE_LENGTH_FOR_SPAN));
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_RESPONSE_CONTENT,
+                SensitiveDataSanitizer.truncate(content, MAX_RESPONSE_LENGTH_FOR_SPAN));
+        }
+    }
+
+    private static void enrichRequestParameters(Span span, ChatContext context) {
+        ChatOptions options = context == null ? null : context.getOptions();
+        if (options == null) {
+            return;
+        }
+        if (options.getMaxTokens() != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_REQUEST_MAX_TOKENS,
+                options.getMaxTokens().longValue());
+        }
+        if (options.getTemperature() != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_REQUEST_TEMPERATURE,
+                options.getTemperature().doubleValue());
+        }
+        if (options.getTopP() != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_REQUEST_TOP_P, options.getTopP().doubleValue());
+        }
+        if (options.getTopK() != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_REQUEST_TOP_K, options.getTopK().longValue());
+        }
+        List<String> stopSequences = options.getStop();
+        if (stopSequences != null && !stopSequences.isEmpty()) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_REQUEST_STOP_SEQUENCES, stopSequences);
         }
     }
 
@@ -270,34 +318,50 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         }
     }
 
-    private static void recordMetrics(Instruments instruments, String provider, String model, String operation,
-                                      boolean success, long startTimeNanos) {
+    private static void recordMetrics(Instruments instruments, String provider, String model, boolean success,
+                                      String errorType, AiMessage message, long startTimeNanos) {
         double latencySeconds = (System.nanoTime() - startTimeNanos) / 1_000_000_000.0;
-        Attributes attrs = baseMetricAttributes(provider, model, operation, success).build();
+        AttributesBuilder attributesBuilder = baseMetricAttributes(provider, model);
+        if (errorType != null) {
+            attributesBuilder.put("error.type", errorType);
+        }
+        Attributes attrs = attributesBuilder.build();
         instruments.requestCount.add(1, attrs);
         instruments.latency.record(latencySeconds, attrs);
         if (!success) {
             instruments.errorCount.add(1, attrs);
         }
+        recordTokenUsage(instruments, provider, model, message);
     }
 
-    private static AttributesBuilder baseMetricAttributes(String provider, String model,
-                                                           String operation, boolean success) {
+    private static AttributesBuilder baseMetricAttributes(String provider, String model) {
         return Attributes.builder()
-            .put("llm.provider", provider)
-            .put("llm.model", model)
-            .put("llm.operation", operation)
-            .put("llm.success", success)
-            .put("gen_ai.provider.name", provider)
-            .put("gen_ai.request.model", model)
-            .put("gen_ai.operation.name", "chat");
+            .put(ObservabilityAttributeKeys.GEN_AI_PROVIDER_NAME, provider)
+            .put(ObservabilityAttributeKeys.GEN_AI_REQUEST_MODEL, model)
+            .put(ObservabilityAttributeKeys.GEN_AI_OPERATION_NAME, "chat");
+    }
+
+    private static void recordTokenUsage(Instruments instruments, String provider, String model, AiMessage message) {
+        if (message == null) {
+            return;
+        }
+        Integer inputTokens = effectiveInputTokens(message);
+        if (inputTokens != null) {
+            instruments.tokenUsage.record(inputTokens.doubleValue(), baseMetricAttributes(provider, model)
+                .put(ObservabilityAttributeKeys.GEN_AI_TOKEN_TYPE, "input").build());
+        }
+        Integer outputTokens = effectiveOutputTokens(message);
+        if (outputTokens != null) {
+            instruments.tokenUsage.record(outputTokens.doubleValue(), baseMetricAttributes(provider, model)
+                .put(ObservabilityAttributeKeys.GEN_AI_TOKEN_TYPE, "output").build());
+        }
     }
 
     private static void recordError(Instruments instruments, Span span, Throwable error, String provider, String model,
-                                    String operation, long startTimeNanos) {
+                                    long startTimeNanos) {
         span.setStatus(StatusCode.ERROR, error.getMessage());
         span.recordException(error);
-        recordMetrics(instruments, provider, model, operation, false, startTimeNanos);
+        recordMetrics(instruments, provider, model, false, error.getClass().getName(), null, startTimeNanos);
     }
 
     private static Instruments instruments() {
@@ -315,5 +379,26 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
 
     private static String valueOrUnknown(String value) {
         return value == null || value.trim().isEmpty() ? "unknown" : value;
+    }
+
+    private static String resolveModel(BaseChatConfig config, ChatContext context) {
+        ChatOptions options = context == null ? null : context.getOptions();
+        return valueOrUnknown(options == null ? config.getModel() : options.getModelOrDefault(config.getModel()));
+    }
+
+    private static Integer effectiveInputTokens(AiMessage message) {
+        return message.getPromptTokens() != null ? message.getPromptTokens() : message.getLocalPromptTokens();
+    }
+
+    private static Integer effectiveOutputTokens(AiMessage message) {
+        return message.getCompletionTokens() != null
+            ? message.getCompletionTokens() : message.getLocalCompletionTokens();
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (first != null && !first.trim().isEmpty()) {
+            return first;
+        }
+        return second == null || second.trim().isEmpty() ? null : second;
     }
 }

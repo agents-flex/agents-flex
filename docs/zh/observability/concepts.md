@@ -78,11 +78,12 @@ Agents-Flex 内置的常见 Metric：
 
 | Metric | 含义 |
 | --- | --- |
-| `llm.request.count` | 模型请求总数 |
-| `llm.request.latency` | 模型请求耗时分布 |
-| `llm.request.error.count` | 模型失败请求数 |
-| `tool.call.count` | 工具调用总数 |
-| `tool.call.latency` | 工具调用耗时分布 |
+| `agentsflex.gen_ai.request.count` | 模型请求总数 |
+| `gen_ai.client.operation.duration` | 模型请求耗时分布 |
+| `gen_ai.client.token.usage` | 输入、输出 Token 用量分布 |
+| `agentsflex.gen_ai.request.error.count` | 模型失败请求数 |
+| `agentsflex.gen_ai.tool.call.count` | 工具调用总数 |
+| `agentsflex.gen_ai.tool.call.duration` | 工具调用耗时分布 |
 | `http.client.request.duration` | HTTP 请求耗时分布 |
 
 简单记忆：定位“某一次请求”通常看 Trace；判断“整个系统最近怎么样”通常看 Metric。

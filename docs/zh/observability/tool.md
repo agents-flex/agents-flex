@@ -37,10 +37,12 @@ Span 是否属于模型 Span，取决于执行工具时是否仍有有效的 Ope
 
 | 属性 | 条件 | 说明 |
 | --- | --- | --- |
-| `tool.name` | 始终 | `Tool.getName()` |
 | `gen_ai.tool.name` | 始终 | GenAI 工具名称属性 |
-| `tool.arguments` | 开启内容采集 | 脱敏并限制长度的 JSON 参数 |
-| `tool.result` | 开启内容采集且结果非空 | 脱敏并限制长度的结果 |
+| `agentsflex.gen_ai.tool.arguments` | 开启内容采集 | 脱敏并限制长度的 JSON 参数 |
+| `agentsflex.gen_ai.tool.result` | 开启内容采集且结果非空 | 脱敏并限制长度的结果 |
+
+工具名称采用 OpenTelemetry GenAI 标准属性。参数和结果属于可选的 Agents-Flex 内容扩展，因此使用
+`agentsflex.*` 命名空间；旧的 `tool.*` 属性不再写入。
 
 工具抛出 `Exception`、`RuntimeException` 或 `Error` 时，Span 会标记为 `ERROR` 并记录异常。Metric 的
 `error.type` 保存实际异常类名，例如 `java.net.SocketTimeoutException`，而不是根据异常继承关系猜测
@@ -50,14 +52,13 @@ Span 是否属于模型 Span，取决于执行工具时是否仍有有效的 Ope
 
 | Metric | 类型 | 单位 | 说明 |
 | --- | --- | --- | --- |
-| `tool.call.count` | Counter | 次 | 工具调用总数 |
-| `tool.call.latency` | Histogram | 秒 | 完整工具执行耗时 |
-| `tool.call.error.count` | Counter | 次 | 失败调用数 |
+| `agentsflex.gen_ai.tool.call.count` | Counter | 次 | 工具调用总数 |
+| `agentsflex.gen_ai.tool.call.duration` | Histogram | 秒 | 完整工具执行耗时 |
+| `agentsflex.gen_ai.tool.call.error.count` | Counter | 次 | 失败调用数 |
 
 Metrics 属性：
 
-- `tool.name`
-- `tool.success`，boolean
+- `gen_ai.tool.name`
 - `error.type`，仅失败时存在
 
 不要把参数、账号、conversation ID 或 request ID 加入 Tool Metrics。它们通常具有高基数，应保留在 Span
@@ -156,7 +157,7 @@ ToolExecutor executor = new ToolExecutor(getWeatherTool, call);
 Object result = executor.execute();
 ```
 
-开启内容采集时，`tool.arguments` 中的 `apiKey` 会变成 `***`。工具收到的实际参数不会被修改；脱敏只作用
+开启内容采集时，`agentsflex.gen_ai.tool.arguments` 中的 `apiKey` 会变成 `***`。工具收到的实际参数不会被修改；脱敏只作用
 于导出的观测副本。
 
 ## 场景：天气工具偶发超时
@@ -173,7 +174,7 @@ tool.getWeather               10.1s  ERROR
 
 1. Tool Span 与 HTTP Span 都接近 10 秒，说明主要耗时不是参数解析；
 2. HTTP Span 状态码为空且有 `SocketTimeoutException`，说明在收到响应前超时；
-3. 如果 `tool.call.error.count` 只在该工具上涨，可以排除所有工具共同故障；
+3. 如果 `agentsflex.gen_ai.tool.call.error.count` 只在该工具上涨，可以排除所有工具共同故障；
 4. 如果相同 host 的 HTTP P95 同时上涨，应检查外部服务、网络和超时配置。
 
 如果工具内部没有使用 `AgentsFlexHttpClient` 或其他 OTel HTTP instrumentation，仍会看到 Tool Span 和异常，

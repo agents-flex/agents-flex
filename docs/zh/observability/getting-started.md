@@ -92,8 +92,8 @@ Span name: openai.chat
 TraceId: 4bf92f3577b34da6a3ce929d0e0e4736
 SpanId: 00f067aa0ba902b7
 Attributes:
-  llm.provider = openai
-  llm.model = gpt-4.1-mini
+  gen_ai.provider.name = openai
+  gen_ai.request.model = gpt-4.1-mini
   gen_ai.operation.name = chat
 ```
 
@@ -126,7 +126,8 @@ Span 在调用结束后即可导出，但 Metrics 默认每 60 秒由 `PeriodicM
 -Dagentsflex.otel.metric.export.interval=5
 ```
 
-等待至少 5 秒后，应看到 `llm.request.count`、`llm.request.latency` 和 HTTP 指标。理解两者区别：
+等待至少 5 秒后，应看到 `agentsflex.gen_ai.request.count`、`gen_ai.client.operation.duration` 和 HTTP 指标。
+理解两者区别：
 
 - Span 是“刚才这一条请求发生了什么”；
 - Metric 是“这段时间总体发生了多少次、通常多慢”。
@@ -137,7 +138,7 @@ Span 在调用结束后即可导出，但 Metrics 默认每 60 秒由 `PeriodicM
 
 - status 为 `ERROR`；
 - exception event 或错误描述；
-- `llm.request.error.count` 或 `tool.call.error.count` 增加。
+- `agentsflex.gen_ai.request.error.count` 或 `agentsflex.gen_ai.tool.call.error.count` 增加。
 
 不要在生产环境为了验证而故意制造错误。
 
