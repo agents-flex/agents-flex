@@ -16,7 +16,9 @@ import com.agentsflex.skill.SkillsTool;
 import com.agentsflex.skill.local.LocalSkillRuntime;
 import com.agentsflex.skill.runtime.SkillExecutionRequest;
 import com.agentsflex.skill.runtime.SkillExecutionResult;
+import com.agentsflex.skill.runtime.SkillPreparationRequest;
 import com.agentsflex.skill.runtime.SkillRuntime;
+import com.agentsflex.skill.runtime.SkillRuntimeConfig;
 import com.agentsflex.skill.runtime.aiosandbox.AioSandboxSkillRuntime;
 import com.agentsflex.skill.runtime.opensandbox.OpenSandboxSkillRuntime;
 import com.agentsflex.skill.util.Skills;
@@ -258,7 +260,8 @@ public class SkillsDemoMain {
      */
     private static void generateDefaultPresentation(SkillRuntime runtime, String skillsDirectory,
                                                     String outputFile) {
-        List<Skill> runtimeSkills = runtime.prepare(Skills.loadDirectory(skillsDirectory));
+        List<Skill> runtimeSkills = runtime.prepare(new SkillPreparationRequest(
+            Skills.loadDirectory(skillsDirectory), Collections.<String, SkillRuntimeConfig>emptyMap()));
         Skill pptxSkill = null;
         for (Skill skill : runtimeSkills) {
             if ("pptx".equals(skill.name())) {

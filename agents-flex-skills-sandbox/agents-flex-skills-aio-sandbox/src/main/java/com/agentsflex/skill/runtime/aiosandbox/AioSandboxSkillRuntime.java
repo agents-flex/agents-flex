@@ -1,15 +1,27 @@
 /*
- * Copyright 2026 - 2026 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package com.agentsflex.skill.runtime.aiosandbox;
 
 import com.agentsflex.skill.Skill;
 import com.agentsflex.skill.runtime.SkillExecutionRequest;
 import com.agentsflex.skill.runtime.SkillExecutionResult;
+import com.agentsflex.skill.runtime.SkillPreparationRequest;
 import com.agentsflex.skill.runtime.SkillRuntime;
+import com.agentsflex.skill.runtime.SkillRuntimeBootstrap;
+import com.agentsflex.skill.runtime.SkillRuntimeConfig;
 import com.agentsflex.skill.runtime.SkillRuntimeException;
 import com.agentsflex.skill.runtime.SkillRuntimeFileSystem;
 
@@ -19,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +51,7 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
 
     private final String remoteRoot;
     private final Map<String, String> preparedSkills = new HashMap<>();
+    private final Map<String, String> environment = new LinkedHashMap<>();
     private final AioSandboxClient client;
     private final SkillRuntimeFileSystem fileSystem;
     private final AioSandboxSkillUploader skillUploader;
@@ -60,11 +74,28 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
     }
 
     @Override
-    public synchronized List<Skill> prepare(List<Skill> skills) {
+    public synchronized List<Skill> prepare(SkillPreparationRequest request) {
+        for (Skill skill : request.getSkills()) {
+            SkillRuntimeConfig config = request.getRuntimeConfig(skill);
+            if (config != null) {
+                environment.putAll(config.getEnvironment());
+            }
+        }
+
         // 返回路径已转换的新 Skill，绝不修改调用方传入对象。
-        List<Skill> runtimeSkills = new ArrayList<>(skills.size());
-        for (Skill skill : skills) {
-            runtimeSkills.add(new Skill(prepareSkill(skill), skill.getFrontMatter(), skill.getContent()));
+        List<Skill> runtimeSkills = new ArrayList<>(request.getSkills().size());
+        for (Skill skill : request.getSkills()) {
+            String existing = preparedSkills.get(skill.getBasePath());
+            if (existing != null) {
+                runtimeSkills.add(runtimeSkill(skill, existing));
+                continue;
+            }
+
+            String remoteBase = uploadSkill(skill);
+            Skill runtimeSkill = runtimeSkill(skill, remoteBase);
+            SkillRuntimeBootstrap.run(this, runtimeSkill, request.getRuntimeConfig(skill));
+            preparedSkills.put(skill.getBasePath(), remoteBase);
+            runtimeSkills.add(runtimeSkill);
         }
         return runtimeSkills;
     }
@@ -81,22 +112,18 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
 
     @Override
     public SkillExecutionResult execute(SkillExecutionRequest request) {
-        return client.execute(request, remoteRoot);
+        return client.execute(withEffectiveEnvironment(request), remoteRoot);
     }
 
     @Override
     public synchronized void close() {
         // AIO 服务可能由多个应用共享，本 Runtime 不拥有其进程或容器生命周期。
         preparedSkills.clear();
+        environment.clear();
     }
 
-    private String prepareSkill(Skill skill) {
+    private String uploadSkill(Skill skill) {
         String localBasePath = skill.getBasePath();
-        String existing = preparedSkills.get(localBasePath);
-        if (existing != null) {
-            return existing;
-        }
-
         Path source = Paths.get(localBasePath).toAbsolutePath().normalize();
         if (!Files.isDirectory(source)) {
             throw new SkillRuntimeException("AIO Sandbox can only prepare file-system skills: " + localBasePath);
@@ -109,8 +136,18 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
         } catch (IOException e) {
             throw new SkillRuntimeException("Failed to upload skill to AIO Sandbox: " + skill.name(), e);
         }
-        preparedSkills.put(localBasePath, remoteBase);
         return remoteBase;
+    }
+
+    private synchronized SkillExecutionRequest withEffectiveEnvironment(SkillExecutionRequest request) {
+        Map<String, String> effective = new LinkedHashMap<>(environment);
+        effective.putAll(request.getEnvironment());
+        return new SkillExecutionRequest(request.getCommand(), request.getWorkingDirectory(),
+            request.getTimeoutMillis(), effective);
+    }
+
+    private static Skill runtimeSkill(Skill skill, String basePath) {
+        return new Skill(basePath, skill.getFrontMatter(), skill.getContent());
     }
 
     private static String safeName(String name) {

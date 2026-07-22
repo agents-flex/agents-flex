@@ -1,8 +1,17 @@
 /*
- * Copyright 2026 - 2026 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package com.agentsflex.skill.local;
 
@@ -16,7 +25,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -32,6 +45,8 @@ import java.util.concurrent.TimeUnit;
 public class LocalSkillRuntime implements SkillRuntime {
 
     private final SkillRuntimeFileSystem fileSystem = new LocalSkillRuntimeFileSystem();
+    private final Map<String, String> environment = new LinkedHashMap<>();
+    private final Set<String> preparedSkills = new HashSet<>();
 
     @Override
     public String getName() {
@@ -39,9 +54,24 @@ public class LocalSkillRuntime implements SkillRuntime {
     }
 
     @Override
-    public List<Skill> prepare(List<Skill> skills) {
-        // 本地执行无需上传，但返回新列表，避免调用方修改原始集合影响本次会话。
-        return new ArrayList<>(skills);
+    public synchronized List<Skill> prepare(SkillPreparationRequest request) {
+        for (Skill skill : request.getSkills()) {
+            SkillRuntimeConfig config = request.getRuntimeConfig(skill);
+            if (config != null) {
+                environment.putAll(config.getEnvironment());
+            }
+        }
+
+        // 本地无需上传；首次准备视为完成本地物化，并执行一次对应 bootstrap。
+        List<Skill> runtimeSkills = new ArrayList<>(request.getSkills());
+        for (Skill skill : runtimeSkills) {
+            if (preparedSkills.contains(skill.getBasePath())) {
+                continue;
+            }
+            SkillRuntimeBootstrap.run(this, skill, request.getRuntimeConfig(skill));
+            preparedSkills.add(skill.getBasePath());
+        }
+        return runtimeSkills;
     }
 
     @Override
@@ -60,7 +90,7 @@ public class LocalSkillRuntime implements SkillRuntime {
         try {
             ProcessBuilder builder = new ProcessBuilder(shellCommand(request.getCommand()));
             builder.redirectErrorStream(false);
-            builder.environment().putAll(request.getEnvironment());
+            builder.environment().putAll(effectiveEnvironment(request));
             if (request.getWorkingDirectory() != null && !request.getWorkingDirectory().trim().isEmpty()) {
                 builder.directory(new File(request.getWorkingDirectory()));
             }
@@ -92,8 +122,15 @@ public class LocalSkillRuntime implements SkillRuntime {
     }
 
     @Override
-    public void close() {
-        // 每次 execute 都独立创建并回收进程，因此 Runtime 自身没有常驻资源。
+    public synchronized void close() {
+        environment.clear();
+        preparedSkills.clear();
+    }
+
+    private synchronized Map<String, String> effectiveEnvironment(SkillExecutionRequest request) {
+        Map<String, String> effective = new LinkedHashMap<>(environment);
+        effective.putAll(request.getEnvironment());
+        return effective;
     }
 
     private static String[] shellCommand(String command) {

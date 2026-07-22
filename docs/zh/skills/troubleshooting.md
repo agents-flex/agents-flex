@@ -15,7 +15,8 @@
 ### 远程路径仍然是本机路径
 
 这通常说明只加载了 `Skills.loadDirectory()`，但没有使用远程 Runtime 执行
-`prepare(List<Skill>)`。推荐统一通过 `SkillsTool.builder().runtime(runtime).buildTools()` 构建工具。
+`prepare(SkillPreparationRequest)`。推荐统一通过
+`SkillsTool.builder().runtime(runtime).buildTools()` 构建工具。
 
 ### OpenSandbox 无法连接
 

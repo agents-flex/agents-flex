@@ -1,17 +1,17 @@
 /*
- * Copyright 2025 - 2025 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package com.agentsflex.skill;
 
@@ -23,7 +23,9 @@ import com.agentsflex.skill.artifact.SkillArtifact;
 import com.agentsflex.skill.artifact.SkillArtifactStore;
 import com.agentsflex.skill.file.FilePublisher;
 import com.agentsflex.skill.local.LocalSkillRuntime;
+import com.agentsflex.skill.runtime.SkillPreparationRequest;
 import com.agentsflex.skill.runtime.SkillRuntime;
+import com.agentsflex.skill.runtime.SkillRuntimeConfig;
 import com.agentsflex.skill.tools.SkillRuntimeFilePublishTools;
 import com.agentsflex.skill.tools.SkillRuntimeFileTools;
 import com.agentsflex.skill.tools.SkillRuntimeSearchTools;
@@ -35,8 +37,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -96,7 +100,8 @@ public class SkillsTool {
      * Skills 工具构建器。
      *
      * <p>可以添加多个 Skills 根目录。所有目录中的 Skill 会作为一个批次传给
-     * {@link SkillRuntime#prepare(List)}，远程 Runtime 可在这里统一上传和重写路径。</p>
+     * {@link SkillRuntime#prepare(SkillPreparationRequest)}，远程 Runtime 可在这里统一上传、
+     * 初始化并重写路径。</p>
      */
     public static class Builder {
 
@@ -105,6 +110,8 @@ public class SkillsTool {
         private String toolDescriptionTemplate = TOOL_DESCRIPTION_TEMPLATE;
 
         private SkillRuntime runtime = new LocalSkillRuntime();
+
+        private final Map<String, SkillRuntimeConfig> skillRuntimeConfigs = new LinkedHashMap<>();
 
         private FilePublisher filePublisher;
 
@@ -136,6 +143,27 @@ public class SkillsTool {
                 throw new IllegalArgumentException("runtime must not be null");
             }
             this.runtime = runtime;
+            return this;
+        }
+
+        /**
+         * 为指定 Skill 配置 Runtime 环境变量和上传后的初始化命令。
+         *
+         * <p>配置独立于标准 {@code SKILL.md}。Skill 必须在构建前通过目录或 Artifact
+         * 添加；名称错误会在 {@link #build()} 时失败。</p>
+         *
+         * @param skillName {@code SKILL.md} 中声明的 Skill 名称
+         * @param config Runtime 配置
+         * @return 当前构建器
+         */
+        public Builder skillRuntimeConfig(String skillName, SkillRuntimeConfig config) {
+            if (skillName == null || skillName.trim().isEmpty()) {
+                throw new IllegalArgumentException("skillName must not be blank");
+            }
+            if (config == null) {
+                throw new IllegalArgumentException("config must not be null");
+            }
+            this.skillRuntimeConfigs.put(skillName.trim(), config);
             return this;
         }
 
@@ -175,7 +203,7 @@ public class SkillsTool {
          * 从一个本机 Skills 根目录中只添加指定名称的 Skill。
          *
          * <p>Skill 名称来自 {@code SKILL.md} front matter 中的 {@code name} 字段，
-         * 匹配区分大小写。筛选在 {@link SkillRuntime#prepare(List)} 之前完成，因此未选中的
+         * 匹配区分大小写。筛选在 {@link SkillRuntime#prepare(SkillPreparationRequest)} 之前完成，因此未选中的
          * Skill 不会被上传到远程 Runtime，也不会出现在模型可见的工具描述中。</p>
          *
          * @param skillsRootDirectory 包含一个或多个 {@code SKILL.md} 的根目录
@@ -310,8 +338,8 @@ public class SkillsTool {
          * @return Skill 加载工具
          */
         public Tool build() {
-            List<Skill> preparedSkills = runtime.prepare(
-                Collections.unmodifiableList(new ArrayList<>(this.skills)));
+            List<Skill> preparedSkills = runtime.prepare(new SkillPreparationRequest(
+                Collections.unmodifiableList(new ArrayList<>(this.skills)), skillRuntimeConfigs));
             if (preparedSkills == null || preparedSkills.size() != this.skills.size()) {
                 throw new IllegalStateException("SkillRuntime.prepare must return one runtime skill per configured skill");
             }

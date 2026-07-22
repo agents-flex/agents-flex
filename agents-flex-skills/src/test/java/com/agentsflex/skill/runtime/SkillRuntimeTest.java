@@ -1,3 +1,18 @@
+/*
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package com.agentsflex.skill.runtime;
 
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -29,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class SkillRuntimeTest {
 
@@ -209,6 +225,60 @@ public class SkillRuntimeTest {
     }
 
     @Test
+    public void localRuntimePersistsEnvironmentAndBootstrapsOnce() throws Exception {
+        File skillDirectory = temporaryFolder.newFolder("configured-local-skill");
+        File marker = new File(skillDirectory, "bootstrap.log");
+        Skill skill = new Skill(skillDirectory.getAbsolutePath(),
+            Collections.<String, Object>singletonMap("name", "configured-local"), "body");
+        SkillRuntimeConfig config = SkillRuntimeConfig.builder()
+            .environment("SKILL_RUNTIME_VALUE", "configured")
+            .bootstrapCommand("printf '%s\\n' \"$SKILL_RUNTIME_VALUE\" >> bootstrap.log", 5000)
+            .build();
+        SkillPreparationRequest request = new SkillPreparationRequest(
+            Collections.singletonList(skill), Collections.singletonMap(skill.name(), config));
+        LocalSkillRuntime runtime = new LocalSkillRuntime();
+
+        runtime.prepare(request);
+        runtime.prepare(request);
+        SkillExecutionResult result = runtime.execute(new SkillExecutionRequest(
+            "printf '%s' \"$SKILL_RUNTIME_VALUE\"", skillDirectory.getAbsolutePath(), 5000,
+            Collections.<String, String>emptyMap()));
+
+        assertEquals("configured\n", result.getStdout());
+        assertEquals("configured\n", new String(Files.readAllBytes(marker.toPath()), StandardCharsets.UTF_8));
+        runtime.close();
+    }
+
+    @Test
+    public void failedLocalBootstrapIsNotMarkedAsPrepared() throws Exception {
+        File skillDirectory = temporaryFolder.newFolder("retry-bootstrap-skill");
+        Skill skill = new Skill(skillDirectory.getAbsolutePath(),
+            Collections.<String, Object>singletonMap("name", "retry-bootstrap"), "body");
+        LocalSkillRuntime runtime = new LocalSkillRuntime();
+        SkillRuntimeConfig failing = SkillRuntimeConfig.builder()
+            .bootstrapCommand("exit 7", 5000)
+            .build();
+
+        try {
+            runtime.prepare(new SkillPreparationRequest(Collections.singletonList(skill),
+                Collections.singletonMap(skill.name(), failing)));
+            fail("Expected bootstrap failure");
+        } catch (SkillRuntimeException expected) {
+            assertTrue(expected.getMessage().contains("exit code 7"));
+        }
+
+        SkillRuntimeConfig succeeding = SkillRuntimeConfig.builder()
+            .bootstrapCommand("printf ready > bootstrap.ready", 5000)
+            .build();
+        runtime.prepare(new SkillPreparationRequest(Collections.singletonList(skill),
+            Collections.singletonMap(skill.name(), succeeding)));
+
+        assertEquals("ready", new String(Files.readAllBytes(
+            new File(skillDirectory, "bootstrap.ready").toPath()), StandardCharsets.UTF_8));
+        runtime.close();
+    }
+
+    @Test
     public void localRuntimeListsDirectFilesAndDirectories() throws Exception {
         File directory = temporaryFolder.newFolder("local-list");
         File childDirectory = new File(directory, "src");
@@ -284,11 +354,11 @@ public class SkillRuntimeTest {
         }
 
         @Override
-        public List<Skill> prepare(List<Skill> skills) {
+        public List<Skill> prepare(SkillPreparationRequest request) {
             prepareCalls++;
-            preparedSkillCount = skills.size();
+            preparedSkillCount = request.getSkills().size();
             List<Skill> prepared = new java.util.ArrayList<>();
-            for (Skill skill : skills) {
+            for (Skill skill : request.getSkills()) {
                 prepared.add(new Skill("/runtime/" + skill.name(), skill.getFrontMatter(), skill.getContent()));
             }
             return prepared;

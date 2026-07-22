@@ -1,8 +1,25 @@
+/*
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package com.agentsflex.skill.runtime.aiosandbox;
 
 import com.agentsflex.skill.Skill;
 import com.agentsflex.skill.runtime.SkillExecutionRequest;
 import com.agentsflex.skill.runtime.SkillExecutionResult;
+import com.agentsflex.skill.runtime.SkillPreparationRequest;
+import com.agentsflex.skill.runtime.SkillRuntimeConfig;
 import com.agentsflex.skill.runtime.SkillRuntimeFileSystem;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -86,7 +103,8 @@ public class AioSandboxSkillRuntimeTest {
             .bearerToken("test-token")
             .build();
 
-        List<Skill> preparedSkills = runtime.prepare(Arrays.asList(skill, secondSkill));
+        List<Skill> preparedSkills = runtime.prepare(new SkillPreparationRequest(
+            Arrays.asList(skill, secondSkill), Collections.<String, SkillRuntimeConfig>emptyMap()));
         String remoteBase = preparedSkills.get(0).getBasePath();
         String secondRemoteBase = preparedSkills.get(1).getBasePath();
         Map<String, String> environment = new HashMap<>();
@@ -131,6 +149,49 @@ public class AioSandboxSkillRuntimeTest {
         assertEquals("s1", JSON.parseObject(wait.body).getString("id"));
         JSONObject outputBody = JSON.parseObject(output.body);
         assertEquals("s1", outputBody.getString("id"));
+        runtime.close();
+    }
+
+    @Test
+    public void bootstrapsUploadedSkillAndPersistsEnvironment() throws Exception {
+        File skillDirectory = temporaryFolder.newFolder("configured");
+        Files.write(new File(skillDirectory, "SKILL.md").toPath(), "body".getBytes(StandardCharsets.UTF_8));
+        Skill skill = new Skill(skillDirectory.getAbsolutePath(),
+            Collections.<String, Object>singletonMap("name", "configured"), "body");
+        SkillRuntimeConfig config = SkillRuntimeConfig.builder()
+            .environment("SKILL_RUNTIME_VALUE", "configured")
+            .bootstrapCommand("setup-command", 5000)
+            .build();
+        SkillPreparationRequest request = new SkillPreparationRequest(Collections.singletonList(skill),
+            Collections.singletonMap(skill.name(), config));
+
+        responses.add("{\"success\":true,\"data\":{\"session_id\":\"mkdir\","
+            + "\"status\":\"completed\",\"output\":\"\",\"exit_code\":0}}");
+        responses.add("{\"success\":true,\"data\":{}}");
+        responses.add("{\"success\":true,\"data\":{\"session_id\":\"bootstrap\","
+            + "\"status\":\"completed\",\"output\":\"\",\"exit_code\":0}}");
+        responses.add("{\"success\":true,\"data\":{\"session_id\":\"execute\","
+            + "\"status\":\"completed\",\"output\":\"configured\",\"exit_code\":0}}");
+
+        AioSandboxSkillRuntime runtime = AioSandboxSkillRuntime.builder()
+            .baseUrl("http://localhost:" + server.getAddress().getPort())
+            .build();
+
+        List<Skill> first = runtime.prepare(request);
+        runtime.prepare(request);
+        SkillExecutionResult result = runtime.execute(new SkillExecutionRequest(
+            "echo $SKILL_RUNTIME_VALUE", first.get(0).getBasePath(), 5000,
+            Collections.<String, String>emptyMap()));
+
+        assertEquals(4, calls.size());
+        JSONObject bootstrap = JSON.parseObject(calls.get(2).body);
+        assertEquals(first.get(0).getBasePath(), bootstrap.getString("exec_dir"));
+        assertEquals("(\nexport SKILL_RUNTIME_VALUE='configured'\nsetup-command\n)",
+            bootstrap.getString("command"));
+        JSONObject execute = JSON.parseObject(calls.get(3).body);
+        assertEquals("(\nexport SKILL_RUNTIME_VALUE='configured'\necho $SKILL_RUNTIME_VALUE\n)",
+            execute.getString("command"));
+        assertEquals("configured", result.getStdout());
         runtime.close();
     }
 

@@ -29,7 +29,7 @@ Sandbox 服务中。
         │ SkillsTool 发现并解析 SKILL.md
         ▼
 List<Skill>，basePath 是当前应用节点可读路径
-        │ SkillRuntime.prepare(List<Skill>)
+        │ SkillRuntime.prepare(SkillPreparationRequest)
         ├──────── Local：保留本地路径
         └──────── Remote：上传目录并改写 basePath
                          │
@@ -45,9 +45,48 @@ List<Skill>，basePath 是当前应用节点可读路径
 `SkillsTool.build()` 或 `buildTools()` 会先完成发现、筛选和 `prepare()`，再创建模型工具。因此远程 Skill
 通常在构建工具时上传，而不是等到模型第一次激活 Skill 时才上传。
 
+### Runtime 配置与 bootstrap
+
+`Skill` 和 `SKILL.md` 保持 Agent Skills 标准结构。运行所需的环境变量和初始化命令通过独立的
+`SkillRuntimeConfig` 配置，不需要向 Skill front matter 添加 Agents-Flex 专用字段：
+
+```java
+SkillRuntimeConfig kdocsConfig = SkillRuntimeConfig.builder()
+    .environment("KDOCS_CLI_DIR", "/home/gem/.local/bin")
+    .environment("PATH", "/home/gem/.local/bin:/usr/local/bin:/usr/bin:/bin")
+    .bootstrapCommand("bash scripts/setup.sh", 120_000L)
+    .build();
+
+prompt.addTools(SkillsTool.builder()
+    .addSkillsDirectory(skillsDirectory, "kdocs-skill")
+    .skillRuntimeConfig("kdocs-skill", kdocsConfig)
+    .runtime(runtime)
+    .buildTools());
+```
+
+准备顺序固定为：
+
+1. 合并当前批次的 Runtime 环境变量；
+2. 上传尚未准备的 Skill；
+3. 以远端 Skill 根目录为工作目录依次执行 bootstrap；
+4. 所有命令成功后才记录上传缓存。
+
+同一个 Runtime 生命周期内，命中上传缓存的 Skill 不会重复执行 bootstrap。Local Runtime 没有上传
+过程，因此把首次准备本地 Skill 视为一次物化，并执行一次 bootstrap。bootstrap 超时或返回非零退出码时，
+`prepare()` 失败且不记录成功状态，下次准备仍会重试。
+
+环境变量保存在 Runtime 对象中，而不是通过 `export`、`.bashrc` 或 `.profile` 持久化。后续每次
+`execute()` 都会重新注入这些变量，单次 `SkillExecutionRequest.environment` 的同名值具有更高优先级。
+多个 Skill 声明同名变量时，按传给 `prepare()` 的 Skill 顺序合并，后面的配置覆盖前面的值。
+
+环境变量可能包含 Token 或 API Key。应用不得记录完整配置、将其写入 Skill 上传目录，或在异常信息中
+输出变量值。当前 API 不区分普通值与 Secret；需要 Vault、KMS 或短期凭证时，应在应用层取得值后再构建
+`SkillRuntimeConfig`。
+
 ### prepare() 是批量 API
 
-`SkillRuntime.prepare(List<Skill>)` 一次接收当前配置的全部 Skills，不是只准备一个 Skill。实现必须：
+`SkillRuntime.prepare(SkillPreparationRequest)` 是批量 API，一次接收当前配置的全部 Skills 及其
+Runtime 配置，不是只准备一个 Skill。实现必须：
 
 1. 返回与输入数量相同的列表；
 2. 保留输入顺序；

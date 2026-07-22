@@ -92,6 +92,26 @@ SkillRuntime runtime = AioSandboxSkillRuntime.builder()
     .build();
 ```
 
+如果 Skill 需要安装 CLI 或持续使用环境变量，可以在 `SkillsTool` 上配置，而不修改标准
+`SKILL.md`：
+
+```java
+SkillRuntimeConfig config = SkillRuntimeConfig.builder()
+    .environment("KDOCS_CLI_DIR", "/home/gem/.local/bin")
+    .environment("PATH", "/home/gem/.local/bin:/usr/local/bin:/usr/bin:/bin")
+    .bootstrapCommand("bash scripts/setup.sh", 120_000L)
+    .build();
+
+prompt.addTools(SkillsTool.builder()
+    .addSkillsDirectory(skillsDirectory, "kdocs-skill")
+    .skillRuntimeConfig("kdocs-skill", config)
+    .runtime(runtime)
+    .buildTools());
+```
+
+AIO 是长期运行的共享服务。Runtime 会在当前 Java 对象中缓存已上传 Skill 和环境配置；`close()` 会清理
+这些本地状态，但不会删除远端安装结果或停止容器。不同租户需要强隔离时，不应共用同一个 AIO 容器。
+
 `close()` 不会停止 AIO 容器。容器由部署系统或操作者管理：
 
 ```bash

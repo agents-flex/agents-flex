@@ -218,6 +218,24 @@ try (SkillRuntime runtime = createOpenSandboxRuntime()) {
 | `environment` | 创建 Sandbox 时注入环境变量 |
 | `networkPolicy` | 出站网络策略；可以传入 `NetworkPolicy` 或配置 `NetworkPolicy.Builder` |
 
+Skill 自身的运行环境和上传后初始化通过 `SkillRuntimeConfig` 配置：
+
+```java
+SkillRuntimeConfig config = SkillRuntimeConfig.builder()
+    .environment("TOOL_HOME", "/workspace/.tools")
+    .bootstrapCommand("bash scripts/setup.sh", 120_000L)
+    .build();
+
+prompt.addTools(SkillsTool.builder()
+    .addSkillsDirectory(skillsDirectory, "demo-skill")
+    .skillRuntimeConfig("demo-skill", config)
+    .runtime(runtime)
+    .buildTools());
+```
+
+Builder 的 `environment` 是 Sandbox 基础环境；`SkillRuntimeConfig.environment` 在 Skill 准备期间合并，
+并在 bootstrap 和后续每次命令执行时注入。单次执行请求中的同名环境变量优先级最高。
+
 镜像必须自行包含任务需要的程序，或允许任务安装依赖。例如 PPTX Demo 使用 `python3` 和
 `python-pptx`。生产环境推荐构建固定版本的专用镜像，不要在每次任务中临时从公网安装依赖。
 

@@ -1,15 +1,27 @@
 /*
- * Copyright 2026 - 2026 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package com.agentsflex.skill.runtime.opensandbox;
 
 import com.agentsflex.skill.Skill;
 import com.agentsflex.skill.runtime.SkillExecutionRequest;
 import com.agentsflex.skill.runtime.SkillExecutionResult;
+import com.agentsflex.skill.runtime.SkillPreparationRequest;
 import com.agentsflex.skill.runtime.SkillRuntime;
+import com.agentsflex.skill.runtime.SkillRuntimeBootstrap;
+import com.agentsflex.skill.runtime.SkillRuntimeConfig;
 import com.agentsflex.skill.runtime.SkillRuntimeException;
 import com.agentsflex.skill.runtime.SkillRuntimeFileSystem;
 import com.alibaba.opensandbox.sandbox.Sandbox;
@@ -52,7 +64,8 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
     private final Duration readyTimeout;
     private final String remoteRoot;
     private final Map<String, String> resources;
-    private final Map<String, String> environment;
+    private final Map<String, String> baseEnvironment;
+    private final Map<String, String> environment = new LinkedHashMap<>();
     private final NetworkPolicy networkPolicy;
     private final Map<String, String> preparedSkills = new HashMap<>();
     private final SkillRuntimeFileSystem fileSystem;
@@ -67,7 +80,7 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
         this.readyTimeout = builder.readyTimeout;
         this.remoteRoot = normalizeRemoteRoot(builder.remoteRoot);
         this.resources = new LinkedHashMap<>(builder.resources);
-        this.environment = new LinkedHashMap<>(builder.environment);
+        this.baseEnvironment = new LinkedHashMap<>(builder.environment);
         this.networkPolicy = builder.networkPolicy;
         this.fileSystem = new OpenSandboxFileSystem(this::sandbox);
         this.skillUploader = new OpenSandboxSkillUploader(this::sandbox);
@@ -88,11 +101,28 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
     }
 
     @Override
-    public synchronized List<Skill> prepare(List<Skill> skills) {
+    public synchronized List<Skill> prepare(SkillPreparationRequest request) {
+        for (Skill skill : request.getSkills()) {
+            SkillRuntimeConfig config = request.getRuntimeConfig(skill);
+            if (config != null) {
+                environment.putAll(config.getEnvironment());
+            }
+        }
+
         // 保留输入顺序，并为每个 Skill 创建指向沙箱目录的新对象。
-        List<Skill> runtimeSkills = new ArrayList<>(skills.size());
-        for (Skill skill : skills) {
-            runtimeSkills.add(new Skill(prepareSkill(skill), skill.getFrontMatter(), skill.getContent()));
+        List<Skill> runtimeSkills = new ArrayList<>(request.getSkills().size());
+        for (Skill skill : request.getSkills()) {
+            String existing = preparedSkills.get(skill.getBasePath());
+            if (existing != null) {
+                runtimeSkills.add(runtimeSkill(skill, existing));
+                continue;
+            }
+
+            String remoteBase = uploadSkill(skill);
+            Skill runtimeSkill = runtimeSkill(skill, remoteBase);
+            SkillRuntimeBootstrap.run(this, runtimeSkill, request.getRuntimeConfig(skill));
+            preparedSkills.put(skill.getBasePath(), remoteBase);
+            runtimeSkills.add(runtimeSkill);
         }
         return runtimeSkills;
     }
@@ -113,7 +143,7 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
             .command(request.getCommand())
             .workingDirectory(request.getWorkingDirectory() == null ? remoteRoot : request.getWorkingDirectory())
             .timeout(Duration.ofMillis(request.getTimeoutMillis()))
-            .envs(request.getEnvironment())
+            .envs(effectiveEnvironment(request))
             .build();
         try {
             Execution execution = sandbox().commands().run(command);
@@ -141,17 +171,13 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
             } finally {
                 sandbox = null;
                 preparedSkills.clear();
+                environment.clear();
             }
         }
     }
 
-    private String prepareSkill(Skill skill) {
+    private String uploadSkill(Skill skill) {
         String localBasePath = skill.getBasePath();
-        String existing = preparedSkills.get(localBasePath);
-        if (existing != null) {
-            return existing;
-        }
-
         Path source = Paths.get(localBasePath).toAbsolutePath().normalize();
         if (!Files.isDirectory(source)) {
             throw new SkillRuntimeException("OpenSandbox can only prepare file-system skills: " + localBasePath);
@@ -164,8 +190,23 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
         } catch (IOException e) {
             throw new SkillRuntimeException("Failed to upload skill to OpenSandbox: " + skill.name(), e);
         }
-        preparedSkills.put(localBasePath, remoteBase);
         return remoteBase;
+    }
+
+    private Map<String, String> effectiveEnvironment(SkillExecutionRequest request) {
+        Map<String, String> effective = configuredEnvironment();
+        effective.putAll(request.getEnvironment());
+        return effective;
+    }
+
+    private Map<String, String> configuredEnvironment() {
+        Map<String, String> configured = new LinkedHashMap<>(baseEnvironment);
+        configured.putAll(environment);
+        return configured;
+    }
+
+    private static Skill runtimeSkill(Skill skill, String basePath) {
+        return new Skill(basePath, skill.getFrontMatter(), skill.getContent());
     }
 
     private synchronized Sandbox sandbox() {
@@ -177,7 +218,7 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
                 .timeout(sandboxTimeout)
                 .readyTimeout(readyTimeout)
                 .resource(resources)
-                .env(environment);
+                .env(configuredEnvironment());
             if (networkPolicy != null) {
                 builder.networkPolicy(networkPolicy);
             }
