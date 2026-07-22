@@ -9,7 +9,7 @@ package com.agentsflex.skill.runtime;
 /**
  * Runtime 文件系统中的文件元数据。
  *
- * <p>该对象只描述 Runtime 能看到的路径，不保证宿主机存在同名文件。Glob、Grep 等
+ * <p>该对象只描述 Runtime 能看到的路径，不保证宿主机存在同名文件。glob、grep 等
  * 工具通过它遍历目录并区分普通文件与目录。</p>
  */
 public class SkillFileInfo {

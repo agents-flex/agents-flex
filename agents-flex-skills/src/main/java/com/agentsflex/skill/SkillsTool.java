@@ -45,9 +45,9 @@ import java.util.stream.Collectors;
  *
  * <p>该类同时解决两个问题：</p>
  * <ol>
- *     <li>构建 {@code Skill} 工具，让模型先看到可用 Skill 的元数据，并按名称加载
+ *     <li>构建 {@code skill} 工具，让模型先看到可用 Skill 的元数据，并按名称加载
  *     {@code SKILL.md} 正文；</li>
- *     <li>通过 {@link Builder#buildTools()} 注册由同一个 Runtime 驱动的 Bash、文件和
+ *     <li>通过 {@link Builder#buildTools()} 注册由同一个 Runtime 驱动的 bash、文件和
  *     搜索工具，保证 Skill 指令中的后续操作不会意外回到宿主机执行。</li>
  * </ol>
  *
@@ -69,8 +69,8 @@ public class SkillsTool {
         "- When you invoke a skill, you will see <command-message>The \"{name}\" skill is loading</command-message>\n" +
         "- The skill's prompt will expand and provide detailed instructions on how to complete the task\n" +
         "\n" +
-        "NOTE: The response starts with the base directory inside the configured skill runtime. Use only the runtime-backed Bash, Read, Write, Edit, Glob, and Grep tools for runtime resources.\n" +
-        "When PublishFile is available, use it to turn a final runtime file into a URL before delivering the result to the user.\n" +
+        "NOTE: The response starts with the base directory inside the configured skill runtime. Use only the runtime-backed bash, read, write, edit, ls, glob, and grep tools for runtime resources.\n" +
+        "When publish_file is available, use it to turn a final runtime file into a URL before delivering the result to the user.\n" +
         "Skill description follows after the base directory line.\n" +
         "\n" +
         "Important:\n" +
@@ -113,7 +113,7 @@ public class SkillsTool {
         }
 
         /**
-         * 替换 {@code Skill} 工具的描述模板。
+         * 替换 {@code skill} 工具的描述模板。
          *
          * <p>模板必须包含一个 {@code %s} 占位符，用于插入可用 Skill 的 XML 摘要。</p>
          *
@@ -142,7 +142,7 @@ public class SkillsTool {
         /**
          * 配置 Runtime 产物的文件发布器。
          *
-         * <p>配置后，{@link #buildTools()} 会额外注册 {@code PublishFile} 工具。
+         * <p>配置后，{@link #buildTools()} 会额外注册 {@code publish_file} 工具。
          * 未配置时不注册该工具，因为 Runtime 文件路径本身不能自动转换为用户可访问 URL。</p>
          *
          * @param filePublisher 保存或上传文件并生成 URL 的应用实现
@@ -301,7 +301,7 @@ public class SkillsTool {
         }
 
         /**
-         * 只构建用于发现和加载 Skill 指令的 {@code Skill} 工具。
+         * 只构建用于发现和加载 Skill 指令的 {@code skill} 工具。
          *
          * <p>该方法会立即调用 Runtime 的批量 {@code prepare}。如果 Skill 需要上传，
          * 上传发生在构建阶段。单独使用本方法时，调用方必须自行注册与同一 Runtime
@@ -323,7 +323,7 @@ public class SkillsTool {
             final List<Skill> runtimeSkills = Collections.unmodifiableList(new ArrayList<>(preparedSkills));
             String skillsXml = runtimeSkills.stream().map(Skill::toXml).collect(Collectors.joining("\n"));
             return Tool.builder()
-                .name("Skill")
+                .name("skill")
                 .description(String.format(this.toolDescriptionTemplate, skillsXml))
                 .addParameter(
                     Parameter.builder()
@@ -353,9 +353,9 @@ public class SkillsTool {
         /**
          * 构建完整的 Runtime 工具集合。
          *
-         * <p>返回的工具包括 {@code Skill}、{@code Bash}、{@code Read}、{@code Write}、
-         * {@code Edit}、{@code Glob} 和 {@code Grep}。配置 FilePublisher 后还会包含
-         * {@code PublishFile}。这些工具共享同一个 Runtime。
+         * <p>返回的工具包括 {@code skill}、{@code bash}、{@code read}、{@code write}、
+         * {@code edit}、{@code ls}、{@code glob} 和 {@code grep}。配置 FilePublisher 后还会包含
+         * {@code publish_file}。这些工具共享同一个 Runtime。
          * 使用远程 Runtime 时，应注册本方法的完整返回值，不要再混入指向宿主机的
          * Commons 文件或 Shell 工具，否则会破坏执行隔离。</p>
          *

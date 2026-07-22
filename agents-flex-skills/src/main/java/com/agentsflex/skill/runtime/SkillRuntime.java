@@ -14,7 +14,7 @@ import java.util.List;
  * Skill 资源、命令和文件操作的统一执行边界。
  *
  * <p>Runtime 可以代表当前主机、容器或远程沙箱。上层代码只依赖本接口，因此切换
- * Runtime 时无需改写 Bash、Read、Write、Glob、Grep 等工具。</p>
+ * Runtime 时无需改写 bash、read、write、glob、grep 等工具。</p>
  *
  * <p>{@link #prepare(List)} 接收当前会话配置的全部 Skill。实现必须让这些资源在目标
  * 环境中可用，并按输入顺序返回数量相同的 Skill；返回对象的 {@code basePath} 必须是

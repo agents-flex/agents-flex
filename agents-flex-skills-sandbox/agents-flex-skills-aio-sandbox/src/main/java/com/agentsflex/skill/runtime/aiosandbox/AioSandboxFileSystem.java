@@ -83,6 +83,30 @@ public class AioSandboxFileSystem implements SkillRuntimeFileSystem {
     }
 
     @Override
+    public List<SkillFileInfo> listDirectory(String path, int maxDepth, int maxResults) {
+        SkillFileInfo info = stat(path);
+        if (info == null) {
+            throw new SkillRuntimeException("Path does not exist in AIO Sandbox: " + path);
+        }
+        if (!info.isDirectory()) {
+            return Collections.singletonList(info);
+        }
+        String command = "find " + shellQuote(path) + " -mindepth 1 -maxdepth " + Math.max(1, maxDepth)
+            + " -printf '%y\\t%p\\n'"
+            + " | head -n " + Math.max(1, maxResults);
+        SkillExecutionResult result = client.execute(command, "/", 30000);
+        requireSuccessful(result, "list directory");
+        List<SkillFileInfo> values = new ArrayList<>();
+        for (String line : result.getStdout().split("\\r?\\n")) {
+            int separator = line.indexOf('\t');
+            if (separator > 0 && separator < line.length() - 1) {
+                values.add(new SkillFileInfo(line.substring(separator + 1), line.charAt(0) == 'd', 0, 0));
+            }
+        }
+        return values;
+    }
+
+    @Override
     public List<SkillFileInfo> listFiles(String path, int maxDepth, int maxResults) {
         SkillFileInfo info = stat(path);
         if (info == null) {

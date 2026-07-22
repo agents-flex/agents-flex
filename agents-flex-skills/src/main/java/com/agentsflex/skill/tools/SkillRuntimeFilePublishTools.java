@@ -56,7 +56,7 @@ public class SkillRuntimeFilePublishTools {
      * @param contentType 可选 MIME 类型；为空时根据文件名推断
      * @return 包含 URL 和文件信息的发布结果
      */
-    @ToolDef(name = "PublishFile", description = "Publishes a file from the configured skill runtime "
+    @ToolDef(name = "publish_file", description = "Publishes a file from the configured skill runtime "
         + "and returns a URL that can be delivered to the user. Use this after generating and validating "
         + "a final file. The path must reference a regular file inside the configured runtime.")
     public String publishFile(

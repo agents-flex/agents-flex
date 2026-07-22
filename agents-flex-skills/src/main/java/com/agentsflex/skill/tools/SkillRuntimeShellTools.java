@@ -15,7 +15,7 @@ import com.agentsflex.skill.runtime.SkillRuntime;
 import java.util.Collections;
 
 /**
- * 完全委托给 {@link SkillRuntime} 的 Bash 工具。
+ * 完全委托给 {@link SkillRuntime} 的 bash 工具。
  *
  * <p>该工具不直接创建本机进程。Runtime 决定命令在宿主机、容器还是远程 Sandbox 中
  * 执行。工具层统一限制模型可设置的最长超时和返回文本长度，防止单次调用长期占用会话
@@ -45,7 +45,7 @@ public class SkillRuntimeShellTools {
      * @param workingDirectory 可选的 Runtime 内工作目录
      * @return 包含退出码、超时状态、stdout 和 stderr 的格式化结果
      */
-    @ToolDef(name = "Bash", description = "Executes a shell command in the configured skill runtime. " +
+    @ToolDef(name = "bash", description = "Executes a shell command in the configured skill runtime. " +
         "Commands never bypass the runtime to execute on the host. The default timeout is 120000ms and the maximum is 600000ms.")
     public String bash(
         @ToolParam(name = "command", description = "The shell command to execute") String command,

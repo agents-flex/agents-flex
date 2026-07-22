@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * 基于 {@link SkillRuntime} 的模型文本文件工具。
  *
- * <p>提供 Read、Write 和 Edit 三个工具。所有路径都交给 Runtime 文件系统处理；配置远程
+ * <p>提供 read、write 和 edit 三个工具。所有路径都交给 Runtime 文件系统处理；配置远程
  * Runtime 后不会回退到宿主机。为避免超大文件占满模型上下文，读取和编辑分别设置了
  * 字节、行数和单行长度上限。</p>
  */
@@ -48,7 +48,7 @@ public class SkillRuntimeFileTools {
      * @param limit 可选的最大行数
      * @return 适合直接返回给模型的文本或错误信息
      */
-    @ToolDef(name = "Read", description = "Reads a UTF-8 text file from the configured skill runtime. "
+    @ToolDef(name = "read", description = "Reads a UTF-8 text file from the configured skill runtime. "
         + "The path is resolved inside that runtime and never against the host when a remote runtime is configured. "
         + "Returns numbered lines; defaults to 2000 lines.")
     public String read(
@@ -96,7 +96,7 @@ public class SkillRuntimeFileTools {
      * @param content 写入内容；{@code null} 按空字符串处理
      * @return 写入结果摘要
      */
-    @ToolDef(name = "Write", description = "Creates or overwrites a UTF-8 text file in the configured skill runtime. "
+    @ToolDef(name = "write", description = "Creates or overwrites a UTF-8 text file in the configured skill runtime. "
         + "Parent directories are created by the runtime implementation.")
     public String write(
         @ToolParam(name = "filePath", description = "Absolute runtime-visible file path") String filePath,
@@ -125,7 +125,7 @@ public class SkillRuntimeFileTools {
      * @param replaceAll 是否替换所有匹配项
      * @return 编辑结果及修改位置附近的文本片段
      */
-    @ToolDef(name = "Edit", description = "Performs an exact text replacement in a UTF-8 file inside the configured skill runtime.")
+    @ToolDef(name = "edit", description = "Performs an exact text replacement in a UTF-8 file inside the configured skill runtime.")
     public String edit(
         @ToolParam(name = "filePath", description = "Absolute runtime-visible file path") String filePath,
         @ToolParam(name = "old_string", description = "Exact text to replace") String oldString,

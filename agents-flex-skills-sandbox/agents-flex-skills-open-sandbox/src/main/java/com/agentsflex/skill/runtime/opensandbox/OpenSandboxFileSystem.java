@@ -87,6 +87,29 @@ public class OpenSandboxFileSystem implements SkillRuntimeFileSystem {
     }
 
     @Override
+    public List<SkillFileInfo> listDirectory(String path, int maxDepth, int maxResults) {
+        SkillFileInfo rootInfo = stat(path);
+        if (rootInfo == null) {
+            throw new SkillRuntimeException("Path does not exist in OpenSandbox: " + path);
+        }
+        if (!rootInfo.isDirectory()) {
+            return Collections.singletonList(rootInfo);
+        }
+        try {
+            List<SkillFileInfo> result = new ArrayList<>();
+            for (EntryInfo info : sandbox().files().listDirectory(path, Math.max(1, maxDepth))) {
+                result.add(toSkillFileInfo(info));
+                if (result.size() >= maxResults) {
+                    break;
+                }
+            }
+            return result;
+        } catch (RuntimeException e) {
+            throw new SkillRuntimeException("OpenSandbox failed to list directory: " + path, e);
+        }
+    }
+
+    @Override
     public List<SkillFileInfo> listFiles(String path, int maxDepth, int maxResults) {
         SkillFileInfo rootInfo = stat(path);
         if (rootInfo == null) {

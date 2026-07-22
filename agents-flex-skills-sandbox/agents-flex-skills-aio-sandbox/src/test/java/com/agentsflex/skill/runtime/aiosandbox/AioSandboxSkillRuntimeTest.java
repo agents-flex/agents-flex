@@ -195,6 +195,32 @@ public class AioSandboxSkillRuntimeTest {
         assertTrue(body.getString("command").endsWith("fi\n)"));
     }
 
+    @Test
+    public void listsDirectFilesAndDirectoriesThroughShell() {
+        responses.add("{\"success\":true,\"data\":{\"session_id\":\"stat\","
+            + "\"status\":\"completed\",\"output\":\"directory\\n0\\n\",\"exit_code\":0}}");
+        responses.add("{\"success\":true,\"data\":{\"session_id\":\"list\","
+            + "\"status\":\"completed\",\"output\":\"d\\t/workspace/src\\nf\\t/workspace/src/Main.java\\n"
+            + "f\\t/workspace/README.md\\n\","
+            + "\"exit_code\":0}}");
+
+        AioSandboxSkillRuntime runtime = AioSandboxSkillRuntime.builder()
+            .baseUrl("http://localhost:" + server.getAddress().getPort())
+            .build();
+
+        List<com.agentsflex.skill.runtime.SkillFileInfo> entries =
+            runtime.getFileSystem().listDirectory("/workspace", 2, 100);
+
+        assertEquals(3, entries.size());
+        assertEquals("/workspace/src", entries.get(0).getPath());
+        assertTrue(entries.get(0).isDirectory());
+        assertEquals("/workspace/src/Main.java", entries.get(1).getPath());
+        assertEquals(false, entries.get(1).isDirectory());
+        assertEquals("/workspace/README.md", entries.get(2).getPath());
+        assertTrue(JSON.parseObject(calls.get(1).body).getString("command")
+            .contains("-mindepth 1 -maxdepth 2"));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void rejectsRootAsRemoteDirectory() {
         AioSandboxSkillRuntime.builder().remoteRoot("/").build();

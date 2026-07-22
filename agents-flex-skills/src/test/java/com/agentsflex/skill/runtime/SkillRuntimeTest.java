@@ -52,14 +52,15 @@ public class SkillRuntimeTest {
             .runtime(runtime)
             .buildTools();
 
-        Tool skillTool = tool(tools, "Skill");
-        Tool bashTool = tool(tools, "Bash");
-        assertEquals(7, tools.size());
-        tool(tools, "Read");
-        tool(tools, "Write");
-        tool(tools, "Edit");
-        tool(tools, "Glob");
-        tool(tools, "Grep");
+        Tool skillTool = tool(tools, "skill");
+        Tool bashTool = tool(tools, "bash");
+        assertEquals(8, tools.size());
+        tool(tools, "read");
+        tool(tools, "write");
+        tool(tools, "edit");
+        tool(tools, "ls");
+        tool(tools, "glob");
+        tool(tools, "grep");
         Object skillResult = skillTool.invoke(Collections.<String, Object>singletonMap("command", "demo"));
 
         Map<String, Object> bashArgs = new HashMap<>();
@@ -90,35 +91,52 @@ public class SkillRuntimeTest {
 
         Map<String, Object> readArgs = new HashMap<>();
         readArgs.put("filePath", "/runtime/files/config.txt");
-        assertTrue(tool(tools, "Read").invoke(readArgs).toString().contains("hello runtime"));
+        assertTrue(tool(tools, "read").invoke(readArgs).toString().contains("hello runtime"));
 
         Map<String, Object> globArgs = new HashMap<>();
         globArgs.put("pattern", "*.txt");
         globArgs.put("path", "/runtime/files");
-        assertEquals("/runtime/files/config.txt", tool(tools, "Glob").invoke(globArgs));
+        assertEquals("/runtime/files/config.txt", tool(tools, "glob").invoke(globArgs));
 
         runtime.fileSystem.writeText("/runtime/target/classes/skill.md", "target ancestor is allowed");
         globArgs.put("pattern", "*.md");
         globArgs.put("path", "/runtime/target/classes");
-        assertEquals("/runtime/target/classes/skill.md", tool(tools, "Glob").invoke(globArgs));
+        assertEquals("/runtime/target/classes/skill.md", tool(tools, "glob").invoke(globArgs));
 
         Map<String, Object> grepArgs = new HashMap<>();
         grepArgs.put("pattern", "runtime");
         grepArgs.put("path", "/runtime/files");
         grepArgs.put("outputMode", "content");
-        assertTrue(tool(tools, "Grep").invoke(grepArgs).toString().contains("hello runtime"));
+        assertTrue(tool(tools, "grep").invoke(grepArgs).toString().contains("hello runtime"));
+
+        runtime.fileSystem.writeText("/runtime/files/nested/child.txt", "child\n");
+        runtime.fileSystem.writeText("/runtime/files/target/generated.txt", "ignored\n");
+        Map<String, Object> lsArgs = new HashMap<>();
+        lsArgs.put("path", "/runtime/files");
+        assertEquals("/runtime/files\n  [dir]  nested\n  [file] config.txt", tool(tools, "ls").invoke(lsArgs));
+        lsArgs.put("depth", 2);
+        assertEquals("/runtime/files\n  [dir]  nested\n  [file] config.txt\n  [file] nested/child.txt",
+            tool(tools, "ls").invoke(lsArgs));
+        lsArgs.put("maxResult", 2);
+        assertEquals("/runtime/files\n  [dir]  nested\n  [file] config.txt\n"
+            + "  ... (limit of 2 reached; use a smaller depth or narrow the path)",
+            tool(tools, "ls").invoke(lsArgs));
+
+        Map<String, Object> lsFileArgs = new HashMap<>();
+        lsFileArgs.put("path", "/runtime/files/config.txt");
+        assertEquals("/runtime/files/config.txt\n  [file] config.txt", tool(tools, "ls").invoke(lsFileArgs));
 
         Map<String, Object> editArgs = new HashMap<>();
         editArgs.put("filePath", "/runtime/files/config.txt");
         editArgs.put("old_string", "second line");
         editArgs.put("new_string", "updated line");
-        tool(tools, "Edit").invoke(editArgs);
+        tool(tools, "edit").invoke(editArgs);
         assertTrue(runtime.fileSystem.readText("/runtime/files/config.txt", 1000).contains("updated line"));
 
         Map<String, Object> writeArgs = new HashMap<>();
         writeArgs.put("filePath", "/runtime/files/new.txt");
         writeArgs.put("content", "new file");
-        tool(tools, "Write").invoke(writeArgs);
+        tool(tools, "write").invoke(writeArgs);
         assertEquals("new file", runtime.fileSystem.readText("/runtime/files/new.txt", 1000));
     }
 
@@ -162,12 +180,12 @@ public class SkillRuntimeTest {
             .filePublisher(publisher)
             .buildTools();
 
-        assertEquals(8, tools.size());
+        assertEquals(9, tools.size());
         Map<String, Object> args = new HashMap<>();
         args.put("filePath", "/runtime/output/report.pptx");
         args.put("fileName", "runtime-report.pptx");
         args.put("contentType", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
-        Object result = tool(tools, "PublishFile").invoke(args);
+        Object result = tool(tools, "publish_file").invoke(args);
 
         assertEquals("presentation-bytes", new String(publishedContent.toByteArray(), StandardCharsets.UTF_8));
         assertEquals("recording", captured.get().getRuntimeName());
@@ -188,6 +206,29 @@ public class SkillRuntimeTest {
 
         assertEquals(0, result.getExitCode());
         assertEquals(directory.getCanonicalPath(), result.getStdout().trim());
+    }
+
+    @Test
+    public void localRuntimeListsDirectFilesAndDirectories() throws Exception {
+        File directory = temporaryFolder.newFolder("local-list");
+        File childDirectory = new File(directory, "src");
+        assertTrue(childDirectory.mkdir());
+        File childFile = new File(directory, "README.md");
+        Files.write(childFile.toPath(), "readme".getBytes(StandardCharsets.UTF_8));
+        File nestedFile = new File(childDirectory, "Main.java");
+        Files.write(nestedFile.toPath(), "class Main {}".getBytes(StandardCharsets.UTF_8));
+
+        List<SkillFileInfo> entries = new LocalSkillRuntime().getFileSystem()
+            .listDirectory(directory.getAbsolutePath(), 2, 100);
+
+        assertEquals(3, entries.size());
+        Map<String, SkillFileInfo> entriesByPath = new HashMap<>();
+        for (SkillFileInfo entry : entries) {
+            entriesByPath.put(entry.getPath(), entry);
+        }
+        assertFalse(entriesByPath.get(childFile.toPath().toAbsolutePath().normalize().toString()).isDirectory());
+        assertTrue(entriesByPath.get(childDirectory.toPath().toAbsolutePath().normalize().toString()).isDirectory());
+        assertFalse(entriesByPath.get(nestedFile.toPath().toAbsolutePath().normalize().toString()).isDirectory());
     }
 
     @Test
@@ -323,6 +364,39 @@ public class SkillRuntimeTest {
                 if ((entry.getKey().equals(path) || entry.getKey().startsWith(prefix)) && result.size() < maxResults) {
                     result.add(new SkillFileInfo(entry.getKey(), false, entry.getValue().length(), 0));
                 }
+            }
+            return result;
+        }
+
+        @Override
+        public List<SkillFileInfo> listDirectory(String path, int maxDepth, int maxResults) {
+            List<SkillFileInfo> result = new ArrayList<>();
+            if (values.containsKey(path)) {
+                result.add(new SkillFileInfo(path, false, values.get(path).length(), 0));
+                return result;
+            }
+            String prefix = path.endsWith("/") ? path : path + "/";
+            Map<String, SkillFileInfo> entries = new LinkedHashMap<>();
+            for (Map.Entry<String, String> entry : values.entrySet()) {
+                if (!entry.getKey().startsWith(prefix)) {
+                    continue;
+                }
+                String relative = entry.getKey().substring(prefix.length());
+                String[] segments = relative.split("/");
+                String current = path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+                for (int i = 0; i < segments.length - 1 && i < maxDepth; i++) {
+                    current += "/" + segments[i];
+                    entries.put(current, new SkillFileInfo(current, true, 0, 0));
+                }
+                if (segments.length <= maxDepth) {
+                    entries.put(entry.getKey(), new SkillFileInfo(entry.getKey(), false, entry.getValue().length(), 0));
+                }
+            }
+            for (SkillFileInfo info : entries.values()) {
+                if (result.size() >= maxResults) {
+                    break;
+                }
+                result.add(info);
             }
             return result;
         }

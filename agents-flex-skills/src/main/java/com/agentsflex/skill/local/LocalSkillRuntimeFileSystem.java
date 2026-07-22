@@ -20,7 +20,9 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * {@link LocalSkillRuntime} 专用的宿主机文件系统实现。
@@ -80,6 +82,33 @@ class LocalSkillRuntimeFileSystem implements SkillRuntimeFileSystem {
     }
 
     @Override
+    public List<SkillFileInfo> listDirectory(String path, int maxDepth, int maxResults) {
+        Path root = Paths.get(path).toAbsolutePath().normalize();
+        if (Files.isRegularFile(root)) {
+            return Collections.singletonList(stat(root.toString()));
+        }
+        if (!Files.isDirectory(root)) {
+            throw new SkillRuntimeException("Path does not exist or is not a directory: " + path);
+        }
+        List<SkillFileInfo> entries = new ArrayList<>();
+        try (Stream<Path> stream = Files.walk(root, Math.max(1, maxDepth))) {
+            java.util.Iterator<Path> iterator = stream.iterator();
+            while (iterator.hasNext() && entries.size() < maxResults) {
+                Path entry = iterator.next();
+                if (entry.equals(root)) {
+                    continue;
+                }
+                BasicFileAttributes attrs = Files.readAttributes(entry, BasicFileAttributes.class);
+                entries.add(new SkillFileInfo(entry.toString(), attrs.isDirectory(), attrs.size(),
+                    attrs.lastModifiedTime().toMillis()));
+            }
+        } catch (IOException e) {
+            throw new SkillRuntimeException("Failed to list local directory: " + path, e);
+        }
+        return entries;
+    }
+
+    @Override
     public List<SkillFileInfo> listFiles(String path, final int maxDepth, final int maxResults) {
         final Path root = Paths.get(path).toAbsolutePath().normalize();
         final List<SkillFileInfo> files = new ArrayList<>();
@@ -94,7 +123,7 @@ class LocalSkillRuntimeFileSystem implements SkillRuntimeFileSystem {
             throw new SkillRuntimeException("Path does not exist or is not a directory: " + path);
         }
         try {
-            // 只收集普通文件；Glob/Grep 不需要目录条目，并通过 maxResults 控制遍历规模。
+            // 只收集普通文件；glob/grep 不需要目录条目，并通过 maxResults 控制遍历规模。
             Files.walkFileTree(root, java.util.EnumSet.noneOf(java.nio.file.FileVisitOption.class), maxDepth,
                 new SimpleFileVisitor<Path>() {
                     @Override

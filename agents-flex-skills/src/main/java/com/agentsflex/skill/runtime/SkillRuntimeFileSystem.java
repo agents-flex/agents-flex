@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * 与传输协议无关的 Skill Runtime 文件系统边界。
  *
- * <p>本接口既服务于模型可调用的 Read、Write、Edit、Glob、Grep 工具，也服务于业务代码
+ * <p>本接口既服务于模型可调用的 read、write、edit、ls、glob、grep 工具，也服务于业务代码
  * 对运行产物的回收。文本方法适合模型上下文，二进制流和 {@code download} 方法适合
  * PPTX、PDF、图片、压缩包等不能按 UTF-8 文本处理的文件。</p>
  *
@@ -175,6 +175,32 @@ public interface SkillRuntimeFileSystem {
     SkillFileInfo stat(String path);
 
     /**
+     * 列出 Runtime 目录的直接子项。
+     *
+     * @param path 要列出的目录；实现也可以接受普通文件路径并返回该文件自身
+     * @param maxResults 最大返回条数，用于防止大目录耗尽内存或模型上下文
+     * @return 直接子文件和子目录的元数据列表
+     */
+    default List<SkillFileInfo> listDirectory(String path, int maxResults) {
+        return listDirectory(path, 1, maxResults);
+    }
+
+    /**
+     * 按深度列出 Runtime 目录内容，包括普通文件和目录。
+     *
+     * <p>默认实现基于 {@link #listFiles(String, int, int)} 提供向后兼容的普通文件列表。
+     * Runtime 实现应覆盖本方法，以同时返回目录条目。</p>
+     *
+     * @param path 起始目录；实现也可以接受普通文件路径并返回该文件自身
+     * @param maxDepth 最大递归深度，1 表示只返回直接子项
+     * @param maxResults 最大返回条数，用于防止大目录耗尽内存或模型上下文
+     * @return 指定深度内的文件和目录元数据列表
+     */
+    default List<SkillFileInfo> listDirectory(String path, int maxDepth, int maxResults) {
+        return listFiles(path, Math.max(1, maxDepth), maxResults);
+    }
+
+    /**
      * 递归列出 Runtime 目录内容。
      *
      * @param path 起始目录
@@ -183,4 +209,5 @@ public interface SkillRuntimeFileSystem {
      * @return 文件和目录元数据列表
      */
     List<SkillFileInfo> listFiles(String path, int maxDepth, int maxResults);
+
 }

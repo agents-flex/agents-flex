@@ -30,7 +30,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 基于 Runtime 文件系统原语实现的 Glob 和 Grep 搜索工具。
+ * 基于 Runtime 文件系统原语实现的 ls、glob 和 grep 浏览与搜索工具。
  *
  * <p>搜索过程由 Java 完成，不依赖目标环境预装 {@code grep}、{@code find} 或
  * {@code ripgrep}。工具先通过 {@link SkillRuntimeFileSystem#listFiles(String, int, int)}
@@ -39,14 +39,16 @@ import java.util.regex.Pattern;
  */
 public class SkillRuntimeSearchTools {
 
+    private static final int DEFAULT_LS_RESULTS = 1000;
     private static final int MAX_DEPTH = 100;
     private static final int MAX_FILES = 5000;
     private static final int MAX_GLOB_RESULTS = 1000;
     private static final int MAX_FILE_BYTES = 2 * 1024 * 1024;
     private static final int MAX_OUTPUT_LENGTH = 100000;
     private static final int MAX_LINE_LENGTH = 10000;
-    private static final Set<String> IGNORED_SEGMENTS = new LinkedHashSet<>(Arrays.asList(
-        ".git", "node_modules", "target", "build", ".idea", ".vscode", "dist", "__pycache__"));
+    private static final Set<String> IGNORED_DIRS = new LinkedHashSet<>(Arrays.asList(
+        ".git", "node_modules", "target", "build", ".idea", ".vscode", "dist", "__pycache__",
+        ".gradle", ".mvn"));
     private static final Map<String, List<String>> TYPE_PATTERNS = typePatterns();
 
     private final SkillRuntime runtime;
@@ -62,13 +64,65 @@ public class SkillRuntimeSearchTools {
     }
 
     /**
+     * 按指定深度列出 Runtime 文件或目录内容。
+     *
+     * @param path 可选目录；为空时使用 Runtime 默认工作目录
+     * @param depth 递归深度；为空或非正数时默认为 1
+     * @param maxResult 最大返回条目数；为空或非正数时默认为 1000
+     * @return 带文件和目录类型标记的相对路径
+     */
+    @ToolDef(name = "ls", description = "Lists files and directories inside the configured skill runtime. "
+        + "Use depth to recurse (default 1) and maxResult to limit entries (default 1000, maximum 5000). "
+        + "Skips common noise directories and labels each entry as [dir] or [file].")
+    public String ls(
+        @ToolParam(name = "path", description = "Optional runtime-visible file or directory", required = false)
+        String path,
+        @ToolParam(name = "depth", description = "Optional recursion depth; 1 lists immediate children", required = false)
+        Integer depth,
+        @ToolParam(name = "maxResult", description = "Optional maximum number of entries to return", required = false)
+        Integer maxResult) {
+        String root = defaultPath(path);
+        int maxDepth = depth != null && depth > 0 ? Math.min(depth, MAX_DEPTH) : 1;
+        int resultLimit = maxResult != null && maxResult > 0
+            ? Math.min(maxResult, MAX_FILES) : DEFAULT_LS_RESULTS;
+        try {
+            List<SkillFileInfo> entries = new ArrayList<>();
+            for (SkillFileInfo entry : files.listDirectory(root, maxDepth, MAX_FILES)) {
+                if (!isIgnored(entry.getPath(), root)) {
+                    entries.add(entry);
+                }
+            }
+            if (entries.isEmpty()) {
+                return "Directory is empty: " + root;
+            }
+            entries.sort(Comparator.comparing(SkillFileInfo::isDirectory).reversed()
+                .thenComparing(entry -> relativePath(entry.getPath(), root)));
+            StringBuilder result = new StringBuilder();
+            result.append(root).append('\n');
+            int resultCount = Math.min(entries.size(), resultLimit);
+            for (int i = 0; i < resultCount; i++) {
+                SkillFileInfo entry = entries.get(i);
+                result.append(entry.isDirectory() ? "  [dir]  " : "  [file] ")
+                    .append(relativePath(entry.getPath(), root)).append('\n');
+            }
+            if (entries.size() > resultLimit) {
+                result.append("  ... (limit of ").append(resultLimit)
+                    .append(" reached; use a smaller depth or narrow the path)");
+            }
+            return result.toString().trim();
+        } catch (RuntimeException e) {
+            return "Error listing " + root + " in " + runtime.getName() + " runtime: " + e.getMessage();
+        }
+    }
+
+    /**
      * 按 glob 模式查找 Runtime 内文件。
      *
      * @param pattern glob 模式，例如“任意目录下的所有 Python 文件”
      * @param path 可选起始目录；为空时使用 Runtime 默认工作目录
      * @return 按修改时间倒序排列的文件路径
      */
-    @ToolDef(name = "Glob", description = "Finds files by glob pattern inside the configured skill runtime. "
+    @ToolDef(name = "glob", description = "Finds files by glob pattern inside the configured skill runtime. "
         + "Supports patterns such as **/*.py and never searches the host for a remote runtime.")
     public String glob(
         @ToolParam(name = "pattern", description = "Glob pattern") String pattern,
@@ -122,7 +176,7 @@ public class SkillRuntimeSearchTools {
      * @param multiline 是否允许正则跨行匹配
      * @return 搜索结果或错误信息
      */
-    @ToolDef(name = "Grep", description = "Searches UTF-8 file contents with a Java regular expression inside the configured skill runtime. "
+    @ToolDef(name = "grep", description = "Searches UTF-8 file contents with a Java regular expression inside the configured skill runtime. "
         + "Supports content, files_with_matches, and count output modes.")
     public String grep(
         @ToolParam(name = "pattern", description = "Java regular expression") String pattern,
@@ -272,6 +326,20 @@ public class SkillRuntimeSearchTools {
         return StringUtil.hasText(path) ? path : runtime.getDefaultWorkingDirectory();
     }
 
+    private static String relativePath(String path, String root) {
+        String normalizedPath = path.replace('\\', '/');
+        String normalizedRoot = normalizeRoot(root);
+        String prefix = "/".equals(normalizedRoot) ? normalizedRoot : normalizedRoot + "/";
+        if (normalizedPath.startsWith(prefix)) {
+            return normalizedPath.substring(prefix.length());
+        }
+        if (normalizedPath.equals(normalizedRoot)) {
+            int separator = normalizedPath.lastIndexOf('/');
+            return separator >= 0 ? normalizedPath.substring(separator + 1) : normalizedPath;
+        }
+        return normalizedPath;
+    }
+
     private static boolean matchesFilters(String file, String root, String glob, String type) {
         if (StringUtil.hasText(glob) && !matchesGlob(file, root, glob)) {
             return false;
@@ -292,9 +360,10 @@ public class SkillRuntimeSearchTools {
 
     private static boolean matchesGlob(String file, String root, String pattern) {
         String normalizedFile = file.replace('\\', '/');
-        String normalizedRoot = root.replace('\\', '/');
-        String relative = normalizedFile.startsWith(normalizedRoot + "/")
-            ? normalizedFile.substring(normalizedRoot.length() + 1) : normalizedFile;
+        String normalizedRoot = normalizeRoot(root);
+        String prefix = "/".equals(normalizedRoot) ? normalizedRoot : normalizedRoot + "/";
+        String relative = normalizedFile.startsWith(prefix)
+            ? normalizedFile.substring(prefix.length()) : normalizedFile;
         String effective = pattern.startsWith("**/") ? pattern : "**/" + pattern;
         PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + effective);
         Path relativePath = Paths.get(relative);
@@ -304,16 +373,25 @@ public class SkillRuntimeSearchTools {
 
     private static boolean isIgnored(String path, String root) {
         String normalizedPath = path.replace('\\', '/');
-        String normalizedRoot = root.replace('\\', '/');
-        String relative = normalizedPath.startsWith(normalizedRoot + "/")
-            ? normalizedPath.substring(normalizedRoot.length() + 1) : normalizedPath;
+        String normalizedRoot = normalizeRoot(root);
+        String prefix = "/".equals(normalizedRoot) ? normalizedRoot : normalizedRoot + "/";
+        String relative = normalizedPath.startsWith(prefix)
+            ? normalizedPath.substring(prefix.length()) : normalizedPath;
         String normalized = "/" + relative + "/";
-        for (String segment : IGNORED_SEGMENTS) {
+        for (String segment : IGNORED_DIRS) {
             if (normalized.contains("/" + segment + "/")) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static String normalizeRoot(String root) {
+        String normalized = root.replace('\\', '/');
+        while (normalized.length() > 1 && normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private static Map<String, List<String>> typePatterns() {
