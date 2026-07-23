@@ -21,53 +21,99 @@ import java.util.*;
 
 public class AiMessage extends AbstractTextMessage<AiMessage> {
 
-    /** 模型服务返回的响应唯一标识。 */
+    /**
+     * 模型服务返回的响应唯一标识。
+     */
     private String id;
-    /** 响应对象类型，如 {@code chat.completion} 或 {@code chat.completion.chunk}。 */
+    /**
+     * 响应对象类型，如 {@code chat.completion} 或 {@code chat.completion.chunk}。
+     */
     private String object;
-    /** 响应创建时间，通常为 Unix 秒级时间戳。 */
+    /**
+     * 响应创建时间，通常为 Unix 秒级时间戳。
+     */
     private Long created;
-    /** 模型服务实际使用的模型名称。 */
+    /**
+     * 模型服务实际使用的模型名称。
+     */
     private String model;
-    /** 模型服务实际采用的服务层级，如 {@code default}。 */
+    /**
+     * 模型服务实际采用的服务层级，如 {@code default}。
+     */
     private String serviceTier;
-    /** 模型后端配置的指纹，用于识别可能影响结果的后端变更。 */
+    /**
+     * 模型后端配置的指纹，用于识别可能影响结果的后端变更。
+     */
     private String systemFingerprint;
-    /** 消息角色，通常为 {@code assistant}。 */
+    /**
+     * 消息角色，通常为 {@code assistant}。
+     */
     private String role;
-    /** 模型拒绝回答时返回的拒绝说明。 */
+    /**
+     * 模型拒绝回答时返回的拒绝说明。
+     */
     private String refusal;
-    /** 模型返回的引用、标注等附加信息。 */
+    /**
+     * 模型返回的引用、标注等附加信息。
+     */
     private List<Object> annotations;
-    /** 输出 Token 的对数概率信息，具体结构由模型服务决定。 */
+    /**
+     * 输出 Token 的对数概率信息，具体结构由模型服务决定。
+     */
     private Map<String, Object> logprobs;
 
-    /** 当前候选结果在 {@code choices} 数组中的索引。 */
+    /**
+     * 当前候选结果在 {@code choices} 数组中的索引。
+     */
     private Integer index;
-    /** 模型服务统计的输入 Token 数。 */
+    /**
+     * 模型服务统计的输入 Token 数。
+     */
     private Integer promptTokens;
-    /** 模型服务统计的输出 Token 数。 */
+    /**
+     * 模型服务统计的输出 Token 数。
+     */
     private Integer completionTokens;
-    /** 模型服务统计的 Token 总数。 */
+    /**
+     * 模型服务统计的 Token 总数。
+     */
     private Integer totalTokens;
-    /** 输入 Token 的明细，如缓存 Token 数和音频 Token 数。 */
+    /**
+     * 输入 Token 的明细，如缓存 Token 数和音频 Token 数。
+     */
     private Map<String, Object> promptTokensDetails;
-    /** 输出 Token 的明细，如推理 Token 数和预测 Token 数。 */
+    /**
+     * 输出 Token 的明细，如推理 Token 数和预测 Token 数。
+     */
     private Map<String, Object> completionTokensDetails;
-    /** 本地 Token 计数器估算的输入 Token 数。 */
+    /**
+     * 本地 Token 计数器估算的输入 Token 数。
+     */
     private Integer localPromptTokens;
-    /** 本地 Token 计数器估算的输出 Token 数。 */
+    /**
+     * 本地 Token 计数器估算的输出 Token 数。
+     */
     private Integer localCompletionTokens;
-    /** 本地 Token 计数器估算的 Token 总数。 */
+    /**
+     * 本地 Token 计数器估算的 Token 总数。
+     */
     private Integer localTotalTokens;
-    /** 当前响应或流式分片中的推理内容。 */
+    /**
+     * 当前响应或流式分片中的推理内容。
+     */
     private String reasoningContent;
-    /** 模型请求调用的工具列表。 */
+    /**
+     * 模型请求调用的工具列表。
+     */
     private List<ToolCall> toolCalls;
 
-    /** 完整的模型回复正文；流式响应中保存已累计的正文。 */
+    /**
+     * 完整的模型回复正文；流式响应中保存已累计的正文。
+     */
     private String fullContent;
-    /** 完整的推理内容；流式响应中保存已累计的推理内容。 */
+    /**
+     * 完整的推理内容；流式响应中保存已累计的推理内容。
+     */
     private String fullReasoningContent;
 
     /**
@@ -81,7 +127,9 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
      */
     private String stopReason;
 
-    /** 是否已经接收并组装完全部响应内容。 */
+    /**
+     * 是否已经接收并组装完全部响应内容。
+     */
     private Boolean finished;
 
     public AiMessage() {
@@ -379,6 +427,16 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
     @Override
     public String getTextContent() {
         return fullContent;
+    }
+
+    @Override
+    public void setContent(String content) {
+        super.setContent(content);
+        if (fullContent == null) {
+            fullContent = content;
+        } else {
+            fullContent += content;
+        }
     }
 
     /**
