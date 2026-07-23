@@ -45,6 +45,7 @@ public class ToolGroupChatIntegrationTest {
         BaseChatModel<BaseChatConfig> model = new BaseChatModel<BaseChatConfig>(config) {
         };
         AtomicReference<Prompt> serializedPrompt = new AtomicReference<>();
+        AtomicReference<Prompt> postToolGroupPrompt = new AtomicReference<>();
         model.setChatRequestSpecBuilder(new ChatRequestSpecBuilder() {
             @Override
             public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, BaseChatConfig chatConfig) {
@@ -69,6 +70,15 @@ public class ToolGroupChatIntegrationTest {
             }
         });
         model.addInterceptor(interceptor);
+        model.addInterceptorRegistration(ChatInterceptorRegistration.builder("post-tool-group", new ChatInterceptor() {
+                @Override
+                public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
+                    postToolGroupPrompt.set(context.getPrompt());
+                    return chain.proceed(chatModel, context);
+                }
+            })
+            .order(ChatInterceptorOrders.REQUEST_PREPARATION + 1)
+            .build());
 
         SimplePrompt original = new SimplePrompt("hello");
         original.addToolGroup(ToolGroup.builder("weather")
@@ -89,6 +99,7 @@ public class ToolGroupChatIntegrationTest {
 
         assertNotSame(original, serializedPrompt.get());
         assertSame(original, interceptorPrompt.get());
+        assertSame(serializedPrompt.get(), postToolGroupPrompt.get());
         assertSame(serializedPrompt.get(), response.getContext().getPrompt());
         assertEquals("weather", response.getContext().getPrompt().getTools().get(0).getName());
         assertEquals(0, original.getTools() == null ? 0 : original.getTools().size());

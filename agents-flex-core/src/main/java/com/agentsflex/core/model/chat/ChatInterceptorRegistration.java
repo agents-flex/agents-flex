@@ -25,11 +25,13 @@ public final class ChatInterceptorRegistration {
     private final String name;
     private final ChatInterceptor interceptor;
     private final ChatInterceptorMatcher matcher;
+    private final int order;
 
     private ChatInterceptorRegistration(Builder builder) {
         this.name = builder.name;
         this.interceptor = builder.interceptor;
         this.matcher = builder.matcher;
+        this.order = builder.order;
     }
 
     public static ChatInterceptorRegistration of(ChatInterceptor interceptor) {
@@ -53,6 +55,10 @@ public final class ChatInterceptorRegistration {
         return matcher;
     }
 
+    public int getOrder() {
+        return order;
+    }
+
     public boolean matches(ChatContext context) {
         return matcher.matches(context);
     }
@@ -67,6 +73,7 @@ public final class ChatInterceptorRegistration {
         private final String name;
         private final ChatInterceptor interceptor;
         private ChatInterceptorMatcher matcher = ALWAYS;
+        private int order = ChatInterceptorOrders.DEFAULT;
 
         private Builder(String name, ChatInterceptor interceptor) {
             if (name == null || name.trim().isEmpty()) {
@@ -82,6 +89,12 @@ public final class ChatInterceptorRegistration {
                 throw new IllegalArgumentException("ChatInterceptorMatcher must not be null");
             }
             this.matcher = matcher;
+            return this;
+        }
+
+        /** Sets request-chain order. Lower values execute first; all integer values are allowed. */
+        public Builder order(int order) {
+            this.order = order;
             return this;
         }
 

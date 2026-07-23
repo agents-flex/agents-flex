@@ -205,11 +205,14 @@ ChatInterceptor interceptor = new ChatInterceptor() {
 chatModel.addInterceptorRegistration(
     ChatInterceptorRegistration.builder("premium-audit", new AuditChatInterceptor())
         .matcher(context -> "premium".equals(context.getAttribute("plan")))
+        .order(ChatInterceptorOrders.DEFAULT)
         .build()
 );
 ```
 
 需要为后续创建的所有 ChatModel 注册条件拦截器时，可以使用 `GlobalChatInterceptors.addRegistration(...)`。现有 `addInterceptor(...)` API 仍然保留，对应始终匹配的 Registration。
+
+每次请求都会按照 `order` 从小到大对 Registration 进行稳定排序。框架默认将可观测性设为 `-1000`、普通拦截器设为 `0`，并将 Tool Group 等请求准备逻辑设为 `1000`。这些数值只是推荐值而不是边界，应用可以使用任意整数，将拦截器放在可观测性之前或 Tool Group 解析之后。相同 order 会保持原始注册顺序。
 
 ## Agent 与任务编排
 

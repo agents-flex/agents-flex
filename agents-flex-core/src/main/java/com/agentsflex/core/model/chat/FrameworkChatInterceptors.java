@@ -17,26 +17,34 @@ package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.prompt.Prompt;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/** Framework-owned request preparation interceptors executed after application interceptors. */
+/** Framework-owned interceptor registrations with overridable default ordering. */
 final class FrameworkChatInterceptors {
 
-    private static final List<ChatInterceptorRegistration> REQUEST_PREPARATION_REGISTRATIONS =
-        Collections.singletonList(
+    private static final List<ChatInterceptorRegistration> REGISTRATIONS =
+        Collections.unmodifiableList(Arrays.asList(
+            ChatInterceptorRegistration.builder("chat-observability", new ChatObservabilityInterceptor())
+                .order(ChatInterceptorOrders.OBSERVABILITY)
+                .matcher(context -> context != null
+                    && context.getConfig() != null
+                    && context.getConfig().isObservabilityEnabled())
+                .build(),
             ChatInterceptorRegistration.builder("tool-group-resolver", new ToolGroupChatInterceptor())
+                .order(ChatInterceptorOrders.REQUEST_PREPARATION)
                 .matcher(context -> {
                     Prompt prompt = context == null ? null : context.getPrompt();
                     return prompt != null && !prompt.getToolGroups().isEmpty();
                 })
                 .build()
-        );
+        ));
 
     private FrameworkChatInterceptors() {
     }
 
-    static List<ChatInterceptorRegistration> getRequestPreparationRegistrations() {
-        return REQUEST_PREPARATION_REGISTRATIONS;
+    static List<ChatInterceptorRegistration> getRegistrations() {
+        return REGISTRATIONS;
     }
 }

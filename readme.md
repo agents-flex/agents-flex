@@ -205,11 +205,14 @@ Interceptors can also be activated conditionally for each request. The matcher r
 chatModel.addInterceptorRegistration(
     ChatInterceptorRegistration.builder("premium-audit", new AuditChatInterceptor())
         .matcher(context -> "premium".equals(context.getAttribute("plan")))
+        .order(ChatInterceptorOrders.DEFAULT)
         .build()
 );
 ```
 
 Use `GlobalChatInterceptors.addRegistration(...)` for a conditional interceptor shared by subsequently created chat models. Existing `addInterceptor(...)` APIs remain available and register an interceptor that always matches.
+
+Registrations are stably sorted by ascending `order` for each request. Framework defaults place observability at `-1000`, ordinary interceptors at `0`, and request preparation such as Tool Group resolution at `1000`. These are recommendations rather than boundaries: applications may use any integer to run before observability or after Tool Group resolution. Registrations with the same order retain their original registration order.
 
 ## Agents And Orchestration
 

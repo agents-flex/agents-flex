@@ -24,6 +24,7 @@ import com.agentsflex.core.prompt.Prompt;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -40,8 +41,8 @@ import java.util.List;
  * <h2>架构流程</h2>
  * <ol>
  *   <li>调用 {@link #chat(Prompt, ChatOptions)} 或 {@link #chatStream(Prompt, StreamResponseListener, ChatOptions)}</li>
- *   <li>构建请求上下文（URL/Headers/Body）并初始化 {@link ChatContext}</li>
- *   <li>构建责任链：可观测性拦截器 → 全局拦截器 → 用户拦截器</li>
+ *   <li>构建请求上下文（URL/Headers）并初始化 {@link ChatContext}</li>
+ *   <li>合并框架、全局和实例 Registration，并按 order 构建责任链</li>
  *   <li>责任链执行：每个拦截器可修改 {@link ChatContext}，最后由 {@link ChatClient} 执行实际调用</li>
  *   <li>结果返回给调用方</li>
  * </ol>
@@ -58,7 +59,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     protected ChatRequestSpecBuilder chatRequestSpecBuilder;
 
     /**
-     * 拦截器注册链，按执行顺序存储（可观测性 → 全局 → 用户）
+     * 应用拦截器注册列表（全局 → 用户）。每次请求会与框架注册合并并排序。
      */
     private final List<ChatInterceptorRegistration> interceptorRegistrations;
 
@@ -75,7 +76,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      * 构造一个聊天模型实例，并指定实例级拦截器。
      * <p>
      * 实例级拦截器会与全局拦截器（通过 {@link GlobalChatInterceptors} 注册）合并，
-     * 执行顺序为：可观测性拦截器 → 全局拦截器 → 实例拦截器。
+     * 最终顺序由 {@link ChatInterceptorRegistration#getOrder()} 决定。
      *
      * @param config           聊天模型配置
      * @param userInterceptors 实例级拦截器列表
@@ -86,30 +87,19 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     }
 
     /**
-     * 构建完整的拦截器链。
-     * <p>
-     * 执行顺序：
-     * 1. 可观测性拦截器（最外层，最早执行）
-     * 2. 全局拦截器（通过 GlobalChatInterceptors 注册）
-     * 3. 用户拦截器（实例级）
+     * 构建应用拦截器注册列表。框架拦截器在每次请求创建责任链快照时合并。
      *
      * @param userInterceptors 用户提供的拦截器列表
      * @return 按执行顺序排列的拦截器链
      */
     private List<ChatInterceptorRegistration> buildInterceptorChain(List<ChatInterceptor> userInterceptors) {
-        List<ChatInterceptorRegistration> chain = new ArrayList<>();
 
-        // 1. 可观测性拦截器（最外层）
-        // 仅在配置启用时添加，负责 OpenTelemetry 追踪和指标上报
-        if (config.isObservabilityEnabled()) {
-            chain.add(ChatInterceptorRegistration.of(new ChatObservabilityInterceptor()));
-        }
-
-        // 2. 全局拦截器（通过 GlobalChatInterceptors 注册）
+        // 1. 全局拦截器（通过 GlobalChatInterceptors 注册）
         // 适用于所有聊天模型实例的通用逻辑（如全局日志、认证）
-        chain.addAll(GlobalChatInterceptors.getRegistrations());
+        List<ChatInterceptorRegistration> chain = new ArrayList<>(
+            GlobalChatInterceptors.getRegistrations());
 
-        // 3. 用户拦截器（实例级）
+        // 2. 用户拦截器（实例级）
         // 适用于当前实例的特定逻辑
         if (userInterceptors != null) {
             for (ChatInterceptor interceptor : userInterceptors) {
@@ -191,10 +181,12 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     }
 
 
-    /** Builds a request-level snapshot with framework preparation interceptors appended last. */
+    /** Builds and stably sorts the effective registration snapshot for one request. */
     private List<ChatInterceptorRegistration> buildRequestInterceptorChain() {
-        List<ChatInterceptorRegistration> chain = new ArrayList<>(interceptorRegistrations);
-        chain.addAll(FrameworkChatInterceptors.getRequestPreparationRegistrations());
+        List<ChatInterceptorRegistration> chain = new ArrayList<>();
+        chain.addAll(FrameworkChatInterceptors.getRegistrations());
+        chain.addAll(interceptorRegistrations);
+        chain.sort(Comparator.comparingInt(ChatInterceptorRegistration::getOrder));
         return chain;
     }
 

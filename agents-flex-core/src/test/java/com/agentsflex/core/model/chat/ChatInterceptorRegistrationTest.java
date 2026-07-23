@@ -84,6 +84,34 @@ public class ChatInterceptorRegistrationTest {
     }
 
     @Test
+    public void shouldExecuteRegistrationsInAscendingOrder() {
+        StringBuilder executionOrder = new StringBuilder();
+        BaseChatModel<BaseChatConfig> model = model(Collections.emptyList());
+        model.addInterceptorRegistration(ChatInterceptorRegistration.builder("later", new ChatInterceptor() {
+                @Override
+                public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
+                    executionOrder.append('A');
+                    return chain.proceed(chatModel, context);
+                }
+            })
+            .order(100)
+            .build());
+        model.addInterceptorRegistration(ChatInterceptorRegistration.builder("earlier", new ChatInterceptor() {
+                @Override
+                public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
+                    executionOrder.append('B');
+                    return chain.proceed(chatModel, context);
+                }
+            })
+            .order(-100)
+            .build());
+
+        model.chat(new SimplePrompt("ordered"));
+
+        assertEquals("BA", executionOrder.toString());
+    }
+
+    @Test
     public void shouldStoreGlobalRegistrationsAndReturnSnapshots() {
         ChatInterceptor first = new ChatInterceptor() {
         };
@@ -100,6 +128,20 @@ public class ChatInterceptorRegistrationTest {
         assertSame(registration, snapshot.get(0));
         assertEquals(2, GlobalChatInterceptors.size());
         assertSame(first, GlobalChatInterceptors.getInterceptors().get(0));
+    }
+
+    @Test
+    public void shouldDefineOrderedFrameworkRegistrationsWithoutExposingThemAsApplicationRegistrations() {
+        List<ChatInterceptorRegistration> framework = FrameworkChatInterceptors.getRegistrations();
+
+        assertEquals(2, framework.size());
+        assertEquals("chat-observability", framework.get(0).getName());
+        assertEquals(ChatInterceptorOrders.OBSERVABILITY, framework.get(0).getOrder());
+        assertEquals("tool-group-resolver", framework.get(1).getName());
+        assertEquals(ChatInterceptorOrders.REQUEST_PREPARATION, framework.get(1).getOrder());
+
+        BaseChatModel<BaseChatConfig> model = model(Collections.emptyList());
+        assertEquals(0, model.getInterceptorRegistrations().size());
     }
 
     private static BaseChatModel<BaseChatConfig> model(List<ChatInterceptor> interceptors) {
