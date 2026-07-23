@@ -44,6 +44,7 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
     private JSONPath completionTokensPath;
     private JSONPath finishReasonPath;
     private JSONPath stopReasonPath;
+    private boolean parseOpenAIResponseMetadata;
 
     private JSONPath toolCallsJsonPath;
     private JSONPath deltaToolCallsJsonPath;
@@ -128,6 +129,14 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
 
     public void setStopReasonPath(JSONPath stopReasonPath) {
         this.stopReasonPath = stopReasonPath;
+    }
+
+    public boolean isParseOpenAIResponseMetadata() {
+        return parseOpenAIResponseMetadata;
+    }
+
+    public void setParseOpenAIResponseMetadata(boolean parseOpenAIResponseMetadata) {
+        this.parseOpenAIResponseMetadata = parseOpenAIResponseMetadata;
     }
 
     public JSONPath getToolCallsJsonPath() {
@@ -227,12 +236,47 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
             aiMessage.setToolCalls(this.callsParser.parse(toolCallsJsonArray));
         }
 
+        if (parseOpenAIResponseMetadata) {
+            parseOpenAIResponseMetadata(rootJson, aiMessage, context.getOptions().isStreaming());
+        }
+
         return aiMessage;
+    }
+
+    private static void parseOpenAIResponseMetadata(JSONObject rootJson, AiMessage aiMessage, boolean streaming) {
+        aiMessage.setId(rootJson.getString("id"));
+        aiMessage.setObject(rootJson.getString("object"));
+        aiMessage.setCreated(rootJson.getLong("created"));
+        aiMessage.setModel(rootJson.getString("model"));
+        aiMessage.setServiceTier(rootJson.getString("service_tier"));
+        aiMessage.setSystemFingerprint(rootJson.getString("system_fingerprint"));
+
+        JSONObject choice = getFirstObject(rootJson.getJSONArray("choices"));
+        if (choice != null) {
+            JSONObject message = choice.getJSONObject(streaming ? "delta" : "message");
+            if (message != null) {
+                aiMessage.setRole(message.getString("role"));
+                aiMessage.setRefusal(message.getString("refusal"));
+                aiMessage.setAnnotations(message.getJSONArray("annotations"));
+            }
+            aiMessage.setLogprobs(choice.getJSONObject("logprobs"));
+        }
+
+        JSONObject usage = rootJson.getJSONObject("usage");
+        if (usage != null) {
+            aiMessage.setPromptTokensDetails(usage.getJSONObject("prompt_tokens_details"));
+            aiMessage.setCompletionTokensDetails(usage.getJSONObject("completion_tokens_details"));
+        }
+    }
+
+    private static JSONObject getFirstObject(JSONArray array) {
+        return array == null || array.isEmpty() ? null : array.getJSONObject(0);
     }
 
 
     public static DefaultAiMessageParser getOpenAIMessageParser() {
         DefaultAiMessageParser aiMessageParser = new DefaultAiMessageParser();
+        aiMessageParser.setParseOpenAIResponseMetadata(true);
         aiMessageParser.setContentPath(JSONUtil.getJsonPath("$.choices[0].message.content"));
         aiMessageParser.setDeltaContentPath(JSONUtil.getJsonPath("$.choices[0].delta.content"));
 

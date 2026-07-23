@@ -37,7 +37,7 @@ public interface AiMessageParser<T> {
 
 ### `DefaultAiMessageParser` 核心设计：路径驱动（Path-Driven）
 
-所有字段提取均通过 `JSONPath` 配置，实现**格式无关**：
+正文、工具调用和基础 Token 用量通过 `JSONPath` 配置，实现**格式无关**：
 
 | 字段 | JSONPath 示例（OpenAI） | 说明 |
 |------|------------------------|------|
@@ -50,6 +50,19 @@ public interface AiMessageParser<T> {
 | `completionTokens` | `$.usage.completion_tokens` | 输出 Token 数 |
 
 > 💡 若某字段在响应中不存在（如 Ollama 不返回 `total_tokens`），解析器会自动跳过或计算（`total = prompt + completion`）。
+
+通过 `getOpenAIMessageParser()` 创建的解析器还会启用 `parseOpenAIResponseMetadata`，保留 OpenAI 兼容响应中的以下信息：
+
+| 响应位置 | `AiMessage` 字段 |
+|----------|-------------------|
+| `id/object/created/model` | `id/object/created/model` |
+| `service_tier/system_fingerprint` | `serviceTier/systemFingerprint` |
+| `choices[0].message.role/refusal/annotations` | `role/refusal/annotations` |
+| `choices[0].logprobs` | `logprobs` |
+| `usage.prompt_tokens_details` | `promptTokensDetails` |
+| `usage.completion_tokens_details` | `completionTokensDetails` |
+
+`annotations`、`logprobs` 和两组 Token details 使用 Map/List 保存，以兼容模型服务后续增加字段。流式响应会把各分片的 `logprobs` 列表合并到最终 `AiMessage`。
 
 
 ###  流式 vs 同步处理
@@ -211,6 +224,7 @@ public class MyXmlAiMessageParser implements AiMessageParser<String> {
 | `finishReasonPath` | 结束原因 | `$.choices[0].finish_reason` |
 | `promptTokensPath` | 输入 Token | `$.usage.prompt_tokens` |
 | `completionTokensPath` | 输出 Token | `$.usage.completion_tokens` |
+| `parseOpenAIResponseMetadata` | 保留 OpenAI 响应元数据 | `true`（仅 `getOpenAIMessageParser()`） |
 | `callsParser` | 工具调用解析器 | OpenAI 格式解析器 |
 
 ---
