@@ -17,6 +17,7 @@ package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.ToolGroup;
 import com.agentsflex.core.model.chat.tool.ToolScanner;
 import com.agentsflex.core.util.Metadata;
 
@@ -28,6 +29,7 @@ public abstract class Prompt extends Metadata {
     public abstract List<Message> getMessages();
 
     private List<Tool> tools;
+    private List<ToolGroup> toolGroups;
     private String toolChoice;
 
     public void addTool(Tool tool) {
@@ -77,6 +79,38 @@ public abstract class Prompt extends Metadata {
             this.tools = null;
         } else {
             this.tools = new ArrayList<>(tools);
+        }
+    }
+
+    public void addToolGroup(ToolGroup toolGroup) {
+        if (toolGroup == null) {
+            return;
+        }
+        if (this.toolGroups == null) {
+            this.toolGroups = new ArrayList<>();
+        }
+        this.toolGroups.add(toolGroup);
+    }
+
+    public void addToolGroups(Collection<? extends ToolGroup> toolGroups) {
+        if (toolGroups == null || toolGroups.isEmpty()) {
+            return;
+        }
+        if (this.toolGroups == null) {
+            this.toolGroups = new ArrayList<>();
+        }
+        this.toolGroups.addAll(toolGroups);
+    }
+
+    public List<ToolGroup> getToolGroups() {
+        return toolGroups == null ? Collections.emptyList() : Collections.unmodifiableList(toolGroups);
+    }
+
+    public void setToolGroups(List<? extends ToolGroup> toolGroups) {
+        if (toolGroups == null) {
+            this.toolGroups = null;
+        } else {
+            this.toolGroups = new ArrayList<>(toolGroups);
         }
     }
 

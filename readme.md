@@ -166,6 +166,23 @@ if (response.hasToolCalls()) {
 
 If tools come from runtime configuration, a plugin system, or workflow nodes, you can also build them dynamically with `Tool.builder()`.
 
+For larger tool sets, use `ToolGroup` to attach tools and system instructions only when the latest user prompt matches. Unmatched groups are omitted from the request body:
+
+```java
+ToolGroup weatherGroup = ToolGroup.builder("weather")
+    .addTools(ToolScanner.scan(WeatherTools.class))
+    .systemPrompt("Always use a weather tool for live weather questions.")
+    .matcher(ToolGroupMatchers.promptContains("weather", "temperature", "rain"))
+    .build();
+
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addToolGroup(weatherGroup);
+prompt.addUserMessage("Will it rain in Beijing today?");
+chatModel.chat(prompt);
+```
+
+A Prompt can contain multiple groups. Every request is matched again against the latest user message, so tools selected for one turn do not leak into later unrelated turns. In addition to `promptContains` and `promptMatches`, `matcher(context -> ...)` supports application-specific strategies.
+
 ## Agents And Orchestration
 
 Agents-Flex includes several mechanisms for complex tasks:

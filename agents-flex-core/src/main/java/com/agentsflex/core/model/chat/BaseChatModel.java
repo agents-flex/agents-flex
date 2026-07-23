@@ -21,6 +21,7 @@ import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 import com.agentsflex.core.prompt.Prompt;
+import com.agentsflex.core.prompt.ToolGroupPromptResolver;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -140,11 +141,12 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         options.setStreaming(false);
 
 
-        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(prompt, options, config);
+        Prompt requestPrompt = ToolGroupPromptResolver.resolve(prompt);
+        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(requestPrompt, options, config);
 
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(prompt, options, request, config)) {
+                 ChatContextHolder.beginChat(requestPrompt, options, request, config)) {
             // 构建同步责任链并执行
             SyncChain chain = buildSyncChain(0);
             return chain.proceed(this, scope.context);
@@ -167,10 +169,11 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         }
         options.setStreaming(true);
 
-        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(prompt, options, config);
+        Prompt requestPrompt = ToolGroupPromptResolver.resolve(prompt);
+        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(requestPrompt, options, config);
 
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(prompt, options, request, config)) {
+                 ChatContextHolder.beginChat(requestPrompt, options, request, config)) {
             StreamChain chain = buildStreamChain(0);
             chain.proceed(this, scope.context, listener);
         }

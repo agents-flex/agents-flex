@@ -166,6 +166,23 @@ if (response.hasToolCalls()) {
 
 如果工具来自运行时配置、插件系统或工作流节点，也可以使用 `Tool.builder()` 动态构建。
 
+当工具数量较多时，可以用 `ToolGroup` 按当前用户输入动态挂载工具和系统提示词。未命中的组不会出现在请求体中：
+
+```java
+ToolGroup weatherGroup = ToolGroup.builder("weather")
+    .addTools(ToolScanner.scan(WeatherTools.class))
+    .systemPrompt("回答实时天气问题时必须使用天气工具。")
+    .matcher(ToolGroupMatchers.promptContains("天气", "气温", "下雨"))
+    .build();
+
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addToolGroup(weatherGroup);
+prompt.addUserMessage("北京今天会下雨吗？");
+chatModel.chat(prompt);
+```
+
+同一个 Prompt 可以添加多个工具组。每一轮请求都会基于最后一条用户消息重新匹配，因此上一轮命中的工具不会泄漏到后续不相关的轮次。除 `promptContains` 和 `promptMatches` 外，也可以通过 `matcher(context -> ...)` 实现业务自定义策略。
+
 ## Agent 与任务编排
 
 Agents-Flex 内置多种面向复杂任务的机制：
