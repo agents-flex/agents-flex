@@ -15,9 +15,15 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
+import com.agentsflex.core.model.chat.ChatContext;
+
 /** Decides whether a tool group should be attached to the current chat request. */
 @FunctionalInterface
 public interface ToolGroupMatcher {
 
-    boolean matches(ToolGroupMatchContext context);
+    /**
+     * Matches against the final chat context produced by application interceptors.
+     * Implementations should treat the context as read-only.
+     */
+    boolean matches(ChatContext context);
 }

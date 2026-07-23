@@ -17,11 +17,9 @@ package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
-import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolGroup;
-import com.agentsflex.core.model.chat.tool.ToolGroupMatchContext;
-import com.agentsflex.core.util.MessageUtil;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.ArrayList;
@@ -37,17 +35,19 @@ public final class ToolGroupPromptResolver {
     private ToolGroupPromptResolver() {
     }
 
-    public static Prompt resolve(Prompt prompt) {
+    public static Prompt resolve(ChatContext context) {
+        if (context == null) {
+            return null;
+        }
+        Prompt prompt = context.getPrompt();
         if (prompt == null || prompt.getToolGroups().isEmpty()) {
             return prompt;
         }
 
         List<Message> messages = prompt.getMessages();
-        UserMessage lastUserMessage = MessageUtil.findLastUserMessage(messages);
-        ToolGroupMatchContext matchContext = new ToolGroupMatchContext(prompt, messages, lastUserMessage);
         List<ToolGroup> matchedGroups = new ArrayList<>();
         for (ToolGroup toolGroup : prompt.getToolGroups()) {
-            if (toolGroup.matches(matchContext)) {
+            if (toolGroup.matches(context)) {
                 matchedGroups.add(toolGroup);
             }
         }

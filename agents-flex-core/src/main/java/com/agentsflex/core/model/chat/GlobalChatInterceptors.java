@@ -35,9 +35,9 @@ import java.util.List;
 public final class GlobalChatInterceptors {
 
     /**
-     * 全局拦截器列表，使用 synchronized 保证线程安全
+     * 全局拦截器注册列表，使用 synchronized 保证线程安全
      */
-    private static final List<ChatInterceptor> GLOBAL_INTERCEPTORS = new ArrayList<>();
+    private static final List<ChatInterceptorRegistration> GLOBAL_INTERCEPTOR_REGISTRATIONS = new ArrayList<>();
 
     /**
      * 私有构造函数，防止实例化
@@ -58,7 +58,7 @@ public final class GlobalChatInterceptors {
         if (interceptor == null) {
             throw new IllegalArgumentException("ChatInterceptor must not be null");
         }
-        GLOBAL_INTERCEPTORS.add(interceptor);
+        GLOBAL_INTERCEPTOR_REGISTRATIONS.add(ChatInterceptorRegistration.of(interceptor));
     }
 
     /**
@@ -78,18 +78,60 @@ public final class GlobalChatInterceptors {
                 throw new IllegalArgumentException("Interceptor list must not contain null elements");
             }
         }
-        GLOBAL_INTERCEPTORS.addAll(interceptors);
+        for (ChatInterceptor interceptor : interceptors) {
+            GLOBAL_INTERCEPTOR_REGISTRATIONS.add(ChatInterceptorRegistration.of(interceptor));
+        }
     }
 
     /**
-     * 获取当前注册的全局拦截器列表的不可变视图。
+     * Registers a conditional global chat interceptor.
+     *
+     * @param registration registration to add
+     */
+    public static synchronized void addRegistration(ChatInterceptorRegistration registration) {
+        if (registration == null) {
+            throw new IllegalArgumentException("ChatInterceptorRegistration must not be null");
+        }
+        GLOBAL_INTERCEPTOR_REGISTRATIONS.add(registration);
+    }
+
+    /**
+     * Registers conditional global chat interceptors in list order.
+     *
+     * @param registrations registrations to add
+     */
+    public static synchronized void addRegistrations(List<ChatInterceptorRegistration> registrations) {
+        if (registrations == null) {
+            throw new IllegalArgumentException("Registration list must not be null");
+        }
+        for (ChatInterceptorRegistration registration : registrations) {
+            if (registration == null) {
+                throw new IllegalArgumentException("Registration list must not contain null elements");
+            }
+        }
+        GLOBAL_INTERCEPTOR_REGISTRATIONS.addAll(registrations);
+    }
+
+    /**
+     * 获取当前注册的全局拦截器列表的不可变快照。
      * <p>
      * 该方法供 {@link BaseChatModel} 内部使用，返回值不应被外部修改。
      *
      * @return 不可变的全局拦截器列表
      */
-    public static List<ChatInterceptor> getInterceptors() {
-        return Collections.unmodifiableList(GLOBAL_INTERCEPTORS);
+    public static synchronized List<ChatInterceptor> getInterceptors() {
+        List<ChatInterceptor> interceptors = new ArrayList<>(GLOBAL_INTERCEPTOR_REGISTRATIONS.size());
+        for (ChatInterceptorRegistration registration : GLOBAL_INTERCEPTOR_REGISTRATIONS) {
+            interceptors.add(registration.getInterceptor());
+        }
+        return Collections.unmodifiableList(interceptors);
+    }
+
+    /**
+     * Returns an immutable snapshot of current global interceptor registrations.
+     */
+    public static synchronized List<ChatInterceptorRegistration> getRegistrations() {
+        return Collections.unmodifiableList(new ArrayList<>(GLOBAL_INTERCEPTOR_REGISTRATIONS));
     }
 
     /**
@@ -98,7 +140,7 @@ public final class GlobalChatInterceptors {
      * <strong>仅用于测试环境</strong>，生产环境应避免调用。
      */
     public static synchronized void clear() {
-        GLOBAL_INTERCEPTORS.clear();
+        GLOBAL_INTERCEPTOR_REGISTRATIONS.clear();
     }
 
     /**
@@ -109,6 +151,6 @@ public final class GlobalChatInterceptors {
      * @return 拦截器数量
      */
     public static synchronized int size() {
-        return GLOBAL_INTERCEPTORS.size();
+        return GLOBAL_INTERCEPTOR_REGISTRATIONS.size();
     }
 }

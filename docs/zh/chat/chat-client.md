@@ -111,7 +111,7 @@ client.setAiMessageParser(customParser);
 `ChatClient` 并非直接由用户调用，而是作为 **责任链的末端执行者**，由 `BaseChatModel` 在拦截器链执行完毕后调用：
 
 ```text
-chat() → 构建 ChatContext → 执行拦截器链 → 调用 chatClient.chat()
+chat() → 构建 ChatContext → 执行拦截器链 → 构建最终 Body → 调用 chatClient.chat(body)
 ```
 
 

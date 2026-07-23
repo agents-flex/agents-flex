@@ -15,30 +15,24 @@
  */
 package com.agentsflex.core.model.chat;
 
+import com.agentsflex.core.prompt.ToolGroupPromptResolver;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 
-/**
- * 聊天模型请求拦截器。
- * <p>
- * 通过责任链模式，在 LLM 调用前后插入自定义逻辑。请求 Body 会在全部拦截器调用
- * {@code chain.proceed(...)} 后统一构建，因此拦截器对 Prompt、ChatOptions 等上下文信息的修改
- * 会作用于最终请求。
- * 支持同步（{@link #intercept}）和流式（{@link #interceptStream}）两种模式。
- */
-public interface ChatInterceptor {
+/** Resolves conditional tool groups after application interceptors finish modifying the request context. */
+public final class ToolGroupChatInterceptor implements ChatInterceptor {
 
-    /**
-     * 拦截同步聊天请求。
-     */
-    default AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
+    @Override
+    public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
+        context.refreshContextFromOptions();
+        context.setPrompt(ToolGroupPromptResolver.resolve(context));
         return chain.proceed(chatModel, context);
     }
 
-    /**
-     * 拦截流式聊天请求。
-     */
-    default void interceptStream(BaseChatModel<?> chatModel, ChatContext context,
-                                 StreamResponseListener listener, StreamChain chain) {
+    @Override
+    public void interceptStream(BaseChatModel<?> chatModel, ChatContext context,
+                                StreamResponseListener listener, StreamChain chain) {
+        context.refreshContextFromOptions();
+        context.setPrompt(ToolGroupPromptResolver.resolve(context));
         chain.proceed(chatModel, context, listener);
     }
 }

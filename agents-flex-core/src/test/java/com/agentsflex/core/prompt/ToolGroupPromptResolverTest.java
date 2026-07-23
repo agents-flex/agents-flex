@@ -7,6 +7,7 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolGroup;
 import com.agentsflex.core.model.chat.tool.ToolGroupMatchers;
 import com.agentsflex.core.model.chat.BaseChatConfig;
+import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.client.OpenAIChatRequestSpecBuilder;
 import com.alibaba.fastjson2.JSON;
@@ -42,7 +43,7 @@ public class ToolGroupPromptResolverTest {
             .matcher(ToolGroupMatchers.promptContains("database"))
             .build());
 
-        Prompt resolved = ToolGroupPromptResolver.resolve(prompt);
+        Prompt resolved = ToolGroupPromptResolver.resolve(context(prompt));
 
         assertNotSame(prompt, resolved);
         assertEquals(Arrays.asList("base", "weather"),
@@ -62,7 +63,7 @@ public class ToolGroupPromptResolverTest {
             .matcher(ToolGroupMatchers.promptContains("weather"))
             .build());
 
-        Prompt resolved = ToolGroupPromptResolver.resolve(prompt);
+        Prompt resolved = ToolGroupPromptResolver.resolve(context(prompt));
 
         assertEquals(0, resolved.getTools().size());
         assertEquals(1, resolved.getMessages().size());
@@ -71,8 +72,7 @@ public class ToolGroupPromptResolverTest {
         BaseChatConfig config = new BaseChatConfig();
         config.setModel("test-model");
         JSONObject body = JSON.parseObject(new OpenAIChatRequestSpecBuilder()
-            .buildRequest(resolved, new ChatOptions(), config)
-            .getBody());
+            .buildRequestBody(resolved, new ChatOptions(), config));
         assertFalse(body.containsKey("tools"));
         assertEquals(1, body.getJSONArray("messages").size());
     }
@@ -85,10 +85,10 @@ public class ToolGroupPromptResolverTest {
             .matcher(ToolGroupMatchers.promptContains("weather"))
             .build());
         prompt.addMessage(new UserMessage("check weather"));
-        assertEquals(1, ToolGroupPromptResolver.resolve(prompt).getTools().size());
+        assertEquals(1, ToolGroupPromptResolver.resolve(context(prompt)).getTools().size());
 
         prompt.addMessage(new UserMessage("just say hello"));
-        assertEquals(0, ToolGroupPromptResolver.resolve(prompt).getTools().size());
+        assertEquals(0, ToolGroupPromptResolver.resolve(context(prompt)).getTools().size());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class ToolGroupPromptResolverTest {
             .matcher(context -> true)
             .build());
 
-        Prompt resolved = ToolGroupPromptResolver.resolve(prompt);
+        Prompt resolved = ToolGroupPromptResolver.resolve(context(prompt));
         List<Message> messages = resolved.getMessages();
 
         assertEquals("first instructions\n\nsecond instructions", messages.get(0).getTextContent());
@@ -118,5 +118,13 @@ public class ToolGroupPromptResolverTest {
         return Tool.builder(name, args -> "ok")
             .description(name + " tool")
             .build();
+    }
+
+    private static ChatContext context(Prompt prompt) {
+        ChatContext context = new ChatContext();
+        context.setPrompt(prompt);
+        context.setOptions(new ChatOptions());
+        context.setConfig(new BaseChatConfig());
+        return context;
     }
 }

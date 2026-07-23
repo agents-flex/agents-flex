@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
+import com.agentsflex.core.model.chat.ChatContext;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -58,7 +60,7 @@ public class ToolGroup {
         return matcher;
     }
 
-    public boolean matches(ToolGroupMatchContext context) {
+    public boolean matches(ChatContext context) {
         return matcher.matches(context);
     }
 

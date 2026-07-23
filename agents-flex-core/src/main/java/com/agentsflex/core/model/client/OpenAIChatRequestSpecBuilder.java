@@ -44,13 +44,12 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
         String url = buildRequestUrl(prompt, options, config);
         Map<String, String> headers = buildRequestHeaders(prompt, options, config);
-        String body = buildRequestBody(prompt, options, config);
-
         boolean retryEnabled = options.getRetryEnabledOrDefault(config.isRetryEnabled());
         int retryCountOrDefault = options.getRetryCountOrDefault(config.getRetryCount());
         int retryInitialDelayMsOrDefault = options.getRetryInitialDelayMsOrDefault(config.getRetryInitialDelayMs());
 
-        return new ChatRequestSpec(url, headers, body, retryEnabled ? retryCountOrDefault : 0, retryEnabled ? retryInitialDelayMsOrDefault : 0);
+        return new ChatRequestSpec(url, headers, retryEnabled ? retryCountOrDefault : 0,
+            retryEnabled ? retryInitialDelayMsOrDefault : 0);
     }
 
     protected String buildRequestUrl(Prompt prompt, ChatOptions options, BaseChatConfig config) {
@@ -65,7 +64,8 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
     }
 
 
-    protected String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
+    @Override
+    public String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
         List<Message> messages = prompt.getMessages();
         UserMessage userMessage = MessageUtil.findLastUserMessage(messages);
 

@@ -183,6 +183,34 @@ chatModel.chat(prompt);
 
 同一个 Prompt 可以添加多个工具组。每一轮请求都会基于最后一条用户消息重新匹配，因此上一轮命中的工具不会泄漏到后续不相关的轮次。除 `promptContains` 和 `promptMatches` 外，也可以通过 `matcher(context -> ...)` 实现业务自定义策略。
 
+Chat 请求的 Body 会在全部拦截器执行到责任链末端后才构建。因此，在 `intercept` 中调用 `chain.proceed()` 之前修改 Prompt 或 ChatOptions，会直接作用于最终请求：
+
+```java
+ChatInterceptor interceptor = new ChatInterceptor() {
+    @Override
+    public AiMessageResponse intercept(BaseChatModel<?> model, ChatContext context, SyncChain chain) {
+        context.getOptions().setTemperature(0.2f);
+        context.setPrompt(new SimplePrompt("改写后的 Prompt"));
+        context.getRequestSpec().addHeader("X-Tenant", "tenant-1");
+        return chain.proceed(model, context);
+    }
+};
+```
+
+`ChatRequestSpec` 只包含 URL、Header 和重试配置，不再暴露 Body。拦截器应通过 Prompt、ChatOptions 等结构化信息影响请求内容，不能直接改写原始 Body。
+
+拦截器也可以按每次请求的上下文动态激活。Matcher 会在 Registration 运行到责任链当前位置时执行，因此能读取前置拦截器对 Context 的修改：
+
+```java
+chatModel.addInterceptorRegistration(
+    ChatInterceptorRegistration.builder("premium-audit", new AuditChatInterceptor())
+        .matcher(context -> "premium".equals(context.getAttribute("plan")))
+        .build()
+);
+```
+
+需要为后续创建的所有 ChatModel 注册条件拦截器时，可以使用 `GlobalChatInterceptors.addRegistration(...)`。现有 `addInterceptor(...)` API 仍然保留，对应始终匹配的 Registration。
+
 ## Agent 与任务编排
 
 Agents-Flex 内置多种面向复杂任务的机制：

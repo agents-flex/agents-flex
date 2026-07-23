@@ -19,6 +19,7 @@ import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.prompt.Prompt;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ChatContext {
 
@@ -121,6 +122,22 @@ public class ChatContext {
 
     public void setAttributes(Map<String, Object> attributes) {
         this.attributes = attributes;
+    }
+
+    void refreshContextFromOptions() {
+        if (options == null) {
+            return;
+        }
+        botId = options.getContextBotId();
+        conversationId = options.getContextConversationId();
+        accountId = options.getContextAccountId();
+        turnId = options.getContextTurnId();
+        if (attributes == null) {
+            attributes = new ConcurrentHashMap<>();
+        }
+        if (options.getContextAttributes() != null) {
+            attributes.putAll(options.getContextAttributes());
+        }
     }
 
 

@@ -13,17 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.client;
+package com.agentsflex.core.model.chat;
 
-import com.agentsflex.core.model.chat.BaseChatConfig;
-import com.agentsflex.core.model.chat.ChatOptions;
-import com.agentsflex.core.prompt.Prompt;
+/** Decides whether a registered chat interceptor applies to the current request. */
+@FunctionalInterface
+public interface ChatInterceptorMatcher {
 
-public interface ChatRequestSpecBuilder {
-
-    /** Builds transport settings before the interceptor chain starts. */
-    ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, BaseChatConfig config);
-
-    /** Builds the request body from the final context after all interceptors have proceeded. */
-    String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config);
+    /**
+     * Matches against the context available at this position in the interceptor chain.
+     * Implementations should treat the context as read-only.
+     */
+    boolean matches(ChatContext context);
 }

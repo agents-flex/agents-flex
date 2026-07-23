@@ -7,6 +7,7 @@ import com.agentsflex.core.model.chat.tool.ToolGroup;
 import com.agentsflex.core.model.chat.tool.ToolGroupMatchers;
 import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpec;
+import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Test;
@@ -27,6 +28,10 @@ public class ToolGroupChatIntegrationTest {
         ChatInterceptor interceptor = new ChatInterceptor() {
             @Override
             public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
+                ((SimplePrompt) context.getPrompt()).getUserMessage().setContent("weather tomorrow");
+                context.getOptions().setModel("interceptor-model");
+                context.getOptions().setContextAccountId("account-1");
+                context.getOptions().setContextAttributes(Collections.singletonMap("plan", "premium"));
                 interceptorPrompt.set(context.getPrompt());
                 return chain.proceed(chatModel, context);
             }
@@ -37,36 +42,53 @@ public class ToolGroupChatIntegrationTest {
                 chain.proceed(chatModel, context, listener);
             }
         };
-        BaseChatModel<BaseChatConfig> model = new BaseChatModel<BaseChatConfig>(
-            config, Collections.singletonList(interceptor)) {
+        BaseChatModel<BaseChatConfig> model = new BaseChatModel<BaseChatConfig>(config) {
         };
         AtomicReference<Prompt> serializedPrompt = new AtomicReference<>();
-        model.setChatRequestSpecBuilder((prompt, options, chatConfig) -> {
-            serializedPrompt.set(prompt);
-            return new ChatRequestSpec("test", Collections.emptyMap(), "{}", 0, 0);
+        model.setChatRequestSpecBuilder(new ChatRequestSpecBuilder() {
+            @Override
+            public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, BaseChatConfig chatConfig) {
+                return new ChatRequestSpec("test", Collections.emptyMap(), 0, 0);
+            }
+
+            @Override
+            public String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig chatConfig) {
+                serializedPrompt.set(prompt);
+                return "{}";
+            }
         });
         model.setChatClient(new ChatClient(model) {
             @Override
-            public AiMessageResponse chat() {
+            public AiMessageResponse chat(String body) {
                 ChatContext context = ChatContextHolder.currentContext();
                 return new AiMessageResponse(context, "{}", new AiMessage("ok"));
             }
 
             @Override
-            public void chatStream(StreamResponseListener listener) {
+            public void chatStream(String body, StreamResponseListener listener) {
             }
         });
+        model.addInterceptor(interceptor);
 
-        SimplePrompt original = new SimplePrompt("weather tomorrow");
+        SimplePrompt original = new SimplePrompt("hello");
         original.addToolGroup(ToolGroup.builder("weather")
             .addTool(Tool.builder("weather", args -> "sunny").build())
-            .matcher(ToolGroupMatchers.promptContains("weather"))
+            .matcher(context -> {
+                assertEquals("interceptor-model", context.getOptions().getModel());
+                assertEquals("account-1", context.getAccountId());
+                assertEquals("premium", context.getAttribute("plan"));
+                return ToolGroupMatchers.promptContains("weather").matches(context);
+            })
             .build());
 
-        AiMessageResponse response = model.chat(original);
+        ChatOptions options = ChatOptions.builder()
+            .model("initial-model")
+            .contextAccountId("account-0")
+            .build();
+        AiMessageResponse response = model.chat(original, options);
 
         assertNotSame(original, serializedPrompt.get());
-        assertSame(serializedPrompt.get(), interceptorPrompt.get());
+        assertSame(original, interceptorPrompt.get());
         assertSame(serializedPrompt.get(), response.getContext().getPrompt());
         assertEquals("weather", response.getContext().getPrompt().getTools().get(0).getName());
         assertEquals(0, original.getTools() == null ? 0 : original.getTools().size());

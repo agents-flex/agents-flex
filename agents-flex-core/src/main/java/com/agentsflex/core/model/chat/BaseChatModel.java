@@ -21,7 +21,6 @@ import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 import com.agentsflex.core.prompt.Prompt;
-import com.agentsflex.core.prompt.ToolGroupPromptResolver;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,9 +58,9 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     protected ChatRequestSpecBuilder chatRequestSpecBuilder;
 
     /**
-     * 拦截器链，按执行顺序存储（可观测性 → 全局 → 用户）
+     * 拦截器注册链，按执行顺序存储（可观测性 → 全局 → 用户）
      */
-    private final List<ChatInterceptor> interceptors;
+    private final List<ChatInterceptorRegistration> interceptorRegistrations;
 
     /**
      * 构造一个聊天模型实例，不使用实例级拦截器。
@@ -83,7 +82,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      */
     public BaseChatModel(T config, List<ChatInterceptor> userInterceptors) {
         this.config = config;
-        this.interceptors = buildInterceptorChain(userInterceptors);
+        this.interceptorRegistrations = buildInterceptorChain(userInterceptors);
     }
 
     /**
@@ -97,23 +96,25 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      * @param userInterceptors 用户提供的拦截器列表
      * @return 按执行顺序排列的拦截器链
      */
-    private List<ChatInterceptor> buildInterceptorChain(List<ChatInterceptor> userInterceptors) {
-        List<ChatInterceptor> chain = new ArrayList<>();
+    private List<ChatInterceptorRegistration> buildInterceptorChain(List<ChatInterceptor> userInterceptors) {
+        List<ChatInterceptorRegistration> chain = new ArrayList<>();
 
         // 1. 可观测性拦截器（最外层）
         // 仅在配置启用时添加，负责 OpenTelemetry 追踪和指标上报
         if (config.isObservabilityEnabled()) {
-            chain.add(new ChatObservabilityInterceptor());
+            chain.add(ChatInterceptorRegistration.of(new ChatObservabilityInterceptor()));
         }
 
         // 2. 全局拦截器（通过 GlobalChatInterceptors 注册）
         // 适用于所有聊天模型实例的通用逻辑（如全局日志、认证）
-        chain.addAll(GlobalChatInterceptors.getInterceptors());
+        chain.addAll(GlobalChatInterceptors.getRegistrations());
 
         // 3. 用户拦截器（实例级）
         // 适用于当前实例的特定逻辑
         if (userInterceptors != null) {
-            chain.addAll(userInterceptors);
+            for (ChatInterceptor interceptor : userInterceptors) {
+                chain.add(ChatInterceptorRegistration.of(interceptor));
+            }
         }
 
         return chain;
@@ -123,9 +124,9 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      * 执行同步聊天请求。
      * <p>
      * 流程：
-     * 1. 构建请求上下文（URL/Headers/Body）
-     * 2. 初始化线程上下文 {@link ChatContext}
-     * 3. 构建并执行责任链
+     * 1. 构建不包含 Body 的传输配置并初始化 {@link ChatContext}
+     * 2. 构建并执行责任链，拦截器可修改 Prompt、ChatOptions 和传输配置
+     * 3. 在责任链末端根据最终上下文构建 Body 并调用模型
      * 4. 返回 LLM 响应
      *
      * @param prompt  用户输入的提示
@@ -137,18 +138,13 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         if (options == null) {
             options = new ChatOptions();
         }
-        // 强制关闭流式
         options.setStreaming(false);
-
-
-        Prompt requestPrompt = ToolGroupPromptResolver.resolve(prompt);
-        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(requestPrompt, options, config);
-
+        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(prompt, options, config);
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(requestPrompt, options, request, config)) {
+                 ChatContextHolder.beginChat(prompt, options, request, config)) {
             // 构建同步责任链并执行
-            SyncChain chain = buildSyncChain(0);
+            SyncChain chain = buildSyncChain(buildRequestInterceptorChain(), 0);
             return chain.proceed(this, scope.context);
         }
     }
@@ -168,34 +164,58 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
             options = new ChatOptions();
         }
         options.setStreaming(true);
-
-        Prompt requestPrompt = ToolGroupPromptResolver.resolve(prompt);
-        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(requestPrompt, options, config);
-
+        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(prompt, options, config);
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(requestPrompt, options, request, config)) {
-            StreamChain chain = buildStreamChain(0);
+                 ChatContextHolder.beginChat(prompt, options, request, config)) {
+            StreamChain chain = buildStreamChain(buildRequestInterceptorChain(), 0);
             chain.proceed(this, scope.context, listener);
         }
     }
 
+    private String buildRequestBody(ChatContext context, boolean streaming) {
+        ChatOptions requestOptions = context.getOptions();
+        if (requestOptions == null) {
+            requestOptions = new ChatOptions();
+            context.setOptions(requestOptions);
+        }
+        requestOptions.setStreaming(streaming);
+
+        BaseChatConfig requestConfig = context.getConfig();
+        if (requestConfig == null) {
+            requestConfig = config;
+            context.setConfig(requestConfig);
+        }
+        context.refreshContextFromOptions();
+        return getChatRequestSpecBuilder().buildRequestBody(
+            context.getPrompt(), requestOptions, requestConfig);
+    }
+
+
+    /** Builds a request-level snapshot with framework preparation interceptors appended last. */
+    private List<ChatInterceptorRegistration> buildRequestInterceptorChain() {
+        List<ChatInterceptorRegistration> chain = new ArrayList<>(interceptorRegistrations);
+        chain.addAll(FrameworkChatInterceptors.getRequestPreparationRegistrations());
+        return chain;
+    }
 
     /**
      * 构建同步责任链。
      * <p>
      * 递归构建拦截器链，链尾节点负责创建并调用 {@link ChatClient}。
      *
+     * @param registrations 当前请求的拦截器注册快照
      * @param index 当前拦截器索引
      * @return 同步责任链
      */
-    private SyncChain buildSyncChain(int index) {
+    private SyncChain buildSyncChain(List<ChatInterceptorRegistration> registrations, int index) {
         // 链尾：执行实际 LLM 调用
-        if (index >= interceptors.size()) {
+        if (index >= registrations.size()) {
             return (model, context) -> {
                 AiMessageResponse aiMessageResponse = null;
+                String body = buildRequestBody(context, false);
                 try {
-                    ChatMessageLogger.logRequest(model.getConfig(), context.getRequestSpec().getBody());
-                    aiMessageResponse = getChatClient().chat();
+                    ChatMessageLogger.logRequest(model.getConfig(), body);
+                    aiMessageResponse = getChatClient().chat(body);
                     return aiMessageResponse;
                 } finally {
                     ChatMessageLogger.logResponse(model.getConfig(), aiMessageResponse == null ? "" : aiMessageResponse.getRawText());
@@ -204,11 +224,16 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         }
 
         // 递归构建下一个节点
-        ChatInterceptor current = interceptors.get(index);
-        SyncChain next = buildSyncChain(index + 1);
+        ChatInterceptorRegistration current = registrations.get(index);
+        SyncChain next = buildSyncChain(registrations, index + 1);
 
         // 当前节点：执行拦截器逻辑
-        return (model, context) -> current.intercept(model, context, next);
+        return (model, context) -> {
+            if (!current.matches(context)) {
+                return next.proceed(model, context);
+            }
+            return current.getInterceptor().intercept(model, context, next);
+        };
     }
 
     /**
@@ -216,19 +241,27 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      * <p>
      * 与同步链类似，但支持流式监听器。
      *
+     * @param registrations 当前请求的拦截器注册快照
      * @param index 当前拦截器索引
      * @return 流式责任链
      */
-    private StreamChain buildStreamChain(int index) {
-        if (index >= interceptors.size()) {
+    private StreamChain buildStreamChain(List<ChatInterceptorRegistration> registrations, int index) {
+        if (index >= registrations.size()) {
             return (model, context, listener) -> {
-                getChatClient().chatStream(listener);
+                String body = buildRequestBody(context, true);
+                getChatClient().chatStream(body, listener);
             };
         }
 
-        ChatInterceptor current = interceptors.get(index);
-        StreamChain next = buildStreamChain(index + 1);
-        return (model, context, listener) -> current.interceptStream(model, context, listener, next);
+        ChatInterceptorRegistration current = registrations.get(index);
+        StreamChain next = buildStreamChain(registrations, index + 1);
+        return (model, context, listener) -> {
+            if (!current.matches(context)) {
+                next.proceed(model, context, listener);
+                return;
+            }
+            current.getInterceptor().interceptStream(model, context, listener, next);
+        };
     }
 
 
@@ -253,7 +286,15 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     }
 
     public List<ChatInterceptor> getInterceptors() {
-        return interceptors;
+        List<ChatInterceptor> interceptors = new ArrayList<>(interceptorRegistrations.size());
+        for (ChatInterceptorRegistration registration : interceptorRegistrations) {
+            interceptors.add(registration.getInterceptor());
+        }
+        return Collections.unmodifiableList(interceptors);
+    }
+
+    public List<ChatInterceptorRegistration> getInterceptorRegistrations() {
+        return Collections.unmodifiableList(new ArrayList<>(interceptorRegistrations));
     }
 
     /**
@@ -264,10 +305,24 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      * @param interceptor 要添加的拦截器
      */
     public void addInterceptor(ChatInterceptor interceptor) {
-        interceptors.add(interceptor);
+        interceptorRegistrations.add(ChatInterceptorRegistration.of(interceptor));
     }
 
     public void addInterceptor(int index, ChatInterceptor interceptor) {
-        interceptors.add(index, interceptor);
+        interceptorRegistrations.add(index, ChatInterceptorRegistration.of(interceptor));
+    }
+
+    public void addInterceptorRegistration(ChatInterceptorRegistration registration) {
+        if (registration == null) {
+            throw new IllegalArgumentException("ChatInterceptorRegistration must not be null");
+        }
+        interceptorRegistrations.add(registration);
+    }
+
+    public void addInterceptorRegistration(int index, ChatInterceptorRegistration registration) {
+        if (registration == null) {
+            throw new IllegalArgumentException("ChatInterceptorRegistration must not be null");
+        }
+        interceptorRegistrations.add(index, registration);
     }
 }

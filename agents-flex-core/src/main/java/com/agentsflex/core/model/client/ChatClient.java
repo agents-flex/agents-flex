@@ -26,8 +26,10 @@ public abstract class ChatClient {
         this.chatModel = chatModel;
     }
 
-    public abstract AiMessageResponse chat();
+    /** Executes a synchronous request using the body produced at the end of the interceptor chain. */
+    public abstract AiMessageResponse chat(String body);
 
-    public abstract void chatStream(StreamResponseListener listener);
+    /** Executes a streaming request using the body produced at the end of the interceptor chain. */
+    public abstract void chatStream(String body, StreamResponseListener listener);
 
 }

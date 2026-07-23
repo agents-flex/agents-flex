@@ -183,6 +183,34 @@ chatModel.chat(prompt);
 
 A Prompt can contain multiple groups. Every request is matched again against the latest user message, so tools selected for one turn do not leak into later unrelated turns. In addition to `promptContains` and `promptMatches`, `matcher(context -> ...)` supports application-specific strategies.
 
+The request body is built only after all interceptors reach the end of the chain. Prompt and ChatOptions changes made before `chain.proceed()` therefore affect the final request:
+
+```java
+ChatInterceptor interceptor = new ChatInterceptor() {
+    @Override
+    public AiMessageResponse intercept(BaseChatModel<?> model, ChatContext context, SyncChain chain) {
+        context.getOptions().setTemperature(0.2f);
+        context.setPrompt(new SimplePrompt("rewritten prompt"));
+        context.getRequestSpec().addHeader("X-Tenant", "tenant-1");
+        return chain.proceed(model, context);
+    }
+};
+```
+
+`ChatRequestSpec` contains only the URL, headers, and retry configuration; it no longer exposes the body. Interceptors influence request content through structured Prompt and ChatOptions changes instead of rewriting raw body JSON.
+
+Interceptors can also be activated conditionally for each request. The matcher runs when the registration reaches its position in the chain, so it sees changes made by earlier interceptors:
+
+```java
+chatModel.addInterceptorRegistration(
+    ChatInterceptorRegistration.builder("premium-audit", new AuditChatInterceptor())
+        .matcher(context -> "premium".equals(context.getAttribute("plan")))
+        .build()
+);
+```
+
+Use `GlobalChatInterceptors.addRegistration(...)` for a conditional interceptor shared by subsequently created chat models. Existing `addInterceptor(...)` APIs remain available and register an interceptor that always matches.
+
 ## Agents And Orchestration
 
 Agents-Flex includes several mechanisms for complex tasks:

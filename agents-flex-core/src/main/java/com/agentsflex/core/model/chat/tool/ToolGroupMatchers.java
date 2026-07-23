@@ -15,6 +15,10 @@
  */
 package com.agentsflex.core.model.chat.tool;
 
+import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.prompt.Prompt;
+import com.agentsflex.core.util.MessageUtil;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.Arrays;
@@ -37,7 +41,7 @@ public final class ToolGroupMatchers {
 
     public static ToolGroupMatcher promptContains(Collection<String> keywords, boolean ignoreCase) {
         return context -> {
-            String prompt = context.getUserPrompt();
+            String prompt = getUserPrompt(context);
             if (prompt == null || keywords == null || keywords.isEmpty()) {
                 return false;
             }
@@ -66,7 +70,21 @@ public final class ToolGroupMatchers {
         if (pattern == null) {
             throw new IllegalArgumentException("pattern must not be null");
         }
-        return context -> context.getUserPrompt() != null
-            && pattern.matcher(context.getUserPrompt()).find();
+        return context -> {
+            String prompt = getUserPrompt(context);
+            return prompt != null && pattern.matcher(prompt).find();
+        };
+    }
+
+    private static String getUserPrompt(ChatContext context) {
+        if (context == null) {
+            return null;
+        }
+        Prompt prompt = context.getPrompt();
+        if (prompt == null) {
+            return null;
+        }
+        UserMessage userMessage = MessageUtil.findLastUserMessage(prompt.getMessages());
+        return userMessage == null ? null : userMessage.getTextContent();
     }
 }

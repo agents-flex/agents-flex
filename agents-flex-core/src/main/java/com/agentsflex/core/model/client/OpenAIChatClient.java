@@ -75,15 +75,15 @@ public class OpenAIChatClient extends ChatClient {
 
 
     @Override
-    public AiMessageResponse chat() {
+    public AiMessageResponse chat(String body) {
         AgentsFlexHttpClient agentsFlexHttpClient = getHttpClient();
         ChatContext context = ChatContextHolder.currentContext();
         ChatRequestSpec requestSpec = context.getRequestSpec();
 
         String response = requestSpec.getRetryCount() > 0 ? Retryer.retry(() -> agentsFlexHttpClient.post(requestSpec.getUrl(),
             requestSpec.getHeaders(),
-            requestSpec.getBody()), requestSpec.getRetryCount(), requestSpec.getRetryInitialDelayMs())
-            : agentsFlexHttpClient.post(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody());
+            body), requestSpec.getRetryCount(), requestSpec.getRetryInitialDelayMs())
+            : agentsFlexHttpClient.post(requestSpec.getUrl(), requestSpec.getHeaders(), body);
 
         if (StringUtil.noText(response)) {
             return AiMessageResponse.error(context, response, "no content for response.");
@@ -116,7 +116,7 @@ public class OpenAIChatClient extends ChatClient {
 
 
     @Override
-    public void chatStream(StreamResponseListener listener) {
+    public void chatStream(String body, StreamResponseListener listener) {
         StreamClient streamClient = getStreamClient();
         ChatContext context = ChatContextHolder.currentContext();
         StreamClientListener clientListener = new BaseStreamClientListener(
@@ -129,12 +129,12 @@ public class OpenAIChatClient extends ChatClient {
 
         ChatRequestSpec requestSpec = context.getRequestSpec();
         if (requestSpec.getRetryCount() > 0) {
-            Retryer.retry(() -> streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody()
+            Retryer.retry(() -> streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), body
                     , clientListener, chatModel.getConfig())
                 , requestSpec.getRetryCount()
                 , requestSpec.getRetryInitialDelayMs());
         } else {
-            streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), requestSpec.getBody()
+            streamClient.start(requestSpec.getUrl(), requestSpec.getHeaders(), body
                 , clientListener, chatModel.getConfig());
         }
     }
