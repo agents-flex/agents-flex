@@ -21,9 +21,13 @@ import com.agentsflex.core.prompt.Prompt;
 
 public interface ChatRequestSpecBuilder {
 
-    /** Builds transport settings before the interceptor chain starts. */
-    ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, BaseChatConfig config);
+    /**
+     * Builds transport settings before the interceptor chain starts.
+     */
+    ChatRequestSpec buildRequestSpec(Prompt prompt, ChatOptions options, BaseChatConfig config);
 
-    /** Builds the request body from the final context after all interceptors have proceeded. */
+    /**
+     * Builds the request body from the final context after all interceptors have proceeded.
+     */
     String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config);
 }

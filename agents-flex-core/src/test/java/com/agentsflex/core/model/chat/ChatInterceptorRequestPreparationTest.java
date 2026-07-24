@@ -98,7 +98,7 @@ public class ChatInterceptorRequestPreparationTest {
         };
         model.setChatRequestSpecBuilder(new ChatRequestSpecBuilder() {
             @Override
-            public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, BaseChatConfig chatConfig) {
+            public ChatRequestSpec buildRequestSpec(Prompt prompt, ChatOptions options, BaseChatConfig chatConfig) {
                 return new ChatRequestSpec("test", new java.util.HashMap<>(), 0, 0);
             }
 

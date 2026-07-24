@@ -48,7 +48,7 @@ public class ToolGroupChatIntegrationTest {
         AtomicReference<Prompt> postToolGroupPrompt = new AtomicReference<>();
         model.setChatRequestSpecBuilder(new ChatRequestSpecBuilder() {
             @Override
-            public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, BaseChatConfig chatConfig) {
+            public ChatRequestSpec buildRequestSpec(Prompt prompt, ChatOptions options, BaseChatConfig chatConfig) {
                 return new ChatRequestSpec("test", Collections.emptyMap(), 0, 0);
             }
 

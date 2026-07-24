@@ -129,7 +129,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
             options = new ChatOptions();
         }
         options.setStreaming(false);
-        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(prompt, options, config);
+        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequestSpec(prompt, options, config);
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
                  ChatContextHolder.beginChat(prompt, options, request, config)) {
@@ -154,7 +154,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
             options = new ChatOptions();
         }
         options.setStreaming(true);
-        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequest(prompt, options, config);
+        ChatRequestSpec request = getChatRequestSpecBuilder().buildRequestSpec(prompt, options, config);
         try (ChatContextHolder.ChatContextScope scope =
                  ChatContextHolder.beginChat(prompt, options, request, config)) {
             StreamChain chain = buildStreamChain(buildRequestInterceptorChain(), 0);

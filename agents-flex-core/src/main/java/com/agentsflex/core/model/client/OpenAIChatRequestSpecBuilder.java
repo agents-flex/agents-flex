@@ -40,7 +40,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
     }
 
     @Override
-    public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, BaseChatConfig config) {
+    public ChatRequestSpec buildRequestSpec(Prompt prompt, ChatOptions options, BaseChatConfig config) {
 
         String url = buildRequestUrl(prompt, options, config);
         Map<String, String> headers = buildRequestHeaders(prompt, options, config);
