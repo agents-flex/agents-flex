@@ -14,7 +14,7 @@
 
 ```java
 public interface ChatRequestSpecBuilder {
-    ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, ChatConfig config);
+    ChatRequestSpec buildRequestSpec(Prompt prompt, ChatOptions options, ChatConfig config);
 }
 ```
 
@@ -36,7 +36,7 @@ public interface ChatRequestSpecBuilder {
 
 ```java
 @Override
-public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, ChatConfig config) {
+public ChatRequestSpec buildRequestSpec(Prompt prompt, ChatOptions options, ChatConfig config) {
     String url = buildRequestUrl(...);      // 通常为 config.getFullUrl()
     Map<String, String> headers = buildRequestHeaders(...); // 包含 Authorization
     String body = buildRequestBody(...);    // JSON 序列化的请求体
@@ -159,7 +159,7 @@ public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
 ```java
 public class MyLLMRequestSpecBuilder implements ChatRequestSpecBuilder {
     @Override
-    public ChatRequestSpec buildRequest(Prompt prompt, ChatOptions options, ChatConfig config) {
+    public ChatRequestSpec buildRequestSpec(Prompt prompt, ChatOptions options, ChatConfig config) {
         // 自定义构建逻辑
     }
 }
