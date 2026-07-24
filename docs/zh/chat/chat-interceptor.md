@@ -353,6 +353,135 @@ public class StreamTimingInterceptor implements ChatInterceptor {
 
 包装 Listener 时应完整代理 `onStart`、`onMessage`、`onStop` 和 `onFailure`，避免上层无法正确结束请求或释放资源。
 
+## GlobalChatInterceptors
+
+`GlobalChatInterceptors` 用于注册应用级 Chat 拦截器。它适合所有 ChatModel 都需要执行的公共逻辑，例如：
+
+- 统一添加认证、租户和 Trace Header
+- 审计模型请求和响应
+- 执行内容安全检查
+- 采集应用级指标
+- 根据账号或业务属性应用统一策略
+
+全局拦截器应在应用初始化阶段、创建任何 ChatModel 之前完成注册。
+
+### 注册普通全局拦截器
+
+```java
+GlobalChatInterceptors.addInterceptor(
+    new AuthHeaderInterceptor()
+);
+
+OpenAIChatModel chatModel = new OpenAIChatModel(config);
+```
+
+通过 `addInterceptor(...)` 注册的拦截器会被包装为始终匹配、`order` 为 `ChatInterceptorOrders.DEFAULT` 的 Registration。
+
+也可以按列表顺序批量注册：
+
+```java
+GlobalChatInterceptors.addInterceptors(Arrays.asList(
+    new AuthHeaderInterceptor(),
+    new AuditChatInterceptor(),
+    new TimingChatInterceptor()
+));
+```
+
+当多个拦截器具有相同 `order` 时，保持注册顺序执行。每次调用都会追加新的拦截器，框架不会按类型或名称自动去重，因此应避免重复执行初始化逻辑。
+
+### 注册带条件和顺序的全局拦截器
+
+需要按请求激活或指定执行顺序时，注册 `ChatInterceptorRegistration`：
+
+```java
+ChatInterceptorRegistration premiumAudit =
+    ChatInterceptorRegistration.builder(
+            "premium-audit",
+            new PremiumAuditInterceptor()
+        )
+        .matcher(context ->
+            "premium".equals(context.getAttribute("plan"))
+        )
+        .order(-100)
+        .build();
+
+GlobalChatInterceptors.addRegistration(premiumAudit);
+```
+
+批量注册可以使用：
+
+```java
+GlobalChatInterceptors.addRegistrations(Arrays.asList(
+    tenantResolverRegistration,
+    premiumAuditRegistration
+));
+```
+
+全局、实例和框架 Registration 最终使用同一套 `order` 规则排序。“全局”表示作用范围，不代表它一定在实例级拦截器之前执行；当 `order` 不同时，以 `order` 为准。
+
+### 生效时机
+
+创建 `BaseChatModel` 时，框架会复制当时的全局 Registration：
+
+```text
+注册 Global A
+    ↓
+创建 ChatModel 1  → 包含 Global A
+    ↓
+注册 Global B
+    ↓
+创建 ChatModel 2  → 包含 Global A、Global B
+```
+
+因此：
+
+- `ChatModel 1` 不会自动获得之后注册的 `Global B`。
+- 需要修改已有模型时，应调用该模型的 `addInterceptor(...)` 或 `addInterceptorRegistration(...)`。
+- `GlobalChatInterceptors.clear()` 只清空全局注册表，不会移除已有模型中的快照。
+
+这种快照机制让模型实例的拦截器链在创建后保持稳定，也意味着不应把 `GlobalChatInterceptors` 当作运行时动态开关。
+
+### 查询全局注册
+
+```java
+int count = GlobalChatInterceptors.size();
+
+List<ChatInterceptor> interceptors =
+    GlobalChatInterceptors.getInterceptors();
+
+List<ChatInterceptorRegistration> registrations =
+    GlobalChatInterceptors.getRegistrations();
+```
+
+| 方法 | 说明 |
+| --- | --- |
+| `addInterceptor(...)` | 添加一个始终生效的普通拦截器 |
+| `addInterceptors(...)` | 批量添加普通拦截器 |
+| `addRegistration(...)` | 添加带 Matcher 和 order 的 Registration |
+| `addRegistrations(...)` | 批量添加 Registration |
+| `getInterceptors()` | 返回当前普通拦截器视图的不可变快照 |
+| `getRegistrations()` | 返回包含 Matcher、name 和 order 的不可变快照 |
+| `size()` | 返回当前全局 Registration 数量 |
+| `clear()` | 清空全局注册表，主要用于测试 |
+
+`getInterceptors()` 和 `getRegistrations()` 只包含应用通过 `GlobalChatInterceptors` 添加的内容，不包含 `FrameworkChatInterceptors` 管理的 Observability 和 ToolGroup 等框架节点。
+
+### 测试清理
+
+全局注册表是进程级静态状态。测试用例应在执行后清理，避免影响其他测试：
+
+```java
+public class ChatInterceptorTest {
+
+    @After
+    public void clearGlobalInterceptors() {
+        GlobalChatInterceptors.clear();
+    }
+}
+```
+
+生产环境中不建议在请求处理期间调用 `clear()` 或追加注册。虽然管理方法是线程安全的，但已经创建的 ChatModel 使用各自的快照，运行时修改会使不同模型实例具有不同配置。
+
 ## 进阶使用
 
 ### ChatInterceptor 接口
@@ -478,30 +607,7 @@ OpenAIChatModel chatModel = new OpenAIChatModel(config, interceptors);
 
 #### 全局注册
 
-全局拦截器适合统一认证、审计和租户解析等应用级逻辑：
-
-```java
-GlobalChatInterceptors.addRegistration(
-    ChatInterceptorRegistration.builder(
-            "global-auth",
-            new AuthHeaderInterceptor()
-        )
-        .order(-100)
-        .build()
-);
-```
-
-简单注册方式也可以直接使用：
-
-```java
-GlobalChatInterceptors.addInterceptor(new LoggingInterceptor());
-GlobalChatInterceptors.addInterceptors(Arrays.asList(
-    new AuthHeaderInterceptor(),
-    new TimingChatInterceptor()
-));
-```
-
-全局 Registration 在创建 `BaseChatModel` 时复制到模型实例。之后新增的全局 Registration 只影响后续创建的模型。`GlobalChatInterceptors.clear()` 主要用于测试清理，不建议在生产请求期间调用。
+全局拦截器作用于注册完成后创建的 ChatModel，适合统一认证、审计和租户解析等应用级逻辑。注册方式、生效时机和管理 API 请参考 [GlobalChatInterceptors](#globalchatinterceptors)。
 
 #### 框架内置注册
 
