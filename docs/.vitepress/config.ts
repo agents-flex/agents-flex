@@ -80,6 +80,7 @@ export default defineConfig({
                     {text: 'Tool 工具调用', link: '/zh/chat/tool'},
                     {text: 'Tool 构建', link: '/zh/chat/tool-build'},
                     {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
+                    {text: 'ToolGroup 工具组', link: '/zh/chat/tool-group'},
                     {text: 'MCP 调用', link: '/zh/chat/mcp'},
                     {text: 'LLM Wiki 知识树', link: '/zh/chat/llm-wiki'},
                     {text: 'Text2SQL 智能问数', link: '/zh/chat/text2sql'},
