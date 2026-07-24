@@ -101,8 +101,8 @@ public class RoutingAgent {
 
                 String decision = chatModel.chat(prompt, chatOptions);
 
-                if (decision != null && decision.startsWith("Route:")) {
-                    String agentName = decision.substring("Route:".length()).trim();
+                if (decision != null && decision.trim().startsWith("Route:")) {
+                    String agentName = decision.trim().substring("Route:".length()).trim();
                     return createAgent(agentName);
                 }
             }
