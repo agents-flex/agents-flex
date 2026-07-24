@@ -26,11 +26,14 @@ mvn -pl demos/skills-demo -am install -DskipTests
 
 ```bash
 SKILLS_RUNTIME=local \
+SKILLS_CONVERSATION_ID=conversation-123 \
 mvn -f demos/skills-demo/pom.xml exec:java
 ```
 
 这会运行默认的 PPTX 验收示例：生成一份五页的 Skills Runtime 报告，并检查页数、元数据、文本内容和
 文件大小。本机默认输出到 `target/skills-demo-output/agentsflex-skills-runtime-report.pptx`。
+配置 `SKILLS_CONVERSATION_ID` 后，Skill 会先复制到对应会话目录的 `skills` 子目录，产物和 Skill
+运行时自行创建的文件都保留在该会话中。
 也可以通过命令参数或 `SKILLS_PROMPT` 传入问题：
 
 ```bash
@@ -56,10 +59,14 @@ mvn -f demos/skills-demo/pom.xml exec:java
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `OPEN_SANDBOX_REMOTE_ROOT` | `/workspace/skills` | Skill 上传目录 |
+| `OPEN_SANDBOX_CONVERSATIONS_ROOT` | `/workspace/conversations` | 会话工作目录的父目录 |
 | `OPEN_SANDBOX_TIMEOUT_SECONDS` | `600` | 沙箱生命周期 |
 | `OPEN_SANDBOX_READY_TIMEOUT_SECONDS` | `30` | 沙箱启动等待时间 |
 
-程序结束时会关闭并销毁本次创建的 OpenSandbox 实例。
+未配置 `SKILLS_CONVERSATION_ID` 时，程序结束会关闭并销毁本次创建的 OpenSandbox 实例。配置会话 ID 后，
+同一 JVM 内后续创建的 Runtime 会通过 Store 中的 `sandboxId` 复用该会话的 Sandbox，普通 `close()` 不会销毁它；共享 Sandbox 最迟会按
+`OPEN_SANDBOX_TIMEOUT_SECONDS` 到期。Demo 使用默认内存 Store；生产环境跨 JVM 或应用重启恢复时，应配置
+`JdbcOpenSandboxConversationStore` 或其他持久化 `OpenSandboxConversationStore` 实现。
 
 ## AIO Sandbox
 
@@ -69,6 +76,7 @@ mvn -f demos/skills-demo/pom.xml exec:java
 ```bash
 export SKILLS_RUNTIME=aio-sandbox
 export AIO_SANDBOX_BASE_URL="http://localhost:8080"
+export SKILLS_CONVERSATION_ID="conversation-123"
 # 服务启用 JWT 鉴权时设置：
 export AIO_SANDBOX_TOKEN="your-jwt-token"
 
@@ -80,6 +88,7 @@ mvn -f demos/skills-demo/pom.xml exec:java
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `AIO_SANDBOX_REMOTE_ROOT` | `/home/gem/workspace/skills` | Skill 上传目录 |
+| `AIO_SANDBOX_CONVERSATIONS_ROOT` | `/home/gem/workspace/conversations` | 会话工作目录的父目录 |
 | `AIO_SANDBOX_HTTP_TIMEOUT_SECONDS` | `660` | 单次 HTTP 请求超时 |
 
 ## 通用配置
@@ -87,6 +96,8 @@ mvn -f demos/skills-demo/pom.xml exec:java
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `SKILLS_DIR` | classpath 中的 `.claude/skills` | 自定义 Skills 文件系统目录 |
+| `SKILLS_CONVERSATION_ID` | 未配置 | 为任意 Runtime 启用稳定的会话工作目录 |
+| `SKILLS_LOCAL_CONVERSATIONS_ROOT` | `target/skills-runtime/conversations` | Local 会话工作目录的父目录 |
 | `SKILLS_PROMPT` | PPTX 验收示例 | 未传命令参数时的用户问题，可用 `${outputFile}` 引用输出路径 |
 | `SKILLS_OUTPUT_FILE` | runtime 对应的默认路径 | runtime 内的 PPTX 输出路径 |
 | `SKILLS_LOCAL_OUTPUT_FILE` | `target/skills-demo-output/<文件名>` | 远端产物下载到本机的路径 |

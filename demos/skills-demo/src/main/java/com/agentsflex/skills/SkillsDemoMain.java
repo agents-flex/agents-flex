@@ -85,7 +85,7 @@ public class SkillsDemoMain {
         long conversationTimeoutSeconds = environmentLong("SKILLS_DEMO_TIMEOUT_SECONDS", 900L);
 
         try (SkillRuntime runtime = createRuntime()) {
-            String outputFile = resolveOutputFile(runtime.getName());
+            String outputFile = resolveOutputFile(runtime);
             boolean defaultPrompt = isDefaultPrompt(args);
             boolean outputExpected = defaultPrompt || StringUtil.hasText(System.getenv("SKILLS_OUTPUT_FILE"));
             String userPrompt = resolvePrompt(args, outputFile);
@@ -138,27 +138,44 @@ public class SkillsDemoMain {
      */
     private static SkillRuntime createRuntime() {
         String name = environment("SKILLS_RUNTIME", "local").trim().toLowerCase(Locale.ROOT);
+        String conversationId = System.getenv("SKILLS_CONVERSATION_ID");
         if ("local".equals(name)) {
-            return new LocalSkillRuntime();
+            if (!StringUtil.hasText(conversationId)) {
+                return new LocalSkillRuntime();
+            }
+            return LocalSkillRuntime.builder()
+                .conversationId(conversationId.trim())
+                .conversationsRoot(environment("SKILLS_LOCAL_CONVERSATIONS_ROOT",
+                    Paths.get("target", "skills-runtime", "conversations").toAbsolutePath().normalize().toString()))
+                .build();
         }
         if ("open-sandbox".equals(name) || "opensandbox".equals(name)) {
-            return OpenSandboxSkillRuntime.builder()
+            OpenSandboxSkillRuntime.Builder builder = OpenSandboxSkillRuntime.builder()
                 .connectionConfig(connection -> connection
                     .domain(requireEnvironment("OPEN_SANDBOX_DOMAIN"))
                     .apiKey(requireEnvironment("OPEN_SANDBOX_API_KEY")))
                 .image(environment("OPEN_SANDBOX_IMAGE", "python:3.11"))
                 .remoteRoot(environment("OPEN_SANDBOX_REMOTE_ROOT", "/workspace/skills"))
+                .conversationsRoot(environment("OPEN_SANDBOX_CONVERSATIONS_ROOT", "/workspace/conversations"))
                 .sandboxTimeout(Duration.ofSeconds(environmentLong("OPEN_SANDBOX_TIMEOUT_SECONDS", 600L)))
-                .readyTimeout(Duration.ofSeconds(environmentLong("OPEN_SANDBOX_READY_TIMEOUT_SECONDS", 30L)))
-                .build();
+                .readyTimeout(Duration.ofSeconds(environmentLong("OPEN_SANDBOX_READY_TIMEOUT_SECONDS", 30L)));
+            if (StringUtil.hasText(conversationId)) {
+                builder.conversationId(conversationId.trim());
+            }
+            return builder.build();
         }
         if ("aio-sandbox".equals(name) || "aio".equals(name) || "aiosandbox".equals(name)) {
-            return AioSandboxSkillRuntime.builder()
+            AioSandboxSkillRuntime.Builder builder = AioSandboxSkillRuntime.builder()
                 .baseUrl(environment("AIO_SANDBOX_BASE_URL", "http://localhost:8080"))
                 .bearerToken(System.getenv("AIO_SANDBOX_TOKEN"))
                 .remoteRoot(environment("AIO_SANDBOX_REMOTE_ROOT", "/home/gem/workspace/skills"))
-                .httpTimeoutMillis(environmentTimeoutMillis("AIO_SANDBOX_HTTP_TIMEOUT_SECONDS", 660L))
-                .build();
+                .conversationsRoot(environment("AIO_SANDBOX_CONVERSATIONS_ROOT",
+                    "/home/gem/workspace/conversations"))
+                .httpTimeoutMillis(environmentTimeoutMillis("AIO_SANDBOX_HTTP_TIMEOUT_SECONDS", 660L));
+            if (StringUtil.hasText(conversationId)) {
+                builder.conversationId(conversationId.trim());
+            }
+            return builder.build();
         }
         throw new IllegalArgumentException("Unsupported SKILLS_RUNTIME: " + name
             + ". Expected local, open-sandbox, or aio-sandbox.");
@@ -211,18 +228,14 @@ public class SkillsDemoMain {
         return (args == null || args.length == 0) && !StringUtil.hasText(System.getenv("SKILLS_PROMPT"));
     }
 
-    private static String resolveOutputFile(String runtimeName) throws Exception {
+    private static String resolveOutputFile(SkillRuntime runtime) throws Exception {
         String configured = System.getenv("SKILLS_OUTPUT_FILE");
         if (StringUtil.hasText(configured)) {
             return configured.trim();
         }
-        if ("open-sandbox".equals(runtimeName)) {
-            return environment("OPEN_SANDBOX_REMOTE_ROOT", "/workspace/skills")
-                + "/output/" + DEFAULT_OUTPUT_FILE;
-        }
-        if ("aio-sandbox".equals(runtimeName)) {
-            return environment("AIO_SANDBOX_REMOTE_ROOT", "/home/gem/workspace/skills")
-                + "/output/" + DEFAULT_OUTPUT_FILE;
+        if (StringUtil.hasText(System.getenv("SKILLS_CONVERSATION_ID"))
+            || "open-sandbox".equals(runtime.getName()) || "aio-sandbox".equals(runtime.getName())) {
+            return runtime.getDefaultWorkingDirectory() + "/output/" + DEFAULT_OUTPUT_FILE;
         }
 
         Path current = Paths.get("").toAbsolutePath().normalize();

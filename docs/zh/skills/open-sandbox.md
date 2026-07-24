@@ -150,7 +150,7 @@ import com.alibaba.opensandbox.sandbox.domain.models.sandboxes.NetworkPolicy;
 
 import java.time.Duration;
 
-SkillRuntime runtime = OpenSandboxSkillRuntime.builder()
+OpenSandboxSkillRuntime runtime = OpenSandboxSkillRuntime.builder()
     .connectionConfig(connection -> connection
         .domain("localhost:8080")
         .apiKey(System.getenv("OPEN_SANDBOX_API_KEY")))
@@ -162,6 +162,63 @@ SkillRuntime runtime = OpenSandboxSkillRuntime.builder()
         .defaultAction(NetworkPolicy.DefaultAction.DENY))
     .build();
 ```
+
+需要在同一次持续会话中隔离并复用产物时，可以增加统一的会话目录配置：
+
+```java
+OpenSandboxSkillRuntime runtime = OpenSandboxSkillRuntime.builder()
+    .connectionConfig(connection)
+    .conversationId(conversationId)
+    .conversationsRoot("/workspace/conversations")
+    .build();
+```
+
+默认工作目录会变为 `/workspace/conversations/<conversationId>`，Skill 上传到其 `skills` 子目录，
+文件 API 会拒绝跨会话路径。默认使用 `InMemoryOpenSandboxConversationStore`，在同一个 JVM 内按
+“OpenSandbox 服务 + conversationId”复用同一个 Sandbox。`conversationId` 应由业务层保证全局唯一；多租户场景
+可以使用包含租户和用户边界的业务会话 ID，但框架不再单独维护租户、用户字段。
+
+### 跨 JVM 和应用重启复用
+
+生产环境可以让所有应用节点连接同一个数据库，并配置 JDBC Store：
+
+```java
+OpenSandboxConversationStore conversationStore =
+    new JdbcOpenSandboxConversationStore(dataSource);
+
+OpenSandboxSkillRuntime runtime = OpenSandboxSkillRuntime.builder()
+    .connectionConfig(connection)
+    .conversationStore(conversationStore)
+    .conversationId(conversationId)
+    .conversationsRoot("/workspace/conversations")
+    .build();
+```
+
+JDBC Store 会持久化 `sandboxId`、工作目录状态和已准备 Skill 的路径映射。其他 JVM 或重启后的 Runtime 会读取
+同一条记录，通过 OpenSandbox SDK Connector 连接原来的远端 Sandbox，并按当前 `sandboxTimeout` 续期。
+Runtime 不要求缓存为同一个 Java 对象。
+
+多个节点同时首次使用同一会话时，Store 通过数据库唯一主键原子竞争 `create()`。只有成功写入记录的节点保留
+候选 Sandbox，其他节点会销毁自己的候选实例并连接记录中的 `sandboxId`。Store 不持有覆盖完整命令执行过程的
+数据库事务，也不负责串行同一会话的业务请求。上层会话调度必须避免多个请求同时修改同一个 PPT 或工作目录；
+Skill bootstrap 也应设计为可重复执行。
+
+参考表结构位于模块资源 `opensandbox-conversation-store.sql`。不同数据库对 `TEXT`、`BOOLEAN` 的类型名称可能
+不同，可以在保持列名和语义不变的前提下调整。`JdbcOpenSandboxConversationStore(DataSource, tableName)` 可指定
+自定义表名，但不会创建表，也不会关闭应用提供的 DataSource。
+
+框架同时公开 `OpenSandboxConversationStore` SPI。需要 Redis 或其他存储时，可以实现相同的
+`get/create/update/delete` 接口，其中 `create()` 必须具备 insert-if-absent 的原子语义。
+
+配置 `conversationId` 后，普通 `close()` 只释放当前 Runtime 的使用关系，不会销毁共享 Sandbox。业务会话
+真正结束时，应显式销毁：
+
+```java
+runtime.destroyConversationSandbox();
+```
+
+远端 Sandbox 仍受 OpenSandbox 服务端生命周期约束。记录中的 Sandbox 已过期或被外部删除时，Connector 会
+失败；业务可以调用 `destroyConversationSandbox()` 清除旧记录，之后相同会话键会创建新的 Sandbox。
 
 `networkPolicy(...)` 同样支持直接传入已经构建的 `NetworkPolicy`，也支持通过回调配置 SDK Builder。
 上例默认拒绝所有出站网络；如果 Skill 需要访问包仓库或业务 API，应通过 `addEgress(...)` 或
@@ -212,6 +269,9 @@ try (SkillRuntime runtime = createOpenSandboxRuntime()) {
 | `connectionConfig` | Server 域名、协议与 API Key |
 | `image` | 每个 Sandbox 使用的镜像，必须包含 Skill 所需运行时 |
 | `remoteRoot` | Skill 上传根目录，必须是非根绝对路径 |
+| `conversationId` | 可选的稳定会话 ID；配置后启用会话目录边界 |
+| `conversationStore` | 会话状态存储；默认单 JVM 内存 Store，可配置 JDBC 或自定义实现 |
+| `conversationsRoot` | 会话工作目录父路径，默认 `/workspace/conversations` |
 | `sandboxTimeout` | Sandbox 最长存活时间 |
 | `readyTimeout` | 等待实例启动就绪的时间 |
 | `resources` | 传递 CPU、内存等资源限制 |

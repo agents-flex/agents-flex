@@ -92,6 +92,22 @@ SkillRuntime runtime = AioSandboxSkillRuntime.builder()
     .build();
 ```
 
+多个会话共享同一个 AIO 容器时，可以使用与 Local、OpenSandbox 相同的会话目录配置，减少文件误读和误写：
+
+```java
+SkillRuntime runtime = AioSandboxSkillRuntime.builder()
+    .baseUrl("http://localhost:8080")
+    .conversationId(conversationId)
+    .conversationsRoot("/home/gem/workspace/conversations")
+    .build();
+```
+
+此时默认工作目录为 `/home/gem/workspace/conversations/<conversationId>`，Skill 也会上传到该目录的
+`skills` 子目录。Runtime 文件 API 会拒绝访问会话目录外的路径，相对路径会基于会话目录解析。
+
+目录限制不能替代容器隔离。Shell 命令仍可显式引用其他绝对路径，符号链接也可能越过词法路径边界；
+不可信租户应继续使用独立 AIO 容器或 OpenSandbox 实例。
+
 如果 Skill 需要安装 CLI 或持续使用环境变量，可以在 `SkillsTool` 上配置，而不修改标准
 `SKILL.md`：
 

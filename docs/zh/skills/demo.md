@@ -64,9 +64,13 @@ mvn -f demos/skills-demo/pom.xml exec:java
 | `SKILLS_GENERATION_TIMEOUT_SECONDS` | `300` | PPTX 生成命令超时 |
 | `SKILLS_DEMO_TIMEOUT_SECONDS` | `900` | 整个模型工具会话超时 |
 | `OPEN_SANDBOX_REMOTE_ROOT` | `/workspace/skills` | OpenSandbox 上传根目录 |
+| `OPEN_SANDBOX_CONVERSATIONS_ROOT` | `/workspace/conversations` | OpenSandbox 会话工作目录的父目录 |
 | `OPEN_SANDBOX_TIMEOUT_SECONDS` | `600` | OpenSandbox 生命周期 |
 | `OPEN_SANDBOX_READY_TIMEOUT_SECONDS` | `30` | OpenSandbox 启动等待时间 |
 | `AIO_SANDBOX_REMOTE_ROOT` | `/home/gem/workspace/skills` | AIO 上传根目录 |
+| `AIO_SANDBOX_CONVERSATIONS_ROOT` | `/home/gem/workspace/conversations` | AIO 会话工作目录的父目录 |
+| `SKILLS_CONVERSATION_ID` | 未配置 | 为任意 Runtime 启用稳定的会话工作目录 |
+| `SKILLS_LOCAL_CONVERSATIONS_ROOT` | `target/skills-runtime/conversations` | Local 会话工作目录的父目录 |
 | `AIO_SANDBOX_HTTP_TIMEOUT_SECONDS` | `660` | AIO HTTP 读取超时 |
 
 指定本地下载位置：
@@ -79,4 +83,3 @@ export SKILLS_LOCAL_OUTPUT_FILE="$PWD/output/runtime-report.pptx"
 哪个文件是最终产物。
 
 </div>
-

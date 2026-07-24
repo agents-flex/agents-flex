@@ -24,12 +24,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -41,12 +43,41 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>Unix-like 系统使用 {@code /bin/bash -c}，Windows 使用 {@code cmd.exe /c}。
  * 标准输出和标准错误由独立线程消费，以避免子进程因管道缓冲区写满而阻塞。</p>
+ *
+ * <p>配置会话 ID 后，Runtime 会先把 Skill 复制到会话目录的 {@code skills} 子目录，改写
+ * {@code basePath}，再在副本中执行 bootstrap，避免运行时生成的文件污染原始 Skill 目录。</p>
  */
 public class LocalSkillRuntime implements SkillRuntime {
 
-    private final SkillRuntimeFileSystem fileSystem = new LocalSkillRuntimeFileSystem();
+    private final SkillRuntimeWorkspace workspace;
+    private final SkillRuntimeFileSystem fileSystem;
     private final Map<String, String> environment = new LinkedHashMap<>();
-    private final Set<String> preparedSkills = new HashSet<>();
+    private final Map<String, String> preparedSkills = new HashMap<>();
+
+    /** 创建不启用会话目录的 Local Runtime，保持原有行为兼容。 */
+    public LocalSkillRuntime() {
+        this.workspace = null;
+        this.fileSystem = new LocalSkillRuntimeFileSystem();
+    }
+
+    protected LocalSkillRuntime(Builder builder) {
+        this.workspace = builder.conversationId == null ? null
+            : SkillRuntimeWorkspace.create(builder.conversationsRoot, builder.conversationId);
+        SkillRuntimeFileSystem localFileSystem = new LocalSkillRuntimeFileSystem();
+        this.fileSystem = workspace == null ? localFileSystem : workspace.scopeFileSystem(localFileSystem);
+        if (workspace != null) {
+            try {
+                Files.createDirectories(Paths.get(workspace.getRoot()));
+            } catch (IOException e) {
+                throw new SkillRuntimeException("Failed to create local conversation workspace", e);
+            }
+        }
+    }
+
+    /** @return Local Runtime 构建器 */
+    public static Builder builder() {
+        return new Builder();
+    }
 
     @Override
     public String getName() {
@@ -62,21 +93,28 @@ public class LocalSkillRuntime implements SkillRuntime {
             }
         }
 
-        // 本地无需上传；首次准备视为完成本地物化，并执行一次对应 bootstrap。
-        List<Skill> runtimeSkills = new ArrayList<>(request.getSkills());
-        for (Skill skill : runtimeSkills) {
-            if (preparedSkills.contains(skill.getBasePath())) {
+        List<Skill> runtimeSkills = new ArrayList<>(request.getSkills().size());
+        for (Skill skill : request.getSkills()) {
+            String existing = preparedSkills.get(skill.getBasePath());
+            if (existing != null) {
+                runtimeSkills.add(runtimeSkill(skill, existing));
                 continue;
             }
-            SkillRuntimeBootstrap.run(this, skill, request.getRuntimeConfig(skill));
-            preparedSkills.add(skill.getBasePath());
+
+            String runtimeBase = workspace == null ? skill.getBasePath() : copySkill(skill);
+            Skill runtimeSkill = runtimeSkill(skill, runtimeBase);
+            SkillRuntimeBootstrap.run(this, runtimeSkill, request.getRuntimeConfig(skill));
+            preparedSkills.put(skill.getBasePath(), runtimeBase);
+            runtimeSkills.add(runtimeSkill);
         }
         return runtimeSkills;
     }
 
     @Override
     public String getDefaultWorkingDirectory() {
-        return new File("").getAbsoluteFile().toPath().normalize().toString();
+        return workspace == null
+            ? new File("").getAbsoluteFile().toPath().normalize().toString()
+            : workspace.getRoot();
     }
 
     @Override
@@ -86,13 +124,15 @@ public class LocalSkillRuntime implements SkillRuntime {
 
     @Override
     public SkillExecutionResult execute(SkillExecutionRequest request) {
+        SkillExecutionRequest scopedRequest = workspace == null ? request : workspace.scopeExecution(request);
         Process process = null;
         try {
-            ProcessBuilder builder = new ProcessBuilder(shellCommand(request.getCommand()));
+            ProcessBuilder builder = new ProcessBuilder(shellCommand(scopedRequest.getCommand()));
             builder.redirectErrorStream(false);
-            builder.environment().putAll(effectiveEnvironment(request));
-            if (request.getWorkingDirectory() != null && !request.getWorkingDirectory().trim().isEmpty()) {
-                builder.directory(new File(request.getWorkingDirectory()));
+            builder.environment().putAll(effectiveEnvironment(scopedRequest));
+            if (scopedRequest.getWorkingDirectory() != null
+                && !scopedRequest.getWorkingDirectory().trim().isEmpty()) {
+                builder.directory(new File(scopedRequest.getWorkingDirectory()));
             }
 
             process = builder.start();
@@ -102,7 +142,7 @@ public class LocalSkillRuntime implements SkillRuntime {
             stdout.start();
             stderr.start();
 
-            boolean completed = process.waitFor(request.getTimeoutMillis(), TimeUnit.MILLISECONDS);
+            boolean completed = process.waitFor(scopedRequest.getTimeoutMillis(), TimeUnit.MILLISECONDS);
             if (!completed) {
                 terminate(process);
             }
@@ -133,6 +173,32 @@ public class LocalSkillRuntime implements SkillRuntime {
         return effective;
     }
 
+    private String copySkill(Skill skill) {
+        Path source = Paths.get(skill.getBasePath()).toAbsolutePath().normalize();
+        if (!Files.isDirectory(source)) {
+            throw new SkillRuntimeException("Local Runtime can only prepare file-system skills: "
+                + skill.getBasePath());
+        }
+        Path target = Paths.get(workspace.getRoot(), "skills", safeName(skill.name()) + "-"
+            + Integer.toHexString(source.toString().hashCode())).normalize();
+        try {
+            SkillRuntimeFiles.copySkillDirectory(source, target);
+            return target.toString();
+        } catch (IOException e) {
+            throw new SkillRuntimeException("Failed to copy skill into local conversation workspace: "
+                + skill.name(), e);
+        }
+    }
+
+    private static Skill runtimeSkill(Skill skill, String basePath) {
+        return new Skill(basePath, skill.getFrontMatter(), skill.getContent());
+    }
+
+    private static String safeName(String name) {
+        String safe = name == null ? "skill" : name.replaceAll("[^a-zA-Z0-9._-]", "-");
+        return safe.isEmpty() ? "skill" : safe;
+    }
+
     private static String[] shellCommand(String command) {
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
             return new String[]{"cmd.exe", "/c", command};
@@ -149,6 +215,33 @@ public class LocalSkillRuntime implements SkillRuntime {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             process.destroyForcibly();
+        }
+    }
+
+    /** Local Runtime 构建器。 */
+    public static class Builder {
+
+        private String conversationsRoot = Paths.get("target", "skills-runtime", "conversations")
+            .toAbsolutePath().normalize().toString();
+        private String conversationId;
+
+        /** @param conversationId 用作会话目录名的稳定 ID */
+        public Builder conversationId(String conversationId) {
+            SkillRuntimeWorkspace.validateConversationId(conversationId);
+            this.conversationId = conversationId;
+            return this;
+        }
+
+        /** @param conversationsRoot 本机会话工作目录的绝对父路径 */
+        public Builder conversationsRoot(String conversationsRoot) {
+            SkillRuntimeWorkspace.create(conversationsRoot, "validation");
+            this.conversationsRoot = conversationsRoot;
+            return this;
+        }
+
+        /** @return 配置完成的 Local Runtime */
+        public LocalSkillRuntime build() {
+            return new LocalSkillRuntime(this);
         }
     }
 

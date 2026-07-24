@@ -24,6 +24,7 @@ import com.agentsflex.skill.runtime.SkillRuntimeBootstrap;
 import com.agentsflex.skill.runtime.SkillRuntimeConfig;
 import com.agentsflex.skill.runtime.SkillRuntimeException;
 import com.agentsflex.skill.runtime.SkillRuntimeFileSystem;
+import com.agentsflex.skill.runtime.SkillRuntimeWorkspace;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -43,24 +44,31 @@ import java.util.concurrent.TimeUnit;
  * Runtime 只上传 Skill、调用 Shell/文件 API 并维护本地路径到远程路径的缓存。
  * {@link #close()} 只清理缓存，不会停止共享的 AIO 服务。</p>
  *
- * <p>每个本机 Skill 上传到 {@code remoteRoot/skill-name-hash}。协议访问、文件操作和上传
- * 分别由 {@link AioSandboxClient}、{@link AioSandboxFileSystem} 和
- * {@link AioSandboxSkillUploader} 承担。</p>
+ * <p>每个本机 Skill 默认上传到 {@code remoteRoot/skill-name-hash}。配置 conversationId 后，Skill
+ * 改为上传到对应会话目录的 {@code skills} 子目录，默认工作目录和文件 API 也限制在该会话目录内。
+ * 该限制用于减少共享容器中的误操作，不是容器级安全隔离；Shell 命令仍然可以显式访问会话目录外的路径。</p>
  */
 public class AioSandboxSkillRuntime implements SkillRuntime {
 
     private final String remoteRoot;
+    private final String workingDirectory;
+    private final SkillRuntimeWorkspace workspace;
     private final Map<String, String> preparedSkills = new HashMap<>();
     private final Map<String, String> environment = new LinkedHashMap<>();
     private final AioSandboxClient client;
     private final SkillRuntimeFileSystem fileSystem;
     private final AioSandboxSkillUploader skillUploader;
+    private boolean workspaceReady;
 
     protected AioSandboxSkillRuntime(Builder builder) {
         this.remoteRoot = normalizeRemoteRoot(builder.remoteRoot);
+        this.workspace = builder.conversationId == null ? null
+            : SkillRuntimeWorkspace.create(builder.conversationsRoot, builder.conversationId);
+        this.workingDirectory = workspace == null ? remoteRoot : workspace.getRoot();
         this.client = new AioSandboxClient(builder.baseUrl, builder.bearerToken, builder.httpTimeoutMillis);
-        this.fileSystem = new AioSandboxFileSystem(client);
-        this.skillUploader = new AioSandboxSkillUploader(client, remoteRoot);
+        SkillRuntimeFileSystem aioFileSystem = new AioSandboxFileSystem(client);
+        this.fileSystem = workspace == null ? aioFileSystem : workspace.scopeFileSystem(aioFileSystem);
+        this.skillUploader = new AioSandboxSkillUploader(client, skillRoot());
     }
 
     /** @return AIO Sandbox Runtime 构建器 */
@@ -75,6 +83,9 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
 
     @Override
     public synchronized List<Skill> prepare(SkillPreparationRequest request) {
+        if (workspace != null && request.getSkills().isEmpty()) {
+            ensureWorkspace();
+        }
         for (Skill skill : request.getSkills()) {
             SkillRuntimeConfig config = request.getRuntimeConfig(skill);
             if (config != null) {
@@ -97,12 +108,15 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
             preparedSkills.put(skill.getBasePath(), remoteBase);
             runtimeSkills.add(runtimeSkill);
         }
+        if (workspace != null && !runtimeSkills.isEmpty()) {
+            workspaceReady = true;
+        }
         return runtimeSkills;
     }
 
     @Override
     public String getDefaultWorkingDirectory() {
-        return remoteRoot;
+        return workingDirectory;
     }
 
     @Override
@@ -112,7 +126,9 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
 
     @Override
     public SkillExecutionResult execute(SkillExecutionRequest request) {
-        return client.execute(withEffectiveEnvironment(request), remoteRoot);
+        SkillExecutionRequest scopedRequest = workspace == null ? request : workspace.scopeExecution(request);
+        ensureWorkspace();
+        return client.execute(withEffectiveEnvironment(scopedRequest), this.workingDirectory);
     }
 
     @Override
@@ -120,6 +136,7 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
         // AIO 服务可能由多个应用共享，本 Runtime 不拥有其进程或容器生命周期。
         preparedSkills.clear();
         environment.clear();
+        workspaceReady = false;
     }
 
     private String uploadSkill(Skill skill) {
@@ -129,7 +146,7 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
             throw new SkillRuntimeException("AIO Sandbox can only prepare file-system skills: " + localBasePath);
         }
 
-        String remoteBase = remoteRoot + "/" + safeName(skill.name()) + "-"
+        String remoteBase = skillRoot() + "/" + safeName(skill.name()) + "-"
             + Integer.toHexString(source.toString().hashCode());
         try {
             skillUploader.upload(source, remoteBase);
@@ -144,6 +161,20 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
         effective.putAll(request.getEnvironment());
         return new SkillExecutionRequest(request.getCommand(), request.getWorkingDirectory(),
             request.getTimeoutMillis(), effective);
+    }
+
+    private String skillRoot() {
+        return workspace == null ? remoteRoot : workspace.getRoot() + "/skills";
+    }
+
+    private synchronized void ensureWorkspace() {
+        if (workspace == null || workspaceReady) {
+            return;
+        }
+        AioSandboxFileSystem.requireSuccessful(client.execute(
+            "mkdir -p " + AioSandboxFileSystem.shellQuote(workspace.getRoot()), "/", 30000),
+            "create conversation workspace");
+        workspaceReady = true;
     }
 
     private static Skill runtimeSkill(Skill skill, String basePath) {
@@ -172,6 +203,8 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
         private String baseUrl = "http://localhost:8080";
         private String bearerToken;
         private String remoteRoot = "/home/gem/workspace/skills";
+        private String conversationsRoot = "/home/gem/workspace/conversations";
+        private String conversationId;
         private int httpTimeoutMillis = (int) TimeUnit.MINUTES.toMillis(11);
 
         /** @param baseUrl AIO HTTP 服务根地址 */
@@ -189,6 +222,24 @@ public class AioSandboxSkillRuntime implements SkillRuntime {
         /** @param remoteRoot Skill 上传根目录，必须是非根绝对路径 */
         public Builder remoteRoot(String remoteRoot) {
             this.remoteRoot = remoteRoot;
+            return this;
+        }
+
+        /**
+         * 将 Runtime 文件和默认工作目录限制在指定会话的独立目录中。
+         *
+         * <p>会话 ID 只能包含字母、数字、点、下划线和连字符，避免不同输入映射到同一路径。</p>
+         */
+        public Builder conversationId(String conversationId) {
+            SkillRuntimeWorkspace.validateConversationId(conversationId);
+            this.conversationId = conversationId;
+            return this;
+        }
+
+        /** @param conversationsRoot AIO 内所有会话工作目录的父目录 */
+        public Builder conversationsRoot(String conversationsRoot) {
+            SkillRuntimeWorkspace.create(conversationsRoot, "validation");
+            this.conversationsRoot = conversationsRoot;
             return this;
         }
 

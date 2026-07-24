@@ -53,7 +53,7 @@ curl -I http://127.0.0.1:8080/v1/docs
 ### 命令成功但找不到产物
 
 - 模型输出路径和下载路径是否完全一致；
-- 是否把产物错误地写进了只读 Skill 目录；
+- 产物是否写入了当前会话目录或准备后的 Skill 目录；
 - `SKILLS_OUTPUT_FILE` 是否是 Runtime 内绝对路径；
 - 自定义 Prompt 是否设置了 `SKILLS_OUTPUT_FILE`；
 - 生成程序是否在非零退出前留下了不完整文件。

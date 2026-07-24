@@ -225,6 +225,94 @@ public class SkillRuntimeTest {
     }
 
     @Test
+    public void localRuntimeScopesFilesAndWorkingDirectoryByConversation() throws Exception {
+        File conversations = temporaryFolder.newFolder("local-conversations");
+        LocalSkillRuntime runtime = LocalSkillRuntime.builder()
+            .conversationsRoot(conversations.getAbsolutePath())
+            .conversationId("conversation-a")
+            .build();
+
+        String workspace = new File(conversations, "conversation-a").getCanonicalPath();
+        assertEquals(workspace, new File(runtime.getDefaultWorkingDirectory()).getCanonicalPath());
+        runtime.getFileSystem().writeText("output/report.txt", "conversation-a");
+        assertEquals("conversation-a", new String(Files.readAllBytes(
+            new File(workspace, "output/report.txt").toPath()), StandardCharsets.UTF_8));
+
+        SkillExecutionResult pwd = runtime.execute(new SkillExecutionRequest(
+            "pwd", null, 5000, Collections.<String, String>emptyMap()));
+        assertEquals(workspace, new File(pwd.getStdout().trim()).getCanonicalPath());
+        assertWorkspacePathRejected(runtime, "../conversation-b/private.txt");
+        assertWorkspacePathRejected(runtime, new File(conversations, "conversation-b/private.txt").getAbsolutePath());
+        try {
+            runtime.execute(new SkillExecutionRequest("pwd", temporaryFolder.getRoot().getAbsolutePath(), 5000,
+                Collections.<String, String>emptyMap()));
+            fail("Expected working directory outside the conversation workspace to be rejected");
+        } catch (SkillRuntimeException expected) {
+            assertTrue(expected.getMessage().contains("outside the conversation workspace"));
+        }
+        runtime.close();
+    }
+
+    @Test
+    public void conversationWorkspaceAllowsDotsButRejectsDotSegments() throws Exception {
+        File conversations = temporaryFolder.newFolder("conversation-id-validation");
+        LocalSkillRuntime runtime = LocalSkillRuntime.builder()
+            .conversationsRoot(conversations.getAbsolutePath())
+            .conversationId("thread.2026-07")
+            .build();
+        assertTrue(runtime.getDefaultWorkingDirectory().endsWith("thread.2026-07"));
+        runtime.close();
+
+        try {
+            LocalSkillRuntime.builder().conversationId("..");
+            fail("Expected a dot segment conversation ID to be rejected");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("conversationId"));
+        }
+    }
+
+    @Test
+    public void scopedLocalRuntimeCopiesSkillAndRunsBootstrapInsideConversation() throws Exception {
+        File conversations = temporaryFolder.newFolder("resource-conversations");
+        File skillDirectory = temporaryFolder.newFolder("copied-skill");
+        File resource = new File(skillDirectory, "resource.txt");
+        Files.write(resource.toPath(), "resource".getBytes(StandardCharsets.UTF_8));
+        Skill skill = new Skill(skillDirectory.getAbsolutePath(),
+            Collections.<String, Object>singletonMap("name", "copied"), "body");
+        SkillRuntimeConfig config = SkillRuntimeConfig.builder()
+            .bootstrapCommand("printf generated > generated.sh", 5000)
+            .build();
+        LocalSkillRuntime runtime = LocalSkillRuntime.builder()
+            .conversationsRoot(conversations.getAbsolutePath())
+            .conversationId("conversation-a")
+            .build();
+
+        List<Skill> prepared = runtime.prepare(new SkillPreparationRequest(Collections.singletonList(skill),
+            Collections.singletonMap(skill.name(), config)));
+        String runtimeBase = prepared.get(0).getBasePath();
+        assertTrue(runtimeBase.startsWith(new File(conversations, "conversation-a/skills").toPath()
+            .toAbsolutePath().normalize().toString()));
+        assertFalse(runtimeBase.equals(skillDirectory.getAbsolutePath()));
+        assertEquals("resource", runtime.getFileSystem().readText(runtimeBase + "/resource.txt", 100));
+        assertEquals("generated", runtime.getFileSystem().readText(runtimeBase + "/generated.sh", 100));
+        assertFalse(new File(skillDirectory, "generated.sh").exists());
+        runtime.getFileSystem().writeText(runtimeBase + "/runtime-created.txt", "persisted");
+        runtime.close();
+
+        LocalSkillRuntime continued = LocalSkillRuntime.builder()
+            .conversationsRoot(conversations.getAbsolutePath())
+            .conversationId("conversation-a")
+            .build();
+        List<Skill> continuedSkills = continued.prepare(new SkillPreparationRequest(
+            Collections.singletonList(skill), Collections.<String, SkillRuntimeConfig>emptyMap()));
+        assertEquals(runtimeBase, continuedSkills.get(0).getBasePath());
+        assertEquals("persisted", continued.getFileSystem().readText(
+            runtimeBase + "/runtime-created.txt", 100));
+        assertWorkspacePathRejected(continued, resource.getAbsolutePath());
+        continued.close();
+    }
+
+    @Test
     public void localRuntimePersistsEnvironmentAndBootstrapsOnce() throws Exception {
         File skillDirectory = temporaryFolder.newFolder("configured-local-skill");
         File marker = new File(skillDirectory, "bootstrap.log");
@@ -339,6 +427,15 @@ public class SkillRuntimeTest {
             }
         }
         throw new AssertionError("Tool not found: " + name);
+    }
+
+    private static void assertWorkspacePathRejected(LocalSkillRuntime runtime, String path) {
+        try {
+            runtime.getFileSystem().readText(path, 100);
+            fail("Expected path outside the conversation workspace to be rejected: " + path);
+        } catch (SkillRuntimeException expected) {
+            assertTrue(expected.getMessage().contains("outside the conversation workspace"));
+        }
     }
 
     private static class RecordingRuntime implements SkillRuntime {

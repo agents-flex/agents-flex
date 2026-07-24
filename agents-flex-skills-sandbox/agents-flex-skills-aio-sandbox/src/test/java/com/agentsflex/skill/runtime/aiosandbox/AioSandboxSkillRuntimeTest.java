@@ -20,6 +20,7 @@ import com.agentsflex.skill.runtime.SkillExecutionRequest;
 import com.agentsflex.skill.runtime.SkillExecutionResult;
 import com.agentsflex.skill.runtime.SkillPreparationRequest;
 import com.agentsflex.skill.runtime.SkillRuntimeConfig;
+import com.agentsflex.skill.runtime.SkillRuntimeException;
 import com.agentsflex.skill.runtime.SkillRuntimeFileSystem;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -282,6 +283,77 @@ public class AioSandboxSkillRuntimeTest {
             .contains("-mindepth 1 -maxdepth 2"));
     }
 
+    @Test
+    public void scopesFilesAndWorkingDirectoryToConversation() {
+        responses.add("{\"success\":true,\"data\":{\"content\":\"presentation\"}}");
+        responses.add("{\"success\":true,\"data\":{\"session_id\":\"mkdir\","
+            + "\"status\":\"completed\",\"output\":\"\",\"exit_code\":0}}");
+        responses.add("{\"success\":true,\"data\":{\"session_id\":\"execute\","
+            + "\"status\":\"completed\",\"output\":\"ok\",\"exit_code\":0}}");
+
+        AioSandboxSkillRuntime runtime = AioSandboxSkillRuntime.builder()
+            .baseUrl("http://localhost:" + server.getAddress().getPort())
+            .conversationId("conversation-123")
+            .build();
+
+        assertEquals("/home/gem/workspace/conversations/conversation-123",
+            runtime.getDefaultWorkingDirectory());
+        assertEquals("presentation", runtime.getFileSystem().readText("output/deck.pptx", 1024));
+        runtime.execute(new SkillExecutionRequest("echo ok", null, 5000,
+            Collections.<String, String>emptyMap()));
+
+        assertEquals("/home/gem/workspace/conversations/conversation-123/output/deck.pptx",
+            JSON.parseObject(calls.get(0).body).getString("file"));
+        assertEquals("/home/gem/workspace/conversations/conversation-123",
+            JSON.parseObject(calls.get(2).body).getString("exec_dir"));
+        assertTrue(JSON.parseObject(calls.get(1).body).getString("command")
+            .contains("mkdir -p '/home/gem/workspace/conversations/conversation-123'"));
+
+        int callCount = calls.size();
+        assertPathRejected(runtime, "../conversation-456/private.pptx");
+        assertPathRejected(runtime, "/home/gem/workspace/conversations/conversation-456/private.pptx");
+        try {
+            runtime.execute(new SkillExecutionRequest("pwd", "/tmp", 5000,
+                Collections.<String, String>emptyMap()));
+            throw new AssertionError("Expected working directory outside the conversation to be rejected");
+        } catch (SkillRuntimeException expected) {
+            assertTrue(expected.getMessage().contains("outside the conversation workspace"));
+        }
+        assertEquals(callCount, calls.size());
+    }
+
+    @Test
+    public void uploadsSkillsInsideConversationWorkspace() throws Exception {
+        File skillDirectory = temporaryFolder.newFolder("conversation-skill");
+        Files.write(new File(skillDirectory, "SKILL.md").toPath(),
+            "conversation body".getBytes(StandardCharsets.UTF_8));
+        Skill skill = new Skill(skillDirectory.getAbsolutePath(),
+            Collections.<String, Object>singletonMap("name", "presentation"), "conversation body");
+        responses.add("{\"success\":true,\"data\":{\"session_id\":\"mkdir\","
+            + "\"status\":\"completed\",\"output\":\"\",\"exit_code\":0}}");
+        responses.add("{\"success\":true,\"data\":{}}");
+
+        AioSandboxSkillRuntime runtime = AioSandboxSkillRuntime.builder()
+            .baseUrl("http://localhost:" + server.getAddress().getPort())
+            .conversationId("conversation-123")
+            .build();
+
+        List<Skill> skills = runtime.prepare(new SkillPreparationRequest(
+            Collections.singletonList(skill), Collections.<String, SkillRuntimeConfig>emptyMap()));
+
+        assertTrue(skills.get(0).getBasePath().startsWith(
+            "/home/gem/workspace/conversations/conversation-123/skills/presentation-"));
+        assertTrue(JSON.parseObject(calls.get(0).body).getString("command").contains(
+            "'/home/gem/workspace/conversations/conversation-123/skills/presentation-"));
+        assertTrue(JSON.parseObject(calls.get(1).body).getString("file").startsWith(
+            "/home/gem/workspace/conversations/conversation-123/skills/presentation-"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsUnsafeConversationId() {
+        AioSandboxSkillRuntime.builder().conversationId("../another-conversation");
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void rejectsRootAsRemoteDirectory() {
         AioSandboxSkillRuntime.builder().remoteRoot("/").build();
@@ -290,6 +362,15 @@ public class AioSandboxSkillRuntimeTest {
     @Test(expected = IllegalArgumentException.class)
     public void rejectsInvalidBaseUrl() {
         AioSandboxSkillRuntime.builder().baseUrl("localhost:8080").build();
+    }
+
+    private static void assertPathRejected(AioSandboxSkillRuntime runtime, String path) {
+        try {
+            runtime.getFileSystem().readText(path, 1024);
+            throw new AssertionError("Expected path outside the conversation to be rejected: " + path);
+        } catch (SkillRuntimeException expected) {
+            assertTrue(expected.getMessage().contains("outside the conversation workspace"));
+        }
     }
 
     private class QueueHandler implements HttpHandler {
