@@ -19,7 +19,9 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** 可跨 JVM 持久化的 OpenSandbox 会话状态。 */
+/**
+ * 可跨 JVM 持久化的 OpenSandbox 会话状态。
+ */
 public final class OpenSandboxConversationRecord {
 
     private final OpenSandboxConversationKey key;

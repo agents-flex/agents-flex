@@ -42,7 +42,9 @@ public class OpenSandboxFileSystem implements SkillRuntimeFileSystem {
 
     private final Supplier<Sandbox> sandboxSupplier;
 
-    /** @param sandboxSupplier 返回当前 Runtime 所属 Sandbox 的延迟供应器 */
+    /**
+     * @param sandboxSupplier 返回当前 Runtime 所属 Sandbox 的延迟供应器
+     */
     public OpenSandboxFileSystem(Supplier<Sandbox> sandboxSupplier) {
         this.sandboxSupplier = sandboxSupplier;
     }

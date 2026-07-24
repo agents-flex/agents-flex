@@ -26,6 +26,7 @@ import com.agentsflex.skill.runtime.SkillRuntimeConfig;
 import com.agentsflex.skill.runtime.SkillRuntimeException;
 import com.agentsflex.skill.runtime.SkillRuntimeFileSystem;
 import com.agentsflex.skill.runtime.SkillRuntimeWorkspace;
+import com.agentsflex.skill.runtime.opensandbox.store.InMemoryOpenSandboxConversationStore;
 import com.alibaba.opensandbox.sandbox.Sandbox;
 import com.alibaba.opensandbox.sandbox.config.ConnectionConfig;
 import com.alibaba.opensandbox.sandbox.domain.models.execd.executions.Execution;

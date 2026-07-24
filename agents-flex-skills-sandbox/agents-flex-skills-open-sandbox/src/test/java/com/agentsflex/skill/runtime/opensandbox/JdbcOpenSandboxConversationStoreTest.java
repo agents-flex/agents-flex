@@ -15,6 +15,7 @@
  */
 package com.agentsflex.skill.runtime.opensandbox;
 
+import com.agentsflex.skill.runtime.opensandbox.store.JdbcOpenSandboxConversationStore;
 import com.alibaba.opensandbox.sandbox.config.ConnectionConfig;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.Before;

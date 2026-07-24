@@ -44,7 +44,9 @@ public class OpenSandboxSkillUploader {
 
     private final Supplier<Sandbox> sandboxSupplier;
 
-    /** @param sandboxSupplier 返回当前 Runtime 所属 Sandbox 的延迟供应器 */
+    /**
+     * @param sandboxSupplier 返回当前 Runtime 所属 Sandbox 的延迟供应器
+     */
     public OpenSandboxSkillUploader(Supplier<Sandbox> sandboxSupplier) {
         this.sandboxSupplier = sandboxSupplier;
     }
@@ -52,7 +54,7 @@ public class OpenSandboxSkillUploader {
     /**
      * 递归上传一个 Skill 目录。
      *
-     * @param source 本机 Skill 根目录
+     * @param source     本机 Skill 根目录
      * @param remoteBase OpenSandbox 内的目标根目录
      * @throws IOException 遍历或读取本机文件失败
      */

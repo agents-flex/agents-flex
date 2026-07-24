@@ -15,10 +15,14 @@
  */
 package com.agentsflex.skill.runtime.opensandbox;
 
-/** OpenSandbox 会话状态存储。 */
+/**
+ * OpenSandbox 会话状态存储。
+ */
 public interface OpenSandboxConversationStore {
 
-    /** 查询会话记录；不存在时返回 {@code null}。 */
+    /**
+     * 查询会话记录；不存在时返回 {@code null}。
+     */
     OpenSandboxConversationRecord get(OpenSandboxConversationKey key);
 
     /**
@@ -28,9 +32,13 @@ public interface OpenSandboxConversationStore {
      */
     boolean create(OpenSandboxConversationRecord record);
 
-    /** 更新已存在的会话记录。 */
+    /**
+     * 更新已存在的会话记录。
+     */
     void update(OpenSandboxConversationRecord record);
 
-    /** 删除并返回原会话记录；不存在时返回 {@code null}。 */
+    /**
+     * 删除并返回原会话记录；不存在时返回 {@code null}。
+     */
     OpenSandboxConversationRecord delete(OpenSandboxConversationKey key);
 }

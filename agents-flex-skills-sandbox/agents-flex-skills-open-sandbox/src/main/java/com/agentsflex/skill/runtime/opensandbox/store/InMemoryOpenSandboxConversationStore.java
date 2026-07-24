@@ -13,7 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.skill.runtime.opensandbox;
+package com.agentsflex.skill.runtime.opensandbox.store;
+
+import com.agentsflex.skill.runtime.opensandbox.OpenSandboxConversationKey;
+import com.agentsflex.skill.runtime.opensandbox.OpenSandboxConversationRecord;
+import com.agentsflex.skill.runtime.opensandbox.OpenSandboxConversationStore;
+import com.agentsflex.skill.runtime.opensandbox.OpenSandboxConversationStoreException;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
