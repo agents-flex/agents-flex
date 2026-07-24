@@ -15,7 +15,9 @@
  */
 package com.agentsflex.core.model.chat;
 
-/** Recommended order values for chat interceptor registrations. Lower values execute first. */
+/**
+ * Recommended order values for chat interceptor registrations. Lower values execute first.
+ */
 public final class ChatInterceptorOrders {
 
     public static final int OBSERVABILITY = -10000;

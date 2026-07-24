@@ -47,7 +47,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 选择本次执行的遥测后端。</p>
  */
 public class ChatObservabilityInterceptor implements ChatInterceptor {
-    /** 模型响应正文写入 Span 属性时允许保留的最大字符数。 */
+    /**
+     * 模型响应正文写入 Span 属性时允许保留的最大字符数。
+     */
     private static final int MAX_RESPONSE_LENGTH_FOR_SPAN = 500;
 
     /**
@@ -57,21 +59,33 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
      */
     private static final Map<ObservabilityRuntime, Instruments> INSTRUMENTS = new WeakHashMap<>();
 
-    /** 某个 ObservabilityRuntime 专属的一组模型 Tracer 和 Metrics instrument。 */
+    /**
+     * 某个 ObservabilityRuntime 专属的一组模型 Tracer 和 Metrics instrument。
+     */
     private static final class Instruments {
-        /** 创建同步和流式模型 Span 的 Tracer。 */
+        /**
+         * 创建同步和流式模型 Span 的 Tracer。
+         */
         private final Tracer tracer;
 
-        /** 记录全部模型请求次数的 Agents-Flex Counter。 */
+        /**
+         * 记录全部模型请求次数的 Agents-Flex Counter。
+         */
         private final LongCounter requestCount;
 
-        /** 记录端到端模型请求耗时的 Histogram，单位为秒。 */
+        /**
+         * 记录端到端模型请求耗时的 Histogram，单位为秒。
+         */
         private final DoubleHistogram latency;
 
-        /** 只记录失败模型请求次数的 Counter。 */
+        /**
+         * 只记录失败模型请求次数的 Counter。
+         */
         private final LongCounter errorCount;
 
-        /** 按输入、输出类型记录 Token 用量的标准 GenAI Histogram。 */
+        /**
+         * 按输入、输出类型记录 Token 用量的标准 GenAI Histogram。
+         */
         private final DoubleHistogram tokenUsage;
 
         private Instruments(ObservabilityRuntime runtime) {

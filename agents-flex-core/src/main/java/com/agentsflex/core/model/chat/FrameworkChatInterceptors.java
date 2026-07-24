@@ -21,17 +21,22 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/** Framework-owned interceptor registrations with overridable default ordering. */
+/**
+ * Framework-owned interceptor registrations with overridable default ordering.
+ */
 final class FrameworkChatInterceptors {
 
     private static final List<ChatInterceptorRegistration> REGISTRATIONS =
         Collections.unmodifiableList(Arrays.asList(
+            // 可观测
             ChatInterceptorRegistration.builder("chat-observability", new ChatObservabilityInterceptor())
                 .order(ChatInterceptorOrders.OBSERVABILITY)
                 .matcher(context -> context != null
                     && context.getConfig() != null
                     && context.getConfig().isObservabilityEnabled())
                 .build(),
+
+            // Tool Group
             ChatInterceptorRegistration.builder("tool-group-resolver", new ToolGroupChatInterceptor())
                 .order(ChatInterceptorOrders.REQUEST_PREPARATION)
                 .matcher(context -> {
