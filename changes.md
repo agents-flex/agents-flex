@@ -1,5 +1,32 @@
 # Agents-Flex ChangeLog
 
+## v2.2.4 20260724
+- docs(chat): add comprehensive GlobalChatInterceptors documentation
+- feat(tool): add description field to ToolGroup with getter and builder method
+- docs(chat): update documentation for chat interceptor and tool group
+- style(chat): format JavaDoc comments and improve code documentation
+- refactor(chat): rename buildRequest to buildRequestSpec in ChatRequestSpecBuilder
+- feat(message): enhance AiMessage with detailed documentation and content management
+- refactor(chat): implement ordered interceptor registration system
+- refactor(chat): replace ToolGroupMatchContext with ChatContext and enhance interceptor chain
+- feat(chat): add conditional tool group support for dynamic tool attachment
+- feat(message): enhance AiMessage with OpenAI response metadata support
+- refactor(skills): update license headers and enhance local skill runtime
+- feat(runtime): add directory listing capability to skill runtime filesystem
+- feat(observability): migrate to canonical OpenTelemetry GenAI semantic conventions
+- feat(observability): add unified correlation attributes for bot and turn tracking
+- docs(observability): add comprehensive observability documentation with concepts and scenarios
+- docs(observability): add comprehensive javadoc and comments for telemetry components
+- feat(observability): add runtime-based telemetry routing and contextual span enrichment
+- feat(observability): add JDBC persistence exporter for OpenTelemetry data
+- refactor(observability): enhance observability infrastructure with improved interceptor management
+- feat(open-sandbox): add network policy configuration support
+- docs(menu): restructure skills documentation with dedicated module
+- feat(runtime): add connection config builder support to OpenSandbox runtime
+- test(aliyun-oss): add integration tests for Aliyun OSS skill artifact store
+- feat(skills): add AWS S3 and S3-compatible artifact store support
+
+
 ## v2.2.3 20260720
 - feat(skills): add artifact storage support for multiple cloud providers
 - refactor(tool): replace tool-commons with specialized tool modules

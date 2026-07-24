@@ -55,7 +55,7 @@ agents-flex-quickstart/
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <agents-flex.version>2.2.3</agents-flex.version>
+        <agents-flex.version>2.2.4</agents-flex.version>
     </properties>
 
     <dependencies>
@@ -74,14 +74,14 @@ agents-flex-quickstart/
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>2.2.3</version>
+    <version>2.2.4</version>
 </dependency>
 ```
 
 Gradle 项目可以使用：
 
 ```groovy
-implementation 'com.agentsflex:agents-flex-chat-openai:2.2.3'
+implementation 'com.agentsflex:agents-flex-chat-openai:2.2.4'
 ```
 
 最新版本可以在 [Maven Central](https://central.sonatype.com/artifact/com.agentsflex/agents-flex-chat-openai) 查看。
