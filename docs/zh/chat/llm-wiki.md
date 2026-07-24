@@ -1241,7 +1241,7 @@ demos/wiki-demo/
 
 - **agents-flex-core**: 核心 SPI 和工具类
 - **agents-flex-chat**: 聊天模型集成
-- **agents-flex-skill**: 技能管理系统（类似概念）
+- **agents-flex-skills**: Skills 与 Runtime 支持（类似概念）
 - **agents-flex-websearch**: 网络搜索工具
 
 

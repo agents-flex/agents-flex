@@ -100,7 +100,7 @@ layout: home
           <div class="af-motion-target af-motion-target--aio"><span>03</span><strong>AIO Sandbox</strong><small>连接隔离服务</small></div>
         </div>
         <div class="af-motion-output">
-          <span>READ</span><span>WRITE</span><span>EDIT</span><span>BASH</span>
+          <span>read</span><span>write</span><span>edit</span><span>bash</span>
           <i aria-hidden="true"></i>
           <strong>验证 · 下载 · 发布</strong>
         </div>

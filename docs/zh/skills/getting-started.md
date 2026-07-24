@@ -92,20 +92,21 @@ List<Tool> tools = SkillsTool.builder()
 `IllegalArgumentException`。筛选发生在 `SkillRuntime.prepare()` 之前，因此未选中的 Skill 不会上传到远程
 Runtime，也不会出现在模型可见的 Skill 列表中。不传 Skill 名称时，原有重载仍会加载目录中的全部 Skill。
 
-`buildTools()` 返回完整工具组：
+`buildTools()` 返回完整工具组。下表中的名称是实际注册给模型的 Tool 名称，区分大小写：
 
 | 工具名 | 作用 | 主要限制 |
 | --- | --- | --- |
-| `Skill` | 按名称加载 Skill 正文 | 只能选择已发现的 Skill |
-| `Bash` | 在 Runtime 内执行 Shell | 默认 120 秒，最大 600 秒，输出会截断 |
-| `Read` | 读取 UTF-8 文件并显示行号 | 最大 4 MiB，默认 2000 行 |
-| `Write` | 创建或覆盖 UTF-8 文件 | Runtime 负责创建父目录 |
-| `Edit` | 精确字符串替换 | 默认只允许唯一匹配 |
-| `Glob` | 按 glob 模式匹配文件 | 限制深度、文件数和结果数 |
-| `Grep` | 用 Java 正则搜索内容 | 跳过大文件和常见构建目录 |
-| `PublishFile` | 上传最终文件并返回用户可访问 URL | 仅配置 `FilePublisher` 后注册 |
+| `skill` | 按名称加载 Skill 正文 | 只能选择已发现的 Skill |
+| `bash` | 在 Runtime 内执行 Shell | 默认 120 秒，最大 600 秒，输出最多 30000 字符 |
+| `read` | 读取 UTF-8 文件并显示行号 | 最大 4 MiB，默认 2000 行，单行最多 2000 字符 |
+| `write` | 创建或覆盖 UTF-8 文件 | Runtime 负责创建父目录 |
+| `edit` | 精确字符串替换 | 最大 8 MiB；默认只允许唯一匹配 |
+| `ls` | 列出文件和目录 | 默认深度 1、1000 条，最多 5000 条 |
+| `glob` | 按 glob 模式匹配文件 | 最多扫描 5000 个文件、返回 1000 条 |
+| `grep` | 用 Java 正则搜索 UTF-8 内容 | 跳过大于 2 MiB 的文件和常见构建目录 |
+| `publish_file` | 上传最终文件并返回用户可访问 URL | 仅配置 `FilePublisher` 后注册 |
 
-Local Runtime 没有安全隔离。不要因为工具名是 `Bash` 就误以为命令在容器中执行。
+Local Runtime 没有安全隔离。不要因为提供了 `bash` 工具就误以为命令在容器中执行。
 ## 下一步
 
 - [从已安装的 Artifact 加载](./artifact-store)

@@ -33,6 +33,9 @@ curl http://127.0.0.1:8080/health
 - `readyTimeout` 是否过短；
 - Server 日志是否显示资源或网络策略错误。
 
+如果配置了 `conversationId`，还要检查 Store 中的 `sandboxId` 是否指向已经过期或被外部删除的实例。
+确认旧实例无法恢复后，调用 `destroyConversationSandbox()` 清除记录，再让相同会话创建新 Sandbox。
+
 ### AIO 返回 Connection refused
 
 ```bash
@@ -72,16 +75,17 @@ Sandbox 可能没有公网访问权限，或者网络策略禁止访问包仓库
 
 1. 默认选择远程 Sandbox，只有可信内部 Skill 才允许 Local Runtime；
 2. 为每个任务或租户建立清晰的 Sandbox 生命周期；
-3. 固定镜像版本和依赖版本，禁止未经验证的 `latest` 自动升级；
-4. 使用非 root 用户、只读基础文件系统和最小 Linux capabilities；
-5. 配置 CPU、内存、PID、磁盘和执行时间限制；
-6. 默认拒绝出站网络，只开放任务需要的域名；
-7. Server 端口只放在私网，通过 TLS 网关暴露；
-8. OpenSandbox 启用 API Key，AIO 启用 JWT；
-9. 密钥使用短期令牌或凭据系统注入，不写入 Skill；
-10. 对上传内容、执行命令、退出码、耗时和下载产物建立审计日志；
-11. 对产物进行类型、大小、恶意内容和压缩炸弹检查后再交付用户；
-12. 定期清理过期 Sandbox、上传目录、临时文件和本地下载缓存。
+3. 保证 `conversationId` 在所需隔离范围内唯一，并在上层串行同一会话的文件修改请求；
+4. 固定镜像版本和依赖版本，禁止未经验证的 `latest` 自动升级；
+5. 使用非 root 用户、只读基础文件系统和最小 Linux capabilities；
+6. 配置 CPU、内存、PID、磁盘和执行时间限制；
+7. 默认拒绝出站网络，只开放任务需要的域名；
+8. Server 端口只放在私网，通过 TLS 网关暴露；
+9. OpenSandbox 启用 API Key，AIO 启用 JWT；
+10. 密钥使用短期令牌或凭据系统注入，不写入 Skill；
+11. 对上传内容、执行命令、退出码、耗时和下载产物建立审计日志；
+12. 对产物进行类型、大小、恶意内容和压缩炸弹检查后再交付用户；
+13. 定期清理过期 Sandbox、上传目录、临时文件和本地下载缓存。
 
 ## 相关资源
 

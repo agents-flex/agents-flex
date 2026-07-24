@@ -128,6 +128,10 @@ prompt.addTools(SkillsTool.builder()
 AIO 是长期运行的共享服务。Runtime 会在当前 Java 对象中缓存已上传 Skill 和环境配置；`close()` 会清理
 这些本地状态，但不会删除远端安装结果或停止容器。不同租户需要强隔离时，不应共用同一个 AIO 容器。
 
+新建 Runtime 并复用同一 `conversationId` 时，源 Skill 会重新上传到固定目录并覆盖同名文件，但不会清理
+只存在于目标目录中的运行时文件。AIO 没有 OpenSandbox Conversation Store；持续复用依赖同一个 AIO 服务及
+其持久目录在两次请求之间仍然存在。
+
 `close()` 不会停止 AIO 容器。容器由部署系统或操作者管理：
 
 ```bash
@@ -172,5 +176,16 @@ Authorization: Bearer <JWT>
 ```
 
 私钥只能保存在业务服务或密钥管理系统中，不能放进 Skill 目录、容器镜像或 Git 仓库。
+
+### AIO Runtime 配置项
+
+| 配置 | 默认值 | 作用 |
+| --- | --- | --- |
+| `baseUrl` | `http://localhost:8080` | AIO 服务的绝对 HTTP(S) 根地址 |
+| `bearerToken` | 未配置 | AIO 启用 JWT 时发送的 Token，不要包含 `Bearer ` 前缀 |
+| `remoteRoot` | `/home/gem/workspace/skills` | 未启用会话目录时的 Skill 上传根目录 |
+| `conversationId` | 未配置 | 启用稳定会话目录；格式限制与其他 Runtime 一致 |
+| `conversationsRoot` | `/home/gem/workspace/conversations` | 会话工作目录父路径，必须是非根绝对路径 |
+| `httpTimeoutMillis` | 660000 | 单次 HTTP 请求读取超时，必须大于 0 |
 
 </div>

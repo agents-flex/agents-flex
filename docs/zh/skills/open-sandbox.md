@@ -183,6 +183,9 @@ OpenSandboxSkillRuntime runtime = OpenSandboxSkillRuntime.builder()
 生产环境可以让所有应用节点连接同一个数据库，并配置 JDBC Store：
 
 ```java
+import com.agentsflex.skill.runtime.opensandbox.OpenSandboxConversationStore;
+import com.agentsflex.skill.runtime.opensandbox.store.JdbcOpenSandboxConversationStore;
+
 OpenSandboxConversationStore conversationStore =
     new JdbcOpenSandboxConversationStore(dataSource);
 
@@ -198,10 +201,18 @@ JDBC Store 会持久化 `sandboxId`、工作目录状态和已准备 Skill 的�
 同一条记录，通过 OpenSandbox SDK Connector 连接原来的远端 Sandbox，并按当前 `sandboxTimeout` 续期。
 Runtime 不要求缓存为同一个 Java 对象。
 
+`InMemoryOpenSandboxConversationStore` 和 `JdbcOpenSandboxConversationStore` 位于
+`com.agentsflex.skill.runtime.opensandbox.store` 包；Store 接口和 Record/Key 类型位于
+`com.agentsflex.skill.runtime.opensandbox` 包。
+
 多个节点同时首次使用同一会话时，Store 通过数据库唯一主键原子竞争 `create()`。只有成功写入记录的节点保留
 候选 Sandbox，其他节点会销毁自己的候选实例并连接记录中的 `sandboxId`。Store 不持有覆盖完整命令执行过程的
 数据库事务，也不负责串行同一会话的业务请求。上层会话调度必须避免多个请求同时修改同一个 PPT 或工作目录；
 Skill bootstrap 也应设计为可重复执行。
+
+已准备 Skill 的路径映射也会持久化。后续 Runtime 复用同一会话时不会自动重新上传相同本机路径的 Skill，
+也不会重跑 bootstrap。本机 Skill 内容升级后，应使用新的会话、先销毁旧会话 Sandbox，或由业务版本策略提供
+新的 Skill 来源路径。
 
 参考表结构位于模块资源 `opensandbox-conversation-store.sql`。不同数据库对 `TEXT`、`BOOLEAN` 的类型名称可能
 不同，可以在保持列名和语义不变的前提下调整。`JdbcOpenSandboxConversationStore(DataSource, tableName)` 可指定
@@ -210,7 +221,7 @@ Skill bootstrap 也应设计为可重复执行。
 框架同时公开 `OpenSandboxConversationStore` SPI。需要 Redis 或其他存储时，可以实现相同的
 `get/create/update/delete` 接口，其中 `create()` 必须具备 insert-if-absent 的原子语义。
 
-配置 `conversationId` 后，普通 `close()` 只释放当前 Runtime 的使用关系，不会销毁共享 Sandbox。业务会话
+配置 `conversationId` 后，普通 `close()` 只关闭当前 Runtime 持有的本地 SDK 资源，不会销毁远端 Sandbox。业务会话
 真正结束时，应显式销毁：
 
 ```java
@@ -259,8 +270,11 @@ try (SkillRuntime runtime = createOpenSandboxRuntime()) {
         .runtime(runtime)
         .buildTools());
     // 执行模型工具循环
-} // 自动 kill 并关闭本次创建的 Sandbox
+} // 未配置 conversationId 时会 kill；配置后只关闭本地 SDK 资源
 ```
+
+会话模式结束时，try-with-resources 之外仍需由业务生命周期调用 `destroyConversationSandbox()`。不要在每轮
+对话消息结束时销毁，否则下一轮无法继续访问前一次生成的文件。
 
 ### OpenSandbox 配置项
 

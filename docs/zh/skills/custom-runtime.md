@@ -58,6 +58,7 @@ public final class MySandboxRuntime implements SkillRuntime {
 - 下载失败不留下伪装成完整文件的本地产物；
 - `close` 幂等，并明确是否拥有远端实例生命周期；
 - 上传默认排除敏感文件且不跟随符号链接；
+- 如果支持 `conversationId`，应复用 `SkillRuntimeWorkspace` 的格式与路径约束，并明确目录复用、状态持久化和清理语义；
 - 为网络失败、404、非零退出码、超时和二进制文件编写测试。
 
 `SkillRuntimeConfig` 通过 Skill 名称绑定：
@@ -75,7 +76,8 @@ List<Tool> tools = SkillsTool.builder()
     .buildTools();
 ```
 
-配置引用不存在的 Skill 名称会在构建工具时抛出 `IllegalArgumentException`。命令的工作目录固定为准备后
-Skill 的 `basePath`，所以配置中应使用相对于 Skill 根目录的脚本路径。
+配置引用不存在的 Skill 名称会在构建工具时抛出 `IllegalArgumentException`。bootstrap 命令的工作目录固定为
+准备后 Skill 的 `basePath`，所以配置中应使用相对于 Skill 根目录的脚本路径；普通 `bash` 调用未显式指定
+工作目录时，则使用 `getDefaultWorkingDirectory()`。
 
 </div>

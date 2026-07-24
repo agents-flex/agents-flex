@@ -69,7 +69,7 @@ agents-flex-skills
 │   ├── SkillArtifactStore               Artifact 存储与本地物化接口
 │   ├── SkillInstallRequest / SkillPackage 存储无关的安装输入
 │   └── FileSystemSkillArtifactStore     单体部署的文件系统实现
-├── attachment/
+├── file/
 │   ├── FilePublishRequest                输入流和待发布文件信息
 │   ├── FilePublisher                     应用自定义文件发布接口
 │   └── PublishedFile                     URL、有效期和存储结果
@@ -82,10 +82,10 @@ agents-flex-skills
 ├── local/
 │   └── LocalSkillRuntime                宿主机实现
 └── tools/
-    ├── SkillRuntimeShellTools           Bash
-    ├── SkillRuntimeFileTools            Read / Write / Edit
-    ├── SkillRuntimeSearchTools          Glob / Grep
-    └── SkillRuntimeFilePublishTools     PublishFile（可选）
+    ├── SkillRuntimeShellTools           bash
+    ├── SkillRuntimeFileTools            read / write / edit
+    ├── SkillRuntimeSearchTools          ls / glob / grep
+    └── SkillRuntimeFilePublishTools     publish_file（可选）
 
 agents-flex-skills-sandbox
 ├── agents-flex-skills-open-sandbox      OpenSandbox SDK 实现

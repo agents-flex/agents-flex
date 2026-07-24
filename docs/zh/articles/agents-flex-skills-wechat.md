@@ -63,7 +63,7 @@ Agent 很快回复了几千字，还贴心地告诉你：“你可以按照以�
 
 **以前是让模型现场想办法，现在是让模型调用团队已经打磨好的办法。**
 
-生成完成后，Agent 还可以继续检查：PPT 能不能正常打开，页数对不对，关键指标有没有遗漏，文件大小是否合理。配置 `PublishFile` 后，最终产物可以直接变成用户可访问的 URL。
+生成完成后，Agent 还可以继续检查：PPT 能不能正常打开，页数对不对，关键指标有没有遗漏，文件大小是否合理。配置 `FilePublisher` 后，模型可以调用 `publish_file`，把最终产物变成用户可访问的 URL。
 
 用户拿到的是结果，不是一篇教程。
 
@@ -97,11 +97,11 @@ Agent 很快回复了几千字，还贴心地告诉你：“你可以按照以�
 
 *开发时本机快速调试，上线后隔离执行；切换 Runtime，不重写 Skill。*
 
-### 阿里 OpenSandbox：一个任务，一个独立工作间
+### 阿里 OpenSandbox：按任务隔离，也能按会话持续复用
 
 OpenSandbox 是阿里开源的通用 Sandbox 平台。它把“管理沙箱”和“在沙箱里执行任务”拆开：OpenSandbox Server 负责创建、管理和回收实例，真正的脚本则在隔离的运行环境中执行。
 
-Agents-Flex 接入 OpenSandbox 后，可以在任务开始时创建一个独立 Sandbox，把当前任务需要的能力文件自动上传进去，然后让 Agent 在里面执行命令、读写文件。任务结束后，Runtime 会关闭并销毁本次创建的实例。
+Agents-Flex 接入 OpenSandbox 后，可以按需创建独立 Sandbox，把当前任务需要的能力文件自动上传进去，然后让 Agent 在里面执行命令、读写文件。未配置 `conversationId` 时，Runtime 关闭会销毁本次实例；配置后，同一业务会话可以通过 Store 中的 `sandboxId` 持续连接原来的 Sandbox，并在会话真正结束时显式销毁。
 
 这种方式很适合生产环境：不同任务之间相互隔离，Sandbox 的镜像、CPU、内存、超时时间、环境变量和网络策略也可以按部署要求控制。尤其是需要执行第三方脚本或处理用户文件时，按任务创建、用完回收，会让安全边界清楚很多。
 
@@ -115,7 +115,7 @@ Agents-Flex 当前主要使用它的 Shell 和文件 API。Java 应用连接一�
 
 最让开发者省心的一点是，切换 Runtime 不需要重写那套业务能力。
 
-开发时，团队可以先用 Local Runtime 快速调试。准备上线时，把 Runtime 换成 OpenSandbox 或 AIO Sandbox，Agent 仍然使用同样的 `Bash`、`Read`、`Write`、`Edit`、`Glob`、`Grep` 工具，原来的模板、脚本和操作流程也不用跟着改。
+开发时，团队可以先用 Local Runtime 快速调试。准备上线时，把 Runtime 换成 OpenSandbox 或 AIO Sandbox，Agent 仍然使用同样的 `bash`、`read`、`write`、`edit`、`ls`、`glob`、`grep` 工具，原来的模板、脚本和操作流程也不用跟着改。
 
 也就是说：
 
@@ -221,4 +221,4 @@ Artifact 对象存储与节点缓存
 
 项目地址：<https://github.com/agents-flex/agents-flex>
 
-使用文档：<https://agentsflex.com/zh/chat/skills.html>
+使用文档：<https://agentsflex.com/zh/skills/overview.html>

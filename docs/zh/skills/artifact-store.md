@@ -98,8 +98,10 @@ import com.agentsflex.skill.artifact.SkillArtifact;
 import com.agentsflex.skill.artifact.SkillArtifactStore;
 import com.agentsflex.skill.artifact.SkillInstallRequest;
 
+import java.nio.file.Files;
 import java.nio.file.Paths;
 
+Files.createDirectories(Paths.get("/var/lib/agents-flex/skills"));
 SkillArtifactStore artifactStore = new FileSystemSkillArtifactStore(
     Paths.get("/var/lib/agents-flex/skills")
 );
@@ -127,7 +129,12 @@ artifactStore.delete(artifact);
 
 安装完成后，`/var/lib/agents-flex/skills/pdf/1.2.0/SKILL.md` 存在，并且 front matter 中的名称应为
 `pdf`。文件系统实现要求输入为 ZIP 且 `SKILL.md` 位于压缩包根目录，并会拒绝绝对 `storageKey`、
-逃逸安装根目录的 `..` 路径以及 Zip Slip 条目。
+逃逸安装根目录的 `..` 路径以及 Zip Slip 条目。传给 `FileSystemSkillArtifactStore` 的安装根目录必须
+预先存在；构造器不会自动创建它。
+
+文件系统实现还限制 ZIP 最多 10000 个条目、解压后总大小最多 512 MiB，并拒绝覆盖已经存在的 Artifact。
+对象存储实现会计算并校验 SHA-256；文件系统实现当前不使用 `digest` 校验 ZIP 内容，因此需要由上传入口或
+上层 Catalog 校验来源和摘要。
 
 分布式部署可以实现同一个接口，在 `materialize()` 中从 OSS、S3 或 MinIO 下载 Artifact，并解压到
 当前节点的 `${cacheRoot}/{digest}` 目录。实现必须在返回前完成摘要校验，使用临时目录加原子移动避免

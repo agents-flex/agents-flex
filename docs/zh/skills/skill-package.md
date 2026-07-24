@@ -56,6 +56,10 @@ description: Create and validate PowerPoint presentations. Use for PPT or PPTX t
 > 尚不是完整 YAML 解析器。因此嵌套的 `metadata`、数组和块文本目前不会按完整 YAML 语义解析；
 > `allowed-tools` 也只会作为元数据提供给模型，不会自动限制 Runtime 工具权限。
 
+`Skills.loadDirectory()` 会递归发现文件名严格为 `SKILL.md` 的文件，但不会替代官方规范校验器：它当前不会
+主动校验目录名是否等于 `name`，也不会完整检查 `name`、`description` 的长度和字符约束。进入 Artifact Store
+或生产环境前，应先运行下文的 `skills-ref validate`。
+
 Markdown 正文用于编写任务步骤、输入输出示例和常见边界情况。Agent 激活 Skill 后会读取整份正文，
 官方规范建议主 `SKILL.md` 保持在 500 行以内，并把详细资料拆到 `references/`。
 
@@ -69,12 +73,12 @@ Markdown 正文用于编写任务步骤、输入输出示例和常见边界情�
 - 产物结构与元数据验证。
 
 脚本不会因为放入目录就自动执行。`SKILL.md` 应说明运行命令、依赖、输入、输出和验收条件。脚本语言
-和执行方式由 Agent 实现决定；在 Agents-Flex 中，模型通过 Runtime 的 `Bash` 工具执行脚本。
+和执行方式由 Agent 实现决定；在 Agents-Flex 中，模型通过 Runtime 的 `bash` 工具执行脚本。
 
 ### references 与 assets
 
 `references/` 放 Agent 按需读取的补充文档；`assets/` 放模板、图片、字体、数据文件等静态资源，通常由
-脚本或任务流程直接使用。在 Agents-Flex 中，模型可以使用 Read/Grep 读取参考资料。大型资料不应全部
+脚本或任务流程直接使用。在 Agents-Flex 中，模型可以使用 `read`/`grep` 读取参考资料。大型资料不应全部
 复制进 `SKILL.md`，否则会失去渐进式披露的优势。
 
 ## 渐进式披露
@@ -90,11 +94,11 @@ Agent Skills 规范采用三个层次的渐进式披露：启动时加载所有 
   SkillsTool 向模型暴露 name / description 等元数据
         ↓
 选择阶段
-  模型调用 Skill(command="pptx")
+  模型调用 skill(command="pptx")
   工具返回 Runtime 名称、Skill 根目录和完整 SKILL.md 正文
         ↓
 执行阶段
-  模型按说明使用 Bash / Read / Write / Edit / Glob / Grep
+  模型按说明使用 bash / read / write / edit / ls / glob / grep
   脚本和 assets 不进入 Prompt，只在 Runtime 内被访问
 ```
 

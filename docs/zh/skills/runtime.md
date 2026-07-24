@@ -36,10 +36,10 @@ List<Skill>，basePath 是当前应用节点可读路径
                          ▼
 模型激活 Skill，获得完整说明和 Runtime 内路径
         │
-        ├── Bash ────────────── SkillRuntime.execute
-        ├── Read/Write/Edit ─── SkillRuntimeFileSystem
-        ├── Glob/Grep ───────── listFiles + readText
-        └── 产物回收/发布 ───── openInputStream / download / PublishFile
+        ├── bash ─────────────── SkillRuntime.execute
+        ├── read/write/edit ──── SkillRuntimeFileSystem
+        ├── ls/glob/grep ─────── listDirectory / listFiles / readText
+        └── 产物回收/发布 ────── openInputStream / download / publish_file
 ```
 
 `SkillsTool.build()` 或 `buildTools()` 会先完成发现、筛选和 `prepare()`，再创建模型工具。因此远程 Skill
@@ -107,7 +107,7 @@ Runtime 配置，不是只准备一个 Skill。实现必须：
 | 文件读写 | JDK NIO | OpenSandbox Files SDK | AIO File HTTP API |
 | 二进制下载 | 本地文件流 | SDK `readStream` | `/v1/file/download` |
 | Runtime 所有权 | 不创建外部资源 | 拥有本次创建的 Sandbox | 连接外部管理的服务 |
-| `close()` 行为 | 无常驻资源 | kill 并关闭 Sandbox | 清理客户端状态，不停止服务 |
+| `close()` 行为 | 清理 Runtime 缓存，不删除文件 | 无会话 ID 时 kill；有会话 ID 时只关闭本地 SDK 资源 | 清理 Runtime 缓存，不停止服务或删除远端文件 |
 | 隔离能力 | 无 | 取决于 OpenSandbox 配置 | 取决于 AIO Docker/部署配置 |
 
 选择建议：
@@ -147,8 +147,14 @@ OpenSandbox 和 AIO Sandbox 的 Builder 同样提供 `conversationId(...)` 与 `
 `skills` 子目录并改写 `basePath`，再在复制或上传后的 Skill 目录执行 bootstrap。因此 Skill 在自身当前
 目录生成的脚本、缓存和中间文件也属于当前会话，不会写回宿主机上的原始 Skill 目录。
 
-同一会话再次准备 Skill 时，源文件会覆盖更新到原来的固定目标路径，但不会清空目标目录中仅由运行过程生成的
-文件。这样后续对话既能取得最新的 Skill 资源，也能继续使用前一次生成的文件。
+准备缓存的行为因 Runtime 生命周期而不同：
+
+- 同一个 Runtime 对象内，已经准备成功的 Skill 不会重复复制、上传或执行 bootstrap；
+- 新建 Local 或 AIO Runtime 并复用同一 `conversationId` 时，会把源 Skill 再次复制或上传到固定目标路径，
+  覆盖同名源文件，但保留目标目录中只由运行过程生成的文件；
+- OpenSandbox 会把已准备 Skill 的路径映射写入 `OpenSandboxConversationStore`。新 Runtime 连接同一会话时会
+  直接复用该映射，不会因为本机源目录内容变化而自动重新上传或重跑 bootstrap。需要发布新版 Skill 时，应使用
+  新的会话、显式销毁旧会话 Sandbox，或让上层版本策略改变 Skill 来源路径。
 
 业务层应使用稳定的 `conversationId`。Local 与连接长期 AIO 服务的 Runtime 可以通过稳定目录找到之前的
 文件。OpenSandbox Runtime 还通过 `OpenSandboxConversationStore` 保存 `sandboxId` 和 Skill 准备状态。
@@ -159,6 +165,9 @@ OpenSandbox 持久化键由服务连接标识和 `conversationId` 组成。业�
 唯一，多租户系统可以把租户和用户边界编码进业务会话 ID。JDBC Store 通过唯一主键解决多个节点同时创建 Sandbox
 的竞争，但不串行同一会话的 Skill 执行或文件修改；上层会话调度应避免并发修改同一个工作目录。普通 `close()`
 只释放当前 Runtime 的 SDK 资源，不销毁远端 Sandbox，业务会话结束时应调用 `destroyConversationSandbox()`。
+
+`conversationId` 必须为 1-128 个字符，只能包含字母、数字、点、下划线和连字符，并且首字符必须是字母或数字。
+`conversationsRoot` 必须是非根绝对路径。
 
 这是一层防止误读误写的词法路径边界，不是安全沙箱。Shell 命令仍可显式访问绝对路径，符号链接也可能越过
 目录边界。处理不可信用户或租户时，仍应使用独立容器、非 root 用户和底层文件权限；不要只依赖目录隔离。

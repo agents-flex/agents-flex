@@ -9,7 +9,7 @@ Agents-Flex 提供三种常见的产物交付方式：
 
 - 使用 `SkillRuntimeFileSystem` 读取文本或小型二进制文件；
 - 下载到应用节点，或者流式传输到对象存储和第三方文件中心；
-- 配置 `FilePublisher`，让模型通过 `PublishFile` 主动发布最终文件并返回 URL。
+- 配置 `FilePublisher`，让模型通过 `publish_file` 主动发布最终文件并返回 URL。
 
 无论采用哪一种方式，传给文件 API 的源路径都是 Runtime 内路径，不一定是 Java 应用所在主机能够
 直接访问的路径。
@@ -77,7 +77,7 @@ try (InputStream input = fileSystem.openInputStream("/runtime/output/report.pptx
 ## 通过 FilePublisher 发布 URL
 
 业务代码主动调用 `download()` 适合固定工作流。如果希望模型在生成并验证文件后主动完成交付，可以
-配置 `FilePublisher`。配置后，`SkillsTool.buildTools()` 会增加一个 `PublishFile` Tool；
+配置 `FilePublisher`。配置后，`SkillsTool.buildTools()` 会增加一个 `publish_file` Tool；
 未配置时不会暴露该工具。
 
 ```java
@@ -236,7 +236,7 @@ prompt.addTools(SkillsTool.builder()
     .buildTools());
 ```
 
-`PublishFile` 通常能够通过 Runtime 的文件元数据取得准确长度。如果自定义 Runtime 返回
+`publish_file` 通常能够通过 Runtime 的文件元数据取得准确长度。如果自定义 Runtime 返回
 `contentLength = -1`，不要为了计算长度把大型文件整体读入内存；应先同步落入受控临时文件，或改用
 S3 multipart upload。`S3Client` 和 `S3Presigner` 应由应用统一管理，并在应用关闭时调用 `close()`。
 
@@ -261,8 +261,8 @@ Tool 会先通过 Runtime 文件系统确认路径存在且不是目录，再打
 | `contentLength` | Runtime 报告的文件大小，未知时可以是 `-1` |
 | `sourcePath` | Runtime 内原始路径，用于审计和策略判断 |
 | `runtimeName` | `local`、`open-sandbox`、`aio-sandbox` 或自定义名称 |
-| `checksum` | 可选内容校验值 |
-| `metadata` | 租户、会话和业务分类等扩展信息 |
+| `checksum` | 可选内容校验值；内置 `publish_file` 当前不计算，值为 `null` |
+| `metadata` | 扩展元数据；内置 `publish_file` 当前传入空 Map |
 
 流的生命周期约定：
 
@@ -274,10 +274,13 @@ Tool 会先通过 Runtime 文件系统确认路径存在且不是目录，再打
 
 ### 发布安全边界
 
-`FilePublisher` 是最终的发布安全边界。应用实现至少应根据 `sourcePath`、租户和文件信息限制
+`FilePublisher` 是最终的发布安全边界。应用实现至少应根据 `sourcePath`、当前业务上下文和文件信息限制
 允许发布的目录、类型与大小；重新生成对象存储 Key；设置 URL 有效期；执行病毒或恶意文件扫描；
 不得直接信任模型提供的文件名。对于本机发布，实现可以先把流保存到受控静态目录，再根据应用配置的
 HTTP `baseUrl` 返回地址，但不应返回只有宿主机能够访问的 `file://` URL。
+
+当前 `SkillsTool.filePublisher(...)` 没有租户或会话 metadata 参数。需要这些信息时，应由 Publisher 从应用的
+请求上下文中读取，或在业务代码直接构造 `FilePublishRequest`；不要假设内置 Tool 已自动填充租户信息。
 
 ## Skill 目录上传注意事项
 
