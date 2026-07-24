@@ -25,6 +25,16 @@ import static org.junit.Assert.assertSame;
 public class ToolGroupPromptResolverTest {
 
     @Test
+    public void shouldExposeOptionalDescription() {
+        ToolGroup group = ToolGroup.builder("weather")
+            .description("Real-time weather lookup")
+            .build();
+
+        assertEquals("weather", group.getName());
+        assertEquals("Real-time weather lookup", group.getDescription());
+    }
+
+    @Test
     public void shouldOnlyAttachMatchedGroups() {
         Tool baseTool = tool("base");
         Tool weatherTool = tool("weather");

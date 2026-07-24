@@ -29,12 +29,14 @@ import java.util.List;
 public class ToolGroup {
 
     private final String name;
+    private final String description;
     private final String systemPrompt;
     private final List<Tool> tools;
     private final ToolGroupMatcher matcher;
 
     private ToolGroup(Builder builder) {
         this.name = builder.name;
+        this.description = builder.description;
         this.systemPrompt = builder.systemPrompt;
         this.tools = Collections.unmodifiableList(new ArrayList<>(builder.tools));
         this.matcher = builder.matcher;
@@ -46,6 +48,10 @@ public class ToolGroup {
 
     public String getName() {
         return name;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public String getSystemPrompt() {
@@ -66,6 +72,7 @@ public class ToolGroup {
 
     public static class Builder {
         private final String name;
+        private String description;
         private String systemPrompt;
         private final List<Tool> tools = new ArrayList<>();
         private ToolGroupMatcher matcher = ToolGroupMatchers.always();
@@ -75,6 +82,11 @@ public class ToolGroup {
                 throw new IllegalArgumentException("Tool group name must not be blank");
             }
             this.name = name;
+        }
+
+        public Builder description(String description) {
+            this.description = description;
+            return this;
         }
 
         public Builder systemPrompt(String systemPrompt) {

@@ -300,21 +300,10 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         interceptorRegistrations.add(ChatInterceptorRegistration.of(interceptor));
     }
 
-    public void addInterceptor(int index, ChatInterceptor interceptor) {
-        interceptorRegistrations.add(index, ChatInterceptorRegistration.of(interceptor));
-    }
-
     public void addInterceptorRegistration(ChatInterceptorRegistration registration) {
         if (registration == null) {
             throw new IllegalArgumentException("ChatInterceptorRegistration must not be null");
         }
         interceptorRegistrations.add(registration);
-    }
-
-    public void addInterceptorRegistration(int index, ChatInterceptorRegistration registration) {
-        if (registration == null) {
-            throw new IllegalArgumentException("ChatInterceptorRegistration must not be null");
-        }
-        interceptorRegistrations.add(index, registration);
     }
 }
