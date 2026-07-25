@@ -155,11 +155,34 @@ export default defineConfig({
                 ]
             },
             {
+                text: 'Store 向量存储模块',
+                items: [
+                    {text: '模块概述', link: '/zh/store/overview'},
+                    {text: '快速开始', link: '/zh/store/getting-started'},
+                    {text: '核心 API 与数据流', link: '/zh/store/core-api'},
+                    {text: 'SearchWrapper 查询构造', link: '/zh/store/search-wrapper'},
+                    {text: 'SQL 风格条件表达式', link: '/zh/store/condition-expression'},
+                    {text: 'StoreOptions 与多集合', link: '/zh/store/store-options'},
+                    {text: '存储选型与能力矩阵', link: '/zh/store/providers'},
+                    {text: 'Redis', link: '/zh/store/redis'},
+                    {text: 'Milvus', link: '/zh/store/milvus'},
+                    {text: 'Pgvector', link: '/zh/store/pgvector'},
+                    {text: 'Elasticsearch', link: '/zh/store/elasticsearch'},
+                    {text: 'OpenSearch', link: '/zh/store/opensearch'},
+                    {text: 'Chroma', link: '/zh/store/chroma'},
+                    {text: 'Qdrant', link: '/zh/store/qdrant'},
+                    {text: '阿里云 DashVector', link: '/zh/store/aliyun'},
+                    {text: '腾讯云向量数据库', link: '/zh/store/qcloud'},
+                    {text: 'VectoRex', link: '/zh/store/vectorex'},
+                    {text: 'VectoRexDB', link: '/zh/store/vectorexdb'},
+                    {text: '自定义 VectorStore', link: '/zh/store/custom-store'},
+                    {text: '故障排查与生产建议', link: '/zh/store/troubleshooting'},
+                ]
+            },
+            {
                 text: 'RAG 模块',
                 items: [
                     {text: '文档概念', link: '/zh/rag/document'},
-                    {text: '向量存储 (Vector Store)', link: '/zh/rag/vector-store'},
-                    {text: 'SearchWrapper', link: '/zh/rag/search-wrapper'},
                     {text: 'file2text', link: '/zh/rag/file2text'},
                     {text: '文档分割 Splitter', link: '/zh/rag/splitter'},
                     {text: '搜索引擎', link: '/zh/rag/search-engine'},

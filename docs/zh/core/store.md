@@ -1,5 +1,9 @@
 # Store 存储
 
+::: tip 独立模块文档
+Store 已整理为独立、分章节的开发文档。请阅读 [Store 向量存储模块概述](../store/overview)。
+:::
+
 Agents-Flex 的 Store 指的是向量存储器 `VectorStore`。 其定义了如下的方法，用于对向量数据进行增删改查：
 
 - `store(List<T> documents, StoreOptions options)` 用于存储向量数据

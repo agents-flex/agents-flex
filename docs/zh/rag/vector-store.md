@@ -1,6 +1,11 @@
 # 向量存储 Vector Store
 <div v-pre>
 
+::: tip 文档已迁移
+向量存储现已整理为独立模块文档。请从 [Store 向量存储模块概述](../store/overview) 开始阅读，
+并参考 [快速开始](../store/getting-started) 和 [存储选型与能力矩阵](../store/providers)。
+:::
+
 
 ## 1. 概念
 

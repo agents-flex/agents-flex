@@ -1,6 +1,11 @@
 # SearchWrapper
 <div v-pre>
 
+::: tip 文档已迁移
+最新完整文档请阅读 [SearchWrapper 查询构造](../store/search-wrapper) 和
+[SQL 风格条件表达式](../store/condition-expression)。
+:::
+
 
 ## 1. 核心概念
 
