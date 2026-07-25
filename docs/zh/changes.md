@@ -1,6 +1,12 @@
 # Agents-Flex ChangeLog
 
 ## v2.2.4 20260724
+- docs(sidebar): add sandbox conversation isolation lab to documentation
+- test(sandbox): add integration tests for AIO and Open Sandbox skill runtimes
+- test(openai): add DeepSeek API integration test
+- docs(skills): update documentation and tool names
+- refactor(runtime): move conversation store implementations to dedicated package
+- feat(runtime): add conversation workspace isolation for skill runtimes
 - docs(chat): add comprehensive GlobalChatInterceptors documentation
 - feat(tool): add description field to ToolGroup with getter and builder method
 - docs(chat): update documentation for chat interceptor and tool group
