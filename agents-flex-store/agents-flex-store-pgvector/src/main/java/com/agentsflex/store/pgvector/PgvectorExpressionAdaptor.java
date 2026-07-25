@@ -10,7 +10,6 @@
 package com.agentsflex.store.pgvector;
 
 import com.agentsflex.core.store.condition.Condition;
-import com.agentsflex.core.store.condition.ConditionType;
 import com.agentsflex.core.store.condition.ExpressionAdaptor;
 import com.agentsflex.core.store.condition.Group;
 import com.agentsflex.core.store.condition.Key;
@@ -24,7 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
 
-class PgvectorConditionBuilder implements ExpressionAdaptor {
+class PgvectorExpressionAdaptor implements ExpressionAdaptor {
 
     private final List<Object> parameters = new ArrayList<>();
 

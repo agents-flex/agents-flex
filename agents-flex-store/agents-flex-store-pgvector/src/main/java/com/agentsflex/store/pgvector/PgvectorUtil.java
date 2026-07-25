@@ -28,7 +28,7 @@ public class PgvectorUtil {
      * @return
      * @throws SQLException
      */
-    public static PGobject toPgVector(double[] src) throws SQLException {
+    public static PGobject toPgVector(float[] src) throws SQLException {
         PGobject vector = new PGobject();
         vector.setType("vector");
         if (src.length == 0) {

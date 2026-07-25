@@ -31,7 +31,7 @@ public class PgvectorConditionBuilderTest {
             .between("createdAt", 100, 200)
             .in("category", Arrays.asList("AI", "Java"))
             .nin("tenant", Arrays.asList("internal", "test"));
-        PgvectorConditionBuilder builder = new PgvectorConditionBuilder();
+        PgvectorExpressionAdaptor builder = new PgvectorExpressionAdaptor();
 
         String sql = wrapper.toFilterExpression(builder);
 
@@ -55,7 +55,7 @@ public class PgvectorConditionBuilderTest {
             .orCriteria(group -> group
                 .ge("views", 10)
                 .in(Connector.AND_NOT, "category", Arrays.asList("hidden", "deleted")));
-        PgvectorConditionBuilder builder = new PgvectorConditionBuilder();
+        PgvectorExpressionAdaptor builder = new PgvectorExpressionAdaptor();
 
         String sql = wrapper.toFilterExpression(builder);
 

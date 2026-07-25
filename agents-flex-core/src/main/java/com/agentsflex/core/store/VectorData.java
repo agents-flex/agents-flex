@@ -62,17 +62,6 @@ public class VectorData extends Metadata {
         return result;
     }
 
-    public double[] getVectorAsDoubleArray() {
-        if (vector == null) {
-            return null;
-        }
-        double[] result = new double[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            result[i] = vector[i];
-        }
-        return result;
-    }
-
     public void setVectorByNumbers(Collection<? extends Number> vector) {
         if (vector == null || vector.isEmpty()) {
             this.vector = null;

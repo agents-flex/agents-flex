@@ -139,7 +139,7 @@ public class PgvectorVectorStore extends DocumentStore {
         validateMinScore(wrapper.getMinScore());
         int maxResults = resolveMaxResults(wrapper.getMaxResults());
         String collectionName = resolveCollectionName(options);
-        PgvectorConditionBuilder conditionBuilder = new PgvectorConditionBuilder();
+        PgvectorExpressionAdaptor conditionBuilder = new PgvectorExpressionAdaptor();
         String condition = wrapper.toFilterExpression(conditionBuilder);
 
         StringBuilder sql = new StringBuilder("SELECT id, title, content, metadata, score");
@@ -159,7 +159,7 @@ public class PgvectorVectorStore extends DocumentStore {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql.toString())) {
             int parameterIndex = 1;
-            statement.setObject(parameterIndex++, PgvectorUtil.toPgVector(wrapper.getVectorAsDoubleArray()));
+            statement.setObject(parameterIndex++, PgvectorUtil.toPgVector(wrapper.getVector()));
             if (wrapper.getMinScore() != null && wrapper.getMinScore() > 0) {
                 statement.setDouble(parameterIndex++, wrapper.getMinScore());
             }
@@ -270,7 +270,7 @@ public class PgvectorVectorStore extends DocumentStore {
         if (document == null || document.getVector() == null || document.getVector().length == 0) {
             throw new IllegalArgumentException("Pgvector document vector cannot be null or empty");
         }
-        return PgvectorUtil.toPgVector(document.getVectorAsDoubleArray());
+        return PgvectorUtil.toPgVector(document.getVector());
     }
 
     private Map<String, Object> metadata(Document document) {
