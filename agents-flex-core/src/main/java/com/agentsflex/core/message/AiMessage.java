@@ -431,6 +431,9 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
 
     @Override
     public void setContent(String content) {
+        if (content == null) {
+            return;
+        }
         super.setContent(content);
         if (fullContent == null) {
             fullContent = content;

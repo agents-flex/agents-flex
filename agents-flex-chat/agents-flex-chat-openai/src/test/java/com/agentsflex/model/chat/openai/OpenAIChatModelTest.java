@@ -657,4 +657,59 @@ public class OpenAIChatModelTest {
     }
 
 
+
+    @Test()
+    public void testDeepseek() throws InterruptedException {
+        OpenAIChatConfig config = new OpenAIChatConfig();
+        config.setLogEnabled(true);
+        config.setEndpoint("https://api.deepseek.com");
+        config.setRequestPath("/chat/completions");
+        config.setModel("deepseek-v4-pro");
+//        config.setModel("DeepSeek-V3");
+//        config.setSupportToolMessage(false);
+        config.setLogEnabled(false);
+        config.setApiKey("sk-***691");
+        config.setRetryEnabled(false);
+
+
+        OpenAIChatModel llm = new OpenAIChatModel(config);
+
+        SimplePrompt prompt = new SimplePrompt("今天北京天气如何？");
+        prompt.addToolsFromClass(WeatherFunctions1.class);
+
+        llm.chatStream(prompt, new StreamResponseListener() {
+            @Override
+            public void onMessage(StreamContext context, AiMessageResponse response) {
+
+                String content = response.getMessage().getContent();
+                String msg = content != null ? content : "[null]";
+
+                System.out.println(">>>>>> raw: " + response.getRawText());
+                System.out.println(">>>>>> msg: " + msg +" lastMsg: " + response.getMessage().isFinalDelta());
+
+//                if (content != null)
+//                    System.out.println(content);
+
+//                if (response.getMessage().isFinalDelta() && response.hasToolCalls()) {
+//                    System.out.println(":::::::: start....");
+//                    prompt.setAiMessage(response.getMessage());
+//                    prompt.setToolMessages(response.executeToolCallsAndGetToolMessages());
+//                    llm.chatStream(prompt, new StreamResponseListener() {
+//                        @Override
+//                        public void onMessage(StreamContext context, AiMessageResponse response) {
+//                            String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+//                            System.out.println(":::" + msg);
+//                        }
+//                    });
+//                } else {
+//                    String msg = response.getMessage().getContent() != null ? response.getMessage().getContent() : response.getMessage().getReasoningContent();
+//                    System.out.println(">>>" + msg);
+//                }
+            }
+        });
+
+        TimeUnit.SECONDS.sleep(25);
+    }
+
+
 }
