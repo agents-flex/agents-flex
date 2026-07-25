@@ -31,6 +31,10 @@ public class Group extends Condition {
         this.childCondition = childCondition;
     }
 
+    public Condition getChildCondition() {
+        return childCondition;
+    }
+
 
     @Override
     public boolean checkEffective() {
