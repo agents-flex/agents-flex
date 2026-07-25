@@ -74,7 +74,7 @@ public class SkillsTool {
         "- The skill's prompt will expand and provide detailed instructions on how to complete the task\n" +
         "\n" +
         "NOTE: The response starts with the base directory inside the configured skill runtime. Use only the runtime-backed bash, read, write, edit, ls, glob, and grep tools for runtime resources.\n" +
-        "When publish_file is available, use it to turn a final runtime file into a URL before delivering the result to the user.\n" +
+        "When publish_file is available, use it by default as the final delivery step whenever the task produces a final file for the user, even if the user did not explicitly ask for a URL or link. Also use it when the user asks to send, give, attach, open, download, or share a runtime file. Return the published URL, never an internal runtime path. Do not publish temporary or intermediate files unless explicitly requested, and do not publish when the user explicitly asks you not to.\n" +
         "Skill description follows after the base directory line.\n" +
         "\n" +
         "Important:\n" +

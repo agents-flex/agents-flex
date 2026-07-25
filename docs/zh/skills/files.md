@@ -80,6 +80,14 @@ try (InputStream input = fileSystem.openInputStream("/runtime/output/report.pptx
 配置 `FilePublisher`。配置后，`SkillsTool.buildTools()` 会增加一个 `publish_file` Tool；
 未配置时不会暴露该工具。
 
+`publish_file` 是 Runtime 文件的默认最终交付工具。只要任务生成了需要交付给用户的最终文件，即使用户
+没有明确要求 URL 或下载链接，模型也应在确认文件存在且有效后调用该工具，并把返回的 URL 交付给用户。
+用户要求“把文件发给我”“作为附件给我”“给出下载链接/访问地址”，或需要打开、下载、分享 Runtime
+中的文件时，也适用这条规则。Runtime 内部路径不是用户可访问地址，不应直接作为交付结果。
+
+临时文件和中间文件默认不发布；用户明确要求不要上传或发布时，也不应调用该工具。若工具返回错误，
+模型应先修复并重试，不能声称文件已经交付。
+
 ```java
 import com.agentsflex.skill.file.FilePublishRequest;
 import com.agentsflex.skill.file.FilePublisher;

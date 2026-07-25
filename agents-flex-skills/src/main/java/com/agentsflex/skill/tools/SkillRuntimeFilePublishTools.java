@@ -65,15 +65,24 @@ public class SkillRuntimeFilePublishTools {
      * @param contentType 可选 MIME 类型；为空时根据文件名推断
      * @return 包含 URL 和文件信息的发布结果
      */
-    @ToolDef(name = "publish_file", description = "Publishes a file from the configured skill runtime "
-        + "and returns a URL that can be delivered to the user. Use this after generating and validating "
-        + "a final file. The path must reference a regular file inside the configured runtime.")
+    @ToolDef(name = "publish_file", description = "Publishes an existing regular file from the configured "
+        + "skill runtime and returns a user-accessible URL. Use this by default as the final delivery step "
+        + "whenever the task produces a final file for the user, even if the user did not explicitly ask for "
+        + "a URL or download link. Also use it for requests to send, give, attach, open, download, or share a "
+        + "runtime file. Internal runtime paths are not user-accessible and must never be returned as the "
+        + "delivery result. Do not publish temporary or intermediate files unless explicitly requested, and "
+        + "do not publish when the user explicitly asks you not to. On success, include the returned URL in "
+        + "the final response. If the tool returns an error, fix the problem and retry; do not claim that the "
+        + "file was delivered.")
     public String publishFile(
-        @ToolParam(name = "filePath", description = "Absolute runtime-visible path of the file to publish")
+        @ToolParam(name = "filePath", description = "Exact absolute runtime-visible path of an existing "
+            + "regular file. Use a path returned or verified by runtime tools; do not invent a host path.")
         String filePath,
-        @ToolParam(name = "fileName", description = "Optional user-facing file name", required = false)
+        @ToolParam(name = "fileName", description = "Optional file name shown to the user; path components "
+            + "are removed", required = false)
         String fileName,
-        @ToolParam(name = "contentType", description = "Optional MIME type", required = false)
+        @ToolParam(name = "contentType", description = "Optional MIME type; omit it to infer from the file "
+            + "name", required = false)
         String contentType) {
 
         if (StringUtil.noText(filePath)) {

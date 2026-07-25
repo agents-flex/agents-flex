@@ -197,11 +197,19 @@ public class SkillRuntimeTest {
             .buildTools();
 
         assertEquals(9, tools.size());
+        Tool publishTool = tool(tools, "publish_file");
+        assertTrue(publishTool.getDescription().contains("Use this by default as the final delivery step"));
+        assertTrue(publishTool.getDescription().contains("even if the user did not explicitly ask"));
+        assertTrue(publishTool.getDescription().contains("send, give, attach, open, download, or share"));
+        assertTrue(publishTool.getDescription().contains("Internal runtime paths are not user-accessible"));
+        assertTrue(publishTool.getDescription().contains("user explicitly asks you not to"));
+        assertTrue(publishTool.getDescription().contains("do not claim that the file was delivered"));
+        assertTrue(publishTool.getParameters()[0].getDescription().contains("do not invent a host path"));
         Map<String, Object> args = new HashMap<>();
         args.put("filePath", "/runtime/output/report.pptx");
         args.put("fileName", "runtime-report.pptx");
         args.put("contentType", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
-        Object result = tool(tools, "publish_file").invoke(args);
+        Object result = publishTool.invoke(args);
 
         assertEquals("presentation-bytes", new String(publishedContent.toByteArray(), StandardCharsets.UTF_8));
         assertEquals("recording", captured.get().getRuntimeName());

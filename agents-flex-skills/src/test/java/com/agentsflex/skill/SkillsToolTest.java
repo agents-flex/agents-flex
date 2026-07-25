@@ -63,6 +63,11 @@ public class SkillsToolTest {
         assertTrue(skillTool.getDescription().contains("<name>pdf</name>"));
         assertTrue(skillTool.getDescription().contains("<name>pptx</name>"));
         assertFalse(skillTool.getDescription().contains("<name>xlsx</name>"));
+        assertTrue(skillTool.getDescription().contains("use it by default as the final delivery step"));
+        assertTrue(skillTool.getDescription().contains("even if the user did not explicitly ask"));
+        assertTrue(skillTool.getDescription().contains("send, give, attach, open, download, or share"));
+        assertTrue(skillTool.getDescription().contains("never an internal runtime path"));
+        assertTrue(skillTool.getDescription().contains("user explicitly asks you not to"));
         assertEquals("Skill not found: xlsx", skillTool.invoke(
             Collections.<String, Object>singletonMap("command", "xlsx")));
     }
