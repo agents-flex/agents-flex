@@ -398,10 +398,14 @@ public class OpenSandboxSkillRuntime implements SkillRuntime {
             builder.networkPolicy(networkPolicy);
         }
         if (conversationKey != null) {
-            builder.metadata("agentsflex.conversation-id", conversationKey.getConversationId());
-            builder.metadata("agentsflex.conversation-key", conversationKey.getStorageKey());
+            builder.metadata("agentsflex.conversation-id", metadataValue(conversationKey.getConversationId()));
+            builder.metadata("agentsflex.conversation-key", metadataValue(conversationKey.getStorageKey()));
         }
         return builder.build();
+    }
+
+    private static String metadataValue(String value) {
+        return value.length() <= 63 ? value : value.substring(0, 63);
     }
 
     private Sandbox connectSandbox(String sandboxId, boolean skipHealthCheck) {
