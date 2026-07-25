@@ -32,6 +32,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 基于 PostgreSQL pgvector 扩展的文档向量存储。
+ *
+ * <p>集合名映射为数据表，文档固定字段保存为表列，其他元数据保存为 JSONB。
+ * 写入操作使用事务；过滤条件由 {@link PgvectorExpressionAdaptor} 转换为参数化 SQL，
+ * 避免将条件值直接拼接进语句。</p>
+ */
 public class PgvectorVectorStore extends DocumentStore {
 
     public static final double DEFAULT_SIMILARITY_THRESHOLD = 0.3;
@@ -61,6 +68,7 @@ public class PgvectorVectorStore extends DocumentStore {
         initDb();
     }
 
+    /** 初始化 vector 扩展，并按配置创建默认集合。 */
     public final void initDb() {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {

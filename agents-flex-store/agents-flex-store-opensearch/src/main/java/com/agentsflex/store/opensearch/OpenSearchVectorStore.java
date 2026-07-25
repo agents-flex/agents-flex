@@ -68,7 +68,10 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * OpenSearch 向量存储
+ * 基于 OpenSearch Java Client 的文档向量存储。
+ *
+ * <p>集合映射为索引，负责文档批量写入、按 ID 删除、更新和 kNN 检索。
+ * {@link StoreOptions} 中的索引名可以覆盖配置的默认索引。</p>
  *
  * @author songyinyin
  * @since 2024/8/10 下午8:31

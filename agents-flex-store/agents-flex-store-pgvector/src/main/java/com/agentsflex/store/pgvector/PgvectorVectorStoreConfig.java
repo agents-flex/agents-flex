@@ -22,19 +22,27 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * postgreSQL访问配置
- * https://github.com/pgvector/pgvector
+ * pgvector 向量存储配置。
+ *
+ * <p>包含 PostgreSQL 连接信息、默认表名、向量维度、自动建表和 HNSW 索引开关。
+ * 数据源扩展属性可通过 {@link #getProperties()} 传入。</p>
+ *
+ * @see <a href="https://github.com/pgvector/pgvector">pgvector</a>
  */
 public class PgvectorVectorStoreConfig implements DocumentStoreConfig {
     private String host;
+    /** PostgreSQL 端口。 */
     private int port = 5432;
     private String databaseName = "agent_vector";
     private String username;
     private String password;
     private Map<String, String> properties = new HashMap<>();
     private String defaultCollectionName;
+    /** 是否自动创建集合对应的数据表。 */
     private boolean autoCreateCollection = true;
+    /** 是否为向量列创建 HNSW 索引。 */
     private boolean useHnswIndex = false;
+    /** 默认向量维度。 */
     private int vectorDimension = 1024;
 
     public PgvectorVectorStoreConfig() {

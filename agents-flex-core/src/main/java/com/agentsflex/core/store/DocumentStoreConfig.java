@@ -17,7 +17,17 @@ package com.agentsflex.core.store;
 
 import java.io.Serializable;
 
+/**
+ * 文档存储配置的通用契约。
+ *
+ * <p>具体存储可在实现中检查地址、凭证、集合名等必要配置是否完整。</p>
+ */
 public interface DocumentStoreConfig extends Serializable {
 
+    /**
+     * 检查当前配置是否具备创建或使用存储的必要条件。
+     *
+     * @return 配置可用时返回 {@code true}
+     */
     boolean checkAvailable();
 }

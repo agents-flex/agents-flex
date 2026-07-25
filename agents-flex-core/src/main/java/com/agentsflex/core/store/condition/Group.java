@@ -17,9 +17,17 @@ package com.agentsflex.core.store.condition;
 
 import com.agentsflex.core.util.StringUtil;
 
+/**
+ * 条件分组节点。
+ *
+ * <p>子条件保存在独立链表中，渲染时由适配器添加分组边界。分组本身仍是
+ * {@link Condition}，因此可以继续连接到外层条件链。</p>
+ */
 public class Group extends Condition {
 
+    /** 分组左括号前的操作符，例如 {@code NOT}。 */
     private String prevOperand = "";
+    /** 分组内第一条条件。 */
     private final Condition childCondition;
 
     public Group(Condition condition) {
@@ -37,6 +45,7 @@ public class Group extends Condition {
 
 
     @Override
+    /** 分组自身有效且至少包含一个有效子条件时，分组才有效。 */
     public boolean checkEffective() {
         boolean effective = super.checkEffective();
         if (!effective) {
@@ -54,6 +63,7 @@ public class Group extends Condition {
 
 
     @Override
+    /** 渲染分组及外层链表中的后续条件。 */
     public String toExpression(ExpressionAdaptor adaptor) {
         StringBuilder expr = new StringBuilder();
         if (checkEffective()) {

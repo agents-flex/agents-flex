@@ -33,8 +33,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * ChromaVectorStore class provides an interface to interact with Chroma Vector Database
- * using direct HTTP calls to the Chroma REST API.
+ * 基于 Chroma REST API 的文档向量存储。
+ *
+ * <p>支持租户、数据库和集合三级定位，可按配置自动创建缺失资源。过滤条件转换为
+ * Chroma 原生 {@code where} JSON，而不是拼接文本表达式。</p>
  */
 public class ChromaVectorStore extends DocumentStore {
 
@@ -719,10 +721,10 @@ public class ChromaVectorStore extends DocumentStore {
     }
 
     /**
-     * Close the connection to Chroma database
+     * 关闭存储。当前 HTTP 客户端使用共享连接池，因此这里只保留资源清理扩展点。
      */
     public void close() {
-        // HttpClient类使用连接池管理，这里可以添加额外的资源清理逻辑
+        // HTTP 客户端使用共享连接池，此处无需主动关闭。
         logger.info("Chroma client closed");
     }
 

@@ -34,6 +34,11 @@ import io.github.javpower.vectorexcore.entity.VectoRexEntity;
 
 import java.util.*;
 
+/**
+ * 基于嵌入式 VectoRexDB 客户端的文档向量存储。
+ *
+ * <p>可在首次写入时自动创建集合，向量维度取自当前嵌入模型。</p>
+ */
 public class VectoRexStore extends DocumentStore {
 
     private final VectoRexStoreConfig config;

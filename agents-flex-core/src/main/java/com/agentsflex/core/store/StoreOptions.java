@@ -24,10 +24,16 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Store Options, Each store can have its own Options implementation.
+ * 单次存储操作的通用选项。
+ *
+ * <p>集合、索引、分区等字段由具体存储按需解释；存储实现也可以继承本类扩展
+ * 专属选项。该对象还继承了 {@link Metadata}，可携带额外参数。</p>
  */
 public class StoreOptions extends Metadata {
 
+    /**
+     * 共享默认选项。该实例禁止修改核心字段，调用方需要定制时应创建新实例。
+     */
     public static final StoreOptions DEFAULT = new StoreOptions() {
         @Override
         public void setCollectionName(String collectionName) {
@@ -46,22 +52,22 @@ public class StoreOptions extends Metadata {
     };
 
     /**
-     * store collection name
+     * 本次操作使用的集合名称。
      */
     private String collectionName;
 
     /**
-     * store index name
+     * 本次操作使用的索引名称。
      */
     private String indexName;
 
     /**
-     * store partition name
+     * 本次操作涉及的分区名称列表。
      */
     private List<String> partitionNames;
 
     /**
-     * store embedding options
+     * 文本向量化时传递给嵌入模型的选项。
      */
     private EmbeddingOptions embeddingOptions = EmbeddingOptions.DEFAULT;
 
@@ -70,6 +76,7 @@ public class StoreOptions extends Metadata {
         return collectionName;
     }
 
+    /** 返回集合名；未配置时返回调用方提供的默认值。 */
     public String getCollectionNameOrDefault(String other) {
         return StringUtil.hasText(collectionName) ? collectionName : other;
     }
@@ -82,10 +89,12 @@ public class StoreOptions extends Metadata {
         return partitionNames;
     }
 
+    /** 返回第一个分区名；没有分区时返回 {@code null}。 */
     public String getPartitionName() {
         return partitionNames != null && !partitionNames.isEmpty() ? partitionNames.get(0) : null;
     }
 
+    /** 返回分区列表；未配置时返回不可变空列表。 */
     public List<String> getPartitionNamesOrEmpty() {
         return partitionNames == null ? Collections.emptyList() : partitionNames;
     }
@@ -94,6 +103,11 @@ public class StoreOptions extends Metadata {
         this.partitionNames = partitionNames;
     }
 
+    /**
+     * 追加一个分区名。
+     *
+     * @return 当前选项对象
+     */
     public StoreOptions partitionName(String partitionName) {
         if (this.partitionNames == null) {
             this.partitionNames = new ArrayList<>(1);
@@ -112,6 +126,7 @@ public class StoreOptions extends Metadata {
     }
 
 
+    /** 创建仅指定集合名的存储选项。 */
     public static StoreOptions ofCollectionName(String collectionName) {
         StoreOptions storeOptions = new StoreOptions();
         storeOptions.setCollectionName(collectionName);
@@ -126,6 +141,7 @@ public class StoreOptions extends Metadata {
         this.indexName = indexName;
     }
 
+    /** 返回索引名；未配置时返回调用方提供的默认值。 */
     public String getIndexNameOrDefault(String other) {
         return StringUtil.hasText(indexName) ? indexName : other;
     }

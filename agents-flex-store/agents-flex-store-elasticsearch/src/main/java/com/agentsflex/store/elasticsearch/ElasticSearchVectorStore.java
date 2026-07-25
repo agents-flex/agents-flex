@@ -69,7 +69,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * es 向量存储：<a href="https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/introduction.html">elasticsearch-java</a>
+ * 基于 Elasticsearch Java API Client 的文档向量存储。
+ *
+ * <p>集合映射为索引，向量检索使用 Elasticsearch kNN 查询，元数据过滤通过
+ * {@link ElasticSearchExpressionAdaptor} 转换为 query string。实例持有底层连接，
+ * 使用完毕后应调用 {@link #close()}。</p>
+ *
+ * @see <a href="https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/introduction.html">Elasticsearch Java Client</a>
  *
  * @author songyinyin
  * @since 2024/8/12 下午4:17

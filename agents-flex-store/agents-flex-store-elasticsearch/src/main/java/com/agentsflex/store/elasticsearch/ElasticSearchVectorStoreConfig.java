@@ -19,7 +19,11 @@ import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
 /**
- * 连接 elasticsearch 配置：<a href="https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/getting-started-java.html">elasticsearch-java</a>
+ * Elasticsearch 向量存储连接配置。
+ *
+ * <p>支持 API Key、用户名密码或无认证连接，并提供默认索引名。</p>
+ *
+ * @see <a href="https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/getting-started-java.html">Elasticsearch Java Client</a>
  *
  * @author songyinyin
  */

@@ -21,17 +21,29 @@ import com.agentsflex.core.document.Document;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 存储写操作的统一结果。
+ *
+ * <p>除成功状态、消息和异常外，还可返回受影响数据的 ID，并通过继承的元数据
+ * 承载具体存储实现的附加信息。</p>
+ */
 public class StoreResult extends Metadata {
+    /** 操作是否成功。 */
     private final boolean success;
+    /** 操作失败时的原始异常；没有异常或操作成功时可以为空。 */
     private Exception exception;
+    /** 面向调用方的结果说明。 */
     private String message;
+    /** 新增或更新的数据 ID。 */
     private List<Object> ids;
 
+    /** 创建不带说明信息的结果。 */
     public StoreResult(boolean success) {
         this.success = success;
         this.message = "";
     }
 
+    /** 创建带说明信息的结果；{@code null} 消息会转换为空字符串。 */
     public StoreResult(boolean success, String message) {
         this.success = success;
         this.message = message == null ? "" : message;
@@ -49,10 +61,12 @@ public class StoreResult extends Metadata {
         this.message = message;
     }
 
+    /** {@link #getIds()} 的简写形式。 */
     public List<Object> ids() {
         return ids;
     }
 
+    /** 创建包含说明和原始异常的失败结果。 */
     public static StoreResult fail(String message, Exception exception) {
         StoreResult storeResult = new StoreResult(false);
         storeResult.setMessage(message);
@@ -60,19 +74,27 @@ public class StoreResult extends Metadata {
         return storeResult;
     }
 
+    /** 创建包含说明的失败结果。 */
     public static StoreResult fail(String message) {
         return new StoreResult(false, message);
     }
 
 
+    /** 创建不带说明的失败结果。 */
     public static StoreResult fail() {
         return new StoreResult(false);
     }
 
+    /** 创建成功结果。 */
     public static StoreResult success() {
         return new StoreResult(true);
     }
 
+    /**
+     * 创建成功结果，并按输入顺序收集文档 ID。
+     *
+     * @param documents 已成功处理的文档
+     */
     public static StoreResult successWithIds(List<Document> documents) {
         StoreResult result = success();
         result.ids = new ArrayList<>(documents.size());

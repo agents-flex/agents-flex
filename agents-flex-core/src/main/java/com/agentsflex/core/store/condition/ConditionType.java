@@ -15,15 +15,25 @@
  */
 package com.agentsflex.core.store.condition;
 
+/** 条件运算类型及其通用 SQL 风格符号。 */
 public enum ConditionType {
+    /** 等于。 */
     EQ(" = "),
+    /** 不等于。 */
     NE(" != "),
+    /** 大于。 */
     GT(" > "),
+    /** 大于等于。 */
     GE(" >= "),
+    /** 小于。 */
     LT(" < "),
+    /** 小于等于。 */
     LE(" <= "),
+    /** 属于集合。 */
     IN(" IN "),
+    /** 不属于集合。 */
     NIN(" NOT IN "),
+    /** 位于两个边界之间。 */
     BETWEEN(" BETWEEN "),
     ;
 
@@ -33,6 +43,7 @@ public enum ConditionType {
         this.defaultSymbol = defaultSymbol;
     }
 
+    /** 返回通用 SQL 风格运算符，包含两侧必要空格。 */
     public String getDefaultSymbol() {
         return defaultSymbol;
     }

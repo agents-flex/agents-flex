@@ -18,6 +18,7 @@ package com.agentsflex.store.qcloud;
 import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
+/** 腾讯云向量数据库配置，包括服务地址、账户、API Key、数据库和默认集合。 */
 public class QCloudVectorStoreConfig implements DocumentStoreConfig {
 
     private String host;
@@ -72,4 +73,3 @@ public class QCloudVectorStoreConfig implements DocumentStoreConfig {
         return StringUtil.allHasText(this.host, this.apiKey, this.account, this.database, this.defaultCollectionName);
     }
 }
-

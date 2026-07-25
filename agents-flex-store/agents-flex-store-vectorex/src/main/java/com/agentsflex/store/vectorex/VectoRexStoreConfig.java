@@ -19,6 +19,7 @@ import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
 
+/** 远程 VectoRex 连接配置，包括 URI、认证信息、默认集合和自动建集合开关。 */
 public class VectoRexStoreConfig implements DocumentStoreConfig {
 
     private String uri;

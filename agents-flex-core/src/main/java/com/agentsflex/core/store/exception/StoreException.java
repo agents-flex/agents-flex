@@ -16,7 +16,9 @@
 package com.agentsflex.core.store.exception;
 
 /**
- * 存储异常
+ * 存储操作异常。
+ *
+ * <p>用于将底层向量数据库客户端或存储适配过程中的异常统一暴露给调用方。</p>
  *
  * @author songyinyin
  * @since 2024/8/10 下午8:53
@@ -31,4 +33,3 @@ public class StoreException extends RuntimeException {
         super(message, cause);
     }
 }
-

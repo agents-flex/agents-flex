@@ -21,14 +21,17 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Vector Store
+ * 向量存储的统一抽象。
  *
- * @param <T> The Vector Data
+ * <p>提供单条和批量数据的新增、删除、更新、检索入口。未显式传入
+ * {@link StoreOptions} 的便捷方法统一使用 {@link StoreOptions#DEFAULT}。</p>
+ *
+ * @param <T> 向量数据类型
  */
 public abstract class VectorStore<T extends VectorData> {
 
     /**
-     * Store Vector Data
+     * 存储单条向量数据，使用默认存储选项。
      *
      * @param vectorData The Vector Data
      * @return Store Result
@@ -38,7 +41,7 @@ public abstract class VectorStore<T extends VectorData> {
     }
 
     /**
-     * Store Vector Data With Options
+     * 使用指定选项存储单条向量数据。
      *
      * @param vectorData The Vector Data
      * @param options    Store Options
@@ -49,7 +52,7 @@ public abstract class VectorStore<T extends VectorData> {
     }
 
     /**
-     * Store Vector Data List
+     * 批量存储向量数据，使用默认存储选项。
      *
      * @param vectorDataList The Vector Data List
      * @return Store Result
@@ -59,7 +62,7 @@ public abstract class VectorStore<T extends VectorData> {
     }
 
     /**
-     * Store Vector Data list wit options
+     * 使用指定选项批量存储向量数据，由具体存储实现完成。
      *
      * @param vectorDataList vector data list
      * @param options        options
@@ -69,7 +72,7 @@ public abstract class VectorStore<T extends VectorData> {
 
 
     /**
-     * delete store data by ids
+     * 按字符串 ID 批量删除数据，使用默认存储选项。
      *
      * @param ids the data ids
      * @return store result
@@ -80,7 +83,7 @@ public abstract class VectorStore<T extends VectorData> {
 
 
     /**
-     * delete store data by ids
+     * 按数字 ID 批量删除数据，使用默认存储选项。
      *
      * @param ids the data ids
      * @return store result
@@ -91,7 +94,7 @@ public abstract class VectorStore<T extends VectorData> {
 
 
     /**
-     * delete store data by id collection
+     * 按 ID 集合批量删除数据，使用默认存储选项。
      *
      * @param ids the ids
      * @return store result
@@ -101,7 +104,7 @@ public abstract class VectorStore<T extends VectorData> {
     }
 
     /**
-     * delete store data by ids with options
+     * 使用指定选项按 ID 集合批量删除数据，由具体存储实现完成。
      *
      * @param ids     ids
      * @param options store options
@@ -110,7 +113,7 @@ public abstract class VectorStore<T extends VectorData> {
     public abstract StoreResult delete(Collection<?> ids, StoreOptions options);
 
     /**
-     * update the vector data by id
+     * 更新单条向量数据，使用默认存储选项。
      *
      * @param vectorData the vector data
      * @return store result
@@ -121,7 +124,7 @@ public abstract class VectorStore<T extends VectorData> {
 
 
     /**
-     * update the vector data by id with options
+     * 使用指定选项更新单条向量数据。
      *
      * @param vectorData vector data
      * @param options    store options
@@ -132,7 +135,7 @@ public abstract class VectorStore<T extends VectorData> {
     }
 
     /**
-     * update vector data list
+     * 批量更新向量数据，使用默认存储选项。
      *
      * @param vectorDataList vector data list
      * @return store result
@@ -142,7 +145,7 @@ public abstract class VectorStore<T extends VectorData> {
     }
 
     /**
-     * update store data list with options
+     * 使用指定选项批量更新向量数据，由具体存储实现完成。
      *
      * @param vectorDataList vector data list
      * @param options        store options
@@ -151,7 +154,7 @@ public abstract class VectorStore<T extends VectorData> {
     public abstract StoreResult update(List<T> vectorDataList, StoreOptions options);
 
     /**
-     * search vector data by SearchWrapper
+     * 按查询参数检索向量数据，使用默认存储选项。
      *
      * @param wrapper SearchWrapper
      * @return the vector data list
@@ -162,7 +165,7 @@ public abstract class VectorStore<T extends VectorData> {
 
 
     /**
-     * search vector data by SearchWrapper with options
+     * 使用指定选项检索向量数据，由具体存储实现完成。
      *
      * @param wrapper SearchWrapper
      * @param options Store Options

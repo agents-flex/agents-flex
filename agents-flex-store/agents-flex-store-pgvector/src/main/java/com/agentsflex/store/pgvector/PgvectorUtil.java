@@ -19,14 +19,14 @@ import org.postgresql.util.PGobject;
 
 import java.sql.SQLException;
 
+/** PostgreSQL vector 类型与 Java 浮点数组之间的转换工具。 */
 public class PgvectorUtil {
     /**
-     * 转化为vector.
-     * 如果需要half vector或者sparse vector 对应实现即可
+     * 将浮点数组转换为 PostgreSQL {@code vector} 类型参数。
      *
      * @param src 向量
-     * @return
-     * @throws SQLException
+     * @return 可直接绑定到 JDBC 参数的对象
+     * @throws SQLException PGobject 设置值失败时抛出
      */
     public static PGobject toPgVector(float[] src) throws SQLException {
         PGobject vector = new PGobject();
@@ -46,6 +46,10 @@ public class PgvectorUtil {
         return vector;
     }
 
+    /**
+     * 将 PostgreSQL 返回的 {@code [x,y,...]} 文本转换为浮点数组。
+     * 无法解析的单个元素按 0 处理。
+     */
     public static float[] fromPgVector(String src) {
         if (src.equals("[]")) {
             return new float[0];

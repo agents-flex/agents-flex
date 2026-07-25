@@ -23,6 +23,12 @@ import com.agentsflex.core.store.condition.Value;
 
 import java.util.StringJoiner;
 
+/**
+ * Chroma 文本过滤表达式适配器。
+ *
+ * <p>主要用于兼容需要文本表达式的调用场景；REST 查询的结构化 {@code where}
+ * 条件由 {@link ChromaConditionBuilder} 构建。</p>
+ */
 public class ChromaExpressionAdaptor implements ExpressionAdaptor {
 
     public static final ChromaExpressionAdaptor DEFAULT = new ChromaExpressionAdaptor();

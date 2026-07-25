@@ -15,11 +15,18 @@
  */
 package com.agentsflex.core.store.condition;
 
+/**
+ * 条件树中的普通谓词节点，同时也是同级条件链表的节点。
+ *
+ * <p>{@code left/type/right} 描述当前谓词；{@code prev/next} 串联同一层级的条件。
+ * {@code connector} 保存在后一个节点上，表示它与前一个有效节点之间的连接关系。</p>
+ */
 public class Condition implements Operand {
 
     protected ConditionType type;
     protected Operand left;
     protected Operand right;
+    /** 是否参与最终表达式渲染。 */
     protected boolean effective = true;
     protected Connector connector;
     protected Condition prev;
@@ -42,6 +49,12 @@ public class Condition implements Operand {
     }
 
 
+    /**
+     * 将条件追加到当前链表末尾。
+     *
+     * @param nextCondition 待追加的条件或分组
+     * @param connector 与前一个条件之间的逻辑连接符
+     */
     public void connect(Condition nextCondition, Connector connector) {
         if (this.next != null) {
             this.next.connect(nextCondition, connector);
@@ -52,10 +65,12 @@ public class Condition implements Operand {
         }
     }
 
+    /** 返回当前节点是否应参与表达式渲染。 */
     public boolean checkEffective() {
         return effective;
     }
 
+    /** 查找前一个有效条件，用于判断是否需要输出连接符。 */
     protected Condition getPrevEffectiveCondition() {
         if (prev == null) {
             return null;
@@ -63,6 +78,7 @@ public class Condition implements Operand {
         return prev.checkEffective() ? prev : prev.getPrevEffectiveCondition();
     }
 
+    /** 查找后一个有效条件。 */
     protected Condition getNextEffectiveCondition() {
         if (next == null) {
             return null;
@@ -72,6 +88,11 @@ public class Condition implements Operand {
 
 
     @Override
+    /**
+     * 使用适配器渲染当前节点及其后续条件链。
+     *
+     * @param adaptor 目标存储对应的表达式适配器
+     */
     public String toExpression(ExpressionAdaptor adaptor) {
         StringBuilder expr = new StringBuilder();
         if (checkEffective()) {

@@ -37,6 +37,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+/**
+ * 基于远程 VectoRex 客户端的文档向量存储。
+ *
+ * <p>可在首次写入时自动创建集合，默认使用余弦距离并根据嵌入模型确定向量维度。</p>
+ */
 public class VectoRexStore extends DocumentStore {
 
     private final VectoRexStoreConfig config;

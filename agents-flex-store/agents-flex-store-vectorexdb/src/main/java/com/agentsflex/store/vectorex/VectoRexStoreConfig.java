@@ -19,6 +19,7 @@ import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
 
+/** 嵌入式 VectoRexDB 配置，包括存储 URI、默认集合和自动建集合开关。 */
 public class VectoRexStoreConfig implements DocumentStoreConfig {
 
     private String uri;

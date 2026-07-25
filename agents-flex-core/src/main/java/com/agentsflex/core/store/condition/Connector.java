@@ -16,33 +16,36 @@
 package com.agentsflex.core.store.condition;
 
 /**
- * @author michael
+ * 条件之间的逻辑连接符。
+ *
+ * <p>复合连接符用于兼容部分存储过滤语言；具体支持情况由对应的
+ * {@link ExpressionAdaptor} 决定。</p>
  */
 public enum Connector {
 
 
     /**
-     * AND
+     * 逻辑与。
      */
     AND(" AND "),
 
     /**
-     * AND NOT
+     * 逻辑与非。
      */
     AND_NOT(" AND NOT "),
 
     /**
-     * OR
+     * 逻辑或。
      */
     OR(" OR "),
 
     /**
-     * OR NOT
+     * 逻辑或非。
      */
     OR_NOT(" OR NOT "),
 
     /**
-     * NOT
+     * 逻辑非连接符。
      */
     NOT(" NOT "),
     ;
@@ -54,6 +57,7 @@ public enum Connector {
         this.value = value;
     }
 
+    /** 返回默认表达式文本，包含两侧必要空格。 */
     public String getValue() {
         return value;
     }

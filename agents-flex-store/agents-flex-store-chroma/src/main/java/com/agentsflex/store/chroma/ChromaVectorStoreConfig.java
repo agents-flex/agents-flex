@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * ChromaVectorStoreConfig class provides configuration for ChromaVectorStore.
+ * Chroma 向量存储配置，包括服务地址、集合、租户、数据库及可选 API Key。
  */
 public class ChromaVectorStoreConfig implements DocumentStoreConfig {
     private static final Logger logger = LoggerFactory.getLogger(ChromaVectorStoreConfig.class);
@@ -44,126 +44,98 @@ public class ChromaVectorStoreConfig implements DocumentStoreConfig {
     }
 
     /**
-     * Get the host of Chroma database
-     *
-     * @return the host of Chroma database
+     * 返回 Chroma 服务主机名。
      */
     public String getHost() {
         return host;
     }
 
     /**
-     * Set the host of Chroma database
-     *
-     * @param host the host of Chroma database
+     * 设置 Chroma 服务主机名。
      */
     public void setHost(String host) {
         this.host = host;
     }
 
     /**
-     * Get the port of Chroma database
-     *
-     * @return the port of Chroma database
+     * 返回 Chroma 服务端口。
      */
     public int getPort() {
         return port;
     }
 
     /**
-     * Set the port of Chroma database
-     *
-     * @param port the port of Chroma database
+     * 设置 Chroma 服务端口。
      */
     public void setPort(int port) {
         this.port = port;
     }
 
     /**
-     * Get the collection name of Chroma database
-     *
-     * @return the collection name of Chroma database
+     * 返回默认集合名。
      */
     public String getCollectionName() {
         return collectionName;
     }
 
     /**
-     * Set the collection name of Chroma database
-     *
-     * @param collectionName the collection name of Chroma database
+     * 设置默认集合名。
      */
     public void setCollectionName(String collectionName) {
         this.collectionName = collectionName;
     }
 
     /**
-     * Get whether to automatically create the collection if it doesn't exist
-     *
-     * @return true if the collection should be created automatically, false otherwise
+     * 返回是否自动创建缺失的集合。
      */
     public boolean isAutoCreateCollection() {
         return autoCreateCollection;
     }
 
     /**
-     * Set whether to automatically create the collection if it doesn't exist
-     *
-     * @param autoCreateCollection true if the collection should be created automatically, false otherwise
+     * 设置是否自动创建缺失的集合。
      */
     public void setAutoCreateCollection(boolean autoCreateCollection) {
         this.autoCreateCollection = autoCreateCollection;
     }
 
     /**
-     * Get the API key of Chroma database
-     *
-     * @return the API key of Chroma database
+     * 返回 API Key。
      */
     public String getApiKey() {
         return apiKey;
     }
 
     /**
-     * Set the API key of Chroma database
-     *
-     * @param apiKey the API key of Chroma database
+     * 设置 API Key。
      */
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
     }
 
     /**
-     * Get the tenant of Chroma database
-     *
-     * @return the tenant of Chroma database
+     * 返回租户名。
      */
     public String getTenant() {
         return tenant;
     }
 
     /**
-     * Set the tenant of Chroma database
-     *
-     * @param tenant the tenant of Chroma database
+     * 设置租户名。
      */
     public void setTenant(String tenant) {
         this.tenant = tenant;
     }
 
     /**
-     * Get the database of Chroma database
-     *
-     * @return the database of Chroma database
+     * 返回数据库名。
      */
     public String getDatabase() {
         return database;
     }
 
     /**
-     * Set the database of Chroma database
-     *
-     * @param database the database of Chroma database
+     * 设置数据库名。
      */
     public void setDatabase(String database) {
         this.database = database;
@@ -193,9 +165,7 @@ public class ChromaVectorStoreConfig implements DocumentStoreConfig {
     }
 
     /**
-     * Get the base URL of Chroma database
-     *
-     * @return the base URL of Chroma database
+     * 根据主机名和端口生成 HTTP 基础地址。
      */
     public String getBaseUrl() {
         return "http://" + host + ":" + port;

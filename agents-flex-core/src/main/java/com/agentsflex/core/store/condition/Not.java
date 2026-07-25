@@ -15,6 +15,12 @@
  */
 package com.agentsflex.core.store.condition;
 
+/**
+ * NOT 条件节点。
+ *
+ * <p>通过在普通 {@link Group} 前添加 NOT 实现，因此既可以否定单个谓词，也可以
+ * 否定一整个括号分组。</p>
+ */
 public class Not extends Group {
 
     public Not(Condition condition) {

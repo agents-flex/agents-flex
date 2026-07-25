@@ -31,7 +31,12 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 /**
- * 文档 https://help.aliyun.com/document_detail/2510317.html
+ * 阿里云 DashVector 文档向量存储。
+ *
+ * <p>通过 DashVector HTTP API 完成文档写入、删除、更新和向量检索；
+ * 集合名可由单次 {@link StoreOptions} 覆盖。</p>
+ *
+ * @see <a href="https://help.aliyun.com/document_detail/2510317.html">DashVector API 文档</a>
  */
 public class AliyunVectorStore extends DocumentStore {
     private static final Logger LOG = LoggerFactory.getLogger(AliyunVectorStore.class);

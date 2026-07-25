@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.store.condition;
 
+/** 条件左侧的字段名操作数。字段的引用和转义规则由表达式适配器决定。 */
 public class Key implements Operand {
 
     private Object key;
@@ -32,6 +33,7 @@ public class Key implements Operand {
     }
 
     @Override
+    /** 返回字段名文本；字段为空时返回空字符串。 */
     public String toExpression(ExpressionAdaptor adaptor) {
         return key != null ? key.toString() : "";
     }

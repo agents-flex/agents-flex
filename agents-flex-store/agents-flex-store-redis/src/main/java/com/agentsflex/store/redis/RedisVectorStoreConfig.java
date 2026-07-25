@@ -19,10 +19,12 @@ import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
 
+/** Redis 向量存储配置，包括连接 URI、数据键前缀和默认集合名。 */
 public class RedisVectorStoreConfig implements DocumentStoreConfig {
 
     private String uri;
 
+    /** Redis JSON 文档键的全局前缀。 */
     private String storePrefix = "docs:";
     private String defaultCollectionName;
 

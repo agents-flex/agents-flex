@@ -19,7 +19,7 @@ import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
 /**
- * https://help.aliyun.com/document_detail/2510317.html
+ * 阿里云 DashVector 连接配置，包括端点、API Key、数据库和默认集合。
  */
 public class AliyunVectorStoreConfig implements DocumentStoreConfig {
     private String endpoint;

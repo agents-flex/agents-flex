@@ -20,16 +20,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses a deliberately small SQL-like expression language into a {@link Condition} tree.
- * Supported predicates are comparisons, IN/NOT IN, BETWEEN/NOT BETWEEN, and IS NULL/IS NOT NULL.
- * AND, OR, NOT, and parentheses are supported with standard SQL precedence. String values must be
- * quoted; field names may be unquoted paths or backtick-quoted names.
+ * 将受限的 SQL 风格条件表达式解析为 {@link Condition} 条件树。
+ *
+ * <p>支持比较运算、IN/NOT IN、BETWEEN/NOT BETWEEN、IS NULL/IS NOT NULL，
+ * 以及 AND、OR、前置 NOT 和任意层级括号。运算优先级为 NOT &gt; AND &gt; OR。</p>
+ *
+ * <p>字符串必须使用单引号或双引号；普通字段名支持路径形式，包含特殊字符或
+ * SQL 关键字的字段名应使用反引号。该解析器不接受函数、算术表达式、子查询，
+ * 也不会执行输入内容。</p>
  */
 public final class ConditionExpressionParser {
 
     private ConditionExpressionParser() {
     }
 
+    /**
+     * 解析条件表达式。
+     *
+     * @param expression SQL 风格条件表达式
+     * @return 条件树的根节点
+     * @throws IllegalArgumentException 表达式为空或语法不合法时抛出，错误信息包含
+     *                                  从 0 开始的字符位置
+     */
     public static Condition parse(String expression) {
         if (expression == null) {
             throw new IllegalArgumentException("Condition expression cannot be null");
@@ -55,6 +67,7 @@ public final class ConditionExpressionParser {
             return condition;
         }
 
+        /** OR 是优先级最低的二元运算。 */
         private Condition parseOr() {
             Condition left = parseAnd();
             while (match(TokenType.OR)) {
@@ -63,6 +76,7 @@ public final class ConditionExpressionParser {
             return left;
         }
 
+        /** AND 的优先级高于 OR。 */
         private Condition parseAnd() {
             Condition left = parseUnary();
             while (match(TokenType.AND)) {
@@ -71,6 +85,7 @@ public final class ConditionExpressionParser {
             return left;
         }
 
+        /** 解析前置 NOT、括号分组或一个普通谓词。 */
         private Condition parseUnary() {
             if (match(TokenType.NOT)) {
                 return new Not(parseUnary());
@@ -241,6 +256,7 @@ public final class ConditionExpressionParser {
             this.input = input;
         }
 
+        /** 读取下一个词法单元，跳过单元之间的空白字符。 */
         private Token next() {
             skipWhitespace();
             if (index >= input.length()) {
@@ -295,6 +311,7 @@ public final class ConditionExpressionParser {
             }
         }
 
+        /** 解析引号字符串，支持 SQL 双写引号和常用反斜杠转义。 */
         private Token string(char quote, int start) {
             StringBuilder value = new StringBuilder();
             while (index < input.length()) {
@@ -330,6 +347,7 @@ public final class ConditionExpressionParser {
             throw lexerError(start, "Unterminated string literal");
         }
 
+        /** 解析反引号字段名；连续两个反引号表示字段名中的一个反引号。 */
         private Token quotedIdentifier(int start) {
             StringBuilder value = new StringBuilder();
             while (index < input.length()) {
@@ -350,6 +368,7 @@ public final class ConditionExpressionParser {
             throw lexerError(start, "Unterminated quoted field name");
         }
 
+        /** 解析带可选正负号、小数部分和科学计数法指数的数字。 */
         private Token number(int start) {
             if ((input.charAt(start) == '+' || input.charAt(start) == '-') && index >= input.length()) {
                 throw lexerError(start, "Expected a digit after '" + input.charAt(start) + "'");

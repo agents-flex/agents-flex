@@ -23,10 +23,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
 
+/**
+ * 将条件树转换为 pgvector 查询使用的参数化 SQL。
+ *
+ * <p>固定文档字段直接引用表列，其他字段通过 JSONB 路径读取；所有条件值收集到
+ * 参数列表中，由调用方绑定到 {@link java.sql.PreparedStatement}。</p>
+ */
 class PgvectorExpressionAdaptor implements ExpressionAdaptor {
 
     private final List<Object> parameters = new ArrayList<>();
 
+    /** 返回按占位符出现顺序排列的只读参数列表。 */
     List<Object> getParameters() {
         return Collections.unmodifiableList(parameters);
     }

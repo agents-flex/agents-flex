@@ -35,6 +35,12 @@ import static io.qdrant.client.ConditionFactory.match;
 import static io.qdrant.client.ConditionFactory.matchKeyword;
 import static io.qdrant.client.ConditionFactory.range;
 
+/**
+ * 将通用条件链转换为 Qdrant 原生过滤器。
+ *
+ * <p>同一 AND 段写入 must/must_not，OR 段写入 should；嵌套 {@link Group} 会递归
+ * 构建子过滤器，以保留查询条件的分组语义。</p>
+ */
 final class QdrantConditionBuilder {
 
     Points.Filter build(Condition condition) {

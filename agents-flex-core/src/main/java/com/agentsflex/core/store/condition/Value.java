@@ -15,6 +15,12 @@
  */
 package com.agentsflex.core.store.condition;
 
+/**
+ * 条件右侧的值操作数。
+ *
+ * <p>普通比较保存单值，IN/NOT IN 与 BETWEEN 保存 {@code Object[]}。关联的
+ * {@link Condition} 用于让适配器根据条件类型选择正确的值格式。</p>
+ */
 public class Value implements Operand {
 
     private Condition condition;
@@ -24,6 +30,7 @@ public class Value implements Operand {
         this.value = value;
     }
 
+    /** 创建多值操作数，主要用于 IN/NOT IN 和 BETWEEN。 */
     public Value(Object... values){
         this.value = values;
     }
@@ -45,6 +52,7 @@ public class Value implements Operand {
     }
 
     @Override
+    /** 委托适配器按所属条件类型渲染当前值。 */
     public String toExpression(ExpressionAdaptor adaptor) {
         if (value instanceof Operand) {
             return adaptor.toRight(this);

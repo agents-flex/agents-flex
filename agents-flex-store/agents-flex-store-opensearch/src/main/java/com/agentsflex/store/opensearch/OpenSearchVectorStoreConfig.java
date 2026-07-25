@@ -19,7 +19,11 @@ import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
 /**
- * 连接 open search 配置：<a href="https://opensearch.org/docs/latest/clients/java/">opensearch-java</a>
+ * OpenSearch 向量存储连接配置。
+ *
+ * <p>支持 API Key、用户名密码或无认证连接，并提供默认索引名。</p>
+ *
+ * @see <a href="https://opensearch.org/docs/latest/clients/java/">OpenSearch Java Client</a>
  *
  * @author songyinyin
  * @since 2024/8/10 下午8:39

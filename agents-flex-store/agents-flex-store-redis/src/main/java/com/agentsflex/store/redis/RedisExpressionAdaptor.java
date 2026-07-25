@@ -27,6 +27,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * 将通用条件树转换为 RediSearch 查询语法。
+ *
+ * <p>有序比较使用数值范围，字符串相等和集合判断使用 TAG 查询；渲染过程中
+ * 会通知存储为首次出现的元数据字段创建对应索引。</p>
+ */
 class RedisExpressionAdaptor implements ExpressionAdaptor {
 
     private final String indexName;

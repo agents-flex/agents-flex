@@ -17,7 +17,9 @@ package com.agentsflex.core.store.condition;
 
 import java.io.Serializable;
 
+/** 条件中的可渲染操作数，例如字段 {@link Key}、值 {@link Value} 或条件节点。 */
 public interface Operand extends Serializable {
+    /** 使用指定适配器转换为目标过滤语言片段。 */
     String toExpression(ExpressionAdaptor adaptor);
 
 }

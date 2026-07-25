@@ -22,6 +22,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 将通用条件树转换为 Chroma {@code where} 过滤对象。
+ *
+ * <p>连续 AND 条件组合为 {@code $and}，OR 分段组合为 {@code $or}；分组和 NOT
+ * 递归转换，以保留原始布尔逻辑。</p>
+ */
 @SuppressWarnings("unchecked")
 final class ChromaConditionBuilder {
 

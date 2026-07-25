@@ -51,12 +51,22 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * 基于 RedisJSON 与 RediSearch 的文档向量存储。
+ *
+ * <p>每个集合映射为独立的搜索索引和键前缀；首次使用集合时自动创建并校验索引。
+ * 元数据字段会根据查询条件按数值或标签类型动态加入索引，并按索引分别缓存，
+ * 从而避免不同集合之间共享字段定义。</p>
+ */
 public class RedisVectorStore extends DocumentStore {
 
     protected final RedisVectorStoreConfig config;
     protected final JedisPooled jedis;
+    /** 已完成结构校验的索引名缓存。 */
     protected final Set<String> redisIndexesCache = ConcurrentHashMap.newKeySet();
+    /** 每个索引独立的创建锁，防止同一进程内并发建索引。 */
     protected final ConcurrentMap<String, Object> indexLocks = new ConcurrentHashMap<>();
+    /** 按索引隔离的元数据字段类型缓存。 */
     protected final ConcurrentMap<String, ConcurrentMap<String, MetadataFieldType>> metadataFieldsCache = new ConcurrentHashMap<>();
     protected static final Logger logger = LoggerFactory.getLogger(RedisVectorStore.class);
 
@@ -73,6 +83,7 @@ public class RedisVectorStore extends DocumentStore {
     }
 
 
+    /** 确保索引存在、结构兼容且元数据字段缓存已经初始化。 */
     protected void createSchemaIfNecessary(String indexName) {
         if (redisIndexesCache.contains(indexName)) {
             return;
@@ -93,7 +104,7 @@ public class RedisVectorStore extends DocumentStore {
                     jedis.ftCreate(indexName, ftCreateParams, schemaFields());
                     indexInfo = getIndexInfo(indexName);
                 } catch (JedisDataException e) {
-                    // Another process may have created the index after our FT.INFO call.
+                    // FT.INFO 与 FT.CREATE 之间可能有其他进程完成了索引创建。
                     if (!isIndexAlreadyExists(e)) {
                         throw e;
                     }

@@ -54,8 +54,15 @@ import static io.qdrant.client.ValueFactory.nullValue;
 import static io.qdrant.client.ValueFactory.value;
 import static io.qdrant.client.VectorsFactory.vectors;
 
+/**
+ * 基于 Qdrant gRPC 客户端的文档向量存储。
+ *
+ * <p>支持普通连接、API Key 和自定义 CA 的 TLS 连接。文档 ID、标题、正文和业务
+ * 元数据写入 payload；查询条件由 {@link QdrantConditionBuilder} 转换为原生 Filter。</p>
+ */
 public class QdrantVectorStore extends DocumentStore {
 
+    /** 保存原始业务 ID，避免 Qdrant 点 ID 类型限制导致信息丢失。 */
     static final String ID_PAYLOAD_KEY = "__agentsflex_id";
     static final String TITLE_PAYLOAD_KEY = "__agentsflex_title";
     static final String CONTENT_PAYLOAD_KEY = "__agentsflex_content";

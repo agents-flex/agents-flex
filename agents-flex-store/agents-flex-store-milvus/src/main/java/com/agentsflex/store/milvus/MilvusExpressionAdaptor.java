@@ -11,6 +11,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.StringJoiner;
 
+/**
+ * 将通用条件树转换为 Milvus 标量过滤表达式。
+ *
+ * <p>负责 Milvus 运算符差异、字符串转义、IN/NOT IN 数组、BETWEEN 展开和
+ * NULL 判断，并保持条件分组结构。</p>
+ */
 public class MilvusExpressionAdaptor implements ExpressionAdaptor {
 
     public static final MilvusExpressionAdaptor DEFAULT = new MilvusExpressionAdaptor();

@@ -18,6 +18,11 @@ package com.agentsflex.store.qdrant;
 import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
+/**
+ * Qdrant 向量存储配置。
+ *
+ * <p>URI 默认使用 gRPC 端口 6334；配置 CA 文件时启用 TLS，API Key 为可选项。</p>
+ */
 public class QdrantVectorStoreConfig implements DocumentStoreConfig {
 
     private String uri = "localhost:6334";

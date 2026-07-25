@@ -23,6 +23,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.StringJoiner;
 
+/**
+ * 将通用条件树转换为 Elasticsearch query string 语法。
+ *
+ * <p>字符串值和字段名会进行必要转义；IN/NOT IN 转换为 OR 词项组，范围条件
+ * 转换为 Elasticsearch 区间语法。</p>
+ */
 class ElasticSearchExpressionAdaptor implements ExpressionAdaptor {
 
     static final ElasticSearchExpressionAdaptor DEFAULT = new ElasticSearchExpressionAdaptor();

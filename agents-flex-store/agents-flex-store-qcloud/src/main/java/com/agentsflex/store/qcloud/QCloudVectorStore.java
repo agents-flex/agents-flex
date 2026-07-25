@@ -30,7 +30,12 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 /**
- * doc https://cloud.tencent.com/document/product/1709/95121
+ * 腾讯云向量数据库文档存储实现。
+ *
+ * <p>通过 HTTP API 完成文档写入、删除、更新和向量检索，认证信息由
+ * {@link QCloudVectorStoreConfig} 提供。</p>
+ *
+ * @see <a href="https://cloud.tencent.com/document/product/1709/95121">腾讯云向量数据库 API</a>
  */
 public class QCloudVectorStore extends DocumentStore {
 
