@@ -37,8 +37,8 @@ public class ChromaVectorStoreConfig implements DocumentStoreConfig {
     private String collectionName = "agents-flex-store";
     private boolean autoCreateCollection = true;
     private String apiKey;
-    private String tenant;
-    private String database;
+    private String tenant = "default_tenant";
+    private String database = "default_database";
 
     public ChromaVectorStoreConfig() {
     }

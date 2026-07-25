@@ -21,13 +21,14 @@ import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
-import com.agentsflex.core.store.condition.ExpressionAdaptor;
+import com.agentsflex.core.store.exception.StoreException;
 import com.agentsflex.core.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URLEncoder;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,10 +44,11 @@ public class ChromaVectorStore extends DocumentStore {
     private final String tenant;
     private final String database;
     private final ChromaVectorStoreConfig config;
-    private final ExpressionAdaptor expressionAdaptor;
+    private final ChromaConditionBuilder conditionBuilder = new ChromaConditionBuilder();
     private final AgentsFlexHttpClient agentsFlexHttpClient;
-    private final int MAX_RETRIES = 3;
-    private final long RETRY_INTERVAL_MS = 1000;
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_INTERVAL_MS = 1000;
+    private static final String TITLE_METADATA_KEY = "__agentsflex_document_title";
 
     private static final String BASE_API = "/api/v2";
 
@@ -57,8 +59,6 @@ public class ChromaVectorStore extends DocumentStore {
         this.database = config.getDatabase();
         this.defaultCollectionName = config.getCollectionName();
         this.config = config;
-        this.expressionAdaptor = ChromaExpressionAdaptor.DEFAULT;
-
         // 创建并配置HttpClient实例
         this.agentsFlexHttpClient = AgentsFlexHttpClient.getDefault();
 
@@ -209,7 +209,7 @@ public class ChromaVectorStore extends DocumentStore {
             }
         }
 
-        throw new IOException("Collection not found: " + collectionName);
+        throw new CollectionNotFoundException(collectionName);
     }
 
     private void createCollection(String collectionName) throws IOException {
@@ -230,10 +230,7 @@ public class ChromaVectorStore extends DocumentStore {
         try {
             Object responseObj = parseJsonResponse(responseBody);
 
-            Map<String, Object> responseMap = null;
-            if (responseObj instanceof Map) {
-                responseMap = (Map<String, Object>) responseObj;
-            }
+            Map<String, Object> responseMap = asResponseMap(responseObj, "create collection");
             if (responseMap.containsKey("error")) {
                 throw new IOException("Failed to create collection: " + responseMap.get("error"));
             }
@@ -258,38 +255,12 @@ public class ChromaVectorStore extends DocumentStore {
             String collectionName = getCollectionName(options);
             ensureCollectionExists(collectionName);
 
-            List<String> ids = new ArrayList<>();
-            List<List<Double>> embeddings = new ArrayList<>();
-            List<Map<String, Object>> metadatas = new ArrayList<>();
-            List<String> documentsContent = new ArrayList<>();
-
-            for (Document doc : documents) {
-                ids.add(String.valueOf(doc.getId()));
-
-                if (doc.getVector() != null) {
-                    List<Double> embedding = doc.getVectorAsDoubleList();
-                    embeddings.add(embedding);
-                } else {
-                    embeddings.add(null);
-                }
-
-                Map<String, Object> metadata = doc.getMetadataMap() != null ?
-                    new HashMap<>(doc.getMetadataMap()) : new HashMap<>();
-                metadatas.add(metadata);
-
-                documentsContent.add(doc.getContent());
-            }
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("ids", ids);
-            requestBody.put("embeddings", embeddings);
-            requestBody.put("metadatas", metadatas);
-            requestBody.put("documents", documentsContent);
+            Map<String, Object> requestBody = createDocumentRequest(documents);
 
             String collectionId = getCollectionId(collectionName);
 
             // 构建包含tenant和database的完整URL
-            String collectionUrl = buildCollectionUrl(collectionId, "add");
+            String collectionUrl = buildCollectionUrl(collectionId, "upsert");
 
             Map<String, String> headers = createHeaders();
 
@@ -305,10 +276,7 @@ public class ChromaVectorStore extends DocumentStore {
 
             Object responseObj = parseJsonResponse(responseBody);
 
-            Map<String, Object> responseMap = null;
-            if (responseObj instanceof Map) {
-                responseMap = (Map<String, Object>) responseObj;
-            }
+            Map<String, Object> responseMap = asResponseMap(responseObj, "store documents");
             if (responseMap.containsKey("error")) {
                 String errorMsg = "Error storing documents: " + responseMap.get("error");
                 logger.error(errorMsg);
@@ -362,10 +330,7 @@ public class ChromaVectorStore extends DocumentStore {
 
             Object responseObj = parseJsonResponse(responseBody);
 
-            Map<String, Object> responseMap = null;
-            if (responseObj instanceof Map) {
-                responseMap = (Map<String, Object>) responseObj;
-            }
+            Map<String, Object> responseMap = asResponseMap(responseObj, "delete documents");
             if (responseMap.containsKey("error")) {
                 String errorMsg = "Error deleting documents: " + responseMap.get("error");
                 logger.error(errorMsg);
@@ -390,22 +355,18 @@ public class ChromaVectorStore extends DocumentStore {
         }
 
         try {
-            // Chroma doesn't support direct update, so we delete and re-add
-            List<Object> ids = documents.stream().map(Document::getId).collect(Collectors.toList());
-            StoreResult deleteResult = doDelete(ids, options);
-
-            if (!deleteResult.isSuccess()) {
-                logger.warn("Delete failed during update operation: {}", deleteResult.toString());
-                // 尝试继续添加，因为可能有些文档是新的
+            String collectionName = getCollectionName(options);
+            ensureCollectionExists(collectionName);
+            String collectionId = getCollectionId(collectionName);
+            String collectionUrl = buildCollectionUrl(collectionId, "upsert");
+            String request = safeJsonSerialize(createDocumentRequest(documents));
+            String responseBody = executeWithRetry(() -> agentsFlexHttpClient.post(
+                collectionUrl, createHeaders(), request));
+            Map<String, Object> response = asResponseMap(parseJsonResponse(responseBody), "update documents");
+            if (response.containsKey("error")) {
+                return StoreResult.fail("Update failed: " + response.get("error"));
             }
-
-            StoreResult storeResult = doStore(documents, options);
-
-            if (storeResult.isSuccess()) {
-                logger.debug("Successfully updated {} documents", documents.size());
-            }
-
-            return storeResult;
+            return StoreResult.successWithIds(documents);
         } catch (Exception e) {
             logger.error("Error updating documents in Chroma", e);
             return StoreResult.fail("Update failed: " + e.getMessage(), e);
@@ -442,22 +403,18 @@ public class ChromaVectorStore extends DocumentStore {
             // 设置返回数量
             requestBody.put("n_results", limit);
 
+            validateMinScore(wrapper.getMinScore());
+            List<String> include = new ArrayList<>(Arrays.asList("documents", "metadatas", "distances"));
+            if (wrapper.isOutputVector()) {
+                include.add("embeddings");
+            }
+            requestBody.put("include", include);
+
             // 设置过滤条件
             if (wrapper.getCondition() != null) {
-                try {
-                    String whereClause = expressionAdaptor.toCondition(wrapper.getCondition());
-                    // Chroma的where条件是JSON对象，需要解析
-                    Object whereObj = parseJsonResponse(whereClause);
-
-                    Map<String, Object> whereMap = null;
-                    if (whereObj instanceof Map) {
-                        whereMap = (Map<String, Object>) whereObj;
-                    }
-                    requestBody.put("where", whereMap);
-                    logger.debug("Search with filter condition: {}", whereClause);
-                } catch (Exception e) {
-                    logger.warn("Failed to parse filter condition: {}, ignoring condition", e.getMessage());
-                }
+                Map<String, Object> where = conditionBuilder.build(wrapper.getCondition());
+                requestBody.put("where", where);
+                logger.debug("Search with filter condition: {}", where);
             }
 
             String collectionId = getCollectionId(collectionName);
@@ -471,29 +428,24 @@ public class ChromaVectorStore extends DocumentStore {
 
             String responseBody = executeWithRetry(() -> agentsFlexHttpClient.post(collectionUrl, headers, jsonRequestBody));
             if (responseBody == null) {
-                logger.error("Error searching documents: no response");
-                return Collections.emptyList();
+                throw new IOException("Error searching documents: no response");
             }
 
 
             Object responseObj = parseJsonResponse(responseBody);
 
-            Map<String, Object> responseMap = null;
-            if (responseObj instanceof Map) {
-                responseMap = (Map<String, Object>) responseObj;
-            }
+            Map<String, Object> responseMap = asResponseMap(responseObj, "search documents");
 
             // 检查响应是否包含error字段
             if (responseMap.containsKey("error")) {
-                logger.error("Error searching documents: {}", responseMap.get("error"));
-                return Collections.emptyList();
+                throw new IOException("Error searching documents: " + responseMap.get("error"));
             }
 
             // 解析结果
-            return parseSearchResults(responseMap);
+            return parseSearchResults(responseMap, wrapper);
         } catch (Exception e) {
-            logger.error("Error searching documents in Chroma", e);
-            return Collections.emptyList();
+            throw e instanceof StoreException ? (StoreException) e
+                : new StoreException("Search failed: " + e.getMessage(), e);
         }
     }
 
@@ -503,65 +455,13 @@ public class ChromaVectorStore extends DocumentStore {
     public List<Document> searchInternal(double[] vector, int topK, StoreOptions options) {
         Objects.requireNonNull(vector, "Vector cannot be null");
 
-        if (topK <= 0) {
-            topK = 10;
-        }
-
-        try {
-            // 确保集合存在
-            String collectionName = getCollectionName(options);
-            ensureCollectionExists(collectionName);
-
-            Map<String, Object> requestBody = new HashMap<>();
-
-            // 设置查询向量
-            List<Double> queryEmbedding = Arrays.stream(vector)
-                .boxed()
-                .collect(Collectors.toList());
-            requestBody.put("query_embeddings", Collections.singletonList(queryEmbedding));
-
-            // 设置返回数量
-            requestBody.put("n_results", topK);
-
-            String collectionId = getCollectionId(collectionName);
-
-            // 构建包含tenant和database的完整URL
-            String collectionUrl = buildCollectionUrl(collectionId, "query");
-
-            Map<String, String> headers = createHeaders();
-
-            String jsonRequestBody = safeJsonSerialize(requestBody);
-
-            logger.debug("Performing direct vector search with dimension: {}", vector.length);
-
-            String responseBody = executeWithRetry(() -> agentsFlexHttpClient.post(collectionUrl, headers, jsonRequestBody));
-            if (responseBody == null) {
-                logger.error("Error searching documents: no response");
-                return Collections.emptyList();
-            }
-
-            Object responseObj = parseJsonResponse(responseBody);
-
-            Map<String, Object> responseMap = null;
-            if (responseObj instanceof Map) {
-                responseMap = (Map<String, Object>) responseObj;
-            }
-
-            // 检查响应是否包含error字段
-            if (responseMap.containsKey("error")) {
-                logger.error("Error searching documents: {}", responseMap.get("error"));
-                return Collections.emptyList();
-            }
-
-            // 解析结果
-            return parseSearchResults(responseMap);
-        } catch (Exception e) {
-            logger.error("Error searching documents in Chroma", e);
-            return Collections.emptyList();
-        }
+        SearchWrapper wrapper = new SearchWrapper();
+        wrapper.setVectorByNumbers(Arrays.stream(vector).boxed().collect(Collectors.toList()));
+        wrapper.setMaxResults(topK > 0 ? topK : 10);
+        return doSearch(wrapper, options);
     }
 
-    private List<Document> parseSearchResults(Map<String, Object> responseMap) {
+    private List<Document> parseSearchResults(Map<String, Object> responseMap, SearchWrapper wrapper) {
         try {
             List<String> ids = extractResultsFromNestedList(responseMap, "ids");
             List<String> documents = extractResultsFromNestedList(responseMap, "documents");
@@ -584,8 +484,13 @@ public class ChromaVectorStore extends DocumentStore {
                     doc.setContent(documents.get(i));
                 }
 
-                if (metadatas != null && i < metadatas.size()) {
-                    doc.setMetadataMap(metadatas.get(i));
+                if (metadatas != null && i < metadatas.size() && metadatas.get(i) != null) {
+                    Map<String, Object> metadata = new HashMap<>(metadatas.get(i));
+                    Object title = metadata.remove(TITLE_METADATA_KEY);
+                    if (title != null) {
+                        doc.setTitle(String.valueOf(title));
+                    }
+                    doc.setMetadataMap(filterMetadata(metadata, wrapper.getOutputFields()));
                 }
 
                 if (embeddings != null && i < embeddings.size() && embeddings.get(i) != null) {
@@ -599,15 +504,16 @@ public class ChromaVectorStore extends DocumentStore {
                     score = Math.max(0, Math.min(1, score));
                     doc.setScore(score);
                 }
-
-                resultDocs.add(doc);
+                if (wrapper.getMinScore() == null || doc.getScore() == null
+                    || doc.getScore() >= wrapper.getMinScore()) {
+                    resultDocs.add(doc);
+                }
             }
 
             logger.debug("Found {} documents in search results", resultDocs.size());
             return resultDocs;
         } catch (Exception e) {
-            logger.error("Failed to parse search results", e);
-            return Collections.emptyList();
+            throw new StoreException("Failed to parse Chroma search results: " + e.getMessage(), e);
         }
     }
 
@@ -649,6 +555,69 @@ public class ChromaVectorStore extends DocumentStore {
         }
 
         return headers;
+    }
+
+    private Map<String, Object> createDocumentRequest(List<Document> documents) {
+        List<String> ids = new ArrayList<>(documents.size());
+        List<List<Double>> embeddings = new ArrayList<>(documents.size());
+        List<Map<String, Object>> metadatas = new ArrayList<>(documents.size());
+        List<String> contents = new ArrayList<>(documents.size());
+        for (Document document : documents) {
+            if (document == null || document.getId() == null) {
+                throw new IllegalArgumentException("Chroma documents and document IDs cannot be null");
+            }
+            ids.add(String.valueOf(document.getId()));
+            embeddings.add(document.getVectorAsDoubleList());
+            Map<String, Object> metadata = document.getMetadataMap() == null
+                ? new HashMap<>() : new HashMap<>(document.getMetadataMap());
+            if (metadata.containsKey(TITLE_METADATA_KEY)) {
+                throw new IllegalArgumentException("Metadata key is reserved: " + TITLE_METADATA_KEY);
+            }
+            if (document.getTitle() != null) {
+                metadata.put(TITLE_METADATA_KEY, document.getTitle());
+            }
+            metadatas.add(metadata);
+            contents.add(document.getContent());
+        }
+        Map<String, Object> request = new HashMap<>();
+        request.put("ids", ids);
+        request.put("embeddings", embeddings);
+        request.put("metadatas", metadatas);
+        request.put("documents", contents);
+        return request;
+    }
+
+    private Map<String, Object> filterMetadata(Map<String, Object> metadata, List<String> outputFields) {
+        if (outputFields == null) {
+            return metadata;
+        }
+        Map<String, Object> filtered = new HashMap<>();
+        for (String field : outputFields) {
+            String metadataField = field;
+            if (metadataField.startsWith("metadataMap.")) {
+                metadataField = metadataField.substring("metadataMap.".length());
+            } else if (metadataField.startsWith("metadata.")) {
+                metadataField = metadataField.substring("metadata.".length());
+            }
+            if (metadata.containsKey(metadataField)) {
+                filtered.put(metadataField, metadata.get(metadataField));
+            }
+        }
+        return filtered;
+    }
+
+    private void validateMinScore(Double minScore) {
+        if (minScore != null && (minScore < 0 || minScore > 1)) {
+            throw new IllegalArgumentException("minScore must be between 0 and 1");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asResponseMap(Object response, String operation) throws IOException {
+        if (!(response instanceof Map)) {
+            throw new IOException("Invalid Chroma response while attempting to " + operation);
+        }
+        return (Map<String, Object>) response;
     }
 
     private <T> T executeWithRetry(HttpOperation<T> operation) throws IOException {
@@ -737,14 +706,15 @@ public class ChromaVectorStore extends DocumentStore {
         StringBuilder urlBuilder = new StringBuilder(baseUrl).append(BASE_API);
 
         if (tenant != null && !tenant.isEmpty()) {
-            urlBuilder.append("/tenants/").append(tenant);
+            urlBuilder.append("/tenants/").append(encodePathSegment(tenant));
 
             if (database != null && !database.isEmpty()) {
-                urlBuilder.append("/databases/").append(database);
+                urlBuilder.append("/databases/").append(encodePathSegment(database));
             }
         }
 
-        urlBuilder.append("/collections/").append(collectionId).append("/").append(operation);
+        urlBuilder.append("/collections/").append(encodePathSegment(collectionId))
+            .append("/").append(encodePathSegment(operation));
         return urlBuilder.toString();
     }
 
@@ -767,10 +737,20 @@ public class ChromaVectorStore extends DocumentStore {
             // 尝试获取默认集合ID，如果能获取到则说明集合存在
             getCollectionId(finalCollectionName);
             logger.debug("Collection '{}' exists", finalCollectionName);
-        } catch (IOException e) {
-            // 如果获取集合ID失败，说明集合不存在，需要创建
+        } catch (CollectionNotFoundException e) {
+            if (!config.isAutoCreateCollection()) {
+                throw e;
+            }
             logger.info("Collection '{}' does not exist, creating...", finalCollectionName);
-            createCollection(finalCollectionName);
+            try {
+                createCollection(finalCollectionName);
+            } catch (IOException createFailure) {
+                try {
+                    getCollectionId(finalCollectionName);
+                } catch (IOException stillMissing) {
+                    throw createFailure;
+                }
+            }
             logger.info("Collection '{}' created successfully", finalCollectionName);
         }
     }
@@ -782,15 +762,29 @@ public class ChromaVectorStore extends DocumentStore {
         StringBuilder urlBuilder = new StringBuilder(baseUrl).append(BASE_API);
 
         if (tenant != null && !tenant.isEmpty()) {
-            urlBuilder.append("/tenants/").append(tenant);
+            urlBuilder.append("/tenants/").append(encodePathSegment(tenant));
 
             if (database != null && !database.isEmpty()) {
-                urlBuilder.append("/databases/").append(database);
+                urlBuilder.append("/databases/").append(encodePathSegment(database));
             }
         }
 
         urlBuilder.append("/collections");
         return urlBuilder.toString();
+    }
+
+    private String encodePathSegment(String value) {
+        try {
+            return URLEncoder.encode(value, "UTF-8").replace("+", "%20");
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid Chroma URL path segment", e);
+        }
+    }
+
+    private static class CollectionNotFoundException extends IOException {
+        CollectionNotFoundException(String collectionName) {
+            super("Collection not found: " + collectionName);
+        }
     }
 
     /**
