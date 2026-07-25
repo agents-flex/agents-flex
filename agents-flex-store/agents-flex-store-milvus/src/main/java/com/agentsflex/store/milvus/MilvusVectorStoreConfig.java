@@ -300,6 +300,10 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
             throw new IllegalArgumentException("Invalid metricType: " + metricType +
                 ". Supported: COSINE, IP, L2");
         }
+        if (!isValidConsistencyLevel(consistencyLevel)) {
+            throw new IllegalArgumentException("Invalid consistencyLevel: " + consistencyLevel
+                + ". Supported: Strong, Session, Bounded, Eventually");
+        }
 
         return true;
     }
@@ -308,6 +312,13 @@ public class MilvusVectorStoreConfig implements DocumentStoreConfig, Serializabl
         return "COSINE".equalsIgnoreCase(metricType)
             || "IP".equalsIgnoreCase(metricType)
             || "L2".equalsIgnoreCase(metricType);
+    }
+
+    private boolean isValidConsistencyLevel(String consistencyLevel) {
+        return "Strong".equalsIgnoreCase(consistencyLevel)
+            || "Session".equalsIgnoreCase(consistencyLevel)
+            || "Bounded".equalsIgnoreCase(consistencyLevel)
+            || "Eventually".equalsIgnoreCase(consistencyLevel);
     }
 
 

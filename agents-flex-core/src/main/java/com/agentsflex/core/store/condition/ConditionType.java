@@ -23,7 +23,7 @@ public enum ConditionType {
     LT(" < "),
     LE(" <= "),
     IN(" IN "),
-    NIN(" MIN "),
+    NIN(" NOT IN "),
     BETWEEN(" BETWEEN "),
     ;
 

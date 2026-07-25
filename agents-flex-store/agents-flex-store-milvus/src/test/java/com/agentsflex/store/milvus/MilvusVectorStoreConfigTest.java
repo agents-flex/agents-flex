@@ -5,6 +5,7 @@ import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -47,6 +48,31 @@ public class MilvusVectorStoreConfigTest {
             .build();
 
         assertTrue(config.checkAvailable());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testRejectsInvalidConsistencyLevel() {
+        MilvusVectorStoreConfig.builder()
+            .endpoint("http://localhost:19530")
+            .consistencyLevel("invalid")
+            .build();
+    }
+
+    @Test
+    public void testClientPoolKeyUsesTheCompleteCredentialIdentity() throws Exception {
+        MilvusVectorStore first = MilvusVectorStore.create(MilvusVectorStoreConfig.builder()
+            .endpoint("http://localhost:19530")
+            .token("same-prefixed-token-a")
+            .build());
+        MilvusVectorStore second = MilvusVectorStore.create(MilvusVectorStoreConfig.builder()
+            .endpoint("http://localhost:19530")
+            .token("same-prefixed-token-b")
+            .build());
+
+        Field poolKey = MilvusVectorStore.class.getDeclaredField("poolKey");
+        poolKey.setAccessible(true);
+
+        assertNotEquals(poolKey.get(first), poolKey.get(second));
     }
 
 

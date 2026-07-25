@@ -21,15 +21,18 @@ import com.agentsflex.core.store.DocumentStore;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreOptions;
 import com.agentsflex.core.store.StoreResult;
+import com.agentsflex.core.store.exception.StoreException;
 import com.agentsflex.core.util.MapUtil;
 import com.agentsflex.core.util.StringUtil;
 import com.google.gson.*;
 import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.common.ConsistencyLevel;
 import io.milvus.v2.common.DataType;
 import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.service.collection.request.CreateCollectionReq;
 import io.milvus.v2.service.collection.request.DescribeCollectionReq;
+import io.milvus.v2.service.collection.request.GetLoadStateReq;
 import io.milvus.v2.service.collection.request.LoadCollectionReq;
 import io.milvus.v2.service.index.request.CreateIndexReq;
 import io.milvus.v2.service.vector.request.DeleteReq;
@@ -37,10 +40,14 @@ import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.request.SearchReq;
 import io.milvus.v2.service.vector.request.UpsertReq;
 import io.milvus.v2.service.vector.request.data.FloatVec;
+import io.milvus.v2.service.vector.response.InsertResp;
 import io.milvus.v2.service.vector.response.SearchResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -104,6 +111,8 @@ public class MilvusVectorStore extends DocumentStore {
      */
     private static final ConcurrentHashMap<String, MilvusClientV2> clientPool = new ConcurrentHashMap<>();
 
+    private static final Object[] COLLECTION_LOCKS = createCollectionLocks(64);
+
     /**
      * 集合存在性缓存，key 为集合名称，value 为是否存在标记
      * 使用 ConcurrentHashMap 保证线程安全，避免重复创建集合
@@ -164,6 +173,8 @@ public class MilvusVectorStore extends DocumentStore {
      * 是否自动创建集合
      */
     private final boolean autoCreateCollection;
+
+    private final ConsistencyLevel consistencyLevel;
 
     /**
      * 保留字段集合，用于判断哪些字段不应放入 metadata
@@ -237,6 +248,7 @@ public class MilvusVectorStore extends DocumentStore {
             .metricType(IndexParam.MetricType.valueOf(config.getMetricType()))
             .enableDynamicField(config.isEnableDynamicField())
             .defaultTopK(config.getDefaultTopK())
+            .consistencyLevel(parseConsistencyLevel(config.getConsistencyLevel()))
             .autoCreateCollection(true)
             .extFields(config.getExtFields())
             .primaryKeyType(config.getPrimaryKeyType())
@@ -264,6 +276,7 @@ public class MilvusVectorStore extends DocumentStore {
         this.metricType = builder.metricType != null ? builder.metricType : IndexParam.MetricType.COSINE;
         this.enableDynamicField = builder.enableDynamicField;
         this.defaultTopK = builder.defaultTopK > 0 ? builder.defaultTopK : 10;
+        this.consistencyLevel = builder.consistencyLevel != null ? builder.consistencyLevel : ConsistencyLevel.SESSION;
         this.autoCreateCollection = builder.autoCreateCollection;
         this.extFields = builder.extFields;
         this.primaryKeyType = builder.primaryKeyType != null ? builder.primaryKeyType : DataType.VarChar;
@@ -289,13 +302,54 @@ public class MilvusVectorStore extends DocumentStore {
      * @return 唯一标识字符串
      */
     private String generatePoolKey(ConnectConfig config) {
-        // 使用 uri + dbName + token 的前 8 位作为 key，平衡唯一性和简洁性
         String uri = config.getUri() != null ? config.getUri() : "";
         String dbName = config.getDbName() != null ? config.getDbName() : "default";
-        String token = config.getToken() != null ? config.getToken() : "";
-        // token 可能较长，取前 8 位作为标识即可
-        String tokenHash = token.length() > 8 ? token.substring(0, 8) : token;
-        return uri + "|" + dbName + "|" + tokenHash;
+        String credentials = String.join("\u0000",
+            valueOrEmpty(config.getToken()),
+            valueOrEmpty(config.getUsername()),
+            valueOrEmpty(config.getPassword()),
+            valueOrEmpty(config.getClientKeyPath()),
+            valueOrEmpty(config.getClientPemPath()),
+            valueOrEmpty(config.getCaPemPath()),
+            valueOrEmpty(config.getServerPemPath()),
+            valueOrEmpty(config.getServerName()),
+            valueOrEmpty(config.getProxyAddress()),
+            String.valueOf(config.getSecure()));
+        return uri + "|" + dbName + "|" + sha256(credentials);
+    }
+
+    private static String valueOrEmpty(String value) {
+        return value != null ? value : "";
+    }
+
+    private static String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                hex.append(String.format("%02x", b & 0xff));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
+    }
+
+    private static Object[] createCollectionLocks(int size) {
+        Object[] locks = new Object[size];
+        for (int i = 0; i < size; i++) {
+            locks[i] = new Object();
+        }
+        return locks;
+    }
+
+    private static ConsistencyLevel parseConsistencyLevel(String value) {
+        for (ConsistencyLevel level : ConsistencyLevel.values()) {
+            if (level.getName().equalsIgnoreCase(value)) {
+                return level;
+            }
+        }
+        throw new IllegalArgumentException("Unsupported Milvus consistency level: " + value);
     }
 
     /**
@@ -317,10 +371,6 @@ public class MilvusVectorStore extends DocumentStore {
      * 使用缓存避免重复检查，使用同步块保证线程安全
      */
     private void ensureCollectionExists(StoreOptions options) {
-        if (!autoCreateCollection) {
-            return;
-        }
-
         String collectionName = options.getCollectionNameOrDefault(this.defaultCollectionName);
 
         // 先查缓存，避免重复请求
@@ -328,7 +378,9 @@ public class MilvusVectorStore extends DocumentStore {
             return;
         }
 
-        synchronized (this) {
+        int lockIndex = (poolKey + "|" + collectionName).hashCode() & Integer.MAX_VALUE;
+        Object collectionLock = COLLECTION_LOCKS[lockIndex % COLLECTION_LOCKS.length];
+        synchronized (collectionLock) {
             // 双重检查，避免并发创建
             if (Boolean.TRUE.equals(collectionCache.get(collectionName))) {
                 return;
@@ -342,6 +394,8 @@ public class MilvusVectorStore extends DocumentStore {
                     .build();
                 milvusClient.describeCollection(describeReq);
 
+                ensureCollectionLoaded(milvusClient, collectionName);
+
                 // 集合已存在，加入缓存
                 collectionCache.put(collectionName, true);
                 logger.debug("Collection '{}' already exists", collectionName);
@@ -350,6 +404,9 @@ public class MilvusVectorStore extends DocumentStore {
                 String errorMsg = e.getMessage();
                 // 判断是否为集合不存在的异常
                 if (errorMsg != null && (errorMsg.contains("collection not found") || errorMsg.contains("can't find collection"))) {
+                    if (!autoCreateCollection) {
+                        throw new StoreException("Milvus collection does not exist: " + collectionName, e);
+                    }
                     // 集合不存在，创建新集合
                     createCollection(milvusClient, collectionName);
                     collectionCache.put(collectionName, true);
@@ -359,6 +416,17 @@ public class MilvusVectorStore extends DocumentStore {
                     throw new RuntimeException("Failed to check collection: " + e.getMessage(), e);
                 }
             }
+        }
+    }
+
+    private void ensureCollectionLoaded(MilvusClientV2 milvusClient, String collectionName) {
+        Boolean loaded = milvusClient.getLoadState(GetLoadStateReq.builder()
+            .collectionName(collectionName)
+            .build());
+        if (!Boolean.TRUE.equals(loaded)) {
+            milvusClient.loadCollection(LoadCollectionReq.builder()
+                .collectionName(collectionName)
+                .build());
         }
     }
 
@@ -475,17 +543,13 @@ public class MilvusVectorStore extends DocumentStore {
                 .collectionName(collectionName)
                 .indexParams(Collections.singletonList(indexParam))
                 .build());
-
-            // 加载集合到内存，必需步骤，否则无法执行搜索
-            milvusClient.loadCollection(LoadCollectionReq.builder()
-                .collectionName(collectionName)
-                .build());
-
-            logger.debug("Vector index created and collection loaded for: {}", collectionName);
+            logger.debug("Vector index created for: {}", collectionName);
         } catch (Exception e) {
-            // 索引创建失败不影响基本功能，记录警告日志
             logger.warn("Failed to create vector index (search may be slower): {}", e.getMessage());
         }
+
+        ensureCollectionLoaded(milvusClient, collectionName);
+        logger.debug("Collection loaded for: {}", collectionName);
     }
 
     /**
@@ -741,7 +805,7 @@ public class MilvusVectorStore extends DocumentStore {
      * @param result 搜索结果项
      * @return Document 对象
      */
-    private Document searchResultToDocument(SearchResp.SearchResult result) {
+    private Document searchResultToDocument(SearchResp.SearchResult result, boolean outputVector) {
         Document document = new Document();
         document.setId(result.getId());
         document.setScore(result.getScore() != null ? result.getScore() : null);
@@ -792,7 +856,7 @@ public class MilvusVectorStore extends DocumentStore {
 
         // 提取向量数据
 
-        if (entity.containsKey(vectorField)) {
+        if (outputVector && entity.containsKey(vectorField)) {
             Object vectorListObject = entity.get(vectorField);
             if (vectorListObject instanceof List) {
                 List<?> vecList = (List<?>) vectorListObject;
@@ -848,12 +912,16 @@ public class MilvusVectorStore extends DocumentStore {
             String collectionName = options.getCollectionNameOrDefault(this.defaultCollectionName);
 
             // 执行插入操作
-            milvusClient.insert(InsertReq.builder()
+            InsertResp response = milvusClient.insert(InsertReq.builder()
                 .collectionName(collectionName)
                 .data(dataList)
                 .build());
 
-            return StoreResult.success();
+            StoreResult result = StoreResult.successWithIds(documents);
+            if (response != null && response.getPrimaryKeys() != null && !response.getPrimaryKeys().isEmpty()) {
+                result.setIds(response.getPrimaryKeys());
+            }
+            return result;
         } catch (Exception e) {
             logger.error("Failed to store documents to Milvus", e);
             return StoreResult.fail("Store failed: " + e.getMessage(), e);
@@ -886,7 +954,8 @@ public class MilvusVectorStore extends DocumentStore {
                 .collectionName(collectionName)
                 .data(Collections.singletonList(new FloatVec(wrapper.getVector())))
                 .limit(wrapper.getMaxResults() != null ? wrapper.getMaxResults() : defaultTopK)
-                .outputFields(wrapper.getOutputFields() != null ? wrapper.getOutputFields() : Collections.singletonList("*"));
+                .consistencyLevel(consistencyLevel)
+                .outputFields(resolveOutputFields(wrapper));
 
             // 添加过滤条件
             String filter = wrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT);
@@ -910,14 +979,29 @@ public class MilvusVectorStore extends DocumentStore {
             }
 
             // 转换搜索结果
+            Double minScore = wrapper.getMinScore();
             return results.get(0).stream()
-                .map(this::searchResultToDocument)
+                .filter(result -> minScore == null
+                    || (result.getScore() != null && result.getScore() >= minScore))
+                .map(result -> searchResultToDocument(result, wrapper.isOutputVector()))
                 .collect(Collectors.toList());
 
         } catch (Exception e) {
             logger.error("Failed to search documents from Milvus", e);
-            return Collections.emptyList();
+            throw new StoreException("Search failed: " + e.getMessage(), e);
         }
+    }
+
+    private List<String> resolveOutputFields(SearchWrapper wrapper) {
+        List<String> outputFields = wrapper.getOutputFields() != null
+            ? new ArrayList<>(wrapper.getOutputFields())
+            : new ArrayList<>(Collections.singletonList("*"));
+        if (wrapper.isOutputVector() && !outputFields.contains("*") && !outputFields.contains(vectorField)) {
+            outputFields.add(vectorField);
+        } else if (!wrapper.isOutputVector()) {
+            outputFields.removeIf(vectorField::equals);
+        }
+        return outputFields;
     }
 
     /**
@@ -1005,21 +1089,14 @@ public class MilvusVectorStore extends DocumentStore {
      */
     private String buildFilterExpression(List<Object> idList) {
         if (idList.size() == 1) {
-            Object id = idList.get(0);
-            return id instanceof String
-                ? String.format("%s == '%s'", idField, id)
-                : String.format("%s == %s", idField, id);
+            return idField + " == " + MilvusExpressionAdaptor.toLiteral(idList.get(0));
         }
 
-        StringBuilder inClause = new StringBuilder().append(idField).append(" in [");
+        StringJoiner inClause = new StringJoiner(", ", idField + " in [", "]");
         for (int i = 0; i < idList.size(); i++) {
-            Object id = idList.get(i);
-            inClause.append(id instanceof String ? "'" + id + "'" : id);
-            if (i < idList.size() - 1) {
-                inClause.append(", ");
-            }
+            inClause.add(MilvusExpressionAdaptor.toLiteral(idList.get(i)));
         }
-        return inClause.append("]").toString();
+        return inClause.toString();
     }
 
     /**
@@ -1081,6 +1158,7 @@ public class MilvusVectorStore extends DocumentStore {
         private IndexParam.MetricType metricType = IndexParam.MetricType.COSINE;
         private boolean enableDynamicField = true;
         private int defaultTopK = 10;
+        private ConsistencyLevel consistencyLevel = ConsistencyLevel.SESSION;
         private boolean autoCreateCollection = true;
         private List<CreateCollectionReq.FieldSchema> extFields;
         private DataType primaryKeyType = DataType.VarChar;
@@ -1222,6 +1300,17 @@ public class MilvusVectorStore extends DocumentStore {
          */
         public Builder defaultTopK(int topK) {
             this.defaultTopK = topK;
+            return this;
+        }
+
+        /**
+         * 设置搜索一致性级别
+         *
+         * @param consistencyLevel Milvus 一致性级别
+         * @return Builder 实例
+         */
+        public Builder consistencyLevel(ConsistencyLevel consistencyLevel) {
+            this.consistencyLevel = consistencyLevel;
             return this;
         }
 

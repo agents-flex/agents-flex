@@ -253,15 +253,15 @@ public class SearchWrapper extends VectorData {
         return this;
     }
 
-    public SearchWrapper min(String key, Object value) {
-        return min(Connector.AND, key, value);
+    public SearchWrapper nin(String key, Collection<?> values) {
+        return nin(Connector.AND, key, values);
     }
 
-    public SearchWrapper min(Connector connector, String key, Object value) {
+    public SearchWrapper nin(Connector connector, String key, Collection<?> values) {
         if (this.condition == null) {
-            this.condition = new Condition(ConditionType.NIN, new Key(key), new Value(value));
+            this.condition = new Condition(ConditionType.NIN, new Key(key), new Value(values.toArray()));
         } else {
-            this.condition.connect(new Condition(ConditionType.NIN, new Key(key), new Value(value)), connector);
+            this.condition.connect(new Condition(ConditionType.NIN, new Key(key), new Value(values.toArray())), connector);
         }
         return this;
     }
