@@ -1,17 +1,11 @@
 /*
- *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
- *  <p>
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  <p>
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  <p>
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
  */
 package com.agentsflex.store.pgvector;
 
@@ -23,224 +17,175 @@ import com.agentsflex.core.store.StoreResult;
 import com.agentsflex.core.store.exception.StoreException;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
-import org.postgresql.PGConnection;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.util.PGobject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class PgvectorVectorStore extends DocumentStore {
-    private static final Logger logger = LoggerFactory.getLogger(PgvectorVectorStore.class);
+
     public static final double DEFAULT_SIMILARITY_THRESHOLD = 0.3;
+
     private final PGSimpleDataSource dataSource;
     private final String defaultCollectionName;
     private final Integer defaultVectorDimension;
     private final PgvectorVectorStoreConfig config;
 
-    private Connection connection;
-
     public PgvectorVectorStore(PgvectorVectorStoreConfig config) {
+        if (config == null || !config.checkAvailable()) {
+            throw new IllegalArgumentException("Pgvector configuration is not available");
+        }
+        this.config = config;
+        this.defaultCollectionName = config.getDefaultCollectionName();
+        this.defaultVectorDimension = config.getVectorDimension();
+
         dataSource = new PGSimpleDataSource();
-        dataSource.setServerNames(new String[]{config.getHost() + ":" + config.getPort()});
+        dataSource.setServerNames(new String[]{config.getHost()});
+        dataSource.setPortNumbers(new int[]{config.getPort()});
         dataSource.setUser(config.getUsername());
         dataSource.setPassword(config.getPassword());
         dataSource.setDatabaseName(config.getDatabaseName());
-        if (!config.getProperties().isEmpty()) {
-            config
-                .getProperties()
-                .forEach(
-                    (k, v) -> {
-                        try {
-                            dataSource.setProperty(k, v);
-                        } catch (SQLException e) {
-                            logger.error("set pg property error", e);
-                        }
-                    });
+        if (config.getProperties() != null) {
+            config.getProperties().forEach((key, value) -> setDataSourceProperty(key, value));
         }
-
-        this.defaultCollectionName = config.getDefaultCollectionName();
-        this.defaultVectorDimension = config.getVectorDimension();
-        this.config = config;
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            logger.error("[PGVector] create connection failed", e);
-        }
-        // 异步初始化数据库
-        new Thread(this::initDb).start();
+        initDb();
     }
 
-    public void initDb() {
-        // 启动的时候初始化向量表, 需要数据库支持pgvector插件
-        // pg管理员需要在对应的库上执行 CREATE EXTENSION IF NOT EXISTS vector;
-        if (config.isAutoCreateCollection()) {
-            createCollectionIfNotExist(defaultCollectionName, config.getVectorDimension());
-        }
-        // 注册PGVector
-        registerVectorType();
-    }
-
-    private Connection getConnection() throws SQLException {
-        Connection connection = dataSource.getConnection();
-        connection.setAutoCommit(false);
-        Statement setupStmt = connection.createStatement();
-        setupStmt.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
-        connection.commit();
-        return connection;
-    }
-
-    private void registerVectorType() {
-        try (Connection connection = getConnection()) {
-            connection.unwrap(PGConnection.class).addDataType("vector", PGobject.class);
-        } catch (SQLException e) {
-            logger.error("register vector error", e);
-        }
-    }
-
-    private void createCollectionIfNotExist(String collectionName, Integer dimensions) {
-        if (StringUtil.noText(collectionName) || dimensions == null) {
-            throw new IllegalArgumentException("collectionName or dimensions can not be null");
-        }
-        try (CallableStatement statement =
-                 connection.prepareCall(
-                     "CREATE TABLE IF NOT EXISTS "
-                         + collectionName
-                         + " (id varchar(100) PRIMARY KEY, content text, vector vector("
-                         + dimensions
-                         + "), metadata jsonb)")) {
-            statement.executeUpdate();
-            connection.commit();
-        } catch (SQLException e) {
-            logger.error("[PGVector] create collectionName failed", e);
-        }
-        // 默认情况下，pgvector 执行精确的最近邻搜索，从而提供完美的召回率. 可以通过索引来修改 pgvector 的搜索方式，以获得更好的性能。
-        // By default, pgvector performs exact nearest neighbor search, which provides perfect recall.
-        if (config.isUseHnswIndex()) {
-            try (Statement stmt = connection.createStatement()) {
-                stmt.executeUpdate(
-                    "CREATE INDEX IF NOT EXISTS "
-                        + collectionName
-                        + "_vector_idx ON "
-                        + collectionName
-                        + " USING hnsw (vector vector_cosine_ops)");
-                connection.commit();
-            } catch (SQLException e) {
-                logger.error("[PGVector] create hnsw_index failed", e);
+    public final void initDb() {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+            if (config.isAutoCreateCollection() && StringUtil.hasText(defaultCollectionName)) {
+                createCollectionIfNotExist(connection, defaultCollectionName, defaultVectorDimension);
             }
+        } catch (SQLException e) {
+            throw new StoreException("Failed to initialize pgvector", e);
         }
     }
 
     @Override
     public StoreResult doStore(List<Document> documents, StoreOptions options) {
-        // 表名
-        String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensionsOrDefault(defaultVectorDimension));
-        try {
-            PreparedStatement pstmt =
-                connection.prepareStatement(
-                    "insert into "
-                        + collectionName
-                        + " (id, content, vector, metadata) values (?, ?, ?, ?::jsonb)");
-            for (Document doc : documents) {
-                Map<String, Object> metadatas = doc.getMetadataMap();
-                JSONObject jsonObject =
-                    JSON.parseObject(
-                        JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
-                pstmt.setString(1, String.valueOf(doc.getId()));
-                pstmt.setString(2, doc.getContent());
-                pstmt.setObject(3, PgvectorUtil.toPgVector(doc.getVectorAsDoubleArray()));
-                pstmt.setString(4, jsonObject.toString());
-                pstmt.addBatch();
-            }
-
-            pstmt.executeBatch();
-            connection.commit();
-        } catch (SQLException e) {
-            logger.error("[PGVector] store vector error", e);
-            return StoreResult.fail();
+        if (documents == null || documents.isEmpty()) {
+            return StoreResult.success();
         }
-        return StoreResult.successWithIds(documents);
+        String collectionName = resolveCollectionName(options);
+        int dimensions = resolveDimensions(documents, options);
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                createCollectionIfNotExist(connection, collectionName, dimensions);
+                String sql = "INSERT INTO " + quoteIdentifier(collectionName)
+                    + " (id, title, content, vector, metadata) VALUES (?, ?, ?, ?, ?::jsonb)";
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    for (Document document : documents) {
+                        statement.setString(1, String.valueOf(document.getId()));
+                        statement.setString(2, document.getTitle());
+                        statement.setString(3, document.getContent());
+                        statement.setObject(4, toPgVector(document));
+                        statement.setString(5, JSON.toJSONString(metadata(document)));
+                        statement.addBatch();
+                    }
+                    statement.executeBatch();
+                }
+                connection.commit();
+                return StoreResult.successWithIds(documents);
+            } catch (Exception e) {
+                rollback(connection, e);
+                return StoreResult.fail("Store failed: " + e.getMessage(), e);
+            }
+        } catch (SQLException e) {
+            return StoreResult.fail("Store failed: " + e.getMessage(), e);
+        }
     }
 
     @Override
     public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
-        String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensionsOrDefault(defaultVectorDimension));
-
-        StringBuilder sql = new StringBuilder("DELETE FROM " + collectionName + " WHERE id IN (");
-        for (int i = 0; i < ids.size(); i++) {
-            sql.append("?");
-            if (i < ids.size() - 1) {
-                sql.append(",");
-            }
+        if (ids == null || ids.isEmpty()) {
+            return StoreResult.success();
         }
-        sql.append(")");
+        String collectionName = resolveCollectionName(options);
+        StringBuilder sql = new StringBuilder("DELETE FROM ")
+            .append(quoteIdentifier(collectionName)).append(" WHERE id IN (");
+        sql.append(String.join(", ", Collections.nCopies(ids.size(), "?"))).append(")");
 
-        try {
-            PreparedStatement pstmt = connection.prepareStatement(sql.toString());
-            ArrayList<?> list = new ArrayList<>(ids);
-            for (int i = 0; i < list.size(); i++) {
-                pstmt.setString(i + 1, (String) list.get(i));
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            int index = 1;
+            for (Object id : ids) {
+                statement.setString(index++, String.valueOf(id));
             }
-
-            pstmt.executeUpdate();
-            connection.commit();
+            statement.executeUpdate();
+            return StoreResult.success();
         } catch (Exception e) {
-            logger.error("[PGVector] delete document error: " + e, e);
             return StoreResult.fail("Delete failed: " + e.getMessage(), e);
         }
-
-        return StoreResult.success();
     }
 
     @Override
-    public List<Document> doSearch(SearchWrapper searchWrapper, StoreOptions options) {
-        String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensionsOrDefault(defaultVectorDimension));
-        StringBuilder sql = new StringBuilder("select ");
-        if (searchWrapper.isOutputVector()) {
-            sql.append("id, vector, content, metadata");
-        } else {
-            sql.append("id,  content, metadata");
-        }
-
-        sql.append(" from ").append(collectionName);
-        sql.append(" where vector <=> ? < ? order by vector <=> ? LIMIT ?");
-        // 使用余弦距离计算最相似的文档
-        try {
-            PreparedStatement stmt = connection.prepareStatement(sql.toString());
-            PGobject vector = PgvectorUtil.toPgVector(searchWrapper.getVectorAsDoubleArray());
-            stmt.setObject(1, vector);
-            stmt.setObject(
-                2, Optional.ofNullable(searchWrapper.getMinScore()).orElse(DEFAULT_SIMILARITY_THRESHOLD));
-            stmt.setObject(3, vector);
-            stmt.setObject(4, searchWrapper.getMaxResults());
-
-            ResultSet resultSet = stmt.executeQuery();
-            List<Document> documents = new ArrayList<>();
-            while (resultSet.next()) {
-                Document doc = new Document();
-                doc.setId(resultSet.getString("id"));
-                doc.setContent(resultSet.getString("content"));
-                doc.putMetadata(JSON.parseObject(resultSet.getString("metadata")));
-
-                if (searchWrapper.isOutputVector()) {
-                    String vectorStr = resultSet.getString("vector");
-                    doc.setVector(PgvectorUtil.fromPgVector(vectorStr));
-                }
-
-                documents.add(doc);
-            }
-
-            return documents;
-        } catch (Exception e) {
-            logger.error("[PGVector] Error searching in pgvector", e);
+    public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
+        if (wrapper == null || wrapper.getVector() == null || wrapper.getVector().length == 0) {
             return Collections.emptyList();
+        }
+        validateMinScore(wrapper.getMinScore());
+        int maxResults = resolveMaxResults(wrapper.getMaxResults());
+        String collectionName = resolveCollectionName(options);
+        PgvectorConditionBuilder conditionBuilder = new PgvectorConditionBuilder();
+        String condition = wrapper.toFilterExpression(conditionBuilder);
+
+        StringBuilder sql = new StringBuilder("SELECT id, title, content, metadata, score");
+        if (wrapper.isOutputVector()) {
+            sql.append(", vector");
+        }
+        sql.append(" FROM (SELECT id, title, content, metadata, vector, 1 - (vector <=> ?) AS score FROM ")
+            .append(quoteIdentifier(collectionName)).append(") ranked WHERE 1 = 1");
+        if (wrapper.getMinScore() != null && wrapper.getMinScore() > 0) {
+            sql.append(" AND score >= ?");
+        }
+        if (StringUtil.hasText(condition)) {
+            sql.append(" AND (").append(condition).append(")");
+        }
+        sql.append(" ORDER BY score DESC LIMIT ?");
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            int parameterIndex = 1;
+            statement.setObject(parameterIndex++, PgvectorUtil.toPgVector(wrapper.getVectorAsDoubleArray()));
+            if (wrapper.getMinScore() != null && wrapper.getMinScore() > 0) {
+                statement.setDouble(parameterIndex++, wrapper.getMinScore());
+            }
+            for (Object parameter : conditionBuilder.getParameters()) {
+                statement.setObject(parameterIndex++, parameter);
+            }
+            statement.setInt(parameterIndex, maxResults);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<Document> documents = new ArrayList<>();
+                while (resultSet.next()) {
+                    Document document = new Document();
+                    document.setId(resultSet.getString("id"));
+                    document.setTitle(resultSet.getString("title"));
+                    document.setContent(resultSet.getString("content"));
+                    document.setScore(resultSet.getFloat("score"));
+                    document.setMetadataMap(filterMetadata(resultSet.getString("metadata"), wrapper.getOutputFields()));
+                    if (wrapper.isOutputVector()) {
+                        document.setVector(PgvectorUtil.fromPgVector(resultSet.getString("vector")));
+                    }
+                    documents.add(document);
+                }
+                return documents;
+            }
+        } catch (Exception e) {
+            throw new StoreException("Search failed: " + e.getMessage(), e);
         }
     }
 
@@ -249,31 +194,143 @@ public class PgvectorVectorStore extends DocumentStore {
         if (documents == null || documents.isEmpty()) {
             return StoreResult.success();
         }
-
-        String collectionName = options.getCollectionNameOrDefault(defaultCollectionName);
-        createCollectionIfNotExist(collectionName, options.getEmbeddingOptions().getDimensionsOrDefault(defaultVectorDimension));
-        StringBuilder sql = new StringBuilder("UPDATE " + collectionName + " SET ");
-        sql.append("content = ?, vector = ?, metadata = ?::jsonb WHERE id = ?");
-        try {
-            PreparedStatement pstmt = connection.prepareStatement(sql.toString());
-            for (Document doc : documents) {
-                Map<String, Object> metadatas = doc.getMetadataMap();
-                JSONObject metadataJson =
-                    JSON.parseObject(
-                        JSON.toJSONBytes(metadatas == null ? Collections.EMPTY_MAP : metadatas));
-                pstmt.setString(1, doc.getContent());
-                pstmt.setObject(2, PgvectorUtil.toPgVector(doc.getVectorAsDoubleArray()));
-                pstmt.setString(3, metadataJson.toString());
-                pstmt.setString(4, String.valueOf(doc.getId()));
-                pstmt.addBatch();
+        String collectionName = resolveCollectionName(options);
+        String sql = "UPDATE " + quoteIdentifier(collectionName)
+            + " SET title = ?, content = ?, vector = ?, metadata = ?::jsonb WHERE id = ?";
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                for (Document document : documents) {
+                    statement.setString(1, document.getTitle());
+                    statement.setString(2, document.getContent());
+                    statement.setObject(3, toPgVector(document));
+                    statement.setString(4, JSON.toJSONString(metadata(document)));
+                    statement.setString(5, String.valueOf(document.getId()));
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+                connection.commit();
+                return StoreResult.successWithIds(documents);
+            } catch (Exception e) {
+                rollback(connection, e);
+                return StoreResult.fail("Update failed: " + e.getMessage(), e);
             }
-
-            pstmt.executeUpdate();
-            connection.commit();
-        } catch (Exception e) {
-            logger.error("[PGVector] Error update in pgvector", e);
+        } catch (SQLException e) {
             return StoreResult.fail("Update failed: " + e.getMessage(), e);
         }
-        return StoreResult.successWithIds(documents);
     }
+
+    static String quoteIdentifier(String identifier) {
+        if (StringUtil.noText(identifier)) {
+            throw new IllegalArgumentException("Pgvector collection name cannot be blank");
+        }
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
+    }
+
+    private void createCollectionIfNotExist(Connection connection, String collectionName, Integer dimensions)
+        throws SQLException {
+        if (!config.isAutoCreateCollection()) {
+            return;
+        }
+        if (dimensions == null || dimensions <= 0) {
+            throw new IllegalArgumentException("Pgvector dimensions must be greater than zero");
+        }
+        String table = quoteIdentifier(collectionName);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + table
+                + " (id varchar(100) PRIMARY KEY, title text, content text, vector vector(" + dimensions
+                + "), metadata jsonb NOT NULL DEFAULT '{}'::jsonb)");
+            statement.executeUpdate("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS title text");
+            if (config.isUseHnswIndex()) {
+                statement.executeUpdate("CREATE INDEX IF NOT EXISTS "
+                    + quoteIdentifier(collectionName + "_vector_idx") + " ON " + table
+                    + " USING hnsw (vector vector_cosine_ops)");
+            }
+        }
+    }
+
+    private String resolveCollectionName(StoreOptions options) {
+        return options.getCollectionNameOrDefault(defaultCollectionName);
+    }
+
+    private int resolveDimensions(List<Document> documents, StoreOptions options) {
+        Integer configured = options.getEmbeddingOptions().getDimensions();
+        if (configured != null) {
+            return configured;
+        }
+        for (Document document : documents) {
+            if (document != null && document.getVector() != null && document.getVector().length > 0) {
+                return document.getVector().length;
+            }
+        }
+        return defaultVectorDimension;
+    }
+
+    private PGobject toPgVector(Document document) throws SQLException {
+        if (document == null || document.getVector() == null || document.getVector().length == 0) {
+            throw new IllegalArgumentException("Pgvector document vector cannot be null or empty");
+        }
+        return PgvectorUtil.toPgVector(document.getVectorAsDoubleArray());
+    }
+
+    private Map<String, Object> metadata(Document document) {
+        return document.getMetadataMap() == null ? Collections.emptyMap() : document.getMetadataMap();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> filterMetadata(String json, List<String> outputFields) {
+        Map<String, Object> metadata = JSON.parseObject(json, Map.class);
+        if (outputFields == null) {
+            return metadata;
+        }
+        Map<String, Object> filtered = new LinkedHashMap<>();
+        for (String outputField : outputFields) {
+            String key = normalizeMetadataField(outputField);
+            if (metadata.containsKey(key)) {
+                filtered.put(key, metadata.get(key));
+            }
+        }
+        return filtered;
+    }
+
+    private String normalizeMetadataField(String field) {
+        if (field.startsWith("metadataMap.")) {
+            return field.substring("metadataMap.".length());
+        }
+        if (field.startsWith("metadata.")) {
+            return field.substring("metadata.".length());
+        }
+        return field;
+    }
+
+    private void validateMinScore(Double minScore) {
+        if (minScore != null && (minScore < 0 || minScore > 1)) {
+            throw new IllegalArgumentException("minScore must be between 0 and 1");
+        }
+    }
+
+    private int resolveMaxResults(Integer maxResults) {
+        int resolved = maxResults == null ? SearchWrapper.DEFAULT_MAX_RESULTS : maxResults;
+        if (resolved <= 0) {
+            throw new IllegalArgumentException("maxResults must be greater than zero");
+        }
+        return resolved;
+    }
+
+    private void setDataSourceProperty(String key, String value) {
+        try {
+            dataSource.setProperty(key, value);
+        } catch (SQLException e) {
+            throw new StoreException("Invalid PostgreSQL property: " + key, e);
+        }
+    }
+
+    private void rollback(Connection connection, Exception original) {
+        try {
+            connection.rollback();
+        } catch (SQLException rollbackException) {
+            original.addSuppressed(rollbackException);
+        }
+    }
+
 }
