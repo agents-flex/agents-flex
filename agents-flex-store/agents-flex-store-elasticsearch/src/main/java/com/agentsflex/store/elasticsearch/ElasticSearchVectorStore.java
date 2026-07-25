@@ -17,6 +17,7 @@ package com.agentsflex.store.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ErrorCause;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
 import co.elastic.clients.elasticsearch._types.mapping.Property;
 import co.elastic.clients.elasticsearch._types.mapping.TextProperty;
@@ -58,8 +59,11 @@ import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -70,7 +74,7 @@ import java.util.stream.Collectors;
  * @author songyinyin
  * @since 2024/8/12 下午4:17
  */
-public class ElasticSearchVectorStore extends DocumentStore {
+public class ElasticSearchVectorStore extends DocumentStore implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(ElasticSearchVectorStore.class);
 
@@ -85,19 +89,23 @@ public class ElasticSearchVectorStore extends DocumentStore {
         try {
             SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial(null, (chains, authType) -> true).build();
 
+            CredentialsProvider provider = null;
             if (StringUtil.hasText(config.getUsername())) {
-                CredentialsProvider provider = new BasicCredentialsProvider();
+                provider = new BasicCredentialsProvider();
                 provider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(config.getUsername(), config.getPassword()));
-                restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
-                    httpClientBuilder.setSSLContext(sslContext);
-                    httpClientBuilder.setDefaultCredentialsProvider(provider);
-                    return httpClientBuilder;
-                });
             }
+            final CredentialsProvider credentialsProvider = provider;
+            restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
+                httpClientBuilder.setSSLContext(sslContext);
+                if (credentialsProvider != null) {
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                }
+                return httpClientBuilder;
+            });
 
             if (StringUtil.hasText(config.getApiKey())) {
                 restClientBuilder.setDefaultHeaders(new Header[]{
-                    new BasicHeader("Authorization", "Apikey " + config.getApiKey())
+                    new BasicHeader("Authorization", "ApiKey " + config.getApiKey())
                 });
             }
 
@@ -109,9 +117,14 @@ public class ElasticSearchVectorStore extends DocumentStore {
         }
         try {
             client.ping();
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             log.error("[I/O Elasticsearch Exception]", e);
-            throw new StoreException(e.getMessage());
+            try {
+                client._transport().close();
+            } catch (IOException closeException) {
+                e.addSuppressed(closeException);
+            }
+            throw new StoreException(e.getMessage(), e);
         }
     }
 
@@ -134,20 +147,21 @@ public class ElasticSearchVectorStore extends DocumentStore {
 
     @Override
     public StoreResult doStore(List<Document> documents, StoreOptions options) {
-        String indexName;
-        if (StringUtil.hasText(options.getCollectionName())) {
-            indexName = options.getCollectionName();
-        } else {
-            indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
+        if (documents == null || documents.isEmpty()) {
+            return StoreResult.success();
         }
-        createIndexIfNotExist(indexName);
+        String indexName = resolveIndexName(options);
+        createIndexIfNotExist(indexName, resolveDimension(documents));
         return saveOrUpdate(documents, indexName);
     }
 
     @Override
     public StoreResult doDelete(Collection<?> ids, StoreOptions options) {
-        String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        if (ids == null || ids.isEmpty()) {
+            return StoreResult.success();
+        }
+        String indexName = resolveIndexName(options);
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(Refresh.WaitFor);
         for (Object id : ids) {
             bulkBuilder.operations(op -> op.delete(d -> d.index(indexName).id(id.toString())));
         }
@@ -157,20 +171,31 @@ public class ElasticSearchVectorStore extends DocumentStore {
 
     @Override
     public StoreResult doUpdate(List<Document> documents, StoreOptions options) {
-        String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
+        if (documents == null || documents.isEmpty()) {
+            return StoreResult.success();
+        }
+        String indexName = resolveIndexName(options);
+        createIndexIfNotExist(indexName, resolveDimension(documents));
         return saveOrUpdate(documents, indexName);
     }
 
     public List<Document> doSearch(SearchWrapper wrapper, StoreOptions options) {
         // 最小匹配分数，无值则默认0
-        Double minScore = wrapper.getMinScore();
+        final Double minScore = wrapper.getMinScore();
         // 获取索引名，无指定则使用配置的默认索引
-        String indexName = options.getIndexNameOrDefault(config.getDefaultIndexName());
+        String indexName = resolveIndexName(options);
+
+        Query filterQuery = Query.of(q -> q.matchAll(m -> m));
+        String filterExpression = wrapper.toFilterExpression(ElasticSearchExpressionAdaptor.DEFAULT);
+        if (StringUtil.hasText(filterExpression)) {
+            filterQuery = Query.of(q -> q.queryString(query -> query.query(filterExpression)));
+        }
+        final Query effectiveFilterQuery = filterQuery;
 
         // 公式：(cosineSimilarity + 1.0) / 2  将相似度映射到 0~1 区间
         ScriptScoreQuery scriptScoreQuery = ScriptScoreQuery.of(fn -> fn
             .minScore(minScore == null ? 0 : minScore.floatValue())
-            .query(Query.of(q -> q.matchAll(m -> m)))
+            .query(effectiveFilterQuery)
             .script(s -> s
                 .source("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
                 .params("query_vector", JsonData.of(wrapper.getVector()))
@@ -178,16 +203,16 @@ public class ElasticSearchVectorStore extends DocumentStore {
         );
 
         try {
-            SearchResponse<JsonData> response = client.search(
-                SearchRequest.of(s -> s.index(indexName)
-                    .query(n -> n.scriptScore(scriptScoreQuery))
-                    .size(wrapper.getMaxResults())),
-                JsonData.class
-            );
+            SearchRequest.Builder searchBuilder = new SearchRequest.Builder()
+                .index(indexName)
+                .query(n -> n.scriptScore(scriptScoreQuery))
+                .size(wrapper.getMaxResults());
+            applySourceFilter(searchBuilder, wrapper);
+            SearchResponse<JsonData> response = client.search(searchBuilder.build(), JsonData.class);
 
             return response.hits().hits().stream()
                 .filter(hit -> hit.source() != null) // 过滤_source为空的无效结果
-                .map(hit -> parseFromJsonData(hit.source(), hit.score()))
+                .map(hit -> parseFromJsonData(hit.source(), hit.score(), wrapper.isOutputVector()))
                 .collect(Collectors.toList());
         } catch (IOException e) {
             log.error("[es/search] Elasticsearch I/O exception occurred", e);
@@ -196,7 +221,7 @@ public class ElasticSearchVectorStore extends DocumentStore {
     }
 
     private StoreResult saveOrUpdate(List<Document> documents, String indexName) {
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(Refresh.WaitFor);
         for (Document document : documents) {
             bulkBuilder.operations(op -> op.index(
                 idx -> idx.index(indexName).id(document.getId().toString()).document(document))
@@ -216,13 +241,13 @@ public class ElasticSearchVectorStore extends DocumentStore {
         }
     }
 
-    private void createIndexIfNotExist(String indexName) {
+    private void createIndexIfNotExist(String indexName, int dimension) {
         try {
             BooleanResponse response = client.indices().exists(c -> c.index(indexName));
             if (!response.value()) {
                 log.info("[ElasticSearch] Index {} not exists, creating...", indexName);
                 client.indices().create(c -> c.index(indexName)
-                    .mappings(getDefaultMappings(this.getEmbeddingModel().dimensions())));
+                    .mappings(getDefaultMappings(dimension)));
             }
         } catch (IOException e) {
             log.error("[I/O ElasticSearch Exception]", e);
@@ -237,7 +262,7 @@ public class ElasticSearchVectorStore extends DocumentStore {
         return TypeMapping.of(c -> c.properties(properties));
     }
 
-    private Document parseFromJsonData(JsonData source, Double score) {
+    private Document parseFromJsonData(JsonData source, Double score, boolean outputVector) {
         Document document = new Document();
         Map<String, Object> dataMap = source.to(Map.class);
 
@@ -247,7 +272,7 @@ public class ElasticSearchVectorStore extends DocumentStore {
         document.setScore(score == null ? null : score.floatValue());
 
         Object vectorObj = dataMap.get("vector");
-        if (vectorObj instanceof List<?>) {
+        if (outputVector && vectorObj instanceof List<?>) {
             List<?> vectorList = (List<?>) vectorObj;
             float[] vector = new float[vectorList.size()];
             for (int i = 0; i < vectorList.size(); i++) {
@@ -278,5 +303,52 @@ public class ElasticSearchVectorStore extends DocumentStore {
         }
 
         return document;
+    }
+
+    private String resolveIndexName(StoreOptions options) {
+        if (StringUtil.hasText(options.getCollectionName())) {
+            return options.getCollectionName();
+        }
+        return options.getIndexNameOrDefault(config.getDefaultIndexName());
+    }
+
+    private int resolveDimension(List<Document> documents) {
+        for (Document document : documents) {
+            if (document != null && document.getVector() != null && document.getVector().length > 0) {
+                return document.getVector().length;
+            }
+        }
+        if (getEmbeddingModel() != null && getEmbeddingModel().dimensions() > 0) {
+            return getEmbeddingModel().dimensions();
+        }
+        throw new StoreException("Cannot create Elasticsearch index without a document vector or embedding model dimension");
+    }
+
+    private void applySourceFilter(SearchRequest.Builder searchBuilder, SearchWrapper wrapper) {
+        if (wrapper.getOutputFields() == null) {
+            if (!wrapper.isOutputVector()) {
+                searchBuilder.source(source -> source.filter(filter -> filter.excludes("vector")));
+            }
+            return;
+        }
+
+        LinkedHashSet<String> fields = new LinkedHashSet<>();
+        Collections.addAll(fields, "id", "title", "content");
+        fields.addAll(wrapper.getOutputFields());
+        if (wrapper.isOutputVector()) {
+            fields.add("vector");
+        } else {
+            fields.remove("vector");
+        }
+        searchBuilder.source(source -> source.filter(filter -> filter.includes(new ArrayList<>(fields))));
+    }
+
+    @Override
+    public void close() {
+        try {
+            client._transport().close();
+        } catch (IOException e) {
+            throw new StoreException("Failed to close Elasticsearch client", e);
+        }
     }
 }

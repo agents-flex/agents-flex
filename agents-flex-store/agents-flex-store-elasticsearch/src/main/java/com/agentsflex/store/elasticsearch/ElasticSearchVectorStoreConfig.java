@@ -77,6 +77,10 @@ public class ElasticSearchVectorStoreConfig implements DocumentStoreConfig {
 
     @Override
     public boolean checkAvailable() {
-        return StringUtil.allHasText(this.serverUrl, this.apiKey, this.defaultIndexName);
+        boolean hasApiKey = StringUtil.hasText(this.apiKey);
+        boolean hasBasicAuth = StringUtil.allHasText(this.username, this.password);
+        boolean hasNoAuth = StringUtil.noText(this.username) && StringUtil.noText(this.password);
+        return StringUtil.allHasText(this.serverUrl, this.defaultIndexName)
+            && (hasApiKey || hasBasicAuth || hasNoAuth);
     }
 }
