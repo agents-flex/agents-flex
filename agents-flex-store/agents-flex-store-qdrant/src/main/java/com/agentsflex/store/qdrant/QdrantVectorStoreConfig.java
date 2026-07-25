@@ -20,9 +20,9 @@ import com.agentsflex.core.util.StringUtil;
 
 public class QdrantVectorStoreConfig implements DocumentStoreConfig {
 
-    private String uri;
+    private String uri = "localhost:6334";
     private String caPath;
-    private String defaultCollectionName;
+    private String defaultCollectionName = "agents-flex-store";
     private String apiKey;
     private boolean autoCreateCollection = true;
 
@@ -68,6 +68,20 @@ public class QdrantVectorStoreConfig implements DocumentStoreConfig {
 
     @Override
     public boolean checkAvailable() {
-        return StringUtil.hasText(this.uri);
+        if (!StringUtil.hasText(this.uri)) {
+            return false;
+        }
+        QdrantVectorStore store = null;
+        try {
+            store = new QdrantVectorStore(this);
+            store.getClient().listCollectionsAsync().get();
+            return true;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (store != null) {
+                store.close();
+            }
+        }
     }
 }
