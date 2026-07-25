@@ -42,6 +42,25 @@ mvn -f demos/skills-demo/pom.xml exec:java \
   -Dexec.args="请使用 ai-tutor skill 给初学者解释什么是 Transformer"
 ```
 
+## 控制台持续对话
+
+运行 `SkillsConsoleDemoMain` 可以在同一个 Runtime 和上下文中持续进行多轮对话：
+
+```bash
+mvn -f demos/skills-demo/pom.xml exec:java \
+  -Dexec.mainClass=com.agentsflex.skills.SkillsConsoleDemoMain
+```
+
+每轮输入后按回车发送。输入 `/clear` 清空模型对话历史，输入 `/exit` 或 `/quit` 结束程序。
+控制台 Demo 默认使用 DeepSeek，启动前需要配置 API Key：
+
+```bash
+export DEEPSEEK_API_KEY="your-api-key"
+```
+
+模型配置可以通过 `DEEPSEEK_MODEL`、`DEEPSEEK_ENDPOINT`、`DEEPSEEK_PROVIDER` 和
+`DEEPSEEK_REQUEST_PATH` 调整。Runtime 和超时相关环境变量与 `SkillsDemoMain` 相同。
+
 ## OpenSandbox
 
 先根据 [OpenSandbox 文档](https://open-sandbox.ai/sdks/kotlin)准备服务端，然后配置：

@@ -136,7 +136,7 @@ public class SkillsDemoMain {
     /**
      * 根据 {@code SKILLS_RUNTIME} 构建且只构建一个 Runtime。
      */
-    private static SkillRuntime createRuntime() {
+    static SkillRuntime createRuntime() {
         String name = environment("SKILLS_RUNTIME", "local").trim().toLowerCase(Locale.ROOT);
         String conversationId = System.getenv("SKILLS_CONVERSATION_ID");
         if ("local".equals(name)) {
@@ -181,7 +181,7 @@ public class SkillsDemoMain {
             + ". Expected local, open-sandbox, or aio-sandbox.");
     }
 
-    private static String resolveSkillsDirectory() throws Exception {
+    static String resolveSkillsDirectory() throws Exception {
         String configured = System.getenv("SKILLS_DIR");
         if (StringUtil.hasText(configured)) {
             return requireDirectory(Paths.get(configured));
@@ -321,13 +321,13 @@ public class SkillsDemoMain {
         return demoDirectory.resolve("target/skills-demo-output").resolve(fileName).normalize();
     }
 
-    private static void disableObservabilityByDefault() {
+    static void disableObservabilityByDefault() {
         if (System.getProperty("agentsflex.otel.enabled") == null) {
             System.setProperty("agentsflex.otel.enabled", "false");
         }
     }
 
-    private static String requireEnvironment(String name) {
+    static String requireEnvironment(String name) {
         String value = System.getenv(name);
         if (!StringUtil.hasText(value)) {
             throw new IllegalStateException("Missing required environment variable: " + name);
@@ -335,12 +335,12 @@ public class SkillsDemoMain {
         return value.trim();
     }
 
-    private static String environment(String name, String defaultValue) {
+    static String environment(String name, String defaultValue) {
         String value = System.getenv(name);
         return StringUtil.hasText(value) ? value.trim() : defaultValue;
     }
 
-    private static long environmentLong(String name, long defaultValue) {
+    static long environmentLong(String name, long defaultValue) {
         String value = System.getenv(name);
         if (!StringUtil.hasText(value)) {
             return defaultValue;
