@@ -43,7 +43,7 @@ public class OpenSandboxSkillRuntimeIT {
 
     @Test
     public void isolatesAndResumesConversationWorkspacesOnRealServer() {
-        String domain = System.getProperty(DOMAIN_PROPERTY);
+        String domain = configuration(DOMAIN_PROPERTY, "OPEN_SANDBOX_DOMAIN");
         assumeTrue("Set -D" + DOMAIN_PROPERTY + " to run against a real OpenSandbox server",
             domain != null && !domain.trim().isEmpty());
 
@@ -78,7 +78,7 @@ public class OpenSandboxSkillRuntimeIT {
 
     @Test
     public void isolatesConcurrentConversationsOnRealServer() throws Exception {
-        String domain = System.getProperty(DOMAIN_PROPERTY);
+        String domain = configuration(DOMAIN_PROPERTY, "OPEN_SANDBOX_DOMAIN");
         assumeTrue("Set -D" + DOMAIN_PROPERTY + " to run against a real OpenSandbox server",
             domain != null && !domain.trim().isEmpty());
 
@@ -131,7 +131,7 @@ public class OpenSandboxSkillRuntimeIT {
 
     private static OpenSandboxSkillRuntime runtime(String domain, String conversationId) {
         ConnectionConfig.Builder connection = ConnectionConfig.builder().domain(domain);
-        String apiKey = System.getProperty(API_KEY_PROPERTY);
+        String apiKey = configuration(API_KEY_PROPERTY, "OPEN_SANDBOX_API_KEY");
         if (apiKey != null && !apiKey.trim().isEmpty()) {
             connection.apiKey(apiKey);
         }
@@ -139,6 +139,11 @@ public class OpenSandboxSkillRuntimeIT {
             .connectionConfig(connection.build())
             .conversationId(conversationId)
             .build();
+    }
+
+    private static String configuration(String property, String environment) {
+        String value = System.getProperty(property);
+        return value == null || value.trim().isEmpty() ? System.getenv(environment) : value;
     }
 
     private static void assertCrossConversationPathRejected(OpenSandboxSkillRuntime runtime,

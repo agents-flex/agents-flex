@@ -107,6 +107,7 @@ export default defineConfig({
                     {text: 'Artifact Store', link: '/zh/skills/artifact-store'},
                     {text: 'OpenSandbox', link: '/zh/skills/open-sandbox'},
                     {text: 'AIO Sandbox', link: '/zh/skills/aio-sandbox'},
+                    {text: 'Sandbox 会话隔离实战', link: '/zh/skills/sandbox-conversation-isolation-lab'},
                     {text: 'Skill 产物', link: '/zh/skills/files'},
                     {text: '完整示例', link: '/zh/skills/demo'},
                     {text: '自定义 Runtime', link: '/zh/skills/custom-runtime'},

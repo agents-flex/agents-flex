@@ -42,7 +42,7 @@ public class AioSandboxSkillRuntimeIT {
 
     @Test
     public void isolatesAndResumesConversationWorkspacesOnRealServer() {
-        String baseUrl = System.getProperty(BASE_URL_PROPERTY);
+        String baseUrl = configuration(BASE_URL_PROPERTY, "AIO_SANDBOX_BASE_URL");
         assumeTrue("Set -D" + BASE_URL_PROPERTY + " to run against a real AIO Sandbox server",
             baseUrl != null && !baseUrl.trim().isEmpty());
 
@@ -74,7 +74,7 @@ public class AioSandboxSkillRuntimeIT {
 
     @Test
     public void isolatesConcurrentConversationsOnRealServer() throws Exception {
-        String baseUrl = System.getProperty(BASE_URL_PROPERTY);
+        String baseUrl = configuration(BASE_URL_PROPERTY, "AIO_SANDBOX_BASE_URL");
         assumeTrue("Set -D" + BASE_URL_PROPERTY + " to run against a real AIO Sandbox server",
             baseUrl != null && !baseUrl.trim().isEmpty());
 
@@ -129,11 +129,16 @@ public class AioSandboxSkillRuntimeIT {
         AioSandboxSkillRuntime.Builder builder = AioSandboxSkillRuntime.builder()
             .baseUrl(baseUrl)
             .conversationId(conversationId);
-        String token = System.getProperty(TOKEN_PROPERTY);
+        String token = configuration(TOKEN_PROPERTY, "AIO_SANDBOX_TOKEN");
         if (token != null && !token.trim().isEmpty()) {
             builder.bearerToken(token);
         }
         return builder.build();
+    }
+
+    private static String configuration(String property, String environment) {
+        String value = System.getProperty(property);
+        return value == null || value.trim().isEmpty() ? System.getenv(environment) : value;
     }
 
     private static void assertCrossConversationPathRejected(AioSandboxSkillRuntime runtime,
