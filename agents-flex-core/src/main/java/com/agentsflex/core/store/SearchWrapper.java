@@ -126,6 +126,31 @@ public class SearchWrapper extends VectorData {
         this.condition = condition;
     }
 
+    public void setConditionExpression(String expression) {
+        this.condition = ConditionExpressionParser.parse(expression);
+    }
+
+    /**
+     * Parses and appends a SQL-like condition expression using AND.
+     */
+    public SearchWrapper condition(String expression) {
+        return condition(Connector.AND, expression);
+    }
+
+    /**
+     * Parses and appends a SQL-like condition expression using the specified connector.
+     */
+    public SearchWrapper condition(Connector connector, String expression) {
+        Objects.requireNonNull(connector, "connector must not be null");
+        Condition parsed = ConditionExpressionParser.parse(expression);
+        if (this.condition == null) {
+            this.condition = parsed;
+        } else {
+            this.condition.connect(new Group(parsed), connector);
+        }
+        return this;
+    }
+
     public List<String> getOutputFields() {
         return outputFields;
     }

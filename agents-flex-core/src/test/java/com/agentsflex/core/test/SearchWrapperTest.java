@@ -68,4 +68,18 @@ public class SearchWrapperTest {
         System.out.println(rw.toFilterExpression());
     }
 
+    @Test
+    public void testConditionExpression() {
+        SearchWrapper wrapper = new SearchWrapper()
+            .eq("tenant", "agents-flex")
+            .condition("views >= 10 OR category NOT IN ('hidden', 'deleted')");
+
+        Assert.assertEquals(
+            "tenant = \"agents-flex\" AND (views >= \"10\" OR category NOT IN (\"hidden\",\"deleted\"))",
+            wrapper.toFilterExpression());
+
+        wrapper.setConditionExpression("enabled = true");
+        Assert.assertEquals("enabled = \"true\"", wrapper.toFilterExpression());
+    }
+
 }

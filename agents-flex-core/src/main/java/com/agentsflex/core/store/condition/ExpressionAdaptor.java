@@ -48,7 +48,7 @@ public interface ExpressionAdaptor {
         }
 
         // in
-        else if (condition.getType() == ConditionType.IN) {
+        else if (condition.getType() == ConditionType.IN || condition.getType() == ConditionType.NIN) {
             Object[] values = (Object[]) value;
             StringJoiner stringJoiner = new StringJoiner(",", "(", ")");
             for (Object v : values) {
