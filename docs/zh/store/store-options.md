@@ -60,7 +60,7 @@ store.delete(documentIds, options);
 
 | 属性 | 作用 | 常见后端 |
 | --- | --- | --- |
-| `collectionName` | 覆盖默认 Collection 或逻辑集合 | Redis、Milvus、MongoDB Atlas、Weaviate、Pgvector、MariaDB、Cassandra、Infinity、Chroma、Qdrant、云服务 |
+| `collectionName` | 覆盖默认 Collection 或逻辑集合 | Redis、Milvus、MongoDB Atlas、Weaviate、Pgvector、MariaDB、Cassandra、Infinity、ClickHouse、Chroma、Qdrant、云服务 |
 | `indexName` | 覆盖默认 Index 或向量搜索索引 | Elasticsearch、OpenSearch、MongoDB Atlas |
 | `partitionNames` | 指定 Collection 内的分区 | Milvus 等支持分区的实现 |
 | `embeddingOptions` | 写入或查询向量化参数 | 由 `EmbeddingModel` 解释 |
@@ -82,6 +82,10 @@ StoreOptions cassandraOptions =
 // Infinity：collectionName 对应同一 database 内的独立 table 和 HNSW
 StoreOptions infinityOptions =
     StoreOptions.ofCollectionName("tenant_a_knowledge");
+
+// ClickHouse：collectionName 对应同一 database 内的独立 MergeTree 表和 HNSW
+StoreOptions clickHouseOptions =
+    StoreOptions.ofCollectionName("tenant_a_events");
 
 // Elasticsearch / OpenSearch
 StoreOptions indexOptions = new StoreOptions();

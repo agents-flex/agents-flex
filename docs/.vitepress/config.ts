@@ -174,6 +174,7 @@ export default defineConfig({
                     {text: 'MariaDB', link: '/zh/store/mariadb'},
                     {text: 'Apache Cassandra', link: '/zh/store/cassandra'},
                     {text: 'Infinity', link: '/zh/store/infinity'},
+                    {text: 'ClickHouse', link: '/zh/store/clickhouse'},
                     {text: 'Elasticsearch', link: '/zh/store/elasticsearch'},
                     {text: 'OpenSearch', link: '/zh/store/opensearch'},
                     {text: 'MongoDB Atlas', link: '/zh/store/mongodb-atlas'},

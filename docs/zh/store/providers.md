@@ -38,6 +38,12 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 原生 `vector<float, N>` 与 SAI 完成向量召回的团队。它的 CQL 条件能力比关系数据库窄，必须提前核对业务过滤
 条件；Agents-Flex 会把 `IN/OR` 拆成多条查询合并，但不会用 `ALLOW FILTERING` 模拟 `NOT/NULL`。
 
+### 已有 ClickHouse，希望复用分析平台
+
+[ClickHouse](./clickhouse) 适合已有 ClickHouse 25.8+、以批量导入和分析型检索为主，并希望在 MergeTree 表中同时
+保存向量与 JSON metadata 的团队。余弦和 L2 可使用原生 HNSW；dot product 当前采用精确排序。它不适合高频小批量
+upsert，覆盖写入会产生同步 mutation。
+
 ### 大规模专用向量检索
 
 优先评估 [Milvus](./milvus)、[Qdrant](./qdrant) 或 [Weaviate](./weaviate)。三者都提供专用向量能力，
@@ -73,6 +79,7 @@ GraphQL 查询和混合检索生态的团队。
 | `agents-flex-store-mariadb` | MariaDB 11.7+ | 关系数据与向量统一运维 | MariaDB 原生 VECTOR |
 | `agents-flex-store-cassandra` | Apache Cassandra 5.x | 分布式宽表与向量统一存储 | Cassandra 原生 vector + SAI |
 | `agents-flex-store-infinity` | Infinity | AI 原生向量、全文与融合检索 | 自建 Infinity 服务 |
+| `agents-flex-store-clickhouse` | ClickHouse 25.8+ | 列式分析数据与向量统一检索 | ClickHouse 原生 Array(Float32) + HNSW |
 | `agents-flex-store-elasticsearch` | Elasticsearch | 搜索平台中的向量召回 | 自建或 Elastic Cloud |
 | `agents-flex-store-opensearch` | OpenSearch | OpenSearch k-NN | 自建或 Amazon OpenSearch |
 | `agents-flex-store-mongodb-atlas` | MongoDB Atlas Vector Search | BSON 业务数据与向量统一 | MongoDB Atlas 或 Atlas Local |
@@ -94,6 +101,7 @@ GraphQL 查询和混合检索生态的团队。
 | [MariaDB](./mariadb) | `collectionName` 对应表 | 自动建表和 VECTOR INDEX 可配置 | 参数化 SQL 与 JSON_VALUE 条件 |
 | [Apache Cassandra](./cassandra) | `collectionName` 对应表 | 自动建 keyspace、表、metadata 列和 SAI | EQ/范围/BETWEEN；IN/OR 多查询合并；支持纯过滤 |
 | [Infinity](./infinity) | `collectionName` 对应 table | 自动建 database、table、metadata 列和 HNSW | Infinity filter；支持 IN/NOT IN、嵌套逻辑和纯过滤 |
+| [ClickHouse](./clickhouse) | `collectionName` 对应 MergeTree 表 | 自动建 database、表、维度约束和 HNSW | 参数化 SQL、JSON_VALUE、复杂条件和纯过滤 |
 | [Elasticsearch](./elasticsearch) | `indexName` | 自动建 Index | query string 适配 |
 | [OpenSearch](./opensearch) | `collectionName` / `indexName` | 自动建 Index | query string 适配；支持纯过滤查询 |
 | [MongoDB Atlas](./mongodb-atlas) | `collectionName` / `indexName` | 自动建 Collection 和 Vector Search Index | BSON 预过滤；支持纯过滤查询 |
@@ -118,6 +126,7 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | MariaDB | JDBC | `mariadb:11.7` Docker |
 | Apache Cassandra | Apache Java Driver | `cassandra:5.0.5` Docker |
 | Infinity | HTTP API | 官方 Infinity Docker，HTTP 端口 23820 |
+| ClickHouse | 官方 JDBC over HTTP | `clickhouse/clickhouse-server:25.8` Docker，默认 HTTP 端口 8123 |
 | Elasticsearch | Elasticsearch Java Client | 官方单节点 Docker |
 | OpenSearch | OpenSearch Java Client | 官方单节点 Docker |
 | MongoDB Atlas | MongoDB Java Driver | 官方 Atlas Local Docker；普通 MongoDB 不支持 Vector Search |
@@ -195,6 +204,7 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | 已有 MariaDB 11.7+，希望少一个系统 | MariaDB | VECTOR INDEX、连接资源、表数量与版本兼容 |
 | 已有 Cassandra 5.x，需要分布式写入与高可用 | Apache Cassandra | SAI、条件限制、节点拓扑、一致性与索引构建成本 |
 | 需要向量、全文和后续融合检索能力 | Infinity | HTTP API 兼容性、HNSW、NULL 与覆盖写入语义 |
+| 已有 ClickHouse，批量分析数据需要向量召回 | ClickHouse | 25.8+ HNSW、mutation 成本、过滤比例和 DOT_PRODUCT 精确排序 |
 | 已有 Redis Stack，在线低延迟 | Redis | 内存、淘汰策略、动态字段索引 |
 | 大规模专用向量检索 | Milvus、Qdrant、Weaviate | 召回率、索引参数、扩缩容与过滤 |
 | 已有 Elasticsearch 搜索体系 | Elasticsearch | mapping、script score 成本、字段精确匹配 |
@@ -265,6 +275,7 @@ PoC 不应停在“能写能搜”，还要执行：
 - [MariaDB](./mariadb)
 - [Apache Cassandra](./cassandra)
 - [Infinity](./infinity)
+- [ClickHouse](./clickhouse)
 - [Elasticsearch](./elasticsearch)
 - [OpenSearch](./opensearch)
 - [MongoDB Atlas](./mongodb-atlas)
