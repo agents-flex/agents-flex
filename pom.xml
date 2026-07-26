@@ -80,7 +80,9 @@
         <opentelemetry.version>1.63.0</opentelemetry.version>
         <opensandbox.version>1.0.16</opensandbox.version>
         <aliyun.oss.v2.version>0.5.0</aliyun.oss.v2.version>
+        <dashvector.version>1.0.18</dashvector.version>
         <tencent.cos.version>5.6.273</tencent.cos.version>
+        <tencent.vectordb.version>2.5.5</tencent.vectordb.version>
         <huawei.obs.version>3.26.6</huawei.obs.version>
         <volcengine.tos.version>2.9.16</volcengine.tos.version>
         <aws.sdk.version>2.48.4</aws.sdk.version>
@@ -443,16 +445,6 @@
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-store-redis</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-store-vectorex</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-store-vectorexdb</artifactId>
                 <version>${revision}</version>
             </dependency>
             <!--store end-->
