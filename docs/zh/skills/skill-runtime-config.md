@@ -1,13 +1,13 @@
 <div v-pre>
 
-# Skill Config
+# Skill Runtime Config
 
 ## 概述
 
 Agents-Flex 使用 `SkillRuntimeConfig` 配置一个 Skill 在 Runtime 中需要的环境变量和初始化命令。它解决的
 是“Skill 被加载后如何准备执行环境”，例如注入 API 地址、扩展 `PATH`、安装依赖或生成本地缓存。
 
-Skill Config 属于 Agents-Flex 执行层，不属于 [Agent Skills 规范](https://agentskills.io/specification)。
+Skill Runtime Config 属于 Agents-Flex 执行层，不属于 [Agent Skills 规范](https://agentskills.io/specification)。
 配置不会写入或修改 `SKILL.md`，也不会被当作 Skill 内容提供给模型。
 
 三类配置的职责如下：

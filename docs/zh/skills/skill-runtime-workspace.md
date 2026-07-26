@@ -4,7 +4,7 @@
 
 ## 概述
 
-Skills Workspace 是一个由 `SkillRuntimeWorkspace` 描述的会话工作目录。启用后，每个业务会话都使用
+Skill Runtime Workspace 是一个描述 Skill 的会话工作目录。启用后，每个业务会话都使用
 独立的目录，Runtime 的相对文件路径、默认命令工作目录以及准备后的 Skill 都位于该目录中：
 
 ```text
