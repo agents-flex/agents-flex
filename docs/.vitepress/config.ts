@@ -167,6 +167,7 @@ export default defineConfig({
                     {text: 'Redis', link: '/zh/store/redis'},
                     {text: 'Milvus', link: '/zh/store/milvus'},
                     {text: 'Pgvector', link: '/zh/store/pgvector'},
+                    {text: 'MariaDB', link: '/zh/store/mariadb'},
                     {text: 'Elasticsearch', link: '/zh/store/elasticsearch'},
                     {text: 'OpenSearch', link: '/zh/store/opensearch'},
                     {text: 'Chroma', link: '/zh/store/chroma'},

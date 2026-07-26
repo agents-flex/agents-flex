@@ -170,6 +170,10 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-store-mariadb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-milvus</artifactId>
         </dependency>
         <dependency>

@@ -22,7 +22,7 @@ DocumentStore ─────────────── SearchWrapper
    └──────── 具体 VectorStore ────┘
                  │
                  ▼
-      Redis / Milvus / Pgvector / ...
+      Redis / Milvus / Pgvector / MariaDB / ...
 ```
 
 ## 使用场景
@@ -60,7 +60,7 @@ DocumentStore ─────────────── SearchWrapper
 | 文档预处理 | 可配置 `DocumentSplitter` 和 `DocumentIdGenerator` |
 | 条件过滤 | 支持链式 API、条件树和 SQL 风格条件字符串 |
 | 数据路由 | 通过 `StoreOptions` 为单次操作指定 Collection、Index 或 Partition |
-| 多后端适配 | Redis、Milvus、Pgvector、Elasticsearch、OpenSearch、Chroma、Qdrant 和云服务 |
+| 多后端适配 | Redis、Milvus、Pgvector、MariaDB、Elasticsearch、OpenSearch、Chroma、Qdrant 和云服务 |
 | 自定义扩展 | 可继承 `DocumentStore` 实现新的数据库适配器 |
 
 ::: warning 统一接口不等于能力完全一致
@@ -99,7 +99,7 @@ Collection 或 Index，但写入、查询、更新和删除必须使用一致的
 
 | 概念 | 常见后端 | Agents-Flex 配置 |
 | --- | --- | --- |
-| Collection | Redis 逻辑集合、Milvus、Chroma、Qdrant、Pgvector 表 | `collectionName` |
+| Collection | Redis 逻辑集合、Milvus、Chroma、Qdrant、Pgvector/MariaDB 表 | `collectionName` |
 | Index | Elasticsearch、OpenSearch | `indexName` |
 | Partition | Milvus 等集合内分区 | `partitionNames` |
 
@@ -123,6 +123,7 @@ agents-flex-store
 ├── agents-flex-store-redis
 ├── agents-flex-store-milvus
 ├── agents-flex-store-pgvector
+├── agents-flex-store-mariadb
 ├── agents-flex-store-elasticsearch
 ├── agents-flex-store-opensearch
 ├── agents-flex-store-chroma

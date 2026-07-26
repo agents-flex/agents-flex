@@ -19,10 +19,13 @@ Agents-Flex 提供统一 Store API，但选择后端仍然是架构决策。数�
 
 ## 使用场景
 
-### 已有 PostgreSQL，希望降低系统复杂度
+### 已有关系数据库，希望降低系统复杂度
 
 优先评估 [Pgvector](./pgvector)。向量、业务字段和 JSONB metadata 可以使用现有数据库的事务、权限、备份和
 监控体系。需要确认数据规模、HNSW 索引和连接资源是否适合现有集群。
+
+已经使用 MariaDB 11.7+ 的团队可以评估 [MariaDB](./mariadb)。它使用数据库原生 VECTOR 和 JSON 能力，不需要
+安装扩展；旧版 MariaDB 和 MySQL 不能直接替代。
 
 ### 已有 Redis Stack，重视低延迟
 
@@ -55,6 +58,7 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | `agents-flex-store-redis` | Redis Stack | 低延迟、复用 Redis 技术栈 | 自建或托管 Redis Stack |
 | `agents-flex-store-milvus` | Milvus / Zilliz Cloud | 大规模专用向量数据库 | 自建集群或云服务 |
 | `agents-flex-store-pgvector` | PostgreSQL + pgvector | 关系数据与向量统一运维 | PostgreSQL 扩展 |
+| `agents-flex-store-mariadb` | MariaDB 11.7+ | 关系数据与向量统一运维 | MariaDB 原生 VECTOR |
 | `agents-flex-store-elasticsearch` | Elasticsearch | 搜索平台中的向量召回 | 自建或 Elastic Cloud |
 | `agents-flex-store-opensearch` | OpenSearch | OpenSearch k-NN | 自建或 Amazon OpenSearch |
 | `agents-flex-store-chroma` | Chroma | 原型和轻量知识库 | 独立 HTTP 服务 |
@@ -71,6 +75,7 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | [Redis](./redis) | `collectionName` | 自动建索引 | RediSearch 表达式适配 |
 | [Milvus](./milvus) | `collectionName`、Partition | 自动建 Collection/索引 | Milvus 标量表达式适配 |
 | [Pgvector](./pgvector) | `collectionName` 对应表 | 自动建表可配置 | 参数化 SQL 与 JSONB 条件 |
+| [MariaDB](./mariadb) | `collectionName` 对应表 | 自动建表和 VECTOR INDEX 可配置 | 参数化 SQL 与 JSON_VALUE 条件 |
 | [Elasticsearch](./elasticsearch) | `indexName` | 自动建 Index | query string 适配 |
 | [OpenSearch](./opensearch) | `indexName` | 自动建 Index | 当前搜索未接入 `Condition` |
 | [Chroma](./chroma) | `collectionName` | 可配置 | Chroma `where` JSON |
@@ -90,6 +95,7 @@ OpenSearch 当前不能依赖 `SearchWrapper.condition` 做共享集合的租户
 | Redis | Redis URI | Redis Stack Docker |
 | Milvus | Milvus Java SDK | 官方 Standalone Docker 脚本 |
 | Pgvector | JDBC | `pgvector/pgvector` Docker |
+| MariaDB | JDBC | `mariadb:11.7` Docker |
 | Elasticsearch | Elasticsearch Java Client | 官方单节点 Docker |
 | OpenSearch | OpenSearch Java Client | 官方单节点 Docker |
 | Chroma | REST `/api/v2` | Chroma Docker |
@@ -162,6 +168,7 @@ OpenSearch 当前不能依赖 `SearchWrapper.condition` 做共享集合的租户
 | 首要约束 | 优先评估 | 重点验证 |
 | --- | --- | --- |
 | 已有 PostgreSQL，希望少一个系统 | Pgvector | 数据规模、查询计划、连接与 HNSW |
+| 已有 MariaDB 11.7+，希望少一个系统 | MariaDB | VECTOR INDEX、连接资源、表数量与版本兼容 |
 | 已有 Redis Stack，在线低延迟 | Redis | 内存、淘汰策略、动态字段索引 |
 | 大规模专用向量检索 | Milvus、Qdrant | 召回率、索引参数、扩缩容与过滤 |
 | 已有 Elasticsearch 搜索体系 | Elasticsearch | mapping、script score 成本、字段精确匹配 |
@@ -227,6 +234,7 @@ PoC 不应停在“能写能搜”，还要执行：
 - [Redis](./redis)
 - [Milvus](./milvus)
 - [Pgvector](./pgvector)
+- [MariaDB](./mariadb)
 - [Elasticsearch](./elasticsearch)
 - [OpenSearch](./opensearch)
 - [Chroma](./chroma)

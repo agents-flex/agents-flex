@@ -349,6 +349,7 @@ SQL 风格表达式是统一的输入方式，但数据库没有统一的过滤�
 | Redis | 转换为 RediSearch TAG、NUMERIC 和组合查询 |
 | Milvus | 转换为 Milvus 标量过滤表达式 |
 | Pgvector | 转换为参数化 SQL 和 JSONB 条件 |
+| MariaDB | 转换为参数化 SQL 和 `JSON_VALUE` 条件 |
 | Elasticsearch | 转换为 Elasticsearch query string |
 | Chroma | 构建 Chroma `where` JSON |
 | Qdrant | 构建 Qdrant 原生 `Filter` |
