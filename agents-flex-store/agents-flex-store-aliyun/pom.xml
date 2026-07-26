@@ -29,6 +29,24 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>dashvector-java-sdk</artifactId>
+            <version>${dashvector.version}</version>
+            <exclusions>
+                <!-- 由宿主应用选择 SLF4J 实现，避免 SDK 的 Log4j binding 污染应用日志配置。 -->
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-slf4j-impl</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 

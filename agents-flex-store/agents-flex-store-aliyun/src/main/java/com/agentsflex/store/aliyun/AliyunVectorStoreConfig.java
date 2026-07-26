@@ -19,11 +19,20 @@ import com.agentsflex.core.store.DocumentStoreConfig;
 import com.agentsflex.core.util.StringUtil;
 
 /**
- * 阿里云 DashVector 连接配置，包括端点、API Key、数据库和默认集合。
+ * 阿里云 DashVector 连接配置，包括 Cluster Endpoint、API Key、超时时间和默认集合。
  */
 public class AliyunVectorStoreConfig implements DocumentStoreConfig {
     private String endpoint;
     private String apiKey;
+    /**
+     * DashVector Java SDK 的请求超时时间，单位为秒。
+     */
+    private Float timeout = 10.0f;
+    /**
+     * DashVector 以 Cluster 和 Collection 组织数据，当前 Java SDK 不使用 Database。
+     * 保留该字段仅用于兼容旧配置。
+     */
+    @Deprecated
     private String database;
     private String defaultCollectionName;
 
@@ -44,10 +53,20 @@ public class AliyunVectorStoreConfig implements DocumentStoreConfig {
         this.apiKey = apiKey;
     }
 
+    public Float getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(Float timeout) {
+        this.timeout = timeout;
+    }
+
+    @Deprecated
     public String getDatabase() {
         return database;
     }
 
+    @Deprecated
     public void setDatabase(String database) {
         this.database = database;
     }
@@ -62,6 +81,9 @@ public class AliyunVectorStoreConfig implements DocumentStoreConfig {
 
     @Override
     public boolean checkAvailable() {
-        return StringUtil.allHasText(this.endpoint, this.apiKey, this.database, this.defaultCollectionName);
+        return StringUtil.allHasText(this.endpoint, this.apiKey, this.defaultCollectionName)
+            && this.timeout != null
+            && Float.isFinite(this.timeout)
+            && this.timeout > 0;
     }
 }
