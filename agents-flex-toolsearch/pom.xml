@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.agentsflex</groupId>
+        <artifactId>parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>agents-flex-toolsearch</artifactId>
+    <name>agents-flex-toolsearch</name>
+    <description>Progressive tool discovery with an extensible search provider and a lightweight in-memory default.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
