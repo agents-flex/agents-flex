@@ -34,8 +34,9 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 
 ### 大规模专用向量检索
 
-优先评估 [Milvus](./milvus) 或 [Qdrant](./qdrant)。两者都提供专用向量能力，但部署架构、过滤模型、索引参数
-和团队运维经验会影响最终选择。
+优先评估 [Milvus](./milvus)、[Qdrant](./qdrant) 或 [Weaviate](./weaviate)。三者都提供专用向量能力，
+但部署架构、过滤模型、索引参数和团队运维经验会影响最终选择。Weaviate 还适合希望使用动态属性 schema、
+GraphQL 查询和混合检索生态的团队。
 
 ### 已有搜索平台，需要结合搜索生态
 
@@ -67,6 +68,7 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | `agents-flex-store-elasticsearch` | Elasticsearch | 搜索平台中的向量召回 | 自建或 Elastic Cloud |
 | `agents-flex-store-opensearch` | OpenSearch | OpenSearch k-NN | 自建或 Amazon OpenSearch |
 | `agents-flex-store-mongodb-atlas` | MongoDB Atlas Vector Search | BSON 业务数据与向量统一 | MongoDB Atlas 或 Atlas Local |
+| `agents-flex-store-weaviate` | Weaviate | 专用向量检索与结构化过滤 | 自建或 Weaviate Cloud |
 | `agents-flex-store-chroma` | Chroma | 原型和轻量知识库 | 独立 HTTP 服务 |
 | `agents-flex-store-qdrant` | Qdrant | 专用向量检索与 payload 过滤 | 自建或 Qdrant Cloud |
 | `agents-flex-store-aliyun` | DashVector | 阿里云托管向量服务 | 云服务 |
@@ -85,6 +87,7 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | [Elasticsearch](./elasticsearch) | `indexName` | 自动建 Index | query string 适配 |
 | [OpenSearch](./opensearch) | `collectionName` / `indexName` | 自动建 Index | query string 适配；支持纯过滤查询 |
 | [MongoDB Atlas](./mongodb-atlas) | `collectionName` / `indexName` | 自动建 Collection 和 Vector Search Index | BSON 预过滤；支持纯过滤查询 |
+| [Weaviate](./weaviate) | `collectionName` | 自动建 Collection 和 metadata 属性 | 原生 `WhereFilter`；支持纯过滤查询 |
 | [Chroma](./chroma) | `collectionName` | 可配置 | Chroma `where` JSON |
 | [Qdrant](./qdrant) | `collectionName` | 可配置 | Qdrant 原生 `Filter` |
 | [阿里云 DashVector](./aliyun) | `collectionName`、Partition | 控制台预建 | DashVector 专属 filter 适配 |
@@ -106,6 +109,7 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | Elasticsearch | Elasticsearch Java Client | 官方单节点 Docker |
 | OpenSearch | OpenSearch Java Client | 官方单节点 Docker |
 | MongoDB Atlas | MongoDB Java Driver | 官方 Atlas Local Docker；普通 MongoDB 不支持 Vector Search |
+| Weaviate | 官方 Java Client | 官方 Weaviate Docker，同时开放 HTTP 和 gRPC |
 | Chroma | REST `/api/v2` | Chroma Docker |
 | Qdrant | gRPC 6334 | Qdrant Docker，同时开放 HTTP 6333 |
 | 阿里云 DashVector | 官方 Java SDK | 不能本地安装，连接云端测试实例 |
@@ -178,10 +182,11 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | 已有 PostgreSQL，希望少一个系统 | Pgvector | 数据规模、查询计划、连接与 HNSW |
 | 已有 MariaDB 11.7+，希望少一个系统 | MariaDB | VECTOR INDEX、连接资源、表数量与版本兼容 |
 | 已有 Redis Stack，在线低延迟 | Redis | 内存、淘汰策略、动态字段索引 |
-| 大规模专用向量检索 | Milvus、Qdrant | 召回率、索引参数、扩缩容与过滤 |
+| 大规模专用向量检索 | Milvus、Qdrant、Weaviate | 召回率、索引参数、扩缩容与过滤 |
 | 已有 Elasticsearch 搜索体系 | Elasticsearch | mapping、script score 成本、字段精确匹配 |
 | 已有 OpenSearch 体系 | OpenSearch | mapping、script score、k-NN 参数与 TLS 配置 |
 | 已有 MongoDB Atlas，希望统一 BSON 与向量 | MongoDB Atlas | `filterFields`、mongot 同步延迟、Search 成本 |
+| 需要专用向量库、动态 schema 与 GraphQL | Weaviate | Collection schema、HNSW、过滤和集群资源 |
 | 快速原型且需要 metadata 过滤 | Chroma | 版本兼容、持久化和容量边界 |
 | 不维护数据库集群 | DashVector、腾讯云、其他托管方案 | 适配能力、网络、配额、费用和锁定成本 |
 
@@ -247,6 +252,7 @@ PoC 不应停在“能写能搜”，还要执行：
 - [Elasticsearch](./elasticsearch)
 - [OpenSearch](./opensearch)
 - [MongoDB Atlas](./mongodb-atlas)
+- [Weaviate](./weaviate)
 - [Chroma](./chroma)
 - [Qdrant](./qdrant)
 - [阿里云 DashVector](./aliyun)
