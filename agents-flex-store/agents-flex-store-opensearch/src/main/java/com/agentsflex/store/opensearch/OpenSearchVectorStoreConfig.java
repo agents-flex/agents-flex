@@ -83,7 +83,12 @@ public class OpenSearchVectorStoreConfig implements DocumentStoreConfig {
 
     @Override
     public boolean checkAvailable() {
-        return StringUtil.allHasText(this.serverUrl, this.apiKey)
-            || StringUtil.allHasText(this.serverUrl, this.username, this.password);
+        if (!StringUtil.hasText(this.serverUrl)) {
+            return false;
+        }
+        boolean hasApiKey = StringUtil.hasText(this.apiKey);
+        boolean hasUsername = StringUtil.hasText(this.username);
+        boolean hasPassword = StringUtil.hasText(this.password);
+        return hasApiKey || (hasUsername == hasPassword);
     }
 }
