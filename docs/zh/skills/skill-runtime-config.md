@@ -152,7 +152,7 @@ Skill、空名称或 `null` 配置时，构建会抛出 `IllegalArgumentExceptio
 Workspace 或远程 Runtime 则在复制、上传后的目录执行，不修改源 Skill。
 
 同一个 Runtime 对象内，已成功准备的 Skill 不会重复执行 bootstrap。跨 Runtime 对象或恢复会话时的具体复用
-语义取决于 Runtime，详见 [Skill Runtime](./runtime) 与 [Skills Workspace](./workspace)。
+语义取决于 Runtime，详见 [Skill Runtime](./runtime) 与 [Skill Runtime Workspace](./skill-runtime-workspace)。
 
 ## Secret 与配置管理
 
@@ -190,7 +190,7 @@ Workspace 或远程 Runtime 则在复制、上传后的目录执行，不修改�
 ## 下一步
 
 - [Skill Runtime](./runtime)
-- [Skills Workspace](./workspace)
+- [Skills Workspace](./skill-runtime-workspace)
 - [Local Runtime](./local-runtime)
 - [故障排查与生产建议](./troubleshooting)
 

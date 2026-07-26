@@ -71,7 +71,7 @@ try (LocalSkillRuntime runtime = LocalSkillRuntime.builder()
 
 启用后的默认目录是 `<conversationsRoot>/<conversationId>`。Local Runtime 会把 Skill 复制到当前会话的
 `skills` 子目录，再执行 bootstrap；文件工具也只能接收当前 Workspace 内的路径。详细规则见
-[Skills Workspace](./workspace)。
+[Skills Workspace](./skill-runtime-workspace)。
 
 ## 两种运行模式
 
@@ -196,8 +196,8 @@ Local Runtime 创建的子进程继承当前 Java 进程用户的本机文件和
 
 ## 下一步
 
-- [Skill Config](./skill-config)
-- [Skills Workspace](./workspace)
+- [Skill Config](./skill-runtime-config)
+- [Skills Workspace](./skill-runtime-workspace)
 - [Skill Runtime](./runtime)
 - [OpenSandbox](./open-sandbox)
 - [AIO Sandbox](./aio-sandbox)

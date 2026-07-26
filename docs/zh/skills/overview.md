@@ -116,8 +116,8 @@ agents-flex-skills-artifact
 
 - [了解 Skill 目录结构](./skill-package)
 - [使用 LocalSkillRuntime 快速开始](./getting-started)
-- [配置 Skill 的执行环境](./skill-config)
-- [理解 Skills Workspace](./workspace)
+- [配置 Skill 的执行环境](./skill-runtime-config)
+- [理解 Skills Workspace](./skill-runtime-workspace)
 - [深入使用 Local Runtime](./local-runtime)
 - [选择和配置 Skill Runtime](./runtime)
 - [安装和分发 Skill Artifact](./artifact-store)
