@@ -40,7 +40,7 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 ### 已有搜索平台，需要结合搜索生态
 
 使用 Elasticsearch 的团队可以评估 [Elasticsearch](./elasticsearch)；使用 OpenSearch 的团队可以评估
-[OpenSearch](./opensearch)。需要注意当前两个 Agents-Flex 适配器的条件能力并不相同。
+[OpenSearch](./opensearch)。两者都支持通过 `SearchWrapper` 进行向量检索和 metadata 条件过滤。
 
 ### 本地原型和轻量知识库
 
@@ -77,15 +77,15 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | [Pgvector](./pgvector) | `collectionName` 对应表 | 自动建表可配置 | 参数化 SQL 与 JSONB 条件 |
 | [MariaDB](./mariadb) | `collectionName` 对应表 | 自动建表和 VECTOR INDEX 可配置 | 参数化 SQL 与 JSON_VALUE 条件 |
 | [Elasticsearch](./elasticsearch) | `indexName` | 自动建 Index | query string 适配 |
-| [OpenSearch](./opensearch) | `indexName` | 自动建 Index | 当前搜索未接入 `Condition` |
+| [OpenSearch](./opensearch) | `collectionName` / `indexName` | 自动建 Index | query string 适配；支持纯过滤查询 |
 | [Chroma](./chroma) | `collectionName` | 可配置 | Chroma `where` JSON |
 | [Qdrant](./qdrant) | `collectionName` | 可配置 | Qdrant 原生 `Filter` |
 | [阿里云 DashVector](./aliyun) | `collectionName`、Partition | 控制台预建 | DashVector 专属 filter 适配 |
 | [腾讯云向量数据库](./qcloud) | `collectionName` | 控制台或 SDK 预建 | 官方 SDK；支持条件与纯过滤查询 |
 
 ::: warning 多租户安全
-OpenSearch 当前不能依赖 `SearchWrapper.condition` 做共享集合的租户隔离。需要严格隔离时使用独立数据空间，
-或者先完善适配器并完成安全测试。
+即使 Store 支持条件过滤，权限条件也必须由服务端强制追加，并通过真实数据库测试验证。高安全场景优先使用独立
+Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 :::
 
 ### 连接与本地开发
@@ -126,7 +126,7 @@ OpenSearch 当前不能依赖 `SearchWrapper.condition` 做共享集合的租户
 - 是否需要返回向量或指定字段；
 - topK、并发量、P95/P99 延迟和召回率目标。
 
-如果过滤是硬性要求，应先排除当前未接入 `Condition` 的 Store。
+如果过滤是硬性要求，应先确认目标 Store 对全部业务条件的适配能力，并运行真实集成测试。
 
 ### 数据一致性和更新
 
@@ -172,7 +172,7 @@ OpenSearch 当前不能依赖 `SearchWrapper.condition` 做共享集合的租户
 | 已有 Redis Stack，在线低延迟 | Redis | 内存、淘汰策略、动态字段索引 |
 | 大规模专用向量检索 | Milvus、Qdrant | 召回率、索引参数、扩缩容与过滤 |
 | 已有 Elasticsearch 搜索体系 | Elasticsearch | mapping、script score 成本、字段精确匹配 |
-| 已有 OpenSearch 体系 | OpenSearch | 当前缺少 Condition、TLS 客户端配置 |
+| 已有 OpenSearch 体系 | OpenSearch | mapping、script score、k-NN 参数与 TLS 配置 |
 | 快速原型且需要 metadata 过滤 | Chroma | 版本兼容、持久化和容量边界 |
 | 不维护数据库集群 | DashVector、腾讯云、其他托管方案 | 适配能力、网络、配额、费用和锁定成本 |
 

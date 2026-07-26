@@ -4,34 +4,33 @@
 
 ## 概述
 
-`OpenSearchVectorStore` 使用 OpenSearch Java Client，自动创建启用 k-NN 的 Index，并通过 `knn_score`
-script score 执行余弦相似度检索。
+`OpenSearchVectorStore` 基于 OpenSearch Java Client 和 k-NN 插件实现向量数据存储。一个 Agents-Flex
+Collection 对应一个 OpenSearch Index，文档正文、向量和 metadata 保存在同一条 `_source` 中。
 
-当前实现支持 CRUD、向量检索、最低分值和按 Index 路由，但尚未把 `SearchWrapper.condition` 和输出字段控制
-接入查询。这是选择该模块前必须了解的边界。
+当前实现支持：
 
-## 本地安装
+- 批量写入、覆盖更新和按 ID 删除；
+- 使用 `knn_score` 和余弦空间执行向量检索；
+- EQ、NE、范围、BETWEEN、IN、NOT IN、NULL 和嵌套逻辑条件；
+- SQL 风格条件表达式和纯 metadata 查询；
+- `outputFields`、`outputVector`、`minScore` 和 `maxResults`；
+- 多 Index 路由以及写入、更新、删除后的立即可查；
+- API Key、Basic Auth 和无认证连接。
 
-### 单节点 Docker
+它适合已经采用 OpenSearch 或 Amazon OpenSearch Service，希望把向量召回、metadata 过滤、权限和运维体系
+放在同一个搜索平台中的应用。
 
-```bash
-docker run --name agents-flex-opensearch \
-  -p 9201:9200 \
-  -p 9600:9600 \
-  -e discovery.type=single-node \
-  -e DISABLE_SECURITY_PLUGIN=true \
-  -e "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g" \
-  -d opensearchproject/opensearch:2.17.1
-```
+## 使用场景
 
-验证：
+适合以下场景：
 
-```bash
-curl -fsS http://127.0.0.1:9201/
-curl -fsS http://127.0.0.1:9201/_cluster/health?pretty
-```
+- 已有 OpenSearch 集群和搜索运维经验；
+- RAG 检索需要在向量召回前应用 tenant、状态、分类或时间条件；
+- 需要通过独立 Index 隔离知识库、租户或 Embedding 模型版本；
+- 希望复用 OpenSearch 的扩缩容、快照、监控和权限能力。
 
-关闭安全插件只适用于本机开发。生产环境使用官方安全插件、TLS 和最小权限账号。
+如果只是小规模本地知识库，或者团队没有 OpenSearch 运维能力，应同时评估 Chroma、Pgvector 或托管向量服务。
+大规模上线前还需要用真实向量规模验证 script score 的延迟和召回率。
 
 ## 添加依赖
 
@@ -43,10 +42,41 @@ curl -fsS http://127.0.0.1:9201/_cluster/health?pretty
 </dependency>
 ```
 
-## 配置
+## 本地安装
 
-当前 `OpenSearchVectorStoreConfig.checkAvailable()` 要求 API Key 或用户名密码。即使本地容器关闭认证，建议使用
-带认证的本地配置测试生产路径，或直接构造 Store 而不先调用 `checkAvailable()`。
+### 使用 Docker 启动
+
+以下命令启动 OpenSearch 2.17.1，映射到本机 `9201`，避免与常用的 Elasticsearch `9200` 端口冲突：
+
+```bash
+docker run -d --name agents-flex-opensearch \
+  -p 127.0.0.1:9201:9200 \
+  -p 127.0.0.1:9600:9600 \
+  -e discovery.type=single-node \
+  -e DISABLE_SECURITY_PLUGIN=true \
+  -e "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" \
+  opensearchproject/opensearch:2.17.1
+```
+
+等待集群启动并验证：
+
+```bash
+curl -fsS http://127.0.0.1:9201/
+curl -fsS http://127.0.0.1:9201/_cluster/health?pretty
+```
+
+`DISABLE_SECURITY_PLUGIN=true` 只适用于本地开发。生产环境必须启用 TLS、认证、网络访问控制和最小权限。
+
+### 停止和清理
+
+```bash
+docker stop agents-flex-opensearch
+docker rm agents-flex-opensearch
+```
+
+## 配置连接
+
+本地无认证环境：
 
 ```java
 OpenSearchVectorStoreConfig config = new OpenSearchVectorStoreConfig();
@@ -57,84 +87,197 @@ OpenSearchVectorStore store = new OpenSearchVectorStore(config);
 store.setEmbeddingModel(embeddingModel);
 ```
 
-认证集群：
+Basic Auth：
 
 ```java
 config.setUsername(System.getenv("OPENSEARCH_USERNAME"));
 config.setPassword(System.getenv("OPENSEARCH_PASSWORD"));
-// 或 config.setApiKey(System.getenv("OPENSEARCH_API_KEY"));
 ```
 
-::: warning TLS 安全边界
-当前默认构造器创建了信任所有证书并关闭主机名校验的 TLS 策略。不要直接把这一行为用于生产。生产接入应通过
-`OpenSearchVectorStore(config, client)` 注入经过正确 CA 和主机名校验配置的 `OpenSearchClient`，或先修正
-默认客户端构造逻辑。
-:::
+API Key：
+
+```java
+config.setApiKey(System.getenv("OPENSEARCH_API_KEY"));
+```
+
+默认客户端使用 JVM 信任库和标准主机名校验。私有 CA 应导入应用 truststore；需要特殊代理、AWS SigV4 或自定义
+TLS 配置时，构造 `OpenSearchClient` 后通过 `OpenSearchVectorStore(config, client)` 注入。
 
 ## 快速开始
 
 ```java
-Document document = Document.of("OpenSearch k-NN 向量检索示例");
+Document document = Document.of("OpenSearch 支持向量检索和 metadata 过滤。");
 document.setId("os-001");
+document.setTitle("OpenSearch Store");
 document.putMetadata("tenant", "demo");
+document.putMetadata("category", "guide");
+document.putMetadata("year", 2026);
 
 store.store(document);
 
 SearchWrapper query = new SearchWrapper()
-    .text("OpenSearch 向量搜索")
+    .text("搜索平台中的向量召回")
     .maxResults(5)
-    .minScore(0.5);
+    .minScore(0.6)
+    .eq("metadataMap.tenant", "demo");
 
-List<Document> result = store.search(query);
+List<Document> results = store.search(query);
 ```
 
-首次写入创建 `knn=true` 的 Index，默认 mapping 包含 `content` 文本字段和 `vector` knn_vector 字段，维度取
-`EmbeddingModel.dimensions()`。
+使用 `store.search(...)` 时，如果只设置了 `text`，`DocumentStore` 会通过已配置的 `EmbeddingModel` 生成查询向量。
+直接调用 `doStore/doSearch` 时则需要自行提供向量。
 
-## 更新、删除和多 Index
-
-```java
-StoreOptions options = new StoreOptions();
-options.setIndexName("tenant-a-knowledge");
-
-store.store(documents, options);
-store.update(documents, options);
-store.delete(ids, options);
-store.search(query, options);
-```
-
-Index 路由必须使用 `indexName`。
+首次写入新 Index 时，Store 优先从文档向量推断维度；文档没有向量时才使用 `EmbeddingModel.dimensions()`。
+自动 mapping 包含 `content` 的 text 字段和 `vector` 的 `knn_vector` 字段，并启用 `index.knn`。
 
 ## 高级查询
 
-当前搜索请求以 `match_all` 作为 script score 的基础 query：
+### 链式条件
 
 ```java
-query.eq("tenant", "tenant-a");
+SearchWrapper query = new SearchWrapper()
+    .text("OpenSearch 条件检索")
+    .eq("metadataMap.tenant", "tenant-a")
+    .in("metadataMap.category", Arrays.asList("guide", "reference"))
+    .between("metadataMap.year", 2024, 2026)
+    .isNotNull("metadataMap.owner")
+    .not(group -> group.eq("metadataMap.status", "deleted"))
+    .maxResults(20);
 ```
 
-上述 Condition 当前不会进入 OpenSearch 请求，不能作为租户隔离或安全过滤。需要 metadata 条件时，应：
+### SQL 风格条件
 
-1. 扩展 Store，把 Condition 转换为 OpenSearch Query DSL；
-2. 在 script score 外层组合 bool filter；
-3. 添加 AND/OR/IN/BETWEEN/NULL 和多租户真实测试；
-4. 在修复前选择已支持条件的 Store。
+```java
+SearchWrapper query = new SearchWrapper()
+    .text("查询文档")
+    .condition(
+        "metadataMap.tenant = 'tenant-a' " +
+        "AND metadataMap.year BETWEEN 2024 AND 2026 " +
+        "AND metadataMap.category NOT IN ('internal', 'deleted')"
+    );
+```
 
-`outputFields` 和 `outputVector` 当前也没有应用到 source filtering，返回行为由 OpenSearch 文档反序列化决定。
+`SearchWrapper` 先把字符串解析为通用条件树，OpenSearch Store 再将条件适配成 query string，并放入
+`script_score.query` 中。因此 metadata 条件在向量评分之前由服务端执行，不是在 Java 结果中二次过滤。
+
+| SearchWrapper 条件 | OpenSearch 执行形式 |
+| --- | --- |
+| EQ / NE | 字段词项或 NOT 词项 |
+| GT / GE / LT / LE | query string 开闭区间 |
+| BETWEEN | `[start TO end]` |
+| IN / NOT IN | OR 词项组及 NOT |
+| IS NULL / IS NOT NULL | `_exists_` 判断 |
+| AND / OR / NOT / Group | 对应逻辑表达式和括号 |
+
+字符串字段是否精确匹配由 mapping 决定。动态字符串通常会映射出 `.keyword` 子字段；对 text 字段做权限或枚举过滤时，
+应预建 mapping 并使用 keyword 字段路径。
+
+### 纯条件查询
+
+不需要向量相似度时关闭向量检索：
+
+```java
+SearchWrapper query = new SearchWrapper()
+    .withVector(false)
+    .condition("metadataMap.status = 'ready' AND metadataMap.year >= 2025")
+    .maxResults(100);
+```
+
+`withVector(true)` 是默认值，此时没有查询向量会抛出明确异常。纯条件模式不计算向量分值，`minScore` 不生效。
+
+## 控制返回字段
+
+默认不返回向量，以减少网络和反序列化成本：
+
+```java
+query.outputFields("metadataMap.category", "metadataMap.year")
+    .outputVector(false);
+```
+
+Store 会保留 `id`、`title` 和 `content`，并仅返回指定 metadata 路径。需要原始向量时显式开启：
+
+```java
+query.outputVector(true);
+```
+
+## 多 Index 与隔离
+
+可以使用统一的 `collectionName`，也可以使用 OpenSearch 专属的 `indexName`：
+
+```java
+StoreOptions options = StoreOptions.ofCollectionName("tenant-a-knowledge");
+
+store.store(documents, options);
+store.search(query, options);
+store.update(documents, options);
+store.delete(ids, options);
+```
+
+当两者同时设置时，`collectionName` 优先；两者都为空时使用 `defaultIndexName`。同一操作链必须传递同一个
+`StoreOptions`，避免写入和查询落到不同 Index。权限敏感场景优先使用独立 Index，再在 Index 内追加 tenant 条件。
+
+## 一致性和资源管理
+
+写入、更新和删除使用 `refresh=wait_for`，方法返回后后续搜索可以看到变更。这个保证会增加高频写入时的等待成本，
+需要在生产负载下验证吞吐和 refresh interval。
+
+Store 持有底层连接，应作为应用级单例并在关闭时释放：
+
+```java
+try (OpenSearchVectorStore store = new OpenSearchVectorStore(config)) {
+    store.setEmbeddingModel(embeddingModel);
+    // 使用 store
+}
+```
 
 ## 测试与验证
 
+普通单元和请求诊断测试不要求本地 OpenSearch：
+
 ```bash
-mvn -pl agents-flex-store/agents-flex-store-opensearch test
+mvn -pl agents-flex-store/agents-flex-store-opensearch -am \
+  -Dtest=OpenSearchExpressionAdaptorTest,OpenSearchVectorStoreDiagnosticTest \
+  -Dsurefire.failIfNoSpecifiedTests=false test
 ```
+
+启动前述 Docker 容器后执行真实集成测试：
+
+```bash
+mvn -pl agents-flex-store/agents-flex-store-opensearch -am \
+  -Dtest=OpenSearchVectorStoreIntegrationTest \
+  -Dsurefire.failIfNoSpecifiedTests=false \
+  -Dagentsflex.opensearch.integration=true \
+  -Dagentsflex.opensearch.url=http://127.0.0.1:9201 test
+```
+
+集成测试使用随机 Index，并验证多集合隔离、复杂条件、纯过滤、字段输出、更新和删除，结束后自动清理。
 
 ## 生产建议
 
-- 注入安全配置的客户端，不使用默认的全信任 TLS；
-- 预建 Index Template 并明确向量 engine、space type 和参数；
-- 在条件能力补齐前不要用于共享 Collection 多租户隔离；
-- 监控 bulk item error，而不仅是 HTTP 状态；
-- 校准 `knn_score` 与 `minScore`；
-- 应用关闭时管理底层 transport 生命周期。
+- 预建 Index Template，固定 metadata 类型、keyword 字段、向量维度和 k-NN 参数；
+- 不依赖动态 mapping 承载 tenant 或权限字段；
+- 固定 OpenSearch Java Client 与服务端的兼容版本；
+- 对动态条件表达式实施字段白名单、长度和 IN 数量限制；
+- 监控 bulk item error、refresh 等待、script score 延迟、JVM 和 native memory；
+- 用生产数据校准 `minScore`、topK、向量归一化和召回质量；
+- 使用快照验证恢复流程，并用新 Index 完成 Embedding 模型迁移。
+
+## 常见问题
+
+### 写入时报向量维度错误
+
+同一个 Index 的向量维度固定。确认写入文档使用同一 Embedding 模型；更换模型或维度时创建新 Index。
+
+### 条件没有命中预期字符串
+
+检查字段 mapping。枚举和标识符应使用 keyword 类型或 `.keyword` 路径，text 字段会受分析器影响。
+
+### HTTPS 证书校验失败
+
+将签发 CA 导入 JVM truststore，并确保 URL 主机名与证书一致。默认客户端不会绕过证书或主机名校验。
+
+### 写入成功但搜索报 mapping 错误
+
+自动 mapping 只固定核心字段。生产环境应预建 metadata mapping，避免首条文档把字段推断为错误类型。
 
 </div>
