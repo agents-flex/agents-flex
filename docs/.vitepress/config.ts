@@ -171,6 +171,7 @@ export default defineConfig({
                     {text: 'MariaDB', link: '/zh/store/mariadb'},
                     {text: 'Elasticsearch', link: '/zh/store/elasticsearch'},
                     {text: 'OpenSearch', link: '/zh/store/opensearch'},
+                    {text: 'MongoDB Atlas', link: '/zh/store/mongodb-atlas'},
                     {text: 'Chroma', link: '/zh/store/chroma'},
                     {text: 'Qdrant', link: '/zh/store/qdrant'},
                     {text: '阿里云 DashVector', link: '/zh/store/aliyun'},

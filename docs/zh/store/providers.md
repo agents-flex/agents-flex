@@ -42,6 +42,11 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 使用 Elasticsearch 的团队可以评估 [Elasticsearch](./elasticsearch)；使用 OpenSearch 的团队可以评估
 [OpenSearch](./opensearch)。两者都支持通过 `SearchWrapper` 进行向量检索和 metadata 条件过滤。
 
+### 已有 MongoDB Atlas，希望统一业务数据和向量
+
+[MongoDB Atlas](./mongodb-atlas) 适合已经使用 Atlas、希望在 BSON 文档上同时执行普通条件和向量召回的团队。
+向量预过滤字段必须预先进入 Vector Search Index，并需要评估 `mongot` 索引同步延迟和 Atlas Search 成本。
+
 ### 本地原型和轻量知识库
 
 [Chroma](./chroma) 易于本地启动，并支持结构化 metadata 过滤，适合原型验证和轻量知识库。
@@ -61,6 +66,7 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | `agents-flex-store-mariadb` | MariaDB 11.7+ | 关系数据与向量统一运维 | MariaDB 原生 VECTOR |
 | `agents-flex-store-elasticsearch` | Elasticsearch | 搜索平台中的向量召回 | 自建或 Elastic Cloud |
 | `agents-flex-store-opensearch` | OpenSearch | OpenSearch k-NN | 自建或 Amazon OpenSearch |
+| `agents-flex-store-mongodb-atlas` | MongoDB Atlas Vector Search | BSON 业务数据与向量统一 | MongoDB Atlas 或 Atlas Local |
 | `agents-flex-store-chroma` | Chroma | 原型和轻量知识库 | 独立 HTTP 服务 |
 | `agents-flex-store-qdrant` | Qdrant | 专用向量检索与 payload 过滤 | 自建或 Qdrant Cloud |
 | `agents-flex-store-aliyun` | DashVector | 阿里云托管向量服务 | 云服务 |
@@ -78,6 +84,7 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | [MariaDB](./mariadb) | `collectionName` 对应表 | 自动建表和 VECTOR INDEX 可配置 | 参数化 SQL 与 JSON_VALUE 条件 |
 | [Elasticsearch](./elasticsearch) | `indexName` | 自动建 Index | query string 适配 |
 | [OpenSearch](./opensearch) | `collectionName` / `indexName` | 自动建 Index | query string 适配；支持纯过滤查询 |
+| [MongoDB Atlas](./mongodb-atlas) | `collectionName` / `indexName` | 自动建 Collection 和 Vector Search Index | BSON 预过滤；支持纯过滤查询 |
 | [Chroma](./chroma) | `collectionName` | 可配置 | Chroma `where` JSON |
 | [Qdrant](./qdrant) | `collectionName` | 可配置 | Qdrant 原生 `Filter` |
 | [阿里云 DashVector](./aliyun) | `collectionName`、Partition | 控制台预建 | DashVector 专属 filter 适配 |
@@ -98,6 +105,7 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | MariaDB | JDBC | `mariadb:11.7` Docker |
 | Elasticsearch | Elasticsearch Java Client | 官方单节点 Docker |
 | OpenSearch | OpenSearch Java Client | 官方单节点 Docker |
+| MongoDB Atlas | MongoDB Java Driver | 官方 Atlas Local Docker；普通 MongoDB 不支持 Vector Search |
 | Chroma | REST `/api/v2` | Chroma Docker |
 | Qdrant | gRPC 6334 | Qdrant Docker，同时开放 HTTP 6333 |
 | 阿里云 DashVector | 官方 Java SDK | 不能本地安装，连接云端测试实例 |
@@ -173,6 +181,7 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | 大规模专用向量检索 | Milvus、Qdrant | 召回率、索引参数、扩缩容与过滤 |
 | 已有 Elasticsearch 搜索体系 | Elasticsearch | mapping、script score 成本、字段精确匹配 |
 | 已有 OpenSearch 体系 | OpenSearch | mapping、script score、k-NN 参数与 TLS 配置 |
+| 已有 MongoDB Atlas，希望统一 BSON 与向量 | MongoDB Atlas | `filterFields`、mongot 同步延迟、Search 成本 |
 | 快速原型且需要 metadata 过滤 | Chroma | 版本兼容、持久化和容量边界 |
 | 不维护数据库集群 | DashVector、腾讯云、其他托管方案 | 适配能力、网络、配额、费用和锁定成本 |
 
@@ -237,6 +246,7 @@ PoC 不应停在“能写能搜”，还要执行：
 - [MariaDB](./mariadb)
 - [Elasticsearch](./elasticsearch)
 - [OpenSearch](./opensearch)
+- [MongoDB Atlas](./mongodb-atlas)
 - [Chroma](./chroma)
 - [Qdrant](./qdrant)
 - [阿里云 DashVector](./aliyun)

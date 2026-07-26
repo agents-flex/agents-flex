@@ -60,8 +60,8 @@ store.delete(documentIds, options);
 
 | 属性 | 作用 | 常见后端 |
 | --- | --- | --- |
-| `collectionName` | 覆盖默认 Collection 或逻辑集合 | Redis、Milvus、Pgvector、Chroma、Qdrant、云服务 |
-| `indexName` | 覆盖默认 Index | Elasticsearch、OpenSearch |
+| `collectionName` | 覆盖默认 Collection 或逻辑集合 | Redis、Milvus、MongoDB Atlas、Pgvector、Chroma、Qdrant、云服务 |
+| `indexName` | 覆盖默认 Index 或向量搜索索引 | Elasticsearch、OpenSearch、MongoDB Atlas |
 | `partitionNames` | 指定 Collection 内的分区 | Milvus 等支持分区的实现 |
 | `embeddingOptions` | 写入或查询向量化参数 | 由 `EmbeddingModel` 解释 |
 | metadata | 携带自定义 Store 扩展参数 | 由扩展实现解释 |
@@ -78,6 +78,10 @@ StoreOptions collectionOptions =
 // Elasticsearch / OpenSearch
 StoreOptions indexOptions = new StoreOptions();
 indexOptions.setIndexName("tenant-a-docs");
+
+// MongoDB Atlas：Collection 与 Vector Search Index 可以分别指定
+StoreOptions atlasOptions = StoreOptions.ofCollectionName("tenant_a_docs");
+atlasOptions.setIndexName("tenant_a_vector_index");
 
 // Milvus Collection 内分区
 StoreOptions partitionOptions =

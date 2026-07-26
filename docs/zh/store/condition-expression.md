@@ -352,6 +352,7 @@ SQL 风格表达式是统一的输入方式，但数据库没有统一的过滤�
 | MariaDB | 转换为参数化 SQL 和 `JSON_VALUE` 条件 |
 | Elasticsearch | 转换为 Elasticsearch query string |
 | OpenSearch | 转换为 OpenSearch query string，并作为向量评分的基础查询 |
+| MongoDB Atlas | 转换为 BSON；向量查询使用 `$vectorSearch.filter`，纯过滤使用普通查询 |
 | Chroma | 构建 Chroma `where` JSON |
 | Qdrant | 构建 Qdrant 原生 `Filter` |
 | 阿里云 DashVector | 使用专属适配器生成 DashVector `filter` |
