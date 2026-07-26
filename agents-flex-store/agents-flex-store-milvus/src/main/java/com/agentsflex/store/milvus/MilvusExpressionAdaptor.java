@@ -37,6 +37,12 @@ public class MilvusExpressionAdaptor implements ExpressionAdaptor {
 
     @Override
     public String toCondition(Condition condition) {
+        if (condition.getType() == ConditionType.IS_NULL) {
+            return toLeft(condition.getLeft()) + " is null";
+        }
+        if (condition.getType() == ConditionType.IS_NOT_NULL) {
+            return toLeft(condition.getLeft()) + " is not null";
+        }
         if (condition.getRight() instanceof Value
             && ((Value) condition.getRight()).getValue() == null) {
             if (condition.getType() == ConditionType.EQ) {

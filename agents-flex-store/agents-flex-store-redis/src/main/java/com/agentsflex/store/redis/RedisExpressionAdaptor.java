@@ -19,7 +19,9 @@ import com.agentsflex.core.store.condition.Condition;
 import com.agentsflex.core.store.condition.ConditionType;
 import com.agentsflex.core.store.condition.Connector;
 import com.agentsflex.core.store.condition.ExpressionAdaptor;
+import com.agentsflex.core.store.condition.Group;
 import com.agentsflex.core.store.condition.Key;
+import com.agentsflex.core.store.condition.Not;
 import com.agentsflex.core.store.condition.Value;
 
 import java.lang.reflect.Array;
@@ -51,6 +53,11 @@ class RedisExpressionAdaptor implements ExpressionAdaptor {
 
         String fieldName = String.valueOf(((Key) condition.getLeft()).getKey());
         store.validateMetadataFieldName(fieldName);
+        if (condition.getType() == ConditionType.IS_NULL
+            || condition.getType() == ConditionType.IS_NOT_NULL) {
+            throw new IllegalArgumentException(
+                "RedisVectorStore does not support IS NULL/IS NOT NULL filters");
+        }
         Object value = ((Value) condition.getRight()).getValue();
         RedisVectorStore.MetadataFieldType fieldType = inferFieldType(condition.getType(), value);
         store.createMetadataFieldIfNecessary(indexName, fieldName, fieldType);
@@ -77,6 +84,11 @@ class RedisExpressionAdaptor implements ExpressionAdaptor {
             default:
                 return " ";
         }
+    }
+
+    @Override
+    public String toGroupPrefix(Group group) {
+        return group instanceof Not ? "-" : "";
     }
 
     private RedisVectorStore.MetadataFieldType inferFieldType(ConditionType type, Object value) {

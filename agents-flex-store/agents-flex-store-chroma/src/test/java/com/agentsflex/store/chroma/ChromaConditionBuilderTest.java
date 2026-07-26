@@ -15,6 +15,8 @@ import java.util.Arrays;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ChromaConditionBuilderTest {
 
@@ -65,6 +67,22 @@ public class ChromaConditionBuilderTest {
                 + "{\"views\":{\"$gt\":10}},"
                 + "{\"views\":{\"$lt\":20}}]}]}",
             builder.build(wrapper.getCondition()));
+    }
+
+    @Test
+    public void shouldBuildUnaryNotAndRejectNullPredicates() {
+        SearchWrapper wrapper = new SearchWrapper()
+            .not(group -> group.eq("status", "deleted").gt("views", 10));
+
+        assertJsonEquals("{\"$or\":[{\"status\":{\"$ne\":\"deleted\"}},"
+            + "{\"views\":{\"$lte\":10}}]}", builder.build(wrapper.getCondition()));
+
+        try {
+            builder.build(new SearchWrapper().isNull("optional").getCondition());
+            fail("Expected unsupported null predicate");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("null predicates"));
+        }
     }
 
     private void assertJsonEquals(String expected, Map<String, Object> actual) {

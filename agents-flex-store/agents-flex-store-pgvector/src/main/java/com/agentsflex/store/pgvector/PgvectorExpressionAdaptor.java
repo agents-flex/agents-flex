@@ -48,6 +48,10 @@ class PgvectorExpressionAdaptor implements ExpressionAdaptor {
         Object value = ((Value) condition.getRight()).getValue();
         String expression = fieldExpression(fieldName, firstValue(value));
         switch (condition.getType()) {
+            case IS_NULL:
+                return expression + " IS NULL";
+            case IS_NOT_NULL:
+                return expression + " IS NOT NULL";
             case EQ:
                 return comparison(expression, "=", value, fieldName);
             case NE:

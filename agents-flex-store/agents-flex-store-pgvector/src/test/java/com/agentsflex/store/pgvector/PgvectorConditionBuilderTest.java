@@ -51,17 +51,21 @@ public class PgvectorConditionBuilderTest {
     public void shouldSupportColumnsNullsAndGroups() {
         SearchWrapper wrapper = new SearchWrapper()
             .eq("id", 42)
-            .eq("optional", null)
+            .isNull("optional")
+            .isNotNull("required")
             .orCriteria(group -> group
                 .ge("views", 10)
-                .in(Connector.AND_NOT, "category", Arrays.asList("hidden", "deleted")));
+                .in(Connector.AND_NOT, "category", Arrays.asList("hidden", "deleted")))
+            .not(group -> group.eq("status", "archived"));
         PgvectorExpressionAdaptor builder = new PgvectorExpressionAdaptor();
 
         String sql = wrapper.toFilterExpression(builder);
 
         assertEquals("\"id\" = ? AND metadata #>> '{optional}' IS NULL"
+            + " AND metadata #>> '{required}' IS NOT NULL"
             + " OR (CAST(metadata #>> '{views}' AS numeric) >= ?"
-            + " AND NOT metadata #>> '{category}' IN (?, ?))", sql);
-        assertEquals(Arrays.asList("42", 10, "hidden", "deleted"), builder.getParameters());
+            + " AND NOT metadata #>> '{category}' IN (?, ?))"
+            + " AND NOT (metadata #>> '{status}' = ?)", sql);
+        assertEquals(Arrays.asList("42", 10, "hidden", "deleted", "archived"), builder.getParameters());
     }
 }

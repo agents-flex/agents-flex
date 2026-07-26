@@ -97,6 +97,8 @@ public class MariaDBVectorStoreIntegrationTest {
         SearchWrapper query = vectorSearch(new float[]{1, 0, 0})
             .condition("category IN ('AI', 'Ops') AND status NOT IN ('deleted', 'blocked')"
                 + " AND views BETWEEN 5 AND 15 AND profile.level >= 2 AND active = true")
+            .isNotNull("category")
+            .not(group -> group.eq("status", "deleted"))
             .minScore(0.8)
             .outputVector(true);
         List<Document> found = store.search(query, firstOptions);

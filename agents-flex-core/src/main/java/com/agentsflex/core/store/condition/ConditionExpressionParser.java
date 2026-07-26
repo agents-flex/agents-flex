@@ -129,7 +129,8 @@ public final class ConditionExpressionParser {
             if (match(TokenType.IS)) {
                 boolean negated = match(TokenType.NOT);
                 expect(TokenType.NULL, "Expected NULL after IS or IS NOT");
-                return comparison(negated ? ConditionType.NE : ConditionType.EQ, key, null);
+                return new Condition(negated ? ConditionType.IS_NOT_NULL : ConditionType.IS_NULL,
+                    key, new Value((Object) null));
             }
             if (match(TokenType.NOT)) {
                 if (match(TokenType.IN)) {

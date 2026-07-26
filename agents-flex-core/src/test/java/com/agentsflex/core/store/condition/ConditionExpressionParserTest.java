@@ -62,7 +62,7 @@ public class ConditionExpressionParserTest {
         assertCondition(condition.getNext().getNext(), ConditionType.GE, "ratio", new BigDecimal("-1.25e2"));
         assertCondition(condition.getNext().getNext().getNext(), ConditionType.EQ, "active", true);
         assertCondition(condition.getNext().getNext().getNext().getNext(),
-            ConditionType.NE, "deleted", null);
+            ConditionType.IS_NOT_NULL, "deleted", null);
     }
 
     @Test
@@ -167,8 +167,8 @@ public class ConditionExpressionParserTest {
 
         assertCondition(condition, ConditionType.EQ, "a", null);
         assertCondition(condition.getNext(), ConditionType.NE, "b", null);
-        assertCondition(condition.getNext().getNext(), ConditionType.EQ, "c", null);
-        assertCondition(condition.getNext().getNext().getNext(), ConditionType.NE, "d", null);
+        assertCondition(condition.getNext().getNext(), ConditionType.IS_NULL, "c", null);
+        assertCondition(condition.getNext().getNext().getNext(), ConditionType.IS_NOT_NULL, "d", null);
     }
 
     @Test

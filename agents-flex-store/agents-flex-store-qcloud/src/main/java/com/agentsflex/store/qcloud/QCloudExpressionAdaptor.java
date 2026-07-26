@@ -13,7 +13,9 @@ import com.agentsflex.core.store.condition.Condition;
 import com.agentsflex.core.store.condition.ConditionType;
 import com.agentsflex.core.store.condition.Connector;
 import com.agentsflex.core.store.condition.ExpressionAdaptor;
+import com.agentsflex.core.store.condition.Group;
 import com.agentsflex.core.store.condition.Key;
+import com.agentsflex.core.store.condition.Not;
 import com.agentsflex.core.store.condition.Value;
 
 import java.lang.reflect.Array;
@@ -42,6 +44,11 @@ final class QCloudExpressionAdaptor implements ExpressionAdaptor {
 
         String field = field(((Key) condition.getLeft()).getKey());
         Object value = ((Value) condition.getRight()).getValue();
+        if (condition.getType() == ConditionType.IS_NULL
+            || condition.getType() == ConditionType.IS_NOT_NULL) {
+            throw new IllegalArgumentException(
+                "Tencent VectorDB filters do not support NULL predicates.");
+        }
         if (value == null) {
             throw new IllegalArgumentException("Tencent VectorDB filters do not support NULL values.");
         }
@@ -67,6 +74,15 @@ final class QCloudExpressionAdaptor implements ExpressionAdaptor {
             return " or ";
         }
         throw new IllegalArgumentException("Unsupported Tencent VectorDB connector: " + connector);
+    }
+
+    @Override
+    public String toGroupStart(Group group) {
+        if (group instanceof Not) {
+            throw new IllegalArgumentException(
+                "Tencent VectorDB filters do not support unary NOT groups.");
+        }
+        return "(";
     }
 
     private String operation(ConditionType type) {

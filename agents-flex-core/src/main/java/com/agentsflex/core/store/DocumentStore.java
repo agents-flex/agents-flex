@@ -24,6 +24,7 @@ import com.agentsflex.core.model.exception.ModelException;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 面向 {@link Document} 的向量存储模板。
@@ -124,19 +125,22 @@ public abstract class DocumentStore extends VectorStore<Document> {
      */
     @Override
     public List<Document> search(SearchWrapper wrapper, StoreOptions options) {
+        Objects.requireNonNull(wrapper, "wrapper must not be null");
         if (options == null) {
             options = StoreOptions.DEFAULT;
         }
 
-        if (wrapper.getVector() == null && embeddingModel != null && wrapper.isWithVector()) {
-            VectorData vectorData = embeddingModel.embed(Document.of(wrapper.getText()), options.getEmbeddingOptions());
+        SearchWrapper executionWrapper = wrapper.copy().validate();
+        if (executionWrapper.getVector() == null && embeddingModel != null && executionWrapper.isWithVector()) {
+            VectorData vectorData = embeddingModel.embed(
+                Document.of(executionWrapper.getText()), options.getEmbeddingOptions());
             if (vectorData == null) {
                 throw new ModelException("Embedding model does not contain vector data");
             }
-            wrapper.setVector(vectorData.getVector());
+            executionWrapper.setVector(vectorData.getVector());
         }
 
-        return doSearch(wrapper, options);
+        return doSearch(executionWrapper, options);
     }
 
 

@@ -72,6 +72,58 @@ public class SearchWrapper extends VectorData {
      */
     private boolean outputVector = false;
 
+    public SearchWrapper() {
+    }
+
+    /**
+     * 创建查询请求的独立副本。向量、条件树、返回字段和元数据容器均会复制。
+     */
+    public SearchWrapper(SearchWrapper source) {
+        Objects.requireNonNull(source, "source must not be null");
+        this.text = source.text;
+        this.maxResults = source.maxResults;
+        this.minScore = source.minScore;
+        this.withVector = source.withVector;
+        this.condition = Condition.copyOf(source.condition);
+        this.outputFields = source.outputFields == null
+            ? null : Collections.unmodifiableList(new ArrayList<>(source.outputFields));
+        this.outputVector = source.outputVector;
+        this.vector = source.vector == null ? null : source.vector.clone();
+        this.score = source.score;
+        setMetadataMap(source.getMetadataMap());
+    }
+
+    /** 返回查询请求的独立副本。 */
+    public static SearchWrapper from(SearchWrapper source) {
+        return new SearchWrapper(source);
+    }
+
+    /** 返回查询请求的独立副本。 */
+    public SearchWrapper copy() {
+        return new SearchWrapper(this);
+    }
+
+    /**
+     * 校验所有通用查询参数。具体 Store 仍可补充向量维度等服务端约束。
+     *
+     * @return 当前查询对象
+     */
+    public SearchWrapper validate() {
+        validateMaxResults(maxResults);
+        validateMinScore(minScore);
+        validateOutputFields(outputFields);
+        return this;
+    }
+
+    @Override
+    public float[] getVector() {
+        return vector == null ? null : vector.clone();
+    }
+
+    @Override
+    public void setVector(float[] vector) {
+        this.vector = vector == null ? null : vector.clone();
+    }
 
 
     public String getText() {
@@ -97,6 +149,7 @@ public class SearchWrapper extends VectorData {
     }
 
     public void setMaxResults(Integer maxResults) {
+        validateMaxResults(maxResults);
         this.maxResults = maxResults;
     }
 
@@ -115,6 +168,7 @@ public class SearchWrapper extends VectorData {
     }
 
     public void setMinScore(Double minScore) {
+        validateMinScore(minScore);
         this.minScore = minScore;
     }
 
@@ -142,7 +196,7 @@ public class SearchWrapper extends VectorData {
      * @return 当前构造器
      */
     public SearchWrapper withVector(Boolean withVector) {
-        setWithVector(withVector);
+        setWithVector(Objects.requireNonNull(withVector, "withVector must not be null"));
         return this;
     }
 
@@ -151,7 +205,7 @@ public class SearchWrapper extends VectorData {
     }
 
     public void setCondition(Condition condition) {
-        this.condition = condition;
+        this.condition = Condition.copyOf(condition);
     }
 
     /**
@@ -202,17 +256,21 @@ public class SearchWrapper extends VectorData {
     }
 
     public void setOutputFields(List<String> outputFields) {
-        this.outputFields = outputFields;
+        validateOutputFields(outputFields);
+        this.outputFields = outputFields == null
+            ? null : Collections.unmodifiableList(new ArrayList<>(outputFields));
     }
 
     /** 设置需要返回的字段，并复制传入集合。 */
     public SearchWrapper outputFields(Collection<String> outputFields) {
+        Objects.requireNonNull(outputFields, "outputFields must not be null");
         setOutputFields(new ArrayList<>(outputFields));
         return this;
     }
 
     /** 设置需要返回的字段。 */
     public SearchWrapper outputFields(String... outputFields) {
+        Objects.requireNonNull(outputFields, "outputFields must not be null");
         setOutputFields(Arrays.asList(outputFields));
         return this;
     }
@@ -239,12 +297,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加等于条件。 */
     public SearchWrapper eq(Connector connector, String key, Object value) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.EQ, new Key(key), new Value(value));
-        } else {
-            this.condition.connect(new Condition(ConditionType.EQ, new Key(key), new Value(value)), connector);
-        }
-        return this;
+        return appendCondition(connector, condition(ConditionType.EQ, key, value));
     }
 
     /** 使用 AND 追加不等于条件。 */
@@ -254,12 +307,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加不等于条件。 */
     public SearchWrapper ne(Connector connector, String key, Object value) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.NE, new Key(key), new Value(value));
-        } else {
-            this.condition.connect(new Condition(ConditionType.NE, new Key(key), new Value(value)), connector);
-        }
-        return this;
+        return appendCondition(connector, condition(ConditionType.NE, key, value));
     }
 
     /** 使用 AND 追加大于条件。 */
@@ -269,12 +317,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加大于条件。 */
     public SearchWrapper gt(Connector connector, String key, Object value) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.GT, new Key(key), new Value(value));
-        } else {
-            this.condition.connect(new Condition(ConditionType.GT, new Key(key), new Value(value)), connector);
-        }
-        return this;
+        return appendCondition(connector, orderedCondition(ConditionType.GT, key, value));
     }
 
 
@@ -285,12 +328,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加大于等于条件。 */
     public SearchWrapper ge(Connector connector, String key, Object value) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.GE, new Key(key), new Value(value));
-        } else {
-            this.condition.connect(new Condition(ConditionType.GE, new Key(key), new Value(value)), connector);
-        }
-        return this;
+        return appendCondition(connector, orderedCondition(ConditionType.GE, key, value));
     }
 
 
@@ -301,12 +339,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加小于条件。 */
     public SearchWrapper lt(Connector connector, String key, Object value) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.LT, new Key(key), new Value(value));
-        } else {
-            this.condition.connect(new Condition(ConditionType.LT, new Key(key), new Value(value)), connector);
-        }
-        return this;
+        return appendCondition(connector, orderedCondition(ConditionType.LT, key, value));
     }
 
 
@@ -317,12 +350,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加小于等于条件。 */
     public SearchWrapper le(Connector connector, String key, Object value) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.LE, new Key(key), new Value(value));
-        } else {
-            this.condition.connect(new Condition(ConditionType.LE, new Key(key), new Value(value)), connector);
-        }
-        return this;
+        return appendCondition(connector, orderedCondition(ConditionType.LE, key, value));
     }
 
 
@@ -333,12 +361,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加 IN 条件。 */
     public SearchWrapper in(Connector connector, String key, Collection<?> values) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.IN, new Key(key), new Value(values.toArray()));
-        } else {
-            this.condition.connect(new Condition(ConditionType.IN, new Key(key), new Value(values.toArray())), connector);
-        }
-        return this;
+        return appendCondition(connector, multiValueCondition(ConditionType.IN, key, values));
     }
 
     /** 使用 AND 追加 NOT IN 条件。 */
@@ -348,12 +371,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加 NOT IN 条件。 */
     public SearchWrapper nin(Connector connector, String key, Collection<?> values) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.NIN, new Key(key), new Value(values.toArray()));
-        } else {
-            this.condition.connect(new Condition(ConditionType.NIN, new Key(key), new Value(values.toArray())), connector);
-        }
-        return this;
+        return appendCondition(connector, multiValueCondition(ConditionType.NIN, key, values));
     }
 
     /** 使用 AND 追加 BETWEEN 条件，边界由存储实现解释。 */
@@ -363,28 +381,44 @@ public class SearchWrapper extends VectorData {
 
     /** 使用指定连接符追加 BETWEEN 条件。 */
     public SearchWrapper between(Connector connector, String key, Object start, Object end) {
-        if (this.condition == null) {
-            this.condition = new Condition(ConditionType.BETWEEN, new Key(key), new Value(start, end));
-        } else {
-            this.condition.connect(new Condition(ConditionType.BETWEEN, new Key(key), new Value(start, end)), connector);
-        }
-        return this;
+        requireKey(key);
+        Objects.requireNonNull(start, "BETWEEN start must not be null");
+        Objects.requireNonNull(end, "BETWEEN end must not be null");
+        return appendCondition(connector,
+            new Condition(ConditionType.BETWEEN, new Key(key), new Value(start, end)));
+    }
+
+    /** 使用 AND 追加 IS NULL 条件。 */
+    public SearchWrapper isNull(String key) {
+        return isNull(Connector.AND, key);
+    }
+
+    /** 使用指定连接符追加 IS NULL 条件。 */
+    public SearchWrapper isNull(Connector connector, String key) {
+        return appendCondition(connector, condition(ConditionType.IS_NULL, key, null));
+    }
+
+    /** 使用 AND 追加 IS NOT NULL 条件。 */
+    public SearchWrapper isNotNull(String key) {
+        return isNotNull(Connector.AND, key);
+    }
+
+    /** 使用指定连接符追加 IS NOT NULL 条件。 */
+    public SearchWrapper isNotNull(Connector connector, String key) {
+        return appendCondition(connector, condition(ConditionType.IS_NOT_NULL, key, null));
     }
 
 
     /** 使用 AND 追加另一个查询构造器中的条件，并将其作为一个分组。 */
     public SearchWrapper group(SearchWrapper wrapper) {
+        Objects.requireNonNull(wrapper, "wrapper must not be null");
         return group(wrapper.condition);
     }
 
     /** 使用 AND 追加条件分组。 */
     public SearchWrapper group(Condition condition) {
-        if (this.condition == null) {
-            this.condition = new Group(condition);
-        } else {
-            this.condition.connect(new Group(condition), Connector.AND);
-        }
-        return this;
+        Objects.requireNonNull(condition, "condition must not be null");
+        return appendCondition(Connector.AND, new Group(Condition.copyOf(condition)));
     }
 
     /**
@@ -392,6 +426,7 @@ public class SearchWrapper extends VectorData {
      * 临时构造器没有条件时不会追加空分组。
      */
     public SearchWrapper group(Consumer<SearchWrapper> consumer) {
+        Objects.requireNonNull(consumer, "consumer must not be null");
         SearchWrapper newWrapper = new SearchWrapper();
         consumer.accept(newWrapper);
         Condition condition = newWrapper.condition;
@@ -408,6 +443,7 @@ public class SearchWrapper extends VectorData {
 
     /** 使用独立的临时构造器创建条件分组，并通过 OR 追加。 */
     public SearchWrapper orCriteria(Consumer<SearchWrapper> consumer) {
+        Objects.requireNonNull(consumer, "consumer must not be null");
         SearchWrapper newWrapper = new SearchWrapper();
         consumer.accept(newWrapper);
         Condition condition = newWrapper.condition;
@@ -417,6 +453,29 @@ public class SearchWrapper extends VectorData {
             } else {
                 this.condition.connect(new Group(condition), Connector.OR);
             }
+        }
+        return this;
+    }
+
+    /** 使用 AND 追加对给定条件分组的一元 NOT。 */
+    public SearchWrapper not(Condition condition) {
+        Objects.requireNonNull(condition, "condition must not be null");
+        return appendCondition(Connector.AND, new Not(Condition.copyOf(condition)));
+    }
+
+    /** 使用 AND 追加对另一个查询构造器条件的一元 NOT。 */
+    public SearchWrapper not(SearchWrapper wrapper) {
+        Objects.requireNonNull(wrapper, "wrapper must not be null");
+        return not(wrapper.condition);
+    }
+
+    /** 使用临时构造器创建条件分组，并通过 AND 追加一元 NOT。 */
+    public SearchWrapper not(Consumer<SearchWrapper> consumer) {
+        Objects.requireNonNull(consumer, "consumer must not be null");
+        SearchWrapper nested = new SearchWrapper();
+        consumer.accept(nested);
+        if (nested.condition != null) {
+            not(nested.condition);
         }
         return this;
     }
@@ -442,6 +501,71 @@ public class SearchWrapper extends VectorData {
         } else {
             Objects.requireNonNull(adaptor, "adaptor must not be null");
             return this.condition.toExpression(adaptor);
+        }
+    }
+
+    private SearchWrapper appendCondition(Connector connector, Condition nextCondition) {
+        Objects.requireNonNull(connector, "connector must not be null");
+        if (this.condition == null) {
+            nextCondition.setConnector(null);
+            this.condition = nextCondition;
+        } else {
+            this.condition.connect(nextCondition, connector);
+        }
+        return this;
+    }
+
+    private Condition condition(ConditionType type, String key, Object value) {
+        requireKey(key);
+        return new Condition(type, new Key(key), new Value(value));
+    }
+
+    private Condition orderedCondition(ConditionType type, String key, Object value) {
+        Objects.requireNonNull(value, type + " value must not be null");
+        return condition(type, key, value);
+    }
+
+    private Condition multiValueCondition(ConditionType type, String key, Collection<?> values) {
+        requireKey(key);
+        Objects.requireNonNull(values, type + " values must not be null");
+        if (values.isEmpty()) {
+            throw new IllegalArgumentException(type + " values must not be empty");
+        }
+        for (Object value : values) {
+            if (value == null) {
+                throw new IllegalArgumentException(type + " values must not contain null");
+            }
+        }
+        return new Condition(type, new Key(key), new Value(values.toArray()));
+    }
+
+    private static void requireKey(String key) {
+        if (key == null || key.trim().isEmpty()) {
+            throw new IllegalArgumentException("condition key must not be blank");
+        }
+    }
+
+    private static void validateMaxResults(Integer maxResults) {
+        if (maxResults == null || maxResults <= 0) {
+            throw new IllegalArgumentException("maxResults must be greater than 0");
+        }
+    }
+
+    private static void validateMinScore(Double minScore) {
+        if (minScore != null && (minScore.isNaN() || minScore.isInfinite()
+            || minScore < 0d || minScore > 1d)) {
+            throw new IllegalArgumentException("minScore must be in the [0, 1] range");
+        }
+    }
+
+    private static void validateOutputFields(Collection<String> outputFields) {
+        if (outputFields == null) {
+            return;
+        }
+        for (String field : outputFields) {
+            if (field == null || field.trim().isEmpty()) {
+                throw new IllegalArgumentException("outputFields must not contain blank fields");
+            }
         }
     }
 

@@ -55,6 +55,10 @@ public class ChromaExpressionAdaptor implements ExpressionAdaptor {
 
     @Override
     public String toCondition(Condition condition) {
+        if (condition.getType() == ConditionType.IS_NULL
+            || condition.getType() == ConditionType.IS_NOT_NULL) {
+            throw new IllegalArgumentException("Chroma metadata filters do not support null predicates");
+        }
         if (condition.getType() == ConditionType.BETWEEN) {
             Object[] values = (Object[]) ((Value) condition.getRight()).getValue();
             return "(" + toLeft(condition.getLeft())

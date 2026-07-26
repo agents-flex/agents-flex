@@ -50,9 +50,9 @@ public class QCloudExpressionAdaptorTest {
             "profile.level = 3",
             new SearchWrapper().eq("profile.level", 3)
                 .toFilterExpression(QCloudExpressionAdaptor.DEFAULT));
-        assertInvalid(new SearchWrapper().eq("deletedAt", null), "NULL");
+        assertInvalid(new SearchWrapper().isNull("deletedAt"), "NULL predicates");
         assertInvalid(new SearchWrapper().eq("bad field", "value"), "field");
-        assertInvalid(new SearchWrapper().in("status", Arrays.asList()), "at least one");
+        assertInvalid(new SearchWrapper().not(group -> group.eq("status", "deleted")), "unary NOT");
     }
 
     private void assertInvalid(SearchWrapper wrapper, String expectedMessage) {

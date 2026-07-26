@@ -99,6 +99,10 @@ final class QdrantConditionBuilder {
         String field = normalizeField(String.valueOf(((Key) condition.getLeft()).getKey()));
         Object value = ((Value) condition.getRight()).getValue();
         switch (condition.getType()) {
+            case IS_NULL:
+                return new Node(isNull(field), false);
+            case IS_NOT_NULL:
+                return new Node(isNull(field), true);
             case EQ:
                 return new Node(equality(field, value), false);
             case NE:

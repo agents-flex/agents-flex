@@ -144,6 +144,16 @@ public class MilvusVectorStoreFilterIntegrationTest {
     }
 
     @Test
+    public void shouldSupportUnaryNotFilter() {
+        SearchWrapper search = search()
+            .not(group -> group.eq("category", "ML"));
+
+        List<Document> documents = store.search(search);
+
+        assertEquals(2, documents.size());
+    }
+
+    @Test
     public void shouldApplyMinScore() {
         SearchWrapper search = search();
         search.setMinScore(0.5d);

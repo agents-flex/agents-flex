@@ -52,18 +52,22 @@ public class MariaDBExpressionAdaptorTest {
     public void shouldSupportColumnsNestedMetadataNullsAndGroups() {
         SearchWrapper wrapper = new SearchWrapper()
             .eq("id", 42)
-            .eq("profile.level", null)
+            .isNull("profile.level")
+            .isNotNull("profile.name")
             .orCriteria(group -> group
                 .ge("metadata.profile.level", 10)
-                .in(Connector.AND_NOT, "category", Arrays.asList("hidden", "deleted")));
+                .in(Connector.AND_NOT, "category", Arrays.asList("hidden", "deleted")))
+            .not(group -> group.eq("status", "archived"));
         MariaDBExpressionAdaptor adaptor = new MariaDBExpressionAdaptor();
 
         String sql = wrapper.toFilterExpression(adaptor);
 
         assertEquals("`id` = ? AND JSON_VALUE(`metadata`, '$.\"profile\".\"level\"') IS NULL"
+            + " AND JSON_VALUE(`metadata`, '$.\"profile\".\"name\"') IS NOT NULL"
             + " OR (JSON_VALUE(`metadata`, '$.\"profile\".\"level\"') >= ?"
-            + " AND NOT JSON_VALUE(`metadata`, '$.\"category\"') IN (?, ?))", sql);
-        assertEquals(Arrays.asList("42", 10, "hidden", "deleted"), adaptor.getParameters());
+            + " AND NOT JSON_VALUE(`metadata`, '$.\"category\"') IN (?, ?))"
+            + " AND NOT (JSON_VALUE(`metadata`, '$.\"status\"') = ?)", sql);
+        assertEquals(Arrays.asList("42", 10, "hidden", "deleted", "archived"), adaptor.getParameters());
     }
 
     @Test(expected = IllegalArgumentException.class)

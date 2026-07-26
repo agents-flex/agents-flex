@@ -31,6 +31,9 @@ public interface ExpressionAdaptor {
 
     /** 渲染一个普通条件，不包含它与前置条件之间的连接符。 */
     default String toCondition(Condition condition) {
+        if (condition.type == ConditionType.IS_NULL || condition.type == ConditionType.IS_NOT_NULL) {
+            return toLeft(condition.left) + toOperationSymbol(condition.type);
+        }
         return toLeft(condition.left)
             + toOperationSymbol(condition.type)
             + toRight(condition.right);
@@ -91,6 +94,11 @@ public interface ExpressionAdaptor {
     /** 渲染分组结束标记。 */
     default String toGroupEnd(Group group) {
         return ")";
+    }
+
+    /** 渲染分组前缀，例如一元 NOT。 */
+    default String toGroupPrefix(Group group) {
+        return group.getPrevOperand();
     }
 
 

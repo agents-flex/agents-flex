@@ -43,6 +43,11 @@ public class Group extends Condition {
         return childCondition;
     }
 
+    /** 返回分组前缀；普通分组为空，一元否定分组为 {@code NOT}。 */
+    public String getPrevOperand() {
+        return prevOperand;
+    }
+
 
     @Override
     /** 分组自身有效且至少包含一个有效子条件时，分组才有效。 */
@@ -70,9 +75,11 @@ public class Group extends Condition {
             String childExpr = childCondition.toExpression(adaptor);
             Condition prevEffectiveCondition = getPrevEffectiveCondition();
             if (prevEffectiveCondition != null && this.connector != null) {
-                childExpr = adaptor.toConnector(this.connector) + this.prevOperand + adaptor.toGroupStart(this) + childExpr + adaptor.toGroupEnd(this);
+                childExpr = adaptor.toConnector(this.connector) + adaptor.toGroupPrefix(this)
+                    + adaptor.toGroupStart(this) + childExpr + adaptor.toGroupEnd(this);
             } else if (StringUtil.hasText(childExpr)) {
-                childExpr = this.prevOperand + adaptor.toGroupStart(this) + childExpr + adaptor.toGroupEnd(this);
+                childExpr = adaptor.toGroupPrefix(this) + adaptor.toGroupStart(this)
+                    + childExpr + adaptor.toGroupEnd(this);
             }
             expr.append(childExpr);
         }

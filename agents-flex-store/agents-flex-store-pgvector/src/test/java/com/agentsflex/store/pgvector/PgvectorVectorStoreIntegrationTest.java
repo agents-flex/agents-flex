@@ -112,7 +112,9 @@ public class PgvectorVectorStoreIntegrationTest {
 
         SearchWrapper filtered = search(new float[]{1, 0, 0})
             .in("metadataMap.category", Arrays.asList("AI", "Ops"))
-            .between("views", 5, 15);
+            .between("views", 5, 15)
+            .isNotNull("metadataMap.category")
+            .not(group -> group.eq("metadataMap.category", "Java"));
         List<Document> filteredResults = store.doSearch(filtered, options);
         assertEquals(1, filteredResults.size());
         assertEquals("doc-1", filteredResults.get(0).getId());

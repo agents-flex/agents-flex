@@ -41,6 +41,10 @@ class MariaDBExpressionAdaptor implements ExpressionAdaptor {
         Object value = ((Value) condition.getRight()).getValue();
         String expression = fieldExpression(fieldName);
         switch (condition.getType()) {
+            case IS_NULL:
+                return expression + " IS NULL";
+            case IS_NOT_NULL:
+                return expression + " IS NOT NULL";
             case EQ:
                 return comparison(expression, "=", value, fieldName);
             case NE:

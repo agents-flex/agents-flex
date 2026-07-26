@@ -54,10 +54,11 @@ public class ElasticSearchExpressionAdaptorTest {
     @Test
     public void shouldConvertNullChecks() {
         SearchWrapper wrapper = new SearchWrapper()
-            .eq("optional", null)
-            .ne("required", null);
+            .isNull("optional")
+            .isNotNull("required")
+            .not(group -> group.eq("status", "deleted"));
 
-        assertEquals("NOT _exists_:optional AND _exists_:required",
+        assertEquals("NOT _exists_:optional AND _exists_:required AND NOT (status:\"deleted\")",
             wrapper.toFilterExpression(ElasticSearchExpressionAdaptor.DEFAULT));
     }
 }

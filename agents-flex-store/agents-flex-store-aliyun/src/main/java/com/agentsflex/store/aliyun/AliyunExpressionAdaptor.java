@@ -43,6 +43,10 @@ final class AliyunExpressionAdaptor implements ExpressionAdaptor {
 
         String field = field(((Key) condition.getLeft()).getKey());
         Object value = ((Value) condition.getRight()).getValue();
+        if (condition.getType() == ConditionType.IS_NULL
+            || condition.getType() == ConditionType.IS_NOT_NULL) {
+            throw new IllegalArgumentException("DashVector filters do not support NULL predicates.");
+        }
         if (value == null) {
             throw new IllegalArgumentException("DashVector filters do not support NULL values.");
         }

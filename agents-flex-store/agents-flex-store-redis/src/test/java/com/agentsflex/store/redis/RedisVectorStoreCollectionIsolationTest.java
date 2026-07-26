@@ -144,6 +144,30 @@ public class RedisVectorStoreCollectionIsolationTest {
     }
 
     @Test
+    public void shouldApplyUnaryNotAndRejectUnsupportedNullPredicates() {
+        collectionA = "collection-not-" + UUID.randomUUID();
+        Document ai = document("doc-ai", "content-ai", new float[]{1.0f, 0.0f});
+        ai.putMetadata("category", "AI");
+        Document ml = document("doc-ml", "content-ml", new float[]{1.0f, 0.0f});
+        ml.putMetadata("category", "ML");
+        storeDocuments(collectionA, Arrays.asList(ai, ml));
+
+        SearchWrapper negated = search().not(group -> group.eq("category", "AI"));
+        List<Document> documents = store.search(
+            negated, StoreOptions.ofCollectionName(collectionA));
+
+        assertEquals(1, documents.size());
+        assertEquals("doc-ml", documents.get(0).getId());
+
+        try {
+            store.search(search().isNull("optional"), StoreOptions.ofCollectionName(collectionA));
+            fail("Expected unsupported null predicate");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("IS NULL"));
+        }
+    }
+
+    @Test
     public void shouldRejectMetadataThatUsesReservedFields() {
         collectionA = "collection-reserved-" + UUID.randomUUID();
         Document document = document("doc-a", "content-a", new float[]{1.0f, 0.0f});

@@ -292,6 +292,11 @@
 
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-toolsearch</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-websearch</artifactId>
         </dependency>
 

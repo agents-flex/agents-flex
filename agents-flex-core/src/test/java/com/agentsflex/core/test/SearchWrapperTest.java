@@ -15,7 +15,9 @@
  */
 package com.agentsflex.core.test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.condition.Connector;
@@ -80,6 +82,96 @@ public class SearchWrapperTest {
 
         wrapper.setConditionExpression("enabled = true");
         Assert.assertEquals("enabled = \"true\"", wrapper.toFilterExpression());
+    }
+
+    @Test
+    public void shouldValidateCommonParametersAtAssignmentTime() {
+        assertInvalid(() -> new SearchWrapper().maxResults(0), "maxResults");
+        assertInvalid(() -> new SearchWrapper().maxResults(null), "maxResults");
+        assertInvalid(() -> new SearchWrapper().minScore(-0.1), "minScore");
+        assertInvalid(() -> new SearchWrapper().minScore(1.1), "minScore");
+        assertInvalid(() -> new SearchWrapper().minScore(Double.NaN), "minScore");
+        assertInvalid(() -> new SearchWrapper().withVector(null), "withVector");
+        assertInvalid(() -> new SearchWrapper().eq(" ", 1), "key");
+        assertInvalid(() -> new SearchWrapper().gt("age", null), "value");
+        assertInvalid(() -> new SearchWrapper().in("status", Arrays.asList()), "empty");
+        assertInvalid(() -> new SearchWrapper().in("status", Arrays.asList("ok", null)), "null");
+        assertInvalid(() -> new SearchWrapper().between("age", null, 10), "start");
+        assertInvalid(() -> new SearchWrapper().outputFields("id", " "), "outputFields");
+    }
+
+    @Test
+    public void shouldDefensivelyCopyMutableInputsAndOutputs() {
+        List<String> fields = new ArrayList<>(Arrays.asList("id", "title"));
+        float[] vector = {1f, 2f};
+        SearchWrapper wrapper = new SearchWrapper().outputFields(fields);
+        wrapper.setVector(vector);
+
+        fields.add("content");
+        vector[0] = 9f;
+        Assert.assertEquals(Arrays.asList("id", "title"), wrapper.getOutputFields());
+        Assert.assertArrayEquals(new float[]{1f, 2f}, wrapper.getVector(), 0f);
+
+        float[] returnedVector = wrapper.getVector();
+        returnedVector[0] = 8f;
+        Assert.assertArrayEquals(new float[]{1f, 2f}, wrapper.getVector(), 0f);
+        try {
+            wrapper.getOutputFields().add("content");
+            Assert.fail("Expected outputFields to be immutable");
+        } catch (UnsupportedOperationException expected) {
+            // expected
+        }
+    }
+
+    @Test
+    public void shouldCreateIndependentCopies() {
+        SearchWrapper original = new SearchWrapper()
+            .text("first")
+            .maxResults(8)
+            .minScore(0.7)
+            .outputFields("id", "title")
+            .eq("tenant", "a")
+            .orCriteria(group -> group.in("status", Arrays.asList("ready", "pending")));
+        original.setVector(new float[]{1f, 2f});
+        original.putMetadata("traceId", "trace-1");
+
+        SearchWrapper copied = SearchWrapper.from(original);
+        original.text("second").eq("newField", true);
+        original.setVector(new float[]{9f, 9f});
+        original.setOutputFields(Arrays.asList("content"));
+        original.putMetadata("traceId", "trace-2");
+
+        Assert.assertEquals("first", copied.getText());
+        Assert.assertEquals(Integer.valueOf(8), copied.getMaxResults());
+        Assert.assertEquals(Arrays.asList("id", "title"), copied.getOutputFields());
+        Assert.assertArrayEquals(new float[]{1f, 2f}, copied.getVector(), 0f);
+        Assert.assertEquals("trace-1", copied.getMetadata("traceId"));
+        Assert.assertEquals(
+            "tenant = \"a\" OR (status IN (\"ready\",\"pending\"))",
+            copied.toFilterExpression());
+    }
+
+    @Test
+    public void shouldBuildFormalNullAndNotPredicates() {
+        SearchWrapper wrapper = new SearchWrapper()
+            .isNull("deletedAt")
+            .isNotNull("requiredAt")
+            .not(group -> group.eq("status", "deleted").eq(Connector.OR, "status", "hidden"));
+
+        Assert.assertEquals(
+            "deletedAt IS NULL AND requiredAt IS NOT NULL AND NOT(status = \"deleted\" OR status = \"hidden\")",
+            wrapper.toFilterExpression());
+    }
+
+    private void assertInvalid(Runnable invocation, String expectedMessage) {
+        try {
+            invocation.run();
+            Assert.fail("Expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+            Assert.assertTrue(expected.getMessage(), expected.getMessage().contains(expectedMessage));
+        } catch (NullPointerException expected) {
+            Assert.assertTrue(expected.getMessage(), expected.getMessage().contains(expectedMessage));
+        }
     }
 
 }

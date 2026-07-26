@@ -51,9 +51,10 @@ public class MilvusExpressionAdaptorTest {
     @Test
     public void shouldRenderNullChecks() {
         SearchWrapper wrapper = new SearchWrapper();
-        wrapper.eq("title", null).ne("content", null);
+        wrapper.isNull("title").isNotNull("content")
+            .not(group -> group.eq("status", "deleted"));
 
-        assertEquals("title is null AND content is not null",
+        assertEquals("title is null AND content is not null AND NOT(status == \"deleted\")",
             wrapper.toFilterExpression(MilvusExpressionAdaptor.DEFAULT));
     }
 

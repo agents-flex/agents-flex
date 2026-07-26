@@ -76,6 +76,10 @@ final class ChromaConditionBuilder {
         }
         String field = normalizeField(String.valueOf(((Key) condition.getLeft()).getKey()));
         Object value = ((Value) condition.getRight()).getValue();
+        if (condition.getType() == ConditionType.IS_NULL
+            || condition.getType() == ConditionType.IS_NOT_NULL) {
+            throw new IllegalArgumentException("Chroma metadata filters do not support null predicates");
+        }
         if (value == null) {
             throw new IllegalArgumentException("Chroma metadata filters do not support null values");
         }

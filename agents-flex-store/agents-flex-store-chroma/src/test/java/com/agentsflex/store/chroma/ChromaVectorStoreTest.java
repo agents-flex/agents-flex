@@ -81,6 +81,7 @@ public class ChromaVectorStoreTest {
             .in("category", Arrays.asList("AI", "Java"))
             .nin("status", Arrays.asList("deleted"))
             .between("views", 5, 15)
+            .not(group -> group.eq("category", "Java"))
             .outputFields("category", "views")
             .outputVector(true)
             .minScore(0.5);

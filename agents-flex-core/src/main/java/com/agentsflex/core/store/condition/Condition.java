@@ -15,6 +15,10 @@
  */
 package com.agentsflex.core.store.condition;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Collection;
+
 /**
  * 条件树中的普通谓词节点，同时也是同级条件链表的节点。
  *
@@ -63,6 +67,67 @@ public class Condition implements Operand {
             this.next = nextCondition;
             nextCondition.prev = this;
         }
+    }
+
+    /**
+     * 创建条件树的结构深副本。条件节点、分组、链表和值数组均不会与原对象共享。
+     * 标量值本身按引用保留，调用方应使用不可变标量作为条件值。
+     */
+    public Condition copy() {
+        return copyOf(this);
+    }
+
+    /** 返回给定条件树的结构深副本；传入 {@code null} 时返回 {@code null}。 */
+    public static Condition copyOf(Condition source) {
+        if (source == null) {
+            return null;
+        }
+
+        Condition copied;
+        if (source instanceof Not) {
+            copied = new Not(copyOf(((Not) source).getChildCondition()));
+        } else if (source instanceof Group) {
+            Group group = (Group) source;
+            copied = new Group(group.getPrevOperand(), copyOf(group.getChildCondition()));
+        } else {
+            copied = new Condition(source.type, copyOperand(source.left), copyOperand(source.right));
+        }
+        copied.effective = source.effective;
+        copied.connector = source.connector;
+        if (source.next != null) {
+            copied.next = copyOf(source.next);
+            copied.next.prev = copied;
+        }
+        return copied;
+    }
+
+    private static Operand copyOperand(Operand operand) {
+        if (operand instanceof Key) {
+            return new Key(((Key) operand).getKey());
+        }
+        if (operand instanceof Value) {
+            return new Value(copyValue(((Value) operand).getValue()));
+        }
+        if (operand instanceof Condition) {
+            return copyOf((Condition) operand);
+        }
+        return operand;
+    }
+
+    private static Object copyValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            Object copied = Array.newInstance(value.getClass().getComponentType(), length);
+            System.arraycopy(value, 0, copied, 0, length);
+            return copied;
+        }
+        if (value instanceof Collection) {
+            return new ArrayList<>((Collection<?>) value);
+        }
+        return value;
     }
 
     /** 返回当前节点是否应参与表达式渲染。 */

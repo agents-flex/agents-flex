@@ -98,7 +98,9 @@ public class ElasticSearchVectorStoreIntegrationTest {
 
         SearchWrapper wrapper = search(new float[]{1.0f, 0.0f, 0.0f})
             .in("metadataMap.category", Arrays.asList("AI", "Ops"))
-            .between("metadataMap.views", 5, 15);
+            .between("metadataMap.views", 5, 15)
+            .isNotNull("metadataMap.category")
+            .not(group -> group.eq("metadataMap.category", "Java"));
         List<Document> results = store.doSearch(wrapper, options);
 
         assertEquals(1, results.size());

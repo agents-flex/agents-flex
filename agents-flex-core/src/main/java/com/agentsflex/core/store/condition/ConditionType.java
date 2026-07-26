@@ -35,6 +35,10 @@ public enum ConditionType {
     NIN(" NOT IN "),
     /** 位于两个边界之间。 */
     BETWEEN(" BETWEEN "),
+    /** 字段值为空。 */
+    IS_NULL(" IS NULL"),
+    /** 字段值不为空。 */
+    IS_NOT_NULL(" IS NOT NULL"),
     ;
 
     private final String defaultSymbol;

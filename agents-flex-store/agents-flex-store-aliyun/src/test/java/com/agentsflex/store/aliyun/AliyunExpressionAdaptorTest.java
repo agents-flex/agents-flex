@@ -47,11 +47,10 @@ public class AliyunExpressionAdaptorTest {
 
     @Test
     public void shouldRejectNullInvalidFieldAndUnaryNot() {
-        assertInvalid(new SearchWrapper().eq("deletedAt", null), "NULL");
+        assertInvalid(new SearchWrapper().isNull("deletedAt"), "NULL predicates");
         assertInvalid(new SearchWrapper().eq("bad field", "value"), "field");
 
-        SearchWrapper not = new SearchWrapper()
-            .condition("NOT (status = 'deleted')");
+        SearchWrapper not = new SearchWrapper().not(group -> group.eq("status", "deleted"));
         assertInvalid(not, "unary NOT");
     }
 

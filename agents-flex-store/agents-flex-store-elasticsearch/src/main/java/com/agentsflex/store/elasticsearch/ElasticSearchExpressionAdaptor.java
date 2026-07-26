@@ -42,6 +42,10 @@ class ElasticSearchExpressionAdaptor implements ExpressionAdaptor {
         String field = escapeField(String.valueOf(((Key) condition.getLeft()).getKey()));
         Object value = ((Value) condition.getRight()).getValue();
         switch (condition.getType()) {
+            case IS_NULL:
+                return "NOT _exists_:" + field;
+            case IS_NOT_NULL:
+                return "_exists_:" + field;
             case EQ:
                 return value == null ? "NOT _exists_:" + field : field + ":" + literal(value);
             case NE:

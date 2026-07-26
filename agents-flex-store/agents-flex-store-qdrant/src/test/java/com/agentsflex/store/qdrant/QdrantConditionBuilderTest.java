@@ -58,6 +58,20 @@ public class QdrantConditionBuilderTest {
         assertEquals(2, filter.getShould(1).getFilter().getMustCount());
     }
 
+    @Test
+    public void shouldBuildNullChecksAndUnaryNot() {
+        SearchWrapper wrapper = new SearchWrapper()
+            .isNull("optional")
+            .isNotNull("required")
+            .not(group -> group.eq("status", "deleted"));
+
+        Points.Filter filter = builder.build(wrapper.getCondition());
+
+        assertEquals(1, filter.getMustCount());
+        assertEquals(2, filter.getMustNotCount());
+        assertTrue(filter.getMust(0).getIsNull().getKey().contains("optional"));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void shouldRejectInvalidRangeValues() {
         SearchWrapper wrapper = new SearchWrapper().gt("views", "ten");
