@@ -310,6 +310,16 @@
             <!--store start-->
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-store-clickhouse</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-store-infinity</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-store-cassandra</artifactId>
                 <version>${revision}</version>
             </dependency>

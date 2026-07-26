@@ -72,6 +72,7 @@ GraphQL 查询和混合检索生态的团队。
 | `agents-flex-store-pgvector` | PostgreSQL + pgvector | 关系数据与向量统一运维 | PostgreSQL 扩展 |
 | `agents-flex-store-mariadb` | MariaDB 11.7+ | 关系数据与向量统一运维 | MariaDB 原生 VECTOR |
 | `agents-flex-store-cassandra` | Apache Cassandra 5.x | 分布式宽表与向量统一存储 | Cassandra 原生 vector + SAI |
+| `agents-flex-store-infinity` | Infinity | AI 原生向量、全文与融合检索 | 自建 Infinity 服务 |
 | `agents-flex-store-elasticsearch` | Elasticsearch | 搜索平台中的向量召回 | 自建或 Elastic Cloud |
 | `agents-flex-store-opensearch` | OpenSearch | OpenSearch k-NN | 自建或 Amazon OpenSearch |
 | `agents-flex-store-mongodb-atlas` | MongoDB Atlas Vector Search | BSON 业务数据与向量统一 | MongoDB Atlas 或 Atlas Local |
@@ -92,6 +93,7 @@ GraphQL 查询和混合检索生态的团队。
 | [Pgvector](./pgvector) | `collectionName` 对应表 | 自动建表可配置 | 参数化 SQL 与 JSONB 条件 |
 | [MariaDB](./mariadb) | `collectionName` 对应表 | 自动建表和 VECTOR INDEX 可配置 | 参数化 SQL 与 JSON_VALUE 条件 |
 | [Apache Cassandra](./cassandra) | `collectionName` 对应表 | 自动建 keyspace、表、metadata 列和 SAI | EQ/范围/BETWEEN；IN/OR 多查询合并；支持纯过滤 |
+| [Infinity](./infinity) | `collectionName` 对应 table | 自动建 database、table、metadata 列和 HNSW | Infinity filter；支持 IN/NOT IN、嵌套逻辑和纯过滤 |
 | [Elasticsearch](./elasticsearch) | `indexName` | 自动建 Index | query string 适配 |
 | [OpenSearch](./opensearch) | `collectionName` / `indexName` | 自动建 Index | query string 适配；支持纯过滤查询 |
 | [MongoDB Atlas](./mongodb-atlas) | `collectionName` / `indexName` | 自动建 Collection 和 Vector Search Index | BSON 预过滤；支持纯过滤查询 |
@@ -115,6 +117,7 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | Pgvector | JDBC | `pgvector/pgvector` Docker |
 | MariaDB | JDBC | `mariadb:11.7` Docker |
 | Apache Cassandra | Apache Java Driver | `cassandra:5.0.5` Docker |
+| Infinity | HTTP API | 官方 Infinity Docker，HTTP 端口 23820 |
 | Elasticsearch | Elasticsearch Java Client | 官方单节点 Docker |
 | OpenSearch | OpenSearch Java Client | 官方单节点 Docker |
 | MongoDB Atlas | MongoDB Java Driver | 官方 Atlas Local Docker；普通 MongoDB 不支持 Vector Search |
@@ -191,6 +194,7 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | 已有 PostgreSQL，希望少一个系统 | Pgvector | 数据规模、查询计划、连接与 HNSW |
 | 已有 MariaDB 11.7+，希望少一个系统 | MariaDB | VECTOR INDEX、连接资源、表数量与版本兼容 |
 | 已有 Cassandra 5.x，需要分布式写入与高可用 | Apache Cassandra | SAI、条件限制、节点拓扑、一致性与索引构建成本 |
+| 需要向量、全文和后续融合检索能力 | Infinity | HTTP API 兼容性、HNSW、NULL 与覆盖写入语义 |
 | 已有 Redis Stack，在线低延迟 | Redis | 内存、淘汰策略、动态字段索引 |
 | 大规模专用向量检索 | Milvus、Qdrant、Weaviate | 召回率、索引参数、扩缩容与过滤 |
 | 已有 Elasticsearch 搜索体系 | Elasticsearch | mapping、script score 成本、字段精确匹配 |
@@ -260,6 +264,7 @@ PoC 不应停在“能写能搜”，还要执行：
 - [Pgvector](./pgvector)
 - [MariaDB](./mariadb)
 - [Apache Cassandra](./cassandra)
+- [Infinity](./infinity)
 - [Elasticsearch](./elasticsearch)
 - [OpenSearch](./opensearch)
 - [MongoDB Atlas](./mongodb-atlas)

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.agentsflex</groupId>
+        <artifactId>agents-flex-store</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <name>agents-flex-store-infinity</name>
+    <artifactId>agents-flex-store-infinity</artifactId>
+
+    <properties>
+        <httpclient5.version>5.1.4</httpclient5.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+        <!-- Infinity 的查询 API 使用带 JSON body 的 GET；OkHttp 会拒绝这种请求，故仅查询使用 HttpClient 5。 -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>${httpclient5.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
