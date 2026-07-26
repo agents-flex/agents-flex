@@ -30,7 +30,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | `agents-flex-image` | Image model integrations: OpenAI, Qwen, Alibaba Cloud, Gitee, Qianfan, SiliconFlow, Stability, Tencent, Volcengine |
 | `agents-flex-video` | Asynchronous video generation and editing: Alibaba Cloud Model Studio and Volcengine Ark |
 | `agents-flex-audio` | Speech-to-text and text-to-speech: Alibaba Cloud, Tencent Cloud, Volcengine |
-| `agents-flex-store` | Vector stores: Redis, Qdrant, Chroma, Pgvector, Milvus, OpenSearch, Elasticsearch, Alibaba Cloud, Tencent Cloud, VectoRex |
+| `agents-flex-store` | Vector stores: Redis, Qdrant, Chroma, Pgvector, Milvus, OpenSearch, Elasticsearch, Alibaba Cloud, Tencent Cloud |
 | `agents-flex-search-engine` | Search engine wrappers: Lucene, Elasticsearch, and search service interfaces |
 | `agents-flex-rerank` | Rerank models: default implementation and Gitee Rerank |
 | `agents-flex-tool` | Common tools: file system, Shell, Grep, Glob, WebFetch, Python, JavaScript |

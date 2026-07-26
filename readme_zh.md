@@ -30,7 +30,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 | `agents-flex-image` | 图像模型适配：阿里云、Gitee、Volcengine |
 | `agents-flex-video` | 异步视频生成与编辑模型适配：阿里云百炼、火山引擎方舟 |
 | `agents-flex-audio` | 语音识别与语音合成：阿里云、腾讯云、火山引擎 |
-| `agents-flex-store` | 向量存储：Redis、Qdrant、Chroma、Pgvector、Milvus、OpenSearch、Elasticsearch、阿里云、腾讯云、VectoRex |
+| `agents-flex-store` | 向量存储：Redis、Qdrant、Chroma、Pgvector、Milvus、OpenSearch、Elasticsearch、阿里云、腾讯云 |
 | `agents-flex-search-engine` | 搜索引擎封装：Lucene、Elasticsearch、搜索服务接口 |
 | `agents-flex-rerank` | Rerank 模型：默认实现、Gitee Rerank |
 | `agents-flex-tool` | 通用工具：文件系统、Shell、Grep、Glob、WebFetch、Python、JavaScript |

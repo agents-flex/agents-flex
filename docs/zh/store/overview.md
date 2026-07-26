@@ -128,9 +128,7 @@ agents-flex-store
 ├── agents-flex-store-chroma
 ├── agents-flex-store-qdrant
 ├── agents-flex-store-aliyun
-├── agents-flex-store-qcloud
-├── agents-flex-store-vectorex
-└── agents-flex-store-vectorexdb
+└── agents-flex-store-qcloud
 ```
 
 ## 写入数据流

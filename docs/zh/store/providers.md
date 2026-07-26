@@ -41,8 +41,7 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 
 ### 本地原型和轻量知识库
 
-[Chroma](./chroma) 易于本地启动，并支持结构化 metadata 过滤。[VectoRexDB](./vectorexdb) 以嵌入式 Java 库
-运行，更适合单机工具和 Demo，不应直接等同于独立数据库服务。
+[Chroma](./chroma) 易于本地启动，并支持结构化 metadata 过滤，适合原型验证和轻量知识库。
 
 ### 希望由云厂商托管
 
@@ -62,8 +61,6 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | `agents-flex-store-qdrant` | Qdrant | 专用向量检索与 payload 过滤 | 自建或 Qdrant Cloud |
 | `agents-flex-store-aliyun` | DashVector | 阿里云托管向量服务 | 云服务 |
 | `agents-flex-store-qcloud` | 腾讯云向量数据库 | 腾讯云托管向量服务 | 云服务 |
-| `agents-flex-store-vectorex` | VectoRex | 远程 VectoRex 服务 | 独立服务端 |
-| `agents-flex-store-vectorexdb` | VectoRexDB | 单机嵌入式向量存储 | 当前 JVM 内运行 |
 
 ## 当前适配能力
 
@@ -78,14 +75,12 @@ RedisJSON 和 RediSearch 的 Redis Stack，并评估向量索引的内存成本�
 | [OpenSearch](./opensearch) | `indexName` | 自动建 Index | 当前搜索未接入 `Condition` |
 | [Chroma](./chroma) | `collectionName` | 可配置 | Chroma `where` JSON |
 | [Qdrant](./qdrant) | `collectionName` | 可配置 | Qdrant 原生 `Filter` |
-| [阿里云 DashVector](./aliyun) | `collectionName` | 控制台预建 | 通用表达式传入 `filter`，需真实服务验证 |
-| [腾讯云向量数据库](./qcloud) | `collectionName` | 控制台预建 | 当前搜索未接入 `Condition` |
-| [VectoRex](./vectorex) | `collectionName` | 可配置 | 当前搜索未使用 `Condition` |
-| [VectoRexDB](./vectorexdb) | `collectionName` | 可配置 | 当前搜索未使用 `Condition` |
+| [阿里云 DashVector](./aliyun) | `collectionName`、Partition | 控制台预建 | DashVector 专属 filter 适配 |
+| [腾讯云向量数据库](./qcloud) | `collectionName` | 控制台或 SDK 预建 | 官方 SDK；支持条件与纯过滤查询 |
 
 ::: warning 多租户安全
-OpenSearch、腾讯云和两个 VectoRex 实现当前不能依赖 `SearchWrapper.condition` 做共享集合的租户隔离。需要
-严格隔离时使用独立数据空间，或者先完善适配器并完成安全测试。
+OpenSearch 当前不能依赖 `SearchWrapper.condition` 做共享集合的租户隔离。需要严格隔离时使用独立数据空间，
+或者先完善适配器并完成安全测试。
 :::
 
 ### 连接与本地开发
@@ -99,10 +94,8 @@ OpenSearch、腾讯云和两个 VectoRex 实现当前不能依赖 `SearchWrapper
 | OpenSearch | OpenSearch Java Client | 官方单节点 Docker |
 | Chroma | REST `/api/v2` | Chroma Docker |
 | Qdrant | gRPC 6334 | Qdrant Docker，同时开放 HTTP 6333 |
-| 阿里云 DashVector | HTTPS REST | 不能本地安装，连接云端测试实例 |
-| 腾讯云向量数据库 | HTTPS REST | 不能本地安装，连接云端测试实例 |
-| VectoRex | VectoRex Client | 按上游服务端文档部署 |
-| VectoRexDB | 嵌入式 Client | Maven 依赖，不需要 Docker |
+| 阿里云 DashVector | 官方 Java SDK | 不能本地安装，连接云端测试实例 |
+| 腾讯云向量数据库 | 官方 Java SDK | 不能本地安装，连接云端测试实例 |
 
 具体安装命令、端口、认证和清理方式均在各 Store 独立文档中提供。
 
@@ -174,7 +167,6 @@ OpenSearch、腾讯云和两个 VectoRex 实现当前不能依赖 `SearchWrapper
 | 已有 Elasticsearch 搜索体系 | Elasticsearch | mapping、script score 成本、字段精确匹配 |
 | 已有 OpenSearch 体系 | OpenSearch | 当前缺少 Condition、TLS 客户端配置 |
 | 快速原型且需要 metadata 过滤 | Chroma | 版本兼容、持久化和容量边界 |
-| 单机嵌入式工具 | VectoRexDB | 持久化、并发、进程生命周期 |
 | 不维护数据库集群 | DashVector、腾讯云、其他托管方案 | 适配能力、网络、配额、费用和锁定成本 |
 
 这个表用于生成候选名单，不应代替真实压测。
@@ -241,7 +233,5 @@ PoC 不应停在“能写能搜”，还要执行：
 - [Qdrant](./qdrant)
 - [阿里云 DashVector](./aliyun)
 - [腾讯云向量数据库](./qcloud)
-- [VectoRex](./vectorex)
-- [VectoRexDB](./vectorexdb)
 
 </div>

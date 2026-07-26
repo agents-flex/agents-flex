@@ -352,10 +352,9 @@ SQL 风格表达式是统一的输入方式，但数据库没有统一的过滤�
 | Elasticsearch | 转换为 Elasticsearch query string |
 | Chroma | 构建 Chroma `where` JSON |
 | Qdrant | 构建 Qdrant 原生 `Filter` |
-| 阿里云 DashVector | 生成通用表达式并传入服务端 `filter`，需真实服务验证 |
+| 阿里云 DashVector | 使用专属适配器生成 DashVector `filter` |
 | OpenSearch | 当前搜索实现尚未接入 `Condition` |
-| 腾讯云向量数据库 | 当前搜索实现尚未接入 `Condition` |
-| VectoRex / VectoRexDB | 当前搜索实现尚未使用 `Condition` |
+| 腾讯云向量数据库 | 转换为 VectorDB filter；支持比较、IN/NOT IN、BETWEEN 和分组 |
 
 这意味着：
 
