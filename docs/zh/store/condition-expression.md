@@ -197,6 +197,10 @@ query.condition(
 NULL 只支持等值和非等值语义，不能用于大小比较、IN 或 BETWEEN。Chroma 等后端可能不支持 NULL metadata
 过滤，因此语法合法不代表目标 Store 一定能执行。
 
+Apache Cassandra 5.x 的 CQL/SAI 不支持通用的 `IS NULL`、`IS NOT NULL`、`!=`、`NOT IN` 和 `NOT` 过滤，
+对应 Store 会明确抛出异常。`IN` 和 `OR` 会被拆成多条服务端查询并在客户端做全局去重、排序；详细边界见
+[Apache Cassandra](./cassandra#条件能力与限制)。
+
 ## AND、OR、NOT 与括号
 
 ```java

@@ -99,7 +99,7 @@ Collection 或 Index，但写入、查询、更新和删除必须使用一致的
 
 | 概念 | 常见后端 | Agents-Flex 配置 |
 | --- | --- | --- |
-| Collection | Redis 逻辑集合、Milvus、MongoDB Atlas、Weaviate、Chroma、Qdrant、Pgvector/MariaDB 表 | `collectionName` |
+| Collection | Redis 逻辑集合、Milvus、MongoDB Atlas、Weaviate、Chroma、Qdrant、Pgvector/MariaDB/Cassandra 表 | `collectionName` |
 | Index | Elasticsearch、OpenSearch | `indexName` |
 | Partition | Milvus 等集合内分区 | `partitionNames` |
 
@@ -124,6 +124,7 @@ agents-flex-store
 ├── agents-flex-store-milvus
 ├── agents-flex-store-pgvector
 ├── agents-flex-store-mariadb
+├── agents-flex-store-cassandra
 ├── agents-flex-store-elasticsearch
 ├── agents-flex-store-opensearch
 ├── agents-flex-store-mongodb-atlas
