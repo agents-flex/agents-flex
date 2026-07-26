@@ -310,6 +310,11 @@
             <!--store start-->
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-store-cassandra</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-store-aliyun</artifactId>
                 <version>${revision}</version>
             </dependency>

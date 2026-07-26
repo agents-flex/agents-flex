@@ -109,6 +109,9 @@ Runtime，也不会出现在模型可见的 Skill 列表中。不传 Skill 名�
 Local Runtime 没有安全隔离。不要因为提供了 `bash` 工具就误以为命令在容器中执行。
 ## 下一步
 
+- [配置环境变量与 bootstrap](./skill-config)
+- [深入了解 Local Runtime](./local-runtime)
+- [配置会话 Workspace](./workspace)
 - [从已安装的 Artifact 加载](./artifact-store)
 - [配置 OpenSandbox](./open-sandbox)
 - [配置 AIO Sandbox](./aio-sandbox)
