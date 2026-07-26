@@ -479,6 +479,7 @@ ToolGroup 的默认 Matcher 是 `ToolGroupMatchers.always()`。需要条件激�
 
 - [Tool 工具调用](./tool.md)
 - [Tool 构建](./tool-build.md)
+- [ToolSearch 工具搜索](./tool-search.md)
 - [Prompt 提示词](./prompt.md)
 - [对话上下文](./chat-context.md)
 - [对话拦截器](./chat-interceptor.md)
