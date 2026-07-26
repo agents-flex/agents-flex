@@ -25,8 +25,13 @@ public class QCloudVectorStoreConfig implements DocumentStoreConfig {
     private String apiKey;
     private String account;
     private String database;
-
     private String defaultCollectionName;
+    /** SDK 读取超时，单位为秒。 */
+    private int timeout = 10;
+    /** SDK 建立连接的超时，单位为秒。 */
+    private int connectTimeout = 10;
+    /** SDK HTTP 连接池最大空闲连接数。 */
+    private int maxIdleConnections = 10;
 
     public String getHost() {
         return host;
@@ -68,8 +73,35 @@ public class QCloudVectorStoreConfig implements DocumentStoreConfig {
         this.defaultCollectionName = defaultCollectionName;
     }
 
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
+
+    public int getConnectTimeout() {
+        return connectTimeout;
+    }
+
+    public void setConnectTimeout(int connectTimeout) {
+        this.connectTimeout = connectTimeout;
+    }
+
+    public int getMaxIdleConnections() {
+        return maxIdleConnections;
+    }
+
+    public void setMaxIdleConnections(int maxIdleConnections) {
+        this.maxIdleConnections = maxIdleConnections;
+    }
+
     @Override
     public boolean checkAvailable() {
-        return StringUtil.allHasText(this.host, this.apiKey, this.account, this.database, this.defaultCollectionName);
+        return StringUtil.allHasText(this.host, this.apiKey, this.account, this.database, this.defaultCollectionName)
+            && timeout > 0
+            && connectTimeout > 0
+            && maxIdleConnections > 0;
     }
 }
