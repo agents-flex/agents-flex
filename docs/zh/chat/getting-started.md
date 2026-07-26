@@ -1,5 +1,39 @@
 # 对话模型快速开始
 
+## 概述
+
+Agents-Flex 用统一的 `ChatModel` 接口连接 OpenAI、DeepSeek、Qwen 以及其他兼容服务。业务代码只需要准备
+模型配置并调用 `chat()` 或 `chatStream()`，切换服务商时通常不需要改写对话流程。
+
+本篇从一个空 Maven 项目开始，完成同步对话、流式输出和多轮消息。第一次接入只需关注四个对象：
+
+| 对象 | 作用 |
+| --- | --- |
+| `OpenAIChatConfig` | 配置 Endpoint、API Key 和默认模型 |
+| `ChatModel` | 提供统一的同步与流式调用接口 |
+| `Prompt` | 组织系统消息、用户消息、历史消息和工具 |
+| `ChatOptions` | 覆盖本次请求的模型、温度、最大 Token 等参数 |
+
+## 适用场景
+
+### 后端生成与文本处理
+
+摘要、分类、改写、信息抽取等任务通常使用同步 `chat()`，业务在一次调用后取得完整结果。
+
+### 聊天界面实时输出
+
+网页或 App 聊天希望尽快显示首字时，使用 `chatStream()` 逐片接收内容，并在结束或失败回调中更新页面状态。
+
+### 多轮助手与 Agent
+
+客服、知识助手和 Tool Calling Agent 需要使用 `Prompt` 保存多条消息，并在每轮把模型回复和工具结果加入后续
+请求。需要跨请求保存历史时，再配合 `MemoryPrompt`。
+
+### OpenAI 兼容服务迁移
+
+自建网关或第三方服务实现 Chat Completions 协议时，可以复用 `OpenAIChatConfig`，覆盖 `endpoint`、
+`requestPath` 和模型名。
+
 本教程将带你完成第一次 Agents-Flex 模型调用。结束时，你将拥有一个可以运行的 Java 程序，并掌握：
 
 - 如何接入 OpenAI 或兼容 OpenAI Chat Completions 协议的模型服务；
@@ -9,7 +43,9 @@
 
 整个过程不依赖 Spring Boot。已有 Spring Boot 项目的开发者也可以直接使用相同 API。
 
-## 准备工作
+## 快速开始
+
+### 准备工作
 
 开始前请确认本地已经具备：
 
@@ -27,7 +63,7 @@ mvn -version
 
 > Agents-Flex 的主要模块支持 JDK 8 或更高版本。若后续使用 MCP 模块，则需要 JDK 17 或更高版本。
 
-## 创建项目
+### 创建项目
 
 新建一个普通 Maven 项目，目录结构如下：
 
@@ -86,7 +122,7 @@ implementation 'com.agentsflex:agents-flex-chat-openai:2.2.4'
 
 最新版本可以在 [Maven Central](https://central.sonatype.com/artifact/com.agentsflex/agents-flex-chat-openai) 查看。
 
-## 配置 API Key
+### 配置 API Key
 
 不要把 API Key 直接写进代码或提交到代码仓库。建议通过环境变量传入：
 
@@ -112,7 +148,7 @@ export AI_ENDPOINT="https://your-provider.example.com"
 
 `AI_ENDPOINT` 应填写服务根地址，不要重复包含 `/v1/chat/completions`。请求路径会单独配置。
 
-## 完成第一次对话
+### 完成第一次对话
 
 创建 `src/main/java/com/example/ChatQuickStart.java`：
 
@@ -164,7 +200,7 @@ mvn compile exec:java -Dexec.mainClass="com.example.ChatQuickStart"
 
 如果程序输出了模型回复，第一次调用就完成了。
 
-### 配置项分别做什么
+#### 配置项分别做什么
 
 | 配置 | 作用 | OpenAI 默认值 |
 | --- | --- | --- |

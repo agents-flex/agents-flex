@@ -1,247 +1,121 @@
-# AiMessageParser AI 消息解析器
-<div v-pre>
+---
+title: AiMessageParser AI 消息解析器
+description: 将同步或流式模型响应解析为统一的 AiMessage，包括正文、推理、ToolCall 和 Token 用量。
+---
 
+# AiMessageParser AI 消息解析器
+
+<div v-pre>
 
 ## 概述
 
-`AiMessageParser` 是 Agents-Flex 中用于**将 LLM（大语言模型）原始响应解析为统一内部消息模型 `AiMessage`** 的核心组件。它解决了不同模型返回格式差异的问题，使上层逻辑无需关心底层协议细节。
+`AiMessageParser<T>` 把模型服务的原始响应对象转换为统一 `AiMessage`。这样 Tool 执行、Memory、流式监听和上层业务无需知道不同厂商的 JSON 字段位置。
 
-该解析器同时支持：
+```text
+HTTP/SSE 原始 JSON -> AiMessageParser -> AiMessage -> AiMessageResponse
+```
 
-- **同步响应**（完整 JSON 对象）
-- **流式响应**（增量 JSON 片段，如 SSE）
-- **多字段提取**：内容、推理内容、工具调用、Token 统计、结束原因等
-- **灵活路径配置**：通过 `JSONPath` 动态指定字段位置
+## 适用场景
 
+- OpenAI 兼容服务把正文放在自定义字段。
+- 模型返回 `reasoning`、`reasoning_content` 或专有 Token 字段。
+- ToolCall 的名称和 arguments 结构不同。
+- 接入完全不同的响应对象类型，而不仅是 Fastjson `JSONObject`。
+
+请求格式不同应修改 Serializer 或 RequestSpecBuilder；不要在 Parser 中修正请求。
+
+## 快速开始
+
+字段结构接近 OpenAI 时，可复用默认解析器并调整 JSONPath：
+
+```java
+DefaultAiMessageParser parser =
+    DefaultAiMessageParser.getOpenAIMessageParser();
+parser.setContentPath(
+    JSONUtil.getJsonPath("$.result.message.content")
+);
+
+OpenAIChatClient client = new OpenAIChatClient(model);
+client.setAiMessageParser(parser);
+model.setChatClient(client);
+```
+
+如果同步和流式字段不同，应同时配置 `contentPath` 与 `deltaContentPath`。
 
 ## 核心接口
 
 ```java
 public interface AiMessageParser<T> {
-    AiMessage parse(T jsonObject, ChatContext context);
+    AiMessage parse(T response, ChatContext context);
 }
 ```
 
-- **泛型 `T`**：表示原始响应类型（如 `JSONObject`、`JsonNode` 等）
-- **输入**：
-    - `jsonObject`：LLM 返回的原始数据（已解析为对象）
-    - `ChatContext`：包含请求上下文（如是否流式、模型配置等）
-- **输出**：标准化的 `AiMessage` 对象
+Parser 通过 `context.getOptions().isStreaming()` 判断当前分支。流式时每次解析的是一个增量 `AiMessage`，后续由 `BaseStreamClientListener` 聚合完整内容与 ToolCall。
 
-> ✅ 最终 `AiMessage` 会被封装进 `AiMessageResponse`，供应用层消费。
+## DefaultAiMessageParser
 
+默认实现可配置：
 
-## 默认实现：`DefaultAiMessageParser`
+- 同步与流式正文 JSONPath。
+- 多个同步与流式 reasoning 候选路径，按顺序取第一个非 null 值。
+- index、finish reason、stop reason。
+- prompt、completion、total Token。
+- 同步与流式 ToolCall 数组路径及 `callsParser`。
+- 是否解析 OpenAI 的 id、model、service tier、logprobs 和 usage details。
 
-这是 Agents-Flex 提供的**高度可配置 JSON 解析器**，专为基于 JSON 的 LLM API（如 OpenAI、Ollama、Qwen 等）设计。
+若没有 total token，但 prompt 与 completion token 都存在，解析器会计算二者之和。
 
-### `DefaultAiMessageParser` 核心设计：路径驱动（Path-Driven）
+## ToolCall 解析
 
-正文、工具调用和基础 Token 用量通过 `JSONPath` 配置，实现**格式无关**：
-
-| 字段 | JSONPath 示例（OpenAI） | 说明 |
-|------|------------------------|------|
-| `content` | `$.choices[0].message.content` | 主要文本内容 |
-| `deltaContent` | `$.choices[0].delta.content` | 流式增量内容 |
-| `toolCalls` | `$.choices[0].message.tool_calls` | 工具调用列表 |
-| `deltaToolCalls` | `$.choices[0].delta.tool_calls` | 流式工具调用 |
-| `finishReason` | `$.choices[0].finish_reason` | 结束原因（stop/length/tool_calls） |
-| `promptTokens` | `$.usage.prompt_tokens` | 输入 Token 数 |
-| `completionTokens` | `$.usage.completion_tokens` | 输出 Token 数 |
-
-> 💡 若某字段在响应中不存在（如 Ollama 不返回 `total_tokens`），解析器会自动跳过或计算（`total = prompt + completion`）。
-
-通过 `getOpenAIMessageParser()` 创建的解析器还会启用 `parseOpenAIResponseMetadata`，保留 OpenAI 兼容响应中的以下信息：
-
-| 响应位置 | `AiMessage` 字段 |
-|----------|-------------------|
-| `id/object/created/model` | `id/object/created/model` |
-| `service_tier/system_fingerprint` | `serviceTier/systemFingerprint` |
-| `choices[0].message.role/refusal/annotations` | `role/refusal/annotations` |
-| `choices[0].logprobs` | `logprobs` |
-| `usage.prompt_tokens_details` | `promptTokensDetails` |
-| `usage.completion_tokens_details` | `completionTokensDetails` |
-
-`annotations`、`logprobs` 和两组 Token details 使用 Map/List 保存，以兼容模型服务后续增加字段。流式响应会把各分片的 `logprobs` 列表合并到最终 `AiMessage`。
-
-
-###  流式 vs 同步处理
-
-解析器根据 `ChatContext.getOptions().isStreaming()` 自动选择路径：
+`getOpenAIMessageParser()` 的 `callsParser` 支持 arguments 为 JSON 字符串或 Map。自定义协议必须构造包含正确 name、id 和 arguments 的 `ToolCall`，否则 `AiMessageResponse` 无法按名称找到 Tool，或 ToolMessage 无法关联调用 ID。
 
 ```java
-if (context.getOptions().isStreaming()) {
-    // 使用 delta 路径（如 delta.content）
-    aiMessage.setContent((String) deltaContentPath.eval(rootJson));
-} else {
-    // 使用完整消息路径（如 message.content）
-    aiMessage.setContent((String) contentPath.eval(rootJson));
-}
-```
-
-- **流式响应**：每次只解析增量片段（可能为 `null` 或空字符串）
-- **同步响应**：解析完整响应体
-
-> 在流式场景中，`BaseStreamClientListener` 负责**合并所有增量**到完整消息（`fullMessage.merge(delta)`）。
-
-
-### 工具调用解析（`callsParser`）
-
-工具调用结构因模型而异，因此使用**可插拔的 `JSONArrayParser`**：
-
-```java
-aiMessageParser.setCallsParser(toolCalls -> {
-    List<ToolCall> toolInfos = new ArrayList<>();
-    for (JSONObject callJson : toolCalls) {
-        ToolCall call = new ToolCall();
-        call.setId(callJson.getString("id"));
-        call.setName(functionJson.getString("name"));
-        call.setArgsString(...); // 支持 String 或 Map
-        toolInfos.add(call);
-    }
-    return toolInfos;
+parser.setCallsParser(array -> {
+    List<ToolCall> calls = new ArrayList<>();
+    // 从厂商结构读取 id、name、arguments
+    return calls;
 });
 ```
 
-- **输入**：`tool_calls` 数组（`JSONArray`）
-- **输出**：标准化 `List<ToolCall>`
-- **灵活性**：可适配 OpenAI (`function`)、Claude (`tools`) 等不同格式
-
----
-
-### Token 统计容错
-
-部分模型（如 Ollama）**不返回 `total_tokens`**，解析器自动补偿：
+## 完全自定义解析器
 
 ```java
-if (totalTokensPath != null) {
-    aiMessage.setTotalTokens((Integer) totalTokensPath.eval(...));
-} else if (promptTokens != null && completionTokens != null) {
-    aiMessage.setTotalTokens(promptTokens + completionTokens); // 自动计算
-}
+AiMessageParser<JSONObject> parser = (json, context) -> {
+    AiMessage message = new AiMessage();
+    message.setContent(json.getString("answer"));
+    message.setFinishReason(json.getString("status"));
+    return message;
+};
 ```
 
+流式自定义解析尤其要处理空心跳、结束分片、arguments 被拆成多段以及 usage 只在最后一帧出现的情况。
 
-## OpenAI 兼容解析器
+## 生产建议
 
-Agents-Flex 提供开箱即用的 OpenAI 解析器：
+1. 为同步和流式真实响应各保留脱敏 fixture 测试。
+2. 字段缺失时返回部分 AiMessage，不要因可选 usage 缺失而丢失正文。
+3. 对 JSON 类型做防御性判断，厂商可能把 arguments 从字符串改为对象。
+4. Parser 不保存跨请求状态；流式累计由 Listener 负责。
+5. 原始响应仍保存在同步 `AiMessageResponse.rawText`，日志输出前需要脱敏。
 
-```java
-AiMessageParser<JSONObject> openaiParser = DefaultAiMessageParser.getOpenAIMessageParser();
-```
+## 常见问题
 
-该方法预配置了所有标准 OpenAI 字段路径，包括：
+### 为什么同步有内容，流式为空？
 
-- 内容路径（`content` / `delta.content`）
-- 工具调用路径（`tool_calls` / `delta.tool_calls`）
-- Token 统计路径（`usage` 下所有字段）
-- 结束原因（`finish_reason`）
+检查 `deltaContentPath`，流式协议通常使用 `choices[0].delta.content` 而不是 message.content。
 
-> ✅ **兼容所有 OpenAI-compatible 服务**：Azure OpenAI、Ollama、LocalAI、DeepSeek、Qwen 等。
+### 为什么 totalTokens 是 null？
 
+只有 total 路径存在，或 prompt/completion 两者都解析成功时才能得到总量。
 
-## 与整体架构的集成
+### 为什么 ToolCall 参数不完整？
 
-### 1 在 `OpenAIChatClient` 中的使用
+流式 arguments 常被拆分到多个分片。确认 Stream Listener 的聚合路径和 delta ToolCall parser 都与服务格式一致。
 
-```java
-protected AiMessageResponse parseResponse(String response) {
-    JSONObject json = JSON.parseObject(response);
-    AiMessage aiMessage = getAiMessageParser().parse(json, context); // 👈 调用解析器
-    LocalTokenCounter.computeAndSetLocalTokens(..., aiMessage);
-    return new AiMessageResponse(context, response, aiMessage);
-}
-```
+## 下一步
 
-一次解析完整响应
-
-### 2 在流式监听器中的使用
-
-```java
-public void onMessage(StreamClient client, String response) {
-    JSONObject json = JSON.parseObject(response);
-    AiMessage delta = messageParser.parse(json, chatContext); // 👈 解析增量
-    fullMessage.merge(delta); // 合并到完整消息
-}
-```
-多次解析增量，最终合并完整消息。
-
-
-## 自定义解析器
-
-### 场景 1：支持新模型（如 Claude）
-
-Claude 的响应结构与 OpenAI 不同：
-
-```json
-{
-  "content": [{"type": "text", "text": "Hello"}],
-  "stop_reason": "end_turn",
-  "usage": { "input_tokens": 10, "output_tokens": 5 }
-}
-```
-
-**自定义步骤**：
-
-```java
-DefaultAiMessageParser claudeParser = new DefaultAiMessageParser();
-claudeParser.setContentPath(JSONPath.of("$.content[0].text"));
-claudeParser.setFinishReasonPath(JSONPath.of("$.stop_reason"));
-claudeParser.setPromptTokensPath(JSONPath.of("$.usage.input_tokens"));
-claudeParser.setCompletionTokensPath(JSONPath.of("$.usage.output_tokens"));
-// 禁用 tool_calls（若 Claude 使用不同格式）
-claudeParser.setToolCallsJsonPath(null);
-```
-
-### 场景 2：实现全新解析器
-
-若模型返回非 JSON 格式（如 XML、Protobuf），需实现 `AiMessageParser` 接口：
-
-```java
-public class MyXmlAiMessageParser implements AiMessageParser<String> {
-    @Override
-    public AiMessage parse(String xmlStr, ChatContext context) {
-        // 自定义 XML 解析逻辑
-        AiMessage msg = new AiMessage();
-        msg.setContent(extractContent(xmlStr));
-        return msg;
-    }
-}
-```
-
-> ⚠️ 注意：需配套修改 `ChatClient` 的响应处理逻辑。
-
-
-## 配置项详解
-
-| 配置项 | 用途 | 默认值（OpenAI） |
-|--------|------|------------------|
-| `contentPath` | 同步内容路径 | `$.choices[0].message.content` |
-| `deltaContentPath` | 流式内容路径 | `$.choices[0].delta.content` |
-| `reasoningContentPath` | 推理内容（如 o1） | `$.choices[0].message.reasoning_content` |
-| `toolCallsJsonPath` | 同步工具调用 | `$.choices[0].message.tool_calls` |
-| `deltaToolCallsJsonPath` | 流式工具调用 | `$.choices[0].delta.tool_calls` |
-| `finishReasonPath` | 结束原因 | `$.choices[0].finish_reason` |
-| `promptTokensPath` | 输入 Token | `$.usage.prompt_tokens` |
-| `completionTokensPath` | 输出 Token | `$.usage.completion_tokens` |
-| `parseOpenAIResponseMetadata` | 保留 OpenAI 响应元数据 | `true`（仅 `getOpenAIMessageParser()`） |
-| `callsParser` | 工具调用解析器 | OpenAI 格式解析器 |
-
----
-
-
-
-## 总结
-
-`AiMessageParser` 是 Agents-Flex **响应标准化层**的核心，它：
-
-- **解耦模型差异**：统一返回 `AiMessage`，屏蔽底层协议
-- **支持流式/同步**：一套逻辑适配两种调用模式
-- **高度可配置**：通过路径和解析器插件适配任意 JSON 格式
-- **容错设计**：自动处理缺失字段（如 Token 统计）
-
-> 📘 **建议**：除非对接非 JSON 或非 OpenAI 协议模型，否则直接使用 `DefaultAiMessageParser` + 路径配置即可。
-
-
+- [ChatClient](./chat-client.md)
+- [Message 消息](./message.md)
+- [Tool 工具调用](./tool.md)
 
 </div>

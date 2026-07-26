@@ -33,7 +33,17 @@ Interceptor A after
 | `chat(...)` | `intercept(...)` | 返回 `AiMessageResponse` |
 | `chatStream(...)` | `interceptStream(...)` | 包装 `StreamResponseListener` |
 
-## 快速上手
+## 适用场景
+
+- **统一请求策略**：为一组模型调用追加系统约束、限制输出长度或调整采样参数。
+- **多租户与动态认证**：根据 `accountId`、租户或业务套餐写入 Header 和路由参数。
+- **审计与监控**：统计耗时、记录调用结果，并把业务标识传给可观测系统。
+- **条件能力**：只对某类账号、模型或请求启用缓存、内容审核等逻辑。
+- **响应后处理**：同步请求返回后统一清洗结果，或包装流式 Listener 监听结束与失败。
+
+如果只是某一次调用需要设置 `temperature`、`model` 等参数，直接使用 `ChatOptions` 更简单；当同一逻辑需要覆盖多个调用点时，再使用拦截器。
+
+## 快速开始
 
 下面用一个最小示例，在请求模型前统一调整 `temperature`，并记录同步调用耗时。
 
@@ -676,7 +686,7 @@ OpenAIChatModel chatModel = new OpenAIChatModel(config, interceptors);
 
 可以。框架内置 Registration 与应用 Registration 使用相同的 `order` 排序规则。调整时需要同时考虑可观测范围以及 Tool Group 的解析时机。
 
-## 相关文档
+## 下一步
 
 - [ChatContext 对话上下文](./chat-context.md)
 - [ChatModel](./chat-model.md)

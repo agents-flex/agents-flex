@@ -11,7 +11,7 @@
 - [8. 常见问题](#8-常见问题)
 
 
-## 1. 概述
+## 概述
 
 ### 1.1 模块简介
 
@@ -32,8 +32,34 @@
 - **JSON 处理**：FastJSON2
 - **依赖模块**：`agents-flex-core`
 
+## 适用场景
 
-## 2. 架构设计
+- 回答新闻、价格、政策等训练数据之后才出现的信息。
+- 先搜索多个候选页面，再交给 WebFetch 获取全文。
+- 只允许检索官方站点，或排除低质量域名。
+- 用统一 `SearchProvider` 在不同搜索服务之间切换。
+
+WebSearch 返回的是标题、URL 和摘要列表，不等同于读取网页全文。已知 URL 需要正文时使用 [WebFetch](./webfetch.md)；查询企业内部结构化数据时使用 Text2SQL 或业务 Tool。
+
+## 快速开始
+
+```java
+SearchProvider provider = new BraveSearchProvider(System.getenv("BRAVE_API_KEY"));
+
+WebSearchTool webSearch = WebSearchTool.builder()
+    .provider(provider)
+    .maxResults(5)
+    .build();
+
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addUserMessage("搜索 Agents-Flex 最近的发布信息");
+prompt.addToolsFromObject(webSearch);
+```
+
+`WebSearchTool` 本身不是 `Tool`，它的 `webSearch(...)` 方法带有 `@ToolDef`，因此应使用 `addToolsFromObject(...)` 扫描。搜索异常会转换为 `ERROR:` 文本返回给模型。
+
+
+## 工作原理
 
 ### 2.1 整体架构
 
@@ -85,7 +111,7 @@ sequenceDiagram
 
 
 
-## 3. 核心组件
+## 核心组件
 
 ### 3.1 SearchProvider（接口）
 
@@ -196,7 +222,7 @@ public String webSearch(
 3. **子域名支持**：规则同时匹配主域名和子域名（如 `example.com` 匹配 `blog.example.com`）
 
 
-## 4. 快速开始
+## 提供商配置与完整接入
 
 ### 4.1 添加依赖
 
@@ -292,32 +318,18 @@ String results = searchTool.webSearch("Java 17 new features", null, null);
 System.out.println(results);
 ```
 
-#### 示例 5：与 LLM Agent 集成
+#### 示例 5：与 ChatModel 集成
 
 ```java
-import com.agentsflex.core.agent.Agent;
-import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.chat.qwen.QwenChatModel;
-
-// 创建聊天模型
-ChatModel chatModel = QwenChatModel.builder()
-    .apiKey(System.getenv("QWEN_API_KEY"))
-    .build();
-
-// 创建搜索工具
 WebSearchTool searchTool = new WebSearchTool(
     new BraveSearchProvider(System.getenv("BRAVE_API_KEY"))
 );
 
-// 创建 Agent 并注册工具
-Agent agent = Agent.builder()
-    .chatModel(chatModel)
-    .tools(searchTool)  // 注册 WebSearchTool
-    .build();
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addUserMessage("帮我查找最新的 Java 21 新特性");
+prompt.addToolsFromObject(searchTool);
 
-// Agent 会自动决定何时调用搜索工具
-String response = agent.chat("帮我查找最新的 Java 21 新特性");
-System.out.println(response);
+AiMessageResponse response = chatModel.chat(prompt);
 ```
 
 
@@ -336,7 +348,7 @@ export FIRECRAWL_API_KEY="your-firecrawl-api-key"
 
 
 
-## 5. 自定义搜索引擎提供商
+## 自定义搜索引擎提供商
 
 ### 5.1 实现步骤
 
@@ -515,7 +527,7 @@ String results = tool.webSearch("Kubernetes deployment guide", null, null);
 
 
 
-## 6. API 参考
+## API 参考
 
 ### 6.1 SearchProvider 接口
 
@@ -618,7 +630,7 @@ public class WebSearchTool {
 
 
 
-## 7. 最佳实践
+## 生产建议
 
 ### 7.1 性能优化
 
@@ -762,7 +774,7 @@ String processedResults = postProcess(rawResults);
 
 
 
-## 8. 常见问题
+## 常见问题
 
 
 ### Q1: 搜索结果返回空列表怎么办？

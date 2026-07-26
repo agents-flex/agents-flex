@@ -2,7 +2,7 @@
 
 # WebFetchTool 开发文档
 
-## 1. 概述
+## 概述
 
 ### 1.1 简介
 WebFetchTool 是 Agents-Flex 框架中的一个智能网页内容抓取工具，提供具备自适应降级机制的可靠网页内容提取功能。它结合了直接 HTTP 请求和专用阅读器服务（如 Jina Reader），确保在各种网站类型下都能可靠地获取内容。
@@ -38,8 +38,37 @@ WebFetchTool 是 Agents-Flex 框架中的一个智能网页内容抓取工具，
                                └─> JinaReaderProvider（Jina 阅读器）
 ```
 
+## 适用场景
 
-## 2. 核心类说明
+- 用户已经给出文章 URL，需要提取正文供模型总结或问答。
+- 搜索结果只有摘要，需要继续读取候选页面。
+- 普通 HTTP 页面抓取失败或正文过短时，需要 Reader 服务降级。
+- 对重复 URL 使用短期缓存，降低站点压力和响应时间。
+
+WebFetch 不负责发现 URL；需要搜索时先使用 [WebSearch](./websearch.md)。它也不是浏览器自动化工具，依赖登录、JavaScript 交互或验证码的页面可能无法读取。
+
+## 快速开始
+
+```java
+WebFetchTool webFetch = WebFetchTool.builder()
+    .useDefaultProviders()
+    .maxContentLength(50_000)
+    .maxCacheSize(100)
+    .build();
+
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addUserMessage("总结这个网页：https://example.com/article");
+prompt.addToolsFromObject(webFetch);
+```
+
+Builder 至少需要一个 `WebReaderProvider`；未调用 `useDefaultProviders()` 或 `addProvider(...)` 时，`build()` 会抛出 `IllegalStateException`。不再使用时可以调用 `webFetch.close()` 清空缓存。
+
+::: danger SSRF 防护
+当前源码只校验 URL 协议是 HTTP/HTTPS 且存在 host，内网 IP 阻断代码并未启用。对不可信 URL 使用时，必须在网关或自定义校验层禁止环回、内网、云元数据地址和 DNS 重绑定。
+:::
+
+
+## 核心类说明
 
 ### 2.1 WebFetchTool
 
@@ -51,7 +80,7 @@ WebFetchTool 是 Agents-Flex 框架中的一个智能网页内容抓取工具，
 
 | 组件 | 类型 | 说明 |
 |------|------|------|
-| `agentsFlexHttpClient` | OkHttpClient | 用于发起 HTTP 请求的客户端 |
+| `httpClient` | OkHttpClient | 用于发起 HTTP 请求的客户端 |
 | `htmlConverter` | FlexmarkHtmlConverter | 将 HTML 转换为 Markdown |
 | `maxContentLength` | int | 最大内容长度（默认：100,000 字符） |
 | `maxCacheSize` | int | 最大缓存条目数（默认：100） |
@@ -231,7 +260,7 @@ provider.addHostScore("github.com", 85);
 - `provider`: WebReaderProvider 实例
 - `score`: 经过自适应调整后的最终评分
 
-## 3. 详细工作流程
+## 工作流程
 
 ### 3.1 内容抓取流程
 
@@ -343,7 +372,7 @@ private String truncate(String content) {
 ```
 
 
-## 4. 使用示例
+## 进阶用法
 
 ### 4.1 基本用法
 
@@ -370,7 +399,7 @@ OkHttpClient customClient = new OkHttpClient.Builder()
     .build();
 
 WebFetchTool tool = WebFetchTool.builder()
-    .agentsFlexHttpClient(customClient)
+    .httpClient(customClient)
     .maxContentLength(50_000)  // 限制为 50KB
     .maxCacheSize(200)         // 缓存 200 个条目
     .useDefaultProviders()
@@ -429,23 +458,22 @@ WebFetchTool tool = WebFetchTool.builder()
 ```
 
 
-### 4.5 与 Agent 框架集成
+### 4.5 与 ChatModel 集成
 
 ```java
-// 与 Agents-Flex agent 集成
-Agent agent = Agent.builder()
-    .name("ResearchAssistant")
-    .tools(List.of(new WebFetchTool.Builder()
-        .useDefaultProviders()
-        .build()))
+WebFetchTool webFetch = WebFetchTool.builder()
+    .useDefaultProviders()
     .build();
 
-// Agent 现在可以使用 web_fetch 工具
-String response = agent.chat("Fetch and summarize https://example.com/news");
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addUserMessage("总结 https://example.com/news");
+prompt.addToolsFromObject(webFetch);
+
+AiMessageResponse response = chatModel.chat(prompt);
 ```
 
 
-## 5. 扩展指南
+## 扩展指南
 
 ### 5.1 创建新的 WebReaderProvider
 
@@ -560,7 +588,7 @@ public int score(String url) {
 }
 ```
 
-## 6. 配置参考
+## 配置参考
 
 ### 6.1 Builder 参数
 
@@ -568,7 +596,7 @@ public int score(String url) {
 |------|------|--------|------|
 | `maxContentLength` | int | 100,000 | 最大内容长度（字符） |
 | `maxCacheSize` | int | 100 | 最大缓存条目数 |
-| `agentsFlexHttpClient` | OkHttpClient | 默认客户端 | 自定义 HTTP 客户端 |
+| `httpClient` | OkHttpClient | 默认客户端 | 自定义 HTTP 客户端 |
 | `providers` | `List<WebReaderProvider>` | 空（必填） | 阅读器提供者列表 |
 
 ### 6.2 常量
@@ -594,7 +622,7 @@ JINA_READER_API_KEY=your_api_key
 
 
 
-## 7. 错误处理
+## 错误处理
 
 ### 7.1 错误消息
 
@@ -637,7 +665,7 @@ try {
 - 无效 URL
 - DNS 解析失败
 
-## 8. 性能考虑
+## 性能考虑
 
 ### 8.1 缓存优势
 
@@ -680,18 +708,18 @@ OkHttpClient sharedClient = new OkHttpClient.Builder()
     .build();
 
 WebFetchTool tool1 = WebFetchTool.builder()
-    .agentsFlexHttpClient(sharedClient)
+    .httpClient(sharedClient)
     .useDefaultProviders()
     .build();
 
 WebFetchTool tool2 = WebFetchTool.builder()
-    .agentsFlexHttpClient(sharedClient)
+    .httpClient(sharedClient)
     .useDefaultProviders()
     .build();
 ```
 
 
-## 9. 测试策略
+## 测试策略
 
 ### 9.1 单元测试
 
@@ -785,7 +813,7 @@ public void testCachePerformance() {
 ```
 
 
-## 10. 故障排除
+## 常见问题
 
 ### 10.1 常见问题
 
@@ -869,7 +897,7 @@ ERROR WebFetchTool - Web fetch failed for url: https://example.com
 ```
 
 
-## 11. 最佳实践
+## 生产建议
 
 ### 11.1 提供者配置
 
@@ -927,7 +955,8 @@ WebFetchTool tool2 = createTool(sharedClient);
 ```java
 // 每个工具创建自己的连接池
 WebFetchTool tool1 = WebFetchTool.builder()
-    .agentsFlexHttpClient(new OkHttpClient())
+    .httpClient(new OkHttpClient())
+    .useDefaultProviders()
     .build();
 ```
 

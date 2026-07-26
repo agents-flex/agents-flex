@@ -3,11 +3,11 @@
 
 
 
-## 1. 拦截器机制概述 (Interceptor Mechanism)
+## 概述
 
 在 Agents-Flex 的 Text2SQL 模块中，**拦截器（SqlInterceptor）** 是核心扩展点。它基于**责任链模式（Chain of Responsibility）**，允许开发者在 SQL 执行的生命周期中插入自定义逻辑。
 
-### 1.1 为什么需要拦截器？
+### 为什么需要拦截器？
 
 LLM 生成的 SQL 往往是“裸”的，直接执行存在以下风险或缺陷：
 1.  **安全性不足**：虽然内置了只读验证，但缺乏业务级的数据权限控制。
@@ -16,12 +16,33 @@ LLM 生成的 SQL 往往是“裸”的，直接执行存在以下风险或缺�
 4.  **可观测性差**：需要记录谁、在什么时间、查了什么数据、耗时多少。
 5.  **SQL 增强**：自动添加审计字段、默认排序、方言转换等。
 
-### 1.2 执行生命周期
+### 执行生命周期
 
 ![](./image/mermaid-1780193221634.png)
 
+## 适用场景
 
-## 2. 如何自定义拦截器 (How to Customize)
+- 强制追加行数上限，降低大结果集和慢查询风险。
+- 注入租户过滤条件和可信参数，保障行级隔离。
+- 记录 SQL、数据源、耗时与调用账号，满足审计要求。
+- 在执行后对手机号、证件号等结果字段脱敏。
+
+固定 SQL 规则应优先由数据库权限、视图和查询网关保证；拦截器是应用层补充，不能成为唯一安全边界。
+
+## 快速开始
+
+```java
+List<Tool> tools = Text2SqlTools.builder()
+    .addDataSourceInfo(dataSourceInfo)
+    .addSqlInterceptor(new LimitSqlInterceptor(100))
+    .addSqlInterceptor(new SqlAuditInterceptor())
+    .buildTools();
+```
+
+拦截器按添加顺序进入 `SqlInvocation`。前置逻辑在 `invocation.proceed()` 之前执行，后置逻辑在返回之后执行；不调用 `proceed()` 会短路 SQL 执行。
+
+
+## 如何自定义拦截器
 
 ### 2.1 核心接口
 
@@ -60,7 +81,7 @@ public interface SqlInterceptor {
 
 
 
-## 3. 常见应用场景与代码实现 (Scenarios & Implementations)
+## 场景实现
 
 ### 场景一：多租户数据隔离 (Multi-Tenancy)
 
@@ -279,7 +300,7 @@ public class QueryCacheInterceptor implements SqlInterceptor {
 
 
 
-## 4. 拦截器注册与顺序控制 (Registration & Ordering)
+## 注册与顺序控制
 
 拦截器的执行顺序至关重要。通常建议的顺序是：
 
@@ -312,7 +333,7 @@ interceptors.add(new SlowQueryInterceptor());
 // 6. 数据脱敏 (处理结果)
 interceptors.add(new DataMaskingInterceptor());
 
-Text2SqlTools tools = Text2SqlTools.builder()
+List<Tool> tools = Text2SqlTools.builder()
     .addDataSourceInfo(dataSource)
     .addSqlInterceptors(interceptors)
     .buildTools();
@@ -320,7 +341,7 @@ Text2SqlTools tools = Text2SqlTools.builder()
 
 
 
-## 5. 高级技巧：在拦截器间传递上下文
+## 在拦截器间传递上下文
 
 有时，一个拦截器产生的数据需要被另一个拦截器或最终的 Executor 使用。`SqlExecuteContext` 的 `attributes` 地图为此提供了支持。
 
@@ -351,7 +372,7 @@ public class DetailedAuditInterceptor implements SqlInterceptor {
 
 
 
-## 6. 注意事项与最佳实践
+## 生产建议
 
 1.  **务必调用 `proceed()`**：这是最常见的错误。忘记调用会导致 SQL 永远不执行，LLM 会收到 `null` 或超时错误。
 2.  **避免阻塞操作**：拦截器中的逻辑应尽可能轻量。不要在拦截器中进行复杂的 HTTP 请求或重型计算，这会显著增加查询延迟。
@@ -359,6 +380,3 @@ public class DetailedAuditInterceptor implements SqlInterceptor {
     *   *Tip*: 如果原 SQL 有 `WHERE`，追加 ` AND ...`；如果没有，追加 ` WHERE ...`。
 4.  **参数一致性**：如果修改了 SQL 增加了 `?` 占位符，**必须**同步修改 `parameters` 列表，否则 JDBC 执行时会报“参数数量不匹配”错误。
 5.  **异常处理**：拦截器中抛出的异常会被 `Text2SqlTools` 捕获，并以 `"Error: Exception Message"` 的形式返回给 LLM。确保异常信息清晰，有助于 LLM 自我修正。
-
-
-

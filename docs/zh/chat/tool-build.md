@@ -1,289 +1,192 @@
-# Tool 工具构建
+---
+title: Tool 构建
+description: 使用注解扫描、Map Builder 和类型化 Builder 构建可供大模型调用的工具。
+---
 
+# Tool 构建
 
+## 概述
 
-## 1. 概述
+Tool 的定义质量直接影响模型能否选对能力、填对参数。Agents-Flex 提供三条构建路径，它们最终都实现同一个 `Tool` 接口：
 
-在 Agents-Flex 框架中，**Tool（工具）是大语言模型（LLM）调用外部能力的标准接口**。为了让开发者高效、安全、可维护地暴露业务能力给 LLM，框架提供了两种互补的工具构建机制：
+| 方式 | 适合场景 | 特点 |
+| --- | --- | --- |
+| `@ToolDef` + `ToolScanner` | 已存在的稳定 Java 服务 | 方法签名就是参数来源 |
+| Map Builder | 动态插件、配置化能力 | 使用 `Map<String, Object>` 接收参数 |
+| 类型化 Builder | 参数较复杂且希望强类型 | 将参数反序列化为输入类 |
 
-- **`ToolScanner`**：通过注解自动扫描 Java 方法，适用于**静态、确定性、可复用**的工具。
-- **`Tool.Builder`**：以编程方式动态构建 `Tool` 实例，适用于**运行时生成、Lambda 表达式、插件系统**等动态场景。
+## 适用场景
 
-本文档系统介绍 **`ToolScanner` 与 `Tool.Builder` 的使用方法、设计原理、适用场景及最佳实践**。
+- 把订单查询、库存检查等现有 Service 方法开放给 Agent。
+- 根据租户套餐或插件配置动态生成工具。
+- 用嵌套对象、数组和枚举描述复杂业务输入。
+- 为 MCP、工作流节点或远程 API 包装统一的 `Tool` 接口。
 
+## 快速开始
 
+稳定业务代码优先使用注解扫描：
 
-## 2. Tool 的基本组成
+```java
+public class OrderTools {
+    @ToolDef(name = "get_order", description = "根据订单号查询订单状态")
+    public OrderView getOrder(
+        @ToolParam(name = "orderNo", description = "订单号", required = true)
+        String orderNo
+    ) {
+        return orderService.find(orderNo);
+    }
+}
+
+SimplePrompt prompt = new SimplePrompt("查询订单 A1001");
+prompt.addToolsFromObject(new OrderTools());
+AiMessageResponse response = chatModel.chat(prompt);
+```
+
+`Prompt.addToolsFromObject(...)` 内部调用 `ToolScanner.scan(object)`；传入 `Class` 时只扫描带 `@ToolDef` 的静态方法。
+
+## Tool 的四个组成部分
 
 ```java
 public interface Tool {
-
     String getName();
-
     String getDescription();
-
     Parameter[] getParameters();
-
     Object invoke(Map<String, Object> argsMap);
 }
 ```
 
-无论通过哪种方式构建，每个 `Tool` 都包含以下四个核心要素：
+- `name` 是协议中的唯一标识，建议使用稳定的英文小写下划线名称。
+- `description` 应说明何时使用、返回什么，不要只写“查询数据”。
+- `parameters` 会被序列化为模型看到的 Schema。
+- `invoke` 是可信边界，仍需校验模型生成的参数。
 
-| 组成项        | 说明                                              |
-|-|-------------------------------------------------|
-| `name`      | 工具的唯一标识名，供 LLM 识别与调用                            |
-| `description` | 工具的功能描述，用于 LLM 的工具选择决策                          |
-| `parameters` | 参数定义列表（`Parameter[]`），描述输入结构（最终生成 JSON Schema）  |
-| `invoke`    | 执行逻辑，类型为 `Map<String, Object>`  |
+## 注解扫描
 
-两种构建方式本质是**同一抽象的不同实现路径**。
-
-
-
-## 3. ToolScanner：基于注解的静态工具构建
-
-### 3.1 核心思想
-
-`ToolScanner` 通过反射扫描标注了 `@ToolDef` 的 Java 方法，自动将其转换为 `Tool` 实例（具体为 `MethodTool`）。开发者只需编写普通业务方法并添加注解，即可让 LLM 调用。
-
-> **适用场景**：工具逻辑稳定、参数结构明确、复用性强（如数据库查询、API 封装、通用服务）。
-
-### 3.2 快速入门
-
-#### 定义工具方法
+`ToolScanner.scan(instance, methodNames...)` 会扫描对象类及其有效父类中带 `@ToolDef` 的方法，并生成 `JavaMethodTool`。指定方法名可以只暴露允许的能力：
 
 ```java
-public class WeatherTools {
-
-    @ToolDef(
-        name = "getWeather",
-        description = "获取指定城市的天气信息"
-    )
-    public String getWeather(
-        @ToolParam(name = "city", description = "城市名称", required = true)
-        String city
-    ) {
-        // 实际业务逻辑
-        return "Sunny in " + city;
-    }
-}
+List<Tool> readOnlyTools = ToolScanner.scan(
+    new OrderTools(),
+    "getOrder",
+    "listOrders"
+);
 ```
 
-#### 扫描并注册工具
+同一签名只会扫描一次。传入 `OrderTools.class` 时，非静态方法会被忽略。
+
+参数可声明枚举约束：
 
 ```java
-// 扫描实例（支持静态 + 非静态方法）
-WeatherTools instance = new WeatherTools();
-List<Tool> tools = ToolScanner.scan(instance);
-
-// 仅扫描静态方法（传入 Class）
-List<Tool> staticTools = ToolScanner.scan(WeatherTools.class);
-```
-
-> 扫描结果可直接加入 Agent 的工具列表，供 LLM 调用。
-
-### 3.3 高级用法
-
-#### 仅扫描指定方法
-
-```java
-List<Tool> tools = ToolScanner.scan(instance, "getWeather", "getForecast");
-```
-
-适用于权限控制、按需暴露等场景。
-
-#### 静态工具类示例
-
-```java
-public class SystemTools {
-    @ToolDef(description = "获取当前系统时间戳（毫秒）")
-    public static long now() {
-        return System.currentTimeMillis();
-    }
-}
-
-List<Tool> tools = ToolScanner.scan(SystemTools.class); // 仅静态方法
-```
-
-#### 参数约束：枚举与必填
-
-```java
-@ToolDef(description = "执行搜索")
-public String search(
-    @ToolParam(name = "query", required = true) String query,
-    @ToolParam(name = "mode", enums = {"fast", "accurate"}, required = true) String mode
+@ToolDef(name = "search_order", description = "按状态查询订单")
+public List<OrderView> search(
+    @ToolParam(
+        name = "status",
+        description = "订单状态",
+        enums = {"created", "paid", "shipped"},
+        required = true
+    ) String status
 ) {
-    return "Searching in " + mode + " mode for: " + query;
+    return orderService.search(status);
 }
 ```
 
-LLM 将获得精确的参数 schema，包括枚举值提示。
+## Map Builder
 
-### 3.4 核心组件说明
-
-| 组件 | 作用                                               |
-|--|--------------------------------------------------|
-| `@ToolDef` | 方法级注解，声明 `name`（可选，默认为方法名）和 `description`（必填）    |
-| `@ToolParam` | 参数级注解，描述参数名、类型、描述、是否必填、枚举值等                      |
-| `ToolScanner` | 工具扫描入口，提供 `scan(Object)` 和 `scan(Class<?>)` 两种模式 |
-| `MethodTool` | `Tool` 的具体实现，内部通过反射调用原方法，自动处理参数映射                |
-
-### 3.5 注意事项
-
-- **方法可见性**：仅支持 `public` 方法。
-- **参数类型**：建议使用基本类型或 `Map<String, Object>`，复杂对象需自行反序列化。
-- **性能**：首次调用涉及反射，但后续调用已优化（无额外开销）。
-- **线程安全**：若工具方法为非静态，需确保被扫描的实例线程安全。
-
-
-
-## 4. Tool.Builder：基于编程的动态工具构建
-
-### 4.1 核心思想
-
-`Tool.Builder` 允许开发者以**链式调用方式**，在运行时构造任意 `Tool` 实例。执行逻辑可来自 Lambda、匿名类、闭包或配置驱动的函数。
-
-> **适用场景**：动态能力暴露、插件系统、工作流节点包装、运行时配置生成工具。
-
-### 4.2 快速入门：加法工具
+运行时才知道工具定义时，可使用 `Tool.builder()` 返回的 `MapBuilder`：
 
 ```java
-Tool addTool = Tool.builder()
-    .name("add")
-    .description("执行两个数字的加法")
+Tool add = Tool.builder("add", "计算两个整数之和")
     .addParameter(Parameter.builder()
-        .name("a").type("number").description("第一个数字").required(true).build())
+        .name("a").type("integer").description("第一个整数")
+        .required(true).build())
     .addParameter(Parameter.builder()
-        .name("b").type("number").description("第二个数字").required(true).build())
-    .function(args -> {
-        int a = (int) args.get("a");
-        int b = (int) args.get("b");
-        return a + b;
-    })
-    .build();
-
-// 调用
-Object result = addTool.invoke(Map.of("a", 5, "b", 7)); // 12
-```
-
-### 4.3 进阶用法
-
-#### 嵌套对象参数
-
-```java
-Parameter userParam = Parameter.builder()
-    .name("user").type("object")
-    .addChild(Parameter.builder().name("id").type("string").build())
-    .addChild(Parameter.builder().name("age").type("number").build())
-    .build();
-
-Tool tool = Tool.builder()
-    .name("processUser")
-    .description("处理用户对象")
-    .addParameter(userParam)
-    .function(args -> {
-        Map<String, Object> user = (Map<String, Object>) args.get("user");
-        return "Processed: " + user.get("id");
-    })
+        .name("b").type("integer").description("第二个整数")
+        .required(true).build())
+    .function(args ->
+        ((Number) args.get("a")).intValue()
+            + ((Number) args.get("b")).intValue())
     .build();
 ```
 
-#### 批量动态生成（插件系统）
+数值经过 JSON 解析后不应强转为某个固定包装类型，使用 `Number` 更稳妥。
+
+## 类型化 Builder
+
+对于复杂输入，可以让框架把参数 Map 转换为 Java 对象：
 
 ```java
-List<Tool> tools = toolConfigs.stream().map(cfg ->
-    Tool.builder()
-        .name(cfg.getName())
-        .description(cfg.getDescription())
-        .parameters(cfg.getParameters())
-        .function(cfg.getHandler())
-        .build()
-).toList();
-```
+public class CreateTicketInput {
+    private String title;
+    private String priority;
+    // getter / setter
+}
 
-#### 工作流节点集成
-
-```java
-Tool nodeTool = Tool.builder()
-    .name("run_workflow_node_12")
-    .description("执行工作流节点12：用户校验")
-    .function(context -> workflowEngine.execute("node_12", context))
+Tool createTicket = Tool.builder(
+        "create_ticket",
+        CreateTicketInput.class,
+        input -> ticketService.create(input.getTitle(), input.getPriority())
+    )
+    .description("创建客服工单")
     .build();
 ```
 
-### 4.4 核心 API
+类型化工具由 `TypedFunctionTool` 执行，参数通过 Fastjson2 转换为输入类型。输入类应能被正常反序列化。
 
-| 方法 | 说明                   |
-|--|----------------------|
-| `name(String)` | 设置工具名                |
-| `description(String)` | 设置描述                 |
-| `addParameter(Parameter)` | 添加单个参数               |
-| `parameters(Parameter...)` | 批量设置参数               |
-| `function(Function<Map<String, Object>, Object>)` | 设置执行逻辑               |
-| `build()` | 构建 `FunctionTool` 实例 |
+## 复杂 Parameter
 
-`Parameter.Builder` 支持 `name`、`type`、`description`、`required`、`addChild` 等方法。
-
-
-
-## 5. ToolScanner 与 Tool.Builder 对比
-
-| 维度        | `ToolScanner` | `Tool.Builder` |
-|-----------|-|-|
-| **构建时机**  | 启动期 / 编译后 | 运行时 |
-| **代码侵入性** | 需添加注解 | 无需修改业务类 |
-| **灵活性**   | 低（依赖方法签名） | 高（任意函数） |
-| **参数控制**  | 依赖 `@ToolParam` | 完全自定义 `Parameter` |
-| **执行性能**  | 反射调用（已优化） | 直接函数调用 |
-| **适用场景**  | 通用服务、稳定 API | 动态能力、插件、工作流 |
-| **可测试性**  | 可直接单元测试原方法 | 需测试 `Function` 逻辑 |
-
-> **建议**：
-> - 通用业务能力 → `@ToolDef` + `ToolScanner`
-> - 动态/配置化能力 → `Tool.Builder`
-
-
-
-## 6. 最佳实践
-
-### 6.1 工具命名与描述
-- 名称使用小写 + 下划线（如 `send_email`）
-- 描述清晰、具体，避免模糊词汇（如“处理数据”应改为“根据用户ID查询订单列表”）
-
-### 6.2 错误处理
-无论哪种方式，**工具不应抛出未处理异常**。建议返回结构化错误：
+对象使用 `children`，数组使用 `itemsParameter`：
 
 ```java
-// Tool.Builder 示例
-.function(args -> {
-    try {
-        // 业务逻辑
-    } catch (Exception e) {
-        log.error("Tool 'xxx' failed", e);
-        return Map.of("error", "操作失败: " + e.getMessage());
-    }
-})
+Parameter address = Parameter.builder()
+    .name("address")
+    .type("object")
+    .required(true)
+    .addChild(Parameter.builder()
+        .name("city").type("string").required(true).build())
+    .addChild(Parameter.builder()
+        .name("street").type("string").required(true).build())
+    .build();
+
+Parameter tags = Parameter.builder()
+    .name("tags")
+    .type("array")
+    .itemsParameter(Parameter.builder().type("string").build())
+    .build();
 ```
 
-对于 `ToolScanner`，可在方法内部捕获异常并返回错误对象。
+`required`、`enums` 和 `defaultValue` 是 Schema 描述，不应替代服务端校验。
 
-### 6.3 日志与监控
-- 记录工具调用入参与结果（敏感信息脱敏）
-- 关键工具建议添加调用计数、耗时监控
+## 如何选择
 
-### 6.4 与 LLM 的协同
-- 参数 `description` 要符合 LLM 理解习惯（用自然语言）
-- 枚举值 (`enums`) 能显著提升 LLM 调用准确性
+- 能直接修改业务类，且工具稳定：使用注解，代码最少。
+- 工具来自数据库、插件或租户配置：使用 Map Builder。
+- 参数结构复杂并会在业务层继续传递：使用类型化 Builder。
+- 需要完全自定义行为：实现 `Tool` 或继承 `BaseTool`。
 
+## 生产建议
 
+1. 工具名保持唯一和稳定，改名会影响已有提示词与调用日志。
+2. 描述同时写清使用条件和边界，例如“只查询，不修改订单”。
+3. 只暴露必要参数；租户 ID、当前用户等可信信息应由上下文或拦截器注入。
+4. 工具对象可能被多个请求复用，实例字段和所依赖 Service 必须满足并发要求。
+5. 在注册模型之前先直接调用 `invoke(...)` 或原方法做单元测试。
 
+## 常见问题
 
+### 为什么 `ToolScanner.scan(SomeClass.class)` 没有结果？
 
-## 7. 总结
+Class 形式只扫描静态方法。扫描实例方法请传入对象。
 
-- `ToolScanner` 提供**低代码、高可维护性**的静态工具构建方式，适合稳定业务能力。
-- `Tool.Builder` 提供**极致灵活、动态可编程**的工具构建能力，适合插件化、配置驱动、工作流等高级场景。
-- 两者可**无缝共存**于同一 Agent 系统，开发者应根据业务特性选择合适方式，或混合使用。
+### 方法必须是 public 吗？
 
-通过合理运用这两种机制，可构建出既稳定又灵活的 LLM 工具生态。
+扫描器会查找带注解的方法并通过反射调用。为了避免模块访问和反射权限问题，工具入口应设计为 public。
+
+### Builder 会自动校验必填参数吗？
+
+`Parameter` 主要用于生成 Schema。业务执行前仍应显式校验缺失值、类型、范围和权限。
+
+## 下一步
+
+- [Tool 工具调用](./tool.md)：完成从 ToolCall 到最终回答的闭环。
+- [Tool 拦截器](./tool-interceptor.md)：集中处理权限和审计。
+- [ToolGroup 工具组](./tool-group.md)：按请求暴露一组工具。

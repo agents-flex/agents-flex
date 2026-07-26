@@ -2,19 +2,6 @@
 
 # Agents-Flex LLM Wiki 开发文档
 
-## 目录
-
-1. [概述](#概述)
-2. [模块架构](#模块架构)
-3. [核心组件](#核心组件)
-4. [设计理念](#设计理念)
-5. [快速开始](#快速开始)
-6. [API 参考](#api-参考)
-7. [最佳实践](#最佳实践)
-8. [扩展开发](#扩展开发)
-9. [常见问题](#常见问题)
-
-
 ## 概述
 
 ### 什么是 Wiki 模块？
@@ -38,6 +25,37 @@ Wiki 模块是 Agents-Flex 框架中的一个知识管理组件，专为 LLM（�
 - 教育培训材料浏览
 
 ---
+
+## 适用场景与选型
+
+Wiki 适合内容天然具有目录层级、路径稳定，并且模型需要按章节逐步深入的知识。它不是全文检索：`WikiProvider` 只有 `getWiki(path)`，框架不会自动做关键词搜索、向量召回或相关性排序。
+
+- 产品手册、API 文档、规章制度等目录型知识：适合 Wiki。
+- 大量无层级文档，需要按语义召回片段：优先使用 RAG。
+- 数据实时变化且需要执行查询：使用 Tool 或 Text2SQL。
+
+## 快速开始
+
+最小接入只需要根节点列表、一个按 path 取内容的 Provider，以及一个 Tool：
+
+```java
+List<Wiki> roots = List.of(
+    new Wiki("guide/index", "使用指南", "产品使用入口")
+);
+
+WikiProvider provider = path -> wikiRepository.findByPath(path);
+
+Tool wikiTool = WikiTool.builder()
+    .addWikis(roots)
+    .wikiProvider(provider)
+    .build();
+
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addUserMessage("怎样配置权限？");
+prompt.addTool(wikiTool);
+```
+
+模型首先看到根节点的 path、title 和 summary；调用 `get_wiki_content` 后，`Wiki.toMarkdown()` 返回当前内容及可继续导航的子节点。完整 ToolCall 循环见 [Tool 工具调用](./tool.md)。
 
 ## 模块架构
 
@@ -364,7 +382,7 @@ private static final String TOOL_DESCRIPTION_TEMPLATE =
 4. LLM 根据需要继续调用 `get_wiki_content(path="configuration.md")`
 
 
-## 快速开始
+## 完整接入
 
 ### 1. 添加依赖
 

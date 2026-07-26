@@ -1,219 +1,195 @@
-# PromptTemplate 提示词模板
 <div v-pre>
+
+# PromptTemplate 提示词模板
 
 ## 概述
 
-`PromptTemplate` 是 Agents-Flex 框架提供的**高性能文本模板引擎**，用于将包含 `{{xxx}}` 占位符的提示词模板动态渲染为最终文本。它专为 LLM 应用场景设计，支持：
+`PromptTemplate` 是一个轻量文本模板引擎，用 `{{ expression }}` 从 Map 数据中取值，并支持 `??` 兜底链。
+它适合把稳定的提示结构与每次请求的数据分离，例如系统指令、RAG 上下文、分类任务和结构化输出约束。
 
-- **JSONPath 表达式**：从复杂嵌套数据中提取字段
-- **空值兜底逻辑（`??`）**：提供多级默认值，避免缺失报错
-- **JSON 转义支持**：安全输出用于 JSON 结构的字符串
-- **编译缓存机制**：自动缓存模板解析与 JSONPath 编译结果，提升性能
+它不是完整编程语言：没有 if/else、循环或函数调用。复杂业务判断应先在 Java 中完成，再把整理好的数据传给
+模板。
 
-> ✅ **典型用途**：
-> 动态生成系统指令、用户提示、工具描述、RAG 上下文等结构化提示内容。
+## 适用场景
 
+- 根据用户、语言和产品配置生成系统提示；
+- 把检索结果填入固定的 RAG 提示结构；
+- 为分类、抽取和评测任务复用同一模板；
+- 使用默认值处理可选字段；
+- 把动态字符串安全嵌入 JSON 字符串字段。
 
-## 基础语法
+一次性短字符串直接拼接更简单；涉及复杂布局、国际化资源或条件逻辑时，也可以选择成熟模板引擎。
 
-### 1. 基本占位符
+## 快速开始
 
-```text
-Hello {{ name }}!
-Today is {{ date }}.
-```
-
-### 2. Object
-
-```text
-用户：{{ user.name }}
-邮箱：{{ user.contact.email }}
-订单数：{{ stats.orderCount }}
-```
-
-### 3. 空值兜底
-
-```text
-称呼：{{ user.nick ?? user.realName ?? "匿名用户" }}
-城市：{{ address.city ?? "未填写" }}
-```
-
-
-- 支持**链式兜底**：从左到右尝试，直到取到非空值
-- 若以 `??` 结尾，表示允许空值，不报错，例如：
-
-```
-{{ user.nick ??  }}
-```
-
-
-### 4. 字符串字面量
-```text
-默认角色：{{ '客服助手' }}
-提示语：{{ "请提供订单号" }}
-```
-
-> 支持单引号 `'xxx'` 或双引号 `"xxx"`。
-
-## 使用方式
-
-### 1. 基础渲染
 ```java
-String template = "你好，{{ user.name ?? '访客' }}！你有 {{ count }} 条未读消息。";
+String source = "你好，{{ user.name ?? '访客' }}！你有 {{ count }} 条待办。";
+
 Map<String, Object> data = Map.of(
     "user", Map.of("name", "张三"),
     "count", 5
 );
 
-String result = PromptTemplate.of(template).format(data);
-// 输出：你好，张三！你有 5 条未读消息。
+String text = PromptTemplate.of(source).format(data);
+System.out.println(text);
 ```
 
-### 2. 处理缺失字段（无兜底 → 抛异常）
-```java
-String template = "欢迎 {{ user.fullName }}";
-Map<String, Object> data = Map.of("user", Map.of("name", "李四")); // 无 fullName
+输出：
 
-// 抛出 IllegalArgumentException，提示缺失字段及上下文数据
-PromptTemplate.of(template).format(data);
+```text
+你好，张三！你有 5 条待办。
 ```
 
-### 3. 允许空值（显式兜空）
-```java
-String template = "备注：{{ note ?? }}"; // 允许 note 为空
-String result = PromptTemplate.of(template).format(Map.of());
-// 输出：备注：
+`PromptTemplate.of()` 会按完整模板字符串使用全局缓存；相同字符串后续复用已解析 Token 和 JSONPath。
+
+## 基础语法
+
+### 字段取值
+
+```text
+姓名：{{ user.name }}
+邮箱：{{ user.contact.email }}
+第一项：{{ items[0] }}
 ```
 
-### 4. JSON 安全输出（用于嵌入 JSON）
-```java
-String template = "{ \"query\": \"{{ input }}\" }";
-Map<String, Object> data = Map.of("input", "他说：\"你好！\"");
+表达式会转换为 Fastjson2 JSONPath；没有 `$` 前缀时框架自动添加 `$.`。
 
-String jsonOutput = PromptTemplate.of(template).format(data, true);
-// 输出：{ "query": "他说：\"你好！\"" }
-// → 双引号被转义为 \"，确保 JSON 合法
+### 多级兜底
+
+```text
+称呼：{{ user.nickname ?? user.name ?? '匿名用户' }}
 ```
 
-## 高级特性
+框架从左到右选取第一个非 null 值。最终结果为空且没有显式空兜底时，默认抛出
+`IllegalArgumentException`。
 
-### 1. 编译缓存（自动启用）
-- 首次使用某模板时解析并缓存
-- 后续相同模板直接复用解析结果
-- JSONPath 表达式也单独缓存，避免重复编译
+### 允许空值
 
-> 📈 **性能提示**：
-> 在高频场景（如 Agent 循环）中，使用 `PromptTemplate.of(template)` 而非 `new PromptTemplate(template)` 以利用缓存。
+表达式以 `??` 结尾表示允许最终为空：
 
-### 2. 清理缓存（仅限测试/热更新场景）
+```text
+备注：{{ note ?? }}
+```
+
+### 字符串字面量
+
+```text
+角色：{{ '客服助手' }}
+语言：{{ "简体中文" }}
+```
+
+只支持单引号或双引号包裹的字符串字面量，不执行 Java 表达式。
+
+## 缺失变量策略
+
+默认行为是缺失时报错，适合尽早发现 Prompt 数据问题：
+
 ```java
-// 清空所有模板与 JSONPath 缓存
+PromptTemplate template = PromptTemplate.of("订单：{{ order.id }}");
+template.format(Map.of()); // IllegalArgumentException
+```
+
+也可以关闭异常：
+
+```java
+PromptTemplate template = new PromptTemplate("订单：{{ order.id }}");
+template.setFailOnMissingVariable(false);
+String text = template.format(Map.of()); // "订单："
+```
+
+或者保留原表达式：
+
+```java
+template.setKeepExpressionOnMissingVariable(true);
+String text = template.format(Map.of()); // "订单：{{order.id}}"
+```
+
+`keepExpressionOnMissingVariable` 优先于 `failOnMissingVariable`。
+
+`PromptTemplate.of()` 返回缓存中的共享可变实例。需要修改缺失变量策略时，推荐使用
+`new PromptTemplate(source)` 创建独立实例，避免一个请求修改全局缓存对象的行为。
+
+## JSON 字符串转义
+
+将变量嵌入 JSON 字符串值时，使用第二个参数启用转义：
+
+```java
+PromptTemplate template = PromptTemplate.of(
+    "{\"query\":\"{{ input }}\"}"
+);
+
+String json = template.format(
+    Map.of("input", "第一行\n他说：\"你好\""),
+    true
+);
+```
+
+该选项会转义字符串中的反斜杠、引号和控制字符，但它不会验证最终文本一定是合法 JSON。对象、数组和整体 JSON
+结构应优先使用 JSON 序列化库构建，不要依赖模板拼接复杂 JSON。
+
+## 缓存机制
+
+框架维护两个进程级 `ConcurrentHashMap`：
+
+- 模板字符串到 `PromptTemplate` 的缓存；
+- 完整 JSONPath 到编译结果的缓存。
+
+```java
 PromptTemplate.clearCache();
 ```
 
-> ⚠️ **生产环境慎用**：会导致后续请求重新编译，短暂性能下降。
+`clearCache()` 主要用于测试或模板热更新验证。高并发生产请求频繁清理会导致后续重新解析，也无法限制由大量
+用户自定义模板造成的缓存增长。不要把无限多、用户可控的唯一模板字符串直接交给全局缓存。
 
+## 与 Prompt 配合
 
-## 数据结构支持
+```java
+PromptTemplate systemTemplate = PromptTemplate.of(
+    "你是 {{ product }} 的客服，只使用 {{ language }} 回答。"
+);
 
-`format(Map<String, Object> rootMap)` 支持任意嵌套的 Java 对象结构，包括：
+String systemText = systemTemplate.format(Map.of(
+    "product", "Agents-Flex",
+    "language", "简体中文"
+));
 
-| 数据类型 | 示例 | 说明 |
-|--------|------|------|
-| **Map** | `Map.of("user", Map.of("name", "Alice"))` | 推荐，天然匹配 JSONPath |
-| **POJO** | `new User("Bob")` | 需 getter 方法，字段名匹配 |
-| **List** | `List.of("a", "b")` | 可通过索引访问：`{{ items[0] }}` |
-| **基本类型** | `"text"`, `123`, `true` | 直接渲染 |
-
-> ✅ **最佳实践**：使用 `Map<String, Object>` 构建上下文，避免反射开销。
-
-
-## 错误处理
-
-当模板中**未提供兜底**且**数据缺失**时，抛出 `IllegalArgumentException`，包含：
-
-- 缺失的表达式
-- 原始模板
-- 已提供的参数（Pretty JSON 格式）
-
-**示例错误信息**：
-```text
-Missing value for expression: "user.fullName"
-Template: 欢迎 {{ user.fullName }}
-Provided parameters:
-{
-	"user": {
-		"name": "李四"
-	}
-}
+SimplePrompt prompt = new SimplePrompt(userQuestion);
+prompt.setSystemMessage(SystemMessage.of(systemText));
 ```
 
-> 💡 **调试建议**：
-> 开发阶段保留此异常，确保提示词数据完整性；生产环境可在外层捕获并提供通用兜底。
+模板只负责生成文本；消息角色、历史、图片和 Tool 仍由 `Prompt` 管理。
 
-## 最佳实践
+## 生产建议
 
-1. **优先使用 Map 构建上下文**
-   ```java
-   Map<String, Object> ctx = new HashMap<>();
-   ctx.put("user", Map.of("name", "Alice"));
-   ```
-
-2. **关键字段提供兜底**
-   ```text
-   角色：{{ role ?? '默认助手' }}
-   ```
-
-3. **复杂逻辑在模板外处理**
-    - 避免在模板中写业务逻辑
-    - 预处理数据后再传入 `format()`
-
-4. **多语言/多场景模板复用**
-   ```java
-   // 全局缓存常用模板
-   private static final PromptTemplate WELCOME_TEMPLATE =
-       PromptTemplate.of("欢迎 {{ name ?? '用户' }}！");
-   ```
-
-5. **JSON 输出务必开启转义**
-   ```java
-   template.format(data, true); // 用于嵌入 JSON 字段时
-   ```
+- 关键字段不提供静默空值，让缺失数据在调用模型前失败；
+- 可选字段使用明确默认值或显式 `??` 空兜底；
+- 不把密钥、认证 Header 或不应发送的数据放入模板上下文；
+- 用户输入嵌入 JSON 字符串时启用转义，复杂 JSON 使用序列化库；
+- 模板版本纳入代码或配置管理，记录调用使用的版本；
+- 限制动态模板数量、长度和数据规模，避免全局缓存无界增长。
 
 ## 常见问题
 
-**Q：支持 `if/else` 条件判断吗？**
+### 支持 if/else 或循环吗？
 
-A：不支持。`PromptTemplate` 是**纯取值模板**，复杂逻辑应在 Java 层处理后传入。
+不支持。先在 Java 层计算条件和列表文本，再作为字段传入。
 
-**Q：如何访问 List 元素？**
+### 为什么字段存在但仍得到空值？
 
-A：使用 JSONPath 索引语法：
+检查 JSONPath、Map Key 大小写和对象 Getter。表达式解析异常会按“未取到值”处理，再进入兜底或缺失策略。
 
-```text
-第一项：{{ items[0] }}
-最后一项：{{ items[-1] }}
-```
+### `format(data, true)` 会返回完整 JSON 字面量吗？
 
-**Q：性能如何？**
+不会。它只对动态字符串值做 JSON 转义，不会给结果自动加引号，也不会校验整个文档。
 
-A：首次编译后，后续渲染仅需字段查找，性能接近字符串拼接。缓存机制确保高并发下高效。
+### 可以修改 `PromptTemplate.of()` 返回对象的策略吗？
 
-**Q：能和 Spring EL 或 Thymeleaf 一起用吗？**
+技术上可以，但对象由全局缓存共享，会影响后续相同模板。需要定制策略时使用构造器创建独立对象。
 
-A：可以，但不推荐。`PromptTemplate` 专为 LLM 场景优化，语法更简洁，且避免引入额外依赖。
+## 下一步
 
-
-##  示例汇总
-
-| 场景 | 模板 | 数据 | 输出 |
-|------|------|------|------|
-| 基础替换 | `你好 {{name}}` | `{"name": "Alice"}` | `你好 Alice` |
-| 多级兜底 | `{{a ?? b ?? "默认"}}` | `{"b": "B"}` | `B` |
-| 空值允许 | `备注：{{note ?? }}` | `{}` | `备注：` |
-| JSON 转义 | `{"text": "{{msg}}"}` | `{"msg": "他说\"你好\""}` | `{"text": "他说\"你好\""}` |
-
-
-
+- [构建 Prompt](./prompt)
+- [理解 Message](./message)
+- [使用 Memory](./memory)
 
 </div>

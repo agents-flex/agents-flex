@@ -2,11 +2,11 @@
 
 
 
-## 1. 概述 (Overview)
+## 概述
 
 智能问数（Text2SQL）模块是 Agents-Flex 生态中用于实现自然语言到数据库查询转换的核心组件。它通过提供一组标准化的 AI Tools（工具），引导大语言模型（LLM）以 **渐进式披露（Progressive Disclosure）** 的方式，安全、准确地完成数据查询任务。
 
-### 1.1 核心设计理念
+### 核心设计理念
 
 1.  **渐进式披露 (Progressive Disclosure)**:
     *   LLM 不会一次性获取所有数据库元数据（避免 Context Window 溢出和注意力分散）。
@@ -21,9 +21,43 @@
     *   **参数化查询**: 强制使用 `?` 占位符，防止 SQL 注入。
     *   **拦截器链**: 支持自定义 SQL 拦截器（如自动添加 `LIMIT`、租户隔离、审计日志）。
 
+## 适用场景
+
+- 运营人员用自然语言查询订单、销售和库存报表。
+- 内部数据助手先探索表结构，再生成只读分析 SQL。
+- 多数据源系统需要让模型先选择数据源，再选择表和字段。
+
+Text2SQL 不适合直接开放写操作，也不应连接不允许模型访问的全量生产库。对固定指标和高频报表，预定义 Tool 往往比自由生成 SQL 更稳定、更容易治理。
+
+## 快速开始
+
+```java
+JdbcDataSourceInfo ds = new JdbcDataSourceInfo();
+ds.setName("analytics");
+ds.setDescription("只读订单分析库");
+ds.setJdbcUrl("jdbc:mysql://localhost:3306/analytics");
+ds.setUsername("readonly_user");
+ds.setPassword(System.getenv("ANALYTICS_DB_PASSWORD"));
+
+List<Tool> tools = Text2SqlTools.builder()
+    .addDataSourceInfo(ds)
+    .addSqlInterceptor(new LimitSqlInterceptor(100))
+    .addSqlInterceptor(new SqlAuditInterceptor())
+    .buildTools();
+
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addUserMessage("统计上个月销售额最高的 10 个商品");
+prompt.addTools(tools);
+```
+
+`buildTools()` 会在表元数据为空时调用 `JdbcDataSourceInfo.buildTables()`，并生成 `listTables`、`listTableColumns` 和三种查询 Tool。应用仍需执行标准 ToolCall 多轮循环。
+
+::: warning 安全边界
+源码中的只读校验检查 SQL 必须以 `SELECT`/`WITH` 开头并排除危险关键字，但它不是 SQL AST 安全证明。生产环境必须使用数据库只读账号、最小表权限、网络隔离和查询超时。
+:::
 
 
-## 2. 架构设计 (Architecture)
+## 工作原理
 
 ### 2.1 核心类图关系
 
@@ -84,7 +118,7 @@ classDiagram
 
 
 
-## 3. 快速开始 (Quick Start)
+## 完整配置示例
 
 ### 3.1 Maven 依赖
 
@@ -101,7 +135,7 @@ classDiagram
 ### 3.2 代码示例
 
 ```java
-import com.agentsflex.text2sql.Text2SqlTools;
+import com.agentsflex.text2sql.tools.Text2SqlTools;
 import com.agentsflex.text2sql.entity.JdbcDataSourceInfo;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.text2sql.interceptor.LimitSqlInterceptor;
@@ -135,15 +169,15 @@ public class Text2SqlDemo {
             .addSqlInterceptors(interceptors)
             .buildTools();
 
-        // 4. 将 tools 注册到你的 Agent/LLM 客户端
-        // myAgent.registerTools(tools);
+        MemoryPrompt prompt = new MemoryPrompt();
+        prompt.addTools(tools);
     }
 }
 ```
 
 
 
-## 4. 核心 API 详解 (API Reference)
+## 核心 API
 
 `Text2SqlTools` 提供了四个核心 Tool，遵循严格的调用顺序。
 
@@ -194,7 +228,7 @@ public class Text2SqlDemo {
 
 
 
-## 5. 安全与拦截器机制 (Security & Interceptors)
+## 安全与拦截器机制
 
 ### 5.1 内置安全验证
 
@@ -272,7 +306,7 @@ public class SqlAuditInterceptor implements SqlInterceptor {
 
 
 
-## 6. 最佳实践 (Best Practices)
+## 生产建议
 
 ### 6.1 针对 LLM 的 Prompt 优化
 
@@ -304,7 +338,7 @@ public class SqlAuditInterceptor implements SqlInterceptor {
 
 
 
-## 7. 常见问题 (FAQ)
+## 常见问题
 
 **Q: 为什么 LLM 总是忘记调用 `listTableColumns` 直接写 SQL？**
 A: 检查 `listTables` 的返回结果中是否包含了明确的 Tip。此外，可以在 System Prompt 中再次强调："Writing SQL without knowing the schema is forbidden."
@@ -320,10 +354,9 @@ A: LLM 在 Step 2 获取多个表的 Schema 后，有能力生成 JOIN SQL。确
 
 
 
-## 8. 附录：实体类说明
+## 实体类参考
 
 *   `DataSourceInfo`: 数据源抽象，包含名称、描述、表列表。
 *   `TableInfo`: 表元数据，包含表名、描述、列列表。
 *   `ColumnInfo`: 列元数据，包含字段名、类型、是否主键、注释。
 *   `SqlExecuteContext`: 执行上下文，贯穿拦截器链，携带 SQL、参数、扩展属性。
-

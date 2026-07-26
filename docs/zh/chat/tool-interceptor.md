@@ -1,221 +1,180 @@
-# Tool Interceptor 工具调用拦截器
-<div v-pre>
+---
+title: ToolInterceptor 工具拦截器
+description: 在 Tool 执行前后统一完成权限、参数校验、审计、缓存和异常处理。
+---
 
-
+# ToolInterceptor 工具拦截器
 
 ## 概述
 
-`ToolInterceptor` 是 Agents-Flex 框架中用于**拦截和增强工具调用行为**的核心扩展点。通过责任链模式，开发者可以在工具执行前后插入横切逻辑，实现：
+`ToolInterceptor` 是 Tool 真正执行时的责任链扩展点。它与 `ChatInterceptor` 的作用阶段不同：后者包围模型请求，前者包围 Java 工具调用。
 
-- **可观测性**：追踪、指标、日志
-- **安全控制**：权限校验、参数脱敏
-- **业务增强**：缓存、重试、审计
-- **错误处理**：统一异常包装、降级策略
+```text
+模型返回 ToolCall
+  -> ToolExecutor
+  -> 内置可观测拦截器
+  -> 全局 ToolInterceptor
+  -> 本次执行的 ToolInterceptor
+  -> Tool.invoke(args)
+```
 
-框架内置了 `ToolObservabilityInterceptor` 作为生产级参考实现，同时支持全局与实例级拦截器注册。
+## 适用场景
 
+- 在创建订单、发邮件等有副作用的工具执行前校验用户权限。
+- 为所有工具记录耗时、审计人和调用结果。
+- 校验、补充或规范化模型生成的参数。
+- 对只读工具增加缓存、超时或业务降级。
+- 把底层异常转换为稳定的业务错误。
 
-## 核心接口
+只影响模型请求的逻辑应使用 [对话拦截器](./chat-interceptor.md)；只影响某个工具的业务规则可直接写在工具实现中。
 
-### 1. `ToolInterceptor` 接口
+## 快速开始
+
+下面在执行工具前拒绝没有账号信息的请求，并记录耗时：
+
+```java
+public class ToolAuditInterceptor implements ToolInterceptor {
+    @Override
+    public Object intercept(ToolContext context, ToolChain chain)
+        throws Exception {
+
+        String accountId = context.getAttribute("accountId");
+        if (accountId == null) {
+            throw new SecurityException("accountId is required");
+        }
+
+        long start = System.nanoTime();
+        try {
+            return chain.proceed(context);
+        } finally {
+            audit(context.getTool().getName(), accountId,
+                System.nanoTime() - start);
+        }
+    }
+}
+```
+
+为某次 ToolCall 注册：
+
+```java
+List<ToolMessage> messages = response
+    .executeToolCallsAndGetToolMessages(new ToolAuditInterceptor());
+```
+
+或者直接创建执行器：
+
+```java
+ToolExecutor executor = new ToolExecutor(
+    tool,
+    toolCall,
+    List.of(new ToolAuditInterceptor())
+);
+Object result = executor.execute();
+```
+
+::: warning
+不调用 `chain.proceed(context)` 会跳过后续拦截器和真实 Tool。只有权限拒绝、缓存命中或明确降级时才应短路。
+:::
+
+## 核心 API
 
 ```java
 public interface ToolInterceptor {
     Object intercept(ToolContext context, ToolChain chain) throws Exception;
 }
 ```
-- **`context`**：包含工具定义、调用参数、临时属性等上下文信息
-- **`chain`**：责任链的下一个节点（必须调用 `chain.proceed()` 以继续执行）
 
-> ⚠️ **注意事项**：
-> - 拦截器**必须**调用 `chain.proceed(context)`，否则工具不会被执行
-> - 可在 `proceed()` 前后添加逻辑（前置检查、后置处理）
-> - 可抛出异常中断流程（如权限拒绝）
+`ToolContext` 在一次执行期间提供：
 
+| 数据 | 说明 |
+| --- | --- |
+| `getTool()` | 当前可执行 Tool |
+| `getToolCall()` | 模型返回的调用 ID、名称和原始参数 |
+| `getArgsMap()` | 由 `ToolCall` 持有的参数 Map |
+| `setAttribute/getAttribute` | 仅在本次拦截链中共享临时数据 |
 
-### 2. `ToolContext` 执行上下文
+`ToolContextHolder.currentContext()` 使用 `ThreadLocal` 暴露当前上下文，只在 `ToolExecutor.execute()` 的同一线程和执行范围内有效，不会自动传播到线程池任务。
 
-`ToolContext` 是贯穿整个拦截链的核心容器：
+## 全局注册
+
+应用级通用策略可在启动阶段注册：
 
 ```java
-public class ToolContext implements Serializable {
-    public Tool getTool();         // 当前工具定义
-    public ToolCall getToolCall(); // LLM 请求的调用详情（含原始参数）
-    public Map<String, Object> getArgsMap(); // 已解析的参数 Map
-    public void setAttribute(String key, Object value); // 设置临时属性
-    public <T> T getAttribute(String key); // 获取临时属性
-}
-```
-
-> 💡 **典型用法**：
-> ```java
-> // 拦截器 A：设置 traceId
-> context.setAttribute("traceId", UUID.randomUUID().toString());
->
-> // 拦截器 B：读取 traceId
-> String traceId = context.getAttribute("traceId");
-> ```
-
-
-## 拦截器注册方式
-
-### 1. 全局拦截器（推荐用于通用逻辑）
-在应用启动时注册，作用于**所有工具调用**：
-```java
-// 注册可观测性拦截器
-GlobalToolInterceptors.addInterceptor(new ToolObservabilityInterceptor());
-
-// 注册自定义拦截器
 GlobalToolInterceptors.addInterceptor(new PermissionInterceptor());
+GlobalToolInterceptors.addInterceptor(new AuditInterceptor());
 ```
 
-### 2. 实例级拦截器（用于特定场景）
-在创建 `ToolExecutor` 时传入，仅作用于当前执行：
+执行器创建时会复制当时的全局列表，之后再注册不会影响已经创建的 `ToolExecutor`。全局拦截器按注册顺序执行，本次执行传入的拦截器排在其后。
+
+`ToolExecutor` 还会确保内置 `ToolObservabilityInterceptor` 位于链首；如果链中已经存在该类型，则不会重复添加。
+
+## 典型场景
+
+### 参数校验
+
 ```java
-ToolExecutor executor = new ToolExecutor(tool, toolCall,
-    List.of(new SensitiveDataMaskInterceptor())
-);
-Object result = executor.execute();
-```
-
-### 执行顺序
-```
-[全局拦截器 1] → [全局拦截器 2] → ...
-→ [实例拦截器 1] → [实例拦截器 2] → [实际工具调用]
-```
-
-
-## 内置实现：`ToolObservabilityInterceptor`
-
-框架提供的**生产级可观测性拦截器**，自动集成 OpenTelemetry，支持：
-
-### 核心能力
-| 能力 | 说明 |
-|------|------|
-| **自动追踪** | 创建 `tool.{name}` Span，记录参数与结果 |
-| **指标上报** | 调用计数、延迟直方图、错误计数 |
-| **参数脱敏** | 自动屏蔽密码、token 等敏感字段 |
-| **结果安全** | 避免二进制/大对象污染 Span |
-| **动态开关** | 支持全局关闭或按工具名排除 |
-
-### 配置方式
-- **全局启用**：确保 `Observability.isEnabled() == true`（默认开启）
-- **排除特定工具**：设置 `agentsflex.otel.tool.excluded=dangerous_tool`
-- **采集参数和结果**：设置 `agentsflex.otel.capture.content=true`（默认关闭）
-
-### 输出示例（Span Attributes）
-```text
-gen_ai.tool.name = "getWeather"
-agentsflex.gen_ai.tool.arguments = {"city": "Beijing", "apiKey": "***"}
-agentsflex.gen_ai.tool.result = {"temperature": 22, "unit": "celsius"}
-```
-
-> 📊 **上报指标**：
-> - `agentsflex.gen_ai.tool.call.count`：总调用次数
-> - `agentsflex.gen_ai.tool.call.duration`：调用延迟（秒）
-> - `agentsflex.gen_ai.tool.call.error.count`：错误次数
-
-
-## 自定义拦截器开发指南
-
-### 示例 1：权限校验拦截器
-```java
-public class PermissionInterceptor implements ToolInterceptor {
-    @Override
-    public Object intercept(ToolContext context, ToolChain chain) throws Exception {
-        String toolName = context.getTool().getName();
-        String userId = context.getAttribute("userId");
-
-        if (!hasPermission(userId, toolName)) {
-            throw new SecurityException("Permission denied for tool: " + toolName);
+public Object intercept(ToolContext context, ToolChain chain) throws Exception {
+    if ("create_order".equals(context.getTool().getName())) {
+        Object amount = context.getArgsMap().get("amount");
+        if (!(amount instanceof Number)
+            || ((Number) amount).doubleValue() <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
         }
-
-        return chain.proceed(context);
     }
-
-    private boolean hasPermission(String userId, String toolName) {
-        // 实现权限逻辑
-        return true;
-    }
+    return chain.proceed(context);
 }
 ```
 
-### 示例 2：参数校验拦截器
+### 只读缓存
+
 ```java
-public class ValidationInterceptor implements ToolInterceptor {
-    @Override
-    public Object intercept(ToolContext context, ToolChain chain) throws Exception {
-        Map<String, Object> args = context.getArgsMap();
-        String toolName = context.getTool().getName();
-
-        // 校验必填参数
-        if ("createUser".equals(toolName) && args.get("email") == null) {
-            throw new IllegalArgumentException("Email is required");
-        }
-
-        return chain.proceed(context);
+public Object intercept(ToolContext context, ToolChain chain) throws Exception {
+    String key = context.getTool().getName() + ":" + context.getArgsMap();
+    Object cached = cache.get(key);
+    if (cached != null) {
+        return cached;
     }
+    Object result = chain.proceed(context);
+    cache.put(key, result);
+    return result;
 }
 ```
 
-### 示例 3：缓存拦截器
+缓存只适合确定性的只读工具。不要缓存支付、创建、删除等副作用操作。
+
+### 拦截器之间传值
+
 ```java
-public class CachingInterceptor implements ToolInterceptor {
-    private final Cache<String, Object> cache = ...;
-
-    @Override
-    public Object intercept(ToolContext context, ToolChain chain) throws Exception {
-        String cacheKey = buildCacheKey(context);
-        Object cached = cache.get(cacheKey);
-        if (cached != null) {
-            return cached; // 命中缓存，跳过实际调用
-        }
-
-        Object result = chain.proceed(context);
-        cache.put(cacheKey, result); // 写入缓存
-        return result;
-    }
-}
+context.setAttribute("traceId", UUID.randomUUID().toString());
+String traceId = context.getAttribute("traceId");
 ```
 
+这些 attributes 不会自动来自 `ChatContext`。若 Tool 需要账号或租户信息，应在创建拦截器时显式传入可信依赖，或建立受控的应用上下文桥接，不要让模型通过 Tool 参数声明身份。
 
-## 上下文管理：`ToolContextHolder`
+## 生产建议
 
-提供线程安全的上下文访问：
-```java
-// 在任意位置获取当前工具调用上下文
-ToolContext current = ToolContextHolder.currentContext();
-if (current != null) {
-    String toolName = current.getTool().getName();
-}
-```
-
-> ⚠️ **注意**：该方式仅在工具调用期间获取有效
+1. 拦截器实例可能被并发调用，应保持无状态或线程安全。
+2. 权限校验必须发生在 `proceed(...)` 前，且不能只依赖模型提示词。
+3. 日志和 Span 中对 token、密码、身份证号等字段脱敏。
+4. 修改 `getArgsMap()` 会直接影响后续 Tool 看到的参数；若要规范化参数，先复制并评估同一 Map 被其他逻辑读取的影响。
+5. 对异常保留服务端诊断信息，但只向模型返回必要的业务说明。
 
 ## 常见问题
 
-**Q：拦截器能修改工具参数吗？**
+### 为什么拦截器没有执行？
 
-A：**不能直接修改** `context.getArgsMap()`（它是 `ToolCall` 的只读视图），但可通过以下方式：
-- 在前置拦截器中验证并拒绝非法参数
-- 使用 `context.setAttribute()` 传递修正后的参数给后续拦截器或工具实现
+确认工具是通过 `ToolExecutor` 或 `AiMessageResponse` 的辅助方法执行。直接调用 `tool.invoke(...)` 会绕过责任链。
 
-**Q：如何跳过实际工具调用？**
+### 如何跳过真实工具调用？
 
-A：在拦截器中**不调用** `chain.proceed()`，直接返回结果（如缓存命中场景）。
+直接返回缓存或降级结果，不调用 `chain.proceed(...)`。
 
-**Q：拦截器执行顺序能调整吗？**
+### 可以调整全局与实例拦截器顺序吗？
 
-A：全局拦截器按注册顺序执行；实例拦截器按传入列表顺序执行。
+当前没有 order 字段。顺序固定为内置可观测性、全局注册顺序、本次执行传入顺序。
 
-**Q：性能开销大吗？**
+## 下一步
 
-A：拦截器开销极低：
-- `ToolObservabilityInterceptor` 采用懒序列化
-- 敏感字段脱敏使用高效正则
-- 可通过开关动态禁用
-
-
-
-
-</div>
+- [Tool 工具调用](./tool.md)
+- [对话拦截器](./chat-interceptor.md)
+- [对话上下文](./chat-context.md)

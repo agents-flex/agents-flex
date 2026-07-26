@@ -1,127 +1,128 @@
+---
+title: ChatClient 对话客户端
+description: 理解 ChatClient 在模型协议层中的职责，并扩展同步 HTTP、流式传输和响应解析。
+---
+
 # ChatClient 对话客户端
+
 <div v-pre>
 
+## 概述
 
-##  概述
+`ChatClient` 是模型协议的传输与响应处理层。`BaseChatModel` 先完成 Prompt、Options、拦截器和请求 Body 构建，再把最终 Body 交给 Client：
 
-`ChatClient` 是 Agents-Flex 中用于对接大语言模型（LLM）服务的**协议调用抽象层**。它定义了统一的同步与流式调用接口，使上层 `BaseChatModel` 能够解耦底层通信协议（如 HTTP、gRPC、WebSocket 等）。
+```text
+ChatModel -> ChatInterceptor -> RequestSpecBuilder
+          -> ChatClient -> HTTP/SSE -> AiMessageParser
+```
 
-目前提供的典型实现是 `OpenAIChatClient`，它封装了对 OpenAI 兼容 API（包括官方 OpenAI 及其衍生模型服务）的 HTTP 同步请求和 SSE 流式响应处理。
+普通业务只调用 `ChatModel`，不需要直接创建 Client。只有接入新协议、替换网络实现或编写模型适配器时才使用本篇 API。
 
+## 适用场景
 
-> 注意： 当只有开发者扩展定义一个全新的模型协议时，才关注本章节。
+- 服务端不是 OpenAI 兼容协议，需要自定义传输与错误解析。
+- 需要使用公司统一的 HTTP Client、代理、证书和网络观测。
+- 流式协议是 NDJSON、WebSocket，而不是 SSE。
+- 响应 JSON 结构不同，需要注入自定义 `AiMessageParser`。
 
+只需修改 URL、Header 或 Body 时，优先扩展 `ChatRequestSpecBuilder` 或使用 `ChatInterceptor`。
 
-## `ChatClient` 结构与职责
+## 快速开始
 
-### 1 抽象基类：`ChatClient`
+OpenAI 兼容模型已经由 `OpenAIChatClient` 处理，通常只需通过 `ChatModel` 调用：
+
+```java
+OpenAIChatModel model = new OpenAIChatModel(config);
+AiMessageResponse response = model.chat(new SimplePrompt("你好"));
+```
+
+要替换同步网络实现，可在模型创建后注入：
+
+```java
+OpenAIChatClient client = new OpenAIChatClient(model);
+client.setHttpClient(new AgentsFlexHttpClient(customOkHttpClient));
+model.setChatClient(client);
+```
+
+## 核心接口
 
 ```java
 public abstract class ChatClient {
-    protected BaseChatModel<?> chatModel;
-    protected ChatContext context;
-
-    public ChatClient(BaseChatModel<?> chatModel, ChatContext context) {
-        this.chatModel = chatModel;
-        this.context = context;
-    }
-
-    public abstract AiMessageResponse chat();               // 同步调用
-    public abstract void chatStream(StreamResponseListener listener); // 流式调用
+    public abstract AiMessageResponse chat(String body);
+    public abstract void chatStream(
+        String body,
+        StreamResponseListener listener
+    );
 }
 ```
 
-- **职责**：
-    - 持有当前模型配置 (`chatModel`) 与请求上下文 (`context`)
-    - 定义两个核心方法：同步响应和流式回调
-- **使用方式**：作为协议适配器，由具体模型实现类（如 `OpenAIChatClient`）继承并实现具体通信逻辑。
+Client 不持有请求级 `ChatContext`。实现类在调用期间通过 `ChatContextHolder.currentContext()` 读取 URL、Header、重试参数和 Prompt；因此方法必须由 `BaseChatModel` 的上下文范围内调用。
 
+## OpenAIChatClient
 
-### 2 实现类：`OpenAIChatClient`
+同步路径使用 `AgentsFlexHttpClient.post(...)`，解析 JSON 错误或成功响应；流式路径每次调用新建 `SseClient`，并由 `BaseStreamClientListener` 聚合增量消息。
 
-封装了对 OpenAI 兼容 API 的完整调用逻辑：
+- 空同步响应返回 error `AiMessageResponse`。
+- 非法 JSON 返回 `invalid json response` 错误响应。
+- 响应含 `error` 对象时保留 message、type 和 code。
+- 成功时使用 `AiMessageParser`，并补充本地 Token 估算。
 
-- 使用 `HttpClient` 发起同步 POST 请求
-- 使用 `SseClient`（实现自 `StreamClient`）处理 Server-Sent Events (SSE) 流式响应
-- 集成重试机制 (`Retryer`)
-- 支持自定义响应解析器 (`AiMessageParser`)
-- 自动计算并设置 Token 消耗（通过 `LocalTokenCounter`）
-
-#### 核心属性（支持 setter 注入，便于测试或定制）
-
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `agentsFlexHttpClient` | `HttpClient` | `new HttpClient()` | 用于同步请求 |
-| `streamClient` | `StreamClient` | `new SseClient()` | 用于流式请求（SSE） |
-| `aiMessageParser` | `AiMessageParser<JSONObject>` | `DefaultAiMessageParser.getOpenAIMessageParser()` | 解析 OpenAI JSON 响应为 `AiMessage` |
-
-> 💡 所有 getter 方法均采用懒初始化（Lazy Initialization），确保首次调用时才创建实例。
-
-
-## 核心 API 说明
-
-### 1 `AiMessageResponse chat()`
-
-**功能**：执行一次完整的同步对话请求，返回结构化响应。
-
-
-### 2 `void chatStream(StreamResponseListener listener)`
-
-**功能**：以流式方式发起对话，通过回调逐片段返回结果。
-
-
-## 扩展与定制
-
-### 1 替换 HTTP 客户端
-
-若需使用自定义 HTTP 客户端（如 OkHttp、Apache HttpClient）：
+可以注入解析器：
 
 ```java
-OpenAIChatClient client = new OpenAIChatClient(model, context);
-client.setHttpClient(new MyCustomHttpClient());
-```
-
-只要实现 `com.agentsflex.core.model.client.AgentsFlexHttpClient` 接口即可。
-
-### 2 替换流式客户端
-
-支持 WebSocket 或其他流协议：
-
-```java
-client.setStreamClient(new WebSocketStreamClient());
-```
-
-需实现 `StreamClient` 接口，并确保能按 OpenAI SSE 格式解析数据流。
-
-### 3 自定义消息解析器
-
-若服务端返回格式与标准 OpenAI 不同（如本地模型返回字段不同）：
-
-```java
-AiMessageParser<JSONObject> customParser = (json, ctx) -> {
-    String content = json.getString("result");
-    return new AiMessage(content);
-};
+OpenAIChatClient client = new OpenAIChatClient(model);
 client.setAiMessageParser(customParser);
+model.setChatClient(client);
 ```
 
+`getStreamClient()` 当前每次返回新的 `SseClient`。若要支持其他流协议，应继承 Client 并覆盖该方法或实现完整的 `chatStream(...)`。
 
-## 与责任链模型的集成
+## 自定义 Client
 
-`ChatClient` 并非直接由用户调用，而是作为 **责任链的末端执行者**，由 `BaseChatModel` 在拦截器链执行完毕后调用：
+```java
+public class MyChatClient extends ChatClient {
+    public MyChatClient(BaseChatModel<?> model) {
+        super(model);
+    }
 
-```text
-chat() → 构建 ChatContext → 执行拦截器链 → 构建最终 Body → 调用 chatClient.chat(body)
+    @Override
+    public AiMessageResponse chat(String body) {
+        ChatContext context = ChatContextHolder.currentContext();
+        ChatRequestSpec spec = context.getRequestSpec();
+        String raw = myTransport.post(spec.getUrl(), spec.getHeaders(), body);
+        return parse(raw, context);
+    }
+
+    @Override
+    public void chatStream(String body, StreamResponseListener listener) {
+        // 连接流、解析分片，并完整转发 onMessage/onStop/onFailure。
+    }
+}
 ```
 
+自定义实现必须把协议错误转换为一致的错误响应或 Listener 失败事件，并确保网络资源在正常结束、异常和主动停止时都能关闭。
 
-## 错误处理与日志
+## 生产建议
 
-- 所有 API 调用错误（如 429、500、无效模型）会被解析为 `AiMessageResponse` 的 `error` 状态
-- 原始响应体（`rawText`）始终保留，便于调试
-- 请求/响应自动记录到 `ChatMessageLogger`（便于审计或监控）
+1. Client 实例会被模型复用，字段必须线程安全；请求状态放在 `ChatContext` 或局部变量中。
+2. 不要在 Client 中再次序列化 Prompt，Body 已由责任链末端构建。
+3. 对同步与流式路径分别测试 2xx、4xx、5xx、空响应、非法 JSON 和中途断流。
+4. 日志中不要输出 Authorization 和未经脱敏的完整 Body。
 
+## 常见问题
 
+### 为什么直接调用 `client.chat(body)` 报上下文错误？
 
+Client 依赖 `ChatContextHolder`，应由 `ChatModel` 调用。如果你需要独立 HTTP Client，请直接使用传输层 API。
+
+### 可以在一个 Client 中保存当前 Context 吗？
+
+不应这样做。模型可能被并发调用，请求级 Context 不能保存在共享字段。
+
+## 下一步
+
+- [ChatRequestSpecBuilder](./chat-request-spec-builder.md)
+- [AiMessageParser](./ai-message-parser.md)
+- [错误重试](./retry.md)
 
 </div>

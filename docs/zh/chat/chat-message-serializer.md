@@ -1,195 +1,111 @@
+---
+title: ChatMessageSerializer 消息序列化
+description: 将 Message 与 Tool 转换为模型协议所需的结构化请求字段。
+---
+
 # ChatMessageSerializer 消息序列化
 
 <div v-pre>
 
-
 ## 概述
 
-`ChatMessageSerializer` 是 Agents-Flex 中用于**将内部消息模型转换为 LLM（大语言模型）可识别的请求格式**的核心组件。其核心职责是：
+`ChatMessageSerializer` 负责把统一的 `Message` 和 `Tool` 对象转换为具体模型协议的数据结构。它不负责网络请求，也不负责拼装整个 Body；`ChatRequestSpecBuilder` 会把序列化结果放入 `messages` 和 `tools` 等字段。
 
-- 将 `Message` 对象列表（如 `UserMessage`、`AiMessage`）序列化为模型所需的聊天消息数组（例如 OpenAI 的 `[{"role":"user", "content":"..."}]`）
-- 将工具（`Tool`）定义序列化为模型支持的函数调用格式（如 OpenAI 的 `tools` 字段）
+普通 OpenAI 兼容模型使用内置实现即可。只有模型的 role、多模态内容或 Tool Schema 格式不兼容时才需要扩展。
 
-尽管接口名为“消息序列化器”，但它**同时承担了工具/函数定义的序列化职责**，因为这些通常作为聊天请求的一部分（如 `tools` 或 `functions` 字段）一起发送。
+## 适用场景
 
+- 新协议使用不同的 system/user/assistant/tool 表示方式。
+- 厂商要求把 SystemMessage 放在顶层字段而不是 messages 数组。
+- 多模态 content part 的字段名或编码方式不同。
+- Tool 参数 Schema 与 OpenAI function calling 不兼容。
 
-## 接口定义
+如果只是响应字段不同，应扩展 [AiMessageParser](./ai-message-parser.md)，不是 Serializer。
 
-```java
-public interface ChatMessageSerializer {
-    List<Map<String, Object>> serializeMessages(List<Message> messages, ChatConfig config);
-    List<Map<String, Object>> serializeTools(List<Tool> tools, ChatConfig config);
+## 快速开始
 
-    // 默认方法：从 UserMessage 提取工具列表
-    default List<Map<String, Object>> serializeTools(UserMessage userMessage, ChatConfig config) {
-        return serializeTools(userMessage == null ? null : userMessage.getTools(), config);
-    }
-}
-```
-
-### 方法说明
-
-| 方法 | 用途 |
-|------|------|
-| `serializeMessages` | 将对话历史消息转换为 LLM 可解析的结构化数组 |
-| `serializeTools` | 将函数定义（工具）转换为 LLM 的函数调用描述格式 |
-| `serializeTools(UserMessage, ...)` | 便捷方法，自动从用户消息中提取工具列表 |
-
-
-## 默认实现：`OpenAIChatMessageSerializer`
-
-`OpenAIChatMessageSerializer` 实现完整支持 **OpenAI 兼容协议**，包括：
-
-- 标准角色消息（user/assistant/system/tool）
-- 多模态内容（文本 + 图片/音频/视频 URL）
-- 函数调用（Function Calling）与工具调用（Tool Calling）
-- 复杂参数结构（嵌套对象、数组、枚举、必填字段）
-
-### 1 消息序列化（`serializeMessages`）
-
-#### 支持的消息类型
-
-| 内部类型 | 转换结果（OpenAI 格式） |
-|--------|------------------------|
-| `UserMessage` | `{ "role": "user", "content": "..." }` |
-| `AiMessage` | `{ "role": "assistant", "content": "...", "tool_calls": [...] }` |
-| `SystemMessage` | `{ "role": "system", "content": "..." }` |
-| `ToolMessage` | `{ "role": "tool", "content": "...", "tool_call_id": "..." }` |
-
-#### 多模态支持（仅限 `UserMessage`）
-
-当 `UserMessage` 包含图像、音频或视频 URL 时，自动转换为 OpenAI 的多模态格式：
-
-```json
-[
-  { "type": "text", "text": "Describe this image" },
-  { "type": "image_url", "image_url": { "url": "https://..." } },
-  { "type": "audio_url", "audio_url": { "url": "https://..." } }
-]
-```
-
-> 🔒 **安全处理**：若 `config.isSupportImageBase64Only()` 为 `true` 且图片 URL 是 HTTP 链接，会自动下载并转换为 `data:image/jpeg;base64,...` 格式。
-
-#### 函数调用响应（`AiMessage`）
-
-当 AI 响应包含 `toolCalls` 时：
-- 自动清空 `content` 字段（避免模型将推理过程误认为输出）
-- 添加 `tool_calls` 数组，格式如下：
-
-```json
-{
-  "role": "assistant",
-  "content": "",
-  "tool_calls": [
-    {
-      "id": "call_123",
-      "type": "function",
-      "function": {
-        "name": "get_weather",
-        "arguments": "{\"location\": \"Beijing\"}"
-      }
-    }
-  ]
-}
-```
-
-
-### 2 工具序列化（`serializeTools`）
-
-将 `Tool` 对象转换为 OpenAI 的 `tools` 结构：
-
-```json
-[
-  {
-    "type": "function",
-    "function": {
-      "name": "get_weather",
-      "description": "Get weather for a location",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "location": {
-            "type": "string",
-            "description": "City name",
-            "enum": ["Beijing", "Shanghai"]
-          }
-        },
-        "required": ["location"]
-      }
-    }
-  }
-]
-```
-
-#### 高级参数支持
-
-- **嵌套对象**：通过 `Parameter.getChildren()` 支持层级结构
-- **数组类型**：自动识别单值数组（`string[]`）与对象数组（`{...}[]`）
-- **必填字段**：通过 `parameter.isRequired()` 控制 `required` 列表
-- **枚举值**：通过 `parameter.getEnums()` 设置合法取值范围
-
-> ⚠️ **开关控制**：模型配置里的  `chatConfig.getSupportTool()` 为 `false`，则返回 `null`，**完全跳过工具发送**，适用于不支持 Function Calling 的模型。
-
-
-## 扩展与定制
-
-### 1 自定义序列化器
-
-若需支持非 OpenAI 协议（如 Claude、Gemini、自研 LLM），可实现 `ChatMessageSerializer` 接口：
+实现两个方向的请求序列化：
 
 ```java
-public class ClaudeMessageSerializer implements ChatMessageSerializer {
+public class MyMessageSerializer implements ChatMessageSerializer {
     @Override
-    public List<Map<String, Object>> serializeMessages(List<Message> messages, ChatConfig config) {
-        // 转换为 Anthropic 格式，例如合并 system message 到 system 参数
+    public List<Map<String, Object>> serializeMessages(
+        List<Message> messages, BaseChatConfig config) {
+        return convertMessages(messages);
     }
 
     @Override
-    public List<Map<String, Object>> serializeTools(List<Tool> tools, ChatConfig config) {
-        // Claude 使用不同的 tools 格式
+    public List<Map<String, Object>> serializeTools(
+        List<Tool> tools, BaseChatConfig config) {
+        return convertTools(tools);
     }
 }
 ```
 
-### 2 注入到请求构建器
-
-在 `OpenAIChatRequestSpecBuilder` 中设置自定义序列化器：
+注入 OpenAI Request Builder：
 
 ```java
-OpenAIChatRequestSpecBuilder builder = new OpenAIChatRequestSpecBuilder(
-    new MyCustomMessageSerializer()
-);
+OpenAIChatRequestSpecBuilder builder =
+    new OpenAIChatRequestSpecBuilder(new MyMessageSerializer());
+model.setChatRequestSpecBuilder(builder);
 ```
 
----
-
-##  与整体架构的集成
-
-`ChatMessageSerializer` 被 `ChatRequestSpecBuilder` 调用，用于构建请求体：
+## 核心接口
 
 ```java
-// 在 OpenAIChatRequestSpecBuilder.buildRequestBody() 中
-map.set("messages", chatMessageSerializer.serializeMessages(messages, config))
-   .setIfNotEmpty("tools", chatMessageSerializer.serializeTools(userMessage, config));
+List<Map<String, Object>> serializeMessages(
+    List<Message> messages, BaseChatConfig config);
+
+List<Map<String, Object>> serializeTools(
+    List<Tool> tools, BaseChatConfig config);
 ```
 
-- **完全解耦**：`ChatClient` 仅消费最终 JSON，不关心序列化细节
-- **上下文感知**：`ChatConfig` 提供模型能力信息（如是否支持图片、工具等），用于条件渲染
+便捷方法 `serializeTools(Prompt, config)` 读取 `prompt.getTools()`。Tool 属于 Prompt，不属于 UserMessage。
 
+## OpenAI 默认映射
 
+| 内部对象 | 协议结果 |
+| --- | --- |
+| `SystemMessage` | `role=system` |
+| `UserMessage` | `role=user`，可含多模态 content parts |
+| `AiMessage` | `role=assistant`，可含 reasoning 与 tool_calls |
+| `ToolMessage` | `role=tool` 与 `tool_call_id` |
+| `Tool` | `type=function`、名称、描述和参数 JSON Schema |
 
-## 总结
+`Parameter` 的 `children` 用于对象属性，`itemsParameter` 用于数组元素，`required` 和 `enums` 会进入 Schema。配置声明不支持 Tool 时，默认实现不发送工具定义。
 
-`ChatMessageSerializer` 是 Agents-Flex **消息协议适配层**的关键组件，它：
+多模态是否序列化取决于 `BaseChatConfig` 的能力声明。对于只接受 Base64 图片的服务，默认实现可能下载远程图片并转换；这会引入网络访问、内容大小和超时风险，应在生产环境限制来源。
 
-- **屏蔽模型差异**：统一内部 `Message` 模型，适配不同 LLM 的输入格式
-- **支持高级特性**：多模态、函数调用、复杂参数结构
-- **安全可控**：通过 `ChatConfig` 动态启用/禁用特性
-- **易于扩展**：通过接口实现支持任意 LLM 协议
+## 与请求构建器的关系
 
-> 📘 **建议**：除非对接非 OpenAI 协议模型，否则直接使用 `OpenAIChatMessageSerializer` 即可满足绝大多数场景。
+```text
+Prompt.getMessages() -> serializeMessages -> body.messages
+Prompt.getTools()    -> serializeTools    -> body.tools
+```
 
+ToolGroup 和 ToolSearch 会在请求准备阶段把本轮可见工具解析到请求级 Prompt，Serializer 只处理最终列表，不负责匹配与搜索。
 
+## 生产建议
 
+1. Serializer 保持纯函数式，不修改输入 Message、Tool 或 Config。
+2. 未支持的消息类型应明确拒绝或记录，避免静默丢失历史。
+3. 测试 System、ToolCall/ToolMessage、多模态、空内容和嵌套参数。
+4. Schema 尽量小而明确，过度嵌套会增加 Token 并降低模型填参稳定性。
+
+## 常见问题
+
+### 为什么工具没有出现在请求里？
+
+确认工具在 Prompt 上，配置支持 Tool，并检查本轮 ToolGroup/ToolSearch 解析结果。
+
+### Serializer 能读取 ChatContext 吗？
+
+接口只接收输入对象与 Config。请求级策略应在进入 Serializer 前由 Builder 或 Interceptor 完成。
+
+## 下一步
+
+- [ChatRequestSpecBuilder](./chat-request-spec-builder.md)
+- [Message 消息](./message.md)
+- [Tool 工具调用](./tool.md)
 
 </div>

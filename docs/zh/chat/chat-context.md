@@ -1,130 +1,161 @@
-# 对话上下文 ChatContext
+<div v-pre>
 
+# 对话上下文 ChatContext
 
 ## 概述
 
-`ChatContext` 是 Agents-Flex 框架中用于**在 LLM 调用全链路中传递上下文信息**的核心容器类。它作为线程局部上下文（通过 `ChatContextHolder` 管理），在以下场景中被广泛使用：
+`ChatContext` 表示一次模型调用在框架内部共享的上下文。它把 `Prompt`、`ChatOptions`、模型配置、已经构建的
+HTTP 请求以及业务关联 ID 放在同一个对象中，供对话拦截器、日志和可观测组件协作使用。
 
-- **拦截器（`ChatInterceptor`）** 之间共享数据
-- **请求构建阶段** 到 **实际调用阶段** 的参数传递
-- **自定义逻辑** 中临时存储或读取元信息
+它不是聊天历史，也不是跨请求会话存储：
 
-`ChatContext` 本身是**不可变属性的集合**，但其内部对象（如 `attributes`、`requestSpec`）可被修改，从而实现动态行为控制。
+| 概念 | 生命周期 | 用途 |
+| --- | --- | --- |
+| `ChatContext` | 一次模型调用 | 拦截器间传值、修改当前请求、记录链路 |
+| `ChatMemory` | 多轮会话 | 保存历史 Message |
+| `ChatOptions.context...` | 一次请求输入 | 初始化 ChatContext 的业务关联字段 |
 
+## 适用场景
 
-## ChatContext 核心属性说明
+- 多个 ChatInterceptor 共享租户、权限判定或缓存键；
+- 在请求发送前添加动态 Header；
+- 把 accountId、conversationId、turnId 关联到日志和 Trace；
+- 在前置拦截器中计算策略，在后置拦截器中读取；
+- 测试中检查最终 Prompt、Options 或 `ChatRequestSpec`。
 
-| 属性 | 类型 | 说明 | 是否可修改 |
-|------|------|------|-----------|
-| **`prompt`** | `Prompt` | 用户原始输入的对话上下文（含多轮消息、工具定义等） | ✅ 可替换（谨慎） |
-| **`config`** | `ChatConfig` | 当前模型的配置（API Key、Endpoint、能力声明等） | ❌ 不建议修改 |
-| **`options`** | `ChatOptions` | 本次调用的生成参数（temperature、maxTokens 等） | ✅ 可调整 |
-| **`requestSpec`** | `ChatRequestSpec` | **即将发送的协议请求规范**，含 URL、Headers、Body | ✅ 可修改（高级用法） |
-| **`attributes`** | `Map<String, Object>` | **开发者自定义属性区**，用于拦截器间传递临时数据 | ✅ 完全可控 |
+## 快速开始
 
-> 🔐 **安全提示**：
-> - `config` 包含敏感信息（如 `apiKey`），**禁止在日志/响应中直接输出**
-> - 修改 `requestSpec` 需了解底层协议（如 OpenAI JSON Schema），否则可能导致请求失败
+业务侧通过 `ChatOptions` 提供关联 ID 和自定义属性：
 
-
-## 核心方法
-
-### 1. 属性访问（Getter/Setter）
-所有核心属性均提供标准 getter/setter，例如：
 ```java
-Prompt prompt = context.getPrompt();
-ChatConfig config = context.getConfig();
+ChatOptions options = ChatOptions.builder()
+    .contextBotId("support-bot")
+    .contextAccountId("account-1001")
+    .contextConversationId("conversation-2002")
+    .contextTurnId("turn-0008")
+    .contextAttribute("plan", "enterprise")
+    .build();
+
+AiMessageResponse response = chatModel.chat(prompt, options);
 ```
 
-### 2. 自定义属性操作
+框架开始调用时会把这些值复制到 `ChatContext`。拦截器可以读取：
+
 ```java
-// 添加/更新属性
-context.addAttribute("traceId", "abc123");
-context.addAttribute("userRole", "admin");
-
-// 批量设置（覆盖原有）
-Map<String, Object> attrs = Map.of("tenant", "t1", "region", "us-west");
-context.setAttributes(attrs);
-
-// 读取属性（需自行判空和类型转换）
-String traceId = (String) context.getAttributes().get("traceId");
-```
-
-
-##  使用场景示例
-
-### 场景 1：拦截器间传递数据
-```java
-// 拦截器 A：生成并传递 trace ID
-public class TraceInterceptor implements ChatInterceptor {
+public class TenantHeaderInterceptor implements ChatInterceptor {
     @Override
-    public AiMessageResponse intercept(BaseChatModel<?> model, ChatContext context, SyncChain chain) {
-        String traceId = UUID.randomUUID().toString();
-        context.addAttribute("traceId", traceId);
-        MDC.put("traceId", traceId); // 用于 SLF4J 日志
-        return chain.proceed(model, context);
+    public Object before(ChatContext context, SyncChain chain) {
+        String accountId = String.valueOf(context.getAccountId());
+        context.getRequestSpec().addHeader("X-Account-Id", accountId);
+        return chain.next(context);
     }
-    // ... 流式方法类似
+}
+```
+
+## 核心字段
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `prompt` | `Prompt` | 当前调用的消息、Tool 和 ToolGroup |
+| `config` | `BaseChatConfig` | 当前 ChatModel 的连接与能力配置 |
+| `options` | `ChatOptions` | 本次请求的生成参数和上下文输入 |
+| `requestSpec` | `ChatRequestSpec` | 最终 URL、Header 与重试参数 |
+| `botId` | `Object` | 业务 Bot 标识 |
+| `conversationId` | `Object` | 连续会话标识 |
+| `accountId` | `Object` | 账号或租户关联标识 |
+| `turnId` | `Object` | 当前单轮交互标识 |
+| `attributes` | `Map<String,Object>` | 拦截器共享的扩展属性 |
+
+前置拦截器的执行阶段不同。修改 Prompt 和 Options 应在请求序列化前完成；`requestSpec` 只有请求准备完成后才适合
+修改。具体阶段顺序见 [对话拦截器](./chat-interceptor)。
+
+## 在拦截器之间传值
+
+```java
+public class PlanResolver implements ChatInterceptor {
+    @Override
+    public Object before(ChatContext context, SyncChain chain) {
+        String plan = subscriptionService.findPlan(context.getAccountId());
+        context.addAttribute("resolvedPlan", plan);
+        return chain.next(context);
+    }
 }
 
-// 拦截器 B：读取 trace ID 并上报指标
-public class MetricsInterceptor implements ChatInterceptor {
+public class ModelPolicyInterceptor implements ChatInterceptor {
     @Override
-    public AiMessageResponse intercept(BaseChatModel<?> model, ChatContext context, SyncChain chain) {
-        String traceId = (String) context.getAttributes().get("traceId");
-        long start = System.currentTimeMillis();
-        try {
-            return chain.proceed(model, context);
-        } finally {
-            long duration = System.currentTimeMillis() - start;
-            Metrics.record("llm_latency", duration, "traceId", traceId);
+    public Object before(ChatContext context, SyncChain chain) {
+        Object plan = context.getAttribute("resolvedPlan");
+        if ("enterprise".equals(plan)) {
+            context.getOptions().setModel("gpt-4o");
         }
+        return chain.next(context);
     }
 }
 ```
 
-### 场景 2：动态修改请求头
+属性 Key 应使用模块前缀或常量，避免不同拦截器意外覆盖同名数据。
+
+## ChatContextHolder
+
+`ChatContextHolder` 用 `ThreadLocal` 保存当前调用上下文，主要供无法直接接收 Context 参数的日志或观测代码使用：
+
 ```java
-public class DynamicAuthInterceptor implements ChatInterceptor {
-    @Override
-    public AiMessageResponse intercept(BaseChatModel<?> model, ChatContext context, SyncChain chain) {
-        // 从上下文或外部服务获取 token
-        String token = TokenService.getValidToken(context.getConfig().getProvider());
-
-        // 修改请求头
-        context.getRequestSpec().getHeaders().put("Authorization", "Bearer " + token);
-
-        return chain.proceed(model, context);
-    }
+ChatContext context = ChatContextHolder.currentContext();
+if (context != null) {
+    audit(context.getConversationId(), context.getTurnId());
 }
 ```
 
-### 场景 3：条件性禁用某功能
+框架通过 `ChatContextScope` 在调用结束后清理。业务通常不需要手动 `beginChat()` 或 `set()`。
+
+ThreadLocal 不会自动传播到业务新建线程、线程池任务或任意异步回调。异步代码需要的字段应显式传递，不要依赖
+稍后还能从 `ChatContextHolder` 读取。
+
+## 修改请求 Header
+
+`BaseModelConfig` 没有通用自定义 Header 配置，动态 Header 可在请求准备完成后的拦截器中加入：
+
 ```java
-public class SafetyCheckInterceptor implements ChatInterceptor {
-    @Override
-    public AiMessageResponse intercept(BaseChatModel<?> model, ChatContext context, SyncChain chain) {
-        // 若检测到敏感词，强制关闭 thinking 模式
-        if (containsSensitiveWords(context.getPrompt())) {
-            context.getOptions().setThinkingEnabled(false);
-        }
-        return chain.proceed(model, context);
+public Object before(ChatContext context, SyncChain chain) {
+    ChatRequestSpec spec = context.getRequestSpec();
+    if (spec != null) {
+        spec.addHeader("X-Tenant-Id", String.valueOf(context.getAccountId()));
+        spec.addHeader("X-Request-Token", tokenService.issue());
     }
+    return chain.next(context);
 }
 ```
 
+不要把 Token 放入 `attributes` 后输出整个 Context 日志；`ChatContext.toString()` 会包含属性 Map。
 
-##  注意事项与最佳实践
+## 生产建议
 
-1. **线程安全**
-   `ChatContext` 由 `ChatContextHolder` 通过 `ThreadLocal` 管理，**天然线程隔离**，无需额外同步。
+- Context 只保存本次调用所需的小型元数据，不放大文档、二进制或不可序列化连接；
+- accountId 和 conversationId 是关联字段，不会自动实施租户权限；
+- 拦截器共享属性使用常量 Key，并记录字段所有者；
+- 不在日志中直接打印完整 `ChatContext`，其中可能包含 Prompt、配置和 Header；
+- 异步任务显式复制所需字段，任务结束后不要持有整个 Context；
+- 修改 `requestSpec` 前检查非空，并选择正确的拦截器执行顺序。
 
-2. **生命周期**
-   每次 `chat()` 或 `chatStream()` 调用会创建**新的 `ChatContext`**，调用结束后自动清理（通过 try-with-resources）。
+## 常见问题
 
-3. **避免存储大对象**
-   `attributes` 仅用于传递轻量元数据（ID、标志位、小配置），勿存文件、大字符串等。
+### 为什么 currentContext() 返回 null？
 
-4. **不要缓存 `ChatContext` 引用**
-   调用结束后上下文即失效，持有引用可能导致内存泄漏或数据错乱。
+代码可能不在 ChatModel 调用线程中，或调用已经结束并完成清理。拦截器内优先使用方法参数中的 Context。
 
+### contextAttributes 会发送给模型吗？
+
+它们用于框架调用链关联，不会作为普通生成参数发送；但拦截器可以主动用它们修改 Prompt 或请求。
+
+### 可以用 ChatContext 保存多轮历史吗？
+
+不应这样做。多轮历史使用 `ChatMemory`，Context 在一次调用结束后失效。
+
+## 下一步
+
+- [使用对话拦截器](./chat-interceptor)
+- [配置 ChatOptions](./chat-model#chatoptions)
+- [使用 Memory](./memory)
+- [配置日志](./logger)
+
+</div>

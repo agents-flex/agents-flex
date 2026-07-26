@@ -1,235 +1,119 @@
-# Chat 日志
-<div v-pre>
+---
+title: Chat 日志
+description: 控制模型原始请求与响应日志，并接入现有日志系统和敏感数据治理。
+---
 
+# Chat 日志
+
+<div v-pre>
 
 ## 概述
 
-Agents-Flex 提供了**统一、可插拔的对话请求日志系统**，用于记录所有与大语言模型（LLM）服务的交互细节，包括：
+Chat 日志记录发送给模型的最终请求 Body 和同步原始响应，帮助排查序列化、参数和服务返回问题。默认实现输出到 `System.out`，格式包含 Config 中的 provider/model。
 
-- **请求日志**：发送给 LLM 的原始请求体（JSON）
-- **响应日志**：LLM 返回的原始响应体（JSON）
+它是调试日志，不是指标、Trace 或合规审计系统。生产调用链观测应结合 Observability 和业务审计。
 
-该系统设计目标：
+## 适用场景
 
-- **开箱即用**：默认输出到 `System.out`（可自定义输出目标）
-- **灵活替换**：支持自定义日志实现（如 SLF4J、Log4j、文件、数据库等）
-- **按需启用**：通过 `ChatConfig.isLogEnabled()` 控制开关
-- **上下文丰富**：自动附加 `provider/model` 信息，便于排查
+- 开发阶段检查 messages、tools 和模型参数是否正确。
+- 排查模型兼容接口返回的原始 JSON。
+- 将脱敏后的模型交互接入 SLF4J 或日志平台。
+- 按模型关闭高敏感或高流量场景的正文日志。
 
+## 快速开始
+
+默认 `BaseChatConfig.logEnabled=true`。生产环境建议先关闭：
+
+```java
+OpenAIChatConfig config = new OpenAIChatConfig();
+config.setLogEnabled(false);
+```
+
+或者在应用启动时替换全局 Logger：
+
+```java
+ChatMessageLogger.setLogger(new DefaultChatMessageLogger(
+    line -> applicationLogger.debug(mask(line))
+));
+```
+
+`ChatMessageLogger` 是进程级静态门面，替换操作应在创建请求之前完成。
 
 ## 核心组件
 
-###  `IChatMessageLogger` 接口
-
 ```java
 public interface IChatMessageLogger {
-    void logRequest(ChatConfig config, String message);
-    void logResponse(ChatConfig config, String message);
+    void logRequest(BaseChatConfig config, String message);
+    void logResponse(BaseChatConfig config, String message);
 }
 ```
 
-- **职责**：定义日志记录的契约
-- **参数**：
-    - `config`：模型配置（含 provider、model、logEnabled 等）
-    - `message`：原始 JSON 字符串（请求体或响应体）
+- `ChatMessageLogger` 保存一个全局实现，并拒绝设置 null。
+- `DefaultChatMessageLogger` 仅在 Config 非 null 且 `isLogEnabled()` 时输出。
+- provider/model 缺失时，默认文本使用源码中的 `unknow`。
 
-> 📌 所有日志实现必须实现此接口。
+## 记录时机
 
+同步请求在责任链末端构建 Body 后记录请求，并在 Client 返回或抛出时的 `finally` 中记录响应。调用在获得响应前失败时，响应日志可能是空字符串。
 
-### `ChatMessageLogger` 全局门面
+流式请求会记录最终请求 Body；具体响应分片的记录行为取决于流式 Client/Listener，而不是 `BaseChatModel` 的同步响应日志块。不要假设每个流式分片都会通过 `IChatMessageLogger.logResponse(...)`。
 
-```java
-public final class ChatMessageLogger {
-    private static IChatMessageLogger logger = new DefaultChatMessageLogger();
-
-    public static void setLogger(IChatMessageLogger logger) { /* ... */ }
-    public static void logRequest(ChatConfig config, String message) { /* ... */ }
-    public static void logResponse(ChatConfig config, String message) { /* ... */ }
-}
-```
-
-- **单例模式**：全局唯一日志器实例
-- **线程安全**：`setLogger()` 是线程安全的（适合应用启动时初始化）
-
-> **调用方式**：所有内部组件通过 `ChatMessageLogger.logRequest(...)` 记录日志。
-
-
-### `DefaultChatMessageLogger` 默认实现
+## 自定义实现
 
 ```java
-public class DefaultChatMessageLogger implements IChatMessageLogger {
-    private final Consumer<String> logConsumer;
-
-    public DefaultChatMessageLogger(Consumer<String> logConsumer) { /* ... */ }
+public class Slf4jChatLogger implements IChatMessageLogger {
+    private final Logger logger = LoggerFactory.getLogger("LLM.Chat");
 
     @Override
-    public void logRequest(ChatConfig config, String message) {
-        if (shouldLog(config)) {
-            String provider = getProviderName(config);
-            String model = getModelName(config);
-            logConsumer.accept(String.format("[%s/%s] >>>> request: %s", provider, model, message));
+    public void logRequest(BaseChatConfig config, String body) {
+        if (config != null && config.isLogEnabled()) {
+            logger.debug("LLM request provider={}, model={}, body={}",
+                config.getProvider(), config.getModel(), redact(body));
         }
     }
 
     @Override
-    public void logResponse(ChatConfig config, String message) {
-        if (shouldLog(config)) {
-            String provider = getProviderName(config);
-            String model = getModelName(config);
-            logConsumer.accept(String.format("[%s/%s] <<<< response: %s", provider, model, message));
+    public void logResponse(BaseChatConfig config, String body) {
+        if (config != null && config.isLogEnabled()) {
+            logger.debug("LLM response provider={}, model={}, body={}",
+                config.getProvider(), config.getModel(), redact(body));
         }
     }
 }
+
+ChatMessageLogger.setLogger(new Slf4jChatLogger());
 ```
 
-- **默认行为**：输出到 `System.out`
-- **格式**：`[provider/model] >>>> request: {...}` / `<<<< response: {...}`
-- **条件记录**：仅当 `config.isLogEnabled() == true` 时记录
-- **可定制输出**：通过 `Consumer<String>` 替换输出目标
+自定义实现自己负责线程安全、异步队列、日志级别、采样、截断和脱敏。`setLogger()` 本身没有同步或 volatile 语义，不应在请求并发期间频繁切换。
 
+## 敏感数据治理
 
+请求 Body 可能包含完整历史、个人信息、Tool Schema 和 Tool 结果；响应可能包含模型复述的敏感内容。Header 不在这里的 Body 日志中，但 Prompt 可能本身包含 token 或凭证。
 
-## 自定义日志实现
+1. 默认关闭生产正文采集，按问题和租户短时开启。
+2. 用 JSON Parser 按字段脱敏，不依赖易漏字段的单个正则。
+3. 限制长度和保留期，并对日志访问设置权限。
+4. 不把调试日志当作不可抵赖的审计记录。
+5. 自定义 Logger 内部失败不能反向影响模型主流程。
 
-### 使用 SLF4J 记录到日志框架
+## 常见问题
 
-```java
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+### 为什么设置 `logEnabled=false` 仍看到网络日志？
 
-public class Slf4jChatMessageLogger implements IChatMessageLogger {
-    private static final Logger logger = LoggerFactory.getLogger("LLM.Chat");
+该开关只控制 `IChatMessageLogger`。HTTP Client、SSE、SDK 或应用日志框架可能还有独立日志配置。
 
-    @Override
-    public void logRequest(ChatConfig config, String message) {
-        if (logger.isDebugEnabled() && shouldLog(config)) {
-            logger.debug("[{}/{}] >>>> request: {}",
-                getProvider(config), getModel(config), maskSensitiveData(message));
-        }
-    }
+### 可以为单次 ChatOptions 关闭吗？
 
-    @Override
-    public void logResponse(ChatConfig config, String message) {
-        if (logger.isDebugEnabled() && shouldLog(config)) {
-            logger.debug("[{}/{}] <<<< response: {}",
-                getProvider(config), getModel(config), message);
-        }
-    }
+当前开关位于 `BaseChatConfig`，不是 `ChatOptions`。并发请求共享 Config 时不要临时切换字段；需要按请求采样可在自定义 Logger 中结合业务上下文判断。
 
-    private boolean shouldLog(ChatConfig config) {
-        return config != null && config.isLogEnabled();
-    }
+### 默认实现会自动脱敏吗？
 
-    private String maskSensitiveData(String json) {
-        // 掩码 API Key 等敏感字段（示例）
-        return json.replaceAll("(\"api_key\"\\s*:\\s*\")[^\"]+\"", "$1***\"");
-    }
-}
+不会。它原样输出 Body，生产使用前必须关闭或替换。
 
-// 注册到全局
-ChatMessageLogger.setLogger(new Slf4jChatMessageLogger());
-```
+## 下一步
 
-### 记录到文件
-
-```java
-public class FileChatMessageLogger implements IChatMessageLogger {
-    private final PrintWriter writer;
-
-    public FileChatMessageLogger(String filePath) throws IOException {
-        this.writer = new PrintWriter(new FileWriter(filePath, true));
-    }
-
-    @Override
-    public void logRequest(ChatConfig config, String message) {
-        if (shouldLog(config)) {
-            writer.println(new Date() + " [REQUEST] " + message);
-            writer.flush();
-        }
-    }
-
-    @Override
-    public void logResponse(ChatConfig config, String message) {
-        if (shouldLog(config)) {
-            writer.println(new Date() + " [RESPONSE] " + message);
-            writer.flush();
-        }
-    }
-
-    // 实现 shouldLog/getProvider/getModel...
-}
-```
-
-##  配置与控制
-
-### 启用/禁用日志
-
-通过 `ChatConfig` 控制：
-
-```java
-OpenAIConfig config = new OpenAIConfig();
-config.setLogEnabled(true);  // 默认为 true
-// 或
-config.setLogEnabled(false); // 完全关闭日志
-```
-
-> 🔒 **生产建议**：生产环境默认关闭，调试时开启。
-
-### 日志内容脱敏
-
-**重要**：请求/响应中可能包含敏感信息（如 API Key、用户隐私），建议在自定义 logger 中实现脱敏：
-
-- 移除 `Authorization` 头（但请求体中通常不含）
-- 掩码用户输入中的 PII（个人身份信息）
-- 避免记录完整上下文（如长对话历史）
-
-
-## 日志格式说明
-
-### 同步请求示例
-
-```
-[openai/gpt-4o] >>>> request: {"model":"gpt-4o","messages":[{"role":"user","content":"Hello"}],"stream":false}
-[openai/gpt-4o] <<<< response: {"choices":[{"message":{"content":"Hi there!","role":"assistant"}}],"usage":{"total_tokens":10}}
-```
-
-### 流式请求示例
-
-```
-[openai/gpt-4o] >>>> request: {"model":"gpt-4o","messages":[{"role":"user","content":"Hello"}],"stream":true}
-[openai/gpt-4o] <<<< response: {"choices":[{"delta":{"role":"assistant"},"index":0}]}
-[openai/gpt-4o] <<<< response: {"choices":[{"delta":{"content":"Hi"},"index":0}]}
-[openai/gpt-4o] <<<< response: {"choices":[{"delta":{"content":" there!"},"index":0}]}
-[openai/gpt-4o] <<<< response: {"choices":[{"finish_reason":"stop","index":0}]}
-```
-
-## 最佳实践
-
-### 推荐做法
-- **开发/测试环境**：启用日志，便于调试
-- **生产环境**：默认关闭，按需开启（如排查问题）
-- **自定义 logger**：集成到现有日志体系（如 SLF4J + Logback）
-- **敏感数据处理**：务必脱敏后再记录
-
-### ❌ 避免事项
-- 不要将原始日志直接暴露给前端或日志聚合系统（未脱敏）
-- 不要长期开启全量日志（可能产生海量数据）
-- 不要依赖日志作为审计主通道（应使用专门的审计日志）
-
-
-
-## 总结
-
-Agents-Flex 的请求日志系统：
-
-- **简单易用**：默认输出到控制台，一行代码切换实现
-- **灵活可控**：按模型/请求级别开关，支持任意输出目标
-- **上下文丰富**：自动标注 provider/model，提升可读性
-- **安全第一**：提供脱敏扩展点，保护敏感数据
-
-> 📘 **建议**：在开发阶段始终开启日志，在生产环境通过配置动态控制。
-
-
-
+- [对话拦截器](./chat-interceptor.md)
+- [对话上下文](./chat-context.md)
+- [错误重试](./retry.md)
 
 </div>

@@ -2,7 +2,7 @@
 # Subagent 开发文档
 
 
-## 1. 概述
+## 概述
 
 Subagent 模块是 Agents-Flex 框架中用于实现**智能体嵌套调用**和**异步任务处理的核心组件**。它允许主 Agent（Parent Agent）将复杂的、多步骤的任务委托给专门的子 Agent（Subagent）执行，支持同步阻塞调用和异步后台执行两种模式。
 
@@ -16,8 +16,40 @@ Subagent 模块是 Agents-Flex 框架中用于实现**智能体嵌套调用**和
 1. `execute_task`：启动子 Agent 执行任务。
 2. `get_task_output`：获取后台子 Agent 的执行结果。
 
+## 适用场景
 
-## 2. 核心架构
+- 主 Agent 需要把代码审查、资料研究等长任务交给专门角色。
+- 多个相互独立的子任务可以后台并行，主对话继续处理其他工作。
+- 希望隔离子 Agent 的 Prompt、模型和工具权限，只把最终结果带回主对话。
+
+简单的一两步 Tool 调用不需要 Subagent。子代理会增加模型调用、状态管理和错误处理成本，只有任务本身需要独立推理过程时才值得委派。
+
+## 快速开始
+
+```java
+SubagentDefinition reviewer = SubagentDefinition.builder()
+    .name("code-reviewer")
+    .description("审查 Java 代码中的缺陷和并发风险")
+    .build();
+
+SubagentExecutor executor = (args, definition) ->
+    reviewChatModel.chat(args.getPrompt());
+
+TaskRepository taskRepository = new TaskRepository();
+
+List<Tool> tools = SubagentTools.builder()
+    .addDefinition(reviewer)
+    .subagentExecutor(executor)
+    .taskRepository(taskRepository)
+    .build();
+
+prompt.addTools(tools);
+```
+
+主模型通过 `execute_task` 选择定义并提交 prompt；后台模式返回 task ID，后续通过 `get_task_output` 查询。应用结束时应关闭所使用的 `TaskRepository`，释放它拥有的线程池。
+
+
+## 核心架构
 
 ### 2.1 架构图
 
@@ -37,7 +69,7 @@ Subagent 模块是 Agents-Flex 框架中用于实现**智能体嵌套调用**和
 | `OutputArgs` | `get_task_output` 工具的输入参数对象。 |
 
 
-## 3. 快速开始
+## 完整接入
 
 ### 3.1 添加依赖
 
@@ -72,9 +104,7 @@ SubagentDefinition docGenerator = SubagentDefinition.builder()
 import com.agentsflex.subagent.SubagentExecutor;
 import com.agentsflex.subagent.SubagentArgs;
 import com.agentsflex.subagent.SubagentDefinition;
-import com.agentsflex.core.llm.Llm;
-import com.agentsflex.core.llm.chat.ChatRequest;
-import com.agentsflex.core.llm.chat.ChatResponse;
+import com.agentsflex.core.model.chat.ChatModel;
 
 public class MySubagentExecutor implements SubagentExecutor {
 
@@ -102,7 +132,7 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import java.util.List;
 
 // 创建执行器
-MySubagentExecutor executor = new MySubagentExecutor(myLlm);
+MySubagentExecutor executor = new MySubagentExecutor(subagentChatModel);
 
 // 构建工具
 List<Tool> subagentTools = SubagentTools.builder()
@@ -111,8 +141,8 @@ List<Tool> subagentTools = SubagentTools.builder()
     .subagentExecutor(executor)
     .build();
 
-// 将 subagentTools 添加到主 Agent 的工具列表中
-// agent.addTools(subagentTools);
+MemoryPrompt prompt = new MemoryPrompt();
+prompt.addTools(subagentTools);
 ```
 
 ### 3.5 在主 Agent 中使用
@@ -129,7 +159,7 @@ List<Tool> subagentTools = SubagentTools.builder()
 4. 主 Agent 获取审查结果，并总结回复给用户。
 
 
-## 4. 详细设计
+## 核心 API
 
 ### 4.1 SubagentDefinition 设计
 
@@ -258,7 +288,7 @@ public interface SubagentExecutor {
 内置 `GET_TASK_OUTPUT_PROMPT_TEMPLATE`，简要说明工具用途和参数含义。
 
 
-## 5. 最佳实践
+## 生产建议
 
 ### 5.1 并行执行子 Agent
 
@@ -303,7 +333,7 @@ Assistant: 我将同时启动代码审查和测试运行 Agent。
 若子 Agent 支持断点续传或长对话记忆，可通过 `resume` 参数传递之前的 `agent ID`（注意：当前实现中，`resume` 参数传递给 `SubagentExecutor`，具体如何实现上下文恢复取决于 `SubagentExecutor` 的实现者）。
 
 
-## 6. 扩展与定制
+## 扩展与定制
 
 ### 6.1 自定义 Prompt 模板
 
@@ -335,7 +365,7 @@ SubagentTools.builder()
 
 
 
-## 7. 常见问题 (FAQ)
+## 常见问题
 
 **Q1: 子 Agent 能看到主 Agent 的对话历史吗？**
 A: 默认情况下，子 Agent 只接收 `prompt` 参数中的内容。若需要传递上下文，需在 `prompt` 中手动拼接相关历史信息，或在 `SubagentExecutor` 实现中从外部存储加载上下文。
@@ -348,4 +378,3 @@ A: 可以。只要子 Agent 所使用的 LLM 客户端也配备了相同的 `exe
 
 **Q4: 如何调试子 Agent 的执行过程？**
 A: 可以在 `SubagentExecutor` 中添加日志记录，打印输入的 `args` 和 `definition`，以及 LLM 的原始响应。对于后台任务，可通过 `TaskRepository` 监控任务状态。
-

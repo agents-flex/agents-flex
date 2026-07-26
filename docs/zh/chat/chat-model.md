@@ -1,202 +1,209 @@
+<div v-pre>
+
 # ChatModel
 
 ## 概述
-ChatModel 是 Agents-Flex 框架中用于与大语言模型（LLM）交互的核心接口。它提供统一的同步与流式调用方式，支持 OpenAI、DeepSeek 等 OpenAI 兼容协议的模型，并通过责任链模式集成日志、可观测性、认证等横切关注点。
 
+`ChatModel` 是 Agents-Flex 对大语言模型对话能力的统一接口。OpenAI、DeepSeek、Qwen 等模型实现都可以通过
+同一组方法接收 `Prompt` 和 `ChatOptions`，并返回 `AiMessageResponse`。
 
-> ⚠️ **注意**：拦截器、责任链、可观测性等高级扩展机制在其他章节中单独说明，当前文档聚焦基础使用。
+它解决的是“如何调用模型”，不负责长期保存历史、执行 Tool 或解析业务 JSON：
 
+```text
+Prompt + ChatOptions
+        ↓
+ChatModel
+        ↓ 配置、拦截器、HTTP Client
+模型服务
+        ↓
+AiMessageResponse 或流式回调
+```
 
+## 适用场景
 
-## 快速上手
+- 简单问答、摘要和分类：使用 `chat(String)` 直接取得文本；
+- 多轮消息、多模态或 Tool Calling：使用 `chat(Prompt, ChatOptions)` 取得完整响应；
+- 聊天 UI 和长文本生成：使用 `chatStream(...)` 逐片处理；
+- 同一业务切换模型提供商：业务依赖 `ChatModel`，配置层选择具体实现；
+- 需要鉴权、缓存、审计或路由：通过 ChatInterceptor 在调用链外层扩展。
 
-### 1. 引入依赖（以 Maven 为例）
+## 快速开始
+
+### 添加模型依赖
+
+下面使用 OpenAI 兼容实现，它已经传递依赖核心模块：
+
 ```xml
 <dependency>
     <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-core</artifactId>
-    <version>2.x.x</version>
+    <artifactId>agents-flex-chat-openai</artifactId>
+    <version>${agents-flex.version}</version>
 </dependency>
 ```
-具体版本号请查看：https://search.maven.org/artifact/com.agentsflex/parent
 
-### 2. 创建模型配置（以 OpenAI 为例）
+### 创建 ChatModel
+
 ```java
-OpenAIChatConfig config = new OpenAIChatConfig();
-config.setApiKey("your-api-key");
-config.setModel("gpt-4o");
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.model.chat.openai.OpenAIChatConfig;
+
+ChatModel chatModel = OpenAIChatConfig.builder()
+    .apiKey(System.getenv("AI_API_KEY"))
+    .model("gpt-4o-mini")
+    .buildModel();
 ```
 
-### 3. 实例化 ChatModel
+`buildModel()` 会先校验 API Key，再创建 `OpenAIChatModel`。生产代码不要把密钥写入源码。
+
+### 同步调用
+
 ```java
-ChatModel chatModel = new OpenAIChatModel(config);
+String answer = chatModel.chat("请用三句话解释什么是向量检索");
+System.out.println(answer);
 ```
 
-### 4. 同步调用（简单文本）
+这个便捷方法内部会创建 `SimplePrompt`。响应报错时抛出 `ModelException`；如果普通内容为空但模型返回了
+`reasoningContent`，方法会回退返回推理内容。
+
+需要 Usage、Tool Call、推理字段等完整信息时，使用 `Prompt` 重载：
+
 ```java
-String response = chatModel.chat("你好，今天过得怎么样？");
-System.out.println(response); // 输出完整回复
+SimplePrompt prompt = new SimplePrompt("分析这段日志的根因");
+AiMessageResponse response = chatModel.chat(prompt, new ChatOptions());
+
+if (response.isError()) {
+    throw new IllegalStateException(response.getErrorMessage());
+}
+AiMessage message = response.getMessage();
 ```
 
-### 5. 流式调用（实时逐片段接收）
+## 流式调用
+
 ```java
-chatModel.chatStream("请用 Java 写一个单例模式", new StreamResponseListener() {
+chatModel.chatStream("写一段产品介绍", new StreamResponseListener() {
     @Override
-    public void onMessage(StreamContext context, AiMessageResponse response) {
-        // 使用 fullContent 获取当前已接收的完整内容
-        String fullText = response.getMessage().getFullContent();
-        String delta = response.getMessage().getContent(); // 仅本次增量
-
-        System.out.print(delta); // 实时输出增量（更流畅）
-        // 或 System.out.println(fullText); // 每次输出完整内容（覆盖式）
+    public void onStart(StreamContext context) {
+        System.out.println("开始生成");
     }
 
     @Override
-    public void onStart(StreamContext context) {
-        System.out.println("[流式开始]");
+    public void onMessage(StreamContext context, AiMessageResponse response) {
+        String delta = response.getMessage().getContent();
+        if (delta != null) {
+            System.out.print(delta);
+        }
     }
 
     @Override
     public void onStop(StreamContext context) {
-        System.out.println("\n[流式正常结束]");
+        System.out.println("\n生成完成");
     }
 
     @Override
-    public void onFailure(StreamContext context, Throwable throwable) {
-        System.err.println("流式调用失败: " + throwable.getMessage());
+    public void onFailure(StreamContext context, Throwable error) {
+        System.err.println(error.getMessage());
     }
 });
 ```
 
-##  ChatModel核心接口说明
+`onMessage()` 可能调用多次，其中 `message.content` 是当前片段；需要截至当前的累计文本时读取
+`message.fullContent`。不要假设 `onStop()` 在失败路径也会调用，资源收尾应同时覆盖 `onFailure()`。
 
-### `ChatModel` 主要方法
+## 核心 API
 
-| 方法 | 说明          |
-| --|-------------|
-| `String chat(String prompt)` | 最简同步调用      |
-| `String chat(String prompt, ChatOptions options)` | 带选项的同步调用    |
-| `AiMessageResponse chat(Prompt prompt, ChatOptions options)` | 返回完整响应对象    |
-| `void chatStream(String prompt, StreamResponseListener listener)` | 流式调用（默认选项）  |
-| `void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options)` | 带选项的流式调用    |
+| 方法 | 适用场景 | 返回值 |
+| --- | --- | --- |
+| `chat(String)` | 最简单的单轮文本 | `String` |
+| `chat(String, ChatOptions)` | 单轮文本并覆盖生成参数 | `String` |
+| `chat(Prompt)` | 消息、图片或 Tool Calling | `AiMessageResponse` |
+| `chat(Prompt, ChatOptions)` | 完整同步调用 | `AiMessageResponse` |
+| `chatStream(String, listener)` | 简单文本流式输出 | 回调 |
+| `chatStream(Prompt, listener, options)` | 完整流式调用 | 回调 |
 
-> 💡 推荐使用 `Prompt` 对象构建多轮对话，而非纯字符串。
+`ChatModel` 接口本身只有两个需要实现的核心方法：同步的 `chat(Prompt, ChatOptions)` 和流式的
+`chatStream(Prompt, StreamResponseListener, ChatOptions)`；其他重载都是默认便捷方法。
 
+## ChatOptions
 
+`ChatOptions` 控制单次请求，优先于模型配置中的默认值：
 
-## `StreamResponseListener` 详解
-
-流式响应通过回调方式处理，接口定义如下：
-
-```java
-public interface StreamResponseListener {
-    // 流式开始时调用（可选）
-    default void onStart(StreamContext context) {}
-
-    // 每收到一个响应片段时调用（必须实现）
-    void onMessage(StreamContext context, AiMessageResponse response);
-
-    // 流式正常结束时调用（可选）
-    default void onStop(StreamContext context) {}
-
-    // 发生错误时调用（可选，默认记录日志）
-    default void onFailure(StreamContext context, Throwable throwable) {}
-}
-```
-
-### 各回调方法说明
-
-| 方法 | 触发时机 | 用途              |
-|--|--|-----------------|
-| `onStart` | 建立连接后、首个消息前 | 初始化状态、打印提示等     |
-| `onMessage` | 每收到一个 LLM 返回的增量片段 | 拼接内容、实时渲染、流式输出  |
-| `onStop` | LLM 正常结束流式响应 | 清理资源、标记完成       |
-| `onFailure` | 网络错误、超时、服务异常等 | 错误处理、告警、重试      |
-
-只要调用 start() 后，onMessage() 可能会被多次调用，直到流式结束。 onStart() 和 onStop() 可用于初始化、清理工作，他们是 100% 触发的，onFailure() 仅用于错误处理。
-
-##  ChatOptions 配置
-
-
-`ChatOptions` 用于精细控制 LLM 的生成行为（如温度、长度、格式等）。它支持 **Java Bean 风格设值** 和 **链式 Builder 模式**，推荐使用后者以提升可读性。
-
-> ⚠️ **重要提示**：不同模型厂商（OpenAI、DeepSeek、Qwen 等）对参数的支持和默认值可能不同。未被支持的参数会被忽略或导致请求失败，请参考具体模型文档。
-
-
-
-### 参数详解
-
-| 参数 | 类型 | 默认值 | 说明                                                                                      |
-|--|--|--|-----------------------------------------------------------------------------------------|
-| **`model`** | `String` | 无（使用客户端默认） | 指定模型名称，如 `"gpt-4o"`、`"qwen-max"`。若未设置，使用 `ChatConfig` 中配置的默认模型。                         |
-| **`temperature`** | `Float` | `0.5f` | 控制输出随机性：<br>• `0.1~0.3`：确定性强，适合事实性任务（RAG、工具调用）<br>• `0.7~1.0`：创意性强，适合写作<br>• **必须 ≥ 0** |
-| **`topP`** | `Float` | `null` | Nucleus 采样阈值（0.0~1.0）。仅保留累积概率不超过 `topP` 的最小词集进行采样。                                      |
-| **`topK`** | `Integer` | `null` | 仅从概率最高的 `topK` 个词中采样。                                                                   |
-| **`maxTokens`** | `Integer` | `null` | 限制生成内容的最大 token 数（不含 prompt）。**必须 ≥ 0**                                                 |
-| **`seed`** | `String` | `null` | 随机种子，用于可复现输出（需模型支持）。                                                                    |
-| **`stop`** | `List<String>` | `null` | 停止序列。当生成内容包含列表中的任意字符串时立即停止（如 `["\n", "。"]`）。                                            |
-| **`thinkingEnabled`** | `Boolean` | `null` | 启用“思考模式”（如 Qwen3 的 reasoning output）。若为 `null`，由模型默认行为决定。                               |
-| **`extra`** | `Map<String, Object>` | `null` | 透传模型特有参数（如 `{"response_format": "json_object"}`）。                                       |
-| **`streaming`** | `boolean` | **自动设置** | **禁止用户手动设置**！框架在调用 `chat()` 或 `chatStream()` 时自动赋值。                                     |
-
-> 📌 **使用建议**：
-> - `temperature`、`topP`、`topK` 通常**只启用其中一个**，避免行为冲突。
-> - 通过 `addExtra()` 添加未显式暴露的参数，例如强制 JSON 输出：
->   ```java
->   options.addExtra("response_format", Map.of("type", "json_object"));
->   ```
-
-
-
-### 创建 `ChatOptions` 的两种方式
-
-#### 1. Builder 模式（推荐）
 ```java
 ChatOptions options = ChatOptions.builder()
     .model("gpt-4o-mini")
     .temperature(0.2f)
-    .maxTokens(512)
-    .stop(List.of("\n\n", "。"))
-    .addExtra("response_format", Map.of("type", "json_object"))
+    .maxTokens(800)
+    .thinkingEnabled(false)
+    .includeUsage(true)
+    .addExtraBody("response_format", Map.of("type", "json_object"))
     .build();
+
+String json = chatModel.chat("返回 JSON 格式的产品摘要", options);
 ```
 
-#### 2. Java Bean 风格
-```java
-ChatOptions options = new ChatOptions();
-options.setModel("qwen-max");
-options.setTemperature(0.3f);
-options.setMaxTokens(1024);
-options.addExtra("enable_search", true);
-```
+| 参数 | 作用 | 注意事项 |
+| --- | --- | --- |
+| `model` | 覆盖默认模型 | 必须是服务端可用名称 |
+| `temperature` | 控制随机性 | 代码校验必须大于等于 0 |
+| `topP` | 核采样阈值 | 代码校验范围为 0 到 1 |
+| `topK` | 候选词数量 | 并非所有厂商支持 |
+| `maxTokens` | 最大输出 Token | 不包含输入 Token |
+| `stop` | 停止序列 | 由厂商决定支持程度 |
+| `thinkingEnabled` | 本次是否启用思考模式 | 模型必须支持 |
+| `includeUsage` | 流式响应是否请求 Usage | 厂商可能忽略 |
+| `responseFormat` | 结构化输出声明 | 需匹配模型协议 |
+| `extraBody` | 透传厂商专有参数 | 使用 `addExtraBody()` |
+| `retryEnabled/count/delay` | 覆盖模型级重试 | 只重试框架判定可重试的错误 |
 
+`streaming` 由框架根据调用 `chat()` 还是 `chatStream()` 自动设置，不应由业务代码修改。`contextBotId`、
+`contextConversationId`、`contextAccountId`、`contextTurnId` 和 `contextAttributes` 只用于调用链上下文，不会作为
+普通模型参数发送。
 
-### 在调用中使用
+## 如何选择调用方式
 
-```java
-// 同步调用
-String response = chatModel.chat(prompt, options);
+| 需求 | 推荐方式 |
+| --- | --- |
+| 只要最终文本 | `chat(String)` |
+| 需要系统消息、历史或图片 | `chat(Prompt)` |
+| 需要 Tool Call 或 Usage | 读取 `AiMessageResponse` |
+| 页面实时显示 | `chatStream(...)` |
+| 需要跨请求历史 | `MemoryPrompt` + `ChatMemory` |
 
-// 流式调用
-chatModel.chatStream(prompt, listener, options);
-```
+## 生产建议
 
-> 框架会自动根据调用方法设置 `streaming` 字段，**请勿手动调用 `setStreaming()`**。
+- 为网络错误、限流和服务端异常设置有限重试，不要重试确定性的 4xx 参数错误；
+- 流式回调不要执行耗时阻塞操作，可把片段转交给消息队列或 UI 线程；
+- 记录 Provider、模型、耗时和 Usage，但不要默认记录敏感 Prompt；
+- Tool Calling 必须处理“模型请求 Tool → 应用执行 → ToolMessage 回传 → 再次调用模型”的循环；
+- 为长对话设置上下文裁剪或 Memory 策略，`ChatModel` 不会自动保存历史。
 
+## 常见问题
 
+### chat(String) 为什么返回 null？
 
+当响应、消息、普通内容和推理内容都为空时会返回 `null`。需要区分具体原因时使用返回
+`AiMessageResponse` 的重载并检查错误和消息字段。
 
+### temperature 的默认值是多少？
 
+`new ChatOptions()` 不会主动填入温度；最终默认值由具体模型实现或服务端决定。不要把注释中的建议值当作所有
+厂商的实际默认值。
 
-### 模型配置（示例：OpenAI）
-```java
-OpenAIChatConfig config = new OpenAIChatConfig();
-config.setApiKey("sk-xxxx");
-config.setModel("gpt-4o-mini");
-config.setEndpoint("https://api.openai.com");
-config.setRequestPath("/v1/chat/completions");
-```
+### 流式内容应该读取 content 还是 fullContent？
 
-> 其他模型（如 DeepSeek）使用对应的配置类（`DeepseekConfig`），参数类似。
+增量推送到前端时读取 `content`；需要覆盖式显示当前完整文本时读取 `fullContent`。
 
+### 可以复用 ChatModel 吗？
 
+通常应把配置完成的模型作为长生命周期对象复用。不要在请求处理中修改共享配置；每次调用的差异放到
+`ChatOptions` 和 `Prompt`。
+
+## 下一步
+
+- [配置 ChatModel](./chat-config)
+- [构建 Prompt](./prompt)
+- [处理 Message](./message)
+- [使用 Memory](./memory)
+- [扩展对话拦截器](./chat-interceptor)
+- [配置错误重试](./retry)
+
+</div>
