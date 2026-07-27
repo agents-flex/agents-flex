@@ -133,7 +133,7 @@ public class SkillsConsoleDemoMain {
         }
 
         @Override
-        public void onStart(StreamContext context) {
+        public void onOpen(StreamContext context) {
             streamActive.set(true);
         }
 
@@ -190,13 +190,13 @@ public class SkillsConsoleDemoMain {
         }
 
         @Override
-        public void onFailure(StreamContext context, Throwable throwable) {
+        public void onError(StreamContext context, Throwable throwable) {
             recordFailure(throwable == null
                 ? new IllegalStateException("Unknown model failure") : throwable);
         }
 
         @Override
-        public void onStop(StreamContext context) {
+        public void onClose(StreamContext context) {
             if (streamActive.compareAndSet(true, false) && !followUpStarted.get()) {
                 completed.countDown();
             }

@@ -55,7 +55,7 @@ public class BaseStreamClientListener implements StreamClientListener {
     public void onStart(StreamClient client) {
         try {
             ChatContextHolder.set(chatContext);
-            streamResponseListener.onStart(context);
+            streamResponseListener.onOpen(context);
         } finally {
             ChatContextHolder.clear();
         }
@@ -105,7 +105,7 @@ public class BaseStreamClientListener implements StreamClientListener {
             notifyLastMessage(response);
         } finally {
             if (stoppedFlag.compareAndSet(false, true)) {
-                streamResponseListener.onStop(context);
+                streamResponseListener.onClose(context);
             }
         }
     }
@@ -122,7 +122,7 @@ public class BaseStreamClientListener implements StreamClientListener {
         } finally {
             try {
                 if (stoppedFlag.compareAndSet(false, true)) {
-                    streamResponseListener.onStop(context);
+                    streamResponseListener.onClose(context);
                 }
             } finally {
                 ChatContextHolder.clear();
@@ -152,7 +152,7 @@ public class BaseStreamClientListener implements StreamClientListener {
         try {
             if (isFailure.compareAndSet(false, true)) {
                 context.setThrowable(throwable);
-                streamResponseListener.onFailure(context, throwable);
+                streamResponseListener.onError(context, throwable);
             }
         } finally {
             ChatContextHolder.clear();

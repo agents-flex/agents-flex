@@ -147,7 +147,7 @@ Agents-Flex 不会替换应用已经注册的全局 OpenTelemetry。没有显式
 | 调用面 | Trace | Metrics | 自动启用条件 |
 | --- | --- | --- | --- |
 | 同步 Chat | 一个模型 Span，内部 HTTP Span 为子节点 | 请求数、耗时、错误数 | 全局开关和模型开关均开启 |
-| 流式 Chat | Span 持续到 `onStop` 或 `onFailure` | 请求数、完整流式耗时、错误数 | 全局开关和模型开关均开启 |
+| 流式 Chat | Span 持续到 `onClose` 或 `onError` | 请求数、完整流式耗时、错误数 | 全局开关和模型开关均开启 |
 | Tool 调用 | 一个 `tool.{name}` Span | 调用数、耗时、错误数 | 全局开关开启且工具未排除 |
 | `AgentsFlexHttpClient` | `CLIENT` Span，自动注入 Trace Context | 请求数、耗时、错误数 | 全局开关开启 |
 

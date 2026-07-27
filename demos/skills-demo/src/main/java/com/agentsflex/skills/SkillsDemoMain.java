@@ -437,7 +437,7 @@ public class SkillsDemoMain {
         }
 
         @Override
-        public void onFailure(StreamContext context, Throwable throwable) {
+        public void onError(StreamContext context, Throwable throwable) {
             if (throwable != null) {
                 throwable.printStackTrace(System.err);
                 failure.compareAndSet(null, throwable);

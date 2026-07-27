@@ -173,7 +173,7 @@ Metadata 主要供应用、日志和拦截器使用，是否发送给模型取�
 
 ### AiMessage 如何判断流式结束？
 
-处理 `StreamResponseListener.onStop()` 和 `onFailure()`，并结合 `finishReason`；当前 AiMessage 没有
+处理 `StreamResponseListener.onClose()` 和 `onError()`，并结合 `finishReason`；当前 AiMessage 没有
 `isLastMessage()` 方法。
 
 ## 下一步

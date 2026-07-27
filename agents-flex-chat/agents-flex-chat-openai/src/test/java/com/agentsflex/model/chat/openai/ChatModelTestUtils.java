@@ -53,8 +53,8 @@ public class ChatModelTestUtils {
 
         StreamResponseListener wrapped = new StreamResponseListener() {
             @Override
-            public void onStart(StreamContext context) {
-                listener.onStart(context);
+            public void onOpen(StreamContext context) {
+                listener.onOpen(context);
             }
 
             @Override
@@ -63,14 +63,14 @@ public class ChatModelTestUtils {
             }
 
             @Override
-            public void onStop(StreamContext ctx) {
-                listener.onStop(ctx);
+            public void onClose(StreamContext ctx) {
+                listener.onClose(ctx);
                 latch.countDown();
             }
 
             @Override
-            public void onFailure(StreamContext context, Throwable throwable) {
-                listener.onFailure(context, throwable);
+            public void onError(StreamContext context, Throwable throwable) {
+                listener.onError(context, throwable);
             }
         };
 

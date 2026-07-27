@@ -82,7 +82,7 @@ AiMessage message = response.getMessage();
 ```java
 chatModel.chatStream("写一段产品介绍", new StreamResponseListener() {
     @Override
-    public void onStart(StreamContext context) {
+    public void onOpen(StreamContext context) {
         System.out.println("开始生成");
     }
 
@@ -95,19 +95,20 @@ chatModel.chatStream("写一段产品介绍", new StreamResponseListener() {
     }
 
     @Override
-    public void onStop(StreamContext context) {
-        System.out.println("\n生成完成");
+    public void onError(StreamContext context, Throwable error) {
+        System.err.println(error.getMessage());
     }
 
     @Override
-    public void onFailure(StreamContext context, Throwable error) {
-        System.err.println(error.getMessage());
+    public void onClose(StreamContext context) {
+        System.out.println("\n流已关闭");
     }
 });
 ```
 
 `onMessage()` 可能调用多次，其中 `message.content` 是当前片段；需要截至当前的累计文本时读取
-`message.fullContent`。不要假设 `onStop()` 在失败路径也会调用，资源收尾应同时覆盖 `onFailure()`。
+`message.fullContent`。`onError()` 只在异常时调用；流一旦打开，无论正常结束还是异常结束，
+`onClose()` 都会且只会调用一次，因此公共资源收尾应放在 `onClose()` 中。
 
 ## 核心 API
 

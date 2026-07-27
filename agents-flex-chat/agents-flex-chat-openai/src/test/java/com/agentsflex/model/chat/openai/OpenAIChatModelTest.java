@@ -61,12 +61,12 @@ public class OpenAIChatModelTest {
             }
 
             @Override
-            public void onFailure(StreamContext context, Throwable throwable) {
+            public void onError(StreamContext context, Throwable throwable) {
                 System.out.println("onFailure>>>>" + throwable);
             }
 
             @Override
-            public void onStop(StreamContext context) {
+            public void onClose(StreamContext context) {
                 ChatContext x = ChatContextHolder.currentContext();
                 System.out.println(x);
                 System.out.println("stop!!!!");
@@ -90,7 +90,7 @@ public class OpenAIChatModelTest {
 
         ChatModelTestUtils.waitForStream(chatModel, prompt, new StreamResponseListener() {
             @Override
-            public void onFailure(StreamContext context, Throwable throwable) {
+            public void onError(StreamContext context, Throwable throwable) {
                 System.out.println("onFailure>>>>" + throwable);
             }
 
@@ -109,7 +109,7 @@ public class OpenAIChatModelTest {
             }
 
             @Override
-            public void onStop(StreamContext context) {
+            public void onClose(StreamContext context) {
                 System.out.println("stop!!!!");
             }
         });
@@ -137,7 +137,7 @@ public class OpenAIChatModelTest {
 
         ChatModelTestUtils.waitForStream(chatModel, prompt, new StreamResponseListener() {
             @Override
-            public void onFailure(StreamContext context, Throwable throwable) {
+            public void onError(StreamContext context, Throwable throwable) {
                 System.out.println("onFailure>>>>" + throwable);
             }
 
@@ -157,7 +157,7 @@ public class OpenAIChatModelTest {
             }
 
             @Override
-            public void onStop(StreamContext context) {
+            public void onClose(StreamContext context) {
                 System.out.println("stop!!!!");
             }
         });
@@ -179,7 +179,7 @@ public class OpenAIChatModelTest {
             }
 
             @Override
-            public void onStop(StreamContext context) {
+            public void onClose(StreamContext context) {
                 System.out.println("stop!!!!");
             }
         });
@@ -354,7 +354,7 @@ public class OpenAIChatModelTest {
                         }
 
                         @Override
-                        public void onStop(StreamContext context) {
+                        public void onClose(StreamContext context) {
                             System.out.println("onStop >>>>>");
                         }
                     });

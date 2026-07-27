@@ -101,7 +101,7 @@ Endpoint 必须包含全部请求标签才会成为候选。不是 Set 的值会
 Router 重试与每个 Chat Client 自身的网络重试会叠加。应按最坏情况计算总请求次数和延迟。
 
 ::: warning 流式调用
-`RoutedChatModel.chatStream(...)` 在启动底层异步流后立即把本次 execute 视为成功。只有 `chatStream` 启动阶段同步抛出的异常会触发 Router 重试；连接建立后的 `onFailure` 不会自动切换 Endpoint。
+`RoutedChatModel.chatStream(...)` 在启动底层异步流后立即把本次 execute 视为成功。只有 `chatStream` 启动阶段同步抛出的异常会触发 Router 重试；连接建立后的 `onError` 不会自动切换 Endpoint。
 :::
 
 ## Embedding 路由

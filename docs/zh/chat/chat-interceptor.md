@@ -321,8 +321,8 @@ public class StreamTimingInterceptor implements ChatInterceptor {
 
         StreamResponseListener wrapped = new StreamResponseListener() {
             @Override
-            public void onStart(StreamContext streamContext) {
-                listener.onStart(streamContext);
+            public void onOpen(StreamContext streamContext) {
+                listener.onOpen(streamContext);
             }
 
             @Override
@@ -334,23 +334,22 @@ public class StreamTimingInterceptor implements ChatInterceptor {
             }
 
             @Override
-            public void onStop(StreamContext streamContext) {
-                try {
-                    listener.onStop(streamContext);
-                } finally {
-                    recordLatency(System.nanoTime() - startNanos);
-                }
-            }
-
-            @Override
-            public void onFailure(
+            public void onError(
                 StreamContext streamContext,
                 Throwable throwable
             ) {
                 try {
-                    listener.onFailure(streamContext, throwable);
+                    listener.onError(streamContext, throwable);
                 } finally {
                     recordFailure(throwable);
+                }
+            }
+
+            @Override
+            public void onClose(StreamContext streamContext) {
+                try {
+                    listener.onClose(streamContext);
+                } finally {
                     recordLatency(System.nanoTime() - startNanos);
                 }
             }
@@ -361,7 +360,7 @@ public class StreamTimingInterceptor implements ChatInterceptor {
 }
 ```
 
-包装 Listener 时应完整代理 `onStart`、`onMessage`、`onStop` 和 `onFailure`，避免上层无法正确结束请求或释放资源。
+包装 Listener 时应完整代理 `onOpen`、`onMessage`、`onClose` 和 `onError`，避免上层无法正确结束请求或释放资源。
 
 ## GlobalChatInterceptors
 

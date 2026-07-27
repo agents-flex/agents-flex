@@ -244,7 +244,7 @@ public class StreamingChatQuickStart {
 
         chatModel.chatStream("解释 Java 中的虚拟线程", new StreamResponseListener() {
             @Override
-            public void onStart(StreamContext context) {
+            public void onOpen(StreamContext context) {
                 System.out.println("开始生成：");
             }
 
@@ -257,14 +257,15 @@ public class StreamingChatQuickStart {
             }
 
             @Override
-            public void onStop(StreamContext context) {
-                System.out.println("\n生成完成");
+            public void onError(StreamContext context, Throwable throwable) {
+                System.err.println("调用失败：" + throwable.getMessage());
+                // 流可能在 onOpen 之前失败，此时不会再调用 onClose。
                 completed.countDown();
             }
 
             @Override
-            public void onFailure(StreamContext context, Throwable throwable) {
-                System.err.println("调用失败：" + throwable.getMessage());
+            public void onClose(StreamContext context) {
+                System.out.println(context.isError() ? "\n流异常关闭" : "\n生成完成");
                 completed.countDown();
             }
         });
@@ -347,7 +348,7 @@ API Key 无效、过期，或者没有访问目标模型的权限。请先在服
 
 ### 流式调用没有任何输出
 
-确认服务端支持 SSE 流式响应，并检查 `onFailure()` 中的异常。部分兼容服务返回的事件格式并不完全遵循 OpenAI 协议，此时需要使用对应厂商模块或自定义流式解析器。
+确认服务端支持 SSE 流式响应，并检查 `onError()` 中的异常。部分兼容服务返回的事件格式并不完全遵循 OpenAI 协议，此时需要使用对应厂商模块或自定义流式解析器。
 
 ### 日志中出现了请求内容
 

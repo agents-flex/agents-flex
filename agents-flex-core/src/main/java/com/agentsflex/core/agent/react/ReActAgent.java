@@ -293,7 +293,7 @@ public class ReActAgent implements IAgent {
             }
 
             @Override
-            public void onStop(StreamContext context) {
+            public void onClose(StreamContext context) {
                 AiMessage lastAiMessage = context.getFullMessage();
                 if (lastAiMessage == null) {
                     notifyOnError(new RuntimeException("没有收到任何回复"));
@@ -341,7 +341,7 @@ public class ReActAgent implements IAgent {
             }
 
             @Override
-            public void onFailure(StreamContext context, Throwable throwable) {
+            public void onError(StreamContext context, Throwable throwable) {
                 notifyOnError((Exception) throwable);
             }
         }, chatOptions);

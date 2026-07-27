@@ -49,7 +49,7 @@ public static void main(String[] args) {
     chatModel.chatStream("你叫什么名字", new StreamResponseListener() {
 
         @Override
-        public void onMessage(ChatContext context, AiMessageResponse response) {
+        public void onMessage(StreamContext context, AiMessageResponse response) {
             System.out.println(response.getMessage().getContent());
         }
 
@@ -69,7 +69,7 @@ public static void main(String[] args) {
     Llm chatModel = new OpenAILlm(config);
     chatModel.chatStream("你叫什么名字", new StreamResponseListener() {
         @Override
-        public void onMessage(ChatContext context, AiMessageResponse response) {
+        public void onMessage(StreamContext context, AiMessageResponse response) {
             System.out.println(response.getMessage().getContent());
 
             //停止对话
@@ -92,24 +92,24 @@ public static void main(String[] args) {
     Llm chatModel = new OpenAILlm(config);
     chatModel.chatStream("你叫什么名字", new StreamResponseListener() {
         @Override
-        public void onMessage(ChatContext context, AiMessageResponse response) {
+        public void onMessage(StreamContext context, AiMessageResponse response) {
             AiMessage message = response.getMessage();
             System.out.println(message.getContent());
         }
 
         @Override
-        public void onStart(ChatContext context) {
+        public void onOpen(StreamContext context) {
             System.out.println("开始");
         }
 
         @Override
-        public void onStop(ChatContext context) {
-            System.out.println("结束");
+        public void onError(StreamContext context, Throwable throwable) {
+            System.out.println("错误");
         }
 
         @Override
-        public void onFailure(ChatContext context, Throwable throwable) {
-            System.out.println("错误");
+        public void onClose(StreamContext context) {
+            System.out.println("结束");
         }
     });
 }
@@ -252,7 +252,7 @@ public static void main(String[] args) {
         // 第四步：调用 chatStream 方法，进行对话
         chatModel.chatStream(prompt, new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 boolean toolCall = response.isFunctionCall();
                 if (toolCall) {
                     System.out.println("do func >>> ");
@@ -267,7 +267,7 @@ public static void main(String[] args) {
                     prompt.addMessage(msg);
                     chatModel.chatStream(prompt, new StreamResponseListener() {
                         @Override
-                        public void onMessage(ChatContext context, AiMessageResponse response) {
+                        public void onMessage(StreamContext context, AiMessageResponse response) {
                             System.out.println("after func >>>> " + response.getMessage().getContent());
                         }
                     });

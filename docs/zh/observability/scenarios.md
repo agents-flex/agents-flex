@@ -49,7 +49,7 @@ business.ai.request             12.0s
 
 ### 容易误判的地方
 
-- 流式首字延迟和完整流式耗时不是一回事；当前 Span 覆盖到 `onStop`/`onFailure`；
+- 流式首字延迟和完整流式耗时不是一回事；当前 Span 覆盖到 `onClose`/`onError`；
 - `getResponse(...)` 的 HTTP Span 会持续到响应体读完或关闭；未关闭 Response 会让耗时看起来异常；
 - 如果工具切换线程但没有传播 Context，它可能显示为另一条 Trace。
 

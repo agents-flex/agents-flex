@@ -67,7 +67,7 @@ public class DeepseekTest {
                 }
 
                 @Override
-                public void onStop(StreamContext context) {
+                public void onClose(StreamContext context) {
                     System.out.println("stop!!!------");
                 }
             });

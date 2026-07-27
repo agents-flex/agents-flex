@@ -177,9 +177,9 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
 
         StreamResponseListener wrappedListener = new StreamResponseListener() {
             @Override
-            public void onStart(StreamContext streamContext) {
+            public void onOpen(StreamContext streamContext) {
                 try (Scope ignored = spanContext.makeCurrent()) {
-                    originalListener.onStart(streamContext);
+                    originalListener.onOpen(streamContext);
                 }
             }
 
@@ -191,23 +191,23 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             }
 
             @Override
-            public void onFailure(StreamContext streamContext, Throwable throwable) {
+            public void onError(StreamContext streamContext, Throwable throwable) {
                 try (Scope ignored = spanContext.makeCurrent()) {
-                    originalListener.onFailure(streamContext, throwable);
+                    originalListener.onError(streamContext, throwable);
                 } finally {
                     finish(false, throwable, streamContext == null ? null : streamContext.getFullMessage());
                 }
             }
 
             @Override
-            public void onStop(StreamContext streamContext) {
+            public void onClose(StreamContext streamContext) {
                 boolean success = !streamContext.isError();
                 Throwable callbackError = null;
                 try (Scope ignored = spanContext.makeCurrent()) {
                     if (success) {
                         enrichSpan(span, streamContext.getFullMessage());
                     }
-                    originalListener.onStop(streamContext);
+                    originalListener.onClose(streamContext);
                 } catch (RuntimeException | Error error) {
                     callbackError = error;
                     throw error;

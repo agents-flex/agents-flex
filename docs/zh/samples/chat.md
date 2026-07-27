@@ -33,7 +33,7 @@ void streamChat(String systemMessage,String userMessage){
         //创建流式监听器,建议单独管理。
         StreamResponseListener listener = new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 //在这里来处理模型返回的数据。
                 //content是流式返回的每一个token字符串。
                 String content = response.getMessage().getContent();

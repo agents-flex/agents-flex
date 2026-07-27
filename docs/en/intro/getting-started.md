@@ -67,9 +67,9 @@ public class Main {
     public static void main(String[] args) {
         Llm chatModel = new OpenAILlm.of("sk-rts5NF6n*******");
 
-        chatModel.chatStream("what is your name?", new StreamResponseListener<AiMessageResponse, AiMessage>() {
+        chatModel.chatStream("what is your name?", new StreamResponseListener() {
             @Override
-            public void onMessage(ChatContext context, AiMessageResponse response) {
+            public void onMessage(StreamContext context, AiMessageResponse response) {
                 System.out.println(">>>> " + response.getMessage().getContent());
             }
         });

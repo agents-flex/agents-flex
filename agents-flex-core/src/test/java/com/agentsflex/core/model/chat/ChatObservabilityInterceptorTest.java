@@ -99,7 +99,7 @@ public class ChatObservabilityInterceptorTest {
                     }
 
                     @Override
-                    public void onStop(StreamContext context) {
+                    public void onClose(StreamContext context) {
                         callbackRuntime.set(Observability.currentRuntime());
                     }
                 },
@@ -107,7 +107,7 @@ public class ChatObservabilityInterceptorTest {
             );
         }
 
-        wrapped.get().onStop(new StreamContext(model, new ChatContext(), null));
+        wrapped.get().onClose(new StreamContext(model, new ChatContext(), null));
         assertSame(runtime, callbackRuntime.get());
     }
 
