@@ -40,7 +40,7 @@ Agents-Flex 不要求 Spring，也不要求专用容器。普通 Java 项目加�
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>2.2.4</version>
+    <version>2.2.5</version>
 </dependency>
 ```
 
