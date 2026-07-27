@@ -116,15 +116,36 @@ public final class SkillRuntimeWorkspace {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("conversationsRoot must not be empty");
         }
-        Path path = Paths.get(value.trim().replace('\\', '/'));
-        if (!path.isAbsolute()) {
+        String trimmed = value.trim().replace('\\', '/');
+        // 使用字符串判断绝对路径，而不是 Path.isAbsolute()（在 Windows 上对 Unix 路径会返回 false）
+        if (!isAbsolutePath(trimmed)) {
             throw new IllegalArgumentException("conversationsRoot must be an absolute path");
         }
+        Path path = Paths.get(trimmed);
         String normalized = normalize(path.normalize());
         if ("/".equals(normalized)) {
             throw new IllegalArgumentException("conversationsRoot must not be the filesystem root");
         }
         return normalized;
+    }
+
+    /**
+     * 判断路径是否为绝对路径（跨平台）。
+     * 支持 Windows 驱动器路径（如 C:/）和 Unix 路径（以 / 开头）。
+     */
+    private static boolean isAbsolutePath(String path) {
+        if (path == null || path.isEmpty()) {
+            return false;
+        }
+        // Unix 绝对路径：以 / 开头
+        if (path.startsWith("/")) {
+            return true;
+        }
+        // Windows 绝对路径：匹配 C:/ 或 C:\ 格式
+        return path.length() >= 3
+            && Character.isLetter(path.charAt(0))
+            && path.charAt(1) == ':'
+            && (path.charAt(2) == '/' || path.charAt(2) == '\\');
     }
 
     private static String normalize(Path path) {
