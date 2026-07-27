@@ -25,7 +25,7 @@ import java.util.List;
  * <p>Runtime 可以代表当前主机、容器或远程沙箱。上层代码只依赖本接口，因此切换
  * Runtime 时无需改写 bash、read、write、glob、grep 等工具。</p>
  *
- * <p>{@link #prepare(SkillPreparationRequest)} 接收当前会话配置的全部 Skill 及其 Runtime
+ * <p>{@link #prepare(SkillPreparationRequest)} 接收一批待准备的 Skill 及其 Runtime
  * 配置。实现必须让这些资源在目标环境中可用，并按输入顺序返回数量相同的 Skill；返回对象的
  * {@code basePath} 必须是 Runtime 内可访问的路径。远程实现通常会在这里上传目录，本地实现则可以
  * 直接返回副本。</p>

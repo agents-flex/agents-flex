@@ -7,12 +7,16 @@
 仓库中的 `demos/skills-demo` 演示同一套 `pptx` Skill 在 Local、OpenSandbox 和 AIO Sandbox 中执行。
 默认任务会：
 
-1. 发现并批量准备 Skills；
+1. 发现 Skills，并只准备默认任务需要的 `pptx` Skill；
 2. 在选定 Runtime 中运行 PPTX 生成器；
 3. 生成 5 页 16:9 PowerPoint；
 4. 验证页数、元数据、文本和文件大小；
 5. 让模型继续使用 Runtime 工具完成验收；
 6. 将远程 PPTX 下载到本机 `target/skills-demo-output`。
+
+默认任务为了确定性生成产物，会在调用模型前主动准备 `pptx`。自定义问题和
+`SkillsConsoleDemoMain` 使用正常的按需路径：构建工具不会创建远程 Sandbox，只有模型首次调用 `skill`、
+`bash` 或文件工具时才会使用 Runtime；其中 `skill` 调用还会按名称准备对应目录。
 
 先构建：
 

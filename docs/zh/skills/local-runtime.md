@@ -48,8 +48,9 @@ try (LocalSkillRuntime runtime = new LocalSkillRuntime()) {
 }
 ```
 
-`buildTools()` 会发现 Skill、调用 `runtime.prepare()`，并注册 `skill`、`bash`、`read`、`write`、
-`edit`、`ls`、`glob` 和 `grep` 等工具。模型读取 Skill 后，可以使用这些工具在本机完成任务。
+`buildTools()` 会发现 Skill 并注册 `skill`、`bash`、`read`、`write`、`edit`、`ls`、`glob` 和 `grep`
+等工具，但不会立即调用 `runtime.prepare()`。模型首次调用某个 `skill` 时，框架才准备该 Skill；随后模型
+可以使用这些工具在本机完成任务。
 
 ## 推荐：启用 Workspace
 
@@ -89,9 +90,9 @@ OpenSandbox 或 AIO Sandbox Runtime。
 
 ## Skill 准备与 bootstrap
 
-`SkillsTool.build()` 或 `buildTools()` 会调用 Local Runtime 的 `prepare()`。准备阶段按以下顺序执行：
+模型首次调用某个 `skill` 时，`SkillsTool` 会调用 Local Runtime 的 `prepare()`。准备阶段按以下顺序执行：
 
-1. 合并所有 Skill 的 `SkillRuntimeConfig.environment`；
+1. 合并当前 Skill 的 `SkillRuntimeConfig.environment`；
 2. 在 Workspace 模式下复制尚未准备的 Skill；
 3. 在实际 Skill 根目录中依次执行 bootstrap 命令；
 4. 全部成功后，把该 Skill 记录为当前 Runtime 已准备。
@@ -111,8 +112,8 @@ List<Tool> tools = SkillsTool.builder()
     .buildTools();
 ```
 
-同一个 Runtime 对象重复准备同一源路径时，不会再次执行 bootstrap。如果 bootstrap 超时或返回非零退出码，
-准备会失败且不会写入成功缓存，下次准备仍可重试。
+同一个 `skill` 工具实例和 Runtime 对象都会缓存成功的准备结果，不会再次执行 bootstrap。如果 bootstrap 超时
+或返回非零退出码，准备会失败且不会写入成功缓存，下次调用该 Skill 时仍可重试。
 
 在 Workspace 模式下，新建 Runtime 并复用同一会话时，会重新把源 Skill 文件复制到固定目标目录。复制会
 覆盖同名源文件，但不会清空只在目标目录中生成的其他文件。

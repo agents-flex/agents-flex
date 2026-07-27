@@ -121,15 +121,15 @@ try (LocalSkillRuntime runtime = new LocalSkillRuntime()) {
 }
 ```
 
-`buildTools()` 会在返回前完成以下工作：
+`buildTools()` 会完成以下工作：
 
 1. 在目录中发现并解析 `SKILL.md`；
-2. 调用 `runtime.prepare()`；
-3. 把准备后的 Runtime 路径写入 Skill；
-4. 注册 `skill`、`bash`、文件和搜索工具。
+2. 使用 Skill 元数据注册 `skill`、`bash`、文件和搜索工具；
+3. 在模型首次调用某个 `skill` 时调用 `runtime.prepare()`；
+4. 把准备后的 Runtime 路径和完整指令作为工具结果返回。
 
-因此模型看到的 Skill 路径一定属于当前 Runtime。远程 Runtime 也会在 `buildTools()` 时上传 Skill，而不是
-等模型第一次选择它时才上传。
+因此模型通过 `skill` 工具得到的路径一定属于当前 Runtime。工具构建本身不会创建远程 Sandbox 或上传 Skill；
+如果本轮对话没有使用任何 Runtime 工具，就不会消耗远程执行资源。
 
 ### 4. 推荐：为会话配置 Workspace
 
@@ -262,7 +262,8 @@ AIO Runtime 不创建也不停止容器。服务启动、端口暴露、JWT 鉴�
 OpenSandbox：/workspace/skills/report-generator-...
 ```
 
-`prepare(SkillPreparationRequest)` 是批量 API，一次接收本次配置的全部 Skill。Runtime 实现必须：
+`prepare(SkillPreparationRequest)` 是批量 API，可以接收一个或多个 Skill。`SkillsTool` 按需准备时每次传入
+模型选中的一个 Skill；业务代码仍可直接批量准备。Runtime 实现必须：
 
 - 返回与输入相同数量的 Skill，并保持顺序；
 - 不直接修改调用方传入的 Skill 对象；
@@ -270,7 +271,7 @@ OpenSandbox：/workspace/skills/report-generator-...
 - 在上传和初始化全部成功后才把 Skill 记为已准备；
 - 在同一个 Runtime 生命周期内尽量避免重复上传和初始化。
 
-调用方通常不需要直接调用 `prepare()`，`SkillsTool.buildTools()` 会自动完成这一步。
+调用方通常不需要直接调用 `prepare()`，`skill` 工具首次加载对应 Skill 时会自动完成这一步，并缓存成功结果。
 
 ### 环境变量与 bootstrap
 
@@ -292,9 +293,9 @@ List<Tool> tools = SkillsTool.builder()
     .buildTools();
 ```
 
-准备顺序如下：
+单个 Skill 的按需准备顺序如下：
 
-1. 合并本批次所有 Skill 的 Runtime 环境变量；
+1. 合并该 Skill 的 Runtime 环境变量；
 2. 复制或上传尚未准备的 Skill；
 3. 以准备后的 Skill 根目录为工作目录执行 bootstrap；
 4. 全部命令成功后记录准备缓存。
@@ -396,6 +397,10 @@ try (SkillRuntime runtime = createRuntime()) {
 }
 ```
 
+Runtime 对象应与业务会话同生命周期，而不是每轮消息都重新创建。它本身可以只是轻量 handle；例如
+OpenSandbox 只有在首次准备 Skill、执行命令或访问文件时才创建或恢复远端 Sandbox。持续会话应复用同一个
+Runtime，既避免重复初始化，也保留上一轮生成的文件和准备缓存。
+
 不要在 `buildTools()` 后立刻关闭 Runtime，再把工具保存到其他位置延迟使用。工具后续执行命令或读取文件时仍然
 依赖该 Runtime。
 
@@ -496,15 +501,17 @@ public final class MySandboxRuntime implements SkillRuntime {
 不是。Workspace 会约束框架文件 API，并避免不同会话误用相对路径，但 Local Shell 仍继承 Java 进程权限，
 脚本也可能使用绝对路径或符号链接访问目录外内容。
 
-### 为什么远程 Runtime 在 buildTools() 时就上传 Skill？
+### 构建工具时会创建远程 Sandbox 或上传 Skill 吗？
 
-工具构建完成时，模型就可能读取 Skill 路径并立即执行命令。提前完成 `prepare()` 可以确保模型看到的每个路径
-已经可访问，也能在进入模型调用循环前暴露上传或 bootstrap 错误。
+不会。`build()` 和 `buildTools()` 只读取本地 Skill 元数据并注册工具。模型首次调用某个 `skill` 时才准备并
+上传该 Skill；上传或 bootstrap 错误会作为该次工具调用错误返回。模型直接调用 `bash` 或文件工具也可能激活
+远程 Runtime，但不会自动上传尚未选择的 Skill。
 
 ### 每条消息都要创建新的 Runtime 吗？
 
-一次性任务可以创建一次并在结束后关闭。持续会话可以为每次请求创建 Runtime 对象，但必须使用稳定的
-`conversationId`，并根据具体实现配置共享目录或 Conversation Store。不要让多个请求同时修改同一会话。
+一次性任务可以创建一次并在结束后关闭。持续会话优先复用会话级 Runtime 对象；跨进程或无法保留对象时，才为
+请求创建新的 Runtime handle，并使用稳定的 `conversationId` 恢复 Workspace 或 Sandbox。不要让多个请求同时
+修改同一会话。
 
 ### SkillArtifactStore 和 SkillRuntime 如何配合？
 

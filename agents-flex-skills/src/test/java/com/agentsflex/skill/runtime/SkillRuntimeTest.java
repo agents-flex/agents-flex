@@ -68,6 +68,8 @@ public class SkillRuntimeTest {
             .runtime(runtime)
             .buildTools();
 
+        assertEquals(0, runtime.prepareCalls);
+
         Tool skillTool = tool(tools, "skill");
         Tool bashTool = tool(tools, "bash");
         assertEquals(8, tools.size());
@@ -87,7 +89,7 @@ public class SkillRuntimeTest {
         assertTrue(skillResult.toString().contains("Runtime: recording"));
         assertTrue(skillResult.toString().contains("Base directory for this skill: /runtime/demo"));
         assertEquals(1, runtime.prepareCalls);
-        assertEquals(2, runtime.preparedSkillCount);
+        assertEquals(1, runtime.preparedSkillCount);
         assertEquals("/runtime/demo/scripts/run.sh", runtime.lastRequest.getCommand());
         assertEquals("remote output\n", bashResult);
     }

@@ -23,6 +23,7 @@ import com.agentsflex.skill.runtime.SkillExecutionRequest;
 import com.agentsflex.skill.runtime.SkillExecutionResult;
 import com.agentsflex.skill.runtime.SkillPreparationRequest;
 import com.agentsflex.skill.runtime.SkillRuntime;
+import com.agentsflex.skill.runtime.SkillRuntimeConfig;
 import com.agentsflex.skill.runtime.SkillRuntimeFileSystem;
 import org.junit.Rule;
 import org.junit.Test;
@@ -36,6 +37,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -48,7 +53,7 @@ public class SkillsToolTest {
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
-    public void selectedSkillsAreFilteredBeforeRuntimePreparation() throws Exception {
+    public void selectedSkillsAreAdvertisedWithoutPreparingRuntime() throws Exception {
         createSkill("pdf", "PDF documents");
         createSkill("xlsx", "Excel workbooks");
         createSkill("pptx", "PowerPoint presentations");
@@ -59,7 +64,7 @@ public class SkillsToolTest {
             .runtime(runtime)
             .build();
 
-        assertEquals(Arrays.asList("pdf", "pptx"), runtime.preparedSkillNames);
+        assertTrue(runtime.preparedSkillNames.isEmpty());
         assertTrue(skillTool.getDescription().contains("<name>pdf</name>"));
         assertTrue(skillTool.getDescription().contains("<name>pptx</name>"));
         assertFalse(skillTool.getDescription().contains("<name>xlsx</name>"));
@@ -70,6 +75,12 @@ public class SkillsToolTest {
         assertTrue(skillTool.getDescription().contains("user explicitly asks you not to"));
         assertEquals("Skill not found: xlsx", skillTool.invoke(
             Collections.<String, Object>singletonMap("command", "xlsx")));
+        assertTrue(runtime.preparedSkillNames.isEmpty());
+
+        Object result = skillTool.invoke(Collections.<String, Object>singletonMap("command", "pptx"));
+        assertTrue(result.toString().contains("/runtime/pptx"));
+        assertEquals(Collections.singletonList("pptx"), runtime.preparedSkillNames);
+        assertEquals(1, runtime.prepareCalls);
     }
 
     @Test
@@ -100,20 +111,132 @@ public class SkillsToolTest {
     }
 
     @Test
-    public void artifactIsMaterializedBeforeRuntimePreparation() throws Exception {
+    public void artifactIsMaterializedBeforeLazyRuntimePreparation() throws Exception {
         File skillDirectory = createSkill("pdf", "PDF documents");
         SkillArtifact artifact = new SkillArtifact(
             "pdf", "1.0.0", "sha256-test", "skills/pdf");
         RecordingArtifactStore artifactStore = new RecordingArtifactStore(skillDirectory.toPath());
         RecordingRuntime runtime = new RecordingRuntime();
 
-        SkillsTool.builder()
+        Tool skillTool = SkillsTool.builder()
             .addSkillArtifact(artifactStore, artifact)
             .runtime(runtime)
             .build();
 
         assertEquals(artifact, artifactStore.materializedArtifact);
+        assertTrue(runtime.preparedSkillNames.isEmpty());
+        skillTool.invoke(Collections.<String, Object>singletonMap("command", "pdf"));
         assertEquals(Collections.singletonList("pdf"), runtime.preparedSkillNames);
+    }
+
+    @Test
+    public void successfulPreparationIsCachedPerSkill() throws Exception {
+        createSkill("pdf", "PDF documents");
+        RecordingRuntime runtime = new RecordingRuntime();
+        Tool skillTool = SkillsTool.builder()
+            .addSkillsDirectory(temporaryFolder.getRoot().getAbsolutePath())
+            .runtime(runtime)
+            .build();
+
+        Map<String, Object> command = Collections.<String, Object>singletonMap("command", "pdf");
+        skillTool.invoke(command);
+        skillTool.invoke(command);
+
+        assertEquals(1, runtime.prepareCalls);
+    }
+
+    @Test
+    public void runtimeConfigIsValidatedEagerlyAndAppliedLazily() throws Exception {
+        createSkill("pdf", "PDF documents");
+        createSkill("pptx", "PowerPoint presentations");
+        SkillRuntimeConfig config = SkillRuntimeConfig.builder()
+            .environment("PPTX_THEME", "corporate")
+            .build();
+        RecordingRuntime runtime = new RecordingRuntime();
+        Tool skillTool = SkillsTool.builder()
+            .addSkillsDirectory(temporaryFolder.getRoot().getAbsolutePath())
+            .skillRuntimeConfig("pptx", config)
+            .runtime(runtime)
+            .build();
+
+        assertEquals(0, runtime.prepareCalls);
+        skillTool.invoke(Collections.<String, Object>singletonMap("command", "pdf"));
+        assertTrue(runtime.lastRuntimeConfigs.isEmpty());
+        skillTool.invoke(Collections.<String, Object>singletonMap("command", "pptx"));
+        assertEquals(config, runtime.lastRuntimeConfigs.get("pptx"));
+
+        try {
+            SkillsTool.builder()
+                .addSkillsDirectory(temporaryFolder.getRoot().getAbsolutePath())
+                .skillRuntimeConfig("unknown", config)
+                .runtime(new RecordingRuntime())
+                .build();
+            fail("Expected an unknown Runtime Config skill to fail during build");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("unknown"));
+        }
+    }
+
+    @Test
+    public void failedPreparationIsRetried() throws Exception {
+        createSkill("pdf", "PDF documents");
+        RecordingRuntime runtime = new RecordingRuntime();
+        runtime.failuresRemaining = 1;
+        Tool skillTool = SkillsTool.builder()
+            .addSkillsDirectory(temporaryFolder.getRoot().getAbsolutePath())
+            .runtime(runtime)
+            .build();
+        Map<String, Object> command = Collections.<String, Object>singletonMap("command", "pdf");
+
+        try {
+            skillTool.invoke(command);
+            fail("Expected the first preparation to fail");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("prepare failed"));
+        }
+        Object result = skillTool.invoke(command);
+
+        assertTrue(result.toString().contains("/runtime/pdf"));
+        assertEquals(2, runtime.prepareCalls);
+    }
+
+    @Test
+    public void concurrentCallsPrepareSkillOnce() throws Exception {
+        createSkill("pdf", "PDF documents");
+        final RecordingRuntime runtime = new RecordingRuntime();
+        final Tool skillTool = SkillsTool.builder()
+            .addSkillsDirectory(temporaryFolder.getRoot().getAbsolutePath())
+            .runtime(runtime)
+            .build();
+        final CountDownLatch start = new CountDownLatch(1);
+        final AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread first = invokeSkill(start, failure, skillTool, "pdf");
+        Thread second = invokeSkill(start, failure, skillTool, "pdf");
+
+        first.start();
+        second.start();
+        start.countDown();
+        first.join(TimeUnit.SECONDS.toMillis(5));
+        second.join(TimeUnit.SECONDS.toMillis(5));
+
+        assertFalse(first.isAlive());
+        assertFalse(second.isAlive());
+        if (failure.get() != null) {
+            throw new AssertionError(failure.get());
+        }
+        assertEquals(1, runtime.prepareCalls);
+    }
+
+    private Thread invokeSkill(final CountDownLatch start, final AtomicReference<Throwable> failure,
+                               final Tool skillTool, final String skillName) {
+        return new Thread(() -> {
+            try {
+                start.await();
+                skillTool.invoke(Collections.<String, Object>singletonMap("command", skillName));
+            } catch (Throwable e) {
+                failure.compareAndSet(null, e);
+            }
+        });
     }
 
     @Test
@@ -200,6 +323,9 @@ public class SkillsToolTest {
     private static class RecordingRuntime implements SkillRuntime {
 
         private List<String> preparedSkillNames = Collections.emptyList();
+        private Map<String, SkillRuntimeConfig> lastRuntimeConfigs = Collections.emptyMap();
+        private int prepareCalls;
+        private int failuresRemaining;
 
         @Override
         public String getName() {
@@ -207,14 +333,22 @@ public class SkillsToolTest {
         }
 
         @Override
-        public List<Skill> prepare(SkillPreparationRequest request) {
+        public synchronized List<Skill> prepare(SkillPreparationRequest request) {
+            prepareCalls++;
+            if (failuresRemaining > 0) {
+                failuresRemaining--;
+                throw new IllegalStateException("prepare failed");
+            }
+            lastRuntimeConfigs = request.getRuntimeConfigs();
             List<String> names = new ArrayList<>();
+            List<Skill> prepared = new ArrayList<>();
             for (Skill skill : request.getSkills()) {
                 names.add(skill.name());
+                prepared.add(new Skill("/runtime/" + skill.name(), skill.getFrontMatter(), skill.getContent()));
             }
             Collections.sort(names);
             this.preparedSkillNames = names;
-            return new ArrayList<>(request.getSkills());
+            return prepared;
         }
 
         @Override

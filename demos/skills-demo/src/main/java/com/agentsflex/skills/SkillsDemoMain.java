@@ -273,18 +273,20 @@ public class SkillsDemoMain {
      */
     private static void generateDefaultPresentation(SkillRuntime runtime, String skillsDirectory,
                                                     String outputFile) {
-        List<Skill> runtimeSkills = runtime.prepare(new SkillPreparationRequest(
-            Skills.loadDirectory(skillsDirectory), Collections.<String, SkillRuntimeConfig>emptyMap()));
-        Skill pptxSkill = null;
-        for (Skill skill : runtimeSkills) {
+        Skill sourcePptxSkill = null;
+        for (Skill skill : Skills.loadDirectory(skillsDirectory)) {
             if ("pptx".equals(skill.name())) {
-                pptxSkill = skill;
+                sourcePptxSkill = skill;
                 break;
             }
         }
-        if (pptxSkill == null) {
+        if (sourcePptxSkill == null) {
             throw new IllegalStateException("Default PPTX task requires the pptx skill");
         }
+        List<Skill> runtimeSkills = runtime.prepare(new SkillPreparationRequest(
+            Collections.singletonList(sourcePptxSkill),
+            Collections.<String, SkillRuntimeConfig>emptyMap()));
+        Skill pptxSkill = runtimeSkills.get(0);
 
         long timeoutMillis = TimeUnit.SECONDS.toMillis(
             environmentLong("SKILLS_GENERATION_TIMEOUT_SECONDS", 300L));

@@ -46,8 +46,9 @@ List<Tool> tools = SkillsTool.builder()
 prompt.addTools(tools);
 ```
 
-`build()` 和 `buildTools()` 都会在返回工具前调用 `runtime.prepare()`。因此，Skill 上传、环境合并和
-bootstrap 都发生在构建工具阶段；配置或初始化失败时，工具不会以半准备状态注册给模型。
+`build()` 和 `buildTools()` 会在构建阶段校验配置引用的 Skill 名称，但不会调用 `runtime.prepare()`。
+模型首次调用对应 `skill` 时，框架才合并环境、上传或复制该 Skill 并运行 bootstrap。初始化失败会作为本次
+工具调用错误返回，而且不会写入准备缓存；后续调用可以重试。
 
 ## 配置环境变量
 
@@ -67,8 +68,8 @@ SkillRuntimeConfig config = SkillRuntimeConfig.builder()
 变量名必须匹配 `[A-Za-z_][A-Za-z0-9_]*`，变量值不能为 `null`。Builder 中后设置的同名变量覆盖之前的值。
 构建后的 Map 不可修改。
 
-Runtime 会先合并当前准备批次中所有 Skill Config 的环境变量，再执行任何 bootstrap。后续每次命令执行也会
-重新注入合并后的环境变量，不依赖 `.bashrc`、`.profile` 或前一次 Shell 进程中的 `export`。
+Runtime 会在 Skill 被准备时合并该 Skill Config 的环境变量，再执行 bootstrap。后续每次命令执行也会重新
+注入当前 Runtime 已合并的环境变量，不依赖 `.bashrc`、`.profile` 或前一次 Shell 进程中的 `export`。
 
 环境变量的优先级从低到高为：
 
@@ -76,13 +77,13 @@ Runtime 会先合并当前准备批次中所有 Skill Config 的环境变量，�
 2. `SkillRuntimeConfig.environment`；
 3. 单次 `SkillExecutionRequest.environment`。
 
-当多个 Skill Config 声明同名变量时，按照传给 `prepare()` 的 Skill 顺序合并，后面的 Skill 覆盖前面的值。
-这些变量保存于整个 Runtime，而不是只在对应 Skill 的命令中生效。因此，共享一个 Runtime 的多个 Skill 应
-避免使用含义不同但名称相同的变量。
+当多个按需加载的 Skill Config 声明同名变量时，后准备的 Skill 覆盖先准备的值。直接批量调用
+`runtime.prepare()` 时仍按请求中的 Skill 顺序合并，后面的 Skill 覆盖前面的值。这些变量保存于整个 Runtime，
+而不是只在对应 Skill 的命令中生效。因此，共享一个 Runtime 的多个 Skill 应避免使用含义不同但名称相同的变量。
 
 ## 配置 bootstrap
 
-bootstrap 是 Skill 准备完成后、对模型开放工具前执行的初始化命令。它常用于：
+bootstrap 是 Skill 首次被模型选择、返回完整指令之前执行的初始化命令。它常用于：
 
 - 安装或校验 Skill 所需依赖；
 - 编译 Skill 自带的脚本；
@@ -103,7 +104,7 @@ SkillRuntimeConfig config = SkillRuntimeConfig.builder()
 Runtime 中准备后的 `Skill.basePath` 作为工作目录，并继承已合并的 Runtime 环境变量。
 
 bootstrap 严格按配置顺序执行。任意命令超时或返回非零退出码，`prepare()` 会立即失败，后续命令不再执行，
-当前 Skill 也不会写入准备成功缓存。修正环境后再次构建工具，Runtime 可以重新尝试准备。
+当前 Skill 也不会写入准备成功缓存。修正外部条件后再次调用该 Skill，Runtime 可以重新尝试准备。
 
 如果多条命令必须共享 Shell 变量、当前目录切换或其他进程内状态，应把它们写进同一个脚本，再用一条
 bootstrap 调用。每条 bootstrap 都是独立的命令执行请求。

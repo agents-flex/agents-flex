@@ -200,10 +200,10 @@ System.out.println(releaseNotes);
 
 1. `addSkillsDirectory(...)` 递归发现文件名为 `SKILL.md` 的 Skill；
 2. 指定名称后，只保留本次真正需要的 Skill；
-3. `buildTools()` 调用 `runtime.prepare()`，Local Workspace 会复制目录，远程 Runtime 会上传目录；
-4. Runtime 返回新的 `basePath`，确保模型看到的是执行环境内路径；
-5. Builder 注册 `skill`、Shell、文件和搜索工具；
-6. 模型先看到名称与描述，调用 `skill` 后才加载完整正文。
+3. `buildTools()` 使用元数据注册 `skill`、Shell、文件和搜索工具，不会激活 Runtime；
+4. 模型先看到名称与描述；
+5. 模型首次调用某个 `skill` 时，Local Workspace 才复制该目录，远程 Runtime 才创建或连接环境并上传该目录；
+6. Runtime 返回执行环境内的新 `basePath`，然后 `skill` 工具加载完整正文。
 
 这种渐进式披露避免在每轮会话开始时把所有 Skill 的完整说明、脚本和参考资料都塞进模型上下文。
 
@@ -226,7 +226,8 @@ List<Tool> tools = SkillsTool.builder()
 名称来自 `SKILL.md` front matter，匹配区分大小写。指定名称不存在，或者目录中出现多个同名 Skill 时，Builder
 会立即抛出 `IllegalArgumentException`。
 
-筛选发生在 `SkillRuntime.prepare()` 之前，因此未选中的 Skill：
+筛选发生在 `SkillRuntime.prepare()` 之前。即使是已加入工具列表但从未被模型调用的 Skill，也不会触发准备。
+因此未选中的 Skill：
 
 - 不会出现在模型可见的 Skill 列表中；
 - 不会上传到远程 Runtime；

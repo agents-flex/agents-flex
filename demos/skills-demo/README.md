@@ -130,6 +130,6 @@ mvn -f demos/skills-demo/pom.xml exec:java
 | `SKILLS_DEMO_TIMEOUT_SECONDS` | `900` | 整个工具调用会话的等待时间 |
 | `CHAT_LOG_ENABLED` | `false` | 是否打印模型请求日志 |
 
-远端 runtime 会在构建工具时上传全部已配置的 Skill 目录，但会忽略 `.git`、`.env`、`.env.*` 和 `credentials*` 等敏感文件，
+远端 runtime 会在模型首次调用某个 Skill 时按需上传对应目录，并忽略 `.git`、`.env`、`.env.*` 和 `credentials*` 等敏感文件，
 且不会跟随符号链接。默认 PPTX 任务完成后，OpenSandbox/AIO 产物会自动下载到本机；下载失败或远端
 文件不存在时 Demo 会以失败结束。自定义任务需要设置 `SKILLS_OUTPUT_FILE` 才会启用相同的产物回收流程。

@@ -99,9 +99,8 @@ public class SkillsTool {
     /**
      * Skills 工具构建器。
      *
-     * <p>可以添加多个 Skills 根目录。所有目录中的 Skill 会作为一个批次传给
-     * {@link SkillRuntime#prepare(SkillPreparationRequest)}，远程 Runtime 可在这里统一上传、
-     * 初始化并重写路径。</p>
+     * <p>可以添加多个 Skills 根目录。构建工具时只读取 Skill 元数据；模型首次调用某个 Skill 时，
+     * 才会通过 {@link SkillRuntime#prepare(SkillPreparationRequest)} 准备该 Skill、初始化并重写路径。</p>
      */
     public static class Builder {
 
@@ -188,7 +187,7 @@ public class SkillsTool {
         /**
          * 添加一个本机 Skills 根目录。
          *
-         * <p>目录会被递归扫描。对于远程 Runtime，这里的文件会在构建工具时上传到
+         * <p>目录会被递归扫描。对于远程 Runtime，模型首次调用对应 Skill 时才会把文件上传到
          * 远端；目录字符串本身不会直接暴露给模型。</p>
          *
          * @param skillsRootDirectory 包含一个或多个 {@code SKILL.md} 的根目录
@@ -331,25 +330,19 @@ public class SkillsTool {
         /**
          * 只构建用于发现和加载 Skill 指令的 {@code skill} 工具。
          *
-         * <p>该方法会立即调用 Runtime 的批量 {@code prepare}。如果 Skill 需要上传，
-         * 上传发生在构建阶段。单独使用本方法时，调用方必须自行注册与同一 Runtime
-         * 绑定的执行和文件工具。</p>
+         * <p>该方法只使用本地 Skill 元数据构建工具描述，不会准备 Runtime。模型首次调用某个
+         * Skill 时才会准备该 Skill；同一个工具实例内，成功准备的 Skill 会被缓存。单独使用
+         * 本方法时，调用方必须自行注册与同一 Runtime 绑定的执行和文件工具。</p>
          *
          * @return Skill 加载工具
          */
         public Tool build() {
-            List<Skill> preparedSkills = runtime.prepare(new SkillPreparationRequest(
-                Collections.unmodifiableList(new ArrayList<>(this.skills)), skillRuntimeConfigs));
-            if (preparedSkills == null || preparedSkills.size() != this.skills.size()) {
-                throw new IllegalStateException("SkillRuntime.prepare must return one runtime skill per configured skill");
-            }
-            for (Skill skill : preparedSkills) {
-                if (skill == null) {
-                    throw new IllegalStateException("SkillRuntime.prepare must not return null skills");
-                }
-            }
-            final List<Skill> runtimeSkills = Collections.unmodifiableList(new ArrayList<>(preparedSkills));
-            String skillsXml = runtimeSkills.stream().map(Skill::toXml).collect(Collectors.joining("\n"));
+            final List<Skill> configuredSkills = Collections.unmodifiableList(new ArrayList<>(this.skills));
+            // Validate Runtime Config references without activating the Runtime.
+            new SkillPreparationRequest(configuredSkills, skillRuntimeConfigs);
+            final PreparedSkillResolver preparedSkills = new PreparedSkillResolver(
+                runtime, skillRuntimeConfigs);
+            String skillsXml = configuredSkills.stream().map(Skill::toXml).collect(Collectors.joining("\n"));
             return Tool.builder()
                 .name("skill")
                 .description(String.format(this.toolDescriptionTemplate, skillsXml))
@@ -362,7 +355,7 @@ public class SkillsTool {
                 .function(stringStringMap -> {
                     String command = (String) stringStringMap.get("command");
                     Skill skill = null;
-                    for (Skill s : runtimeSkills) {
+                    for (Skill s : configuredSkills) {
                         if (s.name().equals(command)) {
                             skill = s;
                             break;
@@ -370,12 +363,50 @@ public class SkillsTool {
                     }
 
                     if (skill != null) {
+                        Skill runtimeSkill = preparedSkills.resolve(skill);
                         return String.format("Runtime: %s\nBase directory for this skill: %s\n\n%s",
-                            runtime.getName(), skill.getBasePath(), skill.getContent());
+                            runtime.getName(), runtimeSkill.getBasePath(), runtimeSkill.getContent());
                     }
 
                     return "Skill not found: " + command;
                 }).build();
+        }
+
+        private static class PreparedSkillResolver {
+
+            private final SkillRuntime runtime;
+            private final Map<String, SkillRuntimeConfig> runtimeConfigs;
+            private final Map<Skill, Skill> preparedSkills = new LinkedHashMap<>();
+
+            private PreparedSkillResolver(SkillRuntime runtime,
+                                          Map<String, SkillRuntimeConfig> runtimeConfigs) {
+                this.runtime = runtime;
+                this.runtimeConfigs = new LinkedHashMap<>(runtimeConfigs);
+            }
+
+            private synchronized Skill resolve(Skill skill) {
+                Skill prepared = preparedSkills.get(skill);
+                if (prepared != null) {
+                    return prepared;
+                }
+
+                SkillRuntimeConfig config = runtimeConfigs.get(skill.name());
+                Map<String, SkillRuntimeConfig> selectedConfig = config == null
+                    ? Collections.<String, SkillRuntimeConfig>emptyMap()
+                    : Collections.singletonMap(skill.name(), config);
+                List<Skill> result = runtime.prepare(new SkillPreparationRequest(
+                    Collections.singletonList(skill), selectedConfig));
+                if (result == null || result.size() != 1) {
+                    throw new IllegalStateException(
+                        "SkillRuntime.prepare must return one runtime skill per configured skill");
+                }
+                prepared = result.get(0);
+                if (prepared == null) {
+                    throw new IllegalStateException("SkillRuntime.prepare must not return null skills");
+                }
+                preparedSkills.put(skill, prepared);
+                return prepared;
+            }
         }
 
         /**
