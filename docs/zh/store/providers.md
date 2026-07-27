@@ -66,8 +66,8 @@ GraphQL 查询和混合检索生态的团队。
 
 ### 希望由云厂商托管
 
-[阿里云 DashVector](./aliyun) 和[腾讯云向量数据库](./qcloud)避免自建集群，但需要评估网络、配额、费用、凭证、
-区域和当前 Store 适配能力。它们不能在开发机本地安装，联调需要云端测试实例。
+[阿里云 DashVector](./aliyun) 可以避免自建集群，但需要评估网络、配额、费用、凭证、区域和当前 Store 适配能力。
+它不能在开发机本地安装，联调需要云端测试实例。
 
 ## 后端总览
 
@@ -87,7 +87,6 @@ GraphQL 查询和混合检索生态的团队。
 | `agents-flex-store-chroma` | Chroma | 原型和轻量知识库 | 独立 HTTP 服务 |
 | `agents-flex-store-qdrant` | Qdrant | 专用向量检索与 payload 过滤 | 自建或 Qdrant Cloud |
 | `agents-flex-store-aliyun` | DashVector | 阿里云托管向量服务 | 云服务 |
-| `agents-flex-store-qcloud` | 腾讯云向量数据库 | 腾讯云托管向量服务 | 云服务 |
 
 ## 当前适配能力
 
@@ -109,7 +108,6 @@ GraphQL 查询和混合检索生态的团队。
 | [Chroma](./chroma) | `collectionName` | 可配置 | Chroma `where` JSON |
 | [Qdrant](./qdrant) | `collectionName` | 可配置 | Qdrant 原生 `Filter` |
 | [阿里云 DashVector](./aliyun) | `collectionName`、Partition | 控制台预建 | DashVector 专属 filter 适配 |
-| [腾讯云向量数据库](./qcloud) | `collectionName` | 控制台或 SDK 预建 | 官方 SDK；支持条件与纯过滤查询 |
 
 ::: warning 多租户安全
 即使 Store 支持条件过滤，权限条件也必须由服务端强制追加，并通过真实数据库测试验证。高安全场景优先使用独立
@@ -134,7 +132,6 @@ Collection 或 Index，不要只依赖调用方传入 tenant 条件。
 | Chroma | REST `/api/v2` | Chroma Docker |
 | Qdrant | gRPC 6334 | Qdrant Docker，同时开放 HTTP 6333 |
 | 阿里云 DashVector | 官方 Java SDK | 不能本地安装，连接云端测试实例 |
-| 腾讯云向量数据库 | 官方 Java SDK | 不能本地安装，连接云端测试实例 |
 
 具体安装命令、端口、认证和清理方式均在各 Store 独立文档中提供。
 
@@ -283,6 +280,5 @@ PoC 不应停在“能写能搜”，还要执行：
 - [Chroma](./chroma)
 - [Qdrant](./qdrant)
 - [阿里云 DashVector](./aliyun)
-- [腾讯云向量数据库](./qcloud)
 
 </div>

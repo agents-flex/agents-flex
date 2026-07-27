@@ -470,11 +470,6 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
-                <artifactId>agents-flex-store-qcloud</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-store-qdrant</artifactId>
                 <version>${revision}</version>
             </dependency>

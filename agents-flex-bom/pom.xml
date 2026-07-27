@@ -186,10 +186,6 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-store-qcloud</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-store-qdrant</artifactId>
         </dependency>
         <dependency>

@@ -363,7 +363,6 @@ SQL 风格表达式是统一的输入方式，但数据库没有统一的过滤�
 | Chroma | 构建 Chroma `where` JSON |
 | Qdrant | 构建 Qdrant 原生 `Filter` |
 | 阿里云 DashVector | 使用专属适配器生成 DashVector `filter` |
-| 腾讯云向量数据库 | 转换为 VectorDB filter；支持比较、IN/NOT IN、BETWEEN 和分组 |
 
 这意味着：
 

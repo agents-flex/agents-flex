@@ -17,7 +17,6 @@
         <module>agents-flex-store-clickhouse</module>
         <module>agents-flex-store-infinity</module>
         <module>agents-flex-store-cassandra</module>
-        <module>agents-flex-store-qcloud</module>
         <module>agents-flex-store-aliyun</module>
         <module>agents-flex-store-chroma</module>
         <module>agents-flex-store-redis</module>

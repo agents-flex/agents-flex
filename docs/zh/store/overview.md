@@ -133,8 +133,7 @@ agents-flex-store
 ├── agents-flex-store-weaviate
 ├── agents-flex-store-chroma
 ├── agents-flex-store-qdrant
-├── agents-flex-store-aliyun
-└── agents-flex-store-qcloud
+└── agents-flex-store-aliyun
 ```
 
 ## 写入数据流

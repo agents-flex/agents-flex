@@ -6,5 +6,4 @@ org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
   com.agentsflex.springboot.store.aliyun.AliyunAutoConfiguration,\
   com.agentsflex.springboot.store.chroma.ChromaAutoConfiguration,\
   com.agentsflex.springboot.store.elasticsearch.ElasticSearchAutoConfiguration,\
-  com.agentsflex.springboot.store.opensearch.OpenSearchAutoConfiguration,\
-  com.agentsflex.springboot.store.qcloud.QCloudStoreAutoConfiguration
+  com.agentsflex.springboot.store.opensearch.OpenSearchAutoConfiguration

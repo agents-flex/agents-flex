@@ -13,7 +13,6 @@ Agents-Flex 的 Store 指的是向量存储器 `VectorStore`。 其定义了如�
 
 目前，在 Agents-Flex 中，已经完成了以下向量数据库的适配：
 - 阿里云向量检索服务：https://help.aliyun.com/document_detail/2510317.html
-- 腾讯云向量数据库：https://cloud.tencent.com/document/product/1709/98666
 - Milvus 向量数据库：https://milvus.io
 
 以下更多的向量数据库适配正在完善中:
@@ -104,6 +103,5 @@ public void testSearchWrapper() {
 ```
 
 过滤表达式可以参考如下：
-- 腾讯云向量数据库：https://cloud.tencent.com/document/product/1709/95099
 - 阿里云向量检索服务：https://help.aliyun.com/document_detail/2513006.html
 - milvus 向量数据库：https://milvus.io/docs/boolean.md
