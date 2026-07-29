@@ -24,6 +24,8 @@
 
 | 服务商      | `artifactId`                   |
 |----------|--------------------------------|
+| OpenAI | `agents-flex-image-openai` |
+| Google Gemini | `agents-flex-image-gemini` |
 | 阿里云百炼    | `agents-flex-image-aliyun`     |
 | 火山引擎     | `agents-flex-image-volcengine` |
 | Gitee AI | `agents-flex-image-gitee`      |

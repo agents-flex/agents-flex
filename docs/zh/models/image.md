@@ -8,5 +8,7 @@
 - [5 分钟快速开始](../image/getting-started)
 - [阿里云百炼适配器](../image/aliyun)
 - [Gitee AI 适配器](../image/gitee)
+- [OpenAI 适配器](../image/openai)
+- [Gemini Nano Banana 适配器](../image/gemini)
 
 </div>

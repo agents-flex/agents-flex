@@ -1,5 +1,46 @@
 # Agents-Flex ChangeLog
 
+## v2.2.5 20260727
+- fix: Fix session directory conversion failure issue in Windows environment
+- docs(toolsearch): add comprehensive documentation and improve code comments for tool search functionality
+- refactor(core): rename StreamResponseListener methods for clarity
+- removes(qcloud): remove QCloud vector store support
+- feat(skills): implement lazy skill preparation and caching
+- docs(skills): update documentation links for skill runtime workspace
+- docs(chat): update Chinese documentation for core chat components
+- docs(skills): update documentation for artifact store and file publishing
+- feat(store): add ClickHouse vector store implementation
+- feat(store): add Infinity vector database support
+- docs(skills): add comprehensive documentation for skill configuration and workspace management
+- feat(store): add Apache Cassandra as vector storage option
+- feat(store): add Weaviate vector database integration
+- feat(store): add MongoDB Atlas vector store implementation
+- docs(chat): add ToolSearchTool documentation and navigation entry
+- feat(toolsearch): add progressive tool discovery with in-memory search provider
+- feat(store): add OpenSearch condition expression support
+- test(store): add document store search functionality tests
+- feat(store): enhance OpenSearch vector store with filtering and connection management
+- feat(store): add null checks and improve search wrapper functionality
+- feat(store): add MariaDB vector store support
+- remove(vectorex): remove VectoRex and VectoRexDB store modules
+- refactor(aliyun): migrate DashVector store to official Java SDK
+- docs(store): add comprehensive vector store module documentation
+- docs(store): add comprehensive javadoc documentation for store components
+- feat(store): add SQL-like condition expression parsing support
+- refactor(qdrant): replace expression adaptor with native condition builder
+- refactor(store): rename PgvectorConditionBuilder to PgvectorExpressionAdaptor and update vector handling
+- feat(chroma): add Chroma vector store implementation with condition building support
+- feat(store): add PgvectorConditionBuilder and enhance PgvectorVectorStore functionality
+- feat(store): add getter method for child condition in Group class
+- test(elasticsearch): add integration tests for ElasticSearchVectorStore
+- feat(elasticsearch): enhance vector store with expression filtering and connection management
+- fix(store): correct NIN operator and enhance Milvus expression handling
+- feat(redis): enhance RedisVectorStore with concurrent safety and metadata support
+- docs(skills): update file publishing documentation and tool descriptions
+- feat(demo): add console interactive demo and improve skills demo
+
+
+
 ## v2.2.4 20260724
 - docs(sidebar): add sandbox conversation isolation lab to documentation
 - test(sandbox): add integration tests for AIO and Open Sandbox skill runtimes

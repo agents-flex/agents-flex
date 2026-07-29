@@ -27,7 +27,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 | `agents-flex-core` | 核心抽象：Chat、Prompt、Message、Tool、Memory、Agent、Document、Store、Router、Observability |
 | `agents-flex-chat` | 聊天模型适配：OpenAI 兼容接口、Qwen、Ollama、DeepSeek、LiteLLM |
 | `agents-flex-embedding` | Embedding 模型适配：OpenAI、Ollama、Qwen |
-| `agents-flex-image` | 图像模型适配：阿里云、Gitee、Volcengine |
+| `agents-flex-image` | 图像模型适配：OpenAI、Gemini、阿里云、Gitee、Volcengine |
 | `agents-flex-video` | 异步视频生成与编辑模型适配：阿里云百炼、火山引擎方舟 |
 | `agents-flex-audio` | 语音识别与语音合成：阿里云、腾讯云、火山引擎 |
 | `agents-flex-store` | 向量存储：Redis、Qdrant、Chroma、Pgvector、MariaDB、Milvus、OpenSearch、Elasticsearch、阿里云、腾讯云 |

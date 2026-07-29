@@ -64,7 +64,7 @@ response.getImage().writeToFile(new File("output/result.png"));
 
 ## 模型能力
 
-继承 `BaseImageConfig` 的适配器会声明文生图、图片编辑、多图输入、多图输出、负向提示词、水印等能力。能力字段用于调用前判断和 UI 展示，不会自动放宽具体模型的参数限制。
+继承 `BaseImageConfig` 的适配器会声明文生图、图片编辑、多图输入、多图输出、负向提示词、水印等能力。配置还可以通过 `supportedResolutions`、`supportedAspectRatios` 和 `supportedQualities` 声明当前模型可选的分辨率、宽高比和画质档位。上层产品可在用户选择模型后读取对应配置并刷新选项；未声明的列表为 `null`，表示适配器没有提供限制信息。能力字段用于调用前判断和 UI 展示，不会自动放宽具体模型的参数限制。
 
 ## 扩展参数
 
