@@ -16,6 +16,9 @@
 package com.agentsflex.core.model.image;
 
 import com.agentsflex.core.model.config.BaseModelConfig;
+import com.agentsflex.core.util.StringUtil;
+
+import java.util.List;
 
 /**
  * 图片模型适配器的基础实现。
@@ -49,6 +52,17 @@ public abstract class BaseImageModel<T extends BaseModelConfig> implements Image
      */
     public T getConfig() {
         return config;
+    }
+
+    /**
+     * 校验供应商原始枚举参数。未传值或适配器未声明可选值时不限制请求。
+     */
+    protected ImageResponse validateSupportedValue(String fieldName, String value,
+                                                   List<String> supportedValues, String model) {
+        if (StringUtil.noText(value) || supportedValues == null) return null;
+        if (supportedValues.contains(value)) return null;
+        return ImageResponse.error(fieldName + " '" + value + "' is not supported by " + model +
+            "; supported values: " + supportedValues);
     }
 
 }
