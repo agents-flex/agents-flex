@@ -26,20 +26,30 @@ import java.util.Map;
  * <p>未提供输入图片时调用 JSON 格式的文生图接口；提供一张输入图片时调用 Multipart 图片编辑接口。</p>
  */
 public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
-    /** 在 {@link GenerateImageRequest#getOptions()} 中传递编辑掩膜的参数名。 */
+    /**
+     * 在 {@link GenerateImageRequest#getOptions()} 中传递编辑掩膜的参数名。
+     */
     public static final String OPTION_MASK = "mask";
-    /** 在 {@link GenerateImageRequest#getOptions()} 中传递 DreamO 任务类型的参数名。 */
+    /**
+     * 在 {@link GenerateImageRequest#getOptions()} 中传递 DreamO 任务类型的参数名。
+     */
     public static final String OPTION_TASK_TYPES = "task_types";
 
-    /** 执行 Gitee AI HTTP 请求的客户端；测试可通过包级构造方法注入替身。 */
+    /**
+     * 执行 Gitee AI HTTP 请求的客户端；测试可通过包级构造方法注入替身。
+     */
     private final AgentsFlexHttpClient agentsFlexHttpClient;
 
-    /** 使用默认 HTTP 客户端创建 Gitee AI 图片模型。 */
+    /**
+     * 使用默认 HTTP 客户端创建 Gitee AI 图片模型。
+     */
     public GiteeImageModel(GiteeImageModelConfig config) {
         this(config, AgentsFlexHttpClient.getDefault());
     }
 
-    /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */
+    /**
+     * 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。
+     */
     GiteeImageModel(GiteeImageModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
         if (agentsFlexHttpClient == null) throw new IllegalArgumentException("httpClient must not be null");
@@ -66,7 +76,9 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
         }
     }
 
-    /** 构建 JSON 文生图请求并调用 {@code /v1/images/generations}。 */
+    /**
+     * 构建 JSON 文生图请求并调用 {@code /v1/images/generations}。
+     */
     private String generateImage(GenerateImageRequest request) {
         JSONObject payload = new JSONObject();
         copyOptions(request, payload, false);
@@ -144,7 +156,9 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
         return null;
     }
 
-    /** 将核心请求中的通用字段写入 Gitee 请求载荷。 */
+    /**
+     * 将核心请求中的通用字段写入 Gitee 请求载荷。
+     */
     private void putStandardFields(GenerateImageRequest request, Map<String, Object> payload) {
         payload.put("model", resolveModel(request));
         putIfNotEmpty(payload, "prompt", request.getPrompt());
@@ -167,19 +181,25 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
         }
     }
 
-    /** 获取本次请求的模型，请求级模型优先于配置默认模型。 */
+    /**
+     * 获取本次请求的模型，请求级模型优先于配置默认模型。
+     */
     private String resolveModel(GenerateImageRequest request) {
         return StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
     }
 
-    /** 将 URL、字节或 Base64 图片转换为 Multipart 可接受的值。 */
+    /**
+     * 将 URL、字节或 Base64 图片转换为 Multipart 可接受的值。
+     */
     private Object toMultipartImage(Image image) {
         if (StringUtil.hasText(image.getUrl())) return image.getUrl();
         if (image.getBytes() != null && image.getBytes().length > 0) return image.getBytes();
         return Base64.getDecoder().decode(image.getB64Json());
     }
 
-    /** 转换掩膜等可能以 {@link Image} 表达的 Multipart 字段。 */
+    /**
+     * 转换掩膜等可能以 {@link Image} 表达的 Multipart 字段。
+     */
     private Object toMultipartValue(Object value, String fieldName) {
         if (!(value instanceof Image)) return value;
         Image image = (Image) value;
@@ -203,7 +223,9 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
         payload.put(OPTION_TASK_TYPES, values.get(0));
     }
 
-    /** 解析 OpenAI 风格的 URL/Base64 图片响应及嵌套错误对象。 */
+    /**
+     * 解析 OpenAI 风格的 URL/Base64 图片响应及嵌套错误对象。
+     */
     private ImageResponse parseResponse(String responseJson) {
         if (StringUtil.noText(responseJson)) return ImageResponse.error("response is empty");
         JSONObject root;

@@ -23,7 +23,9 @@ import java.util.Map;
  * </p>
  */
 public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
-    /** 执行百炼 HTTP 请求的客户端；测试可通过包级构造方法注入替身。 */
+    /**
+     * 执行百炼 HTTP 请求的客户端；测试可通过包级构造方法注入替身。
+     */
     private final AgentsFlexHttpClient agentsFlexHttpClient;
 
     /**
@@ -35,7 +37,9 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         this(config, AgentsFlexHttpClient.getDefault());
     }
 
-    /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */
+    /**
+     * 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。
+     */
     AliyunImageModel(AliyunImageModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
         this.agentsFlexHttpClient = agentsFlexHttpClient;
@@ -104,7 +108,9 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return root;
     }
 
-    /** 将核心请求中的尺寸、数量、水印、随机种子和框选区域映射到 parameters。 */
+    /**
+     * 将核心请求中的尺寸、数量、水印、随机种子和框选区域映射到 parameters。
+     */
     private JSONObject commonParameters(GenerateImageRequest request) {
         JSONObject parameters = new JSONObject();
         String size = StringUtil.hasText(request.getResolution()) ? request.getResolution() : toAliyunSize(request.getSizeString());
@@ -152,7 +158,9 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return null;
     }
 
-    /** 将核心层的矩形对象转换为百炼 {@code bbox_list} 坐标数组。 */
+    /**
+     * 将核心层的矩形对象转换为百炼 {@code bbox_list} 坐标数组。
+     */
     private JSONArray toBboxList(List<List<ImageBoundingBox>> boundingBoxes) {
         JSONArray result = new JSONArray();
         for (List<ImageBoundingBox> imageBoxes : boundingBoxes) {
@@ -193,7 +201,9 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         }
     }
 
-    /** 解析同步响应或任务查询响应，并保留供应商原始字段作为元数据。 */
+    /**
+     * 解析同步响应或任务查询响应，并保留供应商原始字段作为元数据。
+     */
     private ImageResponse parseResponse(String json) {
         if (StringUtil.noText(json)) return ImageResponse.error("response is empty");
         JSONObject root;
@@ -306,10 +316,16 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         if (StringUtil.hasText(url)) response.addImage(url);
     }
 
-    /** 判断指定模型是否只能通过任务协议获取最终图片。 */
-    private boolean requiresTaskProtocol(String model) { return usesLegacySynthesisPayload(model); }
+    /**
+     * 判断指定模型是否只能通过任务协议获取最终图片。
+     */
+    private boolean requiresTaskProtocol(String model) {
+        return usesLegacySynthesisPayload(model);
+    }
 
-    /** 根据模型族选择同步接口、旧千问合成接口或旧万相异步接口。 */
+    /**
+     * 根据模型族选择同步接口、旧千问合成接口或旧万相异步接口。
+     */
     private String submissionUrl(String model, boolean async) {
         if (!async) return config.getFullUrl();
         String value = model.toLowerCase();
@@ -319,7 +335,9 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return config.getAsyncUrl();
     }
 
-    /** 判断模型是否使用旧版图片合成请求结构。 */
+    /**
+     * 判断模型是否使用旧版图片合成请求结构。
+     */
     private boolean usesLegacySynthesisPayload(String model) {
         String value = model.toLowerCase();
         if (value.startsWith("wanx2.") || value.startsWith("wan2.1-") || value.startsWith("wan2.2-") ||
@@ -327,7 +345,9 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return value.equals("qwen-image") || value.startsWith("qwen-image-plus") || value.startsWith("qwen-image-max");
     }
 
-    /** 构建鉴权请求头；异步任务提交时额外携带 {@code X-DashScope-Async}。 */
+    /**
+     * 构建鉴权请求头；异步任务提交时额外携带 {@code X-DashScope-Async}。
+     */
     private Map<String, String> headers(boolean async) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -336,7 +356,9 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
         return headers;
     }
 
-    /** 将核心层的 {@code 宽x高} 转为旧百炼接口要求的 {@code 宽*高}。 */
+    /**
+     * 将核心层的 {@code 宽x高} 转为旧百炼接口要求的 {@code 宽*高}。
+     */
     private static String toAliyunSize(String size) {
         return size == null ? null : size.replace('x', '*');
     }

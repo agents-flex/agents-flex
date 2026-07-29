@@ -17,7 +17,9 @@ public class VolcengineImageModelConfig extends BaseImageConfig {
      */
     private String secretKey;
 
-    /** 初始化方舟默认端点、请求路径、Seedream 默认模型和已声明的图片能力。 */
+    /**
+     * 初始化方舟默认端点、请求路径、Seedream 默认模型和已声明的图片能力。
+     */
     public VolcengineImageModelConfig() {
         setProvider("volcengine");
         setEndpoint("https://ark.cn-beijing.volces.com");
@@ -39,7 +41,9 @@ public class VolcengineImageModelConfig extends BaseImageConfig {
      * @deprecated 方舟图片生成现已统一使用 API Key，请调用 {@link #getApiKey()}。
      */
     @Deprecated
-    public String getAccessKey() { return getApiKey(); }
+    public String getAccessKey() {
+        return getApiKey();
+    }
 
     /**
      * 设置 API Key 的历史别名。
@@ -48,7 +52,9 @@ public class VolcengineImageModelConfig extends BaseImageConfig {
      * @deprecated 请调用 {@link #setApiKey(String)}。
      */
     @Deprecated
-    public void setAccessKey(String accessKey) { setApiKey(accessKey); }
+    public void setAccessKey(String accessKey) {
+        setApiKey(accessKey);
+    }
 
     /**
      * 获取历史 SecretKey 值。
@@ -57,7 +63,9 @@ public class VolcengineImageModelConfig extends BaseImageConfig {
      * @deprecated 仅用于源码兼容，该值不会发送给方舟接口。
      */
     @Deprecated
-    public String getSecretKey() { return secretKey; }
+    public String getSecretKey() {
+        return secretKey;
+    }
 
     /**
      * 保存历史 SecretKey 值。
@@ -66,5 +74,7 @@ public class VolcengineImageModelConfig extends BaseImageConfig {
      * @deprecated 仅用于源码兼容，该值不会发送给方舟接口。
      */
     @Deprecated
-    public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
+    public void setSecretKey(String secretKey) {
+        this.secretKey = secretKey;
+    }
 }

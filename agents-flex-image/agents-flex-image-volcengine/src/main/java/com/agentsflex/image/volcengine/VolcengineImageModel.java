@@ -25,15 +25,21 @@ import java.util.Map;
  * <p>通过 OpenAI 风格的同步 Images API 统一处理文生图、参考图生成、编辑和组图生成。</p>
  */
 public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelConfig> {
-    /** 执行方舟 HTTP 请求的客户端；测试可通过包级构造方法注入替身。 */
+    /**
+     * 执行方舟 HTTP 请求的客户端；测试可通过包级构造方法注入替身。
+     */
     private final AgentsFlexHttpClient agentsFlexHttpClient;
 
-    /** 使用默认 HTTP 客户端创建火山引擎图片模型。 */
+    /**
+     * 使用默认 HTTP 客户端创建火山引擎图片模型。
+     */
     public VolcengineImageModel(VolcengineImageModelConfig config) {
         this(config, AgentsFlexHttpClient.getDefault());
     }
 
-    /** 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。 */
+    /**
+     * 供同包测试注入 HTTP 客户端，避免单元测试访问真实服务。
+     */
     VolcengineImageModel(VolcengineImageModelConfig config, AgentsFlexHttpClient agentsFlexHttpClient) {
         super(config);
         this.agentsFlexHttpClient = agentsFlexHttpClient;
@@ -129,7 +135,9 @@ public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelCon
         return response;
     }
 
-    /** 构建 JSON Content-Type 与 Bearer Token 鉴权请求头。 */
+    /**
+     * 构建 JSON Content-Type 与 Bearer Token 鉴权请求头。
+     */
     private Map<String, String> headers() {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
