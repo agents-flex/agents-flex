@@ -14,44 +14,68 @@ import java.util.List;
  * 除了继承 {@link BaseModelConfig} 提供的服务商、端点、模型和 API Key 等连接配置外，
  * 还描述当前默认模型支持的视频生成能力、输入限制以及异步任务轮询参数。
  * <p>
- * 能力字段主要用于能力展示、调用前判断和上层 UI 配置，不会自动修改请求载荷。
- * 当调用方通过请求临时切换模型时，应同步确认目标模型的实际能力。
+ * 能力字段用于能力展示、上层 UI 配置和 {@link BaseVideoModel} 的提交前统一校验，
+ * 不会自动修改请求载荷。适配器可以覆盖按模型查询方法，使请求临时切换模型时仍使用正确能力。
  */
 public class BaseVideoConfig extends BaseModelConfig {
-    /** 是否支持仅使用文本提示词生成视频。 */
+    /**
+     * 是否支持仅使用文本提示词生成视频。
+     */
     protected Boolean supportTextToVideo;
 
-    /** 是否支持使用单张图片作为起始画面生成视频。 */
+    /**
+     * 是否支持使用单张图片作为起始画面生成视频。
+     */
     protected Boolean supportImageToVideo;
 
-    /** 是否支持同时指定首帧和尾帧生成过渡视频。 */
+    /**
+     * 是否支持同时指定首帧和尾帧生成过渡视频。
+     */
     protected Boolean supportFirstLastFrame;
 
-    /** 是否支持使用一张或多张参考图片约束主体、场景或风格。 */
+    /**
+     * 是否支持使用一张或多张参考图片约束主体、场景或风格。
+     */
     protected Boolean supportReferenceImages;
 
-    /** 是否支持输入源视频进行编辑、重绘或风格转换。 */
+    /**
+     * 是否支持输入源视频进行编辑、重绘或风格转换。
+     */
     protected Boolean supportVideoToVideo;
 
-    /** 是否支持输入音频，用于口型、动作或节奏驱动等场景。 */
+    /**
+     * 是否支持输入音频，用于口型、动作或节奏驱动等场景。
+     */
     protected Boolean supportAudioInput;
 
-    /** 是否支持在生成视频的同时由模型生成音频。 */
+    /**
+     * 是否支持在生成视频的同时由模型生成音频。
+     */
     protected Boolean supportAudioGeneration;
 
-    /** 是否支持负向提示词。 */
+    /**
+     * 是否支持负向提示词。
+     */
     protected Boolean supportNegativePrompt;
 
-    /** 是否支持由服务商自动扩写或优化提示词。 */
+    /**
+     * 是否支持由服务商自动扩写或优化提示词。
+     */
     protected Boolean supportPromptExtend;
 
-    /** 是否支持固定摄像机选项。 */
+    /**
+     * 是否支持固定摄像机选项。
+     */
     protected Boolean supportCameraFixed;
 
-    /** 是否支持控制生成结果中的水印。 */
+    /**
+     * 是否支持控制生成结果中的水印。
+     */
     protected Boolean supportWatermark;
 
-    /** 是否支持指定随机种子。 */
+    /**
+     * 是否支持指定随机种子。
+     */
     protected Boolean supportSeed;
 
     /**
@@ -75,6 +99,11 @@ public class BaseVideoConfig extends BaseModelConfig {
     protected List<String> supportedAspectRatios;
 
     /**
+     * 当前模型支持的视频生成方式。
+     */
+    protected List<VideoGenerationMode> supportedGenerationModes;
+
+    /**
      * 查询异步任务的路径模板，其中 {@code {taskId}} 会被实际任务 ID 替换。
      * 例如 {@code /api/v1/tasks/{taskId}}。
      */
@@ -90,56 +119,251 @@ public class BaseVideoConfig extends BaseModelConfig {
      */
     protected long timeoutMillis = 10 * 60_000L;
 
-    public Boolean getSupportTextToVideo() { return supportTextToVideo; }
-    public void setSupportTextToVideo(Boolean supportTextToVideo) { this.supportTextToVideo = supportTextToVideo; }
-    public boolean isSupportTextToVideo() { return supportTextToVideo != null && supportTextToVideo; }
-    public Boolean getSupportImageToVideo() { return supportImageToVideo; }
-    public void setSupportImageToVideo(Boolean supportImageToVideo) { this.supportImageToVideo = supportImageToVideo; }
-    public boolean isSupportImageToVideo() { return supportImageToVideo != null && supportImageToVideo; }
-    public Boolean getSupportFirstLastFrame() { return supportFirstLastFrame; }
-    public void setSupportFirstLastFrame(Boolean supportFirstLastFrame) { this.supportFirstLastFrame = supportFirstLastFrame; }
-    public boolean isSupportFirstLastFrame() { return supportFirstLastFrame != null && supportFirstLastFrame; }
-    public Boolean getSupportReferenceImages() { return supportReferenceImages; }
-    public void setSupportReferenceImages(Boolean supportReferenceImages) { this.supportReferenceImages = supportReferenceImages; }
-    public boolean isSupportReferenceImages() { return supportReferenceImages != null && supportReferenceImages; }
-    public Boolean getSupportVideoToVideo() { return supportVideoToVideo; }
-    public void setSupportVideoToVideo(Boolean supportVideoToVideo) { this.supportVideoToVideo = supportVideoToVideo; }
-    public boolean isSupportVideoToVideo() { return supportVideoToVideo != null && supportVideoToVideo; }
-    public Boolean getSupportAudioInput() { return supportAudioInput; }
-    public void setSupportAudioInput(Boolean supportAudioInput) { this.supportAudioInput = supportAudioInput; }
-    public boolean isSupportAudioInput() { return supportAudioInput != null && supportAudioInput; }
-    public Boolean getSupportAudioGeneration() { return supportAudioGeneration; }
-    public void setSupportAudioGeneration(Boolean supportAudioGeneration) { this.supportAudioGeneration = supportAudioGeneration; }
-    public boolean isSupportAudioGeneration() { return supportAudioGeneration != null && supportAudioGeneration; }
-    public Boolean getSupportNegativePrompt() { return supportNegativePrompt; }
-    public void setSupportNegativePrompt(Boolean supportNegativePrompt) { this.supportNegativePrompt = supportNegativePrompt; }
-    public boolean isSupportNegativePrompt() { return supportNegativePrompt != null && supportNegativePrompt; }
-    public Boolean getSupportPromptExtend() { return supportPromptExtend; }
-    public void setSupportPromptExtend(Boolean supportPromptExtend) { this.supportPromptExtend = supportPromptExtend; }
-    public boolean isSupportPromptExtend() { return supportPromptExtend != null && supportPromptExtend; }
-    public Boolean getSupportCameraFixed() { return supportCameraFixed; }
-    public void setSupportCameraFixed(Boolean supportCameraFixed) { this.supportCameraFixed = supportCameraFixed; }
-    public boolean isSupportCameraFixed() { return supportCameraFixed != null && supportCameraFixed; }
-    public Boolean getSupportWatermark() { return supportWatermark; }
-    public void setSupportWatermark(Boolean supportWatermark) { this.supportWatermark = supportWatermark; }
-    public boolean isSupportWatermark() { return supportWatermark != null && supportWatermark; }
-    public Boolean getSupportSeed() { return supportSeed; }
-    public void setSupportSeed(Boolean supportSeed) { this.supportSeed = supportSeed; }
-    public boolean isSupportSeed() { return supportSeed != null && supportSeed; }
+    public Boolean getSupportTextToVideo() {
+        return supportTextToVideo;
+    }
 
-    public Integer getMaxReferenceImages() { return maxReferenceImages; }
-    public void setMaxReferenceImages(Integer maxReferenceImages) { this.maxReferenceImages = maxReferenceImages; }
-    public List<Integer> getSupportedDurations() { return supportedDurations; }
-    public void setSupportedDurations(List<Integer> supportedDurations) { this.supportedDurations = supportedDurations; }
-    public List<String> getSupportedResolutions() { return supportedResolutions; }
-    public void setSupportedResolutions(List<String> supportedResolutions) { this.supportedResolutions = supportedResolutions; }
-    public List<String> getSupportedAspectRatios() { return supportedAspectRatios; }
-    public void setSupportedAspectRatios(List<String> supportedAspectRatios) { this.supportedAspectRatios = supportedAspectRatios; }
+    public void setSupportTextToVideo(Boolean supportTextToVideo) {
+        this.supportTextToVideo = supportTextToVideo;
+    }
 
-    public String getQueryPath() { return queryPath; }
+    public boolean isSupportTextToVideo() {
+        return supportTextToVideo != null && supportTextToVideo;
+    }
+
+    public Boolean getSupportImageToVideo() {
+        return supportImageToVideo;
+    }
+
+    public void setSupportImageToVideo(Boolean supportImageToVideo) {
+        this.supportImageToVideo = supportImageToVideo;
+    }
+
+    public boolean isSupportImageToVideo() {
+        return supportImageToVideo != null && supportImageToVideo;
+    }
+
+    public Boolean getSupportFirstLastFrame() {
+        return supportFirstLastFrame;
+    }
+
+    public void setSupportFirstLastFrame(Boolean supportFirstLastFrame) {
+        this.supportFirstLastFrame = supportFirstLastFrame;
+    }
+
+    public boolean isSupportFirstLastFrame() {
+        return supportFirstLastFrame != null && supportFirstLastFrame;
+    }
+
+    public Boolean getSupportReferenceImages() {
+        return supportReferenceImages;
+    }
+
+    public void setSupportReferenceImages(Boolean supportReferenceImages) {
+        this.supportReferenceImages = supportReferenceImages;
+    }
+
+    public boolean isSupportReferenceImages() {
+        return supportReferenceImages != null && supportReferenceImages;
+    }
+
+    public Boolean getSupportVideoToVideo() {
+        return supportVideoToVideo;
+    }
+
+    public void setSupportVideoToVideo(Boolean supportVideoToVideo) {
+        this.supportVideoToVideo = supportVideoToVideo;
+    }
+
+    public boolean isSupportVideoToVideo() {
+        return supportVideoToVideo != null && supportVideoToVideo;
+    }
+
+    public Boolean getSupportAudioInput() {
+        return supportAudioInput;
+    }
+
+    public void setSupportAudioInput(Boolean supportAudioInput) {
+        this.supportAudioInput = supportAudioInput;
+    }
+
+    public boolean isSupportAudioInput() {
+        return supportAudioInput != null && supportAudioInput;
+    }
+
+    public Boolean getSupportAudioGeneration() {
+        return supportAudioGeneration;
+    }
+
+    public void setSupportAudioGeneration(Boolean supportAudioGeneration) {
+        this.supportAudioGeneration = supportAudioGeneration;
+    }
+
+    public boolean isSupportAudioGeneration() {
+        return supportAudioGeneration != null && supportAudioGeneration;
+    }
+
+    public Boolean getSupportNegativePrompt() {
+        return supportNegativePrompt;
+    }
+
+    public void setSupportNegativePrompt(Boolean supportNegativePrompt) {
+        this.supportNegativePrompt = supportNegativePrompt;
+    }
+
+    public boolean isSupportNegativePrompt() {
+        return supportNegativePrompt != null && supportNegativePrompt;
+    }
+
+    public Boolean getSupportPromptExtend() {
+        return supportPromptExtend;
+    }
+
+    public void setSupportPromptExtend(Boolean supportPromptExtend) {
+        this.supportPromptExtend = supportPromptExtend;
+    }
+
+    public boolean isSupportPromptExtend() {
+        return supportPromptExtend != null && supportPromptExtend;
+    }
+
+    public Boolean getSupportCameraFixed() {
+        return supportCameraFixed;
+    }
+
+    public void setSupportCameraFixed(Boolean supportCameraFixed) {
+        this.supportCameraFixed = supportCameraFixed;
+    }
+
+    public boolean isSupportCameraFixed() {
+        return supportCameraFixed != null && supportCameraFixed;
+    }
+
+    public Boolean getSupportWatermark() {
+        return supportWatermark;
+    }
+
+    public void setSupportWatermark(Boolean supportWatermark) {
+        this.supportWatermark = supportWatermark;
+    }
+
+    public boolean isSupportWatermark() {
+        return supportWatermark != null && supportWatermark;
+    }
+
+    public Boolean getSupportSeed() {
+        return supportSeed;
+    }
+
+    public void setSupportSeed(Boolean supportSeed) {
+        this.supportSeed = supportSeed;
+    }
+
+    public boolean isSupportSeed() {
+        return supportSeed != null && supportSeed;
+    }
+
+    public Integer getMaxReferenceImages() {
+        return maxReferenceImages;
+    }
+
+    public void setMaxReferenceImages(Integer maxReferenceImages) {
+        this.maxReferenceImages = maxReferenceImages;
+    }
+
+    public List<Integer> getSupportedDurations() {
+        return supportedDurations;
+    }
+
+    /**
+     * 获取指定模型支持的时长；基础实现仅描述当前配置模型。
+     */
+    public List<Integer> getSupportedDurations(String model) {
+        return sameModel(model) ? supportedDurations : null;
+    }
+
+    public void setSupportedDurations(List<Integer> supportedDurations) {
+        this.supportedDurations = supportedDurations;
+    }
+
+    public List<String> getSupportedResolutions() {
+        return supportedResolutions;
+    }
+
+    /**
+     * 获取指定模型支持的清晰度；基础实现仅描述当前配置模型。
+     */
+    public List<String> getSupportedResolutions(String model) {
+        return sameModel(model) ? supportedResolutions : null;
+    }
+
+    public void setSupportedResolutions(List<String> supportedResolutions) {
+        this.supportedResolutions = supportedResolutions;
+    }
+
+    public List<String> getSupportedAspectRatios() {
+        return supportedAspectRatios;
+    }
+
+    /**
+     * 获取指定模型支持的视频比例；基础实现仅描述当前配置模型。
+     */
+    public List<String> getSupportedAspectRatios(String model) {
+        return sameModel(model) ? supportedAspectRatios : null;
+    }
+
+    public void setSupportedAspectRatios(List<String> supportedAspectRatios) {
+        this.supportedAspectRatios = supportedAspectRatios;
+    }
+
+    public List<VideoGenerationMode> getSupportedGenerationModes() {
+        return supportedGenerationModes;
+    }
+
+    /**
+     * 获取指定模型支持的生成方式；基础实现仅描述当前配置模型。
+     */
+    public List<VideoGenerationMode> getSupportedGenerationModes(String model) {
+        return sameModel(model) ? supportedGenerationModes : null;
+    }
+
+    public void setSupportedGenerationModes(List<VideoGenerationMode> supportedGenerationModes) {
+        this.supportedGenerationModes = supportedGenerationModes;
+        if (supportedGenerationModes == null) {
+            supportTextToVideo = null;
+            supportImageToVideo = null;
+            supportFirstLastFrame = null;
+            supportReferenceImages = null;
+            supportVideoToVideo = null;
+            supportAudioInput = null;
+            return;
+        }
+        supportTextToVideo = supportedGenerationModes.contains(VideoGenerationMode.TEXT_TO_VIDEO);
+        supportImageToVideo = supportedGenerationModes.contains(VideoGenerationMode.FIRST_FRAME);
+        supportFirstLastFrame = supportedGenerationModes.contains(VideoGenerationMode.FIRST_LAST_FRAME);
+        supportReferenceImages = supportedGenerationModes.contains(VideoGenerationMode.REFERENCE_IMAGES) ||
+            supportedGenerationModes.contains(VideoGenerationMode.OMNI_REFERENCE);
+        supportVideoToVideo = supportedGenerationModes.contains(VideoGenerationMode.VIDEO_TO_VIDEO) ||
+            supportedGenerationModes.contains(VideoGenerationMode.OMNI_REFERENCE);
+        supportAudioInput = supportedGenerationModes.contains(VideoGenerationMode.AUDIO_DRIVEN) ||
+            supportedGenerationModes.contains(VideoGenerationMode.OMNI_REFERENCE);
+    }
+
+    /**
+     * 获取指定模型是否支持生成音频；{@code null} 表示未声明。
+     */
+    public Boolean getSupportAudioGeneration(String model) {
+        return sameModel(model) ? supportAudioGeneration : null;
+    }
+
+    public String getQueryPath() {
+        return queryPath;
+    }
+
     public void setQueryPath(String queryPath) {
         this.queryPath = queryPath != null && !queryPath.startsWith("/") ? "/" + queryPath : queryPath;
     }
+
     /**
      * 根据服务端地址、查询路径模板和任务 ID 构造完整查询地址。
      *
@@ -149,10 +373,26 @@ public class BaseVideoConfig extends BaseModelConfig {
     public String getQueryUrl(String taskId) {
         return getEndpoint() + queryPath.replace("{taskId}", taskId);
     }
-    public long getPollIntervalMillis() { return pollIntervalMillis; }
-    public void setPollIntervalMillis(long pollIntervalMillis) { this.pollIntervalMillis = pollIntervalMillis; }
-    public long getTimeoutMillis() { return timeoutMillis; }
-    public void setTimeoutMillis(long timeoutMillis) { this.timeoutMillis = timeoutMillis; }
+
+    public long getPollIntervalMillis() {
+        return pollIntervalMillis;
+    }
+
+    public void setPollIntervalMillis(long pollIntervalMillis) {
+        this.pollIntervalMillis = pollIntervalMillis;
+    }
+
+    public long getTimeoutMillis() {
+        return timeoutMillis;
+    }
+
+    public void setTimeoutMillis(long timeoutMillis) {
+        this.timeoutMillis = timeoutMillis;
+    }
+
+    private boolean sameModel(String model) {
+        return getModel() == null ? model == null : getModel().equals(model);
+    }
 
     @Override
     public String toString() {

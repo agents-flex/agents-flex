@@ -48,7 +48,7 @@ public class GiteeVideoModel extends BaseVideoModel<GiteeVideoModelConfig> {
      * @return 包含任务 ID 和当前状态的响应，参数不合法时返回错误响应
      */
     @Override
-    public VideoResponse generate(GenerateVideoRequest request) {
+    protected VideoResponse doGenerate(GenerateVideoRequest request) {
         if (request == null) return VideoResponse.error("request must not be null");
         String model = StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
         if (StringUtil.noText(model)) return VideoResponse.error("video model must not be empty");

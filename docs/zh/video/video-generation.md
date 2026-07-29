@@ -163,15 +163,45 @@ config.getMaxReferenceImages();
 config.getSupportedDurations();
 config.getSupportedResolutions();
 config.getSupportedAspectRatios();
+config.getSupportedGenerationModes();
 ```
 
-这些字段用于能力展示和调用前判断，不会自动修改或拒绝请求。通过 `request.setModel(...)` 临时切换模型时，应以目标模型能力为准。
+这些字段既用于能力展示，也由 `BaseVideoModel` 在提交任务前统一校验。请求中的清晰度、比例、时长或生成方式不在当前模型声明的枚举中时，框架直接返回 `VideoResponse.error(...)`，不会创建云端任务。列表为 `null` 表示适配器没有声明限制，未知或未来模型仍可透传。
+
+当请求通过 `request.setModel(...)` 临时切换模型时，框架会查询目标模型的能力，不会错误使用 Config 默认模型的枚举。
+
+### 生成方式
+
+`VideoGenerationMode` 统一描述输入素材的组织方式：
+
+| 枚举 | 说明 |
+| --- | --- |
+| `TEXT_TO_VIDEO` | 文生视频 |
+| `FIRST_FRAME` | 首帧图生视频 |
+| `FIRST_LAST_FRAME` | 首尾帧生视频 |
+| `REFERENCE_IMAGES` | 普通参考图生视频 |
+| `OMNI_REFERENCE` | 图片、视频、音频等多模态全能参考 |
+| `VIDEO_TO_VIDEO` | 视频编辑或视频生视频 |
+| `AUDIO_DRIVEN` | 音频驱动视频 |
+
+可以显式指定：
+
+```java
+request.setGenerationMode(VideoGenerationMode.FIRST_LAST_FRAME);
+request.setFirstFrame(firstFrame);
+request.setLastFrame(lastFrame);
+```
+
+未设置 `generationMode` 时，框架根据 `firstFrame`、`lastFrame`、`referenceImages`、`sourceVideo` 和 `audioUrl` 自动推断。显式模式与素材冲突时会在提交前返回错误。
+
+当 `generateAudio` 为 `true` 且目标模型明确声明不支持音频生成时，框架同样会拒绝请求；设置为 `false` 不要求模型具备音频生成能力。
 
 ## 请求参数
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `model` | `String` | 请求级模型；为空时使用 Config 默认模型 |
+| `generationMode` | `VideoGenerationMode` | 生成方式；为空时根据输入素材推断 |
 | `prompt` | `String` | 正向提示词 |
 | `negativePrompt` | `String` | 需要避免的内容或质量问题 |
 | `firstFrame` | `Image` | 图生视频输入图或首帧 |

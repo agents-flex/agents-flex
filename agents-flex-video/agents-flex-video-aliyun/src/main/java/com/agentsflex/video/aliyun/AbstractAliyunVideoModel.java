@@ -34,7 +34,7 @@ abstract class AbstractAliyunVideoModel<T extends BaseVideoConfig> extends BaseV
     }
 
     @Override
-    public final VideoResponse generate(GenerateVideoRequest request) {
+    protected final VideoResponse doGenerate(GenerateVideoRequest request) {
         if (request == null) return VideoResponse.error("request must not be null");
         String model = StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
         if (StringUtil.noText(model)) return VideoResponse.error("video model must not be empty");
@@ -58,13 +58,19 @@ abstract class AbstractAliyunVideoModel<T extends BaseVideoConfig> extends BaseV
         return parseResponse(json, true);
     }
 
-    /** 校验具体模型族的请求；合法时返回 {@code null}。 */
+    /**
+     * 校验具体模型族的请求；合法时返回 {@code null}。
+     */
     protected abstract String validate(String model, GenerateVideoRequest request);
 
-    /** 按具体模型族协议构造请求的 {@code input} 对象。 */
+    /**
+     * 按具体模型族协议构造请求的 {@code input} 对象。
+     */
     protected abstract JSONObject buildInput(String model, GenerateVideoRequest request);
 
-    /** 按具体模型族协议构造请求的 {@code parameters} 对象。 */
+    /**
+     * 按具体模型族协议构造请求的 {@code parameters} 对象。
+     */
     protected abstract JSONObject buildParameters(String model, GenerateVideoRequest request);
 
     @Override

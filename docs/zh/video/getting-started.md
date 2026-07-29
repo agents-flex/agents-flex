@@ -74,8 +74,10 @@ config.setApiKey(System.getenv("ARK_API_KEY"));
 
 ```java
 import com.agentsflex.core.model.video.GenerateVideoRequest;
+import com.agentsflex.core.model.video.VideoGenerationMode;
 
 GenerateVideoRequest request = new GenerateVideoRequest();
+request.setGenerationMode(VideoGenerationMode.TEXT_TO_VIDEO);
 request.setPrompt(
     "一架红色纸飞机飞过日出时的未来城市，电影感广角镜头，" +
     "镜头运动平滑，真实光照"

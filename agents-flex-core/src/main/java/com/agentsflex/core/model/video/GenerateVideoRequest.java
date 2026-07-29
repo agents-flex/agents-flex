@@ -18,6 +18,11 @@ import java.util.List;
  */
 public class GenerateVideoRequest extends BaseVideoRequest {
     /**
+     * 视频生成方式。为空时框架根据已设置的图片、视频和音频素材自动推断。
+     */
+    private VideoGenerationMode generationMode;
+
+    /**
      * 正向提示词，用于描述希望生成的视频内容、镜头、运动、风格和光照等信息。
      */
     private String prompt;
@@ -112,16 +117,54 @@ public class GenerateVideoRequest extends BaseVideoRequest {
      */
     private Boolean cameraFixed;
 
-    public String getPrompt() { return prompt; }
-    public void setPrompt(String prompt) { this.prompt = prompt; }
-    public String getNegativePrompt() { return negativePrompt; }
-    public void setNegativePrompt(String negativePrompt) { this.negativePrompt = negativePrompt; }
-    public Image getFirstFrame() { return firstFrame; }
-    public void setFirstFrame(Image firstFrame) { this.firstFrame = firstFrame; }
-    public Image getLastFrame() { return lastFrame; }
-    public void setLastFrame(Image lastFrame) { this.lastFrame = lastFrame; }
-    public List<Image> getReferenceImages() { return referenceImages; }
-    public void setReferenceImages(List<Image> referenceImages) { this.referenceImages = referenceImages; }
+    public VideoGenerationMode getGenerationMode() {
+        return generationMode;
+    }
+
+    public void setGenerationMode(VideoGenerationMode generationMode) {
+        this.generationMode = generationMode;
+    }
+
+    public String getPrompt() {
+        return prompt;
+    }
+
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
+    }
+
+    public String getNegativePrompt() {
+        return negativePrompt;
+    }
+
+    public void setNegativePrompt(String negativePrompt) {
+        this.negativePrompt = negativePrompt;
+    }
+
+    public Image getFirstFrame() {
+        return firstFrame;
+    }
+
+    public void setFirstFrame(Image firstFrame) {
+        this.firstFrame = firstFrame;
+    }
+
+    public Image getLastFrame() {
+        return lastFrame;
+    }
+
+    public void setLastFrame(Image lastFrame) {
+        this.lastFrame = lastFrame;
+    }
+
+    public List<Image> getReferenceImages() {
+        return referenceImages;
+    }
+
+    public void setReferenceImages(List<Image> referenceImages) {
+        this.referenceImages = referenceImages;
+    }
+
     /**
      * 添加一张参考图片。
      *
@@ -131,44 +174,129 @@ public class GenerateVideoRequest extends BaseVideoRequest {
         if (referenceImages == null) referenceImages = new ArrayList<>();
         referenceImages.add(image);
     }
-    public Video getSourceVideo() { return sourceVideo; }
-    public void setSourceVideo(Video sourceVideo) { this.sourceVideo = sourceVideo; }
-    public String getAudioUrl() { return audioUrl; }
-    public void setAudioUrl(String audioUrl) { this.audioUrl = audioUrl; }
-    public Integer getDuration() { return duration; }
-    public void setDuration(Integer duration) { this.duration = duration; }
-    public Integer getWidth() { return width; }
-    public void setWidth(Integer width) { this.width = width; }
-    public Integer getHeight() { return height; }
-    public void setHeight(Integer height) { this.height = height; }
+
+    public Video getSourceVideo() {
+        return sourceVideo;
+    }
+
+    public void setSourceVideo(Video sourceVideo) {
+        this.sourceVideo = sourceVideo;
+    }
+
+    public String getAudioUrl() {
+        return audioUrl;
+    }
+
+    public void setAudioUrl(String audioUrl) {
+        this.audioUrl = audioUrl;
+    }
+
+    public Integer getDuration() {
+        return duration;
+    }
+
+    public void setDuration(Integer duration) {
+        this.duration = duration;
+    }
+
+    public Integer getWidth() {
+        return width;
+    }
+
+    public void setWidth(Integer width) {
+        this.width = width;
+    }
+
+    public Integer getHeight() {
+        return height;
+    }
+
+    public void setHeight(Integer height) {
+        this.height = height;
+    }
+
     /**
      * 同时设置期望输出的视频宽度和高度。
      *
-     * @param width 宽度，单位为像素
+     * @param width  宽度，单位为像素
      * @param height 高度，单位为像素
      */
-    public void setSize(Integer width, Integer height) { this.width = width; this.height = height; }
+    public void setSize(Integer width, Integer height) {
+        this.width = width;
+        this.height = height;
+    }
+
     /**
      * 获取由宽高组成的尺寸字符串，格式为 {@code 宽*高}，例如 {@code 1280*720}。
      * 宽度或高度未设置时返回 {@code null}。
      *
      * @return 服务商常用的尺寸字符串
      */
-    public String getSizeString() { return width != null && height != null ? width + "*" + height : null; }
-    public String getResolution() { return resolution; }
-    public void setResolution(String resolution) { this.resolution = resolution; }
-    public String getAspectRatio() { return aspectRatio; }
-    public void setAspectRatio(String aspectRatio) { this.aspectRatio = aspectRatio; }
-    public Integer getFps() { return fps; }
-    public void setFps(Integer fps) { this.fps = fps; }
-    public Integer getSeed() { return seed; }
-    public void setSeed(Integer seed) { this.seed = seed; }
-    public Boolean getWatermark() { return watermark; }
-    public void setWatermark(Boolean watermark) { this.watermark = watermark; }
-    public Boolean getPromptExtend() { return promptExtend; }
-    public void setPromptExtend(Boolean promptExtend) { this.promptExtend = promptExtend; }
-    public Boolean getGenerateAudio() { return generateAudio; }
-    public void setGenerateAudio(Boolean generateAudio) { this.generateAudio = generateAudio; }
-    public Boolean getCameraFixed() { return cameraFixed; }
-    public void setCameraFixed(Boolean cameraFixed) { this.cameraFixed = cameraFixed; }
+    public String getSizeString() {
+        return width != null && height != null ? width + "*" + height : null;
+    }
+
+    public String getResolution() {
+        return resolution;
+    }
+
+    public void setResolution(String resolution) {
+        this.resolution = resolution;
+    }
+
+    public String getAspectRatio() {
+        return aspectRatio;
+    }
+
+    public void setAspectRatio(String aspectRatio) {
+        this.aspectRatio = aspectRatio;
+    }
+
+    public Integer getFps() {
+        return fps;
+    }
+
+    public void setFps(Integer fps) {
+        this.fps = fps;
+    }
+
+    public Integer getSeed() {
+        return seed;
+    }
+
+    public void setSeed(Integer seed) {
+        this.seed = seed;
+    }
+
+    public Boolean getWatermark() {
+        return watermark;
+    }
+
+    public void setWatermark(Boolean watermark) {
+        this.watermark = watermark;
+    }
+
+    public Boolean getPromptExtend() {
+        return promptExtend;
+    }
+
+    public void setPromptExtend(Boolean promptExtend) {
+        this.promptExtend = promptExtend;
+    }
+
+    public Boolean getGenerateAudio() {
+        return generateAudio;
+    }
+
+    public void setGenerateAudio(Boolean generateAudio) {
+        this.generateAudio = generateAudio;
+    }
+
+    public Boolean getCameraFixed() {
+        return cameraFixed;
+    }
+
+    public void setCameraFixed(Boolean cameraFixed) {
+        this.cameraFixed = cameraFixed;
+    }
 }

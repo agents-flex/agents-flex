@@ -30,7 +30,7 @@ public class VolcengineVideoModel extends BaseVideoModel<VolcengineVideoModelCon
     }
 
     @Override
-    public VideoResponse generate(GenerateVideoRequest request) {
+    protected VideoResponse doGenerate(GenerateVideoRequest request) {
         if (request == null) return VideoResponse.error("request must not be null");
         String model = StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
         if (StringUtil.noText(model)) return VideoResponse.error("video model must not be empty");
