@@ -50,7 +50,7 @@ public class AliyunImageModel extends BaseImageModel<AliyunImageModelConfig> {
      * <p>请求模型优先于配置模型；方法会根据模型族自动选择同步多模态协议或内部任务轮询协议。</p>
      */
     @Override
-    public ImageResponse generate(GenerateImageRequest request) {
+    protected ImageResponse doGenerate(GenerateImageRequest request) {
         if (request == null) return ImageResponse.error("request must not be null");
         String model = StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
         if (StringUtil.noText(model)) return ImageResponse.error("image model must not be empty");

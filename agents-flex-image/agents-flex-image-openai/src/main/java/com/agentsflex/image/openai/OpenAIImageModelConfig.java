@@ -53,26 +53,41 @@ public class OpenAIImageModelConfig extends BaseImageConfig {
     public void setModel(String model) {
         super.setModel(model);
         String currentModel = getModel();
-        setSupportedResolutions(supportedResolutions(currentModel));
-        setSupportedAspectRatios(supportedAspectRatios(currentModel));
-        setSupportedQualities(supportedQualities(currentModel));
+        setSupportedResolutions(resolutionsForModel(currentModel));
+        setSupportedAspectRatios(aspectRatiosForModel(currentModel));
+        setSupportedQualities(qualitiesForModel(currentModel));
     }
 
-    static java.util.List<String> supportedResolutions(String model) {
+    @Override
+    public java.util.List<String> getSupportedResolutions(String model) {
+        return resolutionsForModel(model);
+    }
+
+    @Override
+    public java.util.List<String> getSupportedAspectRatios(String model) {
+        return aspectRatiosForModel(model);
+    }
+
+    @Override
+    public java.util.List<String> getSupportedQualities(String model) {
+        return qualitiesForModel(model);
+    }
+
+    private static java.util.List<String> resolutionsForModel(String model) {
         if (isGptImageModel(model)) return GPT_IMAGE_RESOLUTIONS;
         if (OpenAIImageModels.DALL_E_3.equals(model)) return DALL_E_3_RESOLUTIONS;
         if (OpenAIImageModels.DALL_E_2.equals(model)) return DALL_E_2_RESOLUTIONS;
         return null;
     }
 
-    static java.util.List<String> supportedAspectRatios(String model) {
+    private static java.util.List<String> aspectRatiosForModel(String model) {
         if (isGptImageModel(model)) return GPT_IMAGE_ASPECT_RATIOS;
         if (OpenAIImageModels.DALL_E_3.equals(model)) return DALL_E_3_ASPECT_RATIOS;
         if (OpenAIImageModels.DALL_E_2.equals(model)) return DALL_E_2_ASPECT_RATIOS;
         return null;
     }
 
-    static java.util.List<String> supportedQualities(String model) {
+    private static java.util.List<String> qualitiesForModel(String model) {
         if (isGptImageModel(model)) return GPT_IMAGE_QUALITIES;
         if (OpenAIImageModels.DALL_E_3.equals(model)) return DALL_E_3_QUALITIES;
         if (OpenAIImageModels.DALL_E_2.equals(model)) return DALL_E_2_QUALITIES;

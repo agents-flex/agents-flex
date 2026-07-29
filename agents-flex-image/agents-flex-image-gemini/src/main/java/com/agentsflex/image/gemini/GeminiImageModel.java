@@ -55,7 +55,7 @@ public class GeminiImageModel extends BaseImageModel<GeminiImageModelConfig> {
      * 同步执行文生图、图片编辑或多图融合请求。
      */
     @Override
-    public ImageResponse generate(GenerateImageRequest request) {
+    protected ImageResponse doGenerate(GenerateImageRequest request) {
         ImageResponse validationError = validate(request);
         if (validationError != null) return validationError;
 
@@ -159,12 +159,6 @@ public class GeminiImageModel extends BaseImageModel<GeminiImageModelConfig> {
         if (request.getSequentialGeneration() != null || request.getMaxImages() != null) {
             return ImageResponse.error("sequential generation options are not supported by Gemini");
         }
-        ImageResponse valueError = validateSupportedValue("resolution", request.getResolution(),
-            GeminiImageModelConfig.supportedResolutions(model), model);
-        if (valueError != null) return valueError;
-        valueError = validateSupportedValue("aspectRatio", stringOption(request, OPTION_ASPECT_RATIO),
-            GeminiImageModelConfig.supportedAspectRatios(model), model);
-        if (valueError != null) return valueError;
         List<Image> inputImages = request.getInputImages();
         int maxInputImages = maxInputImages(model);
         if (inputImages != null && inputImages.size() > maxInputImages) {
@@ -229,6 +223,16 @@ public class GeminiImageModel extends BaseImageModel<GeminiImageModelConfig> {
 
     private String resolveModel(GenerateImageRequest request) {
         return request != null && StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
+    }
+
+    @Override
+    protected String resolveAspectRatioForValidation(GenerateImageRequest request) {
+        return stringOption(request, OPTION_ASPECT_RATIO);
+    }
+
+    @Override
+    protected String resolveResolutionForValidation(GenerateImageRequest request) {
+        return request.getResolution();
     }
 
     private Map<String, String> headers() {

@@ -43,8 +43,8 @@ public class GeminiImageModelConfig extends BaseImageConfig {
     public void setModel(String model) {
         super.setModel(model);
         String currentModel = getModel();
-        setSupportedResolutions(supportedResolutions(currentModel));
-        setSupportedAspectRatios(supportedAspectRatios(currentModel));
+        setSupportedResolutions(resolutionsForModel(currentModel));
+        setSupportedAspectRatios(aspectRatiosForModel(currentModel));
         if (GeminiImageModels.GEMINI_3_1_FLASH_IMAGE.equals(currentModel)) {
             setMaxInputImages(14);
         } else if (GeminiImageModels.GEMINI_3_1_FLASH_LITE_IMAGE.equals(currentModel)) {
@@ -59,7 +59,17 @@ public class GeminiImageModelConfig extends BaseImageConfig {
         setSupportedQualities(null);
     }
 
-    static java.util.List<String> supportedResolutions(String model) {
+    @Override
+    public java.util.List<String> getSupportedResolutions(String model) {
+        return resolutionsForModel(model);
+    }
+
+    @Override
+    public java.util.List<String> getSupportedAspectRatios(String model) {
+        return aspectRatiosForModel(model);
+    }
+
+    private static java.util.List<String> resolutionsForModel(String model) {
         if (GeminiImageModels.GEMINI_3_1_FLASH_IMAGE.equals(model)) {
             return Arrays.asList("512", "1K", "2K", "4K");
         }
@@ -69,7 +79,7 @@ public class GeminiImageModelConfig extends BaseImageConfig {
         return null;
     }
 
-    static java.util.List<String> supportedAspectRatios(String model) {
+    private static java.util.List<String> aspectRatiosForModel(String model) {
         if (GeminiImageModels.GEMINI_3_1_FLASH_IMAGE.equals(model) ||
             GeminiImageModels.GEMINI_3_1_FLASH_LITE_IMAGE.equals(model)) return EXTENDED_ASPECT_RATIOS;
         if (GeminiImageModels.GEMINI_3_PRO_IMAGE.equals(model) ||

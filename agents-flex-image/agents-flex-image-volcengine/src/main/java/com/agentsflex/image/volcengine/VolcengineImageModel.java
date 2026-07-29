@@ -50,7 +50,7 @@ public class VolcengineImageModel extends BaseImageModel<VolcengineImageModelCon
      * <p>将统一请求映射到方舟 Images API，并强制关闭流式响应以返回完整的最终图片。</p>
      */
     @Override
-    public ImageResponse generate(GenerateImageRequest request) {
+    protected ImageResponse doGenerate(GenerateImageRequest request) {
         if (request == null) return ImageResponse.error("request must not be null");
         String model = StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
         if (StringUtil.noText(model)) return ImageResponse.error("image model must not be empty");

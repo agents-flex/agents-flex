@@ -266,12 +266,26 @@ public class BaseImageConfig extends BaseModelConfig {
         return supportedResolutions;
     }
 
+    /**
+     * 获取指定模型的分辨率枚举。基础实现仅能描述配置对象当前选择的模型。
+     */
+    public List<String> getSupportedResolutions(String model) {
+        return sameModel(model) ? supportedResolutions : null;
+    }
+
     public void setSupportedResolutions(List<String> values) {
         supportedResolutions = values;
     }
 
     public List<String> getSupportedAspectRatios() {
         return supportedAspectRatios;
+    }
+
+    /**
+     * 获取指定模型的宽高比枚举。基础实现仅能描述配置对象当前选择的模型。
+     */
+    public List<String> getSupportedAspectRatios(String model) {
+        return sameModel(model) ? supportedAspectRatios : null;
     }
 
     public void setSupportedAspectRatios(List<String> values) {
@@ -282,7 +296,18 @@ public class BaseImageConfig extends BaseModelConfig {
         return supportedQualities;
     }
 
+    /**
+     * 获取指定模型的画质枚举。基础实现仅能描述配置对象当前选择的模型。
+     */
+    public List<String> getSupportedQualities(String model) {
+        return sameModel(model) ? supportedQualities : null;
+    }
+
     public void setSupportedQualities(List<String> values) {
         supportedQualities = values;
+    }
+
+    private boolean sameModel(String model) {
+        return getModel() == null ? model == null : getModel().equals(model);
     }
 }

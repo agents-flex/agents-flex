@@ -61,7 +61,7 @@ public class GiteeImageModel extends BaseImageModel<GiteeImageModelConfig> {
      * <p>方法先完成公共参数校验，再根据是否存在输入图片选择文生图或编辑端点。</p>
      */
     @Override
-    public ImageResponse generate(GenerateImageRequest request) {
+    protected ImageResponse doGenerate(GenerateImageRequest request) {
         ImageResponse validationError = validate(request);
         if (validationError != null) return validationError;
 

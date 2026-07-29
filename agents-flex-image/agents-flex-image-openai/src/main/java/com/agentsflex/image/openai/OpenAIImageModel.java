@@ -57,7 +57,7 @@ public class OpenAIImageModel extends BaseImageModel<OpenAIImageModelConfig> {
      * 构建同步 Images API 请求并解析 URL 或 Base64 图片响应。
      */
     @Override
-    public ImageResponse generate(GenerateImageRequest request) {
+    protected ImageResponse doGenerate(GenerateImageRequest request) {
         ImageResponse validationError = validate(request);
         if (validationError != null) return validationError;
 
@@ -113,12 +113,6 @@ public class OpenAIImageModel extends BaseImageModel<OpenAIImageModelConfig> {
         if (StringUtil.hasText(request.getStyle()) && !OpenAIImageModels.DALL_E_3.equals(model)) {
             return ImageResponse.error("style is only supported by dall-e-3");
         }
-        ImageResponse valueError = validateSupportedValue("size", resolveSize(request),
-            OpenAIImageModelConfig.supportedResolutions(model), model);
-        if (valueError != null) return valueError;
-        valueError = validateSupportedValue("quality", request.getQuality(),
-            OpenAIImageModelConfig.supportedQualities(model), model);
-        if (valueError != null) return valueError;
         return validateOptions(request);
     }
 
