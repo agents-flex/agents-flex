@@ -1,5 +1,16 @@
 # Agents-Flex ChangeLog
 
+## v2.2.6 20260731
+- chore(deps): update fastjson2 dependency to version 2.0.63
+- feat(message): enhance JSON sanitization for unquoted string values in tool calls
+- feat(video): enhance video configuration with generation mode support and validation
+- feat(image): add model-specific capability validation framework
+- feat(image): add OpenAI and Gemini image model adapters
+- refactor(image): enhance image configuration with additional properties and validation
+- refactor(image): standardize JavaDoc comments across image adapter implementations
+- feat(openai): add OpenAI image generation model adapter
+
+
 ## v2.2.5 20260727
 - fix: Fix session directory conversion failure issue in Windows environment
 - docs(toolsearch): add comprehensive documentation and improve code comments for tool search functionality
