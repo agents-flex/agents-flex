@@ -151,6 +151,31 @@ public class ToolCallTest {
     }
 
     @Test
+    public void testGetArgsMap_UnquotedStringValue_IsPreservedAsString() {
+        ToolCall toolCall = new ToolCall();
+        toolCall.setArguments("{\"status\":success,\"message\":operation completed}");
+
+        Map<String, Object> result = toolCall.getArgsMap();
+
+        assertEquals("success", result.get("status"));
+        assertEquals("operation completed", result.get("message"));
+    }
+
+    @Test
+    public void testGetArgsMap_UnquotedStringValue_DoesNotChangeJsonTypes() {
+        ToolCall toolCall = new ToolCall();
+        toolCall.setArguments("{\"status\":success,\"count\":3,\"enabled\":true,\"empty\":null}");
+
+        Map<String, Object> result = toolCall.getArgsMap();
+
+        assertEquals("success", result.get("status"));
+        assertEquals(3, result.get("count"));
+        assertEquals(true, result.get("enabled"));
+        assertTrue(result.containsKey("empty"));
+        assertNull(result.get("empty"));
+    }
+
+    @Test
     public void testGetArgsMap_ComplexFunctionWithQuotesAndRegex_IsPreserved() {
         ToolCall toolCall = new ToolCall();
         String function = "function(params) { "

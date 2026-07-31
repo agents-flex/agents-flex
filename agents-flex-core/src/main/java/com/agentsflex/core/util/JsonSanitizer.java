@@ -36,7 +36,8 @@ public final class JsonSanitizer {
      * 将文本中的常见 JavaScript 值转换为合法的 JSON 字符串值。
      *
      * <p>当前支持函数、异步函数、箭头函数、{@code new} 表达式、正则字面量、
-     * {@code undefined}、{@code NaN}、{@code Infinity} 以及单引号字符串。</p>
+     * {@code undefined}、{@code NaN}、{@code Infinity}、单引号字符串，以及对象中
+     * 未使用引号包裹的字符串值。</p>
      *
      * @param text 待处理的 JSON 或类 JSON 文本
      * @return 可供 JSON 解析器继续尝试解析的文本；参数为 {@code null} 或空字符串时原样返回
@@ -71,6 +72,14 @@ public final class JsonSanitizer {
             }
             if (expectingValue && startsJavaScriptValue(text, i)) {
                 // 保留整个 JavaScript 表达式的源码，再将源码作为普通 JSON 字符串写入。
+                int end = findValueEnd(text, i);
+                String value = text.substring(i, end).trim();
+                result.append(JSON.toJSONString(value));
+                i = end;
+                expectingValue = false;
+                continue;
+            }
+            if (expectingValue && startsUnquotedStringValue(text, i)) {
                 int end = findValueEnd(text, i);
                 String value = text.substring(i, end).trim();
                 result.append(JSON.toJSONString(value));
@@ -224,6 +233,30 @@ public final class JsonSanitizer {
             return start + 1 < text.length() && text.charAt(start + 1) != '/' && text.charAt(start + 1) != '*';
         }
         return (c == '(' || isIdentifierStart(c)) && containsArrowBeforeDelimiter(text, start);
+    }
+
+    /**
+     * 判断对象属性值是否为普通的未加引号字符串。
+     *
+     * <p>只修复冒号后的值，避免将未加引号的对象字段名误判为字符串值。JSON 原生的
+     * {@code true}、{@code false} 和 {@code null} 保持原类型。</p>
+     */
+    private static boolean startsUnquotedStringValue(String text, int start) {
+        if (!isIdentifierStart(text.charAt(start)) || previousNonWhitespace(text, start) != ':') {
+            return false;
+        }
+        return !matchesWord(text, start, "true")
+            && !matchesWord(text, start, "false")
+            && !matchesWord(text, start, "null");
+    }
+
+    private static char previousNonWhitespace(String text, int start) {
+        for (int i = start - 1; i >= 0; i--) {
+            if (!Character.isWhitespace(text.charAt(i))) {
+                return text.charAt(i);
+            }
+        }
+        return '\0';
     }
 
     /**

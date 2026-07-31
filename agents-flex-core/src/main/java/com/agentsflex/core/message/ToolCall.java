@@ -81,7 +81,8 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
         }
 
         try {
-            return JSON.parseObject(JsonSanitizer.sanitize(originalJson));
+            String sanitizeJson = JsonSanitizer.sanitize(originalJson);
+            return JSON.parseObject(sanitizeJson);
         } catch (RuntimeException e) {
             lastException = e;
         }
