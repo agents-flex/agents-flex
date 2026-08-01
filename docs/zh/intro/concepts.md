@@ -315,7 +315,7 @@ Agents-Flex 已提供 Redis、Milvus、Elasticsearch、OpenSearch、PgVector、Q
 | 路由类型 | 根据什么选择 | 选择的目标 |
 | --- | --- | --- |
 | Model Router | 标签、权重、活跃请求、节点健康 | 某个 Chat 或 Embedding 模型节点 |
-| Routing Agent | 用户关键词、对话上下文、LLM 判断 | 某个业务 Agent |
+| Agent Router（平台能力） | 用户关键词、对话上下文、LLM 判断 | 某个业务 Agent |
 | Tool Choice | Prompt 中的工具描述和模型判断 | 某个 Tool |
 
 [Model Router](./model-router.md) 提供最少活跃与加权随机负载均衡、自动重试、熔断、半开恢复和标签过滤。上层仍然使用普通 `ChatModel` 或 `EmbeddingModel` 接口，因此模型节点变化不会侵入业务代码。

@@ -22,6 +22,7 @@
         <module>todolist-demo</module>
         <module>websearch-demo</module>
         <module>agent-demo</module>
+        <module>agent-console-demo</module>
     </modules>
 
     <properties>

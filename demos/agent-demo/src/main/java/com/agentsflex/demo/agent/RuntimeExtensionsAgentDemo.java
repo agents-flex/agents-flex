@@ -6,32 +6,32 @@
  */
 package com.agentsflex.demo.agent;
 
-import com.agentsflex.core.agent.Agent;
-import com.agentsflex.core.agent.AgentInvocationContext;
-import com.agentsflex.core.agent.AgentRun;
-import com.agentsflex.core.agent.AgentRunOptions;
-import com.agentsflex.core.agent.AgentRunStatus;
-import com.agentsflex.core.agent.AgentRunner;
-import com.agentsflex.core.agent.context.InMemoryAgentArtifactStore;
-import com.agentsflex.core.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.core.agent.context.ToolResultOffloadPolicy;
-import com.agentsflex.core.agent.command.InMemoryAgentRunCommandStore;
-import com.agentsflex.core.agent.event.AgentRuntimeEvent;
-import com.agentsflex.core.agent.event.AgentRuntimeEventType;
-import com.agentsflex.core.agent.event.InMemoryAgentRunEventStore;
-import com.agentsflex.core.agent.middleware.AgentMiddleware;
-import com.agentsflex.core.agent.middleware.AgentMiddlewareContext;
-import com.agentsflex.core.agent.middleware.AgentModelCallChain;
-import com.agentsflex.core.agent.middleware.AgentToolCallChain;
-import com.agentsflex.core.agent.middleware.AgentToolCallContext;
-import com.agentsflex.core.agent.registry.InMemoryAgentRegistry;
-import com.agentsflex.core.agent.store.InMemoryAgentRunStore;
-import com.agentsflex.core.agent.tool.AgentToolProgressEmitter;
-import com.agentsflex.core.agent.tool.InMemoryAgentToolRegistry;
+import com.agentsflex.agent.Agent;
+import com.agentsflex.agent.AgentInvocationContext;
+import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentRunOptions;
+import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentRunner;
+import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
+import com.agentsflex.agent.context.MessageCountAgentContextManager;
+import com.agentsflex.agent.context.ToolResultOffloadPolicy;
+import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
+import com.agentsflex.agent.event.AgentRuntimeEvent;
+import com.agentsflex.agent.event.AgentRuntimeEventType;
+import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.middleware.AgentMiddleware;
+import com.agentsflex.agent.middleware.AgentMiddlewareContext;
+import com.agentsflex.agent.middleware.AgentModelCallChain;
+import com.agentsflex.agent.middleware.AgentToolCallChain;
+import com.agentsflex.agent.middleware.AgentToolCallContext;
+import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.tool.AgentToolProgressEmitter;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolContextHolder;
@@ -108,8 +108,7 @@ public final class RuntimeExtensionsAgentDemo {
 
         AgentRunner runner = AgentRunner.builder()
             .runStore(new InMemoryAgentRunStore())
-            .agentRegistry(new InMemoryAgentRegistry())
-            .toolRegistry(new InMemoryAgentToolRegistry())
+            .agentLoader(new InMemoryAgentLoader(agent))
             .eventStore(new InMemoryAgentRunEventStore())
             .commandStore(new InMemoryAgentRunCommandStore())
             .artifactStore(artifactStore)
@@ -122,14 +121,14 @@ public final class RuntimeExtensionsAgentDemo {
             .requestId("request-runtime-1")
             .streaming(true)
             .build();
-        AgentRun run = AgentRun.start(agent, "开始生成报告",
-            AgentRunOptions.builder().invocationContext(invocation).build());
-        // 添加旧历史以触发压缩；这些消息会进入真实 AgentRun 和 Checkpoint。
+        // 使用 Runner 的公开入口携带旧历史创建 Run，确保初始状态立即写入 Checkpoint。
+        List<Message> conversationHistory = new ArrayList<>();
         for (int i = 1; i <= 6; i++) {
-            run.getPrompt().addUserMessage("旧消息 " + i);
+            conversationHistory.add(new UserMessage("旧消息 " + i));
         }
-
-        AgentRun completed = runner.run(run);
+        AgentRun completed = runner.run(agent, conversationHistory,
+            new UserMessage("开始生成报告"),
+            AgentRunOptions.builder().invocationContext(invocation).build());
         DemoSupport.require(completed.getStatus() == AgentRunStatus.COMPLETED,
             "运行时扩展场景应正常完成");
 

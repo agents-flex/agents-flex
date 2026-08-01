@@ -16,7 +16,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 - **Unified model abstractions**: `ChatModel`, `EmbeddingModel`, `ImageModel`, `RerankModel`, and other interfaces wrap provider-specific capabilities.
 - **Consistent sync and streaming APIs**: The same Prompt, Options, interceptor, and context mechanisms work for both normal chat and streaming output.
 - **Complete Tool Calling flow**: Supports annotation-based scanning, programmatic tool building, tool execution, tool message feedback, and tool-level observability.
-- **Built-in Agent capabilities**: Includes ReAct Agent, Routing Agent, Subagent, Skills, and other mechanisms for complex tasks.
+- **Durable Agent runtime**: Provides checkpoint recovery, tool approval, Worker leases, middleware, event streams, task planning, and sub-agent scheduling.
 - **Full RAG building blocks**: Includes document models, parsing, splitting, Embedding, vector stores, retrieval, and Rerank support.
 - **Production-oriented design**: Includes model routing, retry, load balancing, circuit breaking, OpenTelemetry observability, and Text2SQL safety interceptors.
 
@@ -24,7 +24,9 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 
 | Module | Description |
 | --- | --- |
-| `agents-flex-core` | Core abstractions: Chat, Prompt, Message, Tool, Memory, Agent, Document, Store, Router, Observability |
+| `agents-flex-core` | Core abstractions: Chat, Prompt, Message, Tool, Memory, Document, Store, and observability |
+| `agents-flex-agent` | Durable Agent runtime: Run state, checkpoint recovery, Worker leases, approval, middleware, events, and task planning |
+| `agents-flex-agent-store` | JDBC and Redis persistence for Agent runs, commands, events, task plans, and artifacts |
 | `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |
 | `agents-flex-embedding` | Embedding model integrations: OpenAI, Ollama, Qwen |
 | `agents-flex-image` | Image model integrations: OpenAI, Gemini, Qwen, Alibaba Cloud, Gitee, Qianfan, SiliconFlow, Stability, Tencent, Volcengine |
@@ -285,6 +287,8 @@ It is designed for quickly integrating models and vector stores into existing Sp
 
 ```text
 agents-flex-core/                 Core APIs and base implementations
+agents-flex-agent/                Durable Agent runtime and extension contracts
+agents-flex-agent-store/          JDBC and Redis Agent runtime persistence
 agents-flex-observability/        OpenTelemetry persistence exporters
 agents-flex-chat/                 Chat model integrations
 agents-flex-embedding/            Embedding model integrations

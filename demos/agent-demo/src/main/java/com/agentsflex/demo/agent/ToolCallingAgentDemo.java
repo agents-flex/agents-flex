@@ -6,14 +6,14 @@
  */
 package com.agentsflex.demo.agent;
 
-import com.agentsflex.core.agent.Agent;
-import com.agentsflex.core.agent.AgentBudget;
-import com.agentsflex.core.agent.AgentExecutionPolicy;
-import com.agentsflex.core.agent.AgentRun;
-import com.agentsflex.core.agent.AgentRunOptions;
-import com.agentsflex.core.agent.AgentRunStatus;
-import com.agentsflex.core.agent.AgentRunner;
-import com.agentsflex.core.agent.tool.AgentToolInvocation;
+import com.agentsflex.agent.Agent;
+import com.agentsflex.agent.AgentBudget;
+import com.agentsflex.agent.AgentExecutionPolicy;
+import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentRunOptions;
+import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentRunner;
+import com.agentsflex.agent.tool.AgentToolInvocation;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;

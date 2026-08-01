@@ -6,22 +6,20 @@
  */
 package com.agentsflex.demo.agent;
 
-import com.agentsflex.core.agent.Agent;
-import com.agentsflex.core.agent.AgentResumeCommand;
-import com.agentsflex.core.agent.AgentRun;
-import com.agentsflex.core.agent.AgentRunSnapshot;
-import com.agentsflex.core.agent.AgentRunStatus;
-import com.agentsflex.core.agent.AgentRunner;
-import com.agentsflex.core.agent.AgentWorker;
-import com.agentsflex.core.agent.command.InMemoryAgentRunCommandStore;
-import com.agentsflex.core.agent.context.InMemoryAgentArtifactStore;
-import com.agentsflex.core.agent.event.AgentRunEvent;
-import com.agentsflex.core.agent.event.InMemoryAgentRunEventStore;
-import com.agentsflex.core.agent.registry.InMemoryAgentRegistry;
-import com.agentsflex.core.agent.store.InMemoryAgentRunStore;
-import com.agentsflex.core.agent.tool.AgentToolReference;
-import com.agentsflex.core.agent.tool.InMemoryAgentToolRegistry;
-import com.agentsflex.core.agent.tool.ToolApprovalDecision;
+import com.agentsflex.agent.Agent;
+import com.agentsflex.agent.AgentResumeCommand;
+import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentRunSnapshot;
+import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentRunner;
+import com.agentsflex.agent.AgentWorker;
+import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
+import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
+import com.agentsflex.agent.event.AgentRunEvent;
+import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Parameter;
@@ -89,17 +87,16 @@ public final class HumanApprovalAgentDemo {
                     : ToolApprovalDecision.ALLOW)
             .build();
 
-        // 两个 Runner 共享 Store 和 Registry，用来模拟“请求 A 暂停，请求 B 审批后恢复”。
-        // 真实多进程部署应将这些内存实现替换为数据库和应用级 Registry。
+        // 两个 Runner 共享 Store 和 Loader，用来模拟“请求 A 暂停，请求 B 审批后恢复”。
+        // 真实多进程部署应将 Store 替换为生产实现，并由业务 AgentLoader 从配置表组装 Agent。
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
-        InMemoryAgentRegistry agentRegistry = new InMemoryAgentRegistry();
-        InMemoryAgentToolRegistry toolRegistry = new InMemoryAgentToolRegistry();
+        InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
         InMemoryAgentRunEventStore eventStore = new InMemoryAgentRunEventStore();
         InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
         InMemoryAgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
 
         AgentRunner firstRunner = new AgentRunner(
-            runStore, agentRegistry, toolRegistry, eventStore, commandStore, artifactStore);
+            runStore, agentLoader, eventStore, commandStore, artifactStore);
         // run() 会执行到终态或阻塞态；遇到审批点时返回 WAITING_FOR_APPROVAL。
         AgentRun waiting = firstRunner.run(agent, "发布 order-api 2.4.0");
 
@@ -108,12 +105,12 @@ public final class HumanApprovalAgentDemo {
             "高风险工具执行前应暂停");
         DemoSupport.require(deployments.get() == 0, "审批前不能产生部署副作用");
 
-        // pending ToolCall 和 AgentToolReference 已在审批前持久化。恢复时不会重新调用模型
-        // 生成部署参数，也不会按工具名称猜测另一个实现。
+        // pending ToolCall 已在审批前持久化。恢复时不会重新调用模型生成部署参数，
+        // Runner 会从 Checkpoint 指定版本的 Agent 中取得同名工具。
         AgentRunSnapshot checkpoint = runStore.load(waiting.getId());
-        AgentToolReference reference = checkpoint.getPendingToolReferences().get("deploy-call-1");
-        System.out.println("pending tool : " + reference);
-        DemoSupport.require(reference != null, "Checkpoint 必须保存工具引用");
+        DemoSupport.require("deploy_service".equals(
+            checkpoint.getPendingToolCalls().get(0).getName()),
+            "Checkpoint 必须保存待执行 ToolCall");
 
         String callId = waiting.getSuspension().getCorrelationId();
         // correlationId 将审批决定绑定到当前待处理 ToolCall，metadata 用于保存审批审计信息。
@@ -122,7 +119,7 @@ public final class HumanApprovalAgentDemo {
             .withMetadata("approvalSource", "release-console");
 
         AgentRunner secondRunner = new AgentRunner(
-            runStore, agentRegistry, toolRegistry, eventStore, commandStore, artifactStore);
+            runStore, agentLoader, eventStore, commandStore, artifactStore);
         // 审批接口只负责把命令可靠写入 Inbox，不在当前请求中执行模型或部署工具。
         secondRunner.submitCommand("approval-deploy-call-1", waiting.getId(), approval);
         List<AgentRun> processed;

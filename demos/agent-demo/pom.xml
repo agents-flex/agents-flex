@@ -23,7 +23,7 @@
     <dependencies>
         <dependency>
             <groupId>com.agentsflex</groupId>
-            <artifactId>agents-flex-core</artifactId>
+            <artifactId>agents-flex-agent</artifactId>
         </dependency>
         <!-- Demo 提供一个轻量日志实现，避免运行时只有 SLF4J 门面而输出绑定警告。 -->
         <dependency>

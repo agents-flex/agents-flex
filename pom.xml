@@ -43,6 +43,8 @@
         <module>agents-flex-audio</module>
         <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
+        <module>agents-flex-agent</module>
+        <module>agents-flex-agent-store</module>
         <module>agents-flex-observability</module>
         <module>agents-flex-chat</module>
         <module>agents-flex-store</module>
@@ -159,6 +161,24 @@
             <dependency>
                 <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-agent</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-agent-store-jdbc</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-agent-store-redis</artifactId>
                 <version>${revision}</version>
             </dependency>
 

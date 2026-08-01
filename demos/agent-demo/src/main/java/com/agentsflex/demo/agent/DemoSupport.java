@@ -6,7 +6,7 @@
  */
 package com.agentsflex.demo.agent;
 
-import com.agentsflex.core.agent.AgentRun;
+import com.agentsflex.agent.AgentRun;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 

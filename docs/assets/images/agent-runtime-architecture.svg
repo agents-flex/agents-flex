@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
   <title id="title">Agents-Flex 现代 Agent 运行时架构</title>
-  <desc id="desc">Agent 定义、调用上下文、中间件、Runner、Worker、持久化 Store、Registry、实时事件和大型结果存储之间的关系。</desc>
+  <desc id="desc">业务配置、AgentLoader、调用上下文、中间件、Runner、Worker、持久化 Store、实时事件和大型结果存储之间的关系。</desc>
   <style>
     text { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #172033; letter-spacing: 0; }
     .title { font-size: 28px; font-weight: 700; }
@@ -28,10 +28,10 @@
   <text x="86" y="214" class="detail">生成可执行的 Agent 定义和 RunOptions</text>
 
   <rect x="435" y="103" width="330" height="142" class="box" fill="#e9f2ff" stroke="#4d8bd8"/>
-  <text x="461" y="138" class="name">Agent 不可变定义</text>
-  <text x="461" y="166" class="detail">Model、Tools、ExecutionMode、Policy</text>
-  <text x="461" y="190" class="detail">ContextManager、OffloadPolicy</text>
-  <text x="461" y="214" class="detail">Middleware、TaskPlanner、attributes</text>
+  <text x="461" y="138" class="name">业务配置与 AgentLoader</text>
+  <text x="461" y="166" class="detail">业务表、配置中心或远程配置服务</text>
+  <text x="461" y="190" class="detail">按 agentId + version 加载和组装</text>
+  <text x="461" y="214" class="detail">框架不限定配置模型和存储结构</text>
 
   <rect x="810" y="103" width="330" height="142" class="box" fill="#f4edff" stroke="#8557c8"/>
   <text x="836" y="138" class="name">AgentInvocationContext</text>
@@ -75,10 +75,10 @@
   <text x="354" y="650" class="detail">审批、输入与恢复动作</text>
 
   <rect x="600" y="540" width="245" height="130" class="box" fill="#ffffff" stroke="#7d8ba0"/>
-  <text x="624" y="574" class="name">Agent / Tool Registry</text>
-  <text x="624" y="602" class="detail">agentId + version</text>
-  <text x="624" y="626" class="detail">AgentToolReference + metadata</text>
-  <text x="624" y="650" class="detail">跨进程重建运行时对象</text>
+  <text x="624" y="574" class="name">AgentLoader</text>
+  <text x="624" y="602" class="detail">agentId + version 按需加载</text>
+  <text x="624" y="626" class="detail">组装模型、工具与策略</text>
+  <text x="624" y="650" class="detail">跨进程重建 Agent 与 Tool</text>
 
   <rect x="870" y="540" width="270" height="130" class="box" fill="#ffffff" stroke="#7d8ba0"/>
   <text x="894" y="574" class="name">Artifact Store</text>
@@ -97,6 +97,7 @@
   <text x="671" y="796" class="detail">审计、报表、断点消费与 Outbox 集成</text>
 
   <path d="M 390 174 L 435 174" class="arrow"/>
+  <path d="M 600 245 L 722 540" class="dash"/>
   <path d="M 765 174 L 810 174" class="dash"/>
   <path d="M 600 245 L 250 310" class="arrow"/>
   <path d="M 975 245 L 650 310" class="dash"/>

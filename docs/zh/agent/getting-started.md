@@ -1,199 +1,144 @@
 ---
-title: Agent 快速开始
-description: 从 ChatModel、Tool 和 Agent 定义开始，运行第一个模型原生工具调用智能体。
+title: Agent 快速开发
+description: 从 Maven 依赖、真实 ChatModel 和 Tool 开始，完成一次可持续对话的 Agent 调用。
 ---
 
-# Agent 快速开始
+# Agent 快速开发
 
-<div v-pre>
+## 概述
 
-## 准备工作
+本页完成一个可以直接回答问题、调用实时时间工具并持续对话的 Agent。示例只使用进程内 Store，适合先理解 API；它不包含分布式 Worker 和持久化数据库。
 
-Agent 核心 API 位于 `agents-flex-core`。实际调用模型时还需要一个模型实现，例如 OpenAI 兼容对话模块：
+## 快速开发
+
+下面从依赖、模型、工具和 Agent 定义开始，完成第一条消息，再把同一个 Runner 扩展为持续对话和多模态输入。
+
+## 添加依赖
+
+Agent 运行时与具体模型适配器是独立模块。使用 OpenAI-compatible 模型时加入：
 
 ```xml
 <dependency>
     <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-agent</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+<dependency>
+    <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-chat-openai</artifactId>
-    <version>2.2.6</version>
+    <version>${agents-flex.version}</version>
 </dependency>
 ```
 
-该模块会传递依赖 `agents-flex-core`。请通过环境变量提供密钥：
+`agents-flex-agent` 负责运行状态与调度，`agents-flex-chat-openai` 提供 ChatModel。使用其他模型时替换第二个依赖即可。
 
-```bash
-export AI_API_KEY="your-api-key"
-export AI_MODEL="gpt-4o"
-```
-
-## 第一个工具 Agent
-
-下面创建一个天气查询工具，让模型自行判断何时调用。
+## 创建 ChatModel
 
 ```java
-import com.agentsflex.core.agent.Agent;
-import com.agentsflex.core.agent.AgentRun;
-import com.agentsflex.core.agent.AgentRunner;
-import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.chat.tool.Parameter;
-import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.model.chat.openai.OpenAIChatConfig;
-
-public class WeatherAgentDemo {
-
-    public static void main(String[] args) {
-        ChatModel chatModel = OpenAIChatConfig.builder()
-            .apiKey(System.getenv("AI_API_KEY"))
-            .model(System.getenv("AI_MODEL"))
-            .buildModel();
-
-        Tool weather = Tool.builder("get_weather", "查询指定城市的天气")
-            .addParameter(Parameter.builder()
-                .name("city")
-                .type("string")
-                .description("城市名称")
-                .required(true)
-                .build())
-            .function(arguments -> {
-                String city = String.valueOf(arguments.get("city"));
-                return city + "：晴，24°C";
-            })
-            .build();
-
-        Agent agent = Agent.builder("weather-agent")
-            .instructions("你是天气助手。需要实时天气时调用工具，不要编造数据。")
-            .chatModel(chatModel)
-            .tool(weather)
-            .build();
-
-        AgentRun run = new AgentRunner().run(agent, "今天杭州天气怎么样？");
-
-        System.out.println("status = " + run.getStatus());
-        System.out.println("answer = " + run.getFinalOutput());
-    }
-}
+ChatModel chatModel = OpenAIChatConfig.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .endpoint("https://api.openai.com")
+    .requestPath("/v1/chat/completions")
+    .model("gpt-4.1-mini")
+    .supportTool(true)
+    .buildModel();
 ```
 
-典型执行过程：
+Agent 要调用工具，模型适配器必须启用并支持原生 ToolCall。endpoint、requestPath 和模型名应按实际服务调整。
 
-```text
-1. AgentRunner 创建并保存 AgentRun
-2. 模型返回 get_weather ToolCall
-3. Runner 执行天气工具
-4. Runner 写入 ToolMessage 和 Checkpoint
-5. 模型读取工具结果并返回最终回答
-6. Run 进入 COMPLETED
-```
-
-## 最重要的三个对象
-
-### Agent：能力定义
-
-`Agent` 是不可变定义，可以被多个请求复用：
+## 定义第一个 Tool
 
 ```java
-Agent agent = Agent.builder("weather-agent")
-    .id("weather-agent")
-    .version("1")
-    .instructions("你是天气助手")
-    .chatModel(chatModel)
-    .chatOptions(chatOptions)
-    .tools(tools)
-    .executionPolicy(executionPolicy)
+Tool currentTime = Tool.builder("get_current_time", "查询指定时区的当前时间")
+    .addParameter(Parameter.builder()
+        .name("zoneId")
+        .type("string")
+        .description("IANA 时区，例如 Asia/Shanghai")
+        .required(true)
+        .build())
+    .metadata("sideEffect", false)
+    .function(arguments -> ZonedDateTime.now(
+        ZoneId.of(String.valueOf(arguments.get("zoneId")))).toString())
     .build();
 ```
 
-`id` 用于 Checkpoint 恢复，发布后不要随意改变。
+工具名必须在一个 Agent 内唯一。描述和参数 Schema 是模型选择工具、生成参数的依据；Java 函数仍应自己校验参数和业务权限。
 
-### AgentRun：一次运行
-
-每个用户目标都创建独立 `AgentRun`：
+## 定义 Agent
 
 ```java
-AgentRun run = runner.start(agent, "查询杭州天气");
+Agent agent = Agent.builder("assistant")
+    .id("assistant")
+    .version("1")
+    .description("回答常见问题并查询实时时间")
+    .instructions(
+        "你是中文助手。普通问候直接回答；询问当前时间时必须调用 get_current_time。")
+    .chatModel(chatModel)
+    .tool(currentTime)
+    .build();
 ```
 
-Run 保存消息、状态、阶段、待执行工具、Token、重试、暂停和最终结果。通过 Runner 创建会立即保存初始 Checkpoint；不要在多个并发线程中同时推进同一个 Run。
+`id` 用于加载和恢复，`version` 让已创建的 Run 能绑定到同一套定义。生产环境应显式设置二者。
 
-### AgentRunner：执行器
-
-最简单的同步调用：
+## 执行一条消息
 
 ```java
-AgentRun completed = runner.run(agent, input);
-```
+AgentRunner runner = AgentRunner.builder()
+    .agentLoader(new InMemoryAgentLoader(agent))
+    .build();
 
-需要控制执行边界时：
+AgentRun run = runner.run(agent, "上海现在几点？");
 
-```java
-AgentRun run = runner.start(agent, input);
-
-while (!run.getStatus().isTerminal() && !run.getStatus().isBlocked()) {
-    runner.step(run);
-}
-```
-
-通常优先使用：
-
-```java
-runner.runUntilBlocked(run);
-```
-
-它会持续推进，直到完成、失败、预算耗尽，或者等待审批、用户、子 Agent 和重试时间。
-
-## 读取结果与状态
-
-```java
 if (run.getStatus() == AgentRunStatus.COMPLETED) {
     System.out.println(run.getFinalOutput());
-} else if (run.getStatus().isBlocked()) {
-    System.out.println(run.getSuspension().getMessage());
-} else if (run.getStatus() == AgentRunStatus.FAILED) {
-    run.getError().printStackTrace();
+} else {
+    System.out.println(run.getStatus());
 }
 ```
 
-常见终止状态：
+`run()` 会在当前线程执行到完成、失败、预算终止或等待外部事件。不要只读取最终文本，也应检查状态。
 
-| 状态 | 含义 |
-| --- | --- |
-| `COMPLETED` | 得到最终模型消息 |
-| `FAILED` | 不可恢复异常 |
-| `CANCELLED` | 收到取消请求 |
-| `MAX_ITERATIONS_REACHED` | 达到模型迭代上限 |
-| `BUDGET_EXCEEDED` | 时间、Token 或工具调用预算耗尽 |
-
-## 添加生命周期监听器
+## 持续对话
 
 ```java
-AgentRunner runner = new AgentRunner()
-    .addListener(new AgentListener() {
-        @Override
-        public void onToolStart(AgentRun run, ToolCall call) {
-            System.out.println("执行工具：" + call.getName());
-        }
+AgentConversation conversation = AgentConversation.create("user-42", agent);
 
-        @Override
-        public void onCheckpoint(AgentRun run, AgentRunSnapshot snapshot) {
-            System.out.println("保存版本：" + snapshot.getVersion());
-        }
-
-        @Override
-        public void onRunComplete(AgentRun run) {
-            System.out.println("运行完成：" + run.getId());
-        }
-    });
+AgentRun first = runner.run(conversation, "你好，我在上海");
+AgentRun second = runner.run(conversation, "那我这里现在几点？");
 ```
 
-监听器适合 UI 更新、日志和指标，不应该承担控制决策。需要审计和断点消费时使用持久化事件 Store。
+这里产生两个独立 Run，但共享 Conversation 的 Memory。第二轮能够理解“这里”指上海；第一轮和第二轮仍分别拥有自己的状态、Token、事件和 Checkpoint。
+
+## 多模态消息
+
+```java
+UserMessage message = new UserMessage("请分析这张图片中的异常");
+message.addImageUrl(imageUrl);
+
+AgentRun run = runner.run(conversation, message);
+```
+
+`UserMessage` 还可以添加音频、视频和文件 URL。最终能否理解对应内容取决于所选模型及模型适配器能力。
+
+## 添加运行身份
+
+租户、用户和请求 ID 不应写进系统指令。使用 `AgentInvocationContext`：
+
+```java
+AgentRunOptions options = AgentRunOptions.builder()
+    .invocationContext(AgentInvocationContext.builder()
+        .tenantId("tenant-a")
+        .userId("user-42")
+        .requestId("req-1001")
+        .build())
+    .metadata("taskType", "realtime-query")
+    .build();
+
+AgentRun run = runner.run(agent, new UserMessage("查询时间"), options);
+```
+
+Invocation Context 只在当前调用链存在；metadata 会进入 Snapshot，适合后续查询和审计。
 
 ## 下一步
 
-- [Agent Demo 场景与运行方式](./demos/)
-- [架构与核心组件](./architecture.md)
-- [Agent 与 AgentRun](./agent-and-run.md)
-- [工具执行与审批](./tools-and-approval.md)
-- [持久化工具审批 Demo](./demos/durable-tool-agent.md)
-- [平台集成与扩展](./platform-integration.md)
-
-</div>
+如果工具会修改外部状态，应继续阅读 [Tool 与审批](./tool.md)。任务可能超过接口超时时间时，使用 [Worker 与分布式执行](./worker.md)。完整可运行代码位于[示例与 Demo](./examples.md)。

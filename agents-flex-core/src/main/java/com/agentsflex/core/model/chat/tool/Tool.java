@@ -30,8 +30,8 @@ public interface Tool {
     /**
      * 返回工具定义的只读扩展元数据。
      *
-     * <p>元数据可用于工具绑定、审批、展示和审计。需要随 AgentRun 持久化的值应使用
-     * JSON 可序列化类型，并且不能包含密钥、客户端、连接或其他进程内对象。</p>
+     * <p>元数据可用于工具绑定、审批、展示和审计，不应包含密钥、客户端、连接或其他不适合暴露的
+     * 进程内对象。</p>
      */
     default Map<String, Object> getMetadata() {
         return Collections.emptyMap();

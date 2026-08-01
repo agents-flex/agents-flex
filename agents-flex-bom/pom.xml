@@ -58,6 +58,21 @@
 
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-agent</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-agent-store-jdbc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-agent-store-redis</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-observability-jdbc</artifactId>
         </dependency>
 

@@ -1,0 +1,450 @@
+/*
+ * Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ */
+package com.agentsflex.agent;
+
+import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.store.AgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.tool.ToolApprovalDecision;
+import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.message.ToolMessage;
+import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.core.model.chat.ChatOptions;
+import com.agentsflex.core.model.chat.StreamResponseListener;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.tool.Parameter;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.prompt.Prompt;
+import org.junit.Test;
+
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+public class AgentAdvancedFeaturesTest {
+
+    @Test
+    public void shouldApproveToolBeforeExecution() {
+        QueueChatModel model = new QueueChatModel();
+        AtomicInteger executions = new AtomicInteger();
+        model.enqueue(prompt -> aiWithCalls(new ToolCall("danger-1", "danger", "{}")));
+        model.enqueue(prompt -> new AiMessage("approved"));
+        Agent agent = Agent.builder("approval-agent")
+            .chatModel(model)
+            .tool(tool("danger", args -> executions.incrementAndGet()))
+            .toolApprovalPolicy((run, call, tool) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .build();
+        AgentRunner runner = new AgentRunner(
+            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
+
+        AgentRun waiting = runner.run(agent, "execute");
+        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
+        assertEquals(0, executions.get());
+        assertEquals("danger-1", waiting.getSuspension().getCorrelationId());
+
+        AgentRun completed = runner.resume(waiting.getId(),
+            AgentResumeCommand.approveTool("danger-1"));
+        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(1, executions.get());
+    }
+
+    @Test
+    public void shouldReturnRejectedToolResultToModel() {
+        QueueChatModel model = new QueueChatModel();
+        AtomicInteger executions = new AtomicInteger();
+        model.enqueue(prompt -> aiWithCalls(new ToolCall("danger-2", "danger", "{}")));
+        model.enqueue(prompt -> {
+            Message last = prompt.getMessages().get(prompt.getMessages().size() - 1);
+            assertTrue(last instanceof ToolMessage);
+            assertTrue(last.getTextContent().contains("tool_rejected"));
+            assertTrue(last.getTextContent().contains("not allowed"));
+            return new AiMessage("rejected safely");
+        });
+        Agent agent = Agent.builder("rejection-agent")
+            .chatModel(model)
+            .tool(tool("danger", args -> executions.incrementAndGet()))
+            .toolApprovalPolicy((run, call, tool) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .build();
+        AgentRunner runner = new AgentRunner();
+
+        AgentRun waiting = runner.run(agent, "execute");
+        AgentRun completed = runner.resume(waiting,
+            AgentResumeCommand.rejectTool("danger-2", "not allowed"));
+
+        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals("rejected safely", completed.getFinalOutput());
+        assertEquals(0, executions.get());
+    }
+
+    @Test
+    public void shouldRetryDueRunThroughWorkerLease() {
+        QueueChatModel model = new QueueChatModel();
+        model.enqueue(prompt -> { throw new RuntimeException("temporary"); });
+        model.enqueue(prompt -> new AiMessage("recovered"));
+        Agent agent = Agent.builder("retry-agent")
+            .chatModel(model)
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .retryPolicy(AgentRetryPolicy.builder()
+                    .maxRetries(2)
+                    .initialDelayMillis(0)
+                    .maxDelayMillis(0)
+                    .build())
+                .build())
+            .build();
+        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
+
+        AgentRun scheduled = runner.run(agent, "retry");
+        assertEquals(AgentRunStatus.RETRY_SCHEDULED, scheduled.getStatus());
+        assertEquals(1, scheduled.getRetryCount());
+
+        List<AgentRun> processed = new AgentWorker("worker-a", runner, 10000).pollAndRun(1);
+        assertEquals(1, processed.size());
+        assertEquals(AgentRunStatus.COMPLETED, processed.get(0).getStatus());
+        assertEquals("recovered", processed.get(0).getFinalOutput());
+    }
+
+    @Test
+    public void shouldClaimRunWithOnlyOneWorker() {
+        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
+        Agent agent = Agent.builder("lease-agent").chatModel(new QueueChatModel()).build();
+        AgentRun run = runner.start(agent, "lease");
+        long now = System.currentTimeMillis();
+
+        List<AgentRunSnapshot> first = store.claimRunnable("worker-a", now, 10000, 1);
+        List<AgentRunSnapshot> second = store.claimRunnable("worker-b", now, 10000, 1);
+
+        assertEquals(1, first.size());
+        assertTrue(second.isEmpty());
+        assertEquals(run.getId(), first.get(0).getRunId());
+        store.releaseLease(run.getId(), "worker-a", first.get(0).getLeaseId());
+        assertEquals(1, store.claimRunnable("worker-b", now, 10000, 1).size());
+    }
+
+    @Test
+    public void shouldRejectExecutionOutsideActiveLease() {
+        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        QueueChatModel model = new QueueChatModel();
+        model.enqueue(prompt -> new AiMessage("must not run"));
+        Agent agent = Agent.builder("leased-agent").chatModel(model).build();
+        InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
+        AgentRunner runner = new AgentRunner(store, registry);
+        AgentRun run = runner.start(agent, "lease");
+        store.claimRunnable("worker-a", System.currentTimeMillis(), 10000, 1);
+
+        try {
+            runner.runUntilBlocked(run.getId());
+            fail("Expected active lease validation");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("worker-a"));
+        }
+        assertEquals(0, model.getCallCount());
+    }
+
+    @Test
+    public void shouldScheduleChildAndResumeParent() {
+        QueueChatModel parentModel = new QueueChatModel();
+        parentModel.enqueue(prompt -> new AiMessage("parent model result"));
+        QueueChatModel childModel = new QueueChatModel();
+        childModel.enqueue(prompt -> new AiMessage("child result"));
+        Agent parentAgent = Agent.builder("parent-agent")
+            .chatModel(parentModel).build();
+        Agent childAgent = Agent.builder("child-agent").chatModel(childModel).build();
+        InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
+        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(), registry);
+
+        AgentRun parent = runner.start(parentAgent, "parent input");
+        AgentRun child = runner.startChild(parent, "child-agent", "child input");
+        assertEquals(AgentRunStatus.WAITING_FOR_CHILD, parent.getStatus());
+        assertEquals(child.getId(), parent.getSuspension().getCorrelationId());
+
+        child = runner.runUntilBlocked(child.getId());
+        assertEquals(AgentRunStatus.COMPLETED, child.getStatus());
+        AgentRun resumedParent = runner.resumeParentFromChild(child);
+        assertEquals(AgentRunStatus.RUNNING, resumedParent.getStatus());
+        AgentRun completedParent = runner.runUntilBlocked(resumedParent);
+
+        assertEquals(AgentRunStatus.COMPLETED, completedParent.getStatus());
+        assertEquals("parent model result", completedParent.getFinalOutput());
+        assertTrue(completedParent.getPrompt().getMessages().stream()
+            .anyMatch(message -> message.getTextContent().contains("child result")));
+    }
+
+    @Test
+    public void shouldStopWhenTokenBudgetIsExceeded() {
+        QueueChatModel model = new QueueChatModel();
+        model.enqueue(prompt -> {
+            AiMessage message = new AiMessage("large response");
+            message.setTotalTokens(11);
+            return message;
+        });
+        Agent agent = Agent.builder("budget-agent")
+            .chatModel(model)
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .budget(AgentBudget.builder().maxTotalTokens(10).build())
+                .build())
+            .build();
+
+        AgentRun run = new AgentRunner().run(agent, "budget");
+
+        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, run.getStatus());
+        assertEquals("maxTotalTokens", run.getBudgetExceededReason());
+    }
+
+    @Test
+    public void shouldStopWhenWallClockBudgetIsExceeded() {
+        QueueChatModel model = new QueueChatModel();
+        model.enqueue(prompt -> {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(error);
+            }
+            return new AiMessage("late response");
+        });
+        Agent agent = Agent.builder("time-budget-agent")
+            .chatModel(model)
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .budget(AgentBudget.builder().maxDurationMillis(1).build())
+                .build())
+            .build();
+
+        AgentRun run = new AgentRunner().run(agent, "budget");
+
+        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, run.getStatus());
+        assertEquals("maxDurationMillis", run.getBudgetExceededReason());
+    }
+
+    @Test
+    public void shouldStopBeforeToolCallBeyondBudget() {
+        QueueChatModel model = new QueueChatModel();
+        AtomicInteger executions = new AtomicInteger();
+        model.enqueue(prompt -> aiWithCalls(
+            new ToolCall("one", "work", "{}"),
+            new ToolCall("two", "work", "{}")));
+        Agent agent = Agent.builder("tool-budget-agent")
+            .chatModel(model)
+            .tool(tool("work", args -> executions.incrementAndGet()))
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .budget(AgentBudget.builder().maxToolCalls(1).build())
+                .build())
+            .build();
+
+        AgentRun run = new AgentRunner().run(agent, "budget");
+
+        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, run.getStatus());
+        assertEquals("maxToolCalls", run.getBudgetExceededReason());
+        assertEquals(1, executions.get());
+    }
+
+    @Test
+    public void shouldAutomaticallyPollRunnableRuns() throws Exception {
+        QueueChatModel model = new QueueChatModel();
+        model.enqueue(prompt -> new AiMessage("background complete"));
+        Agent agent = Agent.builder("background-agent").chatModel(model).build();
+        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
+        CountDownLatch completed = new CountDownLatch(1);
+        runner.addListener(new AgentListener() {
+            @Override
+            public void onRunComplete(AgentRun run) { completed.countDown(); }
+        });
+        AgentRun scheduled = runner.start(agent, "background");
+
+        AgentWorker worker = new AgentWorker("background-worker", runner, 10000);
+        try {
+            worker.startPolling(5, 1);
+            assertTrue(completed.await(2, TimeUnit.SECONDS));
+        } finally {
+            worker.close();
+        }
+
+        assertEquals(AgentRunStatus.COMPLETED,
+            runner.restore(scheduled.getId()).getStatus());
+    }
+
+    @Test
+    public void shouldResolvePendingToolInAnotherRunner() {
+        InMemoryAgentRunStore durableStore = new InMemoryAgentRunStore();
+        CrashOnPendingStore crashingStore = new CrashOnPendingStore(durableStore);
+        QueueChatModel model = new QueueChatModel();
+        AtomicInteger executions = new AtomicInteger();
+        model.enqueue(prompt -> aiWithCalls(new ToolCall("remote-1", "remote", "{}")));
+        model.enqueue(prompt -> new AiMessage("done"));
+        Agent agent = Agent.builder("remote-agent")
+            .chatModel(model)
+            .tool(tool("remote", args -> executions.incrementAndGet()))
+            .build();
+        InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
+        AgentRunner first = new AgentRunner(crashingStore, registry);
+        AgentRun run = first.start(agent, "remote");
+        try {
+            first.step(run);
+            fail("Expected simulated crash");
+        } catch (SimulatedCrash expected) {
+            // pending ToolCall 已写入持久化 Store。
+        }
+
+        AgentRunner second = new AgentRunner(durableStore, registry);
+        AgentRun restored = second.runUntilBlocked(run.getId());
+
+        assertEquals(AgentRunStatus.COMPLETED, restored.getStatus());
+        assertEquals(1, executions.get());
+        assertEquals(2, model.getCallCount());
+    }
+
+    @Test
+    public void shouldNotRepeatCompletedToolAfterCrash() {
+        InMemoryAgentRunStore durableStore = new InMemoryAgentRunStore();
+        CrashAfterFirstToolStore crashingStore = new CrashAfterFirstToolStore(durableStore);
+        QueueChatModel model = new QueueChatModel();
+        AtomicInteger firstExecutions = new AtomicInteger();
+        AtomicInteger secondExecutions = new AtomicInteger();
+        model.enqueue(prompt -> aiWithCalls(
+            new ToolCall("first-1", "first", "{}"),
+            new ToolCall("second-1", "second", "{}")));
+        model.enqueue(prompt -> new AiMessage("done"));
+        Agent agent = Agent.builder("partial-agent")
+            .chatModel(model)
+            .tool(tool("first", args -> firstExecutions.incrementAndGet()))
+            .tool(tool("second", args -> secondExecutions.incrementAndGet()))
+            .build();
+        InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
+        AgentRunner first = new AgentRunner(crashingStore, registry);
+        AgentRun run = first.start(agent, "tools");
+        try {
+            first.step(run);
+            fail("Expected simulated crash");
+        } catch (SimulatedCrash expected) {
+            // 第一个工具结果已保存，第二个工具仍处于 pending 状态。
+        }
+
+        AgentRunner second = new AgentRunner(durableStore, registry);
+        AgentRun completed = second.runUntilBlocked(run.getId());
+
+        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(1, firstExecutions.get());
+        assertEquals(1, secondExecutions.get());
+    }
+
+    private static Tool tool(String name, Function<Map<String, Object>, Object> function) {
+        return new Tool() {
+            @Override public String getName() { return name; }
+            @Override public String getDescription() { return name; }
+            @Override public Parameter[] getParameters() { return new Parameter[0]; }
+            @Override public Object invoke(Map<String, Object> argsMap) { return function.apply(argsMap); }
+        };
+    }
+
+    private static AiMessage aiWithCalls(ToolCall... calls) {
+        AiMessage message = new AiMessage();
+        message.setToolCalls(Arrays.asList(calls));
+        return message;
+    }
+
+    private static AiMessageResponse response(Prompt prompt, AiMessage message) {
+        ChatContext context = new ChatContext();
+        context.setPrompt(prompt);
+        return new AiMessageResponse(context, null, message);
+    }
+
+    private static final class QueueChatModel implements ChatModel {
+        private final Deque<Function<Prompt, AiMessage>> responses = new ArrayDeque<>();
+        private int callCount;
+
+        void enqueue(Function<Prompt, AiMessage> value) { responses.add(value); }
+        int getCallCount() { return callCount; }
+
+        @Override
+        public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+            callCount++;
+            assertFalse("No queued response for model call " + callCount, responses.isEmpty());
+            return response(prompt, responses.removeFirst().apply(prompt));
+        }
+
+        @Override
+        public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    private static final class CrashOnPendingStore implements AgentRunStore {
+        private final AgentRunStore delegate;
+        private boolean crashed;
+
+        private CrashOnPendingStore(AgentRunStore delegate) { this.delegate = delegate; }
+        @Override public AgentRunSnapshot load(String runId) { return delegate.load(runId); }
+        @Override public boolean requestCancellation(String runId) {
+            return delegate.requestCancellation(runId);
+        }
+        @Override public boolean isCancellationRequested(String runId) {
+            return delegate.isCancellationRequested(runId);
+        }
+
+        @Override
+        public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
+            AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
+            if (!crashed && AgentRunPhase.TOOLS.equals(saved.getPhase())
+                && !saved.getPendingToolCalls().isEmpty()) {
+                crashed = true;
+                throw new SimulatedCrash();
+            }
+            return saved;
+        }
+    }
+
+    private static final class CrashAfterFirstToolStore implements AgentRunStore {
+        private final AgentRunStore delegate;
+        private boolean crashed;
+
+        private CrashAfterFirstToolStore(AgentRunStore delegate) { this.delegate = delegate; }
+        @Override public AgentRunSnapshot load(String runId) { return delegate.load(runId); }
+        @Override public boolean requestCancellation(String runId) {
+            return delegate.requestCancellation(runId);
+        }
+        @Override public boolean isCancellationRequested(String runId) {
+            return delegate.isCancellationRequested(runId);
+        }
+
+        @Override
+        public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
+            AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
+            if (!crashed && saved.getPendingToolCalls().size() == 1
+                && countToolMessages(saved.getMessages()) == 1) {
+                crashed = true;
+                throw new SimulatedCrash();
+            }
+            return saved;
+        }
+
+        private int countToolMessages(List<Message> messages) {
+            int count = 0;
+            for (Message message : messages) {
+                if (message instanceof ToolMessage) { count++; }
+            }
+            return count;
+        }
+    }
+
+    private static final class SimulatedCrash extends RuntimeException { }
+}

@@ -6,19 +6,18 @@
  */
 package com.agentsflex.demo.agent;
 
-import com.agentsflex.core.agent.Agent;
-import com.agentsflex.core.agent.AgentExecutionPolicy;
-import com.agentsflex.core.agent.AgentRetryPolicy;
-import com.agentsflex.core.agent.AgentRun;
-import com.agentsflex.core.agent.AgentRunStatus;
-import com.agentsflex.core.agent.AgentRunner;
-import com.agentsflex.core.agent.AgentWorker;
-import com.agentsflex.core.agent.event.AgentRunEvent;
-import com.agentsflex.core.agent.event.InMemoryAgentRunEventStore;
-import com.agentsflex.core.agent.registry.InMemoryAgentRegistry;
-import com.agentsflex.core.agent.store.InMemoryAgentRunStore;
-import com.agentsflex.core.agent.tool.AgentToolInvocation;
-import com.agentsflex.core.agent.tool.InMemoryAgentToolRegistry;
+import com.agentsflex.agent.Agent;
+import com.agentsflex.agent.AgentExecutionPolicy;
+import com.agentsflex.agent.AgentRetryPolicy;
+import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentRunner;
+import com.agentsflex.agent.AgentWorker;
+import com.agentsflex.agent.event.AgentRunEvent;
+import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.tool.AgentToolInvocation;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -81,10 +80,9 @@ public final class DurableWorkerAgentDemo {
             .build();
 
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
-        InMemoryAgentRegistry registry = new InMemoryAgentRegistry();
-        InMemoryAgentToolRegistry toolRegistry = new InMemoryAgentToolRegistry();
+        InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
         InMemoryAgentRunEventStore eventStore = new InMemoryAgentRunEventStore();
-        AgentRunner runner = new AgentRunner(runStore, registry, toolRegistry, eventStore);
+        AgentRunner runner = new AgentRunner(runStore, agentLoader, eventStore);
 
         AgentRun scheduled = runner.run(agent, "同步库存");
         DemoSupport.printRun(scheduled);
