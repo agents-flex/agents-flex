@@ -1,13 +1,7 @@
 package com.agentsflex.model.chat.openai;
 
-import com.agentsflex.core.agent.react.ReActAgent;
-import com.agentsflex.core.agent.react.ReActAgentListener;
-import com.agentsflex.core.agent.react.ReActAgentState;
-import com.agentsflex.core.agent.react.ReActStep;
-import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
-import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.*;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.ProviderTool;
@@ -499,110 +493,6 @@ public class OpenAIChatModelTest {
 
         System.out.println(llm.chat(prompt));
 
-    }
-
-
-    @Test()
-    public void testReAct1() throws InterruptedException {
-        OpenAIChatConfig config = new OpenAIChatConfig();
-//        config.setDebug(true);
-        config.setEndpoint("https://ai.gitee.com");
-        config.setModel("Qwen3-32B");
-        config.setApiKey("****");
-        config.setRetryEnabled(false);
-
-        OpenAIChatModel llm = new OpenAIChatModel(config);
-
-        List<Tool> tools = ToolScanner.scan(WeatherFunctions.class);
-//        ReActAgent reActAgent = new ReActAgent(llm, functions, "北京和上海的天气怎么样？");
-        ReActAgent reActAgent = new ReActAgent(llm, tools, "介绍一下北京");
-        reActAgent.addListener(new ReActAgentListener() {
-
-            @Override
-            public void onActionStart(ReActStep step) {
-                System.out.println(">>>>>>" + step.getThought());
-                System.out.println("正在调用工具 >>>>> " + step.getAction() + ":" + step.getActionInput());
-            }
-
-            @Override
-            public void onActionEnd(ReActStep step, Object result) {
-                System.out.println("工具调用结束 >>>>> " + step.getAction() + ":" + step.getActionInput() + ">>>>结果：" + result);
-            }
-
-            @Override
-            public void onFinalAnswer(String finalAnswer) {
-                System.out.println("onFinalAnswer >>>>>" + finalAnswer);
-            }
-
-            @Override
-            public void onNonActionResponse(AiMessageResponse response) {
-                System.out.println("onNonActionResponse >>>>>" + response.getMessage().getContent());
-            }
-        });
-
-        reActAgent.execute();
-    }
-
-
-    @Test()
-    public void testReAct2() throws InterruptedException {
-        OpenAIChatConfig config = new OpenAIChatConfig();
-//        config.setDebug(true);
-        config.setEndpoint("https://ai.gitee.com");
-        config.setModel("Qwen2-72B-Instruct");
-        config.setApiKey("*****");
-        config.setRetryEnabled(false);
-
-        OpenAIChatModel llm = new OpenAIChatModel(config);
-
-        List<Tool> tools = ToolScanner.scan(WeatherFunctions.class);
-        ReActAgent reActAgent = new ReActAgent(llm, tools, "今天的天气怎么样？");
-//        reActAgent.setStreamable(true);
-        reActAgent.addListener(new ReActAgentListener() {
-
-            @Override
-            public void onChatResponseStream(StreamContext context, AiMessageResponse response) {
-//                System.out.print(response.getMessage().getContent());
-            }
-
-            @Override
-            public void onRequestUserInput(String question) {
-                System.out.println("onRequestUserInput>>>" + question);
-
-                ReActAgentState state = reActAgent.getState();
-                state.addMessage(new UserMessage("我在北京市"));
-                ReActAgent newAgent = new ReActAgent(llm, tools, state);
-                newAgent.addListener(this);
-                newAgent.execute();
-            }
-
-            @Override
-            public void onActionStart(ReActStep step) {
-                System.out.println(">>>>>>" + step.getThought());
-                System.out.println("正在调用工具 >>>>> " + step.getAction() + ":" + step.getActionInput());
-            }
-
-            @Override
-            public void onActionEnd(ReActStep step, Object result) {
-                System.out.println("工具调用结束 >>>>> " + step.getAction() + ":" + step.getActionInput() + ">>>>结果：" + result);
-            }
-
-            @Override
-            public void onFinalAnswer(String finalAnswer) {
-                System.out.println("onFinalAnswer >>>>>" + finalAnswer);
-                ChatMemory memory = reActAgent.getMemoryPrompt().getMemory();
-                System.out.println(memory);
-            }
-
-            @Override
-            public void onNonActionResponseStream(StreamContext context) {
-                System.out.println("onNonActionResponseStream >>>>>" + context);
-            }
-        });
-
-        reActAgent.execute();
-
-        TimeUnit.SECONDS.sleep(20);
     }
 
 

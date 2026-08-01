@@ -45,8 +45,8 @@ layout: home
         </article>
         <article class="af-stack-node af-stack-node--agent">
           <div class="af-stack-node__head"><span>02 / AGENT</span><i aria-hidden="true"></i></div><h3>工具与智能体编排</h3>
-          <p>连接 Java 方法、MCP、Skills 与 Subagent，组织复杂任务流程。</p>
-          <div><span>Tool Calling</span><span>ReAct</span><span>Routing</span></div>
+          <p>连接 Java 方法、MCP、Skills 与 Subagent，组织可恢复、可追踪的智能任务。</p>
+          <div><span>AgentRun</span><span>Checkpoint</span><span>Subagent</span></div>
         </article>
         <article class="af-stack-node af-stack-node--knowledge">
           <div class="af-stack-node__head"><span>03 / KNOWLEDGE</span><i aria-hidden="true"></i></div><h3>RAG 与结构化知识</h3>
@@ -171,7 +171,7 @@ layout: home
       <div class="af-flow__item"><span>01</span><strong>接入模型</strong><p>按场景配置 ChatModel、ImageModel、语音模型或 VideoModel。</p></div>
       <div class="af-flow__item"><span>02</span><strong>暴露工具</strong><p>用注解或 Builder 将 Java 业务方法变成 Agent 可调用工具。</p></div>
       <div class="af-flow__item"><span>03</span><strong>接入知识</strong><p>组合 RAG、WebSearch、LLM Wiki，为回答提供外部上下文。</p></div>
-      <div class="af-flow__item"><span>04</span><strong>编排 Agent</strong><p>用 ReAct、Routing、Subagent 处理多步骤和多角色任务。</p></div>
+      <div class="af-flow__item"><span>04</span><strong>编排 Agent</strong><p>用持久化运行、任务规划和 Subagent 处理多步骤、多角色任务。</p></div>
       <div class="af-flow__item"><span>05</span><strong>上线观测</strong><p>接入路由、重试、熔断和 OpenTelemetry，稳定运行。</p></div>
     </div>
   </section>

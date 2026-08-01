@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.chat.tool;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -24,6 +25,7 @@ public class MapBuilder {
     private String name;
     private String description;
     private final List<Parameter> parameters = new ArrayList<>();
+    private final Map<String, Object> metadata = new LinkedHashMap<>();
     private Function<Map<String, Object>, Object> invoker;
 
     public MapBuilder name(String name) {
@@ -41,6 +43,23 @@ public class MapBuilder {
         return this;
     }
 
+    /** 添加或覆盖一项工具元数据。 */
+    public MapBuilder metadata(String key, Object value) {
+        if (key == null) {
+            throw new IllegalArgumentException("metadata key must not be null");
+        }
+        this.metadata.put(key, value);
+        return this;
+    }
+
+    /** 批量添加工具元数据。 */
+    public MapBuilder metadata(Map<String, ?> values) {
+        if (values != null) {
+            this.metadata.putAll(values);
+        }
+        return this;
+    }
+
     public MapBuilder function(Function<Map<String, Object>, Object> function) {
         this.invoker = function;
         return this;
@@ -51,6 +70,7 @@ public class MapBuilder {
         tool.setName(name);
         tool.setDescription(description);
         tool.setParameters(parameters.toArray(new Parameter[0]));
+        tool.setMetadata(metadata);
         tool.setInvoker(invoker);
         return tool;
     }

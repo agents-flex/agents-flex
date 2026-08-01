@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.agentsflex</groupId>
+        <artifactId>demos</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <name>agent-demo</name>
+    <artifactId>agent-demo</artifactId>
+
+    <properties>
+        <ignore.tests>true</ignore.tests>
+        <maven.test.skip>true</maven.test.skip>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <exec.mainClass>com.agentsflex.demo.agent.AgentDemoLauncher</exec.mainClass>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+        <!-- Demo 提供一个轻量日志实现，避免运行时只有 SLF4J 门面而输出绑定警告。 -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -153,6 +153,7 @@ public class UserMessage extends AbstractTextMessage<UserMessage> {
         if (this.audioUrls != null) copy.audioUrls = new ArrayList<>(this.audioUrls);
         if (this.videoUrls != null) copy.videoUrls = new ArrayList<>(this.videoUrls);
         if (this.imageUrls != null) copy.imageUrls = new ArrayList<>(this.imageUrls);
+        if (this.fileUrls != null) copy.fileUrls = new ArrayList<>(this.fileUrls);
 
         if (this.metadataMap != null) {
             copy.metadataMap = new HashMap<>(this.metadataMap);

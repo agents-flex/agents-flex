@@ -82,7 +82,17 @@ public class ToolExecutor {
      * @throws RuntimeException 包装原始异常
      */
     public Object execute() {
+        return execute(Collections.emptyMap());
+    }
+
+    /** 使用调用方提供的上下文属性执行工具。 */
+    public Object execute(Map<String, ?> contextAttributes) {
         try (ToolContextHolder.ToolContextScope scope = ToolContextHolder.beginExecute(tool, toolCall)) {
+            if (contextAttributes != null) {
+                for (Map.Entry<String, ?> entry : contextAttributes.entrySet()) {
+                    scope.context.setAttribute(entry.getKey(), entry.getValue());
+                }
+            }
             ToolChain chain = buildChain(0);
             return chain.proceed(scope.context);
         } catch (Exception e) {

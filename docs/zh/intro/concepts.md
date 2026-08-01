@@ -37,7 +37,7 @@ flowchart LR
 | 提示词 | `Prompt`、`SimplePrompt`、`MemoryPrompt` | 把消息、工具和元数据组织成模型输入 | 不等同于一段字符串 |
 | 记忆 | `ChatMemory` | 保存和读取会话历史 | 不等同于模型上下文窗口 |
 | 工具 | `Tool`、`ToolCall`、`ToolExecutor` | 把外部能力暴露给模型并执行 | 不负责决定整个任务流程 |
-| 智能体 | `IAgent`、`ReActAgent`、`RoutingAgent` | 推进多步骤任务和状态 | 不等同于 ChatModel |
+| 智能体 | `Agent`、`AgentRun`、`AgentRunner` | 推进工具调用、等待恢复和多步骤任务状态 | 不等同于 ChatModel |
 | 文档 | `Document`、`DocumentSplitter` | 表示和切分可检索知识 | 不负责生成回答 |
 | 向量检索 | `EmbeddingModel`、`VectorStore`、`SearchWrapper` | 将语义转成向量并召回候选知识 | 不保证最终排序和答案质量 |
 | 重排 | `RerankModel` | 对召回结果做更精确的相关性排序 | 不替代向量数据库 |
@@ -219,13 +219,13 @@ Agent 不是某种特定大模型，而是一种运行方式：它持有目标�
 
 Agents-Flex 当前提供的核心 Agent 能力包括：
 
-### ReAct Agent
+### Agent 智能体
 
-[ReAct Agent](../agent/react-agent.md) 在 Reasoning 与 Acting 之间循环。它可以直接回答简单问题；遇到需要外部信息的任务时选择工具；缺少必要信息时向用户请求澄清。执行状态可以保存并在之后恢复。
+[Agent 智能体](../agent/overview.md) 基于模型原生 ToolCall 推进模型与工具循环。它可以直接回答简单问题；遇到需要外部信息或业务操作的任务时选择工具；缺少必要信息时进入等待状态。运行过程通过 Checkpoint 保存，可以在其他请求、线程或进程中恢复。
 
-### Routing Agent
+### 任务规划与专业 Agent
 
-[Routing Agent](../agent/routing-agent.md) 根据关键词或 LLM 判断，把输入交给合适的专业 Agent。它解决的是**业务意图路由**，而 Model Router 解决的是**模型节点的负载均衡和高可用**，两者不要混淆。
+[任务规划与进度](../agent/task-planning.md) 将复杂目标拆成有序任务，并把任务分配给不同的专业 Agent。它解决的是任务拆解、执行协调和进度展示；Model Router 解决的是模型节点的负载均衡和高可用，两者不要混淆。
 
 ### Subagent
 
@@ -362,7 +362,7 @@ RAG 在请求时提供外部上下文，不会改变模型参数；微调或继�
 1. 通过 [快速开始](../chat/getting-started.md) 完成同步和流式模型调用；
 2. 阅读 [Message](../chat/message.md)、[Prompt](../chat/prompt.md) 与 [Memory](../chat/memory.md)，理解上下文如何构造；
 3. 使用 [Tool](../chat/tool.md) 让模型调用一个真实 Java 方法；
-4. 根据任务选择 [ReAct Agent](../agent/react-agent.md)、[MCP](../chat/mcp.md)、[Skills](../skills/overview.md) 或 [Subagent](../chat/subagent.md)；
+4. 根据任务选择 [Agent 智能体](../agent/overview.md)、[MCP](../chat/mcp.md)、[Skills](../skills/overview.md) 或 [Subagent](../chat/subagent.md)；
 5. 需要企业知识时接入 [RAG](../rag/document.md)、[LLM Wiki](../chat/llm-wiki.md) 或 [Text2SQL](../chat/text2sql.md)；
 6. 上线前补齐 [模型路由](./model-router.md)、拦截器、安全控制与 [可观测性](../observability/observability.md)。
 

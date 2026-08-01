@@ -17,12 +17,16 @@ package com.agentsflex.core.model.chat.tool;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public abstract class BaseTool implements Tool, Serializable {
 
     protected String name;
     protected String description;
     protected Parameter[] parameters;
+    protected Map<String, Object> metadata = new LinkedHashMap<>();
 
     @Override
     public String getName() {
@@ -52,11 +56,32 @@ public abstract class BaseTool implements Tool, Serializable {
     }
 
     @Override
+    public Map<String, Object> getMetadata() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(metadata));
+    }
+
+    /** 使用传入内容替换工具元数据，并与调用方持有的 Map 隔离。 */
+    public void setMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata == null
+            ? new LinkedHashMap<String, Object>()
+            : new LinkedHashMap<>(metadata);
+    }
+
+    /** 添加或覆盖一项工具元数据。 */
+    public void putMetadata(String key, Object value) {
+        if (key == null) {
+            throw new IllegalArgumentException("metadata key must not be null");
+        }
+        metadata.put(key, value);
+    }
+
+    @Override
     public String toString() {
         return "BaseTool{" +
             "name='" + name + '\'' +
             ", description='" + description + '\'' +
             ", parameters=" + Arrays.toString(parameters) +
+            ", metadata=" + metadata +
             '}';
     }
 }

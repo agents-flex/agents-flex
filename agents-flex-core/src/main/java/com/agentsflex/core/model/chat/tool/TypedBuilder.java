@@ -16,6 +16,8 @@
 package com.agentsflex.core.model.chat.tool;
 
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 public class TypedBuilder<I> {
@@ -24,6 +26,7 @@ public class TypedBuilder<I> {
     private String name;
     private String description;
     private Function<I,?> function;
+    private final Map<String, Object> metadata = new LinkedHashMap<>();
 
 
     public TypedBuilder<I> name(String name) {
@@ -46,6 +49,23 @@ public class TypedBuilder<I> {
         return this;
     }
 
+    /** 添加或覆盖一项工具元数据。 */
+    public TypedBuilder<I> metadata(String key, Object value) {
+        if (key == null) {
+            throw new IllegalArgumentException("metadata key must not be null");
+        }
+        this.metadata.put(key, value);
+        return this;
+    }
+
+    /** 批量添加工具元数据。 */
+    public TypedBuilder<I> metadata(Map<String, ?> values) {
+        if (values != null) {
+            this.metadata.putAll(values);
+        }
+        return this;
+    }
+
     public Tool build() {
         TypedFunctionTool<I> tool = new TypedFunctionTool<>();
 
@@ -53,6 +73,7 @@ public class TypedBuilder<I> {
         tool.setDescription(description);
         tool.setInputType(inputType);
         tool.setFunction(function);
+        tool.setMetadata(metadata);
 
         tool.setParameters(
             ToolParameterResolver.resolve(

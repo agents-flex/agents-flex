@@ -21,6 +21,7 @@
         <module>subagent-demo</module>
         <module>todolist-demo</module>
         <module>websearch-demo</module>
+        <module>agent-demo</module>
     </modules>
 
     <properties>

@@ -359,7 +359,7 @@ API Key 无效、过期，或者没有访问目标模型的权限。请先在服
 完成模型调用后，可以沿着实际需求继续扩展：
 
 - 让模型调用 Java 方法或业务 API：[Tool 工具调用](./tool.md)
-- 构建推理与行动循环：[ReAct Agent](../agent/react-agent.md)
+- 构建可暂停、恢复并持续调用工具的运行时：[Agent 智能体](../agent/overview.md)
 - 连接标准化外部工具：[MCP](./mcp.md)
 - 加载可复用的脚本与能力包：[Skills](../skills/overview.md)
 - 接入企业文档和向量数据库：[RAG](../rag/document.md)

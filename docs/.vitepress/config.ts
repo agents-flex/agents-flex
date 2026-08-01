@@ -152,10 +152,30 @@ export default defineConfig({
                 ]
             },
             {
-                text: '智能体',
+                text: 'Agent 智能体',
                 items: [
-                    {text: 'ReAct Agent', link: '/zh/agent/react-agent'},
-                    {text: 'Routing Agent（多智能体路由）', link: '/zh/agent/routing-agent'},
+                    {text: '概述', link: '/zh/agent/overview'},
+                    {text: '快速开始', link: '/zh/agent/getting-started'},
+                    {text: '架构与核心组件', link: '/zh/agent/architecture'},
+                    {text: 'Agent 与 AgentRun', link: '/zh/agent/agent-and-run'},
+                    {text: '执行循环与生命周期', link: '/zh/agent/execution-lifecycle'},
+                    {text: '工具执行与审批', link: '/zh/agent/tools-and-approval'},
+                    {text: 'Checkpoint 与中断恢复', link: '/zh/agent/checkpoint-resume'},
+                    {text: 'Worker 与 Lease', link: '/zh/agent/worker-lease'},
+                    {text: '子 Agent', link: '/zh/agent/subagents'},
+                    {text: '任务规划与进度', link: '/zh/agent/task-planning'},
+                    {text: '事件、监听器与审计', link: '/zh/agent/events'},
+                    {text: '运行上下文与 Middleware', link: '/zh/agent/runtime-extensions'},
+                    {text: '平台集成与扩展', link: '/zh/agent/platform-integration'},
+                    {text: '生产实践', link: '/zh/agent/production'},
+                    {text: '场景：Human-in-the-loop', link: '/zh/agent/scenarios/human-in-the-loop'},
+                    {text: '场景：长任务恢复', link: '/zh/agent/scenarios/long-running-task'},
+                    {text: 'Demo：场景与运行方式', link: '/zh/agent/demos/'},
+                    {text: 'Demo：基础工具 Agent', link: '/zh/agent/demos/tool-calling-agent'},
+                    {text: 'Demo：持久化工具审批', link: '/zh/agent/demos/durable-tool-agent'},
+                    {text: 'Demo：Worker 与自动重试', link: '/zh/agent/demos/durable-worker-agent'},
+                    {text: 'Demo：任务规划与子 Agent', link: '/zh/agent/demos/planned-agent'},
+                    {text: 'Demo：运行时扩展', link: '/zh/agent/demos/runtime-extensions-agent'},
                 ]
             },
             {

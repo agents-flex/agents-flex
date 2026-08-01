@@ -23,11 +23,11 @@ Agents-Flex 的能力不是一组彼此孤立的组件，而是一条完整的�
 | --- | --- | --- |
 | 模型 | Chat、Embedding、Rerank、Image、Video、TTS、STT | 统一接入文本、向量、图像、视频与语音模型 |
 | 对话 | Message、Prompt、Memory、同步与流式响应 | 管理一次对话以及持续的多轮上下文 |
-| 行动 | Tool Calling、ReAct Agent、工具拦截器 | 让模型调用 Java 方法、API、脚本和业务服务 |
+| 行动 | Tool Calling、AgentRun、工具拦截器 | 让模型调用 Java 方法、API、脚本和业务服务，并持续推进任务 |
 | 连接 | MCP、WebSearch、WebFetch、LLM Wiki | 连接外部工具、互联网和动态知识源 |
 | 知识 | 文件解析、文档切分、Embedding、Vector Store、Rerank | 构建从数据导入到召回排序的完整 RAG 链路 |
 | 技能 | AI Skills、Local/OpenSandbox/AIO Sandbox Runtime | 把提示词、脚本和资源封装成可复用、可执行的能力包 |
-| 协作 | Routing Agent、Subagent、同步与后台任务 | 让不同专长的 Agent 分工协作 |
+| 协作 | 任务规划、Subagent、Worker 与 Lease | 让不同专长的 Agent 分工协作并可靠执行长任务 |
 | 工程 | Model Router、熔断、重试、拦截器、OpenTelemetry | 让智能体在生产环境中可用、可控、可观测 |
 
 这意味着，你可以用同一套抽象构建一个对话机器人，也可以继续向前，构建会查资料、读文档、分析数据库、生成文件、调用内部系统，并把复杂任务分派给多个专业 Agent 的业务助手。
@@ -82,7 +82,7 @@ List<Tool> tools = ToolScanner.scan(new OrderTools());
 
 框架负责把方法描述转换为模型可以识别的参数结构，并提供工具执行器、上下文和拦截器链。你可以在调用前后加入鉴权、审批、限流、审计、脱敏或结果转换，而无需把这些逻辑侵入业务方法。
 
-在此之上，[ReAct Agent](../agent/react-agent.md) 能持续执行“判断 - 行动 - 观察 - 再判断”的循环；缺少关键信息时可以向用户发起澄清，执行状态还可以序列化并在中断后恢复。模型不再只是回答问题，而是开始完成任务。
+在此之上，[Agent 智能体](../agent/overview.md) 基于模型原生 ToolCall 持续推进模型与工具循环；缺少关键信息时可以暂停等待用户，执行状态还可以持久化并在中断后恢复。模型不再只是回答问题，而是开始完成任务。
 
 ## MCP、Skills 与 Subagent：打开能力边界
 
@@ -108,7 +108,7 @@ Agents-Flex 原生支持 [Model Context Protocol](../chat/mcp.md)，可以管理
 
 面对复杂任务，最合理的结构通常不是一个无所不能的超级 Prompt，而是一组边界清晰的专业 Agent。
 
-[Subagent](../chat/subagent.md) 允许主 Agent 把任务委托给代码审查、数据分析、资料研究等子 Agent。任务可以同步执行，也可以进入后台；主 Agent 能够通过任务 ID 查询状态和获取结果。配合 [Routing Agent](../agent/routing-agent.md)，还可以先用关键词或 LLM 判断意图，再把请求交给最合适的 Agent。
+[Subagent](../chat/subagent.md) 允许主 Agent 把任务委托给代码审查、数据分析、资料研究等子 Agent。任务可以同步执行，也可以进入后台；主 Agent 能够通过任务 ID 查询状态和获取结果。对于需要拆分目标、分配专业 Agent 并展示执行进度的场景，可以使用 [任务规划与进度](../agent/task-planning.md)。
 
 从单 Agent 到多 Agent，不需要推翻已有代码，只是继续给系统增加新的角色和能力。
 
@@ -174,7 +174,7 @@ Agents-Flex 的核心保持对 Web 框架和 ORM 的独立。你可以在裸 Jav
 
 如果你只想验证一次模型调用，从 [快速开始](../chat/getting-started.md) 出发。
 
-如果你准备构建一个真正会行动的 Agent，继续阅读 [Tool](../chat/tool.md)、[ReAct Agent](../agent/react-agent.md)、[MCP](../chat/mcp.md)、[Skills](../skills/overview.md) 和 [Subagent](../chat/subagent.md)。
+如果你准备构建一个真正会行动的 Agent，继续阅读 [Tool](../chat/tool.md)、[Agent 智能体](../agent/overview.md)、[MCP](../chat/mcp.md)、[Skills](../skills/overview.md) 和 [Subagent](../chat/subagent.md)。
 
 如果你正在建设企业知识与数据能力，请进入 [RAG](../rag/document.md)、[LLM Wiki](../chat/llm-wiki.md) 和 [Text2SQL](../chat/text2sql.md)。
 

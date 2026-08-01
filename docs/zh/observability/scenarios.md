@@ -160,7 +160,7 @@ Span，而不是 Metric。
 ### 问题
 
 宿主系统自己定义了“智能体”或工作流：客服业务发送到公司 APM，内部测试业务只写 MySQL。这个业务概念
-不对应 Agents-Flex 的 `ReActAgent` 或 `IAgent`。
+不要求对应 Agents-Flex 的 `Agent` 或 `AgentRun`。
 
 ### 设计
 
