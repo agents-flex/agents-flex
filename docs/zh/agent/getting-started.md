@@ -1,21 +1,17 @@
 ---
-title: Agent 快速开发
-description: 从 Maven 依赖、真实 ChatModel 和 Tool 开始，完成一次可持续对话的 Agent 调用。
+title: Agent 快速开始
+description: 添加依赖，创建 Agent 和 Tool，并运行第一个完整 Tool Calling 循环。
 ---
 
-# Agent 快速开发
+# Agent 快速开始
 
 ## 概述
 
-本页完成一个可以直接回答问题、调用实时时间工具并持续对话的 Agent。示例只使用进程内 Store，适合先理解 API；它不包含分布式 Worker 和持久化数据库。
-
-## 快速开发
-
-下面从依赖、模型、工具和 Agent 定义开始，完成第一条消息，再把同一个 Runner 扩展为持续对话和多模态输入。
+本节用最小代码完成一次“模型决定调用工具，Runner 执行工具，模型根据结果回答”的闭环。示例在当前线程运行，使用内存 Store，适合先理解 API；审批、恢复和 Worker 会在后续章节逐步加入。
 
 ## 添加依赖
 
-Agent 运行时与具体模型适配器是独立模块。使用 OpenAI-compatible 模型时加入：
+在 Maven 项目中引入 Agent 模块和一个 ChatModel 实现。版本应与项目其他 Agents-Flex 模块保持一致。
 
 ```xml
 <dependency>
@@ -23,6 +19,7 @@ Agent 运行时与具体模型适配器是独立模块。使用 OpenAI-compatibl
     <artifactId>agents-flex-agent</artifactId>
     <version>${agents-flex.version}</version>
 </dependency>
+
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-chat-openai</artifactId>
@@ -30,9 +27,11 @@ Agent 运行时与具体模型适配器是独立模块。使用 OpenAI-compatibl
 </dependency>
 ```
 
-`agents-flex-agent` 负责运行状态与调度，`agents-flex-chat-openai` 提供 ChatModel。使用其他模型时替换第二个依赖即可。
+`agents-flex-agent` 已依赖 `agents-flex-core`。如果使用 Qwen、Ollama 或其他模型，将第二个依赖替换为对应实现即可。
 
 ## 创建 ChatModel
+
+下面使用 OpenAI-compatible 服务。密钥不要硬编码到源码中。
 
 ```java
 ChatModel chatModel = OpenAIChatConfig.builder()
@@ -44,101 +43,104 @@ ChatModel chatModel = OpenAIChatConfig.builder()
     .buildModel();
 ```
 
-Agent 要调用工具，模型适配器必须启用并支持原生 ToolCall。endpoint、requestPath 和模型名应按实际服务调整。
+模型实现必须支持 Tool Calling，且工具名和参数 Schema 会随 Prompt 发送给模型。
 
-## 定义第一个 Tool
+## 定义工具
 
 ```java
-Tool currentTime = Tool.builder("get_current_time", "查询指定时区的当前时间")
+Tool weather = Tool.builder("get_weather", "查询城市的实时天气")
     .addParameter(Parameter.builder()
-        .name("zoneId")
+        .name("city")
         .type("string")
-        .description("IANA 时区，例如 Asia/Shanghai")
+        .description("城市名称")
         .required(true)
         .build())
-    .metadata("sideEffect", false)
-    .function(arguments -> ZonedDateTime.now(
-        ZoneId.of(String.valueOf(arguments.get("zoneId")))).toString())
+    .function(args -> {
+        String city = String.valueOf(args.get("city"));
+        return city + "：晴，26℃";
+    })
     .build();
 ```
 
-工具名必须在一个 Agent 内唯一。描述和参数 Schema 是模型选择工具、生成参数的依据；Java 函数仍应自己校验参数和业务权限。
+工具名称在一个 Agent 内必须唯一。描述和参数应说明“何时调用”与“需要什么值”，因为模型依据这些信息生成 `ToolCall`。
 
-## 定义 Agent
+## 创建 Agent
 
 ```java
-Agent agent = Agent.builder("assistant")
-    .id("assistant")
+Agent agent = Agent.builder("weather-assistant")
+    .id("weather-assistant")
     .version("1")
-    .description("回答常见问题并查询实时时间")
-    .instructions(
-        "你是中文助手。普通问候直接回答；询问当前时间时必须调用 get_current_time。")
+    .description("回答天气问题")
+    .instructions("回答天气问题时必须先调用 get_weather，不要猜测实时天气。")
     .chatModel(chatModel)
-    .tool(currentTime)
+    .tool(weather)
     .build();
 ```
 
-`id` 用于加载和恢复，`version` 让已创建的 Run 能绑定到同一套定义。生产环境应显式设置二者。
+`id` 和 `version` 是恢复协议的一部分。即使本地示例可以只设置名称，准备持久化时也应显式设置稳定 ID 和版本。
 
-## 执行一条消息
+## 运行任务
 
 ```java
-AgentRunner runner = AgentRunner.builder()
-    .agentLoader(new InMemoryAgentLoader(agent))
-    .build();
-
-AgentRun run = runner.run(agent, "上海现在几点？");
+AgentRunner runner = new AgentRunner();
+AgentRun run = runner.run(agent, "上海今天天气如何？");
 
 if (run.getStatus() == AgentRunStatus.COMPLETED) {
     System.out.println(run.getFinalOutput());
 } else {
-    System.out.println(run.getStatus());
+    System.out.println("status=" + run.getStatus());
 }
 ```
 
-`run()` 会在当前线程执行到完成、失败、预算终止或等待外部事件。不要只读取最终文本，也应检查状态。
+`run(...)` 会先创建 Run，再在当前线程持续推进，直到完成、失败或进入阻塞状态。模型可能被调用不止一次：第一次产生 ToolCall，工具执行后第二次生成面向用户的答案。
+
+## 查看运行信息
+
+```java
+System.out.println("runId=" + run.getId());
+System.out.println("iterations=" + run.getIterationCount());
+System.out.println("steps=" + run.getStepCount());
+System.out.println("toolCalls=" + run.getToolCallCount());
+System.out.println("tokens=" + run.getTotalTokens());
+```
+
+`iterationCount` 只统计模型调用，`stepCount` 统计执行模式推进次数，二者不是同一概念。
+
+## 设置运行限制
+
+```java
+AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
+    .maxIterations(8)
+    .maxSteps(32)
+    .budget(AgentBudget.builder()
+        .maxToolCalls(10)
+        .maxTotalTokens(20_000)
+        .maxDurationMillis(60_000)
+        .build())
+    .build();
+
+Agent limited = Agent.builder("weather-assistant")
+    .chatModel(chatModel)
+    .tool(weather)
+    .executionPolicy(policy)
+    .build();
+```
+
+也可以用 `AgentRunOptions.executionPolicy(...)` 只覆盖某一次运行，并通过 `metadata(...)` 与 `invocationContext(...)` 附加业务信息。
 
 ## 持续对话
 
-```java
-AgentConversation conversation = AgentConversation.create("user-42", agent);
-
-AgentRun first = runner.run(conversation, "你好，我在上海");
-AgentRun second = runner.run(conversation, "那我这里现在几点？");
-```
-
-这里产生两个独立 Run，但共享 Conversation 的 Memory。第二轮能够理解“这里”指上海；第一轮和第二轮仍分别拥有自己的状态、Token、事件和 Checkpoint。
-
-## 多模态消息
+一个 Run 对应一个任务，不应把已完成 Run 直接当成下一轮对话。需要持续对话时使用 `AgentConversation`：
 
 ```java
-UserMessage message = new UserMessage("请分析这张图片中的异常");
-message.addImageUrl(imageUrl);
+AgentConversation conversation = AgentConversation.create("session-1001", agent);
 
-AgentRun run = runner.run(conversation, message);
+AgentRun first = runner.run(conversation, "我叫小明");
+AgentRun second = runner.run(conversation, "我叫什么？");
 ```
 
-`UserMessage` 还可以添加音频、视频和文件 URL。最终能否理解对应内容取决于所选模型及模型适配器能力。
-
-## 添加运行身份
-
-租户、用户和请求 ID 不应写进系统指令。使用 `AgentInvocationContext`：
-
-```java
-AgentRunOptions options = AgentRunOptions.builder()
-    .invocationContext(AgentInvocationContext.builder()
-        .tenantId("tenant-a")
-        .userId("user-42")
-        .requestId("req-1001")
-        .build())
-    .metadata("taskType", "realtime-query")
-    .build();
-
-AgentRun run = runner.run(agent, new UserMessage("查询时间"), options);
-```
-
-Invocation Context 只在当前调用链存在；metadata 会进入 Snapshot，适合后续查询和审计。
+每一轮创建新的 `AgentRun`，但共享 Conversation 的 `ChatMemory`。如果某轮处于阻塞状态，应恢复该 active Run，而不是开始新一轮。
 
 ## 下一步
 
-如果工具会修改外部状态，应继续阅读 [Tool 与审批](./tool.md)。任务可能超过接口超时时间时，使用 [Worker 与分布式执行](./worker.md)。完整可运行代码位于[示例与 Demo](./examples.md)。
+建议依次阅读 [Agent](./agent)、[AgentRunner](./agent-runner) 和 [AgentRun](./agent-run)，建立定义、执行器与运行状态的清晰边界，然后再接入[挂起和恢复](./suspend-resume)及[Store 持久化](./store)。

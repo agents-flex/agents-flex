@@ -1,110 +1,91 @@
 ---
-title: Checkpoint 与持久化 Store
+title: Checkpoint
+description: 理解 AgentRunSnapshot 的内容、保存边界、版本控制和恢复兼容性。
 ---
 
-# Checkpoint 与持久化 Store
+# Checkpoint
 
 ## 概述
 
-Agent 调用模型、等待审批、执行工具或调度子 Agent 时，进程随时可能退出。Checkpoint 将一个 `AgentRun` 在稳定边界上的可恢复状态保存为 `AgentRunSnapshot`，让后续请求或其他 Worker 可以从该边界继续，而不是重新执行整个任务。
+Checkpoint 是 `AgentRun` 在稳定执行边界的持久化状态，具体值对象为 `AgentRunSnapshot`。它让任务在审批回调、后台 Worker、进程重启或节点切换后继续执行，而无需重放整条模型与工具链。
 
-`AgentRunSnapshot` 保存消息、待执行 ToolCall、运行状态、计数器、预算消耗、计划、暂停原因、模式状态、父子关系和版本等数据。它不保存 `ChatModel`、`Tool`、Middleware 或业务服务对象；恢复时由 `AgentLoader` 按 `agentId + agentVersion` 重新组装 Agent。
+Checkpoint 保存“继续执行所需的数据”，而不是把整个 Java 对象图序列化下来。模型、工具、Middleware 和调用期服务由 AgentLoader 与 InvocationContextProvider 恢复。
 
-## 快速开发
+## 保存内容
 
-单进程开发可直接使用内存 Store：
+快照包含：
 
-```java
-AgentRunStore runStore = new InMemoryAgentRunStore();
+- Run ID、Agent ID/版本、执行模式 ID/版本。
+- status、phase、消息与待处理 ToolCall。
+- Suspension、工具审批决定和任务计划。
+- 迭代、step、Token、工具、重试等计数。
+- 预算终止原因、nextRunAt、取消标记。
+- 父/根 Run ID、planning depth。
+- metadata、modeState、最终消息和错误摘要。
+- Store version 与 Worker Lease 信息。
 
-AgentRunner runner = AgentRunner.builder()
-    .runStore(runStore)
-    .agentLoader(agentLoader)
-    .build();
+不包含 `ChatModel`、Tool 实例、Listener、Middleware、原始异常对象和 `AgentInvocationContext`。
 
-AgentRun run = runner.start(agent, new UserMessage("生成月度报告"));
-runner.runUntilBlocked(run);
+## 自动保存边界
 
-// 可在另一个 Runner 实例中恢复。
-AgentRun restored = runner.restore(run.getId());
-runner.runUntilBlocked(restored);
-```
+Runner 会在关键状态变化后保存，例如：
 
-`start(...)` 会创建初始 Checkpoint，执行循环会在模型响应、工具结果、暂停、重试和终止等稳定边界继续保存。应用不需要直接构造 `AgentRunSnapshot`。
+- Run 创建与开始。
+- 模型已产生待执行 ToolCall。
+- 工具完成并写入 ToolMessage。
+- 上下文压缩。
+- 暂停、恢复和安排重试。
+- 计划与任务状态变化。
+- 完成、失败、取消或预算终止。
 
-## 稳定边界
+“先保存 ToolCall，再请求审批或执行”保证恢复后使用的是原始参数。
 
-Checkpoint 表示“已经完成且可安全重放之后状态”的边界。例如模型返回一个 ToolCall 后，框架先保存待处理调用；工具执行成功后，再保存 ToolMessage 和调用记录。进程在两者之间退出时，恢复逻辑仍能识别当前处于哪一步。
-
-`AgentToolInvocation` 还为工具提供稳定的 invocation ID。支付、发券、创建工单等有副作用的工具，应把该 ID 作为业务幂等键，避免进程在工具成功但 Checkpoint 尚未提交时造成重复副作用。
-
-## 乐观锁与版本
-
-`AgentRunStore.save(snapshot, expectedVersion)` 使用比较并交换语义。首次写入的期望版本为 `-1`，后续保存必须携带调用方看到的版本；若另一个线程或 Worker 已经更新同一 Run，则抛出 `AgentRunVersionConflictException`。
-
-版本冲突不是应该被覆盖的普通异常。它说明当前执行者持有过期状态，应停止推进并重新加载最新 Checkpoint。
-
-## JDBC Store
+## 手动 Checkpoint
 
 ```java
-JdbcAgentStoreConfig stores = JdbcAgentStoreConfig.builder(dataSource)
-    .tablePrefix("af_agent_")
-    .binaryColumnType("BLOB")
-    .build();
-
-stores.schema().createIfNotExists();
-
-AgentRunner runner = AgentRunner.builder()
-    .runStore(stores.runStore())
-    .commandStore(stores.commandStore())
-    .eventStore(stores.eventStore())
-    .artifactStore(stores.artifactStore())
-    .agentLoader(agentLoader)
-    .build();
+AgentRunSnapshot saved = runner.checkpoint(run);
+System.out.println(saved.getVersion());
 ```
 
-不同数据库的二进制列类型不同，例如 PostgreSQL 常用 `BYTEA`。生产环境通常由 Flyway 或 Liquibase 管理表结构，`createIfNotExists()` 更适合本地开发和测试。
+自定义模式应通过 `AgentExecutionContext.checkpoint()` 或 `checkpointAndContinue()` 保存 Mode State。`run.toSnapshot()` 只生成副本，不执行 Store 乐观写入、事件发布或本地版本同步。
 
-## Redis Store
+## 乐观版本
+
+`AgentRunStore.save(snapshot, expectedVersion)` 必须比较当前版本。创建使用约定的初始期望版本，后续保存只有版本匹配才能成功，成功后 Store 分配递增版本。冲突时抛出 `AgentRunVersionConflictException`。
+
+发生冲突说明另一个执行者已经提交新状态。不能用旧快照覆盖；应停止当前推进并重新加载，必要时由业务决定是否重试命令。
+
+## 恢复校验
 
 ```java
-try (RedisAgentStoreConfig stores = RedisAgentStoreConfig
-        .builder("redis://127.0.0.1:6379")
-        .keyPrefix("myapp:agent:")
-        .build()) {
-    AgentRunner runner = AgentRunner.builder()
-        .runStore(stores.runStore())
-        .commandStore(stores.commandStore())
-        .eventStore(stores.eventStore())
-        .artifactStore(stores.artifactStore())
-        .agentLoader(agentLoader)
-        .build();
-}
+AgentRun run = runner.restore(runId, invocationContext);
 ```
 
-同一部署环境的 API 服务与 Worker 必须使用相同键前缀。多个租户是否共享前缀应由应用的数据隔离策略决定。
+恢复时 Runner：
+
+1. 从 RunStore 读取快照。
+2. 调用 `AgentLoader.load(agentId, agentVersion)`。
+3. 校验执行模式 ID 与版本。
+4. 重建消息、状态、计数和计划。
+5. 附加调用方提供的瞬时 Invocation Context。
+
+历史 Agent 或模式版本缺失时应明确失败，不能静默使用最新逻辑。
 
 ## 序列化
 
-JDBC 和 Redis 默认使用 `FastjsonAgentStoreSerializer`，以 fastjson2 JSONB 保存多态消息和不可变值对象。默认白名单只恢复 Agents-Flex 与常用 JDK 类型。如果 `metadata` 或 `modeState` 中确实需要业务值对象，应显式增加尽可能精确的类型前缀：
+模块提供 `AgentStoreSerializer` 与默认 `FastjsonAgentStoreSerializer`。默认格式是带类型信息的 JSONB 二进制，并限制可反序列化包前缀：
 
 ```java
 AgentStoreSerializer serializer =
     new FastjsonAgentStoreSerializer("com.example.agent.state.");
 ```
 
-持久化字段更推荐字符串、数字、布尔值、列表和 Map。调用上下文中的用户身份、数据库连接或业务 Service 不应进入 Snapshot，而应在 Worker 恢复时通过 `AgentInvocationContextProvider` 重新附加。
+只有在 metadata 或 modeState 确实需要业务值对象时才加入精确白名单。不要接受任意 AutoType，也不要把非 Serializable 对象写入状态。
 
-## Store 的职责边界
+## 模式演进
 
-四类 Store 解决不同问题：
+自定义 Mode State 应有稳定字段含义。改变恢复算法时升级 `AgentExecutionMode.getVersion()`，并选择：保留旧模式实现、提供迁移工具，或在发布前排空旧 Run。仅修改类代码却保持版本不变，会让历史 Checkpoint 在新语义下继续，风险更高。
 
-| Store | 保存内容 | 主要用途 |
-| --- | --- | --- |
-| `AgentRunStore` | 最新 Snapshot、Lease、取消标记 | 恢复和调度 |
-| `AgentRunCommandStore` | 待消费恢复命令 | 跨进程审批、补充输入和唤醒 |
-| `AgentRunEventStore` | 追加式运行事件 | 审计、时间线和指标 |
-| `AgentArtifactStore` | 被卸载的大型内容 | 控制 Snapshot 和模型上下文大小 |
+## 数据保留
 
-Snapshot 是最新状态，不是完整审计日志；事件是过程记录，不应被用来代替恢复所需的最新状态。
-
+终态 Run 的 Checkpoint 仍是审计、结果查询和父子树展示的依据。删除策略应与事件、Command 和 Artifact 协调：不能先删除 Artifact 却保留引用，也不能在父 Run 仍等待时删除子 Run。

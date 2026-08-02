@@ -1,4 +1,5 @@
 import {defineConfig} from 'vitepress'
+import {withMermaid} from 'vitepress-plugin-mermaid'
 
 
 const gitee_icon_svg = '\n' +
@@ -21,7 +22,7 @@ const gitee_icon_svg = '\n' +
 
 
 // https://vitepress.dev/reference/site-config
-export default defineConfig({
+export default withMermaid(defineConfig({
     title: "Agents-Flex",
     // titleTemplate: ':title - Agents-Flex Official website',
     // description: "A Java framework for LLM applications",
@@ -29,6 +30,22 @@ export default defineConfig({
     description: "一个优雅的 LLM（大语言模型）应用开发框架",
     lastUpdated: true,
     appearance:"dark",
+    mermaid: {
+        // HTML labels use foreignObject, which taints Canvas during PNG export.
+        htmlLabels: false,
+    },
+    markdown: {
+        config(md) {
+            const renderFence = md.renderer.rules.fence!
+            md.renderer.rules.fence = (tokens, index, options, env, self) => {
+                const rendered = renderFence(tokens, index, options, env, self)
+                if (tokens[index].info.trim() !== 'mermaid') return rendered
+
+                const source = encodeURIComponent(tokens[index].content)
+                return rendered.replace('<Mermaid ', `<Mermaid data-mermaid-source="${source}" `)
+            }
+        }
+    },
 
 
     themeConfig: {
@@ -146,6 +163,8 @@ export default defineConfig({
                 items: [
                     {text: '图片生成', link: '/zh/image/image-generation'},
                     {text: '快速开始', link: '/zh/image/getting-started'},
+                    {text: 'OpenAI 图片生成', link: '/zh/image/openai'},
+                    {text: 'Gemini 图片生成', link: '/zh/image/gemini'},
                     {text: '阿里云百炼', link: '/zh/image/aliyun'},
                     {text: '火山引擎', link: '/zh/image/volcengine'},
                     {text: 'Gitee AI', link: '/zh/image/gitee'},
@@ -155,25 +174,30 @@ export default defineConfig({
                 text: 'Agent 智能体',
                 items: [
                     {text: '概述', link: '/zh/agent/overview'},
-                    {text: '快速开发', link: '/zh/agent/getting-started'},
-                    {text: 'Agent 定义与加载', link: '/zh/agent/agent'},
-                    {text: '会话、消息与 AgentRun', link: '/zh/agent/agent-run'},
-                    {text: 'AgentRunner 与执行循环', link: '/zh/agent/agent-runner'},
-                    {text: 'Tool 调用、审批与幂等', link: '/zh/agent/tool'},
-                    {text: '暂停、恢复与 Command Inbox', link: '/zh/agent/resume-command'},
-                    {text: '任务规划、进度与子 Agent', link: '/zh/agent/task-planning'},
-                    {text: '多模态与上下文管理', link: '/zh/agent/context-management'},
+                    {text: '快速开始', link: '/zh/agent/getting-started'},
+                    {text: 'Agent', link: '/zh/agent/agent'},
+                    {text: 'AgentRunner', link: '/zh/agent/agent-runner'},
+                    {text: 'AgentRun', link: '/zh/agent/agent-run'},
+                    {text: 'AgentLoader', link: '/zh/agent/agent-loader'},
+                    {text: 'AgentListener', link: '/zh/agent/agent-listener'},
+                    {text: '事件机制', link: '/zh/agent/events'},
+                    {text: '上下文管理', link: '/zh/agent/context-management'},
+                    {text: '任务规划', link: '/zh/agent/task-planning'},
+                    {text: '子 Agent', link: '/zh/agent/subagent'},
+                    {text: '挂起和恢复', link: '/zh/agent/suspend-resume'},
+                    {text: '预算控制', link: '/zh/agent/budget'},
+                    {text: '错误重试', link: '/zh/agent/retry'},
+                    {text: '可观测性', link: '/zh/agent/observability'},
                     {text: 'Agent Middleware', link: '/zh/agent/middleware'},
-                    {text: 'AgentListener 生命周期监听器', link: '/zh/agent/agent-listener'},
-                    {text: '实时事件与审计', link: '/zh/agent/events'},
-                    {text: 'Checkpoint 与持久化 Store', link: '/zh/agent/checkpoint'},
-                    {text: '错误重试与预算控制', link: '/zh/agent/retry'},
-                    {text: 'Worker、Lease 与分布式执行', link: '/zh/agent/worker'},
-                    {text: '自定义执行模式', link: '/zh/agent/execution-lifecycle'},
-                    {text: '整体架构', link: '/zh/agent/architecture'},
-                    {text: '业务平台集成', link: '/zh/agent/platform-integration'},
-                    {text: '生产实践', link: '/zh/agent/production'},
-                    {text: '示例与 Demo', link: '/zh/agent/examples'},
+                    {text: 'Checkpoint', link: '/zh/agent/checkpoint'},
+                    {text: 'Store 持久化', link: '/zh/agent/store'},
+                    {text: 'AgentExecutionMode', link: '/zh/agent/execution-mode'},
+                    {text: 'AgentWorker', link: '/zh/agent/worker'},
+                    {text: '架构设计', link: '/zh/agent/architecture'},
+                    {text: '常见问题', link: '/zh/agent/faq'},
+                    {text: 'Demo: 人工审批', link: '/zh/agent/demo-human-approval'},
+                    {text: 'Demo: 自动任务规划', link: '/zh/agent/demo-task-planning'},
+                    {text: 'Demo: 完整示例（控制台程序）', link: '/zh/agent/demo-console'},
                 ]
             },
             {
@@ -286,4 +310,4 @@ export default defineConfig({
         `
         ]
     ],
-})
+}))

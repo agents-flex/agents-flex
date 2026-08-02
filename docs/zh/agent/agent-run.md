@@ -1,119 +1,116 @@
 ---
-title: 会话、消息与 AgentRun
-description: 理解每条消息如何形成独立 AgentRun，以及 Conversation、状态、阶段和 Snapshot 的关系。
+title: AgentRun
+description: 理解单次 Agent 运行的状态、阶段、消息、计数、元数据和 Conversation 关系。
 ---
 
-# 会话、消息与 AgentRun
+# AgentRun
 
 ## 概述
 
-`AgentRun` 表示一条用户消息触发的一次独立运行。它保存模型与工具已经执行到哪里、当前是否等待外部事件、消耗了多少预算，以及最终结果或错误。
+`AgentRun` 表示一个具体任务的可变运行状态。它包含消息历史、当前状态与阶段、待执行 ToolCall、暂停信息、预算计数、任务计划以及最终结果。Run 由 `AgentRunner` 创建和推进，调用方主要负责读取状态、附加调用上下文以及提交恢复命令。
 
-即使用户只说“你好”，Runner 也会创建一个 Run；如果用户随后要求分析图片，则创建第二个 Run。`AgentConversation` 让第二个 Run 看到之前的消息，但不会把两次运行合并成一个状态对象。
+## Run 与 Conversation
 
-## 快速开发
-
-一次性任务：
+一个 Run 对应一个任务或一轮对话；一个 `AgentConversation` 可以包含多个先后发生的 Run，并共享 `ChatMemory`。
 
 ```java
-AgentRun run = runner.run(agent, "分析今天的库存异常");
+AgentConversation conversation = AgentConversation.create("session-1", agent);
+AgentRun first = runner.run(conversation, "我叫小明");
+AgentRun second = runner.run(conversation, "我叫什么？");
 ```
 
-持续对话：
+独立 Run 也可接受业务系统加载的历史：
 
 ```java
-AgentConversation conversation = AgentConversation.create("conversation-1001", agent);
-
-AgentRun greeting = runner.run(conversation, "你好");
-AgentRun analysis = runner.run(conversation, "继续分析刚才提到的库存问题");
+AgentRun run = runner.run(agent, history, new UserMessage("继续"));
 ```
 
-读取结果时先判断状态：
+历史里的 `SystemMessage` 会被忽略，系统指令始终以当前 Agent 定义为准。
 
-```java
-if (run.getStatus().isTerminal()) {
-    System.out.println(run.getFinalOutput());
-} else if (run.getStatus().isBlocked()) {
-    System.out.println(run.getSuspension().getMessage());
-}
-```
+## 状态
 
-## Run 中保存什么
-
-`AgentRun` 包含以下几类状态：
-
-- 身份：runId、agentId/version、parentRunId、rootRunId；
-- 对话：用户、模型、ToolCall 和 ToolMessage；
-- 执行：status、phase、pendingToolCalls、iterationCount、stepCount；
-- 等待：`AgentSuspension`、nextRunAt、工具审批结果；
-- 资源：输入、输出、总 Token、工具调用次数和预算终止原因；
-- 调度：Checkpoint version、leaseOwner、leaseId、leaseUntil；
-- 规划：任务计划、当前任务、子 Run 和规划深度；
-- 输出：finalMessage 或 error；
-- 扩展：持久化 metadata、modeState，以及非持久化 Invocation Context。
-
-这些字段共同决定恢复位置，因此不能只保存聊天消息。
-
-## 状态与阶段
-
-`AgentRunStatus` 面向调用方描述生命周期：
-
-| 分类 | 状态 |
+| 状态 | 含义 |
 | --- | --- |
-| 可推进 | `READY`、`RUNNING` |
-| 等待 | `WAITING_FOR_USER`、`WAITING_FOR_APPROVAL`、`WAITING_FOR_CHILD`、`RETRY_SCHEDULED` |
-| 终止 | `COMPLETED`、`FAILED`、`CANCELLED`、`MAX_ITERATIONS_REACHED`、`MAX_STEPS_REACHED`、`BUDGET_EXCEEDED` |
+| `READY` | 已创建，等待推进或 Worker 领取 |
+| `RUNNING` | 正在执行 |
+| `WAITING_FOR_USER` | 等待用户补充输入 |
+| `WAITING_FOR_APPROVAL` | 等待工具审批 |
+| `WAITING_FOR_CHILD` | 等待子 Run |
+| `RETRY_SCHEDULED` | 等待 `nextRunAt` 到期 |
+| `COMPLETED` | 正常完成 |
+| `FAILED`、`CANCELLED` | 失败或取消 |
+| `MAX_ITERATIONS_REACHED` | 模型调用达到上限 |
+| `MAX_STEPS_REACHED` | step 达到上限 |
+| `BUDGET_EXCEEDED` | 预算达到上限 |
 
-`AgentRunPhase` 是 Runner 的恢复游标。默认模式主要在 `MODEL` 和 `TOOLS` 之间切换：等待审批时状态是 `WAITING_FOR_APPROVAL`，phase 仍是 `TOOLS`，表示批准后继续执行已保存的工具调用。
+使用 `status.isBlocked()` 和 `status.isTerminal()` 判断状态类别，不要自行维护不完整的枚举集合。
 
-## Suspension 是等待说明
+## 阶段
 
-进入等待状态时，Run 同时保存 `AgentSuspension`：
+`AgentRunPhase.MODEL` 表示下一步应请求模型；`TOOLS` 表示已保存模型产生的 ToolCall，下一步应审批或执行工具。重试和审批恢复会回到快照记录的阶段。
 
-```java
-AgentSuspension suspension = run.getSuspension();
-System.out.println(suspension.getType());
-System.out.println(suspension.getCorrelationId());
-System.out.println(suspension.getMessage());
-```
+状态回答“Run 能否继续”，阶段回答“继续时做什么”，两者不能混用。
 
-correlationId 把审批绑定到具体 ToolCall、把父 Run 绑定到具体子 Run，防止迟到的外部事件恢复错误任务。
-
-## Conversation 与 Memory
-
-`AgentConversation` 绑定一个 Agent 和一个 `ChatMemory`。Run 正常完成后，Conversation 释放 activeRunId，下一条消息可以开始；Run 阻塞时 activeRunId 保留，此时审批或补充输入必须使用 `runner.resume(conversation, command)`，不能当作新一轮普通消息。
-
-```java
-AgentConversation conversation = AgentConversation.of(
-    conversationId,
-    agent,
-    persistentChatMemory
-);
-```
-
-框架没有另设 Conversation Store，因为应用往往已经有会话表和 Memory 实现。需要跨进程恢复阻塞会话时，业务系统同时保存 conversationId、Memory 和 activeRunId，再使用 `AgentConversation.restore(...)` 重建句柄。
-
-## 多模态输入
+## 读取结果与进度
 
 ```java
-UserMessage input = new UserMessage("检查图片和附件中的问题");
-input.addImageUrl(imageUrl);
-input.addFileUrl(fileUrl);
-input.addAudioUrl(audioUrl);
-input.addVideoUrl(videoUrl);
+AgentRunStatus status = run.getStatus();
+String output = run.getFinalOutput();
+Throwable error = run.getError();
 
-AgentRun run = runner.run(conversation, input);
+int iterations = run.getIterationCount();
+int steps = run.getStepCount();
+int toolCalls = run.getToolCallCount();
+long totalTokens = run.getTotalTokens();
 ```
 
-Run 会复制输入消息，调用方后续修改原对象不会影响 Checkpoint。模型支持范围仍由 ChatModel 决定。
+只有正常完成时 `getFinalOutput()` 才是最终答案。失败恢复自 Snapshot 后，异常会以恢复异常表示，类型名与消息保存在快照中，不能依赖原异常对象仍然存在。
 
-## Snapshot
+## 消息与多模态输入
 
-`run.toSnapshot()` 返回跨进程持久化值对象。Snapshot 不包含 Agent、ChatModel、Tool、Middleware、Throwable 实例或 Invocation Context；恢复时 Runner 使用其中的 agentId/version 调用 AgentLoader，再附加当前进程的 Invocation Context。
+Runner 支持 `UserMessage` 结构化输入，消息可以携带文本和多模态内容。创建 Run 时会复制用户消息，避免调用方后续修改影响 Checkpoint。
 
-应用不应直接调用 `AgentRun` 的内部创建或恢复工厂。统一使用 `AgentRunner.start/run/restore`，这样初始 Checkpoint、定义校验和恢复绑定不会被遗漏。
+```java
+AgentRun run = runner.run(agent, userMessage);
+List<Message> history = run.getConversationHistory();
+```
 
-## metadata 与 modeState
+`getConversationHistory()` 返回排除系统消息后的副本，适合保存到业务会话表；`getPrompt()` 暴露运行 Prompt，通常只应由扩展组件读取。
 
-Run metadata 用于任务类型、租户审计键和业务关联 ID；modeState 专门保存自定义执行模式的恢复状态。两者都会进入 Snapshot，值必须满足 Store 序列化约束。请求级服务、凭证和数据库连接不要放入其中。
+## 元数据与调用上下文
 
+```java
+AgentRunOptions options = AgentRunOptions.builder()
+    .metadata("businessOrderId", "O-1001")
+    .invocationContext(AgentInvocationContext.builder()
+        .tenantId("tenant-a")
+        .userId("u-1")
+        .requestId("req-1")
+        .build())
+    .build();
+```
+
+`metadata` 必须可序列化，会进入 Snapshot；`AgentInvocationContext` 是瞬时运行依赖，不进入 Snapshot，恢复或 Worker 执行时必须重新附加。密码、Token、数据库连接和 Spring Bean 不应放入 metadata。
+
+## 父子关系与计划
+
+子 Run 通过 `parentRunId` 指向直接父任务，通过 `rootRunId` 关联整棵任务树。根 Run 的 `rootRunId` 等于自身 ID。开启规划时，可用 `getTaskPlan()` 或 `getTaskProgress()` 查询不可变进度视图。
+
+## Mode State
+
+自定义 `AgentExecutionMode` 可使用：
+
+```java
+run.putModeState("reviewCount", 1);
+Object count = run.getModeState().get("reviewCount");
+```
+
+Mode State 会持久化，应使用稳定键名和可序列化值，并随着执行模式版本一起演进。
+
+## 快照
+
+```java
+AgentRunSnapshot snapshot = run.toSnapshot();
+```
+
+快照是隔离副本，包含恢复所需状态但不包含模型、工具和瞬时调用上下文。正常业务代码应通过 `runner.checkpoint(run)` 保存，由 Store 分配版本，而不是只调用 `toSnapshot()` 后自行覆盖数据。

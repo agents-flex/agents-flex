@@ -40,12 +40,14 @@
 
 <script setup>
 import DefaultTheme from 'vitepress/theme'
+import MermaidEnhancer from './MermaidEnhancer.vue'
 
 const {Layout} = DefaultTheme
 </script>
 
 
 <template>
+  <MermaidEnhancer />
   <Layout>
 
     <!--docs: https://vitepress.dev/guide/extending-default-theme#layout-slots-->

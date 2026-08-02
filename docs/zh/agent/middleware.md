@@ -1,84 +1,103 @@
 ---
 title: Agent Middleware
-description: 在步骤、模型调用和工具调用三个层级实现权限、观测、限流、缓存和 Prompt 处理。
+description: 使用责任链包装 Agent step、模型调用和工具调用，并实现鉴权、治理与审计。
 ---
 
 # Agent Middleware
 
 ## 概述
 
-Middleware 是 Agent 执行链的可组合扩展点。它可以读取当前 Run 和 Invocation Context，在不改 Runner 状态机的情况下包裹整个 step、单次模型调用或单次工具调用。
+`AgentMiddleware` 是位于 Agent 执行主链中的扩展点，可以包装三个层次：整个 step、一次模型调用和一次工具调用。它适合实现租户鉴权、限流、Prompt 临时增强、模型降级、工具参数校验、缓存和 Trace。
 
-例如多租户平台可以在模型调用前检查额度，在工具调用前检查权限，在 step 外层记录一次状态推进的耗时。
+Middleware 会影响执行结果；只观察生命周期时应使用 Listener 或事件。
 
-## 快速开发
+## 注册 Middleware
 
 ```java
-AgentMiddleware middleware = new AgentMiddleware() {
+Agent agent = Agent.builder("order-agent")
+    .chatModel(chatModel)
+    .middleware(new TimingMiddleware())
+    .middleware(new TenantGuardMiddleware())
+    .build();
+```
+
+Middleware 是 Agent 定义的一部分，按注册顺序形成责任链。第一个注册项最先进入、最后退出。
+
+## 三个切入点
+
+```java
+public final class TimingMiddleware implements AgentMiddleware {
+    @Override
+    public AgentStepResult aroundStep(
+        AgentMiddlewareContext context, AgentStepChain chain) {
+        long start = System.nanoTime();
+        try {
+            return chain.proceed(context);
+        } finally {
+            record("step", System.nanoTime() - start);
+        }
+    }
+
     @Override
     public AiMessageResponse aroundModelCall(
-        AgentMiddlewareContext context,
-        AgentModelCallChain chain) {
-
-        quotaService.check(context.getInvocationContext().getTenantId());
+        AgentMiddlewareContext context, AgentModelCallChain chain) {
         return chain.proceed(context);
     }
 
     @Override
     public Object aroundToolCall(
-        AgentToolCallContext context,
-        AgentToolCallChain chain) {
-
-        permissionService.check(
-            context.getInvocationContext().getUserId(),
-            context.getTool().getName());
+        AgentToolCallContext context, AgentToolCallChain chain) {
         return chain.proceed(context);
     }
-};
-
-Agent agent = Agent.builder("secured-agent")
-    .chatModel(chatModel)
-    .middleware(middleware)
-    .build();
+}
 ```
 
-## 三个拦截层级
+- `aroundStep`：覆盖预算检查之后的模式推进，适合 step 级治理。
+- `aroundModelCall`：访问当前 Prompt，适合模型路由、缓存和临时 Prompt 处理。
+- `aroundToolCall`：访问已解析的 `Tool` 与原始 `ToolCall`，适合工具授权和审计。
 
-| 方法 | 覆盖范围 | 常见用途 |
-| --- | --- | --- |
-| `aroundStep` | 一次执行模式推进 | step 耗时、状态指标、统一异常映射 |
-| `aroundModelCall` | 一次 ChatModel 调用 | 配额、Prompt 调整、模型缓存、Trace |
-| `aroundToolCall` | 一个 ToolCall | 权限、审计、限流、业务熔断 |
+## 责任链规则
 
-Middleware 按 Agent 中的注册顺序组成调用链。调用 `chain.proceed(context)` 才会进入后续 Middleware 和实际操作；直接返回可以短路执行。
+实现通常必须调用且只调用一次 `chain.proceed(context)`：
 
-## 修改 Prompt
+- 不调用表示短路，必须返回符合当前状态机的有效结果。
+- 多次调用可能重复请求模型或执行有副作用工具。
+- 在 `finally` 中做耗时上报仍会增加请求延迟。
+- Middleware 被多个 Run 共享，实例字段必须线程安全。
+
+## 使用 Invocation Context
 
 ```java
 @Override
-public AiMessageResponse aroundModelCall(
-    AgentMiddlewareContext context,
-    AgentModelCallChain chain) {
-
-    Prompt prompt = promptPolicy.decorate(
-        context.getPrompt(),
-        context.getInvocationContext());
-    context.setPrompt(prompt);
+public Object aroundToolCall(AgentToolCallContext context,
+                             AgentToolCallChain chain) {
+    AgentInvocationContext invocation = context.getInvocationContext();
+    if (!permissionService.allowed(
+        invocation.getTenantId(), context.getTool().getName())) {
+        throw new SecurityException("tool access denied");
+    }
     return chain.proceed(context);
 }
 ```
 
-不要直接修改 Agent 的 instructions 来承载请求级数据，因为 Agent 是共享不可变定义。动态身份、区域和权限应来自 Invocation Context。
+调用上下文不持久化，因此 Worker 必须重新附加。鉴权逻辑不能假设 context 永远来自前台 HTTP 请求。
 
-## Middleware 与 ToolInterceptor
+## 临时修改 Prompt
 
-Agent Middleware 能看到 AgentRun、规划父子关系和 Invocation Context，适合 Agent 级控制。ToolInterceptor 属于 Core Tool 调用体系，适合参数转换、通用日志和独立于 Agent 的工具治理。两者可以同时使用，顺序为 Agent Middleware 在外，ToolInterceptor 在内。
+`AgentMiddlewareContext.setPrompt(...)` 只替换当前责任链中的模型 Prompt，不直接替换 Run 的持久化 Prompt。这适合添加一次性的路由提示或脱敏视图；需要跨恢复保存的消息修改，应使用 Context Manager 或 Run 的受控状态。
 
-## 异常与状态
+## 与 ToolInterceptor 的关系
 
-Middleware 抛出的异常会进入 Runner 的统一重试或失败流程。不要在 Middleware 中自行修改 Run 状态或直接写 Store；需要暂停、完成或失败的自定义控制流应实现 `AgentExecutionMode`，通过 `AgentExecutionContext` 使用受控操作。
+执行顺序为 Agent Tool Middleware 链，然后进入核心 `ToolExecutor` 与 Agent 配置的 `ToolInterceptor`，最后调用 Tool 函数。Middleware 能访问 Run 和 Agent 上下文；ToolInterceptor 更接近通用工具执行层。跨 Agent 的通用工具治理可放在 ToolInterceptor，任务级策略放在 Middleware。
 
-## 线程与性能
+## 短路示例
 
-Middleware 在执行线程中同步运行。不要在其中进行无界阻塞，也不要保存当前 Run 到实例字段。Middleware 对象会被多个 Run 复用，内部可变状态必须线程安全。
+模型缓存可以直接返回缓存响应，但必须保证响应与正常模型协议等价，并考虑 ToolCall、Token usage 和事件语义。工具缓存只适用于无副作用且参数完全决定结果的工具。对写工具绝不能用简单缓存代替业务幂等。
 
+## 错误处理
+
+Middleware 抛出的运行时异常会进入 Runner 的统一失败/重试逻辑。参数与权限错误应使用确定性异常，避免自动重试；瞬时依赖失败可以让 Runner 按策略调度重试。不要捕获异常后返回伪造成功结果。
+
+## 测试建议
+
+为每个 Middleware 验证正常链、短路、异常、并发复用和恢复场景；特别检查 `proceed` 只调用一次。包含外部副作用时，用稳定 toolCallId 断言重试不会重复写入。

@@ -1,89 +1,82 @@
 ---
-title: Worker、Lease 与分布式执行
+title: AgentWorker
+description: 使用 Lease、心跳与 fencing token 安全执行长任务和分布式 AgentRun。
 ---
 
-# Worker、Lease 与分布式执行
+# AgentWorker
 
 ## 概述
 
-短对话可以在请求线程中同步运行；报告生成、批量查询、等待审批或需要重试的任务更适合由 `AgentWorker` 后台推进。API 服务只负责创建 Run、提交命令和查询状态，Worker 从共享 `AgentRunStore` 领取到期任务。
+`AgentWorker` 从共享 `AgentRunStore` 领取可运行快照，并推进到终止或阻塞。它适合长任务、异步 API 和多实例部署。Worker 使用 Lease 防止同一个 Run 同时被多个进程推进，并用唯一 `leaseId` 阻止旧执行者提交过期结果。
 
-Lease 是有时限的执行权。它允许 Worker 崩溃后由其他节点接管，同时防止两个进程正常情况下并发推进同一个 Run。
-
-## 快速开发
+## 提交与执行
 
 ```java
-AgentRunner runner = AgentRunner.builder()
-    .runStore(sharedRunStore)
-    .commandStore(sharedCommandStore)
-    .eventStore(sharedEventStore)
-    .agentLoader(agentLoader)
-    .build();
+AgentRun queued = runner.start(agent, "生成月报");
 
-AgentWorker worker = new AgentWorker(
-    "worker-shanghai-01", runner, 30_000);
-
-worker.startPolling(1_000, 10);
+try (AgentWorker worker = new AgentWorker(
+    "report-worker-1", runner, 30_000)) {
+    List<AgentRun> processed = worker.pollAndRun(10);
+}
 ```
 
-应用已有 Quartz、XXL-JOB 或 Kubernetes 调度时，也可以由外部调度器定期调用：
+`start` 只保存 READY Run。`pollAndRun(limit)` 会先修复父子唤醒、处理恢复命令，再逐个领取 Run 并同步推进。
+
+## 自动轮询
 
 ```java
-List<AgentRun> results = worker.pollAndRun(10);
+AgentWorker worker = new AgentWorker("worker-1", runner, 30_000);
+worker.startPolling(1_000, 20);
+
+// 应用关闭时
+worker.close();
 ```
 
-关闭应用时调用 `worker.close()`。关闭只停止领取和心跳线程，不保证强制中断已进入第三方 SDK 的调用。
-
-## API 与 Worker 分离
-
-典型长任务流程如下：
-
-1. API 节点通过 `runner.submit(...)` 或相应启动入口保存可运行的 Run；
-2. Worker 原子领取 Run，Store 写入 `leaseOwner`、唯一 `leaseId` 和 `leaseUntil`；
-3. Worker 恢复 Agent 与调用上下文，并推进到完成、等待或重试；
-4. 每个稳定边界保存 Snapshot 和事件；
-5. Worker 释放 Lease，或者崩溃后等待 Lease 到期。
-
-读取任务状态不需要 Lease。取消、审批和用户补充输入通过持久化命令进入系统，也不应直接修改正在执行进程中的 Java 对象。
+重复 `startPolling` 不会创建多个线程。`close` 停止新轮询，但不保证强制中断正在进行的模型 HTTP 或业务工具。
 
 ## Lease 与 fencing
 
-`workerId` 标识进程，`leaseId` 是每次领取生成的唯一令牌。保存和释放操作同时校验两者，可阻止旧进程在暂停后恢复运行并覆盖新持有者的结果。这种 fencing 对滚动发布、长时间 GC 和网络分区尤其重要。
+领取时 Store 写入：
 
-Worker 在执行期间按租约时长约三分之一的周期自动续租。如果续租失败，本地 Run 会失去有效租约，后续 Checkpoint 拒绝继续写入。
+- `leaseOwner`：Worker ID。
+- `leaseId`：每次领取生成的唯一令牌。
+- `leaseUntil`：到期时间。
 
-JDBC 与 Redis Store 使用存储端时间判断 Lease 和 `nextRunAt`，避免多台应用服务器时钟漂移导致任务被提前接管。
+Worker 在租期约三分之一处自动续租。保存 Checkpoint 时同时校验 owner 和 leaseId；即使新 Worker 与旧进程使用相同 workerId，旧 leaseId 也无法覆盖新状态。
 
-## 调用上下文恢复
+Lease 不是分布式事务。外部工具仍需业务幂等，网络分区时旧 Worker 可能已经发出副作用，只是在 Checkpoint 时被 fencing 拒绝。
 
-Snapshot 不保存 Service、认证对象等运行时依赖。Worker 可通过 `AgentInvocationContextProvider` 依据 Snapshot 重建：
+## Invocation Context 恢复
 
 ```java
 AgentInvocationContextProvider provider = snapshot ->
     AgentInvocationContext.builder()
-        .tenantId((String) snapshot.getMetadata().get("tenantId"))
-        .attribute("ticketService", ticketService)
+        .tenantId(String.valueOf(snapshot.getMetadata().get("tenantId")))
+        .attribute("orderService", orderService)
         .build();
 
 AgentWorker worker = new AgentWorker(
-    "worker-01", runner, 30_000, provider);
+    "worker-1", runner, 30_000, provider);
 ```
 
-持久化的 `metadata` 只放重建所需的稳定标识，不要把访问令牌、连接和 Service 对象写入其中。
+Provider 根据安全、可持久化标识重建瞬时服务和身份。不要把 Bean、连接或密钥直接放进 Snapshot metadata。
 
-## Command Inbox 与事件唤醒
+## 可领取状态
 
-审批结果或补充输入可能到达任意 API 节点。`AgentRunCommandStore` 先持久化命令，Worker 再以独立 Lease 领取并调用恢复逻辑。`AgentWakeupListener` 可用于通知调度系统立即触发轮询；即使通知丢失，定时轮询仍能兜底。
+Store 通常领取 READY、可继续的 RUNNING、到期 `RETRY_SCHEDULED`，以及已请求取消但尚未终止的 Run。等待审批、用户或子任务的 Run 在相应事件到达前不可领取。
 
-命令 Store 与 Run Store 应使用同一可靠性等级。仅使用进程内命令队列会让分布式部署在节点切换时丢失审批决定。
+## 父子恢复
 
-## 子 Agent 调度
+Worker 每轮调用 `recoverCompletedChildren`，发现子 Run 已终止而父 Run 仍等待时进行补偿唤醒。这覆盖子 Checkpoint 已提交、父 Checkpoint 尚未更新时进程退出的窗口。
 
-规划工具创建子 Run 时，父 Run 进入 `WAITING_FOR_CHILD`。子 Run 像普通任务一样被任意 Worker 领取。子 Run 终止后，Worker 唤醒父 Run并合并结果；`recoverCompletedChildren(...)` 还会扫描“子任务已结束但父任务尚未唤醒”的情况，修复进程在两次写入之间退出造成的遗漏。
+## 容量规划
 
-父子创建由 `saveParentAndChild(...)` 原子提交，生产 Store 不应把它拆成两个缺少事务保护的写操作。
+当前 Worker 一次领取后同步执行 Run。可通过多个 Worker 实例扩容，但应考虑模型和工具的连接池、速率限制与线程安全。`batchSize` 决定一轮最多处理多少，不代表内部并行度。
 
-## 并发与幂等
+## 运维指标
 
-Lease 和 Snapshot 版本保护框架状态，但无法自动保证外部副作用只发生一次。工具仍应使用 `AgentToolInvocation.getId()` 作为幂等键，并在业务数据库中原子记录执行结果。对于无法提供幂等语义的外部系统，应缩短工具执行窗口、设置超时并设计人工对账流程。
+监控 runnable 队列长度、最老任务年龄、领取/完成速率、Lease 续租失败、版本冲突、命令积压、重试到期延迟和 Worker 最近成功轮询时间。Lease 时间应明显大于正常网络抖动，并小于可接受的故障接管时间。
 
+## 优雅关闭
+
+停止接收新任务，调用 `close()`，等待正在执行的 poll 返回，再关闭进程。由于外部调用不一定可中断，部署平台的 termination grace period 应覆盖常见模型/工具超时；超时退出后由 Lease 到期触发接管。

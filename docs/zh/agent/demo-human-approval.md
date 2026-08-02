@@ -1,0 +1,129 @@
+---
+title: Demo：人工审批
+description: 构建高风险工具审批流程，并通过 Command Inbox 和 Worker 跨请求恢复。
+---
+
+# Demo：人工审批
+
+## 概述
+
+本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Checkpoint 并等待人工批准；审批服务只把命令写入 Inbox；后台 Worker 消费命令，使用另一个 Runner 恢复原 Run 并执行一次部署。
+
+完整源码位于 `demos/agent-demo/src/main/java/com/agentsflex/demo/agent/HumanApprovalAgentDemo.java`。
+
+## 定义高风险工具
+
+```java
+AtomicInteger deployments = new AtomicInteger();
+
+Tool deployTool = Tool.builder("deploy_service", "将服务部署到生产环境")
+    .addParameter(Parameter.builder()
+        .name("service").type("string").required(true).build())
+    .addParameter(Parameter.builder()
+        .name("version").type("string").required(true).build())
+    .metadata("riskLevel", "HIGH")
+    .metadata("sideEffect", true)
+    .function(arguments -> {
+        deployments.incrementAndGet();
+        return "已部署 " + arguments.get("service")
+            + ":" + arguments.get("version");
+    })
+    .build();
+```
+
+生产工具应另外使用 `AgentToolInvocation` 的稳定调用 ID 访问真实发布平台，并以该 ID 实现幂等。计数器只用于 Demo 证明审批前没有副作用。
+
+## 配置审批策略
+
+```java
+Agent agent = Agent.builder("release-agent")
+    .id("release-agent")
+    .version("1")
+    .instructions("部署生产环境必须调用 deploy_service，并等待人工批准。")
+    .chatModel(model)
+    .tool(deployTool)
+    .toolApprovalPolicy((run, call, tool) ->
+        Boolean.TRUE.equals(tool.getMetadata().get("sideEffect"))
+            ? ToolApprovalDecision.requireApproval()
+                .code("PRODUCTION_DEPLOYMENT_REVIEW")
+                .message("生产发布需要人工批准")
+                .reason("部署工具会修改生产环境")
+                .metadata("riskLevel", tool.getMetadata().get("riskLevel"))
+                .build()
+            : ToolApprovalDecision.ALLOW)
+    .build();
+```
+
+策略返回结构化 Decision，而不仅是 boolean，方便审批 UI 和审计记录策略代码、说明、理由与风险元数据。
+
+## 执行到审批点
+
+```java
+AgentRun waiting = firstRunner.run(agent, "发布 order-api 2.4.0");
+
+if (waiting.getStatus() != AgentRunStatus.WAITING_FOR_APPROVAL) {
+    throw new IllegalStateException("expected approval");
+}
+if (deployments.get() != 0) {
+    throw new IllegalStateException("tool ran before approval");
+}
+```
+
+此时模型返回的 `deploy_service` ToolCall 已在 Snapshot 的 `pendingToolCalls` 中。页面可从 Suspension 获取 correlationId、message 和 metadata，并从 pending 调用展示经过脱敏的参数。
+
+## 提交审批命令
+
+```java
+String callId = waiting.getSuspension().getCorrelationId();
+AgentResumeCommand approval = AgentResumeCommand.approveTool(callId)
+    .withMetadata("approverId", "admin-1001")
+    .withMetadata("approvalSource", "release-console");
+
+secondRunner.submitCommand(
+    "approval-deploy-call-1",
+    waiting.getId(),
+    approval);
+```
+
+命令 ID 来自审批业务事件，是重复回调的幂等键。API 返回成功表示命令已入箱，不应在审批 HTTP 请求中直接执行部署。
+
+## Worker 恢复
+
+```java
+List<AgentRun> processed;
+try (AgentWorker worker = new AgentWorker(
+    "release-worker-01", secondRunner, 30_000)) {
+    processed = worker.pollAndRun(10);
+}
+
+AgentRun completed = processed.get(0);
+System.out.println(completed.getFinalOutput());
+```
+
+Worker 先消费命令，再领取已恢复的 Run。Runner 从 TOOLS phase 执行原调用，写入 ToolMessage 后请求模型生成最终答案，不会重新生成部署参数。
+
+## 拒绝审批
+
+```java
+AgentResumeCommand rejection = AgentResumeCommand.rejectTool(
+    callId, "变更窗口尚未开始");
+```
+
+拒绝不会调用工具函数。Runner 把拒绝结果关联到原 ToolCall，再由模型形成面向用户的说明。
+
+## 生产化改造
+
+- 用 JDBC/Redis Store 替换全部内存 Store。
+- 审批 API 校验当前用户、租户、Run 状态与 correlationId。
+- ToolCall 参数只展示白名单字段并脱敏。
+- commandId、runId、callId 与 approverId 进入审计事件。
+- 部署平台以稳定调用 ID 建唯一幂等记录。
+- 对超时未审批任务设置业务撤销或过期策略。
+
+## 运行仓库 Demo
+
+```bash
+mvn -pl demos/agent-demo -am test
+mvn -f demos/agent-demo/pom.xml exec:java \
+  -Dexec.mainClass=com.agentsflex.demo.agent.HumanApprovalAgentDemo
+```

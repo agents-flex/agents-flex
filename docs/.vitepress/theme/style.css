@@ -121,6 +121,182 @@
 }
 
 /**
+ * Mermaid diagram actions
+ * -------------------------------------------------------------------------- */
+
+.mermaid-viewer {
+    position: relative;
+    margin: 16px 0;
+    padding: 46px 12px 16px;
+    overflow: auto;
+    background: var(--vp-c-bg-soft);
+    border: 1px solid var(--vp-c-divider);
+    border-radius: 8px;
+}
+
+.mermaid-viewer .mermaid {
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+    margin: 0;
+}
+
+.mermaid-viewer .mermaid > svg {
+    display: block;
+    height: auto;
+}
+
+.mermaid-source-view {
+    position: relative;
+    min-height: 120px;
+}
+
+.mermaid-source-view pre {
+    box-sizing: border-box;
+    max-height: min(70vh, 720px);
+    margin: 0;
+    padding: 20px;
+    overflow: auto;
+    color: var(--vp-code-block-color);
+    background: var(--vp-code-block-bg);
+    border-radius: 6px;
+    font-family: var(--vp-font-family-mono);
+    font-size: 13px;
+    line-height: 1.65;
+    white-space: pre;
+}
+
+.mermaid-source-view code {
+    color: inherit;
+    font-family: inherit;
+}
+
+.mermaid-viewer .mermaid[hidden],
+.mermaid-source-view[hidden] {
+    display: none;
+}
+
+.mermaid-source-copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 1;
+}
+
+.mermaid-viewer.is-source-mode {
+    padding-right: 12px;
+    padding-left: 12px;
+}
+
+.mermaid-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    display: flex;
+    gap: 4px;
+}
+
+.mermaid-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--vp-c-text-2);
+    background: var(--vp-c-bg);
+    border: 1px solid var(--vp-c-divider);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+
+.mermaid-action:hover {
+    color: var(--vp-c-brand-1);
+    border-color: var(--vp-c-brand-1);
+}
+
+.mermaid-action:focus-visible {
+    outline: 2px solid var(--vp-c-brand-1);
+    outline-offset: 2px;
+}
+
+.mermaid-action:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.mermaid-action svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.mermaid-viewer:fullscreen,
+.mermaid-viewer.is-fallback-fullscreen {
+    box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 64px 32px 32px;
+    background: var(--vp-c-bg);
+    border: 0;
+    border-radius: 0;
+}
+
+.mermaid-viewer:fullscreen .mermaid,
+.mermaid-viewer.is-fallback-fullscreen .mermaid {
+    align-items: flex-start;
+    min-width: 100%;
+    min-height: 100%;
+}
+
+.mermaid-viewer:fullscreen .mermaid-source-view,
+.mermaid-viewer.is-fallback-fullscreen .mermaid-source-view {
+    min-height: 100%;
+}
+
+.mermaid-viewer:fullscreen .mermaid-source-view pre,
+.mermaid-viewer.is-fallback-fullscreen .mermaid-source-view pre {
+    min-height: calc(100vh - 96px);
+    max-height: none;
+}
+
+.mermaid-viewer:fullscreen .mermaid-actions,
+.mermaid-viewer.is-fallback-fullscreen .mermaid-actions {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+}
+
+.mermaid-viewer.is-fallback-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+}
+
+html.has-mermaid-fullscreen {
+    overflow: hidden;
+}
+
+@media (max-width: 640px) {
+    .mermaid-viewer {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+
+    .mermaid-viewer:fullscreen,
+    .mermaid-viewer.is-fallback-fullscreen {
+        padding: 60px 16px 24px;
+    }
+}
+
+/**
  * Agents-Flex custom home
  * -------------------------------------------------------------------------- */
 

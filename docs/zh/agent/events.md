@@ -1,77 +1,82 @@
 ---
-title: 实时事件、持久化事件与审计
-description: 区分细粒度进程内事件和可断点读取的生命周期事件，并用于流式 UI、追踪、审计和报表。
+title: 事件机制
+description: 区分实时事件、持久化运行事件和生命周期监听器，并实现流式 UI 与可靠审计。
 ---
 
-# 实时事件、持久化事件与审计
+# 事件机制
 
 ## 概述
 
-Agent 同时需要低延迟 UI 和可靠历史。把每个 Token 都写数据库成本很高，只在内存发布生命周期事件又无法审计，因此框架提供两条事件通道：
+Agent 模块提供三种不同保证的观察机制：`AgentListener` 用于粗粒度生命周期回调，`AgentRuntimeEvent` 用于当前 JVM 的低延迟细粒度事件，`AgentRunEvent` 用于可持久化、可断点续读的审计事件。三者不是重复 API，而是分别服务于业务回调、实时体验和可靠消费。
 
-- `AgentRuntimeEventStream`：当前 JVM 内的细粒度实时事件；
-- `AgentRunEventStore`：跨进程保存的生命周期事件。
+## 选择事件通道
 
-## 快速开发
+| 机制 | 典型用途 | 是否持久化 | 顺序范围 |
+| --- | --- | --- | --- |
+| `AgentListener` | 指标、日志、轻量通知 | 否 | 调用线程顺序 |
+| Runtime Event | 流式文本、工具进度、实时 UI | 否 | 当前 JVM 内按 runId 递增 |
+| Run Event | 审计、断点消费、状态时间线 | 是 | Store 内按 runId 严格递增 |
 
-监听实时事件：
+## 实时事件
 
 ```java
 runner.addRuntimeEventListener(event -> {
     if (event.getType() == AgentRuntimeEventType.MODEL_TEXT_DELTA) {
-        websocket.send(event.getRunId(), event.getData().get("content"));
+        websocket.send(event.getRunId(), event.getData().get("text"));
     }
 });
 ```
 
-读取持久化事件：
+Runtime Event 包含 `runId`、`rootRunId`、`parentRunId`、Agent ID/版本、sequence、type 和 data。事件类型覆盖 step、模型增量、工具进度、上下文压缩、命令、子任务和终态。
 
-```java
-List<AgentRunEvent> page = eventStore.load(runId, afterSequence, 100);
-for (AgentRunEvent event : page) {
-    afterSequence = event.getSequence();
-}
-```
+监听器在发布线程同步执行；单个监听器异常会隔离，但耗时操作仍会拖慢 Run。网络发送应进入有界队列，并定义队列满时的降级策略。
 
-## 实时事件
+### 工具上报进度
 
-实时类型覆盖模型开始/完成、文本与 reasoning 增量、ToolCall 增量、工具进度、审批、Checkpoint、命令、上下文压缩、Artifact 外置、规划任务和终止状态。
-
-每个 Run 在当前 JVM 内拥有递增 sequence。监听器在发布线程同步执行，必须快速返回；单个监听器异常会被隔离，但慢监听器仍会拖慢运行。生产 UI 通常把事件快速投递到 WebSocket、SSE 或内部消息队列。
-
-实时事件不承担跨进程可靠投递，进程重启后 sequence 也不会延续。
+Runner 会把 `AgentToolProgressEmitter` 放入工具执行上下文 attributes。自定义 Tool 或拦截器可取出并发送 `TOOL_PROGRESS`，进度数据只用于实时观察，不改变工具最终返回值。
 
 ## 持久化事件
 
-`AgentRunEvent` 记录 eventId、runId、Run 内严格递增 sequence、类型、时间和字符串 attributes。EventStore 必须幂等追加 eventId，并原子分配 sequence。
-
-它适合构建：
-
-- Run 时间线和问题追溯；
-- 模型、工具、审批和重试耗时统计；
-- 调用状态、成功率和预算终止报表；
-- 消费者基于 afterSequence 断点读取；
-- 数据库 Outbox 或消息总线同步。
-
-持久化事件是状态变化轨迹，Snapshot 是当前事实。恢复运行只依赖 Snapshot，不通过重放事件重建状态。
-
-## 事件增强
-
 ```java
-runner.addEventEnricher((run, type, attributes) -> {
-    Map<String, String> enriched = new LinkedHashMap<>(attributes);
-    enriched.put("tenantId", String.valueOf(run.getMetadata().get("tenantId")));
-    enriched.put("module", "order-center");
-    return enriched;
-});
+List<AgentRunEvent> page = runner.getEventStore()
+    .load(runId, lastSequence, 100);
+
+for (AgentRunEvent event : page) {
+    handle(event);
+    lastSequence = event.getSequence();
+}
 ```
 
-平台可以补充账号、接口、模块、任务类型和配置版本，再在查询层组合用户账号、调用内容、时间、状态和结果。敏感 Prompt、密钥和完整工具结果不应直接写入事件。
+`afterSequence` 是排他游标，返回结果按 sequence 升序。自定义 `AgentRunEventStore` 必须：
 
-## AgentListener
+- 为同一 `runId` 原子分配严格递增 sequence。
+- 按 `eventId` 幂等追加，重复写入返回原事件。
+- 保证 `load` 的稳定顺序与 limit 语义。
+- 复制或序列化事件，避免调用方修改已存状态。
 
-`AgentListener` 是更简单的对象回调接口，适合进程内日志、指标和轻量通知。它能直接读取 AgentRun，但不提供持久化序号，也不参与运行控制。回调顺序、线程安全以及全部生命周期方法见 [AgentListener 生命周期监听器](./agent-listener.md)。
+持久化类型包括 Run、模型、工具、审批、重试、预算、计划、任务、子 Run 与 Checkpoint 等关键节点。它不是完整 Token 流；流式 delta 只存在于 Runtime Event。
 
-## 指标示例
+## 增强审计字段
 
-一次 Run 的完成率来自终止事件；延迟可由 RUN_STARTED 与终止事件计算；模型延迟由 MODEL_STARTED/MODEL_COMPLETED 计算；工具成功率由 TOOL_STARTED、TOOL_COMPLETED 和 TOOL_FAILED 聚合。平台可以按 Agent ID、版本、任务类型和租户维度生成报表，而无需让运行时内置固定统计表。
+```java
+runner.addEventEnricher((run, type) -> Map.of(
+    "tenantId", String.valueOf(run.getInvocationContext().getTenantId()),
+    "environment", "prod"));
+```
+
+Enricher 的返回值会合并到持久化事件 attributes。attributes 仅支持字符串信息，适合租户、部署区域、业务类型和追踪 ID。敏感信息与大对象不应写入事件。
+
+## 消费者设计
+
+可靠消费者应按 `runId + sequence` 保存游标，并把处理实现为幂等。Store 保证事件追加幂等，不等于外部消费者 exactly-once。对于整棵父子任务树，可通过 `rootRunId` 关联 Runtime Event；持久化事件当前以各 Run 的时间线分别读取。
+
+## 自定义 EventStore
+
+关系数据库可以使用 `(run_id, sequence)` 唯一索引维持顺序，并为 `event_id` 建唯一索引。sequence 分配与插入应在同一事务中。高并发实现可按 runId 行锁、数据库序列分区或原子计数器选择方案，但不能先读最大值再无锁写入。
+
+## 常见误区
+
+- Runtime sequence 在 JVM 重启后不连续，不能作为审计游标。
+- Listener 和实时事件不是可靠消息投递。
+- `CHECKPOINT_SAVED` 表示状态已保存，不表示整个 Run 已完成。
+- 事件用于描述状态变化，当前状态仍应从 `AgentRunStore` 读取。

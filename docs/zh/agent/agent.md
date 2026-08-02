@@ -1,130 +1,110 @@
 ---
-title: Agent 定义与加载
-description: 设计不可变 Agent，配置模型、工具、策略、版本，并通过 AgentLoader 从业务系统组装定义。
+title: Agent
+description: 深入理解不可变 Agent 定义、模型、工具、策略、版本和扩展属性。
 ---
 
-# Agent 定义与加载
+# Agent
 
 ## 概述
 
-`Agent` 是一份不可变的可执行定义。它回答“这个智能体能做什么、使用哪个模型、遵守哪些规则”，不保存某个用户正在执行到哪一步。
+`Agent` 是一个不可变的运行定义，描述“由哪个模型、遵循什么指令、可以使用哪些工具、受哪些策略控制”。它不包含某次请求的消息、状态或结果，因此可被多个 `AgentRun` 复用。
 
-例如订单助手可以绑定订单查询和退款工具，并规定退款必须审批；每个用户请求则创建独立 `AgentRun`。定义和运行分离后，同一个 Agent 能被多个线程复用，运行记录也不会互相污染。
+这种分离类似于配置元数据与运行实例的关系：修改 Agent 定义不会直接修改历史 Run；恢复历史 Run 时，`AgentLoader` 必须按快照中的 ID 和版本重新加载兼容定义。
 
-## 快速开发
+## 创建 Agent
 
 ```java
 Agent agent = Agent.builder("order-assistant")
     .id("order-assistant")
     .version("2026-08-01")
-    .description("查询订单状态并协助处理售后问题")
-    .instructions("根据用户问题选择工具；不得虚构订单状态。")
+    .description("查询订单并处理售后请求")
+    .instructions("先查询订单事实；任何退款操作都必须使用工具。")
     .chatModel(chatModel)
     .chatOptions(chatOptions)
-    .tool(queryOrderTool)
-    .tool(refundTool)
-    .executionPolicy(AgentExecutionPolicy.builder()
-        .maxIterations(12)
-        .build())
+    .tools(List.of(queryOrder, refundOrder))
     .build();
 ```
 
-构建完成后，工具、中间件和 attributes 都是只读集合。模型、Tool 实现本身是否线程安全，仍由对应实现保证。
+构建时会校验模型非空、名称非空、版本非空以及工具名唯一。未设置 `id` 时使用 `name`，未设置版本时为 `"1"`。
 
-## 定义包含哪些内容
+## 属性说明
 
-| 配置 | 用途 |
-| --- | --- |
-| `id` | Checkpoint 恢复和子 Agent 加载使用的稳定标识 |
-| `version` | 运行创建时冻结的定义版本 |
-| `name` | 日志和界面使用的名称 |
-| `description` | 平台和规划模型可见的能力描述 |
-| `instructions` | 注入模型的系统指令 |
-| `chatModel/chatOptions` | 模型实现和生成参数 |
-| `tools` | 当前版本实际可执行的工具 |
-| `executionPolicy` | 迭代、重试和预算边界 |
-| `planningPolicy` | 模型是否可以创建任务计划和委派子 Agent |
-| `toolApprovalPolicy` | ToolCall 执行前的结构化决策 |
-| `middlewares` | 步骤、模型和工具调用扩展链 |
-| `contextManager` | 调用模型前压缩持久化消息 |
-| `attributes` | 平台自定义的定义级配置数据 |
+| 属性 | 作用 | 是否进入 Checkpoint |
+| --- | --- | --- |
+| `id`、`version` | 恢复时定位定义 | 保存标识，不保存整个 Agent |
+| `name`、`description` | 展示及规划时描述能力 | 否 |
+| `instructions` | 注入 `SystemMessage` | 消息中保存当前结果 |
+| `chatModel`、`chatOptions` | 执行模型请求 | 否，恢复时重装配 |
+| `tools`、`toolInterceptors` | 工具协议及执行链 | 否，恢复时重装配 |
+| `executionPolicy` | 迭代、重试、预算 | 有效策略会保存 |
+| `planningPolicy` | 自动规划及委派约束 | 计划状态保存，定义重装配 |
+| `executionMode` | step 推进逻辑 | 保存模式 ID 与版本 |
+| `contextManager` | 模型调用前整理消息 | 处理结果进入快照 |
+| `middlewares` | 包装 step、模型和工具 | 否 |
+| `attributes` | 平台扩展元数据 | 否 |
 
-`attributes` 不会自动发送给模型，也不会替代业务配置表。平台可以用它保存模式参数、发布标签或适用场景，再由 Middleware 或自定义执行模式读取。
+## 指令与工具
 
-## Tool 属于 Agent
-
-Runner 恢复工具调用时，不再访问全局 Tool Registry，而是先加载 Snapshot 指定版本的 Agent，再通过工具名从该 Agent 取得 Tool：
+系统指令用于定义身份、边界和决策原则；工具描述用于告诉模型具体能力。不要只在指令中声称某项能力而不提供工具，也不要把动态业务状态写死在指令里。
 
 ```java
-Tool tool = agent.getTool(toolCall.getName());
-```
-
-因此同一个 Agent 内工具名必须唯一。Tool metadata 随 Tool 定义存在，可以描述风险等级、绑定来源和领域，但不进入 `AgentRunSnapshot`；恢复后以加载到的 Agent 版本为准。
-
-## 执行策略
-
-```java
-AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
-    .maxIterations(10)
-    .maxSteps(200)
-    .retryPolicy(AgentRetryPolicy.builder()
-        .maxRetries(3)
-        .initialDelayMillis(1_000)
-        .maxDelayMillis(30_000)
-        .multiplier(2.0)
-        .build())
-    .budget(AgentBudget.builder()
-        .maxDurationMillis(120_000)
-        .maxTotalTokens(30_000)
-        .maxToolCalls(20)
-        .build())
+Agent agent = Agent.builder("order-assistant")
+    .instructions("查询类请求可直接执行；退款类请求调用 refund_order。")
+    .chatModel(chatModel)
+    .tool(queryOrder)
+    .tool(refundOrder)
+    .toolApprovalPolicy((run, call, tool) ->
+        "refund_order".equals(tool.getName())
+            ? ToolApprovalDecision.requireApproval()
+                .code("REFUND_APPROVAL")
+                .message("退款需要人工审批")
+                .build()
+            : ToolApprovalDecision.ALLOW)
     .build();
 ```
 
-策略是 Agent 的默认值。某类任务需要更小预算时，可通过 `AgentRunOptions.executionPolicy(...)` 覆盖；实际策略会写入 Snapshot，恢复时不会跟随 Agent 当前默认值漂移。
+规划开启后，框架会注入保留工具名 `agent_create_plan` 和 `agent_update_plan`；业务工具不能使用这两个名称。
 
-## 从业务系统加载 Agent
+## 策略组合
 
-生产平台通常把配置拆在多张表中：基础信息、模型连接、工具授权、审批策略和版本发布记录。`AgentLoader` 只要求最终组装出完整 Agent：
+`Agent` 聚合多类互相独立的策略：
 
-```java
-public final class DatabaseAgentLoader implements AgentLoader {
-    @Override
-    public Agent load(String agentId, String version) {
-        AgentConfig config = repository.find(agentId, version);
-        return config == null ? null : assemble(config);
-    }
+- `AgentExecutionPolicy`：最大模型迭代、最大 step、工具错误策略、重试和预算。
+- `ToolApprovalPolicy`：允许、拒绝或要求审批。
+- `AgentPlanningPolicy`：是否规划、允许委派给谁、最大任务数和重规划次数。
+- `AgentContextPolicy`：模型读取完整 Memory 还是窗口消息。
+- `AgentContextManager`：在调用模型前执行摘要等持久化整理。
+- `ToolResultOffloadPolicy`：大型工具结果是否外置。
 
-    @Override
-    public Agent loadActive(String agentId) {
-        AgentConfig config = repository.findPublished(agentId);
-        return config == null ? null : assemble(config);
-    }
-}
-```
+策略是 Agent 的默认值。单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具、审批或执行模式。
 
-`loadActive` 用于创建新任务和模型选择子 Agent；`load(id, version)` 用于恢复已有 Run。加载器不需要保存 Agent 对象，也不需要 register API。
+## 版本管理
 
-## 版本为什么重要
+只要变化会影响历史 Run 的恢复行为，就应发布新版本，例如：
 
-假设任务在审批前生成了“退款 100 元”的 ToolCall。审批期间平台把退款工具参数改成另一种含义，如果恢复时直接加载最新定义，旧调用可能被错误解释。Snapshot 保存 `agentId + agentVersion`，Runner 恢复时精确加载创建该 Run 的版本。
+- 删除或重命名工具。
+- 改变工具参数 Schema 或副作用语义。
+- 更换执行模式协议。
+- 修改会影响待审批调用的 Middleware。
 
-版本不要求平台采用某种编号格式，但同一 ID 和版本必须具有稳定执行语义。已经没有运行引用某版本后，平台才适合归档其运行时配置。
+`AgentLoader.load(agentId, version)` 必须能够加载仍可能恢复的历史版本。不要让该方法悄悄返回最新版本；显式版本找不到时应返回 `null` 或抛出清晰的业务异常。
 
-## 本地加载器
-
-测试和 Demo 可以使用：
+## 扩展属性
 
 ```java
-AgentLoader loader = new InMemoryAgentLoader(agent, researchAgent, codeAgent);
-AgentRunner runner = AgentRunner.builder()
-    .agentLoader(loader)
+Agent agent = Agent.builder("order-assistant")
+    .chatModel(chatModel)
+    .attribute("owner", "order-platform")
+    .attribute("riskLevel", "high")
     .build();
 ```
 
-同一 ID 传入多个版本时，最后一个作为 active 版本，全部版本仍可通过 `load(id, version)` 精确读取。
+`attributes` 适合配置平台展示、路由和审计，不会自动发送给模型，也不会进入 Run 快照。需要影响执行时，应由 Middleware 或业务装配逻辑显式读取。
 
-## 设计边界
+## 线程安全
 
-不要把用户消息、当前审批人、Token 用量或 Worker Lease 放进 Agent；这些属于 Run。也不要把数据源连接、HTTP Request 等进程内对象放进 attributes；请求级服务应通过 `AgentInvocationContext` 传递。
+Agent 自身的集合在构建后只读，但这不自动保证其中的 `ChatModel`、`Tool`、Interceptor 和 Middleware 线程安全。作为单例复用时，这些组件不应把某个 Run 的可变数据保存在实例字段中；运行级数据应放在 `AgentRun`、`AgentInvocationContext` 或外部存储中。
 
+## 自定义装配
+
+生产平台通常从数据库、配置中心和依赖注入容器组合 Agent：配置表保存 ID、版本和策略，运行时注册表提供模型与工具实现。最终只需由 [AgentLoader](./agent-loader) 返回完整、可执行的 `Agent`。

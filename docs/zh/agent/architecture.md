@@ -1,92 +1,89 @@
 ---
-title: Agent 整体架构
+title: 架构设计
+description: 从定义平面、执行平面、持久化平面和观察平面理解 Agent 运行时架构。
 ---
 
-# Agent 整体架构
+# 架构设计
 
 ## 概述
 
-Agents-Flex Agent 模块是一套可恢复的智能体运行时。它把“Agent 能做什么”“一次消息正在做什么”“如何推进任务”和“如何跨进程保存状态”分开，使同一套业务 Agent 既能同步回答，也能等待审批、后台重试、派发子 Agent 或在其他节点恢复。
+agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状态推进器”的架构。模型负责动态决策，Runner 负责确定性的控制流，Store 负责跨线程与跨进程一致性。该分层避免把业务任务绑定到某个 HTTP 请求或某个 JVM 对象。
 
-这种设计的核心不是某种固定提示词格式，而是明确的状态边界：模型、工具和 Middleware 是运行时能力，`AgentRunSnapshot` 是可持久化状态，`AgentRunner` 负责在两者之间安全推进。
+## 组件分层
 
-## 快速开发
-
-开发一个 Agent 通常只需要四步：
-
-```java
-Agent agent = Agent.builder()
-    .id("support-agent")
-    .version("1")
-    .instructions("帮助用户诊断问题，需要时调用工具。")
-    .chatModel(chatModel)
-    .tool(queryTicketTool)
-    .build();
-
-AgentRunner runner = AgentRunner.builder()
-    .agentLoader(agentLoader)
-    .runStore(runStore)
-    .build();
-
-AgentConversation conversation = new AgentConversation(agent, runner);
-AgentRun run = conversation.send(new UserMessage("查询工单 T-1024"));
+```text
+应用入口 / 审批系统 / 调度系统 / UI
+                |
+        AgentRunner / AgentWorker
+        |       |       |       |
+   AgentLoader  Mode  Middleware Listener
+        |       |       |
+     Agent   AgentRun  ChatModel + Tool
+                |
+  RunStore / CommandStore / EventStore / ArtifactStore
 ```
 
-随着场景变复杂，只需要给 Runner 接入共享 Store、事件、Middleware 和 Worker，不需要改写 Agent 的业务工具。
+### 定义平面
 
-## 架构图
+`Agent`、策略、Tool、Middleware 和 ExecutionMode 定义一个可发布版本。`AgentLoader` 把配置数据与运行时对象装配起来，并保留历史版本的恢复能力。
 
-![Agent Runtime 架构](/assets/images/agent-runtime-architecture.svg)
+### 执行平面
 
-## 核心对象
+`AgentRunner` 按 status 与 phase 推进 `AgentRun`。默认模式实现模型原生 Tool Calling；规划通过内置工具创建子 Run；Suspension 把外部等待转换为持久状态。
 
-| 对象 | 职责 | 生命周期 |
-| --- | --- | --- |
-| `Agent` | 模型、指令、工具和执行策略的不可变定义 | 可复用、可版本化 |
-| `AgentConversation` | 维护同一会话的历史消息 | 跨多次用户消息 |
-| `AgentRun` | 一条用户消息的一次可观察执行 | 从创建到终止或等待 |
-| `AgentRunner` | 推进循环、保存状态、执行工具和恢复 | 通常为应用级单例 |
-| `AgentWorker` | 从共享 Store 领取并后台推进 Run | Worker 进程级 |
+### 调度平面
 
-每条消息都创建独立 Run，因此普通问候、一次工具调用和长任务使用相同入口；是否调用工具、规划任务或直接回答由模型与策略共同决定。Conversation 把前一次 Run 的对话历史带入下一次 Run，Run 则保留每次处理的独立状态、预算和审计轨迹。
+`AgentWorker` 领取 READY 和到期任务，Command Inbox 接收外部恢复事件，Lease 与 fencing token 控制多实例所有权。调度系统可以用轮询或 Wakeup Listener 降低延迟。
 
-## 控制面与执行面
+### 持久化平面
 
-业务平台的 API、配置管理、权限和报表属于控制面。它通过 `AgentLoader` 把一张或多张业务表组装成 Agent，通过 Runner 创建或恢复 Run，并把审批等外部决定写入 Command Inbox。
+Run Snapshot 是当前状态，Run Event 是变化历史，Command 是外部输入，Artifact 是大内容。它们有独立接口和一致性契约，可落在同一数据库，也可通过 outbox 与幂等协调异构存储。
 
-Runner 与 Worker 属于执行面。它们加载 Agent、调用模型和工具、检查预算、保存 Checkpoint，并发布实时与持久化事件。两者可以部署在同一 JVM，也可以通过 JDBC 或 Redis Store 分离部署。
+### 观察平面
 
-## 可恢复状态与运行时对象
+Listener 提供粗粒度回调，Runtime Event 服务流式 UI，Run Event 服务审计与断点消费。`rootRunId` 关联父子任务树，Invocation Context 提供请求和租户关联。
 
-进入 Snapshot 的数据必须能在另一个进程中解释，包括消息、ToolCall、状态、计划、计数器、暂停原因和模式状态。以下对象不进入 Snapshot：
+## 默认状态机
 
-- `ChatModel`、`Tool` 和 Middleware 实例；
-- 数据库连接、Spring Bean 和线程池；
-- 当前 HTTP 请求、未序列化身份对象和短期凭据；
-- 实时 listener。
+```text
+READY -> RUNNING/MODEL
+  MODEL -- final message --> COMPLETED
+  MODEL -- ToolCall ------> RUNNING/TOOLS
+  TOOLS -- executed ------> RUNNING/MODEL
+  TOOLS -- approval ------> WAITING_FOR_APPROVAL
+  any   -- retryable -----> RETRY_SCHEDULED
+  parent -- child --------> WAITING_FOR_CHILD
+  any   -- limit/error ---> terminal status
+```
 
-恢复时，`AgentLoader.load(agentId, version)` 重新组装 Agent，`AgentInvocationContextProvider` 重新附加请求外的业务服务和身份上下文。这个边界使分布式恢复不依赖原 JVM 内存。
+恢复命令把阻塞 Run 转回 Suspension 记录的 phase。终态不可重新打开。
 
-## 扩展链路
+## 一致性边界
 
-一次 step 依次经过 step Middleware、模型调用 Middleware、模型、工具审批、tool Middleware、ToolInterceptor 与 Tool。`AgentRuntimeEventStream` 提供低延迟进程内事件，`AgentRunEventStore` 保存跨进程可查询的审计事件。
+框架能保证 Checkpoint 内状态一致和 Store 写入并发控制，但无法把任意外部工具副作用纳入同一事务。因此架构采用稳定 ToolCall ID + 业务幂等键。审批前保存调用、工具后保存结果，把不可避免的故障窗口缩小并变得可恢复。
 
-上下文过长时，`AgentContextManager` 可压缩历史；大型工具结果可写入 `AgentArtifactStore`，模型只接收摘要与引用。规划能力通过内置规划工具创建任务列表和子 Run，仍由同一 Runner/Worker 体系执行。
+## 扩展原则
 
-## 包结构
+- 业务配置通过 Loader 接入，不侵入 Snapshot。
+- 执行语义通过 ExecutionMode 扩展，不在 Listener 中改状态。
+- 横切控制通过 Middleware，低层通用工具逻辑通过 ToolInterceptor。
+- 瞬时依赖通过 Invocation Context，持久业务标识通过 metadata。
+- 长内容进入 Artifact Store，不让 Prompt 和 Checkpoint 无界增长。
 
-`com.agentsflex.agent` 根包放置 Runner、Run、Worker、策略和生命周期对象；子包按能力边界组织：
+## 部署形态
 
-| 包 | 内容 |
-| --- | --- |
-| `command` | 持久化恢复命令和唤醒 |
-| `context` | 上下文压缩、Artifact 和大型结果卸载 |
-| `event` | 实时事件、持久化事件和增强器 |
-| `loader` | Agent 定义加载 |
-| `middleware` | step、模型和工具调用拦截链 |
-| `mode` | 执行模式扩展 |
-| `store` | Snapshot Store 与序列化契约 |
-| `task` | 规划策略、任务与进度 |
-| `tool` | 审批、调用上下文和错误策略 |
+### 单实例同步
 
-包名表达稳定职责，而不是实施阶段或具体产品页面。JDBC 与 Redis 实现在独立 `agents-flex-agent-store-*` Maven 模块中，核心运行时不绑定某个基础设施客户端。
+HTTP 请求直接调用 `runner.run`，内存 Store 可用于开发。进程退出会丢状态。
+
+### 单实例持久化
+
+替换 Store，短任务同步执行，审批后恢复。可抗重启，但同一进程仍承担请求与执行。
+
+### 多实例 Worker
+
+API 服务调用 `start`/`submitCommand`，Worker 集群通过共享 Store 执行。所有实例共享 Loader 版本视图，Lease 负责接管，适合生产长任务。
+
+## 安全边界
+
+模型不能直接绕过工具授权；Runner 只执行当前 Agent 中按名称解析到的 Tool，并在执行前应用审批策略和 Middleware。生产平台还应在配置发布、Invocation Context 重建、Artifact 读取和恢复 API 上实施租户隔离。
