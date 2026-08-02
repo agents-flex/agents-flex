@@ -22,17 +22,29 @@ public final class AgentRunEvent implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 存储层用于幂等追加的全局事件 ID。 */
+    /**
+     * 存储层用于幂等追加的全局事件 ID。
+     */
     private final String eventId;
-    /** 事件所属 AgentRun ID。 */
+    /**
+     * 事件所属 AgentRun ID。
+     */
     private final String runId;
-    /** 同一 runId 内由 EventStore 分配的单调递增序号。 */
+    /**
+     * 同一 runId 内由 EventStore 分配的单调递增序号。
+     */
     private final long sequence;
-    /** 持久化生命周期事件类型。 */
+    /**
+     * 持久化生命周期事件类型。
+     */
     private final AgentRunEventType type;
-    /** 事件首次创建时的毫秒时间戳。 */
+    /**
+     * 事件首次创建时的毫秒时间戳。
+     */
     private final long occurredAt;
-    /** 可跨进程序列化的只读字符串属性。 */
+    /**
+     * 可跨进程序列化的只读字符串属性。
+     */
     private final Map<String, String> attributes;
 
     private AgentRunEvent(String eventId, String runId, long sequence,
@@ -51,14 +63,18 @@ public final class AgentRunEvent implements Serializable {
             : Collections.unmodifiableMap(new HashMap<>(attributes));
     }
 
-    /** 创建一个等待 EventStore 分配序号的新事件。 */
+    /**
+     * 创建一个等待 EventStore 分配序号的新事件。
+     */
     public static AgentRunEvent create(String runId, AgentRunEventType type,
                                        Map<String, String> attributes) {
         return new AgentRunEvent(UUID.randomUUID().toString(), runId, 0,
             type, System.currentTimeMillis(), attributes);
     }
 
-    /** 返回内容相同但带有持久化序号的事件。 */
+    /**
+     * 返回内容相同但带有持久化序号的事件。
+     */
     public AgentRunEvent withSequence(long sequence) {
         if (sequence <= 0) {
             throw new IllegalArgumentException("sequence must be greater than 0");
@@ -66,21 +82,52 @@ public final class AgentRunEvent implements Serializable {
         return new AgentRunEvent(eventId, runId, sequence, type, occurredAt, attributes);
     }
 
-    /** 返回与当前事件完全隔离的副本。 */
+    /**
+     * 返回与当前事件完全隔离的副本。
+     */
     public AgentRunEvent copy() {
         return new AgentRunEvent(eventId, runId, sequence, type, occurredAt, attributes);
     }
 
-    /** @return 全局事件 ID */
-    public String getEventId() { return eventId; }
-    /** @return 事件所属 AgentRun ID */
-    public String getRunId() { return runId; }
-    /** @return 同一 Run 内的持久化序号；尚未追加时为 0 */
-    public long getSequence() { return sequence; }
-    /** @return 生命周期事件类型 */
-    public AgentRunEventType getType() { return type; }
-    /** @return 事件首次创建时间 */
-    public long getOccurredAt() { return occurredAt; }
-    /** @return 不可修改的字符串事件属性 */
-    public Map<String, String> getAttributes() { return attributes; }
+    /**
+     * @return 全局事件 ID
+     */
+    public String getEventId() {
+        return eventId;
+    }
+
+    /**
+     * @return 事件所属 AgentRun ID
+     */
+    public String getRunId() {
+        return runId;
+    }
+
+    /**
+     * @return 同一 Run 内的持久化序号；尚未追加时为 0
+     */
+    public long getSequence() {
+        return sequence;
+    }
+
+    /**
+     * @return 生命周期事件类型
+     */
+    public AgentRunEventType getType() {
+        return type;
+    }
+
+    /**
+     * @return 事件首次创建时间
+     */
+    public long getOccurredAt() {
+        return occurredAt;
+    }
+
+    /**
+     * @return 不可修改的字符串事件属性
+     */
+    public Map<String, String> getAttributes() {
+        return attributes;
+    }
 }

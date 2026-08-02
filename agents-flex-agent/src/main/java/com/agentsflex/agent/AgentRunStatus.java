@@ -63,7 +63,9 @@ public enum AgentRunStatus {
      */
     MAX_ITERATIONS_REACHED,
 
-    /** 运行模式达到总 step 上限，防止不调用模型的自定义模式无限循环。 */
+    /**
+     * 运行模式达到总 step 上限，防止不调用模型的自定义模式无限循环。
+     */
     MAX_STEPS_REACHED,
 
     /**

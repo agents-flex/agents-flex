@@ -3,7 +3,9 @@ package com.agentsflex.agent.context;
 import com.agentsflex.agent.AgentInvocationContext;
 import com.agentsflex.agent.AgentRun;
 
-/** 在模型调用前整理可持久化消息上下文。 */
+/**
+ * 在模型调用前整理可持久化消息上下文。
+ */
 @FunctionalInterface
 public interface AgentContextManager {
     /**
@@ -13,6 +15,10 @@ public interface AgentContextManager {
      */
     AgentContextUpdate prepare(AgentRun run, AgentInvocationContext invocationContext);
 
-    /** 返回不修改消息历史的默认实现。 */
-    static AgentContextManager none() { return (run, context) -> AgentContextUpdate.unchanged(); }
+    /**
+     * 返回不修改消息历史的默认实现。
+     */
+    static AgentContextManager none() {
+        return (run, context) -> AgentContextUpdate.unchanged();
+    }
 }

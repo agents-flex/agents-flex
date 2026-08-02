@@ -11,7 +11,9 @@ package com.agentsflex.agent;
  */
 public enum AgentStepType {
 
-    /** 自定义运行模式已经保存中间状态，可以继续推进。 */
+    /**
+     * 自定义运行模式已经保存中间状态，可以继续推进。
+     */
     PROGRESSED,
 
     /**
@@ -44,9 +46,13 @@ public enum AgentStepType {
      */
     MAX_ITERATIONS_REACHED,
 
-    /** 运行模式达到总 step 上限。 */
+    /**
+     * 运行模式达到总 step 上限。
+     */
     MAX_STEPS_REACHED,
 
-    /** 执行预算已经耗尽。 */
+    /**
+     * 执行预算已经耗尽。
+     */
     BUDGET_EXCEEDED
 }

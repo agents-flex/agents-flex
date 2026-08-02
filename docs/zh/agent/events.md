@@ -70,7 +70,7 @@ runner.addEventEnricher((run, type, attributes) -> {
 
 ## AgentListener
 
-`AgentListener` 是更简单的对象回调接口，适合进程内日志和指标。它能直接读取 AgentRun，但不提供持久化序号。新建可靠审计功能时优先使用 EventStore；需要细粒度流式内容时使用 RuntimeEventStream。
+`AgentListener` 是更简单的对象回调接口，适合进程内日志、指标和轻量通知。它能直接读取 AgentRun，但不提供持久化序号，也不参与运行控制。回调顺序、线程安全以及全部生命周期方法见 [AgentListener 生命周期监听器](./agent-listener.md)。
 
 ## 指标示例
 

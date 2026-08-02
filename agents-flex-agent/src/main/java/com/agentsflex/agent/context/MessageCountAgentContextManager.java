@@ -17,19 +17,25 @@ import java.util.List;
  * {@code agent.context.summary} 元数据的 UserMessage 写回 Memory，因此压缩结果会进入 Checkpoint。</p>
  */
 public final class MessageCountAgentContextManager implements AgentContextManager {
-    /** 触发压缩的非系统消息数量阈值。 */
+    /**
+     * 触发压缩的非系统消息数量阈值。
+     */
     private final int maxMessages;
-    /** 每次压缩必须原样保留的最近消息数量。 */
+    /**
+     * 每次压缩必须原样保留的最近消息数量。
+     */
     private final int recentMessages;
-    /** 把较早消息转换为摘要文本的应用实现。 */
+    /**
+     * 把较早消息转换为摘要文本的应用实现。
+     */
     private final AgentConversationSummarizer summarizer;
 
     /**
      * 创建按消息数量触发的上下文管理器。
      *
-     * @param maxMessages 超过该数量时触发压缩，至少为 2
+     * @param maxMessages    超过该数量时触发压缩，至少为 2
      * @param recentMessages 原样保留的最近消息数，必须小于 maxMessages
-     * @param summarizer 生成摘要文本的实现
+     * @param summarizer     生成摘要文本的实现
      */
     public MessageCountAgentContextManager(int maxMessages, int recentMessages,
                                            AgentConversationSummarizer summarizer) {
@@ -42,7 +48,9 @@ public final class MessageCountAgentContextManager implements AgentContextManage
         this.summarizer = summarizer;
     }
 
-    /** 在模型调用前检查并原子替换 Run 的 Memory 消息。 */
+    /**
+     * 在模型调用前检查并原子替换 Run 的 Memory 消息。
+     */
     @Override
     public AgentContextUpdate prepare(AgentRun run, AgentInvocationContext invocationContext) {
         List<Message> all = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);

@@ -6,12 +6,12 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.tool.ToolApprovalDecision;
+
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.agentsflex.agent.tool.ToolApprovalDecision;
 
 /**
  * AgentRun 的可持久化暂停信息。
@@ -23,15 +23,25 @@ public final class AgentSuspension implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 暂停原因，决定允许使用的恢复命令类型。 */
+    /**
+     * 暂停原因，决定允许使用的恢复命令类型。
+     */
     private final AgentSuspensionType type;
-    /** ToolCall ID 或子 Run ID 等外部事件关联标识。 */
+    /**
+     * ToolCall ID 或子 Run ID 等外部事件关联标识。
+     */
     private final String correlationId;
-    /** 面向调用方展示的等待说明。 */
+    /**
+     * 面向调用方展示的等待说明。
+     */
     private final String message;
-    /** 恢复后继续执行的模型或工具阶段。 */
+    /**
+     * 恢复后继续执行的模型或工具阶段。
+     */
     private final AgentRunPhase resumePhase;
-    /** 审批策略、重试时间等可持久化附加信息。 */
+    /**
+     * 审批策略、重试时间等可持久化附加信息。
+     */
     private final Map<String, Object> metadata;
 
     public AgentSuspension(AgentSuspensionType type, String correlationId, String message,
@@ -48,18 +58,24 @@ public final class AgentSuspension implements Serializable {
             : Collections.unmodifiableMap(new HashMap<>(metadata));
     }
 
-    /** 创建等待使用者补充信息的暂停点。 */
+    /**
+     * 创建等待使用者补充信息的暂停点。
+     */
     public static AgentSuspension userInput(String message) {
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, null, message,
             AgentRunPhase.MODEL, null);
     }
 
-    /** 创建使用默认结构化决策的工具审批暂停点。 */
+    /**
+     * 创建使用默认结构化决策的工具审批暂停点。
+     */
     public static AgentSuspension toolApproval(String callId, String toolName) {
         return toolApproval(callId, toolName, ToolApprovalDecision.REQUIRE_APPROVAL);
     }
 
-    /** 创建携带策略代码、原因和审计元数据的工具审批暂停信息。 */
+    /**
+     * 创建携带策略代码、原因和审计元数据的工具审批暂停信息。
+     */
     public static AgentSuspension toolApproval(String callId, String toolName,
                                                ToolApprovalDecision decision) {
         Map<String, Object> metadata = new HashMap<>();
@@ -76,45 +92,61 @@ public final class AgentSuspension implements Serializable {
             message, AgentRunPhase.TOOLS, metadata);
     }
 
-    /** 创建等待指定时间后自动重试的暂停点。 */
+    /**
+     * 创建等待指定时间后自动重试的暂停点。
+     */
     public static AgentSuspension retry(String message, AgentRunPhase resumePhase, long nextRunAt) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("nextRunAt", nextRunAt);
         return new AgentSuspension(AgentSuspensionType.RETRY, null, message, resumePhase, metadata);
     }
 
-    /** 创建等待指定子 Run 结束的暂停点。 */
+    /**
+     * 创建等待指定子 Run 结束的暂停点。
+     */
     public static AgentSuspension child(String childRunId) {
         return new AgentSuspension(AgentSuspensionType.CHILD_AGENT, childRunId,
             "Waiting for child AgentRun", AgentRunPhase.MODEL, null);
     }
 
-    /** @return 暂停原因类型 */
+    /**
+     * @return 暂停原因类型
+     */
     public AgentSuspensionType getType() {
         return type;
     }
 
-    /** @return ToolCall ID 或子 Run ID 等关联标识 */
+    /**
+     * @return ToolCall ID 或子 Run ID 等关联标识
+     */
     public String getCorrelationId() {
         return correlationId;
     }
 
-    /** @return 面向调用方的等待说明 */
+    /**
+     * @return 面向调用方的等待说明
+     */
     public String getMessage() {
         return message;
     }
 
-    /** @return 应在恢复后继续执行的阶段 */
+    /**
+     * @return 应在恢复后继续执行的阶段
+     */
     public AgentRunPhase getResumePhase() {
         return resumePhase;
     }
 
-    /** @return 不可修改的暂停元数据 */
+    /**
+     * @return 不可修改的暂停元数据
+     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }
 
-    /** @return 与当前暂停信息隔离的副本 */
+    /**
+     * @return 与当前暂停信息隔离的副本
+     */
     AgentSuspension copy() {
         return new AgentSuspension(type, correlationId, message, resumePhase, metadata);
     }

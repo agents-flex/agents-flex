@@ -164,6 +164,7 @@ export default defineConfig({
                     {text: '任务规划、进度与子 Agent', link: '/zh/agent/task-planning'},
                     {text: '多模态与上下文管理', link: '/zh/agent/context-management'},
                     {text: 'Agent Middleware', link: '/zh/agent/middleware'},
+                    {text: 'AgentListener 生命周期监听器', link: '/zh/agent/agent-listener'},
                     {text: '实时事件与审计', link: '/zh/agent/events'},
                     {text: 'Checkpoint 与持久化 Store', link: '/zh/agent/checkpoint'},
                     {text: '错误重试与预算控制', link: '/zh/agent/retry'},

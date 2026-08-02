@@ -23,22 +23,38 @@ public final class AgentToolInvocation implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** AgentRunner 写入 ToolContext 的属性键。 */
+    /**
+     * AgentRunner 写入 ToolContext 的属性键。
+     */
     public static final String CONTEXT_ATTRIBUTE = AgentToolInvocation.class.getName();
 
-    /** 直接执行当前 ToolCall 的 Run ID。 */
+    /**
+     * 直接执行当前 ToolCall 的 Run ID。
+     */
     private final String runId;
-    /** 父子运行树最顶层的 Run ID。 */
+    /**
+     * 父子运行树最顶层的 Run ID。
+     */
     private final String rootRunId;
-    /** 父 Run ID；根运行中的工具调用为空。 */
+    /**
+     * 父 Run ID；根运行中的工具调用为空。
+     */
     private final String parentRunId;
-    /** 工具所属 Agent 的稳定 ID。 */
+    /**
+     * 工具所属 Agent 的稳定 ID。
+     */
     private final String agentId;
-    /** 工具所属 Agent 的配置版本。 */
+    /**
+     * 工具所属 Agent 的配置版本。
+     */
     private final String agentVersion;
-    /** 模型生成或 Runner 补全的稳定 ToolCall ID。 */
+    /**
+     * 模型生成或 Runner 补全的稳定 ToolCall ID。
+     */
     private final String toolCallId;
-    /** Agent 内唯一的工具名称。 */
+    /**
+     * Agent 内唯一的工具名称。
+     */
     private final String toolName;
 
     public AgentToolInvocation(String runId, String rootRunId, String parentRunId,
@@ -59,28 +75,66 @@ public final class AgentToolInvocation implements Serializable {
         this.toolName = toolName;
     }
 
-    /** 返回当前线程正在执行的 Agent Tool 调用；非 AgentRunner 调用时返回 {@code null}。 */
+    /**
+     * 返回当前线程正在执行的 Agent Tool 调用；非 AgentRunner 调用时返回 {@code null}。
+     */
     public static AgentToolInvocation current() {
         ToolContext context = ToolContextHolder.currentContext();
         return context == null ? null : context.getAttribute(CONTEXT_ATTRIBUTE);
     }
 
-    /** @return 直接执行工具的 Run ID */
-    public String getRunId() { return runId; }
-    /** @return 父子运行树的根 Run ID */
-    public String getRootRunId() { return rootRunId; }
-    /** @return 父 Run ID；根运行返回 {@code null} */
-    public String getParentRunId() { return parentRunId; }
-    /** @return 工具所属 Agent ID */
-    public String getAgentId() { return agentId; }
-    /** @return 工具所属 Agent 配置版本 */
-    public String getAgentVersion() { return agentVersion; }
-    /** @return 当前 ToolCall 的稳定 ID */
-    public String getToolCallId() { return toolCallId; }
-    /** @return 当前工具名称 */
-    public String getToolName() { return toolName; }
+    /**
+     * @return 直接执行工具的 Run ID
+     */
+    public String getRunId() {
+        return runId;
+    }
 
-    /** 返回跨进程恢复后仍保持稳定的默认幂等键。 */
+    /**
+     * @return 父子运行树的根 Run ID
+     */
+    public String getRootRunId() {
+        return rootRunId;
+    }
+
+    /**
+     * @return 父 Run ID；根运行返回 {@code null}
+     */
+    public String getParentRunId() {
+        return parentRunId;
+    }
+
+    /**
+     * @return 工具所属 Agent ID
+     */
+    public String getAgentId() {
+        return agentId;
+    }
+
+    /**
+     * @return 工具所属 Agent 配置版本
+     */
+    public String getAgentVersion() {
+        return agentVersion;
+    }
+
+    /**
+     * @return 当前 ToolCall 的稳定 ID
+     */
+    public String getToolCallId() {
+        return toolCallId;
+    }
+
+    /**
+     * @return 当前工具名称
+     */
+    public String getToolName() {
+        return toolName;
+    }
+
+    /**
+     * 返回跨进程恢复后仍保持稳定的默认幂等键。
+     */
     public String getIdempotencyKey() {
         return runId + ":" + toolCallId;
     }
