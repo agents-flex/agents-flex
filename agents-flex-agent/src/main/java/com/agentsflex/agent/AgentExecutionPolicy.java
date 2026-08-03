@@ -32,22 +32,30 @@ public final class AgentExecutionPolicy implements Serializable {
      * 默认最多允许调用模型 20 次。
      */
     private static final int DEFAULT_MAX_ITERATIONS = 20;
-    /** 默认允许自定义运行模式推进的最大步骤数。 */
+    /**
+     * 默认允许自定义运行模式推进的最大步骤数。
+     */
     private static final int DEFAULT_MAX_STEPS = 1000;
 
     /**
      * 一次运行允许的最大模型调用次数。
      */
     private final int maxIterations;
-    /** 一次 Run 允许执行模式推进的最大 step 次数。 */
+    /**
+     * 一次 Run 允许执行模式推进的最大 step 次数。
+     */
     private final int maxSteps;
     /**
      * 工具调用失败时采用的处理方式。
      */
     private final ToolErrorStrategy toolErrorStrategy;
-    /** 模型或工具发生可恢复异常时使用的重试策略。 */
+    /**
+     * 模型或工具发生可恢复异常时使用的重试策略。
+     */
     private final AgentRetryPolicy retryPolicy;
-    /** 限制运行时间、Token 和工具调用次数的资源预算。 */
+    /**
+     * 限制运行时间、Token 和工具调用次数的资源预算。
+     */
     private final AgentBudget budget;
 
     private AgentExecutionPolicy(Builder builder) {
@@ -79,7 +87,9 @@ public final class AgentExecutionPolicy implements Serializable {
         return maxIterations;
     }
 
-    public int getMaxSteps() { return maxSteps; }
+    public int getMaxSteps() {
+        return maxSteps;
+    }
 
     /**
      * @return 工具执行失败后的处理策略
@@ -88,12 +98,16 @@ public final class AgentExecutionPolicy implements Serializable {
         return toolErrorStrategy;
     }
 
-    /** @return 可恢复异常的自动重试策略 */
+    /**
+     * @return 可恢复异常的自动重试策略
+     */
     public AgentRetryPolicy getRetryPolicy() {
         return retryPolicy;
     }
 
-    /** @return 本次运行必须遵守的资源预算 */
+    /**
+     * @return 本次运行必须遵守的资源预算
+     */
     public AgentBudget getBudget() {
         return budget;
     }
@@ -119,7 +133,9 @@ public final class AgentExecutionPolicy implements Serializable {
             return this;
         }
 
-        /** 设置运行模式最多允许推进多少个 step。 */
+        /**
+         * 设置运行模式最多允许推进多少个 step。
+         */
         public Builder maxSteps(int maxSteps) {
             this.maxSteps = maxSteps;
             return this;
@@ -133,13 +149,17 @@ public final class AgentExecutionPolicy implements Serializable {
             return this;
         }
 
-        /** 设置可恢复异常的最大重试次数与退避方式。 */
+        /**
+         * 设置可恢复异常的最大重试次数与退避方式。
+         */
         public Builder retryPolicy(AgentRetryPolicy retryPolicy) {
             this.retryPolicy = retryPolicy;
             return this;
         }
 
-        /** 设置时间、Token 和工具调用次数的硬限制。 */
+        /**
+         * 设置时间、Token 和工具调用次数的硬限制。
+         */
         public Builder budget(AgentBudget budget) {
             this.budget = budget;
             return this;
