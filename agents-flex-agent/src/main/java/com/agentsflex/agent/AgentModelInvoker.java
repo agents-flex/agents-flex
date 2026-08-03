@@ -37,7 +37,9 @@ final class AgentModelInvoker {
         this.eventStream = eventStream;
     }
 
-    /** 根据 Invocation Context 的 streaming 配置选择模型调用方式。 */
+    /**
+     * 根据 Invocation Context 的 streaming 配置选择模型调用方式。
+     */
     AiMessageResponse invoke(AgentRun run, Prompt prompt) {
         if (!run.getInvocationContext().isStreaming()) {
             return run.getAgent().getChatModel().chat(prompt, run.getAgent().getChatOptions());
@@ -45,7 +47,9 @@ final class AgentModelInvoker {
         return invokeStreaming(run, prompt);
     }
 
-    /** 等待异步流关闭，并返回与同步接口一致的完整 AiMessageResponse。 */
+    /**
+     * 等待异步流关闭，并返回与同步接口一致的完整 AiMessageResponse。
+     */
     private AiMessageResponse invokeStreaming(AgentRun run, Prompt prompt) {
         CountDownLatch closed = new CountDownLatch(1);
         AtomicReference<AiMessage> fullMessage = new AtomicReference<>();
@@ -107,7 +111,9 @@ final class AgentModelInvoker {
         return new AiMessageResponse(context, null, fullMessage.get());
     }
 
-    /** 最终完整帧不重复发布正文，只发布真正的增量内容。 */
+    /**
+     * 最终完整帧不重复发布正文，只发布真正的增量内容。
+     */
     private void publishDeltas(AgentRun run, AiMessage message) {
         if (message.isFinalDelta()) return;
         if (StringUtil.hasText(message.getContent())) {
@@ -124,7 +130,9 @@ final class AgentModelInvoker {
         }
     }
 
-    /** 有总时长预算时，流式等待不会超过当前 Run 的剩余时间。 */
+    /**
+     * 有总时长预算时，流式等待不会超过当前 Run 的剩余时间。
+     */
     private void awaitClose(AgentRun run, CountDownLatch closed) {
         try {
             long maxDuration = run.getExecutionPolicy().getBudget().getMaxDurationMillis();

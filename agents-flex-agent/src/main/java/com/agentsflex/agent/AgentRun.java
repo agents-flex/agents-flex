@@ -257,7 +257,7 @@ public final class AgentRun {
      * <p>运行期间产生的用户、模型和工具消息会直接写入同一个 Memory，供下一轮对话继续使用。</p>
      */
     static AgentRun start(Agent agent, ChatMemory memory, UserMessage userMessage,
-                                 AgentRunOptions options) {
+                          AgentRunOptions options) {
         if (memory == null) {
             throw new IllegalArgumentException("memory must not be null");
         }
@@ -277,7 +277,7 @@ public final class AgentRun {
      * 不会被复制，系统指令始终以当前 Agent 定义为准。</p>
      */
     static AgentRun start(Agent agent, List<? extends Message> conversationHistory,
-                                 UserMessage userMessage) {
+                          UserMessage userMessage) {
         return start(agent, conversationHistory, userMessage, AgentRunOptions.defaults());
     }
 
@@ -285,7 +285,7 @@ public final class AgentRun {
      * 使用会话历史、结构化用户消息和单次运行选项创建 Run。
      */
     static AgentRun start(Agent agent, List<? extends Message> conversationHistory,
-                                 UserMessage userMessage, AgentRunOptions options) {
+                          UserMessage userMessage, AgentRunOptions options) {
         if (userMessage == null) {
             throw new IllegalArgumentException("userMessage must not be null");
         }

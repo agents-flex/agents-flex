@@ -143,7 +143,9 @@ public final class AgentRunner {
      * 命令成功入箱后通知外部调度系统的监听器列表。
      */
     private final List<AgentWakeupListener> wakeupListeners = new CopyOnWriteArrayList<>();
-    /** 标识当前线程正在代表哪个 Worker 推进已领取的 Run。 */
+    /**
+     * 标识当前线程正在代表哪个 Worker 推进已领取的 Run。
+     */
     private final ThreadLocal<String> activeWorkerId = new ThreadLocal<>();
     /**
      * 当前 Worker 本次领取得到的唯一租约令牌。
@@ -938,7 +940,9 @@ public final class AgentRunner {
         return middleware.aroundStep(context, chain);
     }
 
-    /** 执行不包含 step Middleware 包装的通用单步状态机。 */
+    /**
+     * 执行不包含 step Middleware 包装的通用单步状态机。
+     */
     private AgentStepResult stepCore(AgentRun run) {
         // 先确认当前状态可推进，并补齐旧调用方可能尚未保存的初始状态。
         validateStep(run);
@@ -1278,17 +1282,22 @@ public final class AgentRunner {
         return executePendingTools(run, response);
     }
 
-    /** 递归构造模型 Middleware 责任链，链尾由 AgentModelInvoker 统一调用 ChatModel。 */
-    private AiMessageResponse proceedModelCall(AgentRun run,
-                                               AgentMiddlewareContext context, int index) {
+    /**
+     * 递归构造模型 Middleware 责任链，链尾由 AgentModelInvoker 统一调用 ChatModel。
+     */
+    private AiMessageResponse proceedModelCall(AgentRun run, AgentMiddlewareContext context, int index) {
         List<AgentMiddleware> middlewares = run.getAgent().getMiddlewares();
-        if (index >= middlewares.size()) return invokeModel(run, context.getPrompt());
+        if (index >= middlewares.size()) {
+            return invokeModel(run, context.getPrompt());
+        }
         AgentMiddleware middleware = middlewares.get(index);
         AgentModelCallChain chain = next -> proceedModelCall(run, next, index + 1);
         return middleware.aroundModelCall(context, chain);
     }
 
-    /** 调用模型适配器，并由适配器发布细粒度流式事件。 */
+    /**
+     * 调用模型适配器，并由适配器发布细粒度流式事件。
+     */
     private AiMessageResponse invokeModel(AgentRun run, Prompt prompt) {
         return modelInvoker.invoke(run, prompt);
     }
@@ -1590,7 +1599,9 @@ public final class AgentRunner {
         return value.substring(0, maxLength) + "\n[子任务结果已截断，完整内容保留在子 Run 中]";
     }
 
-    /** 从恢复出的当前 Agent 定义中按名称解析工具；工具对象本身不保存在 Snapshot。 */
+    /**
+     * 从恢复出的当前 Agent 定义中按名称解析工具；工具对象本身不保存在 Snapshot。
+     */
     private Tool resolveTool(AgentRun run, ToolCall call) {
         return call == null ? null : run.getAgent().getTool(call.getName());
     }
@@ -1622,13 +1633,17 @@ public final class AgentRunner {
         return AgentStepResult.of(AgentStepType.FAILED, response, null, error);
     }
 
-    /** 参数错误和缺失工具属于确定性配置问题，重复执行不会自行恢复。 */
+    /**
+     * 参数错误和缺失工具属于确定性配置问题，重复执行不会自行恢复。
+     */
     private boolean isRetryable(RuntimeException error) {
         return !(error instanceof AgentToolNotFoundException)
             && !(error instanceof IllegalArgumentException);
     }
 
-    /** 保存最终消息、收束计划状态，并将 Run 转换为不可再次推进的 COMPLETED 状态。 */
+    /**
+     * 保存最终消息、收束计划状态，并将 Run 转换为不可再次推进的 COMPLETED 状态。
+     */
     private AgentStepResult complete(AgentRun run, AiMessageResponse response, AiMessage message) {
         AgentTaskPlan plan = run.getTaskPlan();
         if (plan != null && plan.getStatus() == AgentTaskPlanStatus.REPLANNING) {
@@ -1643,7 +1658,9 @@ public final class AgentRunner {
         return AgentStepResult.of(AgentStepType.COMPLETED, response, null, null);
     }
 
-    /** 在安全边界响应单调取消信号并保存最终 CANCELLED 状态。 */
+    /**
+     * 在安全边界响应单调取消信号并保存最终 CANCELLED 状态。
+     */
     private AgentStepResult cancelRun(AgentRun run) {
         run.markCancelled();
         checkpoint(run);
@@ -1651,7 +1668,9 @@ public final class AgentRunner {
         return AgentStepResult.of(AgentStepType.CANCELLED, null, null, null);
     }
 
-    /** 保存预算终止原因，避免调用方只能从通用失败信息推断成本限制。 */
+    /**
+     * 保存预算终止原因，避免调用方只能从通用失败信息推断成本限制。
+     */
     private AgentStepResult budgetExceeded(AgentRun run, String reason) {
         run.markBudgetExceeded(reason);
         checkpoint(run);
@@ -1736,7 +1755,9 @@ public final class AgentRunner {
         return result;
     }
 
-    /** 递归构造 Agent 工具 Middleware 链，链尾再交给核心 ToolExecutor 和 ToolInterceptor。 */
+    /**
+     * 递归构造 Agent 工具 Middleware 链，链尾再交给核心 ToolExecutor 和 ToolInterceptor。
+     */
     private Object proceedToolCall(AgentRun run, AgentToolCallContext context, int index,
                                    AgentToolInvocation invocation,
                                    List<ToolInterceptor> interceptors) {
@@ -1786,7 +1807,9 @@ public final class AgentRunner {
                 "artifactId", reference.getArtifactId(), "size", reference.getSize()));
     }
 
-    /** 把允许交回模型处理的工具异常编码为与原 ToolCall 关联的结构化错误消息。 */
+    /**
+     * 把允许交回模型处理的工具异常编码为与原 ToolCall 关联的结构化错误消息。
+     */
     private ToolMessage buildToolErrorMessage(ToolCall call, Throwable error) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", true);
@@ -1799,7 +1822,9 @@ public final class AgentRunner {
         return result;
     }
 
-    /** 合并审批策略与人工恢复命令中的拒绝信息，生成模型可理解的结构化结果。 */
+    /**
+     * 合并审批策略与人工恢复命令中的拒绝信息，生成模型可理解的结构化结果。
+     */
     private ToolMessage buildToolRejectedMessage(AgentRun run, ToolCall call,
                                                  ToolApprovalDecision decision) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -1827,7 +1852,9 @@ public final class AgentRunner {
         return result;
     }
 
-    /** 返回 ToolCall 的稳定关联键；旧供应商缺少 ID 时兼容使用工具名。 */
+    /**
+     * 返回 ToolCall 的稳定关联键；旧供应商缺少 ID 时兼容使用工具名。
+     */
     private String callKey(ToolCall call) {
         return StringUtil.hasText(call.getId()) ? call.getId() : call.getName();
     }
@@ -1848,7 +1875,9 @@ public final class AgentRunner {
         }
     }
 
-    /** 从消息历史倒序查找最近的 AI 消息，供 FINISHED Phase 或自定义模式完成运行。 */
+    /**
+     * 从消息历史倒序查找最近的 AI 消息，供 FINISHED Phase 或自定义模式完成运行。
+     */
     private AiMessage lastAiMessage(AgentRun run) {
         List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
         for (int i = messages.size() - 1; i >= 0; i--) {
@@ -1859,7 +1888,9 @@ public final class AgentRunner {
         return null;
     }
 
-    /** 确保 Run 已装配规划工具，并兼容尚未保存初始 Snapshot 的包内创建路径。 */
+    /**
+     * 确保 Run 已装配规划工具，并兼容尚未保存初始 Snapshot 的包内创建路径。
+     */
     private void ensurePreparedAndCheckpointed(AgentRun run) {
         prepareRun(run);
         if (run.getVersion() < 0) {
@@ -1916,7 +1947,9 @@ public final class AgentRunner {
         }
     }
 
-    /** 将具体暂停原因映射为对外可查询的生命周期等待状态。 */
+    /**
+     * 将具体暂停原因映射为对外可查询的生命周期等待状态。
+     */
     private AgentRunStatus blockedStatusFor(AgentSuspensionType type) {
         switch (type) {
             case USER_INPUT:
@@ -1982,7 +2015,9 @@ public final class AgentRunner {
         }
     }
 
-    /** 校验审批命令及 ToolCall 关联 ID，并记录后续工具阶段可直接读取的布尔决定。 */
+    /**
+     * 校验审批命令及 ToolCall 关联 ID，并记录后续工具阶段可直接读取的布尔决定。
+     */
     private void applyToolApproval(AgentRun run, AgentSuspension suspension,
                                    AgentResumeCommand command) {
         if (command.getType() != AgentResumeCommandType.APPROVE_TOOL
@@ -2279,7 +2314,9 @@ public final class AgentRunner {
         eventStore.append(AgentRunEvent.create(run.getId(), type, values));
     }
 
-    /** 生成模型迭代事件共用的当前次数、上限和剩余次数。 */
+    /**
+     * 生成模型迭代事件共用的当前次数、上限和剩余次数。
+     */
     private Map<String, String> iterationAttributes(AgentRun run) {
         int maxIterations = run.getExecutionPolicy().getMaxIterations();
         return attributes("iteration", String.valueOf(run.getIterationCount()),
@@ -2314,20 +2351,25 @@ public final class AgentRunner {
         return attributes;
     }
 
-    /** 把工具主动上报的进度数据合并到框架生成的基础属性中。 */
+    /**
+     * 把工具主动上报的进度数据合并到框架生成的基础属性中。
+     */
     private Map<String, Object> mergeObjectAttributes(Map<String, Object> base,
                                                       Map<String, ?> additions) {
         if (additions != null) base.putAll(additions);
         return base;
     }
 
-    /** 发布仅在当前进程存活期间有效的实时事件；空 Run 不产生事件。 */
-    private void emitRuntime(AgentRun run, AgentRuntimeEventType type,
-                             Map<String, ?> data) {
+    /**
+     * 发布仅在当前进程存活期间有效的实时事件；空 Run 不产生事件。
+     */
+    private void emitRuntime(AgentRun run, AgentRuntimeEventType type, Map<String, ?> data) {
         if (run != null) runtimeEventStream.publish(run, type, data);
     }
 
-    /** 使用稳定的“异常类名 + 消息”格式写入事件，避免持久化 Throwable 对象。 */
+    /**
+     * 使用稳定的“异常类名 + 消息”格式写入事件，避免持久化 Throwable 对象。
+     */
     private String errorMessage(Throwable error) {
         return error == null ? null : error.getClass().getName() + ": " + error.getMessage();
     }
@@ -2342,7 +2384,9 @@ public final class AgentRunner {
         }
     }
 
-    /** 同步调用所有生命周期监听器，并隔离单个监听器的运行时异常。 */
+    /**
+     * 同步调用所有生命周期监听器，并隔离单个监听器的运行时异常。
+     */
     private void forEachListener(ListenerCallback callback) {
         for (AgentListener listener : listeners) {
             try {
