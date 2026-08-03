@@ -1,13 +1,13 @@
 ---
 title: 预算控制
-description: 限制 AgentRun 的时长、Token、工具调用、模型迭代和执行 step。
+description: 限制 AgentRun 的时长、Token、工具调用、模型迭代和 Runner step。
 ---
 
 # 预算控制
 
 ## 概述
 
-Agent 的执行路径由模型动态决定，必须设置资源边界。`AgentExecutionPolicy` 提供结构上限，`AgentBudget` 提供资源上限：前者限制模型迭代和模式 step，后者限制时长、Token 和工具调用次数。
+Agent 的执行路径由模型动态决定，必须设置资源边界。`AgentExecutionPolicy` 限制模型迭代和 Runner 总 step，并配置重试和错误策略；`AgentBudget` 限制时长、Token 和工具调用次数。
 
 预算是硬停止条件，不是计费系统。超过任一维度后 Run 进入终态 `BUDGET_EXCEEDED`，不会自动重试。
 
@@ -37,7 +37,7 @@ AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
 - 时长在外部调用前检查，因此不能强制中断已经开始的模型或工具调用。
 - Token 用量在模型响应后累计并检查，可能略微超过上限。
 - 工具次数在即将执行新工具前检查，已完成调用不会被倒推为失败。
-- `maxIterations` 统计模型请求；`maxSteps` 统计执行模式推进。
+- `maxIterations` 统计模型请求；`maxSteps` 统计 Runner 进入稳定执行步骤的次数，包括规划推进和内置 ToolCall 状态机推进。
 
 模型实现若不返回 Token usage，Token 预算无法得到准确统计，应同时使用迭代、工具和时长限制。
 
@@ -64,7 +64,7 @@ if (run.getStatus() == AgentRunStatus.BUDGET_EXCEEDED) {
 }
 ```
 
-原因可能是 `maxDurationMillis`、`maxInputTokens`、`maxOutputTokens`、`maxTotalTokens` 或 `maxToolCalls`。迭代和 step 有各自的终态，不通过 budget reason 表达。
+原因可能是 `maxDurationMillis`、`maxInputTokens`、`maxOutputTokens`、`maxTotalTokens` 或 `maxToolCalls`。模型迭代和 Runner step 达到上限使用独立终态，不通过 budget reason 表达。
 
 ## 分层预算
 
@@ -72,7 +72,7 @@ if (run.getStatus() == AgentRunStatus.BUDGET_EXCEEDED) {
 
 ## 生产建议
 
-- 总是同时配置 `maxIterations` 和 `maxSteps`，自定义模式可能不调用模型。
+- 同时配置合理的 `maxIterations` 和 `maxSteps`，后者还能约束不发起模型请求的规划推进路径。
 - 对有费用或副作用的工具设置 `maxToolCalls`。
 - 监控预算终止比例，过高可能意味着提示词、工具错误或阈值不合理。
 - 不把预算耗尽包装成普通最终答案；向调用方明确返回受限状态。

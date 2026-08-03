@@ -151,4 +151,4 @@ for (AgentTask task : progress.getTasks()) {
 
 ## 自定义与限制
 
-当前 Runner 识别固定规划工具并负责调度，不应自行创建同名业务工具。需要并行任务、依赖图或人工修改计划时，可以把 `AgentTaskPlan` 作为领域参考，在自定义 `AgentExecutionMode` 或外部编排层实现，并继续使用普通子 Run 作为可靠执行单元。
+当前 Runner 识别固定规划工具并负责调度，不应自行创建同名业务工具。需要并行任务、依赖图或人工修改计划时，可以把 `AgentTaskPlan` 作为领域参考，在外部编排层实现，并继续使用普通子 Run 作为可靠执行单元。

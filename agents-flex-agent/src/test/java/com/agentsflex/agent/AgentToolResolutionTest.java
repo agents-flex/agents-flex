@@ -116,7 +116,6 @@ public class AgentToolResolutionTest {
         ToolCall call = new ToolCall("missing-call", "write_order", "{}");
         AgentRunSnapshot invalid = AgentRunSnapshot.builder(
                 "missing-tool-run", agent.getId(), agent.getVersion())
-            .executionMode(agent.getExecutionMode().getId(), agent.getExecutionMode().getVersion())
             .executionPolicy(agent.getExecutionPolicy())
             .status(AgentRunStatus.RUNNING)
             .phase(AgentRunPhase.TOOLS)

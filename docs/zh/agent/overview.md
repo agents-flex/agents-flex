@@ -36,7 +36,7 @@ description: 了解 Agents-Flex Agent 运行时解决的问题、核心概念、
 
 ## 一次运行如何推进
 
-默认 `ToolCallingAgentExecutionMode` 采用模型原生 ToolCall 协议：
+Runner 内置状态机采用模型原生 ToolCall 协议：
 
 1. 创建 `READY` Run，并保存初始 Checkpoint。
 2. 调用模型；没有 ToolCall 时以最终消息完成。
@@ -51,23 +51,23 @@ description: 了解 Agents-Flex Agent 运行时解决的问题、核心概念、
 
 | 需求 | 对应能力 |
 | --- | --- |
-| 多轮工具执行 | `AgentRunner`、`AgentExecutionMode` |
+| 多轮工具执行 | `AgentRunner` |
 | 人工介入 | `AgentSuspension`、`AgentResumeCommand` |
 | 长任务恢复 | `AgentRunSnapshot`、`AgentRunStore` |
 | 分布式执行 | `AgentWorker`、Lease、乐观版本 |
 | 动态拆解任务 | `AgentPlanningPolicy`、父子 Run |
 | 上下文过长 | `AgentContextManager`、Artifact Store |
 | 资源限制 | `AgentExecutionPolicy`、`AgentBudget` |
-| 扩展执行链 | `AgentMiddleware`、`AgentExecutionMode` |
+| 扩展执行链 | `AgentMiddleware` |
 | 监控与审计 | Runtime Event、Run Event、Listener |
 
 ## 设计收益
 
 - **定义与状态分离**：同一个 Agent 定义可安全服务多个 Run。
 - **阻塞而非占线程**：审批与退避通过状态和时间戳表达，不使用线程 `sleep` 等待。
-- **恢复语义稳定**：快照绑定 Agent ID、Agent 版本以及执行模式 ID/版本。
+- **恢复语义稳定**：快照绑定 Agent ID 和 Agent 版本。
 - **并发写入受控**：Store 使用版本号，Worker 使用带 `leaseId` 的 fencing token。
-- **扩展点明确**：模型、工具、加载、存储、上下文、事件和执行模式均有独立接口。
+- **扩展点明确**：模型、工具、加载、存储、上下文、事件和 Middleware 均有独立接口。
 
 ## 默认实现的边界
 

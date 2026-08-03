@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * 进程内 AgentRunStore，主要用于默认运行模式、单元测试和本地开发。
+ * 进程内 AgentRunStore，主要用于默认运行环境、单元测试和本地开发。
  *
  * <p>该实现通过 runId 粒度的同步块实现版本检查和写入原子性。生产环境的长任务应替换为数据库、
  * Redis 等持久化实现，并在存储层使用 CAS、事务或条件更新保证相同语义。</p>

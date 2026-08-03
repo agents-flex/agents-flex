@@ -30,7 +30,6 @@ import com.agentsflex.agent.middleware.AgentToolCallChain;
 import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.mode.AgentExecutionContext;
 import com.agentsflex.agent.store.AgentRunStore;
 import com.agentsflex.agent.store.AgentRunVersionConflictException;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
@@ -84,10 +83,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * <ol>
  *     <li>{@link #runUntilBlocked(AgentRun)} 决定是否继续循环；</li>
  *     <li>{@link #step(AgentRun)} 完成取消、Lease、预算、规划和 Middleware 等通用检查；</li>
- *     <li>{@link com.agentsflex.agent.mode.AgentExecutionMode} 根据当前 Phase 推进具体执行逻辑。</li>
+ *     <li>内置 ToolCall 状态机根据当前 Phase 推进模型调用或工具执行。</li>
  * </ol>
  *
- * <p>默认执行模式使用模型原生 ToolCall。模型产生 ToolCall 后，Runner 先把调用及参数保存为
+ * <p>内置状态机使用模型原生 ToolCall。模型产生 ToolCall 后，Runner 先把调用及参数保存为
  * Checkpoint，再逐个完成审批、工具执行和 ToolMessage 写入。审批恢复时因此可以继续执行已经确认的
  * 原始 ToolCall，而不需要重新请求模型生成参数。</p>
  *
@@ -613,7 +612,7 @@ public final class AgentRunner {
         if (snapshot == null) {
             throw new IllegalStateException("AgentRun checkpoint not found: " + runId);
         }
-        // 必须加载创建 Run 时记录的版本，避免用最新配置解释旧模式状态或待执行 ToolCall。
+        // 必须加载创建 Run 时记录的版本，避免用最新配置解释待执行 ToolCall。
         Agent agent = agentLoader.load(snapshot.getAgentId(), snapshot.getAgentVersion());
         if (agent == null) {
             throw new IllegalStateException("Agent cannot be loaded: " + snapshot.getAgentId()
@@ -874,7 +873,7 @@ public final class AgentRunner {
      * {@link AgentStepResult} 描述本步结果；是否继续下一步由 {@link #runUntilBlocked(AgentRun)} 决定。</p>
      *
      * <p>步骤开始/结束实时事件在最外层发布，Conversation 的 Memory 和活动 Run 标记也在此统一更新，
-     * 因而自定义执行模式不需要重复处理这些通用生命周期工作。</p>
+     * 因而所有执行路径共享相同的生命周期语义。</p>
      */
     public AgentStepResult step(AgentRun run) {
         emitRuntime(run, AgentRuntimeEventType.STEP_STARTED,
@@ -924,7 +923,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 以责任链方式执行 step Middleware，链尾调用 Agent 配置的执行模式。
+     * 以责任链方式执行 step Middleware，链尾进入内置 ToolCall 状态机。
      *
      * <p>每个 Middleware 可以在调用 next 前后观察或增强步骤，但应保持链只推进一次。</p>
      */
@@ -932,8 +931,7 @@ public final class AgentRunner {
         List<AgentMiddleware> middlewares = run == null
             ? Collections.<AgentMiddleware>emptyList() : run.getAgent().getMiddlewares();
         if (index >= middlewares.size()) {
-            return run.getAgent().getExecutionMode()
-                .step(new AgentExecutionContext(this, run));
+            return executeToolCallingStep(run);
         }
         AgentMiddleware middleware = middlewares.get(index);
         AgentStepChain chain = next -> proceedStep(run, next, index + 1);
@@ -980,12 +978,12 @@ public final class AgentRunner {
         AgentStepResult planningResult = advanceTaskPlan(run);
         if (planningResult != null) return planningResult;
 
-        // 规划没有产生独立动作时，再进入 Middleware 和当前 AgentExecutionMode。
+        // 规划没有产生独立动作时，再进入 Middleware 和内置 ToolCall 状态机。
         AgentStepResult result = proceedStep(run,
             new AgentMiddlewareContext(this, run, run.getPrompt()), 0);
         if (result == null) {
             return handleFailure(run, null,
-                new IllegalStateException("AgentExecutionMode returned null step result"),
+                new IllegalStateException("Agent step returned null result"),
                 run.getPhase());
         }
         // 模型或工具执行期间控制面可能提交取消，返回本步之前再同步一次单调取消信号。
@@ -997,16 +995,15 @@ public final class AgentRunner {
     }
 
     /**
-     * 供默认模式及组合模式调用的模型原生 ToolCall 单步执行方法。
+     * 使用模型原生 ToolCall 协议推进一个稳定执行步骤。
      *
      * <p>Phase 是恢复游标而不是业务状态：MODEL 表示下一步应请求模型，TOOLS 表示模型已经生成了
-     * 尚未处理完的 ToolCall，FINISHED 表示运行已经结束。自定义模式可复用本方法，同时保留框架的
-     * Checkpoint、审批、预算和 Middleware 语义。</p>
+     * 尚未处理完的 ToolCall，FINISHED 表示运行已经结束。</p>
      *
      * <p>MODEL 阶段最多调用模型一次；TOOLS 阶段按顺序处理当前模型回合遗留的全部工具调用，并在
      * 每个结果写入后保存 Checkpoint。</p>
      */
-    public AgentStepResult executeToolCallingStep(AgentRun run) {
+    private AgentStepResult executeToolCallingStep(AgentRun run) {
         AgentRunPhase phase = run.getPhase();
         if (phase == AgentRunPhase.MODEL) {
             return executeModel(run);
@@ -1019,34 +1016,6 @@ public final class AgentRunner {
         }
         return handleFailure(run, null,
             new IllegalStateException("Unsupported agent phase: " + phase), phase);
-    }
-
-    /**
-     * 供自定义模式正常结束 Run。
-     */
-    public AgentStepResult completeFromMode(AgentRun run, AiMessage message) {
-        if (run == null || message == null) {
-            throw new IllegalArgumentException("run and message must not be null");
-        }
-        refreshCancellation(run);
-        if (run.isCancellationRequested()) {
-            return cancelRun(run);
-        }
-        run.getPrompt().addMessage(message);
-        return complete(run, null, message);
-    }
-
-    /**
-     * 供自定义模式按统一重试和失败策略处理异常。
-     */
-    public AgentStepResult failFromMode(AgentRun run, Throwable error) {
-        if (run == null || error == null) {
-            throw new IllegalArgumentException("run and error must not be null");
-        }
-        refreshCancellation(run);
-        RuntimeException runtimeError = error instanceof RuntimeException
-            ? (RuntimeException) error : new RuntimeException(error);
-        return handleFailure(run, null, runtimeError, run.getPhase());
     }
 
     /**
@@ -1271,7 +1240,7 @@ public final class AgentRunner {
         }
 
         if (!message.hasToolCalls()) {
-            // 不含 ToolCall 的 AI 消息是默认执行模式的最终回答。
+            // 不含 ToolCall 的 AI 消息是内置状态机的最终回答。
             return complete(run, response, message);
         }
 
@@ -1607,7 +1576,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 将模型、工具或执行模式异常统一转换为取消、持久化重试或最终失败状态。
+     * 将模型或工具异常统一转换为取消、持久化重试或最终失败状态。
      *
      * <p>安排重试时保存发生异常的 Phase，使 Worker 到期恢复后从原模型或工具边界继续。方法只计算
      * {@code nextRunAt} 并返回阻塞结果，不在当前线程 sleep。</p>
@@ -1876,7 +1845,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 从消息历史倒序查找最近的 AI 消息，供 FINISHED Phase 或自定义模式完成运行。
+     * 从消息历史倒序查找最近的 AI 消息，供 FINISHED Phase 完成运行。
      */
     private AiMessage lastAiMessage(AgentRun run) {
         List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
@@ -2292,8 +2261,6 @@ public final class AgentRunner {
         Map<String, String> values = new LinkedHashMap<>();
         values.put("agentId", run.getAgent().getId());
         values.put("agentVersion", run.getAgent().getVersion());
-        values.put("executionModeId", run.getAgent().getExecutionMode().getId());
-        values.put("executionModeVersion", run.getAgent().getExecutionMode().getVersion());
         values.put("status", run.getStatus().name());
         values.put("stepCount", String.valueOf(run.getStepCount()));
         values.put("maxSteps", String.valueOf(run.getExecutionPolicy().getMaxSteps()));

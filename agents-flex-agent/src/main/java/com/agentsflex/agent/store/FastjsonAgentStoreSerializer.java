@@ -12,7 +12,7 @@ import java.util.Arrays;
  *
  * <p>JSONB 会保留消息等多态字段的具体 Java 类型，使 {@code AgentRunSnapshot}、恢复命令和
  * 持久化事件能够完整还原。默认只允许解析 Agents-Flex 类型和常用 JDK 值类型，不会对持久化内容
- * 开启不受限制的 AutoType。应用若在 metadata 或 modeState 中保存自定义值对象，应通过
+ * 开启不受限制的 AutoType。应用若在 metadata 中保存自定义值对象，应通过
  * {@link #FastjsonAgentStoreSerializer(String...)} 显式加入对应的包名前缀。</p>
  *
  * <p>序列化结果是 fastjson2 JSONB 二进制数据，不是 UTF-8 JSON 文本。需要跨语言或人工查看的
@@ -44,7 +44,7 @@ public final class FastjsonAgentStoreSerializer implements AgentStoreSerializer 
      * <p>传入值应为尽可能精确的完整类名或包名前缀，例如
      * {@code com.example.agent.state.}。默认白名单始终保留。</p>
      *
-     * @param additionalAcceptedTypePrefixes 允许从 metadata 或 modeState 恢复的额外类型前缀
+     * @param additionalAcceptedTypePrefixes 允许从 metadata 恢复的额外类型前缀
      */
     public FastjsonAgentStoreSerializer(String... additionalAcceptedTypePrefixes) {
         String[] additional = additionalAcceptedTypePrefixes == null

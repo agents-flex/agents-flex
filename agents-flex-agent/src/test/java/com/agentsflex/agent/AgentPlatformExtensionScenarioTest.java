@@ -9,8 +9,6 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentRunEvent;
 import com.agentsflex.agent.event.AgentRunEventType;
 import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
-import com.agentsflex.agent.mode.AgentExecutionContext;
-import com.agentsflex.agent.mode.AgentExecutionMode;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
 import com.agentsflex.agent.tool.AgentToolInvocation;
@@ -30,7 +28,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-/** 验证配置平台、审计系统和自定义运行模式需要的框架扩展边界。 */
+/** 验证配置平台和审计系统需要的框架扩展边界。 */
 public class AgentPlatformExtensionScenarioTest {
 
     @Test
@@ -180,81 +178,6 @@ public class AgentPlatformExtensionScenarioTest {
     }
 
     @Test
-    public void shouldResumeCustomExecutionModeFromPersistedModeState() {
-        AgentExecutionMode twoStageMode = new AgentExecutionMode() {
-            @Override
-            public String getId() { return "two-stage-demo"; }
-
-            @Override
-            public String getVersion() { return "3"; }
-
-            @Override
-            public AgentStepResult step(AgentExecutionContext context) {
-                Object prepared = context.getRun().getModeState().get("prepared");
-                if (prepared == null) {
-                    context.getRun().putModeState("prepared", true);
-                    return context.checkpointAndContinue();
-                }
-                return context.complete("custom mode completed");
-            }
-        };
-        Agent agent = Agent.builder("custom-mode-agent")
-            .chatModel(new AgentScenarioTestSupport.QueueChatModel())
-            .executionMode(twoStageMode)
-            .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
-        InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRunner firstRunner = new AgentRunner(store, registry);
-        AgentRun run = firstRunner.start(agent, "custom");
-
-        assertEquals(AgentStepType.PROGRESSED, firstRunner.step(run).getType());
-        AgentRunSnapshot prepared = store.load(run.getId());
-        assertEquals("two-stage-demo", prepared.getExecutionModeId());
-        assertEquals("3", prepared.getExecutionModeVersion());
-        assertEquals(true, prepared.getModeState().get("prepared"));
-
-        AgentRunner secondRunner = new AgentRunner(store, registry);
-        AgentRun completed = secondRunner.runUntilBlocked(run.getId());
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
-        assertEquals("custom mode completed", completed.getFinalOutput());
-    }
-
-    @Test
-    public void shouldReturnBlockedResultWhenCustomModeSuspends() {
-        AgentExecutionMode interactiveMode = new AgentExecutionMode() {
-            @Override
-            public String getId() { return "interactive-mode"; }
-
-            @Override
-            public String getVersion() { return "1"; }
-
-            @Override
-            public AgentStepResult step(AgentExecutionContext context) {
-                if (context.getRun().getModeState().containsKey("asked")) {
-                    return context.complete("input received");
-                }
-                context.getRun().putModeState("asked", true);
-                return context.suspend(AgentSuspension.userInput("provide value"));
-            }
-        };
-        Agent agent = Agent.builder("interactive-mode-agent")
-            .chatModel(new AgentScenarioTestSupport.QueueChatModel())
-            .executionMode(interactiveMode)
-            .build();
-        AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
-        AgentRun run = runner.start(agent, "begin");
-
-        AgentStepResult blocked = runner.step(run);
-
-        assertEquals(AgentStepType.BLOCKED, blocked.getType());
-        assertEquals(AgentRunStatus.WAITING_FOR_USER, run.getStatus());
-        AgentRun completed = runner.resume(run.getId(),
-            AgentResumeCommand.userInput("value"));
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
-    }
-
-    @Test
     public void shouldExposeStableAgentInvocationToTool() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
@@ -312,32 +235,22 @@ public class AgentPlatformExtensionScenarioTest {
         assertEquals("user-42", modelStarted.getAttributes().get("accountId"));
         assertEquals("audit-agent", modelStarted.getAttributes().get("agentId"));
         assertEquals("2026.07.31", modelStarted.getAttributes().get("agentVersion"));
-        assertEquals("tool-calling", modelStarted.getAttributes().get("executionModeId"));
         assertEquals("1", modelStarted.getAttributes().get("iteration"));
         assertEquals("19", modelStarted.getAttributes().get("remainingIterations"));
         assertTrue(events.get(events.size() - 1).getSequence() > modelStarted.getSequence());
     }
 
     @Test
-    public void shouldStopCustomModeAtMaximumStepCount() {
-        AgentExecutionMode endlessMode = new AgentExecutionMode() {
-            @Override
-            public String getId() { return "endless-test"; }
-
-            @Override
-            public String getVersion() { return "1"; }
-
-            @Override
-            public AgentStepResult step(AgentExecutionContext context) {
-                context.getRun().putModeState("lastStep",
-                    context.getRun().getStepCount());
-                return context.checkpointAndContinue();
-            }
-        };
-        Agent agent = Agent.builder("bounded-custom-mode")
-            .chatModel(new AgentScenarioTestSupport.QueueChatModel())
-            .executionMode(endlessMode)
+    public void shouldStopBuiltInExecutionAtMaximumStepCount() {
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("again-1", "again", "{}")));
+        model.enqueue(prompt -> toolCalls(new ToolCall("again-2", "again", "{}")));
+        Agent agent = Agent.builder("bounded-agent")
+            .chatModel(model)
+            .tool(tool("again", arguments -> "continue"))
             .executionPolicy(AgentExecutionPolicy.builder()
+                .maxIterations(10)
                 .maxSteps(2)
                 .build())
             .build();
@@ -346,7 +259,8 @@ public class AgentPlatformExtensionScenarioTest {
 
         assertEquals(AgentRunStatus.MAX_STEPS_REACHED, run.getStatus());
         assertEquals(2, run.getStepCount());
-        assertEquals(2, run.getModeState().get("lastStep"));
+        assertEquals(2, run.getIterationCount());
+        assertEquals(2, run.getToolCallCount());
     }
 
     private AgentRunEvent find(List<AgentRunEvent> events, AgentRunEventType type) {

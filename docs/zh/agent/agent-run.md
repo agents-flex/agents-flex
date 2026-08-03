@@ -40,7 +40,7 @@ AgentRun run = runner.run(agent, history, new UserMessage("继续"));
 | `COMPLETED` | 正常完成 |
 | `FAILED`、`CANCELLED` | 失败或取消 |
 | `MAX_ITERATIONS_REACHED` | 模型调用达到上限 |
-| `MAX_STEPS_REACHED` | step 达到上限 |
+| `MAX_STEPS_REACHED` | Runner 总推进次数达到上限 |
 | `BUDGET_EXCEEDED` | 预算达到上限 |
 
 使用 `status.isBlocked()` 和 `status.isTerminal()` 判断状态类别，不要自行维护不完整的枚举集合。
@@ -95,17 +95,6 @@ AgentRunOptions options = AgentRunOptions.builder()
 ## 父子关系与计划
 
 子 Run 通过 `parentRunId` 指向直接父任务，通过 `rootRunId` 关联整棵任务树。根 Run 的 `rootRunId` 等于自身 ID。开启规划时，可用 `getTaskPlan()` 或 `getTaskProgress()` 查询不可变进度视图。
-
-## Mode State
-
-自定义 `AgentExecutionMode` 可使用：
-
-```java
-run.putModeState("reviewCount", 1);
-Object count = run.getModeState().get("reviewCount");
-```
-
-Mode State 会持久化，应使用稳定键名和可序列化值，并随着执行模式版本一起演进。
 
 ## 快照
 

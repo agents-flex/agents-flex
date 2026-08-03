@@ -176,7 +176,6 @@ public class JdbcAgentStoresContractTest {
 
     private AgentRunSnapshot snapshot(String runId, AgentRunStatus status) {
         return AgentRunSnapshot.builder(runId, "agent", "1")
-            .executionMode("tool-calling", "1")
             .executionPolicy(AgentExecutionPolicy.defaults())
             .status(status).createdAt(1).updatedAt(1).rootRunId(runId)
             .metadata(Collections.<String, Object>singletonMap("key", "value")).build();

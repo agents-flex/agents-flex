@@ -16,7 +16,7 @@ import java.io.Serializable;
  * <p>该对象本身不可变，负责以下执行控制：</p>
  * <ul>
  *     <li>限制一次运行最多允许多少次模型调用，避免模型与工具无限循环；</li>
- *     <li>限制运行模式最多推进多少个 step，避免自定义模式无限循环；</li>
+ *     <li>限制 Runner 最多推进多少个 step，避免非模型路径无限循环；</li>
  *     <li>规定工具执行失败后，是立即终止运行，还是把结构化错误返回给模型继续处理。</li>
  *     <li>为可恢复异常配置自动重试和退避时间；</li>
  *     <li>限制运行时间、Token 和工具调用次数。</li>
@@ -32,18 +32,14 @@ public final class AgentExecutionPolicy implements Serializable {
      * 默认最多允许调用模型 20 次。
      */
     private static final int DEFAULT_MAX_ITERATIONS = 20;
-    /**
-     * 默认允许自定义运行模式推进的最大步骤数。
-     */
+    /** 默认允许 Runner 推进的最大步骤数。 */
     private static final int DEFAULT_MAX_STEPS = 1000;
 
     /**
      * 一次运行允许的最大模型调用次数。
      */
     private final int maxIterations;
-    /**
-     * 一次 Run 允许执行模式推进的最大 step 次数。
-     */
+    /** 一次 Run 允许 Runner 推进的最大 step 次数。 */
     private final int maxSteps;
     /**
      * 工具调用失败时采用的处理方式。
@@ -87,6 +83,9 @@ public final class AgentExecutionPolicy implements Serializable {
         return maxIterations;
     }
 
+    /**
+     * @return 一次 AgentRun 允许 Runner 推进的最大 step 次数
+     */
     public int getMaxSteps() {
         return maxSteps;
     }
@@ -134,7 +133,7 @@ public final class AgentExecutionPolicy implements Serializable {
         }
 
         /**
-         * 设置运行模式最多允许推进多少个 step。
+         * 设置 Runner 最多允许推进多少个 step。
          */
         public Builder maxSteps(int maxSteps) {
             this.maxSteps = maxSteps;

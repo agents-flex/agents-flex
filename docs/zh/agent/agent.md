@@ -38,7 +38,6 @@ Agent agent = Agent.builder("order-assistant")
 | `tools`、`toolInterceptors` | 工具协议及执行链 | 否，恢复时重装配 |
 | `executionPolicy` | 迭代、重试、预算 | 有效策略会保存 |
 | `planningPolicy` | 自动规划及委派约束 | 计划状态保存，定义重装配 |
-| `executionMode` | step 推进逻辑 | 保存模式 ID 与版本 |
 | `contextManager` | 模型调用前整理消息 | 处理结果进入快照 |
 | `middlewares` | 包装 step、模型和工具 | 否 |
 | `attributes` | 平台扩展元数据 | 否 |
@@ -69,14 +68,14 @@ Agent agent = Agent.builder("order-assistant")
 
 `Agent` 聚合多类互相独立的策略：
 
-- `AgentExecutionPolicy`：最大模型迭代、最大 step、工具错误策略、重试和预算。
+- `AgentExecutionPolicy`：最大模型迭代、Runner 总 step、工具错误策略、重试和预算。
 - `ToolApprovalPolicy`：允许、拒绝或要求审批。
 - `AgentPlanningPolicy`：是否规划、允许委派给谁、最大任务数和重规划次数。
 - `AgentContextPolicy`：模型读取完整 Memory 还是窗口消息。
 - `AgentContextManager`：在调用模型前执行摘要等持久化整理。
 - `ToolResultOffloadPolicy`：大型工具结果是否外置。
 
-策略是 Agent 的默认值。单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具、审批或执行模式。
+策略是 Agent 的默认值。单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。
 
 ## 版本管理
 
@@ -84,7 +83,6 @@ Agent agent = Agent.builder("order-assistant")
 
 - 删除或重命名工具。
 - 改变工具参数 Schema 或副作用语义。
-- 更换执行模式协议。
 - 修改会影响待审批调用的 Middleware。
 
 `AgentLoader.load(agentId, version)` 必须能够加载仍可能恢复的历史版本。不要让该方法悄悄返回最新版本；显式版本找不到时应返回 `null` 或抛出清晰的业务异常。

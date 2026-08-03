@@ -11,8 +11,6 @@ import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.context.AgentContextManager;
 import com.agentsflex.agent.context.ToolResultOffloadPolicy;
 import com.agentsflex.agent.middleware.AgentMiddleware;
-import com.agentsflex.agent.mode.AgentExecutionMode;
-import com.agentsflex.agent.mode.ToolCallingAgentExecutionMode;
 import com.agentsflex.agent.tool.ToolApprovalPolicy;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
@@ -85,8 +83,6 @@ public final class Agent {
     private final ToolApprovalPolicy toolApprovalPolicy;
     /** 控制模型是否可以自主创建并执行任务计划。 */
     private final AgentPlanningPolicy planningPolicy;
-    /** 决定 AgentRun 如何推进的运行模式。 */
-    private final AgentExecutionMode executionMode;
     /** 控制每次模型调用可见消息范围的上下文策略。 */
     private final AgentContextPolicy contextPolicy;
     /** 在模型调用前压缩或整理持久化消息历史。 */
@@ -116,7 +112,6 @@ public final class Agent {
         this.executionPolicy = builder.executionPolicy;
         this.toolApprovalPolicy = builder.toolApprovalPolicy;
         this.planningPolicy = builder.planningPolicy;
-        this.executionMode = builder.executionMode;
         this.contextPolicy = builder.contextPolicy;
         this.contextManager = builder.contextManager;
         this.toolResultOffloadPolicy = builder.toolResultOffloadPolicy;
@@ -221,9 +216,6 @@ public final class Agent {
     /** @return 模型自主创建任务计划时使用的约束策略 */
     public AgentPlanningPolicy getPlanningPolicy() { return planningPolicy; }
 
-    /** @return 决定每个 step 如何推进的执行模式 */
-    public AgentExecutionMode getExecutionMode() { return executionMode; }
-
     /** @return 每次模型调用使用的消息读取范围策略 */
     public AgentContextPolicy getContextPolicy() { return contextPolicy; }
 
@@ -259,7 +251,6 @@ public final class Agent {
         private AgentExecutionPolicy executionPolicy = AgentExecutionPolicy.defaults();
         private ToolApprovalPolicy toolApprovalPolicy = ToolApprovalPolicy.allowAll();
         private AgentPlanningPolicy planningPolicy = AgentPlanningPolicy.disabled();
-        private AgentExecutionMode executionMode = ToolCallingAgentExecutionMode.INSTANCE;
         private AgentContextPolicy contextPolicy = AgentContextPolicy.defaults();
         private AgentContextManager contextManager = AgentContextManager.none();
         private ToolResultOffloadPolicy toolResultOffloadPolicy = ToolResultOffloadPolicy.disabled();
@@ -374,12 +365,6 @@ public final class Agent {
             return this;
         }
 
-        /** 设置运行模式；未配置时使用模型原生 ToolCall 循环。 */
-        public Builder executionMode(AgentExecutionMode executionMode) {
-            this.executionMode = executionMode;
-            return this;
-        }
-
         /** 设置模型上下文读取策略。 */
         public Builder contextPolicy(AgentContextPolicy contextPolicy) {
             this.contextPolicy = contextPolicy;
@@ -461,7 +446,7 @@ public final class Agent {
             if (toolApprovalPolicy == null) {
                 toolApprovalPolicy = ToolApprovalPolicy.allowAll();
             }
-            if (executionMode == null || contextPolicy == null || contextManager == null
+            if (contextPolicy == null || contextManager == null
                 || toolResultOffloadPolicy == null || planningPolicy == null) {
                 throw new IllegalStateException("Agent runtime policies must not be null");
             }
@@ -472,9 +457,7 @@ public final class Agent {
                 throw new IllegalStateException(
                     "tool name is reserved by Agent planning: " + AgentPlanningTool.NAME);
             }
-            Agent agent = new Agent(this);
-            executionMode.validate(agent);
-            return agent;
+            return new Agent(this);
         }
 
         /**

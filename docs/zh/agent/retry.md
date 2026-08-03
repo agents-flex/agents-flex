@@ -62,20 +62,6 @@ idempotencyKey = runId + ":" + toolCallId
 
 读取 `run.getRetryCount()`、`run.getNextRunAt()` 和 Suspension metadata，并监听 `RETRY_SCHEDULED` 事件。告警应区分最终失败与暂定重试，避免第一次瞬时错误就触发高优先级告警。
 
-## 自定义模式中的失败
-
-自定义 `AgentExecutionMode` 不应直接吞掉异常。使用：
-
-```java
-try {
-    // domain step
-} catch (RuntimeException error) {
-    return context.fail(error);
-}
-```
-
-这样可以复用 Runner 的取消优先级、重试计数、阶段记录、Checkpoint 和失败事件。
-
 ## 生产建议
 
 - 网络客户端自身重试与 Agent 重试不要无界叠加。

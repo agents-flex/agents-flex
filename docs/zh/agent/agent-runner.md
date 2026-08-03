@@ -13,7 +13,7 @@ Runner 自身不把 Run 保存在实例字段中，适合作为应用级对象�
 
 ## 整体执行流程
 
-下面的流程图覆盖默认 `ToolCallingAgentExecutionMode` 从创建 Run 到终止或阻塞的完整路径。图中的每个 Checkpoint 都是可跨线程、跨请求或跨进程恢复的稳定边界。
+下面的流程图覆盖内置 ToolCall 状态机从创建 Run 到终止或阻塞的完整路径。图中的每个 Checkpoint 都是可跨线程、跨请求或跨进程恢复的稳定边界。
 
 ```mermaid
 flowchart TD
@@ -39,8 +39,7 @@ flowchart TD
     Planning -->|"是"| ChildFlow["创建或等待子 AgentRun"]
     ChildFlow --> Blocked
     Planning -->|"否"| Middleware["Agent Step Middleware"]
-    Middleware --> Mode["AgentExecutionMode.step"]
-    Mode --> Phase{"当前 Phase"}
+    Middleware --> Phase{"内置状态机<br/>当前 Phase"}
 
     Phase -->|"MODEL"| Context["整理上下文<br/>ContextManager / ContextPolicy"]
     Context --> ModelChain["Model Middleware -> ChatModel"]
@@ -85,7 +84,7 @@ flowchart TD
 ### 主路径说明
 
 1. `run(...)` 与 `start(...)` 都先创建 `READY` Run 并保存初始 Checkpoint；区别在于前者立即进入循环，后者等待 Worker 领取。
-2. 每次 `step` 都先检查 Lease、持久化取消信号、预算和 step 上限，再处理任务规划和 Middleware。
+2. 每次 `step` 都先检查 Lease、持久化取消信号、预算和 Runner step 上限，再处理任务规划和 Middleware。
 3. MODEL 阶段一次最多调用模型一次。模型直接回答时 Run 完成；模型返回 ToolCall 时，Runner 先保存全部待处理调用，再进入 TOOLS 阶段。
 4. TOOLS 阶段按模型给出的顺序逐个处理调用。每个工具结果都单独写入 `ToolMessage` 并保存 Checkpoint，因此后续恢复能准确知道哪些调用已经确认。
 5. 审批、用户输入、子 Run 和延迟重试都会返回阻塞 Run，不会占用线程等待。
@@ -93,7 +92,7 @@ flowchart TD
 
 ### 异常与终止路径
 
-模型、工具或自定义模式异常统一进入失败处理：可恢复异常保存为 `RETRY_SCHEDULED`，确定性错误进入 `FAILED`。取消、预算、最大模型迭代和最大 step 分别使用独立终态，调用方不需要从通用异常消息推断原因。
+模型或工具异常统一进入失败处理：可恢复异常保存为 `RETRY_SCHEDULED`，确定性错误进入 `FAILED`。取消、预算、最大模型迭代和最大 Runner step 分别使用独立终态，调用方不需要从通用异常消息推断原因。
 
 ## 构建 Runner
 
@@ -138,7 +137,7 @@ AgentStepResult oneStep = runner.step(run);
 AgentRun blockedOrDone = runner.runUntilBlocked(run);
 ```
 
-`step` 只推进一次执行模式，适合调试、外部调度或实现细粒度 UI。`runUntilBlocked` 会循环调用 step。
+`step` 只推进一次稳定执行步骤，适合调试、外部调度或实现细粒度 UI。`runUntilBlocked` 会循环调用 step。
 
 ## 执行层次
 
@@ -146,7 +145,7 @@ AgentRun blockedOrDone = runner.runUntilBlocked(run);
 
 1. `runUntilBlocked` 判断是否继续循环。
 2. `step` 处理取消、Lease、预算、规划、上下文和 Middleware。
-3. `AgentExecutionMode.step` 推进具体模式；默认模式进入 MODEL 或 TOOLS 阶段。
+3. 内置 ToolCall 状态机根据 Phase 进入 MODEL 或 TOOLS 阶段。
 
 模型返回 ToolCall 时，Runner 先记录 `pendingToolCalls` 并保存 Checkpoint，随后才审批和执行。这个顺序是恢复一致性的关键。
 
@@ -156,13 +155,12 @@ AgentRun blockedOrDone = runner.runUntilBlocked(run);
 
 | 类型 | 含义 |
 | --- | --- |
-| `PROGRESSED` | 自定义模式保存了中间状态 |
 | `TOOLS_EXECUTED` | 工具已执行并写入结果 |
 | `COMPLETED` | 已产生最终答案 |
 | `BLOCKED` | 等待外部事件 |
 | `FAILED`、`CANCELLED` | 失败或取消 |
 | `MAX_ITERATIONS_REACHED` | 模型调用次数达到上限 |
-| `MAX_STEPS_REACHED` | 模式推进次数达到上限 |
+| `MAX_STEPS_REACHED` | Runner 总推进次数达到上限 |
 | `BUDGET_EXCEEDED` | 预算耗尽 |
 
 累计状态仍以 `AgentRun` 为准。

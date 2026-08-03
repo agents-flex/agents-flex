@@ -12,11 +12,6 @@ package com.agentsflex.agent;
 public enum AgentStepType {
 
     /**
-     * 自定义运行模式已经保存中间状态，可以继续推进。
-     */
-    PROGRESSED,
-
-    /**
      * 模型返回了一个或多个 ToolCall，Runner 已完成执行并写入 ToolMessage。
      */
     TOOLS_EXECUTED,
@@ -47,7 +42,7 @@ public enum AgentStepType {
     MAX_ITERATIONS_REACHED,
 
     /**
-     * 运行模式达到总 step 上限。
+     * Runner 推进次数达到总 step 上限。
      */
     MAX_STEPS_REACHED,
 

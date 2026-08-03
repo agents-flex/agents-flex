@@ -104,7 +104,7 @@ System.out.println("toolCalls=" + run.getToolCallCount());
 System.out.println("tokens=" + run.getTotalTokens());
 ```
 
-`iterationCount` 只统计模型调用，`stepCount` 统计执行模式推进次数，二者不是同一概念。
+`iterationCount` 统计模型调用次数，`stepCount` 统计 Runner 的总推进次数，工具调用次数由 `toolCallCount` 单独记录。
 
 ## 设置运行限制
 

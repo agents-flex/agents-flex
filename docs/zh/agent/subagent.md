@@ -11,7 +11,7 @@ description: 使用父子 AgentRun 委派任务、传播上下文、恢复父任
 
 ## 两种使用方式
 
-最常见的方式是启用[任务规划](./task-planning)，由模型创建任务后 Runner 自动启动子 Run。平台也可以调用 Runner 的子任务能力，在自定义执行模式中显式委派。
+最常见的方式是启用[任务规划](./task-planning)，由模型创建任务后 Runner 自动启动子 Run。平台也可以调用 Runner 的子任务能力显式委派。
 
 无论入口如何，子 Agent 必须由 `AgentLoader` 加载，且目标 ID 应受业务授权或 `AgentPlanningPolicy` 白名单约束。
 
@@ -56,4 +56,4 @@ description: 使用父子 AgentRun 委派任务、传播上下文、恢复父任
 
 ## 自定义委派
 
-需要领域专用监督者模式时，实现 `AgentExecutionMode`，用 Mode State 保存委派阶段，并通过 Runner 的受控能力创建/等待子 Run。不要只在内存 Future 中维护父子关系，否则进程重启后无法恢复。
+需要领域专用监督者流程时，在外部编排层组合普通子 Run，并把委派阶段保存在业务存储中。不要只在内存 Future 中维护父子关系，否则进程重启后无法恢复。

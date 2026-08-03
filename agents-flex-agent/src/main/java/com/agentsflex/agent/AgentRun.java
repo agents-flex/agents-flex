@@ -66,10 +66,6 @@ public final class AgentRun {
      */
     private final Map<String, Object> metadata = new HashMap<>();
     /**
-     * 运行模式用于保存可持久化自定义状态的命名空间。
-     */
-    private final Map<String, Object> modeState = new HashMap<>();
-    /**
      * 当前进程附加的调用上下文，不参与 Checkpoint 持久化。
      */
     private transient AgentInvocationContext invocationContext = AgentInvocationContext.empty();
@@ -180,7 +176,7 @@ public final class AgentRun {
      */
     private int iterationCount;
     /**
-     * AgentExecutionMode 已经推进的 step 次数。
+     * Runner 已经推进的 step 次数。
      */
     private int stepCount;
     /**
@@ -367,13 +363,6 @@ public final class AgentRun {
             throw new IllegalArgumentException("Agent version does not match snapshot: "
                 + snapshot.getAgentVersion());
         }
-        if (snapshot.getExecutionModeId() != null
-            && (!snapshot.getExecutionModeId().equals(agent.getExecutionMode().getId())
-            || !java.util.Objects.equals(snapshot.getExecutionModeVersion(),
-            agent.getExecutionMode().getVersion()))) {
-            throw new IllegalArgumentException("Agent execution mode does not match snapshot: "
-                + snapshot.getExecutionModeId() + ":" + snapshot.getExecutionModeVersion());
-        }
         AgentRun run = new AgentRun(snapshot.getRunId(), agent, prompt, snapshot.getCreatedAt(),
             snapshot.getExecutionPolicy());
         run.status = snapshot.getStatus();
@@ -408,7 +397,6 @@ public final class AgentRun {
         run.rootRunId = StringUtil.hasText(snapshot.getRootRunId())
             ? snapshot.getRootRunId() : snapshot.getRunId();
         run.metadata.putAll(snapshot.getMetadata());
-        run.modeState.putAll(snapshot.getModeState());
         run.prepareBaseTools();
         return run;
     }
@@ -582,7 +570,7 @@ public final class AgentRun {
     }
 
     /**
-     * @return 执行模式已经推进的 step 次数，与模型调用次数相互独立
+     * @return Runner 已经推进的 step 次数，与模型调用次数相互独立
      */
     public int getStepCount() {
         return stepCount;
@@ -764,23 +752,6 @@ public final class AgentRun {
     }
 
     /**
-     * 返回运行模式的只读持久化状态；值必须可由配置的 StoreSerializer 编码。
-     */
-    public Map<String, Object> getModeState() {
-        return Collections.unmodifiableMap(modeState);
-    }
-
-    /**
-     * 由自定义运行模式保存一个可序列化状态值，并随下一次 Checkpoint 持久化。
-     */
-    public void putModeState(String key, Object value) {
-        if (key == null) {
-            throw new IllegalArgumentException("mode state key must not be null");
-        }
-        modeState.put(key, value);
-    }
-
-    /**
      * 生成与当前可变状态隔离的 Checkpoint Snapshot。
      */
     public AgentRunSnapshot toSnapshot() {
@@ -793,7 +764,6 @@ public final class AgentRun {
         String errorType = error == null ? null : error.getClass().getName();
         String errorMessage = error == null ? null : error.getMessage();
         return AgentRunSnapshot.builder(id, agent.getId(), agent.getVersion())
-            .executionMode(agent.getExecutionMode().getId(), agent.getExecutionMode().getVersion())
             .executionPolicy(executionPolicy)
             .status(status)
             .phase(phase)
@@ -827,7 +797,6 @@ public final class AgentRun {
             .parentRunId(parentRunId)
             .rootRunId(rootRunId)
             .metadata(metadata)
-            .modeState(modeState)
             .build();
     }
 
@@ -1045,7 +1014,7 @@ public final class AgentRun {
     }
 
     /**
-     * 标记自定义或默认执行模式达到总 step 上限。
+     * 标记 Runner 达到总 step 上限。
      */
     void markMaxStepsReached() {
         finish(AgentRunStatus.MAX_STEPS_REACHED);

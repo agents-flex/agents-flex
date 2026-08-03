@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 进程内追加式事件存储，适合默认运行模式、单元测试和本地开发。
+ * 进程内追加式事件存储，适合默认运行环境、单元测试和本地开发。
  *
  * <p>同一 runId 的 sequence 按追加顺序从 1 递增，eventId 重复追加时返回原事件。数据不会跨
  * JVM 共享或在重启后保留，生产环境应替换为持久化 EventStore。</p>

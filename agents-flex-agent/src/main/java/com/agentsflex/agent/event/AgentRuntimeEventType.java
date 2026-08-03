@@ -125,7 +125,7 @@ public enum AgentRuntimeEventType {
      */
     MAX_ITERATIONS_REACHED,
     /**
-     * 执行模式推进次数达到强制上限。
+     * Runner 推进次数达到强制上限。
      */
     MAX_STEPS_REACHED,
     /**

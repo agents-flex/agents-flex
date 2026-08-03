@@ -57,20 +57,6 @@ public final class AgentStepResult {
     }
 
     /**
-     * 创建自定义运行模式已经完成一个持久化中间步骤的结果。
-     */
-    public static AgentStepResult progressed() {
-        return new AgentStepResult(AgentStepType.PROGRESSED, null, null, null);
-    }
-
-    /**
-     * 创建自定义运行模式已经暂停并等待外部事件的结果。
-     */
-    public static AgentStepResult blocked() {
-        return new AgentStepResult(AgentStepType.BLOCKED, null, null, null);
-    }
-
-    /**
      * @return 当前步骤的结果类型
      */
     public AgentStepType getType() {

@@ -178,8 +178,6 @@ public class AgentStateLifecycleScenarioTest {
     private AgentRunSnapshot blocked(String runId, Agent agent, AgentRunStatus status,
                                      AgentSuspension suspension, long nextRunAt) {
         return AgentRunSnapshot.builder(runId, agent.getId(), agent.getVersion())
-            .executionMode(agent.getExecutionMode().getId(),
-                agent.getExecutionMode().getVersion())
             .executionPolicy(agent.getExecutionPolicy())
             .status(status)
             .phase(suspension.getResumePhase())

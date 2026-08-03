@@ -110,7 +110,7 @@ public interface AgentListener {
     default void onMaxIterationsReached(AgentRun run) {
     }
 
-    /** 运行模式达到总 step 上限时触发。 */
+    /** Runner 达到总 step 上限时触发。 */
     default void onMaxStepsReached(AgentRun run) {
     }
 

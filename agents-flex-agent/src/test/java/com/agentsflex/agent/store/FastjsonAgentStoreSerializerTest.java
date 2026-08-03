@@ -54,15 +54,14 @@ public class FastjsonAgentStoreSerializerTest {
         metadata.put("labels", Arrays.asList("durable", "jsonb"));
 
         AgentRunSnapshot snapshot = AgentRunSnapshot.builder("run-1", "agent-1", "v1")
-            .executionMode("tool-calling", "1")
             .executionPolicy(AgentExecutionPolicy.defaults())
             .status(AgentRunStatus.WAITING_FOR_APPROVAL)
             .phase(AgentRunPhase.TOOLS)
             .messages(Arrays.<Message>asList(user, assistant, tool))
             .pendingToolCalls(Collections.singletonList(toolCall))
             .suspension(AgentSuspension.toolApproval("call-1", "lookup"))
+            .stepCount(3)
             .metadata(metadata)
-            .modeState(Collections.<String, Object>singletonMap("cursor", 2))
             .build();
 
         FastjsonAgentStoreSerializer serializer = new FastjsonAgentStoreSerializer();
@@ -77,8 +76,8 @@ public class FastjsonAgentStoreSerializerTest {
         assertEquals("https://example.com/image.png",
             ((UserMessage) decoded.getMessages().get(0)).getImageUrls().get(0));
         assertEquals("lookup", decoded.getPendingToolCalls().get(0).getName());
+        assertEquals(3, decoded.getStepCount());
         assertEquals("tenant-1", decoded.getMetadata().get("tenant"));
-        assertEquals(2, ((Number) decoded.getModeState().get("cursor")).intValue());
     }
 
     @Test
@@ -95,7 +94,6 @@ public class FastjsonAgentStoreSerializerTest {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("custom", new CustomState("ready"));
         AgentRunSnapshot snapshot = AgentRunSnapshot.builder("run-custom", "agent", "v1")
-            .executionMode("tool-calling", "1")
             .executionPolicy(AgentExecutionPolicy.defaults())
             .metadata(metadata)
             .build();
@@ -118,7 +116,6 @@ public class FastjsonAgentStoreSerializerTest {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("invalid", new Object());
         AgentRunSnapshot snapshot = AgentRunSnapshot.builder("run-invalid", "agent", "v1")
-            .executionMode("tool-calling", "1")
             .executionPolicy(AgentExecutionPolicy.defaults())
             .metadata(metadata)
             .build();

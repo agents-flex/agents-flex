@@ -22,10 +22,12 @@ Suspension 还保存 correlationId、展示消息、恢复 phase 和可序列化
 
 ## 主动挂起
 
-自定义执行模式可以使用：
+需要由业务控制面显式建立等待点时，可以使用：
 
 ```java
-return context.suspend(AgentSuspension.userInput("请提供订单号"));
+AgentRun blocked = runner.suspend(
+    run,
+    AgentSuspension.userInput("请提供订单号"));
 ```
 
 Runner 会保存 Checkpoint、发布暂停事件并返回 `BLOCKED`。普通业务代码不应只修改 Run 状态而跳过这些步骤。

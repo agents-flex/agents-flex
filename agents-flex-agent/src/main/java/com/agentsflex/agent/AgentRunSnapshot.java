@@ -21,12 +21,12 @@ import java.util.Map;
 /**
  * AgentRun 在稳定执行边界上的可持久化快照。
  *
- * <p>Snapshot 不包含 ChatModel、Tool、拦截器或 Java Throwable 等进程内对象。它保存恢复运行模式所需的
+ * <p>Snapshot 不包含 ChatModel、Tool、拦截器或 Java Throwable 等进程内对象。它保存恢复运行所需的
  * 数据，并通过 agentId 和 agentVersion 在恢复时重新绑定 {@link Agent}。phase、消息和
  * pendingToolCalls 用于区分“模型尚未决策”和“模型已经决策但工具尚未执行”。恢复时通过 Snapshot
  * 保存的 Agent 版本加载完整 Agent，再按 ToolCall 名称定位工具。</p>
  *
- * <p>执行模式版本、有效执行策略、模式状态、父子关系、调度时间、租约、审批结果、重试次数和预算用量都会随快照保存，使其他进程可以
+ * <p>有效执行策略、父子关系、调度时间、租约、审批结果、重试次数和预算用量都会随快照保存，使其他进程可以
  * 从同一个稳定边界继续执行。</p>
  */
 public final class AgentRunSnapshot implements Serializable {
@@ -39,10 +39,6 @@ public final class AgentRunSnapshot implements Serializable {
     private final String agentId;
     /** 恢复运行时绑定的 Agent 配置版本。 */
     private final String agentVersion;
-    /** 创建 Run 时绑定的执行模式 ID。 */
-    private final String executionModeId;
-    /** 创建 Run 时绑定的执行模式协议版本。 */
-    private final String executionModeVersion;
     /** Run 创建时冻结的有效执行策略。 */
     private final AgentExecutionPolicy executionPolicy;
     /** 当前生命周期状态。 */
@@ -57,7 +53,7 @@ public final class AgentRunSnapshot implements Serializable {
     private final AgentSuspension suspension;
     /** 已发起的模型调用次数。 */
     private final int iterationCount;
-    /** 执行模式已经推进的 step 次数。 */
+    /** Runner 已经推进的 step 次数。 */
     private final int stepCount;
     /** 根 Run 及已汇总子 Run 的累计输入 Token。 */
     private final long inputTokens;
@@ -111,15 +107,11 @@ public final class AgentRunSnapshot implements Serializable {
     private final String rootRunId;
     /** 调用方附加并随 Checkpoint 保存的业务元数据。 */
     private final Map<String, Object> metadata;
-    /** 自定义执行模式保存的可持久化状态。 */
-    private final Map<String, Object> modeState;
 
     private AgentRunSnapshot(Builder builder) {
         this.runId = builder.runId;
         this.agentId = builder.agentId;
         this.agentVersion = builder.agentVersion;
-        this.executionModeId = builder.executionModeId;
-        this.executionModeVersion = builder.executionModeVersion;
         this.executionPolicy = builder.executionPolicy;
         this.status = builder.status;
         this.phase = builder.phase;
@@ -158,9 +150,6 @@ public final class AgentRunSnapshot implements Serializable {
         this.metadata = builder.metadata == null
             ? Collections.emptyMap()
             : Collections.unmodifiableMap(new HashMap<>(builder.metadata));
-        this.modeState = builder.modeState == null
-            ? Collections.emptyMap()
-            : Collections.unmodifiableMap(new HashMap<>(builder.modeState));
     }
 
     /** 创建包含必要运行标识的 Snapshot 构建器。 */
@@ -181,7 +170,6 @@ public final class AgentRunSnapshot implements Serializable {
     /** 返回已填入当前全部字段的构建器。 */
     public Builder toBuilder() {
         return new Builder(runId, agentId, agentVersion)
-            .executionMode(executionModeId, executionModeVersion)
             .executionPolicy(executionPolicy)
             .status(status)
             .phase(phase)
@@ -214,8 +202,7 @@ public final class AgentRunSnapshot implements Serializable {
             .version(version)
             .parentRunId(parentRunId)
             .rootRunId(rootRunId)
-            .metadata(metadata)
-            .modeState(modeState);
+            .metadata(metadata);
     }
 
     /** @return 单次运行 ID */
@@ -230,10 +217,6 @@ public final class AgentRunSnapshot implements Serializable {
 
     /** @return 绑定的 Agent 配置版本 */
     public String getAgentVersion() { return agentVersion; }
-    /** @return 绑定的执行模式 ID */
-    public String getExecutionModeId() { return executionModeId; }
-    /** @return 执行模式协议版本 */
-    public String getExecutionModeVersion() { return executionModeVersion; }
     /** @return Run 创建时冻结的执行策略 */
     public AgentExecutionPolicy getExecutionPolicy() { return executionPolicy; }
 
@@ -267,8 +250,9 @@ public final class AgentRunSnapshot implements Serializable {
         return iterationCount;
     }
 
-    /** @return 执行模式已推进 step 次数 */
+    /** @return Runner 已推进 step 次数 */
     public int getStepCount() { return stepCount; }
+
 
     /** @return 累计输入 Token */
     public long getInputTokens() {
@@ -371,17 +355,12 @@ public final class AgentRunSnapshot implements Serializable {
         return metadata;
     }
 
-    /** @return 不可修改的自定义执行模式状态 */
-    public Map<String, Object> getModeState() { return modeState; }
-
     /** Snapshot 构建器，供 Store、Codec 和数据库映射设置字段。 */
     public static final class Builder {
 
         private final String runId;
         private final String agentId;
         private final String agentVersion;
-        private String executionModeId;
-        private String executionModeVersion;
         private AgentExecutionPolicy executionPolicy;
         private AgentRunStatus status = AgentRunStatus.READY;
         private AgentRunPhase phase = AgentRunPhase.MODEL;
@@ -416,7 +395,6 @@ public final class AgentRunSnapshot implements Serializable {
         private String parentRunId;
         private String rootRunId;
         private Map<String, Object> metadata;
-        private Map<String, Object> modeState;
 
         private Builder(String runId, String agentId, String agentVersion) {
             if (runId == null || agentId == null || agentVersion == null) {
@@ -430,8 +408,6 @@ public final class AgentRunSnapshot implements Serializable {
 
         /** 设置生命周期状态。 */
         public Builder status(AgentRunStatus status) { this.status = status; return this; }
-        /** 设置执行模式 ID 和协议版本。 */
-        public Builder executionMode(String id, String version) { this.executionModeId = id; this.executionModeVersion = version; return this; }
         /** 设置 Run 创建时冻结的执行策略。 */
         public Builder executionPolicy(AgentExecutionPolicy value) { this.executionPolicy = value; return this; }
         /** 设置下一步执行阶段。 */
@@ -444,7 +420,7 @@ public final class AgentRunSnapshot implements Serializable {
         public Builder suspension(AgentSuspension suspension) { this.suspension = suspension; return this; }
         /** 设置已发起的模型调用次数。 */
         public Builder iterationCount(int value) { this.iterationCount = value; return this; }
-        /** 设置执行模式已推进 step 次数。 */
+        /** 设置 Runner 已推进 step 次数。 */
         public Builder stepCount(int value) { this.stepCount = value; return this; }
         /** 设置累计输入 Token。 */
         public Builder inputTokens(long value) { this.inputTokens = value; return this; }
@@ -496,18 +472,10 @@ public final class AgentRunSnapshot implements Serializable {
         public Builder rootRunId(String value) { this.rootRunId = value; return this; }
         /** 设置随 Checkpoint 保存的业务元数据。 */
         public Builder metadata(Map<String, Object> value) { this.metadata = value; return this; }
-        /** 设置自定义执行模式状态。 */
-        public Builder modeState(Map<String, Object> value) { this.modeState = value; return this; }
-
-        /** 校验恢复所需的 Agent、执行模式、策略和状态后创建快照。 */
+        /** 校验恢复所需的 Agent、策略和状态后创建快照。 */
         public AgentRunSnapshot build() {
             if (!StringUtil.hasText(agentVersion)) {
                 throw new IllegalStateException("agentVersion must not be blank");
-            }
-            if (!StringUtil.hasText(executionModeId)
-                || !StringUtil.hasText(executionModeVersion)) {
-                throw new IllegalStateException(
-                    "executionModeId and executionModeVersion must not be blank");
             }
             if (executionPolicy == null) {
                 throw new IllegalStateException("executionPolicy must not be null");

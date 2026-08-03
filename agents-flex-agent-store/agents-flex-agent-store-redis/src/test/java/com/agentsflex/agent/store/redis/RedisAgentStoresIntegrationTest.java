@@ -126,7 +126,7 @@ public class RedisAgentStoresIntegrationTest {
 
     private AgentRunSnapshot snapshot(String runId, AgentRunStatus status) {
         return AgentRunSnapshot.builder(runId, "agent", "1")
-            .executionMode("tool-calling", "1").executionPolicy(AgentExecutionPolicy.defaults())
+            .executionPolicy(AgentExecutionPolicy.defaults())
             .status(status).rootRunId(runId).createdAt(1).updatedAt(1).build();
     }
 

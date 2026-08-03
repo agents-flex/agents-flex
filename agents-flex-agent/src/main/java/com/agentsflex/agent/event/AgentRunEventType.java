@@ -54,6 +54,6 @@ public enum AgentRunEventType {
     RUN_CANCELLED,
     /** 模型调用次数达到上限。 */
     MAX_ITERATIONS_REACHED,
-    /** 执行模式 step 次数达到上限。 */
+    /** Runner step 次数达到上限。 */
     MAX_STEPS_REACHED
 }

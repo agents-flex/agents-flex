@@ -27,7 +27,7 @@ description: 解答 Agent 定义、执行、恢复、工具、规划、Worker �
 
 ## 为什么恢复时找不到 Agent？
 
-Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精确加载历史版本，并绑定完整模型、工具、策略和执行模式。
+Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精确加载历史版本，并绑定完整模型、工具和策略。
 
 ## 修改 Agent 后历史 Run 会用新配置吗？
 
