@@ -46,7 +46,7 @@ layout: home
         <article class="af-stack-node af-stack-node--agent">
           <div class="af-stack-node__head"><span>02 / AGENT</span><i aria-hidden="true"></i></div><h3>工具与智能体编排</h3>
           <p>连接 Java 方法、MCP、Skills 与 Subagent，组织可恢复、可追踪的智能任务。</p>
-          <div><span>AgentRun</span><span>Checkpoint</span><span>Subagent</span></div>
+          <div><span>AgentRun</span><span>Snapshot</span><span>Subagent</span></div>
         </article>
         <article class="af-stack-node af-stack-node--knowledge">
           <div class="af-stack-node__head"><span>03 / KNOWLEDGE</span><i aria-hidden="true"></i></div><h3>RAG 与结构化知识</h3>

@@ -121,7 +121,7 @@ public final class RuntimeExtensionsAgentDemo {
             .requestId("request-runtime-1")
             .streaming(true)
             .build();
-        // 使用 Runner 的公开入口携带旧历史创建 Run，确保初始状态立即写入 Checkpoint。
+        // 使用 Runner 的公开入口携带旧历史创建 Run，确保初始状态立即写入 Snapshot。
         List<Message> conversationHistory = new ArrayList<>();
         for (int i = 1; i <= 6; i++) {
             conversationHistory.add(new UserMessage("旧消息 " + i));

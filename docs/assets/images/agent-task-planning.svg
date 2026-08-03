@@ -51,7 +51,7 @@
   <rect x="365" y="420" width="230" height="150" class="box" fill="#eaf8f1" stroke="#35966f"/>
   <text x="414" y="460" class="name">Task 1 / 子 Run</text>
   <text x="399" y="490" class="detail">默认使用根 Agent</text>
-  <text x="399" y="515" class="detail">Checkpoint 与审批独立</text>
+  <text x="399" y="515" class="detail">Snapshot 与审批独立</text>
   <text x="399" y="540" class="detail">结果回写根 Run</text>
 
   <rect x="635" y="420" width="230" height="150" class="box" fill="#f4edff" stroke="#8557c8"/>

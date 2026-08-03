@@ -27,8 +27,8 @@ description: 了解 Agents-Flex Agent 运行时解决的问题、核心概念、
 | --- | --- | --- |
 | `Agent` | 定义模型、指令、工具和策略 | 可复用、不可变 |
 | `AgentRun` | 保存一次任务的消息、状态、计数和暂停点 | 每次任务一个 |
-| `AgentRunner` | 推进状态机，执行模型与工具，保存 Checkpoint | 应用级复用 |
-| `AgentRunSnapshot` | `AgentRun` 的可持久化副本 | 每个 Checkpoint 一版 |
+| `AgentRunner` | 推进状态机，执行模型与工具，保存 Snapshot | 应用级复用 |
+| `AgentRunSnapshot` | `AgentRun` 的可持久化副本 | 每个 Snapshot 一版 |
 | `AgentLoader` | 按 Agent ID 与版本重新装配运行定义 | 应用级服务 |
 | `AgentWorker` | 使用 Lease 领取并推进后台任务 | Worker 进程级 |
 
@@ -38,7 +38,7 @@ description: 了解 Agents-Flex Agent 运行时解决的问题、核心概念、
 
 Runner 内置状态机采用模型原生 ToolCall 协议：
 
-1. 创建 `READY` Run，并保存初始 Checkpoint。
+1. 创建 `READY` Run，并保存初始 Snapshot。
 2. 调用模型；没有 ToolCall 时以最终消息完成。
 3. 有 ToolCall 时先保存调用参数，再进行审批和工具执行。
 4. 把 `ToolMessage` 写回 Prompt，再次调用模型。

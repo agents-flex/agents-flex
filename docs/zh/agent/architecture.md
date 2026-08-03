@@ -60,7 +60,7 @@ READY -> RUNNING/MODEL
 
 ## 一致性边界
 
-框架能保证 Checkpoint 内状态一致和 Store 写入并发控制，但无法把任意外部工具副作用纳入同一事务。因此架构采用稳定 ToolCall ID + 业务幂等键。审批前保存调用、工具后保存结果，把不可避免的故障窗口缩小并变得可恢复。
+框架能保证 Snapshot 内状态一致和 Store 写入并发控制，但无法把任意外部工具副作用纳入同一事务。因此架构采用稳定 ToolCall ID + 业务幂等键。审批前保存调用、工具后保存结果，把不可避免的故障窗口缩小并变得可恢复。
 
 ## 扩展原则
 
@@ -68,7 +68,7 @@ READY -> RUNNING/MODEL
 - 执行语义通过 ExecutionMode 扩展，不在 Listener 中改状态。
 - 横切控制通过 Middleware，低层通用工具逻辑通过 ToolInterceptor。
 - 瞬时依赖通过 Invocation Context，持久业务标识通过 metadata。
-- 长内容进入 Artifact Store，不让 Prompt 和 Checkpoint 无界增长。
+- 长内容进入 Artifact Store，不让 Prompt 和 Snapshot 无界增长。
 
 ## 部署形态
 

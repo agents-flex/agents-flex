@@ -21,7 +21,7 @@ import java.util.UUID;
 /**
  * 当前 AgentRun 内可持久化的任务计划和执行进度。
  *
- * <p>计划与 Run 使用同一个 Checkpoint 版本保存，避免独立计划存储与父子 Run 状态不一致。</p>
+ * <p>计划与 Run 使用同一个 Snapshot 版本保存，避免独立计划存储与父子 Run 状态不一致。</p>
  */
 public final class AgentTaskPlan implements Serializable {
 
@@ -276,7 +276,7 @@ public final class AgentTaskPlan implements Serializable {
         return Collections.unmodifiableList(values);
     }
 
-    /** 计划状态构建器，主要用于 Checkpoint 反序列化和不可变状态转换。 */
+    /** 计划状态构建器，主要用于 Snapshot 反序列化和不可变状态转换。 */
     public static final class Builder {
         private String id = UUID.randomUUID().toString();
         private final String goal;

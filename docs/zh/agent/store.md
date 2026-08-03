@@ -49,7 +49,7 @@ AgentRunner runner = AgentRunner.builder()
 
 `submit` 对相同 commandId 和相同内容返回已有记录；同 ID 不同内容应拒绝。`claim` 原子领取 PENDING 或租约过期的 CLAIMED 命令并增加 attempts。只有当前租约持有者可以 acknowledge、release 或 fail。
 
-Run Checkpoint 更新与 Command 确认若不能放在同一事务中，必须依靠 processed-command 标记与幂等恢复实现最终一致性。
+Run Snapshot 更新与 Command 确认若不能放在同一事务中，必须依靠 processed-command 标记与幂等恢复实现最终一致性。
 
 ## Event Store 契约
 
@@ -79,7 +79,7 @@ UNIQUE(run_id, sequence)
 - 先确认 Run 终态且不再被父任务引用。
 - Command 的保留期应覆盖外部回调重放窗口。
 - Event 可归档，但消费游标必须随之处理。
-- Artifact 生命周期不得短于引用它的 Checkpoint。
+- Artifact 生命周期不得短于引用它的 Snapshot。
 - 清理作业使用明确批次，避免大事务和全表锁。
 
 ## 验证自定义实现

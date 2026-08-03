@@ -28,7 +28,7 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** 演示高风险工具审批、Checkpoint 和跨 Runner 恢复。 */
+/** 演示高风险工具审批、Snapshot 和跨 Runner 恢复。 */
 public final class HumanApprovalAgentDemo {
 
     private HumanApprovalAgentDemo() {
@@ -106,11 +106,11 @@ public final class HumanApprovalAgentDemo {
         DemoSupport.require(deployments.get() == 0, "审批前不能产生部署副作用");
 
         // pending ToolCall 已在审批前持久化。恢复时不会重新调用模型生成部署参数，
-        // Runner 会从 Checkpoint 指定版本的 Agent 中取得同名工具。
-        AgentRunSnapshot checkpoint = runStore.load(waiting.getId());
+        // Runner 会从 Snapshot 指定版本的 Agent 中取得同名工具。
+        AgentRunSnapshot snapshot = runStore.load(waiting.getId());
         DemoSupport.require("deploy_service".equals(
-            checkpoint.getPendingToolCalls().get(0).getName()),
-            "Checkpoint 必须保存待执行 ToolCall");
+            snapshot.getPendingToolCalls().get(0).getName()),
+            "Snapshot 必须保存待执行 ToolCall");
 
         String callId = waiting.getSuspension().getCorrelationId();
         // correlationId 将审批决定绑定到当前待处理 ToolCall，metadata 用于保存审批审计信息。

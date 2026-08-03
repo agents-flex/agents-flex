@@ -145,7 +145,7 @@ public class AgentPlatformExtensionScenarioTest {
     }
 
     @Test
-    public void shouldLimitModelContextWithoutLosingCheckpointHistory() {
+    public void shouldLimitModelContextWithoutLosingSnapshotHistory() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> {

@@ -59,7 +59,7 @@ public enum AgentRuntimeEventType {
     /**
      * Run 状态已经保存到 AgentRunStore。
      */
-    CHECKPOINT_SAVED,
+    SNAPSHOT_SAVED,
     /**
      * Run 因外部条件未满足而暂停。
      */

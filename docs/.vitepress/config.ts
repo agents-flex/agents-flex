@@ -189,7 +189,7 @@ export default withMermaid(defineConfig({
                     {text: '错误重试', link: '/zh/agent/retry'},
                     {text: '可观测性', link: '/zh/agent/observability'},
                     {text: 'Agent Middleware', link: '/zh/agent/middleware'},
-                    {text: 'Checkpoint', link: '/zh/agent/checkpoint'},
+                    {text: 'Snapshot', link: '/zh/agent/snapshot'},
                     {text: 'Store 持久化', link: '/zh/agent/store'},
                     {text: 'AgentExecutionMode', link: '/zh/agent/execution-mode'},
                     {text: 'AgentWorker', link: '/zh/agent/worker'},

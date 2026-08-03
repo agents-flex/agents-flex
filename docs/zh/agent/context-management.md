@@ -15,7 +15,7 @@ Agent 的上下文同时面对两个目标：保留足够历史以正确决策�
 - `AgentRun` 的 `MemoryPrompt`：本次任务的协议消息和系统指令。
 - 模型调用 Prompt：依据 Context Policy 从 Run Prompt 生成的当前视图。
 
-窗口策略只影响一次模型调用视图；Context Manager 的修改会进入 Run 与 Checkpoint。
+窗口策略只影响一次模型调用视图；Context Manager 的修改会进入 Run 与 Snapshot。
 
 ## Conversation 管理
 
@@ -68,7 +68,7 @@ public final class DomainContextManager implements AgentContextManager {
 }
 ```
 
-实现必须幂等：同一 Checkpoint 因重试再次执行时，不应重复插入摘要。返回 `changed=true` 后，Runner 会立即保存 Checkpoint 并发布 `CONTEXT_COMPACTED`。
+实现必须幂等：同一 Snapshot 因重试再次执行时，不应重复插入摘要。返回 `changed=true` 后，Runner 会立即保存 Snapshot 并发布 `CONTEXT_COMPACTED`。
 
 ## 大型工具结果外置
 
@@ -85,7 +85,7 @@ AgentRunner runner = AgentRunner.builder()
 
 超过阈值的工具结果会保存到 `AgentArtifactStore`，Prompt 中替换为包含 `artifactId`、media type、size 和 checksum 的 JSON 引用。原始内容可用 `artifactStore.load(artifactId)` 读取。
 
-这能降低 Prompt 与 Checkpoint 体积，但模型只看到引用摘要。如果后续推理需要正文，应提供按需读取 Artifact 的工具，或让卸载策略只处理无需再次推理的大内容。
+这能降低 Prompt 与 Snapshot 体积，但模型只看到引用摘要。如果后续推理需要正文，应提供按需读取 Artifact 的工具，或让卸载策略只处理无需再次推理的大内容。
 
 ## 多模态消息
 
@@ -93,11 +93,11 @@ AgentRunner runner = AgentRunner.builder()
 
 ## 瞬时调用上下文
 
-`AgentInvocationContext` 可携带 tenantId、userId、requestId、sessionId 和运行期 attributes。它不持久化，用于鉴权、工具服务定位和摘要器上下文。Worker 恢复时通过 `AgentInvocationContextProvider` 重建，避免把密钥和服务对象写进 Checkpoint。
+`AgentInvocationContext` 可携带 tenantId、userId、requestId、sessionId 和运行期 attributes。它不持久化，用于鉴权、工具服务定位和摘要器上下文。Worker 恢复时通过 `AgentInvocationContextProvider` 重建，避免把密钥和服务对象写进 Snapshot。
 
 ## 生产建议
 
 - 同时限制消息数量、工具结果大小与模型 Token 预算。
 - 摘要模型失败时保留原历史，不能静默丢消息。
 - Artifact 与 Run 设置一致的租户隔离、保留期和删除策略。
-- 对 Checkpoint 和 Artifact 分别监控大小、增长率与读取失败。
+- 对 Snapshot 和 Artifact 分别监控大小、增长率与读取失败。

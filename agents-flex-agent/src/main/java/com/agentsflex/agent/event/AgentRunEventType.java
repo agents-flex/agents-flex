@@ -20,8 +20,8 @@ public enum AgentRunEventType {
     TOOL_COMPLETED,
     /** 业务工具执行失败。 */
     TOOL_FAILED,
-    /** Run Checkpoint 已持久化。 */
-    CHECKPOINT_SAVED,
+    /** Run Snapshot 已持久化。 */
+    SNAPSHOT_SAVED,
     /** Run 进入等待状态。 */
     RUN_SUSPENDED,
     /** Run 已应用外部恢复命令。 */

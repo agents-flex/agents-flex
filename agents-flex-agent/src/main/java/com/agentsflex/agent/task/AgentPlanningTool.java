@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * 根据规划策略生成模型可见的稳定工具协议。
  *
- * <p>工具对象不执行外部函数，AgentRunner 会识别固定工具名并完成参数校验、Checkpoint 和任务调度。
+ * <p>工具对象不执行外部函数，AgentRunner 会识别固定工具名并完成参数校验、Snapshot 和任务调度。
  * 工具 schema 是模型与 Runner 之间的结构化协议，业务工具审批、中间件和 ToolInterceptor 不会处理
  * 这些内置状态转换。</p>
  *

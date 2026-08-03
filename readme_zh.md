@@ -16,7 +16,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 - **多模型统一抽象**：通过 `ChatModel`、`EmbeddingModel`、`ImageModel`、`RerankModel` 等接口封装不同厂商能力。
 - **同步与流式一致**：同一套 Prompt、Options、拦截器和上下文机制可用于普通对话与流式输出。
 - **Tool Calling 完整链路**：支持注解扫描、编程式构建、工具执行、工具消息回传和工具级可观测。
-- **持久化 Agent Runtime**：提供 Checkpoint 恢复、工具审批、Worker Lease、Middleware、事件流、任务规划和子 Agent 调度。
+- **持久化 Agent Runtime**：提供 Snapshot 恢复、工具审批、Worker Lease、Middleware、事件流、任务规划和子 Agent 调度。
 - **RAG 组件齐全**：包含文档、解析、切分、Embedding、向量存储、检索、Rerank 等常用模块。
 - **企业场景友好**：内置模型路由、重试、负载均衡、熔断、OpenTelemetry 可观测、Text2SQL 安全拦截器等能力。
 
@@ -25,7 +25,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 | 模块 | 说明 |
 | --- | --- |
 | `agents-flex-core` | 核心抽象：Chat、Prompt、Message、Tool、Memory、Document、Store、Observability |
-| `agents-flex-agent` | 持久化 Agent Runtime：运行状态、Checkpoint、Worker Lease、审批、Middleware、事件和任务规划 |
+| `agents-flex-agent` | 持久化 Agent Runtime：运行状态、Snapshot、Worker Lease、审批、Middleware、事件和任务规划 |
 | `agents-flex-agent-store` | Agent 运行、命令、事件、任务计划和 Artifact 的 JDBC 与 Redis 持久化实现 |
 | `agents-flex-chat` | 聊天模型适配：OpenAI 兼容接口、Qwen、Ollama、DeepSeek、LiteLLM |
 | `agents-flex-embedding` | Embedding 模型适配：OpenAI、Ollama、Qwen |

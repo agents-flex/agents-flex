@@ -634,7 +634,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         public AgentRunEvent append(AgentRunEvent event) {
             if (failNextAppend) {
                 failNextAppend = false;
-                throw new RuntimeException("simulated event failure after checkpoint");
+                throw new RuntimeException("simulated event failure after snapshot");
             }
             return delegate.append(event);
         }

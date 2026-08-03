@@ -8,7 +8,7 @@
 /**
  * AgentRun 生命周期事件的追加式持久化与增量读取接口。
  *
- * <p>事件流与 Checkpoint 分开保存：Checkpoint 表示当前状态，事件流表示状态如何演进，适合实时推送、
+ * <p>事件流与 Snapshot 分开保存：Snapshot 表示当前状态，事件流表示状态如何演进，适合实时推送、
  * 审计、追踪以及消费者断点续读。</p>
  */
 package com.agentsflex.agent.event;

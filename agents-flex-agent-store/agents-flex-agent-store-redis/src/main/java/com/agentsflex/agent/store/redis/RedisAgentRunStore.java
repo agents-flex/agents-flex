@@ -75,7 +75,7 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
             + "or status=='MAX_STEPS_REACHED' or status=='BUDGET_EXCEEDED' then return 0 end; "
             + "redis.call('HSET',KEYS[1],'cancel','1'); redis.call('ZADD',KEYS[2],0,ARGV[1]); return 1";
         long result = ((Number) eval(script, keys(key("run", runId), index("runnable-runs")), args(runId))).longValue();
-        if (result == -1) throw new IllegalStateException("AgentRun checkpoint not found: " + runId);
+        if (result == -1) throw new IllegalStateException("AgentRun snapshot not found: " + runId);
         return result == 1;
     }
 

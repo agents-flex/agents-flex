@@ -37,7 +37,7 @@ UI 应容忍丢事件，并在重连时从 `AgentRunStore` 重新读取当前状
 
 持久化 `AgentRunEventStore` 后，按 sequence 增量读取。审批事件应通过 Enricher 或 Resume Command metadata 记录审批人、渠道、策略代码和理由；敏感数据应保存引用而不是原文。
 
-Checkpoint 表示当前真相，Event 表示变化历史。排障时先读 Snapshot，再用事件解释到达该状态的路径。
+Snapshot 表示当前真相，Event 表示变化历史。排障时先读 Snapshot，再用事件解释到达该状态的路径。
 
 ## 指标设计
 
@@ -50,7 +50,7 @@ Checkpoint 表示当前真相，Event 表示变化历史。排障时先读 Snaps
 - 重试调度数量及重试后成功率。
 - Worker 领取数、Lease 丢失数、可运行积压。
 - Command Inbox 的 pending 数量、处理延迟和失败数。
-- Checkpoint、事件和 Artifact 的写入失败及大小。
+- Snapshot、事件和 Artifact 的写入失败及大小。
 
 `runId`、`toolCallId` 等高基数值只进入日志或 Trace，不作为指标标签。
 

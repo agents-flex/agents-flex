@@ -1,15 +1,15 @@
 ---
-title: Checkpoint
+title: Snapshot
 description: 理解 AgentRunSnapshot 的内容、保存边界、版本控制和恢复兼容性。
 ---
 
-# Checkpoint
+# Snapshot
 
 ## 概述
 
-Checkpoint 是 `AgentRun` 在稳定执行边界的持久化状态，具体值对象为 `AgentRunSnapshot`。它让任务在审批回调、后台 Worker、进程重启或节点切换后继续执行，而无需重放整条模型与工具链。
+Snapshot 是 `AgentRun` 在稳定执行边界的持久化状态，具体值对象为 `AgentRunSnapshot`。它让任务在审批回调、后台 Worker、进程重启或节点切换后继续执行，而无需重放整条模型与工具链。
 
-Checkpoint 保存“继续执行所需的数据”，而不是把整个 Java 对象图序列化下来。模型、工具、Middleware 和调用期服务由 AgentLoader 与 InvocationContextProvider 恢复。
+Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对象图序列化下来。模型、工具、Middleware 和调用期服务由 AgentLoader 与 InvocationContextProvider 恢复。
 
 ## 保存内容
 
@@ -40,14 +40,14 @@ Runner 会在关键状态变化后保存，例如：
 
 “先保存 ToolCall，再请求审批或执行”保证恢复后使用的是原始参数。
 
-## 手动 Checkpoint
+## 手动 Snapshot
 
 ```java
-AgentRunSnapshot saved = runner.checkpoint(run);
+AgentRunSnapshot saved = runner.saveSnapshot(run);
 System.out.println(saved.getVersion());
 ```
 
-`run.toSnapshot()` 只生成副本，不执行 Store 乐观写入、事件发布或本地版本同步。需要显式保存稳定边界时调用 `runner.checkpoint(run)`。
+`run.toSnapshot()` 只生成内存副本，不执行 Store 乐观写入、事件发布或本地版本同步。需要显式持久化稳定边界时调用 `runner.saveSnapshot(run)`。
 
 ## 乐观版本
 
@@ -85,4 +85,4 @@ AgentStoreSerializer serializer =
 
 ## 数据保留
 
-终态 Run 的 Checkpoint 仍是审计、结果查询和父子树展示的依据。删除策略应与事件、Command 和 Artifact 协调：不能先删除 Artifact 却保留引用，也不能在父 Run 仍等待时删除子 Run。
+终态 Run 的 Snapshot 仍是审计、结果查询和父子树展示的依据。删除策略应与事件、Command 和 Artifact 协调：不能先删除 Artifact 却保留引用，也不能在父 Run 仍等待时删除子 Run。

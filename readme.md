@@ -16,7 +16,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 - **Unified model abstractions**: `ChatModel`, `EmbeddingModel`, `ImageModel`, `RerankModel`, and other interfaces wrap provider-specific capabilities.
 - **Consistent sync and streaming APIs**: The same Prompt, Options, interceptor, and context mechanisms work for both normal chat and streaming output.
 - **Complete Tool Calling flow**: Supports annotation-based scanning, programmatic tool building, tool execution, tool message feedback, and tool-level observability.
-- **Durable Agent runtime**: Provides checkpoint recovery, tool approval, Worker leases, middleware, event streams, task planning, and sub-agent scheduling.
+- **Durable Agent runtime**: Provides snapshot recovery, tool approval, Worker leases, middleware, event streams, task planning, and sub-agent scheduling.
 - **Full RAG building blocks**: Includes document models, parsing, splitting, Embedding, vector stores, retrieval, and Rerank support.
 - **Production-oriented design**: Includes model routing, retry, load balancing, circuit breaking, OpenTelemetry observability, and Text2SQL safety interceptors.
 
@@ -25,7 +25,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | Module | Description |
 | --- | --- |
 | `agents-flex-core` | Core abstractions: Chat, Prompt, Message, Tool, Memory, Document, Store, and observability |
-| `agents-flex-agent` | Durable Agent runtime: Run state, checkpoint recovery, Worker leases, approval, middleware, events, and task planning |
+| `agents-flex-agent` | Durable Agent runtime: Run state, snapshot recovery, Worker leases, approval, middleware, events, and task planning |
 | `agents-flex-agent-store` | JDBC and Redis persistence for Agent runs, commands, events, task plans, and artifacts |
 | `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |
 | `agents-flex-embedding` | Embedding model integrations: OpenAI, Ollama, Qwen |

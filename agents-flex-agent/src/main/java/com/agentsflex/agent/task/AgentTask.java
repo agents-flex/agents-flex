@@ -14,7 +14,7 @@ import java.util.UUID;
 /**
  * 任务计划中的不可变任务及其执行结果。
  *
- * <p>任务定义和执行状态保存在父 Run 的 Checkpoint 中。任务开始后通过 childRunId 关联实际执行
+ * <p>任务定义和执行状态保存在父 Run 的 Snapshot 中。任务开始后通过 childRunId 关联实际执行
  * 的子 Run；result 可以按规划策略截断，完整输出仍以子 Run 的最终消息为准。</p>
  */
 public final class AgentTask implements Serializable {

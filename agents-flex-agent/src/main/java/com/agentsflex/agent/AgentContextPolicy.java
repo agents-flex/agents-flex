@@ -11,7 +11,7 @@ import com.agentsflex.core.prompt.MemoryPrompt;
 /**
  * 配置每次模型调用可见上下文的策略。
  *
- * <p>AgentRun 仍会在 Checkpoint 中保存完整消息历史。本策略只调整发送给模型的消息窗口、文本截断等
+ * <p>AgentRun 仍会在 Snapshot 中保存完整消息历史。本策略只调整发送给模型的消息窗口、文本截断等
  * 参数，因此平台可以实现最近消息、Token 窗口、摘要记忆或自定义上下文装配，而不会破坏恢复数据。</p>
  */
 @FunctionalInterface

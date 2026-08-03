@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Agent Checkpoint 使用的消息深拷贝工具。 */
+/** Agent Snapshot 使用的消息深拷贝工具。 */
 final class AgentMessageUtils {
 
     private AgentMessageUtils() {
@@ -38,7 +38,7 @@ final class AgentMessageUtils {
         if (message instanceof AbstractTextMessage) {
             return ((AbstractTextMessage<?>) message).copy();
         }
-        throw new IllegalStateException("Unsupported checkpoint message type: " + message.getClass().getName());
+        throw new IllegalStateException("Unsupported snapshot message type: " + message.getClass().getName());
     }
 
     static List<ToolCall> copyToolCalls(List<ToolCall> toolCalls) {

@@ -54,7 +54,7 @@ for (AgentRunEvent event : page) {
 - 保证 `load` 的稳定顺序与 limit 语义。
 - 复制或序列化事件，避免调用方修改已存状态。
 
-持久化类型包括 Run、模型、工具、审批、重试、预算、计划、任务、子 Run 与 Checkpoint 等关键节点。它不是完整 Token 流；流式 delta 只存在于 Runtime Event。
+持久化类型包括 Run、模型、工具、审批、重试、预算、计划、任务、子 Run 与 Snapshot 等关键节点。它不是完整 Token 流；流式 delta 只存在于 Runtime Event。
 
 ## 增强审计字段
 
@@ -78,5 +78,5 @@ Enricher 的返回值会合并到持久化事件 attributes。attributes 仅支�
 
 - Runtime sequence 在 JVM 重启后不连续，不能作为审计游标。
 - Listener 和实时事件不是可靠消息投递。
-- `CHECKPOINT_SAVED` 表示状态已保存，不表示整个 Run 已完成。
+- `SNAPSHOT_SAVED` 表示状态已保存，不表示整个 Run 已完成。
 - 事件用于描述状态变化，当前状态仍应从 `AgentRunStore` 读取。

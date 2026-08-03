@@ -14,15 +14,21 @@ import java.util.Map;
  * 创建单次 AgentRun 时使用的可选参数。
  *
  * <p>平台可以为不同任务使用推荐的迭代次数和预算，而不需要为每个任务重新创建 Agent 定义。
- * 解析后的执行策略会随 Checkpoint 保存，保证任务恢复后继续使用启动时的限制。</p>
+ * 解析后的执行策略会随 Snapshot 保存，保证任务恢复后继续使用启动时的限制。</p>
  */
 public final class AgentRunOptions {
 
-    /** 覆盖 Agent 默认值的单次运行执行策略；为空时使用 Agent 策略。 */
+    /**
+     * 覆盖 Agent 默认值的单次运行执行策略；为空时使用 Agent 策略。
+     */
     private final AgentExecutionPolicy executionPolicy;
-    /** 随 Checkpoint 持久化的任务类型、账号等业务数据。 */
+    /**
+     * 随 Snapshot 持久化的任务类型、账号等业务数据。
+     */
     private final Map<String, Object> metadata;
-    /** 仅在当前进程传递且不会写入 Checkpoint 的调用上下文。 */
+    /**
+     * 仅在当前进程传递且不会写入 Snapshot 的调用上下文。
+     */
     private final AgentInvocationContext invocationContext;
 
     private AgentRunOptions(Builder builder) {
@@ -32,42 +38,60 @@ public final class AgentRunOptions {
             ? AgentInvocationContext.empty() : builder.invocationContext;
     }
 
-    /** @return 不覆盖 Agent 策略且不附加元数据的默认选项 */
+    /**
+     * @return 不覆盖 Agent 策略且不附加元数据的默认选项
+     */
     public static AgentRunOptions defaults() {
         return builder().build();
     }
 
-    /** @return 新的单次运行选项构建器 */
+    /**
+     * @return 新的单次运行选项构建器
+     */
     public static Builder builder() {
         return new Builder();
     }
 
-    /** @return 单次运行策略覆盖；未配置时为 {@code null} */
+    /**
+     * @return 单次运行策略覆盖；未配置时为 {@code null}
+     */
     public AgentExecutionPolicy getExecutionPolicy() {
         return executionPolicy;
     }
 
-    /** @return 不可修改的持久化业务元数据 */
+    /**
+     * @return 不可修改的持久化业务元数据
+     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }
 
-    /** @return 非持久化调用上下文，始终不为 {@code null} */
-    public AgentInvocationContext getInvocationContext() { return invocationContext; }
+    /**
+     * @return 非持久化调用上下文，始终不为 {@code null}
+     */
+    public AgentInvocationContext getInvocationContext() {
+        return invocationContext;
+    }
 
-    /** 单次运行选项构建器。 */
+    /**
+     * 单次运行选项构建器。
+     */
     public static final class Builder {
         private AgentExecutionPolicy executionPolicy;
         private final Map<String, Object> metadata = new HashMap<>();
         private AgentInvocationContext invocationContext;
 
-        /** 覆盖 Agent 定义中的默认执行策略。 */
+        /**
+         * 覆盖 Agent 定义中的默认执行策略。
+         */
         public Builder executionPolicy(AgentExecutionPolicy value) {
             this.executionPolicy = value;
             return this;
         }
 
-        /** 添加账号、模块、任务类型、配置版本等运行元数据。 */
+        /**
+         * 添加账号、模块、任务类型、配置版本等运行元数据。
+         */
         public Builder metadata(String key, Object value) {
             if (key == null) {
                 throw new IllegalArgumentException("metadata key must not be null");
@@ -76,7 +100,9 @@ public final class AgentRunOptions {
             return this;
         }
 
-        /** 批量添加运行元数据。 */
+        /**
+         * 批量添加运行元数据。
+         */
         public Builder metadata(Map<String, ?> values) {
             if (values != null) {
                 for (Map.Entry<String, ?> entry : values.entrySet()) {
@@ -86,13 +112,17 @@ public final class AgentRunOptions {
             return this;
         }
 
-        /** 设置仅在本次进程内调用期间生效的运行上下文。 */
+        /**
+         * 设置仅在本次进程内调用期间生效的运行上下文。
+         */
         public Builder invocationContext(AgentInvocationContext value) {
             this.invocationContext = value;
             return this;
         }
 
-        /** 创建不可变运行选项。 */
+        /**
+         * 创建不可变运行选项。
+         */
         public AgentRunOptions build() {
             return new AgentRunOptions(this);
         }

@@ -3,7 +3,7 @@ package com.agentsflex.agent.context;
 /**
  * 上下文管理器完成一次处理后的统计结果。
  *
- * <p>Runner 根据 {@link #isChanged()} 判断是否需要立即保存 Checkpoint 和发布上下文压缩事件。
+ * <p>Runner 根据 {@link #isChanged()} 判断是否需要立即保存 Snapshot 和发布上下文压缩事件。
  * 消息数量用于监控压缩效果，不参与后续状态计算。</p>
  */
 public final class AgentContextUpdate {

@@ -7,7 +7,7 @@ description: 构建高风险工具审批流程，并通过 Command Inbox 和 Wor
 
 ## 概述
 
-本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Checkpoint 并等待人工批准；审批服务只把命令写入 Inbox；后台 Worker 消费命令，使用另一个 Runner 恢复原 Run 并执行一次部署。
+本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Snapshot 并等待人工批准；审批服务只把命令写入 Inbox；后台 Worker 消费命令，使用另一个 Runner 恢复原 Run 并执行一次部署。
 
 完整源码位于 `demos/agent-demo/src/main/java/com/agentsflex/demo/agent/HumanApprovalAgentDemo.java`。
 

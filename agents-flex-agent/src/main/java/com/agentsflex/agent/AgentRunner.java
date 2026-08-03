@@ -87,7 +87,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * </ol>
  *
  * <p>内置状态机使用模型原生 ToolCall。模型产生 ToolCall 后，Runner 先把调用及参数保存为
- * Checkpoint，再逐个完成审批、工具执行和 ToolMessage 写入。审批恢复时因此可以继续执行已经确认的
+ * Snapshot，再逐个完成审批、工具执行和 ToolMessage 写入。审批恢复时因此可以继续执行已经确认的
  * 原始 ToolCall，而不需要重新请求模型生成参数。</p>
  *
  * <p>Runner 同时负责预算检查、自动重试、暂停恢复、任务规划、父子 Run 协调和生命周期事件。
@@ -95,7 +95,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * 因而通常作为应用级对象复用。</p>
  *
  * <p>直接调用 {@code run(...)} 会在当前线程推进子 Run；分布式长任务应先调用 {@code start(...)}
- * 保存 READY Checkpoint，再由 AgentWorker 通过租约领取。不要让两个线程直接推进同一个
+ * 保存 READY Snapshot，再由 AgentWorker 通过租约领取。不要让两个线程直接推进同一个
  * AgentRun 对象。</p>
  */
 public final class AgentRunner {
@@ -103,7 +103,7 @@ public final class AgentRunner {
     private static final Logger log = LoggerFactory.getLogger(AgentRunner.class);
 
     /**
-     * 保存 Checkpoint、取消标记和 Worker 租约的运行存储。
+     * 保存 Snapshot、取消标记和 Worker 租约的运行存储。
      */
     private final AgentRunStore runStore;
     /**
@@ -150,7 +150,7 @@ public final class AgentRunner {
      * 当前 Worker 本次领取得到的唯一租约令牌。
      *
      * <p>仅校验 workerId 无法区分同名 Worker 的两次领取；leaseId 用作 fencing token，阻止租约已经
-     * 失效的旧执行者继续提交 Checkpoint。</p>
+     * 失效的旧执行者继续提交 Snapshot。</p>
      */
     private final ThreadLocal<String> activeLeaseId = new ThreadLocal<>();
 
@@ -219,7 +219,7 @@ public final class AgentRunner {
         private AgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
 
         /**
-         * 设置 Checkpoint 与租约存储。
+         * 设置 Snapshot 与租约存储。
          */
         public Builder runStore(AgentRunStore value) {
             runStore = value;
@@ -459,7 +459,7 @@ public final class AgentRunner {
      * 使用已有会话历史、本轮结构化消息和运行时覆盖参数创建并保存新的 Run。
      *
      * <p>这是无 Conversation 场景最终汇聚的创建入口。方法只建立可恢复的 READY 状态，不调用模型；
-     * 初始 Checkpoint 成功后，Run 才会返回给调用方或后台调度器。</p>
+     * 初始 Snapshot 成功后，Run 才会返回给调用方或后台调度器。</p>
      */
     public AgentRun start(Agent agent, List<? extends Message> conversationHistory,
                           UserMessage userMessage, AgentRunOptions options) {
@@ -467,8 +467,8 @@ public final class AgentRunner {
         prepareAgent(agent);
         AgentRun run = AgentRun.start(agent, conversationHistory, userMessage, options);
         prepareRun(run);
-        // 初始 Checkpoint 使任务在第一次模型调用之前就可以被 Worker 发现和恢复。
-        checkpoint(run);
+        // 初始 Snapshot 使任务在第一次模型调用之前就可以被 Worker 发现和恢复。
+        saveSnapshot(run);
         return run;
     }
 
@@ -490,7 +490,7 @@ public final class AgentRunner {
      * 在持续对话中创建并保存一个带有运行时覆盖参数的 Run。
      *
      * <p>同一 Conversation 同时只允许一个未终止 Run。创建过程会把本轮消息加入共享 Memory；如果
-     * 初始 Checkpoint 保存失败，方法会恢复之前的 Memory 和活动 Run 标记，避免会话留下半创建状态。</p>
+     * 初始 Snapshot 保存失败，方法会恢复之前的 Memory 和活动 Run 标记，避免会话留下半创建状态。</p>
      */
     public AgentRun start(AgentConversation conversation, UserMessage userMessage,
                           AgentRunOptions options) {
@@ -509,7 +509,7 @@ public final class AgentRunner {
             run.putMetadata(AgentConversation.RUN_METADATA_KEY, conversation.getId());
             conversation.activate(run.getId());
             try {
-                checkpoint(run);
+                saveSnapshot(run);
                 return run;
             } catch (RuntimeException error) {
                 // Store 写入失败时撤销内存侧变更，调用方可以安全重试本轮消息。
@@ -545,7 +545,7 @@ public final class AgentRunner {
         }
         AgentRun current = run;
         AgentConversation conversation = run.getConversation();
-        ensurePreparedAndCheckpointed(current);
+        ensurePreparedAndSnapshotSaved(current);
         refreshCancellation(current);
         while (true) {
             // 普通状态持续单步推进；若阻塞期间收到取消信号，也要再执行一步完成 CANCELLED 落盘。
@@ -592,7 +592,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 从 Store 恢复最新 Checkpoint。
+     * 从 Store 恢复最新 Snapshot。
      *
      * <p>方法按照快照中的 agentId 和 agentVersion 加载匹配定义，不使用当前生效版本，并附加空的
      * InvocationContext。</p>
@@ -610,7 +610,7 @@ public final class AgentRunner {
         // Snapshot 是恢复状态的事实来源；运行时对象不能从旧 JVM 内存中获取。
         AgentRunSnapshot snapshot = runStore.load(runId);
         if (snapshot == null) {
-            throw new IllegalStateException("AgentRun checkpoint not found: " + runId);
+            throw new IllegalStateException("AgentRun snapshot not found: " + runId);
         }
         // 必须加载创建 Run 时记录的版本，避免用最新配置解释待执行 ToolCall。
         Agent agent = agentLoader.load(snapshot.getAgentId(), snapshot.getAgentVersion());
@@ -625,7 +625,7 @@ public final class AgentRunner {
     /**
      * 从 Store 恢复持续对话当前的活动 Run，并重新绑定 Conversation 的 Memory。
      *
-     * <p>恢复后的消息以 Run Checkpoint 为准，确保审批、工具结果和中间模型消息不会丢失。</p>
+     * <p>恢复后的消息以 Run Snapshot 为准，确保审批、工具结果和中间模型消息不会丢失。</p>
      */
     public AgentRun restore(AgentConversation conversation) {
         if (conversation == null || !StringUtil.hasText(conversation.getActiveRunId())) {
@@ -633,7 +633,7 @@ public final class AgentRunner {
         }
         AgentRunSnapshot snapshot = runStore.load(conversation.getActiveRunId());
         if (snapshot == null) {
-            throw new IllegalStateException("AgentRun checkpoint not found: "
+            throw new IllegalStateException("AgentRun snapshot not found: "
                 + conversation.getActiveRunId());
         }
         Agent agent = conversation.getAgent();
@@ -650,7 +650,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 从最新 Checkpoint 恢复指定 Run 并推进到下一个稳定边界。
+     * 从最新 Snapshot 恢复指定 Run 并推进到下一个稳定边界。
      */
     public AgentRun runUntilBlocked(String runId) {
         return runUntilBlocked(restore(runId));
@@ -671,7 +671,7 @@ public final class AgentRunner {
         }
         assertLeaseOwnership(run);
         run.suspend(blockedStatusFor(suspension.getType()), suspension);
-        checkpoint(run);
+        saveSnapshot(run);
         notifyRunSuspended(run, suspension);
         return run;
     }
@@ -720,7 +720,7 @@ public final class AgentRunner {
         }
         // 恢复到暂停前保存的模型或工具阶段，不从任务开头重新执行。
         run.resumeAt(suspension.getResumePhase());
-        checkpoint(run);
+        saveSnapshot(run);
         notifyRunResumed(run, command);
         return run;
     }
@@ -820,7 +820,7 @@ public final class AgentRunner {
                 if (!Boolean.TRUE.equals(run.getMetadata().get(processedCommandKey(item.getCommandId())))) {
                     submitResume(run, item.getCommand(), item.getCommandId());
                 }
-                // 只有恢复状态成功写入 Checkpoint 后才能确认命令消费完成。
+                // 只有恢复状态成功写入 Snapshot 后才能确认命令消费完成。
                 commandStore.acknowledge(item.getCommandId(), workerId);
                 emitRuntime(run, AgentRuntimeEventType.COMMAND_CONSUMED,
                     objectAttributes("commandId", item.getCommandId()));
@@ -852,7 +852,7 @@ public final class AgentRunner {
      * <p>Store 返回的 Snapshot 包含新版本号和可能由其他控制面原子写入的取消标记。监听器只在保存
      * 成功后收到通知，因此看到的是已经持久化的稳定状态。</p>
      */
-    public AgentRunSnapshot checkpoint(AgentRun run) {
+    public AgentRunSnapshot saveSnapshot(AgentRun run) {
         synchronized (run) {
             // 同步块保证同一 JVM 中 Snapshot 构造、Store CAS 和本地版本更新不可交错。
             assertLeaseOwnership(run);
@@ -861,7 +861,7 @@ public final class AgentRunner {
             if (saved.isCancellationRequested()) {
                 run.requestCancellation();
             }
-            notifyCheckpoint(run, saved);
+            notifySnapshotSaved(run, saved);
             return saved;
         }
     }
@@ -905,7 +905,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 使用 Checkpoint 消息重建 Conversation Memory，并排除由 Agent 定义重新注入的系统消息。
+     * 使用 Snapshot 消息重建 Conversation Memory，并排除由 Agent 定义重新注入的系统消息。
      */
     private void replaceConversationMemory(AgentConversation conversation,
                                            List<? extends Message> messages) {
@@ -944,7 +944,7 @@ public final class AgentRunner {
     private AgentStepResult stepCore(AgentRun run) {
         // 先确认当前状态可推进，并补齐旧调用方可能尚未保存的初始状态。
         validateStep(run);
-        ensurePreparedAndCheckpointed(run);
+        ensurePreparedAndSnapshotSaved(run);
 
         // Lease 和持久化取消标记必须在任何模型或工具副作用之前检查。
         assertLeaseOwnership(run);
@@ -967,7 +967,7 @@ public final class AgentRunner {
 
         if (run.getStepCount() >= run.getExecutionPolicy().getMaxSteps()) {
             run.markMaxStepsReached();
-            checkpoint(run);
+            saveSnapshot(run);
             notifyMaxStepsReached(run);
             return AgentStepResult.of(AgentStepType.MAX_STEPS_REACHED,
                 null, null, null);
@@ -1001,7 +1001,7 @@ public final class AgentRunner {
      * 尚未处理完的 ToolCall，FINISHED 表示运行已经结束。</p>
      *
      * <p>MODEL 阶段最多调用模型一次；TOOLS 阶段按顺序处理当前模型回合遗留的全部工具调用，并在
-     * 每个结果写入后保存 Checkpoint。</p>
+     * 每个结果写入后保存 Snapshot。</p>
      */
     private AgentStepResult executeToolCallingStep(AgentRun run) {
         AgentRunPhase phase = run.getPhase();
@@ -1057,8 +1057,8 @@ public final class AgentRunner {
         parent.suspend(AgentRunStatus.WAITING_FOR_CHILD, suspension);
         parent.updateVersion(saved.getParent().getVersion());
         child.updateVersion(saved.getChild().getVersion());
-        notifyCheckpoint(parent, saved.getParent());
-        notifyCheckpoint(child, saved.getChild());
+        notifySnapshotSaved(parent, saved.getParent());
+        notifySnapshotSaved(child, saved.getChild());
         notifyRunSuspended(parent, suspension);
         notifyChildStarted(parent, child);
         if (parent.getTaskPlan() != null && parent.getTaskPlan().getActiveTask() != null) {
@@ -1195,7 +1195,7 @@ public final class AgentRunner {
         Agent agent = run.getAgent();
         if (run.getIterationCount() >= run.getExecutionPolicy().getMaxIterations()) {
             run.markMaxIterationsReached();
-            checkpoint(run);
+            saveSnapshot(run);
             notifyMaxIterationsReached(run);
             return AgentStepResult.of(AgentStepType.MAX_ITERATIONS_REACHED,
                 null, null, null);
@@ -1210,7 +1210,7 @@ public final class AgentRunner {
             AgentContextUpdate update = agent.getContextManager()
                 .prepare(run, run.getInvocationContext());
             if (update != null && update.isChanged()) {
-                checkpoint(run);
+                saveSnapshot(run);
                 emitRuntime(run, AgentRuntimeEventType.CONTEXT_COMPACTED,
                     objectAttributes("removedMessageCount", update.getRemovedMessageCount(),
                         "remainingMessageCount", update.getRemainingMessageCount()));
@@ -1247,7 +1247,7 @@ public final class AgentRunner {
         // 先保存模型决策，再执行可能产生外部副作用的工具。
         run.setPendingToolCalls(message.getToolCalls());
         run.moveTo(AgentRunPhase.TOOLS);
-        checkpoint(run);
+        saveSnapshot(run);
         return executePendingTools(run, response);
     }
 
@@ -1272,7 +1272,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 逐个处理待执行 ToolCall，并在每个结果写入后保存 Checkpoint。
+     * 逐个处理待执行 ToolCall，并在每个结果写入后保存 Snapshot。
      */
     private AgentStepResult executePendingTools(AgentRun run, AiMessageResponse response) {
         List<ToolMessage> results = new ArrayList<>();
@@ -1351,7 +1351,7 @@ public final class AgentRunner {
                     return handleFailure(run, response, error, AgentRunPhase.TOOLS);
                 }
             }
-            // Checkpoint 异常必须直接交给调用方，不能被误判为工具执行异常。
+            // Snapshot 异常必须直接交给调用方，不能被误判为工具执行异常。
             appendToolResult(run, call, completedResult);
             results.add(completedResult);
             notifyToolEnd(run, call, completedResult);
@@ -1360,21 +1360,21 @@ public final class AgentRunner {
 
         // 当前模型回合的全部工具调用已处理，下一 step 应让模型读取 ToolMessage 并继续判断。
         run.moveTo(AgentRunPhase.MODEL);
-        checkpoint(run);
+        saveSnapshot(run);
         return AgentStepResult.of(AgentStepType.TOOLS_EXECUTED, response, results, null);
     }
 
     /**
-     * 原子语义上提交一个工具结果：必要时外置大内容、追加消息、移除 pending 调用并保存 Checkpoint。
+     * 原子语义上提交一个工具结果：必要时外置大内容、追加消息、移除 pending 调用并保存 Snapshot。
      *
-     * <p>只有 Checkpoint 成功后调用才算被运行时确认；具备外部副作用的 Tool 仍应使用
+     * <p>只有 Snapshot 成功后调用才算被运行时确认；具备外部副作用的 Tool 仍应使用
      * {@link AgentToolInvocation} ID 在业务侧实现幂等。</p>
      */
     private void appendToolResult(AgentRun run, ToolCall call, ToolMessage result) {
         maybeOffloadToolResult(run, call, result);
         run.getPrompt().addMessage(result);
         run.removeFirstPendingToolCall();
-        checkpoint(run);
+        saveSnapshot(run);
     }
 
     /**
@@ -1490,7 +1490,7 @@ public final class AgentRunner {
         if (next == null) {
             // 没有待执行任务后进入最终汇总；策略允许时可直接使用最后一个任务结果结束。
             run.updateTaskPlan(plan.beginFinalizing(System.currentTimeMillis()));
-            checkpoint(run);
+            saveSnapshot(run);
             if (!run.getAgent().getPlanningPolicy().isFinalSummaryRequired()) {
                 AiMessage finalMessage = new AiMessage(lastTaskResult(plan));
                 run.getPrompt().addMessage(finalMessage);
@@ -1591,13 +1591,13 @@ public final class AgentRunner {
             // retryCount + 1 表示即将安排的重试序号，用于计算指数退避延迟。
             long runAt = System.currentTimeMillis() + retry.delayMillis(run.getRetryCount() + 1);
             run.scheduleRetry(error, resumePhase, runAt);
-            checkpoint(run);
+            saveSnapshot(run);
             notifyRunSuspended(run, run.getSuspension());
             notifyRetryScheduled(run, error);
             return AgentStepResult.of(AgentStepType.BLOCKED, response, null, error);
         }
         run.markFailed(error);
-        checkpoint(run);
+        saveSnapshot(run);
         notifyRunFailed(run, error);
         return AgentStepResult.of(AgentStepType.FAILED, response, null, error);
     }
@@ -1622,7 +1622,7 @@ public final class AgentRunner {
             run.updateTaskPlan(plan.complete(System.currentTimeMillis()));
         }
         run.markCompleted(message == null ? new AiMessage("") : message);
-        checkpoint(run);
+        saveSnapshot(run);
         notifyRunComplete(run);
         return AgentStepResult.of(AgentStepType.COMPLETED, response, null, null);
     }
@@ -1632,7 +1632,7 @@ public final class AgentRunner {
      */
     private AgentStepResult cancelRun(AgentRun run) {
         run.markCancelled();
-        checkpoint(run);
+        saveSnapshot(run);
         notifyRunCancelled(run);
         return AgentStepResult.of(AgentStepType.CANCELLED, null, null, null);
     }
@@ -1642,7 +1642,7 @@ public final class AgentRunner {
      */
     private AgentStepResult budgetExceeded(AgentRun run, String reason) {
         run.markBudgetExceeded(reason);
-        checkpoint(run);
+        saveSnapshot(run);
         notifyBudgetExceeded(run, reason);
         return AgentStepResult.of(AgentStepType.BUDGET_EXCEEDED,
             null, null, null);
@@ -1860,10 +1860,10 @@ public final class AgentRunner {
     /**
      * 确保 Run 已装配规划工具，并兼容尚未保存初始 Snapshot 的包内创建路径。
      */
-    private void ensurePreparedAndCheckpointed(AgentRun run) {
+    private void ensurePreparedAndSnapshotSaved(AgentRun run) {
         prepareRun(run);
         if (run.getVersion() < 0) {
-            checkpoint(run);
+            saveSnapshot(run);
         }
     }
 
@@ -1891,7 +1891,7 @@ public final class AgentRunner {
      * 拒绝非租约持有者推进仍处于有效租约中的 Run。
      *
      * <p>Worker 路径同时校验 owner、唯一 leaseId 和存储端到期时间；同步 API 路径只能推进当前没有
-     * 有效 Lease 的 Run。该检查必须位于每个副作用和 Checkpoint 之前，防止过期 Worker 覆盖新状态。</p>
+     * 有效 Lease 的 Run。该检查必须位于每个副作用和 Snapshot 之前，防止过期 Worker 覆盖新状态。</p>
      */
     private void assertLeaseOwnership(AgentRun run) {
         String workerId = activeWorkerId.get();
@@ -1938,7 +1938,7 @@ public final class AgentRunner {
      * 校验恢复命令与当前 Suspension 匹配，并把命令携带的数据写入 Run。
      *
      * <p>本方法只应用数据，不改变 Status 和 Phase；调用方在校验完成后统一调用 resumeAt 并保存
-     * Checkpoint，避免部分应用一个无效命令。</p>
+     * Snapshot，避免部分应用一个无效命令。</p>
      */
     private void applyResumeCommand(AgentRun run, AgentSuspension suspension,
                                     AgentResumeCommand command) {
@@ -2022,7 +2022,7 @@ public final class AgentRunner {
      * 2. AgentRuntimeEventStream 服务当前 JVM 的流式 UI 和细粒度追踪；
      * 3. AgentListener 提供直接读取 Java 对象的粗粒度回调。
      *
-     * 状态变更类通知通常在对应 Checkpoint 成功后触发，避免观察方看到尚未持久化的状态。
+     * 状态变更类通知通常在对应 Snapshot 成功后触发，避免观察方看到尚未持久化的状态。
      */
     private void notifyRunStart(AgentRun run) {
         publishEvent(run, AgentRunEventType.RUN_STARTED, null);
@@ -2122,14 +2122,14 @@ public final class AgentRunner {
         forEachListener(l -> l.onMaxStepsReached(run));
     }
 
-    private void notifyCheckpoint(AgentRun run, AgentRunSnapshot snapshot) {
-        publishEvent(run, AgentRunEventType.CHECKPOINT_SAVED,
+    private void notifySnapshotSaved(AgentRun run, AgentRunSnapshot snapshot) {
+        publishEvent(run, AgentRunEventType.SNAPSHOT_SAVED,
             attributes("version", String.valueOf(snapshot.getVersion()),
                 "status", snapshot.getStatus().name(), "phase", snapshot.getPhase().name()));
-        emitRuntime(run, AgentRuntimeEventType.CHECKPOINT_SAVED,
+        emitRuntime(run, AgentRuntimeEventType.SNAPSHOT_SAVED,
             objectAttributes("version", snapshot.getVersion(), "status", snapshot.getStatus(),
                 "phase", snapshot.getPhase()));
-        forEachListener(l -> l.onCheckpoint(run, snapshot));
+        forEachListener(l -> l.onSnapshotSaved(run, snapshot));
     }
 
     private void notifyRunSuspended(AgentRun run, AgentSuspension suspension) {

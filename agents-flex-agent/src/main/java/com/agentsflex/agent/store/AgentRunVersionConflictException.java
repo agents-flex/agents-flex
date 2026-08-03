@@ -7,7 +7,7 @@
 package com.agentsflex.agent.store;
 
 /**
- * 保存 AgentRun Checkpoint 时发生乐观锁冲突。
+ * 保存 AgentRun Snapshot 时发生乐观锁冲突。
  */
 public class AgentRunVersionConflictException extends RuntimeException {
 

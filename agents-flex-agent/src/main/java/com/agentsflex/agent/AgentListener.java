@@ -117,7 +117,7 @@ public interface AgentListener {
     /**
      * 一个稳定执行边界已经成功保存到 AgentRunStore。
      */
-    default void onCheckpoint(AgentRun run, AgentRunSnapshot snapshot) {
+    default void onSnapshotSaved(AgentRun run, AgentRunSnapshot snapshot) {
     }
 
     /**

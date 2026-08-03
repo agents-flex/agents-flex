@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/** 使用 JDBC 事务、条件更新和乐观锁保存 AgentRun Checkpoint。 */
+/** 使用 JDBC 事务、条件更新和乐观锁保存 AgentRun Snapshot。 */
 public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements AgentRunStore {
     JdbcAgentRunStore(JdbcAgentStoreConfig config) { super(config); }
 
@@ -56,7 +56,7 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
     @Override
     public boolean requestCancellation(String runId) {
         AgentRunSnapshot current = load(runId);
-        if (current == null) throw new IllegalStateException("AgentRun checkpoint not found: " + runId);
+        if (current == null) throw new IllegalStateException("AgentRun snapshot not found: " + runId);
         if (current.getStatus().isTerminal() || current.isCancellationRequested()) return false;
         String sql = "UPDATE " + table("runs") + " SET cancellation_requested=? WHERE run_id=? "
             + "AND cancellation_requested=? AND status NOT IN (?,?,?,?,?,?)";

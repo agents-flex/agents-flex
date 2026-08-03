@@ -7,13 +7,13 @@ description: 理解 AgentRunner 的执行入口、step 循环、阻塞边界、�
 
 ## 概述
 
-`AgentRunner` 是 Agent 状态机执行器。它创建、推进、暂停和恢复 `AgentRun`，并统一处理 Checkpoint、预算、重试、规划、父子 Run、Middleware 与生命周期事件。
+`AgentRunner` 是 Agent 状态机执行器。它创建、推进、暂停和恢复 `AgentRun`，并统一处理 Snapshot、预算、重试、规划、父子 Run、Middleware 与生命周期事件。
 
 Runner 自身不把 Run 保存在实例字段中，适合作为应用级对象复用；真正的持久状态位于 `AgentRunStore`。同一个 `AgentRun` 对象不应由两个线程同时直接推进。
 
 ## 整体执行流程
 
-下面的流程图覆盖内置 ToolCall 状态机从创建 Run 到终止或阻塞的完整路径。图中的每个 Checkpoint 都是可跨线程、跨请求或跨进程恢复的稳定边界。
+下面的流程图覆盖内置 ToolCall 状态机从创建 Run 到终止或阻塞的完整路径。图中的每个 Snapshot 都是可跨线程、跨请求或跨进程恢复的稳定边界。
 
 ```mermaid
 flowchart TD
@@ -22,7 +22,7 @@ flowchart TD
     Entry -->|"start(...)"| Create
     Entry -->|"恢复已有 Run"| Restore["从 RunStore 加载 Snapshot"]
 
-    Create --> Ready["READY<br/>保存初始 Checkpoint"]
+    Create --> Ready["READY<br/>保存初始 Snapshot"]
     Ready --> StartMode{"执行方式"}
     StartMode -->|"run: 当前线程"| Loop["runUntilBlocked"]
     StartMode -->|"start: 后台任务"| ReturnReady["返回 READY Run"]
@@ -32,7 +32,7 @@ flowchart TD
     LoadAgent --> Loop
 
     Loop --> Guard["step 通用检查<br/>Lease / 取消 / 预算 / maxSteps"]
-    Guard -->|"取消或达到限制"| Terminal["保存终态 Checkpoint"]
+    Guard -->|"取消或达到限制"| Terminal["保存终态 Snapshot"]
     Guard -->|"Run 已阻塞"| Blocked["返回阻塞 Run"]
     Guard -->|"可继续"| Planning{"有可推进的任务计划？"}
 
@@ -47,7 +47,7 @@ flowchart TD
     ModelResult -->|"最终 AiMessage"| Complete["写入最终消息<br/>COMPLETED"]
     Complete --> Terminal
 
-    ModelResult -->|"包含 ToolCall"| SaveCalls["保存 pendingToolCalls<br/>Phase = TOOLS<br/>Checkpoint"]
+    ModelResult -->|"包含 ToolCall"| SaveCalls["保存 pendingToolCalls<br/>Phase = TOOLS<br/>Snapshot"]
     SaveCalls --> ToolLoop["按顺序处理 ToolCall"]
     Phase -->|"TOOLS"| ToolLoop
 
@@ -55,10 +55,10 @@ flowchart TD
     Resolve --> Approval{"审批策略"}
     Approval -->|"需要审批"| ApprovalWait["WAITING_FOR_APPROVAL<br/>保存 Suspension"]
     ApprovalWait --> Blocked
-    Approval -->|"拒绝"| Rejected["写入拒绝 ToolMessage<br/>Checkpoint"]
+    Approval -->|"拒绝"| Rejected["写入拒绝 ToolMessage<br/>Snapshot"]
     Approval -->|"允许"| ToolChain["Tool Middleware -> Interceptor -> Tool"]
     ToolChain --> ToolResult{"工具结果"}
-    ToolResult -->|"成功"| SaveResult["写入 ToolMessage<br/>移除当前 pending call<br/>Checkpoint"]
+    ToolResult -->|"成功"| SaveResult["写入 ToolMessage<br/>移除当前 pending call<br/>Snapshot"]
     ToolResult -->|"可交给模型处理的错误"| ErrorMessage["写入结构化错误 ToolMessage"]
     ErrorMessage --> SaveResult
     ToolResult -->|"可重试异常"| RetryWait["RETRY_SCHEDULED<br/>保存 nextRunAt"]
@@ -69,7 +69,7 @@ flowchart TD
     Rejected --> MoreCalls{"还有 pending ToolCall？"}
     SaveResult --> MoreCalls
     MoreCalls -->|"是"| ToolLoop
-    MoreCalls -->|"否"| BackModel["Phase = MODEL<br/>保存 Checkpoint"]
+    MoreCalls -->|"否"| BackModel["Phase = MODEL<br/>保存 Snapshot"]
     BackModel --> Loop
 
     Blocked --> External{"外部条件到达"}
@@ -83,10 +83,10 @@ flowchart TD
 
 ### 主路径说明
 
-1. `run(...)` 与 `start(...)` 都先创建 `READY` Run 并保存初始 Checkpoint；区别在于前者立即进入循环，后者等待 Worker 领取。
+1. `run(...)` 与 `start(...)` 都先创建 `READY` Run 并保存初始 Snapshot；区别在于前者立即进入循环，后者等待 Worker 领取。
 2. 每次 `step` 都先检查 Lease、持久化取消信号、预算和 Runner step 上限，再处理任务规划和 Middleware。
 3. MODEL 阶段一次最多调用模型一次。模型直接回答时 Run 完成；模型返回 ToolCall 时，Runner 先保存全部待处理调用，再进入 TOOLS 阶段。
-4. TOOLS 阶段按模型给出的顺序逐个处理调用。每个工具结果都单独写入 `ToolMessage` 并保存 Checkpoint，因此后续恢复能准确知道哪些调用已经确认。
+4. TOOLS 阶段按模型给出的顺序逐个处理调用。每个工具结果都单独写入 `ToolMessage` 并保存 Snapshot，因此后续恢复能准确知道哪些调用已经确认。
 5. 审批、用户输入、子 Run 和延迟重试都会返回阻塞 Run，不会占用线程等待。
 6. 恢复命令必须匹配当前 Suspension。Runner 恢复其记录的 Phase，例如工具审批通过后回到 TOOLS，而不是重新请求模型生成参数。
 
@@ -122,7 +122,7 @@ AgentRun run = runner.run(agent, "查询订单 1001");
 
 ### `start(...)`
 
-只创建并保存 `READY` Checkpoint：
+只创建并保存 `READY` Snapshot：
 
 ```java
 AgentRun queued = runner.start(agent, "生成月度报告");
@@ -147,7 +147,7 @@ AgentRun blockedOrDone = runner.runUntilBlocked(run);
 2. `step` 处理取消、Lease、预算、规划、上下文和 Middleware。
 3. 内置 ToolCall 状态机根据 Phase 进入 MODEL 或 TOOLS 阶段。
 
-模型返回 ToolCall 时，Runner 先记录 `pendingToolCalls` 并保存 Checkpoint，随后才审批和执行。这个顺序是恢复一致性的关键。
+模型返回 ToolCall 时，Runner 先记录 `pendingToolCalls` 并保存 Snapshot，随后才审批和执行。这个顺序是恢复一致性的关键。
 
 ## Step 结果
 

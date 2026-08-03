@@ -7,7 +7,7 @@ description: 建立可持久化暂停点，使用结构化命令同步恢复或�
 
 ## 概述
 
-Agent 遇到人工审批、缺少用户信息、等待子任务或延迟重试时，不应占用线程等待。Runner 把等待原因保存为 `AgentSuspension`，将 Run 转换为阻塞状态并写入 Checkpoint。外部事件到达后，通过 `AgentResumeCommand` 从记录的阶段继续。
+Agent 遇到人工审批、缺少用户信息、等待子任务或延迟重试时，不应占用线程等待。Runner 把等待原因保存为 `AgentSuspension`，将 Run 转换为阻塞状态并写入 Snapshot。外部事件到达后，通过 `AgentResumeCommand` 从记录的阶段继续。
 
 ## 暂停类型
 
@@ -30,7 +30,7 @@ AgentRun blocked = runner.suspend(
     AgentSuspension.userInput("请提供订单号"));
 ```
 
-Runner 会保存 Checkpoint、发布暂停事件并返回 `BLOCKED`。普通业务代码不应只修改 Run 状态而跳过这些步骤。
+Runner 会保存 Snapshot、发布暂停事件并返回 `BLOCKED`。普通业务代码不应只修改 Run 状态而跳过这些步骤。
 
 ## 同步恢复
 
@@ -88,4 +88,4 @@ Wakeup Listener 在命令成功入箱后通知外部调度系统，可降低轮�
 
 ## 不应做的事
 
-不要用 `Thread.sleep` 等待审批或重试，不要在恢复时创建一个全新 Run，也不要让模型重新生成待审批参数。暂停点和原 ToolCall 已在 Checkpoint 中，正确操作是恢复原 Run。
+不要用 `Thread.sleep` 等待审批或重试，不要在恢复时创建一个全新 Run，也不要让模型重新生成待审批参数。暂停点和原 ToolCall 已在 Snapshot 中，正确操作是恢复原 Run。

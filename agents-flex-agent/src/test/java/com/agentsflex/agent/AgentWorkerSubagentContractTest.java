@@ -43,7 +43,7 @@ public class AgentWorkerSubagentContractTest {
         assertEquals("worker-b", workerB.getLeaseOwner());
         try {
             store.save(stale.toSnapshot(), stale.getVersion());
-            fail("stale worker checkpoint must be fenced");
+            fail("stale worker snapshot must be fenced");
         } catch (AgentRunVersionConflictException expected) {
             assertTrue(expected.getMessage().contains(
                 "expectedVersion=" + workerA.getVersion()));

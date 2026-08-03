@@ -197,7 +197,7 @@ public class AgentLongRunningScenarioTest {
     }
 
     @Test
-    public void shouldKeepCancellationSignalWhenStaleRunSavesNextCheckpoint() {
+    public void shouldKeepCancellationSignalWhenStaleRunSavesNextSnapshot() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         Agent agent = Agent.builder("cancel-merge-agent").chatModel(model).build();
@@ -206,7 +206,7 @@ public class AgentLongRunningScenarioTest {
         AgentRun stale = runner.start(agent, "work");
 
         runner.requestCancellation(stale.getId());
-        AgentRunSnapshot saved = runner.checkpoint(stale);
+        AgentRunSnapshot saved = runner.saveSnapshot(stale);
 
         assertTrue(saved.isCancellationRequested());
         assertTrue(stale.isCancellationRequested());

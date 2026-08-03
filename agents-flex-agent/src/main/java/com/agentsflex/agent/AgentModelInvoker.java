@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * 统一调用同步或流式 ChatModel，并把流式增量转换为 Agent 实时事件。
  *
- * <p>该组件只负责一次模型请求，不修改 Run 阶段、消息历史或 Checkpoint。模型调用前后的生命周期、
+ * <p>该组件只负责一次模型请求，不修改 Run 阶段、消息历史或 Snapshot。模型调用前后的生命周期、
  * 重试和预算处理仍由 AgentRunner 负责。</p>
  */
 final class AgentModelInvoker {

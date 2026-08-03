@@ -66,11 +66,11 @@ public final class AgentRun {
      */
     private final Map<String, Object> metadata = new HashMap<>();
     /**
-     * 当前进程附加的调用上下文，不参与 Checkpoint 持久化。
+     * 当前进程附加的调用上下文，不参与 Snapshot 持久化。
      */
     private transient AgentInvocationContext invocationContext = AgentInvocationContext.empty();
     /**
-     * 创建本 Run 的持续对话上下文，不参与 Checkpoint 持久化。
+     * 创建本 Run 的持续对话上下文，不参与 Snapshot 持久化。
      */
     private transient AgentConversation conversation;
 
@@ -87,7 +87,7 @@ public final class AgentRun {
      */
     private AgentSuspension suspension;
     /**
-     * Store 中最新 Checkpoint 的乐观锁版本，首次保存前为 -1。
+     * Store 中最新 Snapshot 的乐观锁版本，首次保存前为 -1。
      */
     private long version = -1;
     /**
@@ -234,7 +234,7 @@ public final class AgentRun {
      * 使用一条结构化用户消息创建运行。
      *
      * <p>UserMessage 可以同时携带文本、图片、音频、视频、文件和消息元数据。Run 会复制输入消息，
-     * 调用方在创建后继续修改原消息不会影响本次运行及其 Checkpoint。</p>
+     * 调用方在创建后继续修改原消息不会影响本次运行及其 Snapshot。</p>
      */
     static AgentRun start(Agent agent, UserMessage userMessage) {
         return start(agent, userMessage, AgentRunOptions.defaults());
@@ -331,7 +331,7 @@ public final class AgentRun {
         AgentRun child = start(agent, userInput);
         child.parentRunId = parent.getId();
         child.rootRunId = parent.getRootRunId();
-        // 同一进程内创建子 Run 时继承当前调用身份；从 Checkpoint 恢复后仍需重新附加。
+        // 同一进程内创建子 Run 时继承当前调用身份；从 Snapshot 恢复后仍需重新附加。
         child.invocationContext = parent.getInvocationContext();
         child.planningDepth = parent.planningDepth + 1;
         child.planningEnabled = agent.getPlanningPolicy().isEnabled()
@@ -614,7 +614,7 @@ public final class AgentRun {
     }
 
     /**
-     * @return Store 中最新 Checkpoint 的乐观锁版本，首次保存前为 -1
+     * @return Store 中最新 Snapshot 的乐观锁版本，首次保存前为 -1
      */
     public long getVersion() {
         return version;
@@ -752,10 +752,10 @@ public final class AgentRun {
     }
 
     /**
-     * 生成与当前可变状态隔离的 Checkpoint Snapshot。
+     * 生成与当前可变状态隔离的 Snapshot Snapshot。
      */
     public AgentRunSnapshot toSnapshot() {
-        // getMessages() 可能受附加消息数量限制；Checkpoint 必须保存 Memory 中的完整历史。
+        // getMessages() 可能受附加消息数量限制；Snapshot 必须保存 Memory 中的完整历史。
         List<Message> messages = prompt.getMemory().getMessages(Integer.MAX_VALUE);
         SystemMessage systemMessage = prompt.getSystemMessage();
         if (systemMessage != null && (messages.isEmpty() || !(messages.get(0) instanceof SystemMessage))) {
@@ -970,7 +970,7 @@ public final class AgentRun {
     }
 
     /**
-     * Runner 成功保存 Checkpoint 后更新本地版本。
+     * Runner 成功保存 Snapshot 后更新本地版本。
      */
     void updateVersion(long version) {
         this.version = version;

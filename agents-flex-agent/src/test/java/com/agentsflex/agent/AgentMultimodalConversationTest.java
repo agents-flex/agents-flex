@@ -31,7 +31,7 @@ import static org.junit.Assert.assertTrue;
 public class AgentMultimodalConversationTest {
 
     @Test
-    public void shouldPreserveMultimodalInputAcrossExecutionAndCheckpointRestore() {
+    public void shouldPreserveMultimodalInputAcrossExecutionAndSnapshotRestore() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> {
             UserMessage input = lastUserMessage(prompt.getMessages());

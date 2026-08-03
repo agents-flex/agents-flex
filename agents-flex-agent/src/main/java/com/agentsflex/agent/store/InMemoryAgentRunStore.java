@@ -64,12 +64,12 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
         synchronized (snapshots) {
             AgentRunSnapshot current = snapshots.get(runId);
             if (current == null) {
-                throw new IllegalStateException("AgentRun checkpoint not found: " + runId);
+                throw new IllegalStateException("AgentRun snapshot not found: " + runId);
             }
             if (current.getStatus().isTerminal() || current.isCancellationRequested()) {
                 return false;
             }
-            // 取消是独立于状态版本的单调控制信号，普通 Checkpoint 保存时会合并并保留该标记。
+            // 取消是独立于状态版本的单调控制信号，普通 Snapshot 保存时会合并并保留该标记。
             AgentRunSnapshot cancelled = current.toBuilder()
                 .cancellationRequested(true)
                 .build();
@@ -223,7 +223,7 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
     private AgentRunSnapshot requireOwned(String runId, String workerId, String leaseId) {
         AgentRunSnapshot current = snapshots.get(runId);
         if (current == null) {
-            throw new IllegalStateException("AgentRun checkpoint not found: " + runId);
+            throw new IllegalStateException("AgentRun snapshot not found: " + runId);
         }
         if (!workerId.equals(current.getLeaseOwner()) || leaseId == null
             || !leaseId.equals(current.getLeaseId())) {

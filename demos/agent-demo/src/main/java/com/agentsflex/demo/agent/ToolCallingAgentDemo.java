@@ -52,7 +52,7 @@ public final class ToolCallingAgentDemo {
             .metadata("sideEffect", false)
             .function(arguments -> {
                 // AgentToolInvocation 由 Runner 放入 ToolContext。真实写操作可以把这个稳定键
-                // 传给外部服务，避免进程在 Tool 成功后、Checkpoint 保存前崩溃造成重复副作用。
+                // 传给外部服务，避免进程在 Tool 成功后、Snapshot 保存前崩溃造成重复副作用。
                 AgentToolInvocation invocation = AgentToolInvocation.current();
                 DemoSupport.require(invocation != null, "工具应当获得 Agent 调用上下文");
                 idempotencyKey.set(invocation.getIdempotencyKey());

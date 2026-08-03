@@ -40,7 +40,7 @@ import java.util.Set;
 public final class Agent {
 
     /**
-     * 用于 Checkpoint 恢复和 AgentLoader 加载的稳定 ID。
+     * 用于 Snapshot 恢复和 AgentLoader 加载的稳定 ID。
      */
     private final String id;
     /** Agent 配置版本，用于让运行中的任务绑定到创建时的配置。 */
@@ -136,7 +136,7 @@ public final class Agent {
     }
 
     /**
-     * @return Agent 的稳定 ID，用于 Checkpoint 和恢复加载
+     * @return Agent 的稳定 ID，用于 Snapshot 和恢复加载
      */
     public String getId() {
         return id;
@@ -260,7 +260,7 @@ public final class Agent {
         /**
          * 设置 Agent 的稳定 ID。未设置时默认使用 name。
          *
-         * <p>持久化 AgentRun 后不应随意修改该 ID，否则旧 Checkpoint 将无法重新绑定 Agent。</p>
+         * <p>持久化 AgentRun 后不应随意修改该 ID，否则旧 Snapshot 将无法重新绑定 Agent。</p>
          */
         public Builder id(String id) {
             this.id = id;

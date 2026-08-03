@@ -38,7 +38,7 @@ public class AgentMiddlewareContext {
     /** @return 当前责任链实际使用的 Prompt */
     public Prompt getPrompt() { return prompt; }
 
-    /** 替换本次模型调用使用的 Prompt，不修改 Checkpoint 中的消息历史。 */
+    /** 替换本次模型调用使用的 Prompt，不修改 Snapshot 中的消息历史。 */
     public void setPrompt(Prompt prompt) {
         if (prompt == null) throw new IllegalArgumentException("prompt must not be null");
         this.prompt = prompt;

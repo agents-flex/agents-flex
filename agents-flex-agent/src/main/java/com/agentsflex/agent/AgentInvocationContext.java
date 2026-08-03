@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 一次 Agent 调用使用的非持久化上下文。
  *
  * <p>该对象适合携带租户、用户、请求标识以及进程内服务对象。它会传递给 Middleware、模型调用
- * 和工具调用，但不会写入 AgentRunSnapshot。任务从 Checkpoint 恢复后，应由调用方重新附加上下文。</p>
+ * 和工具调用，但不会写入 AgentRunSnapshot。任务从 Snapshot 恢复后，应由调用方重新附加上下文。</p>
  */
 public final class AgentInvocationContext {
 

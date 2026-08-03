@@ -32,14 +32,18 @@ public final class AgentExecutionPolicy implements Serializable {
      * 默认最多允许调用模型 20 次。
      */
     private static final int DEFAULT_MAX_ITERATIONS = 20;
-    /** 默认允许 Runner 推进的最大步骤数。 */
+    /**
+     * 默认允许 Runner 推进的最大步骤数。
+     */
     private static final int DEFAULT_MAX_STEPS = 1000;
 
     /**
      * 一次运行允许的最大模型调用次数。
      */
     private final int maxIterations;
-    /** 一次 Run 允许 Runner 推进的最大 step 次数。 */
+    /**
+     * 一次 Run 允许 Runner 推进的最大 step 次数。
+     */
     private final int maxSteps;
     /**
      * 工具调用失败时采用的处理方式。

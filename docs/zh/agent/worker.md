@@ -42,9 +42,9 @@ worker.close();
 - `leaseId`：每次领取生成的唯一令牌。
 - `leaseUntil`：到期时间。
 
-Worker 在租期约三分之一处自动续租。保存 Checkpoint 时同时校验 owner 和 leaseId；即使新 Worker 与旧进程使用相同 workerId，旧 leaseId 也无法覆盖新状态。
+Worker 在租期约三分之一处自动续租。保存 Snapshot 时同时校验 owner 和 leaseId；即使新 Worker 与旧进程使用相同 workerId，旧 leaseId 也无法覆盖新状态。
 
-Lease 不是分布式事务。外部工具仍需业务幂等，网络分区时旧 Worker 可能已经发出副作用，只是在 Checkpoint 时被 fencing 拒绝。
+Lease 不是分布式事务。外部工具仍需业务幂等，网络分区时旧 Worker 可能已经发出副作用，只是在 Snapshot 时被 fencing 拒绝。
 
 ## Invocation Context 恢复
 
@@ -67,7 +67,7 @@ Store 通常领取 READY、可继续的 RUNNING、到期 `RETRY_SCHEDULED`，以
 
 ## 父子恢复
 
-Worker 每轮调用 `recoverCompletedChildren`，发现子 Run 已终止而父 Run 仍等待时进行补偿唤醒。这覆盖子 Checkpoint 已提交、父 Checkpoint 尚未更新时进程退出的窗口。
+Worker 每轮调用 `recoverCompletedChildren`，发现子 Run 已终止而父 Run 仍等待时进行补偿唤醒。这覆盖子 Snapshot 已提交、父 Snapshot 尚未更新时进程退出的窗口。
 
 ## 容量规划
 

@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * 从 AgentRunStore 领取可执行任务并推进到终止或阻塞状态的 Worker。
  *
  * <p>Worker 通过 Store 租约确保同一 Run 同时只由一个进程推进。执行期间后台心跳按租约时长的
- * 三分之一续租；租约丢失后 Runner 会在下一个 Checkpoint 边界拒绝继续写入。</p>
+ * 三分之一续租；租约丢失后 Runner 会在下一个 Snapshot 边界拒绝继续写入。</p>
  *
  * <p>Worker 可以由外部调度器调用 {@link #pollAndRun(int)}，也可以使用
  * {@link #startPolling(long, int)} 启动进程内定时轮询。关闭 Worker 不保证强制中断正在执行的
@@ -32,29 +32,49 @@ public final class AgentWorker implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(AgentWorker.class);
 
-    /** 在共享 Store 中标识当前 Worker 进程的稳定名称。 */
+    /**
+     * 在共享 Store 中标识当前 Worker 进程的稳定名称。
+     */
     private final String workerId;
-    /** 负责恢复和推进 Run 的运行器。 */
+    /**
+     * 负责恢复和推进 Run 的运行器。
+     */
     private final AgentRunner runner;
-    /** 每次领取和续租使用的租约时长。 */
+    /**
+     * 每次领取和续租使用的租约时长。
+     */
     private final long leaseMillis;
-    /** 从持久化快照重建非持久化调用上下文的提供者。 */
+    /**
+     * 从持久化快照重建非持久化调用上下文的提供者。
+     */
     private final AgentInvocationContextProvider invocationContextProvider;
-    /** 独立执行租约心跳的单线程调度器。 */
+    /**
+     * 独立执行租约心跳的单线程调度器。
+     */
     private final ScheduledExecutorService leaseScheduler;
-    /** 可选的自动轮询调度器。 */
+    /**
+     * 可选的自动轮询调度器。
+     */
     private ScheduledExecutorService scheduler;
-    /** Worker 是否已经关闭并拒绝新的轮询。 */
+    /**
+     * Worker 是否已经关闭并拒绝新的轮询。
+     */
     private boolean closed;
-    /** 当前尚未返回的同步轮询调用数量。 */
+    /**
+     * 当前尚未返回的同步轮询调用数量。
+     */
     private int activePolls;
 
-    /** 创建使用空调用上下文的 Worker。 */
+    /**
+     * 创建使用空调用上下文的 Worker。
+     */
     public AgentWorker(String workerId, AgentRunner runner, long leaseMillis) {
         this(workerId, runner, leaseMillis, AgentInvocationContextProvider.empty());
     }
 
-    /** 创建在恢复 Run 时可以重新附加租户服务和请求身份的 Worker。 */
+    /**
+     * 创建在恢复 Run 时可以重新附加租户服务和请求身份的 Worker。
+     */
     public AgentWorker(String workerId, AgentRunner runner, long leaseMillis,
                        AgentInvocationContextProvider invocationContextProvider) {
         if (workerId == null || runner == null || leaseMillis <= 0) {
@@ -139,7 +159,9 @@ public final class AgentWorker implements AutoCloseable {
             now, now + leaseMillis);
     }
 
-    /** 延长租约并同步更新正在执行的 AgentRun 版本。 */
+    /**
+     * 延长租约并同步更新正在执行的 AgentRun 版本。
+     */
     public AgentRunSnapshot renewLease(AgentRun run) {
         synchronized (run) {
             AgentRunSnapshot snapshot = renewLease(run.getId(), run.getLeaseId());
@@ -149,7 +171,9 @@ public final class AgentWorker implements AutoCloseable {
         }
     }
 
-    /** 在 Run 执行期间按租约时长的三分之一周期自动续租。 */
+    /**
+     * 在 Run 执行期间按租约时长的三分之一周期自动续租。
+     */
     private ScheduledFuture<?> startLeaseHeartbeat(AgentRun run) {
         long interval = Math.max(1, leaseMillis / 3);
         AtomicReference<RuntimeException> failure = new AtomicReference<>();
@@ -168,7 +192,9 @@ public final class AgentWorker implements AutoCloseable {
         }, interval, interval, TimeUnit.MILLISECONDS);
     }
 
-    /** 按固定间隔自动领取并执行任务。重复调用不会创建多个调度线程。 */
+    /**
+     * 按固定间隔自动领取并执行任务。重复调用不会创建多个调度线程。
+     */
     public synchronized void startPolling(long pollIntervalMillis, int batchSize) {
         if (pollIntervalMillis <= 0 || batchSize <= 0) {
             throw new IllegalArgumentException("pollIntervalMillis and batchSize must be greater than 0");
@@ -193,12 +219,16 @@ public final class AgentWorker implements AutoCloseable {
         }, 0, pollIntervalMillis, TimeUnit.MILLISECONDS);
     }
 
-    /** @return 自动轮询线程是否已经启动且尚未关闭 */
+    /**
+     * @return 自动轮询线程是否已经启动且尚未关闭
+     */
     public synchronized boolean isPolling() {
         return scheduler != null && !scheduler.isShutdown();
     }
 
-    /** 停止自动轮询；正在进行的外部调用能否中断由其具体实现决定。 */
+    /**
+     * 停止自动轮询；正在进行的外部调用能否中断由其具体实现决定。
+     */
     @Override
     public synchronized void close() {
         closed = true;

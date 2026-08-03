@@ -296,7 +296,7 @@ public final class AgentConsoleDemo {
             .buildModel();
     }
 
-    /** 只打印对学习执行过程有帮助的实时事件，避免控制台被所有 Checkpoint 事件淹没。 */
+    /** 只打印对学习执行过程有帮助的实时事件，避免控制台被所有 Snapshot 事件淹没。 */
     private static void printRuntimeEvent(AgentRuntimeEvent event) {
         AgentRuntimeEventType type = event.getType();
         if (type == AgentRuntimeEventType.MODEL_STARTED

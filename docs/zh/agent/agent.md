@@ -29,7 +29,7 @@ Agent agent = Agent.builder("order-assistant")
 
 ## 属性说明
 
-| 属性 | 作用 | 是否进入 Checkpoint |
+| 属性 | 作用 | 是否进入 Snapshot |
 | --- | --- | --- |
 | `id`、`version` | 恢复时定位定义 | 保存标识，不保存整个 Agent |
 | `name`、`description` | 展示及规划时描述能力 | 否 |

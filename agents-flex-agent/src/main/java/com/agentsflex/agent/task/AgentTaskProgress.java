@@ -15,7 +15,7 @@ import java.util.List;
  * 面向调用方展示的任务列表、完成数量和当前子 Run 状态。
  *
  * <p>该对象把父 Run 中的计划状态和当前子 Run 的实际阻塞状态组合为一次只读查询结果，适合任务
- * 列表、进度条和人工审批界面。构造时复制计划，后续 Checkpoint 更新不会修改已有查询结果。</p>
+ * 列表、进度条和人工审批界面。构造时复制计划，后续 Snapshot 更新不会修改已有查询结果。</p>
  */
 public final class AgentTaskProgress {
     /** 查询时刻的计划副本。 */

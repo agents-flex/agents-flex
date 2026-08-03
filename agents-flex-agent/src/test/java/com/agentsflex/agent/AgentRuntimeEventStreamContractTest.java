@@ -45,12 +45,12 @@ public class AgentRuntimeEventStreamContractTest {
 
         assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
         assertTypes(events,
-            AgentRuntimeEventType.CHECKPOINT_SAVED,
+            AgentRuntimeEventType.SNAPSHOT_SAVED,
             AgentRuntimeEventType.STEP_STARTED,
             AgentRuntimeEventType.RUN_STARTED,
             AgentRuntimeEventType.MODEL_STARTED,
             AgentRuntimeEventType.MODEL_COMPLETED,
-            AgentRuntimeEventType.CHECKPOINT_SAVED,
+            AgentRuntimeEventType.SNAPSHOT_SAVED,
             AgentRuntimeEventType.RUN_COMPLETED,
             AgentRuntimeEventType.STEP_COMPLETED);
         assertStrictSequence(events);

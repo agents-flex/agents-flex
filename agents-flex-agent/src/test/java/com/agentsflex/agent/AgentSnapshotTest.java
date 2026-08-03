@@ -37,12 +37,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class AgentCheckpointTest {
+public class AgentSnapshotTest {
 
     @Test
     public void shouldRestorePendingToolsWithoutCallingModelAgain() {
         InMemoryAgentRunStore durableStore = new InMemoryAgentRunStore();
-        FailAfterPendingCheckpointStore crashingStore = new FailAfterPendingCheckpointStore(durableStore);
+        FailAfterPendingSnapshotStore crashingStore = new FailAfterPendingSnapshotStore(durableStore);
         QueueChatModel model = new QueueChatModel();
         AtomicInteger toolInvocations = new AtomicInteger();
         model.enqueue(prompt -> aiWithCalls(new ToolCall("call-1", "work", "{}")));
@@ -60,7 +60,7 @@ public class AgentCheckpointTest {
             firstProcess.step(run);
             fail("Expected simulated process crash");
         } catch (SimulatedProcessCrash expected) {
-            // Checkpoint 已写入，模拟进程在执行工具前退出。
+            // Snapshot 已写入，模拟进程在执行工具前退出。
         }
 
         assertEquals(1, model.getCallCount());
@@ -93,7 +93,7 @@ public class AgentCheckpointTest {
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
         AgentRun run = runner.start(agent, "original");
 
-        run.getPrompt().addUserMessage("added after checkpoint");
+        run.getPrompt().addUserMessage("added after snapshot");
 
         AgentRunSnapshot stored = store.load(run.getId());
         assertEquals(1, stored.getMessages().size());
@@ -113,11 +113,11 @@ public class AgentCheckpointTest {
         AgentRun staleCopy = runner.restore(original.getId());
 
         firstCopy.putMetadata("owner", "first");
-        runner.checkpoint(firstCopy);
+        runner.saveSnapshot(firstCopy);
 
         try {
             staleCopy.putMetadata("owner", "stale");
-            runner.checkpoint(staleCopy);
+            runner.saveSnapshot(staleCopy);
             fail("Expected version conflict");
         } catch (AgentRunVersionConflictException expected) {
             assertTrue(expected.getMessage().contains(original.getId()));
@@ -253,12 +253,12 @@ public class AgentCheckpointTest {
         }
     }
 
-    private static class FailAfterPendingCheckpointStore implements AgentRunStore {
+    private static class FailAfterPendingSnapshotStore implements AgentRunStore {
 
         private final AgentRunStore delegate;
         private boolean failed;
 
-        private FailAfterPendingCheckpointStore(AgentRunStore delegate) {
+        private FailAfterPendingSnapshotStore(AgentRunStore delegate) {
             this.delegate = delegate;
         }
 

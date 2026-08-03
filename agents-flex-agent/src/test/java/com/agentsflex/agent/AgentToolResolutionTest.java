@@ -58,8 +58,8 @@ public class AgentToolResolutionTest {
     @Test
     public void shouldRestorePendingToolFromOriginalAgentVersion() {
         InMemoryAgentRunStore durableStore = new InMemoryAgentRunStore();
-        CrashAfterPendingCheckpointStore crashingStore =
-            new CrashAfterPendingCheckpointStore(durableStore);
+        CrashAfterPendingSnapshotStore crashingStore =
+            new CrashAfterPendingSnapshotStore(durableStore);
         AgentScenarioTestSupport.QueueChatModel versionOneModel =
             new AgentScenarioTestSupport.QueueChatModel();
         AtomicInteger versionOneExecutions = new AtomicInteger();
@@ -94,9 +94,9 @@ public class AgentToolResolutionTest {
             // ToolCall 已经保存，工具尚未执行。
         }
 
-        AgentRunSnapshot checkpoint = durableStore.load(run.getId());
-        assertEquals("1", checkpoint.getAgentVersion());
-        assertEquals("query_order", checkpoint.getPendingToolCalls().get(0).getName());
+        AgentRunSnapshot snapshot = durableStore.load(run.getId());
+        assertEquals("1", snapshot.getAgentVersion());
+        assertEquals("query_order", snapshot.getPendingToolCalls().get(0).getName());
 
         AgentRunner secondRunner = new AgentRunner(durableStore, agentLoader);
         AgentRun completed = secondRunner.runUntilBlocked(run.getId());
@@ -132,11 +132,11 @@ public class AgentToolResolutionTest {
         assertTrue(failed.getError().getMessage().contains("tool not found: write_order"));
     }
 
-    private static final class CrashAfterPendingCheckpointStore implements AgentRunStore {
+    private static final class CrashAfterPendingSnapshotStore implements AgentRunStore {
         private final AgentRunStore delegate;
         private boolean crashed;
 
-        private CrashAfterPendingCheckpointStore(AgentRunStore delegate) {
+        private CrashAfterPendingSnapshotStore(AgentRunStore delegate) {
             this.delegate = delegate;
         }
 

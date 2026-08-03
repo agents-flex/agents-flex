@@ -35,7 +35,7 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 ## 工具为什么执行了两次？
 
-常见原因是 Middleware 多次调用 `proceed`、外部副作用成功后 Checkpoint 失败并重试，或多个执行者绕过 Lease 推进同一 Run。修复责任链和 Store 后，写工具仍必须用 runId + toolCallId 做业务幂等。
+常见原因是 Middleware 多次调用 `proceed`、外部副作用成功后 Snapshot 失败并重试，或多个执行者绕过 Lease 推进同一 Run。修复责任链和 Store 后，写工具仍必须用 runId + toolCallId 做业务幂等。
 
 ## 审批后为什么不能创建新 Run？
 
@@ -55,7 +55,7 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 ## Worker Lease 能防止所有重复副作用吗？
 
-不能。Lease 防止旧执行者提交 Checkpoint，但旧执行者可能已向外部系统发出请求。业务工具的幂等约束仍然必需。
+不能。Lease 防止旧执行者提交 Snapshot，但旧执行者可能已向外部系统发出请求。业务工具的幂等约束仍然必需。
 
 ## 为什么 Invocation Context 恢复后为空？
 
@@ -79,4 +79,4 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 ## 如何排查一直处于 RUNNING 的 Run？
 
-检查 Lease owner/until、Worker 心跳、最近 Checkpoint 事件、模型/工具超时和 runnable 队列。Lease 过期后应能被其他 Worker 领取；若不能，重点验证 `claimRunnable` 的状态判断与数据库时间。
+检查 Lease owner/until、Worker 心跳、最近 Snapshot 事件、模型/工具超时和 runnable 队列。Lease 过期后应能被其他 Worker 领取；若不能，重点验证 `claimRunnable` 的状态判断与数据库时间。

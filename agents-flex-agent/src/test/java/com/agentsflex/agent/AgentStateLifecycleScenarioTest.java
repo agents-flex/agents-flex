@@ -26,7 +26,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** 验证运行状态、Checkpoint 和恢复命令共同构成的生命周期。 */
+/** 验证运行状态、Snapshot 和恢复命令共同构成的生命周期。 */
 public class AgentStateLifecycleScenarioTest {
 
     @Test
@@ -149,7 +149,7 @@ public class AgentStateLifecycleScenarioTest {
     }
 
     @Test
-    public void shouldRejectStaleCheckpointWithoutOverwritingLatestState() {
+    public void shouldRejectStaleSnapshotWithoutOverwritingLatestState() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         Agent agent = Agent.builder("cas-agent").chatModel(model).build();

@@ -42,7 +42,7 @@
   <text x="60" y="292" class="section">执行、扩展与调度</text>
   <rect x="60" y="310" width="330" height="164" class="box" fill="#eaf8f1" stroke="#35966f"/>
   <text x="86" y="345" class="name">AgentRunner</text>
-  <text x="86" y="373" class="detail">状态机、Checkpoint、恢复、重试、预算</text>
+  <text x="86" y="373" class="detail">状态机、Snapshot、恢复、重试、预算</text>
   <text x="86" y="397" class="detail">模型流、工具协议、审批、父子 Run</text>
   <text x="86" y="421" class="detail">上下文压缩、大型结果外置</text>
   <text x="86" y="445" class="detail">持久化事件与实时事件发布</text>

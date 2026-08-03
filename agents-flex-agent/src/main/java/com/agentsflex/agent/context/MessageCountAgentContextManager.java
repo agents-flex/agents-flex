@@ -14,7 +14,7 @@ import java.util.List;
  * 超过消息数量上限时，将较早历史压缩为一条摘要消息。
  *
  * <p>实现始终保留最近的指定数量消息，并避免从 ToolMessage 中间切断一组模型工具交互。摘要以带有
- * {@code agent.context.summary} 元数据的 UserMessage 写回 Memory，因此压缩结果会进入 Checkpoint。</p>
+ * {@code agent.context.summary} 元数据的 UserMessage 写回 Memory，因此压缩结果会进入 Snapshot。</p>
  */
 public final class MessageCountAgentContextManager implements AgentContextManager {
     /**

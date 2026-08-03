@@ -24,12 +24,12 @@ flowchart TD
 
     PlanCall --> Validate["校验 goal、任务字段、maxTasks<br/>委派白名单和规划深度"]
     Validate -->|"不通过"| PlanFailure["按统一失败 / 重试策略处理"]
-    Validate -->|"通过"| PersistPlan["创建 AgentTaskPlan<br/>保存父 Run Checkpoint"]
+    Validate -->|"通过"| PersistPlan["创建 AgentTaskPlan<br/>保存父 Run Snapshot"]
 
     PersistPlan --> Select{"选择下一个 PENDING 任务"}
     Select -->|"存在"| LoadChild["AgentLoader.loadActive<br/>加载目标 Agent"]
     LoadChild --> CreateChild["创建子 AgentRun<br/>绑定 parentRunId / rootRunId / taskId"]
-    CreateChild --> AtomicSave["原子保存父 WAITING_FOR_CHILD<br/>与子 READY Checkpoint"]
+    CreateChild --> AtomicSave["原子保存父 WAITING_FOR_CHILD<br/>与子 READY Snapshot"]
     AtomicSave --> Execution{"执行环境"}
 
     Execution -->|"同步 runner.run"| SyncChild["当前线程递归推进子 Run"]
@@ -55,7 +55,7 @@ flowchart TD
     SaveSuccess --> More{"还有待执行任务？"}
     SaveFailure --> More
     More -->|"有"| Select
-    More -->|"无"| Finalizing["计划进入 FINALIZING<br/>保存 Checkpoint"]
+    More -->|"无"| Finalizing["计划进入 FINALIZING<br/>保存 Snapshot"]
     StopPlan --> Finalizing
 
     Finalizing --> Summary{"finalSummaryRequired？"}
@@ -119,7 +119,7 @@ AgentRunner runner = new AgentRunner(runStore,
 5. 子 Run 失败时，按策略停止或进入 `REPLANNING`。
 6. 所有任务结束后，根模型生成最终汇总；也可配置不要求汇总，使用最后任务结果结束。
 
-父计划和父 Checkpoint 同版本保存，避免独立计划存储与 Run 状态不一致。
+父计划和父 Snapshot 同版本保存，避免独立计划存储与 Run 状态不一致。
 
 ## 查询进度
 

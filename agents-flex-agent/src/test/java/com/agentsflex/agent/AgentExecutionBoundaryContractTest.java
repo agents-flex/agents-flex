@@ -228,7 +228,7 @@ public class AgentExecutionBoundaryContractTest {
     }
 
     @Test
-    public void shouldAllowOnlyOneConcurrentResumeToCheckpoint() throws Exception {
+    public void shouldAllowOnlyOneConcurrentResumeToSnapshot() throws Exception {
         InMemoryAgentRunStore store = new InMemoryAgentRunStore();
         Agent agent = Agent.builder("concurrent-resume")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build();

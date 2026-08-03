@@ -68,7 +68,7 @@ long totalTokens = run.getTotalTokens();
 
 ## 消息与多模态输入
 
-Runner 支持 `UserMessage` 结构化输入，消息可以携带文本和多模态内容。创建 Run 时会复制用户消息，避免调用方后续修改影响 Checkpoint。
+Runner 支持 `UserMessage` 结构化输入，消息可以携带文本和多模态内容。创建 Run 时会复制用户消息，避免调用方后续修改影响 Snapshot。
 
 ```java
 AgentRun run = runner.run(agent, userMessage);
@@ -102,4 +102,4 @@ AgentRunOptions options = AgentRunOptions.builder()
 AgentRunSnapshot snapshot = run.toSnapshot();
 ```
 
-快照是隔离副本，包含恢复所需状态但不包含模型、工具和瞬时调用上下文。正常业务代码应通过 `runner.checkpoint(run)` 保存，由 Store 分配版本，而不是只调用 `toSnapshot()` 后自行覆盖数据。
+快照是隔离副本，包含恢复所需状态但不包含模型、工具和瞬时调用上下文。正常业务代码应通过 `runner.saveSnapshot(run)` 持久化，由 Store 分配版本，而不是只调用 `toSnapshot()` 后自行覆盖数据。

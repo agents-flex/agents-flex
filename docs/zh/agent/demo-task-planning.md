@@ -69,7 +69,7 @@ Agent root = Agent.builder("delivery-agent")
 }
 ```
 
-Runner 校验字段、任务数量和 Agent 白名单后，把计划写入父 Run Checkpoint。
+Runner 校验字段、任务数量和 Agent 白名单后，把计划写入父 Run Snapshot。
 
 ## 运行并查询进度
 

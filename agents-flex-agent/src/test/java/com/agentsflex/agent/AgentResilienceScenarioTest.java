@@ -23,7 +23,7 @@ import static com.agentsflex.agent.AgentScenarioTestSupport.toolCalls;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/** 验证审批、重试、Checkpoint 与预算共同工作时的执行语义。 */
+/** 验证审批、重试、Snapshot 与预算共同工作时的执行语义。 */
 public class AgentResilienceScenarioTest {
 
     @Test

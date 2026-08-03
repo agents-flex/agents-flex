@@ -7,7 +7,7 @@ description: 使用父子 AgentRun 委派任务、传播上下文、恢复父任
 
 ## 概述
 
-子 Agent 不是父 Agent 内的一次普通方法调用，而是拥有独立 ID、状态、预算、Checkpoint 和事件的 `AgentRun`。父子通过 `parentRunId`、`rootRunId` 与暂停关联建立任务树。独立 Run 使子任务可以审批、重试、后台领取，也能单独查询和审计。
+子 Agent 不是父 Agent 内的一次普通方法调用，而是拥有独立 ID、状态、预算、Snapshot 和事件的 `AgentRun`。父子通过 `parentRunId`、`rootRunId` 与暂停关联建立任务树。独立 Run 使子任务可以审批、重试、后台领取，也能单独查询和审计。
 
 ## 两种使用方式
 
@@ -33,7 +33,7 @@ description: 使用父子 AgentRun 委派任务、传播上下文、恢复父任
 
 ## 上下文传播
 
-同一进程创建子 Run 时会继承父 Run 的 `AgentInvocationContext`；从 Checkpoint 恢复后，Worker 仍需通过 Provider 重建。子 Run 接收的是总体目标和当前任务的受控描述，不会自动复制父 Run 的完整消息历史。
+同一进程创建子 Run 时会继承父 Run 的 `AgentInvocationContext`；从 Snapshot 恢复后，Worker 仍需通过 Provider 重建。子 Run 接收的是总体目标和当前任务的受控描述，不会自动复制父 Run 的完整消息历史。
 
 这可以减少上下文污染，也意味着子任务所需事实应明确写入任务描述或通过工具查询。
 

@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * AgentRun Checkpoint 存储接口。
+ * AgentRun Snapshot 存储接口。
  *
  * <p>Store 只保存可序列化的 {@link AgentRunSnapshot}，不保存 ChatModel、Tool 或 Agent 等运行时对象。
  * 恢复时由 {@link AgentLoader} 根据 agentId 重新绑定这些对象。</p>
@@ -34,14 +34,14 @@ public interface AgentRunStore {
     }
 
     /**
-     * 加载指定运行的最新 Checkpoint。
+     * 加载指定运行的最新 Snapshot。
      *
      * @return Snapshot；不存在时返回 {@code null}
      */
     AgentRunSnapshot load(String runId);
 
     /**
-     * 原子保存 Checkpoint 并生成下一个版本号。
+     * 原子保存 Snapshot 并生成下一个版本号。
      *
      * @param snapshot 要保存的状态快照
      * @param expectedVersion 调用方认为 Store 当前持有的版本；首次保存为 -1
@@ -53,7 +53,7 @@ public interface AgentRunStore {
     /**
      * 原子记录取消请求。
      *
-     * <p>取消标记是单调信号：一旦写入，在 Run 进入终止状态前不能被后续 Checkpoint 清除。
+     * <p>取消标记是单调信号：一旦写入，在 Run 进入终止状态前不能被后续 Snapshot 清除。
      * 该操作不要求调用方持有 Worker Lease，因此 HTTP 控制面可以取消正在后台执行或等待中的任务。</p>
      *
      * @return 本次调用是否首次写入取消请求；Run 已终止或已经请求取消时返回 {@code false}
@@ -87,7 +87,7 @@ public interface AgentRunStore {
     /**
      * 延长指定 Worker 持有的有效租约。
      *
-     * <p>续租只更新租约时间，不改变 Checkpoint 版本。leaseId 必须与领取时返回的唯一令牌一致，
+     * <p>续租只更新租约时间，不改变 Snapshot 版本。leaseId 必须与领取时返回的唯一令牌一致，
      * 防止同名 Worker 或已经失效的进程续租新的租约。</p>
      */
     default AgentRunSnapshot renewLease(String runId, String workerId, String leaseId,
