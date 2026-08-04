@@ -14,15 +14,15 @@
  * <p>主要类型及职责：</p>
  * <ul>
  *     <li>{@link com.agentsflex.agent.Agent}：不可变的能力定义，描述模型、指令、工具和策略；</li>
- *     <li>{@link com.agentsflex.agent.AgentRun}：单次任务的可变状态，保存消息、状态和执行结果；</li>
+ *     <li>{@link com.agentsflex.agent.AgentRun}：单次任务对象，组合可持久化状态与进程内运行属性；</li>
+ *     <li>{@link com.agentsflex.agent.AgentRunState}：Run 与 Snapshot 共享的可序列化状态定义；</li>
+ *     <li>{@link com.agentsflex.agent.AgentRunSnapshot}：Agent 标识与不可变运行状态组成的持久化快照；</li>
  *     <li>{@link com.agentsflex.agent.AgentRunner}：管理公共生命周期并保存稳定状态；</li>
- *     <li>{@link com.agentsflex.agent.AgentInvocationContext}：携带单次调用身份和非持久化服务对象；</li>
- *     <li>{@link com.agentsflex.agent.middleware.AgentMiddleware}：包装步骤、模型和工具调用；</li>
  *     <li>{@link com.agentsflex.agent.middleware.AgentMiddleware}：包装步骤、模型调用和工具调用；</li>
  *     <li>{@link com.agentsflex.agent.store.AgentRunStore}：保存 Snapshot、领取任务和管理 Worker 租约；</li>
  *     <li>{@link com.agentsflex.agent.event.AgentEventListener}：观察生命周期、模型增量和工具进度事件；</li>
  *     <li>{@link com.agentsflex.agent.command.AgentRunCommandStore}：持久化审批和恢复命令；</li>
- *     <li>{@link com.agentsflex.agent.context.AgentArtifactStore}：保存大型工具结果；</li>
+ *     <li>{@link com.agentsflex.agent.context.ToolResultOffloader}：组合大型工具结果判断与 Artifact Store；</li>
  *     <li>{@link com.agentsflex.agent.task.AgentPlanningPolicy}：约束模型自主创建和执行任务计划；</li>
  *     <li>{@link com.agentsflex.agent.loader.AgentLoader}：根据稳定 ID 和版本加载可执行 Agent；</li>
  *     <li>{@link com.agentsflex.agent.tool.AgentToolInvocation}：向工具提供 Run 身份和稳定幂等键。</li>

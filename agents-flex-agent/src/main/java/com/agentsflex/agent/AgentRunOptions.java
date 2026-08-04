@@ -27,15 +27,14 @@ public final class AgentRunOptions {
      */
     private final Map<String, Object> metadata;
     /**
-     * 仅在当前进程传递且不会写入 Snapshot 的调用上下文。
+     * 是否在当前进程中使用流式模型调用；该选项不写入 Snapshot。
      */
-    private final AgentInvocationContext invocationContext;
+    private final boolean streaming;
 
     private AgentRunOptions(Builder builder) {
         this.executionPolicy = builder.executionPolicy;
         this.metadata = Collections.unmodifiableMap(new HashMap<>(builder.metadata));
-        this.invocationContext = builder.invocationContext == null
-            ? AgentInvocationContext.empty() : builder.invocationContext;
+        this.streaming = builder.streaming;
     }
 
     /**
@@ -67,10 +66,10 @@ public final class AgentRunOptions {
     }
 
     /**
-     * @return 非持久化调用上下文，始终不为 {@code null}
+     * @return 当前进程是否使用流式模型调用
      */
-    public AgentInvocationContext getInvocationContext() {
-        return invocationContext;
+    public boolean isStreaming() {
+        return streaming;
     }
 
     /**
@@ -79,7 +78,7 @@ public final class AgentRunOptions {
     public static final class Builder {
         private AgentExecutionPolicy executionPolicy;
         private final Map<String, Object> metadata = new HashMap<>();
-        private AgentInvocationContext invocationContext;
+        private boolean streaming;
 
         /**
          * 覆盖 Agent 定义中的默认执行策略。
@@ -113,10 +112,12 @@ public final class AgentRunOptions {
         }
 
         /**
-         * 设置仅在本次进程内调用期间生效的运行上下文。
+         * 设置当前进程是否使用流式模型调用。
+         *
+         * <p>该值不写入 Snapshot。Worker 从 Snapshot 恢复任务时默认使用非流式调用。</p>
          */
-        public Builder invocationContext(AgentInvocationContext value) {
-            this.invocationContext = value;
+        public Builder streaming(boolean value) {
+            this.streaming = value;
             return this;
         }
 

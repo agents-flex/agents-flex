@@ -30,6 +30,6 @@ mvn -f demos/agent-demo/pom.xml exec:java -Dexec.args=runtime
 | `approval` | 工具审批、Snapshot、跨 Runner 恢复和统一事件监听 |
 | `worker` | 工具失败、持久化重试、Worker 领取和 Lease |
 | `planning` | 任务拆分、进度查询和专业子 Agent 调度 |
-| `runtime` | 调用上下文、Middleware、AgentEvent、上下文压缩和大型结果外置 |
+| `runtime` | Middleware、AgentEvent、上下文压缩和大型结果外置 |
 
 `DemoScriptedChatModel` 只负责返回预先配置的模型消息，使 Demo 在离线环境中也能稳定运行。接入真实模型时，只需替换 Agent Builder 中的 `chatModel`。

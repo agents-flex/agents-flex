@@ -23,7 +23,7 @@ description: 解答 Agent 定义、执行、恢复、工具、规划、Worker �
 
 ## 下一轮对话要复用原 AgentRun 吗？
 
-不要。每一轮创建新的 Run；需要共享历史时使用 `AgentConversation` 或传入业务加载的 conversation history。只有恢复阻塞任务时才继续原 Run。
+不要。每一轮创建新的 Run，并传入业务系统从 ChatMemory 加载的历史消息。只有恢复阻塞任务时才按已保存的 runId 继续原 Run。
 
 ## 为什么恢复时找不到 Agent？
 
@@ -57,13 +57,13 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 不能。Lease 防止旧执行者提交 Snapshot，但旧执行者可能已向外部系统发出请求。业务工具的幂等约束仍然必需。
 
-## 为什么 Invocation Context 恢复后为空？
+## 为什么 streaming 设置恢复后失效？
 
-它被设计为瞬时对象，不进入 Snapshot。使用 `restore(runId, context)` 或为 Worker 配置 `AgentInvocationContextProvider`。
+`streaming` 是当前进程调用模型的方式，不属于可恢复业务状态，因此不进入 Snapshot。同一进程创建的子 Run 会继承该设置；从 Snapshot 恢复或由 Worker 执行时默认使用非流式调用。
 
 ## metadata 可以保存任意对象吗？
 
-只保存可序列化、稳定、非敏感的小对象。自定义类型要加入 Serializer 精确白名单。Bean、连接、线程、本地回调和密钥应放在 Invocation Context 或外部服务。
+只保存可序列化、稳定、非敏感的小对象。自定义类型要加入 Serializer 精确白名单。Bean、连接、线程、本地回调和密钥应由组件自身安全管理，或保存在外部服务中。
 
 ## 任务规划会并行执行吗？
 

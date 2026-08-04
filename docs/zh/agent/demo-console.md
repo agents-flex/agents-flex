@@ -7,7 +7,7 @@ description: 使用真实模型构建持续对话、工具调用、人工审批�
 
 ## 概述
 
-控制台 Demo 使用真实 OpenAI-compatible ChatModel，展示一个完整交互应用：普通持续对话、只读工具自动执行、有副作用工具人工审批、阻塞 Run 恢复、每轮独立 Run、共享 Conversation Memory 以及实时事件输出。
+控制台 Demo 使用真实 OpenAI-compatible ChatModel，展示一个完整交互应用：普通持续对话、只读工具自动执行、有副作用工具人工审批、阻塞 Run 恢复、每轮独立 Run、业务 ChatMemory 以及实时事件输出。
 
 源码位于 `demos/agent-console-demo/src/main/java/com/agentsflex/demo/agent/console/AgentConsoleDemo.java`。
 
@@ -18,7 +18,7 @@ description: 使用真实模型构建持续对话、工具调用、人工审批�
 - `get_current_time`：无副作用，Runner 直接执行。
 - `create_support_ticket`：会写业务系统，审批策略要求人工确认。
 
-同一个 `AgentConversation` 保存控制台用户的历史，每条普通输入创建新的 Run；审批输入恢复 active Run，不创建新 Run。
+控制台业务代码维护 conversationId 和 `ChatMemory`，每条普通输入携带历史消息创建新的 Run；审批输入按 runId 恢复原 Run，不创建新 Run。
 
 ## 配置模型
 
@@ -72,24 +72,23 @@ Agent agent = Agent.builder("console-assistant")
 
 工具 metadata 只提供策略事实；真正的执行授权由审批策略决定。
 
-## Conversation 与单轮 Context
+## ChatMemory 与单轮业务信息
 
 ```java
-AgentConversation conversation = AgentConversation.create(
-    "console-" + UUID.randomUUID(), agent);
+String conversationId = "console-" + UUID.randomUUID();
+ChatMemory memory = new DefaultChatMemory(conversationId);
 
 AgentRunOptions options = AgentRunOptions.builder()
-    .invocationContext(AgentInvocationContext.builder()
-        .sessionId(conversation.getId())
-        .requestId(UUID.randomUUID().toString())
-        .userId("console-user")
-        .build())
+    .metadata("conversationId", conversationId)
+    .metadata("requestId", UUID.randomUUID().toString())
+    .metadata("userId", "console-user")
     .build();
 
-AgentRun run = runner.run(conversation, new UserMessage(input), options);
+AgentRun run = runner.run(agent,
+    memory.getMessages(Integer.MAX_VALUE), new UserMessage(input), options);
 ```
 
-Conversation 管消息历史；Invocation Context 管本轮身份与追踪信息。两者不能互相替代。
+ChatMemory 管理跨轮消息历史；metadata 保存当前 Run 恢复后仍需使用的业务标识。Run 终止后，控制台使用 `getConversationHistory()` 更新 Memory。Runner 不持有或修改这两个业务对象。
 
 ## 处理阻塞状态
 
@@ -97,14 +96,14 @@ Conversation 管消息历史；Invocation Context 管本轮身份与追踪信息
 while (run.getStatus().isBlocked()) {
     if (run.getStatus() == AgentRunStatus.WAITING_FOR_APPROVAL) {
         String callId = run.getSuspension().getCorrelationId();
-        run = runner.resume(conversation,
+        run = runner.resume(run.getId(),
             approved
                 ? AgentResumeCommand.approveTool(callId)
                 : AgentResumeCommand.rejectTool(callId, "用户拒绝"));
         continue;
     }
     if (run.getStatus() == AgentRunStatus.WAITING_FOR_USER) {
-        run = runner.resume(conversation,
+        run = runner.resume(run.getId(),
             AgentResumeCommand.userInput(additionalInput));
         continue;
     }
@@ -155,4 +154,4 @@ mvn -f demos/agent-console-demo/pom.xml exec:java
 
 ## 从 Demo 到生产
 
-控制台使用内存 Store，退出后状态丢失。生产服务应把 Runner、共享 Store、AgentLoader 和 Worker 作为应用级组件；将审批输入改为带鉴权的 HTTP API 与 Command Inbox；持久化 Conversation；对输出与工具参数脱敏；并配置网络超时、业务幂等、指标和审计保留策略。
+控制台使用内存 Store，退出后状态丢失。生产服务应把 Runner、共享 Store、AgentLoader 和 Worker 作为应用级组件；将审批输入改为带鉴权的 HTTP API 与 Command Inbox；持久化 conversationId、ChatMemory 和活动 runId；对输出与工具参数脱敏；并配置网络超时、业务幂等、指标和审计保留策略。

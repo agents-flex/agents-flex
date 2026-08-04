@@ -41,7 +41,7 @@ Run Snapshot 是当前状态，Command 是外部输入，Artifact 是大内容�
 
 ### 观察平面
 
-AgentEventListener 统一接收生命周期、模型增量和工具进度事件，可用于流式 UI、日志和指标。可靠审计与断点消费由业务事件系统负责。`rootRunId` 关联父子任务树，Invocation Context 提供请求和租户关联。
+AgentEventListener 统一接收生命周期、模型增量和工具进度事件，可用于流式 UI、日志和指标。可靠审计与断点消费由业务事件系统负责。`rootRunId` 关联父子任务树，Run metadata 提供请求和租户关联。
 
 ## 默认状态机
 
@@ -67,7 +67,7 @@ READY -> RUNNING/MODEL
 - 业务配置通过 Loader 接入，不侵入 Snapshot。
 - 执行控制通过 Middleware 扩展，不在 Listener 中改状态。
 - 横切控制通过 Middleware，低层通用工具逻辑通过 ToolInterceptor。
-- 瞬时依赖通过 Invocation Context，持久业务标识通过 metadata。
+- 持久业务标识通过 Run metadata 传递，进程内服务由 Middleware 或 Tool 自身安全管理。
 - 长内容进入 Artifact Store，不让 Prompt 和 Snapshot 无界增长。
 
 ## 部署形态
@@ -86,4 +86,4 @@ API 服务调用 `start`/`submitCommand`，Worker 集群通过共享 Store 执�
 
 ## 安全边界
 
-模型不能直接绕过工具授权；Runner 只执行当前 Agent 中按名称解析到的 Tool，并在执行前应用审批策略和 Middleware。生产平台还应在配置发布、Invocation Context 重建、Artifact 读取和恢复 API 上实施租户隔离。
+模型不能直接绕过工具授权；Runner 只执行当前 Agent 中按名称解析到的 Tool，并在执行前应用审批策略和 Middleware。生产平台还应在配置发布、Run metadata 校验、Artifact 读取和恢复 API 上实施租户隔离。

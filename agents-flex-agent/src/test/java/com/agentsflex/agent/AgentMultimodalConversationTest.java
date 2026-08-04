@@ -22,9 +22,7 @@ import java.util.List;
 import static com.agentsflex.agent.AgentScenarioTestSupport.tool;
 import static com.agentsflex.agent.AgentScenarioTestSupport.toolCalls;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /** 验证 Agent 的多模态输入和跨 Run 持续对话契约。 */
@@ -103,26 +101,26 @@ public class AgentMultimodalConversationTest {
             .chatModel(model)
             .build();
         AgentRunner runner = new AgentRunner();
-        AgentConversation conversation = AgentConversation.create("conversation-1", agent);
 
-        AgentRun first = runner.run(conversation, new UserMessage("hello"));
+        AgentRun first = runner.run(agent, new UserMessage("hello"));
         UserMessage secondInput = new UserMessage("what is shown here?");
         secondInput.addImageUrl("https://example.com/current.png");
-        AgentRun second = runner.run(conversation, secondInput);
+        AgentRun second = runner.run(agent, first.getConversationHistory(), secondInput,
+            AgentRunOptions.builder()
+                .metadata("conversationId", "conversation-1")
+                .build());
 
         assertNotEquals(first.getId(), second.getId());
         assertEquals(AgentRunStatus.COMPLETED, first.getStatus());
         assertEquals(AgentRunStatus.COMPLETED, second.getStatus());
         assertEquals("a chart", second.getFinalOutput());
-        assertEquals(4, conversation.getMessages().size());
-        assertFalse(conversation.getMessages().get(0) instanceof SystemMessage);
         assertEquals("conversation-1",
-            second.getMetadata().get(AgentConversation.RUN_METADATA_KEY));
-        assertNull(conversation.getActiveRunId());
+            second.getMetadata().get("conversationId"));
+        assertEquals(4, second.getConversationHistory().size());
     }
 
     @Test
-    public void shouldResumeBlockedRunInsteadOfStartingAnotherConversationTurn() {
+    public void shouldResumeBlockedRunByBusinessStoredRunId() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> {
             List<Message> messages = prompt.getMessages();
@@ -134,53 +132,44 @@ public class AgentMultimodalConversationTest {
             .chatModel(model)
             .build();
         InMemoryAgentRunStore store = new InMemoryAgentRunStore();
-        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
-        AgentConversation conversation = AgentConversation.create("conversation-waiting", agent);
-        AgentRun waiting = runner.start(conversation, "initial request");
+        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
+        AgentRun waiting = runner.start(agent, "initial request");
         runner.suspend(waiting, AgentSuspension.userInput("provide value"));
+        String activeRunId = waiting.getId();
 
-        try {
-            runner.run(conversation, "this must not start another run");
-            throw new AssertionError("Expected active run rejection");
-        } catch (IllegalStateException expected) {
-            assertTrue(expected.getMessage().contains("active run"));
-        }
-
-        AgentRun completed = runner.resume(conversation,
+        AgentRun completed = runner.resume(activeRunId,
             AgentResumeCommand.userInput("additional value"));
 
         assertEquals(waiting.getId(), completed.getId());
         assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
         assertEquals("completed after resume", completed.getFinalOutput());
-        assertEquals(3, conversation.getMessages().size());
-        assertNull(conversation.getActiveRunId());
+        assertEquals(3, completed.getConversationHistory().size());
     }
 
     @Test
-    public void shouldRebuildConversationHandleAndResumePersistedActiveRun() {
+    public void shouldLetBusinessSynchronizeCompletedHistoryToChatMemory() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> new AiMessage("restored conversation completed"));
         Agent agent = Agent.builder("restored-conversation-agent")
             .chatModel(model)
             .build();
         InMemoryAgentRunStore store = new InMemoryAgentRunStore();
-        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
+        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
         DefaultChatMemory memory = new DefaultChatMemory("conversation-restored");
-        AgentConversation original = AgentConversation.of(
-            "conversation-restored", agent, memory);
-        AgentRun waiting = runner.start(original, "initial request");
+        AgentRun waiting = runner.start(agent,
+            memory.getMessages(Integer.MAX_VALUE), new UserMessage("initial request"));
         runner.suspend(waiting, AgentSuspension.userInput("provide value"));
 
-        AgentConversation rebuilt = AgentConversation.restore(
-            "conversation-restored", agent, memory, waiting.getId());
-        AgentRun completed = runner.resume(rebuilt,
+        AgentRun completed = runner.resume(waiting.getId(),
             AgentResumeCommand.userInput("restored value"));
+        for (Message message : completed.getConversationHistory()) {
+            memory.addMessage(message);
+        }
 
         assertEquals(waiting.getId(), completed.getId());
         assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
         assertEquals("restored conversation completed", completed.getFinalOutput());
-        assertEquals(3, rebuilt.getMessages().size());
-        assertNull(rebuilt.getActiveRunId());
+        assertEquals(3, memory.getMessages(Integer.MAX_VALUE).size());
     }
 
     @Test

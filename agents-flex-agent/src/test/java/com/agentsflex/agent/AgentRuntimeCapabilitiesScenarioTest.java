@@ -8,7 +8,7 @@ import com.agentsflex.agent.command.AgentRunCommandStatus;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.agent.context.ToolResultOffloadPolicy;
+import com.agentsflex.agent.context.ToolResultOffloader;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;
@@ -32,7 +32,6 @@ import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.ToolContext;
 import com.agentsflex.core.model.chat.tool.ToolContextHolder;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.Prompt;
@@ -45,70 +44,19 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /** 新增运行时能力的组合、隔离、恢复和并发场景测试。 */
 public class AgentRuntimeCapabilitiesScenarioTest {
-
-    @Test
-    public void shouldPropagateInvocationContextWithoutPersistingIt() {
-        ScriptedChatModel model = new ScriptedChatModel();
-        model.enqueue(toolCalls(new ToolCall("call-1", "inspect", "{}")));
-        model.enqueue(new AiMessage("done"));
-        AtomicReference<String> middlewareTenant = new AtomicReference<>();
-        AtomicReference<String> toolTenant = new AtomicReference<>();
-
-        AgentMiddleware middleware = new AgentMiddleware() {
-            @Override
-            public AiMessageResponse aroundModelCall(AgentMiddlewareContext context,
-                                                     AgentModelCallChain chain) {
-                middlewareTenant.set(context.getInvocationContext().getTenantId());
-                return chain.proceed(context);
-            }
-        };
-        Tool tool = tool("inspect", args -> {
-            ToolContext context = ToolContextHolder.currentContext();
-            AgentInvocationContext invocation = context.getAttribute(
-                AgentInvocationContext.CONTEXT_ATTRIBUTE);
-            toolTenant.set(invocation.getTenantId());
-            return "ok";
-        });
-        Agent agent = Agent.builder("context-agent")
-            .chatModel(model)
-            .middleware(middleware)
-            .tool(tool)
-            .build();
-        AgentInvocationContext invocation = AgentInvocationContext.builder()
-            .tenantId("tenant-a")
-            .userId("user-a")
-            .attribute(ClockService.class, new ClockService())
-            .build();
-        AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
-
-        AgentRun run = runner.run(agent, "inspect",
-            AgentRunOptions.builder().invocationContext(invocation).build());
-
-        assertEquals("tenant-a", middlewareTenant.get());
-        assertEquals("tenant-a", toolTenant.get());
-        assertNotNull(run.getInvocationContext().get(ClockService.class));
-        assertFalse(run.toSnapshot().getMetadata().containsKey("tenantId"));
-        assertNull(runner.restore(run.getId()).getInvocationContext().getTenantId());
-        assertEquals("tenant-b", runner.restore(run.getId(), AgentInvocationContext.builder()
-            .tenantId("tenant-b").build()).getInvocationContext().getTenantId());
-    }
 
     @Test
     public void shouldApplyMiddlewareInOnionOrder() {
@@ -133,38 +81,6 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         assertTrue(calls.indexOf("b-model-after") < calls.indexOf("a-model-after"));
         assertTrue(calls.indexOf("a-tool-before") < calls.indexOf("b-tool-before"));
         assertTrue(calls.indexOf("b-tool-after") < calls.indexOf("a-tool-after"));
-    }
-
-    @Test
-    public void shouldIsolateInvocationContextsAcrossConcurrentRuns() throws Exception {
-        Map<String, String> tenantsByRequest = new ConcurrentHashMap<>();
-        AgentMiddleware middleware = new AgentMiddleware() {
-            @Override
-            public AiMessageResponse aroundModelCall(AgentMiddlewareContext context,
-                                                     AgentModelCallChain chain) {
-                AgentInvocationContext invocation = context.getInvocationContext();
-                tenantsByRequest.put(invocation.getRequestId(), invocation.getTenantId());
-                return chain.proceed(context);
-            }
-        };
-        Agent agent = Agent.builder("concurrent-context-agent")
-            .chatModel(new ImmediateChatModel())
-            .middleware(middleware)
-            .build();
-        AgentRunner runner = new AgentRunner();
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-
-        executor.submit(() -> runner.run(agent, "a", AgentRunOptions.builder()
-            .invocationContext(AgentInvocationContext.builder()
-                .tenantId("tenant-a").requestId("request-a").build()).build()));
-        executor.submit(() -> runner.run(agent, "b", AgentRunOptions.builder()
-            .invocationContext(AgentInvocationContext.builder()
-                .tenantId("tenant-b").requestId("request-b").build()).build()));
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
-
-        assertEquals("tenant-a", tenantsByRequest.get("request-a"));
-        assertEquals("tenant-b", tenantsByRequest.get("request-b"));
     }
 
     @Test
@@ -218,33 +134,6 @@ public class AgentRuntimeCapabilitiesScenarioTest {
     }
 
     @Test
-    public void shouldRebuildInvocationContextWhenWorkerRestoresRun() {
-        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
-        AtomicReference<String> tenant = new AtomicReference<>();
-        Agent agent = Agent.builder("worker-context-agent")
-            .chatModel(new ImmediateChatModel())
-            .middleware(new AgentMiddleware() {
-                @Override
-                public AiMessageResponse aroundModelCall(AgentMiddlewareContext context,
-                                                         AgentModelCallChain chain) {
-                    tenant.set(context.getInvocationContext().getTenantId());
-                    return chain.proceed(context);
-                }
-            })
-            .build();
-        InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRunner runner = new AgentRunner(runStore, registry);
-        runner.start(agent, "work");
-        AgentWorker worker = new AgentWorker("worker-context", runner, 10_000,
-            snapshot -> AgentInvocationContext.builder().tenantId("tenant-worker").build());
-
-        List<AgentRun> completed = worker.pollAndRun(1);
-
-        assertEquals(1, completed.size());
-        assertEquals("tenant-worker", tenant.get());
-    }
-
-    @Test
     public void shouldCombineStreamingApprovalInboxWorkerProgressAndOffload() {
         ScriptedChatModel model = new ScriptedChatModel();
         model.enqueue(toolCalls(new ToolCall("danger-1", "export", "{}")));
@@ -273,15 +162,14 @@ public class AgentRuntimeCapabilitiesScenarioTest {
                 .reason("large data export")
                 .metadata("risk", "high")
                 .build())
-            .toolResultOffloadPolicy(ToolResultOffloadPolicy.largerThan(32))
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
+        ToolResultOffloader offloader = ToolResultOffloader.largerThan(32, artifactStore);
         AgentRunner runner = new AgentRunner(runStore, registry,
-            commandStore, artifactStore).addEventListener(events::add);
+            commandStore, offloader).addEventListener(events::add);
 
         AgentRun waiting = runner.run(agent, "export",
-            AgentRunOptions.builder().invocationContext(AgentInvocationContext.builder()
-                .streaming(true).requestId("request-1").build()).build());
+            AgentRunOptions.builder().streaming(true).build());
 
         assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
         assertEquals("EXPORT_REVIEW", waiting.getSuspension().getMetadata().get("approvalCode"));
@@ -361,8 +249,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         Agent agent = Agent.builder("stream-error-agent").chatModel(model).build();
 
         AgentRun run = new AgentRunner().run(agent, "question",
-            AgentRunOptions.builder().invocationContext(AgentInvocationContext.builder()
-                .streaming(true).build()).build());
+            AgentRunOptions.builder().streaming(true).build());
 
         assertEquals(AgentRunStatus.FAILED, run.getStatus());
         assertTrue(run.getError().getMessage().contains("connection failed"));
@@ -375,7 +262,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         Agent agent = Agent.builder("compact-agent")
             .chatModel(model)
             .contextManager(new MessageCountAgentContextManager(5, 3,
-                (messages, context) -> "summarized " + messages.size() + " messages"))
+                messages -> "summarized " + messages.size() + " messages"))
             .build();
         AgentRun run = AgentRun.start(agent, "m1");
         for (int i = 2; i <= 8; i++) run.getPrompt().addUserMessage("m" + i);
@@ -407,7 +294,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         Agent agent = Agent.builder("protocol-agent")
             .chatModel(model)
             .contextManager(new MessageCountAgentContextManager(5, 2,
-                (messages, context) -> "older history"))
+                messages -> "older history"))
             .build();
         AgentRun run = AgentRun.start(agent, "u1");
         run.getPrompt().addUserMessage("u2");
@@ -452,8 +339,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             .chatModel(new ImmediateChatModel())
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRunner runner = new AgentRunner(runStore, registry, commandStore,
-            new InMemoryAgentArtifactStore())
+        AgentRunner runner = new AgentRunner(runStore, registry, commandStore)
             .addEventListener(event -> { throw new RuntimeException("listener failed"); });
         AgentRun waiting = runner.start(agent, "start");
         runner.suspend(waiting, AgentSuspension.userInput("provide value"));
@@ -563,8 +449,6 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         context.setPrompt(prompt);
         return new AiMessageResponse(context, null, message);
     }
-
-    private static final class ClockService { }
 
     /** 同时支持同步和流式调用的确定性脚本模型。 */
     private static class ImmediateChatModel implements ChatModel {

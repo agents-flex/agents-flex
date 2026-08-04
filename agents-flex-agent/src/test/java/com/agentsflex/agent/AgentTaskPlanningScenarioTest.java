@@ -20,6 +20,7 @@ import com.agentsflex.agent.task.AgentTaskStatus;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import org.junit.Test;
@@ -107,9 +108,8 @@ public class AgentTaskPlanningScenarioTest {
             .planningPolicy(AgentPlanningPolicy.enabled())
             .build();
         AgentRunner runner = runner(agent);
-        AgentConversation conversation = AgentConversation.create(agent);
 
-        AgentRun waitingRoot = runner.run(conversation, "发布应用");
+        AgentRun waitingRoot = runner.run(agent, "发布应用");
         AgentTaskProgress waiting = runner.getTaskProgress(waitingRoot.getId());
         AgentRun restoredWaitingRoot = runner.restore(waitingRoot.getId());
 
@@ -119,9 +119,10 @@ public class AgentTaskPlanningScenarioTest {
             restoredWaitingRoot.getTaskPlan().getActiveTask().getId());
         assertEquals(0, executions.get());
 
-        AgentRun completed = runner.resume(conversation,
+        AgentRun completed = runner.resume(waitingRoot.getId(),
             AgentResumeCommand.approveTool("deploy-call"));
-        AgentRun next = runner.run(conversation, "下一步");
+        AgentRun next = runner.run(agent, completed.getConversationHistory(),
+            new UserMessage("下一步"));
 
         assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
         assertEquals(AgentTaskPlanStatus.COMPLETED, completed.getTaskPlan().getStatus());
@@ -257,10 +258,10 @@ public class AgentTaskPlanningScenarioTest {
         model.enqueue(prompt -> new AiMessage("继续对话"));
         Agent agent = planningAgent("conversation-planning-agent", model);
         AgentRunner runner = runner(agent);
-        AgentConversation conversation = AgentConversation.create(agent);
 
-        AgentRun first = runner.run(conversation, "完成数据查询");
-        AgentRun second = runner.run(conversation, "谢谢");
+        AgentRun first = runner.run(agent, "完成数据查询");
+        AgentRun second = runner.run(agent, first.getConversationHistory(),
+            new UserMessage("谢谢"));
 
         assertEquals(AgentRunStatus.COMPLETED, first.getStatus());
         assertEquals(AgentRunStatus.COMPLETED, second.getStatus());

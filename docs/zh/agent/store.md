@@ -7,7 +7,7 @@ description: 实现 Run、Command 与 Artifact Store，并满足版本、租约�
 
 ## 概述
 
-AgentRunner 依赖三类 Store，它们解决不同问题：Run Store 保存当前状态和 Worker Lease，Command Store 保存外部恢复命令，Artifact Store 保存从 Prompt 外置的大型内容。内存实现仅适合测试和单实例试用。
+AgentRunner 必需 Run Store 和 Command Store：前者保存当前状态与 Worker Lease，后者保存外部恢复命令。Artifact Store 只在配置可选 `ToolResultOffloader` 时使用，用于保存从 Prompt 外置的大型内容。内存实现仅适合测试和单实例试用。
 
 ## Store 责任矩阵
 
@@ -23,12 +23,13 @@ AgentRunner 依赖三类 Store，它们解决不同问题：Run Store 保存当�
 AgentRunner runner = AgentRunner.builder()
     .runStore(jdbcRunStore)
     .commandStore(jdbcCommandStore)
-    .artifactStore(objectStorageArtifactStore)
+    .toolResultOffloader(ToolResultOffloader.largerThan(
+        20_000, objectStorageArtifactStore))
     .agentLoader(databaseAgentLoader)
     .build();
 ```
 
-多实例部署至少必须共享 Run Store、Command Store 和 AgentLoader。Artifact 是否需要共享取决于是否启用结果外置。事件持久化不属于 Framework Store，由业务系统通过 `AgentEventListener` 接入自己的审计库、消息平台或 Outbox。
+多实例部署至少必须共享 Run Store、Command Store 和 AgentLoader。启用结果外置时，所有 Runner 还必须使用指向同一持久化 Artifact Store 的等价 `ToolResultOffloader` 配置。事件持久化不属于 Framework Store，由业务系统通过 `AgentEventListener` 接入自己的审计库、消息平台或 Outbox。
 
 从旧版本升级时，原 JDBC events/event_sequences 表和 Redis 事件键不再被 Framework 读写。Schema 初始化不会自动删除历史数据；应由业务确认归档或迁移完成后自行清理。
 

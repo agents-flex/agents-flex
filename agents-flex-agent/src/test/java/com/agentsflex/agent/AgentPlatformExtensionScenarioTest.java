@@ -158,7 +158,7 @@ public class AgentPlatformExtensionScenarioTest {
         Agent agent = Agent.builder("context-agent")
             .instructions("system instruction")
             .chatModel(model)
-            .contextPolicy(AgentContextPolicy.recentMessages(2))
+            .maxAttachedMessages(2)
             .build();
         MemoryPrompt prompt = new MemoryPrompt();
         prompt.addUserMessage("first");

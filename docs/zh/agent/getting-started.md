@@ -126,20 +126,23 @@ Agent limited = Agent.builder("weather-assistant")
     .build();
 ```
 
-也可以用 `AgentRunOptions.executionPolicy(...)` 只覆盖某一次运行，并通过 `metadata(...)` 与 `invocationContext(...)` 附加业务信息。
+也可以用 `AgentRunOptions.executionPolicy(...)` 只覆盖某一次运行，通过 `metadata(...)` 附加可持久化业务信息，并用 `streaming(...)` 控制当前进程内的模型调用方式。
 
 ## 持续对话
 
-一个 Run 对应一个任务，不应把已完成 Run 直接当成下一轮对话。需要持续对话时使用 `AgentConversation`：
+一个 Run 对应一个任务，不应把已完成 Run 直接当成下一轮对话。持续对话的 ID 和 `ChatMemory` 由业务系统维护，每轮把历史消息传给 Runner：
 
 ```java
-AgentConversation conversation = AgentConversation.create("session-1001", agent);
+ChatMemory memory = loadMemory("session-1001");
+AgentRun first = runner.run(agent,
+    memory.getMessages(Integer.MAX_VALUE), new UserMessage("我叫小明"));
+saveHistory(memory, first.getConversationHistory());
 
-AgentRun first = runner.run(conversation, "我叫小明");
-AgentRun second = runner.run(conversation, "我叫什么？");
+AgentRun second = runner.run(agent,
+    memory.getMessages(Integer.MAX_VALUE), new UserMessage("我叫什么？"));
 ```
 
-每一轮创建新的 `AgentRun`，但共享 Conversation 的 `ChatMemory`。如果某轮处于阻塞状态，应恢复该 active Run，而不是开始新一轮。
+每一轮创建新的 `AgentRun`。业务系统负责回写 `getConversationHistory()`、防止同一会话并发开始两轮，并保存尚未结束的 runId。如果某轮处于阻塞状态，应按该 runId 恢复原 Run，而不是开始新一轮。
 
 ## 下一步
 

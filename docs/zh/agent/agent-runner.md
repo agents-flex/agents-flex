@@ -41,7 +41,7 @@ flowchart TD
     Planning -->|"否"| Middleware["Agent Step Middleware"]
     Middleware --> Phase{"内置状态机<br/>当前 Phase"}
 
-    Phase -->|"MODEL"| Context["整理上下文<br/>ContextManager / ContextPolicy"]
+    Phase -->|"MODEL"| Context["整理上下文<br/>ContextManager / maxAttachedMessages"]
     Context --> ModelChain["Model Middleware -> ChatModel"]
     ModelChain --> ModelResult{"模型响应"}
     ModelResult -->|"最终 AiMessage"| Complete["写入最终消息<br/>COMPLETED"]
@@ -101,11 +101,11 @@ AgentRunner runner = AgentRunner.builder()
     .runStore(runStore)
     .agentLoader(agentLoader)
     .commandStore(commandStore)
-    .artifactStore(artifactStore)
+    .toolResultOffloader(toolResultOffloader)
     .build();
 ```
 
-未提供的依赖使用内存实现。生产环境的替换要求见 [Store 持久化](./store)。
+Run Store、AgentLoader 和 Command Store 未提供时使用内存实现；工具结果外置默认禁用，只有配置完整的 `ToolResultOffloader` 才启用。生产环境的替换要求见 [Store 持久化](./store)。
 
 ## 三组执行入口
 
@@ -174,15 +174,14 @@ AgentRun cancelled = runner.requestCancellation(runId);
 
 取消是协作式的：Store 先保存单调取消标志，Runner 在安全边界转换为 `CANCELLED`。它不保证立即中断已经发出的 HTTP 请求或工具函数。
 
-跨请求恢复时，可使用 `restore(runId, invocationContext)` 重新附加不会持久化的租户身份与服务对象。
-
-## Conversation 入口
+## 业务会话入口
 
 ```java
-AgentRun run = runner.run(conversation, new UserMessage("继续上一个问题"));
+AgentRun run = runner.run(agent, history,
+    new UserMessage("继续上一个问题"));
 ```
 
-Runner 会把本轮协议消息同步回 Conversation，并维护 `activeRunId`。当 Conversation 已有阻塞 Run 时，应调用 `resume(conversation, command)`，不能开始另一轮。
+Runner 复制业务系统传入的历史，不会修改外部 ChatMemory，也不维护 conversationId 或 activeRunId。业务系统应在 Run 完成后保存 `getConversationHistory()`；Run 阻塞时保存其 ID，并通过 `resume(runId, command)` 恢复。
 
 ## 外部命令收件箱
 

@@ -1,6 +1,5 @@
 package com.agentsflex.agent.context;
 
-import com.agentsflex.agent.AgentInvocationContext;
 import com.agentsflex.core.message.Message;
 
 import java.util.List;
@@ -17,8 +16,7 @@ public interface AgentConversationSummarizer {
      * 汇总一组按对话顺序排列的历史消息。
      *
      * @param messages 即将从模型上下文压缩掉的历史消息
-     * @param invocationContext 当前调用的非持久化业务上下文
      * @return 可作为后续模型上下文使用的摘要文本
      */
-    String summarize(List<Message> messages, AgentInvocationContext invocationContext);
+    String summarize(List<Message> messages);
 }

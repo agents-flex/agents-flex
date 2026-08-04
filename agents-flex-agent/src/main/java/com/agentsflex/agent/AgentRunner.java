@@ -14,9 +14,8 @@ import com.agentsflex.agent.command.AgentRunCommandStore;
 import com.agentsflex.agent.command.AgentWakeupListener;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.context.AgentArtifactReference;
-import com.agentsflex.agent.context.AgentArtifactStore;
 import com.agentsflex.agent.context.AgentContextUpdate;
-import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
+import com.agentsflex.agent.context.ToolResultOffloader;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
@@ -112,9 +111,9 @@ public final class AgentRunner {
      */
     private final AgentRunCommandStore commandStore;
     /**
-     * 保存从 Prompt 卸载的大型工具结果。
+     * 可选的大型工具结果外置能力；未配置时不执行外置。
      */
-    private final AgentArtifactStore artifactStore;
+    private final ToolResultOffloader toolResultOffloader;
     /**
      * 统一模型调用、Token 统计和事件发布的适配器。
      */
@@ -161,24 +160,32 @@ public final class AgentRunner {
      * 创建自定义 RunStore 和 AgentLoader、其余依赖使用进程内实现的 Runner。
      */
     public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader) {
-        this(runStore, agentLoader, new InMemoryAgentRunCommandStore(),
-            new InMemoryAgentArtifactStore());
+        this(runStore, agentLoader, new InMemoryAgentRunCommandStore(), null);
+    }
+
+    /**
+     * 创建显式提供持久化 Store、但不启用工具结果外置的 Runner。
+     */
+    public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader,
+                       AgentRunCommandStore commandStore) {
+        this(runStore, agentLoader, commandStore, null);
     }
 
     /**
      * 创建显式提供全部可替换持久化依赖的 Runner。
      */
     public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader,
-                       AgentRunCommandStore commandStore, AgentArtifactStore artifactStore) {
+                       AgentRunCommandStore commandStore,
+                       ToolResultOffloader toolResultOffloader) {
         if (runStore == null || agentLoader == null
-            || commandStore == null || artifactStore == null) {
+            || commandStore == null) {
             throw new IllegalArgumentException(
                 "AgentRunner dependencies must not be null");
         }
         this.runStore = runStore;
         this.agentLoader = agentLoader;
         this.commandStore = commandStore;
-        this.artifactStore = artifactStore;
+        this.toolResultOffloader = toolResultOffloader;
         this.modelInvoker = new AgentModelInvoker(this::emitEvent);
     }
 
@@ -186,14 +193,14 @@ public final class AgentRunner {
      * AgentRunner 依赖构建器。
      *
      * <p>未显式配置的组件使用进程内实现，适合测试和本地开发。多实例部署应至少替换 RunStore、
-     * CommandStore、AgentLoader，并按需求替换 ArtifactStore。AgentLoader 必须返回
+     * CommandStore、AgentLoader，并按需求配置 ToolResultOffloader。AgentLoader 必须返回
      * 包含完整工具集合的可执行 Agent。</p>
      */
     public static final class Builder {
         private AgentRunStore runStore = new InMemoryAgentRunStore();
         private AgentLoader agentLoader = new InMemoryAgentLoader();
         private AgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
-        private AgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
+        private ToolResultOffloader toolResultOffloader;
 
         /**
          * 设置 Snapshot 与租约存储。
@@ -220,10 +227,10 @@ public final class AgentRunner {
         }
 
         /**
-         * 设置大型工具结果存储。
+         * 设置大型工具结果的判断与存储能力；未设置时禁用外置。
          */
-        public Builder artifactStore(AgentArtifactStore value) {
-            artifactStore = value;
+        public Builder toolResultOffloader(ToolResultOffloader value) {
+            toolResultOffloader = value;
             return this;
         }
 
@@ -231,7 +238,7 @@ public final class AgentRunner {
          * 校验全部依赖并创建 Runner。
          */
         public AgentRunner build() {
-            return new AgentRunner(runStore, agentLoader, commandStore, artifactStore);
+            return new AgentRunner(runStore, agentLoader, commandStore, toolResultOffloader);
         }
     }
 
@@ -257,10 +264,10 @@ public final class AgentRunner {
     }
 
     /**
-     * @return Runner 使用的 Artifact Store
+     * @return Runner 使用的工具结果外置能力；未启用时为 {@code null}
      */
-    public AgentArtifactStore getArtifactStore() {
-        return artifactStore;
+    public ToolResultOffloader getToolResultOffloader() {
+        return toolResultOffloader;
     }
 
     /**
@@ -338,28 +345,6 @@ public final class AgentRunner {
     }
 
     /**
-     * 在持续对话中使用本轮结构化消息创建并执行新的 Run。
-     */
-    public AgentRun run(AgentConversation conversation, UserMessage userMessage) {
-        return run(start(conversation, userMessage));
-    }
-
-    /**
-     * 在持续对话中使用纯文本便捷创建并执行新的 Run。
-     */
-    public AgentRun run(AgentConversation conversation, String userInput) {
-        return run(conversation, new UserMessage(userInput));
-    }
-
-    /**
-     * 在持续对话中使用本轮结构化消息和运行时覆盖参数创建并执行新的 Run。
-     */
-    public AgentRun run(AgentConversation conversation, UserMessage userMessage,
-                        AgentRunOptions options) {
-        return run(start(conversation, userMessage, options));
-    }
-
-    /**
      * 创建并保存一个尚未执行的 Run。
      */
     public AgentRun start(Agent agent, String userInput) {
@@ -398,7 +383,7 @@ public final class AgentRunner {
     /**
      * 使用已有会话历史、本轮结构化消息和运行时覆盖参数创建并保存新的 Run。
      *
-     * <p>这是无 Conversation 场景最终汇聚的创建入口。方法只建立可恢复的 READY 状态，不调用模型；
+     * <p>这是携带历史消息创建 Run 的统一入口。方法只建立可恢复的 READY 状态，不调用模型；
      * 初始 Snapshot 成功后，Run 才会返回给调用方或后台调度器。</p>
      */
     public AgentRun start(Agent agent, List<? extends Message> conversationHistory,
@@ -410,54 +395,6 @@ public final class AgentRunner {
         // 初始 Snapshot 使任务在第一次模型调用之前就可以被 Worker 发现和恢复。
         saveSnapshot(run);
         return run;
-    }
-
-    /**
-     * 在持续对话中创建并保存一个尚未执行的 Run。
-     */
-    public AgentRun start(AgentConversation conversation, UserMessage userMessage) {
-        return start(conversation, userMessage, AgentRunOptions.defaults());
-    }
-
-    /**
-     * 在持续对话中使用纯文本便捷创建并保存新的 Run。
-     */
-    public AgentRun start(AgentConversation conversation, String userInput) {
-        return start(conversation, new UserMessage(userInput));
-    }
-
-    /**
-     * 在持续对话中创建并保存一个带有运行时覆盖参数的 Run。
-     *
-     * <p>同一 Conversation 同时只允许一个未终止 Run。创建过程会把本轮消息加入共享 Memory；如果
-     * 初始 Snapshot 保存失败，方法会恢复之前的 Memory 和活动 Run 标记，避免会话留下半创建状态。</p>
-     */
-    public AgentRun start(AgentConversation conversation, UserMessage userMessage,
-                          AgentRunOptions options) {
-        if (conversation == null) {
-            throw new IllegalArgumentException("conversation must not be null");
-        }
-        synchronized (conversation) {
-            // Conversation 的活动 Run 与共享 Memory 必须作为一个逻辑整体更新。
-            conversation.assertCanStart();
-            List<Message> previousMessages = conversation.getMessages();
-            Agent agent = conversation.getAgent();
-            prepareAgent(agent);
-            AgentRun run = AgentRun.start(agent, conversation.getMemory(), userMessage, options)
-                .attachConversation(conversation);
-            prepareRun(run);
-            run.putMetadata(AgentConversation.RUN_METADATA_KEY, conversation.getId());
-            conversation.activate(run.getId());
-            try {
-                saveSnapshot(run);
-                return run;
-            } catch (RuntimeException error) {
-                // Store 写入失败时撤销内存侧变更，调用方可以安全重试本轮消息。
-                conversation.release(run.getId());
-                replaceConversationMemory(conversation, previousMessages);
-                throw error;
-            }
-        }
     }
 
     /**
@@ -484,7 +421,6 @@ public final class AgentRunner {
             throw new IllegalArgumentException("run must not be null");
         }
         AgentRun current = run;
-        AgentConversation conversation = run.getConversation();
         ensurePreparedAndSnapshotSaved(current);
         refreshCancellation(current);
         while (true) {
@@ -508,7 +444,6 @@ public final class AgentRunner {
             // 子 Run 终止后把结果写回父 Run，再从父 Run 原来的恢复 Phase 继续外层循环。
             current = resumeParentFromChild(child);
             if (current == null) return run;
-            if (conversation != null) current.attachConversation(conversation);
         }
     }
 
@@ -534,19 +469,9 @@ public final class AgentRunner {
     /**
      * 从 Store 恢复最新 Snapshot。
      *
-     * <p>方法按照快照中的 agentId 和 agentVersion 加载匹配定义，不使用当前生效版本，并附加空的
-     * InvocationContext。</p>
+     * <p>方法按照快照中的 agentId 和 agentVersion 加载匹配定义，不使用当前生效版本。</p>
      */
     public AgentRun restore(String runId) {
-        return restore(runId, AgentInvocationContext.empty());
-    }
-
-    /**
-     * 从 Store 恢复 Run，并附加当前进程使用的调用上下文。
-     *
-     * <p>InvocationContext 不参与持久化，Worker 应在每次恢复时重新提供租户身份和进程内服务。</p>
-     */
-    public AgentRun restore(String runId, AgentInvocationContext invocationContext) {
         // Snapshot 是恢复状态的事实来源；运行时对象不能从旧 JVM 内存中获取。
         AgentRunSnapshot snapshot = runStore.load(runId);
         if (snapshot == null) {
@@ -558,35 +483,7 @@ public final class AgentRunner {
             throw new IllegalStateException("Agent cannot be loaded: " + snapshot.getAgentId()
                 + ", version=" + snapshot.getAgentVersion());
         }
-        // InvocationContext 不进入 Snapshot，由当前 API 请求或 Worker 在恢复时重新附加。
-        return AgentRun.fromSnapshot(agent, snapshot).attachInvocationContext(invocationContext);
-    }
-
-    /**
-     * 从 Store 恢复持续对话当前的活动 Run，并重新绑定 Conversation 的 Memory。
-     *
-     * <p>恢复后的消息以 Run Snapshot 为准，确保审批、工具结果和中间模型消息不会丢失。</p>
-     */
-    public AgentRun restore(AgentConversation conversation) {
-        if (conversation == null || !StringUtil.hasText(conversation.getActiveRunId())) {
-            throw new IllegalStateException("conversation does not have an active run");
-        }
-        AgentRunSnapshot snapshot = runStore.load(conversation.getActiveRunId());
-        if (snapshot == null) {
-            throw new IllegalStateException("AgentRun snapshot not found: "
-                + conversation.getActiveRunId());
-        }
-        Agent agent = conversation.getAgent();
-        if (!agent.getId().equals(snapshot.getAgentId())
-            || !agent.getVersion().equals(snapshot.getAgentVersion())) {
-            throw new IllegalStateException("conversation Agent does not match active run: "
-                + snapshot.getAgentId() + ", version=" + snapshot.getAgentVersion());
-        }
-        replaceConversationMemory(conversation, snapshot.getMessages());
-        AgentRun run = AgentRun.fromSnapshot(agent, snapshot).attachConversation(conversation);
-        // Snapshot 恢复默认会创建独立 Memory，这里重新绑定 Conversation 的共享 Memory。
-        run.getPrompt().setMemory(conversation.getMemory());
-        return run;
+        return AgentRun.fromSnapshot(agent, snapshot);
     }
 
     /**
@@ -628,9 +525,6 @@ public final class AgentRunner {
         AgentRun resumedChild = resume(child, command);
         if (!resumedChild.getStatus().isTerminal()) return run;
         AgentRun parent = resumeParentFromChild(resumedChild);
-        if (parent != null && run.getConversation() != null) {
-            parent.attachConversation(run.getConversation());
-        }
         return parent == null ? run : runUntilBlocked(parent);
     }
 
@@ -670,13 +564,6 @@ public final class AgentRunner {
      */
     public AgentRun resume(String runId, AgentResumeCommand command) {
         return resume(restore(runId), command);
-    }
-
-    /**
-     * 恢复持续对话中正在等待外部输入的 Run。
-     */
-    public AgentRun resume(AgentConversation conversation, AgentResumeCommand command) {
-        return resume(restore(conversation), command);
     }
 
     /**
@@ -812,8 +699,7 @@ public final class AgentRunner {
      * <p>一次调用最多调用模型一次，但可以顺序处理该模型回合产生的全部 ToolCall。方法返回
      * {@link AgentStepResult} 描述本步结果；是否继续下一步由 {@link #runUntilBlocked(AgentRun)} 决定。</p>
      *
-     * <p>步骤开始/结束实时事件在最外层发布，Conversation 的 Memory 和活动 Run 标记也在此统一更新，
-     * 因而所有执行路径共享相同的生命周期语义。</p>
+     * <p>步骤开始和结束事件在最外层发布，所有执行路径共享相同的生命周期语义。</p>
      */
     public AgentStepResult step(AgentRun run) {
         emitEvent(run, AgentEventType.STEP_STARTED,
@@ -824,40 +710,8 @@ public final class AgentRunner {
                 objectAttributes("stepType", result == null ? null : result.getType()));
             return result;
         } finally {
-            updateConversation(run);
             if (run != null && run.getStatus().isTerminal()) {
                 eventSequences.remove(run.getId());
-            }
-        }
-    }
-
-    /**
-     * Run 结束时允许 Conversation 接收下一轮消息；阻塞和运行状态继续保留活动 Run。
-     */
-    private void updateConversation(AgentRun run) {
-        if (run == null || run.getConversation() == null) {
-            return;
-        }
-        if (run.getStatus().isTerminal()) {
-            replaceConversationMemory(run.getConversation(), run.getConversationHistory());
-            run.getConversation().release(run.getId());
-        }
-    }
-
-    /**
-     * 使用 Snapshot 消息重建 Conversation Memory，并排除由 Agent 定义重新注入的系统消息。
-     */
-    private void replaceConversationMemory(AgentConversation conversation,
-                                           List<? extends Message> messages) {
-        synchronized (conversation) {
-            conversation.getMemory().clear();
-            if (messages == null) {
-                return;
-            }
-            for (Message message : messages) {
-                if (!(message instanceof com.agentsflex.core.message.SystemMessage)) {
-                    conversation.getMemory().addMessage(AgentMessageUtils.copyMessage(message));
-                }
             }
         }
     }
@@ -1147,8 +1001,7 @@ public final class AgentRunner {
         AiMessageResponse response;
         try {
             // 上下文管理器可压缩历史或替换大型内容；变更后先落盘再把新 Prompt 发送给模型。
-            AgentContextUpdate update = agent.getContextManager()
-                .prepare(run, run.getInvocationContext());
+            AgentContextUpdate update = agent.getContextManager().prepare(run);
             if (update != null && update.isChanged()) {
                 saveSnapshot(run);
                 emitEvent(run, AgentEventType.CONTEXT_COMPACTED,
@@ -1453,7 +1306,7 @@ public final class AgentRunner {
         AgentTaskPlan plan = parent.getTaskPlan();
         AgentTask task = plan == null ? null : plan.getActiveTask();
         return task == null || !StringUtil.hasText(task.getChildRunId())
-            ? null : restore(task.getChildRunId(), parent.getInvocationContext());
+            ? null : restore(task.getChildRunId());
     }
 
     /**
@@ -1640,8 +1493,8 @@ public final class AgentRunner {
      * 执行单个业务工具并把任意 Java 返回值规范化为 ToolMessage。
      *
      * <p>{@link AgentToolInvocation} 提供跨恢复稳定的调用身份，Tool 可将其作为业务幂等键。调用顺序为
-     * Agent Middleware、ToolInterceptor、Tool 函数；InvocationContext 和进度发射器通过工具上下文
-     * attributes 传入，不写入工具参数 Schema。</p>
+     * Agent Middleware、ToolInterceptor、Tool 函数；调用标识和进度发射器通过工具上下文 attributes
+     * 传入，不写入工具参数 Schema。</p>
      */
     private ToolMessage executeTool(AgentRun run, Tool tool, ToolCall call) {
         List<ToolInterceptor> interceptors = run.getAgent().getToolInterceptors();
@@ -1675,7 +1528,6 @@ public final class AgentRunner {
             // 这些 attributes 只在本次 JVM 调用链存在，不会混入模型可见的工具参数。
             Map<String, Object> attributes = new LinkedHashMap<>();
             attributes.put(AgentToolInvocation.CONTEXT_ATTRIBUTE, invocation);
-            attributes.put(AgentInvocationContext.CONTEXT_ATTRIBUTE, run.getInvocationContext());
             attributes.put(AgentToolProgressEmitter.CONTEXT_ATTRIBUTE,
                 (AgentToolProgressEmitter) (message, data) -> emitEvent(run,
                     AgentEventType.TOOL_PROGRESS,
@@ -1694,14 +1546,14 @@ public final class AgentRunner {
      * 将超过策略阈值的工具结果保存到 Artifact Store，并用稳定引用替换消息正文。
      */
     private void maybeOffloadToolResult(AgentRun run, ToolCall call, ToolMessage result) {
+        if (toolResultOffloader == null) return;
         String content = result.getContent();
-        if (!run.getAgent().getToolResultOffloadPolicy()
-            .shouldOffload(call.getName(), content)) return;
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("toolCallId", callKey(call));
         metadata.put("toolName", call.getName());
-        AgentArtifactReference reference = artifactStore.save(run.getId(),
-            "application/json", content, metadata);
+        AgentArtifactReference reference = toolResultOffloader.offload(run.getId(),
+            call.getName(), "application/json", content, metadata);
+        if (reference == null) return;
         Map<String, Object> placeholder = new LinkedHashMap<>();
         placeholder.put("offloaded", true);
         placeholder.put("artifactId", reference.getArtifactId());
@@ -2063,14 +1915,18 @@ public final class AgentRunner {
                 "childAgentId", child.getAgent().getId()));
     }
 
-    /** 发布模型已经创建任务计划的事件。 */
+    /**
+     * 发布模型已经创建任务计划的事件。
+     */
     private void notifyPlanCreated(AgentRun run, AgentTaskPlan plan) {
         emitEvent(run, AgentEventType.PLAN_CREATED,
             objectAttributes("planId", plan.getId(), "goal", plan.getGoal(),
                 "taskCount", plan.getTasks().size()));
     }
 
-    /** 发布模型已经调整待执行任务的事件。 */
+    /**
+     * 发布模型已经调整待执行任务的事件。
+     */
     private void notifyPlanUpdated(AgentRun run, AgentTaskPlan plan) {
         emitEvent(run, AgentEventType.PLAN_UPDATED,
             objectAttributes("planId", plan.getId(),
@@ -2111,7 +1967,9 @@ public final class AgentRunner {
             "remainingIterations", Math.max(0, maxIterations - run.getIterationCount()));
     }
 
-    /** 创建事件类型相关的数据。 */
+    /**
+     * 创建事件类型相关的数据。
+     */
     private Map<String, Object> objectAttributes(Object... values) {
         Map<String, Object> attributes = new LinkedHashMap<>();
         for (int i = 0; i + 1 < values.length; i += 2) {
@@ -2131,7 +1989,9 @@ public final class AgentRunner {
         return base;
     }
 
-    /** 创建不可变事件并同步通知全部监听器；空 Run 不产生事件。 */
+    /**
+     * 创建不可变事件并同步通知全部监听器；空 Run 不产生事件。
+     */
     private void emitEvent(AgentRun run, AgentEventType type, Map<String, ?> data) {
         if (run == null) return;
         Map<String, Object> values = objectAttributes(

@@ -1,6 +1,5 @@
 package com.agentsflex.agent.context;
 
-import com.agentsflex.agent.AgentInvocationContext;
 import com.agentsflex.agent.AgentRun;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
@@ -52,7 +51,7 @@ public final class MessageCountAgentContextManager implements AgentContextManage
      * 在模型调用前检查并原子替换 Run 的 Memory 消息。
      */
     @Override
-    public AgentContextUpdate prepare(AgentRun run, AgentInvocationContext invocationContext) {
+    public AgentContextUpdate prepare(AgentRun run) {
         List<Message> all = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
         List<Message> messages = new ArrayList<>();
         for (Message message : all) if (!(message instanceof SystemMessage)) messages.add(message);
@@ -63,7 +62,7 @@ public final class MessageCountAgentContextManager implements AgentContextManage
         if (cut <= 0) return AgentContextUpdate.unchanged();
 
         List<Message> older = new ArrayList<>(messages.subList(0, cut));
-        String summaryText = summarizer.summarize(older, invocationContext);
+        String summaryText = summarizer.summarize(older);
         if (summaryText == null) return AgentContextUpdate.unchanged();
 
         UserMessage summary = new UserMessage("Conversation summary:\n" + summaryText);

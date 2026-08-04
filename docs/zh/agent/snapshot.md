@@ -9,7 +9,15 @@ description: 理解 AgentRunSnapshot 的内容、保存边界、版本控制和�
 
 Snapshot 是 `AgentRun` 在稳定执行边界的持久化状态，具体值对象为 `AgentRunSnapshot`。它让任务在审批回调、后台 Worker、进程重启或节点切换后继续执行，而无需重放整条模型与工具链。
 
-Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对象图序列化下来。模型、工具、Middleware 和调用期服务由 AgentLoader 与 InvocationContextProvider 恢复。
+Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对象图序列化下来。模型、工具、Middleware 及其运行期服务由 `AgentLoader` 重新装配。
+
+运行状态分为三层：
+
+- `AgentRunState`：唯一的可序列化状态定义，集中保存生命周期、计数、租约、规划和消息副本。
+- `AgentRun`：可变 State 加上 Agent、Prompt、Throwable 和当前进程的运行时属性。
+- `AgentRunSnapshot`：Agent ID/版本加上深拷贝后的不可变 State。
+
+因此 Run 与 Snapshot 不再各自镜像全部字段；新增持久化状态时只需在 `AgentRunState` 定义一次。Snapshot 的兼容 getter 和 Builder 仍然保留，但内部都委托给 State。
 
 ## 保存内容
 
@@ -24,7 +32,7 @@ Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对�
 - metadata、最终消息和错误摘要。
 - Store version 与 Worker Lease 信息。
 
-不包含 `ChatModel`、Tool 实例、Listener、Middleware、原始异常对象和 `AgentInvocationContext`。
+不包含 `ChatModel`、Tool 实例、Listener、Middleware、原始异常对象和当前进程的 streaming 设置。
 
 ## 自动保存边界
 
@@ -58,15 +66,15 @@ System.out.println(saved.getVersion());
 ## 恢复校验
 
 ```java
-AgentRun run = runner.restore(runId, invocationContext);
+AgentRun run = runner.restore(runId);
 ```
 
 恢复时 Runner：
 
 1. 从 RunStore 读取快照。
 2. 调用 `AgentLoader.load(agentId, agentVersion)`。
-3. 重建消息、状态、计数和计划。
-4. 附加调用方提供的瞬时 Invocation Context。
+3. 从不可变 State 创建可变运行副本，并重建 Prompt 和异常摘要。
+4. 使用恢复后的非流式默认调用方式继续推进；业务 metadata 已包含在 Snapshot 中。
 
 历史 Agent 版本缺失时应明确失败，不能静默使用最新定义。
 
@@ -80,6 +88,8 @@ AgentStoreSerializer serializer =
 ```
 
 只有在 metadata 确实需要业务值对象时才加入精确白名单。不要接受任意 AutoType，也不要把非 Serializable 对象写入状态。
+
+`AgentRunState` 引入后，Snapshot 的序列化结构由平铺字段调整为嵌套 State，Java 序列化版本也已提升。已有部署升级前应先完成旧 Run，或由业务迁移旧 Snapshot；不要在滚动升级期间让新旧 Runner 共同读写同一批未完成 Run。
 
 ## 数据保留
 

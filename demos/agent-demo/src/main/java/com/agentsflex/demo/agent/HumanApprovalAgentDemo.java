@@ -14,7 +14,6 @@ import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.AgentWorker;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
-import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
@@ -92,10 +91,9 @@ public final class HumanApprovalAgentDemo {
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
         List<AgentEvent> events = new java.util.ArrayList<>();
         InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
-        InMemoryAgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
 
         AgentRunner firstRunner = new AgentRunner(
-            runStore, agentLoader, commandStore, artifactStore)
+            runStore, agentLoader, commandStore)
             .addEventListener(events::add);
         // run() 会执行到终态或阻塞态；遇到审批点时返回 WAITING_FOR_APPROVAL。
         AgentRun waiting = firstRunner.run(agent, "发布 order-api 2.4.0");
@@ -119,7 +117,7 @@ public final class HumanApprovalAgentDemo {
             .withMetadata("approvalSource", "release-console");
 
         AgentRunner secondRunner = new AgentRunner(
-            runStore, agentLoader, commandStore, artifactStore)
+            runStore, agentLoader, commandStore)
             .addEventListener(events::add);
         // 审批接口只负责把命令可靠写入 Inbox，不在当前请求中执行模型或部署工具。
         secondRunner.submitCommand("approval-deploy-call-1", waiting.getId(), approval);

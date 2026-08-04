@@ -8,9 +8,7 @@ package com.agentsflex.demo.agent.console;
 
 import com.agentsflex.agent.Agent;
 import com.agentsflex.agent.AgentBudget;
-import com.agentsflex.agent.AgentConversation;
 import com.agentsflex.agent.AgentExecutionPolicy;
-import com.agentsflex.agent.AgentInvocationContext;
 import com.agentsflex.agent.AgentResumeCommand;
 import com.agentsflex.agent.AgentRun;
 import com.agentsflex.agent.AgentRunOptions;
@@ -21,6 +19,8 @@ import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
+import com.agentsflex.core.memory.ChatMemory;
+import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.UserMessage;
@@ -45,9 +45,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 使用真实大模型演示持续对话、原生 ToolCall 和 Human-in-the-loop 的控制台程序。
  *
- * <p>每条普通用户消息都会在同一个 AgentConversation 中创建新的 AgentRun。模型直接回答时 Run
- * 一步完成；模型选择工具时 Runner 自动执行工具并继续调用模型；高风险工具会先进入审批等待状态，
- * 控制台收集人的决定后恢复原 Run。</p>
+ * <p>业务代码维护 conversationId 和 ChatMemory，每条普通用户消息都携带历史消息创建新的 AgentRun。
+ * 模型直接回答时 Run 一步完成；模型选择工具时 Runner 自动执行工具并继续调用模型；高风险工具会
+ * 先进入审批等待状态，控制台收集人的决定后按 runId 恢复原 Run。</p>
  */
 public final class AgentConsoleDemo {
 
@@ -68,23 +68,24 @@ public final class AgentConsoleDemo {
         Tool createTicket = createTicketTool(ticketSequence);
         Agent agent = createAgent(chatModel, currentTime, createTicket);
 
-        // Runner 是可复用的执行引擎；Conversation 才保存这个控制台用户的持续对话 Memory。
+        // Runner 只执行独立 Run；会话标识和 ChatMemory 由业务代码维护。
         AgentRunner runner = AgentRunner.builder()
             .agentLoader(new InMemoryAgentLoader(agent))
             .build();
         runner.addEventListener(AgentConsoleDemo::printEvent);
-        AgentConversation conversation = AgentConversation.create("console-" + UUID.randomUUID(), agent);
+        String conversationId = "console-" + UUID.randomUUID();
+        ChatMemory memory = new DefaultChatMemory(conversationId);
 
-        printWelcome(configuration, conversation);
+        printWelcome(configuration, conversationId);
         try (BufferedReader reader = new BufferedReader(
             new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
-            runConsole(reader, runner, conversation);
+            runConsole(reader, runner, agent, conversationId, memory);
         }
     }
 
     /** 持续读取控制台输入；每次循环表示一次新的正常对话轮次。 */
-    private static void runConsole(BufferedReader reader, AgentRunner runner,
-                                   AgentConversation conversation) throws IOException {
+    private static void runConsole(BufferedReader reader, AgentRunner runner, Agent agent,
+                                   String conversationId, ChatMemory memory) throws IOException {
         while (true) {
             System.out.print("\n你 > ");
             String input = reader.readLine();
@@ -100,26 +101,23 @@ public final class AgentConsoleDemo {
                 continue;
             }
             if ("/history".equalsIgnoreCase(input.trim())) {
-                printHistory(conversation);
+                printHistory(memory);
                 continue;
             }
 
             UserMessage userMessage = new UserMessage(input);
-            AgentRunOptions options = AgentRunOptions.builder()
-                // sessionId 和 requestId 只作用于本轮调用链，不会代替 Conversation 的消息历史。
-                .invocationContext(AgentInvocationContext.builder()
-                    .sessionId(conversation.getId())
-                    .requestId(UUID.randomUUID().toString())
-                    .userId("console-user")
-                    .build())
-                .build();
-
             try {
-                AgentRun run = runner.run(conversation, userMessage, options);
-                run = handleBlockedRun(reader, runner, conversation, run);
+                AgentRun run = runner.run(agent, memory.getMessages(Integer.MAX_VALUE), userMessage,
+                    AgentRunOptions.builder()
+                        .metadata("conversationId", conversationId)
+                        .build());
+                run = handleBlockedRun(reader, runner, run);
                 if (run == null) {
                     System.out.println("对话已结束，尚未审批的 Run 保留在等待状态。");
                     return;
+                }
+                if (run.getStatus().isTerminal()) {
+                    replaceMemory(memory, run.getConversationHistory());
                 }
                 printRunResult(run);
             } catch (RuntimeException error) {
@@ -131,11 +129,11 @@ public final class AgentConsoleDemo {
     /**
      * 处理 Run 的外部等待状态。
      *
-     * <p>审批和用户补充都恢复当前 activeRunId，不会创建新的 AgentRun。循环结构允许一次任务中连续
-     * 出现多个审批点。</p>
+     * <p>审批和用户补充都恢复当前 runId，不会创建新的 AgentRun。循环结构允许一次任务中连续出现
+     * 多个审批点。</p>
      */
     private static AgentRun handleBlockedRun(BufferedReader reader, AgentRunner runner,
-                                             AgentConversation conversation, AgentRun run)
+                                             AgentRun run)
         throws IOException {
         AgentRun current = run;
         while (current.getStatus().isBlocked()) {
@@ -144,7 +142,7 @@ public final class AgentConsoleDemo {
                 if (decision == null) {
                     return null;
                 }
-                current = runner.resume(conversation, decision);
+                current = runner.resume(current.getId(), decision);
                 continue;
             }
             if (current.getStatus() == AgentRunStatus.WAITING_FOR_USER) {
@@ -154,7 +152,7 @@ public final class AgentConsoleDemo {
                 if (value == null || isExit(value)) {
                     return null;
                 }
-                current = runner.resume(conversation, AgentResumeCommand.userInput(value)
+                current = runner.resume(current.getId(), AgentResumeCommand.userInput(value)
                     .withMetadata("source", "console"));
                 continue;
             }
@@ -332,9 +330,9 @@ public final class AgentConsoleDemo {
             + ", toolCalls=" + run.getToolCallCount() + ", tokens=" + run.getTotalTokens());
     }
 
-    private static void printHistory(AgentConversation conversation) {
-        List<Message> messages = conversation.getMessages();
-        System.out.println("\n当前 Conversation 共 " + messages.size() + " 条协议消息：");
+    private static void printHistory(ChatMemory memory) {
+        List<Message> messages = memory.getMessages(Integer.MAX_VALUE);
+        System.out.println("\n当前会话共 " + messages.size() + " 条协议消息：");
         for (int i = 0; i < messages.size(); i++) {
             Message message = messages.get(i);
             System.out.println("  " + (i + 1) + ". " + message.getClass().getSimpleName()
@@ -342,21 +340,29 @@ public final class AgentConsoleDemo {
         }
     }
 
+    /** 使用 Run 返回的完整历史替换业务侧 Memory，避免重复追加已有消息。 */
+    private static void replaceMemory(ChatMemory memory, List<Message> messages) {
+        memory.clear();
+        for (Message message : messages) {
+            memory.addMessage(message);
+        }
+    }
+
     private static void printWelcome(DemoConfiguration configuration,
-                                     AgentConversation conversation) {
+                                     String conversationId) {
         System.out.println("============================================================");
         System.out.println("Agents-Flex 真实模型 Agent 控制台 Demo");
         System.out.println("============================================================");
         System.out.println("model        : " + configuration.model);
         System.out.println("endpoint     : " + configuration.endpoint + configuration.requestPath);
-        System.out.println("conversation : " + conversation.getId());
+        System.out.println("conversation : " + conversationId);
         printHelp();
     }
 
     private static void printHelp() {
         System.out.println("\n建议依次尝试：");
         System.out.println("  1. 你好，我叫小明。             （普通持续对话）");
-        System.out.println("  2. 你还记得我叫什么吗？         （读取 Conversation Memory）");
+        System.out.println("  2. 你还记得我叫什么吗？         （读取业务 ChatMemory）");
         System.out.println("  3. 上海现在几点？               （自动调用只读工具）");
         System.out.println("  4. 帮我创建一个高优先级登录故障工单。（触发人工审批）");
         System.out.println("命令：/history 查看协议消息，/help 查看帮助，/exit 退出。");

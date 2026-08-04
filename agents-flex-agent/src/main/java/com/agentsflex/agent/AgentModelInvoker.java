@@ -39,10 +39,10 @@ final class AgentModelInvoker {
     }
 
     /**
-     * 根据 Invocation Context 的 streaming 配置选择模型调用方式。
+     * 根据当前 Run 的 streaming 设置选择模型调用方式。
      */
     AiMessageResponse invoke(AgentRun run, Prompt prompt) {
-        if (!run.getInvocationContext().isStreaming()) {
+        if (!run.isStreaming()) {
             return run.getAgent().getChatModel().chat(prompt, run.getAgent().getChatOptions());
         }
         return invokeStreaming(run, prompt);
@@ -87,7 +87,7 @@ final class AgentModelInvoker {
             }
 
             /**
-             * 读取流关闭时汇总的完整消息、调用上下文和异常，并通知调用线程继续处理。
+             * 读取流关闭时汇总的完整消息、聊天状态和异常，并通知调用线程继续处理。
              */
             @Override
             public void onClose(StreamContext context) {

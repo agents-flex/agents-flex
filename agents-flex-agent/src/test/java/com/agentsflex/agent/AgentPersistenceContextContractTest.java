@@ -7,7 +7,7 @@ import com.agentsflex.agent.context.AgentArtifactReference;
 import com.agentsflex.agent.context.AgentContextUpdate;
 import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.agent.context.ToolResultOffloadPolicy;
+import com.agentsflex.agent.context.ToolResultOffloader;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -60,6 +60,34 @@ public class AgentPersistenceContextContractTest {
         assertEquals(100, restored.getExecutionPolicy().getBudget().getMaxTotalTokens());
         assertEquals("你好, serialization", restored.getMessages().get(0).getTextContent());
         assertEquals("t-1", restored.getMetadata().get("tenant"));
+        assertTrue(restored.getState().isImmutable());
+    }
+
+    @Test
+    public void shouldKeepSnapshotStateImmutableAndIsolatedFromBuilderChanges() {
+        AgentRunSnapshot original = AgentRunSnapshot.builder("run-1", "agent", "1")
+            .executionPolicy(AgentExecutionPolicy.defaults())
+            .status(AgentRunStatus.READY)
+            .messages(Collections.singletonList(new UserMessage("original")))
+            .metadata(Collections.<String, Object>singletonMap("tenant", "t-1"))
+            .build();
+
+        AgentRunSnapshot changed = original.toBuilder()
+            .status(AgentRunStatus.RUNNING)
+            .metadata(Collections.<String, Object>singletonMap("tenant", "t-2"))
+            .build();
+
+        assertTrue(original.getState().isImmutable());
+        assertEquals(AgentRunStatus.READY, original.getStatus());
+        assertEquals("t-1", original.getMetadata().get("tenant"));
+        assertEquals(AgentRunStatus.RUNNING, changed.getStatus());
+        assertEquals("t-2", changed.getMetadata().get("tenant"));
+        try {
+            original.getState().setStatus(AgentRunStatus.FAILED);
+            fail("snapshot state must reject mutation");
+        } catch (UnsupportedOperationException expected) {
+            assertEquals("AgentRunState is immutable", expected.getMessage());
+        }
     }
 
     @Test
@@ -80,9 +108,9 @@ public class AgentPersistenceContextContractTest {
         AgentRun run = runWithMessages("null-summary", 6);
         List<Message> before = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
         MessageCountAgentContextManager manager = new MessageCountAgentContextManager(
-            4, 2, (messages, context) -> null);
+            4, 2, messages -> null);
 
-        AgentContextUpdate update = manager.prepare(run, AgentInvocationContext.empty());
+        AgentContextUpdate update = manager.prepare(run);
 
         assertFalse(update.isChanged());
         assertEquals(texts(before), texts(run.getPrompt().getMemory()
@@ -95,10 +123,10 @@ public class AgentPersistenceContextContractTest {
         List<String> before = texts(run.getPrompt().getMemory()
             .getMessages(Integer.MAX_VALUE));
         MessageCountAgentContextManager manager = new MessageCountAgentContextManager(
-            4, 2, (messages, context) -> { throw new RuntimeException("summary failed"); });
+            4, 2, messages -> { throw new RuntimeException("summary failed"); });
 
         try {
-            manager.prepare(run, AgentInvocationContext.empty());
+            manager.prepare(run);
             fail("summarizer failure must propagate");
         } catch (RuntimeException expected) {
             assertEquals("summary failed", expected.getMessage());
@@ -113,13 +141,13 @@ public class AgentPersistenceContextContractTest {
         java.util.concurrent.atomic.AtomicInteger summaries =
             new java.util.concurrent.atomic.AtomicInteger();
         MessageCountAgentContextManager manager = new MessageCountAgentContextManager(
-            5, 3, (messages, context) -> {
+            5, 3, messages -> {
                 summaries.incrementAndGet();
                 return "summary";
             });
 
-        AgentContextUpdate first = manager.prepare(run, AgentInvocationContext.empty());
-        AgentContextUpdate second = manager.prepare(run, AgentInvocationContext.empty());
+        AgentContextUpdate first = manager.prepare(run);
+        AgentContextUpdate second = manager.prepare(run);
 
         assertTrue(first.isChanged());
         assertFalse(second.isChanged());
@@ -141,9 +169,9 @@ public class AgentPersistenceContextContractTest {
         run.getPrompt().addMessage(result);
         run.getPrompt().addUserMessage("recent");
         MessageCountAgentContextManager manager = new MessageCountAgentContextManager(
-            4, 2, (messages, context) -> "summary");
+            4, 2, messages -> "summary");
 
-        manager.prepare(run, AgentInvocationContext.empty());
+        manager.prepare(run);
 
         List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
         assertTrue(messages.get(1) instanceof AiMessage);
@@ -168,11 +196,15 @@ public class AgentPersistenceContextContractTest {
 
     @Test
     public void shouldApplyOffloadThresholdAtExactBoundary() {
-        ToolResultOffloadPolicy policy = ToolResultOffloadPolicy.largerThan(4);
+        InMemoryAgentArtifactStore store = new InMemoryAgentArtifactStore();
+        ToolResultOffloader offloader = ToolResultOffloader.largerThan(4, store);
 
-        assertFalse(policy.shouldOffload("tool", null));
-        assertFalse(policy.shouldOffload("tool", "1234"));
-        assertTrue(policy.shouldOffload("tool", "12345"));
+        assertNull(offloader.offload("run", "tool", "text/plain", null, null));
+        assertNull(offloader.offload("run", "tool", "text/plain", "1234", null));
+        AgentArtifactReference reference = offloader.offload(
+            "run", "tool", "text/plain", "12345", null);
+        assertNotNull(reference);
+        assertEquals("12345", offloader.load(reference.getArtifactId()));
     }
 
     private AgentRunSnapshot roundTrip(AgentRunSnapshot snapshot) throws Exception {

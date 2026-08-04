@@ -9,7 +9,6 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.task.AgentTaskPlan;
 import com.agentsflex.agent.task.AgentTaskProgress;
-import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
@@ -20,7 +19,6 @@ import com.agentsflex.core.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,173 +40,57 @@ import java.util.UUID;
 public final class AgentRun {
 
     /**
-     * 本次运行的唯一标识。
-     */
-    private final String id;
-    /**
      * 本次运行使用的不可变 Agent 定义。
      */
     private final Agent agent;
     /**
-     * Run 创建时冻结的有效执行策略。
+     * 生命周期、预算、租约、规划等可持久化状态。
      */
-    private final AgentExecutionPolicy executionPolicy;
+    private final AgentRunState state;
     /**
      * 保存模型交互历史和可用工具的 Prompt。
      */
     private final MemoryPrompt prompt;
     /**
-     * 运行创建时间，使用毫秒时间戳。
+     * 当前进程是否使用流式模型调用，不参与 Snapshot 持久化。
      */
-    private final long createdAt;
-    /**
-     * 供调用方附加 Trace ID、租户 ID 等业务数据。
-     */
-    private final Map<String, Object> metadata = new HashMap<>();
-    /**
-     * 当前进程附加的调用上下文，不参与 Snapshot 持久化。
-     */
-    private transient AgentInvocationContext invocationContext = AgentInvocationContext.empty();
-    /**
-     * 创建本 Run 的持续对话上下文，不参与 Snapshot 持久化。
-     */
-    private transient AgentConversation conversation;
-
-    /**
-     * 当前固定执行阶段。
-     */
-    private AgentRunPhase phase;
-    /**
-     * 模型已经返回、但尚未全部执行完成的工具调用。
-     */
-    private List<ToolCall> pendingToolCalls = new ArrayList<>();
-    /**
-     * Run 进入阻塞状态时保存的等待原因和恢复目标。
-     */
-    private AgentSuspension suspension;
-    /**
-     * Store 中最新 Snapshot 的乐观锁版本，首次保存前为 -1。
-     */
-    private long version = -1;
-    /**
-     * 直接父 Run ID；根任务没有父 Run。
-     */
-    private String parentRunId;
-    /**
-     * 整个父子任务树的根 Run ID。
-     */
-    private String rootRunId;
-    /**
-     * 重试或延迟任务的下一次可执行时间。
-     */
-    private long nextRunAt;
-    /**
-     * 已累计的模型输入 Token。
-     */
-    private long inputTokens;
-    /**
-     * 已累计的模型输出 Token。
-     */
-    private long outputTokens;
-    /**
-     * 已累计的模型总 Token。
-     */
-    private long totalTokens;
-    /**
-     * 已经实际开始执行的工具调用次数。
-     */
-    private int toolCallCount;
-    /**
-     * 已经安排的自动重试次数。
-     */
-    private int retryCount;
-    /**
-     * 超出预算时保存的限制名称。
-     */
-    private String budgetExceededReason;
-    /**
-     * 当前持有运行租约的 Worker ID。
-     */
-    private volatile String leaseOwner;
-    /**
-     * 每次领取时生成的唯一租约令牌，用于区分同名 Worker 的不同进程实例。
-     */
-    private volatile String leaseId;
-    /**
-     * 当前租约到期时间。
-     */
-    private volatile long leaseUntil;
-    /**
-     * 已审批工具调用的决定，key 为 ToolCall ID。
-     */
-    private final Map<String, Boolean> toolApprovals = new HashMap<>();
-    /**
-     * 模型在本 Run 中创建的任务计划；未规划时为 null。
-     */
-    private AgentTaskPlan taskPlan;
-    /**
-     * 当前 Run 是否向模型暴露内置规划工具。
-     */
-    private boolean planningEnabled;
+    private transient boolean streaming;
     /**
      * 当前进程是否已经通过 AgentLoader 解析并装配规划委派目标。
      */
     private transient boolean planningToolsPrepared;
     /**
-     * 当前 Run 在父子任务树中的规划深度，根 Run 为 0。
-     */
-    private int planningDepth;
-
-    /**
-     * 协作式取消标记，使用 volatile 保证执行线程能够看到外部取消请求。
-     */
-    private volatile boolean cancellationRequested;
-    /**
-     * 标记 onRunStart 是否已经发送，确保生命周期开始事件只触发一次。
-     */
-    private boolean started;
-    /**
-     * 当前生命周期状态。
-     */
-    private AgentRunStatus status = AgentRunStatus.READY;
-    /**
-     * 已经发起的模型调用次数，不是工具调用次数。
-     */
-    private int iterationCount;
-    /**
-     * Runner 已经推进的 step 次数。
-     */
-    private int stepCount;
-    /**
-     * 正常结束时模型返回的最终消息。
-     */
-    private AiMessage finalMessage;
-    /**
      * 失败结束时记录的原始异常。
      */
     private Throwable error;
-    /**
-     * 进入任一终止状态的时间；未结束时为 0。
-     */
-    private long completedAt;
 
     private AgentRun(String id, Agent agent, MemoryPrompt prompt, long createdAt,
                      AgentExecutionPolicy executionPolicy) {
+        this(agent, prompt, new AgentRunState(id,
+            effectiveExecutionPolicy(agent, executionPolicy), createdAt));
+        state.setPlanningEnabled(agent.getPlanningPolicy().isEnabled());
+        prepareBaseTools();
+    }
+
+    private static AgentExecutionPolicy effectiveExecutionPolicy(
+        Agent agent, AgentExecutionPolicy executionPolicy) {
+        if (agent == null) throw new IllegalArgumentException("agent must not be null");
+        return executionPolicy == null ? agent.getExecutionPolicy() : executionPolicy;
+    }
+
+    private AgentRun(Agent agent, MemoryPrompt prompt, AgentRunState state) {
         if (agent == null) {
             throw new IllegalArgumentException("agent must not be null");
         }
         if (prompt == null) {
             throw new IllegalArgumentException("prompt must not be null");
         }
-        this.id = id;
+        if (state == null) {
+            throw new IllegalArgumentException("state must not be null");
+        }
         this.agent = agent;
-        this.executionPolicy = executionPolicy == null
-            ? agent.getExecutionPolicy() : executionPolicy;
+        this.state = state;
         this.prompt = prompt;
-        this.createdAt = createdAt;
-        this.rootRunId = id;
-        this.phase = AgentRunPhase.MODEL;
-        this.planningEnabled = agent.getPlanningPolicy().isEnabled();
         preparePrompt();
     }
 
@@ -245,24 +127,6 @@ public final class AgentRun {
      */
     static AgentRun start(Agent agent, UserMessage userMessage, AgentRunOptions options) {
         return start(agent, Collections.<Message>emptyList(), userMessage, options);
-    }
-
-    /**
-     * 使用指定 ChatMemory 中的现有历史和本轮结构化消息创建 Run。
-     *
-     * <p>运行期间产生的用户、模型和工具消息会直接写入同一个 Memory，供下一轮对话继续使用。</p>
-     */
-    static AgentRun start(Agent agent, ChatMemory memory, UserMessage userMessage,
-                          AgentRunOptions options) {
-        if (memory == null) {
-            throw new IllegalArgumentException("memory must not be null");
-        }
-        if (userMessage == null) {
-            throw new IllegalArgumentException("userMessage must not be null");
-        }
-        MemoryPrompt prompt = new MemoryPrompt(memory);
-        prompt.addMessage(userMessage.copy());
-        return create(agent, prompt, options);
     }
 
     /**
@@ -308,8 +172,8 @@ public final class AgentRun {
         AgentRunOptions actual = options == null ? AgentRunOptions.defaults() : options;
         AgentRun run = new AgentRun(runId, agent, prompt, System.currentTimeMillis(),
             actual.getExecutionPolicy());
-        run.metadata.putAll(actual.getMetadata());
-        run.invocationContext = actual.getInvocationContext();
+        run.state.setMetadata(actual.getMetadata());
+        run.streaming = actual.isStreaming();
         return run;
     }
 
@@ -329,14 +193,15 @@ public final class AgentRun {
      */
     static AgentRun startChild(Agent agent, String userInput, AgentRun parent) {
         AgentRun child = start(agent, userInput);
-        child.parentRunId = parent.getId();
-        child.rootRunId = parent.getRootRunId();
-        // 同一进程内创建子 Run 时继承当前调用身份；从 Snapshot 恢复后仍需重新附加。
-        child.invocationContext = parent.getInvocationContext();
-        child.planningDepth = parent.planningDepth + 1;
-        child.planningEnabled = agent.getPlanningPolicy().isEnabled()
+        child.state.setParentRunId(parent.getId());
+        child.state.setRootRunId(parent.getRootRunId());
+        // 同一进程内创建子 Run 时继承流式调用方式；Snapshot 恢复后默认使用非流式调用。
+        child.streaming = parent.streaming;
+        int planningDepth = parent.getPlanningDepth() + 1;
+        child.state.setPlanningDepth(planningDepth);
+        child.state.setPlanningEnabled(agent.getPlanningPolicy().isEnabled()
             && parent.getAgent().getPlanningPolicy().isChildPlanningAllowed()
-            && child.planningDepth < parent.getAgent().getPlanningPolicy().getMaxDepth();
+            && planningDepth < parent.getAgent().getPlanningPolicy().getMaxDepth());
         child.prepareBaseTools();
         return child;
     }
@@ -363,40 +228,14 @@ public final class AgentRun {
             throw new IllegalArgumentException("Agent version does not match snapshot: "
                 + snapshot.getAgentVersion());
         }
-        AgentRun run = new AgentRun(snapshot.getRunId(), agent, prompt, snapshot.getCreatedAt(),
-            snapshot.getExecutionPolicy());
-        run.status = snapshot.getStatus();
-        run.phase = snapshot.getPhase();
-        run.pendingToolCalls = AgentMessageUtils.copyToolCalls(snapshot.getPendingToolCalls());
-        run.suspension = snapshot.getSuspension();
-        run.iterationCount = snapshot.getIterationCount();
-        run.stepCount = snapshot.getStepCount();
-        run.inputTokens = snapshot.getInputTokens();
-        run.outputTokens = snapshot.getOutputTokens();
-        run.totalTokens = snapshot.getTotalTokens();
-        run.toolCallCount = snapshot.getToolCallCount();
-        run.retryCount = snapshot.getRetryCount();
-        run.budgetExceededReason = snapshot.getBudgetExceededReason();
-        run.leaseOwner = snapshot.getLeaseOwner();
-        run.leaseId = snapshot.getLeaseId();
-        run.leaseUntil = snapshot.getLeaseUntil();
-        run.toolApprovals.putAll(snapshot.getToolApprovals());
-        run.taskPlan = snapshot.getTaskPlan();
-        run.planningEnabled = snapshot.isPlanningEnabled();
-        run.planningDepth = snapshot.getPlanningDepth();
-        run.cancellationRequested = snapshot.isCancellationRequested();
-        run.started = snapshot.isStarted();
-        run.finalMessage = snapshot.getFinalMessage();
+        AgentRunState state = snapshot.getState().mutableCopy();
+        if (!StringUtil.hasText(state.getRootRunId())) {
+            state.setRootRunId(snapshot.getRunId());
+        }
+        AgentRun run = new AgentRun(agent, prompt, state);
         if (snapshot.getErrorMessage() != null) {
             run.error = new RestoredAgentRunException(snapshot.getErrorType(), snapshot.getErrorMessage());
         }
-        run.completedAt = snapshot.getCompletedAt();
-        run.nextRunAt = snapshot.getNextRunAt();
-        run.version = snapshot.getVersion();
-        run.parentRunId = snapshot.getParentRunId();
-        run.rootRunId = StringUtil.hasText(snapshot.getRootRunId())
-            ? snapshot.getRootRunId() : snapshot.getRunId();
-        run.metadata.putAll(snapshot.getMetadata());
         run.prepareBaseTools();
         return run;
     }
@@ -409,7 +248,7 @@ public final class AgentRun {
             prompt.setSystemMessage(agent.getInstructions());
         }
         prepareBaseTools();
-        agent.getContextPolicy().configure(prompt);
+        prompt.setMaxAttachedMessageCount(agent.getMaxAttachedMessages());
     }
 
     /**
@@ -417,7 +256,7 @@ public final class AgentRun {
      */
     private void prepareBaseTools() {
         prompt.setTools(new ArrayList<>(agent.getTools()));
-        planningToolsPrepared = !planningEnabled;
+        planningToolsPrepared = !state.isPlanningEnabled();
     }
 
     /**
@@ -425,7 +264,7 @@ public final class AgentRun {
      */
     void preparePlanningTools(List<Agent> delegates) {
         List<com.agentsflex.core.model.chat.tool.Tool> tools = new ArrayList<>(agent.getTools());
-        if (planningEnabled) {
+        if (state.isPlanningEnabled()) {
             tools.addAll(AgentPlanningTool.createTools(
                 agent, delegates, agent.getPlanningPolicy()));
         }
@@ -447,8 +286,8 @@ public final class AgentRun {
      * 下一个安全检查点停止继续调用模型或执行后续工具。</p>
      */
     void requestCancellation() {
-        if (!status.isTerminal()) {
-            this.cancellationRequested = true;
+        if (!state.getStatus().isTerminal()) {
+            state.setCancellationRequested(true);
         }
     }
 
@@ -456,14 +295,14 @@ public final class AgentRun {
      * @return 是否已经收到取消请求
      */
     public boolean isCancellationRequested() {
-        return cancellationRequested;
+        return state.isCancellationRequested();
     }
 
     /**
      * @return 本次运行的唯一 ID
      */
     public String getId() {
-        return id;
+        return state.getRunId();
     }
 
     /**
@@ -477,37 +316,14 @@ public final class AgentRun {
      * @return 本次运行创建时冻结的有效执行策略
      */
     public AgentExecutionPolicy getExecutionPolicy() {
-        return executionPolicy;
+        return state.getExecutionPolicy();
     }
 
     /**
-     * @return 当前进程为 Run 附加的调用上下文
+     * @return 当前进程是否使用流式模型调用
      */
-    public AgentInvocationContext getInvocationContext() {
-        return invocationContext == null ? AgentInvocationContext.empty() : invocationContext;
-    }
-
-    /**
-     * 为新建或恢复的 Run 附加本次调用上下文。
-     */
-    public AgentRun attachInvocationContext(AgentInvocationContext context) {
-        this.invocationContext = context == null ? AgentInvocationContext.empty() : context;
-        return this;
-    }
-
-    /**
-     * 将进程内 Run 重新关联到其持续对话上下文。
-     */
-    AgentRun attachConversation(AgentConversation value) {
-        this.conversation = value;
-        return this;
-    }
-
-    /**
-     * @return 创建本 Run 的进程内持续对话上下文
-     */
-    AgentConversation getConversation() {
-        return conversation;
+    boolean isStreaming() {
+        return streaming;
     }
 
     /**
@@ -538,49 +354,49 @@ public final class AgentRun {
      * @return 当前生命周期状态
      */
     public AgentRunStatus getStatus() {
-        return status;
+        return state.getStatus();
     }
 
     /**
      * @return 当前模型或工具执行阶段
      */
     public AgentRunPhase getPhase() {
-        return phase;
+        return state.getPhase();
     }
 
     /**
      * @return 尚待执行的工具调用深拷贝列表
      */
     public List<ToolCall> getPendingToolCalls() {
-        return Collections.unmodifiableList(AgentMessageUtils.copyToolCalls(pendingToolCalls));
+        return state.getPendingToolCalls();
     }
 
     /**
      * @return 当前阻塞原因；非阻塞状态时为 null
      */
     public AgentSuspension getSuspension() {
-        return suspension == null ? null : suspension.copy();
+        return state.getSuspension();
     }
 
     /**
      * @return 已完成或已发起的模型调用次数
      */
     public int getIterationCount() {
-        return iterationCount;
+        return state.getIterationCount();
     }
 
     /**
      * @return Runner 已经推进的 step 次数，与模型调用次数相互独立
      */
     public int getStepCount() {
-        return stepCount;
+        return state.getStepCount();
     }
 
     /**
      * @return 正常完成时的最终 AiMessage；未正常完成时为 {@code null}
      */
     public AiMessage getFinalMessage() {
-        return finalMessage;
+        return state.getFinalMessage();
     }
 
     /**
@@ -589,6 +405,7 @@ public final class AgentRun {
      * @return 最终文本；尚未完成或没有最终消息时为 {@code null}
      */
     public String getFinalOutput() {
+        AiMessage finalMessage = state.getFinalMessage();
         return finalMessage == null ? null : finalMessage.getContent();
     }
 
@@ -603,126 +420,126 @@ public final class AgentRun {
      * @return 运行创建时间的毫秒时间戳
      */
     public long getCreatedAt() {
-        return createdAt;
+        return state.getCreatedAt();
     }
 
     /**
      * @return 运行结束时间的毫秒时间戳；尚未结束时为 0
      */
     public long getCompletedAt() {
-        return completedAt;
+        return state.getCompletedAt();
     }
 
     /**
      * @return Store 中最新 Snapshot 的乐观锁版本，首次保存前为 -1
      */
     public long getVersion() {
-        return version;
+        return state.getVersion();
     }
 
     /**
      * @return 当前根任务累计输入 Token，包含已经汇总的子 Run
      */
     public long getInputTokens() {
-        return inputTokens;
+        return state.getInputTokens();
     }
 
     /**
      * @return 当前根任务累计输出 Token，包含已经汇总的子 Run
      */
     public long getOutputTokens() {
-        return outputTokens;
+        return state.getOutputTokens();
     }
 
     /**
      * @return 模型报告的累计总 Token
      */
     public long getTotalTokens() {
-        return totalTokens;
+        return state.getTotalTokens();
     }
 
     /**
      * @return 直接父 Run ID；根 Run 返回 {@code null}
      */
     public String getParentRunId() {
-        return parentRunId;
+        return state.getParentRunId();
     }
 
     /**
      * @return 父子运行树的根 Run ID；根 Run 返回自身 ID
      */
     public String getRootRunId() {
-        return rootRunId;
+        return state.getRootRunId();
     }
 
     /**
      * @return 自动重试等延迟状态的最早可运行时间
      */
     public long getNextRunAt() {
-        return nextRunAt;
+        return state.getNextRunAt();
     }
 
     /**
      * @return 已开始执行的业务工具调用数量，不包含内置规划状态转换
      */
     public int getToolCallCount() {
-        return toolCallCount;
+        return state.getToolCallCount();
     }
 
     /**
      * @return 当前 Run 已安排的自动重试次数
      */
     public int getRetryCount() {
-        return retryCount;
+        return state.getRetryCount();
     }
 
     /**
      * @return 预算终止时命中的限制字段；未超预算时为空
      */
     public String getBudgetExceededReason() {
-        return budgetExceededReason;
+        return state.getBudgetExceededReason();
     }
 
     /**
      * @return 当前执行租约的 Worker ID
      */
     public String getLeaseOwner() {
-        return leaseOwner;
+        return state.getLeaseOwner();
     }
 
     /**
      * @return 当前领取批次的唯一租约令牌
      */
     public String getLeaseId() {
-        return leaseId;
+        return state.getLeaseId();
     }
 
     /**
      * @return 当前执行租约到期时间
      */
     public long getLeaseUntil() {
-        return leaseUntil;
+        return state.getLeaseUntil();
     }
 
     /**
      * @return 当前任务计划的隔离副本；模型未创建计划时返回 null
      */
     public AgentTaskPlan getTaskPlan() {
-        return taskPlan == null ? null : taskPlan.copy();
+        return state.getTaskPlan();
     }
 
     /**
      * @return 当前 Run 是否允许模型创建任务计划
      */
     public boolean isPlanningEnabled() {
-        return planningEnabled;
+        return state.isPlanningEnabled();
     }
 
     /**
      * @return 当前 Run 在嵌套规划中的深度
      */
     public int getPlanningDepth() {
-        return planningDepth;
+        return state.getPlanningDepth();
     }
 
     /**
@@ -732,7 +549,9 @@ public final class AgentRun {
      * 聚合状态时使用 {@link AgentRunner#getTaskProgress(String)}。</p>
      */
     public AgentTaskProgress getTaskProgress() {
-        return taskPlan == null ? null : new AgentTaskProgress(taskPlan, status, suspension);
+        AgentTaskPlan taskPlan = state.getTaskPlan();
+        return taskPlan == null ? null
+            : new AgentTaskProgress(taskPlan, state.getStatus(), state.getSuspension());
     }
 
     /**
@@ -741,19 +560,17 @@ public final class AgentRun {
      * @return 不允许直接修改的元数据 Map
      */
     public Map<String, Object> getMetadata() {
-        return Collections.unmodifiableMap(metadata);
+        return state.getMetadata();
     }
 
     /**
      * 添加或覆盖一项业务运行元数据。
      */
     public void putMetadata(String key, Object value) {
-        metadata.put(key, value);
+        state.putMetadata(key, value);
     }
 
-    /**
-     * 生成与当前可变状态隔离的 Snapshot Snapshot。
-     */
+    /** 生成与当前可变状态隔离的 Snapshot。 */
     public AgentRunSnapshot toSnapshot() {
         // getMessages() 可能受附加消息数量限制；Snapshot 必须保存 Memory 中的完整历史。
         List<Message> messages = prompt.getMemory().getMessages(Integer.MAX_VALUE);
@@ -761,54 +578,22 @@ public final class AgentRun {
         if (systemMessage != null && (messages.isEmpty() || !(messages.get(0) instanceof SystemMessage))) {
             messages.add(0, systemMessage);
         }
-        String errorType = error == null ? null : error.getClass().getName();
-        String errorMessage = error == null ? null : error.getMessage();
-        return AgentRunSnapshot.builder(id, agent.getId(), agent.getVersion())
-            .executionPolicy(executionPolicy)
-            .status(status)
-            .phase(phase)
-            .messages(messages)
-            .pendingToolCalls(pendingToolCalls)
-            .suspension(suspension)
-            .iterationCount(iterationCount)
-            .stepCount(stepCount)
-            .inputTokens(inputTokens)
-            .outputTokens(outputTokens)
-            .totalTokens(totalTokens)
-            .toolCallCount(toolCallCount)
-            .retryCount(retryCount)
-            .budgetExceededReason(budgetExceededReason)
-            .leaseOwner(leaseOwner)
-            .leaseId(leaseId)
-            .leaseUntil(leaseUntil)
-            .toolApprovals(toolApprovals)
-            .taskPlan(taskPlan)
-            .planningEnabled(planningEnabled)
-            .planningDepth(planningDepth)
-            .cancellationRequested(cancellationRequested)
-            .started(started)
-            .finalMessage(finalMessage)
-            .error(errorType, errorMessage)
-            .createdAt(createdAt)
-            .completedAt(completedAt)
-            .updatedAt(System.currentTimeMillis())
-            .nextRunAt(nextRunAt)
-            .version(version)
-            .parentRunId(parentRunId)
-            .rootRunId(rootRunId)
-            .metadata(metadata)
-            .build();
+        state.setMessages(messages);
+        state.setError(error == null ? null : error.getClass().getName(),
+            error == null ? null : error.getMessage());
+        state.setUpdatedAt(System.currentTimeMillis());
+        return AgentRunSnapshot.fromState(agent.getId(), agent.getVersion(), state);
     }
 
     /**
      * 标记第一次开始执行，并返回是否需要发送 onRunStart 事件。
      */
     boolean markStarted() {
-        if (started) {
+        if (state.isStarted()) {
             return false;
         }
-        started = true;
-        status = AgentRunStatus.RUNNING;
+        state.setStarted(true);
+        state.setStatus(AgentRunStatus.RUNNING);
         return true;
     }
 
@@ -816,11 +601,11 @@ public final class AgentRun {
      * 增加一次模型迭代计数。
      */
     void incrementIteration() {
-        iterationCount++;
+        state.incrementIterationCount();
     }
 
     void incrementStep() {
-        stepCount++;
+        state.incrementStepCount();
     }
 
     /**
@@ -836,69 +621,59 @@ public final class AgentRun {
             ? message.getCompletionTokens() : message.getLocalCompletionTokens();
         Integer messageTotalTokens = message.getTotalTokens() != null
             ? message.getTotalTokens() : message.getLocalTotalTokens();
-        if (promptTokens != null) {
-            inputTokens += promptTokens;
-        }
-        if (completionTokens != null) {
-            outputTokens += completionTokens;
-        }
-        if (messageTotalTokens != null) {
-            totalTokens += messageTotalTokens;
-        } else {
-            totalTokens += (promptTokens == null ? 0 : promptTokens)
-                + (completionTokens == null ? 0 : completionTokens);
-        }
+        long input = promptTokens == null ? 0 : promptTokens;
+        long output = completionTokens == null ? 0 : completionTokens;
+        long total = messageTotalTokens == null ? input + output : messageTotalTokens;
+        state.addUsage(input, output, total);
     }
 
     /**
      * 保存模型已经决定、但尚未执行的 ToolCall。
      */
     void setPendingToolCalls(List<ToolCall> toolCalls) {
-        this.pendingToolCalls = AgentMessageUtils.copyToolCalls(toolCalls);
+        state.setPendingToolCalls(toolCalls);
     }
 
     /**
      * 清除已经完成处理的 ToolCall。
      */
     void clearPendingToolCalls() {
-        this.pendingToolCalls.clear();
+        state.clearPendingToolCalls();
     }
 
     /**
      * 移除已经写入结果的首个待执行工具调用。
      */
     void removeFirstPendingToolCall() {
-        if (!pendingToolCalls.isEmpty()) {
-            pendingToolCalls.remove(0);
-        }
+        state.removeFirstPendingToolCall();
     }
 
     /**
      * 记录一次已经开始的工具执行。
      */
     void incrementToolCallCount() {
-        toolCallCount++;
+        state.incrementToolCallCount();
     }
 
     /**
      * 保存工具审批结果。
      */
     void approveTool(String callId, boolean approved) {
-        toolApprovals.put(callId, approved);
+        state.approveTool(callId, approved);
     }
 
     /**
      * 返回工具审批结果；尚未审批时返回 null。
      */
     Boolean getToolApproval(String callId) {
-        return toolApprovals.get(callId);
+        return state.getToolApproval(callId);
     }
 
     /**
      * 保存模型创建或 Runner 推进后的不可变任务计划。
      */
     void updateTaskPlan(AgentTaskPlan value) {
-        this.taskPlan = value == null ? null : value.copy();
+        state.setTaskPlan(value);
     }
 
     /**
@@ -906,20 +681,16 @@ public final class AgentRun {
      */
     void addChildUsage(AgentRun child) {
         if (child == null) return;
-        inputTokens += child.inputTokens;
-        outputTokens += child.outputTokens;
-        totalTokens += child.totalTokens;
-        toolCallCount += child.toolCallCount;
-        retryCount += child.retryCount;
+        state.addChildUsage(child.state);
     }
 
     /**
      * 安排一次持久化重试。
      */
     void scheduleRetry(Throwable error, AgentRunPhase resumePhase, long runAt) {
-        retryCount++;
+        state.incrementRetryCount();
         this.error = error;
-        this.nextRunAt = runAt;
+        state.setNextRunAt(runAt);
         suspend(AgentRunStatus.RETRY_SCHEDULED,
             AgentSuspension.retry(error == null ? null : error.getMessage(), resumePhase, runAt));
     }
@@ -935,45 +706,45 @@ public final class AgentRun {
      * 进入指定的运行中阶段。
      */
     void moveTo(AgentRunPhase phase) {
-        this.status = AgentRunStatus.RUNNING;
-        this.phase = phase;
-        this.suspension = null;
+        state.setStatus(AgentRunStatus.RUNNING);
+        state.setPhase(phase);
+        state.setSuspension(null);
     }
 
     /**
      * 进入阻塞状态并保存恢复信息。
      */
     void suspend(AgentRunStatus status, AgentSuspension suspension) {
-        this.status = status;
-        this.phase = suspension.getResumePhase();
-        this.suspension = suspension;
+        state.setStatus(status);
+        state.setPhase(suspension.getResumePhase());
+        state.setSuspension(suspension);
     }
 
     /**
      * 清除阻塞信息并回到指定执行阶段。
      */
     void resumeAt(AgentRunPhase phase) {
-        this.suspension = null;
-        this.status = AgentRunStatus.RUNNING;
-        this.phase = phase == null ? AgentRunPhase.MODEL : phase;
-        this.nextRunAt = 0;
+        state.setSuspension(null);
+        state.setStatus(AgentRunStatus.RUNNING);
+        state.setPhase(phase == null ? AgentRunPhase.MODEL : phase);
+        state.setNextRunAt(0);
     }
 
     /**
      * 进入终止状态并记录结束时间。
      */
     private void finish(AgentRunStatus status) {
-        this.status = status;
-        this.phase = AgentRunPhase.FINISHED;
-        this.suspension = null;
-        this.completedAt = System.currentTimeMillis();
+        state.setStatus(status);
+        state.setPhase(AgentRunPhase.FINISHED);
+        state.setSuspension(null);
+        state.setCompletedAt(System.currentTimeMillis());
     }
 
     /**
      * Runner 成功保存 Snapshot 后更新本地版本。
      */
     void updateVersion(long version) {
-        this.version = version;
+        state.setVersion(version);
     }
 
     /**
@@ -987,7 +758,7 @@ public final class AgentRun {
      * 标记正常完成并保存最终模型消息。
      */
     void markCompleted(AiMessage finalMessage) {
-        this.finalMessage = finalMessage;
+        state.setFinalMessage(finalMessage);
         finish(AgentRunStatus.COMPLETED);
     }
 
@@ -1024,7 +795,7 @@ public final class AgentRun {
      * 标记预算耗尽并保存触发限制。
      */
     void markBudgetExceeded(String reason) {
-        this.budgetExceededReason = reason;
+        state.setBudgetExceededReason(reason);
         finish(AgentRunStatus.BUDGET_EXCEEDED);
     }
 
@@ -1032,9 +803,9 @@ public final class AgentRun {
      * 更新当前租约信息。
      */
     void updateLease(String owner, String id, long until) {
-        this.leaseOwner = owner;
-        this.leaseId = id;
-        this.leaseUntil = until;
+        state.setLeaseOwner(owner);
+        state.setLeaseId(id);
+        state.setLeaseUntil(until);
     }
 
     /**

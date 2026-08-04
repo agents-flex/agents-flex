@@ -9,7 +9,6 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.task.AgentPlanningPolicy;
 import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.context.AgentContextManager;
-import com.agentsflex.agent.context.ToolResultOffloadPolicy;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.tool.ToolApprovalPolicy;
 import com.agentsflex.core.model.chat.ChatModel;
@@ -83,12 +82,10 @@ public final class Agent {
     private final ToolApprovalPolicy toolApprovalPolicy;
     /** 控制模型是否可以自主创建并执行任务计划。 */
     private final AgentPlanningPolicy planningPolicy;
-    /** 控制每次模型调用可见消息范围的上下文策略。 */
-    private final AgentContextPolicy contextPolicy;
+    /** 每次模型调用最多从 Run 历史中附加的消息数量。 */
+    private final int maxAttachedMessages;
     /** 在模型调用前压缩或整理持久化消息历史。 */
     private final AgentContextManager contextManager;
-    /** 判断大型工具结果是否需要外置。 */
-    private final ToolResultOffloadPolicy toolResultOffloadPolicy;
     /** 包装步骤、模型调用和工具调用的中间件。 */
     private final List<AgentMiddleware> middlewares;
     /** 供配置平台保存模式参数、任务类型和发布信息的只读扩展属性。 */
@@ -112,9 +109,8 @@ public final class Agent {
         this.executionPolicy = builder.executionPolicy;
         this.toolApprovalPolicy = builder.toolApprovalPolicy;
         this.planningPolicy = builder.planningPolicy;
-        this.contextPolicy = builder.contextPolicy;
+        this.maxAttachedMessages = builder.maxAttachedMessages;
         this.contextManager = builder.contextManager;
-        this.toolResultOffloadPolicy = builder.toolResultOffloadPolicy;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
         this.attributes = Collections.unmodifiableMap(new HashMap<>(builder.attributes));
     }
@@ -216,14 +212,11 @@ public final class Agent {
     /** @return 模型自主创建任务计划时使用的约束策略 */
     public AgentPlanningPolicy getPlanningPolicy() { return planningPolicy; }
 
-    /** @return 每次模型调用使用的消息读取范围策略 */
-    public AgentContextPolicy getContextPolicy() { return contextPolicy; }
+    /** @return 每次模型调用最多附加的历史消息数量 */
+    public int getMaxAttachedMessages() { return maxAttachedMessages; }
 
     /** @return 模型调用前整理持久化消息的上下文管理器 */
     public AgentContextManager getContextManager() { return contextManager; }
-
-    /** @return 大型工具结果外置策略 */
-    public ToolResultOffloadPolicy getToolResultOffloadPolicy() { return toolResultOffloadPolicy; }
 
     /** @return 按注册顺序执行的只读 Middleware 列表 */
     public List<AgentMiddleware> getMiddlewares() { return middlewares; }
@@ -251,9 +244,8 @@ public final class Agent {
         private AgentExecutionPolicy executionPolicy = AgentExecutionPolicy.defaults();
         private ToolApprovalPolicy toolApprovalPolicy = ToolApprovalPolicy.allowAll();
         private AgentPlanningPolicy planningPolicy = AgentPlanningPolicy.disabled();
-        private AgentContextPolicy contextPolicy = AgentContextPolicy.defaults();
+        private int maxAttachedMessages = 100;
         private AgentContextManager contextManager = AgentContextManager.none();
-        private ToolResultOffloadPolicy toolResultOffloadPolicy = ToolResultOffloadPolicy.disabled();
         private final List<AgentMiddleware> middlewares = new ArrayList<>();
         private final Map<String, Object> attributes = new HashMap<>();
 
@@ -365,21 +357,22 @@ public final class Agent {
             return this;
         }
 
-        /** 设置模型上下文读取策略。 */
-        public Builder contextPolicy(AgentContextPolicy contextPolicy) {
-            this.contextPolicy = contextPolicy;
+        /**
+         * 设置每次模型调用最多附加的历史消息数量。
+         *
+         * <p>该限制只影响本次发送给模型的消息视图，不删除 Run 或 Snapshot 中保存的完整历史。</p>
+         */
+        public Builder maxAttachedMessages(int maxAttachedMessages) {
+            if (maxAttachedMessages <= 0) {
+                throw new IllegalArgumentException("maxAttachedMessages must be greater than 0");
+            }
+            this.maxAttachedMessages = maxAttachedMessages;
             return this;
         }
 
         /** 设置模型调用前使用的消息上下文管理器。 */
         public Builder contextManager(AgentContextManager contextManager) {
             this.contextManager = contextManager;
-            return this;
-        }
-
-        /** 设置工具结果外置策略。 */
-        public Builder toolResultOffloadPolicy(ToolResultOffloadPolicy policy) {
-            this.toolResultOffloadPolicy = policy;
             return this;
         }
 
@@ -446,8 +439,7 @@ public final class Agent {
             if (toolApprovalPolicy == null) {
                 toolApprovalPolicy = ToolApprovalPolicy.allowAll();
             }
-            if (contextPolicy == null || contextManager == null
-                || toolResultOffloadPolicy == null || planningPolicy == null) {
+            if (contextManager == null || planningPolicy == null) {
                 throw new IllegalStateException("Agent runtime policies must not be null");
             }
             validateUniqueToolNames();

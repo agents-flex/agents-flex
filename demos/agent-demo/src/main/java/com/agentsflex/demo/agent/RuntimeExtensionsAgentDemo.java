@@ -7,14 +7,13 @@
 package com.agentsflex.demo.agent;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.agent.AgentInvocationContext;
 import com.agentsflex.agent.AgentRun;
 import com.agentsflex.agent.AgentRunOptions;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.agent.context.ToolResultOffloadPolicy;
+import com.agentsflex.agent.context.ToolResultOffloader;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
@@ -40,7 +39,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/** 演示调用上下文、Middleware、实时事件、上下文压缩和大型工具结果外置。 */
+/** 演示 Middleware、实时事件、上下文压缩和大型工具结果外置。 */
 public final class RuntimeExtensionsAgentDemo {
 
     private RuntimeExtensionsAgentDemo() {
@@ -56,17 +55,15 @@ public final class RuntimeExtensionsAgentDemo {
         InMemoryAgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
         List<AgentEvent> events = new ArrayList<>();
 
-        // 工具可以读取调用上下文，并通过 ToolContext 主动报告可展示的执行进度。
+        // 工具通过 ToolContext 主动报告可展示的执行进度。
         Tool reportTool = Tool.builder("build_report", "生成一份较大的分析报告")
             .function(arguments -> {
-                AgentInvocationContext invocation = ToolContextHolder.currentContext()
-                    .getAttribute(AgentInvocationContext.CONTEXT_ATTRIBUTE);
                 AgentToolProgressEmitter progress = ToolContextHolder.currentContext()
                     .getAttribute(AgentToolProgressEmitter.CONTEXT_ATTRIBUTE);
                 progress.emit("正在生成报告", Collections.singletonMap("percent", 50));
                 char[] body = new char[96];
                 Arrays.fill(body, 'R');
-                return invocation.getTenantId() + ":" + new String(body);
+                return new String(body);
             })
             .build();
 
@@ -76,7 +73,7 @@ public final class RuntimeExtensionsAgentDemo {
             public AiMessageResponse aroundModelCall(AgentMiddlewareContext context,
                                                      AgentModelCallChain chain) {
                 System.out.println("model tenant : "
-                    + context.getInvocationContext().getTenantId());
+                    + context.getRun().getMetadata().get("tenantId"));
                 return chain.proceed(context);
             }
 
@@ -84,7 +81,7 @@ public final class RuntimeExtensionsAgentDemo {
             public Object aroundToolCall(AgentToolCallContext context,
                                          AgentToolCallChain chain) {
                 System.out.println("tool request : "
-                    + context.getInvocationContext().getRequestId());
+                    + context.getRun().getMetadata().get("requestId"));
                 return chain.proceed(context);
             }
         };
@@ -100,25 +97,18 @@ public final class RuntimeExtensionsAgentDemo {
             .middleware(middleware)
             // 历史超过 5 条时，将旧消息压缩为摘要并保留最近 3 条。
             .contextManager(new MessageCountAgentContextManager(5, 3,
-                (messages, context) -> "已压缩 " + messages.size() + " 条较早消息"))
-            // 大于 32 个字符的工具结果保存到 Artifact Store。
-            .toolResultOffloadPolicy(ToolResultOffloadPolicy.largerThan(32))
+                messages -> "已压缩 " + messages.size() + " 条较早消息"))
             .build();
 
         AgentRunner runner = AgentRunner.builder()
             .runStore(new InMemoryAgentRunStore())
             .agentLoader(new InMemoryAgentLoader(agent))
             .commandStore(new InMemoryAgentRunCommandStore())
-            .artifactStore(artifactStore)
+            // 判断逻辑与 Store 作为一个可选能力同时配置。
+            .toolResultOffloader(ToolResultOffloader.largerThan(32, artifactStore))
             .build()
             .addEventListener(events::add);
 
-        AgentInvocationContext invocation = AgentInvocationContext.builder()
-            .tenantId("tenant-demo")
-            .userId("developer")
-            .requestId("request-runtime-1")
-            .streaming(true)
-            .build();
         // 使用 Runner 的公开入口携带旧历史创建 Run，确保初始状态立即写入 Snapshot。
         List<Message> conversationHistory = new ArrayList<>();
         for (int i = 1; i <= 6; i++) {
@@ -126,7 +116,12 @@ public final class RuntimeExtensionsAgentDemo {
         }
         AgentRun completed = runner.run(agent, conversationHistory,
             new UserMessage("开始生成报告"),
-            AgentRunOptions.builder().invocationContext(invocation).build());
+            AgentRunOptions.builder()
+                .metadata("tenantId", "tenant-demo")
+                .metadata("userId", "developer")
+                .metadata("requestId", "request-runtime-1")
+                .streaming(true)
+                .build());
         DemoSupport.require(completed.getStatus() == AgentRunStatus.COMPLETED,
             "运行时扩展场景应正常完成");
 

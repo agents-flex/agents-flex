@@ -66,8 +66,7 @@ public class AgentExecutionBoundaryContractTest {
 
         AgentRun run = runner.run(Agent.builder("partial-stream")
                 .chatModel(model).build(), "input",
-            AgentRunOptions.builder().invocationContext(AgentInvocationContext.builder()
-                .streaming(true).build()).build());
+            AgentRunOptions.builder().streaming(true).build());
 
         assertEquals(AgentRunStatus.FAILED, run.getStatus());
         assertTrue(run.getError().getMessage().contains("stream interrupted"));

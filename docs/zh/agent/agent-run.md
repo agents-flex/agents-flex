@@ -1,31 +1,24 @@
 ---
 title: AgentRun
-description: 理解单次 Agent 运行的状态、阶段、消息、计数、元数据和 Conversation 关系。
+description: 理解单次 Agent 运行的状态、阶段、消息、计数、元数据和业务会话关系。
 ---
 
 # AgentRun
 
 ## 概述
 
-`AgentRun` 表示一个具体任务的可变运行状态。它包含消息历史、当前状态与阶段、待执行 ToolCall、暂停信息、预算计数、任务计划以及最终结果。Run 由 `AgentRunner` 创建和推进，调用方主要负责读取状态、附加调用上下文以及提交恢复命令。
+`AgentRun` 表示一个具体任务的可变运行状态。它包含消息历史、当前状态与阶段、待执行 ToolCall、暂停信息、预算计数、任务计划以及最终结果。Run 由 `AgentRunner` 创建和推进，调用方主要负责读取状态、提供可持久化业务元数据以及提交恢复命令。
 
-## Run 与 Conversation
+## Run 与业务会话
 
-一个 Run 对应一个任务或一轮对话；一个 `AgentConversation` 可以包含多个先后发生的 Run，并共享 `ChatMemory`。
-
-```java
-AgentConversation conversation = AgentConversation.create("session-1", agent);
-AgentRun first = runner.run(conversation, "我叫小明");
-AgentRun second = runner.run(conversation, "我叫什么？");
-```
-
-独立 Run 也可接受业务系统加载的历史：
+一个 Run 对应一个任务或一轮对话。Framework 不维护会话容器；业务系统维护 conversationId 和 `ChatMemory`，并为每一轮创建独立 Run。
 
 ```java
+List<Message> history = memory.getMessages(Integer.MAX_VALUE);
 AgentRun run = runner.run(agent, history, new UserMessage("继续"));
 ```
 
-历史里的 `SystemMessage` 会被忽略，系统指令始终以当前 Agent 定义为准。
+Run 完成后，业务系统可用 `run.getConversationHistory()` 更新自己的 ChatMemory。传入历史里的 `SystemMessage` 会被忽略，系统指令始终以当前 Agent 定义为准。
 
 ## 状态
 
@@ -77,20 +70,20 @@ List<Message> history = run.getConversationHistory();
 
 `getConversationHistory()` 返回排除系统消息后的副本，适合保存到业务会话表；`getPrompt()` 暴露运行 Prompt，通常只应由扩展组件读取。
 
-## 元数据与调用上下文
+## 元数据与流式调用
 
 ```java
 AgentRunOptions options = AgentRunOptions.builder()
     .metadata("businessOrderId", "O-1001")
-    .invocationContext(AgentInvocationContext.builder()
-        .tenantId("tenant-a")
-        .userId("u-1")
-        .requestId("req-1")
-        .build())
+    .metadata("tenantId", "tenant-a")
+    .metadata("userId", "u-1")
+    .streaming(true)
     .build();
 ```
 
-`metadata` 必须可序列化，会进入 Snapshot；`AgentInvocationContext` 是瞬时运行依赖，不进入 Snapshot，恢复或 Worker 执行时必须重新附加。密码、Token、数据库连接和 Spring Bean 不应放入 metadata。
+`metadata` 用于业务订单号、租户 ID、用户 ID 等恢复后仍需使用的信息。值必须可序列化，并会进入 Snapshot。密码、Token、数据库连接和 Spring Bean 不应放入 metadata，运行期服务应由 Middleware 或 Tool 自身通过依赖注入等方式持有。
+
+`streaming(true)` 只控制当前进程内这次 Run 的模型调用方式，不进入 Snapshot。同一进程创建的子 Run 会继承该设置；从 Snapshot 恢复或由 Worker 执行时默认使用非流式调用。
 
 ## 父子关系与计划
 
@@ -102,4 +95,4 @@ AgentRunOptions options = AgentRunOptions.builder()
 AgentRunSnapshot snapshot = run.toSnapshot();
 ```
 
-快照是隔离副本，包含恢复所需状态但不包含模型、工具和瞬时调用上下文。正常业务代码应通过 `runner.saveSnapshot(run)` 持久化，由 Store 分配版本，而不是只调用 `toSnapshot()` 后自行覆盖数据。
+快照是隔离副本，包含恢复所需状态，但不包含模型、工具和当前进程的 streaming 设置。正常业务代码应通过 `runner.saveSnapshot(run)` 持久化，由 Store 分配版本，而不是只调用 `toSnapshot()` 后自行覆盖数据。

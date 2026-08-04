@@ -1,6 +1,6 @@
 ---
 title: 子 Agent
-description: 使用父子 AgentRun 委派任务、传播上下文、恢复父任务并控制任务树。
+description: 使用父子 AgentRun 委派任务、维护父子关系、恢复父任务并控制任务树。
 ---
 
 # 子 Agent
@@ -31,11 +31,11 @@ description: 使用父子 AgentRun 委派任务、传播上下文、恢复父任
 
 同步 `runner.run(...)` 可以在当前调用链推进子 Run，适合短任务。长任务通常先保存子 Run，由 `AgentWorker` 领取。Worker 每轮会修复“子 Run 已终止但父 Run 尚未唤醒”的情况，以处理进程在两次写入之间退出的问题。
 
-## 上下文传播
+## 任务输入
 
-同一进程创建子 Run 时会继承父 Run 的 `AgentInvocationContext`；从 Snapshot 恢复后，Worker 仍需通过 Provider 重建。子 Run 接收的是总体目标和当前任务的受控描述，不会自动复制父 Run 的完整消息历史。
+子 Run 接收总体目标和当前任务的受控描述，不会自动复制父 Run 的完整消息历史。子任务所需的业务事实应明确写入任务描述，或由工具按业务标识查询，而不能依赖父 Run 的进程内对象。
 
-这可以减少上下文污染，也意味着子任务所需事实应明确写入任务描述或通过工具查询。
+同一进程创建子 Run 时只继承父 Run 的 streaming 调用方式；从 Snapshot 恢复或由 Worker 执行时默认使用非流式调用。
 
 ## 结果回传
 

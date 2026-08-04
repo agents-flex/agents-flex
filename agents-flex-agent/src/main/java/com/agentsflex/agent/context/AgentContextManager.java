@@ -1,6 +1,5 @@
 package com.agentsflex.agent.context;
 
-import com.agentsflex.agent.AgentInvocationContext;
 import com.agentsflex.agent.AgentRun;
 
 /**
@@ -15,15 +14,14 @@ public interface AgentContextManager {
      * 在模型调用前整理 Run 的持久化消息历史。
      *
      * @param run 即将调用模型的当前 Run
-     * @param invocationContext 当前调用的非持久化业务上下文
      * @return 是否修改消息以及压缩前后的统计信息
      */
-    AgentContextUpdate prepare(AgentRun run, AgentInvocationContext invocationContext);
+    AgentContextUpdate prepare(AgentRun run);
 
     /**
      * 返回不修改消息历史的默认实现。
      */
     static AgentContextManager none() {
-        return (run, context) -> AgentContextUpdate.unchanged();
+        return run -> AgentContextUpdate.unchanged();
     }
 }

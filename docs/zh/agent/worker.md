@@ -46,21 +46,6 @@ Worker 在租期约三分之一处自动续租。保存 Snapshot 时同时校验
 
 Lease 不是分布式事务。外部工具仍需业务幂等，网络分区时旧 Worker 可能已经发出副作用，只是在 Snapshot 时被 fencing 拒绝。
 
-## Invocation Context 恢复
-
-```java
-AgentInvocationContextProvider provider = snapshot ->
-    AgentInvocationContext.builder()
-        .tenantId(String.valueOf(snapshot.getMetadata().get("tenantId")))
-        .attribute("orderService", orderService)
-        .build();
-
-AgentWorker worker = new AgentWorker(
-    "worker-1", runner, 30_000, provider);
-```
-
-Provider 根据安全、可持久化标识重建瞬时服务和身份。不要把 Bean、连接或密钥直接放进 Snapshot metadata。
-
 ## 可领取状态
 
 Store 通常领取 READY、可继续的 RUNNING、到期 `RETRY_SCHEDULED`，以及已请求取消但尚未终止的 Run。等待审批、用户或子任务的 Run 在相应事件到达前不可领取。

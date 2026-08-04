@@ -220,23 +220,20 @@ public class AgentWorkerSubagentContractTest {
     }
 
     @Test
-    public void shouldInheritInvocationContextWhenCreatingChildInSameProcess() {
+    public void shouldInheritStreamingOptionWhenCreatingChildInSameProcess() {
         Agent parentAgent = Agent.builder("context-parent")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build();
         Agent childAgent = Agent.builder("context-child")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
         AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(), registry);
-        AgentInvocationContext context = AgentInvocationContext.builder()
-            .tenantId("tenant-1").requestId("request-1").build();
         AgentRun parent = runner.start(parentAgent, "input",
-            AgentRunOptions.builder().invocationContext(context).build());
+            AgentRunOptions.builder().streaming(true).build());
 
         AgentRun child = runner.startChild(parent, childAgent.getId(), "child input");
 
-        assertSame(context, child.getInvocationContext());
-        assertEquals("tenant-1", child.getInvocationContext().getTenantId());
-        assertNull(runner.restore(child.getId()).getInvocationContext().getTenantId());
+        assertTrue(child.isStreaming());
+        assertFalse(runner.restore(child.getId()).isStreaming());
     }
 
     @Test

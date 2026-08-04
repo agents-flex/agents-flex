@@ -38,6 +38,7 @@ Agent agent = Agent.builder("order-assistant")
 | `tools`、`toolInterceptors` | 工具协议及执行链 | 否，恢复时重装配 |
 | `executionPolicy` | 迭代、重试、预算 | 有效策略会保存 |
 | `planningPolicy` | 自动规划及委派约束 | 计划状态保存，定义重装配 |
+| `maxAttachedMessages` | 单次模型调用最多附加的历史消息数 | 否，恢复时随 Agent 定义重装配 |
 | `contextManager` | 模型调用前整理消息 | 处理结果进入快照 |
 | `middlewares` | 包装 step、模型和工具 | 否 |
 | `attributes` | 平台扩展元数据 | 否 |
@@ -66,16 +67,15 @@ Agent agent = Agent.builder("order-assistant")
 
 ## 策略组合
 
-`Agent` 聚合多类互相独立的策略：
+`Agent` 聚合执行所需的策略和参数：
 
 - `AgentExecutionPolicy`：最大模型迭代、Runner 总 step、工具错误策略、重试和预算。
 - `ToolApprovalPolicy`：允许、拒绝或要求审批。
 - `AgentPlanningPolicy`：是否规划、允许委派给谁、最大任务数和重规划次数。
-- `AgentContextPolicy`：模型读取完整 Memory 还是窗口消息。
+- `maxAttachedMessages`：每次模型调用最多读取多少条历史消息，默认 100。
 - `AgentContextManager`：在调用模型前执行摘要等持久化整理。
-- `ToolResultOffloadPolicy`：大型工具结果是否外置。
 
-策略是 Agent 的默认值。单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。
+工具结果外置不属于 Agent 定义，由 Runner 的可选 `ToolResultOffloader` 同时配置判断规则和 `AgentArtifactStore`。单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。
 
 ## 版本管理
 
@@ -101,7 +101,7 @@ Agent agent = Agent.builder("order-assistant")
 
 ## 线程安全
 
-Agent 自身的集合在构建后只读，但这不自动保证其中的 `ChatModel`、`Tool`、Interceptor 和 Middleware 线程安全。作为单例复用时，这些组件不应把某个 Run 的可变数据保存在实例字段中；运行级数据应放在 `AgentRun`、`AgentInvocationContext` 或外部存储中。
+Agent 自身的集合在构建后只读，但这不自动保证其中的 `ChatModel`、`Tool`、Interceptor 和 Middleware 线程安全。作为单例复用时，这些组件不应把某个 Run 的可变数据保存在实例字段中；需要恢复的运行级数据应放在 `AgentRun` 的受控状态或 metadata 中，其他数据放在外部存储。Middleware 和 Tool 使用的进程内服务应由组件自身以线程安全方式管理。
 
 ## 自定义装配
 

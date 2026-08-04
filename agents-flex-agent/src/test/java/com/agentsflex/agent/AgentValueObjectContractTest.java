@@ -63,35 +63,6 @@ public class AgentValueObjectContractTest {
     }
 
     @Test
-    public void shouldKeepInvocationContextIndependentFromBuilder() {
-        AgentInvocationContext.Builder builder = AgentInvocationContext.builder()
-            .tenantId("tenant")
-            .attribute("key", "first")
-            .attribute(CharSequence.class, "typed");
-        AgentInvocationContext first = builder.build();
-        builder.attribute("key", "second").attribute(CharSequence.class, "changed");
-
-        assertEquals("first", first.getAttribute("key"));
-        assertEquals("typed", first.get(CharSequence.class));
-        assertNull(first.getAttribute("key", Integer.class));
-        try {
-            first.getAttributes().put("other", "value");
-            fail("invocation attributes must be immutable");
-        } catch (UnsupportedOperationException expected) {
-            assertEquals(1, first.getAttributes().size());
-        }
-    }
-
-    @Test
-    public void shouldRejectInvalidInvocationAttributes() {
-        assertIllegalArgument(() -> AgentInvocationContext.builder()
-            .attribute((String) null, "value"));
-        assertIllegalArgument(() -> AgentInvocationContext.builder().attribute("key", null));
-        assertIllegalArgument(() -> AgentInvocationContext.builder()
-            .attribute((Class) String.class, Integer.valueOf(1)));
-    }
-
-    @Test
     public void shouldKeepApprovalDecisionMetadataImmutable() {
         ToolApprovalDecision decision = ToolApprovalDecision.requireApproval()
             .code("REVIEW")

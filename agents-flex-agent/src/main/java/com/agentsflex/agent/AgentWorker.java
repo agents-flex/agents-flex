@@ -45,10 +45,6 @@ public final class AgentWorker implements AutoCloseable {
      */
     private final long leaseMillis;
     /**
-     * 从持久化快照重建非持久化调用上下文的提供者。
-     */
-    private final AgentInvocationContextProvider invocationContextProvider;
-    /**
      * 独立执行租约心跳的单线程调度器。
      */
     private final ScheduledExecutorService leaseScheduler;
@@ -66,27 +62,15 @@ public final class AgentWorker implements AutoCloseable {
     private int activePolls;
 
     /**
-     * 创建使用空调用上下文的 Worker。
+     * 创建从 Snapshot 领取并恢复 Run 的 Worker。
      */
     public AgentWorker(String workerId, AgentRunner runner, long leaseMillis) {
-        this(workerId, runner, leaseMillis, AgentInvocationContextProvider.empty());
-    }
-
-    /**
-     * 创建在恢复 Run 时可以重新附加租户服务和请求身份的 Worker。
-     */
-    public AgentWorker(String workerId, AgentRunner runner, long leaseMillis,
-                       AgentInvocationContextProvider invocationContextProvider) {
         if (workerId == null || runner == null || leaseMillis <= 0) {
             throw new IllegalArgumentException("workerId, runner and leaseMillis are required");
-        }
-        if (invocationContextProvider == null) {
-            throw new IllegalArgumentException("invocationContextProvider must not be null");
         }
         this.workerId = workerId;
         this.runner = runner;
         this.leaseMillis = leaseMillis;
-        this.invocationContextProvider = invocationContextProvider;
         this.leaseScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "agent-lease-" + workerId);
             thread.setDaemon(true);
@@ -122,8 +106,7 @@ public final class AgentWorker implements AutoCloseable {
             AgentRun run = null;
             ScheduledFuture<?> heartbeat = null;
             try {
-                run = runner.restore(snapshot.getRunId(),
-                    invocationContextProvider.provide(snapshot));
+                run = runner.restore(snapshot.getRunId());
                 run.updateLease(workerId, snapshot.getLeaseId(), snapshot.getLeaseUntil());
                 heartbeat = startLeaseHeartbeat(run);
                 run = runner.runLeased(run, workerId, snapshot.getLeaseId());

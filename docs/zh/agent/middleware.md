@@ -65,22 +65,23 @@ public final class TimingMiddleware implements AgentMiddleware {
 - 在 `finally` 中做耗时上报仍会增加请求延迟。
 - Middleware 被多个 Run 共享，实例字段必须线程安全。
 
-## 使用 Invocation Context
+## 使用 Run Metadata
 
 ```java
 @Override
 public Object aroundToolCall(AgentToolCallContext context,
                              AgentToolCallChain chain) {
-    AgentInvocationContext invocation = context.getInvocationContext();
+    String tenantId = String.valueOf(
+        context.getRun().getMetadata().get("tenantId"));
     if (!permissionService.allowed(
-        invocation.getTenantId(), context.getTool().getName())) {
+        tenantId, context.getTool().getName())) {
         throw new SecurityException("tool access denied");
     }
     return chain.proceed(context);
 }
 ```
 
-调用上下文不持久化，因此 Worker 必须重新附加。鉴权逻辑不能假设 context 永远来自前台 HTTP 请求。
+metadata 会随 Snapshot 持久化，因此 Worker 恢复后仍可读取租户等业务标识。鉴权所需的 `permissionService` 由 Middleware 自身通过依赖注入持有，并且必须能够安全地被多个 Run 并发复用。密钥和服务对象不能放入 metadata。
 
 ## 临时修改 Prompt
 
