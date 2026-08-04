@@ -5,8 +5,8 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStatus;
-import com.agentsflex.agent.event.AgentRuntimeEvent;
-import com.agentsflex.agent.event.AgentRuntimeEventType;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import org.junit.Test;
 
@@ -146,11 +146,11 @@ public class AgentValueObjectContractTest {
     }
 
     @Test
-    public void shouldCopyRuntimeEventData() {
+    public void shouldCopyEventData() {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("status", "before");
-        AgentRuntimeEvent event = new AgentRuntimeEvent("run", "root", null,
-            "agent", "1", 1, AgentRuntimeEventType.RUN_STARTED, data);
+        AgentEvent event = new AgentEvent("run", "root", null,
+            "agent", "1", 1, AgentEventType.RUN_STARTED, data);
         data.put("status", "after");
 
         assertEquals("before", event.getData().get("status"));

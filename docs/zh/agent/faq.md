@@ -45,9 +45,9 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 模型实现必须返回 usage 才能准确累计 Token。始终同时配置最大迭代、最大 step、工具次数和外部请求超时，不能只依赖 Token。
 
-## Runtime Event 能用于可靠审计吗？
+## AgentEvent 能用于可靠审计吗？
 
-不能。它只在当前 JVM 内同步发布，重启后 sequence 也不连续。可靠审计使用 `AgentRunEventStore`。
+不能直接保证。它只在当前 JVM 内同步发布，重启后 sequence 也不连续。可靠审计应由业务 `AgentEventListener` 转发到事务 Outbox、消息平台或审计数据库，并使用业务侧游标和重试机制。
 
 ## 内存 Store 能用于多实例吗？
 
@@ -67,7 +67,7 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 ## 任务规划会并行执行吗？
 
-当前内置计划顺序执行，一次一个活动任务。需要并行 DAG 时在外部编排层或自定义 ExecutionMode 实现。
+当前内置计划顺序执行，一次一个活动任务。需要并行 DAG 时应在外部编排层实现，并把独立任务提交为不同 Run。
 
 ## 如何取消运行？
 

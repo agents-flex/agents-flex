@@ -9,11 +9,8 @@ import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
 import com.agentsflex.agent.context.ToolResultOffloadPolicy;
-import com.agentsflex.agent.event.AgentRuntimeEvent;
-import com.agentsflex.agent.event.AgentRuntimeEventType;
-import com.agentsflex.agent.event.AgentRunEvent;
-import com.agentsflex.agent.event.AgentRunEventStore;
-import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
@@ -255,7 +252,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
         InMemoryAgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
-        List<AgentRuntimeEvent> events = new ArrayList<>();
+        List<AgentEvent> events = new ArrayList<>();
         AtomicInteger toolExecutions = new AtomicInteger();
 
         Tool export = tool("export", args -> {
@@ -280,8 +277,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner runner = new AgentRunner(runStore, registry,
-            new InMemoryAgentRunEventStore(),
-            commandStore, artifactStore).addRuntimeEventListener(events::add);
+            commandStore, artifactStore).addEventListener(events::add);
 
         AgentRun waiting = runner.run(agent, "export",
             AgentRunOptions.builder().invocationContext(AgentInvocationContext.builder()
@@ -316,11 +312,11 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         String artifactId = (String) toolMessage.getMetadata("agent.artifact.id");
         assertNotNull(artifactId);
         assertEquals(128, artifactStore.load(artifactId).length());
-        assertTrue(hasEvent(events, AgentRuntimeEventType.MODEL_REASONING_DELTA));
-        assertTrue(hasEvent(events, AgentRuntimeEventType.MODEL_TOOL_CALL_DELTA));
-        assertTrue(hasEvent(events, AgentRuntimeEventType.TOOL_PROGRESS));
-        assertTrue(hasEvent(events, AgentRuntimeEventType.TOOL_RESULT_OFFLOADED));
-        assertTrue(hasEvent(events, AgentRuntimeEventType.COMMAND_CONSUMED));
+        assertTrue(hasEvent(events, AgentEventType.MODEL_REASONING_DELTA));
+        assertTrue(hasEvent(events, AgentEventType.MODEL_TOOL_CALL_DELTA));
+        assertTrue(hasEvent(events, AgentEventType.TOOL_PROGRESS));
+        assertTrue(hasEvent(events, AgentEventType.TOOL_RESULT_OFFLOADED));
+        assertTrue(hasEvent(events, AgentEventType.COMMAND_CONSUMED));
         assertEquals(1, terminalEventCount(events));
         assertStrictSequences(events);
     }
@@ -383,16 +379,16 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             .build();
         AgentRun run = AgentRun.start(agent, "m1");
         for (int i = 2; i <= 8; i++) run.getPrompt().addUserMessage("m" + i);
-        List<AgentRuntimeEvent> events = new ArrayList<>();
+        List<AgentEvent> events = new ArrayList<>();
 
-        new AgentRunner().addRuntimeEventListener(events::add).run(run);
+        new AgentRunner().addEventListener(events::add).run(run);
 
         List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
         assertEquals("Conversation summary:\nsummarized 5 messages", messages.get(0).getTextContent());
         assertEquals("m6", messages.get(1).getTextContent());
         assertEquals("m8", messages.get(3).getTextContent());
         assertEquals("done", messages.get(4).getTextContent());
-        assertTrue(hasEvent(events, AgentRuntimeEventType.CONTEXT_COMPACTED));
+        assertTrue(hasEvent(events, AgentEventType.CONTEXT_COMPACTED));
     }
 
     @Test
@@ -449,29 +445,24 @@ public class AgentRuntimeCapabilitiesScenarioTest {
     }
 
     @Test
-    public void shouldAcknowledgeRedeliveredCommandWithoutApplyingItTwice() {
+    public void shouldIsolateEventListenerFailureWhileAcknowledgingCommandOnce() {
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
-        FailOnceEventStore eventStore = new FailOnceEventStore();
         Agent agent = Agent.builder("command-redelivery-agent")
             .chatModel(new ImmediateChatModel())
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRunner runner = new AgentRunner(runStore, registry,
-            eventStore, commandStore,
-            new InMemoryAgentArtifactStore());
+        AgentRunner runner = new AgentRunner(runStore, registry, commandStore,
+            new InMemoryAgentArtifactStore())
+            .addEventListener(event -> { throw new RuntimeException("listener failed"); });
         AgentRun waiting = runner.start(agent, "start");
         runner.suspend(waiting, AgentSuspension.userInput("provide value"));
         runner.submitCommand("input-1", waiting.getId(),
             AgentResumeCommand.userInput("reply"));
-        eventStore.failNextAppend = true;
-
-        assertEquals(0, runner.processCommands("worker", 10_000, 1));
-        assertEquals(AgentRunCommandStatus.PENDING,
-            commandStore.load("input-1").getStatus());
         assertEquals(1, runner.processCommands("worker", 10_000, 1));
         assertEquals(AgentRunCommandStatus.COMPLETED,
             commandStore.load("input-1").getStatus());
+        assertEquals(0, runner.processCommands("worker", 10_000, 1));
 
         int replyCount = 0;
         for (Message message : runner.restore(waiting.getId()).getPrompt()
@@ -520,25 +511,25 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         };
     }
 
-    private static boolean hasEvent(List<AgentRuntimeEvent> events, AgentRuntimeEventType type) {
-        for (AgentRuntimeEvent event : events) if (event.getType() == type) return true;
+    private static boolean hasEvent(List<AgentEvent> events, AgentEventType type) {
+        for (AgentEvent event : events) if (event.getType() == type) return true;
         return false;
     }
 
-    private static int terminalEventCount(List<AgentRuntimeEvent> events) {
+    private static int terminalEventCount(List<AgentEvent> events) {
         int count = 0;
-        for (AgentRuntimeEvent event : events) {
-            if (event.getType() == AgentRuntimeEventType.RUN_COMPLETED
-                || event.getType() == AgentRuntimeEventType.RUN_FAILED
-                || event.getType() == AgentRuntimeEventType.RUN_CANCELLED
-                || event.getType() == AgentRuntimeEventType.BUDGET_EXCEEDED) count++;
+        for (AgentEvent event : events) {
+            if (event.getType() == AgentEventType.RUN_COMPLETED
+                || event.getType() == AgentEventType.RUN_FAILED
+                || event.getType() == AgentEventType.RUN_CANCELLED
+                || event.getType() == AgentEventType.BUDGET_EXCEEDED) count++;
         }
         return count;
     }
 
-    private static void assertStrictSequences(List<AgentRuntimeEvent> events) {
+    private static void assertStrictSequences(List<AgentEvent> events) {
         long previous = 0;
-        for (AgentRuntimeEvent event : events) {
+        for (AgentEvent event : events) {
             assertTrue(event.getSequence() > previous);
             previous = event.getSequence();
         }
@@ -625,23 +616,4 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         }
     }
 
-    /** 在指定的一次 append 上模拟事件系统故障。 */
-    private static final class FailOnceEventStore implements AgentRunEventStore {
-        private final InMemoryAgentRunEventStore delegate = new InMemoryAgentRunEventStore();
-        private boolean failNextAppend;
-
-        @Override
-        public AgentRunEvent append(AgentRunEvent event) {
-            if (failNextAppend) {
-                failNextAppend = false;
-                throw new RuntimeException("simulated event failure after snapshot");
-            }
-            return delegate.append(event);
-        }
-
-        @Override
-        public List<AgentRunEvent> load(String runId, long afterSequence, int limit) {
-            return delegate.load(runId, afterSequence, limit);
-        }
-    }
 }

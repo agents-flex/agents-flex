@@ -45,7 +45,7 @@
   <text x="86" y="373" class="detail">状态机、Snapshot、恢复、重试、预算</text>
   <text x="86" y="397" class="detail">模型流、工具协议、审批、父子 Run</text>
   <text x="86" y="421" class="detail">上下文压缩、大型结果外置</text>
-  <text x="86" y="445" class="detail">持久化事件与实时事件发布</text>
+  <text x="86" y="445" class="detail">统一不可变 AgentEvent 发布</text>
 
   <rect x="435" y="310" width="330" height="164" class="box" fill="#edf7ff" stroke="#4d8bd8"/>
   <text x="461" y="345" class="name">Agent Middleware</text>
@@ -87,13 +87,13 @@
   <text x="894" y="650" class="detail">独立鉴权和生命周期</text>
 
   <rect x="195" y="710" width="360" height="112" class="box" fill="#eef8ff" stroke="#4d8bd8"/>
-  <text x="221" y="744" class="name">AgentRuntimeEventStream</text>
+  <text x="221" y="744" class="name">AgentEventListener</text>
   <text x="221" y="772" class="detail">模型文本 / reasoning / ToolCall delta</text>
   <text x="221" y="796" class="detail">工具进度、命令、压缩与外置实时事件</text>
 
   <rect x="645" y="710" width="360" height="112" class="box" fill="#fff7e8" stroke="#c9892b"/>
-  <text x="671" y="744" class="name">AgentRunEventStore</text>
-  <text x="671" y="772" class="detail">持久化生命周期事件、Run 内 sequence</text>
+  <text x="671" y="744" class="name">Business Event Sink</text>
+  <text x="671" y="772" class="detail">业务侧数据库、Kafka 或 Outbox</text>
   <text x="671" y="796" class="detail">审计、报表、断点消费与 Outbox 集成</text>
 
   <path d="M 390 174 L 435 174" class="arrow"/>

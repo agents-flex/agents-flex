@@ -6,9 +6,8 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.event.AgentRunEvent;
-import com.agentsflex.agent.event.AgentRunEventType;
-import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
 import com.agentsflex.agent.store.FastjsonAgentStoreSerializer;
@@ -25,6 +24,7 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -210,23 +210,22 @@ public class AgentTaskPlanningScenarioTest {
     }
 
     @Test
-    public void shouldPersistPlanningLifecycleEvents() {
+    public void shouldPublishPlanningLifecycleEvents() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> planCall("记录事件",
             taskJson("one", "任务", "执行任务", null)));
         model.enqueue(prompt -> new AiMessage("子任务结果"));
         model.enqueue(prompt -> new AiMessage("汇总"));
         Agent agent = planningAgent("event-agent", model);
-        InMemoryAgentRunEventStore events = new InMemoryAgentRunEventStore();
+        List<AgentEvent> events = new ArrayList<>();
         AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(),
-            new InMemoryAgentLoader(agent), events);
+            new InMemoryAgentLoader(agent)).addEventListener(events::add);
 
-        AgentRun completed = runner.run(agent, "执行并记录");
-        List<AgentRunEvent> stored = events.load(completed.getId(), 0, 100);
+        runner.run(agent, "执行并记录");
 
-        assertTrue(hasEvent(stored, AgentRunEventType.PLAN_CREATED));
-        assertTrue(hasEvent(stored, AgentRunEventType.TASK_STARTED));
-        assertTrue(hasEvent(stored, AgentRunEventType.TASK_COMPLETED));
+        assertTrue(hasEvent(events, AgentEventType.PLAN_CREATED));
+        assertTrue(hasEvent(events, AgentEventType.TASK_STARTED));
+        assertTrue(hasEvent(events, AgentEventType.TASK_COMPLETED));
     }
 
     @Test
@@ -426,14 +425,14 @@ public class AgentTaskPlanningScenarioTest {
         });
         model.enqueue(prompt -> new AiMessage("缓存分析完成"));
         model.enqueue(prompt -> new AiMessage("最终汇总"));
-        InMemoryAgentRunEventStore events = new InMemoryAgentRunEventStore();
+        List<AgentEvent> events = new ArrayList<>();
         Agent agent = Agent.builder("replanning-agent").chatModel(model)
             .planningPolicy(AgentPlanningPolicy.builder().enabled(true)
                 .failureStrategy(AgentPlanningPolicy.FailureStrategy.CONTINUE)
                 .maxReplans(1).taskRevisionAllowed(true).build())
             .build();
         AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(),
-            new InMemoryAgentLoader(agent), events);
+            new InMemoryAgentLoader(agent)).addEventListener(events::add);
 
         AgentRun completed = runner.run(agent, "分析数据");
         AgentTask revised = completed.getTaskPlan().getTasks().get(1);
@@ -444,8 +443,7 @@ public class AgentTaskPlanningScenarioTest {
             completed.getTaskPlan().getLastRevisionReason());
         assertEquals("分析缓存", revised.getTitle());
         assertEquals(AgentTaskStatus.COMPLETED, revised.getStatus());
-        assertTrue(hasEvent(events.load(completed.getId(), 0, 100),
-            AgentRunEventType.PLAN_UPDATED));
+        assertTrue(hasEvent(events, AgentEventType.PLAN_UPDATED));
     }
 
     @Test
@@ -663,8 +661,8 @@ public class AgentTaskPlanningScenarioTest {
         return false;
     }
 
-    private static boolean hasEvent(List<AgentRunEvent> events, AgentRunEventType type) {
-        for (AgentRunEvent event : events) if (event.getType() == type) return true;
+    private static boolean hasEvent(List<AgentEvent> events, AgentEventType type) {
+        for (AgentEvent event : events) if (event.getType() == type) return true;
         return false;
     }
 }

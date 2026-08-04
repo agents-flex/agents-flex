@@ -9,18 +9,32 @@ package com.agentsflex.agent;
 /**
  * 恢复暂停 AgentRun 的外部命令类型。
  *
+ * <p>命令类型必须与当前 AgentSuspensionType 匹配，并在需要时携带相同 correlationId，
+ * Runner 才会应用命令并继续推进；不匹配的命令会被拒绝。</p>
  */
 public enum AgentResumeCommandType {
-    /** 不补充数据，直接从暂停阶段继续。 */
+    /**
+     * 不补充数据，直接从暂停阶段继续。
+     */
     CONTINUE,
-    /** 将新的用户输入追加到对话后继续。 */
+    /**
+     * 将新的用户输入追加到对话后继续。
+     */
     USER_INPUT,
-    /** 允许执行关联的工具调用。 */
+    /**
+     * 允许执行关联的工具调用。
+     */
     APPROVE_TOOL,
-    /** 拒绝执行关联的工具调用。 */
+    /**
+     * 拒绝执行关联的工具调用。
+     */
     REJECT_TOOL,
-    /** 通知父运行关联的子运行已经结束。 */
+    /**
+     * 通知父运行关联的子运行已经结束。
+     */
     CHILD_COMPLETED,
-    /** 执行已经到达调度时间的自动重试。 */
+    /**
+     * 执行已经到达调度时间的自动重试。
+     */
     RETRY
 }

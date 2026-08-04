@@ -20,8 +20,7 @@
  *     <li>{@link com.agentsflex.agent.middleware.AgentMiddleware}：包装步骤、模型和工具调用；</li>
  *     <li>{@link com.agentsflex.agent.middleware.AgentMiddleware}：包装步骤、模型调用和工具调用；</li>
  *     <li>{@link com.agentsflex.agent.store.AgentRunStore}：保存 Snapshot、领取任务和管理 Worker 租约；</li>
- *     <li>{@link com.agentsflex.agent.event.AgentRunEventStore}：追加执行事件并支持按序号增量读取；</li>
- *     <li>{@link com.agentsflex.agent.event.AgentRuntimeEventStream}：发布模型增量和工具进度等实时事件；</li>
+ *     <li>{@link com.agentsflex.agent.event.AgentEventListener}：观察生命周期、模型增量和工具进度事件；</li>
  *     <li>{@link com.agentsflex.agent.command.AgentRunCommandStore}：持久化审批和恢复命令；</li>
  *     <li>{@link com.agentsflex.agent.context.AgentArtifactStore}：保存大型工具结果；</li>
  *     <li>{@link com.agentsflex.agent.task.AgentPlanningPolicy}：约束模型自主创建和执行任务计划；</li>

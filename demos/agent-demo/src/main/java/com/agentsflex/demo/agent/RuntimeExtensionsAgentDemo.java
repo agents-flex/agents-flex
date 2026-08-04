@@ -16,9 +16,8 @@ import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
 import com.agentsflex.agent.context.ToolResultOffloadPolicy;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
-import com.agentsflex.agent.event.AgentRuntimeEvent;
-import com.agentsflex.agent.event.AgentRuntimeEventType;
-import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
@@ -55,7 +54,7 @@ public final class RuntimeExtensionsAgentDemo {
         DemoSupport.section("Demo 5 - Agent 运行时扩展");
 
         InMemoryAgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
-        List<AgentRuntimeEvent> runtimeEvents = new ArrayList<>();
+        List<AgentEvent> events = new ArrayList<>();
 
         // 工具可以读取调用上下文，并通过 ToolContext 主动报告可展示的执行进度。
         Tool reportTool = Tool.builder("build_report", "生成一份较大的分析报告")
@@ -109,11 +108,10 @@ public final class RuntimeExtensionsAgentDemo {
         AgentRunner runner = AgentRunner.builder()
             .runStore(new InMemoryAgentRunStore())
             .agentLoader(new InMemoryAgentLoader(agent))
-            .eventStore(new InMemoryAgentRunEventStore())
             .commandStore(new InMemoryAgentRunCommandStore())
             .artifactStore(artifactStore)
             .build()
-            .addRuntimeEventListener(runtimeEvents::add);
+            .addEventListener(events::add);
 
         AgentInvocationContext invocation = AgentInvocationContext.builder()
             .tenantId("tenant-demo")
@@ -141,13 +139,13 @@ public final class RuntimeExtensionsAgentDemo {
         System.out.println("artifact id  : " + artifactId);
         System.out.println("artifact size: " + artifactStore.load(artifactId).length());
 
-        System.out.println("runtime events:");
-        for (AgentRuntimeEvent event : runtimeEvents) {
-            if (event.getType() == AgentRuntimeEventType.MODEL_REASONING_DELTA
-                || event.getType() == AgentRuntimeEventType.MODEL_TOOL_CALL_DELTA
-                || event.getType() == AgentRuntimeEventType.TOOL_PROGRESS
-                || event.getType() == AgentRuntimeEventType.CONTEXT_COMPACTED
-                || event.getType() == AgentRuntimeEventType.TOOL_RESULT_OFFLOADED) {
+        System.out.println("events:");
+        for (AgentEvent event : events) {
+            if (event.getType() == AgentEventType.MODEL_REASONING_DELTA
+                || event.getType() == AgentEventType.MODEL_TOOL_CALL_DELTA
+                || event.getType() == AgentEventType.TOOL_PROGRESS
+                || event.getType() == AgentEventType.CONTEXT_COMPACTED
+                || event.getType() == AgentEventType.TOOL_RESULT_OFFLOADED) {
                 System.out.println("  " + event.getSequence() + " "
                     + event.getType() + " " + event.getData());
             }

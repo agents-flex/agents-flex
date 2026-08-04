@@ -17,8 +17,8 @@ import com.agentsflex.agent.AgentRunOptions;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.AgentSuspension;
-import com.agentsflex.agent.event.AgentRuntimeEvent;
-import com.agentsflex.agent.event.AgentRuntimeEventType;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.Message;
@@ -72,7 +72,7 @@ public final class AgentConsoleDemo {
         AgentRunner runner = AgentRunner.builder()
             .agentLoader(new InMemoryAgentLoader(agent))
             .build();
-        runner.addRuntimeEventListener(AgentConsoleDemo::printRuntimeEvent);
+        runner.addEventListener(AgentConsoleDemo::printEvent);
         AgentConversation conversation = AgentConversation.create("console-" + UUID.randomUUID(), agent);
 
         printWelcome(configuration, conversation);
@@ -297,15 +297,15 @@ public final class AgentConsoleDemo {
     }
 
     /** 只打印对学习执行过程有帮助的实时事件，避免控制台被所有 Snapshot 事件淹没。 */
-    private static void printRuntimeEvent(AgentRuntimeEvent event) {
-        AgentRuntimeEventType type = event.getType();
-        if (type == AgentRuntimeEventType.MODEL_STARTED
-            || type == AgentRuntimeEventType.MODEL_COMPLETED
-            || type == AgentRuntimeEventType.TOOL_STARTED
-            || type == AgentRuntimeEventType.TOOL_COMPLETED
-            || type == AgentRuntimeEventType.TOOL_APPROVAL_REQUESTED
-            || type == AgentRuntimeEventType.RUN_SUSPENDED
-            || type == AgentRuntimeEventType.RUN_RESUMED) {
+    private static void printEvent(AgentEvent event) {
+        AgentEventType type = event.getType();
+        if (type == AgentEventType.MODEL_STARTED
+            || type == AgentEventType.MODEL_COMPLETED
+            || type == AgentEventType.TOOL_STARTED
+            || type == AgentEventType.TOOL_COMPLETED
+            || type == AgentEventType.TOOL_APPROVAL_REQUESTED
+            || type == AgentEventType.RUN_SUSPENDED
+            || type == AgentEventType.RUN_RESUMED) {
             System.out.println("[事件] " + type + " run=" + event.getRunId());
         }
     }

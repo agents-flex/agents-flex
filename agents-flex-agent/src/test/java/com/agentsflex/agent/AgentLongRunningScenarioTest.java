@@ -6,9 +6,8 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.event.AgentRunEvent;
-import com.agentsflex.agent.event.AgentRunEventType;
-import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
@@ -18,7 +17,6 @@ import com.agentsflex.core.message.ToolCall;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -28,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/** 验证 Worker、租约、子任务和持久化事件流组成的长任务执行链路。 */
+/** 验证 Worker、租约、子任务和事件监听器组成的长任务执行链路。 */
 public class AgentLongRunningScenarioTest {
 
     @Test
@@ -112,7 +110,7 @@ public class AgentLongRunningScenarioTest {
     }
 
     @Test
-    public void shouldPersistApprovalWorkflowEventsForIncrementalCrossRunnerReading() {
+    public void shouldObserveApprovalWorkflowAcrossRunners() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         AtomicInteger executions = new AtomicInteger();
@@ -125,34 +123,24 @@ public class AgentLongRunningScenarioTest {
             .build();
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        InMemoryAgentRunEventStore eventStore = new InMemoryAgentRunEventStore();
-        AgentRunner firstRunner = new AgentRunner(runStore, registry, eventStore);
+        List<AgentEvent> events = new ArrayList<>();
+        AgentRunner firstRunner = new AgentRunner(runStore, registry).addEventListener(events::add);
         AgentRun waiting = firstRunner.run(agent, "execute");
 
-        AgentRunner secondRunner = new AgentRunner(runStore, registry, eventStore);
+        AgentRunner secondRunner = new AgentRunner(runStore, registry).addEventListener(events::add);
         AgentRun completed = secondRunner.resume(waiting.getId(),
             AgentResumeCommand.approveTool("event-call")
                 .withMetadata("approverId", "admin-7"));
-        List<AgentRunEvent> firstPage = eventStore.load(completed.getId(), 0, 5);
-        List<AgentRunEvent> secondPage = eventStore.load(completed.getId(),
-            firstPage.get(firstPage.size() - 1).getSequence(), 100);
-        List<AgentRunEvent> all = new ArrayList<>(firstPage);
-        all.addAll(secondPage);
 
-        assertFalse(firstPage.isEmpty());
-        assertFalse(secondPage.isEmpty());
-        assertStrictlyIncreasing(all);
-        assertBefore(all, AgentRunEventType.TOOL_APPROVAL_REQUESTED,
-            AgentRunEventType.RUN_RESUMED);
-        assertBefore(all, AgentRunEventType.RUN_RESUMED,
-            AgentRunEventType.TOOL_STARTED);
-        assertBefore(all, AgentRunEventType.TOOL_STARTED,
-            AgentRunEventType.TOOL_COMPLETED);
-        assertBefore(all, AgentRunEventType.TOOL_COMPLETED,
-            AgentRunEventType.RUN_COMPLETED);
-        AgentRunEvent toolStarted = find(all, AgentRunEventType.TOOL_STARTED);
-        assertEquals("event-call", toolStarted.getAttributes().get("toolCallId"));
-        assertEquals("event-tool", toolStarted.getAttributes().get("toolName"));
+        assertFalse(events.isEmpty());
+        assertBefore(events, AgentEventType.TOOL_APPROVAL_REQUESTED,
+            AgentEventType.RUN_RESUMED);
+        assertBefore(events, AgentEventType.RUN_RESUMED, AgentEventType.TOOL_STARTED);
+        assertBefore(events, AgentEventType.TOOL_STARTED, AgentEventType.TOOL_COMPLETED);
+        assertBefore(events, AgentEventType.TOOL_COMPLETED, AgentEventType.RUN_COMPLETED);
+        AgentEvent toolStarted = find(events, AgentEventType.TOOL_STARTED);
+        assertEquals("event-call", toolStarted.getData().get("toolCallId"));
+        assertEquals("event-tool", toolStarted.getData().get("toolName"));
         assertEquals("admin-7", ((java.util.Map<?, ?>) completed.getMetadata()
             .get("lastResumeCommandMetadata")).get("approverId"));
         assertEquals(1, executions.get());
@@ -172,13 +160,13 @@ public class AgentLongRunningScenarioTest {
             .build();
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        InMemoryAgentRunEventStore eventStore = new InMemoryAgentRunEventStore();
-        AgentRunner requestRunner = new AgentRunner(
-            runStore, registry, eventStore);
+        List<AgentEvent> events = new ArrayList<>();
+        AgentRunner requestRunner = new AgentRunner(runStore, registry)
+            .addEventListener(events::add);
         AgentRun waiting = requestRunner.run(agent, "execute");
 
-        AgentRunner workerRunner = new AgentRunner(
-            runStore, registry, eventStore);
+        AgentRunner workerRunner = new AgentRunner(runStore, registry)
+            .addEventListener(events::add);
         AgentRun requested = workerRunner.requestCancellation(waiting.getId());
         assertTrue(requested.isCancellationRequested());
         assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, requested.getStatus());
@@ -191,9 +179,8 @@ public class AgentLongRunningScenarioTest {
         assertEquals(1, processed.size());
         assertEquals(AgentRunStatus.CANCELLED, processed.get(0).getStatus());
         assertEquals(0, executions.get());
-        List<AgentRunEvent> events = eventStore.load(waiting.getId(), 0, 100);
-        assertBefore(events, AgentRunEventType.CANCELLATION_REQUESTED,
-            AgentRunEventType.RUN_CANCELLED);
+        assertBefore(events, AgentEventType.CANCELLATION_REQUESTED,
+            AgentEventType.RUN_CANCELLED);
     }
 
     @Test
@@ -213,20 +200,6 @@ public class AgentLongRunningScenarioTest {
         assertTrue(store.load(stale.getId()).isCancellationRequested());
     }
 
-    @Test
-    public void shouldAppendSameEventIdempotently() {
-        InMemoryAgentRunEventStore store = new InMemoryAgentRunEventStore();
-        AgentRunEvent event = AgentRunEvent.create("run-1", AgentRunEventType.RUN_STARTED,
-            Collections.singletonMap("source", "test"));
-
-        AgentRunEvent first = store.append(event);
-        AgentRunEvent second = store.append(event);
-
-        assertEquals(first.getEventId(), second.getEventId());
-        assertEquals(first.getSequence(), second.getSequence());
-        assertEquals(1, store.load("run-1", 0, 10).size());
-    }
-
     private int countChildResultMessages(List<Message> messages) {
         int count = 0;
         for (Message message : messages) {
@@ -238,21 +211,13 @@ public class AgentLongRunningScenarioTest {
         return count;
     }
 
-    private void assertStrictlyIncreasing(List<AgentRunEvent> events) {
-        long previous = 0;
-        for (AgentRunEvent event : events) {
-            assertTrue(event.getSequence() > previous);
-            previous = event.getSequence();
-        }
-    }
-
-    private void assertBefore(List<AgentRunEvent> events, AgentRunEventType first,
-                              AgentRunEventType second) {
+    private void assertBefore(List<AgentEvent> events, AgentEventType first,
+                              AgentEventType second) {
         assertTrue(first + " should occur before " + second,
             indexOf(events, first) < indexOf(events, second));
     }
 
-    private int indexOf(List<AgentRunEvent> events, AgentRunEventType type) {
+    private int indexOf(List<AgentEvent> events, AgentEventType type) {
         for (int i = 0; i < events.size(); i++) {
             if (events.get(i).getType() == type) {
                 return i;
@@ -261,8 +226,8 @@ public class AgentLongRunningScenarioTest {
         return Integer.MAX_VALUE;
     }
 
-    private AgentRunEvent find(List<AgentRunEvent> events, AgentRunEventType type) {
-        for (AgentRunEvent event : events) {
+    private AgentEvent find(List<AgentEvent> events, AgentEventType type) {
+        for (AgentEvent event : events) {
             if (event.getType() == type) {
                 return event;
             }

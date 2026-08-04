@@ -104,7 +104,7 @@ for (AgentTask task : progress.getTasks()) {
 
 - 使用真实 Tool Calling 模型，并在指令中定义规划阈值。
 - 为每个 Agent 配置最小权限工具和独立预算。
-- 持久化 Run/Command/Event Store，使用 Worker 执行长任务。
+- 持久化 Run/Command Store，使用 Worker 执行长任务；业务审计通过 AgentEventListener 接入。
 - 监控任务数、深度、重规划次数和子结果截断。
 - 根 Agent 输出只汇总事实，不把失败任务伪装为完成。
 

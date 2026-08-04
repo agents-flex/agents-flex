@@ -15,8 +15,7 @@ import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.AgentWorker;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
-import com.agentsflex.agent.event.AgentRunEvent;
-import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
@@ -91,12 +90,13 @@ public final class HumanApprovalAgentDemo {
         // 真实多进程部署应将 Store 替换为生产实现，并由业务 AgentLoader 从配置表组装 Agent。
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
-        InMemoryAgentRunEventStore eventStore = new InMemoryAgentRunEventStore();
+        List<AgentEvent> events = new java.util.ArrayList<>();
         InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
         InMemoryAgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
 
         AgentRunner firstRunner = new AgentRunner(
-            runStore, agentLoader, eventStore, commandStore, artifactStore);
+            runStore, agentLoader, commandStore, artifactStore)
+            .addEventListener(events::add);
         // run() 会执行到终态或阻塞态；遇到审批点时返回 WAITING_FOR_APPROVAL。
         AgentRun waiting = firstRunner.run(agent, "发布 order-api 2.4.0");
 
@@ -119,7 +119,8 @@ public final class HumanApprovalAgentDemo {
             .withMetadata("approvalSource", "release-console");
 
         AgentRunner secondRunner = new AgentRunner(
-            runStore, agentLoader, eventStore, commandStore, artifactStore);
+            runStore, agentLoader, commandStore, artifactStore)
+            .addEventListener(events::add);
         // 审批接口只负责把命令可靠写入 Inbox，不在当前请求中执行模型或部署工具。
         secondRunner.submitCommand("approval-deploy-call-1", waiting.getId(), approval);
         List<AgentRun> processed;
@@ -140,10 +141,9 @@ public final class HumanApprovalAgentDemo {
             completed.getMetadata().get("lastResumeCommandMetadata");
         System.out.println("approval audit: " + audit);
 
-        List<AgentRunEvent> events = eventStore.load(completed.getId(), 0, 100);
-        // sequence 是 Run 内单调递增游标，平台可用它实现时间线和断点增量消费。
+        // 业务系统可以在统一监听器中把事件写入自己的审计库或消息队列。
         System.out.println("event stream  :");
-        for (AgentRunEvent event : events) {
+        for (AgentEvent event : events) {
             System.out.println("  " + event.getSequence() + " " + event.getType());
         }
     }

@@ -70,8 +70,6 @@ AgentRun run = runner.restore(runId, invocationContext);
 
 历史 Agent 版本缺失时应明确失败，不能静默使用最新定义。
 
-从包含 `AgentExecutionMode` 的旧版本升级时，应先完成或迁移使用自定义 Mode 的未终止 Run。新版本不再保存或校验 execution mode 与 mode state，也不会继续执行旧的自定义模式状态机。
-
 ## 序列化
 
 模块提供 `AgentStoreSerializer` 与默认 `FastjsonAgentStoreSerializer`。默认格式是带类型信息的 JSONB 二进制，并限制可反序列化包前缀：

@@ -100,7 +100,6 @@ flowchart TD
 AgentRunner runner = AgentRunner.builder()
     .runStore(runStore)
     .agentLoader(agentLoader)
-    .eventStore(eventStore)
     .commandStore(commandStore)
     .artifactStore(artifactStore)
     .build();
@@ -201,13 +200,11 @@ AgentRunCommand command = runner.submitCommand(
 ## 监听扩展
 
 ```java
-runner.addListener(listener)
-    .addRuntimeEventListener(runtimeListener)
-    .addEventEnricher((run, type) -> Map.of("tenant", "acme"))
+runner.addEventListener(eventListener)
     .addWakeupListener(command -> scheduler.wakeup());
 ```
 
-这些扩展分别面向粗粒度生命周期、低延迟实时事件、持久化审计增强和外部调度唤醒。监听器应快速返回，不能把业务主流程依赖在“监听一定成功”上。
+统一事件监听器覆盖生命周期、模型增量和工具进度；持久化审计由业务监听器自行实现。WakeupListener 只负责命令入箱后的外部调度唤醒。监听器应快速返回，不能把业务主流程依赖在“监听一定成功”上。
 
 ## 自定义建议
 

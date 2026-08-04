@@ -6,6 +6,7 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.AgentRunStore;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
@@ -265,9 +266,8 @@ public class AgentAdvancedFeaturesTest {
         InMemoryAgentRunStore store = new InMemoryAgentRunStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
         CountDownLatch completed = new CountDownLatch(1);
-        runner.addListener(new AgentListener() {
-            @Override
-            public void onRunComplete(AgentRun run) { completed.countDown(); }
+        runner.addEventListener(event -> {
+            if (event.getType() == AgentEventType.RUN_COMPLETED) completed.countDown();
         });
         AgentRun scheduled = runner.start(agent, "background");
 

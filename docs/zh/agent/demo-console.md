@@ -117,7 +117,7 @@ while (run.getStatus().isBlocked()) {
 ## 实时事件
 
 ```java
-runner.addRuntimeEventListener(event -> {
+runner.addEventListener(event -> {
     switch (event.getType()) {
         case MODEL_STARTED:
         case TOOL_STARTED:

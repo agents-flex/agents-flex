@@ -7,8 +7,6 @@ import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStatus;
 import com.agentsflex.agent.context.AgentArtifactReference;
-import com.agentsflex.agent.event.AgentRunEvent;
-import com.agentsflex.agent.event.AgentRunEventType;
 import com.agentsflex.agent.store.ParentChildRunSnapshots;
 import redis.clients.jedis.params.ScanParams;
 import redis.clients.jedis.resps.ScanResult;
@@ -77,15 +75,6 @@ public class RedisAgentStoresIntegrationTest {
         assertEquals(1, claimedCommand.getAttempts());
         commands.acknowledge("command-1", "worker");
         assertEquals(AgentRunCommandStatus.COMPLETED, commands.load("command-1").getStatus());
-
-        RedisAgentRunEventStore events = config.eventStore();
-        AgentRunEvent event = AgentRunEvent.create("run-1", AgentRunEventType.RUN_STARTED, null);
-        assertEquals(1, events.append(event).getSequence());
-        assertEquals(1, events.append(event).getSequence());
-        AgentRunEvent second = AgentRunEvent.create("run-1", AgentRunEventType.MODEL_STARTED, null);
-        assertEquals(2, events.append(second).getSequence());
-        List<AgentRunEvent> loadedEvents = events.load("run-1", 0, 10);
-        assertEquals(2, loadedEvents.size());
 
         RedisAgentArtifactStore artifacts = config.artifactStore();
         AgentArtifactReference artifact = artifacts.save("run-1", "text/plain", "大型结果", null);

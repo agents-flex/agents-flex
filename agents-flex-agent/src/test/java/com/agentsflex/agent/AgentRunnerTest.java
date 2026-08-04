@@ -6,6 +6,7 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
@@ -218,39 +219,18 @@ public class AgentRunnerTest {
         model.enqueue(prompt -> new AiMessage("done"));
         List<String> events = new ArrayList<>();
 
-        AgentListener listener = new AgentListener() {
-            @Override
-            public void onRunStart(AgentRun run) {
-                events.add("run-start");
-            }
-
-            @Override
-            public void onModelStart(AgentRun run) {
-                events.add("model-start");
-            }
-
-            @Override
-            public void onToolStart(AgentRun run, ToolCall toolCall) {
-                events.add("tool-start");
-            }
-
-            @Override
-            public void onToolEnd(AgentRun run, ToolCall toolCall, ToolMessage result) {
-                events.add("tool-end");
-            }
-
-            @Override
-            public void onRunComplete(AgentRun run) {
-                events.add("run-complete");
-            }
-        };
-
         Agent agent = Agent.builder()
             .chatModel(model)
             .tool(tool("eventTool", args -> "ok"))
             .build();
 
-        AgentRun run = new AgentRunner().addListener(listener).run(agent, "events");
+        AgentRun run = new AgentRunner().addEventListener(event -> {
+            if (event.getType() == AgentEventType.RUN_STARTED) events.add("run-start");
+            if (event.getType() == AgentEventType.MODEL_STARTED) events.add("model-start");
+            if (event.getType() == AgentEventType.TOOL_STARTED) events.add("tool-start");
+            if (event.getType() == AgentEventType.TOOL_COMPLETED) events.add("tool-end");
+            if (event.getType() == AgentEventType.RUN_COMPLETED) events.add("run-complete");
+        }).run(agent, "events");
 
         assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
         assertEquals(Arrays.asList(

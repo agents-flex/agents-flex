@@ -3,8 +3,8 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.event.AgentRuntimeEvent;
-import com.agentsflex.agent.event.AgentRuntimeEventType;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.AgentRunVersionConflictException;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
@@ -46,7 +46,7 @@ public class AgentExecutionBoundaryContractTest {
 
     @Test
     public void shouldPublishPartialDeltaBeforeStreamingFailure() {
-        List<AgentRuntimeEvent> events = new ArrayList<>();
+        List<AgentEvent> events = new ArrayList<>();
         ChatModel model = new ChatModel() {
             @Override
             public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
@@ -62,7 +62,7 @@ public class AgentExecutionBoundaryContractTest {
                 listener.onError(null, new RuntimeException("stream interrupted"));
             }
         };
-        AgentRunner runner = new AgentRunner().addRuntimeEventListener(events::add);
+        AgentRunner runner = new AgentRunner().addEventListener(events::add);
 
         AgentRun run = runner.run(Agent.builder("partial-stream")
                 .chatModel(model).build(), "input",
@@ -71,7 +71,7 @@ public class AgentExecutionBoundaryContractTest {
 
         assertEquals(AgentRunStatus.FAILED, run.getStatus());
         assertTrue(run.getError().getMessage().contains("stream interrupted"));
-        assertTrue(hasEventWithContent(events, AgentRuntimeEventType.MODEL_TEXT_DELTA,
+        assertTrue(hasEventWithContent(events, AgentEventType.MODEL_TEXT_DELTA,
             "partial"));
         assertEquals(1, countTerminalEvents(events));
     }
@@ -266,9 +266,9 @@ public class AgentExecutionBoundaryContractTest {
         }
     }
 
-    private boolean hasEventWithContent(List<AgentRuntimeEvent> events,
-                                        AgentRuntimeEventType type, String content) {
-        for (AgentRuntimeEvent event : events) {
+    private boolean hasEventWithContent(List<AgentEvent> events,
+                                        AgentEventType type, String content) {
+        for (AgentEvent event : events) {
             if (event.getType() == type && content.equals(event.getData().get("content"))) {
                 return true;
             }
@@ -276,13 +276,13 @@ public class AgentExecutionBoundaryContractTest {
         return false;
     }
 
-    private int countTerminalEvents(List<AgentRuntimeEvent> events) {
+    private int countTerminalEvents(List<AgentEvent> events) {
         int result = 0;
-        for (AgentRuntimeEvent event : events) {
-            if (event.getType() == AgentRuntimeEventType.RUN_COMPLETED
-                || event.getType() == AgentRuntimeEventType.RUN_FAILED
-                || event.getType() == AgentRuntimeEventType.RUN_CANCELLED
-                || event.getType() == AgentRuntimeEventType.BUDGET_EXCEEDED) result++;
+        for (AgentEvent event : events) {
+            if (event.getType() == AgentEventType.RUN_COMPLETED
+                || event.getType() == AgentEventType.RUN_FAILED
+                || event.getType() == AgentEventType.RUN_CANCELLED
+                || event.getType() == AgentEventType.BUDGET_EXCEEDED) result++;
         }
         return result;
     }

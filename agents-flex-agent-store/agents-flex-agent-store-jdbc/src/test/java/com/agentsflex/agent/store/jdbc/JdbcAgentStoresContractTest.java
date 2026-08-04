@@ -7,8 +7,6 @@ import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStatus;
 import com.agentsflex.agent.context.AgentArtifactReference;
-import com.agentsflex.agent.event.AgentRunEvent;
-import com.agentsflex.agent.event.AgentRunEventType;
 import com.agentsflex.agent.store.AgentRunVersionConflictException;
 import com.agentsflex.agent.store.ParentChildRunSnapshots;
 import org.h2.jdbcx.JdbcDataSource;
@@ -18,9 +16,6 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -111,20 +106,6 @@ public class JdbcAgentStoresContractTest {
     }
 
     @Test
-    public void shouldAppendIdempotentOrderedEventsAndResumeFromSequence() {
-        JdbcAgentRunEventStore store = config.eventStore();
-        AgentRunEvent first = AgentRunEvent.create("run-1", AgentRunEventType.RUN_STARTED,
-            Collections.singletonMap("source", "test"));
-        AgentRunEvent second = AgentRunEvent.create("run-1", AgentRunEventType.MODEL_STARTED, null);
-        assertEquals(1, store.append(first).getSequence());
-        assertEquals(1, store.append(first).getSequence());
-        assertEquals(2, store.append(second).getSequence());
-        List<AgentRunEvent> resumed = store.load("run-1", 1, 10);
-        assertEquals(1, resumed.size());
-        assertEquals(second.getEventId(), resumed.get(0).getEventId());
-    }
-
-    @Test
     public void shouldPersistUtf8ArtifactAndChecksum() {
         JdbcAgentArtifactStore store = config.artifactStore();
         AgentArtifactReference reference = store.save("run-1", "text/plain", "大型工具结果",
@@ -150,27 +131,6 @@ public class JdbcAgentStoresContractTest {
             });
             start.countDown();
             assertEquals(1, first.get().size() + second.get().size());
-        } finally { executor.shutdownNow(); }
-    }
-
-    @Test
-    public void shouldAllocateUniqueEventSequencesConcurrently() throws Exception {
-        final JdbcAgentRunEventStore store = config.eventStore();
-        ExecutorService executor = Executors.newFixedThreadPool(8);
-        CountDownLatch start = new CountDownLatch(1);
-        List<Future<AgentRunEvent>> futures = new ArrayList<>();
-        try {
-            for (int i = 0; i < 20; i++) {
-                futures.add(executor.submit(() -> {
-                    start.await();
-                    return store.append(AgentRunEvent.create("event-race", AgentRunEventType.MODEL_STARTED, null));
-                }));
-            }
-            start.countDown();
-            Set<Long> sequences = new HashSet<>();
-            for (Future<AgentRunEvent> future : futures) sequences.add(future.get().getSequence());
-            assertEquals(20, sequences.size());
-            assertEquals(20, store.load("event-race", 0, 100).size());
         } finally { executor.shutdownNow(); }
     }
 

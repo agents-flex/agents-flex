@@ -13,8 +13,7 @@ import com.agentsflex.agent.AgentRun;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.AgentWorker;
-import com.agentsflex.agent.event.AgentRunEvent;
-import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
 import com.agentsflex.agent.tool.AgentToolInvocation;
@@ -81,8 +80,9 @@ public final class DurableWorkerAgentDemo {
 
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
-        InMemoryAgentRunEventStore eventStore = new InMemoryAgentRunEventStore();
-        AgentRunner runner = new AgentRunner(runStore, agentLoader, eventStore);
+        List<AgentEvent> events = new java.util.ArrayList<>();
+        AgentRunner runner = new AgentRunner(runStore, agentLoader)
+            .addEventListener(events::add);
 
         AgentRun scheduled = runner.run(agent, "同步库存");
         DemoSupport.printRun(scheduled);
@@ -109,7 +109,7 @@ public final class DurableWorkerAgentDemo {
             "原工具重试不能重复产生模型决策回合");
 
         System.out.println("important events:");
-        for (AgentRunEvent event : eventStore.load(completed.getId(), 0, 100)) {
+        for (AgentEvent event : events) {
             if (event.getType().name().contains("RETRY")
                 || event.getType().name().contains("COMPLETED")) {
                 System.out.println("  " + event.getSequence() + " " + event.getType());

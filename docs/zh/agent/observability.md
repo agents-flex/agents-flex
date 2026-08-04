@@ -24,10 +24,10 @@ Agent 的一次用户请求可能跨模型、工具、审批、重试、Worker �
 
 ## 实时进度
 
-Runtime Event 适合 WebSocket/SSE：
+Agent Event 适合 WebSocket/SSE：
 
 ```java
-runner.addRuntimeEventListener(event -> uiPublisher.publish(
+runner.addEventListener(event -> uiPublisher.publish(
     event.getRunId(), event.getSequence(), event.getType(), event.getData()));
 ```
 
@@ -35,9 +35,9 @@ UI 应容忍丢事件，并在重连时从 `AgentRunStore` 重新读取当前状
 
 ## 审计时间线
 
-持久化 `AgentRunEventStore` 后，按 sequence 增量读取。审批事件应通过 Enricher 或 Resume Command metadata 记录审批人、渠道、策略代码和理由；敏感数据应保存引用而不是原文。
+Framework 不保存事件。需要审计时间线时，由业务 `AgentEventListener` 将事件发送到自己的审计库、消息平台或事务 Outbox，并在业务存储中分配可靠顺序。审批人、渠道、策略代码和理由可以来自 Resume Command metadata；敏感数据应保存引用而不是原文。
 
-Snapshot 表示当前真相，Event 表示变化历史。排障时先读 Snapshot，再用事件解释到达该状态的路径。
+Snapshot 表示当前真相，业务保存的 Event 表示变化历史。排障时先读 Snapshot，再用业务事件解释到达该状态的路径。
 
 ## 指标设计
 
@@ -50,13 +50,13 @@ Snapshot 表示当前真相，Event 表示变化历史。排障时先读 Snapsho
 - 重试调度数量及重试后成功率。
 - Worker 领取数、Lease 丢失数、可运行积压。
 - Command Inbox 的 pending 数量、处理延迟和失败数。
-- Snapshot、事件和 Artifact 的写入失败及大小。
+- Snapshot、业务事件转发和 Artifact 的写入失败及大小。
 
 `runId`、`toolCallId` 等高基数值只进入日志或 Trace，不作为指标标签。
 
 ## Trace 边界
 
-可在 Middleware 中创建 step、model、tool span，在 Listener 中记录最终状态。父子 Run 通过 `rootRunId` 或显式 Trace context 关联。由于 Invocation Context 不持久化，Worker 恢复时应从 Snapshot metadata 中的安全追踪标识重建新的 span link，而不是序列化整个 SDK Context。
+可在 Middleware 中创建 step、model、tool span，在 AgentEventListener 中记录最终状态。父子 Run 通过 `rootRunId` 或显式 Trace context 关联。由于 Invocation Context 不持久化，Worker 恢复时应从 Snapshot metadata 中的安全追踪标识重建新的 span link，而不是序列化整个 SDK Context。
 
 ## 日志建议
 

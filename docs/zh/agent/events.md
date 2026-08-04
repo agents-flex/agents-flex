@@ -1,82 +1,86 @@
 ---
 title: 事件机制
-description: 区分实时事件、持久化运行事件和生命周期监听器，并实现流式 UI 与可靠审计。
+description: 使用统一的不可变 AgentEvent 接入实时 UI、日志、指标和业务审计。
 ---
 
 # 事件机制
 
 ## 概述
 
-Agent 模块提供三种不同保证的观察机制：`AgentListener` 用于粗粒度生命周期回调，`AgentRuntimeEvent` 用于当前 JVM 的低延迟细粒度事件，`AgentRunEvent` 用于可持久化、可断点续读的审计事件。三者不是重复 API，而是分别服务于业务回调、实时体验和可靠消费。
+Agent 模块只提供一套观察机制：`AgentRunner` 产生不可变 `AgentEvent`，并同步通知注册的 `AgentEventListener`。Framework 不保存事件；是否写入数据库、Kafka、日志或监控系统由业务决定。
 
-## 选择事件通道
+会影响执行结果的扩展仍使用 `AgentMiddleware`。Listener 只能观察已经发生的事件，不能修改模型、工具或 Run 的控制决策。
 
-| 机制 | 典型用途 | 是否持久化 | 顺序范围 |
-| --- | --- | --- | --- |
-| `AgentListener` | 指标、日志、轻量通知 | 否 | 调用线程顺序 |
-| Runtime Event | 流式文本、工具进度、实时 UI | 否 | 当前 JVM 内按 runId 递增 |
-| Run Event | 审计、断点消费、状态时间线 | 是 | Store 内按 runId 严格递增 |
-
-## 实时事件
+## 注册监听器
 
 ```java
-runner.addRuntimeEventListener(event -> {
-    if (event.getType() == AgentRuntimeEventType.MODEL_TEXT_DELTA) {
-        websocket.send(event.getRunId(), event.getData().get("text"));
+runner.addEventListener(event -> {
+    if (event.getType() == AgentEventType.MODEL_TEXT_DELTA) {
+        websocket.send(event.getRunId(), event.getData().get("content"));
     }
 });
 ```
 
-Runtime Event 包含 `runId`、`rootRunId`、`parentRunId`、Agent ID/版本、sequence、type 和 data。事件类型覆盖 step、模型增量、工具进度、上下文压缩、命令、子任务和终态。
+可以通过 `removeEventListener(listener)` 删除已经注册的监听器。监听器列表线程安全，但监听器实现自身仍需支持多个 Run 并发调用。
 
-监听器在发布线程同步执行；单个监听器异常会隔离，但耗时操作仍会拖慢 Run。网络发送应进入有界队列，并定义队列满时的降级策略。
+## 事件结构
 
-### 工具上报进度
+`AgentEvent` 包含：
 
-Runner 会把 `AgentToolProgressEmitter` 放入工具执行上下文 attributes。自定义 Tool 或拦截器可取出并发送 `TOOL_PROGRESS`，进度数据只用于实时观察，不改变工具最终返回值。
+- `eventId`：当前发布产生的唯一 ID。
+- `runId`、`rootRunId`、`parentRunId`：运行与父子任务关联。
+- `agentId`、`agentVersion`：产生事件的 Agent 定义。
+- `sequence`：当前 Runner 进程内、同一 runId 的递增序号。
+- `type`、`occurredAt` 和只读 `data`。
 
-## 持久化事件
+Event 本身及 data 中的 Map、List、Iterable 和数组都会被复制并冻结。不受支持的可变对象会转换为字符串，避免监听器持有 Runner 内部状态。
+
+sequence 在 Runner 重建或进程重启后会重新开始，不能直接作为数据库审计游标。
+
+## 事件类型
+
+事件覆盖以下执行节点：
+
+- Run：开始、完成、失败、取消、暂停、恢复和 Snapshot 保存。
+- Step：开始、结束、达到 `maxSteps`。
+- Model：开始、结束、文本/推理/ToolCall 增量和迭代上限。
+- Tool：开始、进度、完成、失败、审批和结果外置。
+- Command：提交、消费和失败。
+- Planning：计划创建、调整、任务和子 Run。
+- Context、重试和预算终止。
+
+`SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Run 已完成。
+
+## 工具上报进度
+
+Runner 会把 `AgentToolProgressEmitter` 放入工具执行上下文。工具可以发送 `TOOL_PROGRESS`：
 
 ```java
-List<AgentRunEvent> page = runner.getEventStore()
-    .load(runId, lastSequence, 100);
-
-for (AgentRunEvent event : page) {
-    handle(event);
-    lastSequence = event.getSequence();
-}
+AgentToolProgressEmitter progress = ToolContextHolder.currentContext()
+    .getAttribute(AgentToolProgressEmitter.CONTEXT_ATTRIBUTE);
+progress.emit("uploading", Map.of("percent", 50));
 ```
 
-`afterSequence` 是排他游标，返回结果按 sequence 升序。自定义 `AgentRunEventStore` 必须：
+进度事件只用于观察，不改变工具的最终结果。
 
-- 为同一 `runId` 原子分配严格递增 sequence。
-- 按 `eventId` 幂等追加，重复写入返回原事件。
-- 保证 `load` 的稳定顺序与 limit 语义。
-- 复制或序列化事件，避免调用方修改已存状态。
+## 业务持久化
 
-持久化类型包括 Run、模型、工具、审批、重试、预算、计划、任务、子 Run 与 Snapshot 等关键节点。它不是完整 Token 流；流式 delta 只存在于 Runtime Event。
-
-## 增强审计字段
+Framework 不提供 EventStore。业务系统可以直接在监听器中转发事件：
 
 ```java
-runner.addEventEnricher((run, type) -> Map.of(
-    "tenantId", String.valueOf(run.getInvocationContext().getTenantId()),
-    "environment", "prod"));
+runner.addEventListener(event -> eventRepository.save(event));
+runner.addEventListener(event -> kafkaPublisher.publish(event));
 ```
 
-Enricher 的返回值会合并到持久化事件 attributes。attributes 仅支持字符串信息，适合租户、部署区域、业务类型和追踪 ID。敏感信息与大对象不应写入事件。
+监听器异常会被 Runner 记录并隔离，不会让 Agent 执行失败。因此，上述直接写入适合尽力而为的日志和实时通知。
 
-## 消费者设计
+需要可靠审计、计费或跨进程消费时，应由业务系统使用有界队列、事务 Outbox 或消息平台，并自行定义持久化 ID、顺序、重试和消费游标。不要把 Framework 的进程内 sequence 当作可靠游标。
 
-可靠消费者应按 `runId + sequence` 保存游标，并把处理实现为幂等。Store 保证事件追加幂等，不等于外部消费者 exactly-once。对于整棵父子任务树，可通过 `rootRunId` 关联 Runtime Event；持久化事件当前以各 Run 的时间线分别读取。
+## 与 Middleware 的区别
 
-## 自定义 EventStore
+| 扩展 | 作用 | 能否影响执行 |
+| --- | --- | --- |
+| `AgentEventListener` | UI、日志、指标、业务事件转发 | 否 |
+| `AgentMiddleware` | 包装或短路 step、model、tool | 是 |
 
-关系数据库可以使用 `(run_id, sequence)` 唯一索引维持顺序，并为 `event_id` 建唯一索引。sequence 分配与插入应在同一事务中。高并发实现可按 runId 行锁、数据库序列分区或原子计数器选择方案，但不能先读最大值再无锁写入。
-
-## 常见误区
-
-- Runtime sequence 在 JVM 重启后不连续，不能作为审计游标。
-- Listener 和实时事件不是可靠消息投递。
-- `SNAPSHOT_SAVED` 表示状态已保存，不表示整个 Run 已完成。
-- 事件用于描述状态变化，当前状态仍应从 `AgentRunStore` 读取。
+鉴权、参数校验、缓存和调用替换放在 Middleware；统计、通知和业务侧事件持久化放在 Listener。

@@ -16,7 +16,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 - **多模型统一抽象**：通过 `ChatModel`、`EmbeddingModel`、`ImageModel`、`RerankModel` 等接口封装不同厂商能力。
 - **同步与流式一致**：同一套 Prompt、Options、拦截器和上下文机制可用于普通对话与流式输出。
 - **Tool Calling 完整链路**：支持注解扫描、编程式构建、工具执行、工具消息回传和工具级可观测。
-- **持久化 Agent Runtime**：提供 Snapshot 恢复、工具审批、Worker Lease、Middleware、事件流、任务规划和子 Agent 调度。
+- **持久化 Agent Runtime**：提供 Snapshot 恢复、工具审批、Worker Lease、Middleware、统一 AgentEvent、任务规划和子 Agent 调度。
 - **RAG 组件齐全**：包含文档、解析、切分、Embedding、向量存储、检索、Rerank 等常用模块。
 - **企业场景友好**：内置模型路由、重试、负载均衡、熔断、OpenTelemetry 可观测、Text2SQL 安全拦截器等能力。
 

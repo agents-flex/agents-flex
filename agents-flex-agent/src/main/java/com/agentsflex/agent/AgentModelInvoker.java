@@ -3,8 +3,7 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.event.AgentRuntimeEventStream;
-import com.agentsflex.agent.event.AgentRuntimeEventType;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.StreamResponseListener;
@@ -14,6 +13,8 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -31,10 +32,10 @@ final class AgentModelInvoker {
      * Agent 运行时事件发布器，用于把模型返回的文本、推理内容和工具调用增量
      * 转换为可订阅的细粒度事件。
      */
-    private final AgentRuntimeEventStream eventStream;
+    private final EventPublisher eventPublisher;
 
-    AgentModelInvoker(AgentRuntimeEventStream eventStream) {
-        this.eventStream = eventStream;
+    AgentModelInvoker(EventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -117,16 +118,24 @@ final class AgentModelInvoker {
     private void publishDeltas(AgentRun run, AiMessage message) {
         if (message.isFinalDelta()) return;
         if (StringUtil.hasText(message.getContent())) {
-            eventStream.publish(run, AgentRuntimeEventType.MODEL_TEXT_DELTA,
+            eventPublisher.publish(run, AgentEventType.MODEL_TEXT_DELTA,
                 data("content", message.getContent()));
         }
         if (StringUtil.hasText(message.getReasoningContent())) {
-            eventStream.publish(run, AgentRuntimeEventType.MODEL_REASONING_DELTA,
+            eventPublisher.publish(run, AgentEventType.MODEL_REASONING_DELTA,
                 data("content", message.getReasoningContent()));
         }
         if (message.hasToolCalls()) {
-            eventStream.publish(run, AgentRuntimeEventType.MODEL_TOOL_CALL_DELTA,
-                data("toolCalls", AgentMessageUtils.copyToolCalls(message.getToolCalls())));
+            List<Map<String, Object>> toolCalls = new ArrayList<>();
+            for (com.agentsflex.core.message.ToolCall call : message.getToolCalls()) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", call.getId());
+                item.put("name", call.getName());
+                item.put("arguments", call.getArguments());
+                toolCalls.add(item);
+            }
+            eventPublisher.publish(run, AgentEventType.MODEL_TOOL_CALL_DELTA,
+                data("toolCalls", toolCalls));
         }
     }
 
@@ -160,5 +169,10 @@ final class AgentModelInvoker {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put(key, value);
         return data;
+    }
+
+    @FunctionalInterface
+    interface EventPublisher {
+        void publish(AgentRun run, AgentEventType type, Map<String, ?> data);
     }
 }

@@ -15,17 +15,17 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
 应用入口 / 审批系统 / 调度系统 / UI
                 |
         AgentRunner / AgentWorker
-        |       |       |       |
-   AgentLoader  Mode  Middleware Listener
         |       |       |
+   AgentLoader  Middleware  AgentEventListener
+        |       |
      Agent   AgentRun  ChatModel + Tool
                 |
-  RunStore / CommandStore / EventStore / ArtifactStore
+       RunStore / CommandStore / ArtifactStore
 ```
 
 ### 定义平面
 
-`Agent`、策略、Tool、Middleware 和 ExecutionMode 定义一个可发布版本。`AgentLoader` 把配置数据与运行时对象装配起来，并保留历史版本的恢复能力。
+`Agent`、策略、Tool 和 Middleware 定义一个可发布版本。`AgentLoader` 把配置数据与运行时对象装配起来，并保留历史版本的恢复能力。
 
 ### 执行平面
 
@@ -37,11 +37,11 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
 
 ### 持久化平面
 
-Run Snapshot 是当前状态，Run Event 是变化历史，Command 是外部输入，Artifact 是大内容。它们有独立接口和一致性契约，可落在同一数据库，也可通过 outbox 与幂等协调异构存储。
+Run Snapshot 是当前状态，Command 是外部输入，Artifact 是大内容。Framework 为它们提供独立 Store；业务事件历史由应用通过 AgentEventListener 写入自己的审计库、消息平台或 Outbox。
 
 ### 观察平面
 
-Listener 提供粗粒度回调，Runtime Event 服务流式 UI，Run Event 服务审计与断点消费。`rootRunId` 关联父子任务树，Invocation Context 提供请求和租户关联。
+AgentEventListener 统一接收生命周期、模型增量和工具进度事件，可用于流式 UI、日志和指标。可靠审计与断点消费由业务事件系统负责。`rootRunId` 关联父子任务树，Invocation Context 提供请求和租户关联。
 
 ## 默认状态机
 
@@ -65,7 +65,7 @@ READY -> RUNNING/MODEL
 ## 扩展原则
 
 - 业务配置通过 Loader 接入，不侵入 Snapshot。
-- 执行语义通过 ExecutionMode 扩展，不在 Listener 中改状态。
+- 执行控制通过 Middleware 扩展，不在 Listener 中改状态。
 - 横切控制通过 Middleware，低层通用工具逻辑通过 ToolInterceptor。
 - 瞬时依赖通过 Invocation Context，持久业务标识通过 metadata。
 - 长内容进入 Artifact Store，不让 Prompt 和 Snapshot 无界增长。

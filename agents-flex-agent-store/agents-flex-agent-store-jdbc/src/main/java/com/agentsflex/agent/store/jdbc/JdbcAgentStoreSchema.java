@@ -22,11 +22,6 @@ public final class JdbcAgentStoreSchema extends JdbcAgentStoreSupport {
                 + "command_id VARCHAR(191) PRIMARY KEY, run_id VARCHAR(191) NOT NULL, status VARCHAR(64) NOT NULL, "
                 + "created_at BIGINT NOT NULL, lease_owner VARCHAR(191), lease_until BIGINT NOT NULL, "
                 + "attempts INTEGER NOT NULL, error_message VARCHAR(2000), payload " + binary + " NOT NULL)");
-            statement.execute("CREATE TABLE IF NOT EXISTS " + table("event_sequences")
-                + " (run_id VARCHAR(191) PRIMARY KEY, next_sequence BIGINT NOT NULL)");
-            statement.execute("CREATE TABLE IF NOT EXISTS " + table("events") + " ("
-                + "event_id VARCHAR(191) PRIMARY KEY, run_id VARCHAR(191) NOT NULL, sequence_no BIGINT NOT NULL, "
-                + "occurred_at BIGINT NOT NULL, payload " + binary + " NOT NULL, UNIQUE(run_id, sequence_no))");
             statement.execute("CREATE TABLE IF NOT EXISTS " + table("artifacts") + " ("
                 + "artifact_id VARCHAR(191) PRIMARY KEY, run_id VARCHAR(191), media_type VARCHAR(191), "
                 + "size_bytes BIGINT NOT NULL, checksum VARCHAR(64) NOT NULL, content " + binary + " NOT NULL)");
@@ -34,8 +29,6 @@ public final class JdbcAgentStoreSchema extends JdbcAgentStoreSupport {
                 "status, next_run_at, lease_until");
             createIndexIfMissing(connection, statement, table("commands"), table("commands_claim_idx"),
                 "status, lease_until, created_at");
-            createIndexIfMissing(connection, statement, table("events"), table("events_run_idx"),
-                "run_id, sequence_no");
         } catch (SQLException error) {
             throw failure("initialize JDBC Agent Store schema", error);
         }

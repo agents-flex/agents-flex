@@ -6,9 +6,8 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.event.AgentRunEvent;
-import com.agentsflex.agent.event.AgentRunEventType;
-import com.agentsflex.agent.event.InMemoryAgentRunEventStore;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
 import com.agentsflex.agent.tool.AgentToolInvocation;
@@ -19,6 +18,7 @@ import com.agentsflex.core.prompt.MemoryPrompt;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.agentsflex.agent.AgentScenarioTestSupport.tool;
@@ -208,7 +208,7 @@ public class AgentPlatformExtensionScenarioTest {
     }
 
     @Test
-    public void shouldEnrichPersistentEventsWithPlatformAuditDimensions() {
+    public void shouldExposeEventIdentityAndStructuredData() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> new AiMessage("audited"));
@@ -216,27 +216,23 @@ public class AgentPlatformExtensionScenarioTest {
             .version("2026.07.31")
             .chatModel(model)
             .build();
-        InMemoryAgentRunEventStore eventStore = new InMemoryAgentRunEventStore();
+        List<AgentEvent> events = new ArrayList<>();
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), agentLoader, eventStore)
-            .addEventEnricher((run, type) -> java.util.Collections.singletonMap(
-                "accountId", String.valueOf(run.getMetadata().get("accountId"))));
+            new InMemoryAgentRunStore(), agentLoader).addEventListener(events::add);
         AgentRunOptions options = AgentRunOptions.builder()
             .metadata("accountId", "user-42")
             .metadata("module", "agent-console")
             .build();
 
-        AgentRun completed = runner.run(agent, "audit this call", options);
-        List<AgentRunEvent> events = eventStore.load(completed.getId(), 0, 100);
-        AgentRunEvent modelStarted = find(events, AgentRunEventType.MODEL_STARTED);
+        runner.run(agent, "audit this call", options);
+        AgentEvent modelStarted = find(events, AgentEventType.MODEL_STARTED);
 
         assertNotNull(modelStarted);
-        assertEquals("user-42", modelStarted.getAttributes().get("accountId"));
-        assertEquals("audit-agent", modelStarted.getAttributes().get("agentId"));
-        assertEquals("2026.07.31", modelStarted.getAttributes().get("agentVersion"));
-        assertEquals("1", modelStarted.getAttributes().get("iteration"));
-        assertEquals("19", modelStarted.getAttributes().get("remainingIterations"));
+        assertEquals("audit-agent", modelStarted.getAgentId());
+        assertEquals("2026.07.31", modelStarted.getAgentVersion());
+        assertEquals(1, modelStarted.getData().get("iteration"));
+        assertEquals(19, modelStarted.getData().get("remainingIterations"));
         assertTrue(events.get(events.size() - 1).getSequence() > modelStarted.getSequence());
     }
 
@@ -263,8 +259,8 @@ public class AgentPlatformExtensionScenarioTest {
         assertEquals(2, run.getToolCallCount());
     }
 
-    private AgentRunEvent find(List<AgentRunEvent> events, AgentRunEventType type) {
-        for (AgentRunEvent event : events) {
+    private AgentEvent find(List<AgentEvent> events, AgentEventType type) {
+        for (AgentEvent event : events) {
             if (event.getType() == type) {
                 return event;
             }

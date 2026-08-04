@@ -17,7 +17,7 @@ description: 了解 Agents-Flex Agent 运行时解决的问题、核心概念、
 - 运维助手拆解排障目标，委派给分析、检索和验证 Agent。
 - 长耗时任务由后台 Worker 领取，服务重启后继续执行。
 - 对模型调用次数、Token、工具次数和总时长设置硬预算。
-- 通过 Middleware、Listener 和事件流接入鉴权、审计、指标与流式 UI。
+- 通过 Middleware 和 AgentEventListener 接入鉴权、审计、指标与流式 UI。
 
 如果需求只是一次无工具的文本生成，直接使用 `ChatModel` 更简单；如果流程完全确定且每一步都由业务代码决定，工作流引擎往往更合适。Agent 的价值在于：执行路径需要模型动态决策，同时业务又要求可靠的运行控制。
 
@@ -59,7 +59,7 @@ Runner 内置状态机采用模型原生 ToolCall 协议：
 | 上下文过长 | `AgentContextManager`、Artifact Store |
 | 资源限制 | `AgentExecutionPolicy`、`AgentBudget` |
 | 扩展执行链 | `AgentMiddleware` |
-| 监控与审计 | Runtime Event、Run Event、Listener |
+| 监控与审计 | `AgentEvent`、`AgentEventListener` |
 
 ## 设计收益
 
