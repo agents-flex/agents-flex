@@ -22,7 +22,10 @@ public enum AgentEventType {
      */
     STEP_STARTED,
     /**
-     * 本次 step 已产生规范化结果，随后可能继续下一 step，也可能阻塞或终止。
+     * 本次 step 已结束，随后可能继续下一 step，也可能阻塞或终止。
+     *
+     * <p>事件 data 包含执行后的 {@code status}、{@code phase} 和本步骤产生的
+     * {@code toolMessageCount}。具体生命周期结果以 status 为准。</p>
      */
     STEP_COMPLETED,
     /**

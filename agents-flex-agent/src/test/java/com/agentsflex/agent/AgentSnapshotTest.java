@@ -73,7 +73,8 @@ public class AgentSnapshotTest {
         AgentRun restored = secondProcess.restore(run.getId());
         AgentStepResult toolStep = secondProcess.step(restored);
 
-        assertEquals(AgentStepType.TOOLS_EXECUTED, toolStep.getType());
+        assertEquals(1, toolStep.getToolMessages().size());
+        assertEquals(AgentRunStatus.RUNNING, restored.getStatus());
         assertEquals(1, model.getCallCount());
         assertEquals(1, toolInvocations.get());
         assertTrue(restored.getPendingToolCalls().isEmpty());

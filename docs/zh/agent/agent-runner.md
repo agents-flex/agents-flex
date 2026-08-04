@@ -150,19 +150,14 @@ AgentRun blockedOrDone = runner.runUntilBlocked(run);
 
 ## Step 结果
 
-`AgentStepResult.getType()` 可能为：
+`AgentStepResult` 只返回本步骤直接产生的内容：
 
-| 类型 | 含义 |
-| --- | --- |
-| `TOOLS_EXECUTED` | 工具已执行并写入结果 |
-| `COMPLETED` | 已产生最终答案 |
-| `BLOCKED` | 等待外部事件 |
-| `FAILED`、`CANCELLED` | 失败或取消 |
-| `MAX_ITERATIONS_REACHED` | 模型调用次数达到上限 |
-| `MAX_STEPS_REACHED` | Runner 总推进次数达到上限 |
-| `BUDGET_EXCEEDED` | 预算耗尽 |
+- `getResponse()`：本步骤调用模型得到的响应；未调用模型时为 `null`。
+- `getToolMessages()`：本步骤执行工具后写入的结果消息；没有工具结果时为空列表。
+- `getError()`：本步骤触发重试或失败时关联的异常；正常步骤通常为 `null`。
 
-累计状态仍以 `AgentRun` 为准。
+运行是否继续、阻塞或终止，以及是完成、取消、达到 `maxSteps` 还是预算耗尽，统一读取
+`AgentRun.getStatus()`。这样 Step 结果不会再维护一套与 `AgentRunStatus` 重复的状态类型。
 
 ## 恢复与取消
 

@@ -91,12 +91,12 @@ public class AgentRunnerTest {
         AgentRun run = AgentRun.start(agent, "weather?");
 
         AgentStepResult first = runner.step(run);
-        assertEquals(AgentStepType.TOOLS_EXECUTED, first.getType());
         assertEquals(AgentRunStatus.RUNNING, run.getStatus());
         assertEquals("call-1", first.getToolMessages().get(0).getToolCallId());
 
         AgentStepResult second = runner.step(run);
-        assertEquals(AgentStepType.COMPLETED, second.getType());
+        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
+        assertTrue(second.getToolMessages().isEmpty());
         assertEquals("It is sunny.", run.getFinalOutput());
     }
 
@@ -207,8 +207,8 @@ public class AgentRunnerTest {
         AgentRun cancelled = runner.restore(run.getId());
         AgentStepResult result = runner.step(cancelled);
 
-        assertEquals(AgentStepType.CANCELLED, result.getType());
         assertEquals(AgentRunStatus.CANCELLED, cancelled.getStatus());
+        assertTrue(result.getToolMessages().isEmpty());
         assertEquals(0, model.getCallCount());
     }
 

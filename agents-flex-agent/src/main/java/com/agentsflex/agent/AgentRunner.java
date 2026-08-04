@@ -707,7 +707,9 @@ public final class AgentRunner {
         try {
             AgentStepResult result = stepCore(run);
             emitEvent(run, AgentEventType.STEP_COMPLETED,
-                objectAttributes("stepType", result == null ? null : result.getType()));
+                objectAttributes("status", run == null ? null : run.getStatus(),
+                    "phase", run == null ? null : run.getPhase(),
+                    "toolMessageCount", result == null ? 0 : result.getToolMessages().size()));
             return result;
         } finally {
             if (run != null && run.getStatus().isTerminal()) {
@@ -748,7 +750,7 @@ public final class AgentRunner {
         }
         if (run.getStatus().isBlocked()) {
             // 阻塞 Run 只能通过类型化 ResumeCommand 改回可运行状态，step 本身不能越过等待边界。
-            return AgentStepResult.of(AgentStepType.BLOCKED, null, null, null);
+            return AgentStepResult.of(null, null, null);
         }
         if (run.markStarted()) {
             notifyRunStart(run);
@@ -763,8 +765,7 @@ public final class AgentRunner {
             run.markMaxStepsReached();
             saveSnapshot(run);
             notifyMaxStepsReached(run);
-            return AgentStepResult.of(AgentStepType.MAX_STEPS_REACHED,
-                null, null, null);
+            return AgentStepResult.of(null, null, null);
         }
         run.incrementStep();
 
@@ -991,8 +992,7 @@ public final class AgentRunner {
             run.markMaxIterationsReached();
             saveSnapshot(run);
             notifyMaxIterationsReached(run);
-            return AgentStepResult.of(AgentStepType.MAX_ITERATIONS_REACHED,
-                null, null, null);
+            return AgentStepResult.of(null, null, null);
         }
 
         // 迭代次数表示模型调用次数，在发起请求前增加，失败的模型请求同样消耗一次尝试。
@@ -1119,7 +1119,7 @@ public final class AgentRunner {
                     callKey(call), call.getName(), decision);
                 suspend(run, suspension);
                 notifyToolApprovalRequested(run, call, decision);
-                return AgentStepResult.of(AgentStepType.BLOCKED, response, results, null);
+                return AgentStepResult.of(response, results, null);
             }
             if (decision.getOutcome() == ToolApprovalDecision.Outcome.DENY) {
                 // 拒绝不是运行时异常，而是结构化 ToolMessage；模型可据此向用户解释或选择替代方案。
@@ -1154,7 +1154,7 @@ public final class AgentRunner {
         // 当前模型回合的全部工具调用已处理，下一 step 应让模型读取 ToolMessage 并继续判断。
         run.moveTo(AgentRunPhase.MODEL);
         saveSnapshot(run);
-        return AgentStepResult.of(AgentStepType.TOOLS_EXECUTED, response, results, null);
+        return AgentStepResult.of(response, results, null);
     }
 
     /**
@@ -1277,7 +1277,7 @@ public final class AgentRunner {
             || plan.getStatus() == AgentTaskPlanStatus.FINALIZING
             || plan.getStatus() == AgentTaskPlanStatus.REPLANNING) return null;
         if (plan.getActiveTask() != null) {
-            return AgentStepResult.of(AgentStepType.BLOCKED, null, null, null);
+            return AgentStepResult.of(null, null, null);
         }
         AgentTask next = plan.getNextTask();
         if (next == null) {
@@ -1295,7 +1295,7 @@ public final class AgentRunner {
             ? next.getAssignedAgentId() : run.getAgent().getId();
         // 每个计划任务都创建普通子 Run，从而复用审批、重试、预算、事件和 Worker 调度。
         startChild(run, agentId, taskInput(plan, next));
-        return AgentStepResult.of(AgentStepType.BLOCKED, null, null, null);
+        return AgentStepResult.of(null, null, null);
     }
 
     /**
@@ -1387,12 +1387,12 @@ public final class AgentRunner {
             saveSnapshot(run);
             notifyRunSuspended(run, run.getSuspension());
             notifyRetryScheduled(run, error);
-            return AgentStepResult.of(AgentStepType.BLOCKED, response, null, error);
+            return AgentStepResult.of(response, null, error);
         }
         run.markFailed(error);
         saveSnapshot(run);
         notifyRunFailed(run, error);
-        return AgentStepResult.of(AgentStepType.FAILED, response, null, error);
+        return AgentStepResult.of(response, null, error);
     }
 
     /**
@@ -1417,7 +1417,7 @@ public final class AgentRunner {
         run.markCompleted(message == null ? new AiMessage("") : message);
         saveSnapshot(run);
         notifyRunComplete(run);
-        return AgentStepResult.of(AgentStepType.COMPLETED, response, null, null);
+        return AgentStepResult.of(response, null, null);
     }
 
     /**
@@ -1427,7 +1427,7 @@ public final class AgentRunner {
         run.markCancelled();
         saveSnapshot(run);
         notifyRunCancelled(run);
-        return AgentStepResult.of(AgentStepType.CANCELLED, null, null, null);
+        return AgentStepResult.of(null, null, null);
     }
 
     /**
@@ -1437,8 +1437,7 @@ public final class AgentRunner {
         run.markBudgetExceeded(reason);
         saveSnapshot(run);
         notifyBudgetExceeded(run, reason);
-        return AgentStepResult.of(AgentStepType.BUDGET_EXCEEDED,
-            null, null, null);
+        return AgentStepResult.of(null, null, null);
     }
 
     /**

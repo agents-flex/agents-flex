@@ -16,15 +16,12 @@ import java.util.List;
 /**
  * 单次 Agent step 的不可变结果。
  *
- * <p>调用方可以通过该对象判断本回合是执行了工具、产生最终答案，还是进入失败、取消等终止状态。
- * Agent 的累计状态仍以 {@link AgentRun} 为准。</p>
+ * <p>该对象只描述本步骤直接产生的模型响应、工具消息和异常。运行是否继续、阻塞或终止，
+ * 以及具体的生命周期状态，统一从执行该步骤的 {@link AgentRun} 读取，避免步骤结果重复表达
+ * {@link AgentRunStatus}。</p>
  */
 public final class AgentStepResult {
 
-    /**
-     * 当前步骤的结果分类。
-     */
-    private final AgentStepType type;
     /**
      * 本步骤调用模型时得到的响应；未调用模型时可能为 null。
      */
@@ -38,9 +35,8 @@ public final class AgentStepResult {
      */
     private final Throwable error;
 
-    private AgentStepResult(AgentStepType type, AiMessageResponse response,
+    private AgentStepResult(AiMessageResponse response,
                             List<ToolMessage> toolMessages, Throwable error) {
-        this.type = type;
         this.response = response;
         this.toolMessages = toolMessages == null
             ? Collections.emptyList()
@@ -51,16 +47,9 @@ public final class AgentStepResult {
     /**
      * 仅供 AgentRunner 创建规范化步骤结果。
      */
-    static AgentStepResult of(AgentStepType type, AiMessageResponse response,
+    static AgentStepResult of(AiMessageResponse response,
                               List<ToolMessage> toolMessages, Throwable error) {
-        return new AgentStepResult(type, response, toolMessages, error);
-    }
-
-    /**
-     * @return 当前步骤的结果类型
-     */
-    public AgentStepType getType() {
-        return type;
+        return new AgentStepResult(response, toolMessages, error);
     }
 
     /**

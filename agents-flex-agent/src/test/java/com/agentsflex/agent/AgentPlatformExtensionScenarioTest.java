@@ -91,7 +91,9 @@ public class AgentPlatformExtensionScenarioTest {
         AgentRunner firstRunner = new AgentRunner(store, registry);
         AgentRun run = firstRunner.start(agent, "run once", options);
 
-        assertEquals(AgentStepType.TOOLS_EXECUTED, firstRunner.step(run).getType());
+        AgentStepResult firstStep = firstRunner.step(run);
+        assertEquals(1, firstStep.getToolMessages().size());
+        assertEquals(AgentRunStatus.RUNNING, run.getStatus());
         AgentRunner secondRunner = new AgentRunner(store, registry);
         AgentRun restored = secondRunner.restore(run.getId());
         AgentRun stopped = secondRunner.runUntilBlocked(restored);
