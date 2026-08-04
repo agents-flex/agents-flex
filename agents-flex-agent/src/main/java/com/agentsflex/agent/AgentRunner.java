@@ -684,8 +684,8 @@ public final class AgentRunner {
             // 同步块保证同一 JVM 中 Snapshot 构造、Store CAS 和本地版本更新不可交错。
             assertLeaseOwnership(run);
             AgentRunSnapshot saved = runStore.save(run.toSnapshot(), run.getVersion());
-            run.updateVersion(saved.getVersion());
-            if (saved.isCancellationRequested()) {
+            run.updateVersion(saved.getState().getVersion());
+            if (saved.getState().isCancellationRequested()) {
                 run.requestCancellation();
             }
             notifySnapshotSaved(run, saved);
@@ -841,17 +841,18 @@ public final class AgentRunner {
             child.putMetadata("agentTaskId", task.getId());
         }
         AgentSuspension suspension = AgentSuspension.child(child.getId());
-        AgentRunSnapshot parentWaiting = parent.toSnapshot().toBuilder()
+        AgentRunSnapshot parentSnapshot = parent.toSnapshot();
+        AgentRunSnapshot parentWaiting = parentSnapshot.withState(parentSnapshot.getState().toBuilder()
             .status(AgentRunStatus.WAITING_FOR_CHILD)
             .phase(suspension.getResumePhase())
             .suspension(suspension)
-            .build();
+            .build());
         // 父等待状态与子 READY 状态必须原子提交，避免出现孤儿子任务或永久等待的父任务。
         ParentChildRunSnapshots saved = runStore.saveParentAndChild(
             parentWaiting, parent.getVersion(), child.toSnapshot());
         parent.suspend(AgentRunStatus.WAITING_FOR_CHILD, suspension);
-        parent.updateVersion(saved.getParent().getVersion());
-        child.updateVersion(saved.getChild().getVersion());
+        parent.updateVersion(saved.getParent().getState().getVersion());
+        child.updateVersion(saved.getChild().getState().getVersion());
         notifySnapshotSaved(parent, saved.getParent());
         notifySnapshotSaved(child, saved.getChild());
         notifyRunSuspended(parent, suspension);
@@ -945,14 +946,14 @@ public final class AgentRunner {
         int recovered = 0;
         for (AgentRunSnapshot snapshot : runStore.findTerminalChildrenWithWaitingParent(limit)) {
             try {
-                AgentRun child = restore(snapshot.getRunId());
+                AgentRun child = restore(snapshot.getState().getRunId());
                 AgentRun parent = resumeParentFromChild(child);
                 if (parent != null && !parent.getStatus().isBlocked()) recovered++;
             } catch (AgentRunVersionConflictException ignored) {
                 // 另一个 Worker 已经完成相同修复，下一次查询会自然过滤该父 Run。
             } catch (IllegalStateException error) {
                 log.debug("Completed child recovery skipped, childRunId={}",
-                    snapshot.getRunId(), error);
+                    snapshot.getState().getRunId(), error);
             }
         }
         return recovered;
@@ -1872,8 +1873,9 @@ public final class AgentRunner {
 
     private void notifySnapshotSaved(AgentRun run, AgentRunSnapshot snapshot) {
         emitEvent(run, AgentEventType.SNAPSHOT_SAVED,
-            objectAttributes("version", snapshot.getVersion(), "status", snapshot.getStatus(),
-                "phase", snapshot.getPhase()));
+            objectAttributes("version", snapshot.getState().getVersion(),
+                "status", snapshot.getState().getStatus(),
+                "phase", snapshot.getState().getPhase()));
     }
 
     private void notifyRunSuspended(AgentRun run, AgentSuspension suspension) {

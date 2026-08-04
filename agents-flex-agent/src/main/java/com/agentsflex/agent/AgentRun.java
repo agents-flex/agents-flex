@@ -220,7 +220,7 @@ public final class AgentRun {
         }
 
         MemoryPrompt prompt = new MemoryPrompt();
-        for (Message message : snapshot.getMessages()) {
+        for (Message message : snapshot.getState().getMessages()) {
             prompt.addMessage(message);
         }
         if (snapshot.getAgentVersion() != null
@@ -230,11 +230,11 @@ public final class AgentRun {
         }
         AgentRunState state = snapshot.getState().mutableCopy();
         if (!StringUtil.hasText(state.getRootRunId())) {
-            state.setRootRunId(snapshot.getRunId());
+            state.setRootRunId(state.getRunId());
         }
         AgentRun run = new AgentRun(agent, prompt, state);
-        if (snapshot.getErrorMessage() != null) {
-            run.error = new RestoredAgentRunException(snapshot.getErrorType(), snapshot.getErrorMessage());
+        if (state.getErrorMessage() != null) {
+            run.error = new RestoredAgentRunException(state.getErrorType(), state.getErrorMessage());
         }
         run.prepareBaseTools();
         return run;

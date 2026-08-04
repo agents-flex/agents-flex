@@ -106,21 +106,22 @@ public final class AgentWorker implements AutoCloseable {
             AgentRun run = null;
             ScheduledFuture<?> heartbeat = null;
             try {
-                run = runner.restore(snapshot.getRunId());
-                run.updateLease(workerId, snapshot.getLeaseId(), snapshot.getLeaseUntil());
+                run = runner.restore(snapshot.getState().getRunId());
+                run.updateLease(workerId, snapshot.getState().getLeaseId(),
+                    snapshot.getState().getLeaseUntil());
                 heartbeat = startLeaseHeartbeat(run);
-                run = runner.runLeased(run, workerId, snapshot.getLeaseId());
+                run = runner.runLeased(run, workerId, snapshot.getState().getLeaseId());
                 runner.resumeParentFromChild(run);
             } finally {
                 if (heartbeat != null) heartbeat.cancel(false);
                 if (run != null) {
                     synchronized (run) {
-                        runner.getRunStore().releaseLease(snapshot.getRunId(), workerId,
-                            snapshot.getLeaseId());
+                        runner.getRunStore().releaseLease(snapshot.getState().getRunId(), workerId,
+                            snapshot.getState().getLeaseId());
                     }
                 } else {
-                    runner.getRunStore().releaseLease(snapshot.getRunId(), workerId,
-                        snapshot.getLeaseId());
+                    runner.getRunStore().releaseLease(snapshot.getState().getRunId(), workerId,
+                        snapshot.getState().getLeaseId());
                 }
             }
             if (run != null) {
@@ -148,8 +149,8 @@ public final class AgentWorker implements AutoCloseable {
     public AgentRunSnapshot renewLease(AgentRun run) {
         synchronized (run) {
             AgentRunSnapshot snapshot = renewLease(run.getId(), run.getLeaseId());
-            run.updateLease(snapshot.getLeaseOwner(), snapshot.getLeaseId(),
-                snapshot.getLeaseUntil());
+            run.updateLease(snapshot.getState().getLeaseOwner(), snapshot.getState().getLeaseId(),
+                snapshot.getState().getLeaseUntil());
             return snapshot;
         }
     }

@@ -7,6 +7,7 @@
 package com.agentsflex.agent.store;
 
 import com.agentsflex.agent.AgentRunSnapshot;
+import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
 
 import java.util.ArrayList;
@@ -39,15 +40,17 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
         if (snapshot == null) {
             throw new IllegalArgumentException("snapshot must not be null");
         }
-        String runId = snapshot.getRunId();
+        String runId = snapshot.getState().getRunId();
         synchronized (snapshots) {
             AgentRunSnapshot current = snapshots.get(runId);
-            long actualVersion = current == null ? -1 : current.getVersion();
+            long actualVersion = current == null ? -1 : current.getState().getVersion();
             if (actualVersion != expectedVersion) {
                 throw new AgentRunVersionConflictException(runId, expectedVersion, actualVersion);
             }
-            AgentRunSnapshot candidate = current != null && current.isCancellationRequested()
-                ? snapshot.toBuilder().cancellationRequested(true).build()
+            AgentRunSnapshot candidate = current != null
+                && current.getState().isCancellationRequested()
+                ? snapshot.withState(snapshot.getState().toBuilder()
+                    .cancellationRequested(true).build())
                 : snapshot;
             AgentRunSnapshot saved = candidate.withVersion(expectedVersion + 1);
             snapshots.put(runId, saved.copy());
@@ -66,13 +69,14 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
             if (current == null) {
                 throw new IllegalStateException("AgentRun snapshot not found: " + runId);
             }
-            if (current.getStatus().isTerminal() || current.isCancellationRequested()) {
+            if (current.getState().getStatus().isTerminal()
+                || current.getState().isCancellationRequested()) {
                 return false;
             }
             // 取消是独立于状态版本的单调控制信号，普通 Snapshot 保存时会合并并保留该标记。
-            AgentRunSnapshot cancelled = current.toBuilder()
+            AgentRunSnapshot cancelled = current.withState(current.getState().toBuilder()
                 .cancellationRequested(true)
-                .build();
+                .build());
             snapshots.put(runId, cancelled.copy());
             return true;
         }
@@ -82,7 +86,7 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
     @Override
     public boolean isCancellationRequested(String runId) {
         AgentRunSnapshot snapshot = snapshots.get(runId);
-        return snapshot != null && snapshot.isCancellationRequested();
+        return snapshot != null && snapshot.getState().isCancellationRequested();
     }
 
     /** 在同一个同步临界区保存等待中的父 Run 和新建子 Run。 */
@@ -94,20 +98,21 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
             throw new IllegalArgumentException("parent and child snapshots must not be null");
         }
         synchronized (snapshots) {
-            AgentRunSnapshot currentParent = snapshots.get(parent.getRunId());
-            long actualParentVersion = currentParent == null ? -1 : currentParent.getVersion();
+            AgentRunSnapshot currentParent = snapshots.get(parent.getState().getRunId());
+            long actualParentVersion = currentParent == null
+                ? -1 : currentParent.getState().getVersion();
             if (actualParentVersion != expectedParentVersion) {
-                throw new AgentRunVersionConflictException(parent.getRunId(),
+                throw new AgentRunVersionConflictException(parent.getState().getRunId(),
                     expectedParentVersion, actualParentVersion);
             }
-            if (snapshots.containsKey(child.getRunId())) {
-                throw new AgentRunVersionConflictException(child.getRunId(), -1,
-                    snapshots.get(child.getRunId()).getVersion());
+            if (snapshots.containsKey(child.getState().getRunId())) {
+                throw new AgentRunVersionConflictException(child.getState().getRunId(), -1,
+                    snapshots.get(child.getState().getRunId()).getState().getVersion());
             }
             AgentRunSnapshot savedParent = parent.withVersion(expectedParentVersion + 1);
             AgentRunSnapshot savedChild = child.withVersion(0);
-            snapshots.put(savedParent.getRunId(), savedParent.copy());
-            snapshots.put(savedChild.getRunId(), savedChild.copy());
+            snapshots.put(savedParent.getState().getRunId(), savedParent.copy());
+            snapshots.put(savedChild.getState().getRunId(), savedChild.copy());
             return new ParentChildRunSnapshots(savedParent.copy(), savedChild.copy());
         }
     }
@@ -127,16 +132,18 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
                 }
                 if (!isRunnable(current, now)
                     || hasLeasedParent(current, now)
-                    || (current.getLeaseUntil() > now && current.getLeaseOwner() != null)) {
+                    || (current.getState().getLeaseUntil() > now
+                        && current.getState().getLeaseOwner() != null)) {
                     continue;
                 }
-                AgentRunSnapshot leased = current.toBuilder()
+                AgentRunState state = current.getState();
+                AgentRunSnapshot leased = current.withState(state.toBuilder()
                     .leaseOwner(workerId)
                     .leaseId(UUID.randomUUID().toString())
                     .leaseUntil(now + leaseMillis)
-                    .version(current.getVersion() + 1)
-                    .build();
-                snapshots.put(current.getRunId(), leased.copy());
+                    .version(state.getVersion() + 1)
+                    .build());
+                snapshots.put(state.getRunId(), leased.copy());
                 claimed.add(leased.copy());
             }
         }
@@ -149,12 +156,12 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
                                        long now, long leaseUntil) {
         synchronized (snapshots) {
             AgentRunSnapshot current = requireOwned(runId, workerId, leaseId);
-            if (current.getLeaseUntil() <= now || leaseUntil <= now) {
+            if (current.getState().getLeaseUntil() <= now || leaseUntil <= now) {
                 throw new IllegalStateException("AgentRun lease has expired: " + runId);
             }
-            AgentRunSnapshot renewed = current.toBuilder()
+            AgentRunSnapshot renewed = current.withState(current.getState().toBuilder()
                 .leaseUntil(leaseUntil)
-                .build();
+                .build());
             snapshots.put(runId, renewed.copy());
             return renewed.copy();
         }
@@ -165,15 +172,15 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
     public void releaseLease(String runId, String workerId, String leaseId) {
         synchronized (snapshots) {
             AgentRunSnapshot current = snapshots.get(runId);
-            if (current == null || !workerId.equals(current.getLeaseOwner())
-                || !leaseId.equals(current.getLeaseId())) {
+            if (current == null || !workerId.equals(current.getState().getLeaseOwner())
+                || !leaseId.equals(current.getState().getLeaseId())) {
                 return;
             }
-            AgentRunSnapshot released = current.toBuilder()
+            AgentRunSnapshot released = current.withState(current.getState().toBuilder()
                 .leaseOwner(null)
                 .leaseId(null)
                 .leaseUntil(0)
-                .build();
+                .build());
             snapshots.put(runId, released.copy());
         }
     }
@@ -186,11 +193,16 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
         synchronized (snapshots) {
             for (AgentRunSnapshot child : snapshots.values()) {
                 if (result.size() >= limit) break;
-                if (!child.getStatus().isTerminal() || child.getParentRunId() == null) continue;
-                AgentRunSnapshot parent = snapshots.get(child.getParentRunId());
-                if (parent != null && parent.getStatus() == AgentRunStatus.WAITING_FOR_CHILD
-                    && parent.getSuspension() != null
-                    && child.getRunId().equals(parent.getSuspension().getCorrelationId())) {
+                AgentRunState childState = child.getState();
+                if (!childState.getStatus().isTerminal()
+                    || childState.getParentRunId() == null) continue;
+                AgentRunSnapshot parent = snapshots.get(childState.getParentRunId());
+                AgentRunState parentState = parent == null ? null : parent.getState();
+                if (parentState != null
+                    && parentState.getStatus() == AgentRunStatus.WAITING_FOR_CHILD
+                    && parentState.getSuspension() != null
+                    && childState.getRunId().equals(
+                        parentState.getSuspension().getCorrelationId())) {
                     result.add(child.copy());
                 }
             }
@@ -200,23 +212,25 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
 
     /** 判断快照当前可以由 Worker 领取推进。 */
     private boolean isRunnable(AgentRunSnapshot snapshot, long now) {
-        if (snapshot.isCancellationRequested() && !snapshot.getStatus().isTerminal()) {
+        AgentRunState state = snapshot.getState();
+        if (state.isCancellationRequested() && !state.getStatus().isTerminal()) {
             return true;
         }
-        AgentRunStatus status = snapshot.getStatus();
+        AgentRunStatus status = state.getStatus();
         if (status == AgentRunStatus.READY || status == AgentRunStatus.RUNNING) {
             return true;
         }
-        return status == AgentRunStatus.RETRY_SCHEDULED && snapshot.getNextRunAt() <= now;
+        return status == AgentRunStatus.RETRY_SCHEDULED && state.getNextRunAt() <= now;
     }
 
     /** 父 Run 仍由 Worker 推进时，子 Run 暂不参与领取。 */
     private boolean hasLeasedParent(AgentRunSnapshot snapshot, long now) {
-        if (snapshot.getParentRunId() == null) {
+        if (snapshot.getState().getParentRunId() == null) {
             return false;
         }
-        AgentRunSnapshot parent = snapshots.get(snapshot.getParentRunId());
-        return parent != null && parent.getLeaseOwner() != null && parent.getLeaseUntil() > now;
+        AgentRunSnapshot parent = snapshots.get(snapshot.getState().getParentRunId());
+        return parent != null && parent.getState().getLeaseOwner() != null
+            && parent.getState().getLeaseUntil() > now;
     }
 
     /** 校验指定 Worker 和 leaseId 仍拥有目标 Run。 */
@@ -225,8 +239,8 @@ public final class InMemoryAgentRunStore implements AgentRunStore {
         if (current == null) {
             throw new IllegalStateException("AgentRun snapshot not found: " + runId);
         }
-        if (!workerId.equals(current.getLeaseOwner()) || leaseId == null
-            || !leaseId.equals(current.getLeaseId())) {
+        if (!workerId.equals(current.getState().getLeaseOwner()) || leaseId == null
+            || !leaseId.equals(current.getState().getLeaseId())) {
             throw new IllegalStateException("AgentRun lease is not owned by worker: " + workerId);
         }
         return current;

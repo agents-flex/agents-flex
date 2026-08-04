@@ -1,6 +1,7 @@
 package com.agentsflex.agent.store.jdbc;
 
 import com.agentsflex.agent.AgentRunSnapshot;
+import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.store.AgentRunStore;
 import com.agentsflex.agent.store.AgentRunVersionConflictException;
@@ -50,14 +51,17 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
                 if (error instanceof RuntimeException) throw (RuntimeException) error;
                 throw error;
             }
-        } catch (SQLException error) { throw failure("save AgentRun " + snapshot.getRunId(), error); }
+        } catch (SQLException error) {
+            throw failure("save AgentRun " + snapshot.getState().getRunId(), error);
+        }
     }
 
     @Override
     public boolean requestCancellation(String runId) {
         AgentRunSnapshot current = load(runId);
         if (current == null) throw new IllegalStateException("AgentRun snapshot not found: " + runId);
-        if (current.getStatus().isTerminal() || current.isCancellationRequested()) return false;
+        if (current.getState().getStatus().isTerminal()
+            || current.getState().isCancellationRequested()) return false;
         String sql = "UPDATE " + table("runs") + " SET cancellation_requested=? WHERE run_id=? "
             + "AND cancellation_requested=? AND status NOT IN (?,?,?,?,?,?)";
         try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -75,7 +79,7 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
     @Override
     public boolean isCancellationRequested(String runId) {
         AgentRunSnapshot snapshot = load(runId);
-        return snapshot != null && snapshot.isCancellationRequested();
+        return snapshot != null && snapshot.getState().isCancellationRequested();
     }
 
     @Override
@@ -190,8 +194,11 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 bind(statement, saved); statement.executeUpdate(); return saved;
             } catch (SQLException error) {
-                AgentRunSnapshot actual = load(connection, snapshot.getRunId());
-                if (actual != null) throw conflict(snapshot.getRunId(), expectedVersion, actual.getVersion());
+                String runId = snapshot.getState().getRunId();
+                AgentRunSnapshot actual = load(connection, runId);
+                if (actual != null) {
+                    throw conflict(runId, expectedVersion, actual.getState().getVersion());
+                }
                 throw error;
             }
         }
@@ -199,27 +206,30 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
             + "parent_run_id=?,cancellation_requested=CASE WHEN cancellation_requested=? THEN ? ELSE ? END,payload=? "
             + "WHERE run_id=? AND version=?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, saved.getVersion()); statement.setString(2, saved.getStatus().name());
-            statement.setLong(3, saved.getNextRunAt()); statement.setString(4, saved.getLeaseOwner());
-            statement.setString(5, saved.getLeaseId()); statement.setLong(6, saved.getLeaseUntil());
-            statement.setString(7, saved.getParentRunId()); statement.setBoolean(8, true);
-            statement.setBoolean(9, true); statement.setBoolean(10, saved.isCancellationRequested());
-            statement.setBytes(11, serialize(saved)); statement.setString(12, saved.getRunId());
+            AgentRunState state = saved.getState();
+            statement.setLong(1, state.getVersion()); statement.setString(2, state.getStatus().name());
+            statement.setLong(3, state.getNextRunAt()); statement.setString(4, state.getLeaseOwner());
+            statement.setString(5, state.getLeaseId()); statement.setLong(6, state.getLeaseUntil());
+            statement.setString(7, state.getParentRunId()); statement.setBoolean(8, true);
+            statement.setBoolean(9, true); statement.setBoolean(10, state.isCancellationRequested());
+            statement.setBytes(11, serialize(saved)); statement.setString(12, state.getRunId());
             statement.setLong(13, expectedVersion);
             if (statement.executeUpdate() != 1) {
-                AgentRunSnapshot actual = load(connection, saved.getRunId());
-                throw conflict(saved.getRunId(), expectedVersion, actual == null ? -1 : actual.getVersion());
+                AgentRunSnapshot actual = load(connection, state.getRunId());
+                throw conflict(state.getRunId(), expectedVersion,
+                    actual == null ? -1 : actual.getState().getVersion());
             }
         }
-        return load(connection, saved.getRunId());
+        return load(connection, saved.getState().getRunId());
     }
 
     private void bind(PreparedStatement statement, AgentRunSnapshot saved) throws SQLException {
-        statement.setString(1, saved.getRunId()); statement.setLong(2, saved.getVersion());
-        statement.setString(3, saved.getStatus().name()); statement.setLong(4, saved.getNextRunAt());
-        statement.setString(5, saved.getLeaseOwner()); statement.setString(6, saved.getLeaseId());
-        statement.setLong(7, saved.getLeaseUntil()); statement.setString(8, saved.getParentRunId());
-        statement.setBoolean(9, saved.isCancellationRequested()); statement.setBytes(10, serialize(saved));
+        AgentRunState state = saved.getState();
+        statement.setString(1, state.getRunId()); statement.setLong(2, state.getVersion());
+        statement.setString(3, state.getStatus().name()); statement.setLong(4, state.getNextRunAt());
+        statement.setString(5, state.getLeaseOwner()); statement.setString(6, state.getLeaseId());
+        statement.setLong(7, state.getLeaseUntil()); statement.setString(8, state.getParentRunId());
+        statement.setBoolean(9, state.isCancellationRequested()); statement.setBytes(10, serialize(saved));
     }
 
     private AgentRunSnapshot load(Connection connection, String runId) throws SQLException {
@@ -230,10 +240,12 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
             try (ResultSet row = statement.executeQuery()) {
                 if (!row.next()) return null;
                 AgentRunSnapshot payload = deserialize(row.getBytes(9), AgentRunSnapshot.class);
-                return payload.toBuilder().version(row.getLong(1)).status(AgentRunStatus.valueOf(row.getString(2)))
+                AgentRunState state = payload.getState().toBuilder()
+                    .version(row.getLong(1)).status(AgentRunStatus.valueOf(row.getString(2)))
                     .nextRunAt(row.getLong(3)).leaseOwner(row.getString(4)).leaseId(row.getString(5))
                     .leaseUntil(row.getLong(6)).parentRunId(row.getString(7))
                     .cancellationRequested(row.getBoolean(8)).build();
+                return payload.withState(state);
             }
         }
     }

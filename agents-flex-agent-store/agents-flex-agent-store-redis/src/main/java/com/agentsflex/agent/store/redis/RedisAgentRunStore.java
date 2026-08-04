@@ -1,6 +1,7 @@
 package com.agentsflex.agent.store.redis;
 
 import com.agentsflex.agent.AgentRunSnapshot;
+import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.store.AgentRunStore;
 import com.agentsflex.agent.store.AgentRunVersionConflictException;
@@ -46,25 +47,32 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
         Map<String, String> values = jedis.hgetAll(key("run", runId));
         if (values == null || values.isEmpty()) return null;
         AgentRunSnapshot payload = decode(values.get("payload"), AgentRunSnapshot.class);
-        return payload.toBuilder().version(Long.parseLong(values.get("version")))
+        AgentRunState state = payload.getState().toBuilder()
+            .version(Long.parseLong(values.get("version")))
             .status(AgentRunStatus.valueOf(values.get("status"))).nextRunAt(number(values.get("next")))
             .leaseOwner(emptyToNull(values.get("lease_owner"))).leaseId(emptyToNull(values.get("lease_id")))
             .leaseUntil(number(values.get("lease_until")))
-            .parentRunId(emptyToNull(values.get("parent"))).cancellationRequested("1".equals(values.get("cancel"))).build();
+            .parentRunId(emptyToNull(values.get("parent")))
+            .cancellationRequested("1".equals(values.get("cancel"))).build();
+        return payload.withState(state);
     }
 
     @Override
     public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
         if (snapshot == null) throw new IllegalArgumentException("snapshot must not be null");
         AgentRunSnapshot saved = snapshot.withVersion(expectedVersion + 1);
-        Object result = eval(SAVE, keys(key("run", saved.getRunId()), index("runs"), index("runnable-runs")), args(
-            String.valueOf(expectedVersion), String.valueOf(saved.getVersion()), saved.getStatus().name(),
-            String.valueOf(saved.getNextRunAt()), text(saved.getLeaseOwner()), text(saved.getLeaseId()),
-            String.valueOf(saved.getLeaseUntil()), text(saved.getParentRunId()),
-            saved.isCancellationRequested() ? "1" : "0", encode(saved), saved.getRunId()));
+        AgentRunState state = saved.getState();
+        Object result = eval(SAVE,
+            keys(key("run", state.getRunId()), index("runs"), index("runnable-runs")), args(
+            String.valueOf(expectedVersion), String.valueOf(state.getVersion()), state.getStatus().name(),
+            String.valueOf(state.getNextRunAt()), text(state.getLeaseOwner()), text(state.getLeaseId()),
+            String.valueOf(state.getLeaseUntil()), text(state.getParentRunId()),
+            state.isCancellationRequested() ? "1" : "0", encode(saved), state.getRunId()));
         long code = ((Number) result).longValue();
-        if (code != -2) throw new AgentRunVersionConflictException(saved.getRunId(), expectedVersion, code);
-        return load(saved.getRunId());
+        if (code != -2) {
+            throw new AgentRunVersionConflictException(state.getRunId(), expectedVersion, code);
+        }
+        return load(state.getRunId());
     }
 
     @Override
@@ -88,6 +96,8 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
         if (parent == null || child == null) throw new IllegalArgumentException("parent and child snapshots must not be null");
         AgentRunSnapshot savedParent = parent.withVersion(expectedParentVersion + 1);
         AgentRunSnapshot savedChild = child.withVersion(0);
+        AgentRunState parentState = savedParent.getState();
+        AgentRunState childState = savedChild.getState();
         String script = "local pv=redis.call('HGET',KEYS[1],'version'); local actual=pv and tonumber(pv) or -1; "
             + "if actual~=tonumber(ARGV[1]) then return actual end; if redis.call('EXISTS',KEYS[2])==1 then return -3 end; "
             + "local pc=redis.call('HGET',KEYS[1],'cancel'); local c=(pc=='1' or ARGV[9]=='1') and '1' or '0'; "
@@ -98,19 +108,30 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
             + "redis.call('SADD',KEYS[3],ARGV[19],ARGV[20]); redis.call('ZREM',KEYS[4],ARGV[19]); "
             + "local cs=ARGV[11]; if cs=='READY' or cs=='RUNNING' then redis.call('ZADD',KEYS[4],ARGV[15],ARGV[20]) "
             + "elseif cs=='RETRY_SCHEDULED' then redis.call('ZADD',KEYS[4],math.max(tonumber(ARGV[12]),tonumber(ARGV[15])),ARGV[20]) end; return -2";
-        Object result = eval(script, keys(key("run", parent.getRunId()), key("run", child.getRunId()),
+        Object result = eval(script,
+            keys(key("run", parentState.getRunId()), key("run", childState.getRunId()),
             index("runs"), index("runnable-runs")), args(
-            String.valueOf(expectedParentVersion), String.valueOf(savedParent.getVersion()), savedParent.getStatus().name(),
-            String.valueOf(savedParent.getNextRunAt()), text(savedParent.getLeaseOwner()), text(savedParent.getLeaseId()),
-            String.valueOf(savedParent.getLeaseUntil()), text(savedParent.getParentRunId()),
-            savedParent.isCancellationRequested() ? "1" : "0", encode(savedParent),
-            savedChild.getStatus().name(), String.valueOf(savedChild.getNextRunAt()), text(savedChild.getLeaseOwner()),
-            text(savedChild.getLeaseId()), String.valueOf(savedChild.getLeaseUntil()), text(savedChild.getParentRunId()),
-            savedChild.isCancellationRequested() ? "1" : "0", encode(savedChild), savedParent.getRunId(), savedChild.getRunId()));
+            String.valueOf(expectedParentVersion), String.valueOf(parentState.getVersion()),
+            parentState.getStatus().name(), String.valueOf(parentState.getNextRunAt()),
+            text(parentState.getLeaseOwner()), text(parentState.getLeaseId()),
+            String.valueOf(parentState.getLeaseUntil()), text(parentState.getParentRunId()),
+            parentState.isCancellationRequested() ? "1" : "0", encode(savedParent),
+            childState.getStatus().name(), String.valueOf(childState.getNextRunAt()),
+            text(childState.getLeaseOwner()), text(childState.getLeaseId()),
+            String.valueOf(childState.getLeaseUntil()), text(childState.getParentRunId()),
+            childState.isCancellationRequested() ? "1" : "0", encode(savedChild),
+            parentState.getRunId(), childState.getRunId()));
         long code = ((Number) result).longValue();
-        if (code == -3) throw new AgentRunVersionConflictException(child.getRunId(), -1, number(jedis.hget(key("run", child.getRunId()), "version")));
-        if (code != -2) throw new AgentRunVersionConflictException(parent.getRunId(), expectedParentVersion, code);
-        return new ParentChildRunSnapshots(load(parent.getRunId()), load(child.getRunId()));
+        if (code == -3) {
+            throw new AgentRunVersionConflictException(childState.getRunId(), -1,
+                number(jedis.hget(key("run", childState.getRunId()), "version")));
+        }
+        if (code != -2) {
+            throw new AgentRunVersionConflictException(parentState.getRunId(),
+                expectedParentVersion, code);
+        }
+        return new ParentChildRunSnapshots(load(parentState.getRunId()),
+            load(childState.getRunId()));
     }
 
     @Override
@@ -164,11 +185,17 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
         for (String id : jedis.smembers(index("runs"))) {
             if (result.size() >= limit) break;
             AgentRunSnapshot child = load(id);
-            if (child == null || !child.getStatus().isTerminal() || child.getParentRunId() == null) continue;
-            AgentRunSnapshot parent = load(child.getParentRunId());
-            if (parent != null && parent.getStatus() == AgentRunStatus.WAITING_FOR_CHILD
-                && parent.getSuspension() != null
-                && child.getRunId().equals(parent.getSuspension().getCorrelationId())) result.add(child);
+            if (child == null) continue;
+            AgentRunState childState = child.getState();
+            if (!childState.getStatus().isTerminal() || childState.getParentRunId() == null) continue;
+            AgentRunSnapshot parent = load(childState.getParentRunId());
+            AgentRunState parentState = parent == null ? null : parent.getState();
+            if (parentState != null
+                && parentState.getStatus() == AgentRunStatus.WAITING_FOR_CHILD
+                && parentState.getSuspension() != null
+                && childState.getRunId().equals(parentState.getSuspension().getCorrelationId())) {
+                result.add(child);
+            }
         }
         return result;
     }

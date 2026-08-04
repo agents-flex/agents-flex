@@ -137,6 +137,24 @@ public final class AgentRunState implements Serializable {
     }
 
     /**
+     * 创建一份新的运行状态构建器。
+     *
+     * <p>该入口主要供 Store、序列化适配器和测试构造持久化状态。Agent 正常执行时仍由
+     * {@link AgentRun} 内部推进可变 State。</p>
+     */
+    public static Builder builder(String runId, AgentExecutionPolicy executionPolicy,
+                                  long createdAt) {
+        return new Builder(new AgentRunState(runId, executionPolicy, createdAt));
+    }
+
+    /**
+     * 返回包含当前全部字段的构建器，用于生成修改后的不可变状态。
+     */
+    public Builder toBuilder() {
+        return new Builder(mutableCopy());
+    }
+
+    /**
      * @return 运行 ID
      */
     public String getRunId() {
@@ -616,5 +634,57 @@ public final class AgentRunState implements Serializable {
     void putMetadata(String key, Object value) {
         requireMutable();
         metadata.put(key, value);
+    }
+
+    /**
+     * AgentRunState 的唯一字段级构建入口。
+     *
+     * <p>Builder 内部操作可变副本，{@link #build()} 返回深拷贝后的不可变状态。新增持久化字段时，
+     * 只需在 State 及此 Builder 中维护，不应再在 AgentRunSnapshot 中增加转发方法。</p>
+     */
+    public static final class Builder {
+        private final AgentRunState state;
+
+        private Builder(AgentRunState state) {
+            this.state = state;
+        }
+
+        public Builder executionPolicy(AgentExecutionPolicy value) { state.setExecutionPolicy(value); return this; }
+        public Builder status(AgentRunStatus value) { state.setStatus(value); return this; }
+        public Builder phase(AgentRunPhase value) { state.setPhase(value); return this; }
+        public Builder messages(List<? extends Message> value) { state.setMessages(value); return this; }
+        public Builder pendingToolCalls(List<ToolCall> value) { state.setPendingToolCalls(value); return this; }
+        public Builder suspension(AgentSuspension value) { state.setSuspension(value); return this; }
+        public Builder iterationCount(int value) { state.setIterationCount(value); return this; }
+        public Builder stepCount(int value) { state.setStepCount(value); return this; }
+        public Builder inputTokens(long value) { state.setInputTokens(value); return this; }
+        public Builder outputTokens(long value) { state.setOutputTokens(value); return this; }
+        public Builder totalTokens(long value) { state.setTotalTokens(value); return this; }
+        public Builder toolCallCount(int value) { state.setToolCallCount(value); return this; }
+        public Builder retryCount(int value) { state.setRetryCount(value); return this; }
+        public Builder budgetExceededReason(String value) { state.setBudgetExceededReason(value); return this; }
+        public Builder leaseOwner(String value) { state.setLeaseOwner(value); return this; }
+        public Builder leaseId(String value) { state.setLeaseId(value); return this; }
+        public Builder leaseUntil(long value) { state.setLeaseUntil(value); return this; }
+        public Builder toolApprovals(Map<String, Boolean> value) { state.setToolApprovals(value); return this; }
+        public Builder taskPlan(AgentTaskPlan value) { state.setTaskPlan(value); return this; }
+        public Builder planningEnabled(boolean value) { state.setPlanningEnabled(value); return this; }
+        public Builder planningDepth(int value) { state.setPlanningDepth(value); return this; }
+        public Builder cancellationRequested(boolean value) { state.setCancellationRequested(value); return this; }
+        public Builder started(boolean value) { state.setStarted(value); return this; }
+        public Builder finalMessage(AiMessage value) { state.setFinalMessage(value); return this; }
+        public Builder error(String type, String message) { state.setError(type, message); return this; }
+        public Builder createdAt(long value) { state.setCreatedAt(value); return this; }
+        public Builder completedAt(long value) { state.setCompletedAt(value); return this; }
+        public Builder updatedAt(long value) { state.setUpdatedAt(value); return this; }
+        public Builder nextRunAt(long value) { state.setNextRunAt(value); return this; }
+        public Builder version(long value) { state.setVersion(value); return this; }
+        public Builder parentRunId(String value) { state.setParentRunId(value); return this; }
+        public Builder rootRunId(String value) { state.setRootRunId(value); return this; }
+        public Builder metadata(Map<String, Object> value) { state.setMetadata(value); return this; }
+
+        public AgentRunState build() {
+            return state.immutableCopy();
+        }
     }
 }
