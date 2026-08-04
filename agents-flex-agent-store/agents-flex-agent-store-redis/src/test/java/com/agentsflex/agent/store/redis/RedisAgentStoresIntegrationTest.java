@@ -7,7 +7,6 @@ import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStatus;
-import com.agentsflex.agent.context.AgentArtifactReference;
 import com.agentsflex.agent.store.ParentChildRunSnapshots;
 import redis.clients.jedis.params.ScanParams;
 import redis.clients.jedis.resps.ScanResult;
@@ -16,7 +15,6 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -77,9 +75,6 @@ public class RedisAgentStoresIntegrationTest {
         commands.acknowledge("command-1", "worker");
         assertEquals(AgentRunCommandStatus.COMPLETED, commands.load("command-1").getStatus());
 
-        RedisAgentArtifactStore artifacts = config.artifactStore();
-        AgentArtifactReference artifact = artifacts.save("run-1", "text/plain", "大型结果", null);
-        assertEquals("大型结果", artifacts.load(artifact.getArtifactId()));
     }
 
     @Test

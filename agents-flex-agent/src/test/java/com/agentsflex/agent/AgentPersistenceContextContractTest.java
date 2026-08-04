@@ -3,11 +3,8 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.context.AgentArtifactReference;
 import com.agentsflex.agent.context.AgentContextUpdate;
-import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.agent.context.ToolResultOffloader;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -27,11 +24,10 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** Snapshot 序列化、上下文压缩和 Artifact 的持久化边界测试。 */
+/** Snapshot 序列化与上下文压缩边界测试。 */
 public class AgentPersistenceContextContractTest {
 
     @Test
@@ -179,33 +175,6 @@ public class AgentPersistenceContextContractTest {
         assertTrue(((AiMessage) messages.get(1)).hasToolCalls());
         assertTrue(messages.get(2) instanceof ToolMessage);
         assertEquals("call-1", ((ToolMessage) messages.get(2)).getToolCallId());
-    }
-
-    @Test
-    public void shouldStoreUtf8ArtifactSizeAndStableChecksum() {
-        InMemoryAgentArtifactStore store = new InMemoryAgentArtifactStore();
-        AgentArtifactReference first = store.save("run", "text/plain", "你好",
-            Collections.singletonMap("tool", "lookup"));
-        AgentArtifactReference second = store.save("run", "text/plain", "你好", null);
-
-        assertEquals(6, first.getSize());
-        assertEquals(first.getChecksum(), second.getChecksum());
-        assertEquals("你好", store.load(first.getArtifactId()));
-        assertEquals("lookup", first.getMetadata().get("tool"));
-        assertNull(store.load("missing"));
-    }
-
-    @Test
-    public void shouldApplyOffloadThresholdAtExactBoundary() {
-        InMemoryAgentArtifactStore store = new InMemoryAgentArtifactStore();
-        ToolResultOffloader offloader = ToolResultOffloader.largerThan(4, store);
-
-        assertNull(offloader.offload("run", "tool", "text/plain", null, null));
-        assertNull(offloader.offload("run", "tool", "text/plain", "1234", null));
-        AgentArtifactReference reference = offloader.offload(
-            "run", "tool", "text/plain", "12345", null);
-        assertNotNull(reference);
-        assertEquals("12345", offloader.load(reference.getArtifactId()));
     }
 
     private AgentRunSnapshot roundTrip(AgentRunSnapshot snapshot) throws Exception {

@@ -30,7 +30,6 @@ public final class RedisAgentStoreConfig implements AutoCloseable {
 
     public RedisAgentRunStore runStore() { return new RedisAgentRunStore(this); }
     public RedisAgentRunCommandStore commandStore() { return new RedisAgentRunCommandStore(this); }
-    public RedisAgentArtifactStore artifactStore() { return new RedisAgentArtifactStore(this); }
 
     @Override public void close() { if (closeClient) jedis.close(); }
 
@@ -50,7 +49,7 @@ public final class RedisAgentStoreConfig implements AutoCloseable {
             return this;
         }
 
-        /** 设置 Snapshot、Command 和 Artifact 等持久化对象的二进制编码实现。 */
+        /** 设置 Snapshot 和 Command 等持久化对象的二进制编码实现。 */
         public Builder serializer(AgentStoreSerializer serializer) {
             this.serializer = Objects.requireNonNull(serializer, "serializer must not be null");
             return this;

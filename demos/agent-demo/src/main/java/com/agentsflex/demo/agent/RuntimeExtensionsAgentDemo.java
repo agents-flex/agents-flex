@@ -11,9 +11,7 @@ import com.agentsflex.agent.AgentRun;
 import com.agentsflex.agent.AgentRunOptions;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentRunner;
-import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.agent.context.ToolResultOffloader;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
@@ -39,7 +37,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/** 演示 Middleware、实时事件、上下文压缩和大型工具结果外置。 */
+/** 演示 Middleware、实时事件和上下文压缩。 */
 public final class RuntimeExtensionsAgentDemo {
 
     private RuntimeExtensionsAgentDemo() {
@@ -52,7 +50,6 @@ public final class RuntimeExtensionsAgentDemo {
     static void run() {
         DemoSupport.section("Demo 5 - Agent 运行时扩展");
 
-        InMemoryAgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
         List<AgentEvent> events = new ArrayList<>();
 
         // 工具通过 ToolContext 主动报告可展示的执行进度。
@@ -89,7 +86,7 @@ public final class RuntimeExtensionsAgentDemo {
         DemoScriptedChatModel model = new DemoScriptedChatModel()
             .enqueue(prompt -> DemoSupport.toolCalls(
                 new ToolCall("report-call-1", "build_report", "{}")))
-            .enqueue(prompt -> new AiMessage("报告已经生成，完整内容保存在 Artifact Store。"));
+            .enqueue(prompt -> new AiMessage("报告已经生成。"));
 
         Agent agent = Agent.builder("runtime-agent")
             .chatModel(model)
@@ -104,8 +101,6 @@ public final class RuntimeExtensionsAgentDemo {
             .runStore(new InMemoryAgentRunStore())
             .agentLoader(new InMemoryAgentLoader(agent))
             .commandStore(new InMemoryAgentRunCommandStore())
-            // 判断逻辑与 Store 作为一个可选能力同时配置。
-            .toolResultOffloader(ToolResultOffloader.largerThan(32, artifactStore))
             .build()
             .addEventListener(events::add);
 
@@ -129,18 +124,16 @@ public final class RuntimeExtensionsAgentDemo {
         for (Message message : completed.getPrompt().getMemory().getMessages(Integer.MAX_VALUE)) {
             if (message instanceof ToolMessage) toolMessage = (ToolMessage) message;
         }
-        String artifactId = (String) toolMessage.getMetadata("agent.artifact.id");
-        DemoSupport.require(artifactId != null, "大型工具结果应被外置");
-        System.out.println("artifact id  : " + artifactId);
-        System.out.println("artifact size: " + artifactStore.load(artifactId).length());
+        DemoSupport.require(toolMessage != null && toolMessage.getContent().length() == 96,
+            "工具结果应原样写入运行历史");
+        System.out.println("tool result size: " + toolMessage.getContent().length());
 
         System.out.println("events:");
         for (AgentEvent event : events) {
             if (event.getType() == AgentEventType.MODEL_REASONING_DELTA
                 || event.getType() == AgentEventType.MODEL_TOOL_CALL_DELTA
                 || event.getType() == AgentEventType.TOOL_PROGRESS
-                || event.getType() == AgentEventType.CONTEXT_COMPACTED
-                || event.getType() == AgentEventType.TOOL_RESULT_OFFLOADED) {
+                || event.getType() == AgentEventType.CONTEXT_COMPACTED) {
                 System.out.println("  " + event.getSequence() + " "
                     + event.getType() + " " + event.getData());
             }

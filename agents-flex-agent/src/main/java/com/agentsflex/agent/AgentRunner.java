@@ -13,9 +13,7 @@ import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStore;
 import com.agentsflex.agent.command.AgentWakeupListener;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
-import com.agentsflex.agent.context.AgentArtifactReference;
 import com.agentsflex.agent.context.AgentContextUpdate;
-import com.agentsflex.agent.context.ToolResultOffloader;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
@@ -111,10 +109,6 @@ public final class AgentRunner {
      */
     private final AgentRunCommandStore commandStore;
     /**
-     * 可选的大型工具结果外置能力；未配置时不执行外置。
-     */
-    private final ToolResultOffloader toolResultOffloader;
-    /**
      * 统一模型调用、Token 统计和事件发布的适配器。
      */
     private final AgentModelInvoker modelInvoker;
@@ -160,23 +154,14 @@ public final class AgentRunner {
      * 创建自定义 RunStore 和 AgentLoader、其余依赖使用进程内实现的 Runner。
      */
     public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader) {
-        this(runStore, agentLoader, new InMemoryAgentRunCommandStore(), null);
-    }
-
-    /**
-     * 创建显式提供持久化 Store、但不启用工具结果外置的 Runner。
-     */
-    public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader,
-                       AgentRunCommandStore commandStore) {
-        this(runStore, agentLoader, commandStore, null);
+        this(runStore, agentLoader, new InMemoryAgentRunCommandStore());
     }
 
     /**
      * 创建显式提供全部可替换持久化依赖的 Runner。
      */
     public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader,
-                       AgentRunCommandStore commandStore,
-                       ToolResultOffloader toolResultOffloader) {
+                       AgentRunCommandStore commandStore) {
         if (runStore == null || agentLoader == null
             || commandStore == null) {
             throw new IllegalArgumentException(
@@ -185,22 +170,19 @@ public final class AgentRunner {
         this.runStore = runStore;
         this.agentLoader = agentLoader;
         this.commandStore = commandStore;
-        this.toolResultOffloader = toolResultOffloader;
         this.modelInvoker = new AgentModelInvoker(this::emitEvent);
     }
 
     /**
      * AgentRunner 依赖构建器。
      *
-     * <p>未显式配置的组件使用进程内实现，适合测试和本地开发。多实例部署应至少替换 RunStore、
-     * CommandStore、AgentLoader，并按需求配置 ToolResultOffloader。AgentLoader 必须返回
-     * 包含完整工具集合的可执行 Agent。</p>
+     * <p>未显式配置的组件使用进程内实现，适合测试和本地开发。多实例部署应替换 RunStore、
+     * CommandStore 和 AgentLoader。AgentLoader 必须返回包含完整工具集合的可执行 Agent。</p>
      */
     public static final class Builder {
         private AgentRunStore runStore = new InMemoryAgentRunStore();
         private AgentLoader agentLoader = new InMemoryAgentLoader();
         private AgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
-        private ToolResultOffloader toolResultOffloader;
 
         /**
          * 设置 Snapshot 与租约存储。
@@ -227,18 +209,10 @@ public final class AgentRunner {
         }
 
         /**
-         * 设置大型工具结果的判断与存储能力；未设置时禁用外置。
-         */
-        public Builder toolResultOffloader(ToolResultOffloader value) {
-            toolResultOffloader = value;
-            return this;
-        }
-
-        /**
          * 校验全部依赖并创建 Runner。
          */
         public AgentRunner build() {
-            return new AgentRunner(runStore, agentLoader, commandStore, toolResultOffloader);
+            return new AgentRunner(runStore, agentLoader, commandStore);
         }
     }
 
@@ -261,13 +235,6 @@ public final class AgentRunner {
      */
     public AgentRunCommandStore getCommandStore() {
         return commandStore;
-    }
-
-    /**
-     * @return Runner 使用的工具结果外置能力；未启用时为 {@code null}
-     */
-    public ToolResultOffloader getToolResultOffloader() {
-        return toolResultOffloader;
     }
 
     /**
@@ -1159,13 +1126,12 @@ public final class AgentRunner {
     }
 
     /**
-     * 原子语义上提交一个工具结果：必要时外置大内容、追加消息、移除 pending 调用并保存 Snapshot。
+     * 原子语义上提交一个工具结果：追加消息、移除 pending 调用并保存 Snapshot。
      *
      * <p>只有 Snapshot 成功后调用才算被运行时确认；具备外部副作用的 Tool 仍应使用
      * {@link AgentToolInvocation} ID 在业务侧实现幂等。</p>
      */
     private void appendToolResult(AgentRun run, ToolCall call, ToolMessage result) {
-        maybeOffloadToolResult(run, call, result);
         run.getPrompt().addMessage(result);
         run.removeFirstPendingToolCall();
         saveSnapshot(run);
@@ -1540,32 +1506,6 @@ public final class AgentRunner {
         AgentToolCallChain chain = next -> proceedToolCall(run, next, index + 1,
             invocation, interceptors);
         return middleware.aroundToolCall(context, chain);
-    }
-
-    /**
-     * 将超过策略阈值的工具结果保存到 Artifact Store，并用稳定引用替换消息正文。
-     */
-    private void maybeOffloadToolResult(AgentRun run, ToolCall call, ToolMessage result) {
-        if (toolResultOffloader == null) return;
-        String content = result.getContent();
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("toolCallId", callKey(call));
-        metadata.put("toolName", call.getName());
-        AgentArtifactReference reference = toolResultOffloader.offload(run.getId(),
-            call.getName(), "application/json", content, metadata);
-        if (reference == null) return;
-        Map<String, Object> placeholder = new LinkedHashMap<>();
-        placeholder.put("offloaded", true);
-        placeholder.put("artifactId", reference.getArtifactId());
-        placeholder.put("mediaType", reference.getMediaType());
-        placeholder.put("size", reference.getSize());
-        placeholder.put("checksum", reference.getChecksum());
-        result.setContent(JSON.toJSONString(placeholder));
-        result.putMetadata("agent.artifact.id", reference.getArtifactId());
-        result.putMetadata("agent.artifact.checksum", reference.getChecksum());
-        emitEvent(run, AgentEventType.TOOL_RESULT_OFFLOADED,
-            objectAttributes("toolCallId", callKey(call), "toolName", call.getName(),
-                "artifactId", reference.getArtifactId(), "size", reference.getSize()));
     }
 
     /**

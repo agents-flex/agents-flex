@@ -56,7 +56,7 @@ Runner 内置状态机采用模型原生 ToolCall 协议：
 | 长任务恢复 | `AgentRunSnapshot`、`AgentRunStore` |
 | 分布式执行 | `AgentWorker`、Lease、乐观版本 |
 | 动态拆解任务 | `AgentPlanningPolicy`、父子 Run |
-| 上下文过长 | `AgentContextManager`、Artifact Store |
+| 上下文过长 | `maxAttachedMessages`、`AgentContextManager`、Tool 分页或摘要 |
 | 资源限制 | `AgentExecutionPolicy`、`AgentBudget` |
 | 扩展执行链 | `AgentMiddleware` |
 | 监控与审计 | `AgentEvent`、`AgentEventListener` |

@@ -75,7 +75,7 @@ Agent agent = Agent.builder("order-assistant")
 - `maxAttachedMessages`：每次模型调用最多读取多少条历史消息，默认 100。
 - `AgentContextManager`：在调用模型前执行摘要等持久化整理。
 
-工具结果外置不属于 Agent 定义，由 Runner 的可选 `ToolResultOffloader` 同时配置判断规则和 `AgentArtifactStore`。单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。
+单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。工具返回规模由 Tool 契约控制，Runner 不会根据内容大小改写结果。
 
 ## 版本管理
 

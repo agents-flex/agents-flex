@@ -50,7 +50,7 @@ Snapshot 表示当前真相，业务保存的 Event 表示变化历史。排障�
 - 重试调度数量及重试后成功率。
 - Worker 领取数、Lease 丢失数、可运行积压。
 - Command Inbox 的 pending 数量、处理延迟和失败数。
-- Snapshot、业务事件转发和 Artifact 的写入失败及大小。
+- Snapshot 写入失败及大小、业务事件转发失败、Tool 返回大小与截断率。
 
 `runId`、`toolCallId` 等高基数值只进入日志或 Trace，不作为指标标签。
 

@@ -101,11 +101,10 @@ AgentRunner runner = AgentRunner.builder()
     .runStore(runStore)
     .agentLoader(agentLoader)
     .commandStore(commandStore)
-    .toolResultOffloader(toolResultOffloader)
     .build();
 ```
 
-Run Store、AgentLoader 和 Command Store 未提供时使用内存实现；工具结果外置默认禁用，只有配置完整的 `ToolResultOffloader` 才启用。生产环境的替换要求见 [Store 持久化](./store)。
+Run Store、AgentLoader 和 Command Store 未提供时使用内存实现。生产环境的替换要求见 [Store 持久化](./store)。
 
 ## 三组执行入口
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
   <title id="title">Agents-Flex 现代 Agent 运行时架构</title>
-  <desc id="desc">业务配置、AgentLoader、运行选项、中间件、Runner、Worker、持久化 Store、实时事件和大型结果存储之间的关系。</desc>
+  <desc id="desc">业务配置、AgentLoader、运行选项、中间件、Runner、Worker、持久化 Store、工具结果契约和实时事件之间的关系。</desc>
   <style>
     text { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #172033; letter-spacing: 0; }
     .title { font-size: 28px; font-weight: 700; }
@@ -44,7 +44,7 @@
   <text x="86" y="345" class="name">AgentRunner</text>
   <text x="86" y="373" class="detail">状态机、Snapshot、恢复、重试、预算</text>
   <text x="86" y="397" class="detail">模型流、工具协议、审批、父子 Run</text>
-  <text x="86" y="421" class="detail">上下文压缩、大型结果外置</text>
+  <text x="86" y="421" class="detail">上下文压缩、模型读取窗口</text>
   <text x="86" y="445" class="detail">统一不可变 AgentEvent 发布</text>
 
   <rect x="435" y="310" width="330" height="164" class="box" fill="#edf7ff" stroke="#4d8bd8"/>
@@ -61,7 +61,7 @@
   <text x="836" y="421" class="detail">Run Lease、续租、崩溃接管</text>
   <text x="836" y="445" class="detail">任务计划与子 Agent 调度</text>
 
-  <text x="60" y="522" class="section">状态、解析、内容与观测</text>
+  <text x="60" y="522" class="section">状态、解析、工具契约与观测</text>
   <rect x="60" y="540" width="245" height="130" class="box" fill="#ffffff" stroke="#7d8ba0"/>
   <text x="84" y="574" class="name">AgentRunStore</text>
   <text x="84" y="602" class="detail">Snapshot、CAS、Lease</text>
@@ -81,15 +81,15 @@
   <text x="624" y="650" class="detail">跨进程重建 Agent 与 Tool</text>
 
   <rect x="870" y="540" width="270" height="130" class="box" fill="#ffffff" stroke="#7d8ba0"/>
-  <text x="894" y="574" class="name">Artifact Store</text>
-  <text x="894" y="602" class="detail">大型工具结果原文</text>
-  <text x="894" y="626" class="detail">artifactId、size、checksum</text>
-  <text x="894" y="650" class="detail">独立鉴权和生命周期</text>
+  <text x="894" y="574" class="name">Tool Result Contract</text>
+  <text x="894" y="602" class="detail">分页、游标、过滤与摘要</text>
+  <text x="894" y="626" class="detail">按 ID 获取详情或业务文件</text>
+  <text x="894" y="650" class="detail">Tool 自主管理结果规模</text>
 
   <rect x="195" y="710" width="360" height="112" class="box" fill="#eef8ff" stroke="#4d8bd8"/>
   <text x="221" y="744" class="name">AgentEventListener</text>
   <text x="221" y="772" class="detail">模型文本 / reasoning / ToolCall delta</text>
-  <text x="221" y="796" class="detail">工具进度、命令、压缩与外置实时事件</text>
+  <text x="221" y="796" class="detail">工具进度、命令与上下文压缩事件</text>
 
   <rect x="645" y="710" width="360" height="112" class="box" fill="#fff7e8" stroke="#c9892b"/>
   <text x="671" y="744" class="name">Business Event Sink</text>

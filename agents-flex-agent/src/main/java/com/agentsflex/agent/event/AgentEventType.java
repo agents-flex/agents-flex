@@ -101,10 +101,6 @@ public enum AgentEventType {
      */
     CONTEXT_COMPACTED,
     /**
-     * 大型工具结果已写入 AgentArtifactStore，消息历史中只保留轻量引用。
-     */
-    TOOL_RESULT_OFFLOADED,
-    /**
      * 父 Run 已原子创建并关联一个子 Run。
      */
     CHILD_STARTED,

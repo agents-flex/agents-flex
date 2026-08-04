@@ -20,7 +20,7 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
         |       |
      Agent   AgentRun  ChatModel + Tool
                 |
-       RunStore / CommandStore / ArtifactStore
+          RunStore / CommandStore
 ```
 
 ### 定义平面
@@ -37,7 +37,7 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
 
 ### 持久化平面
 
-Run Snapshot 是当前状态，Command 是外部输入，Artifact 是大内容。Framework 为它们提供独立 Store；业务事件历史由应用通过 AgentEventListener 写入自己的审计库、消息平台或 Outbox。
+Run Snapshot 是当前状态，Command 是外部输入，Framework 为它们提供独立 Store。业务事件历史由应用通过 AgentEventListener 写入自己的审计库、消息平台或 Outbox。
 
 ### 观察平面
 
@@ -68,7 +68,7 @@ READY -> RUNNING/MODEL
 - 执行控制通过 Middleware 扩展，不在 Listener 中改状态。
 - 横切控制通过 Middleware，低层通用工具逻辑通过 ToolInterceptor。
 - 持久业务标识通过 Run metadata 传递，进程内服务由 Middleware 或 Tool 自身安全管理。
-- 长内容进入 Artifact Store，不让 Prompt 和 Snapshot 无界增长。
+- Tool 通过分页、摘要、按 ID 查询或业务文件引用控制返回规模，Runner 不改写工具结果。
 
 ## 部署形态
 
@@ -86,4 +86,4 @@ API 服务调用 `start`/`submitCommand`，Worker 集群通过共享 Store 执�
 
 ## 安全边界
 
-模型不能直接绕过工具授权；Runner 只执行当前 Agent 中按名称解析到的 Tool，并在执行前应用审批策略和 Middleware。生产平台还应在配置发布、Run metadata 校验、Artifact 读取和恢复 API 上实施租户隔离。
+模型不能直接绕过工具授权；Runner 只执行当前 Agent 中按名称解析到的 Tool，并在执行前应用审批策略和 Middleware。生产平台还应在配置发布、Run metadata 校验、业务文件读取和恢复 API 上实施租户隔离。

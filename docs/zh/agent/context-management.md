@@ -1,13 +1,13 @@
 ---
 title: 上下文管理
-description: 管理业务 ChatMemory、消息窗口、摘要、多模态内容和大型工具结果。
+description: 管理业务 ChatMemory、消息窗口、摘要、多模态内容和工具结果边界。
 ---
 
 # 上下文管理
 
 ## 概述
 
-Agent 的上下文同时面对两个目标：保留足够历史以正确决策，又避免消息和工具结果无限增长。模型读取窗口使用 Agent 的普通参数 `maxAttachedMessages`；需要重写持久化历史时使用 `AgentContextManager`；大型工具结果可由 Runner 的可选 `ToolResultOffloader` 外置。
+Agent 的上下文同时面对两个目标：保留足够历史以正确决策，又避免消息和工具结果无限增长。模型读取窗口使用 Agent 的普通参数 `maxAttachedMessages`；需要重写持久化历史时使用 `AgentContextManager`。工具返回内容由 Tool 自身控制，Runner 会把实际结果原样写入运行历史。
 
 ## 消息的三个层次
 
@@ -72,18 +72,16 @@ public final class DomainContextManager implements AgentContextManager {
 
 实现必须幂等：同一 Snapshot 因重试再次执行时，不应重复插入摘要。返回 `changed=true` 后，Runner 会立即保存 Snapshot 并发布 `CONTEXT_COMPACTED`。
 
-## 大型工具结果外置
+## 大型工具结果设计
 
-```java
-AgentRunner runner = AgentRunner.builder()
-    .toolResultOffloader(ToolResultOffloader.largerThan(
-        20_000, persistentArtifactStore))
-    .build();
-```
+Framework 不根据结果大小改写 ToolMessage，也不保存被替换的原始内容。Tool 应只返回模型完成下一步决策所需的数据，并根据业务语义选择以下方式控制结果规模：
 
-`ToolResultOffloader` 把判断规则与 `AgentArtifactStore` 组合成一个能力。Runner 未配置该能力时完全禁用外置；配置后，超过阈值的工具结果会保存到 Store，Prompt 中替换为包含 `artifactId`、media type、size 和 checksum 的 JSON 引用。原始内容可用 `offloader.load(artifactId)` 读取。
+- 查询类 Tool 提供分页、游标、过滤、字段选择和条数上限。
+- 搜索或分析类 Tool 返回摘要与关键条目，并提供按 ID 获取详情的配套 Tool。
+- 日志、报表和导出类 Tool 把完整内容保存到业务存储，只返回业务文件 ID、下载地址或状态。
+- 数据规模不可预知时，返回 `hasMore`、`nextCursor`、截断原因等明确协议字段。
 
-这能降低 Prompt 与 Snapshot 体积，但模型只看到引用摘要。如果后续推理需要正文，应提供按需读取 Artifact 的工具，或让卸载策略只处理无需再次推理的大内容。
+这些约束属于 Tool 契约，因为只有 Tool 和业务系统知道哪些内容可以截断、如何继续读取以及怎样鉴权。Runner 只负责保存 Tool 实际返回的协议消息。
 
 ## 多模态消息
 
@@ -91,8 +89,8 @@ AgentRunner runner = AgentRunner.builder()
 
 ## 生产建议
 
-- 同时限制消息数量、工具结果大小与模型 Token 预算。
+- 同时限制消息数量、Tool 单次返回规模与模型 Token 预算。
 - 摘要模型失败时保留原历史，不能静默丢消息。
-- Artifact 与 Run 设置一致的租户隔离、保留期和删除策略。
-- 对 Snapshot 和 Artifact 分别监控大小、增长率与读取失败。
+- 对业务文件引用实施租户隔离、有效期和访问授权。
+- 监控 Snapshot 大小以及各 Tool 的返回大小、截断率和分页次数。
 - 恢复后仍需使用的业务标识应保存为可序列化 metadata；密钥、连接和服务对象不要写入 Snapshot。

@@ -44,7 +44,7 @@ sequence 在 Runner 重建或进程重启后会重新开始，不能直接作为
 - Run：开始、完成、失败、取消、暂停、恢复和 Snapshot 保存。
 - Step：开始、结束、达到 `maxSteps`。
 - Model：开始、结束、文本/推理/ToolCall 增量和迭代上限。
-- Tool：开始、进度、完成、失败、审批和结果外置。
+- Tool：开始、进度、完成、失败和审批。
 - Command：提交、消费和失败。
 - Planning：计划创建、调整、任务和子 Run。
 - Context、重试和预算终止。

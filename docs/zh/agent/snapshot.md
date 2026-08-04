@@ -110,4 +110,4 @@ AgentStoreSerializer serializer =
 
 ## 数据保留
 
-终态 Run 的 Snapshot 仍是审计、结果查询和父子树展示的依据。删除策略应与事件、Command 和 Artifact 协调：不能先删除 Artifact 却保留引用，也不能在父 Run 仍等待时删除子 Run。
+终态 Run 的 Snapshot 仍是审计、结果查询和父子树展示的依据。删除策略应与事件和 Command 协调，且不能在父 Run 仍等待时删除子 Run。

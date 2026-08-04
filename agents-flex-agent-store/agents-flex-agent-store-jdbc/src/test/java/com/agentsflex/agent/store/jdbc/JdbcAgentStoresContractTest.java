@@ -7,7 +7,6 @@ import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStatus;
-import com.agentsflex.agent.context.AgentArtifactReference;
 import com.agentsflex.agent.store.AgentRunVersionConflictException;
 import com.agentsflex.agent.store.ParentChildRunSnapshots;
 import org.h2.jdbcx.JdbcDataSource;
@@ -110,17 +109,6 @@ public class JdbcAgentStoresContractTest {
         assertEquals(2, retried.getAttempts());
         store.acknowledge("command-1", "worker-b");
         assertEquals(AgentRunCommandStatus.COMPLETED, store.load("command-1").getStatus());
-    }
-
-    @Test
-    public void shouldPersistUtf8ArtifactAndChecksum() {
-        JdbcAgentArtifactStore store = config.artifactStore();
-        AgentArtifactReference reference = store.save("run-1", "text/plain", "大型工具结果",
-            Collections.singletonMap("source", "tool"));
-        assertEquals("大型工具结果", store.load(reference.getArtifactId()));
-        assertEquals("tool", reference.getMetadata().get("source"));
-        assertEquals(64, reference.getChecksum().length());
-        assertTrue(reference.getSize() > 6);
     }
 
     @Test

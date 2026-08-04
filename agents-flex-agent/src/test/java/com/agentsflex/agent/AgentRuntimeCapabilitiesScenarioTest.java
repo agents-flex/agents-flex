@@ -6,9 +6,7 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStatus;
 import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
-import com.agentsflex.agent.context.InMemoryAgentArtifactStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.agent.context.ToolResultOffloader;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;
@@ -134,13 +132,12 @@ public class AgentRuntimeCapabilitiesScenarioTest {
     }
 
     @Test
-    public void shouldCombineStreamingApprovalInboxWorkerProgressAndOffload() {
+    public void shouldCombineStreamingApprovalInboxWorkerAndProgress() {
         ScriptedChatModel model = new ScriptedChatModel();
         model.enqueue(toolCalls(new ToolCall("danger-1", "export", "{}")));
         model.enqueue(new AiMessage("completed"));
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
-        InMemoryAgentArtifactStore artifactStore = new InMemoryAgentArtifactStore();
         List<AgentEvent> events = new ArrayList<>();
         AtomicInteger toolExecutions = new AtomicInteger();
 
@@ -164,9 +161,8 @@ public class AgentRuntimeCapabilitiesScenarioTest {
                 .build())
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        ToolResultOffloader offloader = ToolResultOffloader.largerThan(32, artifactStore);
         AgentRunner runner = new AgentRunner(runStore, registry,
-            commandStore, offloader).addEventListener(events::add);
+            commandStore).addEventListener(events::add);
 
         AgentRun waiting = runner.run(agent, "export",
             AgentRunOptions.builder().streaming(true).build());
@@ -197,13 +193,10 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         assertEquals(AgentRunCommandStatus.COMPLETED,
             commandStore.load("approve-1").getStatus());
         ToolMessage toolMessage = lastToolMessage(completed.get(0));
-        String artifactId = (String) toolMessage.getMetadata("agent.artifact.id");
-        assertNotNull(artifactId);
-        assertEquals(128, artifactStore.load(artifactId).length());
+        assertEquals(128, toolMessage.getContent().length());
         assertTrue(hasEvent(events, AgentEventType.MODEL_REASONING_DELTA));
         assertTrue(hasEvent(events, AgentEventType.MODEL_TOOL_CALL_DELTA));
         assertTrue(hasEvent(events, AgentEventType.TOOL_PROGRESS));
-        assertTrue(hasEvent(events, AgentEventType.TOOL_RESULT_OFFLOADED));
         assertTrue(hasEvent(events, AgentEventType.COMMAND_CONSUMED));
         assertEquals(1, terminalEventCount(events));
         assertStrictSequences(events);
