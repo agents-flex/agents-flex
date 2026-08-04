@@ -1,13 +1,13 @@
 ---
 title: Demo：人工审批
-description: 构建高风险工具审批流程，并通过 Command Inbox 和 Worker 跨请求恢复。
+description: 构建高风险工具审批流程，并通过 submitResume 和 Worker 跨请求恢复。
 ---
 
 # Demo：人工审批
 
 ## 概述
 
-本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Snapshot 并等待人工批准；审批服务只把命令写入 Inbox；后台 Worker 消费命令，使用另一个 Runner 恢复原 Run 并执行一次部署。
+本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Snapshot 并等待人工批准；审批服务调用 `submitResume` 保存恢复后的 Run；后台 Worker 使用另一个 Runner 领取原 Run 并执行一次部署。
 
 完整源码位于 `demos/agent-demo/src/main/java/com/agentsflex/demo/agent/HumanApprovalAgentDemo.java`。
 
@@ -71,7 +71,7 @@ if (deployments.get() != 0) {
 
 此时模型返回的 `deploy_service` ToolCall 已在 Snapshot 的 `pendingToolCalls` 中。页面可从 Suspension 获取 correlationId、message 和 metadata，并从 pending 调用展示经过脱敏的参数。
 
-## 提交审批命令
+## 提交审批结果
 
 ```java
 String callId = waiting.getSuspension().getCorrelationId();
@@ -79,13 +79,10 @@ AgentResumeCommand approval = AgentResumeCommand.approveTool(callId)
     .withMetadata("approverId", "admin-1001")
     .withMetadata("approvalSource", "release-console");
 
-secondRunner.submitCommand(
-    "approval-deploy-call-1",
-    waiting.getId(),
-    approval);
+secondRunner.submitResume(waiting.getId(), approval);
 ```
 
-命令 ID 来自审批业务事件，是重复回调的幂等键。API 返回成功表示命令已入箱，不应在审批 HTTP 请求中直接执行部署。
+`submitResume` 只将 Run 保存为可运行状态，不会在审批 HTTP 请求中执行部署。生产环境应先由审批业务保存唯一事件 ID 并完成幂等消费，再调用该方法。
 
 ## Worker 恢复
 
@@ -100,7 +97,7 @@ AgentRun completed = processed.get(0);
 System.out.println(completed.getFinalOutput());
 ```
 
-Worker 先消费命令，再领取已恢复的 Run。Runner 从 TOOLS phase 执行原调用，写入 ToolMessage 后请求模型生成最终答案，不会重新生成部署参数。
+Worker 领取已恢复的 Run。Runner 从 TOOLS phase 执行原调用，写入 ToolMessage 后请求模型生成最终答案，不会重新生成部署参数。
 
 ## 拒绝审批
 
@@ -116,7 +113,7 @@ AgentResumeCommand rejection = AgentResumeCommand.rejectTool(
 - 用 JDBC/Redis Store 替换全部内存 Store。
 - 审批 API 校验当前用户、租户、Run 状态与 correlationId。
 - ToolCall 参数只展示白名单字段并脱敏。
-- commandId、runId、callId 与 approverId 进入审计事件。
+- 业务审批事件 ID、runId、callId 与 approverId 进入审计记录。
 - 部署平台以稳定调用 ID 建唯一幂等记录。
 - 对超时未审批任务设置业务撤销或过期策略。
 

@@ -3,8 +3,6 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.command.AgentRunCommand;
-import com.agentsflex.agent.command.AgentRunCommandStatus;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
@@ -104,16 +102,6 @@ public class AgentValueObjectContractTest {
         assertBuildFailure(() -> AgentExecutionPolicy.builder().toolErrorStrategy(null).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().retryPolicy(null).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().budget(null).build());
-    }
-
-    @Test
-    public void shouldValidateCommandRequiredFields() {
-        assertIllegalArgument(() -> new AgentRunCommand(null, "run",
-            AgentResumeCommand.continueRun(), 0, AgentRunCommandStatus.PENDING,
-            null, 0, 0, null));
-        assertIllegalArgument(() -> new AgentRunCommand("id", null,
-            AgentResumeCommand.continueRun(), 0, AgentRunCommandStatus.PENDING,
-            null, 0, 0, null));
     }
 
     @Test

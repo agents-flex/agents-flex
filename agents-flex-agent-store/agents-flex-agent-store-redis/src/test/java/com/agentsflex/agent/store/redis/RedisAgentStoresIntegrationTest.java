@@ -1,12 +1,9 @@
 package com.agentsflex.agent.store.redis;
 
 import com.agentsflex.agent.AgentExecutionPolicy;
-import com.agentsflex.agent.AgentResumeCommand;
 import com.agentsflex.agent.AgentRunSnapshot;
 import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
-import com.agentsflex.agent.command.AgentRunCommand;
-import com.agentsflex.agent.command.AgentRunCommandStatus;
 import com.agentsflex.agent.store.ParentChildRunSnapshots;
 import redis.clients.jedis.params.ScanParams;
 import redis.clients.jedis.resps.ScanResult;
@@ -25,7 +22,7 @@ import java.util.concurrent.Future;
 
 import static org.junit.Assert.*;
 
-/** 在真实 Redis 上验证 Lua 原子操作和五类 Agent Store 的组合行为。 */
+/** 在真实 Redis 上验证 Run Store 的 Lua 原子操作与恢复行为。 */
 public class RedisAgentStoresIntegrationTest {
     private RedisAgentStoreConfig config;
     private String prefix;
@@ -66,14 +63,6 @@ public class RedisAgentStoresIntegrationTest {
         assertEquals(2000, runs.renewLease("run-1", "worker",
             claimedRun.getState().getLeaseId(), 200, 2000).getState().getLeaseUntil());
         runs.releaseLease("run-1", "worker", claimedRun.getState().getLeaseId());
-
-        RedisAgentRunCommandStore commands = config.commandStore();
-        AgentRunCommand command = AgentRunCommand.pending("command-1", "run-1", AgentResumeCommand.continueRun());
-        commands.submit(command); commands.submit(command);
-        AgentRunCommand claimedCommand = commands.claim("worker", 100, 1000, 1).get(0);
-        assertEquals(1, claimedCommand.getAttempts());
-        commands.acknowledge("command-1", "worker");
-        assertEquals(AgentRunCommandStatus.COMPLETED, commands.load("command-1").getStatus());
 
     }
 

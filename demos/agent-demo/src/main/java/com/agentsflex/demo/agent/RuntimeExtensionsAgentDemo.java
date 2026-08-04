@@ -12,7 +12,6 @@ import com.agentsflex.agent.AgentRunOptions;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;
@@ -100,7 +99,6 @@ public final class RuntimeExtensionsAgentDemo {
         AgentRunner runner = AgentRunner.builder()
             .runStore(new InMemoryAgentRunStore())
             .agentLoader(new InMemoryAgentLoader(agent))
-            .commandStore(new InMemoryAgentRunCommandStore())
             .build()
             .addEventListener(events::add);
 

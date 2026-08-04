@@ -1,6 +1,6 @@
 ---
 title: 挂起和恢复
-description: 建立可持久化暂停点，使用结构化命令同步恢复或通过可靠收件箱异步恢复。
+description: 建立可持久化暂停点，使用结构化恢复动作继续执行原 Run。
 ---
 
 # 挂起和恢复
@@ -51,40 +51,29 @@ AgentRun resumed = runner.resume(runId,
 
 Runner 会校验当前 Suspension 类型和 correlationId。批准后执行已保存的原 ToolCall；拒绝后写入与原调用关联的工具结果，供模型解释，不会执行函数体。
 
-## Command Inbox
+## 异步恢复
 
-审批回调与 Worker 不在同一服务时，先提交持久化命令：
+审批回调与 Worker 不在同一服务时，业务系统应先把审批结果可靠保存到自己的数据库、消息队列或 Inbox，再调用：
 
 ```java
-runner.submitCommand(
-    "approval-event-7788",
+runner.submitResume(
     runId,
     AgentResumeCommand.approveTool(callId));
 ```
 
-`AgentRunCommandStore` 按 commandId 幂等保存，Worker 使用租约领取。命令状态经历 `PENDING -> CLAIMED -> COMPLETED`，也可能释放回 PENDING 或最终 `FAILED`。
-
-入箱成功只表示命令可靠保存，不表示 Run 已经恢复完成。外部 API 应返回命令 ID，供调用方查询处理状态。
-
-## 唤醒调度器
-
-```java
-runner.addWakeupListener(command -> queue.signal(command.getRunId()));
-```
-
-Wakeup Listener 在命令成功入箱后通知外部调度系统，可降低轮询延迟。可靠性仍由 Command Store 保证；通知丢失时 Worker 的常规轮询必须最终处理命令。
+`submitResume` 校验恢复动作并把 Run 保存为可领取的 `RUNNING` 状态，不会在当前线程继续调用模型或工具；之后由 `AgentWorker` 通过 Run Lease 领取。Framework 不保存外部审批事件，也不提供恢复命令队列。业务系统负责幂等键、消息重试、消费确认和审计记录。
 
 ## 幂等与竞态
 
-- 外部事件使用稳定 commandId，重复回调提交同一命令。
+- 外部事件使用稳定业务幂等键，重复回调只调用一次 `submitResume`。
 - 工具审批 correlationId 必须匹配当前待处理 ToolCall。
 - Store 版本冲突时重新加载状态，不能覆盖较新快照。
-- Run 已终止后到达的命令应成为明确失败或幂等完成，不能重新打开终态。
+- Run 已终止后到达的恢复动作应成为明确失败或业务侧幂等完成，不能重新打开终态。
 - 多个审批人竞争时，应由业务审批系统先决定唯一结果。
 
 ## 用户体验
 
-暂停接口应向前端返回 Run ID、状态、Suspension message、correlationId 和必要的安全元数据。不要直接展示模型原始内部内容或敏感工具参数。恢复 API 应鉴权，并把审批人、渠道、理由写入命令 metadata 和审计事件。
+暂停接口应向前端返回 Run ID、状态、Suspension message、correlationId 和必要的安全元数据。不要直接展示模型原始内部内容或敏感工具参数。恢复 API 应鉴权，并把审批人、渠道、理由写入 `AgentResumeCommand` metadata 和业务审计记录。
 
 ## 不应做的事
 

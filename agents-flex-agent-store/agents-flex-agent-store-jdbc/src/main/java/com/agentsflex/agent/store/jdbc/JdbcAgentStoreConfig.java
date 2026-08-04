@@ -30,7 +30,6 @@ public final class JdbcAgentStoreConfig {
 
     public JdbcAgentStoreSchema schema() { return new JdbcAgentStoreSchema(this); }
     public JdbcAgentRunStore runStore() { return new JdbcAgentRunStore(this); }
-    public JdbcAgentRunCommandStore commandStore() { return new JdbcAgentRunCommandStore(this); }
 
     public static final class Builder {
         private final DataSource dataSource;
@@ -60,7 +59,7 @@ public final class JdbcAgentStoreConfig {
             return this;
         }
 
-        /** 设置 Snapshot 和 Command 等持久化对象的二进制编码实现。 */
+        /** 设置 Snapshot 的二进制编码实现。 */
         public Builder serializer(AgentStoreSerializer serializer) {
             this.serializer = Objects.requireNonNull(serializer, "serializer must not be null");
             return this;

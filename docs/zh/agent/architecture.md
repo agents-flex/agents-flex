@@ -20,7 +20,7 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
         |       |
      Agent   AgentRun  ChatModel + Tool
                 |
-          RunStore / CommandStore
+               RunStore
 ```
 
 ### 定义平面
@@ -33,11 +33,11 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
 
 ### 调度平面
 
-`AgentWorker` 领取 READY 和到期任务，Command Inbox 接收外部恢复事件，Lease 与 fencing token 控制多实例所有权。调度系统可以用轮询或 Wakeup Listener 降低延迟。
+`AgentWorker` 领取 READY 和到期任务，Lease 与 fencing token 控制多实例所有权。外部审批和用户输入由业务系统可靠保存，再通过 `submitResume` 把 Run 转为可运行状态。
 
 ### 持久化平面
 
-Run Snapshot 是当前状态，Command 是外部输入，Framework 为它们提供独立 Store。业务事件历史由应用通过 AgentEventListener 写入自己的审计库、消息平台或 Outbox。
+Run Snapshot 是 Framework 的持久化事实来源。外部输入和业务事件历史由应用写入自己的数据库、消息平台或 Outbox。
 
 ### 观察平面
 
@@ -82,7 +82,7 @@ HTTP 请求直接调用 `runner.run`，内存 Store 可用于开发。进程退�
 
 ### 多实例 Worker
 
-API 服务调用 `start`/`submitCommand`，Worker 集群通过共享 Store 执行。所有实例共享 Loader 版本视图，Lease 负责接管，适合生产长任务。
+API 服务调用 `start`，业务回调在可靠消费后调用 `submitResume`，Worker 集群通过共享 Run Store 执行。所有实例共享 Loader 版本视图，Lease 负责接管，适合生产长任务。
 
 ## 安全边界
 

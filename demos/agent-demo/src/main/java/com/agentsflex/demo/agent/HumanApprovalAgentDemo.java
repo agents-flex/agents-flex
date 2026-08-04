@@ -13,7 +13,6 @@ import com.agentsflex.agent.AgentRunSnapshot;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.AgentWorker;
-import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
@@ -90,10 +89,7 @@ public final class HumanApprovalAgentDemo {
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
         List<AgentEvent> events = new java.util.ArrayList<>();
-        InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
-
-        AgentRunner firstRunner = new AgentRunner(
-            runStore, agentLoader, commandStore)
+        AgentRunner firstRunner = new AgentRunner(runStore, agentLoader)
             .addEventListener(events::add);
         // run() 会执行到终态或阻塞态；遇到审批点时返回 WAITING_FOR_APPROVAL。
         AgentRun waiting = firstRunner.run(agent, "发布 order-api 2.4.0");
@@ -116,14 +112,13 @@ public final class HumanApprovalAgentDemo {
             .withMetadata("approverId", "admin-1001")
             .withMetadata("approvalSource", "release-console");
 
-        AgentRunner secondRunner = new AgentRunner(
-            runStore, agentLoader, commandStore)
+        AgentRunner secondRunner = new AgentRunner(runStore, agentLoader)
             .addEventListener(events::add);
-        // 审批接口只负责把命令可靠写入 Inbox，不在当前请求中执行模型或部署工具。
-        secondRunner.submitCommand("approval-deploy-call-1", waiting.getId(), approval);
+        // 业务系统负责可靠保存和幂等消费审批结果，这里只把 Run 恢复为可运行状态。
+        secondRunner.submitResume(waiting.getId(), approval);
         List<AgentRun> processed;
         try (AgentWorker worker = new AgentWorker("release-worker-01", secondRunner, 30_000)) {
-            // Worker 先消费审批命令，再通过 Run Lease 领取恢复后的任务。
+            // Worker 通过 Run Lease 领取恢复后的任务。
             processed = worker.pollAndRun(10);
         }
         DemoSupport.require(processed.size() == 1, "Worker 应领取批准后的部署任务");

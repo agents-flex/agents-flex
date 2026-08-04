@@ -3,9 +3,6 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.command.AgentRunCommand;
-import com.agentsflex.agent.command.AgentRunCommandStatus;
-import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.context.MessageCountAgentContextManager;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
@@ -41,10 +38,6 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -132,12 +125,11 @@ public class AgentRuntimeCapabilitiesScenarioTest {
     }
 
     @Test
-    public void shouldCombineStreamingApprovalInboxWorkerAndProgress() {
+    public void shouldCombineStreamingApprovalWorkerAndProgress() {
         ScriptedChatModel model = new ScriptedChatModel();
         model.enqueue(toolCalls(new ToolCall("danger-1", "export", "{}")));
         model.enqueue(new AiMessage("completed"));
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
-        InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
         List<AgentEvent> events = new ArrayList<>();
         AtomicInteger toolExecutions = new AtomicInteger();
 
@@ -161,8 +153,8 @@ public class AgentRuntimeCapabilitiesScenarioTest {
                 .build())
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRunner runner = new AgentRunner(runStore, registry,
-            commandStore).addEventListener(events::add);
+        AgentRunner runner = new AgentRunner(runStore, registry)
+            .addEventListener(events::add);
 
         AgentRun waiting = runner.run(agent, "export",
             AgentRunOptions.builder().streaming(true).build());
@@ -172,32 +164,20 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         assertEquals("high", waiting.getSuspension().getMetadata().get("risk"));
         AgentResumeCommand approval = AgentResumeCommand.approveTool("danger-1")
             .withMetadata("reviewer", "alice");
-        AgentRunCommand command = runner.submitCommand(
-            "approve-1", waiting.getId(), approval);
-        AgentRunCommand duplicate = runner.submitCommand(
-            "approve-1", waiting.getId(), approval);
-        assertEquals(command.getCreatedAt(), duplicate.getCreatedAt());
-        try {
-            runner.submitCommand("approve-1", waiting.getId(),
-                AgentResumeCommand.rejectTool("danger-1", "denied"));
-            throw new AssertionError("reusing commandId for another decision must fail");
-        } catch (IllegalArgumentException expected) {
-            // 同一个幂等键不能代表两个不同的审批决定。
-        }
+        AgentRun ready = runner.submitResume(waiting.getId(), approval);
+        assertEquals(AgentRunStatus.RUNNING, ready.getStatus());
 
         List<AgentRun> completed = new AgentWorker("worker-1", runner, 30_000).pollAndRun(10);
 
         assertEquals(1, completed.size());
         assertEquals(AgentRunStatus.COMPLETED, completed.get(0).getStatus());
         assertEquals(1, toolExecutions.get());
-        assertEquals(AgentRunCommandStatus.COMPLETED,
-            commandStore.load("approve-1").getStatus());
         ToolMessage toolMessage = lastToolMessage(completed.get(0));
         assertEquals(128, toolMessage.getContent().length());
         assertTrue(hasEvent(events, AgentEventType.MODEL_REASONING_DELTA));
         assertTrue(hasEvent(events, AgentEventType.MODEL_TOOL_CALL_DELTA));
         assertTrue(hasEvent(events, AgentEventType.TOOL_PROGRESS));
-        assertTrue(hasEvent(events, AgentEventType.COMMAND_CONSUMED));
+        assertTrue(hasEvent(events, AgentEventType.RUN_RESUMED));
         assertEquals(1, terminalEventCount(events));
         assertStrictSequences(events);
     }
@@ -304,61 +284,6 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
         assertTrue(messages.get(1) instanceof AiMessage);
         assertTrue(messages.get(2) instanceof ToolMessage);
-    }
-
-    @Test
-    public void shouldClaimEachInboxCommandOnlyOnceAcrossWorkers() throws Exception {
-        InMemoryAgentRunCommandStore store = new InMemoryAgentRunCommandStore();
-        store.submit(AgentRunCommand.pending("c1", "run-1",
-            AgentResumeCommand.continueRun()));
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        CountDownLatch start = new CountDownLatch(1);
-        AtomicInteger claimed = new AtomicInteger();
-
-        executor.submit(() -> claim(store, "w1", start, claimed));
-        executor.submit(() -> claim(store, "w2", start, claimed));
-        start.countDown();
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
-
-        assertEquals(1, claimed.get());
-    }
-
-    @Test
-    public void shouldIsolateEventListenerFailureWhileAcknowledgingCommandOnce() {
-        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
-        InMemoryAgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
-        Agent agent = Agent.builder("command-redelivery-agent")
-            .chatModel(new ImmediateChatModel())
-            .build();
-        InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRunner runner = new AgentRunner(runStore, registry, commandStore)
-            .addEventListener(event -> { throw new RuntimeException("listener failed"); });
-        AgentRun waiting = runner.start(agent, "start");
-        runner.suspend(waiting, AgentSuspension.userInput("provide value"));
-        runner.submitCommand("input-1", waiting.getId(),
-            AgentResumeCommand.userInput("reply"));
-        assertEquals(1, runner.processCommands("worker", 10_000, 1));
-        assertEquals(AgentRunCommandStatus.COMPLETED,
-            commandStore.load("input-1").getStatus());
-        assertEquals(0, runner.processCommands("worker", 10_000, 1));
-
-        int replyCount = 0;
-        for (Message message : runner.restore(waiting.getId()).getPrompt()
-            .getMemory().getMessages(Integer.MAX_VALUE)) {
-            if ("reply".equals(message.getTextContent())) replyCount++;
-        }
-        assertEquals(1, replyCount);
-    }
-
-    private static void claim(InMemoryAgentRunCommandStore store, String worker,
-                              CountDownLatch start, AtomicInteger claimed) {
-        try {
-            start.await();
-            claimed.addAndGet(store.claim(worker, System.currentTimeMillis(), 10_000, 1).size());
-        } catch (InterruptedException error) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     private static AgentMiddleware recordingMiddleware(String name, List<String> calls) {

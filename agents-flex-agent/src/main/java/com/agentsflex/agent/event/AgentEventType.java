@@ -85,18 +85,6 @@ public enum AgentEventType {
      */
     CANCELLATION_REQUESTED,
     /**
-     * 恢复命令已经幂等写入 AgentRunCommandStore。
-     */
-    COMMAND_SUBMITTED,
-    /**
-     * Worker 已成功应用恢复命令并确认命令消费完成。
-     */
-    COMMAND_CONSUMED,
-    /**
-     * Worker 处理恢复命令失败，命令已释放重试或标记为终止失败。
-     */
-    COMMAND_FAILED,
-    /**
      * AgentContextManager 已压缩或替换持久化消息历史。
      */
     CONTEXT_COMPACTED,

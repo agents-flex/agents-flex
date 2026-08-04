@@ -1,12 +1,9 @@
 package com.agentsflex.agent.store.jdbc;
 
 import com.agentsflex.agent.AgentExecutionPolicy;
-import com.agentsflex.agent.AgentResumeCommand;
 import com.agentsflex.agent.AgentRunSnapshot;
 import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
-import com.agentsflex.agent.command.AgentRunCommand;
-import com.agentsflex.agent.command.AgentRunCommandStatus;
 import com.agentsflex.agent.store.AgentRunVersionConflictException;
 import com.agentsflex.agent.store.ParentChildRunSnapshots;
 import org.h2.jdbcx.JdbcDataSource;
@@ -91,24 +88,6 @@ public class JdbcAgentStoresContractTest {
         assertEquals(1, pair.getParent().getState().getVersion());
         assertEquals(0, pair.getChild().getState().getVersion());
         assertEquals("parent", store.load("child").getState().getParentRunId());
-    }
-
-    @Test
-    public void shouldProvideIdempotentLeasedCommandInbox() {
-        JdbcAgentRunCommandStore store = config.commandStore();
-        AgentRunCommand command = AgentRunCommand.pending("command-1", "run-1", AgentResumeCommand.userInput("answer"));
-        assertEquals(command.getCommandId(), store.submit(command).getCommandId());
-        assertEquals(command.getCommandId(), store.submit(command).getCommandId());
-
-        AgentRunCommand claimed = store.claim("worker-a", 100, 50, 1).get(0);
-        assertEquals(AgentRunCommandStatus.CLAIMED, claimed.getStatus());
-        assertEquals(1, claimed.getAttempts());
-        store.release("command-1", "worker-a", "temporary");
-        assertEquals(AgentRunCommandStatus.PENDING, store.load("command-1").getStatus());
-        AgentRunCommand retried = store.claim("worker-b", 200, 50, 1).get(0);
-        assertEquals(2, retried.getAttempts());
-        store.acknowledge("command-1", "worker-b");
-        assertEquals(AgentRunCommandStatus.COMPLETED, store.load("command-1").getStatus());
     }
 
     @Test

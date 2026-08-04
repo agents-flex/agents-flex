@@ -94,9 +94,8 @@ public final class AgentWorker implements AutoCloseable {
     }
 
     private List<AgentRun> doPollAndRun(int limit) {
-        // 先修复可能因进程退出而遗漏的父 Run 唤醒，再消费外部恢复命令。
+        // 先修复可能因进程退出而遗漏的父 Run 唤醒，再领取可运行任务。
         runner.recoverCompletedChildren(limit);
-        runner.processCommands(workerId, leaseMillis, limit);
         List<AgentRun> results = new ArrayList<>(limit);
         for (int index = 0; index < limit; index++) {
             List<AgentRunSnapshot> claimed = runner.getRunStore().claimRunnable(

@@ -18,7 +18,7 @@ Agent 的一次用户请求可能跨模型、工具、审批、重试、Worker �
 - `parentRunId`：直接父任务。
 - `agentId` 与 `agentVersion`：运行定义。
 - `requestId`、`tenantId`、`userId`：来自 Run metadata。
-- `toolCallId` 与 `commandId`：工具和恢复命令幂等关联。
+- `toolCallId` 与业务审批事件 ID：工具调用和外部恢复事件的幂等关联。
 
 不要把 Prompt、工具参数和模型输出默认完整写入日志；先做分级、脱敏与大小限制。
 
@@ -35,7 +35,7 @@ UI 应容忍丢事件，并在重连时从 `AgentRunStore` 重新读取当前状
 
 ## 审计时间线
 
-Framework 不保存事件。需要审计时间线时，由业务 `AgentEventListener` 将事件发送到自己的审计库、消息平台或事务 Outbox，并在业务存储中分配可靠顺序。审批人、渠道、策略代码和理由可以来自 Resume Command metadata；敏感数据应保存引用而不是原文。
+Framework 不保存事件。需要审计时间线时，由业务 `AgentEventListener` 将事件发送到自己的审计库、消息平台或事务 Outbox，并在业务存储中分配可靠顺序。审批人、渠道、策略代码和理由可以来自 `AgentResumeCommand` metadata；敏感数据应保存引用而不是原文。
 
 Snapshot 表示当前真相，业务保存的 Event 表示变化历史。排障时先读 Snapshot，再用业务事件解释到达该状态的路径。
 
@@ -49,7 +49,7 @@ Snapshot 表示当前真相，业务保存的 Event 表示变化历史。排障�
 - 工具成功率、错误率和耗时。
 - 重试调度数量及重试后成功率。
 - Worker 领取数、Lease 丢失数、可运行积压。
-- Command Inbox 的 pending 数量、处理延迟和失败数。
+- 业务恢复 Inbox 或消息队列的积压、处理延迟和失败数。
 - Snapshot 写入失败及大小、业务事件转发失败、Tool 返回大小与截断率。
 
 `runId`、`toolCallId` 等高基数值只进入日志或 Trace，不作为指标标签。
@@ -75,4 +75,4 @@ Agents-Flex 的通用可观测模块可以覆盖模型和工具底层调用；Ag
 
 ## 健康检查
 
-生产环境应检查 Loader 能否加载 active 与历史版本、各 Store 的读写、Worker 最近心跳、命令积压和最老 runnable Run 年龄。仅检查 HTTP 进程存活，无法发现 Agent 调度已经停止。
+生产环境应检查 Loader 能否加载 active 与历史版本、Run Store 读写、Worker 最近心跳、业务恢复事件积压和最老 runnable Run 年龄。仅检查 HTTP 进程存活，无法发现 Agent 调度已经停止。

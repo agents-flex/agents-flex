@@ -20,7 +20,7 @@ try (AgentWorker worker = new AgentWorker(
 }
 ```
 
-`start` 只保存 READY Run。`pollAndRun(limit)` 会先修复父子唤醒、处理恢复命令，再逐个领取 Run 并同步推进。
+`start` 只保存 READY Run。`pollAndRun(limit)` 会先修复父子唤醒，再逐个领取 Run 并同步推进。
 
 ## 自动轮询
 
@@ -60,7 +60,7 @@ Worker 每轮调用 `recoverCompletedChildren`，发现子 Run 已终止而父 R
 
 ## 运维指标
 
-监控 runnable 队列长度、最老任务年龄、领取/完成速率、Lease 续租失败、版本冲突、命令积压、重试到期延迟和 Worker 最近成功轮询时间。Lease 时间应明显大于正常网络抖动，并小于可接受的故障接管时间。
+监控 runnable 队列长度、最老任务年龄、领取/完成速率、Lease 续租失败、版本冲突、重试到期延迟和 Worker 最近成功轮询时间。业务系统还应独立监控恢复事件 Inbox 或消息队列。Lease 时间应明显大于正常网络抖动，并小于可接受的故障接管时间。
 
 ## 优雅关闭
 

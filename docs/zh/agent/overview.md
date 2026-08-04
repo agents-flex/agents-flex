@@ -43,7 +43,7 @@ Runner 内置状态机采用模型原生 ToolCall 协议：
 3. 有 ToolCall 时先保存调用参数，再进行审批和工具执行。
 4. 把 `ToolMessage` 写回 Prompt，再次调用模型。
 5. 遇到审批、用户输入、子 Run 或重试时间时进入阻塞状态。
-6. 外部命令到达后从原阶段恢复，而不是重新生成原 ToolCall。
+6. 外部恢复事件到达后从原阶段恢复，而不是重新生成原 ToolCall。
 
 这种设计使人工审批不会丢失模型已经生成的参数，也让重启后的执行可以从稳定边界继续。
 
@@ -71,6 +71,6 @@ Runner 内置状态机采用模型原生 ToolCall 协议：
 
 ## 默认实现的边界
 
-无参 `AgentRunner` 使用进程内 Loader 和 Store，适合测试与单实例试用。内存实现不跨 JVM、不抗重启，也不能构成生产级多实例协调。生产部署至少应持久化 `AgentRunStore`、`AgentRunCommandStore`，并提供能够加载历史 Agent 版本的 `AgentLoader`。
+无参 `AgentRunner` 使用进程内 Loader 和 Store，适合测试与单实例试用。内存实现不跨 JVM、不抗重启，也不能构成生产级多实例协调。生产部署应持久化 `AgentRunStore`，并提供能够加载历史 Agent 版本的 `AgentLoader`。
 
 下一步从[快速开始](./getting-started)创建第一个可调用工具的 Agent。

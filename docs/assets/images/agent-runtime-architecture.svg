@@ -55,9 +55,9 @@
   <text x="461" y="445" class="detail">读取 Run 状态与业务 metadata</text>
 
   <rect x="810" y="310" width="330" height="164" class="box" fill="#fff0f0" stroke="#c45b5b"/>
-  <text x="836" y="345" class="name">AgentWorker / Command Inbox</text>
-  <text x="836" y="373" class="detail">持久化 Command 提交、租约领取、ack</text>
-  <text x="836" y="397" class="detail">事件唤醒 + 定时轮询兜底</text>
+  <text x="836" y="345" class="name">AgentWorker / Run Scheduler</text>
+  <text x="836" y="373" class="detail">领取 READY 与到期 Run</text>
+  <text x="836" y="397" class="detail">定时轮询与业务调度触发</text>
   <text x="836" y="421" class="detail">Run Lease、续租、崩溃接管</text>
   <text x="836" y="445" class="detail">任务计划与子 Agent 调度</text>
 
@@ -69,10 +69,10 @@
   <text x="84" y="650" class="detail">跨进程恢复事实来源</text>
 
   <rect x="330" y="540" width="245" height="130" class="box" fill="#ffffff" stroke="#7d8ba0"/>
-  <text x="354" y="574" class="name">Command Store</text>
-  <text x="354" y="602" class="detail">commandId 幂等提交</text>
-  <text x="354" y="626" class="detail">Command Lease、attempts</text>
-  <text x="354" y="650" class="detail">审批、输入与恢复动作</text>
+  <text x="354" y="574" class="name">Business Resume Inbox</text>
+  <text x="354" y="602" class="detail">业务数据库、MQ 或 Outbox</text>
+  <text x="354" y="626" class="detail">幂等、重试、确认与审计</text>
+  <text x="354" y="650" class="detail">消费后调用 submitResume</text>
 
   <rect x="600" y="540" width="245" height="130" class="box" fill="#ffffff" stroke="#7d8ba0"/>
   <text x="624" y="574" class="name">AgentLoader</text>
@@ -89,7 +89,7 @@
   <rect x="195" y="710" width="360" height="112" class="box" fill="#eef8ff" stroke="#4d8bd8"/>
   <text x="221" y="744" class="name">AgentEventListener</text>
   <text x="221" y="772" class="detail">模型文本 / reasoning / ToolCall delta</text>
-  <text x="221" y="796" class="detail">工具进度、命令与上下文压缩事件</text>
+  <text x="221" y="796" class="detail">工具进度、恢复与上下文压缩事件</text>
 
   <rect x="645" y="710" width="360" height="112" class="box" fill="#fff7e8" stroke="#c9892b"/>
   <text x="671" y="744" class="name">Business Event Sink</text>
@@ -110,5 +110,5 @@
   <path d="M 300 670 L 375 710" class="arrow"/>
   <path d="M 840 670 L 825 710" class="arrow"/>
 
-  <text x="60" y="870" class="detail">可恢复状态、高频实时事件和大型内容分别管理，平台可替换各 Store 而不改变 Agent 执行契约。</text>
+  <text x="60" y="870" class="detail">Framework 保存 Run 状态；业务系统负责外部恢复事件、可靠消息与审计历史。</text>
 </svg>

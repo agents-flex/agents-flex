@@ -154,4 +154,4 @@ mvn -f demos/agent-console-demo/pom.xml exec:java
 
 ## 从 Demo 到生产
 
-控制台使用内存 Store，退出后状态丢失。生产服务应把 Runner、共享 Store、AgentLoader 和 Worker 作为应用级组件；将审批输入改为带鉴权的 HTTP API 与 Command Inbox；持久化 conversationId、ChatMemory 和活动 runId；对输出与工具参数脱敏；并配置网络超时、业务幂等、指标和审计保留策略。
+控制台使用内存 Store，退出后状态丢失。生产服务应把 Runner、共享 Store、AgentLoader 和 Worker 作为应用级组件；将审批输入改为带鉴权的 HTTP API，并由业务 Inbox 或消息队列保证可靠性后调用 `submitResume`；持久化 conversationId、ChatMemory 和活动 runId；对输出与工具参数脱敏；并配置网络超时、业务幂等、指标和审计保留策略。

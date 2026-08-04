@@ -326,7 +326,7 @@ public class AgentTaskPlanningScenarioTest {
     }
 
     @Test
-    public void shouldRoutePersistentApprovalCommandToCurrentChild() {
+    public void shouldRouteApprovalResumeToCurrentChild() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> planCall("审批任务",
             taskJson("approve", "审批", "执行工具", null)));
@@ -338,11 +338,12 @@ public class AgentTaskPlanningScenarioTest {
         AgentRunner runner = runner(agent);
         AgentRun root = runner.run(agent, "执行审批任务");
 
-        com.agentsflex.agent.command.AgentRunCommand command = runner.submitCommand(
+        AgentRun resumed = runner.submitResume(
             root.getId(), AgentResumeCommand.approveTool("approval-call"));
         AgentTask current = root.getTaskPlan().getActiveTask();
 
-        assertEquals(current.getChildRunId(), command.getRunId());
+        assertEquals(current.getChildRunId(), resumed.getId());
+        assertEquals(AgentRunStatus.RUNNING, resumed.getStatus());
     }
 
     @Test

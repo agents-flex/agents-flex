@@ -9,10 +9,6 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
-import com.agentsflex.agent.command.AgentRunCommand;
-import com.agentsflex.agent.command.AgentRunCommandStore;
-import com.agentsflex.agent.command.AgentWakeupListener;
-import com.agentsflex.agent.command.InMemoryAgentRunCommandStore;
 import com.agentsflex.agent.context.AgentContextUpdate;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.middleware.AgentMiddlewareContext;
@@ -60,7 +56,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -105,10 +100,6 @@ public final class AgentRunner {
      */
     private final AgentLoader agentLoader;
     /**
-     * 保存审批、用户输入等外部恢复命令的持久化收件箱。
-     */
-    private final AgentRunCommandStore commandStore;
-    /**
      * 统一模型调用、Token 统计和事件发布的适配器。
      */
     private final AgentModelInvoker modelInvoker;
@@ -120,10 +111,6 @@ public final class AgentRunner {
      * 为每个活动 Run 分配进程内事件序号。
      */
     private final Map<String, AtomicLong> eventSequences = new ConcurrentHashMap<>();
-    /**
-     * 命令成功入箱后通知外部调度系统的监听器列表。
-     */
-    private final List<AgentWakeupListener> wakeupListeners = new CopyOnWriteArrayList<>();
     /**
      * 标识当前线程正在代表哪个 Worker 推进已领取的 Run。
      */
@@ -151,38 +138,27 @@ public final class AgentRunner {
     }
 
     /**
-     * 创建自定义 RunStore 和 AgentLoader、其余依赖使用进程内实现的 Runner。
+     * 创建自定义 RunStore 和 AgentLoader 的 Runner。
      */
     public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader) {
-        this(runStore, agentLoader, new InMemoryAgentRunCommandStore());
-    }
-
-    /**
-     * 创建显式提供全部可替换持久化依赖的 Runner。
-     */
-    public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader,
-                       AgentRunCommandStore commandStore) {
-        if (runStore == null || agentLoader == null
-            || commandStore == null) {
+        if (runStore == null || agentLoader == null) {
             throw new IllegalArgumentException(
                 "AgentRunner dependencies must not be null");
         }
         this.runStore = runStore;
         this.agentLoader = agentLoader;
-        this.commandStore = commandStore;
         this.modelInvoker = new AgentModelInvoker(this::emitEvent);
     }
 
     /**
      * AgentRunner 依赖构建器。
      *
-     * <p>未显式配置的组件使用进程内实现，适合测试和本地开发。多实例部署应替换 RunStore、
-     * CommandStore 和 AgentLoader。AgentLoader 必须返回包含完整工具集合的可执行 Agent。</p>
+     * <p>未显式配置的组件使用进程内实现，适合测试和本地开发。多实例部署应替换 RunStore 和
+     * AgentLoader。AgentLoader 必须返回包含完整工具集合的可执行 Agent。</p>
      */
     public static final class Builder {
         private AgentRunStore runStore = new InMemoryAgentRunStore();
         private AgentLoader agentLoader = new InMemoryAgentLoader();
-        private AgentRunCommandStore commandStore = new InMemoryAgentRunCommandStore();
 
         /**
          * 设置 Snapshot 与租约存储。
@@ -201,18 +177,10 @@ public final class AgentRunner {
         }
 
         /**
-         * 设置持久化恢复命令收件箱。
-         */
-        public Builder commandStore(AgentRunCommandStore value) {
-            commandStore = value;
-            return this;
-        }
-
-        /**
          * 校验全部依赖并创建 Runner。
          */
         public AgentRunner build() {
-            return new AgentRunner(runStore, agentLoader, commandStore);
+            return new AgentRunner(runStore, agentLoader);
         }
     }
 
@@ -228,21 +196,6 @@ public final class AgentRunner {
      */
     public AgentLoader getAgentLoader() {
         return agentLoader;
-    }
-
-    /**
-     * @return Runner 使用的恢复命令 Store
-     */
-    public AgentRunCommandStore getCommandStore() {
-        return commandStore;
-    }
-
-    /**
-     * 添加命令入箱后的调度唤醒监听器。
-     */
-    public AgentRunner addWakeupListener(AgentWakeupListener listener) {
-        if (listener != null) wakeupListeners.add(listener);
-        return this;
     }
 
     /**
@@ -501,10 +454,6 @@ public final class AgentRunner {
      * <p>事件消费者可以使用该方法唤醒任务，再由 AgentWorker 通过租约领取执行。</p>
      */
     public AgentRun submitResume(AgentRun run, AgentResumeCommand command) {
-        return submitResume(run, command, null);
-    }
-
-    private AgentRun submitResume(AgentRun run, AgentResumeCommand command, String commandId) {
         if (run == null || command == null) {
             throw new IllegalArgumentException("run and command must not be null");
         }
@@ -515,10 +464,6 @@ public final class AgentRunner {
         AgentSuspension suspension = run.getSuspension();
         // 先按 Suspension 类型校验并应用命令，任何不匹配的命令都不能改变运行状态。
         applyResumeCommand(run, suspension, command);
-        if (commandId != null) {
-            // 消费持久化 Inbox 时记录命令 ID，使“应用成功但 acknowledge 前崩溃”仍可幂等恢复。
-            run.putMetadata(processedCommandKey(commandId), true);
-        }
         // 恢复到暂停前保存的模型或工具阶段，不从任务开头重新执行。
         run.resumeAt(suspension.getResumePhase());
         saveSnapshot(run);
@@ -540,101 +485,6 @@ public final class AgentRunner {
         AgentRun run = restore(runId);
         AgentRun child = currentPlannedChild(run);
         return submitResume(child == null ? run : child, command);
-    }
-
-    /**
-     * 将恢复命令持久化到收件箱，并在保存成功后发送唤醒通知。
-     */
-    public AgentRunCommand submitCommand(String runId, AgentResumeCommand command) {
-        return submitCommand(UUID.randomUUID().toString(), runId, command);
-    }
-
-    /**
-     * 使用调用方提供的命令 ID 幂等提交恢复命令。
-     *
-     * <p>该方法只把命令写入持久化 Inbox，不直接修改 Run。相同 commandId 和相同内容可安全重试；
-     * 相同 ID 对应不同决定会被拒绝，防止网络重试把批准变成拒绝或反向覆盖。</p>
-     */
-    public AgentRunCommand submitCommand(String commandId, String runId,
-                                         AgentResumeCommand command) {
-        AgentRunCommand existing = commandStore.load(commandId);
-        if (existing != null) {
-            // API 请求超时后可能使用同一 commandId 重试；内容一致时直接返回首次提交结果。
-            AgentResumeCommand savedCommand = existing.getCommand();
-            if (savedCommand.getType() == command.getType()
-                && Objects.equals(savedCommand.getContent(), command.getContent())
-                && Objects.equals(savedCommand.getCorrelationId(), command.getCorrelationId())
-                && Objects.equals(savedCommand.getMetadata(), command.getMetadata())) {
-                return existing;
-            }
-            throw new IllegalArgumentException(
-                "commandId is already bound to another resume decision: " + commandId);
-        }
-        AgentRun run = restore(runId);
-        AgentRun child = currentPlannedChild(run);
-        if (child != null) {
-            // 根任务等待规划子任务时，审批或用户输入实际属于子 Run，应路由到真实阻塞对象。
-            run = child;
-            runId = child.getId();
-        }
-        if (!run.getStatus().isBlocked()) {
-            throw new IllegalStateException("run is not blocked: " + run.getStatus());
-        }
-        AgentRunCommand saved = commandStore.submit(
-            AgentRunCommand.pending(commandId, runId, command));
-        emitEvent(run, AgentEventType.COMMAND_SUBMITTED,
-            objectAttributes("commandId", saved.getCommandId(),
-                "commandType", saved.getCommand().getType()));
-        for (AgentWakeupListener listener : wakeupListeners) {
-            try {
-                // 唤醒只是降低处理延迟；命令已经持久化，通知丢失后仍可由 Worker 轮询兜底。
-                listener.onWakeup(saved);
-            } catch (RuntimeException error) {
-                log.warn("Agent wakeup listener failed", error);
-            }
-        }
-        return saved;
-    }
-
-    /**
-     * 领取并应用一批持久化恢复命令，使对应 Run 重新进入可调度状态。
-     *
-     * <p>同一 commandId 会在 Run metadata 中记录已处理标记，避免命令确认前进程退出导致重复应用。
-     * 单条命令处理失败会释放重试，累计领取三次后标记为最终失败。</p>
-     */
-    public int processCommands(String workerId, long leaseMillis, int limit) {
-        // Command 使用独立 Lease 领取，避免多个 Worker 同时应用同一项外部决定。
-        List<AgentRunCommand> commands = commandStore.claim(workerId,
-            System.currentTimeMillis(), leaseMillis, limit);
-        int completed = 0;
-        for (AgentRunCommand item : commands) {
-            AgentRun run = null;
-            try {
-                run = restore(item.getRunId());
-                if (!Boolean.TRUE.equals(run.getMetadata().get(processedCommandKey(item.getCommandId())))) {
-                    submitResume(run, item.getCommand(), item.getCommandId());
-                }
-                // 只有恢复状态成功写入 Snapshot 后才能确认命令消费完成。
-                commandStore.acknowledge(item.getCommandId(), workerId);
-                emitEvent(run, AgentEventType.COMMAND_CONSUMED,
-                    objectAttributes("commandId", item.getCommandId()));
-                completed++;
-            } catch (RuntimeException error) {
-                // 临时故障释放命令供后续领取；连续失败达到阈值后保留最终失败状态供人工排查。
-                if (item.getAttempts() >= 3) {
-                    commandStore.fail(item.getCommandId(), workerId, error.getMessage());
-                } else {
-                    commandStore.release(item.getCommandId(), workerId, error.getMessage());
-                }
-                if (run != null) emitEvent(run, AgentEventType.COMMAND_FAILED,
-                    objectAttributes("commandId", item.getCommandId(), "error", error.getMessage()));
-            }
-        }
-        return completed;
-    }
-
-    private String processedCommandKey(String commandId) {
-        return "agent.command.processed." + commandId;
     }
 
     /**

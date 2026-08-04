@@ -73,7 +73,7 @@ flowchart TD
     BackModel --> Loop
 
     Blocked --> External{"外部条件到达"}
-    External -->|"审批 / 用户输入"| Command["ResumeCommand<br/>同步恢复或 Command Inbox"]
+    External -->|"审批 / 用户输入"| Command["AgentResumeCommand<br/>resume 或 submitResume"]
     External -->|"重试到期"| Worker
     External -->|"子 Run 终止"| ParentResume["结果写回父 Run"]
     Command --> Resume["校验 Suspension 与 correlationId<br/>恢复原 Phase"]
@@ -100,11 +100,10 @@ flowchart TD
 AgentRunner runner = AgentRunner.builder()
     .runStore(runStore)
     .agentLoader(agentLoader)
-    .commandStore(commandStore)
     .build();
 ```
 
-Run Store、AgentLoader 和 Command Store 未提供时使用内存实现。生产环境的替换要求见 [Store 持久化](./store)。
+Run Store 和 AgentLoader 未提供时使用内存实现。生产环境的替换要求见 [Store 持久化](./store)。
 
 ## 三组执行入口
 
@@ -177,27 +176,25 @@ AgentRun run = runner.run(agent, history,
 
 Runner 复制业务系统传入的历史，不会修改外部 ChatMemory，也不维护 conversationId 或 activeRunId。业务系统应在 Run 完成后保存 `getConversationHistory()`；Run 阻塞时保存其 ID，并通过 `resume(runId, command)` 恢复。
 
-## 外部命令收件箱
+## 外部恢复边界
 
-同步 `resume(...)` 适合同一服务内立即恢复。跨服务回调应先可靠入箱：
+同步 `resume(...)` 适合同一服务内立即恢复。只更新状态并交给 Worker 时使用：
 
 ```java
-AgentRunCommand command = runner.submitCommand(
-    "approval-20260802-1001",
+AgentRun ready = runner.submitResume(
     runId,
     AgentResumeCommand.approveTool(callId));
 ```
 
-`commandId` 是调用方提供的幂等键。Worker 的 `processCommands(...)` 领取并应用命令，成功后确认；临时错误释放，确定性错误最终失败。
+跨服务回调应先进入业务系统自己的数据库 Inbox 或消息队列。业务层完成幂等、重试和审计后调用 `submitResume`，Framework 不保存或消费外部恢复事件。
 
 ## 监听扩展
 
 ```java
-runner.addEventListener(eventListener)
-    .addWakeupListener(command -> scheduler.wakeup());
+runner.addEventListener(eventListener);
 ```
 
-统一事件监听器覆盖生命周期、模型增量和工具进度；持久化审计由业务监听器自行实现。WakeupListener 只负责命令入箱后的外部调度唤醒。监听器应快速返回，不能把业务主流程依赖在“监听一定成功”上。
+统一事件监听器覆盖生命周期、模型增量和工具进度；持久化审计由业务监听器自行实现。监听器应快速返回，不能把业务主流程依赖在“监听一定成功”上。
 
 ## 自定义建议
 

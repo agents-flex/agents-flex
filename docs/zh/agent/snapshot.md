@@ -78,7 +78,7 @@ AgentRunSnapshot updated = snapshot.withState(
 
 `AgentRunStore.save(snapshot, expectedVersion)` 必须比较当前版本。创建使用约定的初始期望版本，后续保存只有版本匹配才能成功，成功后 Store 分配递增版本。冲突时抛出 `AgentRunVersionConflictException`。
 
-发生冲突说明另一个执行者已经提交新状态。不能用旧快照覆盖；应停止当前推进并重新加载，必要时由业务决定是否重试命令。
+发生冲突说明另一个执行者已经提交新状态。不能用旧快照覆盖；应停止当前推进并重新加载，必要时由业务决定是否重试恢复动作。
 
 ## 恢复校验
 
@@ -110,4 +110,4 @@ AgentStoreSerializer serializer =
 
 ## 数据保留
 
-终态 Run 的 Snapshot 仍是审计、结果查询和父子树展示的依据。删除策略应与事件和 Command 协调，且不能在父 Run 仍等待时删除子 Run。
+终态 Run 的 Snapshot 仍是审计、结果查询和父子树展示的依据。删除策略应与业务事件协调，且不能在父 Run 仍等待时删除子 Run。

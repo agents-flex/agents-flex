@@ -18,14 +18,8 @@ public final class JdbcAgentStoreSchema extends JdbcAgentStoreSupport {
                 + "run_id VARCHAR(191) PRIMARY KEY, version BIGINT NOT NULL, status VARCHAR(64) NOT NULL, "
                 + "next_run_at BIGINT NOT NULL, lease_owner VARCHAR(191), lease_id VARCHAR(191), lease_until BIGINT NOT NULL, "
                 + "parent_run_id VARCHAR(191), cancellation_requested BOOLEAN NOT NULL, payload " + binary + " NOT NULL)");
-            statement.execute("CREATE TABLE IF NOT EXISTS " + table("commands") + " ("
-                + "command_id VARCHAR(191) PRIMARY KEY, run_id VARCHAR(191) NOT NULL, status VARCHAR(64) NOT NULL, "
-                + "created_at BIGINT NOT NULL, lease_owner VARCHAR(191), lease_until BIGINT NOT NULL, "
-                + "attempts INTEGER NOT NULL, error_message VARCHAR(2000), payload " + binary + " NOT NULL)");
             createIndexIfMissing(connection, statement, table("runs"), table("runs_runnable_idx"),
                 "status, next_run_at, lease_until");
-            createIndexIfMissing(connection, statement, table("commands"), table("commands_claim_idx"),
-                "status, lease_until, created_at");
         } catch (SQLException error) {
             throw failure("initialize JDBC Agent Store schema", error);
         }

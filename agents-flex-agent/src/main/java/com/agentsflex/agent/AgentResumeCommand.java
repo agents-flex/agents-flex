@@ -22,13 +22,21 @@ public final class AgentResumeCommand implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 恢复动作类型。 */
+    /**
+     * 恢复动作类型。
+     */
     private final AgentResumeCommandType type;
-    /** 用户输入、拒绝原因等文本内容。 */
+    /**
+     * 用户输入、拒绝原因等文本内容。
+     */
     private final String content;
-    /** 工具调用 ID 或子运行 ID。 */
+    /**
+     * 工具调用 ID 或子运行 ID。
+     */
     private final String correlationId;
-    /** 业务系统附加的只读元数据。 */
+    /**
+     * 业务系统附加的只读元数据。
+     */
     private final Map<String, Object> metadata;
 
     public AgentResumeCommand(AgentResumeCommandType type, String content,
@@ -44,37 +52,51 @@ public final class AgentResumeCommand implements Serializable {
             : Collections.unmodifiableMap(new HashMap<>(metadata));
     }
 
-    /** 创建不携带额外数据的继续命令。 */
+    /**
+     * 创建不携带额外数据的继续命令。
+     */
     public static AgentResumeCommand continueRun() {
         return new AgentResumeCommand(AgentResumeCommandType.CONTINUE, null, null, null);
     }
 
-    /** 创建补充用户输入的恢复命令。 */
+    /**
+     * 创建补充用户输入的恢复命令。
+     */
     public static AgentResumeCommand userInput(String content) {
         return new AgentResumeCommand(AgentResumeCommandType.USER_INPUT, content, null, null);
     }
 
-    /** 创建批准指定工具调用的恢复命令。 */
+    /**
+     * 创建批准指定工具调用的恢复命令。
+     */
     public static AgentResumeCommand approveTool(String callId) {
         return new AgentResumeCommand(AgentResumeCommandType.APPROVE_TOOL, null, callId, null);
     }
 
-    /** 创建拒绝指定工具调用的恢复命令。 */
+    /**
+     * 创建拒绝指定工具调用的恢复命令。
+     */
     public static AgentResumeCommand rejectTool(String callId, String reason) {
         return new AgentResumeCommand(AgentResumeCommandType.REJECT_TOOL, reason, callId, null);
     }
 
-    /** 创建执行已到期自动重试的恢复命令。 */
+    /**
+     * 创建执行已到期自动重试的恢复命令。
+     */
     public static AgentResumeCommand retry() {
         return new AgentResumeCommand(AgentResumeCommandType.RETRY, null, null, null);
     }
 
-    /** 创建通知指定子运行已经结束的恢复命令。 */
+    /**
+     * 创建通知指定子运行已经结束的恢复命令。
+     */
     public static AgentResumeCommand childCompleted(String childRunId) {
         return new AgentResumeCommand(AgentResumeCommandType.CHILD_COMPLETED, null, childRunId, null);
     }
 
-    /** 返回附加一项审计元数据的新命令。 */
+    /**
+     * 返回附加一项审计元数据的新命令。
+     */
     public AgentResumeCommand withMetadata(String key, Object value) {
         if (key == null) {
             throw new IllegalArgumentException("metadata key must not be null");
@@ -84,7 +106,9 @@ public final class AgentResumeCommand implements Serializable {
         return new AgentResumeCommand(type, content, correlationId, values);
     }
 
-    /** 返回合并审计元数据后的新命令。 */
+    /**
+     * 返回合并审计元数据后的新命令。
+     */
     public AgentResumeCommand withMetadata(Map<String, ?> additions) {
         Map<String, Object> values = new LinkedHashMap<>(metadata);
         if (additions != null) {
@@ -93,22 +117,30 @@ public final class AgentResumeCommand implements Serializable {
         return new AgentResumeCommand(type, content, correlationId, values);
     }
 
-    /** @return 恢复动作类型 */
+    /**
+     * @return 恢复动作类型
+     */
     public AgentResumeCommandType getType() {
         return type;
     }
 
-    /** @return 用户补充文本或拒绝原因；不需要正文时为空 */
+    /**
+     * @return 用户补充文本或拒绝原因；不需要正文时为空
+     */
     public String getContent() {
         return content;
     }
 
-    /** @return ToolCall ID 或子 Run ID 等阻塞事件关联标识 */
+    /**
+     * @return ToolCall ID 或子 Run ID 等阻塞事件关联标识
+     */
     public String getCorrelationId() {
         return correlationId;
     }
 
-    /** @return 不可修改的命令审计元数据 */
+    /**
+     * @return 不可修改的命令审计元数据
+     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }
