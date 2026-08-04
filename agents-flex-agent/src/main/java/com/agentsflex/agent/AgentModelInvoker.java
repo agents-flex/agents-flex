@@ -32,9 +32,9 @@ final class AgentModelInvoker {
      * Agent 运行时事件发布器，用于把模型返回的文本、推理内容和工具调用增量
      * 转换为可订阅的细粒度事件。
      */
-    private final EventPublisher eventPublisher;
+    private final AgentEventPublisher eventPublisher;
 
-    AgentModelInvoker(EventPublisher eventPublisher) {
+    AgentModelInvoker(AgentEventPublisher eventPublisher) {
         this.eventPublisher = eventPublisher;
     }
 
@@ -169,10 +169,5 @@ final class AgentModelInvoker {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put(key, value);
         return data;
-    }
-
-    @FunctionalInterface
-    interface EventPublisher {
-        void publish(AgentRun run, AgentEventType type, Map<String, ?> data);
     }
 }

@@ -6,7 +6,6 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.context.AgentContextUpdate;
@@ -56,9 +55,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 创建、推进、暂停和恢复 {@link AgentRun} 的核心执行器。
@@ -100,17 +96,13 @@ public final class AgentRunner {
      */
     private final AgentLoader agentLoader;
     /**
+     * 统一构造并同步发布 AgentEvent 的包内组件。
+     */
+    private final AgentEventPublisher eventPublisher;
+    /**
      * 统一模型调用、Token 统计和事件发布的适配器。
      */
     private final AgentModelInvoker modelInvoker;
-    /**
-     * 观察统一不可变事件的线程安全监听器列表。
-     */
-    private final List<AgentEventListener> eventListeners = new CopyOnWriteArrayList<>();
-    /**
-     * 为每个活动 Run 分配进程内事件序号。
-     */
-    private final Map<String, AtomicLong> eventSequences = new ConcurrentHashMap<>();
     /**
      * 标识当前线程正在代表哪个 Worker 推进已领取的 Run。
      */
@@ -147,7 +139,8 @@ public final class AgentRunner {
         }
         this.runStore = runStore;
         this.agentLoader = agentLoader;
-        this.modelInvoker = new AgentModelInvoker(this::emitEvent);
+        this.eventPublisher = new AgentEventPublisher();
+        this.modelInvoker = new AgentModelInvoker(eventPublisher);
     }
 
     /**
@@ -204,7 +197,7 @@ public final class AgentRunner {
      * <p>监听器在发布线程同步执行，只用于观察；单个监听器异常会被隔离，不会让 Run 失败。</p>
      */
     public AgentRunner addEventListener(AgentEventListener listener) {
-        if (listener != null) eventListeners.add(listener);
+        eventPublisher.addListener(listener);
         return this;
     }
 
@@ -212,7 +205,7 @@ public final class AgentRunner {
      * 删除已经注册的统一事件监听器。
      */
     public AgentRunner removeEventListener(AgentEventListener listener) {
-        eventListeners.remove(listener);
+        eventPublisher.removeListener(listener);
         return this;
     }
 
@@ -381,7 +374,7 @@ public final class AgentRunner {
             runStore.requestCancellation(child.getId());
         }
         if (requested) {
-            notifyCancellationRequested(run);
+            eventPublisher.notifyCancellationRequested(run);
         }
         return run;
     }
@@ -429,7 +422,7 @@ public final class AgentRunner {
         assertLeaseOwnership(run);
         run.suspend(blockedStatusFor(suspension.getType()), suspension);
         saveSnapshot(run);
-        notifyRunSuspended(run, suspension);
+        eventPublisher.notifyRunSuspended(run, suspension);
         return run;
     }
 
@@ -467,7 +460,7 @@ public final class AgentRunner {
         // 恢复到暂停前保存的模型或工具阶段，不从任务开头重新执行。
         run.resumeAt(suspension.getResumePhase());
         saveSnapshot(run);
-        notifyRunResumed(run, command);
+        eventPublisher.notifyRunResumed(run, command);
         return run;
     }
 
@@ -505,7 +498,7 @@ public final class AgentRunner {
             if (saved.getState().isCancellationRequested()) {
                 run.requestCancellation();
             }
-            notifySnapshotSaved(run, saved);
+            eventPublisher.notifySnapshotSaved(run, saved);
             return saved;
         }
     }
@@ -519,18 +512,18 @@ public final class AgentRunner {
      * <p>步骤开始和结束事件在最外层发布，所有执行路径共享相同的生命周期语义。</p>
      */
     public AgentStepResult step(AgentRun run) {
-        emitEvent(run, AgentEventType.STEP_STARTED,
+        eventPublisher.publish(run, AgentEventType.STEP_STARTED,
             objectAttributes("phase", run == null ? null : run.getPhase()));
         try {
             AgentStepResult result = stepCore(run);
-            emitEvent(run, AgentEventType.STEP_COMPLETED,
+            eventPublisher.publish(run, AgentEventType.STEP_COMPLETED,
                 objectAttributes("status", run == null ? null : run.getStatus(),
                     "phase", run == null ? null : run.getPhase(),
                     "toolMessageCount", result == null ? 0 : result.getToolMessages().size()));
             return result;
         } finally {
             if (run != null && run.getStatus().isTerminal()) {
-                eventSequences.remove(run.getId());
+                eventPublisher.clearSequence(run.getId());
             }
         }
     }
@@ -570,7 +563,7 @@ public final class AgentRunner {
             return AgentStepResult.of(null, null, null);
         }
         if (run.markStarted()) {
-            notifyRunStart(run);
+            eventPublisher.notifyRunStart(run);
         }
         // 时间和累计 Token 预算在每一步入口检查；工具次数还会在具体工具执行前再次检查。
         String budgetReason = budgetExceededReason(run, false);
@@ -581,7 +574,7 @@ public final class AgentRunner {
         if (run.getStepCount() >= run.getExecutionPolicy().getMaxSteps()) {
             run.markMaxStepsReached();
             saveSnapshot(run);
-            notifyMaxStepsReached(run);
+            eventPublisher.notifyMaxStepsReached(run);
             return AgentStepResult.of(null, null, null);
         }
         run.incrementStep();
@@ -670,12 +663,12 @@ public final class AgentRunner {
         parent.suspend(AgentRunStatus.WAITING_FOR_CHILD, suspension);
         parent.updateVersion(saved.getParent().getState().getVersion());
         child.updateVersion(saved.getChild().getState().getVersion());
-        notifySnapshotSaved(parent, saved.getParent());
-        notifySnapshotSaved(child, saved.getChild());
-        notifyRunSuspended(parent, suspension);
-        notifyChildStarted(parent, child);
+        eventPublisher.notifySnapshotSaved(parent, saved.getParent());
+        eventPublisher.notifySnapshotSaved(child, saved.getChild());
+        eventPublisher.notifyRunSuspended(parent, suspension);
+        eventPublisher.notifyChildStarted(parent, child);
         if (parent.getTaskPlan() != null && parent.getTaskPlan().getActiveTask() != null) {
-            notifyTaskStarted(parent, parent.getTaskPlan().getActiveTask(), child);
+            eventPublisher.notifyTaskStarted(parent, parent.getTaskPlan().getActiveTask(), child);
         }
         return child;
     }
@@ -733,7 +726,7 @@ public final class AgentRunner {
             }
             parent.updateTaskPlan(updated);
             parent.addChildUsage(child);
-            notifyTaskFinished(parent, activeTask, child, taskStatus);
+            eventPublisher.notifyTaskFinished(parent, activeTask, child, taskStatus);
         }
         parent.getPrompt().addUserMessage("Child Agent result: " + JSON.toJSONString(result));
         // CHILD_COMPLETED 命令复用统一恢复校验，并把父 Run 放回暂停前的执行 Phase。
@@ -809,20 +802,20 @@ public final class AgentRunner {
         if (run.getIterationCount() >= run.getExecutionPolicy().getMaxIterations()) {
             run.markMaxIterationsReached();
             saveSnapshot(run);
-            notifyMaxIterationsReached(run);
+            eventPublisher.notifyMaxIterationsReached(run);
             return AgentStepResult.of(null, null, null);
         }
 
         // 迭代次数表示模型调用次数，在发起请求前增加，失败的模型请求同样消耗一次尝试。
         run.incrementIteration();
-        notifyModelStart(run);
+        eventPublisher.notifyModelStart(run);
         AiMessageResponse response;
         try {
             // 上下文管理器可压缩历史或替换大型内容；变更后先落盘再把新 Prompt 发送给模型。
             AgentContextUpdate update = agent.getContextManager().prepare(run);
             if (update != null && update.isChanged()) {
                 saveSnapshot(run);
-                emitEvent(run, AgentEventType.CONTEXT_COMPACTED,
+                eventPublisher.publish(run, AgentEventType.CONTEXT_COMPACTED,
                     objectAttributes("removedMessageCount", update.getRemovedMessageCount(),
                         "remainingMessageCount", update.getRemainingMessageCount()));
             }
@@ -831,7 +824,7 @@ public final class AgentRunner {
                 this, run, run.getPrompt());
             response = proceedModelCall(run, middlewareContext, 0);
             validateResponse(response);
-            notifyModelEnd(run, response);
+            eventPublisher.notifyModelEnd(run, response);
         } catch (RuntimeException error) {
             return handleFailure(run, null, error, AgentRunPhase.MODEL);
         }
@@ -908,8 +901,8 @@ public final class AgentRunner {
                         ? createTaskPlan(run, call) : updateTaskPlan(run, call);
                     appendToolResult(run, call, planned);
                     results.add(planned);
-                    if (creating) notifyPlanCreated(run, run.getTaskPlan());
-                    else notifyPlanUpdated(run, run.getTaskPlan());
+                    if (creating) eventPublisher.notifyPlanCreated(run, run.getTaskPlan());
+                    else eventPublisher.notifyPlanUpdated(run, run.getTaskPlan());
                     continue;
                 } catch (RuntimeException error) {
                     return handleFailure(run, response, error, AgentRunPhase.TOOLS);
@@ -936,7 +929,7 @@ public final class AgentRunner {
                 AgentSuspension suspension = AgentSuspension.toolApproval(
                     callKey(call), call.getName(), decision);
                 suspend(run, suspension);
-                notifyToolApprovalRequested(run, call, decision);
+                eventPublisher.notifyToolApprovalRequested(run, call, decision);
                 return AgentStepResult.of(response, results, null);
             }
             if (decision.getOutcome() == ToolApprovalDecision.Outcome.DENY) {
@@ -947,13 +940,13 @@ public final class AgentRunner {
                 continue;
             }
 
-            notifyToolStart(run, call);
+            eventPublisher.notifyToolStart(run, call);
             ToolMessage completedResult;
             try {
                 run.incrementToolCallCount();
                 completedResult = executeTool(run, tool, call);
             } catch (RuntimeException error) {
-                notifyToolError(run, call, error);
+                eventPublisher.notifyToolError(run, call, error);
                 if (run.getExecutionPolicy().getToolErrorStrategy()
                     == ToolErrorStrategy.RETURN_ERROR_TO_MODEL) {
                     // 将错误交给模型时仍生成与原 ToolCall 匹配的 ToolMessage，保持协议完整。
@@ -965,7 +958,7 @@ public final class AgentRunner {
             // Snapshot 异常必须直接交给调用方，不能被误判为工具执行异常。
             appendToolResult(run, call, completedResult);
             results.add(completedResult);
-            notifyToolEnd(run, call, completedResult);
+            eventPublisher.notifyToolEnd(run, call);
             refreshCancellation(run);
         }
 
@@ -1202,13 +1195,13 @@ public final class AgentRunner {
             long runAt = System.currentTimeMillis() + retry.delayMillis(run.getRetryCount() + 1);
             run.scheduleRetry(error, resumePhase, runAt);
             saveSnapshot(run);
-            notifyRunSuspended(run, run.getSuspension());
-            notifyRetryScheduled(run, error);
+            eventPublisher.notifyRunSuspended(run, run.getSuspension());
+            eventPublisher.notifyRetryScheduled(run, error);
             return AgentStepResult.of(response, null, error);
         }
         run.markFailed(error);
         saveSnapshot(run);
-        notifyRunFailed(run, error);
+        eventPublisher.notifyRunFailed(run, error);
         return AgentStepResult.of(response, null, error);
     }
 
@@ -1233,7 +1226,7 @@ public final class AgentRunner {
         }
         run.markCompleted(message == null ? new AiMessage("") : message);
         saveSnapshot(run);
-        notifyRunComplete(run);
+        eventPublisher.notifyRunComplete(run);
         return AgentStepResult.of(response, null, null);
     }
 
@@ -1243,7 +1236,7 @@ public final class AgentRunner {
     private AgentStepResult cancelRun(AgentRun run) {
         run.markCancelled();
         saveSnapshot(run);
-        notifyRunCancelled(run);
+        eventPublisher.notifyRunCancelled(run);
         return AgentStepResult.of(null, null, null);
     }
 
@@ -1253,7 +1246,7 @@ public final class AgentRunner {
     private AgentStepResult budgetExceeded(AgentRun run, String reason) {
         run.markBudgetExceeded(reason);
         saveSnapshot(run);
-        notifyBudgetExceeded(run, reason);
+        eventPublisher.notifyBudgetExceeded(run, reason);
         return AgentStepResult.of(null, null, null);
     }
 
@@ -1345,10 +1338,8 @@ public final class AgentRunner {
             Map<String, Object> attributes = new LinkedHashMap<>();
             attributes.put(AgentToolInvocation.CONTEXT_ATTRIBUTE, invocation);
             attributes.put(AgentToolProgressEmitter.CONTEXT_ATTRIBUTE,
-                (AgentToolProgressEmitter) (message, data) -> emitEvent(run,
-                    AgentEventType.TOOL_PROGRESS,
-                    mergeObjectAttributes(objectAttributes("toolCallId", callKey(context.getToolCall()),
-                        "toolName", context.getTool().getName(), "message", message), data)));
+                (AgentToolProgressEmitter) (message, data) -> eventPublisher.notifyToolProgress(
+                    run, context.getToolCall(), context.getTool().getName(), message, data));
             return new ToolExecutor(context.getTool(), context.getToolCall(), interceptors)
                 .execute(attributes);
         }
@@ -1598,168 +1589,8 @@ public final class AgentRunner {
         }
     }
 
-    /* 状态变更事件通常在对应 Snapshot 保存成功后发布。 */
-    private void notifyRunStart(AgentRun run) {
-        emitEvent(run, AgentEventType.RUN_STARTED, null);
-    }
-
-    private void notifyModelStart(AgentRun run) {
-        emitEvent(run, AgentEventType.MODEL_STARTED, iterationAttributes(run));
-    }
-
-    private void notifyModelEnd(AgentRun run, AiMessageResponse response) {
-        Map<String, Object> values = iterationAttributes(run);
-        values.put("hasToolCalls",
-            response != null && response.getMessage() != null
-                && response.getMessage().hasToolCalls());
-        emitEvent(run, AgentEventType.MODEL_COMPLETED, values);
-    }
-
-    private void notifyToolStart(AgentRun run, ToolCall call) {
-        Map<String, Object> values = iterationAttributes(run);
-        values.putAll(objectAttributes("toolCallId", callKey(call), "toolName", call.getName()));
-        emitEvent(run, AgentEventType.TOOL_STARTED, values);
-    }
-
-    private void notifyToolEnd(AgentRun run, ToolCall call, ToolMessage message) {
-        Map<String, Object> values = iterationAttributes(run);
-        values.putAll(objectAttributes("toolCallId", callKey(call), "toolName", call.getName()));
-        emitEvent(run, AgentEventType.TOOL_COMPLETED, values);
-    }
-
-    private void notifyToolError(AgentRun run, ToolCall call, Throwable error) {
-        emitEvent(run, AgentEventType.TOOL_FAILED,
-            objectAttributes("toolCallId", callKey(call), "toolName", call.getName(),
-                "error", errorMessage(error)));
-    }
-
-    private void notifyRunComplete(AgentRun run) {
-        emitEvent(run, AgentEventType.RUN_COMPLETED, null);
-    }
-
-    private void notifyRunFailed(AgentRun run, Throwable error) {
-        emitEvent(run, AgentEventType.RUN_FAILED,
-            objectAttributes("error", errorMessage(error)));
-    }
-
-    private void notifyRunCancelled(AgentRun run) {
-        emitEvent(run, AgentEventType.RUN_CANCELLED, null);
-    }
-
-    private void notifyCancellationRequested(AgentRun run) {
-        emitEvent(run, AgentEventType.CANCELLATION_REQUESTED, null);
-    }
-
-    private void notifyMaxIterationsReached(AgentRun run) {
-        emitEvent(run, AgentEventType.MAX_ITERATIONS_REACHED,
-            objectAttributes("iterations", run.getIterationCount()));
-    }
-
-    private void notifyMaxStepsReached(AgentRun run) {
-        emitEvent(run, AgentEventType.MAX_STEPS_REACHED,
-            objectAttributes("steps", run.getStepCount(),
-                "maxSteps", run.getExecutionPolicy().getMaxSteps()));
-    }
-
-    private void notifySnapshotSaved(AgentRun run, AgentRunSnapshot snapshot) {
-        emitEvent(run, AgentEventType.SNAPSHOT_SAVED,
-            objectAttributes("version", snapshot.getState().getVersion(),
-                "status", snapshot.getState().getStatus(),
-                "phase", snapshot.getState().getPhase()));
-    }
-
-    private void notifyRunSuspended(AgentRun run, AgentSuspension suspension) {
-        emitEvent(run, AgentEventType.RUN_SUSPENDED,
-            objectAttributes("suspensionType", suspension.getType(),
-                "correlationId", suspension.getCorrelationId()));
-    }
-
-    private void notifyRunResumed(AgentRun run, AgentResumeCommand command) {
-        emitEvent(run, AgentEventType.RUN_RESUMED,
-            objectAttributes("commandType", command.getType(),
-                "correlationId", command.getCorrelationId()));
-    }
-
-    private void notifyToolApprovalRequested(AgentRun run, ToolCall call,
-                                             ToolApprovalDecision decision) {
-        emitEvent(run, AgentEventType.TOOL_APPROVAL_REQUESTED,
-            objectAttributes("toolCallId", callKey(call), "toolName", call.getName(),
-                "approvalOutcome", decision.getOutcome(), "approvalCode", decision.getCode(),
-                "approvalMessage", decision.getMessage(), "approvalReason", decision.getReason(),
-                "approvalMetadata", decision.getMetadata()));
-    }
-
-    private void notifyRetryScheduled(AgentRun run, Throwable error) {
-        emitEvent(run, AgentEventType.RETRY_SCHEDULED,
-            objectAttributes("retryCount", run.getRetryCount(),
-                "nextRunAt", run.getNextRunAt(), "error", errorMessage(error)));
-    }
-
-    private void notifyBudgetExceeded(AgentRun run, String reason) {
-        emitEvent(run, AgentEventType.BUDGET_EXCEEDED,
-            objectAttributes("reason", reason));
-    }
-
-    private void notifyChildStarted(AgentRun parent, AgentRun child) {
-        emitEvent(parent, AgentEventType.CHILD_STARTED,
-            objectAttributes("childRunId", child.getId(),
-                "childAgentId", child.getAgent().getId()));
-    }
-
     /**
-     * 发布模型已经创建任务计划的事件。
-     */
-    private void notifyPlanCreated(AgentRun run, AgentTaskPlan plan) {
-        emitEvent(run, AgentEventType.PLAN_CREATED,
-            objectAttributes("planId", plan.getId(), "goal", plan.getGoal(),
-                "taskCount", plan.getTasks().size()));
-    }
-
-    /**
-     * 发布模型已经调整待执行任务的事件。
-     */
-    private void notifyPlanUpdated(AgentRun run, AgentTaskPlan plan) {
-        emitEvent(run, AgentEventType.PLAN_UPDATED,
-            objectAttributes("planId", plan.getId(),
-                "revisionCount", plan.getRevisionCount(),
-                "reason", plan.getLastRevisionReason(),
-                "taskCount", plan.getTasks().size()));
-    }
-
-    /**
-     * 发布任务已经绑定子 Run 并开始执行的事件。
-     */
-    private void notifyTaskStarted(AgentRun parent, AgentTask task, AgentRun child) {
-        emitEvent(parent, AgentEventType.TASK_STARTED,
-            objectAttributes("taskId", task.getId(), "title", task.getTitle(),
-                "childRunId", child.getId(), "childAgentId", child.getAgent().getId()));
-    }
-
-    /**
-     * 发布子 Run 已经转换为任务最终状态的事件。
-     */
-    private void notifyTaskFinished(AgentRun parent, AgentTask task, AgentRun child,
-                                    AgentTaskStatus status) {
-        AgentEventType eventType = status == AgentTaskStatus.COMPLETED
-            ? AgentEventType.TASK_COMPLETED : AgentEventType.TASK_FAILED;
-        emitEvent(parent, eventType,
-            objectAttributes("taskId", task.getId(), "childRunId", child.getId(),
-                "taskStatus", status, "result", child.getFinalOutput(),
-                "error", errorMessage(child.getError())));
-    }
-
-    /**
-     * 生成模型迭代事件共用的当前次数、上限和剩余次数。
-     */
-    private Map<String, Object> iterationAttributes(AgentRun run) {
-        int maxIterations = run.getExecutionPolicy().getMaxIterations();
-        return objectAttributes("iteration", run.getIterationCount(),
-            "maxIterations", maxIterations,
-            "remainingIterations", Math.max(0, maxIterations - run.getIterationCount()));
-    }
-
-    /**
-     * 创建事件类型相关的数据。
+     * 创建结构化数据使用的键值映射，忽略空键或空值。
      */
     private Map<String, Object> objectAttributes(Object... values) {
         Map<String, Object> attributes = new LinkedHashMap<>();
@@ -1769,48 +1600,6 @@ public final class AgentRunner {
             }
         }
         return attributes;
-    }
-
-    /**
-     * 把工具主动上报的进度数据合并到框架生成的基础属性中。
-     */
-    private Map<String, Object> mergeObjectAttributes(Map<String, Object> base,
-                                                      Map<String, ?> additions) {
-        if (additions != null) base.putAll(additions);
-        return base;
-    }
-
-    /**
-     * 创建不可变事件并同步通知全部监听器；空 Run 不产生事件。
-     */
-    private void emitEvent(AgentRun run, AgentEventType type, Map<String, ?> data) {
-        if (run == null) return;
-        Map<String, Object> values = objectAttributes(
-            "status", run.getStatus(),
-            "phase", run.getPhase(),
-            "stepCount", run.getStepCount(),
-            "maxSteps", run.getExecutionPolicy().getMaxSteps());
-        if (data != null) values.putAll(data);
-        long sequence = eventSequences
-            .computeIfAbsent(run.getId(), key -> new AtomicLong())
-            .incrementAndGet();
-        AgentEvent event = new AgentEvent(run.getId(), run.getRootRunId(),
-            run.getParentRunId(), run.getAgent().getId(), run.getAgent().getVersion(),
-            sequence, type, values);
-        for (AgentEventListener listener : eventListeners) {
-            try {
-                listener.onEvent(event);
-            } catch (RuntimeException error) {
-                log.warn("Agent event listener failed", error);
-            }
-        }
-    }
-
-    /**
-     * 使用稳定的“异常类名 + 消息”格式写入事件，避免持久化 Throwable 对象。
-     */
-    private String errorMessage(Throwable error) {
-        return error == null ? null : error.getClass().getName() + ": " + error.getMessage();
     }
 
     /**
