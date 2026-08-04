@@ -570,7 +570,9 @@ public final class AgentRun {
         state.putMetadata(key, value);
     }
 
-    /** 生成与当前可变状态隔离的 Snapshot。 */
+    /**
+     * 生成与当前可变状态隔离的 Snapshot。
+     */
     public AgentRunSnapshot toSnapshot() {
         // getMessages() 可能受附加消息数量限制；Snapshot 必须保存 Memory 中的完整历史。
         List<Message> messages = prompt.getMemory().getMessages(Integer.MAX_VALUE);
@@ -582,7 +584,7 @@ public final class AgentRun {
         state.setError(error == null ? null : error.getClass().getName(),
             error == null ? null : error.getMessage());
         state.setUpdatedAt(System.currentTimeMillis());
-        return AgentRunSnapshot.fromState(agent.getId(), agent.getVersion(), state);
+        return AgentRunSnapshot.of(agent.getId(), agent.getVersion(), state);
     }
 
     /**

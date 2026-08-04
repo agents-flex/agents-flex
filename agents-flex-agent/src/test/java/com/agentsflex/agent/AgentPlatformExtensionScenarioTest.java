@@ -174,9 +174,9 @@ public class AgentPlatformExtensionScenarioTest {
         runner.run(run);
 
         AgentRunSnapshot snapshot = store.load(run.getId());
-        assertEquals(6, snapshot.getMessages().size());
-        assertEquals("first", snapshot.getMessages().get(1).getTextContent());
-        assertEquals("done", snapshot.getMessages().get(5).getTextContent());
+        assertEquals(6, snapshot.getState().getMessages().size());
+        assertEquals("first", snapshot.getState().getMessages().get(1).getTextContent());
+        assertEquals("done", snapshot.getState().getMessages().get(5).getTextContent());
     }
 
     @Test

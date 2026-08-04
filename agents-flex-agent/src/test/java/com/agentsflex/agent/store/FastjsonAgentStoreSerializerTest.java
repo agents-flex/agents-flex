@@ -6,6 +6,7 @@ package com.agentsflex.agent.store;
 import com.agentsflex.agent.AgentExecutionPolicy;
 import com.agentsflex.agent.AgentRunPhase;
 import com.agentsflex.agent.AgentRunSnapshot;
+import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentSuspension;
 import com.agentsflex.core.message.AiMessage;
@@ -53,8 +54,8 @@ public class FastjsonAgentStoreSerializerTest {
         metadata.put("priority", 3);
         metadata.put("labels", Arrays.asList("durable", "jsonb"));
 
-        AgentRunSnapshot snapshot = AgentRunSnapshot.builder("run-1", "agent-1", "v1")
-            .executionPolicy(AgentExecutionPolicy.defaults())
+        AgentRunState state = AgentRunState.builder("run-1",
+                AgentExecutionPolicy.defaults(), 0)
             .status(AgentRunStatus.WAITING_FOR_APPROVAL)
             .phase(AgentRunPhase.TOOLS)
             .messages(Arrays.<Message>asList(user, assistant, tool))
@@ -63,21 +64,22 @@ public class FastjsonAgentStoreSerializerTest {
             .stepCount(3)
             .metadata(metadata)
             .build();
+        AgentRunSnapshot snapshot = AgentRunSnapshot.of("agent-1", "v1", state);
 
         FastjsonAgentStoreSerializer serializer = new FastjsonAgentStoreSerializer();
         byte[] encoded = serializer.serialize(snapshot);
         AgentRunSnapshot decoded = serializer.deserialize(encoded, AgentRunSnapshot.class);
 
-        assertEquals("run-1", decoded.getRunId());
-        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, decoded.getStatus());
-        assertTrue(decoded.getMessages().get(0) instanceof UserMessage);
-        assertTrue(decoded.getMessages().get(1) instanceof AiMessage);
-        assertTrue(decoded.getMessages().get(2) instanceof ToolMessage);
+        assertEquals("run-1", decoded.getState().getRunId());
+        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, decoded.getState().getStatus());
+        assertTrue(decoded.getState().getMessages().get(0) instanceof UserMessage);
+        assertTrue(decoded.getState().getMessages().get(1) instanceof AiMessage);
+        assertTrue(decoded.getState().getMessages().get(2) instanceof ToolMessage);
         assertEquals("https://example.com/image.png",
-            ((UserMessage) decoded.getMessages().get(0)).getImageUrls().get(0));
-        assertEquals("lookup", decoded.getPendingToolCalls().get(0).getName());
-        assertEquals(3, decoded.getStepCount());
-        assertEquals("tenant-1", decoded.getMetadata().get("tenant"));
+            ((UserMessage) decoded.getState().getMessages().get(0)).getImageUrls().get(0));
+        assertEquals("lookup", decoded.getState().getPendingToolCalls().get(0).getName());
+        assertEquals(3, decoded.getState().getStepCount());
+        assertEquals("tenant-1", decoded.getState().getMetadata().get("tenant"));
     }
 
     @Test
@@ -93,32 +95,35 @@ public class FastjsonAgentStoreSerializerTest {
     public void shouldOnlyRestoreWhitelistedCustomMetadataType() {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("custom", new CustomState("ready"));
-        AgentRunSnapshot snapshot = AgentRunSnapshot.builder("run-custom", "agent", "v1")
-            .executionPolicy(AgentExecutionPolicy.defaults())
+        AgentRunState state = AgentRunState.builder("run-custom",
+                AgentExecutionPolicy.defaults(), 0)
             .metadata(metadata)
             .build();
+        AgentRunSnapshot snapshot = AgentRunSnapshot.of("agent", "v1", state);
         byte[] encoded = new FastjsonAgentStoreSerializer().serialize(snapshot);
 
         AgentRunSnapshot untrusted = new FastjsonAgentStoreSerializer()
             .deserialize(encoded, AgentRunSnapshot.class);
         assertTrue("untrusted type must not be instantiated",
-            !(untrusted.getMetadata().get("custom") instanceof CustomState));
+            !(untrusted.getState().getMetadata().get("custom") instanceof CustomState));
 
         FastjsonAgentStoreSerializer trusted = new FastjsonAgentStoreSerializer(
             "com.example.agentstate.");
         AgentRunSnapshot decoded = trusted.deserialize(encoded, AgentRunSnapshot.class);
-        assertTrue(decoded.getMetadata().get("custom") instanceof CustomState);
-        assertEquals("ready", ((CustomState) decoded.getMetadata().get("custom")).getValue());
+        assertTrue(decoded.getState().getMetadata().get("custom") instanceof CustomState);
+        assertEquals("ready",
+            ((CustomState) decoded.getState().getMetadata().get("custom")).getValue());
     }
 
     @Test
     public void shouldRejectNestedNonSerializableValue() {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("invalid", new Object());
-        AgentRunSnapshot snapshot = AgentRunSnapshot.builder("run-invalid", "agent", "v1")
-            .executionPolicy(AgentExecutionPolicy.defaults())
+        AgentRunState state = AgentRunState.builder("run-invalid",
+                AgentExecutionPolicy.defaults(), 0)
             .metadata(metadata)
             .build();
+        AgentRunSnapshot snapshot = AgentRunSnapshot.of("agent", "v1", state);
 
         try {
             new FastjsonAgentStoreSerializer().serialize(snapshot);

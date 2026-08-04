@@ -243,9 +243,10 @@ public class AgentTaskPlanningScenarioTest {
         AgentRunSnapshot decoded = serializer.deserialize(
             serializer.serialize(completed.toSnapshot()), AgentRunSnapshot.class);
 
-        assertNotNull(decoded.getTaskPlan());
-        assertEquals(AgentTaskPlanStatus.COMPLETED, decoded.getTaskPlan().getStatus());
-        assertEquals("persist", decoded.getTaskPlan().getTasks().get(0).getId());
+        assertNotNull(decoded.getState().getTaskPlan());
+        assertEquals(AgentTaskPlanStatus.COMPLETED,
+            decoded.getState().getTaskPlan().getStatus());
+        assertEquals("persist", decoded.getState().getTaskPlan().getTasks().get(0).getId());
     }
 
     @Test

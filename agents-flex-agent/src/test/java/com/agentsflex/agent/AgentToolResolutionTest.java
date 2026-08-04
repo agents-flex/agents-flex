@@ -96,7 +96,7 @@ public class AgentToolResolutionTest {
 
         AgentRunSnapshot snapshot = durableStore.load(run.getId());
         assertEquals("1", snapshot.getAgentVersion());
-        assertEquals("query_order", snapshot.getPendingToolCalls().get(0).getName());
+        assertEquals("query_order", snapshot.getState().getPendingToolCalls().get(0).getName());
 
         AgentRunner secondRunner = new AgentRunner(durableStore, agentLoader);
         AgentRun completed = secondRunner.runUntilBlocked(run.getId());
@@ -114,19 +114,18 @@ public class AgentToolResolutionTest {
             .chatModel(new AgentScenarioTestSupport.QueueChatModel())
             .build();
         ToolCall call = new ToolCall("missing-call", "write_order", "{}");
-        AgentRunSnapshot invalid = AgentRunSnapshot.builder(
-                "missing-tool-run", agent.getId(), agent.getVersion())
-            .executionPolicy(agent.getExecutionPolicy())
+        AgentRunState state = AgentRunState.builder("missing-tool-run",
+                agent.getExecutionPolicy(), System.currentTimeMillis())
             .status(AgentRunStatus.RUNNING)
             .phase(AgentRunPhase.TOOLS)
             .messages(Collections.emptyList())
             .pendingToolCalls(Collections.singletonList(call))
-            .createdAt(System.currentTimeMillis())
             .build();
+        AgentRunSnapshot invalid = AgentRunSnapshot.of(agent.getId(), agent.getVersion(), state);
         store.save(invalid, -1);
 
         AgentRun failed = new AgentRunner(store, new InMemoryAgentLoader(agent))
-            .runUntilBlocked(invalid.getRunId());
+            .runUntilBlocked(invalid.getState().getRunId());
 
         assertEquals(AgentRunStatus.FAILED, failed.getStatus());
         assertTrue(failed.getError().getMessage().contains("tool not found: write_order"));
@@ -156,7 +155,7 @@ public class AgentToolResolutionTest {
         @Override
         public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
             AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!crashed && AgentRunPhase.TOOLS.equals(saved.getPhase())) {
+            if (!crashed && AgentRunPhase.TOOLS.equals(saved.getState().getPhase())) {
                 crashed = true;
                 throw new SimulatedProcessCrash();
             }

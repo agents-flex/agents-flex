@@ -66,8 +66,8 @@ public class AgentSnapshotTest {
         assertEquals(1, model.getCallCount());
         assertEquals(0, toolInvocations.get());
         AgentRunSnapshot pending = durableStore.load(run.getId());
-        assertEquals(AgentRunPhase.TOOLS, pending.getPhase());
-        assertEquals(1, pending.getPendingToolCalls().size());
+        assertEquals(AgentRunPhase.TOOLS, pending.getState().getPhase());
+        assertEquals(1, pending.getState().getPendingToolCalls().size());
 
         AgentRunner secondProcess = new AgentRunner(durableStore, registry);
         AgentRun restored = secondProcess.restore(run.getId());
@@ -97,8 +97,8 @@ public class AgentSnapshotTest {
         run.getPrompt().addUserMessage("added after snapshot");
 
         AgentRunSnapshot stored = store.load(run.getId());
-        assertEquals(1, stored.getMessages().size());
-        assertEquals("original", stored.getMessages().get(0).getTextContent());
+        assertEquals(1, stored.getState().getMessages().size());
+        assertEquals("original", stored.getState().getMessages().get(0).getTextContent());
     }
 
     @Test
@@ -197,7 +197,7 @@ public class AgentSnapshotTest {
         assertEquals(12, run.getInputTokens());
         assertEquals(5, run.getOutputTokens());
         assertEquals(17, run.getTotalTokens());
-        assertEquals(17, snapshot.getTotalTokens());
+        assertEquals(17, snapshot.getState().getTotalTokens());
     }
 
     private static Tool tool(String name, Function<Map<String, Object>, Object> function) {
@@ -281,7 +281,7 @@ public class AgentSnapshotTest {
         @Override
         public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
             AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!failed && AgentRunPhase.TOOLS.equals(saved.getPhase())) {
+            if (!failed && AgentRunPhase.TOOLS.equals(saved.getState().getPhase())) {
                 failed = true;
                 throw new SimulatedProcessCrash();
             }

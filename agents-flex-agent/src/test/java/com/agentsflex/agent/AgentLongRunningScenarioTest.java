@@ -47,8 +47,8 @@ public class AgentLongRunningScenarioTest {
         assertEquals(1, first.size());
         assertTrue(beforeExpiry.isEmpty());
         assertEquals(1, afterExpiry.size());
-        assertEquals(run.getId(), afterExpiry.get(0).getRunId());
-        assertEquals("worker-b", afterExpiry.get(0).getLeaseOwner());
+        assertEquals(run.getId(), afterExpiry.get(0).getState().getRunId());
+        assertEquals("worker-b", afterExpiry.get(0).getState().getLeaseOwner());
     }
 
     @Test
@@ -195,9 +195,9 @@ public class AgentLongRunningScenarioTest {
         runner.requestCancellation(stale.getId());
         AgentRunSnapshot saved = runner.saveSnapshot(stale);
 
-        assertTrue(saved.isCancellationRequested());
+        assertTrue(saved.getState().isCancellationRequested());
         assertTrue(stale.isCancellationRequested());
-        assertTrue(store.load(stale.getId()).isCancellationRequested());
+        assertTrue(store.load(stale.getId()).getState().isCancellationRequested());
     }
 
     private int countChildResultMessages(List<Message> messages) {

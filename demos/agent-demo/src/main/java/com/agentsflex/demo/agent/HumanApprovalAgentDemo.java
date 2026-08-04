@@ -107,7 +107,7 @@ public final class HumanApprovalAgentDemo {
         // Runner 会从 Snapshot 指定版本的 Agent 中取得同名工具。
         AgentRunSnapshot snapshot = runStore.load(waiting.getId());
         DemoSupport.require("deploy_service".equals(
-            snapshot.getPendingToolCalls().get(0).getName()),
+            snapshot.getState().getPendingToolCalls().get(0).getName()),
             "Snapshot 必须保存待执行 ToolCall");
 
         String callId = waiting.getSuspension().getCorrelationId();

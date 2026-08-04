@@ -17,7 +17,8 @@ Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对�
 - `AgentRun`：可变 State 加上 Agent、Prompt、Throwable 和当前进程的运行时属性。
 - `AgentRunSnapshot`：Agent ID/版本加上深拷贝后的不可变 State。
 
-因此 Run 与 Snapshot 不再各自镜像全部字段；新增持久化状态时只需在 `AgentRunState` 定义一次。Snapshot 的兼容 getter 和 Builder 仍然保留，但内部都委托给 State。
+因此 Run 与 Snapshot 不再各自镜像全部字段；新增持久化状态时只需在 `AgentRunState` 定义一次。
+`AgentRunSnapshot` 只暴露 Agent 标识和 `getState()`，不再提供运行字段的转发 getter 或 Builder。
 
 ## 保存内容
 
@@ -52,10 +53,26 @@ Runner 会在关键状态变化后保存，例如：
 
 ```java
 AgentRunSnapshot saved = runner.saveSnapshot(run);
-System.out.println(saved.getVersion());
+AgentRunState state = saved.getState();
+System.out.println(state.getVersion());
+System.out.println(state.getStatus());
 ```
 
 `run.toSnapshot()` 只生成内存副本，不执行 Store 乐观写入、事件发布或本地版本同步。需要显式持久化稳定边界时调用 `runner.saveSnapshot(run)`。
+
+Store 或测试需要构造、修改持久化状态时，应通过 State 完成字段级操作：
+
+```java
+AgentRunState state = AgentRunState.builder(runId, executionPolicy, createdAt)
+    .status(AgentRunStatus.READY)
+    .build();
+AgentRunSnapshot snapshot = AgentRunSnapshot.of(agentId, agentVersion, state);
+
+AgentRunSnapshot updated = snapshot.withState(
+    snapshot.getState().toBuilder()
+        .status(AgentRunStatus.RUNNING)
+        .build());
+```
 
 ## 乐观版本
 

@@ -136,8 +136,8 @@ public class AgentAdvancedFeaturesTest {
 
         assertEquals(1, first.size());
         assertTrue(second.isEmpty());
-        assertEquals(run.getId(), first.get(0).getRunId());
-        store.releaseLease(run.getId(), "worker-a", first.get(0).getLeaseId());
+        assertEquals(run.getId(), first.get(0).getState().getRunId());
+        store.releaseLease(run.getId(), "worker-a", first.get(0).getState().getLeaseId());
         assertEquals(1, store.claimRunnable("worker-b", now, 10000, 1).size());
     }
 
@@ -404,8 +404,8 @@ public class AgentAdvancedFeaturesTest {
         @Override
         public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
             AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!crashed && AgentRunPhase.TOOLS.equals(saved.getPhase())
-                && !saved.getPendingToolCalls().isEmpty()) {
+            if (!crashed && AgentRunPhase.TOOLS.equals(saved.getState().getPhase())
+                && !saved.getState().getPendingToolCalls().isEmpty()) {
                 crashed = true;
                 throw new SimulatedCrash();
             }
@@ -429,8 +429,8 @@ public class AgentAdvancedFeaturesTest {
         @Override
         public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
             AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!crashed && saved.getPendingToolCalls().size() == 1
-                && countToolMessages(saved.getMessages()) == 1) {
+            if (!crashed && saved.getState().getPendingToolCalls().size() == 1
+                && countToolMessages(saved.getState().getMessages()) == 1) {
                 crashed = true;
                 throw new SimulatedCrash();
             }

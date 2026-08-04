@@ -41,17 +41,16 @@ public final class AgentRunSnapshot implements Serializable {
         return new AgentRunSnapshot(agentId, agentVersion, state);
     }
 
-    static AgentRunSnapshot fromState(String agentId, String agentVersion, AgentRunState state) {
-        validate(agentId, agentVersion, state);
-        return new AgentRunSnapshot(agentId, agentVersion, state);
-    }
-
-    /** @return 与当前快照完全隔离的深拷贝 */
+    /**
+     * @return 与当前快照完全隔离的深拷贝
+     */
     public AgentRunSnapshot copy() {
         return new AgentRunSnapshot(agentId, agentVersion, state);
     }
 
-    /** 返回内容相同、仅替换 Store 乐观锁版本的新快照。 */
+    /**
+     * 返回内容相同、仅替换 Store 乐观锁版本的新快照。
+     */
     public AgentRunSnapshot withVersion(long version) {
         return withState(state.toBuilder().version(version).build());
     }
@@ -67,10 +66,23 @@ public final class AgentRunSnapshot implements Serializable {
     /**
      * @return Snapshot 持有的不可变运行状态
      */
-    public AgentRunState getState() { return state; }
+    public AgentRunState getState() {
+        return state;
+    }
 
-    public String getAgentId() { return agentId; }
-    public String getAgentVersion() { return agentVersion; }
+    /**
+     * @return 用于恢复完整 Agent 定义的稳定标识
+     */
+    public String getAgentId() {
+        return agentId;
+    }
+
+    /**
+     * @return 创建该 Run 时冻结的 Agent 版本
+     */
+    public String getAgentVersion() {
+        return agentVersion;
+    }
 
     private static void validate(String agentId, String agentVersion, AgentRunState state) {
         if (!StringUtil.hasText(agentId)) {

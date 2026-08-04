@@ -3,6 +3,7 @@ package com.agentsflex.agent.store.jdbc;
 import com.agentsflex.agent.AgentExecutionPolicy;
 import com.agentsflex.agent.AgentResumeCommand;
 import com.agentsflex.agent.AgentRunSnapshot;
+import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStatus;
@@ -39,22 +40,24 @@ public class JdbcAgentStoresContractTest {
     public void shouldPersistRunWithOptimisticLockCancellationAndLease() {
         JdbcAgentRunStore store = config.runStore();
         AgentRunSnapshot created = store.save(snapshot("run-1", AgentRunStatus.READY), -1);
-        assertEquals(0, created.getVersion());
-        assertEquals("value", store.load("run-1").getMetadata().get("key"));
+        assertEquals(0, created.getState().getVersion());
+        assertEquals("value", store.load("run-1").getState().getMetadata().get("key"));
 
         assertTrue(store.requestCancellation("run-1"));
         assertFalse(store.requestCancellation("run-1"));
-        AgentRunSnapshot updated = store.save(created.toBuilder().status(AgentRunStatus.RUNNING).build(), 0);
-        assertTrue(updated.isCancellationRequested());
+        AgentRunSnapshot updated = store.save(created.withState(created.getState().toBuilder()
+            .status(AgentRunStatus.RUNNING).build()), 0);
+        assertTrue(updated.getState().isCancellationRequested());
 
         List<AgentRunSnapshot> claimed = store.claimRunnable("worker-a", 1000, 5000, 10);
         assertEquals(1, claimed.size());
-        assertEquals("worker-a", claimed.get(0).getLeaseOwner());
-        long claimedVersion = claimed.get(0).getVersion();
-        AgentRunSnapshot renewed = store.renewLease("run-1", "worker-a", claimed.get(0).getLeaseId(),
+        assertEquals("worker-a", claimed.get(0).getState().getLeaseOwner());
+        long claimedVersion = claimed.get(0).getState().getVersion();
+        AgentRunSnapshot renewed = store.renewLease("run-1", "worker-a",
+            claimed.get(0).getState().getLeaseId(),
             1500, 7000);
-        assertEquals(7000, renewed.getLeaseUntil());
-        assertEquals(claimedVersion, renewed.getVersion());
+        assertEquals(7000, renewed.getState().getLeaseUntil());
+        assertEquals(claimedVersion, renewed.getState().getVersion());
         try {
             store.renewLease("run-1", "worker-a", "stale-token", 1600, 8000);
             fail("stale lease token must be rejected");
@@ -62,10 +65,11 @@ public class JdbcAgentStoresContractTest {
             assertTrue(expected.getMessage().contains("worker-a"));
         }
         store.releaseLease("run-1", "worker-a", "stale-token");
-        assertEquals(claimed.get(0).getLeaseId(), store.load("run-1").getLeaseId());
-        store.releaseLease("run-1", "worker-a", claimed.get(0).getLeaseId());
-        assertNull(store.load("run-1").getLeaseOwner());
-        assertEquals(claimedVersion, store.load("run-1").getVersion());
+        assertEquals(claimed.get(0).getState().getLeaseId(),
+            store.load("run-1").getState().getLeaseId());
+        store.releaseLease("run-1", "worker-a", claimed.get(0).getState().getLeaseId());
+        assertNull(store.load("run-1").getState().getLeaseOwner());
+        assertEquals(claimedVersion, store.load("run-1").getState().getVersion());
 
         try {
             store.save(created, 0);
@@ -79,12 +83,15 @@ public class JdbcAgentStoresContractTest {
     public void shouldAtomicallyPersistParentAndChildAndDelayChildWhileParentLeased() {
         JdbcAgentRunStore store = config.runStore();
         AgentRunSnapshot parent = store.save(snapshot("parent", AgentRunStatus.RUNNING), -1);
-        AgentRunSnapshot child = snapshot("child", AgentRunStatus.READY).toBuilder().parentRunId("parent").rootRunId("parent").build();
+        AgentRunSnapshot initialChild = snapshot("child", AgentRunStatus.READY);
+        AgentRunSnapshot child = initialChild.withState(initialChild.getState().toBuilder()
+            .parentRunId("parent").rootRunId("parent").build());
         ParentChildRunSnapshots pair = store.saveParentAndChild(
-            parent.toBuilder().status(AgentRunStatus.WAITING_FOR_CHILD).build(), 0, child);
-        assertEquals(1, pair.getParent().getVersion());
-        assertEquals(0, pair.getChild().getVersion());
-        assertEquals("parent", store.load("child").getParentRunId());
+            parent.withState(parent.getState().toBuilder()
+                .status(AgentRunStatus.WAITING_FOR_CHILD).build()), 0, child);
+        assertEquals(1, pair.getParent().getState().getVersion());
+        assertEquals(0, pair.getChild().getState().getVersion());
+        assertEquals("parent", store.load("child").getState().getParentRunId());
     }
 
     @Test
@@ -135,10 +142,11 @@ public class JdbcAgentStoresContractTest {
     }
 
     private AgentRunSnapshot snapshot(String runId, AgentRunStatus status) {
-        return AgentRunSnapshot.builder(runId, "agent", "1")
-            .executionPolicy(AgentExecutionPolicy.defaults())
-            .status(status).createdAt(1).updatedAt(1).rootRunId(runId)
+        AgentRunState state = AgentRunState.builder(runId,
+                AgentExecutionPolicy.defaults(), 1)
+            .status(status).updatedAt(1).rootRunId(runId)
             .metadata(Collections.<String, Object>singletonMap("key", "value")).build();
+        return AgentRunSnapshot.of("agent", "1", state);
     }
 
 }

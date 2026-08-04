@@ -37,18 +37,18 @@ public class AgentWorkerSubagentContractTest {
         AgentRunner runner = new AgentRunner(store, registry);
         AgentRun run = runner.start(agent, "input");
         AgentRunSnapshot workerA = store.claimRunnable("worker-a", 100, 10, 1).get(0);
-        AgentRun stale = runner.restore(workerA.getRunId());
+        AgentRun stale = runner.restore(workerA.getState().getRunId());
         AgentRunSnapshot workerB = store.claimRunnable("worker-b", 110, 10, 1).get(0);
 
-        assertEquals("worker-b", workerB.getLeaseOwner());
+        assertEquals("worker-b", workerB.getState().getLeaseOwner());
         try {
             store.save(stale.toSnapshot(), stale.getVersion());
             fail("stale worker snapshot must be fenced");
         } catch (AgentRunVersionConflictException expected) {
             assertTrue(expected.getMessage().contains(
-                "expectedVersion=" + workerA.getVersion()));
+                "expectedVersion=" + workerA.getState().getVersion()));
             assertTrue(expected.getMessage().contains(
-                "actualVersion=" + workerB.getVersion()));
+                "actualVersion=" + workerB.getState().getVersion()));
         }
     }
 
@@ -61,12 +61,13 @@ public class AgentWorkerSubagentContractTest {
         AgentRunSnapshot claimed = store.claimRunnable("worker-a", 100, 20, 1).get(0);
 
         AgentRunSnapshot renewed = store.renewLease(run.getId(), "worker-a",
-            claimed.getLeaseId(), 110, 200);
+            claimed.getState().getLeaseId(), 110, 200);
 
-        assertEquals(200, renewed.getLeaseUntil());
-        assertEquals(claimed.getVersion(), renewed.getVersion());
+        assertEquals(200, renewed.getState().getLeaseUntil());
+        assertEquals(claimed.getState().getVersion(), renewed.getState().getVersion());
         try {
-            store.renewLease(run.getId(), "worker-b", claimed.getLeaseId(), 120, 300);
+            store.renewLease(run.getId(), "worker-b",
+                claimed.getState().getLeaseId(), 120, 300);
             fail("non-owner must not renew lease");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("worker-b"));
@@ -83,13 +84,14 @@ public class AgentWorkerSubagentContractTest {
         AgentRunSnapshot oldLease = store.claimRunnable("shared-worker", 100, 10, 1).get(0);
         AgentRunSnapshot newLease = store.claimRunnable("shared-worker", 110, 100, 1).get(0);
 
-        store.releaseLease(run.getId(), "shared-worker", oldLease.getLeaseId());
+        store.releaseLease(run.getId(), "shared-worker", oldLease.getState().getLeaseId());
 
         AgentRunSnapshot current = store.load(run.getId());
-        assertEquals(newLease.getLeaseId(), current.getLeaseId());
-        assertEquals(210, current.getLeaseUntil());
+        assertEquals(newLease.getState().getLeaseId(), current.getState().getLeaseId());
+        assertEquals(210, current.getState().getLeaseUntil());
         try {
-            store.renewLease(run.getId(), "shared-worker", oldLease.getLeaseId(), 120, 220);
+            store.renewLease(run.getId(), "shared-worker",
+                oldLease.getState().getLeaseId(), 120, 220);
             fail("stale lease token must not renew a newer lease");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("shared-worker"));

@@ -52,10 +52,10 @@ public class AgentStateLifecycleScenarioTest {
 
         for (AgentRunSnapshot snapshot : snapshots) {
             store.save(snapshot, -1);
-            AgentRun restored = runner.restore(snapshot.getRunId());
-            assertEquals(snapshot.getStatus(), restored.getStatus());
-            assertEquals(snapshot.getPhase(), restored.getPhase());
-            assertEquals(snapshot.getSuspension().getType(),
+            AgentRun restored = runner.restore(snapshot.getState().getRunId());
+            assertEquals(snapshot.getState().getStatus(), restored.getStatus());
+            assertEquals(snapshot.getState().getPhase(), restored.getPhase());
+            assertEquals(snapshot.getState().getSuspension().getType(),
                 restored.getSuspension().getType());
             assertTrue(restored.getStatus().isBlocked());
             assertFalse(restored.getStatus().isTerminal());
@@ -157,35 +157,35 @@ public class AgentStateLifecycleScenarioTest {
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
         AgentRun run = runner.start(agent, "input");
         AgentRunSnapshot stale = store.load(run.getId());
-        AgentRunSnapshot latest = store.save(stale.toBuilder()
+        AgentRunSnapshot latest = store.save(stale.withState(stale.getState().toBuilder()
             .metadata(Collections.<String, Object>singletonMap("owner", "latest"))
-            .build(), stale.getVersion());
+            .build()), stale.getState().getVersion());
 
         try {
-            store.save(stale.toBuilder()
+            store.save(stale.withState(stale.getState().toBuilder()
                 .metadata(Collections.<String, Object>singletonMap("owner", "stale"))
-                .build(), stale.getVersion());
+                .build()), stale.getState().getVersion());
             fail("Expected optimistic lock conflict");
         } catch (AgentRunVersionConflictException expected) {
             assertNotNull(expected.getMessage());
         }
 
         AgentRunSnapshot persisted = store.load(run.getId());
-        assertEquals(latest.getVersion(), persisted.getVersion());
-        assertEquals("latest", persisted.getMetadata().get("owner"));
+        assertEquals(latest.getState().getVersion(), persisted.getState().getVersion());
+        assertEquals("latest", persisted.getState().getMetadata().get("owner"));
     }
 
     private AgentRunSnapshot blocked(String runId, Agent agent, AgentRunStatus status,
                                      AgentSuspension suspension, long nextRunAt) {
-        return AgentRunSnapshot.builder(runId, agent.getId(), agent.getVersion())
-            .executionPolicy(agent.getExecutionPolicy())
+        AgentRunState state = AgentRunState.builder(runId, agent.getExecutionPolicy(),
+                System.currentTimeMillis())
             .status(status)
             .phase(suspension.getResumePhase())
             .messages(Arrays.asList(new com.agentsflex.core.message.UserMessage("input")))
             .suspension(suspension)
-            .createdAt(System.currentTimeMillis())
             .updatedAt(System.currentTimeMillis())
             .nextRunAt(nextRunAt)
             .build();
+        return AgentRunSnapshot.of(agent.getId(), agent.getVersion(), state);
     }
 }

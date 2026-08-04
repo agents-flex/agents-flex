@@ -3,6 +3,7 @@ package com.agentsflex.agent.store.redis;
 import com.agentsflex.agent.AgentExecutionPolicy;
 import com.agentsflex.agent.AgentResumeCommand;
 import com.agentsflex.agent.AgentRunSnapshot;
+import com.agentsflex.agent.AgentRunState;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.command.AgentRunCommand;
 import com.agentsflex.agent.command.AgentRunCommandStatus;
@@ -59,14 +60,14 @@ public class RedisAgentStoresIntegrationTest {
     public void shouldPersistAndCoordinateAllAgentStateTypes() {
         RedisAgentRunStore runs = config.runStore();
         AgentRunSnapshot run = runs.save(snapshot(), -1);
-        assertEquals(0, run.getVersion());
+        assertEquals(0, run.getState().getVersion());
         assertTrue(runs.requestCancellation("run-1"));
-        assertTrue(runs.load("run-1").isCancellationRequested());
+        assertTrue(runs.load("run-1").getState().isCancellationRequested());
         AgentRunSnapshot claimedRun = runs.claimRunnable("worker", 100, 1000, 1).get(0);
-        assertEquals("worker", claimedRun.getLeaseOwner());
-        assertEquals(2000, runs.renewLease("run-1", "worker", claimedRun.getLeaseId(),
-            200, 2000).getLeaseUntil());
-        runs.releaseLease("run-1", "worker", claimedRun.getLeaseId());
+        assertEquals("worker", claimedRun.getState().getLeaseOwner());
+        assertEquals(2000, runs.renewLease("run-1", "worker",
+            claimedRun.getState().getLeaseId(), 200, 2000).getState().getLeaseUntil());
+        runs.releaseLease("run-1", "worker", claimedRun.getState().getLeaseId());
 
         RedisAgentRunCommandStore commands = config.commandStore();
         AgentRunCommand command = AgentRunCommand.pending("command-1", "run-1", AgentResumeCommand.continueRun());
@@ -85,13 +86,15 @@ public class RedisAgentStoresIntegrationTest {
     public void shouldCreateParentAndChildAtomically() {
         RedisAgentRunStore runs = config.runStore();
         AgentRunSnapshot parent = runs.save(snapshot("parent", AgentRunStatus.RUNNING), -1);
-        AgentRunSnapshot child = snapshot("child", AgentRunStatus.READY).toBuilder()
-            .parentRunId("parent").rootRunId("parent").build();
-        ParentChildRunSnapshots pair = runs.saveParentAndChild(parent.toBuilder()
-            .status(AgentRunStatus.WAITING_FOR_CHILD).build(), 0, child);
-        assertEquals(1, pair.getParent().getVersion());
-        assertEquals(0, pair.getChild().getVersion());
-        assertEquals("parent", runs.load("child").getParentRunId());
+        AgentRunSnapshot initialChild = snapshot("child", AgentRunStatus.READY);
+        AgentRunSnapshot child = initialChild.withState(initialChild.getState().toBuilder()
+            .parentRunId("parent").rootRunId("parent").build());
+        ParentChildRunSnapshots pair = runs.saveParentAndChild(parent.withState(
+            parent.getState().toBuilder().status(AgentRunStatus.WAITING_FOR_CHILD).build()),
+            0, child);
+        assertEquals(1, pair.getParent().getState().getVersion());
+        assertEquals(0, pair.getChild().getState().getVersion());
+        assertEquals("parent", runs.load("child").getState().getParentRunId());
     }
 
     @Test
@@ -114,9 +117,10 @@ public class RedisAgentStoresIntegrationTest {
     }
 
     private AgentRunSnapshot snapshot(String runId, AgentRunStatus status) {
-        return AgentRunSnapshot.builder(runId, "agent", "1")
-            .executionPolicy(AgentExecutionPolicy.defaults())
-            .status(status).rootRunId(runId).createdAt(1).updatedAt(1).build();
+        AgentRunState state = AgentRunState.builder(runId,
+                AgentExecutionPolicy.defaults(), 1)
+            .status(status).rootRunId(runId).updatedAt(1).build();
+        return AgentRunSnapshot.of("agent", "1", state);
     }
 
 }

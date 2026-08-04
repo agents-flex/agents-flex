@@ -53,35 +53,36 @@ public class AgentPersistenceContextContractTest {
 
         AgentRunSnapshot restored = roundTrip(original);
 
-        assertEquals(original.getRunId(), restored.getRunId());
+        assertEquals(original.getState().getRunId(), restored.getState().getRunId());
         assertEquals("7", restored.getAgentVersion());
-        assertEquals(9, restored.getExecutionPolicy().getMaxIterations());
-        assertEquals(2, restored.getExecutionPolicy().getRetryPolicy().getMaxRetries());
-        assertEquals(100, restored.getExecutionPolicy().getBudget().getMaxTotalTokens());
-        assertEquals("你好, serialization", restored.getMessages().get(0).getTextContent());
-        assertEquals("t-1", restored.getMetadata().get("tenant"));
+        assertEquals(9, restored.getState().getExecutionPolicy().getMaxIterations());
+        assertEquals(2, restored.getState().getExecutionPolicy().getRetryPolicy().getMaxRetries());
+        assertEquals(100, restored.getState().getExecutionPolicy().getBudget().getMaxTotalTokens());
+        assertEquals("你好, serialization", restored.getState().getMessages().get(0).getTextContent());
+        assertEquals("t-1", restored.getState().getMetadata().get("tenant"));
         assertTrue(restored.getState().isImmutable());
     }
 
     @Test
     public void shouldKeepSnapshotStateImmutableAndIsolatedFromBuilderChanges() {
-        AgentRunSnapshot original = AgentRunSnapshot.builder("run-1", "agent", "1")
-            .executionPolicy(AgentExecutionPolicy.defaults())
+        AgentRunState state = AgentRunState.builder("run-1",
+                AgentExecutionPolicy.defaults(), 0)
             .status(AgentRunStatus.READY)
             .messages(Collections.singletonList(new UserMessage("original")))
             .metadata(Collections.<String, Object>singletonMap("tenant", "t-1"))
             .build();
+        AgentRunSnapshot original = AgentRunSnapshot.of("agent", "1", state);
 
-        AgentRunSnapshot changed = original.toBuilder()
+        AgentRunSnapshot changed = original.withState(original.getState().toBuilder()
             .status(AgentRunStatus.RUNNING)
             .metadata(Collections.<String, Object>singletonMap("tenant", "t-2"))
-            .build();
+            .build());
 
         assertTrue(original.getState().isImmutable());
-        assertEquals(AgentRunStatus.READY, original.getStatus());
-        assertEquals("t-1", original.getMetadata().get("tenant"));
-        assertEquals(AgentRunStatus.RUNNING, changed.getStatus());
-        assertEquals("t-2", changed.getMetadata().get("tenant"));
+        assertEquals(AgentRunStatus.READY, original.getState().getStatus());
+        assertEquals("t-1", original.getState().getMetadata().get("tenant"));
+        assertEquals(AgentRunStatus.RUNNING, changed.getState().getStatus());
+        assertEquals("t-2", changed.getState().getMetadata().get("tenant"));
         try {
             original.getState().setStatus(AgentRunStatus.FAILED);
             fail("snapshot state must reject mutation");
