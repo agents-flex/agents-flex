@@ -1272,9 +1272,11 @@ public final class AgentRunner {
      */
     private ToolMessage executeTool(AgentTurn turn, Tool tool, ToolCall call) {
         List<ToolInterceptor> interceptors = turn.getAgent().getToolInterceptors();
+
         AgentToolInvocation invocation = new AgentToolInvocation(
             turn.getId(), turn.getRootTurnId(), turn.getParentTurnId(),
             turn.getAgent().getId(), turn.getAgent().getVersion(), callKey(call), tool.getName());
+
         AgentToolCallContext middlewareContext = new AgentToolCallContext(this, turn, tool, call);
         Object value = proceedToolCall(turn, middlewareContext, 0, invocation, interceptors);
         // ToolMessage 内容必须是字符串：标量直接转换，结构化对象统一序列化为 JSON。

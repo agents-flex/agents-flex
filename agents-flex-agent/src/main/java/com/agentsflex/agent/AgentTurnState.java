@@ -649,39 +649,170 @@ public final class AgentTurnState implements Serializable {
             this.state = state;
         }
 
-        public Builder executionPolicy(AgentExecutionPolicy value) { state.setExecutionPolicy(value); return this; }
-        public Builder status(AgentTurnStatus value) { state.setStatus(value); return this; }
-        public Builder phase(AgentTurnPhase value) { state.setPhase(value); return this; }
-        public Builder messages(List<? extends Message> value) { state.setMessages(value); return this; }
-        public Builder pendingToolCalls(List<ToolCall> value) { state.setPendingToolCalls(value); return this; }
-        public Builder suspension(AgentSuspension value) { state.setSuspension(value); return this; }
-        public Builder iterationCount(int value) { state.setIterationCount(value); return this; }
-        public Builder stepCount(int value) { state.setStepCount(value); return this; }
-        public Builder inputTokens(long value) { state.setInputTokens(value); return this; }
-        public Builder outputTokens(long value) { state.setOutputTokens(value); return this; }
-        public Builder totalTokens(long value) { state.setTotalTokens(value); return this; }
-        public Builder toolCallCount(int value) { state.setToolCallCount(value); return this; }
-        public Builder retryCount(int value) { state.setRetryCount(value); return this; }
-        public Builder budgetExceededReason(String value) { state.setBudgetExceededReason(value); return this; }
-        public Builder leaseOwner(String value) { state.setLeaseOwner(value); return this; }
-        public Builder leaseId(String value) { state.setLeaseId(value); return this; }
-        public Builder leaseUntil(long value) { state.setLeaseUntil(value); return this; }
-        public Builder toolApprovals(Map<String, Boolean> value) { state.setToolApprovals(value); return this; }
-        public Builder taskPlan(AgentTaskPlan value) { state.setTaskPlan(value); return this; }
-        public Builder planningEnabled(boolean value) { state.setPlanningEnabled(value); return this; }
-        public Builder planningDepth(int value) { state.setPlanningDepth(value); return this; }
-        public Builder cancellationRequested(boolean value) { state.setCancellationRequested(value); return this; }
-        public Builder started(boolean value) { state.setStarted(value); return this; }
-        public Builder finalMessage(AiMessage value) { state.setFinalMessage(value); return this; }
-        public Builder error(String type, String message) { state.setError(type, message); return this; }
-        public Builder createdAt(long value) { state.setCreatedAt(value); return this; }
-        public Builder completedAt(long value) { state.setCompletedAt(value); return this; }
-        public Builder updatedAt(long value) { state.setUpdatedAt(value); return this; }
-        public Builder nextRunnableAt(long value) { state.setNextRunnableAt(value); return this; }
-        public Builder version(long value) { state.setVersion(value); return this; }
-        public Builder parentTurnId(String value) { state.setParentTurnId(value); return this; }
-        public Builder rootTurnId(String value) { state.setRootTurnId(value); return this; }
-        public Builder metadata(Map<String, Object> value) { state.setMetadata(value); return this; }
+        public Builder executionPolicy(AgentExecutionPolicy value) {
+            state.setExecutionPolicy(value);
+            return this;
+        }
+
+        public Builder status(AgentTurnStatus value) {
+            state.setStatus(value);
+            return this;
+        }
+
+        public Builder phase(AgentTurnPhase value) {
+            state.setPhase(value);
+            return this;
+        }
+
+        public Builder messages(List<? extends Message> value) {
+            state.setMessages(value);
+            return this;
+        }
+
+        public Builder pendingToolCalls(List<ToolCall> value) {
+            state.setPendingToolCalls(value);
+            return this;
+        }
+
+        public Builder suspension(AgentSuspension value) {
+            state.setSuspension(value);
+            return this;
+        }
+
+        public Builder iterationCount(int value) {
+            state.setIterationCount(value);
+            return this;
+        }
+
+        public Builder stepCount(int value) {
+            state.setStepCount(value);
+            return this;
+        }
+
+        public Builder inputTokens(long value) {
+            state.setInputTokens(value);
+            return this;
+        }
+
+        public Builder outputTokens(long value) {
+            state.setOutputTokens(value);
+            return this;
+        }
+
+        public Builder totalTokens(long value) {
+            state.setTotalTokens(value);
+            return this;
+        }
+
+        public Builder toolCallCount(int value) {
+            state.setToolCallCount(value);
+            return this;
+        }
+
+        public Builder retryCount(int value) {
+            state.setRetryCount(value);
+            return this;
+        }
+
+        public Builder budgetExceededReason(String value) {
+            state.setBudgetExceededReason(value);
+            return this;
+        }
+
+        public Builder leaseOwner(String value) {
+            state.setLeaseOwner(value);
+            return this;
+        }
+
+        public Builder leaseId(String value) {
+            state.setLeaseId(value);
+            return this;
+        }
+
+        public Builder leaseUntil(long value) {
+            state.setLeaseUntil(value);
+            return this;
+        }
+
+        public Builder toolApprovals(Map<String, Boolean> value) {
+            state.setToolApprovals(value);
+            return this;
+        }
+
+        public Builder taskPlan(AgentTaskPlan value) {
+            state.setTaskPlan(value);
+            return this;
+        }
+
+        public Builder planningEnabled(boolean value) {
+            state.setPlanningEnabled(value);
+            return this;
+        }
+
+        public Builder planningDepth(int value) {
+            state.setPlanningDepth(value);
+            return this;
+        }
+
+        public Builder cancellationRequested(boolean value) {
+            state.setCancellationRequested(value);
+            return this;
+        }
+
+        public Builder started(boolean value) {
+            state.setStarted(value);
+            return this;
+        }
+
+        public Builder finalMessage(AiMessage value) {
+            state.setFinalMessage(value);
+            return this;
+        }
+
+        public Builder error(String type, String message) {
+            state.setError(type, message);
+            return this;
+        }
+
+        public Builder createdAt(long value) {
+            state.setCreatedAt(value);
+            return this;
+        }
+
+        public Builder completedAt(long value) {
+            state.setCompletedAt(value);
+            return this;
+        }
+
+        public Builder updatedAt(long value) {
+            state.setUpdatedAt(value);
+            return this;
+        }
+
+        public Builder nextRunnableAt(long value) {
+            state.setNextRunnableAt(value);
+            return this;
+        }
+
+        public Builder version(long value) {
+            state.setVersion(value);
+            return this;
+        }
+
+        public Builder parentTurnId(String value) {
+            state.setParentTurnId(value);
+            return this;
+        }
+
+        public Builder rootTurnId(String value) {
+            state.setRootTurnId(value);
+            return this;
+        }
+
+        public Builder metadata(Map<String, Object> value) {
+            state.setMetadata(value);
+            return this;
+        }
 
         public AgentTurnState build() {
             return state.immutableCopy();

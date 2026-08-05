@@ -43,7 +43,7 @@ public interface AgentTurnStore {
     /**
      * 原子保存 Snapshot 并生成下一个版本号。
      *
-     * @param snapshot 要保存的状态快照
+     * @param snapshot        要保存的状态快照
      * @param expectedVersion 调用方认为 Store 当前持有的版本；首次保存为 -1
      * @return 已写入 Store、包含新版本号的 Snapshot
      * @throws AgentTurnVersionConflictException Store 版本与 expectedVersion 不一致时抛出
@@ -60,7 +60,9 @@ public interface AgentTurnStore {
      */
     boolean requestCancellation(String turnId);
 
-    /** 查询指定 Turn 是否已经收到持久化取消请求。 */
+    /**
+     * 查询指定 Turn 是否已经收到持久化取消请求。
+     */
     boolean isCancellationRequested(String turnId);
 
     /**
@@ -91,11 +93,13 @@ public interface AgentTurnStore {
      * 防止同名 Worker 或已经失效的进程续租新的租约。</p>
      */
     default AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
-                                        long now, long leaseUntil) {
+                                         long now, long leaseUntil) {
         throw new UnsupportedOperationException("lease renewal is not supported");
     }
 
-    /** 仅在 Worker ID 和唯一租约令牌都匹配时释放租约。 */
+    /**
+     * 仅在 Worker ID 和唯一租约令牌都匹配时释放租约。
+     */
     default void releaseLease(String turnId, String workerId, String leaseId) {
     }
 

@@ -31,7 +31,7 @@ public final class AgentExecutionPolicy implements Serializable {
     /**
      * 默认最多允许调用模型 20 次。
      */
-    private static final int DEFAULT_MAX_ITERATIONS = 20;
+    private static final int DEFAULT_MAX_ITERATIONS = 100;
     /**
      * 默认允许 Runner 推进的最大步骤数。
      */

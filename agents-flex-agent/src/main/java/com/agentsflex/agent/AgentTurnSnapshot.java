@@ -36,7 +36,7 @@ public final class AgentTurnSnapshot implements Serializable {
      * 使用 Agent 标识和完整轮次状态创建 Snapshot。
      */
     public static AgentTurnSnapshot of(String agentId, String agentVersion,
-                                      AgentTurnState state) {
+                                       AgentTurnState state) {
         validate(agentId, agentVersion, state);
         return new AgentTurnSnapshot(agentId, agentVersion, state);
     }

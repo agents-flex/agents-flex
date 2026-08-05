@@ -36,9 +36,13 @@ final class AgentEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(AgentEventPublisher.class);
 
-    /** 观察统一不可变事件的线程安全监听器列表。 */
+    /**
+     * 观察统一不可变事件的线程安全监听器列表。
+     */
     private final List<AgentEventListener> listeners = new CopyOnWriteArrayList<>();
-    /** 为每个活动 Turn 分配进程内事件序号。 */
+    /**
+     * 为每个活动 Turn 分配进程内事件序号。
+     */
     private final Map<String, AtomicLong> sequences = new ConcurrentHashMap<>();
 
     void addListener(AgentEventListener listener) {
@@ -196,7 +200,9 @@ final class AgentEventPublisher {
                 "error", errorMessage(child.getError())));
     }
 
-    /** 创建不可变事件并同步通知全部监听器；空 Turn 不产生事件。 */
+    /**
+     * 创建不可变事件并同步通知全部监听器；空 Turn 不产生事件。
+     */
     void publish(AgentTurn turn, AgentEventType type, Map<String, ?> data) {
         if (turn == null) return;
         Map<String, Object> values = attributes(

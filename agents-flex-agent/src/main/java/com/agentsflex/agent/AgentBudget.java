@@ -18,15 +18,25 @@ public final class AgentBudget implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 从 Turn 创建开始计算的最长运行时间。 */
+    /**
+     * 从 Turn 创建开始计算的最长运行时间。
+     */
     private final long maxDurationMillis;
-    /** 模型累计输入 Token 上限。 */
+    /**
+     * 模型累计输入 Token 上限。
+     */
     private final long maxInputTokens;
-    /** 模型累计输出 Token 上限。 */
+    /**
+     * 模型累计输出 Token 上限。
+     */
     private final long maxOutputTokens;
-    /** 模型累计总 Token 上限。 */
+    /**
+     * 模型累计总 Token 上限。
+     */
     private final long maxTotalTokens;
-    /** 实际开始执行的工具调用次数上限。 */
+    /**
+     * 实际开始执行的工具调用次数上限。
+     */
     private final int maxToolCalls;
 
     private AgentBudget(Builder builder) {
@@ -37,12 +47,16 @@ public final class AgentBudget implements Serializable {
         this.maxToolCalls = builder.maxToolCalls;
     }
 
-    /** 创建所有限制均关闭的预算。 */
+    /**
+     * 创建所有限制均关闭的预算。
+     */
     public static AgentBudget unlimited() {
         return builder().build();
     }
 
-    /** 创建预算构建器。 */
+    /**
+     * 创建预算构建器。
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -51,22 +65,30 @@ public final class AgentBudget implements Serializable {
         return maxDurationMillis;
     }
 
-    /** @return 累计输入 Token 上限，0 表示不限制 */
+    /**
+     * @return 累计输入 Token 上限，0 表示不限制
+     */
     public long getMaxInputTokens() {
         return maxInputTokens;
     }
 
-    /** @return 累计输出 Token 上限，0 表示不限制 */
+    /**
+     * @return 累计输出 Token 上限，0 表示不限制
+     */
     public long getMaxOutputTokens() {
         return maxOutputTokens;
     }
 
-    /** @return 模型报告的累计总 Token 上限，0 表示不限制 */
+    /**
+     * @return 模型报告的累计总 Token 上限，0 表示不限制
+     */
     public long getMaxTotalTokens() {
         return maxTotalTokens;
     }
 
-    /** @return 业务工具调用次数上限，0 表示不限制 */
+    /**
+     * @return 业务工具调用次数上限，0 表示不限制
+     */
     public int getMaxToolCalls() {
         return maxToolCalls;
     }
@@ -81,31 +103,41 @@ public final class AgentBudget implements Serializable {
         private long maxTotalTokens;
         private int maxToolCalls;
 
-        /** 设置最长运行毫秒数，0 表示不限制。 */
+        /**
+         * 设置最长运行毫秒数，0 表示不限制。
+         */
         public Builder maxDurationMillis(long value) {
             this.maxDurationMillis = value;
             return this;
         }
 
-        /** 设置累计输入 Token 上限，0 表示不限制。 */
+        /**
+         * 设置累计输入 Token 上限，0 表示不限制。
+         */
         public Builder maxInputTokens(long value) {
             this.maxInputTokens = value;
             return this;
         }
 
-        /** 设置累计输出 Token 上限，0 表示不限制。 */
+        /**
+         * 设置累计输出 Token 上限，0 表示不限制。
+         */
         public Builder maxOutputTokens(long value) {
             this.maxOutputTokens = value;
             return this;
         }
 
-        /** 设置累计总 Token 上限，0 表示不限制。 */
+        /**
+         * 设置累计总 Token 上限，0 表示不限制。
+         */
         public Builder maxTotalTokens(long value) {
             this.maxTotalTokens = value;
             return this;
         }
 
-        /** 设置工具执行次数上限，0 表示不限制。 */
+        /**
+         * 设置工具执行次数上限，0 表示不限制。
+         */
         public Builder maxToolCalls(int value) {
             this.maxToolCalls = value;
             return this;

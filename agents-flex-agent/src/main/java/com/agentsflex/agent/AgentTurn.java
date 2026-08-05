@@ -71,7 +71,7 @@ public final class AgentTurn {
     private Throwable error;
 
     private AgentTurn(String id, Agent agent, MemoryPrompt prompt, long createdAt,
-                     AgentExecutionPolicy executionPolicy) {
+                      AgentExecutionPolicy executionPolicy) {
         this(agent, prompt, new AgentTurnState(id,
             effectiveExecutionPolicy(agent, executionPolicy), createdAt));
         state.setPlanningEnabled(agent.getPlanningPolicy().isEnabled());
@@ -143,7 +143,7 @@ public final class AgentTurn {
      * 不会被复制，系统指令始终以当前 Agent 定义为准。</p>
      */
     static AgentTurn start(Agent agent, List<? extends Message> conversationHistory,
-                          UserMessage userMessage) {
+                           UserMessage userMessage) {
         return start(agent, conversationHistory, userMessage, AgentTurnOptions.defaults());
     }
 
@@ -151,7 +151,7 @@ public final class AgentTurn {
      * 使用会话历史、结构化用户消息和单次运行选项创建 Turn。
      */
     static AgentTurn start(Agent agent, List<? extends Message> conversationHistory,
-                          UserMessage userMessage, AgentTurnOptions options) {
+                           UserMessage userMessage, AgentTurnOptions options) {
         if (userMessage == null) {
             throw new IllegalArgumentException("userMessage must not be null");
         }
@@ -596,7 +596,9 @@ public final class AgentTurn {
         }
     }
 
-    /** 将本次 Turn 绑定到业务会话；绑定信息随 Snapshot 持久化。 */
+    /**
+     * 将本次 Turn 绑定到业务会话；绑定信息随 Snapshot 持久化。
+     */
     void bindConversation(String conversationId, int baseMessageCount) {
         if (!StringUtil.hasText(conversationId)) {
             throw new IllegalArgumentException("conversationId must not be blank");
