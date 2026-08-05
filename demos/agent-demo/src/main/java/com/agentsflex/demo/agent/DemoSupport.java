@@ -6,7 +6,7 @@
  */
 package com.agentsflex.demo.agent;
 
-import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentTurn;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 
@@ -31,13 +31,13 @@ final class DemoSupport {
         System.out.println("============================================================");
     }
 
-    static void printRun(AgentRun run) {
-        System.out.println("runId       : " + run.getId());
-        System.out.println("status      : " + run.getStatus());
-        System.out.println("phase       : " + run.getPhase());
-        System.out.println("iterations  : " + run.getIterationCount());
-        System.out.println("toolCalls   : " + run.getToolCallCount());
-        System.out.println("finalOutput : " + run.getFinalOutput());
+    static void printTurn(AgentTurn turn) {
+        System.out.println("turnId       : " + turn.getId());
+        System.out.println("status      : " + turn.getStatus());
+        System.out.println("phase       : " + turn.getPhase());
+        System.out.println("iterations  : " + turn.getIterationCount());
+        System.out.println("toolCalls   : " + turn.getToolCallCount());
+        System.out.println("finalOutput : " + turn.getFinalOutput());
     }
 
     static void require(boolean condition, String message) {

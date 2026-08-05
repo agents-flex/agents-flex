@@ -7,8 +7,8 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.AgentRunVersionConflictException;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.AgentTurnVersionConflictException;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
@@ -35,24 +35,24 @@ public class AgentStateLifecycleScenarioTest {
             new AgentScenarioTestSupport.QueueChatModel();
         Agent agent = Agent.builder("state-agent").chatModel(model).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, registry);
         long now = System.currentTimeMillis();
 
-        AgentRunSnapshot[] snapshots = {
-            blocked("user", agent, AgentRunStatus.WAITING_FOR_USER,
+        AgentTurnSnapshot[] snapshots = {
+            blocked("user", agent, AgentTurnStatus.WAITING_FOR_USER,
                 AgentSuspension.userInput("need input"), 0),
-            blocked("approval", agent, AgentRunStatus.WAITING_FOR_APPROVAL,
+            blocked("approval", agent, AgentTurnStatus.WAITING_FOR_APPROVAL,
                 AgentSuspension.toolApproval("call-1", "danger"), 0),
-            blocked("child", agent, AgentRunStatus.WAITING_FOR_CHILD,
+            blocked("child", agent, AgentTurnStatus.WAITING_FOR_CHILD,
                 AgentSuspension.child("child-1"), 0),
-            blocked("retry", agent, AgentRunStatus.RETRY_SCHEDULED,
-                AgentSuspension.retry("temporary", AgentRunPhase.MODEL, now), now)
+            blocked("retry", agent, AgentTurnStatus.RETRY_SCHEDULED,
+                AgentSuspension.retry("temporary", AgentTurnPhase.MODEL, now), now)
         };
 
-        for (AgentRunSnapshot snapshot : snapshots) {
+        for (AgentTurnSnapshot snapshot : snapshots) {
             store.save(snapshot, -1);
-            AgentRun restored = runner.restore(snapshot.getState().getRunId());
+            AgentTurn restored = runner.restore(snapshot.getState().getTurnId());
             assertEquals(snapshot.getState().getStatus(), restored.getStatus());
             assertEquals(snapshot.getState().getPhase(), restored.getPhase());
             assertEquals(snapshot.getState().getSuspension().getType(),
@@ -70,15 +70,15 @@ public class AgentStateLifecycleScenarioTest {
         Agent agent = Agent.builder("blocked-agent")
             .chatModel(model)
             .tool(tool("danger", args -> "ok"))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
 
-        AgentRun waiting = runner.run(agent, "execute");
-        AgentRun stillWaiting = runner.runUntilBlocked(waiting.getId());
+        AgentTurn waiting = runner.run(agent, "execute");
+        AgentTurn stillWaiting = runner.runUntilBlocked(waiting.getId());
 
-        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, stillWaiting.getStatus());
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, stillWaiting.getStatus());
         assertEquals(1, model.getCallCount());
         assertEquals(1, stillWaiting.getPendingToolCalls().size());
     }
@@ -93,25 +93,25 @@ public class AgentStateLifecycleScenarioTest {
         Agent agent = Agent.builder("submitted-resume-agent")
             .chatModel(model)
             .tool(tool("danger", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner firstRunner = new AgentRunner(store, registry);
-        AgentRun waiting = firstRunner.run(agent, "execute");
+        AgentTurn waiting = firstRunner.run(agent, "execute");
 
         AgentRunner commandRunner = new AgentRunner(store, registry);
-        AgentRun runnable = commandRunner.submitResume(waiting.getId(),
+        AgentTurn runnable = commandRunner.submitResume(waiting.getId(),
             AgentResumeCommand.approveTool("approval-2"));
 
-        assertEquals(AgentRunStatus.RUNNING, runnable.getStatus());
-        assertEquals(AgentRunPhase.TOOLS, runnable.getPhase());
+        assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
+        assertEquals(AgentTurnPhase.TOOLS, runnable.getPhase());
         assertEquals(0, executions.get());
         assertEquals(1, model.getCallCount());
 
         AgentRunner executionRunner = new AgentRunner(store, registry);
-        AgentRun completed = executionRunner.runUntilBlocked(runnable.getId());
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        AgentTurn completed = executionRunner.runUntilBlocked(runnable.getId());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(1, executions.get());
         assertEquals(2, model.getCallCount());
     }
@@ -124,11 +124,11 @@ public class AgentStateLifecycleScenarioTest {
         Agent agent = Agent.builder("resume-validation-agent")
             .chatModel(model)
             .tool(tool("danger", args -> "ok"))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
-        AgentRun waiting = runner.run(agent, "execute");
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
+        AgentTurn waiting = runner.run(agent, "execute");
 
         try {
             runner.submitResume(waiting.getId(), AgentResumeCommand.approveTool("other-call"));
@@ -137,7 +137,7 @@ public class AgentStateLifecycleScenarioTest {
             assertTrue(expected.getMessage().contains("correlationId"));
         }
 
-        AgentRun runnable = runner.submitResume(waiting.getId(),
+        AgentTurn runnable = runner.submitResume(waiting.getId(),
             AgentResumeCommand.approveTool("approval-3"));
         try {
             runner.submitResume(runnable.getId(),
@@ -153,11 +153,11 @@ public class AgentStateLifecycleScenarioTest {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         Agent agent = Agent.builder("cas-agent").chatModel(model).build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
-        AgentRun run = runner.start(agent, "input");
-        AgentRunSnapshot stale = store.load(run.getId());
-        AgentRunSnapshot latest = store.save(stale.withState(stale.getState().toBuilder()
+        AgentTurn turn = runner.start(agent, "input");
+        AgentTurnSnapshot stale = store.load(turn.getId());
+        AgentTurnSnapshot latest = store.save(stale.withState(stale.getState().toBuilder()
             .metadata(Collections.<String, Object>singletonMap("owner", "latest"))
             .build()), stale.getState().getVersion());
 
@@ -166,26 +166,26 @@ public class AgentStateLifecycleScenarioTest {
                 .metadata(Collections.<String, Object>singletonMap("owner", "stale"))
                 .build()), stale.getState().getVersion());
             fail("Expected optimistic lock conflict");
-        } catch (AgentRunVersionConflictException expected) {
+        } catch (AgentTurnVersionConflictException expected) {
             assertNotNull(expected.getMessage());
         }
 
-        AgentRunSnapshot persisted = store.load(run.getId());
+        AgentTurnSnapshot persisted = store.load(turn.getId());
         assertEquals(latest.getState().getVersion(), persisted.getState().getVersion());
         assertEquals("latest", persisted.getState().getMetadata().get("owner"));
     }
 
-    private AgentRunSnapshot blocked(String runId, Agent agent, AgentRunStatus status,
-                                     AgentSuspension suspension, long nextRunAt) {
-        AgentRunState state = AgentRunState.builder(runId, agent.getExecutionPolicy(),
+    private AgentTurnSnapshot blocked(String turnId, Agent agent, AgentTurnStatus status,
+                                     AgentSuspension suspension, long nextRunnableAt) {
+        AgentTurnState state = AgentTurnState.builder(turnId, agent.getExecutionPolicy(),
                 System.currentTimeMillis())
             .status(status)
             .phase(suspension.getResumePhase())
             .messages(Arrays.asList(new com.agentsflex.core.message.UserMessage("input")))
             .suspension(suspension)
             .updatedAt(System.currentTimeMillis())
-            .nextRunAt(nextRunAt)
+            .nextRunnableAt(nextRunnableAt)
             .build();
-        return AgentRunSnapshot.of(agent.getId(), agent.getVersion(), state);
+        return AgentTurnSnapshot.of(agent.getId(), agent.getVersion(), state);
     }
 }

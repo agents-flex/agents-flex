@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * 统一调用同步或流式 ChatModel，并把流式增量转换为 Agent 实时事件。
  *
- * <p>该组件只负责一次模型请求，不修改 Run 阶段、消息历史或 Snapshot。模型调用前后的生命周期、
+ * <p>该组件只负责一次模型请求，不修改 Turn 阶段、消息历史或 Snapshot。模型调用前后的生命周期、
  * 重试和预算处理仍由 AgentRunner 负责。</p>
  */
 final class AgentModelInvoker {
@@ -39,25 +39,25 @@ final class AgentModelInvoker {
     }
 
     /**
-     * 根据当前 Run 的 streaming 设置选择模型调用方式。
+     * 根据当前 Turn 的 streaming 设置选择模型调用方式。
      */
-    AiMessageResponse invoke(AgentRun run, Prompt prompt) {
-        if (!run.isStreaming()) {
-            return run.getAgent().getChatModel().chat(prompt, run.getAgent().getChatOptions());
+    AiMessageResponse invoke(AgentTurn turn, Prompt prompt) {
+        if (!turn.isStreaming()) {
+            return turn.getAgent().getChatModel().chat(prompt, turn.getAgent().getChatOptions());
         }
-        return invokeStreaming(run, prompt);
+        return invokeStreaming(turn, prompt);
     }
 
     /**
      * 等待异步流关闭，并返回与同步接口一致的完整 AiMessageResponse。
      */
-    private AiMessageResponse invokeStreaming(AgentRun run, Prompt prompt) {
+    private AiMessageResponse invokeStreaming(AgentTurn turn, Prompt prompt) {
         CountDownLatch closed = new CountDownLatch(1);
         AtomicReference<AiMessage> fullMessage = new AtomicReference<>();
         AtomicReference<ChatContext> chatContext = new AtomicReference<>();
         AtomicReference<Throwable> failure = new AtomicReference<>();
 
-        run.getAgent().getChatModel().chatStream(prompt, new StreamResponseListener() {
+        turn.getAgent().getChatModel().chatStream(prompt, new StreamResponseListener() {
             /**
              * 接收模型产生的单个流式帧。
              *
@@ -69,7 +69,7 @@ final class AgentModelInvoker {
                 if (context != null) chatContext.set(context.getChatContext());
                 AiMessage message = response == null ? null : response.getMessage();
                 if (message == null) return;
-                publishDeltas(run, message);
+                publishDeltas(turn, message);
                 if (message.isFinalDelta()) fullMessage.set(message);
             }
 
@@ -100,9 +100,9 @@ final class AgentModelInvoker {
                 }
                 closed.countDown();
             }
-        }, run.getAgent().getChatOptions());
+        }, turn.getAgent().getChatOptions());
 
-        awaitClose(run, closed);
+        awaitClose(turn, closed);
         rethrowFailure(failure.get());
         ChatContext context = chatContext.get();
         if (context == null) {
@@ -115,14 +115,14 @@ final class AgentModelInvoker {
     /**
      * 最终完整帧不重复发布正文，只发布真正的增量内容。
      */
-    private void publishDeltas(AgentRun run, AiMessage message) {
+    private void publishDeltas(AgentTurn turn, AiMessage message) {
         if (message.isFinalDelta()) return;
         if (StringUtil.hasText(message.getContent())) {
-            eventPublisher.publish(run, AgentEventType.MODEL_TEXT_DELTA,
+            eventPublisher.publish(turn, AgentEventType.MODEL_TEXT_DELTA,
                 data("content", message.getContent()));
         }
         if (StringUtil.hasText(message.getReasoningContent())) {
-            eventPublisher.publish(run, AgentEventType.MODEL_REASONING_DELTA,
+            eventPublisher.publish(turn, AgentEventType.MODEL_REASONING_DELTA,
                 data("content", message.getReasoningContent()));
         }
         if (message.hasToolCalls()) {
@@ -134,22 +134,22 @@ final class AgentModelInvoker {
                 item.put("arguments", call.getArguments());
                 toolCalls.add(item);
             }
-            eventPublisher.publish(run, AgentEventType.MODEL_TOOL_CALL_DELTA,
+            eventPublisher.publish(turn, AgentEventType.MODEL_TOOL_CALL_DELTA,
                 data("toolCalls", toolCalls));
         }
     }
 
     /**
-     * 有总时长预算时，流式等待不会超过当前 Run 的剩余时间。
+     * 有总时长预算时，流式等待不会超过当前 Turn 的剩余时间。
      */
-    private void awaitClose(AgentRun run, CountDownLatch closed) {
+    private void awaitClose(AgentTurn turn, CountDownLatch closed) {
         try {
-            long maxDuration = run.getExecutionPolicy().getBudget().getMaxDurationMillis();
+            long maxDuration = turn.getExecutionPolicy().getBudget().getMaxDurationMillis();
             if (maxDuration <= 0) {
                 closed.await();
                 return;
             }
-            long remaining = maxDuration - (System.currentTimeMillis() - run.getCreatedAt());
+            long remaining = maxDuration - (System.currentTimeMillis() - turn.getCreatedAt());
             if (remaining <= 0 || !closed.await(remaining, TimeUnit.MILLISECONDS)) {
                 throw new IllegalStateException("streaming model call exceeded maxDurationMillis");
             }

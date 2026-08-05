@@ -9,7 +9,7 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -31,23 +31,23 @@ public class AgentLongRunningScenarioTest {
 
     @Test
     public void shouldAllowAnotherWorkerToClaimOnlyAfterLeaseExpires() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         Agent agent = Agent.builder("lease-expiry-agent").chatModel(model).build();
-        AgentRun run = new AgentRunner(store, new InMemoryAgentLoader()).start(agent, "work");
+        AgentTurn turn = new AgentRunner(store, new InMemoryAgentLoader()).start(agent, "work");
         long now = System.currentTimeMillis();
 
-        List<AgentRunSnapshot> first = store.claimRunnable("worker-a", now, 1000, 1);
-        List<AgentRunSnapshot> beforeExpiry =
+        List<AgentTurnSnapshot> first = store.claimRunnable("worker-a", now, 1000, 1);
+        List<AgentTurnSnapshot> beforeExpiry =
             store.claimRunnable("worker-b", now + 999, 1000, 1);
-        List<AgentRunSnapshot> afterExpiry =
+        List<AgentTurnSnapshot> afterExpiry =
             store.claimRunnable("worker-b", now + 1001, 1000, 1);
 
         assertEquals(1, first.size());
         assertTrue(beforeExpiry.isEmpty());
         assertEquals(1, afterExpiry.size());
-        assertEquals(run.getId(), afterExpiry.get(0).getState().getRunId());
+        assertEquals(turn.getId(), afterExpiry.get(0).getState().getTurnId());
         assertEquals("worker-b", afterExpiry.get(0).getState().getLeaseOwner());
     }
 
@@ -66,23 +66,23 @@ public class AgentLongRunningScenarioTest {
         Agent parentAgent = Agent.builder("worker-parent").chatModel(parentModel).build();
         Agent childAgent = Agent.builder("worker-child").chatModel(childModel).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun parent = runner.start(parentAgent, "parent input");
-        AgentRun child = runner.startChild(parent, childAgent.getId(), "child input");
+        AgentTurn parent = runner.start(parentAgent, "parent input");
+        AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
         AgentWorker worker = new AgentWorker("child-worker", runner, 10000);
 
-        List<AgentRun> childResult = worker.pollAndRun(1);
-        AgentRun resumedParent = runner.restore(parent.getId());
-        List<AgentRun> parentResult = worker.pollAndRun(1);
+        List<AgentTurn> childResult = worker.pollAndRun(1);
+        AgentTurn resumedParent = runner.restore(parent.getId());
+        List<AgentTurn> parentResult = worker.pollAndRun(1);
 
         assertEquals(1, childResult.size());
         assertEquals(child.getId(), childResult.get(0).getId());
-        assertEquals(AgentRunStatus.COMPLETED, childResult.get(0).getStatus());
-        assertEquals(AgentRunStatus.RUNNING, resumedParent.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, childResult.get(0).getStatus());
+        assertEquals(AgentTurnStatus.RUNNING, resumedParent.getStatus());
         assertEquals(1, parentResult.size());
         assertEquals(parent.getId(), parentResult.get(0).getId());
-        assertEquals(AgentRunStatus.COMPLETED, parentResult.get(0).getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, parentResult.get(0).getStatus());
         assertEquals("parent output", parentResult.get(0).getFinalOutput());
     }
 
@@ -96,16 +96,16 @@ public class AgentLongRunningScenarioTest {
         Agent parentAgent = Agent.builder("idempotent-parent").chatModel(parentModel).build();
         Agent childAgent = Agent.builder("idempotent-child").chatModel(childModel).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
-        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(), registry);
-        AgentRun parent = runner.start(parentAgent, "parent input");
-        AgentRun child = runner.startChild(parent, childAgent.getId(), "child input");
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(), registry);
+        AgentTurn parent = runner.start(parentAgent, "parent input");
+        AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
         child = runner.runUntilBlocked(child);
 
-        AgentRun firstResume = runner.resumeParentFromChild(child);
-        AgentRun duplicateResume = runner.resumeParentFromChild(child);
+        AgentTurn firstResume = runner.resumeParentFromChild(child);
+        AgentTurn duplicateResume = runner.resumeParentFromChild(child);
 
-        assertEquals(AgentRunStatus.RUNNING, firstResume.getStatus());
-        assertEquals(AgentRunStatus.RUNNING, duplicateResume.getStatus());
+        assertEquals(AgentTurnStatus.RUNNING, firstResume.getStatus());
+        assertEquals(AgentTurnStatus.RUNNING, duplicateResume.getStatus());
         assertEquals(1, countChildResultMessages(duplicateResume.getPrompt().getMessages()));
     }
 
@@ -119,25 +119,25 @@ public class AgentLongRunningScenarioTest {
         Agent agent = Agent.builder("event-agent")
             .chatModel(model)
             .tool(tool("event-tool", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
-        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore turnStore = new InMemoryAgentTurnStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         List<AgentEvent> events = new ArrayList<>();
-        AgentRunner firstRunner = new AgentRunner(runStore, registry).addEventListener(events::add);
-        AgentRun waiting = firstRunner.run(agent, "execute");
+        AgentRunner firstRunner = new AgentRunner(turnStore, registry).addEventListener(events::add);
+        AgentTurn waiting = firstRunner.run(agent, "execute");
 
-        AgentRunner secondRunner = new AgentRunner(runStore, registry).addEventListener(events::add);
-        AgentRun completed = secondRunner.resume(waiting.getId(),
+        AgentRunner secondRunner = new AgentRunner(turnStore, registry).addEventListener(events::add);
+        AgentTurn completed = secondRunner.resume(waiting.getId(),
             AgentResumeCommand.approveTool("event-call")
                 .withMetadata("approverId", "admin-7"));
 
         assertFalse(events.isEmpty());
         assertBefore(events, AgentEventType.TOOL_APPROVAL_REQUESTED,
-            AgentEventType.RUN_RESUMED);
-        assertBefore(events, AgentEventType.RUN_RESUMED, AgentEventType.TOOL_STARTED);
+            AgentEventType.TURN_RESUMED);
+        assertBefore(events, AgentEventType.TURN_RESUMED, AgentEventType.TOOL_STARTED);
         assertBefore(events, AgentEventType.TOOL_STARTED, AgentEventType.TOOL_COMPLETED);
-        assertBefore(events, AgentEventType.TOOL_COMPLETED, AgentEventType.RUN_COMPLETED);
+        assertBefore(events, AgentEventType.TOOL_COMPLETED, AgentEventType.TURN_COMPLETED);
         AgentEvent toolStarted = find(events, AgentEventType.TOOL_STARTED);
         assertEquals("event-call", toolStarted.getData().get("toolCallId"));
         assertEquals("event-tool", toolStarted.getData().get("toolName"));
@@ -156,31 +156,31 @@ public class AgentLongRunningScenarioTest {
         Agent agent = Agent.builder("cancel-agent")
             .chatModel(model)
             .tool(tool("danger", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
-        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore turnStore = new InMemoryAgentTurnStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         List<AgentEvent> events = new ArrayList<>();
-        AgentRunner requestRunner = new AgentRunner(runStore, registry)
+        AgentRunner requestRunner = new AgentRunner(turnStore, registry)
             .addEventListener(events::add);
-        AgentRun waiting = requestRunner.run(agent, "execute");
+        AgentTurn waiting = requestRunner.run(agent, "execute");
 
-        AgentRunner workerRunner = new AgentRunner(runStore, registry)
+        AgentRunner workerRunner = new AgentRunner(turnStore, registry)
             .addEventListener(events::add);
-        AgentRun requested = workerRunner.requestCancellation(waiting.getId());
+        AgentTurn requested = workerRunner.requestCancellation(waiting.getId());
         assertTrue(requested.isCancellationRequested());
-        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, requested.getStatus());
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, requested.getStatus());
 
-        List<AgentRun> processed;
+        List<AgentTurn> processed;
         try (AgentWorker worker = new AgentWorker("cancel-worker", workerRunner, 30_000)) {
             processed = worker.pollAndRun(1);
         }
 
         assertEquals(1, processed.size());
-        assertEquals(AgentRunStatus.CANCELLED, processed.get(0).getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, processed.get(0).getStatus());
         assertEquals(0, executions.get());
         assertBefore(events, AgentEventType.CANCELLATION_REQUESTED,
-            AgentEventType.RUN_CANCELLED);
+            AgentEventType.TURN_CANCELLED);
     }
 
     @Test
@@ -188,12 +188,12 @@ public class AgentLongRunningScenarioTest {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         Agent agent = Agent.builder("cancel-merge-agent").chatModel(model).build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-        AgentRun stale = runner.start(agent, "work");
+        AgentTurn stale = runner.start(agent, "work");
 
         runner.requestCancellation(stale.getId());
-        AgentRunSnapshot saved = runner.saveSnapshot(stale);
+        AgentTurnSnapshot saved = runner.saveSnapshot(stale);
 
         assertTrue(saved.getState().isCancellationRequested());
         assertTrue(stale.isCancellationRequested());

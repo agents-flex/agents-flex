@@ -9,7 +9,7 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentToolInvocation;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
@@ -53,15 +53,15 @@ public class AgentPlatformExtensionScenarioTest {
             .attribute("releaseNote", "updated")
             .build();
 
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(versionOne, versionTwo);
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun started = runner.start(versionOne, "execute with frozen definition");
+        AgentTurn started = runner.start(versionOne, "execute with frozen definition");
 
         assertSame(versionTwo, registry.loadActive("versioned-agent"));
 
-        AgentRun restored = runner.restore(started.getId());
-        AgentRun completed = runner.runUntilBlocked(restored);
+        AgentTurn restored = runner.restore(started.getId());
+        AgentTurn completed = runner.runUntilBlocked(restored);
 
         assertEquals("1", restored.getAgent().getVersion());
         assertEquals("answer from version 1", completed.getFinalOutput());
@@ -81,26 +81,26 @@ public class AgentPlatformExtensionScenarioTest {
             .executionPolicy(AgentExecutionPolicy.builder().maxIterations(9).build())
             .build();
 
-        AgentRunOptions options = AgentRunOptions.builder()
+        AgentTurnOptions options = AgentTurnOptions.builder()
             .executionPolicy(AgentExecutionPolicy.builder().maxIterations(1).build())
             .metadata("taskType", "simple-query")
             .metadata("recommendationReason", "历史任务通常一次完成")
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner firstRunner = new AgentRunner(store, registry);
-        AgentRun run = firstRunner.start(agent, "run once", options);
+        AgentTurn turn = firstRunner.start(agent, "turn once", options);
 
-        AgentStepResult firstStep = firstRunner.step(run);
+        AgentStepResult firstStep = firstRunner.step(turn);
         assertEquals(1, firstStep.getToolMessages().size());
-        assertEquals(AgentRunStatus.RUNNING, run.getStatus());
+        assertEquals(AgentTurnStatus.RUNNING, turn.getStatus());
         AgentRunner secondRunner = new AgentRunner(store, registry);
-        AgentRun restored = secondRunner.restore(run.getId());
-        AgentRun stopped = secondRunner.runUntilBlocked(restored);
+        AgentTurn restored = secondRunner.restore(turn.getId());
+        AgentTurn stopped = secondRunner.runUntilBlocked(restored);
 
         assertEquals(1, restored.getExecutionPolicy().getMaxIterations());
         assertEquals("simple-query", restored.getMetadata().get("taskType"));
-        assertEquals(AgentRunStatus.MAX_ITERATIONS_REACHED, stopped.getStatus());
+        assertEquals(AgentTurnStatus.MAX_ITERATIONS_REACHED, stopped.getStatus());
         assertEquals(1, stopped.getIterationCount());
     }
 
@@ -122,7 +122,7 @@ public class AgentPlatformExtensionScenarioTest {
             .version("1")
             .chatModel(versionOneModel)
             .tool(tool("shared", arguments -> "tool-version-1"))
-            .toolApprovalPolicy((run, call, value) ->
+            .toolApprovalPolicy((turn, call, value) ->
                 com.agentsflex.agent.tool.ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
         Agent versionTwo = Agent.builder("versioned-tool-agent")
@@ -132,14 +132,14 @@ public class AgentPlatformExtensionScenarioTest {
             .tool(tool("shared", arguments -> "tool-version-2"))
             .build();
 
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(versionOne, versionTwo);
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun waiting = runner.run(versionOne, "use version one tool");
-        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
+        AgentTurn waiting = runner.run(versionOne, "use version one tool");
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
 
         runner.start(versionTwo, "register newer version");
-        AgentRun completed = runner.resume(waiting.getId(),
+        AgentTurn completed = runner.resume(waiting.getId(),
             AgentResumeCommand.approveTool("shared-call"));
 
         assertEquals("version 1 completed", completed.getFinalOutput());
@@ -168,12 +168,12 @@ public class AgentPlatformExtensionScenarioTest {
         prompt.addUserMessage("third");
         prompt.addAiMessage("fourth");
 
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-        AgentRun run = AgentRun.fromPrompt(agent, prompt);
-        runner.run(run);
+        AgentTurn turn = AgentTurn.fromPrompt(agent, prompt);
+        runner.run(turn);
 
-        AgentRunSnapshot snapshot = store.load(run.getId());
+        AgentTurnSnapshot snapshot = store.load(turn.getId());
         assertEquals(6, snapshot.getState().getMessages().size());
         assertEquals("first", snapshot.getState().getMessages().get(1).getTextContent());
         assertEquals("done", snapshot.getState().getMessages().get(5).getTextContent());
@@ -196,12 +196,12 @@ public class AgentPlatformExtensionScenarioTest {
             }))
             .build();
 
-        AgentRun completed = new AgentRunner().run(agent, "write data");
+        AgentTurn completed = new AgentRunner().run(agent, "write data");
         AgentToolInvocation invocation = captured.get();
 
         assertNotNull(invocation);
-        assertEquals(completed.getId(), invocation.getRunId());
-        assertEquals(completed.getRootRunId(), invocation.getRootRunId());
+        assertEquals(completed.getId(), invocation.getTurnId());
+        assertEquals(completed.getRootTurnId(), invocation.getRootTurnId());
         assertEquals("invocation-agent", invocation.getAgentId());
         assertEquals("4", invocation.getAgentVersion());
         assertEquals("write-42", invocation.getToolCallId());
@@ -221,8 +221,8 @@ public class AgentPlatformExtensionScenarioTest {
         List<AgentEvent> events = new ArrayList<>();
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), agentLoader).addEventListener(events::add);
-        AgentRunOptions options = AgentRunOptions.builder()
+            new InMemoryAgentTurnStore(), agentLoader).addEventListener(events::add);
+        AgentTurnOptions options = AgentTurnOptions.builder()
             .metadata("accountId", "user-42")
             .metadata("module", "agent-console")
             .build();
@@ -253,12 +253,12 @@ public class AgentPlatformExtensionScenarioTest {
                 .build())
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "must stop");
+        AgentTurn turn = new AgentRunner().run(agent, "must stop");
 
-        assertEquals(AgentRunStatus.MAX_STEPS_REACHED, run.getStatus());
-        assertEquals(2, run.getStepCount());
-        assertEquals(2, run.getIterationCount());
-        assertEquals(2, run.getToolCallCount());
+        assertEquals(AgentTurnStatus.MAX_STEPS_REACHED, turn.getStatus());
+        assertEquals(2, turn.getStepCount());
+        assertEquals(2, turn.getIterationCount());
+        assertEquals(2, turn.getToolCallCount());
     }
 
     private AgentEvent find(List<AgentEvent> events, AgentEventType type) {

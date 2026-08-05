@@ -50,11 +50,11 @@ public class AgentMiddlewareContractTest {
             }
         };
 
-        AgentRun run = new AgentRunner().run(Agent.builder("prompt-middleware")
+        AgentTurn turn = new AgentRunner().run(Agent.builder("prompt-middleware")
             .chatModel(model).middleware(middleware).build(), "original");
 
         assertEquals("rewritten", observed.get());
-        assertEquals("model-result", run.getFinalOutput());
+        assertEquals("model-result", turn.getFinalOutput());
     }
 
     @Test
@@ -68,11 +68,11 @@ public class AgentMiddlewareContractTest {
             }
         };
 
-        AgentRun run = new AgentRunner().run(Agent.builder("response-middleware")
+        AgentTurn turn = new AgentRunner().run(Agent.builder("response-middleware")
             .chatModel(observingModel(new AtomicReference<String>(), "raw"))
             .middleware(middleware).build(), "input");
 
-        assertEquals("transformed", run.getFinalOutput());
+        assertEquals("transformed", turn.getFinalOutput());
     }
 
     @Test
@@ -92,11 +92,11 @@ public class AgentMiddlewareContractTest {
             .middleware(middleware)
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "input");
+        AgentTurn turn = new AgentRunner().run(agent, "input");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
         assertEquals(0, executions.get());
-        assertEquals("cached", lastToolMessage(run).getContent());
+        assertEquals("cached", lastToolMessage(turn).getContent());
     }
 
     @Test
@@ -115,9 +115,9 @@ public class AgentMiddlewareContractTest {
             .middleware(middleware)
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "input");
+        AgentTurn turn = new AgentRunner().run(agent, "input");
 
-        assertEquals("wrapped-raw", lastToolMessage(run).getContent());
+        assertEquals("wrapped-raw", lastToolMessage(turn).getContent());
     }
 
     @Test
@@ -142,12 +142,12 @@ public class AgentMiddlewareContractTest {
             }
         };
         AgentRunner runner = new AgentRunner();
-        AgentRun run = runner.start(Agent.builder("middleware-finally")
+        AgentTurn turn = runner.start(Agent.builder("middleware-finally")
             .chatModel(observingModel(new AtomicReference<String>(), "unused"))
             .middleware(outer).middleware(inner).build(), "input");
 
         try {
-            runner.step(run);
+            runner.step(turn);
         } catch (RuntimeException expected) {
             assertEquals("failed", expected.getMessage());
         }
@@ -173,10 +173,10 @@ public class AgentMiddlewareContractTest {
                 .build())
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "input");
+        AgentTurn turn = new AgentRunner().run(agent, "input");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
-        assertTrue(lastToolMessage(run).getContent().contains("policy unavailable"));
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertTrue(lastToolMessage(turn).getContent().contains("policy unavailable"));
     }
 
     private ChatModel observingModel(AtomicReference<String> observed, String result) {
@@ -207,8 +207,8 @@ public class AgentMiddlewareContractTest {
         return model;
     }
 
-    private ToolMessage lastToolMessage(AgentRun run) {
-        List<com.agentsflex.core.message.Message> messages = run.getPrompt()
+    private ToolMessage lastToolMessage(AgentTurn turn) {
+        List<com.agentsflex.core.message.Message> messages = turn.getPrompt()
             .getMemory().getMessages(Integer.MAX_VALUE);
         for (int i = messages.size() - 1; i >= 0; i--) {
             if (messages.get(i) instanceof ToolMessage) return (ToolMessage) messages.get(i);

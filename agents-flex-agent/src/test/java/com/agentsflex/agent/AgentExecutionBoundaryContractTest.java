@@ -6,8 +6,8 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.AgentRunVersionConflictException;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.AgentTurnVersionConflictException;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
 import com.agentsflex.core.message.AiMessage;
@@ -64,12 +64,12 @@ public class AgentExecutionBoundaryContractTest {
         };
         AgentRunner runner = new AgentRunner().addEventListener(events::add);
 
-        AgentRun run = runner.run(Agent.builder("partial-stream")
+        AgentTurn turn = runner.run(Agent.builder("partial-stream")
                 .chatModel(model).build(), "input",
-            AgentRunOptions.builder().streaming(true).build());
+            AgentTurnOptions.builder().streaming(true).build());
 
-        assertEquals(AgentRunStatus.FAILED, run.getStatus());
-        assertTrue(run.getError().getMessage().contains("stream interrupted"));
+        assertEquals(AgentTurnStatus.FAILED, turn.getStatus());
+        assertTrue(turn.getError().getMessage().contains("stream interrupted"));
         assertTrue(hasEventWithContent(events, AgentEventType.MODEL_TEXT_DELTA,
             "partial"));
         assertEquals(1, countTerminalEvents(events));
@@ -91,18 +91,18 @@ public class AgentExecutionBoundaryContractTest {
             }))
             .build();
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
-        AgentRun started = runner.start(agent, "input");
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
+        AgentTurn started = runner.start(agent, "input");
         ExecutorService executor = Executors.newSingleThreadExecutor();
-        Future<AgentRun> result = executor.submit(() -> runner.run(started));
+        Future<AgentTurn> result = executor.submit(() -> runner.run(started));
         assertTrue(entered.await(5, TimeUnit.SECONDS));
 
         runner.requestCancellation(started.getId());
         release.countDown();
-        AgentRun cancelled = result.get(5, TimeUnit.SECONDS);
+        AgentTurn cancelled = result.get(5, TimeUnit.SECONDS);
         executor.shutdownNow();
 
-        assertEquals(AgentRunStatus.CANCELLED, cancelled.getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, cancelled.getStatus());
         assertEquals(1, model.getCallCount());
     }
 
@@ -119,18 +119,18 @@ public class AgentExecutionBoundaryContractTest {
             .chatModel(model)
             .tool(tool("first", args -> { executions.add("first"); return "one"; }))
             .tool(tool("second", args -> { executions.add("second"); return "two"; }))
-            .toolApprovalPolicy((run, call, value) -> "first".equals(call.getName())
+            .toolApprovalPolicy((turn, call, value) -> "first".equals(call.getName())
                 ? ToolApprovalDecision.REQUIRE_APPROVAL : ToolApprovalDecision.ALLOW)
             .build();
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
 
-        AgentRun waiting = runner.run(agent, "input");
-        AgentRun completed = runner.resume(waiting,
+        AgentTurn waiting = runner.run(agent, "input");
+        AgentTurn completed = runner.resume(waiting,
             AgentResumeCommand.approveTool("first-1"));
 
         assertEquals(Arrays.asList("first", "second"), executions);
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(2, toolMessages(completed).size());
         assertEquals("first-1", toolMessages(completed).get(0).getToolCallId());
         assertEquals("second-1", toolMessages(completed).get(1).getToolCallId());
@@ -146,12 +146,12 @@ public class AgentExecutionBoundaryContractTest {
         Agent agent = Agent.builder("direct-denial")
             .chatModel(model)
             .tool(tool("delete", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.deny()
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.deny()
                 .code("POLICY_DENY").reason("protected resource")
                 .metadata("rule", "R-7").build())
             .build();
 
-        AgentRun completed = new AgentRunner().run(agent, "delete");
+        AgentTurn completed = new AgentRunner().run(agent, "delete");
 
         assertEquals(0, executions.get());
         ToolMessage denied = toolMessages(completed).get(0);
@@ -174,9 +174,9 @@ public class AgentExecutionBoundaryContractTest {
                 .build())
             .build();
 
-        AgentRun completed = new AgentRunner().run(agent, "input");
+        AgentTurn completed = new AgentRunner().run(agent, "input");
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertTrue(toolMessages(completed).get(0).getContent().contains("error"));
     }
 
@@ -195,16 +195,16 @@ public class AgentExecutionBoundaryContractTest {
                 .build())
             .build();
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
 
-        AgentRun run = runner.run(agent, "input");
+        AgentTurn turn = runner.run(agent, "input");
         new AgentWorker("retry-worker", runner, 1000).pollAndRun(1);
-        List<AgentRun> finalAttempt = new AgentWorker("retry-worker", runner, 1000)
+        List<AgentTurn> finalAttempt = new AgentWorker("retry-worker", runner, 1000)
             .pollAndRun(1);
 
-        assertEquals(AgentRunStatus.RETRY_SCHEDULED, run.getStatus());
+        assertEquals(AgentTurnStatus.RETRY_SCHEDULED, turn.getStatus());
         assertEquals(1, finalAttempt.size());
-        assertEquals(AgentRunStatus.FAILED, finalAttempt.get(0).getStatus());
+        assertEquals(AgentTurnStatus.FAILED, finalAttempt.get(0).getStatus());
         assertEquals(3, model.getCallCount());
         assertEquals(2, finalAttempt.get(0).getRetryCount());
     }
@@ -219,26 +219,26 @@ public class AgentExecutionBoundaryContractTest {
                                    ChatOptions options) { throw new UnsupportedOperationException(); }
         };
 
-        AgentRun run = new AgentRunner().run(Agent.builder("null-response")
+        AgentTurn turn = new AgentRunner().run(Agent.builder("null-response")
             .chatModel(model).build(), "input");
 
-        assertEquals(AgentRunStatus.FAILED, run.getStatus());
-        assertTrue(run.getError().getMessage().contains("null response"));
+        assertEquals(AgentTurnStatus.FAILED, turn.getStatus());
+        assertTrue(turn.getError().getMessage().contains("null response"));
     }
 
     @Test
     public void shouldAllowOnlyOneConcurrentResumeToSnapshot() throws Exception {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         Agent agent = Agent.builder("concurrent-resume")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner creator = new AgentRunner(store, registry);
-        AgentRun waiting = creator.start(agent, "input");
+        AgentTurn waiting = creator.start(agent, "input");
         creator.suspend(waiting, AgentSuspension.userInput("value"));
         AgentRunner firstRunner = new AgentRunner(store, registry);
         AgentRunner secondRunner = new AgentRunner(store, registry);
-        AgentRun first = firstRunner.restore(waiting.getId());
-        AgentRun second = secondRunner.restore(waiting.getId());
+        AgentTurn first = firstRunner.restore(waiting.getId());
+        AgentTurn second = secondRunner.restore(waiting.getId());
         CountDownLatch start = new CountDownLatch(1);
         AtomicInteger success = new AtomicInteger();
         AtomicInteger conflicts = new AtomicInteger();
@@ -251,16 +251,16 @@ public class AgentExecutionBoundaryContractTest {
 
         assertEquals(1, success.get());
         assertEquals(1, conflicts.get());
-        assertEquals(AgentRunStatus.RUNNING, creator.restore(waiting.getId()).getStatus());
+        assertEquals(AgentTurnStatus.RUNNING, creator.restore(waiting.getId()).getStatus());
     }
 
-    private void resume(AgentRunner runner, AgentRun run, CountDownLatch start,
+    private void resume(AgentRunner runner, AgentTurn turn, CountDownLatch start,
                         AtomicInteger success, AtomicInteger conflicts) {
         await(start);
         try {
-            runner.submitResume(run, AgentResumeCommand.userInput("answer"));
+            runner.submitResume(turn, AgentResumeCommand.userInput("answer"));
             success.incrementAndGet();
-        } catch (AgentRunVersionConflictException expected) {
+        } catch (AgentTurnVersionConflictException expected) {
             conflicts.incrementAndGet();
         }
     }
@@ -278,17 +278,17 @@ public class AgentExecutionBoundaryContractTest {
     private int countTerminalEvents(List<AgentEvent> events) {
         int result = 0;
         for (AgentEvent event : events) {
-            if (event.getType() == AgentEventType.RUN_COMPLETED
-                || event.getType() == AgentEventType.RUN_FAILED
-                || event.getType() == AgentEventType.RUN_CANCELLED
+            if (event.getType() == AgentEventType.TURN_COMPLETED
+                || event.getType() == AgentEventType.TURN_FAILED
+                || event.getType() == AgentEventType.TURN_CANCELLED
                 || event.getType() == AgentEventType.BUDGET_EXCEEDED) result++;
         }
         return result;
     }
 
-    private List<ToolMessage> toolMessages(AgentRun run) {
+    private List<ToolMessage> toolMessages(AgentTurn turn) {
         List<ToolMessage> result = new ArrayList<>();
-        for (Message message : run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE)) {
+        for (Message message : turn.getPrompt().getMemory().getMessages(Integer.MAX_VALUE)) {
             if (message instanceof ToolMessage) result.add((ToolMessage) message);
         }
         return result;

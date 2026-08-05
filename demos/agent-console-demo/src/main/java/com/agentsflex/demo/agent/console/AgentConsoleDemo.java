@@ -36,9 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 使用真实大模型演示持续对话、原生 ToolCall 和 Human-in-the-loop 的控制台程序。
  *
- * <p>业务代码维护 conversationId 和 ChatMemory，每条普通用户消息都携带历史消息创建新的 AgentRun。
- * 模型直接回答时 Run 一步完成；模型选择工具时 Runner 自动执行工具并继续调用模型；高风险工具会
- * 先进入审批等待状态，控制台收集人的决定后按 runId 恢复原 Run。</p>
+ * <p>业务代码维护 conversationId 和 ChatMemory，每条普通用户消息都携带历史消息创建新的 AgentTurn。
+ * 模型直接回答时 Turn 一步完成；模型选择工具时 Runner 自动执行工具并继续调用模型；高风险工具会
+ * 先进入审批等待状态，控制台收集人的决定后按 turnId 恢复原 Turn。</p>
  */
 public final class AgentConsoleDemo {
 
@@ -59,7 +59,7 @@ public final class AgentConsoleDemo {
         Tool createTicket = createTicketTool(ticketSequence);
         Agent agent = createAgent(chatModel, currentTime, createTicket);
 
-        // Runner 只执行独立 Run；会话标识和 ChatMemory 由业务代码维护。
+        // Runner 只执行独立 Turn；会话标识和 ChatMemory 由业务代码维护。
         AgentRunner runner = AgentRunner.builder()
             .agentLoader(new InMemoryAgentLoader(agent))
             .build();
@@ -98,19 +98,19 @@ public final class AgentConsoleDemo {
 
             UserMessage userMessage = new UserMessage(input);
             try {
-                AgentRun run = runner.run(agent, memory.getMessages(Integer.MAX_VALUE), userMessage,
-                    AgentRunOptions.builder()
+                AgentTurn turn = runner.run(agent, memory.getMessages(Integer.MAX_VALUE), userMessage,
+                    AgentTurnOptions.builder()
                         .metadata("conversationId", conversationId)
                         .build());
-                run = handleBlockedRun(reader, runner, run);
-                if (run == null) {
-                    System.out.println("对话已结束，尚未审批的 Run 保留在等待状态。");
+                turn = handleBlockedTurn(reader, runner, turn);
+                if (turn == null) {
+                    System.out.println("对话已结束，尚未审批的 Turn 保留在等待状态。");
                     return;
                 }
-                if (run.getStatus().isTerminal()) {
-                    replaceMemory(memory, run.getConversationHistory());
+                if (turn.getStatus().isTerminal()) {
+                    replaceMemory(memory, turn.getConversationHistory());
                 }
-                printRunResult(run);
+                printTurnResult(turn);
             } catch (RuntimeException error) {
                 System.err.println("本轮执行异常: " + error.getMessage());
             }
@@ -118,17 +118,17 @@ public final class AgentConsoleDemo {
     }
 
     /**
-     * 处理 Run 的外部等待状态。
+     * 处理 Turn 的外部等待状态。
      *
-     * <p>审批和用户补充都恢复当前 runId，不会创建新的 AgentRun。循环结构允许一次任务中连续出现
+     * <p>审批和用户补充都恢复当前 turnId，不会创建新的 AgentTurn。循环结构允许一次任务中连续出现
      * 多个审批点。</p>
      */
-    private static AgentRun handleBlockedRun(BufferedReader reader, AgentRunner runner,
-                                             AgentRun run)
+    private static AgentTurn handleBlockedTurn(BufferedReader reader, AgentRunner runner,
+                                             AgentTurn turn)
         throws IOException {
-        AgentRun current = run;
+        AgentTurn current = turn;
         while (current.getStatus().isBlocked()) {
-            if (current.getStatus() == AgentRunStatus.WAITING_FOR_APPROVAL) {
+            if (current.getStatus() == AgentTurnStatus.WAITING_FOR_APPROVAL) {
                 AgentResumeCommand decision = readApprovalDecision(reader, current);
                 if (decision == null) {
                     return null;
@@ -136,7 +136,7 @@ public final class AgentConsoleDemo {
                 current = runner.resume(current.getId(), decision);
                 continue;
             }
-            if (current.getStatus() == AgentRunStatus.WAITING_FOR_USER) {
+            if (current.getStatus() == AgentTurnStatus.WAITING_FOR_USER) {
                 System.out.println("\n[需要补充信息] " + current.getSuspension().getMessage());
                 System.out.print("补充 > ");
                 String value = reader.readLine();
@@ -149,19 +149,19 @@ public final class AgentConsoleDemo {
             }
 
             // 子 Agent、延迟重试等状态通常由 Worker 或外部事件恢复，不应在控制台中盲目推进。
-            System.out.println("Run 正在等待外部事件: " + current.getStatus());
+            System.out.println("Turn 正在等待外部事件: " + current.getStatus());
             return current;
         }
         return current;
     }
 
     /** 展示审批上下文并把人的选择转换为结构化恢复命令。 */
-    private static AgentResumeCommand readApprovalDecision(BufferedReader reader, AgentRun run)
+    private static AgentResumeCommand readApprovalDecision(BufferedReader reader, AgentTurn turn)
         throws IOException {
-        AgentSuspension suspension = run.getSuspension();
-        ToolCall pending = findPendingCall(run, suspension.getCorrelationId());
+        AgentSuspension suspension = turn.getSuspension();
+        ToolCall pending = findPendingCall(turn, suspension.getCorrelationId());
         System.out.println("\n-------------------- 人工审批 --------------------");
-        System.out.println("Run ID   : " + run.getId());
+        System.out.println("Turn ID   : " + turn.getId());
         System.out.println("工具     : " + (pending == null ? "未知" : pending.getName()));
         System.out.println("参数     : " + (pending == null ? "{}" : pending.getArguments()));
         System.out.println("说明     : " + suspension.getMessage());
@@ -252,7 +252,7 @@ public final class AgentConsoleDemo {
             .chatModel(chatModel)
             .tool(currentTime)
             .tool(createTicket)
-            .toolApprovalPolicy((run, call, tool) ->
+            .toolApprovalPolicy((turn, call, tool) ->
                 Boolean.TRUE.equals(tool.getMetadata().get("sideEffect"))
                     ? ToolApprovalDecision.requireApproval()
                         .code("CONSOLE_WRITE_APPROVAL")
@@ -293,32 +293,32 @@ public final class AgentConsoleDemo {
             || type == AgentEventType.TOOL_STARTED
             || type == AgentEventType.TOOL_COMPLETED
             || type == AgentEventType.TOOL_APPROVAL_REQUESTED
-            || type == AgentEventType.RUN_SUSPENDED
-            || type == AgentEventType.RUN_RESUMED) {
-            System.out.println("[事件] " + type + " run=" + event.getRunId());
+            || type == AgentEventType.TURN_SUSPENDED
+            || type == AgentEventType.TURN_RESUMED) {
+            System.out.println("[事件] " + type + " turn=" + event.getTurnId());
         }
     }
 
-    private static ToolCall findPendingCall(AgentRun run, String callId) {
-        for (ToolCall call : run.getPendingToolCalls()) {
+    private static ToolCall findPendingCall(AgentTurn turn, String callId) {
+        for (ToolCall call : turn.getPendingToolCalls()) {
             if (call != null && callId != null && callId.equals(call.getId())) {
                 return call;
             }
         }
-        return run.getPendingToolCalls().isEmpty() ? null : run.getPendingToolCalls().get(0);
+        return turn.getPendingToolCalls().isEmpty() ? null : turn.getPendingToolCalls().get(0);
     }
 
-    private static void printRunResult(AgentRun run) {
-        if (run.getStatus() == AgentRunStatus.COMPLETED) {
-            System.out.println("\n助手 > " + run.getFinalOutput());
-        } else if (run.getStatus().isBlocked()) {
-            System.out.println("\n助手 > Run 仍在等待外部事件: " + run.getStatus());
+    private static void printTurnResult(AgentTurn turn) {
+        if (turn.getStatus() == AgentTurnStatus.COMPLETED) {
+            System.out.println("\n助手 > " + turn.getFinalOutput());
+        } else if (turn.getStatus().isBlocked()) {
+            System.out.println("\n助手 > Turn 仍在等待外部事件: " + turn.getStatus());
         } else {
-            System.out.println("\n助手 > 本轮未正常完成，status=" + run.getStatus()
-                + ", error=" + (run.getError() == null ? null : run.getError().getMessage()));
+            System.out.println("\n助手 > 本轮未正常完成，status=" + turn.getStatus()
+                + ", error=" + (turn.getError() == null ? null : turn.getError().getMessage()));
         }
-        System.out.println("[Run] id=" + run.getId() + ", iterations=" + run.getIterationCount()
-            + ", toolCalls=" + run.getToolCallCount() + ", tokens=" + run.getTotalTokens());
+        System.out.println("[Turn] id=" + turn.getId() + ", iterations=" + turn.getIterationCount()
+            + ", toolCalls=" + turn.getToolCallCount() + ", tokens=" + turn.getTotalTokens());
     }
 
     private static void printHistory(ChatMemory memory) {
@@ -331,7 +331,7 @@ public final class AgentConsoleDemo {
         }
     }
 
-    /** 使用 Run 返回的完整历史替换业务侧 Memory，避免重复追加已有消息。 */
+    /** 使用 Turn 返回的完整历史替换业务侧 Memory，避免重复追加已有消息。 */
     private static void replaceMemory(ChatMemory memory, List<Message> messages) {
         memory.clear();
         for (Message message : messages) {

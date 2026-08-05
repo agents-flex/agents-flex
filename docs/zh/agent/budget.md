@@ -1,6 +1,6 @@
 ---
 title: 预算控制
-description: 限制 AgentRun 的时长、Token、工具调用、模型迭代和 Runner step。
+description: 限制 AgentTurn 的时长、Token、工具调用、模型迭代和 Runner step。
 ---
 
 # 预算控制
@@ -9,7 +9,7 @@ description: 限制 AgentRun 的时长、Token、工具调用、模型迭代和 
 
 Agent 的执行路径由模型动态决定，必须设置资源边界。`AgentExecutionPolicy` 限制模型迭代和 Runner 总 step，并配置重试和错误策略；`AgentBudget` 限制时长、Token 和工具调用次数。
 
-预算是硬停止条件，不是计费系统。超过任一维度后 Run 进入终态 `BUDGET_EXCEEDED`，不会自动重试。
+预算是硬停止条件，不是计费系统。超过任一维度后 Turn 进入终态 `BUDGET_EXCEEDED`，不会自动重试。
 
 ## 配置预算
 
@@ -33,7 +33,7 @@ AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
 
 ## 检查时机
 
-- 总时长从 Run 创建时间开始计算，包括等待审批和重试的时间。
+- 总时长从 Turn 创建时间开始计算，包括等待审批和重试的时间。
 - 时长在外部调用前检查，因此不能强制中断已经开始的模型或工具调用。
 - Token 用量在模型响应后累计并检查，可能略微超过上限。
 - 工具次数在即将执行新工具前检查，已完成调用不会被倒推为失败。
@@ -44,14 +44,14 @@ AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
 ## 单次运行覆盖
 
 ```java
-AgentRunOptions options = AgentRunOptions.builder()
+AgentTurnOptions options = AgentTurnOptions.builder()
     .executionPolicy(AgentExecutionPolicy.builder()
         .maxIterations(4)
         .budget(AgentBudget.builder().maxTotalTokens(8_000).build())
         .build())
     .build();
 
-AgentRun run = runner.run(agent, input, options);
+AgentTurn turn = runner.run(agent, input, options);
 ```
 
 实际策略写入 Snapshot，恢复时不会跟随 Agent 默认策略漂移。覆盖是整套 `AgentExecutionPolicy`，调用方应显式保留需要的重试和错误策略。
@@ -59,8 +59,8 @@ AgentRun run = runner.run(agent, input, options);
 ## 读取结果
 
 ```java
-if (run.getStatus() == AgentRunStatus.BUDGET_EXCEEDED) {
-    log.warn("budget exceeded: {}", run.getBudgetExceededReason());
+if (turn.getStatus() == AgentTurnStatus.BUDGET_EXCEEDED) {
+    log.warn("budget exceeded: {}", turn.getBudgetExceededReason());
 }
 ```
 
@@ -68,7 +68,7 @@ if (run.getStatus() == AgentRunStatus.BUDGET_EXCEEDED) {
 
 ## 分层预算
 
-平台可按 Agent 类型、租户套餐和任务风险选择策略，但应在创建 Run 前计算最终值。父 Run 与子 Run 各自计数；如果需要整棵任务树总预算，上层平台应按 `rootRunId` 聚合并在创建子任务前实施额外配额。
+平台可按 Agent 类型、租户套餐和任务风险选择策略，但应在创建 Turn 前计算最终值。父 Turn 与子 Turn 各自计数；如果需要整棵任务树总预算，上层平台应按 `rootTurnId` 聚合并在创建子任务前实施额外配额。
 
 ## 生产建议
 

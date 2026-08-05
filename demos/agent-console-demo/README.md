@@ -5,8 +5,8 @@
 - 普通持续对话；
 - 模型原生 ToolCall 和工具结果回传；
 - 高风险工具的人工批准或拒绝；
-- 阻塞 Run 的恢复；
-- 每轮独立 AgentRun，以及业务侧维护的 conversationId 和 ChatMemory。
+- 阻塞 Turn 的恢复；
+- 每轮独立 AgentTurn，以及业务侧维护的 conversationId 和 ChatMemory。
 
 先在仓库根目录编译：
 

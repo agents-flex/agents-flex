@@ -1,11 +1,11 @@
 package com.agentsflex.agent.store.redis;
 
-import com.agentsflex.agent.AgentRunSnapshot;
-import com.agentsflex.agent.AgentRunState;
-import com.agentsflex.agent.AgentRunStatus;
-import com.agentsflex.agent.store.AgentRunStore;
-import com.agentsflex.agent.store.AgentRunVersionConflictException;
-import com.agentsflex.agent.store.ParentChildRunSnapshots;
+import com.agentsflex.agent.AgentTurnSnapshot;
+import com.agentsflex.agent.AgentTurnState;
+import com.agentsflex.agent.AgentTurnStatus;
+import com.agentsflex.agent.store.AgentTurnStore;
+import com.agentsflex.agent.store.AgentTurnVersionConflictException;
+import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -14,9 +14,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 使用 Redis Hash 与 Lua 脚本实现跨进程 AgentRun CAS、取消和 Lease。
+ * 使用 Redis Hash 与 Lua 脚本实现跨进程 AgentTurn CAS、取消和 Lease。
  */
-public final class RedisAgentRunStore extends RedisAgentStoreSupport implements AgentRunStore {
+public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements AgentTurnStore {
     private static final String SAVE = "local a=redis.call('HGET',KEYS[1],'version'); local actual=a and tonumber(a) or -1; "
         + "if actual~=tonumber(ARGV[1]) then return actual end; local cancel=redis.call('HGET',KEYS[1],'cancel'); "
         + "local c=(cancel=='1' or ARGV[9]=='1') and '1' or '0'; redis.call('HSET',KEYS[1],"
@@ -35,7 +35,7 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
         + "redis.call('HSET',KEYS[1],'lease_owner',ARGV[2],'lease_id',ARGV[4],'lease_until',ARGV[3]); "
         + "redis.call('HINCRBY',KEYS[1],'version',1); redis.call('ZADD',KEYS[3],ARGV[3],ARGV[6]); return 1";
 
-    RedisAgentRunStore(RedisAgentStoreConfig config) {
+    RedisAgentTurnStore(RedisAgentStoreConfig config) {
         super(config);
     }
 
@@ -47,63 +47,63 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
     }
 
     @Override
-    public AgentRunSnapshot load(String runId) {
-        Map<String, String> values = jedis.hgetAll(key("run", runId));
+    public AgentTurnSnapshot load(String turnId) {
+        Map<String, String> values = jedis.hgetAll(key("turn", turnId));
         if (values == null || values.isEmpty()) return null;
-        AgentRunSnapshot payload = decode(values.get("payload"), AgentRunSnapshot.class);
-        AgentRunState state = payload.getState().toBuilder()
+        AgentTurnSnapshot payload = decode(values.get("payload"), AgentTurnSnapshot.class);
+        AgentTurnState state = payload.getState().toBuilder()
             .version(Long.parseLong(values.get("version")))
-            .status(AgentRunStatus.valueOf(values.get("status"))).nextRunAt(number(values.get("next")))
+            .status(AgentTurnStatus.valueOf(values.get("status"))).nextRunnableAt(number(values.get("next")))
             .leaseOwner(emptyToNull(values.get("lease_owner"))).leaseId(emptyToNull(values.get("lease_id")))
             .leaseUntil(number(values.get("lease_until")))
-            .parentRunId(emptyToNull(values.get("parent")))
+            .parentTurnId(emptyToNull(values.get("parent")))
             .cancellationRequested("1".equals(values.get("cancel"))).build();
         return payload.withState(state);
     }
 
     @Override
-    public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
+    public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
         if (snapshot == null) throw new IllegalArgumentException("snapshot must not be null");
-        AgentRunSnapshot saved = snapshot.withVersion(expectedVersion + 1);
-        AgentRunState state = saved.getState();
+        AgentTurnSnapshot saved = snapshot.withVersion(expectedVersion + 1);
+        AgentTurnState state = saved.getState();
         Object result = eval(SAVE,
-            keys(key("run", state.getRunId()), index("runs"), index("runnable-runs")), args(
+            keys(key("turn", state.getTurnId()), index("turns"), index("runnable-turns")), args(
                 String.valueOf(expectedVersion), String.valueOf(state.getVersion()), state.getStatus().name(),
-                String.valueOf(state.getNextRunAt()), text(state.getLeaseOwner()), text(state.getLeaseId()),
-                String.valueOf(state.getLeaseUntil()), text(state.getParentRunId()),
-                state.isCancellationRequested() ? "1" : "0", encode(saved), state.getRunId()));
+                String.valueOf(state.getNextRunnableAt()), text(state.getLeaseOwner()), text(state.getLeaseId()),
+                String.valueOf(state.getLeaseUntil()), text(state.getParentTurnId()),
+                state.isCancellationRequested() ? "1" : "0", encode(saved), state.getTurnId()));
         long code = ((Number) result).longValue();
         if (code != -2) {
-            throw new AgentRunVersionConflictException(state.getRunId(), expectedVersion, code);
+            throw new AgentTurnVersionConflictException(state.getTurnId(), expectedVersion, code);
         }
-        return load(state.getRunId());
+        return load(state.getTurnId());
     }
 
     @Override
-    public boolean requestCancellation(String runId) {
+    public boolean requestCancellation(String turnId) {
         String script = "local status=redis.call('HGET',KEYS[1],'status'); if not status then return -1 end; "
             + "if redis.call('HGET',KEYS[1],'cancel')=='1' then return 0 end; "
             + "if status=='COMPLETED' or status=='FAILED' or status=='CANCELLED' or status=='MAX_ITERATIONS_REACHED' "
             + "or status=='MAX_STEPS_REACHED' or status=='BUDGET_EXCEEDED' then return 0 end; "
             + "redis.call('HSET',KEYS[1],'cancel','1'); redis.call('ZADD',KEYS[2],0,ARGV[1]); return 1";
-        long result = ((Number) eval(script, keys(key("run", runId), index("runnable-runs")), args(runId))).longValue();
-        if (result == -1) throw new IllegalStateException("AgentRun snapshot not found: " + runId);
+        long result = ((Number) eval(script, keys(key("turn", turnId), index("runnable-turns")), args(turnId))).longValue();
+        if (result == -1) throw new IllegalStateException("AgentTurn snapshot not found: " + turnId);
         return result == 1;
     }
 
     @Override
-    public boolean isCancellationRequested(String runId) {
-        return "1".equals(jedis.hget(key("run", runId), "cancel"));
+    public boolean isCancellationRequested(String turnId) {
+        return "1".equals(jedis.hget(key("turn", turnId), "cancel"));
     }
 
     @Override
-    public ParentChildRunSnapshots saveParentAndChild(AgentRunSnapshot parent, long expectedParentVersion, AgentRunSnapshot child) {
+    public ParentChildTurnSnapshots saveParentAndChild(AgentTurnSnapshot parent, long expectedParentVersion, AgentTurnSnapshot child) {
         if (parent == null || child == null)
             throw new IllegalArgumentException("parent and child snapshots must not be null");
-        AgentRunSnapshot savedParent = parent.withVersion(expectedParentVersion + 1);
-        AgentRunSnapshot savedChild = child.withVersion(0);
-        AgentRunState parentState = savedParent.getState();
-        AgentRunState childState = savedChild.getState();
+        AgentTurnSnapshot savedParent = parent.withVersion(expectedParentVersion + 1);
+        AgentTurnSnapshot savedChild = child.withVersion(0);
+        AgentTurnState parentState = savedParent.getState();
+        AgentTurnState childState = savedChild.getState();
         String script = "local pv=redis.call('HGET',KEYS[1],'version'); local actual=pv and tonumber(pv) or -1; "
             + "if actual~=tonumber(ARGV[1]) then return actual end; if redis.call('EXISTS',KEYS[2])==1 then return -3 end; "
             + "local pc=redis.call('HGET',KEYS[1],'cancel'); local c=(pc=='1' or ARGV[9]=='1') and '1' or '0'; "
@@ -115,44 +115,44 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
             + "local cs=ARGV[11]; if cs=='READY' or cs=='RUNNING' then redis.call('ZADD',KEYS[4],ARGV[15],ARGV[20]) "
             + "elseif cs=='RETRY_SCHEDULED' then redis.call('ZADD',KEYS[4],math.max(tonumber(ARGV[12]),tonumber(ARGV[15])),ARGV[20]) end; return -2";
         Object result = eval(script,
-            keys(key("run", parentState.getRunId()), key("run", childState.getRunId()),
-                index("runs"), index("runnable-runs")), args(
+            keys(key("turn", parentState.getTurnId()), key("turn", childState.getTurnId()),
+                index("turns"), index("runnable-turns")), args(
                 String.valueOf(expectedParentVersion), String.valueOf(parentState.getVersion()),
-                parentState.getStatus().name(), String.valueOf(parentState.getNextRunAt()),
+                parentState.getStatus().name(), String.valueOf(parentState.getNextRunnableAt()),
                 text(parentState.getLeaseOwner()), text(parentState.getLeaseId()),
-                String.valueOf(parentState.getLeaseUntil()), text(parentState.getParentRunId()),
+                String.valueOf(parentState.getLeaseUntil()), text(parentState.getParentTurnId()),
                 parentState.isCancellationRequested() ? "1" : "0", encode(savedParent),
-                childState.getStatus().name(), String.valueOf(childState.getNextRunAt()),
+                childState.getStatus().name(), String.valueOf(childState.getNextRunnableAt()),
                 text(childState.getLeaseOwner()), text(childState.getLeaseId()),
-                String.valueOf(childState.getLeaseUntil()), text(childState.getParentRunId()),
+                String.valueOf(childState.getLeaseUntil()), text(childState.getParentTurnId()),
                 childState.isCancellationRequested() ? "1" : "0", encode(savedChild),
-                parentState.getRunId(), childState.getRunId()));
+                parentState.getTurnId(), childState.getTurnId()));
         long code = ((Number) result).longValue();
         if (code == -3) {
-            throw new AgentRunVersionConflictException(childState.getRunId(), -1,
-                number(jedis.hget(key("run", childState.getRunId()), "version")));
+            throw new AgentTurnVersionConflictException(childState.getTurnId(), -1,
+                number(jedis.hget(key("turn", childState.getTurnId()), "version")));
         }
         if (code != -2) {
-            throw new AgentRunVersionConflictException(parentState.getRunId(),
+            throw new AgentTurnVersionConflictException(parentState.getTurnId(),
                 expectedParentVersion, code);
         }
-        return new ParentChildRunSnapshots(load(parentState.getRunId()),
-            load(childState.getRunId()));
+        return new ParentChildTurnSnapshots(load(parentState.getTurnId()),
+            load(childState.getTurnId()));
     }
 
     @Override
-    public List<AgentRunSnapshot> claimRunnable(String workerId, long now, long leaseMillis, int limit) {
+    public List<AgentTurnSnapshot> claimRunnable(String workerId, long now, long leaseMillis, int limit) {
         if (workerId == null || leaseMillis <= 0 || limit <= 0)
             throw new IllegalArgumentException("invalid lease request");
-        List<AgentRunSnapshot> result = new ArrayList<>();
-        List<String> ids = jedis.zrangeByScore(index("runnable-runs"), Double.NEGATIVE_INFINITY,
+        List<AgentTurnSnapshot> result = new ArrayList<>();
+        List<String> ids = jedis.zrangeByScore(index("runnable-turns"), Double.NEGATIVE_INFINITY,
             now, 0, Math.max(limit * 8, limit));
         for (String id : ids) {
             if (result.size() >= limit) break;
-            String parent = jedis.hget(key("run", id), "parent");
+            String parent = jedis.hget(key("turn", id), "parent");
             boolean hasParent = parent != null && !parent.isEmpty();
-            String parentKey = hasParent ? key("run", parent) : key("run", id);
-            long claimed = ((Number) eval(CLAIM, keys(key("run", id), parentKey, index("runnable-runs")), args(
+            String parentKey = hasParent ? key("turn", parent) : key("turn", id);
+            long claimed = ((Number) eval(CLAIM, keys(key("turn", id), parentKey, index("runnable-turns")), args(
                 String.valueOf(now), workerId, String.valueOf(now + leaseMillis),
                 UUID.randomUUID().toString(), hasParent ? "1" : "0", id))).longValue();
             if (claimed == 1) result.add(load(id));
@@ -161,46 +161,46 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
     }
 
     @Override
-    public AgentRunSnapshot renewLease(String runId, String workerId, String leaseId,
+    public AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
                                        long now, long leaseUntil) {
         if (leaseUntil <= now) throw new IllegalArgumentException("leaseUntil must be after now");
         String script = "if redis.call('HGET',KEYS[1],'lease_owner')~=ARGV[1] "
             + "or redis.call('HGET',KEYS[1],'lease_id')~=ARGV[2] "
             + "or tonumber(redis.call('HGET',KEYS[1],'lease_until') or '0')<=tonumber(ARGV[3]) then return 0 end; "
             + "redis.call('HSET',KEYS[1],'lease_until',ARGV[4]); redis.call('ZADD',KEYS[2],ARGV[4],ARGV[5]); return 1";
-        if (((Number) eval(script, keys(key("run", runId), index("runnable-runs")), args(workerId, leaseId,
-            String.valueOf(now), String.valueOf(leaseUntil), runId))).longValue() != 1)
-            throw new IllegalStateException("AgentRun lease is not owned by worker: " + workerId);
-        return load(runId);
+        if (((Number) eval(script, keys(key("turn", turnId), index("runnable-turns")), args(workerId, leaseId,
+            String.valueOf(now), String.valueOf(leaseUntil), turnId))).longValue() != 1)
+            throw new IllegalStateException("AgentTurn lease is not owned by worker: " + workerId);
+        return load(turnId);
     }
 
     @Override
-    public void releaseLease(String runId, String workerId, String leaseId) {
+    public void releaseLease(String turnId, String workerId, String leaseId) {
         String script = "if redis.call('HGET',KEYS[1],'lease_owner')==ARGV[1] "
             + "and redis.call('HGET',KEYS[1],'lease_id')==ARGV[2] then redis.call('HSET',KEYS[1],"
             + "'lease_owner','','lease_id','','lease_until','0'); local s=redis.call('HGET',KEYS[1],'status'); "
             + "local c=redis.call('HGET',KEYS[1],'cancel')=='1'; if c or s=='READY' or s=='RUNNING' then redis.call('ZADD',KEYS[2],0,ARGV[3]) "
             + "elseif s=='RETRY_SCHEDULED' then redis.call('ZADD',KEYS[2],redis.call('HGET',KEYS[1],'next'),ARGV[3]) "
             + "else redis.call('ZREM',KEYS[2],ARGV[3]) end; return 1 end; return 0";
-        eval(script, keys(key("run", runId), index("runnable-runs")), args(workerId, leaseId, runId));
+        eval(script, keys(key("turn", turnId), index("runnable-turns")), args(workerId, leaseId, turnId));
     }
 
     @Override
-    public List<AgentRunSnapshot> findTerminalChildrenWithWaitingParent(int limit) {
+    public List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(int limit) {
         if (limit <= 0) throw new IllegalArgumentException("limit must be greater than 0");
-        List<AgentRunSnapshot> result = new ArrayList<>();
-        for (String id : jedis.smembers(index("runs"))) {
+        List<AgentTurnSnapshot> result = new ArrayList<>();
+        for (String id : jedis.smembers(index("turns"))) {
             if (result.size() >= limit) break;
-            AgentRunSnapshot child = load(id);
+            AgentTurnSnapshot child = load(id);
             if (child == null) continue;
-            AgentRunState childState = child.getState();
-            if (!childState.getStatus().isTerminal() || childState.getParentRunId() == null) continue;
-            AgentRunSnapshot parent = load(childState.getParentRunId());
-            AgentRunState parentState = parent == null ? null : parent.getState();
+            AgentTurnState childState = child.getState();
+            if (!childState.getStatus().isTerminal() || childState.getParentTurnId() == null) continue;
+            AgentTurnSnapshot parent = load(childState.getParentTurnId());
+            AgentTurnState parentState = parent == null ? null : parent.getState();
             if (parentState != null
-                && parentState.getStatus() == AgentRunStatus.WAITING_FOR_CHILD
+                && parentState.getStatus() == AgentTurnStatus.WAITING_FOR_CHILD
                 && parentState.getSuspension() != null
-                && childState.getRunId().equals(parentState.getSuspension().getCorrelationId())) {
+                && childState.getTurnId().equals(parentState.getSuspension().getCorrelationId())) {
                 result.add(child);
             }
         }

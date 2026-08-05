@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
   <title id="title">Agent task planning and execution</title>
-  <desc id="desc">A root agent run owns a plan and executes tasks through child agent runs.</desc>
+  <desc id="desc">A root agent turn owns a plan and executes tasks through child agent runs.</desc>
   <style>
     text { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #172033; }
     .title { font-size: 28px; font-weight: 700; }
@@ -39,29 +39,29 @@
 
   <rect x="365" y="250" width="560" height="105" class="box" fill="#fff4df" stroke="#c9892b"/>
   <text x="525" y="290" class="name">AgentPlanExecutor</text>
-  <text x="424" y="320" class="detail">选择下一个任务 → 创建子 Run → 等待结果 → 更新任务 → 最终汇总</text>
+  <text x="424" y="320" class="detail">选择下一个任务 → 创建子 Turn → 等待结果 → 更新任务 → 最终汇总</text>
   <path d="M 800 195 L 800 250" class="arrow"/>
 
   <rect x="55" y="420" width="250" height="150" class="box" fill="#e9f2ff" stroke="#4d8bd8"/>
-  <text x="105" y="460" class="name">根 AgentRun</text>
+  <text x="105" y="460" class="name">根 AgentTurn</text>
   <text x="89" y="490" class="detail">保存总体目标和子任务结果</text>
   <text x="89" y="515" class="detail">任务全部完成后生成最终回答</text>
-  <text x="89" y="540" class="detail">rootRunId = 自身 ID</text>
+  <text x="89" y="540" class="detail">rootTurnId = 自身 ID</text>
 
   <rect x="365" y="420" width="230" height="150" class="box" fill="#eaf8f1" stroke="#35966f"/>
-  <text x="414" y="460" class="name">Task 1 / 子 Run</text>
+  <text x="414" y="460" class="name">Task 1 / 子 Turn</text>
   <text x="399" y="490" class="detail">默认使用根 Agent</text>
   <text x="399" y="515" class="detail">Snapshot 与审批独立</text>
-  <text x="399" y="540" class="detail">结果回写根 Run</text>
+  <text x="399" y="540" class="detail">结果回写根 Turn</text>
 
   <rect x="635" y="420" width="230" height="150" class="box" fill="#f4edff" stroke="#8557c8"/>
-  <text x="684" y="460" class="name">Task 2 / 子 Run</text>
+  <text x="684" y="460" class="name">Task 2 / 子 Turn</text>
   <text x="669" y="490" class="detail">可指定 assignedAgentId</text>
   <text x="669" y="515" class="detail">交给专用子 Agent</text>
   <text x="669" y="540" class="detail">失败可暂停或终止计划</text>
 
   <rect x="905" y="420" width="240" height="150" class="box" fill="#ffffff" stroke="#7d8ba0"/>
-  <text x="952" y="460" class="name">Task N / 子 Run</text>
+  <text x="952" y="460" class="name">Task N / 子 Turn</text>
   <text x="939" y="490" class="detail">支持 parentTaskId</text>
   <text x="939" y="515" class="detail">按 position 顺序推进</text>
   <text x="939" y="540" class="detail">Worker 可恢复到期任务</text>
@@ -74,5 +74,5 @@
   <path d="M 635 495 L 595 495" class="arrow"/>
   <path d="M 905 495 L 865 495" class="arrow"/>
 
-  <text x="55" y="640" class="detail">任务列表负责业务进度；AgentRun 负责模型、工具、暂停恢复和运行时状态，两者通过 childRunId 关联。</text>
+  <text x="55" y="640" class="detail">任务列表负责业务进度；AgentTurn 负责模型、工具、暂停恢复和运行时状态，两者通过 childTurnId 关联。</text>
 </svg>

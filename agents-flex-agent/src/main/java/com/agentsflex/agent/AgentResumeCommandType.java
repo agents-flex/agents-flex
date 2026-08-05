@@ -7,7 +7,7 @@
 package com.agentsflex.agent;
 
 /**
- * 恢复暂停 AgentRun 的外部命令类型。
+ * 恢复暂停 AgentTurn 的外部命令类型。
  *
  * <p>命令类型必须与当前 AgentSuspensionType 匹配，并在需要时携带相同 correlationId，
  * Runner 才会应用命令并继续推进；不匹配的命令会被拒绝。</p>
@@ -30,7 +30,7 @@ public enum AgentResumeCommandType {
      */
     REJECT_TOOL,
     /**
-     * 通知父运行关联的子运行已经结束。
+     * 通知父 Turn 关联的子 Turn 已经结束。
      */
     CHILD_COMPLETED,
     /**

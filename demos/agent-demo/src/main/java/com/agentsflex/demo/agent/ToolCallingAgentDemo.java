@@ -9,9 +9,9 @@ package com.agentsflex.demo.agent;
 import com.agentsflex.agent.Agent;
 import com.agentsflex.agent.AgentBudget;
 import com.agentsflex.agent.AgentExecutionPolicy;
-import com.agentsflex.agent.AgentRun;
-import com.agentsflex.agent.AgentRunOptions;
-import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentTurn;
+import com.agentsflex.agent.AgentTurnOptions;
+import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.tool.AgentToolInvocation;
 import com.agentsflex.core.message.AiMessage;
@@ -90,19 +90,19 @@ public final class ToolCallingAgentDemo {
             .build();
 
         AgentRunner runner = new AgentRunner();
-        // Run metadata 会随 Snapshot 持久化，可承载租户、请求和业务追踪标识。
-        AgentRunOptions options = AgentRunOptions.builder()
+        // Turn metadata 会随 Snapshot 持久化，可承载租户、请求和业务追踪标识。
+        AgentTurnOptions options = AgentTurnOptions.builder()
             .metadata("tenantId", "demo-tenant")
             .metadata("requestId", "weather-request-001")
             .build();
-        AgentRun completed = runner.run(agent, "杭州今天天气如何？", options);
+        AgentTurn completed = runner.run(agent, "杭州今天天气如何？", options);
 
-        DemoSupport.printRun(completed);
+        DemoSupport.printTurn(completed);
         System.out.println("idempotency : " + idempotencyKey.get());
-        DemoSupport.require(completed.getStatus() == AgentRunStatus.COMPLETED,
+        DemoSupport.require(completed.getStatus() == AgentTurnStatus.COMPLETED,
             "基础 Agent 应正常完成");
         DemoSupport.require(model.getCallCount() == 2, "模型应调用两次");
         DemoSupport.require((completed.getId() + ":weather-call-1").equals(idempotencyKey.get()),
-            "幂等键应由 Run ID 和 ToolCall ID 构成");
+            "幂等键应由 Turn ID 和 ToolCall ID 构成");
     }
 }

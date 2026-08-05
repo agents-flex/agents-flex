@@ -19,23 +19,23 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * AgentRun 与 AgentRunSnapshot 共享的可序列化运行状态。
+ * AgentTurn 与 AgentTurnSnapshot 共享的可序列化轮次状态。
  *
- * <p>运行中的 {@link AgentRun} 持有可变 State，由同包内的状态转换方法推进；
- * {@link AgentRunSnapshot} 持有深拷贝后的不可变 State。消息、ToolCall、Suspension、任务计划和
- * 最终消息在复制时都会隔离，避免保存快照后继续运行的 Run 修改已经持久化的内容。</p>
+ * <p>执行中的 {@link AgentTurn} 持有可变 State，由同包内的状态转换方法推进；
+ * {@link AgentTurnSnapshot} 持有深拷贝后的不可变 State。消息、ToolCall、Suspension、任务计划和
+ * 最终消息在复制时都会隔离，避免保存快照后继续运行的 Turn 修改已经持久化的内容。</p>
  *
  * <p>该类不保存 Agent、Prompt、Throwable、ChatModel、Tool 或其他进程内对象。新增可持久化字段时
- * 应优先放在这里，使 Run 和 Snapshot 不再分别维护一套镜像字段。</p>
+ * 应优先放在这里，使 Turn 和 Snapshot 不再分别维护一套镜像字段。</p>
  */
-public final class AgentRunState implements Serializable {
+public final class AgentTurnState implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String runId;
+    private String turnId;
     private AgentExecutionPolicy executionPolicy;
-    private AgentRunStatus status = AgentRunStatus.READY;
-    private AgentRunPhase phase = AgentRunPhase.MODEL;
+    private AgentTurnStatus status = AgentTurnStatus.READY;
+    private AgentTurnPhase phase = AgentTurnPhase.MODEL;
     private List<Message> messages = Collections.emptyList();
     private List<ToolCall> pendingToolCalls = Collections.emptyList();
     private AgentSuspension suspension;
@@ -62,19 +62,19 @@ public final class AgentRunState implements Serializable {
     private long createdAt;
     private long completedAt;
     private long updatedAt;
-    private long nextRunAt;
+    private long nextRunnableAt;
     private long version = -1;
-    private String parentRunId;
-    private String rootRunId;
+    private String parentTurnId;
+    private String rootTurnId;
     private Map<String, Object> metadata = Collections.emptyMap();
     private boolean immutable;
 
-    AgentRunState(String runId, AgentExecutionPolicy executionPolicy, long createdAt) {
-        if (runId == null) throw new IllegalArgumentException("runId must not be null");
-        this.runId = runId;
+    AgentTurnState(String turnId, AgentExecutionPolicy executionPolicy, long createdAt) {
+        if (turnId == null) throw new IllegalArgumentException("turnId must not be null");
+        this.turnId = turnId;
         this.executionPolicy = executionPolicy;
         this.createdAt = createdAt;
-        this.rootRunId = runId;
+        this.rootTurnId = turnId;
         this.messages = new ArrayList<>();
         this.pendingToolCalls = new ArrayList<>();
         this.toolApprovals = new HashMap<>();
@@ -84,11 +84,11 @@ public final class AgentRunState implements Serializable {
     /**
      * 仅供字段模式反序列化使用。
      */
-    private AgentRunState() {
+    private AgentTurnState() {
     }
 
-    private AgentRunState(AgentRunState source, boolean immutable) {
-        this.runId = source.runId;
+    private AgentTurnState(AgentTurnState source, boolean immutable) {
+        this.turnId = source.turnId;
         this.executionPolicy = source.executionPolicy;
         this.status = source.status;
         this.phase = source.phase;
@@ -119,32 +119,32 @@ public final class AgentRunState implements Serializable {
         this.createdAt = source.createdAt;
         this.completedAt = source.completedAt;
         this.updatedAt = source.updatedAt;
-        this.nextRunAt = source.nextRunAt;
+        this.nextRunnableAt = source.nextRunnableAt;
         this.version = source.version;
-        this.parentRunId = source.parentRunId;
-        this.rootRunId = source.rootRunId;
+        this.parentTurnId = source.parentTurnId;
+        this.rootTurnId = source.rootTurnId;
         Map<String, Object> metadataCopy = new HashMap<>(source.metadata);
         this.metadata = immutable ? Collections.unmodifiableMap(metadataCopy) : metadataCopy;
         this.immutable = immutable;
     }
 
-    AgentRunState mutableCopy() {
-        return new AgentRunState(this, false);
+    AgentTurnState mutableCopy() {
+        return new AgentTurnState(this, false);
     }
 
-    AgentRunState immutableCopy() {
-        return new AgentRunState(this, true);
+    AgentTurnState immutableCopy() {
+        return new AgentTurnState(this, true);
     }
 
     /**
      * 创建一份新的运行状态构建器。
      *
      * <p>该入口主要供 Store、序列化适配器和测试构造持久化状态。Agent 正常执行时仍由
-     * {@link AgentRun} 内部推进可变 State。</p>
+     * {@link AgentTurn} 内部推进可变 State。</p>
      */
-    public static Builder builder(String runId, AgentExecutionPolicy executionPolicy,
+    public static Builder builder(String turnId, AgentExecutionPolicy executionPolicy,
                                   long createdAt) {
-        return new Builder(new AgentRunState(runId, executionPolicy, createdAt));
+        return new Builder(new AgentTurnState(turnId, executionPolicy, createdAt));
     }
 
     /**
@@ -155,14 +155,14 @@ public final class AgentRunState implements Serializable {
     }
 
     /**
-     * @return 运行 ID
+     * @return Turn ID
      */
-    public String getRunId() {
-        return runId;
+    public String getTurnId() {
+        return turnId;
     }
 
     /**
-     * @return Run 创建时冻结的执行策略
+     * @return Turn 创建时冻结的执行策略
      */
     public AgentExecutionPolicy getExecutionPolicy() {
         return executionPolicy;
@@ -171,14 +171,14 @@ public final class AgentRunState implements Serializable {
     /**
      * @return 当前生命周期状态
      */
-    public AgentRunStatus getStatus() {
+    public AgentTurnStatus getStatus() {
         return status;
     }
 
     /**
      * @return 下一步执行阶段
      */
-    public AgentRunPhase getPhase() {
+    public AgentTurnPhase getPhase() {
         return phase;
     }
 
@@ -302,7 +302,7 @@ public final class AgentRunState implements Serializable {
     }
 
     /**
-     * @return 当前 Run 在规划父子树中的深度
+     * @return 当前 Turn 在规划父子树中的深度
      */
     public int getPlanningDepth() {
         return planningDepth;
@@ -316,7 +316,7 @@ public final class AgentRunState implements Serializable {
     }
 
     /**
-     * @return RUN_STARTED 事件是否已经发送
+     * @return TURN_STARTED 事件是否已经发送
      */
     public boolean isStarted() {
         return started;
@@ -344,14 +344,14 @@ public final class AgentRunState implements Serializable {
     }
 
     /**
-     * @return Run 创建时间
+     * @return Turn 创建时间
      */
     public long getCreatedAt() {
         return createdAt;
     }
 
     /**
-     * @return Run 结束时间，未结束时为 0
+     * @return Turn 结束时间，未结束时为 0
      */
     public long getCompletedAt() {
         return completedAt;
@@ -367,8 +367,8 @@ public final class AgentRunState implements Serializable {
     /**
      * @return 延迟任务最早可运行时间
      */
-    public long getNextRunAt() {
-        return nextRunAt;
+    public long getNextRunnableAt() {
+        return nextRunnableAt;
     }
 
     /**
@@ -379,17 +379,17 @@ public final class AgentRunState implements Serializable {
     }
 
     /**
-     * @return 直接父 Run ID
+     * @return 直接父 Turn ID
      */
-    public String getParentRunId() {
-        return parentRunId;
+    public String getParentTurnId() {
+        return parentTurnId;
     }
 
     /**
-     * @return 父子运行树根 Run ID
+     * @return Turn 树的根 Turn ID
      */
-    public String getRootRunId() {
-        return rootRunId;
+    public String getRootTurnId() {
+        return rootTurnId;
     }
 
     /**
@@ -407,7 +407,7 @@ public final class AgentRunState implements Serializable {
     }
 
     private void requireMutable() {
-        if (immutable) throw new UnsupportedOperationException("AgentRunState is immutable");
+        if (immutable) throw new UnsupportedOperationException("AgentTurnState is immutable");
     }
 
     void setExecutionPolicy(AgentExecutionPolicy value) {
@@ -415,12 +415,12 @@ public final class AgentRunState implements Serializable {
         executionPolicy = value;
     }
 
-    void setStatus(AgentRunStatus value) {
+    void setStatus(AgentTurnStatus value) {
         requireMutable();
         status = value;
     }
 
-    void setPhase(AgentRunPhase value) {
+    void setPhase(AgentTurnPhase value) {
         requireMutable();
         phase = value;
     }
@@ -512,7 +512,7 @@ public final class AgentRunState implements Serializable {
         retryCount++;
     }
 
-    void addChildUsage(AgentRunState child) {
+    void addChildUsage(AgentTurnState child) {
         requireMutable();
         inputTokens += child.inputTokens;
         outputTokens += child.outputTokens;
@@ -606,9 +606,9 @@ public final class AgentRunState implements Serializable {
         updatedAt = value;
     }
 
-    void setNextRunAt(long value) {
+    void setNextRunnableAt(long value) {
         requireMutable();
-        nextRunAt = value;
+        nextRunnableAt = value;
     }
 
     void setVersion(long value) {
@@ -616,14 +616,14 @@ public final class AgentRunState implements Serializable {
         version = value;
     }
 
-    void setParentRunId(String value) {
+    void setParentTurnId(String value) {
         requireMutable();
-        parentRunId = value;
+        parentTurnId = value;
     }
 
-    void setRootRunId(String value) {
+    void setRootTurnId(String value) {
         requireMutable();
-        rootRunId = value;
+        rootTurnId = value;
     }
 
     void setMetadata(Map<String, Object> value) {
@@ -637,21 +637,21 @@ public final class AgentRunState implements Serializable {
     }
 
     /**
-     * AgentRunState 的唯一字段级构建入口。
+     * AgentTurnState 的唯一字段级构建入口。
      *
      * <p>Builder 内部操作可变副本，{@link #build()} 返回深拷贝后的不可变状态。新增持久化字段时，
-     * 只需在 State 及此 Builder 中维护，不应再在 AgentRunSnapshot 中增加转发方法。</p>
+     * 只需在 State 及此 Builder 中维护，不应再在 AgentTurnSnapshot 中增加转发方法。</p>
      */
     public static final class Builder {
-        private final AgentRunState state;
+        private final AgentTurnState state;
 
-        private Builder(AgentRunState state) {
+        private Builder(AgentTurnState state) {
             this.state = state;
         }
 
         public Builder executionPolicy(AgentExecutionPolicy value) { state.setExecutionPolicy(value); return this; }
-        public Builder status(AgentRunStatus value) { state.setStatus(value); return this; }
-        public Builder phase(AgentRunPhase value) { state.setPhase(value); return this; }
+        public Builder status(AgentTurnStatus value) { state.setStatus(value); return this; }
+        public Builder phase(AgentTurnPhase value) { state.setPhase(value); return this; }
         public Builder messages(List<? extends Message> value) { state.setMessages(value); return this; }
         public Builder pendingToolCalls(List<ToolCall> value) { state.setPendingToolCalls(value); return this; }
         public Builder suspension(AgentSuspension value) { state.setSuspension(value); return this; }
@@ -677,13 +677,13 @@ public final class AgentRunState implements Serializable {
         public Builder createdAt(long value) { state.setCreatedAt(value); return this; }
         public Builder completedAt(long value) { state.setCompletedAt(value); return this; }
         public Builder updatedAt(long value) { state.setUpdatedAt(value); return this; }
-        public Builder nextRunAt(long value) { state.setNextRunAt(value); return this; }
+        public Builder nextRunnableAt(long value) { state.setNextRunnableAt(value); return this; }
         public Builder version(long value) { state.setVersion(value); return this; }
-        public Builder parentRunId(String value) { state.setParentRunId(value); return this; }
-        public Builder rootRunId(String value) { state.setRootRunId(value); return this; }
+        public Builder parentTurnId(String value) { state.setParentTurnId(value); return this; }
+        public Builder rootTurnId(String value) { state.setRootTurnId(value); return this; }
         public Builder metadata(Map<String, Object> value) { state.setMetadata(value); return this; }
 
-        public AgentRunState build() {
+        public AgentTurnState build() {
             return state.immutableCopy();
         }
     }

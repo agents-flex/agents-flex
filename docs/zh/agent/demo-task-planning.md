@@ -7,7 +7,7 @@ description: 让根 Agent 自主创建计划，顺序委派给专业 Agent，并
 
 ## 概述
 
-本示例把“分析并验证订单服务变更”交给根 Agent。根模型创建两个任务，分别委派给分析 Agent 与测试 Agent；Runner 为每个任务创建子 Run，收集结果后由根模型生成交付结论。
+本示例把“分析并验证订单服务变更”交给根 Agent。根模型创建两个任务，分别委派给分析 Agent 与测试 Agent；Runner 为每个任务创建子 Turn，收集结果后由根模型生成交付结论。
 
 完整源码位于 `demos/agent-demo/src/main/java/com/agentsflex/demo/agent/TaskPlanningAgentDemo.java`。Demo 使用脚本模型固定响应，便于验证状态机，不依赖外部模型服务。
 
@@ -69,17 +69,17 @@ Agent root = Agent.builder("delivery-agent")
 }
 ```
 
-Runner 校验字段、任务数量和 Agent 白名单后，把计划写入父 Run Snapshot。
+Runner 校验字段、任务数量和 Agent 白名单后，把计划写入父 Turn Snapshot。
 
 ## 运行并查询进度
 
 ```java
 AgentRunner runner = new AgentRunner(
-    new InMemoryAgentRunStore(),
+    new InMemoryAgentTurnStore(),
     new InMemoryAgentLoader(root, analyst, tester));
 
-AgentRun run = runner.run(root, "分析并验证订单服务变更");
-AgentTaskProgress progress = runner.getTaskProgress(run.getId());
+AgentTurn turn = runner.run(root, "分析并验证订单服务变更");
+AgentTaskProgress progress = runner.getTaskProgress(turn.getId());
 
 System.out.println(progress.getStatus());
 System.out.println(progress.getCompletedTaskCount()
@@ -90,7 +90,7 @@ for (AgentTask task : progress.getTasks()) {
 }
 ```
 
-同步示例会在同一调用链执行子 Run。在 Worker 模式中，父 Run 会处于 `WAITING_FOR_CHILD`，子任务可能由其他节点领取，UI 可持续查询 `AgentTaskProgress` 或订阅任务事件。
+同步示例会在同一调用链执行子 Turn。在 Worker 模式中，父 Turn 会处于 `WAITING_FOR_CHILD`，子任务可能由其他节点领取，UI 可持续查询 `AgentTaskProgress` 或订阅任务事件。
 
 ## 最终汇总
 
@@ -104,7 +104,7 @@ for (AgentTask task : progress.getTasks()) {
 
 - 使用真实 Tool Calling 模型，并在指令中定义规划阈值。
 - 为每个 Agent 配置最小权限工具和独立预算。
-- 持久化 Run Store，使用 Worker 执行长任务；业务恢复事件和审计由应用自行保存。
+- 持久化 Turn Store，使用 Worker 执行长任务；业务恢复事件和审计由应用自行保存。
 - 监控任务数、深度、重规划次数和子结果截断。
 - 根 Agent 输出只汇总事实，不把失败任务伪装为完成。
 

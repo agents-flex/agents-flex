@@ -9,7 +9,7 @@ package com.agentsflex.agent.event;
 /**
  * 观察 Agent 执行事件的统一监听器。
  *
- * <p>同一个 Runner 可以注册多个监听器，并可能从不同 Worker 线程为不同 Run 并发调用它们，
+ * <p>同一个 Runner 可以注册多个监听器，并可能从不同 Worker 线程为不同 Turn 并发调用它们，
  * 因此有共享状态的实现需要自行保证线程安全。需要改变执行决策时应使用 AgentMiddleware。</p>
  */
 @FunctionalInterface

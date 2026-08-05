@@ -9,16 +9,16 @@ package com.agentsflex.agent;
 import java.io.Serializable;
 
 /**
- * AgentRun 可消耗资源的硬性上限。
+ * AgentTurn 可消耗资源的硬性上限。
  *
  * <p>值为 0 表示不限制。Runner 会在外部调用前检查时间和调用次数，并在模型返回后检查
- * Token 用量。超过任一上限后，Run 会进入 {@link AgentRunStatus#BUDGET_EXCEEDED}。</p>
+ * Token 用量。超过任一上限后，Turn 会进入 {@link AgentTurnStatus#BUDGET_EXCEEDED}。</p>
  */
 public final class AgentBudget implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 从 Run 创建开始计算的最长运行时间。 */
+    /** 从 Turn 创建开始计算的最长运行时间。 */
     private final long maxDurationMillis;
     /** 模型累计输入 Token 上限。 */
     private final long maxInputTokens;

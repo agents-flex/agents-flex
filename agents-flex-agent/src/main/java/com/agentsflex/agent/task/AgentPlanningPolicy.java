@@ -46,11 +46,11 @@ public final class AgentPlanningPolicy implements Serializable {
      */
     private final int maxTasks;
     /**
-     * 允许形成规划子 Run 的最大嵌套深度。
+     * 允许形成规划子 Turn 的最大嵌套深度。
      */
     private final int maxDepth;
     /**
-     * 子 Run 是否也可以调用规划工具。
+     * 子 Turn 是否也可以调用规划工具。
      */
     private final boolean childPlanningAllowed;
     /**
@@ -124,7 +124,7 @@ public final class AgentPlanningPolicy implements Serializable {
     }
 
     /**
-     * @return 是否向当前 Run 的模型开放规划工具
+     * @return 是否向当前 Turn 的模型开放规划工具
      */
     public boolean isEnabled() {
         return enabled;
@@ -138,14 +138,14 @@ public final class AgentPlanningPolicy implements Serializable {
     }
 
     /**
-     * @return 允许创建规划子 Run 的最大深度
+     * @return 允许创建规划子 Turn 的最大深度
      */
     public int getMaxDepth() {
         return maxDepth;
     }
 
     /**
-     * @return 子 Run 是否可以继续使用规划工具
+     * @return 子 Turn 是否可以继续使用规划工具
      */
     public boolean isChildPlanningAllowed() {
         return childPlanningAllowed;
@@ -253,7 +253,7 @@ public final class AgentPlanningPolicy implements Serializable {
         }
 
         /**
-         * 设置规划父子 Run 的最大嵌套深度。
+         * 设置规划父子 Turn 的最大嵌套深度。
          */
         public Builder maxDepth(int value) {
             maxDepth = value;
@@ -261,7 +261,7 @@ public final class AgentPlanningPolicy implements Serializable {
         }
 
         /**
-         * 设置子 Run 是否可以继续自主规划。
+         * 设置子 Turn 是否可以继续自主规划。
          */
         public Builder childPlanningAllowed(boolean value) {
             childPlanningAllowed = value;

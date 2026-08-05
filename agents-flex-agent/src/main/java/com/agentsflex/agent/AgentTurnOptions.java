@@ -11,12 +11,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 创建单次 AgentRun 时使用的可选参数。
+ * 创建单次 AgentTurn 时使用的可选参数。
  *
  * <p>平台可以为不同任务使用推荐的迭代次数和预算，而不需要为每个任务重新创建 Agent 定义。
  * 解析后的执行策略会随 Snapshot 保存，保证任务恢复后继续使用启动时的限制。</p>
  */
-public final class AgentRunOptions {
+public final class AgentTurnOptions {
 
     /**
      * 覆盖 Agent 默认值的单次运行执行策略；为空时使用 Agent 策略。
@@ -31,7 +31,7 @@ public final class AgentRunOptions {
      */
     private final boolean streaming;
 
-    private AgentRunOptions(Builder builder) {
+    private AgentTurnOptions(Builder builder) {
         this.executionPolicy = builder.executionPolicy;
         this.metadata = Collections.unmodifiableMap(new HashMap<>(builder.metadata));
         this.streaming = builder.streaming;
@@ -40,7 +40,7 @@ public final class AgentRunOptions {
     /**
      * @return 不覆盖 Agent 策略且不附加元数据的默认选项
      */
-    public static AgentRunOptions defaults() {
+    public static AgentTurnOptions defaults() {
         return builder().build();
     }
 
@@ -124,8 +124,8 @@ public final class AgentRunOptions {
         /**
          * 创建不可变运行选项。
          */
-        public AgentRunOptions build() {
-            return new AgentRunOptions(this);
+        public AgentTurnOptions build() {
+            return new AgentTurnOptions(this);
         }
     }
 }

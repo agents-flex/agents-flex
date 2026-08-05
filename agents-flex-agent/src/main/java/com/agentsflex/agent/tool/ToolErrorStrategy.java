@@ -6,7 +6,7 @@
  */
 package com.agentsflex.agent.tool;
 
-import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentTurn;
 
 /**
  * 工具调用失败后的处理策略。
@@ -14,7 +14,7 @@ import com.agentsflex.agent.AgentRun;
 public enum ToolErrorStrategy {
 
     /**
-     * 立即结束本次 AgentRun，并把异常记录到 {@link AgentRun#getError()}。
+     * 立即结束本次 AgentTurn，并把异常记录到 {@link AgentTurn#getError()}。
      * 适用于工具错误不可恢复，或业务不允许模型自行重试的场景。
      */
     FAIL_RUN,

@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 构造 Agent 运行事件，并在当前进程内同步发布给已注册监听器。
  *
  * <p>该类是 {@link AgentRunner} 的包内实现细节，不提供持久化或异步消息能力。监听器异常会被
- * 隔离；事件序号只在当前 Publisher 实例内按 runId 递增。</p>
+ * 隔离；事件序号只在当前 Publisher 实例内按 turnId 递增。</p>
  */
 final class AgentEventPublisher {
 
@@ -38,7 +38,7 @@ final class AgentEventPublisher {
 
     /** 观察统一不可变事件的线程安全监听器列表。 */
     private final List<AgentEventListener> listeners = new CopyOnWriteArrayList<>();
-    /** 为每个活动 Run 分配进程内事件序号。 */
+    /** 为每个活动 Turn 分配进程内事件序号。 */
     private final Map<String, AtomicLong> sequences = new ConcurrentHashMap<>();
 
     void addListener(AgentEventListener listener) {
@@ -49,166 +49,166 @@ final class AgentEventPublisher {
         listeners.remove(listener);
     }
 
-    void clearSequence(String runId) {
-        if (runId != null) sequences.remove(runId);
+    void clearSequence(String turnId) {
+        if (turnId != null) sequences.remove(turnId);
     }
 
-    void notifyRunStart(AgentRun run) {
-        publish(run, AgentEventType.RUN_STARTED, null);
+    void notifyTurnStart(AgentTurn turn) {
+        publish(turn, AgentEventType.TURN_STARTED, null);
     }
 
-    void notifyModelStart(AgentRun run) {
-        publish(run, AgentEventType.MODEL_STARTED, iterationAttributes(run));
+    void notifyModelStart(AgentTurn turn) {
+        publish(turn, AgentEventType.MODEL_STARTED, iterationAttributes(turn));
     }
 
-    void notifyModelEnd(AgentRun run, AiMessageResponse response) {
-        Map<String, Object> values = iterationAttributes(run);
+    void notifyModelEnd(AgentTurn turn, AiMessageResponse response) {
+        Map<String, Object> values = iterationAttributes(turn);
         values.put("hasToolCalls",
             response != null && response.getMessage() != null
                 && response.getMessage().hasToolCalls());
-        publish(run, AgentEventType.MODEL_COMPLETED, values);
+        publish(turn, AgentEventType.MODEL_COMPLETED, values);
     }
 
-    void notifyToolStart(AgentRun run, ToolCall call) {
-        Map<String, Object> values = iterationAttributes(run);
+    void notifyToolStart(AgentTurn turn, ToolCall call) {
+        Map<String, Object> values = iterationAttributes(turn);
         values.putAll(attributes("toolCallId", callKey(call), "toolName", call.getName()));
-        publish(run, AgentEventType.TOOL_STARTED, values);
+        publish(turn, AgentEventType.TOOL_STARTED, values);
     }
 
-    void notifyToolEnd(AgentRun run, ToolCall call) {
-        Map<String, Object> values = iterationAttributes(run);
+    void notifyToolEnd(AgentTurn turn, ToolCall call) {
+        Map<String, Object> values = iterationAttributes(turn);
         values.putAll(attributes("toolCallId", callKey(call), "toolName", call.getName()));
-        publish(run, AgentEventType.TOOL_COMPLETED, values);
+        publish(turn, AgentEventType.TOOL_COMPLETED, values);
     }
 
-    void notifyToolError(AgentRun run, ToolCall call, Throwable error) {
-        publish(run, AgentEventType.TOOL_FAILED,
+    void notifyToolError(AgentTurn turn, ToolCall call, Throwable error) {
+        publish(turn, AgentEventType.TOOL_FAILED,
             attributes("toolCallId", callKey(call), "toolName", call.getName(),
                 "error", errorMessage(error)));
     }
 
-    void notifyToolProgress(AgentRun run, ToolCall call, String toolName,
+    void notifyToolProgress(AgentTurn turn, ToolCall call, String toolName,
                             String message, Map<String, ?> data) {
         Map<String, Object> values = attributes("toolCallId", callKey(call),
             "toolName", toolName, "message", message);
         if (data != null) values.putAll(data);
-        publish(run, AgentEventType.TOOL_PROGRESS, values);
+        publish(turn, AgentEventType.TOOL_PROGRESS, values);
     }
 
-    void notifyRunComplete(AgentRun run) {
-        publish(run, AgentEventType.RUN_COMPLETED, null);
+    void notifyTurnComplete(AgentTurn turn) {
+        publish(turn, AgentEventType.TURN_COMPLETED, null);
     }
 
-    void notifyRunFailed(AgentRun run, Throwable error) {
-        publish(run, AgentEventType.RUN_FAILED, attributes("error", errorMessage(error)));
+    void notifyTurnFailed(AgentTurn turn, Throwable error) {
+        publish(turn, AgentEventType.TURN_FAILED, attributes("error", errorMessage(error)));
     }
 
-    void notifyRunCancelled(AgentRun run) {
-        publish(run, AgentEventType.RUN_CANCELLED, null);
+    void notifyTurnCancelled(AgentTurn turn) {
+        publish(turn, AgentEventType.TURN_CANCELLED, null);
     }
 
-    void notifyCancellationRequested(AgentRun run) {
-        publish(run, AgentEventType.CANCELLATION_REQUESTED, null);
+    void notifyCancellationRequested(AgentTurn turn) {
+        publish(turn, AgentEventType.CANCELLATION_REQUESTED, null);
     }
 
-    void notifyMaxIterationsReached(AgentRun run) {
-        publish(run, AgentEventType.MAX_ITERATIONS_REACHED,
-            attributes("iterations", run.getIterationCount()));
+    void notifyMaxIterationsReached(AgentTurn turn) {
+        publish(turn, AgentEventType.MAX_ITERATIONS_REACHED,
+            attributes("iterations", turn.getIterationCount()));
     }
 
-    void notifyMaxStepsReached(AgentRun run) {
-        publish(run, AgentEventType.MAX_STEPS_REACHED,
-            attributes("steps", run.getStepCount(),
-                "maxSteps", run.getExecutionPolicy().getMaxSteps()));
+    void notifyMaxStepsReached(AgentTurn turn) {
+        publish(turn, AgentEventType.MAX_STEPS_REACHED,
+            attributes("steps", turn.getStepCount(),
+                "maxSteps", turn.getExecutionPolicy().getMaxSteps()));
     }
 
-    void notifySnapshotSaved(AgentRun run, AgentRunSnapshot snapshot) {
-        publish(run, AgentEventType.SNAPSHOT_SAVED,
+    void notifySnapshotSaved(AgentTurn turn, AgentTurnSnapshot snapshot) {
+        publish(turn, AgentEventType.SNAPSHOT_SAVED,
             attributes("version", snapshot.getState().getVersion(),
                 "status", snapshot.getState().getStatus(),
                 "phase", snapshot.getState().getPhase()));
     }
 
-    void notifyRunSuspended(AgentRun run, AgentSuspension suspension) {
-        publish(run, AgentEventType.RUN_SUSPENDED,
+    void notifyTurnSuspended(AgentTurn turn, AgentSuspension suspension) {
+        publish(turn, AgentEventType.TURN_SUSPENDED,
             attributes("suspensionType", suspension.getType(),
                 "correlationId", suspension.getCorrelationId()));
     }
 
-    void notifyRunResumed(AgentRun run, AgentResumeCommand command) {
-        publish(run, AgentEventType.RUN_RESUMED,
+    void notifyTurnResumed(AgentTurn turn, AgentResumeCommand command) {
+        publish(turn, AgentEventType.TURN_RESUMED,
             attributes("commandType", command.getType(),
                 "correlationId", command.getCorrelationId()));
     }
 
-    void notifyToolApprovalRequested(AgentRun run, ToolCall call,
+    void notifyToolApprovalRequested(AgentTurn turn, ToolCall call,
                                      ToolApprovalDecision decision) {
-        publish(run, AgentEventType.TOOL_APPROVAL_REQUESTED,
+        publish(turn, AgentEventType.TOOL_APPROVAL_REQUESTED,
             attributes("toolCallId", callKey(call), "toolName", call.getName(),
                 "approvalOutcome", decision.getOutcome(), "approvalCode", decision.getCode(),
                 "approvalMessage", decision.getMessage(), "approvalReason", decision.getReason(),
                 "approvalMetadata", decision.getMetadata()));
     }
 
-    void notifyRetryScheduled(AgentRun run, Throwable error) {
-        publish(run, AgentEventType.RETRY_SCHEDULED,
-            attributes("retryCount", run.getRetryCount(),
-                "nextRunAt", run.getNextRunAt(), "error", errorMessage(error)));
+    void notifyRetryScheduled(AgentTurn turn, Throwable error) {
+        publish(turn, AgentEventType.RETRY_SCHEDULED,
+            attributes("retryCount", turn.getRetryCount(),
+                "nextRunnableAt", turn.getNextRunnableAt(), "error", errorMessage(error)));
     }
 
-    void notifyBudgetExceeded(AgentRun run, String reason) {
-        publish(run, AgentEventType.BUDGET_EXCEEDED, attributes("reason", reason));
+    void notifyBudgetExceeded(AgentTurn turn, String reason) {
+        publish(turn, AgentEventType.BUDGET_EXCEEDED, attributes("reason", reason));
     }
 
-    void notifyChildStarted(AgentRun parent, AgentRun child) {
+    void notifyChildStarted(AgentTurn parent, AgentTurn child) {
         publish(parent, AgentEventType.CHILD_STARTED,
-            attributes("childRunId", child.getId(),
+            attributes("childTurnId", child.getId(),
                 "childAgentId", child.getAgent().getId()));
     }
 
-    void notifyPlanCreated(AgentRun run, AgentTaskPlan plan) {
-        publish(run, AgentEventType.PLAN_CREATED,
+    void notifyPlanCreated(AgentTurn turn, AgentTaskPlan plan) {
+        publish(turn, AgentEventType.PLAN_CREATED,
             attributes("planId", plan.getId(), "goal", plan.getGoal(),
                 "taskCount", plan.getTasks().size()));
     }
 
-    void notifyPlanUpdated(AgentRun run, AgentTaskPlan plan) {
-        publish(run, AgentEventType.PLAN_UPDATED,
+    void notifyPlanUpdated(AgentTurn turn, AgentTaskPlan plan) {
+        publish(turn, AgentEventType.PLAN_UPDATED,
             attributes("planId", plan.getId(),
                 "revisionCount", plan.getRevisionCount(),
                 "reason", plan.getLastRevisionReason(),
                 "taskCount", plan.getTasks().size()));
     }
 
-    void notifyTaskStarted(AgentRun parent, AgentTask task, AgentRun child) {
+    void notifyTaskStarted(AgentTurn parent, AgentTask task, AgentTurn child) {
         publish(parent, AgentEventType.TASK_STARTED,
             attributes("taskId", task.getId(), "title", task.getTitle(),
-                "childRunId", child.getId(), "childAgentId", child.getAgent().getId()));
+                "childTurnId", child.getId(), "childAgentId", child.getAgent().getId()));
     }
 
-    void notifyTaskFinished(AgentRun parent, AgentTask task, AgentRun child,
+    void notifyTaskFinished(AgentTurn parent, AgentTask task, AgentTurn child,
                             AgentTaskStatus status) {
         AgentEventType type = status == AgentTaskStatus.COMPLETED
             ? AgentEventType.TASK_COMPLETED : AgentEventType.TASK_FAILED;
         publish(parent, type,
-            attributes("taskId", task.getId(), "childRunId", child.getId(),
+            attributes("taskId", task.getId(), "childTurnId", child.getId(),
                 "taskStatus", status, "result", child.getFinalOutput(),
                 "error", errorMessage(child.getError())));
     }
 
-    /** 创建不可变事件并同步通知全部监听器；空 Run 不产生事件。 */
-    void publish(AgentRun run, AgentEventType type, Map<String, ?> data) {
-        if (run == null) return;
+    /** 创建不可变事件并同步通知全部监听器；空 Turn 不产生事件。 */
+    void publish(AgentTurn turn, AgentEventType type, Map<String, ?> data) {
+        if (turn == null) return;
         Map<String, Object> values = attributes(
-            "status", run.getStatus(),
-            "phase", run.getPhase(),
-            "stepCount", run.getStepCount(),
-            "maxSteps", run.getExecutionPolicy().getMaxSteps());
+            "status", turn.getStatus(),
+            "phase", turn.getPhase(),
+            "stepCount", turn.getStepCount(),
+            "maxSteps", turn.getExecutionPolicy().getMaxSteps());
         if (data != null) values.putAll(data);
-        long sequence = sequences.computeIfAbsent(run.getId(), key -> new AtomicLong())
+        long sequence = sequences.computeIfAbsent(turn.getId(), key -> new AtomicLong())
             .incrementAndGet();
-        AgentEvent event = new AgentEvent(run.getId(), run.getRootRunId(),
-            run.getParentRunId(), run.getAgent().getId(), run.getAgent().getVersion(),
+        AgentEvent event = new AgentEvent(turn.getId(), turn.getRootTurnId(),
+            turn.getParentTurnId(), turn.getAgent().getId(), turn.getAgent().getVersion(),
             sequence, type, values);
         for (AgentEventListener listener : listeners) {
             try {
@@ -219,11 +219,11 @@ final class AgentEventPublisher {
         }
     }
 
-    private Map<String, Object> iterationAttributes(AgentRun run) {
-        int maxIterations = run.getExecutionPolicy().getMaxIterations();
-        return attributes("iteration", run.getIterationCount(),
+    private Map<String, Object> iterationAttributes(AgentTurn turn) {
+        int maxIterations = turn.getExecutionPolicy().getMaxIterations();
+        return attributes("iteration", turn.getIterationCount(),
             "maxIterations", maxIterations,
-            "remainingIterations", Math.max(0, maxIterations - run.getIterationCount()));
+            "remainingIterations", Math.max(0, maxIterations - turn.getIterationCount()));
     }
 
     private Map<String, Object> attributes(Object... values) {

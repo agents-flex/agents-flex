@@ -8,7 +8,7 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.message.AgentActionMessage;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.AiMessage;
@@ -38,19 +38,19 @@ public class AgentChatMemoryIntegrationTest {
         Agent agent = Agent.builder("chat-memory-agent")
             .chatModel(model)
             .tool(tool("deploy", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, value) ->
+            .toolApprovalPolicy((turn, call, value) ->
                 ToolApprovalDecision.requireApproval()
                     .message("是否允许执行发布？")
                     .build())
             .build();
-        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore turnStore = new InMemoryAgentTurnStore();
         InMemoryAgentLoader loader = new InMemoryAgentLoader(agent);
         DefaultChatMemory memory = new DefaultChatMemory("conversation-1");
 
-        AgentRunner firstRunner = runner(runStore, loader, memory);
-        AgentRun waiting = firstRunner.run(agent, "conversation-1", "发布应用");
+        AgentRunner firstRunner = runner(turnStore, loader, memory);
+        AgentTurn waiting = firstRunner.run(agent, "conversation-1", "发布应用");
 
-        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
         assertEquals("conversation-1", waiting.getConversationId());
         assertEquals(3, memory.getMessages(Integer.MAX_VALUE).size());
         assertEquals(2, memory.getModelMessages(Integer.MAX_VALUE).size());
@@ -59,20 +59,20 @@ public class AgentChatMemoryIntegrationTest {
         assertEquals(2, pending.getActions().size());
         assertFalse(pending.isModelVisible());
 
-        AgentRunner secondRunner = runner(runStore, loader, memory);
-        AgentRun ready = secondRunner.submitResume(waiting.getId(),
+        AgentRunner secondRunner = runner(turnStore, loader, memory);
+        AgentTurn ready = secondRunner.submitResume(waiting.getId(),
             AgentResumeCommand.approveTool("deploy-1")
                 .withMetadata("operatorId", "user-7"));
 
-        assertEquals(AgentRunStatus.RUNNING, ready.getStatus());
+        assertEquals(AgentTurnStatus.RUNNING, ready.getStatus());
         AgentActionMessage approved = action(memory);
         assertEquals(AgentActionMessage.Status.APPROVED, approved.getStatus());
         assertEquals("user-7", approved.getResolvedBy());
         assertEquals(1, approved.getVersion());
         assertTrue(approved.getActions().isEmpty());
 
-        AgentRun completed = secondRunner.runUntilBlocked(waiting.getId());
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        AgentTurn completed = secondRunner.runUntilBlocked(waiting.getId());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(1, executions.get());
         assertEquals("deployed", completed.getFinalOutput());
         assertEquals(5, memory.getMessages(Integer.MAX_VALUE).size());
@@ -95,7 +95,7 @@ public class AgentChatMemoryIntegrationTest {
     @Test
     public void shouldSerializeActionMessageStorageFields() {
         AgentActionMessage source = AgentActionMessage.toolApproval(
-            "run-1", "call-1", "approve?");
+            "turn-1", "call-1", "approve?");
         source.setVersion(2);
 
         AgentActionMessage restored = JSON.parseObject(
@@ -129,21 +129,21 @@ public class AgentChatMemoryIntegrationTest {
             .maxAttachedMessages(3)
             .build();
 
-        AgentRun run = AgentRunner.builder()
+        AgentTurn turn = AgentRunner.builder()
             .chatMemoryProvider(id -> memory)
             .build()
             .run(agent, "bounded-conversation", "latest");
 
         // 只复制 3 条历史、本轮 UserMessage 和最终 AiMessage，不复制前 7 条业务历史。
-        assertEquals(5, run.getConversationHistory().size());
+        assertEquals(5, turn.getConversationHistory().size());
         assertEquals(12, memory.getMessages(Integer.MAX_VALUE).size());
     }
 
-    private static AgentRunner runner(InMemoryAgentRunStore store,
+    private static AgentRunner runner(InMemoryAgentTurnStore store,
                                       InMemoryAgentLoader loader,
                                       DefaultChatMemory memory) {
         return AgentRunner.builder()
-            .runStore(store)
+            .turnStore(store)
             .agentLoader(loader)
             .chatMemoryProvider(id -> memory)
             .build();

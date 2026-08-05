@@ -7,9 +7,9 @@ description: 深入理解不可变 Agent 定义、模型、工具、策略、版
 
 ## 概述
 
-`Agent` 是一个不可变的运行定义，描述“由哪个模型、遵循什么指令、可以使用哪些工具、受哪些策略控制”。它不包含某次请求的消息、状态或结果，因此可被多个 `AgentRun` 复用。
+`Agent` 是一个不可变的运行定义，描述“由哪个模型、遵循什么指令、可以使用哪些工具、受哪些策略控制”。它不包含某次请求的消息、状态或结果，因此可被多个 `AgentTurn` 复用。
 
-这种分离类似于配置元数据与运行实例的关系：修改 Agent 定义不会直接修改历史 Run；恢复历史 Run 时，`AgentLoader` 必须按快照中的 ID 和版本重新加载兼容定义。
+这种分离类似于配置元数据与运行实例的关系：修改 Agent 定义不会直接修改历史 Turn；恢复历史 Turn 时，`AgentLoader` 必须按快照中的 ID 和版本重新加载兼容定义。
 
 ## 创建 Agent
 
@@ -53,7 +53,7 @@ Agent agent = Agent.builder("order-assistant")
     .chatModel(chatModel)
     .tool(queryOrder)
     .tool(refundOrder)
-    .toolApprovalPolicy((run, call, tool) ->
+    .toolApprovalPolicy((turn, call, tool) ->
         "refund_order".equals(tool.getName())
             ? ToolApprovalDecision.requireApproval()
                 .code("REFUND_APPROVAL")
@@ -74,11 +74,11 @@ Agent agent = Agent.builder("order-assistant")
 - `AgentPlanningPolicy`：是否规划、允许委派给谁、最大任务数和重规划次数。
 - `maxAttachedMessages`：每次模型调用最多读取多少条历史消息，默认 100。
 
-单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。工具返回规模由 Tool 契约控制，Runner 不会根据内容大小改写结果。
+单次 Turn 可通过 `AgentTurnOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。工具返回规模由 Tool 契约控制，Runner 不会根据内容大小改写结果。
 
 ## 版本管理
 
-只要变化会影响历史 Run 的恢复行为，就应发布新版本，例如：
+只要变化会影响历史 Turn 的恢复行为，就应发布新版本，例如：
 
 - 删除或重命名工具。
 - 改变工具参数 Schema 或副作用语义。
@@ -96,11 +96,11 @@ Agent agent = Agent.builder("order-assistant")
     .build();
 ```
 
-`attributes` 适合配置平台展示、路由和审计，不会自动发送给模型，也不会进入 Run 快照。需要影响执行时，应由 Middleware 或业务装配逻辑显式读取。
+`attributes` 适合配置平台展示、路由和审计，不会自动发送给模型，也不会进入 Turn 快照。需要影响执行时，应由 Middleware 或业务装配逻辑显式读取。
 
 ## 线程安全
 
-Agent 自身的集合在构建后只读，但这不自动保证其中的 `ChatModel`、`Tool`、Interceptor 和 Middleware 线程安全。作为单例复用时，这些组件不应把某个 Run 的可变数据保存在实例字段中；需要恢复的运行级数据应放在 `AgentRun` 的受控状态或 metadata 中，其他数据放在外部存储。Middleware 和 Tool 使用的进程内服务应由组件自身以线程安全方式管理。
+Agent 自身的集合在构建后只读，但这不自动保证其中的 `ChatModel`、`Tool`、Interceptor 和 Middleware 线程安全。作为单例复用时，这些组件不应把某个 Turn 的可变数据保存在实例字段中；需要恢复的运行级数据应放在 `AgentTurn` 的受控状态或 metadata 中，其他数据放在外部存储。Middleware 和 Tool 使用的进程内服务应由组件自身以线程安全方式管理。
 
 ## 自定义装配
 

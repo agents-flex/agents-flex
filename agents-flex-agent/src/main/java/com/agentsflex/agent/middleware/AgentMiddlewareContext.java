@@ -3,15 +3,15 @@
  */
 package com.agentsflex.agent.middleware;
 
-import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentTurn;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.core.prompt.Prompt;
 
 /**
- * Middleware 访问当前 Run 和模型 Prompt 的受控上下文。
+ * Middleware 访问当前 Turn 和模型 Prompt 的受控上下文。
  *
- * <p>替换 prompt 只影响当前责任链调用，不会直接替换 AgentRun 持有的持久化 Prompt；需要保存状态
- * 时应通过 Runner 或 Run 提供的受控 API 完成。</p>
+ * <p>替换 prompt 只影响当前责任链调用，不会直接替换 AgentTurn 持有的持久化 Prompt；需要保存状态
+ * 时应通过 Runner 或 Turn 提供的受控 API 完成。</p>
  */
 public class AgentMiddlewareContext {
     /**
@@ -19,20 +19,20 @@ public class AgentMiddlewareContext {
      */
     private final AgentRunner runner;
     /**
-     * 当前被推进的 Run。
+     * 当前被推进的 Turn。
      */
-    private final AgentRun run;
+    private final AgentTurn turn;
     /**
      * 当前模型链实际使用的 Prompt，可由 Middleware 替换。
      */
     private Prompt prompt;
 
     /**
-     * 创建绑定 Runner、Run 和当前 Prompt 的中间件上下文。
+     * 创建绑定 Runner、Turn 和当前 Prompt 的中间件上下文。
      */
-    public AgentMiddlewareContext(AgentRunner runner, AgentRun run, Prompt prompt) {
+    public AgentMiddlewareContext(AgentRunner runner, AgentTurn turn, Prompt prompt) {
         this.runner = runner;
-        this.run = run;
+        this.turn = turn;
         this.prompt = prompt;
     }
 
@@ -44,10 +44,10 @@ public class AgentMiddlewareContext {
     }
 
     /**
-     * @return 当前 AgentRun
+     * @return 当前 AgentTurn
      */
-    public AgentRun getRun() {
-        return run;
+    public AgentTurn getRun() {
+        return turn;
     }
 
     /**

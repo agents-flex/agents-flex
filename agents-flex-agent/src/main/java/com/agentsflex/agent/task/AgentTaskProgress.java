@@ -6,30 +6,30 @@
  */
 package com.agentsflex.agent.task;
 
-import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.AgentSuspension;
 
 import java.util.List;
 
 /**
- * 面向调用方展示的任务列表、完成数量和当前子 Run 状态。
+ * 面向调用方展示的任务列表、完成数量和当前子 Turn 状态。
  *
- * <p>该对象把父 Run 中的计划状态和当前子 Run 的实际阻塞状态组合为一次只读查询结果，适合任务
+ * <p>该对象把父 Turn 中的计划状态和当前子 Turn 的实际阻塞状态组合为一次只读查询结果，适合任务
  * 列表、进度条和人工审批界面。构造时复制计划，后续 Snapshot 更新不会修改已有查询结果。</p>
  */
 public final class AgentTaskProgress {
     /** 查询时刻的计划副本。 */
     private final AgentTaskPlan plan;
-    /** 当前活动子 Run 的状态；没有活动子 Run 时为父 Run 状态。 */
-    private final AgentRunStatus activeRunStatus;
-    /** 当前活动 Run 的暂停原因；未阻塞时为 {@code null}。 */
+    /** 当前活动子 Turn 的状态；没有活动子 Turn 时为父 Turn 状态。 */
+    private final AgentTurnStatus activeTurnStatus;
+    /** 当前活动 Turn 的暂停原因；未阻塞时为 {@code null}。 */
     private final AgentSuspension activeSuspension;
 
-    public AgentTaskProgress(AgentTaskPlan plan, AgentRunStatus activeRunStatus,
+    public AgentTaskProgress(AgentTaskPlan plan, AgentTurnStatus activeTurnStatus,
                              AgentSuspension activeSuspension) {
         if (plan == null) throw new IllegalArgumentException("plan must not be null");
         this.plan = plan.copy();
-        this.activeRunStatus = activeRunStatus;
+        this.activeTurnStatus = activeTurnStatus;
         this.activeSuspension = activeSuspension;
     }
 
@@ -43,8 +43,8 @@ public final class AgentTaskProgress {
     public AgentTask getCurrentTask() { return plan.getActiveTask(); }
     /** @return 按执行顺序排列的任务副本 */
     public List<AgentTask> getTasks() { return plan.getTasks(); }
-    /** @return 当前需要关注的父 Run 或子 Run 状态 */
-    public AgentRunStatus getActiveRunStatus() { return activeRunStatus; }
+    /** @return 当前需要关注的父 Turn 或子 Turn 状态 */
+    public AgentTurnStatus getActiveTurnStatus() { return activeTurnStatus; }
     /** @return 当前审批、输入、子任务或重试等待信息 */
     public AgentSuspension getActiveSuspension() { return activeSuspension; }
     /** @return 计划中的任务总数 */

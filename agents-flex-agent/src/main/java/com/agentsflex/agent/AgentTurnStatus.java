@@ -7,11 +7,11 @@
 package com.agentsflex.agent;
 
 /**
- * AgentRun 生命周期状态。
+ * AgentTurn 生命周期状态。
  *
  * <p>状态转换通常由 {@link AgentRunner} 负责，调用方只需要读取状态和发起取消请求。</p>
  */
-public enum AgentRunStatus {
+public enum AgentTurnStatus {
 
     /**
      * 已创建但尚未执行第一个模型回合。
@@ -84,7 +84,7 @@ public enum AgentRunStatus {
     }
 
     /**
-     * 判断当前状态是否已经结束，结束后的 Run 不能再次调用 {@link AgentRunner#step(AgentRun)}。
+     * 判断当前状态是否已经结束，结束后的 Turn 不能再次调用 {@link AgentRunner#step(AgentTurn)}。
      */
     public boolean isTerminal() {
         return this == COMPLETED

@@ -9,7 +9,7 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.store.FastjsonAgentStoreSerializer;
 import com.agentsflex.agent.task.AgentPlanningPolicy;
 import com.agentsflex.agent.task.AgentPlanningTool;
@@ -49,16 +49,16 @@ public class AgentTaskPlanningScenarioTest {
         });
         Agent agent = planningAgent("decision-agent", model);
 
-        AgentRun run = runner(agent).run(agent, "你好");
+        AgentTurn turn = runner(agent).run(agent, "你好");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
-        assertEquals("你好，有什么可以帮你？", run.getFinalOutput());
-        assertNull(run.getTaskPlan());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals("你好，有什么可以帮你？", turn.getFinalOutput());
+        assertNull(turn.getTaskPlan());
         assertEquals(1, model.getCallCount());
     }
 
     @Test
-    public void shouldCreateExecuteAndPersistPlanInsideRootRun() {
+    public void shouldCreateExecuteAndPersistPlanInsideRootTurn() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> planCall("完成变更",
             taskJson("inspect", "分析代码", "定位问题", null) + ","
@@ -73,20 +73,20 @@ public class AgentTaskPlanningScenarioTest {
             assertEquals(2, childResults);
             return new AiMessage("最终答案");
         });
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         Agent agent = planningAgent("sequential-agent", model);
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
 
-        AgentRun result = runner.run(agent, "请完成这项复杂变更");
-        AgentRun restored = runner.restore(result.getId());
+        AgentTurn result = runner.run(agent, "请完成这项复杂变更");
+        AgentTurn restored = runner.restore(result.getId());
 
-        assertEquals(AgentRunStatus.COMPLETED, result.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, result.getStatus());
         assertEquals("最终答案", result.getFinalOutput());
         assertEquals(AgentTaskPlanStatus.COMPLETED, restored.getTaskPlan().getStatus());
         assertEquals(2, restored.getTaskPlan().getTasks().size());
         for (AgentTask task : restored.getTaskPlan().getTasks()) {
             assertEquals(AgentTaskStatus.COMPLETED, task.getStatus());
-            assertNotNull(task.getChildRunId());
+            assertNotNull(task.getChildTurnId());
             assertNotNull(task.getResult());
         }
     }
@@ -104,27 +104,27 @@ public class AgentTaskPlanningScenarioTest {
         Agent agent = Agent.builder("approval-planning-agent")
             .chatModel(model)
             .tool(tool("deploy", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .planningPolicy(AgentPlanningPolicy.enabled())
             .build();
         AgentRunner runner = runner(agent);
 
-        AgentRun waitingRoot = runner.run(agent, "发布应用");
+        AgentTurn waitingRoot = runner.run(agent, "发布应用");
         AgentTaskProgress waiting = runner.getTaskProgress(waitingRoot.getId());
-        AgentRun restoredWaitingRoot = runner.restore(waitingRoot.getId());
+        AgentTurn restoredWaitingRoot = runner.restore(waitingRoot.getId());
 
-        assertEquals(AgentRunStatus.WAITING_FOR_CHILD, waitingRoot.getStatus());
-        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, waiting.getActiveRunStatus());
+        assertEquals(AgentTurnStatus.WAITING_FOR_CHILD, waitingRoot.getStatus());
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, waiting.getActiveTurnStatus());
         assertEquals("deploy-task",
             restoredWaitingRoot.getTaskPlan().getActiveTask().getId());
         assertEquals(0, executions.get());
 
-        AgentRun completed = runner.resume(waitingRoot.getId(),
+        AgentTurn completed = runner.resume(waitingRoot.getId(),
             AgentResumeCommand.approveTool("deploy-call"));
-        AgentRun next = runner.run(agent, completed.getConversationHistory(),
+        AgentTurn next = runner.run(agent, completed.getConversationHistory(),
             new UserMessage("下一步"));
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(AgentTaskPlanStatus.COMPLETED, completed.getTaskPlan().getStatus());
         assertEquals(1, executions.get());
         assertEquals("可以继续对话", next.getFinalOutput());
@@ -144,14 +144,14 @@ public class AgentTaskPlanningScenarioTest {
                 .allowAgent("specialist").build())
             .build();
         Agent specialist = Agent.builder("specialist").chatModel(specialistModel).build();
-        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(),
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(),
             new InMemoryAgentLoader(root, specialist));
 
-        AgentRun completed = runner.run(root, "执行专项分析");
+        AgentTurn completed = runner.run(root, "执行专项分析");
         AgentTask task = completed.getTaskPlan().getTasks().get(0);
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
-        assertEquals("specialist", runner.restore(task.getChildRunId()).getAgent().getId());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
+        assertEquals("specialist", runner.restore(task.getChildTurnId()).getAgent().getId());
         assertEquals("专家结果", task.getResult());
     }
 
@@ -164,9 +164,9 @@ public class AgentTaskPlanningScenarioTest {
             .planningPolicy(AgentPlanningPolicy.builder().enabled(true).maxTasks(1).build())
             .build();
 
-        AgentRun rejected = runner(agent).run(agent, "非法委派");
+        AgentTurn rejected = runner(agent).run(agent, "非法委派");
 
-        assertEquals(AgentRunStatus.FAILED, rejected.getStatus());
+        assertEquals(AgentTurnStatus.FAILED, rejected.getStatus());
         assertTrue(rejected.getError().getMessage().contains("not allowed"));
         assertNull(rejected.getTaskPlan());
     }
@@ -181,9 +181,9 @@ public class AgentTaskPlanningScenarioTest {
             .planningPolicy(AgentPlanningPolicy.builder().enabled(true).maxTasks(1).build())
             .build();
 
-        AgentRun rejected = runner(agent).run(agent, "创建过多任务");
+        AgentTurn rejected = runner(agent).run(agent, "创建过多任务");
 
-        assertEquals(AgentRunStatus.FAILED, rejected.getStatus());
+        assertEquals(AgentTurnStatus.FAILED, rejected.getStatus());
         assertTrue(rejected.getError().getMessage().contains("maxTasks"));
     }
 
@@ -201,9 +201,9 @@ public class AgentTaskPlanningScenarioTest {
                 .failureStrategy(AgentPlanningPolicy.FailureStrategy.CONTINUE).build())
             .build();
 
-        AgentRun completed = runner(agent).run(agent, "执行容错计划");
+        AgentTurn completed = runner(agent).run(agent, "执行容错计划");
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(AgentTaskStatus.FAILED,
             completed.getTaskPlan().getTasks().get(0).getStatus());
         assertEquals(AgentTaskStatus.COMPLETED,
@@ -219,7 +219,7 @@ public class AgentTaskPlanningScenarioTest {
         model.enqueue(prompt -> new AiMessage("汇总"));
         Agent agent = planningAgent("event-agent", model);
         List<AgentEvent> events = new ArrayList<>();
-        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(),
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(),
             new InMemoryAgentLoader(agent)).addEventListener(events::add);
 
         runner.run(agent, "执行并记录");
@@ -237,11 +237,11 @@ public class AgentTaskPlanningScenarioTest {
         model.enqueue(prompt -> new AiMessage("子任务结果"));
         model.enqueue(prompt -> new AiMessage("最终结果"));
         Agent agent = planningAgent("serialized-planning-agent", model);
-        AgentRun completed = runner(agent).run(agent, "执行持久化计划");
+        AgentTurn completed = runner(agent).run(agent, "执行持久化计划");
         FastjsonAgentStoreSerializer serializer = new FastjsonAgentStoreSerializer();
 
-        AgentRunSnapshot decoded = serializer.deserialize(
-            serializer.serialize(completed.toSnapshot()), AgentRunSnapshot.class);
+        AgentTurnSnapshot decoded = serializer.deserialize(
+            serializer.serialize(completed.toSnapshot()), AgentTurnSnapshot.class);
 
         assertNotNull(decoded.getState().getTaskPlan());
         assertEquals(AgentTaskPlanStatus.COMPLETED,
@@ -260,12 +260,12 @@ public class AgentTaskPlanningScenarioTest {
         Agent agent = planningAgent("conversation-planning-agent", model);
         AgentRunner runner = runner(agent);
 
-        AgentRun first = runner.run(agent, "完成数据查询");
-        AgentRun second = runner.run(agent, first.getConversationHistory(),
+        AgentTurn first = runner.run(agent, "完成数据查询");
+        AgentTurn second = runner.run(agent, first.getConversationHistory(),
             new UserMessage("谢谢"));
 
-        assertEquals(AgentRunStatus.COMPLETED, first.getStatus());
-        assertEquals(AgentRunStatus.COMPLETED, second.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, first.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, second.getStatus());
         assertNull(second.getTaskPlan());
         assertEquals("继续对话", second.getFinalOutput());
     }
@@ -294,20 +294,20 @@ public class AgentTaskPlanningScenarioTest {
             .planningPolicy(AgentPlanningPolicy.enabled())
             .build();
         AgentRunner runner = runner(agent);
-        AgentRun root = runner.start(agent, "使用 Worker 执行");
+        AgentTurn root = runner.start(agent, "使用 Worker 执行");
 
         try (AgentWorker worker = new AgentWorker("planning-worker", runner, 10000)) {
             for (int index = 0; index < 6; index++) worker.pollAndRun(1);
         }
-        AgentRun completed = runner.restore(root.getId());
+        AgentTurn completed = runner.restore(root.getId());
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(AgentTaskPlanStatus.COMPLETED, completed.getTaskPlan().getStatus());
         assertEquals(2, attempts.get());
     }
 
     @Test
-    public void shouldEnforceRootTokenBudgetAcrossChildRuns() {
+    public void shouldEnforceRootTokenBudgetAcrossChildTurns() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> planCall("预算任务",
             taskJson("consume", "消耗预算", "生成任务结果", null)));
@@ -318,9 +318,9 @@ public class AgentTaskPlanningScenarioTest {
                 .budget(AgentBudget.builder().maxTotalTokens(10).build()).build())
             .planningPolicy(AgentPlanningPolicy.enabled()).build();
 
-        AgentRun result = runner(agent).run(agent, "执行预算任务");
+        AgentTurn result = runner(agent).run(agent, "执行预算任务");
 
-        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, result.getStatus());
+        assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, result.getStatus());
         assertEquals("maxTotalTokens", result.getBudgetExceededReason());
         assertEquals(12, result.getTotalTokens());
     }
@@ -333,17 +333,17 @@ public class AgentTaskPlanningScenarioTest {
         model.enqueue(prompt -> toolCalls(new ToolCall("approval-call", "protected", "{}")));
         Agent agent = Agent.builder("command-planning-agent").chatModel(model)
             .tool(tool("protected", args -> "ok"))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .planningPolicy(AgentPlanningPolicy.enabled()).build();
         AgentRunner runner = runner(agent);
-        AgentRun root = runner.run(agent, "执行审批任务");
+        AgentTurn root = runner.run(agent, "执行审批任务");
 
-        AgentRun resumed = runner.submitResume(
+        AgentTurn resumed = runner.submitResume(
             root.getId(), AgentResumeCommand.approveTool("approval-call"));
         AgentTask current = root.getTaskPlan().getActiveTask();
 
-        assertEquals(current.getChildRunId(), resumed.getId());
-        assertEquals(AgentRunStatus.RUNNING, resumed.getStatus());
+        assertEquals(current.getChildTurnId(), resumed.getId());
+        assertEquals(AgentTurnStatus.RUNNING, resumed.getStatus());
     }
 
     @Test
@@ -382,12 +382,12 @@ public class AgentTaskPlanningScenarioTest {
         Agent researcher = Agent.builder("研究助手").id("researcher")
             .description("检索公开资料").attribute("domain", "research")
             .chatModel(delegateModel).build();
-        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(),
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(),
             new InMemoryAgentLoader(agent, researcher));
 
-        AgentRun completed = runner.run(agent, "调研主题");
+        AgentTurn completed = runner.run(agent, "调研主题");
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("返回来源与摘要",
             completed.getTaskPlan().getTasks().get(0).getExpectedOutput());
         assertEquals("research",
@@ -434,13 +434,13 @@ public class AgentTaskPlanningScenarioTest {
                 .failureStrategy(AgentPlanningPolicy.FailureStrategy.CONTINUE)
                 .maxReplans(1).taskRevisionAllowed(true).build())
             .build();
-        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(),
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(),
             new InMemoryAgentLoader(agent)).addEventListener(events::add);
 
-        AgentRun completed = runner.run(agent, "分析数据");
+        AgentTurn completed = runner.run(agent, "分析数据");
         AgentTask revised = completed.getTaskPlan().getTasks().get(1);
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(1, completed.getTaskPlan().getRevisionCount());
         assertEquals("数据源失败，改用缓存",
             completed.getTaskPlan().getLastRevisionReason());
@@ -466,9 +466,9 @@ public class AgentTaskPlanningScenarioTest {
                 .maxReplans(1).taskRevisionAllowed(true).build())
             .build();
 
-        AgentRun completed = runner(agent).run(agent, "执行计划");
+        AgentTurn completed = runner(agent).run(agent, "执行计划");
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(1, completed.getTaskPlan().getRevisionCount());
         assertEquals(5, model.getCallCount());
         assertEquals(AgentTaskStatus.FAILED,
@@ -490,9 +490,9 @@ public class AgentTaskPlanningScenarioTest {
                 .maxReplans(1).taskRevisionAllowed(true).taskAppendAllowed(false).build())
             .build();
 
-        AgentRun failed = runner(agent).run(agent, "执行计划");
+        AgentTurn failed = runner(agent).run(agent, "执行计划");
 
-        assertEquals(AgentRunStatus.FAILED, failed.getStatus());
+        assertEquals(AgentTurnStatus.FAILED, failed.getStatus());
         assertTrue(failed.getError().getMessage().contains("appending task is not allowed"));
     }
 
@@ -515,9 +515,9 @@ public class AgentTaskPlanningScenarioTest {
                 .maxReplans(1).taskAppendAllowed(true).build())
             .build();
 
-        AgentRun completed = runner(agent).run(agent, "执行计划");
+        AgentTurn completed = runner(agent).run(agent, "执行计划");
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(3, completed.getTaskPlan().getTasks().size());
         assertEquals("recovery", completed.getTaskPlan().getTasks().get(2).getId());
         assertEquals(AgentTaskStatus.COMPLETED,
@@ -538,9 +538,9 @@ public class AgentTaskPlanningScenarioTest {
                 .maxReplans(1).taskRevisionAllowed(true).build())
             .build();
 
-        AgentRun completed = runner(agent).run(agent, "执行计划");
+        AgentTurn completed = runner(agent).run(agent, "执行计划");
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("无法形成可行的新计划", completed.getFinalOutput());
         assertEquals(AgentTaskPlanStatus.COMPLETED, completed.getTaskPlan().getStatus());
         assertEquals(AgentTaskStatus.SKIPPED,
@@ -557,7 +557,7 @@ public class AgentTaskPlanningScenarioTest {
         model.enqueue(prompt -> {
             String messages = prompt.getMessages().toString();
             assertFalse(messages.contains(original));
-            assertTrue(messages.contains("完整内容保留在子 Run 中"));
+            assertTrue(messages.contains("完整内容保留在子 Turn 中"));
             return new AiMessage("汇总完成");
         });
         Agent agent = Agent.builder("truncation-agent").chatModel(model)
@@ -566,9 +566,9 @@ public class AgentTaskPlanningScenarioTest {
             .build();
         AgentRunner runner = runner(agent);
 
-        AgentRun completed = runner.run(agent, "生成大结果");
+        AgentTurn completed = runner.run(agent, "生成大结果");
         AgentTask task = completed.getTaskPlan().getTasks().get(0);
-        AgentRun child = runner.restore(task.getChildRunId());
+        AgentTurn child = runner.restore(task.getChildTurnId());
 
         assertTrue(task.getResult().startsWith("0123456789"));
         assertTrue(task.getResult().contains("已截断"));
@@ -586,9 +586,9 @@ public class AgentTaskPlanningScenarioTest {
                 .finalSummaryRequired(false).build())
             .build();
 
-        AgentRun completed = runner(agent).run(agent, "执行唯一任务");
+        AgentTurn completed = runner(agent).run(agent, "执行唯一任务");
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("子任务直接结果", completed.getFinalOutput());
         assertEquals(2, model.getCallCount());
         assertTrue(completed.getConversationHistory().stream()
@@ -602,7 +602,7 @@ public class AgentTaskPlanningScenarioTest {
     }
 
     private static AgentRunner runner(Agent agent) {
-        return new AgentRunner(new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
+        return new AgentRunner(new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
     }
 
     private static AiMessage planCall(String goal, String tasks) {

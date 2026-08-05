@@ -7,7 +7,7 @@ description: 使用真实模型构建持续对话、工具调用、人工审批�
 
 ## 概述
 
-控制台 Demo 使用真实 OpenAI-compatible ChatModel，展示一个完整交互应用：普通持续对话、只读工具自动执行、有副作用工具人工审批、阻塞 Run 恢复、每轮独立 Run、业务 ChatMemory 以及实时事件输出。
+控制台 Demo 使用真实 OpenAI-compatible ChatModel，展示一个完整交互应用：普通持续对话、只读工具自动执行、有副作用工具人工审批、阻塞 Turn 恢复、每轮独立 Turn、业务 ChatMemory 以及实时事件输出。
 
 源码位于 `demos/agent-console-demo/src/main/java/com/agentsflex/demo/agent/console/AgentConsoleDemo.java`。
 
@@ -18,7 +18,7 @@ description: 使用真实模型构建持续对话、工具调用、人工审批�
 - `get_current_time`：无副作用，Runner 直接执行。
 - `create_support_ticket`：会写业务系统，审批策略要求人工确认。
 
-控制台业务代码维护 conversationId 和 `ChatMemory`，每条普通输入携带历史消息创建新的 Run；审批输入按 runId 恢复原 Run，不创建新 Run。
+控制台业务代码维护 conversationId 和 `ChatMemory`，每条普通输入携带历史消息创建新的 Turn；审批输入按 turnId 恢复原 Turn，不创建新 Turn。
 
 ## 配置模型
 
@@ -52,7 +52,7 @@ Agent agent = Agent.builder("console-assistant")
     .chatModel(chatModel)
     .tool(currentTime)
     .tool(createTicket)
-    .toolApprovalPolicy((run, call, tool) ->
+    .toolApprovalPolicy((turn, call, tool) ->
         Boolean.TRUE.equals(tool.getMetadata().get("sideEffect"))
             ? ToolApprovalDecision.requireApproval()
                 .code("CONSOLE_WRITE_APPROVAL")
@@ -78,38 +78,38 @@ Agent agent = Agent.builder("console-assistant")
 String conversationId = "console-" + UUID.randomUUID();
 ChatMemory memory = new DefaultChatMemory(conversationId);
 
-AgentRunOptions options = AgentRunOptions.builder()
+AgentTurnOptions options = AgentTurnOptions.builder()
     .metadata("requestId", UUID.randomUUID().toString())
     .metadata("userId", "console-user")
     .build();
 
 AgentRunner runner = AgentRunner.builder()
-    .runStore(runStore)
+    .turnStore(turnStore)
     .agentLoader(agentLoader)
     .chatMemoryProvider(id -> memory)
     .build();
 
-AgentRun run = runner.run(agent, conversationId, new UserMessage(input), options);
+AgentTurn turn = runner.run(agent, conversationId, new UserMessage(input), options);
 ```
 
 ChatMemory 管理跨轮完整时间线；Runner 通过 Provider 读取模型消息，并在 Snapshot 保存后幂等投影本轮
-消息。页面使用 `getMessages()`，模型使用 `getModelMessages()`。metadata 只需保存当前 Run 恢复后仍需
+消息。页面使用 `getMessages()`，模型使用 `getModelMessages()`。metadata 只需保存当前 Turn 恢复后仍需
 使用的其他业务标识。
 
 ## 处理阻塞状态
 
 ```java
-while (run.getStatus().isBlocked()) {
-    if (run.getStatus() == AgentRunStatus.WAITING_FOR_APPROVAL) {
-        String callId = run.getSuspension().getCorrelationId();
-        run = runner.resume(run.getId(),
+while (turn.getStatus().isBlocked()) {
+    if (turn.getStatus() == AgentTurnStatus.WAITING_FOR_APPROVAL) {
+        String callId = turn.getSuspension().getCorrelationId();
+        turn = runner.resume(turn.getId(),
             approved
                 ? AgentResumeCommand.approveTool(callId)
                 : AgentResumeCommand.rejectTool(callId, "用户拒绝"));
         continue;
     }
-    if (run.getStatus() == AgentRunStatus.WAITING_FOR_USER) {
-        run = runner.resume(run.getId(),
+    if (turn.getStatus() == AgentTurnStatus.WAITING_FOR_USER) {
+        turn = runner.resume(turn.getId(),
             AgentResumeCommand.userInput(additionalInput));
         continue;
     }
@@ -128,8 +128,8 @@ runner.addEventListener(event -> {
         case TOOL_STARTED:
         case TOOL_COMPLETED:
         case TOOL_APPROVAL_REQUESTED:
-        case RUN_SUSPENDED:
-        case RUN_RESUMED:
+        case TURN_SUSPENDED:
+        case TURN_RESUMED:
             System.out.println("[事件] " + event.getType());
             break;
         default:
@@ -138,7 +138,7 @@ runner.addEventListener(event -> {
 });
 ```
 
-真实 Web 应把相同事件映射为 SSE/WebSocket，并在断线重连时重新读取 Run 当前状态。
+真实 Web 应把相同事件映射为 SSE/WebSocket，并在断线重连时重新读取 Turn 当前状态。
 
 ## 构建与运行
 
@@ -160,4 +160,4 @@ mvn -f demos/agent-console-demo/pom.xml exec:java
 
 ## 从 Demo 到生产
 
-控制台使用内存 Store，退出后状态丢失。生产服务应把 Runner、共享 Store、AgentLoader 和 Worker 作为应用级组件；将审批输入改为带鉴权的 HTTP API，并由业务 Inbox 或消息队列保证可靠性后调用 `submitResume`；持久化 conversationId、ChatMemory 和活动 runId；对输出与工具参数脱敏；并配置网络超时、业务幂等、指标和审计保留策略。
+控制台使用内存 Store，退出后状态丢失。生产服务应把 Runner、共享 Store、AgentLoader 和 Worker 作为应用级组件；将审批输入改为带鉴权的 HTTP API，并由业务 Inbox 或消息队列保证可靠性后调用 `submitResume`；持久化 conversationId、ChatMemory 和活动 turnId；对输出与工具参数脱敏；并配置网络超时、业务幂等、指标和审计保留策略。

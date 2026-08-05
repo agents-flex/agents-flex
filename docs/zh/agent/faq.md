@@ -7,7 +7,7 @@ description: 解答 Agent 定义、执行、恢复、工具、规划、Worker �
 
 ## 概述
 
-本页汇总使用 agents-flex-agent 时最容易混淆的职责边界和生产问题。遇到异常时，先读取 Run Snapshot 的 status、phase、Suspension、error、version 和 nextRunAt，再结合持久化事件定位原因。
+本页汇总使用 agents-flex-agent 时最容易混淆的职责边界和生产问题。遇到异常时，先读取 Turn Snapshot 的 status、phase、Suspension、error、version 和 nextRunnableAt，再结合持久化事件定位原因。
 
 ## Agent 和 ChatModel 有什么区别？
 
@@ -15,31 +15,31 @@ description: 解答 Agent 定义、执行、恢复、工具、规划、Worker �
 
 ## `run` 和 `start` 应该选哪个？
 
-`run` 在当前线程执行到终止或阻塞，适合短同步任务。`start` 只保存 READY Run，适合由 Worker 异步执行。不要把长任务放在 HTTP 请求线程里一直等待。
+`run` 在当前线程执行到终止或阻塞，适合短同步任务。`start` 只保存 READY Turn，适合由 Worker 异步执行。不要把长任务放在 HTTP 请求线程里一直等待。
 
 ## 为什么 `run` 返回后不是 COMPLETED？
 
-它可能在等待审批、用户输入、子 Run 或重试时间，也可能达到预算/迭代上限。检查 `status` 和 `suspension`，阻塞状态需要外部事件，终态不能再次推进。
+它可能在等待审批、用户输入、子 Turn 或重试时间，也可能达到预算/迭代上限。检查 `status` 和 `suspension`，阻塞状态需要外部事件，终态不能再次推进。
 
-## 下一轮对话要复用原 AgentRun 吗？
+## 下一轮对话要复用原 AgentTurn 吗？
 
-不要。每一轮创建新的 Run，并传入业务系统从 ChatMemory 加载的历史消息。只有恢复阻塞任务时才按已保存的 runId 继续原 Run。
+不要。每一轮创建新的 Turn，并传入业务系统从 ChatMemory 加载的历史消息。只有恢复阻塞任务时才按已保存的 turnId 继续原 Turn。
 
 ## 为什么恢复时找不到 Agent？
 
 Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精确加载历史版本，并绑定完整模型、工具和策略。
 
-## 修改 Agent 后历史 Run 会用新配置吗？
+## 修改 Agent 后历史 Turn 会用新配置吗？
 
-历史 Run 绑定创建时的版本。正确做法是发布新版本，同时保留旧版本直到相关 Run 终止。不要让 `load(id, version)` 自动返回 active 版本。
+历史 Turn 绑定创建时的版本。正确做法是发布新版本，同时保留旧版本直到相关 Turn 终止。不要让 `load(id, version)` 自动返回 active 版本。
 
 ## 工具为什么执行了两次？
 
-常见原因是 Middleware 多次调用 `proceed`、外部副作用成功后 Snapshot 失败并重试，或多个执行者绕过 Lease 推进同一 Run。修复责任链和 Store 后，写工具仍必须用 runId + toolCallId 做业务幂等。
+常见原因是 Middleware 多次调用 `proceed`、外部副作用成功后 Snapshot 失败并重试，或多个执行者绕过 Lease 推进同一 Turn。修复责任链和 Store 后，写工具仍必须用 turnId + toolCallId 做业务幂等。
 
-## 审批后为什么不能创建新 Run？
+## 审批后为什么不能创建新 Turn？
 
-审批对应原 Run 中已持久化的 ToolCall。创建新 Run 会丢失 correlationId、原参数和审计链。应提交 `approveTool(callId)` 或 `rejectTool(callId, reason)` 恢复原 Run。
+审批对应原 Turn 中已持久化的 ToolCall。创建新 Turn 会丢失 correlationId、原参数和审计链。应提交 `approveTool(callId)` 或 `rejectTool(callId, reason)` 恢复原 Turn。
 
 ## Token 预算为什么没有生效？
 
@@ -51,7 +51,7 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 ## 内存 Store 能用于多实例吗？
 
-不能。每个 JVM 有独立数据，无法协调 Snapshot 版本或 Run Lease。生产多实例必须使用共享持久化实现。
+不能。每个 JVM 有独立数据，无法协调 Snapshot 版本或 Turn Lease。生产多实例必须使用共享持久化实现。
 
 ## Worker Lease 能防止所有重复副作用吗？
 
@@ -59,7 +59,7 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 ## 为什么 streaming 设置恢复后失效？
 
-`streaming` 是当前进程调用模型的方式，不属于可恢复业务状态，因此不进入 Snapshot。同一进程创建的子 Run 会继承该设置；从 Snapshot 恢复或由 Worker 执行时默认使用非流式调用。
+`streaming` 是当前进程调用模型的方式，不属于可恢复业务状态，因此不进入 Snapshot。同一进程创建的子 Turn 会继承该设置；从 Snapshot 恢复或由 Worker 执行时默认使用非流式调用。
 
 ## metadata 可以保存任意对象吗？
 
@@ -67,16 +67,16 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 ## 任务规划会并行执行吗？
 
-当前内置计划顺序执行，一次一个活动任务。需要并行 DAG 时应在外部编排层实现，并把独立任务提交为不同 Run。
+当前内置计划顺序执行，一次一个活动任务。需要并行 DAG 时应在外部编排层实现，并把独立任务提交为不同 Turn。
 
 ## 如何取消运行？
 
-调用 `runner.requestCancellation(runId)`。取消是协作式的，在安全边界生效，不保证立刻中断正在执行的 HTTP 或工具函数。
+调用 `runner.requestCancellation(turnId)`。取消是协作式的，在安全边界生效，不保证立刻中断正在执行的 HTTP 或工具函数。
 
 ## Store 版本冲突如何处理？
 
 说明已有更新提交。停止使用旧对象，重新加载最新快照；不要无条件覆盖。业务恢复事件和工具副作用应保持幂等，使重试不会产生额外影响。
 
-## 如何排查一直处于 RUNNING 的 Run？
+## 如何排查一直处于 RUNNING 的 Turn？
 
 检查 Lease owner/until、Worker 心跳、最近 Snapshot 事件、模型/工具超时和 runnable 队列。Lease 过期后应能被其他 Worker 领取；若不能，重点验证 `claimRunnable` 的状态判断与数据库时间。

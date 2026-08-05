@@ -63,9 +63,9 @@ public final class TimingMiddleware implements AgentMiddleware {
 - 不调用表示短路，必须返回符合当前状态机的有效结果。
 - 多次调用可能重复请求模型或执行有副作用工具。
 - 在 `finally` 中做耗时上报仍会增加请求延迟。
-- Middleware 被多个 Run 共享，实例字段必须线程安全。
+- Middleware 被多个 Turn 共享，实例字段必须线程安全。
 
-## 使用 Run Metadata
+## 使用 Turn Metadata
 
 ```java
 @Override
@@ -81,15 +81,15 @@ public Object aroundToolCall(AgentToolCallContext context,
 }
 ```
 
-metadata 会随 Snapshot 持久化，因此 Worker 恢复后仍可读取租户等业务标识。鉴权所需的 `permissionService` 由 Middleware 自身通过依赖注入持有，并且必须能够安全地被多个 Run 并发复用。密钥和服务对象不能放入 metadata。
+metadata 会随 Snapshot 持久化，因此 Worker 恢复后仍可读取租户等业务标识。鉴权所需的 `permissionService` 由 Middleware 自身通过依赖注入持有，并且必须能够安全地被多个 Turn 并发复用。密钥和服务对象不能放入 metadata。
 
 ## 临时修改 Prompt
 
-`AgentMiddlewareContext.setPrompt(...)` 只替换当前责任链中的模型 Prompt，不直接替换 Run 的持久化 Prompt。这适合添加一次性的路由提示或脱敏视图；需要跨恢复保存的消息修改，应使用 Context Manager 或 Run 的受控状态。
+`AgentMiddlewareContext.setPrompt(...)` 只替换当前责任链中的模型 Prompt，不直接替换 Turn 的持久化 Prompt。这适合添加一次性的路由提示或脱敏视图；需要跨恢复保存的消息修改，应使用 Context Manager 或 Turn 的受控状态。
 
 ## 与 ToolInterceptor 的关系
 
-执行顺序为 Agent Tool Middleware 链，然后进入核心 `ToolExecutor` 与 Agent 配置的 `ToolInterceptor`，最后调用 Tool 函数。Middleware 能访问 Run 和 Agent 上下文；ToolInterceptor 更接近通用工具执行层。跨 Agent 的通用工具治理可放在 ToolInterceptor，任务级策略放在 Middleware。
+执行顺序为 Agent Tool Middleware 链，然后进入核心 `ToolExecutor` 与 Agent 配置的 `ToolInterceptor`，最后调用 Tool 函数。Middleware 能访问 Turn 和 Agent 上下文；ToolInterceptor 更接近通用工具执行层。跨 Agent 的通用工具治理可放在 ToolInterceptor，任务级策略放在 Middleware。
 
 ## 短路示例
 

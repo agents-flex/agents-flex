@@ -7,17 +7,17 @@ description: 为 Agent 建立日志、指标、事件时间线、Trace 关联和
 
 ## 概述
 
-Agent 的一次用户请求可能跨模型、工具、审批、重试、Worker 和多个子 Run。可观测性的目标不只是打印模型内容，而是能够回答：任务现在在哪里、为什么等待、消耗了多少、谁批准了什么、失败后是否会重试，以及整棵任务树如何演进。
+Agent 的一次用户请求可能跨模型、工具、审批、重试、Worker 和多个子 Turn。可观测性的目标不只是打印模型内容，而是能够回答：任务现在在哪里、为什么等待、消耗了多少、谁批准了什么、失败后是否会重试，以及整棵任务树如何演进。
 
 ## 关联标识
 
 建议所有日志和 Trace 至少携带：
 
-- `runId`：单个执行实例。
-- `rootRunId`：整棵父子任务树。
-- `parentRunId`：直接父任务。
+- `turnId`：单个执行实例。
+- `rootTurnId`：整棵父子任务树。
+- `parentTurnId`：直接父任务。
 - `agentId` 与 `agentVersion`：运行定义。
-- `requestId`、`tenantId`、`userId`：来自 Run metadata。
+- `requestId`、`tenantId`、`userId`：来自 Turn metadata。
 - `toolCallId` 与业务审批事件 ID：工具调用和外部恢复事件的幂等关联。
 
 不要把 Prompt、工具参数和模型输出默认完整写入日志；先做分级、脱敏与大小限制。
@@ -28,10 +28,10 @@ Agent Event 适合 WebSocket/SSE：
 
 ```java
 runner.addEventListener(event -> uiPublisher.publish(
-    event.getRunId(), event.getSequence(), event.getType(), event.getData()));
+    event.getTurnId(), event.getSequence(), event.getType(), event.getData()));
 ```
 
-UI 应容忍丢事件，并在重连时从 `AgentRunStore` 重新读取当前状态。实时事件不是跨进程恢复日志。
+UI 应容忍丢事件，并在重连时从 `AgentTurnStore` 重新读取当前状态。实时事件不是跨进程恢复日志。
 
 ## 审计时间线
 
@@ -43,8 +43,8 @@ Snapshot 表示当前真相，业务保存的 Event 表示变化历史。排障�
 
 推荐的低基数指标包括：
 
-- Run 创建、完成、失败、取消、预算终止数量。
-- Run 端到端耗时与等待时间。
+- Turn 创建、完成、失败、取消、预算终止数量。
+- Turn 端到端耗时与等待时间。
 - 每 Agent 的模型迭代、Token 与工具调用分布。
 - 工具成功率、错误率和耗时。
 - 重试调度数量及重试后成功率。
@@ -52,18 +52,18 @@ Snapshot 表示当前真相，业务保存的 Event 表示变化历史。排障�
 - 业务恢复 Inbox 或消息队列的积压、处理延迟和失败数。
 - Snapshot 写入失败及大小、业务事件转发失败、Tool 返回大小与截断率。
 
-`runId`、`toolCallId` 等高基数值只进入日志或 Trace，不作为指标标签。
+`turnId`、`toolCallId` 等高基数值只进入日志或 Trace，不作为指标标签。
 
 ## Trace 边界
 
-可在 Middleware 中创建 step、model、tool span，在 AgentEventListener 中记录最终状态。父子 Run 通过 `rootRunId` 或显式 Trace context 关联。Worker 恢复时应从 Snapshot metadata 中的安全追踪标识重建新的 span link，而不是把整个 SDK Context 序列化进 Snapshot。
+可在 Middleware 中创建 step、model、tool span，在 AgentEventListener 中记录最终状态。父子 Turn 通过 `rootTurnId` 或显式 Trace context 关联。Worker 恢复时应从 Snapshot metadata 中的安全追踪标识重建新的 span link，而不是把整个 SDK Context 序列化进 Snapshot。
 
 ## 日志建议
 
 使用结构化日志记录状态转换和关键计数：
 
 ```text
-event=agent_run_suspended runId=... status=WAITING_FOR_APPROVAL
+event=agent_turn_suspended turnId=... status=WAITING_FOR_APPROVAL
 agentId=order-agent tool=refund_order toolCallId=...
 ```
 
@@ -71,8 +71,8 @@ agentId=order-agent tool=refund_order toolCallId=...
 
 ## 与 observability 模块集成
 
-Agents-Flex 的通用可观测模块可以覆盖模型和工具底层调用；Agent 自身的状态事件则补充任务级语义。两者通过 request/run 标识关联，不应重复把整段 Prompt 存两份。具体 exporter 和 JDBC 存储参见站点的“可观测”模块文档。
+Agents-Flex 的通用可观测模块可以覆盖模型和工具底层调用；Agent 自身的状态事件则补充任务级语义。两者通过 request/turn 标识关联，不应重复把整段 Prompt 存两份。具体 exporter 和 JDBC 存储参见站点的“可观测”模块文档。
 
 ## 健康检查
 
-生产环境应检查 Loader 能否加载 active 与历史版本、Run Store 读写、Worker 最近心跳、业务恢复事件积压和最老 runnable Run 年龄。仅检查 HTTP 进程存活，无法发现 Agent 调度已经停止。
+生产环境应检查 Loader 能否加载 active 与历史版本、Turn Store 读写、Worker 最近心跳、业务恢复事件积压和最老 runnable Turn 年龄。仅检查 HTTP 进程存活，无法发现 Agent 调度已经停止。

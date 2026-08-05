@@ -43,8 +43,8 @@ public final class RedisAgentStoreConfig implements AutoCloseable {
         return serializer;
     }
 
-    public RedisAgentRunStore runStore() {
-        return new RedisAgentRunStore(this);
+    public RedisAgentTurnStore turnStore() {
+        return new RedisAgentTurnStore(this);
     }
 
     @Override

@@ -14,9 +14,9 @@ package com.agentsflex.agent.event;
  */
 public enum AgentEventType {
     /**
-     * Run 首次从 READY 状态进入执行流程。
+     * Turn 首次从 READY 状态进入执行流程。
      */
-    RUN_STARTED,
+    TURN_STARTED,
     /**
      * Runner 开始推进一次 step；一次 step 最多发起一次模型调用。
      */
@@ -61,35 +61,35 @@ public enum AgentEventType {
      */
     TOOL_COMPLETED,
     /**
-     * 工具抛出异常；Run 是否立即失败取决于 ToolErrorStrategy。
+     * 工具抛出异常；Turn 是否立即失败取决于 ToolErrorStrategy。
      */
     TOOL_FAILED,
     /**
-     * 工具策略要求外部审批，Run 已保存关联 ToolCall 并进入等待状态。
+     * 工具策略要求外部审批，Turn 已保存关联 ToolCall 并进入等待状态。
      */
     TOOL_APPROVAL_REQUESTED,
     /**
-     * AgentRunSnapshot 已成功写入 AgentRunStore，并获得新的版本号。
+     * AgentTurnSnapshot 已成功写入 AgentTurnStore，并获得新的版本号。
      */
     SNAPSHOT_SAVED,
     /**
-     * Run 已持久化为等待用户输入、工具审批、子 Run 或重试调度的状态。
+     * Turn 已持久化为等待用户输入、工具审批、子 Turn 或重试调度的状态。
      */
-    RUN_SUSPENDED,
+    TURN_SUSPENDED,
     /**
-     * 外部恢复命令已经应用，Run 可以继续推进。
+     * 外部恢复命令已经应用，Turn 可以继续推进。
      */
-    RUN_RESUMED,
+    TURN_RESUMED,
     /**
-     * 外部系统已经写入协作式取消请求，但 Run 可能尚未停止。
+     * 外部系统已经写入协作式取消请求，但 Turn 可能尚未停止。
      */
     CANCELLATION_REQUESTED,
     /**
-     * 父 Run 已原子创建并关联一个子 Run。
+     * 父 Turn 已原子创建并关联一个子 Turn。
      */
     CHILD_STARTED,
     /**
-     * 规划能力已为当前 Run 创建初始任务计划。
+     * 规划能力已为当前 Turn 创建初始任务计划。
      */
     PLAN_CREATED,
     /**
@@ -97,43 +97,43 @@ public enum AgentEventType {
      */
     PLAN_UPDATED,
     /**
-     * 一个计划任务已绑定子 Run 并开始执行。
+     * 一个计划任务已绑定子 Turn 并开始执行。
      */
     TASK_STARTED,
     /**
-     * 计划任务关联的子 Run 已正常完成。
+     * 计划任务关联的子 Turn 已正常完成。
      */
     TASK_COMPLETED,
     /**
-     * 计划任务关联的子 Run 已失败、取消或以其他非成功状态结束。
+     * 计划任务关联的子 Turn 已失败、取消或以其他非成功状态结束。
      */
     TASK_FAILED,
     /**
-     * 可恢复异常已记录，Run 正等待 nextRunAt 到达后重试。
+     * 可恢复异常已记录，Turn 正等待 nextRunnableAt 到达后重试。
      */
     RETRY_SCHEDULED,
     /**
-     * 模型调用次数达到 maxIterations，Run 已进入对应终止状态。
+     * 模型调用次数达到 maxIterations，Turn 已进入对应终止状态。
      */
     MAX_ITERATIONS_REACHED,
     /**
-     * Runner 推进次数达到 maxSteps，Run 已进入对应终止状态。
+     * Runner 推进次数达到 maxSteps，Turn 已进入对应终止状态。
      */
     MAX_STEPS_REACHED,
     /**
-     * 模型已返回不含待执行 ToolCall 的最终结果，Run 正常结束。
+     * 模型已返回不含待执行 ToolCall 的最终结果，Turn 正常结束。
      */
-    RUN_COMPLETED,
+    TURN_COMPLETED,
     /**
-     * Run 因不可恢复的模型、工具或协议异常而失败，失败状态已经保存。
+     * Turn 因不可恢复的模型、工具或协议异常而失败，失败状态已经保存。
      */
-    RUN_FAILED,
+    TURN_FAILED,
     /**
-     * Runner 已观察到取消请求、停止推进并将 Run 标记为已取消。
+     * Runner 已观察到取消请求、停止推进并将 Turn 标记为已取消。
      */
-    RUN_CANCELLED,
+    TURN_CANCELLED,
     /**
-     * 时间、Token 或工具调用次数达到 AgentBudget 上限，Run 已终止。
+     * 时间、Token 或工具调用次数达到 AgentBudget 上限，Turn 已终止。
      */
     BUDGET_EXCEEDED
 }

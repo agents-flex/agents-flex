@@ -70,9 +70,9 @@ public final class DatabaseAgentLoader implements AgentLoader {
 Agent 不可变，适合按 `id:version` 缓存。active 指针则应有更短的缓存时间或由配置发布事件失效：
 
 - 历史版本缓存可长期保留。
-- 新建 Run 使用 active 版本。
-- 已存在 Run 始终使用快照绑定版本。
-- 下线版本前确认没有可恢复 Run 仍引用它。
+- 新建 Turn 使用 active 版本。
+- 已存在 Turn 始终使用快照绑定版本。
+- 下线版本前确认没有可恢复 Turn 仍引用它。
 
 ## 规划与子 Agent
 

@@ -14,8 +14,8 @@ import java.util.UUID;
 /**
  * 任务计划中的不可变任务及其执行结果。
  *
- * <p>任务定义和执行状态保存在父 Run 的 Snapshot 中。任务开始后通过 childRunId 关联实际执行
- * 的子 Run；result 可以按规划策略截断，完整输出仍以子 Run 的最终消息为准。</p>
+ * <p>任务定义和执行状态保存在父 Turn 的 Snapshot 中。任务开始后通过 childTurnId 关联实际执行
+ * 的子 Turn；result 可以按规划策略截断，完整输出仍以子 Turn 的最终消息为准。</p>
  */
 public final class AgentTask implements Serializable {
 
@@ -37,15 +37,15 @@ public final class AgentTask implements Serializable {
     private final AgentTaskStatus status;
     /** 模型选择的目标 Agent ID；为空时使用父 Agent。 */
     private final String assignedAgentId;
-    /** 执行该任务的子 Run ID；尚未调度时为 {@code null}。 */
-    private final String childRunId;
+    /** 执行该任务的子 Turn ID；尚未调度时为 {@code null}。 */
+    private final String childTurnId;
     /** 写回父计划的子任务结果。 */
     private final String result;
     /** 子任务失败、取消或跳过时的原因。 */
     private final String error;
     /** 任务定义创建时间。 */
     private final long createdAt;
-    /** 子 Run 开始执行时间；尚未开始时为 0。 */
+    /** 子 Turn 开始执行时间；尚未开始时为 0。 */
     private final long startedAt;
     /** 任务进入终止状态的时间；尚未结束时为 0。 */
     private final long completedAt;
@@ -59,7 +59,7 @@ public final class AgentTask implements Serializable {
         this.position = builder.position;
         this.status = builder.status;
         this.assignedAgentId = builder.assignedAgentId;
-        this.childRunId = builder.childRunId;
+        this.childTurnId = builder.childTurnId;
         this.result = builder.result;
         this.error = builder.error;
         this.createdAt = builder.createdAt;
@@ -82,7 +82,7 @@ public final class AgentTask implements Serializable {
             .position(position)
             .status(status)
             .assignedAgentId(assignedAgentId)
-            .childRunId(childRunId)
+            .childTurnId(childTurnId)
             .result(result)
             .error(error)
             .createdAt(createdAt)
@@ -109,8 +109,8 @@ public final class AgentTask implements Serializable {
     public AgentTaskStatus getStatus() { return status; }
     /** @return 目标 Agent ID；为空时由父 Agent 执行 */
     public String getAssignedAgentId() { return assignedAgentId; }
-    /** @return 实际执行任务的子 Run ID */
-    public String getChildRunId() { return childRunId; }
+    /** @return 实际执行任务的子 Turn ID */
+    public String getChildTurnId() { return childTurnId; }
     /** @return 写回父计划的任务结果 */
     public String getResult() { return result; }
     /** @return 失败、取消或跳过原因 */
@@ -132,7 +132,7 @@ public final class AgentTask implements Serializable {
         private int position;
         private AgentTaskStatus status = AgentTaskStatus.PENDING;
         private String assignedAgentId;
-        private String childRunId;
+        private String childTurnId;
         private String result;
         private String error;
         private long createdAt = System.currentTimeMillis();
@@ -157,8 +157,8 @@ public final class AgentTask implements Serializable {
         public Builder status(AgentTaskStatus value) { this.status = value; return this; }
         /** 设置模型选择的目标 Agent ID。 */
         public Builder assignedAgentId(String value) { this.assignedAgentId = value; return this; }
-        /** 设置实际执行该任务的子 Run ID。 */
-        public Builder childRunId(String value) { this.childRunId = value; return this; }
+        /** 设置实际执行该任务的子 Turn ID。 */
+        public Builder childTurnId(String value) { this.childTurnId = value; return this; }
         /** 设置写回父计划的任务结果。 */
         public Builder result(String value) { this.result = value; return this; }
         /** 设置任务终止原因。 */

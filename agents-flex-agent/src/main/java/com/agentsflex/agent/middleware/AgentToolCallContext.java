@@ -3,7 +3,7 @@
  */
 package com.agentsflex.agent.middleware;
 
-import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentTurn;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -20,8 +20,8 @@ public final class AgentToolCallContext extends AgentMiddlewareContext {
     /** 模型生成并等待执行的工具调用。 */
     private final ToolCall toolCall;
 
-    public AgentToolCallContext(AgentRunner runner, AgentRun run, Tool tool, ToolCall toolCall) {
-        super(runner, run, run.getPrompt());
+    public AgentToolCallContext(AgentRunner runner, AgentTurn turn, Tool tool, ToolCall toolCall) {
+        super(runner, turn, turn.getPrompt());
         this.tool = tool;
         this.toolCall = toolCall;
     }

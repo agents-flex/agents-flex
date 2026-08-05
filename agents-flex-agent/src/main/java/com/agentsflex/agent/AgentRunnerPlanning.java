@@ -31,7 +31,7 @@ import java.util.Objects;
 /**
  * 封装 {@link AgentRunner} 内部的任务规划状态转换。
  *
- * <p>该类是包内实现细节，不是新的公开扩展点。它负责解析内置规划工具、推进计划、关联父子 Run、
+ * <p>该类是包内实现细节，不是新的公开扩展点。它负责解析内置规划工具、推进计划、关联父子 Turn、
  * 回写子任务结果以及准备规划工具；Snapshot、租约和普通运行循环仍由 AgentRunner 统一管理。</p>
  */
 final class AgentRunnerPlanning {
@@ -56,32 +56,32 @@ final class AgentRunnerPlanning {
     }
 
     /**
-     * 应用规划 ToolCall，只修改 Run 中的计划状态并返回对应 ToolMessage。
-     * 调用方应先保存 ToolMessage 和 Snapshot，再调用 {@link #notifyPlanChanged(AgentRun, ToolCall)}。
+     * 应用规划 ToolCall，只修改 Turn 中的计划状态并返回对应 ToolMessage。
+     * 调用方应先保存 ToolMessage 和 Snapshot，再调用 {@link #notifyPlanChanged(AgentTurn, ToolCall)}。
      */
-    ToolMessage applyToolCall(AgentRun run, ToolCall call) {
+    ToolMessage applyToolCall(AgentTurn turn, ToolCall call) {
         return AgentPlanningTool.NAME.equals(call.getName())
-            ? createTaskPlan(run, call) : updateTaskPlan(run, call);
+            ? createTaskPlan(turn, call) : updateTaskPlan(turn, call);
     }
 
     /**
      * 在规划 ToolCall 的状态已经保存后发布相应生命周期事件。
      */
-    void notifyPlanChanged(AgentRun run, ToolCall call) {
+    void notifyPlanChanged(AgentTurn turn, ToolCall call) {
         if (AgentPlanningTool.NAME.equals(call.getName())) {
-            eventPublisher.notifyPlanCreated(run, run.getTaskPlan());
+            eventPublisher.notifyPlanCreated(turn, turn.getTaskPlan());
         } else {
-            eventPublisher.notifyPlanUpdated(run, run.getTaskPlan());
+            eventPublisher.notifyPlanUpdated(turn, turn.getTaskPlan());
         }
     }
 
     /**
-     * 优先推进 Run 中已经存在的任务计划。
+     * 优先推进 Turn 中已经存在的任务计划。
      *
      * @return 规划产生独立动作时返回步骤结果；无需拦截普通模型步骤时返回 {@code null}
      */
-    AgentStepResult advance(AgentRun run) {
-        AgentTaskPlan plan = run.getTaskPlan();
+    AgentStepResult advance(AgentTurn turn) {
+        AgentTaskPlan plan = turn.getTaskPlan();
         if (plan == null || plan.getStatus() == AgentTaskPlanStatus.COMPLETED
             || plan.getStatus() == AgentTaskPlanStatus.FINALIZING
             || plan.getStatus() == AgentTaskPlanStatus.REPLANNING) return null;
@@ -90,25 +90,25 @@ final class AgentRunnerPlanning {
         }
         AgentTask next = plan.getNextTask();
         if (next == null) {
-            run.updateTaskPlan(plan.beginFinalizing(System.currentTimeMillis()));
-            runner.saveSnapshot(run);
-            if (!run.getAgent().getPlanningPolicy().isFinalSummaryRequired()) {
+            turn.updateTaskPlan(plan.beginFinalizing(System.currentTimeMillis()));
+            runner.saveSnapshot(turn);
+            if (!turn.getAgent().getPlanningPolicy().isFinalSummaryRequired()) {
                 AiMessage finalMessage = new AiMessage(lastTaskResult(plan));
-                run.getPrompt().addMessage(finalMessage);
-                return runner.complete(run, null, finalMessage);
+                turn.getPrompt().addMessage(finalMessage);
+                return runner.complete(turn, null, finalMessage);
             }
             return null;
         }
         String agentId = StringUtil.hasText(next.getAssignedAgentId())
-            ? next.getAssignedAgentId() : run.getAgent().getId();
-        runner.startChild(run, agentId, taskInput(plan, next));
+            ? next.getAssignedAgentId() : turn.getAgent().getId();
+        runner.startChild(turn, agentId, taskInput(plan, next));
         return AgentStepResult.of(null, null, null);
     }
 
     /**
-     * 在父子 Snapshot 保存前，把新建子 Run 与当前计划任务关联。
+     * 在父子 Snapshot 保存前，把新建子 Turn 与当前计划任务关联。
      */
-    void bindChild(AgentRun parent, AgentRun child, String childAgentId) {
+    void bindChild(AgentTurn parent, AgentTurn child, String childAgentId) {
         AgentTaskPlan plan = parent.getTaskPlan();
         if (plan == null || plan.getActiveTask() != null || plan.getNextTask() == null) return;
         AgentTask task = plan.getNextTask();
@@ -122,7 +122,7 @@ final class AgentRunnerPlanning {
     /**
      * 在父子 Snapshot 已经原子保存后发布计划任务开始事件。
      */
-    void notifyTaskStarted(AgentRun parent, AgentRun child) {
+    void notifyTaskStarted(AgentTurn parent, AgentTurn child) {
         AgentTaskPlan plan = parent.getTaskPlan();
         if (plan != null && plan.getActiveTask() != null) {
             eventPublisher.notifyTaskStarted(parent, plan.getActiveTask(), child);
@@ -130,23 +130,23 @@ final class AgentRunnerPlanning {
     }
 
     /**
-     * 将终止子 Run 的结果写回计划并恢复父 Run。
-     * 重复处理已恢复的父 Run 时不会再次追加结果。
+     * 将终止子 Turn 的结果写回计划并恢复父 Turn。
+     * 重复处理已恢复的父 Turn 时不会再次追加结果。
      */
-    AgentRun resumeParentFromChild(AgentRun child) {
+    AgentTurn resumeParentFromChild(AgentTurn child) {
         if (child == null || !child.getStatus().isTerminal()
-            || !StringUtil.hasText(child.getParentRunId())) {
+            || !StringUtil.hasText(child.getParentTurnId())) {
             return null;
         }
-        AgentRun parent = runner.restore(child.getParentRunId());
+        AgentTurn parent = runner.restore(child.getParentTurnId());
         AgentSuspension suspension = parent.getSuspension();
-        if (parent.getStatus() != AgentRunStatus.WAITING_FOR_CHILD || suspension == null
+        if (parent.getStatus() != AgentTurnStatus.WAITING_FOR_CHILD || suspension == null
             || !child.getId().equals(suspension.getCorrelationId())) {
             return parent;
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("childRunId", child.getId());
+        result.put("childTurnId", child.getId());
         result.put("agentId", child.getAgent().getId());
         result.put("status", child.getStatus().name());
         String taskResult = limitTaskResult(parent, child.getFinalOutput());
@@ -162,36 +162,36 @@ final class AgentRunnerPlanning {
     }
 
     /**
-     * 查询计划以及当前计划子 Run 的真实运行状态。
+     * 查询计划以及当前计划子 Turn 的真实运行状态。
      */
-    AgentTaskProgress getTaskProgress(String runId) {
-        AgentRun root = runner.restore(runId);
+    AgentTaskProgress getTaskProgress(String turnId) {
+        AgentTurn root = runner.restore(turnId);
         AgentTaskPlan plan = root.getTaskPlan();
         if (plan == null) return null;
-        AgentRun child = currentChild(root);
+        AgentTurn child = currentChild(root);
         return new AgentTaskProgress(plan,
             child == null ? root.getStatus() : child.getStatus(),
             child == null ? root.getSuspension() : child.getSuspension());
     }
 
     /**
-     * 返回父 Run 当前计划关联的子 Run；没有活动计划任务时返回 {@code null}。
+     * 返回父 Turn 当前计划关联的子 Turn；没有活动计划任务时返回 {@code null}。
      */
-    AgentRun currentChild(AgentRun parent) {
-        if (parent == null || parent.getStatus() != AgentRunStatus.WAITING_FOR_CHILD) return null;
+    AgentTurn currentChild(AgentTurn parent) {
+        if (parent == null || parent.getStatus() != AgentTurnStatus.WAITING_FOR_CHILD) return null;
         AgentTaskPlan plan = parent.getTaskPlan();
         AgentTask task = plan == null ? null : plan.getActiveTask();
-        return task == null || !StringUtil.hasText(task.getChildRunId())
-            ? null : runner.restore(task.getChildRunId());
+        return task == null || !StringUtil.hasText(task.getChildTurnId())
+            ? null : runner.restore(task.getChildTurnId());
     }
 
     /**
-     * 加载白名单中的完整 Agent，并向当前 Run 的 Prompt 装配规划工具。
+     * 加载白名单中的完整 Agent，并向当前 Turn 的 Prompt 装配规划工具。
      */
-    void prepareTools(AgentRun run) {
-        if (run.isPlanningToolsPrepared()) return;
+    void prepareTools(AgentTurn turn) {
+        if (turn.isPlanningToolsPrepared()) return;
         List<Agent> delegates = new ArrayList<>();
-        for (String agentId : run.getAgent().getPlanningPolicy().getAllowedAgentIds()) {
+        for (String agentId : turn.getAgent().getPlanningPolicy().getAllowedAgentIds()) {
             Agent delegate = agentLoader.loadActive(agentId);
             if (delegate == null) {
                 throw new IllegalStateException(
@@ -199,33 +199,33 @@ final class AgentRunnerPlanning {
             }
             delegates.add(delegate);
         }
-        run.preparePlanningTools(delegates);
+        turn.preparePlanningTools(delegates);
     }
 
     /**
-     * 在 Run 完成时收束重规划或最终汇总状态。
+     * 在 Turn 完成时收束重规划或最终汇总状态。
      */
-    void finishPlan(AgentRun run) {
-        AgentTaskPlan plan = run.getTaskPlan();
+    void finishPlan(AgentTurn turn) {
+        AgentTaskPlan plan = turn.getTaskPlan();
         if (plan != null && plan.getStatus() == AgentTaskPlanStatus.REPLANNING) {
             plan = plan.stop("模型未提交计划调整，剩余任务已跳过", System.currentTimeMillis());
         }
         if (plan != null && plan.getStatus() == AgentTaskPlanStatus.FINALIZING) {
-            run.updateTaskPlan(plan.complete(System.currentTimeMillis()));
+            turn.updateTaskPlan(plan.complete(System.currentTimeMillis()));
         }
     }
 
-    private ToolMessage createTaskPlan(AgentRun run, ToolCall call) {
-        if (!run.isPlanningEnabled()) {
-            throw new IllegalArgumentException("task planning is not enabled for this run");
+    private ToolMessage createTaskPlan(AgentTurn turn, ToolCall call) {
+        if (!turn.isPlanningEnabled()) {
+            throw new IllegalArgumentException("task planning is not enabled for this turn");
         }
-        if (run.getTaskPlan() != null) {
-            throw new IllegalArgumentException("an AgentRun can only create one task plan");
+        if (turn.getTaskPlan() != null) {
+            throw new IllegalArgumentException("an AgentTurn can only create one task plan");
         }
         JSONObject object = arguments(call);
         String goal = object.getString("goal");
         JSONArray values = object.getJSONArray("tasks");
-        AgentPlanningPolicy policy = run.getAgent().getPlanningPolicy();
+        AgentPlanningPolicy policy = turn.getAgent().getPlanningPolicy();
         if (!StringUtil.hasText(goal) || values == null || values.isEmpty()) {
             throw new IllegalArgumentException("planning goal and tasks are required");
         }
@@ -233,15 +233,15 @@ final class AgentRunnerPlanning {
             throw new IllegalArgumentException("task count exceeds maxTasks: "
                 + policy.getMaxTasks());
         }
-        List<AgentTask> tasks = parseTasks(run, values);
+        List<AgentTask> tasks = parseTasks(turn, values);
         AgentTaskPlan plan = AgentTaskPlan.create(goal, tasks);
-        run.updateTaskPlan(plan);
+        turn.updateTaskPlan(plan);
         return toolResult(call, "planId", plan.getId(), "taskCount", tasks.size());
     }
 
-    private ToolMessage updateTaskPlan(AgentRun run, ToolCall call) {
-        AgentTaskPlan plan = run.getTaskPlan();
-        AgentPlanningPolicy policy = run.getAgent().getPlanningPolicy();
+    private ToolMessage updateTaskPlan(AgentTurn turn, ToolCall call) {
+        AgentTaskPlan plan = turn.getTaskPlan();
+        AgentPlanningPolicy policy = turn.getAgent().getPlanningPolicy();
         if (plan == null || plan.getStatus() != AgentTaskPlanStatus.REPLANNING) {
             throw new IllegalArgumentException("task plan is not waiting for an update");
         }
@@ -254,24 +254,24 @@ final class AgentRunnerPlanning {
         if (!StringUtil.hasText(reason) || values == null || values.isEmpty()) {
             throw new IllegalArgumentException("revision reason and tasks are required");
         }
-        AgentTaskPlan updated = plan.revisePending(parseTasks(run, values), reason,
+        AgentTaskPlan updated = plan.revisePending(parseTasks(turn, values), reason,
             policy.isTaskRevisionAllowed(), policy.isTaskAppendAllowed(),
             policy.getMaxTasks(), System.currentTimeMillis());
-        run.updateTaskPlan(updated);
+        turn.updateTaskPlan(updated);
         return toolResult(call, "planId", updated.getId(),
             "revisionCount", updated.getRevisionCount(), "pendingTaskCount", values.size());
     }
 
-    private void finishActiveTask(AgentRun parent, AgentRun child, String taskResult) {
+    private void finishActiveTask(AgentTurn parent, AgentTurn child, String taskResult) {
         AgentTaskPlan plan = parent.getTaskPlan();
         if (plan == null || plan.getActiveTask() == null
-            || !child.getId().equals(plan.getActiveTask().getChildRunId())) return;
+            || !child.getId().equals(plan.getActiveTask().getChildTurnId())) return;
         AgentTask activeTask = plan.getActiveTask();
-        AgentTaskStatus taskStatus = child.getStatus() == AgentRunStatus.COMPLETED
-            ? AgentTaskStatus.COMPLETED : (child.getStatus() == AgentRunStatus.CANCELLED
+        AgentTaskStatus taskStatus = child.getStatus() == AgentTurnStatus.COMPLETED
+            ? AgentTaskStatus.COMPLETED : (child.getStatus() == AgentTurnStatus.CANCELLED
             ? AgentTaskStatus.CANCELLED : AgentTaskStatus.FAILED);
         String taskError = child.getError() == null
-            ? (child.getStatus() == AgentRunStatus.COMPLETED ? null : child.getStatus().name())
+            ? (child.getStatus() == AgentTurnStatus.COMPLETED ? null : child.getStatus().name())
             : child.getError().getMessage();
         AgentTaskPlan updated = plan.finishActiveTask(taskStatus,
             taskResult, taskError, System.currentTimeMillis());
@@ -288,8 +288,8 @@ final class AgentRunnerPlanning {
         eventPublisher.notifyTaskFinished(parent, activeTask, child, taskStatus);
     }
 
-    private List<AgentTask> parseTasks(AgentRun run, JSONArray values) {
-        AgentPlanningPolicy policy = run.getAgent().getPlanningPolicy();
+    private List<AgentTask> parseTasks(AgentTurn turn, JSONArray values) {
+        AgentPlanningPolicy policy = turn.getAgent().getPlanningPolicy();
         List<AgentTask> tasks = new ArrayList<>(values.size());
         for (int index = 0; index < values.size(); index++) {
             JSONObject value = values.getJSONObject(index);
@@ -302,7 +302,7 @@ final class AgentRunnerPlanning {
                 throw new IllegalArgumentException(
                     "each task requires id, title and description, index=" + index);
             }
-            if (!policy.canDelegateTo(run.getAgent().getId(), assignedAgentId)) {
+            if (!policy.canDelegateTo(turn.getAgent().getId(), assignedAgentId)) {
                 throw new IllegalArgumentException("task agent is not allowed: " + assignedAgentId);
             }
             tasks.add(AgentTask.builder(title).id(id).description(description)
@@ -312,7 +312,7 @@ final class AgentRunnerPlanning {
         return tasks;
     }
 
-    private void validateTaskAgent(AgentRun parent, AgentTask task, String childAgentId) {
+    private void validateTaskAgent(AgentTurn parent, AgentTask task, String childAgentId) {
         String expected = StringUtil.hasText(task.getAssignedAgentId())
             ? task.getAssignedAgentId() : parent.getAgent().getId();
         if (!expected.equals(childAgentId)
@@ -345,11 +345,11 @@ final class AgentRunnerPlanning {
             && plan.getNextTask() != null;
     }
 
-    private String limitTaskResult(AgentRun parent, String value) {
+    private String limitTaskResult(AgentTurn parent, String value) {
         if (value == null) return null;
         int maxLength = parent.getAgent().getPlanningPolicy().getTaskResultMaxLength();
         if (maxLength <= 0 || value.length() <= maxLength) return value;
-        return value.substring(0, maxLength) + "\n[子任务结果已截断，完整内容保留在子 Run 中]";
+        return value.substring(0, maxLength) + "\n[子任务结果已截断，完整内容保留在子 Turn 中]";
     }
 
     private JSONObject arguments(ToolCall call) {

@@ -6,7 +6,7 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.store.AgentRunStore;
+import com.agentsflex.agent.store.AgentTurnStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,9 +19,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 从 AgentRunStore 领取可执行任务并推进到终止或阻塞状态的 Worker。
+ * 从 AgentTurnStore 领取可执行任务并推进到终止或阻塞状态的 Worker。
  *
- * <p>Worker 通过 Store 租约确保同一 Run 同时只由一个进程推进。执行期间后台心跳按租约时长的
+ * <p>Worker 通过 Store 租约确保同一 Turn 同时只由一个进程推进。执行期间后台心跳按租约时长的
  * 三分之一续租；租约丢失后 Runner 会在下一个 Snapshot 边界拒绝继续写入。</p>
  *
  * <p>Worker 可以由外部调度器调用 {@link #pollAndRun(int)}，也可以使用
@@ -37,7 +37,7 @@ public final class AgentWorker implements AutoCloseable {
      */
     private final String workerId;
     /**
-     * 负责恢复和推进 Run 的运行器。
+     * 负责恢复和推进 Turn 的运行器。
      */
     private final AgentRunner runner;
     /**
@@ -62,7 +62,7 @@ public final class AgentWorker implements AutoCloseable {
     private int activePolls;
 
     /**
-     * 创建从 Snapshot 领取并恢复 Run 的 Worker。
+     * 创建从 Snapshot 领取并恢复 Turn 的 Worker。
      */
     public AgentWorker(String workerId, AgentRunner runner, long leaseMillis) {
         if (workerId == null || runner == null || leaseMillis <= 0) {
@@ -84,7 +84,7 @@ public final class AgentWorker implements AutoCloseable {
      * @param limit 本次最多领取的任务数
      * @return 已推进到终止或阻塞状态的运行列表
      */
-    public List<AgentRun> pollAndRun(int limit) {
+    public List<AgentTurn> pollAndRun(int limit) {
         beginPoll();
         try {
             return doPollAndRun(limit);
@@ -93,84 +93,84 @@ public final class AgentWorker implements AutoCloseable {
         }
     }
 
-    private List<AgentRun> doPollAndRun(int limit) {
-        // 先修复可能因进程退出而遗漏的父 Run 唤醒，再领取可运行任务。
+    private List<AgentTurn> doPollAndRun(int limit) {
+        // 先修复可能因进程退出而遗漏的父 Turn 唤醒，再领取可运行任务。
         runner.recoverCompletedChildren(limit);
-        List<AgentRun> results = new ArrayList<>(limit);
+        List<AgentTurn> results = new ArrayList<>(limit);
         for (int index = 0; index < limit; index++) {
-            List<AgentRunSnapshot> claimed = runner.getRunStore().claimRunnable(
-                workerId, runner.getRunStore().currentTimeMillis(), leaseMillis, 1);
+            List<AgentTurnSnapshot> claimed = runner.getTurnStore().claimRunnable(
+                workerId, runner.getTurnStore().currentTimeMillis(), leaseMillis, 1);
             if (claimed.isEmpty()) break;
-            AgentRunSnapshot snapshot = claimed.get(0);
-            AgentRun run = null;
+            AgentTurnSnapshot snapshot = claimed.get(0);
+            AgentTurn turn = null;
             ScheduledFuture<?> heartbeat = null;
             try {
-                run = runner.restore(snapshot.getState().getRunId());
-                run.updateLease(workerId, snapshot.getState().getLeaseId(),
+                turn = runner.restore(snapshot.getState().getTurnId());
+                turn.updateLease(workerId, snapshot.getState().getLeaseId(),
                     snapshot.getState().getLeaseUntil());
-                heartbeat = startLeaseHeartbeat(run);
-                run = runner.runLeased(run, workerId, snapshot.getState().getLeaseId());
-                runner.resumeParentFromChild(run);
+                heartbeat = startLeaseHeartbeat(turn);
+                turn = runner.runLeased(turn, workerId, snapshot.getState().getLeaseId());
+                runner.resumeParentFromChild(turn);
             } finally {
                 if (heartbeat != null) heartbeat.cancel(false);
-                if (run != null) {
-                    synchronized (run) {
-                        runner.getRunStore().releaseLease(snapshot.getState().getRunId(), workerId,
+                if (turn != null) {
+                    synchronized (turn) {
+                        runner.getTurnStore().releaseLease(snapshot.getState().getTurnId(), workerId,
                             snapshot.getState().getLeaseId());
                     }
                 } else {
-                    runner.getRunStore().releaseLease(snapshot.getState().getRunId(), workerId,
+                    runner.getTurnStore().releaseLease(snapshot.getState().getTurnId(), workerId,
                         snapshot.getState().getLeaseId());
                 }
             }
-            if (run != null) {
+            if (turn != null) {
                 // 返回释放租约后的最新版本，避免调用方持有过期的乐观锁版本号。
-                results.add(runner.restore(run.getId()));
+                results.add(runner.restore(turn.getId()));
             }
         }
         return results;
     }
 
     /**
-     * 延长指定 Run 的租约并返回新版本快照。
+     * 延长指定 Turn 的租约并返回新版本快照。
      *
-     * <p>调用方若仍持有对应 AgentRun，应恢复该快照或使用 {@link #renewLease(AgentRun)} 同步本地版本。</p>
+     * <p>调用方若仍持有对应 AgentTurn，应恢复该快照或使用 {@link #renewLease(AgentTurn)} 同步本地版本。</p>
      */
-    public AgentRunSnapshot renewLease(String runId, String leaseId) {
-        long now = runner.getRunStore().currentTimeMillis();
-        return runner.getRunStore().renewLease(runId, workerId, leaseId,
+    public AgentTurnSnapshot renewLease(String turnId, String leaseId) {
+        long now = runner.getTurnStore().currentTimeMillis();
+        return runner.getTurnStore().renewLease(turnId, workerId, leaseId,
             now, now + leaseMillis);
     }
 
     /**
-     * 延长租约并同步更新正在执行的 AgentRun 版本。
+     * 延长租约并同步更新正在执行的 AgentTurn 版本。
      */
-    public AgentRunSnapshot renewLease(AgentRun run) {
-        synchronized (run) {
-            AgentRunSnapshot snapshot = renewLease(run.getId(), run.getLeaseId());
-            run.updateLease(snapshot.getState().getLeaseOwner(), snapshot.getState().getLeaseId(),
+    public AgentTurnSnapshot renewLease(AgentTurn turn) {
+        synchronized (turn) {
+            AgentTurnSnapshot snapshot = renewLease(turn.getId(), turn.getLeaseId());
+            turn.updateLease(snapshot.getState().getLeaseOwner(), snapshot.getState().getLeaseId(),
                 snapshot.getState().getLeaseUntil());
             return snapshot;
         }
     }
 
     /**
-     * 在 Run 执行期间按租约时长的三分之一周期自动续租。
+     * 在 Turn 执行期间按租约时长的三分之一周期自动续租。
      */
-    private ScheduledFuture<?> startLeaseHeartbeat(AgentRun run) {
+    private ScheduledFuture<?> startLeaseHeartbeat(AgentTurn turn) {
         long interval = Math.max(1, leaseMillis / 3);
         AtomicReference<RuntimeException> failure = new AtomicReference<>();
         return leaseScheduler.scheduleWithFixedDelay(() -> {
             if (failure.get() != null) return;
             try {
-                renewLease(run);
+                renewLease(turn);
             } catch (RuntimeException error) {
                 failure.compareAndSet(null, error);
-                synchronized (run) {
-                    run.updateLease(run.getLeaseOwner(), run.getLeaseId(), 0);
+                synchronized (turn) {
+                    turn.updateLease(turn.getLeaseOwner(), turn.getLeaseId(), 0);
                 }
-                log.warn("Agent worker lost lease, workerId={}, runId={}",
-                    workerId, run.getId(), error);
+                log.warn("Agent worker lost lease, workerId={}, turnId={}",
+                    workerId, turn.getId(), error);
             }
         }, interval, interval, TimeUnit.MILLISECONDS);
     }

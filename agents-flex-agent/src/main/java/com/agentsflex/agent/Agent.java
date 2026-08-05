@@ -29,10 +29,10 @@ import java.util.Set;
  *
  * <p>该类只描述一个 Agent 的静态能力，包括名称、系统指令、模型、工具、工具拦截器和执行策略，
  * 不保存任何一次具体运行产生的消息、迭代次数或最终结果。一次任务的可变状态由
- * {@link AgentRun} 保存，实际执行流程由 {@link AgentRunner} 推进。</p>
+ * {@link AgentTurn} 保存，实际执行流程由 {@link AgentRunner} 推进。</p>
  *
  * <p>Agent 构建完成后，其工具和拦截器集合会转换为只读集合，因此同一个 Agent 可以被多个
- * {@link AgentRun} 复用。需要注意的是，{@link ChatModel}、{@link ChatOptions} 和具体 Tool
+ * {@link AgentTurn} 复用。需要注意的是，{@link ChatModel}、{@link ChatOptions} 和具体 Tool
  * 实现本身是否线程安全，仍由对应实现负责。</p>
  */
 public final class Agent {
@@ -90,7 +90,7 @@ public final class Agent {
      */
     private final AgentPlanningPolicy planningPolicy;
     /**
-     * 每次模型调用最多从 Run 历史中附加的消息数量。
+     * 每次模型调用最多从 Turn 历史中附加的消息数量。
      */
     private final int maxAttachedMessages;
     /**
@@ -282,7 +282,7 @@ public final class Agent {
         /**
          * 设置 Agent 的稳定 ID。未设置时默认使用 name。
          *
-         * <p>持久化 AgentRun 后不应随意修改该 ID，否则旧 Snapshot 将无法重新绑定 Agent。</p>
+         * <p>持久化 AgentTurn 后不应随意修改该 ID，否则旧 Snapshot 将无法重新绑定 Agent。</p>
          */
         public Builder id(String id) {
             this.id = id;
@@ -396,7 +396,7 @@ public final class Agent {
         /**
          * 设置每次模型调用最多附加的历史消息数量。
          *
-         * <p>该限制只影响本次发送给模型的消息视图，不删除 Run 或 Snapshot 中保存的完整历史。</p>
+         * <p>该限制只影响本次发送给模型的消息视图，不删除 Turn 或 Snapshot 中保存的完整历史。</p>
          */
         public Builder maxAttachedMessages(int maxAttachedMessages) {
             if (maxAttachedMessages <= 0) {

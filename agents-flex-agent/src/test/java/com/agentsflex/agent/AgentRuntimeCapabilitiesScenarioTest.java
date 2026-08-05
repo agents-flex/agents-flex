@@ -12,7 +12,7 @@ import com.agentsflex.agent.middleware.AgentStepChain;
 import com.agentsflex.agent.middleware.AgentToolCallChain;
 import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentToolProgressEmitter;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
@@ -62,9 +62,9 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             .tool(tool("work", args -> "ok"))
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "run");
+        AgentTurn turn = new AgentRunner().run(agent, "turn");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
         assertTrue(calls.indexOf("a-step-before") < calls.indexOf("b-step-before"));
         assertTrue(calls.indexOf("b-step-after") < calls.indexOf("a-step-after"));
         assertTrue(calls.indexOf("a-model-before") < calls.indexOf("b-model-before"));
@@ -95,9 +95,9 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             .middleware(middleware)
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "question");
+        AgentTurn turn = new AgentRunner().run(agent, "question");
 
-        assertEquals("cached", run.getFinalOutput());
+        assertEquals("cached", turn.getFinalOutput());
         assertEquals(0, modelCalls.get());
     }
 
@@ -115,10 +115,10 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             .build();
 
         AgentRunner runner = new AgentRunner();
-        AgentRun run = runner.start(agent, "question");
+        AgentTurn turn = runner.start(agent, "question");
 
         RuntimeException error = assertThrows(RuntimeException.class,
-            () -> runner.step(run));
+            () -> runner.step(turn));
 
         assertEquals("middleware failed", error.getMessage());
     }
@@ -128,7 +128,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         ScriptedChatModel model = new ScriptedChatModel();
         model.enqueue(toolCalls(new ToolCall("danger-1", "export", "{}")));
         model.enqueue(new AiMessage("completed"));
-        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore turnStore = new InMemoryAgentTurnStore();
         List<AgentEvent> events = new ArrayList<>();
         AtomicInteger toolExecutions = new AtomicInteger();
 
@@ -144,7 +144,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         Agent agent = Agent.builder("durable-agent")
             .chatModel(model)
             .tool(export)
-            .toolApprovalPolicy((run, call, tool) -> ToolApprovalDecision.requireApproval()
+            .toolApprovalPolicy((turn, call, tool) -> ToolApprovalDecision.requireApproval()
                 .code("EXPORT_REVIEW")
                 .message("Export requires review")
                 .reason("large data export")
@@ -152,31 +152,31 @@ public class AgentRuntimeCapabilitiesScenarioTest {
                 .build())
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRunner runner = new AgentRunner(runStore, registry)
+        AgentRunner runner = new AgentRunner(turnStore, registry)
             .addEventListener(events::add);
 
-        AgentRun waiting = runner.run(agent, "export",
-            AgentRunOptions.builder().streaming(true).build());
+        AgentTurn waiting = runner.run(agent, "export",
+            AgentTurnOptions.builder().streaming(true).build());
 
-        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
         assertEquals("EXPORT_REVIEW", waiting.getSuspension().getMetadata().get("approvalCode"));
         assertEquals("high", waiting.getSuspension().getMetadata().get("risk"));
         AgentResumeCommand approval = AgentResumeCommand.approveTool("danger-1")
             .withMetadata("reviewer", "alice");
-        AgentRun ready = runner.submitResume(waiting.getId(), approval);
-        assertEquals(AgentRunStatus.RUNNING, ready.getStatus());
+        AgentTurn ready = runner.submitResume(waiting.getId(), approval);
+        assertEquals(AgentTurnStatus.RUNNING, ready.getStatus());
 
-        List<AgentRun> completed = new AgentWorker("worker-1", runner, 30_000).pollAndRun(10);
+        List<AgentTurn> completed = new AgentWorker("worker-1", runner, 30_000).pollAndRun(10);
 
         assertEquals(1, completed.size());
-        assertEquals(AgentRunStatus.COMPLETED, completed.get(0).getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.get(0).getStatus());
         assertEquals(1, toolExecutions.get());
         ToolMessage toolMessage = lastToolMessage(completed.get(0));
         assertEquals(128, toolMessage.getContent().length());
         assertTrue(hasEvent(events, AgentEventType.MODEL_REASONING_DELTA));
         assertTrue(hasEvent(events, AgentEventType.MODEL_TOOL_CALL_DELTA));
         assertTrue(hasEvent(events, AgentEventType.TOOL_PROGRESS));
-        assertTrue(hasEvent(events, AgentEventType.RUN_RESUMED));
+        assertTrue(hasEvent(events, AgentEventType.TURN_RESUMED));
         assertEquals(1, terminalEventCount(events));
         assertStrictSequences(events);
     }
@@ -191,16 +191,16 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             .tool(tool("delete", args -> {
                 throw new AssertionError("rejected tool must not execute");
             }))
-            .toolApprovalPolicy((run, call, tool) -> ToolApprovalDecision.requireApproval()
+            .toolApprovalPolicy((turn, call, tool) -> ToolApprovalDecision.requireApproval()
                 .code("DELETE_REVIEW")
                 .reason("destructive operation")
                 .metadata("risk", "critical")
                 .build())
             .build();
         AgentRunner runner = new AgentRunner();
-        AgentRun waiting = runner.run(agent, "delete");
+        AgentTurn waiting = runner.run(agent, "delete");
 
-        AgentRun completed = runner.resume(waiting,
+        AgentTurn completed = runner.resume(waiting,
             AgentResumeCommand.rejectTool("delete-1", "not approved"));
 
         ToolMessage rejected = lastToolMessage(completed);
@@ -220,11 +220,11 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         };
         Agent agent = Agent.builder("stream-error-agent").chatModel(model).build();
 
-        AgentRun run = new AgentRunner().run(agent, "question",
-            AgentRunOptions.builder().streaming(true).build());
+        AgentTurn turn = new AgentRunner().run(agent, "question",
+            AgentTurnOptions.builder().streaming(true).build());
 
-        assertEquals(AgentRunStatus.FAILED, run.getStatus());
-        assertTrue(run.getError().getMessage().contains("connection failed"));
+        assertEquals(AgentTurnStatus.FAILED, turn.getStatus());
+        assertTrue(turn.getError().getMessage().contains("connection failed"));
     }
 
     private static AgentMiddleware recordingMiddleware(String name, List<String> calls) {
@@ -264,9 +264,9 @@ public class AgentRuntimeCapabilitiesScenarioTest {
     private static int terminalEventCount(List<AgentEvent> events) {
         int count = 0;
         for (AgentEvent event : events) {
-            if (event.getType() == AgentEventType.RUN_COMPLETED
-                || event.getType() == AgentEventType.RUN_FAILED
-                || event.getType() == AgentEventType.RUN_CANCELLED
+            if (event.getType() == AgentEventType.TURN_COMPLETED
+                || event.getType() == AgentEventType.TURN_FAILED
+                || event.getType() == AgentEventType.TURN_CANCELLED
                 || event.getType() == AgentEventType.BUDGET_EXCEEDED) count++;
         }
         return count;
@@ -280,8 +280,8 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         }
     }
 
-    private static ToolMessage lastToolMessage(AgentRun run) {
-        List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
+    private static ToolMessage lastToolMessage(AgentTurn turn) {
+        List<Message> messages = turn.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
         for (int i = messages.size() - 1; i >= 0; i--) {
             if (messages.get(i) instanceof ToolMessage) return (ToolMessage) messages.get(i);
         }

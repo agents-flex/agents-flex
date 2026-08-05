@@ -9,15 +9,15 @@ package com.agentsflex.agent.task;
 /**
  * 整个任务计划的生命周期状态。
  *
- * <p>该状态描述计划级推进位置，不等同于父 AgentRun 的状态；例如计划处于 WAITING 时，
- * 父 Run 通常处于 WAITING_FOR_CHILD。</p>
+ * <p>该状态描述计划级推进位置，不等同于父 AgentTurn 的状态；例如计划处于 WAITING 时，
+ * 父 Turn 通常处于 WAITING_FOR_CHILD。</p>
  */
 public enum AgentTaskPlanStatus {
     /** 计划已经创建，但尚未选择第一个可执行任务。 */
     READY,
     /** Runner 正在选择、启动或汇总计划任务。 */
     RUNNING,
-    /** 已启动的任务正在由关联子 Run 执行，计划等待其结束。 */
+    /** 已启动的任务正在由关联子 Turn 执行，计划等待其结束。 */
     WAITING,
     /** 子任务失败后等待模型调整尚未执行的任务。 */
     REPLANNING,
@@ -27,7 +27,7 @@ public enum AgentTaskPlanStatus {
     COMPLETED,
     /** 计划无法继续推进且没有得到完整结果。 */
     FAILED,
-    /** 父 Run 取消后，计划已停止推进。 */
+    /** 父 Turn 取消后，计划已停止推进。 */
     CANCELLED;
 
     /** @return 当前计划是否已经结束 */
@@ -35,7 +35,7 @@ public enum AgentTaskPlanStatus {
         return this == COMPLETED || this == FAILED || this == CANCELLED;
     }
 
-    /** @return 当前计划是否正在等待关联 AgentRun 的外部恢复事件 */
+    /** @return 当前计划是否正在等待关联 AgentTurn 的外部恢复事件 */
     public boolean isBlocked() {
         return this == WAITING;
     }

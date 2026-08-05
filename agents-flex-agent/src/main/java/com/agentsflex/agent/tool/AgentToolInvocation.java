@@ -13,9 +13,9 @@ import com.agentsflex.core.util.StringUtil;
 import java.io.Serializable;
 
 /**
- * Tool 执行期间可读取的 AgentRun 调用身份。
+ * Tool 执行期间可读取的 AgentTurn 调用身份。
  *
- * <p>该对象把 Run、Agent 和 ToolCall 的稳定标识传递给 ToolInterceptor 与 Tool 实现。
+ * <p>该对象把 Turn、Agent 和 ToolCall 的稳定标识传递给 ToolInterceptor 与 Tool 实现。
  * 副作用工具可以使用 {@link #getIdempotencyKey()} 作为外部请求幂等键，审计组件也可以据此
  * 关联根任务、子任务和具体工具调用。</p>
  */
@@ -29,17 +29,17 @@ public final class AgentToolInvocation implements Serializable {
     public static final String CONTEXT_ATTRIBUTE = AgentToolInvocation.class.getName();
 
     /**
-     * 直接执行当前 ToolCall 的 Run ID。
+     * 直接执行当前 ToolCall 的 Turn ID。
      */
-    private final String runId;
+    private final String turnId;
     /**
-     * 父子运行树最顶层的 Run ID。
+     * Turn 树最顶层的 Turn ID。
      */
-    private final String rootRunId;
+    private final String rootTurnId;
     /**
-     * 父 Run ID；根运行中的工具调用为空。
+     * 父 Turn ID；根运行中的工具调用为空。
      */
-    private final String parentRunId;
+    private final String parentTurnId;
     /**
      * 工具所属 Agent 的稳定 ID。
      */
@@ -57,18 +57,18 @@ public final class AgentToolInvocation implements Serializable {
      */
     private final String toolName;
 
-    public AgentToolInvocation(String runId, String rootRunId, String parentRunId,
+    public AgentToolInvocation(String turnId, String rootTurnId, String parentTurnId,
                                String agentId, String agentVersion, String toolCallId,
                                String toolName) {
-        if (!StringUtil.hasText(runId) || !StringUtil.hasText(agentId)
+        if (!StringUtil.hasText(turnId) || !StringUtil.hasText(agentId)
             || !StringUtil.hasText(agentVersion) || !StringUtil.hasText(toolCallId)
             || !StringUtil.hasText(toolName)) {
             throw new IllegalArgumentException(
-                "runId, agentId, agentVersion, toolCallId and toolName must not be blank");
+                "turnId, agentId, agentVersion, toolCallId and toolName must not be blank");
         }
-        this.runId = runId;
-        this.rootRunId = rootRunId;
-        this.parentRunId = parentRunId;
+        this.turnId = turnId;
+        this.rootTurnId = rootTurnId;
+        this.parentTurnId = parentTurnId;
         this.agentId = agentId;
         this.agentVersion = agentVersion;
         this.toolCallId = toolCallId;
@@ -84,24 +84,24 @@ public final class AgentToolInvocation implements Serializable {
     }
 
     /**
-     * @return 直接执行工具的 Run ID
+     * @return 直接执行工具的 Turn ID
      */
-    public String getRunId() {
-        return runId;
+    public String getTurnId() {
+        return turnId;
     }
 
     /**
-     * @return 父子运行树的根 Run ID
+     * @return Turn 树的根 Turn ID
      */
-    public String getRootRunId() {
-        return rootRunId;
+    public String getRootTurnId() {
+        return rootTurnId;
     }
 
     /**
-     * @return 父 Run ID；根运行返回 {@code null}
+     * @return 父 Turn ID；根运行返回 {@code null}
      */
-    public String getParentRunId() {
-        return parentRunId;
+    public String getParentTurnId() {
+        return parentTurnId;
     }
 
     /**
@@ -136,6 +136,6 @@ public final class AgentToolInvocation implements Serializable {
      * 返回跨进程恢复后仍保持稳定的默认幂等键。
      */
     public String getIdempotencyKey() {
-        return runId + ":" + toolCallId;
+        return turnId + ":" + toolCallId;
     }
 }

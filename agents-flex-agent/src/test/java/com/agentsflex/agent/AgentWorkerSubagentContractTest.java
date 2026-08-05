@@ -4,8 +4,8 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.AgentRunVersionConflictException;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.AgentTurnVersionConflictException;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import org.junit.Test;
@@ -30,21 +30,21 @@ public class AgentWorkerSubagentContractTest {
 
     @Test
     public void shouldFenceStaleWorkerAfterLeaseIsReclaimed() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         Agent agent = Agent.builder("lease-fencing")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun run = runner.start(agent, "input");
-        AgentRunSnapshot workerA = store.claimRunnable("worker-a", 100, 10, 1).get(0);
-        AgentRun stale = runner.restore(workerA.getState().getRunId());
-        AgentRunSnapshot workerB = store.claimRunnable("worker-b", 110, 10, 1).get(0);
+        AgentTurn turn = runner.start(agent, "input");
+        AgentTurnSnapshot workerA = store.claimRunnable("worker-a", 100, 10, 1).get(0);
+        AgentTurn stale = runner.restore(workerA.getState().getTurnId());
+        AgentTurnSnapshot workerB = store.claimRunnable("worker-b", 110, 10, 1).get(0);
 
         assertEquals("worker-b", workerB.getState().getLeaseOwner());
         try {
             store.save(stale.toSnapshot(), stale.getVersion());
             fail("stale worker snapshot must be fenced");
-        } catch (AgentRunVersionConflictException expected) {
+        } catch (AgentTurnVersionConflictException expected) {
             assertTrue(expected.getMessage().contains(
                 "expectedVersion=" + workerA.getState().getVersion()));
             assertTrue(expected.getMessage().contains(
@@ -54,19 +54,19 @@ public class AgentWorkerSubagentContractTest {
 
     @Test
     public void shouldAllowOnlyOwnerToRenewLease() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
-        AgentRun run = runner.start(Agent.builder("lease-renew")
+        AgentTurn turn = runner.start(Agent.builder("lease-renew")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build(), "input");
-        AgentRunSnapshot claimed = store.claimRunnable("worker-a", 100, 20, 1).get(0);
+        AgentTurnSnapshot claimed = store.claimRunnable("worker-a", 100, 20, 1).get(0);
 
-        AgentRunSnapshot renewed = store.renewLease(run.getId(), "worker-a",
+        AgentTurnSnapshot renewed = store.renewLease(turn.getId(), "worker-a",
             claimed.getState().getLeaseId(), 110, 200);
 
         assertEquals(200, renewed.getState().getLeaseUntil());
         assertEquals(claimed.getState().getVersion(), renewed.getState().getVersion());
         try {
-            store.renewLease(run.getId(), "worker-b",
+            store.renewLease(turn.getId(), "worker-b",
                 claimed.getState().getLeaseId(), 120, 300);
             fail("non-owner must not renew lease");
         } catch (IllegalStateException expected) {
@@ -76,21 +76,21 @@ public class AgentWorkerSubagentContractTest {
 
     @Test
     public void shouldFenceOldLeaseTokenEvenWhenWorkerIdIsReused() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         Agent agent = Agent.builder("lease-token")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-        AgentRun run = runner.start(agent, "input");
-        AgentRunSnapshot oldLease = store.claimRunnable("shared-worker", 100, 10, 1).get(0);
-        AgentRunSnapshot newLease = store.claimRunnable("shared-worker", 110, 100, 1).get(0);
+        AgentTurn turn = runner.start(agent, "input");
+        AgentTurnSnapshot oldLease = store.claimRunnable("shared-worker", 100, 10, 1).get(0);
+        AgentTurnSnapshot newLease = store.claimRunnable("shared-worker", 110, 100, 1).get(0);
 
-        store.releaseLease(run.getId(), "shared-worker", oldLease.getState().getLeaseId());
+        store.releaseLease(turn.getId(), "shared-worker", oldLease.getState().getLeaseId());
 
-        AgentRunSnapshot current = store.load(run.getId());
+        AgentTurnSnapshot current = store.load(turn.getId());
         assertEquals(newLease.getState().getLeaseId(), current.getState().getLeaseId());
         assertEquals(210, current.getState().getLeaseUntil());
         try {
-            store.renewLease(run.getId(), "shared-worker",
+            store.renewLease(turn.getId(), "shared-worker",
                 oldLease.getState().getLeaseId(), 120, 220);
             fail("stale lease token must not renew a newer lease");
         } catch (IllegalStateException expected) {
@@ -100,7 +100,7 @@ public class AgentWorkerSubagentContractTest {
 
     @Test
     public void shouldKeepLeaseAliveDuringLongModelCall() throws Exception {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         CountDownLatch modelStarted = new CountDownLatch(1);
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> {
@@ -119,14 +119,14 @@ public class AgentWorkerSubagentContractTest {
         AgentWorker worker = new AgentWorker("worker-a", runner, 60);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            Future<List<AgentRun>> execution = executor.submit(() -> worker.pollAndRun(1));
+            Future<List<AgentTurn>> execution = executor.submit(() -> worker.pollAndRun(1));
             assertTrue(modelStarted.await(1, TimeUnit.SECONDS));
             Thread.sleep(100);
 
             assertTrue(store.claimRunnable("worker-b", System.currentTimeMillis(), 60, 1).isEmpty());
-            // 关闭只停止新轮询，正在执行的 Run 会继续续租到本次 poll 退出。
+            // 关闭只停止新轮询，正在执行的 Turn 会继续续租到本次 poll 退出。
             worker.close();
-            assertEquals(AgentRunStatus.COMPLETED,
+            assertEquals(AgentTurnStatus.COMPLETED,
                 execution.get(2, TimeUnit.SECONDS).get(0).getStatus());
         } finally {
             worker.close();
@@ -136,7 +136,7 @@ public class AgentWorkerSubagentContractTest {
 
     @Test
     public void shouldRecoverParentWakeupAfterChildCompletionCrashWindow() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentScenarioTestSupport.QueueChatModel parentModel =
             new AgentScenarioTestSupport.QueueChatModel();
         parentModel.enqueue(prompt -> new AiMessage("parent completed"));
@@ -147,18 +147,18 @@ public class AgentWorkerSubagentContractTest {
         Agent childAgent = Agent.builder("recovery-child").chatModel(childModel).build();
         AgentRunner runner = new AgentRunner(store,
             new InMemoryAgentLoader(parentAgent, childAgent));
-        AgentRun parent = runner.start(parentAgent, "parent input");
-        AgentRun child = runner.startChild(parent, childAgent.getId(), "child input");
+        AgentTurn parent = runner.start(parentAgent, "parent input");
+        AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
         child = runner.runUntilBlocked(child);
-        assertEquals(AgentRunStatus.COMPLETED, child.getStatus());
-        assertEquals(AgentRunStatus.WAITING_FOR_CHILD,
+        assertEquals(AgentTurnStatus.COMPLETED, child.getStatus());
+        assertEquals(AgentTurnStatus.WAITING_FOR_CHILD,
             runner.restore(parent.getId()).getStatus());
 
         AgentWorker worker = new AgentWorker("recovery-worker", runner, 1000);
         try {
-            List<AgentRun> completed = worker.pollAndRun(1);
+            List<AgentTurn> completed = worker.pollAndRun(1);
             assertEquals(1, completed.size());
-            assertEquals(AgentRunStatus.COMPLETED, completed.get(0).getStatus());
+            assertEquals(AgentTurnStatus.COMPLETED, completed.get(0).getStatus());
             assertEquals("parent completed", completed.get(0).getFinalOutput());
         } finally {
             worker.close();
@@ -167,7 +167,7 @@ public class AgentWorkerSubagentContractTest {
 
     @Test
     public void shouldResumeParentWithFailedChildResult() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentScenarioTestSupport.QueueChatModel parentModel =
             new AgentScenarioTestSupport.QueueChatModel();
         parentModel.enqueue(prompt -> {
@@ -184,21 +184,21 @@ public class AgentWorkerSubagentContractTest {
             .chatModel(childModel).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun parent = runner.start(parentAgent, "parent input");
-        AgentRun child = runner.startChild(parent, childAgent.getId(), "child input");
+        AgentTurn parent = runner.start(parentAgent, "parent input");
+        AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
 
         child = runner.runUntilBlocked(child);
-        AgentRun resumed = runner.resumeParentFromChild(child);
-        AgentRun completed = runner.runUntilBlocked(resumed);
+        AgentTurn resumed = runner.resumeParentFromChild(child);
+        AgentTurn completed = runner.runUntilBlocked(resumed);
 
-        assertEquals(AgentRunStatus.FAILED, child.getStatus());
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.FAILED, child.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("parent recovered", completed.getFinalOutput());
     }
 
     @Test
     public void shouldNotResumeCancelledParentFromLateChildCompletion() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentScenarioTestSupport.QueueChatModel childModel =
             new AgentScenarioTestSupport.QueueChatModel();
         childModel.enqueue(prompt -> new AiMessage("late result"));
@@ -207,16 +207,16 @@ public class AgentWorkerSubagentContractTest {
         Agent childAgent = Agent.builder("late-child").chatModel(childModel).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun parent = runner.start(parentAgent, "parent input");
-        AgentRun child = runner.startChild(parent, childAgent.getId(), "child input");
+        AgentTurn parent = runner.start(parentAgent, "parent input");
+        AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
         runner.requestCancellation(parent.getId());
-        AgentRun cancelledParent = runner.runUntilBlocked(parent.getId());
+        AgentTurn cancelledParent = runner.runUntilBlocked(parent.getId());
         child = runner.runUntilBlocked(child);
 
-        AgentRun result = runner.resumeParentFromChild(child);
+        AgentTurn result = runner.resumeParentFromChild(child);
 
-        assertEquals(AgentRunStatus.CANCELLED, cancelledParent.getStatus());
-        assertEquals(AgentRunStatus.CANCELLED, result.getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, cancelledParent.getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, result.getStatus());
         assertFalse(result.getPrompt().getMemory().getMessages(Integer.MAX_VALUE).stream()
             .anyMatch(message -> message.getTextContent().contains("late result")));
     }
@@ -228,11 +228,11 @@ public class AgentWorkerSubagentContractTest {
         Agent childAgent = Agent.builder("context-child")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
-        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(), registry);
-        AgentRun parent = runner.start(parentAgent, "input",
-            AgentRunOptions.builder().streaming(true).build());
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(), registry);
+        AgentTurn parent = runner.start(parentAgent, "input",
+            AgentTurnOptions.builder().streaming(true).build());
 
-        AgentRun child = runner.startChild(parent, childAgent.getId(), "child input");
+        AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
 
         assertTrue(child.isStreaming());
         assertFalse(runner.restore(child.getId()).isStreaming());

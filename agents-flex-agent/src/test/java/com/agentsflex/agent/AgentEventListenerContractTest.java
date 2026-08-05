@@ -36,18 +36,18 @@ public class AgentEventListenerContractTest {
         model.enqueue(prompt -> new AiMessage("done"));
         List<AgentEvent> events = new ArrayList<>();
 
-        AgentRun run = new AgentRunner().addEventListener(events::add)
+        AgentTurn turn = new AgentRunner().addEventListener(events::add)
             .run(Agent.builder("plain-events").chatModel(model).build(), "hello");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
         assertTypes(events,
             AgentEventType.SNAPSHOT_SAVED,
             AgentEventType.STEP_STARTED,
-            AgentEventType.RUN_STARTED,
+            AgentEventType.TURN_STARTED,
             AgentEventType.MODEL_STARTED,
             AgentEventType.MODEL_COMPLETED,
             AgentEventType.SNAPSHOT_SAVED,
-            AgentEventType.RUN_COMPLETED,
+            AgentEventType.TURN_COMPLETED,
             AgentEventType.STEP_COMPLETED);
         assertStrictSequence(events);
     }
@@ -70,7 +70,7 @@ public class AgentEventListenerContractTest {
         assertTrue(firstModel < toolStarted);
         assertTrue(toolStarted < toolCompleted);
         assertTrue(toolCompleted < secondModel);
-        assertEquals(1, count(events, AgentEventType.RUN_COMPLETED));
+        assertEquals(1, count(events, AgentEventType.TURN_COMPLETED));
     }
 
     @Test
@@ -97,7 +97,7 @@ public class AgentEventListenerContractTest {
         AgentRunner runner = new AgentRunner();
         Map<String, List<Long>> sequences = new ConcurrentHashMap<>();
         runner.addEventListener(event -> sequences
-            .computeIfAbsent(event.getRunId(), key -> Collections.synchronizedList(new ArrayList<Long>()))
+            .computeIfAbsent(event.getTurnId(), key -> Collections.synchronizedList(new ArrayList<Long>()))
             .add(event.getSequence()));
         ExecutorService executor = Executors.newFixedThreadPool(8);
         for (int i = 0; i < 8; i++) {
@@ -127,8 +127,8 @@ public class AgentEventListenerContractTest {
     public void shouldDeeplyFreezeEventData() {
         List<String> nested = new ArrayList<>();
         nested.add("value");
-        AgentEvent event = new AgentEvent("run", "run", null,
-            "agent", "1", 1, AgentEventType.RUN_STARTED,
+        AgentEvent event = new AgentEvent("turn", "turn", null,
+            "agent", "1", 1, AgentEventType.TURN_STARTED,
             Collections.singletonMap("nested", nested));
         nested.add("changed later");
 

@@ -108,8 +108,8 @@ public class AgentValueObjectContractTest {
     public void shouldCopyEventData() {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("status", "before");
-        AgentEvent event = new AgentEvent("run", "root", null,
-            "agent", "1", 1, AgentEventType.RUN_STARTED, data);
+        AgentEvent event = new AgentEvent("turn", "root", null,
+            "agent", "1", 1, AgentEventType.TURN_STARTED, data);
         data.put("status", "after");
 
         assertEquals("before", event.getData().get("status"));

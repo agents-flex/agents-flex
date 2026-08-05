@@ -7,7 +7,7 @@ description: 配置指数退避、工具错误策略和持久化重试，并确�
 
 ## 概述
 
-AgentRunner 将可恢复异常转换为持久化重试状态，而不是在执行线程中 sleep。Run 保存失败阶段与 `nextRunAt`，进入 `RETRY_SCHEDULED`；时间到达后由 Worker 领取并从原 MODEL 或 TOOLS 边界继续。
+AgentRunner 将可恢复异常转换为持久化重试状态，而不是在执行线程中 sleep。Turn 保存失败阶段与 `nextRunnableAt`，进入 `RETRY_SCHEDULED`；时间到达后由 Worker 领取并从原 MODEL 或 TOOLS 边界继续。
 
 ## 配置重试
 
@@ -34,7 +34,7 @@ Runner 不重试确定性的参数错误和工具不存在错误；其他运行�
 
 ## 工具错误策略
 
-`ToolErrorStrategy` 决定工具异常是否终止本次 Run，或被编码为结构化 `ToolMessage` 交回模型处理。交回模型适合“某个数据源暂不可用，可选择其他工具”；直接失败适合安全边界和不可继续的业务写入。
+`ToolErrorStrategy` 决定工具异常是否终止本次 Turn，或被编码为结构化 `ToolMessage` 交回模型处理。交回模型适合“某个数据源暂不可用，可选择其他工具”；直接失败适合安全边界和不可继续的业务写入。
 
 工具不存在与参数非法即使交回模型，也必须谨慎控制，避免模型在错误循环中持续消耗迭代预算。
 
@@ -46,21 +46,21 @@ try (AgentWorker worker = new AgentWorker("worker-a", runner, 30_000)) {
 }
 ```
 
-`AgentRunStore.claimRunnable` 只有在 `nextRunAt <= now` 时才允许领取重试 Run。Store 应提供统一 `currentTimeMillis()`，多实例部署应避免应用服务器时钟差导致提前或延迟领取。
+`AgentTurnStore.claimRunnable` 只有在 `nextRunnableAt <= now` 时才允许领取重试 Turn。Store 应提供统一 `currentTimeMillis()`，多实例部署应避免应用服务器时钟差导致提前或延迟领取。
 
 ## 工具副作用幂等
 
-重试可能发生在“业务操作已经成功，但 Snapshot 尚未提交”的窗口。工具应读取执行上下文中的 `AgentToolInvocation`，使用稳定的 runId 与 toolCallId 作为业务幂等键：
+重试可能发生在“业务操作已经成功，但 Snapshot 尚未提交”的窗口。工具应读取执行上下文中的 `AgentToolInvocation`，使用稳定的 turnId 与 toolCallId 作为业务幂等键：
 
 ```text
-idempotencyKey = runId + ":" + toolCallId
+idempotencyKey = turnId + ":" + toolCallId
 ```
 
 数据库写入应对该键建立唯一约束，并在重复调用时返回第一次结果。Agent Store 的乐观锁只能保护 Snapshot，不能自动回滚外部支付、工单或邮件系统。
 
 ## 观察重试
 
-读取 `run.getRetryCount()`、`run.getNextRunAt()` 和 Suspension metadata，并监听 `RETRY_SCHEDULED` 事件。告警应区分最终失败与暂定重试，避免第一次瞬时错误就触发高优先级告警。
+读取 `turn.getRetryCount()`、`turn.getNextRunnableAt()` 和 Suspension metadata，并监听 `RETRY_SCHEDULED` 事件。告警应区分最终失败与暂定重试，避免第一次瞬时错误就触发高优先级告警。
 
 ## 生产建议
 

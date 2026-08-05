@@ -1,10 +1,10 @@
 package com.agentsflex.agent.store.redis;
 
 import com.agentsflex.agent.AgentExecutionPolicy;
-import com.agentsflex.agent.AgentRunSnapshot;
-import com.agentsflex.agent.AgentRunState;
-import com.agentsflex.agent.AgentRunStatus;
-import com.agentsflex.agent.store.ParentChildRunSnapshots;
+import com.agentsflex.agent.AgentTurnSnapshot;
+import com.agentsflex.agent.AgentTurnState;
+import com.agentsflex.agent.AgentTurnStatus;
+import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 import redis.clients.jedis.params.ScanParams;
 import redis.clients.jedis.resps.ScanResult;
 import org.junit.After;
@@ -22,7 +22,7 @@ import java.util.concurrent.Future;
 
 import static org.junit.Assert.*;
 
-/** 在真实 Redis 上验证 Run Store 的 Lua 原子操作与恢复行为。 */
+/** 在真实 Redis 上验证 Turn Store 的 Lua 原子操作与恢复行为。 */
 public class RedisAgentStoresIntegrationTest {
     private RedisAgentStoreConfig config;
     private String prefix;
@@ -53,58 +53,58 @@ public class RedisAgentStoresIntegrationTest {
 
     @Test
     public void shouldPersistAndCoordinateAllAgentStateTypes() {
-        RedisAgentRunStore runs = config.runStore();
-        AgentRunSnapshot run = runs.save(snapshot(), -1);
-        assertEquals(0, run.getState().getVersion());
-        assertTrue(runs.requestCancellation("run-1"));
-        assertTrue(runs.load("run-1").getState().isCancellationRequested());
-        AgentRunSnapshot claimedRun = runs.claimRunnable("worker", 100, 1000, 1).get(0);
-        assertEquals("worker", claimedRun.getState().getLeaseOwner());
-        assertEquals(2000, runs.renewLease("run-1", "worker",
-            claimedRun.getState().getLeaseId(), 200, 2000).getState().getLeaseUntil());
-        runs.releaseLease("run-1", "worker", claimedRun.getState().getLeaseId());
+        RedisAgentTurnStore turns = config.turnStore();
+        AgentTurnSnapshot turn = turns.save(snapshot(), -1);
+        assertEquals(0, turn.getState().getVersion());
+        assertTrue(turns.requestCancellation("turn-1"));
+        assertTrue(turns.load("turn-1").getState().isCancellationRequested());
+        AgentTurnSnapshot claimedTurn = turns.claimRunnable("worker", 100, 1000, 1).get(0);
+        assertEquals("worker", claimedTurn.getState().getLeaseOwner());
+        assertEquals(2000, turns.renewLease("turn-1", "worker",
+            claimedTurn.getState().getLeaseId(), 200, 2000).getState().getLeaseUntil());
+        turns.releaseLease("turn-1", "worker", claimedTurn.getState().getLeaseId());
 
     }
 
     @Test
     public void shouldCreateParentAndChildAtomically() {
-        RedisAgentRunStore runs = config.runStore();
-        AgentRunSnapshot parent = runs.save(snapshot("parent", AgentRunStatus.RUNNING), -1);
-        AgentRunSnapshot initialChild = snapshot("child", AgentRunStatus.READY);
-        AgentRunSnapshot child = initialChild.withState(initialChild.getState().toBuilder()
-            .parentRunId("parent").rootRunId("parent").build());
-        ParentChildRunSnapshots pair = runs.saveParentAndChild(parent.withState(
-            parent.getState().toBuilder().status(AgentRunStatus.WAITING_FOR_CHILD).build()),
+        RedisAgentTurnStore turns = config.turnStore();
+        AgentTurnSnapshot parent = turns.save(snapshot("parent", AgentTurnStatus.RUNNING), -1);
+        AgentTurnSnapshot initialChild = snapshot("child", AgentTurnStatus.READY);
+        AgentTurnSnapshot child = initialChild.withState(initialChild.getState().toBuilder()
+            .parentTurnId("parent").rootTurnId("parent").build());
+        ParentChildTurnSnapshots pair = turns.saveParentAndChild(parent.withState(
+            parent.getState().toBuilder().status(AgentTurnStatus.WAITING_FOR_CHILD).build()),
             0, child);
         assertEquals(1, pair.getParent().getState().getVersion());
         assertEquals(0, pair.getChild().getState().getVersion());
-        assertEquals("parent", runs.load("child").getState().getParentRunId());
+        assertEquals("parent", turns.load("child").getState().getParentTurnId());
     }
 
     @Test
     public void shouldAllowOnlyOneWorkerToClaimRun() throws Exception {
-        final RedisAgentRunStore runs = config.runStore();
-        runs.save(snapshot("race", AgentRunStatus.READY), -1);
+        final RedisAgentTurnStore turns = config.turnStore();
+        turns.save(snapshot("race", AgentTurnStatus.READY), -1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);
         try {
-            List<Future<List<AgentRunSnapshot>>> futures = new ArrayList<>();
-            futures.add(executor.submit(() -> { start.await(); return runs.claimRunnable("worker-a", 100, 1000, 1); }));
-            futures.add(executor.submit(() -> { start.await(); return runs.claimRunnable("worker-b", 100, 1000, 1); }));
+            List<Future<List<AgentTurnSnapshot>>> futures = new ArrayList<>();
+            futures.add(executor.submit(() -> { start.await(); return turns.claimRunnable("worker-a", 100, 1000, 1); }));
+            futures.add(executor.submit(() -> { start.await(); return turns.claimRunnable("worker-b", 100, 1000, 1); }));
             start.countDown();
             assertEquals(1, futures.get(0).get().size() + futures.get(1).get().size());
         } finally { executor.shutdownNow(); }
     }
 
-    private AgentRunSnapshot snapshot() {
-        return snapshot("run-1", AgentRunStatus.READY);
+    private AgentTurnSnapshot snapshot() {
+        return snapshot("turn-1", AgentTurnStatus.READY);
     }
 
-    private AgentRunSnapshot snapshot(String runId, AgentRunStatus status) {
-        AgentRunState state = AgentRunState.builder(runId,
+    private AgentTurnSnapshot snapshot(String turnId, AgentTurnStatus status) {
+        AgentTurnState state = AgentTurnState.builder(turnId,
                 AgentExecutionPolicy.defaults(), 1)
-            .status(status).rootRunId(runId).updatedAt(1).build();
-        return AgentRunSnapshot.of("agent", "1", state);
+            .status(status).rootTurnId(turnId).updatedAt(1).build();
+        return AgentTurnSnapshot.of("agent", "1", state);
     }
 
 }

@@ -230,7 +230,7 @@ Observability.setCustomExporters(
 
 如果宿主系统需要让自己的业务对象绑定一个或多个 APM 后端，不要为每个对象修改全局 SDK。应用可以保存
 `telemetryRouteId`，在执行入口通过 `Observability.useRuntime(...)` 选择路由。完整配置见
-[按执行上下文路由](./runtime-routing)。这个机制不依赖 `Agent`、`AgentRun` 或任何 Agents-Flex Agent 类型。
+[按执行上下文路由](./runtime-routing)。这个机制不依赖 `Agent`、`AgentTurn` 或任何 Agents-Flex Agent 类型。
 
 ## 常用配置
 

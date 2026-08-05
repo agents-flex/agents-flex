@@ -22,7 +22,7 @@ import java.io.Serializable;
  *     <li>限制运行时间、Token 和工具调用次数。</li>
  * </ul>
  *
- * <p>策略属于 Agent 定义的一部分，会应用到该 Agent 创建的每一个 {@link AgentRun}。</p>
+ * <p>策略属于 Agent 定义的一部分，会应用到该 Agent 创建的每一个 {@link AgentTurn}。</p>
  */
 public final class AgentExecutionPolicy implements Serializable {
 
@@ -42,7 +42,7 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     private final int maxIterations;
     /**
-     * 一次 Run 允许 Runner 推进的最大 step 次数。
+     * 一次 Turn 允许 Runner 推进的最大 step 次数。
      */
     private final int maxSteps;
     /**
@@ -81,14 +81,14 @@ public final class AgentExecutionPolicy implements Serializable {
     }
 
     /**
-     * @return 一次 AgentRun 允许的最大模型调用次数
+     * @return 一次 AgentTurn 允许的最大模型调用次数
      */
     public int getMaxIterations() {
         return maxIterations;
     }
 
     /**
-     * @return 一次 AgentRun 允许 Runner 推进的最大 step 次数
+     * @return 一次 AgentTurn 允许 Runner 推进的最大 step 次数
      */
     public int getMaxSteps() {
         return maxSteps;

@@ -19,7 +19,7 @@ import java.util.UUID;
 /**
  * Agent 执行过程中发布的不可变事件。
  *
- * <p>事件只在当前 Runner 进程内同步投递。sequence 在同一 runId 内递增，但不是持久化游标；
+ * <p>事件只在当前 Runner 进程内同步投递。sequence 在同一 turnId 内递增，但不是持久化游标；
  * 需要可靠存储时，应由业务监听器将事件写入自己的数据库、消息队列或 Outbox。</p>
  */
 public final class AgentEvent {
@@ -29,17 +29,17 @@ public final class AgentEvent {
      */
     private final String eventId;
     /**
-     * 直接产生该事件的 AgentRun ID。
+     * 直接产生该事件的 AgentTurn ID。
      */
-    private final String runId;
+    private final String turnId;
     /**
-     * 当前父子 Run 树的根 Run ID；根 Run 通常与 runId 相同。
+     * 当前父子 Turn 树的根 Turn ID；根 Turn 通常与 turnId 相同。
      */
-    private final String rootRunId;
+    private final String rootTurnId;
     /**
-     * 直接父 Run ID；根 Run 没有父级时为 {@code null}。
+     * 直接父 Turn ID；根 Turn 没有父级时为 {@code null}。
      */
-    private final String parentRunId;
+    private final String parentTurnId;
     /**
      * 产生事件的 Agent 稳定标识。
      */
@@ -49,7 +49,7 @@ public final class AgentEvent {
      */
     private final String agentVersion;
     /**
-     * 当前 Runner 内同一活动 runId 从 1 开始递增的事件序号。
+     * 当前 Runner 内同一活动 turnId 从 1 开始递增的事件序号。
      */
     private final long sequence;
     /**
@@ -71,29 +71,29 @@ public final class AgentEvent {
      * <p>data 会在构造时深度复制：Map、Iterable 和数组转换为不可修改集合，基础不可变值原样保留，
      * 其他对象转换为字符串。因此监听器不会通过事件数据意外修改 Runner 内部状态。</p>
      *
-     * @param runId        直接产生事件的 Run ID
-     * @param rootRunId    父子 Run 树的根 Run ID
-     * @param parentRunId  直接父 Run ID，根 Run 可为 {@code null}
+     * @param turnId        直接产生事件的 Turn ID
+     * @param rootTurnId    父子 Turn 树的根 Turn ID
+     * @param parentTurnId  直接父 Turn ID，根 Turn 可为 {@code null}
      * @param agentId      Agent 稳定标识
      * @param agentVersion Agent 定义版本
      * @param sequence     当前 Runner 内的正数事件序号
      * @param type         事件类型
      * @param data         事件数据，可为 {@code null}
      */
-    public AgentEvent(String runId, String rootRunId, String parentRunId,
+    public AgentEvent(String turnId, String rootTurnId, String parentTurnId,
                       String agentId, String agentVersion, long sequence,
                       AgentEventType type, Map<String, ?> data) {
-        if (runId == null || agentId == null || agentVersion == null || type == null) {
+        if (turnId == null || agentId == null || agentVersion == null || type == null) {
             throw new IllegalArgumentException(
-                "runId, agentId, agentVersion and type must not be null");
+                "turnId, agentId, agentVersion and type must not be null");
         }
         if (sequence <= 0) {
             throw new IllegalArgumentException("sequence must be greater than 0");
         }
         this.eventId = UUID.randomUUID().toString();
-        this.runId = runId;
-        this.rootRunId = rootRunId;
-        this.parentRunId = parentRunId;
+        this.turnId = turnId;
+        this.rootTurnId = rootTurnId;
+        this.parentTurnId = parentTurnId;
         this.agentId = agentId;
         this.agentVersion = agentVersion;
         this.sequence = sequence;
@@ -110,24 +110,24 @@ public final class AgentEvent {
     }
 
     /**
-     * @return 直接产生事件的 Run ID
+     * @return 直接产生事件的 Turn ID
      */
-    public String getRunId() {
-        return runId;
+    public String getTurnId() {
+        return turnId;
     }
 
     /**
-     * @return 父子 Run 树的根 Run ID
+     * @return 父子 Turn 树的根 Turn ID
      */
-    public String getRootRunId() {
-        return rootRunId;
+    public String getRootTurnId() {
+        return rootTurnId;
     }
 
     /**
-     * @return 直接父 Run ID；根 Run 返回 {@code null}
+     * @return 直接父 Turn ID；根 Turn 返回 {@code null}
      */
-    public String getParentRunId() {
-        return parentRunId;
+    public String getParentTurnId() {
+        return parentTurnId;
     }
 
     /**
@@ -145,7 +145,7 @@ public final class AgentEvent {
     }
 
     /**
-     * @return 当前 Runner 内同一活动 Run 的递增序号
+     * @return 当前 Runner 内同一活动 Turn 的递增序号
      */
     public long getSequence() {
         return sequence;

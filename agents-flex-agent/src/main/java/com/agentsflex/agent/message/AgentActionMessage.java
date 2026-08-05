@@ -16,7 +16,7 @@ import java.util.List;
  * 展示在对话页面中的 Agent 待处理操作。
  *
  * <p>该消息不会发送给模型。页面根据 {@link #getStatus()} 渲染按钮或处理结果；业务端仍必须使用
- * AgentRun 中的 Suspension 校验操作，不能仅凭本消息恢复执行。</p>
+ * AgentTurn 中的 Suspension 校验操作，不能仅凭本消息恢复执行。</p>
  */
 public final class AgentActionMessage extends AbstractTextMessage<AgentActionMessage> {
 
@@ -46,9 +46,9 @@ public final class AgentActionMessage extends AbstractTextMessage<AgentActionMes
     }
 
     /**
-     * 真实执行状态所在的 AgentRun ID。
+     * 真实执行状态所在的 AgentTurn ID。
      */
-    private String runId;
+    private String turnId;
     /**
      * 与 Suspension correlationId 相同的稳定操作 ID。
      */
@@ -78,15 +78,15 @@ public final class AgentActionMessage extends AbstractTextMessage<AgentActionMes
         setModelVisible(false);
     }
 
-    public static AgentActionMessage toolApproval(String runId, String actionId,
+    public static AgentActionMessage toolApproval(String turnId, String actionId,
                                                   String message) {
-        if (runId == null || runId.trim().isEmpty()
+        if (turnId == null || turnId.trim().isEmpty()
             || actionId == null || actionId.trim().isEmpty()) {
-            throw new IllegalArgumentException("runId and actionId must not be blank");
+            throw new IllegalArgumentException("turnId and actionId must not be blank");
         }
         AgentActionMessage result = new AgentActionMessage();
-        result.setMessageId(runId + ":approval:" + actionId);
-        result.runId = runId;
+        result.setMessageId(turnId + ":approval:" + actionId);
+        result.turnId = turnId;
         result.actionId = actionId;
         result.actionType = Type.TOOL_APPROVAL;
         result.content = message;
@@ -109,12 +109,12 @@ public final class AgentActionMessage extends AbstractTextMessage<AgentActionMes
         return result;
     }
 
-    public String getRunId() {
-        return runId;
+    public String getTurnId() {
+        return turnId;
     }
 
-    public void setRunId(String runId) {
-        this.runId = runId;
+    public void setTurnId(String turnId) {
+        this.turnId = turnId;
     }
 
     public String getActionId() {
@@ -178,7 +178,7 @@ public final class AgentActionMessage extends AbstractTextMessage<AgentActionMes
     public AgentActionMessage copy() {
         AgentActionMessage copy = new AgentActionMessage();
         copy.content = content;
-        copy.runId = runId;
+        copy.turnId = turnId;
         copy.actionId = actionId;
         copy.actionType = actionType;
         copy.status = status;

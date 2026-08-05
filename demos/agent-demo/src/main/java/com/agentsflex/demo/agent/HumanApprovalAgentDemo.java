@@ -8,15 +8,15 @@ package com.agentsflex.demo.agent;
 
 import com.agentsflex.agent.Agent;
 import com.agentsflex.agent.AgentResumeCommand;
-import com.agentsflex.agent.AgentRun;
-import com.agentsflex.agent.AgentRunSnapshot;
-import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentTurn;
+import com.agentsflex.agent.AgentTurnSnapshot;
+import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.AgentWorker;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.message.AgentActionMessage;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.AiMessage;
@@ -76,7 +76,7 @@ public final class HumanApprovalAgentDemo {
             .chatModel(model)
             .tool(deployTool)
             // 审批策略读取 Tool metadata，业务可在这里叠加用户、环境和权限信息。
-            .toolApprovalPolicy((run, call, tool) ->
+            .toolApprovalPolicy((turn, call, tool) ->
                 Boolean.TRUE.equals(tool.getMetadata().get("sideEffect"))
                     ? ToolApprovalDecision.requireApproval()
                         .code("PRODUCTION_DEPLOYMENT_REVIEW")
@@ -89,22 +89,22 @@ public final class HumanApprovalAgentDemo {
 
         // 两个 Runner 共享 Store 和 Loader，用来模拟“请求 A 暂停，请求 B 审批后恢复”。
         // 真实多进程部署应将 Store 替换为生产实现，并由业务 AgentLoader 从配置表组装 Agent。
-        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore turnStore = new InMemoryAgentTurnStore();
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
         DefaultChatMemory chatMemory = new DefaultChatMemory("release-conversation-1");
         List<AgentEvent> events = new java.util.ArrayList<>();
         AgentRunner firstRunner = AgentRunner.builder()
-            .runStore(runStore)
+            .turnStore(turnStore)
             .agentLoader(agentLoader)
             .chatMemoryProvider(id -> chatMemory)
             .build()
             .addEventListener(events::add);
         // run() 会执行到终态或阻塞态；遇到审批点时返回 WAITING_FOR_APPROVAL。
-        AgentRun waiting = firstRunner.run(agent, "release-conversation-1",
+        AgentTurn waiting = firstRunner.run(agent, "release-conversation-1",
             "发布 order-api 2.4.0");
 
-        DemoSupport.printRun(waiting);
-        DemoSupport.require(waiting.getStatus() == AgentRunStatus.WAITING_FOR_APPROVAL,
+        DemoSupport.printTurn(waiting);
+        DemoSupport.require(waiting.getStatus() == AgentTurnStatus.WAITING_FOR_APPROVAL,
             "高风险工具执行前应暂停");
         DemoSupport.require(deployments.get() == 0, "审批前不能产生部署副作用");
         DemoSupport.require(actionMessage(chatMemory).getStatus()
@@ -113,7 +113,7 @@ public final class HumanApprovalAgentDemo {
 
         // pending ToolCall 已在审批前持久化。恢复时不会重新调用模型生成部署参数，
         // Runner 会从 Snapshot 指定版本的 Agent 中取得同名工具。
-        AgentRunSnapshot snapshot = runStore.load(waiting.getId());
+        AgentTurnSnapshot snapshot = turnStore.load(waiting.getId());
         DemoSupport.require("deploy_service".equals(
             snapshot.getState().getPendingToolCalls().get(0).getName()),
             "Snapshot 必须保存待执行 ToolCall");
@@ -125,27 +125,27 @@ public final class HumanApprovalAgentDemo {
             .withMetadata("approvalSource", "release-console");
 
         AgentRunner secondRunner = AgentRunner.builder()
-            .runStore(runStore)
+            .turnStore(turnStore)
             .agentLoader(agentLoader)
             .chatMemoryProvider(id -> chatMemory)
             .build()
             .addEventListener(events::add);
-        // 业务系统负责可靠保存和幂等消费审批结果，这里只把 Run 恢复为可运行状态。
+        // 业务系统负责可靠保存和幂等消费审批结果，这里只把 Turn 恢复为可运行状态。
         secondRunner.submitResume(waiting.getId(), approval);
         AgentActionMessage approved = actionMessage(chatMemory);
         DemoSupport.require(approved.getStatus() == AgentActionMessage.Status.APPROVED,
             "审批后应 CAS 更新原审批消息");
         DemoSupport.require(approved.getActions().isEmpty(), "终态审批消息不应再显示按钮");
-        List<AgentRun> processed;
+        List<AgentTurn> processed;
         try (AgentWorker worker = new AgentWorker("release-worker-01", secondRunner, 30_000)) {
-            // Worker 通过 Run Lease 领取恢复后的任务。
+            // Worker 通过 Turn Lease 领取恢复后的任务。
             processed = worker.pollAndRun(10);
         }
         DemoSupport.require(processed.size() == 1, "Worker 应领取批准后的部署任务");
-        AgentRun completed = processed.get(0);
+        AgentTurn completed = processed.get(0);
 
-        DemoSupport.printRun(completed);
-        DemoSupport.require(completed.getStatus() == AgentRunStatus.COMPLETED,
+        DemoSupport.printTurn(completed);
+        DemoSupport.require(completed.getStatus() == AgentTurnStatus.COMPLETED,
             "批准后应从 TOOLS 阶段继续并完成");
         DemoSupport.require(deployments.get() == 1, "部署工具只能执行一次");
 

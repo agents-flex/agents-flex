@@ -7,12 +7,12 @@
 package com.agentsflex.agent.store;
 
 /**
- * 保存 AgentRun Snapshot 时发生乐观锁冲突。
+ * 保存 AgentTurn Snapshot 时发生乐观锁冲突。
  */
-public class AgentRunVersionConflictException extends RuntimeException {
+public class AgentTurnVersionConflictException extends RuntimeException {
 
-    public AgentRunVersionConflictException(String runId, long expectedVersion, long actualVersion) {
-        super("AgentRun version conflict, runId=" + runId
+    public AgentTurnVersionConflictException(String turnId, long expectedVersion, long actualVersion) {
+        super("AgentTurn version conflict, turnId=" + turnId
             + ", expectedVersion=" + expectedVersion
             + ", actualVersion=" + actualVersion);
     }

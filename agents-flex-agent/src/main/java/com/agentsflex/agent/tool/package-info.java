@@ -8,7 +8,7 @@
 /**
  * Agent 工具解析、审批和错误处理策略。
  *
- * <p>AgentToolInvocation 向工具传递当前 Run、Agent 和 ToolCall 身份；审批策略在执行副作用工具前
+ * <p>AgentToolInvocation 向工具传递当前 Turn、Agent 和 ToolCall 身份；审批策略在执行副作用工具前
  * 返回允许、拒绝或等待人工审批的决定。</p>
  */
 package com.agentsflex.agent.tool;

@@ -8,7 +8,7 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -59,12 +59,12 @@ public class AgentRunnerTest {
             .tool(tool("lookup", args -> "value"))
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "question");
+        AgentTurn turn = new AgentRunner().run(agent, "question");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
-        assertEquals("done", run.getFinalOutput());
-        assertEquals(1, run.getIterationCount());
-        assertNull(run.getError());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals("done", turn.getFinalOutput());
+        assertEquals(1, turn.getIterationCount());
+        assertNull(turn.getError());
     }
 
     @Test
@@ -88,16 +88,16 @@ public class AgentRunnerTest {
             .tool(tool("weather", args -> "sunny in " + args.get("city")))
             .build();
         AgentRunner runner = new AgentRunner();
-        AgentRun run = AgentRun.start(agent, "weather?");
+        AgentTurn turn = AgentTurn.start(agent, "weather?");
 
-        AgentStepResult first = runner.step(run);
-        assertEquals(AgentRunStatus.RUNNING, run.getStatus());
+        AgentStepResult first = runner.step(turn);
+        assertEquals(AgentTurnStatus.RUNNING, turn.getStatus());
         assertEquals("call-1", first.getToolMessages().get(0).getToolCallId());
 
-        AgentStepResult second = runner.step(run);
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
+        AgentStepResult second = runner.step(turn);
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
         assertTrue(second.getToolMessages().isEmpty());
-        assertEquals("It is sunny.", run.getFinalOutput());
+        assertEquals("It is sunny.", turn.getFinalOutput());
     }
 
     @Test
@@ -129,9 +129,9 @@ public class AgentRunnerTest {
             }))
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "run both");
+        AgentTurn turn = new AgentRunner().run(agent, "turn both");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
         assertEquals(Arrays.asList("first", "second"), executionOrder);
     }
 
@@ -157,10 +157,10 @@ public class AgentRunnerTest {
                 .build())
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "try it");
+        AgentTurn turn = new AgentRunner().run(agent, "try it");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
-        assertEquals("The service is unavailable.", run.getFinalOutput());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals("The service is unavailable.", turn.getFinalOutput());
     }
 
     @Test
@@ -169,12 +169,12 @@ public class AgentRunnerTest {
         model.enqueue(prompt -> aiWithCalls(toolCall("missing-1", "missing", "{}")));
 
         Agent agent = Agent.builder().chatModel(model).build();
-        AgentRun run = new AgentRunner().run(agent, "call something");
+        AgentTurn turn = new AgentRunner().run(agent, "call something");
 
-        assertEquals(AgentRunStatus.FAILED, run.getStatus());
-        assertNotNull(run.getError());
-        assertTrue(run.getError().getMessage().contains("tool not found: missing"));
-        assertNull(run.getFinalMessage());
+        assertEquals(AgentTurnStatus.FAILED, turn.getStatus());
+        assertNotNull(turn.getError());
+        assertTrue(turn.getError().getMessage().contains("tool not found: missing"));
+        assertNull(turn.getFinalMessage());
     }
 
     @Test
@@ -187,12 +187,12 @@ public class AgentRunnerTest {
             .executionPolicy(AgentExecutionPolicy.builder().maxIterations(2).build())
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "keep going");
+        AgentTurn turn = new AgentRunner().run(agent, "keep going");
 
-        assertEquals(AgentRunStatus.MAX_ITERATIONS_REACHED, run.getStatus());
-        assertEquals(2, run.getIterationCount());
+        assertEquals(AgentTurnStatus.MAX_ITERATIONS_REACHED, turn.getStatus());
+        assertEquals(2, turn.getIterationCount());
         assertEquals(2, toolInvocations.get());
-        assertNull(run.getFinalMessage());
+        assertNull(turn.getFinalMessage());
     }
 
     @Test
@@ -200,14 +200,14 @@ public class AgentRunnerTest {
         QueueChatModel model = new QueueChatModel();
         Agent agent = Agent.builder().chatModel(model).build();
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
-        AgentRun run = runner.start(agent, "cancel me");
-        runner.requestCancellation(run.getId());
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
+        AgentTurn turn = runner.start(agent, "cancel me");
+        runner.requestCancellation(turn.getId());
 
-        AgentRun cancelled = runner.restore(run.getId());
+        AgentTurn cancelled = runner.restore(turn.getId());
         AgentStepResult result = runner.step(cancelled);
 
-        assertEquals(AgentRunStatus.CANCELLED, cancelled.getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, cancelled.getStatus());
         assertTrue(result.getToolMessages().isEmpty());
         assertEquals(0, model.getCallCount());
     }
@@ -224,17 +224,17 @@ public class AgentRunnerTest {
             .tool(tool("eventTool", args -> "ok"))
             .build();
 
-        AgentRun run = new AgentRunner().addEventListener(event -> {
-            if (event.getType() == AgentEventType.RUN_STARTED) events.add("run-start");
+        AgentTurn turn = new AgentRunner().addEventListener(event -> {
+            if (event.getType() == AgentEventType.TURN_STARTED) events.add("turn-start");
             if (event.getType() == AgentEventType.MODEL_STARTED) events.add("model-start");
             if (event.getType() == AgentEventType.TOOL_STARTED) events.add("tool-start");
             if (event.getType() == AgentEventType.TOOL_COMPLETED) events.add("tool-end");
-            if (event.getType() == AgentEventType.RUN_COMPLETED) events.add("run-complete");
+            if (event.getType() == AgentEventType.TURN_COMPLETED) events.add("turn-complete");
         }).run(agent, "events");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
         assertEquals(Arrays.asList(
-            "run-start", "model-start", "tool-start", "tool-end", "model-start", "run-complete"
+            "turn-start", "model-start", "tool-start", "tool-end", "model-start", "turn-complete"
         ), events);
     }
 
@@ -255,9 +255,9 @@ public class AgentRunnerTest {
             .toolInterceptor(interceptor)
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "execute");
+        AgentTurn turn = new AgentRunner().run(agent, "execute");
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
         assertEquals(1, intercepted.get());
     }
 

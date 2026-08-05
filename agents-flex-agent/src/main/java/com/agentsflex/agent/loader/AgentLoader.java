@@ -19,7 +19,7 @@ public interface AgentLoader {
     /**
      * 加载指定版本的 Agent。
      *
-     * <p>恢复已保存的 Run 时调用。实现应保证同一 agentId 和 version 能恢复兼容的执行定义。</p>
+     * <p>恢复已保存的 Turn 时调用。实现应保证同一 agentId 和 version 能恢复兼容的执行定义。</p>
      */
     Agent load(String agentId, String version);
 

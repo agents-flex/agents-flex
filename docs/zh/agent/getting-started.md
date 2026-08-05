@@ -83,25 +83,25 @@ Agent agent = Agent.builder("weather-assistant")
 
 ```java
 AgentRunner runner = new AgentRunner();
-AgentRun run = runner.run(agent, "上海今天天气如何？");
+AgentTurn turn = runner.run(agent, "上海今天天气如何？");
 
-if (run.getStatus() == AgentRunStatus.COMPLETED) {
-    System.out.println(run.getFinalOutput());
+if (turn.getStatus() == AgentTurnStatus.COMPLETED) {
+    System.out.println(turn.getFinalOutput());
 } else {
-    System.out.println("status=" + run.getStatus());
+    System.out.println("status=" + turn.getStatus());
 }
 ```
 
-`run(...)` 会先创建 Run，再在当前线程持续推进，直到完成、失败或进入阻塞状态。模型可能被调用不止一次：第一次产生 ToolCall，工具执行后第二次生成面向用户的答案。
+`run(...)` 会先创建 Turn，再在当前线程持续推进，直到完成、失败或进入阻塞状态。模型可能被调用不止一次：第一次产生 ToolCall，工具执行后第二次生成面向用户的答案。
 
 ## 查看运行信息
 
 ```java
-System.out.println("runId=" + run.getId());
-System.out.println("iterations=" + run.getIterationCount());
-System.out.println("steps=" + run.getStepCount());
-System.out.println("toolCalls=" + run.getToolCallCount());
-System.out.println("tokens=" + run.getTotalTokens());
+System.out.println("turnId=" + turn.getId());
+System.out.println("iterations=" + turn.getIterationCount());
+System.out.println("steps=" + turn.getStepCount());
+System.out.println("toolCalls=" + turn.getToolCallCount());
+System.out.println("tokens=" + turn.getTotalTokens());
 ```
 
 `iterationCount` 统计模型调用次数，`stepCount` 统计 Runner 的总推进次数，工具调用次数由 `toolCallCount` 单独记录。
@@ -126,31 +126,31 @@ Agent limited = Agent.builder("weather-assistant")
     .build();
 ```
 
-也可以用 `AgentRunOptions.executionPolicy(...)` 只覆盖某一次运行，通过 `metadata(...)` 附加可持久化业务信息，并用 `streaming(...)` 控制当前进程内的模型调用方式。
+也可以用 `AgentTurnOptions.executionPolicy(...)` 只覆盖某一次运行，通过 `metadata(...)` 附加可持久化业务信息，并用 `streaming(...)` 控制当前进程内的模型调用方式。
 
 ## 持续对话
 
-一个 Run 对应一个任务，不应把已完成 Run 直接当成下一轮对话。持续对话的 ID 和 `ChatMemory` 仍由
+一个 Turn 对应一个任务，不应把已完成 Turn 直接当成下一轮对话。持续对话的 ID 和 `ChatMemory` 仍由
 业务系统维护；推荐通过 Runner 的可选 Provider 接入：
 
 ```java
 AgentRunner runner = AgentRunner.builder()
-    .runStore(runStore)
+    .turnStore(turnStore)
     .agentLoader(agentLoader)
     .chatMemoryProvider(id -> loadMemory(id))
     .build();
 
-AgentRun first = runner.run(agent, "session-1001", "我叫小明");
-AgentRun second = runner.run(agent, "session-1001", "我叫什么？");
+AgentTurn first = runner.run(agent, "session-1001", "我叫小明");
+AgentTurn second = runner.run(agent, "session-1001", "我叫什么？");
 ```
 
 Runner 使用 `getModelMessages(maxAttachedMessages)` 分页读取最近历史，并在 Snapshot 保存后幂等回写
 本轮消息。页面读取 `getMessages()` 可以同时看到对话消息和审批操作消息。不配置 Provider 时仍可显式
 传入历史并自行回写 `getConversationHistory()`。
 
-每一轮创建新的 `AgentRun`。业务系统负责防止同一会话并发开始两轮，并保存尚未结束的 runId。如果
-某轮处于阻塞状态，应按该 runId 恢复原 Run，而不是开始新一轮。
+每一轮创建新的 `AgentTurn`。业务系统负责防止同一会话并发开始两轮，并保存尚未结束的 turnId。如果
+某轮处于阻塞状态，应按该 turnId 恢复原 Turn，而不是开始新一轮。
 
 ## 下一步
 
-建议依次阅读 [Agent](./agent)、[AgentRunner](./agent-runner) 和 [AgentRun](./agent-run)，建立定义、执行器与运行状态的清晰边界，然后再接入[挂起和恢复](./suspend-resume)及[Store 持久化](./store)。
+建议依次阅读 [Agent](./agent)、[AgentRunner](./agent-runner) 和 [AgentTurn](./agent-turn)，建立定义、执行器与运行状态的清晰边界，然后再接入[挂起和恢复](./suspend-resume)及[Store 持久化](./store)。

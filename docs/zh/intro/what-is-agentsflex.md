@@ -23,7 +23,7 @@ Agents-Flex 的能力不是一组彼此孤立的组件，而是一条完整的�
 | --- | --- | --- |
 | 模型 | Chat、Embedding、Rerank、Image、Video、TTS、STT | 统一接入文本、向量、图像、视频与语音模型 |
 | 对话 | Message、Prompt、Memory、同步与流式响应 | 管理一次对话以及持续的多轮上下文 |
-| 行动 | Tool Calling、AgentRun、工具拦截器 | 让模型调用 Java 方法、API、脚本和业务服务，并持续推进任务 |
+| 行动 | Tool Calling、AgentTurn、工具拦截器 | 让模型调用 Java 方法、API、脚本和业务服务，并持续推进任务 |
 | 连接 | MCP、WebSearch、WebFetch、LLM Wiki | 连接外部工具、互联网和动态知识源 |
 | 知识 | 文件解析、文档切分、Embedding、Vector Store、Rerank | 构建从数据导入到召回排序的完整 RAG 链路 |
 | 技能 | AI Skills、Local/OpenSandbox/AIO Sandbox Runtime | 把提示词、脚本和资源封装成可复用、可执行的能力包 |

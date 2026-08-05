@@ -7,7 +7,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -25,7 +25,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
-/** 验证 Agent 的多模态输入和跨 Run 持续对话契约。 */
+/** 验证 Agent 的多模态输入和跨 Turn 持续对话契约。 */
 public class AgentMultimodalConversationTest {
 
     @Test
@@ -39,16 +39,16 @@ public class AgentMultimodalConversationTest {
         Agent agent = Agent.builder("multimodal-agent")
             .chatModel(model)
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
 
         UserMessage input = multimodalMessage();
-        AgentRun run = runner.run(agent, input);
+        AgentTurn turn = runner.run(agent, input);
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
-        assertEquals("analysis complete", run.getFinalOutput());
-        assertMultimodalInput(lastUserMessage(run.getConversationHistory()));
-        assertMultimodalInput(lastUserMessage(runner.restore(run.getId()).getConversationHistory()));
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals("analysis complete", turn.getFinalOutput());
+        assertMultimodalInput(lastUserMessage(turn.getConversationHistory()));
+        assertMultimodalInput(lastUserMessage(runner.restore(turn.getId()).getConversationHistory()));
     }
 
     @Test
@@ -62,14 +62,14 @@ public class AgentMultimodalConversationTest {
             .chatModel(model)
             .build();
 
-        AgentRun run = AgentRun.start(agent,
+        AgentTurn turn = AgentTurn.start(agent,
             java.util.Collections.<Message>singletonList(previous), current);
         previous.setContent("changed previous question");
         previous.addImageUrl("https://example.com/changed.png");
         current.setContent("changed current question");
         current.addAudioUrl("https://example.com/changed.mp3");
 
-        List<Message> history = run.getConversationHistory();
+        List<Message> history = turn.getConversationHistory();
         UserMessage storedPrevious = (UserMessage) history.get(0);
         UserMessage storedCurrent = (UserMessage) history.get(1);
         assertEquals("previous question", storedPrevious.getContent());
@@ -78,7 +78,7 @@ public class AgentMultimodalConversationTest {
         assertEquals(1, storedCurrent.getAudioUrls().size());
 
         storedCurrent.addFileUrl("https://example.com/changed.txt");
-        assertEquals(1, ((UserMessage) run.getConversationHistory().get(1)).getFileUrls().size());
+        assertEquals(1, ((UserMessage) turn.getConversationHistory().get(1)).getFileUrls().size());
     }
 
     @Test
@@ -102,17 +102,17 @@ public class AgentMultimodalConversationTest {
             .build();
         AgentRunner runner = new AgentRunner();
 
-        AgentRun first = runner.run(agent, new UserMessage("hello"));
+        AgentTurn first = runner.run(agent, new UserMessage("hello"));
         UserMessage secondInput = new UserMessage("what is shown here?");
         secondInput.addImageUrl("https://example.com/current.png");
-        AgentRun second = runner.run(agent, first.getConversationHistory(), secondInput,
-            AgentRunOptions.builder()
+        AgentTurn second = runner.run(agent, first.getConversationHistory(), secondInput,
+            AgentTurnOptions.builder()
                 .metadata("conversationId", "conversation-1")
                 .build());
 
         assertNotEquals(first.getId(), second.getId());
-        assertEquals(AgentRunStatus.COMPLETED, first.getStatus());
-        assertEquals(AgentRunStatus.COMPLETED, second.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, first.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, second.getStatus());
         assertEquals("a chart", second.getFinalOutput());
         assertEquals("conversation-1",
             second.getMetadata().get("conversationId"));
@@ -120,7 +120,7 @@ public class AgentMultimodalConversationTest {
     }
 
     @Test
-    public void shouldResumeBlockedRunByBusinessStoredRunId() {
+    public void shouldResumeBlockedRunByBusinessStoredTurnId() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> {
             List<Message> messages = prompt.getMessages();
@@ -131,17 +131,17 @@ public class AgentMultimodalConversationTest {
         Agent agent = Agent.builder("waiting-conversation-agent")
             .chatModel(model)
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-        AgentRun waiting = runner.start(agent, "initial request");
+        AgentTurn waiting = runner.start(agent, "initial request");
         runner.suspend(waiting, AgentSuspension.userInput("provide value"));
-        String activeRunId = waiting.getId();
+        String activeTurnId = waiting.getId();
 
-        AgentRun completed = runner.resume(activeRunId,
+        AgentTurn completed = runner.resume(activeTurnId,
             AgentResumeCommand.userInput("additional value"));
 
         assertEquals(waiting.getId(), completed.getId());
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("completed after resume", completed.getFinalOutput());
         assertEquals(3, completed.getConversationHistory().size());
     }
@@ -153,21 +153,21 @@ public class AgentMultimodalConversationTest {
         Agent agent = Agent.builder("restored-conversation-agent")
             .chatModel(model)
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
         DefaultChatMemory memory = new DefaultChatMemory("conversation-restored");
-        AgentRun waiting = runner.start(agent,
+        AgentTurn waiting = runner.start(agent,
             memory.getMessages(Integer.MAX_VALUE), new UserMessage("initial request"));
         runner.suspend(waiting, AgentSuspension.userInput("provide value"));
 
-        AgentRun completed = runner.resume(waiting.getId(),
+        AgentTurn completed = runner.resume(waiting.getId(),
             AgentResumeCommand.userInput("restored value"));
         for (Message message : completed.getConversationHistory()) {
             memory.addMessage(message);
         }
 
         assertEquals(waiting.getId(), completed.getId());
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("restored conversation completed", completed.getFinalOutput());
         assertEquals(3, memory.getMessages(Integer.MAX_VALUE).size());
     }
@@ -186,11 +186,11 @@ public class AgentMultimodalConversationTest {
             .tool(tool("inspect", args -> "detected content"))
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, multimodalMessage());
+        AgentTurn turn = new AgentRunner().run(agent, multimodalMessage());
 
-        assertEquals(AgentRunStatus.COMPLETED, run.getStatus());
-        assertEquals(2, run.getIterationCount());
-        assertEquals("tool-assisted answer", run.getFinalOutput());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals(2, turn.getIterationCount());
+        assertEquals("tool-assisted answer", turn.getFinalOutput());
     }
 
     private static UserMessage multimodalMessage() {

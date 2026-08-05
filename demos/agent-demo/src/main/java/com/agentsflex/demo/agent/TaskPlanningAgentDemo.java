@@ -7,10 +7,10 @@
 package com.agentsflex.demo.agent;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.agent.AgentRun;
+import com.agentsflex.agent.AgentTurn;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.task.AgentPlanningPolicy;
 import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.task.AgentTask;
@@ -31,7 +31,7 @@ public final class TaskPlanningAgentDemo {
     static void run() {
         DemoSupport.section("Demo 4 - 模型自主任务规划");
 
-        // 专业 Agent 使用独立模型和指令执行单个任务，执行过程仍是普通 AgentRun。
+        // 专业 Agent 使用独立模型和指令执行单个任务，执行过程仍是普通 AgentTurn。
         DemoScriptedChatModel analystModel = new DemoScriptedChatModel()
             .enqueue(prompt -> new AiMessage("影响模块：订单 API；主要风险：库存一致性。"));
         DemoScriptedChatModel testerModel = new DemoScriptedChatModel()
@@ -72,16 +72,16 @@ public final class TaskPlanningAgentDemo {
                 .allowAgent("analysis-agent").allowAgent("test-agent").build())
             .build();
 
-        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(),
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(),
             new InMemoryAgentLoader(root, analyst, tester));
 
         // 调用方始终使用同一个入口，不需要预先判断本轮是否应该规划。
-        AgentRun run = runner.run(root, "分析并验证订单服务变更");
-        AgentTaskProgress progress = runner.getTaskProgress(run.getId());
+        AgentTurn turn = runner.run(root, "分析并验证订单服务变更");
+        AgentTaskProgress progress = runner.getTaskProgress(turn.getId());
         printProgress(progress);
-        DemoSupport.printRun(run);
+        DemoSupport.printTurn(turn);
 
-        DemoSupport.require(run.getStatus().isTerminal(), "根 Run 应结束");
+        DemoSupport.require(turn.getStatus().isTerminal(), "根 Turn 应结束");
         DemoSupport.require(progress.getStatus() == AgentTaskPlanStatus.COMPLETED,
             "计划和最终汇总都应完成");
     }

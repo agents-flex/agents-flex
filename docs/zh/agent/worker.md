@@ -1,26 +1,26 @@
 ---
 title: AgentWorker
-description: 使用 Lease、心跳与 fencing token 安全执行长任务和分布式 AgentRun。
+description: 使用 Lease、心跳与 fencing token 安全执行长任务和分布式 AgentTurn。
 ---
 
 # AgentWorker
 
 ## 概述
 
-`AgentWorker` 从共享 `AgentRunStore` 领取可运行快照，并推进到终止或阻塞。它适合长任务、异步 API 和多实例部署。Worker 使用 Lease 防止同一个 Run 同时被多个进程推进，并用唯一 `leaseId` 阻止旧执行者提交过期结果。
+`AgentWorker` 从共享 `AgentTurnStore` 领取可运行快照，并推进到终止或阻塞。它适合长任务、异步 API 和多实例部署。Worker 使用 Lease 防止同一个 Turn 同时被多个进程推进，并用唯一 `leaseId` 阻止旧执行者提交过期结果。
 
 ## 提交与执行
 
 ```java
-AgentRun queued = runner.start(agent, "生成月报");
+AgentTurn queued = runner.start(agent, "生成月报");
 
 try (AgentWorker worker = new AgentWorker(
     "report-worker-1", runner, 30_000)) {
-    List<AgentRun> processed = worker.pollAndRun(10);
+    List<AgentTurn> processed = worker.pollAndRun(10);
 }
 ```
 
-`start` 只保存 READY Run。`pollAndRun(limit)` 会先修复父子唤醒，再逐个领取 Run 并同步推进。
+`start` 只保存 READY Turn。`pollAndRun(limit)` 会先修复父子唤醒，再逐个领取 Turn 并同步推进。
 
 ## 自动轮询
 
@@ -48,15 +48,15 @@ Lease 不是分布式事务。外部工具仍需业务幂等，网络分区时�
 
 ## 可领取状态
 
-Store 通常领取 READY、可继续的 RUNNING、到期 `RETRY_SCHEDULED`，以及已请求取消但尚未终止的 Run。等待审批、用户或子任务的 Run 在相应事件到达前不可领取。
+Store 通常领取 READY、可继续的 RUNNING、到期 `RETRY_SCHEDULED`，以及已请求取消但尚未终止的 Turn。等待审批、用户或子任务的 Turn 在相应事件到达前不可领取。
 
 ## 父子恢复
 
-Worker 每轮调用 `recoverCompletedChildren`，发现子 Run 已终止而父 Run 仍等待时进行补偿唤醒。这覆盖子 Snapshot 已提交、父 Snapshot 尚未更新时进程退出的窗口。
+Worker 每轮调用 `recoverCompletedChildren`，发现子 Turn 已终止而父 Turn 仍等待时进行补偿唤醒。这覆盖子 Snapshot 已提交、父 Snapshot 尚未更新时进程退出的窗口。
 
 ## 容量规划
 
-当前 Worker 一次领取后同步执行 Run。可通过多个 Worker 实例扩容，但应考虑模型和工具的连接池、速率限制与线程安全。`batchSize` 决定一轮最多处理多少，不代表内部并行度。
+当前 Worker 一次领取后同步执行 Turn。可通过多个 Worker 实例扩容，但应考虑模型和工具的连接池、速率限制与线程安全。`batchSize` 决定一轮最多处理多少，不代表内部并行度。
 
 ## 运维指标
 

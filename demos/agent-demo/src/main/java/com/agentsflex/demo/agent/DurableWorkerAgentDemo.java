@@ -9,13 +9,13 @@ package com.agentsflex.demo.agent;
 import com.agentsflex.agent.Agent;
 import com.agentsflex.agent.AgentExecutionPolicy;
 import com.agentsflex.agent.AgentRetryPolicy;
-import com.agentsflex.agent.AgentRun;
-import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentTurn;
+import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.AgentWorker;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentToolInvocation;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
@@ -78,32 +78,32 @@ public final class DurableWorkerAgentDemo {
                 .build())
             .build();
 
-        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore turnStore = new InMemoryAgentTurnStore();
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
         List<AgentEvent> events = new java.util.ArrayList<>();
-        AgentRunner runner = new AgentRunner(runStore, agentLoader)
+        AgentRunner runner = new AgentRunner(turnStore, agentLoader)
             .addEventListener(events::add);
 
-        AgentRun scheduled = runner.run(agent, "同步库存");
-        DemoSupport.printRun(scheduled);
-        DemoSupport.require(scheduled.getStatus() == AgentRunStatus.RETRY_SCHEDULED,
+        AgentTurn scheduled = runner.run(agent, "同步库存");
+        DemoSupport.printTurn(scheduled);
+        DemoSupport.require(scheduled.getStatus() == AgentTurnStatus.RETRY_SCHEDULED,
             "首次失败后应保存为可调度重试状态");
         DemoSupport.require(scheduled.getPendingToolCalls().size() == 1,
             "重试应保留原 ToolCall，而不是重新请求模型决策");
 
         // claimRunnable 会原子写入 leaseOwner 和 leaseUntil。Worker 推进到终止或再次阻塞后释放租约。
         // 多个 Worker 并发轮询时，只有成功取得 Lease 的 Worker 能处理当前 Snapshot 版本。
-        List<AgentRun> processed;
+        List<AgentTurn> processed;
         try (AgentWorker worker = new AgentWorker("inventory-worker-01", runner, 30_000)) {
             processed = worker.pollAndRun(10);
         }
         DemoSupport.require(processed.size() == 1, "Worker 应领取一个到期任务");
-        AgentRun completed = processed.get(0);
+        AgentTurn completed = processed.get(0);
 
-        DemoSupport.printRun(completed);
+        DemoSupport.printTurn(completed);
         System.out.println("attempts     : " + attempts.get());
         System.out.println("idempotency  : " + firstKey.get());
-        DemoSupport.require(completed.getStatus() == AgentRunStatus.COMPLETED,
+        DemoSupport.require(completed.getStatus() == AgentTurnStatus.COMPLETED,
             "Worker 重试后应完成");
         DemoSupport.require(model.getCallCount() == 2,
             "原工具重试不能重复产生模型决策回合");

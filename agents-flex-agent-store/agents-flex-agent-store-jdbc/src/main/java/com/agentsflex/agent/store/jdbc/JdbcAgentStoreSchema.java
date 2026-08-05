@@ -20,12 +20,12 @@ public final class JdbcAgentStoreSchema extends JdbcAgentStoreSupport {
     public void initialize() {
         try (Connection connection = connection(); Statement statement = connection.createStatement()) {
             String binary = config.getBinaryColumnType();
-            statement.execute("CREATE TABLE IF NOT EXISTS " + table("runs") + " ("
-                + "run_id VARCHAR(191) PRIMARY KEY, version BIGINT NOT NULL, status VARCHAR(64) NOT NULL, "
-                + "next_run_at BIGINT NOT NULL, lease_owner VARCHAR(191), lease_id VARCHAR(191), lease_until BIGINT NOT NULL, "
-                + "parent_run_id VARCHAR(191), cancellation_requested BOOLEAN NOT NULL, payload " + binary + " NOT NULL)");
-            createIndexIfMissing(connection, statement, table("runs"), table("runs_runnable_idx"),
-                "status, next_run_at, lease_until");
+            statement.execute("CREATE TABLE IF NOT EXISTS " + table("turns") + " ("
+                + "turn_id VARCHAR(191) PRIMARY KEY, version BIGINT NOT NULL, status VARCHAR(64) NOT NULL, "
+                + "next_runnable_at BIGINT NOT NULL, lease_owner VARCHAR(191), lease_id VARCHAR(191), lease_until BIGINT NOT NULL, "
+                + "parent_turn_id VARCHAR(191), cancellation_requested BOOLEAN NOT NULL, payload " + binary + " NOT NULL)");
+            createIndexIfMissing(connection, statement, table("turns"), table("turns_runnable_idx"),
+                "status, next_runnable_at, lease_until");
         } catch (SQLException error) {
             throw failure("initialize JDBC Agent Store schema", error);
         }

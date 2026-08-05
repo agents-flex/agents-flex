@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
-  <title id="title">AgentRun lifecycle</title>
-  <desc id="desc">Fixed model and tool phases with blocked and terminal run states.</desc>
+  <title id="title">AgentTurn lifecycle</title>
+  <desc id="desc">Fixed model and tool phases with blocked and terminal turn states.</desc>
   <style>
     text { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #172033; }
     .title { font-size: 28px; font-weight: 700; }
@@ -16,7 +16,7 @@
     </marker>
   </defs>
   <rect width="1200" height="650" fill="#f7f9fc"/>
-  <text x="55" y="52" class="title">AgentRun 固定执行阶段与生命周期状态</text>
+  <text x="55" y="52" class="title">AgentTurn 固定执行阶段与生命周期状态</text>
 
   <rect x="55" y="105" width="180" height="90" class="state" fill="#e9f2ff" stroke="#4d8bd8"/>
   <text x="110" y="143" class="name">READY</text>
@@ -49,10 +49,10 @@
   <text x="372" y="391" class="detail">等待工具审批决定</text>
   <rect x="605" y="330" width="245" height="82" class="state" fill="#f4edff" stroke="#8557c8"/>
   <text x="648" y="365" class="name">WAITING_FOR_CHILD</text>
-  <text x="652" y="391" class="detail">等待子 AgentRun 完成</text>
+  <text x="652" y="391" class="detail">等待子 AgentTurn 完成</text>
   <rect x="880" y="330" width="265" height="82" class="state" fill="#f4edff" stroke="#8557c8"/>
   <text x="930" y="365" class="name">RETRY_SCHEDULED</text>
-  <text x="925" y="391" class="detail">等待 nextRunAt 到期</text>
+  <text x="925" y="391" class="detail">等待 nextRunnableAt 到期</text>
 
   <path d="M 710 195 L 710 330" class="dash"/>
   <path d="M 420 195 C 420 270, 177 270, 177 330" class="dash"/>

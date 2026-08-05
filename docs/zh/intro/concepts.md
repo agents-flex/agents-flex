@@ -37,7 +37,7 @@ flowchart LR
 | 提示词 | `Prompt`、`SimplePrompt`、`MemoryPrompt` | 把消息、工具和元数据组织成模型输入 | 不等同于一段字符串 |
 | 记忆 | `ChatMemory` | 保存和读取会话历史 | 不等同于模型上下文窗口 |
 | 工具 | `Tool`、`ToolCall`、`ToolExecutor` | 把外部能力暴露给模型并执行 | 不负责决定整个任务流程 |
-| 智能体 | `Agent`、`AgentRun`、`AgentRunner` | 推进工具调用、等待恢复和多步骤任务状态 | 不等同于 ChatModel |
+| 智能体 | `Agent`、`AgentTurn`、`AgentRunner` | 推进工具调用、等待恢复和多步骤任务状态 | 不等同于 ChatModel |
 | 文档 | `Document`、`DocumentSplitter` | 表示和切分可检索知识 | 不负责生成回答 |
 | 向量检索 | `EmbeddingModel`、`VectorStore`、`SearchWrapper` | 将语义转成向量并召回候选知识 | 不保证最终排序和答案质量 |
 | 重排 | `RerankModel` | 对召回结果做更精确的相关性排序 | 不替代向量数据库 |

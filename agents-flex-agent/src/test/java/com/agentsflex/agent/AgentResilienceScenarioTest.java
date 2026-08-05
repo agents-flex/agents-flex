@@ -7,7 +7,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -36,19 +36,19 @@ public class AgentResilienceScenarioTest {
         Agent agent = Agent.builder("durable-approval-agent")
             .chatModel(model)
             .tool(tool("payment", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner firstRunner = new AgentRunner(store, registry);
-        AgentRun waiting = firstRunner.run(agent, "pay");
+        AgentTurn waiting = firstRunner.run(agent, "pay");
 
         AgentRunner secondRunner = new AgentRunner(store, registry);
-        AgentRun completed = secondRunner.resume(waiting.getId(),
+        AgentTurn completed = secondRunner.resume(waiting.getId(),
             AgentResumeCommand.approveTool("payment-1"));
-        AgentRun restoredAgain = firstRunner.runUntilBlocked(completed.getId());
+        AgentTurn restoredAgain = firstRunner.runUntilBlocked(completed.getId());
 
-        assertEquals(AgentRunStatus.COMPLETED, restoredAgain.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, restoredAgain.getStatus());
         assertEquals(1, executions.get());
         assertEquals(2, model.getCallCount());
     }
@@ -68,16 +68,16 @@ public class AgentResilienceScenarioTest {
         Agent agent = Agent.builder("durable-rejection-agent")
             .chatModel(model)
             .tool(tool("delete", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRun waiting = new AgentRunner(store, registry).run(agent, "delete");
+        AgentTurn waiting = new AgentRunner(store, registry).run(agent, "delete");
 
-        AgentRun completed = new AgentRunner(store, registry).resume(waiting.getId(),
+        AgentTurn completed = new AgentRunner(store, registry).resume(waiting.getId(),
             AgentResumeCommand.rejectTool("delete-1", "protected resource"));
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("kept", completed.getFinalOutput());
         assertEquals(0, executions.get());
         assertEquals("protected resource",
@@ -107,18 +107,18 @@ public class AgentResilienceScenarioTest {
                     .build())
                 .build())
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
 
-        AgentRun scheduled = runner.run(agent, "execute");
-        assertEquals(AgentRunStatus.RETRY_SCHEDULED, scheduled.getStatus());
-        assertEquals(AgentRunPhase.TOOLS, scheduled.getPhase());
+        AgentTurn scheduled = runner.run(agent, "execute");
+        assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
+        assertEquals(AgentTurnPhase.TOOLS, scheduled.getPhase());
         assertEquals(1, scheduled.getPendingToolCalls().size());
 
-        List<AgentRun> processed = new AgentWorker("retry-worker", runner, 10000).pollAndRun(1);
+        List<AgentTurn> processed = new AgentWorker("retry-worker", runner, 10000).pollAndRun(1);
 
         assertEquals(1, processed.size());
-        assertEquals(AgentRunStatus.COMPLETED, processed.get(0).getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, processed.get(0).getStatus());
         assertEquals(2, attempts.get());
         assertEquals(2, model.getCallCount());
     }
@@ -144,16 +144,16 @@ public class AgentResilienceScenarioTest {
                 .budget(AgentBudget.builder().maxDurationMillis(100).build())
                 .build())
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-        AgentRun scheduled = runner.run(agent, "execute");
-        assertEquals(AgentRunStatus.RETRY_SCHEDULED, scheduled.getStatus());
+        AgentTurn scheduled = runner.run(agent, "execute");
+        assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
 
         Thread.sleep(150);
-        List<AgentRun> processed = new AgentWorker("budget-worker", runner, 10000).pollAndRun(1);
+        List<AgentTurn> processed = new AgentWorker("budget-worker", runner, 10000).pollAndRun(1);
 
         assertEquals(1, processed.size());
-        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, processed.get(0).getStatus());
+        assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, processed.get(0).getStatus());
         assertEquals("maxDurationMillis", processed.get(0).getBudgetExceededReason());
         assertEquals(1, attempts.get());
     }
@@ -178,11 +178,11 @@ public class AgentResilienceScenarioTest {
                 .build())
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "execute");
+        AgentTurn turn = new AgentRunner().run(agent, "execute");
 
-        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, run.getStatus());
-        assertEquals("maxTotalTokens", run.getBudgetExceededReason());
+        assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
+        assertEquals("maxTotalTokens", turn.getBudgetExceededReason());
         assertEquals(0, executions.get());
-        assertEquals(13, run.getTotalTokens());
+        assertEquals(13, turn.getTotalTokens());
     }
 }

@@ -46,8 +46,8 @@ public final class JdbcAgentStoreConfig {
         return new JdbcAgentStoreSchema(this);
     }
 
-    public JdbcAgentRunStore runStore() {
-        return new JdbcAgentRunStore(this);
+    public JdbcAgentTurnStore turnStore() {
+        return new JdbcAgentTurnStore(this);
     }
 
     public static final class Builder {

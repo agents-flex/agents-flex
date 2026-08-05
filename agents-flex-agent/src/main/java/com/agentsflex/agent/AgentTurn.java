@@ -24,20 +24,21 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 一个 Agent 的单次可变运行状态。
+ * 一个 Agent 从接收一次输入到产生最终结果的可变执行轮次。
  *
- * <p>{@link Agent} 可以被多次复用，但每次任务都应该创建独立的 AgentRun。该对象保存：</p>
+ * <p>一个 Turn 可以包含多次模型迭代、工具调用、暂停恢复和自动重试。根 Turn 的输入通常来自用户，
+ * 子 Turn 的输入来自父 Agent 的任务委派；每次子 Agent 调用都创建独立的 AgentTurn。该对象保存：</p>
  * <ul>
- *     <li>本次运行唯一 ID；</li>
+ *     <li>本轮唯一 ID 及父子 Turn 关系；</li>
  *     <li>包含 System、User、AI ToolCall 和 ToolMessage 的完整对话上下文；</li>
  *     <li>生命周期状态、模型迭代次数、最终消息和失败原因；</li>
- *     <li>业务侧附加的运行元数据以及协作式取消标记。</li>
+ *     <li>业务侧附加的轮次元数据以及协作式取消标记。</li>
  * </ul>
  *
- * <p>状态转换方法仅对同包内 Runner 可见，避免业务代码直接把运行标记为完成或失败。
- * AgentRun 不是并发执行容器，同一个 Run 不应由多个 Runner 线程同时推进。</p>
+ * <p>状态转换方法仅对同包内 Runner 可见，避免业务代码直接把 Turn 标记为完成或失败。
+ * AgentTurn 不是并发执行容器，同一个 Turn 不应由多个 Runner 线程同时推进。</p>
  */
-public final class AgentRun {
+public final class AgentTurn {
 
     private static final String CONVERSATION_ID_METADATA =
         "agentsflex.conversationId";
@@ -51,7 +52,7 @@ public final class AgentRun {
     /**
      * 生命周期、预算、租约、规划等可持久化状态。
      */
-    private final AgentRunState state;
+    private final AgentTurnState state;
     /**
      * 保存模型交互历史和可用工具的 Prompt。
      */
@@ -69,9 +70,9 @@ public final class AgentRun {
      */
     private Throwable error;
 
-    private AgentRun(String id, Agent agent, MemoryPrompt prompt, long createdAt,
+    private AgentTurn(String id, Agent agent, MemoryPrompt prompt, long createdAt,
                      AgentExecutionPolicy executionPolicy) {
-        this(agent, prompt, new AgentRunState(id,
+        this(agent, prompt, new AgentTurnState(id,
             effectiveExecutionPolicy(agent, executionPolicy), createdAt));
         state.setPlanningEnabled(agent.getPlanningPolicy().isEnabled());
         prepareBaseTools();
@@ -83,7 +84,7 @@ public final class AgentRun {
         return executionPolicy == null ? agent.getExecutionPolicy() : executionPolicy;
     }
 
-    private AgentRun(Agent agent, MemoryPrompt prompt, AgentRunState state) {
+    private AgentTurn(Agent agent, MemoryPrompt prompt, AgentTurnState state) {
         if (agent == null) {
             throw new IllegalArgumentException("agent must not be null");
         }
@@ -104,33 +105,33 @@ public final class AgentRun {
      *
      * @param agent     要执行的 Agent 定义
      * @param userInput 初始用户输入
-     * @return 状态为 {@link AgentRunStatus#READY} 的新运行
+     * @return 状态为 {@link AgentTurnStatus#READY} 的新运行
      */
-    static AgentRun start(Agent agent, String userInput) {
-        return start(agent, new UserMessage(userInput), AgentRunOptions.defaults());
+    static AgentTurn start(Agent agent, String userInput) {
+        return start(agent, new UserMessage(userInput), AgentTurnOptions.defaults());
     }
 
     /**
-     * 使用单次运行选项创建 Run。
+     * 使用单次运行选项创建 Turn。
      */
-    static AgentRun start(Agent agent, String userInput, AgentRunOptions options) {
+    static AgentTurn start(Agent agent, String userInput, AgentTurnOptions options) {
         return start(agent, new UserMessage(userInput), options);
     }
 
     /**
      * 使用一条结构化用户消息创建运行。
      *
-     * <p>UserMessage 可以同时携带文本、图片、音频、视频、文件和消息元数据。Run 会复制输入消息，
+     * <p>UserMessage 可以同时携带文本、图片、音频、视频、文件和消息元数据。Turn 会复制输入消息，
      * 调用方在创建后继续修改原消息不会影响本次运行及其 Snapshot。</p>
      */
-    static AgentRun start(Agent agent, UserMessage userMessage) {
-        return start(agent, userMessage, AgentRunOptions.defaults());
+    static AgentTurn start(Agent agent, UserMessage userMessage) {
+        return start(agent, userMessage, AgentTurnOptions.defaults());
     }
 
     /**
-     * 使用结构化用户消息和单次运行选项创建 Run。
+     * 使用结构化用户消息和单次运行选项创建 Turn。
      */
-    static AgentRun start(Agent agent, UserMessage userMessage, AgentRunOptions options) {
+    static AgentTurn start(Agent agent, UserMessage userMessage, AgentTurnOptions options) {
         return start(agent, Collections.<Message>emptyList(), userMessage, options);
     }
 
@@ -138,19 +139,19 @@ public final class AgentRun {
      * 使用已有会话历史和本轮用户消息创建独立运行。
      *
      * <p>会话历史由上层应用加载，可以来自任意业务表或消息存储。每一轮都会复制历史并创建新的
-     * AgentRun，因此已完成 Run 的状态、预算和审计记录不会被下一轮对话修改。历史中的 SystemMessage
+     * AgentTurn，因此已完成 Turn 的状态、预算和审计记录不会被下一轮对话修改。历史中的 SystemMessage
      * 不会被复制，系统指令始终以当前 Agent 定义为准。</p>
      */
-    static AgentRun start(Agent agent, List<? extends Message> conversationHistory,
+    static AgentTurn start(Agent agent, List<? extends Message> conversationHistory,
                           UserMessage userMessage) {
-        return start(agent, conversationHistory, userMessage, AgentRunOptions.defaults());
+        return start(agent, conversationHistory, userMessage, AgentTurnOptions.defaults());
     }
 
     /**
-     * 使用会话历史、结构化用户消息和单次运行选项创建 Run。
+     * 使用会话历史、结构化用户消息和单次运行选项创建 Turn。
      */
-    static AgentRun start(Agent agent, List<? extends Message> conversationHistory,
-                          UserMessage userMessage, AgentRunOptions options) {
+    static AgentTurn start(Agent agent, List<? extends Message> conversationHistory,
+                          UserMessage userMessage, AgentTurnOptions options) {
         if (userMessage == null) {
             throw new IllegalArgumentException("userMessage must not be null");
         }
@@ -170,16 +171,16 @@ public final class AgentRun {
     }
 
     /**
-     * 统一应用运行选项并创建新的 READY Run。
+     * 统一应用运行选项并创建新的 READY Turn。
      */
-    private static AgentRun create(Agent agent, MemoryPrompt prompt, AgentRunOptions options) {
-        String runId = UUID.randomUUID().toString();
-        AgentRunOptions actual = options == null ? AgentRunOptions.defaults() : options;
-        AgentRun run = new AgentRun(runId, agent, prompt, System.currentTimeMillis(),
+    private static AgentTurn create(Agent agent, MemoryPrompt prompt, AgentTurnOptions options) {
+        String turnId = UUID.randomUUID().toString();
+        AgentTurnOptions actual = options == null ? AgentTurnOptions.defaults() : options;
+        AgentTurn turn = new AgentTurn(turnId, agent, prompt, System.currentTimeMillis(),
             actual.getExecutionPolicy());
-        run.state.setMetadata(actual.getMetadata());
-        run.streaming = actual.isStreaming();
-        return run;
+        turn.state.setMetadata(actual.getMetadata());
+        turn.streaming = actual.isStreaming();
+        return turn;
     }
 
     /**
@@ -187,20 +188,20 @@ public final class AgentRun {
      *
      * <p>该方法会重新应用 Agent 的系统指令和工具列表，但会保留 Prompt 中已有的消息。</p>
      */
-    static AgentRun fromPrompt(Agent agent, MemoryPrompt prompt) {
-        String runId = UUID.randomUUID().toString();
-        return new AgentRun(runId, agent, prompt, System.currentTimeMillis(),
+    static AgentTurn fromPrompt(Agent agent, MemoryPrompt prompt) {
+        String turnId = UUID.randomUUID().toString();
+        return new AgentTurn(turnId, agent, prompt, System.currentTimeMillis(),
             agent.getExecutionPolicy());
     }
 
     /**
-     * 创建一个继承父任务根 ID 的子运行。
+     * 创建一个继承父 Turn 根 ID 的子 Turn。
      */
-    static AgentRun startChild(Agent agent, String userInput, AgentRun parent) {
-        AgentRun child = start(agent, userInput);
-        child.state.setParentRunId(parent.getId());
-        child.state.setRootRunId(parent.getRootRunId());
-        // 同一进程内创建子 Run 时继承流式调用方式；Snapshot 恢复后默认使用非流式调用。
+    static AgentTurn startChild(Agent agent, String userInput, AgentTurn parent) {
+        AgentTurn child = start(agent, userInput);
+        child.state.setParentTurnId(parent.getId());
+        child.state.setRootTurnId(parent.getRootTurnId());
+        // 同一进程内创建子 Turn 时继承流式调用方式；Snapshot 恢复后默认使用非流式调用。
         child.streaming = parent.streaming;
         int planningDepth = parent.getPlanningDepth() + 1;
         child.state.setPlanningDepth(planningDepth);
@@ -212,11 +213,11 @@ public final class AgentRun {
     }
 
     /**
-     * 使用持久化 Snapshot 恢复 AgentRun。
+     * 使用持久化 Snapshot 恢复 AgentTurn。
      *
      * <p>Snapshot 保存 agentId 和 agentVersion，因此调用方必须先通过 AgentLoader 加载匹配版本的 Agent。</p>
      */
-    static AgentRun fromSnapshot(Agent agent, AgentRunSnapshot snapshot) {
+    static AgentTurn fromSnapshot(Agent agent, AgentTurnSnapshot snapshot) {
         if (snapshot == null) {
             throw new IllegalArgumentException("snapshot must not be null");
         }
@@ -233,16 +234,16 @@ public final class AgentRun {
             throw new IllegalArgumentException("Agent version does not match snapshot: "
                 + snapshot.getAgentVersion());
         }
-        AgentRunState state = snapshot.getState().mutableCopy();
-        if (!StringUtil.hasText(state.getRootRunId())) {
-            state.setRootRunId(state.getRunId());
+        AgentTurnState state = snapshot.getState().mutableCopy();
+        if (!StringUtil.hasText(state.getRootTurnId())) {
+            state.setRootTurnId(state.getTurnId());
         }
-        AgentRun run = new AgentRun(agent, prompt, state);
+        AgentTurn turn = new AgentTurn(agent, prompt, state);
         if (state.getErrorMessage() != null) {
-            run.error = new RestoredAgentRunException(state.getErrorType(), state.getErrorMessage());
+            turn.error = new RestoredAgentTurnException(state.getErrorType(), state.getErrorMessage());
         }
-        run.prepareBaseTools();
-        return run;
+        turn.prepareBaseTools();
+        return turn;
     }
 
     /**
@@ -304,10 +305,10 @@ public final class AgentRun {
     }
 
     /**
-     * @return 本次运行的唯一 ID
+     * @return 本轮的唯一 ID；在 State、Event 和 Store 契约中对应 turnId
      */
     public String getId() {
-        return state.getRunId();
+        return state.getTurnId();
     }
 
     /**
@@ -358,14 +359,14 @@ public final class AgentRun {
     /**
      * @return 当前生命周期状态
      */
-    public AgentRunStatus getStatus() {
+    public AgentTurnStatus getStatus() {
         return state.getStatus();
     }
 
     /**
      * @return 当前模型或工具执行阶段
      */
-    public AgentRunPhase getPhase() {
+    public AgentTurnPhase getPhase() {
         return state.getPhase();
     }
 
@@ -443,14 +444,14 @@ public final class AgentRun {
     }
 
     /**
-     * @return 当前根任务累计输入 Token，包含已经汇总的子 Run
+     * @return 当前根任务累计输入 Token，包含已经汇总的子 Turn
      */
     public long getInputTokens() {
         return state.getInputTokens();
     }
 
     /**
-     * @return 当前根任务累计输出 Token，包含已经汇总的子 Run
+     * @return 当前根任务累计输出 Token，包含已经汇总的子 Turn
      */
     public long getOutputTokens() {
         return state.getOutputTokens();
@@ -464,24 +465,24 @@ public final class AgentRun {
     }
 
     /**
-     * @return 直接父 Run ID；根 Run 返回 {@code null}
+     * @return 直接父 Turn ID；根 Turn 返回 {@code null}
      */
-    public String getParentRunId() {
-        return state.getParentRunId();
+    public String getParentTurnId() {
+        return state.getParentTurnId();
     }
 
     /**
-     * @return 父子运行树的根 Run ID；根 Run 返回自身 ID
+     * @return Turn 树的根 Turn ID；根 Turn 返回自身 ID
      */
-    public String getRootRunId() {
-        return state.getRootRunId();
+    public String getRootTurnId() {
+        return state.getRootTurnId();
     }
 
     /**
      * @return 自动重试等延迟状态的最早可运行时间
      */
-    public long getNextRunAt() {
-        return state.getNextRunAt();
+    public long getNextRunnableAt() {
+        return state.getNextRunnableAt();
     }
 
     /**
@@ -492,7 +493,7 @@ public final class AgentRun {
     }
 
     /**
-     * @return 当前 Run 已安排的自动重试次数
+     * @return 当前 Turn 已安排的自动重试次数
      */
     public int getRetryCount() {
         return state.getRetryCount();
@@ -534,23 +535,23 @@ public final class AgentRun {
     }
 
     /**
-     * @return 当前 Run 是否允许模型创建任务计划
+     * @return 当前 Turn 是否允许模型创建任务计划
      */
     public boolean isPlanningEnabled() {
         return state.isPlanningEnabled();
     }
 
     /**
-     * @return 当前 Run 在嵌套规划中的深度
+     * @return 当前 Turn 在嵌套规划中的深度
      */
     public int getPlanningDepth() {
         return state.getPlanningDepth();
     }
 
     /**
-     * 返回仅基于当前 Run 本地状态计算的计划进度。
+     * 返回仅基于当前 Turn 本地状态计算的计划进度。
      *
-     * <p>父 Run 正在等待子 Run 时，该方法不会额外查询子 Run 的真实审批或重试状态；需要跨 Run
+     * <p>父 Turn 正在等待子 Turn 时，该方法不会额外查询子 Turn 的真实审批或重试状态；需要跨 Turn
      * 聚合状态时使用 {@link AgentRunner#getTaskProgress(String)}。</p>
      */
     public AgentTaskProgress getTaskProgress() {
@@ -571,8 +572,8 @@ public final class AgentRun {
     /**
      * 返回通过 Runner 的可选 ChatMemory 集成绑定的业务会话 ID。
      *
-     * <p>未使用 {@code chatMemoryProvider} 创建的 Run 返回 {@code null}。会话 ID 仅用于定位业务
-     * ChatMemory，不替代 Run ID，也不参与 Agent 执行状态判断。</p>
+     * <p>未使用 {@code chatMemoryProvider} 创建的 Turn 返回 {@code null}。会话 ID 仅用于定位业务
+     * ChatMemory，不替代 Turn ID，也不参与 Agent 执行状态判断。</p>
      */
     public String getConversationId() {
         Object value = state.getMetadata().get(CONVERSATION_ID_METADATA);
@@ -580,7 +581,7 @@ public final class AgentRun {
     }
 
     /**
-     * 返回创建 Run 时已经从 ChatMemory 载入的模型消息数量。
+     * 返回创建 Turn 时已经从 ChatMemory 载入的模型消息数量。
      *
      * <p>Runner 以该位置为边界，只把本轮新增消息投影回 ChatMemory，避免重复写入历史。</p>
      */
@@ -595,7 +596,7 @@ public final class AgentRun {
         }
     }
 
-    /** 将本次 Run 绑定到业务会话；绑定信息随 Snapshot 持久化。 */
+    /** 将本次 Turn 绑定到业务会话；绑定信息随 Snapshot 持久化。 */
     void bindConversation(String conversationId, int baseMessageCount) {
         if (!StringUtil.hasText(conversationId)) {
             throw new IllegalArgumentException("conversationId must not be blank");
@@ -617,7 +618,7 @@ public final class AgentRun {
     /**
      * 生成与当前可变状态隔离的 Snapshot。
      */
-    public AgentRunSnapshot toSnapshot() {
+    public AgentTurnSnapshot toSnapshot() {
         // getMessages() 可能受附加消息数量限制；Snapshot 必须保存 Memory 中的完整历史。
         List<Message> messages = prompt.getMemory().getMessages(Integer.MAX_VALUE);
         SystemMessage systemMessage = prompt.getSystemMessage();
@@ -628,18 +629,18 @@ public final class AgentRun {
         state.setError(error == null ? null : error.getClass().getName(),
             error == null ? null : error.getMessage());
         state.setUpdatedAt(System.currentTimeMillis());
-        return AgentRunSnapshot.of(agent.getId(), agent.getVersion(), state);
+        return AgentTurnSnapshot.of(agent.getId(), agent.getVersion(), state);
     }
 
     /**
-     * 标记第一次开始执行，并返回是否需要发送 onRunStart 事件。
+     * 标记第一次开始执行，并返回是否需要发送 onTurnStart 事件。
      */
     boolean markStarted() {
         if (state.isStarted()) {
             return false;
         }
         state.setStarted(true);
-        state.setStatus(AgentRunStatus.RUNNING);
+        state.setStatus(AgentTurnStatus.RUNNING);
         return true;
     }
 
@@ -723,9 +724,9 @@ public final class AgentRun {
     }
 
     /**
-     * 将子 Run 的资源消耗累计到父 Run 的整棵任务预算。
+     * 将子 Turn 的资源消耗累计到父 Turn 的整棵任务预算。
      */
-    void addChildUsage(AgentRun child) {
+    void addChildUsage(AgentTurn child) {
         if (child == null) return;
         state.addChildUsage(child.state);
     }
@@ -733,11 +734,11 @@ public final class AgentRun {
     /**
      * 安排一次持久化重试。
      */
-    void scheduleRetry(Throwable error, AgentRunPhase resumePhase, long runAt) {
+    void scheduleRetry(Throwable error, AgentTurnPhase resumePhase, long runAt) {
         state.incrementRetryCount();
         this.error = error;
-        state.setNextRunAt(runAt);
-        suspend(AgentRunStatus.RETRY_SCHEDULED,
+        state.setNextRunnableAt(runAt);
+        suspend(AgentTurnStatus.RETRY_SCHEDULED,
             AgentSuspension.retry(error == null ? null : error.getMessage(), resumePhase, runAt));
     }
 
@@ -751,8 +752,8 @@ public final class AgentRun {
     /**
      * 进入指定的运行中阶段。
      */
-    void moveTo(AgentRunPhase phase) {
-        state.setStatus(AgentRunStatus.RUNNING);
+    void moveTo(AgentTurnPhase phase) {
+        state.setStatus(AgentTurnStatus.RUNNING);
         state.setPhase(phase);
         state.setSuspension(null);
     }
@@ -760,7 +761,7 @@ public final class AgentRun {
     /**
      * 进入阻塞状态并保存恢复信息。
      */
-    void suspend(AgentRunStatus status, AgentSuspension suspension) {
+    void suspend(AgentTurnStatus status, AgentSuspension suspension) {
         state.setStatus(status);
         state.setPhase(suspension.getResumePhase());
         state.setSuspension(suspension);
@@ -769,19 +770,19 @@ public final class AgentRun {
     /**
      * 清除阻塞信息并回到指定执行阶段。
      */
-    void resumeAt(AgentRunPhase phase) {
+    void resumeAt(AgentTurnPhase phase) {
         state.setSuspension(null);
-        state.setStatus(AgentRunStatus.RUNNING);
-        state.setPhase(phase == null ? AgentRunPhase.MODEL : phase);
-        state.setNextRunAt(0);
+        state.setStatus(AgentTurnStatus.RUNNING);
+        state.setPhase(phase == null ? AgentTurnPhase.MODEL : phase);
+        state.setNextRunnableAt(0);
     }
 
     /**
      * 进入终止状态并记录结束时间。
      */
-    private void finish(AgentRunStatus status) {
+    private void finish(AgentTurnStatus status) {
         state.setStatus(status);
-        state.setPhase(AgentRunPhase.FINISHED);
+        state.setPhase(AgentTurnPhase.FINISHED);
         state.setSuspension(null);
         state.setCompletedAt(System.currentTimeMillis());
     }
@@ -797,7 +798,7 @@ public final class AgentRun {
      * 工具执行完成后保持运行态，等待下一个模型回合。
      */
     void markRunning() {
-        moveTo(AgentRunPhase.MODEL);
+        moveTo(AgentTurnPhase.MODEL);
     }
 
     /**
@@ -805,7 +806,7 @@ public final class AgentRun {
      */
     void markCompleted(AiMessage finalMessage) {
         state.setFinalMessage(finalMessage);
-        finish(AgentRunStatus.COMPLETED);
+        finish(AgentTurnStatus.COMPLETED);
     }
 
     /**
@@ -813,28 +814,28 @@ public final class AgentRun {
      */
     void markFailed(Throwable error) {
         this.error = error;
-        finish(AgentRunStatus.FAILED);
+        finish(AgentTurnStatus.FAILED);
     }
 
     /**
      * 标记取消完成。
      */
     void markCancelled() {
-        finish(AgentRunStatus.CANCELLED);
+        finish(AgentTurnStatus.CANCELLED);
     }
 
     /**
      * 标记因达到最大模型迭代次数而结束。
      */
     void markMaxIterationsReached() {
-        finish(AgentRunStatus.MAX_ITERATIONS_REACHED);
+        finish(AgentTurnStatus.MAX_ITERATIONS_REACHED);
     }
 
     /**
      * 标记 Runner 达到总 step 上限。
      */
     void markMaxStepsReached() {
-        finish(AgentRunStatus.MAX_STEPS_REACHED);
+        finish(AgentTurnStatus.MAX_STEPS_REACHED);
     }
 
     /**
@@ -842,7 +843,7 @@ public final class AgentRun {
      */
     void markBudgetExceeded(String reason) {
         state.setBudgetExceededReason(reason);
-        finish(AgentRunStatus.BUDGET_EXCEEDED);
+        finish(AgentTurnStatus.BUDGET_EXCEEDED);
     }
 
     /**
@@ -857,9 +858,9 @@ public final class AgentRun {
     /**
      * 恢复失败状态时使用的轻量异常，不尝试重建原始异常类型和堆栈。
      */
-    private static final class RestoredAgentRunException extends RuntimeException {
+    private static final class RestoredAgentTurnException extends RuntimeException {
 
-        private RestoredAgentRunException(String errorType, String message) {
+        private RestoredAgentTurnException(String errorType, String message) {
             super((errorType == null ? "" : errorType + ": ") + message);
         }
     }

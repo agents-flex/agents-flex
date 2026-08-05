@@ -11,7 +11,7 @@ import com.agentsflex.core.model.chat.response.AiMessageResponse;
  *
  * <p>Middleware 按 Agent 注册顺序形成责任链。实现通常应调用一次 {@code chain.proceed(context)}；
  * 不调用表示短路后续链路，多次调用可能导致模型或工具重复执行。Middleware 是 Agent 定义的一部分，
- * 被多个 Run 复用时应自行保证线程安全。</p>
+ * 被多个 Turn 复用时应自行保证线程安全。</p>
  */
 public interface AgentMiddleware {
 

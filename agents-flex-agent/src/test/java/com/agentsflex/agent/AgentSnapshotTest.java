@@ -7,9 +7,9 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.AgentRunStore;
-import com.agentsflex.agent.store.AgentRunVersionConflictException;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.AgentTurnStore;
+import com.agentsflex.agent.store.AgentTurnVersionConflictException;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -41,7 +41,7 @@ public class AgentSnapshotTest {
 
     @Test
     public void shouldRestorePendingToolsWithoutCallingModelAgain() {
-        InMemoryAgentRunStore durableStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore durableStore = new InMemoryAgentTurnStore();
         FailAfterPendingSnapshotStore crashingStore = new FailAfterPendingSnapshotStore(durableStore);
         QueueChatModel model = new QueueChatModel();
         AtomicInteger toolInvocations = new AtomicInteger();
@@ -54,10 +54,10 @@ public class AgentSnapshotTest {
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner firstProcess = new AgentRunner(crashingStore, registry);
-        AgentRun run = firstProcess.start(agent, "start");
+        AgentTurn turn = firstProcess.start(agent, "start");
 
         try {
-            firstProcess.step(run);
+            firstProcess.step(turn);
             fail("Expected simulated process crash");
         } catch (SimulatedProcessCrash expected) {
             // Snapshot 已写入，模拟进程在执行工具前退出。
@@ -65,53 +65,53 @@ public class AgentSnapshotTest {
 
         assertEquals(1, model.getCallCount());
         assertEquals(0, toolInvocations.get());
-        AgentRunSnapshot pending = durableStore.load(run.getId());
-        assertEquals(AgentRunPhase.TOOLS, pending.getState().getPhase());
+        AgentTurnSnapshot pending = durableStore.load(turn.getId());
+        assertEquals(AgentTurnPhase.TOOLS, pending.getState().getPhase());
         assertEquals(1, pending.getState().getPendingToolCalls().size());
 
         AgentRunner secondProcess = new AgentRunner(durableStore, registry);
-        AgentRun restored = secondProcess.restore(run.getId());
+        AgentTurn restored = secondProcess.restore(turn.getId());
         AgentStepResult toolStep = secondProcess.step(restored);
 
         assertEquals(1, toolStep.getToolMessages().size());
-        assertEquals(AgentRunStatus.RUNNING, restored.getStatus());
+        assertEquals(AgentTurnStatus.RUNNING, restored.getStatus());
         assertEquals(1, model.getCallCount());
         assertEquals(1, toolInvocations.get());
         assertTrue(restored.getPendingToolCalls().isEmpty());
 
         secondProcess.runUntilBlocked(restored);
-        assertEquals(AgentRunStatus.COMPLETED, restored.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, restored.getStatus());
         assertEquals("finished", restored.getFinalOutput());
         assertEquals(2, model.getCallCount());
     }
 
     @Test
     public void shouldKeepStoredSnapshotIsolatedFromLiveRun() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         Agent agent = Agent.builder("snapshot-agent")
             .chatModel(new QueueChatModel())
             .build();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-        AgentRun run = runner.start(agent, "original");
+        AgentTurn turn = runner.start(agent, "original");
 
-        run.getPrompt().addUserMessage("added after snapshot");
+        turn.getPrompt().addUserMessage("added after snapshot");
 
-        AgentRunSnapshot stored = store.load(run.getId());
+        AgentTurnSnapshot stored = store.load(turn.getId());
         assertEquals(1, stored.getState().getMessages().size());
         assertEquals("original", stored.getState().getMessages().get(0).getTextContent());
     }
 
     @Test
     public void shouldDetectOptimisticLockConflict() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         Agent agent = Agent.builder("version-agent")
             .chatModel(new QueueChatModel())
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun original = runner.start(agent, "input");
-        AgentRun firstCopy = runner.restore(original.getId());
-        AgentRun staleCopy = runner.restore(original.getId());
+        AgentTurn original = runner.start(agent, "input");
+        AgentTurn firstCopy = runner.restore(original.getId());
+        AgentTurn staleCopy = runner.restore(original.getId());
 
         firstCopy.putMetadata("owner", "first");
         runner.saveSnapshot(firstCopy);
@@ -120,14 +120,14 @@ public class AgentSnapshotTest {
             staleCopy.putMetadata("owner", "stale");
             runner.saveSnapshot(staleCopy);
             fail("Expected version conflict");
-        } catch (AgentRunVersionConflictException expected) {
+        } catch (AgentTurnVersionConflictException expected) {
             assertTrue(expected.getMessage().contains(original.getId()));
         }
     }
 
     @Test
     public void shouldSuspendRestoreAndResumeWithUserInput() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         QueueChatModel model = new QueueChatModel();
         model.enqueue(prompt -> {
             List<Message> messages = prompt.getMessages();
@@ -138,42 +138,42 @@ public class AgentSnapshotTest {
         Agent agent = Agent.builder("interactive-agent").chatModel(model).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun run = runner.start(agent, "weather?");
+        AgentTurn turn = runner.start(agent, "weather?");
 
-        runner.suspend(run, AgentSuspension.userInput("Which city?"));
-        assertEquals(AgentRunStatus.WAITING_FOR_USER, run.getStatus());
-        assertTrue(run.getStatus().isBlocked());
+        runner.suspend(turn, AgentSuspension.userInput("Which city?"));
+        assertEquals(AgentTurnStatus.WAITING_FOR_USER, turn.getStatus());
+        assertTrue(turn.getStatus().isBlocked());
 
-        AgentRun restored = runner.runUntilBlocked(run.getId());
-        assertEquals(AgentRunStatus.WAITING_FOR_USER, restored.getStatus());
+        AgentTurn restored = runner.runUntilBlocked(turn.getId());
+        assertEquals(AgentTurnStatus.WAITING_FOR_USER, restored.getStatus());
         assertEquals(0, model.getCallCount());
         assertNotNull(restored.getSuspension());
 
-        AgentRun completed = runner.resume(run.getId(), AgentResumeCommand.userInput("Shanghai"));
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        AgentTurn completed = runner.resume(turn.getId(), AgentResumeCommand.userInput("Shanghai"));
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("sunny", completed.getFinalOutput());
         assertEquals(1, model.getCallCount());
     }
 
     @Test
     public void shouldRejectContinueWhenUserInputIsRequired() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         Agent agent = Agent.builder("interactive-agent")
             .chatModel(new QueueChatModel())
             .build();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-        AgentRun run = runner.start(agent, "weather?");
-        runner.suspend(run, AgentSuspension.userInput("Which city?"));
+        AgentTurn turn = runner.start(agent, "weather?");
+        runner.suspend(turn, AgentSuspension.userInput("Which city?"));
 
         try {
-            runner.resume(run.getId(), AgentResumeCommand.continueRun());
+            runner.resume(turn.getId(), AgentResumeCommand.continueTurn());
             fail("Expected USER_INPUT command validation");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("USER_INPUT"));
         }
 
-        AgentRun restored = runner.restore(run.getId());
-        assertEquals(AgentRunStatus.WAITING_FOR_USER, restored.getStatus());
+        AgentTurn restored = runner.restore(turn.getId());
+        assertEquals(AgentTurnStatus.WAITING_FOR_USER, restored.getStatus());
         assertEquals(1, restored.getPrompt().getMessages().size());
     }
 
@@ -187,16 +187,16 @@ public class AgentSnapshotTest {
             message.setTotalTokens(17);
             return message;
         });
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
         Agent agent = Agent.builder("budget-agent").chatModel(model).build();
 
-        AgentRun run = runner.run(agent, "count tokens");
-        AgentRunSnapshot snapshot = store.load(run.getId());
+        AgentTurn turn = runner.run(agent, "count tokens");
+        AgentTurnSnapshot snapshot = store.load(turn.getId());
 
-        assertEquals(12, run.getInputTokens());
-        assertEquals(5, run.getOutputTokens());
-        assertEquals(17, run.getTotalTokens());
+        assertEquals(12, turn.getInputTokens());
+        assertEquals(5, turn.getOutputTokens());
+        assertEquals(17, turn.getTotalTokens());
         assertEquals(17, snapshot.getState().getTotalTokens());
     }
 
@@ -254,34 +254,34 @@ public class AgentSnapshotTest {
         }
     }
 
-    private static class FailAfterPendingSnapshotStore implements AgentRunStore {
+    private static class FailAfterPendingSnapshotStore implements AgentTurnStore {
 
-        private final AgentRunStore delegate;
+        private final AgentTurnStore delegate;
         private boolean failed;
 
-        private FailAfterPendingSnapshotStore(AgentRunStore delegate) {
+        private FailAfterPendingSnapshotStore(AgentTurnStore delegate) {
             this.delegate = delegate;
         }
 
         @Override
-        public AgentRunSnapshot load(String runId) {
-            return delegate.load(runId);
+        public AgentTurnSnapshot load(String turnId) {
+            return delegate.load(turnId);
         }
 
         @Override
-        public boolean requestCancellation(String runId) {
-            return delegate.requestCancellation(runId);
+        public boolean requestCancellation(String turnId) {
+            return delegate.requestCancellation(turnId);
         }
 
         @Override
-        public boolean isCancellationRequested(String runId) {
-            return delegate.isCancellationRequested(runId);
+        public boolean isCancellationRequested(String turnId) {
+            return delegate.isCancellationRequested(turnId);
         }
 
         @Override
-        public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
-            AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!failed && AgentRunPhase.TOOLS.equals(saved.getState().getPhase())) {
+        public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
+            AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
+            if (!failed && AgentTurnPhase.TOOLS.equals(saved.getState().getPhase())) {
                 failed = true;
                 throw new SimulatedProcessCrash();
             }

@@ -11,13 +11,13 @@ Agent 的上下文同时面对两个目标：保留足够历史以正确决策�
 
 ## 消息的三个层次
 
-- 业务 `ChatMemory`：由应用维护，跨多轮 Run 保存历史。
-- `AgentRun` 的 `MemoryPrompt`：本次任务的协议消息和系统指令。
-- 模型调用 Prompt：依据 `maxAttachedMessages` 从 Run Prompt 生成的当前视图。
+- 业务 `ChatMemory`：由应用维护，跨多轮 Turn 保存历史。
+- `AgentTurn` 的 `MemoryPrompt`：本次任务的协议消息和系统指令。
+- 模型调用 Prompt：依据 `maxAttachedMessages` 从 Turn Prompt 生成的当前视图。
 
 `ChatMemory.getMessages(count)` 返回页面使用的完整时间线；`getModelMessages(count)` 先排除
 `modelVisible=false` 的 UI 消息，再对模型消息应用数量限制。窗口策略只影响一次模型调用视图，不会
-删除 Run、Snapshot 或业务 `ChatMemory` 中的原始消息。
+删除 Turn、Snapshot 或业务 `ChatMemory` 中的原始消息。
 
 ## 业务会话管理
 
@@ -25,11 +25,11 @@ Agent 的上下文同时面对两个目标：保留足够历史以正确决策�
 AgentRunner runner = AgentRunner.builder()
     .chatMemoryProvider(id -> loadMemory(id))
     .build();
-AgentRun run = runner.run(agent, conversationId, new UserMessage("继续处理"));
+AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理"));
 ```
 
-应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 runId。同一业务会话不应并发开始两轮；
-阻塞时必须按已保存的 runId 恢复原 Run，完成后再开始下一轮。Provider 未配置时，应用也可以继续显式
+应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 turnId。同一业务会话不应并发开始两轮；
+阻塞时必须按已保存的 turnId 恢复原 Turn，完成后再开始下一轮。Provider 未配置时，应用也可以继续显式
 传入历史并自行回写。
 
 自定义持久化 `ChatMemory` 应实现以下查询和写入语义：
@@ -67,7 +67,7 @@ if (history.size() > 40) {
     inputHistory.addAll(recent);
 }
 
-AgentRun run = runner.run(agent, inputHistory, new UserMessage("继续处理"));
+AgentTurn turn = runner.run(agent, inputHistory, new UserMessage("继续处理"));
 ```
 
 需要扫描很长的业务历史做摘要时，`loadModelMessagesByWindow` 应循环调用
@@ -90,7 +90,7 @@ Framework 不根据结果大小改写 ToolMessage，也不保存被替换的原�
 
 ## 多模态消息
 
-使用结构化 `UserMessage` 传入图片、音频、文件等内容。Run 创建时复制消息，并由 Snapshot 保留协议数据。实际模型是否支持对应模态取决于具体 `ChatModel`；持久化 Store 还需考虑二进制内容大小，通常应把大文件保存到对象存储，在消息中保留受控引用。
+使用结构化 `UserMessage` 传入图片、音频、文件等内容。Turn 创建时复制消息，并由 Snapshot 保留协议数据。实际模型是否支持对应模态取决于具体 `ChatModel`；持久化 Store 还需考虑二进制内容大小，通常应把大文件保存到对象存储，在消息中保留受控引用。
 
 ## 生产建议
 

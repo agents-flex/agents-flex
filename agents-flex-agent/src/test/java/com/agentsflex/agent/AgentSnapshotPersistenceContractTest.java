@@ -33,13 +33,13 @@ public class AgentSnapshotPersistenceContractTest {
                 .budget(AgentBudget.builder().maxTotalTokens(100).build())
                 .build())
             .build();
-        AgentRun run = new AgentRunner().start(agent, "你好, serialization");
-        run.putMetadata("tenant", "t-1");
-        AgentRunSnapshot original = run.toSnapshot();
+        AgentTurn turn = new AgentRunner().start(agent, "你好, serialization");
+        turn.putMetadata("tenant", "t-1");
+        AgentTurnSnapshot original = turn.toSnapshot();
 
-        AgentRunSnapshot restored = roundTrip(original);
+        AgentTurnSnapshot restored = roundTrip(original);
 
-        assertEquals(original.getState().getRunId(), restored.getState().getRunId());
+        assertEquals(original.getState().getTurnId(), restored.getState().getTurnId());
         assertEquals("7", restored.getAgentVersion());
         assertEquals(9, restored.getState().getExecutionPolicy().getMaxIterations());
         assertEquals(2, restored.getState().getExecutionPolicy().getRetryPolicy().getMaxRetries());
@@ -51,49 +51,49 @@ public class AgentSnapshotPersistenceContractTest {
 
     @Test
     public void shouldKeepSnapshotStateImmutableAndIsolatedFromBuilderChanges() {
-        AgentRunState state = AgentRunState.builder("run-1",
+        AgentTurnState state = AgentTurnState.builder("turn-1",
                 AgentExecutionPolicy.defaults(), 0)
-            .status(AgentRunStatus.READY)
+            .status(AgentTurnStatus.READY)
             .messages(Collections.singletonList(new UserMessage("original")))
             .metadata(Collections.<String, Object>singletonMap("tenant", "t-1"))
             .build();
-        AgentRunSnapshot original = AgentRunSnapshot.of("agent", "1", state);
+        AgentTurnSnapshot original = AgentTurnSnapshot.of("agent", "1", state);
 
-        AgentRunSnapshot changed = original.withState(original.getState().toBuilder()
-            .status(AgentRunStatus.RUNNING)
+        AgentTurnSnapshot changed = original.withState(original.getState().toBuilder()
+            .status(AgentTurnStatus.RUNNING)
             .metadata(Collections.<String, Object>singletonMap("tenant", "t-2"))
             .build());
 
         assertTrue(original.getState().isImmutable());
-        assertEquals(AgentRunStatus.READY, original.getState().getStatus());
+        assertEquals(AgentTurnStatus.READY, original.getState().getStatus());
         assertEquals("t-1", original.getState().getMetadata().get("tenant"));
-        assertEquals(AgentRunStatus.RUNNING, changed.getState().getStatus());
+        assertEquals(AgentTurnStatus.RUNNING, changed.getState().getStatus());
         assertEquals("t-2", changed.getState().getMetadata().get("tenant"));
         try {
-            original.getState().setStatus(AgentRunStatus.FAILED);
+            original.getState().setStatus(AgentTurnStatus.FAILED);
             fail("snapshot state must reject mutation");
         } catch (UnsupportedOperationException expected) {
-            assertEquals("AgentRunState is immutable", expected.getMessage());
+            assertEquals("AgentTurnState is immutable", expected.getMessage());
         }
     }
 
     @Test
     public void shouldRejectNonSerializableSnapshotMetadata() throws Exception {
-        AgentRun run = new AgentRunner().start(Agent.builder("bad-metadata")
+        AgentTurn turn = new AgentRunner().start(Agent.builder("bad-metadata")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build(), "input");
-        run.putMetadata("service", new Object());
+        turn.putMetadata("service", new Object());
         try {
-            serialize(run.toSnapshot());
+            serialize(turn.toSnapshot());
             fail("non-serializable metadata must be rejected");
         } catch (NotSerializableException expected) {
             assertTrue(expected.getMessage().contains("java.lang.Object"));
         }
     }
 
-    private AgentRunSnapshot roundTrip(AgentRunSnapshot snapshot) throws Exception {
+    private AgentTurnSnapshot roundTrip(AgentTurnSnapshot snapshot) throws Exception {
         byte[] bytes = serialize(snapshot);
         ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(bytes));
-        return (AgentRunSnapshot) input.readObject();
+        return (AgentTurnSnapshot) input.readObject();
     }
 
     private byte[] serialize(Object value) throws Exception {

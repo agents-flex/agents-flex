@@ -19,15 +19,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 当前 AgentRun 内可持久化的任务计划和执行进度。
+ * 当前 AgentTurn 内可持久化的任务计划和执行进度。
  *
- * <p>计划与 Run 使用同一个 Snapshot 版本保存，避免独立计划存储与父子 Run 状态不一致。</p>
+ * <p>计划与 Turn 使用同一个 Snapshot 版本保存，避免独立计划存储与父子 Turn 状态不一致。</p>
  */
 public final class AgentTaskPlan implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 当前 Run 内稳定的计划 ID。 */
+    /** 当前 Turn 内稳定的计划 ID。 */
     private final String id;
     /** 模型规划时声明的总体目标。 */
     private final String goal;
@@ -117,11 +117,11 @@ public final class AgentTaskPlan implements Serializable {
         return null;
     }
 
-    /** 记录任务已经创建子 Run 并开始执行。 */
-    public AgentTaskPlan startTask(String taskId, String childRunId, long now) {
+    /** 记录任务已经创建子 Turn 并开始执行。 */
+    public AgentTaskPlan startTask(String taskId, String childTurnId, long now) {
         AgentTask current = require(taskId);
         AgentTask running = current.toBuilder().status(AgentTaskStatus.RUNNING)
-            .childRunId(childRunId).startedAt(now).build();
+            .childTurnId(childTurnId).startedAt(now).build();
         return toBuilder().status(AgentTaskPlanStatus.RUNNING)
             .tasks(replace(running)).activeTaskId(taskId).updatedAt(now).build();
     }
@@ -203,7 +203,7 @@ public final class AgentTaskPlan implements Serializable {
                 throw new IllegalArgumentException("revising task is not allowed: " + task.getId());
             }
             values.add(task.toBuilder().status(AgentTaskStatus.PENDING)
-                .childRunId(null).result(null).error(null).startedAt(0).completedAt(0).build());
+                .childTurnId(null).result(null).error(null).startedAt(0).completedAt(0).build());
         }
         if (!revisionAllowed && !requestedIds.containsAll(pendingById.keySet())) {
             throw new IllegalArgumentException("removing pending task is not allowed");
@@ -265,7 +265,7 @@ public final class AgentTaskPlan implements Serializable {
                 throw new IllegalArgumentException("task must be non-null and IDs must be unique");
             }
             values.add(task.toBuilder().position(i).status(AgentTaskStatus.PENDING)
-                .childRunId(null).result(null).error(null).startedAt(0).completedAt(0).build());
+                .childTurnId(null).result(null).error(null).startedAt(0).completedAt(0).build());
         }
         return values;
     }

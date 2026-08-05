@@ -7,9 +7,9 @@
 package com.agentsflex.demo.agent;
 
 import com.agentsflex.agent.Agent;
-import com.agentsflex.agent.AgentRun;
-import com.agentsflex.agent.AgentRunOptions;
-import com.agentsflex.agent.AgentRunStatus;
+import com.agentsflex.agent.AgentTurn;
+import com.agentsflex.agent.AgentTurnOptions;
+import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
@@ -19,7 +19,7 @@ import com.agentsflex.agent.middleware.AgentModelCallChain;
 import com.agentsflex.agent.middleware.AgentToolCallChain;
 import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentToolProgressEmitter;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -90,30 +90,30 @@ public final class RuntimeExtensionsAgentDemo {
             .chatModel(model)
             .tool(reportTool)
             .middleware(middleware)
-            // 只限制本次模型请求读取的历史，不修改 Run 或业务 ChatMemory。
+            // 只限制本次模型请求读取的历史，不修改 Turn 或业务 ChatMemory。
             .maxAttachedMessages(5)
             .build();
 
         AgentRunner runner = AgentRunner.builder()
-            .runStore(new InMemoryAgentRunStore())
+            .turnStore(new InMemoryAgentTurnStore())
             .agentLoader(new InMemoryAgentLoader(agent))
             .build()
             .addEventListener(events::add);
 
-        // 使用 Runner 的公开入口携带旧历史创建 Run，确保初始状态立即写入 Snapshot。
+        // 使用 Runner 的公开入口携带旧历史创建 Turn，确保初始状态立即写入 Snapshot。
         List<Message> conversationHistory = new ArrayList<>();
         for (int i = 1; i <= 6; i++) {
             conversationHistory.add(new UserMessage("旧消息 " + i));
         }
-        AgentRun completed = runner.run(agent, conversationHistory,
+        AgentTurn completed = runner.run(agent, conversationHistory,
             new UserMessage("开始生成报告"),
-            AgentRunOptions.builder()
+            AgentTurnOptions.builder()
                 .metadata("tenantId", "tenant-demo")
                 .metadata("userId", "developer")
                 .metadata("requestId", "request-runtime-1")
                 .streaming(true)
                 .build());
-        DemoSupport.require(completed.getStatus() == AgentRunStatus.COMPLETED,
+        DemoSupport.require(completed.getStatus() == AgentTurnStatus.COMPLETED,
             "运行时扩展场景应正常完成");
 
         ToolMessage toolMessage = null;

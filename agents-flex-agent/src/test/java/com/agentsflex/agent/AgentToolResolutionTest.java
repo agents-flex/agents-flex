@@ -7,8 +7,8 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.AgentRunStore;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.AgentTurnStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -57,7 +57,7 @@ public class AgentToolResolutionTest {
 
     @Test
     public void shouldRestorePendingToolFromOriginalAgentVersion() {
-        InMemoryAgentRunStore durableStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore durableStore = new InMemoryAgentTurnStore();
         CrashAfterPendingSnapshotStore crashingStore =
             new CrashAfterPendingSnapshotStore(durableStore);
         AgentScenarioTestSupport.QueueChatModel versionOneModel =
@@ -86,22 +86,22 @@ public class AgentToolResolutionTest {
         assertSame(versionTwo, agentLoader.loadActive("order-agent"));
 
         AgentRunner firstRunner = new AgentRunner(crashingStore, agentLoader);
-        AgentRun run = firstRunner.start(versionOne, "query order");
+        AgentTurn turn = firstRunner.start(versionOne, "query order");
         try {
-            firstRunner.step(run);
+            firstRunner.step(turn);
             fail("Expected simulated process crash");
         } catch (SimulatedProcessCrash expected) {
             // ToolCall 已经保存，工具尚未执行。
         }
 
-        AgentRunSnapshot snapshot = durableStore.load(run.getId());
+        AgentTurnSnapshot snapshot = durableStore.load(turn.getId());
         assertEquals("1", snapshot.getAgentVersion());
         assertEquals("query_order", snapshot.getState().getPendingToolCalls().get(0).getName());
 
         AgentRunner secondRunner = new AgentRunner(durableStore, agentLoader);
-        AgentRun completed = secondRunner.runUntilBlocked(run.getId());
+        AgentTurn completed = secondRunner.runUntilBlocked(turn.getId());
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("finished with version one", completed.getFinalOutput());
         assertEquals(1, versionOneExecutions.get());
         assertEquals(0, versionTwoExecutions.get());
@@ -109,53 +109,53 @@ public class AgentToolResolutionTest {
 
     @Test
     public void shouldFailWhenOriginalAgentVersionDoesNotContainPendingTool() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         Agent agent = Agent.builder("strict-tool-agent")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel())
             .build();
         ToolCall call = new ToolCall("missing-call", "write_order", "{}");
-        AgentRunState state = AgentRunState.builder("missing-tool-run",
+        AgentTurnState state = AgentTurnState.builder("missing-tool-turn",
                 agent.getExecutionPolicy(), System.currentTimeMillis())
-            .status(AgentRunStatus.RUNNING)
-            .phase(AgentRunPhase.TOOLS)
+            .status(AgentTurnStatus.RUNNING)
+            .phase(AgentTurnPhase.TOOLS)
             .messages(Collections.emptyList())
             .pendingToolCalls(Collections.singletonList(call))
             .build();
-        AgentRunSnapshot invalid = AgentRunSnapshot.of(agent.getId(), agent.getVersion(), state);
+        AgentTurnSnapshot invalid = AgentTurnSnapshot.of(agent.getId(), agent.getVersion(), state);
         store.save(invalid, -1);
 
-        AgentRun failed = new AgentRunner(store, new InMemoryAgentLoader(agent))
-            .runUntilBlocked(invalid.getState().getRunId());
+        AgentTurn failed = new AgentRunner(store, new InMemoryAgentLoader(agent))
+            .runUntilBlocked(invalid.getState().getTurnId());
 
-        assertEquals(AgentRunStatus.FAILED, failed.getStatus());
+        assertEquals(AgentTurnStatus.FAILED, failed.getStatus());
         assertTrue(failed.getError().getMessage().contains("tool not found: write_order"));
     }
 
-    private static final class CrashAfterPendingSnapshotStore implements AgentRunStore {
-        private final AgentRunStore delegate;
+    private static final class CrashAfterPendingSnapshotStore implements AgentTurnStore {
+        private final AgentTurnStore delegate;
         private boolean crashed;
 
-        private CrashAfterPendingSnapshotStore(AgentRunStore delegate) {
+        private CrashAfterPendingSnapshotStore(AgentTurnStore delegate) {
             this.delegate = delegate;
         }
 
         @Override
-        public AgentRunSnapshot load(String runId) { return delegate.load(runId); }
+        public AgentTurnSnapshot load(String turnId) { return delegate.load(turnId); }
 
         @Override
-        public boolean requestCancellation(String runId) {
-            return delegate.requestCancellation(runId);
+        public boolean requestCancellation(String turnId) {
+            return delegate.requestCancellation(turnId);
         }
 
         @Override
-        public boolean isCancellationRequested(String runId) {
-            return delegate.isCancellationRequested(runId);
+        public boolean isCancellationRequested(String turnId) {
+            return delegate.isCancellationRequested(turnId);
         }
 
         @Override
-        public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
-            AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!crashed && AgentRunPhase.TOOLS.equals(saved.getState().getPhase())) {
+        public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
+            AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
+            if (!crashed && AgentTurnPhase.TOOLS.equals(saved.getState().getPhase())) {
                 crashed = true;
                 throw new SimulatedProcessCrash();
             }

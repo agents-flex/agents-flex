@@ -14,10 +14,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * AgentRun 的可持久化暂停信息。
+ * AgentTurn 的可持久化暂停信息。
  *
  * <p>该对象不执行审批或用户交互，只记录暂停原因、关联事件以及恢复后的执行阶段。它随
- * AgentRunSnapshot 持久化，使另一个进程可以判断应接受哪一种恢复命令。</p>
+ * AgentTurnSnapshot 持久化，使另一个进程可以判断应接受哪一种恢复命令。</p>
  */
 public final class AgentSuspension implements Serializable {
 
@@ -28,7 +28,7 @@ public final class AgentSuspension implements Serializable {
      */
     private final AgentSuspensionType type;
     /**
-     * ToolCall ID 或子 Run ID 等外部事件关联标识。
+     * ToolCall ID 或子 Turn ID 等外部事件关联标识。
      */
     private final String correlationId;
     /**
@@ -38,21 +38,21 @@ public final class AgentSuspension implements Serializable {
     /**
      * 恢复后继续执行的模型或工具阶段。
      */
-    private final AgentRunPhase resumePhase;
+    private final AgentTurnPhase resumePhase;
     /**
      * 审批策略、重试时间等可持久化附加信息。
      */
     private final Map<String, Object> metadata;
 
     public AgentSuspension(AgentSuspensionType type, String correlationId, String message,
-                           AgentRunPhase resumePhase, Map<String, Object> metadata) {
+                           AgentTurnPhase resumePhase, Map<String, Object> metadata) {
         if (type == null) {
             throw new IllegalArgumentException("type must not be null");
         }
         this.type = type;
         this.correlationId = correlationId;
         this.message = message;
-        this.resumePhase = resumePhase == null ? AgentRunPhase.MODEL : resumePhase;
+        this.resumePhase = resumePhase == null ? AgentTurnPhase.MODEL : resumePhase;
         this.metadata = metadata == null
             ? Collections.emptyMap()
             : Collections.unmodifiableMap(new HashMap<>(metadata));
@@ -63,7 +63,7 @@ public final class AgentSuspension implements Serializable {
      */
     public static AgentSuspension userInput(String message) {
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, null, message,
-            AgentRunPhase.MODEL, null);
+            AgentTurnPhase.MODEL, null);
     }
 
     /**
@@ -89,24 +89,24 @@ public final class AgentSuspension implements Serializable {
         String message = decision != null && decision.getMessage() != null
             ? decision.getMessage() : "Tool approval is required: " + toolName;
         return new AgentSuspension(AgentSuspensionType.TOOL_APPROVAL, callId,
-            message, AgentRunPhase.TOOLS, metadata);
+            message, AgentTurnPhase.TOOLS, metadata);
     }
 
     /**
      * 创建等待指定时间后自动重试的暂停点。
      */
-    public static AgentSuspension retry(String message, AgentRunPhase resumePhase, long nextRunAt) {
+    public static AgentSuspension retry(String message, AgentTurnPhase resumePhase, long nextRunnableAt) {
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("nextRunAt", nextRunAt);
+        metadata.put("nextRunnableAt", nextRunnableAt);
         return new AgentSuspension(AgentSuspensionType.RETRY, null, message, resumePhase, metadata);
     }
 
     /**
-     * 创建等待指定子 Run 结束的暂停点。
+     * 创建等待指定子 Turn 结束的暂停点。
      */
-    public static AgentSuspension child(String childRunId) {
-        return new AgentSuspension(AgentSuspensionType.CHILD_AGENT, childRunId,
-            "Waiting for child AgentRun", AgentRunPhase.MODEL, null);
+    public static AgentSuspension child(String childTurnId) {
+        return new AgentSuspension(AgentSuspensionType.CHILD_AGENT, childTurnId,
+            "Waiting for child AgentTurn", AgentTurnPhase.MODEL, null);
     }
 
     /**
@@ -117,7 +117,7 @@ public final class AgentSuspension implements Serializable {
     }
 
     /**
-     * @return ToolCall ID 或子 Run ID 等关联标识
+     * @return ToolCall ID 或子 Turn ID 等关联标识
      */
     public String getCorrelationId() {
         return correlationId;
@@ -133,7 +133,7 @@ public final class AgentSuspension implements Serializable {
     /**
      * @return 应在恢复后继续执行的阶段
      */
-    public AgentRunPhase getResumePhase() {
+    public AgentTurnPhase getResumePhase() {
         return resumePhase;
     }
 

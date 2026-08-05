@@ -8,8 +8,8 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.store.AgentRunStore;
-import com.agentsflex.agent.store.InMemoryAgentRunStore;
+import com.agentsflex.agent.store.AgentTurnStore;
+import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -51,19 +51,19 @@ public class AgentAdvancedFeaturesTest {
         Agent agent = Agent.builder("approval-agent")
             .chatModel(model)
             .tool(tool("danger", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, tool) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, tool) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
         AgentRunner runner = new AgentRunner(
-            new InMemoryAgentRunStore(), new InMemoryAgentLoader(agent));
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
 
-        AgentRun waiting = runner.run(agent, "execute");
-        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
+        AgentTurn waiting = runner.run(agent, "execute");
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
         assertEquals(0, executions.get());
         assertEquals("danger-1", waiting.getSuspension().getCorrelationId());
 
-        AgentRun completed = runner.resume(waiting.getId(),
+        AgentTurn completed = runner.resume(waiting.getId(),
             AgentResumeCommand.approveTool("danger-1"));
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(1, executions.get());
     }
 
@@ -82,15 +82,15 @@ public class AgentAdvancedFeaturesTest {
         Agent agent = Agent.builder("rejection-agent")
             .chatModel(model)
             .tool(tool("danger", args -> executions.incrementAndGet()))
-            .toolApprovalPolicy((run, call, tool) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .toolApprovalPolicy((turn, call, tool) -> ToolApprovalDecision.REQUIRE_APPROVAL)
             .build();
         AgentRunner runner = new AgentRunner();
 
-        AgentRun waiting = runner.run(agent, "execute");
-        AgentRun completed = runner.resume(waiting,
+        AgentTurn waiting = runner.run(agent, "execute");
+        AgentTurn completed = runner.resume(waiting,
             AgentResumeCommand.rejectTool("danger-2", "not allowed"));
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals("rejected safely", completed.getFinalOutput());
         assertEquals(0, executions.get());
     }
@@ -110,50 +110,50 @@ public class AgentAdvancedFeaturesTest {
                     .build())
                 .build())
             .build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
 
-        AgentRun scheduled = runner.run(agent, "retry");
-        assertEquals(AgentRunStatus.RETRY_SCHEDULED, scheduled.getStatus());
+        AgentTurn scheduled = runner.run(agent, "retry");
+        assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
         assertEquals(1, scheduled.getRetryCount());
 
-        List<AgentRun> processed = new AgentWorker("worker-a", runner, 10000).pollAndRun(1);
+        List<AgentTurn> processed = new AgentWorker("worker-a", runner, 10000).pollAndRun(1);
         assertEquals(1, processed.size());
-        assertEquals(AgentRunStatus.COMPLETED, processed.get(0).getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, processed.get(0).getStatus());
         assertEquals("recovered", processed.get(0).getFinalOutput());
     }
 
     @Test
     public void shouldClaimRunWithOnlyOneWorker() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
         Agent agent = Agent.builder("lease-agent").chatModel(new QueueChatModel()).build();
-        AgentRun run = runner.start(agent, "lease");
+        AgentTurn turn = runner.start(agent, "lease");
         long now = System.currentTimeMillis();
 
-        List<AgentRunSnapshot> first = store.claimRunnable("worker-a", now, 10000, 1);
-        List<AgentRunSnapshot> second = store.claimRunnable("worker-b", now, 10000, 1);
+        List<AgentTurnSnapshot> first = store.claimRunnable("worker-a", now, 10000, 1);
+        List<AgentTurnSnapshot> second = store.claimRunnable("worker-b", now, 10000, 1);
 
         assertEquals(1, first.size());
         assertTrue(second.isEmpty());
-        assertEquals(run.getId(), first.get(0).getState().getRunId());
-        store.releaseLease(run.getId(), "worker-a", first.get(0).getState().getLeaseId());
+        assertEquals(turn.getId(), first.get(0).getState().getTurnId());
+        store.releaseLease(turn.getId(), "worker-a", first.get(0).getState().getLeaseId());
         assertEquals(1, store.claimRunnable("worker-b", now, 10000, 1).size());
     }
 
     @Test
     public void shouldRejectExecutionOutsideActiveLease() {
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         QueueChatModel model = new QueueChatModel();
         model.enqueue(prompt -> new AiMessage("must not run"));
         Agent agent = Agent.builder("leased-agent").chatModel(model).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner runner = new AgentRunner(store, registry);
-        AgentRun run = runner.start(agent, "lease");
+        AgentTurn turn = runner.start(agent, "lease");
         store.claimRunnable("worker-a", System.currentTimeMillis(), 10000, 1);
 
         try {
-            runner.runUntilBlocked(run.getId());
+            runner.runUntilBlocked(turn.getId());
             fail("Expected active lease validation");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("worker-a"));
@@ -171,20 +171,20 @@ public class AgentAdvancedFeaturesTest {
             .chatModel(parentModel).build();
         Agent childAgent = Agent.builder("child-agent").chatModel(childModel).build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
-        AgentRunner runner = new AgentRunner(new InMemoryAgentRunStore(), registry);
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(), registry);
 
-        AgentRun parent = runner.start(parentAgent, "parent input");
-        AgentRun child = runner.startChild(parent, "child-agent", "child input");
-        assertEquals(AgentRunStatus.WAITING_FOR_CHILD, parent.getStatus());
+        AgentTurn parent = runner.start(parentAgent, "parent input");
+        AgentTurn child = runner.startChild(parent, "child-agent", "child input");
+        assertEquals(AgentTurnStatus.WAITING_FOR_CHILD, parent.getStatus());
         assertEquals(child.getId(), parent.getSuspension().getCorrelationId());
 
         child = runner.runUntilBlocked(child.getId());
-        assertEquals(AgentRunStatus.COMPLETED, child.getStatus());
-        AgentRun resumedParent = runner.resumeParentFromChild(child);
-        assertEquals(AgentRunStatus.RUNNING, resumedParent.getStatus());
-        AgentRun completedParent = runner.runUntilBlocked(resumedParent);
+        assertEquals(AgentTurnStatus.COMPLETED, child.getStatus());
+        AgentTurn resumedParent = runner.resumeParentFromChild(child);
+        assertEquals(AgentTurnStatus.RUNNING, resumedParent.getStatus());
+        AgentTurn completedParent = runner.runUntilBlocked(resumedParent);
 
-        assertEquals(AgentRunStatus.COMPLETED, completedParent.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completedParent.getStatus());
         assertEquals("parent model result", completedParent.getFinalOutput());
         assertTrue(completedParent.getPrompt().getMessages().stream()
             .anyMatch(message -> message.getTextContent().contains("child result")));
@@ -205,10 +205,10 @@ public class AgentAdvancedFeaturesTest {
                 .build())
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "budget");
+        AgentTurn turn = new AgentRunner().run(agent, "budget");
 
-        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, run.getStatus());
-        assertEquals("maxTotalTokens", run.getBudgetExceededReason());
+        assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
+        assertEquals("maxTotalTokens", turn.getBudgetExceededReason());
     }
 
     @Test
@@ -230,10 +230,10 @@ public class AgentAdvancedFeaturesTest {
                 .build())
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "budget");
+        AgentTurn turn = new AgentRunner().run(agent, "budget");
 
-        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, run.getStatus());
-        assertEquals("maxDurationMillis", run.getBudgetExceededReason());
+        assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
+        assertEquals("maxDurationMillis", turn.getBudgetExceededReason());
     }
 
     @Test
@@ -251,10 +251,10 @@ public class AgentAdvancedFeaturesTest {
                 .build())
             .build();
 
-        AgentRun run = new AgentRunner().run(agent, "budget");
+        AgentTurn turn = new AgentRunner().run(agent, "budget");
 
-        assertEquals(AgentRunStatus.BUDGET_EXCEEDED, run.getStatus());
-        assertEquals("maxToolCalls", run.getBudgetExceededReason());
+        assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
+        assertEquals("maxToolCalls", turn.getBudgetExceededReason());
         assertEquals(1, executions.get());
     }
 
@@ -263,13 +263,13 @@ public class AgentAdvancedFeaturesTest {
         QueueChatModel model = new QueueChatModel();
         model.enqueue(prompt -> new AiMessage("background complete"));
         Agent agent = Agent.builder("background-agent").chatModel(model).build();
-        InMemoryAgentRunStore store = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
         CountDownLatch completed = new CountDownLatch(1);
         runner.addEventListener(event -> {
-            if (event.getType() == AgentEventType.RUN_COMPLETED) completed.countDown();
+            if (event.getType() == AgentEventType.TURN_COMPLETED) completed.countDown();
         });
-        AgentRun scheduled = runner.start(agent, "background");
+        AgentTurn scheduled = runner.start(agent, "background");
 
         AgentWorker worker = new AgentWorker("background-worker", runner, 10000);
         try {
@@ -279,13 +279,13 @@ public class AgentAdvancedFeaturesTest {
             worker.close();
         }
 
-        assertEquals(AgentRunStatus.COMPLETED,
+        assertEquals(AgentTurnStatus.COMPLETED,
             runner.restore(scheduled.getId()).getStatus());
     }
 
     @Test
     public void shouldResolvePendingToolInAnotherRunner() {
-        InMemoryAgentRunStore durableStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore durableStore = new InMemoryAgentTurnStore();
         CrashOnPendingStore crashingStore = new CrashOnPendingStore(durableStore);
         QueueChatModel model = new QueueChatModel();
         AtomicInteger executions = new AtomicInteger();
@@ -297,25 +297,25 @@ public class AgentAdvancedFeaturesTest {
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner first = new AgentRunner(crashingStore, registry);
-        AgentRun run = first.start(agent, "remote");
+        AgentTurn turn = first.start(agent, "remote");
         try {
-            first.step(run);
+            first.step(turn);
             fail("Expected simulated crash");
         } catch (SimulatedCrash expected) {
             // pending ToolCall 已写入持久化 Store。
         }
 
         AgentRunner second = new AgentRunner(durableStore, registry);
-        AgentRun restored = second.runUntilBlocked(run.getId());
+        AgentTurn restored = second.runUntilBlocked(turn.getId());
 
-        assertEquals(AgentRunStatus.COMPLETED, restored.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, restored.getStatus());
         assertEquals(1, executions.get());
         assertEquals(2, model.getCallCount());
     }
 
     @Test
     public void shouldNotRepeatCompletedToolAfterCrash() {
-        InMemoryAgentRunStore durableStore = new InMemoryAgentRunStore();
+        InMemoryAgentTurnStore durableStore = new InMemoryAgentTurnStore();
         CrashAfterFirstToolStore crashingStore = new CrashAfterFirstToolStore(durableStore);
         QueueChatModel model = new QueueChatModel();
         AtomicInteger firstExecutions = new AtomicInteger();
@@ -331,18 +331,18 @@ public class AgentAdvancedFeaturesTest {
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
         AgentRunner first = new AgentRunner(crashingStore, registry);
-        AgentRun run = first.start(agent, "tools");
+        AgentTurn turn = first.start(agent, "tools");
         try {
-            first.step(run);
+            first.step(turn);
             fail("Expected simulated crash");
         } catch (SimulatedCrash expected) {
             // 第一个工具结果已保存，第二个工具仍处于 pending 状态。
         }
 
         AgentRunner second = new AgentRunner(durableStore, registry);
-        AgentRun completed = second.runUntilBlocked(run.getId());
+        AgentTurn completed = second.runUntilBlocked(turn.getId());
 
-        assertEquals(AgentRunStatus.COMPLETED, completed.getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(1, firstExecutions.get());
         assertEquals(1, secondExecutions.get());
     }
@@ -388,23 +388,23 @@ public class AgentAdvancedFeaturesTest {
         }
     }
 
-    private static final class CrashOnPendingStore implements AgentRunStore {
-        private final AgentRunStore delegate;
+    private static final class CrashOnPendingStore implements AgentTurnStore {
+        private final AgentTurnStore delegate;
         private boolean crashed;
 
-        private CrashOnPendingStore(AgentRunStore delegate) { this.delegate = delegate; }
-        @Override public AgentRunSnapshot load(String runId) { return delegate.load(runId); }
-        @Override public boolean requestCancellation(String runId) {
-            return delegate.requestCancellation(runId);
+        private CrashOnPendingStore(AgentTurnStore delegate) { this.delegate = delegate; }
+        @Override public AgentTurnSnapshot load(String turnId) { return delegate.load(turnId); }
+        @Override public boolean requestCancellation(String turnId) {
+            return delegate.requestCancellation(turnId);
         }
-        @Override public boolean isCancellationRequested(String runId) {
-            return delegate.isCancellationRequested(runId);
+        @Override public boolean isCancellationRequested(String turnId) {
+            return delegate.isCancellationRequested(turnId);
         }
 
         @Override
-        public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
-            AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!crashed && AgentRunPhase.TOOLS.equals(saved.getState().getPhase())
+        public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
+            AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
+            if (!crashed && AgentTurnPhase.TOOLS.equals(saved.getState().getPhase())
                 && !saved.getState().getPendingToolCalls().isEmpty()) {
                 crashed = true;
                 throw new SimulatedCrash();
@@ -413,22 +413,22 @@ public class AgentAdvancedFeaturesTest {
         }
     }
 
-    private static final class CrashAfterFirstToolStore implements AgentRunStore {
-        private final AgentRunStore delegate;
+    private static final class CrashAfterFirstToolStore implements AgentTurnStore {
+        private final AgentTurnStore delegate;
         private boolean crashed;
 
-        private CrashAfterFirstToolStore(AgentRunStore delegate) { this.delegate = delegate; }
-        @Override public AgentRunSnapshot load(String runId) { return delegate.load(runId); }
-        @Override public boolean requestCancellation(String runId) {
-            return delegate.requestCancellation(runId);
+        private CrashAfterFirstToolStore(AgentTurnStore delegate) { this.delegate = delegate; }
+        @Override public AgentTurnSnapshot load(String turnId) { return delegate.load(turnId); }
+        @Override public boolean requestCancellation(String turnId) {
+            return delegate.requestCancellation(turnId);
         }
-        @Override public boolean isCancellationRequested(String runId) {
-            return delegate.isCancellationRequested(runId);
+        @Override public boolean isCancellationRequested(String turnId) {
+            return delegate.isCancellationRequested(turnId);
         }
 
         @Override
-        public AgentRunSnapshot save(AgentRunSnapshot snapshot, long expectedVersion) {
-            AgentRunSnapshot saved = delegate.save(snapshot, expectedVersion);
+        public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
+            AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
             if (!crashed && saved.getState().getPendingToolCalls().size() == 1
                 && countToolMessages(saved.getState().getMessages()) == 1) {
                 crashed = true;

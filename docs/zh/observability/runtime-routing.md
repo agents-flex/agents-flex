@@ -21,7 +21,7 @@
 
 宿主系统可能有自己的“智能体”或其他业务对象，每个对象绑定不同的 APM 配置，一次执行还可能需要同时把
 数据发送到多个后端。这里的“智能体”只是宿主系统的业务概念，不要求对应 Agents-Flex 的 `Agent`、
-`AgentRun` 或其他框架类型。
+`AgentTurn` 或其他框架类型。
 
 Agents-Flex 不保存业务对象与 APM 的关系，也不修改 ChatModel 或 Tool 的配置模型。宿主系统只需在业务对象
 中保存一个 `telemetryRouteId`，并在调用 ChatModel、Tool 或 `AgentsFlexHttpClient` 的执行边界选择对应路由。

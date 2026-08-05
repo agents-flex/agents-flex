@@ -9,28 +9,28 @@ description: 使用统一的不可变 AgentEvent 接入实时 UI、日志、指�
 
 Agent 模块只提供一套观察机制：`AgentRunner` 产生不可变 `AgentEvent`，并同步通知注册的 `AgentEventListener`。Framework 不保存事件；是否写入数据库、Kafka、日志或监控系统由业务决定。
 
-会影响执行结果的扩展仍使用 `AgentMiddleware`。Listener 只能观察已经发生的事件，不能修改模型、工具或 Run 的控制决策。
+会影响执行结果的扩展仍使用 `AgentMiddleware`。Listener 只能观察已经发生的事件，不能修改模型、工具或 Turn 的控制决策。
 
 ## 注册监听器
 
 ```java
 runner.addEventListener(event -> {
     if (event.getType() == AgentEventType.MODEL_TEXT_DELTA) {
-        websocket.send(event.getRunId(), event.getData().get("content"));
+        websocket.send(event.getTurnId(), event.getData().get("content"));
     }
 });
 ```
 
-可以通过 `removeEventListener(listener)` 删除已经注册的监听器。监听器列表线程安全，但监听器实现自身仍需支持多个 Run 并发调用。
+可以通过 `removeEventListener(listener)` 删除已经注册的监听器。监听器列表线程安全，但监听器实现自身仍需支持多个 Turn 并发调用。
 
 ## 事件结构
 
 `AgentEvent` 包含：
 
 - `eventId`：当前发布产生的唯一 ID。
-- `runId`、`rootRunId`、`parentRunId`：运行与父子任务关联。
+- `turnId`、`rootTurnId`、`parentTurnId`：运行与父子任务关联。
 - `agentId`、`agentVersion`：产生事件的 Agent 定义。
-- `sequence`：当前 Runner 进程内、同一 runId 的递增序号。
+- `sequence`：当前 Runner 进程内、同一 turnId 的递增序号。
 - `type`、`occurredAt` 和只读 `data`。
 
 Event 本身及 data 中的 Map、List、Iterable 和数组都会被复制并冻结。不受支持的可变对象会转换为字符串，避免监听器持有 Runner 内部状态。
@@ -41,15 +41,15 @@ sequence 在 Runner 重建或进程重启后会重新开始，不能直接作为
 
 事件覆盖以下执行节点：
 
-- Run：开始、完成、失败、取消、暂停、恢复和 Snapshot 保存。
+- Turn：开始、完成、失败、取消、暂停、恢复和 Snapshot 保存。
 - Step：开始、结束、达到 `maxSteps`。
 - Model：开始、结束、文本/推理/ToolCall 增量和迭代上限。
 - Tool：开始、进度、完成、失败和审批。
-- Planning：计划创建、调整、任务和子 Run。
+- Planning：计划创建、调整、任务和子 Turn。
 - Retry：可恢复异常的延迟重试调度。
 - Budget：时间、Token 或工具调用次数达到限制。
 
-`SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Run 已完成。
+`SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Turn 已完成。
 
 ## 工具上报进度
 

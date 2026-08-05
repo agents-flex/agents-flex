@@ -7,7 +7,7 @@
 package com.agentsflex.agent;
 
 /**
- * AgentRun 暂停并等待外部事件的原因。
+ * AgentTurn 暂停并等待外部事件的原因。
  */
 public enum AgentSuspensionType {
     /**
@@ -19,7 +19,7 @@ public enum AgentSuspensionType {
      */
     TOOL_APPROVAL,
     /**
-     * 等待关联的子 AgentRun 结束。
+     * 等待关联的子 AgentTurn 结束。
      */
     CHILD_AGENT,
     /**

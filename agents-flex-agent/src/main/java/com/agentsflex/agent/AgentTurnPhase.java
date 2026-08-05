@@ -7,12 +7,12 @@
 package com.agentsflex.agent;
 
 /**
- * AgentRun 在模型与工具闭环中的固定执行阶段。
+ * AgentTurn 在模型与工具闭环中的固定执行阶段。
  *
  * <p>该枚举只描述 Agent 运行时自身的执行位置，不承担工作流编排职责。使用枚举而不是任意字符串，
  * 可以避免 Snapshot 中出现运行时无法识别的跳转目标。</p>
  */
-public enum AgentRunPhase {
+public enum AgentTurnPhase {
 
     /**
      * 调用模型，让模型生成最终回复或 ToolCall。

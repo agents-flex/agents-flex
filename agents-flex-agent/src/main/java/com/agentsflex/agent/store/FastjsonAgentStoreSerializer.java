@@ -10,7 +10,7 @@ import java.util.Arrays;
 /**
  * 使用 fastjson2 JSONB 编码 Agent 持久化值对象的默认实现。
  *
- * <p>JSONB 会保留消息等多态字段的具体 Java 类型，使 {@code AgentRunSnapshot} 能够完整还原。
+ * <p>JSONB 会保留消息等多态字段的具体 Java 类型，使 {@code AgentTurnSnapshot} 能够完整还原。
  * 默认只允许解析 Agents-Flex 类型和常用 JDK 值类型，不会对持久化内容
  * 开启不受限制的 AutoType。应用若在 metadata 中保存自定义值对象，应通过
  * {@link #FastjsonAgentStoreSerializer(String...)} 显式加入对应的包名前缀。</p>

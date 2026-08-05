@@ -17,8 +17,8 @@ import java.util.List;
  * 单次 Agent step 的不可变结果。
  *
  * <p>该对象只描述本步骤直接产生的模型响应、工具消息和异常。运行是否继续、阻塞或终止，
- * 以及具体的生命周期状态，统一从执行该步骤的 {@link AgentRun} 读取，避免步骤结果重复表达
- * {@link AgentRunStatus}。</p>
+ * 以及具体的生命周期状态，统一从执行该步骤的 {@link AgentTurn} 读取，避免步骤结果重复表达
+ * {@link AgentTurnStatus}。</p>
  */
 public final class AgentStepResult {
 
