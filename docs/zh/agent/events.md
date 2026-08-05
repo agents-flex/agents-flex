@@ -55,6 +55,10 @@ Turn 是 Step 的生命周期容器。第一个步骤开始前发布一次 `TURN
 事件。同一对 Step 事件使用相同的 1-based `stepCount`；Step 内产生暂停时，`TURN_SUSPENDED` 同样在
 对应的 `STEP_COMPLETED` 之后发布。
 
+`TURN_SUSPENDED` 的 data 包含 `suspensionType`、`correlationId`、`message`、`resumePhase` 和只读
+`metadata`。实时 UI 可以据此识别审批或表单请求，但提交结果时仍须恢复最新 Turn，由 Suspension
+校验命令，不能把事件数据当作执行授权。
+
 `SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Turn 已完成。
 
 ## 工具上报进度

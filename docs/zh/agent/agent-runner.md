@@ -13,82 +13,54 @@ Runner 自身不把 Turn 保存在实例字段中，适合作为应用级对象�
 
 ## 整体执行流程
 
-下面的流程图覆盖内置 ToolCall 状态机从创建 Turn 到终止或阻塞的完整路径。图中的每个 Snapshot 都是可跨线程、跨请求或跨进程恢复的稳定边界。
+下面的流程图只展示 Runner 的核心控制流：创建或恢复 Turn、持续推进、进入阻塞或终态，以及外部恢复。
+Snapshot、事件和 Middleware 的具体触发位置属于实现细节，不在主流程中逐项展开。
 
 ```mermaid
 flowchart TD
-    Input["用户输入 / UserMessage"] --> Entry{"调用入口"}
-    Entry -->|"run(...)"| Create["创建 AgentTurn"]
-    Entry -->|"start(...)"| Create
-    Entry -->|"恢复已有 Turn"| Restore["从 TurnStore 加载 Snapshot"]
+    Input["用户输入"] --> Create["创建 READY Turn<br/>保存初始 Snapshot"]
+    Create -->|"start(...)"| Ready["返回 READY Turn"]
+    Create -->|"run(...)"| Loop["runUntilBlocked(...)"]
 
-    Create --> Ready["READY<br/>保存初始 Snapshot"]
-    Ready --> StartMode{"执行方式"}
-    StartMode -->|"turn: 当前线程"| Loop["runUntilBlocked"]
-    StartMode -->|"start: 后台任务"| ReturnReady["返回 READY Turn"]
-    ReturnReady --> Worker["AgentWorker 领取 Lease"]
-    Worker --> Restore
-    Restore --> LoadAgent["AgentLoader 按 ID + 版本装配 Agent"]
-    LoadAgent --> Loop
+    Stored["已保存的 Turn"] --> Restore["restore(...)<br/>恢复 Snapshot 与 Agent 版本"]
+    Restore --> Restored["返回已恢复 Turn"]
+    Ready --> Worker["AgentWorker 领取并推进"]
+    Restored -->|"调用方继续执行"| Loop
+    Worker --> Loop
 
-    Loop --> Guard["step 通用检查<br/>Lease / 取消 / 预算 / maxSteps"]
-    Guard -->|"取消或达到限制"| Terminal["保存终态 Snapshot"]
-    Guard -->|"Turn 已阻塞"| Blocked["返回阻塞 Turn"]
-    Guard -->|"可继续"| Planning{"有可推进的任务计划？"}
+    Loop --> Step["step(...)"]
+    Step --> Guard["检查 Lease、取消、预算与 maxSteps"]
+    Guard -->|"已有任务计划"| Planning["推进计划或子 Turn"]
+    Guard -->|"MODEL"| Model["构造消息窗口并调用模型"]
+    Guard -->|"TOOLS"| Tools["顺序处理待执行 ToolCall"]
 
-    Planning -->|"是"| ChildFlow["创建或等待子 AgentTurn"]
-    ChildFlow --> Blocked
-    Planning -->|"否"| Middleware["Agent Step Middleware"]
-    Middleware --> Phase{"内置状态机<br/>当前 Phase"}
+    Model -->|"最终回答"| Terminal["进入终态并返回"]
+    Model -->|"产生 ToolCall"| Tools
+    Tools -->|"工具结果已保存"| Continue["切换到下一执行阶段"]
+    Planning -->|"计划可继续"| Continue
+    Continue --> Loop
 
-    Phase -->|"MODEL"| Context["构造只读消息窗口<br/>maxAttachedMessages"]
-    Context --> ModelChain["Model Middleware -> ChatModel"]
-    ModelChain --> ModelResult{"模型响应"}
-    ModelResult -->|"最终 AiMessage"| Complete["写入最终消息<br/>COMPLETED"]
-    Complete --> Terminal
+    Guard -->|"已取消或达到限制"| Terminal
+    Planning -->|"等待子 Turn"| Blocked["保存阻塞状态并返回"]
+    Tools -->|"等待审批 / 用户输入 / 重试"| Blocked
 
-    ModelResult -->|"包含 ToolCall"| SaveCalls["保存 pendingToolCalls<br/>Phase = TOOLS<br/>Snapshot"]
-    SaveCalls --> ToolLoop["按顺序处理 ToolCall"]
-    Phase -->|"TOOLS"| ToolLoop
-
-    ToolLoop --> Resolve["解析 Tool + 检查工具预算"]
-    Resolve --> Approval{"审批策略"}
-    Approval -->|"需要审批"| ApprovalWait["WAITING_FOR_APPROVAL<br/>保存 Suspension"]
-    ApprovalWait --> Blocked
-    Approval -->|"拒绝"| Rejected["写入拒绝 ToolMessage<br/>Snapshot"]
-    Approval -->|"允许"| ToolChain["Tool Middleware -> Interceptor -> Tool"]
-    ToolChain --> ToolResult{"工具结果"}
-    ToolResult -->|"成功"| SaveResult["写入 ToolMessage<br/>移除当前 pending call<br/>Snapshot"]
-    ToolResult -->|"可交给模型处理的错误"| ErrorMessage["写入结构化错误 ToolMessage"]
-    ErrorMessage --> SaveResult
-    ToolResult -->|"可重试异常"| RetryWait["RETRY_SCHEDULED<br/>保存 nextRunnableAt"]
-    RetryWait --> Blocked
-    ToolResult -->|"不可恢复异常"| Failed["FAILED"]
-    Failed --> Terminal
-
-    Rejected --> MoreCalls{"还有 pending ToolCall？"}
-    SaveResult --> MoreCalls
-    MoreCalls -->|"是"| ToolLoop
-    MoreCalls -->|"否"| BackModel["Phase = MODEL<br/>保存 Snapshot"]
-    BackModel --> Loop
-
-    Blocked --> External{"外部条件到达"}
-    External -->|"审批 / 用户输入"| Command["AgentResumeCommand<br/>resume 或 submitResume"]
-    External -->|"重试到期"| Worker
-    External -->|"子 Turn 终止"| ParentResume["结果写回父 Turn"]
-    Command --> Resume["校验 Suspension 与 correlationId<br/>恢复原 Phase"]
-    ParentResume --> Resume
-    Resume --> Loop
+    Blocked --> Command["外部条件满足<br/>AgentResumeCommand"]
+    Command -->|"resume(...)：立即执行"| Loop
+    Command -->|"submitResume(...)：仅恢复为可运行"| Runnable["恢复原 Phase<br/>Status = RUNNING"]
+    Runnable --> Worker
 ```
 
 ### 主路径说明
 
-1. `run(...)` 与 `start(...)` 都先创建 `READY` Turn 并保存初始 Snapshot；区别在于前者立即进入循环，后者等待 Worker 领取。
-2. 每次 `step` 都先检查 Lease、持久化取消信号、预算和 Runner step 上限，再处理任务规划和 Middleware。
-3. MODEL 阶段一次最多调用模型一次。模型直接回答时 Turn 完成；模型返回 ToolCall 时，Runner 先保存全部待处理调用，再进入 TOOLS 阶段。
-4. TOOLS 阶段按模型给出的顺序逐个处理调用。每个工具结果都单独写入 `ToolMessage` 并保存 Snapshot，因此后续恢复能准确知道哪些调用已经确认。
-5. 审批、用户输入、子 Turn 和延迟重试都会返回阻塞 Turn，不会占用线程等待。
-6. 恢复命令必须匹配当前 Suspension。Runner 恢复其记录的 Phase，例如工具审批通过后回到 TOOLS，而不是重新请求模型生成参数。
+1. `run(...)` 和 `start(...)` 都先创建 `READY` Turn 并保存初始 Snapshot。`run(...)` 随即进入执行循环；`start(...)` 只返回 Turn，不会自行创建后台线程。
+2. `restore(...)` 只从 Store 恢复 Snapshot，并按其中的 Agent ID 与版本装配 Agent。恢复后可由调用方继续执行，也可由 `AgentWorker` 调度。
+3. `runUntilBlocked(...)` 循环调用 `step(...)`。每一步先检查执行资格和限制，再优先推进已有任务计划，否则根据当前 Phase 调用模型或处理工具。
+4. MODEL 阶段一次 Step 最多调用模型一次。最终回答会结束 Turn；ToolCall 会被记录并在 TOOLS 阶段按顺序处理。
+5. 任务计划可能创建子 Turn。同步执行时 Runner 会递归推进子 Turn；Worker 模式下父 Turn 返回等待，由其他 Worker 推进子 Turn，完成后再把结果写回父 Turn。
+6. 审批、用户输入、子 Turn 和延迟重试形成阻塞边界，不会占用线程等待。`resume(...)` 恢复后立即执行，`submitResume(...)` 只将 Turn 恢复为可运行状态。
+
+Runner 会在创建、状态转换、工具结果和终止等稳定边界保存 Snapshot，使 Turn 能够跨请求或进程恢复；
+Middleware 包围模型、工具和 Step 执行，但不会改变上图的主状态流转。
 
 ### 异常与终止路径
 

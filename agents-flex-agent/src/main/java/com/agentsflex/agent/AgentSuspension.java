@@ -67,6 +67,20 @@ public final class AgentSuspension implements Serializable {
     }
 
     /**
+     * 创建由 request_user_input ToolCall 产生的结构化输入暂停点。
+     *
+     * <p>correlationId 绑定原 ToolCall，恢复到 TOOLS 阶段后由 Runner 写入匹配的 ToolMessage。</p>
+     */
+    public static AgentSuspension userInput(String callId, String message,
+                                            Map<String, Object> metadata) {
+        if (callId == null || callId.trim().isEmpty()) {
+            throw new IllegalArgumentException("callId must not be blank");
+        }
+        return new AgentSuspension(AgentSuspensionType.USER_INPUT, callId, message,
+            AgentTurnPhase.TOOLS, metadata);
+    }
+
+    /**
      * 创建使用默认结构化决策的工具审批暂停点。
      */
     public static AgentSuspension toolApproval(String callId, String toolName) {

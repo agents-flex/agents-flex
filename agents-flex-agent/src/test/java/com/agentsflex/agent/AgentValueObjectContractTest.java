@@ -5,6 +5,8 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
+import com.agentsflex.agent.tool.AgentFormDefinition;
+import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import org.junit.Test;
 
@@ -93,6 +95,51 @@ public class AgentValueObjectContractTest {
         AgentResumeCommand enriched = command.withMetadata("ticket", "T-1");
         assertFalse(command.getMetadata().containsKey("ticket"));
         assertEquals("T-1", enriched.getMetadata().get("ticket"));
+    }
+
+    @Test
+    public void shouldCopyStructuredUserInputData() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("priority", "HIGH");
+        AgentResumeCommand command = AgentResumeCommand.userInput("input-1", data);
+        data.put("priority", "LOW");
+
+        assertEquals("input-1", command.getCorrelationId());
+        assertEquals("HIGH", command.getData().get("priority"));
+        try {
+            command.getData().put("other", true);
+            fail("user input data must be immutable");
+        } catch (UnsupportedOperationException expected) {
+            assertEquals(1, command.getData().size());
+        }
+    }
+
+    @Test
+    public void shouldValidateUserInputFormDefinitions() {
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+        AgentFormDefinition form = AgentFormDefinition.builder("ticket")
+            .whenToUse("缺少工单信息时使用")
+            .schema(schema)
+            .build();
+        schema.put("title", "changed");
+
+        assertFalse(form.getSchema().containsKey("title"));
+        try {
+            form.getSchema().put("title", "changed");
+            fail("form schema must be immutable");
+        } catch (UnsupportedOperationException expected) {
+            assertEquals(1, form.getSchema().size());
+        }
+
+        assertBuildFailure(() -> AgentFormDefinition.builder("")
+            .whenToUse("condition").schema(Collections.singletonMap("type", "object")).build());
+        assertBuildFailure(() -> AgentFormDefinition.builder("ticket")
+            .schema(Collections.singletonMap("type", "object")).build());
+        assertBuildFailure(() -> AgentFormDefinition.builder("ticket")
+            .whenToUse("condition").schema(Collections.emptyMap()).build());
+        assertBuildFailure(() -> AgentUserInputTool.builder().build());
+        assertIllegalArgument(() -> AgentUserInputTool.builder().form(form).form(form));
     }
 
     @Test

@@ -19,8 +19,10 @@ import com.agentsflex.agent.store.AgentTurnStore;
 import com.agentsflex.agent.store.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.store.ParentChildTurnSnapshots;
+import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.AgentToolProgressEmitter;
 import com.agentsflex.agent.tool.AgentToolContext;
+import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
 import com.agentsflex.agent.task.AgentTaskProgress;
@@ -627,7 +629,13 @@ public final class AgentRunner {
         // 先按 Suspension 类型校验并应用命令，任何不匹配的命令都不能改变运行状态。
         applyResumeCommand(turn, suspension, command);
         // 恢复到暂停前保存的模型或工具阶段，不从任务开头重新执行。
-        turn.resumeAt(suspension.getResumePhase());
+        AgentTurnPhase resumePhase = suspension.getResumePhase();
+        if (suspension.getType() == AgentSuspensionType.USER_INPUT
+            && StringUtil.hasText(suspension.getCorrelationId())
+            && turn.getPendingToolCalls().isEmpty()) {
+            resumePhase = AgentTurnPhase.MODEL;
+        }
+        turn.resumeAt(resumePhase);
         saveSnapshot(turn);
         eventPublisher.notifyTurnResumed(turn, command);
         return turn;
@@ -993,11 +1001,11 @@ public final class AgentRunner {
     private AgentStepResult executePendingTools(AgentTurn turn, AiMessageResponse response) {
         List<ToolMessage> results = new ArrayList<>();
         while (!turn.getPendingToolCalls().isEmpty()) {
-            // 每个 ToolCall 都是独立副作用边界，开始前重新检查取消和工具次数预算。
+            // 每个 ToolCall 前重新检查取消和通用预算；工具次数只约束后面的业务工具。
             if (turn.isCancellationRequested()) {
                 return cancelTurn(turn);
             }
-            String budgetReason = budgetExceededReason(turn, true);
+            String budgetReason = budgetExceededReason(turn, false);
             if (budgetReason != null) {
                 return budgetExceeded(turn, budgetReason);
             }
@@ -1021,6 +1029,31 @@ public final class AgentRunner {
                 // 恢复后找不到原工具表示 Agent 版本不完整，不能跳过调用继续生成答案。
                 return handleFailure(turn, response,
                     new AgentToolNotFoundException(call.getName()), AgentTurnPhase.TOOLS);
+            }
+
+            if (AgentUserInputTool.isUserInputTool(tool)) {
+                try {
+                    AgentFormDefinition form = AgentUserInputTool.resolveForm(tool, call);
+                    Map<String, Object> metadata = new LinkedHashMap<>();
+                    metadata.put("formKey", form.getFormKey());
+                    metadata.put("schema", form.getSchema());
+                    metadata.put("toolName", AgentUserInputTool.NAME);
+                    Object title = form.getSchema().get("title");
+                    String message = title == null
+                        ? form.getFormKey() : String.valueOf(title);
+                    AgentSuspension suspension = AgentSuspension.userInput(
+                        callKey(call), message, metadata);
+                    suspend(turn, suspension);
+                    return AgentStepResult.of(response, results, null);
+                } catch (RuntimeException error) {
+                    return handleFailure(turn, response, error, AgentTurnPhase.TOOLS);
+                }
+            }
+
+            // 内置控制工具不计入业务工具调用次数，真实工具执行前才检查 maxToolCalls。
+            budgetReason = budgetExceededReason(turn, true);
+            if (budgetReason != null) {
+                return budgetExceeded(turn, budgetReason);
             }
 
             // 已恢复的审批决定优先；首次遇到 ToolCall 时才执行动态审批策略。
@@ -1496,12 +1529,7 @@ public final class AgentRunner {
         }
         switch (suspension.getType()) {
             case USER_INPUT:
-                requireCommand(command, AgentResumeCommandType.USER_INPUT);
-                if (!StringUtil.hasText(command.getContent())) {
-                    throw new IllegalArgumentException("user input must not be blank");
-                }
-                // 补充信息作为新的用户消息进入现有 Prompt，之前的推理与工具结果全部保留。
-                turn.getPrompt().addUserMessage(command.getContent());
+                applyUserInput(turn, suspension, command);
                 break;
             case TOOL_APPROVAL:
                 applyToolApproval(turn, suspension, command);
@@ -1531,6 +1559,49 @@ public final class AgentRunner {
             turn.putMetadata("lastResumeCommandMetadata",
                 new LinkedHashMap<String, Object>(command.getMetadata()));
         }
+    }
+
+    /**
+     * 应用纯文本补充或 request_user_input 工具产生的结构化表单结果。
+     */
+    private void applyUserInput(AgentTurn turn, AgentSuspension suspension,
+                                AgentResumeCommand command) {
+        requireCommand(command, AgentResumeCommandType.USER_INPUT);
+        boolean hasContent = StringUtil.hasText(command.getContent());
+        boolean hasData = !command.getData().isEmpty();
+        if (!hasContent && !hasData) {
+            throw new IllegalArgumentException("user input content or data must not be empty");
+        }
+
+        // 旧的手工 Suspension 没有关联 ToolCall，继续保留追加 UserMessage 的兼容语义。
+        if (!StringUtil.hasText(suspension.getCorrelationId())) {
+            turn.getPrompt().addUserMessage(hasContent
+                ? command.getContent() : JSON.toJSONString(command.getData()));
+            return;
+        }
+
+        requireCorrelation(suspension, command);
+        List<ToolCall> pending = turn.getPendingToolCalls();
+        if (pending.isEmpty()) {
+            throw new IllegalStateException("user input suspension has no pending ToolCall");
+        }
+        ToolCall call = pending.get(0);
+        if (!suspension.getCorrelationId().equals(callKey(call))
+            || !AgentUserInputTool.NAME.equals(call.getName())) {
+            throw new IllegalStateException(
+                "user input suspension does not match the pending ToolCall");
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", "submitted");
+        body.put("formKey", suspension.getMetadata().get("formKey"));
+        if (hasData) body.put("data", command.getData());
+        if (hasContent) body.put("content", command.getContent());
+        ToolMessage result = new ToolMessage();
+        result.setToolCallId(callKey(call));
+        result.setContent(JSON.toJSONString(body));
+        turn.getPrompt().addMessage(result);
+        turn.removeFirstPendingToolCall();
     }
 
     /**

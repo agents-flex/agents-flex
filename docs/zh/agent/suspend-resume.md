@@ -13,16 +13,66 @@ Agent 遇到人工审批、缺少用户信息、等待子任务或延迟重试�
 
 | Suspension | Turn 状态 | 典型恢复命令 |
 | --- | --- | --- |
-| `USER_INPUT` | `WAITING_FOR_USER` | `userInput(content)` |
+| `USER_INPUT` | `WAITING_FOR_USER` | `userInput(content)` 或 `userInput(callId, data)` |
 | `TOOL_APPROVAL` | `WAITING_FOR_APPROVAL` | `approveTool` / `rejectTool` |
 | `CHILD_AGENT` | `WAITING_FOR_CHILD` | `childCompleted`，通常由 Runner 内部处理 |
 | `RETRY` | `RETRY_SCHEDULED` | `retry()` 或 Worker 到期领取 |
 
 Suspension 还保存 correlationId、展示消息、恢复 phase 和可序列化 metadata。
 
-## 主动挂起
+## 模型请求用户输入
 
-需要由业务控制面显式建立等待点时，可以使用：
+需要在同一个长任务中等待用户补充信息时，为 Agent 注册内置控制工具，并在指令中说明允许使用的
+业务表单：
+
+```java
+Agent agent = Agent.builder("support-agent")
+    .instructions("创建工单缺少必要信息时调用 request_user_input；不要猜测缺失字段。")
+    .chatModel(chatModel)
+    .tool(AgentUserInputTool.builder()
+        .form(AgentFormDefinition.builder("support_ticket_details")
+            .whenToUse("创建故障工单缺少必要信息时使用")
+            .schema(supportTicketSchema)
+            .build())
+        .build())
+    .tool(createTicketTool)
+    .build();
+```
+
+模型发现信息不足时可以产生：
+
+```json
+{
+  "name": "request_user_input",
+  "arguments": {
+    "formKey": "support_ticket_details"
+  }
+}
+```
+
+Runner 不执行该工具函数，而是保存原 ToolCall，使用其 ID 创建 `USER_INPUT` Suspension，并进入
+`WAITING_FOR_USER`。Runner 从 Tool 中解析对应的 `AgentFormDefinition`，并将完整 JSON Schema 固化进
+Suspension 和 Snapshot；模型不能生成或修改 Schema。
+
+用户提交表单后，业务 API 应先使用 Suspension 中的 Schema 完成鉴权和字段校验，再提交结构化恢复命令：
+
+```java
+Map<String, Object> formData = new LinkedHashMap<>();
+formData.put("affectedSystem", "登录系统");
+formData.put("impactScope", "ALL_USERS");
+
+runner.submitResume(
+    turnId,
+    AgentResumeCommand.userInput(callId, formData)
+        .withMetadata("submittedBy", "user-1001"));
+```
+
+Runner 校验 callId，把表单数据写成匹配原 `request_user_input` ToolCall 的 ToolMessage，然后回到模型
+阶段继续原 Turn。这样模型原生 Tool Calling 消息序列保持完整，也不会重新生成问题或表单参数。
+
+### 底层主动挂起
+
+没有模型 ToolCall 的自定义控制流程仍可显式建立纯文本等待点：
 
 ```java
 AgentTurn blocked = runner.suspend(
@@ -30,9 +80,9 @@ AgentTurn blocked = runner.suspend(
     AgentSuspension.userInput("请提供订单号"));
 ```
 
-Runner 会保存 Snapshot、发布暂停事件，并根据 Suspension 类型进入 `WAITING_FOR_USER`、
-`WAITING_FOR_APPROVAL`、`WAITING_FOR_CHILD` 或 `RETRY_SCHEDULED`。普通业务代码不应只修改 Turn
-状态而跳过这些步骤。
+这种兼容路径没有 correlationId，恢复时使用 `userInput(content)`，内容会作为新的 UserMessage 加入
+Prompt。普通模型追问优先使用 `request_user_input`；工具审批、子 Turn 和重试由 Runner 内部创建
+Suspension，业务代码不应手工构造这些暂停类型。
 
 ## 同步恢复
 
@@ -90,6 +140,15 @@ runner.submitResume(
 
 未配置 Provider 时，暂停接口仍可直接向前端返回 Turn ID、状态、Suspension message、correlationId
 和必要的安全元数据。不要直接展示模型原始内部内容或敏感工具参数。
+
+`request_user_input` 产生的表单会投影为 `AgentFormMessage`。消息包含 formKey、完整 JSON Schema 和
+actionId，并且 `modelVisible=false`。`PENDING` 状态的 `getActions()` 返回 `SUBMIT`；成功提交
+后，Runner 使用 expectedVersion CAS 将原消息更新为 `SUBMITTED`，页面不需要关联额外结果消息。
+
+前端直接使用消息携带的 Schema 渲染，不需要额外查询表单注册中心。后端不能信任前端回传的隐藏字段，
+必须使用 Suspension 中固化的同一份 Schema 重新校验。
+
+完整的前端 DTO、表单注册和提交示例见 [表单输入](./form-input)。
 
 ## 不应做的事
 

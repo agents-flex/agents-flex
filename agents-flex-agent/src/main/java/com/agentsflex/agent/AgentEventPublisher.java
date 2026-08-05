@@ -136,7 +136,10 @@ final class AgentEventPublisher {
     void notifyTurnSuspended(AgentTurn turn, AgentSuspension suspension) {
         publish(turn, AgentEventType.TURN_SUSPENDED,
             attributes("suspensionType", suspension.getType(),
-                "correlationId", suspension.getCorrelationId()));
+                "correlationId", suspension.getCorrelationId(),
+                "message", suspension.getMessage(),
+                "resumePhase", suspension.getResumePhase(),
+                "metadata", suspension.getMetadata()));
     }
 
     void notifyTurnResumed(AgentTurn turn, AgentResumeCommand command) {

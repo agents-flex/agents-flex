@@ -23,7 +23,9 @@
  *     <li>{@link com.agentsflex.agent.event.AgentEventListener}：观察生命周期、模型增量和工具进度事件；</li>
  *     <li>{@link com.agentsflex.agent.task.AgentPlanningPolicy}：约束模型自主创建和执行任务计划；</li>
  *     <li>{@link com.agentsflex.agent.loader.AgentLoader}：根据稳定 ID 和版本加载可执行 Agent；</li>
- *     <li>{@link com.agentsflex.agent.tool.AgentToolContext}：向工具提供受控的调用身份、进度与取消能力。</li>
+ *     <li>{@link com.agentsflex.agent.tool.AgentToolContext}：向工具提供受控的调用身份、进度与取消能力；</li>
+ *     <li>{@link com.agentsflex.agent.tool.AgentUserInputTool}：让模型通过稳定 ToolCall 请求业务表单输入；</li>
+ *     <li>{@link com.agentsflex.agent.message.AgentFormMessage}：投影到 ChatMemory 的 UI-only 表单状态。</li>
  * </ul>
  *
  * <p>最简调用方式：</p>

@@ -76,6 +76,7 @@ public enum AgentEventType {
     /**
      * Turn 已持久化为等待用户输入、工具审批、子 Turn 或重试调度的状态。
      * 如果暂停由 Step 产生，本事件在该 Step 的 STEP_COMPLETED 之后发布。
+     * data 包含 suspensionType、correlationId、message、resumePhase 和 metadata。
      */
     TURN_SUSPENDED,
     /**

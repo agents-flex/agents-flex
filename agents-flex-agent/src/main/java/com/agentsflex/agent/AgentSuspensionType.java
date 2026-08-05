@@ -11,7 +11,7 @@ package com.agentsflex.agent;
  */
 public enum AgentSuspensionType {
     /**
-     * 等待用户补充信息。
+     * 等待用户补充信息；可由 request_user_input ToolCall 产生，也可由业务控制面显式创建。
      */
     USER_INPUT,
     /**

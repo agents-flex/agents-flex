@@ -18,7 +18,7 @@ public enum AgentResumeCommandType {
      */
     CONTINUE,
     /**
-     * 将新的用户输入追加到对话后继续。
+     * 提交新的文本或结构化用户输入；控制 ToolCall 场景会生成匹配的 ToolMessage。
      */
     USER_INPUT,
     /**

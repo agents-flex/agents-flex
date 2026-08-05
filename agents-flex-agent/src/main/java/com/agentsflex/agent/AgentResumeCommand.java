@@ -35,18 +35,30 @@ public final class AgentResumeCommand implements Serializable {
      */
     private final String correlationId;
     /**
+     * 表单等结构化用户输入。审批命令通常为空。
+     */
+    private final Map<String, Object> data;
+    /**
      * 业务系统附加的只读元数据。
      */
     private final Map<String, Object> metadata;
 
     public AgentResumeCommand(AgentResumeCommandType type, String content,
                               String correlationId, Map<String, Object> metadata) {
+        this(type, content, correlationId, null, metadata);
+    }
+
+    /** 创建同时支持文本和结构化输入的恢复命令。 */
+    public AgentResumeCommand(AgentResumeCommandType type, String content,
+                              String correlationId, Map<String, Object> data,
+                              Map<String, Object> metadata) {
         if (type == null) {
             throw new IllegalArgumentException("type must not be null");
         }
         this.type = type;
         this.content = content;
         this.correlationId = correlationId;
+        this.data = immutableMap(data);
         this.metadata = metadata == null
             ? Collections.emptyMap()
             : Collections.unmodifiableMap(new HashMap<>(metadata));
@@ -64,6 +76,20 @@ public final class AgentResumeCommand implements Serializable {
      */
     public static AgentResumeCommand userInput(String content) {
         return new AgentResumeCommand(AgentResumeCommandType.USER_INPUT, content, null, null);
+    }
+
+    /** 创建与 request_user_input ToolCall 关联的文本输入命令。 */
+    public static AgentResumeCommand userInput(String callId, String content) {
+        return new AgentResumeCommand(AgentResumeCommandType.USER_INPUT,
+            content, callId, null, null);
+    }
+
+    /** 创建与 request_user_input ToolCall 关联的结构化表单提交命令。 */
+    public static AgentResumeCommand userInput(String callId, Map<String, ?> data) {
+        Map<String, Object> values = data == null
+            ? null : new LinkedHashMap<String, Object>(data);
+        return new AgentResumeCommand(AgentResumeCommandType.USER_INPUT,
+            null, callId, values, null);
     }
 
     /**
@@ -103,7 +129,7 @@ public final class AgentResumeCommand implements Serializable {
         }
         Map<String, Object> values = new LinkedHashMap<>(metadata);
         values.put(key, value);
-        return new AgentResumeCommand(type, content, correlationId, values);
+        return new AgentResumeCommand(type, content, correlationId, data, values);
     }
 
     /**
@@ -114,7 +140,7 @@ public final class AgentResumeCommand implements Serializable {
         if (additions != null) {
             values.putAll(additions);
         }
-        return new AgentResumeCommand(type, content, correlationId, values);
+        return new AgentResumeCommand(type, content, correlationId, data, values);
     }
 
     /**
@@ -138,10 +164,21 @@ public final class AgentResumeCommand implements Serializable {
         return correlationId;
     }
 
+    /** @return 不可修改的结构化用户输入；非表单命令返回空 Map */
+    public Map<String, Object> getData() {
+        return data;
+    }
+
     /**
      * @return 不可修改的命令审计元数据
      */
     public Map<String, Object> getMetadata() {
         return metadata;
+    }
+
+    private static Map<String, Object> immutableMap(Map<String, Object> values) {
+        return values == null || values.isEmpty()
+            ? Collections.<String, Object>emptyMap()
+            : Collections.unmodifiableMap(new LinkedHashMap<>(values));
     }
 }

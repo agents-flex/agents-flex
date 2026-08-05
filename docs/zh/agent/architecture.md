@@ -11,18 +11,43 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
 
 ## 组件分层
 
-```text
-应用入口 / 审批系统 / 调度系统 / UI
-          |                         |
-    ChatMemory                AgentEventListener
-          |                         |
-          +---- AgentRunner / AgentWorker
-                       |       |
-                  AgentLoader  Middleware
-                       |       |
-                    Agent   AgentTurn  ChatModel + Tool
-                               |
-                            TurnStore
+```mermaid
+flowchart TB
+    subgraph Application["业务应用"]
+        App["业务 API / UI"]
+        Approval["审批与用户输入"]
+        Scheduler["任务调度"]
+    end
+
+    subgraph Runtime["Agent 执行"]
+        Runner["AgentRunner<br/>创建、推进、暂停与恢复"]
+        Worker["AgentWorker<br/>领取任务与管理 Lease"]
+        Turn["AgentTurn<br/>本次任务及运行时状态"]
+    end
+
+    subgraph Definition["Agent 定义"]
+        Loader["AgentLoader<br/>按 ID 与版本加载"]
+        AgentDef["Agent<br/>ChatModel / Tool / 策略 / Middleware"]
+    end
+
+    subgraph Integration["持久化与外部集成"]
+        Store["AgentTurnStore<br/>Snapshot 事实来源"]
+        Memory["ChatMemory<br/>可选的会话时间线"]
+        Listener["AgentEventListener<br/>流式输出、日志与指标"]
+    end
+
+    App -->|"run / start / restore"| Runner
+    Approval -->|"submitResume"| Runner
+    Scheduler --> Worker
+    Worker --> Runner
+    Runner <--> |"创建与推进"| Turn
+    Runner --> Loader
+    Loader --> AgentDef
+    Runner -->|"保存 / 恢复 Snapshot"| Store
+    Worker -->|"领取任务 / 续租"| Store
+    Runner -.->|"读取历史 / 投影消息"| Memory
+    App -.->|"渲染会话"| Memory
+    Runner -.->|"发布事件"| Listener
 ```
 
 ### 定义平面
@@ -49,15 +74,33 @@ AgentEventListener 统一接收生命周期、模型增量和工具进度事件�
 
 ## 默认状态机
 
-```text
-READY -> RUNNING/MODEL
-  MODEL -- final message --> COMPLETED
-  MODEL -- ToolCall ------> RUNNING/TOOLS
-  TOOLS -- executed ------> RUNNING/MODEL
-  TOOLS -- approval ------> WAITING_FOR_APPROVAL
-  any   -- retryable -----> RETRY_SCHEDULED
-  parent -- child --------> WAITING_FOR_CHILD
-  any   -- limit/error ---> terminal status
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> READY: 创建并保存
+    READY --> RUNNING: run / step / Worker 领取
+
+    state RUNNING {
+        direction LR
+        [*] --> MODEL
+        MODEL --> TOOLS: 模型返回 ToolCall
+        TOOLS --> MODEL: 工具调用全部完成
+    }
+
+    RUNNING --> WAITING_FOR_USER: 等待补充信息
+    RUNNING --> WAITING_FOR_APPROVAL: 工具需要审批
+    RUNNING --> WAITING_FOR_CHILD: 等待规划子 Turn
+    RUNNING --> RETRY_SCHEDULED: 可恢复异常
+
+    WAITING_FOR_USER --> RUNNING: 提交用户输入
+    WAITING_FOR_APPROVAL --> RUNNING: 提交审批结果
+    WAITING_FOR_CHILD --> RUNNING: 子 Turn 完成
+    RETRY_SCHEDULED --> RUNNING: 到期领取或主动恢复
+
+    state "终态<br/>COMPLETED / FAILED / CANCELLED<br/>MAX_ITERATIONS_REACHED / MAX_STEPS_REACHED / BUDGET_EXCEEDED" as TERMINAL
+    RUNNING --> TERMINAL: 最终回答、取消、错误或达到限制
+    TERMINAL --> [*]
 ```
 
 恢复命令把阻塞 Turn 转回 Suspension 记录的 phase。终态不可重新打开。

@@ -65,6 +65,11 @@ Agent agent = Agent.builder("order-assistant")
 规划开启后，框架会注入保留工具名 `create_task_plan`；允许重规划时还会注入
 `update_task_plan`。业务工具不能使用这些名称。
 
+需要让模型在长任务中请求结构化用户输入时，可以通过 `AgentUserInputTool.builder().form(...)` 注册
+允许选择的表单。模型调用
+稳定工具名 `request_user_input` 后，Runner 会暂停原 Turn；该控制工具不经过业务 Tool 函数、审批
+策略或 ToolInterceptor。模型只选择 formKey，完整 JSON Schema 由 Runner 固化进 Snapshot 并提供给前端。
+
 ## 策略组合
 
 `Agent` 聚合执行所需的策略和参数：
