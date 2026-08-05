@@ -6,6 +6,7 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
+import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import org.junit.Test;
@@ -49,6 +50,29 @@ public class AgentEventListenerContractTest {
             AgentEventType.SNAPSHOT_SAVED,
             AgentEventType.STEP_COMPLETED,
             AgentEventType.TURN_COMPLETED);
+        assertEquals(1, stepCount(events, AgentEventType.STEP_STARTED));
+        assertEquals(1, stepCount(events, AgentEventType.STEP_COMPLETED));
+        assertStrictSequence(events);
+    }
+
+    @Test
+    public void shouldEmitSuspendedAfterCurrentStepCompleted() {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("approval-call", "write", "{}")));
+        List<AgentEvent> events = new ArrayList<>();
+        Agent agent = Agent.builder("suspended-events")
+            .chatModel(model)
+            .tool(tool("write", args -> "done"))
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .build();
+
+        AgentTurn turn = new AgentRunner().addEventListener(events::add).run(agent, "write");
+
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, turn.getStatus());
+        assertTrue(indexOf(events, AgentEventType.STEP_COMPLETED, 0)
+            < indexOf(events, AgentEventType.TURN_SUSPENDED, 0));
+        assertEquals(1, stepCount(events, AgentEventType.STEP_STARTED));
+        assertEquals(1, stepCount(events, AgentEventType.STEP_COMPLETED));
         assertStrictSequence(events);
     }
 
@@ -183,5 +207,11 @@ public class AgentEventListenerContractTest {
         int result = 0;
         for (AgentEvent event : events) if (event.getType() == type) result++;
         return result;
+    }
+
+    private int stepCount(List<AgentEvent> events, AgentEventType type) {
+        int index = indexOf(events, type, 0);
+        if (index < 0) throw new AssertionError("event not found: " + type);
+        return ((Number) events.get(index).getData().get("stepCount")).intValue();
     }
 }

@@ -19,6 +19,7 @@ public enum AgentEventType {
     TURN_STARTED,
     /**
      * Runner 开始推进一次 step；一次 step 最多发起一次模型调用。
+     * data 中的 stepCount 是当前步骤的 1-based 编号，与对应 STEP_COMPLETED 保持一致。
      */
     STEP_STARTED,
     /**
@@ -74,6 +75,7 @@ public enum AgentEventType {
     SNAPSHOT_SAVED,
     /**
      * Turn 已持久化为等待用户输入、工具审批、子 Turn 或重试调度的状态。
+     * 如果暂停由 Step 产生，本事件在该 Step 的 STEP_COMPLETED 之后发布。
      */
     TURN_SUSPENDED,
     /**

@@ -114,6 +114,13 @@ public final class AgentRunner {
      * 失效的旧执行者继续提交 Snapshot。</p>
      */
     private final ThreadLocal<String> activeLeaseId = new ThreadLocal<>();
+    /**
+     * 当前线程正在执行的 Step 结束后再发布的观察事件。
+     *
+     * <p>状态和 Snapshot 仍在原位置立即更新；这里只延后 TURN_SUSPENDED 等通知，保证监听器先看到
+     * STEP_COMPLETED，再看到本步骤产生的 Turn 状态事件。</p>
+     */
+    private final ThreadLocal<List<Runnable>> afterStepEvents = new ThreadLocal<>();
 
     /**
      * 创建全部使用进程内依赖的 Runner，适合测试和单实例试用。
@@ -585,7 +592,7 @@ public final class AgentRunner {
         assertLeaseOwnership(turn);
         turn.suspend(blockedStatusFor(suspension.getType()), suspension);
         saveSnapshot(turn);
-        eventPublisher.notifyTurnSuspended(turn, suspension);
+        publishAfterStep(() -> eventPublisher.notifyTurnSuspended(turn, suspension));
         return turn;
     }
 
@@ -687,17 +694,38 @@ public final class AgentRunner {
         if (turn.markStarted()) {
             eventPublisher.notifyTurnStart(turn);
         }
-        eventPublisher.publish(turn, AgentEventType.STEP_STARTED,
-            objectAttributes("phase", turn.getPhase()));
+        String entryBudgetReason = budgetExceededReason(turn, false);
+        boolean maxStepsReached = !turn.isCancellationRequested()
+            && !turn.getStatus().isBlocked()
+            && entryBudgetReason == null
+            && turn.getStepCount() >= turn.getExecutionPolicy().getMaxSteps();
+        if (!turn.isCancellationRequested() && !turn.getStatus().isBlocked()
+            && entryBudgetReason == null && !maxStepsReached) {
+            // STEP_STARTED 和 STEP_COMPLETED 对同一次推进展示相同的 1-based stepCount。
+            turn.incrementStep();
+        }
+
+        List<Runnable> parentEvents = afterStepEvents.get();
+        List<Runnable> deferredEvents = new ArrayList<>();
+        afterStepEvents.set(deferredEvents);
         try {
-            AgentStepResult result = stepCore(turn);
+            eventPublisher.publish(turn, AgentEventType.STEP_STARTED,
+                objectAttributes("phase", turn.getPhase()));
+            AgentStepResult result = maxStepsReached
+                ? maxStepsReached(turn) : stepCore(turn);
             eventPublisher.publish(turn, AgentEventType.STEP_COMPLETED,
                 objectAttributes("status", turn.getStatus(),
                     "phase", turn.getPhase(),
                     "toolMessageCount", result == null ? 0 : result.getToolMessages().size()));
+            publishDeferredEvents(deferredEvents);
             publishTerminalEvent(turn);
             return result;
         } finally {
+            if (parentEvents == null) {
+                afterStepEvents.remove();
+            } else {
+                afterStepEvents.set(parentEvents);
+            }
             if (turn.getStatus().isTerminal()) {
                 eventPublisher.clearSequence(turn.getId());
             }
@@ -739,13 +767,6 @@ public final class AgentRunner {
         if (budgetReason != null) {
             return budgetExceeded(turn, budgetReason);
         }
-
-        if (turn.getStepCount() >= turn.getExecutionPolicy().getMaxSteps()) {
-            turn.markMaxStepsReached();
-            saveSnapshot(turn);
-            return AgentStepResult.of(null, null, null);
-        }
-        turn.incrementStep();
 
         // 已存在的任务计划优先于下一次模型调用推进，避免计划任务与普通对话循环互相竞争。
         AgentStepResult planningResult = planning.advance(turn);
@@ -824,7 +845,7 @@ public final class AgentRunner {
         child.updateVersion(saved.getChild().getState().getVersion());
         eventPublisher.notifySnapshotSaved(parent, saved.getParent());
         eventPublisher.notifySnapshotSaved(child, saved.getChild());
-        eventPublisher.notifyTurnSuspended(parent, suspension);
+        publishAfterStep(() -> eventPublisher.notifyTurnSuspended(parent, suspension));
         eventPublisher.notifyChildStarted(parent, child);
         planning.notifyTaskStarted(parent, child);
         return child;
@@ -1092,8 +1113,9 @@ public final class AgentRunner {
             long runAt = System.currentTimeMillis() + retry.delayMillis(turn.getRetryCount() + 1);
             turn.scheduleRetry(error, resumePhase, runAt);
             saveSnapshot(turn);
-            eventPublisher.notifyTurnSuspended(turn, turn.getSuspension());
-            eventPublisher.notifyRetryScheduled(turn, error);
+            publishAfterStep(() -> eventPublisher.notifyTurnSuspended(
+                turn, turn.getSuspension()));
+            publishAfterStep(() -> eventPublisher.notifyRetryScheduled(turn, error));
             return AgentStepResult.of(response, null, error);
         }
         turn.markFailed(error);
@@ -1135,6 +1157,33 @@ public final class AgentRunner {
         turn.markBudgetExceeded(reason);
         saveSnapshot(turn);
         return AgentStepResult.of(null, null, null);
+    }
+
+    /**
+     * 保存达到 maxSteps 的终止状态；对应事件由 Step 外层统一发布。
+     */
+    private AgentStepResult maxStepsReached(AgentTurn turn) {
+        turn.markMaxStepsReached();
+        saveSnapshot(turn);
+        return AgentStepResult.of(null, null, null);
+    }
+
+    /**
+     * 在当前 Step 结束后发布事件；不处于 Step 调用链时立即发布。
+     */
+    private void publishAfterStep(Runnable event) {
+        List<Runnable> events = afterStepEvents.get();
+        if (events == null) {
+            event.run();
+        } else {
+            events.add(event);
+        }
+    }
+
+    private void publishDeferredEvents(List<Runnable> events) {
+        for (Runnable event : events) {
+            event.run();
+        }
     }
 
     /**
