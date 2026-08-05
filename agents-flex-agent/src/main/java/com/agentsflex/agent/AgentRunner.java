@@ -30,6 +30,7 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutor;
@@ -45,6 +46,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * 创建、推进、暂停和恢复 {@link AgentRun} 的核心执行器。
@@ -98,6 +100,10 @@ public final class AgentRunner {
      */
     private final AgentModelInvoker modelInvoker;
     /**
+     * 可选的业务会话消息投影。未配置 Provider 时为空操作，现有显式传历史消息的 API 不受影响。
+     */
+    private final AgentRunnerChatMemory chatMemory;
+    /**
      * 标识当前线程正在代表哪个 Worker 推进已领取的 Run。
      */
     private final ThreadLocal<String> activeWorkerId = new ThreadLocal<>();
@@ -127,6 +133,11 @@ public final class AgentRunner {
      * 创建自定义 RunStore 和 AgentLoader 的 Runner。
      */
     public AgentRunner(AgentRunStore runStore, AgentLoader agentLoader) {
+        this(runStore, agentLoader, null);
+    }
+
+    private AgentRunner(AgentRunStore runStore, AgentLoader agentLoader,
+                        Function<String, ChatMemory> chatMemoryProvider) {
         if (runStore == null || agentLoader == null) {
             throw new IllegalArgumentException(
                 "AgentRunner dependencies must not be null");
@@ -136,6 +147,7 @@ public final class AgentRunner {
         this.eventPublisher = new AgentEventPublisher();
         this.planning = new AgentRunnerPlanning(this, agentLoader, eventPublisher);
         this.modelInvoker = new AgentModelInvoker(eventPublisher);
+        this.chatMemory = new AgentRunnerChatMemory(chatMemoryProvider);
     }
 
     /**
@@ -147,6 +159,7 @@ public final class AgentRunner {
     public static final class Builder {
         private AgentRunStore runStore = new InMemoryAgentRunStore();
         private AgentLoader agentLoader = new InMemoryAgentLoader();
+        private Function<String, ChatMemory> chatMemoryProvider;
 
         /**
          * 设置 Snapshot 与租约存储。
@@ -165,10 +178,22 @@ public final class AgentRunner {
         }
 
         /**
+         * 设置按业务会话 ID 加载 ChatMemory 的函数。
+         *
+         * <p>配置后可以使用带 {@code conversationId} 的 start/run 重载。Runner 从
+         * {@link ChatMemory#getModelMessages(int)} 读取模型历史，并在每次 Snapshot 成功保存后把本轮
+         * 消息和审批卡片幂等投影回同一个 ChatMemory。未配置时不会读写任何业务会话。</p>
+         */
+        public Builder chatMemoryProvider(Function<String, ChatMemory> value) {
+            chatMemoryProvider = value;
+            return this;
+        }
+
+        /**
          * 校验全部依赖并创建 Runner。
          */
         public AgentRunner build() {
-            return new AgentRunner(runStore, agentLoader);
+            return new AgentRunner(runStore, agentLoader, chatMemoryProvider);
         }
     }
 
@@ -237,6 +262,37 @@ public final class AgentRunner {
     }
 
     /**
+     * 从业务 ChatMemory 读取会话历史并执行一轮文本请求。
+     */
+    public AgentRun run(Agent agent, String conversationId, String userInput) {
+        return run(agent, conversationId, new UserMessage(userInput),
+            AgentRunOptions.defaults());
+    }
+
+    /**
+     * 从业务 ChatMemory 读取会话历史，并使用单次运行选项执行一轮文本请求。
+     */
+    public AgentRun run(Agent agent, String conversationId, String userInput,
+                        AgentRunOptions options) {
+        return run(agent, conversationId, new UserMessage(userInput), options);
+    }
+
+    /**
+     * 从业务 ChatMemory 读取会话历史并执行一轮结构化请求。
+     */
+    public AgentRun run(Agent agent, String conversationId, UserMessage userMessage) {
+        return run(agent, conversationId, userMessage, AgentRunOptions.defaults());
+    }
+
+    /**
+     * 从业务 ChatMemory 读取会话历史并执行一轮结构化请求。
+     */
+    public AgentRun run(Agent agent, String conversationId, UserMessage userMessage,
+                        AgentRunOptions options) {
+        return run(start(agent, conversationId, userMessage, options));
+    }
+
+    /**
      * 使用已有会话历史和本轮结构化消息创建并执行新的 Run。
      */
     public AgentRun run(Agent agent, List<? extends Message> conversationHistory,
@@ -278,6 +334,51 @@ public final class AgentRunner {
      */
     public AgentRun start(Agent agent, UserMessage userMessage, AgentRunOptions options) {
         return start(agent, Collections.<Message>emptyList(), userMessage, options);
+    }
+
+    /**
+     * 从业务 ChatMemory 读取会话历史并创建一个尚未执行的文本 Run。
+     */
+    public AgentRun start(Agent agent, String conversationId, String userInput) {
+        return start(agent, conversationId, new UserMessage(userInput),
+            AgentRunOptions.defaults());
+    }
+
+    /**
+     * 从业务 ChatMemory 读取会话历史并创建带运行选项的文本 Run。
+     */
+    public AgentRun start(Agent agent, String conversationId, String userInput,
+                          AgentRunOptions options) {
+        return start(agent, conversationId, new UserMessage(userInput), options);
+    }
+
+    /**
+     * 从业务 ChatMemory 读取会话历史并创建一个尚未执行的结构化 Run。
+     */
+    public AgentRun start(Agent agent, String conversationId, UserMessage userMessage) {
+        return start(agent, conversationId, userMessage, AgentRunOptions.defaults());
+    }
+
+    /**
+     * 从业务 ChatMemory 读取模型可见历史并创建 Run。
+     *
+     * <p>页面专用消息不会进入 Prompt。Run 创建后，本轮新增消息会在 Snapshot 保存成功后投影回
+     * ChatMemory；投影失败不会改变 Run 状态，并会在后续保存或恢复时重试。</p>
+     */
+    public AgentRun start(Agent agent, String conversationId, UserMessage userMessage,
+                          AgentRunOptions options) {
+        if (!chatMemory.isEnabled()) {
+            throw new IllegalStateException(
+                "chatMemoryProvider must be configured for conversation APIs");
+        }
+        prepareAgent(agent);
+        List<Message> history = chatMemory.loadModelHistory(
+            conversationId, agent.getMaxAttachedMessages());
+        AgentRun run = AgentRun.start(agent, history, userMessage, options);
+        run.bindConversation(conversationId, history.size());
+        prepareRun(run);
+        saveSnapshot(run);
+        return run;
     }
 
     /**
@@ -391,7 +492,9 @@ public final class AgentRunner {
             throw new IllegalStateException("Agent cannot be loaded: " + snapshot.getAgentId()
                 + ", version=" + snapshot.getAgentVersion());
         }
-        return AgentRun.fromSnapshot(agent, snapshot);
+        AgentRun run = AgentRun.fromSnapshot(agent, snapshot);
+        chatMemory.sync(run);
+        return run;
     }
 
     /**
@@ -493,6 +596,7 @@ public final class AgentRunner {
             if (saved.getState().isCancellationRequested()) {
                 run.requestCancellation();
             }
+            chatMemory.sync(run);
             eventPublisher.notifySnapshotSaved(run, saved);
             return saved;
         }

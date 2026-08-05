@@ -39,6 +39,11 @@ import java.util.UUID;
  */
 public final class AgentRun {
 
+    private static final String CONVERSATION_ID_METADATA =
+        "agentsflex.conversationId";
+    private static final String CONVERSATION_BASE_MESSAGE_COUNT_METADATA =
+        "agentsflex.conversationBaseMessageCount";
+
     /**
      * 本次运行使用的不可变 Agent 定义。
      */
@@ -561,6 +566,45 @@ public final class AgentRun {
      */
     public Map<String, Object> getMetadata() {
         return state.getMetadata();
+    }
+
+    /**
+     * 返回通过 Runner 的可选 ChatMemory 集成绑定的业务会话 ID。
+     *
+     * <p>未使用 {@code chatMemoryProvider} 创建的 Run 返回 {@code null}。会话 ID 仅用于定位业务
+     * ChatMemory，不替代 Run ID，也不参与 Agent 执行状态判断。</p>
+     */
+    public String getConversationId() {
+        Object value = state.getMetadata().get(CONVERSATION_ID_METADATA);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    /**
+     * 返回创建 Run 时已经从 ChatMemory 载入的模型消息数量。
+     *
+     * <p>Runner 以该位置为边界，只把本轮新增消息投影回 ChatMemory，避免重复写入历史。</p>
+     */
+    int getConversationBaseMessageCount() {
+        Object value = state.getMetadata().get(CONVERSATION_BASE_MESSAGE_COUNT_METADATA);
+        if (value instanceof Number) return ((Number) value).intValue();
+        if (value == null) return 0;
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    /** 将本次 Run 绑定到业务会话；绑定信息随 Snapshot 持久化。 */
+    void bindConversation(String conversationId, int baseMessageCount) {
+        if (!StringUtil.hasText(conversationId)) {
+            throw new IllegalArgumentException("conversationId must not be blank");
+        }
+        if (baseMessageCount < 0) {
+            throw new IllegalArgumentException("baseMessageCount must not be negative");
+        }
+        state.putMetadata(CONVERSATION_ID_METADATA, conversationId);
+        state.putMetadata(CONVERSATION_BASE_MESSAGE_COUNT_METADATA, baseMessageCount);
     }
 
     /**

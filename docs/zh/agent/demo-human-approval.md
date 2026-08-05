@@ -7,7 +7,9 @@ description: 构建高风险工具审批流程，并通过 submitResume 和 Work
 
 ## 概述
 
-本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Snapshot 并等待人工批准；审批服务调用 `submitResume` 保存恢复后的 Run；后台 Worker 使用另一个 Runner 领取原 Run 并执行一次部署。
+本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Snapshot 并等待人工批准；
+ChatMemory 同时出现待处理审批消息；审批服务调用 `submitResume` 后 CAS 更新原消息；后台 Worker 使用
+另一个 Runner 领取原 Run 并执行一次部署。
 
 完整源码位于 `demos/agent-demo/src/main/java/com/agentsflex/demo/agent/HumanApprovalAgentDemo.java`。
 
@@ -58,8 +60,19 @@ Agent agent = Agent.builder("release-agent")
 
 ## 执行到审批点
 
+两个 Runner 共享 RunStore、AgentLoader 和业务 ChatMemory：
+
 ```java
-AgentRun waiting = firstRunner.run(agent, "发布 order-api 2.4.0");
+AgentRunner firstRunner = AgentRunner.builder()
+    .runStore(runStore)
+    .agentLoader(agentLoader)
+    .chatMemoryProvider(id -> chatMemory)
+    .build();
+```
+
+```java
+AgentRun waiting = firstRunner.run(
+    agent, "release-conversation-1", "发布 order-api 2.4.0");
 
 if (waiting.getStatus() != AgentRunStatus.WAITING_FOR_APPROVAL) {
     throw new IllegalStateException("expected approval");
@@ -69,7 +82,9 @@ if (deployments.get() != 0) {
 }
 ```
 
-此时模型返回的 `deploy_service` ToolCall 已在 Snapshot 的 `pendingToolCalls` 中。页面可从 Suspension 获取 correlationId、message 和 metadata，并从 pending 调用展示经过脱敏的参数。
+此时模型返回的 `deploy_service` ToolCall 已在 Snapshot 的 `pendingToolCalls` 中。页面通过
+`chatMemory.getMessages(...)` 读取 `AgentActionMessage`；其状态为 `PENDING`，但
+`getModelMessages(...)` 不会返回这条页面消息。
 
 ## 提交审批结果
 
@@ -82,7 +97,9 @@ AgentResumeCommand approval = AgentResumeCommand.approveTool(callId)
 secondRunner.submitResume(waiting.getId(), approval);
 ```
 
-`submitResume` 只将 Run 保存为可运行状态，不会在审批 HTTP 请求中执行部署。生产环境应先由审批业务保存唯一事件 ID 并完成幂等消费，再调用该方法。
+`submitResume` 只将 Run 保存为可运行状态，不会在审批 HTTP 请求中执行部署。成功后，原
+`AgentActionMessage` 通过 expectedVersion CAS 更新为 `APPROVED`，`getActions()` 返回空列表，页面
+无需额外关联一条结果消息。生产环境应先由审批业务保存唯一事件 ID 并完成幂等消费，再调用该方法。
 
 ## Worker 恢复
 

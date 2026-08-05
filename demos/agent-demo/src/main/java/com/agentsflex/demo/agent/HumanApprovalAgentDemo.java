@@ -15,9 +15,12 @@ import com.agentsflex.agent.AgentRunner;
 import com.agentsflex.agent.AgentWorker;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.message.AgentActionMessage;
 import com.agentsflex.agent.store.InMemoryAgentRunStore;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
+import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -88,16 +91,25 @@ public final class HumanApprovalAgentDemo {
         // 真实多进程部署应将 Store 替换为生产实现，并由业务 AgentLoader 从配置表组装 Agent。
         InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
         InMemoryAgentLoader agentLoader = new InMemoryAgentLoader(agent);
+        DefaultChatMemory chatMemory = new DefaultChatMemory("release-conversation-1");
         List<AgentEvent> events = new java.util.ArrayList<>();
-        AgentRunner firstRunner = new AgentRunner(runStore, agentLoader)
+        AgentRunner firstRunner = AgentRunner.builder()
+            .runStore(runStore)
+            .agentLoader(agentLoader)
+            .chatMemoryProvider(id -> chatMemory)
+            .build()
             .addEventListener(events::add);
         // run() 会执行到终态或阻塞态；遇到审批点时返回 WAITING_FOR_APPROVAL。
-        AgentRun waiting = firstRunner.run(agent, "发布 order-api 2.4.0");
+        AgentRun waiting = firstRunner.run(agent, "release-conversation-1",
+            "发布 order-api 2.4.0");
 
         DemoSupport.printRun(waiting);
         DemoSupport.require(waiting.getStatus() == AgentRunStatus.WAITING_FOR_APPROVAL,
             "高风险工具执行前应暂停");
         DemoSupport.require(deployments.get() == 0, "审批前不能产生部署副作用");
+        DemoSupport.require(actionMessage(chatMemory).getStatus()
+                == AgentActionMessage.Status.PENDING,
+            "ChatMemory 中应生成待处理审批消息");
 
         // pending ToolCall 已在审批前持久化。恢复时不会重新调用模型生成部署参数，
         // Runner 会从 Snapshot 指定版本的 Agent 中取得同名工具。
@@ -112,10 +124,18 @@ public final class HumanApprovalAgentDemo {
             .withMetadata("approverId", "admin-1001")
             .withMetadata("approvalSource", "release-console");
 
-        AgentRunner secondRunner = new AgentRunner(runStore, agentLoader)
+        AgentRunner secondRunner = AgentRunner.builder()
+            .runStore(runStore)
+            .agentLoader(agentLoader)
+            .chatMemoryProvider(id -> chatMemory)
+            .build()
             .addEventListener(events::add);
         // 业务系统负责可靠保存和幂等消费审批结果，这里只把 Run 恢复为可运行状态。
         secondRunner.submitResume(waiting.getId(), approval);
+        AgentActionMessage approved = actionMessage(chatMemory);
+        DemoSupport.require(approved.getStatus() == AgentActionMessage.Status.APPROVED,
+            "审批后应 CAS 更新原审批消息");
+        DemoSupport.require(approved.getActions().isEmpty(), "终态审批消息不应再显示按钮");
         List<AgentRun> processed;
         try (AgentWorker worker = new AgentWorker("release-worker-01", secondRunner, 30_000)) {
             // Worker 通过 Run Lease 领取恢复后的任务。
@@ -139,5 +159,14 @@ public final class HumanApprovalAgentDemo {
         for (AgentEvent event : events) {
             System.out.println("  " + event.getSequence() + " " + event.getType());
         }
+    }
+
+    private static AgentActionMessage actionMessage(DefaultChatMemory memory) {
+        for (Message message : memory.getMessages(Integer.MAX_VALUE)) {
+            if (message instanceof AgentActionMessage) {
+                return (AgentActionMessage) message;
+            }
+        }
+        throw new IllegalStateException("AgentActionMessage not found");
     }
 }

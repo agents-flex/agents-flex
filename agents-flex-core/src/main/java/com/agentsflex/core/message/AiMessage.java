@@ -494,12 +494,7 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
             }
         }
 
-        // Metadata
-        if (this.metadataMap != null) {
-            copy.metadataMap = new HashMap<>(this.metadataMap);
-        }
-
-        return copy;
+        return copyMessageStateTo(copy);
     }
 
     @SuppressWarnings("unchecked")

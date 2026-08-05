@@ -73,7 +73,21 @@ runner.submitResume(
 
 ## 用户体验
 
-暂停接口应向前端返回 Run ID、状态、Suspension message、correlationId 和必要的安全元数据。不要直接展示模型原始内部内容或敏感工具参数。恢复 API 应鉴权，并把审批人、渠道、理由写入 `AgentResumeCommand` metadata 和业务审计记录。
+配置 `chatMemoryProvider` 后，工具审批暂停会在业务 ChatMemory 中生成
+`AgentActionMessage`。它包含稳定 messageId、runId、actionId、状态和页面可用操作，并且
+`modelVisible=false`，因此不会发送给模型或占用模型消息窗口。
+
+页面读取 `ChatMemory.getMessages()` 渲染完整时间线：`PENDING` 时显示批准/拒绝按钮，终态时
+`getActions()` 为空。用户提交决定后，Runner 使用 expectedVersion CAS 更新原消息为 `APPROVED` 或
+`REJECTED`，不删除消息，也不额外追加一条结果消息。页面模型保持简单，并发审批也不会用旧版本覆盖
+终态。
+
+`AgentActionMessage` 是页面当前状态，不是执行授权依据，也不是审计日志。恢复 API 必须继续鉴权并调用
+`resume` 或 `submitResume`，由当前 `AgentSuspension` 校验 actionId。审批人、渠道、理由应写入
+`AgentResumeCommand` metadata；完整审计由业务系统通过 `AgentEventListener` 保存。
+
+未配置 Provider 时，暂停接口仍可直接向前端返回 Run ID、状态、Suspension message、correlationId
+和必要的安全元数据。不要直接展示模型原始内部内容或敏感工具参数。
 
 ## 不应做的事
 

@@ -130,19 +130,26 @@ Agent limited = Agent.builder("weather-assistant")
 
 ## 持续对话
 
-一个 Run 对应一个任务，不应把已完成 Run 直接当成下一轮对话。持续对话的 ID 和 `ChatMemory` 由业务系统维护，每轮把历史消息传给 Runner：
+一个 Run 对应一个任务，不应把已完成 Run 直接当成下一轮对话。持续对话的 ID 和 `ChatMemory` 仍由
+业务系统维护；推荐通过 Runner 的可选 Provider 接入：
 
 ```java
-ChatMemory memory = loadMemory("session-1001");
-AgentRun first = runner.run(agent,
-    memory.getMessages(Integer.MAX_VALUE), new UserMessage("我叫小明"));
-saveHistory(memory, first.getConversationHistory());
+AgentRunner runner = AgentRunner.builder()
+    .runStore(runStore)
+    .agentLoader(agentLoader)
+    .chatMemoryProvider(id -> loadMemory(id))
+    .build();
 
-AgentRun second = runner.run(agent,
-    memory.getMessages(Integer.MAX_VALUE), new UserMessage("我叫什么？"));
+AgentRun first = runner.run(agent, "session-1001", "我叫小明");
+AgentRun second = runner.run(agent, "session-1001", "我叫什么？");
 ```
 
-每一轮创建新的 `AgentRun`。业务系统负责回写 `getConversationHistory()`、防止同一会话并发开始两轮，并保存尚未结束的 runId。如果某轮处于阻塞状态，应按该 runId 恢复原 Run，而不是开始新一轮。
+Runner 使用 `getModelMessages(maxAttachedMessages)` 分页读取最近历史，并在 Snapshot 保存后幂等回写
+本轮消息。页面读取 `getMessages()` 可以同时看到对话消息和审批操作消息。不配置 Provider 时仍可显式
+传入历史并自行回写 `getConversationHistory()`。
+
+每一轮创建新的 `AgentRun`。业务系统负责防止同一会话并发开始两轮，并保存尚未结束的 runId。如果
+某轮处于阻塞状态，应按该 runId 恢复原 Run，而不是开始新一轮。
 
 ## 下一步
 

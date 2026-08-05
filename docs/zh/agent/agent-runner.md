@@ -100,10 +100,13 @@ flowchart TD
 AgentRunner runner = AgentRunner.builder()
     .runStore(runStore)
     .agentLoader(agentLoader)
+    .chatMemoryProvider(conversationId -> loadChatMemory(conversationId)) // 可选
     .build();
 ```
 
-Run Store 和 AgentLoader 未提供时使用内存实现。生产环境的替换要求见 [Store 持久化](./store)。
+Run Store 和 AgentLoader 未提供时使用内存实现。`chatMemoryProvider` 是可选能力；不需要业务会话时无需
+理解或配置它，原有 `run(agent, message)` 与显式传入历史消息的 API 保持不变。生产环境的 Store 替换
+要求见 [Store 持久化](./store)。
 
 ## 三组执行入口
 
@@ -169,12 +172,33 @@ AgentRun cancelled = runner.requestCancellation(runId);
 
 ## 业务会话入口
 
+需要让页面时间线与 Agent 长任务自动衔接时，可以配置 ChatMemory Provider：
+
+```java
+AgentRunner runner = AgentRunner.builder()
+    .runStore(runStore)
+    .agentLoader(agentLoader)
+    .chatMemoryProvider(conversationId -> chatMemoryRepository.load(conversationId))
+    .build();
+
+AgentRun run = runner.run(agent, conversationId,
+    new UserMessage("继续上一个问题"));
+```
+
+Runner 会从 `ChatMemory.getModelMessages(agent.getMaxAttachedMessages())` 分页读取最近的模型可见历史，
+不会把完整业务会话复制进 Run。Snapshot 成功保存后，再把本轮新增消息幂等投影到 ChatMemory；恢复
+Run 时也会重试投影。ChatMemory 写入失败不会把已经正确保存的 Run 改成失败，`AgentRunStore` 始终是
+执行状态的事实来源。
+
+不配置 Provider 时，仍可显式传入历史：
+
 ```java
 AgentRun run = runner.run(agent, history,
     new UserMessage("继续上一个问题"));
 ```
 
-Runner 复制业务系统传入的历史，不会修改外部 ChatMemory，也不维护 conversationId 或 activeRunId。业务系统应在 Run 完成后保存 `getConversationHistory()`；Run 阻塞时保存其 ID，并通过 `resume(runId, command)` 恢复。
+该入口只复制传入的历史，不会修改外部 ChatMemory。两种模式都由业务系统维护 conversationId、会话与
+当前未结束 runId 的关系，并防止同一会话并发开始互相冲突的 Run。
 
 ## 外部恢复边界
 

@@ -76,6 +76,9 @@ runner.addEventListener(event -> kafkaPublisher.publish(event));
 
 需要可靠审计、计费或跨进程消费时，应由业务系统使用有界队列、事务 Outbox 或消息平台，并自行定义持久化 ID、顺序、重试和消费游标。不要把 Framework 的进程内 sequence 当作可靠游标。
 
+ChatMemory 中的 `AgentActionMessage` 只表示页面当前审批状态；CAS 更新原消息不会保留每次竞争写入的
+历史。因此合规审计不能依赖 ChatMemory，仍应由 Listener 或审批业务自己的 Outbox 保存完整事件。
+
 ## 与 Middleware 的区别
 
 | 扩展 | 作用 | 能否影响执行 |

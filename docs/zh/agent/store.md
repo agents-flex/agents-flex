@@ -26,6 +26,9 @@ AgentRunner runner = AgentRunner.builder()
 
 多实例部署必须共享 Run Store 和 AgentLoader。事件持久化不属于 Framework Store，由业务系统通过 `AgentEventListener` 接入自己的审计库、消息平台或 Outbox。
 
+业务需要统一对话时间线时，可另外配置共享的持久化 `ChatMemory`。它保存消息与审批页面状态，不替代
+Run Store；Runner 始终先提交 Snapshot，再幂等投影 ChatMemory，投影失败会在后续保存或恢复时补偿。
+
 从旧版本升级时，原 JDBC events/event_sequences、artifacts、commands 表以及对应 Redis 键不再被 Framework 读写。Schema 初始化不会自动删除历史数据；应由业务确认归档或迁移完成后自行清理。
 
 ## AgentRunStore 契约

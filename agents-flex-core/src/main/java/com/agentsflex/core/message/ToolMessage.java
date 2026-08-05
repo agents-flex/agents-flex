@@ -15,8 +15,6 @@
  */
 package com.agentsflex.core.message;
 
-import java.util.HashMap;
-
 public class ToolMessage extends AbstractTextMessage<ToolMessage> {
 
     private String toolCallId;
@@ -49,9 +47,6 @@ public class ToolMessage extends AbstractTextMessage<ToolMessage> {
         ToolMessage copy = new ToolMessage();
         copy.content = this.content;
         copy.toolCallId = this.toolCallId;
-        if (this.metadataMap != null) {
-            copy.metadataMap = new HashMap<>(this.metadataMap);
-        }
-        return copy;
+        return copyMessageStateTo(copy);
     }
 }

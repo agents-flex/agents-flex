@@ -79,16 +79,22 @@ String conversationId = "console-" + UUID.randomUUID();
 ChatMemory memory = new DefaultChatMemory(conversationId);
 
 AgentRunOptions options = AgentRunOptions.builder()
-    .metadata("conversationId", conversationId)
     .metadata("requestId", UUID.randomUUID().toString())
     .metadata("userId", "console-user")
     .build();
 
-AgentRun run = runner.run(agent,
-    memory.getMessages(Integer.MAX_VALUE), new UserMessage(input), options);
+AgentRunner runner = AgentRunner.builder()
+    .runStore(runStore)
+    .agentLoader(agentLoader)
+    .chatMemoryProvider(id -> memory)
+    .build();
+
+AgentRun run = runner.run(agent, conversationId, new UserMessage(input), options);
 ```
 
-ChatMemory 管理跨轮消息历史；metadata 保存当前 Run 恢复后仍需使用的业务标识。Run 终止后，控制台使用 `getConversationHistory()` 更新 Memory。Runner 不持有或修改这两个业务对象。
+ChatMemory 管理跨轮完整时间线；Runner 通过 Provider 读取模型消息，并在 Snapshot 保存后幂等投影本轮
+消息。页面使用 `getMessages()`，模型使用 `getModelMessages()`。metadata 只需保存当前 Run 恢复后仍需
+使用的其他业务标识。
 
 ## 处理阻塞状态
 

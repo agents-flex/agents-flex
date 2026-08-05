@@ -15,8 +15,6 @@
  */
 package com.agentsflex.core.message;
 
-import java.util.HashMap;
-
 public class SystemMessage extends AbstractTextMessage<SystemMessage> {
 
     public SystemMessage() {
@@ -47,9 +45,6 @@ public class SystemMessage extends AbstractTextMessage<SystemMessage> {
     public SystemMessage copy() {
         SystemMessage copy = new SystemMessage();
         copy.content = this.content;
-        if (this.metadataMap != null) {
-            copy.metadataMap = new HashMap<>(this.metadataMap);
-        }
-        return copy;
+        return copyMessageStateTo(copy);
     }
 }

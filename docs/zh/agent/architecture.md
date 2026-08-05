@@ -13,14 +13,16 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
 
 ```text
 应用入口 / 审批系统 / 调度系统 / UI
-                |
-        AgentRunner / AgentWorker
-        |       |       |
-   AgentLoader  Middleware  AgentEventListener
-        |       |
-     Agent   AgentRun  ChatModel + Tool
-                |
-               RunStore
+          |                         |
+    ChatMemory                AgentEventListener
+          |                         |
+          +---- AgentRunner / AgentWorker
+                       |       |
+                  AgentLoader  Middleware
+                       |       |
+                    Agent   AgentRun  ChatModel + Tool
+                               |
+                            RunStore
 ```
 
 ### 定义平面
@@ -37,7 +39,9 @@ agents-flex-agent 采用“不可变定义 + 可持久化运行状态 + 无状�
 
 ### 持久化平面
 
-Run Snapshot 是 Framework 的持久化事实来源。外部输入和业务事件历史由应用写入自己的数据库、消息平台或 Outbox。
+Run Snapshot 是 Framework 执行状态的事实来源。可选 ChatMemory 保存页面完整时间线，并通过模型消息
+视图隔离 UI-only 消息；它是可补偿的展示投影，不参与执行状态判定。外部输入和业务事件历史由应用写入
+自己的数据库、消息平台或 Outbox。
 
 ### 观察平面
 

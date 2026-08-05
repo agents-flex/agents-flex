@@ -18,9 +18,16 @@ package com.agentsflex.core.memory;
 import com.agentsflex.core.message.Message;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * 基于进程内 List 的 ChatMemory，适合测试和单实例临时会话。
+ *
+ * <p>全部读写在实例内同步，支持稳定消息 ID 的幂等追加和基于版本的 CAS 更新；进程退出后内容丢失，
+ * 生产环境应替换为数据库或缓存实现。</p>
+ */
 public class DefaultChatMemory implements ChatMemory {
     private final Object id;
     private final List<Message> messages = new ArrayList<>();
@@ -39,29 +46,69 @@ public class DefaultChatMemory implements ChatMemory {
     }
 
     @Override
-    public List<Message> getMessages(int count) {
-        if (count <= 0) {
-            throw new IllegalArgumentException("count must be greater than 0");
-        }
-        if (count >= messages.size()) {
-            // 返回副本，避免外部修改污染内部状态
-            return new ArrayList<>(messages);
-        } else {
-            // 同样返回副本：subList() 返回的是原列表视图，
-            // 调用方对其 set/add/remove 会直接修改内部 messages
-            return new ArrayList<>(messages.subList(messages.size() - count, messages.size()));
-        }
+    public synchronized List<Message> getMessages(int count) {
+        return getMessages(0, count);
     }
 
     @Override
-    public void addMessage(Message message) {
+    public synchronized List<Message> getMessages(int offset, int count) {
+        if (offset < 0) {
+            throw new IllegalArgumentException("offset must not be negative");
+        }
+        if (count <= 0) {
+            throw new IllegalArgumentException("count must be greater than 0");
+        }
+        if (offset >= messages.size()) return Collections.emptyList();
+        int end = messages.size() - offset;
+        int start = Math.max(0, end - count);
+        return new ArrayList<>(messages.subList(start, end));
+    }
+
+    @Override
+    public synchronized Message getMessage(String messageId) {
+        if (messageId == null || messageId.trim().isEmpty()) return null;
+        for (Message message : messages) {
+            if (message != null && messageId.equals(message.getMessageId())) return message;
+        }
+        return null;
+    }
+
+    @Override
+    public synchronized void addMessage(Message message) {
         messages.add(message);
     }
 
     @Override
-    public void clear() {
-        messages.clear();
+    public synchronized boolean addMessageIfAbsent(Message message) {
+        if (message == null) {
+            throw new IllegalArgumentException("message must not be null");
+        }
+        String messageId = message.getMessageId();
+        if (messageId == null || messageId.trim().isEmpty()) {
+            throw new IllegalArgumentException("messageId must not be blank");
+        }
+        if (getMessage(messageId) != null) return false;
+        messages.add(message);
+        return true;
     }
 
+    @Override
+    public synchronized boolean updateMessage(Message message, long expectedVersion) {
+        if (message == null || message.getMessageId() == null) return false;
+        for (int index = 0; index < messages.size(); index++) {
+            Message existing = messages.get(index);
+            if (message.getMessageId().equals(existing.getMessageId())
+                && existing.getVersion() == expectedVersion) {
+                message.setVersion(expectedVersion + 1);
+                messages.set(index, message);
+                return true;
+            }
+        }
+        return false;
+    }
 
+    @Override
+    public synchronized void clear() {
+        messages.clear();
+    }
 }

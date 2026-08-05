@@ -11,14 +11,24 @@ description: 理解单次 Agent 运行的状态、阶段、消息、计数、元
 
 ## Run 与业务会话
 
-一个 Run 对应一个任务或一轮对话。Framework 不维护会话容器；业务系统维护 conversationId 和 `ChatMemory`，并为每一轮创建独立 Run。
+一个 Run 对应一个任务或一轮对话，业务系统仍负责维护 conversationId、`ChatMemory` 和当前未结束的
+runId。Framework 不提供新的 Conversation 容器；需要融合时只在 Runner 上配置可选的 ChatMemory
+Provider：
 
 ```java
-List<Message> history = memory.getMessages(Integer.MAX_VALUE);
-AgentRun run = runner.run(agent, history, new UserMessage("继续"));
+AgentRunner runner = AgentRunner.builder()
+    .chatMemoryProvider(id -> loadMemory(id))
+    .build();
+
+AgentRun run = runner.run(agent, "conversation-1001", new UserMessage("继续"));
 ```
 
-Run 完成后，业务系统可用 `run.getConversationHistory()` 更新自己的 ChatMemory。传入历史里的 `SystemMessage` 会被忽略，系统指令始终以当前 Agent 定义为准。
+绑定的 conversationId 会作为 Run metadata 随 Snapshot 恢复。Runner 按 `maxAttachedMessages` 分页读取
+最近的模型可见历史并投影本轮新增消息，不会把完整业务会话复制进 Run，也不会替业务系统创建会话、
+选择当前 Run 或清理历史。传入历史里的 `SystemMessage` 会被忽略，系统指令始终以当前 Agent 定义为准。
+
+不使用融合模式时，仍可调用 `runner.run(agent, history, userMessage)`，并在完成后读取
+`run.getConversationHistory()` 自行回写。
 
 ## 状态
 
@@ -68,7 +78,9 @@ AgentRun run = runner.run(agent, userMessage);
 List<Message> history = run.getConversationHistory();
 ```
 
-`getConversationHistory()` 返回排除系统消息后的副本，适合保存到业务会话表；`getPrompt()` 暴露运行 Prompt，通常只应由扩展组件读取。
+`getConversationHistory()` 返回排除系统消息后的模型协议消息副本，适合手工集成会话存储；
+`getConversationId()` 返回可选融合模式绑定的业务会话 ID。`getPrompt()` 暴露运行 Prompt，通常只应由
+扩展组件读取。
 
 ## 元数据与流式调用
 

@@ -15,16 +15,32 @@ Agent 的上下文同时面对两个目标：保留足够历史以正确决策�
 - `AgentRun` 的 `MemoryPrompt`：本次任务的协议消息和系统指令。
 - 模型调用 Prompt：依据 `maxAttachedMessages` 从 Run Prompt 生成的当前视图。
 
-窗口策略只影响一次模型调用视图，不会删除 Run、Snapshot 或业务 `ChatMemory` 中的原始消息。
+`ChatMemory.getMessages(count)` 返回页面使用的完整时间线；`getModelMessages(count)` 先排除
+`modelVisible=false` 的 UI 消息，再对模型消息应用数量限制。窗口策略只影响一次模型调用视图，不会
+删除 Run、Snapshot 或业务 `ChatMemory` 中的原始消息。
 
 ## 业务会话管理
 
 ```java
-List<Message> history = persistedMemory.getMessages(Integer.MAX_VALUE);
-AgentRun run = runner.run(agent, history, new UserMessage("继续处理"));
+AgentRunner runner = AgentRunner.builder()
+    .chatMemoryProvider(id -> loadMemory(id))
+    .build();
+AgentRun run = runner.run(agent, conversationId, new UserMessage("继续处理"));
 ```
 
-应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 runId。Run 完成后使用 `getConversationHistory()` 更新 Memory；同一业务会话不应并发开始两轮；阻塞时必须按已保存的 runId 恢复原 Run，完成后再开始下一轮。Runner 不会直接修改业务 ChatMemory。
+应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 runId。同一业务会话不应并发开始两轮；
+阻塞时必须按已保存的 runId 恢复原 Run，完成后再开始下一轮。Provider 未配置时，应用也可以继续显式
+传入历史并自行回写。
+
+自定义持久化 `ChatMemory` 应实现以下查询和写入语义：
+
+- `getMessages(offset, count)` 从最新消息向前分页，页内仍按从旧到新排列。
+- `getMessage(messageId)` 使用主键或索引读取单条消息。
+- `addMessageIfAbsent` 按稳定 `messageId` 原子幂等追加。
+- `updateMessage(message, expectedVersion)` 按消息 ID 和版本 CAS 更新。
+
+接口为兼容已有实现提供默认分页和查询逻辑，但数据库实现应覆盖它们，避免逐步扩大尾部查询。审批消息
+需要持久化更新时必须覆盖 `updateMessage`。Runner 不会调用 `clear()`。
 
 ## 模型读取窗口
 
@@ -40,7 +56,7 @@ Agent agent = Agent.builder("support-agent")
 ## 业务侧摘要
 
 ```java
-List<Message> history = persistedMemory.getMessages(Integer.MAX_VALUE);
+List<Message> history = loadModelMessagesByWindow(persistedMemory);
 List<Message> inputHistory = history;
 if (history.size() > 40) {
     List<Message> older = history.subList(0, history.size() - 12);
@@ -53,6 +69,9 @@ if (history.size() > 40) {
 
 AgentRun run = runner.run(agent, inputHistory, new UserMessage("继续处理"));
 ```
+
+需要扫描很长的业务历史做摘要时，`loadModelMessagesByWindow` 应循环调用
+`getMessages(offset, pageSize)`，边读取边摘要或写入临时存储，不要用 `Integer.MAX_VALUE` 构造全量 List。
 
 摘要逻辑只读取业务历史并构造传给 Runner 的新列表，不应对数据库型 `ChatMemory` 调用 `clear()`。Runner 会复制传入的消息，因此也不会直接修改 `persistedMemory`。业务实现还应避免从一组 ToolCall/ToolMessage 中间截断，并在摘要失败时继续保留原历史。
 

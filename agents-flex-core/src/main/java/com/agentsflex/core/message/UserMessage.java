@@ -20,7 +20,6 @@ import com.agentsflex.core.util.ImageUtil;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public class UserMessage extends AbstractTextMessage<UserMessage> {
@@ -155,10 +154,6 @@ public class UserMessage extends AbstractTextMessage<UserMessage> {
         if (this.imageUrls != null) copy.imageUrls = new ArrayList<>(this.imageUrls);
         if (this.fileUrls != null) copy.fileUrls = new ArrayList<>(this.fileUrls);
 
-        if (this.metadataMap != null) {
-            copy.metadataMap = new HashMap<>(this.metadataMap);
-        }
-
-        return copy;
+        return copyMessageStateTo(copy);
     }
 }

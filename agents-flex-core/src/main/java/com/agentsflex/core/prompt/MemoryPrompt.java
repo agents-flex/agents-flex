@@ -147,7 +147,7 @@ public class MemoryPrompt extends Prompt {
 
     @Override
     public List<Message> getMessages() {
-        List<Message> messages = memory.getMessages(maxAttachedMessageCount);
+        List<Message> messages = memory.getModelMessages(maxAttachedMessageCount);
         if (messages == null) {
             messages = new ArrayList<>();
         }
