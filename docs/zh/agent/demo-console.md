@@ -117,8 +117,8 @@ AgentTurn turn = runner.run(agent.getId(), conversationId, new UserMessage(input
 ```
 
 ChatMemory 管理跨轮完整时间线；Runner 通过 Provider 读取模型消息，并在 Snapshot 保存后幂等投影本轮
-消息。页面使用 `getMessages()`，模型使用 `getModelMessages()`。metadata 只需保存当前 Turn 恢复后仍需
-使用的其他业务标识。
+消息。页面可以使用 `getMessages(50)` 读取最近时间线，模型视图由 Runner 调用
+`getModelMessages(maxAttachedMessages)` 获取。metadata 只需保存当前 Turn 恢复后仍需使用的其他业务标识。
 
 ## 处理阻塞状态
 

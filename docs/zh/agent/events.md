@@ -63,7 +63,7 @@ Runner 会把受控的 `AgentToolContext` 放入工具执行上下文。工具�
 
 ```java
 AgentToolContext context = AgentToolContext.current();
-context.emitProgress("uploading", Map.of("percent", 50));
+context.emitProgress("uploading", Collections.singletonMap("percent", 50));
 ```
 
 进度事件只用于观察，不改变工具的最终结果。长时间运行的工具还可以调用

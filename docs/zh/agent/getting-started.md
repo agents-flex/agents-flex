@@ -126,7 +126,8 @@ Agent limited = Agent.builder("weather-assistant")
     .build();
 ```
 
-也可以用 `AgentTurnOptions.executionPolicy(...)` 只覆盖某一次运行，通过 `metadata(...)` 附加可持久化业务信息，并用 `streaming(...)` 控制当前进程内的模型调用方式。
+也可以用 `AgentTurnOptions.builder().executionPolicy(...)` 只覆盖某一次运行，通过 `metadata(...)`
+附加可持久化业务信息，并用 `streaming(...)` 控制当前进程内的模型调用方式。
 
 ## 持续对话
 
@@ -146,7 +147,7 @@ AgentTurn second = runner.run(agent.getId(), "session-1001", "我叫什么？");
 
 配置 `AgentLoader` 后，Runner 会按 Agent ID 加载当前生效版本；配置 `ChatMemoryProvider` 后，Runner 使用
 `getModelMessages(maxAttachedMessages)` 分页读取最近历史，并在 Snapshot 保存后幂等回写本轮消息。
-页面读取 `getMessages()` 可以同时看到对话消息和审批操作消息。不配置 Provider 时仍可传入完整 Agent
+页面读取 `getMessages(count)` 可以同时看到对话消息和审批操作消息。不配置 Provider 时仍可传入完整 Agent
 和显式历史，并自行回写 `getConversationHistory()`。
 
 每一轮创建新的 `AgentTurn`。业务系统负责防止同一会话并发开始两轮，并保存尚未结束的 turnId。如果

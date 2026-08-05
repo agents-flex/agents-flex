@@ -30,7 +30,9 @@ AgentTurn blocked = runner.suspend(
     AgentSuspension.userInput("请提供订单号"));
 ```
 
-Runner 会保存 Snapshot、发布暂停事件并返回 `BLOCKED`。普通业务代码不应只修改 Turn 状态而跳过这些步骤。
+Runner 会保存 Snapshot、发布暂停事件，并根据 Suspension 类型进入 `WAITING_FOR_USER`、
+`WAITING_FOR_APPROVAL`、`WAITING_FOR_CHILD` 或 `RETRY_SCHEDULED`。普通业务代码不应只修改 Turn
+状态而跳过这些步骤。
 
 ## 同步恢复
 
@@ -77,7 +79,7 @@ runner.submitResume(
 `AgentActionMessage`。它包含稳定 messageId、turnId、actionId、状态和页面可用操作，并且
 `modelVisible=false`，因此不会发送给模型或占用模型消息窗口。
 
-页面读取 `ChatMemory.getMessages()` 渲染完整时间线：`PENDING` 时显示批准/拒绝按钮，终态时
+页面使用 `ChatMemory.getMessages(count)` 读取时间线窗口：`PENDING` 时显示批准/拒绝按钮，终态时
 `getActions()` 为空。用户提交决定后，Runner 使用 expectedVersion CAS 更新原消息为 `APPROVED` 或
 `REJECTED`，不删除消息，也不额外追加一条结果消息。页面模型保持简单，并发审批也不会用旧版本覆盖
 终态。

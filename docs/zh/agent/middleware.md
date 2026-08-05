@@ -86,7 +86,9 @@ metadata 会随 Snapshot 持久化，因此 Worker 恢复后仍可读取租户�
 
 ## 临时修改 Prompt
 
-`AgentMiddlewareContext.setPrompt(...)` 只替换当前责任链中的模型 Prompt，不直接替换 Turn 的持久化 Prompt。这适合添加一次性的路由提示或脱敏视图；需要跨恢复保存的消息修改，应使用 Context Manager 或 Turn 的受控状态。
+`AgentMiddlewareContext.setPrompt(...)` 只替换当前责任链中的模型 Prompt，不直接替换 Turn 的持久化
+Prompt。这适合添加一次性的路由提示或脱敏视图。需要跨恢复保留的业务信息应写入可序列化 metadata；
+需要永久整理会话历史时，由业务系统读取 `ChatMemory` 后构造新的历史窗口，再创建 Turn。
 
 ## 与 ToolInterceptor 的关系
 

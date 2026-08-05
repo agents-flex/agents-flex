@@ -21,7 +21,7 @@ Agent agent = Agent.builder("order-assistant")
     .instructions("先查询订单事实；任何退款操作都必须使用工具。")
     .chatModel(chatModel)
     .chatOptions(chatOptions)
-    .tools(List.of(queryOrder, refundOrder))
+    .tools(Arrays.asList(queryOrder, refundOrder))
     .build();
 ```
 
@@ -39,7 +39,6 @@ Agent agent = Agent.builder("order-assistant")
 | `executionPolicy` | 迭代、重试、预算 | 有效策略会保存 |
 | `planningPolicy` | 自动规划及委派约束 | 计划状态保存，定义重装配 |
 | `maxAttachedMessages` | 单次模型调用最多附加的历史消息数 | 否，恢复时随 Agent 定义重装配 |
-| `contextManager` | 模型调用前整理消息 | 处理结果进入快照 |
 | `middlewares` | 包装 step、模型和工具 | 否 |
 | `attributes` | 平台扩展元数据 | 否 |
 
@@ -63,7 +62,8 @@ Agent agent = Agent.builder("order-assistant")
     .build();
 ```
 
-规划开启后，框架会注入保留工具名 `agent_create_plan` 和 `agent_update_plan`；业务工具不能使用这两个名称。
+规划开启后，框架会注入保留工具名 `create_task_plan`；允许重规划时还会注入
+`update_task_plan`。业务工具不能使用这些名称。
 
 ## 策略组合
 

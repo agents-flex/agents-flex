@@ -20,7 +20,7 @@ flowchart TD
     Goal["用户提交复杂目标"] --> RootModel["根 Agent 调用模型"]
     RootModel --> Decision{"模型是否需要规划？"}
     Decision -->|"否"| Direct["直接回答并完成根 Turn"]
-    Decision -->|"是"| PlanCall["调用 agent_create_plan"]
+    Decision -->|"是"| PlanCall["调用 create_task_plan"]
 
     PlanCall --> Validate["校验 goal、任务字段、maxTasks<br/>委派白名单和规划深度"]
     Validate -->|"不通过"| PlanFailure["按统一失败 / 重试策略处理"]
@@ -47,7 +47,7 @@ flowchart TD
     FailurePolicy -->|"允许重规划"| Replanning["计划进入 REPLANNING"]
     FailurePolicy -->|"CONTINUE 且不能重规划"| SaveFailure["记录失败并继续原计划"]
 
-    Replanning --> UpdateCall["根模型调用 agent_update_plan"]
+    Replanning --> UpdateCall["根模型调用 update_task_plan"]
     UpdateCall --> ValidateUpdate["只调整未执行任务<br/>校验 revision / append / maxReplans"]
     ValidateUpdate -->|"接受"| Select
     ValidateUpdate -->|"未提交有效更新"| StopPlan
@@ -67,7 +67,7 @@ flowchart TD
 
 ### 主路径说明
 
-1. 根模型可以直接回答，也可以调用 `agent_create_plan`。调用方始终使用同一个 Runner 入口，不需要预先选择“普通模式”或“规划模式”。
+1. 根模型可以直接回答，也可以调用 `create_task_plan`。调用方始终使用同一个 Runner 入口，不需要预先选择“普通模式”或“规划模式”。
 2. Runner 接受计划后，只选择一个 `PENDING` 任务，并通过 `AgentLoader.loadActive` 装配目标 Agent。
 3. 父 Turn 的等待状态与子 Turn 的初始状态通过 `saveParentAndChild` 原子保存，避免出现孤儿子任务或永久等待的父任务。
 4. 同步调用会递归推进子 Turn；Worker 模式只推进当前持有 Lease 的 Turn，子 Turn 留给后续 Worker 独立领取。
@@ -105,8 +105,8 @@ AgentRunner runner = new AgentRunner(turnStore,
 
 开启后，Runner 向模型注入：
 
-- `agent_create_plan`：提交 goal 和 tasks。
-- `agent_update_plan`：在允许重规划时更新尚未执行的任务。
+- `create_task_plan`：提交 goal 和 tasks。
+- `update_task_plan`：在允许重规划时更新尚未执行的任务。
 
 每个任务至少包含稳定 `id`、`title` 和 `description`，可带 `expectedOutput` 与 `assignedAgentId`。Runner 校验任务数量、委派目标和修改规则后才接受计划。
 

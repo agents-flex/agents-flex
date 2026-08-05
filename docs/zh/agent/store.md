@@ -17,9 +17,59 @@ AgentRunner 使用 Turn Store 保存当前状态与 Worker Lease。内存实现�
 
 ## 配置生产 Store
 
+根据存储类型选择一个实现模块。版本应与 `agents-flex-agent` 保持一致：
+
+```xml
+<!-- JDBC 与 Redis 二选一；同时使用时也可以都引入。 -->
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-agent-store-jdbc</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-agent-store-redis</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+```
+
+### JDBC
+
+应用提供已经配置连接池的 `DataSource`。开发环境可以幂等初始化 Schema；生产环境通常应把相同 DDL
+纳入数据库迁移工具，而不是让每个实例在启动时执行：
+
+```java
+JdbcAgentStoreConfig storeConfig = JdbcAgentStoreConfig.builder(dataSource)
+    .tablePrefix("af_agent_")
+    // PostgreSQL 可使用 BYTEA；不同数据库应选择对应的二进制列类型。
+    .binaryColumnType("BLOB")
+    .build();
+
+storeConfig.schema().initialize();
+AgentTurnStore turnStore = storeConfig.turnStore();
+```
+
+### Redis
+
+可以传入 Redis URI，也可以传入应用共享的 `JedisPooled`。使用 URI 创建客户端时，应用关闭阶段应关闭
+配置对象：
+
+```java
+RedisAgentStoreConfig storeConfig = RedisAgentStoreConfig
+    .builder("redis://127.0.0.1:6379")
+    .keyPrefix("agents-flex:agent:")
+    .build();
+
+AgentTurnStore turnStore = storeConfig.turnStore();
+// 应用关闭时调用 storeConfig.close();
+```
+
+配置完成后，将同一个 Store 交给应用级 Runner：
+
 ```java
 AgentRunner runner = AgentRunner.builder()
-    .turnStore(jdbcTurnStore)
+    .turnStore(turnStore)
     .agentLoader(databaseAgentLoader)
     .build();
 ```

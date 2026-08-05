@@ -54,7 +54,9 @@ Agent agent = Agent.builder("support-agent")
     .build();
 ```
 
-默认最多附加最近 100 条历史消息；可使用 `Integer.MAX_VALUE` 读取全部历史。该参数只影响单次模型请求视图，不释放 Snapshot 存储空间。窗口按协议消息计数，不按自然语言轮次计数，包含 ToolCall 时应预留足够空间。
+默认最多附加最近 100 条历史消息。该参数只影响单次模型请求视图，不释放 Snapshot 存储空间。窗口按
+协议消息计数，不按自然语言轮次计数，包含 ToolCall 时应预留足够空间。生产环境应设置明确上限，不要
+使用 `Integer.MAX_VALUE` 请求完整历史。
 
 ## 业务侧摘要
 
