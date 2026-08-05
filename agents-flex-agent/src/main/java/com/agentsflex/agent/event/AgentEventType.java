@@ -14,7 +14,7 @@ package com.agentsflex.agent.event;
  */
 public enum AgentEventType {
     /**
-     * Turn 首次从 READY 状态进入执行流程。
+     * Turn 首次从 READY 状态进入执行流程，在该 Turn 的第一个 STEP_STARTED 之前发布。
      */
     TURN_STARTED,
     /**
@@ -25,7 +25,7 @@ public enum AgentEventType {
      * 本次 step 已结束，随后可能继续下一 step，也可能阻塞或终止。
      *
      * <p>事件 data 包含执行后的 {@code status}、{@code phase} 和本步骤产生的
-     * {@code toolMessageCount}。具体生命周期结果以 status 为准。</p>
+     * {@code toolMessageCount}。如果本步骤使 Turn 终止，对应的 Turn 终止事件在本事件之后发布。</p>
      */
     STEP_COMPLETED,
     /**
@@ -113,27 +113,27 @@ public enum AgentEventType {
      */
     RETRY_SCHEDULED,
     /**
-     * 模型调用次数达到 maxIterations，Turn 已进入对应终止状态。
+     * 模型调用次数达到 maxIterations，Turn 已进入对应终止状态；在最终 STEP_COMPLETED 后发布。
      */
     MAX_ITERATIONS_REACHED,
     /**
-     * Runner 推进次数达到 maxSteps，Turn 已进入对应终止状态。
+     * Runner 推进次数达到 maxSteps，Turn 已进入对应终止状态；在最终 STEP_COMPLETED 后发布。
      */
     MAX_STEPS_REACHED,
     /**
-     * 模型已返回不含待执行 ToolCall 的最终结果，Turn 正常结束。
+     * 模型已返回不含待执行 ToolCall 的最终结果，Turn 正常结束；这是该 Turn 的最后一个生命周期事件。
      */
     TURN_COMPLETED,
     /**
-     * Turn 因不可恢复的模型、工具或协议异常而失败，失败状态已经保存。
+     * Turn 因不可恢复的模型、工具或协议异常而失败，失败状态已经保存；在最终 STEP_COMPLETED 后发布。
      */
     TURN_FAILED,
     /**
-     * Runner 已观察到取消请求、停止推进并将 Turn 标记为已取消。
+     * Runner 已观察到取消请求、停止推进并将 Turn 标记为已取消；在最终 STEP_COMPLETED 后发布。
      */
     TURN_CANCELLED,
     /**
-     * 时间、Token 或工具调用次数达到 AgentBudget 上限，Turn 已终止。
+     * 时间、Token 或工具调用次数达到 AgentBudget 上限，Turn 已终止；在最终 STEP_COMPLETED 后发布。
      */
     BUDGET_EXCEEDED
 }

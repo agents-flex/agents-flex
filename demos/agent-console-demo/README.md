@@ -3,6 +3,7 @@
 该 Demo 使用真实的 OpenAI-compatible 大模型，在同一个控制台会话中演示：
 
 - 普通持续对话；
+- 模型按需创建顺序任务计划，并由父 Turn 汇总子任务结果；
 - 模型原生 ToolCall 和工具结果回传；
 - 高风险工具的人工批准或拒绝；
 - 阻塞 Turn 的恢复；
@@ -44,8 +45,11 @@ mvn -f demos/agent-console-demo/pom.xml exec:java
 你还记得我叫什么吗？
 上海现在几点？
 帮我创建一个高优先级登录故障工单。
+分别查询上海和东京当前时间，并比较时差给出会议建议。
 ```
 
-最后一条输入会在工具真正执行之前展示 ToolCall 参数，并等待输入 `y` 或 `n`。Runner 通过
+创建工单会在工具真正执行之前展示 ToolCall 参数，并等待输入 `y` 或 `n`。为了稳定演示规划能力，
+Demo 要求包含两个或更多独立工具调用的请求必须先调用内置规划工具；跨时区请求会顺序执行两个查询
+子 Turn，由父 Agent 比较结果并给出建议。控制台会输出计划和任务事件。Runner 通过
 `chatMemoryProvider` 分页读取模型历史，并按稳定消息 ID 增量写回本轮消息，不会清空或重写 ChatMemory。
 该 Demo 的 Turn Store 和 ChatMemory 都是进程内实现，退出程序后不会保留状态。

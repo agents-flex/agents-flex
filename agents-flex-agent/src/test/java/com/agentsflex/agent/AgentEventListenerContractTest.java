@@ -42,13 +42,30 @@ public class AgentEventListenerContractTest {
         assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
         assertTypes(events,
             AgentEventType.SNAPSHOT_SAVED,
-            AgentEventType.STEP_STARTED,
             AgentEventType.TURN_STARTED,
+            AgentEventType.STEP_STARTED,
             AgentEventType.MODEL_STARTED,
             AgentEventType.MODEL_COMPLETED,
             AgentEventType.SNAPSHOT_SAVED,
-            AgentEventType.TURN_COMPLETED,
-            AgentEventType.STEP_COMPLETED);
+            AgentEventType.STEP_COMPLETED,
+            AgentEventType.TURN_COMPLETED);
+        assertStrictSequence(events);
+    }
+
+    @Test
+    public void shouldEmitFailureAfterFinalStepCompleted() {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> { throw new IllegalArgumentException("invalid response"); });
+        List<AgentEvent> events = new ArrayList<>();
+
+        AgentTurn turn = new AgentRunner().addEventListener(events::add)
+            .run(Agent.builder("failed-events").chatModel(model).build(), "hello");
+
+        assertEquals(AgentTurnStatus.FAILED, turn.getStatus());
+        assertTrue(indexOf(events, AgentEventType.TURN_STARTED, 0)
+            < indexOf(events, AgentEventType.STEP_STARTED, 0));
+        assertTrue(indexOf(events, AgentEventType.STEP_COMPLETED, 0)
+            < indexOf(events, AgentEventType.TURN_FAILED, 0));
         assertStrictSequence(events);
     }
 

@@ -49,6 +49,11 @@ sequence 在 Runner 重建或进程重启后会重新开始，不能直接作为
 - Retry：可恢复异常的延迟重试调度。
 - Budget：时间、Token 或工具调用次数达到限制。
 
+Turn 是 Step 的生命周期容器。第一个步骤开始前发布一次 `TURN_STARTED`；每个步骤按
+`STEP_STARTED ... STEP_COMPLETED` 成对发布；正常完成、失败、取消或达到限制时，最终的 Turn 终止
+事件在最后一个 `STEP_COMPLETED` 之后发布。监听器收到 Turn 终止事件后，不会再收到该 Turn 的 Step
+事件。
+
 `SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Turn 已完成。
 
 ## 工具上报进度

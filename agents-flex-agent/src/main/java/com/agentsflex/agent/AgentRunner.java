@@ -273,7 +273,7 @@ public final class AgentRunner {
      * 加载当前生效的 Agent，并使用单次运行选项执行一轮文本请求。
      */
     public AgentTurn run(String agentId, String conversationId, String userInput,
-                        AgentTurnOptions options) {
+                         AgentTurnOptions options) {
         return run(agentId, conversationId, new UserMessage(userInput), options);
     }
 
@@ -291,7 +291,7 @@ public final class AgentRunner {
      * 实际加载到的 agentId 和 version，后续恢复仍按精确版本加载。</p>
      */
     public AgentTurn run(String agentId, String conversationId, UserMessage userMessage,
-                        AgentTurnOptions options) {
+                         AgentTurnOptions options) {
         return run(start(agentId, conversationId, userMessage, options));
     }
 
@@ -307,7 +307,7 @@ public final class AgentRunner {
      * 从业务 ChatMemory 读取会话历史，并使用单次运行选项执行一轮文本请求。
      */
     public AgentTurn run(Agent agent, String conversationId, String userInput,
-                        AgentTurnOptions options) {
+                         AgentTurnOptions options) {
         return run(agent, conversationId, new UserMessage(userInput), options);
     }
 
@@ -322,7 +322,7 @@ public final class AgentRunner {
      * 从业务 ChatMemory 读取会话历史并执行一轮结构化请求。
      */
     public AgentTurn run(Agent agent, String conversationId, UserMessage userMessage,
-                        AgentTurnOptions options) {
+                         AgentTurnOptions options) {
         return run(start(agent, conversationId, userMessage, options));
     }
 
@@ -330,7 +330,7 @@ public final class AgentRunner {
      * 使用已有会话历史和本轮结构化消息创建并执行新的 Turn。
      */
     public AgentTurn run(Agent agent, List<? extends Message> conversationHistory,
-                        UserMessage userMessage) {
+                         UserMessage userMessage) {
         return run(start(agent, conversationHistory, userMessage));
     }
 
@@ -338,7 +338,7 @@ public final class AgentRunner {
      * 使用已有会话历史、本轮结构化消息和单次运行选项创建并执行新的 Turn。
      */
     public AgentTurn run(Agent agent, List<? extends Message> conversationHistory,
-                        UserMessage userMessage, AgentTurnOptions options) {
+                         UserMessage userMessage, AgentTurnOptions options) {
         return run(start(agent, conversationHistory, userMessage, options));
     }
 
@@ -382,7 +382,7 @@ public final class AgentRunner {
      * 加载当前生效的 Agent，并使用单次运行选项创建文本 Turn。
      */
     public AgentTurn start(String agentId, String conversationId, String userInput,
-                          AgentTurnOptions options) {
+                           AgentTurnOptions options) {
         return start(agentId, conversationId, new UserMessage(userInput), options);
     }
 
@@ -397,7 +397,7 @@ public final class AgentRunner {
      * 加载当前生效的 Agent，并从业务 ChatMemory 读取历史后创建结构化 Turn。
      */
     public AgentTurn start(String agentId, String conversationId, UserMessage userMessage,
-                          AgentTurnOptions options) {
+                           AgentTurnOptions options) {
         return start(loadActiveAgent(agentId), conversationId, userMessage, options);
     }
 
@@ -413,7 +413,7 @@ public final class AgentRunner {
      * 从业务 ChatMemory 读取会话历史并创建带运行选项的文本 Turn。
      */
     public AgentTurn start(Agent agent, String conversationId, String userInput,
-                          AgentTurnOptions options) {
+                           AgentTurnOptions options) {
         return start(agent, conversationId, new UserMessage(userInput), options);
     }
 
@@ -431,7 +431,7 @@ public final class AgentRunner {
      * ChatMemory；投影失败不会改变 Turn 状态，并会在后续保存或恢复时重试。</p>
      */
     public AgentTurn start(Agent agent, String conversationId, UserMessage userMessage,
-                          AgentTurnOptions options) {
+                           AgentTurnOptions options) {
         if (!chatMemory.isEnabled()) {
             throw new IllegalStateException(
                 "ChatMemoryProvider must be configured for conversation APIs");
@@ -450,7 +450,7 @@ public final class AgentRunner {
      * 使用已有会话历史和本轮结构化消息创建并保存新的 Turn。
      */
     public AgentTurn start(Agent agent, List<? extends Message> conversationHistory,
-                          UserMessage userMessage) {
+                           UserMessage userMessage) {
         return start(agent, conversationHistory, userMessage, AgentTurnOptions.defaults());
     }
 
@@ -461,7 +461,7 @@ public final class AgentRunner {
      * 初始 Snapshot 成功后，Turn 才会返回给调用方或后台调度器。</p>
      */
     public AgentTurn start(Agent agent, List<? extends Message> conversationHistory,
-                          UserMessage userMessage, AgentTurnOptions options) {
+                           UserMessage userMessage, AgentTurnOptions options) {
         // 先准备 Agent 和规划工具，再创建 Turn，确保初始 Snapshot 已包含完整可执行状态。
         prepareAgent(agent);
         AgentTurn turn = AgentTurn.start(agent, conversationHistory, userMessage, options);
@@ -673,20 +673,32 @@ public final class AgentRunner {
      * <p>一次调用最多调用模型一次，但可以顺序处理该模型回合产生的全部 ToolCall。方法返回
      * {@link AgentStepResult} 描述本步结果；是否继续下一步由 {@link #runUntilBlocked(AgentTurn)} 决定。</p>
      *
-     * <p>步骤开始和结束事件在最外层发布，所有执行路径共享相同的生命周期语义。</p>
+     * <p>Turn 是 Step 的生命周期容器：首次推进先发布 TURN_STARTED，再发布 STEP_STARTED；终止
+     * Step 先发布 STEP_COMPLETED，随后发布对应的 Turn 终止事件。这样监听器收到终止事件后，不会再
+     * 收到该 Turn 的步骤事件。</p>
      */
     public AgentStepResult step(AgentTurn turn) {
+        // 在任何 Step 事件之前完成首次 Turn 状态转换，保持 Turn > Step 的生命周期嵌套关系。
+        validateStep(turn);
+        ensurePreparedAndSnapshotSaved(turn);
+        // 无效 Worker 不得先发布生命周期事件；真正执行前 stepCore 还会再次校验租约和取消信号。
+        assertLeaseOwnership(turn);
+        refreshCancellation(turn);
+        if (turn.markStarted()) {
+            eventPublisher.notifyTurnStart(turn);
+        }
         eventPublisher.publish(turn, AgentEventType.STEP_STARTED,
-            objectAttributes("phase", turn == null ? null : turn.getPhase()));
+            objectAttributes("phase", turn.getPhase()));
         try {
             AgentStepResult result = stepCore(turn);
             eventPublisher.publish(turn, AgentEventType.STEP_COMPLETED,
-                objectAttributes("status", turn == null ? null : turn.getStatus(),
-                    "phase", turn == null ? null : turn.getPhase(),
+                objectAttributes("status", turn.getStatus(),
+                    "phase", turn.getPhase(),
                     "toolMessageCount", result == null ? 0 : result.getToolMessages().size()));
+            publishTerminalEvent(turn);
             return result;
         } finally {
-            if (turn != null && turn.getStatus().isTerminal()) {
+            if (turn.getStatus().isTerminal()) {
                 eventPublisher.clearSequence(turn.getId());
             }
         }
@@ -712,10 +724,6 @@ public final class AgentRunner {
      * 执行不包含 step Middleware 包装的通用单步状态机。
      */
     private AgentStepResult stepCore(AgentTurn turn) {
-        // 先确认当前状态可推进，并补齐旧调用方可能尚未保存的初始状态。
-        validateStep(turn);
-        ensurePreparedAndSnapshotSaved(turn);
-
         // Lease 和持久化取消标记必须在任何模型或工具副作用之前检查。
         assertLeaseOwnership(turn);
         refreshCancellation(turn);
@@ -726,9 +734,6 @@ public final class AgentRunner {
             // 阻塞 Turn 只能通过类型化 ResumeCommand 改回可运行状态，step 本身不能越过等待边界。
             return AgentStepResult.of(null, null, null);
         }
-        if (turn.markStarted()) {
-            eventPublisher.notifyTurnStart(turn);
-        }
         // 时间和累计 Token 预算在每一步入口检查；工具次数还会在具体工具执行前再次检查。
         String budgetReason = budgetExceededReason(turn, false);
         if (budgetReason != null) {
@@ -738,7 +743,6 @@ public final class AgentRunner {
         if (turn.getStepCount() >= turn.getExecutionPolicy().getMaxSteps()) {
             turn.markMaxStepsReached();
             saveSnapshot(turn);
-            eventPublisher.notifyMaxStepsReached(turn);
             return AgentStepResult.of(null, null, null);
         }
         turn.incrementStep();
@@ -899,7 +903,6 @@ public final class AgentRunner {
         if (turn.getIterationCount() >= turn.getExecutionPolicy().getMaxIterations()) {
             turn.markMaxIterationsReached();
             saveSnapshot(turn);
-            eventPublisher.notifyMaxIterationsReached(turn);
             return AgentStepResult.of(null, null, null);
         }
 
@@ -1095,7 +1098,6 @@ public final class AgentRunner {
         }
         turn.markFailed(error);
         saveSnapshot(turn);
-        eventPublisher.notifyTurnFailed(turn, error);
         return AgentStepResult.of(response, null, error);
     }
 
@@ -1114,7 +1116,6 @@ public final class AgentRunner {
         planning.finishPlan(turn);
         turn.markCompleted(message == null ? new AiMessage("") : message);
         saveSnapshot(turn);
-        eventPublisher.notifyTurnComplete(turn);
         return AgentStepResult.of(response, null, null);
     }
 
@@ -1124,7 +1125,6 @@ public final class AgentRunner {
     private AgentStepResult cancelTurn(AgentTurn turn) {
         turn.markCancelled();
         saveSnapshot(turn);
-        eventPublisher.notifyTurnCancelled(turn);
         return AgentStepResult.of(null, null, null);
     }
 
@@ -1134,8 +1134,36 @@ public final class AgentRunner {
     private AgentStepResult budgetExceeded(AgentTurn turn, String reason) {
         turn.markBudgetExceeded(reason);
         saveSnapshot(turn);
-        eventPublisher.notifyBudgetExceeded(turn, reason);
         return AgentStepResult.of(null, null, null);
+    }
+
+    /**
+     * 在终止 Step 的 STEP_COMPLETED 之后发布唯一的 Turn 终止事件。
+     */
+    private void publishTerminalEvent(AgentTurn turn) {
+        switch (turn.getStatus()) {
+            case COMPLETED:
+                eventPublisher.notifyTurnComplete(turn);
+                break;
+            case FAILED:
+                eventPublisher.notifyTurnFailed(turn, turn.getError());
+                break;
+            case CANCELLED:
+                eventPublisher.notifyTurnCancelled(turn);
+                break;
+            case MAX_ITERATIONS_REACHED:
+                eventPublisher.notifyMaxIterationsReached(turn);
+                break;
+            case MAX_STEPS_REACHED:
+                eventPublisher.notifyMaxStepsReached(turn);
+                break;
+            case BUDGET_EXCEEDED:
+                eventPublisher.notifyBudgetExceeded(turn, turn.getBudgetExceededReason());
+                break;
+            default:
+                // 非终止状态没有对应的 Turn 结束事件。
+                break;
+        }
     }
 
     /**
