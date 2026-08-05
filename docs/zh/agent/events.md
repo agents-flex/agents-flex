@@ -59,15 +59,15 @@ Turn 是 Step 的生命周期容器。第一个步骤开始前发布一次 `TURN
 
 ## 工具上报进度
 
-Runner 会把 `AgentToolProgressEmitter` 放入工具执行上下文。工具可以发送 `TOOL_PROGRESS`：
+Runner 会把受控的 `AgentToolContext` 放入工具执行上下文。工具可以发送 `TOOL_PROGRESS`：
 
 ```java
-AgentToolProgressEmitter progress = ToolContextHolder.currentContext()
-    .getAttribute(AgentToolProgressEmitter.CONTEXT_ATTRIBUTE);
-progress.emit("uploading", Map.of("percent", 50));
+AgentToolContext context = AgentToolContext.current();
+context.emitProgress("uploading", Map.of("percent", 50));
 ```
 
-进度事件只用于观察，不改变工具的最终结果。
+进度事件只用于观察，不改变工具的最终结果。长时间运行的工具还可以调用
+`context.isCancellationRequested()` 动态检查 Turn 是否已被请求取消。
 
 ## 业务持久化
 

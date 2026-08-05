@@ -16,7 +16,7 @@ import com.agentsflex.agent.AgentWorker;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
-import com.agentsflex.agent.tool.AgentToolInvocation;
+import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -44,8 +44,8 @@ public final class DurableWorkerAgentDemo {
         Tool unstableTool = Tool.builder("sync_inventory", "同步库存")
             .metadata("sideEffect", true)
             .function(arguments -> {
-                AgentToolInvocation invocation = AgentToolInvocation.current();
-                String key = invocation.getIdempotencyKey();
+                AgentToolContext context = AgentToolContext.current();
+                String key = context.getIdempotencyKey();
                 if (firstKey.get() == null) {
                     firstKey.set(key);
                 }

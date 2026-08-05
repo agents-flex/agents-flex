@@ -32,6 +32,7 @@ import static com.agentsflex.agent.AgentScenarioTestSupport.toolCalls;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 /** Middleware 的转换、短路、异常和清理契约测试。 */
@@ -83,6 +84,9 @@ public class AgentMiddlewareContractTest {
             @Override
             public Object aroundToolCall(AgentToolCallContext context,
                                          AgentToolCallChain chain) {
+                assertNotNull(context.getToolContext());
+                assertSame(context.getTool(), context.getToolContext().getTool());
+                assertSame(context.getToolCall(), context.getToolContext().getToolCall());
                 return "cached";
             }
         };

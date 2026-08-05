@@ -228,4 +228,4 @@ runner.addEventListener(eventListener);
 - 应用层共享一个配置完整的 Runner，不要为每个请求创建一套内存 Store。
 - 短任务使用 `run`，长任务使用 `start + AgentWorker`。
 - 不要绕过 Runner 直接修改快照；状态转换、事件和版本更新必须保持一致。
-- 工具副作用使用 `AgentToolInvocation` 中的稳定调用 ID 实现业务幂等。
+- 工具副作用使用 `AgentToolContext.current().getIdempotencyKey()` 返回的稳定调用 ID 实现业务幂等。

@@ -10,7 +10,7 @@ import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
-import com.agentsflex.agent.tool.AgentToolInvocation;
+import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.agentsflex.agent.AgentScenarioTestSupport.tool;
 import static com.agentsflex.agent.AgentScenarioTestSupport.toolCalls;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -180,10 +181,10 @@ public class AgentPlatformExtensionScenarioTest {
     }
 
     @Test
-    public void shouldExposeStableAgentInvocationToTool() {
+    public void shouldExposeControlledAgentToolContext() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
-        AtomicReference<AgentToolInvocation> captured = new AtomicReference<>();
+        AtomicReference<AgentToolContext> captured = new AtomicReference<>();
         model.enqueue(prompt -> toolCalls(new ToolCall("write-42", "write", "{}")));
         model.enqueue(prompt -> new AiMessage("done"));
         Agent agent = Agent.builder("invocation-agent")
@@ -191,13 +192,13 @@ public class AgentPlatformExtensionScenarioTest {
             .version("4")
             .chatModel(model)
             .tool(tool("write", args -> {
-                captured.set(AgentToolInvocation.current());
+                captured.set(AgentToolContext.current());
                 return "ok";
             }))
             .build();
 
         AgentTurn completed = new AgentRunner().run(agent, "write data");
-        AgentToolInvocation invocation = captured.get();
+        AgentToolContext invocation = captured.get();
 
         assertNotNull(invocation);
         assertEquals(completed.getId(), invocation.getTurnId());
@@ -207,6 +208,10 @@ public class AgentPlatformExtensionScenarioTest {
         assertEquals("write-42", invocation.getToolCallId());
         assertEquals(completed.getId() + ":write-42", invocation.getIdempotencyKey());
         assertEquals("write", invocation.getToolName());
+        assertSame(agent.getTool("write"), invocation.getTool());
+        assertEquals("write-42", invocation.getToolCall().getId());
+        assertFalse(invocation.isCancellationRequested());
+        assertNotNull(invocation.getProgressEmitter());
     }
 
     @Test
@@ -234,7 +239,8 @@ public class AgentPlatformExtensionScenarioTest {
         assertEquals("audit-agent", modelStarted.getAgentId());
         assertEquals("2026.07.31", modelStarted.getAgentVersion());
         assertEquals(1, modelStarted.getData().get("iteration"));
-        assertEquals(19, modelStarted.getData().get("remainingIterations"));
+        assertEquals(agent.getExecutionPolicy().getMaxIterations() - 1,
+            modelStarted.getData().get("remainingIterations"));
         assertTrue(events.get(events.size() - 1).getSequence() > modelStarted.getSequence());
     }
 

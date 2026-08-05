@@ -21,7 +21,7 @@ import com.agentsflex.agent.store.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 import com.agentsflex.agent.tool.AgentToolProgressEmitter;
-import com.agentsflex.agent.tool.AgentToolInvocation;
+import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
 import com.agentsflex.agent.task.AgentTaskProgress;
@@ -1081,7 +1081,7 @@ public final class AgentRunner {
      * 原子语义上提交一个工具结果：追加消息、移除 pending 调用并保存 Snapshot。
      *
      * <p>只有 Snapshot 成功后调用才算被运行时确认；具备外部副作用的 Tool 仍应使用
-     * {@link AgentToolInvocation} ID 在业务侧实现幂等。</p>
+     * {@link AgentToolContext} 中的稳定调用 ID 在业务侧实现幂等。</p>
      */
     private void appendToolResult(AgentTurn turn, ToolCall call, ToolMessage result) {
         turn.getPrompt().addMessage(result);
@@ -1266,19 +1266,24 @@ public final class AgentRunner {
     /**
      * 执行单个业务工具并把任意 Java 返回值规范化为 ToolMessage。
      *
-     * <p>{@link AgentToolInvocation} 提供跨恢复稳定的调用身份，Tool 可将其作为业务幂等键。调用顺序为
-     * Agent Middleware、ToolInterceptor、Tool 函数；调用标识和进度发射器通过工具上下文 attributes
-     * 传入，不写入工具参数 Schema。</p>
+     * <p>{@link AgentToolContext} 提供跨恢复稳定的调用身份、进度上报和动态取消检查。调用顺序为
+     * Agent Middleware、ToolInterceptor、Tool 函数；受控上下文通过 Core ToolContext 传入，
+     * 不写入模型可见的工具参数 Schema。</p>
      */
     private ToolMessage executeTool(AgentTurn turn, Tool tool, ToolCall call) {
         List<ToolInterceptor> interceptors = turn.getAgent().getToolInterceptors();
 
-        AgentToolInvocation invocation = new AgentToolInvocation(
-            turn.getId(), turn.getRootTurnId(), turn.getParentTurnId(),
-            turn.getAgent().getId(), turn.getAgent().getVersion(), callKey(call), tool.getName());
+        AgentToolProgressEmitter progressEmitter = (message, data) ->
+            eventPublisher.notifyToolProgress(
+                turn, call, tool.getName(), message, data);
 
-        AgentToolCallContext middlewareContext = new AgentToolCallContext(this, turn, tool, call);
-        Object value = proceedToolCall(turn, middlewareContext, 0, invocation, interceptors);
+        AgentToolContext toolContext = new AgentToolContext(
+            turn.getId(), turn.getRootTurnId(), turn.getParentTurnId(),
+            turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
+            callKey(call), progressEmitter, turn::isCancellationRequested);
+
+        AgentToolCallContext middlewareContext = new AgentToolCallContext(this, turn, toolContext);
+        Object value = proceedToolCall(middlewareContext, 0, interceptors);
         // ToolMessage 内容必须是字符串：标量直接转换，结构化对象统一序列化为 JSON。
         ToolMessage result = new ToolMessage();
         result.setToolCallId(callKey(call));
@@ -1296,23 +1301,18 @@ public final class AgentRunner {
     /**
      * 递归构造 Agent 工具 Middleware 链，链尾再交给核心 ToolExecutor 和 ToolInterceptor。
      */
-    private Object proceedToolCall(AgentTurn turn, AgentToolCallContext context, int index,
-                                   AgentToolInvocation invocation,
+    private Object proceedToolCall(AgentToolCallContext context, int index,
                                    List<ToolInterceptor> interceptors) {
-        List<AgentMiddleware> middlewares = turn.getAgent().getMiddlewares();
+        List<AgentMiddleware> middlewares = context.getRun().getAgent().getMiddlewares();
         if (index >= middlewares.size()) {
-            // 这些 attributes 只在本次 JVM 调用链存在，不会混入模型可见的工具参数。
+            // 受控上下文只在本次 JVM 调用链存在，不会混入模型可见的工具参数。
             Map<String, Object> attributes = new LinkedHashMap<>();
-            attributes.put(AgentToolInvocation.CONTEXT_ATTRIBUTE, invocation);
-            attributes.put(AgentToolProgressEmitter.CONTEXT_ATTRIBUTE,
-                (AgentToolProgressEmitter) (message, data) -> eventPublisher.notifyToolProgress(
-                    turn, context.getToolCall(), context.getTool().getName(), message, data));
+            attributes.put(AgentToolContext.CONTEXT_ATTRIBUTE, context.getToolContext());
             return new ToolExecutor(context.getTool(), context.getToolCall(), interceptors)
                 .execute(attributes);
         }
         AgentMiddleware middleware = middlewares.get(index);
-        AgentToolCallChain chain = next -> proceedToolCall(turn, next, index + 1,
-            invocation, interceptors);
+        AgentToolCallChain chain = next -> proceedToolCall(next, index + 1, interceptors);
         return middleware.aroundToolCall(context, chain);
     }
 

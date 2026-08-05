@@ -33,7 +33,8 @@ Tool deployTool = Tool.builder("deploy_service", "将服务部署到生产环境
     .build();
 ```
 
-生产工具应另外使用 `AgentToolInvocation` 的稳定调用 ID 访问真实发布平台，并以该 ID 实现幂等。计数器只用于 Demo 证明审批前没有副作用。
+生产工具应通过 `AgentToolContext.current().getIdempotencyKey()` 获取稳定调用 ID，访问真实发布平台时
+以该 ID 实现幂等。计数器只用于 Demo 证明审批前没有副作用。
 
 ## 配置审批策略
 

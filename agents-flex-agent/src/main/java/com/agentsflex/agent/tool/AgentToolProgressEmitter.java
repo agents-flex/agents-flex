@@ -5,14 +5,11 @@ import java.util.Map;
 /**
  * 工具在长时间执行过程中主动上报进度的接口。
  *
- * <p>Runner 以 {@link #CONTEXT_ATTRIBUTE} 为键将实例放入 ToolContext。进度最终转换为
+ * <p>Runner 通过 {@link AgentToolContext#getProgressEmitter()} 提供实例。进度最终转换为
  * TOOL_PROGRESS 事件，只用于观察，不保存 Snapshot，也不改变工具结果或 Turn 状态。</p>
  */
 @FunctionalInterface
 public interface AgentToolProgressEmitter {
-    /** 从 ToolContext 读取当前进度发布器时使用的属性键。 */
-    String CONTEXT_ATTRIBUTE = AgentToolProgressEmitter.class.getName();
-
     /**
      * 发布一条不修改 Turn 状态的工具执行进度。
      *

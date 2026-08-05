@@ -13,7 +13,7 @@ import com.agentsflex.agent.AgentTurn;
 import com.agentsflex.agent.AgentTurnOptions;
 import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.AgentRunner;
-import com.agentsflex.agent.tool.AgentToolInvocation;
+import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -51,11 +51,11 @@ public final class ToolCallingAgentDemo {
             .metadata("provider", "demo-weather-service")
             .metadata("sideEffect", false)
             .function(arguments -> {
-                // AgentToolInvocation 由 Runner 放入 ToolContext。真实写操作可以把这个稳定键
+                // AgentToolContext 由 Runner 放入 Core ToolContext。真实写操作可以把这个稳定键
                 // 传给外部服务，避免进程在 Tool 成功后、Snapshot 保存前崩溃造成重复副作用。
-                AgentToolInvocation invocation = AgentToolInvocation.current();
-                DemoSupport.require(invocation != null, "工具应当获得稳定调用标识");
-                idempotencyKey.set(invocation.getIdempotencyKey());
+                AgentToolContext context = AgentToolContext.current();
+                DemoSupport.require(context != null, "工具应当获得受控执行上下文");
+                idempotencyKey.set(context.getIdempotencyKey());
                 return arguments.get("city") + "：晴，26 摄氏度";
             })
             .build();

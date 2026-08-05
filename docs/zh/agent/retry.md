@@ -50,10 +50,12 @@ try (AgentWorker worker = new AgentWorker("worker-a", runner, 30_000)) {
 
 ## 工具副作用幂等
 
-重试可能发生在“业务操作已经成功，但 Snapshot 尚未提交”的窗口。工具应读取执行上下文中的 `AgentToolInvocation`，使用稳定的 turnId 与 toolCallId 作为业务幂等键：
+重试可能发生在“业务操作已经成功，但 Snapshot 尚未提交”的窗口。工具应通过
+`AgentToolContext.current()` 读取受控执行上下文，并使用稳定的幂等键：
 
-```text
-idempotencyKey = turnId + ":" + toolCallId
+```java
+AgentToolContext context = AgentToolContext.current();
+String idempotencyKey = context.getIdempotencyKey();
 ```
 
 数据库写入应对该键建立唯一约束，并在重复调用时返回第一次结果。Agent Store 的乐观锁只能保护 Snapshot，不能自动回滚外部支付、工单或邮件系统。

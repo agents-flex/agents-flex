@@ -13,7 +13,7 @@ import com.agentsflex.agent.middleware.AgentToolCallChain;
 import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
-import com.agentsflex.agent.tool.AgentToolProgressEmitter;
+import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -26,7 +26,6 @@ import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.ToolContextHolder;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.Prompt;
 import org.junit.Test;
@@ -133,9 +132,8 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         AtomicInteger toolExecutions = new AtomicInteger();
 
         Tool export = tool("export", args -> {
-            AgentToolProgressEmitter progress = ToolContextHolder.currentContext()
-                .getAttribute(AgentToolProgressEmitter.CONTEXT_ATTRIBUTE);
-            progress.emit("half", java.util.Collections.singletonMap("percent", 50));
+            AgentToolContext.current().emitProgress(
+                "half", java.util.Collections.singletonMap("percent", 50));
             toolExecutions.incrementAndGet();
             char[] content = new char[128];
             Arrays.fill(content, 'x');

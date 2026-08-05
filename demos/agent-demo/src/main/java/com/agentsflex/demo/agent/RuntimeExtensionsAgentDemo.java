@@ -20,7 +20,7 @@ import com.agentsflex.agent.middleware.AgentToolCallChain;
 import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
-import com.agentsflex.agent.tool.AgentToolProgressEmitter;
+import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -28,7 +28,6 @@ import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.ToolContextHolder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,9 +52,8 @@ public final class RuntimeExtensionsAgentDemo {
         // 工具通过 ToolContext 主动报告可展示的执行进度。
         Tool reportTool = Tool.builder("build_report", "生成一份较大的分析报告")
             .function(arguments -> {
-                AgentToolProgressEmitter progress = ToolContextHolder.currentContext()
-                    .getAttribute(AgentToolProgressEmitter.CONTEXT_ATTRIBUTE);
-                progress.emit("正在生成报告", Collections.singletonMap("percent", 50));
+                AgentToolContext.current().emitProgress(
+                    "正在生成报告", Collections.singletonMap("percent", 50));
                 char[] body = new char[96];
                 Arrays.fill(body, 'R');
                 return new String(body);

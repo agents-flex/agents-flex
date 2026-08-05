@@ -23,7 +23,7 @@
  *     <li>{@link com.agentsflex.agent.event.AgentEventListener}：观察生命周期、模型增量和工具进度事件；</li>
  *     <li>{@link com.agentsflex.agent.task.AgentPlanningPolicy}：约束模型自主创建和执行任务计划；</li>
  *     <li>{@link com.agentsflex.agent.loader.AgentLoader}：根据稳定 ID 和版本加载可执行 Agent；</li>
- *     <li>{@link com.agentsflex.agent.tool.AgentToolInvocation}：向工具提供 Turn 身份和稳定幂等键。</li>
+ *     <li>{@link com.agentsflex.agent.tool.AgentToolContext}：向工具提供受控的调用身份、进度与取消能力。</li>
  * </ul>
  *
  * <p>最简调用方式：</p>
