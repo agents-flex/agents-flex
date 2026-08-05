@@ -46,7 +46,7 @@ public final class TimingMiddleware implements AgentMiddleware {
 
     @Override
     public Object aroundToolCall(
-        AgentToolCallContext context, AgentToolCallChain chain) {
+        AgentMiddlewareContext context, AgentToolCallChain chain) {
         return chain.proceed(context);
     }
 }
@@ -54,7 +54,8 @@ public final class TimingMiddleware implements AgentMiddleware {
 
 - `aroundStep`：覆盖预算检查之后的模式推进，适合 step 级治理。
 - `aroundModelCall`：访问当前 Prompt，适合模型路由、缓存和临时 Prompt 处理。
-- `aroundToolCall`：访问已解析的 `Tool` 与原始 `ToolCall`，适合工具授权和审计。
+- `aroundToolCall`：通过非空的 `context.getToolContext()` 访问已解析的 `Tool` 与原始
+  `ToolCall`，适合工具授权和审计。其他 Middleware 阶段的 `getToolContext()` 返回 `null`。
 
 ## 责任链规则
 
@@ -69,12 +70,12 @@ public final class TimingMiddleware implements AgentMiddleware {
 
 ```java
 @Override
-public Object aroundToolCall(AgentToolCallContext context,
+public Object aroundToolCall(AgentMiddlewareContext context,
                              AgentToolCallChain chain) {
     String tenantId = String.valueOf(
         context.getRun().getMetadata().get("tenantId"));
     if (!permissionService.allowed(
-        tenantId, context.getTool().getName())) {
+        tenantId, context.getToolContext().getToolName())) {
         throw new SecurityException("tool access denied");
     }
     return chain.proceed(context);

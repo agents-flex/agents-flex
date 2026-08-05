@@ -13,7 +13,6 @@ import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
 import com.agentsflex.agent.middleware.AgentStepChain;
 import com.agentsflex.agent.middleware.AgentToolCallChain;
-import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.AgentTurnStore;
@@ -1282,7 +1281,8 @@ public final class AgentRunner {
             turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
             callKey(call), progressEmitter, turn::isCancellationRequested);
 
-        AgentToolCallContext middlewareContext = new AgentToolCallContext(this, turn, toolContext);
+        AgentMiddlewareContext middlewareContext =
+            AgentMiddlewareContext.forToolCall(this, turn, toolContext);
         Object value = proceedToolCall(middlewareContext, 0, interceptors);
         // ToolMessage 内容必须是字符串：标量直接转换，结构化对象统一序列化为 JSON。
         ToolMessage result = new ToolMessage();
@@ -1301,14 +1301,19 @@ public final class AgentRunner {
     /**
      * 递归构造 Agent 工具 Middleware 链，链尾再交给核心 ToolExecutor 和 ToolInterceptor。
      */
-    private Object proceedToolCall(AgentToolCallContext context, int index,
+    private Object proceedToolCall(AgentMiddlewareContext context, int index,
                                    List<ToolInterceptor> interceptors) {
         List<AgentMiddleware> middlewares = context.getRun().getAgent().getMiddlewares();
         if (index >= middlewares.size()) {
             // 受控上下文只在本次 JVM 调用链存在，不会混入模型可见的工具参数。
+            AgentToolContext toolContext = context.getToolContext();
+            if (toolContext == null) {
+                throw new IllegalArgumentException(
+                    "toolContext must not be null in the tool middleware chain");
+            }
             Map<String, Object> attributes = new LinkedHashMap<>();
-            attributes.put(AgentToolContext.CONTEXT_ATTRIBUTE, context.getToolContext());
-            return new ToolExecutor(context.getTool(), context.getToolCall(), interceptors)
+            attributes.put(AgentToolContext.CONTEXT_ATTRIBUTE, toolContext);
+            return new ToolExecutor(toolContext.getTool(), toolContext.getToolCall(), interceptors)
                 .execute(attributes);
         }
         AgentMiddleware middleware = middlewares.get(index);

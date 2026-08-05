@@ -28,7 +28,7 @@ public interface AgentMiddleware {
     }
 
     /** 包装一次工具调用，可执行权限校验、缓存、限流和结果转换。 */
-    default Object aroundToolCall(AgentToolCallContext context,
+    default Object aroundToolCall(AgentMiddlewareContext context,
                                   AgentToolCallChain chain) {
         return chain.proceed(context);
     }

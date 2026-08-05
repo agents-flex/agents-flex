@@ -8,7 +8,6 @@ import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
 import com.agentsflex.agent.middleware.AgentStepChain;
 import com.agentsflex.agent.middleware.AgentToolCallChain;
-import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
@@ -32,7 +31,7 @@ import static com.agentsflex.agent.AgentScenarioTestSupport.toolCalls;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /** Middleware 的转换、短路、异常和清理契约测试。 */
@@ -46,6 +45,7 @@ public class AgentMiddlewareContractTest {
             @Override
             public AiMessageResponse aroundModelCall(AgentMiddlewareContext context,
                                                      AgentModelCallChain chain) {
+                assertNull(context.getToolContext());
                 context.setPrompt(new SimplePrompt("rewritten"));
                 return chain.proceed(context);
             }
@@ -82,11 +82,11 @@ public class AgentMiddlewareContractTest {
         AtomicInteger executions = new AtomicInteger();
         AgentMiddleware middleware = new AgentMiddleware() {
             @Override
-            public Object aroundToolCall(AgentToolCallContext context,
+            public Object aroundToolCall(AgentMiddlewareContext context,
                                          AgentToolCallChain chain) {
                 assertNotNull(context.getToolContext());
-                assertSame(context.getTool(), context.getToolContext().getTool());
-                assertSame(context.getToolCall(), context.getToolContext().getToolCall());
+                assertEquals("lookup", context.getToolContext().getTool().getName());
+                assertNotNull(context.getToolContext().getToolCall());
                 return "cached";
             }
         };
@@ -108,7 +108,7 @@ public class AgentMiddlewareContractTest {
         AgentScenarioTestSupport.QueueChatModel model = modelWithToolThenText("done");
         AgentMiddleware middleware = new AgentMiddleware() {
             @Override
-            public Object aroundToolCall(AgentToolCallContext context,
+            public Object aroundToolCall(AgentMiddlewareContext context,
                                          AgentToolCallChain chain) {
                 return "wrapped-" + chain.proceed(context);
             }
@@ -131,6 +131,7 @@ public class AgentMiddlewareContractTest {
             @Override
             public AgentStepResult aroundStep(AgentMiddlewareContext context,
                                               AgentStepChain chain) {
+                assertNull(context.getToolContext());
                 try {
                     return chain.proceed(context);
                 } finally {
@@ -163,7 +164,7 @@ public class AgentMiddlewareContractTest {
         AgentScenarioTestSupport.QueueChatModel model = modelWithToolThenText("recovered");
         AgentMiddleware middleware = new AgentMiddleware() {
             @Override
-            public Object aroundToolCall(AgentToolCallContext context,
+            public Object aroundToolCall(AgentMiddlewareContext context,
                                          AgentToolCallChain chain) {
                 throw new RuntimeException("policy unavailable");
             }

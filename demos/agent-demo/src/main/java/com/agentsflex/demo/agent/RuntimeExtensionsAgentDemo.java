@@ -17,7 +17,6 @@ import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
 import com.agentsflex.agent.middleware.AgentToolCallChain;
-import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentToolContext;
@@ -71,7 +70,7 @@ public final class RuntimeExtensionsAgentDemo {
             }
 
             @Override
-            public Object aroundToolCall(AgentToolCallContext context,
+            public Object aroundToolCall(AgentMiddlewareContext context,
                                          AgentToolCallChain chain) {
                 System.out.println("tool request : "
                     + context.getRun().getMetadata().get("requestId"));

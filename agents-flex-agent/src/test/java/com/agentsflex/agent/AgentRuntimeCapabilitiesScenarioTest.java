@@ -10,7 +10,6 @@ import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
 import com.agentsflex.agent.middleware.AgentStepChain;
 import com.agentsflex.agent.middleware.AgentToolCallChain;
-import com.agentsflex.agent.middleware.AgentToolCallContext;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentToolContext;
@@ -245,7 +244,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             }
 
             @Override
-            public Object aroundToolCall(AgentToolCallContext context, AgentToolCallChain chain) {
+            public Object aroundToolCall(AgentMiddlewareContext context, AgentToolCallChain chain) {
                 calls.add(name + "-tool-before");
                 Object result = chain.proceed(context);
                 calls.add(name + "-tool-after");
