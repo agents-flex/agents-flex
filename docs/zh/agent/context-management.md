@@ -7,7 +7,7 @@ description: 管理业务 ChatMemory、消息窗口、摘要、多模态内容�
 
 ## 概述
 
-Agent 的上下文同时面对两个目标：保留足够历史以正确决策，又避免消息和工具结果无限增长。模型读取窗口使用 Agent 的普通参数 `maxAttachedMessages`；需要重写持久化历史时使用 `AgentContextManager`。工具返回内容由 Tool 自身控制，Runner 会把实际结果原样写入运行历史。
+Agent 的上下文同时面对两个目标：保留足够历史以正确决策，又避免消息和工具结果无限增长。Framework 使用 `maxAttachedMessages` 限制单次模型请求读取的历史，但不会清空或重写 `ChatMemory`。需要摘要或永久整理历史时，由业务系统在调用 Runner 前完成。工具返回内容由 Tool 自身控制，Runner 会把实际结果原样写入运行历史。
 
 ## 消息的三个层次
 
@@ -15,7 +15,7 @@ Agent 的上下文同时面对两个目标：保留足够历史以正确决策�
 - `AgentRun` 的 `MemoryPrompt`：本次任务的协议消息和系统指令。
 - 模型调用 Prompt：依据 `maxAttachedMessages` 从 Run Prompt 生成的当前视图。
 
-窗口策略只影响一次模型调用视图；Context Manager 的修改会进入 Run 与 Snapshot。
+窗口策略只影响一次模型调用视图，不会删除 Run、Snapshot 或业务 `ChatMemory` 中的原始消息。
 
 ## 业务会话管理
 
@@ -35,42 +35,28 @@ Agent agent = Agent.builder("support-agent")
     .build();
 ```
 
-默认最多附加最近 100 条历史消息；可使用 `Integer.MAX_VALUE` 读取全部历史。该参数只影响单次模型请求视图，不释放 Snapshot 存储空间。窗口按协议消息计数，不按自然语言轮次计数，包含 ToolCall 时应预留足够空间；需要永久压缩时使用 Context Manager。
+默认最多附加最近 100 条历史消息；可使用 `Integer.MAX_VALUE` 读取全部历史。该参数只影响单次模型请求视图，不释放 Snapshot 存储空间。窗口按协议消息计数，不按自然语言轮次计数，包含 ToolCall 时应预留足够空间。
 
-## 消息数量摘要
+## 业务侧摘要
 
 ```java
-AgentConversationSummarizer summarizer = messages ->
-    summaryModel.summarize(messages);
+List<Message> history = persistedMemory.getMessages(Integer.MAX_VALUE);
+List<Message> inputHistory = history;
+if (history.size() > 40) {
+    List<Message> older = history.subList(0, history.size() - 12);
+    List<Message> recent = history.subList(history.size() - 12, history.size());
+    String summary = summaryModel.summarize(older);
+    inputHistory = new ArrayList<>();
+    inputHistory.add(new UserMessage("Conversation summary:\n" + summary));
+    inputHistory.addAll(recent);
+}
 
-AgentContextManager manager = new MessageCountAgentContextManager(
-    40,   // 超过 40 条触发
-    12,   // 始终保留最近 12 条
-    summarizer);
-
-Agent agent = Agent.builder("support-agent")
-    .chatModel(chatModel)
-    .contextManager(manager)
-    .build();
+AgentRun run = runner.run(agent, inputHistory, new UserMessage("继续处理"));
 ```
 
-管理器在模型调用前运行，把较早历史总结为带 `agent.context.summary` 元数据的 `UserMessage`。它会尽量避免从一组 ToolCall/ToolMessage 中间截断。摘要结果为空或摘要器失败时，管理器不会破坏原历史。
+摘要逻辑只读取业务历史并构造传给 Runner 的新列表，不应对数据库型 `ChatMemory` 调用 `clear()`。Runner 会复制传入的消息，因此也不会直接修改 `persistedMemory`。业务实现还应避免从一组 ToolCall/ToolMessage 中间截断，并在摘要失败时继续保留原历史。
 
 自定义摘要提示应要求保留事实、业务 ID、未完成事项、审批结果和用户约束，不应把不可信工具输出提升为系统指令。
-
-## 自定义 Context Manager
-
-```java
-public final class DomainContextManager implements AgentContextManager {
-    @Override
-    public AgentContextUpdate prepare(AgentRun run) {
-        // 只通过受控消息 API整理可持久化历史
-        return AgentContextUpdate.unchanged();
-    }
-}
-```
-
-实现必须幂等：同一 Snapshot 因重试再次执行时，不应重复插入摘要。返回 `changed=true` 后，Runner 会立即保存 Snapshot 并发布 `CONTEXT_COMPACTED`。
 
 ## 大型工具结果设计
 
@@ -90,7 +76,7 @@ Framework 不根据结果大小改写 ToolMessage，也不保存被替换的原�
 ## 生产建议
 
 - 同时限制消息数量、Tool 单次返回规模与模型 Token 预算。
-- 摘要模型失败时保留原历史，不能静默丢消息。
+- 业务侧摘要失败时保留原历史，不能清空或静默丢弃消息。
 - 对业务文件引用实施租户隔离、有效期和访问授权。
 - 监控 Snapshot 大小以及各 Tool 的返回大小、截断率和分页次数。
 - 恢复后仍需使用的业务标识应保存为可序列化 metadata；密钥、连接和服务对象不要写入 Snapshot。

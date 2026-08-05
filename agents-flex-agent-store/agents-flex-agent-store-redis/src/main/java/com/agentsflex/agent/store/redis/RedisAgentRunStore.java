@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** 使用 Redis Hash 与 Lua 脚本实现跨进程 AgentRun CAS、取消和 Lease。 */
+/**
+ * 使用 Redis Hash 与 Lua 脚本实现跨进程 AgentRun CAS、取消和 Lease。
+ */
 public final class RedisAgentRunStore extends RedisAgentStoreSupport implements AgentRunStore {
     private static final String SAVE = "local a=redis.call('HGET',KEYS[1],'version'); local actual=a and tonumber(a) or -1; "
         + "if actual~=tonumber(ARGV[1]) then return actual end; local cancel=redis.call('HGET',KEYS[1],'cancel'); "
@@ -33,7 +35,9 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
         + "redis.call('HSET',KEYS[1],'lease_owner',ARGV[2],'lease_id',ARGV[4],'lease_until',ARGV[3]); "
         + "redis.call('HINCRBY',KEYS[1],'version',1); redis.call('ZADD',KEYS[3],ARGV[3],ARGV[6]); return 1";
 
-    RedisAgentRunStore(RedisAgentStoreConfig config) { super(config); }
+    RedisAgentRunStore(RedisAgentStoreConfig config) {
+        super(config);
+    }
 
     @Override
     public long currentTimeMillis() {
@@ -64,10 +68,10 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
         AgentRunState state = saved.getState();
         Object result = eval(SAVE,
             keys(key("run", state.getRunId()), index("runs"), index("runnable-runs")), args(
-            String.valueOf(expectedVersion), String.valueOf(state.getVersion()), state.getStatus().name(),
-            String.valueOf(state.getNextRunAt()), text(state.getLeaseOwner()), text(state.getLeaseId()),
-            String.valueOf(state.getLeaseUntil()), text(state.getParentRunId()),
-            state.isCancellationRequested() ? "1" : "0", encode(saved), state.getRunId()));
+                String.valueOf(expectedVersion), String.valueOf(state.getVersion()), state.getStatus().name(),
+                String.valueOf(state.getNextRunAt()), text(state.getLeaseOwner()), text(state.getLeaseId()),
+                String.valueOf(state.getLeaseUntil()), text(state.getParentRunId()),
+                state.isCancellationRequested() ? "1" : "0", encode(saved), state.getRunId()));
         long code = ((Number) result).longValue();
         if (code != -2) {
             throw new AgentRunVersionConflictException(state.getRunId(), expectedVersion, code);
@@ -87,13 +91,15 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
         return result == 1;
     }
 
-    @Override public boolean isCancellationRequested(String runId) {
+    @Override
+    public boolean isCancellationRequested(String runId) {
         return "1".equals(jedis.hget(key("run", runId), "cancel"));
     }
 
     @Override
     public ParentChildRunSnapshots saveParentAndChild(AgentRunSnapshot parent, long expectedParentVersion, AgentRunSnapshot child) {
-        if (parent == null || child == null) throw new IllegalArgumentException("parent and child snapshots must not be null");
+        if (parent == null || child == null)
+            throw new IllegalArgumentException("parent and child snapshots must not be null");
         AgentRunSnapshot savedParent = parent.withVersion(expectedParentVersion + 1);
         AgentRunSnapshot savedChild = child.withVersion(0);
         AgentRunState parentState = savedParent.getState();
@@ -110,17 +116,17 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
             + "elseif cs=='RETRY_SCHEDULED' then redis.call('ZADD',KEYS[4],math.max(tonumber(ARGV[12]),tonumber(ARGV[15])),ARGV[20]) end; return -2";
         Object result = eval(script,
             keys(key("run", parentState.getRunId()), key("run", childState.getRunId()),
-            index("runs"), index("runnable-runs")), args(
-            String.valueOf(expectedParentVersion), String.valueOf(parentState.getVersion()),
-            parentState.getStatus().name(), String.valueOf(parentState.getNextRunAt()),
-            text(parentState.getLeaseOwner()), text(parentState.getLeaseId()),
-            String.valueOf(parentState.getLeaseUntil()), text(parentState.getParentRunId()),
-            parentState.isCancellationRequested() ? "1" : "0", encode(savedParent),
-            childState.getStatus().name(), String.valueOf(childState.getNextRunAt()),
-            text(childState.getLeaseOwner()), text(childState.getLeaseId()),
-            String.valueOf(childState.getLeaseUntil()), text(childState.getParentRunId()),
-            childState.isCancellationRequested() ? "1" : "0", encode(savedChild),
-            parentState.getRunId(), childState.getRunId()));
+                index("runs"), index("runnable-runs")), args(
+                String.valueOf(expectedParentVersion), String.valueOf(parentState.getVersion()),
+                parentState.getStatus().name(), String.valueOf(parentState.getNextRunAt()),
+                text(parentState.getLeaseOwner()), text(parentState.getLeaseId()),
+                String.valueOf(parentState.getLeaseUntil()), text(parentState.getParentRunId()),
+                parentState.isCancellationRequested() ? "1" : "0", encode(savedParent),
+                childState.getStatus().name(), String.valueOf(childState.getNextRunAt()),
+                text(childState.getLeaseOwner()), text(childState.getLeaseId()),
+                String.valueOf(childState.getLeaseUntil()), text(childState.getParentRunId()),
+                childState.isCancellationRequested() ? "1" : "0", encode(savedChild),
+                parentState.getRunId(), childState.getRunId()));
         long code = ((Number) result).longValue();
         if (code == -3) {
             throw new AgentRunVersionConflictException(childState.getRunId(), -1,
@@ -136,7 +142,8 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
 
     @Override
     public List<AgentRunSnapshot> claimRunnable(String workerId, long now, long leaseMillis, int limit) {
-        if (workerId == null || leaseMillis <= 0 || limit <= 0) throw new IllegalArgumentException("invalid lease request");
+        if (workerId == null || leaseMillis <= 0 || limit <= 0)
+            throw new IllegalArgumentException("invalid lease request");
         List<AgentRunSnapshot> result = new ArrayList<>();
         List<String> ids = jedis.zrangeByScore(index("runnable-runs"), Double.NEGATIVE_INFINITY,
             now, 0, Math.max(limit * 8, limit));
@@ -200,12 +207,18 @@ public final class RedisAgentRunStore extends RedisAgentStoreSupport implements 
         return result;
     }
 
-    private static long number(String value) { return value == null || value.isEmpty() ? 0 : Long.parseLong(value); }
+    private static long number(String value) {
+        return value == null || value.isEmpty() ? 0 : Long.parseLong(value);
+    }
+
     private static long numberValue(Object value) {
         if (value instanceof byte[]) {
             return Long.parseLong(new String((byte[]) value, StandardCharsets.US_ASCII));
         }
         return Long.parseLong(String.valueOf(value));
     }
-    private static String emptyToNull(String value) { return value == null || value.isEmpty() ? null : value; }
+
+    private static String emptyToNull(String value) {
+        return value == null || value.isEmpty() ? null : value;
+    }
 }

@@ -73,7 +73,6 @@ Agent agent = Agent.builder("order-assistant")
 - `ToolApprovalPolicy`：允许、拒绝或要求审批。
 - `AgentPlanningPolicy`：是否规划、允许委派给谁、最大任务数和重规划次数。
 - `maxAttachedMessages`：每次模型调用最多读取多少条历史消息，默认 100。
-- `AgentContextManager`：在调用模型前执行摘要等持久化整理。
 
 单次 Run 可通过 `AgentRunOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。工具返回规模由 Tool 契约控制，Runner 不会根据内容大小改写结果。
 

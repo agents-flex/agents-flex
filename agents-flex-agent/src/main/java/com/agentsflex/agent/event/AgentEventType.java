@@ -85,10 +85,6 @@ public enum AgentEventType {
      */
     CANCELLATION_REQUESTED,
     /**
-     * AgentContextManager 已压缩或替换持久化消息历史。
-     */
-    CONTEXT_COMPACTED,
-    /**
      * 父 Run 已原子创建并关联一个子 Run。
      */
     CHILD_STARTED,

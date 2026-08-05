@@ -7,7 +7,9 @@ import redis.clients.jedis.JedisPooled;
 import java.net.URI;
 import java.util.Objects;
 
-/** Redis Agent Store 的客户端和键前缀配置。 */
+/**
+ * Redis Agent Store 的客户端和键前缀配置。
+ */
 public final class RedisAgentStoreConfig implements AutoCloseable {
     private final JedisPooled jedis;
     private final String keyPrefix;
@@ -21,16 +23,34 @@ public final class RedisAgentStoreConfig implements AutoCloseable {
         this.serializer = builder.serializer;
     }
 
-    public static Builder builder(String uri) { return new Builder(uri); }
-    public static Builder builder(JedisPooled jedis) { return new Builder(jedis); }
+    public static Builder builder(String uri) {
+        return new Builder(uri);
+    }
 
-    JedisPooled jedis() { return jedis; }
-    String keyPrefix() { return keyPrefix; }
-    AgentStoreSerializer serializer() { return serializer; }
+    public static Builder builder(JedisPooled jedis) {
+        return new Builder(jedis);
+    }
 
-    public RedisAgentRunStore runStore() { return new RedisAgentRunStore(this); }
+    JedisPooled jedis() {
+        return jedis;
+    }
 
-    @Override public void close() { if (closeClient) jedis.close(); }
+    String keyPrefix() {
+        return keyPrefix;
+    }
+
+    AgentStoreSerializer serializer() {
+        return serializer;
+    }
+
+    public RedisAgentRunStore runStore() {
+        return new RedisAgentRunStore(this);
+    }
+
+    @Override
+    public void close() {
+        if (closeClient) jedis.close();
+    }
 
     public static final class Builder {
         private String uri;
@@ -38,22 +58,34 @@ public final class RedisAgentStoreConfig implements AutoCloseable {
         private String keyPrefix = "agents-flex:agent:";
         private AgentStoreSerializer serializer = new FastjsonAgentStoreSerializer();
 
-        private Builder(String uri) { this.uri = Objects.requireNonNull(uri, "uri must not be null"); }
-        private Builder(JedisPooled jedis) { this.jedis = Objects.requireNonNull(jedis, "jedis must not be null"); }
+        private Builder(String uri) {
+            this.uri = Objects.requireNonNull(uri, "uri must not be null");
+        }
 
-        /** 设置所有 Agent 键的命名空间前缀。 */
+        private Builder(JedisPooled jedis) {
+            this.jedis = Objects.requireNonNull(jedis, "jedis must not be null");
+        }
+
+        /**
+         * 设置所有 Agent 键的命名空间前缀。
+         */
         public Builder keyPrefix(String keyPrefix) {
-            if (keyPrefix == null || keyPrefix.trim().isEmpty()) throw new IllegalArgumentException("keyPrefix must not be blank");
+            if (keyPrefix == null || keyPrefix.trim().isEmpty())
+                throw new IllegalArgumentException("keyPrefix must not be blank");
             this.keyPrefix = keyPrefix;
             return this;
         }
 
-        /** 设置 Snapshot 的二进制编码实现。 */
+        /**
+         * 设置 Snapshot 的二进制编码实现。
+         */
         public Builder serializer(AgentStoreSerializer serializer) {
             this.serializer = Objects.requireNonNull(serializer, "serializer must not be null");
             return this;
         }
 
-        public RedisAgentStoreConfig build() { return new RedisAgentStoreConfig(this); }
+        public RedisAgentStoreConfig build() {
+            return new RedisAgentStoreConfig(this);
+        }
     }
 }

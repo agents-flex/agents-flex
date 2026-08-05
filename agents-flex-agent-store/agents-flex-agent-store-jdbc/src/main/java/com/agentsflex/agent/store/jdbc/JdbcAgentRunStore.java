@@ -15,14 +15,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/** 使用 JDBC 事务、条件更新和乐观锁保存 AgentRun Snapshot。 */
+/**
+ * 使用 JDBC 事务、条件更新和乐观锁保存 AgentRun Snapshot。
+ */
 public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements AgentRunStore {
-    JdbcAgentRunStore(JdbcAgentStoreConfig config) { super(config); }
+    JdbcAgentRunStore(JdbcAgentStoreConfig config) {
+        super(config);
+    }
 
     @Override
     public long currentTimeMillis() {
         try (Connection connection = connection(); PreparedStatement statement =
-                 connection.prepareStatement("SELECT CURRENT_TIMESTAMP");
+            connection.prepareStatement("SELECT CURRENT_TIMESTAMP");
              ResultSet row = statement.executeQuery()) {
             if (!row.next()) throw new IllegalStateException("Database did not return current time");
             return row.getTimestamp(1).getTime();
@@ -33,8 +37,11 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
 
     @Override
     public AgentRunSnapshot load(String runId) {
-        try (Connection connection = connection()) { return load(connection, runId); }
-        catch (SQLException error) { throw failure("load AgentRun " + runId, error); }
+        try (Connection connection = connection()) {
+            return load(connection, runId);
+        } catch (SQLException error) {
+            throw failure("load AgentRun " + runId, error);
+        }
     }
 
     @Override
@@ -65,7 +72,9 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
         String sql = "UPDATE " + table("runs") + " SET cancellation_requested=? WHERE run_id=? "
             + "AND cancellation_requested=? AND status NOT IN (?,?,?,?,?,?)";
         try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setBoolean(1, true); statement.setString(2, runId); statement.setBoolean(3, false);
+            statement.setBoolean(1, true);
+            statement.setString(2, runId);
+            statement.setBoolean(3, false);
             statement.setString(4, AgentRunStatus.COMPLETED.name());
             statement.setString(5, AgentRunStatus.FAILED.name());
             statement.setString(6, AgentRunStatus.CANCELLED.name());
@@ -73,7 +82,9 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
             statement.setString(8, AgentRunStatus.MAX_STEPS_REACHED.name());
             statement.setString(9, AgentRunStatus.BUDGET_EXCEEDED.name());
             return statement.executeUpdate() == 1;
-        } catch (SQLException error) { throw failure("request AgentRun cancellation", error); }
+        } catch (SQLException error) {
+            throw failure("request AgentRun cancellation", error);
+        }
     }
 
     @Override
@@ -84,8 +95,9 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
 
     @Override
     public ParentChildRunSnapshots saveParentAndChild(AgentRunSnapshot parent, long expectedParentVersion,
-                                                       AgentRunSnapshot child) {
-        requireSnapshot(parent); requireSnapshot(child);
+                                                      AgentRunSnapshot child) {
+        requireSnapshot(parent);
+        requireSnapshot(child);
         try (Connection connection = connection()) {
             connection.setAutoCommit(false);
             try {
@@ -98,25 +110,33 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
                 if (error instanceof RuntimeException) throw (RuntimeException) error;
                 throw error;
             }
-        } catch (SQLException error) { throw failure("save parent and child AgentRun", error); }
+        } catch (SQLException error) {
+            throw failure("save parent and child AgentRun", error);
+        }
     }
 
     @Override
     public List<AgentRunSnapshot> claimRunnable(String workerId, long now, long leaseMillis, int limit) {
-        if (workerId == null || leaseMillis <= 0 || limit <= 0) throw new IllegalArgumentException("invalid lease request");
+        if (workerId == null || leaseMillis <= 0 || limit <= 0)
+            throw new IllegalArgumentException("invalid lease request");
         List<AgentRunSnapshot> claimed = new ArrayList<>();
         String query = "SELECT r.run_id,r.version,r.parent_run_id FROM " + table("runs") + " r WHERE "
             + "((r.status IN (?,?)) OR (r.status=? AND r.next_run_at<=?) OR r.cancellation_requested=?) "
             + "AND (r.lease_owner IS NULL OR r.lease_until<=?) AND NOT EXISTS (SELECT 1 FROM " + table("runs")
             + " p WHERE p.run_id=r.parent_run_id AND p.lease_owner IS NOT NULL AND p.lease_until>?) ORDER BY r.next_run_at";
         try (Connection connection = connection(); PreparedStatement select = connection.prepareStatement(query)) {
-            select.setString(1, AgentRunStatus.READY.name()); select.setString(2, AgentRunStatus.RUNNING.name());
-            select.setString(3, AgentRunStatus.RETRY_SCHEDULED.name()); select.setLong(4, now);
-            select.setBoolean(5, true); select.setLong(6, now); select.setLong(7, now);
+            select.setString(1, AgentRunStatus.READY.name());
+            select.setString(2, AgentRunStatus.RUNNING.name());
+            select.setString(3, AgentRunStatus.RETRY_SCHEDULED.name());
+            select.setLong(4, now);
+            select.setBoolean(5, true);
+            select.setLong(6, now);
+            select.setLong(7, now);
             select.setMaxRows(Math.max(limit * 4, limit));
             try (ResultSet rows = select.executeQuery()) {
                 while (rows.next() && claimed.size() < limit) {
-                    String runId = rows.getString(1); long version = rows.getLong(2);
+                    String runId = rows.getString(1);
+                    long version = rows.getLong(2);
                     String parentRunId = rows.getString(3);
                     String leaseId = UUID.randomUUID().toString();
                     String update = "UPDATE " + table("runs") + " SET lease_owner=?,lease_id=?,lease_until=?,version=version+1 "
@@ -124,17 +144,23 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
                         + "AND (? IS NULL OR NOT EXISTS (SELECT 1 FROM " + table("runs")
                         + " p WHERE p.run_id=? AND p.lease_owner IS NOT NULL AND p.lease_until>?))";
                     try (PreparedStatement claim = connection.prepareStatement(update)) {
-                        claim.setString(1, workerId); claim.setString(2, leaseId);
-                        claim.setLong(3, now + leaseMillis); claim.setString(4, runId);
-                        claim.setLong(5, version); claim.setLong(6, now);
-                        claim.setString(7, parentRunId); claim.setString(8, parentRunId);
+                        claim.setString(1, workerId);
+                        claim.setString(2, leaseId);
+                        claim.setLong(3, now + leaseMillis);
+                        claim.setString(4, runId);
+                        claim.setLong(5, version);
+                        claim.setLong(6, now);
+                        claim.setString(7, parentRunId);
+                        claim.setString(8, parentRunId);
                         claim.setLong(9, now);
                         if (claim.executeUpdate() == 1) claimed.add(load(connection, runId));
                     }
                 }
             }
             return claimed;
-        } catch (SQLException error) { throw failure("claim runnable AgentRuns", error); }
+        } catch (SQLException error) {
+            throw failure("claim runnable AgentRuns", error);
+        }
     }
 
     @Override
@@ -144,12 +170,17 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
         String sql = "UPDATE " + table("runs") + " SET lease_until=? WHERE run_id=? AND lease_owner=? "
             + "AND lease_id=? AND lease_until>?";
         try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, leaseUntil); statement.setString(2, runId);
-            statement.setString(3, workerId); statement.setString(4, leaseId);
+            statement.setLong(1, leaseUntil);
+            statement.setString(2, runId);
+            statement.setString(3, workerId);
+            statement.setString(4, leaseId);
             statement.setLong(5, now);
-            if (statement.executeUpdate() != 1) throw new IllegalStateException("AgentRun lease is not owned by worker: " + workerId);
+            if (statement.executeUpdate() != 1)
+                throw new IllegalStateException("AgentRun lease is not owned by worker: " + workerId);
             return load(connection, runId);
-        } catch (SQLException error) { throw failure("renew AgentRun lease", error); }
+        } catch (SQLException error) {
+            throw failure("renew AgentRun lease", error);
+        }
     }
 
     @Override
@@ -157,9 +188,13 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
         String sql = "UPDATE " + table("runs") + " SET lease_owner=NULL,lease_id=NULL,lease_until=0 "
             + "WHERE run_id=? AND lease_owner=? AND lease_id=?";
         try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, runId); statement.setString(2, workerId);
-            statement.setString(3, leaseId); statement.executeUpdate();
-        } catch (SQLException error) { throw failure("release AgentRun lease", error); }
+            statement.setString(1, runId);
+            statement.setString(2, workerId);
+            statement.setString(3, leaseId);
+            statement.executeUpdate();
+        } catch (SQLException error) {
+            throw failure("release AgentRun lease", error);
+        }
     }
 
     @Override
@@ -192,7 +227,9 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
             String sql = "INSERT INTO " + table("runs") + " (run_id,version,status,next_run_at,lease_owner,lease_id,lease_until,"
                 + "parent_run_id,cancellation_requested,payload) VALUES (?,?,?,?,?,?,?,?,?,?)";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                bind(statement, saved); statement.executeUpdate(); return saved;
+                bind(statement, saved);
+                statement.executeUpdate();
+                return saved;
             } catch (SQLException error) {
                 String runId = snapshot.getState().getRunId();
                 AgentRunSnapshot actual = load(connection, runId);
@@ -207,12 +244,18 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
             + "WHERE run_id=? AND version=?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             AgentRunState state = saved.getState();
-            statement.setLong(1, state.getVersion()); statement.setString(2, state.getStatus().name());
-            statement.setLong(3, state.getNextRunAt()); statement.setString(4, state.getLeaseOwner());
-            statement.setString(5, state.getLeaseId()); statement.setLong(6, state.getLeaseUntil());
-            statement.setString(7, state.getParentRunId()); statement.setBoolean(8, true);
-            statement.setBoolean(9, true); statement.setBoolean(10, state.isCancellationRequested());
-            statement.setBytes(11, serialize(saved)); statement.setString(12, state.getRunId());
+            statement.setLong(1, state.getVersion());
+            statement.setString(2, state.getStatus().name());
+            statement.setLong(3, state.getNextRunAt());
+            statement.setString(4, state.getLeaseOwner());
+            statement.setString(5, state.getLeaseId());
+            statement.setLong(6, state.getLeaseUntil());
+            statement.setString(7, state.getParentRunId());
+            statement.setBoolean(8, true);
+            statement.setBoolean(9, true);
+            statement.setBoolean(10, state.isCancellationRequested());
+            statement.setBytes(11, serialize(saved));
+            statement.setString(12, state.getRunId());
             statement.setLong(13, expectedVersion);
             if (statement.executeUpdate() != 1) {
                 AgentRunSnapshot actual = load(connection, state.getRunId());
@@ -225,11 +268,16 @@ public final class JdbcAgentRunStore extends JdbcAgentStoreSupport implements Ag
 
     private void bind(PreparedStatement statement, AgentRunSnapshot saved) throws SQLException {
         AgentRunState state = saved.getState();
-        statement.setString(1, state.getRunId()); statement.setLong(2, state.getVersion());
-        statement.setString(3, state.getStatus().name()); statement.setLong(4, state.getNextRunAt());
-        statement.setString(5, state.getLeaseOwner()); statement.setString(6, state.getLeaseId());
-        statement.setLong(7, state.getLeaseUntil()); statement.setString(8, state.getParentRunId());
-        statement.setBoolean(9, state.isCancellationRequested()); statement.setBytes(10, serialize(saved));
+        statement.setString(1, state.getRunId());
+        statement.setLong(2, state.getVersion());
+        statement.setString(3, state.getStatus().name());
+        statement.setLong(4, state.getNextRunAt());
+        statement.setString(5, state.getLeaseOwner());
+        statement.setString(6, state.getLeaseId());
+        statement.setLong(7, state.getLeaseUntil());
+        statement.setString(8, state.getParentRunId());
+        statement.setBoolean(9, state.isCancellationRequested());
+        statement.setBytes(10, serialize(saved));
     }
 
     private AgentRunSnapshot load(Connection connection, String runId) throws SQLException {

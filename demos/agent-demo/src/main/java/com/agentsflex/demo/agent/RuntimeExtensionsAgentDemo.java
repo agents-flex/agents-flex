@@ -11,7 +11,6 @@ import com.agentsflex.agent.AgentRun;
 import com.agentsflex.agent.AgentRunOptions;
 import com.agentsflex.agent.AgentRunStatus;
 import com.agentsflex.agent.AgentRunner;
-import com.agentsflex.agent.context.MessageCountAgentContextManager;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;
@@ -36,7 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/** 演示 Middleware、实时事件和上下文压缩。 */
+/** 演示 Middleware、实时事件和只读消息窗口。 */
 public final class RuntimeExtensionsAgentDemo {
 
     private RuntimeExtensionsAgentDemo() {
@@ -91,9 +90,8 @@ public final class RuntimeExtensionsAgentDemo {
             .chatModel(model)
             .tool(reportTool)
             .middleware(middleware)
-            // 历史超过 5 条时，将旧消息压缩为摘要并保留最近 3 条。
-            .contextManager(new MessageCountAgentContextManager(5, 3,
-                messages -> "已压缩 " + messages.size() + " 条较早消息"))
+            // 只限制本次模型请求读取的历史，不修改 Run 或业务 ChatMemory。
+            .maxAttachedMessages(5)
             .build();
 
         AgentRunner runner = AgentRunner.builder()
@@ -130,8 +128,7 @@ public final class RuntimeExtensionsAgentDemo {
         for (AgentEvent event : events) {
             if (event.getType() == AgentEventType.MODEL_REASONING_DELTA
                 || event.getType() == AgentEventType.MODEL_TOOL_CALL_DELTA
-                || event.getType() == AgentEventType.TOOL_PROGRESS
-                || event.getType() == AgentEventType.CONTEXT_COMPACTED) {
+                || event.getType() == AgentEventType.TOOL_PROGRESS) {
                 System.out.println("  " + event.getSequence() + " "
                     + event.getType() + " " + event.getData());
             }

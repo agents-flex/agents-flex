@@ -41,7 +41,7 @@ flowchart TD
     Planning -->|"否"| Middleware["Agent Step Middleware"]
     Middleware --> Phase{"内置状态机<br/>当前 Phase"}
 
-    Phase -->|"MODEL"| Context["整理上下文<br/>ContextManager / maxAttachedMessages"]
+    Phase -->|"MODEL"| Context["构造只读消息窗口<br/>maxAttachedMessages"]
     Context --> ModelChain["Model Middleware -> ChatModel"]
     ModelChain --> ModelResult{"模型响应"}
     ModelResult -->|"最终 AiMessage"| Complete["写入最终消息<br/>COMPLETED"]

@@ -3,12 +3,6 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.context.AgentContextUpdate;
-import com.agentsflex.agent.context.MessageCountAgentContextManager;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.ToolCall;
-import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import org.junit.Test;
 
@@ -17,18 +11,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.NotSerializableException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** Snapshot 序列化与上下文压缩边界测试。 */
-public class AgentPersistenceContextContractTest {
+/** Snapshot 序列化与不可变状态边界测试。 */
+public class AgentSnapshotPersistenceContractTest {
 
     @Test
     public void shouldRoundTripSnapshotThroughJavaSerialization() throws Exception {
@@ -100,83 +90,6 @@ public class AgentPersistenceContextContractTest {
         }
     }
 
-    @Test
-    public void shouldLeaveHistoryUntouchedWhenSummarizerReturnsNull() {
-        AgentRun run = runWithMessages("null-summary", 6);
-        List<Message> before = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
-        MessageCountAgentContextManager manager = new MessageCountAgentContextManager(
-            4, 2, messages -> null);
-
-        AgentContextUpdate update = manager.prepare(run);
-
-        assertFalse(update.isChanged());
-        assertEquals(texts(before), texts(run.getPrompt().getMemory()
-            .getMessages(Integer.MAX_VALUE)));
-    }
-
-    @Test
-    public void shouldLeaveHistoryUntouchedWhenSummarizerFails() {
-        AgentRun run = runWithMessages("failed-summary", 6);
-        List<String> before = texts(run.getPrompt().getMemory()
-            .getMessages(Integer.MAX_VALUE));
-        MessageCountAgentContextManager manager = new MessageCountAgentContextManager(
-            4, 2, messages -> { throw new RuntimeException("summary failed"); });
-
-        try {
-            manager.prepare(run);
-            fail("summarizer failure must propagate");
-        } catch (RuntimeException expected) {
-            assertEquals("summary failed", expected.getMessage());
-        }
-        assertEquals(before, texts(run.getPrompt().getMemory()
-            .getMessages(Integer.MAX_VALUE)));
-    }
-
-    @Test
-    public void shouldNotCompactAgainWhenHistoryIsAlreadyWithinLimit() {
-        AgentRun run = runWithMessages("idempotent-summary", 7);
-        java.util.concurrent.atomic.AtomicInteger summaries =
-            new java.util.concurrent.atomic.AtomicInteger();
-        MessageCountAgentContextManager manager = new MessageCountAgentContextManager(
-            5, 3, messages -> {
-                summaries.incrementAndGet();
-                return "summary";
-            });
-
-        AgentContextUpdate first = manager.prepare(run);
-        AgentContextUpdate second = manager.prepare(run);
-
-        assertTrue(first.isChanged());
-        assertFalse(second.isChanged());
-        assertEquals(1, summaries.get());
-    }
-
-    @Test
-    public void shouldPreserveCompleteToolProtocolGroupDuringCompaction() {
-        AgentRun run = newRun("tool-boundary");
-        run.getPrompt().addUserMessage("old-1");
-        run.getPrompt().addAiMessage("old-2");
-        AiMessage callMessage = new AiMessage();
-        callMessage.setToolCalls(Collections.singletonList(
-            new ToolCall("call-1", "lookup", "{}")));
-        run.getPrompt().addMessage(callMessage);
-        ToolMessage result = new ToolMessage();
-        result.setToolCallId("call-1");
-        result.setContent("result");
-        run.getPrompt().addMessage(result);
-        run.getPrompt().addUserMessage("recent");
-        MessageCountAgentContextManager manager = new MessageCountAgentContextManager(
-            4, 2, messages -> "summary");
-
-        manager.prepare(run);
-
-        List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
-        assertTrue(messages.get(1) instanceof AiMessage);
-        assertTrue(((AiMessage) messages.get(1)).hasToolCalls());
-        assertTrue(messages.get(2) instanceof ToolMessage);
-        assertEquals("call-1", ((ToolMessage) messages.get(2)).getToolCallId());
-    }
-
     private AgentRunSnapshot roundTrip(AgentRunSnapshot snapshot) throws Exception {
         byte[] bytes = serialize(snapshot);
         ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(bytes));
@@ -191,21 +104,4 @@ public class AgentPersistenceContextContractTest {
         return buffer.toByteArray();
     }
 
-    private AgentRun runWithMessages(String name, int count) {
-        AgentRun run = newRun(name);
-        run.getPrompt().getMemory().clear();
-        for (int i = 0; i < count; i++) run.getPrompt().addUserMessage("m-" + i);
-        return run;
-    }
-
-    private AgentRun newRun(String name) {
-        return new AgentRunner().start(Agent.builder(name)
-            .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build(), "input");
-    }
-
-    private List<String> texts(List<Message> messages) {
-        java.util.ArrayList<String> result = new java.util.ArrayList<>();
-        for (Message message : messages) result.add(message.getTextContent());
-        return result;
-    }
 }

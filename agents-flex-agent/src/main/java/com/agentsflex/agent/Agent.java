@@ -8,7 +8,6 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.task.AgentPlanningPolicy;
 import com.agentsflex.agent.task.AgentPlanningTool;
-import com.agentsflex.agent.context.AgentContextManager;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.tool.ToolApprovalPolicy;
 import com.agentsflex.core.model.chat.ChatModel;
@@ -42,13 +41,17 @@ public final class Agent {
      * 用于 Snapshot 恢复和 AgentLoader 加载的稳定 ID。
      */
     private final String id;
-    /** Agent 配置版本，用于让运行中的任务绑定到创建时的配置。 */
+    /**
+     * Agent 配置版本，用于让运行中的任务绑定到创建时的配置。
+     */
     private final String version;
     /**
      * Agent 的业务名称，用于日志、追踪和 Agent 路由。
      */
     private final String name;
-    /** 提供给使用者和规划模型的公开能力描述。 */
+    /**
+     * 提供给使用者和规划模型的公开能力描述。
+     */
     private final String description;
     /**
      * 作为 SystemMessage 注入对话的系统指令。
@@ -66,7 +69,9 @@ public final class Agent {
      * 暴露给模型并允许 AgentRunner 执行的工具集合。
      */
     private final List<Tool> tools;
-    /** 按唯一工具名建立的只读索引，供 ToolCall 和恢复流程直接定位工具。 */
+    /**
+     * 按唯一工具名建立的只读索引，供 ToolCall 和恢复流程直接定位工具。
+     */
     private final Map<String, Tool> toolsByName;
     /**
      * 仅作用于当前 Agent 工具调用的拦截器集合。
@@ -80,15 +85,21 @@ public final class Agent {
      * 控制工具是否需要外部审批。
      */
     private final ToolApprovalPolicy toolApprovalPolicy;
-    /** 控制模型是否可以自主创建并执行任务计划。 */
+    /**
+     * 控制模型是否可以自主创建并执行任务计划。
+     */
     private final AgentPlanningPolicy planningPolicy;
-    /** 每次模型调用最多从 Run 历史中附加的消息数量。 */
+    /**
+     * 每次模型调用最多从 Run 历史中附加的消息数量。
+     */
     private final int maxAttachedMessages;
-    /** 在模型调用前压缩或整理持久化消息历史。 */
-    private final AgentContextManager contextManager;
-    /** 包装步骤、模型调用和工具调用的中间件。 */
+    /**
+     * 包装步骤、模型调用和工具调用的中间件。
+     */
     private final List<AgentMiddleware> middlewares;
-    /** 供配置平台保存模式参数、任务类型和发布信息的只读扩展属性。 */
+    /**
+     * 供配置平台保存模式参数、任务类型和发布信息的只读扩展属性。
+     */
     private final Map<String, Object> attributes;
 
     private Agent(Builder builder) {
@@ -110,7 +121,6 @@ public final class Agent {
         this.toolApprovalPolicy = builder.toolApprovalPolicy;
         this.planningPolicy = builder.planningPolicy;
         this.maxAttachedMessages = builder.maxAttachedMessages;
-        this.contextManager = builder.contextManager;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
         this.attributes = Collections.unmodifiableMap(new HashMap<>(builder.attributes));
     }
@@ -138,8 +148,12 @@ public final class Agent {
         return id;
     }
 
-    /** @return Agent 配置版本 */
-    public String getVersion() { return version; }
+    /**
+     * @return Agent 配置版本
+     */
+    public String getVersion() {
+        return version;
+    }
 
     /**
      * @return Agent 的业务名称
@@ -151,7 +165,9 @@ public final class Agent {
     /**
      * @return Agent 的公开能力描述；未配置时可能为 {@code null}
      */
-    public String getDescription() { return description; }
+    public String getDescription() {
+        return description;
+    }
 
     /**
      * @return Agent 的系统指令；未配置时可能为 {@code null}
@@ -204,25 +220,40 @@ public final class Agent {
         return executionPolicy;
     }
 
-    /** @return 工具执行前使用的审批策略 */
+    /**
+     * @return 工具执行前使用的审批策略
+     */
     public ToolApprovalPolicy getToolApprovalPolicy() {
         return toolApprovalPolicy;
     }
 
-    /** @return 模型自主创建任务计划时使用的约束策略 */
-    public AgentPlanningPolicy getPlanningPolicy() { return planningPolicy; }
+    /**
+     * @return 模型自主创建任务计划时使用的约束策略
+     */
+    public AgentPlanningPolicy getPlanningPolicy() {
+        return planningPolicy;
+    }
 
-    /** @return 每次模型调用最多附加的历史消息数量 */
-    public int getMaxAttachedMessages() { return maxAttachedMessages; }
+    /**
+     * @return 每次模型调用最多附加的历史消息数量
+     */
+    public int getMaxAttachedMessages() {
+        return maxAttachedMessages;
+    }
 
-    /** @return 模型调用前整理持久化消息的上下文管理器 */
-    public AgentContextManager getContextManager() { return contextManager; }
+    /**
+     * @return 按注册顺序执行的只读 Middleware 列表
+     */
+    public List<AgentMiddleware> getMiddlewares() {
+        return middlewares;
+    }
 
-    /** @return 按注册顺序执行的只读 Middleware 列表 */
-    public List<AgentMiddleware> getMiddlewares() { return middlewares; }
-
-    /** @return 供平台查询和审计的不可修改扩展属性 */
-    public Map<String, Object> getAttributes() { return attributes; }
+    /**
+     * @return 供平台查询和审计的不可修改扩展属性
+     */
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
 
     /**
      * {@link Agent} 构建器。
@@ -245,7 +276,6 @@ public final class Agent {
         private ToolApprovalPolicy toolApprovalPolicy = ToolApprovalPolicy.allowAll();
         private AgentPlanningPolicy planningPolicy = AgentPlanningPolicy.disabled();
         private int maxAttachedMessages = 100;
-        private AgentContextManager contextManager = AgentContextManager.none();
         private final List<AgentMiddleware> middlewares = new ArrayList<>();
         private final Map<String, Object> attributes = new HashMap<>();
 
@@ -259,7 +289,9 @@ public final class Agent {
             return this;
         }
 
-        /** 设置配置平台发布的 Agent 配置版本。 */
+        /**
+         * 设置配置平台发布的 Agent 配置版本。
+         */
         public Builder version(String version) {
             this.version = version;
             return this;
@@ -273,7 +305,9 @@ public final class Agent {
             return this;
         }
 
-        /** 设置可展示给使用者和规划模型的能力描述。 */
+        /**
+         * 设置可展示给使用者和规划模型的能力描述。
+         */
         public Builder description(String description) {
             this.description = description;
             return this;
@@ -351,7 +385,9 @@ public final class Agent {
             return this;
         }
 
-        /** 设置模型自主创建任务计划时使用的约束策略。 */
+        /**
+         * 设置模型自主创建任务计划时使用的约束策略。
+         */
         public Builder planningPolicy(AgentPlanningPolicy planningPolicy) {
             this.planningPolicy = planningPolicy;
             return this;
@@ -370,19 +406,17 @@ public final class Agent {
             return this;
         }
 
-        /** 设置模型调用前使用的消息上下文管理器。 */
-        public Builder contextManager(AgentContextManager contextManager) {
-            this.contextManager = contextManager;
-            return this;
-        }
-
-        /** 添加一个 Agent 运行时中间件。 */
+        /**
+         * 添加一个 Agent 运行时中间件。
+         */
         public Builder middleware(AgentMiddleware middleware) {
             if (middleware != null) this.middlewares.add(middleware);
             return this;
         }
 
-        /** 批量添加 Agent 运行时中间件。 */
+        /**
+         * 批量添加 Agent 运行时中间件。
+         */
         public Builder middlewares(List<? extends AgentMiddleware> values) {
             if (values != null) for (AgentMiddleware value : values) middleware(value);
             return this;
@@ -402,7 +436,9 @@ public final class Agent {
             return this;
         }
 
-        /** 批量添加 Agent 定义扩展属性。 */
+        /**
+         * 批量添加 Agent 定义扩展属性。
+         */
         public Builder attributes(Map<String, ?> values) {
             if (values != null) {
                 for (Map.Entry<String, ?> entry : values.entrySet()) {
@@ -439,8 +475,8 @@ public final class Agent {
             if (toolApprovalPolicy == null) {
                 toolApprovalPolicy = ToolApprovalPolicy.allowAll();
             }
-            if (contextManager == null || planningPolicy == null) {
-                throw new IllegalStateException("Agent runtime policies must not be null");
+            if (planningPolicy == null) {
+                throw new IllegalStateException("planningPolicy must not be null");
             }
             validateUniqueToolNames();
             if (planningPolicy.isEnabled() && tools.stream().anyMatch(tool ->

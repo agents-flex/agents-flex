@@ -47,7 +47,9 @@ final class AgentRunnerPlanning {
         this.eventPublisher = eventPublisher;
     }
 
-    /** 判断 ToolCall 是否属于框架内置的计划创建或调整工具。 */
+    /**
+     * 判断 ToolCall 是否属于框架内置的计划创建或调整工具。
+     */
     boolean isPlanningTool(ToolCall call) {
         return call != null && (AgentPlanningTool.NAME.equals(call.getName())
             || AgentPlanningTool.UPDATE_NAME.equals(call.getName()));
@@ -62,7 +64,9 @@ final class AgentRunnerPlanning {
             ? createTaskPlan(run, call) : updateTaskPlan(run, call);
     }
 
-    /** 在规划 ToolCall 的状态已经保存后发布相应生命周期事件。 */
+    /**
+     * 在规划 ToolCall 的状态已经保存后发布相应生命周期事件。
+     */
     void notifyPlanChanged(AgentRun run, ToolCall call) {
         if (AgentPlanningTool.NAME.equals(call.getName())) {
             eventPublisher.notifyPlanCreated(run, run.getTaskPlan());
@@ -101,7 +105,9 @@ final class AgentRunnerPlanning {
         return AgentStepResult.of(null, null, null);
     }
 
-    /** 在父子 Snapshot 保存前，把新建子 Run 与当前计划任务关联。 */
+    /**
+     * 在父子 Snapshot 保存前，把新建子 Run 与当前计划任务关联。
+     */
     void bindChild(AgentRun parent, AgentRun child, String childAgentId) {
         AgentTaskPlan plan = parent.getTaskPlan();
         if (plan == null || plan.getActiveTask() != null || plan.getNextTask() == null) return;
@@ -113,7 +119,9 @@ final class AgentRunnerPlanning {
         child.putMetadata("agentTaskId", task.getId());
     }
 
-    /** 在父子 Snapshot 已经原子保存后发布计划任务开始事件。 */
+    /**
+     * 在父子 Snapshot 已经原子保存后发布计划任务开始事件。
+     */
     void notifyTaskStarted(AgentRun parent, AgentRun child) {
         AgentTaskPlan plan = parent.getTaskPlan();
         if (plan != null && plan.getActiveTask() != null) {
@@ -153,7 +161,9 @@ final class AgentRunnerPlanning {
         return runner.submitResume(parent, AgentResumeCommand.childCompleted(child.getId()));
     }
 
-    /** 查询计划以及当前计划子 Run 的真实运行状态。 */
+    /**
+     * 查询计划以及当前计划子 Run 的真实运行状态。
+     */
     AgentTaskProgress getTaskProgress(String runId) {
         AgentRun root = runner.restore(runId);
         AgentTaskPlan plan = root.getTaskPlan();
@@ -164,7 +174,9 @@ final class AgentRunnerPlanning {
             child == null ? root.getSuspension() : child.getSuspension());
     }
 
-    /** 返回父 Run 当前计划关联的子 Run；没有活动计划任务时返回 {@code null}。 */
+    /**
+     * 返回父 Run 当前计划关联的子 Run；没有活动计划任务时返回 {@code null}。
+     */
     AgentRun currentChild(AgentRun parent) {
         if (parent == null || parent.getStatus() != AgentRunStatus.WAITING_FOR_CHILD) return null;
         AgentTaskPlan plan = parent.getTaskPlan();
@@ -173,7 +185,9 @@ final class AgentRunnerPlanning {
             ? null : runner.restore(task.getChildRunId());
     }
 
-    /** 加载白名单中的完整 Agent，并向当前 Run 的 Prompt 装配规划工具。 */
+    /**
+     * 加载白名单中的完整 Agent，并向当前 Run 的 Prompt 装配规划工具。
+     */
     void prepareTools(AgentRun run) {
         if (run.isPlanningToolsPrepared()) return;
         List<Agent> delegates = new ArrayList<>();
@@ -188,7 +202,9 @@ final class AgentRunnerPlanning {
         run.preparePlanningTools(delegates);
     }
 
-    /** 在 Run 完成时收束重规划或最终汇总状态。 */
+    /**
+     * 在 Run 完成时收束重规划或最终汇总状态。
+     */
     void finishPlan(AgentRun run) {
         AgentTaskPlan plan = run.getTaskPlan();
         if (plan != null && plan.getStatus() == AgentTaskPlanStatus.REPLANNING) {

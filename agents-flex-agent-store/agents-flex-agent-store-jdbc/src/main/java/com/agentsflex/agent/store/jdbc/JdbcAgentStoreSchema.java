@@ -6,11 +6,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-/** 创建 JDBC Agent Store 所需的可移植基础表结构。 */
+/**
+ * 创建 JDBC Agent Store 所需的可移植基础表结构。
+ */
 public final class JdbcAgentStoreSchema extends JdbcAgentStoreSupport {
-    JdbcAgentStoreSchema(JdbcAgentStoreConfig config) { super(config); }
+    JdbcAgentStoreSchema(JdbcAgentStoreConfig config) {
+        super(config);
+    }
 
-    /** 幂等创建全部表和索引，适合测试、开发和应用启动期初始化。 */
+    /**
+     * 幂等创建全部表和索引，适合测试、开发和应用启动期初始化。
+     */
     public void initialize() {
         try (Connection connection = connection(); Statement statement = connection.createStatement()) {
             String binary = config.getBinaryColumnType();

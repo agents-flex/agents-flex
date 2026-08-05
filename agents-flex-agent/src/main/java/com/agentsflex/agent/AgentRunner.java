@@ -8,7 +8,6 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
-import com.agentsflex.agent.context.AgentContextUpdate;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
@@ -740,14 +739,6 @@ public final class AgentRunner {
         eventPublisher.notifyModelStart(run);
         AiMessageResponse response;
         try {
-            // 上下文管理器可压缩历史或替换大型内容；变更后先落盘再把新 Prompt 发送给模型。
-            AgentContextUpdate update = agent.getContextManager().prepare(run);
-            if (update != null && update.isChanged()) {
-                saveSnapshot(run);
-                eventPublisher.publish(run, AgentEventType.CONTEXT_COMPACTED,
-                    objectAttributes("removedMessageCount", update.getRemovedMessageCount(),
-                        "remainingMessageCount", update.getRemainingMessageCount()));
-            }
             // 模型 Middleware 以责任链包裹最终调用，可用于 tracing、缓存或受控 Prompt 增强。
             AgentMiddlewareContext middlewareContext = new AgentMiddlewareContext(
                 this, run, run.getPrompt());

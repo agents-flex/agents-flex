@@ -46,7 +46,8 @@ sequence 在 Runner 重建或进程重启后会重新开始，不能直接作为
 - Model：开始、结束、文本/推理/ToolCall 增量和迭代上限。
 - Tool：开始、进度、完成、失败和审批。
 - Planning：计划创建、调整、任务和子 Run。
-- Context、重试和预算终止。
+- Retry：可恢复异常的延迟重试调度。
+- Budget：时间、Token 或工具调用次数达到限制。
 
 `SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Run 已完成。
 

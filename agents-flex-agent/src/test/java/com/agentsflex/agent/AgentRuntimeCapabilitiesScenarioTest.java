@@ -3,7 +3,6 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.context.MessageCountAgentContextManager;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;
@@ -226,64 +225,6 @@ public class AgentRuntimeCapabilitiesScenarioTest {
 
         assertEquals(AgentRunStatus.FAILED, run.getStatus());
         assertTrue(run.getError().getMessage().contains("connection failed"));
-    }
-
-    @Test
-    public void shouldCompactOldHistoryAndKeepRecentMessages() {
-        ScriptedChatModel model = new ScriptedChatModel();
-        model.enqueue(new AiMessage("done"));
-        Agent agent = Agent.builder("compact-agent")
-            .chatModel(model)
-            .contextManager(new MessageCountAgentContextManager(5, 3,
-                messages -> "summarized " + messages.size() + " messages"))
-            .build();
-        AgentRun run = AgentRun.start(agent, "m1");
-        for (int i = 2; i <= 8; i++) run.getPrompt().addUserMessage("m" + i);
-        List<AgentEvent> events = new ArrayList<>();
-
-        new AgentRunner().addEventListener(events::add).run(run);
-
-        List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
-        assertEquals("Conversation summary:\nsummarized 5 messages", messages.get(0).getTextContent());
-        assertEquals("m6", messages.get(1).getTextContent());
-        assertEquals("m8", messages.get(3).getTextContent());
-        assertEquals("done", messages.get(4).getTextContent());
-        assertTrue(hasEvent(events, AgentEventType.CONTEXT_COMPACTED));
-    }
-
-    @Test
-    public void shouldPreserveToolProtocolBoundaryWhenCompacting() {
-        ChatModel model = new ImmediateChatModel() {
-            @Override
-            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
-                List<Message> messages = prompt.getMessages();
-                assertTrue(messages.get(1) instanceof AiMessage);
-                assertTrue(((AiMessage) messages.get(1)).hasToolCalls());
-                assertTrue(messages.get(2) instanceof ToolMessage);
-                assertEquals("call-1", ((ToolMessage) messages.get(2)).getToolCallId());
-                return response(prompt, new AiMessage("done"));
-            }
-        };
-        Agent agent = Agent.builder("protocol-agent")
-            .chatModel(model)
-            .contextManager(new MessageCountAgentContextManager(5, 2,
-                messages -> "older history"))
-            .build();
-        AgentRun run = AgentRun.start(agent, "u1");
-        run.getPrompt().addUserMessage("u2");
-        run.getPrompt().addUserMessage("u3");
-        run.getPrompt().addMessage(toolCalls(new ToolCall("call-1", "lookup", "{}")));
-        ToolMessage result = new ToolMessage();
-        result.setToolCallId("call-1");
-        result.setContent("value");
-        run.getPrompt().addMessage(result);
-        run.getPrompt().addUserMessage("continue");
-
-        new AgentRunner().run(run);
-
-        List<Message> messages = run.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
-        assertTrue(messages.get(1) instanceof AiMessage);
-        assertTrue(messages.get(2) instanceof ToolMessage);
     }
 
     private static AgentMiddleware recordingMiddleware(String name, List<String> calls) {
