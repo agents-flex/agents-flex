@@ -6,15 +6,7 @@
  */
 package com.agentsflex.demo.agent.console;
 
-import com.agentsflex.agent.Agent;
-import com.agentsflex.agent.AgentBudget;
-import com.agentsflex.agent.AgentExecutionPolicy;
-import com.agentsflex.agent.AgentResumeCommand;
-import com.agentsflex.agent.AgentRun;
-import com.agentsflex.agent.AgentRunOptions;
-import com.agentsflex.agent.AgentRunStatus;
-import com.agentsflex.agent.AgentRunner;
-import com.agentsflex.agent.AgentSuspension;
+import com.agentsflex.agent.*;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
@@ -38,7 +30,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -414,9 +405,9 @@ public final class AgentConsoleDemo {
             }
             return new DemoConfiguration(
                 apiKey,
-                environment(ENDPOINT_ENV, "https://api.openai.com"),
-                environment(REQUEST_PATH_ENV, "/v1/chat/completions"),
-                environment(MODEL_ENV, "gpt-4o-mini"));
+                environment(ENDPOINT_ENV, "https://api.deepseek.com"),
+                environment(REQUEST_PATH_ENV, "/chat/completions"),
+                environment(MODEL_ENV, "deepseek-v4-pro"));
         }
     }
 
