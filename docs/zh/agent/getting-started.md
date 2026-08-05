@@ -140,13 +140,14 @@ AgentRunner runner = AgentRunner.builder()
     .chatMemoryProvider(id -> loadMemory(id))
     .build();
 
-AgentTurn first = runner.run(agent, "session-1001", "我叫小明");
-AgentTurn second = runner.run(agent, "session-1001", "我叫什么？");
+AgentTurn first = runner.run(agent.getId(), "session-1001", "我叫小明");
+AgentTurn second = runner.run(agent.getId(), "session-1001", "我叫什么？");
 ```
 
-Runner 使用 `getModelMessages(maxAttachedMessages)` 分页读取最近历史，并在 Snapshot 保存后幂等回写
-本轮消息。页面读取 `getMessages()` 可以同时看到对话消息和审批操作消息。不配置 Provider 时仍可显式
-传入历史并自行回写 `getConversationHistory()`。
+配置 `AgentLoader` 后，Runner 会按 Agent ID 加载当前生效版本；配置 `ChatMemoryProvider` 后，Runner 使用
+`getModelMessages(maxAttachedMessages)` 分页读取最近历史，并在 Snapshot 保存后幂等回写本轮消息。
+页面读取 `getMessages()` 可以同时看到对话消息和审批操作消息。不配置 Provider 时仍可传入完整 Agent
+和显式历史，并自行回写 `getConversationHistory()`。
 
 每一轮创建新的 `AgentTurn`。业务系统负责防止同一会话并发开始两轮，并保存尚未结束的 turnId。如果
 某轮处于阻塞状态，应按该 turnId 恢复原 Turn，而不是开始新一轮。

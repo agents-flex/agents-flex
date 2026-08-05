@@ -112,7 +112,7 @@ public final class AgentConsoleDemo {
 
             UserMessage userMessage = new UserMessage(input);
             try {
-                AgentTurn turn = runner.run(agent, conversationId, userMessage,
+                AgentTurn turn = runner.run(agent.getId(), conversationId, userMessage,
                     AgentTurnOptions.builder()
                         .metadata("requestId", UUID.randomUUID().toString())
                         .metadata("userId", "console-user")

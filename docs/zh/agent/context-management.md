@@ -27,7 +27,7 @@ ChatMemoryProvider memoryProvider = id -> loadMemory(id);
 AgentRunner runner = AgentRunner.builder()
     .chatMemoryProvider(memoryProvider)
     .build();
-AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理"));
+AgentTurn turn = runner.run(agentId, conversationId, new UserMessage("继续处理"));
 ```
 
 应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 turnId。同一业务会话不应并发开始两轮；

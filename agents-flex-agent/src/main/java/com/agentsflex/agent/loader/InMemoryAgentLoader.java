@@ -20,9 +20,13 @@ import java.util.Map;
  */
 public final class InMemoryAgentLoader implements AgentLoader {
 
-    /** 按 Agent ID 索引的当前生效版本；同一 ID 以后传入的 Agent 覆盖先前值。 */
+    /**
+     * 按 Agent ID 索引的当前生效版本；同一 ID 以后传入的 Agent 覆盖先前值。
+     */
     private final Map<String, Agent> activeAgents;
-    /** 按 Agent ID 与版本联合索引的全部构造参数，用于精确恢复指定版本。 */
+    /**
+     * 按 Agent ID 与版本联合索引的全部构造参数，用于精确恢复指定版本。
+     */
     private final Map<String, Agent> versionedAgents;
 
     /**
@@ -46,7 +50,9 @@ public final class InMemoryAgentLoader implements AgentLoader {
         this.versionedAgents = Collections.unmodifiableMap(versioned);
     }
 
-    /** 按稳定 ID 和配置版本读取 Agent；不存在时返回 {@code null}。 */
+    /**
+     * 按稳定 ID 和配置版本读取 Agent；不存在时返回 {@code null}。
+     */
     @Override
     public Agent load(String agentId, String version) {
         if (agentId == null || version == null) {
@@ -55,7 +61,9 @@ public final class InMemoryAgentLoader implements AgentLoader {
         return versionedAgents.get(key(agentId, version));
     }
 
-    /** 按稳定 ID 读取构造时最后出现的生效版本。 */
+    /**
+     * 按稳定 ID 读取构造时最后出现的生效版本。
+     */
     @Override
     public Agent loadActive(String agentId) {
         return agentId == null ? null : activeAgents.get(agentId);

@@ -262,6 +262,40 @@ public final class AgentRunner {
     }
 
     /**
+     * 加载当前生效的 Agent，并从业务 ChatMemory 读取历史后执行一轮文本请求。
+     */
+    public AgentTurn run(String agentId, String conversationId, String userInput) {
+        return run(agentId, conversationId, new UserMessage(userInput),
+            AgentTurnOptions.defaults());
+    }
+
+    /**
+     * 加载当前生效的 Agent，并使用单次运行选项执行一轮文本请求。
+     */
+    public AgentTurn run(String agentId, String conversationId, String userInput,
+                        AgentTurnOptions options) {
+        return run(agentId, conversationId, new UserMessage(userInput), options);
+    }
+
+    /**
+     * 加载当前生效的 Agent，并从业务 ChatMemory 读取历史后执行一轮结构化请求。
+     */
+    public AgentTurn run(String agentId, String conversationId, UserMessage userMessage) {
+        return run(agentId, conversationId, userMessage, AgentTurnOptions.defaults());
+    }
+
+    /**
+     * 加载当前生效的 Agent，并从业务 ChatMemory 读取历史后执行一轮结构化请求。
+     *
+     * <p>新 Turn 使用 {@link AgentLoader#loadActive(String)} 返回的当前生效版本；初始 Snapshot 保存
+     * 实际加载到的 agentId 和 version，后续恢复仍按精确版本加载。</p>
+     */
+    public AgentTurn run(String agentId, String conversationId, UserMessage userMessage,
+                        AgentTurnOptions options) {
+        return run(start(agentId, conversationId, userMessage, options));
+    }
+
+    /**
      * 从业务 ChatMemory 读取会话历史并执行一轮文本请求。
      */
     public AgentTurn run(Agent agent, String conversationId, String userInput) {
@@ -334,6 +368,37 @@ public final class AgentRunner {
      */
     public AgentTurn start(Agent agent, UserMessage userMessage, AgentTurnOptions options) {
         return start(agent, Collections.<Message>emptyList(), userMessage, options);
+    }
+
+    /**
+     * 加载当前生效的 Agent，并从业务 ChatMemory 读取历史后创建文本 Turn。
+     */
+    public AgentTurn start(String agentId, String conversationId, String userInput) {
+        return start(agentId, conversationId, new UserMessage(userInput),
+            AgentTurnOptions.defaults());
+    }
+
+    /**
+     * 加载当前生效的 Agent，并使用单次运行选项创建文本 Turn。
+     */
+    public AgentTurn start(String agentId, String conversationId, String userInput,
+                          AgentTurnOptions options) {
+        return start(agentId, conversationId, new UserMessage(userInput), options);
+    }
+
+    /**
+     * 加载当前生效的 Agent，并从业务 ChatMemory 读取历史后创建结构化 Turn。
+     */
+    public AgentTurn start(String agentId, String conversationId, UserMessage userMessage) {
+        return start(agentId, conversationId, userMessage, AgentTurnOptions.defaults());
+    }
+
+    /**
+     * 加载当前生效的 Agent，并从业务 ChatMemory 读取历史后创建结构化 Turn。
+     */
+    public AgentTurn start(String agentId, String conversationId, UserMessage userMessage,
+                          AgentTurnOptions options) {
+        return start(loadActiveAgent(agentId), conversationId, userMessage, options);
     }
 
     /**
@@ -1299,6 +1364,21 @@ public final class AgentRunner {
         if (agent == null) {
             throw new IllegalArgumentException("agent must not be null");
         }
+    }
+
+    private Agent loadActiveAgent(String agentId) {
+        if (!StringUtil.hasText(agentId)) {
+            throw new IllegalArgumentException("agentId must not be blank");
+        }
+        Agent agent = agentLoader.loadActive(agentId);
+        if (agent == null) {
+            throw new IllegalStateException("Active Agent cannot be loaded: " + agentId);
+        }
+        if (!agentId.equals(agent.getId())) {
+            throw new IllegalStateException("AgentLoader returned mismatched Agent: expected="
+                + agentId + ", actual=" + agent.getId());
+        }
+        return agent;
     }
 
     /**

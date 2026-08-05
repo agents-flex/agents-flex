@@ -95,7 +95,7 @@ AgentRunner runner = AgentRunner.builder()
     .chatMemoryProvider(memoryProvider)
     .build();
 
-AgentTurn turn = runner.run(agent, conversationId, new UserMessage(input), options);
+AgentTurn turn = runner.run(agent.getId(), conversationId, new UserMessage(input), options);
 ```
 
 ChatMemory 管理跨轮完整时间线；Runner 通过 Provider 读取模型消息，并在 Snapshot 保存后幂等投影本轮

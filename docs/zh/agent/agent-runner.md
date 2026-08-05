@@ -184,7 +184,7 @@ AgentRunner runner = AgentRunner.builder()
     .chatMemoryProvider(conversationId -> chatMemoryRepository.load(conversationId))
     .build();
 
-AgentTurn turn = runner.run(agent, conversationId,
+AgentTurn turn = runner.run(agentId, conversationId,
     new UserMessage("继续上一个问题"));
 ```
 

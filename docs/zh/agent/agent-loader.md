@@ -29,6 +29,15 @@ AgentRunner runner = AgentRunner.builder()
     .build();
 ```
 
+配置 Loader 后，新 Turn 可以只传稳定 Agent ID。Runner 使用 active 版本创建 Turn，并把实际版本写入
+Snapshot：
+
+```java
+AgentTurn turn = runner.run(agentId, conversationId, userMessage);
+```
+
+直接传入完整 `Agent` 的重载仍然保留，适合测试、临时 Agent 和调用方已经持有完整定义的场景。
+
 `InMemoryAgentLoader` 在构造时冻结集合。同一 ID 的最后一个 Agent 成为 active 版本，但所有传入版本仍可通过 `load(id, version)` 查找。它适合测试、Demo 和静态单进程应用。
 
 ## 自定义 Loader

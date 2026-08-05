@@ -26,7 +26,7 @@ AgentRunner runner = AgentRunner.builder()
     .chatMemoryProvider(id -> loadMemory(id))
     .build();
 
-AgentTurn turn = runner.run(agent, "conversation-1001", new UserMessage("继续"));
+AgentTurn turn = runner.run(agentId, "conversation-1001", new UserMessage("继续"));
 ```
 
 绑定的 conversationId 会作为 Turn metadata 随 Snapshot 恢复。Runner 按 `maxAttachedMessages` 分页读取

@@ -6,6 +6,7 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.message.AgentActionMessage;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
@@ -137,6 +138,66 @@ public class AgentChatMemoryIntegrationTest {
         // 只复制 3 条历史、本轮 UserMessage 和最终 AiMessage，不复制前 7 条业务历史。
         assertEquals(5, turn.getConversationHistory().size());
         assertEquals(12, memory.getMessages(Integer.MAX_VALUE).size());
+    }
+
+    @Test
+    public void shouldLoadActiveAgentByIdForNewConversationTurn() {
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> new AiMessage("loaded"));
+        Agent agent = Agent.builder("loader-entry-agent")
+            .id("loader-entry-agent")
+            .version("2")
+            .chatModel(model)
+            .build();
+        DefaultChatMemory memory = new DefaultChatMemory("conversation-by-id");
+        AgentRunner runner = runner(new InMemoryAgentTurnStore(),
+            new InMemoryAgentLoader(agent), memory);
+
+        AgentTurn turn = runner.run("loader-entry-agent", "conversation-by-id",
+            new com.agentsflex.core.message.UserMessage("hello"),
+            AgentTurnOptions.builder().metadata("requestId", "request-1").build());
+
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals("loader-entry-agent", turn.getAgent().getId());
+        assertEquals("2", turn.getAgent().getVersion());
+        assertEquals("conversation-by-id", turn.getConversationId());
+        assertEquals("loaded", turn.getFinalOutput());
+        assertEquals(2, memory.getModelMessages(Integer.MAX_VALUE).size());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void shouldRejectUnknownActiveAgentId() {
+        DefaultChatMemory memory = new DefaultChatMemory("missing-agent-conversation");
+
+        runner(new InMemoryAgentTurnStore(), new InMemoryAgentLoader(), memory)
+            .start("missing-agent", "missing-agent-conversation", "hello");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void shouldRejectMismatchedAgentReturnedByLoader() {
+        Agent unexpected = Agent.builder("unexpected-agent")
+            .id("unexpected-agent")
+            .chatModel(new AgentScenarioTestSupport.QueueChatModel())
+            .build();
+        AgentLoader loader = new AgentLoader() {
+            @Override
+            public Agent load(String agentId, String version) {
+                return unexpected;
+            }
+
+            @Override
+            public Agent loadActive(String agentId) {
+                return unexpected;
+            }
+        };
+        DefaultChatMemory memory = new DefaultChatMemory("mismatched-agent-conversation");
+
+        AgentRunner.builder()
+            .agentLoader(loader)
+            .chatMemoryProvider(id -> memory)
+            .build()
+            .start("expected-agent", "mismatched-agent-conversation", "hello");
     }
 
     private static AgentRunner runner(InMemoryAgentTurnStore store,
