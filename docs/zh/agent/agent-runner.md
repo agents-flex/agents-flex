@@ -97,16 +97,19 @@ flowchart TD
 ## 构建 Runner
 
 ```java
+ChatMemoryProvider memoryProvider = conversationId -> loadChatMemory(conversationId);
+
 AgentRunner runner = AgentRunner.builder()
     .turnStore(turnStore)
     .agentLoader(agentLoader)
-    .chatMemoryProvider(conversationId -> loadChatMemory(conversationId)) // 可选
+    .chatMemoryProvider(memoryProvider) // 可选
     .build();
 ```
 
-Turn Store 和 AgentLoader 未提供时使用内存实现。`chatMemoryProvider` 是可选能力；不需要业务会话时无需
-理解或配置它，原有 `run(agent, message)` 与显式传入历史消息的 API 保持不变。生产环境的 Store 替换
-要求见 [Store 持久化](./store)。
+Turn Store 和 AgentLoader 未提供时使用内存实现。`ChatMemoryProvider` 只负责根据稳定的
+conversationId 定位业务系统维护的 ChatMemory；`chatMemoryProvider` 是可选能力，不需要业务会话时
+无需配置，原有 `run(agent, message)` 与显式传入历史消息的 API 保持不变。生产环境的 Store 替换要求
+见 [Store 持久化](./store)。
 
 ## 三组执行入口
 

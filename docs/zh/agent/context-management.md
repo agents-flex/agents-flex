@@ -22,15 +22,18 @@ Agent 的上下文同时面对两个目标：保留足够历史以正确决策�
 ## 业务会话管理
 
 ```java
+ChatMemoryProvider memoryProvider = id -> loadMemory(id);
+
 AgentRunner runner = AgentRunner.builder()
-    .chatMemoryProvider(id -> loadMemory(id))
+    .chatMemoryProvider(memoryProvider)
     .build();
 AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理"));
 ```
 
 应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 turnId。同一业务会话不应并发开始两轮；
-阻塞时必须按已保存的 turnId 恢复原 Turn，完成后再开始下一轮。Provider 未配置时，应用也可以继续显式
-传入历史并自行回写。
+阻塞时必须按已保存的 turnId 恢复原 Turn，完成后再开始下一轮。`ChatMemoryProvider` 只定位 Memory，
+不创建 conversationId，也不拥有会话生命周期。Provider 未配置时，应用也可以继续显式传入历史并
+自行回写。
 
 自定义持久化 `ChatMemory` 应实现以下查询和写入语义：
 

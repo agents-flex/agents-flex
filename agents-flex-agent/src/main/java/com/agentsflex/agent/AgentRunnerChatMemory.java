@@ -8,6 +8,7 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.message.AgentActionMessage;
 import com.agentsflex.core.memory.ChatMemory;
+import com.agentsflex.core.memory.ChatMemoryProvider;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.util.StringUtil;
@@ -18,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * 将已保存的 Turn 消息幂等投影到业务 ChatMemory。
@@ -26,9 +26,9 @@ import java.util.function.Function;
 final class AgentRunnerChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(AgentRunnerChatMemory.class);
-    private final Function<String, ChatMemory> provider;
+    private final ChatMemoryProvider provider;
 
-    AgentRunnerChatMemory(Function<String, ChatMemory> provider) {
+    AgentRunnerChatMemory(ChatMemoryProvider provider) {
         this.provider = provider;
     }
 
@@ -126,7 +126,7 @@ final class AgentRunnerChatMemory {
         if (!StringUtil.hasText(conversationId)) {
             throw new IllegalArgumentException("conversationId must not be blank");
         }
-        ChatMemory memory = provider == null ? null : provider.apply(conversationId);
+        ChatMemory memory = provider == null ? null : provider.getMemory(conversationId);
         if (memory == null) {
             throw new IllegalStateException("ChatMemory cannot be loaded: " + conversationId);
         }

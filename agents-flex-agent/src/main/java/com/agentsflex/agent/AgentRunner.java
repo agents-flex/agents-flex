@@ -31,6 +31,7 @@ import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.memory.ChatMemory;
+import com.agentsflex.core.memory.ChatMemoryProvider;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutor;
@@ -46,7 +47,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * 创建、推进、暂停和恢复 {@link AgentTurn} 的核心执行器。
@@ -137,7 +137,7 @@ public final class AgentRunner {
     }
 
     private AgentRunner(AgentTurnStore turnStore, AgentLoader agentLoader,
-                        Function<String, ChatMemory> chatMemoryProvider) {
+                        ChatMemoryProvider chatMemoryProvider) {
         if (turnStore == null || agentLoader == null) {
             throw new IllegalArgumentException(
                 "AgentRunner dependencies must not be null");
@@ -159,7 +159,7 @@ public final class AgentRunner {
     public static final class Builder {
         private AgentTurnStore turnStore = new InMemoryAgentTurnStore();
         private AgentLoader agentLoader = new InMemoryAgentLoader();
-        private Function<String, ChatMemory> chatMemoryProvider;
+        private ChatMemoryProvider chatMemoryProvider;
 
         /**
          * 设置 Snapshot 与租约存储。
@@ -178,13 +178,13 @@ public final class AgentRunner {
         }
 
         /**
-         * 设置按业务会话 ID 加载 ChatMemory 的函数。
+         * 设置按业务会话 ID 定位 ChatMemory 的 {@link ChatMemoryProvider}。
          *
          * <p>配置后可以使用带 {@code conversationId} 的 start/run 重载。Runner 从
          * {@link ChatMemory#getModelMessages(int)} 读取模型历史，并在每次 Snapshot 成功保存后把本轮
          * 消息和审批卡片幂等投影回同一个 ChatMemory。未配置时不会读写任何业务会话。</p>
          */
-        public Builder chatMemoryProvider(Function<String, ChatMemory> value) {
+        public Builder chatMemoryProvider(ChatMemoryProvider value) {
             chatMemoryProvider = value;
             return this;
         }
@@ -369,7 +369,7 @@ public final class AgentRunner {
                           AgentTurnOptions options) {
         if (!chatMemory.isEnabled()) {
             throw new IllegalStateException(
-                "chatMemoryProvider must be configured for conversation APIs");
+                "ChatMemoryProvider must be configured for conversation APIs");
         }
         prepareAgent(agent);
         List<Message> history = chatMemory.loadModelHistory(

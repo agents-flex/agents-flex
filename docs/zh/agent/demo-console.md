@@ -87,10 +87,12 @@ AgentTurnOptions options = AgentTurnOptions.builder()
     .metadata("userId", "console-user")
     .build();
 
+ChatMemoryProvider memoryProvider = id -> memory;
+
 AgentRunner runner = AgentRunner.builder()
     .turnStore(turnStore)
     .agentLoader(agentLoader)
-    .chatMemoryProvider(id -> memory)
+    .chatMemoryProvider(memoryProvider)
     .build();
 
 AgentTurn turn = runner.run(agent, conversationId, new UserMessage(input), options);

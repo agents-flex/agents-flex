@@ -20,6 +20,7 @@ import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.memory.ChatMemory;
+import com.agentsflex.core.memory.ChatMemoryProvider;
 import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -72,9 +73,11 @@ public final class AgentConsoleDemo {
         ChatMemory memory = new DefaultChatMemory(conversationId);
 
         // 业务系统按 conversationId 提供 ChatMemory；Runner 只保存 Turn 状态，不拥有会话生命周期。
+        ChatMemoryProvider memoryProvider =
+            id -> conversationId.equals(id) ? memory : null;
         AgentRunner runner = AgentRunner.builder()
             .agentLoader(new InMemoryAgentLoader(agent))
-            .chatMemoryProvider(id -> conversationId.equals(id) ? memory : null)
+            .chatMemoryProvider(memoryProvider)
             .build();
         runner.addEventListener(AgentConsoleDemo::printEvent);
 

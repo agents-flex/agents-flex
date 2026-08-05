@@ -15,6 +15,6 @@
  */
 
 /**
- * 存储
+ * 对话记忆及其按业务会话定位的基础接口。
  */
 package com.agentsflex.core.memory;
