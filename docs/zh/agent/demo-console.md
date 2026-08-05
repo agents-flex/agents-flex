@@ -18,7 +18,8 @@ description: 使用真实模型构建持续对话、工具调用、人工审批�
 - `get_current_time`：无副作用，Runner 直接执行。
 - `create_support_ticket`：会写业务系统，审批策略要求人工确认。
 
-控制台业务代码维护 conversationId 和 `ChatMemory`，每条普通输入携带历史消息创建新的 Turn；审批输入按 turnId 恢复原 Turn，不创建新 Turn。
+控制台业务代码维护 conversationId 和 `ChatMemory`，Runner 分页读取模型可见历史并增量写回本轮消息；
+审批输入按 turnId 恢复原 Turn，不创建新 Turn，也不会清空或整体重写 ChatMemory。
 
 ## 配置模型
 
@@ -28,6 +29,8 @@ description: 使用真实模型构建持续对话、工具调用、人工审批�
 export AGENT_DEMO_API_KEY="your-api-key"
 export AGENT_DEMO_MODEL="gpt-4o-mini"
 ```
+
+默认使用 `https://api.openai.com/v1/chat/completions`。
 
 使用其他 OpenAI-compatible 服务时：
 
@@ -52,6 +55,7 @@ Agent agent = Agent.builder("console-assistant")
     .chatModel(chatModel)
     .tool(currentTime)
     .tool(createTicket)
+    .maxAttachedMessages(40)
     .toolApprovalPolicy((turn, call, tool) ->
         Boolean.TRUE.equals(tool.getMetadata().get("sideEffect"))
             ? ToolApprovalDecision.requireApproval()
@@ -156,7 +160,10 @@ mvn -f demos/agent-console-demo/pom.xml exec:java
 帮我创建一个高优先级登录故障工单。
 ```
 
-命令 `/history` 查看协议消息，`/help` 查看帮助，`/exit` 退出。最后一条会展示 ToolCall 参数并等待批准或拒绝。
+命令 `/history` 查看最近 50 条时间线消息，`/help` 查看帮助，`/exit` 退出。最后一条会展示
+ToolCall 参数并等待明确批准或拒绝；无法识别的审批输入不会自动当作拒绝。
+
+当前 Demo 的 Turn Store 和 ChatMemory 都使用进程内实现，程序退出后状态会丢失。
 
 ## 从 Demo 到生产
 

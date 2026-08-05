@@ -6,7 +6,15 @@
  */
 package com.agentsflex.demo.agent.console;
 
-import com.agentsflex.agent.*;
+import com.agentsflex.agent.Agent;
+import com.agentsflex.agent.AgentBudget;
+import com.agentsflex.agent.AgentExecutionPolicy;
+import com.agentsflex.agent.AgentResumeCommand;
+import com.agentsflex.agent.AgentRunner;
+import com.agentsflex.agent.AgentSuspension;
+import com.agentsflex.agent.AgentTurn;
+import com.agentsflex.agent.AgentTurnOptions;
+import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
@@ -36,9 +44,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 使用真实大模型演示持续对话、原生 ToolCall 和 Human-in-the-loop 的控制台程序。
  *
- * <p>业务代码维护 conversationId 和 ChatMemory，每条普通用户消息都携带历史消息创建新的 AgentTurn。
- * 模型直接回答时 Turn 一步完成；模型选择工具时 Runner 自动执行工具并继续调用模型；高风险工具会
- * 先进入审批等待状态，控制台收集人的决定后按 turnId 恢复原 Turn。</p>
+ * <p>业务代码维护 conversationId 和 ChatMemory，Runner 按配置的消息窗口读取模型历史，并把本轮新增
+ * 消息幂等投影回业务 ChatMemory。模型直接回答时 Turn 一步完成；模型选择工具时 Runner 自动执行工具
+ * 并继续调用模型；高风险工具会先进入审批等待状态，控制台收集人的决定后按 turnId 恢复原 Turn。</p>
  */
 public final class AgentConsoleDemo {
 
@@ -46,6 +54,7 @@ public final class AgentConsoleDemo {
     private static final String ENDPOINT_ENV = "AGENT_DEMO_ENDPOINT";
     private static final String REQUEST_PATH_ENV = "AGENT_DEMO_REQUEST_PATH";
     private static final String MODEL_ENV = "AGENT_DEMO_MODEL";
+    private static final int HISTORY_DISPLAY_LIMIT = 50;
 
     private AgentConsoleDemo() {
     }
@@ -59,13 +68,15 @@ public final class AgentConsoleDemo {
         Tool createTicket = createTicketTool(ticketSequence);
         Agent agent = createAgent(chatModel, currentTime, createTicket);
 
-        // Runner 只执行独立 Turn；会话标识和 ChatMemory 由业务代码维护。
-        AgentRunner runner = AgentRunner.builder()
-            .agentLoader(new InMemoryAgentLoader(agent))
-            .build();
-        runner.addEventListener(AgentConsoleDemo::printEvent);
         String conversationId = "console-" + UUID.randomUUID();
         ChatMemory memory = new DefaultChatMemory(conversationId);
+
+        // 业务系统按 conversationId 提供 ChatMemory；Runner 只保存 Turn 状态，不拥有会话生命周期。
+        AgentRunner runner = AgentRunner.builder()
+            .agentLoader(new InMemoryAgentLoader(agent))
+            .chatMemoryProvider(id -> conversationId.equals(id) ? memory : null)
+            .build();
+        runner.addEventListener(AgentConsoleDemo::printEvent);
 
         printWelcome(configuration, conversationId);
         try (BufferedReader reader = new BufferedReader(
@@ -98,21 +109,20 @@ public final class AgentConsoleDemo {
 
             UserMessage userMessage = new UserMessage(input);
             try {
-                AgentTurn turn = runner.run(agent, memory.getMessages(Integer.MAX_VALUE), userMessage,
+                AgentTurn turn = runner.run(agent, conversationId, userMessage,
                     AgentTurnOptions.builder()
-                        .metadata("conversationId", conversationId)
+                        .metadata("requestId", UUID.randomUUID().toString())
+                        .metadata("userId", "console-user")
                         .build());
                 turn = handleBlockedTurn(reader, runner, turn);
                 if (turn == null) {
-                    System.out.println("对话已结束，尚未审批的 Turn 保留在等待状态。");
+                    System.out.println("对话已结束。当前 Demo 使用内存 Store，未完成 Turn 会随进程退出丢失。");
                     return;
-                }
-                if (turn.getStatus().isTerminal()) {
-                    replaceMemory(memory, turn.getConversationHistory());
                 }
                 printTurnResult(turn);
             } catch (RuntimeException error) {
-                System.err.println("本轮执行异常: " + error.getMessage());
+                System.err.println("本轮执行异常 [" + error.getClass().getSimpleName()
+                    + "]: " + error.getMessage());
             }
         }
     }
@@ -124,7 +134,7 @@ public final class AgentConsoleDemo {
      * 多个审批点。</p>
      */
     private static AgentTurn handleBlockedTurn(BufferedReader reader, AgentRunner runner,
-                                             AgentTurn turn)
+                                               AgentTurn turn)
         throws IOException {
         AgentTurn current = turn;
         while (current.getStatus().isBlocked()) {
@@ -137,11 +147,15 @@ public final class AgentConsoleDemo {
                 continue;
             }
             if (current.getStatus() == AgentTurnStatus.WAITING_FOR_USER) {
-                System.out.println("\n[需要补充信息] " + current.getSuspension().getMessage());
-                System.out.print("补充 > ");
-                String value = reader.readLine();
-                if (value == null || isExit(value)) {
-                    return null;
+                AgentSuspension suspension = requireSuspension(current);
+                System.out.println("\n[需要补充信息] " + suspension.getMessage());
+                String value;
+                while (true) {
+                    System.out.print("补充 > ");
+                    value = reader.readLine();
+                    if (value == null || isExit(value)) return null;
+                    if (!value.trim().isEmpty()) break;
+                    System.out.println("补充信息不能为空，请重新输入，或输入 /exit 退出。");
                 }
                 current = runner.resume(current.getId(), AgentResumeCommand.userInput(value)
                     .withMetadata("source", "console"));
@@ -158,7 +172,11 @@ public final class AgentConsoleDemo {
     /** 展示审批上下文并把人的选择转换为结构化恢复命令。 */
     private static AgentResumeCommand readApprovalDecision(BufferedReader reader, AgentTurn turn)
         throws IOException {
-        AgentSuspension suspension = turn.getSuspension();
+        AgentSuspension suspension = requireSuspension(turn);
+        String callId = suspension.getCorrelationId();
+        if (callId == null || callId.trim().isEmpty()) {
+            throw new IllegalStateException("审批等待状态缺少 toolCall correlationId");
+        }
         ToolCall pending = findPendingCall(turn, suspension.getCorrelationId());
         System.out.println("\n-------------------- 人工审批 --------------------");
         System.out.println("Turn ID   : " + turn.getId());
@@ -166,21 +184,22 @@ public final class AgentConsoleDemo {
         System.out.println("参数     : " + (pending == null ? "{}" : pending.getArguments()));
         System.out.println("说明     : " + suspension.getMessage());
         System.out.println("风险信息 : " + suspension.getMetadata());
-        System.out.print("是否批准执行？[y/N] > ");
-        String answer = reader.readLine();
-        if (answer == null || isExit(answer)) {
-            return null;
+        while (true) {
+            System.out.print("是否批准执行？[y/n] > ");
+            String answer = reader.readLine();
+            if (answer == null || isExit(answer)) return null;
+            if (isApproved(answer)) {
+                return AgentResumeCommand.approveTool(callId)
+                    .withMetadata("approverId", "console-user")
+                    .withMetadata("approvalChannel", "terminal");
+            }
+            if (isRejected(answer)) {
+                return AgentResumeCommand.rejectTool(callId, "控制台用户拒绝执行")
+                    .withMetadata("approverId", "console-user")
+                    .withMetadata("approvalChannel", "terminal");
+            }
+            System.out.println("请输入 y/yes/同意 或 n/no/拒绝，也可以输入 /exit 退出。");
         }
-
-        String callId = suspension.getCorrelationId();
-        if (isApproved(answer)) {
-            return AgentResumeCommand.approveTool(callId)
-                .withMetadata("approverId", "console-user")
-                .withMetadata("approvalChannel", "terminal");
-        }
-        return AgentResumeCommand.rejectTool(callId, "控制台用户拒绝执行")
-            .withMetadata("approverId", "console-user")
-            .withMetadata("approvalChannel", "terminal");
     }
 
     /** 当前时间工具没有副作用，因此审批策略会允许 Runner 立即执行。 */
@@ -252,6 +271,7 @@ public final class AgentConsoleDemo {
             .chatModel(chatModel)
             .tool(currentTime)
             .tool(createTicket)
+            .maxAttachedMessages(40)
             .toolApprovalPolicy((turn, call, tool) ->
                 Boolean.TRUE.equals(tool.getMetadata().get("sideEffect"))
                     ? ToolApprovalDecision.requireApproval()
@@ -300,12 +320,21 @@ public final class AgentConsoleDemo {
     }
 
     private static ToolCall findPendingCall(AgentTurn turn, String callId) {
+        if (callId == null) return null;
         for (ToolCall call : turn.getPendingToolCalls()) {
-            if (call != null && callId != null && callId.equals(call.getId())) {
+            if (call != null && callId.equals(call.getId())) {
                 return call;
             }
         }
-        return turn.getPendingToolCalls().isEmpty() ? null : turn.getPendingToolCalls().get(0);
+        return null;
+    }
+
+    private static AgentSuspension requireSuspension(AgentTurn turn) {
+        AgentSuspension suspension = turn.getSuspension();
+        if (suspension == null) {
+            throw new IllegalStateException("阻塞 Turn 缺少 Suspension: " + turn.getId());
+        }
+        return suspension;
     }
 
     private static void printTurnResult(AgentTurn turn) {
@@ -322,20 +351,14 @@ public final class AgentConsoleDemo {
     }
 
     private static void printHistory(ChatMemory memory) {
-        List<Message> messages = memory.getMessages(Integer.MAX_VALUE);
-        System.out.println("\n当前会话共 " + messages.size() + " 条协议消息：");
+        List<Message> messages = memory.getMessages(0, HISTORY_DISPLAY_LIMIT);
+        System.out.println("\n当前会话最近 " + messages.size() + " 条消息"
+            + "（最多展示 " + HISTORY_DISPLAY_LIMIT + " 条）：");
         for (int i = 0; i < messages.size(); i++) {
             Message message = messages.get(i);
             System.out.println("  " + (i + 1) + ". " + message.getClass().getSimpleName()
+                + " modelVisible=" + message.isModelVisible()
                 + "  " + abbreviate(message.getTextContent(), 120));
-        }
-    }
-
-    /** 使用 Turn 返回的完整历史替换业务侧 Memory，避免重复追加已有消息。 */
-    private static void replaceMemory(ChatMemory memory, List<Message> messages) {
-        memory.clear();
-        for (Message message : messages) {
-            memory.addMessage(message);
         }
     }
 
@@ -347,6 +370,7 @@ public final class AgentConsoleDemo {
         System.out.println("model        : " + configuration.model);
         System.out.println("endpoint     : " + configuration.endpoint + configuration.requestPath);
         System.out.println("conversation : " + conversationId);
+        System.out.println("storage      : in-memory（进程退出后清空）");
         printHelp();
     }
 
@@ -356,7 +380,7 @@ public final class AgentConsoleDemo {
         System.out.println("  2. 你还记得我叫什么吗？         （读取业务 ChatMemory）");
         System.out.println("  3. 上海现在几点？               （自动调用只读工具）");
         System.out.println("  4. 帮我创建一个高优先级登录故障工单。（触发人工审批）");
-        System.out.println("命令：/history 查看协议消息，/help 查看帮助，/exit 退出。");
+        System.out.println("命令：/history 查看最近的时间线消息，/help 查看帮助，/exit 退出。");
     }
 
     private static boolean isApproved(String value) {
@@ -366,6 +390,16 @@ public final class AgentConsoleDemo {
             || "是".equals(answer)
             || "同意".equals(answer)
             || "批准".equals(answer);
+    }
+
+    private static boolean isRejected(String value) {
+        String answer = value == null ? "" : value.trim();
+        return "n".equalsIgnoreCase(answer)
+            || "no".equalsIgnoreCase(answer)
+            || "否".equals(answer)
+            || "不同意".equals(answer)
+            || "拒绝".equals(answer)
+            || "不批准".equals(answer);
     }
 
     private static boolean isExit(String value) {
@@ -383,7 +417,7 @@ public final class AgentConsoleDemo {
             : oneLine.substring(0, maxLength) + "...";
     }
 
-    /** 模型连接参数只从环境变量读取，避免 API Key 进入源码、命令历史或 Git。 */
+    /** 模型连接参数只从环境变量读取，避免 API Key 进入源码或 Git。 */
     private static final class DemoConfiguration {
         private final String apiKey;
         private final String endpoint;
