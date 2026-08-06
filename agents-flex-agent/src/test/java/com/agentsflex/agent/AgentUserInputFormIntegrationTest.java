@@ -7,7 +7,11 @@ import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.message.AgentFormMessage;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentFormDefinition;
+import com.agentsflex.agent.tool.AgentToolContext;
+import com.agentsflex.agent.tool.AgentFormRequiredException;
 import com.agentsflex.agent.tool.AgentUserInputTool;
+import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -17,8 +21,10 @@ import com.alibaba.fastjson2.JSON;
 import org.junit.Test;
 
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.agentsflex.agent.AgentScenarioTestSupport.toolCalls;
 import static org.junit.Assert.assertEquals;
@@ -28,6 +34,119 @@ import static org.junit.Assert.fail;
 
 /** request_user_input 控制工具和表单消息的完整恢复协议测试。 */
 public class AgentUserInputFormIntegrationTest {
+
+    @Test
+    public void shouldSuspendBusinessToolAndRetryWithSubmittedFormData() {
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(
+            new ToolCall("ticket-call", "create_support_ticket", "{}")));
+        model.enqueue(prompt -> {
+            ToolMessage result = lastToolMessage(prompt.getMessages());
+            assertEquals("ticket-call", result.getToolCallId());
+            assertEquals("TICKET-1001", result.getContent());
+            return new AiMessage("工单已经创建");
+        });
+
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+        schema.put("title", "补充故障信息");
+        schema.put("properties", new LinkedHashMap<String, Object>());
+        AgentFormDefinition formDefinition = AgentFormDefinition
+            .builder("support_ticket_details")
+            .whenToUse("工具执行时发现缺少故障影响信息")
+            .schema(schema)
+            .build();
+        AtomicInteger attempts = new AtomicInteger();
+
+        Agent agent = Agent.builder("tool-form-agent")
+            .chatModel(model)
+            .tool(AgentScenarioTestSupport.tool("create_support_ticket", arguments -> {
+                attempts.incrementAndGet();
+                AgentToolContext context = AgentToolContext.current();
+                assertTrue(context != null);
+                Map<String, Object> submitted = context.getSubmittedFormData();
+                if (submitted.isEmpty()) {
+                    throw new AgentFormRequiredException(formDefinition);
+                }
+                assertEquals("统一登录系统", submitted.get("affectedSystem"));
+                assertEquals("ALL_USERS", submitted.get("impactScope"));
+                return "TICKET-1001";
+            }))
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .budget(AgentBudget.builder().maxToolCalls(1).build())
+                .build())
+            .build();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
+        InMemoryAgentLoader loader = new InMemoryAgentLoader(agent);
+        DefaultChatMemory memory = new DefaultChatMemory("tool-form-conversation");
+        List<AgentEvent> events = new ArrayList<>();
+        AgentRunner firstRunner = AgentRunner.builder()
+            .turnStore(store)
+            .agentLoader(loader)
+            .chatMemoryProvider(id -> memory)
+            .build()
+            .addEventListener(events::add);
+
+        AgentTurn waiting = firstRunner.run(
+            agent, "tool-form-conversation", "创建登录故障工单");
+
+        assertEquals(AgentTurnStatus.WAITING_FOR_USER, waiting.getStatus());
+        assertEquals(AgentTurnPhase.TOOLS, waiting.getPhase());
+        assertEquals("ticket-call", waiting.getSuspension().getCorrelationId());
+        assertEquals("TOOL", waiting.getSuspension().getMetadata().get("inputTarget"));
+        assertEquals("create_support_ticket",
+            waiting.getSuspension().getMetadata().get("toolName"));
+        assertEquals(1, waiting.getPendingToolCalls().size());
+        assertEquals("create_support_ticket", waiting.getPendingToolCalls().get(0).getName());
+        assertEquals(1, attempts.get());
+        assertEquals(1, count(events, AgentEventType.TOOL_STARTED));
+        assertEquals(1, count(events, AgentEventType.TOOL_INPUT_REQUESTED));
+        assertEquals(0, count(events, AgentEventType.TOOL_FAILED));
+        assertBefore(events, AgentEventType.TOOL_STARTED,
+            AgentEventType.TOOL_INPUT_REQUESTED);
+        assertBefore(events, AgentEventType.TOOL_INPUT_REQUESTED,
+            AgentEventType.STEP_COMPLETED);
+        assertBefore(events, AgentEventType.STEP_COMPLETED,
+            AgentEventType.TURN_SUSPENDED);
+
+        AgentFormMessage pending = form(memory);
+        assertEquals("support_ticket_details", pending.getFormKey());
+        assertEquals(schema, pending.getSchema());
+        assertEquals(AgentFormMessage.Status.PENDING, pending.getStatus());
+
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("affectedSystem", "统一登录系统");
+        values.put("impactScope", "ALL_USERS");
+        AgentRunner secondRunner = AgentRunner.builder()
+            .turnStore(store)
+            .agentLoader(loader)
+            .chatMemoryProvider(id -> memory)
+            .build()
+            .addEventListener(events::add);
+        AgentTurn runnable = secondRunner.submitResume(waiting.getId(),
+            AgentResumeCommand.userInput("ticket-call", values)
+                .withMetadata("submittedBy", "user-8"));
+
+        assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
+        assertEquals(AgentTurnPhase.TOOLS, runnable.getPhase());
+        assertEquals(values, runnable.getToolInputData("ticket-call"));
+        AgentFormMessage submitted = form(memory);
+        assertEquals(AgentFormMessage.Status.SUBMITTED, submitted.getStatus());
+        assertEquals("统一登录系统",
+            submitted.getSubmittedValues().get("affectedSystem"));
+        assertEquals("user-8", submitted.getSubmittedBy());
+
+        AgentTurn completed = secondRunner.runUntilBlocked(waiting.getId());
+
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
+        assertEquals("工单已经创建", completed.getFinalOutput());
+        assertEquals(2, attempts.get());
+        assertEquals(1, completed.getToolCallCount());
+        assertEquals(2, count(events, AgentEventType.TOOL_STARTED));
+        assertEquals(1, count(events, AgentEventType.TOOL_COMPLETED));
+        assertEquals(0, count(events, AgentEventType.TOOL_FAILED));
+    }
 
     @Test
     public void shouldSuspendForFormAndResumeWithMatchingToolMessage() {
@@ -175,5 +294,25 @@ public class AgentUserInputFormIntegrationTest {
             if (message instanceof AgentFormMessage) return (AgentFormMessage) message;
         }
         throw new AssertionError("AgentFormMessage not found");
+    }
+
+    private static int count(List<AgentEvent> events, AgentEventType type) {
+        int result = 0;
+        for (AgentEvent event : events) {
+            if (event.getType() == type) result++;
+        }
+        return result;
+    }
+
+    private static void assertBefore(List<AgentEvent> events,
+                                     AgentEventType first, AgentEventType second) {
+        int firstIndex = -1;
+        int secondIndex = -1;
+        for (int index = 0; index < events.size(); index++) {
+            if (firstIndex < 0 && events.get(index).getType() == first) firstIndex = index;
+            if (secondIndex < 0 && events.get(index).getType() == second) secondIndex = index;
+        }
+        assertTrue(first + " must be before " + second,
+            firstIndex >= 0 && secondIndex > firstIndex);
     }
 }

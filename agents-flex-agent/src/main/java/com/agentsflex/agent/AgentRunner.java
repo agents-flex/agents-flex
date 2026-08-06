@@ -22,6 +22,7 @@ import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.AgentToolProgressEmitter;
 import com.agentsflex.agent.tool.AgentToolContext;
+import com.agentsflex.agent.tool.AgentFormRequiredException;
 import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
@@ -79,6 +80,8 @@ import java.util.Map;
 public final class AgentRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AgentRunner.class);
+    private static final String INPUT_TARGET_METADATA = "inputTarget";
+    private static final String TOOL_INPUT_TARGET = "TOOL";
 
     /**
      * 保存 Snapshot、取消标记和 Worker 租约的 Turn 存储。
@@ -1086,6 +1089,26 @@ public final class AgentRunner {
             try {
                 turn.incrementToolCallCount();
                 completedResult = executeTool(turn, tool, call);
+            } catch (AgentFormRequiredException request) {
+                if (!turn.getToolInputData(callKey(call)).isEmpty()) {
+                    IllegalStateException error = new IllegalStateException(
+                        "tool requested user input again after resuming: " + call.getName(), request);
+                    eventPublisher.notifyToolError(turn, call, error);
+                    return handleFailure(turn, response, error, AgentTurnPhase.TOOLS);
+                }
+                // 输入请求发生在副作用之前，恢复后仍是同一个逻辑 ToolCall，不能提前耗尽调用预算。
+                turn.rollbackToolCallCount();
+                AgentFormDefinition form = request.getForm();
+                Map<String, Object> metadata = new LinkedHashMap<>();
+                metadata.put("formKey", form.getFormKey());
+                metadata.put("schema", form.getSchema());
+                metadata.put("toolName", call.getName());
+                metadata.put(INPUT_TARGET_METADATA, TOOL_INPUT_TARGET);
+                AgentSuspension suspension = AgentSuspension.userInput(
+                    callKey(call), request.getMessage(), metadata);
+                suspend(turn, suspension);
+                eventPublisher.notifyToolInputRequested(turn, call, form);
+                return AgentStepResult.of(response, results, null);
             } catch (RuntimeException error) {
                 eventPublisher.notifyToolError(turn, call, error);
                 if (turn.getExecutionPolicy().getToolErrorStrategy()
@@ -1312,7 +1335,8 @@ public final class AgentRunner {
         AgentToolContext toolContext = new AgentToolContext(
             turn.getId(), turn.getRootTurnId(), turn.getParentTurnId(),
             turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
-            callKey(call), progressEmitter, turn::isCancellationRequested);
+            callKey(call), progressEmitter, turn::isCancellationRequested,
+            turn.getToolInputData(callKey(call)));
 
         AgentMiddlewareContext middlewareContext =
             AgentMiddlewareContext.forToolCall(this, turn, toolContext);
@@ -1586,6 +1610,20 @@ public final class AgentRunner {
             throw new IllegalStateException("user input suspension has no pending ToolCall");
         }
         ToolCall call = pending.get(0);
+        if (TOOL_INPUT_TARGET.equals(
+            String.valueOf(suspension.getMetadata().get(INPUT_TARGET_METADATA)))) {
+            if (!hasData) {
+                throw new IllegalArgumentException(
+                    "structured data is required for a suspended business tool");
+            }
+            if (!suspension.getCorrelationId().equals(callKey(call))
+                || !call.getName().equals(suspension.getMetadata().get("toolName"))) {
+                throw new IllegalStateException(
+                    "user input suspension does not match the pending business ToolCall");
+            }
+            turn.putToolInputData(callKey(call), command.getData());
+            return;
+        }
         if (!suspension.getCorrelationId().equals(callKey(call))
             || !AgentUserInputTool.NAME.equals(call.getName())) {
             throw new IllegalStateException(

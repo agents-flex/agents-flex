@@ -70,6 +70,30 @@ runner.submitResume(
 Runner 校验 callId，把表单数据写成匹配原 `request_user_input` ToolCall 的 ToolMessage，然后回到模型
 阶段继续原 Turn。这样模型原生 Tool Calling 消息序列保持完整，也不会重新生成问题或表单参数。
 
+## 工具执行时请求输入
+
+只有执行工具后才能确定所需字段时，业务工具可以在产生副作用前抛出
+`AgentFormRequiredException`。Runner 会保留原业务 ToolCall，并将异常携带的表单保存为同一种
+`USER_INPUT` Suspension：
+
+```java
+AgentToolContext context = AgentToolContext.current();
+Map<String, Object> submitted = context.getSubmittedFormData();
+if (submitted.isEmpty()) {
+    throw new AgentFormRequiredException(formDefinition);
+}
+
+return createTicket(submitted);
+```
+
+用户仍通过 `AgentResumeCommand.userInput(callId, formData)` 提交。区别是 Runner 不生成控制工具的
+ToolMessage，而是把数据保存进 Snapshot，并从 `TOOLS` 阶段重新执行原业务工具。工具通过
+`getSubmittedFormData()` 读取数据；调用成功后，Runner 才生成原业务 ToolCall 对应的 ToolMessage。
+
+Java 调用栈不会被保存，工具恢复时一定从函数开头执行。异常必须在任何外部副作用之前抛出，工具还应
+使用 `AgentToolContext.getIdempotencyKey()` 实现业务幂等。同一个 ToolCall 提交后再次抛出输入请求会
+被视为协议错误，避免无限表单循环。
+
 ### 底层主动挂起
 
 没有模型 ToolCall 的自定义控制流程仍可显式建立纯文本等待点：
@@ -141,8 +165,8 @@ runner.submitResume(
 未配置 Provider 时，暂停接口仍可直接向前端返回 Turn ID、状态、Suspension message、correlationId
 和必要的安全元数据。不要直接展示模型原始内部内容或敏感工具参数。
 
-`request_user_input` 产生的表单会投影为 `AgentFormMessage`。消息包含 formKey、完整 JSON Schema 和
-actionId，并且 `modelVisible=false`。`PENDING` 状态的 `getActions()` 返回 `SUBMIT`；成功提交
+`request_user_input` 或业务工具输入异常产生的表单都会投影为 `AgentFormMessage`。消息包含 formKey、
+完整 JSON Schema 和 actionId，并且 `modelVisible=false`。`PENDING` 状态的 `getActions()` 返回 `SUBMIT`；成功提交
 后，Runner 使用 expectedVersion CAS 将原消息更新为 `SUBMITTED`，页面不需要关联额外结果消息。
 
 前端直接使用消息携带的 Schema 渲染，不需要额外查询表单注册中心。后端不能信任前端回传的隐藏字段，

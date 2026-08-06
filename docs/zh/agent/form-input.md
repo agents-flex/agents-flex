@@ -219,6 +219,62 @@ Runner 从原暂停位置继续调用模型。模型读取表单结果后，已�
 如果该工具具有外部写入等副作用，还可以继续进入[人工审批](./human-approval)流程。表单输入负责收集
 执行所需信息，人工审批负责决定已经确定的 ToolCall 是否允许执行，两者职责不同。
 
+## 工具执行时动态请求表单
+
+前面的流程由模型主动调用 `request_user_input`，适合模型在执行工具前就能判断缺少哪些信息的场景。
+如果只有进入业务工具、查询业务规则后才能确定所需字段，可以让工具抛出
+`AgentFormRequiredException`：
+
+```java
+Tool createTicketTool = Tool.builder("create_support_ticket")
+    .description("创建故障工单")
+    .function(arguments -> {
+        AgentToolContext context = AgentToolContext.current();
+        Map<String, Object> submitted = context.getSubmittedFormData();
+
+        if (submitted.isEmpty()) {
+            throw new AgentFormRequiredException(
+                AgentFormDefinition.builder("support_ticket_details")
+                    .whenToUse("工具发现缺少受影响系统或影响范围")
+                    .schema(supportTicketSchema)
+                    .build());
+        }
+
+        return createSupportTicket(
+            String.valueOf(submitted.get("affectedSystem")),
+            String.valueOf(submitted.get("impactScope")),
+            context.getIdempotencyKey());
+    })
+    .build();
+```
+
+Runner 将该异常作为执行控制信号，而不是工具失败：
+
+```text
+第一次执行 create_support_ticket
+→ 抛出 AgentFormRequiredException
+→ 保留原 create_support_ticket ToolCall
+→ 保存 Schema，进入 WAITING_FOR_USER
+→ 前端提交 formData
+→ formData 保存进 AgentTurnSnapshot
+→ 从头重新执行 create_support_ticket
+→ AgentToolContext.getSubmittedFormData() 返回提交内容
+→ 工具完成并生成 create_support_ticket 的 ToolMessage
+```
+
+这个入口不需要模型再调用 `request_user_input`，但它与模型入口使用相同的 `AgentFormMessage`、前端
+渲染和提交 API。两种入口的恢复语义不同：
+
+| 表单入口 | 提交数据的去向 | 恢复动作 |
+| --- | --- | --- |
+| 模型调用 `request_user_input` | 形成控制 ToolCall 的 ToolMessage | 回到 MODEL 阶段 |
+| 业务工具抛出输入异常 | 保存为原业务 ToolCall 的恢复数据 | 从头重新执行原工具 |
+
+工具输入异常必须在产生外部副作用之前抛出，因为 Framework 不会恢复 Java 调用栈，只会重放整个工具
+函数。工具应使用 `AgentToolContext.getIdempotencyKey()` 保证外部写入幂等；同一个 ToolCall 在已经获得
+提交数据后再次抛出输入异常会被视为协议错误。首次无副作用的中断和恢复后的执行按同一个逻辑
+ToolCall 计算，不会因为表单交互额外消耗 `maxToolCalls` 配额。
+
 ## 前端渲染
 
 配置 `chatMemoryProvider` 后，Runner 会把等待状态投影为 `AgentFormMessage`。消息直接携带 Schema：

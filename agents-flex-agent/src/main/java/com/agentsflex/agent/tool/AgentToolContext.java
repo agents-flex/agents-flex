@@ -12,6 +12,7 @@ import com.agentsflex.core.model.chat.tool.ToolContextHolder;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 
@@ -40,11 +41,25 @@ public final class AgentToolContext {
     private final String toolCallId;
     private final AgentToolProgressEmitter progressEmitter;
     private final BooleanSupplier cancellationRequested;
+    private final Map<String, Object> submittedFormData;
 
+    /**
+     * 创建不携带恢复表单数据的工具上下文。
+     */
     public AgentToolContext(String turnId, String rootTurnId, String parentTurnId,
                             String agentId, String agentVersion, Tool tool, ToolCall toolCall,
                             String toolCallId, AgentToolProgressEmitter progressEmitter,
                             BooleanSupplier cancellationRequested) {
+        this(turnId, rootTurnId, parentTurnId, agentId, agentVersion, tool, toolCall,
+            toolCallId, progressEmitter, cancellationRequested,
+            Collections.<String, Object>emptyMap());
+    }
+
+    public AgentToolContext(String turnId, String rootTurnId, String parentTurnId,
+                            String agentId, String agentVersion, Tool tool, ToolCall toolCall,
+                            String toolCallId, AgentToolProgressEmitter progressEmitter,
+                            BooleanSupplier cancellationRequested,
+                            Map<String, ?> submittedFormData) {
         if (!StringUtil.hasText(turnId) || !StringUtil.hasText(agentId)
             || !StringUtil.hasText(agentVersion) || tool == null || toolCall == null
             || !StringUtil.hasText(toolCallId) || progressEmitter == null
@@ -63,6 +78,9 @@ public final class AgentToolContext {
         this.toolCallId = toolCallId;
         this.progressEmitter = progressEmitter;
         this.cancellationRequested = cancellationRequested;
+        this.submittedFormData = submittedFormData == null || submittedFormData.isEmpty()
+            ? Collections.<String, Object>emptyMap()
+            : Collections.unmodifiableMap(new LinkedHashMap<String, Object>(submittedFormData));
     }
 
     /** 返回当前线程的 Agent Tool 上下文；非 AgentRunner 调用时返回 {@code null}。 */
@@ -107,6 +125,14 @@ public final class AgentToolContext {
 
     /** @return 当前调用的进度发布器 */
     public AgentToolProgressEmitter getProgressEmitter() { return progressEmitter; }
+
+    /**
+     * 返回该 ToolCall 上一次表单暂停后用户提交的数据。
+     *
+     * <p>首次执行工具时返回空 Map；工具抛出 {@link AgentFormRequiredException} 并恢复后，Runner
+     * 会从头执行原工具，此时返回提交数据。该值来自 Snapshot，是不可修改的。</p>
+     */
+    public Map<String, Object> getSubmittedFormData() { return submittedFormData; }
 
     /** 发布不修改 Turn 状态的工具进度。 */
     public void emitProgress(String message) {

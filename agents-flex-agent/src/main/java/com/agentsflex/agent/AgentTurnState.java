@@ -51,6 +51,7 @@ public final class AgentTurnState implements Serializable {
     private volatile String leaseId;
     private volatile long leaseUntil;
     private Map<String, Boolean> toolApprovals = Collections.emptyMap();
+    private Map<String, Map<String, Object>> toolInputData = Collections.emptyMap();
     private AgentTaskPlan taskPlan;
     private boolean planningEnabled;
     private int planningDepth;
@@ -78,6 +79,7 @@ public final class AgentTurnState implements Serializable {
         this.messages = new ArrayList<>();
         this.pendingToolCalls = new ArrayList<>();
         this.toolApprovals = new HashMap<>();
+        this.toolInputData = new HashMap<>();
         this.metadata = new HashMap<>();
     }
 
@@ -108,6 +110,7 @@ public final class AgentTurnState implements Serializable {
         this.leaseUntil = source.leaseUntil;
         Map<String, Boolean> approvals = new HashMap<>(source.toolApprovals);
         this.toolApprovals = immutable ? Collections.unmodifiableMap(approvals) : approvals;
+        this.toolInputData = copyToolInputData(source.toolInputData, immutable);
         this.taskPlan = source.taskPlan == null ? null : source.taskPlan.copy();
         this.planningEnabled = source.planningEnabled;
         this.planningDepth = source.planningDepth;
@@ -285,6 +288,13 @@ public final class AgentTurnState implements Serializable {
      */
     public Map<String, Boolean> getToolApprovals() {
         return Collections.unmodifiableMap(toolApprovals);
+    }
+
+    /**
+     * @return 按 ToolCall ID 保存的工具表单提交数据
+     */
+    public Map<String, Map<String, Object>> getToolInputData() {
+        return copyToolInputData(toolInputData, true);
     }
 
     /**
@@ -502,6 +512,11 @@ public final class AgentTurnState implements Serializable {
         toolCallCount++;
     }
 
+    void rollbackToolCallCount() {
+        requireMutable();
+        if (toolCallCount > 0) toolCallCount--;
+    }
+
     void setRetryCount(int value) {
         requireMutable();
         retryCount = value;
@@ -553,6 +568,28 @@ public final class AgentTurnState implements Serializable {
 
     Boolean getToolApproval(String callId) {
         return toolApprovals.get(callId);
+    }
+
+    void setToolInputData(Map<String, Map<String, Object>> value) {
+        requireMutable();
+        toolInputData = copyToolInputData(value, false);
+    }
+
+    void putToolInputData(String callId, Map<String, ?> value) {
+        requireMutable();
+        if (callId == null || callId.trim().isEmpty()) {
+            throw new IllegalArgumentException("callId must not be blank");
+        }
+        if (toolInputData == null) toolInputData = new HashMap<>();
+        toolInputData.put(callId, value == null
+            ? new HashMap<String, Object>() : new HashMap<String, Object>(value));
+    }
+
+    Map<String, Object> getToolInputData(String callId) {
+        if (toolInputData == null) return Collections.emptyMap();
+        Map<String, Object> value = toolInputData.get(callId);
+        return value == null ? Collections.<String, Object>emptyMap()
+            : Collections.unmodifiableMap(new HashMap<>(value));
     }
 
     void setTaskPlan(AgentTaskPlan value) {
@@ -739,6 +776,11 @@ public final class AgentTurnState implements Serializable {
             return this;
         }
 
+        public Builder toolInputData(Map<String, Map<String, Object>> value) {
+            state.setToolInputData(value);
+            return this;
+        }
+
         public Builder taskPlan(AgentTaskPlan value) {
             state.setTaskPlan(value);
             return this;
@@ -817,5 +859,19 @@ public final class AgentTurnState implements Serializable {
         public AgentTurnState build() {
             return state.immutableCopy();
         }
+    }
+
+    private static Map<String, Map<String, Object>> copyToolInputData(
+        Map<String, Map<String, Object>> source, boolean immutable) {
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        if (source != null) {
+            for (Map.Entry<String, Map<String, Object>> entry : source.entrySet()) {
+                Map<String, Object> value = entry.getValue() == null
+                    ? new HashMap<String, Object>() : new HashMap<>(entry.getValue());
+                result.put(entry.getKey(), immutable
+                    ? Collections.unmodifiableMap(value) : value);
+            }
+        }
+        return immutable ? Collections.unmodifiableMap(result) : result;
     }
 }

@@ -12,6 +12,7 @@ import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.task.AgentTask;
 import com.agentsflex.agent.task.AgentTaskPlan;
 import com.agentsflex.agent.task.AgentTaskStatus;
+import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
@@ -155,6 +156,13 @@ final class AgentEventPublisher {
                 "approvalOutcome", decision.getOutcome(), "approvalCode", decision.getCode(),
                 "approvalMessage", decision.getMessage(), "approvalReason", decision.getReason(),
                 "approvalMetadata", decision.getMetadata()));
+    }
+
+    void notifyToolInputRequested(AgentTurn turn, ToolCall call,
+                                  AgentFormDefinition form) {
+        publish(turn, AgentEventType.TOOL_INPUT_REQUESTED,
+            attributes("toolCallId", callKey(call), "toolName", call.getName(),
+                "formKey", form.getFormKey()));
     }
 
     void notifyRetryScheduled(AgentTurn turn, Throwable error) {

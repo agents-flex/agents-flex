@@ -7,6 +7,7 @@ import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.AgentUserInputTool;
+import com.agentsflex.agent.tool.AgentFormRequiredException;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import org.junit.Test;
 
@@ -140,6 +141,7 @@ public class AgentValueObjectContractTest {
             .whenToUse("condition").schema(Collections.emptyMap()).build());
         assertBuildFailure(() -> AgentUserInputTool.builder().build());
         assertIllegalArgument(() -> AgentUserInputTool.builder().form(form).form(form));
+        assertIllegalArgument(() -> new AgentFormRequiredException(null));
     }
 
     @Test

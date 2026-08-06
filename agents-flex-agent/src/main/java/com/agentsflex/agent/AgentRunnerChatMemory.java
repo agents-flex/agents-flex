@@ -93,9 +93,7 @@ final class AgentRunnerChatMemory {
 
         if (turn.getStatus().isTerminal()) {
             for (ToolCall call : turn.getPendingToolCalls()) {
-                if (call != null && AgentUserInputTool.NAME.equals(call.getName())) {
-                    cancelForm(memory, turn, call.getId());
-                }
+                if (call != null) cancelForm(memory, turn, call.getId());
             }
         }
 
@@ -178,6 +176,8 @@ final class AgentRunnerChatMemory {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> submittedValues(AgentTurn turn, String actionId) {
+        Map<String, Object> toolInput = turn.getToolInputData(actionId);
+        if (!toolInput.isEmpty()) return new LinkedHashMap<>(toolInput);
         for (Message message : turn.getConversationHistory()) {
             if (!(message instanceof ToolMessage)
                 || !actionId.equals(((ToolMessage) message).getToolCallId())) continue;

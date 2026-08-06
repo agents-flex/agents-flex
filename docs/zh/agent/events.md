@@ -44,7 +44,7 @@ sequence 在 Runner 重建或进程重启后会重新开始，不能直接作为
 - Turn：开始、完成、失败、取消、暂停、恢复和 Snapshot 保存。
 - Step：开始、结束、达到 `maxSteps`。
 - Model：开始、结束、文本/推理/ToolCall 增量和迭代上限。
-- Tool：开始、进度、完成、失败和审批。
+- Tool：开始、进度、完成、失败、输入请求和审批。
 - Planning：计划创建、调整、任务和子 Turn。
 - Retry：可恢复异常的延迟重试调度。
 - Budget：时间、Token 或工具调用次数达到限制。
@@ -60,6 +60,10 @@ Turn 是 Step 的生命周期容器。第一个步骤开始前发布一次 `TURN
 校验命令，不能把事件数据当作执行授权。
 
 `SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Turn 已完成。
+
+业务工具抛出 `AgentFormRequiredException` 时，会依次观察到 `TOOL_STARTED`、
+`TOOL_INPUT_REQUESTED`，随后本 Step 结束并发布 `TURN_SUSPENDED`。这不是工具失败，因此不会发布
+`TOOL_FAILED` 或 `TOOL_COMPLETED`。用户提交后，原工具从头重试，成功时才发布 `TOOL_COMPLETED`。
 
 ## 工具上报进度
 

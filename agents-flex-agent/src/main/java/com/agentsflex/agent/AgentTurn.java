@@ -704,6 +704,11 @@ public final class AgentTurn {
         state.incrementToolCallCount();
     }
 
+    /** 工具在副作用前请求输入时，回滚尚未完成的调用计数。 */
+    void rollbackToolCallCount() {
+        state.rollbackToolCallCount();
+    }
+
     /**
      * 保存工具审批结果。
      */
@@ -716,6 +721,16 @@ public final class AgentTurn {
      */
     Boolean getToolApproval(String callId) {
         return state.getToolApproval(callId);
+    }
+
+    /** 保存工具暂停后由用户提交、供原 ToolCall 重试时读取的表单数据。 */
+    void putToolInputData(String callId, Map<String, ?> value) {
+        state.putToolInputData(callId, value);
+    }
+
+    /** 返回指定 ToolCall 已提交的表单数据；尚未提交时返回空 Map。 */
+    Map<String, Object> getToolInputData(String callId) {
+        return state.getToolInputData(callId);
     }
 
     /**

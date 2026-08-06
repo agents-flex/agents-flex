@@ -53,6 +53,10 @@ public class FastjsonAgentStoreSerializerTest {
         metadata.put("tenant", "tenant-1");
         metadata.put("priority", 3);
         metadata.put("labels", Arrays.asList("durable", "jsonb"));
+        Map<String, Object> submittedForm = new LinkedHashMap<>();
+        submittedForm.put("affectedSystem", "登录系统");
+        Map<String, Map<String, Object>> toolInputData = new LinkedHashMap<>();
+        toolInputData.put("call-1", submittedForm);
 
         AgentTurnState state = AgentTurnState.builder("turn-1",
                 AgentExecutionPolicy.defaults(), 0)
@@ -61,6 +65,7 @@ public class FastjsonAgentStoreSerializerTest {
             .messages(Arrays.<Message>asList(user, assistant, tool))
             .pendingToolCalls(Collections.singletonList(toolCall))
             .suspension(AgentSuspension.toolApproval("call-1", "lookup"))
+            .toolInputData(toolInputData)
             .stepCount(3)
             .metadata(metadata)
             .build();
@@ -80,6 +85,8 @@ public class FastjsonAgentStoreSerializerTest {
         assertEquals("lookup", decoded.getState().getPendingToolCalls().get(0).getName());
         assertEquals(3, decoded.getState().getStepCount());
         assertEquals("tenant-1", decoded.getState().getMetadata().get("tenant"));
+        assertEquals("登录系统", decoded.getState().getToolInputData()
+            .get("call-1").get("affectedSystem"));
     }
 
     @Test

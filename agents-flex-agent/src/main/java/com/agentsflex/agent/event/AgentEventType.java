@@ -70,6 +70,11 @@ public enum AgentEventType {
      */
     TOOL_APPROVAL_REQUESTED,
     /**
+     * 业务工具在产生副作用前请求表单输入，原 ToolCall 已保留并等待用户提交。
+     * data 包含 toolCallId、toolName 和 formKey；完整 Schema 保存在 Suspension。
+     */
+    TOOL_INPUT_REQUESTED,
+    /**
      * AgentTurnSnapshot 已成功写入 AgentTurnStore，并获得新的版本号。
      */
     SNAPSHOT_SAVED,
