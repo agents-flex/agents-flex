@@ -140,7 +140,7 @@ AgentTurn blockedOrDone = runner.runUntilBlocked(turn);
 ```java
 AgentTurn restored = runner.restore(turnId);
 AgentTurn resumed = runner.resume(turnId, AgentResumeCommand.approveTool(callId));
-AgentTurn cancelled = runner.requestCancellation(turnId);
+AgentTurn cancelled = runner.cancel(turnId);
 ```
 
 取消是协作式的：Store 先保存单调取消标志，Runner 在安全边界转换为 `CANCELLED`。它不保证立即中断已经发出的 HTTP 请求或工具函数。

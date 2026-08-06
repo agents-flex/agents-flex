@@ -557,12 +557,16 @@ public final class AgentRunner {
     }
 
     /**
-     * 将取消请求持久化到 Store，并返回包含最新取消标记的 Turn。
+     * 请求取消指定的 Agent Turn，并返回包含最新取消标记的 Turn。
      *
-     * <p>该方法可以取消等待状态或由 Worker 执行的任务。取消是协作式的，正在阻塞的模型请求或
-     * Tool 方法不会被强制中断，Runner 会在下一个安全边界终止运行。</p>
+     * <p>典型场景包括：用户点击“停止生成”、取消正在执行的长任务、关闭页面前取消后台任务，
+     * 或取消一个正在等待子 Turn 完成的规划任务。取消是协作式的，不会强制中断已经发出的模型
+     * HTTP 请求或正在运行的 Tool；Runner 会在当前调用返回后的安全边界停止继续推进。</p>
+     *
+     * @param turnId 要取消的 Turn ID
+     * @return 已记录取消请求的最新 Turn
      */
-    public AgentTurn requestCancellation(String turnId) {
+    public AgentTurn cancel(String turnId) {
         boolean requested = turnStore.requestCancellation(turnId);
         AgentTurn turn = restore(turnId);
         AgentTurn child = planning.currentChild(turn);
@@ -573,6 +577,14 @@ public final class AgentRunner {
             eventPublisher.notifyCancellationRequested(turn);
         }
         return turn;
+    }
+
+    /**
+     * @deprecated 请使用 {@link #cancel(String)}。保留该方法用于兼容已有业务代码。
+     */
+    @Deprecated
+    public AgentTurn requestCancellation(String turnId) {
+        return cancel(turnId);
     }
 
     /**

@@ -71,7 +71,7 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 ## 如何取消运行？
 
-调用 `runner.requestCancellation(turnId)`。取消是协作式的，在安全边界生效，不保证立刻中断正在执行的 HTTP 或工具函数。
+调用 `runner.cancel(turnId)`。取消是协作式的，在安全边界生效，不保证立刻中断正在执行的 HTTP 或工具函数。
 
 ## Store 版本冲突如何处理？
 

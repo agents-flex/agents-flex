@@ -24,12 +24,16 @@ import java.util.List;
  */
 public interface AgentTurnStore {
 
-    /** 查找指定业务会话当前未结束的 Turn。持久化实现应按 conversationId 建立索引。 */
+    /**
+     * 查找指定业务会话当前未结束的 Turn。持久化实现应按 conversationId 建立索引。
+     */
     default AgentTurnSnapshot findActiveTurn(String conversationId) {
         return null;
     }
 
-    /** 原子创建绑定业务会话的新 Turn；冲突时应抛出 {@link AgentConversationBusyException}。 */
+    /**
+     * 原子创建绑定业务会话的新 Turn；冲突时应抛出 {@link AgentConversationBusyException}。
+     */
     default AgentTurnSnapshot saveNewConversationTurn(AgentTurnSnapshot snapshot) {
         return save(snapshot, -1);
     }

@@ -202,7 +202,7 @@ public class AgentRunnerTest {
         AgentRunner runner = new AgentRunner(
             new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
         AgentTurn turn = runner.start(agent, "cancel me");
-        runner.requestCancellation(turn.getId());
+        runner.cancel(turn.getId());
 
         AgentTurn cancelled = runner.restore(turn.getId());
         AgentStepResult result = runner.step(cancelled);
