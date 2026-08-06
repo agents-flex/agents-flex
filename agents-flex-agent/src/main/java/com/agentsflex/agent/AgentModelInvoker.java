@@ -59,6 +59,11 @@ final class AgentModelInvoker {
         AtomicReference<Boolean> textDeltaPublished = new AtomicReference<>(false);
 
         turn.getAgent().getChatModel().chatStream(prompt, new StreamResponseListener() {
+            @Override
+            public void onOpen(StreamContext context) {
+                chatContext.set(context.getChatContext());
+            }
+
             /**
              * 接收模型产生的单个流式帧。
              *
@@ -68,18 +73,12 @@ final class AgentModelInvoker {
              */
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
-                if (context != null) chatContext.set(context.getChatContext());
                 AiMessage message = response == null ? null : response.getMessage();
                 if (message == null) return;
+
                 if (message.isFinalDelta()) {
                     fullMessage.set(message);
-                    String finalContent = StringUtil.hasText(message.getFullContent())
-                        ? message.getFullContent() : message.getContent();
-                    if (!textDeltaPublished.get() && StringUtil.hasText(finalContent)) {
-                        eventPublisher.publish(turn, AgentEventType.MODEL_TEXT_DELTA,
-                            data("content", finalContent));
-                        textDeltaPublished.set(true);
-                    }
+                    publishFinalTextIfNeeded(turn, message, textDeltaPublished);
                 } else if (publishDeltas(turn, message)) {
                     textDeltaPublished.set(true);
                 }
@@ -104,8 +103,11 @@ final class AgentModelInvoker {
             @Override
             public void onClose(StreamContext context) {
                 if (context != null) {
-                    chatContext.set(context.getChatContext());
-                    if (context.getFullMessage() != null) fullMessage.set(context.getFullMessage());
+                    if (context.getFullMessage() != null) {
+                        fullMessage.set(context.getFullMessage());
+                        // 一些兼容服务只在流关闭时提供聚合正文；此处仍早于 MODEL_COMPLETED 事件。
+                        publishFinalTextIfNeeded(turn, context.getFullMessage(), textDeltaPublished);
+                    }
                     if (context.getThrowable() != null) {
                         failure.compareAndSet(null, context.getThrowable());
                     }
@@ -116,6 +118,8 @@ final class AgentModelInvoker {
 
         awaitClose(turn, closed);
         rethrowFailure(failure.get());
+        // 包装器或兼容客户端可能只在关闭完成后补齐聚合消息；返回 Runner 前做最后一次兜底。
+        publishFinalTextIfNeeded(turn, fullMessage.get(), textDeltaPublished);
         ChatContext context = chatContext.get();
         if (context == null) {
             context = new ChatContext();
@@ -152,6 +156,24 @@ final class AgentModelInvoker {
                 data("toolCalls", toolCalls));
         }
         return textPublished;
+    }
+
+    /**
+     * 兼容只返回聚合正文的流式服务，确保最终文本仍在 MODEL_COMPLETED 前作为事件发布。
+     */
+    private void publishFinalTextIfNeeded(AgentTurn turn, AiMessage message,
+                                          AtomicReference<Boolean> textDeltaPublished) {
+        if (Boolean.TRUE.equals(textDeltaPublished.get()) || message == null) return;
+        String content = StringUtil.hasText(message.getFullContent())
+            ? message.getFullContent() : message.getContent();
+        if (!StringUtil.hasText(content)) {
+            content = message.getTextContent();
+        }
+        if (StringUtil.hasText(content)) {
+            eventPublisher.publish(turn, AgentEventType.MODEL_TEXT_DELTA,
+                data("content", content));
+            textDeltaPublished.set(true);
+        }
     }
 
     /**
