@@ -33,9 +33,12 @@ public class AgentSnapshotPersistenceContractTest {
                 .budget(AgentBudget.builder().maxTotalTokens(100).build())
                 .build())
             .build();
-        AgentTurn turn = new AgentRunner().start(agent, "你好, serialization");
+        AgentTurn turn = new AgentRunner().start(agent, "你好, serialization",
+            AgentTurnOptions.builder().streaming(true).build());
         turn.putMetadata("tenant", "t-1");
         AgentTurnSnapshot original = turn.toSnapshot();
+        AgentTurn restoredTurn = AgentTurn.fromSnapshot(agent, original);
+        assertTrue(restoredTurn.isStreaming());
 
         AgentTurnSnapshot restored = roundTrip(original);
 
@@ -45,6 +48,7 @@ public class AgentSnapshotPersistenceContractTest {
         assertEquals(2, restored.getState().getExecutionPolicy().getRetryPolicy().getMaxRetries());
         assertEquals(100, restored.getState().getExecutionPolicy().getBudget().getMaxTotalTokens());
         assertEquals("你好, serialization", restored.getState().getMessages().get(0).getTextContent());
+        assertTrue(restored.getState().isStreaming());
         assertEquals("t-1", restored.getState().getMetadata().get("tenant"));
         assertTrue(restored.getState().isImmutable());
     }

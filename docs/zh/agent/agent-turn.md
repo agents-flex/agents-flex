@@ -101,7 +101,7 @@ AgentTurnOptions options = AgentTurnOptions.builder()
 
 `metadata` 用于业务订单号、租户 ID、用户 ID 等恢复后仍需使用的信息。值必须可序列化，并会进入 Snapshot。密码、Token、数据库连接和 Spring Bean 不应放入 metadata，运行期服务应由 Middleware 或 Tool 自身通过依赖注入等方式持有。
 
-`streaming(true)` 只控制当前进程内这次 Turn 的模型调用方式，不进入 Snapshot。同一进程创建的子 Turn 会继承该设置；从 Snapshot 恢复或由 Worker 执行时默认使用非流式调用。
+`streaming(true)` 设置当前 Turn 的模型调用方式，并随 Snapshot 持久化。同一进程创建的子 Turn 会继承该设置；从 Snapshot 恢复或由 Worker 执行时仍会保持一致。
 
 ## 父子关系与计划
 
@@ -113,4 +113,4 @@ AgentTurnOptions options = AgentTurnOptions.builder()
 AgentTurnSnapshot snapshot = turn.toSnapshot();
 ```
 
-快照是隔离副本，包含恢复所需状态，但不包含模型、工具和当前进程的 streaming 设置。正常业务代码应通过 `runner.saveSnapshot(turn)` 持久化，由 Store 分配版本，而不是只调用 `toSnapshot()` 后自行覆盖数据。
+快照是隔离副本，包含恢复所需状态（包括 streaming 设置），但不包含模型、工具等进程内对象。正常业务代码应通过 `runner.saveSnapshot(turn)` 持久化，由 Store 分配版本，而不是只调用 `toSnapshot()` 后自行覆盖数据。

@@ -58,10 +58,6 @@ public final class AgentTurn {
      */
     private final MemoryPrompt prompt;
     /**
-     * 当前进程是否使用流式模型调用，不参与 Snapshot 持久化。
-     */
-    private transient boolean streaming;
-    /**
      * 当前进程是否已经通过 AgentLoader 解析并装配规划委派目标。
      */
     private transient boolean planningToolsPrepared;
@@ -179,7 +175,7 @@ public final class AgentTurn {
         AgentTurn turn = new AgentTurn(turnId, agent, prompt, System.currentTimeMillis(),
             actual.getExecutionPolicy());
         turn.state.setMetadata(actual.getMetadata());
-        turn.streaming = actual.isStreaming();
+        turn.state.setStreaming(actual.isStreaming());
         return turn;
     }
 
@@ -201,8 +197,8 @@ public final class AgentTurn {
         AgentTurn child = start(agent, userInput);
         child.state.setParentTurnId(parent.getId());
         child.state.setRootTurnId(parent.getRootTurnId());
-        // 同一进程内创建子 Turn 时继承流式调用方式；Snapshot 恢复后默认使用非流式调用。
-        child.streaming = parent.streaming;
+        // 子 Turn 继承父 Turn 的模型调用方式。
+        child.state.setStreaming(parent.isStreaming());
         int planningDepth = parent.getPlanningDepth() + 1;
         child.state.setPlanningDepth(planningDepth);
         child.state.setPlanningEnabled(agent.getPlanningPolicy().isEnabled()
@@ -329,7 +325,7 @@ public final class AgentTurn {
      * @return 当前进程是否使用流式模型调用
      */
     boolean isStreaming() {
-        return streaming;
+        return state.isStreaming();
     }
 
     /**

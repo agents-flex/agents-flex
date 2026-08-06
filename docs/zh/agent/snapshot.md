@@ -33,7 +33,7 @@ Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对�
 - metadata、最终消息和错误摘要。
 - Store version 与 Worker Lease 信息。
 
-不包含 `ChatModel`、Tool 实例、Listener、Middleware、原始异常对象和当前进程的 streaming 设置。
+不包含 `ChatModel`、Tool 实例、Listener、Middleware 和原始异常对象；Turn 的 streaming 设置属于可恢复运行状态，会随快照保存。
 
 ## 自动保存边界
 

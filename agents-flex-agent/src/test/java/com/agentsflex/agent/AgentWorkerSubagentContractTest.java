@@ -222,7 +222,7 @@ public class AgentWorkerSubagentContractTest {
     }
 
     @Test
-    public void shouldInheritStreamingOptionWhenCreatingChildInSameProcess() {
+    public void shouldPreserveStreamingOptionForChildAndSnapshotRestore() {
         Agent parentAgent = Agent.builder("context-parent")
             .chatModel(new AgentScenarioTestSupport.QueueChatModel()).build();
         Agent childAgent = Agent.builder("context-child")
@@ -235,7 +235,7 @@ public class AgentWorkerSubagentContractTest {
         AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
 
         assertTrue(child.isStreaming());
-        assertFalse(runner.restore(child.getId()).isStreaming());
+        assertTrue(runner.restore(child.getId()).isStreaming());
     }
 
     @Test

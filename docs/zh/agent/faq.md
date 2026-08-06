@@ -57,9 +57,9 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 
 不能。Lease 防止旧执行者提交 Snapshot，但旧执行者可能已向外部系统发出请求。业务工具的幂等约束仍然必需。
 
-## 为什么 streaming 设置恢复后失效？
+## 挂起恢复后还会继续流式输出吗？
 
-`streaming` 是当前进程调用模型的方式，不属于可恢复业务状态，因此不进入 Snapshot。同一进程创建的子 Turn 会继承该设置；从 Snapshot 恢复或由 Worker 执行时默认使用非流式调用。
+会。`streaming(true)` 是当前 Turn 的执行属性，会写入 Snapshot；表单输入、人工审批等挂起点恢复后，以及由 Worker 接管执行时，都会继续使用流式模型调用。只有新建 Turn 时显式使用默认配置，才会采用非流式调用。
 
 ## metadata 可以保存任意对象吗？
 

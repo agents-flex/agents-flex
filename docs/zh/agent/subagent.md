@@ -38,7 +38,7 @@ description: 使用父子 AgentTurn 委派任务、维护父子关系、恢复�
 
 子 Turn 接收总体目标和当前任务的受控描述，不会自动复制父 Turn 的完整消息历史。子任务所需的业务事实应明确写入任务描述，或由工具按业务标识查询，而不能依赖父 Turn 的进程内对象。
 
-同一进程创建子 Turn 时只继承父 Turn 的 streaming 调用方式；从 Snapshot 恢复或由 Worker 执行时默认使用非流式调用。
+子 Turn 会继承父 Turn 的 streaming 调用方式；从 Snapshot 恢复或由 Worker 执行时也会保持该设置。
 
 ## 结果回传
 

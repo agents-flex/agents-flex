@@ -34,6 +34,8 @@ public final class AgentTurnState implements Serializable {
 
     private String turnId;
     private AgentExecutionPolicy executionPolicy;
+    /** 当前 Turn 是否使用模型流式调用；随 Snapshot 持久化，恢复后保持一致。 */
+    private boolean streaming;
     private AgentTurnStatus status = AgentTurnStatus.READY;
     private AgentTurnPhase phase = AgentTurnPhase.MODEL;
     private List<Message> messages = Collections.emptyList();
@@ -92,6 +94,7 @@ public final class AgentTurnState implements Serializable {
     private AgentTurnState(AgentTurnState source, boolean immutable) {
         this.turnId = source.turnId;
         this.executionPolicy = source.executionPolicy;
+        this.streaming = source.streaming;
         this.status = source.status;
         this.phase = source.phase;
         this.messages = immutable ? Collections.unmodifiableList(AgentMessageUtils.copyMessages(source.messages)) : AgentMessageUtils.copyMessages(source.messages);
@@ -169,6 +172,13 @@ public final class AgentTurnState implements Serializable {
      */
     public AgentExecutionPolicy getExecutionPolicy() {
         return executionPolicy;
+    }
+
+    /**
+     * @return 当前 Turn 是否使用流式模型调用
+     */
+    public boolean isStreaming() {
+        return streaming;
     }
 
     /**
@@ -423,6 +433,11 @@ public final class AgentTurnState implements Serializable {
     void setExecutionPolicy(AgentExecutionPolicy value) {
         requireMutable();
         executionPolicy = value;
+    }
+
+    void setStreaming(boolean value) {
+        requireMutable();
+        streaming = value;
     }
 
     void setStatus(AgentTurnStatus value) {
@@ -688,6 +703,11 @@ public final class AgentTurnState implements Serializable {
 
         public Builder executionPolicy(AgentExecutionPolicy value) {
             state.setExecutionPolicy(value);
+            return this;
+        }
+
+        public Builder streaming(boolean value) {
+            state.setStreaming(value);
             return this;
         }
 
