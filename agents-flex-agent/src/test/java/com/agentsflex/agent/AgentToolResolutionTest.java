@@ -26,7 +26,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** 按指定版本 Agent 恢复待执行工具的组合场景测试。 */
+/**
+ * 按指定版本 Agent 恢复待执行工具的组合场景测试。
+ */
 public class AgentToolResolutionTest {
 
     @Test
@@ -140,7 +142,19 @@ public class AgentToolResolutionTest {
         }
 
         @Override
-        public AgentTurnSnapshot load(String turnId) { return delegate.load(turnId); }
+        public AgentTurnSnapshot load(String turnId) {
+            return delegate.load(turnId);
+        }
+
+        @Override
+        public AgentTurnSnapshot findActiveTurn(String conversationId) {
+            return delegate.findActiveTurn(conversationId);
+        }
+
+        @Override
+        public long currentTimeMillis() {
+            return delegate.currentTimeMillis();
+        }
 
         @Override
         public boolean requestCancellation(String turnId) {
@@ -148,8 +162,32 @@ public class AgentToolResolutionTest {
         }
 
         @Override
-        public boolean isCancellationRequested(String turnId) {
-            return delegate.isCancellationRequested(turnId);
+        public com.agentsflex.agent.store.ParentChildTurnSnapshots saveParentAndChild(
+            AgentTurnSnapshot parent, long expectedParentVersion, AgentTurnSnapshot child) {
+            return delegate.saveParentAndChild(parent, expectedParentVersion, child);
+        }
+
+        @Override
+        public java.util.List<AgentTurnSnapshot> claimRunnable(
+            String workerId, long now, long leaseMillis, int limit) {
+            return delegate.claimRunnable(workerId, now, leaseMillis, limit);
+        }
+
+        @Override
+        public AgentTurnSnapshot renewLease(String turnId, String workerId,
+                                            String leaseId, long now, long leaseUntil) {
+            return delegate.renewLease(turnId, workerId, leaseId, now, leaseUntil);
+        }
+
+        @Override
+        public void releaseLease(String turnId, String workerId, String leaseId) {
+            delegate.releaseLease(turnId, workerId, leaseId);
+        }
+
+        @Override
+        public java.util.List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(
+            int limit) {
+            return delegate.findTerminalChildrenWithWaitingParent(limit);
         }
 
         @Override

@@ -190,7 +190,7 @@ try {
 新的普通 Turn。Turn 进入终态后，会话可以开始下一轮。
 
 `InMemoryAgentTurnStore` 已提供同进程多个 Runner 之间的原子检查和创建。JDBC、Redis 或其他生产 Store
-应覆盖 `AgentTurnStore.findActiveTurn` 与 `saveNewConversationTurn`，使用数据库事务、唯一约束或 Redis
+应实现 `AgentTurnStore.findActiveTurn`，并在 `save(snapshot, -1)` 创建新 Turn 时使用数据库事务、唯一约束或 Redis
 脚本实现跨进程原子保护；否则只能依赖 Runner 实例内的检查，不能保证分布式并发安全。排队、拒绝响应和
 消息重试属于业务系统职责，不由 Runner 保存队列。
 

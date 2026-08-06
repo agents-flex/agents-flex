@@ -394,11 +394,31 @@ public class AgentAdvancedFeaturesTest {
 
         private CrashOnPendingStore(AgentTurnStore delegate) { this.delegate = delegate; }
         @Override public AgentTurnSnapshot load(String turnId) { return delegate.load(turnId); }
+        @Override public AgentTurnSnapshot findActiveTurn(String conversationId) {
+            return delegate.findActiveTurn(conversationId);
+        }
+        @Override public long currentTimeMillis() { return delegate.currentTimeMillis(); }
         @Override public boolean requestCancellation(String turnId) {
             return delegate.requestCancellation(turnId);
         }
-        @Override public boolean isCancellationRequested(String turnId) {
-            return delegate.isCancellationRequested(turnId);
+        @Override public com.agentsflex.agent.store.ParentChildTurnSnapshots saveParentAndChild(
+            AgentTurnSnapshot parent, long expectedParentVersion, AgentTurnSnapshot child) {
+            return delegate.saveParentAndChild(parent, expectedParentVersion, child);
+        }
+        @Override public java.util.List<AgentTurnSnapshot> claimRunnable(
+            String workerId, long now, long leaseMillis, int limit) {
+            return delegate.claimRunnable(workerId, now, leaseMillis, limit);
+        }
+        @Override public AgentTurnSnapshot renewLease(String turnId, String workerId,
+                                                       String leaseId, long now, long leaseUntil) {
+            return delegate.renewLease(turnId, workerId, leaseId, now, leaseUntil);
+        }
+        @Override public void releaseLease(String turnId, String workerId, String leaseId) {
+            delegate.releaseLease(turnId, workerId, leaseId);
+        }
+        @Override public java.util.List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(
+            int limit) {
+            return delegate.findTerminalChildrenWithWaitingParent(limit);
         }
 
         @Override
@@ -419,11 +439,31 @@ public class AgentAdvancedFeaturesTest {
 
         private CrashAfterFirstToolStore(AgentTurnStore delegate) { this.delegate = delegate; }
         @Override public AgentTurnSnapshot load(String turnId) { return delegate.load(turnId); }
+        @Override public AgentTurnSnapshot findActiveTurn(String conversationId) {
+            return delegate.findActiveTurn(conversationId);
+        }
+        @Override public long currentTimeMillis() { return delegate.currentTimeMillis(); }
         @Override public boolean requestCancellation(String turnId) {
             return delegate.requestCancellation(turnId);
         }
-        @Override public boolean isCancellationRequested(String turnId) {
-            return delegate.isCancellationRequested(turnId);
+        @Override public com.agentsflex.agent.store.ParentChildTurnSnapshots saveParentAndChild(
+            AgentTurnSnapshot parent, long expectedParentVersion, AgentTurnSnapshot child) {
+            return delegate.saveParentAndChild(parent, expectedParentVersion, child);
+        }
+        @Override public java.util.List<AgentTurnSnapshot> claimRunnable(
+            String workerId, long now, long leaseMillis, int limit) {
+            return delegate.claimRunnable(workerId, now, leaseMillis, limit);
+        }
+        @Override public AgentTurnSnapshot renewLease(String turnId, String workerId,
+                                                       String leaseId, long now, long leaseUntil) {
+            return delegate.renewLease(turnId, workerId, leaseId, now, leaseUntil);
+        }
+        @Override public void releaseLease(String turnId, String workerId, String leaseId) {
+            delegate.releaseLease(turnId, workerId, leaseId);
+        }
+        @Override public java.util.List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(
+            int limit) {
+            return delegate.findTerminalChildrenWithWaitingParent(limit);
         }
 
         @Override

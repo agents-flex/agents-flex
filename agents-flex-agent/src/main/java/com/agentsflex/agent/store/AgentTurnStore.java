@@ -7,10 +7,8 @@
 package com.agentsflex.agent.store;
 
 import com.agentsflex.agent.AgentTurnSnapshot;
-import com.agentsflex.agent.AgentConversationBusyException;
 import com.agentsflex.agent.loader.AgentLoader;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -27,26 +25,15 @@ public interface AgentTurnStore {
     /**
      * 查找指定业务会话当前未结束的 Turn。持久化实现应按 conversationId 建立索引。
      */
-    default AgentTurnSnapshot findActiveTurn(String conversationId) {
-        return null;
-    }
-
-    /**
-     * 原子创建绑定业务会话的新 Turn；冲突时应抛出 {@link AgentConversationBusyException}。
-     */
-    default AgentTurnSnapshot saveNewConversationTurn(AgentTurnSnapshot snapshot) {
-        return save(snapshot, -1);
-    }
+    AgentTurnSnapshot findActiveTurn(String conversationId);
 
     /**
      * 返回调度存储使用的当前时间。
      *
-     * <p>分布式 Store 应覆盖该方法并使用数据库或 Redis 服务端时间，避免应用节点时钟漂移
-     * 导致 Lease 被提前抢占。进程内实现默认使用本机时间。</p>
+     * <p>分布式 Store 应使用数据库或 Redis 服务端时间，避免应用节点时钟漂移导致 Lease 被提前抢占。
+     * 进程内实现可以使用本机时间。</p>
      */
-    default long currentTimeMillis() {
-        return System.currentTimeMillis();
-    }
+    long currentTimeMillis();
 
     /**
      * 加载指定运行的最新 Snapshot。
@@ -76,30 +63,21 @@ public interface AgentTurnStore {
     boolean requestCancellation(String turnId);
 
     /**
-     * 查询指定 Turn 是否已经收到持久化取消请求。
-     */
-    boolean isCancellationRequested(String turnId);
-
-    /**
      * 原子保存进入等待状态的父 Turn，并创建对应的子 Turn。
      *
      * <p>外部 Store 应在同一事务中完成父记录条件更新和子记录插入，避免只提交其中一个状态。</p>
      */
-    default ParentChildTurnSnapshots saveParentAndChild(AgentTurnSnapshot parent,
-                                                        long expectedParentVersion,
-                                                        AgentTurnSnapshot child) {
-        throw new UnsupportedOperationException("atomic child creation is not supported");
-    }
+    ParentChildTurnSnapshots saveParentAndChild(AgentTurnSnapshot parent,
+                                                long expectedParentVersion,
+                                                AgentTurnSnapshot child);
 
     /**
      * 原子领取当前可执行且没有有效租约的 Turn。
      *
-     * <p>Store 实现应在领取时写入 leaseOwner、leaseUntil 并增加版本号。默认实现表示不支持调度。</p>
+     * <p>所有 Store 实现都必须明确实现该原子操作；不支持后台调度的应用不应配置 AgentWorker。</p>
      */
-    default List<AgentTurnSnapshot> claimRunnable(String workerId, long now,
-                                                  long leaseMillis, int limit) {
-        return Collections.emptyList();
-    }
+    List<AgentTurnSnapshot> claimRunnable(String workerId, long now,
+                                          long leaseMillis, int limit);
 
     /**
      * 延长指定 Worker 持有的有效租约。
@@ -107,21 +85,16 @@ public interface AgentTurnStore {
      * <p>续租只更新租约时间，不改变 Snapshot 版本。leaseId 必须与领取时返回的唯一令牌一致，
      * 防止同名 Worker 或已经失效的进程续租新的租约。</p>
      */
-    default AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
-                                         long now, long leaseUntil) {
-        throw new UnsupportedOperationException("lease renewal is not supported");
-    }
+    AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
+                                 long now, long leaseUntil);
 
     /**
      * 仅在 Worker ID 和唯一租约令牌都匹配时释放租约。
      */
-    default void releaseLease(String turnId, String workerId, String leaseId) {
-    }
+    void releaseLease(String turnId, String workerId, String leaseId);
 
     /**
      * 查询已经终止、但父 Turn 仍处于等待状态的子 Turn，供 Worker 修复父任务唤醒。
      */
-    default List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(int limit) {
-        return Collections.emptyList();
-    }
+    List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(int limit);
 }

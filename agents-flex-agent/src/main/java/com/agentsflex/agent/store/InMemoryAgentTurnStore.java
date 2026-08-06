@@ -51,18 +51,8 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
     }
 
     @Override
-    public AgentTurnSnapshot saveNewConversationTurn(AgentTurnSnapshot snapshot) {
-        if (snapshot == null) throw new IllegalArgumentException("snapshot must not be null");
-        Object value = snapshot.getState().getMetadata().get("agentsflex.conversationId");
-        if (value == null) return save(snapshot, -1);
-        synchronized (snapshots) {
-            AgentTurnSnapshot active = findActiveTurn(String.valueOf(value));
-            if (active != null) {
-                throw new AgentConversationBusyException(String.valueOf(value),
-                    active.getState().getTurnId(), active.getState().getStatus());
-            }
-            return save(snapshot, -1);
-        }
+    public long currentTimeMillis() {
+        return System.currentTimeMillis();
     }
 
     /** 按 expectedVersion 执行 CAS 保存并返回版本加一的新快照。 */
@@ -74,6 +64,17 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         String turnId = snapshot.getState().getTurnId();
         synchronized (snapshots) {
             AgentTurnSnapshot current = snapshots.get(turnId);
+            if (expectedVersion == -1) {
+                Object conversationId = snapshot.getState().getMetadata()
+                    .get("agentsflex.conversationId");
+                if (conversationId != null) {
+                    AgentTurnSnapshot active = findActiveTurn(String.valueOf(conversationId));
+                    if (active != null) {
+                        throw new AgentConversationBusyException(String.valueOf(conversationId),
+                            active.getState().getTurnId(), active.getState().getStatus());
+                    }
+                }
+            }
             long actualVersion = current == null ? -1 : current.getState().getVersion();
             if (actualVersion != expectedVersion) {
                 throw new AgentTurnVersionConflictException(turnId, expectedVersion, actualVersion);
@@ -111,13 +112,6 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
             snapshots.put(turnId, cancelled.copy());
             return true;
         }
-    }
-
-    /** 查询当前最新快照是否已经收到取消请求。 */
-    @Override
-    public boolean isCancellationRequested(String turnId) {
-        AgentTurnSnapshot snapshot = snapshots.get(turnId);
-        return snapshot != null && snapshot.getState().isCancellationRequested();
     }
 
     /** 在同一个同步临界区保存等待中的父 Turn 和新建子 Turn。 */

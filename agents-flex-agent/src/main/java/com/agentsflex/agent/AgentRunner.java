@@ -127,7 +127,9 @@ public final class AgentRunner {
      * STEP_COMPLETED，再看到本步骤产生的 Turn 状态事件。</p>
      */
     private final ThreadLocal<List<Runnable>> afterStepEvents = new ThreadLocal<>();
-    /** 同一 Runner 内按 conversationId 串行创建初始 Turn，避免检查与保存之间出现竞态。 */
+    /**
+     * 同一 Runner 内按 conversationId 串行创建初始 Turn，避免检查与保存之间出现竞态。
+     */
     private final ConcurrentMap<String, Object> conversationLocks = new ConcurrentHashMap<>();
 
     /**
@@ -474,7 +476,7 @@ public final class AgentRunner {
 
     private void saveInitialConversationSnapshot(AgentTurn turn) {
         synchronized (turn) {
-            AgentTurnSnapshot saved = turnStore.saveNewConversationTurn(turn.toSnapshot());
+            AgentTurnSnapshot saved = turnStore.save(turn.toSnapshot(), -1);
             turn.updateVersion(saved.getState().getVersion());
             chatMemory.sync(turn);
             eventPublisher.notifySnapshotSaved(turn, saved);
@@ -1762,9 +1764,11 @@ public final class AgentRunner {
      * 将 Store 中的单调取消信号同步到当前内存 Turn。
      */
     private void refreshCancellation(AgentTurn turn) {
-        if (!turn.isCancellationRequested()
-            && turnStore.isCancellationRequested(turn.getId())) {
-            turn.requestCancellation();
+        if (!turn.isCancellationRequested()) {
+            AgentTurnSnapshot latest = turnStore.load(turn.getId());
+            if (latest != null && latest.getState().isCancellationRequested()) {
+                turn.requestCancellation();
+            }
         }
     }
 

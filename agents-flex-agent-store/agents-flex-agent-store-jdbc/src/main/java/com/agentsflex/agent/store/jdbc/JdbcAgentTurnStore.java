@@ -45,6 +45,32 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
     }
 
     @Override
+    public AgentTurnSnapshot findActiveTurn(String conversationId) {
+        if (conversationId == null) return null;
+        String sql = "SELECT payload FROM " + table("turns")
+            + " WHERE status NOT IN (?,?,?,?,?,?)";
+        try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, AgentTurnStatus.COMPLETED.name());
+            statement.setString(2, AgentTurnStatus.FAILED.name());
+            statement.setString(3, AgentTurnStatus.CANCELLED.name());
+            statement.setString(4, AgentTurnStatus.MAX_ITERATIONS_REACHED.name());
+            statement.setString(5, AgentTurnStatus.MAX_STEPS_REACHED.name());
+            statement.setString(6, AgentTurnStatus.BUDGET_EXCEEDED.name());
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    AgentTurnSnapshot snapshot = deserialize(rows.getBytes(1), AgentTurnSnapshot.class);
+                    Object value = snapshot.getState().getMetadata().get("agentsflex.conversationId");
+                    if (conversationId.equals(value)) return load(connection,
+                        snapshot.getState().getTurnId());
+                }
+            }
+            return null;
+        } catch (SQLException error) {
+            throw failure("find active AgentTurn", error);
+        }
+    }
+
+    @Override
     public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
         requireSnapshot(snapshot);
         try (Connection connection = connection()) {
@@ -88,14 +114,8 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
     }
 
     @Override
-    public boolean isCancellationRequested(String turnId) {
-        AgentTurnSnapshot snapshot = load(turnId);
-        return snapshot != null && snapshot.getState().isCancellationRequested();
-    }
-
-    @Override
     public ParentChildTurnSnapshots saveParentAndChild(AgentTurnSnapshot parent, long expectedParentVersion,
-                                                      AgentTurnSnapshot child) {
+                                                       AgentTurnSnapshot child) {
         requireSnapshot(parent);
         requireSnapshot(child);
         try (Connection connection = connection()) {
@@ -165,7 +185,7 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
 
     @Override
     public AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
-                                       long now, long leaseUntil) {
+                                        long now, long leaseUntil) {
         if (leaseUntil <= now) throw new IllegalArgumentException("leaseUntil must be after now");
         String sql = "UPDATE " + table("turns") + " SET lease_until=? WHERE turn_id=? AND lease_owner=? "
             + "AND lease_id=? AND lease_until>?";

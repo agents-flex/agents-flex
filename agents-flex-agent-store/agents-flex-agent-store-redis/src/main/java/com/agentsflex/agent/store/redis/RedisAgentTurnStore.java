@@ -62,6 +62,18 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
     }
 
     @Override
+    public AgentTurnSnapshot findActiveTurn(String conversationId) {
+        if (conversationId == null) return null;
+        for (String id : jedis.smembers(index("turns"))) {
+            AgentTurnSnapshot snapshot = load(id);
+            if (snapshot == null || snapshot.getState().getStatus().isTerminal()) continue;
+            Object value = snapshot.getState().getMetadata().get("agentsflex.conversationId");
+            if (conversationId.equals(value)) return snapshot;
+        }
+        return null;
+    }
+
+    @Override
     public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
         if (snapshot == null) throw new IllegalArgumentException("snapshot must not be null");
         AgentTurnSnapshot saved = snapshot.withVersion(expectedVersion + 1);
@@ -89,11 +101,6 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
         long result = ((Number) eval(script, keys(key("turn", turnId), index("runnable-turns")), args(turnId))).longValue();
         if (result == -1) throw new IllegalStateException("AgentTurn snapshot not found: " + turnId);
         return result == 1;
-    }
-
-    @Override
-    public boolean isCancellationRequested(String turnId) {
-        return "1".equals(jedis.hget(key("turn", turnId), "cancel"));
     }
 
     @Override
@@ -162,7 +169,7 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
 
     @Override
     public AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
-                                       long now, long leaseUntil) {
+                                        long now, long leaseUntil) {
         if (leaseUntil <= now) throw new IllegalArgumentException("leaseUntil must be after now");
         String script = "if redis.call('HGET',KEYS[1],'lease_owner')~=ARGV[1] "
             + "or redis.call('HGET',KEYS[1],'lease_id')~=ARGV[2] "
