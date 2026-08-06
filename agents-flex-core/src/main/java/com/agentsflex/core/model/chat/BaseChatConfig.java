@@ -17,6 +17,7 @@ package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.model.config.BaseModelConfig;
 
+import java.util.Collections;
 import java.util.List;
 
 public class BaseChatConfig extends BaseModelConfig {
@@ -158,16 +159,15 @@ public class BaseChatConfig extends BaseModelConfig {
     }
 
     public void setSupportProviderTools(List<String> supportProviderTools) {
-        this.supportProviderTools = supportProviderTools;
+        this.supportProviderTools = supportProviderTools == null
+            ? null : new java.util.ArrayList<>(supportProviderTools);
     }
 
     public void addSupportProviderTools(String... tools) {
         if (supportProviderTools == null) {
             supportProviderTools = new java.util.ArrayList<>();
         }
-        for (String tool : tools) {
-            supportProviderTools.add(tool);
-        }
+        Collections.addAll(supportProviderTools, tools);
     }
 
     public boolean isSupportProviderTools(String tool) {

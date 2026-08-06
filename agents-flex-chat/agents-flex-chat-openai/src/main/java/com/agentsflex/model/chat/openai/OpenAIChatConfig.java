@@ -140,8 +140,34 @@ public class OpenAIChatConfig extends BaseChatConfig {
             return this;
         }
 
+        public Builder supportFile(Boolean supportFile) {
+            config.setSupportFile(supportFile);
+            return this;
+        }
+
         public Builder supportTool(Boolean supportTool) {
             config.setSupportTool(supportTool);
+            return this;
+        }
+
+        public Builder supportToolMessage(Boolean supportToolMessage) {
+            config.setSupportToolMessage(supportToolMessage);
+            return this;
+        }
+
+        /**
+         * 设置服务商托管工具，例如 web_search、code_interpreter。
+         */
+        public Builder supportProviderTools(List<String> tools) {
+            config.setSupportProviderTools(tools);
+            return this;
+        }
+
+        /**
+         * 追加一个或多个服务商托管工具。
+         */
+        public Builder addSupportProviderTools(String... tools) {
+            config.addSupportProviderTools(tools);
             return this;
         }
 
@@ -150,8 +176,24 @@ public class OpenAIChatConfig extends BaseChatConfig {
             return this;
         }
 
+        /**
+         * 是否在工具调用时把模型推理内容作为 reasoning_content 继续传递。
+         */
+        public Builder preserveThinkingEnable(Boolean preserveThinkingEnable) {
+            config.setPreserveThinkingEnable(preserveThinkingEnable);
+            return this;
+        }
+
         public Builder thinkingEnabled(boolean thinkingEnabled) {
             config.setThinkingEnabled(thinkingEnabled);
+            return this;
+        }
+
+        /**
+         * 设置推理协议，例如 deepseek、qwen、ollama 或 none。
+         */
+        public Builder thinkingProtocol(String thinkingProtocol) {
+            config.setThinkingProtocol(thinkingProtocol);
             return this;
         }
 
@@ -162,6 +204,21 @@ public class OpenAIChatConfig extends BaseChatConfig {
 
         public Builder logEnabled(boolean logEnabled) {
             config.setLogEnabled(logEnabled);
+            return this;
+        }
+
+        public Builder retryEnabled(boolean retryEnabled) {
+            config.setRetryEnabled(retryEnabled);
+            return this;
+        }
+
+        public Builder retryCount(int retryCount) {
+            config.setRetryCount(retryCount);
+            return this;
+        }
+
+        public Builder retryInitialDelayMs(int retryInitialDelayMs) {
+            config.setRetryInitialDelayMs(retryInitialDelayMs);
             return this;
         }
 
