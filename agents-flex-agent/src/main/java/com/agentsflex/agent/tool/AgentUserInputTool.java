@@ -16,8 +16,8 @@ import java.util.Map;
 /**
  * 创建模型可见的用户输入请求工具。
  *
- * <p>该工具没有业务函数。模型调用后，AgentRunner 会保存原 ToolCall 并进入等待用户输入状态；
- * 用户提交的数据最终作为匹配该 ToolCall 的 ToolMessage 返回给模型。</p>
+ * <p>该工具没有业务函数。模型调用后，AgentRunner 会保存原 ToolCall 并进入等待用户输入状态。
+ * 用户提交的数据作为匹配该 ToolCall 的 ToolMessage 返回模型，由模型决定下一步业务动作。</p>
  */
 public final class AgentUserInputTool {
 

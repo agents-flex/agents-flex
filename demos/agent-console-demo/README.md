@@ -45,13 +45,14 @@ mvn -f demos/agent-console-demo/pom.xml exec:java
 你好，我叫小明。
 你还记得我叫什么吗？
 上海现在几点？
-请帮我收集会议安排信息。
+请帮我预定一个会议室。
 帮我创建一个高优先级登录故障工单。
 分别查询上海和东京当前时间，并比较时差给出会议建议。
 ```
 
-收集会议信息时，模型会调用 `request_user_input(meeting_request)`；Schema 不发送给模型，而是由
-Runner 保存并交给控制台渲染。创建工单时，`prepare_support_ticket` 会通过
+预定会议室时，模型会调用 `request_user_input(meeting_room_booking)`。Schema 不发送给模型，而是
+由 Runner 保存并交给控制台渲染；提交后表单数据作为 ToolMessage 返回模型，模型再调用
+`reserve_meeting_room` 完成预定。创建工单时，`prepare_support_ticket` 会通过
 `AgentFormRequiredException` 请求“受影响系统、影响范围、错误提示”表单。控制台根据
 Schema 逐项读取输入，提交后 Runner 从头恢复同一个准备工具；资料整理完成后，模型再调用
 `create_support_ticket`，控制台展示最终 ToolCall 参数并等待输入 `y` 或 `n`。

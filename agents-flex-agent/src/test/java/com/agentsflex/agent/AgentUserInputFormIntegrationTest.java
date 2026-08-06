@@ -248,6 +248,65 @@ public class AgentUserInputFormIntegrationTest {
     }
 
     @Test
+    public void shouldLetModelChooseBusinessToolAfterFormSubmission() {
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("input-1", AgentUserInputTool.NAME,
+            "{\"formKey\":\"meeting_room_booking\"}")));
+        model.enqueue(prompt -> {
+            ToolMessage input = lastToolMessage(prompt.getMessages());
+            assertEquals("input-1", input.getToolCallId());
+            Map<String, Object> body = JSON.parseObject(input.getContent());
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) body.get("data");
+            assertEquals("季度评审", data.get("subject"));
+            return toolCalls(new ToolCall("reserve-call", "reserve_meeting_room",
+                JSON.toJSONString(data)));
+        });
+        model.enqueue(prompt -> {
+            ToolMessage result = lastToolMessage(prompt.getMessages());
+            assertEquals("reserve-call", result.getToolCallId());
+            assertEquals("ROOM-101", result.getContent());
+            return new AiMessage("会议室预定成功");
+        });
+
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+        schema.put("title", "填写会议安排");
+        schema.put("properties", new LinkedHashMap<String, Object>());
+        AgentFormDefinition form = AgentFormDefinition.builder("meeting_room_booking")
+            .description("预定会议室时收集会议资料")
+            .schema(schema)
+            .build();
+        Agent agent = Agent.builder("target-form-agent")
+            .chatModel(model)
+            .tool(AgentUserInputTool.builder().form(form).build())
+            .tool(AgentScenarioTestSupport.tool("reserve_meeting_room", arguments -> "ROOM-101"))
+            .build();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
+        DefaultChatMemory memory = new DefaultChatMemory("target-form-conversation");
+        AgentRunner runner = AgentRunner.builder().turnStore(store)
+            .agentLoader(new InMemoryAgentLoader(agent))
+            .chatMemoryProvider(id -> memory).build();
+
+        AgentTurn waiting = runner.run(agent, "target-form-conversation", "预定会议室");
+        assertEquals(AgentTurnStatus.WAITING_FOR_USER, waiting.getStatus());
+
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("subject", "季度评审");
+        values.put("preferredTime", "明天下午三点");
+        values.put("participantCount", 8);
+        AgentTurn runnable = runner.submitResume(waiting.getId(),
+            AgentResumeCommand.userInput("input-1", values));
+        assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
+        assertTrue(runnable.getPendingToolCalls().isEmpty());
+        assertEquals(AgentTurnPhase.MODEL, runnable.getPhase());
+        assertEquals(AgentTurnStatus.COMPLETED,
+            runner.runUntilBlocked(waiting.getId()).getStatus());
+        assertEquals("会议室预定成功", runner.restore(waiting.getId()).getFinalOutput());
+    }
+
+    @Test
     public void shouldSerializeFormMessageStorageFields() {
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");

@@ -7,15 +7,42 @@ description: 让模型从已注册表单中选择一项，并在用户提交结�
 
 ## 概述
 
-表单输入适用于 Agent 执行到一半、缺少结构化业务信息的场景，例如创建工单、预订会议室或补充退款
-资料。业务代码在 `AgentUserInputTool` 上注册表单定义；模型只能选择稳定的 `formKey`，看不到完整
-JSON Schema，也不能生成任意表单结构。
-
-模型调用 `request_user_input` 后，Runner 将选中表单的 Schema 保存到 Suspension 和 Snapshot，Turn
-进入 `WAITING_FOR_USER`。配置 ChatMemory 后，同一份 Schema 会通过 `AgentFormMessage` 直接提供给前端。
-用户提交后，Runner 把数据作为匹配原 ToolCall 的 ToolMessage 返回给模型。
+表单输入有两种入口。第一种是模型在执行业务动作前调用 `request_user_input` 选择表单；用户提交后，
+Runner 将结构化数据作为 ToolMessage 返回模型，由模型判断并调用后续业务 Tool。第二种是业务 Tool
+执行过程中发现缺少信息，抛出 `AgentFormRequiredException`；Runner 挂起并在提交后重放原 Tool。
+两种方式都通过 `AgentFormMessage` 向前端提供 Schema，并使用 `submitResume` 或 `resume` 恢复 Turn。
 
 ## 快速开始
+
+### 方式一：模型主动请求表单
+
+下面的例子中，表单只负责收集预定资料，`reserve_meeting_room` 才是真正执行预定的业务 Tool：
+
+```java
+AgentFormDefinition meetingForm = AgentFormDefinition.builder("meeting_room_booking")
+    .description("预定会议室时收集会议主题、时间和参会人数")
+    .schema(meetingSchema)
+    .build();
+
+Tool reserveMeetingRoom = Tool.builder("reserve_meeting_room", "根据完整资料预定会议室")
+    .function(arguments -> reserveRoom(arguments))
+    .build();
+
+Agent agent = Agent.builder("meeting-agent")
+    .instructions("用户要求预定会议室时先调用 request_user_input 选择 meeting_room_booking；"
+        + "提交后执行 reserve_meeting_room，不要只回复已收到表单。")
+    .chatModel(chatModel)
+    .tool(AgentUserInputTool.builder().form(meetingForm).build())
+    .tool(reserveMeetingRoom)
+    .build();
+```
+
+执行顺序是：模型调用 `request_user_input`，Runner 保存 Schema 并挂起；前端渲染
+`AgentFormMessage`；用户提交后 Runner 追加匹配原调用的 ToolMessage 并回到 MODEL 阶段。模型读取
+表单数据后，自行判断并调用 `reserve_meeting_room`，随后根据工具结果生成最终回答。Runner 不保存
+目标 Tool 名称，也不会替模型生成业务 ToolCall。
+
+### 方式二：业务 Tool 执行中动态请求表单
 
 ### 1. 定义并注册表单
 
@@ -267,7 +294,7 @@ Runner 将该异常作为执行控制信号，而不是工具失败：
 
 | 表单入口 | 提交数据的去向 | 恢复动作 |
 | --- | --- | --- |
-| 模型调用 `request_user_input` | 形成控制 ToolCall 的 ToolMessage | 回到 MODEL 阶段 |
+| 模型调用 `request_user_input` | 形成控制 ToolCall 的 ToolMessage | 回到 MODEL，由模型选择后续 Tool |
 | 业务工具抛出输入异常 | 保存为原业务 ToolCall 的恢复数据 | 从头重新执行原工具 |
 
 工具输入异常必须在产生外部副作用之前抛出，因为 Framework 不会恢复 Java 调用栈，只会重放整个工具

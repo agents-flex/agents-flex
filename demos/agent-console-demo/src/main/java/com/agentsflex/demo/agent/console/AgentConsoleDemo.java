@@ -81,11 +81,12 @@ public final class AgentConsoleDemo {
 
         Tool currentTime = createCurrentTimeTool();
         AgentFormDefinition meetingRequestForm = createMeetingRequestForm();
+        Tool reserveMeetingRoom = createMeetingReservationTool();
         AgentFormDefinition ticketDetailsForm = createTicketDetailsForm();
         Tool prepareTicket = createTicketPreparationTool(ticketDetailsForm);
         Tool createTicket = createTicketTool(ticketSequence);
         Agent agent = createAgent(chatModel, currentTime, meetingRequestForm,
-            prepareTicket, createTicket);
+            reserveMeetingRoom, prepareTicket, createTicket);
 
         String conversationId = "console-" + UUID.randomUUID();
         ChatMemory memory = new DefaultChatMemory(conversationId);
@@ -445,9 +446,26 @@ public final class AgentConsoleDemo {
         schema.put("required", Arrays.asList(
             "subject", "preferredTime", "participantCount"));
 
-        return AgentFormDefinition.builder("meeting_request")
-            .description("用户要求收集或确认会议主题、时间和参会人数时使用")
+        return AgentFormDefinition.builder("meeting_room_booking")
+            .description("预定会议室时收集会议主题、时间和参会人数")
             .schema(schema)
+            .build();
+    }
+
+    /** 模型读取表单提交结果后可以选择调用的真实业务工具。 */
+    private static Tool createMeetingReservationTool() {
+        return Tool.builder("reserve_meeting_room", "根据完整会议资料预定会议室")
+            .addParameter(Parameter.builder().name("subject").type("string")
+                .description("会议主题").required(true).build())
+            .addParameter(Parameter.builder().name("preferredTime").type("string")
+                .description("会议时间").required(true).build())
+            .addParameter(Parameter.builder().name("participantCount").type("integer")
+                .description("参会人数").required(true).build())
+            .function(arguments -> {
+                String roomId = "ROOM-SH-101";
+                System.out.println("\n[工具已执行] 预定会议室 " + roomId + "，参数=" + arguments);
+                return "会议室预定成功，roomId=" + roomId;
+            })
             .build();
     }
 
@@ -552,6 +570,7 @@ public final class AgentConsoleDemo {
      */
     private static Agent createAgent(ChatModel chatModel, Tool currentTime,
                                      AgentFormDefinition meetingRequestForm,
+                                     Tool reserveMeetingRoom,
                                      Tool prepareTicket, Tool createTicket) {
         return Agent.builder("console-assistant")
             .id("console-assistant")
@@ -560,8 +579,9 @@ public final class AgentConsoleDemo {
             .instructions(
                 "你是一个支持持续对话的中文助手。请结合完整会话历史理解代词和省略信息。"
                     + "普通问候或知识问题直接回答。用户询问当前日期或时间时，必须调用 get_current_time，"
-                    + "不能依靠训练数据猜测。用户要求收集或确认会议安排信息时，必须调用 "
-                    + "request_user_input 并选择 meeting_request，提交后汇总用户填写的内容。"
+                    + "不能依靠训练数据猜测。用户要求预定会议室时，必须调用 "
+                    + "request_user_input 并选择 meeting_room_booking；收到表单提交结果后，必须调用 "
+                    + "reserve_meeting_room 完成预定，不要只回复已收到表单。"
                     + "用户明确要求创建、提交或登记支持工单时，必须先调用 "
                     + "prepare_support_ticket 整理标题、优先级和描述；该工具补齐资料并返回后，再调用 "
                     + "create_support_ticket，不能跳过准备工具，也不能猜测表单字段。"
@@ -572,6 +592,7 @@ public final class AgentConsoleDemo {
             .chatModel(chatModel)
             .tool(currentTime)
             .tool(AgentUserInputTool.builder().form(meetingRequestForm).build())
+            .tool(reserveMeetingRoom)
             .tool(prepareTicket)
             .tool(createTicket)
             .maxAttachedMessages(40)
@@ -618,6 +639,9 @@ public final class AgentConsoleDemo {
             .supportTool(true)
             .observabilityEnabled(false)
             .logEnabled(false)
+            .supportThinking(true)
+            .preserveThinkingEnable(true)
+            .logEnabled(true)
             .buildModel();
     }
 
