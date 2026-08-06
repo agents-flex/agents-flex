@@ -76,6 +76,34 @@ public class AgentExecutionBoundaryContractTest {
     }
 
     @Test
+    public void shouldPublishFinalContentWhenStreamHasNoIntermediateDelta() {
+        List<AgentEvent> events = new ArrayList<>();
+        ChatModel model = new ChatModel() {
+            @Override
+            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void chatStream(Prompt prompt, StreamResponseListener listener,
+                                   ChatOptions options) {
+                AiMessage finalMessage = new AiMessage();
+                finalMessage.setFinished(true);
+                finalMessage.setFullContent("final-only");
+                listener.onMessage(null, response(prompt, finalMessage));
+                listener.onClose(null);
+            }
+        };
+        AgentTurn turn = new AgentRunner().addEventListener(events::add).run(
+            Agent.builder("final-only-stream").chatModel(model).build(), "input",
+            AgentTurnOptions.builder().streaming(true).build());
+
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertTrue(hasEventWithContent(events, AgentEventType.MODEL_TEXT_DELTA,
+            "final-only"));
+    }
+
+    @Test
     public void shouldCancelAfterRunningToolReturnsWithoutCallingModelAgain() throws Exception {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();

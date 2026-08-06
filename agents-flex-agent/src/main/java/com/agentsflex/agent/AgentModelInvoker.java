@@ -56,21 +56,33 @@ final class AgentModelInvoker {
         AtomicReference<AiMessage> fullMessage = new AtomicReference<>();
         AtomicReference<ChatContext> chatContext = new AtomicReference<>();
         AtomicReference<Throwable> failure = new AtomicReference<>();
+        AtomicReference<Boolean> textDeltaPublished = new AtomicReference<>(false);
 
         turn.getAgent().getChatModel().chatStream(prompt, new StreamResponseListener() {
             /**
              * 接收模型产生的单个流式帧。
              *
-             * <p>普通增量帧会立即发布为运行时事件；最终帧只用于保留完整消息，
-             * 避免把模型实现提供的聚合正文再次作为增量发布。</p>
+             * <p>普通增量帧会立即发布为运行时事件；最终帧只用于保留完整消息。
+             * 如果服务端没有发送任何正文增量，则把最终聚合正文发布一次作为兜底，避免
+             * 兼容接口虽然声明 stream=true 但只返回完整正文时丢失用户可见输出。</p>
              */
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
                 if (context != null) chatContext.set(context.getChatContext());
                 AiMessage message = response == null ? null : response.getMessage();
                 if (message == null) return;
-                publishDeltas(turn, message);
-                if (message.isFinalDelta()) fullMessage.set(message);
+                if (message.isFinalDelta()) {
+                    fullMessage.set(message);
+                    String finalContent = StringUtil.hasText(message.getFullContent())
+                        ? message.getFullContent() : message.getContent();
+                    if (!textDeltaPublished.get() && StringUtil.hasText(finalContent)) {
+                        eventPublisher.publish(turn, AgentEventType.MODEL_TEXT_DELTA,
+                            data("content", finalContent));
+                        textDeltaPublished.set(true);
+                    }
+                } else if (publishDeltas(turn, message)) {
+                    textDeltaPublished.set(true);
+                }
             }
 
             /**
@@ -115,11 +127,13 @@ final class AgentModelInvoker {
     /**
      * 最终完整帧不重复发布正文，只发布真正的增量内容。
      */
-    private void publishDeltas(AgentTurn turn, AiMessage message) {
-        if (message.isFinalDelta()) return;
+    private boolean publishDeltas(AgentTurn turn, AiMessage message) {
+        if (message.isFinalDelta()) return false;
+        boolean textPublished = false;
         if (StringUtil.hasText(message.getContent())) {
             eventPublisher.publish(turn, AgentEventType.MODEL_TEXT_DELTA,
                 data("content", message.getContent()));
+            textPublished = true;
         }
         if (StringUtil.hasText(message.getReasoningContent())) {
             eventPublisher.publish(turn, AgentEventType.MODEL_REASONING_DELTA,
@@ -137,6 +151,7 @@ final class AgentModelInvoker {
             eventPublisher.publish(turn, AgentEventType.MODEL_TOOL_CALL_DELTA,
                 data("toolCalls", toolCalls));
         }
+        return textPublished;
     }
 
     /**
