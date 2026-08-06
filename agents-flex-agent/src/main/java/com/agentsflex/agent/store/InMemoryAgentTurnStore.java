@@ -9,6 +9,7 @@ package com.agentsflex.agent.store;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
+import com.agentsflex.agent.AgentConversationBusyException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,36 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
     public AgentTurnSnapshot load(String turnId) {
         AgentTurnSnapshot snapshot = snapshots.get(turnId);
         return snapshot == null ? null : snapshot.copy();
+    }
+
+    @Override
+    public AgentTurnSnapshot findActiveTurn(String conversationId) {
+        if (conversationId == null) return null;
+        synchronized (snapshots) {
+            for (AgentTurnSnapshot snapshot : snapshots.values()) {
+                AgentTurnState state = snapshot.getState();
+                Object value = state.getMetadata().get("agentsflex.conversationId");
+                if (conversationId.equals(value) && !state.getStatus().isTerminal()) {
+                    return snapshot.copy();
+                }
+            }
+            return null;
+        }
+    }
+
+    @Override
+    public AgentTurnSnapshot saveNewConversationTurn(AgentTurnSnapshot snapshot) {
+        if (snapshot == null) throw new IllegalArgumentException("snapshot must not be null");
+        Object value = snapshot.getState().getMetadata().get("agentsflex.conversationId");
+        if (value == null) return save(snapshot, -1);
+        synchronized (snapshots) {
+            AgentTurnSnapshot active = findActiveTurn(String.valueOf(value));
+            if (active != null) {
+                throw new AgentConversationBusyException(String.valueOf(value),
+                    active.getState().getTurnId(), active.getState().getStatus());
+            }
+            return save(snapshot, -1);
+        }
     }
 
     /** 按 expectedVersion 执行 CAS 保存并返回版本加一的新快照。 */

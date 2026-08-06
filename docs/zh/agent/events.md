@@ -61,6 +61,21 @@ Turn 是 Step 的生命周期容器。第一个步骤开始前发布一次 `TURN
 
 `SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Turn 已完成。
 
+### 用终态事件驱动业务队列
+
+业务侧可以监听 `TURN_COMPLETED`、`TURN_FAILED`、`TURN_CANCELLED`、`MAX_ITERATIONS_REACHED`、
+`MAX_STEPS_REACHED` 和 `BUDGET_EXCEEDED`，将 `turnId`、`rootTurnId` 和 `eventId` 投递给自己的
+Inbox/Outbox，再由 Worker 领取同一 `conversationId` 的下一条待处理 UserMessage。
+
+`TURN_SUSPENDED` 不是可出队信号：它表示当前 Turn 正在等待用户输入、工具审批、子 Turn 或重试。业务
+必须先使用原 Turn 的恢复命令，不能把普通排队消息当成表单或审批结果。失败、取消和预算终态是否继续
+消费队列，也应由业务策略决定。
+
+监听器是同步且进程内的，不能直接承担可靠队列消费，也不建议在监听器中递归调用 `runner.run(...)`。
+监听器应快速写入 Outbox 或发布消息；队列消费必须使用稳定 `messageId` 幂等，并通过 CAS、事务或消息
+确认机制避免多 Worker 重复执行。事件丢失时，业务系统应扫描 PENDING 消息、活动 Turn 和终态 Snapshot
+进行补偿。排队消息在真正创建新 Turn 前不要写入 ChatMemory，以免提前进入模型上下文。
+
 业务工具抛出 `AgentFormRequiredException` 时，会依次观察到 `TOOL_STARTED`、
 `TOOL_INPUT_REQUESTED`，随后本 Step 结束并发布 `TURN_SUSPENDED`。这不是工具失败，因此不会发布
 `TOOL_FAILED` 或 `TOOL_COMPLETED`。用户提交后，原工具从头重试，成功时才发布 `TOOL_COMPLETED`。

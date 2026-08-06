@@ -172,8 +172,77 @@ AgentTurn turn = runner.run(agent, history,
     new UserMessage("继续上一个问题"));
 ```
 
-该入口只复制传入的历史，不会修改外部 ChatMemory。两种模式都由业务系统维护 conversationId、会话与
-当前未结束 turnId 的关系，并防止同一会话并发开始互相冲突的 Turn。
+该入口只复制传入的历史，不会修改外部 ChatMemory。显式历史模式不绑定 conversationId；业务会话模式
+会在创建初始 Snapshot 时检查同一 conversationId 是否已有未结束 Turn。冲突时抛出
+`AgentConversationBusyException`，其中包含 `conversationId`、活动 `turnId` 和当前状态。
+
+```java
+try {
+    runner.run(agentId, conversationId, new UserMessage("继续处理"));
+} catch (AgentConversationBusyException busy) {
+    // 可以返回 HTTP 409，或把消息放入业务侧队列
+    log.info("conversation is busy: {}", busy.getStatus());
+}
+```
+
+`WAITING_FOR_USER` 和 `WAITING_FOR_APPROVAL` 不是普通消息可以覆盖的状态，必须使用原 Turn 的
+`resume(...)` 提交表单或审批命令。`RUNNING`、`WAITING_FOR_CHILD` 和 `RETRY_SCHEDULED` 也会阻止
+新的普通 Turn。Turn 进入终态后，会话可以开始下一轮。
+
+`InMemoryAgentTurnStore` 已提供同进程多个 Runner 之间的原子检查和创建。JDBC、Redis 或其他生产 Store
+应覆盖 `AgentTurnStore.findActiveTurn` 与 `saveNewConversationTurn`，使用数据库事务、唯一约束或 Redis
+脚本实现跨进程原子保护；否则只能依赖 Runner 实例内的检查，不能保证分布式并发安全。排队、拒绝响应和
+消息重试属于业务系统职责，不由 Runner 保存队列。
+
+### 业务侧排队与继续执行
+
+如果用户在 `RUNNING` 或其他未结束状态下继续发送消息，业务系统可以将消息写入自己的 Inbox 或消息队列，
+而不是立即再次调用 `runner.run(...)`。建议至少保存 `conversationId`、稳定 `messageId`、消息内容、
+`PENDING/PROCESSING/COMPLETED/FAILED` 状态和顺序号。
+
+监听终态事件，把下一条消息交给业务 Worker：
+
+```java
+runner.addEventListener(event -> {
+    if (event.getType() == AgentEventType.TURN_COMPLETED
+        || event.getType() == AgentEventType.TURN_FAILED
+        || event.getType() == AgentEventType.TURN_CANCELLED
+        || event.getType() == AgentEventType.MAX_ITERATIONS_REACHED
+        || event.getType() == AgentEventType.MAX_STEPS_REACHED
+        || event.getType() == AgentEventType.BUDGET_EXCEEDED) {
+        // 只记录可重试的触发信号；不要在监听器中递归调用 Runner
+        inbox.markTurnFinished(event.getTurnId(), event.getRootTurnId(),
+            event.getType(), event.getEventId());
+    }
+});
+```
+
+Worker 再原子领取下一条消息并启动新的 Turn：
+
+```java
+PendingUserMessage pending = inbox.claimNext(conversationId);
+if (pending != null) {
+    try {
+        AgentTurn next = runner.run(agentId, conversationId,
+            new UserMessage(pending.getContent()));
+        inbox.markCompleted(pending.getMessageId(), next.getId());
+    } catch (AgentConversationBusyException busy) {
+        inbox.releaseForRetry(pending.getMessageId());
+    } catch (RuntimeException error) {
+        inbox.markFailed(pending.getMessageId(), error.getMessage());
+    }
+}
+```
+
+`TURN_SUSPENDED` 不表示执行完毕。`WAITING_FOR_USER`、`WAITING_FOR_APPROVAL` 和
+`WAITING_FOR_CHILD` 必须先通过原 Turn 的 `resume(...)` 或 `submitResume(...)` 完成恢复；普通排队消息
+不能替代表单数据或审批命令。终态中的失败、取消和预算耗尽也应由业务策略决定是继续、重试还是转人工，
+不能无条件执行下一条消息。
+
+事件只在当前 Runner 进程内同步投递，不能作为唯一可靠触发源。监听器应快速写入业务 Outbox 或发送
+消息，由 Worker 做幂等消费。生产系统还应定时扫描“队列仍为 PENDING、会话没有活动 Turn、最近 Turn
+已进入终态”的记录，补偿监听器丢失或进程崩溃造成的空窗。排队消息在真正创建新 Turn 前不要写入
+`ChatMemory`，避免被当前 Turn 的模型上下文提前看到。
 
 ## 外部恢复边界
 

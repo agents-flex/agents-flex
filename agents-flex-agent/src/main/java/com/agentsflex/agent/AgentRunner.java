@@ -49,6 +49,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * 创建、推进、暂停和恢复 {@link AgentTurn} 的核心执行器。
@@ -125,6 +127,8 @@ public final class AgentRunner {
      * STEP_COMPLETED，再看到本步骤产生的 Turn 状态事件。</p>
      */
     private final ThreadLocal<List<Runnable>> afterStepEvents = new ThreadLocal<>();
+    /** 同一 Runner 内按 conversationId 串行创建初始 Turn，避免检查与保存之间出现竞态。 */
+    private final ConcurrentMap<String, Object> conversationLocks = new ConcurrentHashMap<>();
 
     /**
      * 创建全部使用进程内依赖的 Runner，适合测试和单实例试用。
@@ -447,14 +451,34 @@ public final class AgentRunner {
             throw new IllegalStateException(
                 "ChatMemoryProvider must be configured for conversation APIs");
         }
-        prepareAgent(agent);
-        List<Message> history = chatMemory.loadModelHistory(
-            conversationId, agent.getMaxAttachedMessages());
-        AgentTurn turn = AgentTurn.start(agent, history, userMessage, options);
-        turn.bindConversation(conversationId, history.size());
-        prepareTurn(turn);
-        saveSnapshot(turn);
-        return turn;
+        if (!StringUtil.hasText(conversationId)) {
+            throw new IllegalArgumentException("conversationId must not be blank");
+        }
+        Object lock = conversationLocks.computeIfAbsent(conversationId, key -> new Object());
+        synchronized (lock) {
+            AgentTurnSnapshot active = turnStore.findActiveTurn(conversationId);
+            if (active != null) {
+                throw new AgentConversationBusyException(conversationId,
+                    active.getState().getTurnId(), active.getState().getStatus());
+            }
+            prepareAgent(agent);
+            List<Message> history = chatMemory.loadModelHistory(
+                conversationId, agent.getMaxAttachedMessages());
+            AgentTurn turn = AgentTurn.start(agent, history, userMessage, options);
+            turn.bindConversation(conversationId, history.size());
+            prepareTurn(turn);
+            saveInitialConversationSnapshot(turn);
+            return turn;
+        }
+    }
+
+    private void saveInitialConversationSnapshot(AgentTurn turn) {
+        synchronized (turn) {
+            AgentTurnSnapshot saved = turnStore.saveNewConversationTurn(turn.toSnapshot());
+            turn.updateVersion(saved.getState().getVersion());
+            chatMemory.sync(turn);
+            eventPublisher.notifySnapshotSaved(turn, saved);
+        }
     }
 
     /**

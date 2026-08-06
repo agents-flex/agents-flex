@@ -30,8 +30,9 @@ AgentRunner runner = AgentRunner.builder()
 AgentTurn turn = runner.run(agentId, conversationId, new UserMessage("继续处理"));
 ```
 
-应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 turnId。同一业务会话不应并发开始两轮；
-阻塞时必须按已保存的 turnId 恢复原 Turn，完成后再开始下一轮。`ChatMemoryProvider` 只定位 Memory，
+应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 turnId。Runner 会在 Store 支持会话原子保护时
+拒绝同一业务会话的并发新 Turn；业务系统仍应捕获 `AgentConversationBusyException`，决定返回冲突、排队
+或合并消息。阻塞时必须按已保存的 turnId 恢复原 Turn，完成后再开始下一轮。`ChatMemoryProvider` 只定位 Memory，
 不创建 conversationId，也不拥有会话生命周期。Provider 未配置时，应用也可以继续显式传入历史并
 自行回写。
 

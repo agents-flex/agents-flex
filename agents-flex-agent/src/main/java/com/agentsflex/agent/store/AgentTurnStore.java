@@ -7,6 +7,7 @@
 package com.agentsflex.agent.store;
 
 import com.agentsflex.agent.AgentTurnSnapshot;
+import com.agentsflex.agent.AgentConversationBusyException;
 import com.agentsflex.agent.loader.AgentLoader;
 
 import java.util.Collections;
@@ -22,6 +23,16 @@ import java.util.List;
  * AgentTurn 的最新状态。新建记录时 expectedVersion 应为 {@code -1}。</p>
  */
 public interface AgentTurnStore {
+
+    /** 查找指定业务会话当前未结束的 Turn。持久化实现应按 conversationId 建立索引。 */
+    default AgentTurnSnapshot findActiveTurn(String conversationId) {
+        return null;
+    }
+
+    /** 原子创建绑定业务会话的新 Turn；冲突时应抛出 {@link AgentConversationBusyException}。 */
+    default AgentTurnSnapshot saveNewConversationTurn(AgentTurnSnapshot snapshot) {
+        return save(snapshot, -1);
+    }
 
     /**
      * 返回调度存储使用的当前时间。

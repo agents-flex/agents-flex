@@ -26,6 +26,7 @@ import static com.agentsflex.agent.AgentScenarioTestSupport.toolCalls;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class AgentChatMemoryIntegrationTest {
 
@@ -82,6 +83,34 @@ public class AgentChatMemoryIntegrationTest {
         secondRunner.restore(waiting.getId());
         assertEquals(5, memory.getMessages(Integer.MAX_VALUE).size());
         assertEquals(AgentActionMessage.Status.APPROVED, action(memory).getStatus());
+    }
+
+    @Test
+    public void shouldRejectNewConversationTurnWhileAnotherTurnIsActive() {
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("approval-1", "deploy", "{}")));
+        Agent agent = Agent.builder("busy-conversation-agent")
+            .chatModel(model)
+            .tool(tool("deploy", args -> "deployed"))
+            .toolApprovalPolicy((turn, call, value) ->
+                ToolApprovalDecision.requireApproval().message("需要审批").build())
+            .build();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
+        InMemoryAgentLoader loader = new InMemoryAgentLoader(agent);
+        DefaultChatMemory memory = new DefaultChatMemory("busy-conversation");
+        AgentRunner first = runner(store, loader, memory);
+        AgentRunner second = runner(store, loader, memory);
+
+        AgentTurn waiting = first.run(agent, "busy-conversation", "执行发布");
+        try {
+            second.run(agent, "busy-conversation", "再执行一个请求");
+            fail("an active conversation must reject a new turn");
+        } catch (AgentConversationBusyException error) {
+            assertEquals("busy-conversation", error.getConversationId());
+            assertEquals(waiting.getId(), error.getActiveTurnId());
+            assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, error.getStatus());
+        }
     }
 
     @Test(expected = IllegalStateException.class)
