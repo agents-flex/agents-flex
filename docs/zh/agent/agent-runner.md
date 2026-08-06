@@ -145,6 +145,18 @@ AgentTurn cancelled = runner.cancel(turnId);
 
 取消是协作式的：Store 先保存单调取消标志，Runner 在安全边界转换为 `CANCELLED`。它不保证立即中断已经发出的 HTTP 请求或工具函数。
 
+取消、失败、预算耗尽等异常终止场景会补齐未完成的 ToolCall，并追加一条 Turn 收束消息。消息内容可以在执行策略中配置：
+
+```java
+AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
+    .interruptedToolMessageTemplate("工具 {toolName} 未完成：{reason}")
+    .interruptedTurnMessageTemplate("本轮任务已结束：{reason}")
+    .build();
+```
+
+工具消息模板支持 `{reason}`、`{turnId}`、`{toolCallId}` 和 `{toolName}`；Turn 消息模板支持
+`{reason}` 和 `{turnId}`。未配置时继续使用 Framework 原有英文文本。
+
 ## 业务会话入口
 
 需要让页面时间线与 Agent 长任务自动衔接时，可以配置 ChatMemory Provider：

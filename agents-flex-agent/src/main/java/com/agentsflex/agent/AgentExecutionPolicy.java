@@ -36,6 +36,10 @@ public final class AgentExecutionPolicy implements Serializable {
      * 默认允许 Runner 推进的最大步骤数。
      */
     private static final int DEFAULT_MAX_STEPS = 1000;
+    private static final String DEFAULT_INTERRUPTED_TOOL_MESSAGE =
+        "Tool call was not completed: {reason}";
+    private static final String DEFAULT_INTERRUPTED_TURN_MESSAGE =
+        "The previous AgentTurn ended before completion: {reason}";
 
     /**
      * 一次运行允许的最大模型调用次数。
@@ -57,6 +61,14 @@ public final class AgentExecutionPolicy implements Serializable {
      * 限制运行时间、Token 和工具调用次数的资源预算。
      */
     private final AgentBudget budget;
+    /**
+     * 未完成 ToolCall 收束为 ToolMessage 时使用的内容模板。
+     */
+    private final String interruptedToolMessageTemplate;
+    /**
+     * 异常终止 Turn 最后追加的 AIMessage 内容模板。
+     */
+    private final String interruptedTurnMessageTemplate;
 
     private AgentExecutionPolicy(Builder builder) {
         this.maxIterations = builder.maxIterations;
@@ -64,6 +76,8 @@ public final class AgentExecutionPolicy implements Serializable {
         this.toolErrorStrategy = builder.toolErrorStrategy;
         this.retryPolicy = builder.retryPolicy;
         this.budget = builder.budget;
+        this.interruptedToolMessageTemplate = builder.interruptedToolMessageTemplate;
+        this.interruptedTurnMessageTemplate = builder.interruptedTurnMessageTemplate;
     }
 
     /**
@@ -116,6 +130,20 @@ public final class AgentExecutionPolicy implements Serializable {
     }
 
     /**
+     * @return 未完成 ToolCall 的收束消息模板
+     */
+    public String getInterruptedToolMessageTemplate() {
+        return interruptedToolMessageTemplate;
+    }
+
+    /**
+     * @return 异常终止 Turn 的最终说明模板
+     */
+    public String getInterruptedTurnMessageTemplate() {
+        return interruptedTurnMessageTemplate;
+    }
+
+    /**
      * 执行策略构建器。
      */
     public static final class Builder {
@@ -125,6 +153,8 @@ public final class AgentExecutionPolicy implements Serializable {
         private ToolErrorStrategy toolErrorStrategy = ToolErrorStrategy.FAIL_RUN;
         private AgentRetryPolicy retryPolicy = AgentRetryPolicy.none();
         private AgentBudget budget = AgentBudget.unlimited();
+        private String interruptedToolMessageTemplate = DEFAULT_INTERRUPTED_TOOL_MESSAGE;
+        private String interruptedTurnMessageTemplate = DEFAULT_INTERRUPTED_TURN_MESSAGE;
 
         /**
          * 设置最大模型迭代次数。
@@ -169,6 +199,27 @@ public final class AgentExecutionPolicy implements Serializable {
         }
 
         /**
+         * 设置未完成 ToolCall 对应的 ToolMessage 内容模板。
+         *
+         * <p>支持 {@code {reason}}、{@code {turnId}}、{@code {toolCallId}} 和
+         * {@code {toolName}} 占位符。</p>
+         */
+        public Builder interruptedToolMessageTemplate(String value) {
+            this.interruptedToolMessageTemplate = value;
+            return this;
+        }
+
+        /**
+         * 设置异常终止 Turn 最后追加的 AIMessage 内容模板。
+         *
+         * <p>支持 {@code {reason}} 和 {@code {turnId}} 占位符；工具相关占位符会替换为空字符串。</p>
+         */
+        public Builder interruptedTurnMessageTemplate(String value) {
+            this.interruptedTurnMessageTemplate = value;
+            return this;
+        }
+
+        /**
          * 构建不可变执行策略。
          *
          * @throws IllegalStateException 最大迭代次数非法或错误策略为空时抛出
@@ -182,6 +233,9 @@ public final class AgentExecutionPolicy implements Serializable {
             }
             if (retryPolicy == null || budget == null) {
                 throw new IllegalStateException("retryPolicy and budget must not be null");
+            }
+            if (interruptedToolMessageTemplate == null || interruptedTurnMessageTemplate == null) {
+                throw new IllegalStateException("interrupted message templates must not be null");
             }
             return new AgentExecutionPolicy(this);
         }

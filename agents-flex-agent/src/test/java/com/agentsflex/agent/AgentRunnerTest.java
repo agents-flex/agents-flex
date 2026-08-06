@@ -196,6 +196,28 @@ public class AgentRunnerTest {
     }
 
     @Test
+    public void shouldRenderConfiguredInterruptedHistoryMessages() {
+        AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
+            .maxIterations(2)
+            .interruptedToolMessageTemplate("工具 {toolName}({toolCallId}) 未完成：{reason}")
+            .interruptedTurnMessageTemplate("Turn {turnId} 已结束：{reason}")
+            .build();
+        Agent agent = Agent.builder("configured-interruption-messages")
+            .chatModel(new RepeatingToolCallModel())
+            .executionPolicy(policy)
+            .tool(tool("again", args -> "done"))
+            .build();
+
+        AgentTurn turn = new AgentRunner().run(agent, "keep going");
+        List<Message> messages = turn.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
+
+        assertEquals("工具 again(again-1) 未完成：maximum model iterations reached",
+            messages.get(messages.size() - 2).getTextContent());
+        assertEquals("Turn " + turn.getId() + " 已结束：maximum model iterations reached",
+            messages.get(messages.size() - 1).getTextContent());
+    }
+
+    @Test
     public void shouldCancelBeforeCallingModel() {
         QueueChatModel model = new QueueChatModel();
         Agent agent = Agent.builder().chatModel(model).build();

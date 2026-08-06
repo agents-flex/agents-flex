@@ -27,7 +27,7 @@ public final class AgentTurnOptions {
      */
     private final Map<String, Object> metadata;
     /**
-     * 是否在当前进程中使用流式模型调用；该选项不写入 Snapshot。
+     * 是否使用流式模型调用；该选项随 Turn Snapshot 持久化。
      */
     private final boolean streaming;
 
@@ -66,7 +66,7 @@ public final class AgentTurnOptions {
     }
 
     /**
-     * @return 当前进程是否使用流式模型调用
+     * @return 当前 Turn 是否使用流式模型调用
      */
     public boolean isStreaming() {
         return streaming;
@@ -112,9 +112,8 @@ public final class AgentTurnOptions {
         }
 
         /**
-         * 设置当前进程是否使用流式模型调用。
-         *
-         * <p>该值不写入 Snapshot。Worker 从 Snapshot 恢复任务时默认使用非流式调用。</p>
+         * 设置当前 Turn 是否使用流式模型调用。该值会随 Snapshot 保存，挂起恢复或 Worker 接管后
+         * 仍保持一致。
          */
         public Builder streaming(boolean value) {
             this.streaming = value;

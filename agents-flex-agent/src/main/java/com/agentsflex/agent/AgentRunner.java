@@ -1260,12 +1260,24 @@ public final class AgentRunner {
         for (ToolCall call : pending) {
             ToolMessage result = new ToolMessage();
             result.setToolCallId(call.getId());
-            result.setContent("Tool call was not completed: " + reason);
+            result.setContent(renderInterruptedMessage(
+                turn.getExecutionPolicy().getInterruptedToolMessageTemplate(), turn, call, reason));
             turn.getPrompt().addMessage(result);
         }
         turn.clearPendingToolCalls();
-        turn.getPrompt().addMessage(new AiMessage("The previous AgentTurn ended before completion: " + reason));
+        turn.getPrompt().addMessage(new AiMessage(renderInterruptedMessage(
+            turn.getExecutionPolicy().getInterruptedTurnMessageTemplate(), turn, null, reason)));
         turn.putMetadata("agentsflex.interruptedHistoryFinalized", true);
+    }
+
+    /** 将执行策略中的收束消息模板渲染为本次 Turn 的实际消息内容。 */
+    private String renderInterruptedMessage(String template, AgentTurn turn,
+                                            ToolCall call, String reason) {
+        return template
+            .replace("{reason}", reason == null ? "" : reason)
+            .replace("{turnId}", turn.getId())
+            .replace("{toolCallId}", call == null || call.getId() == null ? "" : call.getId())
+            .replace("{toolName}", call == null || call.getName() == null ? "" : call.getName());
     }
 
     /**
