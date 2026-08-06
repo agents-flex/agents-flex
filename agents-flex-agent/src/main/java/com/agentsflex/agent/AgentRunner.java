@@ -1322,7 +1322,10 @@ public final class AgentRunner {
     }
 
     /**
-     * 返回第一个已经超过的预算维度；未超过时返回 null。
+     * 返回第一个已经超过的预算维度及实际用量；未超过时返回 null。
+     *
+     * <p>结果保留稳定的预算键名作为前缀，并附带当前用量和限制值，便于日志、事件消费者和用户界面
+     * 直接展示。例如：{@code maxTotalTokens (used=120, limit=100)}。</p>
      *
      * @param beforeTool 是否即将执行一个新工具；工具次数只在该边界检查，避免已完成一次调用后被误判
      */
@@ -1330,20 +1333,25 @@ public final class AgentRunner {
         AgentBudget budget = turn.getExecutionPolicy().getBudget();
         long elapsed = System.currentTimeMillis() - turn.getCreatedAt();
         if (budget.getMaxDurationMillis() > 0 && elapsed >= budget.getMaxDurationMillis()) {
-            return "maxDurationMillis";
+            return "maxDurationMillis (elapsed=" + elapsed + "ms, limit="
+                + budget.getMaxDurationMillis() + "ms)";
         }
         if (budget.getMaxInputTokens() > 0 && turn.getInputTokens() > budget.getMaxInputTokens()) {
-            return "maxInputTokens";
+            return "maxInputTokens (used=" + turn.getInputTokens() + ", limit="
+                + budget.getMaxInputTokens() + ")";
         }
         if (budget.getMaxOutputTokens() > 0 && turn.getOutputTokens() > budget.getMaxOutputTokens()) {
-            return "maxOutputTokens";
+            return "maxOutputTokens (used=" + turn.getOutputTokens() + ", limit="
+                + budget.getMaxOutputTokens() + ")";
         }
         if (budget.getMaxTotalTokens() > 0 && turn.getTotalTokens() > budget.getMaxTotalTokens()) {
-            return "maxTotalTokens";
+            return "maxTotalTokens (used=" + turn.getTotalTokens() + ", limit="
+                + budget.getMaxTotalTokens() + ")";
         }
         if (beforeTool && budget.getMaxToolCalls() > 0
             && turn.getToolCallCount() >= budget.getMaxToolCalls()) {
-            return "maxToolCalls";
+            return "maxToolCalls (used=" + turn.getToolCallCount() + ", limit="
+                + budget.getMaxToolCalls() + ")";
         }
         return null;
     }

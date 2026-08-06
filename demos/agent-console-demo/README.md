@@ -62,3 +62,18 @@ Schema 逐项读取输入，提交后 Runner 从头恢复同一个准备工具�
 子 Turn，由父 Agent 比较结果并给出建议。控制台会输出计划和任务事件。Runner 通过
 `chatMemoryProvider` 分页读取模型历史，并按稳定消息 ID 增量写回本轮消息，不会清空或重写 ChatMemory。
 该 Demo 的 Turn Store 和 ChatMemory 都是进程内实现，退出程序后不会保留状态。
+
+## 流式输出 Demo
+
+如果需要观察模型逐段输出，可以运行独立的 `StreamingAgentConsoleDemo`。它完整保留上面 Demo 的
+持续对话、任务规划、表单输入、人工审批、工具调用和 ChatMemory 能力，只把每个 Turn 改为显式
+启用流式调用，并通过 `MODEL_TEXT_DELTA` 事件实时打印文本：
+
+```bash
+AGENT_DEMO_API_KEY=你的密钥 \
+mvn -f demos/agent-console-demo/pom.xml exec:java \
+  -Dexec.mainClass=com.agentsflex.demo.agent.console.StreamingAgentConsoleDemo
+```
+
+也可以继续使用 `AGENT_DEMO_ENDPOINT`、`AGENT_DEMO_REQUEST_PATH` 和 `AGENT_DEMO_MODEL` 覆盖
+OpenAI-compatible 服务地址、请求路径和模型名称。

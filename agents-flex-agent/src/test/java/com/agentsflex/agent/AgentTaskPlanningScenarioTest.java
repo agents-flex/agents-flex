@@ -321,7 +321,7 @@ public class AgentTaskPlanningScenarioTest {
         AgentTurn result = runner(agent).run(agent, "执行预算任务");
 
         assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, result.getStatus());
-        assertEquals("maxTotalTokens", result.getBudgetExceededReason());
+        assertTrue(result.getBudgetExceededReason().startsWith("maxTotalTokens (used="));
         assertEquals(12, result.getTotalTokens());
     }
 

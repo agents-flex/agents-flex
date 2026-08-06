@@ -208,7 +208,7 @@ public class AgentAdvancedFeaturesTest {
         AgentTurn turn = new AgentRunner().run(agent, "budget");
 
         assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
-        assertEquals("maxTotalTokens", turn.getBudgetExceededReason());
+        assertTrue(turn.getBudgetExceededReason().startsWith("maxTotalTokens (used="));
     }
 
     @Test
@@ -233,7 +233,7 @@ public class AgentAdvancedFeaturesTest {
         AgentTurn turn = new AgentRunner().run(agent, "budget");
 
         assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
-        assertEquals("maxDurationMillis", turn.getBudgetExceededReason());
+        assertTrue(turn.getBudgetExceededReason().startsWith("maxDurationMillis (elapsed="));
     }
 
     @Test
@@ -254,7 +254,7 @@ public class AgentAdvancedFeaturesTest {
         AgentTurn turn = new AgentRunner().run(agent, "budget");
 
         assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
-        assertEquals("maxToolCalls", turn.getBudgetExceededReason());
+        assertTrue(turn.getBudgetExceededReason().startsWith("maxToolCalls (used="));
         assertEquals(1, executions.get());
     }
 

@@ -154,7 +154,8 @@ public class AgentResilienceScenarioTest {
 
         assertEquals(1, processed.size());
         assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, processed.get(0).getStatus());
-        assertEquals("maxDurationMillis", processed.get(0).getBudgetExceededReason());
+        assertTrue(processed.get(0).getBudgetExceededReason()
+            .startsWith("maxDurationMillis (elapsed="));
         assertEquals(1, attempts.get());
     }
 
@@ -181,7 +182,8 @@ public class AgentResilienceScenarioTest {
         AgentTurn turn = new AgentRunner().run(agent, "execute");
 
         assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
-        assertEquals("maxTotalTokens", turn.getBudgetExceededReason());
+        assertTrue(turn.getBudgetExceededReason()
+            .startsWith("maxTotalTokens (used="));
         assertEquals(0, executions.get());
         assertEquals(13, turn.getTotalTokens());
     }

@@ -64,7 +64,7 @@ if (turn.getStatus() == AgentTurnStatus.BUDGET_EXCEEDED) {
 }
 ```
 
-原因可能是 `maxDurationMillis`、`maxInputTokens`、`maxOutputTokens`、`maxTotalTokens` 或 `maxToolCalls`。模型迭代和 Runner step 达到上限使用独立终态，不通过 budget reason 表达。
+原因可能是 `maxDurationMillis`、`maxInputTokens`、`maxOutputTokens`、`maxTotalTokens` 或 `maxToolCalls`。`getBudgetExceededReason()` 和 `BUDGET_EXCEEDED` 事件会保留原因键名，并附带实际用量与限制值，例如 `maxTotalTokens (used=120, limit=100)`；时间预算则会显示 `elapsed` 和 `limit` 的毫秒数。模型迭代和 Runner step 达到上限使用独立终态，不通过 budget reason 表达。
 
 ## 分层预算
 
