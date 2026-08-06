@@ -113,6 +113,41 @@ public class AgentChatMemoryIntegrationTest {
         }
     }
 
+    @Test
+    public void shouldCloseCancelledToolCallHistoryBeforeNextConversationTurn() {
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("cancel-1", "deploy", "{}")));
+        model.enqueue(prompt -> {
+            List<Message> messages = prompt.getMessages();
+            assertTrue(messages.size() >= 2);
+            assertTrue(messages.get(messages.size() - 2) instanceof AiMessage);
+            return new AiMessage("next answer");
+        });
+        Agent agent = Agent.builder("cancel-history-agent")
+            .chatModel(model)
+            .tool(tool("deploy", args -> "deployed"))
+            .toolApprovalPolicy((turn, call, value) ->
+                ToolApprovalDecision.requireApproval().message("需要审批").build())
+            .build();
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
+        InMemoryAgentLoader loader = new InMemoryAgentLoader(agent);
+        DefaultChatMemory memory = new DefaultChatMemory("cancel-history");
+        AgentRunner runner = runner(store, loader, memory);
+
+        AgentTurn waiting = runner.run(agent, "cancel-history", "执行发布");
+        runner.requestCancellation(waiting.getId());
+        AgentTurn cancelled = runner.runUntilBlocked(waiting.getId());
+
+        assertEquals(AgentTurnStatus.CANCELLED, cancelled.getStatus());
+        List<Message> history = memory.getModelMessages(Integer.MAX_VALUE);
+        assertTrue(history.get(history.size() - 1) instanceof AiMessage);
+
+        AgentTurn next = runner.run(agent, "cancel-history", "开始新的问题");
+        assertEquals(AgentTurnStatus.COMPLETED, next.getStatus());
+        assertEquals("next answer", next.getFinalOutput());
+    }
+
     @Test(expected = IllegalStateException.class)
     public void shouldRequireProviderOnlyForConversationApi() {
         Agent agent = Agent.builder("missing-memory-agent")

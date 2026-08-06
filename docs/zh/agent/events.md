@@ -61,6 +61,13 @@ Turn 是 Step 的生命周期容器。第一个步骤开始前发布一次 `TURN
 
 `SNAPSHOT_SAVED` 表示状态已经保存，不表示整个 Turn 已完成。
 
+当 Turn 进入 `FAILED`、`CANCELLED`、`MAX_ITERATIONS_REACHED`、`MAX_STEPS_REACHED` 或
+`BUDGET_EXCEEDED` 时，Runner 会在最终 Snapshot 前自动收束未完成的 ToolCall：补充错误/取消
+`ToolMessage`，再追加一条普通 `AiMessage`。因此这些终态事件发布后，绑定 ChatMemory 的模型历史可以
+安全地承接下一条 UserMessage；业务队列仍应以终态事件作为触发信号，并通过自己的幂等机制消费。
+
+`RETRY_SCHEDULED` 不属于最终终态，不会追加收束消息；原 Turn 恢复后继续使用原来的模型或工具阶段。
+
 ### 用终态事件驱动业务队列
 
 业务侧可以监听 `TURN_COMPLETED`、`TURN_FAILED`、`TURN_CANCELLED`、`MAX_ITERATIONS_REACHED`、

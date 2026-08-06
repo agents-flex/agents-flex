@@ -244,6 +244,21 @@ if (pending != null) {
 已进入终态”的记录，补偿监听器丢失或进程崩溃造成的空窗。排队消息在真正创建新 Turn 前不要写入
 `ChatMemory`，避免被当前 Turn 的模型上下文提前看到。
 
+### 异常终态的历史收束
+
+当 Turn 因取消、不可恢复错误、最大迭代次数、最大 Step 或预算耗尽而终止时，Runner 会在保存终态
+Snapshot 前收束模型消息协议：
+
+1. 为仍在 `pendingToolCalls` 中的每个 ToolCall 追加带有取消或错误原因的 `ToolMessage`。
+2. 追加一条普通的模型可见 `AiMessage`，说明本轮未正常完成。
+3. 清除待执行 ToolCall 后保存 Snapshot，并将收束后的消息投影到 ChatMemory。
+
+因此，同一 `conversationId` 在收到 `TURN_CANCELLED` 或 `TURN_FAILED` 后可以开始新的普通 Turn，
+其模型历史仍保持完整的 `assistant -> tool -> assistant -> user` 边界。`RETRY_SCHEDULED` 不会触发
+收束，因为它还会从原 Phase 继续恢复；人工审批拒绝也会先生成正常 ToolMessage，再让模型生成最终回答。
+
+页面历史仍保留原始工具、取消和失败事件；收束消息主要用于保证后续模型请求的协议有效性。
+
 ## 外部恢复边界
 
 同步 `resume(...)` 适合同一服务内立即恢复。只更新状态并交给 Worker 时使用：

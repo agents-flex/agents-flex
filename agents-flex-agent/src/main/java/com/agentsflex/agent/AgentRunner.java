@@ -956,6 +956,7 @@ public final class AgentRunner {
     private AgentStepResult executeModel(AgentTurn turn) {
         Agent agent = turn.getAgent();
         if (turn.getIterationCount() >= turn.getExecutionPolicy().getMaxIterations()) {
+            finalizeInterruptedHistory(turn, "maximum model iterations reached");
             turn.markMaxIterationsReached();
             saveSnapshot(turn);
             return AgentStepResult.of(null, null, null);
@@ -1197,6 +1198,8 @@ public final class AgentRunner {
             publishAfterStep(() -> eventPublisher.notifyRetryScheduled(turn, error));
             return AgentStepResult.of(response, null, error);
         }
+        finalizeInterruptedHistory(turn, "turn failed: "
+            + (error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage()));
         turn.markFailed(error);
         saveSnapshot(turn);
         return AgentStepResult.of(response, null, error);
@@ -1224,15 +1227,38 @@ public final class AgentRunner {
      * 在安全边界响应单调取消信号并保存最终 CANCELLED 状态。
      */
     private AgentStepResult cancelTurn(AgentTurn turn) {
+        finalizeInterruptedHistory(turn, "turn cancelled by caller");
         turn.markCancelled();
         saveSnapshot(turn);
         return AgentStepResult.of(null, null, null);
     }
 
     /**
+     * 收束异常终止的模型消息协议，避免下一轮从 ChatMemory 读取未闭合 ToolCall。
+     *
+     * <p>重试状态不进入此方法；只有已经不能继续推进的 Turn 才追加缺失 ToolMessage 和终止说明。</p>
+     */
+    private void finalizeInterruptedHistory(AgentTurn turn, String reason) {
+        if (Boolean.TRUE.equals(turn.getMetadata().get("agentsflex.interruptedHistoryFinalized"))) {
+            return;
+        }
+        List<ToolCall> pending = turn.getPendingToolCalls();
+        for (ToolCall call : pending) {
+            ToolMessage result = new ToolMessage();
+            result.setToolCallId(call.getId());
+            result.setContent("Tool call was not completed: " + reason);
+            turn.getPrompt().addMessage(result);
+        }
+        turn.clearPendingToolCalls();
+        turn.getPrompt().addMessage(new AiMessage("The previous AgentTurn ended before completion: " + reason));
+        turn.putMetadata("agentsflex.interruptedHistoryFinalized", true);
+    }
+
+    /**
      * 保存预算终止原因，避免调用方只能从通用失败信息推断成本限制。
      */
     private AgentStepResult budgetExceeded(AgentTurn turn, String reason) {
+        finalizeInterruptedHistory(turn, "execution budget exceeded: " + reason);
         turn.markBudgetExceeded(reason);
         saveSnapshot(turn);
         return AgentStepResult.of(null, null, null);
@@ -1242,6 +1268,7 @@ public final class AgentRunner {
      * 保存达到 maxSteps 的终止状态；对应事件由 Step 外层统一发布。
      */
     private AgentStepResult maxStepsReached(AgentTurn turn) {
+        finalizeInterruptedHistory(turn, "maximum runner steps reached");
         turn.markMaxStepsReached();
         saveSnapshot(turn);
         return AgentStepResult.of(null, null, null);
