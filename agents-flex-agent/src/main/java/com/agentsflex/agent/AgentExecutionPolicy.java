@@ -40,6 +40,8 @@ public final class AgentExecutionPolicy implements Serializable {
         "Tool call was not completed: {reason}";
     private static final String DEFAULT_INTERRUPTED_TURN_MESSAGE =
         "The previous AgentTurn ended before completion: {reason}";
+    private static final String DEFAULT_CANCELLATION_REASON =
+        "turn cancelled by caller";
 
     /**
      * 一次运行允许的最大模型调用次数。
@@ -69,6 +71,10 @@ public final class AgentExecutionPolicy implements Serializable {
      * 异常终止 Turn 最后追加的 AIMessage 内容模板。
      */
     private final String interruptedTurnMessageTemplate;
+    /**
+     * 主动取消 Turn 时写入收束消息的原因文本。
+     */
+    private final String cancellationReason;
 
     private AgentExecutionPolicy(Builder builder) {
         this.maxIterations = builder.maxIterations;
@@ -78,6 +84,7 @@ public final class AgentExecutionPolicy implements Serializable {
         this.budget = builder.budget;
         this.interruptedToolMessageTemplate = builder.interruptedToolMessageTemplate;
         this.interruptedTurnMessageTemplate = builder.interruptedTurnMessageTemplate;
+        this.cancellationReason = builder.cancellationReason;
     }
 
     /**
@@ -144,6 +151,13 @@ public final class AgentExecutionPolicy implements Serializable {
     }
 
     /**
+     * @return 主动取消 Turn 时使用的原因文本
+     */
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    /**
      * 执行策略构建器。
      */
     public static final class Builder {
@@ -155,6 +169,7 @@ public final class AgentExecutionPolicy implements Serializable {
         private AgentBudget budget = AgentBudget.unlimited();
         private String interruptedToolMessageTemplate = DEFAULT_INTERRUPTED_TOOL_MESSAGE;
         private String interruptedTurnMessageTemplate = DEFAULT_INTERRUPTED_TURN_MESSAGE;
+        private String cancellationReason = DEFAULT_CANCELLATION_REASON;
 
         /**
          * 设置最大模型迭代次数。
@@ -220,6 +235,14 @@ public final class AgentExecutionPolicy implements Serializable {
         }
 
         /**
+         * 设置主动取消 Turn 时使用的原因文本，该文本会作为 {@code {reason}} 注入收束消息模板。
+         */
+        public Builder cancellationReason(String value) {
+            this.cancellationReason = value;
+            return this;
+        }
+
+        /**
          * 构建不可变执行策略。
          *
          * @throws IllegalStateException 最大迭代次数非法或错误策略为空时抛出
@@ -234,8 +257,10 @@ public final class AgentExecutionPolicy implements Serializable {
             if (retryPolicy == null || budget == null) {
                 throw new IllegalStateException("retryPolicy and budget must not be null");
             }
-            if (interruptedToolMessageTemplate == null || interruptedTurnMessageTemplate == null) {
-                throw new IllegalStateException("interrupted message templates must not be null");
+            if (interruptedToolMessageTemplate == null || interruptedTurnMessageTemplate == null
+                || cancellationReason == null) {
+                throw new IllegalStateException(
+                    "interrupted message templates and cancellationReason must not be null");
             }
             return new AgentExecutionPolicy(this);
         }

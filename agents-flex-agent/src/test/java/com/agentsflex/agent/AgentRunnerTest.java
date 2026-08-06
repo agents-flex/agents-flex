@@ -198,22 +198,29 @@ public class AgentRunnerTest {
     @Test
     public void shouldRenderConfiguredInterruptedHistoryMessages() {
         AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
-            .maxIterations(2)
             .interruptedToolMessageTemplate("工具 {toolName}({toolCallId}) 未完成：{reason}")
             .interruptedTurnMessageTemplate("Turn {turnId} 已结束：{reason}")
+            .cancellationReason("用户主动停止")
             .build();
         Agent agent = Agent.builder("configured-interruption-messages")
-            .chatModel(new RepeatingToolCallModel())
+            .chatModel(new QueueChatModel())
             .executionPolicy(policy)
             .tool(tool("again", args -> "done"))
             .build();
 
-        AgentTurn turn = new AgentRunner().run(agent, "keep going");
-        List<Message> messages = turn.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(),
+            new InMemoryAgentLoader(agent));
+        AgentTurn turn = runner.start(agent, "keep going");
+        turn.setPendingToolCalls(Arrays.asList(toolCall("again-1", "again", "{}")));
+        runner.saveSnapshot(turn);
+        runner.cancel(turn.getId());
+        AgentTurn cancelled = runner.runUntilBlocked(turn.getId());
+        List<Message> messages = cancelled.getPrompt().getMemory()
+            .getMessages(Integer.MAX_VALUE);
 
-        assertEquals("工具 again(again-1) 未完成：maximum model iterations reached",
+        assertEquals("工具 again(again-1) 未完成：用户主动停止",
             messages.get(messages.size() - 2).getTextContent());
-        assertEquals("Turn " + turn.getId() + " 已结束：maximum model iterations reached",
+        assertEquals("Turn " + turn.getId() + " 已结束：用户主动停止",
             messages.get(messages.size() - 1).getTextContent());
     }
 

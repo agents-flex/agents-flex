@@ -151,11 +151,13 @@ AgentTurn cancelled = runner.cancel(turnId);
 AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
     .interruptedToolMessageTemplate("工具 {toolName} 未完成：{reason}")
     .interruptedTurnMessageTemplate("本轮任务已结束：{reason}")
+    .cancellationReason("用户主动停止")
     .build();
 ```
 
 工具消息模板支持 `{reason}`、`{turnId}`、`{toolCallId}` 和 `{toolName}`；Turn 消息模板支持
-`{reason}` 和 `{turnId}`。未配置时继续使用 Framework 原有英文文本。
+`{reason}` 和 `{turnId}`。`cancellationReason` 会作为主动取消时的 `{reason}`；未配置时默认使用
+`turn cancelled by caller`。
 
 ## 业务会话入口
 

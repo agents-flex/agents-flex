@@ -1241,7 +1241,7 @@ public final class AgentRunner {
      * 在安全边界响应单调取消信号并保存最终 CANCELLED 状态。
      */
     private AgentStepResult cancelTurn(AgentTurn turn) {
-        finalizeInterruptedHistory(turn, "turn cancelled by caller");
+        finalizeInterruptedHistory(turn, turn.getExecutionPolicy().getCancellationReason());
         turn.markCancelled();
         saveSnapshot(turn);
         return AgentStepResult.of(null, null, null);
