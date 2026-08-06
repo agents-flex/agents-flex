@@ -19,7 +19,7 @@ JSON Schema，也不能生成任意表单结构。
 
 ### 1. 定义并注册表单
 
-`AgentFormDefinition` 只包含 `formKey`、`whenToUse` 和标准 JSON Schema：
+`AgentFormDefinition` 只包含 `formKey`、`description` 和标准 JSON Schema：
 
 ```java
 Map<String, Object> affectedSystem = new LinkedHashMap<>();
@@ -44,7 +44,7 @@ schema.put("required", Arrays.asList("affectedSystem", "impactScope"));
 
 AgentFormDefinition form = AgentFormDefinition
     .builder("support_ticket_details")
-    .whenToUse("创建故障工单缺少受影响系统或影响范围时使用")
+    .description("创建故障工单缺少受影响系统或影响范围时使用")
     .schema(schema)
     .build();
 
@@ -56,7 +56,7 @@ Agent agent = Agent.builder("support-agent")
     .build();
 ```
 
-`whenToUse` 会连同 `formKey` 出现在 Tool description 中，帮助模型选择。Schema 保存在 Tool metadata，
+`description` 用于说明表单的用途，会连同 `formKey` 出现在 Tool description 中，帮助模型选择。Schema 保存在 Tool metadata，
 不会进入模型可见的参数定义。模型只会产生类似调用：
 
 ```json
@@ -121,7 +121,7 @@ AgentTurn runnable = runner.submitResume(
 
 ### 1. 模型选择业务表单
 
-模型能看到 `request_user_input`、允许选择的 formKey 及其 `whenToUse`，但看不到 Schema。它判断当前
+模型能看到 `request_user_input`、允许选择的 formKey 及其 `description`，但看不到 Schema。它判断当前
 信息不足后产生 ToolCall：
 
 ```json
@@ -235,7 +235,7 @@ Tool createTicketTool = Tool.builder("create_support_ticket")
         if (submitted.isEmpty()) {
             throw new AgentFormRequiredException(
                 AgentFormDefinition.builder("support_ticket_details")
-                    .whenToUse("工具发现缺少受影响系统或影响范围")
+                    .description("工具发现缺少受影响系统或影响范围")
                     .schema(supportTicketSchema)
                     .build());
         }

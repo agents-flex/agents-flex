@@ -16,19 +16,19 @@ import java.util.Map;
 /**
  * request_user_input 可以请求的一种业务表单。
  *
- * <p>formKey 和 whenToUse 用于生成模型可见的表单选项；schema 不发送给模型，只在模型选中表单后
+ * <p>formKey 和 description 用于生成模型可见的表单选项；schema 不发送给模型，只在模型选中表单后
  * 保存到 Suspension，并通过 AgentFormMessage 提供给前端。Schema 应使用可序列化的 JSON 值。</p>
  */
 public final class AgentFormDefinition implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String formKey;
-    private final String whenToUse;
+    private final String description;
     private final Map<String, Object> schema;
 
     private AgentFormDefinition(Builder builder) {
         this.formKey = builder.formKey;
-        this.whenToUse = builder.whenToUse;
+        this.description = builder.description;
         this.schema = immutableMap(builder.schema);
     }
 
@@ -41,8 +41,9 @@ public final class AgentFormDefinition implements Serializable {
         return formKey;
     }
 
-    public String getWhenToUse() {
-        return whenToUse;
+    /** @return 提供给模型的表单用途描述，用于帮助模型选择合适的表单 */
+    public String getDescription() {
+        return description;
     }
 
     /** @return 不可修改的 JSON Schema */
@@ -53,16 +54,16 @@ public final class AgentFormDefinition implements Serializable {
     /** 表单定义构建器。 */
     public static final class Builder {
         private final String formKey;
-        private String whenToUse;
+        private String description;
         private Map<String, Object> schema;
 
         private Builder(String formKey) {
             this.formKey = formKey;
         }
 
-        /** 设置模型选择该表单的业务条件，该说明会出现在 Tool description 中。 */
-        public Builder whenToUse(String value) {
-            this.whenToUse = value;
+        /** 设置表单的用途描述，该说明会出现在 Tool description 中，供模型选择表单。 */
+        public Builder description(String value) {
+            this.description = value;
             return this;
         }
 
@@ -76,8 +77,8 @@ public final class AgentFormDefinition implements Serializable {
             if (!StringUtil.hasText(formKey)) {
                 throw new IllegalStateException("formKey must not be blank");
             }
-            if (!StringUtil.hasText(whenToUse)) {
-                throw new IllegalStateException("whenToUse must not be blank: " + formKey);
+            if (!StringUtil.hasText(description)) {
+                throw new IllegalStateException("description must not be blank: " + formKey);
             }
             if (schema == null || schema.isEmpty()) {
                 throw new IllegalStateException("schema must not be empty: " + formKey);

@@ -18,9 +18,14 @@ import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.message.AgentFormMessage;
 import com.agentsflex.agent.task.AgentPlanningPolicy;
 import com.agentsflex.agent.task.AgentTask;
 import com.agentsflex.agent.task.AgentTaskProgress;
+import com.agentsflex.agent.tool.AgentFormDefinition;
+import com.agentsflex.agent.tool.AgentFormRequiredException;
+import com.agentsflex.agent.tool.AgentToolContext;
+import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.ChatMemoryProvider;
@@ -41,7 +46,11 @@ import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -50,8 +59,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>业务代码维护 conversationId 和 ChatMemory，Runner 按配置的消息窗口读取模型历史，并把本轮新增
  * 消息幂等投影回业务 ChatMemory。模型直接回答时 Turn 一步完成；模型选择工具时 Runner 自动执行工具
- * 并继续调用模型；复杂目标可拆成顺序子任务；高风险工具会先进入审批等待状态，控制台收集人的决定
- * 后按根 turnId 恢复实际阻塞的 Turn。</p>
+ * 并继续调用模型；工具可以在副作用前请求结构化表单，控制台按 Schema 收集数据并恢复原调用；复杂
+ * 目标可拆成顺序子任务；高风险工具会先进入审批等待状态，控制台收集人的决定后按根 turnId 恢复
+ * 实际阻塞的 Turn。</p>
  */
 public final class AgentConsoleDemo {
 
@@ -70,8 +80,12 @@ public final class AgentConsoleDemo {
         AtomicInteger ticketSequence = new AtomicInteger(1000);
 
         Tool currentTime = createCurrentTimeTool();
+        AgentFormDefinition meetingRequestForm = createMeetingRequestForm();
+        AgentFormDefinition ticketDetailsForm = createTicketDetailsForm();
+        Tool prepareTicket = createTicketPreparationTool(ticketDetailsForm);
         Tool createTicket = createTicketTool(ticketSequence);
-        Agent agent = createAgent(chatModel, currentTime, createTicket);
+        Agent agent = createAgent(chatModel, currentTime, meetingRequestForm,
+            prepareTicket, createTicket);
 
         String conversationId = "console-" + UUID.randomUUID();
         ChatMemory memory = new DefaultChatMemory(conversationId);
@@ -159,17 +173,11 @@ public final class AgentConsoleDemo {
             }
             if (active.getStatus() == AgentTurnStatus.WAITING_FOR_USER) {
                 AgentSuspension suspension = requireSuspension(active);
-                System.out.println("\n[需要补充信息] " + suspension.getMessage());
-                String value;
-                while (true) {
-                    System.out.print("补充 > ");
-                    value = reader.readLine();
-                    if (value == null || isExit(value)) return null;
-                    if (!value.trim().isEmpty()) break;
-                    System.out.println("补充信息不能为空，请重新输入，或输入 /exit 退出。");
+                AgentResumeCommand input = readUserInput(reader, active, suspension);
+                if (input == null) {
+                    return null;
                 }
-                current = runner.resume(current.getId(), AgentResumeCommand.userInput(value)
-                    .withMetadata("source", "console"));
+                current = runner.resume(current.getId(), input);
                 continue;
             }
 
@@ -178,6 +186,122 @@ public final class AgentConsoleDemo {
             return current;
         }
         return current;
+    }
+
+    /**
+     * 根据 Suspension 是否携带表单 Schema，选择结构化表单或纯文本恢复协议。
+     */
+    private static AgentResumeCommand readUserInput(BufferedReader reader, AgentTurn turn,
+                                                    AgentSuspension suspension)
+        throws IOException {
+        Map<String, Object> schema = mapValue(suspension.getMetadata().get("schema"));
+        String callId = suspension.getCorrelationId();
+        if (!schema.isEmpty() && callId != null && !callId.trim().isEmpty()) {
+            Map<String, Object> values = readForm(reader, turn, suspension, schema);
+            return values == null ? null
+                : AgentResumeCommand.userInput(callId, values)
+                    .withMetadata("submittedBy", "console-user")
+                    .withMetadata("source", "console-form");
+        }
+
+        System.out.println("\n[需要补充信息] " + suspension.getMessage());
+        while (true) {
+            System.out.print("补充 > ");
+            String value = reader.readLine();
+            if (value == null || isExit(value)) return null;
+            if (!value.trim().isEmpty()) {
+                return AgentResumeCommand.userInput(value)
+                    .withMetadata("source", "console");
+            }
+            System.out.println("补充信息不能为空，请重新输入，或输入 /exit 退出。");
+        }
+    }
+
+    /**
+     * 使用 JSON Schema 的 properties、required 和 enum 渲染简单控制台表单。
+     */
+    private static Map<String, Object> readForm(BufferedReader reader, AgentTurn turn,
+                                                AgentSuspension suspension,
+                                                Map<String, Object> schema)
+        throws IOException {
+        Map<String, Object> properties = mapValue(schema.get("properties"));
+        if (properties.isEmpty()) {
+            throw new IllegalStateException("表单 Schema 缺少 properties");
+        }
+        List<?> required = schema.get("required") instanceof List
+            ? (List<?>) schema.get("required") : Collections.emptyList();
+        System.out.println("\n-------------------- 表单输入 --------------------");
+        System.out.println("Turn ID : " + turn.getId());
+        System.out.println("Form    : " + suspension.getMetadata().get("formKey"));
+        System.out.println("标题    : " + textValue(schema.get("title"), suspension.getMessage()));
+        System.out.println("说明    : 输入 /exit 可退出；带 * 的字段为必填项。");
+
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            String fieldName = entry.getKey();
+            Map<String, Object> field = mapValue(entry.getValue());
+            boolean fieldRequired = required.contains(fieldName);
+            while (true) {
+                printFieldPrompt(fieldName, field, fieldRequired);
+                String input = reader.readLine();
+                if (input == null || isExit(input)) return null;
+                input = input.trim();
+                if (input.isEmpty()) {
+                    if (!fieldRequired) break;
+                    System.out.println("该字段不能为空，请重新输入。");
+                    continue;
+                }
+                List<?> allowed = field.get("enum") instanceof List
+                    ? (List<?>) field.get("enum") : Collections.emptyList();
+                if (!allowed.isEmpty() && !containsText(allowed, input)) {
+                    System.out.println("请输入允许值之一: " + allowed);
+                    continue;
+                }
+                try {
+                    values.put(fieldName, parseFieldValue(input, field.get("type")));
+                    break;
+                } catch (IllegalArgumentException error) {
+                    System.out.println(error.getMessage());
+                }
+            }
+        }
+        System.out.println("[表单提交] " + values);
+        return values;
+    }
+
+    private static void printFieldPrompt(String fieldName, Map<String, Object> field,
+                                         boolean required) {
+        String title = textValue(field.get("title"), fieldName);
+        Object description = field.get("description");
+        Object allowed = field.get("enum");
+        if (description != null) {
+            System.out.println("  提示: " + description);
+        }
+        System.out.print(title + (required ? " *" : "")
+            + (allowed instanceof List ? " " + allowed : "") + " > ");
+    }
+
+    private static Object parseFieldValue(String input, Object type) {
+        String valueType = type == null ? "string" : String.valueOf(type);
+        try {
+            if ("integer".equals(valueType)) return Long.valueOf(input);
+            if ("number".equals(valueType)) return Double.valueOf(input);
+            if ("boolean".equals(valueType)) {
+                if ("true".equalsIgnoreCase(input) || "是".equals(input)) return true;
+                if ("false".equalsIgnoreCase(input) || "否".equals(input)) return false;
+                throw new IllegalArgumentException("请输入 true/false 或 是/否。");
+            }
+            return input;
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException("请输入有效的 " + valueType + " 数值。");
+        }
+    }
+
+    private static boolean containsText(List<?> values, String input) {
+        for (Object value : values) {
+            if (input.equals(String.valueOf(value))) return true;
+        }
+        return false;
     }
 
     /**
@@ -256,6 +380,122 @@ public final class AgentConsoleDemo {
     }
 
     /**
+     * 定义工具运行时请求的故障详情表单。Schema 不发送给模型，Runner 会将它保存到暂停快照。
+     */
+    private static AgentFormDefinition createTicketDetailsForm() {
+        Map<String, Object> affectedSystem = new LinkedHashMap<>();
+        affectedSystem.put("type", "string");
+        affectedSystem.put("title", "受影响系统");
+        affectedSystem.put("description", "例如统一登录系统、管理后台或移动端");
+
+        Map<String, Object> impactScope = new LinkedHashMap<>();
+        impactScope.put("type", "string");
+        impactScope.put("title", "影响范围");
+        impactScope.put("enum", Arrays.asList(
+            "ONE_USER", "PARTIAL_USERS", "ALL_USERS"));
+
+        Map<String, Object> errorMessage = new LinkedHashMap<>();
+        errorMessage.put("type", "string");
+        errorMessage.put("title", "错误提示");
+        errorMessage.put("description", "选填，填写页面上看到的错误信息");
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("affectedSystem", affectedSystem);
+        properties.put("impactScope", impactScope);
+        properties.put("errorMessage", errorMessage);
+
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+        schema.put("title", "补充登录故障信息");
+        schema.put("properties", properties);
+        schema.put("required", Arrays.asList("affectedSystem", "impactScope"));
+
+        return AgentFormDefinition.builder("support_ticket_details")
+            .description("准备故障工单时缺少受影响系统或影响范围")
+            .schema(schema)
+            .build();
+    }
+
+    /**
+     * 定义由模型通过 request_user_input 主动选择的会议信息表单。
+     */
+    private static AgentFormDefinition createMeetingRequestForm() {
+        Map<String, Object> subject = new LinkedHashMap<>();
+        subject.put("type", "string");
+        subject.put("title", "会议主题");
+
+        Map<String, Object> preferredTime = new LinkedHashMap<>();
+        preferredTime.put("type", "string");
+        preferredTime.put("title", "期望时间");
+        preferredTime.put("description", "例如明天下午 3 点或 2026-08-10 15:00");
+
+        Map<String, Object> participantCount = new LinkedHashMap<>();
+        participantCount.put("type", "integer");
+        participantCount.put("title", "参会人数");
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("subject", subject);
+        properties.put("preferredTime", preferredTime);
+        properties.put("participantCount", participantCount);
+
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+        schema.put("title", "填写会议安排");
+        schema.put("properties", properties);
+        schema.put("required", Arrays.asList(
+            "subject", "preferredTime", "participantCount"));
+
+        return AgentFormDefinition.builder("meeting_request")
+            .description("用户要求收集或确认会议主题、时间和参会人数时使用")
+            .schema(schema)
+            .build();
+    }
+
+    /**
+     * 工单准备工具没有副作用；首次执行请求表单，恢复后返回可供模型创建工单的完整资料。
+     */
+    private static Tool createTicketPreparationTool(AgentFormDefinition formDefinition) {
+        return Tool.builder("prepare_support_ticket", "整理创建支持工单所需的完整资料，不会写入业务系统")
+            .addParameter(Parameter.builder()
+                .name("title")
+                .type("string")
+                .description("简短明确的工单标题")
+                .required(true)
+                .build())
+            .addParameter(Parameter.builder()
+                .name("priority")
+                .type("string")
+                .description("优先级：LOW、MEDIUM、HIGH")
+                .required(true)
+                .build())
+            .addParameter(Parameter.builder()
+                .name("description")
+                .type("string")
+                .description("根据当前对话整理的初步工单详情")
+                .required(true)
+                .build())
+            .metadata("sideEffect", false)
+            .metadata("category", "preparation")
+            .function(arguments -> {
+                AgentToolContext context = AgentToolContext.current();
+                if (context == null) {
+                    throw new IllegalStateException(
+                        "prepare_support_ticket requires AgentToolContext");
+                }
+                Map<String, Object> submitted = context.getSubmittedFormData();
+                if (submitted.isEmpty()) {
+                    throw new AgentFormRequiredException(formDefinition);
+                }
+                Map<String, Object> prepared = new LinkedHashMap<>(arguments);
+                prepared.putAll(submitted);
+                prepared.put("idempotencyKey", context.getIdempotencyKey());
+                System.out.println("\n[表单已提交] 工单资料=" + prepared);
+                return prepared;
+            })
+            .build();
+    }
+
+    /**
      * 创建工单工具模拟真实写操作，只有审批通过后函数体才会执行。
      */
     private static Tool createTicketTool(AtomicInteger sequence) {
@@ -278,6 +518,24 @@ public final class AgentConsoleDemo {
                 .description("根据当前对话整理的工单详情")
                 .required(true)
                 .build())
+            .addParameter(Parameter.builder()
+                .name("affectedSystem")
+                .type("string")
+                .description("表单中确认的受影响系统")
+                .required(true)
+                .build())
+            .addParameter(Parameter.builder()
+                .name("impactScope")
+                .type("string")
+                .description("表单中确认的影响范围")
+                .required(true)
+                .build())
+            .addParameter(Parameter.builder()
+                .name("errorMessage")
+                .type("string")
+                .description("用户看到的错误提示；没有时可以省略")
+                .required(false)
+                .build())
             .metadata("sideEffect", true)
             .metadata("riskLevel", "MEDIUM")
             .metadata("approvalType", "HUMAN")
@@ -292,7 +550,9 @@ public final class AgentConsoleDemo {
     /**
      * 配置 Agent 的模型指令、规划边界、工具、审批规则和执行预算。
      */
-    private static Agent createAgent(ChatModel chatModel, Tool currentTime, Tool createTicket) {
+    private static Agent createAgent(ChatModel chatModel, Tool currentTime,
+                                     AgentFormDefinition meetingRequestForm,
+                                     Tool prepareTicket, Tool createTicket) {
         return Agent.builder("console-assistant")
             .id("console-assistant")
             .version("1")
@@ -300,14 +560,19 @@ public final class AgentConsoleDemo {
             .instructions(
                 "你是一个支持持续对话的中文助手。请结合完整会话历史理解代词和省略信息。"
                     + "普通问候或知识问题直接回答。用户询问当前日期或时间时，必须调用 get_current_time，"
-                    + "不能依靠训练数据猜测。只有用户明确要求创建、提交或登记支持工单时，才调用 "
-                    + "create_support_ticket；调用前从对话中整理标题、优先级和描述。"
+                    + "不能依靠训练数据猜测。用户要求收集或确认会议安排信息时，必须调用 "
+                    + "request_user_input 并选择 meeting_request，提交后汇总用户填写的内容。"
+                    + "用户明确要求创建、提交或登记支持工单时，必须先调用 "
+                    + "prepare_support_ticket 整理标题、优先级和描述；该工具补齐资料并返回后，再调用 "
+                    + "create_support_ticket，不能跳过准备工具，也不能猜测表单字段。"
                     + "当请求需要两个或更多独立工具调用时，必须先调用 create_task_plan 创建计划，"
                     + "不能直接调用业务工具；例如比较两个城市当前时间时，每个城市查询一个任务，"
                     + "比较、归纳和建议由父 Agent 在全部任务完成后汇总。单步请求不要创建计划。"
                     + "工具返回后必须根据真实结果回答，绝不能虚构工具已经执行。")
             .chatModel(chatModel)
             .tool(currentTime)
+            .tool(AgentUserInputTool.builder().form(meetingRequestForm).build())
+            .tool(prepareTicket)
             .tool(createTicket)
             .maxAttachedMessages(40)
             .planningPolicy(AgentPlanningPolicy.builder()
@@ -449,9 +714,14 @@ public final class AgentConsoleDemo {
             + "（最多展示 " + HISTORY_DISPLAY_LIMIT + " 条）：");
         for (int i = 0; i < messages.size(); i++) {
             Message message = messages.get(i);
+            String details = "";
+            if (message instanceof AgentFormMessage) {
+                AgentFormMessage form = (AgentFormMessage) message;
+                details = " formKey=" + form.getFormKey() + " status=" + form.getStatus();
+            }
             System.out.println("  " + (i + 1) + ". " + message.getClass().getSimpleName()
                 + " modelVisible=" + message.isModelVisible()
-                + "  " + abbreviate(message.getTextContent(), 120));
+                + details + "  " + abbreviate(message.getTextContent(), 120));
         }
     }
 
@@ -472,8 +742,9 @@ public final class AgentConsoleDemo {
         System.out.println("  1. 你好，我叫小明。             （普通持续对话）");
         System.out.println("  2. 你还记得我叫什么吗？         （读取业务 ChatMemory）");
         System.out.println("  3. 上海现在几点？               （自动调用只读工具）");
-        System.out.println("  4. 帮我创建一个高优先级登录故障工单。（触发人工审批）");
-        System.out.println("  5. 分别查询上海和东京当前时间，并比较时差给出会议建议。（任务规划）");
+        System.out.println("  4. 请帮我收集会议安排信息。（模型主动请求表单）");
+        System.out.println("  5. 帮我创建一个高优先级登录故障工单。（工具请求表单 + 人工审批）");
+        System.out.println("  6. 分别查询上海和东京当前时间，并比较时差给出会议建议。（任务规划）");
         System.out.println("命令：/history 查看最近的时间线消息，/help 查看帮助，/exit 退出。");
     }
 
@@ -509,6 +780,18 @@ public final class AgentConsoleDemo {
         String oneLine = value.replace('\n', ' ').replace('\r', ' ');
         return oneLine.length() <= maxLength ? oneLine
             : oneLine.substring(0, maxLength) + "...";
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> mapValue(Object value) {
+        return value instanceof Map
+            ? new LinkedHashMap<>((Map<String, Object>) value)
+            : Collections.emptyMap();
+    }
+
+    private static String textValue(Object value, String defaultValue) {
+        return value == null || String.valueOf(value).trim().isEmpty()
+            ? defaultValue : String.valueOf(value);
     }
 
     /**

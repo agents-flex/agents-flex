@@ -1,6 +1,6 @@
 ---
 title: Demo：完整示例（控制台程序）
-description: 使用真实模型构建持续对话、任务规划、工具调用、人工审批和实时事件控制台。
+description: 使用真实模型构建持续对话、任务规划、表单输入、工具调用、人工审批和实时事件控制台。
 ---
 
 # Demo：完整示例（控制台程序）
@@ -8,16 +8,19 @@ description: 使用真实模型构建持续对话、任务规划、工具调用�
 ## 概述
 
 控制台 Demo 使用真实 OpenAI-compatible ChatModel，展示一个完整交互应用：普通持续对话、按需任务
-规划、只读工具自动执行、有副作用工具人工审批、阻塞 Turn 恢复、每轮独立 Turn、业务 ChatMemory
-以及实时事件输出。
+规划、只读工具自动执行、工具动态请求表单、有副作用工具人工审批、阻塞 Turn 恢复、每轮独立 Turn、
+业务 ChatMemory 以及实时事件输出。
 
 源码位于 `demos/agent-console-demo/src/main/java/com/agentsflex/demo/agent/console/AgentConsoleDemo.java`。
 
 ## 功能结构
 
-程序包含两个工具：
+程序包含三个业务工具和一个控制工具：
 
 - `get_current_time`：无副作用，Runner 直接执行。
+- `request_user_input`：模型主动选择 `meeting_request` 表单，Runner 接管 ToolCall 并等待用户提交。
+- `prepare_support_ticket`：没有副作用；首次执行抛出 `AgentFormRequiredException` 请求故障详情表单，
+  提交后从 Snapshot 读取表单数据并重新执行。
 - `create_support_ticket`：会写业务系统，审批策略要求人工确认。
 
 控制台业务代码维护 conversationId 和 `ChatMemory`，Runner 分页读取模型可见历史并增量写回本轮消息；
@@ -53,10 +56,14 @@ Agent agent = Agent.builder("console-assistant")
     .instructions(
         "结合完整会话历史理解用户请求。"
         + "当前时间必须调用 get_current_time。"
-        + "只有用户明确要求创建工单时才调用 create_support_ticket。"
+        + "收集会议安排时调用 request_user_input 并选择 meeting_request。"
+        + "创建工单时必须先调用 prepare_support_ticket 补齐资料，"
+        + "准备完成后再调用 create_support_ticket。"
         + "需要两个或更多独立工具调用时必须先创建计划。")
     .chatModel(chatModel)
     .tool(currentTime)
+    .tool(AgentUserInputTool.builder().form(meetingRequestForm).build())
+    .tool(prepareTicket)
     .tool(createTicket)
     .maxAttachedMessages(40)
     .planningPolicy(AgentPlanningPolicy.builder()
@@ -88,6 +95,65 @@ Agent agent = Agent.builder("console-assistant")
 ```
 
 工具 metadata 只提供策略事实；真正的执行授权由审批策略决定。
+
+## 表单输入示例
+
+Demo 同时展示两种表单入口。模型主动入口先注册稳定表单：
+
+```java
+AgentFormDefinition meetingRequestForm = AgentFormDefinition
+    .builder("meeting_request")
+    .description("用户要求收集或确认会议主题、时间和参会人数时使用")
+    .schema(meetingRequestSchema)
+    .build();
+
+Tool userInputTool = AgentUserInputTool.builder()
+    .form(meetingRequestForm)
+    .build();
+```
+
+模型只能看到 `meeting_request` 和 `description`，调用 `request_user_input` 后由 Runner 保存 Schema、
+暂停 Turn，并投影 `AgentFormMessage`。提交数据会成为该控制 ToolCall 的 ToolMessage，然后返回 MODEL
+阶段让模型汇总。
+
+另一种入口由业务工具在执行过程中动态请求表单：
+
+```java
+AgentFormDefinition ticketDetailsForm = AgentFormDefinition
+    .builder("support_ticket_details")
+    .description("准备故障工单时缺少受影响系统或影响范围")
+    .schema(ticketDetailsSchema)
+    .build();
+
+Tool prepareTicket = Tool.builder(
+        "prepare_support_ticket", "整理创建支持工单所需的完整资料")
+    .function(arguments -> {
+        AgentToolContext context = AgentToolContext.current();
+        Map<String, Object> submitted = context.getSubmittedFormData();
+        if (submitted.isEmpty()) {
+            throw new AgentFormRequiredException(ticketDetailsForm);
+        }
+        Map<String, Object> prepared = new LinkedHashMap<>(arguments);
+        prepared.putAll(submitted);
+        return prepared;
+    })
+    .build();
+```
+
+第一次执行时，Runner 捕获异常并进入 `WAITING_FOR_USER`，同时把 Schema 投影为
+`AgentFormMessage`。控制台读取 Suspension 中的同一份 Schema，根据 `properties`、`required`、
+`enum` 和字段类型逐项收集数据，然后提交：
+
+```java
+runner.resume(
+    turnId,
+    AgentResumeCommand.userInput(callId, formData)
+        .withMetadata("submittedBy", "console-user"));
+```
+
+提交数据进入 Snapshot，原 `prepare_support_ticket` 从函数开头重新执行，并通过
+`getSubmittedFormData()` 读取数据。准备工具完成后，模型调用真正的 `create_support_ticket`，再进入
+人工审批。表单中断发生在副作用之前，并使用稳定 ToolCall ID 保持恢复和幂等语义。
 
 规划能力是同一个 Agent 的能力，不需要额外的 planning 入口。框架本身仍允许模型判断是否需要规划；
 为了让控制台示例可以稳定复现，Demo 的指令明确要求包含两个或更多独立工具调用的请求必须先调用内置
@@ -133,8 +199,12 @@ while (turn.getStatus().isBlocked()) {
         continue;
     }
     if (turn.getStatus() == AgentTurnStatus.WAITING_FOR_USER) {
-        turn = runner.resume(turn.getId(),
-            AgentResumeCommand.userInput(additionalInput));
+        AgentSuspension suspension = turn.getSuspension();
+        Map<String, Object> schema =
+            (Map<String, Object>) suspension.getMetadata().get("schema");
+        Map<String, Object> formData = renderAndReadForm(schema);
+        turn = runner.resume(turn.getId(), AgentResumeCommand.userInput(
+            suspension.getCorrelationId(), formData));
         continue;
     }
     break;
@@ -152,6 +222,7 @@ runner.addEventListener(event -> {
         case TOOL_STARTED:
         case TOOL_COMPLETED:
         case TOOL_APPROVAL_REQUESTED:
+        case TOOL_INPUT_REQUESTED:
         case PLAN_CREATED:
         case TASK_STARTED:
         case TASK_COMPLETED:
@@ -181,13 +252,17 @@ mvn -f demos/agent-console-demo/pom.xml exec:java
 你好，我叫小明。
 你还记得我叫什么吗？
 上海现在几点？
+请帮我收集会议安排信息。
 帮我创建一个高优先级登录故障工单。
 分别查询上海和东京当前时间，并比较时差给出会议建议。
 ```
 
-命令 `/history` 查看最近 50 条时间线消息，`/help` 查看帮助，`/exit` 退出。最后一条会展示
-计划创建、子任务开始和完成事件，以及最终计划状态。创建工单会展示 ToolCall 参数并等待明确批准
-或拒绝；规划子 Turn 中发生审批时，控制台仍使用根 turnId 恢复，Runner 自动把命令路由到实际子 Turn。
+命令 `/history` 查看最近 50 条时间线消息，`/help` 查看帮助，`/exit` 退出。会议信息示例由模型直接
+触发 `request_user_input`；创建工单示例则由准备工具抛出异常请求表单。创建工单时会先展示
+JSON Schema 表单，依次填写受影响系统、影响范围和可选错误提示；提交后准备工具会重新执行，随后
+创建工具展示完整 ToolCall 参数并等待明确批准或拒绝。最后一条时间查询示例会展示计划创建、子任务
+开始和完成事件，以及最终计划状态。规划子 Turn 中发生交互等待时，控制台仍使用根 turnId 恢复，
+Runner 自动把命令路由到实际子 Turn。
 无法识别的审批输入不会自动当作拒绝。
 
 当前 Demo 的 Turn Store 和 ChatMemory 都使用进程内实现，程序退出后状态会丢失。

@@ -54,7 +54,7 @@ public class AgentUserInputFormIntegrationTest {
         schema.put("properties", new LinkedHashMap<String, Object>());
         AgentFormDefinition formDefinition = AgentFormDefinition
             .builder("support_ticket_details")
-            .whenToUse("工具执行时发现缺少故障影响信息")
+            .description("工具执行时发现缺少故障影响信息")
             .schema(schema)
             .build();
         AtomicInteger attempts = new AtomicInteger();
@@ -184,7 +184,7 @@ public class AgentUserInputFormIntegrationTest {
             .chatModel(model)
             .tool(AgentUserInputTool.builder()
                 .form(AgentFormDefinition.builder("support_ticket_details")
-                    .whenToUse("创建故障工单缺少受影响系统或影响范围时使用")
+                    .description("创建故障工单缺少受影响系统或影响范围时使用")
                     .schema(schema)
                     .build())
                 .build())

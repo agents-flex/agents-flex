@@ -105,7 +105,7 @@ public final class AgentUserInputTool {
                 "当完成任务缺少必要信息时，从以下业务表单中选择一项请求用户填写；不要猜测缺失值：");
             for (AgentFormDefinition form : forms.values()) {
                 description.append('[').append(form.getFormKey()).append("：")
-                    .append(form.getWhenToUse()).append("] ");
+                    .append(form.getDescription()).append("] ");
             }
             Map<String, AgentFormDefinition> definitions = Collections.unmodifiableMap(
                 new LinkedHashMap<>(forms));

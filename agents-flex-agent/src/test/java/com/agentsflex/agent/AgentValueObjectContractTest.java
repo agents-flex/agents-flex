@@ -120,7 +120,7 @@ public class AgentValueObjectContractTest {
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
         AgentFormDefinition form = AgentFormDefinition.builder("ticket")
-            .whenToUse("缺少工单信息时使用")
+            .description("缺少工单信息时使用")
             .schema(schema)
             .build();
         schema.put("title", "changed");
@@ -134,11 +134,11 @@ public class AgentValueObjectContractTest {
         }
 
         assertBuildFailure(() -> AgentFormDefinition.builder("")
-            .whenToUse("condition").schema(Collections.singletonMap("type", "object")).build());
+            .description("condition").schema(Collections.singletonMap("type", "object")).build());
         assertBuildFailure(() -> AgentFormDefinition.builder("ticket")
             .schema(Collections.singletonMap("type", "object")).build());
         assertBuildFailure(() -> AgentFormDefinition.builder("ticket")
-            .whenToUse("condition").schema(Collections.emptyMap()).build());
+            .description("condition").schema(Collections.emptyMap()).build());
         assertBuildFailure(() -> AgentUserInputTool.builder().build());
         assertIllegalArgument(() -> AgentUserInputTool.builder().form(form).form(form));
         assertIllegalArgument(() -> new AgentFormRequiredException(null));
