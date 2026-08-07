@@ -155,7 +155,7 @@ public class Metadata implements Serializable {
      *
      * @return true if no entries exist, false otherwise
      */
-    public boolean isEmpty() {
+    public boolean isMetadataEmpty() {
         Map<String, Object> map = metadataMap;
         return (map == null) || map.isEmpty();
     }
