@@ -202,6 +202,36 @@ public class AgentRunnerTest {
     }
 
     @Test
+    public void shouldUseConfiguredToolErrorMessageFactoryAndPreserveToolCallId() {
+        QueueChatModel model = new QueueChatModel();
+        model.enqueue(prompt -> aiWithCalls(toolCall("call-custom-error", "unstable", "{}")));
+        model.enqueue(prompt -> {
+            ToolMessage error = (ToolMessage) prompt.getMessages().get(2);
+            assertEquals("call-custom-error", error.getToolCallId());
+            assertEquals("{\"code\":\"UPSTREAM_UNAVAILABLE\"}", error.getContent());
+            return new AiMessage("Please retry later.");
+        });
+
+        Agent agent = Agent.builder()
+            .chatModel(model)
+            .tool(tool("unstable", args -> { throw new RuntimeException("internal detail"); }))
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .toolErrorStrategy(ToolErrorStrategy.RETURN_ERROR_TO_MODEL)
+                .build())
+            .toolErrorMessageFactory((turn, call, error) -> {
+                ToolMessage message = new ToolMessage();
+                message.setContent("{\"code\":\"UPSTREAM_UNAVAILABLE\"}");
+                return message;
+            })
+            .build();
+
+        AgentTurn turn = new AgentRunner().run(agent, "try it");
+
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals("Please retry later.", turn.getFinalOutput());
+    }
+
+    @Test
     public void shouldFailWhenModelCallsUnknownTool() {
         QueueChatModel model = new QueueChatModel();
         model.enqueue(prompt -> aiWithCalls(toolCall("missing-1", "missing", "{}")));

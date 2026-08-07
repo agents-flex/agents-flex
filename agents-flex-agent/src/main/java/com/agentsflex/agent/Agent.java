@@ -11,6 +11,7 @@ import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.tool.AgentToolResolver;
 import com.agentsflex.agent.tool.ToolApprovalPolicy;
+import com.agentsflex.agent.tool.ToolErrorMessageFactory;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -87,6 +88,10 @@ public final class Agent {
      */
     private final ToolApprovalPolicy toolApprovalPolicy;
     /**
+     * 将允许交回模型的工具异常转换为 ToolMessage 的业务规则。
+     */
+    private final ToolErrorMessageFactory toolErrorMessageFactory;
+    /**
      * 控制模型是否可以自主创建并执行任务计划。
      */
     private final AgentPlanningPolicy planningPolicy;
@@ -124,6 +129,7 @@ public final class Agent {
         this.toolInterceptors = Collections.unmodifiableList(new ArrayList<>(builder.toolInterceptors));
         this.executionPolicy = builder.executionPolicy;
         this.toolApprovalPolicy = builder.toolApprovalPolicy;
+        this.toolErrorMessageFactory = builder.toolErrorMessageFactory;
         this.planningPolicy = builder.planningPolicy;
         this.maxAttachedMessages = builder.maxAttachedMessages;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
@@ -258,6 +264,13 @@ public final class Agent {
     }
 
     /**
+     * @return 工具异常交回模型时使用的消息工厂
+     */
+    public ToolErrorMessageFactory getToolErrorMessageFactory() {
+        return toolErrorMessageFactory;
+    }
+
+    /**
      * @return 工具执行前使用的审批策略
      */
     public ToolApprovalPolicy getToolApprovalPolicy() {
@@ -311,6 +324,8 @@ public final class Agent {
         private final List<ToolInterceptor> toolInterceptors = new ArrayList<>();
         private AgentExecutionPolicy executionPolicy = AgentExecutionPolicy.defaults();
         private ToolApprovalPolicy toolApprovalPolicy = ToolApprovalPolicy.allowAll();
+        private ToolErrorMessageFactory toolErrorMessageFactory =
+            ToolErrorMessageFactory.defaultFactory();
         private AgentPlanningPolicy planningPolicy = AgentPlanningPolicy.disabled();
         private int maxAttachedMessages = 100;
         private final List<AgentMiddleware> middlewares = new ArrayList<>();
@@ -415,6 +430,17 @@ public final class Agent {
         }
 
         /**
+         * 设置工具执行异常交回模型时的消息构造规则。
+         *
+         * <p>仅在 {@link com.agentsflex.agent.tool.ToolErrorStrategy#RETURN_ERROR_TO_MODEL} 时调用。
+         * 可用于隐藏内部异常详情、映射业务错误码或告诉模型可采取的补救动作。</p>
+         */
+        public Builder toolErrorMessageFactory(ToolErrorMessageFactory value) {
+            this.toolErrorMessageFactory = value;
+            return this;
+        }
+
+        /**
          * 设置工具执行前的审批策略。
          */
         public Builder toolApprovalPolicy(ToolApprovalPolicy toolApprovalPolicy) {
@@ -511,6 +537,9 @@ public final class Agent {
             }
             if (toolApprovalPolicy == null) {
                 toolApprovalPolicy = ToolApprovalPolicy.allowAll();
+            }
+            if (toolErrorMessageFactory == null) {
+                throw new IllegalStateException("toolErrorMessageFactory must not be null");
             }
             if (planningPolicy == null) {
                 throw new IllegalStateException("planningPolicy must not be null");

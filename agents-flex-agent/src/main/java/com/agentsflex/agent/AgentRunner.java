@@ -1153,7 +1153,7 @@ public final class AgentRunner {
                 if (turn.getExecutionPolicy().getToolErrorStrategy()
                     == ToolErrorStrategy.RETURN_ERROR_TO_MODEL) {
                     // 将错误交给模型时仍生成与原 ToolCall 匹配的 ToolMessage，保持协议完整。
-                    completedResult = buildToolErrorMessage(call, error);
+                    completedResult = buildToolErrorMessage(turn, call, error);
                 } else {
                     return handleFailure(turn, response, error, AgentTurnPhase.TOOLS);
                 }
@@ -1466,15 +1466,13 @@ public final class AgentRunner {
     /**
      * 把允许交回模型处理的工具异常编码为与原 ToolCall 关联的结构化错误消息。
      */
-    private ToolMessage buildToolErrorMessage(ToolCall call, Throwable error) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("error", true);
-        body.put("type", error instanceof AgentToolNotFoundException
-            ? "tool_not_found" : "tool_execution_error");
-        body.put("message", error.getMessage());
-        ToolMessage result = new ToolMessage();
+    private ToolMessage buildToolErrorMessage(AgentTurn turn, ToolCall call, Throwable error) {
+        ToolMessage result = turn.getAgent().getToolErrorMessageFactory().create(turn, call, error);
+        if (result == null) {
+            throw new IllegalStateException("ToolErrorMessageFactory must not return null");
+        }
+        // 工厂只决定模型可见内容，ToolCall 关联必须与本次执行保持一致。
         result.setToolCallId(callKey(call));
-        result.setContent(JSON.toJSONString(body));
         return result;
     }
 
