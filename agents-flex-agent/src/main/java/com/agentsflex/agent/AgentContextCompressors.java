@@ -3,6 +3,10 @@ package com.agentsflex.agent;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.core.model.chat.ChatOptions;
+import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.prompt.SimplePrompt;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,6 +59,38 @@ public final class AgentContextCompressors {
             }
             String value = text.length() <= maxCharacters ? text.toString() : text.substring(0, maxCharacters);
             return Collections.<Message>singletonList(new UserMessage("历史上下文摘要：\n" + value));
+        };
+    }
+
+    /**
+     * 使用聊天模型生成语义摘要。每次压缩只调用一次模型，并将模型返回文本包装为
+     * {@code UserMessage + AiMessage}，因此不会把摘要模型的 ToolCall 带入业务模型上下文。
+     *
+     * @param model       摘要模型，可以与业务模型相同，也可以使用更便宜的专用模型
+     * @param instruction 摘要提示词，应要求保留业务事实、ID、约束和未完成事项
+     */
+    public static AgentContextCompressor model(ChatModel model, String instruction) {
+        if (model == null) throw new IllegalArgumentException("model must not be null");
+        if (instruction == null || instruction.trim().isEmpty()) {
+            throw new IllegalArgumentException("instruction must not be blank");
+        }
+        return messages -> {
+            StringBuilder input = new StringBuilder(instruction).append("\n\n历史消息：\n");
+            for (Message message : messages) {
+                String text = message.getTextContent();
+                if (text != null && !text.isEmpty()) {
+                    input.append(message.getClass().getSimpleName()).append(": ").append(text).append('\n');
+                }
+            }
+            AiMessageResponse response = model.chat(new SimplePrompt(input.toString()), new ChatOptions());
+            if (response == null || response.isError() || response.getMessage() == null) {
+                if (response != null && response.isError()) response.throwIfError();
+                throw new IllegalStateException("context summary model returned no message");
+            }
+            AiMessage summary = response.getMessage().copy();
+            summary.setToolCalls(null);
+            return java.util.Arrays.<Message>asList(
+                new UserMessage("以下是较早对话的摘要，请将其作为历史事实参考："), summary);
         };
     }
 

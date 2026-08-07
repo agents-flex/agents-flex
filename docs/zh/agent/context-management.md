@@ -72,6 +72,23 @@ Agent agent = Agent.builder("support-agent")
 单条摘要用户消息，`chain(...)` 可组合多个策略。生产环境通常应使用业务侧摘要模型实现
 `AgentContextCompressor`，并在摘要失败时保留原始历史。
 
+框架也提供 `AgentContextCompressors.model(...)` 适配聊天模型：
+
+```java
+AgentContextCompressor compressor = AgentContextCompressors.model(
+    summaryModel,
+    "请压缩历史对话，保留业务事实、实体 ID、用户约束、审批结果和未完成事项，不要编造信息。");
+
+Agent agent = Agent.builder("support-agent")
+    .contextCompressor(compressor)
+    .compressionKeepRecentTurns(2)
+    .build();
+```
+
+该策略只对较早已完成 Turn 调用一次摘要模型，模型返回内容会被包装为合法的
+`UserMessage + AiMessage`。摘要模型不应注册业务工具；压缩失败时 Runner 会中止本次模型调用，
+业务侧可以记录错误并重试或暂时关闭语义压缩。
+
 窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。
 `AgentActionMessage`、`AgentFormMessage` 等 `modelVisible=false` 消息不会发送给模型。
 
