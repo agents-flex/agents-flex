@@ -178,6 +178,8 @@ export default withMermaid(defineConfig({
                     {text: 'Agent', link: '/zh/agent/agent'},
                     {text: 'AgentTurn', link: '/zh/agent/agent-turn'},
                     {text: 'AgentRunner', link: '/zh/agent/agent-runner'},
+                    {text: 'AgentExecutionPolicy', link: '/zh/agent/execution-policy'},
+                    {text: 'AgentToolContext', link: '/zh/agent/tool-context'},
                     {text: 'AgentLoader', link: '/zh/agent/agent-loader'},
                     {text: '事件机制', link: '/zh/agent/events'},
                     {text: '人工审批', link: '/zh/agent/human-approval'},

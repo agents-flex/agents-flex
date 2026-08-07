@@ -9,6 +9,10 @@ description: 在 Tool 执行前后统一完成权限、参数校验、审计、�
 
 `ToolInterceptor` 是 Tool 真正执行时的责任链扩展点。它与 `ChatInterceptor` 的作用阶段不同：后者包围模型请求，前者包围 Java 工具调用。
 
+两者不要混用：`ToolInterceptor` 处理“工具已经被模型选中之后如何执行”，`ChatInterceptor` 处理“模型请求如何构建和发送”。
+`ChatInterceptorRegistration`、`ChatInterceptorMatcher` 和 `ChatInterceptorProvider` 都属于 Chat 请求拦截机制，
+完整说明见 [对话拦截器](./chat-interceptor.md)。
+
 ```text
 模型返回 ToolCall
   -> ToolExecutor
@@ -27,6 +31,61 @@ description: 在 Tool 执行前后统一完成权限、参数校验、审计、�
 - 把底层异常转换为稳定的业务错误。
 
 只影响模型请求的逻辑应使用 [对话拦截器](./chat-interceptor.md)；只影响某个工具的业务规则可直接写在工具实现中。
+
+## Tool 与 ChatInterceptorProvider
+
+一个 Tool 可以同时实现 `ToolInterceptor` 和 `ChatInterceptorProvider`，分别扩展两个阶段：
+
+```java
+public final class SearchTool implements Tool, ChatInterceptorProvider {
+
+    @Override
+    public List<ChatInterceptorRegistration> getChatInterceptorRegistrations() {
+        return Collections.singletonList(
+            ChatInterceptorRegistration.builder(
+                    "search-request-preparation",
+                    new SearchRequestInterceptor())
+                .order(ChatInterceptorOrders.REQUEST_PREPARATION)
+                .matcher(context -> context.getPrompt().getTools().stream()
+                    .anyMatch(tool -> "search".equals(tool.getName())))
+                .build()
+        );
+    }
+
+    // ToolInterceptor 仍然只包围 SearchTool 的真实执行。
+    @Override
+    public Object intercept(ToolContext context, ToolChain chain) throws Exception {
+        checkPermission(context);
+        return chain.proceed(context);
+    }
+}
+```
+
+当 `SearchTool` 通过 `prompt.addTool(searchTool)` 加入 Prompt 时，ChatModel 会自动发现 Provider，
+只把该 Provider 的 Registration 加入当前请求；不会修改 ChatModel 的共享拦截器配置。Matcher 可以根据
+当前 `ChatContext` 判断是否启用，例如账号、模型、会话属性或 Prompt 内容。Tool 被真正调用时，才进入
+`ToolInterceptor` 链。
+
+如果只需要为某个 Prompt 添加 Chat 拦截器，也可以显式注册：
+
+```java
+prompt.addChatInterceptorProvider(new ChatInterceptorProvider() {
+    @Override
+    public List<ChatInterceptor> getChatInterceptors() {
+        return Collections.singletonList(new SearchRequestInterceptor());
+    }
+});
+```
+
+简单 Provider 返回 `getChatInterceptors()` 即可；需要稳定名称、条件或顺序时覆盖
+`getChatInterceptorRegistrations()`。多个来源发现同一个拦截器实例时，框架会按实例去重。
+
+| 机制 | 作用阶段 | 典型职责 |
+| --- | --- | --- |
+| `ChatInterceptorProvider` | 当前 Chat 请求组装 | 让 Prompt、Tool 或 ToolGroup 按需贡献 ChatInterceptor |
+| `ChatInterceptorRegistration` | Chat 责任链注册 | 为拦截器声明名称、Matcher 和 order |
+| `ChatInterceptorMatcher` | Chat 请求运行时 | 判断当前请求是否启用 Registration |
+| `ToolInterceptor` | Tool 实际执行 | 权限、参数校验、审计、缓存和异常转换 |
 
 ## 快速开始
 

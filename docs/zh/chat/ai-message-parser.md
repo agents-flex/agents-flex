@@ -50,7 +50,7 @@ public interface AiMessageParser<T> {
 }
 ```
 
-Parser 通过 `context.getOptions().isStreaming()` 判断当前分支。流式时每次解析的是一个增量 `AiMessage`，后续由 `BaseStreamClientListener` 聚合完整内容与 ToolCall。
+Parser 通过 `context.isStreaming()` 判断当前分支。流式时每次解析的是一个增量 `AiMessage`，后续由 `BaseStreamClientListener` 聚合完整内容与 ToolCall。
 
 ## DefaultAiMessageParser
 

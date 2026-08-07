@@ -252,7 +252,7 @@ Matcher 可以读取 Prompt、模型、账号、会话、业务属性和流式�
 ```java
 .matcher(context ->
     context.getAccountId() != null
-        && context.getOptions().isStreaming()
+    && context.isStreaming()
         && containsSearchIntent(context.getPrompt())
 )
 ```
@@ -473,7 +473,7 @@ List<ChatInterceptorRegistration> registrations =
 | `size()` | 返回当前全局 Registration 数量 |
 | `clear()` | 清空全局注册表，主要用于测试 |
 
-`getInterceptors()` 和 `getRegistrations()` 只包含应用通过 `GlobalChatInterceptors` 添加的内容，不包含 `FrameworkChatInterceptors` 管理的 Observability 和 ToolGroup 等框架节点。
+`getInterceptors()` 和 `getRegistrations()` 只包含应用通过 `GlobalChatInterceptors` 添加的内容，不包含 `FrameworkChatInterceptors` 管理的 Observability，也不包含 Prompt 级 Provider（包括 ToolGroup）。
 
 ### 测试清理
 
@@ -576,9 +576,10 @@ Matcher 在责任链到达当前 Registration 时执行。因此，它可以读�
 
 1. Prompt 自身实现的 `ChatInterceptorProvider`。
 2. 通过 `prompt.addChatInterceptorProvider(...)` 显式添加的 Provider。
-3. `prompt.addTool(...)` 添加且实现了 `ChatInterceptorProvider` 的 Tool。
+3. `prompt.getToolGroups()` 中的 `ToolGroup`。
+4. `prompt.addTool(...)` 添加且实现了 `ChatInterceptorProvider` 的 Tool。
 
-ToolGroup 暂不参与 Provider 自动发现。
+因此，ToolGroup 只会在当前 Prompt 实际使用它时提供解析拦截器，不会进入 ChatModel 的共享配置。
 
 简单场景可以只返回 ChatInterceptor，框架会将其包装为默认 Registration：
 
@@ -607,11 +608,12 @@ public class SearchTool implements Tool, ChatInterceptorProvider {
 ```
 
 Provider 提供的 Registration 只加入当前请求的责任链。重复发现同一个 ChatInterceptor 实例时，
-框架只保留第一次注册。
+框架只保留第一次注册。Provider 不会修改 ChatModel 的实例级或全局 Registration。
 
 ### 执行顺序
 
-每次请求会合并 Framework、Global 和 Instance Registration，再按 `order` 从小到大稳定排序。
+每次请求会合并 Framework、Global、Instance 以及当前 Prompt 发现的 Provider Registration，
+再按 `order` 从小到大稳定排序。
 
 | 常量 | 当前值 | 默认用途 |
 | --- | ---: | --- |
@@ -630,7 +632,7 @@ Provider 提供的 Registration 只加入当前请求的责任链。重复发现
 ```
 
 相同 `order` 的 Registration 按注册先后保持稳定顺序。默认情况下，同值时的来源顺序为
-Framework、Global、Instance、Prompt 自身、Prompt 显式 Provider、Prompt Tool，各来源内部保持注册顺序。
+Framework、Global、Instance、Prompt 自身、Prompt 显式 Provider、Prompt ToolGroup、Prompt Tool，各来源内部保持注册顺序。
 
 ### 注册范围
 
@@ -664,16 +666,17 @@ OpenAIChatModel chatModel = new OpenAIChatModel(config, interceptors);
 框架内置 Registration 由 `FrameworkChatInterceptors` 管理，目前包括：
 
 - `chat-observability`：根据配置动态启用 OpenTelemetry。
-- `tool-group-resolver`：存在 Tool Group 时，解析并挂载匹配的工具和系统提示词。
 
-它们与应用 Registration 使用同一套排序规则。应用可以通过 `order` 将自己的拦截器放在这些框架节点之前或之后。
+ToolGroup 不再属于框架全局 Registration。`ToolGroup` 自身实现 `ChatInterceptorProvider`，在 Prompt
+包含 ToolGroup 时按 `REQUEST_PREPARATION` 顺序提供 `tool-group-resolver`。它与应用 Registration
+使用同一套排序规则，应用可以通过 `order` 将自己的拦截器放在 ToolGroup 解析之前或之后。
 
 ### 完整执行流程
 
 ```text
 创建 ChatContext
     ↓
-合并 Framework、Global、Instance Registration
+合并 Framework、Global、Instance Registration 与 Prompt Provider
     ↓
 按 order 从小到大稳定排序
     ↓
@@ -724,7 +727,8 @@ OpenAIChatModel chatModel = new OpenAIChatModel(config, interceptors);
 
 ### 可以调整 Observability 和 Tool Group 的执行位置吗？
 
-可以。框架内置 Registration 与应用 Registration 使用相同的 `order` 排序规则。调整时需要同时考虑可观测范围以及 Tool Group 的解析时机。
+可以。可观测性是框架 Registration；Tool Group 是由 Prompt 自动发现的 Provider。两者与应用 Registration
+使用相同的 `order` 排序规则。调整时需要同时考虑可观测范围以及 Tool Group 的解析时机。
 
 ## 下一步
 

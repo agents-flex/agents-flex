@@ -21,6 +21,17 @@ description: 解答 Agent 定义、执行、恢复、工具、规划、Worker �
 
 它可能在等待审批、用户输入、子 Turn 或重试时间，也可能达到预算/迭代上限。检查 `status` 和 `suspension`，阻塞状态需要外部事件，终态不能再次推进。
 
+## 新的用户消息应该调用 `resume` 吗？
+
+不应该。`resume` 只接受当前 Suspension 对应的审批或表单结果，并继续已经保存的 ToolCall。用户提出
+新的独立问题时创建新的 Turn；如果原会话仍有活动 Turn，业务侧应返回冲突或把消息写入自己的队列，
+不要直接追加到 ChatMemory 让模型猜测顺序。
+
+## 审批、表单和普通追问如何区分？
+
+人工审批表示“参数已经确定，是否允许执行”；表单输入表示“执行所需参数尚未齐全”；普通追问是新的
+用户意图。前两者都通过 `AgentResumeCommand` 恢复原 Turn，普通追问通过 `runner.run(...)` 创建新 Turn。
+
 ## 下一轮对话要复用原 AgentTurn 吗？
 
 不要。每一轮创建新的 Turn，并传入业务系统从 ChatMemory 加载的历史消息。只有恢复阻塞任务时才按已保存的 turnId 继续原 Turn。
@@ -72,6 +83,15 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 ## 如何取消运行？
 
 调用 `runner.cancel(turnId)`。取消是协作式的，在安全边界生效，不保证立刻中断正在执行的 HTTP 或工具函数。
+
+取消完成后 Runner 会为未完成的 ToolCall 补齐协议结果，并追加本轮未完成的模型消息，因此同一会话可以
+正常开始下一轮。已经成功提交的工具结果会保留；工具本身仍须使用幂等键处理“副作用已发生但进程随后退出”的窗口。
+
+## 浏览器关闭后如何继续任务？
+
+不要依赖内存中的 `AgentTurn` 对象。保存 `turnId`，重新登录后调用 `runner.restore(turnId)` 查询状态：
+若是 `WAITING_FOR_APPROVAL` 或 `WAITING_FOR_USER`，提交对应命令；若是 `READY`、`RUNNING` 或到期重试，
+交给 `AgentWorker`；若已是终态，只读取结果并展示。
 
 ## Store 版本冲突如何处理？
 

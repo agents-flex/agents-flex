@@ -301,7 +301,9 @@ ToolGroup Matcher 随后可以读取该属性：
 )
 ```
 
-框架默认在普通应用拦截器之后解析 ToolGroup，因此这种方式不需要手动调用 `ToolGroupPromptResolver`。有关执行顺序，请参考 [对话拦截器](./chat-interceptor.md#执行顺序)。
+ToolGroup 自身实现 `ChatInterceptorProvider`，会在当前 Prompt 使用 ToolGroup 时自动提供
+`tool-group-resolver` Registration，因此不需要手动调用 `ToolGroupPromptResolver`。有关 Provider
+发现和执行顺序，请参考 [对话拦截器](./chat-interceptor.md#chatinterceptorprovider)。
 
 ## 进阶使用
 
@@ -414,7 +416,7 @@ ToolGroup 解析不会直接修改原始 Prompt。框架为当前请求创建解
 
 ### 与 ChatInterceptor 的执行顺序
 
-框架通过内置的 `tool-group-resolver` Registration 自动解析 ToolGroup，其默认顺序是：
+ToolGroup 通过自身提供的 `tool-group-resolver` Registration 自动解析，其默认顺序是：
 
 ```java
 ChatInterceptorOrders.REQUEST_PREPARATION  // 10000
@@ -448,7 +450,9 @@ ToolGroup 解析后再添加新的 ToolGroup，不会触发第二次解析。
 
 ## 实现说明
 
-当 Prompt 包含 ToolGroup 时，框架内置的 `ToolGroupChatInterceptor` 会调用 `ToolGroupPromptResolver`。Resolver 根据当前 `ChatContext` 计算命中的组，并创建一个请求级 Prompt 快照。
+当 Prompt 包含 ToolGroup 时，ToolGroup 通过 `ChatInterceptorProvider` 提供的
+`ToolGroupChatInterceptor` 会调用 `ToolGroupPromptResolver`。Resolver 根据当前 `ChatContext`
+计算命中的组，并创建一个请求级 Prompt 快照。
 
 只有解析后 Prompt 中实际存在的 Tool 和系统提示词才会进入模型请求。ToolGroup 配置本身不会作为额外字段发送给模型。
 

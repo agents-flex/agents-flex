@@ -155,14 +155,13 @@ String json = chatModel.chat("返回 JSON 格式的产品摘要", options);
 | `extraBody` | 透传厂商专有参数 | 使用 `addExtraBody()` |
 | `retryEnabled/count/delay` | 覆盖模型级重试 | 只重试框架判定可重试的错误 |
 
-`streaming` 由框架根据调用 `chat()` 还是 `chatStream()` 自动设置，不应由业务代码修改。`contextBotId`、
-`contextConversationId`、`contextAccountId`、`contextTurnId` 和 `contextAttributes` 只用于调用链上下文，不会作为
-普通模型参数发送。
+ChatModel 的模型参数由调用方提供，`streaming` 不属于 `ChatOptions`：调用 `chat()` 或 `chatStream()` 时，
+框架通过 `ChatContext.isStreaming()` 区分同步和流式请求。`contextBotId`、`contextConversationId`、
+`contextAccountId`、`contextTurnId` 和 `contextAttributes` 只用于调用链上下文，不会作为普通模型参数发送。
 
-ChatModel 每次调用都会通过 `ChatOptions.copy()` 创建请求级副本。框架设置的 streaming、拦截器修改的参数和
-上下文属性不会回写调用方持有的 Options，因此同一个配置模板可以被并发请求复用。基础复制会保留自定义
-ChatOptions 的运行时类型和扩展字段；扩展字段包含可变集合且需要深度隔离时，子类可以覆盖 `copy()`，并调用
-`copyBasePropertiesTo(...)` 后再复制自己的扩展字段。
+ChatModel 每次调用都会通过 `ChatOptions.copy()` 创建请求级副本。拦截器对模型参数、额外请求体和 metadata 的
+修改只作用于当前请求，因此同一配置模板可以安全地并发复用。基础复制会保留自定义 ChatOptions 的运行时类型
+和扩展字段；子类包含需要深度隔离的可变对象时，可以覆盖 `copy()` 并调用 `copyBasePropertiesTo(...)`。
 
 ## 如何选择调用方式
 
