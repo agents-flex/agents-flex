@@ -19,23 +19,19 @@ import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.prompt.Prompt;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 一次 ChatModel 调用的可变运行上下文。
+ *
+ * <p>业务关联 ID 和 attributes 不在本类重复保存，而是通过当前请求独享的 ChatOptions 读写。
+ * 因此拦截器通过 ChatContext 或 ChatOptions 修改上下文时操作的是同一份数据。</p>
+ */
 public class ChatContext {
 
     Prompt prompt;
     BaseChatConfig config;
     ChatOptions options;
     ChatRequestSpec requestSpec;
-    /** 宿主系统当前业务 Bot 的关联 ID。 */
-    Object botId;
-    /** 当前连续会话的关联 ID。 */
-    Object conversationId;
-    /** 发起当前交互的账号关联 ID。 */
-    Object accountId;
-    /** 当前会话中单轮用户交互的关联 ID。 */
-    Object turnId;
-    Map<String, Object> attributes;
 
     public Prompt getPrompt() {
         return prompt;
@@ -58,6 +54,23 @@ public class ChatContext {
     }
 
     public void setOptions(ChatOptions options) {
+        if (this.options != null && options != null) {
+            if (options.getContextBotId() == null) {
+                options.setContextBotId(this.options.getContextBotId());
+            }
+            if (options.getContextConversationId() == null) {
+                options.setContextConversationId(this.options.getContextConversationId());
+            }
+            if (options.getContextAccountId() == null) {
+                options.setContextAccountId(this.options.getContextAccountId());
+            }
+            if (options.getContextTurnId() == null) {
+                options.setContextTurnId(this.options.getContextTurnId());
+            }
+            if (options.getContextAttributes() == null) {
+                options.setContextAttributes(this.options.getContextAttributes());
+            }
+        }
         this.options = options;
     }
 
@@ -71,42 +84,43 @@ public class ChatContext {
     }
 
     public Object getBotId() {
-        return botId;
+        return options == null ? null : options.getContextBotId();
     }
 
     public void setBotId(Object botId) {
-        this.botId = botId;
+        ensureOptions().setContextBotId(botId);
     }
 
     public Object getConversationId() {
-        return conversationId;
+        return options == null ? null : options.getContextConversationId();
     }
 
     public void setConversationId(Object conversationId) {
-        this.conversationId = conversationId;
+        ensureOptions().setContextConversationId(conversationId);
     }
 
     public Object getAccountId() {
-        return accountId;
+        return options == null ? null : options.getContextAccountId();
     }
 
     public void setAccountId(Object accountId) {
-        this.accountId = accountId;
+        ensureOptions().setContextAccountId(accountId);
     }
 
     public Object getTurnId() {
-        return turnId;
+        return options == null ? null : options.getContextTurnId();
     }
 
     public void setTurnId(Object turnId) {
-        this.turnId = turnId;
+        ensureOptions().setContextTurnId(turnId);
     }
 
     public Map<String, Object> getAttributes() {
-        return attributes;
+        return options == null ? null : options.getContextAttributes();
     }
 
     public Object getAttribute(String key) {
+        Map<String, Object> attributes = getAttributes();
         if (attributes == null) {
             return null;
         }
@@ -114,30 +128,24 @@ public class ChatContext {
     }
 
     public void addAttribute(String key, Object value) {
+        Map<String, Object> attributes = getAttributes();
         if (attributes == null) {
-            attributes = new java.util.HashMap<>();
+            ensureOptions().setContextAttributes(
+                new java.util.concurrent.ConcurrentHashMap<String, Object>());
+            attributes = getAttributes();
         }
         attributes.put(key, value);
     }
 
     public void setAttributes(Map<String, Object> attributes) {
-        this.attributes = attributes;
+        ensureOptions().setContextAttributes(attributes);
     }
 
-    void refreshContextFromOptions() {
+    private ChatOptions ensureOptions() {
         if (options == null) {
-            return;
+            options = new ChatOptions();
         }
-        botId = options.getContextBotId();
-        conversationId = options.getContextConversationId();
-        accountId = options.getContextAccountId();
-        turnId = options.getContextTurnId();
-        if (attributes == null) {
-            attributes = new ConcurrentHashMap<>();
-        }
-        if (options.getContextAttributes() != null) {
-            attributes.putAll(options.getContextAttributes());
-        }
+        return options;
     }
 
 
@@ -148,11 +156,11 @@ public class ChatContext {
             ", config=" + config +
             ", options=" + options +
             ", requestSpec=" + requestSpec +
-            ", botId=" + botId +
-            ", conversationId=" + conversationId +
-            ", accountId=" + accountId +
-            ", turnId=" + turnId +
-            ", attributes=" + attributes +
+            ", botId=" + getBotId() +
+            ", conversationId=" + getConversationId() +
+            ", accountId=" + getAccountId() +
+            ", turnId=" + getTurnId() +
+            ", attributes=" + getAttributes() +
             '}';
     }
 }

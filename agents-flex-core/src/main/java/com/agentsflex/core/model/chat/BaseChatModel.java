@@ -128,9 +128,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      */
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
-        if (options == null) {
-            options = new ChatOptions();
-        }
+        options = options == null ? new ChatOptions() : options.copy();
         options.setStreaming(false);
         ChatRequestSpec request = getChatRequestSpecBuilder().buildRequestSpec(prompt, options, config);
         // 初始化聊天上下文（自动清理）
@@ -153,9 +151,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      */
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
-        if (options == null) {
-            options = new ChatOptions();
-        }
+        options = options == null ? new ChatOptions() : options.copy();
         options.setStreaming(true);
         ChatRequestSpec request = getChatRequestSpecBuilder().buildRequestSpec(prompt, options, config);
         try (ChatContextHolder.ChatContextScope scope =
@@ -178,7 +174,6 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
             requestConfig = config;
             context.setConfig(requestConfig);
         }
-        context.refreshContextFromOptions();
         return getChatRequestSpecBuilder().buildRequestBody(
             context.getPrompt(), requestOptions, requestConfig);
     }

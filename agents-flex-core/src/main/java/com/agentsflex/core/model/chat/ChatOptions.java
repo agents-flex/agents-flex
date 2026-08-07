@@ -20,15 +20,17 @@ import com.agentsflex.core.util.Metadata;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 聊天选项配置类，用于控制大语言模型（LLM）的生成行为。
  * 支持 Builder 模式，便于链式调用。
  * 注意：不同模型厂商对参数的支持和默认值可能不同。
  */
-public class ChatOptions extends Metadata {
+public class ChatOptions extends Metadata implements Cloneable {
 
 
     /**
@@ -142,6 +144,58 @@ public class ChatOptions extends Metadata {
 
     // ===== 构造函数 =====
     public ChatOptions() {
+    }
+
+    /**
+     * 创建当前配置的请求级副本。
+     *
+     * <p>ChatModel 会在每次调用前复制 Options，随后只修改副本中的 streaming 和请求上下文，
+     * 因而同一个配置模板可以被同步、流式或多个 AgentTurn 并发复用。基础实现会保留运行时子类型及
+     * 其字段；子类包含需要深度隔离的可变对象时，可以覆盖本方法，并先调用
+     * {@link #copyBasePropertiesTo(ChatOptions)}。</p>
+     */
+    public ChatOptions copy() {
+        try {
+            ChatOptions copy = (ChatOptions) super.clone();
+            copyBasePropertiesTo(copy);
+            return copy;
+        } catch (CloneNotSupportedException exception) {
+            throw new IllegalStateException("ChatOptions copy is not supported", exception);
+        }
+    }
+
+    /** 把 ChatOptions 定义的字段复制到目标实例，供模型厂商的 Options 子类复用。 */
+    protected final void copyBasePropertiesTo(ChatOptions target) {
+        if (target == null) {
+            throw new IllegalArgumentException("target ChatOptions must not be null");
+        }
+        target.model = model;
+        target.seed = seed;
+        target.temperature = temperature;
+        target.topP = topP;
+        target.topK = topK;
+        target.maxTokens = maxTokens;
+        target.stop = stop == null ? null : new ArrayList<>(stop);
+        target.thinkingEnabled = thinkingEnabled;
+        target.includeUsage = includeUsage;
+        target.extraBody = copyMap(extraBody);
+        target.retryEnabled = retryEnabled;
+        target.retryCount = retryCount;
+        target.retryInitialDelayMs = retryInitialDelayMs;
+        target.responseFormat = copyMap(responseFormat);
+        target.streaming = streaming;
+        target.contextBotId = contextBotId;
+        target.contextConversationId = contextConversationId;
+        target.contextAccountId = contextAccountId;
+        target.contextTurnId = contextTurnId;
+        target.contextAttributes = contextAttributes == null
+            ? new ConcurrentHashMap<String, Object>()
+            : new ConcurrentHashMap<>(contextAttributes);
+        target.setMetadataMap(getMetadataMap());
+    }
+
+    private static Map<String, Object> copyMap(Map<String, Object> source) {
+        return source == null ? null : new HashMap<>(source);
     }
 
     private ChatOptions(Builder builder) {
@@ -382,7 +436,8 @@ public class ChatOptions extends Metadata {
     }
 
     public void setContextAttributes(Map<String, Object> contextAttributes) {
-        this.contextAttributes = contextAttributes;
+        this.contextAttributes = contextAttributes == null
+            ? null : new ConcurrentHashMap<>(contextAttributes);
     }
 
     /**

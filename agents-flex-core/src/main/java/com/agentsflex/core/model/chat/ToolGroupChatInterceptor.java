@@ -23,7 +23,6 @@ public final class ToolGroupChatInterceptor implements ChatInterceptor {
 
     @Override
     public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context, SyncChain chain) {
-        context.refreshContextFromOptions();
         context.setPrompt(ToolGroupPromptResolver.resolve(context));
         return chain.proceed(chatModel, context);
     }
@@ -31,7 +30,6 @@ public final class ToolGroupChatInterceptor implements ChatInterceptor {
     @Override
     public void interceptStream(BaseChatModel<?> chatModel, ChatContext context,
                                 StreamResponseListener listener, StreamChain chain) {
-        context.refreshContextFromOptions();
         context.setPrompt(ToolGroupPromptResolver.resolve(context));
         chain.proceed(chatModel, context, listener);
     }

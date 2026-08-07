@@ -18,8 +18,6 @@ package com.agentsflex.core.model.chat;
 import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.prompt.Prompt;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
  * 聊天上下文管理器，用于在当前线程中保存聊天相关的上下文信息。
  * <p>
@@ -58,17 +56,8 @@ public final class ChatContextHolder {
         ctx.requestSpec = request;
         ctx.config = config;
 
-        if (options != null) {
-            ctx.botId = options.getContextBotId();
-            ctx.conversationId = options.getContextConversationId();
-            ctx.accountId = options.getContextAccountId();
-            ctx.turnId = options.getContextTurnId();
-        }
-
-        // attributes
-        ctx.attributes = new ConcurrentHashMap<>();
-        if (options != null && options.getContextAttributes() != null) {
-            ctx.attributes.putAll(options.getContextAttributes());
+        if (options != null && options.getContextAttributes() == null) {
+            options.setContextAttributes(new java.util.concurrent.ConcurrentHashMap<String, Object>());
         }
 
         CONTEXT_HOLDER.set(ctx);

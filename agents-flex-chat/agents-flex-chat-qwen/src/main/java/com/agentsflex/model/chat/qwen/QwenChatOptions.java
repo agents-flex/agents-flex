@@ -4,6 +4,7 @@ import com.agentsflex.core.model.chat.ChatOptions;
 import com.alibaba.fastjson2.annotation.JSONField;
 
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * <link href="https://help.aliyun.com/zh/model-studio/use-qwen-by-calling-api">通义千问API参考</link>
@@ -76,6 +77,51 @@ public class QwenChatOptions extends ChatOptions {
      * 仅当enable_search为true时生效。
      */
     private SearchOptions searchOptions;
+
+    /** 创建保留 Qwen 扩展参数的请求级副本。 */
+    @Override
+    public QwenChatOptions copy() {
+        QwenChatOptions copy = new QwenChatOptions();
+        copyBasePropertiesTo(copy);
+        copy.modalities = modalities == null ? null : new ArrayList<>(modalities);
+        copy.presencePenalty = presencePenalty;
+        copy.n = n;
+        copy.parallelToolCalls = parallelToolCalls;
+        copy.translationOptions = copyTranslationOptions(translationOptions);
+        copy.enableSearch = enableSearch;
+        copy.thinkingBudget = thinkingBudget;
+        copy.searchOptions = copySearchOptions(searchOptions);
+        return copy;
+    }
+
+    private static TranslationOptions copyTranslationOptions(TranslationOptions source) {
+        if (source == null) return null;
+        TranslationOptions copy = new TranslationOptions()
+            .setSourceLang(source.getSourceLang())
+            .setTargetLang(source.getTargetLang())
+            .setDomains(source.getDomains());
+        copy.setTerms(copyTranslationItems(source.getTerms()));
+        copy.setTmList(copyTranslationItems(source.getTmList()));
+        return copy;
+    }
+
+    private static List<TranslationOptionsExt> copyTranslationItems(
+        List<TranslationOptionsExt> source) {
+        if (source == null) return null;
+        List<TranslationOptionsExt> copy = new ArrayList<>(source.size());
+        for (TranslationOptionsExt item : source) {
+            copy.add(item == null ? null : new TranslationOptionsExt()
+                .setSource(item.getSource())
+                .setTarget(item.getTarget()));
+        }
+        return copy;
+    }
+
+    private static SearchOptions copySearchOptions(SearchOptions source) {
+        return source == null ? null : new SearchOptions()
+            .setForcedSearch(source.getForcedSearch())
+            .setSearchStrategy(source.getSearchStrategy());
+    }
 
     public static class TranslationOptions {
         /**

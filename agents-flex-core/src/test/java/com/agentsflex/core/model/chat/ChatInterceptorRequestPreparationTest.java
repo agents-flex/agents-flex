@@ -15,6 +15,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -83,6 +85,58 @@ public class ChatInterceptorRequestPreparationTest {
         assertEquals("stream-model", builtOptions.get().getModel());
         assertTrue(clientContext.get().getOptions().isStreaming());
         assertNotNull(clientContext.get().getRequestSpec());
+    }
+
+    @Test
+    public void shouldUseRequestCopyWithoutMutatingCallerOptions() {
+        AtomicReference<Prompt> builtPrompt = new AtomicReference<>();
+        AtomicReference<ChatOptions> builtOptions = new AtomicReference<>();
+        AtomicReference<BaseChatConfig> builtConfig = new AtomicReference<>();
+        AtomicReference<ChatContext> clientContext = new AtomicReference<>();
+        ChatInterceptor interceptor = new ChatInterceptor() {
+            @Override
+            public void interceptStream(BaseChatModel<?> chatModel, ChatContext context,
+                                        StreamResponseListener listener, StreamChain chain) {
+                context.setConversationId("request-conversation");
+                context.addAttribute("request-only", true);
+                chain.proceed(chatModel, context, listener);
+            }
+        };
+        BaseChatModel<BaseChatConfig> model = model(
+            interceptor, builtPrompt, builtOptions, builtConfig, clientContext);
+        ChatOptions configured = ChatOptions.builder()
+            .contextConversationId("configured-conversation")
+            .addContextAttributes("configured", true)
+            .build();
+
+        model.chatStream(new SimplePrompt("stream prompt"), (context, response) -> {
+        }, configured);
+
+        assertNotSame(configured, builtOptions.get());
+        assertTrue(builtOptions.get().isStreaming());
+        assertFalse(configured.isStreaming());
+        assertEquals("request-conversation", clientContext.get().getConversationId());
+        assertEquals("configured-conversation", configured.getContextConversationId());
+        assertEquals(Boolean.TRUE, clientContext.get().getAttribute("request-only"));
+        assertNull(configured.getContextAttributes().get("request-only"));
+    }
+
+    @Test
+    public void shouldPreserveUnawareChatOptionsSubclassAndIsolateMetadata() {
+        CustomChatOptions configured = new CustomChatOptions();
+        configured.customValue = "custom";
+        configured.putMetadata("source", "value");
+
+        ChatOptions copied = configured.copy();
+        copied.putMetadata("request-only", true);
+
+        assertTrue(copied instanceof CustomChatOptions);
+        assertEquals("custom", ((CustomChatOptions) copied).customValue);
+        assertNull(configured.getMetadata("request-only"));
+    }
+
+    private static final class CustomChatOptions extends ChatOptions {
+        private String customValue;
     }
 
     private static BaseChatModel<BaseChatConfig> model(

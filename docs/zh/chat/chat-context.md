@@ -13,7 +13,7 @@ HTTP 请求以及业务关联 ID 放在同一个对象中，供对话拦截器�
 | --- | --- | --- |
 | `ChatContext` | 一次模型调用 | 拦截器间传值、修改当前请求、记录链路 |
 | `ChatMemory` | 多轮会话 | 保存历史 Message |
-| `ChatOptions.context...` | 一次请求输入 | 初始化 ChatContext 的业务关联字段 |
+| `ChatOptions.context...` | 一次请求输入 | 提供 ChatContext 使用的业务关联字段 |
 
 ## 适用场景
 
@@ -33,13 +33,14 @@ ChatOptions options = ChatOptions.builder()
     .contextAccountId("account-1001")
     .contextConversationId("conversation-2002")
     .contextTurnId("turn-0008")
-    .contextAttribute("plan", "enterprise")
+    .addContextAttributes("plan", "enterprise")
     .build();
 
 AiMessageResponse response = chatModel.chat(prompt, options);
 ```
 
-框架开始调用时会把这些值复制到 `ChatContext`。拦截器可以读取：
+框架开始调用时会先创建 `ChatOptions` 的请求级副本。`ChatContext` 不再镜像这些字段，而是直接通过该副本
+读取和修改，因此不会出现 Context 与 Options 值不一致的问题。拦截器可以读取：
 
 ```java
 public class TenantHeaderInterceptor implements ChatInterceptor {
@@ -58,13 +59,21 @@ public class TenantHeaderInterceptor implements ChatInterceptor {
 | --- | --- | --- |
 | `prompt` | `Prompt` | 当前调用的消息、Tool 和 ToolGroup |
 | `config` | `BaseChatConfig` | 当前 ChatModel 的连接与能力配置 |
-| `options` | `ChatOptions` | 本次请求的生成参数和上下文输入 |
+| `options` | `ChatOptions` | 本次请求独享的生成参数和上下文数据副本 |
 | `requestSpec` | `ChatRequestSpec` | 最终 URL、Header 与重试参数 |
-| `botId` | `Object` | 业务 Bot 标识 |
-| `conversationId` | `Object` | 连续会话标识 |
-| `accountId` | `Object` | 账号或租户关联标识 |
-| `turnId` | `Object` | 当前单轮交互标识 |
-| `attributes` | `Map<String,Object>` | 拦截器共享的扩展属性 |
+| `getBotId()` | `Object` | 从请求级 Options 读取业务 Bot 标识 |
+| `getConversationId()` | `Object` | 从请求级 Options 读取连续会话标识 |
+| `getAccountId()` | `Object` | 从请求级 Options 读取账号或租户关联标识 |
+| `getTurnId()` | `Object` | 从请求级 Options 读取当前单轮交互标识 |
+| `getAttributes()` | `Map<String,Object>` | 请求级 Options 中由拦截器共享的扩展属性 |
+
+传给 `chat(...)` 或 `chatStream(...)` 的原始 `ChatOptions` 不会被框架修改。流式标记、拦截器变更和
+Context 属性都只写入请求副本，因此同一个 Options 模板可以安全地用于并发调用。基础复制会保留自定义
+`ChatOptions` 的运行时类型和扩展字段；扩展字段包含可变集合且需要深度隔离时，子类应覆盖 `copy()` 并调用
+`copyBasePropertiesTo(...)`。
+
+AgentRunner 调用模型时还会在请求副本中自动设置当前 AgentTurn 的 `conversationId` 和 `turnId`。
+Agent 上配置的 ChatOptions 只是模型参数模板，不应写入固定的 conversationId 或 turnId。
 
 前置拦截器的执行阶段不同。修改 Prompt 和 Options 应在请求序列化前完成；`requestSpec` 只有请求准备完成后才适合
 修改。具体阶段顺序见 [对话拦截器](./chat-interceptor)。

@@ -63,7 +63,7 @@ public final class Agent {
      */
     private final ChatModel chatModel;
     /**
-     * 每次调用聊天模型时使用的生成参数和上下文参数。
+     * 模型调用参数模板。每次请求都会创建独立副本，避免不同 Turn 修改同一个配置实例。
      */
     private final ChatOptions chatOptions;
     /**

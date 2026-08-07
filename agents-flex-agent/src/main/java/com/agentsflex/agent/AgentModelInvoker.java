@@ -6,6 +6,7 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.StreamContext;
@@ -42,16 +43,17 @@ final class AgentModelInvoker {
      * 根据当前 Turn 的 streaming 设置选择模型调用方式。
      */
     AiMessageResponse invoke(AgentTurn turn, Prompt prompt) {
+        ChatOptions options = requestOptions(turn);
         if (!turn.isStreaming()) {
-            return turn.getAgent().getChatModel().chat(prompt, turn.getAgent().getChatOptions());
+            return turn.getAgent().getChatModel().chat(prompt, options);
         }
-        return invokeStreaming(turn, prompt);
+        return invokeStreaming(turn, prompt, options);
     }
 
     /**
      * 等待异步流关闭，并返回与同步接口一致的完整 AiMessageResponse。
      */
-    private AiMessageResponse invokeStreaming(AgentTurn turn, Prompt prompt) {
+    private AiMessageResponse invokeStreaming(AgentTurn turn, Prompt prompt, ChatOptions options) {
         CountDownLatch closed = new CountDownLatch(1);
         AtomicReference<AiMessage> fullMessage = new AtomicReference<>();
         AtomicReference<ChatContext> chatContext = new AtomicReference<>();
@@ -114,7 +116,7 @@ final class AgentModelInvoker {
                 }
                 closed.countDown();
             }
-        }, turn.getAgent().getChatOptions());
+        }, options);
 
         awaitClose(turn, closed);
         rethrowFailure(failure.get());
@@ -126,6 +128,19 @@ final class AgentModelInvoker {
             context.setPrompt(prompt);
         }
         return new AiMessageResponse(context, null, fullMessage.get());
+    }
+
+    /**
+     * 从 Agent 的静态模型配置创建本次请求副本，并绑定当前 Turn 的关联标识。
+     */
+    private ChatOptions requestOptions(AgentTurn turn) {
+        ChatOptions configured = turn.getAgent().getChatOptions();
+        ChatOptions options = configured == null ? new ChatOptions() : configured.copy();
+        if (StringUtil.hasText(turn.getConversationId())) {
+            options.setContextConversationId(turn.getConversationId());
+        }
+        options.setContextTurnId(turn.getId());
+        return options;
     }
 
     /**

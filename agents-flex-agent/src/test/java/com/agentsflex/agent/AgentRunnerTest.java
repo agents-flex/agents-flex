@@ -33,6 +33,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
@@ -42,6 +43,43 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class AgentRunnerTest {
+
+    @Test
+    public void shouldBindTurnIdentityToRequestOptionsWithoutMutatingAgentOptions() {
+        AtomicReference<ChatOptions> captured = new AtomicReference<>();
+        ChatModel model = new ChatModel() {
+            @Override
+            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+                captured.set(options);
+                return response(prompt, new AiMessage("done"));
+            }
+
+            @Override
+            public void chatStream(Prompt prompt, StreamResponseListener listener,
+                                   ChatOptions options) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        ChatOptions configured = ChatOptions.builder()
+            .contextAccountId("account-1")
+            .build();
+        Agent agent = Agent.builder("request-context-agent")
+            .chatModel(model)
+            .chatOptions(configured)
+            .build();
+        AgentTurn turn = AgentTurn.start(agent, "hello");
+        turn.bindConversation("conversation-1", 0);
+
+        new AgentRunner().run(turn);
+
+        assertNotNull(captured.get());
+        assertTrue(captured.get() != configured);
+        assertEquals("conversation-1", captured.get().getContextConversationId());
+        assertEquals(turn.getId(), captured.get().getContextTurnId());
+        assertEquals("account-1", captured.get().getContextAccountId());
+        assertNull(configured.getContextConversationId());
+        assertNull(configured.getContextTurnId());
+    }
 
     @Test
     public void shouldCompleteWithoutToolsAndApplyAgentConfiguration() {
