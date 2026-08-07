@@ -16,6 +16,9 @@
 package com.agentsflex.core.model.chat.toolgroup;
 
 import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatInterceptorOrders;
+import com.agentsflex.core.model.chat.ChatInterceptorProvider;
+import com.agentsflex.core.model.chat.ChatInterceptorRegistration;
 import com.agentsflex.core.model.chat.tool.Tool;
 
 import java.util.ArrayList;
@@ -27,7 +30,17 @@ import java.util.List;
  * A conditional collection of tools and system instructions.
  * Only matched groups are serialized into an individual chat request.
  */
-public class ToolGroup {
+public class ToolGroup implements ChatInterceptorProvider {
+
+    /**
+     * 所有 ToolGroup 共用同一解析拦截器。BaseChatModel 会按拦截器实例去重，
+     * 因而一个 Prompt 中存在多个 ToolGroup 时仍只解析一次。
+     */
+    private static final List<ChatInterceptorRegistration> INTERCEPTOR_REGISTRATIONS =
+        Collections.singletonList(ChatInterceptorRegistration.builder(
+                "tool-group-resolver", new ToolGroupChatInterceptor())
+            .order(ChatInterceptorOrders.REQUEST_PREPARATION)
+            .build());
 
     private final String name;
     private final String description;
@@ -69,6 +82,14 @@ public class ToolGroup {
 
     public boolean matches(ChatContext context) {
         return matcher.matches(context);
+    }
+
+    /**
+     * ToolGroup 仅在被添加到当前 Prompt 时提供解析拦截器，不会注册为 ChatModel 的全局能力。
+     */
+    @Override
+    public List<ChatInterceptorRegistration> getChatInterceptorRegistrations() {
+        return INTERCEPTOR_REGISTRATIONS;
     }
 
     public static class Builder {

@@ -15,10 +15,6 @@
  */
 package com.agentsflex.core.model.chat;
 
-import com.agentsflex.core.model.chat.toolgroup.ToolGroupChatInterceptor;
-import com.agentsflex.core.prompt.Prompt;
-
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,24 +24,14 @@ import java.util.List;
 final class FrameworkChatInterceptors {
 
     private static final List<ChatInterceptorRegistration> REGISTRATIONS =
-        Collections.unmodifiableList(Arrays.asList(
+        Collections.singletonList(
             // 可观测
             ChatInterceptorRegistration.builder("chat-observability", new ChatObservabilityInterceptor())
                 .order(ChatInterceptorOrders.OBSERVABILITY)
                 .matcher(context -> context != null
                     && context.getConfig() != null
                     && context.getConfig().isObservabilityEnabled())
-                .build(),
-
-            // Tool Group
-            ChatInterceptorRegistration.builder("tool-group-resolver", new ToolGroupChatInterceptor())
-                .order(ChatInterceptorOrders.REQUEST_PREPARATION)
-                .matcher(context -> {
-                    Prompt prompt = context == null ? null : context.getPrompt();
-                    return prompt != null && !prompt.getToolGroups().isEmpty();
-                })
-                .build()
-        ));
+                .build());
 
     private FrameworkChatInterceptors() {
     }

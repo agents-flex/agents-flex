@@ -12,8 +12,8 @@ import java.util.List;
  * 为当前 ChatModel 请求提供拦截器的可选能力。
  *
  * <p>接口本身不限定实现类型。当前 BaseChatModel 会从 Prompt 自身、Prompt 显式配置的
- * Provider 以及 Prompt 中的 Tool 发现本能力，并且只把 Registration 加入当前请求的责任链，
- * 不会修改自身的全局或实例级拦截器配置。ToolGroup 暂不参与自动发现。</p>
+ * Provider、Prompt 中的 Tool 以及 ToolGroup 发现本能力，并且只把 Registration 加入当前请求的
+ * 责任链，不会修改自身的全局或实例级拦截器配置。</p>
  */
 public interface ChatInterceptorProvider {
 

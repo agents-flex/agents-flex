@@ -21,6 +21,7 @@ import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
 import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.toolgroup.ToolGroup;
 import com.agentsflex.core.prompt.Prompt;
 
 import java.util.ArrayList;
@@ -193,7 +194,9 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
             for (ChatInterceptorProvider provider : prompt.getChatInterceptorProviders()) {
                 addProviderRegistrations(provider, chain, contributed);
             }
-            // ToolGroup 暂不作为 Provider 发现来源。
+            for (ToolGroup toolGroup : prompt.getToolGroups()) {
+                addProviderRegistrations(toolGroup, chain, contributed);
+            }
             List<Tool> tools = prompt.getTools();
             if (tools != null) {
                 for (Tool tool : tools) {

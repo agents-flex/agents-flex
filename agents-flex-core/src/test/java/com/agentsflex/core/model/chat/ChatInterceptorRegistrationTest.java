@@ -137,11 +137,9 @@ public class ChatInterceptorRegistrationTest {
     public void shouldDefineOrderedFrameworkRegistrationsWithoutExposingThemAsApplicationRegistrations() {
         List<ChatInterceptorRegistration> framework = FrameworkChatInterceptors.getRegistrations();
 
-        assertEquals(2, framework.size());
+        assertEquals(1, framework.size());
         assertEquals("chat-observability", framework.get(0).getName());
         assertEquals(ChatInterceptorOrders.OBSERVABILITY, framework.get(0).getOrder());
-        assertEquals("tool-group-resolver", framework.get(1).getName());
-        assertEquals(ChatInterceptorOrders.REQUEST_PREPARATION, framework.get(1).getOrder());
 
         BaseChatModel<BaseChatConfig> model = model(Collections.emptyList());
         assertEquals(0, model.getInterceptorRegistrations().size());
