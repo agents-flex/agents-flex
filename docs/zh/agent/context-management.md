@@ -89,6 +89,27 @@ Agent agent = Agent.builder("support-agent")
 `UserMessage + AiMessage`。摘要模型不应注册业务工具；压缩失败时 Runner 会中止本次模型调用，
 业务侧可以记录错误并重试或暂时关闭语义压缩。
 
+需要保留每条消息的 User/AI 交替结构时，使用逐消息摘要策略：
+
+```java
+AgentContextCompressor compressor = AgentContextCompressors.perMessageModel(
+    summaryModel,
+    "请压缩每条消息，保留事实、数字、实体 ID、用户约束和决定；不要改变消息角色。"
+);
+```
+
+它对一批历史只调用一次模型，并要求模型返回：
+
+```json
+[
+  {"messageId":"u1","summary":"用户咨询订单状态"},
+  {"messageId":"a1","summary":"助手说明订单正在配送"}
+]
+```
+
+框架据此复制原消息的角色、`messageId` 和 metadata，只替换正文，因此得到 `UserMessage -> AiMessage`
+的原始交替结构。包含 ToolCall 的 AiMessage 和 ToolMessage 始终原样保留，不能逐条摘要。
+
 如果不希望每次都重新摘要全部旧消息，可以使用增量策略：
 
 ```java
@@ -101,7 +122,7 @@ String coveredUntil = compressor.getCoveredUntilMessageId();
 compressor.restore(summary, coveredUntil);
 ```
 
-增量策略按照稳定的 `messageId` 找到上次已覆盖的位置，只把新增的旧消息和既有摘要再次提交给摘要模型；
+增量策略是“整体摘要更新”，而不是逐消息摘要。它按照稳定的 `messageId` 找到上次已覆盖的位置，只把新增的旧消息和既有摘要再次提交给摘要模型；
 相同历史重复调用不会重复请求模型。摘要状态应与 `conversationId` 绑定并由业务侧持久化，Runner 不会替业务系统保存它。
 
 窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。

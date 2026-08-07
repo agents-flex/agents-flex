@@ -7,6 +7,9 @@ import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.prompt.SimplePrompt;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,6 +98,80 @@ public final class AgentContextCompressors {
     }
 
     /**
+     * 按消息逐条生成摘要，但整个批次只调用一次摘要模型。
+     * 模型必须返回 JSON 数组：{@code [{"messageId":"...","summary":"..."}]}。
+     * 原消息的角色、messageId 和元数据会保留，只有文本正文被摘要替换。
+     * 含 ToolCall 的 AiMessage 或 ToolMessage 会原样保留，避免破坏工具协议。
+     */
+    public static AgentContextCompressor perMessageModel(ChatModel model, String instruction) {
+        if (model == null) throw new IllegalArgumentException("model must not be null");
+        if (instruction == null || instruction.trim().isEmpty()) {
+            throw new IllegalArgumentException("instruction must not be blank");
+        }
+        return messages -> {
+            StringBuilder input = new StringBuilder(instruction)
+                .append("\n请逐条摘要以下消息，并仅返回 JSON 数组，每项包含 messageId 和 summary：\n");
+            for (Message message : messages) {
+                if (message instanceof AiMessage && ((AiMessage) message).hasToolCalls()) continue;
+                if (message instanceof com.agentsflex.core.message.ToolMessage) continue;
+                input.append("messageId=").append(message.getMessageId())
+                    .append(", role=").append(message.getClass().getSimpleName())
+                    .append(", content=").append(message.getTextContent()).append('\n');
+            }
+            AiMessageResponse response = model.chat(new SimplePrompt(input.toString()), new ChatOptions());
+            if (response == null || response.isError() || response.getMessage() == null) {
+                if (response != null && response.isError()) response.throwIfError();
+                throw new IllegalStateException("per-message summary model returned no message");
+            }
+            String content = response.getMessage().getContent();
+            if (content == null || content.trim().isEmpty()) {
+                throw new IllegalStateException("per-message summary model returned empty content");
+            }
+            content = content.trim();
+            if (content.startsWith("```")) {
+                int firstLine = content.indexOf('\n');
+                int lastFence = content.lastIndexOf("```");
+                if (firstLine > 0 && lastFence > firstLine) {
+                    content = content.substring(firstLine + 1, lastFence).trim();
+                }
+            }
+            JSONArray summaries;
+            try {
+                summaries = JSON.parseArray(content);
+            } catch (RuntimeException e) {
+                throw new IllegalStateException("per-message summary model must return a JSON array", e);
+            }
+            java.util.Map<String, String> byId = new java.util.HashMap<>();
+            for (Object value : summaries) {
+                JSONObject item = (JSONObject) value;
+                String id = item.getString("messageId");
+                String summary = item.getString("summary");
+                if (id != null && summary != null) byId.put(id, summary);
+            }
+            List<Message> result = new ArrayList<>();
+            for (Message original : messages) {
+                String summary = byId.get(original.getMessageId());
+                if (summary == null || (original instanceof AiMessage && ((AiMessage) original).hasToolCalls())
+                    || original instanceof com.agentsflex.core.message.ToolMessage) {
+                    result.add(AgentMessageUtils.copyMessage(original));
+                } else if (original instanceof UserMessage) {
+                    UserMessage copy = ((UserMessage) original).copy();
+                    copy.setContent(summary);
+                    result.add(copy);
+                } else if (original instanceof AiMessage) {
+                    AiMessage copy = ((AiMessage) original).copy();
+                    copy.setContent(summary);
+                    copy.setToolCalls(null);
+                    result.add(copy);
+                } else {
+                    result.add(AgentMessageUtils.copyMessage(original));
+                }
+            }
+            return result;
+        };
+    }
+
+    /**
      * 创建一个增量语义压缩器。状态对象应由业务侧随 conversation 一起持久化，不能只保存在
      * Runner 的内存中；这样服务重启后仍能从上次覆盖的位置继续摘要。
      */
@@ -102,13 +179,18 @@ public final class AgentContextCompressors {
         return new Incremental(model(model, instruction));
     }
 
-    /** 使用自定义摘要器创建增量状态，便于接入业务摘要服务或测试替身。 */
+    /**
+     * 使用自定义摘要器创建增量状态，便于接入业务摘要服务或测试替身。
+     */
     public static Incremental incremental(AgentContextCompressor compressor) {
         if (compressor == null) throw new IllegalArgumentException("compressor must not be null");
         return new Incremental(compressor);
     }
 
-    /** 增量摘要器及其可由业务侧持久化的状态。 */
+    /**
+     * 整体摘要的增量更新器：适合历史很长、允许用一条“事实摘要”代表较早对话的场景。
+     * 它不是逐消息摘要策略；业务侧应持久化 summary 和 coveredUntilMessageId，避免服务重启后重复处理。
+     */
     public static final class Incremental implements AgentContextCompressor {
         private final AgentContextCompressor delegate;
         private List<Message> summary = new ArrayList<>();
