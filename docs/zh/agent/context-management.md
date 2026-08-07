@@ -7,13 +7,13 @@ description: 管理业务 ChatMemory、消息窗口、摘要、多模态内容�
 
 ## 概述
 
-Agent 的上下文同时面对两个目标：保留足够历史以正确决策，又避免消息和工具结果无限增长。Framework 使用 `maxAttachedMessages` 限制单次模型请求读取的历史，但不会清空或重写 `ChatMemory`。需要摘要或永久整理历史时，由业务系统在调用 Runner 前完成。工具返回内容由 Tool 自身控制，Runner 会把实际结果原样写入运行历史。
+Agent 的上下文同时面对两个目标：保留足够历史以正确决策，又避免消息和工具结果无限增长。Framework 在模型调用前构建独立的上下文窗口：按完整 Turn 选择历史，使用 `maxAttachedTurns` 控制语义范围，使用 `maxAttachedMessages` 作为消息数量上限，并可将较早的已完成工具 Turn 归一化为 UserMessage + 最终 AiMessage。该过程不会清空或重写 `ChatMemory`。
 
 ## 消息的三个层次
 
 - 业务 `ChatMemory`：由应用维护，跨多轮 Turn 保存历史。
 - `AgentTurn` 的 `MemoryPrompt`：本次任务的协议消息和系统指令。
-- 模型调用 Prompt：依据 `maxAttachedMessages` 从 Turn Prompt 生成的当前视图。
+- 模型调用 Prompt：依据 `maxAttachedTurns`、`maxAttachedMessages` 和工具 Turn 压缩规则生成的当前视图。
 
 `ChatMemory.getMessages(count)` 返回页面使用的完整时间线；`getModelMessages(count)` 先排除
 `modelVisible=false` 的 UI 消息，再对模型消息应用数量限制。窗口策略只影响一次模型调用视图，不会
@@ -51,15 +51,41 @@ AgentTurn turn = runner.run(agentId, conversationId, new UserMessage("继续处�
 ```java
 Agent agent = Agent.builder("support-agent")
     .chatModel(chatModel)
+    .maxAttachedTurns(5)
     .maxAttachedMessages(40)
+    .compactCompletedToolTurns(true)
     .build();
 ```
 
-默认最多附加最近 100 条历史消息。该参数只影响单次模型请求视图，不释放 Snapshot 存储空间。窗口按
-协议消息计数，不按自然语言轮次计数，包含 ToolCall 时应预留足够空间。生产环境应设置明确上限，不要
-使用 `Integer.MAX_VALUE` 请求完整历史。
+默认最多附加最近 10 个完整 Turn 和 100 条消息。`maxAttachedTurns` 是主要的语义窗口，
+`maxAttachedMessages` 是安全上限；框架不会从 ToolCall/ToolMessage 中间硬截断。单个当前 Turn
+即使超过消息上限，也会保留完整协议，避免模型收到孤立的 ToolMessage 或未闭合 ToolCall。
 
-## 业务侧摘要
+窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。
+`AgentActionMessage`、`AgentFormMessage` 等 `modelVisible=false` 消息不会发送给模型。
+
+### 已完成工具 Turn 的归一化
+
+开启 `compactCompletedToolTurns` 后，较早且已经完成的 Turn：
+
+```text
+UserMessage
+AiMessage(tool_calls)
+ToolMessage
+AiMessage(最终回复)
+```
+
+在模型上下文中会变成：
+
+```text
+UserMessage
+AiMessage(最终回复)
+```
+
+这只改变模型 Prompt，不删除 `ChatMemory`、Snapshot 或工具审计记录。当前 Turn、挂起 Turn、失败 Turn、
+取消 Turn 和没有最终正文的工具 Turn 会保留完整协议。
+
+## 业务侧语义摘要
 
 ```java
 List<Message> history = loadModelMessagesByWindow(persistedMemory);
@@ -76,7 +102,7 @@ if (history.size() > 40) {
 AgentTurn turn = runner.run(agent, inputHistory, new UserMessage("继续处理"));
 ```
 
-需要扫描很长的业务历史做摘要时，`loadModelMessagesByWindow` 应循环调用
+当前框架内置的是 Turn 边界和工具协议归一化，不会自动调用摘要模型。需要扫描很长的业务历史做语义摘要时，`loadModelMessagesByWindow` 应循环调用
 `getMessages(offset, pageSize)`，边读取边摘要或写入临时存储，不要用 `Integer.MAX_VALUE` 构造全量 List。
 
 摘要逻辑只读取业务历史并构造传给 Runner 的新列表，不应对数据库型 `ChatMemory` 调用 `clear()`。Runner 会复制传入的消息，因此也不会直接修改 `persistedMemory`。业务实现还应避免从一组 ToolCall/ToolMessage 中间截断，并在摘要失败时继续保留原历史。

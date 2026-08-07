@@ -1036,7 +1036,15 @@ public final class AgentRunner {
      * 调用模型适配器，并由适配器发布细粒度流式事件。
      */
     private AiMessageResponse invokeModel(AgentTurn turn, Prompt prompt) {
-        return modelInvoker.invoke(turn, prompt);
+        Prompt modelPrompt = prompt;
+        if (prompt instanceof com.agentsflex.core.prompt.MemoryPrompt) {
+            modelPrompt = AgentContextWindow.build(
+                (com.agentsflex.core.prompt.MemoryPrompt) prompt,
+                turn.getAgent().getMaxAttachedTurns(),
+                turn.getAgent().getMaxAttachedMessages(),
+                turn.getAgent().isCompactCompletedToolTurns());
+        }
+        return modelInvoker.invoke(turn, modelPrompt);
     }
 
     /**

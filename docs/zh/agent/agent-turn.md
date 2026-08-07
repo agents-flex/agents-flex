@@ -29,7 +29,8 @@ AgentRunner runner = AgentRunner.builder()
 AgentTurn turn = runner.run(agentId, "conversation-1001", new UserMessage("继续"));
 ```
 
-绑定的 conversationId 会作为 Turn metadata 随 Snapshot 恢复。Runner 按 `maxAttachedMessages` 分页读取
+绑定的 conversationId 会作为 Turn metadata 随 Snapshot 恢复。Runner 按 `maxAttachedTurns` 和
+`maxAttachedMessages` 构建完整消息边界的模型窗口，分页读取
 最近的模型可见历史并投影根 Turn 新增的消息，不会把完整业务会话复制进 Turn，也不会替业务系统创建会话、
 选择当前 Turn 或清理历史。传入历史里的 `SystemMessage` 会被忽略，系统指令始终以当前 Agent 定义为准。
 

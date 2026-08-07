@@ -146,7 +146,8 @@ AgentTurn second = runner.run(agent.getId(), "session-1001", "我叫什么？");
 ```
 
 配置 `AgentLoader` 后，Runner 会按 Agent ID 加载当前生效版本；配置 `ChatMemoryProvider` 后，Runner 使用
-`getModelMessages(maxAttachedMessages)` 分页读取最近历史，并在 Snapshot 保存后幂等回写本轮消息。
+Runner 会按 `maxAttachedTurns` 和 `maxAttachedMessages` 构建模型上下文窗口，使用分页读取最近历史；
+已完成工具 Turn 可归一化为用户消息和最终 AI 回复，但 Snapshot 保存后仍会幂等回写本轮完整消息。
 页面读取 `getMessages(count)` 可以同时看到对话消息和审批操作消息。不配置 Provider 时仍可传入完整 Agent
 和显式历史，并自行回写 `getConversationHistory()`。
 

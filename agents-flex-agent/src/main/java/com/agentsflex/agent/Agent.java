@@ -95,6 +95,14 @@ public final class Agent {
      */
     private final int maxAttachedMessages;
     /**
+     * 每次模型调用最多保留的完整 Turn 数量。
+     */
+    private final int maxAttachedTurns;
+    /**
+     * 是否将较早已完成工具 Turn 压缩为 UserMessage + 最终 AiMessage。
+     */
+    private final boolean compactCompletedToolTurns;
+    /**
      * 包装步骤、模型调用和工具调用的中间件。
      */
     private final List<AgentMiddleware> middlewares;
@@ -126,6 +134,8 @@ public final class Agent {
         this.toolApprovalPolicy = builder.toolApprovalPolicy;
         this.planningPolicy = builder.planningPolicy;
         this.maxAttachedMessages = builder.maxAttachedMessages;
+        this.maxAttachedTurns = builder.maxAttachedTurns;
+        this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
         List<AgentToolResolver> resolvers = new ArrayList<>();
         for (AgentMiddleware middleware : this.middlewares) {
@@ -278,6 +288,14 @@ public final class Agent {
         return maxAttachedMessages;
     }
 
+    public int getMaxAttachedTurns() {
+        return maxAttachedTurns;
+    }
+
+    public boolean isCompactCompletedToolTurns() {
+        return compactCompletedToolTurns;
+    }
+
     /**
      * @return 按注册顺序执行的只读 Middleware 列表
      */
@@ -313,6 +331,8 @@ public final class Agent {
         private ToolApprovalPolicy toolApprovalPolicy = ToolApprovalPolicy.allowAll();
         private AgentPlanningPolicy planningPolicy = AgentPlanningPolicy.disabled();
         private int maxAttachedMessages = 100;
+        private int maxAttachedTurns = 10;
+        private boolean compactCompletedToolTurns = true;
         private final List<AgentMiddleware> middlewares = new ArrayList<>();
         private final Map<String, Object> attributes = new HashMap<>();
 
@@ -440,6 +460,25 @@ public final class Agent {
                 throw new IllegalArgumentException("maxAttachedMessages must be greater than 0");
             }
             this.maxAttachedMessages = maxAttachedMessages;
+            return this;
+        }
+
+        /**
+         * 设置模型上下文最多附加的完整 Turn 数量。
+         */
+        public Builder maxAttachedTurns(int maxAttachedTurns) {
+            if (maxAttachedTurns <= 0) {
+                throw new IllegalArgumentException("maxAttachedTurns must be greater than 0");
+            }
+            this.maxAttachedTurns = maxAttachedTurns;
+            return this;
+        }
+
+        /**
+         * 设置是否压缩较早的已完成工具 Turn；完整历史仍保留在 ChatMemory 和 Snapshot 中。
+         */
+        public Builder compactCompletedToolTurns(boolean value) {
+            this.compactCompletedToolTurns = value;
             return this;
         }
 

@@ -79,7 +79,9 @@ Agent 会按工具名称建立索引。模型返回的 ToolCall 必须能解析�
 | `executionPolicy(...)` | 最大迭代、最大 Step、预算、重试和工具错误处理 |
 | `toolApprovalPolicy(...)` | 对退款、发布、删除等有副作用 Tool 要求人工批准 |
 | `planningPolicy(...)` | 开启模型自主任务规划、父子 Turn 和重规划限制 |
-| `maxAttachedMessages(...)` | 限制发送给模型的历史消息窗口，不删除完整历史 |
+| `maxAttachedTurns(...)` | 按完整 Turn 限制发送给模型的历史窗口，不拆分 Tool 协议 |
+| `maxAttachedMessages(...)` | 上下文消息数量安全上限，不删除完整历史 |
+| `compactCompletedToolTurns(...)` | 将较早已完成工具 Turn 归一化为用户问题和最终 AI 回复 |
 
 `AgentExecutionPolicy` 的典型配置：
 
@@ -191,7 +193,7 @@ AgentTurn turn = runner.run(
 | 自动重试 | `AgentRetryPolicy`、`RETRY_SCHEDULED` |
 | 运行预算 | `AgentBudget`、`maxIterations`、`maxSteps` |
 | 任务规划 | `AgentPlanningPolicy`、父子 Turn、`AgentTaskPlan` |
-| 上下文窗口 | `maxAttachedMessages`、业务侧 ChatMemory 和摘要 |
+| 上下文窗口 | `maxAttachedTurns`、`maxAttachedMessages`、工具 Turn 归一化、业务侧 ChatMemory 和摘要 |
 | 动态工具 | `AgentMiddleware`、`AgentToolResolver` |
 | 取消与新问题 | `cancel(...)`、历史收束消息、业务侧并发策略 |
 | 进程重启恢复 | `AgentTurnSnapshot`、`AgentTurnStore`、`AgentLoader` |

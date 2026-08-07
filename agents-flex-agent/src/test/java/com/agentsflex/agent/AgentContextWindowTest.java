@@ -1,0 +1,166 @@
+package com.agentsflex.agent;
+
+import com.agentsflex.agent.message.AgentActionMessage;
+import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.message.ToolMessage;
+import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.prompt.MemoryPrompt;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class AgentContextWindowTest {
+
+    @Test
+    public void firstModelMessageIsUserAndOldToolTurnIsCompacted() {
+        MemoryPrompt source = prompt(
+            new UserMessage("old question"),
+            aiTool("call-1"),
+            tool("call-1", "old result"),
+            new AiMessage("old final answer"),
+            AgentActionMessage.toolApproval("turn", "action", "approval"),
+            new UserMessage("current question"),
+            new AiMessage("current answer"));
+
+        MemoryPrompt result = AgentContextWindow.build(source, 2, 10, true);
+        List<Message> messages = result.getMemory().getMessages(Integer.MAX_VALUE);
+
+        Assert.assertEquals(4, messages.size());
+        Assert.assertTrue(messages.get(0) instanceof UserMessage);
+        Assert.assertEquals("old question", messages.get(0).getTextContent());
+        Assert.assertEquals("old final answer", messages.get(1).getTextContent());
+        Assert.assertTrue(messages.get(2) instanceof UserMessage);
+        Assert.assertEquals("current question", messages.get(2).getTextContent());
+        Assert.assertEquals("current answer", messages.get(3).getTextContent());
+    }
+
+    @Test
+    public void currentTurnKeepsCompleteToolProtocolEvenWhenOverMessageLimit() {
+        MemoryPrompt source = prompt(
+            new UserMessage("current"),
+            aiTool("call-1"),
+            tool("call-1", "result"),
+            aiTool("call-2"),
+            tool("call-2", "result-2"),
+            new AiMessage("done"));
+
+        MemoryPrompt result = AgentContextWindow.build(source, 1, 2, true);
+        List<Message> messages = result.getMemory().getMessages(Integer.MAX_VALUE);
+
+        Assert.assertEquals(6, messages.size());
+        Assert.assertTrue(messages.get(0) instanceof UserMessage);
+        Assert.assertTrue(messages.get(1) instanceof AiMessage);
+        Assert.assertTrue(messages.get(2) instanceof ToolMessage);
+        Assert.assertTrue(messages.get(3) instanceof AiMessage);
+        Assert.assertTrue(messages.get(4) instanceof ToolMessage);
+        Assert.assertTrue(messages.get(5) instanceof AiMessage);
+    }
+
+    @Test
+    public void maxAttachedTurnsDropsOlderCompleteTurnsWithoutSplittingRecentTurn() {
+        MemoryPrompt source = prompt(
+            new UserMessage("one"), new AiMessage("answer one"),
+            new UserMessage("two"), new AiMessage("answer two"),
+            new UserMessage("three"), new AiMessage("answer three"));
+
+        MemoryPrompt result = AgentContextWindow.build(source, 2, 100, true);
+        List<Message> messages = result.getMemory().getMessages(Integer.MAX_VALUE);
+
+        Assert.assertEquals(4, messages.size());
+        Assert.assertEquals("two", messages.get(0).getTextContent());
+        Assert.assertEquals("answer two", messages.get(1).getTextContent());
+        Assert.assertEquals("three", messages.get(2).getTextContent());
+        Assert.assertEquals("answer three", messages.get(3).getTextContent());
+    }
+
+    @Test
+    public void uiOnlyMessagesDoNotEnterModelWindow() {
+        MemoryPrompt source = prompt(
+            new UserMessage("question"),
+            AgentActionMessage.toolApproval("turn", "action", "approve"),
+            new AiMessage("answer"));
+
+        MemoryPrompt result = AgentContextWindow.build(source, 1, 10, true);
+
+        for (Message message : result.getMemory().getMessages(Integer.MAX_VALUE)) {
+            Assert.assertFalse(message instanceof AgentActionMessage);
+            Assert.assertTrue(message.isModelVisible());
+        }
+    }
+
+    @Test
+    public void systemMessageMayPrecedeUserButNoOtherMessageMayStartWindow() {
+        MemoryPrompt source = prompt(new UserMessage("question"), new AiMessage("answer"));
+        source.setSystemMessage("system instruction");
+
+        MemoryPrompt result = AgentContextWindow.build(source, 1, 10, true);
+        List<Message> messages = result.getMessages();
+
+        Assert.assertEquals(3, messages.size());
+        Assert.assertTrue(messages.get(0) instanceof com.agentsflex.core.message.SystemMessage);
+        Assert.assertTrue(messages.get(1) instanceof UserMessage);
+        Assert.assertTrue(messages.get(2) instanceof AiMessage);
+    }
+
+    @Test
+    public void incompleteOldToolTurnIsNotIncorrectlyReduced() {
+        MemoryPrompt source = prompt(
+            new UserMessage("old"),
+            aiTool("call-1"),
+            tool("call-1", "partial"),
+            new UserMessage("current"),
+            new AiMessage("answer"));
+
+        MemoryPrompt result = AgentContextWindow.build(source, 2, 100, true);
+        List<Message> messages = result.getMemory().getMessages(Integer.MAX_VALUE);
+
+        Assert.assertEquals(5, messages.size());
+        Assert.assertTrue(messages.get(0) instanceof UserMessage);
+        Assert.assertTrue(messages.get(1) instanceof AiMessage);
+        Assert.assertTrue(((AiMessage) messages.get(1)).hasToolCalls());
+        Assert.assertTrue(messages.get(2) instanceof ToolMessage);
+    }
+
+    @Test
+    public void orphanAssistantOrToolMessagesBeforeFirstUserAreDropped() {
+        MemoryPrompt source = prompt(
+            new AiMessage("orphan assistant"),
+            tool("orphan-call", "orphan tool"),
+            new UserMessage("real question"),
+            new AiMessage("real answer"));
+
+        MemoryPrompt result = AgentContextWindow.build(source, 1, 10, true);
+        List<Message> messages = result.getMemory().getMessages(Integer.MAX_VALUE);
+
+        Assert.assertEquals(2, messages.size());
+        Assert.assertTrue(messages.get(0) instanceof UserMessage);
+        Assert.assertEquals("real question", messages.get(0).getTextContent());
+    }
+
+    private static MemoryPrompt prompt(Message... messages) {
+        MemoryPrompt prompt = new MemoryPrompt();
+        prompt.addMessages(Arrays.asList(messages));
+        return prompt;
+    }
+
+    private static AiMessage aiTool(String id) {
+        AiMessage message = new AiMessage();
+        ToolCall call = new ToolCall();
+        call.setId(id);
+        call.setName("lookup");
+        call.setArguments("{}");
+        message.setToolCalls(Arrays.asList(call));
+        return message;
+    }
+
+    private static ToolMessage tool(String id, String content) {
+        ToolMessage message = new ToolMessage();
+        message.setToolCallId(id);
+        message.setContent(content);
+        return message;
+    }
+}

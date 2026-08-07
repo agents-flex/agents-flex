@@ -38,7 +38,9 @@ Agent agent = Agent.builder("order-assistant")
 | `tools`、`toolInterceptors` | 工具协议及执行链 | 否，恢复时重装配 |
 | `executionPolicy` | 迭代、重试、预算 | 有效策略会保存 |
 | `planningPolicy` | 自动规划及委派约束 | 计划状态保存，定义重装配 |
-| `maxAttachedMessages` | 单次模型调用最多附加的历史消息数 | 否，恢复时随 Agent 定义重装配 |
+| `maxAttachedTurns` | 单次模型调用最多附加的完整 Turn 数 | 否，恢复时随 Agent 定义重装配 |
+| `maxAttachedMessages` | 上下文窗口的消息数量安全上限 | 否，恢复时随 Agent 定义重装配 |
+| `compactCompletedToolTurns` | 是否将较早已完成工具 Turn 归一化为 User + 最终 AI | 否，恢复时随 Agent 定义重装配 |
 | `middlewares` | 包装 step、模型和工具 | 否 |
 | `attributes` | 平台扩展元数据 | 否 |
 
@@ -77,7 +79,9 @@ Agent agent = Agent.builder("order-assistant")
 - `AgentExecutionPolicy`：最大模型迭代、Runner 总 step、工具错误策略、重试和预算。
 - `ToolApprovalPolicy`：允许、拒绝或要求审批。
 - `AgentPlanningPolicy`：是否规划、允许委派给谁、最大任务数和重规划次数。
-- `maxAttachedMessages`：每次模型调用最多读取多少条历史消息，默认 100。
+- `maxAttachedTurns`：每次模型调用最多保留多少个完整 Turn，默认 10。
+- `maxAttachedMessages`：上下文消息数量安全上限，默认 100；不会从 ToolCall/ToolMessage 中间截断。
+- `compactCompletedToolTurns`：是否压缩较早已完成工具 Turn，默认开启；不修改完整历史。
 
 单次 Turn 可通过 `AgentTurnOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。工具返回规模由 Tool 契约控制，Runner 不会根据内容大小改写结果。
 
