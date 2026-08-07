@@ -157,7 +157,23 @@ EmbeddingModel embeddingModel = new RoutedEmbeddingModel(
 );
 ```
 
-但同一向量索引中的模型必须输出相同维度、相同或可接受的语义空间。不要把不同 Embedding 模型的向量混写入同一索引，否则检索质量会不可预测。
+也可以显式指定负载均衡、重试和熔断策略：
+
+```java
+EmbeddingModel embeddingModel = new RoutedEmbeddingModel(
+    Arrays.asList(
+        new ModelEndpoint<>(embeddingA),
+        new ModelEndpoint<>(embeddingB)
+    ),
+    new LeastActiveLoadBalancer<>(),
+    new DefaultRetryPolicy(2),
+    new DefaultCircuitBreaker<>(3, 10_000)
+);
+```
+
+Embedding Router 只选择节点，不会校验或转换向量空间。因此同一向量索引中的模型必须输出相同维度，
+并使用相同或兼容的距离度量、归一化方式和语义空间。不要把不同 Embedding 模型的向量混写入同一索引，
+否则检索质量会不可预测。切换供应商或模型版本时，应先重建索引或在业务侧按模型版本隔离索引。
 
 ## 生产检查清单
 
