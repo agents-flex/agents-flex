@@ -131,10 +131,9 @@ public class DefaultAiMessageParserTest {
     }
 
     private static ChatContext context(boolean streaming) {
-        ChatOptions options = new ChatOptions();
-        options.setStreaming(streaming);
         ChatContext context = new ChatContext();
-        context.setOptions(options);
+        context.setOptions(new ChatOptions());
+        context.setStreaming(streaming);
         return context;
     }
 }

@@ -29,5 +29,17 @@ public interface ChatRequestSpecBuilder {
     /**
      * Builds the request body from the final context after all interceptors have proceeded.
      */
-    String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config);
+    default String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
+        throw new UnsupportedOperationException(
+            "ChatRequestSpecBuilder must implement buildRequestBody with streaming state");
+    }
+
+    /**
+     * 构建请求体时由 ChatModel 明确传入调用方式，避免把框架运行状态写入 ChatOptions。
+     * 旧实现可继续覆盖三参数方法；新实现应覆盖此方法以正确处理流式协议。
+     */
+    default String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config,
+                                    boolean streaming) {
+        return buildRequestBody(prompt, options, config);
+    }
 }

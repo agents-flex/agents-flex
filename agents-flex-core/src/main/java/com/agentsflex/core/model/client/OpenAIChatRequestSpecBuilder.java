@@ -66,10 +66,16 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
     @Override
     public String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
+        return buildRequestBody(prompt, options, config, false);
+    }
+
+    @Override
+    public String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config,
+                                   boolean streaming) {
         List<Message> messages = prompt.getMessages();
         UserMessage userMessage = MessageUtil.findLastUserMessage(messages);
 
-        Maps baseBodyJsonMap = buildBaseParamsOfRequestBody(prompt, options, config);
+        Maps baseBodyJsonMap = buildBaseParamsOfRequestBody(prompt, options, config, streaming);
 
         Maps bodyJsonMap = baseBodyJsonMap
             .set("messages", chatMessageSerializer.serializeMessages(messages, config))
@@ -78,7 +84,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
                 && maps.containsKey("tools"), "tool_choice", prompt.getToolChoice());
 
 
-        if (options.isStreaming() && options.getIncludeUsageOrDefault(true)) {
+        if (streaming && options.getIncludeUsageOrDefault(true)) {
             bodyJsonMap.set("stream_options", Maps.of("include_usage", true));
         }
 
@@ -124,9 +130,10 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
     }
 
 
-    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
+    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options,
+                                                BaseChatConfig config, boolean streaming) {
         return Maps.of("model", options.getModelOrDefault(config.getModel()))
-            .setIf(options.isStreaming(), "stream", true)
+            .setIf(streaming, "stream", true)
             .setIfNotNull("top_p", options.getTopP())
 //            .setIfNotNull("top_k", options.getTopK()) // openAI 不支持 top_k 标识
             .setIfNotNull("temperature", options.getTemperature())

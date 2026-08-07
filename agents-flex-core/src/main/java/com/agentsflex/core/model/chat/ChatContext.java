@@ -32,6 +32,7 @@ public class ChatContext {
     BaseChatConfig config;
     ChatOptions options;
     ChatRequestSpec requestSpec;
+    boolean streaming;
 
     public Prompt getPrompt() {
         return prompt;
@@ -81,6 +82,22 @@ public class ChatContext {
 
     public void setRequestSpec(ChatRequestSpec requestSpec) {
         this.requestSpec = requestSpec;
+    }
+
+    /**
+     * 当前调用是否采用流式协议。
+     * 此状态由 {@link BaseChatModel#chatStream} 决定，不能由用户配置覆盖。
+     */
+    public boolean isStreaming() {
+        return streaming;
+    }
+
+    /**
+     * 设置当前调用的流式状态。通常由 {@link BaseChatModel} 设置；手动构造上下文并调用消息解析器时，
+     * 调用方也应按实际响应协议设置该值。
+     */
+    public void setStreaming(boolean streaming) {
+        this.streaming = streaming;
     }
 
     public Object getBotId() {
@@ -156,6 +173,7 @@ public class ChatContext {
             ", config=" + config +
             ", options=" + options +
             ", requestSpec=" + requestSpec +
+            ", streaming=" + streaming +
             ", botId=" + getBotId() +
             ", conversationId=" + getConversationId() +
             ", accountId=" + getAccountId() +

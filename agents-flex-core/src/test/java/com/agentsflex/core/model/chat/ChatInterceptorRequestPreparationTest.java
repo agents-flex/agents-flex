@@ -54,7 +54,7 @@ public class ChatInterceptorRequestPreparationTest {
         assertEquals("rewritten prompt", builtPrompt.get().getMessages().get(0).getTextContent());
         assertEquals("interceptor-model", builtOptions.get().getModel());
         assertEquals(Float.valueOf(0.2f), builtOptions.get().getTemperature());
-        assertFalse(builtOptions.get().isStreaming());
+        assertFalse(clientContext.get().isStreaming());
         assertSame(replacementConfig, builtConfig.get());
         assertEquals("bot-2", clientContext.get().getBotId());
         assertEquals("tenant-3", clientContext.get().getAttribute("tenant"));
@@ -71,7 +71,7 @@ public class ChatInterceptorRequestPreparationTest {
             @Override
             public void interceptStream(BaseChatModel<?> chatModel, ChatContext context,
                                         StreamResponseListener listener, StreamChain chain) {
-                assertTrue(context.getOptions().isStreaming());
+                assertTrue(context.isStreaming());
                 context.setOptions(ChatOptions.builder().model("stream-model").build());
                 chain.proceed(chatModel, context, listener);
             }
@@ -81,9 +81,9 @@ public class ChatInterceptorRequestPreparationTest {
         model.chatStream(new SimplePrompt("stream prompt"), (context, response) -> {
         }, new ChatOptions());
 
-        assertTrue(builtOptions.get().isStreaming());
+        assertTrue(clientContext.get().isStreaming());
         assertEquals("stream-model", builtOptions.get().getModel());
-        assertTrue(clientContext.get().getOptions().isStreaming());
+        assertTrue(clientContext.get().isStreaming());
         assertNotNull(clientContext.get().getRequestSpec());
     }
 
@@ -113,8 +113,7 @@ public class ChatInterceptorRequestPreparationTest {
         }, configured);
 
         assertNotSame(configured, builtOptions.get());
-        assertTrue(builtOptions.get().isStreaming());
-        assertFalse(configured.isStreaming());
+        assertTrue(clientContext.get().isStreaming());
         assertEquals("request-conversation", clientContext.get().getConversationId());
         assertEquals("configured-conversation", configured.getContextConversationId());
         assertEquals(Boolean.TRUE, clientContext.get().getAttribute("request-only"));

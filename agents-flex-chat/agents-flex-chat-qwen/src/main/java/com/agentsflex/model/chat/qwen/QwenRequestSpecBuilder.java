@@ -10,8 +10,9 @@ import com.agentsflex.core.util.Maps;
 public class QwenRequestSpecBuilder extends OpenAIChatRequestSpecBuilder {
 
     @Override
-    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
-        Maps params = super.buildBaseParamsOfRequestBody(prompt, options, config);
+    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options,
+                                                BaseChatConfig config, boolean streaming) {
+        Maps params = super.buildBaseParamsOfRequestBody(prompt, options, config, streaming);
         if (options instanceof QwenChatOptions) {
             QwenChatOptions op = (QwenChatOptions) options;
             params.setIf(CollectionUtil.hasItems(op.getModalities()), "modalities", op.getModalities());

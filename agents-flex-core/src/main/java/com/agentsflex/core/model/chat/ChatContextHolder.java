@@ -48,13 +48,15 @@ public final class ChatContextHolder {
         Prompt prompt,
         ChatOptions options,
         ChatRequestSpec request,
-        BaseChatConfig config) {
+        BaseChatConfig config,
+        boolean streaming) {
 
         ChatContext ctx = new ChatContext();
         ctx.prompt = prompt;
         ctx.options = options;
         ctx.requestSpec = request;
         ctx.config = config;
+        ctx.streaming = streaming;
 
         if (options != null && options.getContextAttributes() == null) {
             options.setContextAttributes(new java.util.concurrent.ConcurrentHashMap<String, Object>());
@@ -63,6 +65,14 @@ public final class ChatContextHolder {
         CONTEXT_HOLDER.set(ctx);
 
         return new ChatContextScope(ctx);
+    }
+
+    /**
+     * 兼容手动创建上下文的调用；这类调用默认视为非流式。
+     */
+    public static ChatContextScope beginChat(
+        Prompt prompt, ChatOptions options, ChatRequestSpec request, BaseChatConfig config) {
+        return beginChat(prompt, options, request, config, false);
     }
 
     /**

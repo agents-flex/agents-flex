@@ -124,14 +124,6 @@ public class ChatOptions extends Metadata implements Cloneable {
 
     private Map<String, Object> responseFormat;
 
-    /**
-     * 是否为流式请求。
-     * 这个不允许用户设置，由 Framework 自动设置（用户设置也可能被修改）。
-     * 用户调用 chat 或者 chatStream 方法时，会自动设置这个字段。
-     */
-    private boolean streaming;
-
-
     /** 宿主系统业务 Bot 的 ID，只用于调用链关联，不会传递给模型服务。 */
     private Object contextBotId;
     /** 当前会话 ID，只用于调用链关联，不会传递给模型服务。 */
@@ -149,8 +141,9 @@ public class ChatOptions extends Metadata implements Cloneable {
     /**
      * 创建当前配置的请求级副本。
      *
-     * <p>ChatModel 会在每次调用前复制 Options，随后只修改副本中的 streaming 和请求上下文，
-     * 因而同一个配置模板可以被同步、流式或多个 AgentTurn 并发复用。基础实现会保留运行时子类型及
+     * <p>ChatModel 会在每次调用前复制 Options，拦截器对模型参数、额外请求体和 metadata 的修改
+     * 仅作用于当前请求，因而同一个配置模板可以被多个调用并发复用。流式状态属于
+     * {@link ChatContext}，不保存在本配置中。基础实现会保留运行时子类型及
      * 其字段；子类包含需要深度隔离的可变对象时，可以覆盖本方法，并先调用
      * {@link #copyBasePropertiesTo(ChatOptions)}。</p>
      */
@@ -183,7 +176,6 @@ public class ChatOptions extends Metadata implements Cloneable {
         target.retryCount = retryCount;
         target.retryInitialDelayMs = retryInitialDelayMs;
         target.responseFormat = copyMap(responseFormat);
-        target.streaming = streaming;
         target.contextBotId = contextBotId;
         target.contextConversationId = contextConversationId;
         target.contextAccountId = contextAccountId;
@@ -389,14 +381,6 @@ public class ChatOptions extends Metadata implements Cloneable {
 
     public void setResponseFormat(Map<String, Object> responseFormat) {
         this.responseFormat = responseFormat;
-    }
-
-    public boolean isStreaming() {
-        return streaming;
-    }
-
-    public void setStreaming(boolean streaming) {
-        this.streaming = streaming;
     }
 
     public Object getContextBotId() {
@@ -647,7 +631,6 @@ public class ChatOptions extends Metadata implements Cloneable {
             ", retryCount=" + retryCount +
             ", retryInitialDelayMs=" + retryInitialDelayMs +
             ", responseFormat=" + responseFormat +
-            ", streaming=" + streaming +
             ", contextBotId=" + contextBotId +
             ", contextConversationId=" + contextConversationId +
             ", contextAccountId=" + contextAccountId +

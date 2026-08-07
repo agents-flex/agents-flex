@@ -123,17 +123,16 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      * 4. 返回 LLM 响应
      *
      * @param prompt  用户输入的提示
-     * @param options 聊天选项（如流式开关、超时等）
+     * @param options 聊天选项（如模型参数、重试配置等）
      * @return LLM 响应结果
      */
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         options = options == null ? new ChatOptions() : options.copy();
-        options.setStreaming(false);
         ChatRequestSpec request = getChatRequestSpecBuilder().buildRequestSpec(prompt, options, config);
         // 初始化聊天上下文（自动清理）
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(prompt, options, request, config)) {
+                 ChatContextHolder.beginChat(prompt, options, request, config, false)) {
             // 构建同步责任链并执行
             SyncChain chain = buildSyncChain(buildRequestInterceptorChain(prompt), 0);
             return chain.proceed(this, scope.context);
@@ -152,30 +151,27 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
         options = options == null ? new ChatOptions() : options.copy();
-        options.setStreaming(true);
         ChatRequestSpec request = getChatRequestSpecBuilder().buildRequestSpec(prompt, options, config);
         try (ChatContextHolder.ChatContextScope scope =
-                 ChatContextHolder.beginChat(prompt, options, request, config)) {
+                 ChatContextHolder.beginChat(prompt, options, request, config, true)) {
             StreamChain chain = buildStreamChain(buildRequestInterceptorChain(prompt), 0);
             chain.proceed(this, scope.context, listener);
         }
     }
 
-    private String buildRequestBody(ChatContext context, boolean streaming) {
+    private String buildRequestBody(ChatContext context) {
         ChatOptions requestOptions = context.getOptions();
         if (requestOptions == null) {
             requestOptions = new ChatOptions();
             context.setOptions(requestOptions);
         }
-        requestOptions.setStreaming(streaming);
-
         BaseChatConfig requestConfig = context.getConfig();
         if (requestConfig == null) {
             requestConfig = config;
             context.setConfig(requestConfig);
         }
         return getChatRequestSpecBuilder().buildRequestBody(
-            context.getPrompt(), requestOptions, requestConfig);
+            context.getPrompt(), requestOptions, requestConfig, context.isStreaming());
     }
 
 
@@ -248,7 +244,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         if (index >= registrations.size()) {
             return (model, context) -> {
                 AiMessageResponse aiMessageResponse = null;
-                String body = buildRequestBody(context, false);
+                String body = buildRequestBody(context);
                 try {
                     ChatMessageLogger.logRequest(model.getConfig(), body);
                     aiMessageResponse = getChatClient().chat(body);
@@ -284,7 +280,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     private StreamChain buildStreamChain(List<ChatInterceptorRegistration> registrations, int index) {
         if (index >= registrations.size()) {
             return (model, context, listener) -> {
-                String body = buildRequestBody(context, true);
+                String body = buildRequestBody(context);
                 getChatClient().chatStream(body, listener);
             };
         }

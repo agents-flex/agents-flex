@@ -7,9 +7,10 @@ import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.Maps;
 
 public class OllamaRequestSpecBuilder extends OpenAIChatRequestSpecBuilder {
-    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config) {
-        Maps params = super.buildBaseParamsOfRequestBody(prompt, options, config);
-        params.setIf(!options.isStreaming(), "stream", false);
+    protected Maps buildBaseParamsOfRequestBody(Prompt prompt, ChatOptions options,
+                                                BaseChatConfig config, boolean streaming) {
+        Maps params = super.buildBaseParamsOfRequestBody(prompt, options, config, streaming);
+        params.setIf(!streaming, "stream", false);
 
         // 支持思考
         if (config.isSupportThinking()) {

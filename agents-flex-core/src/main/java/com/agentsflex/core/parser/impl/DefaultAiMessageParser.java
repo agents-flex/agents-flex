@@ -168,7 +168,7 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
         AiMessage aiMessage = new AiMessage();
 
         JSONArray toolCallsJsonArray = null;
-        if (context.getOptions().isStreaming()) {
+        if (context.isStreaming()) {
             if (this.deltaContentPath != null) {
                 aiMessage.setContent((String) this.deltaContentPath.eval(rootJson));
             }
@@ -237,7 +237,7 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
         }
 
         if (parseOpenAIResponseMetadata) {
-            parseOpenAIResponseMetadata(rootJson, aiMessage, context.getOptions().isStreaming());
+            parseOpenAIResponseMetadata(rootJson, aiMessage, context.isStreaming());
         }
 
         return aiMessage;
