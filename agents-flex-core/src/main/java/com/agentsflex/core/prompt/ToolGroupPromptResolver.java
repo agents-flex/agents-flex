@@ -61,6 +61,7 @@ public final class ToolGroupPromptResolver {
         private ResolvedPrompt(Prompt source, List<Message> sourceMessages, List<ToolGroup> matchedGroups) {
             this.messages = appendSystemPrompts(sourceMessages, matchedGroups);
             setTools(mergeTools(source.getTools(), matchedGroups));
+            setChatInterceptorProviders(source.getChatInterceptorProviders());
             setToolChoice(source.getToolChoice());
             putMetadata(source.getMetadataMap());
         }

@@ -4,21 +4,56 @@
  */
 package com.agentsflex.core.model.chat;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
  * 为当前 ChatModel 请求提供拦截器的可选能力。
  *
- * <p>接口本身不限定实现类型，可以由 Tool、ToolGroup 或其他请求扩展组件实现。当前
- * BaseChatModel 会自动发现 Prompt 中实现本接口的 Tool，并且只把其拦截器加入当前请求的
- * 责任链，不会修改自身的全局或实例级拦截器配置。</p>
+ * <p>接口本身不限定实现类型。当前 BaseChatModel 会从 Prompt 自身、Prompt 显式配置的
+ * Provider 以及 Prompt 中的 Tool 发现本能力，并且只把 Registration 加入当前请求的责任链，
+ * 不会修改自身的全局或实例级拦截器配置。ToolGroup 暂不参与自动发现。</p>
  */
 public interface ChatInterceptorProvider {
 
     /**
-     * 返回当前组件需要参与 ChatModel 请求的拦截器。
+     * 返回当前组件需要参与 ChatModel 请求的完整注册信息。
      *
-     * @return 拦截器列表；不得返回 {@code null}，没有拦截器时返回空列表
+     * <p>需要指定名称、执行顺序或条件匹配时覆盖本方法。默认实现会把
+     * {@link #getChatInterceptors()} 返回的简单拦截器转换为默认 Registration。</p>
+     *
+     * @return Registration 列表；不得返回 {@code null} 或包含 {@code null}
      */
-    List<ChatInterceptor> getChatInterceptors();
+    default List<ChatInterceptorRegistration> getChatInterceptorRegistrations() {
+        List<ChatInterceptor> interceptors = getChatInterceptors();
+        if (interceptors == null) {
+            throw new IllegalStateException("ChatInterceptorProvider#getChatInterceptors() must not return null: "
+                + getClass().getName());
+        }
+        if (interceptors.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<ChatInterceptorRegistration> registrations = new ArrayList<>(interceptors.size());
+        for (ChatInterceptor interceptor : interceptors) {
+            if (interceptor == null) {
+                throw new IllegalStateException("ChatInterceptorProvider returned a null interceptor: "
+                    + getClass().getName());
+            }
+            registrations.add(ChatInterceptorRegistration.of(interceptor));
+        }
+        return registrations;
+    }
+
+    /**
+     * 返回不需要自定义注册属性的简单拦截器。
+     *
+     * <p>这是兼容和便捷入口；需要 order、matcher 或稳定名称时，应覆盖
+     * {@link #getChatInterceptorRegistrations()}。</p>
+     *
+     * @return 拦截器列表；默认返回空列表
+     */
+    default List<ChatInterceptor> getChatInterceptors() {
+        return Collections.emptyList();
+    }
 }

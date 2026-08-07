@@ -16,6 +16,7 @@
 package com.agentsflex.core.prompt;
 
 import com.agentsflex.core.message.Message;
+import com.agentsflex.core.model.chat.ChatInterceptorProvider;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolGroup;
 import com.agentsflex.core.model.chat.tool.ToolScanner;
@@ -30,7 +31,51 @@ public abstract class Prompt extends Metadata {
 
     private List<Tool> tools;
     private List<ToolGroup> toolGroups;
+    private List<ChatInterceptorProvider> chatInterceptorProviders;
     private String toolChoice;
+
+    /**
+     * 为当前 Prompt 显式添加一个请求级 ChatInterceptorProvider。
+     *
+     * <p>Provider 仅参与使用当前 Prompt 发起的请求，不会注册到 ChatModel 的共享配置中。</p>
+     */
+    public void addChatInterceptorProvider(ChatInterceptorProvider provider) {
+        if (provider == null) {
+            throw new IllegalArgumentException("ChatInterceptorProvider must not be null");
+        }
+        if (chatInterceptorProviders == null) {
+            chatInterceptorProviders = new ArrayList<>();
+        }
+        chatInterceptorProviders.add(provider);
+    }
+
+    /** 批量添加当前 Prompt 使用的请求级 ChatInterceptorProvider。 */
+    public void addChatInterceptorProviders(Collection<? extends ChatInterceptorProvider> providers) {
+        if (providers == null || providers.isEmpty()) {
+            return;
+        }
+        for (ChatInterceptorProvider provider : providers) {
+            addChatInterceptorProvider(provider);
+        }
+    }
+
+    /** @return 当前 Prompt 显式配置的 Provider 只读视图。 */
+    public List<ChatInterceptorProvider> getChatInterceptorProviders() {
+        return chatInterceptorProviders == null
+            ? Collections.<ChatInterceptorProvider>emptyList()
+            : Collections.unmodifiableList(chatInterceptorProviders);
+    }
+
+    /** 使用传入列表替换当前 Prompt 的请求级 Provider，并与调用方列表隔离。 */
+    public void setChatInterceptorProviders(
+        Collection<? extends ChatInterceptorProvider> providers) {
+        if (providers == null || providers.isEmpty()) {
+            chatInterceptorProviders = null;
+            return;
+        }
+        chatInterceptorProviders = new ArrayList<>();
+        addChatInterceptorProviders(providers);
+    }
 
     public void addTool(Tool tool) {
         if (this.tools == null)

@@ -93,8 +93,8 @@ ToolSearchTool toolSearch = ToolSearchTool.builder()
 prompt.addTool(toolSearch);
 ```
 
-`ToolSearchTool` 会通过 Core 提供的 `ChatInterceptorProvider` 自动贡献
-`ToolSearchChatInterceptor`。普通 ChatModel 场景只需要：
+`ToolSearchTool` 会通过 Core 提供的 `ChatInterceptorProvider` 自动贡献带有执行顺序的
+`ChatInterceptorRegistration`。普通 ChatModel 场景只需要：
 
 ```java
 prompt.addTool(toolSearch);

@@ -110,7 +110,8 @@ ToolSearchTool toolSearch = ToolSearchTool.builder()
 prompt.addTool(toolSearch);
 ```
 
-`ToolSearchTool` 实现了 `ChatInterceptorProvider`。因此，普通 ChatModel 场景下只要把它加入
+`ToolSearchTool` 实现了 `ChatInterceptorProvider`，并通过 `ChatInterceptorRegistration` 声明
+请求准备阶段的执行顺序。因此，普通 ChatModel 场景下只要把它加入
 `Prompt`，ChatModel 就会在当前请求中自动启用 `ToolSearchChatInterceptor`，不需要再手动调用
 `chatModel.addInterceptor(...)`：
 

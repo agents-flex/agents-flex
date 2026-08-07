@@ -6,6 +6,8 @@ package com.agentsflex.toolsearch;
 
 import com.agentsflex.core.model.chat.ChatInterceptor;
 import com.agentsflex.core.model.chat.ChatInterceptorProvider;
+import com.agentsflex.core.model.chat.ChatInterceptorOrders;
+import com.agentsflex.core.model.chat.ChatInterceptorRegistration;
 import com.agentsflex.core.model.chat.tool.BaseTool;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -82,8 +84,11 @@ public class ToolSearchTool extends BaseTool implements ChatInterceptorProvider 
 
     /** 自动为普通 ChatModel 请求启用 Tool 搜索结果的渐进式工具披露。 */
     @Override
-    public List<ChatInterceptor> getChatInterceptors() {
-        return Collections.singletonList(CHAT_INTERCEPTOR);
+    public List<ChatInterceptorRegistration> getChatInterceptorRegistrations() {
+        return Collections.singletonList(
+            ChatInterceptorRegistration.builder("tool-search", CHAT_INTERCEPTOR)
+                .order(ChatInterceptorOrders.REQUEST_PREPARATION)
+                .build());
     }
 
     /**

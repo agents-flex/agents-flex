@@ -190,36 +190,53 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         chain.addAll(FrameworkChatInterceptors.getRegistrations());
         chain.addAll(interceptorRegistrations);
 
-        // Tool 通过 ChatInterceptorProvider 声明请求级拦截器，避免修改 ChatModel 的共享配置。
-        if (prompt != null && prompt.getTools() != null) {
-            Set<ChatInterceptor> contributed =
-                Collections.newSetFromMap(new IdentityHashMap<ChatInterceptor, Boolean>());
-            for (ChatInterceptorRegistration registration : chain) {
-                contributed.add(registration.getInterceptor());
+        Set<ChatInterceptor> contributed =
+            Collections.newSetFromMap(new IdentityHashMap<ChatInterceptor, Boolean>());
+        for (ChatInterceptorRegistration registration : chain) {
+            contributed.add(registration.getInterceptor());
+        }
+        if (prompt != null) {
+            if (prompt instanceof ChatInterceptorProvider) {
+                addProviderRegistrations((ChatInterceptorProvider) prompt, chain, contributed);
             }
-            for (Tool tool : prompt.getTools()) {
-                if (!(tool instanceof ChatInterceptorProvider)) {
-                    continue;
-                }
-                ChatInterceptorProvider provider = (ChatInterceptorProvider) tool;
-                List<ChatInterceptor> provided = provider.getChatInterceptors();
-                if (provided == null) {
-                    throw new IllegalStateException("ChatInterceptorProvider must not return null: "
-                        + provider.getClass().getName());
-                }
-                for (ChatInterceptor interceptor : provided) {
-                    if (interceptor == null) {
-                        throw new IllegalStateException("ChatInterceptorProvider returned a null interceptor: "
-                            + provider.getClass().getName());
-                    }
-                    if (contributed.add(interceptor)) {
-                        chain.add(ChatInterceptorRegistration.of(interceptor));
+            for (ChatInterceptorProvider provider : prompt.getChatInterceptorProviders()) {
+                addProviderRegistrations(provider, chain, contributed);
+            }
+            // ToolGroup 暂不作为 Provider 发现来源。
+            List<Tool> tools = prompt.getTools();
+            if (tools != null) {
+                for (Tool tool : tools) {
+                    if (tool instanceof ChatInterceptorProvider) {
+                        addProviderRegistrations((ChatInterceptorProvider) tool, chain, contributed);
                     }
                 }
             }
         }
         chain.sort(Comparator.comparingInt(ChatInterceptorRegistration::getOrder));
         return chain;
+    }
+
+    private void addProviderRegistrations(ChatInterceptorProvider provider,
+                                          List<ChatInterceptorRegistration> chain,
+                                          Set<ChatInterceptor> contributed) {
+        List<ChatInterceptorRegistration> registrations =
+            provider.getChatInterceptorRegistrations();
+        if (registrations == null) {
+            throw new IllegalStateException(
+                "ChatInterceptorProvider#getChatInterceptorRegistrations() must not return null: "
+                    + provider.getClass().getName());
+        }
+        for (ChatInterceptorRegistration registration : registrations) {
+            if (registration == null) {
+                throw new IllegalStateException(
+                    "ChatInterceptorProvider returned a null registration: "
+                        + provider.getClass().getName());
+            }
+            ChatInterceptor interceptor = registration.getInterceptor();
+            if (contributed.add(interceptor)) {
+                chain.add(registration);
+            }
+        }
     }
 
     /**

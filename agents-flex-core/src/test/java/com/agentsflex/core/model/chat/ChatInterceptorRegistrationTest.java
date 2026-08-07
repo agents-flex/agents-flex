@@ -170,6 +170,74 @@ public class ChatInterceptorRegistrationTest {
         assertEquals(0, model.getInterceptors().size());
     }
 
+    @Test
+    public void shouldApplyProviderExplicitlyAddedToPrompt() {
+        AtomicInteger invocations = new AtomicInteger();
+        final ChatInterceptor interceptor = new ChatInterceptor() {
+            @Override
+            public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context,
+                                               SyncChain chain) {
+                invocations.incrementAndGet();
+                return chain.proceed(chatModel, context);
+            }
+        };
+        SimplePrompt prompt = new SimplePrompt("hello");
+        prompt.addChatInterceptorProvider(new ChatInterceptorProvider() {
+            @Override
+            public List<ChatInterceptor> getChatInterceptors() {
+                return Collections.singletonList(interceptor);
+            }
+        });
+
+        model(Collections.<ChatInterceptor>emptyList()).chat(prompt);
+
+        assertEquals(1, invocations.get());
+    }
+
+    @Test
+    public void shouldApplyRegistrationProvidedByPromptItselfWithItsOrder() {
+        final StringBuilder order = new StringBuilder();
+        ChatInterceptor modelInterceptor = new ChatInterceptor() {
+            @Override
+            public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context,
+                                               SyncChain chain) {
+                order.append('M');
+                return chain.proceed(chatModel, context);
+            }
+        };
+        ChatInterceptor promptInterceptor = new ChatInterceptor() {
+            @Override
+            public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context,
+                                               SyncChain chain) {
+                order.append('P');
+                return chain.proceed(chatModel, context);
+            }
+        };
+        ProviderPrompt prompt = new ProviderPrompt(promptInterceptor);
+
+        model(Collections.singletonList(modelInterceptor)).chat(prompt);
+
+        assertEquals("PM", order.toString());
+    }
+
+    private static final class ProviderPrompt extends SimplePrompt
+        implements ChatInterceptorProvider {
+        private final ChatInterceptor interceptor;
+
+        private ProviderPrompt(ChatInterceptor interceptor) {
+            super("hello");
+            this.interceptor = interceptor;
+        }
+
+        @Override
+        public List<ChatInterceptorRegistration> getChatInterceptorRegistrations() {
+            return Collections.singletonList(
+                ChatInterceptorRegistration.builder("prompt-provider", interceptor)
+                    .order(-100)
+                    .build());
+        }
+    }
+
     private static final class ProviderTool implements Tool, ChatInterceptorProvider {
         private final ChatInterceptor interceptor;
 

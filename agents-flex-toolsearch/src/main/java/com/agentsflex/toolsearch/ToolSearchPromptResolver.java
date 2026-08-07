@@ -144,6 +144,7 @@ final class ToolSearchPromptResolver {
                 ? Collections.emptyList() : new ArrayList<>(sourceMessages);
             setTools(tools);
             setToolGroups(source.getToolGroups());
+            setChatInterceptorProviders(source.getChatInterceptorProviders());
             setToolChoice(source.getToolChoice());
             putMetadata(source.getMetadataMap());
         }

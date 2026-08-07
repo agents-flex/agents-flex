@@ -569,6 +569,46 @@ ChatInterceptorRegistration.builder(
 
 Matcher 在责任链到达当前 Registration 时执行。因此，它可以读取顺序更早的拦截器已经写入 `ChatContext` 的数据。
 
+### ChatInterceptorProvider
+
+`ChatInterceptorProvider` 用于让组件为单次 Prompt 请求贡献拦截器，而不修改 ChatModel 的共享配置。
+当前 ChatModel 会从以下位置自动发现 Provider：
+
+1. Prompt 自身实现的 `ChatInterceptorProvider`。
+2. 通过 `prompt.addChatInterceptorProvider(...)` 显式添加的 Provider。
+3. `prompt.addTool(...)` 添加且实现了 `ChatInterceptorProvider` 的 Tool。
+
+ToolGroup 暂不参与 Provider 自动发现。
+
+简单场景可以只返回 ChatInterceptor，框架会将其包装为默认 Registration：
+
+```java
+prompt.addChatInterceptorProvider(new ChatInterceptorProvider() {
+    @Override
+    public List<ChatInterceptor> getChatInterceptors() {
+        return Collections.singletonList(new TimingChatInterceptor());
+    }
+});
+```
+
+需要稳定名称、执行顺序或 Matcher 时，直接返回 Registration：
+
+```java
+public class SearchTool implements Tool, ChatInterceptorProvider {
+    @Override
+    public List<ChatInterceptorRegistration> getChatInterceptorRegistrations() {
+        return Collections.singletonList(
+            ChatInterceptorRegistration.builder("search-request", interceptor)
+                .order(ChatInterceptorOrders.REQUEST_PREPARATION)
+                .build()
+        );
+    }
+}
+```
+
+Provider 提供的 Registration 只加入当前请求的责任链。重复发现同一个 ChatInterceptor 实例时，
+框架只保留第一次注册。
+
 ### 执行顺序
 
 每次请求会合并 Framework、Global 和 Instance Registration，再按 `order` 从小到大稳定排序。
@@ -589,7 +629,8 @@ Matcher 在责任链到达当前 Registration 时执行。因此，它可以读�
 .order(ChatInterceptorOrders.REQUEST_PREPARATION + 100)
 ```
 
-相同 `order` 的 Registration 按注册先后保持稳定顺序。默认情况下，同值时的来源顺序为 Framework、Global、Instance，各来源内部保持注册顺序。
+相同 `order` 的 Registration 按注册先后保持稳定顺序。默认情况下，同值时的来源顺序为
+Framework、Global、Instance、Prompt 自身、Prompt 显式 Provider、Prompt Tool，各来源内部保持注册顺序。
 
 ### 注册范围
 
