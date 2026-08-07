@@ -89,6 +89,21 @@ Agent agent = Agent.builder("support-agent")
 `UserMessage + AiMessage`。摘要模型不应注册业务工具；压缩失败时 Runner 会中止本次模型调用，
 业务侧可以记录错误并重试或暂时关闭语义压缩。
 
+如果不希望每次都重新摘要全部旧消息，可以使用增量策略：
+
+```java
+AgentContextCompressors.Incremental compressor =
+    AgentContextCompressors.incremental(summaryModel, "保留事实、ID、约束和未完成事项");
+
+// 每次调用后，把这两个值保存到业务侧的会话摘要表；恢复会话时再调用 restore。
+List<Message> summary = compressor.getSummary();
+String coveredUntil = compressor.getCoveredUntilMessageId();
+compressor.restore(summary, coveredUntil);
+```
+
+增量策略按照稳定的 `messageId` 找到上次已覆盖的位置，只把新增的旧消息和既有摘要再次提交给摘要模型；
+相同历史重复调用不会重复请求模型。摘要状态应与 `conversationId` 绑定并由业务侧持久化，Runner 不会替业务系统保存它。
+
 窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。
 `AgentActionMessage`、`AgentFormMessage` 等 `modelVisible=false` 消息不会发送给模型。
 

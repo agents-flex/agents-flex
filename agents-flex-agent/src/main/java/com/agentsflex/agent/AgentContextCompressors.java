@@ -95,6 +95,68 @@ public final class AgentContextCompressors {
     }
 
     /**
+     * 创建一个增量语义压缩器。状态对象应由业务侧随 conversation 一起持久化，不能只保存在
+     * Runner 的内存中；这样服务重启后仍能从上次覆盖的位置继续摘要。
+     */
+    public static Incremental incremental(ChatModel model, String instruction) {
+        return new Incremental(model(model, instruction));
+    }
+
+    /** 使用自定义摘要器创建增量状态，便于接入业务摘要服务或测试替身。 */
+    public static Incremental incremental(AgentContextCompressor compressor) {
+        if (compressor == null) throw new IllegalArgumentException("compressor must not be null");
+        return new Incremental(compressor);
+    }
+
+    /** 增量摘要器及其可由业务侧持久化的状态。 */
+    public static final class Incremental implements AgentContextCompressor {
+        private final AgentContextCompressor delegate;
+        private List<Message> summary = new ArrayList<>();
+        private String coveredUntilMessageId;
+
+        private Incremental(AgentContextCompressor delegate) {
+            this.delegate = delegate;
+        }
+
+        /**
+         * 只把尚未覆盖的消息与既有摘要合并后交给摘要模型；同一批消息重复调用不会重复请求模型。
+         */
+        @Override
+        public synchronized List<Message> compress(List<Message> messages) {
+            if (messages == null || messages.isEmpty()) return copy(summary);
+            int start = 0;
+            if (coveredUntilMessageId != null) {
+                for (int i = 0; i < messages.size(); i++) {
+                    if (coveredUntilMessageId.equals(messages.get(i).getMessageId())) {
+                        start = i + 1;
+                        break;
+                    }
+                }
+            }
+            if (start >= messages.size()) return copy(summary);
+            List<Message> input = new ArrayList<>(summary);
+            input.addAll(messages.subList(start, messages.size()));
+            List<Message> result = delegate.compress(Collections.unmodifiableList(copy(input)));
+            summary = copy(result);
+            coveredUntilMessageId = messages.get(messages.size() - 1).getMessageId();
+            return copy(summary);
+        }
+
+        public synchronized List<Message> getSummary() {
+            return copy(summary);
+        }
+
+        public synchronized String getCoveredUntilMessageId() {
+            return coveredUntilMessageId;
+        }
+
+        public synchronized void restore(List<Message> summary, String coveredUntilMessageId) {
+            this.summary = copy(summary);
+            this.coveredUntilMessageId = coveredUntilMessageId;
+        }
+    }
+
+    /**
      * 按顺序组合多个压缩器，后一个处理前一个的输出。
      */
     public static AgentContextCompressor chain(AgentContextCompressor... compressors) {
