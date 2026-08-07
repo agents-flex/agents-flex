@@ -15,6 +15,17 @@
  */
 package com.agentsflex.core.model.router.retry;
 
+import com.agentsflex.core.model.exception.ModelException;
+import com.agentsflex.core.model.exception.ModelOverloadedException;
+import com.agentsflex.core.model.exception.ModelQuotaExceededException;
+import com.agentsflex.core.model.exception.ModelRateLimitException;
+import com.agentsflex.core.model.exception.TokenLimitExceededException;
+
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.util.concurrent.TimeoutException;
+
 /**
  * 默认重试策略。
  */
@@ -31,6 +42,31 @@ public class DefaultRetryPolicy implements RetryPolicy {
 
     @Override
     public boolean shouldRetry(int retryCount, Throwable throwable) {
-        return retryCount < maxRetries;
+        return retryCount < maxRetries && isTransient(unwrap(throwable));
+    }
+
+    /**
+     * 默认只重试临时服务故障，不重复发送确定会失败的请求。
+     */
+    private boolean isTransient(Throwable throwable) {
+        if (throwable == null) return false;
+        if (throwable instanceof TokenLimitExceededException
+            || throwable instanceof ModelQuotaExceededException) return false;
+        if (throwable instanceof ModelRateLimitException
+            || throwable instanceof ModelOverloadedException) return true;
+        if (throwable instanceof IOException || throwable instanceof TimeoutException
+            || throwable instanceof ConnectException || throwable instanceof SocketTimeoutException) {
+            return true;
+        }
+        return !(throwable instanceof ModelException);
+    }
+
+    private Throwable unwrap(Throwable throwable) {
+        while (throwable != null && (throwable instanceof java.util.concurrent.CompletionException
+            || throwable instanceof java.util.concurrent.ExecutionException)
+            && throwable.getCause() != null) {
+            throwable = throwable.getCause();
+        }
+        return throwable;
     }
 }

@@ -15,12 +15,18 @@
  */
 package com.agentsflex.core.model.router.core;
 
+import com.agentsflex.core.model.exception.ModelException;
+import com.agentsflex.core.model.exception.ModelOverloadedException;
+import com.agentsflex.core.model.exception.ModelQuotaExceededException;
+import com.agentsflex.core.model.exception.ModelRateLimitException;
+import com.agentsflex.core.model.exception.TokenLimitExceededException;
 import com.agentsflex.core.model.router.balance.ModelLoadBalancer;
 import com.agentsflex.core.model.router.breaker.CircuitBreaker;
 import com.agentsflex.core.model.router.endpoint.EndpointStatus;
 import com.agentsflex.core.model.router.endpoint.ModelEndpoint;
 import com.agentsflex.core.model.router.retry.RetryPolicy;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -80,6 +86,7 @@ public abstract class AbstractModelRouter<T> {
     protected <R> R execute(ModelInvoker<T, R> invoker, Set<String> tags) {
 
         Throwable lastThrowable = null;
+        Set<ModelEndpoint<T>> attempted = new HashSet<>();
 
         int retry = 0;
 
@@ -87,6 +94,11 @@ public abstract class AbstractModelRouter<T> {
 
             // 过滤可用 Endpoint
             List<ModelEndpoint<T>> candidates = filterEndpoints(tags);
+            candidates.removeIf(attempted::contains);
+            if (candidates.isEmpty()) {
+                attempted.clear();
+                candidates = filterEndpoints(tags);
+            }
 
             if (candidates.isEmpty()) {
                 throw new RouterException("No available model endpoint.");
@@ -94,6 +106,7 @@ public abstract class AbstractModelRouter<T> {
 
             // 负载均衡选择节点
             ModelEndpoint<T> endpoint = loadBalancer.select(candidates);
+            attempted.add(endpoint);
 
             long start = System.currentTimeMillis();
 
@@ -111,14 +124,16 @@ public abstract class AbstractModelRouter<T> {
                 // 熔断恢复
                 circuitBreaker.recordSuccess(endpoint);
                 return result;
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 long latency = System.currentTimeMillis() - start;
 
                 // 记录失败指标
                 endpoint.getMetrics().recordFailure(latency);
 
                 // 熔断失败记录
-                circuitBreaker.recordFailure(endpoint);
+                if (shouldRecordEndpointFailure(e)) {
+                    circuitBreaker.recordFailure(endpoint);
+                }
 
                 lastThrowable = e;
 
@@ -133,6 +148,19 @@ public abstract class AbstractModelRouter<T> {
         }
 
         throw new RouterException("All model requests failed.", lastThrowable);
+    }
+
+    /**
+     * 请求本身确定有问题时不熔断节点，避免上下文超限或额度耗尽污染健康状态。
+     */
+    protected boolean shouldRecordEndpointFailure(Throwable throwable) {
+        if (throwable instanceof ModelRateLimitException
+            || throwable instanceof ModelOverloadedException) {
+            return true;
+        }
+        return !(throwable instanceof TokenLimitExceededException
+            || throwable instanceof ModelQuotaExceededException
+            || throwable instanceof ModelException);
     }
 
 

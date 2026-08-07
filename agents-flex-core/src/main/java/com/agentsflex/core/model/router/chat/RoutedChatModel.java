@@ -32,6 +32,8 @@ import com.agentsflex.core.prompt.Prompt;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements ChatModel {
@@ -65,21 +67,116 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         return execute(
-            model -> model.chat(prompt, options),
+            model -> {
+                AiMessageResponse response = model.chat(prompt, options);
+                if (response != null && response.isError()) {
+                    response.throwIfError();
+                }
+                return response;
+            },
             extractTags(options)
         );
     }
 
     @Override
     public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
-        execute(model -> {
-            model.chatStream(
-                prompt,
-                listener,
-                options
-            );
-            return null;
-        }, extractTags(options));
+        if (listener == null) throw new IllegalArgumentException("listener must not be null");
+        Set<ModelEndpoint<ChatModel>> attempted = new java.util.HashSet<>();
+        streamAttempt(prompt, listener, options, attempted, 0, null);
+    }
+
+    private void streamAttempt(Prompt prompt, StreamResponseListener listener, ChatOptions options,
+                               Set<ModelEndpoint<ChatModel>> attempted, int retryCount,
+                               Throwable previous) {
+        List<ModelEndpoint<ChatModel>> candidates = filterAvailable(extractTags(options), attempted);
+        if (candidates.isEmpty()) {
+            attempted.clear();
+            candidates = filterAvailable(extractTags(options), attempted);
+        }
+        if (candidates.isEmpty())
+            throw new com.agentsflex.core.model.router.core.RouterException("No available model endpoint.", previous);
+        ModelEndpoint<ChatModel> endpoint = loadBalancer.select(candidates);
+        attempted.add(endpoint);
+        endpoint.getMetrics().beginRequest();
+        long start = System.currentTimeMillis();
+        AtomicBoolean delivered = new AtomicBoolean();
+        AtomicBoolean opened = new AtomicBoolean();
+        AtomicBoolean failed = new AtomicBoolean();
+        AtomicBoolean finished = new AtomicBoolean();
+        AtomicBoolean switched = new AtomicBoolean();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        StreamResponseListener wrapped = new StreamResponseListener() {
+            @Override
+            public void onOpen(com.agentsflex.core.model.client.StreamContext context) {
+                opened.set(true);
+            }
+
+            @Override
+            public void onMessage(com.agentsflex.core.model.client.StreamContext context, AiMessageResponse response) {
+                if (response != null && response.isError()) {
+                    onError(context, response.toException());
+                    return;
+                }
+                delivered.set(true);
+                if (opened.compareAndSet(false, true)) listener.onOpen(context);
+                listener.onMessage(context, response);
+            }
+
+            @Override
+            public void onError(com.agentsflex.core.model.client.StreamContext context, Throwable error) {
+                failed.set(true);
+                failure.compareAndSet(null, error);
+                if (!delivered.get() && retryPolicy.shouldRetry(retryCount, error)) {
+                    switched.set(true);
+                    finished.set(true);
+                    endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
+                    if (shouldRecordEndpointFailure(error)) circuitBreaker.recordFailure(endpoint);
+                    endpoint.getMetrics().endRequest();
+                    streamAttempt(prompt, listener, options, attempted, retryCount + 1, error);
+                    return;
+                }
+                if (opened.compareAndSet(false, true)) listener.onOpen(context);
+                listener.onError(context, error);
+            }
+
+            @Override
+            public void onClose(com.agentsflex.core.model.client.StreamContext context) {
+                if (!finished.compareAndSet(false, true)) return;
+                if (!switched.get()) {
+                    listener.onClose(context);
+                    if (failed.get()) {
+                        endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
+                        if (shouldRecordEndpointFailure(failure.get())) {
+                            circuitBreaker.recordFailure(endpoint);
+                        }
+                    } else {
+                        endpoint.getMetrics().recordSuccess(System.currentTimeMillis() - start);
+                        circuitBreaker.recordSuccess(endpoint);
+                    }
+                }
+                endpoint.getMetrics().endRequest();
+            }
+        };
+        try {
+            endpoint.getModel().chatStream(prompt, wrapped, options);
+        } catch (Exception e) {
+            if (!delivered.get() && retryPolicy.shouldRetry(retryCount, e)) {
+                endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
+                if (shouldRecordEndpointFailure(e)) circuitBreaker.recordFailure(endpoint);
+                endpoint.getMetrics().endRequest();
+                streamAttempt(prompt, listener, options, attempted, retryCount + 1, e);
+            } else {
+                endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
+                endpoint.getMetrics().endRequest();
+                throw new com.agentsflex.core.model.router.core.RouterException("All model requests failed.", e);
+            }
+        }
+    }
+
+    private List<ModelEndpoint<ChatModel>> filterAvailable(Set<String> tags, Set<ModelEndpoint<ChatModel>> attempted) {
+        return endpoints.stream().filter(e -> !attempted.contains(e))
+            .filter(e -> e.getStatus() != com.agentsflex.core.model.router.endpoint.EndpointStatus.DOWN)
+            .filter(circuitBreaker::allowRequest).filter(e -> e.matchTags(tags)).collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
