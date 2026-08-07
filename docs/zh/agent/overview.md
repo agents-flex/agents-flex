@@ -84,6 +84,7 @@ Agent 会按工具名称建立索引。模型返回的 ToolCall 必须能解析�
 | `compactCompletedToolTurns(...)` | 将较早已完成工具 Turn 归一化为用户问题和最终 AI 回复 |
 | `compressionKeepRecentTurns(...)` | 保留最近若干完整 Turn，不参与规则或语义压缩 |
 | `contextCompressor(...)` | 对更早历史执行可选的业务语义压缩，仅改变模型上下文视图 |
+| `multimodalChatModel(...)` | 当前上下文包含多模态内容时切换到专用模型 |
 
 `AgentExecutionPolicy` 的典型配置：
 

@@ -35,6 +35,7 @@ Agent agent = Agent.builder("order-assistant")
 | `name`、`description` | 展示及规划时描述能力 | 否 |
 | `instructions` | 注入 `SystemMessage` | 消息中保存当前结果 |
 | `chatModel`、`chatOptions` | 执行模型请求 | 否，恢复时重装配 |
+| `multimodalChatModel` | 当前 Prompt 含图片、音频、视频或文件时使用的模型 | 否，恢复时重装配 |
 | `tools`、`toolInterceptors` | 工具协议及执行链 | 否，恢复时重装配 |
 | `executionPolicy` | 迭代、重试、预算 | 有效策略会保存 |
 | `planningPolicy` | 自动规划及委派约束 | 计划状态保存，定义重装配 |

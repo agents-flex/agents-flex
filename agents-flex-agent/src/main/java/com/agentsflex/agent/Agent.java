@@ -63,6 +63,10 @@ public final class Agent {
      */
     private final ChatModel chatModel;
     /**
+     * 处理图片、音频、视频或文件等多模态输入的可选模型。
+     */
+    private final ChatModel multimodalChatModel;
+    /**
      * 模型调用参数模板。每次请求都会创建独立副本，避免不同 Turn 修改同一个配置实例。
      */
     private final ChatOptions chatOptions;
@@ -130,6 +134,7 @@ public final class Agent {
         this.description = builder.description;
         this.instructions = builder.instructions;
         this.chatModel = builder.chatModel;
+        this.multimodalChatModel = builder.multimodalChatModel;
         this.chatOptions = builder.chatOptions;
         this.tools = Collections.unmodifiableList(new ArrayList<>(builder.tools));
         Map<String, Tool> indexedTools = new HashMap<>();
@@ -212,6 +217,13 @@ public final class Agent {
      */
     public ChatModel getChatModel() {
         return chatModel;
+    }
+
+    /**
+     * @return 多模态消息存在时使用的模型；未配置时返回 {@code null}
+     */
+    public ChatModel getMultimodalChatModel() {
+        return multimodalChatModel;
     }
 
     /**
@@ -342,6 +354,7 @@ public final class Agent {
         private String description;
         private String instructions;
         private ChatModel chatModel;
+        private ChatModel multimodalChatModel;
         private ChatOptions chatOptions = new ChatOptions();
         private final List<Tool> tools = new ArrayList<>();
         private final List<ToolInterceptor> toolInterceptors = new ArrayList<>();
@@ -403,6 +416,15 @@ public final class Agent {
          */
         public Builder chatModel(ChatModel chatModel) {
             this.chatModel = chatModel;
+            return this;
+        }
+
+        /**
+         * 配置处理多模态输入的模型。当前 Prompt 包含图片、音频、视频或文件时，Runner 优先使用该模型；
+         * 纯文本请求仍使用 {@link #chatModel(ChatModel)} 配置的默认模型。
+         */
+        public Builder multimodalChatModel(ChatModel multimodalChatModel) {
+            this.multimodalChatModel = multimodalChatModel;
             return this;
         }
 

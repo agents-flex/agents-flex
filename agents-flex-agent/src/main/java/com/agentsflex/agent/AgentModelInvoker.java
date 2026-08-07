@@ -5,12 +5,16 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.Prompt;
+import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.LinkedHashMap;
@@ -44,23 +48,24 @@ final class AgentModelInvoker {
      */
     AiMessageResponse invoke(AgentTurn turn, Prompt prompt) {
         ChatOptions options = requestOptions(turn);
+        ChatModel model = selectModel(turn, prompt);
         if (!turn.isStreaming()) {
-            return turn.getAgent().getChatModel().chat(prompt, options);
+            return model.chat(prompt, options);
         }
-        return invokeStreaming(turn, prompt, options);
+        return invokeStreaming(turn, prompt, options, model);
     }
 
     /**
      * 等待异步流关闭，并返回与同步接口一致的完整 AiMessageResponse。
      */
-    private AiMessageResponse invokeStreaming(AgentTurn turn, Prompt prompt, ChatOptions options) {
+    private AiMessageResponse invokeStreaming(AgentTurn turn, Prompt prompt, ChatOptions options, ChatModel model) {
         CountDownLatch closed = new CountDownLatch(1);
         AtomicReference<AiMessage> fullMessage = new AtomicReference<>();
         AtomicReference<ChatContext> chatContext = new AtomicReference<>();
         AtomicReference<Throwable> failure = new AtomicReference<>();
         AtomicReference<Boolean> textDeltaPublished = new AtomicReference<>(false);
 
-        turn.getAgent().getChatModel().chatStream(prompt, new StreamResponseListener() {
+        model.chatStream(prompt, new StreamResponseListener() {
             @Override
             public void onOpen(StreamContext context) {
                 chatContext.set(context.getChatContext());
@@ -128,6 +133,28 @@ final class AgentModelInvoker {
             context.setPrompt(prompt);
         }
         return new AiMessageResponse(context, null, fullMessage.get());
+    }
+
+    /**
+     * 多模态模型的选择以实际发送给模型的 Prompt 为准，而非仅检查最新用户消息。
+     * 这样历史图片仍处于上下文窗口时，后续文本追问也不会错误地落到纯文本模型。
+     */
+    private ChatModel selectModel(AgentTurn turn, Prompt prompt) {
+        ChatModel multimodal = turn.getAgent().getMultimodalChatModel();
+        if (multimodal == null || !(prompt instanceof MemoryPrompt)) return turn.getAgent().getChatModel();
+        for (Message message : ((MemoryPrompt) prompt).getMessages()) {
+            if (message instanceof UserMessage && hasMultimodalContent((UserMessage) message)) return multimodal;
+        }
+        return turn.getAgent().getChatModel();
+    }
+
+    private boolean hasMultimodalContent(UserMessage message) {
+        return hasContent(message.getImageUrls()) || hasContent(message.getAudioUrls())
+            || hasContent(message.getVideoUrls()) || hasContent(message.getFileUrls());
+    }
+
+    private boolean hasContent(List<String> values) {
+        return values != null && !values.isEmpty();
     }
 
     /**
