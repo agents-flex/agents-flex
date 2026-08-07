@@ -14,7 +14,6 @@ import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import org.junit.Test;
 
@@ -98,20 +97,6 @@ public class ToolSearchAgentMiddlewareTest {
 
         assertNotNull(agent.resolveTool(turn, ToolSearchTool.NAME));
         assertNull(agent.resolveTool(turn, "hiddenTool"));
-    }
-
-    @Test
-    public void shouldRejectToolSearchToolBoundToSharedPrompt() {
-        ToolSearchTool bound = ToolSearchTool.builder()
-            .prompt(new MemoryPrompt())
-            .build();
-
-        try {
-            ToolSearchAgentMiddleware.of(bound);
-            throw new AssertionError("Agent integration must reject a bound Prompt");
-        } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage().contains("must not bind a Prompt"));
-        }
     }
 
     private static AiMessage toolCalls(ToolCall... calls) {

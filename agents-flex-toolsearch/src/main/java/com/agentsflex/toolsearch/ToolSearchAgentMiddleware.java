@@ -14,13 +14,10 @@ import com.agentsflex.agent.middleware.AgentToolCallChain;
 import com.agentsflex.agent.tool.AgentToolResolver;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.prompt.Prompt;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 将 {@link ToolSearchTool} 接入 AgentRunner 的渐进式工具披露 Middleware。
@@ -44,10 +41,6 @@ public final class ToolSearchAgentMiddleware implements AgentMiddleware {
     public ToolSearchAgentMiddleware(ToolSearchTool searchTool) {
         if (searchTool == null) {
             throw new IllegalArgumentException("searchTool must not be null");
-        }
-        if (searchTool.isBound()) {
-            throw new IllegalArgumentException(
-                "ToolSearchTool used by Agent Middleware must not bind a Prompt");
         }
         this.searchTool = searchTool;
         this.manager = searchTool.getManager();
@@ -74,7 +67,8 @@ public final class ToolSearchAgentMiddleware implements AgentMiddleware {
     @Override
     public AiMessageResponse aroundModelCall(AgentMiddlewareContext context,
                                              AgentModelCallChain chain) {
-        refreshVisibleTools(context.getPrompt(), activeToolNames(context.getRun()));
+        context.setPrompt(ToolSearchPromptResolver.resolve(
+            context.getPrompt(), searchTool, activeToolNames(context.getRun())));
         return chain.proceed(context);
     }
 
@@ -98,24 +92,6 @@ public final class ToolSearchAgentMiddleware implements AgentMiddleware {
         if (searchTool.getName().equals(toolName)) return searchTool;
         if (!activeToolNames(turn).contains(toolName)) return null;
         return manager.resolve(toolName);
-    }
-
-    private void refreshVisibleTools(Prompt prompt, List<String> activeNames) {
-        Map<String, Tool> visible = new LinkedHashMap<>();
-        if (prompt.getTools() != null) {
-            for (Tool tool : prompt.getTools()) {
-                if (tool == null || tool == searchTool) continue;
-                Tool searchable = manager.resolve(tool.getName());
-                // 只移除本 Middleware 上次加入的目录对象；业务显式注册的同名对象仍由 Agent 管理。
-                if (searchable != tool) visible.put(tool.getName(), tool);
-            }
-        }
-        visible.put(searchTool.getName(), searchTool);
-        for (String name : activeNames) {
-            Tool tool = manager.resolve(name);
-            if (tool != null && !visible.containsKey(name)) visible.put(name, tool);
-        }
-        prompt.setTools(new ArrayList<>(visible.values()));
     }
 
     private List<String> normalizedToolNames(Object value) {

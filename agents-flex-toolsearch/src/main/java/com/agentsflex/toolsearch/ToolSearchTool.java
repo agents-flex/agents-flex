@@ -7,29 +7,19 @@ package com.agentsflex.toolsearch;
 import com.agentsflex.core.model.chat.tool.BaseTool;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.toolsearch.memory.InMemoryToolSearchProvider;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 面向大模型的 Tool 搜索入口，用于按需发现并渐进式暴露业务 Tool。
  *
- * <p>通过 Builder 注册的业务 Tool 不会在初始请求中全部发送给模型。模型先调用本 Tool
- * 描述所需能力，搜索命中的可执行 Tool 才会被加入绑定的 {@link Prompt}，供下一轮模型
- * 调用。这样可以降低几十到几百个 Tool 同时占用上下文所产生的 Token 成本和选择干扰。</p>
- *
- * <p>一个实例同一时间只绑定一个 Prompt。Prompt 中由开发者直接维护的 Tool 被视为
- * “常驻 Tool”，始终可见且不会自动进入搜索目录；只有通过 {@link Builder#addTool(Tool)}
- * 或 {@link Builder#addTools(Collection)} 注册的 Tool 才可搜索。</p>
- *
- * <p>动态发现结果采用替换语义：每次搜索前都会清空上一次结果，Prompt 中仅保留最近
- * 一次命中的 Tool。搜索无结果时，之前发现的 Tool 也会被移除。</p>
+ * <p>本 Tool 只负责检索目录并返回可执行 Tool 的名称，不持有也不修改 Prompt。普通 ChatModel
+ * 场景由 {@link ToolSearchChatInterceptor} 根据消息中的最近一次搜索结果渐进披露 Tool；AgentRunner
+ * 场景由 {@link ToolSearchAgentMiddleware} 保存 Turn 级搜索状态并处理工具可见性。</p>
  */
 public class ToolSearchTool extends BaseTool {
 
@@ -54,18 +44,7 @@ public class ToolSearchTool extends BaseTool {
      * 保存可搜索元数据并关联本地可执行 Tool 的管理器。
      */
     private final ToolSearchManager manager;
-    /**
-     * 最近一次搜索命中的可执行 Tool，以名称去重并保持 Provider 返回顺序。
-     */
-    private final Map<String, Tool> discoveredTools = new LinkedHashMap<>();
-    /**
-     * 当前绑定的唯一 Prompt；未绑定时为 {@code null}。
-     */
-    private Prompt prompt;
-    /**
-     * 开发者直接维护在 Prompt 中、需要始终发送给模型的 Tool。
-     */
-    private Map<String, Tool> alwaysVisibleTools = Collections.emptyMap();
+
 
     private ToolSearchTool(ToolSearchManager manager, String name, String description) {
         this.manager = manager;
@@ -90,65 +69,6 @@ public class ToolSearchTool extends BaseTool {
     }
 
     /**
-     * 将当前 ToolSearchTool 绑定到一个 Prompt。
-     *
-     * <p>绑定前 Prompt 中已有的 Tool 会保留为常驻 Tool，不会注册到搜索目录。绑定完成后，
-     * Prompt 会包含原有常驻 Tool 和当前 ToolSearchTool。重复绑定同一个 Prompt 是幂等的；
-     * 如需改绑另一个 Prompt，必须先调用 {@link #unbind()}。</p>
-     *
-     * @param prompt 需要渐进式挂载搜索结果的 Prompt
-     * @return 当前 ToolSearchTool，便于链式调用
-     * @throws IllegalArgumentException 当 prompt 为 {@code null} 时抛出
-     * @throws IllegalStateException    当当前实例已绑定另一个 Prompt 时抛出
-     */
-    public synchronized ToolSearchTool bind(Prompt prompt) {
-        if (prompt == null) throw new IllegalArgumentException("Prompt must not be null");
-        if (this.prompt != null && this.prompt != prompt) {
-            throw new IllegalStateException("ToolSearchTool can only be bound to one Prompt");
-        }
-        if (this.prompt == null) {
-            this.prompt = prompt;
-            syncAlwaysVisibleTools();
-        }
-        refreshPrompt();
-        return this;
-    }
-
-    /**
-     * 解除 Prompt 绑定。
-     *
-     * <p>解除前会再次同步开发者对 Prompt Tool 列表的增删，然后恢复当前常驻 Tool，移除
-     * ToolSearchTool 和动态发现的 Tool。解除后该实例可以绑定另一个 Prompt。</p>
-     */
-    public synchronized void unbind() {
-        syncAlwaysVisibleTools();
-        if (this.prompt != null) this.prompt.setTools(new ArrayList<>(this.alwaysVisibleTools.values()));
-        this.prompt = null;
-        this.alwaysVisibleTools = Collections.emptyMap();
-        this.discoveredTools.clear();
-    }
-
-    /**
-     * 清除最近一次搜索发现的 Tool，使 Prompt 回到“常驻 Tool + ToolSearchTool”的状态。
-     *
-     * <p>该操作不会清空搜索目录，也不会移除开发者直接添加到 Prompt 的常驻 Tool。</p>
-     */
-    public synchronized void reset() {
-        syncAlwaysVisibleTools();
-        discoveredTools.clear();
-        refreshPrompt();
-    }
-
-    /**
-     * 获取最近一次搜索激活的 Tool 快照。
-     *
-     * @return 不可修改的 Tool 列表；尚未搜索、已重置或最近搜索无结果时为空
-     */
-    public synchronized List<Tool> getDiscoveredTools() {
-        return Collections.unmodifiableList(new ArrayList<>(discoveredTools.values()));
-    }
-
-    /**
      * @return 当前实例使用的 ToolSearchManager
      */
     public ToolSearchManager getManager() {
@@ -156,17 +76,10 @@ public class ToolSearchTool extends BaseTool {
     }
 
     /**
-     * Agent Middleware 接入时用于拒绝会修改共享 Prompt 的绑定实例。
-     */
-    synchronized boolean isBound() {
-        return prompt != null;
-    }
-
-    /**
-     * 执行 Tool 搜索，并把命中的本地可执行 Tool 激活到绑定的 Prompt。
+     * 执行 Tool 搜索并返回能够解析到本地执行对象的 Tool 名称。
      *
-     * <p>返回值只包含命中 Tool 的名称。完整 Tool 定义会在下一次使用绑定 Prompt 调用模型
-     * 时发送，因此搜索本身不会执行任何业务 Tool。每次调用都会替换上一次发现结果。</p>
+     * <p>搜索本身不会执行目标 Tool，也不会保存本次结果。调用方必须把 ToolMessage 加入消息历史，
+     * 下一次模型调用时由 ToolSearchChatInterceptor 或 ToolSearchAgentMiddleware 披露完整定义。</p>
      *
      * @param argsMap 模型传入的参数，必须包含非空 {@code query}；可以包含
      *                {@code maxResults} 和 {@code category}
@@ -189,60 +102,15 @@ public class ToolSearchTool extends BaseTool {
         Object category = argsMap.get("category");
         if (category != null) request.setCategory(category.toString());
 
-        List<ToolSearchResult> results = searchAndActivate(request);
-        List<String> names = new ArrayList<>(results.size());
-        for (ToolSearchResult result : results) names.add(result.getToolInfo().getName());
-        return names;
-    }
-
-    private synchronized List<ToolSearchResult> searchAndActivate(ToolSearchRequest request) {
-        // 搜索前先吸收开发者对 Prompt Tool 列表的最新修改，避免用旧快照覆盖常驻 Tool。
-        syncAlwaysVisibleTools();
-        // 动态 Tool 只保留最近一次结果；即使本次无命中，也必须移除上次发现的 Tool。
-        discoveredTools.clear();
-        List<ToolSearchResult> activatedResults = new ArrayList<>();
+        List<String> names = new ArrayList<>();
         for (ToolSearchResult result : manager.search(request)) {
             if (result != null && result.getToolInfo() != null) {
-                // Provider 只返回元数据；没有对应本地执行对象的陈旧或远程结果不能暴露给模型。
-                Tool tool = manager.resolve(result.getToolInfo().getName());
-                if (tool != null) {
-                    discoveredTools.put(tool.getName(), tool);
-                    activatedResults.add(result);
-                }
+                String toolName = result.getToolInfo().getName();
+                if (toolName != null && manager.resolve(toolName) != null
+                    && !names.contains(toolName)) names.add(toolName);
             }
         }
-        refreshPrompt();
-        return activatedResults;
-    }
-
-    /**
-     * 根据 Prompt 当前内容重新计算开发者维护的常驻 Tool。
-     *
-     * <p>判断动态发现 Tool 时使用对象身份而不是只比较名称：同一个搜索结果对象会被排除，
-     * 不会在下一次同步时被误提升为常驻 Tool；如果开发者主动用另一个同名 Tool 替换它，
-     * 新对象则被视为显式配置的常驻 Tool。</p>
-     */
-    private void syncAlwaysVisibleTools() {
-        if (this.prompt == null) return;
-        Map<String, Tool> currentAlwaysVisible = new LinkedHashMap<>();
-        if (this.prompt.getTools() != null) {
-            for (Tool tool : this.prompt.getTools()) {
-                if (tool == null || tool == this) continue;
-                Tool discoveredTool = this.discoveredTools.get(tool.getName());
-                if (tool != discoveredTool) currentAlwaysVisible.put(tool.getName(), tool);
-            }
-        }
-        this.alwaysVisibleTools = currentAlwaysVisible;
-    }
-
-    private void refreshPrompt() {
-        if (this.prompt == null) return;
-        Map<String, Tool> visibleTools = new LinkedHashMap<>();
-        // 顺序稳定为：开发者常驻 Tool、搜索入口、最近发现的 Tool；同名时前者优先。
-        visibleTools.putAll(alwaysVisibleTools);
-        visibleTools.put(this.getName(), this);
-        for (Tool tool : discoveredTools.values()) visibleTools.putIfAbsent(tool.getName(), tool);
-        this.prompt.setTools(new ArrayList<>(visibleTools.values()));
+        return names;
     }
 
     /**
@@ -264,10 +132,6 @@ public class ToolSearchTool extends BaseTool {
          * 可选的共享 Manager；与 provider 互斥。
          */
         private ToolSearchManager manager;
-        /**
-         * 构建后自动绑定的唯一 Prompt。
-         */
-        private Prompt prompt;
         /**
          * 模型看到的搜索 Tool 名称。
          */
@@ -362,25 +226,7 @@ public class ToolSearchTool extends BaseTool {
         }
 
         /**
-         * 配置构建后自动绑定的 Prompt。
-         *
-         * <p>一个 Builder 只能配置一个 Prompt。Prompt 中已有和后续由开发者直接添加的
-         * Tool 都属于常驻 Tool，不会自动加入搜索目录。</p>
-         *
-         * @param prompt 要绑定的 Prompt
-         * @return 当前 Builder
-         * @throws IllegalStateException 当已经配置了另一个 Prompt 时抛出
-         */
-        public Builder prompt(Prompt prompt) {
-            if (this.prompt != null && this.prompt != prompt) {
-                throw new IllegalStateException("Only one Prompt can be configured");
-            }
-            this.prompt = prompt;
-            return this;
-        }
-
-        /**
-         * 注册所有 Builder Tool、创建 ToolSearchTool，并按配置绑定 Prompt。
+         * 注册所有 Builder Tool 并创建无运行状态的 ToolSearchTool。
          *
          * @return 构建完成的 ToolSearchTool
          * @throws IllegalStateException 当 manager 与 provider 同时配置、名称为空，或者
@@ -402,9 +248,7 @@ public class ToolSearchTool extends BaseTool {
             if (resolvedManager.isRegistered(name)) {
                 throw new IllegalStateException("Tool name '" + name + "' is already registered");
             }
-            ToolSearchTool searchTool = new ToolSearchTool(resolvedManager, name, description);
-            if (prompt != null) searchTool.bind(prompt);
-            return searchTool;
+            return new ToolSearchTool(resolvedManager, name, description);
         }
     }
 

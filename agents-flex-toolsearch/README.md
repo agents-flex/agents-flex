@@ -20,7 +20,7 @@
 Prompt 常驻 Tool + toolSearch
         ↓ 第一次调用 ChatModel
 模型调用 toolSearch(query = "查询城市天气")
-        ↓ 搜索并修改绑定的 Prompt
+        ↓ 返回命中 Tool 名称并写入 ToolMessage
 Prompt 常驻 Tool + toolSearch + getWeather
         ↓ 下一次调用 ChatModel
 模型调用 getWeather(city = "上海")
@@ -88,14 +88,17 @@ prompt.addUserMessage("查询上海天气，然后把结果发送到我的邮箱
 
 ToolSearchTool toolSearch = ToolSearchTool.builder()
     .addTools(Arrays.asList(weatherTool, emailTool))
-    .prompt(prompt)
     .build();
+
+prompt.addTool(toolSearch);
+chatModel.addInterceptor(new ToolSearchChatInterceptor());
 ```
 
 这里有两个关键点：
 
 - `.addTools(...)` 注册的是可搜索 Tool，初始不会发送给模型。
-- `.prompt(prompt)` 绑定唯一的 Prompt，并自动把 `toolSearch` 加入可见工具。
+- `prompt.addTool(toolSearch)` 把搜索入口加入 Prompt。
+- `ToolSearchChatInterceptor` 根据消息中最近一次搜索结果生成本次请求的工具快照。
 
 ### 4. 执行 ChatModel 工具调用循环
 
@@ -111,7 +114,9 @@ for (int i = 0; i < 10 && response.hasToolCalls(); i++) {
 String answer = response.getMessage().getContent();
 ```
 
-`response.executeToolCallsAndGetToolMessages()` 执行 `toolSearch` 时，会把命中的 Tool 加入绑定的 Prompt。必须继续调用下一轮 `chatModel.chat(prompt)`，模型才能看到并调用刚刚发现的完整 Tool。搜索只负责发现 Tool，不会代替模型执行目标业务 Tool。
+`response.executeToolCallsAndGetToolMessages()` 执行 `toolSearch` 后会返回包含 Tool 名称的 ToolMessage。
+应用必须把 AiMessage 和 ToolMessage 加入同一个 Prompt；下一轮调用时，拦截器按 toolCallId 关联消息，
+并把命中 Tool 的完整定义加入请求级 Prompt 快照。原始 Prompt 不会被修改。
 
 ## 接入 AgentRunner
 
@@ -133,9 +138,6 @@ AgentTurn turn = new AgentRunner().run(
 );
 ```
 
-Agent 模式下不要配置 `.prompt(prompt)` 或调用 `bind(prompt)`。Runner 会为每个 Turn 构造 Prompt，
-Middleware 负责加入搜索 Tool 和当前搜索结果，因此同一个 Agent 可以并发处理多个 Turn。
-
 Middleware 会将最近一次命中的 Tool 名称保存到 Turn metadata，并随 Snapshot 持久化。恢复 Turn
 时，同一 Agent 版本中的 Middleware 会重新披露并解析这些工具。新的搜索结果会整体替换旧结果。
 可搜索 Tool 不需要再注册到 `Agent.builder().tool(...)`；需要始终可见的 Tool 仍可直接注册到 Agent。
@@ -151,7 +153,8 @@ prompt.addTool(currentTimeTool);
 prompt.addTool(askUserTool);
 ```
 
-常驻 Tool 适合高频基础能力、安全确认或用户交互等必须始终可见的工具。在 `ToolSearchTool` 构建后继续调用 `prompt.addTool(...)` 或主动删除 Tool 也有效；每次搜索、`reset()` 和 `unbind()` 前，绑定逻辑都会重新同步 Prompt 当前的常驻 Tool。
+常驻 Tool 适合高频基础能力、安全确认或用户交互等必须始终可见的工具。拦截器每次都从当前
+Prompt 创建请求快照，因此后续增加或移除常驻 Tool 会自然生效。
 
 ### 可搜索 Tool
 
@@ -161,15 +164,17 @@ prompt.addTool(askUserTool);
 ToolSearchTool toolSearch = ToolSearchTool.builder()
     .addTool(weatherTool)
     .addTools(orderTools)
-    .prompt(prompt)
     .build();
+
+prompt.addTool(toolSearch);
 ```
 
 这些 Tool 初始不会出现在 Prompt 中，只有最近一次搜索命中的 Tool 才会在下一轮发送给模型。
 
-## 只保留最近一次搜索结果
+## 最近一次搜索结果
 
-`ToolSearchTool` 不累积历次搜索发现的 Tool。每次搜索都会整体替换上一次动态结果：
+ToolSearchTool 不保存搜索状态。普通 ChatModel 模式下，拦截器只读取消息链中最近一次
+`toolSearch` 调用的结果：
 
 ```text
 第一次搜索 weather：Prompt = 常驻 Tool + toolSearch + getWeather
@@ -177,13 +182,8 @@ ToolSearchTool toolSearch = ToolSearchTool.builder()
 第三次搜索无结果： Prompt = 常驻 Tool + toolSearch
 ```
 
-这种替换语义可以防止长对话不断积累 Tool，最终重新退化成发送整个工具目录。需要主动清空当前结果时，可以调用：
-
-```java
-toolSearch.reset();
-```
-
-`reset()` 只移除动态发现的 Tool，不影响常驻 Tool、`toolSearch` 本身和搜索目录。
+搜索无结果、结果无效或最近一次搜索尚未完成时，不会继续沿用更早的搜索结果。这种替换语义可以
+防止长对话不断积累 Tool，也避免在共享 Tool 实例中维护运行状态。
 
 ## 搜索结果为什么只返回名称
 
@@ -195,7 +195,8 @@ toolSearch.reset();
 
 名称是已激活 Tool 的稳定引用。下一轮模型请求会携带这些 Tool 的完整名称、描述和参数 Schema，因此无需在 Tool Message 中重复整份定义。模型不是靠名称猜测调用参数，而是在下一轮根据完整定义选择并调用业务 Tool。
 
-如果没有通过 `.prompt(prompt)` 或 `bind(prompt)` 绑定 Prompt，搜索仍会返回名称，但命中 Tool 不会自动出现在后续模型请求中。
+普通 ChatModel 模式必须注册 `ToolSearchChatInterceptor` 并保留完整工具调用消息链；AgentRunner
+模式由 `ToolSearchAgentMiddleware` 自动处理。
 
 ## 默认内存搜索
 
@@ -204,7 +205,6 @@ toolSearch.reset();
 ```java
 ToolSearchTool toolSearch = ToolSearchTool.builder()
     .addTools(applicationTools)
-    .prompt(prompt)
     .build();
 ```
 
@@ -244,7 +244,6 @@ weatherInfo.setMetadata(metadata);
 
 ToolSearchTool toolSearch = ToolSearchTool.builder()
     .addTool(weatherTool, weatherInfo)
-    .prompt(prompt)
     .build();
 ```
 
@@ -299,36 +298,28 @@ public class DatabaseToolSearchProvider implements ToolSearchProvider {
 ToolSearchTool toolSearch = ToolSearchTool.builder()
     .provider(new DatabaseToolSearchProvider())
     .addTools(applicationTools)
-    .prompt(prompt)
     .build();
 ```
 
 自定义 Provider 只负责元数据保存和检索。Provider 返回的名称必须能在当前 `ToolSearchManager` 中解析到同名的本地可执行 Tool；只有远程元数据、没有本地执行对象的结果会被忽略。
 
-## Manager、Prompt 与隔离
+## Manager 与隔离
 
-默认情况下，每次 Builder 构建都会创建独立的 `ToolSearchManager` 和 Provider，因此不同实例的目录及搜索结果互不影响：
+默认情况下，每次 Builder 构建都会创建独立的 `ToolSearchManager` 和 Provider，因此不同实例的目录互不影响：
 
 ```java
 ToolSearchTool first = ToolSearchTool.builder()
     .addTools(firstTools)
-    .prompt(firstPrompt)
     .build();
 
 ToolSearchTool second = ToolSearchTool.builder()
     .addTools(secondTools)
-    .prompt(secondPrompt)
     .build();
 ```
 
-一个 `ToolSearchTool` 同一时间只能绑定一个 Prompt。需要复用到另一个 Prompt 时，应先解除绑定：
-
-```java
-toolSearch.unbind();
-toolSearch.bind(anotherPrompt);
-```
-
-`unbind()` 会从原 Prompt 移除搜索入口和动态发现结果，并保留开发者当前维护的常驻 Tool。
+ToolSearchTool 不持有 Prompt 或最近一次搜索结果，因此同一个实例可以加入多个 Prompt。每个 Prompt
+的搜索状态来自自己的消息历史，不会相互污染。并发复用时，自定义 Manager 和 Provider 也必须
+保证线程安全；默认内存实现支持并发访问。
 
 确实需要让多个实例共享工具目录时，可以显式复用 Manager：
 
@@ -338,12 +329,10 @@ manager.registerAll(sharedTools);
 
 ToolSearchTool first = ToolSearchTool.builder()
     .manager(manager)
-    .prompt(firstPrompt)
     .build();
 
 ToolSearchTool second = ToolSearchTool.builder()
     .manager(manager)
-    .prompt(secondPrompt)
     .build();
 ```
 
@@ -361,8 +350,8 @@ ToolSearchTool second = ToolSearchTool.builder()
 | 模型往返 | 不增加 | 通常增加一次搜索 Tool Call |
 | Tool 粒度 | 预先划分的一组 Tool | 从统一目录返回最近一次 Top-K Tool |
 | 系统提示词 | 命中组可以追加 `systemPrompt` | 不追加业务系统提示词 |
-| Prompt 处理 | 为当前请求创建解析结果，不修改原 Prompt | 修改绑定的 Prompt，为下一轮加入搜索结果 |
-| 状态 | 每个请求重新运行 Matcher | 保存最近一次发现结果，并在下一次搜索时替换 |
+| Prompt 处理 | 为当前请求创建解析结果，不修改原 Prompt | 为当前请求创建解析结果，不修改原 Prompt |
+| 状态 | 每个请求重新运行 Matcher | 普通模式读取消息历史；Agent 模式读取 Turn metadata |
 
 优先使用 ToolGroup 的场景：
 
@@ -396,7 +385,7 @@ ToolSearchTool second = ToolSearchTool.builder()
 
 ### 搜索到新 Tool 后，旧 Tool 为什么不见了？
 
-这是预期行为。`ToolSearchTool` 只保留最近一次搜索结果，以免长对话持续累积工具定义。常驻 Tool 不受影响。
+这是预期行为。拦截器只使用最近一次搜索结果，以免长对话持续累积工具定义。常驻 Tool 不受影响。
 
 ### Prompt 中直接添加的 Tool 为什么没有进入搜索结果？
 
@@ -406,9 +395,11 @@ Prompt 直接添加的是常驻 Tool，它已经始终对模型可见，无需�
 
 Provider 只保存元数据。请确认同名可执行 Tool 已注册到当前 Manager；无法解析到本地执行对象的远程或陈旧结果会被忽略。
 
-### 一个 ToolSearchTool 可以绑定多个 Prompt 吗？
+### 一个 ToolSearchTool 可以用于多个 Prompt 吗？
 
-不可以。一个实例只能绑定一个 Prompt。每个对话分别构建实例，或者先调用 `unbind()` 再绑定另一个 Prompt。
+可以。ToolSearchTool 不持有 Prompt 和运行状态。每个 Prompt 需要保存自己的完整工具调用消息链，
+拦截器会分别解析；需要共享目录时也可以显式共享 ToolSearchManager。并发使用自定义 Manager 或
+Provider 时，实现本身也必须保证线程安全。
 
 ### 少量 Tool 需要使用 ToolSearchTool 吗？
 
