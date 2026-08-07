@@ -16,8 +16,6 @@
 package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.model.exception.ModelException;
-import com.agentsflex.core.model.chat.response.AbstractBaseMessageResponse;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.SimplePrompt;
@@ -30,12 +28,12 @@ public interface ChatModel {
     }
 
     default String chat(String prompt, ChatOptions options) {
-        AbstractBaseMessageResponse<AiMessage> response = chat(new SimplePrompt(prompt), options);
+        AiMessageResponse response = chat(new SimplePrompt(prompt), options);
         if (response == null) {
             return null;
         }
         if (response.isError()) {
-            throw new ModelException(response.getErrorMessage());
+            response.throwIfError();
         }
         AiMessage message = response.getMessage();
         if (message == null) {

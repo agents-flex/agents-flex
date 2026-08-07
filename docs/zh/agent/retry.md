@@ -30,6 +30,11 @@ AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
 
 Runner 不重试确定性的参数错误和工具不存在错误；其他运行时异常在次数允许时可安排重试。应用不应依赖过于宽泛的默认分类来掩盖业务错误，工具内部应把不可恢复输入错误表达清楚，并在必要时由 Middleware 标准化异常。
 
+ChatModel 会把部分供应商错误归一化为结构化异常：`ModelRateLimitException`（临时限速）和
+`ModelOverloadedException`（服务过载）可以按退避策略重试；`TokenLimitExceededException`（输入上下文
+超限）和 `ModelQuotaExceededException`（余额、消费或组织额度耗尽）不会原样重试。上下文超限应先缩短
+消息窗口或摘要后重新构造 Prompt，额度耗尽则需要业务处理账户或项目配置。
+
 取消请求优先于重试。预算耗尽、最大迭代和最大 step 是终态，也不会进入重试。
 
 ## 工具错误策略

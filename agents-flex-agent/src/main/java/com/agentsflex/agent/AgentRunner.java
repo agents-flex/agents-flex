@@ -35,6 +35,8 @@ import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.ChatMemoryProvider;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.exception.ModelQuotaExceededException;
+import com.agentsflex.core.model.exception.TokenLimitExceededException;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutor;
 import com.agentsflex.core.model.chat.tool.ToolInterceptor;
@@ -1223,6 +1225,11 @@ public final class AgentRunner {
      * 参数错误和缺失工具属于确定性配置问题，重复执行不会自行恢复。
      */
     private boolean isRetryable(RuntimeException error) {
+        // 原样重试不会改变输入上下文或账户额度，避免无意义地重复请求。
+        if (error instanceof ModelQuotaExceededException
+            || error instanceof TokenLimitExceededException) {
+            return false;
+        }
         return !(error instanceof AgentToolNotFoundException)
             && !(error instanceof IllegalArgumentException);
     }
@@ -1396,6 +1403,7 @@ public final class AgentRunner {
             throw new IllegalStateException("chat model returned null response");
         }
         if (response.isError()) {
+            response.throwIfError();
             throw new IllegalStateException("chat model returned an error: " + response.getErrorMessage());
         }
         if (response.getMessage() == null) {

@@ -64,6 +64,21 @@ String subject = (String) values.get("subject");
 
 表单机制的完整流程见[表单输入](./form-input)。
 
+需要区分两个生命周期：`AgentToolContext` 只在一次 Java Tool 的同步调用范围内创建，包含 Tool、ToolCall、
+进度发布器和取消检查器，调用结束后即失效；它不会被放入 Snapshot，也不会跨线程自动传播。
+
+真正可持久化的是当前 Turn 的 `AgentTurnState.toolInputData`。Runner 按 `toolCallId` 保存表单数据，并随
+`AgentTurnSnapshot` 交给 `AgentTurnStore` 保存。恢复同一个被表单挂起的 Turn 时，Runner 会用这份数据创建
+新的 `AgentToolContext`，所以 `getSubmittedFormData()` 可以读到之前的提交内容。
+
+如果原 Turn 已被拒绝、完成或取消，之后创建新的 Turn 不会自动继承这份数据。新 Turn 即使使用同一个
+`conversationId`，也只会读取 ChatMemory 中的模型消息，不会把旧 Turn 的 `toolInputData` 注入新的 ToolCall。
+需要再次收集数据时，工具应重新抛出 `AgentFormRequiredException`；确实要复用旧数据时，应由业务系统显式
+读取并作为新的业务输入或 metadata 传入，而不是依赖 `AgentToolContext`。
+
+表单可能包含敏感信息。Store 序列化、日志和 ChatMemory 投影应按业务要求脱敏、加密或设置保留期限；不要
+尝试自行序列化 `AgentToolContext`、Tool 或其中的回调对象。
+
 ## 进度与取消
 
 ```java

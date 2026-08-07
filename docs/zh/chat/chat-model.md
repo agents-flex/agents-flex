@@ -177,6 +177,10 @@ ChatModel 每次调用都会通过 `ChatOptions.copy()` 创建请求级副本。
 
 - 为网络错误、限流和服务端异常设置有限重试，不要重试确定性的 4xx 参数错误；
 - 流式回调不要执行耗时阻塞操作，可把片段转交给消息队列或 UI 线程；
+
+模型错误会尽量归一化为 `ModelRateLimitException`、`ModelOverloadedException`、
+`TokenLimitExceededException` 和 `ModelQuotaExceededException`。其中限速和服务过载适合读取
+`Retry-After` 后退避，输入上下文超限应先压缩 Prompt，余额或消费额度错误不能通过重试解决。
 - 记录 Provider、模型、耗时和 Usage，但不要默认记录敏感 Prompt；
 - Tool Calling 必须处理“模型请求 Tool → 应用执行 → ToolMessage 回传 → 再次调用模型”的循环；
 - 为长对话设置上下文裁剪或 Memory 策略，`ChatModel` 不会自动保存历史。

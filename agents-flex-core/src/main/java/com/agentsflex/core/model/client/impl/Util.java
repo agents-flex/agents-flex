@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.client.impl;
 
-import com.agentsflex.core.model.exception.ModelException;
+import com.agentsflex.core.model.exception.ModelErrorClassifier;
 import com.agentsflex.core.util.StringUtil;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -40,15 +40,27 @@ class Util {
                     String string = body.string();
                     if (StringUtil.hasText(string)) {
                         errMessage += ", body: " + string;
+                        return ModelErrorClassifier.fromHttpError(response.code(), string,
+                            retryAfterMillis(response.header("Retry-After")));
                     }
                 }
             } catch (IOException e) {
                 // ignore
             }
-            t = new ModelException(errMessage);
+            t = ModelErrorClassifier.fromHttpError(response.code(), errMessage,
+                retryAfterMillis(response.header("Retry-After")));
         }
 
         return t;
 
+    }
+
+    private static Long retryAfterMillis(String value) {
+        if (!StringUtil.hasText(value)) return null;
+        try {
+            return Math.max(0L, Long.parseLong(value.trim()) * 1000L);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

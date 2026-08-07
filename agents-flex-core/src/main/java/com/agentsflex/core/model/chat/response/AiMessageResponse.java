@@ -22,6 +22,8 @@ import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutor;
 import com.agentsflex.core.model.chat.tool.ToolInterceptor;
+import com.agentsflex.core.model.exception.ModelErrorClassifier;
+import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.CollectionUtil;
 import com.agentsflex.core.util.StringUtil;
@@ -48,6 +50,27 @@ public class AiMessageResponse extends AbstractBaseMessageResponse<AiMessage> {
 
     public String getRawText() {
         return rawText;
+    }
+
+    /**
+     * 将当前错误响应转换为结构化模型异常。
+     *
+     * <p>正常响应返回 {@code null}。没有 {@code AiMessageResponse} 的流式 HTTP 错误仍由传输层
+     * 直接使用分类器。</p>
+     *
+     * @return 结构化模型异常，正常响应返回 {@code null}
+     */
+    public ModelException toException() {
+        return isError() ? ModelErrorClassifier.fromResponse(this) : null;
+    }
+
+
+    /**
+     * 当前响应存在错误时抛出结构化异常；正常响应不执行任何操作。
+     */
+    public void throwIfError() {
+        ModelException exception = toException();
+        if (exception != null) throw exception;
     }
 
     @Override
