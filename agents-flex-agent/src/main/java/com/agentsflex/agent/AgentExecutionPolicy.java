@@ -7,6 +7,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.tool.ToolErrorStrategy;
+import com.agentsflex.agent.tool.ToolErrorMessageFactory;
 
 import java.io.Serializable;
 
@@ -56,6 +57,10 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     private final ToolErrorStrategy toolErrorStrategy;
     /**
+     * 将允许交回模型的工具异常转换为 ToolMessage 的业务规则。
+     */
+    private final ToolErrorMessageFactory toolErrorMessageFactory;
+    /**
      * 模型或工具发生可恢复异常时使用的重试策略。
      */
     private final AgentRetryPolicy retryPolicy;
@@ -80,6 +85,7 @@ public final class AgentExecutionPolicy implements Serializable {
         this.maxIterations = builder.maxIterations;
         this.maxSteps = builder.maxSteps;
         this.toolErrorStrategy = builder.toolErrorStrategy;
+        this.toolErrorMessageFactory = builder.toolErrorMessageFactory;
         this.retryPolicy = builder.retryPolicy;
         this.budget = builder.budget;
         this.interruptedToolMessageTemplate = builder.interruptedToolMessageTemplate;
@@ -120,6 +126,13 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     public ToolErrorStrategy getToolErrorStrategy() {
         return toolErrorStrategy;
+    }
+
+    /**
+     * @return 工具异常交回模型时使用的消息工厂
+     */
+    public ToolErrorMessageFactory getToolErrorMessageFactory() {
+        return toolErrorMessageFactory;
     }
 
     /**
@@ -165,6 +178,8 @@ public final class AgentExecutionPolicy implements Serializable {
         private int maxIterations = DEFAULT_MAX_ITERATIONS;
         private int maxSteps = DEFAULT_MAX_STEPS;
         private ToolErrorStrategy toolErrorStrategy = ToolErrorStrategy.FAIL_RUN;
+        private ToolErrorMessageFactory toolErrorMessageFactory =
+            ToolErrorMessageFactory.defaultFactory();
         private AgentRetryPolicy retryPolicy = AgentRetryPolicy.none();
         private AgentBudget budget = AgentBudget.unlimited();
         private String interruptedToolMessageTemplate = DEFAULT_INTERRUPTED_TOOL_MESSAGE;
@@ -194,6 +209,17 @@ public final class AgentExecutionPolicy implements Serializable {
          */
         public Builder toolErrorStrategy(ToolErrorStrategy toolErrorStrategy) {
             this.toolErrorStrategy = toolErrorStrategy;
+            return this;
+        }
+
+        /**
+         * 设置工具执行异常交回模型时的消息构造规则。
+         *
+         * <p>仅在 {@link ToolErrorStrategy#RETURN_ERROR_TO_MODEL} 时调用，可用于隐藏内部异常详情、
+         * 映射业务错误码或告诉模型可采取的补救动作。</p>
+         */
+        public Builder toolErrorMessageFactory(ToolErrorMessageFactory value) {
+            this.toolErrorMessageFactory = value;
             return this;
         }
 
@@ -254,8 +280,9 @@ public final class AgentExecutionPolicy implements Serializable {
             if (toolErrorStrategy == null) {
                 throw new IllegalStateException("toolErrorStrategy must not be null");
             }
-            if (retryPolicy == null || budget == null) {
-                throw new IllegalStateException("retryPolicy and budget must not be null");
+            if (retryPolicy == null || budget == null || toolErrorMessageFactory == null) {
+                throw new IllegalStateException(
+                    "retryPolicy, budget and toolErrorMessageFactory must not be null");
             }
             if (interruptedToolMessageTemplate == null || interruptedTurnMessageTemplate == null
                 || cancellationReason == null) {

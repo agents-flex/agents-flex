@@ -1467,7 +1467,8 @@ public final class AgentRunner {
      * 把允许交回模型处理的工具异常编码为与原 ToolCall 关联的结构化错误消息。
      */
     private ToolMessage buildToolErrorMessage(AgentTurn turn, ToolCall call, Throwable error) {
-        ToolMessage result = turn.getAgent().getToolErrorMessageFactory().create(turn, call, error);
+        ToolMessage result = turn.getExecutionPolicy().getToolErrorMessageFactory()
+            .create(turn, call, error);
         if (result == null) {
             throw new IllegalStateException("ToolErrorMessageFactory must not return null");
         }

@@ -217,12 +217,12 @@ public class AgentRunnerTest {
             .tool(tool("unstable", args -> { throw new RuntimeException("internal detail"); }))
             .executionPolicy(AgentExecutionPolicy.builder()
                 .toolErrorStrategy(ToolErrorStrategy.RETURN_ERROR_TO_MODEL)
+                .toolErrorMessageFactory((turn, call, error) -> {
+                    ToolMessage message = new ToolMessage();
+                    message.setContent("{\"code\":\"UPSTREAM_UNAVAILABLE\"}");
+                    return message;
+                })
                 .build())
-            .toolErrorMessageFactory((turn, call, error) -> {
-                ToolMessage message = new ToolMessage();
-                message.setContent("{\"code\":\"UPSTREAM_UNAVAILABLE\"}");
-                return message;
-            })
             .build();
 
         AgentTurn turn = new AgentRunner().run(agent, "try it");
