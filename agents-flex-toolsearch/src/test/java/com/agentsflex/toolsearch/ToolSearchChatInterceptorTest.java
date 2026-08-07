@@ -28,7 +28,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
-/** 普通 ChatModel 使用 ToolSearchChatInterceptor 的渐进披露契约测试。 */
+/** 普通 ChatModel 使用 ToolSearchTool 自动贡献拦截器的渐进披露契约测试。 */
 public class ToolSearchChatInterceptorTest {
 
     @Test
@@ -50,8 +50,6 @@ public class ToolSearchChatInterceptorTest {
         responses.add(weatherCall);
         AtomicReference<Prompt> requestPrompt = new AtomicReference<>();
         BaseChatModel<BaseChatConfig> model = model(responses, requestPrompt);
-        model.addInterceptor(new ToolSearchChatInterceptor());
-
         AiMessageResponse searchResponse = model.chat(prompt);
         prompt.addMessage(searchResponse.getMessage());
         prompt.addMessages(searchResponse.executeToolCallsAndGetToolMessages());
@@ -61,6 +59,37 @@ public class ToolSearchChatInterceptorTest {
         assertEquals(Collections.singletonList("sunny"),
             weatherResponse.executeToolCallsAndGetResults());
         assertNull(prompt.getToolsMap().get("weatherLookup"));
+    }
+
+    @Test
+    public void shouldAutomaticallyApplyProviderForStreamingCalls() {
+        Tool weather = Tool.builder("weatherLookup", args -> "sunny").build();
+        ToolSearchTool searchTool = ToolSearchTool.builder().addTool(weather).build();
+        MemoryPrompt prompt = new MemoryPrompt();
+        prompt.addTool(searchTool);
+        addSearchResult(prompt, searchTool.getName(), "search-stream", "[\"weatherLookup\"]");
+        AtomicReference<Prompt> requestPrompt = new AtomicReference<>();
+        BaseChatModel<BaseChatConfig> model = model(new ArrayDeque<AiMessage>(), requestPrompt);
+
+        model.chatStream(prompt, (context, response) -> {
+        });
+
+        assertSame(weather, requestPrompt.get().getToolsMap().get("weatherLookup"));
+    }
+
+    @Test
+    public void shouldNotOverridePromptAlreadyResolvedByAgentMiddleware() {
+        Tool weather = Tool.builder("weatherLookup", args -> "sunny").build();
+        ToolSearchTool searchTool = ToolSearchTool.builder().addTool(weather).build();
+        MemoryPrompt prompt = new MemoryPrompt();
+        prompt.addTool(searchTool);
+
+        Prompt agentResolved = ToolSearchPromptResolver.resolve(
+            prompt, searchTool, Collections.singletonList("weatherLookup"));
+        Prompt interceptorResolved = ToolSearchPromptResolver.resolve(agentResolved);
+
+        assertSame(agentResolved, interceptorResolved);
+        assertSame(weather, interceptorResolved.getToolsMap().get("weatherLookup"));
     }
 
     @Test

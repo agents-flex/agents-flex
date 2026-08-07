@@ -20,12 +20,15 @@ import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
+import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.prompt.Prompt;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 支持责任链、统一上下文和协议客户端的聊天模型基类。
@@ -134,7 +137,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         try (ChatContextHolder.ChatContextScope scope =
                  ChatContextHolder.beginChat(prompt, options, request, config)) {
             // 构建同步责任链并执行
-            SyncChain chain = buildSyncChain(buildRequestInterceptorChain(), 0);
+            SyncChain chain = buildSyncChain(buildRequestInterceptorChain(prompt), 0);
             return chain.proceed(this, scope.context);
         }
     }
@@ -157,7 +160,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
         ChatRequestSpec request = getChatRequestSpecBuilder().buildRequestSpec(prompt, options, config);
         try (ChatContextHolder.ChatContextScope scope =
                  ChatContextHolder.beginChat(prompt, options, request, config)) {
-            StreamChain chain = buildStreamChain(buildRequestInterceptorChain(), 0);
+            StreamChain chain = buildStreamChain(buildRequestInterceptorChain(prompt), 0);
             chain.proceed(this, scope.context, listener);
         }
     }
@@ -182,10 +185,39 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
 
 
     /** Builds and stably sorts the effective registration snapshot for one request. */
-    private List<ChatInterceptorRegistration> buildRequestInterceptorChain() {
+    private List<ChatInterceptorRegistration> buildRequestInterceptorChain(Prompt prompt) {
         List<ChatInterceptorRegistration> chain = new ArrayList<>();
         chain.addAll(FrameworkChatInterceptors.getRegistrations());
         chain.addAll(interceptorRegistrations);
+
+        // Tool 通过 ChatInterceptorProvider 声明请求级拦截器，避免修改 ChatModel 的共享配置。
+        if (prompt != null && prompt.getTools() != null) {
+            Set<ChatInterceptor> contributed =
+                Collections.newSetFromMap(new IdentityHashMap<ChatInterceptor, Boolean>());
+            for (ChatInterceptorRegistration registration : chain) {
+                contributed.add(registration.getInterceptor());
+            }
+            for (Tool tool : prompt.getTools()) {
+                if (!(tool instanceof ChatInterceptorProvider)) {
+                    continue;
+                }
+                ChatInterceptorProvider provider = (ChatInterceptorProvider) tool;
+                List<ChatInterceptor> provided = provider.getChatInterceptors();
+                if (provided == null) {
+                    throw new IllegalStateException("ChatInterceptorProvider must not return null: "
+                        + provider.getClass().getName());
+                }
+                for (ChatInterceptor interceptor : provided) {
+                    if (interceptor == null) {
+                        throw new IllegalStateException("ChatInterceptorProvider returned a null interceptor: "
+                            + provider.getClass().getName());
+                    }
+                    if (contributed.add(interceptor)) {
+                        chain.add(ChatInterceptorRegistration.of(interceptor));
+                    }
+                }
+            }
+        }
         chain.sort(Comparator.comparingInt(ChatInterceptorRegistration::getOrder));
         return chain;
     }

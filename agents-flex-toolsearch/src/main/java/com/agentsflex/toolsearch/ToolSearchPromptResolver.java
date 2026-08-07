@@ -30,6 +30,8 @@ final class ToolSearchPromptResolver {
      * 普通 ChatModel 场景：从消息链中恢复每个 ToolSearchTool 最近一次完成的搜索结果。
      */
     static Prompt resolve(Prompt source) {
+        // Agent Middleware 或前一个拦截器已经完成解析时，保留其请求级状态。
+        if (source instanceof ResolvedPrompt) return source;
         if (source == null || source.getTools() == null) return source;
         List<Message> messages = source.getMessages();
         List<SearchState> states = new ArrayList<>();

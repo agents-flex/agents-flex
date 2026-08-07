@@ -15,7 +15,8 @@ import com.agentsflex.core.model.chat.response.AiMessageResponse;
 /**
  * 普通 ChatModel 场景的 ToolSearch 请求拦截器。
  *
- * <p>应用只需把无状态的 ToolSearchTool 加入 Prompt，并给 ChatModel 注册本拦截器。每次调用模型前，
+ * <p>应用只需把无状态的 ToolSearchTool 加入 Prompt。ToolSearchTool 会通过
+ * {@code ChatInterceptorProvider} 自动贡献本拦截器；显式注册本拦截器仍然兼容。每次调用模型前，
  * 拦截器从消息链读取最近一次搜索结果，创建只对本次请求生效的 Prompt 快照，不修改原始 Prompt。</p>
  */
 public final class ToolSearchChatInterceptor implements ChatInterceptor {

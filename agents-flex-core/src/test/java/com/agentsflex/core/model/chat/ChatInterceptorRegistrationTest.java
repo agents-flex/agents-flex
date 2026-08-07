@@ -2,6 +2,8 @@ package com.agentsflex.core.model.chat;
 
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.tool.Parameter;
+import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.client.ChatClient;
 import com.agentsflex.core.model.client.ChatRequestSpec;
 import com.agentsflex.core.model.client.ChatRequestSpecBuilder;
@@ -12,6 +14,7 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -142,6 +145,62 @@ public class ChatInterceptorRegistrationTest {
 
         BaseChatModel<BaseChatConfig> model = model(Collections.emptyList());
         assertEquals(0, model.getInterceptorRegistrations().size());
+    }
+
+    @Test
+    public void shouldApplyToolProvidedInterceptorOncePerRequest() {
+        AtomicInteger invocations = new AtomicInteger();
+        ChatInterceptor interceptor = new ChatInterceptor() {
+            @Override
+            public AiMessageResponse intercept(BaseChatModel<?> chatModel, ChatContext context,
+                                               SyncChain chain) {
+                invocations.incrementAndGet();
+                return chain.proceed(chatModel, context);
+            }
+        };
+        Tool providerTool = new ProviderTool(interceptor);
+        SimplePrompt prompt = new SimplePrompt("hello");
+        prompt.addTool(providerTool);
+        prompt.addTool(providerTool);
+        BaseChatModel<BaseChatConfig> model = model(Collections.<ChatInterceptor>emptyList());
+
+        model.chat(prompt);
+
+        assertEquals(1, invocations.get());
+        assertEquals(0, model.getInterceptors().size());
+    }
+
+    private static final class ProviderTool implements Tool, ChatInterceptorProvider {
+        private final ChatInterceptor interceptor;
+
+        private ProviderTool(ChatInterceptor interceptor) {
+            this.interceptor = interceptor;
+        }
+
+        @Override
+        public List<ChatInterceptor> getChatInterceptors() {
+            return Collections.singletonList(interceptor);
+        }
+
+        @Override
+        public String getName() {
+            return "providerTool";
+        }
+
+        @Override
+        public String getDescription() {
+            return "test provider";
+        }
+
+        @Override
+        public Parameter[] getParameters() {
+            return new Parameter[0];
+        }
+
+        @Override
+        public Object invoke(Map<String, Object> argsMap) {
+            return null;
+        }
     }
 
     private static BaseChatModel<BaseChatConfig> model(List<ChatInterceptor> interceptors) {

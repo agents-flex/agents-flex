@@ -4,6 +4,8 @@
  */
 package com.agentsflex.toolsearch;
 
+import com.agentsflex.core.model.chat.ChatInterceptor;
+import com.agentsflex.core.model.chat.ChatInterceptorProvider;
 import com.agentsflex.core.model.chat.tool.BaseTool;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -11,6 +13,7 @@ import com.agentsflex.toolsearch.memory.InMemoryToolSearchProvider;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -21,12 +24,14 @@ import java.util.Map;
  * 场景由 {@link ToolSearchChatInterceptor} 根据消息中的最近一次搜索结果渐进披露 Tool；AgentRunner
  * 场景由 {@link ToolSearchAgentMiddleware} 保存 Turn 级搜索状态并处理工具可见性。</p>
  */
-public class ToolSearchTool extends BaseTool {
+public class ToolSearchTool extends BaseTool implements ChatInterceptorProvider {
 
     /**
      * 默认 Tool 名称，同时是 Manager 禁止业务 Tool 占用的保留名称。
      */
     public static final String NAME = "toolSearch";
+
+    private static final ChatInterceptor CHAT_INTERCEPTOR = new ToolSearchChatInterceptor();
 
     /**
      * 面向模型的默认说明，明确搜索时机、检索范围、返回内容和“只发现不执行”的边界。
@@ -73,6 +78,12 @@ public class ToolSearchTool extends BaseTool {
      */
     public ToolSearchManager getManager() {
         return manager;
+    }
+
+    /** 自动为普通 ChatModel 请求启用 Tool 搜索结果的渐进式工具披露。 */
+    @Override
+    public List<ChatInterceptor> getChatInterceptors() {
+        return Collections.singletonList(CHAT_INTERCEPTOR);
     }
 
     /**

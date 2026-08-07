@@ -108,10 +108,21 @@ ToolSearchTool toolSearch = ToolSearchTool.builder()
     .build();
 
 prompt.addTool(toolSearch);
-chatModel.addInterceptor(new ToolSearchChatInterceptor());
 ```
 
-这里有两个关键点：
+`ToolSearchTool` 实现了 `ChatInterceptorProvider`。因此，普通 ChatModel 场景下只要把它加入
+`Prompt`，ChatModel 就会在当前请求中自动启用 `ToolSearchChatInterceptor`，不需要再手动调用
+`chatModel.addInterceptor(...)`：
+
+```java
+prompt.addTool(toolSearch);
+chatModel.chat(prompt);
+```
+
+拦截器只加入当前请求的责任链，不会修改 ChatModel 的共享配置。原有的显式注册方式仍然兼容；
+ToolSearch 的请求快照具备幂等性，但新代码不再需要重复注册。
+
+这里有三个关键点：
 
 - `.addTools(...)` 注册的是**可搜索 Tool**，初始不会发送给模型。
 - `prompt.addTool(toolSearch)` 只把搜索入口加入 Prompt。
@@ -237,7 +248,7 @@ Prompt = 常驻 Tool + toolSearch
 
 名称是 ToolSearchTool 激活 Tool 的稳定引用。模型不需要根据名称猜测参数，因为下一轮请求会携带命中 Tool 的完整名称、描述和参数 Schema。只返回名称可以避免在 Tool Message 中重复发送完整定义。
 
-普通 ChatModel 模式必须注册 `ToolSearchChatInterceptor`，并把搜索 AiMessage 与 ToolMessage 加入同一个
+普通 ChatModel 模式只需把搜索 AiMessage 与 ToolMessage 加入同一个
 Prompt 的消息历史；AgentRunner 模式则由 `ToolSearchAgentMiddleware` 自动处理。
 
 ## 默认内存搜索
@@ -445,7 +456,7 @@ ToolSearchTool toolSearch = ToolSearchTool.builder()
     .build();
 
 prompt.addTool(toolSearch);
-chatModel.addInterceptor(new ToolSearchChatInterceptor());
+chatModel.chat(prompt);
 ```
 
 不要把权限控制只放在 ToolSearchTool 的描述或搜索标签中。Tool 搜索解决的是“找到什么能力”，ToolGroup 和业务拦截器解决的是“当前请求是否允许获得这项能力”。

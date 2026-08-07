@@ -91,10 +91,20 @@ ToolSearchTool toolSearch = ToolSearchTool.builder()
     .build();
 
 prompt.addTool(toolSearch);
-chatModel.addInterceptor(new ToolSearchChatInterceptor());
 ```
 
-这里有两个关键点：
+`ToolSearchTool` 会通过 Core 提供的 `ChatInterceptorProvider` 自动贡献
+`ToolSearchChatInterceptor`。普通 ChatModel 场景只需要：
+
+```java
+prompt.addTool(toolSearch);
+chatModel.chat(prompt);
+```
+
+拦截器只作用于当前请求，不会写入 ChatModel 的共享拦截器列表。显式调用
+`chatModel.addInterceptor(...)` 仍可兼容旧代码；ToolSearch 的请求快照具备幂等性，但新代码不再需要重复注册。
+
+这里有三个关键点：
 
 - `.addTools(...)` 注册的是可搜索 Tool，初始不会发送给模型。
 - `prompt.addTool(toolSearch)` 把搜索入口加入 Prompt。
@@ -195,7 +205,7 @@ ToolSearchTool 不保存搜索状态。普通 ChatModel 模式下，拦截器只
 
 名称是已激活 Tool 的稳定引用。下一轮模型请求会携带这些 Tool 的完整名称、描述和参数 Schema，因此无需在 Tool Message 中重复整份定义。模型不是靠名称猜测调用参数，而是在下一轮根据完整定义选择并调用业务 Tool。
 
-普通 ChatModel 模式必须注册 `ToolSearchChatInterceptor` 并保留完整工具调用消息链；AgentRunner
+普通 ChatModel 模式只需把 `ToolSearchTool` 加入 Prompt 并保留完整工具调用消息链；AgentRunner
 模式由 `ToolSearchAgentMiddleware` 自动处理。
 
 ## 默认内存搜索
