@@ -54,12 +54,18 @@ Agent agent = Agent.builder("support-agent")
     .maxAttachedTurns(5)
     .maxAttachedMessages(40)
     .compactCompletedToolTurns(true)
+    .compressionKeepRecentTurns(2)
+    .contextCompressor(messages -> summarizeForModel(messages))
     .build();
 ```
 
 默认最多附加最近 10 个完整 Turn 和 100 条消息。`maxAttachedTurns` 是主要的语义窗口，
 `maxAttachedMessages` 是安全上限；框架不会从 ToolCall/ToolMessage 中间硬截断。单个当前 Turn
 即使超过消息上限，也会保留完整协议，避免模型收到孤立的 ToolMessage 或未闭合 ToolCall。
+
+`compactCompletedToolTurns` 只控制较早、已经完成且包含工具调用的 Turn 是否按规则归一化。它不表示所有历史 Turn 都会被压缩。`compressionKeepRecentTurns`（默认 2）会保护最近的若干完整 Turn，这些 Turn 保留原始 ToolCall、ToolMessage 和最终 AiMessage，不参与规则压缩或语义压缩；当前 Turn 始终属于保护范围。
+
+`contextCompressor` 是可选的业务语义压缩器，接收较早且允许压缩的模型可见消息，返回要放入本次模型 Prompt 的消息。它只影响模型上下文，不修改 ChatMemory、Turn 或 Snapshot。返回结果必须以 `UserMessage` 开始，不能包含 UI 消息，并保持每个 `ToolMessage.toolCallId` 与前面 AiMessage 中 ToolCall ID 匹配；未配置时不会调用摘要模型，只执行规则归一化。
 
 窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。
 `AgentActionMessage`、`AgentFormMessage` 等 `modelVisible=false` 消息不会发送给模型。

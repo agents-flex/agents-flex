@@ -41,6 +41,8 @@ Agent agent = Agent.builder("order-assistant")
 | `maxAttachedTurns` | 单次模型调用最多附加的完整 Turn 数 | 否，恢复时随 Agent 定义重装配 |
 | `maxAttachedMessages` | 上下文窗口的消息数量安全上限 | 否，恢复时随 Agent 定义重装配 |
 | `compactCompletedToolTurns` | 是否将较早已完成工具 Turn 归一化为 User + 最终 AI | 否，恢复时随 Agent 定义重装配 |
+| `compressionKeepRecentTurns` | 规则或语义压缩时保留最近的完整 Turn 数 | 否，恢复时随 Agent 定义重装配 |
+| `contextCompressor` | 可选的业务语义上下文压缩器，仅影响模型 Prompt | 否，恢复时随 Agent 定义重装配 |
 | `middlewares` | 包装 step、模型和工具 | 否 |
 | `attributes` | 平台扩展元数据 | 否 |
 
@@ -82,6 +84,8 @@ Agent agent = Agent.builder("order-assistant")
 - `maxAttachedTurns`：每次模型调用最多保留多少个完整 Turn，默认 10。
 - `maxAttachedMessages`：上下文消息数量安全上限，默认 100；不会从 ToolCall/ToolMessage 中间截断。
 - `compactCompletedToolTurns`：是否压缩较早已完成工具 Turn，默认开启；不修改完整历史。
+- `compressionKeepRecentTurns`：最近多少个 Turn 不参与任何压缩，默认 2；当前 Turn 始终保留完整协议。
+- `contextCompressor`：对更早历史执行业务语义压缩的可选函数，不会清理 ChatMemory。
 
 单次 Turn 可通过 `AgentTurnOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。工具返回规模由 Tool 契约控制，Runner 不会根据内容大小改写结果。
 

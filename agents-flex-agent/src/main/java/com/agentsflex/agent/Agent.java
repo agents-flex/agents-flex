@@ -103,6 +103,14 @@ public final class Agent {
      */
     private final boolean compactCompletedToolTurns;
     /**
+     * 最近多少个 Turn 不参与规则或语义压缩。
+     */
+    private final int compressionKeepRecentTurns;
+    /**
+     * 可选的业务语义压缩器。
+     */
+    private final AgentContextCompressor contextCompressor;
+    /**
      * 包装步骤、模型调用和工具调用的中间件。
      */
     private final List<AgentMiddleware> middlewares;
@@ -136,6 +144,8 @@ public final class Agent {
         this.maxAttachedMessages = builder.maxAttachedMessages;
         this.maxAttachedTurns = builder.maxAttachedTurns;
         this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
+        this.compressionKeepRecentTurns = builder.compressionKeepRecentTurns;
+        this.contextCompressor = builder.contextCompressor;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
         List<AgentToolResolver> resolvers = new ArrayList<>();
         for (AgentMiddleware middleware : this.middlewares) {
@@ -296,6 +306,14 @@ public final class Agent {
         return compactCompletedToolTurns;
     }
 
+    public int getCompressionKeepRecentTurns() {
+        return compressionKeepRecentTurns;
+    }
+
+    public AgentContextCompressor getContextCompressor() {
+        return contextCompressor;
+    }
+
     /**
      * @return 按注册顺序执行的只读 Middleware 列表
      */
@@ -333,6 +351,8 @@ public final class Agent {
         private int maxAttachedMessages = 100;
         private int maxAttachedTurns = 10;
         private boolean compactCompletedToolTurns = true;
+        private int compressionKeepRecentTurns = 2;
+        private AgentContextCompressor contextCompressor;
         private final List<AgentMiddleware> middlewares = new ArrayList<>();
         private final Map<String, Object> attributes = new HashMap<>();
 
@@ -479,6 +499,25 @@ public final class Agent {
          */
         public Builder compactCompletedToolTurns(boolean value) {
             this.compactCompletedToolTurns = value;
+            return this;
+        }
+
+        /**
+         * 设置最近多少个 Turn 不参与压缩，默认保留最近 2 个完整 Turn。
+         */
+        public Builder compressionKeepRecentTurns(int value) {
+            if (value < 0) {
+                throw new IllegalArgumentException("compressionKeepRecentTurns must not be negative");
+            }
+            this.compressionKeepRecentTurns = value;
+            return this;
+        }
+
+        /**
+         * 设置可选的语义上下文压缩器；未设置时仅使用规则压缩。
+         */
+        public Builder contextCompressor(AgentContextCompressor value) {
+            this.contextCompressor = value;
             return this;
         }
 

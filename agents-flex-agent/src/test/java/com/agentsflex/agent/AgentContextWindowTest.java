@@ -141,6 +141,75 @@ public class AgentContextWindowTest {
         Assert.assertEquals("real question", messages.get(0).getTextContent());
     }
 
+    @Test
+    public void recentTurnsRemainCompleteAndCompressorOnlyReceivesOlderTurns() {
+        MemoryPrompt source = prompt(
+            new UserMessage("old"), new AiMessage("old answer"),
+            new UserMessage("middle"), new AiMessage("middle answer"),
+            new UserMessage("recent"), aiTool("recent-call"), tool("recent-call", "result"),
+            new AiMessage("recent answer"),
+            new UserMessage("current"), new AiMessage("current answer"));
+        final List<Message> received = new java.util.ArrayList<>();
+        MemoryPrompt result = AgentContextWindow.build(source, 10, 100, true, 2, messages -> {
+            received.addAll(messages);
+            return Arrays.asList(new UserMessage("compressed history"), new AiMessage("compressed answer"));
+        });
+
+        Assert.assertEquals(2, countUsers(received));
+        List<Message> messages = result.getMemory().getMessages(Integer.MAX_VALUE);
+        Assert.assertEquals("compressed history", messages.get(0).getTextContent());
+        Assert.assertEquals("recent", messages.get(2).getTextContent());
+        Assert.assertTrue(messages.get(3) instanceof AiMessage);
+        Assert.assertEquals("current", messages.get(6).getTextContent());
+        Assert.assertEquals(8, messages.size());
+    }
+
+    @Test
+    public void invalidCompressorOutputIsRejected() {
+        MemoryPrompt source = prompt(new UserMessage("old"), new AiMessage("answer"),
+            new UserMessage("current"), new AiMessage("now"));
+        try {
+            AgentContextWindow.build(source, 10, 100, true, 0,
+                messages -> Arrays.asList(new AiMessage("must start with user")));
+            Assert.fail("expected invalid compressor output");
+        } catch (IllegalArgumentException expected) {
+            Assert.assertTrue(expected.getMessage().contains("start with UserMessage"));
+        }
+    }
+
+    @Test
+    public void compressorToolMessageMustMatchPreviousToolCall() {
+        MemoryPrompt source = prompt(new UserMessage("old"), new AiMessage("answer"),
+            new UserMessage("current"), new AiMessage("now"));
+        try {
+            AgentContextWindow.build(source, 10, 100, true, 0,
+                messages -> Arrays.asList(new UserMessage("summary"), aiTool("call-1"), tool("other", "bad")));
+            Assert.fail("expected invalid tool pairing");
+        } catch (IllegalArgumentException expected) {
+            Assert.assertTrue(expected.getMessage().contains("orphan ToolMessage"));
+        }
+    }
+
+    @Test
+    public void maxMessagesDropsCompressedHistoryBeforeProtectedRecentTurns() {
+        MemoryPrompt source = prompt(
+            new UserMessage("old"), new AiMessage("old answer"),
+            new UserMessage("recent"), new AiMessage("recent answer"),
+            new UserMessage("current"), new AiMessage("current answer"));
+        MemoryPrompt result = AgentContextWindow.build(source, 10, 4, true, 2,
+            messages -> Arrays.asList(new UserMessage("summary"), new AiMessage("summary answer")));
+        List<Message> messages = result.getMemory().getMessages(Integer.MAX_VALUE);
+        Assert.assertEquals(4, messages.size());
+        Assert.assertEquals("recent", messages.get(0).getTextContent());
+        Assert.assertEquals("current", messages.get(2).getTextContent());
+    }
+
+    private static int countUsers(List<Message> messages) {
+        int count = 0;
+        for (Message message : messages) if (message instanceof UserMessage) count++;
+        return count;
+    }
+
     private static MemoryPrompt prompt(Message... messages) {
         MemoryPrompt prompt = new MemoryPrompt();
         prompt.addMessages(Arrays.asList(messages));

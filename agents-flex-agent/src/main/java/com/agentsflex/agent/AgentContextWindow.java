@@ -26,29 +26,60 @@ final class AgentContextWindow {
 
     static MemoryPrompt build(MemoryPrompt source, int maxTurns, int maxMessages,
                               boolean compactCompletedToolTurns) {
+        return build(source, maxTurns, maxMessages, compactCompletedToolTurns, 0, null);
+    }
+
+    static MemoryPrompt build(MemoryPrompt source, int maxTurns, int maxMessages,
+                              boolean compactCompletedToolTurns, int keepRecentTurns,
+                              AgentContextCompressor contextCompressor) {
         if (source == null) throw new IllegalArgumentException("source prompt must not be null");
         List<Message> history = readHistory(source.getMemory(), maxTurns);
         List<List<Message>> turns = splitTurns(history);
-        List<Message> selected = new ArrayList<>();
         int from = Math.max(0, turns.size() - maxTurns);
-        for (int index = from; index < turns.size(); index++) {
-            List<Message> turn = turns.get(index);
-            boolean current = index == turns.size() - 1;
-            selected.addAll(compactCompletedToolTurns && !current
-                ? compact(turn) : copy(turn));
+        // 当前 Turn 永远不能被压缩；即使配置为 0，也至少保护当前这一轮。
+        int compressionEnd = Math.max(from, turns.size() - Math.max(1, keepRecentTurns));
+        List<Message> semanticInput = new ArrayList<>();
+        boolean allCompressible = true;
+        for (int index = from; index < compressionEnd; index++) {
+            semanticInput.addAll(turns.get(index));
+            allCompressible &= isCompletedTurn(turns.get(index));
         }
-
-        // 只移除较早的完整 Turn，绝不从当前 Turn 中间切断协议消息。
-        while (selected.size() > maxMessages && turns.size() - from > 1) {
-            from++;
-            selected.clear();
-            for (int index = from; index < turns.size(); index++) {
+        List<Message> semanticOutput = null;
+        if (contextCompressor != null && allCompressible && !semanticInput.isEmpty()) {
+            semanticOutput = contextCompressor.compress(Collections.unmodifiableList(copy(semanticInput)));
+            validateCompressedMessages(semanticOutput);
+        }
+        // 每个元素都是不可拆分的历史单元：语义压缩结果、一个旧 Turn 或一个受保护 Turn。
+        // 超过消息上限时只删除最早单元，永远不会从 ToolCall/ToolMessage 中间截断。
+        List<List<Message>> units = new ArrayList<>();
+        int protectedStart;
+        if (semanticOutput != null) {
+            units.add(copy(semanticOutput));
+            protectedStart = 1;
+        } else {
+            protectedStart = compressionEnd - from;
+        }
+        for (int index = compressionEnd; index < turns.size(); index++) {
+            units.add(copy(turns.get(index)));
+        }
+        if (semanticOutput == null) {
+            units.clear();
+            for (int index = from; index < compressionEnd; index++) {
                 List<Message> turn = turns.get(index);
                 boolean current = index == turns.size() - 1;
-                selected.addAll(compactCompletedToolTurns && !current
-                    ? compact(turn) : copy(turn));
+                units.add(compactCompletedToolTurns && !current ? compact(turn) : copy(turn));
+            }
+            for (int index = compressionEnd; index < turns.size(); index++) {
+                units.add(copy(turns.get(index)));
             }
         }
+        int firstUnit = 0;
+        int size = countMessages(units);
+        while (size > maxMessages && firstUnit < protectedStart) {
+            size -= units.get(firstUnit++).size();
+        }
+        List<Message> selected = new ArrayList<>();
+        for (int index = firstUnit; index < units.size(); index++) selected.addAll(units.get(index));
 
         MemoryPrompt result = new MemoryPrompt();
         result.setMetadataMap(source.getMetadataMap());
@@ -120,10 +151,81 @@ final class AgentContextWindow {
         return copy(turn);
     }
 
+    private static void validateCompressedMessages(List<Message> messages) {
+        if (messages == null || messages.isEmpty()) {
+            throw new IllegalArgumentException("contextCompressor must return at least one message");
+        }
+        if (!(messages.get(0) instanceof UserMessage)) {
+            throw new IllegalArgumentException("contextCompressor result must start with UserMessage");
+        }
+        AiMessage lastToolCallMessage = null;
+        java.util.Set<String> returnedToolCallIds = new java.util.HashSet<>();
+        java.util.Set<String> expectedToolCallIds = new java.util.HashSet<>();
+        for (int index = 0; index < messages.size(); index++) {
+            Message message = messages.get(index);
+            if (message == null || !message.isModelVisible()) {
+                throw new IllegalArgumentException("contextCompressor result contains invalid message");
+            }
+            if (message instanceof ToolMessage) {
+                if (lastToolCallMessage == null || !matchesToolCall(lastToolCallMessage, (ToolMessage) message)
+                    || !returnedToolCallIds.add(((ToolMessage) message).getToolCallId())) {
+                    throw new IllegalArgumentException("contextCompressor result contains orphan ToolMessage");
+                }
+                expectedToolCallIds.remove(((ToolMessage) message).getToolCallId());
+            } else if (message instanceof AiMessage && ((AiMessage) message).hasToolCalls()) {
+                if (!expectedToolCallIds.isEmpty()) {
+                    throw new IllegalArgumentException("contextCompressor result contains incomplete ToolCall");
+                }
+                lastToolCallMessage = (AiMessage) message;
+                returnedToolCallIds.clear();
+                expectedToolCallIds.clear();
+                for (com.agentsflex.core.message.ToolCall call : lastToolCallMessage.getToolCalls()) {
+                    if (call.getId() != null) expectedToolCallIds.add(call.getId());
+                }
+            } else {
+                if (!expectedToolCallIds.isEmpty()) {
+                    throw new IllegalArgumentException("contextCompressor result contains incomplete ToolCall");
+                }
+                lastToolCallMessage = null;
+                returnedToolCallIds.clear();
+            }
+        }
+        if (!expectedToolCallIds.isEmpty()) {
+            throw new IllegalArgumentException("contextCompressor result contains incomplete ToolCall");
+        }
+    }
+
+    private static boolean matchesToolCall(AiMessage assistant, ToolMessage result) {
+        if (result.getToolCallId() == null) return false;
+        for (com.agentsflex.core.message.ToolCall call : assistant.getToolCalls()) {
+            if (result.getToolCallId().equals(call.getId())) return true;
+        }
+        return false;
+    }
+
+    private static int countMessages(List<List<Message>> units) {
+        int count = 0;
+        for (List<Message> unit : units) count += unit.size();
+        return count;
+    }
+
     private static boolean containsToolProtocol(List<Message> turn) {
         for (Message message : turn) {
             if (message instanceof ToolMessage
                 || (message instanceof AiMessage && ((AiMessage) message).hasToolCalls())) return true;
+        }
+        return false;
+    }
+
+    private static boolean isCompletedTurn(List<Message> turn) {
+        if (turn.isEmpty()) return false;
+        for (int index = turn.size() - 1; index >= 0; index--) {
+            Message message = turn.get(index);
+            if (message instanceof AiMessage) {
+                AiMessage ai = (AiMessage) message;
+                return !ai.hasToolCalls()
+                    && (ai.getContent() != null || ai.getReasoningContent() != null);
+            }
         }
         return false;
     }

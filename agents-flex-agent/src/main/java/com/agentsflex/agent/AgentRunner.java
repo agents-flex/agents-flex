@@ -1042,7 +1042,9 @@ public final class AgentRunner {
                 (com.agentsflex.core.prompt.MemoryPrompt) prompt,
                 turn.getAgent().getMaxAttachedTurns(),
                 turn.getAgent().getMaxAttachedMessages(),
-                turn.getAgent().isCompactCompletedToolTurns());
+                turn.getAgent().isCompactCompletedToolTurns(),
+                turn.getAgent().getCompressionKeepRecentTurns(),
+                turn.getAgent().getContextCompressor());
         }
         return modelInvoker.invoke(turn, modelPrompt);
     }
