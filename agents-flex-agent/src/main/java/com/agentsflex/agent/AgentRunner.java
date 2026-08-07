@@ -1187,7 +1187,7 @@ public final class AgentRunner {
      * 从恢复出的当前 Agent 定义中按名称解析工具；工具对象本身不保存在 Snapshot。
      */
     private Tool resolveTool(AgentTurn turn, ToolCall call) {
-        return call == null ? null : turn.getAgent().getTool(call.getName());
+        return call == null ? null : turn.getAgent().resolveTool(turn, call.getName());
     }
 
     /**

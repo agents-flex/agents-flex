@@ -9,6 +9,7 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.task.AgentPlanningPolicy;
 import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.middleware.AgentMiddleware;
+import com.agentsflex.agent.tool.AgentToolResolver;
 import com.agentsflex.agent.tool.ToolApprovalPolicy;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
@@ -98,6 +99,10 @@ public final class Agent {
      */
     private final List<AgentMiddleware> middlewares;
     /**
+     * 由 Middleware 在 Agent 构建阶段声明的动态工具解析器。
+     */
+    private final List<AgentToolResolver> toolResolvers;
+    /**
      * 供配置平台保存模式参数、任务类型和发布信息的只读扩展属性。
      */
     private final Map<String, Object> attributes;
@@ -122,6 +127,12 @@ public final class Agent {
         this.planningPolicy = builder.planningPolicy;
         this.maxAttachedMessages = builder.maxAttachedMessages;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
+        List<AgentToolResolver> resolvers = new ArrayList<>();
+        for (AgentMiddleware middleware : this.middlewares) {
+            AgentToolResolver resolver = middleware.getToolResolver();
+            if (resolver != null) resolvers.add(resolver);
+        }
+        this.toolResolvers = Collections.unmodifiableList(resolvers);
         this.attributes = Collections.unmodifiableMap(new HashMap<>(builder.attributes));
     }
 
@@ -204,6 +215,32 @@ public final class Agent {
      */
     public Tool getTool(String name) {
         return name == null ? null : toolsByName.get(name);
+    }
+
+    /**
+     * 解析当前 Turn 要执行的工具。显式注册在 Agent 上的 Tool 优先，随后按 Middleware 注册顺序
+     * 查询动态 Resolver；多个 Resolver 同时返回结果时视为配置冲突。
+     */
+    public Tool resolveTool(AgentTurn turn, String name) {
+        if (turn == null || name == null) return null;
+        Tool direct = toolsByName.get(name);
+        if (direct != null) return direct;
+        Tool resolved = null;
+        for (AgentToolResolver resolver : toolResolvers) {
+            Tool candidate = resolver.resolve(turn, name);
+            if (candidate == null) continue;
+            if (!name.equals(candidate.getName())) {
+                throw new IllegalStateException(
+                    "AgentToolResolver returned tool '" + candidate.getName()
+                        + "' for requested name: " + name);
+            }
+            if (resolved != null) {
+                throw new IllegalStateException(
+                    "multiple AgentToolResolvers resolved tool: " + name);
+            }
+            resolved = candidate;
+        }
+        return resolved;
     }
 
     /**

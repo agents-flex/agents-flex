@@ -4,6 +4,7 @@
 package com.agentsflex.agent.middleware;
 
 import com.agentsflex.agent.AgentStepResult;
+import com.agentsflex.agent.tool.AgentToolResolver;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 
 /**
@@ -14,6 +15,15 @@ import com.agentsflex.core.model.chat.response.AiMessageResponse;
  * 被多个 Turn 复用时应自行保证线程安全。</p>
  */
 public interface AgentMiddleware {
+
+    /**
+     * 返回该 Middleware 提供的动态工具解析器。
+     *
+     * <p>Agent 构建时会自动收集非空 Resolver，业务代码只需注册 Middleware。默认不提供动态工具。</p>
+     */
+    default AgentToolResolver getToolResolver() {
+        return null;
+    }
 
     /** 包装一次 Agent step，可在调用 chain 前后执行横切逻辑或直接返回结果。 */
     default AgentStepResult aroundStep(AgentMiddlewareContext context,

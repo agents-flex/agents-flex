@@ -90,6 +90,48 @@ metadata 会随 Snapshot 持久化，因此 Worker 恢复后仍可读取租户�
 Prompt。这适合添加一次性的路由提示或脱敏视图。需要跨恢复保留的业务信息应写入可序列化 metadata；
 需要永久整理会话历史时，由业务系统读取 `ChatMemory` 后构造新的历史窗口，再创建 Turn。
 
+## 动态解析工具
+
+当工具来自动态目录，无法在构建 Agent 时全部注册，可以由 Middleware 同时声明
+`AgentToolResolver`：
+
+```java
+public final class CatalogMiddleware implements AgentMiddleware {
+    private final ToolCatalog catalog;
+
+    @Override
+    public AgentToolResolver getToolResolver() {
+        return (turn, toolName) -> {
+            if (!isActivated(turn, toolName)) {
+                return null;
+            }
+            return catalog.resolve(toolName);
+        };
+    }
+
+    @Override
+    public AiMessageResponse aroundModelCall(
+        AgentMiddlewareContext context, AgentModelCallChain chain) {
+        // 只把当前 Turn 已激活的 Tool 定义加入本次模型 Prompt。
+        exposeActivatedTools(context);
+        return chain.proceed(context);
+    }
+}
+```
+
+Agent 构建时会自动收集每个 Middleware 的非空 Resolver。模型产生 ToolCall 后，Runner 先查找
+Agent 静态注册的 Tool，再查询这些动态 Resolver，因此业务代码不需要单独向 Runner 注册工具目录。
+
+Resolver 只解决“当前名称对应哪个本地可执行 Tool”，不会自动让模型看到 Tool。Middleware 仍需在
+`aroundModelCall` 中把允许使用的 Tool 定义放入当前 Prompt，并把跨恢复所需的激活状态写入 Turn
+metadata。Resolver 返回的 Tool 名称必须与请求名称一致；多个 Resolver 同时解析出同一个名称会被
+视为配置冲突。
+
+::: tip ToolSearch 集成
+`agents-flex-toolsearch` 已提供 `ToolSearchAgentMiddleware`。它负责按搜索结果控制模型可见工具，
+并通过 Resolver 恢复可执行 Tool，无需业务侧重复实现上述逻辑。
+:::
+
 ## 与 ToolInterceptor 的关系
 
 执行顺序为 Agent Tool Middleware 链，然后进入核心 `ToolExecutor` 与 Agent 配置的 `ToolInterceptor`，最后调用 Tool 函数。Middleware 能访问 Turn 和 Agent 上下文；ToolInterceptor 更接近通用工具执行层。跨 Agent 的通用工具治理可放在 ToolInterceptor，任务级策略放在 Middleware。

@@ -156,6 +156,13 @@ public class ToolSearchTool extends BaseTool {
     }
 
     /**
+     * Agent Middleware 接入时用于拒绝会修改共享 Prompt 的绑定实例。
+     */
+    synchronized boolean isBound() {
+        return prompt != null;
+    }
+
+    /**
      * 执行 Tool 搜索，并把命中的本地可执行 Tool 激活到绑定的 Prompt。
      *
      * <p>返回值只包含命中 Tool 的名称。完整 Tool 定义会在下一次使用绑定 Prompt 调用模型

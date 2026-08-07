@@ -44,6 +44,9 @@ ToolSearch 会多一次模型与搜索工具的往返。少量高频工具仍应
 
 ## 快速开始
 
+以下示例直接使用 `ChatModel`。如果应用通过 `AgentRunner` 执行，请使用后面的
+[接入 AgentRunner](#接入-agentrunner)，不要把 ToolSearchTool 绑定到共享 Prompt。
+
 ### 1. 添加依赖
 
 ```xml
@@ -130,6 +133,44 @@ String answer = response.getMessage().getContent();
 ::: warning 必须继续下一轮模型调用
 `toolSearch` 只发现 Tool，不执行目标业务 Tool。执行搜索后必须把 Tool Message 加回 Prompt 并再次调用 ChatModel，模型才能选择刚刚发现的 Tool。
 :::
+
+## 接入 AgentRunner
+
+Agent 模式使用 `ToolSearchAgentMiddleware`。Middleware 会自动完成三件事：
+
+1. 在每次模型调用前把 `toolSearch` 和当前 Turn 最近一次命中的 Tool 加入 Prompt。
+2. 搜索完成后把命中的 Tool 名称保存到 Turn metadata，下一次模型调用只披露这些 Tool。
+3. 为 Runner 提供动态工具解析器，使恢复后的 Turn 仍能执行已激活的 Tool。
+
+```java
+ToolSearchTool toolSearch = ToolSearchTool.builder()
+    .addTools(Arrays.asList(weatherTool, emailTool))
+    .build();
+
+Agent agent = Agent.builder("assistant")
+    .chatModel(chatModel)
+    .middleware(ToolSearchAgentMiddleware.of(toolSearch))
+    .build();
+
+AgentTurn turn = new AgentRunner().run(
+    agent,
+    "查询上海天气，然后把结果发送到我的邮箱"
+);
+```
+
+::: warning Agent 模式不要绑定 Prompt
+构建 `ToolSearchTool` 时不要调用 `.prompt(prompt)` 或 `bind(prompt)`。AgentRunner 会为每个 Turn
+构造当前 Prompt，Middleware 在模型调用前处理该 Prompt。绑定一个共享 Prompt 会引入跨 Turn
+状态，并破坏同一个 Agent 的并发执行。
+:::
+
+可搜索 Tool 不需要再通过 `Agent.builder().tool(...)` 注册。需要始终可见的高频 Tool 可以正常注册
+到 Agent；它们仍由 Agent 直接解析，不经过搜索激活。
+
+最近一次搜索命中的名称保存在 metadata 的
+`agentsflex.toolsearch.activeToolNames` 中，并随 Snapshot 持久化。新的搜索结果会整体替换旧结果；
+Runner 从 Snapshot 恢复 Turn 后，Middleware 会根据这些名称重新披露并解析 Tool。Snapshot 只保存
+名称，不保存 Tool 实例，因此恢复时必须加载包含同一 Middleware 和工具目录的 Agent 版本。
 
 ## 两类 Tool
 

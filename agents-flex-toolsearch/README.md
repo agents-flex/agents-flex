@@ -113,6 +113,33 @@ String answer = response.getMessage().getContent();
 
 `response.executeToolCallsAndGetToolMessages()` 执行 `toolSearch` 时，会把命中的 Tool 加入绑定的 Prompt。必须继续调用下一轮 `chatModel.chat(prompt)`，模型才能看到并调用刚刚发现的完整 Tool。搜索只负责发现 Tool，不会代替模型执行目标业务 Tool。
 
+## 接入 AgentRunner
+
+使用 AgentRunner 时，通过 `ToolSearchAgentMiddleware` 接入：
+
+```java
+ToolSearchTool toolSearch = ToolSearchTool.builder()
+    .addTools(Arrays.asList(weatherTool, emailTool))
+    .build();
+
+Agent agent = Agent.builder("assistant")
+    .chatModel(chatModel)
+    .middleware(ToolSearchAgentMiddleware.of(toolSearch))
+    .build();
+
+AgentTurn turn = new AgentRunner().run(
+    agent,
+    "查询上海天气，然后把结果发送到我的邮箱"
+);
+```
+
+Agent 模式下不要配置 `.prompt(prompt)` 或调用 `bind(prompt)`。Runner 会为每个 Turn 构造 Prompt，
+Middleware 负责加入搜索 Tool 和当前搜索结果，因此同一个 Agent 可以并发处理多个 Turn。
+
+Middleware 会将最近一次命中的 Tool 名称保存到 Turn metadata，并随 Snapshot 持久化。恢复 Turn
+时，同一 Agent 版本中的 Middleware 会重新披露并解析这些工具。新的搜索结果会整体替换旧结果。
+可搜索 Tool 不需要再注册到 `Agent.builder().tool(...)`；需要始终可见的 Tool 仍可直接注册到 Agent。
+
 ## 常驻 Tool 与可搜索 Tool
 
 ### 常驻 Tool

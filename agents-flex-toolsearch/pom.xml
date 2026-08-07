@@ -19,6 +19,11 @@
             <artifactId>agents-flex-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-agent</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>

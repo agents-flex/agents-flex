@@ -7,8 +7,10 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.store.AgentTurnStore;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
+import com.agentsflex.agent.tool.AgentToolResolver;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Tool;
@@ -55,6 +57,86 @@ public class AgentToolResolutionTest {
         } catch (UnsupportedOperationException expected) {
             // Tool 只暴露只读元数据。
         }
+    }
+
+    @Test
+    public void shouldAutomaticallyUseToolResolverDeclaredByMiddleware() {
+        AtomicInteger executions = new AtomicInteger();
+        Tool dynamic = AgentScenarioTestSupport.tool("dynamic_tool",
+            arguments -> executions.incrementAndGet());
+        AgentMiddleware middleware = new AgentMiddleware() {
+            @Override
+            public AgentToolResolver getToolResolver() {
+                return (turn, name) -> "dynamic_tool".equals(name) ? dynamic : null;
+            }
+        };
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("dynamic-1", "dynamic_tool", "{}")));
+        model.enqueue(prompt -> new AiMessage("done"));
+        Agent agent = Agent.builder("dynamic-agent")
+            .chatModel(model)
+            .middleware(middleware)
+            .build();
+
+        AgentTurn completed = new AgentRunner().run(agent, "execute dynamic tool");
+
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
+        assertEquals(1, executions.get());
+    }
+
+    @Test
+    public void shouldRejectAmbiguousMiddlewareToolResolvers() {
+        Tool first = AgentScenarioTestSupport.tool("dynamic_tool", arguments -> "first");
+        Tool second = AgentScenarioTestSupport.tool("dynamic_tool", arguments -> "second");
+        AgentMiddleware firstMiddleware = resolverMiddleware(first);
+        AgentMiddleware secondMiddleware = resolverMiddleware(second);
+        Agent agent = Agent.builder("ambiguous-dynamic-agent")
+            .chatModel(new AgentScenarioTestSupport.QueueChatModel())
+            .middleware(firstMiddleware)
+            .middleware(secondMiddleware)
+            .build();
+        AgentTurn turn = new AgentRunner().start(agent, "input");
+
+        try {
+            agent.resolveTool(turn, "dynamic_tool");
+            fail("multiple resolvers must not silently select a tool");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("multiple AgentToolResolvers"));
+        }
+    }
+
+    @Test
+    public void shouldRejectToolResolverReturningDifferentToolName() {
+        Tool wrong = AgentScenarioTestSupport.tool("other_tool", arguments -> "wrong");
+        AgentMiddleware middleware = new AgentMiddleware() {
+            @Override
+            public AgentToolResolver getToolResolver() {
+                return (turn, name) -> "requested_tool".equals(name) ? wrong : null;
+            }
+        };
+        Agent agent = Agent.builder("invalid-resolver-agent")
+            .chatModel(new AgentScenarioTestSupport.QueueChatModel())
+            .middleware(middleware)
+            .build();
+        AgentTurn turn = new AgentRunner().start(agent, "input");
+
+        try {
+            agent.resolveTool(turn, "requested_tool");
+            fail("resolver must return the requested tool name");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("other_tool"));
+            assertTrue(expected.getMessage().contains("requested_tool"));
+        }
+    }
+
+    private AgentMiddleware resolverMiddleware(final Tool tool) {
+        return new AgentMiddleware() {
+            @Override
+            public AgentToolResolver getToolResolver() {
+                return (turn, name) -> tool.getName().equals(name) ? tool : null;
+            }
+        };
     }
 
     @Test
