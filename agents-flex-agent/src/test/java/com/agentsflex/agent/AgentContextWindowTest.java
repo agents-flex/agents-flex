@@ -6,6 +6,7 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import org.junit.Assert;
 import org.junit.Test;
@@ -173,8 +174,20 @@ public class AgentContextWindowTest {
                 messages -> Arrays.asList(new AiMessage("must start with user")));
             Assert.fail("expected invalid compressor output");
         } catch (IllegalArgumentException expected) {
-            Assert.assertTrue(expected.getMessage().contains("start with UserMessage"));
+            Assert.assertTrue(expected.getMessage().contains("SystemMessage"));
         }
+    }
+
+    @Test
+    public void compressorMayReturnSystemMessageBeforeUserMessage() {
+        MemoryPrompt source = prompt(new UserMessage("old"), new AiMessage("answer"),
+            new UserMessage("current"), new AiMessage("now"));
+        MemoryPrompt result = AgentContextWindow.build(source, 10, 100, true, 1,
+            messages -> Arrays.asList(new SystemMessage("compressed policy"),
+                new UserMessage("history summary"), new AiMessage("summary answer")));
+        List<Message> messages = result.getMemory().getMessages(Integer.MAX_VALUE);
+        Assert.assertTrue(messages.get(0) instanceof SystemMessage);
+        Assert.assertTrue(messages.get(1) instanceof UserMessage);
     }
 
     @Test

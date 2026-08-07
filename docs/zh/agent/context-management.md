@@ -67,6 +67,11 @@ Agent agent = Agent.builder("support-agent")
 
 `contextCompressor` 是可选的业务语义压缩器，接收较早且允许压缩的模型可见消息，返回要放入本次模型 Prompt 的消息。它只影响模型上下文，不修改 ChatMemory、Turn 或 Snapshot。返回结果必须以 `UserMessage` 开始，不能包含 UI 消息，并保持每个 `ToolMessage.toolCallId` 与前面 AiMessage 中 ToolCall ID 匹配；未配置时不会调用摘要模型，只执行规则归一化。
 
+框架提供了几个无需额外模型调用的策略：`AgentContextCompressors.identity()` 原样复制消息，
+`compactCompletedTurns()` 每轮只保留用户问题和最终 AI 回复，`textExcerpt(maxCharacters)` 提取历史文本为
+单条摘要用户消息，`chain(...)` 可组合多个策略。生产环境通常应使用业务侧摘要模型实现
+`AgentContextCompressor`，并在摘要失败时保留原始历史。
+
 窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。
 `AgentActionMessage`、`AgentFormMessage` 等 `modelVisible=false` 消息不会发送给模型。
 
