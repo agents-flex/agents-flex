@@ -26,13 +26,13 @@ import com.agentsflex.core.model.router.breaker.CircuitBreaker;
 import com.agentsflex.core.model.router.breaker.DefaultCircuitBreaker;
 import com.agentsflex.core.model.router.core.AbstractModelRouter;
 import com.agentsflex.core.model.router.core.RouterException;
-import com.agentsflex.core.model.router.endpoint.EndpointStatus;
 import com.agentsflex.core.model.router.endpoint.ModelEndpoint;
 import com.agentsflex.core.model.router.retry.DefaultRetryPolicy;
 import com.agentsflex.core.model.router.retry.RetryPolicy;
 import com.agentsflex.core.prompt.Prompt;
 
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -112,7 +112,7 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
         }
         // 一个流式故障转移周期内不重复尝试同一节点，全部尝试过后才开始下一轮重试。
         Set<ModelEndpoint<ChatModel>> attempted = new HashSet<>();
-        streamAttempt(prompt, listener, options, attempted, 0, null);
+        streamAttempt(prompt, listener, options, attempted, new ArrayList<>(), 0, null);
     }
 
     /**
@@ -123,16 +123,19 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
      * Listener 把该异步边界纳入 Router 的指标、重试与熔断处理。</p>
      */
     private void streamAttempt(Prompt prompt, StreamResponseListener listener, ChatOptions options,
-                               Set<ModelEndpoint<ChatModel>> attempted, int retryCount,
+                               Set<ModelEndpoint<ChatModel>> attempted, List<Throwable> failures,
+                               int retryCount,
                                Throwable previous) {
-        List<ModelEndpoint<ChatModel>> candidates = filterAvailable(extractTags(options), attempted);
-        if (candidates.isEmpty()) {
-            // 所有候选均已经尝试过，开始新的重试轮次前重新允许它们参与选择。
-            attempted.clear();
-            candidates = filterAvailable(extractTags(options), attempted);
+        List<ModelEndpoint<ChatModel>> allCandidates = filterEndpoints(extractTags(options));
+        if (allCandidates.isEmpty()) {
+            throw routerFailure("No available model endpoint.", previous, failures);
         }
+        List<ModelEndpoint<ChatModel>> candidates = new ArrayList<>(allCandidates);
+        candidates.removeIf(attempted::contains);
         if (candidates.isEmpty()) {
-            throw new RouterException("No available model endpoint.", previous);
+            // 只有全部当前候选都尝试过时才开始新一轮，避免状态过滤导致误重试。
+            attempted.clear();
+            candidates = allCandidates;
         }
         ModelEndpoint<ChatModel> endpoint = loadBalancer.select(candidates);
         attempted.add(endpoint);
@@ -176,7 +179,12 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                     endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
                     if (shouldRecordEndpointFailure(error)) circuitBreaker.recordFailure(endpoint);
                     endpoint.getMetrics().endRequest();
-                    streamAttempt(prompt, listener, options, attempted, retryCount + 1, error);
+                    failures.add(error);
+                    if (!waitBeforeRetry(retryCount, error)) {
+                        listener.onError(context, error);
+                        return;
+                    }
+                    streamAttempt(prompt, listener, options, attempted, failures, retryCount + 1, error);
                     return;
                 }
                 // 已经输出过内容，或异常不可重试：保持原流的生命周期并交由调用方处理。
@@ -210,20 +218,26 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                 endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
                 if (shouldRecordEndpointFailure(e)) circuitBreaker.recordFailure(endpoint);
                 endpoint.getMetrics().endRequest();
-                streamAttempt(prompt, listener, options, attempted, retryCount + 1, e);
+                failures.add(e);
+                if (!waitBeforeRetry(retryCount, e)) {
+                    throw routerFailure("Model request retry was interrupted.", e, failures);
+                }
+                streamAttempt(prompt, listener, options, attempted, failures, retryCount + 1, e);
             } else {
                 endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
                 endpoint.getMetrics().endRequest();
-                throw new RouterException("All model requests failed.", e);
+                failures.add(e);
+                throw routerFailure("All model requests failed.", e, failures);
             }
         }
     }
 
-    private List<ModelEndpoint<ChatModel>> filterAvailable(Set<String> tags, Set<ModelEndpoint<ChatModel>> attempted) {
-        // 流式调用不能使用基类的私有过滤方法，还需排除当前故障转移周期已尝试的节点。
-        return endpoints.stream().filter(e -> !attempted.contains(e))
-            .filter(e -> e.getStatus() != EndpointStatus.DOWN)
-            .filter(circuitBreaker::allowRequest).filter(e -> e.matchTags(tags)).collect(Collectors.toList());
+    private RouterException routerFailure(String message, Throwable cause, List<Throwable> failures) {
+        RouterException result = new RouterException(message, cause);
+        for (Throwable failure : failures) {
+            if (failure != cause) result.addSuppressed(failure);
+        }
+        return result;
     }
 
     @SuppressWarnings("unchecked")

@@ -51,11 +51,16 @@ public class DefaultCircuitBreaker<T> implements CircuitBreaker<T> {
     }
 
     @Override
-    public boolean allowRequest(ModelEndpoint<T> endpoint) {
+    public synchronized boolean allowRequest(ModelEndpoint<T> endpoint) {
 
         // 正常状态直接允许
         if (endpoint.getStatus() == EndpointStatus.UP) {
             return true;
+        }
+
+        // 半开状态只允许一个探测请求，避免恢复期间瞬间放行大量流量。
+        if (endpoint.getStatus() == EndpointStatus.HALF_OPEN) {
+            return endpoint.getHalfOpenProbeInFlight().compareAndSet(false, true);
         }
 
         long now = System.currentTimeMillis();
@@ -64,6 +69,7 @@ public class DefaultCircuitBreaker<T> implements CircuitBreaker<T> {
         // 到达恢复时间
         if (diff >= recoverMs) {
             endpoint.setStatus(EndpointStatus.HALF_OPEN);
+            endpoint.getHalfOpenProbeInFlight().set(true);
             return true;
         }
 
@@ -71,15 +77,16 @@ public class DefaultCircuitBreaker<T> implements CircuitBreaker<T> {
     }
 
     @Override
-    public void recordSuccess(ModelEndpoint<T> endpoint) {
+    public synchronized void recordSuccess(ModelEndpoint<T> endpoint) {
         // 清空连续失败次数
         endpoint.getConsecutiveFailures().set(0);
         // 恢复正常状态
         endpoint.setStatus(EndpointStatus.UP);
+        endpoint.getHalfOpenProbeInFlight().set(false);
     }
 
     @Override
-    public void recordFailure(ModelEndpoint<T> endpoint) {
+    public synchronized void recordFailure(ModelEndpoint<T> endpoint) {
         int failures = endpoint.getConsecutiveFailures()
             .incrementAndGet();
 
@@ -89,5 +96,6 @@ public class DefaultCircuitBreaker<T> implements CircuitBreaker<T> {
         if (failures >= failureThreshold) {
             endpoint.setStatus(EndpointStatus.DOWN);
         }
+        endpoint.getHalfOpenProbeInFlight().set(false);
     }
 }

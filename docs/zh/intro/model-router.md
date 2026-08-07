@@ -74,6 +74,27 @@ ChatModel chatModel = new RoutedChatModel(
 );
 ```
 
+### 为节点配置稳定标识
+
+生产环境建议为每个逻辑节点指定稳定的 `endpointId`。它用于失败日志、故障聚合以及一次重试轮次内的节点去重：
+
+```java
+ModelEndpoint<ChatModel> primary =
+    new ModelEndpoint<>("openai-primary-cn", primaryModel);
+ModelEndpoint<ChatModel> backup =
+    new ModelEndpoint<>("openai-backup-cn", backupModel);
+
+ChatModel chatModel = new RoutedChatModel(
+    Arrays.asList(primary, backup),
+    new LeastActiveLoadBalancer<>(),
+    new DefaultRetryPolicy(2),
+    new DefaultCircuitBreaker<>(3, 10_000)
+);
+```
+
+同一个 `endpointId` 会被视为同一个逻辑节点，不建议把不同供应商或不同区域配置成相同 ID。
+Router 会复制节点列表，调用方之后修改原始 `List` 不会改变运行中的路由集合；节点的健康状态和指标仍然会随请求实时变化。
+
 | 对象 | 作用 |
 | --- | --- |
 | `ModelEndpoint<T>` | 保存模型实例、标签、权重、节点状态和内存运行指标。 |
@@ -119,7 +140,39 @@ AiMessageResponse response = chatModel.chat(prompt, options);
 
 限速和过载会记录为节点失败，可推动熔断；Token 超限、额度耗尽和其他请求级错误不会污染节点健康状态。默认熔断器连续失败 5 次后将节点标记为不可用，成功调用会清零连续失败计数。
 
-Router 重试会与具体 ChatModel 客户端的网络重试叠加。生产环境应同时检查两层配置，按最坏情况估算请求数、延迟与费用，并为 429 场景配置合适的退避策略。
+节点进入 `DOWN` 后，恢复时间到达时会进入 `HALF_OPEN`，并只允许一个并发探测请求：
+
+```text
+UP -> 连续临时故障 -> DOWN -> 等待 recoverMs -> HALF_OPEN
+                                      |              |
+                              探测失败回 DOWN    探测成功回 UP
+```
+
+例如 `new DefaultCircuitBreaker<>(3, 10_000)` 表示连续 3 次节点故障后熔断，10 秒后允许一次探测。
+如果探测仍失败，节点继续保持不可用；如果成功，连续失败计数清零并恢复正常流量。
+
+Router 重试会与具体 ChatModel 客户端的网络重试叠加。生产环境应同时检查两层配置，按最坏情况估算请求数、延迟与费用。
+`DefaultRetryPolicy` 会读取 `ModelRateLimitException` 中的 `retryAfterMillis`，在下一次尝试前等待，最长等待 30 秒；
+需要指数退避、随机抖动或更长等待时间时，实现自定义 `RetryPolicy`：
+
+```java
+RetryPolicy retryPolicy = new RetryPolicy() {
+    @Override
+    public boolean shouldRetry(int retryCount, Throwable error) {
+        return retryCount < 2 && error instanceof ModelRateLimitException;
+    }
+
+    @Override
+    public long retryDelayMillis(int retryCount, Throwable error) {
+        return Math.min(100L << retryCount, 2_000L);
+    }
+};
+```
+
+等待发生在 Router 的重试边界，不会改变业务侧的 `ChatModel` 调用方式。线程被中断时 Router 会停止后续重试并保留中断标记。
+
+如果所有节点都失败，抛出的 `RouterException` 会把最后一次失败作为 `cause`，并将之前节点的失败作为 suppressed exceptions 保留，
+便于日志系统还原 `A -> B -> C` 的完整失败链路。
 
 ## 流式调用的故障切换
 
@@ -180,8 +233,9 @@ Embedding Router 只选择节点，不会校验或转换向量空间。因此同
 1. 每组可切换 ChatModel 的工具能力、结构化输出、多模态能力和上下文长度满足同一业务要求。
 2. 为限速、过载、Token 超限、全部节点不可用、标签无匹配以及流式中途失败编写集成测试。
 3. 结合日志或 OpenTelemetry 观察每个 Endpoint 的延迟、失败率和活跃请求数。
-4. 多实例部署时，Endpoint 指标和熔断状态默认仅保存在当前 JVM；需要全局一致状态时应接入业务侧的共享健康检查或配置系统。
-5. 备用模型不是“免费保险”：确认其成本、数据区域、模型版本和合规要求。
+4. 为每个逻辑节点配置稳定 `endpointId`，便于定位哪个供应商、区域或网关发生故障。
+5. 多实例部署时，Endpoint 指标和熔断状态默认仅保存在当前 JVM；需要全局一致状态时应接入业务侧的共享健康检查或配置系统。
+6. 备用模型不是“免费保险”：确认其成本、数据区域、模型版本和合规要求。
 
 ## 常见问题
 
@@ -192,6 +246,15 @@ Embedding Router 只选择节点，不会校验或转换向量空间。因此同
 ### Router 会按价格自动挑选最便宜模型吗？
 
 不会。可以通过标签把低成本节点隔离出来，再由业务在 `ChatOptions` 中显式传递 `modelTags`；也可以实现自定义 `ModelLoadBalancer` 按成本、区域或实时配额选择。
+
+### 为什么不能把同一向量索引交给不同 Embedding 模型？
+
+因为 Router 只负责切换节点，不负责转换向量空间。即使两个模型返回的向量维度相同，距离度量、归一化方式或训练语义空间也可能不同。
+模型升级或更换供应商时，应重建索引，或按模型版本拆分索引。
+
+### 模型返回 `null` 时 Router 会怎样？
+
+Router 将 `null` 视为节点调用失败，而不是成功响应，会记录失败指标并按照 `RetryPolicy` 决定是否切换。模型实现应尽量返回有效响应或抛出明确异常，避免隐藏真正的 Provider 错误。
 
 ### 为什么流式内容已经输出后没有切换备用节点？
 

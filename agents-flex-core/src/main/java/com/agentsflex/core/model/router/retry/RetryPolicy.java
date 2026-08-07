@@ -32,4 +32,13 @@ public interface RetryPolicy {
      */
     boolean shouldRetry(int retryCount, Throwable throwable);
 
+    /**
+     * 返回下一次重试前的等待时间，单位为毫秒。
+     *
+     * <p>默认不等待，兼容已有策略实现。返回负数时按 0 处理。</p>
+     */
+    default long retryDelayMillis(int retryCount, Throwable throwable) {
+        return 0L;
+    }
+
 }

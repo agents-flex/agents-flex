@@ -45,6 +45,17 @@ public class DefaultRetryPolicy implements RetryPolicy {
         return retryCount < maxRetries && isTransient(unwrap(throwable));
     }
 
+    @Override
+    public long retryDelayMillis(int retryCount, Throwable throwable) {
+        Throwable cause = unwrap(throwable);
+        if (cause instanceof ModelRateLimitException) {
+            Long retryAfter = ((ModelRateLimitException) cause).getRetryAfterMillis();
+            // 避免供应商异常响应让调用线程无限期等待；更长退避可由自定义策略控制。
+            return retryAfter == null ? 0L : Math.min(Math.max(0L, retryAfter), 30_000L);
+        }
+        return 0L;
+    }
+
     /**
      * 默认只重试临时服务故障，不重复发送确定会失败的请求。
      */

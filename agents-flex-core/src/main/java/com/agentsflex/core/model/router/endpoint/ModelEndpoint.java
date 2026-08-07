@@ -19,6 +19,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
+import java.util.UUID;
 
 /**
  * 模型节点。
@@ -38,6 +41,11 @@ import java.util.concurrent.atomic.AtomicLong;
  * Endpoint 是 Router 的核心抽象。
  */
 public class ModelEndpoint<T> {
+
+    /**
+     * 节点稳定标识，用于日志、故障聚合和一次重试轮次内的去重。
+     */
+    private final String endpointId;
 
     /**
      * 真实模型对象。
@@ -90,8 +98,25 @@ public class ModelEndpoint<T> {
      */
     private final AtomicLong lastFailureTime = new AtomicLong();
 
+    /**
+     * 半开状态下的探测请求占用标记。
+     */
+    private final AtomicBoolean halfOpenProbeInFlight = new AtomicBoolean();
+
     public ModelEndpoint(T model) {
+        this(UUID.randomUUID().toString(), model);
+    }
+
+    /**
+     * 使用显式标识创建节点。相同标识表示同一个逻辑节点，便于路由重试去重。
+     */
+    public ModelEndpoint(String endpointId, T model) {
+        this.endpointId = Objects.requireNonNull(endpointId, "endpointId must not be null");
         this.model = model;
+    }
+
+    public String getEndpointId() {
+        return endpointId;
     }
 
     public T getModel() {
@@ -126,6 +151,10 @@ public class ModelEndpoint<T> {
         return lastFailureTime;
     }
 
+    public AtomicBoolean getHalfOpenProbeInFlight() {
+        return halfOpenProbeInFlight;
+    }
+
     public void addTags(Set<String> tags) {
         this.tags.addAll(tags);
     }
@@ -137,5 +166,18 @@ public class ModelEndpoint<T> {
         }
 
         return tags.containsAll(requiredTags);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof ModelEndpoint)) return false;
+        ModelEndpoint<?> other = (ModelEndpoint<?>) obj;
+        return endpointId.equals(other.endpointId);
+    }
+
+    @Override
+    public int hashCode() {
+        return endpointId.hashCode();
     }
 }
