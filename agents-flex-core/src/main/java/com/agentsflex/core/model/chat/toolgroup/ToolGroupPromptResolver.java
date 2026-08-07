@@ -13,13 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.prompt;
+package com.agentsflex.core.model.chat.toolgroup;
 
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.ToolGroup;
+import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.ArrayList;

@@ -15,6 +15,7 @@
  */
 package com.agentsflex.core.model.chat;
 
+import com.agentsflex.core.model.chat.toolgroup.ToolGroupChatInterceptor;
 import com.agentsflex.core.prompt.Prompt;
 
 import java.util.Arrays;

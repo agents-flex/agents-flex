@@ -124,13 +124,21 @@ public class ChatOptions extends Metadata implements Cloneable {
 
     private Map<String, Object> responseFormat;
 
-    /** 宿主系统业务 Bot 的 ID，只用于调用链关联，不会传递给模型服务。 */
+    /**
+     * 宿主系统业务 Bot 的 ID，只用于调用链关联，不会传递给模型服务。
+     */
     private Object contextBotId;
-    /** 当前会话 ID，只用于调用链关联，不会传递给模型服务。 */
+    /**
+     * 当前会话 ID，只用于调用链关联，不会传递给模型服务。
+     */
     private Object contextConversationId;
-    /** 当前账号 ID，只用于调用链关联，不会传递给模型服务。 */
+    /**
+     * 当前账号 ID，只用于调用链关联，不会传递给模型服务。
+     */
     private Object contextAccountId;
-    /** 当前会话中一次用户交互的 ID，只用于调用链关联，不会传递给模型服务。 */
+    /**
+     * 当前会话中一次用户交互的 ID，只用于调用链关联，不会传递给模型服务。
+     */
     private Object contextTurnId;
     private Map<String, Object> contextAttributes;
 
@@ -157,7 +165,9 @@ public class ChatOptions extends Metadata implements Cloneable {
         }
     }
 
-    /** 把 ChatOptions 定义的字段复制到目标实例，供模型厂商的 Options 子类复用。 */
+    /**
+     * 把 ChatOptions 定义的字段复制到目标实例，供模型厂商的 Options 子类复用。
+     */
     protected final void copyBasePropertiesTo(ChatOptions target) {
         if (target == null) {
             throw new IllegalArgumentException("target ChatOptions must not be null");

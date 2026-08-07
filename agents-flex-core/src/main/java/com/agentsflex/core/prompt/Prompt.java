@@ -18,7 +18,7 @@ package com.agentsflex.core.prompt;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.ChatInterceptorProvider;
 import com.agentsflex.core.model.chat.tool.Tool;
-import com.agentsflex.core.model.chat.tool.ToolGroup;
+import com.agentsflex.core.model.chat.toolgroup.ToolGroup;
 import com.agentsflex.core.model.chat.tool.ToolScanner;
 import com.agentsflex.core.util.Metadata;
 

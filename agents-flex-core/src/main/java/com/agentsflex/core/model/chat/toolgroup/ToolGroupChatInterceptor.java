@@ -13,9 +13,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.core.model.chat;
+package com.agentsflex.core.model.chat.toolgroup;
 
-import com.agentsflex.core.prompt.ToolGroupPromptResolver;
+import com.agentsflex.core.model.chat.*;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 
 /** Resolves conditional tool groups after application interceptors finish modifying the request context. */
