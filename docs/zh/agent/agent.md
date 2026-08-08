@@ -44,6 +44,7 @@ Agent agent = Agent.builder("order-assistant")
 | `compactCompletedToolTurns` | 是否将较早已完成工具 Turn 归一化为 User + 最终 AI | 否，恢复时随 Agent 定义重装配 |
 | `compressionKeepRecentTurns` | 规则或语义压缩时保留最近的完整 Turn 数 | 否，恢复时随 Agent 定义重装配 |
 | `contextCompressor` | 可选的业务语义上下文压缩器，仅影响模型 Prompt | 否，恢复时随 Agent 定义重装配 |
+| `compactBeforeContextCompression` | 语义压缩前是否先归一化较早工具 Turn | 否，恢复时随 Agent 定义重装配 |
 | `middlewares` | 包装 step、模型和工具 | 否 |
 | `attributes` | 平台扩展元数据 | 否 |
 
@@ -87,6 +88,7 @@ Agent agent = Agent.builder("order-assistant")
 - `compactCompletedToolTurns`：是否压缩较早已完成工具 Turn，默认开启；不修改完整历史。
 - `compressionKeepRecentTurns`：最近多少个 Turn 不参与任何压缩，默认 2；当前 Turn 始终保留完整协议。
 - `contextCompressor`：对更早历史执行业务语义压缩的可选函数，不会清理 ChatMemory。
+- `compactBeforeContextCompression`：是否先将工具协议归一化再交给语义压缩器，默认关闭。
 
 单次 Turn 可通过 `AgentTurnOptions` 覆盖执行策略，但不会覆盖 Agent 的工具或审批策略。工具返回规模由 Tool 契约控制，Runner 不会根据内容大小改写结果。
 

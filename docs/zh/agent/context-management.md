@@ -54,6 +54,7 @@ Agent agent = Agent.builder("support-agent")
     .maxAttachedTurns(5)
     .maxAttachedMessages(40)
     .compactCompletedToolTurns(true)
+    .compactBeforeContextCompression(true)
     .compressionKeepRecentTurns(2)
     .contextCompressor(messages -> summarizeForModel(messages))
     .build();
@@ -66,6 +67,10 @@ Agent agent = Agent.builder("support-agent")
 `compactCompletedToolTurns` 只控制较早、已经完成且包含工具调用的 Turn 是否按规则归一化。它不表示所有历史 Turn 都会被压缩。`compressionKeepRecentTurns`（默认 2）会保护最近的若干完整 Turn，这些 Turn 保留原始 ToolCall、ToolMessage 和最终 AiMessage，不参与规则压缩或语义压缩；当前 Turn 始终属于保护范围。
 
 `contextCompressor` 是可选的业务语义压缩器，接收较早且允许压缩的模型可见消息，返回要放入本次模型 Prompt 的消息。它只影响模型上下文，不修改 ChatMemory、Turn 或 Snapshot。返回结果必须以 `UserMessage` 开始，不能包含 UI 消息，并保持每个 `ToolMessage.toolCallId` 与前面 AiMessage 中 ToolCall ID 匹配；未配置时不会调用摘要模型，只执行规则归一化。
+
+`compactBeforeContextCompression` 是独立开关，默认关闭。开启后，语义压缩器收到的较早工具 Turn 会先被
+规则归一化为 `UserMessage + 最终 AiMessage`，再进行语义摘要；关闭时，压缩器收到较早 Turn 的原始消息。
+该开关只有在 `compactCompletedToolTurns(true)` 同时开启时才生效。
 
 框架提供了几个无需额外模型调用的策略：`AgentContextCompressors.identity()` 原样复制消息，
 `compactCompletedTurns()` 每轮只保留用户问题和最终 AI 回复，`textExcerpt(maxCharacters)` 提取历史文本为

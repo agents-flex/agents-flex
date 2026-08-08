@@ -191,6 +191,23 @@ public class AgentContextWindowTest {
     }
 
     @Test
+    public void canNormalizeToolTurnsBeforeSemanticCompressionWhenEnabled() {
+        MemoryPrompt source = prompt(
+            new UserMessage("old request"), aiTool("call-1"), tool("call-1", "result"),
+            new AiMessage("old final"),
+            new UserMessage("current"), new AiMessage("now"));
+        final List<Message> received = new java.util.ArrayList<>();
+        AgentContextWindow.build(source, 2, 100, true, 1, messages -> {
+            received.addAll(messages);
+            return Arrays.asList(new UserMessage("summary"), new AiMessage("facts"));
+        }, true);
+        Assert.assertEquals(2, received.size());
+        Assert.assertTrue(received.get(0) instanceof UserMessage);
+        Assert.assertTrue(received.get(1) instanceof AiMessage);
+        Assert.assertFalse(((AiMessage) received.get(1)).hasToolCalls());
+    }
+
+    @Test
     public void incrementalCompressorOnlyProcessesNewMessages() {
         final int[] calls = {0};
         AgentContextCompressors.Incremental compressor = AgentContextCompressors.incremental(messages -> {

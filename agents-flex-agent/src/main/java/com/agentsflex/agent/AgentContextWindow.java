@@ -28,6 +28,13 @@ final class AgentContextWindow {
         return build(source, maxTurns, maxMessages, compactCompletedToolTurns, 0, null);
     }
 
+    static MemoryPrompt build(MemoryPrompt source, int maxTurns, int maxMessages,
+                              boolean compactCompletedToolTurns, int keepRecentTurns,
+                              AgentContextCompressor contextCompressor) {
+        return build(source, maxTurns, maxMessages, compactCompletedToolTurns,
+            keepRecentTurns, contextCompressor, false);
+    }
+
     /**
      * 根据完整 Turn 边界创建一次模型调用的消息视图。
      *
@@ -37,7 +44,8 @@ final class AgentContextWindow {
      */
     static MemoryPrompt build(MemoryPrompt source, int maxTurns, int maxMessages,
                               boolean compactCompletedToolTurns, int keepRecentTurns,
-                              AgentContextCompressor contextCompressor) {
+                              AgentContextCompressor contextCompressor,
+                              boolean compactBeforeContextCompression) {
         if (source == null) throw new IllegalArgumentException("source prompt must not be null");
         // 多取一轮用于识别边界；最终发送窗口仍严格限制为 maxTurns。
         List<Message> history = readHistory(source.getMemory(), maxTurns);
@@ -49,8 +57,10 @@ final class AgentContextWindow {
         boolean allCompressible = true;
         // 语义压缩只接收较早、已完成的 Turn；挂起或失败的协议消息不能交给摘要器猜测。
         for (int index = from; index < compressionEnd; index++) {
-            semanticInput.addAll(turns.get(index));
-            allCompressible &= isCompletedTurn(turns.get(index));
+            List<Message> turn = turns.get(index);
+            semanticInput.addAll(compactBeforeContextCompression && compactCompletedToolTurns
+                ? compact(turn) : copy(turn));
+            allCompressible &= isCompletedTurn(turn);
         }
         List<Message> semanticOutput = null;
         if (contextCompressor != null && allCompressible && !semanticInput.isEmpty()) {
