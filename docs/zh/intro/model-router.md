@@ -66,20 +66,44 @@ RoutedChatModel routedModel = RoutedChatModel.builder()
     .endpoint("premium", premiumModel)
     .selector((prompt, options, candidates) -> {
         if (containsMultimodalContent(prompt)) {
-            return candidates.stream()
-                .filter(endpoint -> "vision".equals(endpoint.getEndpointId()))
-                .collect(Collectors.toList());
+            return candidates.named("vision");
         }
         if ("tenant-a".equals(options.getMetadata("tenant"))) {
-            return candidates.stream()
-                .filter(endpoint -> "premium".equals(endpoint.getEndpointId()))
-                .collect(Collectors.toList());
+            return candidates.named("premium");
         }
-        return candidates.stream()
-            .filter(endpoint -> "deepseek".equals(endpoint.getEndpointId()))
-            .collect(Collectors.toList());
+        return candidates.named("deepseek");
     })
     .build();
+```
+
+### 按 endpointId 选择
+
+`ChatModelCandidates.named("primary", "backup")` 适合节点 ID 固定的规则；参数顺序就是候选优先级：
+
+```java
+.selector((prompt, options, candidates) ->
+    containsMultimodalContent(prompt)
+        ? candidates.named("vision", "vision-backup")
+        : candidates.named("deepseek", "deepseek-backup"))
+```
+
+`all()` 返回当前所有健康候选节点，适合不额外筛选、仅交给负载均衡器处理的场景。
+
+### 使用 Stream 自定义筛选
+
+当规则依赖 Endpoint 的标签、权重、实时指标或业务配置时，可以使用 `stream()` 返回标准 Java Stream：
+
+```java
+.selector((prompt, options, candidates) -> {
+    if ("tenant-a".equals(options.getMetadata("tenant"))) {
+        return candidates.stream()
+            .filter(endpoint -> endpoint.getEndpointId().startsWith("premium-"))
+            .collect(Collectors.toList());
+    }
+    return candidates.stream()
+        .filter(endpoint -> endpoint.getEndpointId().startsWith("cheap-"))
+        .collect(Collectors.toList());
+})
 ```
 
 选择函数只负责候选节点的筛选和排序，重试、熔断、负载均衡、指标和流式故障切换仍由 Router

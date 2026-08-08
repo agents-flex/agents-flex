@@ -91,14 +91,20 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
         );
     }
 
-    /** 设置自定义候选选择函数；未设置时继续使用 modelTags 和默认负载均衡。 */
+    /**
+     * 设置自定义候选选择函数；未设置时继续使用 modelTags 和默认负载均衡。
+     */
     public RoutedChatModel selector(ChatModelSelector selector) {
         this.selector = selector;
         return this;
     }
 
-    /** 创建轻量构建器，适合直接按名称注册模型节点。 */
-    public static Builder builder() { return new Builder(); }
+    /**
+     * 创建轻量构建器，适合直接按名称注册模型节点。
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
 
     public static final class Builder {
         private final List<ModelEndpoint<ChatModel>> endpoints = new ArrayList<>();
@@ -106,13 +112,32 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
         private RetryPolicy retryPolicy = new DefaultRetryPolicy(3);
         private CircuitBreaker<ChatModel> circuitBreaker = new DefaultCircuitBreaker<>();
         private ChatModelSelector selector;
+
         public Builder endpoint(String id, ChatModel model) {
-            endpoints.add(new ModelEndpoint<>(id, model)); return this;
+            endpoints.add(new ModelEndpoint<>(id, model));
+            return this;
         }
-        public Builder loadBalancer(ModelLoadBalancer<ChatModel> value) { loadBalancer = value; return this; }
-        public Builder retryPolicy(RetryPolicy value) { retryPolicy = value; return this; }
-        public Builder circuitBreaker(CircuitBreaker<ChatModel> value) { circuitBreaker = value; return this; }
-        public Builder selector(ChatModelSelector value) { selector = value; return this; }
+
+        public Builder loadBalancer(ModelLoadBalancer<ChatModel> value) {
+            loadBalancer = value;
+            return this;
+        }
+
+        public Builder retryPolicy(RetryPolicy value) {
+            retryPolicy = value;
+            return this;
+        }
+
+        public Builder circuitBreaker(CircuitBreaker<ChatModel> value) {
+            circuitBreaker = value;
+            return this;
+        }
+
+        public Builder selector(ChatModelSelector value) {
+            selector = value;
+            return this;
+        }
+
         public RoutedChatModel build() {
             return new RoutedChatModel(endpoints, loadBalancer, retryPolicy, circuitBreaker).selector(selector);
         }
@@ -131,7 +156,7 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
             },
             extractTags(options),
             candidates -> selector == null ? candidates
-                : selector.select(prompt, options, candidates)
+                : selector.select(prompt, options, new ChatModelCandidates(candidates))
         );
     }
 
@@ -158,7 +183,7 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                                Throwable previous) {
         List<ModelEndpoint<ChatModel>> allCandidates = filterEndpoints(extractTags(options));
         if (selector != null) {
-            allCandidates = selector.select(prompt, options, allCandidates);
+            allCandidates = selector.select(prompt, options, new ChatModelCandidates(allCandidates));
         }
         if (allCandidates == null) allCandidates = Collections.emptyList();
         if (allCandidates.isEmpty()) {
