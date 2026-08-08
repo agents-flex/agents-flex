@@ -129,6 +129,32 @@ compressor.restore(summary, coveredUntil);
 增量策略是“整体摘要更新”，而不是逐消息摘要。它按照稳定的 `messageId` 找到上次已覆盖的位置，只把新增的旧消息和既有摘要再次提交给摘要模型；
 相同历史重复调用不会重复请求模型。摘要状态应与 `conversationId` 绑定并由业务侧持久化，Runner 不会替业务系统保存它。
 
+### 按触发条件增量持久化
+
+当压缩条件不是固定的消息数量（例如 Token 总量、Turn 数、工具结果大小、时间间隔或租户配额）时，使用协调器把“何时压缩”和“如何压缩”分开：
+
+```java
+AgentContextCompressionCoordinator coordinator = new AgentContextCompressionCoordinator(
+    compressionStateStore,                         // 业务侧按 conversationId 保存状态
+    input -> input.getEstimatedPendingTokens() >= 100_000,
+    AgentContextCompressors.model(summaryModel, "保留事实、ID、约束和未完成事项"),
+    messages -> tokenCounter.estimate(messages));
+
+// 传入完整的“可压缩历史”；当前 Turn 和最近保护 Turn 由调用方留在窗口之外
+AgentContextCompressionResult result = coordinator.compress(conversationId, compressibleHistory);
+List<Message> modelMessages = result.getModelMessages();
+```
+
+`AgentContextCompressionStateStore` 只需要实现 `load` 和带 `expectedVersion` 的 CAS `save`。首次保存使用版本 `0`；
+协调器成功压缩后会推进 `version`、`compressionVersion`、`coveredUntilMessageId`、覆盖 Token 数和 Turn 数。
+业务侧应把这个状态和会话放在同一事务边界内，或使用数据库/Redis 的乐观锁，避免两个请求同时摘要而互相覆盖。
+每次调用都会读取状态，但只有 `AgentContextCompressionTrigger` 返回 `true` 且存在新增消息时才调用摘要器和保存状态；
+因此达到一次阈值后，后续请求不会每轮重复调用摘要模型，直到新增历史再次满足触发条件。
+
+传给协调器的可压缩历史必须是该会话对应范围内完整、按时间升序排列的消息列表。如果状态中的
+`coveredUntilMessageId` 不在列表中，协调器会抛出异常而不是静默从头重复摘要；这通常表示分页不完整、消息被错误删除或状态与会话不一致。
+协调器只生成模型调用视图，不修改 `ChatMemory`，CAS 冲突也不会覆盖已有摘要。
+
 窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。
 `AgentActionMessage`、`AgentFormMessage` 等 `modelVisible=false` 消息不会发送给模型。
 
