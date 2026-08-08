@@ -67,6 +67,7 @@ Agent 的能力不是集中在一个巨大配置对象中，而是分为三层�
 | Builder 方法 | 能力 |
 | --- | --- |
 | `tool(...)` / `tools(...)` | 注册模型可见且 Runner 可执行的 Tool |
+| `toolGroup(...)` / `toolGroups(...)` | 注册按请求条件向模型暴露的 ToolGroup；组内 Tool 自动成为 Runner 可执行 Tool，但只有 matcher 匹配时才进入模型 Prompt |
 | `toolInterceptor(...)` | 为当前 Agent 的 Tool 调用增加权限、审计、参数校验或异常转换 |
 | `middleware(...)` / `middlewares(...)` | 包装 Step、模型调用和 Tool 调用，必要时注册动态 Tool Resolver |
 

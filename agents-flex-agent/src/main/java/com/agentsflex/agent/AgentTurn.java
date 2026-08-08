@@ -9,19 +9,12 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.task.AgentTaskPlan;
 import com.agentsflex.agent.task.AgentTaskProgress;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.SystemMessage;
-import com.agentsflex.core.message.ToolCall;
-import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.message.*;
+import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 一个 Agent 从接收一次输入到产生最终结果的可变执行轮次。
@@ -257,7 +250,9 @@ public final class AgentTurn {
      * 装配不依赖运行时解析的业务工具，规划工具稍后由 Runner 统一补充。
      */
     private void prepareBaseTools() {
+        // ToolGroup 中的 Tool 由 ChatModel 在请求级按 matcher 解析，不能提前无条件暴露给模型。
         prompt.setTools(new ArrayList<>(agent.getTools()));
+        prompt.setToolGroups(agent.getToolGroups());
         planningToolsPrepared = !state.isPlanningEnabled();
     }
 
@@ -265,7 +260,7 @@ public final class AgentTurn {
      * 使用 AgentLoader 已解析出的完整 Agent 装配模型可见的规划工具。
      */
     void preparePlanningTools(List<Agent> delegates) {
-        List<com.agentsflex.core.model.chat.tool.Tool> tools = new ArrayList<>(agent.getTools());
+        List<Tool> tools = new ArrayList<>(agent.getTools());
         if (state.isPlanningEnabled()) {
             tools.addAll(AgentPlanningTool.createTools(
                 agent, delegates, agent.getPlanningPolicy()));
@@ -700,7 +695,9 @@ public final class AgentTurn {
         state.incrementToolCallCount();
     }
 
-    /** 工具在副作用前请求输入时，回滚尚未完成的调用计数。 */
+    /**
+     * 工具在副作用前请求输入时，回滚尚未完成的调用计数。
+     */
     void rollbackToolCallCount() {
         state.rollbackToolCallCount();
     }
@@ -719,12 +716,16 @@ public final class AgentTurn {
         return state.getToolApproval(callId);
     }
 
-    /** 保存工具暂停后由用户提交、供原 ToolCall 重试时读取的表单数据。 */
+    /**
+     * 保存工具暂停后由用户提交、供原 ToolCall 重试时读取的表单数据。
+     */
     void putToolInputData(String callId, Map<String, ?> value) {
         state.putToolInputData(callId, value);
     }
 
-    /** 返回指定 ToolCall 已提交的表单数据；尚未提交时返回空 Map。 */
+    /**
+     * 返回指定 ToolCall 已提交的表单数据；尚未提交时返回空 Map。
+     */
     Map<String, Object> getToolInputData(String callId) {
         return state.getToolInputData(callId);
     }

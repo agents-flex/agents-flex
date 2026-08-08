@@ -15,6 +15,7 @@ import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolInterceptor;
+import com.agentsflex.core.model.chat.toolgroup.ToolGroup;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Set;
 
 /**
@@ -71,9 +73,17 @@ public final class Agent {
      */
     private final ChatOptions chatOptions;
     /**
-     * 暴露给模型并允许 AgentRunner 执行的工具集合。
+     * AgentRunner 最终可执行的工具全集，包含直接工具和 ToolGroup 工具。
+     */
+    private final List<Tool> executableTools;
+    /**
+     * 直接配置、始终加入 Prompt 的 Tool；ToolGroup 中的 Tool 不在此列表中。
      */
     private final List<Tool> tools;
+    /**
+     * 按当前请求条件向模型暴露 Tool 和系统指令的工具组。
+     */
+    private final List<ToolGroup> toolGroups;
     /**
      * 按唯一工具名建立的只读索引，供 ToolCall 和恢复流程直接定位工具。
      */
@@ -137,8 +147,10 @@ public final class Agent {
         this.multimodalChatModel = builder.multimodalChatModel;
         this.chatOptions = builder.chatOptions;
         this.tools = Collections.unmodifiableList(new ArrayList<>(builder.tools));
+        this.toolGroups = Collections.unmodifiableList(new ArrayList<>(builder.toolGroups));
+        this.executableTools = Collections.unmodifiableList(builder.effectiveTools());
         Map<String, Tool> indexedTools = new HashMap<>();
-        for (Tool tool : builder.tools) {
+        for (Tool tool : this.executableTools) {
             indexedTools.put(tool.getName(), tool);
         }
         this.toolsByName = Collections.unmodifiableMap(indexedTools);
@@ -234,10 +246,20 @@ public final class Agent {
     }
 
     /**
-     * @return 不可修改的工具列表
+     * @return 直接配置、默认始终对模型可见的工具列表
      */
     public List<Tool> getTools() {
         return tools;
+    }
+
+    /** 返回 Runner 可执行的完整 Tool 集合，包含直接 Tool 和所有 ToolGroup 中的 Tool。 */
+    List<Tool> getExecutableTools() {
+        return executableTools;
+    }
+
+    /** @return 当前 Agent 配置的请求级 ToolGroup。 */
+    public List<ToolGroup> getToolGroups() {
+        return toolGroups;
     }
 
     /**
@@ -357,6 +379,7 @@ public final class Agent {
         private ChatModel multimodalChatModel;
         private ChatOptions chatOptions = new ChatOptions();
         private final List<Tool> tools = new ArrayList<>();
+        private final List<ToolGroup> toolGroups = new ArrayList<>();
         private final List<ToolInterceptor> toolInterceptors = new ArrayList<>();
         private AgentExecutionPolicy executionPolicy = AgentExecutionPolicy.defaults();
         private ToolApprovalPolicy toolApprovalPolicy = ToolApprovalPolicy.allowAll();
@@ -455,6 +478,24 @@ public final class Agent {
                     tool(tool);
                 }
             }
+            return this;
+        }
+
+        /**
+         * 添加按请求条件向模型暴露 Tool 的工具组。
+         *
+         * <p>组内 Tool 会自动登记为 AgentRunner 可执行 Tool，但不会无条件加入 Prompt；只有
+         * ToolGroup 的 matcher 匹配当前模型请求时才会对模型可见。若同名 Tool 已显式注册，必须是
+         * 同一个实例，避免模型看到的 Tool 与实际执行的 Tool 不一致。</p>
+         */
+        public Builder toolGroup(ToolGroup toolGroup) {
+            if (toolGroup != null) this.toolGroups.add(toolGroup);
+            return this;
+        }
+
+        /** 批量添加 ToolGroup；集合中的 null 元素会被忽略。 */
+        public Builder toolGroups(List<? extends ToolGroup> toolGroups) {
+            if (toolGroups != null) for (ToolGroup toolGroup : toolGroups) toolGroup(toolGroup);
             return this;
         }
 
@@ -615,8 +656,9 @@ public final class Agent {
             if (planningPolicy == null) {
                 throw new IllegalStateException("planningPolicy must not be null");
             }
-            validateUniqueToolNames();
-            if (planningPolicy.isEnabled() && tools.stream().anyMatch(tool ->
+            List<Tool> effectiveTools = effectiveTools();
+            validateUniqueToolNames(effectiveTools);
+            if (planningPolicy.isEnabled() && effectiveTools.stream().anyMatch(tool ->
                 AgentPlanningTool.NAME.equals(tool.getName())
                     || AgentPlanningTool.UPDATE_NAME.equals(tool.getName()))) {
                 throw new IllegalStateException(
@@ -628,15 +670,34 @@ public final class Agent {
         /**
          * 校验工具名称可用于从模型 ToolCall 唯一定位工具实现。
          */
-        private void validateUniqueToolNames() {
+        private void validateUniqueToolNames(List<Tool> values) {
             Set<String> names = new HashSet<>();
-            for (Tool tool : tools) {
+            for (Tool tool : values) {
                 if (!StringUtil.hasText(tool.getName())) {
                     throw new IllegalStateException("tool name must not be blank");
                 }
                 if (!names.add(tool.getName())) {
                     throw new IllegalStateException("duplicate tool name: " + tool.getName());
                 }
+            }
+        }
+
+        /** 合并常驻 Tool 与 ToolGroup Tool，保留唯一、稳定的执行实例。 */
+        private List<Tool> effectiveTools() {
+            Map<String, Tool> result = new LinkedHashMap<>();
+            addTools(result, tools);
+            for (ToolGroup toolGroup : toolGroups) addTools(result, toolGroup.getTools());
+            return new ArrayList<>(result.values());
+        }
+
+        private static void addTools(Map<String, Tool> target, List<? extends Tool> values) {
+            for (Tool tool : values) {
+                if (tool == null || !StringUtil.hasText(tool.getName())) continue;
+                Tool existing = target.get(tool.getName());
+                if (existing != null && existing != tool) {
+                    throw new IllegalStateException("duplicate tool name with different instances: " + tool.getName());
+                }
+                target.put(tool.getName(), tool);
             }
         }
     }

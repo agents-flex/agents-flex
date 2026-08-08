@@ -185,6 +185,7 @@ export default withMermaid(defineConfig({
                     {text: '人工审批', link: '/zh/agent/human-approval'},
                     {text: '表单输入', link: '/zh/agent/form-input'},
                     {text: '上下文管理', link: '/zh/agent/context-management'},
+                    {text: '消息压缩', link: '/zh/agent/message-compression'},
                     {text: '任务规划', link: '/zh/agent/task-planning'},
                     {text: '子 Agent', link: '/zh/agent/subagent'},
                     {text: '挂起和恢复', link: '/zh/agent/suspend-resume'},

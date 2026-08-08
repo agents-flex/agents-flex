@@ -10,6 +10,9 @@ import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.toolgroup.ToolGroup;
+import com.agentsflex.core.model.chat.toolgroup.ToolGroupMatchers;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.prompt.Prompt;
 import org.junit.Test;
@@ -25,7 +28,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** Agent 和 AgentRunner 配置的边界及组合契约测试。 */
+/**
+ * Agent 和 AgentRunner 配置的边界及组合契约测试。
+ */
 public class AgentConfigurationCoverageTest {
 
     @Test
@@ -73,6 +78,36 @@ public class AgentConfigurationCoverageTest {
         } catch (UnsupportedOperationException expected) {
             // expected
         }
+    }
+
+    @Test
+    public void shouldRegisterToolGroupAsConditionalModelCapabilityAndExecutableTool() {
+        Tool weather = Tool.builder("query_weather", arguments -> "sunny").build();
+        ToolGroup group = ToolGroup.builder("weather")
+            .addTool(weather)
+            .matcher(ToolGroupMatchers.promptContains("天气"))
+            .build();
+        Agent agent = Agent.builder("weather-agent")
+            .chatModel(new RecordingModel())
+            .toolGroup(group)
+            .build();
+
+        AgentTurn turn = AgentTurn.start(agent, new UserMessage("查询北京天气"));
+        assertTrue(agent.getTools().isEmpty());
+        assertEquals(1, agent.getExecutableTools().size());
+        assertSame(weather, agent.resolveTool(turn, "query_weather"));
+        assertTrue(turn.getPrompt().getTools().isEmpty());
+        assertEquals(1, turn.getPrompt().getToolGroups().size());
+        assertSame(group, turn.getPrompt().getToolGroups().get(0));
+    }
+
+    @Test
+    public void shouldRejectDifferentToolInstancesWithSameNameAcrossToolGroupAndAgent() {
+        Tool direct = Tool.builder("lookup", arguments -> "direct").build();
+        Tool grouped = Tool.builder("lookup", arguments -> "grouped").build();
+        ToolGroup group = ToolGroup.builder("lookup-group").addTool(grouped).build();
+        assertIllegalState(() -> Agent.builder("invalid")
+            .chatModel(new RecordingModel()).tool(direct).toolGroup(group).build());
     }
 
     @Test
@@ -158,13 +193,21 @@ public class AgentConfigurationCoverageTest {
     }
 
     private static void assertIllegalState(Runnable action) {
-        try { action.run(); fail("expected IllegalStateException"); }
-        catch (IllegalStateException expected) { assertFalse(expected.getMessage().isEmpty()); }
+        try {
+            action.run();
+            fail("expected IllegalStateException");
+        } catch (IllegalStateException expected) {
+            assertFalse(expected.getMessage().isEmpty());
+        }
     }
 
     private static void assertIllegalArgument(Runnable action) {
-        try { action.run(); fail("expected IllegalArgumentException"); }
-        catch (IllegalArgumentException expected) { assertFalse(expected.getMessage().isEmpty()); }
+        try {
+            action.run();
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+            assertFalse(expected.getMessage().isEmpty());
+        }
     }
 
     private static final class RecordingModel implements ChatModel {
