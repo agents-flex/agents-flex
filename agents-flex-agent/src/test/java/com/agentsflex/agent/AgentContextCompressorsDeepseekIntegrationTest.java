@@ -92,7 +92,6 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
             .maxAttachedMessages(12)
             .compressionKeepRecentTurns(1)
             .compactCompletedToolTurns(true)
-            .compactBeforeContextCompression(true)
             .contextCompressor(compressor)
             .middleware(new AgentMiddleware() {
                 @Override
@@ -108,7 +107,6 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
         assertEquals(12, agent.getMaxAttachedMessages());
         assertEquals(1, agent.getCompressionKeepRecentTurns());
         assertTrue(agent.isCompactCompletedToolTurns());
-        assertTrue(agent.isCompactBeforeContextCompression());
         assertTrue(agent.getContextCompressor() == compressor);
         AgentTurn turn = new AgentRunner().run(agent, history,
             new UserMessage("请根据历史预约信息，确认最终会议安排并简要说明。"));

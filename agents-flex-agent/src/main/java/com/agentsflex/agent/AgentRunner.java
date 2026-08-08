@@ -1044,8 +1044,7 @@ public final class AgentRunner {
                 turn.getAgent().getMaxAttachedMessages(),
                 turn.getAgent().isCompactCompletedToolTurns(),
                 turn.getAgent().getCompressionKeepRecentTurns(),
-                turn.getAgent().getContextCompressor(),
-                turn.getAgent().isCompactBeforeContextCompression());
+                turn.getAgent().getContextCompressor());
         }
         return modelInvoker.invoke(turn, modelPrompt);
     }

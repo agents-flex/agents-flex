@@ -28,13 +28,6 @@ final class AgentContextWindow {
         return build(source, maxTurns, maxMessages, compactCompletedToolTurns, 0, null);
     }
 
-    static MemoryPrompt build(MemoryPrompt source, int maxTurns, int maxMessages,
-                              boolean compactCompletedToolTurns, int keepRecentTurns,
-                              AgentContextCompressor contextCompressor) {
-        return build(source, maxTurns, maxMessages, compactCompletedToolTurns,
-            keepRecentTurns, contextCompressor, false);
-    }
-
     /**
      * 根据完整 Turn 边界创建一次模型调用的消息视图。
      *
@@ -44,8 +37,7 @@ final class AgentContextWindow {
      */
     static MemoryPrompt build(MemoryPrompt source, int maxTurns, int maxMessages,
                               boolean compactCompletedToolTurns, int keepRecentTurns,
-                              AgentContextCompressor contextCompressor,
-                              boolean compactBeforeContextCompression) {
+                              AgentContextCompressor contextCompressor) {
         if (source == null) throw new IllegalArgumentException("source prompt must not be null");
         // 多取一轮用于识别边界；最终发送窗口仍严格限制为 maxTurns。
         List<Message> history = readHistory(source.getMemory(), maxTurns);
@@ -58,8 +50,9 @@ final class AgentContextWindow {
         // 语义压缩只接收较早、已完成的 Turn；挂起或失败的协议消息不能交给摘要器猜测。
         for (int index = from; index < compressionEnd; index++) {
             List<Message> turn = turns.get(index);
-            semanticInput.addAll(compactBeforeContextCompression && compactCompletedToolTurns
-                ? compact(turn) : copy(turn));
+            // compactCompletedToolTurns 是独立的压缩策略；配置语义压缩器时，先将较早工具 Turn
+            // 压缩为 UserMessage + 最终 AiMessage，再把结果交给语义压缩器。
+            semanticInput.addAll(compactCompletedToolTurns ? compact(turn) : copy(turn));
             allCompressible &= isCompletedTurn(turn);
         }
         List<Message> semanticOutput = null;
@@ -238,7 +231,7 @@ final class AgentContextWindow {
     }
 
     private static boolean containsToolProtocol(List<Message> turn) {
-        // 只有真正包含 ToolCall/ToolMessage 的 Turn 才值得做规则归一化。
+        // 只有真正包含 ToolCall/ToolMessage 的 Turn 才需要删除中间工具消息并保留最终回复。
         for (Message message : turn) {
             if (message instanceof ToolMessage
                 || (message instanceof AiMessage && ((AiMessage) message).hasToolCalls())) return true;

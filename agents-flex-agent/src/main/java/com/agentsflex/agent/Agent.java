@@ -115,10 +115,6 @@ public final class Agent {
      */
     private final AgentContextCompressor contextCompressor;
     /**
-     * 是否在语义压缩前先归一化较早的工具 Turn。
-     */
-    private final boolean compactBeforeContextCompression;
-    /**
      * 包装步骤、模型调用和工具调用的中间件。
      */
     private final List<AgentMiddleware> middlewares;
@@ -155,7 +151,6 @@ public final class Agent {
         this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
         this.compressionKeepRecentTurns = builder.compressionKeepRecentTurns;
         this.contextCompressor = builder.contextCompressor;
-        this.compactBeforeContextCompression = builder.compactBeforeContextCompression;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
         List<AgentToolResolver> resolvers = new ArrayList<>();
         for (AgentMiddleware middleware : this.middlewares) {
@@ -331,10 +326,6 @@ public final class Agent {
         return contextCompressor;
     }
 
-    public boolean isCompactBeforeContextCompression() {
-        return compactBeforeContextCompression;
-    }
-
     /**
      * @return 按注册顺序执行的只读 Middleware 列表
      */
@@ -375,7 +366,6 @@ public final class Agent {
         private boolean compactCompletedToolTurns = true;
         private int compressionKeepRecentTurns = 2;
         private AgentContextCompressor contextCompressor;
-        private boolean compactBeforeContextCompression;
         private final List<AgentMiddleware> middlewares = new ArrayList<>();
         private final Map<String, Object> attributes = new HashMap<>();
 
@@ -550,14 +540,6 @@ public final class Agent {
          */
         public Builder contextCompressor(AgentContextCompressor value) {
             this.contextCompressor = value;
-            return this;
-        }
-
-        /**
-         * 设置是否在语义压缩前先归一化较早的工具 Turn，默认关闭。
-         */
-        public Builder compactBeforeContextCompression(boolean value) {
-            this.compactBeforeContextCompression = value;
             return this;
         }
 

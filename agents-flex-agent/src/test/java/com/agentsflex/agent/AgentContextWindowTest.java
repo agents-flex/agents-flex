@@ -200,7 +200,7 @@ public class AgentContextWindowTest {
         AgentContextWindow.build(source, 2, 100, true, 1, messages -> {
             received.addAll(messages);
             return Arrays.asList(new UserMessage("summary"), new AiMessage("facts"));
-        }, true);
+        });
         Assert.assertEquals(2, received.size());
         Assert.assertTrue(received.get(0) instanceof UserMessage);
         Assert.assertTrue(received.get(1) instanceof AiMessage);
