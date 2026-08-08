@@ -1,6 +1,6 @@
 ---
 title: 模型路由与高可用
-description: 使用 RoutedChatModel 将多个模型节点包装为一个 ChatModel，实现标签选择、负载均衡、故障切换、重试与熔断。
+description: 使用 RoutedChatModel 将多个模型节点包装为一个 ChatModel，实现自定义选择、标签过滤、负载均衡、故障切换、重试与熔断。
 ---
 
 # 模型路由与高可用
@@ -53,6 +53,42 @@ AiMessageResponse response = chatModel.chat(prompt, options);
 `3` 表示最多三次额外重试，不包含首次请求。因此持续发生可重试故障时，单次调用最多尝试四次。
 
 对于 Agent，不需要特殊接入：将这个 `chatModel` 传给 Agent 或 AgentRunner 原本使用 `ChatModel` 的位置即可。
+
+## 自定义选择函数
+
+如果业务规则不适合用标签表达，可以使用构建器注册选择函数。函数接收当前 Prompt、请求参数和
+健康候选节点，返回筛选或重新排序后的候选列表：
+
+```java
+RoutedChatModel routedModel = RoutedChatModel.builder()
+    .endpoint("deepseek", deepseekModel)
+    .endpoint("vision", visionModel)
+    .endpoint("premium", premiumModel)
+    .selector((prompt, options, candidates) -> {
+        if (containsMultimodalContent(prompt)) {
+            return candidates.stream()
+                .filter(endpoint -> "vision".equals(endpoint.getEndpointId()))
+                .collect(Collectors.toList());
+        }
+        if ("tenant-a".equals(options.getMetadata("tenant"))) {
+            return candidates.stream()
+                .filter(endpoint -> "premium".equals(endpoint.getEndpointId()))
+                .collect(Collectors.toList());
+        }
+        return candidates.stream()
+            .filter(endpoint -> "deepseek".equals(endpoint.getEndpointId()))
+            .collect(Collectors.toList());
+    })
+    .build();
+```
+
+选择函数只负责候选节点的筛选和排序，重试、熔断、负载均衡、指标和流式故障切换仍由 Router
+处理。为了让故障切换生效，函数应返回有序的备用候选列表，而不是只返回一个节点；例如主节点和备用节点
+都符合条件时，应返回 `[primary, backup]`。如果函数只返回单个节点，Router 只能在该节点上重试。
+
+选择函数会在同步和流式请求的每次候选选择前执行。Token 超限属于请求内容问题，默认不会自动重试；如果
+业务需要切换到更大上下文模型，应在选择函数中根据 Prompt 预估 Token，或自定义 `RetryPolicy` 与路由
+策略配合处理。
 
 ## 自定义节点与策略
 
@@ -245,7 +281,30 @@ Embedding Router 只选择节点，不会校验或转换向量空间。因此同
 
 ### Router 会按价格自动挑选最便宜模型吗？
 
-不会。可以通过标签把低成本节点隔离出来，再由业务在 `ChatOptions` 中显式传递 `modelTags`；也可以实现自定义 `ModelLoadBalancer` 按成本、区域或实时配额选择。
+不会自动推断价格。可以通过标签把低成本节点隔离出来，再由业务在 `ChatOptions` 中显式传递
+`modelTags`；也可以使用 `RoutedChatModel.builder().selector(...)`，根据租户、区域、成本或实时配额
+筛选/排序候选节点。选择函数只负责候选选择，重试、熔断和负载均衡仍由 Router 负责。
+
+### Agent 应该配置多个模型还是一个 Router？
+
+只有固定的文本模型和视觉模型时，可以直接配置：
+
+```java
+Agent agent = Agent.builder("assistant")
+    .chatModel(textModel)
+    .multimodalChatModel(visionModel)
+    .build();
+```
+
+需要同时考虑地区、租户、成本、上下文长度或故障切换时，建议只配置一个 Router：
+
+```java
+Agent agent = Agent.builder("assistant")
+    .chatModel(routedChatModel)
+    .build();
+```
+
+两种方式不会修改 ChatMemory 或 AgentTurn 的消息结构，只改变本次模型请求使用的 ChatModel。
 
 ### 为什么不能把同一向量索引交给不同 Embedding 模型？
 

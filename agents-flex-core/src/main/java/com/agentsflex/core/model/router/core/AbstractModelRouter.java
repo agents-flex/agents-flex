@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.function.Function;
 
 /**
  * Router 抽象基类。
@@ -98,6 +99,14 @@ public abstract class AbstractModelRouter<T> {
      * 整个 Router 核心入口。
      */
     protected <R> R execute(ModelInvoker<T, R> invoker, Set<String> tags) {
+        return execute(invoker, tags, candidates -> candidates);
+    }
+
+    /**
+     * 使用调用方选择器调整健康候选节点顺序或范围，治理逻辑仍由 Router 统一执行。
+     */
+    protected <R> R execute(ModelInvoker<T, R> invoker, Set<String> tags,
+                            Function<List<ModelEndpoint<T>>, List<ModelEndpoint<T>>> selector) {
 
         Throwable lastThrowable = null;
         List<Throwable> failures = new ArrayList<>();
@@ -108,7 +117,8 @@ public abstract class AbstractModelRouter<T> {
         while (true) {
 
             // 过滤可用 Endpoint
-            List<ModelEndpoint<T>> allCandidates = filterEndpoints(tags);
+            List<ModelEndpoint<T>> allCandidates = selector.apply(filterEndpoints(tags));
+            if (allCandidates == null) allCandidates = Collections.emptyList();
             if (allCandidates.isEmpty()) {
                 throw new RouterException("No available model endpoint.");
             }

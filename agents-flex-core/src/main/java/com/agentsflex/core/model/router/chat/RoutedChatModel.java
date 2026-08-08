@@ -52,6 +52,7 @@ import java.util.stream.Collectors;
  * 两个模型的结果，因此此时会将错误直接交给原监听器。</p>
  */
 public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements ChatModel {
+    private ChatModelSelector selector;
 
     /**
      * 使用业务指定的节点、负载均衡、重试与熔断策略创建路由模型。
@@ -90,6 +91,33 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
         );
     }
 
+    /** 设置自定义候选选择函数；未设置时继续使用 modelTags 和默认负载均衡。 */
+    public RoutedChatModel selector(ChatModelSelector selector) {
+        this.selector = selector;
+        return this;
+    }
+
+    /** 创建轻量构建器，适合直接按名称注册模型节点。 */
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private final List<ModelEndpoint<ChatModel>> endpoints = new ArrayList<>();
+        private ModelLoadBalancer<ChatModel> loadBalancer = new LeastActiveLoadBalancer<>();
+        private RetryPolicy retryPolicy = new DefaultRetryPolicy(3);
+        private CircuitBreaker<ChatModel> circuitBreaker = new DefaultCircuitBreaker<>();
+        private ChatModelSelector selector;
+        public Builder endpoint(String id, ChatModel model) {
+            endpoints.add(new ModelEndpoint<>(id, model)); return this;
+        }
+        public Builder loadBalancer(ModelLoadBalancer<ChatModel> value) { loadBalancer = value; return this; }
+        public Builder retryPolicy(RetryPolicy value) { retryPolicy = value; return this; }
+        public Builder circuitBreaker(CircuitBreaker<ChatModel> value) { circuitBreaker = value; return this; }
+        public Builder selector(ChatModelSelector value) { selector = value; return this; }
+        public RoutedChatModel build() {
+            return new RoutedChatModel(endpoints, loadBalancer, retryPolicy, circuitBreaker).selector(selector);
+        }
+    }
+
     @Override
     public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
         return execute(
@@ -101,7 +129,9 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                 }
                 return response;
             },
-            extractTags(options)
+            extractTags(options),
+            candidates -> selector == null ? candidates
+                : selector.select(prompt, options, candidates)
         );
     }
 
@@ -127,6 +157,10 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                                int retryCount,
                                Throwable previous) {
         List<ModelEndpoint<ChatModel>> allCandidates = filterEndpoints(extractTags(options));
+        if (selector != null) {
+            allCandidates = selector.select(prompt, options, allCandidates);
+        }
+        if (allCandidates == null) allCandidates = Collections.emptyList();
         if (allCandidates.isEmpty()) {
             throw routerFailure("No available model endpoint.", previous, failures);
         }
