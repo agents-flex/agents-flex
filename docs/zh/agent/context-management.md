@@ -155,6 +155,29 @@ List<Message> modelMessages = result.getModelMessages();
 `coveredUntilMessageId` 不在列表中，协调器会抛出异常而不是静默从头重复摘要；这通常表示分页不完整、消息被错误删除或状态与会话不一致。
 协调器只生成模型调用视图，不修改 `ChatMemory`，CAS 冲突也不会覆盖已有摘要。
 
+框架不强制业务侧采用某一种数据库，但 Store 模块提供 JDBC 和 Redis 实现：
+
+```java
+JdbcAgentStoreConfig jdbc = JdbcAgentStoreConfig.builder(dataSource)
+    .tablePrefix("app_agent_")
+    .build();
+jdbc.schema().initialize();
+AgentContextCompressionStateStore compressionStore = jdbc.compressionStateStore();
+```
+
+Redis 使用同样的 CAS 语义，适合多实例服务共享状态：
+
+```java
+RedisAgentStoreConfig redis = RedisAgentStoreConfig.builder("redis://127.0.0.1:6379")
+    .keyPrefix("app:agent:")
+    .build();
+AgentContextCompressionStateStore compressionStore = redis.compressionStateStore();
+```
+
+JDBC 实现需要在启动时执行 `schema().initialize()`，或使用等价的数据库迁移脚本；Redis 实现不需要建表。
+两种实现都使用 `FastjsonAgentStoreSerializer` 保存消息多态类型，也都支持通过配置替换为业务自定义序列化器。
+应用负责关闭自己创建的 Redis 配置对象；JDBC `DataSource` 的生命周期仍由应用管理。
+
 窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。
 `AgentActionMessage`、`AgentFormMessage` 等 `modelVisible=false` 消息不会发送给模型。
 

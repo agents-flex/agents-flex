@@ -1,11 +1,14 @@
 package com.agentsflex.agent.store.jdbc;
 
 import com.agentsflex.agent.AgentExecutionPolicy;
+import com.agentsflex.agent.AgentContextCompressionState;
+import com.agentsflex.agent.AgentContextCompressionStateStore;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.store.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.ParentChildTurnSnapshots;
+import com.agentsflex.core.message.AiMessage;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,6 +16,7 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,7 +24,9 @@ import java.util.concurrent.Future;
 
 import static org.junit.Assert.*;
 
-/** 验证 JDBC 实现与 Agent Store SPI 的状态、并发和恢复语义一致。 */
+/**
+ * 验证 JDBC 实现与 Agent Store SPI 的状态、并发和恢复语义一致。
+ */
 public class JdbcAgentStoresContractTest {
     private JdbcAgentStoreConfig config;
 
@@ -98,14 +104,37 @@ public class JdbcAgentStoresContractTest {
         CountDownLatch start = new CountDownLatch(1);
         try {
             Future<List<AgentTurnSnapshot>> first = executor.submit(() -> {
-                start.await(); return store.claimRunnable("worker-a", 100, 1000, 1);
+                start.await();
+                return store.claimRunnable("worker-a", 100, 1000, 1);
             });
             Future<List<AgentTurnSnapshot>> second = executor.submit(() -> {
-                start.await(); return store.claimRunnable("worker-b", 100, 1000, 1);
+                start.await();
+                return store.claimRunnable("worker-b", 100, 1000, 1);
             });
             start.countDown();
             assertEquals(1, first.get().size() + second.get().size());
-        } finally { executor.shutdownNow(); }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void shouldPersistCompressionStateWithCasAndRestoreSummaryMessages() {
+        AgentContextCompressionStateStore store = config.compressionStateStore();
+        AgentContextCompressionState first = new AgentContextCompressionState(1,
+            Arrays.asList(new AiMessage("summary-1")), "message-100", 1, 1000, 10);
+        assertTrue(store.save("conversation-1", first, 0));
+        AgentContextCompressionState loaded = store.load("conversation-1");
+        assertEquals(1, loaded.getVersion());
+        assertEquals("message-100", loaded.getCoveredUntilMessageId());
+        assertEquals("summary-1", loaded.getSummaryMessages().get(0).getTextContent());
+
+        AgentContextCompressionState second = new AgentContextCompressionState(2,
+            Arrays.asList(new AiMessage("summary-2")), "message-200", 2, 2000, 20);
+        assertFalse(store.save("conversation-1", second, 0));
+        assertTrue(store.save("conversation-1", second, 1));
+        assertEquals(2, store.load("conversation-1").getCompressionVersion());
+        assertNull(store.load("missing-conversation"));
     }
 
     private AgentTurnSnapshot snapshot(String turnId, AgentTurnStatus status) {

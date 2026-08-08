@@ -1,10 +1,13 @@
 package com.agentsflex.agent.store.redis;
 
 import com.agentsflex.agent.AgentExecutionPolicy;
+import com.agentsflex.agent.AgentContextCompressionState;
+import com.agentsflex.agent.AgentContextCompressionStateStore;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.store.ParentChildTurnSnapshots;
+import com.agentsflex.core.message.AiMessage;
 import redis.clients.jedis.params.ScanParams;
 import redis.clients.jedis.resps.ScanResult;
 import org.junit.After;
@@ -15,6 +18,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.UUID;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -94,6 +98,21 @@ public class RedisAgentStoresIntegrationTest {
             start.countDown();
             assertEquals(1, futures.get(0).get().size() + futures.get(1).get().size());
         } finally { executor.shutdownNow(); }
+    }
+
+    @Test
+    public void shouldPersistCompressionStateWithRedisLuaCas() {
+        AgentContextCompressionStateStore store = config.compressionStateStore();
+        AgentContextCompressionState first = new AgentContextCompressionState(1,
+            Arrays.asList(new AiMessage("summary-1")), "message-100", 1, 1000, 10);
+        assertTrue(store.save("conversation-1", first, 0));
+        assertEquals("summary-1", store.load("conversation-1").getSummaryMessages().get(0).getTextContent());
+
+        AgentContextCompressionState second = new AgentContextCompressionState(2,
+            Arrays.asList(new AiMessage("summary-2")), "message-200", 2, 2000, 20);
+        assertFalse(store.save("conversation-1", second, 0));
+        assertTrue(store.save("conversation-1", second, 1));
+        assertEquals(2, store.load("conversation-1").getCompressionVersion());
     }
 
     private AgentTurnSnapshot snapshot() {

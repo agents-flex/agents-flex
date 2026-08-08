@@ -2,6 +2,7 @@ package com.agentsflex.agent.store.jdbc;
 
 import com.agentsflex.agent.store.AgentStoreSerializer;
 import com.agentsflex.agent.store.FastjsonAgentStoreSerializer;
+import com.agentsflex.agent.AgentContextCompressionStateStore;
 
 import javax.sql.DataSource;
 import java.util.Objects;
@@ -48,6 +49,13 @@ public final class JdbcAgentStoreConfig {
 
     public JdbcAgentTurnStore turnStore() {
         return new JdbcAgentTurnStore(this);
+    }
+
+    /**
+     * 创建使用同一 DataSource 和序列化器的上下文压缩状态 Store。
+     */
+    public AgentContextCompressionStateStore compressionStateStore() {
+        return new JdbcAgentContextCompressionStateStore(this);
     }
 
     public static final class Builder {

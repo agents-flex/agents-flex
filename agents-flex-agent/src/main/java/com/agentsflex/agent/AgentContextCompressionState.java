@@ -5,6 +5,7 @@ import com.agentsflex.core.message.Message;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.io.Serializable;
 
 /**
  * 可由业务侧持久化的增量压缩状态。
@@ -13,7 +14,8 @@ import java.util.List;
  * 不会再次交给压缩器。{@code version} 用于 Store 的 CAS，{@code compressionVersion} 用于
  * 业务审计和监控，两者不要混用。</p>
  */
-public final class AgentContextCompressionState {
+public final class AgentContextCompressionState implements Serializable {
+    private static final long serialVersionUID = 1L;
     private final long version;
     private final List<Message> summaryMessages;
     private final String coveredUntilMessageId;
