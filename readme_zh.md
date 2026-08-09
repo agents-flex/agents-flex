@@ -25,6 +25,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 | 模块 | 说明 |
 | --- | --- |
 | `agents-flex-core` | 核心抽象：Chat、Prompt、Message、Tool、Memory、Document、Store、Observability |
+| `agents-flex-doc-extractor` | 从 PDF、Office、HTML、邮件、压缩包、输入流和 URL 中提取 Markdown 风格内容 |
 | `agents-flex-agent` | 持久化 Agent Runtime：运行状态、Snapshot、Worker Lease、审批、Middleware、事件和任务规划 |
 | `agents-flex-agent-store` | Agent 运行、命令、事件、任务计划和 Artifact 的 JDBC 与 Redis 持久化实现 |
 | `agents-flex-chat` | 聊天模型适配：OpenAI 兼容接口、Qwen、Ollama、DeepSeek、LiteLLM |
@@ -233,7 +234,7 @@ Agents-Flex 内置多种面向复杂任务的机制：
 RAG 相关能力分布在多个模块中：
 
 - 文档模型：`Document`、`VectorData`、`Metadata`
-- 文本处理：Loader、Parser、Splitter、File2Text
+- 文本处理：Loader、Parser、Splitter、Doc Extractor
 - 向量化：OpenAI、Ollama、Qwen Embedding
 - 向量存储：Redis、Qdrant、Chroma、Pgvector、MariaDB、Milvus、OpenSearch、Elasticsearch 等
 - 检索增强：`SearchWrapper`、`DocumentStore`、`VectorStore`
@@ -287,6 +288,7 @@ LLM Wiki 可以理解为一种面向 Agent 的层级知识库：知识不只是�
 
 ```text
 agents-flex-core/                 核心 API 与基础实现
+agents-flex-doc-extractor/        文档内容提取
 agents-flex-agent/                持久化 Agent Runtime 与扩展契约
 agents-flex-agent-store/          Agent Runtime 的 JDBC 与 Redis 持久化实现
 agents-flex-observability/        OpenTelemetry 数据持久化 Exporter

@@ -9,12 +9,12 @@
 ### 1.1 移除模块
 
 * **Chain 模块**：已合并到 `Tinyflow`，请迁移相关流程逻辑到 Tinyflow。
-* **documentParser 模块**：不再提供，请使用 `file2text` 相关功能。
-* **DocumentLoader 模块**：不再提供，建议使用 `file2text` 相关功能。
+* **documentParser 模块**：不再提供，请使用 `doc-extractor` 相关功能。
+* **DocumentLoader 模块**：不再提供，建议使用 `doc-extractor` 相关功能。
 
 ### 1.2 新增模块
 
-* **file2text**：用于文件内容解析与文本抽取，替代旧的 documentParser / DocumentLoader 功能。
+* **doc-extractor**：用于文件内容解析与文本抽取，替代旧的 documentParser / DocumentLoader 功能。
 * **observability**：提供系统、模型和工具调用的可观测能力。
 * **RAG**：支持由 AI 自动将文档拆分为语义片段，便于知识检索和上下文管理。
 
@@ -66,7 +66,7 @@
     * 将原 Chain 模块流程迁移到 Tinyflow，调整节点调用逻辑。
 2. **文档处理**
 
-    * 使用 `file2text` 替代 documentParser 和 DocumentLoader，统一文件解析流程。
+    * 使用 `doc-extractor` 替代 documentParser 和 DocumentLoader，统一文件解析流程。
 3. **模型调用**（只有在创建自己的模型实现时用到）
 
     * 将原 `LLMClient` 替换为 `StreamClient`，并更新监听器为 `StreamClientListener`。
@@ -89,7 +89,7 @@
 ## 5. 注意事项
 
 * 所有 v1 相关模块均需对应替换或迁移，否则可能出现编译错误。
-* 新增模块 `file2text`、`observability`、`RAG` 提供更强大的功能，建议根据业务需求逐步接入。
+* 新增模块 `doc-extractor`、`observability`、`RAG` 提供更强大的功能，建议根据业务需求逐步接入。
 * 升级过程中，注意消息类与 Prompt 类名称变化，保证上下文逻辑一致。
 * 可能有些相同的类名，发生了包的变化，请自行检查。
 

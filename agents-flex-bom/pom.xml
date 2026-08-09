@@ -58,6 +58,11 @@
 
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-doc-extractor</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-agent</artifactId>
         </dependency>
 

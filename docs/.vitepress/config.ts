@@ -235,7 +235,7 @@ export default withMermaid(defineConfig({
                 text: 'RAG 模块',
                 items: [
                     {text: '文档概念', link: '/zh/rag/document'},
-                    {text: 'file2text', link: '/zh/rag/file2text'},
+                    {text: 'doc-extractor', link: '/zh/rag/doc-extractor'},
                     {text: '文档分割 Splitter', link: '/zh/rag/splitter'},
                     {text: '搜索引擎', link: '/zh/rag/search-engine'},
                     {text: 'Rerank 重排模型', link: '/zh/models/rerank'},

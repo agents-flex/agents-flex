@@ -25,6 +25,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | Module | Description |
 | --- | --- |
 | `agents-flex-core` | Core abstractions: Chat, Prompt, Message, Tool, Memory, Document, Store, and observability |
+| `agents-flex-doc-extractor` | Extracts Markdown-style content from PDF, Office, HTML, email, archives, streams, and URLs |
 | `agents-flex-agent` | Durable Agent runtime: Run state, snapshot recovery, Worker leases, approval, middleware, events, and task planning |
 | `agents-flex-agent-store` | JDBC and Redis persistence for Agent runs, commands, events, task plans, and artifacts |
 | `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |
@@ -233,7 +234,7 @@ These capabilities are built on the same `Tool`, `Prompt`, and `ChatModel` abstr
 RAG-related capabilities are distributed across multiple modules:
 
 - Document models: `Document`, `VectorData`, `Metadata`
-- Text processing: Loader, Parser, Splitter, File2Text
+- Text processing: Loader, Parser, Splitter, Doc Extractor
 - Vectorization: OpenAI, Ollama, and Qwen Embedding
 - Vector stores: Redis, Qdrant, Chroma, Pgvector, MariaDB, Milvus, OpenSearch, Elasticsearch, and more
 - Retrieval: `SearchWrapper`, `DocumentStore`, `VectorStore`
@@ -287,6 +288,7 @@ It is designed for quickly integrating models and vector stores into existing Sp
 
 ```text
 agents-flex-core/                 Core APIs and base implementations
+agents-flex-doc-extractor/        Document content extraction
 agents-flex-agent/                Durable Agent runtime and extension contracts
 agents-flex-agent-store/          JDBC and Redis Agent runtime persistence
 agents-flex-observability/        OpenTelemetry persistence exporters

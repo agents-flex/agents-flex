@@ -1,6 +1,10 @@
 # Agents-Flex ChangeLog
 
 ## v2.2.6 20260731
+- refactor(doc-extractor): move document extraction from core into an independent Maven module
+- refactor(doc-extractor): rename File2Text APIs to DocumentExtractionService, DocumentExtractor, and DocumentExtractors
+- test(doc-extractor): migrate format tests and add public API and lifecycle coverage
+- docs(doc-extractor): update module documentation, navigation, and migration guidance
 - chore(deps): update fastjson2 dependency to version 2.0.63
 - feat(message): enhance JSON sanitization for unquoted string values in tool calls
 - feat(video): enhance video configuration with generation mode support and validation
