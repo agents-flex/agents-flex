@@ -33,6 +33,7 @@ const startAndChatSidebar = [
         {text: '快速开始', link: '/zh/chat/getting-started'},
         {text: 'ChatModel', link: '/zh/chat/chat-model'},
         {text: 'ChatConfig', link: '/zh/chat/chat-config'},
+        {text: 'Function Call', link: '/zh/chat/function-call'},
         {text: '对话拦截器', link: '/zh/chat/chat-interceptor'},
         {text: '对话上下文', link: '/zh/chat/chat-context'},
         {text: 'Prompt 提示词', link: '/zh/chat/prompt'},
@@ -47,7 +48,6 @@ const startAndChatSidebar = [
         {text: '日志', link: '/zh/chat/logger'},
     ]},
     {text: 'Tool 扩展', items: [
-        {text: 'Tool Calling', link: '/zh/chat/tool'},
         {text: 'Tool 构建', link: '/zh/chat/tool-build'},
         {text: 'Tool.Builder', link: '/zh/chat/tool-builder'},
         {text: 'ToolScanner', link: '/zh/chat/tool-scanner'},

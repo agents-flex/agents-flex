@@ -174,7 +174,7 @@ Agents-Flex 的核心保持对 Web 框架和 ORM 的独立。你可以在裸 Jav
 
 如果你只想验证一次模型调用，从 [快速开始](../chat/getting-started.md) 出发。
 
-如果你准备构建一个真正会行动的 Agent，继续阅读 [Tool](../chat/tool.md)、[Agent 智能体](../agent/overview.md)、[MCP](../chat/mcp.md)、[Skills](../skills/overview.md) 和 [Subagent](../chat/subagent.md)。
+如果你准备构建一个真正会行动的 Agent，继续阅读 [Function Call](../chat/function-call.md)、[Agent 智能体](../agent/overview.md)、[MCP](../chat/mcp.md)、[Skills](../skills/overview.md) 和 [Subagent](../chat/subagent.md)。
 
 如果你正在建设企业知识与数据能力，请进入 [RAG](../rag/document.md)、[LLM Wiki](../chat/llm-wiki.md) 和 [Text2SQL](../chat/text2sql.md)。
 

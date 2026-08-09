@@ -212,6 +212,6 @@ ID 只是定位记录，不能替代授权。Repository 每次读写仍需校验
 - [构建 MemoryPrompt](./prompt)
 - [理解 Message](./message)
 - [使用对话上下文](./chat-context)
-- [处理 Tool Calling](./tool)
+- [处理 Function Call](./function-call)
 
 </div>

@@ -116,6 +116,6 @@ AiMessageParser<JSONObject> parser = (json, context) -> {
 
 - [ChatClient](./chat-client.md)
 - [Message 消息](./message.md)
-- [Tool 工具调用](./tool.md)
+- [Function Call](./function-call.md)
 
 </div>

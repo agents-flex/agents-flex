@@ -734,6 +734,6 @@ ToolGroup 不再属于框架全局 Registration。`ToolGroup` 自身实现 `Chat
 
 - [ChatContext 对话上下文](./chat-context.md)
 - [ChatModel](./chat-model.md)
-- [Tool 工具调用](./tool.md)
+- [Function Call](./function-call.md)
 - [Tool 拦截器](./tool-interceptor.md)
 - [可观测性](../observability/observability.md)

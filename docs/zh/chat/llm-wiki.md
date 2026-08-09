@@ -55,7 +55,7 @@ prompt.addUserMessage("怎样配置权限？");
 prompt.addTool(wikiTool);
 ```
 
-模型首先看到根节点的 path、title 和 summary；调用 `get_wiki_content` 后，`Wiki.toMarkdown()` 返回当前内容及可继续导航的子节点。完整 ToolCall 循环见 [Tool 工具调用](./tool.md)。
+模型首先看到根节点的 path、title 和 summary；调用 `get_wiki_content` 后，`Wiki.toMarkdown()` 返回当前内容及可继续导航的子节点。完整 ToolCall 循环见 [Function Call](./function-call.md)。
 
 ## 模块架构
 

@@ -187,6 +187,6 @@ Class 形式只扫描静态方法。扫描实例方法请传入对象。
 
 ## 下一步
 
-- [Tool 工具调用](./tool.md)：完成从 ToolCall 到最终回答的闭环。
+- [Function Call](./function-call.md)：理解协议原理并完成从 ToolCall 到最终回答的闭环。
 - [Tool 拦截器](./tool-interceptor.md)：集中处理权限和审计。
 - [ToolGroup 工具组](./tool-group.md)：按请求暴露一组工具。

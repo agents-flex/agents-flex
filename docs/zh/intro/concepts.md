@@ -211,7 +211,7 @@ sequenceDiagram
 - 模型只是**请求**调用工具，真正执行发生在你的 Java 进程或配置的 Runtime 中；
 - 一次模型响应可能只完成闭环的一步，应用或 Agent 需要负责继续循环。
 
-Agents-Flex 支持通过 `@ToolDef` / `@ToolParam` 扫描 Java 方法，也支持 Builder 动态构建工具。`ToolInterceptor` 可以在执行前后加入鉴权、审批、限流、审计和可观测性。详见 [Tool 工具调用](../chat/tool.md)、[Tool 构建](../chat/tool-build.md) 和 [Tool 拦截器](../chat/tool-interceptor.md)。
+Agents-Flex 支持通过 `@ToolDef` / `@ToolParam` 扫描 Java 方法，也支持 Builder 动态构建工具。`ToolInterceptor` 可以在执行前后加入鉴权、审批、限流、审计和可观测性。详见 [Function Call](../chat/function-call.md)、[Tool 构建](../chat/tool-build.md) 和 [Tool 拦截器](../chat/tool-interceptor.md)。
 
 ## Agent：围绕目标持续推进任务
 
@@ -361,7 +361,7 @@ RAG 在请求时提供外部上下文，不会改变模型参数；微调或继�
 
 1. 通过 [快速开始](../chat/getting-started.md) 完成同步和流式模型调用；
 2. 阅读 [Message](../chat/message.md)、[Prompt](../chat/prompt.md) 与 [Memory](../chat/memory.md)，理解上下文如何构造；
-3. 使用 [Tool](../chat/tool.md) 让模型调用一个真实 Java 方法；
+3. 使用 [Function Call](../chat/function-call.md) 让模型调用一个真实 Java 方法；
 4. 根据任务选择 [Agent 智能体](../agent/overview.md)、[MCP](../chat/mcp.md)、[Skills](../skills/overview.md) 或 [Subagent](../chat/subagent.md)；
 5. 需要企业知识时接入 [RAG](../rag/document.md)、[LLM Wiki](../chat/llm-wiki.md) 或 [Text2SQL](../chat/text2sql.md)；
 6. 上线前补齐 [模型路由](./model-router.md)、拦截器、安全控制与 [可观测性](../observability/observability.md)。

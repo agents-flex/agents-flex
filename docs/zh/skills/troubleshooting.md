@@ -92,7 +92,7 @@ Sandbox 可能没有公网访问权限，或者网络策略禁止访问包仓库
 - [Skills Demo README](https://github.com/agents-flex/agents-flex/tree/main/demos/skills-demo)
 - [OpenSandbox 官方文档](https://open-sandbox.ai/getting-started/)
 - [AIO Sandbox 官方文档](https://sandbox.agent-infra.com/zh/guide/start/quick-start)
-- [Tool 工具调用](../chat/tool)
+- [Function Call](../chat/function-call)
 - [Tool 构建](../chat/tool-build)
 
 </div>

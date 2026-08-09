@@ -233,7 +233,7 @@ Client 是懒初始化的。先获取 Client 或 Tool 建立连接，再检查�
 
 ## 下一步
 
-- [Tool 工具调用](./tool.md)
+- [Function Call](./function-call.md)
 - [Tool 拦截器](./tool-interceptor.md)
 - [ToolSearch 工具搜索](./tool-search.md)
 

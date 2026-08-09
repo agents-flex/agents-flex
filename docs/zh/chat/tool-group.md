@@ -490,7 +490,7 @@ ToolGroup 的默认 Matcher 是 `ToolGroupMatchers.always()`。需要条件激�
 
 ## 下一步
 
-- [Tool 工具调用](./tool.md)
+- [Function Call](./function-call.md)
 - [Tool 构建](./tool-build.md)
 - [ToolSearch 工具搜索](./tool-search.md)
 - [Prompt 提示词](./prompt.md)

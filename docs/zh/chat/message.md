@@ -180,7 +180,7 @@ Metadata 主要供应用、日志和拦截器使用，是否发送给模型取�
 
 - [构建 Prompt](./prompt)
 - [使用 Memory](./memory)
-- [处理 Tool Calling](./tool)
+- [处理 Function Call](./function-call)
 - [序列化 Message](./chat-message-serializer)
 - [解析 AI 响应](./ai-message-parser)
 

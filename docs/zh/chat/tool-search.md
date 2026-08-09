@@ -503,7 +503,7 @@ Provider 只保存元数据。请确认同名的可执行 Tool 已注册到当�
 
 ## 下一步
 
-- [Tool 工具调用](./tool.md)
+- [Function Call](./function-call.md)
 - [Tool 构建](./tool-build.md)
 - [ToolGroup 工具组](./tool-group.md)
 - [Prompt 提示词](./prompt.md)

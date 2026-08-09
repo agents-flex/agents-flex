@@ -106,6 +106,6 @@ ToolGroup 和 ToolSearch 会在请求准备阶段把本轮可见工具解析到�
 
 - [ChatRequestSpecBuilder](./chat-request-spec-builder.md)
 - [Message 消息](./message.md)
-- [Tool 工具调用](./tool.md)
+- [Function Call](./function-call.md)
 
 </div>

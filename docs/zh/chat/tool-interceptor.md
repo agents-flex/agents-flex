@@ -234,6 +234,6 @@ String traceId = context.getAttribute("traceId");
 
 ## 下一步
 
-- [Tool 工具调用](./tool.md)
+- [Function Call](./function-call.md)
 - [对话拦截器](./chat-interceptor.md)
 - [对话上下文](./chat-context.md)
