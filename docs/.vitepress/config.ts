@@ -175,6 +175,7 @@ export default withMermaid(defineConfig({
 
 
     themeConfig: {
+        skipToContentLabel: '跳到主要内容',
         search: {
             provider: 'local'
         },

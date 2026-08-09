@@ -40,9 +40,45 @@
 
 <script setup>
 import DefaultTheme from 'vitepress/theme'
+import { nextTick, onBeforeUnmount, onMounted } from 'vue'
 import MermaidEnhancer from './MermaidEnhancer.vue'
 
 const {Layout} = DefaultTheme
+
+function getMenuTrigger() {
+  return document.querySelector('.VPNavBarHamburger[aria-controls="VPNavScreen"]')
+}
+
+function onNavigationClick(event) {
+  const trigger = event.target.closest?.('.VPNavBarHamburger')
+  if (!trigger) return
+
+  nextTick(() => {
+    if (trigger.getAttribute('aria-expanded') !== 'true') return
+    document.querySelector('#VPNavScreen a, #VPNavScreen button')?.focus()
+  })
+}
+
+function onNavigationKeydown(event) {
+  if (event.key !== 'Escape') return
+
+  const trigger = getMenuTrigger()
+  if (trigger?.getAttribute('aria-expanded') !== 'true') return
+
+  event.preventDefault()
+  trigger.click()
+  nextTick(() => trigger.focus())
+}
+
+onMounted(() => {
+  document.addEventListener('click', onNavigationClick)
+  document.addEventListener('keydown', onNavigationKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onNavigationClick)
+  document.removeEventListener('keydown', onNavigationKeydown)
+})
 </script>
 
 

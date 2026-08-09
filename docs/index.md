@@ -1,59 +1,176 @@
 ---
 layout: home
-hero:
-  name: "Agents-Flex"
-  text: "Java AI 应用开发框架"
-  tagline: "从一次模型调用，到可恢复、可观测的智能任务。"
-  image:
-    src: /assets/images/logo.png
-    alt: Agents-Flex
-  actions:
-    - theme: brand
-      text: 快速开始
-      link: /zh/chat/getting-started
-    - theme: alt
-      text: 帮助文档
-      link: /zh/intro/what-is-agentsflex
+title: Agents-Flex
+description: 面向 Java 开发者的 AI 应用与智能体框架
 ---
 
-<div class="af-home-shell">
-  <section class="af-home-intro">
-    <header>
-      <p class="af-eyebrow">JAVA AI APPLICATION STACK</p>
-      <h2>把 AI 能力接进<br /><span>真实的 Java 系统</span></h2>
-    </header>
-    <p class="af-lead">Agents-Flex 以清晰的模块边界组织模型、对话、工具、知识和运行时。你可以从一个 ChatModel 开始，按业务增长逐步加入 Agent、RAG，以及图片、语音和视频生成。</p>
-  </section>
-  <section class="af-paths" aria-label="文档入口"><a class="af-path af-path--primary" href="/zh/chat/getting-started"><span class="af-path__index">01</span><span class="af-path__label">FIRST RUN</span><h3>第一次使用</h3><p>安装依赖、配置模型，并完成第一轮对话。</p><span class="af-path__arrow" aria-hidden="true">→</span></a><a class="af-path" href="/zh/agent/getting-started"><span class="af-path__index">02</span><span class="af-path__label">BUILD AGENTS</span><h3>构建 Agent</h3><p>把工具和任务流程交给可恢复的智能体。</p><span class="af-path__arrow" aria-hidden="true">→</span></a><a class="af-path" href="/zh/rag/document"><span class="af-path__index">03</span><span class="af-path__label">ADD KNOWLEDGE</span><h3>接入知识库</h3><p>从文档抽取、切分到向量检索，搭建 RAG 链路。</p><span class="af-path__arrow" aria-hidden="true">→</span></a><a class="af-path" href="/zh/skills/overview"><span class="af-path__index">04</span><span class="af-path__label">RUN SAFELY</span><h3>隔离执行任务</h3><p>使用 Skills 与 Sandbox 承载脚本和文件操作。</p><span class="af-path__arrow" aria-hidden="true">→</span></a></section>
-  <section class="af-capabilities" aria-label="Agents-Flex 能力">
-    <div class="af-section-heading"><p class="af-eyebrow">CAPABILITIES</p><h2>不止对话，覆盖完整的 AI 应用链路</h2><p>按需引入模块，用同一套 Java 方式处理文本、工具、知识，以及图片、语音和视频生成。</p></div>
-    <div class="af-capability-grid">
-      <a href="/zh/chat/getting-started"><b>CHAT</b><strong>对话与大模型</strong><span>ChatModel、Prompt、Memory、流式输出与多模型接入</span><i>→</i></a>
-      <a href="/zh/agent/overview"><b>AGENT</b><strong>智能体与任务编排</strong><span>工具调用、任务规划、子 Agent、人工审批与持久化恢复</span><i>→</i></a>
-      <a href="/zh/rag/document"><b>KNOWLEDGE</b><strong>RAG 与知识库</strong><span>文档抽取、Splitter、Embedding、Vector Store 与 Rerank</span><i>→</i></a>
-      <a href="/zh/image/image-generation"><b>IMAGE</b><strong>图片生成</strong><span>OpenAI、Gemini、阿里云、火山引擎与 Gitee AI</span><i>→</i></a>
-      <a href="/zh/audio/tts-stt"><b>AUDIO</b><strong>语音合成与识别</strong><span>TTS、STT、流式播放、网页录音及多家服务商</span><i>→</i></a>
-      <a href="/zh/video/video-generation"><b>VIDEO</b><strong>视频生成</strong><span>异步视频任务、状态追踪与阿里云、火山等接入</span><i>→</i></a>
-      <a href="/zh/chat/mcp"><b>CONNECT</b><strong>MCP 与 Web 能力</strong><span>连接外部工具、WebSearch、WebFetch 与 LLM Wiki</span><i>→</i></a>
-      <a href="/zh/skills/overview"><b>RUNTIME</b><strong>Skills 与 Sandbox</strong><span>渐进式加载、文件产物、本机运行与隔离沙箱</span><i>→</i></a>
-    </div>
-  </section>
-  <section class="af-code-section">
-    <div class="af-section-heading"><p class="af-eyebrow">QUICK START</p><h2>先调用模型，再逐步扩展</h2><p>保持现有 Java 应用结构，只增加需要的模块。</p></div>
-    <div class="af-code-card"><div class="af-code-card__bar"><span><i></i><i></i><i></i></span><strong>ChatDemo.java</strong><em>agents-flex</em></div><pre><code>ChatModel model = OpenAIChatConfig.builder()
-    .model("Qwen3-32B")
-    .apiKey(System.getenv("API_KEY"))
+<main class="afx-home">
+  <section class="afx-hero" aria-labelledby="afx-hero-title">
+    <div class="afx-container afx-hero__grid">
+      <div class="afx-hero__copy">
+        <p class="afx-kicker">JAVA AI APPLICATION FRAMEWORK</p>
+        <h1 id="afx-hero-title">Agents-Flex</h1>
+        <p class="afx-hero__headline">把模型能力带进真实的 Java 系统</p>
+        <p class="afx-hero__summary">从统一的模型调用开始，按需组合 Agent、RAG、多模态、Skills 与可观测能力。保持业务架构清晰，也为长任务的恢复和生产运行留出空间。</p>
+        <div class="afx-actions">
+          <a class="afx-button afx-button--primary" href="/zh/chat/getting-started">快速开始 <span aria-hidden="true">&rarr;</span></a>
+          <a class="afx-button" href="/zh/intro/what-is-agentsflex">了解框架</a>
+        </div>
+        <p class="afx-requirement">支持 JDK 8+，MCP 模块需要 JDK 17+</p>
+      </div>
+      <div class="afx-hero__terminal" role="img" aria-label="使用 Agents-Flex 发起一次模型对话的 Java 示例">
+        <div class="afx-terminal__bar">
+          <span>ChatQuickStart.java</span>
+          <span>JAVA</span>
+        </div>
+        <pre><code><span class="afx-code-type">ChatModel</span> model = OpenAIChatConfig.builder()
+    .apiKey(System.getenv(<span class="afx-code-string">"AI_API_KEY"</span>))
+    .model(<span class="afx-code-string">"your-model"</span>)
     .buildModel();
-    String reply = model.chat("介绍一下 Agents-Flex");</code></pre><a href="/zh/chat/getting-started">查看完整对话示例 →</a></div>
-  </section>
-  <section class="af-layers">
-    <div class="af-section-heading"><p class="af-eyebrow">ARCHITECTURE</p><h2>一套可组合的工程底座</h2></div>
-    <div class="af-layer-list">
-      <a href="/zh/chat/getting-started"><b>01</b><strong>模型与对话</strong><span>ChatModel · Prompt · Memory · Tool</span><i>→</i></a>
-      <a href="/zh/agent/overview"><b>02</b><strong>Agent 与编排</strong><span>AgentTurn · Planning · Subagent · Snapshot</span><i>→</i></a>
-      <a href="/zh/rag/document"><b>03</b><strong>知识与检索</strong><span>Document · Embedding · VectorStore · Rerank</span><i>→</i></a>
-      <a href="/zh/skills/runtime"><b>04</b><strong>运行时与生产</strong><span>Skills · Sandbox · Routing · Observability</span><i>→</i></a>
+String answer = model.chat(
+    <span class="afx-code-string">"用一句话介绍 Agents-Flex"</span>
+);</code></pre>
+        <div class="afx-terminal__result"><span>RESULT</span><p>面向 Java 开发者的 AI 应用与智能体框架。</p></div>
+      </div>
     </div>
   </section>
-  <section class="af-home-footer"><div><p class="af-eyebrow">READY WHEN YOU ARE</p><h2>从一段代码开始。</h2></div><div class="af-footer-actions"><a class="af-button af-button--brand" href="/zh/chat/getting-started">开始使用</a><a class="af-button" href="https://github.com/agents-flex/agents-flex">查看源码 ↗</a></div></section>
-</div>
+
+  <nav class="afx-jump" aria-label="选择开始路径">
+    <div class="afx-container afx-jump__grid">
+      <a href="/zh/chat/getting-started"><span>01</span><strong>调用模型</strong><small>完成第一次对话</small><i aria-hidden="true">&rarr;</i></a>
+      <a href="/zh/agent/getting-started"><span>02</span><strong>构建 Agent</strong><small>接入工具与任务循环</small><i aria-hidden="true">&rarr;</i></a>
+      <a href="/zh/rag/document"><span>03</span><strong>连接知识</strong><small>搭建完整 RAG 链路</small><i aria-hidden="true">&rarr;</i></a>
+      <a href="/zh/skills/getting-started"><span>04</span><strong>执行 Skills</strong><small>交付文件与运行结果</small><i aria-hidden="true">&rarr;</i></a>
+    </div>
+  </nav>
+
+  <section class="afx-section" aria-labelledby="afx-map-title">
+    <div class="afx-container">
+      <header class="afx-section__header">
+        <div><p class="afx-kicker">CAPABILITY MAP</p><h2 id="afx-map-title">按业务需要组合，不被单一场景绑住</h2></div>
+        <p>配置中的核心文档域被整理为六条能力线。可以只使用 ChatModel，也可以逐步扩展为具备知识、工具、执行环境与运行治理的完整系统。</p>
+      </header>
+      <div class="afx-capabilities">
+        <a href="/zh/chat/chat-model"><span>MODEL</span><h3>模型与对话</h3><p>ChatModel、Prompt、Memory、流式输出、Tool Calling 与 MCP。</p><b aria-hidden="true">&rarr;</b></a>
+        <a href="/zh/agent/overview"><span>AGENT</span><h3>智能体运行时</h3><p>任务规划、子 Agent、人工审批、预算、重试、挂起与恢复。</p><b aria-hidden="true">&rarr;</b></a>
+        <a href="/zh/rag/document"><span>KNOWLEDGE</span><h3>RAG 与存储</h3><p>文档抽取、切分、Embedding、Rerank 与多种 Vector Store。</p><b aria-hidden="true">&rarr;</b></a>
+        <a href="/zh/image/image-generation"><span>MEDIA</span><h3>多模态生成</h3><p>图片、TTS、STT 与视频生成，共享一致的 Java 接入体验。</p><b aria-hidden="true">&rarr;</b></a>
+        <a href="/zh/skills/overview"><span>EXECUTION</span><h3>Skills 与 Sandbox</h3><p>封装专业方法，在本机或隔离环境执行脚本并交付产物。</p><b aria-hidden="true">&rarr;</b></a>
+        <a href="/zh/observability/observability"><span>OPERATIONS</span><h3>可观测与治理</h3><p>关联 Model、Agent、Tool 与 Runtime，追踪延迟、Token 和状态。</p><b aria-hidden="true">&rarr;</b></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="afx-section afx-section--skills" aria-labelledby="afx-skills-title">
+    <div class="afx-container">
+      <header class="afx-section__header">
+        <div><p class="afx-kicker">SKILLS & SANDBOX</p><h2 id="afx-skills-title">让 Skill 在可控环境中完成真实工作</h2></div>
+        <p>Skill 把说明、脚本与资源封装为可复用能力；SkillRuntime 提供统一的命令和文件接口，让同一套 Skill 可以在本机或隔离 Sandbox 中执行。</p>
+      </header>
+      <div class="afx-skill-flow" role="img" aria-label="Skill 从定义、安装、执行到产物交付的完整流程">
+        <div><small>DEFINE</small><strong>Skill Package</strong><span>SKILL.md + scripts + assets</span></div>
+        <i aria-hidden="true">&rarr;</i>
+        <div><small>INSTALL</small><strong>Artifact Store</strong><span>版本、校验与节点物化</span></div>
+        <i aria-hidden="true">&rarr;</i>
+        <div class="afx-skill-flow__core"><small>EXECUTE</small><strong>SkillRuntime</strong><span>Shell + Files + Search</span></div>
+        <i aria-hidden="true">&rarr;</i>
+        <div><small>DELIVER</small><strong>Artifacts</strong><span>文件、数据与发布结果</span></div>
+      </div>
+      <div class="afx-runtime-options">
+        <a href="/zh/skills/local-runtime"><span>LOCAL</span><strong>Local Runtime</strong><p>适合可信 Skill、本地开发与快速调试，直接使用宿主机环境。</p><i aria-hidden="true">&rarr;</i></a>
+        <a href="/zh/skills/open-sandbox"><span>ISOLATED</span><strong>OpenSandbox</strong><p>按任务创建隔离容器，控制文件、网络、超时与生命周期。</p><i aria-hidden="true">&rarr;</i></a>
+        <a href="/zh/skills/aio-sandbox"><span>REMOTE</span><strong>AIO Sandbox</strong><p>连接已运行的 Sandbox 服务，适合集中部署与远程执行。</p><i aria-hidden="true">&rarr;</i></a>
+      </div>
+      <a class="afx-text-link" href="/zh/skills/overview">了解 Skills 完整架构 <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </section>
+
+  <section class="afx-section" aria-labelledby="afx-media-title">
+    <div class="afx-container">
+      <header class="afx-section__header">
+        <div><p class="afx-kicker">MULTIMODAL MODELS</p><h2 id="afx-media-title">用一套 Java 方式处理文本、图像、语音与视频</h2></div>
+        <p>每种媒介保留适合自身的调用语义，同时通过统一的 Config、Request、Response 和模型接口降低服务商切换成本。</p>
+      </header>
+      <div class="afx-media-grid">
+        <a href="/zh/chat/getting-started">
+          <div><span>TEXT</span><b aria-hidden="true">T</b></div>
+          <h3>对话与文本</h3>
+          <p>同步或流式调用大模型，组合 Prompt、Memory、Tool Calling 与结构化输出。</p>
+          <small>ChatModel · chat() · chatStream()</small>
+          <i aria-hidden="true">&rarr;</i>
+        </a>
+        <a href="/zh/image/image-generation">
+          <div><span>IMAGE</span><b aria-hidden="true">I</b></div>
+          <h3>图片生成与编辑</h3>
+          <p>覆盖文生图、参考图、多图融合、局部编辑和多图输出。</p>
+          <small>ImageModel · GenerateImageRequest</small>
+          <i aria-hidden="true">&rarr;</i>
+        </a>
+        <a href="/zh/audio/tts-stt">
+          <div><span>AUDIO</span><b aria-hidden="true">A</b></div>
+          <h3>语音合成与识别</h3>
+          <p>提供 TTS、STT 和流式语音合成，适配实时 AI 语音交互。</p>
+          <small>TextToSpeech · SpeechToText</small>
+          <i aria-hidden="true">&rarr;</i>
+        </a>
+        <a href="/zh/video/video-generation">
+          <div><span>VIDEO</span><b aria-hidden="true">V</b></div>
+          <h3>视频生成任务</h3>
+          <p>统一提交、查询和等待异步任务，支持文生视频、图生视频与编辑。</p>
+          <small>VideoModel · TaskStatus · Video</small>
+          <i aria-hidden="true">&rarr;</i>
+        </a>
+      </div>
+      <div class="afx-media-notes" aria-label="多模态模块共同特性">
+        <span><b>统一配置</b>模型与连接参数集中管理</span>
+        <span><b>能力声明</b>调用前识别模型支持范围</span>
+        <span><b>服务商适配</b>业务代码不绑定供应商协议</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="afx-section afx-section--dark" aria-labelledby="afx-production-title">
+    <div class="afx-container">
+      <header class="afx-section__header">
+        <div><p class="afx-kicker">BUILT FOR LONG-RUNNING WORK</p><h2 id="afx-production-title">让智能任务可控制、可恢复、可观察</h2></div>
+        <p>AgentTurn 把一次任务建模为可持久化状态。人工审批、外部等待、进程重启和后台接管都能在同一执行契约下处理。</p>
+      </header>
+      <div class="afx-runtime" role="img" aria-label="请求经过 Agent Runner 和工具执行后写入状态存储及可观测系统">
+        <div><small>INPUT</small><strong>Request</strong><span>Business context</span></div>
+        <i aria-hidden="true">&rarr;</i>
+        <div class="afx-runtime__core"><small>ORCHESTRATE</small><strong>AgentRunner</strong><span>Policy + Middleware</span></div>
+        <i aria-hidden="true">&rarr;</i>
+        <div><small>EXECUTE</small><strong>Model + Tools</strong><span>Skills + Sandbox</span></div>
+        <i aria-hidden="true">&rarr;</i>
+        <div><small>PERSIST</small><strong>Turn Store</strong><span>Snapshot + Events</span></div>
+      </div>
+      <div class="afx-production-links">
+        <a href="/zh/agent/suspend-resume"><strong>挂起与恢复</strong><span>处理审批和外部回调</span></a>
+        <a href="/zh/agent/store"><strong>状态持久化</strong><span>支持 JDBC、Redis 与自定义 Store</span></a>
+        <a href="/zh/observability/getting-started"><strong>运行可观测</strong><span>查看模型、工具和任务状态</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="afx-section afx-docs" aria-labelledby="afx-docs-title">
+    <div class="afx-container">
+      <header class="afx-section__header">
+        <div><p class="afx-kicker">DOCUMENTATION</p><h2 id="afx-docs-title">沿着问题找到下一篇文档</h2></div>
+        <p>首页只保留方向选择，完整概念、API、示例和生产建议都在对应文档域中持续维护。</p>
+      </header>
+      <div class="afx-docs__grid">
+        <div><h3>构建应用</h3><a href="/zh/chat/getting-started">ChatModel 快速开始</a><a href="/zh/chat/tool-build">Tool 构建</a><a href="/zh/chat/mcp">MCP</a><a href="/zh/chat/text2sql">Text2SQL</a></div>
+        <div><h3>运行 Agent</h3><a href="/zh/agent/architecture">架构设计</a><a href="/zh/agent/task-planning">任务规划</a><a href="/zh/agent/human-approval">人工审批</a><a href="/zh/agent/worker">AgentWorker</a></div>
+        <div><h3>连接数据</h3><a href="/zh/rag/document">RAG 文档</a><a href="/zh/store/overview">Vector Store</a><a href="/zh/rag/embedding">Embedding</a><a href="/zh/rag/rerank">Rerank</a></div>
+        <div><h3>进入生产</h3><a href="/zh/skills/runtime">Skill Runtime</a><a href="/zh/skills/open-sandbox">Sandbox</a><a href="/zh/observability/observability">可观测性</a><a href="/changes">更新记录</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="afx-final" aria-labelledby="afx-final-title">
+    <div class="afx-container afx-final__inner">
+      <div><p class="afx-kicker">READY TO BUILD</p><h2 id="afx-final-title">从一次模型调用开始。</h2><p>先完成最小闭环，再按业务需要加入知识、工具与智能体能力。</p></div>
+      <div class="afx-actions"><a class="afx-button afx-button--primary" href="/zh/chat/getting-started">开始使用 <span aria-hidden="true">&rarr;</span></a><a class="afx-button" href="https://github.com/agents-flex/agents-flex" target="_blank" rel="noreferrer">查看 GitHub</a></div>
+    </div>
+  </section>
+</main>
