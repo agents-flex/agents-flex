@@ -14,7 +14,7 @@ description: 面向 Java 开发者的 AI 应用与智能体框架
         <p class="afx-hero__summary">从统一的模型调用开始，按需组合 Agent、RAG、多模态、Skills 与可观测能力。保持业务架构清晰，也为长任务的恢复和生产运行留出空间。</p>
         <div class="afx-actions">
           <a class="afx-button afx-button--primary" href="/zh/chat/getting-started">快速开始 <span aria-hidden="true">&rarr;</span></a>
-          <a class="afx-button" href="/zh/intro/what-is-agentsflex">了解框架</a>
+          <a class="afx-button" href="/zh/intro/compare-spring-ai">对比 Spring AI</a>
         </div>
         <p class="afx-requirement">Apache 2.0 开源 · 支持 JDK 8+ · 不强制依赖 Spring</p>
       </div>
@@ -64,19 +64,33 @@ String answer = model.chat(
   <section class="afx-section afx-section--skills" aria-labelledby="afx-skills-title">
     <div class="afx-container">
       <header class="afx-section__header">
-        <div><p class="afx-kicker">SKILLS & SANDBOX</p><h2 id="afx-skills-title">让 Skill 在可控环境中完成真实工作</h2></div>
-        <p>Skill 把说明、脚本与资源封装为可复用能力；SkillRuntime 提供统一的命令和文件接口，让同一套 Skill 可以在本机或隔离 Sandbox 中执行。</p>
+        <div><p class="afx-kicker">SKILLS & SANDBOX</p><h2 id="afx-skills-title">Skill 的加载、执行与运行环境 Sandbox</h2></div>
+        <p>说明、脚本与参考资料组成可复用的 Skill。统一的 SkillRuntime 承接命令与文件能力，让同一套 Skill 可以在本机开发，也可以进入隔离环境运行。</p>
       </header>
-      <ol class="afx-skill-flow" aria-label="Skill 从定义、加载、执行到产物交付的完整流程">
-        <li><small>01 · 定义</small><strong>Skill Package</strong><span>SKILL.md + scripts + assets</span></li>
-        <li><small>02 · 发现与物化</small><strong>Discover / Materialize</strong><span>本地目录或 Artifact Store</span></li>
-        <li class="afx-skill-flow__core"><small>03 · 执行</small><strong>SkillRuntime</strong><span>Shell + Files + Search</span></li>
-        <li><small>04 · 交付</small><strong>Artifacts</strong><span>文件、数据与发布结果</span></li>
-      </ol>
-      <div class="afx-runtime-options">
-        <a href="/zh/skills/local-runtime"><span>本地</span><strong>Local Runtime</strong><p>适合可信 Skill、本地开发与快速调试，直接使用宿主机环境。</p></a>
-        <a href="/zh/skills/open-sandbox"><span>隔离</span><strong>OpenSandbox</strong><p>按任务创建隔离容器，控制文件、网络、超时与生命周期。</p></a>
-        <a href="/zh/skills/aio-sandbox"><span>远程</span><strong>AIO Sandbox</strong><p>连接已运行的 Sandbox 服务，适合集中部署与远程执行。</p></a>
+      <div class="afx-skill-architecture" aria-label="Skill 通过 SkillRuntime 在本机或 Sandbox 环境中执行">
+        <div class="afx-skill-package">
+          <small>可复用能力包</small>
+          <div class="afx-skill-package__files" aria-hidden="true"><i></i><i></i><i></i></div>
+          <h3>Skill Package</h3>
+          <p>SKILL.md · scripts · assets</p>
+        </div>
+        <div class="afx-skill-connector" aria-hidden="true"><span></span></div>
+        <div class="afx-skill-runtime">
+          <small>统一执行边界</small>
+          <strong>SkillRuntime</strong>
+          <span>Shell · Files · Search</span>
+        </div>
+        <div class="afx-skill-connector" aria-hidden="true"><span></span></div>
+        <div class="afx-skill-targets">
+          <a href="/zh/skills/local-runtime"><small>01 · 本地</small><strong>Local Runtime</strong><span>可信任务与本地调试</span></a>
+          <a href="/zh/skills/open-sandbox"><small>02 · 隔离</small><strong>OpenSandbox</strong><span>按任务创建隔离容器</span></a>
+          <a href="/zh/skills/aio-sandbox"><small>03 · 远程</small><strong>AIO Sandbox</strong><span>连接集中部署的服务</span></a>
+        </div>
+      </div>
+      <div class="afx-skill-principles" aria-label="Skills 与 Sandbox 的设计原则">
+        <div><small>01</small><strong>灵活加载</strong><span>从本地目录或远程存储发现 Skill，使用时加载完整内容。</span></div>
+        <div><small>02</small><strong>受控执行</strong><span>按任务选择本机或 Sandbox，命令和文件操作遵循统一边界。</span></div>
+        <div><small>03</small><strong>产物直达</strong><span>生成文件可以下载到本地，也可以发布为可访问的结果。</span></div>
       </div>
       <a class="afx-text-link" href="/zh/skills/overview">了解 Skills 完整架构 <span aria-hidden="true">&rarr;</span></a>
     </div>

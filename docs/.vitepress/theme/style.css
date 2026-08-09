@@ -152,21 +152,39 @@ body { letter-spacing: 0; }
 .afx-section--skills { background: var(--afx-surface); }
 .afx-text-link { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; margin-top: 22px; color: var(--afx-brand) !important; font-size: 14px; font-weight: 700; }
 .afx-text-link:hover { color: var(--afx-brand-hover) !important; text-decoration: underline; text-underline-offset: 4px; }
-.afx-home ol.afx-skill-flow,
 .afx-home ol.afx-runtime { margin: 0; padding: 0; list-style: none; }
-.afx-home ol.afx-skill-flow > li + li,
 .afx-home ol.afx-runtime > li + li { margin-top: 0; }
-.afx-skill-flow { display: grid; grid-template-columns: repeat(4, 1fr); padding: 0; border-top: 1px solid var(--afx-line); border-left: 1px solid var(--afx-line); list-style: none; }
-.afx-skill-flow > li { display: flex; min-height: 154px; flex-direction: column; justify-content: center; padding: 24px; border-right: 1px solid var(--afx-line); border-bottom: 1px solid var(--afx-line); background: var(--afx-bg); }
-.afx-skill-flow small, .afx-runtime-options span { color: var(--afx-brand); font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; font-weight: 700; }
-.afx-skill-flow strong { margin-top: 14px; font-size: 17px; }
-.afx-skill-flow span { margin-top: 7px; color: var(--afx-muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; line-height: 1.6; }
-.afx-skill-flow .afx-skill-flow__core { border: 2px solid var(--afx-brand); background: var(--afx-brand-soft); }
-.afx-runtime-options { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 36px; border-top: 1px solid var(--afx-line); border-left: 1px solid var(--afx-line); }
-.afx-runtime-options a { min-height: 176px; padding: 24px; border-right: 1px solid var(--afx-line); border-bottom: 1px solid var(--afx-line); background: var(--afx-bg); transition: background-color 180ms ease; }
-.afx-runtime-options a:hover { background: var(--afx-brand-soft); }
-.afx-runtime-options strong { display: block; margin-top: 18px; font-size: 16px; }
-.afx-runtime-options p { max-width: 300px; margin-top: 8px; color: var(--afx-muted); font-size: 13px; line-height: 1.65; }
+.afx-skill-architecture { display: grid; min-height: 360px; grid-template-columns: minmax(180px, .8fr) minmax(56px, .32fr) minmax(210px, .9fr) minmax(56px, .32fr) minmax(280px, 1.15fr); align-items: center; padding: 40px 32px; border: 1px solid var(--afx-line); background: var(--afx-bg); }
+.afx-skill-package small,
+.afx-skill-runtime small,
+.afx-skill-targets small,
+.afx-skill-principles small { color: var(--afx-brand); font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; font-weight: 700; line-height: 1.5; }
+.afx-skill-package__files { display: flex; gap: 8px; margin-top: 38px; }
+.afx-skill-package__files i { display: block; width: 17px; height: 17px; border: 2px solid var(--afx-brand); transform: rotate(45deg); }
+.afx-skill-package__files i:nth-child(2) { opacity: .72; }
+.afx-skill-package__files i:nth-child(3) { opacity: .45; }
+.afx-skill-package h3 { margin-top: 24px; font-size: 25px; line-height: 1.25; }
+.afx-skill-package p { margin-top: 9px; color: var(--afx-muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; line-height: 1.6; }
+.afx-skill-connector { display: flex; height: 100%; min-height: 80px; align-items: center; padding: 0 14px; }
+.afx-skill-connector span { position: relative; display: block; width: 100%; height: 1px; background: var(--afx-line); }
+.afx-skill-connector span::before,
+.afx-skill-connector span::after { position: absolute; top: 50%; width: 6px; height: 6px; border-radius: 50%; background: var(--afx-brand); content: ""; transform: translateY(-50%); }
+.afx-skill-connector span::before { left: 0; }
+.afx-skill-connector span::after { right: 0; }
+.afx-skill-runtime { position: relative; display: flex; width: min(100%, 210px); aspect-ratio: 1; align-items: center; justify-self: center; flex-direction: column; justify-content: center; border: 2px solid var(--afx-brand); border-radius: 50%; background: var(--afx-brand-soft); text-align: center; }
+.afx-skill-runtime::before { position: absolute; inset: -12px; border: 1px dashed var(--afx-brand); border-radius: 50%; content: ""; opacity: .45; }
+.afx-skill-runtime strong { margin-top: 13px; font-size: 22px; line-height: 1.3; }
+.afx-skill-runtime span { margin-top: 8px; color: var(--afx-muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; line-height: 1.5; }
+.afx-skill-targets { border-top: 1px solid var(--afx-line); }
+.afx-skill-targets a { display: grid; min-height: 88px; grid-template-columns: 72px minmax(0, 1fr); grid-template-rows: auto auto; align-content: center; padding: 14px 16px; border-bottom: 1px solid var(--afx-line); transition: background-color 180ms ease; }
+.afx-skill-targets a:hover { background: var(--afx-brand-soft); }
+.afx-skill-targets small { grid-row: 1 / 3; align-self: center; }
+.afx-skill-targets strong { font-size: 15px; line-height: 1.45; }
+.afx-skill-targets span { margin-top: 3px; color: var(--afx-muted); font-size: 12px; line-height: 1.5; }
+.afx-skill-principles { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 36px; border-top: 1px solid var(--afx-line); border-left: 1px solid var(--afx-line); background: var(--afx-bg); }
+.afx-skill-principles > div { min-height: 136px; padding: 24px; border-right: 1px solid var(--afx-line); border-bottom: 1px solid var(--afx-line); }
+.afx-skill-principles strong { display: block; margin-top: 15px; font-size: 16px; line-height: 1.45; }
+.afx-skill-principles span { display: block; margin-top: 8px; color: var(--afx-muted); font-size: 13px; line-height: 1.65; }
 
 .afx-media-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--afx-line); border-left: 1px solid var(--afx-line); }
 .afx-media-grid > a { display: flex; min-height: 300px; flex-direction: column; padding: 26px; border-right: 1px solid var(--afx-line); border-bottom: 1px solid var(--afx-line); transition: background-color 180ms ease; }
@@ -212,7 +230,17 @@ body { letter-spacing: 0; }
   .afx-jump__grid { grid-template-columns: repeat(2, 1fr); }
   .afx-capabilities { grid-template-columns: repeat(2, 1fr); }
   .afx-section__header { grid-template-columns: 1fr; align-items: start; gap: 22px; }
-  .afx-skill-flow { grid-template-columns: repeat(2, 1fr); }
+  .afx-skill-architecture { grid-template-columns: 1fr; padding: 40px; }
+  .afx-skill-package { text-align: center; }
+  .afx-skill-package__files { justify-content: center; margin-top: 28px; }
+  .afx-skill-runtime { width: min(210px, calc(100% - 24px)); }
+  .afx-skill-connector { min-height: 72px; justify-content: center; padding: 12px 0; }
+  .afx-skill-connector span { width: 1px; height: 48px; }
+  .afx-skill-connector span::before,
+  .afx-skill-connector span::after { top: auto; left: 50%; transform: translateX(-50%); }
+  .afx-skill-connector span::before { top: 0; }
+  .afx-skill-connector span::after { top: auto; right: auto; bottom: 0; }
+  .afx-skill-targets { width: min(100%, 520px); justify-self: center; }
   .afx-media-grid { grid-template-columns: repeat(2, 1fr); }
   .afx-runtime { grid-template-columns: repeat(2, 1fr); }
   .afx-docs__grid { grid-template-columns: repeat(2, 1fr); }
@@ -232,8 +260,9 @@ body { letter-spacing: 0; }
   .afx-section h2 { font-size: 32px; }
   .afx-capabilities { grid-template-columns: 1fr; }
   .afx-capabilities a { min-height: 200px; }
-  .afx-skill-flow { grid-template-columns: 1fr; }
-  .afx-runtime-options { grid-template-columns: 1fr; }
+  .afx-skill-architecture { padding: 32px 20px; }
+  .afx-skill-principles { grid-template-columns: 1fr; }
+  .afx-skill-principles > div { min-height: 0; }
   .afx-media-grid { grid-template-columns: 1fr; }
   .afx-media-grid > a { min-height: 270px; }
   .afx-media-notes { grid-template-columns: 1fr; }
