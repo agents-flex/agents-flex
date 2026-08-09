@@ -21,6 +21,132 @@ const gitee_icon_svg = '\n' +
     '</svg>'
 
 
+const startAndChatSidebar = [
+    {text: '开始使用', items: [
+        {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
+        {text: '核心概念', link: '/zh/intro/concepts'},
+        {text: 'Maven 依赖', link: '/zh/intro/maven'},
+        {text: '模型路由与高可用', link: '/zh/intro/model-router'},
+        {text: '通信与贡献', link: '/zh/intro/communication'},
+    ]},
+    {text: 'ChatModel', items: [
+        {text: '快速开始', link: '/zh/chat/getting-started'},
+        {text: 'ChatModel', link: '/zh/chat/chat-model'},
+        {text: 'ChatConfig', link: '/zh/chat/chat-config'},
+        {text: '对话拦截器', link: '/zh/chat/chat-interceptor'},
+        {text: '对话上下文', link: '/zh/chat/chat-context'},
+        {text: 'Prompt 提示词', link: '/zh/chat/prompt'},
+        {text: '提示词模板', link: '/zh/chat/prompt-template'},
+        {text: 'Message 消息', link: '/zh/chat/message'},
+        {text: 'Memory 记忆', link: '/zh/chat/memory'},
+        {text: 'ChatClient', link: '/zh/chat/chat-client'},
+        {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
+        {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
+        {text: 'AiMessageParser', link: '/zh/chat/ai-message-parser'},
+        {text: '错误重试', link: '/zh/chat/retry'},
+        {text: '日志', link: '/zh/chat/logger'},
+    ]},
+    {text: 'Tool 扩展', items: [
+        {text: 'Tool Calling', link: '/zh/chat/tool'},
+        {text: 'Tool 构建', link: '/zh/chat/tool-build'},
+        {text: 'Tool.Builder', link: '/zh/chat/tool-builder'},
+        {text: 'ToolScanner', link: '/zh/chat/tool-scanner'},
+        {text: 'ToolGroup 工具组', link: '/zh/chat/tool-group'},
+        {text: 'ToolSearch 工具搜索', link: '/zh/chat/tool-search'},
+        {text: 'MCP', link: '/zh/chat/mcp'},
+        {text: 'Text2SQL 智能问数', link: '/zh/chat/text2sql'},
+        {text: 'WebSearch', link: '/zh/chat/websearch'},
+        {text: 'WebFetch', link: '/zh/chat/webfetch'},
+        {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
+        {text: 'Subagent', link: '/zh/chat/subagent'},
+        {text: 'Chat Skills', link: '/zh/chat/skills'},
+    ]},
+]
+
+const mediaSidebar = [
+    {text: '图片生成', items: [
+        {text: '概览', link: '/zh/image/image-generation'},
+        {text: '快速开始', link: '/zh/image/getting-started'},
+        {text: 'OpenAI', link: '/zh/image/openai'},
+        {text: 'Gemini', link: '/zh/image/gemini'},
+        {text: '阿里云百炼', link: '/zh/image/aliyun'},
+        {text: '火山引擎', link: '/zh/image/volcengine'},
+        {text: 'Gitee AI', link: '/zh/image/gitee'},
+    ]},
+    {text: '音频 TTS / STT', items: [
+        {text: '概述', link: '/zh/audio/tts-stt'},
+        {text: '快速开始', link: '/zh/audio/getting-started'},
+        {text: '阿里云', link: '/zh/audio/aliyun'},
+        {text: '腾讯云', link: '/zh/audio/tencent'},
+        {text: '火山引擎', link: '/zh/audio/volc'},
+        {text: 'AudioStreamPlayer', link: '/zh/audio/audio-stream-player'},
+        {text: '网页录音', link: '/zh/audio/audio-recorder'},
+    ]},
+    {text: '视频', items: [
+        {text: '概览', link: '/zh/video/video-generation'},
+        {text: '快速开始', link: '/zh/video/getting-started'},
+        {text: '阿里云 Wan', link: '/zh/video/aliyun'},
+        {text: 'HappyHorse', link: '/zh/video/happyhorse'},
+        {text: '火山引擎 Seedance', link: '/zh/video/volcengine'},
+        {text: 'Gitee AI', link: '/zh/video/gitee'},
+    ]},
+]
+
+const ragStoreSidebar = [
+    {text: 'RAG 模块', items: [
+        {text: '文档概念', link: '/zh/rag/document'},
+        {text: 'doc-extractor', link: '/zh/rag/doc-extractor'},
+        {text: '文档分割 Splitter', link: '/zh/rag/splitter'},
+        {text: '搜索引擎', link: '/zh/rag/search-engine'},
+        {text: 'SearchWrapper', link: '/zh/rag/search-wrapper'},
+        {text: 'VectorStore', link: '/zh/rag/vector-store'},
+        {text: 'Embedding 嵌入模型', link: '/zh/rag/embedding'},
+        {text: 'Rerank 重排模型', link: '/zh/rag/rerank'},
+    ]},
+    {text: 'Store 向量存储模块', items: [
+        {text: '模块概述', link: '/zh/store/overview'},
+        {text: '快速开始', link: '/zh/store/getting-started'},
+        {text: '核心 API 与数据流', link: '/zh/store/core-api'},
+        {text: 'SearchWrapper 查询构造', link: '/zh/store/search-wrapper'},
+        {text: 'SQL 风格条件表达式', link: '/zh/store/condition-expression'},
+        {text: 'StoreOptions 与多集合', link: '/zh/store/store-options'},
+        {text: '存储选型与能力矩阵', link: '/zh/store/providers'},
+        {text: 'Redis', link: '/zh/store/redis'},
+        {text: 'Milvus', link: '/zh/store/milvus'},
+        {text: 'Pgvector', link: '/zh/store/pgvector'},
+        {text: 'MariaDB', link: '/zh/store/mariadb'},
+        {text: 'Apache Cassandra', link: '/zh/store/cassandra'},
+        {text: 'Infinity', link: '/zh/store/infinity'},
+        {text: 'ClickHouse', link: '/zh/store/clickhouse'},
+        {text: 'Elasticsearch', link: '/zh/store/elasticsearch'},
+        {text: 'OpenSearch', link: '/zh/store/opensearch'},
+        {text: 'MongoDB Atlas', link: '/zh/store/mongodb-atlas'},
+        {text: 'Weaviate', link: '/zh/store/weaviate'},
+        {text: 'Chroma', link: '/zh/store/chroma'},
+        {text: 'Qdrant', link: '/zh/store/qdrant'},
+        {text: '阿里云 DashVector', link: '/zh/store/aliyun'},
+        {text: '自定义 VectorStore', link: '/zh/store/custom-store'},
+        {text: '故障排查与生产建议', link: '/zh/store/troubleshooting'},
+    ]},
+]
+
+const developerReferenceSidebar = [
+    {text: '更新记录', items: [
+        {text: '更新记录', link: '/changes'},
+    ]},
+    {text: '内置工具类', items: [
+        {text: 'Maps', link: '/zh/util/maps'},
+        {text: 'Retryer', link: '/zh/util/retryer'},
+        {text: 'LocalTokenCounter', link: '/zh/util/local-token-counter'},
+        {text: 'PromptTemplate', link: '/zh/util/prompt-template'},
+        {text: '其他工具类', link: '/zh/util/others'},
+    ]},
+    {text: '迁移与升级', items: [
+        {text: 'v1.x 升级', link: '/zh/other/v1-upgrade'},
+        {text: '工作流编排', link: '/zh/other/chain'},
+    ]},
+]
+
 // https://vitepress.dev/reference/site-config
 export default withMermaid(defineConfig({
     title: "Agents-Flex",
@@ -68,113 +194,26 @@ export default withMermaid(defineConfig({
 
         nav: [
             {text: '首页', link: '/'},
-            {text: '帮助文档', link: '/zh/intro/what-is-agentsflex'},
-            {text: 'ChangeLog', link: '/changes.md'},
+            {text: '快速开始', link: '/zh/intro/what-is-agentsflex'},
+            {text: 'ChatModel', link: '/zh/chat/chat-model'},
+            {text: 'Agent', link: '/zh/agent/overview'},
+            {text: 'RAG 知识库', link: '/zh/rag/document'},
+            {text: '多模态', items: [
+                {text: '图片生成', link: '/zh/image/image-generation'},
+                {text: '语音 TTS / STT', link: '/zh/audio/tts-stt'},
+                {text: '视频生成', link: '/zh/video/video-generation'},
+            ]},
+            {text: 'Skills', link: '/zh/skills/overview'},
+            {text: '可观测', link: '/zh/observability/observability'},
+            {text: '开发参考', link: '/changes'},
         ],
 
-        sidebar: [
-            {
-                text: '快速开始',
-                items: [
-                    {text: 'Agents-Flex 是什么', link: '/zh/intro/what-is-agentsflex'},
-                    {text: '核心概念', link: '/zh/intro/concepts'},
-                    {text: 'Maven 依赖', link: '/zh/intro/maven'},
-                    {text: '微信交流群', link: '/zh/intro/communication'},
-                ]
-            },
-            {
-                text: '对话模块',
-                items: [
-                    {text: '快速开始', link: '/zh/chat/getting-started'},
-                    {text: 'ChatModel', link: '/zh/chat/chat-model'},
-                    {text: 'ChatConfig', link: '/zh/chat/chat-config'},
-                    {text: '对话拦截器', link: '/zh/chat/chat-interceptor'},
-                    {text: '对话上下文', link: '/zh/chat/chat-context'},
-                    {text: 'Prompt 提示词', link: '/zh/chat/prompt'},
-                    {text: '提示词模板', link: '/zh/chat/prompt-template'},
-                    {text: 'Message 消息', link: '/zh/chat/message'},
-                    {text: 'Memory 记忆', link: '/zh/chat/memory'},
-                    {text: 'Tool 工具调用', link: '/zh/chat/tool'},
-                    {text: 'Tool 构建', link: '/zh/chat/tool-build'},
-                    {text: 'Tool 拦截器', link: '/zh/chat/tool-interceptor'},
-                    {text: 'ToolGroup 工具组', link: '/zh/chat/tool-group'},
-                    {text: 'ToolSearch 工具搜索', link: '/zh/chat/tool-search'},
-                    {text: 'MCP 调用', link: '/zh/chat/mcp'},
-                    {text: 'LLM Wiki 知识树', link: '/zh/chat/llm-wiki'},
-                    {text: 'Text2SQL 智能问数', link: '/zh/chat/text2sql'},
-                    {text: 'Text2SQL 拦截器', link: '/zh/chat/text2sql-interceptor'},
-                    {text: 'Subagent 子代理', link: '/zh/chat/subagent'},
-                    {text: 'WebSearch 搜索引擎', link: '/zh/chat/websearch'},
-                    {text: 'WebFetch 网页内容获取', link: '/zh/chat/webfetch'},
-                    {text: 'ChatClient', link: '/zh/chat/chat-client'},
-                    {text: 'ChatRequestSpecBuilder', link: '/zh/chat/chat-request-spec-builder'},
-                    {text: 'ChatMessageSerializer', link: '/zh/chat/chat-message-serializer'},
-                    {text: 'AiMessageParser', link: '/zh/chat/ai-message-parser'},
-                    {text: 'LLM 负载均衡/高可用', link: '/zh/intro/model-router'},
-                    {text: '错误重试', link: '/zh/chat/retry'},
-                    {text: '日志', link: '/zh/chat/logger'},
-                ]
-            },
-            {
-                text: 'Skills 模块',
-                items: [
-                    {text: '概述', link: '/zh/skills/overview'},
-                    {text: '快速开始', link: '/zh/skills/getting-started'},
-                    {text: 'Skill 目录与开发', link: '/zh/skills/skill-package'},
-                    {text: 'Artifact Store', link: '/zh/skills/artifact-store'},
-                    {text: 'Skill Runtime', link: '/zh/skills/runtime'},
-                    {text: 'Skill Runtime Config', link: '/zh/skills/skill-runtime-config'},
-                    {text: 'Skill Runtime Workspace', link: '/zh/skills/skill-runtime-workspace'},
-                    {text: 'Local Runtime', link: '/zh/skills/local-runtime'},
-                    {text: 'OpenSandbox', link: '/zh/skills/open-sandbox'},
-                    {text: 'AIO Sandbox', link: '/zh/skills/aio-sandbox'},
-                    {text: 'Sandbox 会话隔离实战', link: '/zh/skills/sandbox-conversation-isolation-lab'},
-                    {text: 'Skill 产物', link: '/zh/skills/files'},
-                    {text: '完整示例', link: '/zh/skills/demo'},
-                    {text: '自定义 Runtime', link: '/zh/skills/custom-runtime'},
-                    {text: '故障排查与生产建议', link: '/zh/skills/troubleshooting'},
-                ]
-            },
-            {
-                text: '语音模块',
-                items: [
-                    {text: 'TTS 和 STT', link: '/zh/audio/tts-stt'},
-                    {text: '快速开始', link: '/zh/audio/getting-started'},
-                    {text: '阿里云 TTS 和 STT', link: '/zh/audio/aliyun'},
-                    {text: '腾讯云 TTS 和 STT', link: '/zh/audio/tencent'},
-                    {text: '火山引擎 TTS 和 STT', link: '/zh/audio/volc'},
-                    {text: 'AudioStreamPlayer', link: '/zh/audio/audio-stream-player'},
-                    {text: '网页录音', link: '/zh/audio/audio-recorder'},
-                ]
-            },
-            {
-                text: '视频模块',
-                items: [
-                    {text: '视频生成', link: '/zh/video/video-generation'},
-                    {text: '快速开始', link: '/zh/video/getting-started'},
-                    {text: '阿里云 Wan 视频生成', link: '/zh/video/aliyun'},
-                    {text: 'HappyHorse 视频生成', link: '/zh/video/happyhorse'},
-                    {text: '火山引擎 Seedance 视频生成', link: '/zh/video/volcengine'},
-                    {text: 'Gitee AI 视频生成', link: '/zh/video/gitee'},
-                ]
-            },
-            {
-                text: '图片模块',
-                items: [
-                    {text: '图片生成', link: '/zh/image/image-generation'},
-                    {text: '快速开始', link: '/zh/image/getting-started'},
-                    {text: 'OpenAI 图片生成', link: '/zh/image/openai'},
-                    {text: 'Gemini 图片生成', link: '/zh/image/gemini'},
-                    {text: '阿里云百炼', link: '/zh/image/aliyun'},
-                    {text: '火山引擎', link: '/zh/image/volcengine'},
-                    {text: 'Gitee AI', link: '/zh/image/gitee'},
-                ]
-            },
-            {
-                text: 'Agent 智能体',
-                items: [
+        sidebar: {
+            '/zh/agent/': [
+                {text: 'Agent 智能体', items: [
                     {text: '概述', link: '/zh/agent/overview'},
                     {text: '快速开始', link: '/zh/agent/getting-started'},
+                    {text: '架构设计', link: '/zh/agent/architecture'},
                     {text: 'Agent', link: '/zh/agent/agent'},
                     {text: 'AgentTurn', link: '/zh/agent/agent-turn'},
                     {text: 'AgentRunner', link: '/zh/agent/agent-runner'},
@@ -196,86 +235,59 @@ export default withMermaid(defineConfig({
                     {text: 'Snapshot', link: '/zh/agent/snapshot'},
                     {text: 'Store 持久化', link: '/zh/agent/store'},
                     {text: 'AgentWorker', link: '/zh/agent/worker'},
-                    {text: '架构设计', link: '/zh/agent/architecture'},
                     {text: '常见问题', link: '/zh/agent/faq'},
                     {text: 'Demo: 人工审批', link: '/zh/agent/demo-human-approval'},
                     {text: 'Demo: 自动任务规划', link: '/zh/agent/demo-task-planning'},
                     {text: 'Demo: 完整示例（控制台程序）', link: '/zh/agent/demo-console'},
-                ]
-            },
-            {
-                text: 'Store 向量存储模块',
-                items: [
-                    {text: '模块概述', link: '/zh/store/overview'},
-                    {text: '快速开始', link: '/zh/store/getting-started'},
-                    {text: '核心 API 与数据流', link: '/zh/store/core-api'},
-                    {text: 'SearchWrapper 查询构造', link: '/zh/store/search-wrapper'},
-                    {text: 'SQL 风格条件表达式', link: '/zh/store/condition-expression'},
-                    {text: 'StoreOptions 与多集合', link: '/zh/store/store-options'},
-                    {text: '存储选型与能力矩阵', link: '/zh/store/providers'},
-                    {text: 'Redis', link: '/zh/store/redis'},
-                    {text: 'Milvus', link: '/zh/store/milvus'},
-                    {text: 'Pgvector', link: '/zh/store/pgvector'},
-                    {text: 'MariaDB', link: '/zh/store/mariadb'},
-                    {text: 'Apache Cassandra', link: '/zh/store/cassandra'},
-                    {text: 'Infinity', link: '/zh/store/infinity'},
-                    {text: 'ClickHouse', link: '/zh/store/clickhouse'},
-                    {text: 'Elasticsearch', link: '/zh/store/elasticsearch'},
-                    {text: 'OpenSearch', link: '/zh/store/opensearch'},
-                    {text: 'MongoDB Atlas', link: '/zh/store/mongodb-atlas'},
-                    {text: 'Weaviate', link: '/zh/store/weaviate'},
-                    {text: 'Chroma', link: '/zh/store/chroma'},
-                    {text: 'Qdrant', link: '/zh/store/qdrant'},
-                    {text: '阿里云 DashVector', link: '/zh/store/aliyun'},
-                    {text: '自定义 VectorStore', link: '/zh/store/custom-store'},
-                    {text: '故障排查与生产建议', link: '/zh/store/troubleshooting'},
-                ]
-            },
-            {
-                text: 'RAG 模块',
-                items: [
-                    {text: '文档概念', link: '/zh/rag/document'},
-                    {text: 'doc-extractor', link: '/zh/rag/doc-extractor'},
-                    {text: '文档分割 Splitter', link: '/zh/rag/splitter'},
-                    {text: '搜索引擎', link: '/zh/rag/search-engine'},
-                    {text: 'Rerank 重排模型', link: '/zh/models/rerank'},
-                    {text: 'Embedding 嵌入模型', link: '/zh/models/embedding'},
-                ]
-            },
-            {
-                text: '可观测',
-                items: [
-                    {text: 'Observability 概述', link: '/zh/observability/observability'},
-                    {text: '零基础概念', link: '/zh/observability/concepts'},
-                    {text: '典型场景与实践', link: '/zh/observability/scenarios'},
+                ]},
+            ],
+            '/zh/skills/': [
+                {text: 'Skills', items: [
+                    {text: '概述', link: '/zh/skills/overview'},
+                    {text: '快速开始', link: '/zh/skills/getting-started'},
+                    {text: 'Skill 目录与开发', link: '/zh/skills/skill-package'},
+                    {text: 'Artifact Store', link: '/zh/skills/artifact-store'},
+                    {text: 'Skill Runtime', link: '/zh/skills/runtime'},
+                    {text: 'Skill Runtime Config', link: '/zh/skills/skill-runtime-config'},
+                    {text: 'Skill Runtime Workspace', link: '/zh/skills/skill-runtime-workspace'},
+                    {text: 'Local Runtime', link: '/zh/skills/local-runtime'},
+                    {text: 'Skill 产物', link: '/zh/skills/files'},
+                    {text: '自定义 Runtime', link: '/zh/skills/custom-runtime'},
+                    {text: '完整示例', link: '/zh/skills/demo'},
+                    {text: '故障排查与生产建议', link: '/zh/skills/troubleshooting'},
+                ]},
+                {text: 'Sandbox', items: [
+                    {text: 'OpenSandbox', link: '/zh/skills/open-sandbox'},
+                    {text: 'AIO Sandbox', link: '/zh/skills/aio-sandbox'},
+                    {text: '会话隔离实战', link: '/zh/skills/sandbox-conversation-isolation-lab'},
+                    {text: 'Sandbox 故障排查', link: '/zh/skills/troubleshooting'},
+                ]},
+            ],
+            '/zh/observability/': [
+                {text: '可观测性', items: [
+                    {text: '概览', link: '/zh/observability/observability'},
+                    {text: '核心概念', link: '/zh/observability/concepts'},
+                    {text: '典型场景', link: '/zh/observability/scenarios'},
                     {text: '快速开始', link: '/zh/observability/getting-started'},
                     {text: '按执行上下文路由', link: '/zh/observability/runtime-routing'},
-                    {text: '模型与 HTTP 可观测', link: '/zh/observability/model'},
-                    {text: '工具调用可观测', link: '/zh/observability/tool'},
+                    {text: '模型观测', link: '/zh/observability/model'},
+                    {text: '工具观测', link: '/zh/observability/tool'},
                     {text: 'JDBC 持久化', link: '/zh/observability/jdbc'},
-                    {text: '故障排查与生产建议', link: '/zh/observability/troubleshooting'},
-                ]
-            },
-            {
-                text: '内置工具类',
-                items: [
-                    {text: 'Maps', link: '/zh/util/maps'},
-                    {text: 'Retryer', link: '/zh/util/retryer'},
-                    {text: 'ToolScanner', link: '/zh/util/tool-scanner'},
-                    {text: 'Tool.Builder', link: '/zh/util/tool-builder'},
-                    {text: 'LocalTokenCounter', link: '/zh/util/local-token-counter'},
-                    {text: 'PromptTemplate', link: '/zh/util/prompt-template'},
-                    {text: '其他工具类', link: '/zh/util/others'},
-                ]
-            },
-            {
-                text: '其他',
-                items: [
-                    {text: 'v1.x 升级', link: '/zh/other/v1-upgrade'},
-                    {text: '工作流编排', link: '/zh/other/chain'},
-                ]
-            },
-        ],
+                    {text: '故障排查', link: '/zh/observability/troubleshooting'},
+                ]},
+            ],
+            '/changes': developerReferenceSidebar,
+            '/zh/changes': developerReferenceSidebar,
+            '/zh/util/': developerReferenceSidebar,
+            '/zh/other/': developerReferenceSidebar,
+            '/zh/intro/': startAndChatSidebar,
+            '/zh/chat/': startAndChatSidebar,
+            '/zh/image/': mediaSidebar,
+            '/zh/audio/': mediaSidebar,
+            '/zh/video/': mediaSidebar,
+            '/zh/rag/': ragStoreSidebar,
+            '/zh/store/': ragStoreSidebar,
+        },
         footer: {
             message: 'Released under the Apache License.',
             copyright: 'Copyright © 2022-present Agents-Flex. ' +

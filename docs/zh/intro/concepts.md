@@ -294,7 +294,7 @@ MCP 模块依赖官方 Java SDK，因此需要 JDK 17 或更高版本。
 
 Embedding 负责“把语义变成可检索的向量”，Vector Store 负责“快速找到候选”，Rerank 负责“在候选中做更精细的排序”。三者互相协作，但不能替代彼此。
 
-Agents-Flex 已提供 Redis、Milvus、Elasticsearch、OpenSearch、PgVector、Qdrant、Chroma 等存储适配。详见 [Document](../rag/document.md)、[文件转文本](../rag/doc-extractor.md)、[文档切分](../rag/splitter.md)、[Embedding](../models/embedding.md)、[Vector Store](../rag/vector-store.md) 与 [Rerank](../models/rerank.md)。
+Agents-Flex 已提供 Redis、Milvus、Elasticsearch、OpenSearch、PgVector、Qdrant、Chroma 等存储适配。详见 [Document](../rag/document.md)、[文件转文本](../rag/doc-extractor.md)、[文档切分](../rag/splitter.md)、[Embedding](../rag/embedding.md)、[Vector Store](../rag/vector-store.md) 与 [Rerank](../rag/rerank.md)。
 
 ## 面向特定场景的知识与工具
 
