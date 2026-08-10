@@ -183,12 +183,13 @@ export default withMermaid(defineConfig({
     titleTemplate: ':title - Agents-Flex 官方网站',
     description: "面向 Java 开发者的 AI 应用与智能体框架",
     lastUpdated: true,
-    appearance: "dark",
+    appearance: true,
     mermaid: {
         // HTML labels use foreignObject, which taints Canvas during PNG export.
         htmlLabels: false,
     },
     markdown: {
+        theme: 'github-dark',
         config(md) {
             const renderFence = md.renderer.rules.fence!
             md.renderer.rules.fence = (tokens, index, options, env, self) => {
@@ -358,7 +359,7 @@ export default withMermaid(defineConfig({
             "script",
             {},
             `
-        if (location.protocol !== 'https:' && location.hostname != 'localhost') {
+        if (location.protocol !== 'https:' && (location.port === '' || location.port === '80')) {
             location.href = 'https://' + location.hostname + location.pathname + location.search;
         }
         `

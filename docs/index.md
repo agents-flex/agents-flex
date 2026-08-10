@@ -8,15 +8,13 @@ description: 面向 Java 开发者的 AI 应用与智能体框架
   <section class="afx-hero" aria-labelledby="afx-hero-title">
     <div class="afx-container afx-hero__grid">
       <div class="afx-hero__copy">
-        <p class="afx-kicker">JAVA AI APPLICATION FRAMEWORK</p>
         <h1 id="afx-hero-title">Agents-Flex</h1>
-        <p class="afx-hero__headline">把模型能力带进真实的 Java 系统</p>
+        <p class="afx-hero__headline">Java AI，从模型调用到生产运行</p>
         <p class="afx-hero__summary">从统一的模型调用开始，按需组合 Agent、RAG、多模态、Skills 与可观测能力。保持业务架构清晰，也为长任务的恢复和生产运行留出空间。</p>
         <div class="afx-actions">
           <a class="afx-button afx-button--primary" href="/zh/chat/getting-started.html">快速开始 <span aria-hidden="true">&rarr;</span></a>
           <a class="afx-button" href="/zh/intro/compare-spring-ai.html">对比 Spring AI</a>
         </div>
-        <p class="afx-requirement">Apache 2.0 开源 · 支持 JDK 8+ · 不强制依赖 Spring</p>
       </div>
       <div class="afx-hero__terminal">
         <div class="afx-terminal__bar">
@@ -35,19 +33,27 @@ String answer = model.chat(
     </div>
   </section>
 
+  <div class="afx-facts" aria-label="项目特性">
+    <div class="afx-container afx-facts__inner">
+      <span>Apache 2.0 开源</span>
+      <span>支持 JDK 8+</span>
+      <span>不强制依赖 Spring</span>
+    </div>
+  </div>
+
   <nav class="afx-jump" aria-label="选择开始路径">
     <div class="afx-container afx-jump__grid">
-      <a href="/zh/chat/getting-started.html"><span>01</span><strong>调用模型</strong><small>完成第一次对话</small></a>
-      <a href="/zh/agent/getting-started.html"><span>02</span><strong>构建 Agent</strong><small>接入工具与任务循环</small></a>
-      <a href="/zh/rag/document.html"><span>03</span><strong>连接知识</strong><small>搭建完整 RAG 链路</small></a>
-      <a href="/zh/skills/getting-started.html"><span>04</span><strong>执行 Skills</strong><small>交付文件与运行结果</small></a>
+      <a href="/zh/chat/getting-started.html"><span>ChatModel</span><strong>调用模型</strong><small>完成第一次对话</small></a>
+      <a href="/zh/agent/getting-started.html"><span>Agent</span><strong>构建 Agent</strong><small>接入工具与任务循环</small></a>
+      <a href="/zh/rag/document.html"><span>RAG</span><strong>连接知识</strong><small>搭建完整检索链路</small></a>
+      <a href="/zh/skills/getting-started.html"><span>Skills</span><strong>执行 Skills</strong><small>交付文件与运行结果</small></a>
     </div>
   </nav>
 
   <section class="afx-section" aria-labelledby="afx-map-title">
     <div class="afx-container">
       <header class="afx-section__header">
-        <div><h2 id="afx-map-title">按需组合，覆盖 AI 应用的完整链路</h2></div>
+        <h2 id="afx-map-title">按需组合，覆盖 AI 应用的完整链路</h2>
         <p>Agents-Flex 将模型、Agent、知识、多模态、执行环境与运行治理组织为可独立引入的模块。可以只使用 ChatModel，也可以随业务逐步扩展。</p>
       </header>
       <div class="afx-capabilities">
@@ -64,33 +70,45 @@ String answer = model.chat(
   <section class="afx-section afx-section--skills" aria-labelledby="afx-skills-title">
     <div class="afx-container">
       <header class="afx-section__header">
-        <div><p class="afx-kicker">SKILLS & SANDBOX</p><h2 id="afx-skills-title">Skill 的加载、执行与运行环境 Sandbox</h2></div>
-        <p>说明、脚本与参考资料组成可复用的 Skill。统一的 SkillRuntime 承接命令与文件能力，让同一套 Skill 可以在本机开发，也可以进入隔离环境运行。</p>
+        <div><p class="afx-kicker">SKILLS & SANDBOX</p><h2 id="afx-skills-title">从 Skill 加载到 Sandbox 执行</h2></div>
+        <p>Skill 封装说明、脚本与资源，SkillRuntime 提供统一执行边界，再按任务路由到本机或 Sandbox。能力定义保持不变，运行环境可以独立选择。</p>
       </header>
       <div class="afx-skill-architecture" aria-label="Skill 通过 SkillRuntime 在本机或 Sandbox 环境中执行">
-        <div class="afx-skill-package">
-          <small>可复用能力包</small>
-          <div class="afx-skill-package__files" aria-hidden="true"><i></i><i></i><i></i></div>
+        <article class="afx-skill-node afx-skill-node--package">
+          <small>SKILL</small>
           <h3>Skill Package</h3>
-          <p>SKILL.md · scripts · assets</p>
-        </div>
-        <div class="afx-skill-connector" aria-hidden="true"><span></span></div>
-        <div class="afx-skill-runtime">
-          <small>统一执行边界</small>
-          <strong>SkillRuntime</strong>
-          <span>Shell · Files · Search</span>
-        </div>
-        <div class="afx-skill-connector" aria-hidden="true"><span></span></div>
-        <div class="afx-skill-targets">
-          <a href="/zh/skills/local-runtime.html"><small>01 · 本地</small><strong>Local Runtime</strong><span>可信任务与本地调试</span></a>
-          <a href="/zh/skills/open-sandbox.html"><small>02 · 隔离</small><strong>OpenSandbox</strong><span>按任务创建隔离容器</span></a>
-          <a href="/zh/skills/aio-sandbox.html"><small>03 · 远程</small><strong>AIO Sandbox</strong><span>连接集中部署的服务</span></a>
-        </div>
-      </div>
-      <div class="afx-skill-principles" aria-label="Skills 与 Sandbox 的设计原则">
-        <div><small>01</small><strong>灵活加载</strong><span>从本地目录或远程存储发现 Skill，使用时加载完整内容。</span></div>
-        <div><small>02</small><strong>受控执行</strong><span>按任务选择本机或 Sandbox，命令和文件操作遵循统一边界。</span></div>
-        <div><small>03</small><strong>产物直达</strong><span>生成文件可以下载到本地，也可以发布为可访问的结果。</span></div>
+          <p>可复用、可版本化的能力定义。</p>
+          <div class="afx-skill-manifest" aria-label="Skill 包的组成">
+            <span><b>SKILL.md</b><em>说明与流程</em></span>
+            <span><b>scripts/</b><em>可执行脚本</em></span>
+            <span><b>assets/</b><em>模板与资源</em></span>
+          </div>
+          <div class="afx-skill-node__note"><small>DISCOVER</small><span>从本地目录或远程存储发现并加载。</span></div>
+        </article>
+        <div class="afx-skill-flow__connector" aria-hidden="true"><span>加载</span><b>&rarr;</b></div>
+        <article class="afx-skill-node afx-skill-node--runtime">
+          <small>RUNTIME</small>
+          <h3>SkillRuntime</h3>
+          <p>为不同运行环境提供一致的命令与文件接口。</p>
+          <div class="afx-skill-runtime__apis" aria-label="SkillRuntime 提供的能力">
+            <span><strong>执行命令</strong><small>Shell</small></span>
+            <span><strong>读写文件</strong><small>Files</small></span>
+            <span><strong>搜索内容</strong><small>Search</small></span>
+          </div>
+          <div class="afx-skill-node__note"><small>CONTROL</small><span>在统一边界内执行命令、读写文件与搜索内容。</span></div>
+        </article>
+        <div class="afx-skill-flow__connector" aria-hidden="true"><span>路由</span><b>&rarr;</b></div>
+        <article class="afx-skill-node afx-skill-node--targets">
+          <small>EXECUTION TARGET</small>
+          <h3>选择运行环境</h3>
+          <a class="afx-skill-local" href="/zh/skills/local-runtime.html"><span><small>LOCAL</small><strong>Local Runtime</strong></span><em>可信任务与本地调试</em><b aria-hidden="true">&rarr;</b></a>
+          <div class="afx-sandbox-group">
+            <div class="afx-sandbox-group__header"><span><small>SANDBOX</small><strong>隔离或远程执行</strong></span></div>
+            <a href="/zh/skills/open-sandbox.html"><span><strong>OpenSandbox</strong><em>按任务创建隔离容器</em></span><b aria-hidden="true">&rarr;</b></a>
+            <a href="/zh/skills/aio-sandbox.html"><span><strong>AIO Sandbox</strong><em>连接集中部署的服务</em></span><b aria-hidden="true">&rarr;</b></a>
+          </div>
+          <div class="afx-skill-node__note"><small>DELIVER</small><span>将文件下载到本地，或发布为可访问结果。</span></div>
+        </article>
       </div>
       <a class="afx-text-link" href="/zh/skills/overview.html">了解 Skills 完整架构 <span aria-hidden="true">&rarr;</span></a>
     </div>
@@ -99,7 +117,7 @@ String answer = model.chat(
   <section class="afx-section" aria-labelledby="afx-media-title">
     <div class="afx-container">
       <header class="afx-section__header">
-        <div><p class="afx-kicker">MULTIMODAL MODELS</p><h2 id="afx-media-title">用一套 Java 方式处理文本、图像、语音与视频</h2></div>
+        <h2 id="afx-media-title">用一套 Java 方式处理文本、图像、语音与视频</h2>
         <p>每种媒介保留适合自身的调用语义，同时通过统一的 Config、Request、Response 和模型接口降低服务商切换成本。</p>
       </header>
       <div class="afx-media-grid">
@@ -136,17 +154,17 @@ String answer = model.chat(
     </div>
   </section>
 
-  <section class="afx-section afx-section--dark" aria-labelledby="afx-production-title">
+  <section class="afx-section afx-section--production" aria-labelledby="afx-production-title">
     <div class="afx-container">
       <header class="afx-section__header">
-        <div><p class="afx-kicker">BUILT FOR LONG-RUNNING WORK</p><h2 id="afx-production-title">让智能任务可控、可恢复、可观测</h2></div>
+        <h2 id="afx-production-title">让智能任务可控、可恢复、可观测</h2>
         <p>AgentTurn 把一次任务建模为可持久化状态。人工审批、外部等待、进程重启和后台接管都能在同一执行契约下处理。</p>
       </header>
       <ol class="afx-runtime" aria-label="请求经过 Agent Runner 和工具执行后写入状态存储及可观测系统">
-        <li><small>01 · 输入</small><strong>Request</strong><span>Business context</span></li>
-        <li class="afx-runtime__core"><small>02 · 编排</small><strong>AgentRunner</strong><span>Policy + Middleware</span></li>
-        <li><small>03 · 执行</small><strong>Model + Tools</strong><span>Skills + Sandbox</span></li>
-        <li><small>04 · 持久化</small><strong>Turn Store</strong><span>Snapshot + Events</span></li>
+        <li><small>输入</small><strong>Request</strong><span>Business context</span></li>
+        <li class="afx-runtime__core"><small>编排</small><strong>AgentRunner</strong><span>Policy + Middleware</span></li>
+        <li><small>执行</small><strong>Model + Tools</strong><span>Skills + Sandbox</span></li>
+        <li><small>持久化</small><strong>Turn Store</strong><span>Snapshot + Events</span></li>
       </ol>
       <div class="afx-production-links">
         <a href="/zh/agent/suspend-resume.html"><strong>挂起与恢复</strong><span>处理审批和外部回调</span></a>
@@ -159,7 +177,7 @@ String answer = model.chat(
   <section class="afx-section afx-docs" aria-labelledby="afx-docs-title">
     <div class="afx-container">
       <header class="afx-section__header">
-        <div><h2 id="afx-docs-title">按开发阶段深入文档</h2></div>
+        <h2 id="afx-docs-title">按开发阶段深入文档</h2>
         <p>从模型接入、Agent 编排到知识检索与生产运行，选择当前任务继续阅读。</p>
       </header>
       <div class="afx-docs__grid">
