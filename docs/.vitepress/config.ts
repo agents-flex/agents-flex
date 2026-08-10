@@ -174,10 +174,9 @@ const developerReferenceSidebar = [
 // https://vitepress.dev/reference/site-config
 export default withMermaid(defineConfig({
     title: "Agents-Flex",
-    // The homepage is authored as custom HTML. In SPA mode VitePress swaps
-    // the SSR content for the initial lean page chunk, which is intentionally
-    // empty and removes that HTML after first paint. MPA keeps the static page
-    // output intact while retaining normal links between documentation pages.
+    // Keep the server-rendered document intact on direct loads. VitePress's
+    // SPA lean page chunk cannot represent the custom HTML homepage and would
+    // replace it with an empty vnode after the first paint.
     mpa: true,
     // titleTemplate: ':title - Agents-Flex Official website',
     // description: "A Java framework for LLM applications",
@@ -363,6 +362,7 @@ export default withMermaid(defineConfig({
             location.href = 'https://' + location.hostname + location.pathname + location.search;
         }
         `
-        ]
+        ],
+        ['script', {src: '/navigation-enhancer.js'}]
     ],
 }))

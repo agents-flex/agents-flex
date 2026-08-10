@@ -1,5 +1,5 @@
 ---
-layout: home
+layout: page
 title: Agents-Flex
 description: 面向 Java 开发者的 AI 应用与智能体框架
 ---
@@ -13,8 +13,8 @@ description: 面向 Java 开发者的 AI 应用与智能体框架
         <p class="afx-hero__headline">把模型能力带进真实的 Java 系统</p>
         <p class="afx-hero__summary">从统一的模型调用开始，按需组合 Agent、RAG、多模态、Skills 与可观测能力。保持业务架构清晰，也为长任务的恢复和生产运行留出空间。</p>
         <div class="afx-actions">
-          <a class="afx-button afx-button--primary" href="/zh/chat/getting-started">快速开始 <span aria-hidden="true">&rarr;</span></a>
-          <a class="afx-button" href="/zh/intro/compare-spring-ai">对比 Spring AI</a>
+          <a class="afx-button afx-button--primary" href="/zh/chat/getting-started.html">快速开始 <span aria-hidden="true">&rarr;</span></a>
+          <a class="afx-button" href="/zh/intro/compare-spring-ai.html">对比 Spring AI</a>
         </div>
         <p class="afx-requirement">Apache 2.0 开源 · 支持 JDK 8+ · 不强制依赖 Spring</p>
       </div>
@@ -37,10 +37,10 @@ String answer = model.chat(
 
   <nav class="afx-jump" aria-label="选择开始路径">
     <div class="afx-container afx-jump__grid">
-      <a href="/zh/chat/getting-started"><span>01</span><strong>调用模型</strong><small>完成第一次对话</small></a>
-      <a href="/zh/agent/getting-started"><span>02</span><strong>构建 Agent</strong><small>接入工具与任务循环</small></a>
-      <a href="/zh/rag/document"><span>03</span><strong>连接知识</strong><small>搭建完整 RAG 链路</small></a>
-      <a href="/zh/skills/getting-started"><span>04</span><strong>执行 Skills</strong><small>交付文件与运行结果</small></a>
+      <a href="/zh/chat/getting-started.html"><span>01</span><strong>调用模型</strong><small>完成第一次对话</small></a>
+      <a href="/zh/agent/getting-started.html"><span>02</span><strong>构建 Agent</strong><small>接入工具与任务循环</small></a>
+      <a href="/zh/rag/document.html"><span>03</span><strong>连接知识</strong><small>搭建完整 RAG 链路</small></a>
+      <a href="/zh/skills/getting-started.html"><span>04</span><strong>执行 Skills</strong><small>交付文件与运行结果</small></a>
     </div>
   </nav>
 
@@ -51,12 +51,12 @@ String answer = model.chat(
         <p>Agents-Flex 将模型、Agent、知识、多模态、执行环境与运行治理组织为可独立引入的模块。可以只使用 ChatModel，也可以随业务逐步扩展。</p>
       </header>
       <div class="afx-capabilities">
-        <a href="/zh/chat/chat-model"><span>MODEL</span><h3>模型与对话</h3><p>ChatModel、Prompt、Memory、流式输出、Tool Calling 与 MCP。</p></a>
-        <a href="/zh/agent/overview"><span>AGENT</span><h3>智能体运行时</h3><p>任务规划、子 Agent、人工审批、预算、重试、挂起与恢复。</p></a>
-        <a href="/zh/rag/document"><span>KNOWLEDGE</span><h3>RAG 与存储</h3><p>文档抽取、切分、Embedding、Rerank 与多种 Vector Store。</p></a>
-        <a href="/zh/image/image-generation"><span>MEDIA</span><h3>多模态生成</h3><p>图片、TTS、STT 与视频生成，共享一致的 Java 接入体验。</p></a>
-        <a href="/zh/skills/overview"><span>EXECUTION</span><h3>Skills 与 Sandbox</h3><p>封装专业方法，在本机或隔离环境执行脚本并交付产物。</p></a>
-        <a href="/zh/observability/observability"><span>OPERATIONS</span><h3>可观测与治理</h3><p>关联 Model、Agent、Tool 与 Runtime，追踪延迟、Token 和状态。</p></a>
+        <a href="/zh/chat/chat-model.html"><span>MODEL</span><h3>模型与对话</h3><p>ChatModel、Prompt、Memory、流式输出、Tool Calling 与 MCP。</p></a>
+        <a href="/zh/agent/overview.html"><span>AGENT</span><h3>智能体运行时</h3><p>任务规划、子 Agent、人工审批、预算、重试、挂起与恢复。</p></a>
+        <a href="/zh/rag/document.html"><span>KNOWLEDGE</span><h3>RAG 与存储</h3><p>文档抽取、切分、Embedding、Rerank 与多种 Vector Store。</p></a>
+        <a href="/zh/image/image-generation.html"><span>MEDIA</span><h3>多模态生成</h3><p>图片、TTS、STT 与视频生成，共享一致的 Java 接入体验。</p></a>
+        <a href="/zh/skills/overview.html"><span>EXECUTION</span><h3>Skills 与 Sandbox</h3><p>封装专业方法，在本机或隔离环境执行脚本并交付产物。</p></a>
+        <a href="/zh/observability/observability.html"><span>OPERATIONS</span><h3>可观测与治理</h3><p>关联 Model、Agent、Tool 与 Runtime，追踪延迟、Token 和状态。</p></a>
       </div>
     </div>
   </section>
@@ -82,9 +82,9 @@ String answer = model.chat(
         </div>
         <div class="afx-skill-connector" aria-hidden="true"><span></span></div>
         <div class="afx-skill-targets">
-          <a href="/zh/skills/local-runtime"><small>01 · 本地</small><strong>Local Runtime</strong><span>可信任务与本地调试</span></a>
-          <a href="/zh/skills/open-sandbox"><small>02 · 隔离</small><strong>OpenSandbox</strong><span>按任务创建隔离容器</span></a>
-          <a href="/zh/skills/aio-sandbox"><small>03 · 远程</small><strong>AIO Sandbox</strong><span>连接集中部署的服务</span></a>
+          <a href="/zh/skills/local-runtime.html"><small>01 · 本地</small><strong>Local Runtime</strong><span>可信任务与本地调试</span></a>
+          <a href="/zh/skills/open-sandbox.html"><small>02 · 隔离</small><strong>OpenSandbox</strong><span>按任务创建隔离容器</span></a>
+          <a href="/zh/skills/aio-sandbox.html"><small>03 · 远程</small><strong>AIO Sandbox</strong><span>连接集中部署的服务</span></a>
         </div>
       </div>
       <div class="afx-skill-principles" aria-label="Skills 与 Sandbox 的设计原则">
@@ -92,7 +92,7 @@ String answer = model.chat(
         <div><small>02</small><strong>受控执行</strong><span>按任务选择本机或 Sandbox，命令和文件操作遵循统一边界。</span></div>
         <div><small>03</small><strong>产物直达</strong><span>生成文件可以下载到本地，也可以发布为可访问的结果。</span></div>
       </div>
-      <a class="afx-text-link" href="/zh/skills/overview">了解 Skills 完整架构 <span aria-hidden="true">&rarr;</span></a>
+      <a class="afx-text-link" href="/zh/skills/overview.html">了解 Skills 完整架构 <span aria-hidden="true">&rarr;</span></a>
     </div>
   </section>
 
@@ -103,25 +103,25 @@ String answer = model.chat(
         <p>每种媒介保留适合自身的调用语义，同时通过统一的 Config、Request、Response 和模型接口降低服务商切换成本。</p>
       </header>
       <div class="afx-media-grid">
-        <a href="/zh/chat/getting-started">
+        <a href="/zh/chat/getting-started.html">
           <b class="afx-media-mark" aria-hidden="true">T</b>
           <h3>对话与文本</h3>
           <p>同步或流式调用大模型，组合 Prompt、Memory、Tool Calling 与结构化输出。</p>
           <small>ChatModel · chat() · chatStream()</small>
         </a>
-        <a href="/zh/image/image-generation">
+        <a href="/zh/image/image-generation.html">
           <b class="afx-media-mark" aria-hidden="true">I</b>
           <h3>图片生成与编辑</h3>
           <p>覆盖文生图、参考图、多图融合、局部编辑和多图输出。</p>
           <small>ImageModel · GenerateImageRequest</small>
         </a>
-        <a href="/zh/audio/tts-stt">
+        <a href="/zh/audio/tts-stt.html">
           <b class="afx-media-mark" aria-hidden="true">A</b>
           <h3>语音合成与识别</h3>
           <p>提供 TTS、STT 和流式语音合成，适配实时 AI 语音交互。</p>
           <small>TextToSpeech · SpeechToText</small>
         </a>
-        <a href="/zh/video/video-generation">
+        <a href="/zh/video/video-generation.html">
           <b class="afx-media-mark" aria-hidden="true">V</b>
           <h3>视频生成任务</h3>
           <p>统一提交、查询和等待异步任务，支持文生视频、图生视频与编辑。</p>
@@ -149,9 +149,9 @@ String answer = model.chat(
         <li><small>04 · 持久化</small><strong>Turn Store</strong><span>Snapshot + Events</span></li>
       </ol>
       <div class="afx-production-links">
-        <a href="/zh/agent/suspend-resume"><strong>挂起与恢复</strong><span>处理审批和外部回调</span></a>
-        <a href="/zh/agent/store"><strong>状态持久化</strong><span>支持 JDBC、Redis 与自定义 Store</span></a>
-        <a href="/zh/observability/getting-started"><strong>运行可观测</strong><span>查看模型、工具和任务状态</span></a>
+        <a href="/zh/agent/suspend-resume.html"><strong>挂起与恢复</strong><span>处理审批和外部回调</span></a>
+        <a href="/zh/agent/store.html"><strong>状态持久化</strong><span>支持 JDBC、Redis 与自定义 Store</span></a>
+        <a href="/zh/observability/getting-started.html"><strong>运行可观测</strong><span>查看模型、工具和任务状态</span></a>
       </div>
     </div>
   </section>
@@ -163,10 +163,10 @@ String answer = model.chat(
         <p>从模型接入、Agent 编排到知识检索与生产运行，选择当前任务继续阅读。</p>
       </header>
       <div class="afx-docs__grid">
-        <div><h3>模型与工具</h3><a href="/zh/chat/getting-started">模型调用快速开始</a><a href="/zh/chat/tool-build">构建与调用 Tool</a><a href="/zh/chat/mcp">接入 MCP 服务</a><a href="/zh/chat/text2sql">构建 Text2SQL 应用</a></div>
-        <div><h3>Agent 编排</h3><a href="/zh/agent/getting-started">Agent 快速开始</a><a href="/zh/agent/task-planning">任务规划</a><a href="/zh/agent/human-approval">人工审批</a><a href="/zh/agent/form-input">表单输入</a></div>
-        <div><h3>知识与检索</h3><a href="/zh/rag/document">文档处理与切分</a><a href="/zh/store/overview">Vector Store</a><a href="/zh/rag/embedding">Embedding</a><a href="/zh/rag/rerank">Rerank</a></div>
-        <div><h3>生产与交付</h3><a href="/zh/skills/getting-started">Skills 快速开始</a><a href="/zh/skills/open-sandbox">Sandbox 隔离执行</a><a href="/zh/observability/observability">可观测性</a><a href="/changes">更新记录</a></div>
+        <div><h3>模型与工具</h3><a href="/zh/chat/getting-started.html">模型调用快速开始</a><a href="/zh/chat/tool-build.html">构建与调用 Tool</a><a href="/zh/chat/mcp.html">接入 MCP 服务</a><a href="/zh/chat/text2sql.html">构建 Text2SQL 应用</a></div>
+        <div><h3>Agent 编排</h3><a href="/zh/agent/getting-started.html">Agent 快速开始</a><a href="/zh/agent/task-planning.html">任务规划</a><a href="/zh/agent/human-approval.html">人工审批</a><a href="/zh/agent/form-input.html">表单输入</a></div>
+        <div><h3>知识与检索</h3><a href="/zh/rag/document.html">文档处理与切分</a><a href="/zh/store/overview.html">Vector Store</a><a href="/zh/rag/embedding.html">Embedding</a><a href="/zh/rag/rerank.html">Rerank</a></div>
+        <div><h3>生产与交付</h3><a href="/zh/skills/getting-started.html">Skills 快速开始</a><a href="/zh/skills/open-sandbox.html">Sandbox 隔离执行</a><a href="/zh/observability/observability.html">可观测性</a><a href="/changes.html">更新记录</a></div>
       </div>
     </div>
   </section>

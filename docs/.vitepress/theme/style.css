@@ -69,12 +69,44 @@ body { letter-spacing: 0; }
   font-weight: 700;
 }
 .VPSidebarItem.level-1 .text { font-size: 14px; }
+
+/* MPA outline items are inserted after render and have no Vue scoped attrs. */
+.VPDocAsideOutline .VPDocOutlineItem.root,
+.VPDocAsideOutline .VPDocOutlineItem.nested {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.VPDocAsideOutline .VPDocOutlineItem.nested { padding-left: 16px; }
+.VPDocAsideOutline .outline-link {
+  display: block;
+  overflow: hidden;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 32px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color .25s;
+}
+.VPDocAsideOutline .outline-link.nested { padding-left: 13px; }
+.VPDocAsideOutline .outline-link:hover,
+.VPDocAsideOutline .outline-link.active {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
 .VPButton { min-height: 44px; border-radius: 5px !important; letter-spacing: 0; }
 
 .VPHome .vp-doc { max-width: none; padding: 0; }
 .VPHome .vp-doc > div { margin: 0; }
 .VPHome .vp-doc a { text-decoration: none; }
 .VPHome:has(.afx-home) { margin-bottom: 0; }
+.VPPage:has(.afx-home) .vp-doc { max-width: none; padding: 0; }
+.VPPage:has(.afx-home) .vp-doc > div { margin: 0; }
+.VPPage:has(.afx-home) .vp-doc a { text-decoration: none; }
+.VPPage:has(.afx-home) { margin-bottom: 0; }
 
 .afx-home {
   --afx-bg: #ffffff;
