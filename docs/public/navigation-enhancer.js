@@ -72,9 +72,30 @@
     if (container) container.classList.toggle('has-outline', headings.length > 0)
   }
 
+  function updateThemeControls() {
+    var dark = document.documentElement.classList.contains('dark')
+    document.querySelectorAll('.VPSwitchAppearance').forEach(function (button) {
+      button.setAttribute('aria-checked', dark ? 'true' : 'false')
+    })
+  }
+
+  function setupThemeToggle() {
+    updateThemeControls()
+    document.addEventListener('click', function (event) {
+      var button = event.target.closest && event.target.closest('.VPSwitchAppearance')
+      if (!button) return
+      event.preventDefault()
+      var dark = !document.documentElement.classList.contains('dark')
+      document.documentElement.classList.toggle('dark', dark)
+      localStorage.setItem('vitepress-theme-appearance', dark ? 'dark' : 'light')
+      updateThemeControls()
+    })
+  }
+
   function enhance() {
     updateSidebar()
     updateOutline()
+    setupThemeToggle()
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enhance)

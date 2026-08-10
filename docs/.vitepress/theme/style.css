@@ -263,6 +263,7 @@ body { letter-spacing: 0; }
 .afx-media-grid > a { display: flex; min-height: 300px; flex-direction: column; padding: 26px; border-right: 1px solid var(--afx-line); border-bottom: 1px solid var(--afx-line); transition: background-color 180ms ease; }
 .afx-media-grid > a:hover { background: var(--afx-brand-soft); }
 .afx-media-mark { display: flex; width: 48px; height: 48px; flex: 0 0 48px; align-items: center; align-self: flex-end; justify-content: center; border: 1px solid var(--afx-brand); border-radius: 4px; background: #ffffff; color: var(--afx-brand); font-family: "SFMono-Regular", Consolas, monospace; font-size: 18px; font-weight: 700; }
+.dark .afx-media-mark { border-color: var(--afx-brand); background: var(--afx-surface-strong); color: var(--afx-brand); }
 .afx-media-grid h3 { margin-top: 36px; font-size: 18px; line-height: 1.4; }
 .afx-media-grid p { margin-top: 11px; color: var(--afx-muted); font-size: 13px; line-height: 1.7; }
 .afx-media-grid small { margin-top: auto; padding-top: 24px; color: var(--afx-muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; line-height: 1.5; }
