@@ -55,7 +55,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 - `agents-flex-mcp`：JDK 17+
 - 构建工具：Maven
 
-当前仓库版本见根 `pom.xml` 的 `revision` 属性，目前为 `2.2.6`。
+当前仓库版本见根 `pom.xml` 的 `revision` 属性，目前为 `2.2.7`。
 
 ## 安装
 
@@ -65,7 +65,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>2.2.6</version>
+    <version>2.2.7</version>
 </dependency>
 ```
 
@@ -75,7 +75,7 @@ Spring Boot 项目可以使用 Starter：
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-spring-boot-starter</artifactId>
-    <version>2.2.6</version>
+    <version>2.2.7</version>
 </dependency>
 ```
 
@@ -85,13 +85,13 @@ Spring Boot 项目可以使用 Starter：
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-chat-openai</artifactId>
-    <version>2.2.6</version>
+    <version>2.2.7</version>
 </dependency>
 
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-store-redis</artifactId>
-    <version>2.2.6</version>
+    <version>2.2.7</version>
 </dependency>
 ```
 

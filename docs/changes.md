@@ -1,5 +1,53 @@
 # Agents-Flex ChangeLog
 
+## v2.2.7 20260810
+- docs(website): add document extractors documentation and enable MPA mode
+- docs: remove en documentation files and samples
+- docs(community): update communication and contribution guidelines
+- style(docs): refine homepage layout and content structure
+- refactor(docs): update theme layout and styling for enhanced accessibility
+- docs(menu): rename Tool to Function Call in navigation and links
+- docs(sidebar): refactor documentation structure and remove cursor enhancement
+- refactor(doc-extractor): move document extraction components to dedicated module
+- feat(agent): add conditional tool group and context compression support
+- feat(store): add context compression state persistence with JDBC and Redis support
+- feat(agent): add context compression coordinator for incremental history management
+- refactor(agent): remove compactBeforeContextCompression option
+- feat(agent): add option to normalize tool turns before semantic compression
+- refactor(model-router): update ChatModelSelector interface to use ChatModelCandidates
+- feat(model-router): add custom selector support for RoutedChatModel
+- feat(agent): add multimodal chat model support
+- feat(compression): add per-message context compression strategy
+- feat(agent): add incremental context compression feature
+- feat(agent): add semantic summarization with chat model
+- feat(agent): enhance context compression with system message support and local strategies
+- feat(agent): add semantic context compression and recent turn protection
+- feat(agent): add context window management with turn-based limits
+- fix(router): enhance circuit breaker and retry mechanism with endpoint deduplication
+- feat(embedding): add RoutedEmbeddingModel with load balancing and circuit breaking
+- feat(model-router): enhance RoutedChatModel with streaming fault tolerance
+- feat(chat): enhance RoutedChatModel with robust streaming and retry mechanisms
+- feat(model): add structured model error classification and retry handling
+- docs(agent): add execution policy and tool context documentation
+- refactor(agent): move tool error message factory from agent to execution policy
+- feat(agent): add ToolErrorMessageFactory for customizing tool error messages
+- feat(chat): enable ToolGroup to provide chat interceptors dynamically
+- refactor(core): move tool group classes to dedicated package Michael
+- refactor(chat): move streaming state from ChatOptions to ChatContext
+- refactor(util): rename isEmpty method to isMetadataEmpty in Metadata class
+- feat(chat): implement request-level ChatOptions copying for thread safety
+- refactor(chat): enhance ChatInterceptorProvider with registration support
+- feat(chat): add ChatInterceptorProvider support for dynamic request-level interceptors
+- refactor(toolsearch): remove prompt binding and simplify tool search logic
+- feat(agent): add dynamic tool resolution support via middleware
+- feat(agent): add cancellation reason configuration for agent execution policy
+- feat(agent): add configurable interrupted message templates for agent execution
+- refactor(store): remove default methods from AgentTurnStore interface
+- refactor(agent): rename requestCancellation to cancel method
+- feat(chat): add Agent module and add file support and provider tools to OpenAI chat configuration
+- feat(chat): Add comprehensive test coverage for all new configuration options
+
+
 ## v2.2.6 20260731
 - refactor(doc-extractor): move document extraction from core into an independent Maven module
 - refactor(doc-extractor): rename File2Text APIs to DocumentExtractionService, DocumentExtractor, and DocumentExtractors
