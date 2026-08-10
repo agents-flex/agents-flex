@@ -159,6 +159,7 @@ const developerReferenceSidebar = [
             {text: 'Retryer', link: '/zh/util/retryer'},
             {text: 'LocalTokenCounter', link: '/zh/util/local-token-counter'},
             {text: 'PromptTemplate', link: '/zh/util/prompt-template'},
+            {text: 'DocumentExtractors', link: '/zh/util/document-extractors'},
             {text: '其他工具类', link: '/zh/util/others'},
         ]
     },
@@ -173,10 +174,15 @@ const developerReferenceSidebar = [
 // https://vitepress.dev/reference/site-config
 export default withMermaid(defineConfig({
     title: "Agents-Flex",
+    // The homepage is authored as custom HTML. In SPA mode VitePress swaps
+    // the SSR content for the initial lean page chunk, which is intentionally
+    // empty and removes that HTML after first paint. MPA keeps the static page
+    // output intact while retaining normal links between documentation pages.
+    mpa: true,
     // titleTemplate: ':title - Agents-Flex Official website',
     // description: "A Java framework for LLM applications",
     titleTemplate: ':title - Agents-Flex 官方网站',
-    description: "一个优雅的 LLM（大语言模型）应用开发框架",
+    description: "面向 Java 开发者的 AI 应用与智能体框架",
     lastUpdated: true,
     appearance: "dark",
     mermaid: {
@@ -331,9 +337,9 @@ export default withMermaid(defineConfig({
         }
     },
     head: [
-        [
-            'link', {rel: 'icon', href: '/assets/images/logo02.png'}
-        ],
+        // [
+            // 'link', {rel: 'icon', href: '/assets/images/logo02.png'}
+        // ],
 
         [// 添加百度统计
             "script",
