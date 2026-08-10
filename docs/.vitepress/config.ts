@@ -224,20 +224,20 @@ export default withMermaid(defineConfig({
 
         nav: [
             {text: '首页', link: '/'},
-            {text: '快速开始', link: '/zh/intro/what-is-agentsflex'},
-            {text: 'ChatModel', link: '/zh/chat/chat-model'},
-            {text: 'Agent', link: '/zh/agent/overview'},
-            {text: 'RAG 知识库', link: '/zh/rag/document'},
+            {text: '快速开始', link: '/zh/intro/what-is-agentsflex', activeMatch: '/zh/intro/'},
+            {text: 'ChatModel', link: '/zh/chat/chat-model', activeMatch: '/zh/chat/'},
+            {text: 'Agent', link: '/zh/agent/overview', activeMatch: '/zh/agent/'},
+            {text: 'RAG 知识库', link: '/zh/rag/document', activeMatch: '/zh/(?:rag|store)/'},
             {
-                text: '多模态', items: [
-                    {text: '图片生成', link: '/zh/image/image-generation'},
-                    {text: '语音 TTS / STT', link: '/zh/audio/tts-stt'},
-                    {text: '视频生成', link: '/zh/video/video-generation'},
+                text: '多模态', activeMatch: '/zh/(?:image|audio|video)/', items: [
+                    {text: '图片生成', link: '/zh/image/image-generation', activeMatch: '/zh/image/'},
+                    {text: '语音 TTS / STT', link: '/zh/audio/tts-stt', activeMatch: '/zh/audio/'},
+                    {text: '视频生成', link: '/zh/video/video-generation', activeMatch: '/zh/video/'},
                 ]
             },
-            {text: 'Skills', link: '/zh/skills/overview'},
-            {text: '可观测', link: '/zh/observability/observability'},
-            {text: '开发参考', link: '/changes'},
+            {text: 'Skills', link: '/zh/skills/overview', activeMatch: '/zh/skills/'},
+            {text: '可观测', link: '/zh/observability/observability', activeMatch: '/zh/observability/'},
+            {text: '开发参考', link: '/changes', activeMatch: '/(?:zh/)?changes(?:\\.md|\\.html|/|$)'},
         ],
 
         sidebar: {
@@ -338,7 +338,7 @@ export default withMermaid(defineConfig({
     },
     head: [
         // [
-            // 'link', {rel: 'icon', href: '/assets/images/logo02.png'}
+        // 'link', {rel: 'icon', href: '/assets/images/logo02.png'}
         // ],
 
         [// 添加百度统计

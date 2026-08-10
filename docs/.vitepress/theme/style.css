@@ -21,6 +21,47 @@ body { letter-spacing: 0; }
 .VPNavBarTitle .title { font-weight: 700; }
 .VPNavBarMenuLink,
 .VPNavBarMenuGroup .text { font-size: 14px; }
+.VPNavBarMenuLink.active {
+  position: relative;
+  color: var(--vp-c-brand-1);
+  font-weight: 650;
+}
+.VPNavBarMenuLink.active::after {
+  position: absolute;
+  right: 12px;
+  bottom: 7px;
+  left: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--vp-c-brand-1);
+  content: "";
+}
+.VPNavBarMenuGroup.active .text {
+  color: var(--vp-c-brand-1);
+  font-weight: 650;
+}
+.VPNavBarMenuGroup.active::after {
+  position: absolute;
+  right: 12px;
+  bottom: 7px;
+  left: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--vp-c-brand-1);
+  content: "";
+  z-index: 1;
+}
+.VPNavBarMenuGroup .menu { z-index: 2; }
+.VPSidebarItem.is-active > .item > .link {
+  border-left: 3px solid var(--vp-c-brand-1);
+  border-radius: 0 4px 4px 0;
+  background: var(--vp-c-brand-soft);
+  padding-left: 10px;
+}
+.VPSidebarItem.is-active > .item > .link > .text {
+  color: var(--vp-c-brand-1);
+  font-weight: 650;
+}
 .VPSidebarItem.level-0 { padding-bottom: 12px; }
 .VPSidebarItem.level-0 > .item > .text {
   color: var(--vp-c-text-1);
