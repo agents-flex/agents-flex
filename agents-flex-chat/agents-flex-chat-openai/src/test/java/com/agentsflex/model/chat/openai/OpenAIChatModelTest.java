@@ -11,12 +11,24 @@ import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.exception.ModelException;
 import com.agentsflex.core.prompt.SimplePrompt;
 import com.agentsflex.core.util.Maps;
+import org.junit.BeforeClass;
+import org.junit.Assume;
 import org.junit.Test;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class OpenAIChatModelTest {
+
+    /**
+     * These tests exercise live provider endpoints and are intentionally opt-in.
+     * The sample credentials in this class are not build credentials.
+     */
+    @BeforeClass
+    public static void requireLiveProviderAccess() {
+        Assume.assumeTrue("Set -Dagentsflex.integration=true to run live provider tests",
+            Boolean.getBoolean("agentsflex.integration"));
+    }
 
     @Test(expected = ModelException.class)
     public void testChat() {

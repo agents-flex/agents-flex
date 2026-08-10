@@ -3,6 +3,7 @@ package com.agentsflex.store.milvus;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.store.SearchWrapper;
 import com.agentsflex.core.store.StoreResult;
+import org.junit.Assume;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
@@ -13,6 +14,11 @@ import java.util.List;
 import static org.junit.Assert.*;
 
 public class MilvusVectorStoreConfigTest {
+
+    private static void requireLiveMilvus() {
+        Assume.assumeTrue("Set -Dagentsflex.integration=true to run live Milvus tests",
+            Boolean.getBoolean("agentsflex.integration"));
+    }
 
     @Test
     public void testBuilderCreate() {
@@ -87,6 +93,7 @@ public class MilvusVectorStoreConfigTest {
 
     @Test
     public void testStoreSuccess() {
+        requireLiveMilvus();
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
             .defaultCollectionName("test_collection05")
@@ -117,6 +124,7 @@ public class MilvusVectorStoreConfigTest {
 
     @Test
     public void testSearchSuccess() {
+        requireLiveMilvus();
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
             .defaultCollectionName("test_collection05")
@@ -136,6 +144,7 @@ public class MilvusVectorStoreConfigTest {
 
     @Test
     public void testAll() throws InterruptedException {
+        requireLiveMilvus();
         MilvusVectorStoreConfig config = MilvusVectorStoreConfig.builder()
             .endpoint("http://localhost:19530")
             .defaultCollectionName("test_collection_test")

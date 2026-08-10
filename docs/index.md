@@ -174,7 +174,7 @@ String answer = model.chat(
   <section class="afx-final" aria-labelledby="afx-final-title">
     <div class="afx-container afx-final__inner">
       <div><h2 id="afx-final-title">开始构建你的 Java AI 应用</h2><p>从 ChatModel 起步，按需加入知识、工具、Skills 与 Agent。</p></div>
-      <div class="afx-actions"><a class="afx-button afx-button--primary" href="/zh/chat/getting-started">开始使用 <span aria-hidden="true">&rarr;</span></a><a class="afx-button" href="https://github.com/agents-flex/agents-flex" target="_blank" rel="noreferrer">查看 GitHub</a></div>
+      <div class="afx-actions"><a class="afx-button afx-button--primary" href="/zh/chat/getting-started.html">开始使用 <span aria-hidden="true">&rarr;</span></a><a class="afx-button" href="https://github.com/agents-flex/agents-flex" target="_blank" rel="noreferrer">查看 GitHub</a></div>
     </div>
   </section>
 </main>

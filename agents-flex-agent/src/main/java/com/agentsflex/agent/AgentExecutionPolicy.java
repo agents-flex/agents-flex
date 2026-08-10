@@ -9,6 +9,8 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
 import com.agentsflex.agent.tool.ToolErrorMessageFactory;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 
 /**
@@ -59,7 +61,9 @@ public final class AgentExecutionPolicy implements Serializable {
     /**
      * 将允许交回模型的工具异常转换为 ToolMessage 的业务规则。
      */
-    private final ToolErrorMessageFactory toolErrorMessageFactory;
+    // A factory is executable process-local behavior, not durable turn state.
+    // Do not let a user-provided lambda make an otherwise serializable snapshot fail.
+    private transient ToolErrorMessageFactory toolErrorMessageFactory;
     /**
      * 模型或工具发生可恢复异常时使用的重试策略。
      */
@@ -91,6 +95,13 @@ public final class AgentExecutionPolicy implements Serializable {
         this.interruptedToolMessageTemplate = builder.interruptedToolMessageTemplate;
         this.interruptedTurnMessageTemplate = builder.interruptedTurnMessageTemplate;
         this.cancellationReason = builder.cancellationReason;
+    }
+
+    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
+        input.defaultReadObject();
+        if (toolErrorMessageFactory == null) {
+            toolErrorMessageFactory = ToolErrorMessageFactory.defaultFactory();
+        }
     }
 
     /**

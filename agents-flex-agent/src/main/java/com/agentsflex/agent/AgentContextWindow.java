@@ -64,12 +64,8 @@ final class AgentContextWindow {
         // 每个元素都是不可拆分的历史单元：语义压缩结果、一个旧 Turn 或一个受保护 Turn。
         // 超过消息上限时只删除最早单元，永远不会从 ToolCall/ToolMessage 中间截断。
         List<List<Message>> units = new ArrayList<>();
-        int protectedStart;
         if (semanticOutput != null) {
             units.add(copy(semanticOutput));
-            protectedStart = 1;
-        } else {
-            protectedStart = compressionEnd - from;
         }
         for (int index = compressionEnd; index < turns.size(); index++) {
             units.add(copy(turns.get(index)));
@@ -87,7 +83,9 @@ final class AgentContextWindow {
         }
         int firstUnit = 0;
         int size = countMessages(units);
-        while (size > maxMessages && firstUnit < protectedStart) {
+        // Drop the oldest complete units until the message budget is met. The
+        // newest unit is always retained so the current turn cannot disappear.
+        while (size > maxMessages && firstUnit < units.size() - 1) {
             size -= units.get(firstUnit++).size();
         }
         List<Message> selected = new ArrayList<>();
