@@ -18,7 +18,7 @@
       <stop offset="1" stop-color="#a3f277"/>
     </linearGradient>
   </defs>
-  <rect width="625" height="625" rx="96" fill="#2a3b35" stroke="#43584f" stroke-width="6"/>
+  <rect width="625" height="625" rx="96" fill="#45645b" stroke="#7a9d92" stroke-width="16"/>
   <g transform="translate(-150 25) scale(.92)">
   <!-- arched crown behind the wings -->
   <path d="M294 176 C347 130 416 105 497 104 C579 104 649 130 704 176 L680 190 C628 151 566 135 497 135 C428 135 367 151 316 190 Z" fill="url(#body)"/>

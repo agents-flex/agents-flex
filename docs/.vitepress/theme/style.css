@@ -54,6 +54,10 @@ body {
 }
 
 ::selection { background: var(--vp-c-brand-soft); }
+.vp-doc div[class*="language-"] ::selection {
+  background: rgb(71 211 143 / 42%);
+  color: #fff;
+}
 
 .VPNavBar {
   border-bottom-color: rgb(113 128 120 / 18%);
@@ -61,7 +65,6 @@ body {
   backdrop-filter: blur(16px) saturate(140%);
 }
 .dark .VPNavBar { background: rgb(20 26 23 / 88%); }
-.dark .VPNavBarTitle .logo img { content: url('/assets/images/agents-flex-logo-dark.svg'); }
 .VPNavBarTitle .title { font-weight: 720; }
 .VPNavBarMenuLink,
 .VPNavBarMenuGroup .text { font-size: 13px; }

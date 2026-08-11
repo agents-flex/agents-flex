@@ -205,7 +205,11 @@ export default withMermaid(defineConfig({
         search: {
             provider: 'local'
         },
-        logo: '/assets/images/agents-flex-logo.svg',
+        logo: {
+            light: '/assets/images/agents-flex-logo.svg',
+            dark: '/assets/images/agents-flex-logo-dark.svg',
+            alt: 'Agents-Flex',
+        },
         socialLinks: [
             {icon: {svg: gitee_icon_svg}, link: 'https://gitee.com/agents-flex/agents-flex'},
             {icon: 'github', link: 'https://github.com/agents-flex/agents-flex'},
