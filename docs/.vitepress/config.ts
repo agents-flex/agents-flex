@@ -205,6 +205,7 @@ export default withMermaid(defineConfig({
         search: {
             provider: 'local'
         },
+        logo: '/assets/images/agents-flex-logo.svg',
         socialLinks: [
             {icon: {svg: gitee_icon_svg}, link: 'https://gitee.com/agents-flex/agents-flex'},
             {icon: 'github', link: 'https://github.com/agents-flex/agents-flex'},
@@ -334,9 +335,7 @@ export default withMermaid(defineConfig({
         }
     },
     head: [
-        // [
-        // 'link', {rel: 'icon', href: '/assets/images/logo02.png'}
-        // ],
+        ['link', {rel: 'icon', type: 'image/svg+xml', href: '/assets/images/agents-flex-logo.svg'}],
 
         [// 添加百度统计
             "script",

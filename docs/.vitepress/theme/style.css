@@ -61,6 +61,7 @@ body {
   backdrop-filter: blur(16px) saturate(140%);
 }
 .dark .VPNavBar { background: rgb(20 26 23 / 88%); }
+.dark .VPNavBarTitle .logo img { content: url('/assets/images/agents-flex-logo-dark.svg'); }
 .VPNavBarTitle .title { font-weight: 720; }
 .VPNavBarMenuLink,
 .VPNavBarMenuGroup .text { font-size: 13px; }

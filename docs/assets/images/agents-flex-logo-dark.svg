@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="625" height="625" viewBox="0 0 625 625">
+  <title>Agents-Flex logo for dark mode</title>
+  <defs>
+    <linearGradient id="body" x1="0.14" y1="0.78" x2="0.88" y2="0.18">
+      <stop offset="0" stop-color="#4c8dff"/>
+      <stop offset="0.34" stop-color="#28a7ff"/>
+      <stop offset="0.62" stop-color="#28d5e2"/>
+      <stop offset="0.82" stop-color="#54e0c5"/>
+      <stop offset="1" stop-color="#a3f277"/>
+    </linearGradient>
+    <linearGradient id="irisL" x1="0.15" y1="0.8" x2="0.82" y2="0.18">
+      <stop offset="0" stop-color="#4c8dff"/>
+      <stop offset="1" stop-color="#28a7ff"/>
+    </linearGradient>
+    <linearGradient id="irisR" x1="0.1" y1="0.75" x2="0.9" y2="0.2">
+      <stop offset="0" stop-color="#28a7ff"/>
+      <stop offset="0.55" stop-color="#28d5e2"/>
+      <stop offset="1" stop-color="#a3f277"/>
+    </linearGradient>
+  </defs>
+  <rect width="625" height="625" rx="96" fill="#2a3b35" stroke="#43584f" stroke-width="6"/>
+  <g transform="translate(-150 25) scale(.92)">
+  <!-- arched crown behind the wings -->
+  <path d="M294 176 C347 130 416 105 497 104 C579 104 649 130 704 176 L680 190 C628 151 566 135 497 135 C428 135 367 151 316 190 Z" fill="url(#body)"/>
+
+  <!-- continuous owl silhouette -->
+  <path fill="url(#body)" d="M184 80 C202 122 246 150 310 160 C403 178 467 217 498 280 C529 216 594 178 687 160 C750 148 793 118 809 80 C806 113 787 145 759 168 C781 165 798 156 809 146 C802 178 781 198 749 210 C790 246 813 297 813 354 C813 453 740 532 647 532 C608 532 573 519 547 497 L498 572 L449 497 C421 519 389 532 349 532 C254 532 181 454 181 354 C181 297 203 247 246 210 C214 198 193 178 184 146 C198 156 215 165 238 169 C207 145 188 114 184 80 Z"/>
+
+  <!-- white eye fields -->
+  <circle cx="349" cy="354" r="133" fill="#fdfdfc"/>
+  <circle cx="647" cy="354" r="133" fill="#fdfdfc"/>
+
+  <!-- irises -->
+  <circle cx="349" cy="354" r="91" fill="url(#irisL)"/>
+  <circle cx="647" cy="354" r="91" fill="url(#irisR)"/>
+
+  <!-- inner whites -->
+  <circle cx="349" cy="354" r="56" fill="#fdfdfc"/>
+  <circle cx="647" cy="354" r="56" fill="#fdfdfc"/>
+
+  <!-- pupils -->
+  <circle cx="349" cy="354" r="35" fill="url(#irisL)"/>
+  <circle cx="647" cy="354" r="35" fill="url(#irisR)"/>
+  <circle cx="361" cy="343" r="11" fill="#fff"/>
+  <circle cx="659" cy="343" r="11" fill="#fff"/>
+  </g>
+</svg>
