@@ -174,10 +174,7 @@ const developerReferenceSidebar = [
 // https://vitepress.dev/reference/site-config
 export default withMermaid(defineConfig({
     title: "Agents-Flex",
-    // Keep the server-rendered document intact on direct loads. VitePress's
-    // SPA lean page chunk cannot represent the custom HTML homepage and would
-    // replace it with an empty vnode after the first paint.
-    mpa: true,
+    mpa: false,
     // titleTemplate: ':title - Agents-Flex Official website',
     // description: "A Java framework for LLM applications",
     titleTemplate: ':title - Agents-Flex 官方网站',
@@ -363,7 +360,6 @@ export default withMermaid(defineConfig({
             location.href = 'https://' + location.hostname + location.pathname + location.search;
         }
         `
-        ],
-        ['script', {src: '/navigation-enhancer.js'}]
+        ]
     ],
 }))

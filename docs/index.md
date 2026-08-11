@@ -5,6 +5,7 @@ description: 面向 Java 开发者的 AI 应用与智能体框架
 ---
 
 <main class="afx-home">
+  <span class="afx-home__hydration-marker" aria-hidden="true">{{ $frontmatter.title }}</span>
   <section class="afx-hero" aria-labelledby="afx-hero-title">
     <div class="afx-container afx-hero__grid">
       <div class="afx-hero__copy">

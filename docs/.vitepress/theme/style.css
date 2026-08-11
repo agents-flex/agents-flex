@@ -16,6 +16,7 @@
   --vp-button-brand-hover-bg: #08613f;
   --vp-button-brand-text: #f4faf7;
   --vp-code-block-bg: #101512;
+  --vp-code-block-color: #e1e4e8;
   --vp-code-tab-bg: #101512;
   --vp-sidebar-bg-color: #f7faf8;
   --vp-nav-height: 64px;
@@ -40,6 +41,7 @@
   --vp-button-brand-hover-bg: #49bd81;
   --vp-button-brand-text: #102019;
   --vp-code-block-bg: #101512;
+  --vp-code-block-color: #e1e4e8;
   --vp-code-tab-bg: #101512;
   --vp-sidebar-bg-color: #161d19;
 }
@@ -174,6 +176,7 @@ body {
   --afx-brand-soft: #20372a;
 }
 .afx-home *, .afx-home *::before, .afx-home *::after { box-sizing: border-box; }
+.afx-home__hydration-marker { display: none; }
 .afx-home h1, .afx-home h2, .afx-home h3, .afx-home p, .afx-home pre, .afx-home figure, .afx-home ol { margin: 0; }
 .afx-home h1, .afx-home h2, .afx-home h3, .afx-home strong { color: inherit; }
 .afx-home a { color: inherit; text-decoration: none; touch-action: manipulation; }
