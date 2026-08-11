@@ -111,6 +111,7 @@ body {
 .vp-doc h2 { margin-top: 52px; border-top: 1px solid var(--vp-c-divider); padding-top: 28px; font-size: 25px; font-weight: 690; }
 .vp-doc h3 { margin-top: 34px; font-size: 19px; font-weight: 680; }
 .vp-doc p { margin: 18px 0; }
+.vp-nowrap { white-space: nowrap; }
 .vp-doc a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .vp-doc code:not(pre code) { border: 1px solid var(--vp-c-divider); border-radius: 4px; padding: 2px 5px; background: var(--vp-c-bg-soft); color: var(--vp-c-brand-1); }
 .vp-doc div[class*="language-"] { margin: 22px 0; border: 1px solid rgb(127 148 136 / 18%); border-radius: 6px; box-shadow: 0 12px 30px rgb(23 33 27 / 8%); }
