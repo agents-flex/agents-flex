@@ -11,7 +11,7 @@ description: 面向 Java 开发者的 AI 应用与智能体框架
       <div class="afx-hero__copy">
         <h1 id="afx-hero-title">Agents-Flex</h1>
         <p class="afx-hero__headline">Java AI，从模型调用到生产运行</p>
-        <p class="afx-hero__summary">从统一的模型调用开始，按需组合 Agent、RAG、多模态、Skills 与可观测能力。保持业务架构清晰，也为长任务的恢复和生产运行留出空间。</p>
+        <p class="afx-hero__summary">从统一的模型调用开始，按需组合 Agent、RAG、多模态、OCR、Skills 与可观测能力。保持业务架构清晰，也通过异步任务为长任务恢复和生产运行留出空间。</p>
         <div class="afx-actions">
           <a class="afx-button afx-button--primary" href="/zh/chat/getting-started.html">快速开始 <span aria-hidden="true">&rarr;</span></a>
           <a class="afx-button" href="/zh/intro/compare-spring-ai.html">对比 Spring AI</a>
@@ -61,7 +61,7 @@ String answer = model.chat(
         <a href="/zh/chat/chat-model.html"><span>MODEL</span><h3>模型与对话</h3><p>ChatModel、Prompt、Memory、流式输出、Tool Calling 与 MCP。</p></a>
         <a href="/zh/agent/overview.html"><span>AGENT</span><h3>智能体运行时</h3><p>任务规划、子 Agent、人工审批、预算、重试、挂起与恢复。</p></a>
         <a href="/zh/rag/document.html"><span>KNOWLEDGE</span><h3>RAG 与存储</h3><p>文档抽取、切分、Embedding、Rerank 与多种 Vector Store。</p></a>
-        <a href="/zh/image/image-generation.html"><span>MEDIA</span><h3>多模态生成</h3><p>图片、TTS、STT 与视频生成，共享一致的 Java 接入体验。</p></a>
+        <a href="/zh/image/image-generation.html"><span>MEDIA</span><h3>多模态与文档</h3><p>图片、TTS、STT、视频生成与 OCR 文档解析，共享一致的 Java 接入体验。</p></a>
         <a href="/zh/skills/overview.html"><span>EXECUTION</span><h3>Skills 与 Sandbox</h3><p>封装专业方法，在本机或隔离环境执行脚本并交付产物。</p></a>
         <a href="/zh/observability/observability.html"><span>OPERATIONS</span><h3>可观测与治理</h3><p>关联 Model、Agent、Tool 与 Runtime，追踪延迟、Token 和状态。</p></a>
       </div>
@@ -118,8 +118,8 @@ String answer = model.chat(
   <section class="afx-section" aria-labelledby="afx-media-title">
     <div class="afx-container">
       <header class="afx-section__header">
-        <h2 id="afx-media-title">用一套 Java 方式处理文本、图像、语音与视频</h2>
-        <p>每种媒介保留适合自身的调用语义，同时通过统一的 Config、Request、Response 和模型接口降低服务商切换成本。</p>
+        <h2 id="afx-media-title">用一套 Java 方式处理文本、图像、语音、视频与文档</h2>
+        <p>每种内容保留适合自身的调用语义，同时通过统一的 Config、Request、Response 和模型接口降低服务商切换成本。</p>
       </header>
       <div class="afx-media-grid">
         <a href="/zh/chat/getting-started.html">
@@ -146,11 +146,17 @@ String answer = model.chat(
           <p>统一提交、查询和等待异步任务，支持文生视频、图生视频与编辑。</p>
           <small>VideoModel · TaskStatus · Video</small>
         </a>
+        <a class="afx-media-grid__wide" href="/zh/ocr/overview.html">
+          <b class="afx-media-mark" aria-hidden="true">O</b>
+          <h3>OCR 文档识别</h3>
+          <p>统一解析图片与 PDF，支持百度智能云、Gitee AI 和 MinerU，并输出文本、Markdown 或结果资源。</p>
+          <small>OcrModel · OcrRequest · OcrResponse</small>
+        </a>
       </div>
       <div class="afx-media-notes" aria-label="多模态模型的调用方式">
         <span><b>流式响应</b>对话与语音内容生成即返回</span>
         <span><b>同步返回</b>图片生成完成后直接获得结果</span>
-        <span><b>异步任务</b>视频提交后按任务状态查询结果</span>
+        <span><b>异步任务</b>OCR 与视频提交后按任务状态查询结果</span>
       </div>
     </div>
   </section>
@@ -159,7 +165,7 @@ String answer = model.chat(
     <div class="afx-container">
       <header class="afx-section__header">
         <h2 id="afx-production-title">让智能任务可控、可恢复、可观测</h2>
-        <p>AgentTurn 把一次任务建模为可持久化状态。人工审批、外部等待、进程重启和后台接管都能在同一执行契约下处理。</p>
+        <p>AgentTurn 管理智能体执行状态，Async Task 持久化跟踪 OCR、视频等供应商长任务。人工审批、外部等待、进程重启和后台接管都有明确的恢复路径。</p>
       </header>
       <ol class="afx-runtime" aria-label="请求经过 Agent Runner 和工具执行后写入状态存储及可观测系统">
         <li><small>输入</small><strong>Request</strong><span>Business context</span></li>
@@ -170,6 +176,7 @@ String answer = model.chat(
       <div class="afx-production-links">
         <a href="/zh/agent/suspend-resume.html"><strong>挂起与恢复</strong><span>处理审批和外部回调</span></a>
         <a href="/zh/agent/store.html"><strong>状态持久化</strong><span>支持 JDBC、Redis 与自定义 Store</span></a>
+        <a href="/zh/async-task/overview.html"><strong>异步任务调度</strong><span>持久化跟踪、限流、配额与多 Worker 接管</span></a>
         <a href="/zh/observability/getting-started.html"><strong>运行可观测</strong><span>查看模型、工具和任务状态</span></a>
       </div>
     </div>
@@ -182,10 +189,10 @@ String answer = model.chat(
         <p>从模型接入、Agent 编排到知识检索与生产运行，选择当前任务继续阅读。</p>
       </header>
       <div class="afx-docs__grid">
-        <div><h3>模型与工具</h3><a href="/zh/chat/getting-started.html">模型调用快速开始</a><a href="/zh/chat/tool-build.html">构建与调用 Tool</a><a href="/zh/chat/mcp.html">接入 MCP 服务</a><a href="/zh/chat/text2sql.html">构建 Text2SQL 应用</a></div>
+        <div><h3>模型与工具</h3><a href="/zh/chat/getting-started.html">模型调用快速开始</a><a href="/zh/ocr/getting-started.html">OCR 文档识别</a><a href="/zh/chat/tool-build.html">构建与调用 Tool</a><a href="/zh/chat/mcp.html">接入 MCP 服务</a><a href="/zh/chat/text2sql.html">构建 Text2SQL 应用</a></div>
         <div><h3>Agent 编排</h3><a href="/zh/agent/getting-started.html">Agent 快速开始</a><a href="/zh/agent/task-planning.html">任务规划</a><a href="/zh/agent/human-approval.html">人工审批</a><a href="/zh/agent/form-input.html">表单输入</a></div>
         <div><h3>知识与检索</h3><a href="/zh/rag/document.html">文档处理与切分</a><a href="/zh/store/overview.html">Vector Store</a><a href="/zh/rag/embedding.html">Embedding</a><a href="/zh/rag/rerank.html">Rerank</a></div>
-        <div><h3>生产与交付</h3><a href="/zh/skills/getting-started.html">Skills 快速开始</a><a href="/zh/skills/open-sandbox.html">Sandbox 隔离执行</a><a href="/zh/observability/observability.html">可观测性</a><a href="/changes.html">更新记录</a></div>
+        <div><h3>生产与交付</h3><a href="/zh/async-task/getting-started.html">异步任务与恢复</a><a href="/zh/skills/getting-started.html">Skills 快速开始</a><a href="/zh/skills/open-sandbox.html">Sandbox 隔离执行</a><a href="/zh/observability/observability.html">可观测性</a><a href="/changes.html">更新记录</a></div>
       </div>
     </div>
   </section>

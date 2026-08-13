@@ -1,6 +1,6 @@
 ---
 title: 对比 Spring AI
-description: 从 ChatModel、Tool、Agent、Skills、多模态、RAG、模型路由和可观测性等维度，对比 Agents-Flex 与 Spring AI 的完整能力。
+description: 从开发体验、Agent 运行时、OCR、异步任务、多模态、RAG、模型路由和可观测性等维度，对比 Agents-Flex 与 Spring AI。
 ---
 
 # Agents-Flex 对比 Spring AI
@@ -12,16 +12,38 @@ Tool Calling 和 MCP 带入 Spring Boot，并提供 Fluent `ChatClient`、Adviso
 Observation 以及大量模型和向量库适配。
 
 Agents-Flex 与 Spring AI 的目标并不完全相同。Spring AI 重点解决“如何在 Spring 应用中使用 AI”；
-Agents-Flex 要继续解决“如何构建一个能在生产环境中长期稳定运行的 Agent 系统”。
+Agents-Flex 除了提供模型接入，还继续解决“如何构建能够长期运行、恢复和治理的 Java AI 应用与 Agent”。
 
-因此，Agents-Flex 不仅有
-ChatModel、Tool 和 RAG，还把模型高可用、可恢复 Agent、审批表单、Worker Lease、Skills Runtime、
-Sandbox 和执行级遥测路由纳入同一套框架。
+因此，Agents-Flex 不仅有 ChatModel、Tool 和 RAG，还把模型高可用、可恢复 Agent、审批表单、OCR、
+视频生成、通用异步任务、Worker Lease、Skills Runtime、Sandbox 和执行级遥测路由纳入同一套框架。
+
+## 先看结论
+
+两者不是简单的替代关系。选择时应先看应用的运行环境和最难解决的问题，而不是只比较 Provider 数量。
+
+| 你的主要需求 | 更适合的选择 | 原因 |
+| --- | --- | --- |
+| 已有 Spring Boot 系统，需要快速接入模型、Tool Calling 或 RAG | **Spring AI** | 自动配置、Fluent `ChatClient`、结构化输出、Advisor、Actuator 和 Spring 生态集成更成熟 |
+| 希望核心能力不依赖 Spring，运行在普通 Java 或其他 JVM 框架中 | **Agents-Flex** | 核心保持独立，同时提供可选的 Spring Boot Starter |
+| 需要更多国际模型与向量数据库的开箱适配 | **Spring AI** | Provider 和 Vector Store 的覆盖范围更广 |
+| 需要 Agent 跨请求、跨进程暂停和恢复 | **Agents-Flex** | Agent Turn、快照、Lease、Worker、审批和恢复是一等运行时能力 |
+| 需要模型节点负载均衡、故障转移和熔断恢复 | **Agents-Flex** | ChatModel 与 EmbeddingModel 均有对业务透明的高可用路由 |
+| 需要 OCR、视频生成等国内多模态服务 | **Agents-Flex** | 提供统一模型抽象和百度智能云、Gitee AI、MinerU、阿里云、火山引擎等适配 |
+| 需要治理供应商长任务的 QPS、账号并发、租户配额和调度顺序 | **Agents-Flex** | 通用异步任务模块内置持久化、Worker 领取、重试以及调度与准入控制 |
+
+如果系统的主要边界就是 Spring Boot，Spring AI 通常能以更少的配置完成基础 AI 集成；如果应用的复杂度
+集中在长任务、分布式执行、多租户治理、模型高可用或可恢复 Agent，Agents-Flex 提供了更完整的运行时。
 
 ::: info 对比基线
 本文基于 2026-08-09 的本地代码核对。Spring AI 的范围同时包含核心代码 `spring-ai`
 （`2.0.1-SNAPSHOT`）与 `spring-ai-agent-utils`（`0.11.0-SNAPSHOT`，依赖 Spring AI 2.0.0）；
 Agents-Flex 的版本为 2.2.7。
+:::
+
+::: tip 如何理解表格中的“不支持”
+本文的“不支持”是指在上述版本和核对范围内，没有发现框架直接提供的对等抽象或开箱实现；不代表应用
+无法通过 Spring Bean、自定义 Tool、定时任务或第三方组件自行实现。随着双方版本演进，具体能力应以
+对应版本的官方文档和代码为准。
 :::
 
 ## 基础对话 ChatModel 对比
@@ -268,6 +290,50 @@ Agents-Flex 的三个国内云语音模块都同时覆盖语音识别、语音�
 Spring AI 的独立媒体模型抽象主要覆盖图像生成和语音；Agents-Flex 进一步提供统一的视频生成接口、
 国内主流 Provider 和异步任务轮询，并能与 ChatModel、Tool 和 Agent 组合成同一业务系统。
 
+## OCR 文档识别对比
+
+OCR 与普通文档读取解决的问题不同。文档 Reader 适合从带文本层的文件中抽取内容；扫描件、拍照文件、
+复杂版面和公式表格通常需要专业 OCR 服务。Agents-Flex 将这类能力抽象为统一的 `OcrModel`，避免业务
+分别处理不同供应商的提交参数、任务状态和结果格式。
+
+| 对比项描述 | Agents-Flex | <span class="vp-nowrap">Spring AI     </span>                                                          |
+| --- | --- |-------------------------------------------------------------------------|
+| 独立的 OCR 模型抽象 | **整体支持**。`OcrModel` 统一任务提交、状态查询和等待完成等操作 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
+| 本地文件与远程 URL 输入 | **整体支持**。统一 `OcrRequest` 表达输入，具体上传方式由 Provider 适配器处理 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>               |
+| 百度智能云 OCR | **整体支持**。`agents-flex-ocr-baidu` 适配 PaddleOCR-VL 文档解析异步 API | <span class="vp-nowrap">❌ <strong>不支持</strong></span>       |
+| Gitee AI OCR | **整体支持**。`agents-flex-ocr-gitee` 适配模力方舟异步文档解析接口 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>       |
+| MinerU 文档解析 | **整体支持**。`agents-flex-ocr-mineru` 支持远程 URL，以及本地文件的预签名上传流程 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>       |
+| 统一任务状态与结果 | **整体支持**。不同供应商的处理中、成功、失败状态统一映射，并返回 Markdown、资源文件或原始结果 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>               |
+| 接入持久化异步任务运行时 | **整体支持**。`OcrAsyncTaskHandler` 可将 OCR 任务交给通用异步任务模块持续跟踪 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>               |
+
+对于单次、短时任务，可以直接使用 `OcrModel` 等待结果；对于 Web 服务、批量文档或耗时不可控的任务，
+应将任务交给异步任务模块持久化跟踪，避免占用请求线程，并在进程重启后继续查询。完整用法参见
+[OCR 概览](../ocr/overview.md)。
+
+## 通用异步任务与长任务治理对比
+
+视频生成、OCR 和部分云端解析 API 通常先返回外部任务编号，几秒到数分钟后才能取得结果。简单的定时
+轮询可以处理少量任务，但进入生产环境后还要面对进程重启、重复查询、多 Worker 竞争、供应商限流、
+租户公平性和失败重试。Agents-Flex 将这些共性问题提取为独立的 `agents-flex-async-task` 模块，而不是
+让每个模型 Provider 重复实现一套轮询逻辑。
+
+| 对比项描述 | Agents-Flex | Spring AI |
+| --- | --- | --- |
+| 统一的异步任务生命周期 | **整体支持**。Handler 负责 `submit()` 和 `query()`，Manager、Worker 与 Store 负责持久化、领取、查询、重试和终态更新 | <span class="vp-nowrap">❌ <strong>未发现 AI 任务级对等模块</strong></span> |
+| 提交后持久化与跨重启恢复 | **整体支持**。`submit()` 保存外部任务信息和状态但不保存提交参数；`enqueue()` 还会保存可序列化的提交参数，服务恢复后均可由 Worker 继续处理 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+| 多 Worker 安全领取 | **整体支持**。Store 通过 Lease、版本控制与条件更新避免多个 Worker 同时推进同一任务 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+| JDBC 与 Redis Store | **整体支持**。分别提供 `agents-flex-async-task-store-jdbc` 和 `agents-flex-async-task-store-redis`，另有进程内 Store 用于测试和单机场景 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+| 每供应商 QPS | **整体支持**。按 `providerKey` 限制排队任务的供应商提交速率，保护供应商接口并降低限流错误 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+| 每账号并发上限 | **整体支持**。按供应商账号限制同时执行数，避免单账号占满外部服务并发额度 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+| 租户配额 | **整体支持**。按租户限制运行中任务数量，防止单一租户挤占共享资源 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+| 优先级队列与延迟提交 | **整体支持**。任务按优先级和计划时间参与领取，可表达紧急任务、退避重试和预约执行 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+| 暂停某个供应商 | **整体支持**。运行时可按供应商停止新任务准入，并保留已持久化任务等待恢复 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+
+这里的差异不是“能否写出轮询代码”，而是谁负责保证长任务在故障和并发条件下仍然正确。只处理少量
+任务时，应用内定时器通常足够；当任务必须跨重启恢复，或者需要多租户、多个供应商和多个 Worker 时，
+统一 Store、状态机和准入策略会显著减少重复基础设施。详细设计参见
+[异步任务概览](../async-task/overview.md)与[调度与准入控制](../async-task/scheduling.md)。
+
 ## 多模态 Agent 协作对比
 
 ChatModel 接收多模态输入与使用独立模型生成图片、音频或视频是两类能力。双方都允许在对话消息中携带
@@ -417,22 +483,28 @@ OpenTelemetry，同时提供 JDBC 持久化和执行级路由，因此既能进�
 ## 总结
 
 **结论：** Spring AI 更适合在 Spring Boot 应用中快速接入模型、Tool Calling 和 RAG，其 Provider
-覆盖、自动配置、ChatClient 与 Spring 生态集成是明确优势。Agents-Flex 解决的问题更进一步：它不仅让
-应用能够调用模型和工具，还提供一套可以持续执行、暂停、恢复、扩展和观测的完整 Agent 运行时。
+覆盖、自动配置、`ChatClient`、结构化输出与 Spring 生态集成是明确优势。Agents-Flex 更适合把 AI 能力
+作为独立运行时建设：它不仅让应用调用模型和工具，还提供可以持续执行、暂停、恢复、调度和观测的 Agent
+与异步任务基础设施。
 
-在 Agents-Flex 中，ChatModel、Tool、MCP、Skills、RAG、Wiki、Text2SQL 和多模态能力不是彼此独立的
-功能集合。它们共享 Agent Turn、执行预算、审批与表单、快照恢复、Worker Lease、模型路由以及遥测链路。
-模型节点故障、用户审批等待、进程重启或任务转移到其他 Worker 后，Agent 仍然可以从原有状态继续执行。
+在 Agents-Flex 中，ChatModel、Tool、MCP、Skills、RAG、Wiki、Text2SQL、OCR 和其他多模态能力并非
+彼此孤立。Agent 长流程共享 Turn、执行预算、审批表单、快照恢复、模型路由和遥测链路；OCR、视频等
+供应商长任务则可共享 Async Task Store、Worker Lease、失败重试、优先级、延迟调度、QPS、账号并发和
+租户配额治理。模型节点故障、进程重启或任务转移到其他 Worker 后，系统仍能从已持久化状态继续处理。
 
 如果系统只需要为现有 Spring 应用增加 AI 调用能力，Spring AI 已经提供了成熟的开发体验；如果目标是
-构建需要模型高可用、长任务恢复、分布式执行、隔离 Skills 和多知识源协作的生产级 Agent，Agents-Flex
-提供的能力边界更完整，也能显著减少业务团队自行拼装运行时、状态机和治理设施的工作。
+构建需要模型高可用、OCR 与视频长任务治理、分布式执行、隔离 Skills 或跨请求恢复的生产级 AI 应用，
+Agents-Flex 提供的能力边界更完整，也能减少业务团队自行拼装状态机、Store 和调度设施的工作。
 
 ## 扩展阅读
 
 - [ChatModel 快速开始](../chat/getting-started.md)
 - [Agent 概述](../agent/overview.md)
 - [Skills 模块概述](../skills/overview.md)
+- [OCR 文档识别](../ocr/overview.md)
+- [异步任务概览](../async-task/overview.md)
+- [异步任务调度与准入控制](../async-task/scheduling.md)
+- [异步任务 Store](../async-task/store.md)
 - [模型路由与高可用](./model-router.md)
 - [RAG 文档](../rag/document.md)
 - [可观测性](../observability/observability.md)
