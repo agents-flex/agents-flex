@@ -43,6 +43,8 @@
         <module>agents-flex-audio</module>
         <module>agents-flex-bom</module>
         <module>agents-flex-core</module>
+        <module>agents-flex-async-task</module>
+        <module>agents-flex-async-task-store</module>
         <module>agents-flex-doc-extractor</module>
         <module>agents-flex-agent</module>
         <module>agents-flex-agent-store</module>
@@ -52,6 +54,7 @@
         <module>agents-flex-spring-boot-starter</module>
         <module>agents-flex-image</module>
         <module>agents-flex-video</module>
+        <module>agents-flex-ocr</module>
         <module>agents-flex-rerank</module>
         <module>agents-flex-search-engine</module>
         <module>agents-flex-embedding</module>
@@ -167,6 +170,24 @@
 
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-async-task</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-async-task-store-jdbc</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-async-task-store-redis</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-doc-extractor</artifactId>
                 <version>${revision}</version>
             </dependency>
@@ -269,6 +290,24 @@
                 <version>${revision}</version>
             </dependency>
             <!--video model end-->
+
+            <!--ocr model start-->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-ocr-baidu</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-ocr-gitee</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-ocr-mineru</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!--ocr model end-->
 
 
             <!--chatModel start-->

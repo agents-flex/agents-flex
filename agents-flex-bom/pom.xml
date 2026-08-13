@@ -58,6 +58,21 @@
 
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-async-task</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-async-task-store-jdbc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-async-task-store-redis</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-doc-extractor</artifactId>
         </dependency>
 
@@ -134,6 +149,21 @@
             <artifactId>agents-flex-video-volcengine</artifactId>
         </dependency>
         <!--video model end-->
+
+        <!--ocr model start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-ocr-baidu</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-ocr-gitee</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-ocr-mineru</artifactId>
+        </dependency>
+        <!--ocr model end-->
 
 
         <!--chatModel start-->
