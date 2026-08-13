@@ -1,0 +1,107 @@
+# Gitee AI OCR
+
+`agents-flex-ocr-gitee` 适配 Gitee AI 模力方舟异步文档解析接口，支持多种 OCR 和文档解析模型。
+
+当前适配器使用 multipart 接口上传本地文件，不支持直接提交远程 URL。它适合需要在同一平台切换多种文档解析模型，并希望统一读取 Markdown 和下载资源的场景。
+
+## 快速开始
+
+### 1. 添加依赖
+
+```xml
+<dependency>
+    <groupId>com.agentsflex</groupId>
+    <artifactId>agents-flex-ocr-gitee</artifactId>
+    <version>${agents-flex.version}</version>
+</dependency>
+```
+
+### 2. 配置并识别
+
+```java
+import com.agentsflex.core.model.ocr.OcrRequest;
+import com.agentsflex.core.model.ocr.OcrResponse;
+import com.agentsflex.ocr.gitee.GiteeOcrConfig;
+import com.agentsflex.ocr.gitee.GiteeOcrModel;
+import com.agentsflex.ocr.gitee.GiteeOcrModels;
+
+import java.io.File;
+
+GiteeOcrConfig config = new GiteeOcrConfig();
+config.setApiKey(System.getenv("GITEE_API_KEY"));
+config.setModel(GiteeOcrModels.UNLIMITED_OCR);
+
+GiteeOcrModel model = new GiteeOcrModel(config);
+OcrResponse response = model.recognizeAndWait(
+    OcrRequest.ofFile(new File("input.pdf"))
+);
+```
+
+本地文件使用 multipart 上传。任务成功后，适配器会按供应商返回顺序合并文本片段到 `OcrResponse.markdown`，并保留结果资源。
+
+### 3. 检查结果
+
+```java
+import com.agentsflex.core.model.ocr.OcrResource;
+
+if (response == null || response.isError()) {
+    throw new IllegalStateException(
+        response == null ? "empty response" : response.getErrorMessage()
+    );
+}
+
+System.out.println(response.getMarkdown());
+for (OcrResource resource : response.getResources()) {
+    System.out.println(resource.getType() + ": " + resource.getUrl());
+}
+```
+
+## 模型常量
+
+| 常量 | 模型名 |
+| --- | --- |
+| `UNLIMITED_OCR` | `Unlimited-OCR` |
+| `PDF_EXTRACT_KIT_1_0` | `PDF-Extract-Kit-1.0` |
+| `MINERU_2_5` | `MinerU2.5` |
+| `MINERU_2_5_PRO` | `MinerU2.5-Pro` |
+| `DEEPSEEK_OCR` | `DeepSeek-OCR` |
+| `PADDLE_OCR_VL_1_5` | `PaddleOCR-VL-1.5` |
+| `PADDLE_OCR_VL` | `PaddleOCR-VL` |
+
+也可以对单次请求覆盖模型：
+
+```java
+OcrRequest request = OcrRequest.ofFile(new File("input.pdf"));
+request.setModel(GiteeOcrModels.PDF_EXTRACT_KIT_1_0);
+```
+
+## 分离提交和查询
+
+```java
+OcrResponse submitted = model.recognize(request);
+String taskId = submitted.getTaskId();
+
+OcrResponse latest = model.getResult(taskId);
+```
+
+结果 URL 通常只有短期有效期。任务成功后应立即下载或转存。大量任务推荐交给 [异步任务模块](../async-task/overview) 自动查询。
+
+## 常见问题
+
+### 可以传入远程 URL 吗？
+
+当前不可以。请先把文件保存为可读的本地文件，再使用 `OcrRequest.ofFile()`。
+
+### 如何选择模型？
+
+不同模型在版面、表格、公式、速度和费用方面能力不同。先用真实业务样本进行评测，再固定默认模型；单次特殊任务可通过 `request.setModel()` 覆盖。
+
+### 为什么任务成功但 Markdown 为空？
+
+检查 `resources` 和供应商原始元数据。不同模型可能返回 JSON、压缩包或其他下载资源，而不是内联 Markdown。
+
+## 下一步
+
+- [OCR 快速开始](./getting-started)
+- [OCR 核心概念](./overview)
+- [Async Task 持久化跟踪](../async-task/getting-started)

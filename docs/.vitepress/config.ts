@@ -103,6 +103,30 @@ const mediaSidebar = [
             {text: 'Gitee AI', link: '/zh/video/gitee'},
         ]
     },
+    {
+        text: 'OCR 文档识别', items: [
+            {text: '概览', link: '/zh/ocr/overview'},
+            {text: '快速开始', link: '/zh/ocr/getting-started'},
+            {text: '百度智能云', link: '/zh/ocr/baidu'},
+            {text: 'Gitee AI', link: '/zh/ocr/gitee'},
+            {text: 'MinerU', link: '/zh/ocr/mineru'},
+        ]
+    },
+    {
+        text: '异步任务', items: [
+            {text: '概览', link: '/zh/async-task/overview'},
+            {text: '快速开始', link: '/zh/async-task/getting-started'},
+            {text: '调度与准入控制', link: '/zh/async-task/scheduling'},
+            {text: '每供应商 QPS', link: '/zh/async-task/provider-qps'},
+            {text: '每账号并发上限', link: '/zh/async-task/account-concurrency'},
+            {text: '租户配额', link: '/zh/async-task/tenant-quota'},
+            {text: '优先级队列', link: '/zh/async-task/priority-queue'},
+            {text: '延迟提交', link: '/zh/async-task/delayed-submission'},
+            {text: '暂停供应商', link: '/zh/async-task/provider-pause'},
+            {text: 'Store 持久化', link: '/zh/async-task/store'},
+            {text: '自定义 Handler', link: '/zh/async-task/handler'},
+        ]
+    },
 ]
 
 const ragStoreSidebar = [
@@ -231,10 +255,12 @@ export default withMermaid(defineConfig({
             {text: 'Agent', link: '/zh/agent/overview', activeMatch: '/zh/agent/'},
             {text: 'RAG 知识库', link: '/zh/rag/document', activeMatch: '/zh/(?:rag|store)/'},
             {
-                text: '多模态', activeMatch: '/zh/(?:image|audio|video)/', items: [
+                text: '多模态', activeMatch: '/zh/(?:image|audio|video|ocr|async-task)/', items: [
                     {text: '图片生成', link: '/zh/image/image-generation', activeMatch: '/zh/image/'},
                     {text: '语音 TTS / STT', link: '/zh/audio/tts-stt', activeMatch: '/zh/audio/'},
                     {text: '视频生成', link: '/zh/video/video-generation', activeMatch: '/zh/video/'},
+                    {text: 'OCR 文档识别', link: '/zh/ocr/overview', activeMatch: '/zh/ocr/'},
+                    {text: '异步任务', link: '/zh/async-task/overview', activeMatch: '/zh/async-task/'},
                 ]
             },
             {text: 'Skills', link: '/zh/skills/overview', activeMatch: '/zh/skills/'},
@@ -327,6 +353,8 @@ export default withMermaid(defineConfig({
             '/zh/image/': mediaSidebar,
             '/zh/audio/': mediaSidebar,
             '/zh/video/': mediaSidebar,
+            '/zh/ocr/': mediaSidebar,
+            '/zh/async-task/': mediaSidebar,
             '/zh/rag/': ragStoreSidebar,
             '/zh/store/': ragStoreSidebar,
         },

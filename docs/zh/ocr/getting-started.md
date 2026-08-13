@@ -1,60 +1,8 @@
-# OCR 文档识别
+# OCR 快速开始
 
-OCR 模块参考视频生成模块，将公共异步任务协议放在 `agents-flex-core`，供应商实现拆分为独立依赖。目前支持百度智能云、Gitee AI 模力方舟和 MinerU。
+本节以 Gitee AI 和本地 PDF 为例完成一次文档识别。三家供应商共享 `OcrModel`、`OcrRequest` 和 `OcrResponse`，但支持的输入形式、选项和结果资源不同，切换实现时仍应阅读对应供应商文档。
 
-## 公共接口
-
-所有供应商都实现 `OcrModel`：
-
-```java
-OcrResponse submitted = model.recognize(request);
-OcrResponse latest = model.getResult(submitted.getTaskId());
-OcrResponse result = model.recognizeAndWait(request, 10 * 60_000L, 3_000L);
-```
-
-`OcrResponse` 统一提供任务状态、纯文本、Markdown 和结果资源列表。供应商尚未统一的原始字段保存在 metadata 中；供应商请求参数可通过 `OcrRequest.putOption()` 透传。
-
-## 百度智能云 PaddleOCR-VL
-
-依赖：
-
-```xml
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-ocr-baidu</artifactId>
-    <version>${agents-flex.version}</version>
-</dependency>
-```
-
-配置中的 `apiKey` 可填写 `bce-v3/` 开头的新版 API Key，也可填写通过百度 API Key
-和 Secret Key 换取的旧版 OAuth Access Token。适配器会自动选择 Bearer 请求头或
-`access_token` 查询参数：
-
-```java
-BaiduOcrConfig config = new BaiduOcrConfig();
-config.setApiKey(System.getenv("BAIDU_OCR_ACCESS_TOKEN"));
-
-BaiduOcrModel model = new BaiduOcrModel(config);
-OcrRequest request = OcrRequest.ofFile(new File("input.pdf"));
-request.putOption("analysis_chart", true);
-request.putOption("merge_tables", true);
-request.putOption("recognize_seal", true);
-OcrResponse result = model.recognizeAndWait(request);
-```
-
-远程 URL 也可直接提交。URL 最后一个路径段能作为文件名时无需额外配置，否则必须设置 `fileName`：
-
-```java
-OcrRequest request = OcrRequest.ofUrl("https://example.com/download?id=123");
-request.setFileName("input.pdf");
-OcrResponse result = model.recognizeAndWait(request);
-```
-
-本地文件会转为 Base64 `file_data`，远程文件使用 `file_url`。成功结果中的 `markdown_url` 和 `parse_result_url` 分别映射为 `markdown`、`json` 类型资源，供应商链接有效期为 30 天。
-
-## Gitee AI
-
-依赖：
+## 第一步：添加依赖
 
 ```xml
 <dependency>
@@ -64,53 +12,186 @@ OcrResponse result = model.recognizeAndWait(request);
 </dependency>
 ```
 
-Gitee 文档解析接口使用 multipart 上传本地文件：
+其他实现对应：
+
+| 供应商 | artifactId |
+| --- | --- |
+| 百度智能云 | `agents-flex-ocr-baidu` |
+| Gitee AI | `agents-flex-ocr-gitee` |
+| MinerU | `agents-flex-ocr-mineru` |
+
+## 第二步：配置模型
 
 ```java
+import com.agentsflex.ocr.gitee.GiteeOcrConfig;
+import com.agentsflex.ocr.gitee.GiteeOcrModel;
+import com.agentsflex.ocr.gitee.GiteeOcrModels;
+
 GiteeOcrConfig config = new GiteeOcrConfig();
 config.setApiKey(System.getenv("GITEE_API_KEY"));
 config.setModel(GiteeOcrModels.UNLIMITED_OCR);
+config.setTimeoutMillis(10 * 60_000L);
+config.setPollIntervalMillis(3_000L);
 
 GiteeOcrModel model = new GiteeOcrModel(config);
-OcrResponse result = model.recognizeAndWait(OcrRequest.ofFile(new File("input.pdf")));
 ```
 
-可选模型常量包括 `Unlimited-OCR`、`PDF-Extract-Kit-1.0`、`MinerU2.5`、`DeepSeek-OCR`、`MinerU2.5-Pro` 和 PaddleOCR-VL 系列。结果 URL 仅短期有效，应及时下载。
+API Key 应从环境变量或密钥管理服务读取，不要写入源码、配置模板和日志。
 
-## MinerU
+## 第三步：创建请求
 
-依赖：
-
-```xml
-<dependency>
-    <groupId>com.agentsflex</groupId>
-    <artifactId>agents-flex-ocr-mineru</artifactId>
-    <version>${agents-flex.version}</version>
-</dependency>
-```
-
-使用远程文件 URL：
+提交本地文件：
 
 ```java
-MineruOcrConfig config = new MineruOcrConfig();
-config.setApiKey(System.getenv("MINERU_API_KEY"));
-config.setModel(MineruOcrModels.VLM);
+import com.agentsflex.core.model.ocr.OcrRequest;
 
-MineruOcrModel model = new MineruOcrModel(config);
-OcrRequest request = OcrRequest.ofUrl("https://example.com/input.pdf");
-request.putOption("is_ocr", true);
-request.putOption("page_ranges", "1-20");
-OcrResponse result = model.recognizeAndWait(request);
+import java.io.File;
+
+OcrRequest request = OcrRequest.ofFile(new File("input/report.pdf"));
 ```
 
-本地文件也可直接传入：
+统一请求对象也支持远程文件，但需要供应商适配器支持。例如百度和 MinerU 可以使用：
 
 ```java
-OcrResponse result = model.recognizeAndWait(OcrRequest.ofFile(new File("input.pdf")));
+OcrRequest request = OcrRequest.ofUrl("https://example.com/report.pdf");
 ```
 
-适配器会自动申请预签名上传地址、PUT 上传文件并查询 batch 结果。MinerU 完成后通常返回包含 `full.md`、JSON 和中间结果的 `full_zip_url`，统一映射为 `archive` 类型资源。
+Gitee AI 当前使用 multipart 接口，只接受本地文件，不能直接传入远程 URL。
 
-应用重启后如需用已保存的 batch ID 恢复本地文件任务查询，可调用 `model.getBatchResult(batchId)`。
+如果 URL 不能推导出有效文件名，可以显式指定：
 
-常用 MinerU 参数包括 `is_ocr`、`language`、`page_ranges`、`extra_formats`、`formula_enable` 和 `table_enable`。具体限制以供应商文档为准。
+```java
+OcrRequest request = OcrRequest.ofUrl("https://example.com/download?id=42");
+request.setFileName("report.pdf");
+```
+
+## 第四步：识别并等待结果
+
+```java
+import com.agentsflex.core.model.ocr.OcrResponse;
+import com.agentsflex.core.model.ocr.OcrTaskStatus;
+
+OcrResponse response = model.recognizeAndWait(request);
+
+if (response == null) {
+    throw new IllegalStateException("OCR provider returned no response");
+} else if (response.getStatus() == OcrTaskStatus.SUCCEEDED) {
+    System.out.println(response.getMarkdown());
+} else {
+    System.err.println(response.getErrorCode() + ": " + response.getErrorMessage());
+}
+```
+
+无参数的 `recognizeAndWait(request)` 使用 Config 中的 `timeoutMillis` 和 `pollIntervalMillis`。也可以为单次调用指定：
+
+```java
+OcrResponse response = model.recognizeAndWait(
+    request,
+    15 * 60_000L,
+    5_000L
+);
+```
+
+## 第五步：处理结果资源
+
+部分供应商不把完整内容直接放入响应，而是返回 Markdown、JSON 或 ZIP 下载地址：
+
+```java
+import com.agentsflex.core.model.ocr.OcrResource;
+
+for (OcrResource resource : response.getResources()) {
+    System.out.println(resource.getType() + ": " + resource.getUrl());
+}
+```
+
+这些 URL 通常有有效期。生产系统应在任务成功后尽快下载并转存到自己的对象存储。
+
+## 完整示例
+
+```java
+import com.agentsflex.core.model.ocr.OcrRequest;
+import com.agentsflex.core.model.ocr.OcrResource;
+import com.agentsflex.core.model.ocr.OcrResponse;
+import com.agentsflex.core.model.ocr.OcrTaskStatus;
+import com.agentsflex.ocr.gitee.GiteeOcrConfig;
+import com.agentsflex.ocr.gitee.GiteeOcrModel;
+import com.agentsflex.ocr.gitee.GiteeOcrModels;
+
+import java.io.File;
+
+public class OcrQuickStart {
+    public static void main(String[] args) {
+        GiteeOcrConfig config = new GiteeOcrConfig();
+        config.setApiKey(System.getenv("GITEE_API_KEY"));
+        config.setModel(GiteeOcrModels.UNLIMITED_OCR);
+        config.setTimeoutMillis(10 * 60_000L);
+        config.setPollIntervalMillis(3_000L);
+
+        GiteeOcrModel model = new GiteeOcrModel(config);
+        OcrRequest request = OcrRequest.ofFile(new File("input/report.pdf"));
+        OcrResponse response = model.recognizeAndWait(request);
+
+        if (response == null) {
+            throw new IllegalStateException("OCR provider returned no response");
+        }
+        if (response.getStatus() != OcrTaskStatus.SUCCEEDED) {
+            throw new IllegalStateException(
+                response.getErrorCode() + ": " + response.getErrorMessage()
+            );
+        }
+
+        if (response.getMarkdown() != null) {
+            System.out.println(response.getMarkdown());
+        }
+        for (OcrResource resource : response.getResources()) {
+            System.out.println(resource.getType() + ": " + resource.getUrl());
+        }
+    }
+}
+```
+
+## 非阻塞调用
+
+```java
+OcrResponse submitted = model.recognize(request);
+if (submitted == null || submitted.isError()) {
+    throw new IllegalStateException(
+        submitted == null ? "empty response" : submitted.getErrorMessage()
+    );
+}
+String taskId = submitted.getTaskId();
+
+// 稍后由后台任务查询一次
+OcrResponse latest = model.getResult(taskId);
+```
+
+单纯保存 `taskId` 适合简单系统。如果还需要跨重启恢复、自动重试、租约、防止多 Worker 重复查询，以及 QPS、配额和优先级控制，请使用 [异步任务模块](../async-task/overview)。
+
+## 常见问题
+
+### `TIMED_OUT` 是否表示供应商失败？
+
+不是。它表示本地等待达到上限，供应商任务可能仍在运行。请保存 `taskId` 并继续查询。
+
+### 为什么成功响应没有 `markdown`？
+
+不同供应商的输出形式不同。检查 `resources`，结果可能位于 Markdown URL、JSON URL 或 ZIP 中。
+
+### `recognize()` 返回后可以立即读取结果吗？
+
+不一定。异步供应商通常先返回 `SUBMITTED` 和 `taskId`。只有状态进入 `SUCCEEDED` 后，文本和结果资源才完整可用。
+
+### 供应商返回的 URL 可以永久保存吗？
+
+通常不可以。它们可能是短期签名 URL，任务成功后应尽快下载并转存。
+
+### 可以同时设置本地文件和 URL 吗？
+
+不可以。一次请求必须只选择一种输入来源。
+
+## 下一步
+
+- [OCR 核心概念](./overview)
+- [百度智能云](./baidu)
+- [Gitee AI](./gitee)
+- [MinerU](./mineru)
