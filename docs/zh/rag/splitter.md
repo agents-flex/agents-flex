@@ -30,6 +30,8 @@ Agents-Flex 提供了多种 `DocumentSplitter` 实现，适用于不同场景：
 | `SimpleDocumentSplitter` | 按固定字符长度拆分，可设置 overlap            | 文本长度固定或无需语义感知       |
 | `SimpleTokenizeSplitter` | 按 token（编码）拆分，可解决 Unicode/中文字符问题 | 对接 LLM，保证 token 对齐  |
 | `RegexDocumentSplitter`  | 按正则表达式拆分                         | 文本有固定分隔符，如段落、换行符、符号 |
+| `MarkdownHeaderSplitter` | 按 Markdown 标题层级拆分                  | 保留章节结构和父级标题路径       |
+| `MarkdownTableSplitter`  | 按完整数据行拆分长表格，并在每块重复表头             | OCR、报表等包含长表格的 Markdown |
 | `AIDocumentSplitter`     | 基于 LLM/AI 语义拆分，保持逻辑完整            | 文档长度长，语义复杂，需 AI 感知  |
 
 
@@ -68,6 +70,16 @@ aiSplitter.setFallbackSplitter(new SimpleDocumentSplitter(200)); // 设置 fallb
 
 List<Document> aiChunks = aiSplitter.split(doc, id -> "doc-" + System.nanoTime());
 ```
+
+### 2.4 示例：Markdown 长表格拆分
+
+```java
+// 每块最多约 1000 个字符，并在相邻块间重复最后 1 行数据
+MarkdownTableSplitter tableSplitter = new MarkdownTableSplitter(1000, 1);
+List<Document> tableChunks = tableSplitter.split(markdownDocument);
+```
+
+`MarkdownTableSplitter` 只拆分超过 `maxChunkSize` 的 GFM 风格表格。每个表格块都会重复原表头和分隔行，且不会截断数据行；若单行本身超过限制，该块会保留完整行并允许超过限制。围栏代码块中的表格语法不会被识别为表格。表格块会附加 `content_type=markdown_table`、`table_index`、`table_chunk_index` 和 `table_chunk_count` 元数据。
 
 
 
