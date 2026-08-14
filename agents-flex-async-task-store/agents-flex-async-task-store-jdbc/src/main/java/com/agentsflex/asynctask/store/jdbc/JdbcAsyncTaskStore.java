@@ -108,6 +108,7 @@ public final class JdbcAsyncTaskStore implements AsyncTaskStore {
     public List<AsyncTask> claimDueSubmissions(String workerId, long now, long leaseMillis, int limit, AsyncTaskAdmissionPolicy policy) {
         validateClaim(workerId, leaseMillis, limit);
         if (policy == null) throw new IllegalArgumentException("admissionPolicy is required");
+        markExpiredSubmissionsUnknown(now, limit * 8);
         List<AsyncTask> candidates = select("status IN (?) AND scheduled_submit_at<=? AND (lease_owner IS NULL OR lease_until<=?) ORDER BY priority DESC,scheduled_submit_at,created_at",
             new String[]{AsyncTaskStatus.PENDING_SUBMIT.name()}, now, limit * 8);
         // Java Policy 无法通用下推为 SQL；策略判断后仍由 version 条件更新决定最终领取者。
@@ -122,6 +123,44 @@ public final class JdbcAsyncTaskStore implements AsyncTaskStore {
             }
         }
         return result;
+    }
+
+    private void markExpiredSubmissionsUnknown(long now, int max) {
+        String query = "SELECT payload FROM " + table
+            + " WHERE status=? AND lease_until<=? ORDER BY lease_until";
+        try (Connection c = connection(); PreparedStatement s = c.prepareStatement(query)) {
+            s.setString(1, AsyncTaskStatus.SUBMITTING.name());
+            s.setLong(2, now);
+            s.setMaxRows(max);
+            try (ResultSet rows = s.executeQuery()) {
+                while (rows.next()) markSubmitUnknown(deserialize(rows.getBytes(1)), now);
+            }
+        } catch (SQLException e) {
+            throw failure("recover expired async task submissions", e);
+        }
+    }
+
+    private void markSubmitUnknown(AsyncTask task, long now) throws SQLException {
+        AsyncTask unknown = task.copy();
+        unknown.setVersion(task.getVersion() + 1);
+        unknown.setStatus(AsyncTaskStatus.SUBMIT_UNKNOWN);
+        unknown.setLeaseOwner(null);
+        unknown.setLeaseId(null);
+        unknown.setLeaseUntil(0);
+        unknown.setUpdatedAt(now);
+        unknown.setErrorMessage("Submission worker lease expired before the result was persisted");
+        String update = "UPDATE " + table + " SET version=?,status=?,lease_owner=NULL,lease_id=NULL,lease_until=0,payload=? "
+            + "WHERE task_id=? AND version=? AND status=? AND lease_until<=?";
+        try (Connection c = connection(); PreparedStatement s = c.prepareStatement(update)) {
+            s.setLong(1, unknown.getVersion());
+            s.setString(2, unknown.getStatus().name());
+            s.setBytes(3, serialize(unknown));
+            s.setString(4, unknown.getId());
+            s.setLong(5, task.getVersion());
+            s.setString(6, AsyncTaskStatus.SUBMITTING.name());
+            s.setLong(7, now);
+            s.executeUpdate();
+        }
     }
 
     @Override

@@ -16,6 +16,8 @@
 package com.agentsflex.asynctask.store.jdbc;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -45,26 +47,29 @@ public final class JdbcAsyncTaskStoreSchema {
             + "cancellation_requested BOOLEAN NOT NULL,payload " + config.getBinaryColumnType() + " NOT NULL)";
         try (Connection connection = config.getDataSource().getConnection(); Statement statement = connection.createStatement()) {
             statement.execute(create);
-            createIndex(statement, config.getTablePrefix() + "submit_idx", table,
+            createIndex(connection, statement, config.getTablePrefix() + "submit_idx", table,
                 "status,scheduled_submit_at,priority,lease_until");
-            createIndex(statement, config.getTablePrefix() + "query_idx", table,
+            createIndex(connection, statement, config.getTablePrefix() + "query_idx", table,
                 "status,next_query_at,lease_until");
         } catch (SQLException error) {
             throw new IllegalStateException("Failed to create async task schema", error);
         }
     }
 
-    private void createIndex(Statement statement, String name, String table, String columns) throws SQLException {
-        try {
-            statement.execute("CREATE INDEX IF NOT EXISTS " + name + " ON " + table + " (" + columns + ")");
-        } catch (SQLException unsupported) {
-            // 某些数据库不支持索引的 IF NOT EXISTS；索引已存在时可由迁移工具统一处理。
-            if (!isAlreadyExists(unsupported)) throw unsupported;
-        }
+    private void createIndex(Connection connection, Statement statement, String name,
+                             String table, String columns) throws SQLException {
+        DatabaseMetaData metadata = connection.getMetaData();
+        if (hasIndex(metadata, table, name) || hasIndex(metadata, table.toUpperCase(), name)) return;
+        statement.execute("CREATE INDEX " + name + " ON " + table + " (" + columns + ")");
     }
 
-    private boolean isAlreadyExists(SQLException error) {
-        String state = error.getSQLState();
-        return "42S11".equals(state) || "42710".equals(state);
+    private boolean hasIndex(DatabaseMetaData metadata, String table, String name) throws SQLException {
+        try (ResultSet indexes = metadata.getIndexInfo(null, null, table, false, false)) {
+            while (indexes.next()) {
+                String existing = indexes.getString("INDEX_NAME");
+                if (existing != null && existing.equalsIgnoreCase(name)) return true;
+            }
+            return false;
+        }
     }
 }

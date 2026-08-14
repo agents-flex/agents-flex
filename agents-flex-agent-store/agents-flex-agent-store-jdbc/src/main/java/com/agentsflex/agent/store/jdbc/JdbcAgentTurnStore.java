@@ -141,7 +141,8 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
             throw new IllegalArgumentException("invalid lease request");
         List<AgentTurnSnapshot> claimed = new ArrayList<>();
         String query = "SELECT r.turn_id,r.version,r.parent_turn_id FROM " + table("turns") + " r WHERE "
-            + "((r.status IN (?,?)) OR (r.status=? AND r.next_runnable_at<=?) OR r.cancellation_requested=?) "
+            + "((r.status IN (?,?)) OR (r.status=? AND r.next_runnable_at<=?) OR "
+            + "(r.cancellation_requested=? AND r.status NOT IN (?,?,?,?,?,?))) "
             + "AND (r.lease_owner IS NULL OR r.lease_until<=?) AND NOT EXISTS (SELECT 1 FROM " + table("turns")
             + " p WHERE p.turn_id=r.parent_turn_id AND p.lease_owner IS NOT NULL AND p.lease_until>?) ORDER BY r.next_runnable_at";
         try (Connection connection = connection(); PreparedStatement select = connection.prepareStatement(query)) {
@@ -150,8 +151,9 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
             select.setString(3, AgentTurnStatus.RETRY_SCHEDULED.name());
             select.setLong(4, now);
             select.setBoolean(5, true);
-            select.setLong(6, now);
-            select.setLong(7, now);
+            bindTerminalStatuses(select, 6);
+            select.setLong(12, now);
+            select.setLong(13, now);
             select.setMaxRows(Math.max(limit * 4, limit));
             try (ResultSet rows = select.executeQuery()) {
                 while (rows.next() && claimed.size() < limit) {
@@ -161,8 +163,8 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
                     String leaseId = UUID.randomUUID().toString();
                     String update = "UPDATE " + table("turns") + " SET lease_owner=?,lease_id=?,lease_until=?,version=version+1 "
                         + "WHERE turn_id=? AND version=? AND (lease_owner IS NULL OR lease_until<=?) "
-                        + "AND (? IS NULL OR NOT EXISTS (SELECT 1 FROM " + table("turns")
-                        + " p WHERE p.turn_id=? AND p.lease_owner IS NOT NULL AND p.lease_until>?))";
+                        + "AND (? IS NULL OR NOT EXISTS (SELECT 1 FROM (SELECT turn_id,lease_owner,lease_until FROM "
+                        + table("turns") + ") p WHERE p.turn_id=? AND p.lease_owner IS NOT NULL AND p.lease_until>?))";
                     try (PreparedStatement claim = connection.prepareStatement(update)) {
                         claim.setString(1, workerId);
                         claim.setString(2, leaseId);
@@ -320,6 +322,15 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
 
     private AgentTurnVersionConflictException conflict(String turnId, long expected, long actual) {
         return new AgentTurnVersionConflictException(turnId, expected, actual);
+    }
+
+    private void bindTerminalStatuses(PreparedStatement statement, int start) throws SQLException {
+        statement.setString(start, AgentTurnStatus.COMPLETED.name());
+        statement.setString(start + 1, AgentTurnStatus.FAILED.name());
+        statement.setString(start + 2, AgentTurnStatus.CANCELLED.name());
+        statement.setString(start + 3, AgentTurnStatus.MAX_ITERATIONS_REACHED.name());
+        statement.setString(start + 4, AgentTurnStatus.MAX_STEPS_REACHED.name());
+        statement.setString(start + 5, AgentTurnStatus.BUDGET_EXCEEDED.name());
     }
 
     private void requireSnapshot(AgentTurnSnapshot snapshot) {

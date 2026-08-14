@@ -3,16 +3,22 @@ package com.agentsflex.agent.store.jdbc;
 import com.agentsflex.agent.AgentExecutionPolicy;
 import com.agentsflex.agent.AgentContextCompressionState;
 import com.agentsflex.agent.AgentContextCompressionStateStore;
+import com.agentsflex.agent.AgentSuspension;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.store.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 import com.agentsflex.core.message.AiMessage;
+import com.mysql.cj.jdbc.MysqlDataSource;
 import org.h2.jdbcx.JdbcDataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -29,13 +35,36 @@ import static org.junit.Assert.*;
  */
 public class JdbcAgentStoresContractTest {
     private JdbcAgentStoreConfig config;
+    private DataSource dataSource;
+    private String tablePrefix;
 
     @Before
     public void setUp() {
-        JdbcDataSource dataSource = new JdbcDataSource();
-        dataSource.setURL("jdbc:h2:mem:" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
-        config = JdbcAgentStoreConfig.builder(dataSource).tablePrefix("test_agent_").build();
+        tablePrefix = "test_agent_" + UUID.randomUUID().toString().replace("-", "") + "_";
+        String mysqlUrl = System.getProperty("mysql.test.url");
+        if (mysqlUrl == null) {
+            JdbcDataSource h2 = new JdbcDataSource();
+            h2.setURL("jdbc:h2:mem:" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
+            dataSource = h2;
+        } else {
+            MysqlDataSource mysql = new MysqlDataSource();
+            mysql.setURL(mysqlUrl);
+            mysql.setUser(System.getProperty("mysql.test.user", "root"));
+            mysql.setPassword(requiredEnv("MYSQL_TEST_PASSWORD"));
+            dataSource = mysql;
+        }
+        config = JdbcAgentStoreConfig.builder(dataSource).tablePrefix(tablePrefix).build();
         config.schema().initialize();
+        config.schema().initialize();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        if (dataSource == null || tablePrefix == null) return;
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("DROP TABLE IF EXISTS " + tablePrefix + "compression_states");
+            statement.execute("DROP TABLE IF EXISTS " + tablePrefix + "turns");
+        }
     }
 
     @Test
@@ -84,16 +113,22 @@ public class JdbcAgentStoresContractTest {
     @Test
     public void shouldAtomicallyPersistParentAndChildAndDelayChildWhileParentLeased() {
         JdbcAgentTurnStore store = config.turnStore();
-        AgentTurnSnapshot parent = store.save(snapshot("parent", AgentTurnStatus.RUNNING), -1);
+        store.save(snapshot("parent", AgentTurnStatus.READY), -1);
+        AgentTurnSnapshot parent = store.claimRunnable("parent-worker", 100, 1000, 1).get(0);
         AgentTurnSnapshot initialChild = snapshot("child", AgentTurnStatus.READY);
         AgentTurnSnapshot child = initialChild.withState(initialChild.getState().toBuilder()
             .parentTurnId("parent").rootTurnId("parent").build());
         ParentChildTurnSnapshots pair = store.saveParentAndChild(
             parent.withState(parent.getState().toBuilder()
-                .status(AgentTurnStatus.WAITING_FOR_CHILD).build()), 0, child);
-        assertEquals(1, pair.getParent().getState().getVersion());
+                .status(AgentTurnStatus.WAITING_FOR_CHILD).build()),
+            parent.getState().getVersion(), child);
+        assertEquals(2, pair.getParent().getState().getVersion());
         assertEquals(0, pair.getChild().getState().getVersion());
         assertEquals("parent", store.load("child").getState().getParentTurnId());
+        assertTrue(store.claimRunnable("child-worker", 101, 100, 1).isEmpty());
+        store.releaseLease("parent", "parent-worker", parent.getState().getLeaseId());
+        assertEquals("child", store.claimRunnable("child-worker", 102, 100, 1).get(0)
+            .getState().getTurnId());
     }
 
     @Test
@@ -118,6 +153,23 @@ public class JdbcAgentStoresContractTest {
         }
     }
 
+    /**
+     * 取消标记在终态快照中保持为 true 时，也不能让终态 Turn 再次被领取。
+     */
+    @Test
+    public void shouldNeverReclaimCanceledTerminalTurn() {
+        JdbcAgentTurnStore store = config.turnStore();
+        store.save(snapshot("terminal", AgentTurnStatus.READY), -1);
+        assertTrue(store.requestCancellation("terminal"));
+        AgentTurnSnapshot claimed = store.claimRunnable("worker", 10, 100, 1).get(0);
+        AgentTurnSnapshot terminal = claimed.withState(claimed.getState().toBuilder()
+            .status(AgentTurnStatus.CANCELLED).build());
+        AgentTurnSnapshot saved = store.save(terminal, claimed.getState().getVersion());
+        store.releaseLease("terminal", "worker", saved.getState().getLeaseId());
+
+        assertTrue(store.claimRunnable("other", 11, 100, 1).isEmpty());
+    }
+
     @Test
     public void shouldPersistCompressionStateWithCasAndRestoreSummaryMessages() {
         AgentContextCompressionStateStore store = config.compressionStateStore();
@@ -137,12 +189,49 @@ public class JdbcAgentStoresContractTest {
         assertNull(store.load("missing-conversation"));
     }
 
+    /**
+     * 活动会话查询应排除终态，终态子任务应能被等待中的父任务恢复扫描发现。
+     */
+    @Test
+    public void shouldFindActiveTurnAndTerminalChildForRecovery() {
+        JdbcAgentTurnStore store = config.turnStore();
+        AgentTurnSnapshot activeSource = snapshot("active", AgentTurnStatus.READY);
+        AgentTurnSnapshot active = activeSource.withState(activeSource.getState().toBuilder()
+            .metadata(Collections.<String, Object>singletonMap(
+                "agentsflex.conversationId", "conversation-1"))
+            .build());
+        AgentTurnSnapshot savedActive = store.save(active, -1);
+        assertEquals("active", store.findActiveTurn("conversation-1").getState().getTurnId());
+        store.save(savedActive.withState(savedActive.getState().toBuilder()
+            .status(AgentTurnStatus.COMPLETED).build()), savedActive.getState().getVersion());
+        assertNull(store.findActiveTurn("conversation-1"));
+
+        AgentTurnSnapshot parentSource = snapshot("waiting-parent", AgentTurnStatus.WAITING_FOR_CHILD);
+        AgentTurnSnapshot parent = parentSource.withState(parentSource.getState().toBuilder()
+            .suspension(AgentSuspension.child("terminal-child")).build());
+        store.save(parent, -1);
+        AgentTurnSnapshot childSource = snapshot("terminal-child", AgentTurnStatus.COMPLETED);
+        AgentTurnSnapshot child = childSource.withState(childSource.getState().toBuilder()
+            .parentTurnId("waiting-parent").rootTurnId("waiting-parent").build());
+        store.save(child, -1);
+
+        List<AgentTurnSnapshot> completed = store.findTerminalChildrenWithWaitingParent(1);
+        assertEquals(1, completed.size());
+        assertEquals("terminal-child", completed.get(0).getState().getTurnId());
+    }
+
     private AgentTurnSnapshot snapshot(String turnId, AgentTurnStatus status) {
         AgentTurnState state = AgentTurnState.builder(turnId,
                 AgentExecutionPolicy.defaults(), 1)
             .status(status).updatedAt(1).rootTurnId(turnId)
             .metadata(Collections.<String, Object>singletonMap("key", "value")).build();
         return AgentTurnSnapshot.of("agent", "1", state);
+    }
+
+    private static String requiredEnv(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isEmpty()) throw new IllegalStateException(name + " is required");
+        return value;
     }
 
 }

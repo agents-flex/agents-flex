@@ -18,11 +18,17 @@ package com.agentsflex.asynctask.store.jdbc;
 import com.agentsflex.asynctask.*;
 import com.agentsflex.asynctask.policy.*;
 import com.agentsflex.asynctask.store.*;
+import com.mysql.cj.jdbc.MysqlDataSource;
 import org.h2.jdbcx.JdbcDataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
@@ -35,18 +41,40 @@ import static org.junit.Assert.*;
  */
 public class JdbcAsyncTaskStoreContractTest {
     private JdbcAsyncTaskStore store;
+    private DataSource dataSource;
+    private String tablePrefix;
 
     /**
      * 每个测试创建隔离的内存数据库，并验证 Schema 初始化可以重复执行。
      */
     @Before
     public void setUp() {
-        JdbcDataSource dataSource = new JdbcDataSource();
-        dataSource.setURL("jdbc:h2:mem:async_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1");
-        JdbcAsyncTaskStoreConfig config = JdbcAsyncTaskStoreConfig.builder(dataSource).build();
+        tablePrefix = "test_async_" + UUID.randomUUID().toString().replace("-", "") + "_";
+        String mysqlUrl = System.getProperty("mysql.test.url");
+        if (mysqlUrl == null) {
+            JdbcDataSource h2 = new JdbcDataSource();
+            h2.setURL("jdbc:h2:mem:async_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1");
+            dataSource = h2;
+        } else {
+            MysqlDataSource mysql = new MysqlDataSource();
+            mysql.setURL(mysqlUrl);
+            mysql.setUser(System.getProperty("mysql.test.user", "root"));
+            mysql.setPassword(requiredEnv("MYSQL_TEST_PASSWORD"));
+            dataSource = mysql;
+        }
+        JdbcAsyncTaskStoreConfig config = JdbcAsyncTaskStoreConfig.builder(dataSource)
+            .tablePrefix(tablePrefix).build();
         config.schema().createIfNotExists();
         config.schema().createIfNotExists();
         store = config.store();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        if (dataSource == null || tablePrefix == null) return;
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("DROP TABLE IF EXISTS " + tablePrefix + "tasks");
+        }
     }
 
     /**
@@ -121,6 +149,20 @@ public class JdbcAsyncTaskStoreContractTest {
         }
     }
 
+    /** 提交 Worker 崩溃后结果不可判定，必须转为 SUBMIT_UNKNOWN 且不得自动重复提交。 */
+    @Test
+    public void shouldMarkExpiredSubmittingTaskUnknownWithoutResubmitting() {
+        store.create(submission("submit-once", 1, 0));
+        assertEquals(1, store.claimDueSubmissions(
+            "dead-worker", 10, 20, 1, (candidate, all, now) -> true).size());
+
+        assertTrue(store.claimDueSubmissions(
+            "new-worker", 30, 20, 1, (candidate, all, now) -> true).isEmpty());
+        AsyncTask recovered = store.load("submit-once");
+        assertEquals(AsyncTaskStatus.SUBMIT_UNKNOWN, recovered.getStatus());
+        assertNull(recovered.getLeaseOwner());
+    }
+
     /**
      * 租约只能由 owner 和 leaseId 同时匹配的 Worker 续期或释放，取消标记保持单调且不能修改终态。
      */
@@ -168,5 +210,11 @@ public class JdbcAsyncTaskStoreContractTest {
         } catch (Throwable error) {
             if (!type.isInstance(error)) throw error;
         }
+    }
+
+    private static String requiredEnv(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isEmpty()) throw new IllegalStateException(name + " is required");
+        return value;
     }
 }
