@@ -16,7 +16,7 @@
 package com.agentsflex.doc;
 
 
-import com.agentsflex.doc.handler.ExtractedImageHandler;
+import com.agentsflex.core.document.ExtractedImageHandler;
 import com.agentsflex.doc.source.ByteArrayDocumentSource;
 import com.agentsflex.doc.source.ByteStreamDocumentSource;
 import com.agentsflex.doc.source.FileDocumentSource;

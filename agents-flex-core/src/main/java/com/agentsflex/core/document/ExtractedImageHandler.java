@@ -13,28 +13,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.agentsflex.doc.handler;
+package com.agentsflex.core.document;
 
 import java.io.IOException;
 
 /**
- * 文档内嵌图片处理器。
- * <p>
- * 文件解析器提取到图片后，会将图片数据交给该处理器。处理器可以将图片上传到
- * 对象存储、写入本地文件或转换为 Data URI，并返回用于 Markdown 渲染的图片地址。
+ * 文档解析过程中提取出的图片处理器。
+ *
+ * <p>文档提取器和 OCR 模型共用该扩展点。实现可以把图片上传到对象存储、写入文件
+ * 服务或转换为 Data URI，并返回最终写入 Markdown 的图片地址。</p>
  */
 @FunctionalInterface
 public interface ExtractedImageHandler {
 
     /**
-     * 处理从文档中提取的图片。
-     *
-     * @param imageBytes 图片二进制数据
-     * @param mimeType 图片 MIME 类型；无法识别时为 {@code application/octet-stream}
-     * @param fileName 文档内的图片文件名；原格式不提供文件名时由解析器生成
-     * @return 用于 Markdown 渲染的图片地址，可以是 URL 或 Data URI；返回
-     *         {@code null} 或空字符串时不输出该图片
-     * @throws IOException 图片保存、上传或转换失败
+     * @param imageBytes 图片二进制内容
+     * @param mimeType   图片 MIME 类型，无法识别时为 application/octet-stream
+     * @param fileName   原始图片文件名
+     * @return 用于 Markdown 的 URL 或 Data URI；返回空值时移除图片引用
      */
     String handle(byte[] imageBytes, String mimeType, String fileName) throws IOException;
 }

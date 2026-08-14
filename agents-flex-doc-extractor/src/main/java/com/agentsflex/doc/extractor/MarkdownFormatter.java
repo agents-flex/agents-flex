@@ -15,7 +15,7 @@
  */
 package com.agentsflex.doc.extractor;
 
-import com.agentsflex.doc.handler.ExtractedImageHandler;
+import com.agentsflex.core.document.ExtractedImageHandler;
 
 import java.io.IOException;
 import java.util.List;

@@ -15,6 +15,7 @@
  */
 package com.agentsflex.doc.handler;
 
+import com.agentsflex.core.document.ExtractedImageHandler;
 import com.agentsflex.doc.util.ImageUtils;
 
 /**
