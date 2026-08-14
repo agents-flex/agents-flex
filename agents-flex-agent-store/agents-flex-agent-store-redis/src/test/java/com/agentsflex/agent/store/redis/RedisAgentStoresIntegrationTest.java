@@ -3,6 +3,7 @@ package com.agentsflex.agent.store.redis;
 import com.agentsflex.agent.AgentExecutionPolicy;
 import com.agentsflex.agent.AgentContextCompressionState;
 import com.agentsflex.agent.AgentContextCompressionStateStore;
+import com.agentsflex.agent.AgentSuspension;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -113,6 +115,93 @@ public class RedisAgentStoresIntegrationTest {
         assertFalse(store.save("conversation-1", second, 0));
         assertTrue(store.save("conversation-1", second, 1));
         assertEquals(2, store.load("conversation-1").getCompressionVersion());
+        assertNull(store.load("missing-conversation"));
+    }
+
+    /** 取消信号即使保留在终态快照中，也不能让终态 Turn 再次进入运行队列。 */
+    @Test
+    public void shouldNeverReclaimCanceledTerminalTurn() {
+        RedisAgentTurnStore turns = config.turnStore();
+        turns.save(snapshot("terminal", AgentTurnStatus.READY), -1);
+        assertTrue(turns.requestCancellation("terminal"));
+        AgentTurnSnapshot claimed = turns.claimRunnable("worker", 10, 100, 1).get(0);
+        AgentTurnSnapshot terminal = claimed.withState(claimed.getState().toBuilder()
+            .status(AgentTurnStatus.CANCELLED).build());
+        AgentTurnSnapshot saved = turns.save(terminal, claimed.getState().getVersion());
+        turns.releaseLease("terminal", "worker", saved.getState().getLeaseId());
+
+        assertTrue(turns.claimRunnable("other", 11, 100, 1).isEmpty());
+    }
+
+    /** 父租约提前释放后，曾被父租约阻挡的子 Turn 应立即恢复可领取。 */
+    @Test
+    public void shouldWakeChildImmediatelyAfterParentLeaseRelease() {
+        RedisAgentTurnStore turns = config.turnStore();
+        turns.save(snapshot("leased-parent", AgentTurnStatus.READY), -1);
+        AgentTurnSnapshot claimedParent = turns.claimRunnable("parent-worker", 100, 1000, 1).get(0);
+        AgentTurnSnapshot initialChild = snapshot("ready-child", AgentTurnStatus.READY);
+        AgentTurnSnapshot child = initialChild.withState(initialChild.getState().toBuilder()
+            .parentTurnId("leased-parent").rootTurnId("leased-parent").build());
+        turns.saveParentAndChild(claimedParent.withState(claimedParent.getState().toBuilder()
+            .status(AgentTurnStatus.WAITING_FOR_CHILD).build()),
+            claimedParent.getState().getVersion(), child);
+
+        assertTrue(turns.claimRunnable("child-worker", 101, 100, 1).isEmpty());
+        turns.releaseLease("leased-parent", "parent-worker", claimedParent.getState().getLeaseId());
+        assertEquals("ready-child", turns.claimRunnable("child-worker", 102, 100, 1).get(0)
+            .getState().getTurnId());
+    }
+
+    /** Redis Turn Store 必须拒绝旧版本写入与错误 fencing token。 */
+    @Test
+    public void shouldEnforceVersionAndLeaseBoundaries() {
+        RedisAgentTurnStore turns = config.turnStore();
+        AgentTurnSnapshot created = turns.save(snapshot("boundaries", AgentTurnStatus.READY), -1);
+        try {
+            turns.save(created, -1);
+            fail("Expected version conflict");
+        } catch (com.agentsflex.agent.store.AgentTurnVersionConflictException expected) {
+            assertTrue(expected.getMessage().contains("boundaries"));
+        }
+
+        AgentTurnSnapshot claimed = turns.claimRunnable("owner", 10, 100, 1).get(0);
+        try {
+            turns.renewLease("boundaries", "owner", "stale", 20, 200);
+            fail("Expected stale lease rejection");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("owner"));
+        }
+        turns.releaseLease("boundaries", "owner", "stale");
+        assertEquals(claimed.getState().getLeaseId(), turns.load("boundaries").getState().getLeaseId());
+    }
+
+    /** 活动会话与父子完成查询必须基于 Redis 中的最新投影，而不是序列化时的旧状态。 */
+    @Test
+    public void shouldFindActiveTurnAndTerminalChildForRecovery() {
+        RedisAgentTurnStore turns = config.turnStore();
+        AgentTurnSnapshot activeSource = snapshot("active", AgentTurnStatus.READY);
+        AgentTurnSnapshot active = activeSource.withState(activeSource.getState().toBuilder()
+            .metadata(Collections.<String, Object>singletonMap(
+                "agentsflex.conversationId", "conversation-1"))
+            .build());
+        AgentTurnSnapshot savedActive = turns.save(active, -1);
+        assertEquals("active", turns.findActiveTurn("conversation-1").getState().getTurnId());
+        turns.save(savedActive.withState(savedActive.getState().toBuilder()
+            .status(AgentTurnStatus.COMPLETED).build()), savedActive.getState().getVersion());
+        assertNull(turns.findActiveTurn("conversation-1"));
+
+        AgentTurnSnapshot parentSource = snapshot("waiting-parent", AgentTurnStatus.WAITING_FOR_CHILD);
+        AgentTurnSnapshot parent = parentSource.withState(parentSource.getState().toBuilder()
+            .suspension(AgentSuspension.child("terminal-child")).build());
+        turns.save(parent, -1);
+        AgentTurnSnapshot childSource = snapshot("terminal-child", AgentTurnStatus.COMPLETED);
+        AgentTurnSnapshot child = childSource.withState(childSource.getState().toBuilder()
+            .parentTurnId("waiting-parent").rootTurnId("waiting-parent").build());
+        turns.save(child, -1);
+
+        List<AgentTurnSnapshot> completed = turns.findTerminalChildrenWithWaitingParent(1);
+        assertEquals(1, completed.size());
+        assertEquals("terminal-child", completed.get(0).getState().getTurnId());
     }
 
     private AgentTurnSnapshot snapshot() {

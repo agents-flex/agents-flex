@@ -22,16 +22,18 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
         + "local c=(cancel=='1' or ARGV[9]=='1') and '1' or '0'; redis.call('HSET',KEYS[1],"
         + "'version',ARGV[2],'status',ARGV[3],'next',ARGV[4],'lease_owner',ARGV[5],'lease_id',ARGV[6],'lease_until',ARGV[7],"
         + "'parent',ARGV[8],'cancel',c,'payload',ARGV[10]); redis.call('SADD',KEYS[2],ARGV[11]); "
-        + "local s=ARGV[3]; local score=nil; local lu=tonumber(ARGV[7]); if c=='1' or s=='READY' or s=='RUNNING' then "
+        + "local s=ARGV[3]; local terminal=(s=='COMPLETED' or s=='FAILED' or s=='CANCELLED' or s=='MAX_ITERATIONS_REACHED' or s=='MAX_STEPS_REACHED' or s=='BUDGET_EXCEEDED'); "
+        + "local score=nil; local lu=tonumber(ARGV[7]); if (c=='1' and not terminal) or s=='READY' or s=='RUNNING' then "
         + "score=(ARGV[5]~='' and lu or 0) elseif s=='RETRY_SCHEDULED' then score=math.max(tonumber(ARGV[4]),lu) end; "
         + "if score then redis.call('ZADD',KEYS[3],score,ARGV[11]) else redis.call('ZREM',KEYS[3],ARGV[11]) end; return -2";
     private static final String CLAIM = "local status=redis.call('HGET',KEYS[1],'status'); if not status then return 0 end; "
         + "local nextRun=tonumber(redis.call('HGET',KEYS[1],'next') or '0'); local leaseUntil=tonumber(redis.call('HGET',KEYS[1],'lease_until') or '0'); "
-        + "local cancel=redis.call('HGET',KEYS[1],'cancel')=='1'; local runnable=(status=='READY' or status=='RUNNING' or cancel "
+        + "local cancel=redis.call('HGET',KEYS[1],'cancel')=='1'; local terminal=(status=='COMPLETED' or status=='FAILED' or status=='CANCELLED' or status=='MAX_ITERATIONS_REACHED' or status=='MAX_STEPS_REACHED' or status=='BUDGET_EXCEEDED'); "
+        + "local runnable=(status=='READY' or status=='RUNNING' or (cancel and not terminal) "
         + "or (status=='RETRY_SCHEDULED' and nextRun<=tonumber(ARGV[1]))); if not runnable then redis.call('ZREM',KEYS[3],ARGV[6]); return 0 end; "
         + "if leaseUntil>tonumber(ARGV[1]) then redis.call('ZADD',KEYS[3],leaseUntil,ARGV[6]); return 0 end; "
         + "if ARGV[5]=='1' and redis.call('EXISTS',KEYS[2])==1 then local pu=tonumber(redis.call('HGET',KEYS[2],'lease_until') or '0'); "
-        + "local po=redis.call('HGET',KEYS[2],'lease_owner'); if po and po~='' and pu>tonumber(ARGV[1]) then redis.call('ZADD',KEYS[3],pu,ARGV[6]); return 0 end end; "
+        + "local po=redis.call('HGET',KEYS[2],'lease_owner'); if po and po~='' and pu>tonumber(ARGV[1]) then return 0 end end; "
         + "redis.call('HSET',KEYS[1],'lease_owner',ARGV[2],'lease_id',ARGV[4],'lease_until',ARGV[3]); "
         + "redis.call('HINCRBY',KEYS[1],'version',1); redis.call('ZADD',KEYS[3],ARGV[3],ARGV[6]); return 1";
 
@@ -186,7 +188,8 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
         String script = "if redis.call('HGET',KEYS[1],'lease_owner')==ARGV[1] "
             + "and redis.call('HGET',KEYS[1],'lease_id')==ARGV[2] then redis.call('HSET',KEYS[1],"
             + "'lease_owner','','lease_id','','lease_until','0'); local s=redis.call('HGET',KEYS[1],'status'); "
-            + "local c=redis.call('HGET',KEYS[1],'cancel')=='1'; if c or s=='READY' or s=='RUNNING' then redis.call('ZADD',KEYS[2],0,ARGV[3]) "
+            + "local c=redis.call('HGET',KEYS[1],'cancel')=='1'; local terminal=(s=='COMPLETED' or s=='FAILED' or s=='CANCELLED' or s=='MAX_ITERATIONS_REACHED' or s=='MAX_STEPS_REACHED' or s=='BUDGET_EXCEEDED'); "
+            + "if (c and not terminal) or s=='READY' or s=='RUNNING' then redis.call('ZADD',KEYS[2],0,ARGV[3]) "
             + "elseif s=='RETRY_SCHEDULED' then redis.call('ZADD',KEYS[2],redis.call('HGET',KEYS[1],'next'),ARGV[3]) "
             + "else redis.call('ZREM',KEYS[2],ARGV[3]) end; return 1 end; return 0";
         eval(script, keys(key("turn", turnId), index("runnable-turns")), args(workerId, leaseId, turnId));
