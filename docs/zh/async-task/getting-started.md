@@ -67,6 +67,20 @@ AsyncTaskManager manager = new AsyncTaskManager(store, registry);
 
 ## 第四步：启动 Worker
 
+Worker 是异步任务的后台执行器，负责把 Store 中的任务真正向前推进。它会周期性扫描 Store，并完成以下工作：
+
+1. 领取已经到达提交时间且满足准入策略的任务，调用对应 Handler 的 `submit()` 提交给供应商；
+2. 领取已经到达查询时间的任务，调用 Handler 的 `query()` 获取供应商处理结果；
+3. 根据 Handler 返回值和重试策略，更新任务状态、下次查询时间、错误信息及最终结果；
+4. 在执行前处理取消和跟踪超时，并通过租约与 CAS 避免多个 Worker 重复处理同一轮任务。
+
+因此，`manager.submit()` 的职责只是创建任务并写入 Store，不会直接访问供应商，也不会创建 Worker。
+如果没有正在运行的 Worker，任务会保留在 Store 中，但不会自动提交给供应商或继续查询结果。
+
+Worker 不是“每提交一个任务就启动一次”，而是应用级的长生命周期组件。通常一个应用进程只创建一个
+Worker 实例，在应用启动时调用一次 `start()`，后续所有任务都由这个 Worker 持续处理，应用关闭时再调用
+`close()`。同一个 Worker 重复调用 `start()` 是幂等的，不会创建第二个调度线程；调用 `close()` 后不能再次启动。
+
 ```java
 import com.agentsflex.asynctask.AsyncTaskWorker;
 import com.agentsflex.asynctask.policy.ExponentialAsyncTaskRetryPolicy;
@@ -90,6 +104,24 @@ worker.start(1_000L, 10);
 ```
 
 `leaseMillis` 应覆盖一次供应商请求和 Store 保存的最长正常耗时；`workerId` 在所有实例间必须唯一。
+
+典型生命周期如下：
+
+```text
+应用启动
+  └─ 创建 Manager 和 Worker
+       └─ worker.start(...)：持续扫描整个 Store
+            ├─ manager.submit(task-a)
+            ├─ manager.submit(task-b)
+            └─ Worker 依次领取并处理 task-a、task-b
+应用关闭
+  └─ worker.close()
+```
+
+“一个应用进程一个 Worker”是默认建议，并不是框架限制。需要提高吞吐量时，同一应用或多个应用实例可以
+共同运行多个 Worker，但它们必须共享 JDBC 或 Redis Store，并为每个 Worker 配置不同的 `workerId`；任务领取
+由 Store 租约和 CAS 防止重复处理。只负责接收和查询任务的 API 节点也可以不启动 Worker，由独立 Worker
+节点统一处理。内存 Store 不能在不同进程之间共享，因此不适合这种部署方式。
 
 ## 第五步：提交 URL 任务
 
@@ -189,7 +221,8 @@ boolean accepted = manager.cancel(task.getId());
 worker.close();
 ```
 
-应用关闭时应释放 Worker 的调度线程。待提交任务和已经取得供应商任务 ID 的查询任务仍保存在持久化
+`close()` 应在应用关闭时调用一次，而不是在每次提交后调用；否则刚进入队列的任务可能还没来得及处理。
+关闭只释放当前 Worker 的调度线程，待提交任务和已经取得供应商任务 ID 的查询任务仍保存在持久化
 Store 中。不要依赖强制终止正在执行的 `submit()` 来恢复任务：进程退出时可能无法判断供应商是否已经
 创建远端任务，应优先优雅停机，并为提交接口使用幂等键。
 
