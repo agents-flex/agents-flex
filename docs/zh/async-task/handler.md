@@ -14,8 +14,11 @@
 ```java
 public interface AsyncTaskHandler<P> {
     String getKey();
-    // 已有默认实现：根据实现类的泛型声明解析并缓存 P。
-    Class<P> getSubmitParamsType();
+    @SuppressWarnings("unchecked")
+    default Class<P> getSubmitParamsType() {
+        // AsyncTaskHandlerTypes 是框架内部的泛型解析器。
+        return (Class<P>) AsyncTaskHandlerTypes.resolve(getClass());
+    }
     default void validateSubmitParams(P params) {}
     TaskSubmitResult submit(P params, TaskSubmitContext context);
     TaskQueryResult query(TaskQueryParams params, TaskQueryContext context);
@@ -156,9 +159,51 @@ public Class<DocumentParseRequest> getSubmitParamsType() {
 
 框架不会在无法解析时退化成 `Object.class`，从而避免无关 Handler 被错误匹配。
 
+`P` 必须最终解析为一个具体 `Class`。`AsyncTaskHandler<List<Request>>` 这类参数化容器无法参与当前的精确
+类型路由，建议定义明确的 `BatchRequest` DTO；原始类型 `AsyncTaskHandler` 和运行时仍未绑定的 `P` 也会
+在注册时失败。
+
 同一个参数类型注册多个 Handler 时，在 Manager 构造器中配置 `AsyncTaskHandlerSelector`。也可以通过
 `AsyncTaskOptions.handlerKey` 为某一次提交强制路由；显式 key 优先于 selector。无论采用哪种方式，选择
 结果都会持久化到任务，Worker 不会在后续处理或恢复时重新选择。
+
+## Handler Selector
+
+Selector 只在“未指定 `options.handlerKey` 且同一请求类型匹配多个 Handler”时执行。选择上下文包含：
+
+| 字段 | 语义 |
+| --- | --- |
+| `request` | 当前提交对象；用于读取租户、区域或模型等路由信息 |
+| `options` | `AsyncTaskOptions` 的独立快照；Selector 修改它不会改变最终持久化选项 |
+| `candidates` | Registry 提供的稳定顺序、不可修改且 Key 唯一的候选快照；内存 Registry 按 Handler Key 排序 |
+
+Selector 必须返回 `candidates` 中的一个实例；返回 `null` 或外部 Handler 会被 Manager 拒绝。内置工厂：
+
+| 工厂 | 行为与约束 |
+| --- | --- |
+| `roundRobin()` | 按稳定候选顺序轮询；不同候选 Key 集合分别维护序号 |
+| `random()` | 从当前候选中均匀随机选择，不保证短周期比例 |
+| `weighted(weights)` | 按正整数权重循环；权重表可以覆盖多个候选组，但当前每个候选 Key 都必须配置 |
+| `consistentHash(extractor)` | 使用 Rendezvous Hash；提取器必须返回非空稳定业务键，候选增删时只迁移必要业务键 |
+| `leastActive(provider)` | 每轮读取每个候选一次活动数，选择最小值；活动数不能为负，平局选稳定顺序中的第一个 |
+
+例如一份全局权重表可以同时包含多个能力的 Handler：
+
+```java
+Map<String, Integer> weights = new HashMap<>();
+weights.put("ocr:gitee", 3);
+weights.put("ocr:baidu", 1);
+weights.put("video:aliyun", 2);
+
+AsyncTaskManager manager = new AsyncTaskManager(
+    store,
+    registry,
+    AsyncTaskHandlerSelectors.weighted(weights)
+);
+```
+
+OCR 候选组只使用 OCR 权重，视频候选组维护自己的权重周期。权重表中的其他已知 Key 不会导致当前候选组
+失败，但当前候选漏配权重会立即抛出异常。
 
 ## 扩展内置 OCR Handler
 

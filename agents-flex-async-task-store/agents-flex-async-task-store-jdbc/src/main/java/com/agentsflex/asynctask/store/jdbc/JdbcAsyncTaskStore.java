@@ -115,7 +115,8 @@ public final class JdbcAsyncTaskStore implements AsyncTaskStore {
         List<AsyncTask> result = new ArrayList<>();
         for (AsyncTask task : candidates) {
             if (result.size() >= limit) break;
-            if (policy.tryAcquire(task.copy(), snapshot, now)) {
+            // 取消和截止时间优先于准入，确保被暂停或限额阻塞的任务仍能由 Worker 收敛到本地终态。
+            if (requiresTerminalTransition(task, now) || policy.tryAcquire(task.copy(), snapshot, now)) {
                 AsyncTask claimed = claim(task, workerId, now, leaseMillis, true);
                 if (claimed != null) result.add(claimed);
             }
@@ -172,13 +173,14 @@ public final class JdbcAsyncTaskStore implements AsyncTaskStore {
 
     @Override
     public boolean requestCancellation(String taskId) {
-        String sql = "UPDATE " + table + " SET cancellation_requested=TRUE,version=version+1 WHERE task_id=? AND cancellation_requested=FALSE AND status NOT IN (?,?,?,?)";
+        String sql = "UPDATE " + table + " SET cancellation_requested=TRUE,version=version+1 WHERE task_id=? AND cancellation_requested=FALSE AND status NOT IN (?,?,?,?,?)";
         try (Connection c = connection(); PreparedStatement s = c.prepareStatement(sql)) {
             s.setString(1, taskId);
             s.setString(2, AsyncTaskStatus.SUCCEEDED.name());
             s.setString(3, AsyncTaskStatus.FAILED.name());
             s.setString(4, AsyncTaskStatus.CANCELED.name());
             s.setString(5, AsyncTaskStatus.TRACKING_TIMED_OUT.name());
+            s.setString(6, AsyncTaskStatus.SUBMIT_UNKNOWN.name());
             return s.executeUpdate() == 1;
         } catch (SQLException e) {
             throw failure("request async task cancellation", e);
@@ -236,6 +238,10 @@ public final class JdbcAsyncTaskStore implements AsyncTaskStore {
         } catch (SQLException e) {
             throw failure("load async task snapshot", e);
         }
+    }
+
+    private boolean requiresTerminalTransition(AsyncTask task, long now) {
+        return task.isCancellationRequested() || (task.getDeadlineAt() > 0 && now >= task.getDeadlineAt());
     }
 
     private AsyncTask load(Connection c, String id) throws SQLException {

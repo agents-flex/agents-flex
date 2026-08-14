@@ -36,8 +36,11 @@ import static org.junit.Assert.*;
 public class JdbcAsyncTaskStoreContractTest {
     private JdbcAsyncTaskStore store;
 
-    /** 每个测试创建隔离的内存数据库，并验证 Schema 初始化可以重复执行。 */
-    @Before public void setUp() {
+    /**
+     * 每个测试创建隔离的内存数据库，并验证 Schema 初始化可以重复执行。
+     */
+    @Before
+    public void setUp() {
         JdbcDataSource dataSource = new JdbcDataSource();
         dataSource.setURL("jdbc:h2:mem:async_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1");
         JdbcAsyncTaskStoreConfig config = JdbcAsyncTaskStoreConfig.builder(dataSource).build();
@@ -46,8 +49,11 @@ public class JdbcAsyncTaskStoreContractTest {
         store = config.store();
     }
 
-    /** 创建后应隔离调用方修改，CAS 保存成功递增版本，旧版本必须失败。 */
-    @Test public void shouldPersistDefensiveSnapshotAndEnforceCas() {
+    /**
+     * 创建后应隔离调用方修改，CAS 保存成功递增版本，旧版本必须失败。
+     */
+    @Test
+    public void shouldPersistDefensiveSnapshotAndEnforceCas() {
         AsyncTask source = task("task", AsyncTaskStatus.SUBMITTED, 10, 100);
         AsyncTask created = store.create(source);
         source.setStatus(AsyncTaskStatus.FAILED);
@@ -58,8 +64,11 @@ public class JdbcAsyncTaskStoreContractTest {
         assertNull(store.load("missing"));
     }
 
-    /** 提交队列先按优先级，再按计划时间领取；未来任务不得提前提交。 */
-    @Test public void shouldClaimDueSubmissionsByPriority() {
+    /**
+     * 提交队列先按优先级，再按计划时间领取；未来任务不得提前提交。
+     */
+    @Test
+    public void shouldClaimDueSubmissionsByPriority() {
         store.create(submission("low", 1, 10));
         store.create(submission("future", 100, 1000));
         store.create(submission("high", 9, 20));
@@ -71,21 +80,52 @@ public class JdbcAsyncTaskStoreContractTest {
         assertEquals(AsyncTaskStatus.SUBMITTING, claimed.get(0).getStatus());
     }
 
-    /** 两个线程同时争抢同一到期任务时，数据库条件更新只允许一个 Worker 成功。 */
-    @Test public void shouldAllowOnlyOneConcurrentClaim() throws Exception {
+    /**
+     * 即使准入策略拒绝供应商，也必须领取已取消或已过期任务，以便 Worker 写入本地终态。
+     */
+    @Test
+    public void shouldClaimCanceledAndExpiredSubmissionsWithoutAdmission() {
+        AsyncTask canceled = submission("canceled", 0, 0);
+        canceled.setCancellationRequested(true);
+        AsyncTask expired = submission("expired", 0, 0);
+        expired.setDeadlineAt(50);
+        store.create(canceled);
+        store.create(expired);
+
+        List<AsyncTask> claimed = store.claimDueSubmissions(
+            "worker", 100, 1000, 10, (candidate, all, now) -> false);
+        assertEquals(2, claimed.size());
+    }
+
+    /**
+     * 两个线程同时争抢同一到期任务时，数据库条件更新只允许一个 Worker 成功。
+     */
+    @Test
+    public void shouldAllowOnlyOneConcurrentClaim() throws Exception {
         store.create(task("race", AsyncTaskStatus.RUNNING, 0, 100));
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);
         try {
-            Future<List<AsyncTask>> a = pool.submit(() -> { start.await(); return store.claimDueTasks("a", 10, 1000, 1); });
-            Future<List<AsyncTask>> b = pool.submit(() -> { start.await(); return store.claimDueTasks("b", 10, 1000, 1); });
+            Future<List<AsyncTask>> a = pool.submit(() -> {
+                start.await();
+                return store.claimDueTasks("a", 10, 1000, 1);
+            });
+            Future<List<AsyncTask>> b = pool.submit(() -> {
+                start.await();
+                return store.claimDueTasks("b", 10, 1000, 1);
+            });
             start.countDown();
             assertEquals(1, a.get().size() + b.get().size());
-        } finally { pool.shutdownNow(); }
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
-    /** 租约只能由 owner 和 leaseId 同时匹配的 Worker 续期或释放，取消标记保持单调。 */
-    @Test public void shouldFenceLeaseAndKeepCancellationMonotonic() {
+    /**
+     * 租约只能由 owner 和 leaseId 同时匹配的 Worker 续期或释放，取消标记保持单调且不能修改终态。
+     */
+    @Test
+    public void shouldFenceLeaseAndKeepCancellationMonotonic() {
         store.create(task("leased", AsyncTaskStatus.RUNNING, 0, 100));
         AsyncTask claimed = store.claimDueTasks("worker", 10, 100, 1).get(0);
         assertEquals(300, store.renewLease("leased", "worker", claimed.getLeaseId(), 20, 300).getLeaseUntil());
@@ -99,9 +139,34 @@ public class JdbcAsyncTaskStoreContractTest {
         AsyncTask staleCancellation = store.load("leased");
         staleCancellation.setCancellationRequested(false);
         assertTrue(store.save(staleCancellation, staleCancellation.getVersion()).isCancellationRequested());
+        store.create(task("submit-unknown", AsyncTaskStatus.SUBMIT_UNKNOWN, 0, 100));
+        assertFalse(store.requestCancellation("submit-unknown"));
     }
 
-    private AsyncTask submission(String id, int priority, long at) { AsyncTask t=task(id,AsyncTaskStatus.PENDING_SUBMIT,0,100);t.setPriority(priority);t.setScheduledSubmitAt(at);return t; }
-    private AsyncTask task(String id, AsyncTaskStatus status, long next, long created) { AsyncTask t=new AsyncTask();t.setId(id);t.setHandlerKey("test");t.setStatus(status);t.setNextQueryAt(next);t.setCreatedAt(created);t.setProviderKey("provider");return t; }
-    private void expect(Class<? extends Throwable> type, Runnable call) { try { call.run(); fail("应抛出 " + type.getName()); } catch (Throwable error) { if (!type.isInstance(error)) throw error; } }
+    private AsyncTask submission(String id, int priority, long at) {
+        AsyncTask t = task(id, AsyncTaskStatus.PENDING_SUBMIT, 0, 100);
+        t.setPriority(priority);
+        t.setScheduledSubmitAt(at);
+        return t;
+    }
+
+    private AsyncTask task(String id, AsyncTaskStatus status, long next, long created) {
+        AsyncTask t = new AsyncTask();
+        t.setId(id);
+        t.setHandlerKey("test");
+        t.setStatus(status);
+        t.setNextQueryAt(next);
+        t.setCreatedAt(created);
+        t.setProviderKey("provider");
+        return t;
+    }
+
+    private void expect(Class<? extends Throwable> type, Runnable call) {
+        try {
+            call.run();
+            fail("应抛出 " + type.getName());
+        } catch (Throwable error) {
+            if (!type.isInstance(error)) throw error;
+        }
+    }
 }

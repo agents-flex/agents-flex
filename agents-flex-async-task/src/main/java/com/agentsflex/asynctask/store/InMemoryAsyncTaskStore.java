@@ -100,7 +100,11 @@ public final class InMemoryAsyncTaskStore implements AsyncTaskStore {
             for (AsyncTask candidate : due) {
                 if (claimed.size() >= limit) break;
                 // 准入判断与领取共用同一锁，账号/租户计数不会被本 Store 的并发领取穿透。
-                if (!admissionPolicy.tryAcquire(candidate.copy(), snapshotValues(), now)) continue;
+                // 已取消或已超时的任务必须允许 Worker 领取并写入本地终态，不访问供应商，也不消耗准入额度。
+                if (!requiresTerminalTransition(candidate, now)
+                    && !admissionPolicy.tryAcquire(candidate.copy(), snapshotValues(), now)) {
+                    continue;
+                }
                 AsyncTask task = candidate.copy();
                 task.setStatus(AsyncTaskStatus.SUBMITTING);
                 claim(task, workerId, now, leaseMillis);
@@ -190,6 +194,10 @@ public final class InMemoryAsyncTaskStore implements AsyncTaskStore {
         List<AsyncTask> values = new ArrayList<>(tasks.size());
         for (AsyncTask task : tasks.values()) values.add(task.copy());
         return values;
+    }
+
+    private boolean requiresTerminalTransition(AsyncTask task, long now) {
+        return task.isCancellationRequested() || (task.getDeadlineAt() > 0 && now >= task.getDeadlineAt());
     }
 
     private void validateClaim(String workerId, long leaseMillis, int limit) {

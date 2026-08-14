@@ -110,7 +110,8 @@ public final class RedisAsyncTaskStore implements AsyncTaskStore {
         List<AsyncTask> out = new ArrayList<>();
         for (AsyncTask t : candidates) {
             if (out.size() >= limit) break;
-            if (policy.tryAcquire(t.copy(), snapshot, now)) {
+            // 已取消或已超时的任务绕过准入，仅用于让 Worker 写入终态，不会创建供应商任务。
+            if (requiresTerminalTransition(t, now) || policy.tryAcquire(t.copy(), snapshot, now)) {
                 AsyncTask c = claim(t, worker, now, lease, true, submitKey());
                 if (c != null) out.add(c);
             }
@@ -179,6 +180,10 @@ public final class RedisAsyncTaskStore implements AsyncTaskStore {
             if (t != null) out.add(t);
         }
         return out;
+    }
+
+    private boolean requiresTerminalTransition(AsyncTask task, long now) {
+        return task.isCancellationRequested() || (task.getDeadlineAt() > 0 && now >= task.getDeadlineAt());
     }
 
     private String taskKey(String id) {

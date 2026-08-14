@@ -106,6 +106,9 @@ admission.resumeProvider("gitee");
 
 如果任务在暂停期间超过 `deadlineAt`，Worker 会将其置为 `TRACKING_TIMED_OUT`，不会补提交。暂停时间不会自动延长跟踪时限。
 
+已经请求取消或超过截止时间的待提交任务会绕过暂停准入，仅用于让 Worker 写入 `CANCELED` 或
+`TRACKING_TIMED_OUT`；这个过程不会调用 Handler `submit()`，也不会消耗供应商 QPS。
+
 ## 生产运维设计
 
 可以通过受权限保护的管理接口封装开关：

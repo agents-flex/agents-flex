@@ -174,8 +174,11 @@ public class AsyncTaskAdmissionSchedulingTest {
             options("p", "b", "t2", 0, 0));
         Thread.sleep(5);
 
+        // 即使供应商处于暂停状态，取消和超时任务也必须被领取以完成本地终态转换。
+        InMemoryAsyncTaskAdmissionPolicy admission = new InMemoryAsyncTaskAdmissionPolicy();
+        admission.pauseProvider("p");
         AsyncTaskWorker worker = new AsyncTaskWorker("worker", store, registry,
-            new ExponentialAsyncTaskRetryPolicy(1, 1, 10, 1), 10_000);
+            new ExponentialAsyncTaskRetryPolicy(1, 1, 10, 1), admission, 10_000);
         assertEquals(2, worker.submitDueTasks(10));
         assertEquals(AsyncTaskStatus.CANCELED, store.load(canceled.getId()).getStatus());
         assertEquals(AsyncTaskStatus.TRACKING_TIMED_OUT, store.load(expired.getId()).getStatus());

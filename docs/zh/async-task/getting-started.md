@@ -216,7 +216,7 @@ Worker 提交任务并定时查询供应商
 
 ### 1. 将 Handler Key 作为持久化协议管理
 
-任务只保存 `handlerKey`，Worker 恢复任务时依靠这个值从 Registry 找到 Handler。因此 Key 不是临时 Bean
+任务保存的是 `handlerKey`，而不是 Handler 对象；Worker 恢复任务时依靠这个值从 Registry 找到实现。因此 Key 不是临时 Bean
 名称，也不只是日志标签，而是 Store 数据与运行时代码之间的长期契约。
 
 推荐使用小写、ASCII、冒号分段的格式：
@@ -294,10 +294,13 @@ AsyncTaskManager manager = new AsyncTaskManager(
 `consistentHash(keyExtractor)` 和 `leastActive(activeCountProvider)`：
 
 - `roundRobin()`：供应商能力接近，希望请求均匀分布。
-- `weighted(weights)`：供应商容量或成本不同，需要按比例分流；每个候选都必须配置正权重。
+- `weighted(weights)`：供应商容量或成本不同，需要按比例分流；权重表可覆盖多个能力，但当前候选都必须配置正权重。
 - `consistentHash(keyExtractor)`：同一租户或业务键应稳定使用同一供应商。
 - `leastActive(activeCountProvider)`：能够取得可靠的实时活动数，希望优先使用负载最低的供应商。
 - `random()`：无状态的近似均匀分流，不保证短周期均衡。
+
+轮询和加权选择器会按候选 Handler Key 集合分别维护进度，OCR 与视频等不同请求类型交错提交时不会相互
+消耗序号。Selector 的完整上下文、返回值约束和边界行为参见[自定义 Handler](./handler#handler-selector)。
 
 少数请求必须固定供应商时，在 `AsyncTaskOptions` 中指定 `handlerKey`。它会忽略 Manager selector；key
 不存在或请求类型不匹配会直接失败，不会降级：

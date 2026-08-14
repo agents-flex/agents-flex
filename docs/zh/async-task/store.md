@@ -80,9 +80,15 @@ AsyncTaskStore store = storeConfig.store();
 storeConfig.close();
 ```
 
-也可以传入应用统一管理的 `JedisPooled`。此时关闭 Store 配置不会代替应用管理外部客户端。
+也可以通过 `RedisAsyncTaskStoreConfig.builder(jedis)` 传入应用统一管理的 `JedisPooled`。此时
+`storeConfig.close()` 不会关闭外部客户端，应用仍需在自己的生命周期中关闭它；使用 URI 创建配置时，
+`storeConfig.close()` 会关闭内部创建的客户端。
 
 Redis 实现使用 Hash、ZSet 和 Lua 完成 CAS、领取、续租、释放和取消。键使用相同 hash tag，支持在 Redis Cluster 同槽执行脚本。
+
+JDBC 和 Redis 在每轮提交领取时最多预取 `batchSize * 8` 个候选，再应用 Java 准入策略；查询领取也使用
+有界预取。这样可以限制单轮读取成本，但被策略拒绝或暂时位于窗口之外的任务要到后续扫描再参与竞争。
+优先级在当前候选集内生效，具体顺序与 Redis 差异参见[优先级队列](./priority-queue)。
 
 ## 序列化器白名单
 

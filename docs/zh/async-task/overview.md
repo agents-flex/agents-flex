@@ -61,6 +61,10 @@ Manager 只提供一种 `submit()`：先验证并持久化参数，再返回状�
 配置的 `AsyncTaskHandlerSelector` 选择；`AsyncTaskOptions.handlerKey` 可以为单次请求强制路由。最终 key
 会写入任务，Worker 后续处理只使用持久化结果，不会再次选择。
 
+Handler 的提交参数类型默认从 `AsyncTaskHandler<P>` 泛型声明解析并按实现类缓存。直接实现、泛型子接口和
+多层泛型继承通常不需要重复返回 `XxxRequest.class`；如果代理或未绑定类型变量导致类型无法确定，Handler
+必须显式覆盖 `getSubmitParamsType()`，注册时会立即校验失败，不会退化成 `Object.class`。
+
 提交参数必须能够持久化并在其他 Worker 中恢复。内置 OCR Handler 只接受 URL 输入；视频的图片和源视频
 素材也必须使用远程 URL。`File`、`InputStream` 和 `byte[]` 等进程本地或大块二进制输入会在写入 Store
 前抛出异常，调用方应先上传文件，再提交 Worker 和供应商能够访问且有效期足够长的 URL。

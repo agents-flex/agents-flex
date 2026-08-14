@@ -97,6 +97,9 @@ worker.start(1_000L, 10);
 
 每轮扫描会先提交最多 `batchSize` 个待提交任务，再查询最多 `batchSize` 个到期任务。
 
+取消标记和跟踪截止时间优先于准入策略。即使供应商暂停、账号已满或租户无额度，Worker 仍会领取已经
+取消或超时的待提交任务，只完成本地终态转换，不调用供应商，也不消耗 QPS。
+
 ## 集群部署注意事项
 
 `InMemoryAsyncTaskAdmissionPolicy` 的配置和 QPS 窗口只存在于当前 JVM。JDBC/Redis Store 可以防止同一任务被多个 Worker 同时领取，但不会自动把本地准入计数变成集群全局计数。
