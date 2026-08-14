@@ -6,7 +6,7 @@
 
 它解决的是“已经提交但尚未结束的任务太多”的问题。与 QPS 不同，并发上限关注任务占用供应商容量的整个生命周期，而不是某一秒提交了多少次。
 
-> 该能力只控制 `manager.enqueue()` 的后台提交。没有设置 `accountId` 的任务不会参与账号并发限制。
+> 该能力只控制 `manager.submit()` 的后台提交。没有设置 `accountId` 的任务不会参与账号并发限制。
 
 ## 为什么需要账号并发上限
 
@@ -44,13 +44,12 @@ admission.setAccountConcurrency("gitee", "account-a", 2);
 ### 2. 标记任务所属账号
 
 ```java
-AsyncTaskSubmissionOptions options = new AsyncTaskSubmissionOptions();
+AsyncTaskOptions options = new AsyncTaskOptions();
 options.setProviderKey("gitee");
 options.setAccountId("account-a");
 
-AsyncTask task = manager.enqueue(
-    "ocr:gitee:queued",
-    command,
+AsyncTask task = manager.submit(
+    OcrRequest.ofUrl("https://files.example.com/document.pdf"),
     30 * 60_000L,
     options
 );
@@ -129,6 +128,10 @@ admission.setAccountConcurrency("gitee", "account-a", 2);
 ## 集群部署
 
 内存策略的检查与计数不是跨 JVM 原子操作。多个进程可能同时看到账号还有一个空位，并各自提交一个任务。
+
+此外，JDBC/Redis Store 会把候选快照交给 Java 策略后逐项领取；内置策略不会把本批已获准的候选写回该
+快照。因此即使只有一个进程，一轮批量领取也不能作为严格并发预占。供应商有硬性并发限制时，应实现
+共享原子预占，或为该供应商使用单提交 Worker 并把提交批量设为 1。
 
 严格的全局并发限制需要共享策略原子预占容量，或确保某个供应商账号只由一个提交 Worker 管理。涉及计费或供应商硬限制时，不应仅依赖进程内策略。
 

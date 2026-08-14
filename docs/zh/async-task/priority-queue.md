@@ -6,7 +6,7 @@
 
 优先级只影响还处于 `PENDING_SUBMIT` 的任务。任务一旦提交给供应商，框架不会因为出现更高优先级任务而中断或抢占它。
 
-> 优先级只适用于 `manager.enqueue()`。`manager.submit()` 会立即执行，没有队列排序过程。
+> 所有 `manager.submit()` 创建的任务都会进入待提交队列。优先级决定 Worker 在同一轮候选任务中的领取顺序。
 
 ## 为什么需要优先级队列
 
@@ -49,13 +49,12 @@ public final class TaskPriorities {
 ### 2. 提交高优先级任务
 
 ```java
-AsyncTaskSubmissionOptions options = new AsyncTaskSubmissionOptions();
+AsyncTaskOptions options = new AsyncTaskOptions();
 options.setProviderKey("gitee");
 options.setPriority(TaskPriorities.HIGH);
 
-AsyncTask task = manager.enqueue(
-    "ocr:gitee:queued",
-    command,
+AsyncTask task = manager.submit(
+    OcrRequest.ofUrl("https://files.example.com/document.pdf"),
     30 * 60_000L,
     options
 );

@@ -6,7 +6,7 @@
 
 当前实现中的“配额”指活动任务上限，不是每天调用次数、文档页数或费用额度。
 
-> 租户配额只控制 `manager.enqueue()` 的后台提交。没有设置 `tenantId` 的任务不会参与配额限制。
+> 租户配额只控制 `manager.submit()` 的后台提交。没有设置 `tenantId` 的任务不会参与配额限制。
 
 ## 为什么需要租户配额
 
@@ -45,14 +45,13 @@ admission.setTenantQuota("tenant-b", 3);
 ### 2. 给任务设置租户
 
 ```java
-AsyncTaskSubmissionOptions options = new AsyncTaskSubmissionOptions();
+AsyncTaskOptions options = new AsyncTaskOptions();
 options.setProviderKey("gitee");
 options.setAccountId("account-a");
 options.setTenantId("tenant-a");
 
-AsyncTask task = manager.enqueue(
-    "ocr:gitee:queued",
-    command,
+AsyncTask task = manager.submit(
+    OcrRequest.ofUrl("https://files.example.com/document.pdf"),
     30 * 60_000L,
     options
 );
@@ -114,6 +113,9 @@ admission.setAccountConcurrency("gitee", "account-a", 10);
 ## 集群部署
 
 `InMemoryAsyncTaskAdmissionPolicy` 不提供跨 JVM 的严格全局配额。多个 Worker 进程可能同时判断租户还有容量。
+
+使用 JDBC/Redis Store 时，任务持久化是共享的，但内置策略仍只根据领取前的任务快照判断，不会为同一批
+候选原子预占租户额度。把 `batchSize` 设为 1 可以缩小窗口，但涉及套餐承诺或计费时仍应使用共享预占。
 
 生产环境若把配额用于套餐承诺或计费，应使用 Redis、数据库等共享存储原子预占和释放容量，并处理 Worker 崩溃、租约过期和终态清理。
 

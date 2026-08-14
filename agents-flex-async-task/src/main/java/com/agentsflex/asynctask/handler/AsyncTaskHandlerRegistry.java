@@ -15,6 +15,7 @@
  */
 package com.agentsflex.asynctask.handler;
 
+import java.util.List;
 
 /**
  * 根据持久化的 handlerKey 找回供应商适配器的注册表。
@@ -28,4 +29,18 @@ public interface AsyncTaskHandlerRegistry {
      * @throws IllegalStateException key 未注册时抛出，避免任务被错误适配器处理
      */
     AsyncTaskHandler<?> get(String key);
+
+    /**
+     * 查找能够消费指定提交参数类型的全部 Handler。
+     *
+     * <p>这里使用精确类型匹配，而不是父子类型兼容匹配。精确匹配可以避免新增父类 Handler 后改变既有
+     * 请求的路由结果，也让“一个请求类型对应哪些供应商实现”保持可审计。返回顺序必须稳定，选择器可以
+     * 据此实现可重复的轮询、加权或一致性哈希。</p>
+     *
+     * @param submitParamsType 提交参数的实际运行时类型
+     * @return 不可修改的候选 Handler 列表；没有匹配项时返回空列表
+     */
+    default List<AsyncTaskHandler<?>> findBySubmitParamsType(Class<?> submitParamsType) {
+        throw new UnsupportedOperationException("This AsyncTaskHandlerRegistry does not support lookup by submit params type");
+    }
 }

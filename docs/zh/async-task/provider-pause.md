@@ -6,7 +6,7 @@
 
 它适合供应商故障、维护、额度耗尽、成本控制和人工熔断等运维场景。
 
-> 暂停只作用于 `manager.enqueue()` 的后台提交。`manager.submit()` 不经过准入策略，仍会立即访问供应商。
+> 暂停只阻止 Worker 创建新的供应商任务。`manager.submit()` 仍可接收并持久化任务，恢复供应商后继续处理。
 
 ## 为什么需要暂停能力
 
@@ -43,12 +43,11 @@ admission.pauseProvider("gitee");
 ### 2. 任务使用相同的供应商键
 
 ```java
-AsyncTaskSubmissionOptions options = new AsyncTaskSubmissionOptions();
+AsyncTaskOptions options = new AsyncTaskOptions();
 options.setProviderKey("gitee");
 
-AsyncTask task = manager.enqueue(
-    "ocr:gitee:queued",
-    command,
+AsyncTask task = manager.submit(
+    OcrRequest.ofUrl("https://files.example.com/document.pdf"),
     30 * 60_000L,
     options
 );
@@ -75,17 +74,17 @@ options.setProviderKey("gitee");
 admission.pauseProvider("gitee");
 ```
 
-如果没有设置 `providerKey`，Manager 默认使用 Handler Key，例如 `ocr:gitee:queued`，此时必须暂停该完整 Handler Key。建议在生产系统中明确设置并集中定义供应商键。
+如果没有设置 `providerKey`，Manager 默认使用 Handler Key，例如 `ocr:gitee`，此时必须暂停该完整 Handler Key。建议在生产系统中明确设置并集中定义供应商键。
 
 ## 暂停后的准确行为
 
 | 行为 | 是否继续 |
 | --- | --- |
-| 新任务调用 `enqueue()` 并写入 Store | 是 |
+| 新任务调用 `submit()` 并写入 Store | 是 |
 | Worker 创建新的供应商任务 | 否 |
 | 其他供应商创建任务 | 是 |
 | 已提交任务调用 Handler `query()` | 是 |
-| 直接调用 `manager.submit()` | 是，不受暂停控制 |
+| `manager.submit()` 写入本地待提交任务 | 是，不访问供应商 |
 | 供应商远端任务自动取消 | 否 |
 
 暂停不会删除任务、修改优先级或延长截止时间。
@@ -137,7 +136,7 @@ public void setProviderEnabled(String providerKey, boolean enabled) {
 
 ### 暂停后为什么还有供应商请求？
 
-可能是已提交任务的结果查询，也可能是业务使用了 `manager.submit()`，或者其他 JVM 没有共享暂停状态。
+可能是已提交任务的结果查询，或者其他 JVM 没有共享暂停状态。暂停不会阻止已有供应商任务继续查询。
 
 ### 暂停会取消供应商正在运行的任务吗？
 

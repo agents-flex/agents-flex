@@ -15,13 +15,54 @@
  */
 package com.agentsflex.ocr.gitee;
 
+import com.agentsflex.core.model.client.AgentsFlexHttpClient;
+import com.agentsflex.core.model.ocr.OcrRequest;
 import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
 import org.junit.Test;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+
 import static org.junit.Assert.*;
 
 /** Gitee OCR 默认配置和响应兼容映射的单元测试。 */
 public class GiteeOcrModelTest {
+    /** URL 输入应由适配器下载为临时文件，上传结束后立即清理。 */
+    @Test
+    public void shouldDownloadUrlUploadMultipartAndDeleteTemporaryFile() {
+        AtomicReference<File> uploaded = new AtomicReference<>();
+        AtomicReference<String> downloaded = new AtomicReference<>();
+        AgentsFlexHttpClient client = new AgentsFlexHttpClient() {
+            @Override
+            public byte[] getBytes(String url) {
+                downloaded.set(url);
+                return "ocr".getBytes(StandardCharsets.UTF_8);
+            }
+
+            @Override
+            public String multipartString(String url, Map<String, String> headers, Map<String, Object> params) {
+                File file = (File) params.get("file");
+                assertTrue(file.isFile());
+                uploaded.set(file);
+                return "{\"task_id\":\"g-url\"}";
+            }
+        };
+        GiteeOcrConfig config = new GiteeOcrConfig();
+        config.setApiKey("test-key");
+
+        OcrResponse response = new GiteeOcrModel(config, client).recognize(
+            OcrRequest.ofUrl("https://files.example.com/report.pdf?signature=test"));
+
+        assertEquals("https://files.example.com/report.pdf?signature=test", downloaded.get());
+        assertEquals(OcrTaskStatus.SUBMITTED, response.getStatus());
+        assertEquals("g-url", response.getTaskId());
+        assertNotNull(uploaded.get());
+        assertFalse(uploaded.get().exists());
+        assertTrue(uploaded.get().getName().endsWith(".pdf"));
+    }
     /** 验证默认提交地址、任务查询地址和默认模型均符合供应商协议。 */
     @Test
     public void shouldExposeDocumentParsingDefaults() {

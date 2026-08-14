@@ -19,6 +19,8 @@ import com.agentsflex.asynctask.*;
 
 
 import com.agentsflex.core.model.video.GenerateVideoRequest;
+import com.agentsflex.core.model.image.Image;
+import com.agentsflex.core.model.video.Video;
 import com.agentsflex.core.model.video.VideoModel;
 import com.agentsflex.core.model.video.VideoResponse;
 import com.agentsflex.core.model.video.VideoTaskStatus;
@@ -49,6 +51,48 @@ public class VideoAsyncTaskHandler implements AsyncTaskHandler<GenerateVideoRequ
     @Override
     public Class<GenerateVideoRequest> getSubmitParamsType() {
         return GenerateVideoRequest.class;
+    }
+
+    /**
+     * 拒绝嵌入字节或 Base64 的视频素材，只允许远程 URL。
+     *
+     * <p>文本生成视频可以没有素材；一旦设置图片或源视频，素材必须能由任意 Worker 恢复，
+     * 因此不能把大块二进制直接写入任务 Store。</p>
+     */
+    @Override
+    public void validateSubmitParams(GenerateVideoRequest request) {
+        validateImage(request.getFirstFrame(), "firstFrame");
+        validateImage(request.getLastFrame(), "lastFrame");
+        if (request.getReferenceImages() != null) {
+            for (int i = 0; i < request.getReferenceImages().size(); i++) {
+                validateImage(request.getReferenceImages().get(i), "referenceImages[" + i + "]");
+            }
+        }
+        Video source = request.getSourceVideo();
+        if (source != null && source.getBytes() != null) {
+            throw unsupported("sourceVideo");
+        }
+        if (source != null && !hasText(source.getUrl())) {
+            throw new IllegalArgumentException("Persistent video task sourceVideo requires an accessible URL.");
+        }
+    }
+
+    private void validateImage(Image image, String field) {
+        if (image == null) return;
+        if (image.getBytes() != null || hasText(image.getB64Json())) throw unsupported(field);
+        if (!hasText(image.getUrl())) {
+            throw new IllegalArgumentException("Persistent video task " + field
+                + " requires an accessible image URL.");
+        }
+    }
+
+    private IllegalArgumentException unsupported(String field) {
+        return new IllegalArgumentException("Persistent video tasks do not support binary or Base64 " + field
+            + ". Upload the content to storage and submit an accessible URL instead.");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     @Override

@@ -22,6 +22,7 @@ import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
@@ -30,6 +31,20 @@ import static org.junit.Assert.*;
  * 验证 OCR 模型提交和供应商状态到统一异步任务状态的映射。
  */
 public class OcrAsyncTaskHandlerTest {
+    @Test
+    public void shouldAcceptUrlAndRejectLocalOrMissingInputForPersistentTask() {
+        OcrAsyncTaskHandler handler = new OcrAsyncTaskHandler("ocr:test",
+            model(new AtomicReference<>(), null, null));
+        handler.validateSubmitParams(OcrRequest.ofUrl("https://example.com/document.pdf"));
+
+        IllegalArgumentException local = expectError(() ->
+            handler.validateSubmitParams(OcrRequest.ofFile(new File("document.pdf"))));
+        assertTrue(local.getMessage().contains("OcrRequest.ofUrl"));
+
+        IllegalArgumentException missing = expectError(() ->
+            handler.validateSubmitParams(new OcrRequest()));
+        assertTrue(missing.getMessage().contains("URL"));
+    }
     @Test
     public void shouldSubmitRequestAndCreateQueryParams() {
         AtomicReference<OcrRequest> seen = new AtomicReference<>();
@@ -167,6 +182,11 @@ public class OcrAsyncTaskHandlerTest {
             fail("Expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) {
         }
+    }
+
+    private IllegalArgumentException expectError(Runnable runnable) {
+        try { runnable.run(); fail("Expected IllegalArgumentException"); return null; }
+        catch (IllegalArgumentException expected) { return expected; }
     }
 
     private interface Query {

@@ -21,6 +21,7 @@ import com.agentsflex.core.util.ImageUtil;
 import com.agentsflex.core.util.StringUtil;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.Base64;
 
 /**
@@ -29,7 +30,8 @@ import java.util.Base64;
  * 图片可以由远程 URL、原始字节或 API 返回的 Base64 字符串表示。通常只需设置其中一种；
  * 若同时存在多种表示，转换和落盘方法会按照各自文档声明的优先级选择。
  */
-public class Image {
+public class Image implements Serializable {
+    private static final long serialVersionUID = 1L;
 
 
     /**
@@ -103,9 +105,13 @@ public class Image {
         this.bytes = bytes;
     }
 
-    public String getMimeType() { return mimeType; }
+    public String getMimeType() {
+        return mimeType;
+    }
 
-    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
 
     /**
      * 直接读取当前保存的原始字节。
@@ -149,7 +155,7 @@ public class Image {
      * URL 形式会在调用时发起网络下载。</p>
      *
      * @param file 目标文件
-     * @throws IllegalStateException 无法创建目标目录时抛出
+     * @throws IllegalStateException    无法创建目标目录时抛出
      * @throws IllegalArgumentException Base64 内容非法时抛出
      */
     public void writeToFile(File file) {

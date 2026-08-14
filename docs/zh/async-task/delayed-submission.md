@@ -8,7 +8,7 @@
 
 延迟提交提供的是最早执行时间，不是精确到毫秒的定时调度。
 
-> 该能力只适用于 `manager.enqueue()`。`manager.submit()` 会在当前线程立即访问供应商。
+> `manager.submit()` 只持久化任务。设置延迟后，Worker 会等到计划时间到达才访问供应商。
 
 ## 为什么需要延迟提交
 
@@ -29,14 +29,14 @@
 - 失败补偿需要在未来某个时间重新创建新任务。
 - 预约执行，但允许秒级或分钟级误差。
 
-如果要求日历表达式、重复执行或严格定时，应使用专业调度系统创建 `enqueue()` 任务，而不是仅依赖相对延迟。
+如果要求日历表达式、重复执行或严格定时，应使用专业调度系统创建 `submit()` 任务，而不是仅依赖相对延迟。
 
 ## 快速开始
 
 ### 1. 设置相对延迟
 
 ```java
-AsyncTaskSubmissionOptions options = new AsyncTaskSubmissionOptions();
+AsyncTaskOptions options = new AsyncTaskOptions();
 options.setProviderKey("gitee");
 options.setDelayMillis(30_000L);
 ```
@@ -46,9 +46,8 @@ options.setDelayMillis(30_000L);
 ### 2. 将任务放入队列
 
 ```java
-AsyncTask task = manager.enqueue(
-    "ocr:gitee:queued",
-    command,
+AsyncTask task = manager.submit(
+    OcrRequest.ofUrl("https://files.example.com/document.pdf"),
     30 * 60_000L,
     options
 );
@@ -105,9 +104,8 @@ options.setDelayMillis(delayMillis);
 options.setDelayMillis(10 * 60_000L);
 
 // 10 分钟延迟 + 最多 30 分钟供应商处理
-manager.enqueue(
-    handlerKey,
-    command,
+manager.submit(
+    OcrRequest.ofUrl("https://files.example.com/document.pdf"),
     40 * 60_000L,
     options
 );
@@ -126,7 +124,8 @@ options.setPriority(100);
 
 ## payload 的持久化要求
 
-延迟期间必须保存提交参数，因此 command 必须实现 `Serializable`，并被 Store 序列化器允许。
+延迟期间必须保存提交参数，因此自定义请求类型必须实现 `Serializable`，并被 Store 序列化器允许。OCR、
+视频等文件输入应先上传并使用有效期覆盖延迟时间的 URL。
 
 不要保存短期签名 URL、打开的文件流、HTTP Client 或本地临时文件句柄。推荐保存对象存储 key，在真正提交时由 Handler 生成仍然有效的下载 URL。
 
@@ -146,7 +145,7 @@ boolean accepted = manager.cancel(task.getId());
 
 ### 可以每天凌晨执行吗？
 
-可以由外部调度器在每天凌晨调用 `enqueue()`。本功能本身不提供 Cron 和重复任务定义。
+可以由外部调度器在每天凌晨调用 `submit()`。本功能本身不提供 Cron 和重复任务定义。
 
 ### 延迟期间供应商暂停了会怎样？
 

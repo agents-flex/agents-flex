@@ -17,6 +17,7 @@ import java.util.List;
  * 模型特有且未被统一抽象的参数可通过 {@link #addOption(String, Object)} 传递。
  */
 public class GenerateVideoRequest extends BaseVideoRequest {
+    private static final long serialVersionUID = 1L;
     /**
      * 视频生成方式。为空时框架根据已设置的图片、视频和音频素材自动推断。
      */

@@ -25,6 +25,8 @@ import com.agentsflex.core.model.video.GenerateVideoRequest;
 import com.agentsflex.core.model.video.VideoModel;
 import com.agentsflex.core.model.video.VideoResponse;
 import com.agentsflex.core.model.video.VideoTaskStatus;
+import com.agentsflex.core.model.video.Video;
+import com.agentsflex.core.model.image.Image;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,6 +35,25 @@ import static org.junit.Assert.*;
 
 /** 验证视频模型提交、查询参数传递和成功/失败/处理中状态映射。 */
 public class VideoAsyncTaskHandlerTest {
+    @Test
+    public void shouldAcceptRemoteMediaAndRejectEmbeddedBinaryContent() {
+        VideoAsyncTaskHandler handler = new VideoAsyncTaskHandler("video:test",
+            model(new AtomicReference<>(), null, null));
+        GenerateVideoRequest remote = new GenerateVideoRequest();
+        remote.setFirstFrame(Image.ofUrl("https://example.com/frame.png"));
+        remote.setSourceVideo(Video.ofUrl("https://example.com/source.mp4"));
+        handler.validateSubmitParams(remote);
+
+        GenerateVideoRequest imageBytes = new GenerateVideoRequest();
+        imageBytes.setFirstFrame(Image.ofBytes(new byte[] {1}, "image/png"));
+        assertTrue(expectError(() -> handler.validateSubmitParams(imageBytes))
+            .getMessage().contains("accessible URL"));
+
+        GenerateVideoRequest videoBytes = new GenerateVideoRequest();
+        videoBytes.setSourceVideo(Video.ofBytes(new byte[] {1}, "video/mp4"));
+        assertTrue(expectError(() -> handler.validateSubmitParams(videoBytes))
+            .getMessage().contains("accessible URL"));
+    }
     @Test
     public void shouldSubmitAndQueryVideoTask() {
         AtomicReference<GenerateVideoRequest> submittedRequest = new AtomicReference<>();
@@ -128,6 +149,11 @@ public class VideoAsyncTaskHandlerTest {
     private void expect(Runnable runnable) {
         try { runnable.run(); fail("Expected IllegalArgumentException"); }
         catch (IllegalArgumentException expected) { }
+    }
+
+    private IllegalArgumentException expectError(Runnable runnable) {
+        try { runnable.run(); fail("Expected IllegalArgumentException"); return null; }
+        catch (IllegalArgumentException expected) { return expected; }
     }
 
     private interface Query { VideoResponse get(String taskId); }

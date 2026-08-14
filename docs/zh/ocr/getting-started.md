@@ -50,13 +50,15 @@ import java.io.File;
 OcrRequest request = OcrRequest.ofFile(new File("input/report.pdf"));
 ```
 
-统一请求对象也支持远程文件，但需要供应商适配器支持。例如百度和 MinerU 可以使用：
+三种内置适配器都支持远程文件：百度和 MinerU 把 URL 交给供应商，Gitee 会先由当前进程下载，再通过
+multipart 上传：
 
 ```java
 OcrRequest request = OcrRequest.ofUrl("https://example.com/report.pdf");
 ```
 
-Gitee AI 当前使用 multipart 接口，只接受本地文件，不能直接传入远程 URL。
+使用持久化 Async Task 时必须选择 URL 输入。这个 URL 至少要在任务完成本地排队并开始提交前保持有效，
+且能够被实际执行任务的 Worker 访问。
 
 如果 URL 不能推导出有效文件名，可以显式指定：
 

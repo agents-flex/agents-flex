@@ -38,7 +38,7 @@ public class AsyncTask implements Serializable {
      */
     private String handlerKey;
     /**
-     * 仅 enqueue 模式持久化的供应商提交参数。
+     * Worker 创建供应商任务前持久化的提交参数；提交完成后会被清空。
      */
     private Object submitParams;
     /**

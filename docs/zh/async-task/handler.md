@@ -5,7 +5,7 @@
 ## 什么时候需要自定义 Handler
 
 - 接入 OCR、视频之外的异步供应商。
-- 使用 `enqueue()`，需要让 Handler 接受可序列化业务 DTO。
+- 需要为自定义请求类型定义持久化校验和供应商提交逻辑。
 - 查询除了任务 ID，还需要区域、批次类型、账号路由或动态游标。
 - 内置 OCR Handler 无法恢复某种供应商的特殊查询路由，例如 MinerU 本地文件批任务。
 
@@ -15,6 +15,7 @@
 public interface AsyncTaskHandler<P> {
     String getKey();
     Class<P> getSubmitParamsType();
+    default void validateSubmitParams(P params) {}
     TaskSubmitResult submit(P params, TaskSubmitContext context);
     TaskQueryResult query(TaskQueryParams params, TaskQueryContext context);
 }
@@ -24,11 +25,12 @@ public interface AsyncTaskHandler<P> {
 
 ## 开发步骤
 
-1. 定义稳定的提交参数类型；用于 `enqueue()` 时必须实现 `Serializable`。
-2. 在 `submit()` 中创建一次供应商任务，并返回可持久化查询参数。
-3. 在 `query()` 中只查询一次并映射统一状态。
-4. 使用稳定的 Handler Key 注册，并在所有 Worker 实例中保持一致。
-5. 分别测试提交成功、同步完成、供应商失败、空响应、查询重试和游标更新。
+1. 定义实现 `Serializable` 的稳定提交参数类型。
+2. 在 `validateSubmitParams()` 中拒绝本地文件、流、二进制和其他无法跨节点恢复的数据。
+3. 在 `submit()` 中创建一次供应商任务，并返回可持久化查询参数。
+4. 在 `query()` 中只查询一次并映射统一状态。
+5. 使用稳定的 Handler Key 注册，并在所有 Worker 实例中保持一致。
+6. 分别测试参数拒绝、提交成功、同步完成、供应商失败、查询重试和游标更新。
 
 ## `submit()`
 
@@ -36,7 +38,7 @@ public interface AsyncTaskHandler<P> {
 
 ```java
 @Override
-public TaskSubmitResult submit(MySubmitCommand params,
+public TaskSubmitResult submit(DocumentParseRequest params,
                                TaskSubmitContext context) {
     ProviderSubmitResponse response = client.createTask(
         params,
@@ -123,7 +125,7 @@ public TaskQueryResult query(TaskQueryParams params,
 
 ```java
 public final class MyAsyncTaskHandler
-    implements AsyncTaskHandler<MySubmitCommand> {
+    implements AsyncTaskHandler<DocumentParseRequest> {
 
     @Override
     public String getKey() {
@@ -131,8 +133,8 @@ public final class MyAsyncTaskHandler
     }
 
     @Override
-    public Class<MySubmitCommand> getSubmitParamsType() {
-        return MySubmitCommand.class;
+    public Class<DocumentParseRequest> getSubmitParamsType() {
+        return DocumentParseRequest.class;
     }
 
     // submit() 和 query() 省略
@@ -141,7 +143,12 @@ public final class MyAsyncTaskHandler
 registry.register(new MyAsyncTaskHandler());
 ```
 
-键必须稳定且唯一。所有处理历史任务的 Worker 都必须注册同一版本兼容的 Handler。
+键必须稳定且唯一。所有处理历史任务的 Worker 都必须注册同一版本兼容的 Handler。提交时 Manager 会按
+`getSubmitParamsType()` 的精确类型自动寻找候选；单一候选直接使用，不要求业务代码再次传 key。
+
+同一个参数类型注册多个 Handler 时，在 Manager 构造器中配置 `AsyncTaskHandlerSelector`。也可以通过
+`AsyncTaskOptions.handlerKey` 为某一次提交强制路由；显式 key 优先于 selector。无论采用哪种方式，选择
+结果都会持久化到任务，Worker 不会在后续处理或恢复时重新选择。
 
 ## 扩展内置 OCR Handler
 
@@ -177,6 +184,7 @@ public final class RegionalOcrHandler extends OcrAsyncTaskHandler {
 ## 实现约束
 
 - `submit()` 返回 `SUBMITTED` 或 `RUNNING` 时必须包含有效查询参数。
+- `submit()` 抛出异常后 Worker 会把任务记为 `SUBMIT_UNKNOWN`，不会使用查询重试策略自动重提。
 - `query()` 只能返回可继续查询状态或终态，不能返回 `PENDING_SUBMIT`、`SUBMITTING`。
 - 查询异常应抛出运行时异常交给 RetryPolicy，不要在 Handler 内自行无限重试。
 - `result`、metadata 和 `providerParams` 必须能被 Store 序列化。
@@ -189,12 +197,14 @@ public final class RegionalOcrHandler extends OcrAsyncTaskHandler {
 
 | 场景 | 预期 |
 | --- | --- |
+| 本地文件、流或二进制输入 | 在写入 Store 前抛出明确异常并提示改用 URL |
 | 提交返回任务 ID | 生成 `TaskQueryParams` |
 | 供应商同步完成 | 直接返回 `SUCCEEDED` 和结果 |
 | 查询仍在运行 | 返回 `RUNNING`，不在 Handler 内循环 |
 | 查询成功或失败 | 正确映射终态、结果和错误信息 |
 | 查询参数发生变化 | 使用 `nextQueryParams` 保存下一轮游标 |
-| 网络异常 | 抛出异常，由 Worker 退避重试 |
+| 提交网络异常 | 抛出异常，任务进入 `SUBMIT_UNKNOWN`，不得假设可以安全重提 |
+| 查询网络异常 | 抛出异常，由 Worker 按 RetryPolicy 退避重试 |
 | 历史任务恢复 | 旧版 DTO 和 providerParams 仍可反序列化 |
 
 ## 下一步

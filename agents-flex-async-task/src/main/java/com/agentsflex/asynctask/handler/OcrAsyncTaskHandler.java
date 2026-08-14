@@ -58,6 +58,24 @@ public class OcrAsyncTaskHandler implements AsyncTaskHandler<OcrRequest> {
         return OcrRequest.class;
     }
 
+    /**
+     * 持久化 OCR 任务只接受供应商能够访问的远程 URL。
+     *
+     * <p>本地 File 只对当前进程有意义，任务被其他 Worker 领取或服务重启后无法保证仍可访问，
+     * 因此要求调用方先上传文件，再提交有效期足够长的 URL。</p>
+     */
+    @Override
+    public void validateSubmitParams(OcrRequest request) {
+        if (request.getFile() != null) {
+            throw new IllegalArgumentException("Persistent OCR tasks do not support local File input. "
+                + "Upload the file to storage and submit OcrRequest.ofUrl(url) instead.");
+        }
+        if (request.getFileUrl() == null || request.getFileUrl().trim().isEmpty()) {
+            throw new IllegalArgumentException("Persistent OCR tasks require an accessible file URL. "
+                + "Upload the file to storage and submit OcrRequest.ofUrl(url).");
+        }
+    }
+
     @Override
     public TaskSubmitResult submit(OcrRequest request, TaskSubmitContext context) {
         // 提交响应先统一映射；只在供应商确实返回 taskId 时构造后续查询参数。

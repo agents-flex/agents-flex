@@ -37,12 +37,14 @@ public class AsyncTaskRuntimeTest {
         InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
         AsyncTaskManager manager = new AsyncTaskManager(store, registry);
 
-        AsyncTask submitted = manager.submit("test", "request", 60_000);
-        assertEquals(AsyncTaskStatus.SUBMITTED, submitted.getStatus());
-        assertEquals("external-1", submitted.getQueryParams().getExternalTaskId());
-
         AsyncTaskWorker worker = new AsyncTaskWorker("worker-1", store, registry,
             new ExponentialAsyncTaskRetryPolicy(10_000, 100, 1_000, 3), 5_000);
+        AsyncTask submitted = manager.submit("request", 60_000);
+        assertEquals(AsyncTaskStatus.PENDING_SUBMIT, submitted.getStatus());
+        assertEquals(1, worker.submitDueTasks(10));
+        submitted = manager.get(submitted.getId());
+        assertEquals(AsyncTaskStatus.SUBMITTED, submitted.getStatus());
+        assertEquals("external-1", submitted.getQueryParams().getExternalTaskId());
         assertEquals(1, worker.queryDueTasks(10));
 
         AsyncTask running = manager.get(submitted.getId());
@@ -79,7 +81,11 @@ public class AsyncTaskRuntimeTest {
             }
         });
 
-        AsyncTask task = new AsyncTaskManager(store, registry).submit("failing", "request", 60_000);
+        AsyncTask task = new AsyncTaskManager(store, registry).submit("request", 60_000);
+        assertEquals(AsyncTaskStatus.PENDING_SUBMIT, task.getStatus());
+        new AsyncTaskWorker("worker", store, registry,
+            new ExponentialAsyncTaskRetryPolicy(100, 100, 1_000, 3), 5_000).submitDueTasks(1);
+        task = store.load(task.getId());
         assertEquals(AsyncTaskStatus.SUBMIT_UNKNOWN, task.getStatus());
         assertEquals("connection lost", task.getErrorMessage());
     }
@@ -103,15 +109,61 @@ public class AsyncTaskRuntimeTest {
         InMemoryAsyncTaskStore store = new InMemoryAsyncTaskStore();
         AtomicInteger queries = new AtomicInteger();
         InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler(queries));
-        AsyncTask task = new AsyncTaskManager(store, registry).submit("test", "request", 60_000);
+        AsyncTask task = new AsyncTaskManager(store, registry).submit("request", 60_000);
         assertTrue(store.requestCancellation(task.getId()));
 
         AsyncTaskWorker worker = new AsyncTaskWorker("worker", store, registry,
             new ExponentialAsyncTaskRetryPolicy(100, 100, 1_000, 3), 5_000);
-        worker.queryDueTasks(1);
+        worker.submitDueTasks(1);
 
         assertEquals(AsyncTaskStatus.CANCELED, store.load(task.getId()).getStatus());
         assertEquals(0, queries.get());
+    }
+
+    /**
+     * Selector 只在 Manager 创建任务时运行一次；Worker 必须按持久化 handlerKey 调用选中的实现。
+     */
+    @Test
+    public void shouldUsePersistedSelectedHandlerInWorker() {
+        InMemoryAsyncTaskStore store = new InMemoryAsyncTaskStore();
+        AtomicInteger firstCalls = new AtomicInteger();
+        AtomicInteger secondCalls = new AtomicInteger();
+        AsyncTaskHandler<String> first = submittedHandler("provider:a", firstCalls);
+        AsyncTaskHandler<String> second = submittedHandler("provider:b", secondCalls);
+        InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry()
+            .register(first).register(second);
+        AtomicInteger selectorCalls = new AtomicInteger();
+        AsyncTaskManager manager = new AsyncTaskManager(store, registry, context -> {
+            selectorCalls.incrementAndGet();
+            return second;
+        });
+
+        AsyncTask task = manager.submit("request", 60_000);
+        assertEquals("provider:b", task.getHandlerKey());
+        new AsyncTaskWorker("worker", store, registry,
+            new ExponentialAsyncTaskRetryPolicy(100, 100, 1_000, 3), 5_000).submitDueTasks(1);
+
+        assertEquals(1, selectorCalls.get());
+        assertEquals(0, firstCalls.get());
+        assertEquals(1, secondCalls.get());
+        assertEquals(AsyncTaskStatus.SUCCEEDED, store.load(task.getId()).getStatus());
+    }
+
+    private AsyncTaskHandler<String> submittedHandler(String key, AtomicInteger calls) {
+        return new AsyncTaskHandler<String>() {
+            @Override public String getKey() { return key; }
+            @Override public Class<String> getSubmitParamsType() { return String.class; }
+            @Override public TaskSubmitResult submit(String params, TaskSubmitContext context) {
+                calls.incrementAndGet();
+                TaskSubmitResult result = new TaskSubmitResult();
+                result.setStatus(AsyncTaskStatus.SUCCEEDED);
+                result.setResult(key);
+                return result;
+            }
+            @Override public TaskQueryResult query(TaskQueryParams params, TaskQueryContext context) {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     private AsyncTaskHandler<String> handler(AtomicInteger queries) {

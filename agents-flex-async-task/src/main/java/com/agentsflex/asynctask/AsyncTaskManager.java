@@ -15,120 +15,103 @@
  */
 package com.agentsflex.asynctask;
 
-import com.agentsflex.asynctask.handler.*;
-import com.agentsflex.asynctask.policy.*;
+import com.agentsflex.asynctask.handler.AsyncTaskHandler;
+import com.agentsflex.asynctask.handler.AsyncTaskHandlerRegistry;
+import com.agentsflex.asynctask.handler.selector.AsyncTaskHandlerSelectionContext;
+import com.agentsflex.asynctask.handler.selector.AsyncTaskHandlerSelector;
 import com.agentsflex.asynctask.store.AsyncTaskStore;
 
-
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.Reader;
 import java.io.Serializable;
-import java.util.Collections;
+import java.io.Writer;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * 异步任务的应用入口，提供同步提交和持久化排队两种模式。
+ * 异步任务的应用入口，负责校验并持久化待提交任务。
  *
- * <p>{@code submit} 立即调用供应商，提交参数不会落库；{@code enqueue} 先持久化参数，
- * 后续由 Worker 在配额允许且计划时间到达后提交，适用于优先级、限流和延迟提交。</p>
+ * <p>Manager 不直接访问供应商。所有任务都会先进入 {@link AsyncTaskStatus#PENDING_SUBMIT}，
+ * 再由 Worker 统一执行供应商提交、准入控制、状态查询和重试。</p>
  */
 public final class AsyncTaskManager {
     private final AsyncTaskStore store;
     private final AsyncTaskHandlerRegistry registry;
+    private final AsyncTaskHandlerSelector handlerSelector;
 
     /**
      * 创建任务管理器。
      *
      * @param store    任务持久化与权威时钟来源
-     * @param registry 根据 handlerKey 获取供应商适配器的注册表
+     * @param registry 支持按参数类型选择、按持久化 handlerKey 恢复的 Handler 注册表
      */
     public AsyncTaskManager(AsyncTaskStore store, AsyncTaskHandlerRegistry registry) {
+        this(store, registry, null);
+    }
+
+    /**
+     * 创建带多 Handler 路由能力的任务管理器。
+     *
+     * <p>selector 仅在同一提交参数类型匹配到多个 Handler，且 options.handlerKey 未指定时调用。
+     * 每种参数只有一个 Handler 的应用无需配置 selector；多个候选却未配置时会抛出明确异常，避免路由
+     * 因注册表变化而静默改变。</p>
+     *
+     * @param store           任务持久化与权威时钟来源
+     * @param registry        Handler 注册表
+     * @param handlerSelector 多候选选择器，可以为空
+     */
+    public AsyncTaskManager(AsyncTaskStore store, AsyncTaskHandlerRegistry registry,
+                            AsyncTaskHandlerSelector handlerSelector) {
         if (store == null || registry == null) throw new IllegalArgumentException("store and registry are required");
         this.store = store;
         this.registry = registry;
+        this.handlerSelector = handlerSelector;
     }
 
     /**
-     * 立即同步调用供应商创建异步任务，不持久化提交参数。
+     * 根据提交参数类型自动选择 Handler，并使用默认调度选项创建持久化异步任务。
      *
-     * @param handlerKey            供应商 Handler 注册键
-     * @param params                Handler 接受的业务提交参数
-     * @param trackingTimeoutMillis 从创建时刻起允许自动跟踪的最长时间
-     * @return 已保存供应商提交结果的任务快照
+     * @param params                能够持久化并在其他 Worker 恢复的提交参数
+     * @param trackingTimeoutMillis 包含排队、提交和查询阶段的总跟踪时限
+     * @return 状态为 PENDING_SUBMIT 的任务快照
      */
-    public <P> AsyncTask submit(String handlerKey, P params, long trackingTimeoutMillis) {
-        return submit(handlerKey, params, trackingTimeoutMillis, Collections.emptyMap());
+    public <P> AsyncTask submit(P params, long trackingTimeoutMillis) {
+        return submit(params, trackingTimeoutMillis, null);
     }
 
     /**
-     * 立即同步调用供应商创建异步任务，并保存 metadata。
+     * 根据参数类型选择 Handler 并创建持久化异步任务。
      *
-     * <p>框架会先创建 SUBMITTING 快照再访问外部系统。若调用抛出异常，任务保存为
-     * SUBMIT_UNKNOWN，而不是 FAILED，以表达“供应商可能已经接收但响应丢失”。</p>
+     * <p>参数校验发生在 Store 写入之前。Handler 可以声明领域约束，Manager 还会拒绝本地文件、流、
+     * 字节数组和无法完成 Java 序列化的对象，避免创建永远不能在其他节点恢复的任务。options.handlerKey
+     * 可强制使用指定 Handler；否则按精确参数类型查找，唯一候选直接使用，多候选交给 Manager selector。</p>
      *
-     * @param handlerKey            供应商 Handler 注册键
-     * @param params                Handler 接受的业务提交参数，本方法不会持久化该对象
-     * @param trackingTimeoutMillis 自动跟踪总时限，必须大于 0
-     * @param metadata              持久化并透传给 Handler 的扩展信息
-     * @return 完成提交阶段并经过 CAS 保存的任务快照
+     * @param params                Handler 接受且适合持久化的提交参数
+     * @param trackingTimeoutMillis 从创建时刻起计算的总跟踪时限，必须大于 0
+     * @param options               Handler 路由、调度、隔离和 metadata；为空时使用默认值
+     * @return 已写入 Store 的 PENDING_SUBMIT 任务
      */
-    public <P> AsyncTask submit(String handlerKey, P params, long trackingTimeoutMillis,
-                                Map<String, Object> metadata) {
+    public <P> AsyncTask submit(P params, long trackingTimeoutMillis, AsyncTaskOptions options) {
         if (trackingTimeoutMillis <= 0)
             throw new IllegalArgumentException("trackingTimeoutMillis must be greater than 0");
-        AsyncTaskHandler<?> handler = registry.get(handlerKey);
-        if (params == null || !handler.getSubmitParamsType().isInstance(params)) {
-            throw new IllegalArgumentException("Handler " + handlerKey + " requires submit params of type "
-                + handler.getSubmitParamsType().getName());
-        }
+        if (params == null) throw new IllegalArgumentException("submit params are required");
 
-        // 先落库 SUBMITTING 快照，确保进程在供应商调用前后崩溃时仍留下可诊断记录。
-        long now = store.currentTimeMillis();
-        AsyncTask task = new AsyncTask();
-        task.setId(UUID.randomUUID().toString());
-        task.setHandlerKey(handlerKey);
-        task.setStatus(AsyncTaskStatus.SUBMITTING);
-        task.setCreatedAt(now);
-        task.setUpdatedAt(now);
-        task.setDeadlineAt(safeAdd(now, trackingTimeoutMillis));
-        task.setMetadata(metadata);
-        task = store.create(task);
+        AsyncTaskOptions effective = options == null ? new AsyncTaskOptions() : options;
+        AsyncTaskHandler<?> handler = selectHandler(params, effective);
+        String handlerKey = handler.getKey();
+        validateHandlerParams(handler, params);
+        validatePersistentValue("submit params", params);
+        validatePersistentValue("metadata", effective.getMetadata());
 
-        try {
-            // 外部调用只发生一次；Handler 返回值必须转换并校验为框架支持的状态。
-            TaskSubmitResult result = submitChecked(handler, params,
-                new TaskSubmitContext(task.getId(), now, metadata));
-            applySubmitResult(task, result, now);
-        } catch (RuntimeException error) {
-            // 网络异常无法证明供应商未创建任务，使用 SUBMIT_UNKNOWN 防止盲目重复提交。
-            task.setStatus(AsyncTaskStatus.SUBMIT_UNKNOWN);
-            task.setErrorMessage(error.getMessage());
-            task.setUpdatedAt(store.currentTimeMillis());
-        }
-        // 使用 create 返回的版本执行 CAS，避免并发取消等更新被本次提交结果静默覆盖。
-        return store.save(task, task.getVersion());
-    }
-
-    /**
-     * 将可序列化的提交参数持久化，等待后台 Worker 在准入控制后执行。
-     *
-     * @param handlerKey            Handler 注册键
-     * @param params                必须可序列化的提交参数，Worker 重启后会从 Store 恢复
-     * @param trackingTimeoutMillis 包含排队和查询阶段的总跟踪时限
-     * @param options               优先级、延迟和隔离维度；为空时使用默认值
-     * @return 状态为 PENDING_SUBMIT 的持久化任务
-     */
-    public <P extends Serializable> AsyncTask enqueue(String handlerKey, P params,
-                                                      long trackingTimeoutMillis,
-                                                      AsyncTaskSubmissionOptions options) {
-        if (trackingTimeoutMillis <= 0)
-            throw new IllegalArgumentException("trackingTimeoutMillis must be greater than 0");
-        AsyncTaskHandler<?> handler = registry.get(handlerKey);
-        if (params == null || !handler.getSubmitParamsType().isInstance(params)) {
-            throw new IllegalArgumentException("Handler " + handlerKey + " requires submit params of type "
-                + handler.getSubmitParamsType().getName());
-        }
-        AsyncTaskSubmissionOptions effective = options == null ? new AsyncTaskSubmissionOptions() : options;
-        // enqueue 不访问供应商，只保存提交信息和调度维度，供任意 Worker 恢复执行。
         long now = store.currentTimeMillis();
         AsyncTask task = new AsyncTask();
         task.setId(UUID.randomUUID().toString());
@@ -162,39 +145,123 @@ public final class AsyncTaskManager {
     }
 
     @SuppressWarnings("unchecked")
-    private <P> TaskSubmitResult submitChecked(AsyncTaskHandler<?> handler, P params,
-                                               TaskSubmitContext context) {
-        return ((AsyncTaskHandler<P>) handler).submit(params, context);
+    private <P> void validateHandlerParams(AsyncTaskHandler<?> handler, P params) {
+        ((AsyncTaskHandler<P>) handler).validateSubmitParams(params);
     }
 
-    private void applySubmitResult(AsyncTask task, TaskSubmitResult result, long now) {
-        // Handler 只能把任务推进到“可查询”或“终态”，不能返回框架内部提交状态。
-        if (result == null || result.getStatus() == null) {
-            throw new IllegalStateException("Async task handler returned no submit status");
+    private AsyncTaskHandler<?> selectHandler(Object params, AsyncTaskOptions options) {
+        if (hasText(options.getHandlerKey())) {
+            AsyncTaskHandler<?> specified = registry.get(options.getHandlerKey());
+            if (!specified.getSubmitParamsType().isInstance(params)) {
+                throw new IllegalArgumentException("Handler " + specified.getKey() + " requires submit params of type "
+                    + specified.getSubmitParamsType().getName() + ", but received " + params.getClass().getName());
+            }
+            return specified;
         }
-        if (!result.getStatus().isQueryable() && !result.getStatus().isTerminal()) {
-            throw new IllegalStateException("Async task handler returned an unsupported submit status: "
-                + result.getStatus());
+
+        List<AsyncTaskHandler<?>> candidates = registry.findBySubmitParamsType(params.getClass());
+        if (candidates.isEmpty()) {
+            throw new IllegalStateException("No async task handler registered for submit params type: "
+                + params.getClass().getName());
         }
-        if (result.getStatus().isQueryable() && (result.getQueryParams() == null
-            || blank(result.getQueryParams().getExternalTaskId()))) {
-            throw new IllegalStateException("Async task handler returned no query parameters");
+        if (candidates.size() == 1) return candidates.get(0);
+        if (handlerSelector == null) {
+            throw new IllegalStateException("Multiple async task handlers registered for submit params type "
+                + params.getClass().getName() + ": " + handlerKeys(candidates)
+                + ". Configure an AsyncTaskHandlerSelector or set AsyncTaskOptions.handlerKey.");
         }
-        task.setStatus(result.getStatus());
-        task.setQueryParams(result.getQueryParams());
-        task.setResult(result.getResult());
-        task.setErrorCode(result.getErrorCode());
-        task.setErrorMessage(result.getErrorMessage());
-        task.setNextQueryAt(now);
-        task.setUpdatedAt(store.currentTimeMillis());
+
+        AsyncTaskHandler<?> selected = handlerSelector.select(
+            new AsyncTaskHandlerSelectionContext(params, options, candidates));
+        if (selected == null || !candidates.contains(selected)) {
+            throw new IllegalStateException("AsyncTaskHandlerSelector must return one of the candidate handlers: "
+                + handlerKeys(candidates));
+        }
+        return selected;
     }
 
-    private boolean blank(String value) {
-        return value == null || value.trim().isEmpty();
+    private String handlerKeys(List<AsyncTaskHandler<?>> handlers) {
+        StringBuilder keys = new StringBuilder();
+        for (AsyncTaskHandler<?> handler : handlers) {
+            if (keys.length() > 0) keys.append(", ");
+            keys.append(handler.getKey());
+        }
+        return keys.toString();
+    }
+
+    private void validatePersistentValue(String field, Object value) {
+        Object unsupported = findUnsupportedValue(value, new IdentityHashMap<>());
+        if (unsupported != null) {
+            throw new IllegalArgumentException("Persistent async task " + field + " does not support "
+                + unsupported.getClass().getSimpleName()
+                + ". Upload file or binary content to storage and submit an accessible URL instead.");
+        }
+        if (!(value instanceof Serializable)) {
+            throw new IllegalArgumentException("Persistent async task " + field + " must implement Serializable: "
+                + value.getClass().getName());
+        }
+        try {
+            ObjectOutputStream output = new ObjectOutputStream(new ByteArrayOutputStream());
+            output.writeObject(value);
+            output.close();
+        } catch (Exception error) {
+            throw new IllegalArgumentException("Persistent async task " + field
+                + " contains a non-serializable value: " + value.getClass().getName(), error);
+        }
+    }
+
+    private Object findUnsupportedValue(Object value, IdentityHashMap<Object, Boolean> visited) {
+        if (value == null || isLeaf(value.getClass())) return null;
+        if (value instanceof File || value instanceof InputStream || value instanceof OutputStream
+            || value instanceof Reader || value instanceof Writer || value instanceof byte[]) return value;
+        if (visited.put(value, Boolean.TRUE) != null) return null;
+        Class<?> type = value.getClass();
+        if (type.isArray()) {
+            for (int i = 0; i < Array.getLength(value); i++) {
+                Object found = findUnsupportedValue(Array.get(value, i), visited);
+                if (found != null) return found;
+            }
+            return null;
+        }
+        if (value instanceof Iterable) {
+            for (Object item : (Iterable<?>) value) {
+                Object found = findUnsupportedValue(item, visited);
+                if (found != null) return found;
+            }
+            return null;
+        }
+        if (value instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                Object found = findUnsupportedValue(entry.getKey(), visited);
+                if (found == null) found = findUnsupportedValue(entry.getValue(), visited);
+                if (found != null) return found;
+            }
+            return null;
+        }
+        for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+            if (current.getName().startsWith("java.")) continue;
+            for (Field field : current.getDeclaredFields()) {
+                if (Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()) continue;
+                try {
+                    field.setAccessible(true);
+                    Object found = findUnsupportedValue(field.get(value), visited);
+                    if (found != null) return found;
+                } catch (RuntimeException | IllegalAccessException ignored) {
+                    // 无法反射访问的字段仍会由后续真实序列化校验兜底。
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isLeaf(Class<?> type) {
+        return type.isPrimitive() || type.isEnum() || Number.class.isAssignableFrom(type)
+            || CharSequence.class.isAssignableFrom(type) || Boolean.class == type || Character.class == type
+            || UUID.class == type || type.getName().startsWith("java.time.");
     }
 
     private boolean hasText(String value) {
-        return !blank(value);
+        return value != null && !value.trim().isEmpty();
     }
 
     private long safeAdd(long value, long delta) {

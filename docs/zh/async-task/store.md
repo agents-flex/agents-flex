@@ -88,7 +88,7 @@ Redis 实现使用 Hash、ZSet 和 Lua 完成 CAS、领取、续租、释放和�
 
 JDBC 和 Redis 默认使用 `FastjsonAsyncTaskStoreSerializer` 保存 JSONB。它默认允许框架类和常见 JDK 类型，不会对 Store 内容开放无限制 AutoType。
 
-如果 `enqueue()` 使用自己的 DTO，必须显式增加尽可能精确的业务包前缀：
+如果 `submit()` 使用自己的 DTO，必须显式增加尽可能精确的业务包前缀：
 
 ```java
 import com.agentsflex.asynctask.store.FastjsonAsyncTaskStoreSerializer;
@@ -123,9 +123,16 @@ Worker 领取任务后获得 `leaseOwner`、`leaseId` 和 `leaseUntil`。`leaseI
 
 当前内置 Worker 不会在单次 Handler 调用期间自动续租，因此 `leaseMillis` 必须覆盖供应商请求与结果保存的最长正常耗时。自行扩展执行器时可以使用 `AsyncTaskStore.renewLease()`，但必须携带当前 `workerId` 和 `leaseId`。`workerId` 在所有运行实例中必须唯一。
 
+::: warning 租约不等于提交幂等
+租约解决的是“哪个 Worker 可以保存结果”，不能证明供应商是否已经收到一次中断的提交请求。Worker 在
+`SUBMITTING` 阶段异常退出时，不应仅因为租约到期就盲目重提。应使用供应商幂等键，并告警和核查长期
+停留在 `SUBMITTING` 的任务。
+:::
+
 ## 数据保留
 
-当前 Store 保留终态任务，便于审计和查询。生产系统应根据业务要求另行实现归档或清理流程，并确保不会删除仍处于 `PENDING_SUBMIT`、`SUBMITTED`、`RUNNING` 或有效租约中的任务。
+当前 Store 保留终态任务，便于审计和查询。生产系统应根据业务要求另行实现归档或清理流程，并确保不会
+删除仍处于 `PENDING_SUBMIT`、`SUBMITTING`、`SUBMITTED`、`RUNNING` 或持有有效租约的任务。
 
 ## 上线检查清单
 
@@ -135,12 +142,15 @@ Worker 领取任务后获得 `leaseOwner`、`leaseId` 和 `leaseUntil`。`leaseI
 - 验证业务 DTO 已实现 `Serializable`，并配置最小化反序列化白名单。
 - 对数据库和 Redis 配置备份、访问控制、TLS 与容量告警。
 - 建立终态任务归档策略，并监控长时间未推进的活动任务。
+- 使用真实 Store 验证取消、租约过期、并发领取以及所有终态，不只验证正常成功路径。
 
 ## 常见问题
 
 ### JDBC 或 Redis Store 是否自动实现全局限流？
 
-不会。它们原子领取单个任务，但 Java `InMemoryAsyncTaskAdmissionPolicy` 的窗口和配置仍属于当前进程。严格全局限流需要共享策略。
+不会。它们原子领取单个任务，但 Java `InMemoryAsyncTaskAdmissionPolicy` 的窗口和配置仍属于当前进程；
+切换到 JDBC 或 Redis Store 不会自动把 QPS、账号并发、租户配额和暂停状态变成集群共享配置。严格全局
+控制需要共享策略，或者确保同一治理维度只有一个提交 Worker。
 
 ### Store 暂时不可用时会怎样？
 

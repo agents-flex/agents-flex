@@ -16,6 +16,7 @@
 package com.agentsflex.core.model.ocr;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,7 +27,8 @@ import java.util.Map;
  * <p>输入支持远程 URL 和本地文件两种形式，但一次请求必须且只能选择其中一种。
  * {@code options} 用于承载供应商特有参数，公共抽象不会解释或修改这些参数。</p>
  */
-public class OcrRequest {
+public class OcrRequest implements Serializable {
+    private static final long serialVersionUID = 1L;
     /**
      * 本次请求指定的模型；为空时由供应商配置提供默认值。
      */

@@ -9,6 +9,7 @@ import com.agentsflex.core.util.IOUtil;
 import com.agentsflex.core.util.StringUtil;
 
 import java.io.File;
+import java.io.Serializable;
 
 /**
  * 视频资源。
@@ -17,7 +18,8 @@ import java.io.File;
  * 有有效期的下载 URL，调用 {@link #readBytes()} 或 {@link #writeToFile(File)} 时会在需要时
  * 下载远程内容。
  */
-public class Video {
+public class Video implements Serializable {
+    private static final long serialVersionUID = 1L;
     /**
      * 视频文件的远程访问地址。
      * <p>

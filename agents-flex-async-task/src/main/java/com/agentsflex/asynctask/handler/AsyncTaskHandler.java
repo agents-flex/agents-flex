@@ -41,6 +41,18 @@ public interface AsyncTaskHandler<P> {
     Class<P> getSubmitParamsType();
 
     /**
+     * 在任务写入 Store 前验证提交参数是否适合持久化和跨 Worker 恢复。
+     *
+     * <p>实现应拒绝本地文件、流、大块二进制、凭证或其他只能在当前进程使用的数据，并在异常消息中
+     * 给出可执行的替代方案。参数错误会直接返回给调用方，不会创建失败任务。</p>
+     *
+     * @param params 已通过运行时类型校验的提交参数
+     * @throws IllegalArgumentException 参数不能用于持久化异步任务
+     */
+    default void validateSubmitParams(P params) {
+    }
+
+    /**
      * 创建一次供应商任务。
      *
      * <p>实现应把 {@link TaskSubmitContext#getIdempotencyKey()} 传给支持幂等键的供应商。

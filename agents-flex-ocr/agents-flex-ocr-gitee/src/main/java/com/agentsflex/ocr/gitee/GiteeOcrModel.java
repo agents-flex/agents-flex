@@ -25,14 +25,17 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Gitee AI 异步文档解析适配器。
  *
- * <p>当前提交接口使用 multipart/form-data 上传本地文件，不支持直接传入远程 URL。
- * 供应商返回的文本、Markdown 和下载资源会被归一化到 {@link OcrResponse}。</p>
+ * <p>供应商提交接口使用 multipart/form-data。调用方传入远程 URL 时，适配器会先下载到临时文件，
+ * 完成上传后立即清理；供应商返回的文本、Markdown 和下载资源会被归一化到 {@link OcrResponse}。</p>
  */
 public class GiteeOcrModel extends BaseOcrModel<GiteeOcrConfig> {
     /**
@@ -56,20 +59,71 @@ public class GiteeOcrModel extends BaseOcrModel<GiteeOcrConfig> {
         this.httpClient = httpClient;
     }
 
-    /** 提交本地文档解析任务。 */
+    /** 提交本地文件或远程 URL 文档解析任务。 */
     @Override
     public OcrResponse recognize(OcrRequest request) {
         OcrResponse error = validateRequest(request);
         if (error != null) return error;
-        if (request.getFile() == null) return OcrResponse.error("Gitee OCR requires a local file");
         String model = StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
         if (StringUtil.noText(model)) return OcrResponse.error("OCR model must not be empty");
+        File file = request.getFile();
+        boolean temporary = false;
+        if (file == null) {
+            try {
+                file = downloadTemporaryFile(request);
+                temporary = true;
+            } catch (RuntimeException cause) {
+                return OcrResponse.error("Failed to prepare Gitee OCR input: " + cause.getMessage());
+            }
+        }
+        try {
+            // multipart 网络异常继续向上抛出，让 Async Task 记录为 SUBMIT_UNKNOWN。
+            return submitFile(request, model, file);
+        } finally {
+            if (temporary && file != null) {
+                try {
+                    Files.deleteIfExists(file.toPath());
+                } catch (IOException ignored) {
+                    file.deleteOnExit();
+                }
+            }
+        }
+    }
+
+    private OcrResponse submitFile(OcrRequest request, String model, File file) {
         Map<String, Object> payload = new HashMap<>();
         // 先复制扩展选项，再写入受适配器控制的 model/file，避免调用方覆盖核心字段。
         payload.putAll(request.getOptions());
         payload.put("model", model);
-        payload.put("file", request.getFile());
+        payload.put("file", file);
         return parseResponse(httpClient.multipartString(config.getFullUrl(), headers(), payload), true);
+    }
+
+    private File downloadTemporaryFile(OcrRequest request) {
+        if (StringUtil.noText(request.getFileUrl())) {
+            throw new IllegalArgumentException("Gitee OCR requires a local file or accessible URL");
+        }
+        byte[] bytes = httpClient.getBytes(request.getFileUrl());
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalStateException("Downloaded OCR file is empty");
+        }
+        String suffix = suffix(request.getFileName(), request.getFileUrl());
+        try {
+            File file = Files.createTempFile("agents-flex-gitee-ocr-", suffix).toFile();
+            Files.write(file.toPath(), bytes);
+            return file;
+        } catch (IOException error) {
+            throw new IllegalStateException("Can not create temporary OCR file", error);
+        }
+    }
+
+    private String suffix(String fileName, String url) {
+        String source = StringUtil.hasText(fileName) ? fileName : url;
+        int query = source.indexOf('?');
+        if (query >= 0) source = source.substring(0, query);
+        int slash = source.lastIndexOf('/');
+        int dot = source.lastIndexOf('.');
+        return dot > slash && source.length() - dot <= 12 ? source.substring(dot) : ".tmp";
     }
 
     /** 使用任务编号查询 Gitee 任务状态和解析结果。 */

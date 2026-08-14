@@ -320,7 +320,7 @@ OCR 与普通文档读取解决的问题不同。文档 Reader 适合从带文�
 | 对比项描述 | Agents-Flex | Spring AI |
 | --- | --- | --- |
 | 统一的异步任务生命周期 | **整体支持**。Handler 负责 `submit()` 和 `query()`，Manager、Worker 与 Store 负责持久化、领取、查询、重试和终态更新 | <span class="vp-nowrap">❌ <strong>未发现 AI 任务级对等模块</strong></span> |
-| 提交后持久化与跨重启恢复 | **整体支持**。`submit()` 保存外部任务信息和状态但不保存提交参数；`enqueue()` 还会保存可序列化的提交参数，服务恢复后均可由 Worker 继续处理 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
+| 提交后持久化与跨重启恢复 | **整体支持**。`submit()` 统一持久化提交参数和状态，再由 Worker 创建并持续查询供应商任务；服务重启后可继续处理 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
 | 多 Worker 安全领取 | **整体支持**。Store 通过 Lease、版本控制与条件更新避免多个 Worker 同时推进同一任务 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
 | JDBC 与 Redis Store | **整体支持**。分别提供 `agents-flex-async-task-store-jdbc` 和 `agents-flex-async-task-store-redis`，另有进程内 Store 用于测试和单机场景 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |
 | 每供应商 QPS | **整体支持**。按 `providerKey` 限制排队任务的供应商提交速率，保护供应商接口并降低限流错误 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>  |

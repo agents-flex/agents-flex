@@ -126,8 +126,8 @@ public class AsyncTaskAdmissionSchedulingTest {
         AsyncTaskHandler<PersistedRequest> handler = handler(submissions, values, false);
         InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
         AsyncTaskManager manager = new AsyncTaskManager(store, registry);
-        AsyncTaskSubmissionOptions options = options("provider", "account", "tenant", 7, 0);
-        AsyncTask queued = manager.enqueue("handler", new PersistedRequest("request"), 60_000, options);
+        AsyncTaskOptions options = options("provider", "account", "tenant", 7, 0);
+        AsyncTask queued = manager.submit(new PersistedRequest("request"), 60_000, options);
         assertEquals(AsyncTaskStatus.PENDING_SUBMIT, queued.getStatus());
         assertEquals("provider", queued.getProviderKey());
         assertEquals(7, queued.getPriority());
@@ -149,8 +149,8 @@ public class AsyncTaskAdmissionSchedulingTest {
         InMemoryAsyncTaskStore store = new InMemoryAsyncTaskStore();
         AsyncTaskHandler<PersistedRequest> handler = handler(new AtomicInteger(), new ArrayList<>(), true);
         InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
-        AsyncTask queued = new AsyncTaskManager(store, registry).enqueue(
-            "handler", new PersistedRequest("request"), 60_000, options("p", "a", "t", 0, 0));
+        AsyncTask queued = new AsyncTaskManager(store, registry).submit(
+            new PersistedRequest("request"), 60_000, options("p", "a", "t", 0, 0));
         AsyncTaskWorker worker = new AsyncTaskWorker("worker", store, registry,
             new ExponentialAsyncTaskRetryPolicy(1, 1, 10, 1), 10_000);
         worker.submitDueTasks(1);
@@ -167,10 +167,10 @@ public class AsyncTaskAdmissionSchedulingTest {
         AsyncTaskHandler<PersistedRequest> handler = handler(submissions, new ArrayList<>(), false);
         InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
         AsyncTaskManager manager = new AsyncTaskManager(store, registry);
-        AsyncTask canceled = manager.enqueue("handler", new PersistedRequest("cancel"), 60_000,
+        AsyncTask canceled = manager.submit(new PersistedRequest("cancel"), 60_000,
             options("p", "a", "t", 0, 0));
         assertTrue(manager.cancel(canceled.getId()));
-        AsyncTask expired = manager.enqueue("handler", new PersistedRequest("expired"), 1,
+        AsyncTask expired = manager.submit(new PersistedRequest("expired"), 1,
             options("p", "b", "t2", 0, 0));
         Thread.sleep(5);
 
@@ -195,8 +195,8 @@ public class AsyncTaskAdmissionSchedulingTest {
             InMemoryAsyncTaskStore store = new InMemoryAsyncTaskStore();
             AsyncTaskHandler<PersistedRequest> handler = behaviorHandler(behavior);
             InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
-            AsyncTask task = new AsyncTaskManager(store, registry).enqueue(
-                "handler", new PersistedRequest("x"), 60_000, options("p", "a", "t", 0, 0));
+            AsyncTask task = new AsyncTaskManager(store, registry).submit(
+                new PersistedRequest("x"), 60_000, options("p", "a", "t", 0, 0));
             new AsyncTaskWorker("w", store, registry,
                 new ExponentialAsyncTaskRetryPolicy(1, 1, 10, 1), 10_000).submitDueTasks(1);
             assertEquals(AsyncTaskStatus.SUBMIT_UNKNOWN, store.load(task.getId()).getStatus());
@@ -206,8 +206,8 @@ public class AsyncTaskAdmissionSchedulingTest {
         AsyncTaskHandler<PersistedRequest> handler = behaviorHandler(
             (p, c) -> submitResult(AsyncTaskStatus.SUBMITTED, new TaskQueryParams("id")));
         InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
-        AsyncTask task = new AsyncTaskManager(store, registry).enqueue(
-            "handler", new PersistedRequest("x"), 60_000, options("p", "a", "t", 0, 0));
+        AsyncTask task = new AsyncTaskManager(store, registry).submit(
+            new PersistedRequest("x"), 60_000, options("p", "a", "t", 0, 0));
         task.setSubmitParams("wrong-type");
         store.save(task, task.getVersion());
         new AsyncTaskWorker("w", store, registry,
@@ -223,9 +223,10 @@ public class AsyncTaskAdmissionSchedulingTest {
         expect(() -> policy.setAccountConcurrency("p", "a", 0));
         expect(() -> policy.setTenantQuota("t", 0));
         expect(() -> policy.pauseProvider(" "));
-        AsyncTaskSubmissionOptions options = new AsyncTaskSubmissionOptions();
+        AsyncTaskOptions options = new AsyncTaskOptions();
         expect(() -> options.setDelayMillis(-1));
         options.setProviderKey("p");
+        options.setHandlerKey("handler");
         options.setAccountId("a");
         options.setTenantId("t");
         options.setPriority(9);
@@ -235,18 +236,27 @@ public class AsyncTaskAdmissionSchedulingTest {
         options.setMetadata(metadata);
         metadata.put("key", "changed");
         assertEquals("p", options.getProviderKey());
+        assertEquals("handler", options.getHandlerKey());
         assertEquals("a", options.getAccountId());
         assertEquals("t", options.getTenantId());
         assertEquals(9, options.getPriority());
         assertEquals(10, options.getDelayMillis());
         assertEquals("value", options.getMetadata().get("key"));
+        try {
+            options.getMetadata().put("another", "value");
+            fail("Expected UnsupportedOperationException");
+        } catch (UnsupportedOperationException expected) {
+            // metadata 对外只读，避免任务创建前被调用方绕过 setMetadata 修改。
+        }
+        options.setMetadata(null);
+        assertTrue(options.getMetadata().isEmpty());
 
         InMemoryAsyncTaskStore store = new InMemoryAsyncTaskStore();
         AsyncTaskHandler<PersistedRequest> handler = handler(new AtomicInteger(), new ArrayList<>(), false);
         AsyncTaskManager manager = new AsyncTaskManager(store,
             new InMemoryAsyncTaskHandlerRegistry().register(handler));
-        expect(() -> manager.enqueue("handler", null, 1000, null));
-        expect(() -> manager.enqueue("handler", new PersistedRequest("x"), 0, null));
+        expect(() -> manager.submit(null, 1000, null));
+        expect(() -> manager.submit(new PersistedRequest("x"), 0, null));
         expect(() -> store.claimDueSubmissions("w", 1, 1, 1, null));
     }
 
@@ -262,9 +272,9 @@ public class AsyncTaskAdmissionSchedulingTest {
         return task;
     }
 
-    private AsyncTaskSubmissionOptions options(String provider, String account, String tenant,
+    private AsyncTaskOptions options(String provider, String account, String tenant,
                                                 int priority, long delay) {
-        AsyncTaskSubmissionOptions options = new AsyncTaskSubmissionOptions();
+        AsyncTaskOptions options = new AsyncTaskOptions();
         options.setProviderKey(provider);
         options.setAccountId(account);
         options.setTenantId(tenant);

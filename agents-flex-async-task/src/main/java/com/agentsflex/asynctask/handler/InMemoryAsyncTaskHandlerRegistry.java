@@ -18,6 +18,10 @@ package com.agentsflex.asynctask.handler;
 import com.agentsflex.asynctask.*;
 
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -36,8 +40,9 @@ public final class InMemoryAsyncTaskHandlerRegistry implements AsyncTaskHandlerR
      * @throws IllegalStateException    key 已被占用
      */
     public InMemoryAsyncTaskHandlerRegistry register(AsyncTaskHandler<?> handler) {
-        if (handler == null || handler.getKey() == null || handler.getKey().trim().isEmpty()) {
-            throw new IllegalArgumentException("handler and handler.key are required");
+        if (handler == null || handler.getKey() == null || handler.getKey().trim().isEmpty()
+            || handler.getSubmitParamsType() == null) {
+            throw new IllegalArgumentException("handler, handler.key and handler.submitParamsType are required");
         }
         AsyncTaskHandler<?> previous = handlers.putIfAbsent(handler.getKey(), handler);
         if (previous != null)
@@ -50,5 +55,17 @@ public final class InMemoryAsyncTaskHandlerRegistry implements AsyncTaskHandlerR
         AsyncTaskHandler<?> handler = handlers.get(key);
         if (handler == null) throw new IllegalStateException("Async task handler not found: " + key);
         return handler;
+    }
+
+    @Override
+    public List<AsyncTaskHandler<?>> findBySubmitParamsType(Class<?> submitParamsType) {
+        if (submitParamsType == null) throw new IllegalArgumentException("submitParamsType is required");
+        List<AsyncTaskHandler<?>> matches = new ArrayList<>();
+        for (AsyncTaskHandler<?> handler : handlers.values()) {
+            if (submitParamsType.equals(handler.getSubmitParamsType())) matches.add(handler);
+        }
+        // ConcurrentHashMap 没有稳定遍历顺序，统一按 key 排序后再交给选择器。
+        Collections.sort(matches, Comparator.comparing(AsyncTaskHandler::getKey));
+        return Collections.unmodifiableList(matches);
     }
 }

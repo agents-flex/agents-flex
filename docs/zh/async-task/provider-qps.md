@@ -6,7 +6,7 @@
 
 这个能力解决的是“单位时间内提交太快”的问题。它控制提交频率，不控制供应商当前正在执行多少个任务。
 
-> QPS 控制只作用于 `manager.enqueue()` 创建的排队任务。`manager.submit()` 会立即访问供应商，不经过 QPS 控制。
+> 所有 `manager.submit()` 创建的任务都会先进入队列。配置准入策略后，Worker 在创建供应商任务前统一执行 QPS 控制。
 
 ## 为什么需要 QPS 控制
 
@@ -45,20 +45,19 @@ admission.setProviderQps("gitee", 5);
 ### 2. 给任务设置相同的供应商键
 
 ```java
-import com.agentsflex.asynctask.AsyncTaskSubmissionOptions;
+import com.agentsflex.asynctask.AsyncTaskOptions;
 
-AsyncTaskSubmissionOptions options = new AsyncTaskSubmissionOptions();
+AsyncTaskOptions options = new AsyncTaskOptions();
 options.setProviderKey("gitee");
 
-AsyncTask task = manager.enqueue(
-    "ocr:gitee:queued",
-    command,
+AsyncTask task = manager.submit(
+    OcrRequest.ofUrl("https://files.example.com/document.pdf"),
     30 * 60_000L,
     options
 );
 ```
 
-`command` 必须是 Handler 接受且实现 `Serializable` 的提交 DTO。`providerKey` 未设置时会使用 Handler Key；准入策略中的键必须与任务最终保存的键完全一致。
+请求参数必须适合持久化；OCR 应使用远程 URL，不能提交本地文件。`providerKey` 未设置时会使用 Handler Key；准入策略中的键必须与任务最终保存的键完全一致。
 
 ### 3. 将策略交给 Worker
 
@@ -74,7 +73,7 @@ AsyncTaskWorker worker = new AsyncTaskWorker(
 worker.start(200L, 20);
 ```
 
-至此，即使业务瞬间调用 `enqueue()` 创建 100 个任务，Worker 也只会按配置速度提交，其他任务保持 `PENDING_SUBMIT`。
+至此，即使业务瞬间调用 `submit()` 创建 100 个任务，Worker 也只会按配置速度提交，其他任务保持 `PENDING_SUBMIT`。
 
 ## 工作原理
 
@@ -117,6 +116,9 @@ admission.setAccountConcurrency("gitee", "account-a", 2);
 
 需要严格全局 QPS 时，应实现基于 Redis、数据库或网关的共享 `AsyncTaskAdmissionPolicy`，通过原子操作维护滑动窗口；另一种方案是让同一供应商只有一个 Worker 负责提交。
 
+QPS 与账号/租户容量的实现方式不同：内置 QPS 会在策略对象内部记录本轮获准次数，因此同一策略实例的
+批量领取仍受窗口限制；账号并发和租户配额依赖任务快照，使用 JDBC/Redis 时需要额外的原子预占。
+
 ## 常见问题
 
 ### 被限流的任务会失败吗？
@@ -129,7 +131,7 @@ admission.setAccountConcurrency("gitee", "account-a", 2);
 
 ### 为什么配置后没有生效？
 
-确认使用的是 `enqueue()`，Worker 构造器传入了该 `admission` 实例，并且任务的 `providerKey` 与配置键一致。
+确认使用的是 `submit()`，Worker 构造器传入了该 `admission` 实例，并且任务的 `providerKey` 与配置键一致。
 
 ## 下一步
 

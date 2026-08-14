@@ -102,7 +102,7 @@ request.putOption("language", "ch");
 | 供应商 | Maven 模块 | 本地文件 | 远程 URL | 结果特点 |
 | --- | --- | --- | --- | --- |
 | 百度智能云 | `agents-flex-ocr-baidu` | Base64 上传 | 支持 | Markdown、解析 JSON 资源 |
-| Gitee AI | `agents-flex-ocr-gitee` | multipart 上传 | 当前不支持 | 可直接返回 Markdown，结果 URL 短期有效 |
+| Gitee AI | `agents-flex-ocr-gitee` | multipart 上传 | 支持，适配器先下载再上传 | 可直接返回 Markdown，结果 URL 短期有效 |
 | MinerU | `agents-flex-ocr-mineru` | 预签名 URL 上传 | 支持 | 常返回完整结果 ZIP |
 
 选择供应商时，除了模型效果，还应评估文件大小和页数限制、输入方式、结果链接有效期、并发额度及数据合规要求。
