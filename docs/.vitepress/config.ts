@@ -124,6 +124,7 @@ const mediaSidebar = [
             {text: '延迟提交', link: '/zh/async-task/delayed-submission'},
             {text: '暂停供应商', link: '/zh/async-task/provider-pause'},
             {text: 'Store 持久化', link: '/zh/async-task/store'},
+            {text: 'Store 压测对比', link: '/zh/async-task/store-benchmark'},
             {text: '自定义 Handler', link: '/zh/async-task/handler'},
         ]
     },
@@ -295,6 +296,7 @@ export default withMermaid(defineConfig({
                         {text: 'Agent Middleware', link: '/zh/agent/middleware'},
                         {text: 'Snapshot', link: '/zh/agent/snapshot'},
                         {text: 'Store 持久化', link: '/zh/agent/store'},
+                        {text: 'Store 压测对比', link: '/zh/agent/store-benchmark'},
                         {text: 'AgentWorker', link: '/zh/agent/worker'},
                         {text: '常见问题', link: '/zh/agent/faq'},
                         {text: 'Demo: 人工审批', link: '/zh/agent/demo-human-approval'},
