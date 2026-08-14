@@ -36,7 +36,8 @@ public final class ConsistentHashAsyncTaskHandlerSelector implements AsyncTaskHa
         long bestScore = Long.MIN_VALUE;
         // Rendezvous Hash 在增加或移除 Handler 时只迁移必要的键，且无需维护虚拟节点环。
         for (AsyncTaskHandler<?> candidate : candidates) {
-            long score = hash(key + '\u0000' + candidate.getKey());
+            // 长度前缀避免业务键或 Handler Key 包含分隔符时产生拼接歧义。
+            long score = hash(key.length() + ":" + key + candidate.getKey().length() + ":" + candidate.getKey());
             if (selected == null || Long.compareUnsigned(score, bestScore) > 0) {
                 selected = candidate;
                 bestScore = score;

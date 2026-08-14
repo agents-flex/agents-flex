@@ -49,7 +49,7 @@ options.setDelayMillis(30_000L);
 
 `submit()` 的参数类型必须同时满足：
 
-1. 与 Handler 的 `getSubmitParamsType()` 一致。
+1. 与 Handler 泛型声明自动解析出的提交参数类型一致；特殊实现也可以覆盖 `getSubmitParamsType()` 明确指定。
 2. 实现 `Serializable`。
 3. 能被 Store 配置的序列化器恢复。
 

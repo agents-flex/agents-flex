@@ -12,6 +12,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -22,7 +24,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class WeightedAsyncTaskHandlerSelector implements AsyncTaskHandlerSelector {
     private final Map<String, Integer> weights;
-    private final AtomicLong sequence = new AtomicLong();
+    /**
+     * 不同候选集合分别维护权重周期，防止其他 request 类型改变当前分组的分配比例。
+     */
+    private final ConcurrentMap<String, AtomicLong> sequences = new ConcurrentHashMap<>();
 
     public WeightedAsyncTaskHandlerSelector(Map<String, Integer> weights) {
         if (weights == null || weights.isEmpty()) throw new IllegalArgumentException("weights are required");
@@ -41,11 +46,10 @@ public final class WeightedAsyncTaskHandlerSelector implements AsyncTaskHandlerS
     public AsyncTaskHandler<?> select(AsyncTaskHandlerSelectionContext context) {
         List<AsyncTaskHandler<?>> candidates = context.getCandidates();
         if (candidates.isEmpty()) return null;
-        if (weights.size() != candidates.size()) {
-            throw new IllegalStateException("Handler weights must exactly match the candidate handlers");
-        }
         long total = 0;
         for (AsyncTaskHandler<?> candidate : candidates) total = Math.addExact(total, weight(candidate));
+        String groupKey = AsyncTaskHandlerSelectorSupport.candidateGroupKey(candidates);
+        AtomicLong sequence = sequences.computeIfAbsent(groupKey, ignored -> new AtomicLong());
         long point = Math.floorMod(sequence.getAndIncrement(), total);
         for (AsyncTaskHandler<?> candidate : candidates) {
             point -= weight(candidate);

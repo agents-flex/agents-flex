@@ -30,6 +30,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -93,13 +94,71 @@ public class AsyncTaskRegistryTest {
         expect(IllegalArgumentException.class, () -> registry.findBySubmitParamsType(null));
     }
 
-    private void expect(Class<? extends Throwable> type, Runnable runnable) {
+    /** 直接实现接口时应从泛型签名得到提交参数类型，不再要求编写重复的类型方法。 */
+    @Test
+    public void shouldResolveSubmitParamsTypeFromDirectImplementation() {
+        DirectStringHandler handler = new DirectStringHandler("direct");
+
+        assertEquals(String.class, handler.getSubmitParamsType());
+        InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
+        assertSame(handler, registry.findBySubmitParamsType(String.class).get(0));
+    }
+
+    /** 泛型变量经过多个父类传递后，仍应替换为最终子类绑定的具体请求类型。 */
+    @Test
+    public void shouldResolveSubmitParamsTypeAcrossGenericHierarchy() {
+        ConcreteStringHandler handler = new ConcreteStringHandler("hierarchy");
+
+        assertEquals(String.class, handler.getSubmitParamsType());
+        InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
+        assertSame(handler, registry.findBySubmitParamsType(String.class).get(0));
+    }
+
+    /** 业务可以先定义带泛型的领域 Handler 子接口，默认解析仍应找到最终绑定的请求类型。 */
+    @Test
+    public void shouldResolveSubmitParamsTypeAcrossGenericInterface() {
+        InterfaceStringHandler handler = new InterfaceStringHandler("interface");
+
+        assertEquals(String.class, handler.getSubmitParamsType());
+        InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(handler);
+        assertSame(handler, registry.findBySubmitParamsType(String.class).get(0));
+    }
+
+    /** 未绑定类型变量不能静默退化为 Object；复杂代理或泛型实现可以显式覆盖类型方法。 */
+    @Test
+    public void shouldFailUnresolvedGenericTypeAndAllowExplicitOverride() {
+        GenericHandler<String> unresolved = new GenericHandler<>("unresolved");
+        IllegalStateException error = expect(IllegalStateException.class, unresolved::getSubmitParamsType);
+        assertTrue(error.getMessage().contains("Override getSubmitParamsType()"));
+        expect(IllegalStateException.class,
+            () -> new InMemoryAsyncTaskHandlerRegistry().register(unresolved));
+
+        GenericHandler<String> explicit = new GenericHandler<String>("explicit") {
+            @Override
+            public Class<String> getSubmitParamsType() {
+                return String.class;
+            }
+        };
+        InMemoryAsyncTaskHandlerRegistry registry = new InMemoryAsyncTaskHandlerRegistry().register(explicit);
+        assertSame(explicit, registry.findBySubmitParamsType(String.class).get(0));
+    }
+
+    /** 参数化容器没有可用于精确路由的 Class，必须由 Handler 显式声明更具体的请求类型。 */
+    @Test
+    public void shouldRejectParameterizedSubmitParamsType() {
+        expect(IllegalStateException.class, () -> new InMemoryAsyncTaskHandlerRegistry()
+            .register(new ListHandler("list")));
+    }
+
+    private <T extends Throwable> T expect(Class<T> type, Runnable runnable) {
         try {
             runnable.run();
             fail("Expected " + type.getName());
         } catch (Throwable error) {
             if (!type.isInstance(error)) throw error;
+            return type.cast(error);
         }
+        throw new AssertionError("unreachable");
     }
 
     private <P> AsyncTaskHandler<P> handler(String key, Class<P> type) {
@@ -112,5 +171,102 @@ public class AsyncTaskRegistryTest {
                 com.agentsflex.asynctask.TaskQueryParams params,
                 com.agentsflex.asynctask.TaskQueryContext context) { return null; }
         };
+    }
+
+    /** 不覆盖 getSubmitParamsType，用于验证接口默认解析能力。 */
+    private static final class DirectStringHandler implements AsyncTaskHandler<String> {
+        private final String key;
+
+        private DirectStringHandler(String key) {
+            this.key = key;
+        }
+
+        @Override
+        public String getKey() {
+            return key;
+        }
+
+        @Override
+        public TaskSubmitResult submit(String params, TaskSubmitContext context) {
+            return null;
+        }
+
+        @Override
+        public TaskQueryResult query(TaskQueryParams params, TaskQueryContext context) {
+            return null;
+        }
+    }
+
+    private abstract static class GenericHandlerSupport<P> implements AsyncTaskHandler<P> {
+        private final String key;
+
+        private GenericHandlerSupport(String key) {
+            this.key = key;
+        }
+
+        @Override
+        public String getKey() {
+            return key;
+        }
+
+        @Override
+        public TaskSubmitResult submit(P params, TaskSubmitContext context) {
+            return null;
+        }
+
+        @Override
+        public TaskQueryResult query(TaskQueryParams params, TaskQueryContext context) {
+            return null;
+        }
+    }
+
+    private abstract static class IntermediateHandler<P> extends GenericHandlerSupport<P> {
+        private IntermediateHandler(String key) {
+            super(key);
+        }
+    }
+
+    private static final class ConcreteStringHandler extends IntermediateHandler<String> {
+        private ConcreteStringHandler(String key) {
+            super(key);
+        }
+    }
+
+    private static class GenericHandler<P> extends GenericHandlerSupport<P> {
+        private GenericHandler(String key) {
+            super(key);
+        }
+    }
+
+    private static final class ListHandler extends GenericHandlerSupport<List<String>> {
+        private ListHandler(String key) {
+            super(key);
+        }
+    }
+
+    private interface DomainHandler<P> extends AsyncTaskHandler<P> {
+    }
+
+    private static final class InterfaceStringHandler implements DomainHandler<String> {
+        private final String key;
+
+        private InterfaceStringHandler(String key) {
+            this.key = key;
+        }
+
+        @Override
+        public String getKey() {
+            return key;
+        }
+
+        @Override
+        public TaskSubmitResult submit(String params, TaskSubmitContext context) {
+            return null;
+        }
+
+        @Override
+        public TaskQueryResult query(TaskQueryParams params, TaskQueryContext context) {
+            return null;
+        }
     }
 }

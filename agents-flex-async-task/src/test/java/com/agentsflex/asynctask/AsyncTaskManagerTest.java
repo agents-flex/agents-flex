@@ -199,7 +199,9 @@ public class AsyncTaskManagerTest {
         AsyncTask task = new AsyncTaskManager(new InMemoryAsyncTaskStore(), registry, context -> {
             selectorCalls[0]++;
             assertSame(request, context.getRequest());
-            assertSame(options, context.getOptions());
+            assertNotSame(options, context.getOptions());
+            assertEquals("tenant-1", context.getOptions().getTenantId());
+            context.getOptions().setTenantId("selector-mutated");
             assertEquals(Arrays.asList(first, second), context.getCandidates());
             return second;
         }).submit(request, 1000, options);

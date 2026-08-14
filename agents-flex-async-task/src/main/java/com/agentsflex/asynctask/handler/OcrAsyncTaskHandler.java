@@ -53,11 +53,6 @@ public class OcrAsyncTaskHandler implements AsyncTaskHandler<OcrRequest> {
         return key;
     }
 
-    @Override
-    public Class<OcrRequest> getSubmitParamsType() {
-        return OcrRequest.class;
-    }
-
     /**
      * 持久化 OCR 任务只接受供应商能够访问的远程 URL。
      *

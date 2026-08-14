@@ -34,11 +34,19 @@ public interface AsyncTaskHandler<P> {
     String getKey();
 
     /**
-     * 提交参数的运行时类型，用于在调用供应商前做明确校验。
+     * 提交参数的运行时类型，用于自动路由和调用供应商前的类型校验。
+     *
+     * <p>默认实现从 {@code AsyncTaskHandler<P>} 的泛型声明中解析 {@code P}，直接实现接口、继承泛型
+     * 抽象类以及多层泛型继承均无需重复返回 {@code XxxRequest.class}。如果 Handler 使用原始类型、运行时
+     * 仍未绑定的类型变量，或者代理类丢失了泛型签名，解析会明确失败；这类实现应覆盖本方法。</p>
      *
      * @return {@link #submit(Object, TaskSubmitContext)} 第一个参数所接受的具体类型
+     * @throws IllegalStateException 无法从 Handler 类的泛型声明确定具体参数类型
      */
-    Class<P> getSubmitParamsType();
+    @SuppressWarnings("unchecked")
+    default Class<P> getSubmitParamsType() {
+        return (Class<P>) AsyncTaskHandlerTypes.resolve(getClass());
+    }
 
     /**
      * 在任务写入 Store 前验证提交参数是否适合持久化和跨 Worker 恢复。

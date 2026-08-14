@@ -48,11 +48,6 @@ public class VideoAsyncTaskHandler implements AsyncTaskHandler<GenerateVideoRequ
         return key;
     }
 
-    @Override
-    public Class<GenerateVideoRequest> getSubmitParamsType() {
-        return GenerateVideoRequest.class;
-    }
-
     /**
      * 拒绝嵌入字节或 Base64 的视频素材，只允许远程 URL。
      *

@@ -14,6 +14,7 @@
 ```java
 public interface AsyncTaskHandler<P> {
     String getKey();
+    // 已有默认实现：根据实现类的泛型声明解析并缓存 P。
     Class<P> getSubmitParamsType();
     default void validateSubmitParams(P params) {}
     TaskSubmitResult submit(P params, TaskSubmitContext context);
@@ -132,19 +133,28 @@ public final class MyAsyncTaskHandler
         return "document:my-provider";
     }
 
-    @Override
-    public Class<DocumentParseRequest> getSubmitParamsType() {
-        return DocumentParseRequest.class;
-    }
-
     // submit() 和 query() 省略
 }
 
 registry.register(new MyAsyncTaskHandler());
 ```
 
-键必须稳定且唯一。所有处理历史任务的 Worker 都必须注册同一版本兼容的 Handler。提交时 Manager 会按
-`getSubmitParamsType()` 的精确类型自动寻找候选；单一候选直接使用，不要求业务代码再次传 key。
+键必须稳定且唯一。所有处理历史任务的 Worker 都必须注册同一版本兼容的 Handler。框架默认从
+`AsyncTaskHandler<DocumentParseRequest>` 的泛型声明解析精确类型；直接实现接口、泛型抽象基类和多层泛型
+继承通常都不需要覆盖 `getSubmitParamsType()`。Manager 按解析出的精确类型寻找候选，单一候选直接使用，
+不要求业务代码再次传 key。
+
+如果 Handler 使用了运行时仍未绑定的类型变量，或者代理框架没有保留泛型签名，注册时会立即失败并提示
+显式覆盖类型方法。此时可以把具体类型写清楚：
+
+```java
+@Override
+public Class<DocumentParseRequest> getSubmitParamsType() {
+    return DocumentParseRequest.class;
+}
+```
+
+框架不会在无法解析时退化成 `Object.class`，从而避免无关 Handler 被错误匹配。
 
 同一个参数类型注册多个 Handler 时，在 Manager 构造器中配置 `AsyncTaskHandlerSelector`。也可以通过
 `AsyncTaskOptions.handlerKey` 为某一次提交强制路由；显式 key 优先于 selector。无论采用哪种方式，选择
