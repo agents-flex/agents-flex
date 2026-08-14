@@ -143,7 +143,7 @@ public class MineruOcrModel extends BaseOcrModel<MineruOcrConfig> {
         if (StringUtil.noText(taskId)) return OcrResponse.error("taskId must not be empty");
         boolean batch = batchTaskIds.contains(taskId);
         OcrResponse response = batch ? getBatchResult(taskId)
-            : parseResponse(httpClient.get(config.getQueryUrl(taskId), headers(false)), false);
+            : resolveResultMarkdown(parseResponse(httpClient.get(config.getQueryUrl(taskId), headers(false)), false));
         // 终态任务不再需要保留进程内路由信息，及时释放集合条目。
         if (batch && response != null && response.isTerminal()) batchTaskIds.remove(taskId);
         return response;
@@ -161,7 +161,7 @@ public class MineruOcrModel extends BaseOcrModel<MineruOcrConfig> {
         if (StringUtil.noText(batchId)) return OcrResponse.error("batchId must not be empty");
         OcrResponse response = parseResponse(httpClient.get(config.getBatchQueryUrl(batchId), headers(false)), false);
         if (response != null && StringUtil.noText(response.getTaskId())) response.setTaskId(batchId);
-        return response;
+        return resolveResultMarkdown(response);
     }
 
     /**

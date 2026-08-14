@@ -15,6 +15,8 @@
  */
 package com.agentsflex.core.model.ocr;
 
+import com.agentsflex.core.document.ExtractedImageHandler;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,6 +35,11 @@ public abstract class BaseOcrModel<T extends BaseOcrConfig> implements OcrModel 
     protected final T config;
 
     /**
+     * 可选的 OCR 结果图片处理器；未配置时保留供应商原始图片引用。
+     */
+    private volatile ExtractedImageHandler extractedImageHandler;
+
+    /**
      * 创建 OCR 模型。
      *
      * @param config 非空的供应商配置
@@ -49,14 +56,35 @@ public abstract class BaseOcrModel<T extends BaseOcrConfig> implements OcrModel 
         return config;
     }
 
+    public ExtractedImageHandler getExtractedImageHandler() {
+        return extractedImageHandler;
+    }
+
+    /**
+     * 设置图片处理器。解析 Markdown 时，能够取得二进制内容的图片会交给该处理器，
+     * 并使用处理器返回的 URL 替换原始引用。
+     */
+    public void setExtractedImageHandler(ExtractedImageHandler extractedImageHandler) {
+        this.extractedImageHandler = extractedImageHandler;
+    }
+
     /**
      * 使用配置中的超时时间和查询间隔提交任务并等待终态。
-     *
-     * @param request OCR 请求
-     * @return 最终结果、提交错误或超时结果
      */
     public OcrResponse recognizeAndWait(OcrRequest request) {
         return recognizeAndWait(request, config.getTimeoutMillis(), config.getPollIntervalMillis());
+    }
+
+    /**
+     * 物化查询结果中的 Markdown。供应商实现应在 getResult() 获得响应后调用该方法，
+     * 使手动查询、异步任务和 recognizeAndWait() 具有一致的结果。
+     */
+    protected OcrResponse resolveResultMarkdown(OcrResponse response) {
+        if (response != null && !response.isError() && response.getStatus() == OcrTaskStatus.SUCCEEDED) {
+            OcrMarkdownResolver ocrMarkdownResolver = OcrMarkdownResolver.getDefault();
+            response.setMarkdown(ocrMarkdownResolver.resolve(response, extractedImageHandler));
+        }
+        return response;
     }
 
     /**

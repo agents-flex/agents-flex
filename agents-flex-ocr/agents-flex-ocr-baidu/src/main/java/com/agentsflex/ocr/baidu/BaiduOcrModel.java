@@ -99,7 +99,8 @@ public class BaiduOcrModel extends BaseOcrModel<BaiduOcrConfig> {
     public OcrResponse getResult(String taskId) {
         if (StringUtil.noText(taskId)) return OcrResponse.error("taskId must not be empty");
         if (StringUtil.noText(config.getApiKey())) return OcrResponse.error("Baidu access token must not be empty");
-        return execute(config.getQueryUrl(), new FormBody.Builder().add("task_id", taskId).build(), false);
+        return resolveResultMarkdown(
+            execute(config.getQueryUrl(), new FormBody.Builder().add("task_id", taskId).build(), false));
     }
 
     /**

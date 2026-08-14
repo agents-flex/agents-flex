@@ -130,7 +130,7 @@ public class GiteeOcrModel extends BaseOcrModel<GiteeOcrConfig> {
     @Override
     public OcrResponse getResult(String taskId) {
         if (StringUtil.noText(taskId)) return OcrResponse.error("taskId must not be empty");
-        return parseResponse(httpClient.get(config.getQueryUrl(taskId), headers()), false);
+        return resolveResultMarkdown(parseResponse(httpClient.get(config.getQueryUrl(taskId), headers()), false));
     }
 
     /**

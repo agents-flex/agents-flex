@@ -111,4 +111,23 @@ public class MineruOcrModelTest {
             Files.deleteIfExists(input.toPath());
         }
     }
+
+    /** 验证普通任务 getResult 会物化 Markdown，并应用图片处理器。 */
+    @Test
+    public void shouldResolveMarkdownWhenGettingSuccessfulResult() {
+        AgentsFlexHttpClient apiClient = new AgentsFlexHttpClient() {
+            @Override
+            public String get(String url, Map<String, String> headers) {
+                return "{\"code\":0,\"data\":{\"task_id\":\"m3\",\"state\":\"done\"," +
+                    "\"markdown\":\"![](data:image/png;base64,AQID)\"}}";
+            }
+        };
+        MineruOcrModel model = new MineruOcrModel(
+            new MineruOcrConfig(), apiClient, new OkHttpClient());
+        model.setExtractedImageHandler((bytes, mimeType, fileName) -> "https://cdn.example/image.png");
+
+        OcrResponse response = model.getResult("m3");
+
+        assertEquals("![](https://cdn.example/image.png)", response.getMarkdown());
+    }
 }

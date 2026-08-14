@@ -105,4 +105,22 @@ public class GiteeOcrModelTest {
         assertEquals(OcrTaskStatus.SUCCEEDED, response.getStatus());
         assertEquals("# AgentsFlex\nOCR result", response.getMarkdown());
     }
+
+    /** 验证 getResult 会物化 Markdown，并应用 model 上配置的图片处理器。 */
+    @Test
+    public void shouldResolveMarkdownWhenGettingSuccessfulResult() {
+        AgentsFlexHttpClient client = new AgentsFlexHttpClient() {
+            @Override
+            public String get(String url, Map<String, String> headers) {
+                return "{\"task_id\":\"g4\",\"status\":\"success\",\"output\":{" +
+                    "\"markdown\":\"![](data:image/png;base64,AQID)\"}}";
+            }
+        };
+        GiteeOcrModel model = new GiteeOcrModel(new GiteeOcrConfig(), client);
+        model.setExtractedImageHandler((bytes, mimeType, fileName) -> "https://cdn.example/image.png");
+
+        OcrResponse response = model.getResult("g4");
+
+        assertEquals("![](https://cdn.example/image.png)", response.getMarkdown());
+    }
 }
