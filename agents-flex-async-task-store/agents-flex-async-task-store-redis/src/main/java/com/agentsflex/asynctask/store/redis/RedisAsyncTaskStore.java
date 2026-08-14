@@ -35,10 +35,12 @@ import java.util.*;
 public final class RedisAsyncTaskStore implements AsyncTaskStore {
     // 服务端脚本一次完成版本/租约校验、状态转换和索引更新，消除多次 Redis 往返的竞争窗口。
     private static final String CLAIM = "local v=redis.call('HGET',KEYS[1],'version'); if not v or tonumber(v)~=tonumber(ARGV[1]) then return 0 end; "
+        + "local status=redis.call('HGET',KEYS[1],'status'); if (ARGV[10]=='1' and status~='PENDING_SUBMIT') or (ARGV[10]=='0' and status~='SUBMITTED' and status~='RUNNING') then return 0 end; "
         + "local lu=tonumber(redis.call('HGET',KEYS[1],'lease_until') or '0'); if lu>tonumber(ARGV[2]) then return 0 end; "
         + "redis.call('HSET',KEYS[1],'version',ARGV[3],'status',ARGV[4],'lease_owner',ARGV[5],'lease_id',ARGV[6],'lease_until',ARGV[7],'payload',ARGV[8]); "
-        // 以 leaseUntil 保留在原到期索引，Worker 崩溃后任务会在租约到期时重新可见。
-        + "redis.call('ZADD',KEYS[2],ARGV[7],ARGV[9]); redis.call('ZADD',KEYS[3],ARGV[7],ARGV[9]); return 1";
+        // 两类任务都保留到租约到期：查询任务可重领，提交任务则由扫描器转为 SUBMIT_UNKNOWN。
+        + "redis.call('ZADD',KEYS[2],ARGV[7],ARGV[9]); "
+        + "redis.call('ZADD',KEYS[3],ARGV[7],ARGV[9]); return 1";
     private final RedisAsyncTaskStoreConfig config;
     private final JedisPooled jedis;
 
@@ -110,6 +112,10 @@ public final class RedisAsyncTaskStore implements AsyncTaskStore {
         List<AsyncTask> out = new ArrayList<>();
         for (AsyncTask t : candidates) {
             if (out.size() >= limit) break;
+            if (t.getStatus() == AsyncTaskStatus.SUBMITTING) {
+                markSubmitUnknown(t, now);
+                continue;
+            }
             // 已取消或已超时的任务绕过准入，仅用于让 Worker 写入终态，不会创建供应商任务。
             if (requiresTerminalTransition(t, now) || policy.tryAcquire(t.copy(), snapshot, now)) {
                 AsyncTask c = claim(t, worker, now, lease, true, submitKey());
@@ -117,6 +123,25 @@ public final class RedisAsyncTaskStore implements AsyncTaskStore {
             }
         }
         return out;
+    }
+
+    private void markSubmitUnknown(AsyncTask task, long now) {
+        AsyncTask unknown = task.copy();
+        unknown.setVersion(task.getVersion() + 1);
+        unknown.setStatus(AsyncTaskStatus.SUBMIT_UNKNOWN);
+        unknown.setLeaseOwner(null);
+        unknown.setLeaseId(null);
+        unknown.setLeaseUntil(0);
+        unknown.setUpdatedAt(now);
+        unknown.setErrorMessage("Submission worker lease expired before the result was persisted");
+        String script = "local v=redis.call('HGET',KEYS[1],'version'); local s=redis.call('HGET',KEYS[1],'status'); "
+            + "local lu=tonumber(redis.call('HGET',KEYS[1],'lease_until') or '0'); "
+            + "if not v or tonumber(v)~=tonumber(ARGV[1]) or s~='SUBMITTING' or lu>tonumber(ARGV[2]) then return 0 end; "
+            + "redis.call('HSET',KEYS[1],'version',ARGV[3],'status','SUBMIT_UNKNOWN','lease_owner','','lease_id','','lease_until','0','payload',ARGV[4]); "
+            + "redis.call('ZREM',KEYS[2],ARGV[5]); redis.call('ZREM',KEYS[3],ARGV[5]); return 1";
+        eval(script, keys(taskKey(task.getId()), submitKey(), leasedKey()), args(
+            String.valueOf(task.getVersion()), String.valueOf(now), String.valueOf(unknown.getVersion()),
+            encode(unknown), task.getId()));
     }
 
     @Override
@@ -159,7 +184,7 @@ public final class RedisAsyncTaskStore implements AsyncTaskStore {
         c.setLeaseId(UUID.randomUUID().toString());
         c.setLeaseUntil(now + lease);
         if (submitting) c.setStatus(AsyncTaskStatus.SUBMITTING);
-        long ok = num(eval(CLAIM, keys(taskKey(t.getId()), dueKey, leasedKey()), args(String.valueOf(t.getVersion()), String.valueOf(now), String.valueOf(c.getVersion()), c.getStatus().name(), worker, c.getLeaseId(), String.valueOf(c.getLeaseUntil()), encode(c), c.getId())));
+        long ok = num(eval(CLAIM, keys(taskKey(t.getId()), dueKey, leasedKey()), args(String.valueOf(t.getVersion()), String.valueOf(now), String.valueOf(c.getVersion()), c.getStatus().name(), worker, c.getLeaseId(), String.valueOf(c.getLeaseUntil()), encode(c), c.getId(), submitting ? "1" : "0")));
         return ok == 1 ? c : null;
     }
 

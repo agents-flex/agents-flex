@@ -161,6 +161,64 @@ public class RedisAsyncTaskStoreIntegrationTest {
         assertEquals("new-worker", recovered.getLeaseOwner());
     }
 
+    /**
+     * 提交请求的结果在 Worker 崩溃后不可判定，不能自动重提并在供应商侧创建重复任务。
+     */
+    @Test
+    public void shouldNotResubmitAfterSubmittingLeaseExpires() {
+        store.create(task("submit-once", AsyncTaskStatus.PENDING_SUBMIT, 0));
+        assertEquals(1, store.claimDueSubmissions(
+            "dead-worker", 10, 20, 1, (candidate, all, now) -> true).size());
+
+        assertTrue(store.claimDueSubmissions(
+            "new-worker", 30, 20, 1, (candidate, all, now) -> true).isEmpty());
+        assertEquals(AsyncTaskStatus.SUBMIT_UNKNOWN, store.load("submit-once").getStatus());
+        assertNull(store.load("submit-once").getLeaseOwner());
+    }
+
+    /** Redis 实现必须与 Store SPI 保持重复创建、CAS、租约 fencing 和终态取消契约一致。 */
+    @Test
+    public void shouldEnforceCasLeaseAndCancellationBoundaries() {
+        AsyncTask created = store.create(task("boundaries", AsyncTaskStatus.RUNNING, 0));
+        expect(IllegalStateException.class,
+            () -> store.create(task("boundaries", AsyncTaskStatus.RUNNING, 0)));
+
+        AsyncTask update = created.copy();
+        update.setProviderStatus("first");
+        assertEquals(1, store.save(update, 0).getVersion());
+        expect(AsyncTaskVersionConflictException.class, () -> store.save(update, 0));
+
+        AsyncTask claimed = store.claimDueTasks("owner", 10, 100, 1).get(0);
+        expect(IllegalStateException.class,
+            () -> store.renewLease("boundaries", "other", claimed.getLeaseId(), 20, 200));
+        store.releaseLease("boundaries", "other", claimed.getLeaseId());
+        assertEquals("owner", store.load("boundaries").getLeaseOwner());
+
+        AsyncTask done = task("done", AsyncTaskStatus.SUCCEEDED, 0);
+        store.create(done);
+        assertFalse(store.requestCancellation("done"));
+        assertFalse(store.requestCancellation("missing"));
+    }
+
+    /** 无效领取参数应在访问 Redis 前失败。 */
+    @Test
+    public void shouldValidateClaimArguments() {
+        expect(IllegalArgumentException.class, () -> store.claimDueTasks(null, 0, 1, 1));
+        expect(IllegalArgumentException.class, () -> store.claimDueTasks("worker", 0, 0, 1));
+        expect(IllegalArgumentException.class, () -> store.claimDueTasks("worker", 0, 1, 0));
+        expect(IllegalArgumentException.class,
+            () -> store.claimDueSubmissions("worker", 0, 1, 1, null));
+    }
+
+    private void expect(Class<? extends Throwable> type, Runnable call) {
+        try {
+            call.run();
+            fail("Expected " + type.getName());
+        } catch (Throwable error) {
+            if (!type.isInstance(error)) throw error;
+        }
+    }
+
     private AsyncTask task(String id, AsyncTaskStatus status, long due) {
         AsyncTask t = new AsyncTask();
         t.setId(id);
