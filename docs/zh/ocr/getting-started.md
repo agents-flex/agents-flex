@@ -108,6 +108,41 @@ for (OcrResource resource : response.getResources()) {
 
 这些 URL 通常有有效期。生产系统应在任务成功后尽快下载并转存到自己的对象存储。
 
+通常不需要自行判断这些资源。内置 model 的 `getResult()` 会依次读取内联 Markdown、Markdown URL、
+ZIP 中的 `full.md`，最后使用纯文本作为降级结果，并把内容写回响应。`recognizeAndWait()` 通过循环调用
+`getResult()` 获得相同结果：
+
+```java
+OcrResponse response = model.recognizeAndWait(request);
+String markdown = response.getMarkdown();
+```
+
+等待过程可能包含网络下载和 ZIP 解压，是阻塞操作。响应失败、资源下载失败或没有可用内容时会抛出
+`OcrMarkdownResolveException`。
+
+`getResult()` 在任务尚未成功时只返回当前状态；成功时会下载并物化 Markdown 资源。
+
+### 将 Markdown 图片保存为 URL
+
+OCR 结果 ZIP 中的图片通常使用相对路径，部分供应商也可能返回 Base64 Data URI。可以为 model 设置图片
+处理器，将图片上传到对象存储，并用返回 URL 重写 Markdown。该处理器使用与 Doc Extractor 相同的
+`com.agentsflex.core.document.ExtractedImageHandler` 接口：
+
+```java
+model.setExtractedImageHandler((imageBytes, mimeType, fileName) -> {
+    String objectKey = imageKeyGenerator.fromContent(imageBytes, fileName);
+    return objectStorage.upload(objectKey, imageBytes, mimeType);
+});
+
+OcrResponse response = model.recognizeAndWait(request);
+String markdown = response.getMarkdown();
+```
+
+Handler 返回 `null` 或空字符串时，对应图片会从 Markdown 中移除。没有配置 Handler 时，供应商原有的
+远程图片 URL 会保留，Markdown 资源中的相对图片 URL 会转换为绝对 URL；ZIP 内的相对图片路径无法自动
+获得外部地址，因此生产环境应配置 Handler。已经是远程 URL 的图片不会再次下载并交给 Handler，避免
+不必要的重复上传和对不受信任地址的服务端请求。
+
 ## 完整示例
 
 ```java
@@ -142,9 +177,7 @@ public class OcrQuickStart {
             );
         }
 
-        if (response.getMarkdown() != null) {
-            System.out.println(response.getMarkdown());
-        }
+        System.out.println(response.getMarkdown());
         for (OcrResource resource : response.getResources()) {
             System.out.println(resource.getType() + ": " + resource.getUrl());
         }
@@ -177,7 +210,8 @@ OcrResponse latest = model.getResult(taskId);
 
 ### 为什么成功响应没有 `markdown`？
 
-不同供应商的输出形式不同。检查 `resources`，结果可能位于 Markdown URL、JSON URL 或 ZIP 中。
+内置 model 的 `getResult()` 会在成功时自动填充 `markdown`，因此 `recognizeAndWait()` 和手动查询的结果一致。
+只有 JSON 资源时仍需要按供应商结构自行转换。
 
 ### `recognize()` 返回后可以立即读取结果吗？
 

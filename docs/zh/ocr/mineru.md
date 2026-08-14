@@ -75,6 +75,7 @@ PUT 上传本地文件
 
 ```java
 OcrResponse latest = model.getBatchResult(batchId);
+String markdown = latest.getMarkdown();
 ```
 
 普通远程 URL 任务仍使用 `getResult(taskId)`。
@@ -96,7 +97,9 @@ OcrResponse latest = model.getBatchResult(batchId);
 
 ## 结果资源
 
-MinerU 完成后通常返回 `full_zip_url`，其中包含 `full.md`、JSON 和中间产物。框架将其映射为 `archive` 类型 `OcrResource`。下载 URL 可能过期，应及时转存。
+MinerU 完成后通常返回 `full_zip_url`，其中包含 `full.md`、JSON 和中间产物。框架将其映射为 `archive`
+类型 `OcrResource`；`getResult()` 和 `getBatchResult()` 会自动下载 ZIP、提取 Markdown 并写入
+`response.markdown`。下载 URL 可能过期，原始资源仍应及时转存。
 
 ## 常见问题
 
@@ -110,7 +113,8 @@ MinerU 完成后通常返回 `full_zip_url`，其中包含 `full.md`、JSON 和�
 
 ### 成功后为什么只有 ZIP 地址？
 
-MinerU 常把 Markdown、JSON 和中间产物打包返回。读取 `archive` 类型资源并及时转存即可。
+MinerU 常把 Markdown、JSON 和中间产物打包返回。当前适配器会自动提取其中的 Markdown；如果 ZIP 中的
+图片需要长期可访问的 URL，请通过 `model.setExtractedImageHandler(...)` 配置对象存储上传逻辑。
 
 ## 下一步
 

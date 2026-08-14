@@ -185,6 +185,7 @@ const developerReferenceSidebar = [
             {text: 'LocalTokenCounter', link: '/zh/util/local-token-counter'},
             {text: 'PromptTemplate', link: '/zh/util/prompt-template'},
             {text: 'DocumentExtractors', link: '/zh/util/document-extractors'},
+            {text: 'DocumentImageDescriber', link: '/zh/util/document-image-describer'},
             {text: '其他工具类', link: '/zh/util/others'},
         ]
     },

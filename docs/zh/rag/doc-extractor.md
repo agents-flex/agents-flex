@@ -278,7 +278,9 @@ Presentation content
 
 ## ExtractedImageHandler 图片处理
 
-`ExtractedImageHandler` 是内嵌图片从“文档二进制数据”转换为“Markdown 可引用地址”的扩展点。解析器负责发现和读取图片，Handler 负责决定图片如何保存以及最终返回什么地址。
+`com.agentsflex.core.document.ExtractedImageHandler` 是内嵌图片从“文档二进制数据”转换为“Markdown
+可引用地址”的统一扩展点，Doc Extractor 和 OCR 共用该接口。解析器负责发现和读取图片，Handler 负责
+决定图片如何保存以及最终返回什么地址。
 
 ```text
 文档解析器 -> imageBytes + mimeType + fileName
@@ -302,6 +304,8 @@ Presentation content
 ### 接口契约
 
 ```java
+package com.agentsflex.core.document;
+
 @FunctionalInterface
 public interface ExtractedImageHandler {
     String handle(byte[] imageBytes, String mimeType, String fileName)

@@ -83,7 +83,7 @@ try (InputStream input = Files.newInputStream(path)) {
 | `extractFromUrl(String httpUrl, String fileName)` | 为 URL 指定文件名 |
 | `extractFromUrl(String httpUrl, String fileName, String mimeType)` | 同时指定文件名和 MIME 类型 |
 | `setDefault(DocumentExtractionService service)` | 替换进程级默认服务 |
-| `setExtractedImageHandler(ExtractedImageHandler handler)` | 配置文档内图片的处理方式 |
+| `setExtractedImageHandler(ExtractedImageHandler handler)` | 配置文档内图片的处理方式；接口位于 `com.agentsflex.core.document` |
 
 ## 4. 图片处理
 

@@ -66,6 +66,7 @@ if (response == null || response.isError()) {
     );
 }
 
+System.out.println(response.getMarkdown());
 for (OcrResource resource : response.getResources()) {
     System.out.println(resource.getType() + ": " + resource.getUrl());
 }
@@ -100,7 +101,9 @@ config.setModel(BaiduOcrModels.PADDLE_OCR_VL_1_6);
 | `markdown_url` | `resources` 中 `markdown` 类型 |
 | `parse_result_url` | `resources` 中 `json` 类型 |
 
-供应商结果链接存在有效期，应及时下载或转存。
+任务成功时，`getResult()` 会自动下载 `markdown_url` 并写入 `response.markdown`；
+`recognizeAndWait()` 轮询该方法，因此同样可以直接调用 `response.getMarkdown()`。原始资源仍会保留在
+`resources` 中，供应商结果链接存在有效期，应及时转存。
 
 ## 自定义等待时间
 

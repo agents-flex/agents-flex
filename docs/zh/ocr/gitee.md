@@ -84,9 +84,11 @@ OcrResponse submitted = model.recognize(request);
 String taskId = submitted.getTaskId();
 
 OcrResponse latest = model.getResult(taskId);
+String markdown = latest.getMarkdown();
 ```
 
-结果 URL 通常只有短期有效期。任务成功后应立即下载或转存。大量任务推荐交给 [异步任务模块](../async-task/overview) 自动查询。
+任务成功时，`getResult()` 会统一处理内联 Markdown、Markdown URL 或 ZIP，并填充 `markdown`。结果 URL
+通常只有短期有效期，仍应及时转存。大量任务推荐交给 [异步任务模块](../async-task/overview) 自动查询。
 
 ## 常见问题
 
@@ -105,7 +107,9 @@ Worker 访问，并且有效期覆盖本地排队和下载时间。
 
 ### 为什么任务成功但 Markdown 为空？
 
-检查 `resources` 和供应商原始元数据。不同模型可能返回 JSON、压缩包或其他下载资源，而不是内联 Markdown。
+如果供应商提供了内联 Markdown、Markdown URL、包含 Markdown 的 ZIP 或纯文本，`getResult()` 都会填充
+`markdown`。仍为空通常表示供应商只返回了无法通用转换的 JSON 或其他未知格式，请检查 `resources` 和
+供应商原始元数据。
 
 ## 下一步
 

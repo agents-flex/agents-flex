@@ -115,6 +115,19 @@ request.putOption("language", "ch");
 4. 保存框架任务 ID、供应商任务 ID 和必要的元数据，便于审计和故障恢复。
 5. 对关键文档增加内容完整性校验或人工审核，不要把 OCR 结果默认视为绝对准确。
 
+内置模型的 `getResult()` 会统一解析不同的结果位置，并把最终内容写入响应；等待入口通过轮询该方法获得
+相同结果：
+
+```java
+OcrResponse response = model.recognizeAndWait(request);
+String markdown = response.getMarkdown();
+```
+
+`getResult()` 支持内联 Markdown、Markdown 下载资源、ZIP 中的 Markdown，并以纯文本作为最后降级结果。
+通过
+`BaseOcrModel.setExtractedImageHandler()` 可以把结果图片上传到对象存储，并将 Markdown 图片引用替换为
+Handler 返回的 URL。
+
 ## 下一步
 
 - [快速开始](./getting-started)
