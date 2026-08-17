@@ -41,7 +41,9 @@ public class DocumentImageDescriberTest {
         Document result = describer.describe(document);
 
         assertSame(document, result);
-        assertEquals("内容内容内容\n![](https://example.com/chart.png)\n> 一张展示季度增长趋势的折线图。",
+        assertEquals("内容内容内容\n![](https://example.com/chart.png)\n\n"
+                + "<!-- image-description:start -->\n一张展示季度增长趋势的折线图。\n"
+                + "<!-- image-description:end -->",
             document.getContent());
         assertEquals("https://example.com/chart.png", model.imageUrls.get(0));
     }
@@ -53,21 +55,87 @@ public class DocumentImageDescriberTest {
 
         String result = describer.describe("![first](one.png \"title\")\r\ntext\r\n![second](<two.png>)\r\n");
 
-        assertEquals("![first](one.png \"title\")\r\n> 第一张图片\r\ntext\r\n"
-            + "![second](<two.png>)\r\n> 第二张图片\r\n", result);
+        assertEquals("![first](one.png \"title\")\r\n\r\n<!-- image-description:start -->\r\n"
+            + "第一张图片\r\n<!-- image-description:end -->\r\n\r\ntext\r\n"
+            + "![second](<two.png>)\r\n\r\n<!-- image-description:start -->\r\n"
+            + "第二张图片\r\n<!-- image-description:end -->\r\n", result);
         assertEquals("one.png", model.imageUrls.get(0));
         assertEquals("two.png", model.imageUrls.get(1));
     }
 
     @Test
-    public void shouldSkipCodeFencesAndImagesWithExistingDescription() {
+    public void shouldDescribeHtmlImagesAndUseAltText() {
+        RecordingChatModel model = new RecordingChatModel("HTML 图片", "无替代文本图片");
+        DocumentImageDescriber describer = new DocumentImageDescriber(model);
+        describer.setPromptTemplate("describe: {alt}");
+
+        String html = "<IMG width=\"20\" ALT='销售趋势' SRC=\"https://example.com/chart.png\">\n"
+            + "<img src='data:image/png;base64,AQID' loading=lazy />";
+        String result = describer.describe(html);
+
+        assertEquals("<IMG width=\"20\" ALT='销售趋势' SRC=\"https://example.com/chart.png\">\n\n"
+            + "<!-- image-description:start -->\nHTML 图片\n<!-- image-description:end -->\n\n"
+            + "<img src='data:image/png;base64,AQID' loading=lazy />\n\n"
+            + "<!-- image-description:start -->\n无替代文本图片\n<!-- image-description:end -->", result);
+        assertEquals("https://example.com/chart.png", model.imageUrls.get(0));
+        assertEquals("data:image/png;base64,AQID", model.imageUrls.get(1));
+        assertEquals("describe: 销售趋势", model.prompts.get(0));
+        assertEquals("describe: ", model.prompts.get(1));
+    }
+
+    @Test
+    public void shouldDescribeMarkdownAndHtmlImagesInSourceOrder() {
+        RecordingChatModel model = new RecordingChatModel("HTML", "Markdown", "HTML 2");
+        DocumentImageDescriber describer = new DocumentImageDescriber(model);
+        String source = "<img alt=first src=one.png> ![second](two.png) <img src=three.png alt=third>";
+
+        String result = describer.describe(source);
+
+        assertEquals(source + "\n\n<!-- image-description:start -->\nHTML\n"
+            + "<!-- image-description:end -->\n\n<!-- image-description:start -->\nMarkdown\n"
+            + "<!-- image-description:end -->\n\n<!-- image-description:start -->\nHTML 2\n"
+            + "<!-- image-description:end -->", result);
+        assertEquals("one.png", model.imageUrls.get(0));
+        assertEquals("two.png", model.imageUrls.get(1));
+        assertEquals("three.png", model.imageUrls.get(2));
+    }
+
+    @Test
+    public void shouldSkipHtmlImagesInCodeFencesAndWithoutSrc() {
         RecordingChatModel model = new RecordingChatModel("新增描述");
         DocumentImageDescriber describer = new DocumentImageDescriber(model);
-        String markdown = "![](done.png)\n> 已有描述\n\n```markdown\n![](sample.png)\n```\n![](new.png)";
+        String source = "```html\n<img src=sample.png>\n```\n<img alt=missing>\n<img src=real.png>";
+
+        String result = describer.describe(source);
+
+        assertEquals(source + "\n\n<!-- image-description:start -->\n新增描述\n"
+            + "<!-- image-description:end -->", result);
+        assertEquals(1, model.imageUrls.size());
+        assertEquals("real.png", model.imageUrls.get(0));
+    }
+
+    @Test
+    public void shouldKeepAltTextAndSkipExistingDescriptionParagraph() {
+        RecordingChatModel model = new RecordingChatModel();
+        DocumentImageDescriber describer = new DocumentImageDescriber(model);
+        String source = "![原始替代文本](chart.png)\n\n"
+            + "<!-- image-description:start -->\n这是图片下方已有的描述段落。\n"
+            + "<!-- image-description:end -->";
+
+        assertEquals(source, describer.describe(source));
+        assertEquals(0, model.imageUrls.size());
+    }
+
+    @Test
+    public void shouldSkipCodeFences() {
+        RecordingChatModel model = new RecordingChatModel("新增描述");
+        DocumentImageDescriber describer = new DocumentImageDescriber(model);
+        String markdown = "```markdown\n![](sample.png)\n```\n![](new.png)";
 
         String result = describer.describe(markdown);
 
-        assertEquals(markdown + "\n> 新增描述", result);
+        assertEquals(markdown + "\n\n<!-- image-description:start -->\n新增描述\n"
+            + "<!-- image-description:end -->", result);
         assertEquals(1, model.imageUrls.size());
         assertEquals("new.png", model.imageUrls.get(0));
     }
@@ -80,7 +148,8 @@ public class DocumentImageDescriberTest {
 
         String result = describer.describe("![销售图](chart.png)");
 
-        assertEquals("![销售图](chart.png)\n> 第一行\n> 第二行", result);
+        assertEquals("![销售图](chart.png)\n\n<!-- image-description:start -->\n第一行\n第二行\n"
+            + "<!-- image-description:end -->", result);
         assertEquals("describe: 销售图", model.prompts.get(0));
     }
 

@@ -23,23 +23,28 @@ import com.agentsflex.core.prompt.SimplePrompt;
 import com.agentsflex.core.util.StringUtil;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Markdown 文档图片描述生成器。
+ * Markdown 与内嵌 HTML 文档图片描述生成器。
  *
- * <p>该工具扫描文档正文中的 Markdown 图片语法，并将图片地址作为多模态消息发送给支持视觉输入的
- * {@link ChatModel}。模型返回的描述会转换为 Markdown 引用块，插入到对应图片所在行之后。例如：</p>
+ * <p>该工具扫描文档正文中的 Markdown 图片语法和 HTML {@code <img>} 标签，并将图片地址作为
+ * 多模态消息发送给支持视觉输入的 {@link ChatModel}。模型返回的描述会作为独立正文段落插入到
+ * 对应图片所在行之后，不会改写 Markdown 替代文本或 HTML {@code alt} 属性。例如：</p>
  *
  * <pre>{@code
  * ![](https://example.com/chart.png)
- * > 一张展示季度增长趋势的折线图。
+ *
+ * <!-- image-description:start -->
+ * 一张展示季度增长趋势的折线图。
+ * <!-- image-description:end -->
  * }</pre>
  *
  * <p>每张待描述图片会触发一次同步模型调用。一行存在多张图片时，将按照图片出现顺序逐张调用。
- * 图片后方已经紧跟引用块时，认为该图片已有描述并跳过；代码围栏中的图片语法也不会处理。</p>
+ * 图片后方已经存在描述标记时，认为该图片已有描述并跳过；代码围栏中的图片语法和标签也不会处理。</p>
  *
  * <p>图片地址会原样写入 {@code UserMessage.imageUrls}。HTTP URL 和
  * {@code data:image/...;base64,...} Data URI 均可被识别，但能否实际读取取决于所使用的
@@ -53,7 +58,8 @@ public class DocumentImageDescriber {
     /**
      * 默认图片描述提示词。
      *
-     * <p>{@code {alt}} 是图片替代文本占位符，调用模型前会替换为 Markdown 图片中方括号内的内容。</p>
+     * <p>{@code {alt}} 是图片替代文本占位符，调用模型前会替换为 Markdown 图片替代文本或 HTML
+     * {@code alt} 属性。</p>
      */
     public static final String DEFAULT_PROMPT_TEMPLATE =
         "请准确、简洁地描述这张图片。描述应适合写入文档并帮助后续检索。"
@@ -63,7 +69,11 @@ public class DocumentImageDescriber {
     private static final Pattern MARKDOWN_IMAGE = Pattern.compile(
         "!\\[((?:\\\\.|[^\\]])*)\\]\\(\\s*(<[^>\\r\\n]+>|[^\\s)]+)"
             + "(?:\\s+(?:\"[^\"]*\"|'[^']*'|\\([^)]*\\)))?\\s*\\)");
-    private static final Pattern BLOCK_QUOTE = Pattern.compile("^\\s*>.*$");
+    private static final Pattern HTML_IMAGE = Pattern.compile("(?i)<img\\b[^>]*>");
+    private static final Pattern HTML_ATTRIBUTE = Pattern.compile(
+        "(?i)(?:^|\\s)(src|alt)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'=<>`]+))");
+    private static final String DESCRIPTION_START = "<!-- image-description:start -->";
+    private static final String DESCRIPTION_END = "<!-- image-description:end -->";
 
     private final ChatModel chatModel;
     private ChatOptions chatOptions = ChatOptions.builder().temperature(0.2f).build();
@@ -83,7 +93,7 @@ public class DocumentImageDescriber {
     }
 
     /**
-     * 为文档正文中的 Markdown 图片生成描述。
+     * 为文档正文中的 Markdown 和 HTML 图片生成描述。
      *
      * <p>该方法会直接修改传入对象的 {@link Document#getContent() content}，并返回同一个
      * Document 实例。文档的 ID、标题、向量、分数和 Metadata 均不会修改。</p>
@@ -93,7 +103,7 @@ public class DocumentImageDescriber {
      * @param document 待增强的文档；不能为 {@code null}
      * @return 已更新正文的原 Document 实例
      * @throws IllegalArgumentException 当 {@code document} 为 {@code null} 时抛出
-     * @throws RuntimeException 当底层 ChatModel 调用失败或返回错误响应时传播模型异常
+     * @throws RuntimeException         当底层 ChatModel 调用失败或返回错误响应时传播模型异常
      */
     public Document describe(Document document) {
         if (document == null) {
@@ -106,13 +116,15 @@ public class DocumentImageDescriber {
     /**
      * 为 Markdown 字符串中的图片生成描述并返回增强后的新字符串。
      *
-     * <p>支持普通 URL、尖括号包裹的 URL 和单行 Data URI。图片标题会保留但不会发送给模型，
-     * 图片替代文本会通过提示词模板中的 {@code {alt}} 传给模型。相对图片地址虽然能够解析，
+     * <p>支持 Markdown 图片以及 HTML {@code <img src="..." alt="...">} 标签中的图片。Markdown
+     * 图片支持普通 URL、尖括号包裹的 URL 和单行 Data URI。图片标题和 HTML 其他属性会原样保留但
+     * 不会发送给模型，图片替代文本会通过提示词模板中的 {@code {alt}} 传给模型。相对图片地址虽然能够解析，
      * 但调用远程模型前通常需要转换为模型可访问的绝对 URL 或 Data URI。</p>
      *
-     * <p>模型返回多行文本时，每个非空行都会规范化为 {@code > } 开头的 Markdown 引用行。
-     * 如果模型没有返回消息或描述为空，则保留原图片且不追加内容。输出会沿用输入文本原有的
-     * LF、CRLF 或 CR 换行风格。</p>
+     * <p>模型返回的描述会在图片下方以普通 Markdown 段落写入。工具会在段落前添加不可见的 HTML
+     * 注释标记，以便重复执行时跳过已有描述。该标记不会影响 Markdown/HTML 渲染。如果模型没有
+     * 返回消息或描述为空，则保留原图片且不追加内容。输出会沿用输入文本原有的 LF、CRLF 或 CR
+     * 换行风格。</p>
      *
      * @param markdown 待处理的 Markdown；可以为 {@code null}
      * @return 插入图片描述后的 Markdown；输入无内容时原样返回
@@ -145,11 +157,9 @@ public class DocumentImageDescriber {
                 continue;
             }
 
-            Matcher matcher = MARKDOWN_IMAGE.matcher(line.content);
             List<String> descriptions = new ArrayList<>();
-            while (matcher.find()) {
-                String imageUrl = stripAngles(matcher.group(2));
-                String description = requestDescription(imageUrl, unescapeAlt(matcher.group(1)));
+            for (ImageReference image : findImages(line.content)) {
+                String description = requestDescription(image.url, image.alt);
                 if (StringUtil.hasText(description)) {
                     descriptions.add(description);
                 }
@@ -162,11 +172,16 @@ public class DocumentImageDescriber {
             if (line.separator.isEmpty()) {
                 result.append(separator);
             }
+            result.append(separator);
             for (int descriptionIndex = 0; descriptionIndex < descriptions.size(); descriptionIndex++) {
-                appendBlockQuote(result, descriptions.get(descriptionIndex), separator);
+                result.append(DESCRIPTION_START).append(separator);
+                appendParagraph(result, descriptions.get(descriptionIndex), separator);
+                result.append(separator).append(DESCRIPTION_END);
                 boolean lastDescription = descriptionIndex == descriptions.size() - 1;
                 boolean lastInputLine = i == lines.size() - 1;
-                if (!lastDescription || !lastInputLine || !line.separator.isEmpty()) {
+                if (!lastDescription || !lastInputLine) {
+                    result.append(separator).append(separator);
+                } else if (!line.separator.isEmpty()) {
                     result.append(separator);
                 }
             }
@@ -244,9 +259,9 @@ public class DocumentImageDescriber {
     }
 
     /**
-     * 将模型返回的单行或多行描述规范化为 Markdown 引用块。
+     * 将模型返回的单行或多行描述规范化为一个普通 Markdown 段落。
      */
-    private static void appendBlockQuote(StringBuilder result, String description, String separator) {
+    private static void appendParagraph(StringBuilder result, String description, String separator) {
         String[] descriptionLines = description.trim().split("\\r\\n|\\n|\\r", -1);
         boolean wroteLine = false;
         for (String descriptionLine : descriptionLines) {
@@ -257,17 +272,24 @@ public class DocumentImageDescriber {
             if (wroteLine) {
                 result.append(separator);
             }
-            result.append("> ").append(normalized);
+            result.append(normalized);
             wroteLine = true;
         }
     }
 
     /**
-     * 图片下一行已经是引用块时视为已有描述，避免重复执行时反复追加。
+     * 图片下方存在描述开始标记时视为已有描述，避免重复执行时反复追加。
      */
     private static boolean hasFollowingDescription(List<Line> lines, int currentIndex) {
-        return currentIndex + 1 < lines.size()
-            && BLOCK_QUOTE.matcher(lines.get(currentIndex + 1).content).matches();
+        if (currentIndex + 1 >= lines.size()) return false;
+        String nextLine = lines.get(currentIndex + 1).content;
+        if (isDescriptionStart(nextLine)) return true;
+        return nextLine.trim().isEmpty() && currentIndex + 2 < lines.size()
+            && isDescriptionStart(lines.get(currentIndex + 2).content);
+    }
+
+    private static boolean isDescriptionStart(String line) {
+        return DESCRIPTION_START.equals(line.trim());
     }
 
     /**
@@ -309,6 +331,45 @@ public class DocumentImageDescriber {
             ? value.substring(1, value.length() - 1) : value;
     }
 
+    /**
+     * 提取一行中的 Markdown 和 HTML 图片，并按原文中的出现位置排序。
+     */
+    private static List<ImageReference> findImages(String line) {
+        List<ImageReference> images = new ArrayList<>();
+        Matcher markdownMatcher = MARKDOWN_IMAGE.matcher(line);
+        while (markdownMatcher.find()) {
+            images.add(new ImageReference(markdownMatcher.start(), stripAngles(markdownMatcher.group(2)),
+                unescapeAlt(markdownMatcher.group(1))));
+        }
+
+        Matcher htmlMatcher = HTML_IMAGE.matcher(line);
+        while (htmlMatcher.find()) {
+            String src = null;
+            String alt = "";
+            Matcher attributeMatcher = HTML_ATTRIBUTE.matcher(htmlMatcher.group());
+            while (attributeMatcher.find()) {
+                String value = firstAttributeValue(attributeMatcher);
+                if ("src".equalsIgnoreCase(attributeMatcher.group(1))) {
+                    src = value;
+                } else {
+                    alt = value;
+                }
+            }
+            if (StringUtil.hasText(src)) {
+                images.add(new ImageReference(htmlMatcher.start(), src, alt));
+            }
+        }
+        images.sort(Comparator.comparingInt(imageReference -> imageReference.position));
+        return images;
+    }
+
+    private static String firstAttributeValue(Matcher matcher) {
+        for (int group = 2; group <= 4; group++) {
+            if (matcher.group(group) != null) return matcher.group(group);
+        }
+        return "";
+    }
+
     private static String unescapeAlt(String value) {
         return value == null ? "" : value.replace("\\]", "]").replace("\\[", "[");
     }
@@ -331,6 +392,18 @@ public class DocumentImageDescriber {
         private Line(String content, String separator) {
             this.content = content;
             this.separator = separator;
+        }
+    }
+
+    private static final class ImageReference {
+        private final int position;
+        private final String url;
+        private final String alt;
+
+        private ImageReference(int position, String url, String alt) {
+            this.position = position;
+            this.url = url;
+            this.alt = alt;
         }
     }
 

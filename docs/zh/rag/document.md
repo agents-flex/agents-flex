@@ -111,9 +111,9 @@ doc.setScore(similarityScore); // similarityScore ∈ [0,1]
 
 
 
-## 5. 为 Markdown 图片生成描述
+## 5. 为 Markdown 和 HTML 图片生成描述
 
-Markdown 文档中的图片可以通过 `DocumentImageDescriber` 调用视觉模型生成描述，使图片语义能够参与后续切分、Embedding 和检索。完整配置、处理规则和文档提取组合方式参见 [DocumentImageDescriber 图片描述工具](../util/document-image-describer.md)。
+文档中的 Markdown 图片和 HTML `<img>` 标签可以通过 `DocumentImageDescriber` 调用视觉模型生成描述，使图片语义能够参与后续切分、Embedding 和检索。完整配置、处理规则和文档提取组合方式参见 [DocumentImageDescriber 图片描述工具](../util/document-image-describer.md)。
 
 
 

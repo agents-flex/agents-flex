@@ -2,7 +2,7 @@
 
 <div v-pre>
 
-`DocumentImageDescriber` 是 `agents-flex-core` 提供的文档增强工具。它会查找 Markdown 正文中的图片，调用支持视觉输入的 `ChatModel` 生成描述，并将描述以引用块形式插入图片后方。
+`DocumentImageDescriber` 是 `agents-flex-core` 提供的文档增强工具。它会查找 Markdown 图片和内嵌 HTML `<img>` 标签，调用支持视觉输入的 `ChatModel` 生成描述，并在图片下方新建一个普通正文段落。工具不会把生成结果写入 Markdown 的 `[]` 或 HTML 的 `alt` 属性。
 
 处理前：
 
@@ -16,10 +16,13 @@
 ```markdown
 内容内容内容
 ![](https://example.com/chart.png)
-> 一张展示季度增长趋势的折线图。
+
+<!-- image-description:start -->
+一张展示季度增长趋势的折线图。
+<!-- image-description:end -->
 ```
 
-生成的描述属于 `Document.content` 的一部分，可以继续参与文档切分、Embedding 和检索。
+生成的描述属于 `Document.content` 的一部分，可以继续参与文档切分、Embedding 和检索。成对的 HTML 注释用于界定描述范围，不会在 Markdown 或 HTML 页面中显示。
 
 ## 1. 引入依赖
 
@@ -93,15 +96,23 @@ describer.setPromptTemplate(
 
 此时 `{alt}` 的值为 `2026 年销售趋势`。模板可以不包含该占位符，但不能为空。
 
+HTML 图片使用 `<img>` 标签的 `alt` 属性：
+
+```html
+<img src="https://example.com/sales.png" alt="2026 年销售趋势">
+```
+
 ## 5. 处理规则
 
 | 输入情况 | 行为 |
 | --- | --- |
-| 普通 Markdown 图片 | 调用一次模型并在图片后插入描述 |
+| 普通 Markdown 图片 | 调用一次模型，在图片下方新建普通正文段落 |
+| HTML `<img>` 图片 | 读取 `src` 和 `alt`，保留原标签并在图片下方新建普通正文段落 |
+| 一行混合 Markdown 和 HTML 图片 | 按原文中的出现顺序逐张调用模型 |
 | 一行包含多张图片 | 按出现顺序逐张调用模型并追加描述 |
-| 图片后紧跟引用块 | 视为已有描述，不再调用模型 |
-| Markdown 代码围栏中的图片语法 | 作为示例代码保留，不调用模型 |
-| 模型返回多行描述 | 每个非空行都转换为 `> ` 引用行 |
+| 图片下方存在 `image-description:start` 标记 | 视为已有描述，不再调用模型 |
+| Markdown 代码围栏中的图片语法或 HTML 标签 | 作为示例代码保留，不调用模型 |
+| 模型返回多行描述 | 移除空行后写入同一个普通段落 |
 | 模型返回空消息 | 保留原图片，不追加描述 |
 | 模型返回错误响应 | 抛出模型异常，由调用方决定重试或跳过 |
 
@@ -144,6 +155,6 @@ List<Document> chunks = splitter.split(document);
 
 每张待处理图片都会发起一次同步模型调用。包含大量图片的文档会相应增加耗时、Token 消耗和供应商请求次数。批量导入时应在业务层设置并发上限、超时和重试策略，并结合模型供应商的 QPS 限制控制任务速率。
 
-重复执行时，工具会跳过后方已经存在引用块的图片。不过，如果业务会修改描述与图片之间的结构，建议额外记录处理状态，避免重复产生模型调用。
+重复执行时，工具会通过 `<!-- image-description:start -->` 和 `<!-- image-description:end -->` 界定并识别已有描述。成对标记也方便后续程序精确替换或删除描述区域。
 
 </div>
