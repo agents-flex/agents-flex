@@ -8,6 +8,7 @@
         <artifactId>agents-flex-async-task-store</artifactId>
         <version>${revision}</version>
     </parent>
+    <name>agents-flex-async-task-store-jdbc</name>
     <artifactId>agents-flex-async-task-store-jdbc</artifactId>
     <dependencies>
         <dependency>

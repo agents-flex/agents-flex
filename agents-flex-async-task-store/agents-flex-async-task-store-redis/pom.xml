@@ -8,10 +8,22 @@
         <artifactId>agents-flex-async-task-store</artifactId>
         <version>${revision}</version>
     </parent>
+    <name>agents-flex-async-task-store-redis</name>
     <artifactId>agents-flex-async-task-store-redis</artifactId>
     <dependencies>
-        <dependency><groupId>com.agentsflex</groupId><artifactId>agents-flex-async-task</artifactId></dependency>
-        <dependency><groupId>redis.clients</groupId><artifactId>jedis</artifactId><version>5.2.0</version></dependency>
-        <dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-async-task</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>5.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

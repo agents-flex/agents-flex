@@ -8,6 +8,7 @@
         <artifactId>parent</artifactId>
         <version>${revision}</version>
     </parent>
+    <name>agents-flex-async-task-store</name>
     <artifactId>agents-flex-async-task-store</artifactId>
     <packaging>pom</packaging>
     <modules>

@@ -8,9 +8,17 @@
         <artifactId>agents-flex-ocr</artifactId>
         <version>${revision}</version>
     </parent>
+    <name>agents-flex-ocr-gitee</name>
     <artifactId>agents-flex-ocr-gitee</artifactId>
     <dependencies>
-        <dependency><groupId>com.agentsflex</groupId><artifactId>agents-flex-core</artifactId></dependency>
-        <dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
