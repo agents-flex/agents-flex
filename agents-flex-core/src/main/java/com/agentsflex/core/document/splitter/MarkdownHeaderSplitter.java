@@ -137,6 +137,7 @@ public class MarkdownHeaderSplitter implements DocumentSplitter {
         for (DocumentChunk chunk : chunks) {
             Document doc = new Document();
             doc.setContent(chunk.content.trim());
+            doc.setTitle(document.getTitle());
             doc.putMetadata(document.getMetadataMap());
 
             if (includeParentHeaders && !chunk.headerPath.isEmpty()) {

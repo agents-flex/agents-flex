@@ -138,6 +138,7 @@ public class SimpleTokenizeSplitter implements DocumentSplitter {
             Document newDocument = new Document();
             newDocument.putMetadata(document.getMetadataMap());
             newDocument.setContent(chunkText);
+            newDocument.setTitle(document.getTitle());
 
             //we should invoke setId after setContent
             newDocument.setId(idGenerator == null ? null : idGenerator.generateId(newDocument));

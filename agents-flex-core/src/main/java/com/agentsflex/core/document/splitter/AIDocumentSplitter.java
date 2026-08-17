@@ -113,6 +113,7 @@ public class AIDocumentSplitter implements DocumentSplitter {
             Document doc = new Document();
             doc.setContent(chunk);
             doc.setTitle(document.getTitle());
+            doc.putMetadata(document.getMetadataMap());
             if (idGenerator != null) {
                 doc.setId(idGenerator.generateId(doc));
             }

@@ -488,6 +488,7 @@ public class MarkdownTableSplitter implements DocumentSplitter {
         Document result = new Document();
         result.putMetadata(source.getMetadataMap());
         result.setContent(content);
+        result.setTitle(source.getTitle());
         result.setId(idGenerator == null ? null : idGenerator.generateId(result));
         return result;
     }
