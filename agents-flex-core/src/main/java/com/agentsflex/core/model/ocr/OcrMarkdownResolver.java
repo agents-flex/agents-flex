@@ -212,7 +212,30 @@ public class OcrMarkdownResolver {
                 throw new OcrMarkdownResolveException("Invalid Base64 image in OCR Markdown", e);
             }
         }
+        String remoteUrl = resolveRemoteReference(base, reference);
+        if (remoteUrl == null) remoteUrl = absoluteRemoteReference(reference);
+        if (remoteUrl != null) {
+            return new ImageData(download(remoteUrl), remoteFileName(remoteUrl));
+        }
         return null;
+    }
+
+    private static String absoluteRemoteReference(String reference) {
+        try {
+            URI uri = URI.create(reference);
+            String scheme = uri.getScheme();
+            return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme) ? uri.toString() : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static String remoteFileName(String url) {
+        try {
+            return fileName(URI.create(url).getPath());
+        } catch (IllegalArgumentException e) {
+            return "ocr-image";
+        }
     }
 
     private static String selectMarkdown(Map<String, byte[]> entries) {

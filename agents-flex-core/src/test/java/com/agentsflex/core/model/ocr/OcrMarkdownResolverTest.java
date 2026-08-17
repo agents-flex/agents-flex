@@ -37,20 +37,41 @@ public class OcrMarkdownResolverTest {
     }
 
     @Test
-    public void shouldPreserveRemoteImageAsAbsoluteUrlWhenHandlerIsConfigured() {
-        OkHttpClient client = clientReturning(requestUrl ->
-            "# Report\n\n![chart](images/chart.png)".getBytes(StandardCharsets.UTF_8));
+    public void shouldDownloadRemoteImageWhenHandlerIsConfigured() {
+        OkHttpClient client = clientReturning(requestUrl -> requestUrl.endsWith("result.md")
+            ? "# Report\n\n![chart](images/chart.png)".getBytes(StandardCharsets.UTF_8)
+            : new byte[]{1, 2, 3});
         OcrResponse response = successfulResponse();
         response.addResource("markdown", "https://result.example/result.md");
-        AtomicReference<Boolean> handled = new AtomicReference<>(false);
+        AtomicReference<String> handledName = new AtomicReference<>();
 
         String markdown = new OcrMarkdownResolver(client).resolve(response, (bytes, mimeType, name) -> {
-            handled.set(true);
+            assertEquals(3, bytes.length);
+            assertEquals("image/png", mimeType);
+            handledName.set(name);
             return "https://cdn.example/image.png";
         });
 
-        assertEquals(Boolean.FALSE, handled.get());
-        assertEquals("# Report\n\n![chart](https://result.example/images/chart.png)", markdown);
+        assertEquals("chart.png", handledName.get());
+        assertEquals("# Report\n\n![chart](https://cdn.example/image.png)", markdown);
+    }
+
+    @Test
+    public void shouldDownloadAbsoluteSignedImageUrlWithoutChangingItsQuery() {
+        String signedUrl = "https://result.example/images/chart.jpg?authorization=signed-value";
+        AtomicReference<String> requestedUrl = new AtomicReference<>();
+        OkHttpClient client = clientReturning(requestUrl -> {
+            requestedUrl.set(requestUrl);
+            return new byte[]{1, 2, 3};
+        });
+        OcrResponse response = successfulResponse();
+        response.setMarkdown("![](" + signedUrl + ")");
+
+        String markdown = new OcrMarkdownResolver(client).resolve(response,
+            (bytes, mimeType, name) -> "https://cdn.example/chart.jpg");
+
+        assertEquals(signedUrl, requestedUrl.get());
+        assertEquals("![](https://cdn.example/chart.jpg)", markdown);
     }
 
     @Test
