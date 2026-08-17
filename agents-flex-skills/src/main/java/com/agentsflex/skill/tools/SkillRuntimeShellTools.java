@@ -38,7 +38,9 @@ public class SkillRuntimeShellTools {
 
     private final SkillRuntime runtime;
 
-    /** @param runtime 接收所有命令的 Runtime */
+    /**
+     * @param runtime 接收所有命令的 Runtime
+     */
     public SkillRuntimeShellTools(SkillRuntime runtime) {
         if (runtime == null) {
             throw new IllegalArgumentException("runtime must not be null");
@@ -49,8 +51,8 @@ public class SkillRuntimeShellTools {
     /**
      * 在配置的 Runtime 中执行 Shell 命令。
      *
-     * @param command Shell 命令文本
-     * @param timeout 可选超时毫秒数，最终限制在 1 到 600000 之间
+     * @param command          Shell 命令文本
+     * @param timeout          可选超时毫秒数，最终限制在 1 到 600000 之间
      * @param workingDirectory 可选的 Runtime 内工作目录
      * @return 包含退出码、超时状态、stdout 和 stderr 的格式化结果
      */

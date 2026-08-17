@@ -35,7 +35,9 @@ import java.util.List;
  */
 public interface SkillRuntime extends AutoCloseable {
 
-    /** @return 稳定的 Runtime 名称，用于日志、配置和分支判断 */
+    /**
+     * @return 稳定的 Runtime 名称，用于日志、配置和分支判断
+     */
     String getName();
 
     /**
@@ -46,10 +48,14 @@ public interface SkillRuntime extends AutoCloseable {
      */
     List<Skill> prepare(SkillPreparationRequest request);
 
-    /** @return Runtime 内执行命令时使用的默认工作目录 */
+    /**
+     * @return Runtime 内执行命令时使用的默认工作目录
+     */
     String getDefaultWorkingDirectory();
 
-    /** @return 与当前 Runtime 使用相同传输和权限边界的文件系统实现 */
+    /**
+     * @return 与当前 Runtime 使用相同传输和权限边界的文件系统实现
+     */
     SkillRuntimeFileSystem getFileSystem();
 
     /**

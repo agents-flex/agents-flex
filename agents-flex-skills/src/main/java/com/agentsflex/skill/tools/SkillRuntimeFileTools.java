@@ -40,7 +40,9 @@ public class SkillRuntimeFileTools {
     private final SkillRuntime runtime;
     private final SkillRuntimeFileSystem files;
 
-    /** @param runtime 文件实际所在的 Runtime */
+    /**
+     * @param runtime 文件实际所在的 Runtime
+     */
     public SkillRuntimeFileTools(SkillRuntime runtime) {
         if (runtime == null) {
             throw new IllegalArgumentException("runtime must not be null");
@@ -53,8 +55,8 @@ public class SkillRuntimeFileTools {
      * 读取 UTF-8 文本并返回带行号的片段。
      *
      * @param filePath Runtime 内绝对路径
-     * @param offset 可选的起始行，按 1 开始
-     * @param limit 可选的最大行数
+     * @param offset   可选的起始行，按 1 开始
+     * @param limit    可选的最大行数
      * @return 适合直接返回给模型的文本或错误信息
      */
     @ToolDef(name = "read", description = "Reads a UTF-8 text file from the configured skill runtime. "
@@ -102,7 +104,7 @@ public class SkillRuntimeFileTools {
      * 创建或覆盖 Runtime 内的 UTF-8 文本文件。
      *
      * @param filePath Runtime 内绝对路径
-     * @param content 写入内容；{@code null} 按空字符串处理
+     * @param content  写入内容；{@code null} 按空字符串处理
      * @return 写入结果摘要
      */
     @ToolDef(name = "write", description = "Creates or overwrites a UTF-8 text file in the configured skill runtime. "
@@ -128,9 +130,9 @@ public class SkillRuntimeFileTools {
      * <p>默认要求旧字符串只出现一次，避免模型使用过短片段误改多处。需要批量替换时必须
      * 显式传入 {@code replaceAll=true}。</p>
      *
-     * @param filePath Runtime 内绝对路径
-     * @param oldString 必须精确匹配的原文本
-     * @param newString 替换文本；{@code null} 表示删除
+     * @param filePath   Runtime 内绝对路径
+     * @param oldString  必须精确匹配的原文本
+     * @param newString  替换文本；{@code null} 表示删除
      * @param replaceAll 是否替换所有匹配项
      * @return 编辑结果及修改位置附近的文本片段
      */

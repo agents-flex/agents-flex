@@ -42,7 +42,7 @@ public class SkillRuntimeFilePublishTools {
     private final FilePublisher publisher;
 
     /**
-     * @param runtime 产物所在 Runtime
+     * @param runtime   产物所在 Runtime
      * @param publisher 应用提供的文件发布实现
      */
     public SkillRuntimeFilePublishTools(SkillRuntime runtime, FilePublisher publisher) {
@@ -60,8 +60,8 @@ public class SkillRuntimeFilePublishTools {
     /**
      * 发布 Runtime 中的一个普通文件并返回 URL。
      *
-     * @param filePath Runtime 内文件路径
-     * @param fileName 可选展示文件名；为空时使用路径中的文件名
+     * @param filePath    Runtime 内文件路径
+     * @param fileName    可选展示文件名；为空时使用路径中的文件名
      * @param contentType 可选 MIME 类型；为空时根据文件名推断
      * @return 包含 URL 和文件信息的发布结果
      */

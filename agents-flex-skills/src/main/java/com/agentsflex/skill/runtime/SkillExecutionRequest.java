@@ -36,10 +36,10 @@ public class SkillExecutionRequest {
     /**
      * 创建执行请求。
      *
-     * @param command 要执行的 Shell 命令，不能为空
+     * @param command          要执行的 Shell 命令，不能为空
      * @param workingDirectory Runtime 内的工作目录；为 {@code null} 时由实现决定
-     * @param timeoutMillis 最长执行时间，必须大于 0
-     * @param environment 附加环境变量；允许为 {@code null}，构造后会复制并只读化
+     * @param timeoutMillis    最长执行时间，必须大于 0
+     * @param environment      附加环境变量；允许为 {@code null}，构造后会复制并只读化
      */
     public SkillExecutionRequest(String command, String workingDirectory, long timeoutMillis,
                                  Map<String, String> environment) {
@@ -57,22 +57,30 @@ public class SkillExecutionRequest {
             : Collections.unmodifiableMap(new LinkedHashMap<>(environment));
     }
 
-    /** @return Shell 命令文本 */
+    /**
+     * @return Shell 命令文本
+     */
     public String getCommand() {
         return command;
     }
 
-    /** @return Runtime 内的工作目录，可能为 {@code null} */
+    /**
+     * @return Runtime 内的工作目录，可能为 {@code null}
+     */
     public String getWorkingDirectory() {
         return workingDirectory;
     }
 
-    /** @return 超时时间，单位毫秒 */
+    /**
+     * @return 超时时间，单位毫秒
+     */
     public long getTimeoutMillis() {
         return timeoutMillis;
     }
 
-    /** @return 不可变的附加环境变量 */
+    /**
+     * @return 不可变的附加环境变量
+     */
     public Map<String, String> getEnvironment() {
         return environment;
     }

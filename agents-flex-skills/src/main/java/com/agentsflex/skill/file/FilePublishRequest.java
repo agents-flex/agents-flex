@@ -57,47 +57,65 @@ public class FilePublishRequest {
         this.metadata = Collections.unmodifiableMap(new LinkedHashMap<>(builder.metadata));
     }
 
-    /** @return 新的请求构建器 */
+    /**
+     * @return 新的请求构建器
+     */
     public static Builder builder() {
         return new Builder();
     }
 
-    /** @return 只能同步消费一次、由调用方负责关闭的文件输入流 */
+    /**
+     * @return 只能同步消费一次、由调用方负责关闭的文件输入流
+     */
     public InputStream getInputStream() {
         return inputStream;
     }
 
-    /** @return 对外展示的文件名 */
+    /**
+     * @return 对外展示的文件名
+     */
     public String getFileName() {
         return fileName;
     }
 
-    /** @return MIME 类型；无法推断时可能为 {@code null} */
+    /**
+     * @return MIME 类型；无法推断时可能为 {@code null}
+     */
     public String getContentType() {
         return contentType;
     }
 
-    /** @return 文件字节数；未知时为 {@code -1} */
+    /**
+     * @return 文件字节数；未知时为 {@code -1}
+     */
     public long getContentLength() {
         return contentLength;
     }
 
-    /** @return Runtime 内原始文件路径 */
+    /**
+     * @return Runtime 内原始文件路径
+     */
     public String getSourcePath() {
         return sourcePath;
     }
 
-    /** @return 来源 Runtime 名称 */
+    /**
+     * @return 来源 Runtime 名称
+     */
     public String getRuntimeName() {
         return runtimeName;
     }
 
-    /** @return 可选内容校验值，例如 SHA-256 */
+    /**
+     * @return 可选内容校验值，例如 SHA-256
+     */
     public String getChecksum() {
         return checksum;
     }
 
-    /** @return 不可变扩展元数据 */
+    /**
+     * @return 不可变扩展元数据
+     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }
@@ -106,7 +124,9 @@ public class FilePublishRequest {
         return value == null || value.trim().isEmpty();
     }
 
-    /** 文件发布请求构建器。 */
+    /**
+     * 文件发布请求构建器。
+     */
     public static class Builder {
 
         private InputStream inputStream;

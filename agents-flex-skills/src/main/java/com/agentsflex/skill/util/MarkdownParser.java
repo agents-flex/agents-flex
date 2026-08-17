@@ -51,99 +51,101 @@ import java.util.Map;
  */
 public class MarkdownParser {
 
-	/** 已解析的 front matter 键值对。 */
-	private Map<String, Object> frontMatter;
+    /**
+     * 已解析的 front matter 键值对。
+     */
+    private Map<String, Object> frontMatter;
 
-	/** front matter 结束后的 Markdown 正文。 */
-	private String content;
+    /**
+     * front matter 结束后的 Markdown 正文。
+     */
+    private String content;
 
-	/**
-	 * 创建解析器并立即解析输入内容。
-	 *
-	 * @param markdown 待解析 Markdown；可以为 {@code null} 或空字符串
-	 */
-	public MarkdownParser(String markdown) {
+    /**
+     * 创建解析器并立即解析输入内容。
+     *
+     * @param markdown 待解析 Markdown；可以为 {@code null} 或空字符串
+     */
+    public MarkdownParser(String markdown) {
 
-		frontMatter = new HashMap<>();
-		content = "";
+        frontMatter = new HashMap<>();
+        content = "";
 
-		if (markdown == null || markdown.isEmpty()) {
-			return;
-		}
+        if (markdown == null || markdown.isEmpty()) {
+            return;
+        }
 
-		// 只有文件开头的 --- 才会被识别为 front matter 起始分隔符。
-		if (markdown.startsWith("---")) {
-			// 查找结束分隔符。
-			int endIndex = markdown.indexOf("---", 3);
+        // 只有文件开头的 --- 才会被识别为 front matter 起始分隔符。
+        if (markdown.startsWith("---")) {
+            // 查找结束分隔符。
+            int endIndex = markdown.indexOf("---", 3);
 
-			if (endIndex != -1) {
-				// 解析两个分隔符之间的元数据。
-				String frontMatterSection = markdown.substring(3, endIndex).trim();
-				parseFrontMatter(frontMatterSection);
+            if (endIndex != -1) {
+                // 解析两个分隔符之间的元数据。
+                String frontMatterSection = markdown.substring(3, endIndex).trim();
+                parseFrontMatter(frontMatterSection);
 
-				// 跳过结束分隔符，并去掉正文首尾空白。
-				content = markdown.substring(endIndex + 3).trim();
-			}
-			else {
-				// 缺少结束分隔符时不猜测元数据，整份文档按正文处理。
-				content = markdown;
-			}
-		}
-		else {
-			// 普通 Markdown 全部作为正文。
-			content = markdown;
-		}
+                // 跳过结束分隔符，并去掉正文首尾空白。
+                content = markdown.substring(endIndex + 3).trim();
+            } else {
+                // 缺少结束分隔符时不猜测元数据，整份文档按正文处理。
+                content = markdown;
+            }
+        } else {
+            // 普通 Markdown 全部作为正文。
+            content = markdown;
+        }
 
-	}
+    }
 
-	private void parseFrontMatter(String frontMatterSection) {
-		String[] lines = frontMatterSection.split("\n");
+    private void parseFrontMatter(String frontMatterSection) {
+        String[] lines = frontMatterSection.split("\n");
 
-		for (String line : lines) {
-			line = line.trim();
+        for (String line : lines) {
+            line = line.trim();
 
-			if (line.isEmpty()) {
-				continue;
-			}
+            if (line.isEmpty()) {
+                continue;
+            }
 
-			// 只按第一个冒号切分，值本身可以继续包含冒号。
-			int colonIndex = line.indexOf(':');
-			if (colonIndex > 0) {
-				String key = line.substring(0, colonIndex).trim();
-				String value = line.substring(colonIndex + 1).trim();
+            // 只按第一个冒号切分，值本身可以继续包含冒号。
+            int colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+                String key = line.substring(0, colonIndex).trim();
+                String value = line.substring(colonIndex + 1).trim();
 
-				// 去掉成对的单引号或双引号。
-				value = removeQuotes(value);
+                // 去掉成对的单引号或双引号。
+                value = removeQuotes(value);
 
-				frontMatter.put(key, value);
-			}
-		}
-	}
+                frontMatter.put(key, value);
+            }
+        }
+    }
 
-	private String removeQuotes(String value) {
-		if (value.length() >= 2) {
-			if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
-				return value.substring(1, value.length() - 1);
-			}
-		}
-		return value;
-	}
+    private String removeQuotes(String value) {
+        if (value.length() >= 2) {
+            if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+                return value.substring(1, value.length() - 1);
+            }
+        }
+        return value;
+    }
 
-	/**
-	 * 获取 front matter 的副本，调用方修改返回 Map 不会影响解析器内部状态。
-	 *
-	 * @return front matter 键值对；未提供元数据时为空 Map
-	 */
-	public Map<String, Object> getFrontMatter() {
-		return new HashMap<>(frontMatter);
-	}
+    /**
+     * 获取 front matter 的副本，调用方修改返回 Map 不会影响解析器内部状态。
+     *
+     * @return front matter 键值对；未提供元数据时为空 Map
+     */
+    public Map<String, Object> getFrontMatter() {
+        return new HashMap<>(frontMatter);
+    }
 
-	/**
-	 * 获取去掉 front matter 后的 Markdown 正文。
-	 *
-	 * @return 正文；输入为空时返回空字符串
-	 */
-	public String getContent() {
-		return content;
-	}
+    /**
+     * 获取去掉 front matter 后的 Markdown 正文。
+     *
+     * @return 正文；输入为空时返回空字符串
+     */
+    public String getContent() {
+        return content;
+    }
 }

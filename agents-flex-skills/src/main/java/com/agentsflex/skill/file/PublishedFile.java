@@ -51,7 +51,9 @@ public class PublishedFile {
         this.metadata = Collections.unmodifiableMap(new LinkedHashMap<>(builder.metadata));
     }
 
-    /** @return 新的发布结果构建器 */
+    /**
+     * @return 新的发布结果构建器
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -72,7 +74,9 @@ public class PublishedFile {
         return contentLength;
     }
 
-    /** @return URL 失效时间的 Unix 毫秒值；永久地址或未知时为 {@code null} */
+    /**
+     * @return URL 失效时间的 Unix 毫秒值；永久地址或未知时为 {@code null}
+     */
     public Long getExpiresAt() {
         return expiresAt;
     }
@@ -85,7 +89,9 @@ public class PublishedFile {
         return metadata;
     }
 
-    /** 已发布文件构建器。 */
+    /**
+     * 已发布文件构建器。
+     */
     public static class Builder {
 
         private String url;

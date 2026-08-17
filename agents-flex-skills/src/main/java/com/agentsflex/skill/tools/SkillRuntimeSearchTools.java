@@ -63,7 +63,9 @@ public class SkillRuntimeSearchTools {
     private final SkillRuntime runtime;
     private final SkillRuntimeFileSystem files;
 
-    /** @param runtime 文件搜索实际发生的 Runtime */
+    /**
+     * @param runtime 文件搜索实际发生的 Runtime
+     */
     public SkillRuntimeSearchTools(SkillRuntime runtime) {
         if (runtime == null) {
             throw new IllegalArgumentException("runtime must not be null");
@@ -75,8 +77,8 @@ public class SkillRuntimeSearchTools {
     /**
      * 按指定深度列出 Runtime 文件或目录内容。
      *
-     * @param path 可选目录；为空时使用 Runtime 默认工作目录
-     * @param depth 递归深度；为空或非正数时默认为 1
+     * @param path      可选目录；为空时使用 Runtime 默认工作目录
+     * @param depth     递归深度；为空或非正数时默认为 1
      * @param maxResult 最大返回条目数；为空或非正数时默认为 1000
      * @return 带文件和目录类型标记的相对路径
      */
@@ -128,7 +130,7 @@ public class SkillRuntimeSearchTools {
      * 按 glob 模式查找 Runtime 内文件。
      *
      * @param pattern glob 模式，例如“任意目录下的所有 Python 文件”
-     * @param path 可选起始目录；为空时使用 Runtime 默认工作目录
+     * @param path    可选起始目录；为空时使用 Runtime 默认工作目录
      * @return 按修改时间倒序排列的文件路径
      */
     @ToolDef(name = "glob", description = "Finds files by glob pattern inside the configured skill runtime. "
@@ -170,19 +172,19 @@ public class SkillRuntimeSearchTools {
      * 行、大小写和多行模式过滤。二进制文件、无法按文本读取的文件和超过大小限制的文件
      * 会被跳过。</p>
      *
-     * @param pattern Java 正则表达式
-     * @param path 可选的 Runtime 文件或目录
-     * @param glob 可选 glob 文件过滤器
-     * @param outputMode {@code content}、{@code files_with_matches} 或 {@code count}
-     * @param contextBefore 匹配前上下文行数
-     * @param contextAfter 匹配后上下文行数
-     * @param context 同时设置匹配前后上下文行数
+     * @param pattern         Java 正则表达式
+     * @param path            可选的 Runtime 文件或目录
+     * @param glob            可选 glob 文件过滤器
+     * @param outputMode      {@code content}、{@code files_with_matches} 或 {@code count}
+     * @param contextBefore   匹配前上下文行数
+     * @param contextAfter    匹配后上下文行数
+     * @param context         同时设置匹配前后上下文行数
      * @param showLineNumbers 是否显示行号
      * @param caseInsensitive 是否忽略大小写
-     * @param type 文件类型快捷过滤，例如 {@code java}、{@code py}、{@code md}
-     * @param headLimit 最大结果条数
-     * @param offset 跳过的结果条数
-     * @param multiline 是否允许正则跨行匹配
+     * @param type            文件类型快捷过滤，例如 {@code java}、{@code py}、{@code md}
+     * @param headLimit       最大结果条数
+     * @param offset          跳过的结果条数
+     * @param multiline       是否允许正则跨行匹配
      * @return 搜索结果或错误信息
      */
     @ToolDef(name = "grep", description = "Searches UTF-8 file contents with a Java regular expression inside the configured skill runtime. "

@@ -47,9 +47,9 @@ public class Skill {
     /**
      * 创建一个完整的 Skill 定义。
      *
-     * @param basePath Skill 根目录；可能是本机目录，也可能是 Runtime 内目录
+     * @param basePath    Skill 根目录；可能是本机目录，也可能是 Runtime 内目录
      * @param frontMatter 从 {@code SKILL.md} 解析出的元数据
-     * @param content 去掉 front matter 后的 Markdown 指令正文
+     * @param content     去掉 front matter 后的 Markdown 指令正文
      */
     public Skill(String basePath, Map<String, Object> frontMatter, String content) {
         this.basePath = basePath;
@@ -66,27 +66,37 @@ public class Skill {
         return basePath;
     }
 
-    /** @param basePath 当前执行环境可见的 Skill 根目录 */
+    /**
+     * @param basePath 当前执行环境可见的 Skill 根目录
+     */
     public void setBasePath(String basePath) {
         this.basePath = basePath;
     }
 
-    /** @return 从 {@code SKILL.md} 解析出的 front matter */
+    /**
+     * @return 从 {@code SKILL.md} 解析出的 front matter
+     */
     public Map<String, Object> getFrontMatter() {
         return frontMatter;
     }
 
-    /** @param frontMatter Skill 元数据 */
+    /**
+     * @param frontMatter Skill 元数据
+     */
     public void setFrontMatter(Map<String, Object> frontMatter) {
         this.frontMatter = frontMatter;
     }
 
-    /** @return 去掉 front matter 后的 Markdown 指令正文 */
+    /**
+     * @return 去掉 front matter 后的 Markdown 指令正文
+     */
     public String getContent() {
         return content;
     }
 
-    /** @param content Markdown 指令正文 */
+    /**
+     * @param content Markdown 指令正文
+     */
     public void setContent(String content) {
         this.content = content;
     }

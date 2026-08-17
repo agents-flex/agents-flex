@@ -136,7 +136,7 @@ public class Skills {
     /**
      * 扫描单个 JAR 内指定前缀下的 Skill 定义。
      *
-     * @param jarFile 待扫描 JAR
+     * @param jarFile     待扫描 JAR
      * @param entryPrefix 匹配前缀，必须以 {@code /} 结尾
      * @return 在 JAR 中发现的 Skill 列表
      */
@@ -161,7 +161,7 @@ public class Skills {
     /**
      * 从输入流解析一个 {@code SKILL.md}。
      *
-     * @param is Markdown 内容输入流
+     * @param is        Markdown 内容输入流
      * @param entryPath JAR 条目路径，用于推导 Skill 根目录
      */
     private static Skill parseSkill(InputStream is, String entryPath) throws IOException {

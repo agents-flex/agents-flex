@@ -29,9 +29,9 @@ public class SkillFileInfo {
     private final long modifiedTimeMillis;
 
     /**
-     * @param path Runtime 内的完整路径
-     * @param directory 是否为目录
-     * @param size 文件大小；目录或实现无法提供时可能为 0
+     * @param path               Runtime 内的完整路径
+     * @param directory          是否为目录
+     * @param size               文件大小；目录或实现无法提供时可能为 0
      * @param modifiedTimeMillis 最后修改时间的 Unix 毫秒值；未知时可能为 0
      */
     public SkillFileInfo(String path, boolean directory, long size, long modifiedTimeMillis) {
@@ -41,22 +41,30 @@ public class SkillFileInfo {
         this.modifiedTimeMillis = modifiedTimeMillis;
     }
 
-    /** @return Runtime 内路径 */
+    /**
+     * @return Runtime 内路径
+     */
     public String getPath() {
         return path;
     }
 
-    /** @return 是否为目录 */
+    /**
+     * @return 是否为目录
+     */
     public boolean isDirectory() {
         return directory;
     }
 
-    /** @return 文件大小，单位字节 */
+    /**
+     * @return 文件大小，单位字节
+     */
     public long getSize() {
         return size;
     }
 
-    /** @return 最后修改时间的 Unix 毫秒值 */
+    /**
+     * @return 最后修改时间的 Unix 毫秒值
+     */
     public long getModifiedTimeMillis() {
         return modifiedTimeMillis;
     }

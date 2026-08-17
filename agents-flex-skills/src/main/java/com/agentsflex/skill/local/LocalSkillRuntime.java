@@ -54,7 +54,9 @@ public class LocalSkillRuntime implements SkillRuntime {
     private final Map<String, String> environment = new LinkedHashMap<>();
     private final Map<String, String> preparedSkills = new HashMap<>();
 
-    /** 创建不启用会话目录的 Local Runtime，保持原有行为兼容。 */
+    /**
+     * 创建不启用会话目录的 Local Runtime，保持原有行为兼容。
+     */
     public LocalSkillRuntime() {
         this.workspace = null;
         this.fileSystem = new LocalSkillRuntimeFileSystem();
@@ -74,7 +76,9 @@ public class LocalSkillRuntime implements SkillRuntime {
         }
     }
 
-    /** @return Local Runtime 构建器 */
+    /**
+     * @return Local Runtime 构建器
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -218,28 +222,36 @@ public class LocalSkillRuntime implements SkillRuntime {
         }
     }
 
-    /** Local Runtime 构建器。 */
+    /**
+     * Local Runtime 构建器。
+     */
     public static class Builder {
 
         private String conversationsRoot = Paths.get("target", "skills-runtime", "conversations")
             .toAbsolutePath().normalize().toString();
         private String conversationId;
 
-        /** @param conversationId 用作会话目录名的稳定 ID */
+        /**
+         * @param conversationId 用作会话目录名的稳定 ID
+         */
         public Builder conversationId(String conversationId) {
             SkillRuntimeWorkspace.validateConversationId(conversationId);
             this.conversationId = conversationId;
             return this;
         }
 
-        /** @param conversationsRoot 本机会话工作目录的绝对父路径 */
+        /**
+         * @param conversationsRoot 本机会话工作目录的绝对父路径
+         */
         public Builder conversationsRoot(String conversationsRoot) {
             SkillRuntimeWorkspace.create(conversationsRoot, "validation");
             this.conversationsRoot = conversationsRoot;
             return this;
         }
 
-        /** @return 配置完成的 Local Runtime */
+        /**
+         * @return 配置完成的 Local Runtime
+         */
         public LocalSkillRuntime build() {
             return new LocalSkillRuntime(this);
         }

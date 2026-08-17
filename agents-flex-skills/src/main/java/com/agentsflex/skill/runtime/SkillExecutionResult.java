@@ -30,8 +30,8 @@ public class SkillExecutionResult {
 
     /**
      * @param exitCode 进程退出码；超时时可能是 Runtime 定义的非零值
-     * @param stdout 标准输出，{@code null} 会转换为空字符串
-     * @param stderr 标准错误，{@code null} 会转换为空字符串
+     * @param stdout   标准输出，{@code null} 会转换为空字符串
+     * @param stderr   标准错误，{@code null} 会转换为空字符串
      * @param timedOut 是否因达到超时限制而终止
      */
     public SkillExecutionResult(int exitCode, String stdout, String stderr, boolean timedOut) {
@@ -41,22 +41,30 @@ public class SkillExecutionResult {
         this.timedOut = timedOut;
     }
 
-    /** @return 进程退出码 */
+    /**
+     * @return 进程退出码
+     */
     public int getExitCode() {
         return exitCode;
     }
 
-    /** @return 标准输出，永不为 {@code null} */
+    /**
+     * @return 标准输出，永不为 {@code null}
+     */
     public String getStdout() {
         return stdout;
     }
 
-    /** @return 标准错误，永不为 {@code null} */
+    /**
+     * @return 标准错误，永不为 {@code null}
+     */
     public String getStderr() {
         return stderr;
     }
 
-    /** @return 命令是否超时 */
+    /**
+     * @return 命令是否超时
+     */
     public boolean isTimedOut() {
         return timedOut;
     }

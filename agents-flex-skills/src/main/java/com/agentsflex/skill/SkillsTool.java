@@ -152,7 +152,7 @@ public class SkillsTool {
          * 添加；名称错误会在 {@link #build()} 时失败。</p>
          *
          * @param skillName {@code SKILL.md} 中声明的 Skill 名称
-         * @param config Runtime 配置
+         * @param config    Runtime 配置
          * @return 当前构建器
          */
         public Builder skillRuntimeConfig(String skillName, SkillRuntimeConfig config) {
@@ -206,7 +206,7 @@ public class SkillsTool {
          * Skill 不会被上传到远程 Runtime，也不会出现在模型可见的工具描述中。</p>
          *
          * @param skillsRootDirectory 包含一个或多个 {@code SKILL.md} 的根目录
-         * @param skillNames 要加载的 Skill 名称，不能为空
+         * @param skillNames          要加载的 Skill 名称，不能为空
          * @return 当前构建器
          * @throws IllegalArgumentException 名称为空、指定的 Skill 不存在或名称存在歧义
          */
@@ -221,7 +221,7 @@ public class SkillsTool {
          * 从一个本机 Skills 根目录中只添加指定名称的 Skill。
          *
          * @param skillsRootDirectory 包含一个或多个 {@code SKILL.md} 的根目录
-         * @param skillNames 要加载的 Skill 名称集合，不能为空
+         * @param skillNames          要加载的 Skill 名称集合，不能为空
          * @return 当前构建器
          * @throws IllegalArgumentException 名称为空、指定的 Skill 不存在或名称存在歧义
          */
@@ -272,7 +272,7 @@ public class SkillsTool {
          * Runtime prepare 流程。Artifact 名称必须与 {@code SKILL.md} 中的名称一致。</p>
          *
          * @param artifactStore Artifact 的存储与本地物化实现
-         * @param artifact 已安装 Skill 的确定版本
+         * @param artifact      已安装 Skill 的确定版本
          * @return 当前构建器
          */
         public Builder addSkillArtifact(SkillArtifactStore artifactStore, SkillArtifact artifact) {
@@ -298,7 +298,7 @@ public class SkillsTool {
          * 从同一个 Artifact Store 批量加载已安装 Skills。
          *
          * @param artifactStore Artifact 的存储与本地物化实现
-         * @param artifacts 已安装 Skill 版本列表
+         * @param artifacts     已安装 Skill 版本列表
          * @return 当前构建器
          */
         public Builder addSkillArtifacts(SkillArtifactStore artifactStore,

@@ -19,7 +19,9 @@ import com.agentsflex.skill.Skill;
 
 import java.util.Collections;
 
-/** Runtime 实现共享的 Skill bootstrap 执行与结果校验。 */
+/**
+ * Runtime 实现共享的 Skill bootstrap 执行与结果校验。
+ */
 public final class SkillRuntimeBootstrap {
 
     private SkillRuntimeBootstrap() {
