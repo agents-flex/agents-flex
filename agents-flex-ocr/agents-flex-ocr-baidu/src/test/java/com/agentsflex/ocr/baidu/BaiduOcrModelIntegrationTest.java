@@ -15,6 +15,7 @@
  */
 package com.agentsflex.ocr.baidu;
 
+import com.alibaba.fastjson2.JSON;
 import com.agentsflex.core.model.ocr.OcrRequest;
 import com.agentsflex.core.model.ocr.OcrResource;
 import com.agentsflex.core.model.ocr.OcrResponse;
@@ -30,6 +31,10 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.DirectoryStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,14 +57,14 @@ public class BaiduOcrModelIntegrationTest {
     /**
      * 百度文档解析任务最长等待三分钟。
      */
-    private static final long TIMEOUT_MILLIS = 180_000L;
+    private static final long TIMEOUT_MILLIS = 600_000L;
     /**
      * 使用五秒查询间隔，与供应商配置默认值保持一致。
      */
     private static final long POLL_INTERVAL_MILLIS = 5_000L;
 
-    private static final Path PDF_SAMPLE = Paths.get("..", "..", "testresource", "amt_handbook_sample.pdf");
-    private static final Path PDF_OUTPUT = Paths.get("target", "baidu-ocr-integration");
+    private static final Path PDF_SAMPLE = Paths.get("..", "..", "testresource", "2305.03393v1.pdf");
+    private static final Path PDF_OUTPUT = Paths.get("target", "baidu-ocr-integration", "2305.03393v1");
 
     private File sampleImage;
 
@@ -128,6 +133,7 @@ public class BaiduOcrModelIntegrationTest {
             apiKey != null && !apiKey.trim().isEmpty());
         Assume.assumeTrue("缺少 PDF 测试文件: " + PDF_SAMPLE.toAbsolutePath(), Files.isRegularFile(PDF_SAMPLE));
 
+        deleteRecursively(PDF_OUTPUT);
         Files.createDirectories(PDF_OUTPUT);
         Path imageOutput = PDF_OUTPUT.resolve("images");
         Files.createDirectories(imageOutput);
@@ -169,9 +175,11 @@ public class BaiduOcrModelIntegrationTest {
             + "handledImages=" + imageCount.get() + System.lineSeparator()
             + "resources=" + response.getResources() + System.lineSeparator();
         Files.write(PDF_OUTPUT.resolve("response.txt"), summary.getBytes(StandardCharsets.UTF_8));
+        int rawArtifactCount = saveRawArtifacts(response, PDF_OUTPUT.resolve("raw"));
 
         assertTrue("样例 PDF 应至少解析出一张图片；结果目录: " + imageOutput.toAbsolutePath(),
             imageCount.get() > 0);
+        assertTrue("供应商原始结果应保存到 raw 目录", rawArtifactCount > 0);
         assertTrue("Markdown 应引用 ExtractedImageHandler 生成的本地图片 URL",
             response.getMarkdown().contains(imageOutput.toAbsolutePath().toUri().toString()));
     }
@@ -191,5 +199,43 @@ public class BaiduOcrModelIntegrationTest {
      */
     private static boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private static int saveRawArtifacts(OcrResponse response, Path output) throws Exception {
+        Files.createDirectories(output);
+        int index = 0;
+        for (OcrResource resource : response.getResources()) {
+            if (resource == null || !hasText(resource.getUrl())) continue;
+            String type = hasText(resource.getType()) ? resource.getType().toLowerCase() : "resource";
+            String extension = "archive".equals(type) ? ".zip" :
+                ("markdown".equals(type) ? ".md" : ("json".equals(type) ? ".json" : ".bin"));
+            Path destination = output.resolve(String.format("%03d-%s%s", ++index, type, extension));
+            try (InputStream input = new URL(resource.getUrl()).openStream()) {
+                Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+        if (index == 0 && !response.isMetadataEmpty()) {
+            Files.write(output.resolve(String.format("%03d-provider-response.json", ++index)),
+                JSON.toJSONBytes(response.getMetadataMap()));
+        }
+        if (response.getResources().isEmpty() && hasText(response.getMarkdown())) {
+            Files.write(output.resolve(String.format("%03d-inline-markdown.md", ++index)),
+                response.getMarkdown().getBytes(StandardCharsets.UTF_8));
+        }
+        if (response.getResources().isEmpty() && hasText(response.getText())) {
+            Files.write(output.resolve(String.format("%03d-inline-text.txt", ++index)),
+                response.getText().getBytes(StandardCharsets.UTF_8));
+        }
+        return index;
+    }
+
+    private static void deleteRecursively(Path path) throws IOException {
+        if (!Files.exists(path)) return;
+        if (Files.isDirectory(path)) {
+            try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
+                for (Path child : children) deleteRecursively(child);
+            }
+        }
+        Files.delete(path);
     }
 }
