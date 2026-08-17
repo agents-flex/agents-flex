@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
 
@@ -43,6 +44,49 @@ public class MineruOcrModelTest {
         assertEquals("https://mineru.net/api/v4/extract/task", config.getFullUrl());
         assertEquals("https://mineru.net/api/v4/extract/task/abc", config.getQueryUrl("abc"));
         assertEquals("https://mineru.net/api/v4/extract-results/batch/abc", config.getBatchQueryUrl("abc"));
+    }
+
+    /** 验证 AK/SK 必须成对配置。 */
+    @Test
+    public void shouldRejectIncompleteAccessKeyCredentials() {
+        MineruOcrConfig config = new MineruOcrConfig();
+        config.setAccessKeyId("ak");
+        MineruOcrModel model = new MineruOcrModel(config, new AgentsFlexHttpClient(), new OkHttpClient());
+
+        OcrResponse response = model.recognize(OcrRequest.ofUrl("https://example.com/input.pdf"));
+
+        assertTrue(response.isError());
+        assertEquals("accessKeyId and secretAccessKey must be configured together", response.getErrorMessage());
+    }
+
+    /** 验证同时配置时显式 API Token 优先，不触发 AK/SK 换票。 */
+    @Test
+    public void shouldPreferApiKeyOverAccessKeyCredentials() {
+        AtomicReference<Map<String, String>> requestHeaders = new AtomicReference<>();
+        AgentsFlexHttpClient apiClient = new AgentsFlexHttpClient() {
+            @Override
+            public String post(String url, Map<String, String> headers, String payload) {
+                requestHeaders.set(headers);
+                return "{\"code\":0,\"data\":{\"task_id\":\"task-1\"}}";
+            }
+        };
+        MineruOcrConfig config = new MineruOcrConfig();
+        config.setApiKey("direct-token");
+        config.setAccessKeyId("ak");
+        config.setSecretAccessKey("sk");
+        OpenXlabAuthClient authClient = new OpenXlabAuthClient(apiClient) {
+            @Override
+            synchronized String getJwt(String accessKeyId, String secretAccessKey) {
+                fail("AK/SK authentication must not run when apiKey is configured");
+                return null;
+            }
+        };
+        MineruOcrModel model = new MineruOcrModel(config, apiClient, new OkHttpClient(), authClient);
+
+        OcrResponse response = model.recognize(OcrRequest.ofUrl("https://example.com/input.pdf"));
+
+        assertFalse(response.isError());
+        assertEquals("Bearer direct-token", requestHeaders.get().get("Authorization"));
     }
 
     /** 验证完成任务会映射为成功，并提取完整结果压缩包资源。 */
@@ -74,12 +118,10 @@ public class MineruOcrModelTest {
         assertEquals(OcrTaskStatus.RUNNING, response.getStatus());
     }
 
-    /**
-     * 验证向预签名 URL 上传时不发送 Content-Type，防止该请求头参与 OSS 签名后造成 403。
-     */
+    /** 验证向预签名 URL 上传时发送与文件一致的 Content-Type，满足 OSS 签名要求。 */
     @Test
-    public void shouldUploadPresignedFileWithoutContentType() throws Exception {
-        File input = Files.createTempFile("mineru-upload-", ".txt").toFile();
+    public void shouldUploadPresignedFileWithDetectedContentType() throws Exception {
+        File input = Files.createTempFile("mineru-upload-", ".pdf").toFile();
         Files.write(input.toPath(), "ocr".getBytes(StandardCharsets.UTF_8));
         AtomicReference<Request> uploadedRequest = new AtomicReference<>();
         try {
@@ -87,7 +129,7 @@ public class MineruOcrModelTest {
                 @Override
                 public String post(String url, Map<String, String> headers, String payload) {
                     return "{\"code\":0,\"data\":{\"batch_id\":\"batch-1\"," +
-                        "\"file_urls\":[\"https://upload.example/input.txt\"]}}";
+                        "\"file_urls\":[\"https://upload.example/input.pdf\"]}}";
                 }
             };
             OkHttpClient uploadClient = new OkHttpClient.Builder().addInterceptor(chain -> {
@@ -101,12 +143,52 @@ public class MineruOcrModelTest {
                     .build();
             }).build();
 
-            MineruOcrModel model = new MineruOcrModel(new MineruOcrConfig(), apiClient, uploadClient);
+            MineruOcrModel model = new MineruOcrModel(tokenConfig(), apiClient, uploadClient);
             OcrResponse response = model.recognize(OcrRequest.ofFile(input));
 
             assertEquals(OcrTaskStatus.SUBMITTED, response.getStatus());
             assertNotNull(uploadedRequest.get());
-            assertNull(uploadedRequest.get().header("Content-Type"));
+            assertNotNull(uploadedRequest.get().body());
+            assertEquals("application/pdf", uploadedRequest.get().body().contentType().toString());
+        } finally {
+            Files.deleteIfExists(input.toPath());
+        }
+    }
+
+    /** 验证原生 API Token 的预签名 URL 拒绝 MIME 时，会以空 Content-Type 重试。 */
+    @Test
+    public void shouldRetryPresignedUploadWithoutContentTypeAfterForbidden() throws Exception {
+        File input = Files.createTempFile("mineru-upload-", ".pdf").toFile();
+        Files.write(input.toPath(), "ocr".getBytes(StandardCharsets.UTF_8));
+        AtomicInteger attempts = new AtomicInteger();
+        AtomicReference<Request> fallbackRequest = new AtomicReference<>();
+        try {
+            AgentsFlexHttpClient apiClient = new AgentsFlexHttpClient() {
+                @Override
+                public String post(String url, Map<String, String> headers, String payload) {
+                    return "{\"code\":0,\"data\":{\"batch_id\":\"batch-1\"," +
+                        "\"file_urls\":[\"https://upload.example/input.pdf\"]}}";
+                }
+            };
+            OkHttpClient uploadClient = new OkHttpClient.Builder().addInterceptor(chain -> {
+                int attempt = attempts.incrementAndGet();
+                if (attempt == 2) fallbackRequest.set(chain.request());
+                return new Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(attempt == 1 ? 403 : 200)
+                    .message(attempt == 1 ? "Forbidden" : "OK")
+                    .body(ResponseBody.create(new byte[0], null))
+                    .build();
+            }).build();
+
+            MineruOcrModel model = new MineruOcrModel(tokenConfig(), apiClient, uploadClient);
+            OcrResponse response = model.recognize(OcrRequest.ofFile(input));
+
+            assertEquals(OcrTaskStatus.SUBMITTED, response.getStatus());
+            assertEquals(2, attempts.get());
+            assertNotNull(fallbackRequest.get());
+            assertNull(fallbackRequest.get().body().contentType());
         } finally {
             Files.deleteIfExists(input.toPath());
         }
@@ -123,11 +205,17 @@ public class MineruOcrModelTest {
             }
         };
         MineruOcrModel model = new MineruOcrModel(
-            new MineruOcrConfig(), apiClient, new OkHttpClient());
+            tokenConfig(), apiClient, new OkHttpClient());
         model.setExtractedImageHandler((bytes, mimeType, fileName) -> "https://cdn.example/image.png");
 
         OcrResponse response = model.getResult("m3");
 
         assertEquals("![](https://cdn.example/image.png)", response.getMarkdown());
+    }
+
+    private static MineruOcrConfig tokenConfig() {
+        MineruOcrConfig config = new MineruOcrConfig();
+        config.setApiKey("test-token");
+        return config;
     }
 }

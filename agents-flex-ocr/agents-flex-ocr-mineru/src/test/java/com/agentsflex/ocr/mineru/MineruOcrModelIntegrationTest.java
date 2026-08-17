@@ -30,7 +30,12 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -41,7 +46,8 @@ import static org.junit.Assert.assertTrue;
  * MinerU OCR 真实服务集成测试。
  *
  * <p>测试完整覆盖申请预签名 URL、PUT 上传本地文件、使用 batch ID 查询结果的链路。
- * 只有显式设置 {@code MINERU_OCR_TOKEN} 时才执行，Token 不会写入源码或测试输出。</p>
+ * 显式设置 {@code MINERU_OCR_TOKEN}，或同时设置 {@code OPENXLAB_ACCESS_KEY_ID} 与
+ * {@code OPENXLAB_SECRET_ACCESS_KEY} 时执行，凭据不会写入源码或测试输出。</p>
  */
 public class MineruOcrModelIntegrationTest {
     /**
@@ -52,6 +58,9 @@ public class MineruOcrModelIntegrationTest {
      * 使用三秒查询间隔控制真实查询请求频率。
      */
     private static final long POLL_INTERVAL_MILLIS = 3_000L;
+
+    private static final Path PDF_SAMPLE = Paths.get("..", "..", "testresource", "amt_handbook_sample.pdf");
+    private static final Path PDF_OUTPUT = Paths.get("target", "mineru-ocr-integration");
 
     private File sampleImage;
 
@@ -90,12 +99,8 @@ public class MineruOcrModelIntegrationTest {
      */
     @Test
     public void shouldRecognizeLocalImageThroughRealMineruApi() {
-        String token = System.getenv("MINERU_OCR_TOKEN");
-        Assume.assumeTrue("未设置 MINERU_OCR_TOKEN，跳过真实 MinerU OCR 测试",
-            token != null && !token.trim().isEmpty());
-
-        MineruOcrConfig config = new MineruOcrConfig();
-        config.setApiKey(token);
+        MineruOcrConfig config = integrationConfig();
+        Assume.assumeNotNull(config);
         MineruOcrModel model = new MineruOcrModel(config);
 
         OcrResponse response = model.recognizeAndWait(
@@ -111,6 +116,62 @@ public class MineruOcrModelIntegrationTest {
     }
 
     /**
+     * 使用仓库中的真实 PDF 验证 MinerU 上传、轮询、ZIP Markdown 解析及图片处理全链路。
+     * 结果保存在 target/mineru-ocr-integration，便于人工检查识别质量。
+     */
+    @Test
+    public void shouldRecognizePdfAndMaterializeMarkdownAndImages() throws Exception {
+        MineruOcrConfig config = integrationConfig();
+        Assume.assumeNotNull(config);
+        Assume.assumeTrue("缺少 PDF 测试文件: " + PDF_SAMPLE.toAbsolutePath(), Files.isRegularFile(PDF_SAMPLE));
+
+        Files.createDirectories(PDF_OUTPUT);
+        Path imageOutput = PDF_OUTPUT.resolve("images");
+        Files.createDirectories(imageOutput);
+        AtomicInteger imageCount = new AtomicInteger();
+
+        MineruOcrModel model = new MineruOcrModel(config);
+        model.setExtractedImageHandler((imageBytes, mimeType, fileName) -> {
+            int index = imageCount.incrementAndGet();
+            String originalName = fileName == null ? "image" : Paths.get(fileName).getFileName().toString();
+            int extensionIndex = originalName.lastIndexOf('.');
+            String baseName = extensionIndex > 0 ? originalName.substring(0, extensionIndex) : originalName;
+            String extension = "image/png".equals(mimeType) ? ".png" :
+                ("image/jpeg".equals(mimeType) ? ".jpg" : ".bin");
+            Path destination = imageOutput.resolve(String.format("%03d-%s%s", index, baseName, extension));
+            Files.copy(new java.io.ByteArrayInputStream(imageBytes), destination,
+                StandardCopyOption.REPLACE_EXISTING);
+            return destination.toAbsolutePath().toUri().toString();
+        });
+
+        OcrRequest request = OcrRequest.ofFile(PDF_SAMPLE.toFile());
+        request.putOption("is_ocr", true);
+        request.putOption("formula_enable", true);
+        request.putOption("table_enable", true);
+        OcrResponse response = model.recognizeAndWait(request, TIMEOUT_MILLIS, POLL_INTERVAL_MILLIS);
+
+        assertNotNull("供应商不应返回空响应", response);
+        assertFalse("真实 PDF OCR 请求失败: " + response.getErrorCode() + " / " + response.getErrorMessage(),
+            response.isError());
+        assertEquals("真实 PDF OCR 任务未成功完成", OcrTaskStatus.SUCCEEDED, response.getStatus());
+        assertTrue("PDF OCR 应直接返回已物化的 Markdown", hasText(response.getMarkdown()));
+        assertFalse("Markdown 不应保留 Base64 图片", response.getMarkdown().contains("data:image/"));
+
+        Files.write(PDF_OUTPUT.resolve("result.md"), response.getMarkdown().getBytes(StandardCharsets.UTF_8));
+        String summary = "taskId=" + response.getTaskId() + System.lineSeparator()
+            + "status=" + response.getStatus() + System.lineSeparator()
+            + "markdownChars=" + response.getMarkdown().length() + System.lineSeparator()
+            + "handledImages=" + imageCount.get() + System.lineSeparator()
+            + "resources=" + response.getResources() + System.lineSeparator();
+        Files.write(PDF_OUTPUT.resolve("response.txt"), summary.getBytes(StandardCharsets.UTF_8));
+
+        assertTrue("样例 PDF 应至少解析出一张图片；结果目录: " + imageOutput.toAbsolutePath(),
+            imageCount.get() > 0);
+        assertTrue("Markdown 应引用 ExtractedImageHandler 生成的本地图片 URL",
+            response.getMarkdown().contains(imageOutput.toAbsolutePath().toUri().toString()));
+    }
+
+    /**
      * 判断响应中是否至少存在一个类型与 URL 都有效的结果资源。
      */
     private static boolean hasValidResource(OcrResponse response) {
@@ -118,6 +179,21 @@ public class MineruOcrModelIntegrationTest {
             if (resource != null && hasText(resource.getType()) && hasText(resource.getUrl())) return true;
         }
         return false;
+    }
+
+    private static MineruOcrConfig integrationConfig() {
+        String token = System.getenv("MINERU_OCR_TOKEN");
+        String accessKeyId = System.getenv("OPENXLAB_ACCESS_KEY_ID");
+        String secretAccessKey = System.getenv("OPENXLAB_SECRET_ACCESS_KEY");
+        if (!hasText(token) && (!hasText(accessKeyId) || !hasText(secretAccessKey))) return null;
+        MineruOcrConfig config = new MineruOcrConfig();
+        if (hasText(token)) {
+            config.setApiKey(token);
+        } else {
+            config.setAccessKeyId(accessKeyId);
+            config.setSecretAccessKey(secretAccessKey);
+        }
+        return config;
     }
 
     /**
