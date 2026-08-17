@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.ocr;
 
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DocumentImagePublisher;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,9 +35,9 @@ public abstract class BaseOcrModel<T extends BaseOcrConfig> implements OcrModel 
     protected final T config;
 
     /**
-     * 可选的 OCR 结果图片处理器；未配置时保留供应商原始图片引用。
+     * 可选的 OCR 结果图片发布器；未配置时保留供应商原始图片引用。
      */
-    private volatile ExtractedImageHandler extractedImageHandler;
+    private volatile DocumentImagePublisher documentImagePublisher;
 
     /**
      * 创建 OCR 模型。
@@ -56,16 +56,26 @@ public abstract class BaseOcrModel<T extends BaseOcrConfig> implements OcrModel 
         return config;
     }
 
-    public ExtractedImageHandler getExtractedImageHandler() {
-        return extractedImageHandler;
+    /**
+     * 返回当前 OCR 结果图片发布器。
+     *
+     * @return 当前发布器；未配置时为 {@code null}
+     */
+    public DocumentImagePublisher getDocumentImagePublisher() {
+        return documentImagePublisher;
     }
 
     /**
-     * 设置图片处理器。解析 Markdown 时，能够取得二进制内容的图片会交给该处理器，
-     * 并使用处理器返回的 URL 替换原始引用。
+     * 设置图片发布器。解析 Markdown 时，能够取得二进制内容的图片会交给该发布器，
+     * 并使用发布器返回的 URL 替换原始引用。
+     *
+     * <p>传入 {@code null} 表示关闭图片转存：远程图片保留供应商地址，ZIP 中无法转换为外部地址的
+     * 相对图片则保持现有解析策略。</p>
+     *
+     * @param documentImagePublisher 图片发布器，允许为 {@code null}
      */
-    public void setExtractedImageHandler(ExtractedImageHandler extractedImageHandler) {
-        this.extractedImageHandler = extractedImageHandler;
+    public void setDocumentImagePublisher(DocumentImagePublisher documentImagePublisher) {
+        this.documentImagePublisher = documentImagePublisher;
     }
 
     /**
@@ -82,7 +92,7 @@ public abstract class BaseOcrModel<T extends BaseOcrConfig> implements OcrModel 
     protected OcrResponse resolveResultMarkdown(OcrResponse response) {
         if (response != null && !response.isError() && response.getStatus() == OcrTaskStatus.SUCCEEDED) {
             OcrMarkdownResolver ocrMarkdownResolver = OcrMarkdownResolver.getDefault();
-            response.setMarkdown(ocrMarkdownResolver.resolve(response, extractedImageHandler));
+            response.setMarkdown(ocrMarkdownResolver.resolve(response, documentImagePublisher));
         }
         return response;
     }

@@ -106,8 +106,8 @@ Worker 访问，并且有效期覆盖本地排队和下载时间。
 不同模型在版面、表格、公式、速度和费用方面能力不同。先用真实业务样本进行评测，再固定默认模型；单次特殊任务可通过 `request.setModel()` 覆盖。
 
 对于需要保留正文结构和图片的 PDF，优先评估 `PDF_EXTRACT_KIT_1_0`。`UNLIMITED_OCR` 更偏向版面元素
-识别，可能只返回图片区域标注而不返回实际图片 URL。若配置 `ExtractedImageHandler`，框架会将模型返回的
-临时图片 URL 下载后交给 Handler，并把 Markdown 图片引用替换为 Handler 返回的持久 URL。
+识别，可能只返回图片区域标注而不返回实际图片 URL。若配置 `DocumentImagePublisher`，框架会将模型返回的
+临时图片 URL 下载后交给 Publisher，并把 Markdown 图片引用替换为 Publisher 返回的持久 URL。
 
 ### 为什么任务成功但 Markdown 为空？
 

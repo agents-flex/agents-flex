@@ -17,8 +17,8 @@ package com.agentsflex.doc.extractor.impl;
 
 import com.agentsflex.doc.extractor.DocumentExtractor;
 import com.agentsflex.doc.extractor.MarkdownFormatter;
-import com.agentsflex.doc.handler.Base64ExtractedImageHandler;
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DataUriDocumentImagePublisher;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.DocumentSource;
 import org.apache.poi.xslf.usermodel.*;
 import org.apache.xmlbeans.XmlException;
@@ -89,11 +89,11 @@ public class PptxExtractor implements DocumentExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
-        return extractText(source, new Base64ExtractedImageHandler());
+        return extractText(source, new DataUriDocumentImagePublisher());
     }
 
     @Override
-    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
+    public String extractText(DocumentSource source, DocumentImagePublisher documentImagePublisher) throws IOException {
         StringBuilder text = new StringBuilder();
 
         try (InputStream is = source.openStream();
@@ -105,7 +105,7 @@ public class PptxExtractor implements DocumentExtractor {
                 XSLFSlide slide = slides.get(i);
                 text.append("\n--- Slide ").append(i + 1).append(" ---\n");
 
-                extractShapes(slide.getShapes(), text, extractedImageHandler);
+                extractShapes(slide.getShapes(), text, documentImagePublisher);
             }
 
         } catch (XmlException e) {
@@ -118,25 +118,25 @@ public class PptxExtractor implements DocumentExtractor {
     }
 
     private void extractShapes(List<XSLFShape> shapes, StringBuilder text,
-                               ExtractedImageHandler extractedImageHandler) throws IOException {
+                               DocumentImagePublisher documentImagePublisher) throws IOException {
         for (XSLFShape shape : shapes) {
             if (shape instanceof XSLFTable) {
                 extractTable((XSLFTable) shape, text);
             } else if (shape instanceof XSLFPictureShape) {
-                extractPicture((XSLFPictureShape) shape, text, extractedImageHandler);
+                extractPicture((XSLFPictureShape) shape, text, documentImagePublisher);
             } else if (shape instanceof XSLFTextShape) {
                 String shapeText = ((XSLFTextShape) shape).getText();
                 if (shapeText != null && !shapeText.trim().isEmpty()) {
                     text.append(shapeText.trim()).append('\n');
                 }
             } else if (shape instanceof XSLFGroupShape) {
-                extractShapes(((XSLFGroupShape) shape).getShapes(), text, extractedImageHandler);
+                extractShapes(((XSLFGroupShape) shape).getShapes(), text, documentImagePublisher);
             }
         }
     }
 
     private void extractPicture(XSLFPictureShape pictureShape, StringBuilder text,
-                                ExtractedImageHandler extractedImageHandler) throws IOException {
+                                DocumentImagePublisher documentImagePublisher) throws IOException {
         XSLFPictureData pictureData = pictureShape.getPictureData();
         if (pictureData == null) {
             return;
@@ -151,7 +151,7 @@ public class PptxExtractor implements DocumentExtractor {
         if (contentType == null || contentType.trim().isEmpty()) {
             contentType = "application/octet-stream";
         }
-        MarkdownFormatter.appendImage(text, extractedImageHandler, data, contentType,
+        MarkdownFormatter.appendImage(text, documentImagePublisher, data, contentType,
             pictureData.getFileName());
     }
 

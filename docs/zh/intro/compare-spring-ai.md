@@ -386,12 +386,12 @@ RAG 的质量首先取决于能否把原始文档稳定地转换为可检索内�
 | 压缩包递归解析的安全治理 | **整体支持**。内置最大递归层级、条目数、单条大小和总解压大小限制 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | 文件、URL、InputStream 与字节数组输入 | **整体支持**。提供 File、HTTP、ByteArray、ByteStream 和临时文件 `DocumentSource` | **整体支持**。DocumentReader 基于 Spring `Resource`，可使用文件、URL、InputStreamResource 和 ByteArrayResource |
 | PDF、Word、PowerPoint 与长尾文档的嵌入图片提取 | **整体支持**。PDF、DOC/DOCX、PPT/PPTX 专用 Extractor 以及 Tika 长尾解析器可提取图片并在内容中生成 Markdown 图片引用 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
-| 可替换的文档图片处理机制 | **整体支持**。`ExtractedImageHandler` 统一接收图片字节、MIME 类型和文件名，应用可将图片上传对象存储、写入本地或转换为自定义 URL | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
-| 嵌入图片默认转换为 Base64 Data URI | **整体支持**。`Base64ExtractedImageHandler` 可在不依赖外部存储的情况下直接生成可用的 Markdown 图片地址 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
+| 可替换的文档图片处理机制 | **整体支持**。`DocumentImagePublisher` 统一接收图片字节、MIME 类型和文件名，应用可将图片上传对象存储、写入本地或转换为自定义 URL | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
+| 嵌入图片默认转换为 Base64 Data URI | **整体支持**。`DataUriDocumentImagePublisher` 可在不依赖外部存储的情况下直接生成可用的 Markdown 图片地址 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 
 Agents-Flex 不只是把所有格式交给一个通用 Parser，而是为 PDF、Word、Excel、PowerPoint 和 HTML 提供专用
 Extractor。Word、Excel、PPT 和 PPTX 中的表格会转换为 Markdown 表格，比打平后的纯文本更容易被模型正确理解；
-该表格转换能力不包含 PDF。PDF、Word 和 PowerPoint 中的图片统一交给 `ExtractedImageHandler` 处理，最后
+该表格转换能力不包含 PDF。PDF、Word 和 PowerPoint 中的图片统一交给 `DocumentImagePublisher` 处理，最后
 再由 Tika 补齐邮件、OpenDocument、iWork 和压缩包等长尾格式。
 
 ### RAG 核心能力对比

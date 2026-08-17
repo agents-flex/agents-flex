@@ -17,8 +17,8 @@ package com.agentsflex.doc.extractor.impl;
 
 import com.agentsflex.doc.extractor.DocumentExtractor;
 import com.agentsflex.doc.extractor.MarkdownFormatter;
-import com.agentsflex.doc.handler.Base64ExtractedImageHandler;
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DataUriDocumentImagePublisher;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.DocumentSource;
 import org.apache.poi.xwpf.usermodel.*;
 
@@ -90,11 +90,11 @@ public class DocxExtractor implements DocumentExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
-        return extractText(source, new Base64ExtractedImageHandler());
+        return extractText(source, new DataUriDocumentImagePublisher());
     }
 
     @Override
-    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
+    public String extractText(DocumentSource source, DocumentImagePublisher documentImagePublisher) throws IOException {
         StringBuilder text = new StringBuilder();
 
         try (InputStream is = source.openStream();
@@ -103,12 +103,12 @@ public class DocxExtractor implements DocumentExtractor {
             // 按文档中的原始顺序提取段落和表格
             for (IBodyElement bodyElement : document.getBodyElements()) {
                 if (bodyElement instanceof XWPFParagraph) {
-                    String paragraphText = getParagraphText((XWPFParagraph) bodyElement, extractedImageHandler);
+                    String paragraphText = getParagraphText((XWPFParagraph) bodyElement, documentImagePublisher);
                     if (paragraphText != null && !paragraphText.trim().isEmpty()) {
                         text.append(paragraphText).append('\n');
                     }
                 } else if (bodyElement instanceof XWPFTable) {
-                    extractTable((XWPFTable) bodyElement, text, extractedImageHandler);
+                    extractTable((XWPFTable) bodyElement, text, documentImagePublisher);
                 }
             }
 
@@ -122,7 +122,7 @@ public class DocxExtractor implements DocumentExtractor {
     /**
      * 提取段落文本，包括其中嵌入的图片
      */
-    private String getParagraphText(XWPFParagraph paragraph, ExtractedImageHandler extractedImageHandler) throws IOException {
+    private String getParagraphText(XWPFParagraph paragraph, DocumentImagePublisher documentImagePublisher) throws IOException {
         StringBuilder text = new StringBuilder();
 
         // 1. 提取普通文本 Run
@@ -137,7 +137,7 @@ public class DocxExtractor implements DocumentExtractor {
             List<XWPFPicture> pictures = run.getEmbeddedPictures();
             if (pictures != null && !pictures.isEmpty()) {
                 for (XWPFPicture picture : pictures) {
-                    String imageUrl = processImage(picture, extractedImageHandler);
+                    String imageUrl = processImage(picture, documentImagePublisher);
                     MarkdownFormatter.appendImage(text, imageUrl);
                 }
             }
@@ -152,10 +152,10 @@ public class DocxExtractor implements DocumentExtractor {
     /**
      * 提取单元格文本，递归处理段落和图片
      */
-    private String getCellText(XWPFTableCell cell, ExtractedImageHandler extractedImageHandler) throws IOException {
+    private String getCellText(XWPFTableCell cell, DocumentImagePublisher documentImagePublisher) throws IOException {
         StringBuilder text = new StringBuilder();
         for (XWPFParagraph p : cell.getParagraphs()) {
-            String pt = getParagraphText(p, extractedImageHandler);
+            String pt = getParagraphText(p, documentImagePublisher);
             if (pt != null) {
                 if (text.length() > 0) {
                     text.append(' ');
@@ -166,7 +166,7 @@ public class DocxExtractor implements DocumentExtractor {
         return text.toString().trim();
     }
 
-    private void extractTable(XWPFTable table, StringBuilder text, ExtractedImageHandler extractedImageHandler) throws IOException {
+    private void extractTable(XWPFTable table, StringBuilder text, DocumentImagePublisher documentImagePublisher) throws IOException {
         List<XWPFTableRow> rows = table.getRows();
         if (rows == null || rows.isEmpty()) {
             return;
@@ -176,14 +176,14 @@ public class DocxExtractor implements DocumentExtractor {
         for (XWPFTableRow row : rows) {
             List<String> cells = new ArrayList<>();
             for (XWPFTableCell cell : row.getTableCells()) {
-                cells.add(getCellText(cell, extractedImageHandler));
+                cells.add(getCellText(cell, documentImagePublisher));
             }
             tableRows.add(cells);
         }
         MarkdownFormatter.appendTable(text, tableRows);
     }
 
-    private String processImage(XWPFPicture picture, ExtractedImageHandler extractedImageHandler) throws IOException {
+    private String processImage(XWPFPicture picture, DocumentImagePublisher documentImagePublisher) throws IOException {
         XWPFPictureData pictureData = picture.getPictureData();
         if (pictureData == null) {
             return null;
@@ -199,7 +199,7 @@ public class DocxExtractor implements DocumentExtractor {
         if (data == null || data.length == 0) {
             return null;
         }
-        return MarkdownFormatter.handleImage(extractedImageHandler, data, mimeType,
+        return MarkdownFormatter.handleImage(documentImagePublisher, data, mimeType,
             pictureData.getFileName());
     }
 

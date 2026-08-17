@@ -117,7 +117,7 @@ public class GiteeOcrModelTest {
             }
         };
         GiteeOcrModel model = new GiteeOcrModel(new GiteeOcrConfig(), client);
-        model.setExtractedImageHandler((bytes, mimeType, fileName) -> "https://cdn.example/image.png");
+        model.setDocumentImagePublisher((bytes, mimeType, fileName) -> "https://cdn.example/image.png");
 
         OcrResponse response = model.getResult("g4");
 

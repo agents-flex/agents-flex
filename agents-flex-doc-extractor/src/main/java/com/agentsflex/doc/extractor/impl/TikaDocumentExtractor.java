@@ -17,8 +17,8 @@ package com.agentsflex.doc.extractor.impl;
 
 import com.agentsflex.doc.extractor.DocumentExtractor;
 import com.agentsflex.doc.extractor.MarkdownFormatter;
-import com.agentsflex.doc.handler.Base64ExtractedImageHandler;
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DataUriDocumentImagePublisher;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.ByteArrayDocumentSource;
 import com.agentsflex.doc.source.DocumentSource;
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
@@ -115,12 +115,12 @@ public class TikaDocumentExtractor implements DocumentExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
-        return extractText(source, new Base64ExtractedImageHandler());
+        return extractText(source, new DataUriDocumentImagePublisher());
     }
 
     @Override
     public String extractText(DocumentSource source,
-                              ExtractedImageHandler extractedImageHandler) throws IOException {
+                              DocumentImagePublisher documentImagePublisher) throws IOException {
         Metadata metadata = new Metadata();
         if (source.getFileName() != null) {
             metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, source.getFileName());
@@ -136,7 +136,7 @@ public class TikaDocumentExtractor implements DocumentExtractor {
             ParseContext context = new ParseContext();
             context.set(Parser.class, parser);
             context.set(EmbeddedDocumentExtractor.class,
-                new LimitedEmbeddedDocumentExtractor(context, extractedImageHandler));
+                new LimitedEmbeddedDocumentExtractor(context, documentImagePublisher));
             parser.parse(inputStream, handler, metadata, context);
             byte[] xhtml = handler.toString().getBytes(StandardCharsets.UTF_8);
             return new HtmlExtractor().extractText(
@@ -193,15 +193,15 @@ public class TikaDocumentExtractor implements DocumentExtractor {
 
     private static class LimitedEmbeddedDocumentExtractor implements EmbeddedDocumentExtractor {
         private final ParsingEmbeddedDocumentExtractor delegate;
-        private final ExtractedImageHandler extractedImageHandler;
+        private final DocumentImagePublisher documentImagePublisher;
         private int depth;
         private int entryCount;
         private long totalBytes;
 
         LimitedEmbeddedDocumentExtractor(ParseContext context,
-                                          ExtractedImageHandler extractedImageHandler) {
+                                          DocumentImagePublisher documentImagePublisher) {
             this.delegate = new ParsingEmbeddedDocumentExtractor(context);
-            this.extractedImageHandler = extractedImageHandler;
+            this.documentImagePublisher = documentImagePublisher;
             this.delegate.setWriteFileNameToContent(true);
         }
 
@@ -251,7 +251,7 @@ public class TikaDocumentExtractor implements DocumentExtractor {
             throws IOException, SAXException {
             String mimeType = metadata.get(HttpHeaders.CONTENT_TYPE);
             String fileName = metadata.get(TikaCoreProperties.RESOURCE_NAME_KEY);
-            String imageUrl = MarkdownFormatter.handleImage(extractedImageHandler, data,
+            String imageUrl = MarkdownFormatter.handleImage(documentImagePublisher, data,
                 mimeType, fileName);
             String imageMarkdown = MarkdownFormatter.formatImage(imageUrl);
             if (!imageMarkdown.isEmpty()) {

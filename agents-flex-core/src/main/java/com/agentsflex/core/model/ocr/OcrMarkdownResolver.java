@@ -15,7 +15,7 @@
  */
 package com.agentsflex.core.model.ocr;
 
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.util.StringUtil;
 import okhttp3.OkHttpClient;
@@ -68,18 +68,18 @@ public class OcrMarkdownResolver {
     /**
      * 依次尝试内联 Markdown、Markdown 下载资源和包含 Markdown 的 ZIP 资源。
      */
-    public String resolve(OcrResponse response, ExtractedImageHandler imageHandler) {
+    public String resolve(OcrResponse response, DocumentImagePublisher imagePublisher) {
         validate(response);
         if (StringUtil.hasText(response.getMarkdown())) {
-            return rewriteImages(response.getMarkdown(), null, null, imageHandler);
+            return rewriteImages(response.getMarkdown(), null, null, imagePublisher);
         }
         OcrResource markdown = findResource(response, "markdown");
         if (markdown != null) {
             byte[] bytes = download(markdown.getUrl());
-            return rewriteImages(new String(bytes, StandardCharsets.UTF_8), markdown.getUrl(), null, imageHandler);
+            return rewriteImages(new String(bytes, StandardCharsets.UTF_8), markdown.getUrl(), null, imagePublisher);
         }
         OcrResource archive = findResource(response, "archive");
-        if (archive != null) return resolveArchive(download(archive.getUrl()), imageHandler);
+        if (archive != null) return resolveArchive(download(archive.getUrl()), imagePublisher);
         if (StringUtil.hasText(response.getText())) return response.getText();
         throw new OcrMarkdownResolveException("OCR response does not contain Markdown or a supported Markdown resource");
     }
@@ -123,7 +123,7 @@ public class OcrMarkdownResolver {
         }
     }
 
-    private String resolveArchive(byte[] archiveBytes, ExtractedImageHandler imageHandler) {
+    private String resolveArchive(byte[] archiveBytes, DocumentImagePublisher imagePublisher) {
         Map<String, byte[]> entries = new HashMap<>();
         long total = 0;
         int count = 0;
@@ -146,17 +146,17 @@ public class OcrMarkdownResolver {
         String markdownPath = selectMarkdown(entries);
         if (markdownPath == null) throw new OcrMarkdownResolveException("OCR archive does not contain a Markdown file");
         String markdown = new String(entries.get(markdownPath), StandardCharsets.UTF_8);
-        return rewriteImages(markdown, markdownPath, entries, imageHandler);
+        return rewriteImages(markdown, markdownPath, entries, imagePublisher);
     }
 
     private String rewriteImages(String markdown, String base, Map<String, byte[]> archiveEntries,
-                                 ExtractedImageHandler imageHandler) {
+                                 DocumentImagePublisher imagePublisher) {
         if (StringUtil.noText(markdown)) return markdown;
         Matcher matcher = MARKDOWN_IMAGE.matcher(markdown);
         StringBuffer output = new StringBuffer();
         while (matcher.find()) {
             String reference = stripAngles(matcher.group(2));
-            if (imageHandler == null) {
+            if (imagePublisher == null) {
                 String absolute = archiveEntries == null ? resolveRemoteReference(base, reference) : null;
                 if (absolute != null && !absolute.equals(reference)) {
                     matcher.appendReplacement(output, Matcher.quoteReplacement(
@@ -175,7 +175,7 @@ public class OcrMarkdownResolver {
             }
             String replacement;
             try {
-                String url = imageHandler.handle(image.bytes, mimeType(image.fileName, image.bytes), image.fileName);
+                String url = imagePublisher.publish(image.bytes, mimeType(image.fileName, image.bytes), image.fileName);
                 replacement = StringUtil.hasText(url)
                     ? matcher.group(1) + url + matcher.group(3) : "";
             } catch (IOException e) {
@@ -184,23 +184,23 @@ public class OcrMarkdownResolver {
             matcher.appendReplacement(output, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(output);
-        return rewriteHtmlImages(output.toString(), base, archiveEntries, imageHandler);
+        return rewriteHtmlImages(output.toString(), base, archiveEntries, imagePublisher);
     }
 
     private String rewriteHtmlImages(String markdown, String base, Map<String, byte[]> archiveEntries,
-                                     ExtractedImageHandler imageHandler) {
+                                     DocumentImagePublisher imagePublisher) {
         Matcher matcher = HTML_IMAGE.matcher(markdown);
         StringBuffer output = new StringBuffer();
         while (matcher.find()) {
             String reference = matcher.group(3);
             String replacementUrl = null;
-            if (imageHandler == null) {
+            if (imagePublisher == null) {
                 replacementUrl = archiveEntries == null ? resolveRemoteReference(base, reference) : null;
             } else {
                 ImageData image = loadImage(reference, base, archiveEntries);
                 if (image != null) {
                     try {
-                        replacementUrl = imageHandler.handle(
+                        replacementUrl = imagePublisher.publish(
                             image.bytes, mimeType(image.fileName, image.bytes), image.fileName);
                     } catch (IOException e) {
                         throw new OcrMarkdownResolveException("Failed to handle OCR image: " + image.fileName, e);

@@ -105,8 +105,8 @@ config.setModel(BaiduOcrModels.PADDLE_OCR_VL_1_6);
 `recognizeAndWait()` 轮询该方法，因此同样可以直接调用 `response.getMarkdown()`。原始资源仍会保留在
 `resources` 中，供应商结果链接存在有效期，应及时转存。
 
-百度结果中的图片通常使用 HTML `<img src="...">` 和临时签名 URL。配置 `ExtractedImageHandler` 后，
-框架会下载这些图片、交给 Handler 转存，并将 `src` 替换为 Handler 返回的持久 URL。
+百度结果中的图片通常使用 HTML `<img src="...">` 和临时签名 URL。配置 `DocumentImagePublisher` 后，
+框架会下载这些图片、交给 Publisher 转存，并将 `src` 替换为 Publisher 返回的持久 URL。
 
 ## 自定义等待时间
 

@@ -206,7 +206,7 @@ public class MineruOcrModelTest {
         };
         MineruOcrModel model = new MineruOcrModel(
             tokenConfig(), apiClient, new OkHttpClient());
-        model.setExtractedImageHandler((bytes, mimeType, fileName) -> "https://cdn.example/image.png");
+        model.setDocumentImagePublisher((bytes, mimeType, fileName) -> "https://cdn.example/image.png");
 
         OcrResponse response = model.getResult("m3");
 

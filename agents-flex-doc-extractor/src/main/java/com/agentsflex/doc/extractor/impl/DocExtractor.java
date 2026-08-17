@@ -17,8 +17,8 @@ package com.agentsflex.doc.extractor.impl;
 
 import com.agentsflex.doc.extractor.DocumentExtractor;
 import com.agentsflex.doc.extractor.MarkdownFormatter;
-import com.agentsflex.doc.handler.Base64ExtractedImageHandler;
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DataUriDocumentImagePublisher;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.DocumentSource;
 import com.agentsflex.doc.util.ImageUtils;
 import org.apache.poi.hwpf.HWPFDocument;
@@ -82,11 +82,11 @@ public class DocExtractor implements DocumentExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
-        return extractText(source, new Base64ExtractedImageHandler());
+        return extractText(source, new DataUriDocumentImagePublisher());
     }
 
     @Override
-    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
+    public String extractText(DocumentSource source, DocumentImagePublisher documentImagePublisher) throws IOException {
         try (InputStream is = source.openStream();
              POIFSFileSystem fs = new POIFSFileSystem(is);
              HWPFDocument doc = new HWPFDocument(fs)) {
@@ -101,7 +101,7 @@ public class DocExtractor implements DocumentExtractor {
 
                 if (paragraph.isInTable()) {
                     Table table = range.getTable(paragraph);
-                    extractTable(table, picturesTable, text, extractedImageHandler);
+                    extractTable(table, picturesTable, text, documentImagePublisher);
 
                     int tableEndOffset = table.getEndOffset();
                     while (i + 1 < numParagraphs
@@ -111,7 +111,7 @@ public class DocExtractor implements DocumentExtractor {
                     continue;
                 }
 
-                appendParagraphContent(paragraph, picturesTable, text, extractedImageHandler);
+                appendParagraphContent(paragraph, picturesTable, text, documentImagePublisher);
                 text.append('\n');
             }
 
@@ -123,13 +123,13 @@ public class DocExtractor implements DocumentExtractor {
     }
 
     private void appendParagraphContent(Paragraph paragraph, PicturesTable picturesTable,
-                                        StringBuilder text, ExtractedImageHandler extractedImageHandler) throws IOException {
+                                        StringBuilder text, DocumentImagePublisher documentImagePublisher) throws IOException {
         int numRuns = paragraph.numCharacterRuns();
         for (int i = 0; i < numRuns; i++) {
             CharacterRun run = paragraph.getCharacterRun(i);
             if (picturesTable.hasPicture(run)) {
                 Picture picture = picturesTable.extractPicture(run, true);
-                String imageUrl = processPicture(picture, extractedImageHandler);
+                String imageUrl = processPicture(picture, documentImagePublisher);
                 MarkdownFormatter.appendImage(text, imageUrl);
             } else {
                 String runText = run.text();
@@ -157,7 +157,7 @@ public class DocExtractor implements DocumentExtractor {
     }
 
     private void extractTable(Table table, PicturesTable picturesTable, StringBuilder text,
-                              ExtractedImageHandler extractedImageHandler) throws IOException {
+                              DocumentImagePublisher documentImagePublisher) throws IOException {
         int rowCount = table.numRows();
         if (rowCount == 0) {
             return;
@@ -169,7 +169,7 @@ public class DocExtractor implements DocumentExtractor {
             List<String> cells = new ArrayList<>();
             for (int column = 0; column < tableRow.numCells(); column++) {
                 cells.add(getCellText(tableRow.getCell(column), picturesTable,
-                    extractedImageHandler));
+                    documentImagePublisher));
             }
             rows.add(cells);
         }
@@ -177,18 +177,18 @@ public class DocExtractor implements DocumentExtractor {
     }
 
     private String getCellText(TableCell cell, PicturesTable picturesTable,
-                               ExtractedImageHandler extractedImageHandler) throws IOException {
+                               DocumentImagePublisher documentImagePublisher) throws IOException {
         StringBuilder text = new StringBuilder();
         for (int i = 0; i < cell.numParagraphs(); i++) {
             if (text.length() > 0) {
                 text.append(' ');
             }
-            appendParagraphContent(cell.getParagraph(i), picturesTable, text, extractedImageHandler);
+            appendParagraphContent(cell.getParagraph(i), picturesTable, text, documentImagePublisher);
         }
         return text.toString().trim();
     }
 
-    private String processPicture(Picture picture, ExtractedImageHandler extractedImageHandler) throws IOException {
+    private String processPicture(Picture picture, DocumentImagePublisher documentImagePublisher) throws IOException {
         if (picture == null) {
             return null;
         }
@@ -200,7 +200,7 @@ public class DocExtractor implements DocumentExtractor {
 
         String ext = picture.suggestFileExtension();
         String mimeType = getPictureMimeType(ext);
-        return MarkdownFormatter.handleImage(extractedImageHandler, data, mimeType,
+        return MarkdownFormatter.handleImage(documentImagePublisher, data, mimeType,
             picture.suggestFullFileName());
     }
 

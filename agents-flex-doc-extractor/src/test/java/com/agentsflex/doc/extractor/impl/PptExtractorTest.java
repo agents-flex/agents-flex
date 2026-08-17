@@ -45,7 +45,7 @@ public class PptExtractorTest {
     }
 
     @Test
-    public void shouldRenderUrlReturnedByExtractedImageHandler() throws Exception {
+    public void shouldRenderUrlReturnedByDocumentImagePublisher() throws Exception {
         DocumentExtractionService service = new DocumentExtractionService(
             (bytes, mimeType, fileName) -> "https://cdn.example.com/ppt-image.png");
 

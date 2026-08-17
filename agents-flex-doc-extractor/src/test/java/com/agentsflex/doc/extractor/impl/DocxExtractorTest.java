@@ -49,7 +49,7 @@ public class DocxExtractorTest {
     }
 
     @Test
-    public void shouldRenderUrlReturnedByExtractedImageHandler() throws Exception {
+    public void shouldRenderUrlReturnedByDocumentImagePublisher() throws Exception {
         AtomicBoolean processed = new AtomicBoolean();
         DocumentExtractionService service = new DocumentExtractionService((bytes, mimeType, fileName) -> {
             assertTrue(bytes.length > 0);

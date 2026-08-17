@@ -143,7 +143,7 @@ public class GiteeOcrModelIntegrationTest {
         GiteeOcrConfig config = new GiteeOcrConfig();
         config.setApiKey(apiKey);
         GiteeOcrModel model = new GiteeOcrModel(config);
-        model.setExtractedImageHandler((imageBytes, mimeType, fileName) -> {
+        model.setDocumentImagePublisher((imageBytes, mimeType, fileName) -> {
             int index = imageCount.incrementAndGet();
             String safeName = fileName == null ? "image.bin" : Paths.get(fileName).getFileName().toString();
             Path destination = imageOutput.resolve(String.format("%03d-%s", index, safeName));
@@ -175,7 +175,7 @@ public class GiteeOcrModelIntegrationTest {
         assertTrue("样例 PDF 应至少解析出一张图片；结果目录: " + imageOutput.toAbsolutePath(),
             imageCount.get() > 0);
         assertTrue("供应商原始结果应保存到 raw 目录", rawArtifactCount > 0);
-        assertTrue("Markdown 应引用 ExtractedImageHandler 生成的本地图片 URL",
+        assertTrue("Markdown 应引用 DocumentImagePublisher 生成的本地图片 URL",
             response.getMarkdown().contains(imageOutput.toAbsolutePath().toUri().toString()));
     }
 

@@ -159,7 +159,7 @@ public class OcrMarkdownResolverTest {
                 return resolveResultMarkdown(response);
             }
         };
-        model.setExtractedImageHandler((bytes, mimeType, name) -> "https://cdn.example/image.png");
+        model.setDocumentImagePublisher((bytes, mimeType, name) -> "https://cdn.example/image.png");
 
         OcrResponse response = model.recognizeAndWait(OcrRequest.ofUrl("https://example.com/input.pdf"));
 

@@ -126,11 +126,11 @@ String markdown = response.getMarkdown();
 
 OCR 结果中的图片可能使用 Markdown 图片或 HTML `<img>`，内容可能来自 ZIP 相对路径、Base64 Data URI
 或供应商的临时远程 URL。可以为 model 设置图片
-处理器，将图片上传到对象存储，并用返回 URL 重写 Markdown。该处理器使用与 Doc Extractor 相同的
-`com.agentsflex.core.document.ExtractedImageHandler` 接口：
+发布器，将图片上传到对象存储，并用返回 URL 重写 Markdown。该发布器使用与 Doc Extractor 相同的
+`com.agentsflex.core.document.DocumentImagePublisher` 接口：
 
 ```java
-model.setExtractedImageHandler((imageBytes, mimeType, fileName) -> {
+model.setDocumentImagePublisher((imageBytes, mimeType, fileName) -> {
     String objectKey = imageKeyGenerator.fromContent(imageBytes, fileName);
     return objectStorage.upload(objectKey, imageBytes, mimeType);
 });
@@ -139,10 +139,10 @@ OcrResponse response = model.recognizeAndWait(request);
 String markdown = response.getMarkdown();
 ```
 
-Handler 返回 `null` 或空字符串时，对应图片会从 Markdown 中移除。没有配置 Handler 时，供应商原有的
+Publisher 返回 `null` 或空字符串时，对应图片会从 Markdown 中移除。没有配置 Publisher 时，供应商原有的
 远程图片 URL 会保留，Markdown 资源中的相对图片 URL 会转换为绝对 URL；ZIP 内的相对图片路径无法自动
-获得外部地址，因此生产环境应配置 Handler。配置 Handler 后，框架也会下载 Markdown 中的 HTTP/HTTPS
-图片并交给 Handler，适合将供应商有时效的签名 URL 转存到自己的对象存储。图片来源必须可信，并应配合
+获得外部地址，因此生产环境应配置 Publisher。配置 Publisher 后，框架也会下载 Markdown 中的 HTTP/HTTPS
+图片并交给 Publisher，适合将供应商有时效的签名 URL 转存到自己的对象存储。图片来源必须可信，并应配合
 网络访问策略，避免服务端请求不受信任的地址。
 
 ## 完整示例

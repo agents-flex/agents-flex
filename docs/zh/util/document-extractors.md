@@ -83,20 +83,20 @@ try (InputStream input = Files.newInputStream(path)) {
 | `extractFromUrl(String httpUrl, String fileName)` | 为 URL 指定文件名 |
 | `extractFromUrl(String httpUrl, String fileName, String mimeType)` | 同时指定文件名和 MIME 类型 |
 | `setDefault(DocumentExtractionService service)` | 替换进程级默认服务 |
-| `setExtractedImageHandler(ExtractedImageHandler handler)` | 配置文档内图片的处理方式；接口位于 `com.agentsflex.core.document` |
+| `setDocumentImagePublisher(DocumentImagePublisher publisher)` | 配置文档内图片的发布方式；接口位于 `com.agentsflex.core.document` |
 
 ## 4. 图片处理
 
-部分文档包含图片。默认处理器会将图片提取为 Base64 内容；可以通过全局入口替换处理器：
+部分文档包含图片。默认发布器会将图片提取为 Base64 Data URI；可以通过全局入口替换发布器：
 
 ```java
-DocumentExtractors.setExtractedImageHandler((imageBytes, mimeType, fileName) -> {
+DocumentExtractors.setDocumentImagePublisher((imageBytes, mimeType, fileName) -> {
     // 将 image 保存到对象存储，并返回可访问的 URL
     return uploadAndGetUrl(imageBytes, mimeType, fileName);
 });
 ```
 
-图片处理器是进程级配置，通常在应用启动时设置一次。不要在多租户请求中按请求修改它。
+图片发布器是进程级配置，通常在应用启动时设置一次。不要在多租户请求中按请求修改它。
 
 ## 5. 使用 DocumentExtractionService
 
@@ -105,7 +105,7 @@ DocumentExtractors.setExtractedImageHandler((imageBytes, mimeType, fileName) -> 
 ```java
 DocumentExtractionService service = new DocumentExtractionService(
     registry,
-    extractedImageHandler
+    documentImagePublisher
 );
 
 String markdown = service.extract(file);

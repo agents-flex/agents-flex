@@ -17,8 +17,8 @@ package com.agentsflex.doc.extractor.impl;
 
 import com.agentsflex.doc.extractor.DocumentExtractor;
 import com.agentsflex.doc.extractor.MarkdownFormatter;
-import com.agentsflex.doc.handler.Base64ExtractedImageHandler;
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DataUriDocumentImagePublisher;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.DocumentSource;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSBase;
@@ -94,14 +94,14 @@ public class PdfTextExtractor implements DocumentExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
-        return extractText(source, new Base64ExtractedImageHandler());
+        return extractText(source, new DataUriDocumentImagePublisher());
     }
 
     @Override
-    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
+    public String extractText(DocumentSource source, DocumentImagePublisher documentImagePublisher) throws IOException {
         try (InputStream is = source.openStream();
              PDDocument doc = PDDocument.load(is, MemoryUsageSetting.setupMixed(MAX_MAIN_MEMORY_BYTES))) {
-            PageContentExtractor extractor = new PageContentExtractor(extractedImageHandler);
+            PageContentExtractor extractor = new PageContentExtractor(documentImagePublisher);
             extractor.setSortByPosition(true);
             extractor.setLineSeparator("\n");
             extractor.setPageStart("");
@@ -116,13 +116,13 @@ public class PdfTextExtractor implements DocumentExtractor {
         private final List<String> images = new ArrayList<>();
         private final Set<COSBase> seenImages = Collections.newSetFromMap(
             new IdentityHashMap<COSBase, Boolean>());
-        private final ExtractedImageHandler extractedImageHandler;
+        private final DocumentImagePublisher documentImagePublisher;
         private Writer documentOutput;
         private StringWriter pageOutput;
 
-        PageContentExtractor(ExtractedImageHandler extractedImageHandler) throws IOException {
+        PageContentExtractor(DocumentImagePublisher documentImagePublisher) throws IOException {
             super();
-            this.extractedImageHandler = extractedImageHandler;
+            this.documentImagePublisher = documentImagePublisher;
         }
 
         @Override
@@ -207,7 +207,7 @@ public class PdfTextExtractor implements DocumentExtractor {
             }
 
             String fileName = "page-" + getCurrentPageNo() + "-image-" + seenImages.size() + ".png";
-            String imageUrl = MarkdownFormatter.handleImage(extractedImageHandler, imageBytes,
+            String imageUrl = MarkdownFormatter.handleImage(documentImagePublisher, imageBytes,
                 "image/png", fileName);
             if (imageUrl != null && !imageUrl.trim().isEmpty()) {
                 images.add(imageUrl);

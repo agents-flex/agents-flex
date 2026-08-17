@@ -40,7 +40,7 @@ public class PdfTextExtractorTest {
     }
 
     @Test
-    public void shouldRenderUrlReturnedByExtractedImageHandler() throws Exception {
+    public void shouldRenderUrlReturnedByDocumentImagePublisher() throws Exception {
         DocumentExtractionService service = new DocumentExtractionService(
             (bytes, mimeType, fileName) -> "https://cdn.example.com/pdf-image.png");
 

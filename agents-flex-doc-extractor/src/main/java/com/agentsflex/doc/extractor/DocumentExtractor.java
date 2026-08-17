@@ -15,7 +15,7 @@
  */
 package com.agentsflex.doc.extractor;
 
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.DocumentSource;
 
 import java.io.IOException;
@@ -38,13 +38,18 @@ public interface DocumentExtractor {
     String extractText(DocumentSource source) throws IOException;
 
     /**
-     * 使用指定的图片处理器提取文档内容。处理图片的解析器应通过
-     * {@link MarkdownFormatter#handleImage(ExtractedImageHandler, byte[], String, String)}
-     * 调用处理器并统一 MIME 类型、文件名和 Markdown 格式。
+     * 使用指定的图片发布器提取文档内容。处理图片的解析器应通过
+     * {@link MarkdownFormatter#handleImage(DocumentImagePublisher, byte[], String, String)}
+     * 调用发布器并统一 MIME 类型、文件名和 Markdown 格式。
      * 不处理图片的自定义解析器只需实现 {@link #extractText(DocumentSource)}。
+     *
+     * @param source 文档输入源
+     * @param documentImagePublisher 非空的图片发布器
+     * @return Markdown 风格的提取结果
+     * @throws IOException 文档读取、解析或图片发布失败
      */
     default String extractText(DocumentSource source,
-                               ExtractedImageHandler extractedImageHandler) throws IOException {
+                               DocumentImagePublisher documentImagePublisher) throws IOException {
         return extractText(source);
     }
 

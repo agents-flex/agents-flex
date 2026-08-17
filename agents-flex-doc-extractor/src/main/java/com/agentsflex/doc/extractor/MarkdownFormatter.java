@@ -15,7 +15,7 @@
  */
 package com.agentsflex.doc.extractor;
 
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DocumentImagePublisher;
 
 import java.io.IOException;
 import java.util.List;
@@ -31,23 +31,36 @@ public final class MarkdownFormatter {
     private MarkdownFormatter() {
     }
 
-    public static String handleImage(ExtractedImageHandler handler, byte[] imageBytes,
+    /**
+     * 发布图片并返回适合写入 Markdown 的图片地址。
+     *
+     * <p>空图片不会调用发布器并直接返回 {@code null}；缺失的 MIME 类型和文件名会分别规范为
+     * {@code application/octet-stream} 和 {@code embedded-image}。</p>
+     *
+     * @param publisher 非空的图片发布器
+     * @param imageBytes 图片二进制内容
+     * @param mimeType 图片 MIME 类型，允许为空
+     * @param fileName 原始图片文件名，允许为空
+     * @return 发布器生成的图片地址，空图片时为 {@code null}
+     * @throws IOException 图片发布失败
+     */
+    public static String handleImage(DocumentImagePublisher publisher, byte[] imageBytes,
                                      String mimeType, String fileName) throws IOException {
-        if (handler == null) {
-            throw new IllegalArgumentException("ExtractedImageHandler cannot be null");
+        if (publisher == null) {
+            throw new IllegalArgumentException("DocumentImagePublisher cannot be null");
         }
         if (imageBytes == null || imageBytes.length == 0) {
             return null;
         }
 
-        return handler.handle(imageBytes, valueOrDefault(mimeType, DEFAULT_IMAGE_MIME_TYPE),
+        return publisher.publish(imageBytes, valueOrDefault(mimeType, DEFAULT_IMAGE_MIME_TYPE),
             valueOrDefault(fileName, DEFAULT_IMAGE_FILE_NAME));
     }
 
-    public static void appendImage(StringBuilder output, ExtractedImageHandler handler,
+    public static void appendImage(StringBuilder output, DocumentImagePublisher publisher,
                                    byte[] imageBytes, String mimeType, String fileName)
         throws IOException {
-        appendImage(output, handleImage(handler, imageBytes, mimeType, fileName));
+        appendImage(output, handleImage(publisher, imageBytes, mimeType, fileName));
     }
 
     public static void appendImage(StringBuilder output, String imageUrl) {

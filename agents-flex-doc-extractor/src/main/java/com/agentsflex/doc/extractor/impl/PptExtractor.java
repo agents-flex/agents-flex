@@ -17,8 +17,8 @@ package com.agentsflex.doc.extractor.impl;
 
 import com.agentsflex.doc.extractor.DocumentExtractor;
 import com.agentsflex.doc.extractor.MarkdownFormatter;
-import com.agentsflex.doc.handler.Base64ExtractedImageHandler;
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DataUriDocumentImagePublisher;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.DocumentSource;
 import org.apache.poi.hslf.usermodel.HSLFGroupShape;
 import org.apache.poi.hslf.usermodel.HSLFPictureData;
@@ -70,11 +70,11 @@ public class PptExtractor implements DocumentExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
-        return extractText(source, new Base64ExtractedImageHandler());
+        return extractText(source, new DataUriDocumentImagePublisher());
     }
 
     @Override
-    public String extractText(DocumentSource source, ExtractedImageHandler extractedImageHandler) throws IOException {
+    public String extractText(DocumentSource source, DocumentImagePublisher documentImagePublisher) throws IOException {
         StringBuilder text = new StringBuilder();
 
         try (InputStream inputStream = source.openStream();
@@ -82,7 +82,7 @@ public class PptExtractor implements DocumentExtractor {
             List<HSLFSlide> slides = slideShow.getSlides();
             for (int i = 0; i < slides.size(); i++) {
                 text.append("\n--- Slide ").append(i + 1).append(" ---\n");
-                extractShapes(slides.get(i).getShapes(), text, extractedImageHandler);
+                extractShapes(slides.get(i).getShapes(), text, documentImagePublisher);
             }
         } catch (Exception e) {
             throw new IOException("Failed to extract PPT: " + e.getMessage(), e);
@@ -92,25 +92,25 @@ public class PptExtractor implements DocumentExtractor {
     }
 
     private void extractShapes(List<HSLFShape> shapes, StringBuilder text,
-                               ExtractedImageHandler extractedImageHandler) throws IOException {
+                               DocumentImagePublisher documentImagePublisher) throws IOException {
         for (HSLFShape shape : shapes) {
             if (shape instanceof HSLFTable) {
                 extractTable((HSLFTable) shape, text);
             } else if (shape instanceof HSLFPictureShape) {
-                extractPicture((HSLFPictureShape) shape, text, extractedImageHandler);
+                extractPicture((HSLFPictureShape) shape, text, documentImagePublisher);
             } else if (shape instanceof HSLFTextShape) {
                 String shapeText = ((HSLFTextShape) shape).getText();
                 if (shapeText != null && !shapeText.trim().isEmpty()) {
                     text.append(shapeText.trim()).append('\n');
                 }
             } else if (shape instanceof HSLFGroupShape) {
-                extractShapes(((HSLFGroupShape) shape).getShapes(), text, extractedImageHandler);
+                extractShapes(((HSLFGroupShape) shape).getShapes(), text, documentImagePublisher);
             }
         }
     }
 
     private void extractPicture(HSLFPictureShape pictureShape, StringBuilder text,
-                                ExtractedImageHandler extractedImageHandler) throws IOException {
+                                DocumentImagePublisher documentImagePublisher) throws IOException {
         HSLFPictureData pictureData = pictureShape.getPictureData();
         if (pictureData == null) {
             return;
@@ -127,7 +127,7 @@ public class PptExtractor implements DocumentExtractor {
         }
         String extension = pictureData.getType() != null ? pictureData.getType().extension : "bin";
         String fileName = "image-" + pictureData.getIndex() + "." + extension;
-        MarkdownFormatter.appendImage(text, extractedImageHandler, data, contentType, fileName);
+        MarkdownFormatter.appendImage(text, documentImagePublisher, data, contentType, fileName);
     }
 
     private void extractTable(HSLFTable table, StringBuilder text) {

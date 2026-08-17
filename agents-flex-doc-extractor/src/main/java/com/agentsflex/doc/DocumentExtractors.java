@@ -16,7 +16,7 @@
 package com.agentsflex.doc;
 
 
-import com.agentsflex.core.document.ExtractedImageHandler;
+import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.ByteArrayDocumentSource;
 import com.agentsflex.doc.source.ByteStreamDocumentSource;
 import com.agentsflex.doc.source.FileDocumentSource;
@@ -39,11 +39,15 @@ public class DocumentExtractors {
     }
 
     /**
-     * 设置 extractedImageHandler ，全局只需要配置 1 次。
-     * @param extractedImageHandler
+     * 设置进程级默认文档图片发布器。
+     *
+     * <p>该配置作用于静态入口持有的默认 {@link DocumentExtractionService}，通常应在应用启动阶段设置一次。
+     * 多租户或请求级图片策略应创建独立的服务实例，避免并发请求互相覆盖全局配置。</p>
+     *
+     * @param documentImagePublisher 非空的图片发布器
      */
-    public static void setExtractedImageHandler(ExtractedImageHandler extractedImageHandler) {
-        defaultService.setExtractedImageHandler(extractedImageHandler);
+    public static void setDocumentImagePublisher(DocumentImagePublisher documentImagePublisher) {
+        defaultService.setDocumentImagePublisher(documentImagePublisher);
     }
 
     public static String extractFromUrl(String httpUrl) {

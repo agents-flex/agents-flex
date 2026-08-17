@@ -125,9 +125,9 @@ String markdown = response.getMarkdown();
 
 `getResult()` 支持内联 Markdown、Markdown 下载资源、ZIP 中的 Markdown，并以纯文本作为最后降级结果。
 通过
-`BaseOcrModel.setExtractedImageHandler()` 可以把结果图片上传到对象存储，并将 Markdown 图片引用替换为
-Handler 返回的 URL。图片可以来自 ZIP、Base64 Data URI 或 HTTP/HTTPS 地址；配置 Handler 后，远程图片
-也会被下载并转存。未配置 Handler 时保留供应商返回的远程 URL。
+`BaseOcrModel.setDocumentImagePublisher()` 可以把结果图片上传到对象存储，并将 Markdown 图片引用替换为
+Publisher 返回的 URL。图片可以来自 ZIP、Base64 Data URI 或 HTTP/HTTPS 地址；配置 Publisher 后，远程图片
+也会被下载并转存。未配置 Publisher 时保留供应商返回的远程 URL。
 
 ## 下一步
 

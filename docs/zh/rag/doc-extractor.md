@@ -135,7 +135,7 @@ String text = service.extract(
 | --- | --- | --- |
 | PDF 文档 | `.pdf` | 分页文本、实际绘制的图片、同页图片去重 |
 
-PDF 输出包含 `--- Page N ---` 分页标记。图片统一转换为 PNG 后交给 `ExtractedImageHandler` 处理。纯扫描 PDF 可以提取页面中的图片，但当前不包含 OCR 文字识别。
+PDF 输出包含 `--- Page N ---` 分页标记。图片统一转换为 PNG 后交给 `DocumentImagePublisher` 处理。纯扫描 PDF 可以提取页面中的图片，但当前不包含 OCR 文字识别。
 
 ### OpenDocument
 
@@ -252,7 +252,7 @@ Word、PowerPoint、Excel、HTML 和部分 Tika 文档中的表格统一使用�
 ![Image](data:image/png;base64,iVBORw0KGgo...)
 ```
 
-DOC、DOCX、PPT、PPTX、PDF，以及 Tika 支持的长尾文档中可识别的内嵌图片会转换为 Markdown 图片。默认使用 Data URI；生产环境通常通过 `ExtractedImageHandler` 替换为对象存储 URL。完整配置和扩展方式见下文“ExtractedImageHandler 图片处理”章节。
+DOC、DOCX、PPT、PPTX、PDF，以及 Tika 支持的长尾文档中可识别的内嵌图片会转换为 Markdown 图片。默认使用 Data URI；生产环境通常通过 `DocumentImagePublisher` 替换为对象存储 URL。完整配置和扩展方式见下文“DocumentImagePublisher 图片处理”章节。
 
 ### 页面和幻灯片
 
@@ -276,15 +276,15 @@ Presentation content
 | Service | 1000 |
 ```
 
-## ExtractedImageHandler 图片处理
+## DocumentImagePublisher 图片处理
 
-`com.agentsflex.core.document.ExtractedImageHandler` 是内嵌图片从“文档二进制数据”转换为“Markdown
-可引用地址”的统一扩展点，Doc Extractor 和 OCR 共用该接口。解析器负责发现和读取图片，Handler 负责
+`com.agentsflex.core.document.DocumentImagePublisher` 是内嵌图片从“文档二进制数据”转换为“Markdown
+可引用地址”的统一扩展点，Doc Extractor 和 OCR 共用该接口。解析器负责发现和读取图片，Publisher 负责
 决定图片如何保存以及最终返回什么地址。
 
 ```text
 文档解析器 -> imageBytes + mimeType + fileName
-          -> ExtractedImageHandler.handle(...)
+          -> DocumentImagePublisher.publish(...)
           -> URL / Data URI / null
           -> ![Image](返回值)
 ```
@@ -293,13 +293,13 @@ Presentation content
 
 | 场景 | 建议处理方式 |
 | --- | --- |
-| 本地开发、小文档预览 | 使用默认 `Base64ExtractedImageHandler`，无需管理外部文件 |
+| 本地开发、小文档预览 | 使用默认 `DataUriDocumentImagePublisher`，无需管理外部文件 |
 | RAG 入库、生产文档解析 | 上传到 OSS、S3、COS 等对象存储并返回稳定 URL |
 | 不需要图片的纯文本检索 | 返回 `null`，跳过所有图片，降低存储和 Token 开销 |
-| 图片需要统一规范 | 在 Handler 中压缩、转码、生成缩略图或清理元数据 |
+| 图片需要统一规范 | 在 Publisher 中压缩、转码、生成缩略图或清理元数据 |
 | 受控内容平台 | 执行格式、大小、安全检查后再写入内部文件服务 |
 
-默认构造的 `DocumentExtractionService` 使用 `Base64ExtractedImageHandler`。它将图片编码为 `data:<mimeType>;base64,...`，适合直接预览，但会明显增大结果字符串和后续模型上下文。
+默认构造的 `DocumentExtractionService` 使用 `DataUriDocumentImagePublisher`。它将图片编码为 `data:<mimeType>;base64,...`，适合直接预览，但会明显增大结果字符串和后续模型上下文。
 
 ### 接口契约
 
@@ -307,8 +307,8 @@ Presentation content
 package com.agentsflex.core.document;
 
 @FunctionalInterface
-public interface ExtractedImageHandler {
-    String handle(byte[] imageBytes, String mimeType, String fileName)
+public interface DocumentImagePublisher {
+    String publish(byte[] imageBytes, String mimeType, String fileName)
         throws IOException;
 }
 ```
@@ -322,27 +322,27 @@ public interface ExtractedImageHandler {
 | 返回 `null` 或空字符串 | 跳过该图片，不输出 Markdown 图片标记 |
 | 抛出 `IOException` | 当前候选提取器失败，服务记录日志并尝试下一个候选提取器 |
 
-Handler 只决定 Markdown 中的图片地址，不负责生成图片说明或 OCR 文本。
+Publisher 只决定 Markdown 中的图片地址，不负责生成图片说明或 OCR 文本。
 
 ### 上传到对象存储
 
 ```java
-ExtractedImageHandler imageHandler = (imageBytes, mimeType, fileName) -> {
+DocumentImagePublisher imagePublisher = (imageBytes, mimeType, fileName) -> {
     String objectKey = imageKeyGenerator.fromContent(imageBytes, fileName);
     return objectStorage.upload(objectKey, imageBytes, mimeType);
 };
 
-DocumentExtractionService service = new DocumentExtractionService(imageHandler);
+DocumentExtractionService service = new DocumentExtractionService(imagePublisher);
 String markdown = service.extract(new File("/path/to/report.docx"));
 ```
 
-当 Handler 返回 `https://cdn.example.com/files/image-1.png` 时，结果中会写入：
+当 Publisher 返回 `https://cdn.example.com/files/image-1.png` 时，结果中会写入：
 
 ```markdown
 ![Image](https://cdn.example.com/files/image-1.png)
 ```
 
-建议根据图片内容摘要生成对象 Key。候选提取器降级、调用方重试或同一图片重复出现时，Handler 可能处理相同图片多次；使用内容摘要可以让上传操作保持幂等。
+建议根据图片内容摘要生成对象 Key。候选提取器降级、调用方重试或同一图片重复出现时，Publisher 可能处理相同图片多次；使用内容摘要可以让上传操作保持幂等。
 
 ### 跳过图片
 
@@ -359,26 +359,26 @@ DocumentExtractionService service = new DocumentExtractionService(
 构造服务实例时配置，适合不同租户或不同解析任务采用不同存储策略：
 
 ```java
-DocumentExtractionService service = new DocumentExtractionService(imageHandler);
+DocumentExtractionService service = new DocumentExtractionService(imagePublisher);
 ```
 
 也可以在服务创建后替换：
 
 ```java
-service.setExtractedImageHandler(imageHandler);
+service.setDocumentImagePublisher(imagePublisher);
 ```
 
-自定义注册中心和 Handler 可以同时传入：
+自定义注册中心和 Publisher 可以同时传入：
 
 ```java
 DocumentExtractionService service =
-    new DocumentExtractionService(registry, imageHandler);
+    new DocumentExtractionService(registry, imagePublisher);
 ```
 
 静态入口支持进程级默认配置：
 
 ```java
-DocumentExtractors.setExtractedImageHandler(imageHandler);
+DocumentExtractors.setDocumentImagePublisher(imagePublisher);
 String markdown = DocumentExtractors.extract(file);
 ```
 
@@ -386,7 +386,7 @@ String markdown = DocumentExtractors.extract(file);
 
 ### 自定义提取器接入
 
-自定义 `DocumentExtractor` 只有覆盖包含 Handler 的重载，才能使用服务中配置的图片策略。图片应通过 `MarkdownFormatter` 处理，以获得一致的空值、默认 MIME、默认文件名和 Markdown 格式：
+自定义 `DocumentExtractor` 只有覆盖包含 Publisher 的重载，才能使用服务中配置的图片策略。图片应通过 `MarkdownFormatter` 处理，以获得一致的空值、默认 MIME、默认文件名和 Markdown 格式：
 
 ```java
 public class CustomExtractor implements DocumentExtractor {
@@ -398,16 +398,16 @@ public class CustomExtractor implements DocumentExtractor {
 
     @Override
     public String extractText(DocumentSource source) throws IOException {
-        return extractText(source, new Base64ExtractedImageHandler());
+        return extractText(source, new DataUriDocumentImagePublisher());
     }
 
     @Override
     public String extractText(DocumentSource source,
-                              ExtractedImageHandler imageHandler) throws IOException {
+                              DocumentImagePublisher imagePublisher) throws IOException {
         byte[] image = readEmbeddedImage(source);
         StringBuilder output = new StringBuilder("Document content");
         MarkdownFormatter.appendImage(
-            output, imageHandler, image, "image/png", "figure-1.png"
+            output, imagePublisher, image, "image/png", "figure-1.png"
         );
         return output.toString();
     }
@@ -418,12 +418,12 @@ public class CustomExtractor implements DocumentExtractor {
 
 ### 生产环境注意事项
 
-- Handler 可能被多个解析请求并发调用，实现必须是线程安全的，或只使用方法内局部状态。
+- Publisher 可能被多个解析请求并发调用，实现必须是线程安全的，或只使用方法内局部状态。
 - `fileName` 和 `mimeType` 来自文档元数据，不能直接作为可信文件路径或安全校验依据；应清理文件名并校验实际文件签名。
 - 图片以完整 `byte[]` 传入，应限制原始文档和单张图片大小，避免超大图片造成内存压力。
 - 返回值会直接进入 Markdown 图片地址，应返回经过正确编码的 URL 或合法 Data URI。
 - 上传失败可以抛出 `IOException`。由于服务随后可能尝试其他候选提取器，上传、计费和审计操作应设计为幂等。
-- Handler 不会自动执行 OCR；扫描件文字识别需要单独的 OCR 流程。
+- Publisher 不会自动执行 OCR；扫描件文字识别需要单独的 OCR 流程。
 
 ## 工作原理
 
@@ -432,7 +432,7 @@ public class CustomExtractor implements DocumentExtractor {
 1. `DocumentSource` 提供文件名、MIME 和可重复打开的输入流。
 2. `ExtractorRegistry` 根据文件名和 MIME 筛选候选解析器。
 3. 候选解析器按 `getOrder()` 从小到大依次执行。
-4. 解析器发现内嵌图片时，将图片数据交给 `ExtractedImageHandler`，并把返回地址写入 Markdown。
+4. 解析器发现内嵌图片时，将图片数据交给 `DocumentImagePublisher`，并把返回地址写入 Markdown。
 5. 第一个返回非空内容的解析器结束本次处理。
 6. 所有解析器均失败或返回空内容时，服务返回 `null`。
 7. 请求结束后自动调用 `DocumentSource.cleanup()` 清理临时资源。
@@ -606,14 +606,14 @@ if (text == null || text.trim().isEmpty()) {
 - Apple iWork 内部格式随应用版本变化，部分现代文件只能提取元数据和资源列表。
 - MHTML 的复杂 multipart、内嵌脚本和动态网页行为不会完整还原。
 - Tika 长尾格式以内容提取为目标，不保证完全保留源文档视觉布局。
-- 默认的 Base64 图片会显著增加输出长度；生产环境建议配置 `ExtractedImageHandler`，在解析过程中直接替换为对象存储 URL。
+- 默认的 Base64 图片会显著增加输出长度；生产环境建议配置 `DocumentImagePublisher`，在解析过程中直接替换为对象存储 URL。
 
 ## 推荐实践
 
 1. 对流和 HTTP 下载尽量提供准确的文件名及 MIME。
 2. 大文件使用临时文件数据源，并在入口处限制原始文件大小。
 3. 将返回的分页、幻灯片或 Sheet 标记作为 RAG 分块边界。
-4. 使用 `ExtractedImageHandler` 在解析图片时直接上传到对象存储，避免在最终文本中保留 Base64 数据。
+4. 使用 `DocumentImagePublisher` 在解析图片时直接上传到对象存储，避免在最终文本中保留 Base64 数据。
 5. 对扫描件配置独立 OCR 流程，并与 Doc Extractor 的文本结果合并。
 6. 对 `null` 结果保留原文件和解析日志，便于降级处理与格式补充。
 
