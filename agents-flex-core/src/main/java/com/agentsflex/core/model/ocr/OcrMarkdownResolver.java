@@ -45,6 +45,8 @@ public class OcrMarkdownResolver {
     private static final long MAX_EXTRACTED_BYTES = 200L * 1024 * 1024;
     private static final int MAX_ARCHIVE_ENTRIES = 10_000;
     private static final Pattern MARKDOWN_IMAGE = Pattern.compile("(!\\[[^\\]]*\\]\\()(<[^>]+>|[^\\s)]+)([^)]*\\))");
+    private static final Pattern HTML_IMAGE = Pattern.compile(
+        "(?i)(<img\\b[^>]*?\\bsrc\\s*=\\s*)([\"'])([^\"']+)(\\2)([^>]*>)");
     private static final OcrMarkdownResolver DEFAULT =
         new OcrMarkdownResolver(OkHttpClientUtil.buildDefaultClient());
 
@@ -173,13 +175,46 @@ public class OcrMarkdownResolver {
             }
             String replacement;
             try {
-                String url = imageHandler.handle(image.bytes, mimeType(image.fileName), image.fileName);
+                String url = imageHandler.handle(image.bytes, mimeType(image.fileName, image.bytes), image.fileName);
                 replacement = StringUtil.hasText(url)
                     ? matcher.group(1) + url + matcher.group(3) : "";
             } catch (IOException e) {
                 throw new OcrMarkdownResolveException("Failed to handle OCR image: " + image.fileName, e);
             }
             matcher.appendReplacement(output, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(output);
+        return rewriteHtmlImages(output.toString(), base, archiveEntries, imageHandler);
+    }
+
+    private String rewriteHtmlImages(String markdown, String base, Map<String, byte[]> archiveEntries,
+                                     ExtractedImageHandler imageHandler) {
+        Matcher matcher = HTML_IMAGE.matcher(markdown);
+        StringBuffer output = new StringBuffer();
+        while (matcher.find()) {
+            String reference = matcher.group(3);
+            String replacementUrl = null;
+            if (imageHandler == null) {
+                replacementUrl = archiveEntries == null ? resolveRemoteReference(base, reference) : null;
+            } else {
+                ImageData image = loadImage(reference, base, archiveEntries);
+                if (image != null) {
+                    try {
+                        replacementUrl = imageHandler.handle(
+                            image.bytes, mimeType(image.fileName, image.bytes), image.fileName);
+                    } catch (IOException e) {
+                        throw new OcrMarkdownResolveException("Failed to handle OCR image: " + image.fileName, e);
+                    }
+                    if (StringUtil.noText(replacementUrl)) {
+                        matcher.appendReplacement(output, "");
+                        continue;
+                    }
+                }
+            }
+            if (StringUtil.hasText(replacementUrl) && !replacementUrl.equals(reference)) {
+                matcher.appendReplacement(output, Matcher.quoteReplacement(
+                    matcher.group(1) + matcher.group(2) + replacementUrl + matcher.group(4) + matcher.group(5)));
+            }
         }
         matcher.appendTail(output);
         return output.toString();
@@ -289,7 +324,24 @@ public class OcrMarkdownResolver {
             ? value.substring(1, value.length() - 1) : value;
     }
 
-    private static String mimeType(String fileName) {
+    private static String mimeType(String fileName, byte[] bytes) {
+        if (bytes != null) {
+            if (bytes.length >= 8 && bytes[0] == (byte) 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e &&
+                bytes[3] == 0x47 && bytes[4] == 0x0d && bytes[5] == 0x0a && bytes[6] == 0x1a && bytes[7] == 0x0a) {
+                return "image/png";
+            }
+            if (bytes.length >= 3 && bytes[0] == (byte) 0xff && bytes[1] == (byte) 0xd8 && bytes[2] == (byte) 0xff) {
+                return "image/jpeg";
+            }
+            if (bytes.length >= 6 && bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F' &&
+                bytes[3] == '8' && (bytes[4] == '7' || bytes[4] == '9') && bytes[5] == 'a') {
+                return "image/gif";
+            }
+            if (bytes.length >= 12 && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F' &&
+                bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') {
+                return "image/webp";
+            }
+        }
         String mime = URLConnection.guessContentTypeFromName(fileName);
         return mime == null ? "application/octet-stream" : mime;
     }

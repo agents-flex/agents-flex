@@ -75,6 +75,47 @@ public class OcrMarkdownResolverTest {
     }
 
     @Test
+    public void shouldRewriteHtmlImageReturnedByBaidu() {
+        String signedUrl = "https://result.example/images/chart.jpg?authorization=signed-value";
+        OkHttpClient client = clientReturning(requestUrl -> new byte[]{1, 2, 3});
+        OcrResponse response = successfulResponse();
+        response.setMarkdown("<div><img src=\"" + signedUrl + "\" alt=\"Image\" width=\"39%\" /></div>");
+
+        String markdown = new OcrMarkdownResolver(client).resolve(response,
+            (bytes, mimeType, name) -> "https://cdn.example/chart.jpg");
+
+        assertEquals("<div><img src=\"https://cdn.example/chart.jpg\" alt=\"Image\" width=\"39%\" /></div>",
+            markdown);
+    }
+
+    @Test
+    public void shouldRemoveEntireHtmlImageWhenHandlerReturnsEmptyUrl() {
+        OcrResponse response = successfulResponse();
+        response.setMarkdown("before<img src=\"data:image/png;base64,AQID\" alt=\"Image\" />after");
+
+        String markdown = OcrMarkdownResolver.getDefault().resolve(response,
+            (bytes, mimeType, name) -> null);
+
+        assertEquals("beforeafter", markdown);
+    }
+
+    @Test
+    public void shouldDetectImageMimeTypeFromBytesBeforeFileExtension() {
+        byte[] png = new byte[]{(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+        OkHttpClient client = clientReturning(requestUrl -> png);
+        OcrResponse response = successfulResponse();
+        response.setMarkdown("![](https://result.example/image.jpg)");
+        AtomicReference<String> handledMimeType = new AtomicReference<>();
+
+        new OcrMarkdownResolver(client).resolve(response, (bytes, mimeType, name) -> {
+            handledMimeType.set(mimeType);
+            return "https://cdn.example/image.png";
+        });
+
+        assertEquals("image/png", handledMimeType.get());
+    }
+
+    @Test
     public void shouldMakeRelativeRemoteImageUrlAbsoluteWithoutHandler() {
         OkHttpClient client = clientReturning(requestUrl ->
             "![](images/chart.png)".getBytes(StandardCharsets.UTF_8));
