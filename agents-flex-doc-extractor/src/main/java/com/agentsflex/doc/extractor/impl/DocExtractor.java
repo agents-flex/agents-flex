@@ -20,7 +20,7 @@ import com.agentsflex.doc.extractor.MarkdownFormatter;
 import com.agentsflex.core.document.DataUriDocumentImagePublisher;
 import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.DocumentSource;
-import com.agentsflex.doc.util.ImageUtils;
+import com.agentsflex.core.util.ImageUtil;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.model.PicturesTable;
 import org.apache.poi.hwpf.usermodel.CharacterRun;
@@ -212,7 +212,7 @@ public class DocExtractor implements DocumentExtractor {
             return "image/x-emf";
         }
 
-        String mimeType = ImageUtils.getMimeTypeFromExtension(extension);
+        String mimeType = ImageUtil.getMimeTypeFromExtension(extension);
         return mimeType != null ? mimeType : "application/octet-stream";
     }
 
