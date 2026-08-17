@@ -25,6 +25,14 @@ import com.agentsflex.core.model.ocr.BaseOcrConfig;
  */
 public class MineruOcrConfig extends BaseOcrConfig {
     /**
+     * OpenXLab Access Key ID，用于自动换取 MinerU 可接受的 JWT。
+     */
+    private String accessKeyId;
+    /**
+     * OpenXLab Secret Access Key，仅用于本地 HMAC 签名。
+     */
+    private String secretAccessKey;
+    /**
      * 申请预签名文件上传地址的路径。
      */
     private String uploadPath = "/api/v4/file-urls/batch";
@@ -42,6 +50,22 @@ public class MineruOcrConfig extends BaseOcrConfig {
         setRequestPath("/api/v4/extract/task");
         setQueryPath("/api/v4/extract/task/{taskId}");
         setModel(MineruOcrModels.PIPELINE);
+    }
+
+    public String getAccessKeyId() {
+        return accessKeyId;
+    }
+
+    public void setAccessKeyId(String accessKeyId) {
+        this.accessKeyId = accessKeyId == null ? null : accessKeyId.trim();
+    }
+
+    public String getSecretAccessKey() {
+        return secretAccessKey;
+    }
+
+    public void setSecretAccessKey(String secretAccessKey) {
+        this.secretAccessKey = secretAccessKey == null ? null : secretAccessKey.trim();
     }
 
     /**

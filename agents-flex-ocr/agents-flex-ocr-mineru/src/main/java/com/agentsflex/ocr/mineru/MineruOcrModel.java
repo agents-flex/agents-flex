@@ -26,11 +26,13 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import okhttp3.OkHttpClient;
+import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import java.io.IOException;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +55,10 @@ public class MineruOcrModel extends BaseOcrModel<MineruOcrConfig> {
      */
     private final OkHttpClient uploadClient;
     /**
+     * 将 OpenXLab AK/SK 换取为 MinerU Bearer JWT，并在内存中管理有效期。
+     */
+    private final OpenXlabAuthClient authClient;
+    /**
      * 当前进程内通过本地文件流程创建、且尚未终结的批任务编号。
      */
     private final Set<String> batchTaskIds = ConcurrentHashMap.newKeySet();
@@ -61,24 +67,35 @@ public class MineruOcrModel extends BaseOcrModel<MineruOcrConfig> {
      * 使用默认 JSON 客户端和上传客户端创建 MinerU OCR 模型。
      */
     public MineruOcrModel(MineruOcrConfig config) {
-        this(config, AgentsFlexHttpClient.getDefault(), OkHttpClientUtil.buildDefaultClient());
+        this(config, AgentsFlexHttpClient.getDefault(), OkHttpClientUtil.buildDefaultClient(),
+            new OpenXlabAuthClient(AgentsFlexHttpClient.getDefault()));
     }
 
     /**
      * 供同包测试注入可控 HTTP 客户端。
      */
     MineruOcrModel(MineruOcrConfig config, AgentsFlexHttpClient httpClient, OkHttpClient uploadClient) {
+        this(config, httpClient, uploadClient, new OpenXlabAuthClient(httpClient));
+    }
+
+    MineruOcrModel(MineruOcrConfig config, AgentsFlexHttpClient httpClient, OkHttpClient uploadClient,
+                   OpenXlabAuthClient authClient) {
         super(config);
-        if (httpClient == null || uploadClient == null)
+        if (httpClient == null || uploadClient == null || authClient == null)
             throw new IllegalArgumentException("http clients must not be null");
         this.httpClient = httpClient;
         this.uploadClient = uploadClient;
+        this.authClient = authClient;
     }
 
-    /** 根据输入类型选择远程 URL 单任务流程或本地文件批任务流程。 */
+    /**
+     * 根据输入类型选择远程 URL 单任务流程或本地文件批任务流程。
+     */
     @Override
     public OcrResponse recognize(OcrRequest request) {
         OcrResponse error = validateRequest(request);
+        if (error != null) return error;
+        error = validateCredentials();
         if (error != null) return error;
         String model = StringUtil.hasText(request.getModel()) ? request.getModel() : config.getModel();
         if (request.getFileUrl() != null) {
@@ -114,14 +131,30 @@ public class MineruOcrModel extends BaseOcrModel<MineruOcrConfig> {
         if (urls == null || urls.isEmpty()) return OcrResponse.error("MinerU did not return an upload URL");
         String uploadUrl = urls.getString(0);
         try {
-            // 预签名地址通常不接受业务 Bearer Token，按供应商要求直接上传二进制内容。
-            // 预签名内容没有包含 Content-Type，额外发送该请求头会导致 OSS 签名校验失败。
+            // 预签名地址不接受业务 Bearer Token；Content-Type 必须与 OSS 签名中的文件类型一致。
+            String mimeType = URLConnection.guessContentTypeFromName(request.getFileName());
+            if (StringUtil.noText(mimeType)) mimeType = "application/octet-stream";
             Request upload = new Request.Builder().url(uploadUrl)
-                .put(RequestBody.create(request.getFile(), null)).build();
+                .put(RequestBody.create(request.getFile(), MediaType.parse(mimeType))).build();
+            boolean retryWithoutContentType;
             try (Response response = uploadClient.newCall(upload).execute()) {
-                // OSS 错误正文可能包含临时 AccessKey、签名和对象路径，不向业务响应传播。
-                if (!response.isSuccessful())
+                if (response.isSuccessful()) {
+                    retryWithoutContentType = false;
+                } else if (response.code() == 403) {
+                    // MinerU 原生 API Token 和 OpenXLab JWT 签发的 OSS URL 对 Content-Type 要求不同。
+                    retryWithoutContentType = true;
+                } else {
+                    // OSS 错误正文可能包含临时 AccessKey、签名和对象路径，不向业务响应传播。
                     return OcrResponse.error("HTTP " + response.code(), "MinerU file upload failed");
+                }
+            }
+            if (retryWithoutContentType) {
+                Request fallbackUpload = upload.newBuilder()
+                    .put(RequestBody.create(request.getFile(), null)).build();
+                try (Response response = uploadClient.newCall(fallbackUpload).execute()) {
+                    if (!response.isSuccessful())
+                        return OcrResponse.error("HTTP " + response.code(), "MinerU file upload failed");
+                }
             }
         } catch (IOException e) {
             return OcrResponse.error("MinerU file upload failed: " + e.getMessage());
@@ -141,6 +174,8 @@ public class MineruOcrModel extends BaseOcrModel<MineruOcrConfig> {
     @Override
     public OcrResponse getResult(String taskId) {
         if (StringUtil.noText(taskId)) return OcrResponse.error("taskId must not be empty");
+        OcrResponse credentialError = validateCredentials();
+        if (credentialError != null) return credentialError;
         boolean batch = batchTaskIds.contains(taskId);
         OcrResponse response = batch ? getBatchResult(taskId)
             : resolveResultMarkdown(parseResponse(httpClient.get(config.getQueryUrl(taskId), headers(false)), false));
@@ -159,6 +194,8 @@ public class MineruOcrModel extends BaseOcrModel<MineruOcrConfig> {
      */
     public OcrResponse getBatchResult(String batchId) {
         if (StringUtil.noText(batchId)) return OcrResponse.error("batchId must not be empty");
+        OcrResponse credentialError = validateCredentials();
+        if (credentialError != null) return credentialError;
         OcrResponse response = parseResponse(httpClient.get(config.getBatchQueryUrl(batchId), headers(false)), false);
         if (response != null && StringUtil.noText(response.getTaskId())) response.setTaskId(batchId);
         return resolveResultMarkdown(response);
@@ -234,9 +271,31 @@ public class MineruOcrModel extends BaseOcrModel<MineruOcrConfig> {
      */
     private Map<String, String> headers(boolean json) {
         Map<String, String> headers = new HashMap<>();
-        headers.put("Authorization", "Bearer " + config.getApiKey());
+        headers.put("Authorization", "Bearer " + bearerCredential());
         if (json) headers.put("Content-Type", "application/json");
         return headers;
+    }
+
+    private String bearerCredential() {
+        if (StringUtil.hasText(config.getApiKey())) return config.getApiKey();
+        return authClient.getJwt(config.getAccessKeyId(), config.getSecretAccessKey());
+    }
+
+    private OcrResponse validateCredentials() {
+        if (StringUtil.hasText(config.getApiKey())) return null;
+        boolean hasAccessKeyId = StringUtil.hasText(config.getAccessKeyId());
+        boolean hasSecretAccessKey = StringUtil.hasText(config.getSecretAccessKey());
+        if (!hasAccessKeyId || !hasSecretAccessKey) {
+            return OcrResponse.error(hasAccessKeyId == hasSecretAccessKey
+                ? "apiKey or accessKeyId/secretAccessKey must be configured"
+                : "accessKeyId and secretAccessKey must be configured together");
+        }
+        try {
+            bearerCredential();
+            return null;
+        } catch (RuntimeException e) {
+            return OcrResponse.error("MinerU OpenXLab authentication failed: " + e.getMessage());
+        }
     }
 
     /**
