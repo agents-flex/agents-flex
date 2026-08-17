@@ -30,7 +30,12 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -52,6 +57,9 @@ public class GiteeOcrModelIntegrationTest {
      * 集成测试采用两秒查询间隔，兼顾完成速度和供应商查询 QPS。
      */
     private static final long POLL_INTERVAL_MILLIS = 2_000L;
+
+    private static final Path PDF_SAMPLE = Paths.get("..", "..", "testresource", "amt_handbook_sample.pdf");
+    private static final Path PDF_OUTPUT = Paths.get("target", "gitee-ocr-integration");
 
     private File sampleImage;
 
@@ -108,6 +116,59 @@ public class GiteeOcrModelIntegrationTest {
         assertNotNull("供应商成功响应必须保留任务编号", response.getTaskId());
         assertTrue("成功结果应包含内联文本、Markdown 或可下载资源",
             hasText(response.getText()) || hasText(response.getMarkdown()) || hasValidResource(response));
+    }
+
+    /**
+     * 使用仓库中的真实 PDF 验证 Markdown 下载、压缩包展开和内嵌图片处理全链路。
+     * 结果保存在 target/gitee-ocr-integration，便于人工检查识别质量。
+     */
+    @Test
+    public void shouldRecognizePdfAndMaterializeMarkdownAndImages() throws Exception {
+        String apiKey = System.getenv("GITEE_OCR_API_KEY");
+        Assume.assumeTrue("未设置 GITEE_OCR_API_KEY，跳过真实 Gitee OCR PDF 测试",
+            apiKey != null && !apiKey.trim().isEmpty());
+        Assume.assumeTrue("缺少 PDF 测试文件: " + PDF_SAMPLE.toAbsolutePath(), Files.isRegularFile(PDF_SAMPLE));
+
+        Files.createDirectories(PDF_OUTPUT);
+        Path imageOutput = PDF_OUTPUT.resolve("images");
+        Files.createDirectories(imageOutput);
+        AtomicInteger imageCount = new AtomicInteger();
+
+        GiteeOcrConfig config = new GiteeOcrConfig();
+        config.setApiKey(apiKey);
+        GiteeOcrModel model = new GiteeOcrModel(config);
+        model.setExtractedImageHandler((imageBytes, mimeType, fileName) -> {
+            int index = imageCount.incrementAndGet();
+            String safeName = fileName == null ? "image.bin" : Paths.get(fileName).getFileName().toString();
+            Path destination = imageOutput.resolve(String.format("%03d-%s", index, safeName));
+            Files.copy(new java.io.ByteArrayInputStream(imageBytes), destination,
+                StandardCopyOption.REPLACE_EXISTING);
+            return destination.toAbsolutePath().toUri().toString();
+        });
+
+        OcrRequest request = OcrRequest.ofFile(PDF_SAMPLE.toFile());
+        request.setModel(GiteeOcrModels.PDF_EXTRACT_KIT_1_0);
+        OcrResponse response = model.recognizeAndWait(request, TIMEOUT_MILLIS, POLL_INTERVAL_MILLIS);
+
+        assertNotNull("供应商不应返回空响应", response);
+        assertFalse("真实 PDF OCR 请求失败: " + response.getErrorCode() + " / " + response.getErrorMessage(),
+            response.isError());
+        assertEquals("真实 PDF OCR 任务未成功完成", OcrTaskStatus.SUCCEEDED, response.getStatus());
+        assertTrue("PDF OCR 应直接返回已物化的 Markdown", hasText(response.getMarkdown()));
+        assertFalse("Markdown 不应保留 Base64 图片", response.getMarkdown().contains("data:image/"));
+
+        Files.write(PDF_OUTPUT.resolve("result.md"), response.getMarkdown().getBytes(StandardCharsets.UTF_8));
+        String summary = "taskId=" + response.getTaskId() + System.lineSeparator()
+            + "status=" + response.getStatus() + System.lineSeparator()
+            + "markdownChars=" + response.getMarkdown().length() + System.lineSeparator()
+            + "handledImages=" + imageCount.get() + System.lineSeparator()
+            + "resources=" + response.getResources() + System.lineSeparator();
+        Files.write(PDF_OUTPUT.resolve("response.txt"), summary.getBytes(StandardCharsets.UTF_8));
+
+        assertTrue("样例 PDF 应至少解析出一张图片；结果目录: " + imageOutput.toAbsolutePath(),
+            imageCount.get() > 0);
+        assertTrue("Markdown 应引用 ExtractedImageHandler 生成的本地图片 URL",
+            response.getMarkdown().contains(imageOutput.toAbsolutePath().toUri().toString()));
     }
 
     /**
