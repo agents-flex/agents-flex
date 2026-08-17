@@ -828,6 +828,8 @@
                     <autoPublish>true</autoPublish>
                     <excludeArtifacts>
                         <excludeArtifact>demos</excludeArtifact>
+                        <excludeArtifact>agent-console-demo</excludeArtifact>
+                        <excludeArtifact>agent-demo</excludeArtifact>
                         <excludeArtifact>helloworld</excludeArtifact>
                         <excludeArtifact>skills-demo</excludeArtifact>
                         <excludeArtifact>subagent-demo</excludeArtifact>
