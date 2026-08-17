@@ -1,5 +1,48 @@
 # Agents-Flex ChangeLog
 
+## v2.2.8 20260817
+- refactor(doc-extractor): replace deprecated ImageUtils with ImageUtil
+- refactor(documents): replace ExtractedImageHandler with DocumentImagePublisher
+- style(javadoc): standardize javadoc comment formatting across all classes
+- docs(util): add documentation for AgentsFlexHttpClient and JsonSanitizer
+- feat(http): add gzip response decoding support to http client
+- feat(document): add HTML img tag support to image describer
+- test(ocr): update integration tests with extended timeout and raw artifact saving
+- docs(ocr): update MinerU OCR documentation with authentication methods and adapter features
+- test(mineru): add comprehensive PDF OCR integration tests and improve credential handling
+- feat(ocr): add OpenXLab authentication support for MinerU OCR
+- docs(ocr): Update image processing instructions for Baidu OCR and introductory documents
+- feat(ocr): Enhanced OCR Markdown parser supports HTML image processing and bytecode MIME type detection
+- docs(ocr): Update image processing related document instructions
+- test(gitee-ocr): Add PDF recognition integration testing to verify the complete link
+- feat(ocr): Support remote image download and OCR analysis enhancement function
+- refactor(document): Refactoring document splitter implementation and improving boundary handling
+- fix: fix and close https://github.com/agents-flex/agents-flex/issues/62
+- docs(async-task): update getting started guide with comprehensive overview
+- docs(ocr): update documentation for markdown result handling and image processing
+- feat(document): add DocumentImageDescriber for generating image descriptions
+- feat(ocr): add OCR markdown resolution with image handling support
+- refactor(doc): move ExtractedImageHandler interface to core module
+- docs(nav): add store benchmark comparison documentation
+- feat(document): add MarkdownTableSplitter for splitting long tables
+- test(benchmark): add JDBC and Redis store benchmark tests
+- fix(store): prevent reclamation of cancelled terminal turns and handle expired submissions
+- feat(async-task-store): enhance Redis async task store with submission lease handling
+- fix(store): prevent canceled terminal turns from re-entering runnable queue
+- docs(async-task): enhance worker lifecycle documentation
+- feat(async-task): allow canceled and expired tasks to bypass admission control
+- feat(asynctask): enhance handler selection and type resolution
+- feat(asynctask): add parameter validation and handler selection for persistent async tasks
+- docs(website): update documentation with async task best practices and OCR features
+- docs(sidebar): add OCR and async task documentation sections
+- feat(core): add async task framework with OCR and video model support
+- feat(ocr): add comprehensive OCR model abstraction and Baidu implementation
+- style(docs): add nowrap style and update comparison table formatting
+- style(docs): update documentation theme and logo styling
+- feat(docs): add logo support for dark mode theme
+- actor(docsref): update VitePress theme configuration and styling
+
+
 ## v2.2.7 20260810
 - docs(website): add document extractors documentation and enable MPA mode
 - docs: remove en documentation files and samples

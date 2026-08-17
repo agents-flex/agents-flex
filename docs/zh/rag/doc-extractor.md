@@ -13,7 +13,7 @@ Doc Extractor 已从 `agents-flex-core` 中拆分为独立模块，需要显式�
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-doc-extractor</artifactId>
-    <version>2.2.7</version>
+    <version>最新版本</version>
 </dependency>
 ```
 

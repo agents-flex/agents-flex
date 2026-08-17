@@ -55,7 +55,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 - `agents-flex-mcp`: JDK 17+
 - Build tool: Maven
 
-The current repository version is defined by the `revision` property in the root `pom.xml`; it is currently `2.2.7`.
+The current repository version is defined by the `revision` property in the root `pom.xml`; it is currently `2.2.8`.
 
 ## Installation
 
@@ -65,7 +65,7 @@ For plain Java projects, you can use the aggregate dependency:
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-bom</artifactId>
-    <version>2.2.7</version>
+    <version>2.2.8</version>
 </dependency>
 ```
 
@@ -75,7 +75,7 @@ For Spring Boot projects, use the starter:
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-spring-boot-starter</artifactId>
-    <version>2.2.7</version>
+    <version>2.2.8</version>
 </dependency>
 ```
 
@@ -85,13 +85,13 @@ You can also depend on only the modules you need:
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-chat-openai</artifactId>
-    <version>2.2.7</version>
+    <version>2.2.8</version>
 </dependency>
 
 <dependency>
     <groupId>com.agentsflex</groupId>
     <artifactId>agents-flex-store-redis</artifactId>
-    <version>2.2.7</version>
+    <version>2.2.8</version>
 </dependency>
 ```
 
