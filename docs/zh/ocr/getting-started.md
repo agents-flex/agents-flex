@@ -124,7 +124,7 @@ String markdown = response.getMarkdown();
 
 ### 将 Markdown 图片保存为 URL
 
-OCR 结果 ZIP 中的图片通常使用相对路径，部分供应商也可能返回 Base64 Data URI。可以为 model 设置图片
+OCR 结果中的图片可能来自 ZIP 相对路径、Base64 Data URI 或供应商的临时远程 URL。可以为 model 设置图片
 处理器，将图片上传到对象存储，并用返回 URL 重写 Markdown。该处理器使用与 Doc Extractor 相同的
 `com.agentsflex.core.document.ExtractedImageHandler` 接口：
 
@@ -140,8 +140,9 @@ String markdown = response.getMarkdown();
 
 Handler 返回 `null` 或空字符串时，对应图片会从 Markdown 中移除。没有配置 Handler 时，供应商原有的
 远程图片 URL 会保留，Markdown 资源中的相对图片 URL 会转换为绝对 URL；ZIP 内的相对图片路径无法自动
-获得外部地址，因此生产环境应配置 Handler。已经是远程 URL 的图片不会再次下载并交给 Handler，避免
-不必要的重复上传和对不受信任地址的服务端请求。
+获得外部地址，因此生产环境应配置 Handler。配置 Handler 后，框架也会下载 Markdown 中的 HTTP/HTTPS
+图片并交给 Handler，适合将供应商有时效的签名 URL 转存到自己的对象存储。图片来源必须可信，并应配合
+网络访问策略，避免服务端请求不受信任的地址。
 
 ## 完整示例
 
