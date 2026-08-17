@@ -35,6 +35,7 @@ import okio.Buffer;
 import okio.BufferedSink;
 import okio.BufferedSource;
 import okio.ForwardingSource;
+import okio.GzipSource;
 import okio.Okio;
 import okio.Source;
 import org.slf4j.Logger;
@@ -58,13 +59,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 才被消费，Span 和 Metrics 仍发送到发起请求时选择的 Route。</p>
  */
 public class AgentsFlexHttpClient {
-    /** HTTP 执行或响应体读取异常使用的日志记录器。 */
+    /**
+     * HTTP 执行或响应体读取异常使用的日志记录器。
+     */
     private static final Logger LOG = LoggerFactory.getLogger(AgentsFlexHttpClient.class);
 
-    /** 非 GET 请求默认使用的 JSON 请求体媒体类型。 */
+    /**
+     * 非 GET 请求默认使用的 JSON 请求体媒体类型。
+     */
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
-    /** 使用默认 OkHttp 配置创建的共享客户端实例。 */
+    /**
+     * 使用默认 OkHttp 配置创建的共享客户端实例。
+     */
     private static final AgentsFlexHttpClient INSTANCE = new AgentsFlexHttpClient();
 
     /**
@@ -73,18 +80,28 @@ public class AgentsFlexHttpClient {
      */
     private static final Map<ObservabilityRuntime, Instruments> INSTRUMENTS = new WeakHashMap<>();
 
-    /** 某个 ObservabilityRuntime 专属的一组 HTTP Tracer 和 Metrics instrument。 */
+    /**
+     * 某个 ObservabilityRuntime 专属的一组 HTTP Tracer 和 Metrics instrument。
+     */
     private static final class Instruments {
-        /** 创建 HTTP CLIENT Span 的 Tracer。 */
+        /**
+         * 创建 HTTP CLIENT Span 的 Tracer。
+         */
         private final Tracer tracer;
 
-        /** 记录全部 HTTP 请求次数的 Counter。 */
+        /**
+         * 记录全部 HTTP 请求次数的 Counter。
+         */
         private final LongCounter requestCount;
 
-        /** 记录包含响应体消费时间在内的 HTTP 请求耗时 Histogram，单位为秒。 */
+        /**
+         * 记录包含响应体消费时间在内的 HTTP 请求耗时 Histogram，单位为秒。
+         */
         private final DoubleHistogram latency;
 
-        /** 只记录网络异常或失败状态请求次数的 Counter。 */
+        /**
+         * 只记录网络异常或失败状态请求次数的 Counter。
+         */
         private final LongCounter errorCount;
 
         private Instruments(ObservabilityRuntime runtime) {
@@ -103,7 +120,9 @@ public class AgentsFlexHttpClient {
         }
     }
 
-    /** 实际执行网络请求的 OkHttpClient，由构造函数注入或使用框架默认配置创建。 */
+    /**
+     * 实际执行网络请求的 OkHttpClient，由构造函数注入或使用框架默认配置创建。
+     */
     private final OkHttpClient okHttpClient;
 
     public static AgentsFlexHttpClient getDefault() {
@@ -117,8 +136,6 @@ public class AgentsFlexHttpClient {
     public AgentsFlexHttpClient(OkHttpClient okHttpClient) {
         this.okHttpClient = Objects.requireNonNull(okHttpClient, "okHttpClient must not be null");
     }
-
-
 
 
     public String get(String url) {
@@ -281,7 +298,7 @@ public class AgentsFlexHttpClient {
         // 使用当前 runtime 的 Propagator 注入 traceparent 等请求头，保证跨服务 Trace 连续。
         request = propagateTraceContext(request.newBuilder()).build();
 
-        Response response = okHttpClient.newCall(request).execute();
+        Response response = decodeGzipResponse(okHttpClient.newCall(request).execute());
 
         // 同时保存到 RequestObservation，供 Span 结束后的 Metrics 判断成功状态。
         recordResponseStatus(response, observation);
@@ -321,7 +338,7 @@ public class AgentsFlexHttpClient {
 
         MultipartBody multipartBody = mbBuilder.build();
         Request request = propagateTraceContext(builder.post(multipartBody)).build();
-        Response response = okHttpClient.newCall(request).execute();
+        Response response = decodeGzipResponse(okHttpClient.newCall(request).execute());
 
         // 同时记录到 Span 和请求观察状态，供后续 Metrics 使用。
         recordResponseStatus(response, observation);
@@ -329,6 +346,26 @@ public class AgentsFlexHttpClient {
     }
 
     // ===== HTTP 状态记录 =====
+
+    /**
+     * OkHttp only enables transparent gzip when it adds {@code Accept-Encoding} itself. If a caller supplies that
+     * header explicitly, the encoded response reaches this client unchanged, so decode it here as a fallback.
+     */
+    private static Response decodeGzipResponse(Response response) {
+        ResponseBody body = response.body();
+        String contentEncoding = response.header("Content-Encoding");
+        if (body == null || contentEncoding == null || !"gzip".equalsIgnoreCase(contentEncoding.trim())) {
+            return response;
+        }
+
+        BufferedSource source = Okio.buffer(new GzipSource(body.source()));
+        ResponseBody decodedBody = ResponseBody.create(body.contentType(), -1L, source);
+        return response.newBuilder()
+            .removeHeader("Content-Encoding")
+            .removeHeader("Content-Length")
+            .body(decodedBody)
+            .build();
+    }
 
     private void recordResponseStatus(Response response, RequestObservation observation) {
         Span currentSpan = Span.current();
@@ -527,7 +564,9 @@ public class AgentsFlexHttpClient {
     }
 
     private static class RequestObservation {
-        /** 收到的 HTTP 状态码；请求在收到响应前失败时保持为 null。 */
+        /**
+         * 收到的 HTTP 状态码；请求在收到响应前失败时保持为 null。
+         */
         private Integer statusCode;
     }
 
@@ -541,16 +580,24 @@ public class AgentsFlexHttpClient {
      * 负责去重。这里在读取期间恢复 Span，便于 OkHttp/下游代码读取 {@link Span#current()}。
      */
     private static class ObservedResponseBody extends ResponseBody {
-        /** 原始响应体，所有媒体类型、长度和读取操作都委托给它。 */
+        /**
+         * 原始响应体，所有媒体类型、长度和读取操作都委托给它。
+         */
         private final ResponseBody delegate;
 
-        /** 发起请求时创建的 CLIENT Span，在响应体读取和关闭期间恢复为当前 Span。 */
+        /**
+         * 发起请求时创建的 CLIENT Span，在响应体读取和关闭期间恢复为当前 Span。
+         */
         private final Span span;
 
-        /** 响应体到达 EOF、关闭或读取失败时调用的完成通知。 */
+        /**
+         * 响应体到达 EOF、关闭或读取失败时调用的完成通知。
+         */
         private final ResponseCompletion completion;
 
-        /** 对原始 source 的单例包装，确保多次调用 source() 不会重复创建完成监听器。 */
+        /**
+         * 对原始 source 的单例包装，确保多次调用 source() 不会重复创建完成监听器。
+         */
         private BufferedSource source;
 
         private ObservedResponseBody(ResponseBody delegate, Span span, ResponseCompletion completion) {
@@ -607,10 +654,14 @@ public class AgentsFlexHttpClient {
     // ===== Inner class =====
 
     public static class InputStreamRequestBody extends RequestBody {
-        /** 上传内容来源；该类不预读流，也不根据 available() 推断长度。 */
+        /**
+         * 上传内容来源；该类不预读流，也不根据 available() 推断长度。
+         */
         private final InputStream inputStream;
 
-        /** 上传流对应的 HTTP Content-Type。 */
+        /**
+         * 上传流对应的 HTTP Content-Type。
+         */
         private final MediaType contentType;
 
         public InputStreamRequestBody(MediaType contentType, InputStream inputStream) {

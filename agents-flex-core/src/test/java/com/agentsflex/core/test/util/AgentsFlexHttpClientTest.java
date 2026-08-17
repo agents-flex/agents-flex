@@ -13,15 +13,19 @@ import okio.Okio;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.GZIPOutputStream;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 public class AgentsFlexHttpClientTest {
@@ -31,6 +35,36 @@ public class AgentsFlexHttpClientTest {
         AgentsFlexHttpClient client = clientReturning(200, "ok");
 
         assertEquals("ok", client.get("https://example.test/resource"));
+    }
+
+    @Test
+    public void shouldDecodeGzipWhenAcceptEncodingIsExplicit() throws IOException {
+        byte[] expected = "compressed response".getBytes(StandardCharsets.UTF_8);
+        byte[] compressed = gzip(expected);
+        Interceptor interceptor = chain -> new Response.Builder()
+            .request(chain.request())
+            .protocol(Protocol.HTTP_1_1)
+            .code(200)
+            .message("test response")
+            .header("Content-Type", "text/plain; charset=utf-8")
+            .header("Content-Encoding", "gzip")
+            .header("Content-Length", String.valueOf(compressed.length))
+            .body(ResponseBody.create(MediaType.parse("text/plain; charset=utf-8"), compressed))
+            .build();
+        AgentsFlexHttpClient client = new AgentsFlexHttpClient(
+            new OkHttpClient.Builder().addInterceptor(interceptor).build());
+
+        assertEquals("compressed response", client.get(
+            "https://example.test/string", Collections.singletonMap("Accept-Encoding", "gzip")));
+        assertArrayEquals(expected, client.executeBytes(
+            "https://example.test/bytes", "GET", Collections.singletonMap("Accept-Encoding", "gzip"), null, null));
+        try (Response response = client.getResponse(
+            "https://example.test/response", Collections.singletonMap("Accept-Encoding", "gzip"))) {
+            assertNull(response.header("Content-Encoding"));
+            assertNull(response.header("Content-Length"));
+            assertNotNull(response.body());
+            assertEquals("compressed response", response.body().string());
+        }
     }
 
     @Test
@@ -109,6 +143,14 @@ public class AgentsFlexHttpClientTest {
             .message("test response")
             .body(new CloseAwareResponseBody(body))
             .build();
+    }
+
+    private static byte[] gzip(byte[] content) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzip = new GZIPOutputStream(output)) {
+            gzip.write(content);
+        }
+        return output.toByteArray();
     }
 
     private static class CloseAwareResponseBody extends ResponseBody {
