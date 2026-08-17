@@ -182,6 +182,8 @@ const developerReferenceSidebar = [
         text: '内置工具类', items: [
             {text: 'Maps', link: '/zh/util/maps'},
             {text: 'Retryer', link: '/zh/util/retryer'},
+            {text: 'AgentsFlexHttpClient', link: '/zh/util/agents-flex-http-client'},
+            {text: 'JsonSanitizer', link: '/zh/util/json-sanitizer'},
             {text: 'LocalTokenCounter', link: '/zh/util/local-token-counter'},
             {text: 'PromptTemplate', link: '/zh/util/prompt-template'},
             {text: 'DocumentExtractors', link: '/zh/util/document-extractors'},

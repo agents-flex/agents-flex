@@ -230,6 +230,8 @@ String score = JSONUtil.readString(response, JSONPath.of("$.data.score"));
 
 模型生成的 Tool 参数有时混入单引号、未加引号的字符串、JavaScript 函数、正则表达式或 `new Date()`，这些内容不是标准 JSON。`JsonSanitizer` 会保留表达式源码，但把它转换成普通 JSON 字符串，不会执行 JavaScript。
 
+完整 API、容错边界和与 `ToolCall` 的集成方式见 [JsonSanitizer 开发者文档](/zh/util/json-sanitizer)。
+
 ```java
 String raw = "参数如下：{name: 'demo', handler: function () { return 1; }}";
 
