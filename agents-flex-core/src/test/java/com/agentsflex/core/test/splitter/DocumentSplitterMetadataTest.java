@@ -8,12 +8,10 @@ import com.agentsflex.core.document.splitter.MarkdownTableSplitter;
 import com.agentsflex.core.document.splitter.RegexDocumentSplitter;
 import com.agentsflex.core.document.splitter.SimpleDocumentSplitter;
 import com.agentsflex.core.document.splitter.SimpleTokenizeSplitter;
-import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.Prompt;
 import org.junit.Test;
 
@@ -45,10 +43,48 @@ public class DocumentSplitterMetadataTest {
         }
     }
 
+    @Test
+    public void aiSplitterShouldHandleBoundarySeparators() {
+        Document source = source("first");
+        List<Document> chunks = new AIDocumentSplitter(new FixedChatModel("---first---")).split(source);
+
+        assertEquals(1, chunks.size());
+        assertEquals("first", chunks.get(0).getContent());
+    }
+
+    @Test
+    public void aiSplitterShouldFallbackOnEmptyResponse() {
+        AIDocumentSplitter splitter = new AIDocumentSplitter(new FixedChatModel("  "));
+        splitter.setFallbackSplitter(new SimpleDocumentSplitter(3));
+
+        List<Document> chunks = splitter.split(source("one two"));
+
+        assertFalse(chunks.isEmpty());
+        assertEquals("source title", chunks.get(0).getTitle());
+        assertEquals("test.md", chunks.get(0).getMetadata("source"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void simpleSplitterShouldRejectNegativeOverlap() {
+        new SimpleDocumentSplitter(10, -1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void tokenizeSplitterShouldRejectOverlapThatCanLoop() {
+        SimpleTokenizeSplitter splitter = new SimpleTokenizeSplitter(10);
+        splitter.setOverlapSize(10);
+    }
+
     private void assertInherited(DocumentSplitter splitter, String content) {
-        List<Document> chunks = splitter.split(source(content));
+        List<Document> chunks = splitter.split(source(content), chunkDocument -> {
+            assertEquals("source title", chunkDocument.getTitle());
+            assertFalse(chunkDocument.getContent().isEmpty());
+            assertEquals("test.md", chunkDocument.getMetadata("source"));
+            return "chunk-id";
+        });
         assertFalse(chunks.isEmpty());
         for (Document chunk : chunks) {
+            assertEquals("chunk-id", chunk.getId());
             assertEquals("source title", chunk.getTitle());
             assertEquals("test.md", chunk.getMetadata("source"));
         }

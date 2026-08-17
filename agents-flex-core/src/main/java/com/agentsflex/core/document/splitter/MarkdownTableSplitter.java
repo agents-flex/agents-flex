@@ -158,20 +158,20 @@ public class MarkdownTableSplitter implements DocumentSplitter {
         List<TableBlock> longTables = findLongTables(lines);
         if (longTables.isEmpty()) {
             // 即使无需拆表也返回新 Document，与其他 DocumentSplitter 的行为保持一致。
-            return Collections.singletonList(createDocument(document, document.getContent(), idGenerator));
+            return Collections.singletonList(createChunkDocument(document, document.getContent(), idGenerator));
         }
 
         // 依次输出表格前的正文和表格分段，最后补上末尾正文，以维持原文顺序。
-        List<Document> result = new ArrayList<>();
+        List<Document> chunkDocuments = new ArrayList<>();
         int contentStart = 0;
         for (int tableIndex = 0; tableIndex < longTables.size(); tableIndex++) {
             TableBlock table = longTables.get(tableIndex);
-            addPlainContent(result, lines, contentStart, table.startLine, document, idGenerator);
-            addTableChunks(result, lines, table, tableIndex, document, idGenerator);
+            addPlainContent(chunkDocuments, lines, contentStart, table.startLine, document, idGenerator);
+            addTableChunks(chunkDocuments, lines, table, tableIndex, document, idGenerator);
             contentStart = table.endLine + 1;
         }
-        addPlainContent(result, lines, contentStart, lines.length, document, idGenerator);
-        return result;
+        addPlainContent(chunkDocuments, lines, contentStart, lines.length, document, idGenerator);
+        return chunkDocuments;
     }
 
     /**
@@ -233,11 +233,11 @@ public class MarkdownTableSplitter implements DocumentSplitter {
      * @param source      源文档
      * @param idGenerator 可选的 ID 生成器
      */
-    private void addPlainContent(List<Document> result, String[] lines, int start, int end,
+    private void addPlainContent(List<Document> chunkDocuments, String[] lines, int start, int end,
                                  Document source, DocumentIdGenerator idGenerator) {
         String content = joinLines(lines, start, end).trim();
         if (!content.isEmpty()) {
-            result.add(createDocument(source, content, idGenerator));
+            chunkDocuments.add(createChunkDocument(source, content, idGenerator));
         }
     }
 
@@ -255,7 +255,7 @@ public class MarkdownTableSplitter implements DocumentSplitter {
      * @param source      源文档
      * @param idGenerator 可选的 ID 生成器
      */
-    private void addTableChunks(List<Document> result, String[] lines, TableBlock table, int tableIndex,
+    private void addTableChunks(List<Document> chunkDocuments, String[] lines, TableBlock table, int tableIndex,
                                 Document source, DocumentIdGenerator idGenerator) {
         String prefix = lines[table.startLine] + "\n" + lines[table.startLine + 1];
         List<String> rows = new ArrayList<>();
@@ -278,13 +278,13 @@ public class MarkdownTableSplitter implements DocumentSplitter {
         }
 
         for (int chunkIndex = 0; chunkIndex < chunks.size(); chunkIndex++) {
-            Document chunk = createDocument(source, chunks.get(chunkIndex), null);
-            chunk.putMetadata("content_type", "markdown_table");
-            chunk.putMetadata("table_index", String.valueOf(tableIndex));
-            chunk.putMetadata("table_chunk_index", String.valueOf(chunkIndex));
-            chunk.putMetadata("table_chunk_count", String.valueOf(chunks.size()));
-            chunk.setId(idGenerator == null ? null : idGenerator.generateId(chunk));
-            result.add(chunk);
+            Document chunkDocument = createChunkDocument(source, chunks.get(chunkIndex), null);
+            chunkDocument.putMetadata("content_type", "markdown_table");
+            chunkDocument.putMetadata("table_index", String.valueOf(tableIndex));
+            chunkDocument.putMetadata("table_chunk_index", String.valueOf(chunkIndex));
+            chunkDocument.putMetadata("table_chunk_count", String.valueOf(chunks.size()));
+            chunkDocument.setId(idGenerator == null ? null : idGenerator.generateId(chunkDocument));
+            chunkDocuments.add(chunkDocument);
         }
     }
 
@@ -482,15 +482,15 @@ public class MarkdownTableSplitter implements DocumentSplitter {
     }
 
     /**
-     * 创建输出文档，复制源元数据，并在设置内容后生成 ID。
+     * 创建输出文档，并在设置全部继承字段后生成 ID。
      */
-    private static Document createDocument(Document source, String content, DocumentIdGenerator idGenerator) {
-        Document result = new Document();
-        result.putMetadata(source.getMetadataMap());
-        result.setContent(content);
-        result.setTitle(source.getTitle());
-        result.setId(idGenerator == null ? null : idGenerator.generateId(result));
-        return result;
+    private static Document createChunkDocument(Document source, String content, DocumentIdGenerator idGenerator) {
+        Document chunkDocument = new Document();
+        chunkDocument.setTitle(source.getTitle());
+        chunkDocument.setContent(content);
+        chunkDocument.putMetadata(source.getMetadataMap());
+        chunkDocument.setId(idGenerator == null ? null : idGenerator.generateId(chunkDocument));
+        return chunkDocument;
     }
 
     /**

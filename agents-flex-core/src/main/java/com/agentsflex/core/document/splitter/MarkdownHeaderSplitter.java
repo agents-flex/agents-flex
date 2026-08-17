@@ -133,26 +133,24 @@ public class MarkdownHeaderSplitter implements DocumentSplitter {
         }
 
         // 构建结果 Document 列表
-        List<Document> result = new ArrayList<>();
+        List<Document> chunkDocuments = new ArrayList<>();
         for (DocumentChunk chunk : chunks) {
-            Document doc = new Document();
-            doc.setContent(chunk.content.trim());
-            doc.setTitle(document.getTitle());
-            doc.putMetadata(document.getMetadataMap());
+            Document chunkDocument = new Document();
+            chunkDocument.setTitle(document.getTitle());
+            chunkDocument.setContent(chunk.content.trim());
+            chunkDocument.putMetadata(document.getMetadataMap());
 
             if (includeParentHeaders && !chunk.headerPath.isEmpty()) {
-                doc.putMetadata("header_path", String.join(" > ", chunk.headerPath));
+                chunkDocument.putMetadata("header_path", String.join(" > ", chunk.headerPath));
             }
-            doc.putMetadata("start_line", String.valueOf(chunk.startLine));
-            doc.putMetadata("end_line", String.valueOf(chunk.endLine));
+            chunkDocument.putMetadata("start_line", String.valueOf(chunk.startLine));
+            chunkDocument.putMetadata("end_line", String.valueOf(chunk.endLine));
 
-            if (idGenerator != null) {
-                doc.setId(idGenerator.generateId(doc));
-            }
-            result.add(doc);
+            chunkDocument.setId(idGenerator == null ? null : idGenerator.generateId(chunkDocument));
+            chunkDocuments.add(chunkDocument);
         }
 
-        return result;
+        return chunkDocuments;
     }
 
     private void flushChunk(List<DocumentChunk> chunks, String content,

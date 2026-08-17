@@ -42,8 +42,8 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
         if (this.chunkSize <= 0) {
             throw new IllegalArgumentException("chunkSize must be greater than 0, chunkSize: " + this.chunkSize);
         }
-        if (this.overlapSize >= this.chunkSize) {
-            throw new IllegalArgumentException("overlapSize must be less than chunkSize, overlapSize: " + this.overlapSize + ", chunkSize: " + this.chunkSize);
+        if (this.overlapSize < 0 || this.overlapSize >= this.chunkSize) {
+            throw new IllegalArgumentException("overlapSize must be between 0 (inclusive) and chunkSize (exclusive), overlapSize: " + this.overlapSize + ", chunkSize: " + this.chunkSize);
         }
     }
 
@@ -52,6 +52,12 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
     }
 
     public void setChunkSize(int chunkSize) {
+        if (chunkSize <= 0) {
+            throw new IllegalArgumentException("chunkSize must be greater than 0, chunkSize: " + chunkSize);
+        }
+        if (overlapSize >= chunkSize) {
+            throw new IllegalArgumentException("overlapSize must be less than chunkSize, overlapSize: " + overlapSize + ", chunkSize: " + chunkSize);
+        }
         this.chunkSize = chunkSize;
     }
 
@@ -60,6 +66,9 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
     }
 
     public void setOverlapSize(int overlapSize) {
+        if (overlapSize < 0 || overlapSize >= chunkSize) {
+            throw new IllegalArgumentException("overlapSize must be between 0 (inclusive) and chunkSize (exclusive), overlapSize: " + overlapSize + ", chunkSize: " + chunkSize);
+        }
         this.overlapSize = overlapSize;
     }
 
@@ -73,7 +82,7 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
         int index = 0, currentIndex = index;
         int maxIndex = content.length();
 
-        List<Document> chunks = new ArrayList<>();
+        List<Document> chunkDocuments = new ArrayList<>();
         while (currentIndex < maxIndex) {
             int endIndex = Math.min(currentIndex + chunkSize, maxIndex);
             String chunk = content.substring(currentIndex, endIndex).trim();
@@ -83,16 +92,15 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
                 continue;
             }
 
-            Document newDocument = new Document();
-            newDocument.putMetadata(document.getMetadataMap());
-            newDocument.setContent(chunk);
-            newDocument.setTitle(document.getTitle());
+            Document chunkDocument = new Document();
+            chunkDocument.setTitle(document.getTitle());
+            chunkDocument.setContent(chunk);
+            chunkDocument.putMetadata(document.getMetadataMap());
 
-            //we should invoke setId after setContent
-            newDocument.setId(idGenerator == null ? null : idGenerator.generateId(newDocument));
-            chunks.add(newDocument);
+            chunkDocument.setId(idGenerator == null ? null : idGenerator.generateId(chunkDocument));
+            chunkDocuments.add(chunkDocument);
         }
 
-        return chunks;
+        return chunkDocuments;
     }
 }

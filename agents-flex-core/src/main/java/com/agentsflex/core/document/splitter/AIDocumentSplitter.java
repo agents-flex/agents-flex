@@ -91,15 +91,7 @@ public class AIDocumentSplitter implements DocumentSplitter {
             chunks = parseChunksBySeparator(llmOutput, CHUNK_SEPARATOR);
         } catch (Exception e) {
             log.error("AI 拆分失败，使用 fallback 拆分器", e);
-            if (fallbackSplitter == null) {
-                log.error("没有可用的 fallback 拆分器，请检查配置");
-                return Collections.emptyList();
-            }
-            List<Document> fallbackDocs = fallbackSplitter.split(document, idGenerator);
-            if (fallbackDocs.size() > maxChunks) {
-                return new ArrayList<>(fallbackDocs.subList(0, maxChunks));
-            }
-            return fallbackDocs;
+            return fallback(document, idGenerator);
         }
 
         List<String> validChunks = chunks.stream()
@@ -107,20 +99,34 @@ public class AIDocumentSplitter implements DocumentSplitter {
             .filter(s -> !s.isEmpty())
             .limit(maxChunks)
             .collect(Collectors.toList());
-
-        List<Document> result = new ArrayList<>();
-        for (String chunk : validChunks) {
-            Document doc = new Document();
-            doc.setContent(chunk);
-            doc.setTitle(document.getTitle());
-            doc.putMetadata(document.getMetadataMap());
-            if (idGenerator != null) {
-                doc.setId(idGenerator.generateId(doc));
-            }
-            result.add(doc);
+        if (validChunks.isEmpty()) {
+            log.warn("AI 拆分未返回有效内容，使用 fallback 拆分器");
+            return fallback(document, idGenerator);
         }
 
-        return result;
+        List<Document> chunkDocuments = new ArrayList<>();
+        for (String chunk : validChunks) {
+            Document chunkDocument = new Document();
+            chunkDocument.setTitle(document.getTitle());
+            chunkDocument.setContent(chunk);
+            chunkDocument.putMetadata(document.getMetadataMap());
+            chunkDocument.setId(idGenerator == null ? null : idGenerator.generateId(chunkDocument));
+            chunkDocuments.add(chunkDocument);
+        }
+
+        return chunkDocuments;
+    }
+
+    private List<Document> fallback(Document document, DocumentIdGenerator idGenerator) {
+        if (fallbackSplitter == null) {
+            log.error("没有可用的 fallback 拆分器，请检查配置");
+            return Collections.emptyList();
+        }
+        List<Document> fallbackDocs = fallbackSplitter.split(document, idGenerator);
+        if (fallbackDocs.size() > maxChunks) {
+            return new ArrayList<>(fallbackDocs.subList(0, maxChunks));
+        }
+        return fallbackDocs;
     }
 
     private List<String> parseChunksBySeparator(String text, String separator) {
@@ -138,15 +144,13 @@ public class AIDocumentSplitter implements DocumentSplitter {
         }
 
         if (chunks.size() == 1 && text.contains(separator)) {
-            return tryAlternativeSplit(text, separator);
+            String normalized = text.replaceAll("\\s*" + separator + "\\s*", separator);
+            if (!normalized.equals(text)) {
+                return parseChunksBySeparator(normalized, separator);
+            }
         }
 
         return chunks;
-    }
-
-    private List<String> tryAlternativeSplit(String text, String separator) {
-        String normalized = text.replaceAll("\\s*---\\s*", "---");
-        return parseChunksBySeparator(normalized, separator);
     }
 
     // ===== Getters & Setters =====

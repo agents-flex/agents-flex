@@ -38,20 +38,19 @@ public class RegexDocumentSplitter implements DocumentSplitter {
             return Collections.emptyList();
         }
         String[] textArray = document.getContent().split(regex);
-        List<Document> chunks = new ArrayList<>(textArray.length);
+        List<Document> chunkDocuments = new ArrayList<>(textArray.length);
         for (String textString : textArray) {
             if (StringUtil.noText(textString)) {
                 continue;
             }
-            Document newDocument = new Document();
-            newDocument.putMetadata(document.getMetadataMap());
-            newDocument.setContent(textString);
-            newDocument.setTitle(document.getTitle());
+            Document chunkDocument = new Document();
+            chunkDocument.setTitle(document.getTitle());
+            chunkDocument.setContent(textString);
+            chunkDocument.putMetadata(document.getMetadataMap());
 
-            //we should invoke setId after setContent
-            newDocument.setId(idGenerator == null ? null : idGenerator.generateId(newDocument));
-            chunks.add(newDocument);
+            chunkDocument.setId(idGenerator == null ? null : idGenerator.generateId(chunkDocument));
+            chunkDocuments.add(chunkDocument);
         }
-        return chunks;
+        return chunkDocuments;
     }
 }
