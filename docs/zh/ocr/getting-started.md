@@ -124,7 +124,8 @@ String markdown = response.getMarkdown();
 
 ### 将 Markdown 图片保存为 URL
 
-OCR 结果中的图片可能来自 ZIP 相对路径、Base64 Data URI 或供应商的临时远程 URL。可以为 model 设置图片
+OCR 结果中的图片可能使用 Markdown 图片或 HTML `<img>`，内容可能来自 ZIP 相对路径、Base64 Data URI
+或供应商的临时远程 URL。可以为 model 设置图片
 处理器，将图片上传到对象存储，并用返回 URL 重写 Markdown。该处理器使用与 Doc Extractor 相同的
 `com.agentsflex.core.document.ExtractedImageHandler` 接口：
 
