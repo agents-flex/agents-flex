@@ -30,6 +30,24 @@ config.setModel(MineruOcrModels.VLM);
 MineruOcrModel model = new MineruOcrModel(config);
 ```
 
+`apiKey` 最终作为 `Authorization: Bearer <credential>` 发送，可以直接使用 MinerU API 管理页创建的
+`sk-...` API Token。
+
+也可以直接配置 OpenXLab Access Key ID / Secret Access Key：
+
+```java
+MineruOcrConfig config = new MineruOcrConfig();
+config.setAccessKeyId(System.getenv("OPENXLAB_ACCESS_KEY_ID"));
+config.setSecretAccessKey(System.getenv("OPENXLAB_SECRET_ACCESS_KEY"));
+
+MineruOcrModel model = new MineruOcrModel(config);
+```
+
+模型会自动完成 nonce 获取、HMAC 签名和 JWT 换取，并在模型实例内存中缓存 JWT。JWT 临近过期时优先
+使用 refresh token 刷新，refresh token 失效后重新使用 AK/SK 登录。Token 不会写入磁盘。
+
+`apiKey` 和 AK/SK 同时配置时优先使用 `apiKey`。`accessKeyId` 与 `secretAccessKey` 必须成对配置。
+
 可用模型常量：
 
 | 常量 | 值 |
@@ -106,6 +124,8 @@ MinerU 完成后通常返回 `full_zip_url`，其中包含 `full.md`、JSON 和�
 ### 本地文件为什么比远程 URL 多一个 batch 流程？
 
 本地文件需要先申请预签名地址并上传，再通过 batch 接口查询；远程 URL 可以直接创建普通解析任务。
+适配器会自动兼容不同凭据签发的 OSS URL：优先根据文件名设置 `Content-Type`，若签名拒绝该值则以空
+`Content-Type` 重试，不需要调用方手动区分。
 
 ### 应用重启后为什么查询不到本地文件任务？
 
