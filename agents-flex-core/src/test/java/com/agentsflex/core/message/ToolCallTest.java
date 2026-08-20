@@ -191,4 +191,36 @@ public class ToolCallTest {
         assertEquals(true, result.get("enabled"));
     }
 
+    @Test
+    public void testGetArgsMap_MarkdownFenceWithLanguage_ParsesSuccessfully() {
+        ToolCall toolCall = new ToolCall();
+        toolCall.setArguments("```json\n{\"dataSourceName\":\"shixu\",\"count\":3}\n```");
+
+        Map<String, Object> result = toolCall.getArgsMap();
+
+        assertEquals("shixu", result.get("dataSourceName"));
+        assertEquals(3, result.get("count"));
+    }
+
+    @Test
+    public void testGetArgsMap_MarkdownFenceWithoutLanguage_ParsesSuccessfully() {
+        ToolCall toolCall = new ToolCall();
+        toolCall.setArguments("```\n{\"name\":\"张三\"}\n```");
+
+        Map<String, Object> result = toolCall.getArgsMap();
+
+        assertEquals("张三", result.get("name"));
+    }
+
+    @Test
+    public void testGetArgsMap_MarkdownFenceWithPrefix_ParsesSuccessfully() {
+        ToolCall toolCall = new ToolCall();
+        toolCall.setArguments("Action Input:\n```json\n{\"dataSourceName\":\"shixu\"}\n```");
+
+        Map<String, Object> result = toolCall.getArgsMap();
+
+        assertEquals("shixu", result.get("dataSourceName"));
+    }
+
+
 }
