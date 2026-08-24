@@ -25,20 +25,26 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | Module | Description |
 | --- | --- |
 | `agents-flex-core` | Core abstractions: Chat, Prompt, Message, Tool, Memory, Document, Store, and observability |
+| `agents-flex-async-task` | Durable tracking and scheduling for provider jobs that use submit-and-poll workflows |
+| `agents-flex-async-task-store` | JDBC and Redis persistence for async task state, scheduling indexes, and Worker leases |
 | `agents-flex-doc-extractor` | Extracts Markdown-style content from PDF, Office, HTML, email, archives, streams, and URLs |
 | `agents-flex-agent` | Durable Agent runtime: Run state, snapshot recovery, Worker leases, approval, middleware, events, and task planning |
 | `agents-flex-agent-store` | JDBC and Redis persistence for Agent runs, commands, events, task plans, and artifacts |
+| `agents-flex-observability` | OpenTelemetry span and metric exporters with JDBC persistence |
 | `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |
 | `agents-flex-embedding` | Embedding model integrations: OpenAI, Ollama, Qwen |
 | `agents-flex-image` | Image model integrations: OpenAI, Gemini, Qwen, Alibaba Cloud, Gitee, Qianfan, SiliconFlow, Stability, Tencent, Volcengine |
 | `agents-flex-video` | Asynchronous video generation and editing: Alibaba Cloud Model Studio and Volcengine Ark |
 | `agents-flex-audio` | Speech-to-text and text-to-speech: Alibaba Cloud, Tencent Cloud, Volcengine |
+| `agents-flex-ocr` | OCR model integrations: Baidu AI Cloud, Gitee AI, and MinerU |
 | `agents-flex-store` | Vector stores: Redis, Qdrant, Chroma, Pgvector, MariaDB, Milvus, OpenSearch, Elasticsearch, Alibaba Cloud, Tencent Cloud |
 | `agents-flex-search-engine` | Search engine wrappers: Lucene, Elasticsearch, and search service interfaces |
 | `agents-flex-rerank` | Rerank models: default implementation and Gitee Rerank |
 | `agents-flex-tool` | Common tools: file system, Shell, Grep, Glob, WebFetch, Python, JavaScript |
+| `agents-flex-toolsearch` | Progressive tool discovery with in-memory and custom search providers |
 | `agents-flex-mcp` | MCP client that converts external MCP tools into Agents-Flex `Tool` instances |
 | `agents-flex-skills` | File-system-based Skills loading with progressive disclosure |
+| `agents-flex-skills-artifact` | Versioned Skill package storage backed by file systems and object storage services |
 | `agents-flex-skills-sandbox` | Sandbox runtime integrations for isolated Skills execution |
 | `agents-flex-skills-open-sandbox` | Isolated Skills execution through the OpenSandbox runtime |
 | `agents-flex-skills-aio-sandbox` | Isolated Skills execution through an AIO Sandbox service |
@@ -288,6 +294,8 @@ It is designed for quickly integrating models and vector stores into existing Sp
 
 ```text
 agents-flex-core/                 Core APIs and base implementations
+agents-flex-async-task/           Durable asynchronous task tracking and scheduling
+agents-flex-async-task-store/     JDBC and Redis asynchronous task stores
 agents-flex-doc-extractor/        Document content extraction
 agents-flex-agent/                Durable Agent runtime and extension contracts
 agents-flex-agent-store/          JDBC and Redis Agent runtime persistence
@@ -297,11 +305,14 @@ agents-flex-embedding/            Embedding model integrations
 agents-flex-image/                Image model integrations
 agents-flex-video/                Video model integrations
 agents-flex-audio/                Audio model integrations
+agents-flex-ocr/                  OCR model integrations
 agents-flex-store/                Vector store integrations
 agents-flex-search-engine/        Search engine integrations
 agents-flex-tool/                 Common tools
+agents-flex-toolsearch/           Progressive tool discovery
 agents-flex-mcp/                  MCP client
 agents-flex-skills/               Skills capability system
+agents-flex-skills-artifact/      Versioned Skill package storage
 agents-flex-skills-sandbox/       Sandbox runtimes for Skills
 ├── agents-flex-skills-open-sandbox/
 └── agents-flex-skills-aio-sandbox/

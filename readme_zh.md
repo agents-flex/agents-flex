@@ -25,20 +25,26 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 | 模块 | 说明 |
 | --- | --- |
 | `agents-flex-core` | 核心抽象：Chat、Prompt、Message、Tool、Memory、Document、Store、Observability |
+| `agents-flex-async-task` | 可靠跟踪和调度采用“提交后轮询”协议的供应商异步任务 |
+| `agents-flex-async-task-store` | 异步任务状态、调度索引和 Worker Lease 的 JDBC 与 Redis 持久化实现 |
 | `agents-flex-doc-extractor` | 从 PDF、Office、HTML、邮件、压缩包、输入流和 URL 中提取 Markdown 风格内容 |
 | `agents-flex-agent` | 持久化 Agent Runtime：运行状态、Snapshot、Worker Lease、审批、Middleware、事件和任务规划 |
 | `agents-flex-agent-store` | Agent 运行、命令、事件、任务计划和 Artifact 的 JDBC 与 Redis 持久化实现 |
+| `agents-flex-observability` | OpenTelemetry Span 与 Metric Exporter，支持 JDBC 持久化 |
 | `agents-flex-chat` | 聊天模型适配：OpenAI 兼容接口、Qwen、Ollama、DeepSeek、LiteLLM |
 | `agents-flex-embedding` | Embedding 模型适配：OpenAI、Ollama、Qwen |
 | `agents-flex-image` | 图像模型适配：OpenAI、Gemini、阿里云、Gitee、Volcengine |
 | `agents-flex-video` | 异步视频生成与编辑模型适配：阿里云百炼、火山引擎方舟 |
 | `agents-flex-audio` | 语音识别与语音合成：阿里云、腾讯云、火山引擎 |
+| `agents-flex-ocr` | OCR 模型适配：百度智能云、Gitee AI、MinerU |
 | `agents-flex-store` | 向量存储：Redis、Qdrant、Chroma、Pgvector、MariaDB、Milvus、OpenSearch、Elasticsearch、阿里云、腾讯云 |
 | `agents-flex-search-engine` | 搜索引擎封装：Lucene、Elasticsearch、搜索服务接口 |
 | `agents-flex-rerank` | Rerank 模型：默认实现、Gitee Rerank |
 | `agents-flex-tool` | 通用工具：文件系统、Shell、Grep、Glob、WebFetch、Python、JavaScript |
+| `agents-flex-toolsearch` | 渐进式工具发现，支持内存和自定义搜索提供商 |
 | `agents-flex-mcp` | MCP 客户端，可把外部 MCP 工具转换为 Agents-Flex `Tool` |
 | `agents-flex-skills` | 基于文件系统的 Skills 加载与渐进式披露机制 |
+| `agents-flex-skills-artifact` | 基于文件系统和对象存储服务的 Skill 版本化安装包存储 |
 | `agents-flex-skills-sandbox` | Skills 隔离执行的 Sandbox runtime 聚合模块 |
 | `agents-flex-skills-open-sandbox` | 通过 OpenSandbox runtime 隔离执行 Skills 脚本 |
 | `agents-flex-skills-aio-sandbox` | 通过 AIO Sandbox 服务隔离执行 Skills 脚本 |
@@ -288,6 +294,8 @@ LLM Wiki 可以理解为一种面向 Agent 的层级知识库：知识不只是�
 
 ```text
 agents-flex-core/                 核心 API 与基础实现
+agents-flex-async-task/           可靠的异步任务跟踪与调度
+agents-flex-async-task-store/     JDBC 与 Redis 异步任务存储
 agents-flex-doc-extractor/        文档内容提取
 agents-flex-agent/                持久化 Agent Runtime 与扩展契约
 agents-flex-agent-store/          Agent Runtime 的 JDBC 与 Redis 持久化实现
@@ -297,11 +305,14 @@ agents-flex-embedding/            Embedding 模型适配
 agents-flex-image/                图像模型适配
 agents-flex-video/                视频模型适配
 agents-flex-audio/                语音模型适配
+agents-flex-ocr/                  OCR 模型适配
 agents-flex-store/                向量存储适配
 agents-flex-search-engine/        搜索引擎适配
 agents-flex-tool/                 通用工具集
+agents-flex-toolsearch/           渐进式工具发现
 agents-flex-mcp/                  MCP 客户端
 agents-flex-skills/               Skills 能力系统
+agents-flex-skills-artifact/      Skill 版本化安装包存储
 agents-flex-skills-sandbox/       Skills Sandbox runtime 聚合模块
 ├── agents-flex-skills-open-sandbox/
 └── agents-flex-skills-aio-sandbox/
