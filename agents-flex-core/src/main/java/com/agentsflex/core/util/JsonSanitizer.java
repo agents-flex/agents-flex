@@ -99,6 +99,48 @@ public final class JsonSanitizer {
         return result.toString();
     }
 
+
+    /**
+     * 剥离大模型输出中包裹工具参数的 markdown 代码围栏。
+     *
+     * <p>大模型经常把工具参数包在 markdown 代码块中输出，例如
+     * {@code ```json}{@code
+     * {"dataSourceName":"shixu"}}{@code ```}，这类文本无法被 JSON 解析器直接处理，
+     * 需要先取出围栏内部的 JSON 文本。</p>
+     *
+     * <p>方法按行扫描：取第一行围栏（{@code ```} 或 {@code ```json} 等）作为开头，
+     * 最后一行围栏作为结尾，返回中间的内容。文本没有成对围栏时原样返回，
+     * 交给后续容错策略处理。</p>
+     *
+     * @param text 可能被 markdown 代码围栏包裹的文本
+     * @return 围栏内部的 JSON 文本；文本不是围栏形式时原样返回
+     */
+    public static String stripMarkdownFences(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        String trimmed = text.trim();
+        String[] lines = trimmed.split("\n", -1);
+        Integer open = null;
+        Integer close = null;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.startsWith("```")) {
+                if (open == null) {
+                    open = i;
+                }
+                else {
+                    close = i;
+                }
+            }
+        }
+        if (open == null || close == null || close <= open) {
+            return trimmed;
+        }
+        String[] inner = java.util.Arrays.copyOfRange(lines, open + 1, close);
+        return String.join("\n", inner).trim();
+    }
+
     /**
      * 从带有说明文字的模型输出中提取所有花括号配对完整的对象候选。
      *

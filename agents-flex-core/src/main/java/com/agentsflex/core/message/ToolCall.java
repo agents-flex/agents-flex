@@ -80,6 +80,14 @@ public class ToolCall implements Serializable, Copyable<ToolCall> {
             lastException = e;
         }
 
+        String fencedJson = JsonSanitizer.stripMarkdownFences(originalJson);
+        if (!fencedJson.equals(originalJson)) {
+            try {
+                return JSON.parseObject(fencedJson);
+            } catch (RuntimeException e) {
+                lastException = e;
+            }
+        }
         try {
             String sanitizeJson = JsonSanitizer.sanitize(originalJson);
             return JSON.parseObject(sanitizeJson);
