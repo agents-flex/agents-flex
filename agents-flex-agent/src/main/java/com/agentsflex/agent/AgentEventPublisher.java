@@ -46,26 +46,57 @@ final class AgentEventPublisher {
      */
     private final Map<String, AtomicLong> sequences = new ConcurrentHashMap<>();
 
+    /**
+     * 注册进程内事件监听器；空监听器会被忽略。
+     *
+     * @param listener 需要接收后续事件的监听器
+     */
     void addListener(AgentEventListener listener) {
         if (listener != null) listeners.add(listener);
     }
 
+    /**
+     * 移除已注册监听器；未注册的实例不会产生副作用。
+     *
+     * @param listener 待移除监听器
+     */
     void removeListener(AgentEventListener listener) {
         listeners.remove(listener);
     }
 
+    /**
+     * 在 Turn 生命周期结束后释放其进程内事件序号。
+     *
+     * @param turnId 已结束的 Turn ID；空值会被忽略
+     */
     void clearSequence(String turnId) {
         if (turnId != null) sequences.remove(turnId);
     }
 
+    /**
+     * 发布 Turn 开始事件。
+     *
+     * @param turn 刚进入执行阶段的 Turn
+     */
     void notifyTurnStart(AgentTurn turn) {
         publish(turn, AgentEventType.TURN_STARTED, null);
     }
 
+    /**
+     * 发布模型调用开始事件，并携带当前迭代预算。
+     *
+     * @param turn 当前 Turn
+     */
     void notifyModelStart(AgentTurn turn) {
         publish(turn, AgentEventType.MODEL_STARTED, iterationAttributes(turn));
     }
 
+    /**
+     * 发布模型调用完成事件，并标识响应是否包含工具调用。
+     *
+     * @param turn     当前 Turn
+     * @param response 模型响应；允许为空以记录不完整调用
+     */
     void notifyModelEnd(AgentTurn turn, AiMessageResponse response) {
         Map<String, Object> values = iterationAttributes(turn);
         values.put("hasToolCalls",
@@ -74,24 +105,52 @@ final class AgentEventPublisher {
         publish(turn, AgentEventType.MODEL_COMPLETED, values);
     }
 
+    /**
+     * 发布工具执行开始事件。
+     *
+     * @param turn 当前 Turn
+     * @param call 即将执行的工具调用
+     */
     void notifyToolStart(AgentTurn turn, ToolCall call) {
         Map<String, Object> values = iterationAttributes(turn);
         values.putAll(attributes("toolCallId", callKey(call), "toolName", call.getName()));
         publish(turn, AgentEventType.TOOL_STARTED, values);
     }
 
+    /**
+     * 发布工具执行成功完成事件。
+     *
+     * @param turn 当前 Turn
+     * @param call 已完成的工具调用
+     */
     void notifyToolEnd(AgentTurn turn, ToolCall call) {
         Map<String, Object> values = iterationAttributes(turn);
         values.putAll(attributes("toolCallId", callKey(call), "toolName", call.getName()));
         publish(turn, AgentEventType.TOOL_COMPLETED, values);
     }
 
+    /**
+     * 发布工具执行失败事件，并将异常类型和消息转为稳定文本。
+     *
+     * @param turn  当前 Turn
+     * @param call  失败的工具调用
+     * @param error 执行异常
+     */
     void notifyToolError(AgentTurn turn, ToolCall call, Throwable error) {
         publish(turn, AgentEventType.TOOL_FAILED,
             attributes("toolCallId", callKey(call), "toolName", call.getName(),
                 "error", errorMessage(error)));
     }
 
+    /**
+     * 发布工具执行过程事件，并合并工具提供的结构化进度数据。
+     *
+     * @param turn     当前 Turn
+     * @param call     工具调用
+     * @param toolName 对外展示的工具名
+     * @param message  进度说明
+     * @param data     可选结构化进度数据
+     */
     void notifyToolProgress(AgentTurn turn, ToolCall call, String toolName,
                             String message, Map<String, ?> data) {
         Map<String, Object> values = attributes("toolCallId", callKey(call),
@@ -100,33 +159,70 @@ final class AgentEventPublisher {
         publish(turn, AgentEventType.TOOL_PROGRESS, values);
     }
 
+    /**
+     * 发布 Turn 正常完成事件。
+     *
+     * @param turn 已完成 Turn
+     */
     void notifyTurnComplete(AgentTurn turn) {
         publish(turn, AgentEventType.TURN_COMPLETED, null);
     }
 
+    /**
+     * 发布 Turn 失败事件。
+     *
+     * @param turn  已失败 Turn
+     * @param error 导致失败的异常
+     */
     void notifyTurnFailed(AgentTurn turn, Throwable error) {
         publish(turn, AgentEventType.TURN_FAILED, attributes("error", errorMessage(error)));
     }
 
+    /**
+     * 发布 Turn 已取消事件。
+     *
+     * @param turn 已取消 Turn
+     */
     void notifyTurnCancelled(AgentTurn turn) {
         publish(turn, AgentEventType.TURN_CANCELLED, null);
     }
 
+    /**
+     * 发布取消请求已登记事件，此时 Turn 可能尚未进入终态。
+     *
+     * @param turn 当前 Turn
+     */
     void notifyCancellationRequested(AgentTurn turn) {
         publish(turn, AgentEventType.CANCELLATION_REQUESTED, null);
     }
 
+    /**
+     * 发布模型迭代次数耗尽事件，并记录实际次数。
+     *
+     * @param turn 已终止 Turn
+     */
     void notifyMaxIterationsReached(AgentTurn turn) {
         publish(turn, AgentEventType.MAX_ITERATIONS_REACHED,
             attributes("iterations", turn.getIterationCount()));
     }
 
+    /**
+     * 发布 Runner 步骤预算耗尽事件，并记录实际值与上限。
+     *
+     * @param turn 已终止 Turn
+     */
     void notifyMaxStepsReached(AgentTurn turn) {
         publish(turn, AgentEventType.MAX_STEPS_REACHED,
             attributes("steps", turn.getStepCount(),
                 "maxSteps", turn.getExecutionPolicy().getMaxSteps()));
     }
 
+    /**
+     * 发布 Snapshot 保存成功事件，携带持久化后的版本和生命周期状态。
+     *
+     * @param turn     Snapshot 所属 Turn
+     * @param snapshot Store 返回的已保存快照
+     */
     void notifySnapshotSaved(AgentTurn turn, AgentTurnSnapshot snapshot) {
         publish(turn, AgentEventType.SNAPSHOT_SAVED,
             attributes("version", snapshot.getState().getVersion(),
@@ -134,6 +230,12 @@ final class AgentEventPublisher {
                 "phase", snapshot.getState().getPhase()));
     }
 
+    /**
+     * 发布 Turn 挂起事件，并完整携带恢复所需的关联信息。
+     *
+     * @param turn       已挂起 Turn
+     * @param suspension 挂起原因及恢复阶段
+     */
     void notifyTurnSuspended(AgentTurn turn, AgentSuspension suspension) {
         publish(turn, AgentEventType.TURN_SUSPENDED,
             attributes("suspensionType", suspension.getType(),
@@ -143,12 +245,25 @@ final class AgentEventPublisher {
                 "metadata", suspension.getMetadata()));
     }
 
+    /**
+     * 发布 Turn 恢复事件，记录命令类型和关联 ID。
+     *
+     * @param turn    已恢复 Turn
+     * @param command 已应用的恢复命令
+     */
     void notifyTurnResumed(AgentTurn turn, AgentResumeCommand command) {
         publish(turn, AgentEventType.TURN_RESUMED,
             attributes("commandType", command.getType(),
                 "correlationId", command.getCorrelationId()));
     }
 
+    /**
+     * 发布工具审批请求，保留策略决策代码、原因和业务元数据。
+     *
+     * @param turn     等待审批的 Turn
+     * @param call     待审批工具调用
+     * @param decision 审批策略决策
+     */
     void notifyToolApprovalRequested(AgentTurn turn, ToolCall call,
                                      ToolApprovalDecision decision) {
         publish(turn, AgentEventType.TOOL_APPROVAL_REQUESTED,
@@ -158,6 +273,13 @@ final class AgentEventPublisher {
                 "approvalMetadata", decision.getMetadata()));
     }
 
+    /**
+     * 发布结构化用户输入请求。
+     *
+     * @param turn 等待输入的 Turn
+     * @param call 触发表单的工具调用
+     * @param form 需要展示的表单定义
+     */
     void notifyToolInputRequested(AgentTurn turn, ToolCall call,
                                   AgentFormDefinition form) {
         publish(turn, AgentEventType.TOOL_INPUT_REQUESTED,
@@ -165,28 +287,58 @@ final class AgentEventPublisher {
                 "formKey", form.getFormKey()));
     }
 
+    /**
+     * 发布自动重试已调度事件，包含次数、下次运行时间和失败原因。
+     *
+     * @param turn  已进入重试等待的 Turn
+     * @param error 本次失败异常
+     */
     void notifyRetryScheduled(AgentTurn turn, Throwable error) {
         publish(turn, AgentEventType.RETRY_SCHEDULED,
             attributes("retryCount", turn.getRetryCount(),
                 "nextRunnableAt", turn.getNextRunnableAt(), "error", errorMessage(error)));
     }
 
+    /**
+     * 发布运行预算超限事件。
+     *
+     * @param turn   因预算结束的 Turn
+     * @param reason 稳定的超限维度和用量说明
+     */
     void notifyBudgetExceeded(AgentTurn turn, String reason) {
         publish(turn, AgentEventType.BUDGET_EXCEEDED, attributes("reason", reason));
     }
 
+    /**
+     * 发布通用子 Agent 已启动事件。
+     *
+     * @param parent 父 Turn
+     * @param child  已持久化的子 Turn
+     */
     void notifyChildStarted(AgentTurn parent, AgentTurn child) {
         publish(parent, AgentEventType.CHILD_STARTED,
             attributes("childTurnId", child.getId(),
                 "childAgentId", child.getAgent().getId()));
     }
 
+    /**
+     * 发布任务计划创建事件。
+     *
+     * @param turn 计划所属 Turn
+     * @param plan 已保存的新计划
+     */
     void notifyPlanCreated(AgentTurn turn, AgentTaskPlan plan) {
         publish(turn, AgentEventType.PLAN_CREATED,
             attributes("planId", plan.getId(), "goal", plan.getGoal(),
                 "taskCount", plan.getTasks().size()));
     }
 
+    /**
+     * 发布任务计划修订事件，包含修订原因和累计次数。
+     *
+     * @param turn 计划所属 Turn
+     * @param plan 修订后的计划
+     */
     void notifyPlanUpdated(AgentTurn turn, AgentTaskPlan plan) {
         publish(turn, AgentEventType.PLAN_UPDATED,
             attributes("planId", plan.getId(),
@@ -195,12 +347,27 @@ final class AgentEventPublisher {
                 "taskCount", plan.getTasks().size()));
     }
 
+    /**
+     * 发布计划任务开始事件，并关联实际子 Turn。
+     *
+     * @param parent 父 Turn
+     * @param task   已进入运行态的任务
+     * @param child  执行任务的子 Turn
+     */
     void notifyTaskStarted(AgentTurn parent, AgentTask task, AgentTurn child) {
         publish(parent, AgentEventType.TASK_STARTED,
             attributes("taskId", task.getId(), "title", task.getTitle(),
                 "childTurnId", child.getId(), "childAgentId", child.getAgent().getId()));
     }
 
+    /**
+     * 根据任务终态发布完成或失败事件，并附带子 Turn 输出与错误。
+     *
+     * @param parent 父 Turn
+     * @param task   已结束任务
+     * @param child  执行任务的子 Turn
+     * @param status 任务终态
+     */
     void notifyTaskFinished(AgentTurn parent, AgentTask task, AgentTurn child,
                             AgentTaskStatus status) {
         AgentEventType type = status == AgentTaskStatus.COMPLETED
@@ -236,6 +403,12 @@ final class AgentEventPublisher {
         }
     }
 
+    /**
+     * 生成当前模型迭代次数、上限和剩余额度属性。
+     *
+     * @param turn 当前 Turn
+     * @return 有序事件属性
+     */
     private Map<String, Object> iterationAttributes(AgentTurn turn) {
         int maxIterations = turn.getExecutionPolicy().getMaxIterations();
         return attributes("iteration", turn.getIterationCount(),
@@ -243,6 +416,12 @@ final class AgentEventPublisher {
             "remainingIterations", Math.max(0, maxIterations - turn.getIterationCount()));
     }
 
+    /**
+     * 将键值序列转换为有序 Map，忽略空键、空值及末尾孤立参数。
+     *
+     * @param values 交替排列的键和值
+     * @return 可继续合并的属性 Map
+     */
     private Map<String, Object> attributes(Object... values) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (int index = 0; index + 1 < values.length; index += 2) {
@@ -253,10 +432,22 @@ final class AgentEventPublisher {
         return result;
     }
 
+    /**
+     * 获取事件使用的稳定工具调用键，ID 缺失时使用工具名。
+     *
+     * @param call 工具调用
+     * @return 事件关联键
+     */
     private String callKey(ToolCall call) {
         return StringUtil.hasText(call.getId()) ? call.getId() : call.getName();
     }
 
+    /**
+     * 将异常转换为同时包含类型和消息的可观测文本。
+     *
+     * @param error 可选异常
+     * @return 格式化文本；无异常时返回 {@code null}
+     */
     private String errorMessage(Throwable error) {
         return error == null ? null : error.getClass().getName() + ": " + error.getMessage();
     }

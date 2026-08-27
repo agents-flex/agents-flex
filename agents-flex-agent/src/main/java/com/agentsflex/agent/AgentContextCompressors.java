@@ -19,6 +19,9 @@ import java.util.List;
  * 常用的本地上下文压缩策略工厂；不调用模型，也不修改 ChatMemory。
  */
 public final class AgentContextCompressors {
+    /**
+     * 工厂类不保存实例状态，禁止构造。
+     */
     private AgentContextCompressors() {
     }
 
@@ -196,6 +199,9 @@ public final class AgentContextCompressors {
         private List<Message> summary = new ArrayList<>();
         private String coveredUntilMessageId;
 
+        /**
+         * @param delegate 负责重新摘要“旧摘要 + 新增消息”的实际压缩器
+         */
         private Incremental(AgentContextCompressor delegate) {
             this.delegate = delegate;
         }
@@ -232,6 +238,12 @@ public final class AgentContextCompressors {
             return coveredUntilMessageId;
         }
 
+        /**
+         * 从业务持久化状态恢复摘要和覆盖游标，并复制摘要消息。
+         *
+         * @param summary               已保存摘要
+         * @param coveredUntilMessageId 已覆盖的最后消息 ID
+         */
         public synchronized void restore(List<Message> summary, String coveredUntilMessageId) {
             this.summary = copy(summary);
             this.coveredUntilMessageId = coveredUntilMessageId;
@@ -251,6 +263,12 @@ public final class AgentContextCompressors {
         };
     }
 
+    /**
+     * 将单个已完成 Turn 压缩为用户问题和最终 AI 正文；不完整 Turn 原样复制。
+     *
+     * @param result 追加目标
+     * @param turn   待处理完整 Turn
+     */
     private static void appendCompact(List<Message> result, List<Message> turn) {
         if (turn.isEmpty()) return;
         Message user = turn.get(0);
@@ -268,6 +286,9 @@ public final class AgentContextCompressors {
         } else result.addAll(copy(turn));
     }
 
+    /**
+     * 深复制所有非空消息，空输入返回可修改的空列表。
+     */
     private static List<Message> copy(List<Message> messages) {
         List<Message> result = new ArrayList<>();
         if (messages != null) for (Message message : messages) {

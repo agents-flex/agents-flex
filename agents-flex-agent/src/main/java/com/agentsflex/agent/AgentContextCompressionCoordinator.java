@@ -18,6 +18,14 @@ public final class AgentContextCompressionCoordinator {
     private final AgentContextCompressor compressor;
     private final ToLongFunction<List<Message>> tokenEstimator;
 
+    /**
+     * 创建增量压缩协调器，并要求状态存储、触发器、压缩器和 Token 估算器全部可用。
+     *
+     * @param store          按会话持久化压缩游标和摘要的 CAS Store
+     * @param trigger        判断当前增量是否值得压缩的策略
+     * @param compressor     生成新摘要的实现
+     * @param tokenEstimator 对待压缩消息进行非负 Token 估算的函数
+     */
     public AgentContextCompressionCoordinator(AgentContextCompressionStateStore store,
                                               AgentContextCompressionTrigger trigger,
                                               AgentContextCompressor compressor,
@@ -73,6 +81,14 @@ public final class AgentContextCompressionCoordinator {
         return new AgentContextCompressionResult(true, next, summary);
     }
 
+    /**
+     * 根据持久化游标截取尚未进入摘要的消息。
+     *
+     * @param coveredId 上次已覆盖的最后消息 ID；首次压缩时为空
+     * @param messages  包含游标消息的完整正序历史
+     * @return 游标之后消息的新列表
+     * @throws IllegalStateException 游标不在传入历史中时抛出
+     */
     private static List<Message> pendingAfter(String coveredId, List<Message> messages) {
         int start = 0;
         if (coveredId != null) {
@@ -92,17 +108,33 @@ public final class AgentContextCompressionCoordinator {
         return new ArrayList<>(messages.subList(start, messages.size()));
     }
 
+    /**
+     * 根据 UserMessage 数量估算给定消息覆盖的 Turn 数。
+     *
+     * @param messages 待统计的正序消息
+     * @return Turn 数量
+     */
     private static int countTurns(List<Message> messages) {
         int count = 0;
         for (Message message : messages) if (message instanceof UserMessage) count++;
         return count;
     }
 
+    /**
+     * 执行不会溢出的非负整数累加，超过上限时饱和为最大值。
+     *
+     * @return 饱和后的累计值
+     */
     private static int saturatingAdd(int left, int right) {
         if (right > 0 && left > Integer.MAX_VALUE - right) return Integer.MAX_VALUE;
         return left + right;
     }
 
+    /**
+     * 执行不会溢出的非负长整数累加，超过上限时饱和为最大值。
+     *
+     * @return 饱和后的累计值
+     */
     private static long saturatingAdd(long left, long right) {
         if (right > 0 && left > Long.MAX_VALUE - right) return Long.MAX_VALUE;
         return left + right;

@@ -71,9 +71,9 @@ public final class AgentEvent {
      * <p>data 会在构造时深度复制：Map、Iterable 和数组转换为不可修改集合，基础不可变值原样保留，
      * 其他对象转换为字符串。因此监听器不会通过事件数据意外修改 Runner 内部状态。</p>
      *
-     * @param turnId        直接产生事件的 Turn ID
-     * @param rootTurnId    父子 Turn 树的根 Turn ID
-     * @param parentTurnId  直接父 Turn ID，根 Turn 可为 {@code null}
+     * @param turnId       直接产生事件的 Turn ID
+     * @param rootTurnId   父子 Turn 树的根 Turn ID
+     * @param parentTurnId 直接父 Turn ID，根 Turn 可为 {@code null}
      * @param agentId      Agent 稳定标识
      * @param agentVersion Agent 定义版本
      * @param sequence     当前 Runner 内的正数事件序号
@@ -172,6 +172,9 @@ public final class AgentEvent {
         return data;
     }
 
+    /**
+     * 深度复制事件 Map，校验键非空并冻结外层结构。
+     */
     private static Map<String, Object> immutableMap(Map<String, ?> source) {
         if (source == null || source.isEmpty()) return Collections.emptyMap();
         Map<String, Object> copy = new LinkedHashMap<>();
@@ -184,6 +187,9 @@ public final class AgentEvent {
         return Collections.unmodifiableMap(copy);
     }
 
+    /**
+     * 递归冻结集合与数组；未知对象转为字符串，避免泄漏可变业务对象。
+     */
     private static Object immutableValue(Object value) {
         if (value == null || value instanceof String || value instanceof Boolean
             || value instanceof Character || value instanceof Byte || value instanceof Short

@@ -39,6 +39,9 @@ public final class AgentBudget implements Serializable {
      */
     private final int maxToolCalls;
 
+    /**
+     * 从已校验构建器创建不可变资源预算。
+     */
     private AgentBudget(Builder builder) {
         this.maxDurationMillis = builder.maxDurationMillis;
         this.maxInputTokens = builder.maxInputTokens;
@@ -143,6 +146,12 @@ public final class AgentBudget implements Serializable {
             return this;
         }
 
+        /**
+         * 校验所有限制均为非负数后创建预算。
+         *
+         * @return 不可变预算
+         * @throws IllegalStateException 任一限制为负数时抛出
+         */
         public AgentBudget build() {
             if (maxDurationMillis < 0 || maxInputTokens < 0 || maxOutputTokens < 0
                 || maxTotalTokens < 0 || maxToolCalls < 0) {

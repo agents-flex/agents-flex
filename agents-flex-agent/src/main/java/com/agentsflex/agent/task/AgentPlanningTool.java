@@ -35,6 +35,9 @@ public final class AgentPlanningTool {
      */
     public static final String UPDATE_NAME = "update_task_plan";
 
+    /**
+     * 工具协议工厂不保存实例状态，禁止构造。
+     */
     private AgentPlanningTool() {
     }
 

@@ -137,6 +137,11 @@ public final class Agent {
      */
     private final Map<String, Object> attributes;
 
+    /**
+     * 从已校验构建器冻结 Agent 定义，并建立工具名索引和中间件扩展集合。
+     *
+     * @param builder 完整 Agent 配置
+     */
     private Agent(Builder builder) {
         this.id = builder.id;
         this.version = builder.version;
@@ -252,12 +257,16 @@ public final class Agent {
         return tools;
     }
 
-    /** 返回 Runner 可执行的完整 Tool 集合，包含直接 Tool 和所有 ToolGroup 中的 Tool。 */
+    /**
+     * 返回 Runner 可执行的完整 Tool 集合，包含直接 Tool 和所有 ToolGroup 中的 Tool。
+     */
     List<Tool> getExecutableTools() {
         return executableTools;
     }
 
-    /** @return 当前 Agent 配置的请求级 ToolGroup。 */
+    /**
+     * @return 当前 Agent 配置的请求级 ToolGroup。
+     */
     public List<ToolGroup> getToolGroups() {
         return toolGroups;
     }
@@ -493,7 +502,9 @@ public final class Agent {
             return this;
         }
 
-        /** 批量添加 ToolGroup；集合中的 null 元素会被忽略。 */
+        /**
+         * 批量添加 ToolGroup；集合中的 null 元素会被忽略。
+         */
         public Builder toolGroups(List<? extends ToolGroup> toolGroups) {
             if (toolGroups != null) for (ToolGroup toolGroup : toolGroups) toolGroup(toolGroup);
             return this;
@@ -682,7 +693,9 @@ public final class Agent {
             }
         }
 
-        /** 合并常驻 Tool 与 ToolGroup Tool，保留唯一、稳定的执行实例。 */
+        /**
+         * 合并常驻 Tool 与 ToolGroup Tool，保留唯一、稳定的执行实例。
+         */
         private List<Tool> effectiveTools() {
             Map<String, Tool> result = new LinkedHashMap<>();
             addTools(result, tools);
@@ -690,6 +703,12 @@ public final class Agent {
             return new ArrayList<>(result.values());
         }
 
+        /**
+         * 按名称合并工具，允许同一实例重复出现但拒绝同名的不同实现。
+         *
+         * @param target 工具名索引
+         * @param values 待合并工具
+         */
         private static void addTools(Map<String, Tool> target, List<? extends Tool> values) {
             for (Tool tool : values) {
                 if (tool == null || !StringUtil.hasText(tool.getName())) continue;

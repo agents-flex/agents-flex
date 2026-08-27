@@ -85,6 +85,9 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     private final String cancellationReason;
 
+    /**
+     * 从已校验构建器冻结一次 Turn 使用的全部执行控制策略。
+     */
     private AgentExecutionPolicy(Builder builder) {
         this.maxIterations = builder.maxIterations;
         this.maxSteps = builder.maxSteps;
@@ -97,6 +100,11 @@ public final class AgentExecutionPolicy implements Serializable {
         this.cancellationReason = builder.cancellationReason;
     }
 
+    /**
+     * 反序列化持久化策略，并恢复不会进入 Snapshot 的进程内错误消息工厂。
+     *
+     * @param input Java 对象输入流
+     */
     private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
         input.defaultReadObject();
         if (toolErrorMessageFactory == null) {

@@ -23,6 +23,16 @@ public final class AgentContextCompressionState implements Serializable {
     private final long estimatedCoveredTokens;
     private final int coveredTurnCount;
 
+    /**
+     * 创建可持久化的压缩状态快照。
+     *
+     * @param version                Store CAS 版本
+     * @param summaryMessages        已生成的模型摘要消息
+     * @param coveredUntilMessageId  摘要覆盖的最后消息 ID
+     * @param compressionVersion     成功压缩次数
+     * @param estimatedCoveredTokens 累计覆盖的估算 Token
+     * @param coveredTurnCount       累计覆盖 Turn 数
+     */
     public AgentContextCompressionState(long version, List<Message> summaryMessages,
                                         String coveredUntilMessageId, long compressionVersion,
                                         long estimatedCoveredTokens, int coveredTurnCount) {
@@ -34,6 +44,9 @@ public final class AgentContextCompressionState implements Serializable {
         this.coveredTurnCount = coveredTurnCount;
     }
 
+    /**
+     * @return 尚未覆盖任何消息、版本为零的初始压缩状态
+     */
     public static AgentContextCompressionState empty() {
         return new AgentContextCompressionState(0, Collections.emptyList(), null, 0, 0, 0);
     }
@@ -62,6 +75,9 @@ public final class AgentContextCompressionState implements Serializable {
         return coveredTurnCount;
     }
 
+    /**
+     * 深复制并冻结摘要消息，防止持久化状态被调用方间接修改。
+     */
     private static List<Message> copy(List<Message> messages) {
         List<Message> result = new ArrayList<>();
         if (messages != null) for (Message message : messages) {

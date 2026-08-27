@@ -74,10 +74,21 @@ public final class AgentActionMessage extends AbstractTextMessage<AgentActionMes
      */
     private long resolvedAt;
 
+    /**
+     * 创建默认待处理且仅供页面展示的动作消息。
+     */
     public AgentActionMessage() {
         setModelVisible(false);
     }
 
+    /**
+     * 创建与工具审批 Suspension 对应的稳定页面消息。
+     *
+     * @param turnId   执行事实所在 Turn ID
+     * @param actionId 工具调用关联 ID
+     * @param message  面向审批人的说明
+     * @return 状态为 PENDING、模型不可见的审批消息
+     */
     public static AgentActionMessage toolApproval(String turnId, String actionId,
                                                   String message) {
         if (turnId == null || turnId.trim().isEmpty()
@@ -174,6 +185,11 @@ public final class AgentActionMessage extends AbstractTextMessage<AgentActionMes
             : Collections.<String>emptyList();
     }
 
+    /**
+     * 深复制页面动作及所有通用消息状态，供 CAS 更新时使用。
+     *
+     * @return 与当前消息不共享可变元数据的副本
+     */
     @Override
     public AgentActionMessage copy() {
         AgentActionMessage copy = new AgentActionMessage();

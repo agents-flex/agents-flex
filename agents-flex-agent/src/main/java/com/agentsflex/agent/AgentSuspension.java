@@ -44,6 +44,15 @@ public final class AgentSuspension implements Serializable {
      */
     private final Map<String, Object> metadata;
 
+    /**
+     * 创建可持久化挂起点，并复制恢复所需元数据。
+     *
+     * @param type          挂起原因
+     * @param correlationId 工具调用或子 Turn 关联 ID
+     * @param message       面向调用方的等待说明
+     * @param resumePhase   恢复后继续执行的阶段
+     * @param metadata      可序列化扩展数据
+     */
     public AgentSuspension(AgentSuspensionType type, String correlationId, String message,
                            AgentTurnPhase resumePhase, Map<String, Object> metadata) {
         if (type == null) {

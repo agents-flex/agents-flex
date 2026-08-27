@@ -35,6 +35,9 @@ public final class AgentRetryPolicy implements Serializable {
      */
     private final double multiplier;
 
+    /**
+     * 从已校验构建器创建不可变指数退避策略。
+     */
     private AgentRetryPolicy(Builder builder) {
         this.maxRetries = builder.maxRetries;
         this.initialDelayMillis = builder.initialDelayMillis;
@@ -136,6 +139,12 @@ public final class AgentRetryPolicy implements Serializable {
             return this;
         }
 
+        /**
+         * 校验次数、延迟边界和增长倍数后创建策略。
+         *
+         * @return 不可变重试策略
+         * @throws IllegalStateException 配置无效时抛出
+         */
         public AgentRetryPolicy build() {
             if (maxRetries < 0 || initialDelayMillis < 0 || maxDelayMillis < initialDelayMillis
                 || multiplier < 1.0d) {

@@ -22,6 +22,9 @@ public final class AgentFormRequiredException extends RuntimeException {
 
     private final AgentFormDefinition form;
 
+    /**
+     * @param form 工具恢复执行前必须填写的非空表单定义
+     */
     public AgentFormRequiredException(AgentFormDefinition form) {
         super(message(form));
         if (form == null) {
@@ -30,11 +33,16 @@ public final class AgentFormRequiredException extends RuntimeException {
         this.form = form;
     }
 
-    /** @return 当前工具请求展示的不可变表单定义 */
+    /**
+     * @return 当前工具请求展示的不可变表单定义
+     */
     public AgentFormDefinition getForm() {
         return form;
     }
 
+    /**
+     * 从 Schema title 或 formKey 生成适合日志显示的异常消息。
+     */
     private static String message(AgentFormDefinition form) {
         if (form == null) return "Tool requires user input";
         Object title = form.getSchema().get("title");

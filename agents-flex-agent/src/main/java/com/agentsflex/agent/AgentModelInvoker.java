@@ -39,6 +39,11 @@ final class AgentModelInvoker {
      */
     private final AgentEventPublisher eventPublisher;
 
+    /**
+     * 创建统一模型调用器。
+     *
+     * @param eventPublisher 用于发布模型流增量事件的发布器
+     */
     AgentModelInvoker(AgentEventPublisher eventPublisher) {
         this.eventPublisher = eventPublisher;
     }
@@ -66,6 +71,10 @@ final class AgentModelInvoker {
         AtomicReference<Boolean> textDeltaPublished = new AtomicReference<>(false);
 
         model.chatStream(prompt, new StreamResponseListener() {
+            /**
+             * 保存底层模型客户端创建的 ChatContext，供流关闭后组装完整响应。
+             * @param context 当前流上下文
+             */
             @Override
             public void onOpen(StreamContext context) {
                 chatContext.set(context.getChatContext());
@@ -148,11 +157,20 @@ final class AgentModelInvoker {
         return turn.getAgent().getChatModel();
     }
 
+    /**
+     * 判断用户消息是否引用了任意图片、音频、视频或文件资源。
+     *
+     * @param message 待检查用户消息
+     * @return 任一媒体列表非空时返回 {@code true}
+     */
     private boolean hasMultimodalContent(UserMessage message) {
         return hasContent(message.getImageUrls()) || hasContent(message.getAudioUrls())
             || hasContent(message.getVideoUrls()) || hasContent(message.getFileUrls());
     }
 
+    /**
+     * @return 给定媒体列表是否至少包含一个元素
+     */
     private boolean hasContent(List<String> values) {
         return values != null && !values.isEmpty();
     }
@@ -238,12 +256,24 @@ final class AgentModelInvoker {
         }
     }
 
+    /**
+     * 保留运行时异常类型重新抛出，并把其他流失败统一包装为状态异常。
+     *
+     * @param error 流监听器记录的失败；为空时不做处理
+     */
     private void rethrowFailure(Throwable error) {
         if (error == null) return;
         if (error instanceof RuntimeException) throw (RuntimeException) error;
         throw new IllegalStateException("streaming model call failed", error);
     }
 
+    /**
+     * 创建包含单个键值的有序事件数据 Map。
+     *
+     * @param key   事件字段名
+     * @param value 事件字段值
+     * @return 可修改 Map
+     */
     private Map<String, Object> data(String key, Object value) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put(key, value);

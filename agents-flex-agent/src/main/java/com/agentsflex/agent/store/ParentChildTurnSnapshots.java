@@ -21,6 +21,12 @@ public final class ParentChildTurnSnapshots {
      */
     private final AgentTurnSnapshot child;
 
+    /**
+     * 创建原子保存结果。
+     *
+     * @param parent 已进入等待状态且版本递增的父快照
+     * @param child  已完成首次保存的子快照
+     */
     public ParentChildTurnSnapshots(AgentTurnSnapshot parent, AgentTurnSnapshot child) {
         this.parent = parent;
         this.child = child;

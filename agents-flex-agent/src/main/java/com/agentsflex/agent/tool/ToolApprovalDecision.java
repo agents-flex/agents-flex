@@ -69,6 +69,9 @@ public final class ToolApprovalDecision implements Serializable {
      */
     private final Map<String, Object> metadata;
 
+    /**
+     * 从构建器冻结审批结果及扩展元数据。
+     */
     private ToolApprovalDecision(Builder builder) {
         this.outcome = builder.outcome;
         this.code = builder.code;
@@ -150,6 +153,9 @@ public final class ToolApprovalDecision implements Serializable {
         private String reason;
         private final Map<String, Object> metadata = new LinkedHashMap<>();
 
+        /**
+         * @param outcome 必需的审批处理结果
+         */
         private Builder(Outcome outcome) {
             if (outcome == null) throw new IllegalArgumentException("outcome must not be null");
             this.outcome = outcome;

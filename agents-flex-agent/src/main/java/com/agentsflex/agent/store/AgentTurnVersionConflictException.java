@@ -11,6 +11,13 @@ package com.agentsflex.agent.store;
  */
 public class AgentTurnVersionConflictException extends RuntimeException {
 
+    /**
+     * 创建包含冲突 Turn 和双方版本的异常。
+     *
+     * @param turnId          冲突 Turn ID
+     * @param expectedVersion 调用方预期版本
+     * @param actualVersion   Store 当前版本
+     */
     public AgentTurnVersionConflictException(String turnId, long expectedVersion, long actualVersion) {
         super("AgentTurn version conflict, turnId=" + turnId
             + ", expectedVersion=" + expectedVersion

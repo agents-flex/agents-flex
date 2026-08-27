@@ -93,6 +93,12 @@ public final class AgentWorker implements AutoCloseable {
         }
     }
 
+    /**
+     * 领取可运行快照，逐个恢复并在租约保护下推进到下一个持久化边界。
+     *
+     * @param limit 本轮最多领取数量
+     * @return 本轮实际处理的 Turn
+     */
     private List<AgentTurn> doPollAndRun(int limit) {
         // 先修复可能因进程退出而遗漏的父 Turn 唤醒，再领取可运行任务。
         runner.recoverCompletedChildren(limit);
@@ -222,11 +228,17 @@ public final class AgentWorker implements AutoCloseable {
         if (activePolls == 0) leaseScheduler.shutdownNow();
     }
 
+    /**
+     * 标记 Worker 正在轮询，拒绝同一实例并发或递归执行 poll。
+     */
     private synchronized void beginPoll() {
         if (closed) throw new IllegalStateException("AgentWorker is already closed");
         activePolls++;
     }
 
+    /**
+     * 清除轮询标志，保证异常路径结束后 Worker 仍可继续使用。
+     */
     private synchronized void endPoll() {
         activePolls--;
         if (closed && activePolls == 0) leaseScheduler.shutdownNow();

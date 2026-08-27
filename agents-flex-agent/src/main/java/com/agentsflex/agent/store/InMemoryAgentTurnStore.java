@@ -25,16 +25,25 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class InMemoryAgentTurnStore implements AgentTurnStore {
 
-    /** 按 turnId 保存的最新不可变快照。 */
+    /**
+     * 按 turnId 保存的最新不可变快照。
+     */
     private final ConcurrentMap<String, AgentTurnSnapshot> snapshots = new ConcurrentHashMap<>();
 
-    /** 返回最新快照副本；不存在时返回 {@code null}。 */
+    /**
+     * 返回最新快照副本；不存在时返回 {@code null}。
+     */
     @Override
     public AgentTurnSnapshot load(String turnId) {
         AgentTurnSnapshot snapshot = snapshots.get(turnId);
         return snapshot == null ? null : snapshot.copy();
     }
 
+    /**
+     * 在线性内存快照中查找指定会话唯一的非终态 Turn。
+     *
+     * @return 防御性快照副本；没有活动 Turn 时返回 {@code null}
+     */
     @Override
     public AgentTurnSnapshot findActiveTurn(String conversationId) {
         if (conversationId == null) return null;
@@ -50,12 +59,17 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         }
     }
 
+    /**
+     * @return 进程当前毫秒时间，用于内存租约判断
+     */
     @Override
     public long currentTimeMillis() {
         return System.currentTimeMillis();
     }
 
-    /** 按 expectedVersion 执行 CAS 保存并返回版本加一的新快照。 */
+    /**
+     * 按 expectedVersion 执行 CAS 保存并返回版本加一的新快照。
+     */
     @Override
     public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
         if (snapshot == null) {
@@ -82,7 +96,7 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
             AgentTurnSnapshot candidate = current != null
                 && current.getState().isCancellationRequested()
                 ? snapshot.withState(snapshot.getState().toBuilder()
-                    .cancellationRequested(true).build())
+                .cancellationRequested(true).build())
                 : snapshot;
             AgentTurnSnapshot saved = candidate.withVersion(expectedVersion + 1);
             snapshots.put(turnId, saved.copy());
@@ -90,7 +104,9 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         }
     }
 
-    /** 单调写入取消标记，不覆盖其他执行状态。 */
+    /**
+     * 单调写入取消标记，不覆盖其他执行状态。
+     */
     @Override
     public boolean requestCancellation(String turnId) {
         if (turnId == null) {
@@ -114,7 +130,9 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         }
     }
 
-    /** 在同一个同步临界区保存等待中的父 Turn 和新建子 Turn。 */
+    /**
+     * 在同一个同步临界区保存等待中的父 Turn 和新建子 Turn。
+     */
     @Override
     public ParentChildTurnSnapshots saveParentAndChild(AgentTurnSnapshot parent,
                                                        long expectedParentVersion,
@@ -142,7 +160,9 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         }
     }
 
-    /** 原子领取可运行且没有有效租约的 Turn，并为每次领取生成唯一 leaseId。 */
+    /**
+     * 原子领取可运行且没有有效租约的 Turn，并为每次领取生成唯一 leaseId。
+     */
     @Override
     public List<AgentTurnSnapshot> claimRunnable(String workerId, long now,
                                                  long leaseMillis, int limit) {
@@ -158,7 +178,7 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
                 if (!isRunnable(current, now)
                     || hasLeasedParent(current, now)
                     || (current.getState().getLeaseUntil() > now
-                        && current.getState().getLeaseOwner() != null)) {
+                    && current.getState().getLeaseOwner() != null)) {
                     continue;
                 }
                 AgentTurnState state = current.getState();
@@ -175,10 +195,12 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         return claimed;
     }
 
-    /** 仅允许当前 leaseId 持有者延长尚未过期的租约。 */
+    /**
+     * 仅允许当前 leaseId 持有者延长尚未过期的租约。
+     */
     @Override
     public AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
-                                       long now, long leaseUntil) {
+                                        long now, long leaseUntil) {
         synchronized (snapshots) {
             AgentTurnSnapshot current = requireOwned(turnId, workerId, leaseId);
             if (current.getState().getLeaseUntil() <= now || leaseUntil <= now) {
@@ -192,7 +214,9 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         }
     }
 
-    /** 释放匹配 Worker 和 leaseId 的租约；过期调用不会影响新租约。 */
+    /**
+     * 释放匹配 Worker 和 leaseId 的租约；过期调用不会影响新租约。
+     */
     @Override
     public void releaseLease(String turnId, String workerId, String leaseId) {
         synchronized (snapshots) {
@@ -210,7 +234,9 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         }
     }
 
-    /** 查找已经终止但父 Turn 仍等待其完成信号的子 Turn。 */
+    /**
+     * 查找已经终止但父 Turn 仍等待其完成信号的子 Turn。
+     */
     @Override
     public List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(int limit) {
         if (limit <= 0) throw new IllegalArgumentException("limit must be greater than 0");
@@ -227,7 +253,7 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
                     && parentState.getStatus() == AgentTurnStatus.WAITING_FOR_CHILD
                     && parentState.getSuspension() != null
                     && childState.getTurnId().equals(
-                        parentState.getSuspension().getCorrelationId())) {
+                    parentState.getSuspension().getCorrelationId())) {
                     result.add(child.copy());
                 }
             }
@@ -235,7 +261,9 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         return result;
     }
 
-    /** 判断快照当前可以由 Worker 领取推进。 */
+    /**
+     * 判断快照当前可以由 Worker 领取推进。
+     */
     private boolean isRunnable(AgentTurnSnapshot snapshot, long now) {
         AgentTurnState state = snapshot.getState();
         if (state.isCancellationRequested() && !state.getStatus().isTerminal()) {
@@ -248,7 +276,9 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         return status == AgentTurnStatus.RETRY_SCHEDULED && state.getNextRunnableAt() <= now;
     }
 
-    /** 父 Turn 仍由 Worker 推进时，子 Turn 暂不参与领取。 */
+    /**
+     * 父 Turn 仍由 Worker 推进时，子 Turn 暂不参与领取。
+     */
     private boolean hasLeasedParent(AgentTurnSnapshot snapshot, long now) {
         if (snapshot.getState().getParentTurnId() == null) {
             return false;
@@ -258,7 +288,9 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
             && parent.getState().getLeaseUntil() > now;
     }
 
-    /** 校验指定 Worker 和 leaseId 仍拥有目标 Turn。 */
+    /**
+     * 校验指定 Worker 和 leaseId 仍拥有目标 Turn。
+     */
     private AgentTurnSnapshot requireOwned(String turnId, String workerId, String leaseId) {
         AgentTurnSnapshot current = snapshots.get(turnId);
         if (current == null) {

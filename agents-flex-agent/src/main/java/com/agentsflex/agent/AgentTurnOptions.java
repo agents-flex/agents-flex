@@ -31,6 +31,9 @@ public final class AgentTurnOptions {
      */
     private final boolean streaming;
 
+    /**
+     * 从构建器冻结单次运行覆盖项，并复制业务元数据。
+     */
     private AgentTurnOptions(Builder builder) {
         this.executionPolicy = builder.executionPolicy;
         this.metadata = Collections.unmodifiableMap(new HashMap<>(builder.metadata));

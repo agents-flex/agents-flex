@@ -40,6 +40,13 @@ final class AgentRunnerPlanning {
     private final AgentLoader agentLoader;
     private final AgentEventPublisher eventPublisher;
 
+    /**
+     * 创建任务规划协调器。
+     *
+     * @param runner         负责 Turn 生命周期和持久化的 Runner
+     * @param agentLoader    用于加载允许委派的子 Agent
+     * @param eventPublisher 规划生命周期事件发布器
+     */
     AgentRunnerPlanning(AgentRunner runner, AgentLoader agentLoader,
                         AgentEventPublisher eventPublisher) {
         this.runner = runner;
@@ -215,6 +222,14 @@ final class AgentRunnerPlanning {
         }
     }
 
+    /**
+     * 解析模型提交的计划创建调用，校验策略限制并写入 Turn。
+     *
+     * @param turn 开启规划能力且尚未创建计划的 Turn
+     * @param call {@link AgentPlanningTool#NAME} 工具调用
+     * @return 向模型确认计划 ID 和任务数量的 ToolMessage
+     * @throws IllegalArgumentException 规划未启用、计划已存在或参数不符合策略时抛出
+     */
     private ToolMessage createTaskPlan(AgentTurn turn, ToolCall call) {
         if (!turn.isPlanningEnabled()) {
             throw new IllegalArgumentException("task planning is not enabled for this turn");
@@ -239,6 +254,14 @@ final class AgentRunnerPlanning {
         return toolResult(call, "planId", plan.getId(), "taskCount", tasks.size());
     }
 
+    /**
+     * 在重规划阶段用模型提交的新定义调整剩余任务。
+     *
+     * @param turn 当前处于 REPLANNING 的父 Turn
+     * @param call 计划更新工具调用
+     * @return 包含修订次数和剩余任务数的确认消息
+     * @throws IllegalArgumentException 当前状态、修订次数或更新内容不合法时抛出
+     */
     private ToolMessage updateTaskPlan(AgentTurn turn, ToolCall call) {
         AgentTaskPlan plan = turn.getTaskPlan();
         AgentPlanningPolicy policy = turn.getAgent().getPlanningPolicy();
@@ -262,6 +285,13 @@ final class AgentRunnerPlanning {
             "revisionCount", updated.getRevisionCount(), "pendingTaskCount", values.size());
     }
 
+    /**
+     * 把子 Turn 终态映射为计划任务终态，并按失败策略推进、停止或进入重规划。
+     *
+     * @param parent     持有任务计划的父 Turn
+     * @param child      已结束的子 Turn
+     * @param taskResult 已按策略截断的子任务输出
+     */
     private void finishActiveTask(AgentTurn parent, AgentTurn child, String taskResult) {
         AgentTaskPlan plan = parent.getTaskPlan();
         if (plan == null || plan.getActiveTask() == null
@@ -288,6 +318,14 @@ final class AgentRunnerPlanning {
         eventPublisher.notifyTaskFinished(parent, activeTask, child, taskStatus);
     }
 
+    /**
+     * 将规划工具的 JSON 数组转换为经过委派白名单校验的任务定义。
+     *
+     * @param turn   提供规划策略和当前 Agent ID 的 Turn
+     * @param values 模型提交的任务数组
+     * @return 保持输入顺序并写入 position 的任务列表
+     * @throws IllegalArgumentException 必填字段缺失或目标 Agent 不允许委派时抛出
+     */
     private List<AgentTask> parseTasks(AgentTurn turn, JSONArray values) {
         AgentPlanningPolicy policy = turn.getAgent().getPlanningPolicy();
         List<AgentTask> tasks = new ArrayList<>(values.size());
@@ -312,6 +350,14 @@ final class AgentRunnerPlanning {
         return tasks;
     }
 
+    /**
+     * 校验实际启动的子 Agent 与任务定义及父 Agent 委派策略一致。
+     *
+     * @param parent       父 Turn
+     * @param task         即将执行的计划任务
+     * @param childAgentId 实际子 Agent ID
+     * @throws IllegalArgumentException Agent 不匹配或不在允许范围时抛出
+     */
     private void validateTaskAgent(AgentTurn parent, AgentTask task, String childAgentId) {
         String expected = StringUtil.hasText(task.getAssignedAgentId())
             ? task.getAssignedAgentId() : parent.getAgent().getId();
@@ -322,6 +368,13 @@ final class AgentRunnerPlanning {
         }
     }
 
+    /**
+     * 生成传给子 Agent 的受限任务提示，包含总体目标、当前任务和期望输出。
+     *
+     * @param plan 父计划
+     * @param task 当前任务
+     * @return 子 Agent 的用户输入文本
+     */
     private String taskInput(AgentTaskPlan plan, AgentTask task) {
         return "总体目标：" + plan.getGoal()
             + "\n当前任务：" + task.getTitle()
@@ -331,6 +384,12 @@ final class AgentRunnerPlanning {
             + "\n请只完成当前任务，并返回可供父 Agent 汇总的结果。";
     }
 
+    /**
+     * 从后向前查找最后一个非空任务结果，供无需模型汇总的计划直接返回。
+     *
+     * @param plan 已执行到末尾的计划
+     * @return 最近任务结果；均为空时返回稳定的完成提示
+     */
     private String lastTaskResult(AgentTaskPlan plan) {
         List<AgentTask> tasks = plan.getTasks();
         for (int index = tasks.size() - 1; index >= 0; index--) {
@@ -339,12 +398,26 @@ final class AgentRunnerPlanning {
         return "任务计划已执行完成";
     }
 
+    /**
+     * 判断失败后的计划是否仍满足重规划次数、能力和剩余任务条件。
+     *
+     * @param policy 当前规划策略
+     * @param plan   已记录任务失败的计划
+     * @return 可以进入 REPLANNING 时返回 {@code true}
+     */
     private boolean canReplan(AgentPlanningPolicy policy, AgentTaskPlan plan) {
         return policy.getMaxReplans() > plan.getRevisionCount()
             && (policy.isTaskRevisionAllowed() || policy.isTaskAppendAllowed())
             && plan.getNextTask() != null;
     }
 
+    /**
+     * 按父 Agent 策略限制回填到父上下文的子任务结果长度。
+     *
+     * @param parent 父 Turn
+     * @param value  子 Turn 完整输出
+     * @return 原值、截断并带提示的值，或 {@code null}
+     */
     private String limitTaskResult(AgentTurn parent, String value) {
         if (value == null) return null;
         int maxLength = parent.getAgent().getPlanningPolicy().getTaskResultMaxLength();
@@ -352,11 +425,24 @@ final class AgentRunnerPlanning {
         return value.substring(0, maxLength) + "\n[子任务结果已截断，完整内容保留在子 Turn 中]";
     }
 
+    /**
+     * 将工具调用参数转换为便于类型读取的 JSONObject。
+     *
+     * @param call 工具调用
+     * @return 参数对象；调用没有参数时返回空对象
+     */
     private JSONObject arguments(ToolCall call) {
         Map<String, Object> values = call.getArgsMap();
         return values == null ? new JSONObject() : new JSONObject(values);
     }
 
+    /**
+     * 构造规划工具的 JSON 成功响应，并绑定稳定 Tool Call ID。
+     *
+     * @param call   原始工具调用
+     * @param values 追加到响应中的键值对
+     * @return 可直接加入 Prompt 的 ToolMessage
+     */
     private ToolMessage toolResult(ToolCall call, Object... values) {
         Map<String, Object> result = attributes("accepted", true);
         result.putAll(attributes(values));
@@ -366,6 +452,12 @@ final class AgentRunnerPlanning {
         return message;
     }
 
+    /**
+     * 把交替出现的键和值组装为有序 Map，忽略不完整或含空值的键值对。
+     *
+     * @param values 交替排列的键和值
+     * @return 保持参数顺序的属性 Map
+     */
     private Map<String, Object> attributes(Object... values) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (int index = 0; index + 1 < values.length; index += 2) {
@@ -376,6 +468,12 @@ final class AgentRunnerPlanning {
         return result;
     }
 
+    /**
+     * 返回工具结果关联键，优先使用模型生成的调用 ID，缺失时退化为工具名。
+     *
+     * @param call 工具调用
+     * @return 非空关联键
+     */
     private String callKey(ToolCall call) {
         return StringUtil.hasText(call.getId()) ? call.getId() : call.getName();
     }

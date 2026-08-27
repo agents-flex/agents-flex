@@ -155,6 +155,13 @@ public final class AgentRunner {
         this(turnStore, agentLoader, null);
     }
 
+    /**
+     * 创建 Runner 并组装事件、规划、模型调用与可选 ChatMemory 投影组件。
+     *
+     * @param turnStore          Snapshot、CAS 和租约存储
+     * @param agentLoader        Agent 版本加载器
+     * @param chatMemoryProvider 可选业务会话存储 Provider
+     */
     private AgentRunner(AgentTurnStore turnStore, AgentLoader agentLoader,
                         ChatMemoryProvider chatMemoryProvider) {
         if (turnStore == null || agentLoader == null) {
@@ -476,6 +483,11 @@ public final class AgentRunner {
         }
     }
 
+    /**
+     * 首次保存会话 Turn，回写 Store 分配版本后同步 ChatMemory 并发布事件。
+     *
+     * @param turn 尚未持久化的 READY Turn
+     */
     private void saveInitialConversationSnapshot(AgentTurn turn) {
         synchronized (turn) {
             AgentTurnSnapshot saved = turnStore.save(turn.toSnapshot(), -1);
@@ -1287,7 +1299,9 @@ public final class AgentRunner {
         turn.putMetadata("agentsflex.interruptedHistoryFinalized", true);
     }
 
-    /** 将执行策略中的收束消息模板渲染为本次 Turn 的实际消息内容。 */
+    /**
+     * 将执行策略中的收束消息模板渲染为本次 Turn 的实际消息内容。
+     */
     private String renderInterruptedMessage(String template, AgentTurn turn,
                                             ToolCall call, String reason) {
         return template
@@ -1329,6 +1343,11 @@ public final class AgentRunner {
         }
     }
 
+    /**
+     * 按产生顺序发布 Step 临界区结束后延迟的事件。
+     *
+     * @param events 不应包含空值的事件动作
+     */
     private void publishDeferredEvents(List<Runnable> events) {
         for (Runnable event : events) {
             event.run();
@@ -1399,6 +1418,12 @@ public final class AgentRunner {
         return null;
     }
 
+    /**
+     * 校验 Turn 可以继续推进。
+     *
+     * @throws IllegalArgumentException Turn 为空时抛出
+     * @throws IllegalStateException    Turn 已进入终态时抛出
+     */
     private void validateStep(AgentTurn turn) {
         if (turn == null) {
             throw new IllegalArgumentException("turn must not be null");
@@ -1408,6 +1433,11 @@ public final class AgentRunner {
         }
     }
 
+    /**
+     * 校验模型响应存在、无错误且包含消息。
+     *
+     * @throws IllegalStateException 响应协议不完整时抛出
+     */
     private void validateResponse(AiMessageResponse response) {
         if (response == null) {
             throw new IllegalStateException("chat model returned null response");
@@ -1603,12 +1633,20 @@ public final class AgentRunner {
         }
     }
 
+    /**
+     * 校验即将用于新 Turn 的 Agent 定义非空。
+     */
     private void prepareAgent(Agent agent) {
         if (agent == null) {
             throw new IllegalArgumentException("agent must not be null");
         }
     }
 
+    /**
+     * 加载并校验指定 ID 的当前生效 Agent。
+     *
+     * @return Loader 返回且 ID 匹配的 Agent
+     */
     private Agent loadActiveAgent(String agentId) {
         if (!StringUtil.hasText(agentId)) {
             throw new IllegalArgumentException("agentId must not be blank");
@@ -1764,12 +1802,18 @@ public final class AgentRunner {
         }
     }
 
+    /**
+     * 校验恢复命令类型与当前挂起分支要求完全一致。
+     */
     private void requireCommand(AgentResumeCommand command, AgentResumeCommandType type) {
         if (command.getType() != type) {
             throw new IllegalArgumentException(type + " command is required");
         }
     }
 
+    /**
+     * 校验迟到恢复命令仍指向当前 Suspension 的关联对象。
+     */
     private void requireCorrelation(AgentSuspension suspension, AgentResumeCommand command) {
         if (!suspension.getCorrelationId().equals(command.getCorrelationId())) {
             throw new IllegalArgumentException("resume command correlationId does not match suspension");
@@ -1808,6 +1852,9 @@ public final class AgentRunner {
      * 表示恢复执行时，当前 Agent 已无法提供快照所记录的工具。
      */
     private static final class AgentToolNotFoundException extends RuntimeException {
+        /**
+         * @param name Snapshot 中存在但当前 Agent 已无法解析的工具名
+         */
         private AgentToolNotFoundException(String name) {
             super("tool not found: " + name);
         }

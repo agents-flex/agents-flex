@@ -59,6 +59,15 @@ public final class AgentTurn {
      */
     private Throwable error;
 
+    /**
+     * 创建全新 Turn，解析有效策略并初始化规划及基础工具状态。
+     *
+     * @param id              新 Turn ID
+     * @param agent           冻结的 Agent 定义
+     * @param prompt          本轮可变 Prompt
+     * @param createdAt       创建时间
+     * @param executionPolicy 单次策略覆盖；为空时使用 Agent 默认策略
+     */
     private AgentTurn(String id, Agent agent, MemoryPrompt prompt, long createdAt,
                       AgentExecutionPolicy executionPolicy) {
         this(agent, prompt, new AgentTurnState(id,
@@ -67,12 +76,24 @@ public final class AgentTurn {
         prepareBaseTools();
     }
 
+    /**
+     * 选择单次覆盖策略或 Agent 默认策略，并校验 Agent 非空。
+     *
+     * @return 本 Turn 应冻结的执行策略
+     */
     private static AgentExecutionPolicy effectiveExecutionPolicy(
         Agent agent, AgentExecutionPolicy executionPolicy) {
         if (agent == null) throw new IllegalArgumentException("agent must not be null");
         return executionPolicy == null ? agent.getExecutionPolicy() : executionPolicy;
     }
 
+    /**
+     * 用已有状态组装 Turn，适用于新建和 Snapshot 恢复路径。
+     *
+     * @param agent  与状态版本匹配的 Agent
+     * @param prompt 从状态重建或新建的 Prompt
+     * @param state  可继续推进的状态
+     */
     private AgentTurn(Agent agent, MemoryPrompt prompt, AgentTurnState state) {
         if (agent == null) {
             throw new IllegalArgumentException("agent must not be null");
@@ -644,6 +665,9 @@ public final class AgentTurn {
         state.incrementIterationCount();
     }
 
+    /**
+     * 在 Runner 接受当前步骤后递增持久化步骤计数。
+     */
     void incrementStep() {
         state.incrementStepCount();
     }
@@ -874,6 +898,12 @@ public final class AgentTurn {
      */
     private static final class RestoredAgentTurnException extends RuntimeException {
 
+        /**
+         * 用持久化的异常类型名和消息创建只读恢复异常。
+         *
+         * @param errorType 原异常类名
+         * @param message   原异常消息
+         */
         private RestoredAgentTurnException(String errorType, String message) {
             super((errorType == null ? "" : errorType + ": ") + message);
         }

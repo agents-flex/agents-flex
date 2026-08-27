@@ -35,6 +35,13 @@ public final class AgentStepResult {
      */
     private final Throwable error;
 
+    /**
+     * 创建一次 Runner 步骤的不可变结果。
+     *
+     * @param response     本步骤模型响应
+     * @param toolMessages 已执行工具产生的消息
+     * @param error        导致步骤失败的异常
+     */
     private AgentStepResult(AiMessageResponse response,
                             List<ToolMessage> toolMessages, Throwable error) {
         this.response = response;

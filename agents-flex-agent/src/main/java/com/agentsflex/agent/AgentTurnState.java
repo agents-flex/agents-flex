@@ -34,7 +34,9 @@ public final class AgentTurnState implements Serializable {
 
     private String turnId;
     private AgentExecutionPolicy executionPolicy;
-    /** 当前 Turn 是否使用模型流式调用；随 Snapshot 持久化，恢复后保持一致。 */
+    /**
+     * 当前 Turn 是否使用模型流式调用；随 Snapshot 持久化，恢复后保持一致。
+     */
     private boolean streaming;
     private AgentTurnStatus status = AgentTurnStatus.READY;
     private AgentTurnPhase phase = AgentTurnPhase.MODEL;
@@ -72,6 +74,13 @@ public final class AgentTurnState implements Serializable {
     private Map<String, Object> metadata = Collections.emptyMap();
     private boolean immutable;
 
+    /**
+     * 创建供运行中 Turn 持有的可变初始状态，并初始化所有集合字段。
+     *
+     * @param turnId          全局唯一 Turn ID
+     * @param executionPolicy 创建时冻结的执行策略
+     * @param createdAt       创建时间戳（毫秒）
+     */
     AgentTurnState(String turnId, AgentExecutionPolicy executionPolicy, long createdAt) {
         if (turnId == null) throw new IllegalArgumentException("turnId must not be null");
         this.turnId = turnId;
@@ -91,6 +100,12 @@ public final class AgentTurnState implements Serializable {
     private AgentTurnState() {
     }
 
+    /**
+     * 深复制另一个状态，并按用途决定集合是否暴露为不可修改视图。
+     *
+     * @param source    复制来源
+     * @param immutable {@code true} 表示生成 Snapshot 使用的不可变状态
+     */
     private AgentTurnState(AgentTurnState source, boolean immutable) {
         this.turnId = source.turnId;
         this.executionPolicy = source.executionPolicy;
@@ -134,10 +149,20 @@ public final class AgentTurnState implements Serializable {
         this.immutable = immutable;
     }
 
+    /**
+     * 创建可继续执行状态转换的深复制。
+     *
+     * @return 集合和消息均与当前对象隔离的可变状态
+     */
     AgentTurnState mutableCopy() {
         return new AgentTurnState(this, false);
     }
 
+    /**
+     * 创建适合持久化 Snapshot 的深复制。
+     *
+     * @return 所有集合均不可修改、嵌套消息已隔离的状态
+     */
     AgentTurnState immutableCopy() {
         return new AgentTurnState(this, true);
     }
@@ -426,6 +451,11 @@ public final class AgentTurnState implements Serializable {
         return immutable;
     }
 
+    /**
+     * 拒绝对 Snapshot 持有的不可变状态执行任何写操作。
+     *
+     * @throws UnsupportedOperationException 当前状态不可变时抛出
+     */
     private void requireMutable() {
         if (immutable) throw new UnsupportedOperationException("AgentTurnState is immutable");
     }
@@ -460,11 +490,17 @@ public final class AgentTurnState implements Serializable {
         pendingToolCalls = AgentMessageUtils.copyToolCalls(value);
     }
 
+    /**
+     * 清空尚未执行的工具调用；仅允许用于运行态可变副本。
+     */
     void clearPendingToolCalls() {
         requireMutable();
         pendingToolCalls.clear();
     }
 
+    /**
+     * 按模型声明顺序移除首个待执行工具调用；列表为空时不做处理。
+     */
     void removeFirstPendingToolCall() {
         requireMutable();
         if (!pendingToolCalls.isEmpty()) pendingToolCalls.remove(0);
@@ -480,6 +516,9 @@ public final class AgentTurnState implements Serializable {
         iterationCount = value;
     }
 
+    /**
+     * 在一次模型调用正式开始前递增模型迭代计数。
+     */
     void incrementIterationCount() {
         requireMutable();
         iterationCount++;
@@ -490,6 +529,9 @@ public final class AgentTurnState implements Serializable {
         stepCount = value;
     }
 
+    /**
+     * 在 Runner 接受一个新步骤时递增步骤计数。
+     */
     void incrementStepCount() {
         requireMutable();
         stepCount++;
@@ -510,6 +552,13 @@ public final class AgentTurnState implements Serializable {
         totalTokens = value;
     }
 
+    /**
+     * 累加一次模型响应报告的 Token 用量。
+     *
+     * @param input  输入 Token 数
+     * @param output 输出 Token 数
+     * @param total  总 Token 数
+     */
     void addUsage(long input, long output, long total) {
         requireMutable();
         inputTokens += input;
@@ -522,11 +571,19 @@ public final class AgentTurnState implements Serializable {
         toolCallCount = value;
     }
 
+    /**
+     * 在工具调用通过执行前检查后递增累计工具次数。
+     */
     void incrementToolCallCount() {
         requireMutable();
         toolCallCount++;
     }
 
+    /**
+     * 回滚尚未真正执行的工具计数，最小保持为零。
+     *
+     * <p>主要用于审批或用户输入导致工具在执行前挂起的路径。</p>
+     */
     void rollbackToolCallCount() {
         requireMutable();
         if (toolCallCount > 0) toolCallCount--;
@@ -537,11 +594,19 @@ public final class AgentTurnState implements Serializable {
         retryCount = value;
     }
 
+    /**
+     * 在一次可重试失败被调度后递增累计重试次数。
+     */
     void incrementRetryCount() {
         requireMutable();
         retryCount++;
     }
 
+    /**
+     * 把已结束子 Turn 的 Token、工具调用和重试用量汇总到父 Turn。
+     *
+     * @param child 子 Turn 的最终状态
+     */
     void addChildUsage(AgentTurnState child) {
         requireMutable();
         inputTokens += child.inputTokens;
@@ -576,11 +641,23 @@ public final class AgentTurnState implements Serializable {
         toolApprovals = value == null ? new HashMap<>() : new HashMap<>(value);
     }
 
+    /**
+     * 记录指定工具调用的人工审批结论，供恢复后的执行阶段消费。
+     *
+     * @param callId   工具调用 ID
+     * @param approved {@code true} 表示批准，{@code false} 表示拒绝
+     */
     void approveTool(String callId, boolean approved) {
         requireMutable();
         toolApprovals.put(callId, approved);
     }
 
+    /**
+     * 查询工具调用已经记录的审批结论。
+     *
+     * @param callId 工具调用 ID
+     * @return 批准或拒绝；尚未审批时返回 {@code null}
+     */
     Boolean getToolApproval(String callId) {
         return toolApprovals.get(callId);
     }
@@ -590,6 +667,13 @@ public final class AgentTurnState implements Serializable {
         toolInputData = copyToolInputData(value, false);
     }
 
+    /**
+     * 保存一次用户输入工具调用提交的结构化数据，并复制调用方 Map。
+     *
+     * @param callId 工具调用 ID
+     * @param value  提交数据；空值按空 Map 保存
+     * @throws IllegalArgumentException callId 为空时抛出
+     */
     void putToolInputData(String callId, Map<String, ?> value) {
         requireMutable();
         if (callId == null || callId.trim().isEmpty()) {
@@ -600,6 +684,12 @@ public final class AgentTurnState implements Serializable {
             ? new HashMap<String, Object>() : new HashMap<String, Object>(value));
     }
 
+    /**
+     * 返回指定工具调用的提交数据副本，避免外部修改持久化状态。
+     *
+     * @param callId 工具调用 ID
+     * @return 不可修改的数据副本；没有记录时返回空 Map
+     */
     Map<String, Object> getToolInputData(String callId) {
         if (toolInputData == null) return Collections.emptyMap();
         Map<String, Object> value = toolInputData.get(callId);
@@ -637,6 +727,9 @@ public final class AgentTurnState implements Serializable {
         finalMessage = value == null ? null : value.copy();
     }
 
+    /**
+     * 同时更新持久化异常类型名和消息，避免出现半更新错误状态。
+     */
     void setError(String type, String message) {
         requireMutable();
         errorType = type;
@@ -683,6 +776,12 @@ public final class AgentTurnState implements Serializable {
         metadata = value == null ? new HashMap<>() : new HashMap<>(value);
     }
 
+    /**
+     * 写入单个运行元数据项。
+     *
+     * @param key   元数据键
+     * @param value 可序列化的元数据值
+     */
     void putMetadata(String key, Object value) {
         requireMutable();
         metadata.put(key, value);
@@ -697,6 +796,11 @@ public final class AgentTurnState implements Serializable {
     public static final class Builder {
         private final AgentTurnState state;
 
+        /**
+         * 包装一份专供当前 Builder 修改的可变状态。
+         *
+         * @param state 不与已发布 Snapshot 共享集合的状态
+         */
         private Builder(AgentTurnState state) {
             this.state = state;
         }
@@ -876,11 +980,23 @@ public final class AgentTurnState implements Serializable {
             return this;
         }
 
+        /**
+         * 冻结当前字段并生成新的不可变深复制。
+         *
+         * @return 可安全交给 Snapshot 或 Store 的状态
+         */
         public AgentTurnState build() {
             return state.immutableCopy();
         }
     }
 
+    /**
+     * 深复制按 Tool Call ID 分组的表单数据，并可冻结外层及内层 Map。
+     *
+     * @param source    原始数据；允许为空
+     * @param immutable 是否返回不可修改结构
+     * @return 不与来源共享 Map 的两层数据结构
+     */
     private static Map<String, Map<String, Object>> copyToolInputData(
         Map<String, Map<String, Object>> source, boolean immutable) {
         Map<String, Map<String, Object>> result = new HashMap<>();

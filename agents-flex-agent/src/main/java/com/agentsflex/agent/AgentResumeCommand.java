@@ -43,12 +43,22 @@ public final class AgentResumeCommand implements Serializable {
      */
     private final Map<String, Object> metadata;
 
+    /**
+     * 创建只携带文本和审计元数据的兼容恢复命令。
+     *
+     * @param type          恢复动作类型
+     * @param content       用户文本或拒绝原因
+     * @param correlationId 工具调用或子 Turn 关联 ID
+     * @param metadata      业务审计元数据
+     */
     public AgentResumeCommand(AgentResumeCommandType type, String content,
                               String correlationId, Map<String, Object> metadata) {
         this(type, content, correlationId, null, metadata);
     }
 
-    /** 创建同时支持文本和结构化输入的恢复命令。 */
+    /**
+     * 创建同时支持文本和结构化输入的恢复命令。
+     */
     public AgentResumeCommand(AgentResumeCommandType type, String content,
                               String correlationId, Map<String, Object> data,
                               Map<String, Object> metadata) {
@@ -78,13 +88,17 @@ public final class AgentResumeCommand implements Serializable {
         return new AgentResumeCommand(AgentResumeCommandType.USER_INPUT, content, null, null);
     }
 
-    /** 创建与 request_user_input ToolCall 关联的文本输入命令。 */
+    /**
+     * 创建与 request_user_input ToolCall 关联的文本输入命令。
+     */
     public static AgentResumeCommand userInput(String callId, String content) {
         return new AgentResumeCommand(AgentResumeCommandType.USER_INPUT,
             content, callId, null, null);
     }
 
-    /** 创建与 request_user_input ToolCall 关联的结构化表单提交命令。 */
+    /**
+     * 创建与 request_user_input ToolCall 关联的结构化表单提交命令。
+     */
     public static AgentResumeCommand userInput(String callId, Map<String, ?> data) {
         Map<String, Object> values = data == null
             ? null : new LinkedHashMap<String, Object>(data);
@@ -164,7 +178,9 @@ public final class AgentResumeCommand implements Serializable {
         return correlationId;
     }
 
-    /** @return 不可修改的结构化用户输入；非表单命令返回空 Map */
+    /**
+     * @return 不可修改的结构化用户输入；非表单命令返回空 Map
+     */
     public Map<String, Object> getData() {
         return data;
     }
@@ -176,6 +192,9 @@ public final class AgentResumeCommand implements Serializable {
         return metadata;
     }
 
+    /**
+     * 复制结构化提交数据并返回保持字段顺序的不可修改 Map。
+     */
     private static Map<String, Object> immutableMap(Map<String, Object> values) {
         return values == null || values.isEmpty()
             ? Collections.<String, Object>emptyMap()

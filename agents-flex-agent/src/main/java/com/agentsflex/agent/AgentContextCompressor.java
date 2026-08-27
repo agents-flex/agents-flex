@@ -15,5 +15,11 @@ import java.util.List;
 @FunctionalInterface
 public interface AgentContextCompressor {
 
+    /**
+     * 将一段模型可见历史转换为更短且协议合法的消息序列。
+     *
+     * @param messages 按时间正序排列、调用期间不应修改的输入消息
+     * @return 非空压缩结果；实现不得返回孤立或未闭合的工具协议
+     */
     List<Message> compress(List<Message> messages);
 }

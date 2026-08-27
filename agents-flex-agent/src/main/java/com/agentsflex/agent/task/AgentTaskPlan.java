@@ -27,29 +27,54 @@ public final class AgentTaskPlan implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 当前 Turn 内稳定的计划 ID。 */
+    /**
+     * 当前 Turn 内稳定的计划 ID。
+     */
     private final String id;
-    /** 模型规划时声明的总体目标。 */
+    /**
+     * 模型规划时声明的总体目标。
+     */
     private final String goal;
-    /** 整个计划的生命周期状态。 */
+    /**
+     * 整个计划的生命周期状态。
+     */
     private final AgentTaskPlanStatus status;
-    /** 按 position 排列的不可变任务列表。 */
+    /**
+     * 按 position 排列的不可变任务列表。
+     */
     private final List<AgentTask> tasks;
-    /** 当前正在执行的任务 ID；没有活动任务时为空。 */
+    /**
+     * 当前正在执行的任务 ID；没有活动任务时为空。
+     */
     private final String activeTaskId;
-    /** 最近一次任务失败或计划停止原因。 */
+    /**
+     * 最近一次任务失败或计划停止原因。
+     */
     private final String error;
-    /** 模型已经成功调整计划的次数。 */
+    /**
+     * 模型已经成功调整计划的次数。
+     */
     private final int revisionCount;
-    /** 最近一次调整计划的原因。 */
+    /**
+     * 最近一次调整计划的原因。
+     */
     private final String lastRevisionReason;
-    /** 计划创建时间。 */
+    /**
+     * 计划创建时间。
+     */
     private final long createdAt;
-    /** 最近一次状态转换时间。 */
+    /**
+     * 最近一次状态转换时间。
+     */
     private final long updatedAt;
-    /** 父 Agent 完成最终汇总的时间。 */
+    /**
+     * 父 Agent 完成最终汇总的时间。
+     */
     private final long completedAt;
 
+    /**
+     * 从构建器生成不可变计划，并复制任务列表以隔离后续状态转换。
+     */
     private AgentTaskPlan(Builder builder) {
         id = builder.id;
         goal = builder.goal;
@@ -64,15 +89,23 @@ public final class AgentTaskPlan implements Serializable {
         completedAt = builder.completedAt;
     }
 
-    /** 创建尚未执行的顺序任务计划。 */
+    /**
+     * 创建尚未执行的顺序任务计划。
+     */
     public static AgentTaskPlan create(String goal, List<AgentTask> tasks) {
         return builder(goal).tasks(normalize(tasks)).build();
     }
 
-    /** 创建以总体目标为必填项的计划构建器。 */
-    public static Builder builder(String goal) { return new Builder(goal); }
+    /**
+     * 创建以总体目标为必填项的计划构建器。
+     */
+    public static Builder builder(String goal) {
+        return new Builder(goal);
+    }
 
-    /** 返回包含当前全部定义和状态的构建器。 */
+    /**
+     * 返回包含当前全部定义和状态的构建器。
+     */
     public Builder toBuilder() {
         return new Builder(goal).id(id).status(status).tasks(tasks)
             .activeTaskId(activeTaskId).error(error).createdAt(createdAt)
@@ -80,35 +113,100 @@ public final class AgentTaskPlan implements Serializable {
             .updatedAt(updatedAt).completedAt(completedAt);
     }
 
-    /** @return 与当前计划完全隔离的深拷贝 */
-    public AgentTaskPlan copy() { return toBuilder().build(); }
-    /** @return 计划稳定 ID */
-    public String getId() { return id; }
-    /** @return 总体目标 */
-    public String getGoal() { return goal; }
-    /** @return 计划生命周期状态 */
-    public AgentTaskPlanStatus getStatus() { return status; }
-    /** @return 按执行顺序排列的任务深拷贝 */
-    public List<AgentTask> getTasks() { return copyTasks(tasks); }
-    /** @return 当前活动任务 ID */
-    public String getActiveTaskId() { return activeTaskId; }
-    /** @return 最近一次失败或停止原因 */
-    public String getError() { return error; }
-    /** @return 已成功重规划次数 */
-    public int getRevisionCount() { return revisionCount; }
-    /** @return 最近一次重规划原因 */
-    public String getLastRevisionReason() { return lastRevisionReason; }
-    /** @return 计划创建时间 */
-    public long getCreatedAt() { return createdAt; }
-    /** @return 最近更新时间 */
-    public long getUpdatedAt() { return updatedAt; }
-    /** @return 计划完成时间；未完成时为 0 */
-    public long getCompletedAt() { return completedAt; }
+    /**
+     * @return 与当前计划完全隔离的深拷贝
+     */
+    public AgentTaskPlan copy() {
+        return toBuilder().build();
+    }
 
-    /** @return 当前活动任务副本；没有活动任务时为 {@code null} */
-    public AgentTask getActiveTask() { return find(activeTaskId); }
+    /**
+     * @return 计划稳定 ID
+     */
+    public String getId() {
+        return id;
+    }
 
-    /** 返回下一个尚未调度的任务。 */
+    /**
+     * @return 总体目标
+     */
+    public String getGoal() {
+        return goal;
+    }
+
+    /**
+     * @return 计划生命周期状态
+     */
+    public AgentTaskPlanStatus getStatus() {
+        return status;
+    }
+
+    /**
+     * @return 按执行顺序排列的任务深拷贝
+     */
+    public List<AgentTask> getTasks() {
+        return copyTasks(tasks);
+    }
+
+    /**
+     * @return 当前活动任务 ID
+     */
+    public String getActiveTaskId() {
+        return activeTaskId;
+    }
+
+    /**
+     * @return 最近一次失败或停止原因
+     */
+    public String getError() {
+        return error;
+    }
+
+    /**
+     * @return 已成功重规划次数
+     */
+    public int getRevisionCount() {
+        return revisionCount;
+    }
+
+    /**
+     * @return 最近一次重规划原因
+     */
+    public String getLastRevisionReason() {
+        return lastRevisionReason;
+    }
+
+    /**
+     * @return 计划创建时间
+     */
+    public long getCreatedAt() {
+        return createdAt;
+    }
+
+    /**
+     * @return 最近更新时间
+     */
+    public long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * @return 计划完成时间；未完成时为 0
+     */
+    public long getCompletedAt() {
+        return completedAt;
+    }
+
+    /**
+     * @return 当前活动任务副本；没有活动任务时为 {@code null}
+     */
+    public AgentTask getActiveTask() {
+        return find(activeTaskId);
+    }
+
+    /**
+     * 返回下一个尚未调度的任务。
+     */
     public AgentTask getNextTask() {
         for (AgentTask task : tasks) {
             if (task.getStatus() == AgentTaskStatus.PENDING
@@ -117,7 +215,9 @@ public final class AgentTaskPlan implements Serializable {
         return null;
     }
 
-    /** 记录任务已经创建子 Turn 并开始执行。 */
+    /**
+     * 记录任务已经创建子 Turn 并开始执行。
+     */
     public AgentTaskPlan startTask(String taskId, String childTurnId, long now) {
         AgentTask current = require(taskId);
         AgentTask running = current.toBuilder().status(AgentTaskStatus.RUNNING)
@@ -126,7 +226,9 @@ public final class AgentTaskPlan implements Serializable {
             .tasks(replace(running)).activeTaskId(taskId).updatedAt(now).build();
     }
 
-    /** 记录当前子任务的最终结果。 */
+    /**
+     * 记录当前子任务的最终结果。
+     */
     public AgentTaskPlan finishActiveTask(AgentTaskStatus taskStatus, String result,
                                           String taskError, long now) {
         AgentTask current = require(activeTaskId);
@@ -136,7 +238,9 @@ public final class AgentTaskPlan implements Serializable {
             .activeTaskId(null).error(taskError).updatedAt(now).build();
     }
 
-    /** 停止计划并将尚未执行的任务标记为跳过。 */
+    /**
+     * 停止计划并将尚未执行的任务标记为跳过。
+     */
     public AgentTaskPlan stop(String reason, long now) {
         List<AgentTask> values = new ArrayList<>();
         for (AgentTask task : tasks) {
@@ -150,13 +254,17 @@ public final class AgentTaskPlan implements Serializable {
             .activeTaskId(null).error(reason).updatedAt(now).build();
     }
 
-    /** 标记所有任务已处理，父 Agent 可以生成最终汇总。 */
+    /**
+     * 标记所有任务已处理，父 Agent 可以生成最终汇总。
+     */
     public AgentTaskPlan beginFinalizing(long now) {
         return toBuilder().status(AgentTaskPlanStatus.FINALIZING)
             .activeTaskId(null).updatedAt(now).build();
     }
 
-    /** 子任务失败后进入等待模型调整计划的状态。 */
+    /**
+     * 子任务失败后进入等待模型调整计划的状态。
+     */
     public AgentTaskPlan beginReplanning(long now) {
         return toBuilder().status(AgentTaskPlanStatus.REPLANNING)
             .activeTaskId(null).updatedAt(now).build();
@@ -220,24 +328,43 @@ public final class AgentTaskPlan implements Serializable {
             .updatedAt(now).build();
     }
 
-    /** 标记父 Agent 已经完成最终汇总。 */
+    /**
+     * 标记父 Agent 已经完成最终汇总。
+     */
     public AgentTaskPlan complete(long now) {
         return toBuilder().status(AgentTaskPlanStatus.COMPLETED)
             .completedAt(now).updatedAt(now).build();
     }
 
+    /**
+     * 按稳定 ID 查询任务并返回副本。
+     *
+     * @param taskId 任务 ID
+     * @return 匹配任务；不存在时返回 {@code null}
+     */
     private AgentTask find(String taskId) {
         if (taskId == null) return null;
         for (AgentTask task : tasks) if (taskId.equals(task.getId())) return task.copy();
         return null;
     }
 
+    /**
+     * 查询状态转换必需的任务。
+     *
+     * @throws IllegalStateException 指定任务不存在时抛出
+     */
     private AgentTask require(String taskId) {
         AgentTask task = find(taskId);
         if (task == null) throw new IllegalStateException("task not found: " + taskId);
         return task;
     }
 
+    /**
+     * 创建替换指定任务后的新列表，原计划保持不变。
+     *
+     * @param replacement 携带新状态的任务
+     * @return 替换后的任务列表
+     */
     private List<AgentTask> replace(AgentTask replacement) {
         List<AgentTask> values = new ArrayList<>(tasks.size());
         for (AgentTask task : tasks) {
@@ -246,6 +373,9 @@ public final class AgentTaskPlan implements Serializable {
         return values;
     }
 
+    /**
+     * 比较任务业务定义，不比较执行状态、子 Turn 和结果。
+     */
     private static boolean sameDefinition(AgentTask left, AgentTask right) {
         return java.util.Objects.equals(left.getTitle(), right.getTitle())
             && java.util.Objects.equals(left.getDescription(), right.getDescription())
@@ -253,6 +383,11 @@ public final class AgentTaskPlan implements Serializable {
             && java.util.Objects.equals(left.getAssignedAgentId(), right.getAssignedAgentId());
     }
 
+    /**
+     * 校验任务非空且 ID 唯一，重置运行字段并生成连续 position。
+     *
+     * @return 可安全用于新计划的任务列表
+     */
     private static List<AgentTask> normalize(List<AgentTask> source) {
         if (source == null || source.isEmpty()) {
             throw new IllegalArgumentException("tasks must not be empty");
@@ -270,13 +405,18 @@ public final class AgentTaskPlan implements Serializable {
         return values;
     }
 
+    /**
+     * 深复制任务列表并返回不可修改视图。
+     */
     private static List<AgentTask> copyTasks(List<AgentTask> source) {
         List<AgentTask> values = new ArrayList<>();
         if (source != null) for (AgentTask task : source) values.add(task.copy());
         return Collections.unmodifiableList(values);
     }
 
-    /** 计划状态构建器，主要用于 Snapshot 反序列化和不可变状态转换。 */
+    /**
+     * 计划状态构建器，主要用于 Snapshot 反序列化和不可变状态转换。
+     */
     public static final class Builder {
         private String id = UUID.randomUUID().toString();
         private final String goal;
@@ -290,29 +430,96 @@ public final class AgentTaskPlan implements Serializable {
         private long updatedAt = System.currentTimeMillis();
         private long completedAt;
 
-        private Builder(String goal) { this.goal = goal; }
-        /** 设置计划稳定 ID。 */
-        public Builder id(String value) { id = value; return this; }
-        /** 设置计划生命周期状态。 */
-        public Builder status(AgentTaskPlanStatus value) { status = value; return this; }
-        /** 设置任务列表。 */
-        public Builder tasks(List<AgentTask> value) { tasks = value; return this; }
-        /** 设置当前活动任务 ID。 */
-        public Builder activeTaskId(String value) { activeTaskId = value; return this; }
-        /** 设置最近一次失败或停止原因。 */
-        public Builder error(String value) { error = value; return this; }
-        /** 设置已成功调整计划的次数。 */
-        public Builder revisionCount(int value) { revisionCount = value; return this; }
-        /** 设置最近一次调整原因。 */
-        public Builder lastRevisionReason(String value) { lastRevisionReason = value; return this; }
-        /** 设置计划创建时间。 */
-        public Builder createdAt(long value) { createdAt = value; return this; }
-        /** 设置最近更新时间。 */
-        public Builder updatedAt(long value) { updatedAt = value; return this; }
-        /** 设置计划完成时间。 */
-        public Builder completedAt(long value) { completedAt = value; return this; }
+        /**
+         * @param goal 计划需要完成的总体目标
+         */
+        private Builder(String goal) {
+            this.goal = goal;
+        }
 
-        /** 校验计划标识、目标、状态和任务列表后创建不可变计划。 */
+        /**
+         * 设置计划稳定 ID。
+         */
+        public Builder id(String value) {
+            id = value;
+            return this;
+        }
+
+        /**
+         * 设置计划生命周期状态。
+         */
+        public Builder status(AgentTaskPlanStatus value) {
+            status = value;
+            return this;
+        }
+
+        /**
+         * 设置任务列表。
+         */
+        public Builder tasks(List<AgentTask> value) {
+            tasks = value;
+            return this;
+        }
+
+        /**
+         * 设置当前活动任务 ID。
+         */
+        public Builder activeTaskId(String value) {
+            activeTaskId = value;
+            return this;
+        }
+
+        /**
+         * 设置最近一次失败或停止原因。
+         */
+        public Builder error(String value) {
+            error = value;
+            return this;
+        }
+
+        /**
+         * 设置已成功调整计划的次数。
+         */
+        public Builder revisionCount(int value) {
+            revisionCount = value;
+            return this;
+        }
+
+        /**
+         * 设置最近一次调整原因。
+         */
+        public Builder lastRevisionReason(String value) {
+            lastRevisionReason = value;
+            return this;
+        }
+
+        /**
+         * 设置计划创建时间。
+         */
+        public Builder createdAt(long value) {
+            createdAt = value;
+            return this;
+        }
+
+        /**
+         * 设置最近更新时间。
+         */
+        public Builder updatedAt(long value) {
+            updatedAt = value;
+            return this;
+        }
+
+        /**
+         * 设置计划完成时间。
+         */
+        public Builder completedAt(long value) {
+            completedAt = value;
+            return this;
+        }
+
+        /**
+         * 校验计划标识、目标、状态和任务列表后创建不可变计划。
+         */
         public AgentTaskPlan build() {
             if (!StringUtil.hasText(id) || !StringUtil.hasText(goal)
                 || status == null || tasks == null || tasks.isEmpty() || revisionCount < 0) {

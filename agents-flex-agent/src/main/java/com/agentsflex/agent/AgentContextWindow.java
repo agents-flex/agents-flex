@@ -17,6 +17,9 @@ import java.util.List;
  */
 final class AgentContextWindow {
 
+    /**
+     * 工具类不维护实例状态，禁止外部构造。
+     */
     private AgentContextWindow() {
     }
 
@@ -110,6 +113,16 @@ final class AgentContextWindow {
         return result;
     }
 
+    /**
+     * 从会话尾部按页读取足以覆盖指定 Turn 数量的模型可见历史。
+     *
+     * <p>分页接口返回的每页消息是从旧到新排列的，而页本身按时间从新向旧读取，因此每一页需要
+     * 前插到结果列表。读取到额外一个 UserMessage 后即可确认最早 Turn 的边界并停止查询。</p>
+     *
+     * @param memory   会话存储；为 {@code null} 时视为空历史
+     * @param maxTurns 模型窗口最多需要保留的 Turn 数
+     * @return 按从旧到新排列的模型可见消息，不会返回 {@code null}
+     */
     private static List<Message> readHistory(ChatMemory memory, int maxTurns) {
         if (memory == null) return Collections.emptyList();
         List<Message> chronological = new ArrayList<>();
@@ -130,6 +143,12 @@ final class AgentContextWindow {
         return chronological;
     }
 
+    /**
+     * 以 UserMessage 为起点把连续消息划分为不可拆分的会话 Turn。
+     *
+     * @param messages 按时间正序排列的消息
+     * @return Turn 列表；首个 UserMessage 之前的孤立 AI 或工具消息会被忽略
+     */
     private static List<List<Message>> splitTurns(List<Message> messages) {
         List<List<Message>> turns = new ArrayList<>();
         List<Message> current = null;
@@ -144,6 +163,15 @@ final class AgentContextWindow {
         return turns;
     }
 
+    /**
+     * 对一个已完成的历史 Turn 执行规则压缩。
+     *
+     * <p>普通对话保持原样；包含工具协议时，仅在存在最终 AI 正文的情况下保留用户问题和最终回复。
+     * 未闭合工具调用不会被压缩，以免产生孤立的 ToolMessage 或丢失待执行调用。</p>
+     *
+     * @param turn 一个完整的历史 Turn
+     * @return 深复制后的压缩结果，必要时仍为完整 Turn
+     */
     private static List<Message> compact(List<Message> turn) {
         // 没有工具协议的普通 Turn 不需要规则压缩，保留原有 User/AI 消息。
         if (!containsToolProtocol(turn)) return copy(turn);
@@ -165,6 +193,15 @@ final class AgentContextWindow {
         return copy(turn);
     }
 
+    /**
+     * 校验业务压缩器返回的消息仍满足模型会话协议。
+     *
+     * <p>结果必须非空，以 UserMessage（可选前置 SystemMessage）开始，且每组 ToolCall 都必须有
+     * 唯一、完整、按顺序出现的 ToolMessage 响应。所有消息还必须对模型可见。</p>
+     *
+     * @param messages 压缩器生成的消息
+     * @throws IllegalArgumentException 结果为空、包含非法消息或工具协议不完整时抛出
+     */
     private static void validateCompressedMessages(List<Message> messages) {
         if (messages == null || messages.isEmpty()) {
             throw new IllegalArgumentException("contextCompressor must return at least one message");
@@ -212,6 +249,13 @@ final class AgentContextWindow {
         }
     }
 
+    /**
+     * 判断工具结果是否响应了指定 AI 消息声明的任意一个工具调用。
+     *
+     * @param assistant 声明工具调用的 AI 消息
+     * @param result    待校验的工具结果
+     * @return Tool Call ID 非空且存在匹配项时返回 {@code true}
+     */
     private static boolean matchesToolCall(AiMessage assistant, ToolMessage result) {
         // 一个 AiMessage 可能同时声明多个工具调用，结果只要命中其中一个 ID 即合法。
         if (result.getToolCallId() == null) return false;
@@ -221,6 +265,12 @@ final class AgentContextWindow {
         return false;
     }
 
+    /**
+     * 统计上下文单元中的消息总数，不改变单元边界。
+     *
+     * @param units 由完整 Turn 或压缩结果组成的上下文单元
+     * @return 所有单元的消息数量之和
+     */
     private static int countMessages(List<List<Message>> units) {
         // 单元是裁剪的最小粒度，统计时不能把其中的协议消息拆开计算。
         int count = 0;
@@ -228,6 +278,12 @@ final class AgentContextWindow {
         return count;
     }
 
+    /**
+     * 检查 Turn 中是否包含 ToolCall 声明或 ToolMessage 结果。
+     *
+     * @param turn 待检查的完整 Turn
+     * @return 包含任一工具协议消息时返回 {@code true}
+     */
     private static boolean containsToolProtocol(List<Message> turn) {
         // 只有真正包含 ToolCall/ToolMessage 的 Turn 才需要删除中间工具消息并保留最终回复。
         for (Message message : turn) {
@@ -237,6 +293,12 @@ final class AgentContextWindow {
         return false;
     }
 
+    /**
+     * 判断一个 Turn 是否已经由最终 AI 正文收束。
+     *
+     * @param turn 待检查的 Turn
+     * @return 最后一条 AI 消息没有工具调用且包含正文或推理内容时返回 {@code true}
+     */
     private static boolean isCompletedTurn(List<Message> turn) {
         // 最后一条 AI 正文代表该 Turn 已收束；最后仍是 ToolCall 或没有正文时视为未完成。
         if (turn.isEmpty()) return false;
@@ -251,6 +313,12 @@ final class AgentContextWindow {
         return false;
     }
 
+    /**
+     * 深复制消息列表及 Agent 关心的可变子结构。
+     *
+     * @param messages 原始消息列表
+     * @return 与输入顺序一致的新列表和消息副本
+     */
     private static List<Message> copy(List<Message> messages) {
         // Message.copy 还需要由 AgentMessageUtils 处理具体子类，避免共享可变 ToolCall 列表。
         List<Message> result = new ArrayList<>(messages.size());
@@ -258,6 +326,12 @@ final class AgentContextWindow {
         return result;
     }
 
+    /**
+     * 统计消息列表中的 UserMessage 数量，用作历史分页的 Turn 边界判断。
+     *
+     * @param messages 待统计的消息
+     * @return UserMessage 数量
+     */
     private static int countUsers(List<Message> messages) {
         // UserMessage 数量用于分页停止判断，确保至少读到 maxTurns 个完整 Turn 的起点。
         int count = 0;

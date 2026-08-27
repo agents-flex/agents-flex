@@ -48,6 +48,9 @@ public final class AgentFormMessage extends AbstractTextMessage<AgentFormMessage
     private String submittedBy;
     private long submittedAt;
 
+    /**
+     * 创建默认待提交且不进入模型上下文的表单消息。
+     */
     public AgentFormMessage() {
         setModelVisible(false);
     }
@@ -167,6 +170,11 @@ public final class AgentFormMessage extends AbstractTextMessage<AgentFormMessage
         submittedAt = value;
     }
 
+    /**
+     * 深复制表单定义、提交值和通用消息状态，供乐观更新使用。
+     *
+     * @return 与当前消息隔离的副本
+     */
     @Override
     public AgentFormMessage copy() {
         AgentFormMessage copy = new AgentFormMessage();
@@ -182,11 +190,17 @@ public final class AgentFormMessage extends AbstractTextMessage<AgentFormMessage
         return copyMessageStateTo(copy);
     }
 
+    /**
+     * 复制表单 JSON 数据并返回保持字段顺序的不可修改 Map。
+     */
     private static Map<String, Object> immutableMap(Map<String, ?> values) {
         if (values == null || values.isEmpty()) return Collections.emptyMap();
         return Collections.unmodifiableMap(new LinkedHashMap<String, Object>(values));
     }
 
+    /**
+     * @return 字符串为 {@code null}、空或仅含空白时返回 {@code true}
+     */
     private static boolean blank(String value) {
         return value == null || value.trim().isEmpty();
     }

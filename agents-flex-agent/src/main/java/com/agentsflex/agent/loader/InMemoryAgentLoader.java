@@ -69,6 +69,9 @@ public final class InMemoryAgentLoader implements AgentLoader {
         return agentId == null ? null : activeAgents.get(agentId);
     }
 
+    /**
+     * 使用不可出现在普通标识中的分隔符生成 ID 与版本联合索引键。
+     */
     private static String key(String agentId, String version) {
         return agentId + "\u0000" + version;
     }

@@ -25,6 +25,13 @@ public final class AgentTurnSnapshot implements Serializable {
     private final String agentVersion;
     private final AgentTurnState state;
 
+    /**
+     * 创建与具体 Agent 版本绑定的不可变 Turn 快照。
+     *
+     * @param agentId      Agent 稳定 ID
+     * @param agentVersion Agent 配置版本
+     * @param state        已冻结的 Turn 状态
+     */
     private AgentTurnSnapshot(String agentId, String agentVersion, AgentTurnState state) {
         if (state == null) throw new IllegalArgumentException("state must not be null");
         this.agentId = agentId;
@@ -84,6 +91,9 @@ public final class AgentTurnSnapshot implements Serializable {
         return agentVersion;
     }
 
+    /**
+     * 校验恢复 Agent 所需身份字段和状态对象均已提供。
+     */
     private static void validate(String agentId, String agentVersion, AgentTurnState state) {
         if (!StringUtil.hasText(agentId)) {
             throw new IllegalStateException("agentId must not be blank");

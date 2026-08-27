@@ -14,6 +14,13 @@ public final class AgentContextCompressionResult {
     private final AgentContextCompressionState state;
     private final List<Message> modelMessages;
 
+    /**
+     * 创建一次协调结果，并复制最终模型消息。
+     *
+     * @param compressed    本次是否实际调用压缩器并保存新状态
+     * @param state         本次结束后的持久化状态
+     * @param modelMessages 应用于模型上下文的摘要和新增消息
+     */
     public AgentContextCompressionResult(boolean compressed, AgentContextCompressionState state,
                                          List<Message> modelMessages) {
         this.compressed = compressed;
@@ -33,6 +40,9 @@ public final class AgentContextCompressionResult {
         return modelMessages;
     }
 
+    /**
+     * 深复制非空消息并冻结结果，避免结果对象泄漏可变消息列表。
+     */
     private static List<Message> copy(List<Message> messages) {
         List<Message> result = new ArrayList<>();
         if (messages != null) for (Message message : messages) {

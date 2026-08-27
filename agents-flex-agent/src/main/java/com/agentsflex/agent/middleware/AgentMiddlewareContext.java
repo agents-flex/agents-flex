@@ -43,8 +43,8 @@ public class AgentMiddlewareContext {
     /**
      * 创建工具 Middleware 使用的统一上下文。
      *
-     * @param runner 当前 Runner
-     * @param turn 当前 AgentTurn
+     * @param runner      当前 Runner
+     * @param turn        当前 AgentTurn
      * @param toolContext 当前工具调用的受控上下文，工具调用阶段不能为 {@code null}
      * @return 携带非空工具上下文的 Middleware 上下文
      */
@@ -56,6 +56,14 @@ public class AgentMiddlewareContext {
         return new AgentMiddlewareContext(runner, turn, turn.getPrompt(), toolContext);
     }
 
+    /**
+     * 创建统一中间件上下文；toolContext 仅在工具调用链中存在。
+     *
+     * @param runner      当前 Runner
+     * @param turn        当前 Turn
+     * @param prompt      当前模型请求 Prompt
+     * @param toolContext 可选工具上下文
+     */
     private AgentMiddlewareContext(AgentRunner runner, AgentTurn turn, Prompt prompt,
                                    AgentToolContext toolContext) {
         this.runner = runner;

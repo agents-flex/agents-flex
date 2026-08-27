@@ -18,6 +18,13 @@ public final class AgentConversationBusyException extends IllegalStateException 
     private final String activeTurnId;
     private final AgentTurnStatus status;
 
+    /**
+     * 创建会话并发冲突异常。
+     *
+     * @param conversationId 冲突业务会话 ID
+     * @param activeTurnId   当前未结束 Turn ID
+     * @param status         当前 Turn 状态
+     */
     public AgentConversationBusyException(String conversationId, String activeTurnId,
                                           AgentTurnStatus status) {
         super("conversation has an active AgentTurn: conversationId=" + conversationId
@@ -27,7 +34,15 @@ public final class AgentConversationBusyException extends IllegalStateException 
         this.status = status;
     }
 
-    public String getConversationId() { return conversationId; }
-    public String getActiveTurnId() { return activeTurnId; }
-    public AgentTurnStatus getStatus() { return status; }
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public String getActiveTurnId() {
+        return activeTurnId;
+    }
+
+    public AgentTurnStatus getStatus() {
+        return status;
+    }
 }

@@ -9,6 +9,7 @@ package com.agentsflex.agent.tool;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Parameter;
 import com.agentsflex.core.model.chat.tool.Tool;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,10 +32,15 @@ public final class AgentUserInputTool {
     public static final String CAPABILITY = "user-input";
     private static final String FORMS_METADATA = "agent.userInputForms";
 
+    /**
+     * 工厂类不持有实例状态，禁止构造。
+     */
     private AgentUserInputTool() {
     }
 
-    /** 创建至少注册一个业务表单的工具构建器。 */
+    /**
+     * 创建至少注册一个业务表单的工具构建器。
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -71,6 +77,11 @@ public final class AgentUserInputTool {
         return form;
     }
 
+    /**
+     * 从受控工具元数据读取已注册表单集合。
+     *
+     * @return 表单标识到定义的映射；元数据不合法时返回空 Map
+     */
     @SuppressWarnings("unchecked")
     private static Map<String, AgentFormDefinition> forms(Tool tool) {
         Object value = tool.getMetadata().get(FORMS_METADATA);
@@ -78,15 +89,22 @@ public final class AgentUserInputTool {
             ? (Map<String, AgentFormDefinition>) value : Collections.emptyMap();
     }
 
+    /**
+     * 将可选工具参数转换为字符串，空值保持为 {@code null}。
+     */
     private static String stringValue(Object value) {
         return value == null ? null : String.valueOf(value);
     }
 
-    /** 用户输入工具构建器。 */
+    /**
+     * 用户输入工具构建器。
+     */
     public static final class Builder {
         private final Map<String, AgentFormDefinition> forms = new LinkedHashMap<>();
 
-        /** 注册模型可以选择的一种表单。 */
+        /**
+         * 注册模型可以选择的一种表单。
+         */
         public Builder form(AgentFormDefinition definition) {
             if (definition == null) return this;
             if (forms.put(definition.getFormKey(), definition) != null) {
@@ -96,7 +114,9 @@ public final class AgentUserInputTool {
             return this;
         }
 
-        /** 创建只允许选择已注册 formKey 的内置控制工具。 */
+        /**
+         * 创建只允许选择已注册 formKey 的内置控制工具。
+         */
         public Tool build() {
             if (forms.isEmpty()) {
                 throw new IllegalStateException("at least one user input form is required");

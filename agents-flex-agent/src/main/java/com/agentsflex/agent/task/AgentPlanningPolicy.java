@@ -86,6 +86,9 @@ public final class AgentPlanningPolicy implements Serializable {
      */
     private final Set<String> allowedAgentIds;
 
+    /**
+     * 从已校验构建器冻结规划开关、委派白名单和重规划限制。
+     */
     private AgentPlanningPolicy(Builder builder) {
         this.enabled = builder.enabled;
         this.maxTasks = builder.maxTasks;
