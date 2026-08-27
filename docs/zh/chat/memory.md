@@ -53,11 +53,19 @@ prompt.addMessage(second.getMessage());
 ```java
 public interface ChatMemory extends Memory {
     List<Message> getMessages(int count);
+    List<Message> getMessages(int offset, int count);
+    List<Message> getModelMessages(int count);
+    Message getMessage(String messageId);
     void addMessage(Message message);
+    boolean addMessageIfAbsent(Message message);
+    boolean updateMessage(Message message, long expectedVersion);
     void addMessages(Collection<? extends Message> messages);
     void clear();
 }
 ```
+
+`ChatMemory` 不提供默认存储逻辑，每个实现类都必须实现上述全部方法。这样数据库、缓存和内存实现会在编译期被要求
+明确处理窗口查询、模型可见消息、幂等新增和乐观更新，不会意外退化为进程内扫描或非原子操作。
 
 `Memory.id()` 返回业务标识。`getMessages(count)` 必须返回最近最多 count 条按时间排序的消息；count 小于等于 0
 时，内置实现会抛出 `IllegalArgumentException`。
@@ -79,7 +87,7 @@ businessId.clear();
 - `getMessages()` 返回新的 List，修改返回 List 不会改变内部列表；
 - Message 对象本身没有深复制；
 - 不持久化，进程重启后丢失；
-- 没有同步保护，不应由多个线程并发修改。
+- 所有读写方法在实例内同步，但不能提供跨进程一致性。
 
 因此它适合测试、单机短会话和业务已经保证串行的场景。
 
@@ -144,8 +152,38 @@ public final class JdbcChatMemory implements ChatMemory {
     }
 
     @Override
+    public List<Message> getMessages(int offset, int count) {
+        return repository.findWindow(conversationId, offset, count);
+    }
+
+    @Override
+    public List<Message> getModelMessages(int count) {
+        return repository.findLatestModelVisible(conversationId, count);
+    }
+
+    @Override
+    public Message getMessage(String messageId) {
+        return repository.findById(conversationId, messageId);
+    }
+
+    @Override
     public void addMessage(Message message) {
         repository.append(conversationId, message);
+    }
+
+    @Override
+    public boolean addMessageIfAbsent(Message message) {
+        return repository.insertIfAbsent(conversationId, message);
+    }
+
+    @Override
+    public boolean updateMessage(Message message, long expectedVersion) {
+        return repository.updateIfVersionMatches(conversationId, message, expectedVersion);
+    }
+
+    @Override
+    public void addMessages(Collection<? extends Message> messages) {
+        repository.appendAll(conversationId, messages);
     }
 
     @Override
@@ -156,6 +194,8 @@ public final class JdbcChatMemory implements ChatMemory {
 ```
 
 数据库查询如果按时间倒序取最近 N 条，返回给框架前必须恢复为从旧到新的协议顺序。
+`insertIfAbsent` 应由唯一索引或等价的原子机制实现；`updateIfVersionMatches` 应在同一条更新语句中同时校验
+`messageId` 和 `expectedVersion`，成功时将版本递增。不要用“先查询、再写入”的进程内判断代替这两项原子操作。
 
 ## 会话 ID 与租户隔离
 
