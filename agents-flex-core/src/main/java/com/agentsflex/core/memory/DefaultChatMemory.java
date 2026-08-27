@@ -18,6 +18,7 @@ package com.agentsflex.core.memory;
 import com.agentsflex.core.message.Message;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -65,6 +66,31 @@ public class DefaultChatMemory implements ChatMemory {
     }
 
     @Override
+    public synchronized List<Message> getModelMessages(int count) {
+        if (count <= 0) {
+            throw new IllegalArgumentException("count must be greater than 0");
+        }
+        int pageSize = count == Integer.MAX_VALUE ? 256 : Math.max(32, Math.min(256, count));
+        List<Message> newestFirst = new ArrayList<>(Math.min(count, pageSize));
+        int offset = 0;
+        while (newestFirst.size() < count) {
+            List<Message> page = getMessages(offset, pageSize);
+            if (page.isEmpty()) break;
+            for (int index = page.size() - 1;
+                 index >= 0 && newestFirst.size() < count; index--) {
+                Message message = page.get(index);
+                if (message != null && message.isModelVisible()) {
+                    newestFirst.add(message);
+                }
+            }
+            if (page.size() < pageSize || offset > Integer.MAX_VALUE - page.size()) break;
+            offset += page.size();
+        }
+        Collections.reverse(newestFirst);
+        return newestFirst;
+    }
+
+    @Override
     public synchronized Message getMessage(String messageId) {
         if (messageId == null || messageId.trim().isEmpty()) return null;
         for (Message message : messages) {
@@ -76,6 +102,11 @@ public class DefaultChatMemory implements ChatMemory {
     @Override
     public synchronized void addMessage(Message message) {
         messages.add(message);
+    }
+
+    @Override
+    public synchronized void addMessages(Collection<? extends Message> messages) {
+        this.messages.addAll(messages);
     }
 
     @Override

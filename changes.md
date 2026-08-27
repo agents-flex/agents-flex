@@ -1,6 +1,7 @@
 # Agents-Flex ChangeLog
 
 ## v2.2.8 20260817
+- refactor(memory): remove default methods from ChatMemory interface
 - refactor(doc-extractor): replace deprecated ImageUtils with ImageUtil
 - refactor(documents): replace ExtractedImageHandler with DocumentImagePublisher
 - style(javadoc): standardize javadoc comment formatting across all classes

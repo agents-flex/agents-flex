@@ -11,6 +11,8 @@ import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import org.junit.Test;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -19,6 +21,14 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 public class ChatMemoryMessageContractTest {
+
+    @Test
+    public void shouldRequireImplementationsToImplementEveryOperation() {
+        for (Method method : ChatMemory.class.getDeclaredMethods()) {
+            assertTrue(method.getName() + " must be abstract",
+                Modifier.isAbstract(method.getModifiers()));
+        }
+    }
 
     @Test
     public void shouldKeepFullTimelineAndExposeOnlyModelMessages() {
