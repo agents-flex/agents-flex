@@ -81,7 +81,7 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
                 String.valueOf(expectedVersion), String.valueOf(state.getVersion()), state.getStatus().name(),
                 String.valueOf(state.getNextRunnableAt()), text(state.getLeaseOwner()), text(state.getLeaseId()),
                 String.valueOf(state.getLeaseUntil()), state.isCancellationRequested() ? "1" : "0",
-                encode(saved), state.getTurnId()));
+                encode(saved), state.getTurnId(), state.getTurnId()));
         long code = ((Number) result).longValue();
         if (code != -2) {
             throw new AgentTurnVersionConflictException(state.getTurnId(), expectedVersion, code);

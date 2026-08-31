@@ -142,7 +142,7 @@ public class RedisAgentStoresIntegrationTest {
 
     /** 活动会话查询必须基于 Redis 中的最新投影，而不是序列化时的旧状态。 */
     @Test
-    public void shouldFindActiveTurnAndTerminalChildForRecovery() {
+    public void shouldFindActiveTurnForRecovery() {
         RedisAgentTurnStore turns = config.turnStore();
         AgentTurnSnapshot activeSource = snapshot("active", AgentTurnStatus.READY);
         AgentTurnSnapshot active = activeSource.withState(activeSource.getState().toBuilder()
