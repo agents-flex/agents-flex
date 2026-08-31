@@ -4,7 +4,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  */
-package com.agentsflex.agent.tool;
+package com.agentsflex.agent.exception;
+
+import com.agentsflex.agent.tool.AgentFormDefinition;
 
 /**
  * 业务工具在产生副作用前请求用户填写表单的控制流异常。

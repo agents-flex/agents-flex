@@ -7,8 +7,8 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.AgentTurnStore;
-import com.agentsflex.agent.store.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;

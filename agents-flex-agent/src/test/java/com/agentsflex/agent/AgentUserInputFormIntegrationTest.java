@@ -5,10 +5,10 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.message.AgentFormMessage;
+import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.AgentToolContext;
-import com.agentsflex.agent.tool.AgentFormRequiredException;
 import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;

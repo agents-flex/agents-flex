@@ -9,7 +9,7 @@ description: 让模型从已注册表单中选择一项，并在用户提交结�
 
 表单输入有两种入口。第一种是模型在执行业务动作前调用 `request_user_input` 选择表单；用户提交后，
 Runner 将结构化数据作为 ToolMessage 返回模型，由模型判断并调用后续业务 Tool。第二种是业务 Tool
-执行过程中发现缺少信息，抛出 `AgentFormRequiredException`；Runner 挂起并在提交后重放原 Tool。
+执行过程中发现缺少信息，抛出 `AgentFormRequiredException`；Runner 挂起并在提交后重放原 Tool。该异常位于 `com.agentsflex.agent.exception` 包。
 两种方式都通过 `AgentFormMessage` 向前端提供 Schema，并使用 `submitResume` 或 `resume` 恢复 Turn。
 
 ## 快速开始

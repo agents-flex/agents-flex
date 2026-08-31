@@ -190,6 +190,8 @@ AgentTurn turn = runner.run(agent, history,
 会在创建初始 Snapshot 时检查同一 conversationId 是否已有未结束 Turn。冲突时抛出
 `AgentConversationBusyException`，其中包含 `conversationId`、活动 `turnId` 和当前状态。
 
+该异常位于 `com.agentsflex.agent.exception` 包。
+
 ```java
 try {
     runner.run(agentId, conversationId, new UserMessage("继续处理"));

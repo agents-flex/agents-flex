@@ -75,7 +75,7 @@ AgentTurnSnapshot updated = snapshot.withState(
 
 ## 乐观版本
 
-`AgentTurnStore.save(snapshot, expectedVersion)` 必须比较当前版本。创建使用约定的初始期望版本，后续保存只有版本匹配才能成功，成功后 Store 分配递增版本。冲突时抛出 `AgentTurnVersionConflictException`。
+`AgentTurnStore.save(snapshot, expectedVersion)` 必须比较当前版本。创建使用约定的初始期望版本，后续保存只有版本匹配才能成功，成功后 Store 分配递增版本。冲突时抛出 `AgentTurnVersionConflictException`，该异常位于 `com.agentsflex.agent.exception` 包。
 
 发生冲突说明另一个执行者已经提交新状态。不能用旧快照覆盖；应停止当前推进并重新加载，必要时由业务决定是否重试恢复动作。
 

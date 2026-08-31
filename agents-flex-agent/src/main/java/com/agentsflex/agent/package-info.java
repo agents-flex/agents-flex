@@ -24,7 +24,7 @@
  *     <li>{@link com.agentsflex.agent.task.AgentPlanningPolicy}：约束模型自主创建和执行任务计划；</li>
  *     <li>{@link com.agentsflex.agent.loader.AgentLoader}：根据稳定 ID 和版本加载可执行 Agent；</li>
  *     <li>{@link com.agentsflex.agent.tool.AgentToolContext}：向工具提供调用身份、进度、取消和恢复输入；</li>
- *     <li>{@link com.agentsflex.agent.tool.AgentFormRequiredException}：让业务工具在副作用前请求表单；</li>
+ *     <li>{@link com.agentsflex.agent.exception.AgentFormRequiredException}：让业务工具在副作用前请求表单；</li>
  *     <li>{@link com.agentsflex.agent.tool.AgentUserInputTool}：让模型通过稳定 ToolCall 请求业务表单输入；</li>
  *     <li>{@link com.agentsflex.agent.message.AgentFormMessage}：投影到 ChatMemory 的 UI-only 表单状态。</li>
  * </ul>

@@ -4,7 +4,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  */
-package com.agentsflex.agent;
+package com.agentsflex.agent.exception;
+
+import com.agentsflex.agent.AgentTurnStatus;
 
 /**
  * 同一业务会话已经存在未结束 AgentTurn 时，拒绝创建新的普通 Turn。

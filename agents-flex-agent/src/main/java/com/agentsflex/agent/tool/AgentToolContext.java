@@ -6,6 +6,7 @@
  */
 package com.agentsflex.agent.tool;
 
+import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolContextHolder;

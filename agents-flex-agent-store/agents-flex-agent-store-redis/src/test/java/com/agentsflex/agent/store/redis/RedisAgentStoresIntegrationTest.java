@@ -7,6 +7,7 @@ import com.agentsflex.agent.AgentSuspension;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
+import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 import com.agentsflex.core.message.AiMessage;
 import redis.clients.jedis.params.ScanParams;
@@ -160,7 +161,7 @@ public class RedisAgentStoresIntegrationTest {
         try {
             turns.save(created, -1);
             fail("Expected version conflict");
-        } catch (com.agentsflex.agent.store.AgentTurnVersionConflictException expected) {
+        } catch (AgentTurnVersionConflictException expected) {
             assertTrue(expected.getMessage().contains("boundaries"));
         }
 

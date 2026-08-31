@@ -9,7 +9,8 @@ package com.agentsflex.agent.store;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
-import com.agentsflex.agent.AgentConversationBusyException;
+import com.agentsflex.agent.exception.AgentConversationBusyException;
+import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 
 import java.util.ArrayList;
 import java.util.List;

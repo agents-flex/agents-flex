@@ -7,6 +7,7 @@
 package com.agentsflex.agent.store;
 
 import com.agentsflex.agent.AgentTurnSnapshot;
+import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.loader.AgentLoader;
 
 import java.util.List;

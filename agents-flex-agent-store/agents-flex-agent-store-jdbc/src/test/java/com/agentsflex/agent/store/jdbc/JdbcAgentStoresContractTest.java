@@ -7,7 +7,7 @@ import com.agentsflex.agent.AgentSuspension;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
-import com.agentsflex.agent.store.AgentTurnVersionConflictException;
+import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 import com.agentsflex.core.message.AiMessage;
 import com.mysql.cj.jdbc.MysqlDataSource;

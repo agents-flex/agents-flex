@@ -3,8 +3,8 @@ package com.agentsflex.agent.store.jdbc;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
+import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.AgentTurnStore;
-import com.agentsflex.agent.store.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 
 import java.sql.Connection;

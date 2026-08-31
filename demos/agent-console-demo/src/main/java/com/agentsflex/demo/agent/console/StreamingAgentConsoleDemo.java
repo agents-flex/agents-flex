@@ -23,7 +23,7 @@ import com.agentsflex.agent.task.AgentPlanningPolicy;
 import com.agentsflex.agent.task.AgentTask;
 import com.agentsflex.agent.task.AgentTaskProgress;
 import com.agentsflex.agent.tool.AgentFormDefinition;
-import com.agentsflex.agent.tool.AgentFormRequiredException;
+import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
