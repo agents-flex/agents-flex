@@ -11,17 +11,14 @@ import java.io.Serializable;
  * 可由业务侧持久化的增量压缩状态。
  *
  * <p>{@code coveredUntilMessageId} 是幂等增量压缩的游标；摘要成功后，游标之前的原始消息
- * 不会再次交给压缩器。{@code version} 用于 Store 的 CAS，{@code compressionVersion} 用于
- * 业务审计和监控，两者不要混用。</p>
+ * 不会再次交给压缩器。{@code version} 用于 Store 的 CAS。压缩次数和 Token/Turn 统计属于
+ * 事件或监控数据，不放入持久化状态。</p>
  */
 public final class AgentContextCompressionState implements Serializable {
     private static final long serialVersionUID = 1L;
     private final long version;
     private final List<Message> summaryMessages;
     private final String coveredUntilMessageId;
-    private final long compressionVersion;
-    private final long estimatedCoveredTokens;
-    private final int coveredTurnCount;
 
     /**
      * 创建可持久化的压缩状态快照。
@@ -29,26 +26,19 @@ public final class AgentContextCompressionState implements Serializable {
      * @param version                Store CAS 版本
      * @param summaryMessages        已生成的模型摘要消息
      * @param coveredUntilMessageId  摘要覆盖的最后消息 ID
-     * @param compressionVersion     成功压缩次数
-     * @param estimatedCoveredTokens 累计覆盖的估算 Token
-     * @param coveredTurnCount       累计覆盖 Turn 数
      */
     public AgentContextCompressionState(long version, List<Message> summaryMessages,
-                                        String coveredUntilMessageId, long compressionVersion,
-                                        long estimatedCoveredTokens, int coveredTurnCount) {
+                                        String coveredUntilMessageId) {
         this.version = version;
         this.summaryMessages = copy(summaryMessages);
         this.coveredUntilMessageId = coveredUntilMessageId;
-        this.compressionVersion = compressionVersion;
-        this.estimatedCoveredTokens = estimatedCoveredTokens;
-        this.coveredTurnCount = coveredTurnCount;
     }
 
     /**
      * @return 尚未覆盖任何消息、版本为零的初始压缩状态
      */
     public static AgentContextCompressionState empty() {
-        return new AgentContextCompressionState(0, Collections.emptyList(), null, 0, 0, 0);
+        return new AgentContextCompressionState(0, Collections.emptyList(), null);
     }
 
     public long getVersion() {
@@ -61,18 +51,6 @@ public final class AgentContextCompressionState implements Serializable {
 
     public String getCoveredUntilMessageId() {
         return coveredUntilMessageId;
-    }
-
-    public long getCompressionVersion() {
-        return compressionVersion;
-    }
-
-    public long getEstimatedCoveredTokens() {
-        return estimatedCoveredTokens;
-    }
-
-    public int getCoveredTurnCount() {
-        return coveredTurnCount;
     }
 
     /**

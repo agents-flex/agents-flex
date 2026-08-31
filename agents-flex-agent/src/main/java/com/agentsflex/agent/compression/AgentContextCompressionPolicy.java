@@ -8,6 +8,7 @@ package com.agentsflex.agent.compression;
 
 import com.agentsflex.core.message.Message;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.ToLongFunction;
 
@@ -24,11 +25,18 @@ public final class AgentContextCompressionPolicy {
     private final int keepRecentTurns;
 
     private AgentContextCompressionPolicy(Builder builder) {
-        if (builder.coordinator != null && builder.compressor != null) {
-            throw new IllegalArgumentException("compression policy cannot configure both coordinator and compressor");
+        boolean hasIncrementalDependency = builder.stateStore != null
+            || builder.trigger != null || builder.tokenEstimator != null;
+        if (hasIncrementalDependency && (builder.stateStore == null
+            || builder.trigger == null || builder.tokenEstimator == null || builder.compressor == null)) {
+            throw new IllegalArgumentException(
+                "incremental compression requires stateStore, trigger, compressor and tokenEstimator");
         }
         this.compressor = builder.compressor;
-        this.coordinator = builder.coordinator;
+        this.coordinator = hasIncrementalDependency
+            ? new AgentContextCompressionCoordinator(
+                builder.stateStore, builder.trigger, builder.compressor, builder.tokenEstimator)
+            : null;
         this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
         this.keepRecentTurns = builder.keepRecentTurns;
     }
@@ -48,23 +56,19 @@ public final class AgentContextCompressionPolicy {
     }
 
     /**
-     * 创建由协调器驱动的增量压缩策略。
-     */
-    public static AgentContextCompressionPolicy incremental(
-        AgentContextCompressionCoordinator coordinator) {
-        return builder().coordinator(coordinator).build();
-    }
-
-    /**
-     * 创建增量策略并在策略内部装配协调器。
+     * 创建增量策略。协调器由策略内部装配，Agent 运行时无需直接接触协调器。
      */
     public static AgentContextCompressionPolicy incremental(
         AgentContextCompressionStateStore store,
         AgentContextCompressionTrigger trigger,
         AgentContextCompressor compressor,
         ToLongFunction<List<Message>> tokenEstimator) {
-        return incremental(new AgentContextCompressionCoordinator(
-            store, trigger, compressor, tokenEstimator));
+        return builder()
+            .stateStore(store)
+            .trigger(trigger)
+            .compressor(compressor)
+            .tokenEstimator(tokenEstimator)
+            .build();
     }
 
     public static Builder builder() {
@@ -72,15 +76,22 @@ public final class AgentContextCompressionPolicy {
     }
 
     public AgentContextCompressor getCompressor() {
-        return compressor;
-    }
-
-    public AgentContextCompressionCoordinator getCoordinator() {
-        return coordinator;
+        // Incremental policies invoke their compressor only through the coordinator.
+        return coordinator == null ? compressor : null;
     }
 
     public boolean isIncremental() {
         return coordinator != null;
+    }
+
+    /**
+     * 执行一次增量压缩；仅供 Runner 使用，普通业务代码只需配置策略。
+     */
+    public AgentContextCompressionResult compress(String conversationId, List<Message> chronologicalMessages) {
+        if (coordinator == null) {
+            throw new IllegalStateException("compression policy is not incremental");
+        }
+        return coordinator.compress(conversationId, chronologicalMessages);
     }
 
     public boolean isCompactCompletedToolTurns() {
@@ -93,7 +104,9 @@ public final class AgentContextCompressionPolicy {
 
     public static final class Builder {
         private AgentContextCompressor compressor;
-        private AgentContextCompressionCoordinator coordinator;
+        private AgentContextCompressionStateStore stateStore;
+        private AgentContextCompressionTrigger trigger;
+        private ToLongFunction<List<Message>> tokenEstimator;
         private boolean compactCompletedToolTurns = true;
         private int keepRecentTurns = 2;
 
@@ -102,8 +115,18 @@ public final class AgentContextCompressionPolicy {
             return this;
         }
 
-        public Builder coordinator(AgentContextCompressionCoordinator coordinator) {
-            this.coordinator = coordinator;
+        public Builder stateStore(AgentContextCompressionStateStore stateStore) {
+            this.stateStore = stateStore;
+            return this;
+        }
+
+        public Builder trigger(AgentContextCompressionTrigger trigger) {
+            this.trigger = trigger;
+            return this;
+        }
+
+        public Builder tokenEstimator(ToLongFunction<List<Message>> tokenEstimator) {
+            this.tokenEstimator = tokenEstimator;
             return this;
         }
 
@@ -122,4 +145,5 @@ public final class AgentContextCompressionPolicy {
             return new AgentContextCompressionPolicy(this);
         }
     }
+
 }

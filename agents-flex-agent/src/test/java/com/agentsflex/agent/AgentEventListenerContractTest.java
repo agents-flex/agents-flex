@@ -78,15 +78,15 @@ public class AgentEventListenerContractTest {
                 return true;
             }
         };
-        AgentContextCompressionCoordinator coordinator = new AgentContextCompressionCoordinator(
-            states, input -> true,
+        AgentContextCompressionPolicy compressionPolicy = AgentContextCompressionPolicy.incremental(
+            states, (pending, tokens, turns, state) -> true,
             messages -> java.util.Arrays.asList(new UserMessage("summary"), new AiMessage("facts")),
             messages -> messages.size());
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> new AiMessage("done"));
         Agent agent = Agent.builder("compression-events")
             .chatModel(model)
-            .compressionPolicy(AgentContextCompressionPolicy.incremental(coordinator))
+            .compressionPolicy(compressionPolicy)
             .build();
         List<AgentEvent> events = new ArrayList<>();
         AgentTurn turn = AgentRunner.builder().chatMemoryProvider(id -> memory).build()

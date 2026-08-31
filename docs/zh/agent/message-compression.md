@@ -107,7 +107,7 @@ Agent agent = Agent.builder("support-agent")
 消息 201~300 -> 第三次压缩，继续推进游标
 ```
 
-`AgentContextCompressionState` 保存摘要和覆盖游标；`AgentContextCompressionTrigger` 决定本次是否达到条件；`AgentContextCompressionCoordinator` 负责组合旧摘要与新增消息、调用压缩器并通过 CAS 保存新状态。
+`AgentContextCompressionState` 保存摘要和覆盖游标；`AgentContextCompressionTrigger` 决定本次是否达到条件；策略内部的协调器负责组合旧摘要与新增消息、调用压缩器并通过 CAS 保存新状态。
 
 ## 按 Token 或业务条件触发
 
@@ -116,7 +116,7 @@ Agent agent = Agent.builder("support-agent")
     .chatModel(chatModel)
     .compressionPolicy(AgentContextCompressionPolicy.incremental(
         compressionStateStore,
-        input -> input.getEstimatedPendingTokens() >= 100_000,
+        (pending, tokens, turns, state) -> tokens >= 100_000,
         AgentContextCompressors.model(
             summaryModel,
             "保留事实、实体 ID、约束、审批结果和未完成事项"),
@@ -126,19 +126,18 @@ Agent agent = Agent.builder("support-agent")
 AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理"));
 ```
 
-触发器收到的 `AgentContextCompressionInput` 包含：
+触发器直接收到以下参数：
 
 - 上次游标之后的 `pendingMessages`
-- 已持久化的 `summaryMessages`
 - 新增消息的估算 Token 数
 - 新增消息中的 Turn 数
-- 当前完整压缩状态
+- 当前完整压缩状态（摘要可从 `state.getSummaryMessages()` 获取）
 
 因此可以表达更复杂的业务规则：
 
 ```java
-input -> input.getEstimatedPendingTokens() >= 80_000
-    || input.getPendingTurnCount() >= 20
+(pending, tokens, turns, state) -> tokens >= 80_000
+    || turns >= 20
 ```
 
 只有存在新增消息且触发器返回 `true` 时，才调用压缩器并保存状态。达到一次阈值后，后续没有足够新增内容的请求不会重复调用摘要模型。

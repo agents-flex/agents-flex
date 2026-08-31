@@ -36,10 +36,12 @@ public class AgentContextCompressionPolicyTest {
                 return true;
             }
         };
+        AgentContextCompressor compressor = messages ->
+            Collections.<Message>singletonList(new UserMessage("summary"));
         AgentContextCompressionPolicy policy = AgentContextCompressionPolicy.incremental(
             store,
-            input -> true,
-            messages -> Collections.<Message>singletonList(new UserMessage("summary")),
+            (pending, tokens, turns, state) -> true,
+            compressor,
             messages -> messages.size());
 
         assertTrue(policy.isIncremental());
@@ -47,21 +49,9 @@ public class AgentContextCompressionPolicyTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void policyRejectsImmediateAndIncrementalCompressionTogether() {
-        AgentContextCompressionCoordinator coordinator = new AgentContextCompressionCoordinator(
-            new AgentContextCompressionStateStore() {
-                public AgentContextCompressionState load(String id) {
-                    return null;
-                }
-
-                public boolean save(String id, AgentContextCompressionState state, long version) {
-                    return true;
-                }
-            }, input -> true, messages -> Collections.<Message>singletonList(new UserMessage("summary")),
-            messages -> messages.size());
+    public void policyRejectsPartialIncrementalConfiguration() {
         AgentContextCompressionPolicy.builder()
-            .compressor(messages -> Collections.<Message>singletonList(new UserMessage("summary")))
-            .coordinator(coordinator)
+            .trigger((pending, tokens, turns, state) -> true)
             .build();
     }
 }

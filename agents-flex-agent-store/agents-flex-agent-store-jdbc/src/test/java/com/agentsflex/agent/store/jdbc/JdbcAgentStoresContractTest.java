@@ -174,7 +174,7 @@ public class JdbcAgentStoresContractTest {
     public void shouldPersistCompressionStateWithCasAndRestoreSummaryMessages() {
         AgentContextCompressionStateStore store = config.compressionStateStore();
         AgentContextCompressionState first = new AgentContextCompressionState(1,
-            Arrays.asList(new AiMessage("summary-1")), "message-100", 1, 1000, 10);
+            Arrays.asList(new AiMessage("summary-1")), "message-100");
         assertTrue(store.save("conversation-1", first, 0));
         AgentContextCompressionState loaded = store.load("conversation-1");
         assertEquals(1, loaded.getVersion());
@@ -182,10 +182,10 @@ public class JdbcAgentStoresContractTest {
         assertEquals("summary-1", loaded.getSummaryMessages().get(0).getTextContent());
 
         AgentContextCompressionState second = new AgentContextCompressionState(2,
-            Arrays.asList(new AiMessage("summary-2")), "message-200", 2, 2000, 20);
+            Arrays.asList(new AiMessage("summary-2")), "message-200");
         assertFalse(store.save("conversation-1", second, 0));
         assertTrue(store.save("conversation-1", second, 1));
-        assertEquals(2, store.load("conversation-1").getCompressionVersion());
+        assertEquals(2, store.load("conversation-1").getVersion());
         assertNull(store.load("missing-conversation"));
     }
 

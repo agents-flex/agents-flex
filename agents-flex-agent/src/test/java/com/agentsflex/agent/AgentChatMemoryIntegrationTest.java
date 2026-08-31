@@ -61,9 +61,9 @@ public class AgentChatMemoryIntegrationTest {
                 return true;
             }
         };
-        AgentContextCompressionCoordinator coordinator = new AgentContextCompressionCoordinator(
+        AgentContextCompressionPolicy compressionPolicy = AgentContextCompressionPolicy.incremental(
             states,
-            input -> !input.getPendingMessages().isEmpty(),
+            (pending, tokens, turns, state) -> !pending.isEmpty(),
             messages -> {
                 compressions.incrementAndGet();
                 return java.util.Arrays.asList(
@@ -77,7 +77,7 @@ public class AgentChatMemoryIntegrationTest {
         model.enqueue(prompt -> new AiMessage("second answer"));
         Agent agent = Agent.builder("incremental-agent")
             .chatModel(model)
-            .compressionPolicy(AgentContextCompressionPolicy.incremental(coordinator))
+            .compressionPolicy(compressionPolicy)
             .build();
 
         AgentRunner runner = AgentRunner.builder()

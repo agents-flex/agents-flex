@@ -7,7 +7,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.event.AgentEvent;
-import com.agentsflex.agent.compression.AgentContextCompressionResult;
+import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
 import com.agentsflex.agent.compression.AgentContextCompressionState;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
@@ -115,13 +115,13 @@ final class AgentEventPublisher {
     }
 
     void notifyContextCompressionCompleted(AgentTurn turn,
-                                           AgentContextCompressionResult result) {
+                                           AgentContextCompressionPolicy.CompressionResult result) {
         publish(turn, AgentEventType.CONTEXT_COMPRESSION_COMPLETED,
             compressionAttributes(result));
     }
 
     void notifyContextCompressionSkipped(AgentTurn turn,
-                                         AgentContextCompressionResult result) {
+                                         AgentContextCompressionPolicy.CompressionResult result) {
         publish(turn, AgentEventType.CONTEXT_COMPRESSION_SKIPPED,
             compressionAttributes(result));
     }
@@ -442,14 +442,13 @@ final class AgentEventPublisher {
             "remainingIterations", Math.max(0, maxIterations - turn.getIterationCount()));
     }
 
-    private Map<String, Object> compressionAttributes(AgentContextCompressionResult result) {
+    private Map<String, Object> compressionAttributes(
+        AgentContextCompressionPolicy.CompressionResult result) {
         Map<String, Object> values = attributes("compressed", result != null && result.isCompressed());
         if (result == null || result.getState() == null) return values;
         AgentContextCompressionState state = result.getState();
         values.putAll(attributes("coveredUntilMessageId", state.getCoveredUntilMessageId(),
-            "compressionVersion", state.getCompressionVersion(),
-            "estimatedCoveredTokens", state.getEstimatedCoveredTokens(),
-            "coveredTurnCount", state.getCoveredTurnCount(),
+            "stateVersion", state.getVersion(),
             "modelMessageCount", result.getModelMessages().size()));
         return values;
     }
