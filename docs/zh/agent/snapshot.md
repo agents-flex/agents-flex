@@ -26,7 +26,7 @@ Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对�
 
 - Turn ID、Agent ID/版本。
 - status、phase、消息与待处理 ToolCall。
-- Suspension、工具审批决定和任务计划。
+- Suspension 和工具审批决定。
 - 模型迭代、Runner step、Token、工具、重试等计数。
 - 预算终止原因、nextRunnableAt、取消标记。
 - metadata、最终消息和错误摘要。
@@ -42,7 +42,6 @@ Runner 会在关键状态变化后保存，例如：
 - 模型已产生待执行 ToolCall。
 - 工具完成并写入 ToolMessage。
 - 暂停、恢复和安排重试。
-- 计划与任务状态变化。
 - 完成、失败、取消或预算终止。
 
 “先保存 ToolCall，再请求审批或执行”保证恢复后使用的是原始参数。

@@ -26,7 +26,7 @@ public interface AgentLoader {
     /**
      * 加载当前生效的 Agent。
      *
-     * <p>创建按 Agent ID 分派的新任务或子任务时调用，具体生效规则由业务实现决定。</p>
+     * <p>创建按 Agent ID 分派的新 Turn 或平台入口时调用，具体生效规则由业务实现决定。</p>
      */
     Agent loadActive(String agentId);
 }

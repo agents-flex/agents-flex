@@ -779,7 +779,7 @@ public final class AgentRunner {
             turn.incrementStep();
         }
 
-        List<Runnable> parentEvents = afterStepEvents.get();
+        List<Runnable> previousEvents = afterStepEvents.get();
         List<Runnable> deferredEvents = new ArrayList<>();
         afterStepEvents.set(deferredEvents);
         try {
@@ -795,10 +795,10 @@ public final class AgentRunner {
             publishTerminalEvent(turn);
             return result;
         } finally {
-            if (parentEvents == null) {
+            if (previousEvents == null) {
                 afterStepEvents.remove();
             } else {
-                afterStepEvents.set(parentEvents);
+                afterStepEvents.set(previousEvents);
             }
             if (turn.getStatus().isTerminal()) {
                 eventPublisher.clearSequence(turn.getId());

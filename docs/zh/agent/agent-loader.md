@@ -18,7 +18,7 @@ public interface AgentLoader {
 }
 ```
 
-`load` 必须按精确版本加载历史定义；`loadActive` 返回当前生效版本，用于创建新子任务或平台入口。两者语义不应混淆。
+`load` 必须按精确版本加载历史定义；`loadActive` 返回当前生效版本，用于创建新 Turn 或平台入口。两者语义不应混淆。
 
 ## 内存实现
 

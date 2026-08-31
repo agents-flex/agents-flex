@@ -168,7 +168,7 @@ public class JdbcAgentStoresContractTest {
 
     /** 活动会话查询应排除终态。 */
     @Test
-    public void shouldFindActiveTurnAndTerminalChildForRecovery() {
+    public void shouldFindActiveTurnForRecovery() {
         JdbcAgentTurnStore store = config.turnStore();
         AgentTurnSnapshot activeSource = snapshot("active", AgentTurnStatus.READY);
         AgentTurnSnapshot active = activeSource.withState(activeSource.getState().toBuilder()

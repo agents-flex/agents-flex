@@ -7,7 +7,7 @@ description: 建立可持久化暂停点，使用结构化恢复动作继续执�
 
 ## 概述
 
-Agent 遇到人工审批、缺少用户信息、等待子任务或延迟重试时，不应占用线程等待。Runner 把等待原因保存为 `AgentSuspension`，将 Turn 转换为阻塞状态并写入 Snapshot。外部事件到达后，通过 `AgentResumeCommand` 从记录的阶段继续。
+Agent 遇到人工审批、缺少用户信息或延迟重试时，不应占用线程等待。Runner 把等待原因保存为 `AgentSuspension`，将 Turn 转换为阻塞状态并写入 Snapshot。外部事件到达后，通过 `AgentResumeCommand` 从记录的阶段继续。
 
 ## 暂停类型
 

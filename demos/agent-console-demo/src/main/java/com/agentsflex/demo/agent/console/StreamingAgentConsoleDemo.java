@@ -58,9 +58,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>业务代码维护 conversationId 和 ChatMemory，Runner 按配置的消息窗口读取模型历史，并把本轮新增
  * 消息幂等投影回业务 ChatMemory。模型直接回答时 Turn 一步完成；模型选择工具时 Runner 自动执行工具
- * 并继续调用模型；工具可以在副作用前请求结构化表单，控制台按 Schema 收集数据并恢复原调用；复杂
- * 目标可拆成顺序子任务；高风险工具会先进入审批等待状态，控制台收集人的决定后按根 turnId 恢复
- * 实际阻塞的 Turn。</p>
+ * 并继续调用模型；工具可以在副作用前请求结构化表单，控制台按 Schema 收集数据并恢复原调用；高风险
+ * 工具会先进入审批等待状态，控制台收集人的决定后按当前 turnId 恢复实际阻塞的 Turn。</p>
  */
 public final class StreamingAgentConsoleDemo {
 

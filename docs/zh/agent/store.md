@@ -87,7 +87,7 @@ Turn Store；Runner 始终先提交 Snapshot，再幂等投影 ChatMemory，投�
 
 ## AgentTurnStore 契约
 
-实现需要支持：保存/加载快照、请求取消、领取 runnable Turn、续租/释放 Lease，以及查询等待父 Turn 的终态子任务。关键规则：
+实现需要支持：保存/加载快照、请求取消、领取 runnable Turn，以及续租/释放 Lease。关键规则：
 
 - `save` 比较 expectedVersion 并原子写入新版本。
 - 带有效 Lease 的写入必须验证 `workerId + leaseId`。
@@ -108,7 +108,7 @@ Framework 只保证 Turn Snapshot 的原子状态转换。外部审批、用户�
 
 ## 清理策略
 
-- 先确认 Turn 终态且不再被父任务引用。
+- 先确认 Turn 已进入终态。
 - 清理作业使用明确批次，避免大事务和全表锁。
 
 ## 验证自定义实现

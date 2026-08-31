@@ -8,7 +8,7 @@
 /**
  * AgentTurn 状态持久化与 Worker 租约接口。
  *
- * <p>存储实现负责 Snapshot 的乐观锁写入、父子任务原子保存、可运行任务领取以及租约续期。
+ * <p>存储实现负责 Snapshot 的乐观锁写入、可运行任务领取以及租约续期。
  * 默认内存实现适合本地执行和测试，长任务应使用数据库或其他持久化实现。</p>
  */
 package com.agentsflex.agent.store;
