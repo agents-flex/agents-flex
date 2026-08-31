@@ -24,7 +24,7 @@ public class AgentContextCompressionCoordinatorTest {
         MemoryStore store = new MemoryStore();
         AtomicInteger compressions = new AtomicInteger();
         AgentContextCompressionCoordinator coordinator = coordinator(store,
-            (pending, tokens, turns, state) -> tokens >= 4,
+            input -> input.getEstimatedPendingTokens() >= 4,
             value -> {
                 compressions.incrementAndGet();
                 return Collections.singletonList(new AiMessage("summary"));
@@ -32,7 +32,7 @@ public class AgentContextCompressionCoordinatorTest {
             messages -> messages.size());
         List<Message> history = messages(3);
 
-        AgentContextCompressionPolicy.CompressionResult result = coordinator.compress("c1", history);
+        AgentContextCompressionResult result = coordinator.compress("c1", history);
 
         assertFalse(result.isCompressed());
         assertEquals(history.size(), result.getModelMessages().size());
@@ -43,19 +43,19 @@ public class AgentContextCompressionCoordinatorTest {
     @Test
     public void shouldPersistInitialCompressionWithVersionZeroCas() {
         MemoryStore store = new MemoryStore();
-        AtomicReference<List<Message>> input = new AtomicReference<>();
-        AgentContextCompressionCoordinator coordinator = coordinator(store, (pending, tokens, turns, state) -> true,
+        AtomicReference<List<Message>> compressorInput = new AtomicReference<>();
+        AgentContextCompressionCoordinator coordinator = coordinator(store, input -> true,
             value -> {
-                input.set(value);
+                compressorInput.set(value);
                 return Collections.singletonList(new AiMessage("summary-1"));
             },
             messages -> messages.size());
         List<Message> history = messages(100);
 
-        AgentContextCompressionPolicy.CompressionResult result = coordinator.compress("c1", history);
+        AgentContextCompressionResult result = coordinator.compress("c1", history);
 
         assertTrue(result.isCompressed());
-        assertEquals(100, input.get().size());
+        assertEquals(100, compressorInput.get().size());
         assertEquals(0L, store.saves.get(0).expectedVersion);
         assertEquals(1L, result.getState().getVersion());
         assertEquals(history.get(99).getMessageId(), result.getState().getCoveredUntilMessageId());
@@ -66,7 +66,8 @@ public class AgentContextCompressionCoordinatorTest {
     public void shouldCompressOnlyNewMessagesAcrossMultipleRounds() {
         MemoryStore store = new MemoryStore();
         List<List<Message>> inputs = new ArrayList<>();
-        AgentContextCompressionCoordinator coordinator = coordinator(store, (pending, tokens, turns, state) -> tokens >= 100,
+        AgentContextCompressionCoordinator coordinator = coordinator(store,
+            input -> input.getEstimatedPendingTokens() >= 100,
             value -> {
                 inputs.add(value);
                 return Collections.singletonList(new AiMessage("summary-" + (inputs.size())));
@@ -78,9 +79,9 @@ public class AgentContextCompressionCoordinatorTest {
         List<Message> third = new ArrayList<>(second);
         third.addAll(messages(100));
 
-        AgentContextCompressionPolicy.CompressionResult r1 = coordinator.compress("c1", first);
-        AgentContextCompressionPolicy.CompressionResult r2 = coordinator.compress("c1", second);
-        AgentContextCompressionPolicy.CompressionResult r3 = coordinator.compress("c1", third);
+        AgentContextCompressionResult r1 = coordinator.compress("c1", first);
+        AgentContextCompressionResult r2 = coordinator.compress("c1", second);
+        AgentContextCompressionResult r3 = coordinator.compress("c1", third);
 
         assertTrue(r1.isCompressed());
         assertTrue(r2.isCompressed());
@@ -96,11 +97,11 @@ public class AgentContextCompressionCoordinatorTest {
     @Test
     public void shouldNotSaveWhenNoNewMessagesRemain() {
         MemoryStore store = new MemoryStore();
-        AgentContextCompressionCoordinator coordinator = coordinator(store, (pending, tokens, turns, state) -> true,
+        AgentContextCompressionCoordinator coordinator = coordinator(store, input -> true,
             value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
         List<Message> history = messages(2);
         coordinator.compress("c1", history);
-        AgentContextCompressionPolicy.CompressionResult result = coordinator.compress("c1", history);
+        AgentContextCompressionResult result = coordinator.compress("c1", history);
 
         assertFalse(result.isCompressed());
         assertEquals(1, store.saves.size());
@@ -111,25 +112,34 @@ public class AgentContextCompressionCoordinatorTest {
     public void shouldExposeTriggerInputAndCarryPreviousState() {
         MemoryStore store = new MemoryStore();
         AtomicReference<List<Message>> seenPending = new AtomicReference<>();
+        AtomicReference<List<Message>> seenSummary = new AtomicReference<>();
         AtomicReference<AgentContextCompressionState> seenState = new AtomicReference<>();
         AtomicReference<Long> seenTokens = new AtomicReference<>();
         AtomicReference<Integer> seenTurns = new AtomicReference<>();
-        AgentContextCompressionCoordinator coordinator = coordinator(store, (pending, tokens, turns, state) -> {
-            seenPending.set(pending);
-            seenState.set(state);
-            seenTokens.set(tokens);
-            seenTurns.set(turns);
+        AgentContextCompressionCoordinator coordinator = coordinator(store, input -> {
+            seenPending.set(input.getPendingMessages());
+            seenSummary.set(input.getSummaryMessages());
+            seenState.set(input.getState());
+            seenTokens.set(input.getEstimatedPendingTokens());
+            seenTurns.set(input.getPendingTurnCount());
             try {
-                pending.clear();
+                input.getPendingMessages().clear();
                 fail("trigger input must be immutable");
             } catch (UnsupportedOperationException expected) {
                 // expected
             }
-            return state.getVersion() == 0;
+            try {
+                input.getSummaryMessages().clear();
+                fail("summary input must be immutable");
+            } catch (UnsupportedOperationException expected) {
+                // expected
+            }
+            return input.getState().getVersion() == 0;
         }, value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size() * 7L);
         coordinator.compress("c1", messages(2));
 
         assertNotNull(seenPending.get());
+        assertNotNull(seenSummary.get());
         assertEquals(0L, seenState.get().getVersion());
         assertEquals(2, seenPending.get().size());
         assertEquals(2, seenTurns.get().intValue());
@@ -139,7 +149,7 @@ public class AgentContextCompressionCoordinatorTest {
     @Test
     public void shouldRejectHistoryThatDoesNotContainCoveredMessage() {
         MemoryStore store = new MemoryStore();
-        AgentContextCompressionCoordinator coordinator = coordinator(store, (pending, tokens, turns, state) -> true,
+        AgentContextCompressionCoordinator coordinator = coordinator(store, input -> true,
             value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
         coordinator.compress("c1", messages(2));
         try {
@@ -154,7 +164,7 @@ public class AgentContextCompressionCoordinatorTest {
     @Test
     public void shouldFailWithoutOverwritingStateOnCasConflict() {
         MemoryStore store = new MemoryStore();
-        AgentContextCompressionCoordinator coordinator = coordinator(store, (pending, tokens, turns, state) -> true,
+        AgentContextCompressionCoordinator coordinator = coordinator(store, input -> true,
             value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
         store.rejectNextSave = true;
         try {
@@ -169,7 +179,7 @@ public class AgentContextCompressionCoordinatorTest {
     @Test
     public void shouldRejectEmptyCompressorResultAndPreserveState() {
         MemoryStore store = new MemoryStore();
-        AgentContextCompressionCoordinator coordinator = coordinator(store, (pending, tokens, turns, state) -> true,
+        AgentContextCompressionCoordinator coordinator = coordinator(store, input -> true,
             value -> Collections.emptyList(), messages -> messages.size());
         try {
             coordinator.compress("c1", messages(1));
@@ -184,14 +194,20 @@ public class AgentContextCompressionCoordinatorTest {
     public void shouldKeepStateAndInputsImmutable() {
         MemoryStore store = new MemoryStore();
         List<Message> history = messages(2);
-        AgentContextCompressionCoordinator coordinator = coordinator(store, (pending, tokens, turns, state) -> true,
+        AgentContextCompressionCoordinator coordinator = coordinator(store, input -> true,
             value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
-        AgentContextCompressionPolicy.CompressionResult result = coordinator.compress("c1", history);
+        AgentContextCompressionResult result = coordinator.compress("c1", history);
         history.clear();
         assertEquals(1, result.getState().getSummaryMessages().size());
         try {
             result.getState().getSummaryMessages().add(new AiMessage("x"));
             fail("expected immutable summary list");
+        } catch (UnsupportedOperationException expected) {
+            // expected
+        }
+        try {
+            result.getModelMessages().clear();
+            fail("expected immutable model message list");
         } catch (UnsupportedOperationException expected) {
             // expected
         }
@@ -201,7 +217,8 @@ public class AgentContextCompressionCoordinatorTest {
     public void shouldHandleZeroAndLargeTokenEstimatesAtTriggerBoundary() {
         MemoryStore zeroStore = new MemoryStore();
         AtomicInteger zeroCalls = new AtomicInteger();
-        AgentContextCompressionCoordinator zero = coordinator(zeroStore, (pending, tokens, turns, state) -> tokens > 0,
+        AgentContextCompressionCoordinator zero = coordinator(zeroStore,
+            input -> input.getEstimatedPendingTokens() > 0,
             value -> {
                 zeroCalls.incrementAndGet();
                 return Collections.singletonList(new AiMessage("x"));
@@ -210,14 +227,15 @@ public class AgentContextCompressionCoordinatorTest {
         assertEquals(0, zeroCalls.get());
 
         MemoryStore largeStore = new MemoryStore();
-        AgentContextCompressionCoordinator large = coordinator(largeStore, (pending, tokens, turns, state) -> tokens == Long.MAX_VALUE,
+        AgentContextCompressionCoordinator large = coordinator(largeStore,
+            input -> input.getEstimatedPendingTokens() == Long.MAX_VALUE,
             value -> Collections.singletonList(new AiMessage("large")), messages -> Long.MAX_VALUE);
         assertTrue(large.compress("large", messages(1)).isCompressed());
     }
 
     @Test
     public void shouldRejectNegativeTokenEstimate() {
-        AgentContextCompressionCoordinator coordinator = coordinator(new MemoryStore(), (pending, tokens, turns, state) -> true,
+        AgentContextCompressionCoordinator coordinator = coordinator(new MemoryStore(), input -> true,
             value -> Collections.singletonList(new AiMessage("summary")), messages -> -1);
         try {
             coordinator.compress("negative", messages(1));

@@ -4,7 +4,6 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.ToLongFunction;
 

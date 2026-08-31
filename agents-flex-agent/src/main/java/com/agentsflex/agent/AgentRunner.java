@@ -8,6 +8,7 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
 import com.agentsflex.agent.compression.AgentContextCompressor;
+import com.agentsflex.agent.compression.AgentContextCompressionResult;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;
@@ -486,7 +487,7 @@ public final class AgentRunner {
                 List<Message> protectedTail = new ArrayList<>(history.subList(compressible.size(), history.size()));
                 eventPublisher.notifyContextCompressionStarted(turn, history.size(), compressible.size());
                 try {
-                    AgentContextCompressionPolicy.CompressionResult result = policy
+                    AgentContextCompressionResult result = policy
                         .compress(conversationId, compressible);
                     modelHistory = new ArrayList<>(result.getModelMessages());
                     modelHistory.addAll(protectedTail);

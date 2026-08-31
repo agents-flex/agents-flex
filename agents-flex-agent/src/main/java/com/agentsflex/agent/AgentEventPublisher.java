@@ -7,7 +7,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.event.AgentEvent;
-import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
+import com.agentsflex.agent.compression.AgentContextCompressionResult;
 import com.agentsflex.agent.compression.AgentContextCompressionState;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
@@ -115,13 +115,13 @@ final class AgentEventPublisher {
     }
 
     void notifyContextCompressionCompleted(AgentTurn turn,
-                                           AgentContextCompressionPolicy.CompressionResult result) {
+                                           AgentContextCompressionResult result) {
         publish(turn, AgentEventType.CONTEXT_COMPRESSION_COMPLETED,
             compressionAttributes(result));
     }
 
     void notifyContextCompressionSkipped(AgentTurn turn,
-                                         AgentContextCompressionPolicy.CompressionResult result) {
+                                         AgentContextCompressionResult result) {
         publish(turn, AgentEventType.CONTEXT_COMPRESSION_SKIPPED,
             compressionAttributes(result));
     }
@@ -443,7 +443,7 @@ final class AgentEventPublisher {
     }
 
     private Map<String, Object> compressionAttributes(
-        AgentContextCompressionPolicy.CompressionResult result) {
+        AgentContextCompressionResult result) {
         Map<String, Object> values = attributes("compressed", result != null && result.isCompressed());
         if (result == null || result.getState() == null) return values;
         AgentContextCompressionState state = result.getState();

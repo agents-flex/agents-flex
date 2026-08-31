@@ -40,7 +40,7 @@ public class AgentContextCompressionPolicyTest {
             Collections.<Message>singletonList(new UserMessage("summary"));
         AgentContextCompressionPolicy policy = AgentContextCompressionPolicy.incremental(
             store,
-            (pending, tokens, turns, state) -> true,
+            input -> true,
             compressor,
             messages -> messages.size());
 
@@ -51,7 +51,7 @@ public class AgentContextCompressionPolicyTest {
     @Test(expected = IllegalArgumentException.class)
     public void policyRejectsPartialIncrementalConfiguration() {
         AgentContextCompressionPolicy.builder()
-            .trigger((pending, tokens, turns, state) -> true)
+            .trigger(input -> true)
             .build();
     }
 }

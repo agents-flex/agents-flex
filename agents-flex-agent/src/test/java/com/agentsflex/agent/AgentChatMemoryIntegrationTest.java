@@ -63,7 +63,7 @@ public class AgentChatMemoryIntegrationTest {
         };
         AgentContextCompressionPolicy compressionPolicy = AgentContextCompressionPolicy.incremental(
             states,
-            (pending, tokens, turns, state) -> !pending.isEmpty(),
+            input -> !input.getPendingMessages().isEmpty(),
             messages -> {
                 compressions.incrementAndGet();
                 return java.util.Arrays.asList(

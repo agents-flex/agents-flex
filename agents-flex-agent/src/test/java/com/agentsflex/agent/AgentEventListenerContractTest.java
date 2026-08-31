@@ -79,7 +79,7 @@ public class AgentEventListenerContractTest {
             }
         };
         AgentContextCompressionPolicy compressionPolicy = AgentContextCompressionPolicy.incremental(
-            states, (pending, tokens, turns, state) -> true,
+            states, input -> true,
             messages -> java.util.Arrays.asList(new UserMessage("summary"), new AiMessage("facts")),
             messages -> messages.size());
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
