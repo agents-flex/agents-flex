@@ -107,7 +107,7 @@ Agent agent = Agent.builder("support-agent")
 消息 201~300 -> 第三次压缩，继续推进游标
 ```
 
-`AgentContextCompressionState` 保存摘要和覆盖游标；`AgentContextCompressionCondition` 决定本次是否达到条件；策略内部的协调器负责组合旧摘要与新增消息、调用压缩器并通过 CAS 保存新状态。
+`AgentContextCompressionState` 保存摘要和覆盖游标；`AgentContextCompressionCondition` 决定本次是否达到条件；策略内部的处理器负责组合旧摘要与新增消息、调用压缩器并通过 CAS 保存新状态。
 
 ## 按 Token 或业务条件触发
 
@@ -153,7 +153,7 @@ AgentContextCompressionCondition condition = AgentContextCompressionConditions.a
 只有存在新增消息且触发器返回 `true` 时，才调用压缩器并保存状态。达到一次阈值后，后续没有足够新增内容的请求不会重复调用摘要模型。
 配置增量 `compressionPolicy` 后，这些步骤由 Runner 自动完成。
 
-协调器以 `AgentContextCompressionResult` 返回本轮是否完成压缩、最新状态以及最终模型消息视图；业务侧通常不需要直接处理该结果，Runner 会自动将其绑定到当前 Turn 和模型请求。
+处理器以 `AgentContextCompressionResult` 返回本轮是否完成压缩、最新状态以及最终模型消息视图；业务侧通常不需要直接处理该结果，Runner 会自动将其绑定到当前 Turn 和模型请求。
 
 ## 状态持久化
 
@@ -220,7 +220,7 @@ AgentContextCompressor compressor = AgentContextCompressors.chain(
 
 ### 压缩游标不存在
 
-协调器要求传入的可压缩历史包含 `coveredUntilMessageId`。如果分页遗漏了该消息、历史被错误删除或状态与会话不一致，会抛出异常，而不是静默从头重复摘要。
+处理器要求传入的可压缩历史包含 `coveredUntilMessageId`。如果分页遗漏了该消息、历史被错误删除或状态与会话不一致，会抛出异常，而不是静默从头重复摘要。
 
 ### CAS 冲突
 

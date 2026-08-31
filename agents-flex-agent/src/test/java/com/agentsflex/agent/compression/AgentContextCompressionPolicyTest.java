@@ -26,7 +26,7 @@ public class AgentContextCompressionPolicyTest {
     }
 
     @Test
-    public void incrementalFactoryBuildsCoordinatorWithoutExposingAssemblyAtCallSite() {
+    public void incrementalFactoryBuildsProcessorWithoutExposingAssemblyAtCallSite() {
         AgentContextCompressionStateStore store = new AgentContextCompressionStateStore() {
             public AgentContextCompressionState load(String id) {
                 return null;

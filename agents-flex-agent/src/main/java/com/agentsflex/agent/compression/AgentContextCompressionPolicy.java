@@ -8,7 +8,6 @@ package com.agentsflex.agent.compression;
 
 import com.agentsflex.core.message.Message;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.ToLongFunction;
 
@@ -16,11 +15,11 @@ import java.util.function.ToLongFunction;
  * Agent 的统一上下文压缩策略。
  *
  * <p>即时策略只在构建模型窗口时调用压缩器；增量策略由 Runner 在带会话 ID 的请求入口
- * 自动调用协调器，并通过状态 Store 保存游标和摘要。</p>
+ * 自动调用处理器，并通过状态 Store 保存游标和摘要。</p>
  */
 public final class AgentContextCompressionPolicy {
     private final AgentContextCompressor compressor;
-    private final AgentContextCompressionCoordinator coordinator;
+    private final AgentContextCompressionProcessor processor;
     private final boolean compactCompletedToolTurns;
     private final int keepRecentTurns;
 
@@ -33,9 +32,9 @@ public final class AgentContextCompressionPolicy {
                 "incremental compression requires stateStore, condition, compressor and tokenEstimator");
         }
         this.compressor = builder.compressor;
-        this.coordinator = hasIncrementalDependency
-            ? new AgentContextCompressionCoordinator(
-            builder.stateStore, builder.condition, builder.compressor, builder.tokenEstimator)
+        this.processor = hasIncrementalDependency
+            ? new AgentContextCompressionProcessor(
+                builder.stateStore, builder.condition, builder.compressor, builder.tokenEstimator)
             : null;
         this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
         this.keepRecentTurns = builder.keepRecentTurns;
@@ -56,7 +55,7 @@ public final class AgentContextCompressionPolicy {
     }
 
     /**
-     * 创建增量策略。协调器由策略内部装配，Agent 运行时无需直接接触协调器。
+     * 创建增量策略。处理器由策略内部装配，Agent 运行时无需直接接触处理器。
      */
     public static AgentContextCompressionPolicy incremental(
         AgentContextCompressionStateStore store,
@@ -76,22 +75,22 @@ public final class AgentContextCompressionPolicy {
     }
 
     public AgentContextCompressor getCompressor() {
-        // Incremental policies invoke their compressor only through the coordinator.
-        return coordinator == null ? compressor : null;
+        // Incremental policies invoke their compressor only through the processor.
+        return processor == null ? compressor : null;
     }
 
     public boolean isIncremental() {
-        return coordinator != null;
+        return processor != null;
     }
 
     /**
      * 执行一次增量压缩；仅供 Runner 使用，普通业务代码只需配置策略。
      */
     public AgentContextCompressionResult compress(String conversationId, List<Message> chronologicalMessages) {
-        if (coordinator == null) {
+        if (processor == null) {
             throw new IllegalStateException("compression policy is not incremental");
         }
-        return coordinator.compress(conversationId, chronologicalMessages);
+        return processor.process(conversationId, chronologicalMessages);
     }
 
     public boolean isCompactCompletedToolTurns() {

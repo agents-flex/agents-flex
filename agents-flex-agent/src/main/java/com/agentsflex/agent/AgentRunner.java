@@ -1275,7 +1275,7 @@ public final class AgentRunner {
      */
     private AgentStepResult handleFailure(AgentTurn turn, AiMessageResponse response,
                                           RuntimeException error, AgentTurnPhase resumePhase) {
-        if (error instanceof AgentTurnCancelledException || turn.isCancellationRequested()) {
+        if (turn.isCancellationRequested()) {
             return cancelTurn(turn);
         }
         AgentRetryPolicy retry = turn.getExecutionPolicy().getRetryPolicy();
@@ -1896,9 +1896,6 @@ public final class AgentRunner {
                 turn.requestCancellation();
             }
         }
-    }
-
-    private static final class AgentTurnCancelledException extends RuntimeException {
     }
 
     /**

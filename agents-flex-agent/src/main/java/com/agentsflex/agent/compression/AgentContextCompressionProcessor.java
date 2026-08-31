@@ -8,30 +8,30 @@ import java.util.List;
 import java.util.function.ToLongFunction;
 
 /**
- * 协调增量压缩、触发判断和业务侧状态 CAS 保存。
+ * 处理增量压缩、条件判断和业务侧状态 CAS 保存。
  *
  * <p>它只处理已传入的较早历史，不修改 ChatMemory。压缩失败或 CAS 冲突时不会覆盖旧摘要。</p>
  */
-final class AgentContextCompressionCoordinator {
+final class AgentContextCompressionProcessor {
     private final AgentContextCompressionStateStore store;
     private final AgentContextCompressionCondition condition;
     private final AgentContextCompressor compressor;
     private final ToLongFunction<List<Message>> tokenEstimator;
 
     /**
-     * 创建增量压缩协调器，并要求状态存储、触发器、压缩器和 Token 估算器全部可用。
+     * 创建增量压缩处理器，并要求状态存储、条件、压缩器和 Token 估算器全部可用。
      *
      * @param store          按会话持久化压缩游标和摘要的 CAS Store
      * @param condition      判断当前增量是否值得压缩的条件
      * @param compressor     生成新摘要的实现
      * @param tokenEstimator 对待压缩消息进行非负 Token 估算的函数
      */
-    AgentContextCompressionCoordinator(AgentContextCompressionStateStore store,
-                                       AgentContextCompressionCondition condition,
-                                       AgentContextCompressor compressor,
-                                       ToLongFunction<List<Message>> tokenEstimator) {
+    AgentContextCompressionProcessor(AgentContextCompressionStateStore store,
+                                     AgentContextCompressionCondition condition,
+                                     AgentContextCompressor compressor,
+                                     ToLongFunction<List<Message>> tokenEstimator) {
         if (store == null || condition == null || compressor == null || tokenEstimator == null) {
-            throw new IllegalArgumentException("compression coordinator dependencies must not be null");
+            throw new IllegalArgumentException("compression processor dependencies must not be null");
         }
         this.store = store;
         this.condition = condition;
@@ -41,11 +41,11 @@ final class AgentContextCompressionCoordinator {
 
     /**
      * 对一段完整、按时间升序排列的可压缩历史执行一次增量压缩。
-     * <p>调用方应在这里传入已排除当前 Turn 和最近保护 Turn 的历史；协调器不会修改输入，
+     * <p>调用方应在这里传入已排除当前 Turn 和最近保护 Turn 的历史；处理器不会修改输入，
      * 也不会操作 ChatMemory。每次传入仍须包含已持久化游标对应的消息。</p>
      */
-    AgentContextCompressionResult compress(String conversationId,
-                                           List<Message> chronologicalMessages) {
+    AgentContextCompressionResult process(String conversationId,
+                                          List<Message> chronologicalMessages) {
         if (conversationId == null || chronologicalMessages == null) {
             throw new IllegalArgumentException("conversationId and messages must not be null");
         }
