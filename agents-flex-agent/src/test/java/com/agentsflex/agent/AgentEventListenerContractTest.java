@@ -3,6 +3,8 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.compression.*;
+
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;

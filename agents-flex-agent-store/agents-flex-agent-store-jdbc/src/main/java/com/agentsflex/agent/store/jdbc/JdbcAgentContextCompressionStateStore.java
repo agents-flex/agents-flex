@@ -1,7 +1,7 @@
 package com.agentsflex.agent.store.jdbc;
 
-import com.agentsflex.agent.AgentContextCompressionState;
-import com.agentsflex.agent.AgentContextCompressionStateStore;
+import com.agentsflex.agent.compression.AgentContextCompressionState;
+import com.agentsflex.agent.compression.AgentContextCompressionStateStore;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

@@ -1,4 +1,4 @@
-package com.agentsflex.agent;
+package com.agentsflex.agent.compression;
 
 import com.agentsflex.core.message.Message;
 
@@ -81,7 +81,7 @@ public final class AgentContextCompressionState implements Serializable {
     private static List<Message> copy(List<Message> messages) {
         List<Message> result = new ArrayList<>();
         if (messages != null) for (Message message : messages) {
-            if (message != null) result.add(AgentMessageUtils.copyMessage(message));
+            if (message != null) result.add(CompressionMessageUtils.copyMessage(message));
         }
         return Collections.unmodifiableList(result);
     }

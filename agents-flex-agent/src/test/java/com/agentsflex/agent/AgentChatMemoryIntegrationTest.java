@@ -6,6 +6,8 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.compression.*;
+
 import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.message.AgentActionMessage;

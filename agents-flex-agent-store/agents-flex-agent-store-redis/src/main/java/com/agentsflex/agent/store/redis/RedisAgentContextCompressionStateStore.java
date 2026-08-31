@@ -1,7 +1,7 @@
 package com.agentsflex.agent.store.redis;
 
-import com.agentsflex.agent.AgentContextCompressionState;
-import com.agentsflex.agent.AgentContextCompressionStateStore;
+import com.agentsflex.agent.compression.AgentContextCompressionState;
+import com.agentsflex.agent.compression.AgentContextCompressionStateStore;
 
 /**
  * 使用 Redis Hash 保存上下文压缩状态。

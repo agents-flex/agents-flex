@@ -1,5 +1,7 @@
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.compression.*;
+
 import com.agentsflex.agent.message.AgentActionMessage;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -205,26 +207,6 @@ public class AgentContextWindowTest {
         Assert.assertTrue(received.get(0) instanceof UserMessage);
         Assert.assertTrue(received.get(1) instanceof AiMessage);
         Assert.assertFalse(((AiMessage) received.get(1)).hasToolCalls());
-    }
-
-    @Test
-    public void incrementalCompressorOnlyProcessesNewMessages() {
-        final int[] calls = {0};
-        AgentContextCompressors.Incremental compressor = AgentContextCompressors.incremental(messages -> {
-            calls[0]++;
-            return Arrays.asList(new UserMessage("summary-" + calls[0]), new AiMessage("facts"));
-        });
-        UserMessage first = new UserMessage("first");
-        AiMessage answer = new AiMessage("answer");
-        List<Message> history = Arrays.asList(first, answer);
-        compressor.compress(history);
-        compressor.compress(history);
-        Assert.assertEquals(1, calls[0]);
-
-        UserMessage next = new UserMessage("next");
-        compressor.compress(Arrays.asList(first, answer, next));
-        Assert.assertEquals(2, calls[0]);
-        Assert.assertEquals(next.getMessageId(), compressor.getCoveredUntilMessageId());
     }
 
     @Test

@@ -1,4 +1,4 @@
-package com.agentsflex.agent;
+package com.agentsflex.agent.compression;
 
 /**
  * 判断新增历史是否达到业务定义的压缩条件。

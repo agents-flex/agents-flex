@@ -1,5 +1,7 @@
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.compression.*;
+
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;

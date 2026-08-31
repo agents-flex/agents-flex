@@ -1,4 +1,4 @@
-package com.agentsflex.agent;
+package com.agentsflex.agent.compression;
 
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
@@ -156,7 +156,7 @@ public final class AgentContextCompressors {
                 String summary = byId.get(original.getMessageId());
                 if (summary == null || (original instanceof AiMessage && ((AiMessage) original).hasToolCalls())
                     || original instanceof com.agentsflex.core.message.ToolMessage) {
-                    result.add(AgentMessageUtils.copyMessage(original));
+                    result.add(CompressionMessageUtils.copyMessage(original));
                 } else if (original instanceof UserMessage) {
                     UserMessage copy = ((UserMessage) original).copy();
                     copy.setContent(summary);
@@ -167,87 +167,11 @@ public final class AgentContextCompressors {
                     copy.setToolCalls(null);
                     result.add(copy);
                 } else {
-                    result.add(AgentMessageUtils.copyMessage(original));
+                    result.add(CompressionMessageUtils.copyMessage(original));
                 }
             }
             return result;
         };
-    }
-
-    /**
-     * 创建一个增量语义压缩器。状态对象应由业务侧随 conversation 一起持久化，不能只保存在
-     * Runner 的内存中；这样服务重启后仍能从上次覆盖的位置继续摘要。
-     */
-    public static Incremental incremental(ChatModel model, String instruction) {
-        return new Incremental(model(model, instruction));
-    }
-
-    /**
-     * 使用自定义摘要器创建增量状态，便于接入业务摘要服务或测试替身。
-     */
-    public static Incremental incremental(AgentContextCompressor compressor) {
-        if (compressor == null) throw new IllegalArgumentException("compressor must not be null");
-        return new Incremental(compressor);
-    }
-
-    /**
-     * 整体摘要的增量更新器：适合历史很长、允许用一条“事实摘要”代表较早对话的场景。
-     * 它不是逐消息摘要策略；业务侧应持久化 summary 和 coveredUntilMessageId，避免服务重启后重复处理。
-     */
-    public static final class Incremental implements AgentContextCompressor {
-        private final AgentContextCompressor delegate;
-        private List<Message> summary = new ArrayList<>();
-        private String coveredUntilMessageId;
-
-        /**
-         * @param delegate 负责重新摘要“旧摘要 + 新增消息”的实际压缩器
-         */
-        private Incremental(AgentContextCompressor delegate) {
-            this.delegate = delegate;
-        }
-
-        /**
-         * 只把尚未覆盖的消息与既有摘要合并后交给摘要模型；同一批消息重复调用不会重复请求模型。
-         */
-        @Override
-        public synchronized List<Message> compress(List<Message> messages) {
-            if (messages == null || messages.isEmpty()) return copy(summary);
-            int start = 0;
-            if (coveredUntilMessageId != null) {
-                for (int i = 0; i < messages.size(); i++) {
-                    if (coveredUntilMessageId.equals(messages.get(i).getMessageId())) {
-                        start = i + 1;
-                        break;
-                    }
-                }
-            }
-            if (start >= messages.size()) return copy(summary);
-            List<Message> input = new ArrayList<>(summary);
-            input.addAll(messages.subList(start, messages.size()));
-            List<Message> result = delegate.compress(Collections.unmodifiableList(copy(input)));
-            summary = copy(result);
-            coveredUntilMessageId = messages.get(messages.size() - 1).getMessageId();
-            return copy(summary);
-        }
-
-        public synchronized List<Message> getSummary() {
-            return copy(summary);
-        }
-
-        public synchronized String getCoveredUntilMessageId() {
-            return coveredUntilMessageId;
-        }
-
-        /**
-         * 从业务持久化状态恢复摘要和覆盖游标，并复制摘要消息。
-         *
-         * @param summary               已保存摘要
-         * @param coveredUntilMessageId 已覆盖的最后消息 ID
-         */
-        public synchronized void restore(List<Message> summary, String coveredUntilMessageId) {
-            this.summary = copy(summary);
-            this.coveredUntilMessageId = coveredUntilMessageId;
-        }
     }
 
     /**
@@ -292,7 +216,7 @@ public final class AgentContextCompressors {
     private static List<Message> copy(List<Message> messages) {
         List<Message> result = new ArrayList<>();
         if (messages != null) for (Message message : messages) {
-            if (message != null) result.add(AgentMessageUtils.copyMessage(message));
+            if (message != null) result.add(CompressionMessageUtils.copyMessage(message));
         }
         return result;
     }

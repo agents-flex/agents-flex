@@ -7,6 +7,8 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.event.AgentEvent;
+import com.agentsflex.agent.compression.AgentContextCompressionResult;
+import com.agentsflex.agent.compression.AgentContextCompressionState;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.task.AgentTask;

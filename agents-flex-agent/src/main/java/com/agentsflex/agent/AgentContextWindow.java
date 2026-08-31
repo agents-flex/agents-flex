@@ -1,5 +1,6 @@
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.compression.AgentContextCompressor;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.prompt.MemoryPrompt;

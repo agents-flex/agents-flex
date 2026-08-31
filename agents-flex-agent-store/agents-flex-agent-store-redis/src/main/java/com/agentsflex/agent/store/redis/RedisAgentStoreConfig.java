@@ -2,7 +2,7 @@ package com.agentsflex.agent.store.redis;
 
 import com.agentsflex.agent.store.AgentStoreSerializer;
 import com.agentsflex.agent.store.FastjsonAgentStoreSerializer;
-import com.agentsflex.agent.AgentContextCompressionStateStore;
+import com.agentsflex.agent.compression.AgentContextCompressionStateStore;
 import redis.clients.jedis.JedisPooled;
 
 import java.net.URI;

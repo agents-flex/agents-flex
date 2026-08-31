@@ -11,6 +11,9 @@ description: 从上下文窗口、规则归一化到可持久化的增量语义�
 
 压缩始终只生成模型调用视图，原始 `ChatMemory`、`AgentTurn`、ToolCall、ToolMessage 和审计记录不会被清空或改写。
 
+压缩相关扩展类型统一位于 `com.agentsflex.agent.compression` 包；Agent 侧只需要配置一个
+`compressionPolicy`，不需要在运行时自行组装压缩流程。
+
 消息压缩通常分为三层：
 
 | 层次 | 机制 | 是否调用模型 | 适用场景 |

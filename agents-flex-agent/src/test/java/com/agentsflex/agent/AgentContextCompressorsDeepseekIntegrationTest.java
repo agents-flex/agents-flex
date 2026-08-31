@@ -1,5 +1,7 @@
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.compression.*;
+
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
@@ -55,15 +57,6 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
         assertTrue(summary.get(0) instanceof UserMessage);
         assertTrue(summary.get(1) instanceof AiMessage);
         assertTrue(summary.get(1).getTextContent().length() > 0);
-
-        AgentContextCompressors.Incremental incremental = AgentContextCompressors.incremental(model,
-            "请用中文压缩历史事实，保留订单号和时间。不要调用工具。");
-        List<Message> first = incremental.compress(history);
-        List<Message> repeated = incremental.compress(history);
-        assertEquals(first.get(1).getTextContent(), repeated.get(1).getTextContent());
-        UserMessage next = new UserMessage("请把会议改到周五上午十点，订单号仍为 AF-20260808。");
-        incremental.compress(Arrays.asList(history.get(0), history.get(1), history.get(2), history.get(3), next));
-        assertEquals(next.getMessageId(), incremental.getCoveredUntilMessageId());
 
         List<Message> perMessage = AgentContextCompressors.perMessageModel(model,
             "请逐条压缩每条消息，保留订单号、日期和用户约束。仅返回 JSON 数组，每项必须有 messageId 和 summary。")

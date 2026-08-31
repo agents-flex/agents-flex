@@ -1,8 +1,8 @@
 package com.agentsflex.agent.store.redis;
 
 import com.agentsflex.agent.AgentExecutionPolicy;
-import com.agentsflex.agent.AgentContextCompressionState;
-import com.agentsflex.agent.AgentContextCompressionStateStore;
+import com.agentsflex.agent.compression.AgentContextCompressionState;
+import com.agentsflex.agent.compression.AgentContextCompressionStateStore;
 import com.agentsflex.agent.AgentSuspension;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;

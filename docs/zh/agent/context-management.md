@@ -9,6 +9,8 @@ description: 管理业务 ChatMemory、消息窗口、摘要、多模态内容�
 
 Agent 的上下文同时面对两个目标：保留足够历史以正确决策，又避免消息和工具结果无限增长。Framework 在模型调用前构建独立的上下文窗口：按完整 Turn 选择历史，使用 `maxAttachedTurns` 控制语义范围，使用 `maxAttachedMessages` 作为消息数量上限，并可将较早的已完成工具 Turn 归一化为 UserMessage + 最终 AiMessage。该过程不会清空或重写 `ChatMemory`。
 
+压缩扩展类型统一位于 `com.agentsflex.agent.compression` 包；Agent 通过 `compressionPolicy(...)` 统一配置规则压缩、即时语义压缩或带持久化状态的增量压缩。
+
 ## 消息的三个层次
 
 - 业务 `ChatMemory`：由应用维护，跨多轮 Turn 保存历史。
@@ -114,21 +116,6 @@ AgentContextCompressor compressor = AgentContextCompressors.perMessageModel(
 
 框架据此复制原消息的角色、`messageId` 和 metadata，只替换正文，因此得到 `UserMessage -> AiMessage`
 的原始交替结构。包含 ToolCall 的 AiMessage 和 ToolMessage 始终原样保留，不能逐条摘要。
-
-如果不希望每次都重新摘要全部旧消息，可以使用增量策略：
-
-```java
-AgentContextCompressors.Incremental compressor =
-    AgentContextCompressors.incremental(summaryModel, "保留事实、ID、约束和未完成事项");
-
-// 每次调用后，把这两个值保存到业务侧的会话摘要表；恢复会话时再调用 restore。
-List<Message> summary = compressor.getSummary();
-String coveredUntil = compressor.getCoveredUntilMessageId();
-compressor.restore(summary, coveredUntil);
-```
-
-增量策略是“整体摘要更新”，而不是逐消息摘要。它按照稳定的 `messageId` 找到上次已覆盖的位置，只把新增的旧消息和既有摘要再次提交给摘要模型；
-相同历史重复调用不会重复请求模型。摘要状态应与 `conversationId` 绑定并由业务侧持久化，Runner 不会替业务系统保存它。
 
 ### 按触发条件增量持久化
 

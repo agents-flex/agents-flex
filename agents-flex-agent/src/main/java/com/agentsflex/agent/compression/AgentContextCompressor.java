@@ -1,4 +1,4 @@
-package com.agentsflex.agent;
+package com.agentsflex.agent.compression;
 
 import com.agentsflex.core.message.Message;
 

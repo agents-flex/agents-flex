@@ -6,6 +6,7 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
 import com.agentsflex.agent.task.AgentPlanningPolicy;
 import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.middleware.AgentMiddleware;

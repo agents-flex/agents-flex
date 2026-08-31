@@ -6,6 +6,9 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
+import com.agentsflex.agent.compression.AgentContextCompressionResult;
+import com.agentsflex.agent.compression.AgentContextCompressor;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.middleware.AgentMiddleware;

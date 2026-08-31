@@ -1,4 +1,4 @@
-package com.agentsflex.agent;
+package com.agentsflex.agent.compression;
 
 /**
  * 业务侧实现的摘要状态存储；save 使用版本号进行 CAS。
