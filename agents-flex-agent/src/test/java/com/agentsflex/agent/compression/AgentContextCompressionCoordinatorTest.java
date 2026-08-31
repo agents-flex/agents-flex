@@ -109,7 +109,7 @@ public class AgentContextCompressionCoordinatorTest {
     }
 
     @Test
-    public void shouldExposeTriggerInputAndCarryPreviousState() {
+    public void shouldExposeConditionInputAndCarryPreviousState() {
         MemoryStore store = new MemoryStore();
         AtomicReference<List<Message>> seenPending = new AtomicReference<>();
         AtomicReference<List<Message>> seenSummary = new AtomicReference<>();
@@ -214,7 +214,7 @@ public class AgentContextCompressionCoordinatorTest {
     }
 
     @Test
-    public void shouldHandleZeroAndLargeTokenEstimatesAtTriggerBoundary() {
+    public void shouldHandleZeroAndLargeTokenEstimatesAtConditionBoundary() {
         MemoryStore zeroStore = new MemoryStore();
         AtomicInteger zeroCalls = new AtomicInteger();
         AgentContextCompressionCoordinator zero = coordinator(zeroStore,
@@ -246,10 +246,10 @@ public class AgentContextCompressionCoordinatorTest {
     }
 
     private static AgentContextCompressionCoordinator coordinator(AgentContextCompressionStateStore store,
-                                                                  AgentContextCompressionTrigger trigger,
+                                                                  AgentContextCompressionCondition condition,
                                                                   AgentContextCompressor compressor,
                                                                   ToLongFunction<List<Message>> estimator) {
-        return new AgentContextCompressionCoordinator(store, trigger, compressor, estimator);
+        return new AgentContextCompressionCoordinator(store, condition, compressor, estimator);
     }
 
     private static List<Message> messages(int count) {

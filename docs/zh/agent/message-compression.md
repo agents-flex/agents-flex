@@ -22,7 +22,7 @@ description: 从上下文窗口、规则归一化到可持久化的增量语义�
 | 规则压缩 | `compactCompletedToolTurns` | 否 | 删除较早已完成工具 Turn 的中间协议消息 |
 | 语义压缩 | `AgentContextCompressor` | 可选 | 把较长历史提炼成事实、约束和决定 |
 
-当压缩条件不是固定消息数量，还可以使用 `AgentContextCompressionTrigger` 和业务侧 Store，按 Token、Turn、工具结果大小、时间或租户配额做增量压缩。
+当压缩条件不是固定消息数量，还可以使用 `AgentContextCompressionCondition` 和业务侧 Store，按 Token、Turn、工具结果大小、时间或租户配额做增量压缩。
 
 ## 快速开始
 
@@ -107,7 +107,7 @@ Agent agent = Agent.builder("support-agent")
 消息 201~300 -> 第三次压缩，继续推进游标
 ```
 
-`AgentContextCompressionState` 保存摘要和覆盖游标；`AgentContextCompressionTrigger` 决定本次是否达到条件；策略内部的协调器负责组合旧摘要与新增消息、调用压缩器并通过 CAS 保存新状态。
+`AgentContextCompressionState` 保存摘要和覆盖游标；`AgentContextCompressionCondition` 决定本次是否达到条件；策略内部的协调器负责组合旧摘要与新增消息、调用压缩器并通过 CAS 保存新状态。
 
 ## 按 Token 或业务条件触发
 
@@ -126,7 +126,7 @@ Agent agent = Agent.builder("support-agent")
 AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理"));
 ```
 
-触发器通过 `AgentContextCompressionInput` 收到以下只读信息：
+条件通过 `AgentContextCompressionInput` 收到以下只读信息：
 
 - 上次游标之后的 `input.getPendingMessages()`
 - 已持久化的 `input.getSummaryMessages()`
@@ -139,6 +139,15 @@ AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理
 ```java
 input -> input.getEstimatedPendingTokens() >= 80_000
     || input.getPendingTurnCount() >= 20
+```
+
+也可以直接使用内置条件并组合多个条件：
+
+```java
+AgentContextCompressionCondition condition = AgentContextCompressionConditions.anyOf(
+    AgentContextCompressionConditions.pendingTokensAtLeast(80_000),
+    AgentContextCompressionConditions.pendingTurnsAtLeast(20),
+    AgentContextCompressionConditions.pendingMessagesAtLeast(100));
 ```
 
 只有存在新增消息且触发器返回 `true` 时，才调用压缩器并保存状态。达到一次阈值后，后续没有足够新增内容的请求不会重复调用摘要模型。

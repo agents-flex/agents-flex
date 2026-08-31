@@ -51,7 +51,7 @@ public class AgentContextCompressionPolicyTest {
     @Test(expected = IllegalArgumentException.class)
     public void policyRejectsPartialIncrementalConfiguration() {
         AgentContextCompressionPolicy.builder()
-            .trigger(input -> true)
+            .condition(input -> true)
             .build();
     }
 }

@@ -14,7 +14,7 @@ import java.util.function.ToLongFunction;
  */
 final class AgentContextCompressionCoordinator {
     private final AgentContextCompressionStateStore store;
-    private final AgentContextCompressionTrigger trigger;
+    private final AgentContextCompressionCondition condition;
     private final AgentContextCompressor compressor;
     private final ToLongFunction<List<Message>> tokenEstimator;
 
@@ -22,19 +22,19 @@ final class AgentContextCompressionCoordinator {
      * 创建增量压缩协调器，并要求状态存储、触发器、压缩器和 Token 估算器全部可用。
      *
      * @param store          按会话持久化压缩游标和摘要的 CAS Store
-     * @param trigger        判断当前增量是否值得压缩的策略
+     * @param condition      判断当前增量是否值得压缩的条件
      * @param compressor     生成新摘要的实现
      * @param tokenEstimator 对待压缩消息进行非负 Token 估算的函数
      */
     AgentContextCompressionCoordinator(AgentContextCompressionStateStore store,
-                                       AgentContextCompressionTrigger trigger,
+                                       AgentContextCompressionCondition condition,
                                        AgentContextCompressor compressor,
                                        ToLongFunction<List<Message>> tokenEstimator) {
-        if (store == null || trigger == null || compressor == null || tokenEstimator == null) {
+        if (store == null || condition == null || compressor == null || tokenEstimator == null) {
             throw new IllegalArgumentException("compression coordinator dependencies must not be null");
         }
         this.store = store;
-        this.trigger = trigger;
+        this.condition = condition;
         this.compressor = compressor;
         this.tokenEstimator = tokenEstimator;
     }
@@ -59,7 +59,7 @@ final class AgentContextCompressionCoordinator {
         int pendingTurnCount = countTurns(pending);
         AgentContextCompressionInput input = new AgentContextCompressionInput(
             pending, state.getSummaryMessages(), estimatedTokens, pendingTurnCount, state);
-        if (pending.isEmpty() || !trigger.shouldCompress(input)) {
+        if (pending.isEmpty() || !condition.shouldCompress(input)) {
             List<Message> modelMessages = new ArrayList<>(state.getSummaryMessages());
             modelMessages.addAll(pending);
             return new AgentContextCompressionResult(false, state, modelMessages);
