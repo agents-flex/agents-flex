@@ -473,14 +473,57 @@ public final class AgentRunner {
                     active.getState().getTurnId(), active.getState().getStatus());
             }
             prepareAgent(agent);
+            AgentContextCompressionPolicy policy = agent.getCompressionPolicy();
             List<Message> history = chatMemory.loadModelHistory(
-                conversationId, agent.getMaxAttachedMessages());
-            AgentTurn turn = AgentTurn.start(agent, history, userMessage, options);
-            turn.bindConversation(conversationId, history.size());
+                conversationId, policy.isIncremental() ? Integer.MAX_VALUE : agent.getMaxAttachedMessages());
+            List<Message> modelHistory = history;
+            if (policy.isIncremental()) {
+                modelHistory = applyIncrementalCompression(
+                    conversationId, history, policy);
+            }
+            AgentTurn turn = AgentTurn.start(agent, modelHistory, userMessage, options);
+            turn.bindConversation(conversationId, modelHistory.size());
             prepareTurn(turn);
             saveInitialConversationSnapshot(turn);
             return turn;
         }
+    }
+
+    /**
+     * 在创建会话 Turn 时自动推进增量摘要；摘要结果只进入模型 Prompt，原始 ChatMemory 不会被改写。
+     */
+    private List<Message> applyIncrementalCompression(String conversationId,
+                                                       List<Message> history,
+                                                       AgentContextCompressionPolicy policy) {
+        List<Message> compressible = compressiblePrefix(history, policy.getKeepRecentTurns());
+        List<Message> protectedTail = new ArrayList<>(history.subList(compressible.size(), history.size()));
+        AgentContextCompressionResult result = policy.getCoordinator().compress(conversationId, compressible);
+        List<Message> modelHistory = new ArrayList<>(result.getModelMessages());
+        modelHistory.addAll(protectedTail);
+        return modelHistory;
+    }
+
+    /** 返回最近保护 Turn 之前的完整历史前缀。 */
+    private static List<Message> compressiblePrefix(List<Message> history, int keepRecentTurns) {
+        if (history.isEmpty() || keepRecentTurns <= 0) return new ArrayList<>(history);
+        int userMessages = 0;
+        for (Message message : history) {
+            if (message instanceof UserMessage) userMessages++;
+        }
+        int keep = Math.min(keepRecentTurns, userMessages);
+        if (keep == 0) return new ArrayList<>(history);
+        int targetUser = userMessages - keep;
+        if (targetUser <= 0) return new ArrayList<>();
+        int seen = 0;
+        for (int i = 0; i < history.size(); i++) {
+            if (history.get(i) instanceof UserMessage) {
+                seen++;
+                if (seen == targetUser + 1) {
+                    return new ArrayList<>(history.subList(0, i));
+                }
+            }
+        }
+        return new ArrayList<>(history);
     }
 
     /**
@@ -1050,13 +1093,16 @@ public final class AgentRunner {
     private AiMessageResponse invokeModel(AgentTurn turn, Prompt prompt) {
         Prompt modelPrompt = prompt;
         if (prompt instanceof com.agentsflex.core.prompt.MemoryPrompt) {
+            AgentContextCompressionPolicy policy = turn.getAgent().getCompressionPolicy();
+            AgentContextCompressor compressor = policy.getCompressor();
+            if (policy.isIncremental() && turn.getConversationId() != null) compressor = null;
             modelPrompt = AgentContextWindow.build(
                 (com.agentsflex.core.prompt.MemoryPrompt) prompt,
                 turn.getAgent().getMaxAttachedTurns(),
                 turn.getAgent().getMaxAttachedMessages(),
-                turn.getAgent().isCompactCompletedToolTurns(),
-                turn.getAgent().getCompressionKeepRecentTurns(),
-                turn.getAgent().getContextCompressor());
+                policy.isCompactCompletedToolTurns(),
+                policy.getKeepRecentTurns(),
+                compressor);
         }
         return modelInvoker.invoke(turn, modelPrompt);
     }

@@ -44,8 +44,10 @@ Agent agent = Agent.builder("support-agent")
 ```java
 Agent agent = Agent.builder("support-agent")
     .chatModel(chatModel)
-    .compactCompletedToolTurns(true)
-    .compressionKeepRecentTurns(2)
+    .compressionPolicy(AgentContextCompressionPolicy.builder()
+        .compactCompletedToolTurns(true)
+        .keepRecentTurns(2)
+        .build())
     .build();
 ```
 
@@ -78,8 +80,10 @@ AgentContextCompressor compressor = AgentContextCompressors.model(
 
 Agent agent = Agent.builder("support-agent")
     .chatModel(chatModel)
-    .contextCompressor(compressor)
-    .compressionKeepRecentTurns(3)
+    .compressionPolicy(AgentContextCompressionPolicy.builder()
+        .compressor(compressor)
+        .keepRecentTurns(3)
+        .build())
     .build();
 ```
 
@@ -105,23 +109,18 @@ Agent agent = Agent.builder("support-agent")
 ## 按 Token 或业务条件触发
 
 ```java
-AgentContextCompressionCoordinator coordinator =
-    new AgentContextCompressionCoordinator(
+Agent agent = Agent.builder("support-agent")
+    .chatModel(chatModel)
+    .compressionPolicy(AgentContextCompressionPolicy.incremental(
         compressionStateStore,
         input -> input.getEstimatedPendingTokens() >= 100_000,
         AgentContextCompressors.model(
             summaryModel,
             "保留事实、实体 ID、约束、审批结果和未完成事项"),
-        messages -> tokenCounter.estimate(messages));
+        messages -> tokenCounter.estimate(messages)))
+    .build();
 
-AgentContextCompressionResult result = coordinator.compress(
-    conversationId,
-    compressibleHistory);
-
-AgentTurn turn = runner.run(
-    agent,
-    result.getModelMessages(),
-    new UserMessage("继续处理"));
+AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理"));
 ```
 
 触发器收到的 `AgentContextCompressionInput` 包含：
@@ -140,6 +139,7 @@ input -> input.getEstimatedPendingTokens() >= 80_000
 ```
 
 只有存在新增消息且触发器返回 `true` 时，才调用压缩器并保存状态。达到一次阈值后，后续没有足够新增内容的请求不会重复调用摘要模型。
+配置增量 `compressionPolicy` 后，这些步骤由 Runner 自动完成。
 
 ## 状态持久化
 

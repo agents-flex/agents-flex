@@ -90,9 +90,11 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
             .chatModel(model)
             .maxAttachedTurns(4)
             .maxAttachedMessages(12)
-            .compressionKeepRecentTurns(1)
-            .compactCompletedToolTurns(true)
-            .contextCompressor(compressor)
+            .compressionPolicy(AgentContextCompressionPolicy.builder()
+                .compressor(compressor)
+                .keepRecentTurns(1)
+                .compactCompletedToolTurns(true)
+                .build())
             .middleware(new AgentMiddleware() {
                 @Override
                 public AiMessageResponse aroundModelCall(AgentMiddlewareContext context,
@@ -105,9 +107,9 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
 
         assertEquals(4, agent.getMaxAttachedTurns());
         assertEquals(12, agent.getMaxAttachedMessages());
-        assertEquals(1, agent.getCompressionKeepRecentTurns());
-        assertTrue(agent.isCompactCompletedToolTurns());
-        assertTrue(agent.getContextCompressor() == compressor);
+        assertEquals(1, agent.getCompressionPolicy().getKeepRecentTurns());
+        assertTrue(agent.getCompressionPolicy().isCompactCompletedToolTurns());
+        assertTrue(agent.getCompressionPolicy().getCompressor() == compressor);
         AgentTurn turn = new AgentRunner().run(agent, history,
             new UserMessage("请根据历史预约信息，确认最终会议安排并简要说明。"));
         assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());

@@ -98,10 +98,12 @@ public final class StreamingAgentConsoleDemo {
         // 业务系统按 conversationId 提供 ChatMemory；Runner 只保存 Turn 状态，不拥有会话生命周期。
         ChatMemoryProvider memoryProvider =
             id -> conversationId.equals(id) ? memory : null;
+
         AgentRunner runner = AgentRunner.builder()
             .agentLoader(new InMemoryAgentLoader(agent))
             .chatMemoryProvider(memoryProvider)
             .build();
+
         runner.addEventListener(StreamingAgentConsoleDemo::printEvent);
 
         printWelcome(configuration, conversationId);

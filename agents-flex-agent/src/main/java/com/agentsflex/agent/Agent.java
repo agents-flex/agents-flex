@@ -112,18 +112,8 @@ public final class Agent {
      * 每次模型调用最多保留的完整 Turn 数量。
      */
     private final int maxAttachedTurns;
-    /**
-     * 是否将较早已完成工具 Turn 压缩为 UserMessage + 最终 AiMessage。
-     */
-    private final boolean compactCompletedToolTurns;
-    /**
-     * 最近多少个 Turn 不参与规则或语义压缩。
-     */
-    private final int compressionKeepRecentTurns;
-    /**
-     * 可选的业务语义压缩器。
-     */
-    private final AgentContextCompressor contextCompressor;
+    /** Agent 的统一上下文压缩策略。 */
+    private final AgentContextCompressionPolicy compressionPolicy;
     /**
      * 包装步骤、模型调用和工具调用的中间件。
      */
@@ -165,9 +155,7 @@ public final class Agent {
         this.planningPolicy = builder.planningPolicy;
         this.maxAttachedMessages = builder.maxAttachedMessages;
         this.maxAttachedTurns = builder.maxAttachedTurns;
-        this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
-        this.compressionKeepRecentTurns = builder.compressionKeepRecentTurns;
-        this.contextCompressor = builder.contextCompressor;
+        this.compressionPolicy = builder.compressionPolicy;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
         List<AgentToolResolver> resolvers = new ArrayList<>();
         for (AgentMiddleware middleware : this.middlewares) {
@@ -345,16 +333,8 @@ public final class Agent {
         return maxAttachedTurns;
     }
 
-    public boolean isCompactCompletedToolTurns() {
-        return compactCompletedToolTurns;
-    }
-
-    public int getCompressionKeepRecentTurns() {
-        return compressionKeepRecentTurns;
-    }
-
-    public AgentContextCompressor getContextCompressor() {
-        return contextCompressor;
+    public AgentContextCompressionPolicy getCompressionPolicy() {
+        return compressionPolicy;
     }
 
     /**
@@ -395,9 +375,7 @@ public final class Agent {
         private AgentPlanningPolicy planningPolicy = AgentPlanningPolicy.disabled();
         private int maxAttachedMessages = 100;
         private int maxAttachedTurns = 10;
-        private boolean compactCompletedToolTurns = true;
-        private int compressionKeepRecentTurns = 2;
-        private AgentContextCompressor contextCompressor;
+        private AgentContextCompressionPolicy compressionPolicy = AgentContextCompressionPolicy.defaults();
         private final List<AgentMiddleware> middlewares = new ArrayList<>();
         private final Map<String, Object> attributes = new HashMap<>();
 
@@ -568,30 +546,10 @@ public final class Agent {
             return this;
         }
 
-        /**
-         * 设置是否压缩较早的已完成工具 Turn；完整历史仍保留在 ChatMemory 和 Snapshot 中。
-         */
-        public Builder compactCompletedToolTurns(boolean value) {
-            this.compactCompletedToolTurns = value;
-            return this;
-        }
-
-        /**
-         * 设置最近多少个 Turn 不参与压缩，默认保留最近 2 个完整 Turn。
-         */
-        public Builder compressionKeepRecentTurns(int value) {
-            if (value < 0) {
-                throw new IllegalArgumentException("compressionKeepRecentTurns must not be negative");
-            }
-            this.compressionKeepRecentTurns = value;
-            return this;
-        }
-
-        /**
-         * 设置可选的语义上下文压缩器；未设置时仅使用规则压缩。
-         */
-        public Builder contextCompressor(AgentContextCompressor value) {
-            this.contextCompressor = value;
+        /** 设置统一的上下文压缩策略。 */
+        public Builder compressionPolicy(AgentContextCompressionPolicy value) {
+            this.compressionPolicy = value == null
+                ? AgentContextCompressionPolicy.defaults() : value;
             return this;
         }
 

@@ -68,8 +68,8 @@ public class AgentConfigurationCoverageTest {
             .chatOptions(options).attribute("env", "test").build();
         assertEquals(10, agent.getMaxAttachedTurns());
         assertEquals(100, agent.getMaxAttachedMessages());
-        assertEquals(2, agent.getCompressionKeepRecentTurns());
-        assertTrue(agent.isCompactCompletedToolTurns());
+        assertEquals(2, agent.getCompressionPolicy().getKeepRecentTurns());
+        assertTrue(agent.getCompressionPolicy().isCompactCompletedToolTurns());
         assertSame(options, agent.getChatOptions());
         assertEquals("test", agent.getAttributes().get("env"));
         try {
@@ -117,7 +117,8 @@ public class AgentConfigurationCoverageTest {
         assertIllegalState(() -> Agent.builder().chatModel(new RecordingModel()).version(" ").build());
         assertIllegalArgument(() -> Agent.builder().chatModel(new RecordingModel()).maxAttachedTurns(0));
         assertIllegalArgument(() -> Agent.builder().chatModel(new RecordingModel()).maxAttachedMessages(0));
-        assertIllegalArgument(() -> Agent.builder().chatModel(new RecordingModel()).compressionKeepRecentTurns(-1));
+        assertIllegalArgument(() -> Agent.builder().chatModel(new RecordingModel())
+            .compressionPolicy(AgentContextCompressionPolicy.builder().keepRecentTurns(-1).build()));
         assertIllegalArgument(() -> AgentRunner.builder().turnStore(null).build());
         assertIllegalArgument(() -> AgentRunner.builder().agentLoader(null).build());
     }

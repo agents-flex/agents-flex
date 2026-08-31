@@ -15,6 +15,7 @@ import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.message.UserMessage;
 import com.alibaba.fastjson2.JSON;
 import org.junit.Test;
 
@@ -29,6 +30,72 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class AgentChatMemoryIntegrationTest {
+
+    @Test
+    public void shouldAutomaticallyAdvanceIncrementalCompressionWithoutProjectingSummary() {
+        DefaultChatMemory memory = new DefaultChatMemory("compressed-conversation");
+        memory.addMessage(new UserMessage("old question"));
+        memory.addMessage(new AiMessage("old answer"));
+        memory.addMessage(new UserMessage("recent question"));
+        memory.addMessage(new AiMessage("recent answer"));
+        memory.addMessage(new UserMessage("latest question"));
+        memory.addMessage(new AiMessage("latest answer"));
+
+        AtomicInteger compressions = new AtomicInteger();
+        AgentContextCompressionStateStore states = new AgentContextCompressionStateStore() {
+            private AgentContextCompressionState state;
+
+            @Override
+            public AgentContextCompressionState load(String conversationId) {
+                return state;
+            }
+
+            @Override
+            public boolean save(String conversationId, AgentContextCompressionState next,
+                                long expectedVersion) {
+                long actual = state == null ? 0 : state.getVersion();
+                if (actual != expectedVersion) return false;
+                state = next;
+                return true;
+            }
+        };
+        AgentContextCompressionCoordinator coordinator = new AgentContextCompressionCoordinator(
+            states,
+            input -> !input.getPendingMessages().isEmpty(),
+            messages -> {
+                compressions.incrementAndGet();
+                return java.util.Arrays.asList(
+                    new UserMessage("compressed facts"),
+                    new AiMessage("compressed summary"));
+            },
+            messages -> messages.size());
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> new AiMessage("new answer"));
+        model.enqueue(prompt -> new AiMessage("second answer"));
+        Agent agent = Agent.builder("incremental-agent")
+            .chatModel(model)
+            .compressionPolicy(AgentContextCompressionPolicy.incremental(coordinator))
+            .build();
+
+        AgentRunner runner = AgentRunner.builder()
+            .chatMemoryProvider(id -> memory)
+            .build();
+        AgentTurn turn = runner.run(agent, "compressed-conversation", "new question");
+
+        assertEquals(1, compressions.get());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals("new answer", turn.getFinalOutput());
+        List<Message> persisted = memory.getModelMessages(Integer.MAX_VALUE);
+        assertTrue(persisted.stream().anyMatch(message -> "old question".equals(message.getTextContent())));
+        assertTrue(persisted.stream().noneMatch(message -> "compressed facts".equals(message.getTextContent())));
+        assertTrue(persisted.stream().anyMatch(message -> "new question".equals(message.getTextContent())));
+
+        AgentTurn second = runner.run(agent, "compressed-conversation", "second question");
+        assertEquals(AgentTurnStatus.COMPLETED, second.getStatus());
+        assertEquals("second answer", second.getFinalOutput());
+        assertEquals(2, compressions.get());
+    }
 
     @Test
     public void shouldProjectApprovalAndResumeAcrossRunnerInstances() {

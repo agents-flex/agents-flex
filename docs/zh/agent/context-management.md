@@ -53,9 +53,11 @@ Agent agent = Agent.builder("support-agent")
     .chatModel(chatModel)
     .maxAttachedTurns(5)
     .maxAttachedMessages(40)
-    .compactCompletedToolTurns(true)
-    .compressionKeepRecentTurns(2)
-    .contextCompressor(messages -> summarizeForModel(messages))
+    .compressionPolicy(AgentContextCompressionPolicy.builder()
+        .compactCompletedToolTurns(true)
+        .keepRecentTurns(2)
+        .compressor(messages -> summarizeForModel(messages))
+        .build())
     .build();
 ```
 
@@ -63,13 +65,13 @@ Agent agent = Agent.builder("support-agent")
 `maxAttachedMessages` 是安全上限；框架不会从 ToolCall/ToolMessage 中间硬截断。单个当前 Turn
 即使超过消息上限，也会保留完整协议，避免模型收到孤立的 ToolMessage 或未闭合 ToolCall。
 
-`compactCompletedToolTurns` 只控制较早、已经完成且包含工具调用的 Turn 是否删除中间 `ToolCall/ToolMessage`，仅保留 `UserMessage + 最终 AiMessage`。它不表示所有历史 Turn 都会被压缩。`compressionKeepRecentTurns`（默认 2）会保护最近的若干完整 Turn，这些 Turn 保留原始 ToolCall、ToolMessage 和最终 AiMessage，不参与消息压缩；当前 Turn 始终属于保护范围。
+`compressionPolicy` 中的 `compactCompletedToolTurns` 只控制较早、已经完成且包含工具调用的 Turn 是否删除中间 `ToolCall/ToolMessage`，仅保留 `UserMessage + 最终 AiMessage`。`keepRecentTurns`（默认 2）会保护最近的若干完整 Turn，这些 Turn 保留原始协议，不参与消息压缩；当前 Turn 始终属于保护范围。
 
-`contextCompressor` 是可选的业务语义压缩器，接收较早且允许压缩的模型可见消息，返回要放入本次模型 Prompt 的消息。它只影响模型上下文，不修改 ChatMemory、Turn 或 Snapshot。返回结果必须以 `UserMessage` 开始，不能包含 UI 消息，并保持每个 `ToolMessage.toolCallId` 与前面 AiMessage 中 ToolCall ID 匹配。未配置时不会调用摘要模型，只执行已完成工具 Turn 的消息压缩（如果已开启）。
+`compressionPolicy` 中的 `compressor` 接收较早且允许压缩的模型可见消息，返回要放入本次模型 Prompt 的消息。它只影响模型上下文，不修改 ChatMemory、Turn 或 Snapshot。返回结果必须以 `UserMessage` 开始，不能包含 UI 消息，并保持每个 `ToolMessage.toolCallId` 与前面 AiMessage 中 ToolCall ID 匹配。未配置摘要器时不会调用摘要模型，只执行已开启的工具 Turn 归一化。
 
-`compactCompletedToolTurns` 是独立的压缩策略。开启后，较早已完成工具 Turn 会先被压缩为
-`UserMessage + 最终 AiMessage`；如果同时配置了 `contextCompressor`，语义压缩器接收的就是这个压缩后的结果。
-未配置 `contextCompressor` 时，规则压缩仍然单独生效，不依赖语义压缩器。
+`compressionPolicy` 中的 `compactCompletedToolTurns` 是独立的归一化选项。开启后，较早已完成工具 Turn 会先被压缩为
+`UserMessage + 最终 AiMessage`；如果同时配置了 `compressor`，语义压缩器接收的就是这个压缩后的结果。
+未配置 `compressor` 时，规则压缩仍然单独生效，不依赖语义压缩器。
 
 框架提供了几个无需额外模型调用的策略：`AgentContextCompressors.identity()` 原样复制消息，
 `compactCompletedTurns()` 每轮只保留用户问题和最终 AI 回复，`textExcerpt(maxCharacters)` 提取历史文本为
@@ -84,8 +86,7 @@ AgentContextCompressor compressor = AgentContextCompressors.model(
     "请压缩历史对话，保留业务事实、实体 ID、用户约束、审批结果和未完成事项，不要编造信息。");
 
 Agent agent = Agent.builder("support-agent")
-    .contextCompressor(compressor)
-    .compressionKeepRecentTurns(2)
+    .compressionPolicy(AgentContextCompressionPolicy.immediate(compressor))
     .build();
 ```
 
@@ -134,22 +135,25 @@ compressor.restore(summary, coveredUntil);
 当压缩条件不是固定的消息数量（例如 Token 总量、Turn 数、工具结果大小、时间间隔或租户配额）时，使用协调器把“何时压缩”和“如何压缩”分开：
 
 ```java
-AgentContextCompressionCoordinator coordinator = new AgentContextCompressionCoordinator(
-    compressionStateStore,                         // 业务侧按 conversationId 保存状态
-    input -> input.getEstimatedPendingTokens() >= 100_000,
-    AgentContextCompressors.model(summaryModel, "保留事实、ID、约束和未完成事项"),
-    messages -> tokenCounter.estimate(messages));
+Agent agent = Agent.builder("support-agent")
+    .chatModel(chatModel)
+    .compressionPolicy(AgentContextCompressionPolicy.incremental(
+        compressionStateStore,
+        input -> input.getEstimatedPendingTokens() >= 100_000,
+        AgentContextCompressors.model(summaryModel, "保留事实、ID、约束和未完成事项"),
+        messages -> tokenCounter.estimate(messages)))
+    .build();
 
-// 传入完整的“可压缩历史”；当前 Turn 和最近保护 Turn 由调用方留在窗口之外
-AgentContextCompressionResult result = coordinator.compress(conversationId, compressibleHistory);
-List<Message> modelMessages = result.getModelMessages();
+// Runner 会按 conversationId 自动读取历史、触发增量压缩并组装模型上下文
+AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理"));
 ```
 
 `AgentContextCompressionStateStore` 只需要实现 `load` 和带 `expectedVersion` 的 CAS `save`。首次保存使用版本 `0`；
 协调器成功压缩后会推进 `version`、`compressionVersion`、`coveredUntilMessageId`、覆盖 Token 数和 Turn 数。
 业务侧应把这个状态和会话放在同一事务边界内，或使用数据库/Redis 的乐观锁，避免两个请求同时摘要而互相覆盖。
-每次调用都会读取状态，但只有 `AgentContextCompressionTrigger` 返回 `true` 且存在新增消息时才调用摘要器和保存状态；
-因此达到一次阈值后，后续请求不会每轮重复调用摘要模型，直到新增历史再次满足触发条件。
+每次会话请求都会读取状态，但只有 `AgentContextCompressionTrigger` 返回 `true` 且存在新增消息时才调用摘要器和保存状态；
+因此达到一次阈值后，后续请求不会每轮重复调用摘要模型，直到新增历史再次满足触发条件。配置了增量策略后，
+Runner 会自动执行协调器，业务侧不需要手工调用 `compress(...)` 或传递 `getModelMessages()`。
 
 传给协调器的可压缩历史必须是该会话对应范围内完整、按时间升序排列的消息列表。如果状态中的
 `coveredUntilMessageId` 不在列表中，协调器会抛出异常而不是静默从头重复摘要；这通常表示分页不完整、消息被错误删除或状态与会话不一致。
