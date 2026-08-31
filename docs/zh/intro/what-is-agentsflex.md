@@ -106,7 +106,7 @@ Agents-Flex 原生支持 [Model Context Protocol](../chat/mcp.md)，可以管理
 
 ### 独立 Subagent Tool
 
-[Subagent](../chat/subagent.md) 是独立的通用 Tool 模块。需要后台任务或外部 Agent 协作时，业务可以像注册其他 Tool 一样按需接入，不依赖 `agents-flex-agent` 的任务规划功能。
+[Subagent](../chat/subagent.md) 是独立的通用 Tool 模块。需要后台任务或外部 Agent 协作时，业务可以像注册其他 Tool 一样按需接入，不依赖 `agents-flex-agent` 的运行时状态机扩展。
 
 ## 不止问答：把企业数据变成 Agent 的上下文
 

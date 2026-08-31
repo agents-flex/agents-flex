@@ -241,7 +241,7 @@ Agents-Flex 当前提供的核心 Agent 能力包括：
 
 ### MCP
 
-[MCP](../chat/mcp.md) 客户端管理外部 MCP Server，并把 MCP Tool 自动适配为 Agents-Flex 的 `Tool`。支持 Stdio、HTTP SSE 与 Streamable HTTP。MCP 解决的是“如何以标准协议发现和调用外部能力”，并不自动提供任务规划。
+[MCP](../chat/mcp.md) 客户端管理外部 MCP Server，并把 MCP Tool 自动适配为 Agents-Flex 的 `Tool`。支持 Stdio、HTTP SSE 与 Streamable HTTP。MCP 解决的是“如何以标准协议发现和调用外部能力”，不负责业务流程编排。
 
 MCP 模块依赖官方 Java SDK，因此需要 JDK 17 或更高版本。
 

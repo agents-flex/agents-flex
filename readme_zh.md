@@ -223,13 +223,12 @@ chatModel.addInterceptorRegistration(
 
 每次请求都会按照 `order` 从小到大对 Registration 进行稳定排序。框架默认将可观测性设为 `-1000`、普通拦截器设为 `0`，并将 Tool Group 等请求准备逻辑设为 `1000`。这些数值只是推荐值而不是边界，应用可以使用任意整数，将拦截器放在可观测性之前或 Tool Group 解析之后。相同 order 会保持原始注册顺序。
 
-## Agent 与任务编排
+## Agent 与工具编排
 
-Agents-Flex 内置多种面向复杂任务的机制：
+Agents-Flex 提供可组合的 Agent 运行时和通用工具模块：
 
-- `ReActAgent`：通过 Thought / Action / Observation 方式执行多步骤任务。
-- `RoutingAgent`：把请求分发给更适合的 Agent。
-- `SubagentTools`：让主 Agent 创建子任务，支持同步执行和后台任务。
+- `AgentRunner`：推进单个 AgentTurn，支持工具调用、审批、挂起、恢复和持久化。
+- `SubagentTools`：独立的通用 Tool，按需提供后台任务执行和结果获取。
 - `SkillsTool`：读取本地 Skills 目录，按需加载专业能力说明和资源。
 - `McpClientManager`：连接 MCP Server，并把远程工具封装成 `Tool`。
 

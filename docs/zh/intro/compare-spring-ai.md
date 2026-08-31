@@ -97,8 +97,7 @@ Spring AI 的 `ChatClient` 在 Fluent API 和 POJO 结构化输出方面更完�
 | 可持久化的工具审批与表单 | **整体支持**。审批、拒绝和表单等待都能挂起并持久化到 `AgentTurn`，可跨请求、跨进程恢复 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 
 Spring AI 的 ToolCallback 层在结果转换、`returnDirect`、参数增强和现成工具集方面更加丰富。Agents-Flex
-的重点则是让 Tool 不只完成一次函数调用：调用身份、预算计数、审批决定、恢复输入、执行进度、错误结果以及
-Subagent 状态都进入统一的 Agent Turn，并能随快照跨请求、跨进程继续执行。
+的重点则是让 Tool 不只完成一次函数调用：调用身份、预算计数、审批决定、恢复输入、执行进度和错误结果都进入统一的 Agent Turn，并能随快照跨请求、跨进程继续执行。
 
 ### Web Search 对比
 

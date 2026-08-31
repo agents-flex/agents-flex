@@ -223,13 +223,12 @@ Use `GlobalChatInterceptors.addRegistration(...)` for a conditional interceptor 
 
 Registrations are stably sorted by ascending `order` for each request. Framework defaults place observability at `-1000`, ordinary interceptors at `0`, and request preparation such as Tool Group resolution at `1000`. These are recommendations rather than boundaries: applications may use any integer to run before observability or after Tool Group resolution. Registrations with the same order retain their original registration order.
 
-## Agents And Orchestration
+## Agents And Tool Orchestration
 
-Agents-Flex includes several mechanisms for complex tasks:
+Agents-Flex provides a composable Agent runtime and general-purpose tool modules:
 
-- `ReActAgent`: Executes multi-step tasks with Thought / Action / Observation.
-- `RoutingAgent`: Routes requests to a more suitable Agent.
-- `SubagentTools`: Lets a parent Agent create subtasks with synchronous or background execution.
+- `AgentRunner`: Advances a single AgentTurn with tool calls, approval, suspension, resumption, and persistence.
+- `SubagentTools`: An independent general-purpose Tool for optional background task execution and output retrieval.
 - `SkillsTool`: Reads local Skills directories and loads specialized capability instructions and resources on demand.
 - `McpClientManager`: Connects to MCP Servers and wraps remote tools as `Tool` instances.
 
