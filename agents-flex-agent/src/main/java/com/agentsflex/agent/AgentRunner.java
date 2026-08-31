@@ -477,30 +477,33 @@ public final class AgentRunner {
             List<Message> history = chatMemory.loadModelHistory(
                 conversationId, policy.isIncremental() ? Integer.MAX_VALUE : agent.getMaxAttachedMessages());
             List<Message> modelHistory = history;
+            AgentTurn turn = AgentTurn.start(agent, history, userMessage, options);
+            turn.bindConversation(conversationId, history.size());
             if (policy.isIncremental()) {
-                modelHistory = applyIncrementalCompression(
-                    conversationId, history, policy);
+                List<Message> compressible = compressiblePrefix(history, policy.getKeepRecentTurns());
+                List<Message> protectedTail = new ArrayList<>(history.subList(compressible.size(), history.size()));
+                eventPublisher.notifyContextCompressionStarted(turn, history.size(), compressible.size());
+                try {
+                    AgentContextCompressionResult result = policy.getCoordinator()
+                        .compress(conversationId, compressible);
+                    modelHistory = new ArrayList<>(result.getModelMessages());
+                    modelHistory.addAll(protectedTail);
+                    turn.replaceConversationHistory(modelHistory);
+                    turn.bindConversation(conversationId, modelHistory.size());
+                    if (result.isCompressed()) {
+                        eventPublisher.notifyContextCompressionCompleted(turn, result);
+                    } else {
+                        eventPublisher.notifyContextCompressionSkipped(turn, result);
+                    }
+                } catch (RuntimeException error) {
+                    eventPublisher.notifyContextCompressionFailed(turn, error);
+                    throw error;
+                }
             }
-            AgentTurn turn = AgentTurn.start(agent, modelHistory, userMessage, options);
-            turn.bindConversation(conversationId, modelHistory.size());
             prepareTurn(turn);
             saveInitialConversationSnapshot(turn);
             return turn;
         }
-    }
-
-    /**
-     * 在创建会话 Turn 时自动推进增量摘要；摘要结果只进入模型 Prompt，原始 ChatMemory 不会被改写。
-     */
-    private List<Message> applyIncrementalCompression(String conversationId,
-                                                       List<Message> history,
-                                                       AgentContextCompressionPolicy policy) {
-        List<Message> compressible = compressiblePrefix(history, policy.getKeepRecentTurns());
-        List<Message> protectedTail = new ArrayList<>(history.subList(compressible.size(), history.size()));
-        AgentContextCompressionResult result = policy.getCoordinator().compress(conversationId, compressible);
-        List<Message> modelHistory = new ArrayList<>(result.getModelMessages());
-        modelHistory.addAll(protectedTail);
-        return modelHistory;
     }
 
     /** 返回最近保护 Turn 之前的完整历史前缀。 */

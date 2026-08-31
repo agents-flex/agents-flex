@@ -623,6 +623,27 @@ public final class AgentTurn {
     }
 
     /**
+     * 在首次 Snapshot 前替换模型可见的历史上下文，并保留本轮用户消息。
+     * 压缩摘要只属于模型视图，后续 ChatMemory 投影从新的基线之后继续追加本轮消息。
+     */
+    void replaceConversationHistory(List<? extends Message> history) {
+        List<Message> current = prompt.getMemory().getMessages(Integer.MAX_VALUE);
+        if (current.isEmpty()) throw new IllegalStateException("turn prompt has no current user message");
+        Message userMessage = current.get(current.size() - 1);
+        if (!(userMessage instanceof UserMessage)) {
+            throw new IllegalStateException("turn prompt must end with current user message");
+        }
+        prompt.clear();
+        if (history != null) {
+            for (Message message : history) {
+                if (message != null) prompt.addMessage(AgentMessageUtils.copyMessage(message));
+            }
+        }
+        prompt.addMessage(AgentMessageUtils.copyMessage(userMessage));
+        preparePrompt();
+    }
+
+    /**
      * 添加或覆盖一项业务运行元数据。
      */
     public void putMetadata(String key, Object value) {

@@ -105,6 +105,30 @@ final class AgentEventPublisher {
         publish(turn, AgentEventType.MODEL_COMPLETED, values);
     }
 
+    void notifyContextCompressionStarted(AgentTurn turn, int historyMessageCount,
+                                         int pendingMessageCount) {
+        publish(turn, AgentEventType.CONTEXT_COMPRESSION_STARTED,
+            attributes("historyMessageCount", historyMessageCount,
+                "pendingMessageCount", pendingMessageCount));
+    }
+
+    void notifyContextCompressionCompleted(AgentTurn turn,
+                                           AgentContextCompressionResult result) {
+        publish(turn, AgentEventType.CONTEXT_COMPRESSION_COMPLETED,
+            compressionAttributes(result));
+    }
+
+    void notifyContextCompressionSkipped(AgentTurn turn,
+                                         AgentContextCompressionResult result) {
+        publish(turn, AgentEventType.CONTEXT_COMPRESSION_SKIPPED,
+            compressionAttributes(result));
+    }
+
+    void notifyContextCompressionFailed(AgentTurn turn, Throwable error) {
+        publish(turn, AgentEventType.CONTEXT_COMPRESSION_FAILED,
+            attributes("error", errorMessage(error)));
+    }
+
     /**
      * 发布工具执行开始事件。
      *
@@ -414,6 +438,18 @@ final class AgentEventPublisher {
         return attributes("iteration", turn.getIterationCount(),
             "maxIterations", maxIterations,
             "remainingIterations", Math.max(0, maxIterations - turn.getIterationCount()));
+    }
+
+    private Map<String, Object> compressionAttributes(AgentContextCompressionResult result) {
+        Map<String, Object> values = attributes("compressed", result != null && result.isCompressed());
+        if (result == null || result.getState() == null) return values;
+        AgentContextCompressionState state = result.getState();
+        values.putAll(attributes("coveredUntilMessageId", state.getCoveredUntilMessageId(),
+            "compressionVersion", state.getCompressionVersion(),
+            "estimatedCoveredTokens", state.getEstimatedCoveredTokens(),
+            "coveredTurnCount", state.getCoveredTurnCount(),
+            "modelMessageCount", result.getModelMessages().size()));
+        return values;
     }
 
     /**

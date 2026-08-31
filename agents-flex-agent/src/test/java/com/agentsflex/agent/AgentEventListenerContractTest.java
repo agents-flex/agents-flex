@@ -9,6 +9,8 @@ import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.memory.DefaultChatMemory;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -53,6 +55,48 @@ public class AgentEventListenerContractTest {
         assertEquals(1, stepCount(events, AgentEventType.STEP_STARTED));
         assertEquals(1, stepCount(events, AgentEventType.STEP_COMPLETED));
         assertStrictSequence(events);
+    }
+
+    @Test
+    public void shouldEmitCompressionEventsBoundToNewTurn() {
+        DefaultChatMemory memory = new DefaultChatMemory("compression-events");
+        memory.addMessage(new UserMessage("old"));
+        memory.addMessage(new AiMessage("old answer"));
+        memory.addMessage(new UserMessage("recent"));
+        memory.addMessage(new AiMessage("recent answer"));
+        memory.addMessage(new UserMessage("latest"));
+        memory.addMessage(new AiMessage("latest answer"));
+        AgentContextCompressionStateStore states = new AgentContextCompressionStateStore() {
+            private AgentContextCompressionState state;
+            public AgentContextCompressionState load(String id) { return state; }
+            public boolean save(String id, AgentContextCompressionState next, long version) {
+                long actual = state == null ? 0 : state.getVersion();
+                if (actual != version) return false;
+                state = next;
+                return true;
+            }
+        };
+        AgentContextCompressionCoordinator coordinator = new AgentContextCompressionCoordinator(
+            states, input -> true,
+            messages -> java.util.Arrays.asList(new UserMessage("summary"), new AiMessage("facts")),
+            messages -> messages.size());
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> new AiMessage("done"));
+        Agent agent = Agent.builder("compression-events")
+            .chatModel(model)
+            .compressionPolicy(AgentContextCompressionPolicy.incremental(coordinator))
+            .build();
+        List<AgentEvent> events = new ArrayList<>();
+        AgentTurn turn = AgentRunner.builder().chatMemoryProvider(id -> memory).build()
+            .addEventListener(events::add).run(agent, "compression-events", "new question");
+
+        assertEquals(AgentEventType.CONTEXT_COMPRESSION_STARTED, events.get(0).getType());
+        assertEquals(AgentEventType.CONTEXT_COMPRESSION_COMPLETED, events.get(1).getType());
+        assertEquals(turn.getId(), events.get(0).getTurnId());
+        assertEquals(turn.getId(), events.get(1).getTurnId());
+        assertTrue(events.get(1).getData().get("compressed") == Boolean.TRUE);
+        assertTrue(indexOf(events, AgentEventType.CONTEXT_COMPRESSION_COMPLETED, 0)
+            < indexOf(events, AgentEventType.SNAPSHOT_SAVED, 0));
     }
 
     @Test
