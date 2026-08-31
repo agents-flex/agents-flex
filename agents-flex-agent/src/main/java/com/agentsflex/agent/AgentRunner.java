@@ -26,6 +26,8 @@ import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.AgentToolProgressEmitter;
 import com.agentsflex.agent.tool.AgentToolContext;
+import com.agentsflex.agent.tool.AgentToolResumeInfo;
+import com.agentsflex.agent.tool.AgentToolResumeType;
 import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
@@ -503,7 +505,9 @@ public final class AgentRunner {
         }
     }
 
-    /** 返回最近保护 Turn 之前的完整历史前缀。 */
+    /**
+     * 返回最近保护 Turn 之前的完整历史前缀。
+     */
     private static List<Message> compressiblePrefix(List<Message> history, int keepRecentTurns) {
         if (history.isEmpty() || keepRecentTurns <= 0) return new ArrayList<>(history);
         int userMessages = 0;
@@ -1073,13 +1077,7 @@ public final class AgentRunner {
                 turn.incrementToolCallCount();
                 completedResult = executeTool(turn, tool, call);
             } catch (AgentFormRequiredException request) {
-                if (!turn.getToolInputData(callKey(call)).isEmpty()) {
-                    IllegalStateException error = new IllegalStateException(
-                        "tool requested user input again after resuming: " + call.getName(), request);
-                    eventPublisher.notifyToolError(turn, call, error);
-                    return handleFailure(turn, response, error, AgentTurnPhase.TOOLS);
-                }
-                // 输入请求发生在副作用之前，恢复后仍是同一个逻辑 ToolCall，不能提前耗尽调用预算。
+                // 输入请求发生在副作用之前；无论第几轮表单交互，均不提前耗尽调用预算。
                 turn.rollbackToolCallCount();
                 AgentFormDefinition form = request.getForm();
                 Map<String, Object> metadata = new LinkedHashMap<>();
@@ -1148,7 +1146,16 @@ public final class AgentRunner {
         AgentRetryPolicy retry = turn.getExecutionPolicy().getRetryPolicy();
         if (isRetryable(error) && turn.getRetryCount() < retry.getMaxRetries()) {
             // retryCount + 1 表示即将安排的重试序号，用于计算指数退避延迟。
-            long runAt = System.currentTimeMillis() + retry.delayMillis(turn.getRetryCount() + 1);
+            int retryAttempt = turn.getRetryCount() + 1;
+            long runAt = System.currentTimeMillis() + retry.delayMillis(retryAttempt);
+            if (resumePhase == AgentTurnPhase.TOOLS && !turn.getPendingToolCalls().isEmpty()) {
+                ToolCall call = turn.getPendingToolCalls().get(0);
+                Map<String, Object> metadata = new LinkedHashMap<>();
+                metadata.put("retryAttempt", retryAttempt);
+                metadata.put("nextRunnableAt", runAt);
+                recordToolResume(turn, callKey(call), AgentToolResumeType.RETRY,
+                    metadata, error);
+            }
             turn.scheduleRetry(error, resumePhase, runAt);
             saveSnapshot(turn);
             publishAfterStep(() -> eventPublisher.notifyTurnSuspended(
@@ -1384,10 +1391,13 @@ public final class AgentRunner {
             eventPublisher.notifyToolProgress(
                 turn, call, tool.getName(), message, data);
 
+        String toolCallId = callKey(call);
+        int executionAttempt = turn.incrementToolExecutionAttempt(toolCallId);
         AgentToolContext toolContext = new AgentToolContext(
             turn.getId(), turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
-            callKey(call), progressEmitter, turn::isCancellationRequested,
-            turn.getToolInputData(callKey(call)));
+            toolCallId, progressEmitter, turn::isCancellationRequested,
+            turn.getToolInputData(toolCallId), executionAttempt,
+            turn.getToolResumeInfo(toolCallId));
 
         AgentMiddlewareContext middlewareContext =
             AgentMiddlewareContext.forToolCall(this, turn, toolContext);
@@ -1509,7 +1519,9 @@ public final class AgentRunner {
         return null;
     }
 
-    /** 确保 Turn 已准备并保存初始 Snapshot。 */
+    /**
+     * 确保 Turn 已准备并保存初始 Snapshot。
+     */
     private void ensurePreparedAndSnapshotSaved(AgentTurn turn) {
         prepareTurn(turn);
         if (turn.getVersion() < 0) {
@@ -1668,6 +1680,10 @@ public final class AgentRunner {
                     "user input suspension does not match the pending business ToolCall");
             }
             turn.putToolInputData(callKey(call), command.getData());
+            Map<String, Object> metadata = new LinkedHashMap<>(suspension.getMetadata());
+            metadata.putAll(command.getMetadata());
+            recordToolResume(turn, callKey(call), AgentToolResumeType.FORM_INPUT,
+                metadata, null);
             return;
         }
         if (!suspension.getCorrelationId().equals(callKey(call))
@@ -1700,12 +1716,32 @@ public final class AgentRunner {
         requireCorrelation(suspension, command);
         turn.approveTool(suspension.getCorrelationId(),
             command.getType() == AgentResumeCommandType.APPROVE_TOOL);
+        if (command.getType() == AgentResumeCommandType.APPROVE_TOOL) {
+            Map<String, Object> metadata = new LinkedHashMap<>(suspension.getMetadata());
+            metadata.putAll(command.getMetadata());
+            recordToolResume(turn, suspension.getCorrelationId(), AgentToolResumeType.APPROVAL,
+                metadata, null);
+        }
         turn.putMetadata("toolApprovalAudit." + suspension.getCorrelationId(),
             new LinkedHashMap<String, Object>(suspension.getMetadata()));
         if (command.getType() == AgentResumeCommandType.REJECT_TOOL
             && StringUtil.hasText(command.getContent())) {
             turn.putMetadata("toolRejectionReason." + suspension.getCorrelationId(), command.getContent());
         }
+    }
+
+    /**
+     * 记录按 ToolCall 隔离的恢复来源，供下一次工具函数执行读取。
+     */
+    private void recordToolResume(AgentTurn turn, String callId, AgentToolResumeType type,
+                                  Map<String, ?> metadata, Throwable error) {
+        AgentToolResumeInfo previous = turn.getToolResumeInfo(callId);
+        Map<String, Object> values = metadata == null
+            ? new LinkedHashMap<String, Object>() : new LinkedHashMap<String, Object>(metadata);
+        turn.putToolResumeInfo(callId, new AgentToolResumeInfo(type,
+            previous.getResumeCount() + 1, values,
+            error == null ? null : error.getClass().getName(),
+            error == null ? null : error.getMessage()));
     }
 
     /**

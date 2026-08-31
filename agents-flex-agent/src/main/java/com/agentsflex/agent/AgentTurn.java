@@ -9,6 +9,7 @@ package com.agentsflex.agent;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
+import com.agentsflex.agent.tool.AgentToolResumeInfo;
 
 import java.util.*;
 
@@ -37,7 +38,9 @@ public final class AgentTurn {
      * 本次运行使用的不可变 Agent 定义。
      */
     private final Agent agent;
-    /** 生命周期、预算、租约等可持久化状态。 */
+    /**
+     * 生命周期、预算、租约等可持久化状态。
+     */
     private final AgentTurnState state;
     /**
      * 保存模型交互历史和可用工具的 Prompt。
@@ -422,7 +425,9 @@ public final class AgentTurn {
         return state.getTotalTokens();
     }
 
-    /** @return 自动重试等延迟状态的最早可运行时间 */
+    /**
+     * @return 自动重试等延迟状态的最早可运行时间
+     */
     public long getNextRunnableAt() {
         return state.getNextRunnableAt();
     }
@@ -670,6 +675,22 @@ public final class AgentTurn {
      */
     Map<String, Object> getToolInputData(String callId) {
         return state.getToolInputData(callId);
+    }
+
+    int incrementToolExecutionAttempt(String callId) {
+        return state.incrementToolExecutionAttempt(callId);
+    }
+
+    int getToolExecutionAttempt(String callId) {
+        return state.getToolExecutionAttempt(callId);
+    }
+
+    AgentToolResumeInfo getToolResumeInfo(String callId) {
+        return state.getToolResumeInfo(callId);
+    }
+
+    void putToolResumeInfo(String callId, AgentToolResumeInfo value) {
+        state.putToolResumeInfo(callId, value);
     }
 
     /**

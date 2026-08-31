@@ -43,6 +43,8 @@ public final class AgentToolContext {
     private final AgentToolProgressEmitter progressEmitter;
     private final BooleanSupplier cancellationRequested;
     private final Map<String, Object> submittedFormData;
+    private final int executionAttempt;
+    private final AgentToolResumeInfo resumeInfo;
 
     /**
      * 创建不携带恢复表单数据的工具上下文。
@@ -62,7 +64,7 @@ public final class AgentToolContext {
                             BooleanSupplier cancellationRequested) {
         this(turnId, agentId, agentVersion, tool, toolCall,
             toolCallId, progressEmitter, cancellationRequested,
-            Collections.<String, Object>emptyMap());
+            Collections.<String, Object>emptyMap(), 1, AgentToolResumeInfo.none());
     }
 
     /**
@@ -83,6 +85,20 @@ public final class AgentToolContext {
                             String toolCallId, AgentToolProgressEmitter progressEmitter,
                             BooleanSupplier cancellationRequested,
                             Map<String, ?> submittedFormData) {
+        this(turnId, agentId, agentVersion, tool, toolCall, toolCallId,
+            progressEmitter, cancellationRequested, submittedFormData, 1,
+            AgentToolResumeInfo.none());
+    }
+
+    /**
+     * 创建包含执行次数和恢复来源的完整工具上下文。
+     */
+    public AgentToolContext(String turnId, String agentId, String agentVersion,
+                            Tool tool, ToolCall toolCall,
+                            String toolCallId, AgentToolProgressEmitter progressEmitter,
+                            BooleanSupplier cancellationRequested,
+                            Map<String, ?> submittedFormData, int executionAttempt,
+                            AgentToolResumeInfo resumeInfo) {
         if (!StringUtil.hasText(turnId) || !StringUtil.hasText(agentId)
             || !StringUtil.hasText(agentVersion) || tool == null || toolCall == null
             || !StringUtil.hasText(toolCallId) || progressEmitter == null
@@ -102,6 +118,11 @@ public final class AgentToolContext {
         this.submittedFormData = submittedFormData == null || submittedFormData.isEmpty()
             ? Collections.<String, Object>emptyMap()
             : Collections.unmodifiableMap(new LinkedHashMap<String, Object>(submittedFormData));
+        if (executionAttempt < 1) {
+            throw new IllegalArgumentException("executionAttempt must be greater than zero");
+        }
+        this.executionAttempt = executionAttempt;
+        this.resumeInfo = resumeInfo == null ? AgentToolResumeInfo.none() : resumeInfo;
     }
 
     /**
@@ -187,10 +208,74 @@ public final class AgentToolContext {
      * 返回该 ToolCall 上一次表单暂停后用户提交的数据。
      *
      * <p>首次执行工具时返回空 Map；工具抛出 {@link AgentFormRequiredException} 并恢复后，Runner
-     * 会从头执行原工具，此时返回提交数据。该值来自 Snapshot，是不可修改的。</p>
+     * 会从头执行原工具，此时返回截至当前轮的全部提交数据。多轮提交会合并字段，后提交值覆盖同名字段。
+     * 该值来自 Snapshot，是不可修改的。</p>
      */
     public Map<String, Object> getSubmittedFormData() {
         return submittedFormData;
+    }
+
+    /**
+     * @return 当前 ToolCall 实际进入工具函数的累计次数，从 1 开始
+     */
+    public int getExecutionAttempt() {
+        return executionAttempt;
+    }
+
+    /**
+     * @return 本次执行前最近一次恢复来源及其审计信息
+     */
+    public AgentToolResumeInfo getResumeInfo() {
+        return resumeInfo;
+    }
+
+    /**
+     * @return 本次执行前最近一次恢复类型
+     */
+    public AgentToolResumeType getResumeType() {
+        return resumeInfo.getType();
+    }
+
+    /**
+     * @return 当前 ToolCall 已发生的恢复次数
+     */
+    public int getResumeCount() {
+        return resumeInfo.getResumeCount();
+    }
+
+    /**
+     * @return 是否由表单提交恢复
+     */
+    public boolean isFormInputResumed() {
+        return getResumeType() == AgentToolResumeType.FORM_INPUT;
+    }
+
+    /**
+     * @return 是否由审批通过恢复
+     */
+    public boolean isApprovalResumed() {
+        return getResumeType() == AgentToolResumeType.APPROVAL;
+    }
+
+    /**
+     * @return 是否由异常重试恢复
+     */
+    public boolean isRetryResumed() {
+        return getResumeType() == AgentToolResumeType.RETRY;
+    }
+
+    /**
+     * @return 本次工具执行是否由挂起恢复触发
+     */
+    public boolean isResumed() {
+        return resumeInfo.isResumed();
+    }
+
+    /**
+     * @return 当前 ToolCall 是否已经被工具函数执行过至少一次
+     */
+    public boolean isReplay() {
+        return executionAttempt > 1;
     }
 
     /**

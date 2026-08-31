@@ -9,6 +9,8 @@ import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.AgentSuspension;
+import com.agentsflex.agent.tool.AgentToolResumeInfo;
+import com.agentsflex.agent.tool.AgentToolResumeType;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -57,6 +59,13 @@ public class FastjsonAgentStoreSerializerTest {
         submittedForm.put("affectedSystem", "登录系统");
         Map<String, Map<String, Object>> toolInputData = new LinkedHashMap<>();
         toolInputData.put("call-1", submittedForm);
+        Map<String, Integer> toolExecutionAttempts = new LinkedHashMap<>();
+        toolExecutionAttempts.put("call-1", 2);
+        Map<String, Object> resumeMetadata = new LinkedHashMap<>();
+        resumeMetadata.put("submittedBy", "user-8");
+        Map<String, AgentToolResumeInfo> toolResumeInfo = new LinkedHashMap<>();
+        toolResumeInfo.put("call-1", new AgentToolResumeInfo(
+            AgentToolResumeType.FORM_INPUT, 1, resumeMetadata, null, null));
 
         AgentTurnState state = AgentTurnState.builder("turn-1",
                 AgentExecutionPolicy.defaults(), 0)
@@ -66,6 +75,8 @@ public class FastjsonAgentStoreSerializerTest {
             .pendingToolCalls(Collections.singletonList(toolCall))
             .suspension(AgentSuspension.toolApproval("call-1", "lookup"))
             .toolInputData(toolInputData)
+            .toolExecutionAttempts(toolExecutionAttempts)
+            .toolResumeInfo(toolResumeInfo)
             .stepCount(3)
             .metadata(metadata)
             .build();
@@ -87,6 +98,12 @@ public class FastjsonAgentStoreSerializerTest {
         assertEquals("tenant-1", decoded.getState().getMetadata().get("tenant"));
         assertEquals("登录系统", decoded.getState().getToolInputData()
             .get("call-1").get("affectedSystem"));
+        assertEquals(Integer.valueOf(2),
+            decoded.getState().getToolExecutionAttempts().get("call-1"));
+        AgentToolResumeInfo decodedResume = decoded.getState().getToolResumeInfo().get("call-1");
+        assertEquals(AgentToolResumeType.FORM_INPUT, decodedResume.getType());
+        assertEquals(1, decodedResume.getResumeCount());
+        assertEquals("user-8", decodedResume.getMetadata().get("submittedBy"));
     }
 
     @Test

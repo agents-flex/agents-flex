@@ -9,6 +9,7 @@ package com.agentsflex.agent;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.agent.tool.AgentToolResumeInfo;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -55,6 +56,10 @@ public final class AgentTurnState implements Serializable {
     private volatile long leaseUntil;
     private Map<String, Boolean> toolApprovals = Collections.emptyMap();
     private Map<String, Map<String, Object>> toolInputData = Collections.emptyMap();
+    /** 按 ToolCall ID 记录实际进入 Tool 函数的次数。 */
+    private Map<String, Integer> toolExecutionAttempts = Collections.emptyMap();
+    /** 按 ToolCall ID 记录本次执行前最近一次恢复来源。 */
+    private Map<String, AgentToolResumeInfo> toolResumeInfo = Collections.emptyMap();
     private volatile boolean cancellationRequested;
     private boolean started;
     private AiMessage finalMessage;
@@ -84,6 +89,8 @@ public final class AgentTurnState implements Serializable {
         this.pendingToolCalls = new ArrayList<>();
         this.toolApprovals = new HashMap<>();
         this.toolInputData = new HashMap<>();
+        this.toolExecutionAttempts = new HashMap<>();
+        this.toolResumeInfo = new HashMap<>();
         this.metadata = new HashMap<>();
     }
 
@@ -122,6 +129,14 @@ public final class AgentTurnState implements Serializable {
         Map<String, Boolean> approvals = new HashMap<>(source.toolApprovals);
         this.toolApprovals = immutable ? Collections.unmodifiableMap(approvals) : approvals;
         this.toolInputData = copyToolInputData(source.toolInputData, immutable);
+        Map<String, Integer> attempts = source.toolExecutionAttempts == null
+            ? new HashMap<String, Integer>() : new HashMap<>(source.toolExecutionAttempts);
+        this.toolExecutionAttempts = immutable
+            ? Collections.unmodifiableMap(attempts) : attempts;
+        Map<String, AgentToolResumeInfo> resumes = source.toolResumeInfo == null
+            ? new HashMap<String, AgentToolResumeInfo>() : new HashMap<>(source.toolResumeInfo);
+        this.toolResumeInfo = immutable
+            ? Collections.unmodifiableMap(resumes) : resumes;
         this.cancellationRequested = source.cancellationRequested;
         this.started = source.started;
         this.finalMessage = source.finalMessage == null ? null : source.finalMessage.copy();
@@ -318,6 +333,18 @@ public final class AgentTurnState implements Serializable {
      */
     public Map<String, Map<String, Object>> getToolInputData() {
         return copyToolInputData(toolInputData, true);
+    }
+
+    /** @return 每个 ToolCall 实际进入工具函数的累计次数 */
+    public Map<String, Integer> getToolExecutionAttempts() {
+        return Collections.unmodifiableMap(toolExecutionAttempts == null
+            ? Collections.<String, Integer>emptyMap() : toolExecutionAttempts);
+    }
+
+    /** @return 每个 ToolCall 最近一次恢复来源 */
+    public Map<String, AgentToolResumeInfo> getToolResumeInfo() {
+        return Collections.unmodifiableMap(toolResumeInfo == null
+            ? Collections.<String, AgentToolResumeInfo>emptyMap() : toolResumeInfo);
     }
 
     /**
@@ -606,21 +633,62 @@ public final class AgentTurnState implements Serializable {
         toolInputData = copyToolInputData(value, false);
     }
 
-    /**
-     * 保存一次用户输入工具调用提交的结构化数据，并复制调用方 Map。
-     *
-     * @param callId 工具调用 ID
-     * @param value  提交数据；空值按空 Map 保存
-     * @throws IllegalArgumentException callId 为空时抛出
-     */
+    void setToolExecutionAttempts(Map<String, Integer> value) {
+        requireMutable();
+        toolExecutionAttempts = value == null ? new HashMap<String, Integer>()
+            : new HashMap<>(value);
+    }
+
+    void setToolResumeInfo(Map<String, AgentToolResumeInfo> value) {
+        requireMutable();
+        toolResumeInfo = value == null ? new HashMap<String, AgentToolResumeInfo>()
+            : new HashMap<>(value);
+    }
+
+    int incrementToolExecutionAttempt(String callId) {
+        requireMutable();
+        if (callId == null || callId.trim().isEmpty()) {
+            throw new IllegalArgumentException("callId must not be blank");
+        }
+        if (toolExecutionAttempts == null) toolExecutionAttempts = new HashMap<>();
+        int attempt = toolExecutionAttempts.containsKey(callId)
+            ? toolExecutionAttempts.get(callId) + 1 : 1;
+        toolExecutionAttempts.put(callId, attempt);
+        return attempt;
+    }
+
+    int getToolExecutionAttempt(String callId) {
+        if (toolExecutionAttempts == null) return 0;
+        Integer value = toolExecutionAttempts.get(callId);
+        return value == null ? 0 : value;
+    }
+
+    AgentToolResumeInfo getToolResumeInfo(String callId) {
+        if (toolResumeInfo == null) return AgentToolResumeInfo.none();
+        AgentToolResumeInfo value = toolResumeInfo.get(callId);
+        return value == null ? AgentToolResumeInfo.none() : value;
+    }
+
+    void putToolResumeInfo(String callId, AgentToolResumeInfo value) {
+        requireMutable();
+        if (callId == null || callId.trim().isEmpty()) {
+            throw new IllegalArgumentException("callId must not be blank");
+        }
+        if (toolResumeInfo == null) toolResumeInfo = new HashMap<>();
+        toolResumeInfo.put(callId, value == null ? AgentToolResumeInfo.none() : value);
+    }
+
+    /** 保存一次表单提交；同一 ToolCall 的多轮提交会合并，后提交值覆盖同名字段。 */
     void putToolInputData(String callId, Map<String, ?> value) {
         requireMutable();
         if (callId == null || callId.trim().isEmpty()) {
             throw new IllegalArgumentException("callId must not be blank");
         }
         if (toolInputData == null) toolInputData = new HashMap<>();
-        toolInputData.put(callId, value == null
-            ? new HashMap<String, Object>() : new HashMap<String, Object>(value));
+        Map<String, Object> merged = toolInputData.get(callId) == null
+            ? new HashMap<String, Object>() : new HashMap<>(toolInputData.get(callId));
+        if (value != null) merged.putAll(value);
+        toolInputData.put(callId, merged);
     }
 
     /**
@@ -816,6 +884,16 @@ public final class AgentTurnState implements Serializable {
 
         public Builder toolInputData(Map<String, Map<String, Object>> value) {
             state.setToolInputData(value);
+            return this;
+        }
+
+        public Builder toolExecutionAttempts(Map<String, Integer> value) {
+            state.setToolExecutionAttempts(value);
+            return this;
+        }
+
+        public Builder toolResumeInfo(Map<String, AgentToolResumeInfo> value) {
+            state.setToolResumeInfo(value);
             return this;
         }
 
