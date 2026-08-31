@@ -6,11 +6,7 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.task.AgentPlanningTool;
-import com.agentsflex.agent.task.AgentTaskPlan;
-import com.agentsflex.agent.task.AgentTaskProgress;
 import com.agentsflex.core.message.*;
-import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
 
@@ -19,10 +15,9 @@ import java.util.*;
 /**
  * 一个 Agent 从接收一次输入到产生最终结果的可变执行轮次。
  *
- * <p>一个 Turn 可以包含多次模型迭代、工具调用、暂停恢复和自动重试。根 Turn 的输入通常来自用户，
- * 子 Turn 的输入来自父 Agent 的任务委派；每次子 Agent 调用都创建独立的 AgentTurn。该对象保存：</p>
+ * <p>一个 Turn 可以包含多次模型迭代、工具调用、暂停恢复和自动重试。该对象保存：</p>
  * <ul>
- *     <li>本轮唯一 ID 及父子 Turn 关系；</li>
+ *     <li>本轮唯一 ID；</li>
  *     <li>包含 System、User、AI ToolCall 和 ToolMessage 的完整对话上下文；</li>
  *     <li>生命周期状态、模型迭代次数、最终消息和失败原因；</li>
  *     <li>业务侧附加的轮次元数据以及协作式取消标记。</li>
@@ -42,25 +37,19 @@ public final class AgentTurn {
      * 本次运行使用的不可变 Agent 定义。
      */
     private final Agent agent;
-    /**
-     * 生命周期、预算、租约、规划等可持久化状态。
-     */
+    /** 生命周期、预算、租约等可持久化状态。 */
     private final AgentTurnState state;
     /**
      * 保存模型交互历史和可用工具的 Prompt。
      */
     private final MemoryPrompt prompt;
     /**
-     * 当前进程是否已经通过 AgentLoader 解析并装配规划委派目标。
-     */
-    private transient boolean planningToolsPrepared;
-    /**
      * 失败结束时记录的原始异常。
      */
     private Throwable error;
 
     /**
-     * 创建全新 Turn，解析有效策略并初始化规划及基础工具状态。
+     * 创建全新 Turn，解析有效策略并初始化基础工具状态。
      *
      * @param id              新 Turn ID
      * @param agent           冻结的 Agent 定义
@@ -72,7 +61,6 @@ public final class AgentTurn {
                       AgentExecutionPolicy executionPolicy) {
         this(agent, prompt, new AgentTurnState(id,
             effectiveExecutionPolicy(agent, executionPolicy), createdAt));
-        state.setPlanningEnabled(agent.getPlanningPolicy().isEnabled());
         prepareBaseTools();
     }
 
@@ -205,24 +193,6 @@ public final class AgentTurn {
     }
 
     /**
-     * 创建一个继承父 Turn 根 ID 的子 Turn。
-     */
-    static AgentTurn startChild(Agent agent, String userInput, AgentTurn parent) {
-        AgentTurn child = start(agent, userInput);
-        child.state.setParentTurnId(parent.getId());
-        child.state.setRootTurnId(parent.getRootTurnId());
-        // 子 Turn 继承父 Turn 的模型调用方式。
-        child.state.setStreaming(parent.isStreaming());
-        int planningDepth = parent.getPlanningDepth() + 1;
-        child.state.setPlanningDepth(planningDepth);
-        child.state.setPlanningEnabled(agent.getPlanningPolicy().isEnabled()
-            && parent.getAgent().getPlanningPolicy().isChildPlanningAllowed()
-            && planningDepth < parent.getAgent().getPlanningPolicy().getMaxDepth());
-        child.prepareBaseTools();
-        return child;
-    }
-
-    /**
      * 使用持久化 Snapshot 恢复 AgentTurn。
      *
      * <p>Snapshot 保存 agentId 和 agentVersion，因此调用方必须先通过 AgentLoader 加载匹配版本的 Agent。</p>
@@ -245,9 +215,6 @@ public final class AgentTurn {
                 + snapshot.getAgentVersion());
         }
         AgentTurnState state = snapshot.getState().mutableCopy();
-        if (!StringUtil.hasText(state.getRootTurnId())) {
-            state.setRootTurnId(state.getTurnId());
-        }
         AgentTurn turn = new AgentTurn(agent, prompt, state);
         if (state.getErrorMessage() != null) {
             turn.error = new RestoredAgentTurnException(state.getErrorType(), state.getErrorMessage());
@@ -268,33 +235,12 @@ public final class AgentTurn {
     }
 
     /**
-     * 装配不依赖运行时解析的业务工具，规划工具稍后由 Runner 统一补充。
+     * 装配不依赖运行时解析的业务工具。
      */
     private void prepareBaseTools() {
         // ToolGroup 中的 Tool 由 ChatModel 在请求级按 matcher 解析，不能提前无条件暴露给模型。
         prompt.setTools(new ArrayList<>(agent.getTools()));
         prompt.setToolGroups(agent.getToolGroups());
-        planningToolsPrepared = !state.isPlanningEnabled();
-    }
-
-    /**
-     * 使用 AgentLoader 已解析出的完整 Agent 装配模型可见的规划工具。
-     */
-    void preparePlanningTools(List<Agent> delegates) {
-        List<Tool> tools = new ArrayList<>(agent.getTools());
-        if (state.isPlanningEnabled()) {
-            tools.addAll(AgentPlanningTool.createTools(
-                agent, delegates, agent.getPlanningPolicy()));
-        }
-        prompt.setTools(tools);
-        planningToolsPrepared = true;
-    }
-
-    /**
-     * @return 当前进程是否已经完成规划工具的运行时装配
-     */
-    boolean isPlanningToolsPrepared() {
-        return planningToolsPrepared;
     }
 
     /**
@@ -456,14 +402,14 @@ public final class AgentTurn {
     }
 
     /**
-     * @return 当前根任务累计输入 Token，包含已经汇总的子 Turn
+     * @return 当前 Turn 累计输入 Token
      */
     public long getInputTokens() {
         return state.getInputTokens();
     }
 
     /**
-     * @return 当前根任务累计输出 Token，包含已经汇总的子 Turn
+     * @return 当前 Turn 累计输出 Token
      */
     public long getOutputTokens() {
         return state.getOutputTokens();
@@ -476,29 +422,13 @@ public final class AgentTurn {
         return state.getTotalTokens();
     }
 
-    /**
-     * @return 直接父 Turn ID；根 Turn 返回 {@code null}
-     */
-    public String getParentTurnId() {
-        return state.getParentTurnId();
-    }
-
-    /**
-     * @return Turn 树的根 Turn ID；根 Turn 返回自身 ID
-     */
-    public String getRootTurnId() {
-        return state.getRootTurnId();
-    }
-
-    /**
-     * @return 自动重试等延迟状态的最早可运行时间
-     */
+    /** @return 自动重试等延迟状态的最早可运行时间 */
     public long getNextRunnableAt() {
         return state.getNextRunnableAt();
     }
 
     /**
-     * @return 已开始执行的业务工具调用数量，不包含内置规划状态转换
+     * @return 已开始执行的业务工具调用数量
      */
     public int getToolCallCount() {
         return state.getToolCallCount();
@@ -537,39 +467,6 @@ public final class AgentTurn {
      */
     public long getLeaseUntil() {
         return state.getLeaseUntil();
-    }
-
-    /**
-     * @return 当前任务计划的隔离副本；模型未创建计划时返回 null
-     */
-    public AgentTaskPlan getTaskPlan() {
-        return state.getTaskPlan();
-    }
-
-    /**
-     * @return 当前 Turn 是否允许模型创建任务计划
-     */
-    public boolean isPlanningEnabled() {
-        return state.isPlanningEnabled();
-    }
-
-    /**
-     * @return 当前 Turn 在嵌套规划中的深度
-     */
-    public int getPlanningDepth() {
-        return state.getPlanningDepth();
-    }
-
-    /**
-     * 返回仅基于当前 Turn 本地状态计算的计划进度。
-     *
-     * <p>父 Turn 正在等待子 Turn 时，该方法不会额外查询子 Turn 的真实审批或重试状态；需要跨 Turn
-     * 聚合状态时使用 {@link AgentRunner#getTaskProgress(String)}。</p>
-     */
-    public AgentTaskProgress getTaskProgress() {
-        AgentTaskPlan taskPlan = state.getTaskPlan();
-        return taskPlan == null ? null
-            : new AgentTaskProgress(taskPlan, state.getStatus(), state.getSuspension());
     }
 
     /**
@@ -773,21 +670,6 @@ public final class AgentTurn {
      */
     Map<String, Object> getToolInputData(String callId) {
         return state.getToolInputData(callId);
-    }
-
-    /**
-     * 保存模型创建或 Runner 推进后的不可变任务计划。
-     */
-    void updateTaskPlan(AgentTaskPlan value) {
-        state.setTaskPlan(value);
-    }
-
-    /**
-     * 将子 Turn 的资源消耗累计到父 Turn 的整棵任务预算。
-     */
-    void addChildUsage(AgentTurn child) {
-        if (child == null) return;
-        state.addChildUsage(child.state);
     }
 
     /**

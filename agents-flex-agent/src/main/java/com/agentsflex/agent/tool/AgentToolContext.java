@@ -35,8 +35,6 @@ public final class AgentToolContext {
     public static final String CONTEXT_ATTRIBUTE = AgentToolContext.class.getName();
 
     private final String turnId;
-    private final String rootTurnId;
-    private final String parentTurnId;
     private final String agentId;
     private final String agentVersion;
     private final Tool tool;
@@ -50,8 +48,6 @@ public final class AgentToolContext {
      * 创建不携带恢复表单数据的工具上下文。
      *
      * @param turnId                当前 Turn ID
-     * @param rootTurnId            根 Turn ID
-     * @param parentTurnId          可选父 Turn ID
      * @param agentId               Agent ID
      * @param agentVersion          Agent 配置版本
      * @param tool                  已解析工具
@@ -60,11 +56,11 @@ public final class AgentToolContext {
      * @param progressEmitter       进度发布器
      * @param cancellationRequested 动态取消检查
      */
-    public AgentToolContext(String turnId, String rootTurnId, String parentTurnId,
-                            String agentId, String agentVersion, Tool tool, ToolCall toolCall,
+    public AgentToolContext(String turnId, String agentId, String agentVersion,
+                            Tool tool, ToolCall toolCall,
                             String toolCallId, AgentToolProgressEmitter progressEmitter,
                             BooleanSupplier cancellationRequested) {
-        this(turnId, rootTurnId, parentTurnId, agentId, agentVersion, tool, toolCall,
+        this(turnId, agentId, agentVersion, tool, toolCall,
             toolCallId, progressEmitter, cancellationRequested,
             Collections.<String, Object>emptyMap());
     }
@@ -73,8 +69,6 @@ public final class AgentToolContext {
      * 创建包含恢复表单数据的完整工具执行上下文，并复制提交字段。
      *
      * @param turnId                当前 Turn ID
-     * @param rootTurnId            根 Turn ID
-     * @param parentTurnId          可选父 Turn ID
      * @param agentId               Agent ID
      * @param agentVersion          Agent 配置版本
      * @param tool                  已解析工具
@@ -84,8 +78,8 @@ public final class AgentToolContext {
      * @param cancellationRequested 动态取消检查
      * @param submittedFormData     恢复时提交的结构化表单数据
      */
-    public AgentToolContext(String turnId, String rootTurnId, String parentTurnId,
-                            String agentId, String agentVersion, Tool tool, ToolCall toolCall,
+    public AgentToolContext(String turnId, String agentId, String agentVersion,
+                            Tool tool, ToolCall toolCall,
                             String toolCallId, AgentToolProgressEmitter progressEmitter,
                             BooleanSupplier cancellationRequested,
                             Map<String, ?> submittedFormData) {
@@ -98,8 +92,6 @@ public final class AgentToolContext {
                     + "and cancellationRequested must be provided");
         }
         this.turnId = turnId;
-        this.rootTurnId = rootTurnId;
-        this.parentTurnId = parentTurnId;
         this.agentId = agentId;
         this.agentVersion = agentVersion;
         this.tool = tool;
@@ -126,20 +118,6 @@ public final class AgentToolContext {
      */
     public String getTurnId() {
         return turnId;
-    }
-
-    /**
-     * @return Turn 树的根 Turn ID
-     */
-    public String getRootTurnId() {
-        return rootTurnId;
-    }
-
-    /**
-     * @return 父 Turn ID；根 Turn 返回 {@code null}
-     */
-    public String getParentTurnId() {
-        return parentTurnId;
     }
 
     /**

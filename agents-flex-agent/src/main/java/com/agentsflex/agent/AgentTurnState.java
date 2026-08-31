@@ -6,7 +6,6 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.task.AgentTaskPlan;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -22,7 +21,7 @@ import java.util.Map;
  * AgentTurn 与 AgentTurnSnapshot 共享的可序列化轮次状态。
  *
  * <p>执行中的 {@link AgentTurn} 持有可变 State，由同包内的状态转换方法推进；
- * {@link AgentTurnSnapshot} 持有深拷贝后的不可变 State。消息、ToolCall、Suspension、任务计划和
+ * {@link AgentTurnSnapshot} 持有深拷贝后的不可变 State。消息、ToolCall 和 Suspension、
  * 最终消息在复制时都会隔离，避免保存快照后继续运行的 Turn 修改已经持久化的内容。</p>
  *
  * <p>该类不保存 Agent、Prompt、Throwable、ChatModel、Tool 或其他进程内对象。新增可持久化字段时
@@ -56,9 +55,6 @@ public final class AgentTurnState implements Serializable {
     private volatile long leaseUntil;
     private Map<String, Boolean> toolApprovals = Collections.emptyMap();
     private Map<String, Map<String, Object>> toolInputData = Collections.emptyMap();
-    private AgentTaskPlan taskPlan;
-    private boolean planningEnabled;
-    private int planningDepth;
     private volatile boolean cancellationRequested;
     private boolean started;
     private AiMessage finalMessage;
@@ -69,8 +65,6 @@ public final class AgentTurnState implements Serializable {
     private long updatedAt;
     private long nextRunnableAt;
     private long version = -1;
-    private String parentTurnId;
-    private String rootTurnId;
     private Map<String, Object> metadata = Collections.emptyMap();
     private boolean immutable;
 
@@ -86,7 +80,6 @@ public final class AgentTurnState implements Serializable {
         this.turnId = turnId;
         this.executionPolicy = executionPolicy;
         this.createdAt = createdAt;
-        this.rootTurnId = turnId;
         this.messages = new ArrayList<>();
         this.pendingToolCalls = new ArrayList<>();
         this.toolApprovals = new HashMap<>();
@@ -129,9 +122,6 @@ public final class AgentTurnState implements Serializable {
         Map<String, Boolean> approvals = new HashMap<>(source.toolApprovals);
         this.toolApprovals = immutable ? Collections.unmodifiableMap(approvals) : approvals;
         this.toolInputData = copyToolInputData(source.toolInputData, immutable);
-        this.taskPlan = source.taskPlan == null ? null : source.taskPlan.copy();
-        this.planningEnabled = source.planningEnabled;
-        this.planningDepth = source.planningDepth;
         this.cancellationRequested = source.cancellationRequested;
         this.started = source.started;
         this.finalMessage = source.finalMessage == null ? null : source.finalMessage.copy();
@@ -142,8 +132,6 @@ public final class AgentTurnState implements Serializable {
         this.updatedAt = source.updatedAt;
         this.nextRunnableAt = source.nextRunnableAt;
         this.version = source.version;
-        this.parentTurnId = source.parentTurnId;
-        this.rootTurnId = source.rootTurnId;
         Map<String, Object> metadataCopy = new HashMap<>(source.metadata);
         this.metadata = immutable ? Collections.unmodifiableMap(metadataCopy) : metadataCopy;
         this.immutable = immutable;
@@ -333,27 +321,6 @@ public final class AgentTurnState implements Serializable {
     }
 
     /**
-     * @return 任务计划副本
-     */
-    public AgentTaskPlan getTaskPlan() {
-        return taskPlan == null ? null : taskPlan.copy();
-    }
-
-    /**
-     * @return 是否向模型开放规划工具
-     */
-    public boolean isPlanningEnabled() {
-        return planningEnabled;
-    }
-
-    /**
-     * @return 当前 Turn 在规划父子树中的深度
-     */
-    public int getPlanningDepth() {
-        return planningDepth;
-    }
-
-    /**
      * @return 是否收到协作式取消请求
      */
     public boolean isCancellationRequested() {
@@ -421,20 +388,6 @@ public final class AgentTurnState implements Serializable {
      */
     public long getVersion() {
         return version;
-    }
-
-    /**
-     * @return 直接父 Turn ID
-     */
-    public String getParentTurnId() {
-        return parentTurnId;
-    }
-
-    /**
-     * @return Turn 树的根 Turn ID
-     */
-    public String getRootTurnId() {
-        return rootTurnId;
     }
 
     /**
@@ -602,20 +555,6 @@ public final class AgentTurnState implements Serializable {
         retryCount++;
     }
 
-    /**
-     * 把已结束子 Turn 的 Token、工具调用和重试用量汇总到父 Turn。
-     *
-     * @param child 子 Turn 的最终状态
-     */
-    void addChildUsage(AgentTurnState child) {
-        requireMutable();
-        inputTokens += child.inputTokens;
-        outputTokens += child.outputTokens;
-        totalTokens += child.totalTokens;
-        toolCallCount += child.toolCallCount;
-        retryCount += child.retryCount;
-    }
-
     void setBudgetExceededReason(String value) {
         requireMutable();
         budgetExceededReason = value;
@@ -697,21 +636,6 @@ public final class AgentTurnState implements Serializable {
             : Collections.unmodifiableMap(new HashMap<>(value));
     }
 
-    void setTaskPlan(AgentTaskPlan value) {
-        requireMutable();
-        taskPlan = value == null ? null : value.copy();
-    }
-
-    void setPlanningEnabled(boolean value) {
-        requireMutable();
-        planningEnabled = value;
-    }
-
-    void setPlanningDepth(int value) {
-        requireMutable();
-        planningDepth = value;
-    }
-
     void setCancellationRequested(boolean value) {
         requireMutable();
         cancellationRequested = value;
@@ -759,16 +683,6 @@ public final class AgentTurnState implements Serializable {
     void setVersion(long value) {
         requireMutable();
         version = value;
-    }
-
-    void setParentTurnId(String value) {
-        requireMutable();
-        parentTurnId = value;
-    }
-
-    void setRootTurnId(String value) {
-        requireMutable();
-        rootTurnId = value;
     }
 
     void setMetadata(Map<String, Object> value) {
@@ -905,21 +819,6 @@ public final class AgentTurnState implements Serializable {
             return this;
         }
 
-        public Builder taskPlan(AgentTaskPlan value) {
-            state.setTaskPlan(value);
-            return this;
-        }
-
-        public Builder planningEnabled(boolean value) {
-            state.setPlanningEnabled(value);
-            return this;
-        }
-
-        public Builder planningDepth(int value) {
-            state.setPlanningDepth(value);
-            return this;
-        }
-
         public Builder cancellationRequested(boolean value) {
             state.setCancellationRequested(value);
             return this;
@@ -962,16 +861,6 @@ public final class AgentTurnState implements Serializable {
 
         public Builder version(long value) {
             state.setVersion(value);
-            return this;
-        }
-
-        public Builder parentTurnId(String value) {
-            state.setParentTurnId(value);
-            return this;
-        }
-
-        public Builder rootTurnId(String value) {
-            state.setRootTurnId(value);
             return this;
         }
 

@@ -68,7 +68,7 @@ if (turn.getStatus() == AgentTurnStatus.BUDGET_EXCEEDED) {
 
 ## 分层预算
 
-平台可按 Agent 类型、租户套餐和任务风险选择策略，但应在创建 Turn 前计算最终值。父 Turn 与子 Turn 各自计数；如果需要整棵任务树总预算，上层平台应按 `rootTurnId` 聚合并在创建子任务前实施额外配额。
+平台可按 Agent 类型、租户套餐和任务风险选择策略，但应在创建 Turn 前计算最终值。每个 Turn 独立计数；跨 Turn 的配额由上层平台按业务会话聚合。
 
 ## 生产建议
 

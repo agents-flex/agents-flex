@@ -162,35 +162,6 @@ public class AgentAdvancedFeaturesTest {
     }
 
     @Test
-    public void shouldScheduleChildAndResumeParent() {
-        QueueChatModel parentModel = new QueueChatModel();
-        parentModel.enqueue(prompt -> new AiMessage("parent model result"));
-        QueueChatModel childModel = new QueueChatModel();
-        childModel.enqueue(prompt -> new AiMessage("child result"));
-        Agent parentAgent = Agent.builder("parent-agent")
-            .chatModel(parentModel).build();
-        Agent childAgent = Agent.builder("child-agent").chatModel(childModel).build();
-        InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
-        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(), registry);
-
-        AgentTurn parent = runner.start(parentAgent, "parent input");
-        AgentTurn child = runner.startChild(parent, "child-agent", "child input");
-        assertEquals(AgentTurnStatus.WAITING_FOR_CHILD, parent.getStatus());
-        assertEquals(child.getId(), parent.getSuspension().getCorrelationId());
-
-        child = runner.runUntilBlocked(child.getId());
-        assertEquals(AgentTurnStatus.COMPLETED, child.getStatus());
-        AgentTurn resumedParent = runner.resumeParentFromChild(child);
-        assertEquals(AgentTurnStatus.RUNNING, resumedParent.getStatus());
-        AgentTurn completedParent = runner.runUntilBlocked(resumedParent);
-
-        assertEquals(AgentTurnStatus.COMPLETED, completedParent.getStatus());
-        assertEquals("parent model result", completedParent.getFinalOutput());
-        assertTrue(completedParent.getPrompt().getMessages().stream()
-            .anyMatch(message -> message.getTextContent().contains("child result")));
-    }
-
-    @Test
     public void shouldStopWhenTokenBudgetIsExceeded() {
         QueueChatModel model = new QueueChatModel();
         model.enqueue(prompt -> {
@@ -401,10 +372,6 @@ public class AgentAdvancedFeaturesTest {
         @Override public boolean requestCancellation(String turnId) {
             return delegate.requestCancellation(turnId);
         }
-        @Override public com.agentsflex.agent.store.ParentChildTurnSnapshots saveParentAndChild(
-            AgentTurnSnapshot parent, long expectedParentVersion, AgentTurnSnapshot child) {
-            return delegate.saveParentAndChild(parent, expectedParentVersion, child);
-        }
         @Override public java.util.List<AgentTurnSnapshot> claimRunnable(
             String workerId, long now, long leaseMillis, int limit) {
             return delegate.claimRunnable(workerId, now, leaseMillis, limit);
@@ -415,10 +382,6 @@ public class AgentAdvancedFeaturesTest {
         }
         @Override public void releaseLease(String turnId, String workerId, String leaseId) {
             delegate.releaseLease(turnId, workerId, leaseId);
-        }
-        @Override public java.util.List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(
-            int limit) {
-            return delegate.findTerminalChildrenWithWaitingParent(limit);
         }
 
         @Override
@@ -446,10 +409,6 @@ public class AgentAdvancedFeaturesTest {
         @Override public boolean requestCancellation(String turnId) {
             return delegate.requestCancellation(turnId);
         }
-        @Override public com.agentsflex.agent.store.ParentChildTurnSnapshots saveParentAndChild(
-            AgentTurnSnapshot parent, long expectedParentVersion, AgentTurnSnapshot child) {
-            return delegate.saveParentAndChild(parent, expectedParentVersion, child);
-        }
         @Override public java.util.List<AgentTurnSnapshot> claimRunnable(
             String workerId, long now, long leaseMillis, int limit) {
             return delegate.claimRunnable(workerId, now, leaseMillis, limit);
@@ -460,10 +419,6 @@ public class AgentAdvancedFeaturesTest {
         }
         @Override public void releaseLease(String turnId, String workerId, String leaseId) {
             delegate.releaseLease(turnId, workerId, leaseId);
-        }
-        @Override public java.util.List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(
-            int limit) {
-            return delegate.findTerminalChildrenWithWaitingParent(limit);
         }
 
         @Override

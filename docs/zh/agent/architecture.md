@@ -56,7 +56,7 @@ flowchart TB
 
 ### 执行平面
 
-`AgentRunner` 按 status 与 phase 推进 `AgentTurn`。默认模式实现模型原生 Tool Calling；规划通过内置工具创建子 Turn；Suspension 把外部等待转换为持久状态。
+`AgentRunner` 按 status 与 phase 推进 `AgentTurn`。默认模式实现模型原生 Tool Calling；Suspension 把外部等待转换为持久状态。
 
 ### 调度平面
 
@@ -70,7 +70,7 @@ Turn Snapshot 是 Framework 执行状态的事实来源。可选 ChatMemory 保�
 
 ### 观察平面
 
-AgentEventListener 统一接收生命周期、模型增量和工具进度事件，可用于流式 UI、日志和指标。可靠审计与断点消费由业务事件系统负责。`rootTurnId` 关联父子任务树，Turn metadata 提供请求和租户关联。
+AgentEventListener 统一接收生命周期、模型增量和工具进度事件，可用于流式 UI、日志和指标。可靠审计与断点消费由业务事件系统负责，Turn metadata 提供请求和租户关联。
 
 ## 默认状态机
 
@@ -90,12 +90,10 @@ stateDiagram-v2
 
     RUNNING --> WAITING_FOR_USER: 等待补充信息
     RUNNING --> WAITING_FOR_APPROVAL: 工具需要审批
-    RUNNING --> WAITING_FOR_CHILD: 等待规划子 Turn
     RUNNING --> RETRY_SCHEDULED: 可恢复异常
 
     WAITING_FOR_USER --> RUNNING: 提交用户输入
     WAITING_FOR_APPROVAL --> RUNNING: 提交审批结果
-    WAITING_FOR_CHILD --> RUNNING: 子 Turn 完成
     RETRY_SCHEDULED --> RUNNING: 到期领取或主动恢复
 
     state "终态<br/>COMPLETED / FAILED / CANCELLED<br/>MAX_ITERATIONS_REACHED / MAX_STEPS_REACHED / BUDGET_EXCEEDED" as TERMINAL

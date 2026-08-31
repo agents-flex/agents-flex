@@ -7,7 +7,7 @@ description: 理解 AgentRunner 的执行入口、step 循环、阻塞边界、�
 
 ## 概述
 
-`AgentRunner` 是 Agent 状态机执行器。它创建、推进、暂停和恢复 `AgentTurn`，并统一处理 Snapshot、预算、重试、规划、父子 Turn、Middleware 与生命周期事件。
+`AgentRunner` 是 Agent 状态机执行器。它创建、推进、暂停和恢复 `AgentTurn`，并统一处理 Snapshot、预算、重试、Middleware 与生命周期事件。
 
 Runner 自身不把 Turn 保存在实例字段中，适合作为应用级对象复用；真正的持久状态位于 `AgentTurnStore`。同一个 `AgentTurn` 对象不应由两个线程同时直接推进。
 
@@ -30,18 +30,15 @@ flowchart TD
 
     Loop --> Step["step(...)"]
     Step --> Guard["检查 Lease、取消、预算与 maxSteps"]
-    Guard -->|"已有任务计划"| Planning["推进计划或子 Turn"]
     Guard -->|"MODEL"| Model["构造消息窗口并调用模型"]
     Guard -->|"TOOLS"| Tools["顺序处理待执行 ToolCall"]
 
     Model -->|"最终回答"| Terminal["进入终态并返回"]
     Model -->|"产生 ToolCall"| Tools
     Tools -->|"工具结果已保存"| Continue["切换到下一执行阶段"]
-    Planning -->|"计划可继续"| Continue
     Continue --> Loop
 
     Guard -->|"已取消或达到限制"| Terminal
-    Planning -->|"等待子 Turn"| Blocked["保存阻塞状态并返回"]
     Tools -->|"等待审批 / 用户输入 / 重试"| Blocked
 
     Blocked --> Command["外部条件满足<br/>AgentResumeCommand"]
@@ -54,10 +51,9 @@ flowchart TD
 
 1. `run(...)` 和 `start(...)` 都先创建 `READY` Turn 并保存初始 Snapshot。`run(...)` 随即进入执行循环；`start(...)` 只返回 Turn，不会自行创建后台线程。
 2. `restore(...)` 只从 Store 恢复 Snapshot，并按其中的 Agent ID 与版本装配 Agent。恢复后可由调用方继续执行，也可由 `AgentWorker` 调度。
-3. `runUntilBlocked(...)` 循环调用 `step(...)`。每一步先检查执行资格和限制，再优先推进已有任务计划，否则根据当前 Phase 调用模型或处理工具。
+3. `runUntilBlocked(...)` 循环调用 `step(...)`。每一步先检查执行资格和限制，再根据当前 Phase 调用模型或处理工具。
 4. MODEL 阶段一次 Step 最多调用模型一次。最终回答会结束 Turn；ToolCall 会被记录并在 TOOLS 阶段按顺序处理。
-5. 任务计划可能创建子 Turn。同步执行时 Runner 会递归推进子 Turn；Worker 模式下父 Turn 返回等待，由其他 Worker 推进子 Turn，完成后再把结果写回父 Turn。
-6. 审批、用户输入、子 Turn 和延迟重试形成阻塞边界，不会占用线程等待。`resume(...)` 恢复后立即执行，`submitResume(...)` 只将 Turn 恢复为可运行状态。
+5. 审批、用户输入和延迟重试形成阻塞边界，不会占用线程等待。`resume(...)` 恢复后立即执行，`submitResume(...)` 只将 Turn 恢复为可运行状态。
 
 Runner 会在创建、状态转换、工具结果和终止等稳定边界保存 Snapshot，使 Turn 能够跨请求或进程恢复；
 Middleware 包围模型、工具和 Step 执行，但不会改变上图的主状态流转。
@@ -93,7 +89,7 @@ conversationId 定位业务系统维护的 ChatMemory；`chatMemoryProvider` 是
 AgentTurn turn = runner.run(agent, "查询订单 1001");
 ```
 
-适合同步请求和短任务。它不保证一定完成，审批、用户输入、子 Agent 或重试都会返回阻塞 Turn。
+适合同步请求和短任务。它不保证一定完成，审批、用户输入或重试都会返回阻塞 Turn。
 
 ### `start(...)`
 
@@ -119,7 +115,7 @@ AgentTurn blockedOrDone = runner.runUntilBlocked(turn);
 一次标准推进包含三层：
 
 1. `runUntilBlocked` 判断是否继续循环。
-2. `step` 处理取消、Lease、预算、规划、上下文和 Middleware。
+2. `step` 处理取消、Lease、预算、上下文和 Middleware。
 3. 内置 ToolCall 状态机根据 Phase 进入 MODEL 或 TOOLS 阶段。
 
 模型返回 ToolCall 时，Runner 先记录 `pendingToolCalls` 并保存 Snapshot，随后才审批和执行。这个顺序是恢复一致性的关键。
@@ -202,7 +198,7 @@ try {
 ```
 
 `WAITING_FOR_USER` 和 `WAITING_FOR_APPROVAL` 不是普通消息可以覆盖的状态，必须使用原 Turn 的
-`resume(...)` 提交表单或审批命令。`RUNNING`、`WAITING_FOR_CHILD` 和 `RETRY_SCHEDULED` 也会阻止
+`resume(...)` 提交表单或审批命令。`RUNNING` 和 `RETRY_SCHEDULED` 也会阻止
 新的普通 Turn。Turn 进入终态后，会话可以开始下一轮。
 
 `InMemoryAgentTurnStore` 已提供同进程多个 Runner 之间的原子检查和创建。JDBC、Redis 或其他生产 Store
@@ -227,7 +223,7 @@ runner.addEventListener(event -> {
         || event.getType() == AgentEventType.MAX_STEPS_REACHED
         || event.getType() == AgentEventType.BUDGET_EXCEEDED) {
         // 只记录可重试的触发信号；不要在监听器中递归调用 Runner
-        inbox.markTurnFinished(event.getTurnId(), event.getRootTurnId(),
+        inbox.markTurnFinished(event.getTurnId(),
             event.getType(), event.getEventId());
     }
 });
@@ -250,8 +246,8 @@ if (pending != null) {
 }
 ```
 
-`TURN_SUSPENDED` 不表示执行完毕。`WAITING_FOR_USER`、`WAITING_FOR_APPROVAL` 和
-`WAITING_FOR_CHILD` 必须先通过原 Turn 的 `resume(...)` 或 `submitResume(...)` 完成恢复；普通排队消息
+`TURN_SUSPENDED` 不表示执行完毕。`WAITING_FOR_USER` 和 `WAITING_FOR_APPROVAL`
+必须先通过原 Turn 的 `resume(...)` 或 `submitResume(...)` 完成恢复；普通排队消息
 不能替代表单数据或审批命令。终态中的失败、取消和预算耗尽也应由业务策略决定是继续、重试还是转人工，
 不能无条件执行下一条消息。
 

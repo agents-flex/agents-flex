@@ -19,9 +19,6 @@ import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.message.AgentFormMessage;
-import com.agentsflex.agent.task.AgentPlanningPolicy;
-import com.agentsflex.agent.task.AgentTask;
-import com.agentsflex.agent.task.AgentTaskProgress;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.agent.tool.AgentToolContext;
@@ -55,7 +52,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 使用真实大模型演示持续对话、任务规划、原生 ToolCall 和 Human-in-the-loop 的控制台程序。
+ * 使用真实大模型演示持续对话、原生 ToolCall 和 Human-in-the-loop 的控制台程序。
  *
  * <p>业务代码维护 conversationId 和 ChatMemory，Runner 按配置的消息窗口读取模型历史，并把本轮新增
  * 消息幂等投影回业务 ChatMemory。模型直接回答时 Turn 一步完成；模型选择工具时 Runner 自动执行工具
@@ -168,7 +165,7 @@ public final class AgentConsoleDemo {
                 if (decision == null) {
                     return null;
                 }
-                // 传根 turnId 即可；Runner 会把命令路由到规划中实际等待审批的子 Turn。
+                // 使用当前 turnId 恢复等待中的审批。
                 current = runner.resume(current.getId(), decision);
                 continue;
             }
@@ -306,18 +303,10 @@ public final class AgentConsoleDemo {
     }
 
     /**
-     * 规划根 Turn 会以 WAITING_FOR_CHILD 表示等待；交互信息则保存在当前活动子 Turn 中。
+     * 返回当前阻塞 Turn。
      */
     private static AgentTurn activeBlockedTurn(AgentRunner runner, AgentTurn root) {
-        if (root.getStatus() != AgentTurnStatus.WAITING_FOR_CHILD) {
-            return root;
-        }
-        AgentTaskProgress progress = runner.getTaskProgress(root.getId());
-        AgentTask task = progress == null ? null : progress.getCurrentTask();
-        if (task == null || task.getChildTurnId() == null) {
-            return root;
-        }
-        return runner.restore(task.getChildTurnId());
+        return root;
     }
 
     /**
@@ -585,9 +574,6 @@ public final class AgentConsoleDemo {
                     + "用户明确要求创建、提交或登记支持工单时，必须先调用 "
                     + "prepare_support_ticket 整理标题、优先级和描述；该工具补齐资料并返回后，再调用 "
                     + "create_support_ticket，不能跳过准备工具，也不能猜测表单字段。"
-                    + "当请求需要两个或更多独立工具调用时，必须先调用 create_task_plan 创建计划，"
-                    + "不能直接调用业务工具；例如比较两个城市当前时间时，每个城市查询一个任务，"
-                    + "比较、归纳和建议由父 Agent 在全部任务完成后汇总。单步请求不要创建计划。"
                     + "工具返回后必须根据真实结果回答，绝不能虚构工具已经执行。")
             .chatModel(chatModel)
             .tool(currentTime)
@@ -596,17 +582,6 @@ public final class AgentConsoleDemo {
             .tool(prepareTicket)
             .tool(createTicket)
             .maxAttachedMessages(40)
-            .planningPolicy(AgentPlanningPolicy.builder()
-                .enabled(true)
-                .maxTasks(4)
-                .maxDepth(1)
-                .childPlanningAllowed(false)
-                .taskResultMaxLength(2_000)
-                .planningInstructions(
-                    "请求需要两个或更多独立工具调用时必须规划。每个任务只执行一个可独立完成的数据"
-                        + "获取或业务动作；不要创建比较、归纳或最终总结任务，这些工作由父 Agent 在全部"
-                        + "子任务完成后完成。")
-                .build())
             .toolApprovalPolicy((turn, call, tool) ->
                 Boolean.TRUE.equals(tool.getMetadata().get("sideEffect"))
                     ? ToolApprovalDecision.requireApproval()
@@ -655,35 +630,11 @@ public final class AgentConsoleDemo {
 //            || type == AgentEventType.TOOL_STARTED
 //            || type == AgentEventType.TOOL_COMPLETED
 //            || type == AgentEventType.TOOL_APPROVAL_REQUESTED
-//            || type == AgentEventType.PLAN_CREATED
-//            || type == AgentEventType.PLAN_UPDATED
-//            || type == AgentEventType.TASK_STARTED
-//            || type == AgentEventType.TASK_COMPLETED
-//            || type == AgentEventType.TASK_FAILED
 //            || type == AgentEventType.TURN_SUSPENDED
 //            || type == AgentEventType.TURN_RESUMED) {
             System.out.println("[事件] " + type + " turn=" + event.getTurnId() +" data:" + event.getData());
-//                + planningEventDetails(event));
+//                );
 //        }
-    }
-
-    private static String planningEventDetails(AgentEvent event) {
-        AgentEventType type = event.getType();
-        if (type == AgentEventType.PLAN_CREATED) {
-            return " goal=" + event.getData().get("goal")
-                + " tasks=" + event.getData().get("taskCount");
-        }
-        if (type == AgentEventType.TASK_STARTED
-            || type == AgentEventType.TASK_COMPLETED
-            || type == AgentEventType.TASK_FAILED) {
-            if (type == AgentEventType.TASK_STARTED) {
-                return " task=" + event.getData().get("title")
-                    + " taskId=" + event.getData().get("taskId");
-            }
-            return " taskId=" + event.getData().get("taskId")
-                + " status=" + event.getData().get("taskStatus");
-        }
-        return "";
     }
 
     private static ToolCall findPendingCall(AgentTurn turn, String callId) {
@@ -715,21 +666,6 @@ public final class AgentConsoleDemo {
         }
         System.out.println("[Turn] id=" + turn.getId() + ", iterations=" + turn.getIterationCount()
             + ", toolCalls=" + turn.getToolCallCount() + ", tokens=" + turn.getTotalTokens());
-        printTaskPlan(turn);
-    }
-
-    private static void printTaskPlan(AgentTurn turn) {
-        if (turn.getTaskPlan() == null) {
-            return;
-        }
-        System.out.println("[计划] goal=" + turn.getTaskPlan().getGoal()
-            + ", status=" + turn.getTaskPlan().getStatus());
-        for (AgentTask task : turn.getTaskPlan().getTasks()) {
-            System.out.println("  [" + task.getStatus() + "] " + task.getTitle()
-                + " -> " + (task.getAssignedAgentId() == null
-                ? turn.getAgent().getId() : task.getAssignedAgentId())
-                + (task.getResult() == null ? "" : " | " + abbreviate(task.getResult(), 100)));
-        }
     }
 
     private static void printHistory(ChatMemory memory) {
@@ -768,7 +704,6 @@ public final class AgentConsoleDemo {
         System.out.println("  3. 上海现在几点？               （自动调用只读工具）");
         System.out.println("  4. 请帮我收集会议安排信息。（模型主动请求表单）");
         System.out.println("  5. 帮我创建一个高优先级登录故障工单。（工具请求表单 + 人工审批）");
-        System.out.println("  6. 分别查询上海和东京当前时间，并比较时差给出会议建议。（任务规划）");
         System.out.println("命令：/history 查看最近的时间线消息，/help 查看帮助，/exit 退出。");
     }
 

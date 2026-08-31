@@ -23,7 +23,7 @@ public final class JdbcAgentStoreSchema extends JdbcAgentStoreSupport {
             statement.execute("CREATE TABLE IF NOT EXISTS " + table("turns") + " ("
                 + "turn_id VARCHAR(191) PRIMARY KEY, version BIGINT NOT NULL, status VARCHAR(64) NOT NULL, "
                 + "next_runnable_at BIGINT NOT NULL, lease_owner VARCHAR(191), lease_id VARCHAR(191), lease_until BIGINT NOT NULL, "
-                + "parent_turn_id VARCHAR(191), cancellation_requested BOOLEAN NOT NULL, payload " + binary + " NOT NULL)");
+                + "cancellation_requested BOOLEAN NOT NULL, payload " + binary + " NOT NULL)");
             statement.execute("CREATE TABLE IF NOT EXISTS " + table("compression_states") + " ("
                 + "conversation_id VARCHAR(191) PRIMARY KEY, version BIGINT NOT NULL, payload " + binary + " NOT NULL)");
             createIndexIfMissing(connection, statement, table("turns"), table("turns_runnable_idx"),

@@ -23,14 +23,12 @@ import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.AgentTurnStore;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
-import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.AgentToolProgressEmitter;
 import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
-import com.agentsflex.agent.task.AgentTaskProgress;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
@@ -64,12 +62,12 @@ import java.util.concurrent.ConcurrentMap;
  * <p>Runner 可以理解为一个可持久化的状态机执行器。{@link Agent} 提供模型、指令、工具和执行
  * 策略，{@link AgentTurn} 保存某个 Agent 一次输入到最终结果的可变状态，Runner 根据 Turn 的
  * {@link AgentTurnStatus} 和 {@link AgentTurnPhase} 决定下一步调用模型、执行工具、等待外部事件，
- * 或结束本轮。根 Turn 通常由用户消息触发，子 Turn 由父 Agent 委派触发。</p>
+ * 或结束本轮。每个 Turn 对应一次独立的 Agent 调用。</p>
  *
  * <p>一次标准执行由三层组成：</p>
  * <ol>
  *     <li>{@link #runUntilBlocked(AgentTurn)} 决定是否继续循环；</li>
- *     <li>{@link #step(AgentTurn)} 完成取消、Lease、预算、规划和 Middleware 等通用检查；</li>
+ *     <li>{@link #step(AgentTurn)} 完成取消、Lease、预算和 Middleware 等通用检查；</li>
  *     <li>内置 ToolCall 状态机根据当前 Phase 推进模型调用或工具执行。</li>
  * </ol>
  *
@@ -77,11 +75,11 @@ import java.util.concurrent.ConcurrentMap;
  * Snapshot，再逐个完成审批、工具执行和 ToolMessage 写入。审批恢复时因此可以继续执行已经确认的
  * 原始 ToolCall，而不需要重新请求模型生成参数。</p>
  *
- * <p>Runner 同时负责预算检查、自动重试、暂停恢复、任务规划、父子 Turn 协调和生命周期事件。
+ * <p>Runner 同时负责预算检查、自动重试、暂停恢复和生命周期事件。
  * 所有需要跨进程恢复的状态最终通过 {@link AgentTurnStore} 持久化；Runner 自身不长期保存任务状态，
  * 因而通常作为应用级对象复用。</p>
  *
- * <p>直接调用 {@code run(...)} 会在当前线程推进子 Turn；分布式长任务应先调用 {@code start(...)}
+ * <p>直接调用 {@code run(...)} 会在当前线程推进 Turn；分布式长任务应先调用 {@code start(...)}
  * 保存 READY Snapshot，再由 AgentWorker 通过租约领取。不要让两个线程直接推进同一个
  * AgentTurn 对象。</p>
  */
@@ -103,10 +101,6 @@ public final class AgentRunner {
      * 统一构造并同步发布 AgentEvent 的包内组件。
      */
     private final AgentEventPublisher eventPublisher;
-    /**
-     * 集中处理任务规划状态转换的包内组件。
-     */
-    private final AgentRunnerPlanning planning;
     /**
      * 统一模型调用、Token 统计和事件发布的适配器。
      */
@@ -160,7 +154,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 创建 Runner 并组装事件、规划、模型调用与可选 ChatMemory 投影组件。
+     * 创建 Runner 并组装事件、模型调用与可选 ChatMemory 投影组件。
      *
      * @param turnStore          Snapshot、CAS 和租约存储
      * @param agentLoader        Agent 版本加载器
@@ -175,7 +169,6 @@ public final class AgentRunner {
         this.turnStore = turnStore;
         this.agentLoader = agentLoader;
         this.eventPublisher = new AgentEventPublisher();
-        this.planning = new AgentRunnerPlanning(this, agentLoader, eventPublisher);
         this.modelInvoker = new AgentModelInvoker(eventPublisher);
         this.chatMemory = new AgentRunnerChatMemory(chatMemoryProvider);
     }
@@ -264,7 +257,7 @@ public final class AgentRunner {
      *
      * <p>该便捷入口等价于先调用 {@link #start(Agent, String)}，再调用
      * {@link #runUntilBlocked(AgentTurn)}。返回值不一定已经完成，也可能正在等待审批、用户输入、
-     * 子 Agent 或重试时间。</p>
+     * 重试时间。</p>
      */
     public AgentTurn run(Agent agent, String userInput) {
         return run(start(agent, userInput));
@@ -563,7 +556,7 @@ public final class AgentRunner {
      */
     public AgentTurn start(Agent agent, List<? extends Message> conversationHistory,
                            UserMessage userMessage, AgentTurnOptions options) {
-        // 先准备 Agent 和规划工具，再创建 Turn，确保初始 Snapshot 已包含完整可执行状态。
+        // 先准备 Agent，再创建 Turn，确保初始 Snapshot 已包含完整可执行状态。
         prepareAgent(agent);
         AgentTurn turn = AgentTurn.start(agent, conversationHistory, userMessage, options);
         prepareTurn(turn);
@@ -580,16 +573,13 @@ public final class AgentRunner {
     }
 
     /**
-     * 持续推进，直到根任务终止或等待外部事件。
+     * 持续推进，直到 Turn 终止或等待外部事件。
      *
      * <p>“阻塞”不是失败，而是已经保存了恢复所需状态并等待外部条件。典型阻塞状态包括等待用户输入、
-     * 工具审批、子 Turn 和重试时间。终止状态或阻塞状态到达后，本方法都会正常返回，由调用方读取
+     * 工具审批和重试时间。终止状态或阻塞状态到达后，本方法都会正常返回，由调用方读取
      * {@link AgentTurn#getStatus()} 决定后续动作。</p>
      *
-     * <p>同步调用会在当前线程继续执行规划产生的子 Turn，并在子 Turn 终止后自动恢复父 Turn。由
-     * AgentWorker 持租约调用时只推进当前已领取 Turn，子 Turn 留给 Store 后续独立领取。</p>
-     *
-     * @return 最新父 Turn；阻塞状态表示需要审批、用户输入、子 Turn 或重试时间
+     * @return 最新 Turn；阻塞状态表示需要审批、用户输入或重试时间
      */
     public AgentTurn runUntilBlocked(AgentTurn turn) {
         if (turn == null) {
@@ -598,36 +588,20 @@ public final class AgentRunner {
         AgentTurn current = turn;
         ensurePreparedAndSnapshotSaved(current);
         refreshCancellation(current);
-        while (true) {
-            // 普通状态持续单步推进；若阻塞期间收到取消信号，也要再执行一步完成 CANCELLED 落盘。
-            while (!current.getStatus().isTerminal()
-                && (!current.getStatus().isBlocked() || current.isCancellationRequested())) {
-                step(current);
-            }
-
-            // 没有活动子任务时，当前 Turn 已经到达本次调用的返回边界。
-            AgentTurn child = planning.currentChild(current);
-            if (child == null || current.isCancellationRequested()) return current;
-
-            // Worker 只能推进自己通过 Store 领取的 Turn，子 Turn 必须另行领取并获得独立租约。
-            if (activeWorkerId.get() != null) return current;
-
-            // 同步模式递归执行子 Turn；子 Turn 若再次阻塞，则保持父 Turn 的 WAITING_FOR_CHILD 状态返回。
-            child = runUntilBlocked(child);
-            if (!child.getStatus().isTerminal()) return current;
-
-            // 子 Turn 终止后把结果写回父 Turn，再从父 Turn 原来的恢复 Phase 继续外层循环。
-            current = resumeParentFromChild(child);
-            if (current == null) return turn;
+        // 普通状态持续单步推进；若阻塞期间收到取消信号，也要再执行一步完成 CANCELLED 落盘。
+        while (!current.getStatus().isTerminal()
+            && (!current.getStatus().isBlocked() || current.isCancellationRequested())) {
+            step(current);
         }
+        return current;
     }
 
     /**
      * 请求取消指定的 Agent Turn，并返回包含最新取消标记的 Turn。
      *
      * <p>典型场景包括：用户点击“停止生成”、取消正在执行的长任务、关闭页面前取消后台任务，
-     * 或取消一个正在等待子 Turn 完成的规划任务。取消是协作式的，不会强制中断已经发出的模型
-     * HTTP 请求或正在运行的 Tool；Runner 会在当前调用返回后的安全边界停止继续推进。</p>
+     * 取消是协作式的，不会强制中断已经发出的模型 HTTP 请求或正在运行的 Tool；Runner 会在当前调用
+     * 返回后的安全边界停止继续推进。</p>
      *
      * @param turnId 要取消的 Turn ID
      * @return 已记录取消请求的最新 Turn
@@ -635,10 +609,6 @@ public final class AgentRunner {
     public AgentTurn cancel(String turnId) {
         boolean requested = turnStore.requestCancellation(turnId);
         AgentTurn turn = restore(turnId);
-        AgentTurn child = planning.currentChild(turn);
-        if (child != null && !child.getStatus().isTerminal()) {
-            turnStore.requestCancellation(child.getId());
-        }
         if (requested) {
             eventPublisher.notifyCancellationRequested(turn);
         }
@@ -705,16 +675,10 @@ public final class AgentRunner {
     /**
      * 应用外部命令并在当前线程继续推进。
      *
-     * <p>根 Turn 正在等待规划子 Turn 时，命令会自动路由到实际阻塞的子 Turn；子 Turn 终止后再恢复并
-     * 推进父 Turn。</p>
+     * <p>命令只作用于传入的阻塞 Turn。</p>
      */
     public AgentTurn resume(AgentTurn turn, AgentResumeCommand command) {
-        AgentTurn child = planning.currentChild(turn);
-        if (child == null) return runUntilBlocked(submitResume(turn, command));
-        AgentTurn resumedChild = resume(child, command);
-        if (!resumedChild.getStatus().isTerminal()) return turn;
-        AgentTurn parent = resumeParentFromChild(resumedChild);
-        return parent == null ? turn : runUntilBlocked(parent);
+        return runUntilBlocked(submitResume(turn, command));
     }
 
     /**
@@ -754,12 +718,10 @@ public final class AgentRunner {
     }
 
     /**
-     * 恢复指定 ID 的 Turn 但不继续执行；规划场景会自动路由到当前活动子 Turn。
+     * 恢复指定 ID 的 Turn 但不继续执行。
      */
     public AgentTurn submitResume(String turnId, AgentResumeCommand command) {
-        AgentTurn turn = restore(turnId);
-        AgentTurn child = planning.currentChild(turn);
-        return submitResume(child == null ? turn : child, command);
+        return submitResume(restore(turnId), command);
     }
 
     /**
@@ -880,11 +842,7 @@ public final class AgentRunner {
             return budgetExceeded(turn, budgetReason);
         }
 
-        // 已存在的任务计划优先于下一次模型调用推进，避免计划任务与普通对话循环互相竞争。
-        AgentStepResult planningResult = planning.advance(turn);
-        if (planningResult != null) return planningResult;
-
-        // 规划没有产生独立动作时，再进入 Middleware 和内置 ToolCall 状态机。
+        // 进入 Middleware 和内置 ToolCall 状态机。
         AgentStepResult result = proceedStep(turn,
             new AgentMiddlewareContext(this, turn, turn.getPrompt()), 0);
         if (result == null) {
@@ -922,85 +880,6 @@ public final class AgentRunner {
         }
         return handleFailure(turn, null,
             new IllegalStateException("Unsupported agent phase: " + phase), phase);
-    }
-
-    /**
-     * 创建子 Turn，并让父 Turn 等待子任务完成。
-     *
-     * <p>目标 Agent 使用 loadActive 加载。父等待快照和新子快照通过 TurnStore 的原子接口一起保存，
-     * 避免只创建子 Turn 或只暂停父 Turn 的部分状态。</p>
-     */
-    public AgentTurn startChild(AgentTurn parent, String childAgentId, String input) {
-        // 创建子 Turn 会同时改变父 Turn 状态，因此必须仍持有父 Turn 的有效 Lease。
-        assertLeaseOwnership(parent);
-        // 新子任务使用目标 Agent 当前生效版本；一旦创建，其具体版本会写入子 Snapshot。
-        Agent childAgent = agentLoader.loadActive(childAgentId);
-        if (childAgent == null) {
-            throw new IllegalStateException("Active child agent cannot be loaded: " + childAgentId);
-        }
-        prepareAgent(childAgent);
-        AgentTurn child = AgentTurn.startChild(childAgent, input, parent);
-        prepareTurn(child);
-        planning.bindChild(parent, child, childAgentId);
-        AgentSuspension suspension = AgentSuspension.child(child.getId());
-        AgentTurnSnapshot parentSnapshot = parent.toSnapshot();
-        AgentTurnSnapshot parentWaiting = parentSnapshot.withState(parentSnapshot.getState().toBuilder()
-            .status(AgentTurnStatus.WAITING_FOR_CHILD)
-            .phase(suspension.getResumePhase())
-            .suspension(suspension)
-            .build());
-        // 父等待状态与子 READY 状态必须原子提交，避免出现孤儿子任务或永久等待的父任务。
-        ParentChildTurnSnapshots saved = turnStore.saveParentAndChild(
-            parentWaiting, parent.getVersion(), child.toSnapshot());
-        parent.suspend(AgentTurnStatus.WAITING_FOR_CHILD, suspension);
-        parent.updateVersion(saved.getParent().getState().getVersion());
-        child.updateVersion(saved.getChild().getState().getVersion());
-        eventPublisher.notifySnapshotSaved(parent, saved.getParent());
-        eventPublisher.notifySnapshotSaved(child, saved.getChild());
-        publishAfterStep(() -> eventPublisher.notifyTurnSuspended(parent, suspension));
-        eventPublisher.notifyChildStarted(parent, child);
-        planning.notifyTaskStarted(parent, child);
-        return child;
-    }
-
-    /**
-     * 将终止子 Turn 的结果交回正在等待它的父 Turn。
-     *
-     * <p>该方法具备幂等检查：父 Turn 已不再等待当前 childTurnId 时不会重复写入消息。任务结果按父
-     * Agent 的 planningPolicy 限制写回长度，子 Turn 中的完整最终输出不会被修改。</p>
-     */
-    public AgentTurn resumeParentFromChild(AgentTurn child) {
-        return planning.resumeParentFromChild(child);
-    }
-
-    /**
-     * 查询根 Turn 中的计划以及当前子 Turn 的真实阻塞状态。
-     */
-    public AgentTaskProgress getTaskProgress(String turnId) {
-        return planning.getTaskProgress(turnId);
-    }
-
-    /**
-     * 修复子 Turn 已终止但父 Turn 尚未收到完成信号的状态。
-     *
-     * <p>该补偿操作是幂等的，适合每次 Worker 轮询前执行。多个 Worker 同时修复时，
-     * 父 Turn 的乐观锁只允许一个写入成功，其他竞争者会在后续轮询看到已恢复状态。</p>
-     */
-    public int recoverCompletedChildren(int limit) {
-        int recovered = 0;
-        for (AgentTurnSnapshot snapshot : turnStore.findTerminalChildrenWithWaitingParent(limit)) {
-            try {
-                AgentTurn child = restore(snapshot.getState().getTurnId());
-                AgentTurn parent = resumeParentFromChild(child);
-                if (parent != null && !parent.getStatus().isBlocked()) recovered++;
-            } catch (AgentTurnVersionConflictException ignored) {
-                // 另一个 Worker 已经完成相同修复，下一次查询会自然过滤该父 Turn。
-            } catch (IllegalStateException error) {
-                log.debug("Completed child recovery skipped, childTurnId={}",
-                    snapshot.getState().getTurnId(), error);
-            }
-        }
-        return recovered;
     }
 
     /**
@@ -1131,18 +1010,6 @@ public final class AgentRunner {
 
             // 始终处理队首调用；成功写入 ToolMessage 后才从 pending 列表移除。
             ToolCall call = turn.getPendingToolCalls().get(0);
-            if (planning.isPlanningTool(call)) {
-                try {
-                    // 规划工具只转换 Turn 内部状态，不经过业务工具审批和外部执行器。
-                    ToolMessage planned = planning.applyToolCall(turn, call);
-                    appendToolResult(turn, call, planned);
-                    results.add(planned);
-                    planning.notifyPlanChanged(turn, call);
-                    continue;
-                } catch (RuntimeException error) {
-                    return handleFailure(turn, response, error, AgentTurnPhase.TOOLS);
-                }
-            }
             Tool tool = resolveTool(turn, call);
             if (tool == null) {
                 // 恢复后找不到原工具表示 Agent 版本不完整，不能跳过调用继续生成答案。
@@ -1310,10 +1177,9 @@ public final class AgentRunner {
     }
 
     /**
-     * 保存最终消息、收束计划状态，并将 Turn 转换为不可再次推进的 COMPLETED 状态。
+     * 保存最终消息，并将 Turn 转换为不可再次推进的 COMPLETED 状态。
      */
     AgentStepResult complete(AgentTurn turn, AiMessageResponse response, AiMessage message) {
-        planning.finishPlan(turn);
         turn.markCompleted(message == null ? new AiMessage("") : message);
         saveSnapshot(turn);
         return AgentStepResult.of(response, null, null);
@@ -1519,8 +1385,7 @@ public final class AgentRunner {
                 turn, call, tool.getName(), message, data);
 
         AgentToolContext toolContext = new AgentToolContext(
-            turn.getId(), turn.getRootTurnId(), turn.getParentTurnId(),
-            turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
+            turn.getId(), turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
             callKey(call), progressEmitter, turn::isCancellationRequested,
             turn.getToolInputData(callKey(call)));
 
@@ -1644,9 +1509,7 @@ public final class AgentRunner {
         return null;
     }
 
-    /**
-     * 确保 Turn 已装配规划工具，并兼容尚未保存初始 Snapshot 的包内创建路径。
-     */
+    /** 确保 Turn 已准备并保存初始 Snapshot。 */
     private void ensurePreparedAndSnapshotSaved(AgentTurn turn) {
         prepareTurn(turn);
         if (turn.getVersion() < 0) {
@@ -1654,13 +1517,9 @@ public final class AgentRunner {
         }
     }
 
-    /**
-     * 解析规划白名单中的完整 Agent，并为当前 Turn 装配模型可见的规划工具。
-     */
     private void prepareTurn(AgentTurn turn) {
         if (turn == null) throw new IllegalArgumentException("turn must not be null");
         prepareAgent(turn.getAgent());
-        planning.prepareTools(turn);
     }
 
     /**
@@ -1724,8 +1583,6 @@ public final class AgentRunner {
                 return AgentTurnStatus.WAITING_FOR_USER;
             case TOOL_APPROVAL:
                 return AgentTurnStatus.WAITING_FOR_APPROVAL;
-            case CHILD_AGENT:
-                return AgentTurnStatus.WAITING_FOR_CHILD;
             case RETRY:
                 return AgentTurnStatus.RETRY_SCHEDULED;
             default:
@@ -1762,10 +1619,6 @@ public final class AgentRunner {
                 }
                 // RETRY 遵守 nextRunnableAt；CONTINUE 是显式人工强制继续，可忽略尚未到期的调度时间。
                 turn.clearRetryError();
-                break;
-            case CHILD_AGENT:
-                requireCommand(command, AgentResumeCommandType.CHILD_COMPLETED);
-                requireCorrelation(suspension, command);
                 break;
             default:
                 throw new IllegalStateException("Unsupported suspension type: " + suspension.getType());

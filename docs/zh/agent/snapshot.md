@@ -29,7 +29,6 @@ Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对�
 - Suspension、工具审批决定和任务计划。
 - 模型迭代、Runner step、Token、工具、重试等计数。
 - 预算终止原因、nextRunnableAt、取消标记。
-- 父/根 Turn ID、planning depth。
 - metadata、最终消息和错误摘要。
 - Store version 与 Worker Lease 信息。
 
@@ -111,4 +110,4 @@ Framework 不提供旧 Snapshot 的兼容反序列化层。已有部署升级前
 
 ## 数据保留
 
-终态 Turn 的 Snapshot 仍是审计、结果查询和父子树展示的依据。删除策略应与业务事件协调，且不能在父 Turn 仍等待时删除子 Turn。
+终态 Turn 的 Snapshot 仍是审计和结果查询的依据。删除策略应与业务事件协调。

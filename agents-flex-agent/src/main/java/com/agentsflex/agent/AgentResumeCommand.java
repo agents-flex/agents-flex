@@ -16,7 +16,7 @@ import java.util.Map;
  * 外部系统用于恢复暂停任务的不可变命令。
  *
  * <p>命令类型必须与当前暂停原因匹配。例如，等待工具审批的 Turn 只接受批准或拒绝命令，等待用户输入
- * 的 Turn 只接受用户输入命令。correlationId 用于校验工具调用或子任务，避免迟到事件恢复错误任务。</p>
+ * 的 Turn 只接受用户输入命令。correlationId 用于校验工具调用或外部事件，避免迟到事件恢复错误任务。</p>
  */
 public final class AgentResumeCommand implements Serializable {
 
@@ -31,7 +31,7 @@ public final class AgentResumeCommand implements Serializable {
      */
     private final String content;
     /**
-     * 工具调用 ID 或子 Turn ID。
+     * 工具调用 ID 或外部事件关联 ID。
      */
     private final String correlationId;
     /**
@@ -48,7 +48,7 @@ public final class AgentResumeCommand implements Serializable {
      *
      * @param type          恢复动作类型
      * @param content       用户文本或拒绝原因
-     * @param correlationId 工具调用或子 Turn 关联 ID
+     * @param correlationId 工具调用或外部事件关联 ID
      * @param metadata      业务审计元数据
      */
     public AgentResumeCommand(AgentResumeCommandType type, String content,
@@ -128,13 +128,6 @@ public final class AgentResumeCommand implements Serializable {
     }
 
     /**
-     * 创建通知指定子 Turn 已经结束的恢复命令。
-     */
-    public static AgentResumeCommand childCompleted(String childTurnId) {
-        return new AgentResumeCommand(AgentResumeCommandType.CHILD_COMPLETED, null, childTurnId, null);
-    }
-
-    /**
      * 返回附加一项审计元数据的新命令。
      */
     public AgentResumeCommand withMetadata(String key, Object value) {
@@ -172,7 +165,7 @@ public final class AgentResumeCommand implements Serializable {
     }
 
     /**
-     * @return ToolCall ID 或子 Turn ID 等阻塞事件关联标识
+     * @return ToolCall ID 或其他阻塞事件关联标识
      */
     public String getCorrelationId() {
         return correlationId;

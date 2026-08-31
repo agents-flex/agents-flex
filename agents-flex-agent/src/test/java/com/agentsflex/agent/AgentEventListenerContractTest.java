@@ -214,8 +214,7 @@ public class AgentEventListenerContractTest {
     public void shouldDeeplyFreezeEventData() {
         List<String> nested = new ArrayList<>();
         nested.add("value");
-        AgentEvent event = new AgentEvent("turn", "turn", null,
-            "agent", "1", 1, AgentEventType.TURN_STARTED,
+        AgentEvent event = new AgentEvent("turn", "agent", "1", 1, AgentEventType.TURN_STARTED,
             Collections.singletonMap("nested", nested));
         nested.add("changed later");
 

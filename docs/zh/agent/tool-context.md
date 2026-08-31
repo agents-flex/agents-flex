@@ -23,7 +23,7 @@ String idempotencyKey = context.getIdempotencyKey();
 | API | 用途 |
 | --- | --- |
 | `current()` | 获取当前工具执行上下文 |
-| `getTurnId()` / `getRootTurnId()` / `getParentTurnId()` | 关联当前 Turn 及父子任务 |
+| `getTurnId()` | 关联当前 Turn |
 | `getAgentId()` / `getAgentVersion()` | 关联执行时使用的 Agent 定义版本 |
 | `getTool()` / `getToolCall()` | 读取当前工具和模型生成的调用参数 |
 | `getTurnId()` / `getToolCallId()` | 关联日志、审计和外部系统 |

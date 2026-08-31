@@ -244,12 +244,6 @@ public class AgentToolResolutionTest {
         }
 
         @Override
-        public com.agentsflex.agent.store.ParentChildTurnSnapshots saveParentAndChild(
-            AgentTurnSnapshot parent, long expectedParentVersion, AgentTurnSnapshot child) {
-            return delegate.saveParentAndChild(parent, expectedParentVersion, child);
-        }
-
-        @Override
         public java.util.List<AgentTurnSnapshot> claimRunnable(
             String workerId, long now, long leaseMillis, int limit) {
             return delegate.claimRunnable(workerId, now, leaseMillis, limit);
@@ -264,12 +258,6 @@ public class AgentToolResolutionTest {
         @Override
         public void releaseLease(String turnId, String workerId, String leaseId) {
             delegate.releaseLease(turnId, workerId, leaseId);
-        }
-
-        @Override
-        public java.util.List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(
-            int limit) {
-            return delegate.findTerminalChildrenWithWaitingParent(limit);
         }
 
         @Override

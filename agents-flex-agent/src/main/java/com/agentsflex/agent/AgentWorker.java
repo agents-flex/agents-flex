@@ -99,8 +99,6 @@ public final class AgentWorker implements AutoCloseable {
      * @return 本轮实际处理的 Turn
      */
     private List<AgentTurn> doPollAndRun(int limit) {
-        // 先修复可能因进程退出而遗漏的父 Turn 唤醒，再领取可运行任务。
-        runner.recoverCompletedChildren(limit);
         List<AgentTurn> results = new ArrayList<>(limit);
         for (int index = 0; index < limit; index++) {
             List<AgentTurnSnapshot> claimed = runner.getTurnStore().claimRunnable(
@@ -115,7 +113,6 @@ public final class AgentWorker implements AutoCloseable {
                     snapshot.getState().getLeaseUntil());
                 heartbeat = startLeaseHeartbeat(turn);
                 turn = runner.runLeased(turn, workerId, snapshot.getState().getLeaseId());
-                runner.resumeParentFromChild(turn);
             } finally {
                 if (heartbeat != null) heartbeat.cancel(false);
                 if (turn != null) {

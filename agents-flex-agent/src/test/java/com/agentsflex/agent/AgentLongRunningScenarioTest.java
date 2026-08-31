@@ -26,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/** 验证 Worker、租约、子任务和事件监听器组成的长任务执行链路。 */
+/** 验证 Worker、租约和事件监听器组成的长任务执行链路。 */
 public class AgentLongRunningScenarioTest {
 
     @Test
@@ -49,64 +49,6 @@ public class AgentLongRunningScenarioTest {
         assertEquals(1, afterExpiry.size());
         assertEquals(turn.getId(), afterExpiry.get(0).getState().getTurnId());
         assertEquals("worker-b", afterExpiry.get(0).getState().getLeaseOwner());
-    }
-
-    @Test
-    public void shouldCompleteChildAndResumeParentThroughWorkers() {
-        AgentScenarioTestSupport.QueueChatModel parentModel =
-            new AgentScenarioTestSupport.QueueChatModel();
-        AgentScenarioTestSupport.QueueChatModel childModel =
-            new AgentScenarioTestSupport.QueueChatModel();
-        parentModel.enqueue(prompt -> {
-            assertTrue(prompt.getMessages().stream()
-                .anyMatch(message -> message.getTextContent().contains("child output")));
-            return new AiMessage("parent output");
-        });
-        childModel.enqueue(prompt -> new AiMessage("child output"));
-        Agent parentAgent = Agent.builder("worker-parent").chatModel(parentModel).build();
-        Agent childAgent = Agent.builder("worker-child").chatModel(childModel).build();
-        InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
-        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
-        AgentRunner runner = new AgentRunner(store, registry);
-        AgentTurn parent = runner.start(parentAgent, "parent input");
-        AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
-        AgentWorker worker = new AgentWorker("child-worker", runner, 10000);
-
-        List<AgentTurn> childResult = worker.pollAndRun(1);
-        AgentTurn resumedParent = runner.restore(parent.getId());
-        List<AgentTurn> parentResult = worker.pollAndRun(1);
-
-        assertEquals(1, childResult.size());
-        assertEquals(child.getId(), childResult.get(0).getId());
-        assertEquals(AgentTurnStatus.COMPLETED, childResult.get(0).getStatus());
-        assertEquals(AgentTurnStatus.RUNNING, resumedParent.getStatus());
-        assertEquals(1, parentResult.size());
-        assertEquals(parent.getId(), parentResult.get(0).getId());
-        assertEquals(AgentTurnStatus.COMPLETED, parentResult.get(0).getStatus());
-        assertEquals("parent output", parentResult.get(0).getFinalOutput());
-    }
-
-    @Test
-    public void shouldIgnoreLateDuplicateChildCompletion() {
-        AgentScenarioTestSupport.QueueChatModel parentModel =
-            new AgentScenarioTestSupport.QueueChatModel();
-        AgentScenarioTestSupport.QueueChatModel childModel =
-            new AgentScenarioTestSupport.QueueChatModel();
-        childModel.enqueue(prompt -> new AiMessage("child output"));
-        Agent parentAgent = Agent.builder("idempotent-parent").chatModel(parentModel).build();
-        Agent childAgent = Agent.builder("idempotent-child").chatModel(childModel).build();
-        InMemoryAgentLoader registry = new InMemoryAgentLoader(parentAgent, childAgent);
-        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(), registry);
-        AgentTurn parent = runner.start(parentAgent, "parent input");
-        AgentTurn child = runner.startChild(parent, childAgent.getId(), "child input");
-        child = runner.runUntilBlocked(child);
-
-        AgentTurn firstResume = runner.resumeParentFromChild(child);
-        AgentTurn duplicateResume = runner.resumeParentFromChild(child);
-
-        assertEquals(AgentTurnStatus.RUNNING, firstResume.getStatus());
-        assertEquals(AgentTurnStatus.RUNNING, duplicateResume.getStatus());
-        assertEquals(1, countChildResultMessages(duplicateResume.getPrompt().getMessages()));
     }
 
     @Test
@@ -198,17 +140,6 @@ public class AgentLongRunningScenarioTest {
         assertTrue(saved.getState().isCancellationRequested());
         assertTrue(stale.isCancellationRequested());
         assertTrue(store.load(stale.getId()).getState().isCancellationRequested());
-    }
-
-    private int countChildResultMessages(List<Message> messages) {
-        int count = 0;
-        for (Message message : messages) {
-            if (message.getTextContent() != null
-                && message.getTextContent().contains("Child Agent result:")) {
-                count++;
-            }
-        }
-        return count;
     }
 
     private void assertBefore(List<AgentEvent> events, AgentEventType first,

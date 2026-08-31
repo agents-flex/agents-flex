@@ -59,7 +59,7 @@ String answer = model.chat(
       </header>
       <div class="afx-capabilities">
         <a href="/zh/chat/chat-model.html"><span>MODEL</span><h3>模型与对话</h3><p>ChatModel、Prompt、Memory、流式输出、Tool Calling 与 MCP。</p></a>
-        <a href="/zh/agent/overview.html"><span>AGENT</span><h3>智能体运行时</h3><p>任务规划、子 Agent、人工审批、预算、重试、挂起与恢复。</p></a>
+        <a href="/zh/agent/overview.html"><span>AGENT</span><h3>智能体运行时</h3><p>人工审批、预算、重试、挂起与恢复。</p></a>
         <a href="/zh/rag/document.html"><span>KNOWLEDGE</span><h3>RAG 与存储</h3><p>文档抽取、切分、Embedding、Rerank 与多种 Vector Store。</p></a>
         <a href="/zh/image/image-generation.html"><span>MEDIA</span><h3>多模态与文档</h3><p>图片、TTS、STT、视频生成与 OCR 文档解析，共享一致的 Java 接入体验。</p></a>
         <a href="/zh/skills/overview.html"><span>EXECUTION</span><h3>Skills 与 Sandbox</h3><p>封装专业方法，在本机或隔离环境执行脚本并交付产物。</p></a>
@@ -190,7 +190,7 @@ String answer = model.chat(
       </header>
       <div class="afx-docs__grid">
         <div><h3>模型与工具</h3><a href="/zh/chat/getting-started.html">模型调用快速开始</a><a href="/zh/ocr/getting-started.html">OCR 文档识别</a><a href="/zh/chat/tool-build.html">构建与调用 Tool</a><a href="/zh/chat/mcp.html">接入 MCP 服务</a><a href="/zh/chat/text2sql.html">构建 Text2SQL 应用</a></div>
-        <div><h3>Agent 编排</h3><a href="/zh/agent/getting-started.html">Agent 快速开始</a><a href="/zh/agent/task-planning.html">任务规划</a><a href="/zh/agent/human-approval.html">人工审批</a><a href="/zh/agent/form-input.html">表单输入</a></div>
+        <div><h3>Agent 编排</h3><a href="/zh/agent/getting-started.html">Agent 快速开始</a><a href="/zh/agent/human-approval.html">人工审批</a><a href="/zh/agent/form-input.html">表单输入</a></div>
         <div><h3>知识与检索</h3><a href="/zh/rag/document.html">文档处理与切分</a><a href="/zh/store/overview.html">Vector Store</a><a href="/zh/rag/embedding.html">Embedding</a><a href="/zh/rag/rerank.html">Rerank</a></div>
         <div><h3>生产与交付</h3><a href="/zh/async-task/getting-started.html">异步任务与恢复</a><a href="/zh/skills/getting-started.html">Skills 快速开始</a><a href="/zh/skills/open-sandbox.html">Sandbox 隔离执行</a><a href="/zh/observability/observability.html">可观测性</a><a href="/changes.html">更新记录</a></div>
       </div>

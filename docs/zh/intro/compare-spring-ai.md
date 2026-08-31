@@ -91,7 +91,7 @@ Spring AI 的 `ChatClient` 在 Fluent API 和 POJO 结构化输出方面更完�
 | 扩展模型可见的 Tool 参数 Schema | <span class="vp-nowrap">❌ <strong>不支持</strong></span> | **整体支持**。`AugmentedToolCallback` 可用 Record 为现有 Tool Schema 增加结构化参数，并在委托执行前消费或移除扩展参数 |
 | Tool 执行进度事件 | **整体支持**。业务 Tool 可通过 `AgentToolProgressEmitter` 发布文本和结构化进度，统一转换为带 Turn 与 ToolCall 身份的 Agent 事件 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | 常用 Agent 工具集 | **整体支持**。提供 TodoWrite、WebFetch，以及基于 `SkillRuntime` 的 Shell、文件、Glob 和 Grep 等工具 | **整体支持**。提供 Shell、文件、Glob、Grep、TodoWrite 和 WebFetch 等工具 |
-| Subagent Tool | **整体支持**。规划工具可把任务委派给子 Agent；父子 Turn、任务依赖、执行状态和结果都进入快照，可跨请求和进程恢复 | **整体支持**。`TaskTool` 可同步或后台启动 Subagent，并通过 TaskOutput 查询结果和恢复已有 Agent；默认任务状态保存在进程内 |
+| Subagent Tool | **通过独立模块支持**。`agents-flex-subagent` 提供通用后台任务执行与结果获取 Tool，不属于 `agents-flex-agent` 的内置规划能力 | **整体支持**。`TaskTool` 可同步或后台启动 Subagent，并通过 TaskOutput 查询结果和恢复已有 Agent；默认任务状态保存在进程内 |
 | AutoMemory Tool | <span class="vp-nowrap">❌ <strong>不支持</strong></span> | **整体支持**。`AutoMemoryTools` 与 `AutoMemoryToolsAdvisor` 提供基于文件的长期记忆创建、读取、更新、删除和上下文注入 |
 | 后台 Shell 任务及输出管理 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> | **整体支持**。`ShellTools` 可在后台启动命令，通过 `BashOutput` 增量读取输出，并使用 `KillShell` 终止进程 |
 | 可持久化的工具审批与表单 | **整体支持**。审批、拒绝和表单等待都能挂起并持久化到 `AgentTurn`，可跨请求、跨进程恢复 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
@@ -218,7 +218,6 @@ Tool Calling 能让模型调用方法，但它本身不等于生产级 Agent。�
 | 跨请求的审批、表单、暂停与恢复 | **整体支持**。等待是可持久化的正常状态，用户或外部系统可通过另一个请求恢复执行 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | Agent 执行预算 | **整体支持**。`AgentBudget` 统一限制迭代、Step、Tool、Token 与执行耗时，达到上限后由 Agent 状态机终止 Turn | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | 可持久化的 Agent 重试调度 | **整体支持**。`AgentRetryPolicy` 定义重试次数、退避间隔和最大等待时间，下一次重试时间随 Turn 快照持久化，可由 Worker 在到期后继续执行 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
-| 持久化任务计划、依赖和子 Agent 状态 | **整体支持**。计划、依赖、进度、父子 Turn 及子 Agent 状态统一保存在运行时模型中 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | 完整 Agent 生命周期事件与中间件 | **整体支持**。Turn、Step、Model、Tool 均有生命周期事件，并提供三层 Middleware 扩展点 | ⚠️ **部分支持**。Advisor 和 Observation 覆盖调用链，但没有同层级的 Turn 生命周期模型 |
 
 这部分是两者最根本的差异。Spring AI 可以构建会调用工具和 Subagent 的应用；Agents-Flex 进一步保证

@@ -1,6 +1,6 @@
 ---
 title: AgentTurn
-description: 理解单次 Agent 轮次的边界、状态、阶段、消息、计数和父子关系。
+description: 理解单次 Agent 轮次的边界、状态、阶段、消息和计数。
 ---
 
 # AgentTurn
@@ -8,16 +8,14 @@ description: 理解单次 Agent 轮次的边界、状态、阶段、消息、计
 ## 概述
 
 `AgentTurn` 表示某个 Agent 从接收一次输入到产生最终结果的完整轮次。一个 Turn 可以包含多次模型
-迭代、工具调用、暂停恢复和自动重试。根 Turn 的输入通常来自用户，子 Turn 的输入来自父 Agent 的
-任务委派；父 Agent 每次调用子 Agent 都会创建一个独立 Turn。
+迭代、工具调用、暂停恢复和自动重试。每个 Turn 都对应一次独立的 Agent 调用，输入通常来自用户消息。
 
-Turn 包含消息历史、当前状态与阶段、待执行 ToolCall、暂停信息、预算计数、任务计划以及最终结果。
+Turn 包含消息历史、当前状态与阶段、待执行 ToolCall、暂停信息、预算计数以及最终结果。
 它由 `AgentRunner` 创建和推进，调用方主要负责读取状态、提供可持久化业务元数据以及提交恢复命令。
 
 ## Turn 与业务会话
 
-一个根 Turn 通常对应业务会话中的一轮用户交互；子 Turn 属于该轮内部的 Agent 委派，不会自动成为
-新的用户对话轮次。业务系统仍负责维护 conversationId、`ChatMemory` 和当前未结束的 turnId。
+一个 Turn 通常对应业务会话中的一轮用户交互。业务系统仍负责维护 conversationId、`ChatMemory` 和当前未结束的 turnId。
 Framework 不提供新的 Conversation 容器；需要融合时只在 Runner 上配置可选的 ChatMemory
 Provider：
 
@@ -45,7 +43,6 @@ AgentTurn turn = runner.run(agentId, "conversation-1001", new UserMessage("继�
 | `RUNNING` | 正在执行 |
 | `WAITING_FOR_USER` | 等待用户补充输入 |
 | `WAITING_FOR_APPROVAL` | 等待工具审批 |
-| `WAITING_FOR_CHILD` | 等待子 Turn |
 | `RETRY_SCHEDULED` | 等待 `nextRunnableAt` 到期 |
 | `COMPLETED` | 正常完成 |
 | `FAILED`、`CANCELLED` | 失败或取消 |
@@ -102,11 +99,7 @@ AgentTurnOptions options = AgentTurnOptions.builder()
 
 `metadata` 用于业务订单号、租户 ID、用户 ID 等恢复后仍需使用的信息。值必须可序列化，并会进入 Snapshot。密码、Token、数据库连接和 Spring Bean 不应放入 metadata，运行期服务应由 Middleware 或 Tool 自身通过依赖注入等方式持有。
 
-`streaming(true)` 设置当前 Turn 的模型调用方式，并随 Snapshot 持久化。同一进程创建的子 Turn 会继承该设置；从 Snapshot 恢复或由 Worker 执行时仍会保持一致。
-
-## 父子关系与计划
-
-子 Turn 通过 `parentTurnId` 指向直接父任务，通过 `rootTurnId` 关联整棵任务树。根 Turn 的 `rootTurnId` 等于自身 ID。开启规划时，可用 `getTaskPlan()` 或 `getTaskProgress()` 查询不可变进度视图。
+`streaming(true)` 设置当前 Turn 的模型调用方式，并随 Snapshot 持久化；从 Snapshot 恢复或由 Worker 执行时仍会保持一致。
 
 ## 快照
 

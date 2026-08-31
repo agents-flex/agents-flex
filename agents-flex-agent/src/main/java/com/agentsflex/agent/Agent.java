@@ -7,8 +7,6 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
-import com.agentsflex.agent.task.AgentPlanningPolicy;
-import com.agentsflex.agent.task.AgentPlanningTool;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.tool.AgentToolResolver;
 import com.agentsflex.agent.tool.ToolApprovalPolicy;
@@ -102,10 +100,6 @@ public final class Agent {
      */
     private final ToolApprovalPolicy toolApprovalPolicy;
     /**
-     * 控制模型是否可以自主创建并执行任务计划。
-     */
-    private final AgentPlanningPolicy planningPolicy;
-    /**
      * 每次模型调用最多从 Turn 历史中附加的消息数量。
      */
     private final int maxAttachedMessages;
@@ -153,7 +147,6 @@ public final class Agent {
         this.toolInterceptors = Collections.unmodifiableList(new ArrayList<>(builder.toolInterceptors));
         this.executionPolicy = builder.executionPolicy;
         this.toolApprovalPolicy = builder.toolApprovalPolicy;
-        this.planningPolicy = builder.planningPolicy;
         this.maxAttachedMessages = builder.maxAttachedMessages;
         this.maxAttachedTurns = builder.maxAttachedTurns;
         this.compressionPolicy = builder.compressionPolicy;
@@ -317,13 +310,6 @@ public final class Agent {
     }
 
     /**
-     * @return 模型自主创建任务计划时使用的约束策略
-     */
-    public AgentPlanningPolicy getPlanningPolicy() {
-        return planningPolicy;
-    }
-
-    /**
      * @return 每次模型调用最多附加的历史消息数量
      */
     public int getMaxAttachedMessages() {
@@ -373,7 +359,6 @@ public final class Agent {
         private final List<ToolInterceptor> toolInterceptors = new ArrayList<>();
         private AgentExecutionPolicy executionPolicy = AgentExecutionPolicy.defaults();
         private ToolApprovalPolicy toolApprovalPolicy = ToolApprovalPolicy.allowAll();
-        private AgentPlanningPolicy planningPolicy = AgentPlanningPolicy.disabled();
         private int maxAttachedMessages = 100;
         private int maxAttachedTurns = 10;
         private AgentContextCompressionPolicy compressionPolicy = AgentContextCompressionPolicy.defaults();
@@ -516,14 +501,6 @@ public final class Agent {
         }
 
         /**
-         * 设置模型自主创建任务计划时使用的约束策略。
-         */
-        public Builder planningPolicy(AgentPlanningPolicy planningPolicy) {
-            this.planningPolicy = planningPolicy;
-            return this;
-        }
-
-        /**
          * 设置每次模型调用最多附加的历史消息数量。
          *
          * <p>该限制只影响本次发送给模型的消息视图，不删除 Turn 或 Snapshot 中保存的完整历史。</p>
@@ -623,17 +600,8 @@ public final class Agent {
             if (toolApprovalPolicy == null) {
                 toolApprovalPolicy = ToolApprovalPolicy.allowAll();
             }
-            if (planningPolicy == null) {
-                throw new IllegalStateException("planningPolicy must not be null");
-            }
             List<Tool> effectiveTools = effectiveTools();
             validateUniqueToolNames(effectiveTools);
-            if (planningPolicy.isEnabled() && effectiveTools.stream().anyMatch(tool ->
-                AgentPlanningTool.NAME.equals(tool.getName())
-                    || AgentPlanningTool.UPDATE_NAME.equals(tool.getName()))) {
-                throw new IllegalStateException(
-                    "tool name is reserved by Agent planning: " + AgentPlanningTool.NAME);
-            }
             return new Agent(this);
         }
 

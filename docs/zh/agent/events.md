@@ -28,7 +28,7 @@ runner.addEventListener(event -> {
 `AgentEvent` 包含：
 
 - `eventId`：当前发布产生的唯一 ID。
-- `turnId`、`rootTurnId`、`parentTurnId`：运行与父子任务关联。
+- `turnId`：当前运行关联标识。
 - `agentId`、`agentVersion`：产生事件的 Agent 定义。
 - `sequence`：当前 Runner 进程内、同一 turnId 的递增序号。
 - `type`、`occurredAt` 和只读 `data`。
@@ -45,7 +45,6 @@ sequence 在 Runner 重建或进程重启后会重新开始，不能直接作为
 - Step：开始、结束、达到 `maxSteps`。
 - Model：开始、结束、文本/推理/ToolCall 增量和迭代上限。
 - Tool：开始、进度、完成、失败、输入请求和审批。
-- Planning：计划创建、调整、任务和子 Turn。
 - Retry：可恢复异常的延迟重试调度。
 - Budget：时间、Token 或工具调用次数达到限制。
 
@@ -71,10 +70,10 @@ Turn 是 Step 的生命周期容器。第一个步骤开始前发布一次 `TURN
 ### 用终态事件驱动业务队列
 
 业务侧可以监听 `TURN_COMPLETED`、`TURN_FAILED`、`TURN_CANCELLED`、`MAX_ITERATIONS_REACHED`、
-`MAX_STEPS_REACHED` 和 `BUDGET_EXCEEDED`，将 `turnId`、`rootTurnId` 和 `eventId` 投递给自己的
+`MAX_STEPS_REACHED` 和 `BUDGET_EXCEEDED`，将 `turnId` 和 `eventId` 投递给自己的
 Inbox/Outbox，再由 Worker 领取同一 `conversationId` 的下一条待处理 UserMessage。
 
-`TURN_SUSPENDED` 不是可出队信号：它表示当前 Turn 正在等待用户输入、工具审批、子 Turn 或重试。业务
+`TURN_SUSPENDED` 不是可出队信号：它表示当前 Turn 正在等待用户输入、工具审批或重试。业务
 必须先使用原 Turn 的恢复命令，不能把普通排队消息当成表单或审批结果。失败、取消和预算终态是否继续
 消费队列，也应由业务策略决定。
 

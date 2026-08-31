@@ -19,10 +19,6 @@ public enum AgentSuspensionType {
      */
     TOOL_APPROVAL,
     /**
-     * 等待关联的子 AgentTurn 结束。
-     */
-    CHILD_AGENT,
-    /**
      * 等待自动重试的调度时间到达。
      */
     RETRY

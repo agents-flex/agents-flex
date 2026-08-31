@@ -33,14 +33,6 @@ public final class AgentEvent {
      */
     private final String turnId;
     /**
-     * 当前父子 Turn 树的根 Turn ID；根 Turn 通常与 turnId 相同。
-     */
-    private final String rootTurnId;
-    /**
-     * 直接父 Turn ID；根 Turn 没有父级时为 {@code null}。
-     */
-    private final String parentTurnId;
-    /**
      * 产生事件的 Agent 稳定标识。
      */
     private final String agentId;
@@ -72,16 +64,13 @@ public final class AgentEvent {
      * 其他对象转换为字符串。因此监听器不会通过事件数据意外修改 Runner 内部状态。</p>
      *
      * @param turnId       直接产生事件的 Turn ID
-     * @param rootTurnId   父子 Turn 树的根 Turn ID
-     * @param parentTurnId 直接父 Turn ID，根 Turn 可为 {@code null}
      * @param agentId      Agent 稳定标识
      * @param agentVersion Agent 定义版本
      * @param sequence     当前 Runner 内的正数事件序号
      * @param type         事件类型
      * @param data         事件数据，可为 {@code null}
      */
-    public AgentEvent(String turnId, String rootTurnId, String parentTurnId,
-                      String agentId, String agentVersion, long sequence,
+    public AgentEvent(String turnId, String agentId, String agentVersion, long sequence,
                       AgentEventType type, Map<String, ?> data) {
         if (turnId == null || agentId == null || agentVersion == null || type == null) {
             throw new IllegalArgumentException(
@@ -92,8 +81,6 @@ public final class AgentEvent {
         }
         this.eventId = UUID.randomUUID().toString();
         this.turnId = turnId;
-        this.rootTurnId = rootTurnId;
-        this.parentTurnId = parentTurnId;
         this.agentId = agentId;
         this.agentVersion = agentVersion;
         this.sequence = sequence;
@@ -114,20 +101,6 @@ public final class AgentEvent {
      */
     public String getTurnId() {
         return turnId;
-    }
-
-    /**
-     * @return 父子 Turn 树的根 Turn ID
-     */
-    public String getRootTurnId() {
-        return rootTurnId;
-    }
-
-    /**
-     * @return 直接父 Turn ID；根 Turn 返回 {@code null}
-     */
-    public String getParentTurnId() {
-        return parentTurnId;
     }
 
     /**

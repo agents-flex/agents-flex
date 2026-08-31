@@ -114,7 +114,7 @@ Agent agent = Agent.builder("order-agent")
 ```
 
 策略应根据已经解析出的 Tool、Tool metadata、Turn metadata 和参数摘要进行确定性判断，不应在其中
-修改 Turn 或执行外部副作用。内置任务规划工具只修改 Turn 内的计划状态，不属于业务工具审批范围。
+修改 Turn 或执行外部副作用。
 
 ## 审批决定
 

@@ -5,7 +5,6 @@ import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.AgentTurnStore;
-import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -114,37 +113,14 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
     }
 
     @Override
-    public ParentChildTurnSnapshots saveParentAndChild(AgentTurnSnapshot parent, long expectedParentVersion,
-                                                       AgentTurnSnapshot child) {
-        requireSnapshot(parent);
-        requireSnapshot(child);
-        try (Connection connection = connection()) {
-            connection.setAutoCommit(false);
-            try {
-                AgentTurnSnapshot savedParent = save(connection, parent, expectedParentVersion);
-                AgentTurnSnapshot savedChild = save(connection, child, -1);
-                connection.commit();
-                return new ParentChildTurnSnapshots(savedParent, savedChild);
-            } catch (RuntimeException | SQLException error) {
-                rollback(connection);
-                if (error instanceof RuntimeException) throw (RuntimeException) error;
-                throw error;
-            }
-        } catch (SQLException error) {
-            throw failure("save parent and child AgentTurn", error);
-        }
-    }
-
-    @Override
     public List<AgentTurnSnapshot> claimRunnable(String workerId, long now, long leaseMillis, int limit) {
         if (workerId == null || leaseMillis <= 0 || limit <= 0)
             throw new IllegalArgumentException("invalid lease request");
         List<AgentTurnSnapshot> claimed = new ArrayList<>();
-        String query = "SELECT r.turn_id,r.version,r.parent_turn_id FROM " + table("turns") + " r WHERE "
+        String query = "SELECT r.turn_id,r.version FROM " + table("turns") + " r WHERE "
             + "((r.status IN (?,?)) OR (r.status=? AND r.next_runnable_at<=?) OR "
             + "(r.cancellation_requested=? AND r.status NOT IN (?,?,?,?,?,?))) "
-            + "AND (r.lease_owner IS NULL OR r.lease_until<=?) AND NOT EXISTS (SELECT 1 FROM " + table("turns")
-            + " p WHERE p.turn_id=r.parent_turn_id AND p.lease_owner IS NOT NULL AND p.lease_until>?) ORDER BY r.next_runnable_at";
+            + "AND (r.lease_owner IS NULL OR r.lease_until<=?) ORDER BY r.next_runnable_at";
         try (Connection connection = connection(); PreparedStatement select = connection.prepareStatement(query)) {
             select.setString(1, AgentTurnStatus.READY.name());
             select.setString(2, AgentTurnStatus.RUNNING.name());
@@ -153,18 +129,14 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
             select.setBoolean(5, true);
             bindTerminalStatuses(select, 6);
             select.setLong(12, now);
-            select.setLong(13, now);
             select.setMaxRows(Math.max(limit * 4, limit));
             try (ResultSet rows = select.executeQuery()) {
                 while (rows.next() && claimed.size() < limit) {
                     String turnId = rows.getString(1);
                     long version = rows.getLong(2);
-                    String parentTurnId = rows.getString(3);
                     String leaseId = UUID.randomUUID().toString();
                     String update = "UPDATE " + table("turns") + " SET lease_owner=?,lease_id=?,lease_until=?,version=version+1 "
-                        + "WHERE turn_id=? AND version=? AND (lease_owner IS NULL OR lease_until<=?) "
-                        + "AND (? IS NULL OR NOT EXISTS (SELECT 1 FROM (SELECT turn_id,lease_owner,lease_until FROM "
-                        + table("turns") + ") p WHERE p.turn_id=? AND p.lease_owner IS NOT NULL AND p.lease_until>?))";
+                        + "WHERE turn_id=? AND version=? AND (lease_owner IS NULL OR lease_until<=?)";
                     try (PreparedStatement claim = connection.prepareStatement(update)) {
                         claim.setString(1, workerId);
                         claim.setString(2, leaseId);
@@ -172,9 +144,6 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
                         claim.setString(4, turnId);
                         claim.setLong(5, version);
                         claim.setLong(6, now);
-                        claim.setString(7, parentTurnId);
-                        claim.setString(8, parentTurnId);
-                        claim.setLong(9, now);
                         if (claim.executeUpdate() == 1) claimed.add(load(connection, turnId));
                     }
                 }
@@ -219,35 +188,11 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
         }
     }
 
-    @Override
-    public List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(int limit) {
-        if (limit <= 0) throw new IllegalArgumentException("limit must be greater than 0");
-        List<AgentTurnSnapshot> result = new ArrayList<>();
-        String sql = "SELECT c.turn_id FROM " + table("turns") + " c JOIN " + table("turns")
-            + " p ON p.turn_id=c.parent_turn_id WHERE p.status=? AND c.status IN (?,?,?,?,?,?)";
-        try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, AgentTurnStatus.WAITING_FOR_CHILD.name());
-            statement.setString(2, AgentTurnStatus.COMPLETED.name());
-            statement.setString(3, AgentTurnStatus.FAILED.name());
-            statement.setString(4, AgentTurnStatus.CANCELLED.name());
-            statement.setString(5, AgentTurnStatus.MAX_ITERATIONS_REACHED.name());
-            statement.setString(6, AgentTurnStatus.MAX_STEPS_REACHED.name());
-            statement.setString(7, AgentTurnStatus.BUDGET_EXCEEDED.name());
-            statement.setMaxRows(limit);
-            try (ResultSet rows = statement.executeQuery()) {
-                while (rows.next()) result.add(load(connection, rows.getString(1)));
-            }
-            return result;
-        } catch (SQLException error) {
-            throw failure("find completed child AgentTurns", error);
-        }
-    }
-
     private AgentTurnSnapshot save(Connection connection, AgentTurnSnapshot snapshot, long expectedVersion) throws SQLException {
         AgentTurnSnapshot saved = snapshot.withVersion(expectedVersion + 1);
         if (expectedVersion == -1) {
-            String sql = "INSERT INTO " + table("turns") + " (turn_id,version,status,next_runnable_at,lease_owner,lease_id,lease_until,"
-                + "parent_turn_id,cancellation_requested,payload) VALUES (?,?,?,?,?,?,?,?,?,?)";
+            String sql = "INSERT INTO " + table("turns") + " (turn_id,version,status,next_runnable_at,lease_owner,lease_id,"
+                + "lease_until,cancellation_requested,payload) VALUES (?,?,?,?,?,?,?,?,?)";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 bind(statement, saved);
                 statement.executeUpdate();
@@ -262,7 +207,7 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
             }
         }
         String sql = "UPDATE " + table("turns") + " SET version=?,status=?,next_runnable_at=?,lease_owner=?,lease_id=?,lease_until=?,"
-            + "parent_turn_id=?,cancellation_requested=CASE WHEN cancellation_requested=? THEN ? ELSE ? END,payload=? "
+            + "cancellation_requested=CASE WHEN cancellation_requested=? THEN ? ELSE ? END,payload=? "
             + "WHERE turn_id=? AND version=?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             AgentTurnState state = saved.getState();
@@ -272,13 +217,12 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
             statement.setString(4, state.getLeaseOwner());
             statement.setString(5, state.getLeaseId());
             statement.setLong(6, state.getLeaseUntil());
-            statement.setString(7, state.getParentTurnId());
+            statement.setBoolean(7, true);
             statement.setBoolean(8, true);
-            statement.setBoolean(9, true);
-            statement.setBoolean(10, state.isCancellationRequested());
-            statement.setBytes(11, serialize(saved));
-            statement.setString(12, state.getTurnId());
-            statement.setLong(13, expectedVersion);
+            statement.setBoolean(9, state.isCancellationRequested());
+            statement.setBytes(10, serialize(saved));
+            statement.setString(11, state.getTurnId());
+            statement.setLong(12, expectedVersion);
             if (statement.executeUpdate() != 1) {
                 AgentTurnSnapshot actual = load(connection, state.getTurnId());
                 throw conflict(state.getTurnId(), expectedVersion,
@@ -297,24 +241,23 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
         statement.setString(5, state.getLeaseOwner());
         statement.setString(6, state.getLeaseId());
         statement.setLong(7, state.getLeaseUntil());
-        statement.setString(8, state.getParentTurnId());
-        statement.setBoolean(9, state.isCancellationRequested());
-        statement.setBytes(10, serialize(saved));
+        statement.setBoolean(8, state.isCancellationRequested());
+        statement.setBytes(9, serialize(saved));
     }
 
     private AgentTurnSnapshot load(Connection connection, String turnId) throws SQLException {
-        String sql = "SELECT version,status,next_runnable_at,lease_owner,lease_id,lease_until,parent_turn_id,cancellation_requested,payload "
+        String sql = "SELECT version,status,next_runnable_at,lease_owner,lease_id,lease_until,cancellation_requested,payload "
             + "FROM " + table("turns") + " WHERE turn_id=?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, turnId);
             try (ResultSet row = statement.executeQuery()) {
                 if (!row.next()) return null;
-                AgentTurnSnapshot payload = deserialize(row.getBytes(9), AgentTurnSnapshot.class);
+                AgentTurnSnapshot payload = deserialize(row.getBytes(8), AgentTurnSnapshot.class);
                 AgentTurnState state = payload.getState().toBuilder()
                     .version(row.getLong(1)).status(AgentTurnStatus.valueOf(row.getString(2)))
                     .nextRunnableAt(row.getLong(3)).leaseOwner(row.getString(4)).leaseId(row.getString(5))
-                    .leaseUntil(row.getLong(6)).parentTurnId(row.getString(7))
-                    .cancellationRequested(row.getBoolean(8)).build();
+                    .leaseUntil(row.getLong(6))
+                    .cancellationRequested(row.getBoolean(7)).build();
                 return payload.withState(state);
             }
         }

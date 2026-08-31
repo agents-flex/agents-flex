@@ -16,7 +16,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 - **多模型统一抽象**：通过 `ChatModel`、`EmbeddingModel`、`ImageModel`、`RerankModel` 等接口封装不同厂商能力。
 - **同步与流式一致**：同一套 Prompt、Options、拦截器和上下文机制可用于普通对话与流式输出。
 - **Tool Calling 完整链路**：支持注解扫描、编程式构建、工具执行、工具消息回传和工具级可观测。
-- **持久化 Agent Runtime**：提供 Snapshot 恢复、工具审批、Worker Lease、Middleware、统一 AgentEvent、任务规划和子 Agent 调度。
+- **持久化 Agent Runtime**：提供 Snapshot 恢复、工具审批、Worker Lease、Middleware 和统一 AgentEvent。
 - **RAG 组件齐全**：包含文档、解析、切分、Embedding、向量存储、检索、Rerank 等常用模块。
 - **企业场景友好**：内置模型路由、重试、负载均衡、熔断、OpenTelemetry 可观测、Text2SQL 安全拦截器等能力。
 
@@ -28,8 +28,8 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 | `agents-flex-async-task` | 可靠跟踪和调度采用“提交后轮询”协议的供应商异步任务 |
 | `agents-flex-async-task-store` | 异步任务状态、调度索引和 Worker Lease 的 JDBC 与 Redis 持久化实现 |
 | `agents-flex-doc-extractor` | 从 PDF、Office、HTML、邮件、压缩包、输入流和 URL 中提取 Markdown 风格内容 |
-| `agents-flex-agent` | 持久化 Agent Runtime：运行状态、Snapshot、Worker Lease、审批、Middleware、事件和任务规划 |
-| `agents-flex-agent-store` | Agent 运行、命令、事件、任务计划和 Artifact 的 JDBC 与 Redis 持久化实现 |
+| `agents-flex-agent` | 持久化 Agent Runtime：运行状态、Snapshot、Worker Lease、审批、Middleware 和事件 |
+| `agents-flex-agent-store` | Agent 运行、命令、事件和 Artifact 的 JDBC 与 Redis 持久化实现 |
 | `agents-flex-observability` | OpenTelemetry Span 与 Metric Exporter，支持 JDBC 持久化 |
 | `agents-flex-chat` | 聊天模型适配：OpenAI 兼容接口、Qwen、Ollama、DeepSeek、LiteLLM |
 | `agents-flex-embedding` | Embedding 模型适配：OpenAI、Ollama、Qwen |
@@ -48,7 +48,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 | `agents-flex-skills-sandbox` | Skills 隔离执行的 Sandbox runtime 聚合模块 |
 | `agents-flex-skills-open-sandbox` | 通过 OpenSandbox runtime 隔离执行 Skills 脚本 |
 | `agents-flex-skills-aio-sandbox` | 通过 AIO Sandbox 服务隔离执行 Skills 脚本 |
-| `agents-flex-subagent` | 子 Agent 定义、后台任务执行与结果获取工具 |
+| `agents-flex-subagent` | 独立的通用 Subagent Tool，提供后台任务执行与结果获取 |
 | `agents-flex-text2sql` | 智能问数工具集，支持表结构渐进披露、只读 SQL 校验和拦截器链 |
 | `agents-flex-websearch` | 网络搜索工具，支持 Brave、Bocha、百度千帆与自定义搜索提供商 |
 | `agents-flex-wiki` | LLM Wiki 能力：把知识组织为可导航的层级 Wiki 树，支持按路径递归读取与渐进式披露 |

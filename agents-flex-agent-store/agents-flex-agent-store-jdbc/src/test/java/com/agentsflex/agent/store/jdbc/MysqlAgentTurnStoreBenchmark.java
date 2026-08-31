@@ -129,7 +129,7 @@ public class MysqlAgentTurnStoreBenchmark {
 
     private AgentTurnSnapshot snapshot(String id) {
         AgentTurnState state = AgentTurnState.builder(id, AgentExecutionPolicy.defaults(), 1)
-            .status(AgentTurnStatus.READY).rootTurnId(id).updatedAt(1).build();
+            .status(AgentTurnStatus.READY).updatedAt(1).build();
         return AgentTurnSnapshot.of("benchmark", "1", state);
     }
 

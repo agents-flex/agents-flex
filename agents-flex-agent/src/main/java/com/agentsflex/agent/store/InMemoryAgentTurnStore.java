@@ -132,36 +132,6 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
     }
 
     /**
-     * 在同一个同步临界区保存等待中的父 Turn 和新建子 Turn。
-     */
-    @Override
-    public ParentChildTurnSnapshots saveParentAndChild(AgentTurnSnapshot parent,
-                                                       long expectedParentVersion,
-                                                       AgentTurnSnapshot child) {
-        if (parent == null || child == null) {
-            throw new IllegalArgumentException("parent and child snapshots must not be null");
-        }
-        synchronized (snapshots) {
-            AgentTurnSnapshot currentParent = snapshots.get(parent.getState().getTurnId());
-            long actualParentVersion = currentParent == null
-                ? -1 : currentParent.getState().getVersion();
-            if (actualParentVersion != expectedParentVersion) {
-                throw new AgentTurnVersionConflictException(parent.getState().getTurnId(),
-                    expectedParentVersion, actualParentVersion);
-            }
-            if (snapshots.containsKey(child.getState().getTurnId())) {
-                throw new AgentTurnVersionConflictException(child.getState().getTurnId(), -1,
-                    snapshots.get(child.getState().getTurnId()).getState().getVersion());
-            }
-            AgentTurnSnapshot savedParent = parent.withVersion(expectedParentVersion + 1);
-            AgentTurnSnapshot savedChild = child.withVersion(0);
-            snapshots.put(savedParent.getState().getTurnId(), savedParent.copy());
-            snapshots.put(savedChild.getState().getTurnId(), savedChild.copy());
-            return new ParentChildTurnSnapshots(savedParent.copy(), savedChild.copy());
-        }
-    }
-
-    /**
      * 原子领取可运行且没有有效租约的 Turn，并为每次领取生成唯一 leaseId。
      */
     @Override
@@ -177,7 +147,6 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
                     break;
                 }
                 if (!isRunnable(current, now)
-                    || hasLeasedParent(current, now)
                     || (current.getState().getLeaseUntil() > now
                     && current.getState().getLeaseOwner() != null)) {
                     continue;
@@ -236,33 +205,6 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
     }
 
     /**
-     * 查找已经终止但父 Turn 仍等待其完成信号的子 Turn。
-     */
-    @Override
-    public List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(int limit) {
-        if (limit <= 0) throw new IllegalArgumentException("limit must be greater than 0");
-        List<AgentTurnSnapshot> result = new ArrayList<>();
-        synchronized (snapshots) {
-            for (AgentTurnSnapshot child : snapshots.values()) {
-                if (result.size() >= limit) break;
-                AgentTurnState childState = child.getState();
-                if (!childState.getStatus().isTerminal()
-                    || childState.getParentTurnId() == null) continue;
-                AgentTurnSnapshot parent = snapshots.get(childState.getParentTurnId());
-                AgentTurnState parentState = parent == null ? null : parent.getState();
-                if (parentState != null
-                    && parentState.getStatus() == AgentTurnStatus.WAITING_FOR_CHILD
-                    && parentState.getSuspension() != null
-                    && childState.getTurnId().equals(
-                    parentState.getSuspension().getCorrelationId())) {
-                    result.add(child.copy());
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
      * 判断快照当前可以由 Worker 领取推进。
      */
     private boolean isRunnable(AgentTurnSnapshot snapshot, long now) {
@@ -275,18 +217,6 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
             return true;
         }
         return status == AgentTurnStatus.RETRY_SCHEDULED && state.getNextRunnableAt() <= now;
-    }
-
-    /**
-     * 父 Turn 仍由 Worker 推进时，子 Turn 暂不参与领取。
-     */
-    private boolean hasLeasedParent(AgentTurnSnapshot snapshot, long now) {
-        if (snapshot.getState().getParentTurnId() == null) {
-            return false;
-        }
-        AgentTurnSnapshot parent = snapshots.get(snapshot.getState().getParentTurnId());
-        return parent != null && parent.getState().getLeaseOwner() != null
-            && parent.getState().getLeaseUntil() > now;
     }
 
     /**

@@ -28,7 +28,7 @@ public final class AgentSuspension implements Serializable {
      */
     private final AgentSuspensionType type;
     /**
-     * ToolCall ID 或子 Turn ID 等外部事件关联标识。
+     * ToolCall ID 等外部事件关联标识。
      */
     private final String correlationId;
     /**
@@ -48,7 +48,7 @@ public final class AgentSuspension implements Serializable {
      * 创建可持久化挂起点，并复制恢复所需元数据。
      *
      * @param type          挂起原因
-     * @param correlationId 工具调用或子 Turn 关联 ID
+     * @param correlationId 工具调用关联 ID
      * @param message       面向调用方的等待说明
      * @param resumePhase   恢复后继续执行的阶段
      * @param metadata      可序列化扩展数据
@@ -125,14 +125,6 @@ public final class AgentSuspension implements Serializable {
     }
 
     /**
-     * 创建等待指定子 Turn 结束的暂停点。
-     */
-    public static AgentSuspension child(String childTurnId) {
-        return new AgentSuspension(AgentSuspensionType.CHILD_AGENT, childTurnId,
-            "Waiting for child AgentTurn", AgentTurnPhase.MODEL, null);
-    }
-
-    /**
      * @return 暂停原因类型
      */
     public AgentSuspensionType getType() {
@@ -140,7 +132,7 @@ public final class AgentSuspension implements Serializable {
     }
 
     /**
-     * @return ToolCall ID 或子 Turn ID 等关联标识
+     * @return ToolCall ID 等关联标识
      */
     public String getCorrelationId() {
         return correlationId;

@@ -21,7 +21,6 @@
  *     <li>{@link com.agentsflex.agent.middleware.AgentMiddleware}：包装步骤、模型调用和工具调用；</li>
  *     <li>{@link com.agentsflex.agent.store.AgentTurnStore}：保存 Snapshot、领取任务和管理 Worker 租约；</li>
  *     <li>{@link com.agentsflex.agent.event.AgentEventListener}：观察生命周期、模型增量和工具进度事件；</li>
- *     <li>{@link com.agentsflex.agent.task.AgentPlanningPolicy}：约束模型自主创建和执行任务计划；</li>
  *     <li>{@link com.agentsflex.agent.loader.AgentLoader}：根据稳定 ID 和版本加载可执行 Agent；</li>
  *     <li>{@link com.agentsflex.agent.tool.AgentToolContext}：向工具提供调用身份、进度、取消和恢复输入；</li>
  *     <li>{@link com.agentsflex.agent.exception.AgentFormRequiredException}：让业务工具在副作用前请求表单；</li>

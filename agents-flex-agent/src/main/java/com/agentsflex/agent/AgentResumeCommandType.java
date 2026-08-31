@@ -30,10 +30,6 @@ public enum AgentResumeCommandType {
      */
     REJECT_TOOL,
     /**
-     * 通知父 Turn 关联的子 Turn 已经结束。
-     */
-    CHILD_COMPLETED,
-    /**
      * 执行已经到达调度时间的自动重试。
      */
     RETRY

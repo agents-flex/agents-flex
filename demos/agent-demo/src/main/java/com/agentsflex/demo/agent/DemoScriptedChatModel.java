@@ -24,7 +24,7 @@ import java.util.function.Function;
  * 按入队顺序返回 AiMessage 的确定性模型。
  *
  * <p>Demo 的目标是学习 Agent 状态机，而不是依赖某个外部模型服务。每个脚本函数仍会收到真实
- * Prompt，因此可以检查 ToolMessage、子 Agent 结果和上下文是否按预期进入下一轮模型调用。</p>
+ * Prompt，因此可以检查 ToolMessage 和上下文是否按预期进入下一轮模型调用。</p>
  */
 final class DemoScriptedChatModel implements ChatModel {
 

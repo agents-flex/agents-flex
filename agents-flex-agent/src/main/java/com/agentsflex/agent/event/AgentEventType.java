@@ -95,7 +95,7 @@ public enum AgentEventType {
      */
     SNAPSHOT_SAVED,
     /**
-     * Turn 已持久化为等待用户输入、工具审批、子 Turn 或重试调度的状态。
+     * Turn 已持久化为等待用户输入、工具审批或重试调度的状态。
      * 如果暂停由 Step 产生，本事件在该 Step 的 STEP_COMPLETED 之后发布。
      * data 包含 suspensionType、correlationId、message、resumePhase 和 metadata。
      */
@@ -108,30 +108,6 @@ public enum AgentEventType {
      * 外部系统已经写入协作式取消请求，但 Turn 可能尚未停止。
      */
     CANCELLATION_REQUESTED,
-    /**
-     * 父 Turn 已原子创建并关联一个子 Turn。
-     */
-    CHILD_STARTED,
-    /**
-     * 规划能力已为当前 Turn 创建初始任务计划。
-     */
-    PLAN_CREATED,
-    /**
-     * 模型根据执行结果调整了尚未完成的任务计划。
-     */
-    PLAN_UPDATED,
-    /**
-     * 一个计划任务已绑定子 Turn 并开始执行。
-     */
-    TASK_STARTED,
-    /**
-     * 计划任务关联的子 Turn 已正常完成。
-     */
-    TASK_COMPLETED,
-    /**
-     * 计划任务关联的子 Turn 已失败、取消或以其他非成功状态结束。
-     */
-    TASK_FAILED,
     /**
      * 可恢复异常已记录，Turn 正等待 nextRunnableAt 到达后重试。
      */

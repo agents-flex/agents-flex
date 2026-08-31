@@ -7,15 +7,13 @@ description: 为 Agent 建立日志、指标、事件时间线、Trace 关联和
 
 ## 概述
 
-Agent 的一次用户请求可能跨模型、工具、审批、重试、Worker 和多个子 Turn。可观测性的目标不只是打印模型内容，而是能够回答：任务现在在哪里、为什么等待、消耗了多少、谁批准了什么、失败后是否会重试，以及整棵任务树如何演进。
+Agent 的一次用户请求可能跨模型、工具、审批、重试和 Worker。可观测性的目标不只是打印模型内容，而是能够回答：任务现在在哪里、为什么等待、消耗了多少、谁批准了什么，以及失败后是否会重试。
 
 ## 关联标识
 
 建议所有日志和 Trace 至少携带：
 
 - `turnId`：单个执行实例。
-- `rootTurnId`：整棵父子任务树。
-- `parentTurnId`：直接父任务。
 - `agentId` 与 `agentVersion`：运行定义。
 - `requestId`、`tenantId`、`userId`：来自 Turn metadata。
 - `toolCallId` 与业务审批事件 ID：工具调用和外部恢复事件的幂等关联。
@@ -56,7 +54,7 @@ Snapshot 表示当前真相，业务保存的 Event 表示变化历史。排障�
 
 ## Trace 边界
 
-可在 Middleware 中创建 step、model、tool span，在 AgentEventListener 中记录最终状态。父子 Turn 通过 `rootTurnId` 或显式 Trace context 关联。Worker 恢复时应从 Snapshot metadata 中的安全追踪标识重建新的 span link，而不是把整个 SDK Context 序列化进 Snapshot。
+可在 Middleware 中创建 step、model、tool span，在 AgentEventListener 中记录最终状态。Worker 恢复时应从 Snapshot metadata 中的安全追踪标识重建新的 span link，而不是把整个 SDK Context 序列化进 Snapshot。
 
 ## 日志建议
 

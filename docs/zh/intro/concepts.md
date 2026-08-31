@@ -223,13 +223,9 @@ Agents-Flex 当前提供的核心 Agent 能力包括：
 
 [Agent 智能体](../agent/overview.md) 基于模型原生 ToolCall 推进模型与工具循环。它可以直接回答简单问题；遇到需要外部信息或业务操作的任务时选择工具；缺少必要信息时进入等待状态。运行过程通过 Snapshot 保存，可以在其他请求、线程或进程中恢复。
 
-### 任务规划与专业 Agent
+### 独立 Subagent Tool
 
-[任务规划与进度](../agent/task-planning.md) 将复杂目标拆成有序任务，并把任务分配给不同的专业 Agent。它解决的是任务拆解、执行协调和进度展示；Model Router 解决的是模型节点的负载均衡和高可用，两者不要混淆。
-
-### Subagent
-
-[Subagent](../chat/subagent.md) 让主 Agent 把任务委托给拥有不同说明和执行器的子 Agent。任务可以同步执行，也可以在后台运行并通过任务 ID 获取结果。它适合研究、代码审查、数据分析等能够清晰划分职责的复杂任务。
+[Subagent Tool](../chat/subagent.md) 是独立的通用 Tool 模块，不属于 `agents-flex-agent` 的内置运行能力。它可按需由业务 Agent 注册，用于后台任务执行与结果获取。
 
 并不是所有需求都应该使用 Agent。固定步骤、结果确定的业务流程通常更适合普通 Java 代码或工作流；只有当下一步依赖语义判断、环境反馈或动态工具选择时，Agent 循环才真正产生价值。
 

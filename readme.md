@@ -16,7 +16,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 - **Unified model abstractions**: `ChatModel`, `EmbeddingModel`, `ImageModel`, `RerankModel`, and other interfaces wrap provider-specific capabilities.
 - **Consistent sync and streaming APIs**: The same Prompt, Options, interceptor, and context mechanisms work for both normal chat and streaming output.
 - **Complete Tool Calling flow**: Supports annotation-based scanning, programmatic tool building, tool execution, tool message feedback, and tool-level observability.
-- **Durable Agent runtime**: Provides snapshot recovery, tool approval, Worker leases, middleware, event streams, task planning, and sub-agent scheduling.
+- **Durable Agent runtime**: Provides snapshot recovery, tool approval, Worker leases, middleware, and event streams.
 - **Full RAG building blocks**: Includes document models, parsing, splitting, Embedding, vector stores, retrieval, and Rerank support.
 - **Production-oriented design**: Includes model routing, retry, load balancing, circuit breaking, OpenTelemetry observability, and Text2SQL safety interceptors.
 
@@ -28,8 +28,8 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | `agents-flex-async-task` | Durable tracking and scheduling for provider jobs that use submit-and-poll workflows |
 | `agents-flex-async-task-store` | JDBC and Redis persistence for async task state, scheduling indexes, and Worker leases |
 | `agents-flex-doc-extractor` | Extracts Markdown-style content from PDF, Office, HTML, email, archives, streams, and URLs |
-| `agents-flex-agent` | Durable Agent runtime: Run state, snapshot recovery, Worker leases, approval, middleware, events, and task planning |
-| `agents-flex-agent-store` | JDBC and Redis persistence for Agent runs, commands, events, task plans, and artifacts |
+| `agents-flex-agent` | Durable Agent runtime: Run state, snapshot recovery, Worker leases, approval, middleware, and events |
+| `agents-flex-agent-store` | JDBC and Redis persistence for Agent runs, commands, events, and artifacts |
 | `agents-flex-observability` | OpenTelemetry span and metric exporters with JDBC persistence |
 | `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |
 | `agents-flex-embedding` | Embedding model integrations: OpenAI, Ollama, Qwen |

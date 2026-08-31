@@ -3,12 +3,10 @@ package com.agentsflex.agent.store.jdbc;
 import com.agentsflex.agent.AgentExecutionPolicy;
 import com.agentsflex.agent.compression.AgentContextCompressionState;
 import com.agentsflex.agent.compression.AgentContextCompressionStateStore;
-import com.agentsflex.agent.AgentSuspension;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
-import com.agentsflex.agent.store.ParentChildTurnSnapshots;
 import com.agentsflex.core.message.AiMessage;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import org.h2.jdbcx.JdbcDataSource;
@@ -111,27 +109,6 @@ public class JdbcAgentStoresContractTest {
     }
 
     @Test
-    public void shouldAtomicallyPersistParentAndChildAndDelayChildWhileParentLeased() {
-        JdbcAgentTurnStore store = config.turnStore();
-        store.save(snapshot("parent", AgentTurnStatus.READY), -1);
-        AgentTurnSnapshot parent = store.claimRunnable("parent-worker", 100, 1000, 1).get(0);
-        AgentTurnSnapshot initialChild = snapshot("child", AgentTurnStatus.READY);
-        AgentTurnSnapshot child = initialChild.withState(initialChild.getState().toBuilder()
-            .parentTurnId("parent").rootTurnId("parent").build());
-        ParentChildTurnSnapshots pair = store.saveParentAndChild(
-            parent.withState(parent.getState().toBuilder()
-                .status(AgentTurnStatus.WAITING_FOR_CHILD).build()),
-            parent.getState().getVersion(), child);
-        assertEquals(2, pair.getParent().getState().getVersion());
-        assertEquals(0, pair.getChild().getState().getVersion());
-        assertEquals("parent", store.load("child").getState().getParentTurnId());
-        assertTrue(store.claimRunnable("child-worker", 101, 100, 1).isEmpty());
-        store.releaseLease("parent", "parent-worker", parent.getState().getLeaseId());
-        assertEquals("child", store.claimRunnable("child-worker", 102, 100, 1).get(0)
-            .getState().getTurnId());
-    }
-
-    @Test
     public void shouldAllowOnlyOneWorkerToClaimTheSameRun() throws Exception {
         final JdbcAgentTurnStore store = config.turnStore();
         store.save(snapshot("race-turn", AgentTurnStatus.READY), -1);
@@ -189,9 +166,7 @@ public class JdbcAgentStoresContractTest {
         assertNull(store.load("missing-conversation"));
     }
 
-    /**
-     * 活动会话查询应排除终态，终态子任务应能被等待中的父任务恢复扫描发现。
-     */
+    /** 活动会话查询应排除终态。 */
     @Test
     public void shouldFindActiveTurnAndTerminalChildForRecovery() {
         JdbcAgentTurnStore store = config.turnStore();
@@ -206,24 +181,12 @@ public class JdbcAgentStoresContractTest {
             .status(AgentTurnStatus.COMPLETED).build()), savedActive.getState().getVersion());
         assertNull(store.findActiveTurn("conversation-1"));
 
-        AgentTurnSnapshot parentSource = snapshot("waiting-parent", AgentTurnStatus.WAITING_FOR_CHILD);
-        AgentTurnSnapshot parent = parentSource.withState(parentSource.getState().toBuilder()
-            .suspension(AgentSuspension.child("terminal-child")).build());
-        store.save(parent, -1);
-        AgentTurnSnapshot childSource = snapshot("terminal-child", AgentTurnStatus.COMPLETED);
-        AgentTurnSnapshot child = childSource.withState(childSource.getState().toBuilder()
-            .parentTurnId("waiting-parent").rootTurnId("waiting-parent").build());
-        store.save(child, -1);
-
-        List<AgentTurnSnapshot> completed = store.findTerminalChildrenWithWaitingParent(1);
-        assertEquals(1, completed.size());
-        assertEquals("terminal-child", completed.get(0).getState().getTurnId());
     }
 
     private AgentTurnSnapshot snapshot(String turnId, AgentTurnStatus status) {
         AgentTurnState state = AgentTurnState.builder(turnId,
                 AgentExecutionPolicy.defaults(), 1)
-            .status(status).updatedAt(1).rootTurnId(turnId)
+            .status(status).updatedAt(1)
             .metadata(Collections.<String, Object>singletonMap("key", "value")).build();
         return AgentTurnSnapshot.of("agent", "1", state);
     }

@@ -24,9 +24,6 @@ public final class AgentDemoLauncher {
         if ("all".equalsIgnoreCase(scenario) || "worker".equalsIgnoreCase(scenario)) {
             DurableWorkerAgentDemo.run();
         }
-        if ("all".equalsIgnoreCase(scenario) || "planning".equalsIgnoreCase(scenario)) {
-            TaskPlanningAgentDemo.run();
-        }
         if ("all".equalsIgnoreCase(scenario) || "runtime".equalsIgnoreCase(scenario)) {
             RuntimeExtensionsAgentDemo.run();
         }
@@ -34,11 +31,10 @@ public final class AgentDemoLauncher {
             && !"tool".equalsIgnoreCase(scenario)
             && !"approval".equalsIgnoreCase(scenario)
             && !"worker".equalsIgnoreCase(scenario)
-            && !"planning".equalsIgnoreCase(scenario)
             && !"runtime".equalsIgnoreCase(scenario)) {
             throw new IllegalArgumentException(
                 "未知场景: " + scenario
-                    + "，可选值为 tool、approval、worker、planning、runtime");
+                    + "，可选值为 tool、approval、worker、runtime");
         }
     }
 }

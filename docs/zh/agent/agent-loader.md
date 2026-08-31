@@ -7,7 +7,7 @@ description: 按稳定 ID 和版本加载 Agent，并把配置数据装配为可
 
 ## 概述
 
-`AgentLoader` 负责把持久化快照中的 `agentId + agentVersion` 重新解析为完整 `Agent`。快照不会序列化 `ChatModel`、Tool 或 Middleware，因此 Loader 是跨进程恢复和子 Agent 委派的必要组成部分。
+`AgentLoader` 负责把持久化快照中的 `agentId + agentVersion` 重新解析为完整 `Agent`。快照不会序列化 `ChatModel`、Tool 或 Middleware，因此 Loader 是跨进程恢复的必要组成部分。
 
 ## 接口
 
@@ -83,9 +83,6 @@ Agent 不可变，适合按 `id:version` 缓存。active 指针则应有更短�
 - 已存在 Turn 始终使用快照绑定版本。
 - 下线版本前确认没有可恢复 Turn 仍引用它。
 
-## 规划与子 Agent
-
-`AgentPlanningPolicy.allowAgent(...)` 只是委派白名单，不会自动注册目标 Agent。规划开始前，Runner 会用 Loader 加载允许的目标定义并向模型暴露其 ID、名称和描述。加载不到目标时，规划无法正确执行。
 
 ## 错误处理
 

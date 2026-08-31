@@ -3,7 +3,7 @@
 该 Demo 使用真实的 OpenAI-compatible 大模型，在同一个控制台会话中演示：
 
 - 普通持续对话；
-- 模型按需创建顺序任务计划，并由父 Turn 汇总子任务结果；
+- 模型按需组合多个工具调用并返回结果；
 - 模型原生 ToolCall 和工具结果回传；
 - 工具执行时请求 JSON Schema 表单，并在提交后恢复原工具；
 - 高风险工具的人工批准或拒绝；
@@ -57,16 +57,14 @@ mvn -f demos/agent-console-demo/pom.xml exec:java
 Schema 逐项读取输入，提交后 Runner 从头恢复同一个准备工具；资料整理完成后，模型再调用
 `create_support_ticket`，控制台展示最终 ToolCall 参数并等待输入 `y` 或 `n`。
 
-为了稳定演示规划能力，Demo 要求包含两个或更多独立工具调用的请求必须先调用内置规划工具；跨时区
-请求会顺序执行两个查询
-子 Turn，由父 Agent 比较结果并给出建议。控制台会输出计划和任务事件。Runner 通过
+Runner 通过
 `chatMemoryProvider` 分页读取模型历史，并按稳定消息 ID 增量写回本轮消息，不会清空或重写 ChatMemory。
 该 Demo 的 Turn Store 和 ChatMemory 都是进程内实现，退出程序后不会保留状态。
 
 ## 流式输出 Demo
 
 如果需要观察模型逐段输出，可以运行独立的 `StreamingAgentConsoleDemo`。它完整保留上面 Demo 的
-持续对话、任务规划、表单输入、人工审批、工具调用和 ChatMemory 能力，只把每个 Turn 改为显式
+持续对话、表单输入、人工审批、工具调用和 ChatMemory 能力，只把每个 Turn 改为显式
 启用流式调用，并通过 `MODEL_TEXT_DELTA` 事件实时打印文本：
 
 ```bash

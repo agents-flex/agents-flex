@@ -8,7 +8,7 @@
 - 它要连接不同厂商的模型，也要能够随时切换模型；
 - 它要记住上下文，检索企业知识，知道什么时候调用工具；
 - 它要访问网页、数据库和外部服务，还要安全地执行脚本、读写文件；
-- 它要把复杂任务拆给不同的子 Agent，并追踪后台任务的执行结果；
+- 它要可靠地推进工具调用，并追踪长任务的执行结果；
 - 它还要经得住生产环境中的超时、故障、并发、审计与观测。
 
 **Agents-Flex 要解决的，正是模型能力与 Java 业务系统之间的这段距离。**
@@ -27,7 +27,7 @@ Agents-Flex 的能力不是一组彼此孤立的组件，而是一条完整的�
 | 连接 | MCP、WebSearch、WebFetch、LLM Wiki | 连接外部工具、互联网和动态知识源 |
 | 知识 | 文件解析、文档切分、Embedding、Vector Store、Rerank | 构建从数据导入到召回排序的完整 RAG 链路 |
 | 技能 | AI Skills、Local/OpenSandbox/AIO Sandbox Runtime | 把提示词、脚本和资源封装成可复用、可执行的能力包 |
-| 协作 | 任务规划、Subagent、Worker 与 Lease | 让不同专长的 Agent 分工协作并可靠执行长任务 |
+| 执行 | Worker 与 Lease | 让 Agent 任务可靠执行并支持跨进程恢复 |
 | 工程 | Model Router、熔断、重试、拦截器、OpenTelemetry | 让智能体在生产环境中可用、可控、可观测 |
 
 这意味着，你可以用同一套抽象构建一个对话机器人，也可以继续向前，构建会查资料、读文档、分析数据库、生成文件、调用内部系统，并把复杂任务分派给多个专业 Agent 的业务助手。
@@ -104,13 +104,9 @@ Agents-Flex 原生支持 [Model Context Protocol](../chat/mcp.md)，可以管理
 
 于是，“生成并验证一份 PPTX”“分析一批文件并输出报告”“按照团队规范审查代码”不再是一段临时提示词，而是可以版本化、复用、迁移和隔离执行的工程资产。
 
-### Subagent：一个 Agent 不必包办一切
+### 独立 Subagent Tool
 
-面对复杂任务，最合理的结构通常不是一个无所不能的超级 Prompt，而是一组边界清晰的专业 Agent。
-
-[Subagent](../chat/subagent.md) 允许主 Agent 把任务委托给代码审查、数据分析、资料研究等子 Agent。任务可以同步执行，也可以进入后台；主 Agent 能够通过任务 ID 查询状态和获取结果。对于需要拆分目标、分配专业 Agent 并展示执行进度的场景，可以使用 [任务规划与进度](../agent/task-planning.md)。
-
-从单 Agent 到多 Agent，不需要推翻已有代码，只是继续给系统增加新的角色和能力。
+[Subagent](../chat/subagent.md) 是独立的通用 Tool 模块。需要后台任务或外部 Agent 协作时，业务可以像注册其他 Tool 一样按需接入，不依赖 `agents-flex-agent` 的任务规划功能。
 
 ## 不止问答：把企业数据变成 Agent 的上下文
 

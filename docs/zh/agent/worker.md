@@ -20,7 +20,7 @@ try (AgentWorker worker = new AgentWorker(
 }
 ```
 
-`start` 只保存 READY Turn。`pollAndRun(limit)` 会先修复父子唤醒，再逐个领取 Turn 并同步推进。
+`start` 只保存 READY Turn。`pollAndRun(limit)` 会逐个领取 Turn 并同步推进。
 
 ## 自动轮询
 
@@ -48,11 +48,7 @@ Lease 不是分布式事务。外部工具仍需业务幂等，网络分区时�
 
 ## 可领取状态
 
-Store 通常领取 READY、可继续的 RUNNING、到期 `RETRY_SCHEDULED`，以及已请求取消但尚未终止的 Turn。等待审批、用户或子任务的 Turn 在相应事件到达前不可领取。
-
-## 父子恢复
-
-Worker 每轮调用 `recoverCompletedChildren`，发现子 Turn 已终止而父 Turn 仍等待时进行补偿唤醒。这覆盖子 Snapshot 已提交、父 Snapshot 尚未更新时进程退出的窗口。
+Store 通常领取 READY、可继续的 RUNNING、到期 `RETRY_SCHEDULED`，以及已请求取消但尚未终止的 Turn。等待审批或用户输入的 Turn 在相应事件到达前不可领取。
 
 ## 容量规划
 

@@ -44,8 +44,6 @@ public class AgentStateLifecycleScenarioTest {
                 AgentSuspension.userInput("need input"), 0),
             blocked("approval", agent, AgentTurnStatus.WAITING_FOR_APPROVAL,
                 AgentSuspension.toolApproval("call-1", "danger"), 0),
-            blocked("child", agent, AgentTurnStatus.WAITING_FOR_CHILD,
-                AgentSuspension.child("child-1"), 0),
             blocked("retry", agent, AgentTurnStatus.RETRY_SCHEDULED,
                 AgentSuspension.retry("temporary", AgentTurnPhase.MODEL, now), now)
         };

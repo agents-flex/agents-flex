@@ -64,15 +64,6 @@ public interface AgentTurnStore {
     boolean requestCancellation(String turnId);
 
     /**
-     * 原子保存进入等待状态的父 Turn，并创建对应的子 Turn。
-     *
-     * <p>外部 Store 应在同一事务中完成父记录条件更新和子记录插入，避免只提交其中一个状态。</p>
-     */
-    ParentChildTurnSnapshots saveParentAndChild(AgentTurnSnapshot parent,
-                                                long expectedParentVersion,
-                                                AgentTurnSnapshot child);
-
-    /**
      * 原子领取当前可执行且没有有效租约的 Turn。
      *
      * <p>所有 Store 实现都必须明确实现该原子操作；不支持后台调度的应用不应配置 AgentWorker。</p>
@@ -94,8 +85,4 @@ public interface AgentTurnStore {
      */
     void releaseLease(String turnId, String workerId, String leaseId);
 
-    /**
-     * 查询已经终止、但父 Turn 仍处于等待状态的子 Turn，供 Worker 修复父任务唤醒。
-     */
-    List<AgentTurnSnapshot> findTerminalChildrenWithWaitingParent(int limit);
 }

@@ -34,11 +34,6 @@ public enum AgentTurnStatus {
     WAITING_FOR_APPROVAL,
 
     /**
-     * 父 Agent 已暂停，等待一个或多个子 Agent 完成。
-     */
-    WAITING_FOR_CHILD,
-
-    /**
      * 可恢复错误已安排后续重试，等待调度时间到达。
      */
     RETRY_SCHEDULED,
@@ -79,7 +74,6 @@ public enum AgentTurnStatus {
     public boolean isBlocked() {
         return this == WAITING_FOR_USER
             || this == WAITING_FOR_APPROVAL
-            || this == WAITING_FOR_CHILD
             || this == RETRY_SCHEDULED;
     }
 

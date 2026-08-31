@@ -202,7 +202,6 @@ public class AgentPlatformExtensionScenarioTest {
 
         assertNotNull(invocation);
         assertEquals(completed.getId(), invocation.getTurnId());
-        assertEquals(completed.getRootTurnId(), invocation.getRootTurnId());
         assertEquals("invocation-agent", invocation.getAgentId());
         assertEquals("4", invocation.getAgentVersion());
         assertEquals("write-42", invocation.getToolCallId());

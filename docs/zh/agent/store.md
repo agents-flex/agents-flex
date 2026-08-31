@@ -82,7 +82,7 @@ Turn Store；Runner 始终先提交 Snapshot，再幂等投影 ChatMemory，投�
 从旧版本升级时，原 JDBC events/event_sequences、artifacts、commands 表以及对应 Redis 键不再被 Framework 读写。Schema 初始化不会自动删除历史数据；应由业务确认归档或迁移完成后自行清理。
 
 `AgentRunStore` 到 `AgentTurnStore` 的迁移同样不会自动执行。JDBC 实现使用新的 `turns` 表、`turn_id`、
-`parent_turn_id` 和 `next_runnable_at` 列；Redis 实现使用 `turn`、`turns` 和 `runnable-turns` key。
+`next_runnable_at` 列；Redis 实现使用 `turn`、`turns` 和 `runnable-turns` key。
 应用必须在停机迁移窗口完成旧数据转换，或者先让旧 Run 全部进入终态后再切换新 Store。
 
 ## AgentTurnStore 契约
@@ -113,4 +113,4 @@ Framework 只保证 Turn Snapshot 的原子状态转换。外部审批、用户�
 
 ## 验证自定义实现
 
-至少测试并发版本冲突、Turn Lease 失效、同名 Worker fencing、取消与保存竞态、重试到期领取、父子恢复扫描和序列化重启往返。
+至少测试并发版本冲突、Turn Lease 失效、同名 Worker fencing、取消与保存竞态、重试到期领取和序列化重启往返。

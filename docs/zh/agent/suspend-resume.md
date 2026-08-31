@@ -15,7 +15,6 @@ Agent 遇到人工审批、缺少用户信息、等待子任务或延迟重试�
 | --- | --- | --- |
 | `USER_INPUT` | `WAITING_FOR_USER` | `userInput(content)` 或 `userInput(callId, data)` |
 | `TOOL_APPROVAL` | `WAITING_FOR_APPROVAL` | `approveTool` / `rejectTool` |
-| `CHILD_AGENT` | `WAITING_FOR_CHILD` | `childCompleted`，通常由 Runner 内部处理 |
 | `RETRY` | `RETRY_SCHEDULED` | `retry()` 或 Worker 到期领取 |
 
 Suspension 还保存 correlationId、展示消息、恢复 phase 和可序列化 metadata。
@@ -105,7 +104,7 @@ AgentTurn blocked = runner.suspend(
 ```
 
 这种兼容路径没有 correlationId，恢复时使用 `userInput(content)`，内容会作为新的 UserMessage 加入
-Prompt。普通模型追问优先使用 `request_user_input`；工具审批、子 Turn 和重试由 Runner 内部创建
+Prompt。普通模型追问优先使用 `request_user_input`；工具审批和重试由 Runner 内部创建
 Suspension，业务代码不应手工构造这些暂停类型。
 
 ## 同步恢复

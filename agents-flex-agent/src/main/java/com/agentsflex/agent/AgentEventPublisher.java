@@ -11,9 +11,6 @@ import com.agentsflex.agent.compression.AgentContextCompressionResult;
 import com.agentsflex.agent.compression.AgentContextCompressionState;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
-import com.agentsflex.agent.task.AgentTask;
-import com.agentsflex.agent.task.AgentTaskPlan;
-import com.agentsflex.agent.task.AgentTaskStatus;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.ToolCall;
@@ -336,75 +333,6 @@ final class AgentEventPublisher {
     }
 
     /**
-     * 发布通用子 Agent 已启动事件。
-     *
-     * @param parent 父 Turn
-     * @param child  已持久化的子 Turn
-     */
-    void notifyChildStarted(AgentTurn parent, AgentTurn child) {
-        publish(parent, AgentEventType.CHILD_STARTED,
-            attributes("childTurnId", child.getId(),
-                "childAgentId", child.getAgent().getId()));
-    }
-
-    /**
-     * 发布任务计划创建事件。
-     *
-     * @param turn 计划所属 Turn
-     * @param plan 已保存的新计划
-     */
-    void notifyPlanCreated(AgentTurn turn, AgentTaskPlan plan) {
-        publish(turn, AgentEventType.PLAN_CREATED,
-            attributes("planId", plan.getId(), "goal", plan.getGoal(),
-                "taskCount", plan.getTasks().size()));
-    }
-
-    /**
-     * 发布任务计划修订事件，包含修订原因和累计次数。
-     *
-     * @param turn 计划所属 Turn
-     * @param plan 修订后的计划
-     */
-    void notifyPlanUpdated(AgentTurn turn, AgentTaskPlan plan) {
-        publish(turn, AgentEventType.PLAN_UPDATED,
-            attributes("planId", plan.getId(),
-                "revisionCount", plan.getRevisionCount(),
-                "reason", plan.getLastRevisionReason(),
-                "taskCount", plan.getTasks().size()));
-    }
-
-    /**
-     * 发布计划任务开始事件，并关联实际子 Turn。
-     *
-     * @param parent 父 Turn
-     * @param task   已进入运行态的任务
-     * @param child  执行任务的子 Turn
-     */
-    void notifyTaskStarted(AgentTurn parent, AgentTask task, AgentTurn child) {
-        publish(parent, AgentEventType.TASK_STARTED,
-            attributes("taskId", task.getId(), "title", task.getTitle(),
-                "childTurnId", child.getId(), "childAgentId", child.getAgent().getId()));
-    }
-
-    /**
-     * 根据任务终态发布完成或失败事件，并附带子 Turn 输出与错误。
-     *
-     * @param parent 父 Turn
-     * @param task   已结束任务
-     * @param child  执行任务的子 Turn
-     * @param status 任务终态
-     */
-    void notifyTaskFinished(AgentTurn parent, AgentTask task, AgentTurn child,
-                            AgentTaskStatus status) {
-        AgentEventType type = status == AgentTaskStatus.COMPLETED
-            ? AgentEventType.TASK_COMPLETED : AgentEventType.TASK_FAILED;
-        publish(parent, type,
-            attributes("taskId", task.getId(), "childTurnId", child.getId(),
-                "taskStatus", status, "result", child.getFinalOutput(),
-                "error", errorMessage(child.getError())));
-    }
-
-    /**
      * 创建不可变事件并同步通知全部监听器；空 Turn 不产生事件。
      */
     void publish(AgentTurn turn, AgentEventType type, Map<String, ?> data) {
@@ -417,8 +345,8 @@ final class AgentEventPublisher {
         if (data != null) values.putAll(data);
         long sequence = sequences.computeIfAbsent(turn.getId(), key -> new AtomicLong())
             .incrementAndGet();
-        AgentEvent event = new AgentEvent(turn.getId(), turn.getRootTurnId(),
-            turn.getParentTurnId(), turn.getAgent().getId(), turn.getAgent().getVersion(),
+        AgentEvent event = new AgentEvent(turn.getId(), turn.getAgent().getId(),
+            turn.getAgent().getVersion(),
             sequence, type, values);
         for (AgentEventListener listener : listeners) {
             try {

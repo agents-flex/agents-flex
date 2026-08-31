@@ -10,9 +10,9 @@ description: 了解 Agents-Flex Agent 的静态能力、运行控制、持久化
 `agents-flex-agent` 是建立在 `ChatModel` 和 Tool Calling 之上的可恢复 Agent 运行时。
 它不只负责“让模型调用 Java Tool”，还把一次任务建模为可以暂停、持久化、恢复、取消、重试和分布式调度的 `AgentTurn`。
 
-普通聊天通常是“发送 Prompt，得到一次响应”；真实业务任务可能经历多轮模型判断、多个工具、人工审批、表单输入、失败退避、子任务和进程重启。Agent 模块负责这些执行控制能力：
+普通聊天通常是“发送 Prompt，得到一次响应”；真实业务任务可能经历多轮模型判断、多个工具、人工审批、表单输入、失败退避和进程重启。Agent 模块负责这些执行控制能力：
 
-- 模型负责决定下一步是回答、调用工具、请求表单还是创建计划。
+- 模型负责决定下一步是回答、调用工具还是请求表单。
 - `AgentRunner` 负责按照状态机推进，并在安全边界保存 Snapshot。
 - 业务系统通过 Store、Loader、Listener 和 ChatMemory 接入持久化、恢复、审计和页面展示。
 
@@ -55,7 +55,7 @@ Agent 的能力不是集中在一个巨大配置对象中，而是分为三层�
 | --- | --- |
 | `id(...)` | Snapshot 恢复和 `AgentLoader` 使用的稳定 ID |
 | `version(...)` | 绑定任务创建时的 Agent 配置版本 |
-| `name(...)` / `description(...)` | 展示、路由和任务规划时使用的描述 |
+| `name(...)` / `description(...)` | 展示和路由时使用的描述 |
 | `instructions(...)` | 注入模型的系统指令 |
 | `chatModel(...)` | 必填，提供模型调用能力 |
 | `chatOptions(...)` | 模型参数模板，例如 model、temperature、maxTokens 和 thinking |
@@ -79,7 +79,6 @@ Agent 会按工具名称建立索引。模型返回的 ToolCall 必须能解析�
 | --- | --- |
 | `executionPolicy(...)` | 最大迭代、最大 Step、预算、重试和工具错误处理 |
 | `toolApprovalPolicy(...)` | 对退款、发布、删除等有副作用 Tool 要求人工批准 |
-| `planningPolicy(...)` | 开启模型自主任务规划、父子 Turn 和重规划限制 |
 | `maxAttachedTurns(...)` | 按完整 Turn 限制发送给模型的历史窗口，不拆分 Tool 协议 |
 | `maxAttachedMessages(...)` | 上下文消息数量安全上限，不删除完整历史 |
 | `compressionPolicy(...)` | 统一配置工具 Turn 归一化、语义压缩、增量触发和状态持久化 |
@@ -105,22 +104,6 @@ AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
 
 工具错误交回模型时，还可以在该策略中配置 `ToolErrorMessageFactory`，用于脱敏、映射业务错误码或提供补救建议。`ToolErrorStrategy` 决定控制流，Factory 决定模型看到的消息内容。
 
-### 任务规划能力
-
-开启 `AgentPlanningPolicy` 后，Runner 向模型提供内置规划工具。模型可以创建任务、选择目标 Agent、等待子任务并汇总结果。
-
-```java
-AgentPlanningPolicy planning = AgentPlanningPolicy.builder()
-    .enabled(true)
-    .maxTasks(6)
-    .maxDepth(2)
-    .maxReplans(1)
-    .finalSummaryRequired(true)
-    .build();
-```
-
-规划能力适合跨工具、跨 Agent 的动态任务；简单的固定顺序流程不必开启。
-
 ## AgentRunner 的能力配置
 
 `AgentRunner` 是无长期业务状态的执行器。它可以作为应用级单例复用，真正的 Turn 状态由 `AgentTurnStore` 保存。
@@ -135,7 +118,7 @@ AgentRunner runner = AgentRunner.builder()
 
 | Builder 方法 | 能力 |
 | --- | --- |
-| `turnStore(...)` | Snapshot、CAS、取消、租约和父子 Turn 的持久化能力 |
+| `turnStore(...)` | Snapshot、CAS、取消和租约的持久化能力 |
 | `agentLoader(...)` | 根据 Agent ID 和版本恢复完整 Agent 定义 |
 | `chatMemoryProvider(...)` | 可选，将业务会话历史投影到 ChatMemory；不配置时 Runner 不读写业务会话 |
 | `addEventListener(...)` | 监听不可变 `AgentEvent`，由业务侧保存审计、推送 UI 或写监控 |
@@ -171,14 +154,13 @@ AgentTurn turn = runner.run(
 | 创建并执行 | `run(...)` | 推进到完成、失败或阻塞 |
 | 只创建 | `start(...)` | 保存 `READY` Snapshot，交给 Worker 或稍后执行 |
 | 单步推进 | `step(...)` | 执行一个状态机 Step，适合自定义调度 |
-| 继续执行 | `runUntilBlocked(...)` | 推进到终态或等待审批、表单、子 Turn、重试 |
+| 继续执行 | `runUntilBlocked(...)` | 推进到终态或等待审批、表单、重试 |
 | 保存快照 | `saveSnapshot(...)` | 在业务需要时显式保存当前状态 |
 | 挂起 | `suspend(...)` | 工具或业务流程主动创建等待点 |
 | 恢复执行 | `resume(...)` | 提交审批或表单结果并立即继续 |
 | 更新可运行状态 | `submitResume(...)` | 提交恢复命令但不在当前线程执行 |
 | 取消 | `cancel(...)` | 持久化取消并在安全边界收束消息历史 |
 | 恢复查询 | `restore(...)` | 从 Store 重新装配 Turn |
-| 子任务 | `startChild(...)` / `resumeParentFromChild(...)` | 管理父子 Turn 关系 |
 | 后台调度 | `AgentWorker` | 使用 Lease 领取可运行 Snapshot |
 
 阻塞状态不是异常，而是正常的业务状态。前端可以根据事件或 ChatMemory 展示审批按钮、表单和重试状态；提交结果后调用对应的 `resume` 或 `submitResume`。
@@ -194,7 +176,6 @@ AgentTurn turn = runner.run(
 | 工具失败交回模型 | `ToolErrorStrategy`、`ToolErrorMessageFactory` |
 | 自动重试 | `AgentRetryPolicy`、`RETRY_SCHEDULED` |
 | 运行预算 | `AgentBudget`、`maxIterations`、`maxSteps` |
-| 任务规划 | `AgentPlanningPolicy`、父子 Turn、`AgentTaskPlan` |
 | 上下文窗口 | `maxAttachedTurns`、`maxAttachedMessages`、工具 Turn 归一化、业务侧 ChatMemory 和摘要 |
 | 动态工具 | `AgentMiddleware`、`AgentToolResolver` |
 | 取消与新问题 | `cancel(...)`、历史收束消息、业务侧并发策略 |
@@ -237,7 +218,6 @@ AgentTurn turn = runner.run(
 - [挂起与恢复](./suspend-resume)
 - [人工审批](./human-approval)
 - [表单输入](./form-input)
-- [任务规划](./task-planning)
 - [Snapshot 持久化](./snapshot)
 - [事件机制](./events)
 - [可观测性](./observability)

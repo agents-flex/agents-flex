@@ -32,13 +32,12 @@ Agent agent = Agent.builder("order-assistant")
 | 属性 | 作用 | 是否进入 Snapshot |
 | --- | --- | --- |
 | `id`、`version` | 恢复时定位定义 | 保存标识，不保存整个 Agent |
-| `name`、`description` | 展示及规划时描述能力 | 否 |
+| `name`、`description` | 展示及路由时描述能力 | 否 |
 | `instructions` | 注入 `SystemMessage` | 消息中保存当前结果 |
 | `chatModel`、`chatOptions` | 执行模型请求 | 否，恢复时重装配 |
 | `multimodalChatModel` | 当前 Prompt 含图片、音频、视频或文件时使用的模型 | 否，恢复时重装配 |
 | `tools`、`toolInterceptors` | 工具协议及执行链 | 否，恢复时重装配 |
 | `executionPolicy` | 迭代、重试、预算 | 有效策略会保存 |
-| `planningPolicy` | 自动规划及委派约束 | 计划状态保存，定义重装配 |
 | `maxAttachedTurns` | 单次模型调用最多附加的完整 Turn 数 | 否，恢复时随 Agent 定义重装配 |
 | `maxAttachedMessages` | 上下文窗口的消息数量安全上限 | 否，恢复时随 Agent 定义重装配 |
 | `compressionPolicy` | 统一配置工具 Turn 归一化、语义压缩、增量触发和状态持久化 | 否，恢复时随 Agent 定义重装配 |
@@ -65,9 +64,6 @@ Agent agent = Agent.builder("order-assistant")
     .build();
 ```
 
-规划开启后，框架会注入保留工具名 `create_task_plan`；允许重规划时还会注入
-`update_task_plan`。业务工具不能使用这些名称。
-
 需要让模型在长任务中请求结构化用户输入时，可以通过 `AgentUserInputTool.builder().form(...)` 注册
 允许选择的表单。模型调用
 稳定工具名 `request_user_input` 后，Runner 会暂停原 Turn；该控制工具不经过业务 Tool 函数、审批
@@ -79,7 +75,6 @@ Agent agent = Agent.builder("order-assistant")
 
 - `AgentExecutionPolicy`：最大模型迭代、Runner 总 step、工具错误策略、重试和预算。
 - `ToolApprovalPolicy`：允许、拒绝或要求审批。
-- `AgentPlanningPolicy`：是否规划、允许委派给谁、最大任务数和重规划次数。
 - `maxAttachedTurns`：每次模型调用最多保留多少个完整 Turn，默认 10。
 - `maxAttachedMessages`：上下文消息数量安全上限，默认 100；不会从 ToolCall/ToolMessage 中间截断。
 - `compressionPolicy`：统一控制较早历史的工具 Turn 归一化、语义压缩和增量摘要；只改变模型上下文，不清理 ChatMemory。
