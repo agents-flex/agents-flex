@@ -23,10 +23,12 @@ import java.io.Serializable;
  *     <li>规定工具执行失败后，是立即终止运行，还是把结构化错误返回给模型继续处理。</li>
  *     <li>为可恢复异常配置自动重试和退避时间；</li>
  *     <li>限制运行时间、Token 和工具调用次数。</li>
+ *     <li>限制并行工具批次的并发度，并定义批次失败语义。</li>
  * </ul>
  *
  * <p>策略属于 Agent 定义的一部分，会应用到该 Agent 创建的每一个 {@link AgentTurn}。</p>
- * <p>并行 ToolCall 仅适用于相互独立的本地工具；审批、表单和外部工具仍按可恢复的顺序状态机执行。</p>
+ * <p>并行 ToolCall 仅适用于相互独立的本地工具；审批、表单和外部工具仍按可恢复的顺序状态机执行。
+ * 并行工具应具备幂等性，因为超时或进程故障无法撤销已经发生的外部副作用。</p>
  */
 public final class AgentExecutionPolicy implements Serializable {
 
@@ -110,6 +112,14 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     private final AgentToolExecutionMode toolExecutionMode;
     /**
+     * 并行批次最多同时启动的本地工具数量。
+     */
+    private final int maxParallelToolCalls;
+    /**
+     * 并行批次失败后的处理方式。
+     */
+    private final AgentParallelFailureStrategy parallelFailureStrategy;
+    /**
      * 进程内重试分类器，不进入 Snapshot。
      */
     private transient AgentRetryClassifier retryClassifier;
@@ -133,6 +143,8 @@ public final class AgentExecutionPolicy implements Serializable {
         this.toolResultMaxCharacters = builder.toolResultMaxCharacters;
         this.externalToolResultMaxCharacters = builder.externalToolResultMaxCharacters;
         this.toolExecutionMode = builder.toolExecutionMode;
+        this.maxParallelToolCalls = builder.maxParallelToolCalls;
+        this.parallelFailureStrategy = builder.parallelFailureStrategy;
         this.retryClassifier = builder.retryClassifier;
     }
 
@@ -278,6 +290,22 @@ public final class AgentExecutionPolicy implements Serializable {
     }
 
     /**
+     * @return 并行批次最大并发工具数
+     */
+    public int getMaxParallelToolCalls() {
+        // 兼容反序列化的旧策略：新增字段缺省为 0 时回到安全默认上限。
+        return maxParallelToolCalls <= 0 ? 8 : maxParallelToolCalls;
+    }
+
+    /**
+     * @return 并行批次失败处理方式
+     */
+    public AgentParallelFailureStrategy getParallelFailureStrategy() {
+        return parallelFailureStrategy == null
+            ? AgentParallelFailureStrategy.FAIL_FAST : parallelFailureStrategy;
+    }
+
+    /**
      * 执行策略构建器。
      */
     public static final class Builder {
@@ -299,6 +327,8 @@ public final class AgentExecutionPolicy implements Serializable {
         private long externalToolResultMaxCharacters;
         private AgentRetryClassifier retryClassifier = AgentRetryClassifier.defaults();
         private AgentToolExecutionMode toolExecutionMode = AgentToolExecutionMode.SEQUENTIAL;
+        private int maxParallelToolCalls = 8;
+        private AgentParallelFailureStrategy parallelFailureStrategy = AgentParallelFailureStrategy.FAIL_FAST;
 
         /**
          * 设置最大模型迭代次数。
@@ -440,6 +470,23 @@ public final class AgentExecutionPolicy implements Serializable {
         }
 
         /**
+         * 设置并行批次最大并发工具数；超过上限时自动回退顺序执行。
+         */
+        public Builder maxParallelToolCalls(int value) {
+            this.maxParallelToolCalls = value;
+            return this;
+        }
+
+        /**
+         * 设置并行批次出现失败时是快速失败还是将错误交回模型。
+         */
+        public Builder parallelFailureStrategy(AgentParallelFailureStrategy value) {
+            this.parallelFailureStrategy = value == null
+                ? AgentParallelFailureStrategy.FAIL_FAST : value;
+            return this;
+        }
+
+        /**
          * 构建不可变执行策略。
          *
          * @throws IllegalStateException 最大迭代次数非法或错误策略为空时抛出
@@ -467,6 +514,10 @@ public final class AgentExecutionPolicy implements Serializable {
             }
             if (retryClassifier == null) {
                 throw new IllegalStateException("retryClassifier must not be null");
+            }
+            if (maxParallelToolCalls <= 0 || parallelFailureStrategy == null) {
+                throw new IllegalStateException(
+                    "maxParallelToolCalls must be greater than 0 and parallelFailureStrategy must not be null");
             }
             return new AgentExecutionPolicy(this);
         }

@@ -260,6 +260,9 @@ public final class AgentWorker implements AutoCloseable {
      */
     private synchronized void beginPoll() {
         if (closed) throw new IllegalStateException("AgentWorker is already closed");
+        if (activePolls > 0) {
+            throw new IllegalStateException("AgentWorker poll is already in progress");
+        }
         activePolls++;
     }
 

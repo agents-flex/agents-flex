@@ -512,6 +512,21 @@ public final class AgentTurnState implements Serializable {
         if (!pendingToolCalls.isEmpty()) pendingToolCalls.remove(0);
     }
 
+    /**
+     * 按调用 ID 移除指定 pending ToolCall，供并行结果按完成情况安全落盘。
+     */
+    void removePendingToolCall(String callId) {
+        requireMutable();
+        if (callId == null) return;
+        for (int index = 0; index < pendingToolCalls.size(); index++) {
+            ToolCall call = pendingToolCalls.get(index);
+            if (call != null && callId.equals(call.getId())) {
+                pendingToolCalls.remove(index);
+                return;
+            }
+        }
+    }
+
     void setSuspension(AgentSuspension value) {
         requireMutable();
         suspension = value == null ? null : value.copy();

@@ -1021,7 +1021,8 @@ public final class AgentRunner {
      */
     private AgentStepResult executePendingTools(AgentTurn turn, AiMessageResponse response) {
         if (turn.getExecutionPolicy().getToolExecutionMode() == AgentToolExecutionMode.PARALLEL
-            && turn.getPendingToolCalls().size() > 1) {
+            && turn.getPendingToolCalls().size() > 1
+            && turn.getPendingToolCalls().size() <= turn.getExecutionPolicy().getMaxParallelToolCalls()) {
             AgentStepResult parallel = executePendingToolsInParallel(turn, response);
             if (parallel != null) return parallel;
         }
@@ -1194,13 +1195,14 @@ public final class AgentRunner {
                 futures.add(executor.submit(() -> executeTool(turn, tool, call, invocationExecutor)));
             }
             List<ToolMessage> results = new ArrayList<>(calls.size());
+            RuntimeException firstFailure = null;
+            List<RuntimeException> failures = new ArrayList<>(calls.size());
             for (int index = 0; index < calls.size(); index++) {
                 ToolCall call = calls.get(index);
                 try {
                     ToolMessage result = futures.get(index).get();
-                    appendToolResult(turn, call, result);
+                    // 暂存成功结果，先收集完整批次，避免前序失败导致后序成功结果无法落盘。
                     results.add(result);
-                    eventPublisher.notifyToolEnd(turn, call);
                 } catch (InterruptedException error) {
                     Thread.currentThread().interrupt();
                     return handleFailure(turn, response,
@@ -1211,18 +1213,42 @@ public final class AgentRunner {
                     RuntimeException failure = cause instanceof RuntimeException
                         ? (RuntimeException) cause : new IllegalStateException("parallel tool execution failed", cause);
                     eventPublisher.notifyToolError(turn, call, failure);
-                    if (turn.getExecutionPolicy().getToolErrorStrategy() == ToolErrorStrategy.RETURN_ERROR_TO_MODEL) {
-                        ToolMessage result = buildToolErrorMessage(turn, call, failure);
-                        appendToolResult(turn, call, result);
-                        results.add(result);
-                        continue;
-                    }
-                    return handleFailure(turn, response, failure, AgentTurnExecutionPoint.PROCESS_TOOLS);
+                    if (firstFailure == null) firstFailure = failure;
+                    failures.add(failure);
+                    results.add(null);
+                    continue;
                 }
+                failures.add(null);
+            }
+            // 按模型声明顺序写入成功结果；并行完成顺序不影响 Prompt 顺序。
+            List<ToolMessage> returned = new ArrayList<>(calls.size());
+            boolean returnErrors = turn.getExecutionPolicy().getToolErrorStrategy()
+                == ToolErrorStrategy.RETURN_ERROR_TO_MODEL
+                || turn.getExecutionPolicy().getParallelFailureStrategy()
+                == AgentParallelFailureStrategy.RETURN_ERRORS_TO_MODEL;
+            for (int index = 0; index < calls.size(); index++) {
+                ToolCall call = calls.get(index);
+                ToolMessage result = results.get(index);
+                if (result == null) {
+                    if (returnErrors) {
+                        result = buildToolErrorMessage(turn, call, failures.get(index));
+                        appendToolResult(turn, call, result);
+                        returned.add(result);
+                    }
+                    continue;
+                }
+                turn.getPrompt().addMessage(result);
+                turn.removePendingToolCall(call.getId());
+                saveSnapshot(turn);
+                returned.add(result);
+                eventPublisher.notifyToolEnd(turn, call);
+            }
+            if (firstFailure != null && !returnErrors) {
+                return handleFailure(turn, response, firstFailure, AgentTurnExecutionPoint.PROCESS_TOOLS);
             }
             turn.moveTo(AgentTurnExecutionPoint.INVOKE_MODEL);
             saveSnapshot(turn);
-            return AgentStepResult.of(response, results, null);
+            return AgentStepResult.of(response, returned, null);
         } finally {
             executor.shutdownNow();
             invocationExecutor.shutdownNow();

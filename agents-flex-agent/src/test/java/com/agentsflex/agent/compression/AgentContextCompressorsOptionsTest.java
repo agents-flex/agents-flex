@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class AgentContextCompressorsOptionsTest {
 
@@ -139,7 +140,33 @@ public class AgentContextCompressorsOptionsTest {
         assertNotSame(first, options.getChatOptions());
     }
 
-    private static final class CapturingChatModel implements ChatModel {
+    @Test
+    public void compressionModelTimeoutIsApplied() {
+        ChatModel slow = new CapturingChatModel("summary") {
+            @Override
+            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                }
+                return super.chat(prompt, options);
+            }
+        };
+        AgentContextModelCompressorOptions options = AgentContextModelCompressorOptions.builder()
+            .instruction("summarize")
+            .modelCallTimeoutMillis(20)
+            .build();
+        try {
+            AgentContextCompressors.model(slow, options)
+                .compress(Arrays.<Message>asList(new UserMessage("question")));
+            fail("compression model timeout must fail promptly");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("timeout"));
+        }
+    }
+
+    private static class CapturingChatModel implements ChatModel {
         private final String response;
         private String promptText;
         private ChatOptions options;

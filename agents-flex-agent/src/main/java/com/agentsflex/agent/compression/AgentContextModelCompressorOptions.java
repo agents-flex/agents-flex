@@ -23,6 +23,10 @@ public final class AgentContextModelCompressorOptions {
     private final String perMessageRequest;
     private final String summaryPrefix;
     private final ChatOptions chatOptions;
+    /**
+     * 摘要模型单次调用超时；0 表示不限制。
+     */
+    private final long modelCallTimeoutMillis;
     private final Function<Message, String> modelMessageFormatter;
     private final Function<Message, String> perMessageFormatter;
 
@@ -48,6 +52,10 @@ public final class AgentContextModelCompressorOptions {
         this.summaryPrefix = builder.summaryPrefix;
         this.chatOptions = builder.chatOptions == null
             ? new ChatOptions() : builder.chatOptions.copy();
+        if (builder.modelCallTimeoutMillis < 0) {
+            throw new IllegalArgumentException("modelCallTimeoutMillis must not be negative");
+        }
+        this.modelCallTimeoutMillis = builder.modelCallTimeoutMillis;
         this.modelMessageFormatter = builder.modelMessageFormatter;
         this.perMessageFormatter = builder.perMessageFormatter;
     }
@@ -79,6 +87,13 @@ public final class AgentContextModelCompressorOptions {
         return chatOptions.copy();
     }
 
+    /**
+     * @return 摘要模型单次调用超时时间（毫秒），0 表示不限制
+     */
+    public long getModelCallTimeoutMillis() {
+        return modelCallTimeoutMillis;
+    }
+
     public Function<Message, String> getModelMessageFormatter() {
         return modelMessageFormatter;
     }
@@ -94,6 +109,7 @@ public final class AgentContextModelCompressorOptions {
             "\n请逐条摘要以下消息，并仅返回 JSON 数组，每项包含 messageId 和 summary：\n";
         private String summaryPrefix = "以下是较早对话的摘要，请将其作为历史事实参考：";
         private ChatOptions chatOptions;
+        private long modelCallTimeoutMillis;
         private Function<Message, String> modelMessageFormatter = message -> {
             String text = message.getTextContent();
             return text == null || text.isEmpty()
@@ -126,6 +142,14 @@ public final class AgentContextModelCompressorOptions {
 
         public Builder chatOptions(ChatOptions value) {
             this.chatOptions = value;
+            return this;
+        }
+
+        /**
+         * 设置摘要模型单次调用超时；超时后压缩器抛出异常，由压缩失败策略决定后续行为。
+         */
+        public Builder modelCallTimeoutMillis(long value) {
+            this.modelCallTimeoutMillis = value;
             return this;
         }
 

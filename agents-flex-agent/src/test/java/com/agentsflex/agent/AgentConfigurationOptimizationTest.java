@@ -66,6 +66,34 @@ public class AgentConfigurationOptimizationTest {
     }
 
     @Test
+    public void parallelFailurePersistsSuccessfulSiblingOnlyOnce() {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        AtomicInteger successfulCalls = new AtomicInteger();
+        model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(
+            new ToolCall("failed", "fail", "{}"), new ToolCall("ok", "ok", "{}")));
+        Agent agent = Agent.builder("parallel-failure")
+            .chatModel(model)
+            .tool(AgentScenarioTestSupport.tool("fail", args -> {
+                throw new IllegalStateException("boom");
+            }))
+            .tool(AgentScenarioTestSupport.tool("ok", args -> {
+                successfulCalls.incrementAndGet();
+                return "ok";
+            }))
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .toolExecutionMode(AgentToolExecutionMode.PARALLEL)
+                .retryPolicy(AgentRetryPolicy.builder().maxRetries(1).initialDelayMillis(0).build())
+                .build())
+            .build();
+
+        AgentTurn turn = new AgentRunner().run(agent, "parallel failure");
+        assertEquals(AgentTurnStatus.RETRY_SCHEDULED, turn.getStatus());
+        assertEquals("successful sibling must not be retried", 1, successfulCalls.get());
+        assertEquals("only the failed call remains pending", 1, turn.getPendingToolCalls().size());
+        assertEquals("failed", turn.getPendingToolCalls().get(0).getId());
+    }
+
+    @Test
     public void toolVisibilityAlsoFiltersToolGroupButKeepsHiddenToolExecutable() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         AtomicInteger hiddenInvocations = new AtomicInteger();
@@ -202,6 +230,32 @@ public class AgentConfigurationOptimizationTest {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("workerId"));
         }
+    }
+
+    @Test
+    public void parallelToolCallLimitFallsBackToSequentialExecution() {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        AtomicInteger calls = new AtomicInteger();
+        model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(
+            new ToolCall("a", "a", "{}"), new ToolCall("b", "b", "{}")));
+        model.enqueue(prompt -> new AiMessage("done"));
+        Agent agent = Agent.builder("parallel-limit")
+            .chatModel(model)
+            .tool(AgentScenarioTestSupport.tool("a", args -> {
+                calls.incrementAndGet();
+                return "a";
+            }))
+            .tool(AgentScenarioTestSupport.tool("b", args -> {
+                calls.incrementAndGet();
+                return "b";
+            }))
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .toolExecutionMode(AgentToolExecutionMode.PARALLEL)
+                .maxParallelToolCalls(1).build())
+            .build();
+        AgentTurn turn = new AgentRunner().run(agent, "limit");
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals(2, calls.get());
     }
 
     @Test

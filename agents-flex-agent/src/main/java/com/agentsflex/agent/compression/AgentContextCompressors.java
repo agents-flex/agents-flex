@@ -14,11 +14,26 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * 常用的上下文压缩策略工厂；压缩只生成模型可见视图，不修改 ChatMemory。
  */
 public final class AgentContextCompressors {
+    /**
+     * 压缩模型默认使用 daemon 线程，避免摘要调用阻塞应用退出。
+     */
+    private static final ExecutorService MODEL_EXECUTOR = Executors.newCachedThreadPool(runnable -> {
+        Thread thread = new Thread(runnable, "agent-context-compression");
+        thread.setDaemon(true);
+        return thread;
+    });
+
     /**
      * 工厂类不保存实例状态，禁止构造。
      */
@@ -103,8 +118,7 @@ public final class AgentContextCompressors {
             for (Message message : messages) {
                 input.append(format(options.getModelMessageFormatter(), message));
             }
-            AiMessageResponse response = model.chat(new SimplePrompt(input.toString()),
-                options.getChatOptions());
+            AiMessageResponse response = callModel(model, new SimplePrompt(input.toString()), options);
             if (response == null || response.isError() || response.getMessage() == null) {
                 if (response != null && response.isError()) response.throwIfError();
                 throw new IllegalStateException("context summary model returned no message");
@@ -154,8 +168,7 @@ public final class AgentContextCompressors {
             if (!hasCompressibleMessage) {
                 return copy(messages);
             }
-            AiMessageResponse response = model.chat(new SimplePrompt(input.toString()),
-                options.getChatOptions());
+            AiMessageResponse response = callModel(model, new SimplePrompt(input.toString()), options);
             if (response == null || response.isError() || response.getMessage() == null) {
                 if (response != null && response.isError()) response.throwIfError();
                 throw new IllegalStateException("per-message summary model returned no message");
@@ -218,6 +231,32 @@ public final class AgentContextCompressors {
             throw new IllegalStateException("compression message formatter returned null");
         }
         return value;
+    }
+
+    /**
+     * 执行摘要模型调用并统一处理超时、中断和底层异常。
+     */
+    private static AiMessageResponse callModel(ChatModel model, SimplePrompt prompt,
+                                               AgentContextModelCompressorOptions options) {
+        long timeout = options.getModelCallTimeoutMillis();
+        if (timeout <= 0) return model.chat(prompt, options.getChatOptions());
+        FutureTask<AiMessageResponse> task = new FutureTask<>(
+            () -> model.chat(prompt, options.getChatOptions()));
+        MODEL_EXECUTOR.execute(task);
+        try {
+            return task.get(timeout, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException error) {
+            task.cancel(true);
+            throw new IllegalStateException(
+                "context compression model call exceeded timeout: " + timeout + "ms", error);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("context compression model call was interrupted", error);
+        } catch (ExecutionException error) {
+            Throwable cause = error.getCause();
+            if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+            throw new IllegalStateException("context compression model call failed", cause);
+        }
     }
 
     /**

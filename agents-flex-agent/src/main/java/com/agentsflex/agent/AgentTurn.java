@@ -255,14 +255,11 @@ public final class AgentTurn {
         prompt.setTools(visible);
         List<ToolGroup> visibleGroups = new ArrayList<>();
         for (ToolGroup group : agent.getToolGroups()) {
-            boolean filtered = false;
+            List<Tool> groupVisibleTools = new ArrayList<>();
             for (Tool tool : group.getTools()) {
-                if (!agent.getToolVisibilityPolicy().isVisible(this, tool)) {
-                    filtered = true;
-                    break;
-                }
+                if (agent.getToolVisibilityPolicy().isVisible(this, tool)) groupVisibleTools.add(tool);
             }
-            if (!filtered) {
+            if (groupVisibleTools.size() == group.getTools().size()) {
                 // 默认/全量策略下复用原对象，保持现有 Prompt 身份语义和零额外分配。
                 visibleGroups.add(group);
                 continue;
@@ -271,9 +268,7 @@ public final class AgentTurn {
                 .description(group.getDescription())
                 .systemPrompt(group.getSystemPrompt())
                 .matcher(group.getMatcher());
-            for (Tool tool : group.getTools()) {
-                if (agent.getToolVisibilityPolicy().isVisible(this, tool)) copy.addTool(tool);
-            }
+            copy.addTools(groupVisibleTools);
             visibleGroups.add(copy.build());
         }
         prompt.setToolGroups(visibleGroups);
@@ -673,6 +668,13 @@ public final class AgentTurn {
      */
     void removeFirstPendingToolCall() {
         state.removeFirstPendingToolCall();
+    }
+
+    /**
+     * 按 ToolCall ID 移除并行批次中已经成功落盘的调用。
+     */
+    void removePendingToolCall(String callId) {
+        state.removePendingToolCall(callId);
     }
 
     /**
