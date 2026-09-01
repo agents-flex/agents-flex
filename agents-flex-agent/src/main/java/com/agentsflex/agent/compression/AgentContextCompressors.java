@@ -4,7 +4,6 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.ChatModel;
-import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.prompt.SimplePrompt;
 import com.alibaba.fastjson2.JSON;
@@ -14,9 +13,10 @@ import com.alibaba.fastjson2.JSONObject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 
 /**
- * 常用的本地上下文压缩策略工厂；不调用模型，也不修改 ChatMemory。
+ * 常用的上下文压缩策略工厂；压缩只生成模型可见视图，不修改 ChatMemory。
  */
 public final class AgentContextCompressors {
     /**
@@ -55,7 +55,15 @@ public final class AgentContextCompressors {
      * 将历史文本提取为单条用户摘要，并限制字符数，适合作为简单兜底策略。
      */
     public static AgentContextCompressor textExcerpt(int maxCharacters) {
+        return textExcerpt(maxCharacters, "历史上下文摘要：");
+    }
+
+    /**
+     * 将历史文本提取为单条用户摘要，并允许自定义摘要前缀。
+     */
+    public static AgentContextCompressor textExcerpt(int maxCharacters, String prefix) {
         if (maxCharacters <= 0) throw new IllegalArgumentException("maxCharacters must be greater than 0");
+        if (prefix == null) throw new IllegalArgumentException("prefix must not be null");
         return messages -> {
             StringBuilder text = new StringBuilder();
             for (Message message : messages) {
@@ -64,7 +72,7 @@ public final class AgentContextCompressors {
                 }
             }
             String value = text.length() <= maxCharacters ? text.toString() : text.substring(0, maxCharacters);
-            return Collections.<Message>singletonList(new UserMessage("历史上下文摘要：\n" + value));
+            return Collections.<Message>singletonList(new UserMessage(prefix + "\n" + value));
         };
     }
 
@@ -77,18 +85,26 @@ public final class AgentContextCompressors {
      */
     public static AgentContextCompressor model(ChatModel model, String instruction) {
         if (model == null) throw new IllegalArgumentException("model must not be null");
-        if (instruction == null || instruction.trim().isEmpty()) {
-            throw new IllegalArgumentException("instruction must not be blank");
-        }
+        return model(model, AgentContextModelCompressorOptions.builder()
+            .instruction(instruction)
+            .build());
+    }
+
+    /**
+     * 使用配置对象创建整段历史摘要压缩器。
+     */
+    public static AgentContextCompressor model(
+        ChatModel model, AgentContextModelCompressorOptions options) {
+        if (model == null) throw new IllegalArgumentException("model must not be null");
+        if (options == null) throw new IllegalArgumentException("options must not be null");
         return messages -> {
-            StringBuilder input = new StringBuilder(instruction).append("\n\n历史消息：\n");
+            StringBuilder input = new StringBuilder(options.getInstruction())
+                .append(options.getHistoryHeader());
             for (Message message : messages) {
-                String text = message.getTextContent();
-                if (text != null && !text.isEmpty()) {
-                    input.append(message.getClass().getSimpleName()).append(": ").append(text).append('\n');
-                }
+                input.append(format(options.getModelMessageFormatter(), message));
             }
-            AiMessageResponse response = model.chat(new SimplePrompt(input.toString()), new ChatOptions());
+            AiMessageResponse response = model.chat(new SimplePrompt(input.toString()),
+                options.getChatOptions());
             if (response == null || response.isError() || response.getMessage() == null) {
                 if (response != null && response.isError()) response.throwIfError();
                 throw new IllegalStateException("context summary model returned no message");
@@ -96,7 +112,7 @@ public final class AgentContextCompressors {
             AiMessage summary = response.getMessage().copy();
             summary.setToolCalls(null);
             return java.util.Arrays.<Message>asList(
-                new UserMessage("以下是较早对话的摘要，请将其作为历史事实参考："), summary);
+                new UserMessage(options.getSummaryPrefix()), summary);
         };
     }
 
@@ -108,20 +124,38 @@ public final class AgentContextCompressors {
      */
     public static AgentContextCompressor perMessageModel(ChatModel model, String instruction) {
         if (model == null) throw new IllegalArgumentException("model must not be null");
-        if (instruction == null || instruction.trim().isEmpty()) {
-            throw new IllegalArgumentException("instruction must not be blank");
-        }
+        return perMessageModel(model, AgentContextModelCompressorOptions.builder()
+            .instruction(instruction)
+            .build());
+    }
+
+    /**
+     * 使用配置对象创建逐条消息摘要压缩器。
+     */
+    public static AgentContextCompressor perMessageModel(
+        ChatModel model, AgentContextModelCompressorOptions options) {
+        if (model == null) throw new IllegalArgumentException("model must not be null");
+        if (options == null) throw new IllegalArgumentException("options must not be null");
         return messages -> {
-            StringBuilder input = new StringBuilder(instruction)
-                .append("\n请逐条摘要以下消息，并仅返回 JSON 数组，每项包含 messageId 和 summary：\n");
+            StringBuilder input = new StringBuilder(options.getInstruction())
+                .append(options.getPerMessageRequest());
+            boolean hasCompressibleMessage = false;
             for (Message message : messages) {
                 if (message instanceof AiMessage && ((AiMessage) message).hasToolCalls()) continue;
                 if (message instanceof com.agentsflex.core.message.ToolMessage) continue;
-                input.append("messageId=").append(message.getMessageId())
-                    .append(", role=").append(message.getClass().getSimpleName())
-                    .append(", content=").append(message.getTextContent()).append('\n');
+                String formatted = format(options.getPerMessageFormatter(), message);
+                if (message.getMessageId() == null || !formatted.contains(message.getMessageId())) {
+                    throw new IllegalStateException(
+                        "per-message compression formatter must include messageId");
+                }
+                input.append(formatted);
+                hasCompressibleMessage = true;
             }
-            AiMessageResponse response = model.chat(new SimplePrompt(input.toString()), new ChatOptions());
+            if (!hasCompressibleMessage) {
+                return copy(messages);
+            }
+            AiMessageResponse response = model.chat(new SimplePrompt(input.toString()),
+                options.getChatOptions());
             if (response == null || response.isError() || response.getMessage() == null) {
                 if (response != null && response.isError()) response.throwIfError();
                 throw new IllegalStateException("per-message summary model returned no message");
@@ -146,6 +180,10 @@ public final class AgentContextCompressors {
             }
             java.util.Map<String, String> byId = new java.util.HashMap<>();
             for (Object value : summaries) {
+                if (!(value instanceof JSONObject)) {
+                    throw new IllegalStateException(
+                        "per-message summary model must return JSON objects");
+                }
                 JSONObject item = (JSONObject) value;
                 String id = item.getString("messageId");
                 String summary = item.getString("summary");
@@ -172,6 +210,14 @@ public final class AgentContextCompressors {
             }
             return result;
         };
+    }
+
+    private static String format(Function<Message, String> formatter, Message message) {
+        String value = formatter.apply(message);
+        if (value == null) {
+            throw new IllegalStateException("compression message formatter returned null");
+        }
+        return value;
     }
 
     /**

@@ -90,6 +90,52 @@ Agent agent = Agent.builder("support-agent")
     .build();
 ```
 
+需要控制摘要请求和摘要注入形式时，使用模型压缩配置对象：
+
+```java
+AgentContextModelCompressorOptions compressionOptions =
+    AgentContextModelCompressorOptions.builder()
+        .instruction("请总结历史事实，保留业务 ID、约束和未完成事项")
+        .historyHeader("\n\n需要总结的历史消息：\n")
+        .summaryPrefix("以下是历史摘要，请结合当前请求继续处理：")
+        .chatOptions(ChatOptions.builder()
+            .temperature(0.1f)
+            .maxTokens(2_000)
+            .thinkingEnabled(false)
+            .build())
+        .modelMessageFormatter(message ->
+            message.getClass().getSimpleName() + ": " + message.getTextContent() + "\n")
+        .build();
+
+AgentContextCompressor compressor =
+    AgentContextCompressors.model(summaryModel, compressionOptions);
+```
+
+`summaryPrefix` 就是摘要结果前面的用户消息，默认值为
+“以下是较早对话的摘要，请将其作为历史事实参考：”。`historyHeader` 和
+`modelMessageFormatter` 控制发给摘要模型的历史部分；`chatOptions` 控制摘要请求的模型名、温度、
+最大输出 Token、思考模式和厂商扩展参数。配置对象会复制 `ChatOptions`，不会与其他压缩请求共享
+请求级修改。
+
+逐条摘要使用同一个配置类型，但读取 `perMessageRequest` 和 `perMessageFormatter`：
+
+```java
+AgentContextCompressor compressor = AgentContextCompressors.perMessageModel(
+    summaryModel,
+    AgentContextModelCompressorOptions.builder()
+        .instruction("逐条压缩历史消息，保留事实和约束")
+        .perMessageRequest("\n仅返回 messageId 和 summary 组成的 JSON 数组：\n")
+        .perMessageFormatter(message ->
+            "messageId=" + message.getMessageId()
+                + ", role=" + message.getClass().getSimpleName()
+                + ", content=" + message.getTextContent() + "\n")
+        .chatOptions(ChatOptions.builder().maxTokens(2_000).build())
+        .build());
+```
+
+自定义 `perMessageFormatter` 必须保留每条消息的 `messageId`，否则框架会拒绝调用摘要模型，
+避免摘要结果无法关联原消息。
+
 摘要模型的结果只用于当前模型请求，不会回写 `ChatMemory`。摘要失败时应保留原始历史并记录错误，不要直接清空业务数据库。
 
 ## 为什么需要增量压缩
@@ -210,6 +256,7 @@ AgentContextCompressor compressor = AgentContextCompressors.chain(
 - `identity()`：只复制消息，用于关闭压缩或调试。
 - `compactCompletedTurns()`：每个已完成 Turn 只保留 UserMessage 和最终 AiMessage。
 - `textExcerpt(maxCharacters)`：生成简单文本摘录，适合低成本兜底。
+- `textExcerpt(maxCharacters, prefix)`：生成带自定义前缀的文本摘录。
 - `model(...)`：将整段历史总结为合法的模型消息。
 - `perMessageModel(...)`：为每条 User/AI 消息生成摘要，保留消息角色和 ID。
 - 自定义实现：按领域提取订单、权限、审批、时间和未完成事项等结构化事实。

@@ -10,6 +10,7 @@ import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentModelCallChain;
+import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.MemoryPrompt;
@@ -51,7 +52,7 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
         assertTrue(excerpt.get(0) instanceof UserMessage);
 
         List<Message> summary = AgentContextCompressors.model(model,
-            "请用中文简要总结历史对话，保留订单号、日期和用户约束，不要调用工具。")
+                "请用中文简要总结历史对话，保留订单号、日期和用户约束，不要调用工具。")
             .compress(history);
         assertEquals(2, summary.size());
         assertTrue(summary.get(0) instanceof UserMessage);
@@ -59,7 +60,14 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
         assertTrue(summary.get(1).getTextContent().length() > 0);
 
         List<Message> perMessage = AgentContextCompressors.perMessageModel(model,
-            "请逐条压缩每条消息，保留订单号、日期和用户约束。仅返回 JSON 数组，每项必须有 messageId 和 summary。")
+                AgentContextModelCompressorOptions.builder()
+                    .instruction("请逐条压缩每条消息，保留订单号、日期和用户约束。仅返回 JSON 数组，每项必须有 messageId 和 summary。")
+                    .chatOptions(ChatOptions.builder()
+                        .temperature(0.1f)
+                        .maxTokens(2_000)
+                        .thinkingEnabled(false)
+                        .build())
+                    .build())
             .compress(history);
         assertEquals(history.size(), perMessage.size());
         for (int index = 0; index < history.size(); index++) {
@@ -91,7 +99,7 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
             .middleware(new AgentMiddleware() {
                 @Override
                 public AiMessageResponse aroundModelCall(AgentMiddlewareContext context,
-                                                          AgentModelCallChain chain) {
+                                                         AgentModelCallChain chain) {
                     captured.set(context.getPrompt());
                     return chain.proceed(context);
                 }

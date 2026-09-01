@@ -92,6 +92,29 @@ Agent agent = Agent.builder("support-agent")
     .build();
 ```
 
+需要自定义摘要前缀、历史段标题、消息格式或模型参数时，可以传入
+`AgentContextModelCompressorOptions`：
+
+```java
+AgentContextCompressor compressor = AgentContextCompressors.model(
+    summaryModel,
+    AgentContextModelCompressorOptions.builder()
+        .instruction("保留事实、ID、约束和未完成事项")
+        .historyHeader("\n\n待压缩历史：\n")
+        .summaryPrefix("以下是历史摘要，请作为当前任务的背景信息：")
+        .chatOptions(ChatOptions.builder()
+            .temperature(0.1f)
+            .maxTokens(2_000)
+            .thinkingEnabled(false)
+            .build())
+        .modelMessageFormatter(message ->
+            message.getClass().getSimpleName() + ": " + message.getTextContent() + "\n")
+        .build());
+```
+
+逐条摘要使用同一配置类型的 `perMessageRequest(...)` 和 `perMessageFormatter(...)`。
+逐条格式化结果必须包含原消息的 `messageId`，用于把模型返回的摘要写回对应消息副本。
+
 该策略只对较早已完成 Turn 调用一次摘要模型，模型返回内容会被包装为合法的
 `UserMessage + AiMessage`。摘要模型不应注册业务工具；压缩失败时 Runner 会中止本次模型调用，
 业务侧可以记录错误并重试或暂时关闭语义压缩。
