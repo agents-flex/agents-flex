@@ -42,6 +42,7 @@ import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.exception.ModelQuotaExceededException;
 import com.agentsflex.core.model.exception.TokenLimitExceededException;
 import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.ToolExecutionTarget;
 import com.agentsflex.core.model.chat.tool.ToolExecutor;
 import com.agentsflex.core.model.chat.tool.ToolInterceptor;
 import com.agentsflex.core.prompt.Prompt;
@@ -63,14 +64,14 @@ import java.util.concurrent.ConcurrentMap;
  *
  * <p>Runner 可以理解为一个可持久化的状态机执行器。{@link Agent} 提供模型、指令、工具和执行
  * 策略，{@link AgentTurn} 保存某个 Agent 一次输入到最终结果的可变状态，Runner 根据 Turn 的
- * {@link AgentTurnStatus} 和 {@link AgentTurnPhase} 决定下一步调用模型、执行工具、等待外部事件，
+ * {@link AgentTurnStatus} 和 {@link AgentTurnExecutionPoint} 决定下一步调用模型、执行工具、等待外部事件，
  * 或结束本轮。每个 Turn 对应一次独立的 Agent 调用。</p>
  *
  * <p>一次标准执行由三层组成：</p>
  * <ol>
  *     <li>{@link #runUntilBlocked(AgentTurn)} 决定是否继续循环；</li>
  *     <li>{@link #step(AgentTurn)} 完成取消、Lease、预算和 Middleware 等通用检查；</li>
- *     <li>内置 ToolCall 状态机根据当前 Phase 推进模型调用或工具执行。</li>
+ *     <li>内置 ToolCall 状态机根据当前 ExecutionPoint 推进模型调用或工具执行。</li>
  * </ol>
  *
  * <p>内置状态机使用模型原生 ToolCall。模型产生 ToolCall 后，Runner 先把调用及参数保存为
@@ -659,7 +660,7 @@ public final class AgentRunner {
     /**
      * 将 Turn 置为等待外部事件的状态并立即保存。
      *
-     * <p>Suspension 同时记录等待类型、关联 ID 和恢复 Phase。外部命令只有匹配这些信息才能恢复，
+     * <p>Suspension 同时记录等待类型、关联 ID 和恢复 ExecutionPoint。外部命令只有匹配这些信息才能恢复，
      * 从而避免把某次审批决定误用到另一个 ToolCall。</p>
      */
     public AgentTurn suspend(AgentTurn turn, AgentSuspension suspension) {
@@ -702,14 +703,16 @@ public final class AgentRunner {
         // 先按 Suspension 类型校验并应用命令，任何不匹配的命令都不能改变运行状态。
         applyResumeCommand(turn, suspension, command);
         // 恢复到暂停前保存的模型或工具阶段，不从任务开头重新执行。
-        AgentTurnPhase resumePhase = suspension.getResumePhase();
-        if (suspension.getType() == AgentSuspensionType.USER_INPUT
-            && StringUtil.hasText(suspension.getCorrelationId())
+        AgentTurnExecutionPoint resumeExecutionPoint = suspension.getResumeExecutionPoint();
+        if (resumeExecutionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS
             && turn.getPendingToolCalls().isEmpty()) {
-            resumePhase = AgentTurnPhase.MODEL;
+            resumeExecutionPoint = AgentTurnExecutionPoint.INVOKE_MODEL;
         }
-        turn.resumeAt(resumePhase);
+        turn.resumeAt(resumeExecutionPoint);
         saveSnapshot(turn);
+        if (suspension.getType() == AgentSuspensionType.EXTERNAL_TOOL) {
+            eventPublisher.notifyExternalToolResult(turn, suspension, command);
+        }
         eventPublisher.notifyTurnResumed(turn, command);
         return turn;
     }
@@ -788,12 +791,12 @@ public final class AgentRunner {
         afterStepEvents.set(deferredEvents);
         try {
             eventPublisher.publish(turn, AgentEventType.STEP_STARTED,
-                objectAttributes("phase", turn.getPhase()));
+                objectAttributes("executionPoint", turn.getExecutionPoint()));
             AgentStepResult result = maxStepsReached
                 ? maxStepsReached(turn) : stepCore(turn);
             eventPublisher.publish(turn, AgentEventType.STEP_COMPLETED,
                 objectAttributes("status", turn.getStatus(),
-                    "phase", turn.getPhase(),
+                    "executionPoint", turn.getExecutionPoint(),
                     "toolMessageCount", result == null ? 0 : result.getToolMessages().size()));
             publishDeferredEvents(deferredEvents);
             publishTerminalEvent(turn);
@@ -852,7 +855,7 @@ public final class AgentRunner {
         if (result == null) {
             return handleFailure(turn, null,
                 new IllegalStateException("Agent step returned null result"),
-                turn.getPhase());
+                turn.getExecutionPoint());
         }
         // 模型或工具执行期间控制面可能提交取消，返回本步之前再同步一次单调取消信号。
         refreshCancellation(turn);
@@ -865,25 +868,26 @@ public final class AgentRunner {
     /**
      * 使用模型原生 ToolCall 协议推进一个稳定执行步骤。
      *
-     * <p>Phase 是恢复游标而不是业务状态：MODEL 表示下一步应请求模型，TOOLS 表示模型已经生成了
+     * <p>ExecutionPoint 是恢复游标而不是业务状态：INVOKE_MODEL 表示下一步应请求模型，PROCESS_TOOLS 表示模型已经生成了
      * 尚未处理完的 ToolCall，FINISHED 表示运行已经结束。</p>
      *
-     * <p>MODEL 阶段最多调用模型一次；TOOLS 阶段按顺序处理当前模型回合遗留的全部工具调用，并在
+     * <p>INVOKE_MODEL 阶段最多调用模型一次；PROCESS_TOOLS 阶段按顺序处理当前模型回合遗留的全部工具调用，并在
      * 每个结果写入后保存 Snapshot。</p>
      */
     private AgentStepResult executeToolCallingStep(AgentTurn turn) {
-        AgentTurnPhase phase = turn.getPhase();
-        if (phase == AgentTurnPhase.MODEL) {
+        AgentTurnExecutionPoint executionPoint = turn.getExecutionPoint();
+        if (executionPoint == AgentTurnExecutionPoint.INVOKE_MODEL) {
             return executeModel(turn);
         }
-        if (phase == AgentTurnPhase.TOOLS) {
+        if (executionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS) {
             return executePendingTools(turn, null);
         }
-        if (phase == AgentTurnPhase.FINISHED) {
+        if (executionPoint == AgentTurnExecutionPoint.FINISHED) {
             return complete(turn, null, lastAiMessage(turn));
         }
         return handleFailure(turn, null,
-            new IllegalStateException("Unsupported agent phase: " + phase), phase);
+            new IllegalStateException("Unsupported agent execution point: " + executionPoint),
+            executionPoint);
     }
 
     /**
@@ -912,7 +916,7 @@ public final class AgentRunner {
      * 执行一个模型回合，并根据响应进入完成状态或 ToolCall 处理阶段。
      *
      * <p>模型响应只有在通过基础校验后才加入 Prompt。若响应包含 ToolCall，必须先保存 pendingToolCalls
-     * 和 TOOLS Phase，再执行工具；该顺序保证模型已经作出的工具决定可跨进程恢复。</p>
+     * 和 PROCESS_TOOLS ExecutionPoint，再执行工具；该顺序保证模型已经作出的工具决定可跨进程恢复。</p>
      */
     private AgentStepResult executeModel(AgentTurn turn) {
         Agent agent = turn.getAgent();
@@ -935,7 +939,7 @@ public final class AgentRunner {
             validateResponse(response);
             eventPublisher.notifyModelEnd(turn, response);
         } catch (RuntimeException error) {
-            return handleFailure(turn, null, error, AgentTurnPhase.MODEL);
+            return handleFailure(turn, null, error, AgentTurnExecutionPoint.INVOKE_MODEL);
         }
         refreshCancellation(turn);
         if (turn.isCancellationRequested()) {
@@ -959,7 +963,7 @@ public final class AgentRunner {
 
         // 先保存模型决策，再执行可能产生外部副作用的工具。
         turn.setPendingToolCalls(message.getToolCalls());
-        turn.moveTo(AgentTurnPhase.TOOLS);
+        turn.moveTo(AgentTurnExecutionPoint.PROCESS_TOOLS);
         saveSnapshot(turn);
         return executePendingTools(turn, response);
     }
@@ -1018,7 +1022,7 @@ public final class AgentRunner {
             if (tool == null) {
                 // 恢复后找不到原工具表示 Agent 版本不完整，不能跳过调用继续生成答案。
                 return handleFailure(turn, response,
-                    new AgentToolNotFoundException(call.getName()), AgentTurnPhase.TOOLS);
+                    new AgentToolNotFoundException(call.getName()), AgentTurnExecutionPoint.PROCESS_TOOLS);
             }
 
             if (AgentUserInputTool.isUserInputTool(tool)) {
@@ -1036,7 +1040,7 @@ public final class AgentRunner {
                     suspend(turn, suspension);
                     return AgentStepResult.of(response, results, null);
                 } catch (RuntimeException error) {
-                    return handleFailure(turn, response, error, AgentTurnPhase.TOOLS);
+                    return handleFailure(turn, response, error, AgentTurnExecutionPoint.PROCESS_TOOLS);
                 }
             }
 
@@ -1053,10 +1057,10 @@ public final class AgentRunner {
                 : (approval ? ToolApprovalDecision.ALLOW : ToolApprovalDecision.DENY);
             if (decision == null) {
                 return handleFailure(turn, response,
-                    new IllegalStateException("ToolApprovalPolicy returned null"), AgentTurnPhase.TOOLS);
+                    new IllegalStateException("ToolApprovalPolicy returned null"), AgentTurnExecutionPoint.PROCESS_TOOLS);
             }
             if (decision.getOutcome() == ToolApprovalDecision.Outcome.REQUIRE_APPROVAL) {
-                // Suspension 保存当前 ToolCall 关联 ID 和 TOOLS 恢复点，审批后不会重新调用模型。
+                // Suspension 保存当前 ToolCall 关联 ID 和 PROCESS_TOOLS 恢复点，审批后不会重新调用模型。
                 AgentSuspension suspension = AgentSuspension.toolApproval(
                     callKey(call), call.getName(), decision);
                 suspend(turn, suspension);
@@ -1069,6 +1073,15 @@ public final class AgentRunner {
                 appendToolResult(turn, call, rejected);
                 results.add(rejected);
                 continue;
+            }
+
+            if (tool.getExecutionTarget() == ToolExecutionTarget.EXTERNAL) {
+                turn.incrementToolCallCount();
+                AgentSuspension suspension = AgentSuspension.externalTool(
+                    callKey(call), call.getName(), call.getArguments(), tool.getMetadata());
+                suspend(turn, suspension);
+                eventPublisher.notifyExternalToolRequested(turn, call, tool);
+                return AgentStepResult.of(response, results, null);
             }
 
             eventPublisher.notifyToolStart(turn, call);
@@ -1097,7 +1110,7 @@ public final class AgentRunner {
                     // 将错误交给模型时仍生成与原 ToolCall 匹配的 ToolMessage，保持协议完整。
                     completedResult = buildToolErrorMessage(turn, call, error);
                 } else {
-                    return handleFailure(turn, response, error, AgentTurnPhase.TOOLS);
+                    return handleFailure(turn, response, error, AgentTurnExecutionPoint.PROCESS_TOOLS);
                 }
             }
             // Snapshot 异常必须直接交给调用方，不能被误判为工具执行异常。
@@ -1108,7 +1121,7 @@ public final class AgentRunner {
         }
 
         // 当前模型回合的全部工具调用已处理，下一 step 应让模型读取 ToolMessage 并继续判断。
-        turn.moveTo(AgentTurnPhase.MODEL);
+        turn.moveTo(AgentTurnExecutionPoint.INVOKE_MODEL);
         saveSnapshot(turn);
         return AgentStepResult.of(response, results, null);
     }
@@ -1135,11 +1148,11 @@ public final class AgentRunner {
     /**
      * 将模型或工具异常统一转换为取消、持久化重试或最终失败状态。
      *
-     * <p>安排重试时保存发生异常的 Phase，使 Worker 到期恢复后从原模型或工具边界继续。方法只计算
+     * <p>安排重试时保存发生异常的 ExecutionPoint，使 Worker 到期恢复后从原模型或工具边界继续。方法只计算
      * {@code nextRunnableAt} 并返回阻塞结果，不在当前线程 sleep。</p>
      */
     private AgentStepResult handleFailure(AgentTurn turn, AiMessageResponse response,
-                                          RuntimeException error, AgentTurnPhase resumePhase) {
+                                          RuntimeException error, AgentTurnExecutionPoint resumeExecutionPoint) {
         if (turn.isCancellationRequested()) {
             return cancelTurn(turn);
         }
@@ -1148,7 +1161,7 @@ public final class AgentRunner {
             // retryCount + 1 表示即将安排的重试序号，用于计算指数退避延迟。
             int retryAttempt = turn.getRetryCount() + 1;
             long runAt = System.currentTimeMillis() + retry.delayMillis(retryAttempt);
-            if (resumePhase == AgentTurnPhase.TOOLS && !turn.getPendingToolCalls().isEmpty()) {
+            if (resumeExecutionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS && !turn.getPendingToolCalls().isEmpty()) {
                 ToolCall call = turn.getPendingToolCalls().get(0);
                 Map<String, Object> metadata = new LinkedHashMap<>();
                 metadata.put("retryAttempt", retryAttempt);
@@ -1156,7 +1169,7 @@ public final class AgentRunner {
                 recordToolResume(turn, callKey(call), AgentToolResumeType.RETRY,
                     metadata, error);
             }
-            turn.scheduleRetry(error, resumePhase, runAt);
+            turn.scheduleRetry(error, resumeExecutionPoint, runAt);
             saveSnapshot(turn);
             publishAfterStep(() -> eventPublisher.notifyTurnSuspended(
                 turn, turn.getSuspension()));
@@ -1507,7 +1520,7 @@ public final class AgentRunner {
     }
 
     /**
-     * 从消息历史倒序查找最近的 AI 消息，供 FINISHED Phase 完成运行。
+     * 从消息历史倒序查找最近的 AI 消息，供 FINISHED ExecutionPoint 完成运行。
      */
     private AiMessage lastAiMessage(AgentTurn turn) {
         List<Message> messages = turn.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
@@ -1595,6 +1608,8 @@ public final class AgentRunner {
                 return AgentTurnStatus.WAITING_FOR_USER;
             case TOOL_APPROVAL:
                 return AgentTurnStatus.WAITING_FOR_APPROVAL;
+            case EXTERNAL_TOOL:
+                return AgentTurnStatus.WAITING_FOR_TOOL;
             case RETRY:
                 return AgentTurnStatus.RETRY_SCHEDULED;
             default:
@@ -1605,7 +1620,7 @@ public final class AgentRunner {
     /**
      * 校验恢复命令与当前 Suspension 匹配，并把命令携带的数据写入 Turn。
      *
-     * <p>本方法只应用数据，不改变 Status 和 Phase；调用方在校验完成后统一调用 resumeAt 并保存
+     * <p>本方法只应用数据，不改变 Status 和 ExecutionPoint；调用方在校验完成后统一调用 resumeAt 并保存
      * Snapshot，避免部分应用一个无效命令。</p>
      */
     private void applyResumeCommand(AgentTurn turn, AgentSuspension suspension,
@@ -1619,6 +1634,9 @@ public final class AgentRunner {
                 break;
             case TOOL_APPROVAL:
                 applyToolApproval(turn, suspension, command);
+                break;
+            case EXTERNAL_TOOL:
+                applyExternalToolResult(turn, suspension, command);
                 break;
             case RETRY:
                 if (command.getType() != AgentResumeCommandType.CONTINUE
@@ -1728,6 +1746,39 @@ public final class AgentRunner {
             && StringUtil.hasText(command.getContent())) {
             turn.putMetadata("toolRejectionReason." + suspension.getCorrelationId(), command.getContent());
         }
+    }
+
+    /**
+     * 校验外部工具回传并直接生成与原 ToolCall 匹配的 ToolMessage。
+     */
+    private void applyExternalToolResult(AgentTurn turn, AgentSuspension suspension,
+                                         AgentResumeCommand command) {
+        if (command.getType() != AgentResumeCommandType.TOOL_RESULT
+            && command.getType() != AgentResumeCommandType.TOOL_ERROR) {
+            throw new IllegalArgumentException("TOOL_RESULT or TOOL_ERROR command is required");
+        }
+        requireCorrelation(suspension, command);
+        if (command.getContent() == null) {
+            throw new IllegalArgumentException("external tool result content must not be null");
+        }
+        List<ToolCall> pending = turn.getPendingToolCalls();
+        if (pending.isEmpty()) {
+            throw new IllegalStateException("external tool suspension has no pending ToolCall");
+        }
+        ToolCall call = pending.get(0);
+        Tool tool = resolveTool(turn, call);
+        if (!suspension.getCorrelationId().equals(callKey(call))
+            || !call.getName().equals(suspension.getMetadata().get("toolName"))
+            || tool == null
+            || tool.getExecutionTarget() != ToolExecutionTarget.EXTERNAL) {
+            throw new IllegalStateException(
+                "external tool suspension does not match the pending ToolCall");
+        }
+        ToolMessage result = new ToolMessage();
+        result.setToolCallId(callKey(call));
+        result.setContent(command.getContent());
+        turn.getPrompt().addMessage(result);
+        turn.removeFirstPendingToolCall();
     }
 
     /**

@@ -37,6 +37,13 @@ public interface Tool {
         return Collections.emptyMap();
     }
 
+    /**
+     * 返回当前工具的执行位置。现有工具默认在 Runner 所在进程执行。
+     */
+    default ToolExecutionTarget getExecutionTarget() {
+        return ToolExecutionTarget.LOCAL;
+    }
+
     Object invoke(Map<String, Object> argsMap);
 
     static MapBuilder builder() {

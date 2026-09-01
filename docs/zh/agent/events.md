@@ -45,6 +45,7 @@ sequence 在 Runner 重建或进程重启后会重新开始，不能直接作为
 - Step：开始、结束、达到 `maxSteps`。
 - Model：开始、结束、文本/推理/ToolCall 增量和迭代上限。
 - Tool：开始、进度、完成、失败、输入请求和审批。
+- External Tool：派发请求、成功结果和错误结果。
 - Retry：可恢复异常的延迟重试调度。
 - Budget：时间、Token 或工具调用次数达到限制。
 
@@ -54,7 +55,7 @@ Turn 是 Step 的生命周期容器。第一个步骤开始前发布一次 `TURN
 事件。同一对 Step 事件使用相同的 1-based `stepCount`；Step 内产生暂停时，`TURN_SUSPENDED` 同样在
 对应的 `STEP_COMPLETED` 之后发布。
 
-`TURN_SUSPENDED` 的 data 包含 `suspensionType`、`correlationId`、`message`、`resumePhase` 和只读
+`TURN_SUSPENDED` 的 data 包含 `suspensionType`、`correlationId`、`message`、`resumeExecutionPoint` 和只读
 `metadata`。实时 UI 可以据此识别审批或表单请求，但提交结果时仍须恢复最新 Turn，由 Suspension
 校验命令，不能把事件数据当作执行授权。
 
@@ -85,6 +86,11 @@ Inbox/Outbox，再由 Worker 领取同一 `conversationId` 的下一条待处理
 业务工具抛出 `AgentFormRequiredException` 时，会依次观察到 `TOOL_STARTED`、
 `TOOL_INPUT_REQUESTED`，随后本 Step 结束并发布 `TURN_SUSPENDED`。这不是工具失败，因此不会发布
 `TOOL_FAILED` 或 `TOOL_COMPLETED`。用户提交后，原工具从头重试，成功时才发布 `TOOL_COMPLETED`。
+
+标记为 `ToolExecutionTarget.EXTERNAL` 的工具不会发布本地 `TOOL_STARTED`。Runner 持久化等待点后发布
+`EXTERNAL_TOOL_REQUESTED`；业务系统提交 `toolResult(...)` 或 `toolError(...)` 后，Runner 将结果写入
+原 ToolCall，并发布 `EXTERNAL_TOOL_COMPLETED` 或 `EXTERNAL_TOOL_FAILED`。这些事件只表示 Runner 已
+接受结果，不替代业务侧的可靠派发、回调幂等和审计记录。
 
 ## 工具上报进度
 

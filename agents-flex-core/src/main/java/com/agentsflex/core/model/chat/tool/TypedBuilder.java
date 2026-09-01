@@ -27,6 +27,7 @@ public class TypedBuilder<I> {
     private String description;
     private Function<I,?> function;
     private final Map<String, Object> metadata = new LinkedHashMap<>();
+    private ToolExecutionTarget executionTarget = ToolExecutionTarget.LOCAL;
 
 
     public TypedBuilder<I> name(String name) {
@@ -66,6 +67,15 @@ public class TypedBuilder<I> {
         return this;
     }
 
+    /** 设置 ToolCall 的实际执行位置。 */
+    public TypedBuilder<I> executionTarget(ToolExecutionTarget value) {
+        if (value == null) {
+            throw new IllegalArgumentException("executionTarget must not be null");
+        }
+        this.executionTarget = value;
+        return this;
+    }
+
     public Tool build() {
         TypedFunctionTool<I> tool = new TypedFunctionTool<>();
 
@@ -74,6 +84,7 @@ public class TypedBuilder<I> {
         tool.setInputType(inputType);
         tool.setFunction(function);
         tool.setMetadata(metadata);
+        tool.setExecutionTarget(executionTarget);
 
         tool.setParameters(
             ToolParameterResolver.resolve(

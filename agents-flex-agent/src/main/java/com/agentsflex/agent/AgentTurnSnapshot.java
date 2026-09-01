@@ -110,8 +110,8 @@ public final class AgentTurnSnapshot implements Serializable {
         if (state.getStatus() == null) {
             throw new IllegalStateException("status must not be null");
         }
-        if (state.getPhase() == null) {
-            throw new IllegalStateException("phase must not be null");
+        if (state.getExecutionPoint() == null) {
+            throw new IllegalStateException("executionPoint must not be null");
         }
     }
 

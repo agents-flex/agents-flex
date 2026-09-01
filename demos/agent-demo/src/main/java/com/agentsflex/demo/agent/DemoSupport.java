@@ -34,7 +34,7 @@ final class DemoSupport {
     static void printTurn(AgentTurn turn) {
         System.out.println("turnId       : " + turn.getId());
         System.out.println("status      : " + turn.getStatus());
-        System.out.println("phase       : " + turn.getPhase());
+        System.out.println("execution   : " + turn.getExecutionPoint());
         System.out.println("iterations  : " + turn.getIterationCount());
         System.out.println("toolCalls   : " + turn.getToolCallCount());
         System.out.println("finalOutput : " + turn.getFinalOutput());

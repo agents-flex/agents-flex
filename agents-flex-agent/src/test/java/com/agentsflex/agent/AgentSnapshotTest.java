@@ -66,7 +66,7 @@ public class AgentSnapshotTest {
         assertEquals(1, model.getCallCount());
         assertEquals(0, toolInvocations.get());
         AgentTurnSnapshot pending = durableStore.load(turn.getId());
-        assertEquals(AgentTurnPhase.TOOLS, pending.getState().getPhase());
+        assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, pending.getState().getExecutionPoint());
         assertEquals(1, pending.getState().getPendingToolCalls().size());
 
         AgentRunner secondProcess = new AgentRunner(durableStore, registry);
@@ -293,7 +293,7 @@ public class AgentSnapshotTest {
         @Override
         public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
             AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!failed && AgentTurnPhase.TOOLS.equals(saved.getState().getPhase())) {
+            if (!failed && AgentTurnExecutionPoint.PROCESS_TOOLS.equals(saved.getState().getExecutionPoint())) {
                 failed = true;
                 throw new SimulatedProcessCrash();
             }

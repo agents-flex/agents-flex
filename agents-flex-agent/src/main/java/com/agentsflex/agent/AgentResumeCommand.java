@@ -6,6 +6,8 @@
  */
 package com.agentsflex.agent;
 
+import com.alibaba.fastjson2.JSON;
+
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -121,6 +123,26 @@ public final class AgentResumeCommand implements Serializable {
     }
 
     /**
+     * 创建外部执行器成功结果命令。结构化对象会转换成 JSON ToolMessage 内容。
+     */
+    public static AgentResumeCommand toolResult(String callId, Object result) {
+        return new AgentResumeCommand(AgentResumeCommandType.TOOL_RESULT,
+            toolContent(result), callId, null);
+    }
+
+    /**
+     * 创建外部执行器失败结果命令。错误会作为结构化 ToolMessage 返回给模型。
+     */
+    public static AgentResumeCommand toolError(String callId, String code, String message) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", "error");
+        if (code != null) body.put("code", code);
+        if (message != null) body.put("message", message);
+        return new AgentResumeCommand(AgentResumeCommandType.TOOL_ERROR,
+            JSON.toJSONString(body), callId, null);
+    }
+
+    /**
      * 创建执行已到期自动重试的恢复命令。
      */
     public static AgentResumeCommand retry() {
@@ -192,5 +214,14 @@ public final class AgentResumeCommand implements Serializable {
         return values == null || values.isEmpty()
             ? Collections.<String, Object>emptyMap()
             : Collections.unmodifiableMap(new LinkedHashMap<>(values));
+    }
+
+    private static String toolContent(Object value) {
+        if (value == null) return "null";
+        if (value instanceof CharSequence || value instanceof Number
+            || value instanceof Boolean) {
+            return value.toString();
+        }
+        return JSON.toJSONString(value);
     }
 }

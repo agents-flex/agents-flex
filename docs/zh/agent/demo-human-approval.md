@@ -115,7 +115,7 @@ AgentTurn completed = processed.get(0);
 System.out.println(completed.getFinalOutput());
 ```
 
-Worker 领取已恢复的 Turn。Runner 从 TOOLS phase 执行原调用，写入 ToolMessage 后请求模型生成最终答案，不会重新生成部署参数。
+Worker 领取已恢复的 Turn。Runner 从 PROCESS_TOOLS executionPoint 执行原调用，写入 ToolMessage 后请求模型生成最终答案，不会重新生成部署参数。
 
 ## 拒绝审批
 

@@ -43,6 +43,7 @@ AgentTurn turn = runner.run(agentId, "conversation-1001", new UserMessage("继�
 | `RUNNING` | 正在执行 |
 | `WAITING_FOR_USER` | 等待用户补充输入 |
 | `WAITING_FOR_APPROVAL` | 等待工具审批 |
+| `WAITING_FOR_TOOL` | 等待外部执行器返回工具结果 |
 | `RETRY_SCHEDULED` | 等待 `nextRunnableAt` 到期 |
 | `COMPLETED` | 正常完成 |
 | `FAILED`、`CANCELLED` | 失败或取消 |
@@ -54,7 +55,7 @@ AgentTurn turn = runner.run(agentId, "conversation-1001", new UserMessage("继�
 
 ## 阶段
 
-`AgentTurnPhase.MODEL` 表示下一步应请求模型；`TOOLS` 表示已保存模型产生的 ToolCall，下一步应审批或执行工具。重试和审批恢复会回到快照记录的阶段。
+`AgentTurnExecutionPoint.INVOKE_MODEL` 表示下一步应请求模型；`PROCESS_TOOLS` 表示已保存模型产生的 ToolCall，下一步应审批或执行工具。重试和审批恢复会回到快照记录的阶段。
 
 状态回答“Turn 能否继续”，阶段回答“继续时做什么”，两者不能混用。
 

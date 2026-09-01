@@ -140,8 +140,8 @@ flowchart TD
     Policy -->|"REQUIRE_APPROVAL"| Waiting["保存 Suspension<br/>WAITING_FOR_APPROVAL"]
 
     Waiting --> Decision["业务审批系统提交结果"]
-    Decision -->|"approveTool(callId)"| ResumeAllow["恢复原 TOOLS Phase"]
-    Decision -->|"rejectTool(callId, reason)"| ResumeDeny["恢复原 TOOLS Phase"]
+    Decision -->|"approveTool(callId)"| ResumeAllow["恢复原 PROCESS_TOOLS ExecutionPoint"]
+    Decision -->|"rejectTool(callId, reason)"| ResumeDeny["恢复原 PROCESS_TOOLS ExecutionPoint"]
     ResumeAllow --> Execute
     ResumeDeny --> Rejected
 
@@ -150,7 +150,7 @@ flowchart TD
     Result --> Continue["模型读取结果并继续执行"]
 ```
 
-原 ToolCall 会先于审批请求写入 Snapshot。批准后 Runner 从 `TOOLS` Phase 继续执行已经保存的调用，
+原 ToolCall 会先于审批请求写入 Snapshot。批准后 Runner 从 `PROCESS_TOOLS` ExecutionPoint 继续执行已经保存的调用，
 不会让模型重新生成工具名称或参数。拒绝不是运行时失败；Runner 会生成与原调用关联的 ToolMessage，
 模型可以据此解释拒绝结果或选择其他方案。
 
@@ -201,7 +201,7 @@ runner.submitResume(turnId, approval);
 ```
 
 `submitResume(...)` 只校验命令并把 Turn 保存为可运行的 `RUNNING` 状态，保留 Suspension 记录的
-`TOOLS` Phase；随后由 `AgentWorker` 领取。`resume(...)` 则会在当前线程继续推进，直到再次阻塞或终止。
+`PROCESS_TOOLS` ExecutionPoint；随后由 `AgentWorker` 领取。`resume(...)` 则会在当前线程继续推进，直到再次阻塞或终止。
 
 Runner 会校验当前 Turn 确实处于等待审批状态，并要求命令中的 callId 与 Suspension 的
 `correlationId` 完全匹配。迟到或错误的审批结果不能恢复其他 ToolCall。

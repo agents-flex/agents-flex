@@ -30,6 +30,14 @@ public enum AgentResumeCommandType {
      */
     REJECT_TOOL,
     /**
+     * 提交外部执行器成功完成后的工具结果。
+     */
+    TOOL_RESULT,
+    /**
+     * 提交外部执行器返回的结构化工具错误。
+     */
+    TOOL_ERROR,
+    /**
      * 执行已经到达调度时间的自动重试。
      */
     RETRY

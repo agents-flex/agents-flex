@@ -25,7 +25,7 @@ public enum AgentEventType {
     /**
      * 本次 step 已结束，随后可能继续下一 step，也可能阻塞或终止。
      *
-     * <p>事件 data 包含执行后的 {@code status}、{@code phase} 和本步骤产生的
+     * <p>事件 data 包含执行后的 {@code status}、{@code executionPoint} 和本步骤产生的
      * {@code toolMessageCount}。如果本步骤使 Turn 终止，对应的 Turn 终止事件在本事件之后发布。</p>
      */
     STEP_COMPLETED,
@@ -91,13 +91,25 @@ public enum AgentEventType {
      */
     TOOL_INPUT_REQUESTED,
     /**
+     * ToolCall 已持久化并等待外部执行器执行。data 包含工具 ID、名称、参数和工具元数据。
+     */
+    EXTERNAL_TOOL_REQUESTED,
+    /**
+     * 外部执行器已成功返回工具结果。
+     */
+    EXTERNAL_TOOL_COMPLETED,
+    /**
+     * 外部执行器已返回结构化工具错误，错误将作为 ToolMessage 交给模型。
+     */
+    EXTERNAL_TOOL_FAILED,
+    /**
      * AgentTurnSnapshot 已成功写入 AgentTurnStore，并获得新的版本号。
      */
     SNAPSHOT_SAVED,
     /**
      * Turn 已持久化为等待用户输入、工具审批或重试调度的状态。
      * 如果暂停由 Step 产生，本事件在该 Step 的 STEP_COMPLETED 之后发布。
-     * data 包含 suspensionType、correlationId、message、resumePhase 和 metadata。
+     * data 包含 suspensionType、correlationId、message、resumeExecutionPoint 和 metadata。
      */
     TURN_SUSPENDED,
     /**

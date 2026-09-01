@@ -387,7 +387,7 @@ public class AgentAdvancedFeaturesTest {
         @Override
         public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
             AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!crashed && AgentTurnPhase.TOOLS.equals(saved.getState().getPhase())
+            if (!crashed && AgentTurnExecutionPoint.PROCESS_TOOLS.equals(saved.getState().getExecutionPoint())
                 && !saved.getState().getPendingToolCalls().isEmpty()) {
                 crashed = true;
                 throw new SimulatedCrash();

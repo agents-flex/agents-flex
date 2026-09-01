@@ -56,7 +56,7 @@ flowchart TB
 
 ### 执行平面
 
-`AgentRunner` 按 status 与 phase 推进 `AgentTurn`。默认模式实现模型原生 Tool Calling；Suspension 把外部等待转换为持久状态。
+`AgentRunner` 按 status 与 executionPoint 推进 `AgentTurn`。默认模式实现模型原生 Tool Calling；Suspension 把外部等待转换为持久状态。
 
 ### 调度平面
 
@@ -83,17 +83,19 @@ stateDiagram-v2
 
     state RUNNING {
         direction LR
-        [*] --> MODEL
-        MODEL --> TOOLS: 模型返回 ToolCall
-        TOOLS --> MODEL: 工具调用全部完成
+        [*] --> INVOKE_MODEL
+        INVOKE_MODEL --> PROCESS_TOOLS: 模型返回 ToolCall
+        PROCESS_TOOLS --> INVOKE_MODEL: 工具调用全部完成
     }
 
     RUNNING --> WAITING_FOR_USER: 等待补充信息
     RUNNING --> WAITING_FOR_APPROVAL: 工具需要审批
+    RUNNING --> WAITING_FOR_TOOL: 等待外部工具结果
     RUNNING --> RETRY_SCHEDULED: 可恢复异常
 
     WAITING_FOR_USER --> RUNNING: 提交用户输入
     WAITING_FOR_APPROVAL --> RUNNING: 提交审批结果
+    WAITING_FOR_TOOL --> RUNNING: 提交工具结果或错误
     RETRY_SCHEDULED --> RUNNING: 到期领取或主动恢复
 
     state "终态<br/>COMPLETED / FAILED / CANCELLED<br/>MAX_ITERATIONS_REACHED / MAX_STEPS_REACHED / BUDGET_EXCEEDED" as TERMINAL
@@ -101,7 +103,7 @@ stateDiagram-v2
     TERMINAL --> [*]
 ```
 
-恢复命令把阻塞 Turn 转回 Suspension 记录的 phase。终态不可重新打开。
+恢复命令把阻塞 Turn 转回 Suspension 记录的 executionPoint。终态不可重新打开。
 
 ## 一致性边界
 

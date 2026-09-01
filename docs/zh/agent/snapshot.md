@@ -25,7 +25,7 @@ Snapshot 保存“继续执行所需的数据”，而不是把整个 Java 对�
 快照包含：
 
 - Turn ID、Agent ID/版本。
-- status、phase、消息与待处理 ToolCall。
+- status、executionPoint、消息与待处理 ToolCall。
 - Suspension 和工具审批决定。
 - 模型迭代、Runner step、Token、工具、重试等计数。
 - 预算终止原因、nextRunnableAt、取消标记。

@@ -38,7 +38,7 @@ Agent agent = Agent.builder("meeting-agent")
 ```
 
 执行顺序是：模型调用 `request_user_input`，Runner 保存 Schema 并挂起；前端渲染
-`AgentFormMessage`；用户提交后 Runner 追加匹配原调用的 ToolMessage 并回到 MODEL 阶段。模型读取
+`AgentFormMessage`；用户提交后 Runner 追加匹配原调用的 ToolMessage 并回到 INVOKE_MODEL 阶段。模型读取
 表单数据后，自行判断并调用 `reserve_meeting_room`，随后根据工具结果生成最终回答。Runner 不保存
 目标 Tool 名称，也不会替模型生成业务 ToolCall。
 
@@ -115,7 +115,7 @@ Map<String, Object> savedSchema =
     (Map<String, Object>) suspension.getMetadata().get("schema");
 ```
 
-此时原 ToolCall 仍在 `pendingToolCalls`，Phase 为 `TOOLS`。Snapshot 保存的是当次请求选中的完整 Schema；
+此时原 ToolCall 仍在 `pendingToolCalls`，ExecutionPoint 为 `PROCESS_TOOLS`。Snapshot 保存的是当次请求选中的完整 Schema；
 之后修改 Agent 上的表单定义，只影响新 Turn，不会改变已经等待中的页面。
 
 ### 3. 校验并提交表单
@@ -171,7 +171,7 @@ Runner 保留原 ToolCall，创建 `USER_INPUT` Suspension，并把完整 Schema
 
 ```text
 status = WAITING_FOR_USER
-phase  = TOOLS
+executionPoint  = PROCESS_TOOLS
 correlationId = call-456
 ```
 
@@ -294,7 +294,7 @@ Runner 将该异常作为执行控制信号，而不是工具失败：
 
 | 表单入口 | 提交数据的去向 | 恢复动作 |
 | --- | --- | --- |
-| 模型调用 `request_user_input` | 形成控制 ToolCall 的 ToolMessage | 回到 MODEL，由模型选择后续 Tool |
+| 模型调用 `request_user_input` | 形成控制 ToolCall 的 ToolMessage | 回到 INVOKE_MODEL，由模型选择后续 Tool |
 | 业务工具抛出输入异常 | 保存为原业务 ToolCall 的恢复数据 | 从头重新执行原工具 |
 
 工具输入异常必须在产生外部副作用之前抛出，因为 Framework 不会恢复 Java 调用栈，只会重放整个工具

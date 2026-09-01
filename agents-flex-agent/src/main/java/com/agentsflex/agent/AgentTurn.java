@@ -325,10 +325,10 @@ public final class AgentTurn {
     }
 
     /**
-     * @return 当前模型或工具执行阶段
+     * @return 下一步模型或工具执行入口
      */
-    public AgentTurnPhase getPhase() {
-        return state.getPhase();
+    public AgentTurnExecutionPoint getExecutionPoint() {
+        return state.getExecutionPoint();
     }
 
     /**
@@ -696,12 +696,12 @@ public final class AgentTurn {
     /**
      * 安排一次持久化重试。
      */
-    void scheduleRetry(Throwable error, AgentTurnPhase resumePhase, long runAt) {
+    void scheduleRetry(Throwable error, AgentTurnExecutionPoint resumeExecutionPoint, long runAt) {
         state.incrementRetryCount();
         this.error = error;
         state.setNextRunnableAt(runAt);
         suspend(AgentTurnStatus.RETRY_SCHEDULED,
-            AgentSuspension.retry(error == null ? null : error.getMessage(), resumePhase, runAt));
+            AgentSuspension.retry(error == null ? null : error.getMessage(), resumeExecutionPoint, runAt));
     }
 
     /**
@@ -712,11 +712,11 @@ public final class AgentTurn {
     }
 
     /**
-     * 进入指定的运行中阶段。
+     * 进入指定的运行入口。
      */
-    void moveTo(AgentTurnPhase phase) {
+    void moveTo(AgentTurnExecutionPoint executionPoint) {
         state.setStatus(AgentTurnStatus.RUNNING);
-        state.setPhase(phase);
+        state.setExecutionPoint(executionPoint);
         state.setSuspension(null);
     }
 
@@ -725,17 +725,18 @@ public final class AgentTurn {
      */
     void suspend(AgentTurnStatus status, AgentSuspension suspension) {
         state.setStatus(status);
-        state.setPhase(suspension.getResumePhase());
+        state.setExecutionPoint(suspension.getResumeExecutionPoint());
         state.setSuspension(suspension);
     }
 
     /**
-     * 清除阻塞信息并回到指定执行阶段。
+     * 清除阻塞信息并回到指定执行入口。
      */
-    void resumeAt(AgentTurnPhase phase) {
+    void resumeAt(AgentTurnExecutionPoint executionPoint) {
         state.setSuspension(null);
         state.setStatus(AgentTurnStatus.RUNNING);
-        state.setPhase(phase == null ? AgentTurnPhase.MODEL : phase);
+        state.setExecutionPoint(executionPoint == null
+            ? AgentTurnExecutionPoint.INVOKE_MODEL : executionPoint);
         state.setNextRunnableAt(0);
     }
 
@@ -744,7 +745,7 @@ public final class AgentTurn {
      */
     private void finish(AgentTurnStatus status) {
         state.setStatus(status);
-        state.setPhase(AgentTurnPhase.FINISHED);
+        state.setExecutionPoint(AgentTurnExecutionPoint.FINISHED);
         state.setSuspension(null);
         state.setCompletedAt(System.currentTimeMillis());
     }
@@ -760,7 +761,7 @@ public final class AgentTurn {
      * 工具执行完成后保持运行态，等待下一个模型回合。
      */
     void markRunning() {
-        moveTo(AgentTurnPhase.MODEL);
+        moveTo(AgentTurnExecutionPoint.INVOKE_MODEL);
     }
 
     /**

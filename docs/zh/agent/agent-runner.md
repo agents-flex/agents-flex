@@ -30,8 +30,8 @@ flowchart TD
 
     Loop --> Step["step(...)"]
     Step --> Guard["检查 Lease、取消、预算与 maxSteps"]
-    Guard -->|"MODEL"| Model["构造消息窗口并调用模型"]
-    Guard -->|"TOOLS"| Tools["顺序处理待执行 ToolCall"]
+    Guard -->|"INVOKE_MODEL"| Model["构造消息窗口并调用模型"]
+    Guard -->|"PROCESS_TOOLS"| Tools["顺序处理待执行 ToolCall"]
 
     Model -->|"最终回答"| Terminal["进入终态并返回"]
     Model -->|"产生 ToolCall"| Tools
@@ -43,7 +43,7 @@ flowchart TD
 
     Blocked --> Command["外部条件满足<br/>AgentResumeCommand"]
     Command -->|"resume(...)：立即执行"| Loop
-    Command -->|"submitResume(...)：仅恢复为可运行"| Runnable["恢复原 Phase<br/>Status = RUNNING"]
+    Command -->|"submitResume(...)：仅恢复为可运行"| Runnable["恢复原 ExecutionPoint<br/>Status = RUNNING"]
     Runnable --> Worker
 ```
 
@@ -51,8 +51,8 @@ flowchart TD
 
 1. `run(...)` 和 `start(...)` 都先创建 `READY` Turn 并保存初始 Snapshot。`run(...)` 随即进入执行循环；`start(...)` 只返回 Turn，不会自行创建后台线程。
 2. `restore(...)` 只从 Store 恢复 Snapshot，并按其中的 Agent ID 与版本装配 Agent。恢复后可由调用方继续执行，也可由 `AgentWorker` 调度。
-3. `runUntilBlocked(...)` 循环调用 `step(...)`。每一步先检查执行资格和限制，再根据当前 Phase 调用模型或处理工具。
-4. MODEL 阶段一次 Step 最多调用模型一次。最终回答会结束 Turn；ToolCall 会被记录并在 TOOLS 阶段按顺序处理。
+3. `runUntilBlocked(...)` 循环调用 `step(...)`。每一步先检查执行资格和限制，再根据当前 ExecutionPoint 调用模型或处理工具。
+4. INVOKE_MODEL 阶段一次 Step 最多调用模型一次。最终回答会结束 Turn；ToolCall 会被记录并在 PROCESS_TOOLS 阶段按顺序处理。
 5. 审批、用户输入和延迟重试形成阻塞边界，不会占用线程等待。`resume(...)` 恢复后立即执行，`submitResume(...)` 只将 Turn 恢复为可运行状态。
 
 Runner 会在创建、状态转换、工具结果和终止等稳定边界保存 Snapshot，使 Turn 能够跨请求或进程恢复；
@@ -116,7 +116,7 @@ AgentTurn blockedOrDone = runner.runUntilBlocked(turn);
 
 1. `runUntilBlocked` 判断是否继续循环。
 2. `step` 处理取消、Lease、预算、上下文和 Middleware。
-3. 内置 ToolCall 状态机根据 Phase 进入 MODEL 或 TOOLS 阶段。
+3. 内置 ToolCall 状态机根据 ExecutionPoint 进入 INVOKE_MODEL 或 PROCESS_TOOLS 阶段。
 
 模型返回 ToolCall 时，Runner 先记录 `pendingToolCalls` 并保存 Snapshot，随后才审批和执行。这个顺序是恢复一致性的关键。
 
@@ -197,8 +197,8 @@ try {
 }
 ```
 
-`WAITING_FOR_USER` 和 `WAITING_FOR_APPROVAL` 不是普通消息可以覆盖的状态，必须使用原 Turn 的
-`resume(...)` 提交表单或审批命令。`RUNNING` 和 `RETRY_SCHEDULED` 也会阻止
+`WAITING_FOR_USER`、`WAITING_FOR_APPROVAL` 和 `WAITING_FOR_TOOL` 不是普通消息可以覆盖的状态，
+必须使用原 Turn 的 `resume(...)` 提交表单、审批命令或外部工具结果。`RUNNING` 和 `RETRY_SCHEDULED` 也会阻止
 新的普通 Turn。Turn 进入终态后，会话可以开始下一轮。
 
 `InMemoryAgentTurnStore` 已提供同进程多个 Runner 之间的原子检查和创建。JDBC、Redis 或其他生产 Store
@@ -246,9 +246,9 @@ if (pending != null) {
 }
 ```
 
-`TURN_SUSPENDED` 不表示执行完毕。`WAITING_FOR_USER` 和 `WAITING_FOR_APPROVAL`
+`TURN_SUSPENDED` 不表示执行完毕。`WAITING_FOR_USER`、`WAITING_FOR_APPROVAL` 和 `WAITING_FOR_TOOL`
 必须先通过原 Turn 的 `resume(...)` 或 `submitResume(...)` 完成恢复；普通排队消息
-不能替代表单数据或审批命令。终态中的失败、取消和预算耗尽也应由业务策略决定是继续、重试还是转人工，
+不能替代表单数据、审批命令或工具结果。终态中的失败、取消和预算耗尽也应由业务策略决定是继续、重试还是转人工，
 不能无条件执行下一条消息。
 
 事件只在当前 Runner 进程内同步投递，不能作为唯一可靠触发源。监听器应快速写入业务 Outbox 或发送
@@ -267,7 +267,7 @@ Snapshot 前收束模型消息协议：
 
 因此，同一 `conversationId` 在收到 `TURN_CANCELLED` 或 `TURN_FAILED` 后可以开始新的普通 Turn，
 其模型历史仍保持完整的 `assistant -> tool -> assistant -> user` 边界。`RETRY_SCHEDULED` 不会触发
-收束，因为它还会从原 Phase 继续恢复；人工审批拒绝也会先生成正常 ToolMessage，再让模型生成最终回答。
+收束，因为它还会从原 ExecutionPoint 继续恢复；人工审批拒绝也会先生成正常 ToolMessage，再让模型生成最终回答。
 
 页面历史仍保留原始工具、取消和失败事件；收束消息主要用于保证后续模型请求的协议有效性。
 

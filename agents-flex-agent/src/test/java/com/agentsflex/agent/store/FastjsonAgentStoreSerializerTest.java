@@ -4,7 +4,7 @@
 package com.agentsflex.agent.store;
 
 import com.agentsflex.agent.AgentExecutionPolicy;
-import com.agentsflex.agent.AgentTurnPhase;
+import com.agentsflex.agent.AgentTurnExecutionPoint;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
@@ -70,7 +70,7 @@ public class FastjsonAgentStoreSerializerTest {
         AgentTurnState state = AgentTurnState.builder("turn-1",
                 AgentExecutionPolicy.defaults(), 0)
             .status(AgentTurnStatus.WAITING_FOR_APPROVAL)
-            .phase(AgentTurnPhase.TOOLS)
+            .executionPoint(AgentTurnExecutionPoint.PROCESS_TOOLS)
             .messages(Arrays.<Message>asList(user, assistant, tool))
             .pendingToolCalls(Collections.singletonList(toolCall))
             .suspension(AgentSuspension.toolApproval("call-1", "lookup"))
@@ -94,6 +94,8 @@ public class FastjsonAgentStoreSerializerTest {
         assertEquals("https://example.com/image.png",
             ((UserMessage) decoded.getState().getMessages().get(0)).getImageUrls().get(0));
         assertEquals("lookup", decoded.getState().getPendingToolCalls().get(0).getName());
+        assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS,
+            decoded.getState().getExecutionPoint());
         assertEquals(3, decoded.getState().getStepCount());
         assertEquals("tenant-1", decoded.getState().getMetadata().get("tenant"));
         assertEquals("登录系统", decoded.getState().getToolInputData()

@@ -9,6 +9,8 @@ import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.AgentUserInputTool;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.tool.ToolExecutionTarget;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -113,6 +115,25 @@ public class AgentValueObjectContractTest {
         } catch (UnsupportedOperationException expected) {
             assertEquals(1, command.getData().size());
         }
+    }
+
+    @Test
+    public void shouldBuildExternalToolAndNormalizeResumeResults() {
+        Tool external = Tool.builder("browser", "browser")
+            .executionTarget(ToolExecutionTarget.EXTERNAL)
+            .build();
+        assertEquals(ToolExecutionTarget.EXTERNAL, external.getExecutionTarget());
+        assertEquals(ToolExecutionTarget.LOCAL,
+            Tool.builder("local", "local").build().getExecutionTarget());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("ok", true);
+        AgentResumeCommand command = AgentResumeCommand.toolResult("call-1", result);
+        assertEquals(AgentResumeCommandType.TOOL_RESULT, command.getType());
+        assertEquals("call-1", command.getCorrelationId());
+        assertEquals("{\"ok\":true}", command.getContent());
+        assertTrue(AgentResumeCommand.toolError("call-1", "FAILED", "bad")
+            .getContent().contains("FAILED"));
     }
 
     @Test

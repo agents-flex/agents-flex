@@ -7,7 +7,7 @@ description: 配置指数退避、工具错误策略和持久化重试，并确�
 
 ## 概述
 
-AgentRunner 将可恢复异常转换为持久化重试状态，而不是在执行线程中 sleep。Turn 保存失败阶段与 `nextRunnableAt`，进入 `RETRY_SCHEDULED`；时间到达后由 Worker 领取并从原 MODEL 或 TOOLS 边界继续。
+AgentRunner 将可恢复异常转换为持久化重试状态，而不是在执行线程中 sleep。Turn 保存失败阶段与 `nextRunnableAt`，进入 `RETRY_SCHEDULED`；时间到达后由 Worker 领取并从原 INVOKE_MODEL 或 PROCESS_TOOLS 边界继续。
 
 ## 配置重试
 

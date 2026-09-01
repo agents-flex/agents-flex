@@ -27,6 +27,7 @@ public class MapBuilder {
     private final List<Parameter> parameters = new ArrayList<>();
     private final Map<String, Object> metadata = new LinkedHashMap<>();
     private Function<Map<String, Object>, Object> invoker;
+    private ToolExecutionTarget executionTarget = ToolExecutionTarget.LOCAL;
 
     public MapBuilder name(String name) {
         this.name = name;
@@ -65,12 +66,22 @@ public class MapBuilder {
         return this;
     }
 
+    /** 设置 ToolCall 的实际执行位置。 */
+    public MapBuilder executionTarget(ToolExecutionTarget value) {
+        if (value == null) {
+            throw new IllegalArgumentException("executionTarget must not be null");
+        }
+        this.executionTarget = value;
+        return this;
+    }
+
     public Tool build() {
         MapFunctionTool tool = new MapFunctionTool();
         tool.setName(name);
         tool.setDescription(description);
         tool.setParameters(parameters.toArray(new Parameter[0]));
         tool.setMetadata(metadata);
+        tool.setExecutionTarget(executionTarget);
         tool.setInvoker(invoker);
         return tool;
     }

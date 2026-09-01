@@ -27,6 +27,7 @@ public abstract class BaseTool implements Tool, Serializable {
     protected String description;
     protected Parameter[] parameters;
     protected Map<String, Object> metadata = new LinkedHashMap<>();
+    protected ToolExecutionTarget executionTarget = ToolExecutionTarget.LOCAL;
 
     @Override
     public String getName() {
@@ -58,6 +59,16 @@ public abstract class BaseTool implements Tool, Serializable {
     @Override
     public Map<String, Object> getMetadata() {
         return Collections.unmodifiableMap(new LinkedHashMap<>(metadata));
+    }
+
+    @Override
+    public ToolExecutionTarget getExecutionTarget() {
+        return executionTarget;
+    }
+
+    public void setExecutionTarget(ToolExecutionTarget executionTarget) {
+        this.executionTarget = executionTarget == null
+            ? ToolExecutionTarget.LOCAL : executionTarget;
     }
 
     /** 使用传入内容替换工具元数据，并与调用方持有的 Map 隔离。 */

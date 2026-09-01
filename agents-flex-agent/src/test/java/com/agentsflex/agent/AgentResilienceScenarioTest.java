@@ -112,7 +112,7 @@ public class AgentResilienceScenarioTest {
 
         AgentTurn scheduled = runner.run(agent, "execute");
         assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
-        assertEquals(AgentTurnPhase.TOOLS, scheduled.getPhase());
+        assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, scheduled.getExecutionPoint());
         assertEquals(1, scheduled.getPendingToolCalls().size());
 
         List<AgentTurn> processed = new AgentWorker("retry-worker", runner, 10000).pollAndRun(1);

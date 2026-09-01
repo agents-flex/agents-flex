@@ -15,9 +15,10 @@ Agent 遇到人工审批、缺少用户信息或延迟重试时，不应占用�
 | --- | --- | --- |
 | `USER_INPUT` | `WAITING_FOR_USER` | `userInput(content)` 或 `userInput(callId, data)` |
 | `TOOL_APPROVAL` | `WAITING_FOR_APPROVAL` | `approveTool` / `rejectTool` |
+| `EXTERNAL_TOOL` | `WAITING_FOR_TOOL` | `toolResult` / `toolError` |
 | `RETRY` | `RETRY_SCHEDULED` | `retry()` 或 Worker 到期领取 |
 
-Suspension 还保存 correlationId、展示消息、恢复 phase 和可序列化 metadata。
+Suspension 还保存 correlationId、展示消息、恢复 executionPoint 和可序列化 metadata。
 
 ## 模型请求用户输入
 
@@ -86,12 +87,54 @@ return createTicket(submitted);
 ```
 
 用户仍通过 `AgentResumeCommand.userInput(callId, formData)` 提交。区别是 Runner 不生成控制工具的
-ToolMessage，而是把数据保存进 Snapshot，并从 `TOOLS` 阶段重新执行原业务工具。工具通过
+ToolMessage，而是把数据保存进 Snapshot，并从 `PROCESS_TOOLS` 阶段重新执行原业务工具。工具通过
 `getSubmittedFormData()` 读取数据；调用成功后，Runner 才生成原业务 ToolCall 对应的 ToolMessage。
 
 Java 调用栈不会被保存，工具恢复时一定从函数开头执行。异常必须在任何外部副作用之前抛出，工具还应
 使用 `AgentToolContext.getIdempotencyKey()` 实现业务幂等。同一个 ToolCall 提交后再次抛出输入请求会
 被视为协议错误，避免无限表单循环。
+
+## 外部工具执行
+
+浏览器、移动端或其他外部执行器提供的能力，可以把 Tool 标记为 `EXTERNAL`：
+
+```java
+Tool browserLocation = Tool.builder("read_browser_location", "读取浏览器定位")
+    .metadata("clientCapability", "geolocation")
+    .executionTarget(ToolExecutionTarget.EXTERNAL)
+    .build();
+```
+
+模型生成该 ToolCall 后，Runner 仍先执行工具审批策略。允许执行时不调用 `Tool.invoke(...)`，而是保存
+`EXTERNAL_TOOL` Suspension，进入 `WAITING_FOR_TOOL`，并发布 `EXTERNAL_TOOL_REQUESTED`。事件 data
+包含 `toolCallId`、`toolName`、原始 `arguments` 和只读 `toolMetadata`，业务系统可以将其转发到
+WebSocket、SSE 或消息通道。
+
+外部执行成功后提交：
+
+```java
+runner.submitResume(turnId,
+    AgentResumeCommand.toolResult(toolCallId, result)
+        .withMetadata("executorId", "web-session-1"));
+```
+
+结构化结果会序列化为 JSON，并直接生成与原 ToolCall ID 匹配的 `ToolMessage`。Runner 不会调用本地
+工具函数，然后由 Worker 或 `resume(...)` 继续调用模型。
+
+外部执行失败时，使用结构化错误结果：
+
+```java
+runner.submitResume(turnId,
+    AgentResumeCommand.toolError(
+        toolCallId, "PERMISSION_DENIED", "用户拒绝了定位权限"));
+```
+
+错误同样作为 ToolMessage 返回模型，因此模型可以解释失败或选择替代方案。Runner 分别发布
+`EXTERNAL_TOOL_COMPLETED` 或 `EXTERNAL_TOOL_FAILED`。事件监听器不是可靠队列，生产环境应先将派发和
+回调写入业务 Inbox/Outbox，再调用 `submitResume(...)`。
+
+外部工具与审批可以组合：需要审批时先进入 `WAITING_FOR_APPROVAL`；批准后才进入
+`WAITING_FOR_TOOL` 并发布执行请求。
 
 ### 底层主动挂起
 

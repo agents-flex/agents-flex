@@ -201,7 +201,7 @@ public class AgentToolResolutionTest {
         AgentTurnState state = AgentTurnState.builder("missing-tool-turn",
                 agent.getExecutionPolicy(), System.currentTimeMillis())
             .status(AgentTurnStatus.RUNNING)
-            .phase(AgentTurnPhase.TOOLS)
+            .executionPoint(AgentTurnExecutionPoint.PROCESS_TOOLS)
             .messages(Collections.emptyList())
             .pendingToolCalls(Collections.singletonList(call))
             .build();
@@ -263,7 +263,7 @@ public class AgentToolResolutionTest {
         @Override
         public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
             AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
-            if (!crashed && AgentTurnPhase.TOOLS.equals(saved.getState().getPhase())) {
+            if (!crashed && AgentTurnExecutionPoint.PROCESS_TOOLS.equals(saved.getState().getExecutionPoint())) {
                 crashed = true;
                 throw new SimulatedProcessCrash();
             }

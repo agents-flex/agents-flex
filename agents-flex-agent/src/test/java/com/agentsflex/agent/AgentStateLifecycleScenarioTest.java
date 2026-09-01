@@ -44,15 +44,17 @@ public class AgentStateLifecycleScenarioTest {
                 AgentSuspension.userInput("need input"), 0),
             blocked("approval", agent, AgentTurnStatus.WAITING_FOR_APPROVAL,
                 AgentSuspension.toolApproval("call-1", "danger"), 0),
+            blocked("external", agent, AgentTurnStatus.WAITING_FOR_TOOL,
+                AgentSuspension.externalTool("call-2", "browser", "{}", null), 0),
             blocked("retry", agent, AgentTurnStatus.RETRY_SCHEDULED,
-                AgentSuspension.retry("temporary", AgentTurnPhase.MODEL, now), now)
+                AgentSuspension.retry("temporary", AgentTurnExecutionPoint.INVOKE_MODEL, now), now)
         };
 
         for (AgentTurnSnapshot snapshot : snapshots) {
             store.save(snapshot, -1);
             AgentTurn restored = runner.restore(snapshot.getState().getTurnId());
             assertEquals(snapshot.getState().getStatus(), restored.getStatus());
-            assertEquals(snapshot.getState().getPhase(), restored.getPhase());
+            assertEquals(snapshot.getState().getExecutionPoint(), restored.getExecutionPoint());
             assertEquals(snapshot.getState().getSuspension().getType(),
                 restored.getSuspension().getType());
             assertTrue(restored.getStatus().isBlocked());
@@ -103,7 +105,7 @@ public class AgentStateLifecycleScenarioTest {
             AgentResumeCommand.approveTool("approval-2"));
 
         assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
-        assertEquals(AgentTurnPhase.TOOLS, runnable.getPhase());
+        assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, runnable.getExecutionPoint());
         assertEquals(0, executions.get());
         assertEquals(1, model.getCallCount());
 
@@ -178,7 +180,7 @@ public class AgentStateLifecycleScenarioTest {
         AgentTurnState state = AgentTurnState.builder(turnId, agent.getExecutionPolicy(),
                 System.currentTimeMillis())
             .status(status)
-            .phase(suspension.getResumePhase())
+            .executionPoint(suspension.getResumeExecutionPoint())
             .messages(Arrays.asList(new com.agentsflex.core.message.UserMessage("input")))
             .suspension(suspension)
             .updatedAt(System.currentTimeMillis())

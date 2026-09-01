@@ -65,7 +65,7 @@ event=agent_turn_suspended turnId=... status=WAITING_FOR_APPROVAL
 agentId=order-agent tool=refund_order toolCallId=...
 ```
 
-错误日志应保留异常类型、phase、retryCount 和是否还会重试。模型返回内容只在受控调试环境记录，并设置采样与脱敏。
+错误日志应保留异常类型、executionPoint、retryCount 和是否还会重试。模型返回内容只在受控调试环境记录，并设置采样与脱敏。
 
 ## 与 observability 模块集成
 

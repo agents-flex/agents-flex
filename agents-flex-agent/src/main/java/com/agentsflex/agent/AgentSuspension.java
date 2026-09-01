@@ -38,7 +38,7 @@ public final class AgentSuspension implements Serializable {
     /**
      * 恢复后继续执行的模型或工具阶段。
      */
-    private final AgentTurnPhase resumePhase;
+    private final AgentTurnExecutionPoint resumeExecutionPoint;
     /**
      * 审批策略、重试时间等可持久化附加信息。
      */
@@ -50,18 +50,18 @@ public final class AgentSuspension implements Serializable {
      * @param type          挂起原因
      * @param correlationId 工具调用关联 ID
      * @param message       面向调用方的等待说明
-     * @param resumePhase   恢复后继续执行的阶段
+     * @param resumeExecutionPoint   恢复后继续执行的阶段
      * @param metadata      可序列化扩展数据
      */
     public AgentSuspension(AgentSuspensionType type, String correlationId, String message,
-                           AgentTurnPhase resumePhase, Map<String, Object> metadata) {
+                           AgentTurnExecutionPoint resumeExecutionPoint, Map<String, Object> metadata) {
         if (type == null) {
             throw new IllegalArgumentException("type must not be null");
         }
         this.type = type;
         this.correlationId = correlationId;
         this.message = message;
-        this.resumePhase = resumePhase == null ? AgentTurnPhase.MODEL : resumePhase;
+        this.resumeExecutionPoint = resumeExecutionPoint == null ? AgentTurnExecutionPoint.INVOKE_MODEL : resumeExecutionPoint;
         this.metadata = metadata == null
             ? Collections.emptyMap()
             : Collections.unmodifiableMap(new HashMap<>(metadata));
@@ -72,13 +72,13 @@ public final class AgentSuspension implements Serializable {
      */
     public static AgentSuspension userInput(String message) {
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, null, message,
-            AgentTurnPhase.MODEL, null);
+            AgentTurnExecutionPoint.INVOKE_MODEL, null);
     }
 
     /**
      * 创建由 request_user_input ToolCall 产生的结构化输入暂停点。
      *
-     * <p>correlationId 绑定原 ToolCall，恢复到 TOOLS 阶段后由 Runner 写入匹配的 ToolMessage。</p>
+     * <p>correlationId 绑定原 ToolCall，恢复到 PROCESS_TOOLS 阶段后由 Runner 写入匹配的 ToolMessage。</p>
      */
     public static AgentSuspension userInput(String callId, String message,
                                             Map<String, Object> metadata) {
@@ -86,7 +86,7 @@ public final class AgentSuspension implements Serializable {
             throw new IllegalArgumentException("callId must not be blank");
         }
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, callId, message,
-            AgentTurnPhase.TOOLS, metadata);
+            AgentTurnExecutionPoint.PROCESS_TOOLS, metadata);
     }
 
     /**
@@ -112,16 +112,36 @@ public final class AgentSuspension implements Serializable {
         String message = decision != null && decision.getMessage() != null
             ? decision.getMessage() : "Tool approval is required: " + toolName;
         return new AgentSuspension(AgentSuspensionType.TOOL_APPROVAL, callId,
-            message, AgentTurnPhase.TOOLS, metadata);
+            message, AgentTurnExecutionPoint.PROCESS_TOOLS, metadata);
+    }
+
+    /**
+     * 创建等待外部执行器返回指定 ToolCall 结果的暂停点。
+     */
+    public static AgentSuspension externalTool(String callId, String toolName,
+                                               String arguments,
+                                               Map<String, Object> toolMetadata) {
+        if (callId == null || callId.trim().isEmpty()) {
+            throw new IllegalArgumentException("callId must not be blank");
+        }
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("toolName", toolName);
+        metadata.put("arguments", arguments);
+        if (toolMetadata != null && !toolMetadata.isEmpty()) {
+            metadata.put("toolMetadata", new HashMap<String, Object>(toolMetadata));
+        }
+        return new AgentSuspension(AgentSuspensionType.EXTERNAL_TOOL, callId,
+            "External tool result is required: " + toolName,
+            AgentTurnExecutionPoint.PROCESS_TOOLS, metadata);
     }
 
     /**
      * 创建等待指定时间后自动重试的暂停点。
      */
-    public static AgentSuspension retry(String message, AgentTurnPhase resumePhase, long nextRunnableAt) {
+    public static AgentSuspension retry(String message, AgentTurnExecutionPoint resumeExecutionPoint, long nextRunnableAt) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("nextRunnableAt", nextRunnableAt);
-        return new AgentSuspension(AgentSuspensionType.RETRY, null, message, resumePhase, metadata);
+        return new AgentSuspension(AgentSuspensionType.RETRY, null, message, resumeExecutionPoint, metadata);
     }
 
     /**
@@ -148,8 +168,8 @@ public final class AgentSuspension implements Serializable {
     /**
      * @return 应在恢复后继续执行的阶段
      */
-    public AgentTurnPhase getResumePhase() {
-        return resumePhase;
+    public AgentTurnExecutionPoint getResumeExecutionPoint() {
+        return resumeExecutionPoint;
     }
 
     /**
@@ -163,6 +183,6 @@ public final class AgentSuspension implements Serializable {
      * @return 与当前暂停信息隔离的副本
      */
     AgentSuspension copy() {
-        return new AgentSuspension(type, correlationId, message, resumePhase, metadata);
+        return new AgentSuspension(type, correlationId, message, getResumeExecutionPoint(), metadata);
     }
 }

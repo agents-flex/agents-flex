@@ -15,6 +15,7 @@ import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -250,7 +251,7 @@ final class AgentEventPublisher {
         publish(turn, AgentEventType.SNAPSHOT_SAVED,
             attributes("version", snapshot.getState().getVersion(),
                 "status", snapshot.getState().getStatus(),
-                "phase", snapshot.getState().getPhase()));
+                "executionPoint", snapshot.getState().getExecutionPoint()));
     }
 
     /**
@@ -264,7 +265,7 @@ final class AgentEventPublisher {
             attributes("suspensionType", suspension.getType(),
                 "correlationId", suspension.getCorrelationId(),
                 "message", suspension.getMessage(),
-                "resumePhase", suspension.getResumePhase(),
+                "resumeExecutionPoint", suspension.getResumeExecutionPoint(),
                 "metadata", suspension.getMetadata()));
     }
 
@@ -311,6 +312,28 @@ final class AgentEventPublisher {
     }
 
     /**
+     * 发布外部工具执行请求。Snapshot 已经保存，业务监听器可以安全派发给外部执行器。
+     */
+    void notifyExternalToolRequested(AgentTurn turn, ToolCall call, Tool tool) {
+        publish(turn, AgentEventType.EXTERNAL_TOOL_REQUESTED,
+            attributes("toolCallId", callKey(call), "toolName", call.getName(),
+                "arguments", call.getArguments(), "toolMetadata", tool.getMetadata()));
+    }
+
+    /**
+     * 发布外部工具结果已经写入原 ToolCall 的事实事件。
+     */
+    void notifyExternalToolResult(AgentTurn turn, AgentSuspension suspension,
+                                  AgentResumeCommand command) {
+        AgentEventType type = command.getType() == AgentResumeCommandType.TOOL_ERROR
+            ? AgentEventType.EXTERNAL_TOOL_FAILED
+            : AgentEventType.EXTERNAL_TOOL_COMPLETED;
+        publish(turn, type,
+            attributes("toolCallId", suspension.getCorrelationId(),
+                "toolName", suspension.getMetadata().get("toolName")));
+    }
+
+    /**
      * 发布自动重试已调度事件，包含次数、下次运行时间和失败原因。
      *
      * @param turn  已进入重试等待的 Turn
@@ -339,7 +362,7 @@ final class AgentEventPublisher {
         if (turn == null) return;
         Map<String, Object> values = attributes(
             "status", turn.getStatus(),
-            "phase", turn.getPhase(),
+            "executionPoint", turn.getExecutionPoint(),
             "stepCount", turn.getStepCount(),
             "maxSteps", turn.getExecutionPolicy().getMaxSteps());
         if (data != null) values.putAll(data);

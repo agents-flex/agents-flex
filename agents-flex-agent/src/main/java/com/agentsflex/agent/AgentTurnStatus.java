@@ -34,6 +34,11 @@ public enum AgentTurnStatus {
     WAITING_FOR_APPROVAL,
 
     /**
+     * ToolCall 已派发给外部执行器，正在等待工具结果。
+     */
+    WAITING_FOR_TOOL,
+
+    /**
      * 可恢复错误已安排后续重试，等待调度时间到达。
      */
     RETRY_SCHEDULED,
@@ -74,6 +79,7 @@ public enum AgentTurnStatus {
     public boolean isBlocked() {
         return this == WAITING_FOR_USER
             || this == WAITING_FOR_APPROVAL
+            || this == WAITING_FOR_TOOL
             || this == RETRY_SCHEDULED;
     }
 

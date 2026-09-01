@@ -19,6 +19,10 @@ public enum AgentSuspensionType {
      */
     TOOL_APPROVAL,
     /**
+     * 等待浏览器、移动端或其他外部执行器返回工具结果。
+     */
+    EXTERNAL_TOOL,
+    /**
      * 等待自动重试的调度时间到达。
      */
     RETRY

@@ -7,7 +7,7 @@ description: 解答 Agent 定义、执行、恢复、工具、规划、Worker �
 
 ## 概述
 
-本页汇总使用 agents-flex-agent 时最容易混淆的职责边界和生产问题。遇到异常时，先读取 Turn Snapshot 的 status、phase、Suspension、error、version 和 nextRunnableAt，再结合持久化事件定位原因。
+本页汇总使用 agents-flex-agent 时最容易混淆的职责边界和生产问题。遇到异常时，先读取 Turn Snapshot 的 status、executionPoint、Suspension、error、version 和 nextRunnableAt，再结合持久化事件定位原因。
 
 ## Agent 和 ChatModel 有什么区别？
 
@@ -86,7 +86,8 @@ Snapshot 只保存 Agent ID 与版本。确保 Runner 配置的 Loader 可以精
 ## 浏览器关闭后如何继续任务？
 
 不要依赖内存中的 `AgentTurn` 对象。保存 `turnId`，重新登录后调用 `runner.restore(turnId)` 查询状态：
-若是 `WAITING_FOR_APPROVAL` 或 `WAITING_FOR_USER`，提交对应命令；若是 `READY`、`RUNNING` 或到期重试，
+若是 `WAITING_FOR_APPROVAL`、`WAITING_FOR_USER` 或 `WAITING_FOR_TOOL`，提交对应审批、输入或工具结果命令；
+若是 `READY`、`RUNNING` 或到期重试，
 交给 `AgentWorker`；若已是终态，只读取结果并展示。
 
 ## Store 版本冲突如何处理？

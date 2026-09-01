@@ -101,7 +101,7 @@ Tool userInputTool = AgentUserInputTool.builder()
 ```
 
 模型只能看到 `meeting_request` 和 `description`，调用 `request_user_input` 后由 Runner 保存 Schema、
-暂停 Turn，并投影 `AgentFormMessage`。提交数据会成为该控制 ToolCall 的 ToolMessage，然后返回 MODEL
+暂停 Turn，并投影 `AgentFormMessage`。提交数据会成为该控制 ToolCall 的 ToolMessage，然后返回 INVOKE_MODEL
 阶段让模型汇总。
 
 另一种入口由业务工具在执行过程中动态请求表单：

@@ -92,7 +92,7 @@ public class AgentUserInputFormIntegrationTest {
             agent, "tool-form-conversation", "创建登录故障工单");
 
         assertEquals(AgentTurnStatus.WAITING_FOR_USER, waiting.getStatus());
-        assertEquals(AgentTurnPhase.TOOLS, waiting.getPhase());
+        assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, waiting.getExecutionPoint());
         assertEquals("ticket-call", waiting.getSuspension().getCorrelationId());
         assertEquals("TOOL", waiting.getSuspension().getMetadata().get("inputTarget"));
         assertEquals("create_support_ticket",
@@ -129,7 +129,7 @@ public class AgentUserInputFormIntegrationTest {
                 .withMetadata("submittedBy", "user-8"));
 
         assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
-        assertEquals(AgentTurnPhase.TOOLS, runnable.getPhase());
+        assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, runnable.getExecutionPoint());
         assertEquals(values, runnable.getToolInputData("ticket-call"));
         AgentFormMessage submitted = form(memory);
         assertEquals(AgentFormMessage.Status.SUBMITTED, submitted.getStatus());
@@ -201,7 +201,7 @@ public class AgentUserInputFormIntegrationTest {
         AgentTurn waiting = runner.run(agent, "form-conversation", "创建高优先级故障工单");
 
         assertEquals(AgentTurnStatus.WAITING_FOR_USER, waiting.getStatus());
-        assertEquals(AgentTurnPhase.TOOLS, waiting.getPhase());
+        assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, waiting.getExecutionPoint());
         assertEquals("input-1", waiting.getSuspension().getCorrelationId());
         assertEquals("support_ticket_details",
             waiting.getSuspension().getMetadata().get("formKey"));
@@ -231,7 +231,7 @@ public class AgentUserInputFormIntegrationTest {
                 .withMetadata("submittedBy", "user-7"));
 
         assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
-        assertEquals(AgentTurnPhase.MODEL, runnable.getPhase());
+        assertEquals(AgentTurnExecutionPoint.INVOKE_MODEL, runnable.getExecutionPoint());
         assertTrue(runnable.getPendingToolCalls().isEmpty());
         AgentFormMessage submitted = form(memory);
         assertEquals(AgentFormMessage.Status.SUBMITTED, submitted.getStatus());
@@ -300,7 +300,7 @@ public class AgentUserInputFormIntegrationTest {
             AgentResumeCommand.userInput("input-1", values));
         assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
         assertTrue(runnable.getPendingToolCalls().isEmpty());
-        assertEquals(AgentTurnPhase.MODEL, runnable.getPhase());
+        assertEquals(AgentTurnExecutionPoint.INVOKE_MODEL, runnable.getExecutionPoint());
         assertEquals(AgentTurnStatus.COMPLETED,
             runner.runUntilBlocked(waiting.getId()).getStatus());
         assertEquals("会议室预定成功", runner.restore(waiting.getId()).getFinalOutput());

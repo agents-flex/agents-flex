@@ -39,7 +39,7 @@ public final class AgentTurnState implements Serializable {
      */
     private boolean streaming;
     private AgentTurnStatus status = AgentTurnStatus.READY;
-    private AgentTurnPhase phase = AgentTurnPhase.MODEL;
+    private AgentTurnExecutionPoint executionPoint = AgentTurnExecutionPoint.INVOKE_MODEL;
     private List<Message> messages = Collections.emptyList();
     private List<ToolCall> pendingToolCalls = Collections.emptyList();
     private AgentSuspension suspension;
@@ -111,7 +111,7 @@ public final class AgentTurnState implements Serializable {
         this.executionPolicy = source.executionPolicy;
         this.streaming = source.streaming;
         this.status = source.status;
-        this.phase = source.phase;
+        this.executionPoint = source.getExecutionPoint();
         this.messages = immutable ? Collections.unmodifiableList(AgentMessageUtils.copyMessages(source.messages)) : AgentMessageUtils.copyMessages(source.messages);
         this.pendingToolCalls = immutable ? Collections.unmodifiableList(AgentMessageUtils.copyToolCalls(source.pendingToolCalls)) : AgentMessageUtils.copyToolCalls(source.pendingToolCalls);
         this.suspension = source.suspension == null ? null : source.suspension.copy();
@@ -217,10 +217,10 @@ public final class AgentTurnState implements Serializable {
     }
 
     /**
-     * @return 下一步执行阶段
+     * @return 下一步执行入口
      */
-    public AgentTurnPhase getPhase() {
-        return phase;
+    public AgentTurnExecutionPoint getExecutionPoint() {
+        return executionPoint;
     }
 
     /**
@@ -455,9 +455,9 @@ public final class AgentTurnState implements Serializable {
         status = value;
     }
 
-    void setPhase(AgentTurnPhase value) {
+    void setExecutionPoint(AgentTurnExecutionPoint value) {
         requireMutable();
-        phase = value;
+        executionPoint = value;
     }
 
     void setMessages(List<? extends Message> value) {
@@ -802,8 +802,8 @@ public final class AgentTurnState implements Serializable {
             return this;
         }
 
-        public Builder phase(AgentTurnPhase value) {
-            state.setPhase(value);
+        public Builder executionPoint(AgentTurnExecutionPoint value) {
+            state.setExecutionPoint(value);
             return this;
         }
 
