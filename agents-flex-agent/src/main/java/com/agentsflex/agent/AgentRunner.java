@@ -7,40 +7,22 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
-import com.agentsflex.agent.compression.AgentContextCompressor;
 import com.agentsflex.agent.compression.AgentContextCompressionResult;
-import com.agentsflex.agent.exception.AgentConversationBusyException;
-import com.agentsflex.agent.exception.AgentFormRequiredException;
-import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
+import com.agentsflex.agent.compression.AgentContextCompressor;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
-import com.agentsflex.agent.middleware.AgentMiddleware;
-import com.agentsflex.agent.middleware.AgentMiddlewareContext;
-import com.agentsflex.agent.middleware.AgentModelCallChain;
-import com.agentsflex.agent.middleware.AgentStepChain;
-import com.agentsflex.agent.middleware.AgentToolCallChain;
+import com.agentsflex.agent.exception.AgentConversationBusyException;
+import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
+import com.agentsflex.agent.middleware.*;
 import com.agentsflex.agent.store.AgentTurnStore;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
-import com.agentsflex.agent.tool.AgentFormDefinition;
-import com.agentsflex.agent.tool.AgentToolProgressEmitter;
-import com.agentsflex.agent.tool.AgentToolContext;
-import com.agentsflex.agent.tool.AgentToolResumeInfo;
-import com.agentsflex.agent.tool.AgentToolResumeType;
-import com.agentsflex.agent.tool.AgentUserInputTool;
-import com.agentsflex.agent.tool.ToolApprovalDecision;
-import com.agentsflex.agent.tool.ToolErrorStrategy;
-import com.agentsflex.core.message.AiMessage;
-import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.ToolCall;
-import com.agentsflex.core.message.ToolMessage;
-import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.agent.tool.*;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.ChatMemoryProvider;
+import com.agentsflex.core.message.*;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.exception.ModelQuotaExceededException;
-import com.agentsflex.core.model.exception.TokenLimitExceededException;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutionTarget;
 import com.agentsflex.core.model.chat.tool.ToolExecutor;
@@ -51,13 +33,8 @@ import com.alibaba.fastjson2.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * 创建、推进、暂停和恢复 {@link AgentTurn} 的核心执行器。
@@ -108,6 +85,7 @@ public final class AgentRunner {
      * 统一模型调用、Token 统计和事件发布的适配器。
      */
     private final AgentModelInvoker modelInvoker;
+    private final AgentRunnerOptions runnerOptions;
     /**
      * 可选的业务会话消息投影。未配置 Provider 时为空操作，现有显式传历史消息的 API 不受影响。
      */
@@ -134,6 +112,10 @@ public final class AgentRunner {
      * 同一 Runner 内按 conversationId 串行创建初始 Turn，避免检查与保存之间出现竞态。
      */
     private final ConcurrentMap<String, Object> conversationLocks = new ConcurrentHashMap<>();
+    /**
+     * 同一 Turn 内即时压缩结果缓存；key 包含输入消息 ID，历史变化时自动失效。
+     */
+    private final ConcurrentMap<String, List<Message>> compressionCache = new ConcurrentHashMap<>();
 
     /**
      * 创建全部使用进程内依赖的 Runner，适合测试和单实例试用。
@@ -153,7 +135,7 @@ public final class AgentRunner {
      * 创建自定义 TurnStore 和 AgentLoader 的 Runner。
      */
     public AgentRunner(AgentTurnStore turnStore, AgentLoader agentLoader) {
-        this(turnStore, agentLoader, null);
+        this(turnStore, agentLoader, null, AgentRunnerOptions.defaults());
     }
 
     /**
@@ -164,15 +146,16 @@ public final class AgentRunner {
      * @param chatMemoryProvider 可选业务会话存储 Provider
      */
     private AgentRunner(AgentTurnStore turnStore, AgentLoader agentLoader,
-                        ChatMemoryProvider chatMemoryProvider) {
+                        ChatMemoryProvider chatMemoryProvider, AgentRunnerOptions runnerOptions) {
         if (turnStore == null || agentLoader == null) {
             throw new IllegalArgumentException(
                 "AgentRunner dependencies must not be null");
         }
         this.turnStore = turnStore;
         this.agentLoader = agentLoader;
-        this.eventPublisher = new AgentEventPublisher();
-        this.modelInvoker = new AgentModelInvoker(eventPublisher);
+        this.runnerOptions = runnerOptions == null ? AgentRunnerOptions.defaults() : runnerOptions;
+        this.eventPublisher = new AgentEventPublisher(this.runnerOptions);
+        this.modelInvoker = new AgentModelInvoker(eventPublisher, this.runnerOptions.getModelExecutor());
         this.chatMemory = new AgentRunnerChatMemory(chatMemoryProvider);
     }
 
@@ -186,6 +169,7 @@ public final class AgentRunner {
         private AgentTurnStore turnStore = new InMemoryAgentTurnStore();
         private AgentLoader agentLoader = new InMemoryAgentLoader();
         private ChatMemoryProvider chatMemoryProvider;
+        private AgentRunnerOptions runnerOptions = AgentRunnerOptions.defaults();
 
         /**
          * 设置 Snapshot 与租约存储。
@@ -216,10 +200,18 @@ public final class AgentRunner {
         }
 
         /**
+         * 设置事件分发、工具执行和事件脱敏等基础设施配置。
+         */
+        public Builder options(AgentRunnerOptions value) {
+            runnerOptions = value == null ? AgentRunnerOptions.defaults() : value;
+            return this;
+        }
+
+        /**
          * 校验全部依赖并创建 Runner。
          */
         public AgentRunner build() {
-            return new AgentRunner(turnStore, agentLoader, chatMemoryProvider);
+            return new AgentRunner(turnStore, agentLoader, chatMemoryProvider, runnerOptions);
         }
     }
 
@@ -988,23 +980,51 @@ public final class AgentRunner {
         Prompt modelPrompt = prompt;
         if (prompt instanceof com.agentsflex.core.prompt.MemoryPrompt) {
             AgentContextCompressionPolicy policy = turn.getAgent().getCompressionPolicy();
-            AgentContextCompressor compressor = policy.getCompressor();
-            if (policy.isIncremental() && turn.getConversationId() != null) compressor = null;
+            AgentContextCompressor configuredCompressor = policy.getCompressor();
+            if (policy.isIncremental() && turn.getConversationId() != null) configuredCompressor = null;
+            final AgentContextCompressor compressor = configuredCompressor;
+            AgentContextCompressor effectiveCompressor = compressor == null ? null
+                : messages -> cachedCompression(turn, messages, compressor);
             modelPrompt = AgentContextWindow.build(
                 (com.agentsflex.core.prompt.MemoryPrompt) prompt,
                 turn.getAgent().getMaxAttachedTurns(),
                 turn.getAgent().getMaxAttachedMessages(),
+                turn.getAgent().getMaxAttachedTokens(),
+                turn.getAgent().getContextTokenEstimator(),
                 policy.isCompactCompletedToolTurns(),
                 policy.getKeepRecentTurns(),
-                compressor);
+                effectiveCompressor, policy.getCompressionFailureStrategy());
         }
         return modelInvoker.invoke(turn, modelPrompt);
+    }
+
+    /**
+     * 缓存单个 Turn 的即时摘要；压缩器失败时不写入缓存，便于下一次调用重试。
+     */
+    private List<Message> cachedCompression(AgentTurn turn, List<Message> messages,
+                                            AgentContextCompressor compressor) {
+        // 只用消息 ID 组成 key：新增工具结果或新一轮 UserMessage 会自然产生新 key，旧摘要不会误用。
+        StringBuilder keyBuilder = new StringBuilder(turn.getId());
+        for (Message message : messages) {
+            keyBuilder.append('|').append(message == null ? "null" : message.getMessageId());
+        }
+        String key = keyBuilder.toString();
+        List<Message> cached = compressionCache.get(key);
+        if (cached != null) return AgentMessageUtils.copyMessages(cached);
+        List<Message> result = compressor.compress(messages);
+        if (result != null) compressionCache.putIfAbsent(key, AgentMessageUtils.copyMessages(result));
+        return result;
     }
 
     /**
      * 逐个处理待执行 ToolCall，并在每个结果写入后保存 Snapshot。
      */
     private AgentStepResult executePendingTools(AgentTurn turn, AiMessageResponse response) {
+        if (turn.getExecutionPolicy().getToolExecutionMode() == AgentToolExecutionMode.PARALLEL
+            && turn.getPendingToolCalls().size() > 1) {
+            AgentStepResult parallel = executePendingToolsInParallel(turn, response);
+            if (parallel != null) return parallel;
+        }
         List<ToolMessage> results = new ArrayList<>();
         while (!turn.getPendingToolCalls().isEmpty()) {
             // 每个 ToolCall 前重新检查取消和通用预算；工具次数只约束后面的业务工具。
@@ -1078,7 +1098,8 @@ public final class AgentRunner {
             if (tool.getExecutionTarget() == ToolExecutionTarget.EXTERNAL) {
                 turn.incrementToolCallCount();
                 AgentSuspension suspension = AgentSuspension.externalTool(
-                    callKey(call), call.getName(), call.getArguments(), tool.getMetadata());
+                    callKey(call), call.getName(), call.getArguments(), tool.getMetadata(),
+                    turn.getExecutionPolicy().getExternalToolTimeoutMillis());
                 suspend(turn, suspension);
                 eventPublisher.notifyExternalToolRequested(turn, call, tool);
                 return AgentStepResult.of(response, results, null);
@@ -1088,7 +1109,7 @@ public final class AgentRunner {
             ToolMessage completedResult;
             try {
                 turn.incrementToolCallCount();
-                completedResult = executeTool(turn, tool, call);
+                completedResult = executeTool(turn, tool, call, runnerOptions.getToolExecutor());
             } catch (AgentFormRequiredException request) {
                 // 输入请求发生在副作用之前；无论第几轮表单交互，均不提前耗尽调用预算。
                 turn.rollbackToolCallCount();
@@ -1127,6 +1148,88 @@ public final class AgentRunner {
     }
 
     /**
+     * 并行执行一批已经明确允许的本地 ToolCall。需要审批、用户输入或外部工具时返回 null，
+     * 由顺序状态机处理，以便每次挂起都能保存精确的恢复点。
+     */
+    private AgentStepResult executePendingToolsInParallel(AgentTurn turn, AiMessageResponse response) {
+        List<ToolCall> calls = turn.getPendingToolCalls();
+        List<Tool> tools = new ArrayList<>(calls.size());
+        for (ToolCall call : calls) {
+            Tool tool = resolveTool(turn, call);
+            if (tool == null || AgentUserInputTool.isUserInputTool(tool)
+                || tool.getExecutionTarget() == ToolExecutionTarget.EXTERNAL) return null;
+            Boolean approval = turn.getToolApproval(callKey(call));
+            ToolApprovalDecision decision = approval == null
+                ? turn.getAgent().getToolApprovalPolicy().decide(turn, call, tool)
+                : (approval ? ToolApprovalDecision.ALLOW : ToolApprovalDecision.DENY);
+            if (decision == null || decision.getOutcome() != ToolApprovalDecision.Outcome.ALLOW) return null;
+            tools.add(tool);
+        }
+        String budgetReason = budgetExceededReason(turn, false);
+        if (budgetReason != null) return budgetExceeded(turn, budgetReason);
+        if (turn.getExecutionPolicy().getBudget().getMaxToolCalls() > 0
+            && turn.getToolCallCount() + calls.size() > turn.getExecutionPolicy().getBudget().getMaxToolCalls()) {
+            return null;
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(calls.size(), runnable -> {
+            Thread thread = new Thread(runnable, "agent-tool-parallel-" + turn.getId());
+            thread.setDaemon(true);
+            return thread;
+        });
+        // Tool execution itself may use FutureTask for timeout. Keep its executor separate from
+        // the batch coordinator so a bounded batch pool cannot deadlock waiting for its own workers.
+        ExecutorService invocationExecutor = Executors.newCachedThreadPool(runnable -> {
+            Thread thread = new Thread(runnable, "agent-tool-invocation-" + turn.getId());
+            thread.setDaemon(true);
+            return thread;
+        });
+        List<Future<ToolMessage>> futures = new ArrayList<>(calls.size());
+        try {
+            for (int index = 0; index < calls.size(); index++) {
+                ToolCall call = calls.get(index);
+                Tool tool = tools.get(index);
+                turn.incrementToolCallCount();
+                eventPublisher.notifyToolStart(turn, call);
+                futures.add(executor.submit(() -> executeTool(turn, tool, call, invocationExecutor)));
+            }
+            List<ToolMessage> results = new ArrayList<>(calls.size());
+            for (int index = 0; index < calls.size(); index++) {
+                ToolCall call = calls.get(index);
+                try {
+                    ToolMessage result = futures.get(index).get();
+                    appendToolResult(turn, call, result);
+                    results.add(result);
+                    eventPublisher.notifyToolEnd(turn, call);
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    return handleFailure(turn, response,
+                        new IllegalStateException("parallel tool execution was interrupted", error),
+                        AgentTurnExecutionPoint.PROCESS_TOOLS);
+                } catch (ExecutionException error) {
+                    Throwable cause = error.getCause();
+                    RuntimeException failure = cause instanceof RuntimeException
+                        ? (RuntimeException) cause : new IllegalStateException("parallel tool execution failed", cause);
+                    eventPublisher.notifyToolError(turn, call, failure);
+                    if (turn.getExecutionPolicy().getToolErrorStrategy() == ToolErrorStrategy.RETURN_ERROR_TO_MODEL) {
+                        ToolMessage result = buildToolErrorMessage(turn, call, failure);
+                        appendToolResult(turn, call, result);
+                        results.add(result);
+                        continue;
+                    }
+                    return handleFailure(turn, response, failure, AgentTurnExecutionPoint.PROCESS_TOOLS);
+                }
+            }
+            turn.moveTo(AgentTurnExecutionPoint.INVOKE_MODEL);
+            saveSnapshot(turn);
+            return AgentStepResult.of(response, results, null);
+        } finally {
+            executor.shutdownNow();
+            invocationExecutor.shutdownNow();
+        }
+    }
+
+    /**
      * 原子语义上提交一个工具结果：追加消息、移除 pending 调用并保存 Snapshot。
      *
      * <p>只有 Snapshot 成功后调用才算被运行时确认；具备外部副作用的 Tool 仍应使用
@@ -1157,7 +1260,12 @@ public final class AgentRunner {
             return cancelTurn(turn);
         }
         AgentRetryPolicy retry = turn.getExecutionPolicy().getRetryPolicy();
-        if (isRetryable(error) && turn.getRetryCount() < retry.getMaxRetries()) {
+        if (turn.getExecutionPolicy().getRetryClassifier()
+            .isRetryable(turn, error,
+                resumeExecutionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS
+                    && !turn.getPendingToolCalls().isEmpty()
+                    ? turn.getPendingToolCalls().get(0) : null)
+            && turn.getRetryCount() < retry.getMaxRetries()) {
             // retryCount + 1 表示即将安排的重试序号，用于计算指数退避延迟。
             int retryAttempt = turn.getRetryCount() + 1;
             long runAt = System.currentTimeMillis() + retry.delayMillis(retryAttempt);
@@ -1181,19 +1289,6 @@ public final class AgentRunner {
         turn.markFailed(error);
         saveSnapshot(turn);
         return AgentStepResult.of(response, null, error);
-    }
-
-    /**
-     * 参数错误和缺失工具属于确定性配置问题，重复执行不会自行恢复。
-     */
-    private boolean isRetryable(RuntimeException error) {
-        // 原样重试不会改变输入上下文或账户额度，避免无意义地重复请求。
-        if (error instanceof ModelQuotaExceededException
-            || error instanceof TokenLimitExceededException) {
-            return false;
-        }
-        return !(error instanceof AgentToolNotFoundException)
-            && !(error instanceof IllegalArgumentException);
     }
 
     /**
@@ -1297,6 +1392,7 @@ public final class AgentRunner {
      * 在终止 Step 的 STEP_COMPLETED 之后发布唯一的 Turn 终止事件。
      */
     private void publishTerminalEvent(AgentTurn turn) {
+        clearCompressionCache(turn.getId());
         switch (turn.getStatus()) {
             case COMPLETED:
                 eventPublisher.notifyTurnComplete(turn);
@@ -1319,6 +1415,14 @@ public final class AgentRunner {
             default:
                 // 非终止状态没有对应的 Turn 结束事件。
                 break;
+        }
+    }
+
+    private void clearCompressionCache(String turnId) {
+        if (turnId == null) return;
+        String prefix = turnId + "|";
+        for (String key : compressionCache.keySet()) {
+            if (key.startsWith(prefix)) compressionCache.remove(key);
         }
     }
 
@@ -1397,7 +1501,8 @@ public final class AgentRunner {
      * Agent Middleware、ToolInterceptor、Tool 函数；受控上下文通过 Core ToolContext 传入，
      * 不写入模型可见的工具参数 Schema。</p>
      */
-    private ToolMessage executeTool(AgentTurn turn, Tool tool, ToolCall call) {
+    private ToolMessage executeTool(AgentTurn turn, Tool tool, ToolCall call,
+                                    java.util.concurrent.Executor executor) {
         List<ToolInterceptor> interceptors = turn.getAgent().getToolInterceptors();
 
         AgentToolProgressEmitter progressEmitter = (message, data) ->
@@ -1414,7 +1519,7 @@ public final class AgentRunner {
 
         AgentMiddlewareContext middlewareContext =
             AgentMiddlewareContext.forToolCall(this, turn, toolContext);
-        Object value = proceedToolCall(middlewareContext, 0, interceptors);
+        Object value = executeToolCallWithTimeout(turn, middlewareContext, interceptors, executor);
         // ToolMessage 内容必须是字符串：标量直接转换，结构化对象统一序列化为 JSON。
         ToolMessage result = new ToolMessage();
         result.setToolCallId(callKey(call));
@@ -1426,7 +1531,36 @@ public final class AgentRunner {
         } else {
             result.setContent(JSON.toJSONString(value));
         }
+        long maxCharacters = turn.getExecutionPolicy().getToolResultMaxCharacters();
+        if (maxCharacters > 0 && result.getContent() != null
+            && result.getContent().length() > maxCharacters) {
+            throw new IllegalStateException("tool result exceeded maximum size: " + maxCharacters);
+        }
         return result;
+    }
+
+    private Object executeToolCallWithTimeout(AgentTurn turn,
+                                              AgentMiddlewareContext context,
+                                              List<ToolInterceptor> interceptors,
+                                              java.util.concurrent.Executor executor) {
+        long timeout = turn.getExecutionPolicy().getToolExecutionTimeoutMillis();
+        // 无论是否配置超时，都通过 toolExecutor 执行，确保线程池隔离、上下文传播和资源配额配置一致。
+        // FutureTask 只负责同步等待结果；timeout=0 时使用无期限 get，不改变原有顺序执行语义。
+        FutureTask<Object> task = new FutureTask<>(() -> proceedToolCall(context, 0, interceptors));
+        executor.execute(task);
+        try {
+            return timeout <= 0 ? task.get() : task.get(timeout, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException error) {
+            task.cancel(true);
+            throw new IllegalStateException("tool execution exceeded timeout: " + timeout + "ms", error);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("tool execution was interrupted", error);
+        } catch (java.util.concurrent.ExecutionException error) {
+            Throwable cause = error.getCause();
+            if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+            throw new IllegalStateException("tool execution failed", cause);
+        }
     }
 
     /**
@@ -1758,8 +1892,20 @@ public final class AgentRunner {
             throw new IllegalArgumentException("TOOL_RESULT or TOOL_ERROR command is required");
         }
         requireCorrelation(suspension, command);
+        Object requestedAt = suspension.getMetadata().get("requestedAt");
+        Object timeoutMillis = suspension.getMetadata().get("timeoutMillis");
+        if (requestedAt instanceof Number && timeoutMillis instanceof Number
+            && ((Number) timeoutMillis).longValue() > 0
+            && System.currentTimeMillis() - ((Number) requestedAt).longValue()
+            >= ((Number) timeoutMillis).longValue()) {
+            throw new IllegalStateException("external tool result has expired");
+        }
         if (command.getContent() == null) {
             throw new IllegalArgumentException("external tool result content must not be null");
+        }
+        long maxCharacters = turn.getExecutionPolicy().getExternalToolResultMaxCharacters();
+        if (maxCharacters > 0 && command.getContent().length() > maxCharacters) {
+            throw new IllegalArgumentException("external tool result exceeded maximum size: " + maxCharacters);
         }
         List<ToolCall> pending = turn.getPendingToolCalls();
         if (pending.isEmpty()) {
@@ -1841,11 +1987,11 @@ public final class AgentRunner {
     /**
      * 表示恢复执行时，当前 Agent 已无法提供快照所记录的工具。
      */
-    private static final class AgentToolNotFoundException extends RuntimeException {
+    static final class AgentToolNotFoundException extends RuntimeException {
         /**
          * @param name Snapshot 中存在但当前 Agent 已无法解析的工具名
          */
-        private AgentToolNotFoundException(String name) {
+        AgentToolNotFoundException(String name) {
             super("tool not found: " + name);
         }
     }

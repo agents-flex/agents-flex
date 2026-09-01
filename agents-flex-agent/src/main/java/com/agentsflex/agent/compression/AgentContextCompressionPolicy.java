@@ -22,6 +22,7 @@ public final class AgentContextCompressionPolicy {
     private final AgentContextCompressionProcessor processor;
     private final boolean compactCompletedToolTurns;
     private final int keepRecentTurns;
+    private final AgentCompressionFailureStrategy compressionFailureStrategy;
 
     private AgentContextCompressionPolicy(Builder builder) {
         boolean hasIncrementalDependency = builder.stateStore != null
@@ -34,10 +35,11 @@ public final class AgentContextCompressionPolicy {
         this.compressor = builder.compressor;
         this.processor = hasIncrementalDependency
             ? new AgentContextCompressionProcessor(
-                builder.stateStore, builder.condition, builder.compressor, builder.tokenEstimator)
+            builder.stateStore, builder.condition, builder.compressor, builder.tokenEstimator)
             : null;
         this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
         this.keepRecentTurns = builder.keepRecentTurns;
+        this.compressionFailureStrategy = builder.compressionFailureStrategy;
     }
 
     /**
@@ -101,6 +103,10 @@ public final class AgentContextCompressionPolicy {
         return keepRecentTurns;
     }
 
+    public AgentCompressionFailureStrategy getCompressionFailureStrategy() {
+        return compressionFailureStrategy;
+    }
+
     public static final class Builder {
         private AgentContextCompressor compressor;
         private AgentContextCompressionStateStore stateStore;
@@ -108,6 +114,7 @@ public final class AgentContextCompressionPolicy {
         private ToLongFunction<List<Message>> tokenEstimator;
         private boolean compactCompletedToolTurns = true;
         private int keepRecentTurns = 2;
+        private AgentCompressionFailureStrategy compressionFailureStrategy = AgentCompressionFailureStrategy.FAIL;
 
         public Builder compressor(AgentContextCompressor compressor) {
             this.compressor = compressor;
@@ -137,6 +144,15 @@ public final class AgentContextCompressionPolicy {
         public Builder keepRecentTurns(int value) {
             if (value < 0) throw new IllegalArgumentException("keepRecentTurns must not be negative");
             this.keepRecentTurns = value;
+            return this;
+        }
+
+        /**
+         * 设置即时压缩失败后的处理方式。增量策略仍以状态一致性为优先。
+         */
+        public Builder compressionFailureStrategy(AgentCompressionFailureStrategy value) {
+            this.compressionFailureStrategy = value == null
+                ? AgentCompressionFailureStrategy.FAIL : value;
             return this;
         }
 

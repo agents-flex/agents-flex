@@ -44,6 +44,10 @@ public final class AgentWorker implements AutoCloseable {
      */
     private final long leaseMillis;
     /**
+     * 租约续期间隔占租约时长的比例。
+     */
+    private double leaseRenewalFraction;
+    /**
      * 独立执行租约心跳的单线程调度器。
      */
     private final ScheduledExecutorService leaseScheduler;
@@ -70,11 +74,38 @@ public final class AgentWorker implements AutoCloseable {
         this.workerId = workerId;
         this.runner = runner;
         this.leaseMillis = leaseMillis;
+        this.leaseRenewalFraction = 1.0 / 3.0;
         this.leaseScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "agent-lease-" + workerId);
             thread.setDaemon(true);
             return thread;
         });
+    }
+
+    /**
+     * 使用轮询配置对象创建 Worker。
+     */
+    public AgentWorker(AgentRunner runner, AgentWorkerOptions options) {
+        this(requireOptions(options).getWorkerId(), runner, options.getLeaseMillis());
+        this.options = options;
+        this.leaseRenewalFraction = options.getLeaseRenewalFraction();
+    }
+
+    private static AgentWorkerOptions requireOptions(AgentWorkerOptions options) {
+        if (options == null) throw new IllegalArgumentException("options must not be null");
+        return options;
+    }
+
+    private AgentWorkerOptions options;
+
+    /**
+     * 使用配置对象中的间隔和批量大小启动自动轮询。
+     */
+    public void startPolling() {
+        // 旧构造函数没有 options，因此继续保留原有的 1 秒/单任务默认行为。
+        AgentWorkerOptions value = options;
+        startPolling(value == null ? 1000 : value.getPollIntervalMillis(),
+            value == null ? 1 : value.getBatchSize());
     }
 
     /**
@@ -160,7 +191,7 @@ public final class AgentWorker implements AutoCloseable {
      * 在 Turn 执行期间按租约时长的三分之一周期自动续租。
      */
     private ScheduledFuture<?> startLeaseHeartbeat(AgentTurn turn) {
-        long interval = Math.max(1, leaseMillis / 3);
+        long interval = Math.max(1, (long) (leaseMillis * leaseRenewalFraction));
         AtomicReference<RuntimeException> failure = new AtomicReference<>();
         return leaseScheduler.scheduleWithFixedDelay(() -> {
             if (failure.get() != null) return;

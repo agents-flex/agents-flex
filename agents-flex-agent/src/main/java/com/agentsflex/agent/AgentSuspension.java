@@ -47,11 +47,11 @@ public final class AgentSuspension implements Serializable {
     /**
      * 创建可持久化挂起点，并复制恢复所需元数据。
      *
-     * @param type          挂起原因
-     * @param correlationId 工具调用关联 ID
-     * @param message       面向调用方的等待说明
-     * @param resumeExecutionPoint   恢复后继续执行的阶段
-     * @param metadata      可序列化扩展数据
+     * @param type                 挂起原因
+     * @param correlationId        工具调用关联 ID
+     * @param message              面向调用方的等待说明
+     * @param resumeExecutionPoint 恢复后继续执行的阶段
+     * @param metadata             可序列化扩展数据
      */
     public AgentSuspension(AgentSuspensionType type, String correlationId, String message,
                            AgentTurnExecutionPoint resumeExecutionPoint, Map<String, Object> metadata) {
@@ -121,12 +121,29 @@ public final class AgentSuspension implements Serializable {
     public static AgentSuspension externalTool(String callId, String toolName,
                                                String arguments,
                                                Map<String, Object> toolMetadata) {
+        return externalTool(callId, toolName, arguments, toolMetadata, 0);
+    }
+
+    /**
+     * 创建带结果等待期限的外部工具暂停点。
+     *
+     * @param timeoutMillis 等待期限，0 表示不限制
+     */
+    public static AgentSuspension externalTool(String callId, String toolName,
+                                               String arguments,
+                                               Map<String, Object> toolMetadata,
+                                               long timeoutMillis) {
         if (callId == null || callId.trim().isEmpty()) {
             throw new IllegalArgumentException("callId must not be blank");
+        }
+        if (timeoutMillis < 0) {
+            throw new IllegalArgumentException("timeoutMillis must not be negative");
         }
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("toolName", toolName);
         metadata.put("arguments", arguments);
+        metadata.put("requestedAt", System.currentTimeMillis());
+        metadata.put("timeoutMillis", timeoutMillis);
         if (toolMetadata != null && !toolMetadata.isEmpty()) {
             metadata.put("toolMetadata", new HashMap<String, Object>(toolMetadata));
         }

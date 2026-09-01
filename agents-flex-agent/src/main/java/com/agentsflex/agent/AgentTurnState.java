@@ -9,6 +9,7 @@ package com.agentsflex.agent;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.agent.tool.AgentToolResumeInfo;
 
 import java.io.Serializable;
@@ -38,6 +39,10 @@ public final class AgentTurnState implements Serializable {
      * 当前 Turn 是否使用模型流式调用；随 Snapshot 持久化，恢复后保持一致。
      */
     private boolean streaming;
+    /**
+     * 当前 Turn 的模型请求参数覆盖；为空时使用 Agent 默认值。
+     */
+    private ChatOptions chatOptions;
     private AgentTurnStatus status = AgentTurnStatus.READY;
     private AgentTurnExecutionPoint executionPoint = AgentTurnExecutionPoint.INVOKE_MODEL;
     private List<Message> messages = Collections.emptyList();
@@ -56,9 +61,13 @@ public final class AgentTurnState implements Serializable {
     private volatile long leaseUntil;
     private Map<String, Boolean> toolApprovals = Collections.emptyMap();
     private Map<String, Map<String, Object>> toolInputData = Collections.emptyMap();
-    /** 按 ToolCall ID 记录实际进入 Tool 函数的次数。 */
+    /**
+     * 按 ToolCall ID 记录实际进入 Tool 函数的次数。
+     */
     private Map<String, Integer> toolExecutionAttempts = Collections.emptyMap();
-    /** 按 ToolCall ID 记录本次执行前最近一次恢复来源。 */
+    /**
+     * 按 ToolCall ID 记录本次执行前最近一次恢复来源。
+     */
     private Map<String, AgentToolResumeInfo> toolResumeInfo = Collections.emptyMap();
     private volatile boolean cancellationRequested;
     private boolean started;
@@ -110,6 +119,7 @@ public final class AgentTurnState implements Serializable {
         this.turnId = source.turnId;
         this.executionPolicy = source.executionPolicy;
         this.streaming = source.streaming;
+        this.chatOptions = source.chatOptions == null ? null : source.chatOptions.copy();
         this.status = source.status;
         this.executionPoint = source.getExecutionPoint();
         this.messages = immutable ? Collections.unmodifiableList(AgentMessageUtils.copyMessages(source.messages)) : AgentMessageUtils.copyMessages(source.messages);
@@ -207,6 +217,13 @@ public final class AgentTurnState implements Serializable {
      */
     public boolean isStreaming() {
         return streaming;
+    }
+
+    /**
+     * 返回当前 Turn 的模型参数覆盖副本。
+     */
+    public ChatOptions getChatOptions() {
+        return chatOptions == null ? null : chatOptions.copy();
     }
 
     /**
@@ -335,13 +352,17 @@ public final class AgentTurnState implements Serializable {
         return copyToolInputData(toolInputData, true);
     }
 
-    /** @return 每个 ToolCall 实际进入工具函数的累计次数 */
+    /**
+     * @return 每个 ToolCall 实际进入工具函数的累计次数
+     */
     public Map<String, Integer> getToolExecutionAttempts() {
         return Collections.unmodifiableMap(toolExecutionAttempts == null
             ? Collections.<String, Integer>emptyMap() : toolExecutionAttempts);
     }
 
-    /** @return 每个 ToolCall 最近一次恢复来源 */
+    /**
+     * @return 每个 ToolCall 最近一次恢复来源
+     */
     public Map<String, AgentToolResumeInfo> getToolResumeInfo() {
         return Collections.unmodifiableMap(toolResumeInfo == null
             ? Collections.<String, AgentToolResumeInfo>emptyMap() : toolResumeInfo);
@@ -448,6 +469,11 @@ public final class AgentTurnState implements Serializable {
     void setStreaming(boolean value) {
         requireMutable();
         streaming = value;
+    }
+
+    void setChatOptions(ChatOptions value) {
+        requireMutable();
+        chatOptions = value == null ? null : value.copy();
     }
 
     void setStatus(AgentTurnStatus value) {
@@ -678,7 +704,9 @@ public final class AgentTurnState implements Serializable {
         toolResumeInfo.put(callId, value == null ? AgentToolResumeInfo.none() : value);
     }
 
-    /** 保存一次表单提交；同一 ToolCall 的多轮提交会合并，后提交值覆盖同名字段。 */
+    /**
+     * 保存一次表单提交；同一 ToolCall 的多轮提交会合并，后提交值覆盖同名字段。
+     */
     void putToolInputData(String callId, Map<String, ?> value) {
         requireMutable();
         if (callId == null || callId.trim().isEmpty()) {
@@ -794,6 +822,11 @@ public final class AgentTurnState implements Serializable {
 
         public Builder streaming(boolean value) {
             state.setStreaming(value);
+            return this;
+        }
+
+        public Builder chatOptions(ChatOptions value) {
+            state.setChatOptions(value);
             return this;
         }
 

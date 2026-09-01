@@ -6,6 +6,8 @@
  */
 package com.agentsflex.agent;
 
+import com.agentsflex.core.model.chat.ChatOptions;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +32,10 @@ public final class AgentTurnOptions {
      * 是否使用流式模型调用；该选项随 Turn Snapshot 持久化。
      */
     private final boolean streaming;
+    /**
+     * 单次模型请求参数覆盖；为空时使用 Agent 默认 ChatOptions。
+     */
+    private final ChatOptions chatOptions;
 
     /**
      * 从构建器冻结单次运行覆盖项，并复制业务元数据。
@@ -38,6 +44,7 @@ public final class AgentTurnOptions {
         this.executionPolicy = builder.executionPolicy;
         this.metadata = Collections.unmodifiableMap(new HashMap<>(builder.metadata));
         this.streaming = builder.streaming;
+        this.chatOptions = builder.chatOptions == null ? null : builder.chatOptions.copy();
     }
 
     /**
@@ -76,12 +83,20 @@ public final class AgentTurnOptions {
     }
 
     /**
+     * @return 单次请求 ChatOptions 的隔离副本；未配置时返回 null
+     */
+    public ChatOptions getChatOptions() {
+        return chatOptions == null ? null : chatOptions.copy();
+    }
+
+    /**
      * 单次运行选项构建器。
      */
     public static final class Builder {
         private AgentExecutionPolicy executionPolicy;
         private final Map<String, Object> metadata = new HashMap<>();
         private boolean streaming;
+        private ChatOptions chatOptions;
 
         /**
          * 覆盖 Agent 定义中的默认执行策略。
@@ -120,6 +135,20 @@ public final class AgentTurnOptions {
          */
         public Builder streaming(boolean value) {
             this.streaming = value;
+            return this;
+        }
+
+        /**
+         * 覆盖 Agent 定义中的模型请求参数。该配置会随 Turn Snapshot 保存。
+         *
+         * <p>Runner 会在真正调用模型前复制该对象，并补充 conversationId、turnId 等运行时上下文；
+         * 因此调用方可以安全地复用自己的 ChatOptions 模板，且不会被 Agent 执行过程修改。</p>
+         *
+         * @param value 本 Turn 使用的参数覆盖；为 {@code null} 时回退到 Agent 默认参数
+         * @return 当前构建器
+         */
+        public Builder chatOptions(ChatOptions value) {
+            this.chatOptions = value;
             return this;
         }
 

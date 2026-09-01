@@ -26,13 +26,14 @@ import java.io.Serializable;
  * </ul>
  *
  * <p>策略属于 Agent 定义的一部分，会应用到该 Agent 创建的每一个 {@link AgentTurn}。</p>
+ * <p>并行 ToolCall 仅适用于相互独立的本地工具；审批、表单和外部工具仍按可恢复的顺序状态机执行。</p>
  */
 public final class AgentExecutionPolicy implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     /**
-     * 默认最多允许调用模型 20 次。
+     * 默认最多允许调用模型 100 次。
      */
     private static final int DEFAULT_MAX_ITERATIONS = 100;
     /**
@@ -84,6 +85,34 @@ public final class AgentExecutionPolicy implements Serializable {
      * 主动取消 Turn 时写入收束消息的原因文本。
      */
     private final String cancellationReason;
+    /**
+     * 单次模型调用最长允许执行时间，0 表示不单独限制。
+     */
+    private final long modelCallTimeoutMillis;
+    /**
+     * 单次本地工具调用最长允许执行时间，0 表示不单独限制。
+     */
+    private final long toolExecutionTimeoutMillis;
+    /**
+     * 外部工具结果最长等待时间，0 表示不设置过期时间。
+     */
+    private final long externalToolTimeoutMillis;
+    /**
+     * 本地工具结果允许写入模型上下文的最大字符数，0 表示不限制。
+     */
+    private final long toolResultMaxCharacters;
+    /**
+     * 外部工具结果允许写入模型上下文的最大字符数，0 表示不限制。
+     */
+    private final long externalToolResultMaxCharacters;
+    /**
+     * 同一模型响应中的多个本地工具调用执行方式。
+     */
+    private final AgentToolExecutionMode toolExecutionMode;
+    /**
+     * 进程内重试分类器，不进入 Snapshot。
+     */
+    private transient AgentRetryClassifier retryClassifier;
 
     /**
      * 从已校验构建器冻结一次 Turn 使用的全部执行控制策略。
@@ -98,6 +127,13 @@ public final class AgentExecutionPolicy implements Serializable {
         this.interruptedToolMessageTemplate = builder.interruptedToolMessageTemplate;
         this.interruptedTurnMessageTemplate = builder.interruptedTurnMessageTemplate;
         this.cancellationReason = builder.cancellationReason;
+        this.modelCallTimeoutMillis = builder.modelCallTimeoutMillis;
+        this.toolExecutionTimeoutMillis = builder.toolExecutionTimeoutMillis;
+        this.externalToolTimeoutMillis = builder.externalToolTimeoutMillis;
+        this.toolResultMaxCharacters = builder.toolResultMaxCharacters;
+        this.externalToolResultMaxCharacters = builder.externalToolResultMaxCharacters;
+        this.toolExecutionMode = builder.toolExecutionMode;
+        this.retryClassifier = builder.retryClassifier;
     }
 
     /**
@@ -109,6 +145,9 @@ public final class AgentExecutionPolicy implements Serializable {
         input.defaultReadObject();
         if (toolErrorMessageFactory == null) {
             toolErrorMessageFactory = ToolErrorMessageFactory.defaultFactory();
+        }
+        if (retryClassifier == null) {
+            retryClassifier = AgentRetryClassifier.defaults();
         }
     }
 
@@ -190,6 +229,55 @@ public final class AgentExecutionPolicy implements Serializable {
     }
 
     /**
+     * @return 单次同步或流式模型调用的超时时间；0 表示不额外限制
+     */
+    public long getModelCallTimeoutMillis() {
+        return modelCallTimeoutMillis;
+    }
+
+    /**
+     * @return 单次本地工具调用的超时时间；0 表示不额外限制
+     */
+    public long getToolExecutionTimeoutMillis() {
+        return toolExecutionTimeoutMillis;
+    }
+
+    /**
+     * @return 外部工具结果等待时间；0 表示不判定结果过期
+     */
+    public long getExternalToolTimeoutMillis() {
+        return externalToolTimeoutMillis;
+    }
+
+    /**
+     * @return 本地工具结果写入模型上下文的字符上限；0 表示不限制
+     */
+    public long getToolResultMaxCharacters() {
+        return toolResultMaxCharacters;
+    }
+
+    /**
+     * @return 外部工具结果写入模型上下文的字符上限；0 表示不限制
+     */
+    public long getExternalToolResultMaxCharacters() {
+        return externalToolResultMaxCharacters;
+    }
+
+    /**
+     * @return 进程内重试分类器；旧 Snapshot 恢复后若分类器不可序列化则返回默认分类器
+     */
+    public AgentRetryClassifier getRetryClassifier() {
+        return retryClassifier == null ? AgentRetryClassifier.defaults() : retryClassifier;
+    }
+
+    /**
+     * @return 同一模型响应中本地 ToolCall 的执行方式
+     */
+    public AgentToolExecutionMode getToolExecutionMode() {
+        return toolExecutionMode == null ? AgentToolExecutionMode.SEQUENTIAL : toolExecutionMode;
+    }
+
+    /**
      * 执行策略构建器。
      */
     public static final class Builder {
@@ -204,6 +292,13 @@ public final class AgentExecutionPolicy implements Serializable {
         private String interruptedToolMessageTemplate = DEFAULT_INTERRUPTED_TOOL_MESSAGE;
         private String interruptedTurnMessageTemplate = DEFAULT_INTERRUPTED_TURN_MESSAGE;
         private String cancellationReason = DEFAULT_CANCELLATION_REASON;
+        private long modelCallTimeoutMillis;
+        private long toolExecutionTimeoutMillis;
+        private long externalToolTimeoutMillis;
+        private long toolResultMaxCharacters;
+        private long externalToolResultMaxCharacters;
+        private AgentRetryClassifier retryClassifier = AgentRetryClassifier.defaults();
+        private AgentToolExecutionMode toolExecutionMode = AgentToolExecutionMode.SEQUENTIAL;
 
         /**
          * 设置最大模型迭代次数。
@@ -288,6 +383,63 @@ public final class AgentExecutionPolicy implements Serializable {
         }
 
         /**
+         * 设置单次模型调用超时。超时后任务会被取消并进入统一失败/重试流程；0 表示关闭单次限制。
+         */
+        public Builder modelCallTimeoutMillis(long value) {
+            this.modelCallTimeoutMillis = value;
+            return this;
+        }
+
+        /**
+         * 设置单次本地工具调用超时；工具线程会收到取消信号，0 表示关闭限制。
+         */
+        public Builder toolExecutionTimeoutMillis(long value) {
+            this.toolExecutionTimeoutMillis = value;
+            return this;
+        }
+
+        /**
+         * 设置外部工具回传的最长等待时间；超时后的回传会被拒绝，0 表示不设置期限。
+         */
+        public Builder externalToolTimeoutMillis(long value) {
+            this.externalToolTimeoutMillis = value;
+            return this;
+        }
+
+        /**
+         * 限制本地工具结果写入模型上下文的字符数，防止工具输出耗尽上下文窗口。
+         */
+        public Builder toolResultMaxCharacters(long value) {
+            this.toolResultMaxCharacters = value;
+            return this;
+        }
+
+        /**
+         * 限制外部执行器回传结果的字符数，超限结果不会写入 Turn。
+         */
+        public Builder externalToolResultMaxCharacters(long value) {
+            this.externalToolResultMaxCharacters = value;
+            return this;
+        }
+
+        /**
+         * 设置进程内重试分类器；它不会进入 Snapshot，恢复后使用恢复进程中的配置。
+         */
+        public Builder retryClassifier(AgentRetryClassifier value) {
+            this.retryClassifier = value;
+            return this;
+        }
+
+        /**
+         * 设置同一模型回合内多个本地 ToolCall 的执行方式。
+         */
+        public Builder toolExecutionMode(AgentToolExecutionMode value) {
+            this.toolExecutionMode = value == null
+                ? AgentToolExecutionMode.SEQUENTIAL : value;
+            return this;
+        }
+
+        /**
          * 构建不可变执行策略。
          *
          * @throws IllegalStateException 最大迭代次数非法或错误策略为空时抛出
@@ -307,6 +459,14 @@ public final class AgentExecutionPolicy implements Serializable {
                 || cancellationReason == null) {
                 throw new IllegalStateException(
                     "interrupted message templates and cancellationReason must not be null");
+            }
+            if (modelCallTimeoutMillis < 0 || toolExecutionTimeoutMillis < 0
+                || externalToolTimeoutMillis < 0 || toolResultMaxCharacters < 0
+                || externalToolResultMaxCharacters < 0) {
+                throw new IllegalStateException("timeout values must not be negative");
+            }
+            if (retryClassifier == null) {
+                throw new IllegalStateException("retryClassifier must not be null");
             }
             return new AgentExecutionPolicy(this);
         }

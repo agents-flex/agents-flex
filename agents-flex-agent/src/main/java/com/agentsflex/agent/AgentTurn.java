@@ -8,6 +8,9 @@ package com.agentsflex.agent;
 
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.prompt.MemoryPrompt;
+import com.agentsflex.core.model.chat.ChatOptions;
+import com.agentsflex.core.model.chat.tool.Tool;
+import com.agentsflex.core.model.chat.toolgroup.ToolGroup;
 import com.agentsflex.core.util.StringUtil;
 import com.agentsflex.agent.tool.AgentToolResumeInfo;
 
@@ -181,6 +184,7 @@ public final class AgentTurn {
             actual.getExecutionPolicy());
         turn.state.setMetadata(actual.getMetadata());
         turn.state.setStreaming(actual.isStreaming());
+        turn.state.setChatOptions(actual.getChatOptions());
         return turn;
     }
 
@@ -242,8 +246,25 @@ public final class AgentTurn {
      */
     private void prepareBaseTools() {
         // ToolGroup 中的 Tool 由 ChatModel 在请求级按 matcher 解析，不能提前无条件暴露给模型。
-        prompt.setTools(new ArrayList<>(agent.getTools()));
-        prompt.setToolGroups(agent.getToolGroups());
+        // 直接工具和分组工具都经过同一可见性策略，但 Agent 的执行索引始终保留完整工具集，
+        // 这样“当前隐藏、恢复时执行”仍然成立。
+        List<Tool> visible = new ArrayList<>();
+        for (Tool tool : agent.getTools()) {
+            if (agent.getToolVisibilityPolicy().isVisible(this, tool)) visible.add(tool);
+        }
+        prompt.setTools(visible);
+        List<ToolGroup> visibleGroups = new ArrayList<>();
+        for (ToolGroup group : agent.getToolGroups()) {
+            ToolGroup.Builder copy = ToolGroup.builder(group.getName())
+                .description(group.getDescription())
+                .systemPrompt(group.getSystemPrompt())
+                .matcher(group.getMatcher());
+            for (Tool tool : group.getTools()) {
+                if (agent.getToolVisibilityPolicy().isVisible(this, tool)) copy.addTool(tool);
+            }
+            visibleGroups.add(copy.build());
+        }
+        prompt.setToolGroups(visibleGroups);
     }
 
     /**
@@ -291,6 +312,13 @@ public final class AgentTurn {
      */
     boolean isStreaming() {
         return state.isStreaming();
+    }
+
+    /**
+     * @return 当前 Turn 的模型参数覆盖副本；未配置时返回 null
+     */
+    ChatOptions getChatOptionsOverride() {
+        return state.getChatOptions();
     }
 
     /**

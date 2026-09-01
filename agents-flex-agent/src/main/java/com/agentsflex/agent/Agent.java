@@ -72,6 +72,22 @@ public final class Agent {
      */
     private final ChatOptions chatOptions;
     /**
+     * 当前 Turn 的模型路由策略。
+     */
+    private final AgentModelSelector modelSelector;
+    /**
+     * 当前 Turn 暴露给模型的工具过滤策略。
+     */
+    private final AgentToolVisibilityPolicy toolVisibilityPolicy;
+    /**
+     * 模型上下文 Token 上限，0 表示不限制。
+     */
+    private final long maxAttachedTokens;
+    /**
+     * 模型上下文 Token 估算器。
+     */
+    private final AgentContextTokenEstimator contextTokenEstimator;
+    /**
      * AgentRunner 最终可执行的工具全集，包含直接工具和 ToolGroup 工具。
      */
     private final List<Tool> executableTools;
@@ -107,7 +123,9 @@ public final class Agent {
      * 每次模型调用最多保留的完整 Turn 数量。
      */
     private final int maxAttachedTurns;
-    /** Agent 的统一上下文压缩策略。 */
+    /**
+     * Agent 的统一上下文压缩策略。
+     */
     private final AgentContextCompressionPolicy compressionPolicy;
     /**
      * 包装步骤、模型调用和工具调用的中间件。
@@ -136,6 +154,10 @@ public final class Agent {
         this.chatModel = builder.chatModel;
         this.multimodalChatModel = builder.multimodalChatModel;
         this.chatOptions = builder.chatOptions;
+        this.modelSelector = builder.modelSelector;
+        this.toolVisibilityPolicy = builder.toolVisibilityPolicy;
+        this.maxAttachedTokens = builder.maxAttachedTokens;
+        this.contextTokenEstimator = builder.contextTokenEstimator;
         this.tools = Collections.unmodifiableList(new ArrayList<>(builder.tools));
         this.toolGroups = Collections.unmodifiableList(new ArrayList<>(builder.toolGroups));
         this.executableTools = Collections.unmodifiableList(builder.effectiveTools());
@@ -230,6 +252,22 @@ public final class Agent {
      */
     public ChatOptions getChatOptions() {
         return chatOptions;
+    }
+
+    public AgentModelSelector getModelSelector() {
+        return modelSelector;
+    }
+
+    public AgentToolVisibilityPolicy getToolVisibilityPolicy() {
+        return toolVisibilityPolicy;
+    }
+
+    public long getMaxAttachedTokens() {
+        return maxAttachedTokens;
+    }
+
+    public AgentContextTokenEstimator getContextTokenEstimator() {
+        return contextTokenEstimator;
     }
 
     /**
@@ -354,6 +392,10 @@ public final class Agent {
         private ChatModel chatModel;
         private ChatModel multimodalChatModel;
         private ChatOptions chatOptions = new ChatOptions();
+        private AgentModelSelector modelSelector;
+        private AgentToolVisibilityPolicy toolVisibilityPolicy = AgentToolVisibilityPolicy.all();
+        private long maxAttachedTokens;
+        private AgentContextTokenEstimator contextTokenEstimator;
         private final List<Tool> tools = new ArrayList<>();
         private final List<ToolGroup> toolGroups = new ArrayList<>();
         private final List<ToolInterceptor> toolInterceptors = new ArrayList<>();
@@ -429,6 +471,38 @@ public final class Agent {
          */
         public Builder chatOptions(ChatOptions chatOptions) {
             this.chatOptions = chatOptions;
+            return this;
+        }
+
+        /**
+         * 设置当前 Turn 的 ChatModel 路由器。
+         * <p>路由器接收最终上下文和两个基础模型，可按租户、任务类型、Token 预算或多模态能力选择模型。</p>
+         */
+        public Builder modelSelector(AgentModelSelector value) {
+            this.modelSelector = value;
+            return this;
+        }
+
+        /**
+         * 设置模型 Prompt 中可见工具的过滤策略。
+         * <p>隐藏只影响模型工具 Schema，不会移除恢复已有 ToolCall 所需的执行能力。</p>
+         */
+        public Builder toolVisibilityPolicy(AgentToolVisibilityPolicy value) {
+            this.toolVisibilityPolicy = value == null ? AgentToolVisibilityPolicy.all() : value;
+            return this;
+        }
+
+        /**
+         * 设置模型上下文 Token 上限及估算器；上限为 0 时关闭该限制。
+         * <p>窗口会按完整 Turn 从最老单元开始裁剪，当前 Turn 和工具协议不会被拆开。</p>
+         */
+        public Builder maxAttachedTokens(long value, AgentContextTokenEstimator estimator) {
+            if (value < 0) throw new IllegalArgumentException("maxAttachedTokens must not be negative");
+            if (value > 0 && estimator == null) {
+                throw new IllegalArgumentException("contextTokenEstimator is required when maxAttachedTokens is set");
+            }
+            this.maxAttachedTokens = value;
+            this.contextTokenEstimator = estimator;
             return this;
         }
 
@@ -524,7 +598,9 @@ public final class Agent {
             return this;
         }
 
-        /** 设置统一的上下文压缩策略。 */
+        /**
+         * 设置统一的上下文压缩策略。
+         */
         public Builder compressionPolicy(AgentContextCompressionPolicy value) {
             this.compressionPolicy = value == null
                 ? AgentContextCompressionPolicy.defaults() : value;

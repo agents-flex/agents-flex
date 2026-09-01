@@ -1,6 +1,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.compression.AgentContextCompressor;
+import com.agentsflex.agent.compression.AgentCompressionFailureStrategy;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.prompt.MemoryPrompt;
@@ -42,7 +43,21 @@ final class AgentContextWindow {
     static MemoryPrompt build(MemoryPrompt source, int maxTurns, int maxMessages,
                               boolean compactCompletedToolTurns, int keepRecentTurns,
                               AgentContextCompressor contextCompressor) {
+        return build(source, maxTurns, maxMessages, 0, null,
+            compactCompletedToolTurns, keepRecentTurns, contextCompressor,
+            AgentCompressionFailureStrategy.FAIL);
+    }
+
+    static MemoryPrompt build(MemoryPrompt source, int maxTurns, int maxMessages,
+                              long maxTokens, AgentContextTokenEstimator tokenEstimator,
+                              boolean compactCompletedToolTurns, int keepRecentTurns,
+                              AgentContextCompressor contextCompressor,
+                              AgentCompressionFailureStrategy compressionFailureStrategy) {
+        // 这些限制只作用于模型视图；Turn/ChatMemory 中的完整历史仍由业务层保留。
         if (source == null) throw new IllegalArgumentException("source prompt must not be null");
+        if (maxTurns <= 0 || maxMessages <= 0 || maxTokens < 0) {
+            throw new IllegalArgumentException("context limits must be positive, maxTokens may be zero");
+        }
         // 多取一轮用于识别边界；最终发送窗口仍严格限制为 maxTurns。
         List<Message> history = readHistory(source.getMemory(), maxTurns);
         List<List<Message>> turns = splitTurns(history);
@@ -62,8 +77,13 @@ final class AgentContextWindow {
         List<Message> semanticOutput = null;
         if (contextCompressor != null && allCompressible && !semanticInput.isEmpty()) {
             // 传入不可修改副本，防止业务压缩器意外修改 Runner 正在使用的历史对象。
-            semanticOutput = contextCompressor.compress(Collections.unmodifiableList(copy(semanticInput)));
-            validateCompressedMessages(semanticOutput);
+            try {
+                semanticOutput = contextCompressor.compress(Collections.unmodifiableList(copy(semanticInput)));
+                validateCompressedMessages(semanticOutput);
+            } catch (RuntimeException error) {
+                if (compressionFailureStrategy == AgentCompressionFailureStrategy.FAIL) throw error;
+                semanticOutput = null;
+            }
         }
         // 每个元素都是不可拆分的历史单元：语义压缩结果、一个旧 Turn 或一个受保护 Turn。
         // 超过消息上限时只删除最早单元，永远不会从 ToolCall/ToolMessage 中间截断。
@@ -94,6 +114,20 @@ final class AgentContextWindow {
         }
         List<Message> selected = new ArrayList<>();
         for (int index = firstUnit; index < units.size(); index++) selected.addAll(units.get(index));
+        if (maxTokens > 0 && tokenEstimator != null) {
+            long estimatedTokens = tokenEstimator.estimate(selected);
+            if (estimatedTokens < 0) {
+                throw new IllegalArgumentException("contextTokenEstimator must return a non-negative value");
+            }
+            while (selected.size() > 1 && estimatedTokens > maxTokens
+                && firstUnit < units.size() - 1) {
+                selected.subList(0, units.get(firstUnit++).size()).clear();
+                estimatedTokens = tokenEstimator.estimate(selected);
+                if (estimatedTokens < 0) {
+                    throw new IllegalArgumentException("contextTokenEstimator must return a non-negative value");
+                }
+            }
+        }
 
         // 只复制 Prompt 的配置和模型可见消息；temporaryMessages 仍作为 UI/运行时消息单独复制。
         MemoryPrompt result = new MemoryPrompt();

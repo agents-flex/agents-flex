@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.FutureTask;
 
 /**
  * 统一调用同步或流式 ChatModel，并把流式增量转换为 Agent 实时事件。
@@ -38,6 +39,7 @@ final class AgentModelInvoker {
      * 转换为可订阅的细粒度事件。
      */
     private final AgentEventPublisher eventPublisher;
+    private final java.util.concurrent.Executor modelExecutor;
 
     /**
      * 创建统一模型调用器。
@@ -45,17 +47,40 @@ final class AgentModelInvoker {
      * @param eventPublisher 用于发布模型流增量事件的发布器
      */
     AgentModelInvoker(AgentEventPublisher eventPublisher) {
+        this(eventPublisher, Runnable::run);
+    }
+
+    AgentModelInvoker(AgentEventPublisher eventPublisher,
+                      java.util.concurrent.Executor modelExecutor) {
         this.eventPublisher = eventPublisher;
+        this.modelExecutor = modelExecutor;
     }
 
     /**
      * 根据当前 Turn 的 streaming 设置选择模型调用方式。
      */
     AiMessageResponse invoke(AgentTurn turn, Prompt prompt) {
+        // Turn 级参数已经在 requestOptions 中复制；模型选择也基于裁剪后的最终 Prompt。
         ChatOptions options = requestOptions(turn);
         ChatModel model = selectModel(turn, prompt);
         if (!turn.isStreaming()) {
-            return model.chat(prompt, options);
+            long timeout = turn.getExecutionPolicy().getModelCallTimeoutMillis();
+            if (timeout <= 0) return model.chat(prompt, options);
+            FutureTask<AiMessageResponse> task = new FutureTask<>(() -> model.chat(prompt, options));
+            modelExecutor.execute(task);
+            try {
+                return task.get(timeout, TimeUnit.MILLISECONDS);
+            } catch (java.util.concurrent.TimeoutException error) {
+                task.cancel(true);
+                throw new IllegalStateException("model call exceeded timeout: " + timeout + "ms", error);
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("model call was interrupted", error);
+            } catch (java.util.concurrent.ExecutionException error) {
+                Throwable cause = error.getCause();
+                if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+                throw new IllegalStateException("model call failed", cause);
+            }
         }
         return invokeStreaming(turn, prompt, options, model);
     }
@@ -70,7 +95,7 @@ final class AgentModelInvoker {
         AtomicReference<Throwable> failure = new AtomicReference<>();
         AtomicReference<Boolean> textDeltaPublished = new AtomicReference<>(false);
 
-        model.chatStream(prompt, new StreamResponseListener() {
+        StreamResponseListener listener = new StreamResponseListener() {
             /**
              * 保存底层模型客户端创建的 ChatContext，供流关闭后组装完整响应。
              * @param context 当前流上下文
@@ -130,9 +155,26 @@ final class AgentModelInvoker {
                 }
                 closed.countDown();
             }
-        }, options);
+        };
+        // chatStream 有两种常见实现：立即返回并异步回调，或阻塞到网络流结束。
+        // 统一放入模型执行器，才能让入口阻塞也受 modelCallTimeoutMillis 保护。
+        FutureTask<Void> streamTask = new FutureTask<>(() -> {
+            try {
+                model.chatStream(prompt, listener, options);
+            } catch (RuntimeException error) {
+                failure.compareAndSet(null, error);
+                closed.countDown();
+                throw error;
+            } catch (Error error) {
+                failure.compareAndSet(null, error);
+                closed.countDown();
+                throw error;
+            }
+            return null;
+        });
+        modelExecutor.execute(streamTask);
 
-        awaitClose(turn, closed);
+        awaitClose(turn, closed, streamTask);
         rethrowFailure(failure.get());
         // 包装器或兼容客户端可能只在关闭完成后补齐聚合消息；返回 Runner 前做最后一次兜底。
         publishFinalTextIfNeeded(turn, fullMessage.get(), textDeltaPublished);
@@ -149,6 +191,12 @@ final class AgentModelInvoker {
      * 这样历史图片仍处于上下文窗口时，后续文本追问也不会错误地落到纯文本模型。
      */
     private ChatModel selectModel(AgentTurn turn, Prompt prompt) {
+        if (turn.getAgent().getModelSelector() != null) {
+            ChatModel selected = turn.getAgent().getModelSelector().select(turn, prompt,
+                turn.getAgent().getChatModel(), turn.getAgent().getMultimodalChatModel());
+            if (selected == null) throw new IllegalStateException("AgentModelSelector returned null");
+            return selected;
+        }
         ChatModel multimodal = turn.getAgent().getMultimodalChatModel();
         if (multimodal == null || !(prompt instanceof MemoryPrompt)) return turn.getAgent().getChatModel();
         for (Message message : ((MemoryPrompt) prompt).getMessages()) {
@@ -179,7 +227,8 @@ final class AgentModelInvoker {
      * 从 Agent 的静态模型配置创建本次请求副本，并绑定当前 Turn 的关联标识。
      */
     private ChatOptions requestOptions(AgentTurn turn) {
-        ChatOptions configured = turn.getAgent().getChatOptions();
+        ChatOptions configured = turn.getChatOptionsOverride();
+        if (configured == null) configured = turn.getAgent().getChatOptions();
         ChatOptions options = configured == null ? new ChatOptions() : configured.copy();
         if (StringUtil.hasText(turn.getConversationId())) {
             options.setContextConversationId(turn.getConversationId());
@@ -239,20 +288,50 @@ final class AgentModelInvoker {
     /**
      * 有总时长预算时，流式等待不会超过当前 Turn 的剩余时间。
      */
-    private void awaitClose(AgentTurn turn, CountDownLatch closed) {
+    private void awaitClose(AgentTurn turn, CountDownLatch closed, FutureTask<Void> streamTask) {
         try {
             long maxDuration = turn.getExecutionPolicy().getBudget().getMaxDurationMillis();
-            if (maxDuration <= 0) {
+            long callTimeout = turn.getExecutionPolicy().getModelCallTimeoutMillis();
+            if (maxDuration <= 0 && callTimeout <= 0) {
                 closed.await();
+                // 若模型实现只在入口抛错而没有触发回调，读取 FutureTask 的异常。
+                observeStreamTask(streamTask);
                 return;
             }
-            long remaining = maxDuration - (System.currentTimeMillis() - turn.getCreatedAt());
-            if (remaining <= 0 || !closed.await(remaining, TimeUnit.MILLISECONDS)) {
+            long remaining = maxDuration <= 0 ? Long.MAX_VALUE
+                : maxDuration - (System.currentTimeMillis() - turn.getCreatedAt());
+            if (callTimeout > 0) remaining = Math.min(remaining, callTimeout);
+            if (remaining <= 0) {
+                streamTask.cancel(true);
                 throw new IllegalStateException("streaming model call exceeded maxDurationMillis");
             }
+            long deadline = System.currentTimeMillis() + remaining;
+            while (closed.getCount() > 0) {
+                long left = deadline - System.currentTimeMillis();
+                if (left <= 0) {
+                    streamTask.cancel(true);
+                    String limit = callTimeout > 0 && (maxDuration <= 0 || callTimeout <= remaining)
+                        ? "model call timeout" : "maxDurationMillis";
+                    throw new IllegalStateException("streaming model call exceeded " + limit);
+                }
+                closed.await(Math.min(left, 20), TimeUnit.MILLISECONDS);
+            }
+            observeStreamTask(streamTask);
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("streaming model call was interrupted", error);
+        }
+    }
+
+    /**
+     * 读取流入口任务的完成状态；异常已经同步写入 failure，由调用方统一转换。
+     */
+    private void observeStreamTask(FutureTask<Void> streamTask) throws InterruptedException {
+        if (!streamTask.isDone()) return;
+        try {
+            streamTask.get();
+        } catch (java.util.concurrent.ExecutionException ignored) {
+            // invokeStreaming 随后会通过 rethrowFailure 保留原始异常类型。
         }
     }
 

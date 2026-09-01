@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.Executor;
 
 /**
  * 构造 Agent 运行事件，并在当前进程内同步发布给已注册监听器。
@@ -45,6 +46,17 @@ final class AgentEventPublisher {
      * 为每个活动 Turn 分配进程内事件序号。
      */
     private final Map<String, AtomicLong> sequences = new ConcurrentHashMap<>();
+    private final Executor executor;
+    private final AgentEventDataSanitizer sanitizer;
+
+    AgentEventPublisher() {
+        this(AgentRunnerOptions.defaults());
+    }
+
+    AgentEventPublisher(AgentRunnerOptions options) {
+        this.executor = options.getEventExecutor();
+        this.sanitizer = options.getEventDataSanitizer();
+    }
 
     /**
      * 注册进程内事件监听器；空监听器会被忽略。
@@ -360,6 +372,7 @@ final class AgentEventPublisher {
      */
     void publish(AgentTurn turn, AgentEventType type, Map<String, ?> data) {
         if (turn == null) return;
+        // 先分配序号和构造不可变事件，再交给执行器，避免异步监听器读取到正在变化的 Turn 数据。
         Map<String, Object> values = attributes(
             "status", turn.getStatus(),
             "executionPoint", turn.getExecutionPoint(),
@@ -368,16 +381,27 @@ final class AgentEventPublisher {
         if (data != null) values.putAll(data);
         long sequence = sequences.computeIfAbsent(turn.getId(), key -> new AtomicLong())
             .incrementAndGet();
+        Map<String, ?> sanitized;
+        try {
+            sanitized = sanitizer.sanitize(type, values);
+        } catch (RuntimeException error) {
+            log.warn("Agent event sanitizer failed, using original data", error);
+            sanitized = values;
+        }
         AgentEvent event = new AgentEvent(turn.getId(), turn.getAgent().getId(),
             turn.getAgent().getVersion(),
-            sequence, type, values);
-        for (AgentEventListener listener : listeners) {
-            try {
-                listener.onEvent(event);
-            } catch (RuntimeException error) {
-                log.warn("Agent event listener failed", error);
+            sequence, type, sanitized);
+        executor.execute(() -> {
+            for (AgentEventListener listener : listeners) {
+                try {
+                    listener.onEvent(event);
+                } catch (RuntimeException error) {
+                    log.warn("Agent event listener failed", error);
+                }
             }
-        }
+            if (type == AgentEventType.TURN_COMPLETED || type == AgentEventType.TURN_FAILED
+                || type == AgentEventType.TURN_CANCELLED) clearSequence(turn.getId());
+        });
     }
 
     /**
