@@ -135,7 +135,6 @@ public class AgentConfigurationOptimizationTest {
     public void immediateCompressionIsCachedWithinOneTurn() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         AtomicInteger compressions = new AtomicInteger();
-        final List<String> compressionInputs = new java.util.ArrayList<>();
         model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(new ToolCall("call", "echo", "{}")));
         model.enqueue(prompt -> new AiMessage("done"));
         Agent agent = Agent.builder("compression-cache")
@@ -144,7 +143,6 @@ public class AgentConfigurationOptimizationTest {
             .compressionPolicy(com.agentsflex.agent.compression.AgentContextCompressionPolicy.builder()
                 .compressor(messages -> {
                     compressions.incrementAndGet();
-                    compressionInputs.add(messages.get(0).getMessageId() + ":" + messages.get(0).getTextContent());
                     return Arrays.<Message>asList(new com.agentsflex.core.message.UserMessage("old summary"));
                 })
                 .keepRecentTurns(1)
@@ -155,8 +153,7 @@ public class AgentConfigurationOptimizationTest {
 
         AgentTurn turn = new AgentRunner().run(agent, history, new UserMessage("current question"));
         assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
-        assertEquals("same Turn should reuse the immediate compression result " + compressionInputs,
-            1, compressions.get());
+        assertEquals("same Turn should reuse the immediate compression result", 1, compressions.get());
     }
 
     @Test

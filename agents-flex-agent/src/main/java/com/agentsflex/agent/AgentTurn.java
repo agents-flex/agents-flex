@@ -255,6 +255,18 @@ public final class AgentTurn {
         prompt.setTools(visible);
         List<ToolGroup> visibleGroups = new ArrayList<>();
         for (ToolGroup group : agent.getToolGroups()) {
+            boolean filtered = false;
+            for (Tool tool : group.getTools()) {
+                if (!agent.getToolVisibilityPolicy().isVisible(this, tool)) {
+                    filtered = true;
+                    break;
+                }
+            }
+            if (!filtered) {
+                // 默认/全量策略下复用原对象，保持现有 Prompt 身份语义和零额外分配。
+                visibleGroups.add(group);
+                continue;
+            }
             ToolGroup.Builder copy = ToolGroup.builder(group.getName())
                 .description(group.getDescription())
                 .systemPrompt(group.getSystemPrompt())

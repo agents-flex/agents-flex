@@ -1392,24 +1392,29 @@ public final class AgentRunner {
      * 在终止 Step 的 STEP_COMPLETED 之后发布唯一的 Turn 终止事件。
      */
     private void publishTerminalEvent(AgentTurn turn) {
-        clearCompressionCache(turn.getId());
         switch (turn.getStatus()) {
             case COMPLETED:
+                clearCompressionCache(turn.getId());
                 eventPublisher.notifyTurnComplete(turn);
                 break;
             case FAILED:
+                clearCompressionCache(turn.getId());
                 eventPublisher.notifyTurnFailed(turn, turn.getError());
                 break;
             case CANCELLED:
+                clearCompressionCache(turn.getId());
                 eventPublisher.notifyTurnCancelled(turn);
                 break;
             case MAX_ITERATIONS_REACHED:
+                clearCompressionCache(turn.getId());
                 eventPublisher.notifyMaxIterationsReached(turn);
                 break;
             case MAX_STEPS_REACHED:
+                clearCompressionCache(turn.getId());
                 eventPublisher.notifyMaxStepsReached(turn);
                 break;
             case BUDGET_EXCEEDED:
+                clearCompressionCache(turn.getId());
                 eventPublisher.notifyBudgetExceeded(turn, turn.getBudgetExceededReason());
                 break;
             default:
