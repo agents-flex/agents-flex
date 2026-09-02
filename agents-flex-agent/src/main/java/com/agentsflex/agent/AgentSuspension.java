@@ -257,6 +257,16 @@ public final class AgentSuspension implements Serializable {
     }
 
     /**
+     * 使用 TurnStore 的统一时钟重写等待起点，避免多节点本机时钟偏差。
+     */
+    AgentSuspension withRequestedAt(long value) {
+        if (getTimeoutMillis() <= 0) return this;
+        Map<String, Object> values = new HashMap<>(metadata);
+        values.put("requestedAt", value);
+        return new AgentSuspension(type, correlationId, message, resumeExecutionPoint, values);
+    }
+
+    /**
      * @return 与当前暂停信息隔离的副本
      */
     AgentSuspension copy() {

@@ -4,6 +4,8 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.core.message.UserMessage;
+import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.message.ToolMessage;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -17,7 +19,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** Snapshot 序列化与不可变状态边界测试。 */
+/**
+ * Snapshot 序列化与不可变状态边界测试。
+ */
 public class AgentSnapshotPersistenceContractTest {
 
     @Test
@@ -92,6 +96,31 @@ public class AgentSnapshotPersistenceContractTest {
         } catch (NotSerializableException expected) {
             assertTrue(expected.getMessage().contains("java.lang.Object"));
         }
+    }
+
+    @Test
+    public void shouldRebindTransientErrorFactoryAndRetryClassifierAfterSnapshotRestore() throws Exception {
+        AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
+            .toolErrorMessageFactory((turn, call, error) -> {
+                ToolMessage message = new ToolMessage();
+                message.setContent("custom-error");
+                return message;
+            })
+            .retryClassifier((turn, error, call) -> false)
+            .build();
+        Agent originalAgent = Agent.builder("runtime-policy")
+            .version("v1").chatModel(new AgentScenarioTestSupport.QueueChatModel())
+            .executionPolicy(policy).build();
+        AgentTurn originalTurn = new AgentRunner().start(originalAgent, "input");
+        Agent restoredAgent = Agent.builder("runtime-policy")
+            .version("v1").chatModel(new AgentScenarioTestSupport.QueueChatModel())
+            .executionPolicy(policy).build();
+        AgentTurn restored = AgentTurn.fromSnapshot(restoredAgent, roundTrip(originalTurn.toSnapshot()));
+        ToolMessage custom = restored.getExecutionPolicy().getToolErrorMessageFactory().create(
+            restored, new ToolCall("call", "lookup", "{}"), new IllegalStateException("hidden"));
+        assertEquals("custom-error", custom.getContent());
+        assertTrue(!restored.getExecutionPolicy().getRetryClassifier()
+            .isRetryable(restored, new IllegalStateException("transient"), null));
     }
 
     private AgentTurnSnapshot roundTrip(AgentTurnSnapshot snapshot) throws Exception {

@@ -90,6 +90,8 @@ public class AgentValueObjectContractTest {
         assertEquals(8, defaults.getMaxParallelToolCalls());
         assertEquals(AgentParallelFailureStrategy.FAIL_FAST, defaults.getParallelFailureStrategy());
         assertEquals(AgentToolResultOverflowStrategy.FAIL, defaults.getToolResultOverflowStrategy());
+        assertEquals(AgentSuspensionExpirationStrategy.REJECT_RESUME,
+            defaults.getSuspensionExpirationStrategy());
 
         assertBuildFailure(() -> AgentExecutionPolicy.builder().modelCallTimeoutMillis(-1).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().toolExecutionTimeoutMillis(-1).build());
@@ -99,6 +101,9 @@ public class AgentValueObjectContractTest {
         assertBuildFailure(() -> AgentExecutionPolicy.builder().toolResultMaxCharacters(-1).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().externalToolResultMaxCharacters(-1).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().maxParallelToolCalls(0).build());
+        assertEquals(AgentSuspensionExpirationStrategy.REJECT_RESUME,
+            AgentExecutionPolicy.builder().suspensionExpirationStrategy(null).build()
+                .getSuspensionExpirationStrategy());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().interruptedToolMessageTemplate(null).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().interruptedTurnMessageTemplate(null).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().cancellationReason(null).build());
@@ -116,6 +121,8 @@ public class AgentValueObjectContractTest {
             .pollIntervalMillis(0).build());
         assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
             .batchSize(0).build());
+        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
+            .maxConcurrentTurns(0).build());
         assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
             .leaseRenewalFraction(0).build());
         assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)

@@ -24,6 +24,7 @@ public final class AgentRunnerOptions {
     });
     private final Executor eventExecutor;
     private final AgentEventDataSanitizer eventDataSanitizer;
+    private final AgentEventSanitizationFailureStrategy eventSanitizationFailureStrategy;
     private final Executor toolExecutor;
     private final Executor modelExecutor;
 
@@ -31,6 +32,9 @@ public final class AgentRunnerOptions {
         this.eventExecutor = builder.eventExecutor == null ? Runnable::run : builder.eventExecutor;
         this.eventDataSanitizer = builder.eventDataSanitizer == null
             ? AgentEventDataSanitizer.identity() : builder.eventDataSanitizer;
+        this.eventSanitizationFailureStrategy = builder.eventSanitizationFailureStrategy == null
+            ? AgentEventSanitizationFailureStrategy.DROP_DATA
+            : builder.eventSanitizationFailureStrategy;
         this.toolExecutor = builder.toolExecutor == null ? DEFAULT_ASYNC_EXECUTOR : builder.toolExecutor;
         this.modelExecutor = builder.modelExecutor == null ? DEFAULT_ASYNC_EXECUTOR : builder.modelExecutor;
     }
@@ -63,6 +67,10 @@ public final class AgentRunnerOptions {
         return eventDataSanitizer;
     }
 
+    public AgentEventSanitizationFailureStrategy getEventSanitizationFailureStrategy() {
+        return eventSanitizationFailureStrategy;
+    }
+
     /**
      * @return 本地工具执行器；配置超时时由 Runner 用于 FutureTask
      */
@@ -80,6 +88,8 @@ public final class AgentRunnerOptions {
     public static final class Builder {
         private Executor eventExecutor;
         private AgentEventDataSanitizer eventDataSanitizer;
+        private AgentEventSanitizationFailureStrategy eventSanitizationFailureStrategy =
+            AgentEventSanitizationFailureStrategy.DROP_DATA;
         private Executor toolExecutor;
         private Executor modelExecutor;
 
@@ -96,6 +106,16 @@ public final class AgentRunnerOptions {
          */
         public Builder eventDataSanitizer(AgentEventDataSanitizer value) {
             eventDataSanitizer = value;
+            return this;
+        }
+
+        /**
+         * 设置事件脱敏器异常后的降级方式；默认继续发布无数据事件。
+         */
+        public Builder eventSanitizationFailureStrategy(
+            AgentEventSanitizationFailureStrategy value) {
+            eventSanitizationFailureStrategy = value == null
+                ? AgentEventSanitizationFailureStrategy.DROP_DATA : value;
             return this;
         }
 

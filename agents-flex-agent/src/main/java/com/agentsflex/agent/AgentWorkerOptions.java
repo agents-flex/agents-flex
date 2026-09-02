@@ -17,6 +17,7 @@ public final class AgentWorkerOptions {
     private final long leaseMillis;
     private final long pollIntervalMillis;
     private final int batchSize;
+    private final int maxConcurrentTurns;
     /**
      * 租约续期间隔占租约时长的比例，默认三分之一。
      */
@@ -26,6 +27,7 @@ public final class AgentWorkerOptions {
         if (builder.workerId == null || builder.workerId.trim().isEmpty())
             throw new IllegalArgumentException("workerId must not be blank");
         if (builder.leaseMillis <= 0 || builder.pollIntervalMillis <= 0 || builder.batchSize <= 0
+            || builder.maxConcurrentTurns <= 0
             || Double.isNaN(builder.leaseRenewalFraction)
             || Double.isInfinite(builder.leaseRenewalFraction)
             || builder.leaseRenewalFraction <= 0 || builder.leaseRenewalFraction > 1) {
@@ -36,6 +38,7 @@ public final class AgentWorkerOptions {
         leaseMillis = builder.leaseMillis;
         pollIntervalMillis = builder.pollIntervalMillis;
         batchSize = builder.batchSize;
+        maxConcurrentTurns = builder.maxConcurrentTurns;
         leaseRenewalFraction = builder.leaseRenewalFraction;
     }
 
@@ -78,6 +81,13 @@ public final class AgentWorkerOptions {
     }
 
     /**
+     * @return 单个 Worker 同时推进的最大 Turn 数量
+     */
+    public int getMaxConcurrentTurns() {
+        return maxConcurrentTurns;
+    }
+
+    /**
      * @return 续租间隔占租约时长的比例，范围为 (0, 1]
      */
     public double getLeaseRenewalFraction() {
@@ -89,6 +99,7 @@ public final class AgentWorkerOptions {
         private long leaseMillis;
         private long pollIntervalMillis = 1000;
         private int batchSize = 1;
+        private int maxConcurrentTurns = 1;
         private double leaseRenewalFraction = 1.0 / 3.0;
 
         /**
@@ -120,6 +131,14 @@ public final class AgentWorkerOptions {
          */
         public Builder batchSize(int value) {
             batchSize = value;
+            return this;
+        }
+
+        /**
+         * 设置单个 Worker 同时推进的最大 Turn 数，与每轮领取总量相互独立。
+         */
+        public Builder maxConcurrentTurns(int value) {
+            maxConcurrentTurns = value;
             return this;
         }
 

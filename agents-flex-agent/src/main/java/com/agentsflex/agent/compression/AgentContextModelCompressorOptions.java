@@ -10,6 +10,7 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.ChatOptions;
 
 import java.util.function.Function;
+import java.util.concurrent.Executor;
 
 /**
  * 基于 ChatModel 的上下文压缩器配置。
@@ -27,6 +28,18 @@ public final class AgentContextModelCompressorOptions {
      * 摘要模型单次调用超时；0 表示不限制。
      */
     private final long modelCallTimeoutMillis;
+    /**
+     * 压缩请求正文字符上限，0 表示不限制。
+     */
+    private final long maxInputCharacters;
+    /**
+     * 压缩模型响应字符上限，0 表示不限制。
+     */
+    private final long maxOutputCharacters;
+    /**
+     * 压缩模型超时调用使用的专用执行器；为空时使用框架 daemon 执行器。
+     */
+    private final Executor modelExecutor;
     private final Function<Message, String> modelMessageFormatter;
     private final Function<Message, String> perMessageFormatter;
 
@@ -52,10 +65,14 @@ public final class AgentContextModelCompressorOptions {
         this.summaryPrefix = builder.summaryPrefix;
         this.chatOptions = builder.chatOptions == null
             ? new ChatOptions() : builder.chatOptions.copy();
-        if (builder.modelCallTimeoutMillis < 0) {
-            throw new IllegalArgumentException("modelCallTimeoutMillis must not be negative");
+        if (builder.modelCallTimeoutMillis < 0 || builder.maxInputCharacters < 0
+            || builder.maxOutputCharacters < 0) {
+            throw new IllegalArgumentException("compression limits must not be negative");
         }
         this.modelCallTimeoutMillis = builder.modelCallTimeoutMillis;
+        this.maxInputCharacters = builder.maxInputCharacters;
+        this.maxOutputCharacters = builder.maxOutputCharacters;
+        this.modelExecutor = builder.modelExecutor;
         this.modelMessageFormatter = builder.modelMessageFormatter;
         this.perMessageFormatter = builder.perMessageFormatter;
     }
@@ -94,6 +111,18 @@ public final class AgentContextModelCompressorOptions {
         return modelCallTimeoutMillis;
     }
 
+    public long getMaxInputCharacters() {
+        return maxInputCharacters;
+    }
+
+    public long getMaxOutputCharacters() {
+        return maxOutputCharacters;
+    }
+
+    public Executor getModelExecutor() {
+        return modelExecutor;
+    }
+
     public Function<Message, String> getModelMessageFormatter() {
         return modelMessageFormatter;
     }
@@ -110,6 +139,9 @@ public final class AgentContextModelCompressorOptions {
         private String summaryPrefix = "以下是较早对话的摘要，请将其作为历史事实参考：";
         private ChatOptions chatOptions;
         private long modelCallTimeoutMillis;
+        private long maxInputCharacters;
+        private long maxOutputCharacters;
+        private Executor modelExecutor;
         private Function<Message, String> modelMessageFormatter = message -> {
             String text = message.getTextContent();
             return text == null || text.isEmpty()
@@ -150,6 +182,30 @@ public final class AgentContextModelCompressorOptions {
          */
         public Builder modelCallTimeoutMillis(long value) {
             this.modelCallTimeoutMillis = value;
+            return this;
+        }
+
+        /**
+         * 限制发送给压缩模型的请求字符数；0 表示不限制。
+         */
+        public Builder maxInputCharacters(long value) {
+            this.maxInputCharacters = value;
+            return this;
+        }
+
+        /**
+         * 限制压缩模型返回正文字符数；0 表示不限制。
+         */
+        public Builder maxOutputCharacters(long value) {
+            this.maxOutputCharacters = value;
+            return this;
+        }
+
+        /**
+         * 设置压缩模型超时调用使用的执行器；为空时使用框架 daemon 执行器。
+         */
+        public Builder modelExecutor(Executor value) {
+            this.modelExecutor = value;
             return this;
         }
 

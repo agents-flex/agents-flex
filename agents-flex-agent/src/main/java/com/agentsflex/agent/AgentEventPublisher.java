@@ -48,6 +48,7 @@ final class AgentEventPublisher {
     private final Map<String, AtomicLong> sequences = new ConcurrentHashMap<>();
     private final Executor executor;
     private final AgentEventDataSanitizer sanitizer;
+    private final AgentEventSanitizationFailureStrategy sanitizationFailureStrategy;
 
     AgentEventPublisher() {
         this(AgentRunnerOptions.defaults());
@@ -56,6 +57,7 @@ final class AgentEventPublisher {
     AgentEventPublisher(AgentRunnerOptions options) {
         this.executor = options.getEventExecutor();
         this.sanitizer = options.getEventDataSanitizer();
+        this.sanitizationFailureStrategy = options.getEventSanitizationFailureStrategy();
     }
 
     /**
@@ -385,23 +387,41 @@ final class AgentEventPublisher {
         try {
             sanitized = sanitizer.sanitize(type, values);
         } catch (RuntimeException error) {
-            log.warn("Agent event sanitizer failed, using original data", error);
-            sanitized = values;
+            switch (sanitizationFailureStrategy) {
+                case DROP_EVENT:
+                    log.warn("Agent event sanitizer failed, dropping event", error);
+                    return;
+                case USE_ORIGINAL:
+                    log.warn("Agent event sanitizer failed, using original data", error);
+                    sanitized = values;
+                    break;
+                case FAIL_EXECUTION:
+                    throw error;
+                case DROP_DATA:
+                default:
+                    log.warn("Agent event sanitizer failed, dropping event data", error);
+                    sanitized = null;
+                    break;
+            }
         }
         AgentEvent event = new AgentEvent(turn.getId(), turn.getAgent().getId(),
             turn.getAgent().getVersion(),
             sequence, type, sanitized);
-        executor.execute(() -> {
-            for (AgentEventListener listener : listeners) {
-                try {
-                    listener.onEvent(event);
-                } catch (RuntimeException error) {
-                    log.warn("Agent event listener failed", error);
+        try {
+            executor.execute(() -> {
+                for (AgentEventListener listener : listeners) {
+                    try {
+                        listener.onEvent(event);
+                    } catch (RuntimeException error) {
+                        log.warn("Agent event listener failed", error);
+                    }
                 }
-            }
-            if (type == AgentEventType.TURN_COMPLETED || type == AgentEventType.TURN_FAILED
-                || type == AgentEventType.TURN_CANCELLED) clearSequence(turn.getId());
-        });
+                if (type == AgentEventType.TURN_COMPLETED || type == AgentEventType.TURN_FAILED
+                    || type == AgentEventType.TURN_CANCELLED) clearSequence(turn.getId());
+            });
+        } catch (RuntimeException error) {
+            log.warn("Agent event executor rejected event", error);
+        }
     }
 
     /**

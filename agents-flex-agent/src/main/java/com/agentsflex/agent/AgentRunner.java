@@ -663,9 +663,10 @@ public final class AgentRunner {
             throw new IllegalStateException("terminal turn cannot be suspended: " + turn.getStatus());
         }
         assertLeaseOwnership(turn);
-        turn.suspend(blockedStatusFor(suspension.getType()), suspension);
+        AgentSuspension effective = suspension.withRequestedAt(turnStore.currentTimeMillis());
+        turn.suspend(blockedStatusFor(effective.getType()), effective);
         saveSnapshot(turn);
-        publishAfterStep(() -> eventPublisher.notifyTurnSuspended(turn, suspension));
+        publishAfterStep(() -> eventPublisher.notifyTurnSuspended(turn, effective));
         return turn;
     }
 
@@ -692,7 +693,9 @@ public final class AgentRunner {
         }
         assertLeaseOwnership(turn);
         AgentSuspension suspension = turn.getSuspension();
-        ensureSuspensionNotExpired(suspension);
+        if (resolveExpiredSuspension(turn, suspension)) {
+            return turn;
+        }
         // 先按 Suspension 类型校验并应用命令，任何不匹配的命令都不能改变运行状态。
         applyResumeCommand(turn, suspension, command);
         // 恢复到暂停前保存的模型或工具阶段，不从任务开头重新执行。
@@ -1022,8 +1025,7 @@ public final class AgentRunner {
      */
     private AgentStepResult executePendingTools(AgentTurn turn, AiMessageResponse response) {
         if (turn.getExecutionPolicy().getToolExecutionMode() == AgentToolExecutionMode.PARALLEL
-            && turn.getPendingToolCalls().size() > 1
-            && turn.getPendingToolCalls().size() <= turn.getExecutionPolicy().getMaxParallelToolCalls()) {
+            && turn.getPendingToolCalls().size() > 1) {
             AgentStepResult parallel = executePendingToolsInParallel(turn, response);
             if (parallel != null) return parallel;
         }
@@ -1177,15 +1179,10 @@ public final class AgentRunner {
             return null;
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(calls.size(), runnable -> {
+        int maxConcurrency = Math.min(calls.size(),
+            turn.getExecutionPolicy().getMaxParallelToolCalls());
+        ExecutorService executor = Executors.newFixedThreadPool(maxConcurrency, runnable -> {
             Thread thread = new Thread(runnable, "agent-tool-parallel-" + turn.getId());
-            thread.setDaemon(true);
-            return thread;
-        });
-        // Tool execution itself may use FutureTask for timeout. Keep its executor separate from
-        // the batch coordinator so a bounded batch pool cannot deadlock waiting for its own workers.
-        ExecutorService invocationExecutor = Executors.newCachedThreadPool(runnable -> {
-            Thread thread = new Thread(runnable, "agent-tool-invocation-" + turn.getId());
             thread.setDaemon(true);
             return thread;
         });
@@ -1196,7 +1193,9 @@ public final class AgentRunner {
                 Tool tool = tools.get(index);
                 turn.incrementToolCallCount();
                 eventPublisher.notifyToolStart(turn, call);
-                futures.add(executor.submit(() -> executeTool(turn, tool, call, invocationExecutor)));
+                // 协调线程只负责维持批次并发上限；实际工具调用仍进入 Runner 配置的 toolExecutor。
+                futures.add(executor.submit(() -> executeTool(
+                    turn, tool, call, runnerOptions.getToolExecutor())));
             }
             List<ToolMessage> results = new ArrayList<>(calls.size());
             RuntimeException firstFailure = null;
@@ -1255,7 +1254,6 @@ public final class AgentRunner {
             return AgentStepResult.of(response, returned, null);
         } finally {
             executor.shutdownNow();
-            invocationExecutor.shutdownNow();
         }
     }
 
@@ -1970,14 +1968,14 @@ public final class AgentRunner {
      * 统一检查审批、用户输入和外部工具的挂起期限。恢复命令在此之前不会改变 Turn 状态，
      * 因而过期命令不会留下半应用的审批结果或工具消息。
      */
-    private void ensureSuspensionNotExpired(AgentSuspension suspension) {
+    private boolean resolveExpiredSuspension(AgentTurn turn, AgentSuspension suspension) {
         if (suspension == null || suspension.getTimeoutMillis() <= 0
             || suspension.getRequestedAt() <= 0) {
-            return;
+            return false;
         }
-        long elapsed = System.currentTimeMillis() - suspension.getRequestedAt();
+        long elapsed = turnStore.currentTimeMillis() - suspension.getRequestedAt();
         if (elapsed < suspension.getTimeoutMillis()) {
-            return;
+            return false;
         }
         String subject;
         switch (suspension.getType()) {
@@ -1993,7 +1991,21 @@ public final class AgentRunner {
             default:
                 subject = suspension.getType().name().toLowerCase();
         }
-        throw new IllegalStateException(subject + " has expired");
+        String reason = subject + " has expired";
+        AgentSuspensionExpirationStrategy strategy = turn.getExecutionPolicy()
+            .getSuspensionExpirationStrategy();
+        if (strategy == AgentSuspensionExpirationStrategy.REJECT_RESUME) {
+            throw new IllegalStateException(reason);
+        }
+        finalizeInterruptedHistory(turn, reason);
+        if (strategy == AgentSuspensionExpirationStrategy.CANCEL_TURN) {
+            turn.markCancelled();
+        } else {
+            turn.markFailed(new IllegalStateException(reason));
+        }
+        saveSnapshot(turn);
+        publishTerminalEvent(turn);
+        return true;
     }
 
     /**

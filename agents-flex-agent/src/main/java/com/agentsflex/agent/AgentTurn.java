@@ -222,6 +222,8 @@ public final class AgentTurn {
                 + snapshot.getAgentVersion());
         }
         AgentTurnState state = snapshot.getState().mutableCopy();
+        // Snapshot 只保存可持久化策略字段；函数型运行时组件由同版本 Agent 定义重新提供。
+        state.getExecutionPolicy().rebindRuntimeComponents(agent.getExecutionPolicy());
         AgentTurn turn = new AgentTurn(agent, prompt, state);
         if (state.getErrorMessage() != null) {
             turn.error = new RestoredAgentTurnException(state.getErrorType(), state.getErrorMessage());
@@ -719,11 +721,11 @@ public final class AgentTurn {
         return state.getToolInputData(callId);
     }
 
-    int incrementToolExecutionAttempt(String callId) {
+    synchronized int incrementToolExecutionAttempt(String callId) {
         return state.incrementToolExecutionAttempt(callId);
     }
 
-    int getToolExecutionAttempt(String callId) {
+    synchronized int getToolExecutionAttempt(String callId) {
         return state.getToolExecutionAttempt(callId);
     }
 

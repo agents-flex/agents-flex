@@ -12,7 +12,7 @@ import com.agentsflex.core.message.ToolCall;
  * 判断一次模型或工具失败是否值得自动重试。
  *
  * <p>实现通常应按异常类型、工具名称和是否具备幂等性进行判断。该回调是进程内策略，
- * 不会进入 Snapshot；反序列化后恢复为默认分类器。</p>
+ * 不会进入 Snapshot；跨进程恢复时由同版本 Agent 重新绑定，若无法提供则使用默认分类器。</p>
  */
 @FunctionalInterface
 public interface AgentRetryClassifier {

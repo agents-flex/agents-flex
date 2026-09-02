@@ -12,6 +12,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +55,11 @@ public final class AgentWorker implements AutoCloseable {
      */
     private final ScheduledExecutorService leaseScheduler;
     /**
+     * 同一 Worker 内并发推进不同 Turn 的有界执行器。
+     */
+    private final ExecutorService turnExecutor;
+    private final int maxConcurrentTurns;
+    /**
      * 可选的自动轮询调度器。
      */
     private ScheduledExecutorService scheduler;
@@ -68,15 +76,29 @@ public final class AgentWorker implements AutoCloseable {
      * 创建从 Snapshot 领取并恢复 Turn 的 Worker。
      */
     public AgentWorker(String workerId, AgentRunner runner, long leaseMillis) {
+        this(workerId, runner, leaseMillis, 1);
+    }
+
+    private AgentWorker(String workerId, AgentRunner runner, long leaseMillis,
+                        int maxConcurrentTurns) {
         if (workerId == null || runner == null || leaseMillis <= 0) {
             throw new IllegalArgumentException("workerId, runner and leaseMillis are required");
+        }
+        if (maxConcurrentTurns <= 0) {
+            throw new IllegalArgumentException("maxConcurrentTurns must be greater than 0");
         }
         this.workerId = workerId;
         this.runner = runner;
         this.leaseMillis = leaseMillis;
         this.leaseRenewalFraction = 1.0 / 3.0;
+        this.maxConcurrentTurns = maxConcurrentTurns;
         this.leaseScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "agent-lease-" + workerId);
+            thread.setDaemon(true);
+            return thread;
+        });
+        this.turnExecutor = Executors.newFixedThreadPool(maxConcurrentTurns, runnable -> {
+            Thread thread = new Thread(runnable, "agent-turn-" + workerId);
             thread.setDaemon(true);
             return thread;
         });
@@ -86,7 +108,8 @@ public final class AgentWorker implements AutoCloseable {
      * 使用轮询配置对象创建 Worker。
      */
     public AgentWorker(AgentRunner runner, AgentWorkerOptions options) {
-        this(requireOptions(options).getWorkerId(), runner, options.getLeaseMillis());
+        this(requireOptions(options).getWorkerId(), runner, options.getLeaseMillis(),
+            options.getMaxConcurrentTurns());
         this.options = options;
         this.leaseRenewalFraction = options.getLeaseRenewalFraction();
     }
@@ -134,37 +157,57 @@ public final class AgentWorker implements AutoCloseable {
      */
     private List<AgentTurn> doPollAndRun(int limit) {
         List<AgentTurn> results = new ArrayList<>(limit);
-        for (int index = 0; index < limit; index++) {
+        while (results.size() < limit) {
+            int window = Math.min(maxConcurrentTurns, limit - results.size());
             List<AgentTurnSnapshot> claimed = runner.getTurnStore().claimRunnable(
-                workerId, runner.getTurnStore().currentTimeMillis(), leaseMillis, 1);
+                workerId, runner.getTurnStore().currentTimeMillis(), leaseMillis, window);
             if (claimed.isEmpty()) break;
-            AgentTurnSnapshot snapshot = claimed.get(0);
-            AgentTurn turn = null;
-            ScheduledFuture<?> heartbeat = null;
-            try {
-                turn = runner.restore(snapshot.getState().getTurnId());
-                turn.updateLease(workerId, snapshot.getState().getLeaseId(),
-                    snapshot.getState().getLeaseUntil());
-                heartbeat = startLeaseHeartbeat(turn);
-                turn = runner.runLeased(turn, workerId, snapshot.getState().getLeaseId());
-            } finally {
-                if (heartbeat != null) heartbeat.cancel(false);
-                if (turn != null) {
-                    synchronized (turn) {
-                        runner.getTurnStore().releaseLease(snapshot.getState().getTurnId(), workerId,
-                            snapshot.getState().getLeaseId());
-                    }
-                } else {
-                    runner.getTurnStore().releaseLease(snapshot.getState().getTurnId(), workerId,
-                        snapshot.getState().getLeaseId());
-                }
+            List<Future<AgentTurn>> futures = new ArrayList<>(claimed.size());
+            for (AgentTurnSnapshot snapshot : claimed) {
+                futures.add(turnExecutor.submit(() -> runClaimed(snapshot)));
             }
-            if (turn != null) {
-                // 返回释放租约后的最新版本，避免调用方持有过期的乐观锁版本号。
-                results.add(runner.restore(turn.getId()));
+            for (Future<AgentTurn> future : futures) {
+                try {
+                    AgentTurn turn = future.get();
+                    if (turn != null) results.add(turn);
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("AgentWorker was interrupted", error);
+                } catch (ExecutionException error) {
+                    Throwable cause = error.getCause();
+                    if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+                    throw new IllegalStateException("AgentWorker turn execution failed", cause);
+                }
             }
         }
         return results;
+    }
+
+    /**
+     * 恢复一个已领取快照、启动心跳、推进 Turn，并确保租约最终释放。
+     */
+    private AgentTurn runClaimed(AgentTurnSnapshot snapshot) {
+        AgentTurn turn = null;
+        ScheduledFuture<?> heartbeat = null;
+        try {
+            turn = runner.restore(snapshot.getState().getTurnId());
+            turn.updateLease(workerId, snapshot.getState().getLeaseId(),
+                snapshot.getState().getLeaseUntil());
+            heartbeat = startLeaseHeartbeat(turn);
+            turn = runner.runLeased(turn, workerId, snapshot.getState().getLeaseId());
+        } finally {
+            if (heartbeat != null) heartbeat.cancel(false);
+            if (turn != null) {
+                synchronized (turn) {
+                    runner.getTurnStore().releaseLease(snapshot.getState().getTurnId(), workerId,
+                        snapshot.getState().getLeaseId());
+                }
+            } else {
+                runner.getTurnStore().releaseLease(snapshot.getState().getTurnId(), workerId,
+                    snapshot.getState().getLeaseId());
+            }
+        }
+        return turn == null ? null : runner.restore(turn.getId());
     }
 
     /**
@@ -256,6 +299,7 @@ public final class AgentWorker implements AutoCloseable {
             scheduler = null;
         }
         if (activePolls == 0) leaseScheduler.shutdownNow();
+        if (activePolls == 0) turnExecutor.shutdownNow();
     }
 
     /**
@@ -274,6 +318,9 @@ public final class AgentWorker implements AutoCloseable {
      */
     private synchronized void endPoll() {
         activePolls--;
-        if (closed && activePolls == 0) leaseScheduler.shutdownNow();
+        if (closed && activePolls == 0) {
+            leaseScheduler.shutdownNow();
+            turnExecutor.shutdownNow();
+        }
     }
 }

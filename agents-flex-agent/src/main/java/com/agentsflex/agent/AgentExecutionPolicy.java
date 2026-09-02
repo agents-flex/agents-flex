@@ -110,6 +110,10 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     private final long userInputTimeoutMillis;
     /**
+     * 挂起过期后的终态处理方式。
+     */
+    private final AgentSuspensionExpirationStrategy suspensionExpirationStrategy;
+    /**
      * 本地工具结果允许写入模型上下文的最大字符数，0 表示不限制。
      */
     private final long toolResultMaxCharacters;
@@ -156,6 +160,7 @@ public final class AgentExecutionPolicy implements Serializable {
         this.externalToolTimeoutMillis = builder.externalToolTimeoutMillis;
         this.approvalTimeoutMillis = builder.approvalTimeoutMillis;
         this.userInputTimeoutMillis = builder.userInputTimeoutMillis;
+        this.suspensionExpirationStrategy = builder.suspensionExpirationStrategy;
         this.toolResultMaxCharacters = builder.toolResultMaxCharacters;
         this.externalToolResultMaxCharacters = builder.externalToolResultMaxCharacters;
         this.toolResultOverflowStrategy = builder.toolResultOverflowStrategy;
@@ -286,6 +291,11 @@ public final class AgentExecutionPolicy implements Serializable {
         return userInputTimeoutMillis;
     }
 
+    public AgentSuspensionExpirationStrategy getSuspensionExpirationStrategy() {
+        return suspensionExpirationStrategy == null
+            ? AgentSuspensionExpirationStrategy.REJECT_RESUME : suspensionExpirationStrategy;
+    }
+
     /**
      * @return 本地工具结果写入模型上下文的字符上限；0 表示不限制
      */
@@ -313,6 +323,18 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     public AgentRetryClassifier getRetryClassifier() {
         return retryClassifier == null ? AgentRetryClassifier.defaults() : retryClassifier;
+    }
+
+    /**
+     * 从已加载的同版本 Agent 策略重新绑定不进入 Snapshot 的进程内回调。
+     *
+     * <p>数值限制和持久化策略继续使用 Turn 创建时的快照值；这里只恢复无法可靠序列化的函数对象，
+     * 防止任务跨进程恢复后静默改用默认错误映射或默认重试分类。</p>
+     */
+    void rebindRuntimeComponents(AgentExecutionPolicy source) {
+        if (source == null) return;
+        this.toolErrorMessageFactory = source.getToolErrorMessageFactory();
+        this.retryClassifier = source.getRetryClassifier();
     }
 
     /**
@@ -358,6 +380,8 @@ public final class AgentExecutionPolicy implements Serializable {
         private long externalToolTimeoutMillis;
         private long approvalTimeoutMillis;
         private long userInputTimeoutMillis;
+        private AgentSuspensionExpirationStrategy suspensionExpirationStrategy =
+            AgentSuspensionExpirationStrategy.REJECT_RESUME;
         private long toolResultMaxCharacters;
         private long externalToolResultMaxCharacters;
         private AgentToolResultOverflowStrategy toolResultOverflowStrategy =
@@ -490,6 +514,15 @@ public final class AgentExecutionPolicy implements Serializable {
         }
 
         /**
+         * 设置挂起过期后拒绝命令、失败 Turn 或取消 Turn。
+         */
+        public Builder suspensionExpirationStrategy(AgentSuspensionExpirationStrategy value) {
+            this.suspensionExpirationStrategy = value == null
+                ? AgentSuspensionExpirationStrategy.REJECT_RESUME : value;
+            return this;
+        }
+
+        /**
          * 限制本地工具结果写入模型上下文的字符数，防止工具输出耗尽上下文窗口。
          */
         public Builder toolResultMaxCharacters(long value) {
@@ -584,6 +617,9 @@ public final class AgentExecutionPolicy implements Serializable {
             }
             if (toolResultOverflowStrategy == null) {
                 throw new IllegalStateException("toolResultOverflowStrategy must not be null");
+            }
+            if (suspensionExpirationStrategy == null) {
+                throw new IllegalStateException("suspensionExpirationStrategy must not be null");
             }
             return new AgentExecutionPolicy(this);
         }

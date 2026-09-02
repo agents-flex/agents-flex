@@ -2,10 +2,13 @@ package com.agentsflex.agent.compression;
 
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.message.UserMessage;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,7 +30,7 @@ public class AgentContextCompressionProcessorTest {
             input -> input.getEstimatedPendingTokens() >= 4,
             value -> {
                 compressions.incrementAndGet();
-                return Collections.singletonList(new AiMessage("summary"));
+                return Collections.singletonList(summary("summary"));
             },
             messages -> messages.size());
         List<Message> history = messages(3);
@@ -47,7 +50,7 @@ public class AgentContextCompressionProcessorTest {
         AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
             value -> {
                 compressorInput.set(value);
-                return Collections.singletonList(new AiMessage("summary-1"));
+                return Collections.singletonList(summary("summary-1"));
             },
             messages -> messages.size());
         List<Message> history = messages(100);
@@ -70,7 +73,7 @@ public class AgentContextCompressionProcessorTest {
             input -> input.getEstimatedPendingTokens() >= 100,
             value -> {
                 inputs.add(value);
-                return Collections.singletonList(new AiMessage("summary-" + (inputs.size())));
+                return Collections.singletonList(summary("summary-" + (inputs.size())));
             }, messages -> messages.size());
 
         List<Message> first = messages(100);
@@ -98,7 +101,7 @@ public class AgentContextCompressionProcessorTest {
     public void shouldNotSaveWhenNoNewMessagesRemain() {
         MemoryStore store = new MemoryStore();
         AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
-            value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
+            value -> Collections.singletonList(summary("summary")), messages -> messages.size());
         List<Message> history = messages(2);
         processor.process("c1", history);
         AgentContextCompressionResult result = processor.process("c1", history);
@@ -135,7 +138,7 @@ public class AgentContextCompressionProcessorTest {
                 // expected
             }
             return input.getState().getVersion() == 0;
-        }, value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size() * 7L);
+        }, value -> Collections.singletonList(summary("summary")), messages -> messages.size() * 7L);
         processor.process("c1", messages(2));
 
         assertNotNull(seenPending.get());
@@ -150,7 +153,7 @@ public class AgentContextCompressionProcessorTest {
     public void shouldRejectHistoryThatDoesNotContainCoveredMessage() {
         MemoryStore store = new MemoryStore();
         AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
-            value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
+            value -> Collections.singletonList(summary("summary")), messages -> messages.size());
         processor.process("c1", messages(2));
         try {
             processor.process("c1", messages(1));
@@ -165,7 +168,7 @@ public class AgentContextCompressionProcessorTest {
     public void shouldFailWithoutOverwritingStateOnCasConflict() {
         MemoryStore store = new MemoryStore();
         AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
-            value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
+            value -> Collections.singletonList(summary("summary")), messages -> messages.size());
         store.rejectNextSave = true;
         try {
             processor.process("c1", messages(1));
@@ -244,7 +247,7 @@ public class AgentContextCompressionProcessorTest {
         MemoryStore store = new MemoryStore();
         store.rejectNextSave = true;
         AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
-            value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size(),
+            value -> Collections.singletonList(summary("summary")), messages -> messages.size(),
             AgentCompressionFailureStrategy.USE_ORIGINAL);
         try {
             processor.process("cas", messages(1));
@@ -260,7 +263,7 @@ public class AgentContextCompressionProcessorTest {
         MemoryStore store = new MemoryStore();
         List<Message> history = messages(2);
         AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
-            value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
+            value -> Collections.singletonList(summary("summary")), messages -> messages.size());
         AgentContextCompressionResult result = processor.process("c1", history);
         history.clear();
         assertEquals(1, result.getState().getSummaryMessages().size());
@@ -279,6 +282,48 @@ public class AgentContextCompressionProcessorTest {
     }
 
     @Test
+    public void shouldRejectOrphanToolMessageAndUseOriginalWithoutAdvancingCursor() {
+        List<Message> history = Arrays.<Message>asList(new UserMessage("question"), toolResult("missing"));
+        for (AgentCompressionFailureStrategy strategy : new AgentCompressionFailureStrategy[]{
+            AgentCompressionFailureStrategy.FAIL, AgentCompressionFailureStrategy.USE_ORIGINAL}) {
+            MemoryStore store = new MemoryStore();
+            AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
+                value -> Collections.<Message>singletonList(toolResult("missing")),
+                messages -> messages.size(), strategy);
+            try {
+                AgentContextCompressionResult result = processor.process("orphan-" + strategy, history);
+                assertEquals(AgentCompressionFailureStrategy.USE_ORIGINAL, strategy);
+                assertFalse(result.isCompressed());
+                assertEquals(history.size(), result.getModelMessages().size());
+            } catch (IllegalArgumentException expected) {
+                assertEquals(AgentCompressionFailureStrategy.FAIL, strategy);
+            }
+            assertEquals("invalid output must never be persisted", 0, store.saves.size());
+            assertNull(store.state);
+        }
+    }
+
+    @Test
+    public void shouldRejectIncompleteAndDuplicateToolCallIds() {
+        List<Message> incomplete = Arrays.<Message>asList(new UserMessage("question"), toolCalls("call-1"));
+        List<Message> duplicate = Arrays.<Message>asList(new UserMessage("question"), toolCalls("same", "same"));
+        List<Message> blank = Arrays.<Message>asList(new UserMessage("question"), toolCalls(" "));
+        List<Message> duplicateAcrossGroups = Arrays.<Message>asList(new UserMessage("question"),
+            toolCalls("same"), toolResult("same"), new UserMessage("next"),
+            toolCalls("same"), toolResult("same"));
+        for (List<Message> invalid : Arrays.asList(incomplete, duplicate, blank, duplicateAcrossGroups)) {
+            AgentContextCompressionProcessor processor = createProcessor(new MemoryStore(), input -> true,
+                value -> invalid, messages -> messages.size(), AgentCompressionFailureStrategy.FAIL);
+            try {
+                processor.process("invalid-tool", Arrays.<Message>asList(new UserMessage("question")));
+                fail("invalid ToolCall protocol must fail");
+            } catch (IllegalArgumentException expected) {
+                assertTrue(expected.getMessage().contains("ToolCall"));
+            }
+        }
+    }
+
+    @Test
     public void shouldHandleZeroAndLargeTokenEstimatesAtConditionBoundary() {
         MemoryStore zeroStore = new MemoryStore();
         AtomicInteger zeroCalls = new AtomicInteger();
@@ -286,7 +331,7 @@ public class AgentContextCompressionProcessorTest {
             input -> input.getEstimatedPendingTokens() > 0,
             value -> {
                 zeroCalls.incrementAndGet();
-                return Collections.singletonList(new AiMessage("x"));
+                return Collections.singletonList(summary("x"));
             }, messages -> 0);
         assertFalse(zero.process("zero", messages(5)).isCompressed());
         assertEquals(0, zeroCalls.get());
@@ -294,14 +339,14 @@ public class AgentContextCompressionProcessorTest {
         MemoryStore largeStore = new MemoryStore();
         AgentContextCompressionProcessor large = createProcessor(largeStore,
             input -> input.getEstimatedPendingTokens() == Long.MAX_VALUE,
-            value -> Collections.singletonList(new AiMessage("large")), messages -> Long.MAX_VALUE);
+            value -> Collections.singletonList(summary("large")), messages -> Long.MAX_VALUE);
         assertTrue(large.process("large", messages(1)).isCompressed());
     }
 
     @Test
     public void shouldRejectNegativeTokenEstimate() {
         AgentContextCompressionProcessor processor = createProcessor(new MemoryStore(), input -> true,
-            value -> Collections.singletonList(new AiMessage("summary")), messages -> -1);
+            value -> Collections.singletonList(summary("summary")), messages -> -1);
         try {
             processor.process("negative", messages(1));
             fail("expected invalid token estimate");
@@ -313,7 +358,7 @@ public class AgentContextCompressionProcessorTest {
     @Test
     public void shouldRejectBlankConversationAndNullHistoryEntries() {
         AgentContextCompressionProcessor processor = createProcessor(new MemoryStore(), input -> false,
-            value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
+            value -> Collections.singletonList(summary("summary")), messages -> messages.size());
         try {
             processor.process("  ", messages(1));
             fail("blank conversation id must fail");
@@ -348,6 +393,25 @@ public class AgentContextCompressionProcessorTest {
     private static List<Message> messages(int count) {
         List<Message> result = new ArrayList<>();
         for (int i = 0; i < count; i++) result.add(new UserMessage("message-" + i));
+        return result;
+    }
+
+    private static ToolMessage toolResult(String id) {
+        ToolMessage result = new ToolMessage();
+        result.setToolCallId(id);
+        result.setContent("result");
+        return result;
+    }
+
+    private static UserMessage summary(String text) {
+        return new UserMessage(text);
+    }
+
+    private static AiMessage toolCalls(String... ids) {
+        AiMessage result = new AiMessage();
+        List<ToolCall> calls = new ArrayList<>();
+        for (String id : ids) calls.add(new ToolCall(id, "lookup", "{}"));
+        result.setToolCalls(calls);
         return result;
     }
 

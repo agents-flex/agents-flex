@@ -118,12 +118,17 @@ public final class AgentContextCompressors {
             for (Message message : messages) {
                 input.append(format(options.getModelMessageFormatter(), message));
             }
+            validateSize("context compression input", input.length(),
+                options.getMaxInputCharacters());
             AiMessageResponse response = callModel(model, new SimplePrompt(input.toString()), options);
             if (response == null || response.isError() || response.getMessage() == null) {
                 if (response != null && response.isError()) response.throwIfError();
                 throw new IllegalStateException("context summary model returned no message");
             }
             AiMessage summary = response.getMessage().copy();
+            validateSize("context compression output",
+                summary.getContent() == null ? 0 : summary.getContent().length(),
+                options.getMaxOutputCharacters());
             summary.setToolCalls(null);
             return java.util.Arrays.<Message>asList(
                 new UserMessage(options.getSummaryPrefix()), summary);
@@ -168,6 +173,8 @@ public final class AgentContextCompressors {
             if (!hasCompressibleMessage) {
                 return copy(messages);
             }
+            validateSize("per-message compression input", input.length(),
+                options.getMaxInputCharacters());
             AiMessageResponse response = callModel(model, new SimplePrompt(input.toString()), options);
             if (response == null || response.isError() || response.getMessage() == null) {
                 if (response != null && response.isError()) response.throwIfError();
@@ -177,6 +184,8 @@ public final class AgentContextCompressors {
             if (content == null || content.trim().isEmpty()) {
                 throw new IllegalStateException("per-message summary model returned empty content");
             }
+            validateSize("per-message compression output", content.length(),
+                options.getMaxOutputCharacters());
             content = content.trim();
             if (content.startsWith("```")) {
                 int firstLine = content.indexOf('\n');
@@ -242,7 +251,9 @@ public final class AgentContextCompressors {
         if (timeout <= 0) return model.chat(prompt, options.getChatOptions());
         FutureTask<AiMessageResponse> task = new FutureTask<>(
             () -> model.chat(prompt, options.getChatOptions()));
-        MODEL_EXECUTOR.execute(task);
+        java.util.concurrent.Executor executor = options.getModelExecutor() == null
+            ? MODEL_EXECUTOR : options.getModelExecutor();
+        executor.execute(task);
         try {
             return task.get(timeout, TimeUnit.MILLISECONDS);
         } catch (TimeoutException error) {
@@ -256,6 +267,12 @@ public final class AgentContextCompressors {
             Throwable cause = error.getCause();
             if (cause instanceof RuntimeException) throw (RuntimeException) cause;
             throw new IllegalStateException("context compression model call failed", cause);
+        }
+    }
+
+    private static void validateSize(String subject, long actual, long limit) {
+        if (limit > 0 && actual > limit) {
+            throw new IllegalStateException(subject + " exceeded maximum size: " + limit);
         }
     }
 

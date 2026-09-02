@@ -7,6 +7,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.compression.AgentCompressionFailureStrategy;
+import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
@@ -22,6 +23,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -244,6 +246,37 @@ public class AgentConfigurationOptimizationTest {
     }
 
     @Test
+    public void eventSanitizerFailureStrategiesHaveExplicitDataSemantics() {
+        for (AgentEventSanitizationFailureStrategy strategy : AgentEventSanitizationFailureStrategy.values()) {
+            AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+            model.enqueue(prompt -> new AiMessage("done"));
+            List<AgentEvent> received = new java.util.ArrayList<>();
+            AgentRunner runner = AgentRunner.builder()
+                .options(AgentRunnerOptions.builder()
+                    .eventDataSanitizer((type, data) -> {
+                        throw new IllegalStateException("sanitize");
+                    })
+                    .eventSanitizationFailureStrategy(strategy).build())
+                .build().addEventListener(received::add);
+            try {
+                AgentTurn turn = runner.run(Agent.builder("sanitize-" + strategy).chatModel(model).build(), "hello");
+                assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+            } catch (IllegalStateException expected) {
+                assertEquals(AgentEventSanitizationFailureStrategy.FAIL_EXECUTION, strategy);
+            }
+            if (strategy == AgentEventSanitizationFailureStrategy.DROP_EVENT) {
+                assertTrue(received.isEmpty());
+            } else if (strategy == AgentEventSanitizationFailureStrategy.DROP_DATA) {
+                assertTrue(received.size() > 0);
+                assertTrue(received.get(0).getData().isEmpty());
+            } else if (strategy == AgentEventSanitizationFailureStrategy.USE_ORIGINAL) {
+                assertTrue(received.size() > 0);
+                assertTrue(received.get(0).getData().containsKey("status"));
+            }
+        }
+    }
+
+    @Test
     public void workerOptionsValidateAndExposePollingConfiguration() {
         AgentWorkerOptions options = AgentWorkerOptions.builder("worker-1", 5000)
             .pollIntervalMillis(250).batchSize(3).leaseRenewalFraction(0.25).build();
@@ -251,6 +284,7 @@ public class AgentConfigurationOptimizationTest {
         assertEquals(5000, options.getLeaseMillis());
         assertEquals(250, options.getPollIntervalMillis());
         assertEquals(3, options.getBatchSize());
+        assertEquals(1, options.getMaxConcurrentTurns());
         assertEquals(0.25, options.getLeaseRenewalFraction(), 0.0001);
         try {
             AgentWorkerOptions.builder(" ", 1).build();
@@ -258,6 +292,102 @@ public class AgentConfigurationOptimizationTest {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("workerId"));
         }
+    }
+
+    @Test
+    public void parallelToolCallLimitIsEnforcedWhileUsingConfiguredToolExecutor() throws Exception {
+        for (int limit : new int[]{1, 2}) {
+            AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+            model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(
+                new ToolCall("a", "a", "{}"), new ToolCall("b", "b", "{}"),
+                new ToolCall("c", "c", "{}")));
+            model.enqueue(prompt -> new AiMessage("done"));
+            CountDownLatch release = new CountDownLatch(1);
+            AtomicInteger current = new AtomicInteger();
+            AtomicInteger maximum = new AtomicInteger();
+            AtomicInteger executorSubmissions = new AtomicInteger();
+            Executor toolExecutor = command -> {
+                executorSubmissions.incrementAndGet();
+                Thread thread = new Thread(command, "test-tool");
+                thread.start();
+            };
+            Agent agent = Agent.builder("parallel-limit-" + limit)
+                .chatModel(model)
+                .tool(AgentScenarioTestSupport.tool("a", args -> limitedTool(release, current, maximum, limit)))
+                .tool(AgentScenarioTestSupport.tool("b", args -> limitedTool(release, current, maximum, limit)))
+                .tool(AgentScenarioTestSupport.tool("c", args -> limitedTool(release, current, maximum, limit)))
+                .executionPolicy(AgentExecutionPolicy.builder()
+                    .toolExecutionMode(AgentToolExecutionMode.PARALLEL)
+                    .maxParallelToolCalls(limit).build())
+                .build();
+            AgentRunner runner = AgentRunner.builder()
+                .options(AgentRunnerOptions.builder().toolExecutor(toolExecutor).build()).build();
+            AgentTurn turn = runner.run(agent, "limited");
+            release.countDown();
+            assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+            assertTrue("configured executor was not used", executorSubmissions.get() >= 3);
+            assertTrue("parallel limit exceeded: " + maximum.get(), maximum.get() <= limit);
+        }
+    }
+
+    @Test
+    public void workerBatchSizeAndConcurrencyAreIndependent() throws Exception {
+        com.agentsflex.agent.store.InMemoryAgentTurnStore store =
+            new com.agentsflex.agent.store.InMemoryAgentTurnStore();
+        CountDownLatch entered = new CountDownLatch(2);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicInteger active = new AtomicInteger();
+        AtomicInteger maximum = new AtomicInteger();
+        ChatModel model = new ChatModel() {
+            @Override
+            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+                int now = active.incrementAndGet();
+                maximum.updateAndGet(previous -> Math.max(previous, now));
+                entered.countDown();
+                try {
+                    release.await(2, TimeUnit.SECONDS);
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    active.decrementAndGet();
+                }
+                return AgentScenarioTestSupport.response(prompt, new AiMessage("done"));
+            }
+
+            @Override
+            public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        Agent agent = Agent.builder("worker-concurrency").chatModel(model).build();
+        AgentRunner runner = new AgentRunner(store, new com.agentsflex.agent.loader.InMemoryAgentLoader(agent));
+        runner.start(agent, "first");
+        runner.start(agent, "second");
+        AgentWorkerOptions options = AgentWorkerOptions.builder("worker", 10_000)
+            .batchSize(1).maxConcurrentTurns(2).build();
+        try (AgentWorker worker = new AgentWorker(runner, options)) {
+            Thread polling = new Thread(() -> worker.pollAndRun(2));
+            polling.start();
+            assertTrue("worker did not execute two turns concurrently", entered.await(2, TimeUnit.SECONDS));
+            release.countDown();
+            polling.join(2000);
+            assertEquals(2, maximum.get());
+        }
+    }
+
+    private static String limitedTool(CountDownLatch release, AtomicInteger current,
+                                      AtomicInteger maximum, int limit) {
+        int now = current.incrementAndGet();
+        maximum.updateAndGet(previous -> Math.max(previous, now));
+        if (now >= limit) release.countDown();
+        try {
+            release.await(2, TimeUnit.SECONDS);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+        } finally {
+            current.decrementAndGet();
+        }
+        return "ok";
     }
 
     @Test

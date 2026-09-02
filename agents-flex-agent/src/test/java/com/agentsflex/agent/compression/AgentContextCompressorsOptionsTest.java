@@ -15,6 +15,8 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
@@ -168,7 +170,49 @@ public class AgentContextCompressorsOptionsTest {
     }
 
     @Test
+    public void compressionModelHonorsInputOutputCharacterBoundariesAndCustomExecutor() {
+        CapturingChatModel model = new CapturingChatModel("ok");
+        AtomicInteger executorCalls = new AtomicInteger();
+        Executor executor = command -> {
+            executorCalls.incrementAndGet();
+            command.run();
+        };
+        AgentContextModelCompressorOptions exact = AgentContextModelCompressorOptions.builder()
+            .instruction("I").historyHeader("H")
+            .modelMessageFormatter(message -> "X")
+            .maxInputCharacters(3).maxOutputCharacters(2)
+            .modelCallTimeoutMillis(1000).modelExecutor(executor).build();
+        List<Message> result = AgentContextCompressors.model(model, exact)
+            .compress(Collections.<Message>singletonList(new UserMessage("ignored")));
+        assertEquals("ok", result.get(1).getTextContent());
+        assertEquals(1, executorCalls.get());
+
+        try {
+            AgentContextCompressors.model(model, AgentContextModelCompressorOptions.builder()
+                .instruction("I").historyHeader("H").modelMessageFormatter(message -> "X")
+                .maxInputCharacters(2).build()).compress(
+                Collections.<Message>singletonList(new UserMessage("ignored")));
+            fail("input exactly over limit must fail");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("input"));
+        }
+        try {
+            AgentContextCompressors.model(model, AgentContextModelCompressorOptions.builder()
+                .instruction("I").historyHeader("H").modelMessageFormatter(message -> "X")
+                .maxOutputCharacters(1).build()).compress(
+                Collections.<Message>singletonList(new UserMessage("ignored")));
+            fail("output exactly over limit must fail");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("output"));
+        }
+    }
+
+    @Test
     public void modelCompressorOptionsRejectMissingRequiredValues() {
+        AgentContextModelCompressorOptions unlimited = AgentContextModelCompressorOptions.builder()
+            .instruction("ok").maxInputCharacters(0).maxOutputCharacters(0).build();
+        assertEquals(0, unlimited.getMaxInputCharacters());
+        assertEquals(0, unlimited.getMaxOutputCharacters());
         assertInvalid(() -> AgentContextModelCompressorOptions.builder().build());
         assertInvalid(() -> AgentContextModelCompressorOptions.builder().instruction(" ").build());
         assertInvalid(() -> AgentContextModelCompressorOptions.builder()
@@ -183,6 +227,10 @@ public class AgentContextCompressorsOptionsTest {
             .instruction("ok").perMessageFormatter(null).build());
         assertInvalid(() -> AgentContextModelCompressorOptions.builder()
             .instruction("ok").modelCallTimeoutMillis(-1).build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder()
+            .instruction("ok").maxInputCharacters(-1).build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder()
+            .instruction("ok").maxOutputCharacters(-1).build());
     }
 
     @Test

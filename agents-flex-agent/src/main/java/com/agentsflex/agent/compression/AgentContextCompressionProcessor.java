@@ -93,17 +93,12 @@ final class AgentContextCompressionProcessor {
         List<Message> summary;
         try {
             summary = compressor.compress(Collections.unmodifiableList(copyMessages(compressorInput)));
+            AgentContextCompressionValidator.validate(summary, true);
         } catch (RuntimeException error) {
             if (compressionFailureStrategy == AgentCompressionFailureStrategy.USE_ORIGINAL) {
                 return originalResult(state, pending);
             }
             throw error;
-        }
-        if (summary == null || summary.isEmpty()) {
-            if (compressionFailureStrategy == AgentCompressionFailureStrategy.USE_ORIGINAL) {
-                return originalResult(state, pending);
-            }
-            throw new IllegalStateException("contextCompressor returned no summary");
         }
         Message last = pending.get(pending.size() - 1);
         AgentContextCompressionState next = new AgentContextCompressionState(

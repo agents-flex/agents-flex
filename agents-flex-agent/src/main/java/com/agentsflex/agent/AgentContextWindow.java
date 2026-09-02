@@ -2,6 +2,7 @@ package com.agentsflex.agent;
 
 import com.agentsflex.agent.compression.AgentContextCompressor;
 import com.agentsflex.agent.compression.AgentCompressionFailureStrategy;
+import com.agentsflex.agent.compression.AgentContextCompressionValidator;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.prompt.MemoryPrompt;
@@ -79,7 +80,7 @@ final class AgentContextWindow {
             // 传入不可修改副本，防止业务压缩器意外修改 Runner 正在使用的历史对象。
             try {
                 semanticOutput = contextCompressor.compress(Collections.unmodifiableList(copy(semanticInput)));
-                validateCompressedMessages(semanticOutput);
+                AgentContextCompressionValidator.validate(semanticOutput, true);
             } catch (RuntimeException error) {
                 if (compressionFailureStrategy == AgentCompressionFailureStrategy.FAIL) throw error;
                 semanticOutput = null;
@@ -226,78 +227,6 @@ final class AgentContextWindow {
         }
         // 未闭合或无最终正文的历史 Turn 不能猜测其结果，保留完整协议。
         return copy(turn);
-    }
-
-    /**
-     * 校验业务压缩器返回的消息仍满足模型会话协议。
-     *
-     * <p>结果必须非空，以 UserMessage（可选前置 SystemMessage）开始，且每组 ToolCall 都必须有
-     * 唯一、完整、按顺序出现的 ToolMessage 响应。所有消息还必须对模型可见。</p>
-     *
-     * @param messages 压缩器生成的消息
-     * @throws IllegalArgumentException 结果为空、包含非法消息或工具协议不完整时抛出
-     */
-    private static void validateCompressedMessages(List<Message> messages) {
-        if (messages == null || messages.isEmpty()) {
-            throw new IllegalArgumentException("contextCompressor must return at least one message");
-        }
-        int firstConversationMessage = messages.get(0) instanceof SystemMessage ? 1 : 0;
-        if (firstConversationMessage >= messages.size()
-            || !(messages.get(firstConversationMessage) instanceof UserMessage)) {
-            throw new IllegalArgumentException("contextCompressor result must start with SystemMessage optionally followed by UserMessage");
-        }
-        // ToolMessage 可以连续出现，因此不能只检查它的直接前一条消息；使用最近一条
-        // ToolCall AiMessage 和待回收 ID 集合校验完整配对关系。
-        AiMessage lastToolCallMessage = null;
-        java.util.Set<String> returnedToolCallIds = new java.util.HashSet<>();
-        java.util.Set<String> expectedToolCallIds = new java.util.HashSet<>();
-        for (int index = 0; index < messages.size(); index++) {
-            Message message = messages.get(index);
-            if (message == null || !message.isModelVisible()) {
-                throw new IllegalArgumentException("contextCompressor result contains invalid message");
-            }
-            if (message instanceof ToolMessage) {
-                if (lastToolCallMessage == null || !matchesToolCall(lastToolCallMessage, (ToolMessage) message)
-                    || !returnedToolCallIds.add(((ToolMessage) message).getToolCallId())) {
-                    throw new IllegalArgumentException("contextCompressor result contains orphan ToolMessage");
-                }
-                expectedToolCallIds.remove(((ToolMessage) message).getToolCallId());
-            } else if (message instanceof AiMessage && ((AiMessage) message).hasToolCalls()) {
-                if (!expectedToolCallIds.isEmpty()) {
-                    throw new IllegalArgumentException("contextCompressor result contains incomplete ToolCall");
-                }
-                lastToolCallMessage = (AiMessage) message;
-                returnedToolCallIds.clear();
-                for (com.agentsflex.core.message.ToolCall call : lastToolCallMessage.getToolCalls()) {
-                    if (call.getId() != null) expectedToolCallIds.add(call.getId());
-                }
-            } else {
-                if (!expectedToolCallIds.isEmpty()) {
-                    throw new IllegalArgumentException("contextCompressor result contains incomplete ToolCall");
-                }
-                lastToolCallMessage = null;
-                returnedToolCallIds.clear();
-            }
-        }
-        if (!expectedToolCallIds.isEmpty()) {
-            throw new IllegalArgumentException("contextCompressor result contains incomplete ToolCall");
-        }
-    }
-
-    /**
-     * 判断工具结果是否响应了指定 AI 消息声明的任意一个工具调用。
-     *
-     * @param assistant 声明工具调用的 AI 消息
-     * @param result    待校验的工具结果
-     * @return Tool Call ID 非空且存在匹配项时返回 {@code true}
-     */
-    private static boolean matchesToolCall(AiMessage assistant, ToolMessage result) {
-        // 一个 AiMessage 可能同时声明多个工具调用，结果只要命中其中一个 ID 即合法。
-        if (result.getToolCallId() == null) return false;
-        for (com.agentsflex.core.message.ToolCall call : assistant.getToolCalls()) {
-            if (result.getToolCallId().equals(call.getId())) return true;
-        }
-        return false;
     }
 
     /**

@@ -313,6 +313,41 @@ public class AgentExternalToolIntegrationTest {
         assertTrue(turn.getPrompt().getMessages().size() <= 1);
     }
 
+    @Test
+    public void expiredSuspensionCanFailOrCancelTurnAccordingToPolicy() throws Exception {
+        for (AgentSuspensionExpirationStrategy strategy : new AgentSuspensionExpirationStrategy[]{
+            AgentSuspensionExpirationStrategy.FAIL_TURN,
+            AgentSuspensionExpirationStrategy.CANCEL_TURN}) {
+            AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+            model.enqueue(prompt -> toolCalls(new ToolCall("external", "client", "{}")));
+            InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
+            Agent agent = Agent.builder("expired-" + strategy)
+                .chatModel(model)
+                .tool(Tool.builder("client", "client")
+                    .executionTarget(ToolExecutionTarget.EXTERNAL).build())
+                .executionPolicy(AgentExecutionPolicy.builder()
+                    .externalToolTimeoutMillis(1)
+                    .suspensionExpirationStrategy(strategy).build())
+                .build();
+            List<AgentEvent> events = new ArrayList<>();
+            AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent))
+                .addEventListener(events::add);
+            AgentTurn waiting = runner.run(agent, "run");
+            Thread.sleep(10);
+            AgentTurn terminal = runner.submitResume(waiting,
+                AgentResumeCommand.toolResult("external", "late"));
+            assertTrue(terminal.getStatus().isTerminal());
+            assertEquals(strategy == AgentSuspensionExpirationStrategy.CANCEL_TURN
+                ? AgentTurnStatus.CANCELLED : AgentTurnStatus.FAILED, terminal.getStatus());
+            assertEquals(terminal.getStatus(), store.load(terminal.getId()).getState().getStatus());
+            assertTrue(hasEvent(events, strategy == AgentSuspensionExpirationStrategy.CANCEL_TURN
+                ? AgentEventType.TURN_CANCELLED : AgentEventType.TURN_FAILED));
+            assertTrue("expired command must not append the late result",
+                terminal.getPrompt().getMessages().stream()
+                    .noneMatch(message -> "late".equals(message.getTextContent())));
+        }
+    }
+
     private static AgentEvent event(List<AgentEvent> events, AgentEventType type) {
         for (AgentEvent event : events) {
             if (event.getType() == type) return event;
