@@ -13,6 +13,7 @@ import com.agentsflex.core.prompt.Prompt;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -166,6 +167,34 @@ public class AgentContextCompressorsOptionsTest {
         }
     }
 
+    @Test
+    public void modelCompressorOptionsRejectMissingRequiredValues() {
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder().build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder().instruction(" ").build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder()
+            .instruction("ok").historyHeader(null).build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder()
+            .instruction("ok").perMessageRequest(null).build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder()
+            .instruction("ok").summaryPrefix(null).build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder()
+            .instruction("ok").modelMessageFormatter(null).build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder()
+            .instruction("ok").perMessageFormatter(null).build());
+        assertInvalid(() -> AgentContextModelCompressorOptions.builder()
+            .instruction("ok").modelCallTimeoutMillis(-1).build());
+    }
+
+    @Test
+    public void compressorChainRejectsNullOutputWithExplicitError() {
+        try {
+            AgentContextCompressors.chain(messages -> null).compress(Collections.emptyList());
+            fail("null compressor output must fail explicitly");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("returned null"));
+        }
+    }
+
     private static class CapturingChatModel implements ChatModel {
         private final String response;
         private String promptText;
@@ -186,6 +215,15 @@ public class AgentContextCompressorsOptionsTest {
         public void chatStream(Prompt prompt, StreamResponseListener listener,
                                ChatOptions options) {
             throw new UnsupportedOperationException();
+        }
+    }
+
+    private static void assertInvalid(Runnable action) {
+        try {
+            action.run();
+            fail("invalid compressor option must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage() != null && !expected.getMessage().isEmpty());
         }
     }
 }

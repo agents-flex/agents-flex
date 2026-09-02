@@ -115,6 +115,9 @@ public final class AgentWorker implements AutoCloseable {
      * @return 已推进到终止或阻塞状态的运行列表
      */
     public List<AgentTurn> pollAndRun(int limit) {
+        if (limit <= 0) {
+            throw new IllegalArgumentException("limit must be greater than 0");
+        }
         beginPoll();
         try {
             return doPollAndRun(limit);

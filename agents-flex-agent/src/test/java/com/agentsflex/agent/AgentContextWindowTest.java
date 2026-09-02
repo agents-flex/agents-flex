@@ -236,6 +236,28 @@ public class AgentContextWindowTest {
         Assert.assertEquals("current", messages.get(2).getTextContent());
     }
 
+    @Test
+    public void contextWindowRejectsInvalidLimitsAndKeepsExactTokenBoundary() {
+        MemoryPrompt source = prompt(new UserMessage("question"), new AiMessage("answer"));
+        assertInvalidWindow(() -> AgentContextWindow.build(source, 0, 10, true, 1, null));
+        assertInvalidWindow(() -> AgentContextWindow.build(source, 1, 0, true, 1, null));
+        assertInvalidWindow(() -> AgentContextWindow.build(source, 1, 10, -1, null,
+            true, 1, null, AgentCompressionFailureStrategy.FAIL));
+
+        MemoryPrompt exact = AgentContextWindow.build(source, 1, 10, 2,
+            messages -> 2, true, 1, null, AgentCompressionFailureStrategy.FAIL);
+        Assert.assertEquals(2, exact.getMemory().getMessages(Integer.MAX_VALUE).size());
+    }
+
+    private static void assertInvalidWindow(Runnable action) {
+        try {
+            action.run();
+            Assert.fail("invalid context window limits must fail");
+        } catch (IllegalArgumentException expected) {
+            Assert.assertTrue(expected.getMessage() != null && !expected.getMessage().isEmpty());
+        }
+    }
+
     private static int countUsers(List<Message> messages) {
         int count = 0;
         for (Message message : messages) if (message instanceof UserMessage) count++;

@@ -35,7 +35,8 @@ public final class AgentContextCompressionPolicy {
         this.compressor = builder.compressor;
         this.processor = hasIncrementalDependency
             ? new AgentContextCompressionProcessor(
-            builder.stateStore, builder.condition, builder.compressor, builder.tokenEstimator)
+            builder.stateStore, builder.condition, builder.compressor, builder.tokenEstimator,
+            builder.compressionFailureStrategy)
             : null;
         this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
         this.keepRecentTurns = builder.keepRecentTurns;

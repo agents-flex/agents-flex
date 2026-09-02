@@ -147,6 +147,7 @@ public final class AgentRetryPolicy implements Serializable {
          */
         public AgentRetryPolicy build() {
             if (maxRetries < 0 || initialDelayMillis < 0 || maxDelayMillis < initialDelayMillis
+                || Double.isNaN(multiplier) || Double.isInfinite(multiplier)
                 || multiplier < 1.0d) {
                 throw new IllegalStateException("invalid retry policy");
             }

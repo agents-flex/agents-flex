@@ -71,8 +71,14 @@ public final class AgentSuspension implements Serializable {
      * 创建等待使用者补充信息的暂停点。
      */
     public static AgentSuspension userInput(String message) {
-        return new AgentSuspension(AgentSuspensionType.USER_INPUT, null, message,
-            AgentTurnExecutionPoint.INVOKE_MODEL, null);
+        return userInput(message, 0);
+    }
+
+    /**
+     * 创建带等待期限的用户输入暂停点；0 表示永不过期。
+     */
+    public static AgentSuspension userInput(String message, long timeoutMillis) {
+        return createUserInput(null, message, AgentTurnExecutionPoint.INVOKE_MODEL, null, timeoutMillis);
     }
 
     /**
@@ -82,11 +88,33 @@ public final class AgentSuspension implements Serializable {
      */
     public static AgentSuspension userInput(String callId, String message,
                                             Map<String, Object> metadata) {
+        return userInput(callId, message, metadata, 0);
+    }
+
+    /**
+     * 创建带等待期限的结构化用户输入暂停点；0 表示永不过期。
+     */
+    public static AgentSuspension userInput(String callId, String message,
+                                            Map<String, Object> metadata, long timeoutMillis) {
         if (callId == null || callId.trim().isEmpty()) {
             throw new IllegalArgumentException("callId must not be blank");
         }
+        return createUserInput(callId, message, AgentTurnExecutionPoint.PROCESS_TOOLS, metadata, timeoutMillis);
+    }
+
+    private static AgentSuspension createUserInput(String callId, String message,
+                                                   AgentTurnExecutionPoint resumePoint,
+                                                   Map<String, Object> sourceMetadata,
+                                                   long timeoutMillis) {
+        if (timeoutMillis < 0) {
+            throw new IllegalArgumentException("timeoutMillis must not be negative");
+        }
+        Map<String, Object> metadata = sourceMetadata == null
+            ? new HashMap<String, Object>() : new HashMap<>(sourceMetadata);
+        metadata.put("requestedAt", System.currentTimeMillis());
+        metadata.put("timeoutMillis", timeoutMillis);
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, callId, message,
-            AgentTurnExecutionPoint.PROCESS_TOOLS, metadata);
+            resumePoint, metadata);
     }
 
     /**
@@ -101,6 +129,20 @@ public final class AgentSuspension implements Serializable {
      */
     public static AgentSuspension toolApproval(String callId, String toolName,
                                                ToolApprovalDecision decision) {
+        return toolApproval(callId, toolName, decision, 0);
+    }
+
+    /**
+     * 创建带等待期限的工具审批暂停点；0 表示永不过期。
+     */
+    public static AgentSuspension toolApproval(String callId, String toolName,
+                                               ToolApprovalDecision decision, long timeoutMillis) {
+        if (callId == null || callId.trim().isEmpty()) {
+            throw new IllegalArgumentException("callId must not be blank");
+        }
+        if (timeoutMillis < 0) {
+            throw new IllegalArgumentException("timeoutMillis must not be negative");
+        }
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("toolName", toolName);
         if (decision != null) {
@@ -109,6 +151,8 @@ public final class AgentSuspension implements Serializable {
             metadata.put("approvalReason", decision.getReason());
             metadata.putAll(decision.getMetadata());
         }
+        metadata.put("requestedAt", System.currentTimeMillis());
+        metadata.put("timeoutMillis", timeoutMillis);
         String message = decision != null && decision.getMessage() != null
             ? decision.getMessage() : "Tool approval is required: " + toolName;
         return new AgentSuspension(AgentSuspensionType.TOOL_APPROVAL, callId,
@@ -194,6 +238,22 @@ public final class AgentSuspension implements Serializable {
      */
     public Map<String, Object> getMetadata() {
         return metadata;
+    }
+
+    /**
+     * @return 挂起创建时间；旧快照没有该字段时返回 0。
+     */
+    public long getRequestedAt() {
+        Object value = metadata.get("requestedAt");
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
+    }
+
+    /**
+     * @return 挂起等待期限；0 表示不限制。
+     */
+    public long getTimeoutMillis() {
+        Object value = metadata.get("timeoutMillis");
+        return value instanceof Number ? Math.max(0L, ((Number) value).longValue()) : 0L;
     }
 
     /**

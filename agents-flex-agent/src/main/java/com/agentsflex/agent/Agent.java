@@ -153,7 +153,8 @@ public final class Agent {
         this.instructions = builder.instructions;
         this.chatModel = builder.chatModel;
         this.multimodalChatModel = builder.multimodalChatModel;
-        this.chatOptions = builder.chatOptions;
+        // Agent 构建完成后冻结模型参数模板，避免调用方继续修改 Builder 传入的实例。
+        this.chatOptions = builder.chatOptions.copy();
         this.modelSelector = builder.modelSelector;
         this.toolVisibilityPolicy = builder.toolVisibilityPolicy;
         this.maxAttachedTokens = builder.maxAttachedTokens;
@@ -251,7 +252,7 @@ public final class Agent {
      * @return 调用聊天模型时使用的参数
      */
     public ChatOptions getChatOptions() {
-        return chatOptions;
+        return chatOptions.copy();
     }
 
     public AgentModelSelector getModelSelector() {

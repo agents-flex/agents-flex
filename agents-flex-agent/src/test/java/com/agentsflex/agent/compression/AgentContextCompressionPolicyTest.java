@@ -54,4 +54,51 @@ public class AgentContextCompressionPolicyTest {
             .condition(input -> true)
             .build();
     }
+
+    @Test
+    public void immediatePolicyRejectsIncrementalOperation() {
+        try {
+            AgentContextCompressionPolicy.immediate(messages -> Collections.emptyList())
+                .compress("conversation", Collections.emptyList());
+            org.junit.Assert.fail("immediate policy must not expose incremental operation");
+        } catch (IllegalStateException expected) {
+            org.junit.Assert.assertTrue(expected.getMessage().contains("not incremental"));
+        }
+    }
+
+    @Test
+    public void policyRejectsEveryIncompleteIncrementalDependency() {
+        AgentContextCompressor compressor = messages -> Collections.emptyList();
+        AgentContextCompressionCondition condition = input -> true;
+        AgentContextCompressionStateStore store = new AgentContextCompressionStateStore() {
+            public AgentContextCompressionState load(String id) {
+                return null;
+            }
+
+            public boolean save(String id, AgentContextCompressionState state, long version) {
+                return true;
+            }
+        };
+        try {
+            AgentContextCompressionPolicy.builder().stateStore(store).build();
+            org.junit.Assert.fail("missing incremental dependencies must fail");
+        } catch (IllegalArgumentException expected) {
+        }
+        try {
+            AgentContextCompressionPolicy.builder().condition(condition).build();
+            org.junit.Assert.fail("missing incremental dependencies must fail");
+        } catch (IllegalArgumentException expected) {
+        }
+        try {
+            AgentContextCompressionPolicy.builder().tokenEstimator(messages -> 1).build();
+            org.junit.Assert.fail("missing incremental dependencies must fail");
+        } catch (IllegalArgumentException expected) {
+        }
+        try {
+            AgentContextCompressionPolicy.builder().stateStore(store).condition(condition)
+                .compressor(compressor).tokenEstimator(messages -> 1).build();
+        } catch (RuntimeException unexpected) {
+            org.junit.Assert.fail("complete incremental configuration must be accepted");
+        }
+    }
 }

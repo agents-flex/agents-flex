@@ -94,6 +94,34 @@ public class AgentConfigurationOptimizationTest {
     }
 
     @Test
+    public void parallelFailureCanReturnStructuredErrorsToModel() {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(
+            new ToolCall("failed", "fail", "{}"), new ToolCall("ok", "ok", "{}")));
+        model.enqueue(prompt -> {
+            assertEquals(4, prompt.getMessages().size());
+            assertTrue(prompt.getMessages().get(2).getTextContent().contains("error"));
+            assertEquals("ok", prompt.getMessages().get(3).getTextContent());
+            return new AiMessage("recovered");
+        });
+        Agent agent = Agent.builder("parallel-errors")
+            .chatModel(model)
+            .tool(AgentScenarioTestSupport.tool("fail", args -> {
+                throw new IllegalStateException("boom");
+            }))
+            .tool(AgentScenarioTestSupport.tool("ok", args -> "ok"))
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .toolExecutionMode(AgentToolExecutionMode.PARALLEL)
+                .parallelFailureStrategy(AgentParallelFailureStrategy.RETURN_ERRORS_TO_MODEL)
+                .build())
+            .build();
+
+        AgentTurn turn = new AgentRunner().run(agent, "parallel errors");
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertTrue(turn.getPendingToolCalls().isEmpty());
+    }
+
+    @Test
     public void toolVisibilityAlsoFiltersToolGroupButKeepsHiddenToolExecutable() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         AtomicInteger hiddenInvocations = new AtomicInteger();
@@ -322,6 +350,93 @@ public class AgentConfigurationOptimizationTest {
             fail("expired external results must be rejected");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("expired"));
+        }
+    }
+
+    @Test
+    public void oversizedLocalToolResultCanBeTruncatedWithExplicitMarker() {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(new ToolCall("local", "echo", "{}")));
+        model.enqueue(prompt -> {
+            assertEquals("ab\n...[tool result truncated]",
+                ((com.agentsflex.core.message.ToolMessage) prompt.getMessages().get(2)).getContent());
+            return new AiMessage("done");
+        });
+        Agent agent = Agent.builder("truncate-local")
+            .chatModel(model)
+            .tool(AgentScenarioTestSupport.tool("echo", args -> "abcdefghijklmnopqrstuvwxyz1234567890"))
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .toolResultMaxCharacters(29)
+                .toolResultOverflowStrategy(AgentToolResultOverflowStrategy.TRUNCATE)
+                .build())
+            .build();
+        assertEquals(AgentTurnStatus.COMPLETED, new AgentRunner().run(agent, "truncate").getStatus());
+    }
+
+    @Test
+    public void toolResultExactlyAtConfiguredLimitIsAccepted() {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(new ToolCall("local", "echo", "{}")));
+        model.enqueue(prompt -> new AiMessage("done"));
+        Agent agent = Agent.builder("exact-result-limit")
+            .chatModel(model)
+            .tool(AgentScenarioTestSupport.tool("echo", args -> "12345"))
+            .executionPolicy(AgentExecutionPolicy.builder().toolResultMaxCharacters(5).build())
+            .build();
+        assertEquals(AgentTurnStatus.COMPLETED, new AgentRunner().run(agent, "exact").getStatus());
+    }
+
+    @Test
+    public void oversizedExternalToolResultCanBeTruncatedWithoutChangingCommandType() {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(new ToolCall("external", "client", "{}")));
+        model.enqueue(prompt -> {
+            assertEquals("ab\n...[tool result truncated]",
+                ((com.agentsflex.core.message.ToolMessage) prompt.getMessages().get(2)).getContent());
+            return new AiMessage("done");
+        });
+        Agent agent = Agent.builder("truncate-external")
+            .chatModel(model)
+            .tool(com.agentsflex.core.model.chat.tool.Tool.builder("client", "client")
+                .executionTarget(ToolExecutionTarget.EXTERNAL).build())
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .externalToolResultMaxCharacters(29)
+                .toolResultOverflowStrategy(AgentToolResultOverflowStrategy.TRUNCATE)
+                .build())
+            .build();
+        AgentRunner runner = new AgentRunner();
+        AgentTurn waiting = runner.run(agent, "truncate external");
+        assertEquals(AgentTurnStatus.COMPLETED,
+            runner.resume(waiting, new AgentResumeCommand(AgentResumeCommandType.TOOL_ERROR,
+                "abcdefghijklmnopqrstuvwxyz1234567890", "external", null)).getStatus());
+    }
+
+    @Test
+    public void retryPolicyRejectsNonFiniteMultiplier() {
+        try {
+            AgentRetryPolicy.builder().multiplier(Double.NaN).build();
+            fail("NaN multiplier must fail validation");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("retry"));
+        }
+        try {
+            AgentRetryPolicy.builder().multiplier(Double.POSITIVE_INFINITY).build();
+            fail("infinite multiplier must fail validation");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("retry"));
+        }
+    }
+
+    @Test
+    public void workerRejectsNonPositivePollLimit() {
+        AgentWorker worker = new AgentWorker("limit-worker", new AgentRunner(), 1000);
+        try {
+            worker.pollAndRun(0);
+            fail("zero poll limit must fail validation");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("limit"));
+        } finally {
+            worker.close();
         }
     }
 

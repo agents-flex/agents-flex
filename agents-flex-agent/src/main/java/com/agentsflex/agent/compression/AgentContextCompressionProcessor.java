@@ -4,6 +4,7 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.ToLongFunction;
 
@@ -17,6 +18,7 @@ final class AgentContextCompressionProcessor {
     private final AgentContextCompressionCondition condition;
     private final AgentContextCompressor compressor;
     private final ToLongFunction<List<Message>> tokenEstimator;
+    private final AgentCompressionFailureStrategy compressionFailureStrategy;
 
     /**
      * 创建增量压缩处理器，并要求状态存储、条件、压缩器和 Token 估算器全部可用。
@@ -30,6 +32,20 @@ final class AgentContextCompressionProcessor {
                                      AgentContextCompressionCondition condition,
                                      AgentContextCompressor compressor,
                                      ToLongFunction<List<Message>> tokenEstimator) {
+        this(store, condition, compressor, tokenEstimator, AgentCompressionFailureStrategy.FAIL);
+    }
+
+    /**
+     * 创建带压缩失败策略的增量压缩处理器。
+     *
+     * <p>失败策略只包围压缩器本身的调用。状态读取、游标校验和 CAS 保存属于一致性边界，
+     * 即使启用了回退也不能吞掉这些错误。</p>
+     */
+    AgentContextCompressionProcessor(AgentContextCompressionStateStore store,
+                                     AgentContextCompressionCondition condition,
+                                     AgentContextCompressor compressor,
+                                     ToLongFunction<List<Message>> tokenEstimator,
+                                     AgentCompressionFailureStrategy compressionFailureStrategy) {
         if (store == null || condition == null || compressor == null || tokenEstimator == null) {
             throw new IllegalArgumentException("compression processor dependencies must not be null");
         }
@@ -37,6 +53,8 @@ final class AgentContextCompressionProcessor {
         this.condition = condition;
         this.compressor = compressor;
         this.tokenEstimator = tokenEstimator;
+        this.compressionFailureStrategy = compressionFailureStrategy == null
+            ? AgentCompressionFailureStrategy.FAIL : compressionFailureStrategy;
     }
 
     /**
@@ -46,8 +64,13 @@ final class AgentContextCompressionProcessor {
      */
     AgentContextCompressionResult process(String conversationId,
                                           List<Message> chronologicalMessages) {
-        if (conversationId == null || chronologicalMessages == null) {
-            throw new IllegalArgumentException("conversationId and messages must not be null");
+        if (conversationId == null || conversationId.trim().isEmpty() || chronologicalMessages == null) {
+            throw new IllegalArgumentException("conversationId must not be blank and messages must not be null");
+        }
+        for (Message message : chronologicalMessages) {
+            if (message == null) {
+                throw new IllegalArgumentException("chronological history must not contain null messages");
+            }
         }
         AgentContextCompressionState state = store.load(conversationId);
         if (state == null) state = AgentContextCompressionState.empty();
@@ -67,8 +90,19 @@ final class AgentContextCompressionProcessor {
 
         List<Message> compressorInput = new ArrayList<>(state.getSummaryMessages());
         compressorInput.addAll(pending);
-        List<Message> summary = compressor.compress(compressorInput);
+        List<Message> summary;
+        try {
+            summary = compressor.compress(Collections.unmodifiableList(copyMessages(compressorInput)));
+        } catch (RuntimeException error) {
+            if (compressionFailureStrategy == AgentCompressionFailureStrategy.USE_ORIGINAL) {
+                return originalResult(state, pending);
+            }
+            throw error;
+        }
         if (summary == null || summary.isEmpty()) {
+            if (compressionFailureStrategy == AgentCompressionFailureStrategy.USE_ORIGINAL) {
+                return originalResult(state, pending);
+            }
             throw new IllegalStateException("contextCompressor returned no summary");
         }
         Message last = pending.get(pending.size() - 1);
@@ -78,6 +112,24 @@ final class AgentContextCompressionProcessor {
             throw new IllegalStateException("compression state changed concurrently");
         }
         return new AgentContextCompressionResult(true, next, summary);
+    }
+
+    /**
+     * 压缩器失败时保留旧状态和完整 pending，保证下一次调用仍可重试同一批消息。
+     */
+    private static AgentContextCompressionResult originalResult(AgentContextCompressionState state,
+                                                                List<Message> pending) {
+        List<Message> modelMessages = new ArrayList<>(state.getSummaryMessages());
+        modelMessages.addAll(pending);
+        return new AgentContextCompressionResult(false, state, modelMessages);
+    }
+
+    private static List<Message> copyMessages(List<Message> messages) {
+        List<Message> copies = new ArrayList<>(messages.size());
+        for (Message message : messages) {
+            if (message != null) copies.add(CompressionMessageUtils.copyMessage(message));
+        }
+        return copies;
     }
 
     /**

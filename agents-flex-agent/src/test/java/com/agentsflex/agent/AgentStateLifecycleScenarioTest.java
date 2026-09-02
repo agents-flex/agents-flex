@@ -26,7 +26,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** 验证运行状态、Snapshot 和恢复命令共同构成的生命周期。 */
+/**
+ * 验证运行状态、Snapshot 和恢复命令共同构成的生命周期。
+ */
 public class AgentStateLifecycleScenarioTest {
 
     @Test
@@ -81,6 +83,32 @@ public class AgentStateLifecycleScenarioTest {
         assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, stillWaiting.getStatus());
         assertEquals(1, model.getCallCount());
         assertEquals(1, stillWaiting.getPendingToolCalls().size());
+    }
+
+    @Test
+    public void shouldRejectExpiredApprovalWithoutApplyingDecision() throws Exception {
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("approval-expired", "danger", "{}")));
+        Agent agent = Agent.builder("expired-approval")
+            .chatModel(model)
+            .tool(tool("danger", args -> "ok"))
+            .toolApprovalPolicy((turn, call, value) -> ToolApprovalDecision.REQUIRE_APPROVAL)
+            .executionPolicy(AgentExecutionPolicy.builder().approvalTimeoutMillis(1).build())
+            .build();
+        AgentRunner runner = new AgentRunner();
+        AgentTurn waiting = runner.run(agent, "execute");
+        Thread.sleep(5);
+
+        try {
+            runner.submitResume(waiting, AgentResumeCommand.approveTool("approval-expired"));
+            fail("expired approval must fail");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("tool approval has expired"));
+        }
+        assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
+        assertEquals(1, waiting.getPendingToolCalls().size());
+        assertEquals(null, waiting.getToolApproval("approval-expired"));
     }
 
     @Test
@@ -176,7 +204,7 @@ public class AgentStateLifecycleScenarioTest {
     }
 
     private AgentTurnSnapshot blocked(String turnId, Agent agent, AgentTurnStatus status,
-                                     AgentSuspension suspension, long nextRunnableAt) {
+                                      AgentSuspension suspension, long nextRunnableAt) {
         AgentTurnState state = AgentTurnState.builder(turnId, agent.getExecutionPolicy(),
                 System.currentTimeMillis())
             .status(status)

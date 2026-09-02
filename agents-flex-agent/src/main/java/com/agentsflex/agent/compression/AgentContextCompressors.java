@@ -266,7 +266,14 @@ public final class AgentContextCompressors {
         return messages -> {
             List<Message> current = copy(messages);
             if (compressors != null) for (AgentContextCompressor compressor : compressors) {
-                if (compressor != null) current = compressor.compress(Collections.unmodifiableList(current));
+                if (compressor != null) {
+                    List<Message> next = compressor.compress(Collections.unmodifiableList(current));
+                    if (next == null) {
+                        throw new IllegalStateException(
+                            "context compressor in chain returned null messages");
+                    }
+                    current = next;
+                }
             }
             return copy(current);
         };

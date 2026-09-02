@@ -23,7 +23,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** Agent 运行时值对象的参数校验和不可变性契约测试。 */
+/**
+ * Agent 运行时值对象的参数校验和不可变性契约测试。
+ */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AgentValueObjectContractTest {
 
@@ -38,6 +40,11 @@ public class AgentValueObjectContractTest {
         assertBuildFailure(() -> AgentBudget.builder().maxOutputTokens(-1).build());
         assertBuildFailure(() -> AgentBudget.builder().maxTotalTokens(-1).build());
         assertBuildFailure(() -> AgentBudget.builder().maxToolCalls(-1).build());
+
+        // 零表示关闭限制，应是合法边界；负数才表示非法配置。
+        assertEquals(0, AgentBudget.builder().maxDurationMillis(0)
+            .maxInputTokens(0).maxOutputTokens(0).maxTotalTokens(0).maxToolCalls(0)
+            .build().getMaxTotalTokens());
     }
 
     @Test
@@ -63,6 +70,60 @@ public class AgentValueObjectContractTest {
         assertBuildFailure(() -> AgentRetryPolicy.builder()
             .initialDelayMillis(10).maxDelayMillis(9).build());
         assertBuildFailure(() -> AgentRetryPolicy.builder().multiplier(0.9).build());
+        assertBuildFailure(() -> AgentRetryPolicy.builder().multiplier(Double.NaN).build());
+        assertBuildFailure(() -> AgentRetryPolicy.builder().multiplier(Double.POSITIVE_INFINITY).build());
+    }
+
+    @Test
+    public void shouldValidateExecutionPolicyNumericBoundariesAndDefaults() {
+        AgentExecutionPolicy defaults = AgentExecutionPolicy.defaults();
+        assertEquals(100, defaults.getMaxIterations());
+        assertEquals(1000, defaults.getMaxSteps());
+        assertEquals(0, defaults.getModelCallTimeoutMillis());
+        assertEquals(0, defaults.getToolExecutionTimeoutMillis());
+        assertEquals(0, defaults.getExternalToolTimeoutMillis());
+        assertEquals(0, defaults.getApprovalTimeoutMillis());
+        assertEquals(0, defaults.getUserInputTimeoutMillis());
+        assertEquals(0, defaults.getToolResultMaxCharacters());
+        assertEquals(0, defaults.getExternalToolResultMaxCharacters());
+        assertEquals(AgentToolExecutionMode.SEQUENTIAL, defaults.getToolExecutionMode());
+        assertEquals(8, defaults.getMaxParallelToolCalls());
+        assertEquals(AgentParallelFailureStrategy.FAIL_FAST, defaults.getParallelFailureStrategy());
+        assertEquals(AgentToolResultOverflowStrategy.FAIL, defaults.getToolResultOverflowStrategy());
+
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().modelCallTimeoutMillis(-1).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().toolExecutionTimeoutMillis(-1).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().externalToolTimeoutMillis(-1).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().approvalTimeoutMillis(-1).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().userInputTimeoutMillis(-1).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().toolResultMaxCharacters(-1).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().externalToolResultMaxCharacters(-1).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().maxParallelToolCalls(0).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().interruptedToolMessageTemplate(null).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().interruptedTurnMessageTemplate(null).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().cancellationReason(null).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().retryClassifier(null).build());
+    }
+
+    @Test
+    public void shouldValidateWorkerOptionBoundaries() {
+        AgentWorkerOptions edge = AgentWorkerOptions.builder("worker", 1)
+            .pollIntervalMillis(1).batchSize(1).leaseRenewalFraction(1).build();
+        assertEquals(1, edge.getLeaseMillis());
+        assertEquals(1.0, edge.getLeaseRenewalFraction(), 0.0);
+
+        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
+            .pollIntervalMillis(0).build());
+        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
+            .batchSize(0).build());
+        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
+            .leaseRenewalFraction(0).build());
+        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
+            .leaseRenewalFraction(1.01).build());
+        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
+            .leaseRenewalFraction(Double.NaN).build());
+        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
+            .leaseRenewalFraction(Double.POSITIVE_INFINITY).build());
     }
 
     @Test

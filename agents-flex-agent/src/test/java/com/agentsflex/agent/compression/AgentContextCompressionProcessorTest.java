@@ -191,6 +191,71 @@ public class AgentContextCompressionProcessorTest {
     }
 
     @Test
+    public void shouldUseOriginalHistoryWhenIncrementalCompressorFails() {
+        MemoryStore store = new MemoryStore();
+        AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
+            value -> {
+                throw new IllegalStateException("compressor unavailable");
+            }, messages -> messages.size(),
+            AgentCompressionFailureStrategy.USE_ORIGINAL);
+        List<Message> history = messages(2);
+
+        AgentContextCompressionResult result = processor.process("fallback", history);
+
+        assertFalse(result.isCompressed());
+        assertEquals(history.size(), result.getModelMessages().size());
+        assertEquals(0, store.saves.size());
+        assertNull(store.state);
+    }
+
+    @Test
+    public void shouldUseOriginalHistoryWhenCompressorReturnsEmptySummary() {
+        MemoryStore store = new MemoryStore();
+        AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
+            value -> Collections.emptyList(), messages -> messages.size(),
+            AgentCompressionFailureStrategy.USE_ORIGINAL);
+        List<Message> history = messages(2);
+
+        AgentContextCompressionResult result = processor.process("empty-fallback", history);
+
+        assertFalse(result.isCompressed());
+        assertEquals(history.size(), result.getModelMessages().size());
+        assertEquals(0, store.saves.size());
+        assertEquals(0L, result.getState().getVersion());
+    }
+
+    @Test
+    public void shouldPropagateIncrementalCompressorFailureWithFailStrategy() {
+        AgentContextCompressionProcessor processor = createProcessor(new MemoryStore(), input -> true,
+            value -> {
+                throw new IllegalStateException("compressor unavailable");
+            }, messages -> messages.size(),
+            AgentCompressionFailureStrategy.FAIL);
+        try {
+            processor.process("fail", messages(1));
+            fail("expected compressor failure");
+        } catch (IllegalStateException ex) {
+            assertEquals("compressor unavailable", ex.getMessage());
+        }
+    }
+
+    @Test
+    public void shouldNotFallbackWhenCasSaveFails() {
+        MemoryStore store = new MemoryStore();
+        store.rejectNextSave = true;
+        AgentContextCompressionProcessor processor = createProcessor(store, input -> true,
+            value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size(),
+            AgentCompressionFailureStrategy.USE_ORIGINAL);
+        try {
+            processor.process("cas", messages(1));
+            fail("expected CAS failure");
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage().contains("concurrently"));
+        }
+        assertEquals(1, store.saves.size());
+    }
+
+    @Test
     public void shouldKeepStateAndInputsImmutable() {
         MemoryStore store = new MemoryStore();
         List<Message> history = messages(2);
@@ -245,11 +310,39 @@ public class AgentContextCompressionProcessorTest {
         }
     }
 
+    @Test
+    public void shouldRejectBlankConversationAndNullHistoryEntries() {
+        AgentContextCompressionProcessor processor = createProcessor(new MemoryStore(), input -> false,
+            value -> Collections.singletonList(new AiMessage("summary")), messages -> messages.size());
+        try {
+            processor.process("  ", messages(1));
+            fail("blank conversation id must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("conversationId"));
+        }
+        List<Message> invalid = new ArrayList<>();
+        invalid.add(null);
+        try {
+            processor.process("null-message", invalid);
+            fail("null history message must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("null messages"));
+        }
+    }
+
     private static AgentContextCompressionProcessor createProcessor(AgentContextCompressionStateStore store,
-                                                                  AgentContextCompressionCondition condition,
-                                                                  AgentContextCompressor compressor,
-                                                                  ToLongFunction<List<Message>> estimator) {
+                                                                    AgentContextCompressionCondition condition,
+                                                                    AgentContextCompressor compressor,
+                                                                    ToLongFunction<List<Message>> estimator) {
         return new AgentContextCompressionProcessor(store, condition, compressor, estimator);
+    }
+
+    private static AgentContextCompressionProcessor createProcessor(AgentContextCompressionStateStore store,
+                                                                    AgentContextCompressionCondition condition,
+                                                                    AgentContextCompressor compressor,
+                                                                    ToLongFunction<List<Message>> estimator,
+                                                                    AgentCompressionFailureStrategy strategy) {
+        return new AgentContextCompressionProcessor(store, condition, compressor, estimator, strategy);
     }
 
     private static List<Message> messages(int count) {

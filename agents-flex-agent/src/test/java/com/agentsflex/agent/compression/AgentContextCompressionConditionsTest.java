@@ -46,4 +46,20 @@ public class AgentContextCompressionConditionsTest {
     public void shouldRejectNegativeThreshold() {
         AgentContextCompressionConditions.pendingTokensAtLeast(-1);
     }
+
+    @Test
+    public void shouldRejectNegativeMessageAndTurnThresholds() {
+        try {
+            AgentContextCompressionConditions.pendingMessagesAtLeast(-1);
+            org.junit.Assert.fail("negative message threshold must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("threshold"));
+        }
+        try {
+            AgentContextCompressionConditions.pendingTurnsAtLeast(-1);
+            org.junit.Assert.fail("negative turn threshold must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("threshold"));
+        }
+    }
 }

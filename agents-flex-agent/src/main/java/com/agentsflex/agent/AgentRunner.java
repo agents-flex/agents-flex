@@ -692,6 +692,7 @@ public final class AgentRunner {
         }
         assertLeaseOwnership(turn);
         AgentSuspension suspension = turn.getSuspension();
+        ensureSuspensionNotExpired(suspension);
         // 先按 Suspension 类型校验并应用命令，任何不匹配的命令都不能改变运行状态。
         applyResumeCommand(turn, suspension, command);
         // 恢复到暂停前保存的模型或工具阶段，不从任务开头重新执行。
@@ -1057,7 +1058,8 @@ public final class AgentRunner {
                     String message = title == null
                         ? form.getFormKey() : String.valueOf(title);
                     AgentSuspension suspension = AgentSuspension.userInput(
-                        callKey(call), message, metadata);
+                        callKey(call), message, metadata,
+                        turn.getExecutionPolicy().getUserInputTimeoutMillis());
                     suspend(turn, suspension);
                     return AgentStepResult.of(response, results, null);
                 } catch (RuntimeException error) {
@@ -1083,7 +1085,8 @@ public final class AgentRunner {
             if (decision.getOutcome() == ToolApprovalDecision.Outcome.REQUIRE_APPROVAL) {
                 // Suspension 保存当前 ToolCall 关联 ID 和 PROCESS_TOOLS 恢复点，审批后不会重新调用模型。
                 AgentSuspension suspension = AgentSuspension.toolApproval(
-                    callKey(call), call.getName(), decision);
+                    callKey(call), call.getName(), decision,
+                    turn.getExecutionPolicy().getApprovalTimeoutMillis());
                 suspend(turn, suspension);
                 eventPublisher.notifyToolApprovalRequested(turn, call, decision);
                 return AgentStepResult.of(response, results, null);
@@ -1121,7 +1124,8 @@ public final class AgentRunner {
                 metadata.put("toolName", call.getName());
                 metadata.put(INPUT_TARGET_METADATA, TOOL_INPUT_TARGET);
                 AgentSuspension suspension = AgentSuspension.userInput(
-                    callKey(call), request.getMessage(), metadata);
+                    callKey(call), request.getMessage(), metadata,
+                    turn.getExecutionPolicy().getUserInputTimeoutMillis());
                 suspend(turn, suspension);
                 eventPublisher.notifyToolInputRequested(turn, call, form);
                 return AgentStepResult.of(response, results, null);
@@ -1565,7 +1569,12 @@ public final class AgentRunner {
         long maxCharacters = turn.getExecutionPolicy().getToolResultMaxCharacters();
         if (maxCharacters > 0 && result.getContent() != null
             && result.getContent().length() > maxCharacters) {
-            throw new IllegalStateException("tool result exceeded maximum size: " + maxCharacters);
+            if (turn.getExecutionPolicy().getToolResultOverflowStrategy()
+                == AgentToolResultOverflowStrategy.TRUNCATE) {
+                result.setContent(truncateToolResult(result.getContent(), maxCharacters));
+            } else {
+                throw new IllegalStateException("tool result exceeded maximum size: " + maxCharacters);
+            }
         }
         return result;
     }
@@ -1923,20 +1932,19 @@ public final class AgentRunner {
             throw new IllegalArgumentException("TOOL_RESULT or TOOL_ERROR command is required");
         }
         requireCorrelation(suspension, command);
-        Object requestedAt = suspension.getMetadata().get("requestedAt");
-        Object timeoutMillis = suspension.getMetadata().get("timeoutMillis");
-        if (requestedAt instanceof Number && timeoutMillis instanceof Number
-            && ((Number) timeoutMillis).longValue() > 0
-            && System.currentTimeMillis() - ((Number) requestedAt).longValue()
-            >= ((Number) timeoutMillis).longValue()) {
-            throw new IllegalStateException("external tool result has expired");
-        }
         if (command.getContent() == null) {
             throw new IllegalArgumentException("external tool result content must not be null");
         }
         long maxCharacters = turn.getExecutionPolicy().getExternalToolResultMaxCharacters();
         if (maxCharacters > 0 && command.getContent().length() > maxCharacters) {
-            throw new IllegalArgumentException("external tool result exceeded maximum size: " + maxCharacters);
+            if (turn.getExecutionPolicy().getToolResultOverflowStrategy()
+                == AgentToolResultOverflowStrategy.TRUNCATE) {
+                command = new AgentResumeCommand(command.getType(),
+                    truncateToolResult(command.getContent(), maxCharacters),
+                    command.getCorrelationId(), command.getData(), command.getMetadata());
+            } else {
+                throw new IllegalArgumentException("external tool result exceeded maximum size: " + maxCharacters);
+            }
         }
         List<ToolCall> pending = turn.getPendingToolCalls();
         if (pending.isEmpty()) {
@@ -1956,6 +1964,56 @@ public final class AgentRunner {
         result.setContent(command.getContent());
         turn.getPrompt().addMessage(result);
         turn.removeFirstPendingToolCall();
+    }
+
+    /**
+     * 统一检查审批、用户输入和外部工具的挂起期限。恢复命令在此之前不会改变 Turn 状态，
+     * 因而过期命令不会留下半应用的审批结果或工具消息。
+     */
+    private void ensureSuspensionNotExpired(AgentSuspension suspension) {
+        if (suspension == null || suspension.getTimeoutMillis() <= 0
+            || suspension.getRequestedAt() <= 0) {
+            return;
+        }
+        long elapsed = System.currentTimeMillis() - suspension.getRequestedAt();
+        if (elapsed < suspension.getTimeoutMillis()) {
+            return;
+        }
+        String subject;
+        switch (suspension.getType()) {
+            case TOOL_APPROVAL:
+                subject = "tool approval";
+                break;
+            case USER_INPUT:
+                subject = "user input";
+                break;
+            case EXTERNAL_TOOL:
+                subject = "external tool result";
+                break;
+            default:
+                subject = suspension.getType().name().toLowerCase();
+        }
+        throw new IllegalStateException(subject + " has expired");
+    }
+
+    /**
+     * 按字符上限截断工具结果，并尽量保留完整的截断标记。
+     *
+     * <p>上限使用 {@code long} 是为了兼容持久化配置，但 Java 字符串长度是 {@code int}；这里
+     * 先安全收窄到实际可表示的范围，并避免把一个 UTF-16 代理项拆开。</p>
+     */
+    private String truncateToolResult(String content, long maxCharacters) {
+        int limit = (int) Math.min((long) Integer.MAX_VALUE, maxCharacters);
+        if (content.length() <= limit) return content;
+        String marker = "\n...[tool result truncated]";
+        if (limit <= marker.length()) return content.substring(0, limit);
+        int end = limit - marker.length();
+        if (end > 0 && end < content.length()
+            && Character.isHighSurrogate(content.charAt(end - 1))
+            && Character.isLowSurrogate(content.charAt(end))) {
+            end--;
+        }
+        return content.substring(0, end) + marker;
     }
 
     /**

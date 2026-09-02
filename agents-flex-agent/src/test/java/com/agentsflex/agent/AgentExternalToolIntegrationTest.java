@@ -32,7 +32,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** 外部执行 ToolCall 的挂起、回传和跨 Runner 恢复契约。 */
+/**
+ * 外部执行 ToolCall 的挂起、回传和跨 Runner 恢复契约。
+ */
 public class AgentExternalToolIntegrationTest {
 
     @Test
@@ -234,6 +236,81 @@ public class AgentExternalToolIntegrationTest {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("correlationId"));
         }
+    }
+
+    @Test
+    public void shouldRejectNullExternalResultAndInvalidSuspensionFactoryArguments() {
+        try {
+            AgentSuspension.externalTool("", "client", "{}", null);
+            fail("blank external call id must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("callId"));
+        }
+        try {
+            AgentSuspension.externalTool("call", "client", "{}", null, -1);
+            fail("negative external timeout must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("timeout"));
+        }
+        try {
+            AgentSuspension.userInput("input", -1);
+            fail("negative user input timeout must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("timeout"));
+        }
+        try {
+            AgentSuspension.toolApproval("call", "client", null, -1);
+            fail("negative approval timeout must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("timeout"));
+        }
+        try {
+            AgentSuspension.toolApproval(" ", "client", null);
+            fail("blank approval call id must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("callId"));
+        }
+
+        AgentSuspension noExpiry = AgentSuspension.userInput("input", 0);
+        assertEquals(0L, noExpiry.getTimeoutMillis());
+        assertTrue(noExpiry.getRequestedAt() > 0);
+
+        AgentScenarioTestSupport.QueueChatModel model =
+            new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("external-call", "client_tool", "{}")));
+        Agent agent = Agent.builder("external-null-result")
+            .chatModel(model)
+            .tool(Tool.builder("client_tool", "client tool")
+                .executionTarget(ToolExecutionTarget.EXTERNAL).build())
+            .build();
+        AgentTurn waiting = new AgentRunner().run(agent, "run");
+        try {
+            new AgentRunner().submitResume(waiting, new AgentResumeCommand(
+                AgentResumeCommandType.TOOL_RESULT, null, "external-call", null));
+            fail("null external result content must fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("content"));
+        }
+        assertEquals(AgentTurnStatus.WAITING_FOR_TOOL, waiting.getStatus());
+    }
+
+    @Test
+    public void shouldRejectExpiredUserInputSuspensionWithoutMutatingTurn() throws Exception {
+        Agent agent = Agent.builder("expired-input")
+            .chatModel(new AgentScenarioTestSupport.QueueChatModel())
+            .build();
+        AgentRunner runner = new AgentRunner();
+        AgentTurn turn = AgentTurn.start(agent, "input");
+        runner.suspend(turn, AgentSuspension.userInput("answer", 1));
+        Thread.sleep(5);
+        try {
+            runner.submitResume(turn, AgentResumeCommand.userInput("answer"));
+            fail("expired user input must fail");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("user input has expired"));
+        }
+        assertEquals(AgentTurnStatus.WAITING_FOR_USER, turn.getStatus());
+        assertTrue(turn.getPrompt().getMessages().size() <= 1);
     }
 
     private static AgentEvent event(List<AgentEvent> events, AgentEventType type) {

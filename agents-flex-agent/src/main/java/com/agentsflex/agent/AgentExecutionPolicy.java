@@ -23,7 +23,9 @@ import java.io.Serializable;
  *     <li>规定工具执行失败后，是立即终止运行，还是把结构化错误返回给模型继续处理。</li>
  *     <li>为可恢复异常配置自动重试和退避时间；</li>
  *     <li>限制运行时间、Token 和工具调用次数。</li>
+ *     <li>分别限制审批、用户输入和外部工具挂起的等待时间。</li>
  *     <li>限制并行工具批次的并发度，并定义批次失败语义。</li>
+ *     <li>限制工具结果大小，并决定超限时严格失败还是带标记截断。</li>
  * </ul>
  *
  * <p>策略属于 Agent 定义的一部分，会应用到该 Agent 创建的每一个 {@link AgentTurn}。</p>
@@ -100,6 +102,14 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     private final long externalToolTimeoutMillis;
     /**
+     * 审批挂起最长等待时间，0 表示不限制。
+     */
+    private final long approvalTimeoutMillis;
+    /**
+     * 用户输入挂起最长等待时间，0 表示不限制。
+     */
+    private final long userInputTimeoutMillis;
+    /**
      * 本地工具结果允许写入模型上下文的最大字符数，0 表示不限制。
      */
     private final long toolResultMaxCharacters;
@@ -107,6 +117,10 @@ public final class AgentExecutionPolicy implements Serializable {
      * 外部工具结果允许写入模型上下文的最大字符数，0 表示不限制。
      */
     private final long externalToolResultMaxCharacters;
+    /**
+     * 工具结果超出字符上限时的处理策略。
+     */
+    private final AgentToolResultOverflowStrategy toolResultOverflowStrategy;
     /**
      * 同一模型响应中的多个本地工具调用执行方式。
      */
@@ -140,8 +154,11 @@ public final class AgentExecutionPolicy implements Serializable {
         this.modelCallTimeoutMillis = builder.modelCallTimeoutMillis;
         this.toolExecutionTimeoutMillis = builder.toolExecutionTimeoutMillis;
         this.externalToolTimeoutMillis = builder.externalToolTimeoutMillis;
+        this.approvalTimeoutMillis = builder.approvalTimeoutMillis;
+        this.userInputTimeoutMillis = builder.userInputTimeoutMillis;
         this.toolResultMaxCharacters = builder.toolResultMaxCharacters;
         this.externalToolResultMaxCharacters = builder.externalToolResultMaxCharacters;
+        this.toolResultOverflowStrategy = builder.toolResultOverflowStrategy;
         this.toolExecutionMode = builder.toolExecutionMode;
         this.maxParallelToolCalls = builder.maxParallelToolCalls;
         this.parallelFailureStrategy = builder.parallelFailureStrategy;
@@ -261,6 +278,14 @@ public final class AgentExecutionPolicy implements Serializable {
         return externalToolTimeoutMillis;
     }
 
+    public long getApprovalTimeoutMillis() {
+        return approvalTimeoutMillis;
+    }
+
+    public long getUserInputTimeoutMillis() {
+        return userInputTimeoutMillis;
+    }
+
     /**
      * @return 本地工具结果写入模型上下文的字符上限；0 表示不限制
      */
@@ -273,6 +298,14 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     public long getExternalToolResultMaxCharacters() {
         return externalToolResultMaxCharacters;
+    }
+
+    /**
+     * @return 工具结果超限时的处理方式；旧 Snapshot 缺少该字段时返回严格失败
+     */
+    public AgentToolResultOverflowStrategy getToolResultOverflowStrategy() {
+        return toolResultOverflowStrategy == null
+            ? AgentToolResultOverflowStrategy.FAIL : toolResultOverflowStrategy;
     }
 
     /**
@@ -323,8 +356,12 @@ public final class AgentExecutionPolicy implements Serializable {
         private long modelCallTimeoutMillis;
         private long toolExecutionTimeoutMillis;
         private long externalToolTimeoutMillis;
+        private long approvalTimeoutMillis;
+        private long userInputTimeoutMillis;
         private long toolResultMaxCharacters;
         private long externalToolResultMaxCharacters;
+        private AgentToolResultOverflowStrategy toolResultOverflowStrategy =
+            AgentToolResultOverflowStrategy.FAIL;
         private AgentRetryClassifier retryClassifier = AgentRetryClassifier.defaults();
         private AgentToolExecutionMode toolExecutionMode = AgentToolExecutionMode.SEQUENTIAL;
         private int maxParallelToolCalls = 8;
@@ -437,6 +474,22 @@ public final class AgentExecutionPolicy implements Serializable {
         }
 
         /**
+         * 设置工具审批挂起的最长等待时间；0 表示不设置期限。
+         */
+        public Builder approvalTimeoutMillis(long value) {
+            this.approvalTimeoutMillis = value;
+            return this;
+        }
+
+        /**
+         * 设置用户输入挂起的最长等待时间；0 表示不设置期限。
+         */
+        public Builder userInputTimeoutMillis(long value) {
+            this.userInputTimeoutMillis = value;
+            return this;
+        }
+
+        /**
          * 限制本地工具结果写入模型上下文的字符数，防止工具输出耗尽上下文窗口。
          */
         public Builder toolResultMaxCharacters(long value) {
@@ -449,6 +502,15 @@ public final class AgentExecutionPolicy implements Serializable {
          */
         public Builder externalToolResultMaxCharacters(long value) {
             this.externalToolResultMaxCharacters = value;
+            return this;
+        }
+
+        /**
+         * 设置本地和外部工具结果超限时的处理方式。默认严格失败；截断模式会保留明确的截断标记。
+         */
+        public Builder toolResultOverflowStrategy(AgentToolResultOverflowStrategy value) {
+            this.toolResultOverflowStrategy = value == null
+                ? AgentToolResultOverflowStrategy.FAIL : value;
             return this;
         }
 
@@ -508,7 +570,8 @@ public final class AgentExecutionPolicy implements Serializable {
                     "interrupted message templates and cancellationReason must not be null");
             }
             if (modelCallTimeoutMillis < 0 || toolExecutionTimeoutMillis < 0
-                || externalToolTimeoutMillis < 0 || toolResultMaxCharacters < 0
+                || externalToolTimeoutMillis < 0 || approvalTimeoutMillis < 0
+                || userInputTimeoutMillis < 0 || toolResultMaxCharacters < 0
                 || externalToolResultMaxCharacters < 0) {
                 throw new IllegalStateException("timeout values must not be negative");
             }
@@ -518,6 +581,9 @@ public final class AgentExecutionPolicy implements Serializable {
             if (maxParallelToolCalls <= 0 || parallelFailureStrategy == null) {
                 throw new IllegalStateException(
                     "maxParallelToolCalls must be greater than 0 and parallelFailureStrategy must not be null");
+            }
+            if (toolResultOverflowStrategy == null) {
+                throw new IllegalStateException("toolResultOverflowStrategy must not be null");
             }
             return new AgentExecutionPolicy(this);
         }

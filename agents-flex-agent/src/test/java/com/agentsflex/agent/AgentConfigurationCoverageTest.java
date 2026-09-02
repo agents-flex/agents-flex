@@ -21,6 +21,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -72,7 +73,12 @@ public class AgentConfigurationCoverageTest {
         assertEquals(100, agent.getMaxAttachedMessages());
         assertEquals(2, agent.getCompressionPolicy().getKeepRecentTurns());
         assertTrue(agent.getCompressionPolicy().isCompactCompletedToolTurns());
-        assertSame(options, agent.getChatOptions());
+        assertNotSame(options, agent.getChatOptions());
+        ChatOptions exposed = agent.getChatOptions();
+        exposed.setModel("mutated");
+        assertEquals(null, agent.getChatOptions().getModel());
+        options.setModel("after-build");
+        assertEquals(null, agent.getChatOptions().getModel());
         assertEquals("test", agent.getAttributes().get("env"));
         try {
             agent.getAttributes().put("x", "y");
@@ -123,6 +129,56 @@ public class AgentConfigurationCoverageTest {
             .compressionPolicy(AgentContextCompressionPolicy.builder().keepRecentTurns(-1).build()));
         assertIllegalArgument(() -> AgentRunner.builder().turnStore(null).build());
         assertIllegalArgument(() -> AgentRunner.builder().agentLoader(null).build());
+    }
+
+    @Test
+    public void shouldExposeRunnerInfrastructureAndNormalizeNullAgentOptions() {
+        Executor events = Runnable::run;
+        Executor tools = Runnable::run;
+        Executor models = Runnable::run;
+        AgentEventDataSanitizer sanitizer = (type, data) -> data;
+        AgentRunnerOptions options = AgentRunnerOptions.builder()
+            .eventExecutor(events)
+            .eventDataSanitizer(sanitizer)
+            .toolExecutor(tools)
+            .modelExecutor(models)
+            .build();
+        assertSame(events, options.getEventExecutor());
+        assertSame(sanitizer, options.getEventDataSanitizer());
+        assertSame(tools, options.getToolExecutor());
+        assertSame(models, options.getModelExecutor());
+
+        AgentRunnerOptions defaults = AgentRunnerOptions.builder()
+            .eventExecutor(null).eventDataSanitizer(null).toolExecutor(null).modelExecutor(null).build();
+        assertTrue(defaults.getEventExecutor() != null);
+        assertTrue(defaults.getEventDataSanitizer() != null);
+        assertTrue(defaults.getToolExecutor() != null);
+        assertTrue(defaults.getModelExecutor() != null);
+
+        Agent agent = Agent.builder("null-normalization")
+            .chatModel(new RecordingModel())
+            .chatOptions(null)
+            .executionPolicy(null)
+            .compressionPolicy(null)
+            .toolVisibilityPolicy(null)
+            .build();
+        assertTrue(agent.getChatOptions() != null);
+        assertTrue(agent.getExecutionPolicy() != null);
+        assertTrue(agent.getCompressionPolicy() != null);
+        assertTrue(agent.getToolVisibilityPolicy() != null);
+    }
+
+    @Test
+    public void shouldFailWhenModelSelectorReturnsNull() {
+        RecordingModel model = new RecordingModel();
+        Agent agent = Agent.builder("null-model-selector")
+            .chatModel(model)
+            .modelSelector((turn, prompt, text, multimodal) -> null)
+            .build();
+        AgentTurn turn = new AgentRunner().run(agent, "route");
+        assertEquals(AgentTurnStatus.FAILED, turn.getStatus());
+        assertTrue(turn.getError() != null && turn.getError().getMessage().contains("returned null"));
+        assertEquals(0, model.calls.get());
     }
 
     @Test
