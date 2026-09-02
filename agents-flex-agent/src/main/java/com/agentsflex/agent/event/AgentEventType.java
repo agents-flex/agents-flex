@@ -50,17 +50,13 @@ public enum AgentEventType {
      */
     MODEL_COMPLETED,
     /**
-     * Runner 已为当前 Turn 发现可执行的上下文压缩流程，并即将判断和生成摘要。
+     * Runner 已确认当前 Turn 需要上下文压缩，并即将生成摘要。
      */
     CONTEXT_COMPRESSION_STARTED,
     /**
      * 上下文压缩已完成；data 中包含本次是否实际生成并保存了新摘要。
      */
     CONTEXT_COMPRESSION_COMPLETED,
-    /**
-     * 上下文压缩被跳过，通常表示没有新增消息或尚未达到触发条件。
-     */
-    CONTEXT_COMPRESSION_SKIPPED,
     /**
      * 上下文压缩失败；原始历史和旧摘要未被覆盖。
      */

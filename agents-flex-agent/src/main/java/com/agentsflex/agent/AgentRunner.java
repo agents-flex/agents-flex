@@ -474,18 +474,17 @@ public final class AgentRunner {
             if (policy.isIncremental()) {
                 List<Message> compressible = compressiblePrefix(history, policy.getKeepRecentTurns());
                 List<Message> protectedTail = new ArrayList<>(history.subList(compressible.size(), history.size()));
-                eventPublisher.notifyContextCompressionStarted(turn, history.size(), compressible.size());
                 try {
                     AgentContextCompressionResult result = policy
-                        .compress(conversationId, compressible);
+                        .compress(conversationId, compressible,
+                            () -> eventPublisher.notifyContextCompressionStarted(
+                                turn, history.size(), compressible.size()));
                     modelHistory = new ArrayList<>(result.getModelMessages());
                     modelHistory.addAll(protectedTail);
                     turn.replaceConversationHistory(modelHistory);
                     turn.bindConversation(conversationId, modelHistory.size());
                     if (result.isCompressed()) {
                         eventPublisher.notifyContextCompressionCompleted(turn, result);
-                    } else {
-                        eventPublisher.notifyContextCompressionSkipped(turn, result);
                     }
                 } catch (RuntimeException error) {
                     eventPublisher.notifyContextCompressionFailed(turn, error);

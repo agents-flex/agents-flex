@@ -90,10 +90,24 @@ public final class AgentContextCompressionPolicy {
      * 执行一次增量压缩；仅供 Runner 使用，普通业务代码只需配置策略。
      */
     public AgentContextCompressionResult compress(String conversationId, List<Message> chronologicalMessages) {
+        return compress(conversationId, chronologicalMessages, null);
+    }
+
+    /**
+     * 执行一次增量压缩，并在真正调用压缩器前触发开始回调；未达到决策条件时不会触发回调。
+     *
+     * @param conversationId        会话 ID
+     * @param chronologicalMessages 按时间升序排列的历史消息
+     * @param onCompressionStarted  真正开始调用压缩器前执行的回调，可为空
+     * @return 压缩结果
+     */
+    public AgentContextCompressionResult compress(String conversationId,
+                                                  List<Message> chronologicalMessages,
+                                                  Runnable onCompressionStarted) {
         if (processor == null) {
             throw new IllegalStateException("compression policy is not incremental");
         }
-        return processor.process(conversationId, chronologicalMessages);
+        return processor.process(conversationId, chronologicalMessages, onCompressionStarted);
     }
 
     public boolean isCompactCompletedToolTurns() {

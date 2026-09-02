@@ -129,12 +129,6 @@ final class AgentEventPublisher {
             compressionAttributes(result));
     }
 
-    void notifyContextCompressionSkipped(AgentTurn turn,
-                                         AgentContextCompressionResult result) {
-        publish(turn, AgentEventType.CONTEXT_COMPRESSION_SKIPPED,
-            compressionAttributes(result));
-    }
-
     void notifyContextCompressionFailed(AgentTurn turn, Throwable error) {
         publish(turn, AgentEventType.CONTEXT_COMPRESSION_FAILED,
             attributes("error", errorMessage(error)));

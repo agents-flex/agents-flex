@@ -21,7 +21,7 @@ final class AgentContextCompressionProcessor {
     private final AgentCompressionFailureStrategy compressionFailureStrategy;
 
     /**
-     * 创建增量压缩处理器，并要求状态存储、条件、压缩器和 Token 估算器全部可用。
+     * 创建增量压缩处理器，并要求状态存储、决策器、压缩器和 Token 估算器全部可用。
      *
      * @param store          按会话持久化压缩游标和摘要的 CAS Store
      * @param decider        判断当前增量是否值得压缩的决策器
@@ -64,6 +64,20 @@ final class AgentContextCompressionProcessor {
      */
     AgentContextCompressionResult process(String conversationId,
                                           List<Message> chronologicalMessages) {
+        return process(conversationId, chronologicalMessages, null);
+    }
+
+    /**
+     * 对一段历史执行增量压缩，并在决策器确认需要压缩、即将调用压缩器时通知调用方。
+     *
+     * @param conversationId        会话 ID
+     * @param chronologicalMessages 按时间升序排列的历史消息
+     * @param onCompressionStarted  真正开始调用压缩器前执行的回调，可为空
+     * @return 压缩结果
+     */
+    AgentContextCompressionResult process(String conversationId,
+                                          List<Message> chronologicalMessages,
+                                          Runnable onCompressionStarted) {
         if (conversationId == null || conversationId.trim().isEmpty() || chronologicalMessages == null) {
             throw new IllegalArgumentException("conversationId must not be blank and messages must not be null");
         }
@@ -88,6 +102,7 @@ final class AgentContextCompressionProcessor {
             return new AgentContextCompressionResult(false, state, modelMessages);
         }
 
+        if (onCompressionStarted != null) onCompressionStarted.run();
         List<Message> compressorInput = new ArrayList<>(state.getSummaryMessages());
         compressorInput.addAll(pending);
         List<Message> summary;

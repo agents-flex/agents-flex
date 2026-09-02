@@ -32,7 +32,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** 统一事件监听器的顺序、隔离、并发和不可变性契约测试。 */
+/**
+ * 统一事件监听器的顺序、隔离、并发和不可变性契约测试。
+ */
 public class AgentEventListenerContractTest {
 
     @Test
@@ -70,7 +72,11 @@ public class AgentEventListenerContractTest {
         memory.addMessage(new AiMessage("latest answer"));
         AgentContextCompressionStateStore states = new AgentContextCompressionStateStore() {
             private AgentContextCompressionState state;
-            public AgentContextCompressionState load(String id) { return state; }
+
+            public AgentContextCompressionState load(String id) {
+                return state;
+            }
+
             public boolean save(String id, AgentContextCompressionState next, long version) {
                 long actual = state == null ? 0 : state.getVersion();
                 if (actual != version) return false;
@@ -102,6 +108,40 @@ public class AgentEventListenerContractTest {
     }
 
     @Test
+    public void shouldNotEmitCompressionEventsWhenDeciderSkipsCompression() {
+        DefaultChatMemory memory = new DefaultChatMemory("compression-events-skipped");
+        memory.addMessage(new UserMessage("old"));
+        memory.addMessage(new AiMessage("old answer"));
+        AgentContextCompressionStateStore states = new AgentContextCompressionStateStore() {
+            public AgentContextCompressionState load(String id) {
+                return null;
+            }
+
+            public boolean save(String id, AgentContextCompressionState next, long version) {
+                return true;
+            }
+        };
+        AgentContextCompressionPolicy compressionPolicy = AgentContextCompressionPolicy.incremental(
+            states, input -> false,
+            messages -> java.util.Arrays.asList(new UserMessage("summary")),
+            messages -> messages.size());
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> new AiMessage("done"));
+        Agent agent = Agent.builder("compression-events-skipped")
+            .chatModel(model)
+            .compressionPolicy(compressionPolicy)
+            .build();
+        List<AgentEvent> events = new ArrayList<>();
+
+        AgentTurn turn = AgentRunner.builder().chatMemoryProvider(id -> memory).build()
+            .addEventListener(events::add).run(agent, "compression-events-skipped", "new question");
+
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals(0, count(events, AgentEventType.CONTEXT_COMPRESSION_STARTED));
+        assertEquals(0, count(events, AgentEventType.CONTEXT_COMPRESSION_COMPLETED));
+    }
+
+    @Test
     public void shouldEmitSuspendedAfterCurrentStepCompleted() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> toolCalls(new ToolCall("approval-call", "write", "{}")));
@@ -125,7 +165,9 @@ public class AgentEventListenerContractTest {
     @Test
     public void shouldEmitFailureAfterFinalStepCompleted() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
-        model.enqueue(prompt -> { throw new IllegalArgumentException("invalid response"); });
+        model.enqueue(prompt -> {
+            throw new IllegalArgumentException("invalid response");
+        });
         List<AgentEvent> events = new ArrayList<>();
 
         AgentTurn turn = new AgentRunner().addEventListener(events::add)
@@ -168,7 +210,9 @@ public class AgentEventListenerContractTest {
         AtomicInteger removed = new AtomicInteger();
         AgentEventListener removedListener = event -> removed.incrementAndGet();
         AgentRunner runner = new AgentRunner()
-            .addEventListener(event -> { throw new RuntimeException("listener failed"); })
+            .addEventListener(event -> {
+                throw new RuntimeException("listener failed");
+            })
             .addEventListener(removedListener)
             .addEventListener(event -> received.incrementAndGet())
             .removeEventListener(removedListener);
