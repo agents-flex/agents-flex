@@ -7,6 +7,7 @@ import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.AgentToolContext;
+import com.agentsflex.agent.tool.AgentToolResumeInfo;
 import com.agentsflex.agent.tool.AgentToolResumeType;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.AiMessage;
@@ -23,11 +24,47 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * AgentToolContext 在各类挂起恢复和重试路径中的契约测试。
  */
 public class AgentToolResumeContextTest {
+
+    @Test
+    public void resumeInfoNormalizesInvalidCoreValuesAndCopiesMetadata() {
+        AgentToolResumeInfo none = new AgentToolResumeInfo(
+            null, -1, 4, 99L, null, null, null);
+        assertEquals(AgentToolResumeType.NONE, none.getType());
+        assertFalse(none.isResumed());
+        assertEquals(0, none.getRetryAttempt());
+        assertEquals(0L, none.getRetryNextRunnableAt());
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("source", "approval-ui");
+        AgentToolResumeInfo approval = new AgentToolResumeInfo(
+            AgentToolResumeType.APPROVAL, -1, -4, -9L, metadata, null, null);
+
+        assertEquals(0, approval.getResumeCount());
+        assertEquals(0, approval.getRetryAttempt());
+        assertEquals(0L, approval.getRetryNextRunnableAt());
+        metadata.put("mutated", true);
+        assertFalse(approval.getMetadata().containsKey("mutated"));
+        try {
+            approval.getMetadata().put("forbidden", true);
+            fail("resume metadata must be immutable");
+        } catch (UnsupportedOperationException expected) {
+            // 只读契约
+        }
+
+        AgentToolResumeInfo retry = new AgentToolResumeInfo(
+            AgentToolResumeType.RETRY, -1, -4, -9L, null, "java.io.IOException", "timeout");
+        assertEquals(0, retry.getResumeCount());
+        assertEquals(0, retry.getRetryAttempt());
+        assertEquals(0L, retry.getRetryNextRunnableAt());
+        assertEquals("java.io.IOException", retry.getPreviousErrorType());
+        assertEquals("timeout", retry.getPreviousErrorMessage());
+    }
 
     @Test
     public void approvalResumeIsFirstRealExecution() {
@@ -194,17 +231,23 @@ public class AgentToolResumeContextTest {
         AgentToolContext firstRetry = contexts.get(1);
         assertEquals(2, firstRetry.getExecutionAttempt());
         assertEquals(1, firstRetry.getResumeInfo().getResumeCount());
-        assertEquals("temporary failure 1", firstRetry.getResumeInfo().getPreviousErrorMessage());
+        assertEquals("temporary failure 1", firstRetry.getPreviousErrorMessage());
+        assertEquals(1, firstRetry.getRetryAttempt());
+        assertTrue(firstRetry.getRetryNextRunnableAt() > 0);
+        assertFalse(firstRetry.getResumeInfo().getMetadata().containsKey("retryAttempt"));
+        assertFalse(firstRetry.getResumeInfo().getMetadata().containsKey("nextRunnableAt"));
         AgentToolContext resumed = contexts.get(2);
         assertEquals(AgentToolResumeType.RETRY, resumed.getResumeInfo().getType());
         assertTrue(resumed.isResumed());
         assertTrue(resumed.isReplay());
         assertEquals(3, resumed.getExecutionAttempt());
         assertEquals(2, resumed.getResumeInfo().getResumeCount());
-        assertEquals(RuntimeException.class.getName(),
-            resumed.getResumeInfo().getPreviousErrorType());
-        assertEquals("temporary failure 2", resumed.getResumeInfo().getPreviousErrorMessage());
-        assertEquals(2, resumed.getResumeInfo().getMetadata().get("retryAttempt"));
+        assertEquals(RuntimeException.class.getName(), resumed.getPreviousErrorType());
+        assertEquals("temporary failure 2", resumed.getPreviousErrorMessage());
+        assertEquals(2, resumed.getRetryAttempt());
+        assertEquals(2, resumed.getResumeInfo().getRetryAttempt());
+        assertTrue(resumed.getRetryNextRunnableAt() > 0);
+        assertFalse(resumed.getResumeInfo().getMetadata().containsKey("retryAttempt"));
     }
 
     @Test

@@ -1298,11 +1298,8 @@ public final class AgentRunner {
             long runAt = System.currentTimeMillis() + retry.delayMillis(retryAttempt);
             if (resumeExecutionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS && !turn.getPendingToolCalls().isEmpty()) {
                 ToolCall call = turn.getPendingToolCalls().get(0);
-                Map<String, Object> metadata = new LinkedHashMap<>();
-                metadata.put("retryAttempt", retryAttempt);
-                metadata.put("nextRunnableAt", runAt);
                 recordToolResume(turn, callKey(call), AgentToolResumeType.RETRY,
-                    metadata, error);
+                    retryAttempt, runAt, null, error);
             }
             turn.scheduleRetry(error, resumeExecutionPoint, runAt);
             saveSnapshot(turn);
@@ -2032,11 +2029,23 @@ public final class AgentRunner {
      */
     private void recordToolResume(AgentTurn turn, String callId, AgentToolResumeType type,
                                   Map<String, ?> metadata, Throwable error) {
+        recordToolResume(turn, callId, type, 0, 0L, metadata, error);
+    }
+
+    /**
+     * 记录按 ToolCall 隔离的恢复来源及核心重试字段，供下一次工具函数执行读取。
+     *
+     * <p>重试序号和下一次执行时间是框架协议字段，直接写入 {@link AgentToolResumeInfo}；只有审批、
+     * 表单和业务自定义内容继续放入 metadata。</p>
+     */
+    private void recordToolResume(AgentTurn turn, String callId, AgentToolResumeType type,
+                                  int retryAttempt, long retryNextRunnableAt,
+                                  Map<String, ?> metadata, Throwable error) {
         AgentToolResumeInfo previous = turn.getToolResumeInfo(callId);
         Map<String, Object> values = metadata == null
             ? new LinkedHashMap<String, Object>() : new LinkedHashMap<String, Object>(metadata);
         turn.putToolResumeInfo(callId, new AgentToolResumeInfo(type,
-            previous.getResumeCount() + 1, values,
+            previous.getResumeCount() + 1, retryAttempt, retryNextRunnableAt, values,
             error == null ? null : error.getClass().getName(),
             error == null ? null : error.getMessage()));
     }

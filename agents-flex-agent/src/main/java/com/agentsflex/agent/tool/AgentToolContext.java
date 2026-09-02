@@ -244,6 +244,34 @@ public final class AgentToolContext {
     }
 
     /**
+     * @return 当前 ToolCall 的错误重试序号；当前执行不是由错误重试恢复时返回 0
+     */
+    public int getRetryAttempt() {
+        return resumeInfo.getRetryAttempt();
+    }
+
+    /**
+     * @return 当前错误重试计划的下一次执行时间；没有重试计划时返回 0
+     */
+    public long getRetryNextRunnableAt() {
+        return resumeInfo.getRetryNextRunnableAt();
+    }
+
+    /**
+     * @return 上一次恢复关联的错误类型；没有错误或不是错误恢复时返回 null
+     */
+    public String getPreviousErrorType() {
+        return resumeInfo.getPreviousErrorType();
+    }
+
+    /**
+     * @return 上一次恢复关联的错误消息；没有错误或不是错误恢复时返回 null
+     */
+    public String getPreviousErrorMessage() {
+        return resumeInfo.getPreviousErrorMessage();
+    }
+
+    /**
      * @return 是否由表单提交恢复
      */
     public boolean isFormInputResumed() {

@@ -65,7 +65,7 @@ public class FastjsonAgentStoreSerializerTest {
         resumeMetadata.put("submittedBy", "user-8");
         Map<String, AgentToolResumeInfo> toolResumeInfo = new LinkedHashMap<>();
         toolResumeInfo.put("call-1", new AgentToolResumeInfo(
-            AgentToolResumeType.FORM_INPUT, 1, resumeMetadata, null, null));
+            AgentToolResumeType.FORM_INPUT, 1, 0, 0L, resumeMetadata, null, null));
 
         AgentTurnState state = AgentTurnState.builder("turn-1",
                 AgentExecutionPolicy.defaults(), 0)
@@ -105,6 +105,9 @@ public class FastjsonAgentStoreSerializerTest {
         AgentToolResumeInfo decodedResume = decoded.getState().getToolResumeInfo().get("call-1");
         assertEquals(AgentToolResumeType.FORM_INPUT, decodedResume.getType());
         assertEquals(1, decodedResume.getResumeCount());
+        // 非 RETRY 恢复即使包含旧数据，也必须保持重试字段为零，避免业务误判为自动重试。
+        assertEquals(0, decodedResume.getRetryAttempt());
+        assertEquals(0L, decodedResume.getRetryNextRunnableAt());
         assertEquals("user-8", decodedResume.getMetadata().get("submittedBy"));
     }
 
