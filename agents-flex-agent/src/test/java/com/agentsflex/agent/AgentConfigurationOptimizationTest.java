@@ -7,7 +7,6 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.compression.AgentCompressionFailureStrategy;
-import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.UserMessage;
@@ -224,55 +223,6 @@ public class AgentConfigurationOptimizationTest {
             fail("negative token estimates must fail");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("non-negative"));
-        }
-    }
-
-    @Test
-    public void eventSanitizerFailureDoesNotBreakExecution() {
-        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
-        model.enqueue(prompt -> new AiMessage("done"));
-        AtomicInteger events = new AtomicInteger();
-        AgentRunner runner = AgentRunner.builder()
-            .options(AgentRunnerOptions.builder()
-                .eventDataSanitizer((type, data) -> {
-                    throw new IllegalStateException("bad sanitizer");
-                })
-                .build())
-            .build()
-            .addEventListener(event -> events.incrementAndGet());
-        AgentTurn turn = runner.run(Agent.builder("sanitized").chatModel(model).build(), "hello");
-        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
-        assertTrue(events.get() > 0);
-    }
-
-    @Test
-    public void eventSanitizerFailureStrategiesHaveExplicitDataSemantics() {
-        for (AgentEventSanitizationFailureStrategy strategy : AgentEventSanitizationFailureStrategy.values()) {
-            AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
-            model.enqueue(prompt -> new AiMessage("done"));
-            List<AgentEvent> received = new java.util.ArrayList<>();
-            AgentRunner runner = AgentRunner.builder()
-                .options(AgentRunnerOptions.builder()
-                    .eventDataSanitizer((type, data) -> {
-                        throw new IllegalStateException("sanitize");
-                    })
-                    .eventSanitizationFailureStrategy(strategy).build())
-                .build().addEventListener(received::add);
-            try {
-                AgentTurn turn = runner.run(Agent.builder("sanitize-" + strategy).chatModel(model).build(), "hello");
-                assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
-            } catch (IllegalStateException expected) {
-                assertEquals(AgentEventSanitizationFailureStrategy.FAIL_EXECUTION, strategy);
-            }
-            if (strategy == AgentEventSanitizationFailureStrategy.DROP_EVENT) {
-                assertTrue(received.isEmpty());
-            } else if (strategy == AgentEventSanitizationFailureStrategy.DROP_DATA) {
-                assertTrue(received.size() > 0);
-                assertTrue(received.get(0).getData().isEmpty());
-            } else if (strategy == AgentEventSanitizationFailureStrategy.USE_ORIGINAL) {
-                assertTrue(received.size() > 0);
-                assertTrue(received.get(0).getData().containsKey("status"));
-            }
         }
     }
 

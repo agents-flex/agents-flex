@@ -17,10 +17,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Agent 执行过程中发布的不可变事件。
+ * Agent 执行过程中发布的不可变内部事件。
  *
  * <p>事件只在当前 Runner 进程内同步投递。sequence 在同一 turnId 内递增，但不是持久化游标；
- * 需要可靠存储时，应由业务监听器将事件写入自己的数据库、消息队列或 Outbox。</p>
+ * 事件数据也未经过业务脱敏或权限过滤。需要对外展示或可靠存储时，应由业务监听器自行过滤并写入
+ * 自己的数据库、消息队列或 Outbox。</p>
  */
 public final class AgentEvent {
 

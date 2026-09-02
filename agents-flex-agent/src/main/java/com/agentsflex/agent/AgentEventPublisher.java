@@ -32,7 +32,8 @@ import java.util.concurrent.Executor;
  * 构造 Agent 运行事件，并在当前进程内同步发布给已注册监听器。
  *
  * <p>该类是 {@link AgentRunner} 的包内实现细节，不提供持久化或异步消息能力。监听器异常会被
- * 隔离；事件序号只在当前 Publisher 实例内按 turnId 递增。</p>
+ * 隔离；事件序号只在当前 Publisher 实例内按 turnId 递增。事件数据由 {@link AgentEvent} 做不可变
+ * 快照，但框架不负责脱敏、权限过滤、审计或对外投递，监听器应按业务安全要求自行处理。</p>
  */
 final class AgentEventPublisher {
 
@@ -47,8 +48,6 @@ final class AgentEventPublisher {
      */
     private final Map<String, AtomicLong> sequences = new ConcurrentHashMap<>();
     private final Executor executor;
-    private final AgentEventDataSanitizer sanitizer;
-    private final AgentEventSanitizationFailureStrategy sanitizationFailureStrategy;
 
     AgentEventPublisher() {
         this(AgentRunnerOptions.defaults());
@@ -56,8 +55,6 @@ final class AgentEventPublisher {
 
     AgentEventPublisher(AgentRunnerOptions options) {
         this.executor = options.getEventExecutor();
-        this.sanitizer = options.getEventDataSanitizer();
-        this.sanitizationFailureStrategy = options.getEventSanitizationFailureStrategy();
     }
 
     /**
@@ -383,30 +380,9 @@ final class AgentEventPublisher {
         if (data != null) values.putAll(data);
         long sequence = sequences.computeIfAbsent(turn.getId(), key -> new AtomicLong())
             .incrementAndGet();
-        Map<String, ?> sanitized;
-        try {
-            sanitized = sanitizer.sanitize(type, values);
-        } catch (RuntimeException error) {
-            switch (sanitizationFailureStrategy) {
-                case DROP_EVENT:
-                    log.warn("Agent event sanitizer failed, dropping event", error);
-                    return;
-                case USE_ORIGINAL:
-                    log.warn("Agent event sanitizer failed, using original data", error);
-                    sanitized = values;
-                    break;
-                case FAIL_EXECUTION:
-                    throw error;
-                case DROP_DATA:
-                default:
-                    log.warn("Agent event sanitizer failed, dropping event data", error);
-                    sanitized = null;
-                    break;
-            }
-        }
         AgentEvent event = new AgentEvent(turn.getId(), turn.getAgent().getId(),
             turn.getAgent().getVersion(),
-            sequence, type, sanitized);
+            sequence, type, values);
         try {
             executor.execute(() -> {
                 for (AgentEventListener listener : listeners) {

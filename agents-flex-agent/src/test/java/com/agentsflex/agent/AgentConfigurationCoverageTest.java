@@ -136,22 +136,18 @@ public class AgentConfigurationCoverageTest {
         Executor events = Runnable::run;
         Executor tools = Runnable::run;
         Executor models = Runnable::run;
-        AgentEventDataSanitizer sanitizer = (type, data) -> data;
         AgentRunnerOptions options = AgentRunnerOptions.builder()
             .eventExecutor(events)
-            .eventDataSanitizer(sanitizer)
             .toolExecutor(tools)
             .modelExecutor(models)
             .build();
         assertSame(events, options.getEventExecutor());
-        assertSame(sanitizer, options.getEventDataSanitizer());
         assertSame(tools, options.getToolExecutor());
         assertSame(models, options.getModelExecutor());
 
         AgentRunnerOptions defaults = AgentRunnerOptions.builder()
-            .eventExecutor(null).eventDataSanitizer(null).toolExecutor(null).modelExecutor(null).build();
+            .eventExecutor(null).toolExecutor(null).modelExecutor(null).build();
         assertTrue(defaults.getEventExecutor() != null);
-        assertTrue(defaults.getEventDataSanitizer() != null);
         assertTrue(defaults.getToolExecutor() != null);
         assertTrue(defaults.getModelExecutor() != null);
 

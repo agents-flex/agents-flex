@@ -23,18 +23,11 @@ public final class AgentRunnerOptions {
         return thread;
     });
     private final Executor eventExecutor;
-    private final AgentEventDataSanitizer eventDataSanitizer;
-    private final AgentEventSanitizationFailureStrategy eventSanitizationFailureStrategy;
     private final Executor toolExecutor;
     private final Executor modelExecutor;
 
     private AgentRunnerOptions(Builder builder) {
         this.eventExecutor = builder.eventExecutor == null ? Runnable::run : builder.eventExecutor;
-        this.eventDataSanitizer = builder.eventDataSanitizer == null
-            ? AgentEventDataSanitizer.identity() : builder.eventDataSanitizer;
-        this.eventSanitizationFailureStrategy = builder.eventSanitizationFailureStrategy == null
-            ? AgentEventSanitizationFailureStrategy.DROP_DATA
-            : builder.eventSanitizationFailureStrategy;
         this.toolExecutor = builder.toolExecutor == null ? DEFAULT_ASYNC_EXECUTOR : builder.toolExecutor;
         this.modelExecutor = builder.modelExecutor == null ? DEFAULT_ASYNC_EXECUTOR : builder.modelExecutor;
     }
@@ -47,7 +40,7 @@ public final class AgentRunnerOptions {
     }
 
     /**
-     * 返回事件同步、脱敏透传、模型/工具使用共享 daemon 执行器的默认配置。
+     * 返回事件同步、模型/工具使用共享 daemon 执行器的默认配置。
      */
     public static AgentRunnerOptions defaults() {
         return builder().build();
@@ -58,17 +51,6 @@ public final class AgentRunnerOptions {
      */
     public Executor getEventExecutor() {
         return eventExecutor;
-    }
-
-    /**
-     * @return 事件数据脱敏器，默认原样透传
-     */
-    public AgentEventDataSanitizer getEventDataSanitizer() {
-        return eventDataSanitizer;
-    }
-
-    public AgentEventSanitizationFailureStrategy getEventSanitizationFailureStrategy() {
-        return eventSanitizationFailureStrategy;
     }
 
     /**
@@ -87,9 +69,6 @@ public final class AgentRunnerOptions {
 
     public static final class Builder {
         private Executor eventExecutor;
-        private AgentEventDataSanitizer eventDataSanitizer;
-        private AgentEventSanitizationFailureStrategy eventSanitizationFailureStrategy =
-            AgentEventSanitizationFailureStrategy.DROP_DATA;
         private Executor toolExecutor;
         private Executor modelExecutor;
 
@@ -98,24 +77,6 @@ public final class AgentRunnerOptions {
          */
         public Builder eventExecutor(Executor value) {
             eventExecutor = value;
-            return this;
-        }
-
-        /**
-         * 设置事件数据脱敏器；为空时保留全部数据。
-         */
-        public Builder eventDataSanitizer(AgentEventDataSanitizer value) {
-            eventDataSanitizer = value;
-            return this;
-        }
-
-        /**
-         * 设置事件脱敏器异常后的降级方式；默认继续发布无数据事件。
-         */
-        public Builder eventSanitizationFailureStrategy(
-            AgentEventSanitizationFailureStrategy value) {
-            eventSanitizationFailureStrategy = value == null
-                ? AgentEventSanitizationFailureStrategy.DROP_DATA : value;
             return this;
         }
 
