@@ -278,6 +278,7 @@ export default withMermaid(defineConfig({
                     text: 'Agent 智能体', items: [
                         {text: '概述', link: '/zh/agent/overview'},
                         {text: '快速开始', link: '/zh/agent/getting-started'},
+                        {text: 'Demo 示例', link: '/zh/agent/demo'},
                         {text: '架构设计', link: '/zh/agent/architecture'},
                         {text: 'Agent', link: '/zh/agent/agent'},
                         {text: 'AgentTurn', link: '/zh/agent/agent-turn'},
