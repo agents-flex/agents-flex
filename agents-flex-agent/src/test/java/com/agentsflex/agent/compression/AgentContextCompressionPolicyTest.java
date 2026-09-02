@@ -51,7 +51,7 @@ public class AgentContextCompressionPolicyTest {
     @Test(expected = IllegalArgumentException.class)
     public void policyRejectsPartialIncrementalConfiguration() {
         AgentContextCompressionPolicy.builder()
-            .condition(input -> true)
+            .decider(input -> true)
             .build();
     }
 
@@ -69,7 +69,7 @@ public class AgentContextCompressionPolicyTest {
     @Test
     public void policyRejectsEveryIncompleteIncrementalDependency() {
         AgentContextCompressor compressor = messages -> Collections.emptyList();
-        AgentContextCompressionCondition condition = input -> true;
+        AgentContextCompressionDecider decider = input -> true;
         AgentContextCompressionStateStore store = new AgentContextCompressionStateStore() {
             public AgentContextCompressionState load(String id) {
                 return null;
@@ -85,7 +85,7 @@ public class AgentContextCompressionPolicyTest {
         } catch (IllegalArgumentException expected) {
         }
         try {
-            AgentContextCompressionPolicy.builder().condition(condition).build();
+            AgentContextCompressionPolicy.builder().decider(decider).build();
             org.junit.Assert.fail("missing incremental dependencies must fail");
         } catch (IllegalArgumentException expected) {
         }
@@ -95,7 +95,7 @@ public class AgentContextCompressionPolicyTest {
         } catch (IllegalArgumentException expected) {
         }
         try {
-            AgentContextCompressionPolicy.builder().stateStore(store).condition(condition)
+            AgentContextCompressionPolicy.builder().stateStore(store).decider(decider)
                 .compressor(compressor).tokenEstimator(messages -> 1).build();
         } catch (RuntimeException unexpected) {
             org.junit.Assert.fail("complete incremental configuration must be accepted");

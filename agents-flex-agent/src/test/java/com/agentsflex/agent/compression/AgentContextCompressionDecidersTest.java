@@ -10,7 +10,7 @@ import java.util.Collections;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class AgentContextCompressionConditionsTest {
+public class AgentContextCompressionDecidersTest {
 
     @Test
     public void shouldSupportCommonThresholdConditionsAndComposition() {
@@ -18,16 +18,16 @@ public class AgentContextCompressionConditionsTest {
             Arrays.<Message>asList(new UserMessage("one"), new UserMessage("two")),
             Collections.<Message>emptyList(), 120, 2, AgentContextCompressionState.empty());
 
-        assertTrue(AgentContextCompressionConditions.pendingTokensAtLeast(100).shouldCompress(input));
-        assertFalse(AgentContextCompressionConditions.pendingTokensAtLeast(121).shouldCompress(input));
-        assertTrue(AgentContextCompressionConditions.pendingMessagesAtLeast(2).shouldCompress(input));
-        assertTrue(AgentContextCompressionConditions.pendingTurnsAtLeast(2).shouldCompress(input));
-        assertTrue(AgentContextCompressionConditions.anyOf(
-            AgentContextCompressionConditions.pendingTokensAtLeast(200),
-            AgentContextCompressionConditions.pendingTurnsAtLeast(2)).shouldCompress(input));
-        assertFalse(AgentContextCompressionConditions.allOf(
-            AgentContextCompressionConditions.pendingTokensAtLeast(200),
-            AgentContextCompressionConditions.pendingTurnsAtLeast(2)).shouldCompress(input));
+        assertTrue(AgentContextCompressionDeciders.pendingTokensAtLeast(100).shouldCompress(input));
+        assertFalse(AgentContextCompressionDeciders.pendingTokensAtLeast(121).shouldCompress(input));
+        assertTrue(AgentContextCompressionDeciders.pendingMessagesAtLeast(2).shouldCompress(input));
+        assertTrue(AgentContextCompressionDeciders.pendingTurnsAtLeast(2).shouldCompress(input));
+        assertTrue(AgentContextCompressionDeciders.anyOf(
+            AgentContextCompressionDeciders.pendingTokensAtLeast(200),
+            AgentContextCompressionDeciders.pendingTurnsAtLeast(2)).shouldCompress(input));
+        assertFalse(AgentContextCompressionDeciders.allOf(
+            AgentContextCompressionDeciders.pendingTokensAtLeast(200),
+            AgentContextCompressionDeciders.pendingTurnsAtLeast(2)).shouldCompress(input));
     }
 
     @Test
@@ -36,27 +36,27 @@ public class AgentContextCompressionConditionsTest {
             Collections.<Message>emptyList(), Collections.<Message>emptyList(), 0, 0,
             AgentContextCompressionState.empty());
 
-        assertTrue(AgentContextCompressionConditions.always().shouldCompress(input));
-        assertFalse(AgentContextCompressionConditions.never().shouldCompress(input));
-        assertFalse(AgentContextCompressionConditions.anyOf().shouldCompress(input));
-        assertTrue(AgentContextCompressionConditions.allOf().shouldCompress(input));
+        assertTrue(AgentContextCompressionDeciders.always().shouldCompress(input));
+        assertFalse(AgentContextCompressionDeciders.never().shouldCompress(input));
+        assertFalse(AgentContextCompressionDeciders.anyOf().shouldCompress(input));
+        assertTrue(AgentContextCompressionDeciders.allOf().shouldCompress(input));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldRejectNegativeThreshold() {
-        AgentContextCompressionConditions.pendingTokensAtLeast(-1);
+        AgentContextCompressionDeciders.pendingTokensAtLeast(-1);
     }
 
     @Test
     public void shouldRejectNegativeMessageAndTurnThresholds() {
         try {
-            AgentContextCompressionConditions.pendingMessagesAtLeast(-1);
+            AgentContextCompressionDeciders.pendingMessagesAtLeast(-1);
             org.junit.Assert.fail("negative message threshold must fail");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("threshold"));
         }
         try {
-            AgentContextCompressionConditions.pendingTurnsAtLeast(-1);
+            AgentContextCompressionDeciders.pendingTurnsAtLeast(-1);
             org.junit.Assert.fail("negative turn threshold must fail");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("threshold"));

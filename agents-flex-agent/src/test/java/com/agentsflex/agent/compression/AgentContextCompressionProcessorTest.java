@@ -376,18 +376,18 @@ public class AgentContextCompressionProcessorTest {
     }
 
     private static AgentContextCompressionProcessor createProcessor(AgentContextCompressionStateStore store,
-                                                                    AgentContextCompressionCondition condition,
+                                                                    AgentContextCompressionDecider decider,
                                                                     AgentContextCompressor compressor,
                                                                     ToLongFunction<List<Message>> estimator) {
-        return new AgentContextCompressionProcessor(store, condition, compressor, estimator);
+        return new AgentContextCompressionProcessor(store, decider, compressor, estimator);
     }
 
     private static AgentContextCompressionProcessor createProcessor(AgentContextCompressionStateStore store,
-                                                                    AgentContextCompressionCondition condition,
+                                                                    AgentContextCompressionDecider decider,
                                                                     AgentContextCompressor compressor,
                                                                     ToLongFunction<List<Message>> estimator,
                                                                     AgentCompressionFailureStrategy strategy) {
-        return new AgentContextCompressionProcessor(store, condition, compressor, estimator, strategy);
+        return new AgentContextCompressionProcessor(store, decider, compressor, estimator, strategy);
     }
 
     private static List<Message> messages(int count) {

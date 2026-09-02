@@ -15,7 +15,7 @@ import java.util.function.ToLongFunction;
  */
 final class AgentContextCompressionProcessor {
     private final AgentContextCompressionStateStore store;
-    private final AgentContextCompressionCondition condition;
+    private final AgentContextCompressionDecider decider;
     private final AgentContextCompressor compressor;
     private final ToLongFunction<List<Message>> tokenEstimator;
     private final AgentCompressionFailureStrategy compressionFailureStrategy;
@@ -24,15 +24,15 @@ final class AgentContextCompressionProcessor {
      * 创建增量压缩处理器，并要求状态存储、条件、压缩器和 Token 估算器全部可用。
      *
      * @param store          按会话持久化压缩游标和摘要的 CAS Store
-     * @param condition      判断当前增量是否值得压缩的条件
+     * @param decider        判断当前增量是否值得压缩的决策器
      * @param compressor     生成新摘要的实现
      * @param tokenEstimator 对待压缩消息进行非负 Token 估算的函数
      */
     AgentContextCompressionProcessor(AgentContextCompressionStateStore store,
-                                     AgentContextCompressionCondition condition,
+                                     AgentContextCompressionDecider decider,
                                      AgentContextCompressor compressor,
                                      ToLongFunction<List<Message>> tokenEstimator) {
-        this(store, condition, compressor, tokenEstimator, AgentCompressionFailureStrategy.FAIL);
+        this(store, decider, compressor, tokenEstimator, AgentCompressionFailureStrategy.FAIL);
     }
 
     /**
@@ -42,15 +42,15 @@ final class AgentContextCompressionProcessor {
      * 即使启用了回退也不能吞掉这些错误。</p>
      */
     AgentContextCompressionProcessor(AgentContextCompressionStateStore store,
-                                     AgentContextCompressionCondition condition,
+                                     AgentContextCompressionDecider decider,
                                      AgentContextCompressor compressor,
                                      ToLongFunction<List<Message>> tokenEstimator,
                                      AgentCompressionFailureStrategy compressionFailureStrategy) {
-        if (store == null || condition == null || compressor == null || tokenEstimator == null) {
+        if (store == null || decider == null || compressor == null || tokenEstimator == null) {
             throw new IllegalArgumentException("compression processor dependencies must not be null");
         }
         this.store = store;
-        this.condition = condition;
+        this.decider = decider;
         this.compressor = compressor;
         this.tokenEstimator = tokenEstimator;
         this.compressionFailureStrategy = compressionFailureStrategy == null
@@ -82,7 +82,7 @@ final class AgentContextCompressionProcessor {
         int pendingTurnCount = countTurns(pending);
         AgentContextCompressionInput input = new AgentContextCompressionInput(
             pending, state.getSummaryMessages(), estimatedTokens, pendingTurnCount, state);
-        if (pending.isEmpty() || !condition.shouldCompress(input)) {
+        if (pending.isEmpty() || !decider.shouldCompress(input)) {
             List<Message> modelMessages = new ArrayList<>(state.getSummaryMessages());
             modelMessages.addAll(pending);
             return new AgentContextCompressionResult(false, state, modelMessages);

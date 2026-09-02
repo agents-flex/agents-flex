@@ -26,16 +26,16 @@ public final class AgentContextCompressionPolicy {
 
     private AgentContextCompressionPolicy(Builder builder) {
         boolean hasIncrementalDependency = builder.stateStore != null
-            || builder.condition != null || builder.tokenEstimator != null;
+            || builder.decider != null || builder.tokenEstimator != null;
         if (hasIncrementalDependency && (builder.stateStore == null
-            || builder.condition == null || builder.tokenEstimator == null || builder.compressor == null)) {
+            || builder.decider == null || builder.tokenEstimator == null || builder.compressor == null)) {
             throw new IllegalArgumentException(
-                "incremental compression requires stateStore, condition, compressor and tokenEstimator");
+                "incremental compression requires stateStore, decider, compressor and tokenEstimator");
         }
         this.compressor = builder.compressor;
         this.processor = hasIncrementalDependency
             ? new AgentContextCompressionProcessor(
-            builder.stateStore, builder.condition, builder.compressor, builder.tokenEstimator,
+            builder.stateStore, builder.decider, builder.compressor, builder.tokenEstimator,
             builder.compressionFailureStrategy)
             : null;
         this.compactCompletedToolTurns = builder.compactCompletedToolTurns;
@@ -62,12 +62,12 @@ public final class AgentContextCompressionPolicy {
      */
     public static AgentContextCompressionPolicy incremental(
         AgentContextCompressionStateStore store,
-        AgentContextCompressionCondition condition,
+        AgentContextCompressionDecider decider,
         AgentContextCompressor compressor,
         ToLongFunction<List<Message>> tokenEstimator) {
         return builder()
             .stateStore(store)
-            .condition(condition)
+            .decider(decider)
             .compressor(compressor)
             .tokenEstimator(tokenEstimator)
             .build();
@@ -111,7 +111,7 @@ public final class AgentContextCompressionPolicy {
     public static final class Builder {
         private AgentContextCompressor compressor;
         private AgentContextCompressionStateStore stateStore;
-        private AgentContextCompressionCondition condition;
+        private AgentContextCompressionDecider decider;
         private ToLongFunction<List<Message>> tokenEstimator;
         private boolean compactCompletedToolTurns = true;
         private int keepRecentTurns = 2;
@@ -127,8 +127,8 @@ public final class AgentContextCompressionPolicy {
             return this;
         }
 
-        public Builder condition(AgentContextCompressionCondition condition) {
-            this.condition = condition;
+        public Builder decider(AgentContextCompressionDecider decider) {
+            this.decider = decider;
             return this;
         }
 

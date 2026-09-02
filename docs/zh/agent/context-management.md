@@ -161,7 +161,7 @@ AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理
 `AgentContextCompressionStateStore` 只需要实现 `load` 和带 `expectedVersion` 的 CAS `save`。首次保存使用版本 `0`；
 处理器成功压缩后会推进 `version` 和 `coveredUntilMessageId`；本轮 Token 数和 Turn 数只用于条件判断与事件监控，不写入持久化状态。
 业务侧应把这个状态和会话放在同一事务边界内，或使用数据库/Redis 的乐观锁，避免两个请求同时摘要而互相覆盖。
-每次会话请求都会读取状态，但只有 `AgentContextCompressionCondition` 返回 `true` 且存在新增消息时才调用摘要器和保存状态；
+每次会话请求都会读取状态，但只有 `AgentContextCompressionDecider` 返回 `true` 且存在新增消息时才调用摘要器和保存状态；
 因此达到一次阈值后，后续请求不会每轮重复调用摘要模型，直到新增历史再次满足触发条件。配置了增量策略后，
 Runner 会自动执行处理器，业务侧不需要手工调用 `compress(...)` 或传递 `getModelMessages()`。
 
