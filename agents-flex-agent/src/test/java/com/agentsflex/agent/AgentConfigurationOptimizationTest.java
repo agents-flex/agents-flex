@@ -431,7 +431,7 @@ public class AgentConfigurationOptimizationTest {
             .chatModel(model)
             .executionPolicy(AgentExecutionPolicy.builder()
                 .modelCallTimeoutMillis(20)
-                .retryClassifier((turn, error, call) -> false)
+                .retryDecider((turn, error, call) -> false)
                 .build())
             .build();
         long started = System.currentTimeMillis();
@@ -591,7 +591,7 @@ public class AgentConfigurationOptimizationTest {
             })
             .executionPolicy(AgentExecutionPolicy.builder()
                 .modelCallTimeoutMillis(20)
-                .retryClassifier((turn, error, call) -> false).build())
+                .retryDecider((turn, error, call) -> false).build())
             .build();
         long started = System.currentTimeMillis();
         AgentTurn turn = new AgentRunner().run(agent, "stream", AgentTurnOptions.builder()

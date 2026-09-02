@@ -1288,8 +1288,8 @@ public final class AgentRunner {
             return cancelTurn(turn);
         }
         AgentRetryPolicy retry = turn.getExecutionPolicy().getRetryPolicy();
-        if (turn.getExecutionPolicy().getRetryClassifier()
-            .isRetryable(turn, error,
+        if (turn.getExecutionPolicy().getRetryDecider()
+            .shouldRetry(turn, error,
                 resumeExecutionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS
                     && !turn.getPendingToolCalls().isEmpty()
                     ? turn.getPendingToolCalls().get(0) : null)

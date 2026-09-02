@@ -138,9 +138,9 @@ public final class AgentExecutionPolicy implements Serializable {
      */
     private final AgentParallelFailureStrategy parallelFailureStrategy;
     /**
-     * 进程内重试分类器，不进入 Snapshot。
+     * 进程内重试决策器，不进入 Snapshot。
      */
-    private transient AgentRetryClassifier retryClassifier;
+    private transient AgentRetryDecider retryDecider;
 
     /**
      * 从已校验构建器冻结一次 Turn 使用的全部执行控制策略。
@@ -167,7 +167,7 @@ public final class AgentExecutionPolicy implements Serializable {
         this.toolExecutionMode = builder.toolExecutionMode;
         this.maxParallelToolCalls = builder.maxParallelToolCalls;
         this.parallelFailureStrategy = builder.parallelFailureStrategy;
-        this.retryClassifier = builder.retryClassifier;
+        this.retryDecider = builder.retryDecider;
     }
 
     /**
@@ -180,8 +180,8 @@ public final class AgentExecutionPolicy implements Serializable {
         if (toolErrorMessageFactory == null) {
             toolErrorMessageFactory = ToolErrorMessageFactory.defaultFactory();
         }
-        if (retryClassifier == null) {
-            retryClassifier = AgentRetryClassifier.defaults();
+        if (retryDecider == null) {
+            retryDecider = AgentRetryDecider.defaults();
         }
     }
 
@@ -319,22 +319,22 @@ public final class AgentExecutionPolicy implements Serializable {
     }
 
     /**
-     * @return 进程内重试分类器；旧 Snapshot 恢复后若分类器不可序列化则返回默认分类器
+     * @return 进程内重试决策器；旧 Snapshot 恢复后若决策器不可序列化则返回默认决策器
      */
-    public AgentRetryClassifier getRetryClassifier() {
-        return retryClassifier == null ? AgentRetryClassifier.defaults() : retryClassifier;
+    public AgentRetryDecider getRetryDecider() {
+        return retryDecider == null ? AgentRetryDecider.defaults() : retryDecider;
     }
 
     /**
      * 从已加载的同版本 Agent 策略重新绑定不进入 Snapshot 的进程内回调。
      *
      * <p>数值限制和持久化策略继续使用 Turn 创建时的快照值；这里只恢复无法可靠序列化的函数对象，
-     * 防止任务跨进程恢复后静默改用默认错误映射或默认重试分类。</p>
+     * 防止任务跨进程恢复后静默改用默认错误映射或默认重试决策。</p>
      */
     void rebindRuntimeComponents(AgentExecutionPolicy source) {
         if (source == null) return;
         this.toolErrorMessageFactory = source.getToolErrorMessageFactory();
-        this.retryClassifier = source.getRetryClassifier();
+        this.retryDecider = source.getRetryDecider();
     }
 
     /**
@@ -386,7 +386,7 @@ public final class AgentExecutionPolicy implements Serializable {
         private long externalToolResultMaxCharacters;
         private AgentToolResultOverflowStrategy toolResultOverflowStrategy =
             AgentToolResultOverflowStrategy.FAIL;
-        private AgentRetryClassifier retryClassifier = AgentRetryClassifier.defaults();
+        private AgentRetryDecider retryDecider = AgentRetryDecider.defaults();
         private AgentToolExecutionMode toolExecutionMode = AgentToolExecutionMode.SEQUENTIAL;
         private int maxParallelToolCalls = 8;
         private AgentParallelFailureStrategy parallelFailureStrategy = AgentParallelFailureStrategy.FAIL_FAST;
@@ -548,10 +548,10 @@ public final class AgentExecutionPolicy implements Serializable {
         }
 
         /**
-         * 设置进程内重试分类器；它不会进入 Snapshot，恢复后使用恢复进程中的配置。
+         * 设置进程内重试决策器；它不会进入 Snapshot，恢复后使用恢复进程中的配置。
          */
-        public Builder retryClassifier(AgentRetryClassifier value) {
-            this.retryClassifier = value;
+        public Builder retryDecider(AgentRetryDecider value) {
+            this.retryDecider = value;
             return this;
         }
 
@@ -608,8 +608,8 @@ public final class AgentExecutionPolicy implements Serializable {
                 || externalToolResultMaxCharacters < 0) {
                 throw new IllegalStateException("timeout values must not be negative");
             }
-            if (retryClassifier == null) {
-                throw new IllegalStateException("retryClassifier must not be null");
+            if (retryDecider == null) {
+                throw new IllegalStateException("retryDecider must not be null");
             }
             if (maxParallelToolCalls <= 0 || parallelFailureStrategy == null) {
                 throw new IllegalStateException(

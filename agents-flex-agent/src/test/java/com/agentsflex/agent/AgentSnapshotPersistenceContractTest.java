@@ -99,14 +99,14 @@ public class AgentSnapshotPersistenceContractTest {
     }
 
     @Test
-    public void shouldRebindTransientErrorFactoryAndRetryClassifierAfterSnapshotRestore() throws Exception {
+    public void shouldRebindTransientErrorFactoryAndRetryDeciderAfterSnapshotRestore() throws Exception {
         AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
             .toolErrorMessageFactory((turn, call, error) -> {
                 ToolMessage message = new ToolMessage();
                 message.setContent("custom-error");
                 return message;
             })
-            .retryClassifier((turn, error, call) -> false)
+            .retryDecider((turn, error, call) -> false)
             .build();
         Agent originalAgent = Agent.builder("runtime-policy")
             .version("v1").chatModel(new AgentScenarioTestSupport.QueueChatModel())
@@ -119,8 +119,8 @@ public class AgentSnapshotPersistenceContractTest {
         ToolMessage custom = restored.getExecutionPolicy().getToolErrorMessageFactory().create(
             restored, new ToolCall("call", "lookup", "{}"), new IllegalStateException("hidden"));
         assertEquals("custom-error", custom.getContent());
-        assertTrue(!restored.getExecutionPolicy().getRetryClassifier()
-            .isRetryable(restored, new IllegalStateException("transient"), null));
+        assertTrue(!restored.getExecutionPolicy().getRetryDecider()
+            .shouldRetry(restored, new IllegalStateException("transient"), null));
     }
 
     private AgentTurnSnapshot roundTrip(AgentTurnSnapshot snapshot) throws Exception {

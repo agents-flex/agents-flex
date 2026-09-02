@@ -107,7 +107,7 @@ public class AgentValueObjectContractTest {
         assertBuildFailure(() -> AgentExecutionPolicy.builder().interruptedToolMessageTemplate(null).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().interruptedTurnMessageTemplate(null).build());
         assertBuildFailure(() -> AgentExecutionPolicy.builder().cancellationReason(null).build());
-        assertBuildFailure(() -> AgentExecutionPolicy.builder().retryClassifier(null).build());
+        assertBuildFailure(() -> AgentExecutionPolicy.builder().retryDecider(null).build());
     }
 
     @Test

@@ -12,10 +12,10 @@ import com.agentsflex.core.message.ToolCall;
  * 判断一次模型或工具失败是否值得自动重试。
  *
  * <p>实现通常应按异常类型、工具名称和是否具备幂等性进行判断。该回调是进程内策略，
- * 不会进入 Snapshot；跨进程恢复时由同版本 Agent 重新绑定，若无法提供则使用默认分类器。</p>
+ * 不会进入 Snapshot；跨进程恢复时由同版本 Agent 重新绑定，若无法提供则使用默认决策器。</p>
  */
 @FunctionalInterface
-public interface AgentRetryClassifier {
+public interface AgentRetryDecider {
 
     /**
      * @param turn     当前 Turn
@@ -23,12 +23,12 @@ public interface AgentRetryClassifier {
      * @param toolCall 失败的工具调用；模型调用失败时为空
      * @return 是否安排自动重试
      */
-    boolean isRetryable(AgentTurn turn, Throwable error, ToolCall toolCall);
+    boolean shouldRetry(AgentTurn turn, Throwable error, ToolCall toolCall);
 
     /**
      * 默认只重试非参数、非缺失工具、非配额类错误。
      */
-    static AgentRetryClassifier defaults() {
+    static AgentRetryDecider defaults() {
         return (turn, error, call) -> {
             if (error instanceof com.agentsflex.core.model.exception.ModelQuotaExceededException
                 || error instanceof com.agentsflex.core.model.exception.TokenLimitExceededException
