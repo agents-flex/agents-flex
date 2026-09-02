@@ -43,7 +43,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-/** 新增运行时能力的组合、隔离、恢复和并发场景测试。 */
+/**
+ * 新增运行时能力的组合、隔离、恢复和并发场景测试。
+ */
 public class AgentRuntimeCapabilitiesScenarioTest {
 
     @Test
@@ -146,6 +148,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
                 .message("Export requires review")
                 .reason("large data export")
                 .metadata("risk", "high")
+                .metadata("approvalCode", "business-value-must-not-override-protocol")
                 .build())
             .build();
         InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
@@ -156,8 +159,12 @@ public class AgentRuntimeCapabilitiesScenarioTest {
             AgentTurnOptions.builder().streaming(true).build());
 
         assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
-        assertEquals("EXPORT_REVIEW", waiting.getSuspension().getMetadata().get("approvalCode"));
+        assertEquals(ToolApprovalDecision.Outcome.REQUIRE_APPROVAL,
+            waiting.getSuspension().getApprovalOutcome());
+        assertEquals("EXPORT_REVIEW", waiting.getSuspension().getApprovalCode());
+        assertEquals("large data export", waiting.getSuspension().getApprovalReason());
         assertEquals("high", waiting.getSuspension().getMetadata().get("risk"));
+        assertFalse(waiting.getSuspension().getMetadata().containsKey("approvalCode"));
         AgentResumeCommand approval = AgentResumeCommand.approveTool("danger-1")
             .withMetadata("reviewer", "alice");
         AgentTurn ready = runner.submitResume(waiting.getId(), approval);
@@ -287,10 +294,25 @@ public class AgentRuntimeCapabilitiesScenarioTest {
 
     private static Tool tool(String name, java.util.function.Function<Map<String, Object>, Object> fn) {
         return new Tool() {
-            @Override public String getName() { return name; }
-            @Override public String getDescription() { return name; }
-            @Override public Parameter[] getParameters() { return new Parameter[0]; }
-            @Override public Object invoke(Map<String, Object> argsMap) { return fn.apply(argsMap); }
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public String getDescription() {
+                return name;
+            }
+
+            @Override
+            public Parameter[] getParameters() {
+                return new Parameter[0];
+            }
+
+            @Override
+            public Object invoke(Map<String, Object> argsMap) {
+                return fn.apply(argsMap);
+            }
         };
     }
 
@@ -306,7 +328,9 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         return new AiMessageResponse(context, null, message);
     }
 
-    /** 同时支持同步和流式调用的确定性脚本模型。 */
+    /**
+     * 同时支持同步和流式调用的确定性脚本模型。
+     */
     private static class ImmediateChatModel implements ChatModel {
         @Override
         public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
@@ -323,7 +347,9 @@ public class AgentRuntimeCapabilitiesScenarioTest {
     private static final class ScriptedChatModel implements ChatModel {
         private final Deque<AiMessage> responses = new ArrayDeque<>();
 
-        void enqueue(AiMessage message) { responses.add(message); }
+        void enqueue(AiMessage message) {
+            responses.add(message);
+        }
 
         @Override
         public AiMessageResponse chat(Prompt prompt, ChatOptions options) {

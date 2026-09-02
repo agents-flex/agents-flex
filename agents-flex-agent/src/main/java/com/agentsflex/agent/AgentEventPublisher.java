@@ -271,6 +271,17 @@ final class AgentEventPublisher {
                 "correlationId", suspension.getCorrelationId(),
                 "message", suspension.getMessage(),
                 "resumeExecutionPoint", suspension.getResumeExecutionPoint(),
+                "requestedAt", suspension.getRequestedAt(),
+                "timeoutMillis", suspension.getTimeoutMillis(),
+                "nextRunnableAt", suspension.getNextRunnableAt(),
+                "toolName", suspension.getToolName(),
+                "arguments", suspension.getArguments(),
+                "approvalOutcome", suspension.getApprovalOutcome(),
+                "approvalCode", suspension.getApprovalCode(),
+                "approvalReason", suspension.getApprovalReason(),
+                "formKey", suspension.getFormKey(),
+                "schema", suspension.getSchema(),
+                "inputTarget", suspension.getInputTarget(),
                 "metadata", suspension.getMetadata()));
     }
 
@@ -335,7 +346,7 @@ final class AgentEventPublisher {
             : AgentEventType.EXTERNAL_TOOL_COMPLETED;
         publish(turn, type,
             attributes("toolCallId", suspension.getCorrelationId(),
-                "toolName", suspension.getMetadata().get("toolName")));
+                "toolName", suspension.getToolName()));
     }
 
     /**

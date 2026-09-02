@@ -32,7 +32,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** request_user_input 控制工具和表单消息的完整恢复协议测试。 */
+/**
+ * request_user_input 控制工具和表单消息的完整恢复协议测试。
+ */
 public class AgentUserInputFormIntegrationTest {
 
     @Test
@@ -94,9 +96,10 @@ public class AgentUserInputFormIntegrationTest {
         assertEquals(AgentTurnStatus.WAITING_FOR_USER, waiting.getStatus());
         assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, waiting.getExecutionPoint());
         assertEquals("ticket-call", waiting.getSuspension().getCorrelationId());
-        assertEquals("TOOL", waiting.getSuspension().getMetadata().get("inputTarget"));
-        assertEquals("create_support_ticket",
-            waiting.getSuspension().getMetadata().get("toolName"));
+        assertEquals("TOOL", waiting.getSuspension().getInputTarget());
+        assertEquals("create_support_ticket", waiting.getSuspension().getToolName());
+        assertEquals("support_ticket_details", waiting.getSuspension().getFormKey());
+        assertEquals(schema, waiting.getSuspension().getSchema());
         assertEquals(1, waiting.getPendingToolCalls().size());
         assertEquals("create_support_ticket", waiting.getPendingToolCalls().get(0).getName());
         assertEquals(1, attempts.get());
@@ -203,9 +206,10 @@ public class AgentUserInputFormIntegrationTest {
         assertEquals(AgentTurnStatus.WAITING_FOR_USER, waiting.getStatus());
         assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, waiting.getExecutionPoint());
         assertEquals("input-1", waiting.getSuspension().getCorrelationId());
-        assertEquals("support_ticket_details",
-            waiting.getSuspension().getMetadata().get("formKey"));
-        assertEquals(schema, waiting.getSuspension().getMetadata().get("schema"));
+        assertEquals("support_ticket_details", waiting.getSuspension().getFormKey());
+        assertEquals(schema, waiting.getSuspension().getSchema());
+        assertFalse(waiting.getSuspension().getMetadata().containsKey("formKey"));
+        assertFalse(waiting.getSuspension().getMetadata().containsKey("schema"));
         assertEquals(1, waiting.getPendingToolCalls().size());
         AgentFormMessage pending = form(memory);
         assertEquals(AgentFormMessage.Status.PENDING, pending.getStatus());

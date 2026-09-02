@@ -107,11 +107,10 @@ final class AgentRunnerChatMemory {
             }
             if (suspension.getType() == AgentSuspensionType.USER_INPUT
                 && StringUtil.hasText(suspension.getCorrelationId())
-                && StringUtil.hasText(stringValue(suspension.getMetadata().get("formKey")))) {
+                && StringUtil.hasText(suspension.getFormKey())) {
                 AgentFormMessage form = AgentFormMessage.request(
                     turn.getId(), suspension.getCorrelationId(),
-                    stringValue(suspension.getMetadata().get("formKey")),
-                    mapValue(suspension.getMetadata().get("schema")));
+                    suspension.getFormKey(), suspension.getSchema());
                 memory.addMessageIfAbsent(form);
                 return;
             }
@@ -146,10 +145,20 @@ final class AgentRunnerChatMemory {
      * @param message    目标动作消息
      */
     private void copyMetadata(AgentSuspension suspension, Message message) {
+        Map<String, Object> values = new LinkedHashMap<>(suspension.getMetadata());
+        // 页面动作消息仍使用 metadata 作为扩展载体，但协议字段从 Suspension 属性显式投影。
+        putIfPresent(values, "toolName", suspension.getToolName());
+        putIfPresent(values, "approvalOutcome", suspension.getApprovalOutcome());
+        putIfPresent(values, "approvalCode", suspension.getApprovalCode());
+        putIfPresent(values, "approvalReason", suspension.getApprovalReason());
         // Metadata 基于 ConcurrentHashMap，不接受策略或模型参数中的可选 null 值。
-        for (Map.Entry<String, Object> entry : suspension.getMetadata().entrySet()) {
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
             if (entry.getValue() != null) message.putMetadata(entry.getKey(), entry.getValue());
         }
+    }
+
+    private void putIfPresent(Map<String, Object> values, String key, Object value) {
+        if (value != null) values.put(key, value);
     }
 
     /**

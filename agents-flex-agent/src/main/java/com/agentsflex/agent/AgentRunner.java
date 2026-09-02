@@ -66,7 +66,6 @@ import java.util.concurrent.*;
 public final class AgentRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AgentRunner.class);
-    private static final String INPUT_TARGET_METADATA = "inputTarget";
     private static final String TOOL_INPUT_TARGET = "TOOL";
 
     /**
@@ -1051,15 +1050,12 @@ public final class AgentRunner {
             if (AgentUserInputTool.isUserInputTool(tool)) {
                 try {
                     AgentFormDefinition form = AgentUserInputTool.resolveForm(tool, call);
-                    Map<String, Object> metadata = new LinkedHashMap<>();
-                    metadata.put("formKey", form.getFormKey());
-                    metadata.put("schema", form.getSchema());
-                    metadata.put("toolName", AgentUserInputTool.NAME);
                     Object title = form.getSchema().get("title");
                     String message = title == null
                         ? form.getFormKey() : String.valueOf(title);
                     AgentSuspension suspension = AgentSuspension.userInput(
-                        callKey(call), message, metadata,
+                        callKey(call), message, form.getFormKey(), form.getSchema(),
+                        AgentUserInputTool.NAME, null,
                         turn.getExecutionPolicy().getUserInputTimeoutMillis());
                     suspend(turn, suspension);
                     return AgentStepResult.of(response, results, null);
@@ -1119,13 +1115,9 @@ public final class AgentRunner {
                 // 输入请求发生在副作用之前；无论第几轮表单交互，均不提前耗尽调用预算。
                 turn.rollbackToolCallCount();
                 AgentFormDefinition form = request.getForm();
-                Map<String, Object> metadata = new LinkedHashMap<>();
-                metadata.put("formKey", form.getFormKey());
-                metadata.put("schema", form.getSchema());
-                metadata.put("toolName", call.getName());
-                metadata.put(INPUT_TARGET_METADATA, TOOL_INPUT_TARGET);
                 AgentSuspension suspension = AgentSuspension.userInput(
-                    callKey(call), request.getMessage(), metadata,
+                    callKey(call), request.getMessage(), form.getFormKey(), form.getSchema(),
+                    call.getName(), TOOL_INPUT_TARGET,
                     turn.getExecutionPolicy().getUserInputTimeoutMillis());
                 suspend(turn, suspension);
                 eventPublisher.notifyToolInputRequested(turn, call, form);
@@ -1854,14 +1846,13 @@ public final class AgentRunner {
             throw new IllegalStateException("user input suspension has no pending ToolCall");
         }
         ToolCall call = pending.get(0);
-        if (TOOL_INPUT_TARGET.equals(
-            String.valueOf(suspension.getMetadata().get(INPUT_TARGET_METADATA)))) {
+        if (TOOL_INPUT_TARGET.equals(suspension.getInputTarget())) {
             if (!hasData) {
                 throw new IllegalArgumentException(
                     "structured data is required for a suspended business tool");
             }
             if (!suspension.getCorrelationId().equals(callKey(call))
-                || !call.getName().equals(suspension.getMetadata().get("toolName"))) {
+                || !call.getName().equals(suspension.getToolName())) {
                 throw new IllegalStateException(
                     "user input suspension does not match the pending business ToolCall");
             }
@@ -1880,7 +1871,7 @@ public final class AgentRunner {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("status", "submitted");
-        body.put("formKey", suspension.getMetadata().get("formKey"));
+        body.put("formKey", suspension.getFormKey());
         if (hasData) body.put("data", command.getData());
         if (hasContent) body.put("content", command.getContent());
         ToolMessage result = new ToolMessage();
@@ -1908,8 +1899,12 @@ public final class AgentRunner {
             recordToolResume(turn, suspension.getCorrelationId(), AgentToolResumeType.APPROVAL,
                 metadata, null);
         }
-        turn.putMetadata("toolApprovalAudit." + suspension.getCorrelationId(),
-            new LinkedHashMap<String, Object>(suspension.getMetadata()));
+        Map<String, Object> approvalAudit = new LinkedHashMap<>(suspension.getMetadata());
+        putIfPresent(approvalAudit, "toolName", suspension.getToolName());
+        putIfPresent(approvalAudit, "approvalOutcome", suspension.getApprovalOutcome());
+        putIfPresent(approvalAudit, "approvalCode", suspension.getApprovalCode());
+        putIfPresent(approvalAudit, "approvalReason", suspension.getApprovalReason());
+        turn.putMetadata("toolApprovalAudit." + suspension.getCorrelationId(), approvalAudit);
         if (command.getType() == AgentResumeCommandType.REJECT_TOOL
             && StringUtil.hasText(command.getContent())) {
             turn.putMetadata("toolRejectionReason." + suspension.getCorrelationId(), command.getContent());
@@ -1947,7 +1942,7 @@ public final class AgentRunner {
         ToolCall call = pending.get(0);
         Tool tool = resolveTool(turn, call);
         if (!suspension.getCorrelationId().equals(callKey(call))
-            || !call.getName().equals(suspension.getMetadata().get("toolName"))
+            || !call.getName().equals(suspension.getToolName())
             || tool == null
             || tool.getExecutionTarget() != ToolExecutionTarget.EXTERNAL) {
             throw new IllegalStateException(
@@ -2057,6 +2052,13 @@ public final class AgentRunner {
         if (command.getType() != type) {
             throw new IllegalArgumentException(type + " command is required");
         }
+    }
+
+    /**
+     * 将非空的类型化挂起属性投影到审计 Map，兼容既有拒绝结果模板。
+     */
+    private void putIfPresent(Map<String, Object> values, String key, Object value) {
+        if (value != null) values.put(key, value);
     }
 
     /**

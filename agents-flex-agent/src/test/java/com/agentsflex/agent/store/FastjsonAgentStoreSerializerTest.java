@@ -27,11 +27,14 @@ import java.util.Map;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** fastjson2 Agent Store 默认序列化器的往返和类型安全测试。 */
+/**
+ * fastjson2 Agent Store 默认序列化器的往返和类型安全测试。
+ */
 public class FastjsonAgentStoreSerializerTest {
 
     @Test
@@ -96,6 +99,11 @@ public class FastjsonAgentStoreSerializerTest {
         assertEquals("lookup", decoded.getState().getPendingToolCalls().get(0).getName());
         assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS,
             decoded.getState().getExecutionPoint());
+        AgentSuspension decodedSuspension = decoded.getState().getSuspension();
+        assertEquals("lookup", decodedSuspension.getToolName());
+        assertTrue(decodedSuspension.getRequestedAt() > 0);
+        assertEquals(0L, decodedSuspension.getTimeoutMillis());
+        assertFalse(decodedSuspension.getMetadata().containsKey("toolName"));
         assertEquals(3, decoded.getState().getStepCount());
         assertEquals("tenant-1", decoded.getState().getMetadata().get("tenant"));
         assertEquals("登录系统", decoded.getState().getToolInputData()

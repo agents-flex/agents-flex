@@ -38,6 +38,41 @@ import static org.junit.Assert.fail;
 public class AgentExternalToolIntegrationTest {
 
     @Test
+    public void metadataDoesNotPopulateProtocolFields() {
+        Map<String, Object> legacy = new LinkedHashMap<>();
+        legacy.put("requestedAt", 100L);
+        legacy.put("timeoutMillis", 5000L);
+        legacy.put("nextRunnableAt", 200L);
+        legacy.put("toolName", "browser");
+        legacy.put("arguments", "{}");
+        legacy.put("approvalOutcome", "REQUIRE_APPROVAL");
+        legacy.put("approvalCode", "REVIEW");
+        legacy.put("approvalReason", "risk");
+        legacy.put("formKey", "form");
+        legacy.put("schema", java.util.Collections.singletonMap("type", "object"));
+        legacy.put("inputTarget", "TOOL");
+        legacy.put("businessId", "B-1");
+
+        AgentSuspension suspension = new AgentSuspension(AgentSuspensionType.EXTERNAL_TOOL,
+            "call", "wait", AgentTurnExecutionPoint.PROCESS_TOOLS, legacy);
+
+        assertEquals(0L, suspension.getRequestedAt());
+        assertEquals(0L, suspension.getTimeoutMillis());
+        assertEquals(0L, suspension.getNextRunnableAt());
+        assertEquals(null, suspension.getToolName());
+        assertEquals(null, suspension.getArguments());
+        assertEquals(null, suspension.getApprovalOutcome());
+        assertEquals(null, suspension.getApprovalCode());
+        assertEquals(null, suspension.getApprovalReason());
+        assertEquals(null, suspension.getFormKey());
+        assertTrue(suspension.getSchema().isEmpty());
+        assertEquals(null, suspension.getInputTarget());
+        assertEquals("B-1", suspension.getMetadata().get("businessId"));
+        assertFalse(suspension.getMetadata().containsKey("toolName"));
+        assertFalse(suspension.getMetadata().containsKey("requestedAt"));
+    }
+
+    @Test
     public void shouldSuspendExternalToolAndResumeWithMatchingToolMessage() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
@@ -77,7 +112,12 @@ public class AgentExternalToolIntegrationTest {
         assertEquals(AgentSuspensionType.EXTERNAL_TOOL, waiting.getSuspension().getType());
         assertEquals("browser-call", waiting.getSuspension().getCorrelationId());
         assertEquals("{\"accuracy\":\"high\"}",
-            waiting.getSuspension().getMetadata().get("arguments"));
+            waiting.getSuspension().getArguments());
+        assertEquals("read_browser_location", waiting.getSuspension().getToolName());
+        assertFalse(waiting.getSuspension().getMetadata().containsKey("arguments"));
+        assertFalse(waiting.getSuspension().getMetadata().containsKey("toolName"));
+        assertTrue(waiting.getSuspension().getRequestedAt() > 0);
+        assertEquals(0L, waiting.getSuspension().getTimeoutMillis());
         assertEquals(0, localInvocations.get());
         AgentEvent requested = event(events, AgentEventType.EXTERNAL_TOOL_REQUESTED);
         assertEquals("read_browser_location", requested.getData().get("toolName"));
