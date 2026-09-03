@@ -1,5 +1,39 @@
 # Agents-Flex ChangeLog
 
+## v2.2.9 20260903
+- fix(agent): propagate chat context into timed tool execution
+- feat(agent): enhance tool execution with chat context propagation
+- docs(agent): add demo documentation for agent showcase
+- refactor(agent): migrate suspension protocol fields to typed properties
+- feat(tool): add retry information to agent tool context
+- feat(compression): add compression start callback and refine event system
+- refactor(compression): replace compression condition with decider interface
+- refactor(agent): remove event data sanitization framework
+- refactor(agent): replace retry classifier with retry decider
+- feat(compression): enhance context compression with validation and size limits
+- feat(compression): add compression failure strategy and improve context management
+- fix(chat): ensure immutable chat options through copy operations
+- test(validation): enhance test coverage for edge cases and error conditions
+- feat(agent): add context compression timeout and parallel tool call controls
+- refactor(agent): optimize compression cache clearing and tool visibility filtering
+- feat(agent): enhance context compression and execution policies with advanced timeout and parallel execution features
+- feat(compression): add configurable context compression options
+- feat(agent): replace AgentTurnPhase with AgentTurnExecutionPoint for external tool execution
+- feat(tools): add execution tracking and resume context for tool calls
+- refactor(agent): remove child gagent and planning module in the agent
+- refactor(compression): replace coordinator with processor for context compression
+- refactor(agent): move exception classes to dedicated package
+- refactor(compression): replace compression trigger with condition interface
+- refactor(compression): replace compression policy trigger signature with input object
+- refactor(compression): simplify context compression coordinator and policy implementation
+- refactor(agent): move compression classes to separate package
+- feat(agent): add context compression events and integrate with agent runner
+- refactor(agent): consolidate context compression configuration into unified policy
+- docs(java): add comprehensive javadoc documentation for agent components
+- refactor(memory): remove default methods from ChatMemory interface
+- fix(core): strip markdown code fences from tool call arguments
+
+
 ## v2.2.8 20260817
 - refactor(memory): remove default methods from ChatMemory interface
 - refactor(doc-extractor): replace deprecated ImageUtils with ImageUtil
