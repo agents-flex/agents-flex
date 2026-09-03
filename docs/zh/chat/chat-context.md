@@ -120,6 +120,9 @@ if (context != null) {
 ThreadLocal 不会自动传播到业务新建线程、线程池任务或任意异步回调。异步代码需要的字段应显式传递，不要依赖
 稍后还能从 `ChatContextHolder` 读取。
 
+`AgentRunner` 会在自己的本地工具执行器中显式绑定本次模型响应的 `ChatContext`，因此工具、ToolInterceptor
+和 `aroundToolCall` 可以在该执行范围内读取它；工具内部自行创建的异步任务仍不会自动继承该上下文。
+
 ## 修改请求 Header
 
 `BaseModelConfig` 没有通用自定义 Header 配置，动态 Header 可在请求准备完成后的拦截器中加入：

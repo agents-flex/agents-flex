@@ -16,6 +16,7 @@ import com.agentsflex.core.message.SystemMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatContextHolder;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
@@ -79,6 +80,40 @@ public class AgentRunnerTest {
         assertEquals("account-1", captured.get().getContextAccountId());
         assertNull(configured.getContextConversationId());
         assertNull(configured.getContextTurnId());
+    }
+
+    @Test
+    public void shouldPropagateChatContextIntoTimedToolExecution() {
+        AtomicReference<ChatContext> captured = new AtomicReference<>();
+        QueueChatModel model = new QueueChatModel();
+        model.enqueue(prompt -> aiWithCalls(toolCall("call-1", "lookup", "{}")));
+        model.enqueue(prompt -> new AiMessage("done"));
+        Tool lookup = tool("lookup", args -> {
+            captured.set(ChatContextHolder.currentContext());
+            return "value";
+        });
+        ChatOptions options = ChatOptions.builder()
+            .contextBotId("bot-1")
+            .contextConversationId("conversation-1")
+            .contextAccountId("account-1")
+            .build();
+        Agent agent = Agent.builder("context-tool-agent")
+            .chatModel(model)
+            .chatOptions(options)
+            .tool(lookup)
+            .executionPolicy(AgentExecutionPolicy.builder()
+                .toolExecutionTimeoutMillis(1000)
+                .build())
+            .build();
+
+        AgentTurn turn = new AgentRunner().run(agent, "lookup");
+
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertNotNull(captured.get());
+        assertEquals("bot-1", captured.get().getBotId());
+        assertEquals("conversation-1", captured.get().getConversationId());
+        assertEquals("account-1", captured.get().getAccountId());
+        assertEquals(turn.getId(), captured.get().getTurnId());
     }
 
     @Test

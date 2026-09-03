@@ -14,8 +14,7 @@ import java.util.concurrent.Executors;
  */
 public final class AgentRunnerOptions {
     /**
-     * 超时控制所使用的共享 daemon 执行器。只有配置了模型或工具超时时才会提交任务，
-     * 因而默认执行路径仍然保持同步；daemon 线程不会阻止应用正常退出。
+     * 模型和工具调用使用的共享 daemon 执行器。daemon 线程不会阻止应用正常退出。
      */
     private static final Executor DEFAULT_ASYNC_EXECUTOR = Executors.newCachedThreadPool(runnable -> {
         Thread thread = new Thread(runnable, "agent-execution");
