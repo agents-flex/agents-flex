@@ -22,6 +22,9 @@ import com.agentsflex.agent.tool.*;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.ChatMemoryProvider;
 import com.agentsflex.core.message.*;
+import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatContextHolder;
+import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutionTarget;
@@ -1021,10 +1024,39 @@ public final class AgentRunner {
     /**
      * 逐个处理待执行 ToolCall，并在每个结果写入后保存 Snapshot。
      */
+    private ChatContext chatContextForToolExecution(AgentTurn turn, AiMessageResponse response) {
+        ChatContext responseContext = response == null ? null : response.getContext();
+        if (responseContext != null && responseContext.getOptions() != null) {
+            return responseContext;
+        }
+
+        // 恢复或自定义 ChatModel 未返回 Context 时，按当前 Turn 的有效选项补齐关联字段。
+        ChatContext context = new ChatContext();
+        if (responseContext != null) {
+            context.setPrompt(responseContext.getPrompt());
+            context.setConfig(responseContext.getConfig());
+            context.setRequestSpec(responseContext.getRequestSpec());
+            context.setStreaming(responseContext.isStreaming());
+        } else {
+            context.setPrompt(turn.getPrompt());
+            context.setStreaming(turn.isStreaming());
+        }
+        ChatOptions options = turn.getChatOptionsOverride();
+        if (options == null) options = turn.getAgent().getChatOptions();
+        if (options == null) options = new ChatOptions();
+        if (StringUtil.hasText(turn.getConversationId())) {
+            options.setContextConversationId(turn.getConversationId());
+        }
+        options.setContextTurnId(turn.getId());
+        context.setOptions(options);
+        return context;
+    }
+
     private AgentStepResult executePendingTools(AgentTurn turn, AiMessageResponse response) {
+        ChatContext chatContext = chatContextForToolExecution(turn, response);
         if (turn.getExecutionPolicy().getToolExecutionMode() == AgentToolExecutionMode.PARALLEL
             && turn.getPendingToolCalls().size() > 1) {
-            AgentStepResult parallel = executePendingToolsInParallel(turn, response);
+            AgentStepResult parallel = executePendingToolsInParallel(turn, response, chatContext);
             if (parallel != null) return parallel;
         }
         List<ToolMessage> results = new ArrayList<>();
@@ -1110,7 +1142,7 @@ public final class AgentRunner {
             ToolMessage completedResult;
             try {
                 turn.incrementToolCallCount();
-                completedResult = executeTool(turn, tool, call, runnerOptions.getToolExecutor());
+                completedResult = executeTool(turn, tool, call, runnerOptions.getToolExecutor(), chatContext);
             } catch (AgentFormRequiredException request) {
                 // 输入请求发生在副作用之前；无论第几轮表单交互，均不提前耗尽调用预算。
                 turn.rollbackToolCallCount();
@@ -1149,7 +1181,8 @@ public final class AgentRunner {
      * 并行执行一批已经明确允许的本地 ToolCall。需要审批、用户输入或外部工具时返回 null，
      * 由顺序状态机处理，以便每次挂起都能保存精确的恢复点。
      */
-    private AgentStepResult executePendingToolsInParallel(AgentTurn turn, AiMessageResponse response) {
+    private AgentStepResult executePendingToolsInParallel(AgentTurn turn, AiMessageResponse response,
+                                                         ChatContext chatContext) {
         List<ToolCall> calls = turn.getPendingToolCalls();
         List<Tool> tools = new ArrayList<>(calls.size());
         for (ToolCall call : calls) {
@@ -1186,7 +1219,7 @@ public final class AgentRunner {
                 eventPublisher.notifyToolStart(turn, call);
                 // 协调线程只负责维持批次并发上限；实际工具调用仍进入 Runner 配置的 toolExecutor。
                 futures.add(executor.submit(() -> executeTool(
-                    turn, tool, call, runnerOptions.getToolExecutor())));
+                    turn, tool, call, runnerOptions.getToolExecutor(), chatContext)));
             }
             List<ToolMessage> results = new ArrayList<>(calls.size());
             RuntimeException firstFailure = null;
@@ -1523,7 +1556,8 @@ public final class AgentRunner {
      * 不写入模型可见的工具参数 Schema。</p>
      */
     private ToolMessage executeTool(AgentTurn turn, Tool tool, ToolCall call,
-                                    java.util.concurrent.Executor executor) {
+                                    java.util.concurrent.Executor executor,
+                                    ChatContext chatContext) {
         List<ToolInterceptor> interceptors = turn.getAgent().getToolInterceptors();
 
         AgentToolProgressEmitter progressEmitter = (message, data) ->
@@ -1540,7 +1574,8 @@ public final class AgentRunner {
 
         AgentMiddlewareContext middlewareContext =
             AgentMiddlewareContext.forToolCall(this, turn, toolContext);
-        Object value = executeToolCallWithTimeout(turn, middlewareContext, interceptors, executor);
+        Object value = executeToolCallWithTimeout(
+            turn, middlewareContext, interceptors, executor, chatContext);
         // ToolMessage 内容必须是字符串：标量直接转换，结构化对象统一序列化为 JSON。
         ToolMessage result = new ToolMessage();
         result.setToolCallId(callKey(call));
@@ -1568,11 +1603,24 @@ public final class AgentRunner {
     private Object executeToolCallWithTimeout(AgentTurn turn,
                                               AgentMiddlewareContext context,
                                               List<ToolInterceptor> interceptors,
-                                              java.util.concurrent.Executor executor) {
+                                              java.util.concurrent.Executor executor,
+                                              ChatContext chatContext) {
         long timeout = turn.getExecutionPolicy().getToolExecutionTimeoutMillis();
         // 无论是否配置超时，都通过 toolExecutor 执行，确保线程池隔离、上下文传播和资源配额配置一致。
         // FutureTask 只负责同步等待结果；timeout=0 时使用无期限 get，不改变原有顺序执行语义。
-        FutureTask<Object> task = new FutureTask<>(() -> proceedToolCall(context, 0, interceptors));
+        FutureTask<Object> task = new FutureTask<>(() -> {
+            ChatContext previous = ChatContextHolder.currentContext();
+            try {
+                if (chatContext != null) ChatContextHolder.set(chatContext);
+                return proceedToolCall(context, 0, interceptors);
+            } finally {
+                if (previous == null) {
+                    ChatContextHolder.clear();
+                } else {
+                    ChatContextHolder.set(previous);
+                }
+            }
+        });
         executor.execute(task);
         try {
             return timeout <= 0 ? task.get() : task.get(timeout, TimeUnit.MILLISECONDS);
