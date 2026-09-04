@@ -291,8 +291,6 @@ export default withMermaid(defineConfig({
                         {text: '表单输入', link: '/zh/agent/form-input'},
                         {text: '上下文管理', link: '/zh/agent/context-management'},
                         {text: '消息压缩', link: '/zh/agent/message-compression'},
-                        {text: '任务规划', link: '/zh/agent/task-planning'},
-                        {text: '子 Agent', link: '/zh/agent/subagent'},
                         {text: '挂起和恢复', link: '/zh/agent/suspend-resume'},
                         {text: '预算控制', link: '/zh/agent/budget'},
                         {text: '错误重试', link: '/zh/agent/retry'},
@@ -304,7 +302,6 @@ export default withMermaid(defineConfig({
                         {text: 'AgentWorker', link: '/zh/agent/worker'},
                         {text: '常见问题', link: '/zh/agent/faq'},
                         {text: 'Demo: 人工审批', link: '/zh/agent/demo-human-approval'},
-                        {text: 'Demo: 自动任务规划', link: '/zh/agent/demo-task-planning'},
                         {text: 'Demo: 完整示例（控制台程序）', link: '/zh/agent/demo-console'},
                     ]
                 },
