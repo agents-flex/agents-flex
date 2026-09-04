@@ -139,4 +139,4 @@ mvn -pl agents-flex-agent-store/agents-flex-agent-store-jdbc -am \
 
 最终选择应以业务的主要瓶颈为准：创建与调度延迟优先看 Redis，数据治理与关系型集成优先看 MySQL，并在生产等价环境中用真实 Snapshot 再次验证。
 
-配置和 Store 契约详见 [Store 持久化](./store)。
+配置和 Store 契约详见 [任务快照持久化](./store)。

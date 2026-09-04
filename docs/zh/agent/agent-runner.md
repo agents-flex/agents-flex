@@ -1,299 +1,237 @@
 ---
 title: AgentRunner
-description: 理解 AgentRunner 的执行入口、step 循环、阻塞边界、依赖与定制方式。
+description: 了解 AgentRunner 如何创建、执行、暂停和恢复 Agent 任务，以及如何选择合适的执行入口。
 ---
 
 # AgentRunner
 
 ## 概述
 
-`AgentRunner` 是 Agent 状态机执行器。它创建、推进、暂停和恢复 `AgentTurn`，并统一处理 Snapshot、预算、重试、Middleware 与生命周期事件。
+`AgentRunner` 是 Agent 任务的执行器。
 
-Runner 自身不把 Turn 保存在实例字段中，适合作为应用级对象复用；真正的持久状态位于 `AgentTurnStore`。同一个 `AgentTurn` 对象不应由两个线程同时直接推进。
+`Agent` 负责定义大模型、指令、工具和规则，`AgentTurn` 负责记录一次具体任务，而 `AgentRunner` 负责让这次任务真正运行起来。
 
-## 整体执行流程
+它的主要职责包括：
 
-下面的流程图只展示 Runner 的核心控制流：创建或恢复 Turn、持续推进、进入阻塞或终态，以及外部恢复。
-Snapshot、事件和 Middleware 的具体触发位置属于实现细节，不在主流程中逐项展开。
+- 创建 `AgentTurn`；
+- 调用大模型；
+- 执行模型选择的 Java 工具；
+- 更新并保存任务进度；
+- 处理暂停、恢复和取消；
+- 检查执行次数、Token 和运行时间等限制。
+
+业务代码通常只需要选择合适的 Runner 方法，然后根据返回的 `AgentTurn` 状态决定下一步操作。
+
+## 与相关对象的关系
+
+| 对象 | 职责 |
+| --- | --- |
+| `Agent` | 定义助手使用的模型、指令、工具和规则 |
+| `AgentRunner` | 按照 Agent 配置执行任务 |
+| `AgentTurn` | 保存一次任务的状态、消息和结果 |
+| `AgentTurnStore` | 持久化任务进度，供 Runner 保存和恢复 |
+| `AgentLoader` | 根据 Agent ID 和版本重新加载 Agent 配置 |
+| `AgentWorker` | 在后台领取并执行 Runner 创建的任务 |
+
+Runner 本身不是任务数据库。它可以在应用中重复使用，实际任务状态由 `AgentTurn` 表示，并通过 `AgentTurnStore` 保存。
+
+## 简化执行流程
+
+大多数业务只需要理解下面这条主线：
 
 ```mermaid
-flowchart TD
-    Input["用户输入"] --> Create["创建 READY Turn<br/>保存初始 Snapshot"]
-    Create -->|"start(...)"| Ready["返回 READY Turn"]
-    Create -->|"run(...)"| Loop["runUntilBlocked(...)"]
-
-    Stored["已保存的 Turn"] --> Restore["restore(...)<br/>恢复 Snapshot 与 Agent 版本"]
-    Restore --> Restored["返回已恢复 Turn"]
-    Ready --> Worker["AgentWorker 领取并推进"]
-    Restored -->|"调用方继续执行"| Loop
-    Worker --> Loop
-
-    Loop --> Step["step(...)"]
-    Step --> Guard["检查 Lease、取消、预算与 maxSteps"]
-    Guard -->|"INVOKE_MODEL"| Model["构造消息窗口并调用模型"]
-    Guard -->|"PROCESS_TOOLS"| Tools["顺序处理待执行 ToolCall"]
-
-    Model -->|"最终回答"| Terminal["进入终态并返回"]
-    Model -->|"产生 ToolCall"| Tools
-    Tools -->|"工具结果已保存"| Continue["切换到下一执行阶段"]
-    Continue --> Loop
-
-    Guard -->|"已取消或达到限制"| Terminal
-    Tools -->|"等待审批 / 用户输入 / 重试"| Blocked
-
-    Blocked --> Command["外部条件满足<br/>AgentResumeCommand"]
-    Command -->|"resume(...)：立即执行"| Loop
-    Command -->|"submitResume(...)：仅恢复为可运行"| Runnable["恢复原 ExecutionPoint<br/>Status = RUNNING"]
-    Runnable --> Worker
+flowchart LR
+    Start["提交任务"] --> Runner["AgentRunner 执行"]
+    Runner --> Model["调用大模型"]
+    Model -->|"直接回答"| Done["返回 AgentTurn"]
+    Model -->|"需要工具"| Tool["执行 Java 工具"]
+    Tool --> Runner
+    Runner -->|"需要输入、审批或稍后重试"| Waiting["保存进度并等待"]
+    Waiting -->|"条件满足后恢复"| Runner
 ```
 
-### 主路径说明
+执行过程可以概括为：
 
-1. `run(...)` 和 `start(...)` 都先创建 `READY` Turn 并保存初始 Snapshot。`run(...)` 随即进入执行循环；`start(...)` 只返回 Turn，不会自行创建后台线程。
-2. `restore(...)` 只从 Store 恢复 Snapshot，并按其中的 Agent ID 与版本装配 Agent。恢复后可由调用方继续执行，也可由 `AgentWorker` 调度。
-3. `runUntilBlocked(...)` 循环调用 `step(...)`。每一步先检查执行资格和限制，再根据当前 ExecutionPoint 调用模型或处理工具。
-4. INVOKE_MODEL 阶段一次 Step 最多调用模型一次。最终回答会结束 Turn；ToolCall 会被记录并在 PROCESS_TOOLS 阶段按顺序处理。
-5. 审批、用户输入和延迟重试形成阻塞边界，不会占用线程等待。`resume(...)` 恢复后立即执行，`submitResume(...)` 只将 Turn 恢复为可运行状态。
+1. Runner 创建一个 AgentTurn。
+2. Runner 调用大模型，让模型判断下一步。
+3. 如果模型选择工具，Runner 执行工具，并把结果交回模型。
+4. 如果模型给出最终回答，任务完成。
+5. 如果需要用户输入、人工审批或稍后重试，Runner 保存进度并返回，不会一直占用线程等待。
 
-Runner 会在创建、状态转换、工具结果和终止等稳定边界保存 Snapshot，使 Turn 能够跨请求或进程恢复；
-Middleware 包围模型、工具和 Step 执行，但不会改变上图的主状态流转。
+一次任务可能多次执行“调用模型和执行工具”的过程。调用结束时，返回的 AgentTurn 可能已经完成，也可能正在等待、已经失败或达到限制，因此业务代码需要检查任务状态。
 
-### 异常与终止路径
+## 创建 Runner
 
-模型或工具异常统一进入失败处理：可恢复异常保存为 `RETRY_SCHEDULED`，确定性错误进入 `FAILED`。取消、预算、最大模型迭代和最大 Runner step 分别使用独立终态，调用方不需要从通用异常消息推断原因。
+### 本地示例
 
-## 构建 Runner
+最简单的创建方式如下：
 
 ```java
-ChatMemoryProvider memoryProvider = conversationId -> loadChatMemory(conversationId);
+AgentRunner runner = new AgentRunner();
+```
 
+这种方式使用进程内的 Agent 配置和任务存储，适合快速开始与本地测试。应用重启后，内存中的任务无法恢复。
+
+### 正式环境
+
+需要持久化和恢复任务时，可以通过 Builder 配置依赖：
+
+```java
 AgentRunner runner = AgentRunner.builder()
     .turnStore(turnStore)
     .agentLoader(agentLoader)
-    .chatMemoryProvider(memoryProvider) // 可选
+    .chatMemoryProvider(chatMemoryProvider) // 可选
     .build();
 ```
 
-Turn Store 和 AgentLoader 未提供时使用内存实现。`ChatMemoryProvider` 只负责根据稳定的
-conversationId 定位业务系统维护的 ChatMemory；`chatMemoryProvider` 是可选能力，不需要业务会话时
-无需配置，原有 `run(agent, message)` 与显式传入历史消息的 API 保持不变。生产环境的 Store 替换要求
-见 [Store 持久化](./store)。
+| 配置 | 作用 | 是否必需 |
+| --- | --- | --- |
+| `turnStore(...)` | 保存和读取任务进度 | 正式环境建议配置 |
+| `agentLoader(...)` | 恢复任务时加载对应版本的 Agent | 需要恢复或后台执行时配置 |
+| `chatMemoryProvider(...)` | 根据会话 ID 读取和保存聊天记录 | 需要连续对话时配置 |
 
-## 三组执行入口
+未显式配置时，Builder 会使用进程内实现。正式环境的持久化配置请查看 [任务快照持久化](./store)。
 
-### `run(...)`
+## 执行入口
 
-创建 Turn 并在当前线程持续执行到终止或阻塞：
+AgentRunner 提供了多种方法，但日常使用主要关注以下几个：
 
-```java
-AgentTurn turn = runner.run(agent, "查询订单 1001");
-```
+| 方法 | 作用 | 适用场景 |
+| --- | --- | --- |
+| `run(...)` | 创建任务并在当前线程中执行 | 同步请求和短任务 |
+| `start(...)` | 只创建任务，不立即执行 | 后台任务和长任务 |
+| `restore(...)` | 从 Store 读取任务最新进度 | 查询或重新装配已有任务 |
+| `resume(...)` | 提交外部结果，并在当前线程继续执行 | 审批或表单提交后立即继续 |
+| `submitResume(...)` | 提交外部结果，但不在当前线程执行 | 交给后台 Worker 继续 |
+| `cancel(...)` | 请求取消任务 | 用户停止任务 |
 
-适合同步请求和短任务。它不保证一定完成，审批、用户输入或重试都会返回阻塞 Turn。
-
-### `start(...)`
-
-只创建并保存 `READY` Snapshot：
-
-```java
-AgentTurn queued = runner.start(agent, "生成月度报告");
-```
-
-适合提交到后台，之后由 `AgentWorker` 领取。
-
-### `step(...)` 与 `runUntilBlocked(...)`
+### 同步执行
 
 ```java
-AgentStepResult oneStep = runner.step(turn);
-AgentTurn blockedOrDone = runner.runUntilBlocked(turn);
+AgentTurn turn = runner.run(agent, "查询订单 A1001 的状态");
+
+if (turn.getStatus() == AgentTurnStatus.COMPLETED) {
+    System.out.println(turn.getFinalOutput());
+} else {
+    System.out.println("当前状态：" + turn.getStatus());
+}
 ```
 
-`step` 只推进一次稳定执行步骤，适合调试、外部调度或实现细粒度 UI。`runUntilBlocked` 会循环调用 step。
+`run(...)` 会在当前线程持续执行，直到任务完成、失败或进入等待状态。它并不保证返回时状态一定是 `COMPLETED`。
 
-## 执行层次
+### 后台执行
 
-一次标准推进包含三层：
+```java
+AgentTurn turn = runner.start(agent, "生成本月销售报告");
+System.out.println("任务 ID：" + turn.getId());
+```
 
-1. `runUntilBlocked` 判断是否继续循环。
-2. `step` 处理取消、Lease、预算、上下文和 Middleware。
-3. 内置 ToolCall 状态机根据 ExecutionPoint 进入 INVOKE_MODEL 或 PROCESS_TOOLS 阶段。
+`start(...)` 只创建并保存状态为 `READY` 的任务，不会自动创建后台线程。需要由 `AgentWorker` 领取并执行，详见 [Worker](./worker)。
 
-模型返回 ToolCall 时，Runner 先记录 `pendingToolCalls` 并保存 Snapshot，随后才审批和执行。这个顺序是恢复一致性的关键。
+### 恢复等待中的任务
 
-## Step 结果
+下面的示例提交工具审批结果，并立即继续执行：
 
-`AgentStepResult` 只返回本步骤直接产生的内容：
+```java
+AgentTurn resumed = runner.resume(
+    turnId,
+    AgentResumeCommand.approveTool(toolCallId)
+);
+```
 
-- `getResponse()`：本步骤调用模型得到的响应；未调用模型时为 `null`。
-- `getToolMessages()`：本步骤执行工具后写入的结果消息；没有工具结果时为空列表。
-- `getError()`：本步骤触发重试或失败时关联的异常；正常步骤通常为 `null`。
+如果当前接口只负责接收审批结果，实际任务由后台 Worker 执行，可以使用：
 
-运行是否继续、阻塞或终止，以及是完成、取消、达到 `maxSteps` 还是预算耗尽，统一读取
-`AgentTurn.getStatus()`。这样 Step 结果不会再维护一套与 `AgentTurnStatus` 重复的状态类型。
+```java
+AgentTurn resumed = runner.submitResume(
+    turnId,
+    AgentResumeCommand.approveTool(toolCallId)
+);
+```
+
+`resume(...)` 会在当前线程继续运行，`submitResume(...)` 只让任务恢复为可执行状态。两者都会继续原来的 AgentTurn，不会从头创建新任务。
+
+表单输入、审批和外部工具结果使用不同的恢复命令，详见[挂起与恢复](./suspend-resume)。
 
 ## 恢复与取消
 
+`restore(...)` 根据任务 ID 读取已保存的最新进度：
+
 ```java
 AgentTurn restored = runner.restore(turnId);
-AgentTurn resumed = runner.resume(turnId, AgentResumeCommand.approveTool(callId));
-AgentTurn cancelled = runner.cancel(turnId);
 ```
 
-取消是协作式的：Store 先保存单调取消标志，Runner 在安全边界转换为 `CANCELLED`。它不保证立即中断已经发出的 HTTP 请求或工具函数。
+该方法只恢复任务对象，不会自动继续执行。需要继续普通可运行任务时，可以调用 `runner.run(restored)`；处于等待状态的任务应先提交与等待原因匹配的恢复命令。
 
-取消、失败、预算耗尽等异常终止场景会补齐未完成的 ToolCall，并追加一条 Turn 收束消息。消息内容可以在执行策略中配置：
+取消任务时使用：
 
 ```java
-AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
-    .interruptedToolMessageTemplate("工具 {toolName} 未完成：{reason}")
-    .interruptedTurnMessageTemplate("本轮任务已结束：{reason}")
-    .cancellationReason("用户主动停止")
-    .build();
+AgentTurn turn = runner.cancel(turnId);
 ```
 
-工具消息模板支持 `{reason}`、`{turnId}`、`{toolCallId}` 和 `{toolName}`；Turn 消息模板支持
-`{reason}` 和 `{turnId}`。`cancellationReason` 会作为主动取消时的 `{reason}`；未配置时默认使用
-`turn cancelled by caller`。
+取消采用协作方式。Runner 会记录取消请求，并在当前模型调用或工具调用结束后的安全位置停止继续执行。它不会强制中断已经发出的 HTTP 请求或正在运行的 Java 方法。
 
-## 业务会话入口
+## 单步执行
 
-需要让页面时间线与 Agent 长任务自动衔接时，可以配置 ChatMemory Provider：
+绝大多数业务使用 `run(...)` 或 `start(...)` 即可。只有需要调试、自定义调度或逐步展示执行过程时，才需要以下方法：
+
+```java
+AgentStepResult result = runner.step(turn);
+AgentTurn latest = runner.runUntilBlocked(turn);
+```
+
+- `step(...)` 只推进一个执行步骤；
+- `runUntilBlocked(...)` 持续执行，直到任务结束或进入等待状态。
+
+任务最终处于什么状态，应读取 `AgentTurn.getStatus()`；`AgentStepResult` 只描述当前步骤产生的模型响应、工具消息或错误。
+
+## 连续对话
+
+需要让多个 AgentTurn 共享聊天历史时，可以配置 `ChatMemoryProvider`：
 
 ```java
 AgentRunner runner = AgentRunner.builder()
     .turnStore(turnStore)
     .agentLoader(agentLoader)
-    .chatMemoryProvider(conversationId -> chatMemoryRepository.load(conversationId))
+    .chatMemoryProvider(id -> chatMemoryRepository.load(id))
     .build();
 
-AgentTurn turn = runner.run(agentId, conversationId,
-    new UserMessage("继续上一个问题"));
+AgentTurn turn = runner.run(
+    agent,
+    "conversation-1001",
+    "继续查询上一笔订单"
+);
 ```
 
-Runner 会从 `ChatMemory.getModelMessages(agent.getMaxAttachedMessages())` 分页读取最近的模型可见历史，
-不会把完整业务会话复制进 Turn。Snapshot 成功保存后，再把本轮新增消息幂等投影到 ChatMemory；恢复
-Turn 时也会重试投影。ChatMemory 写入失败不会把已经正确保存的 Turn 改成失败，`AgentTurnStore` 始终是
-执行状态的事实来源。
+Runner 会根据会话 ID 读取之前的聊天记录，并在任务进度保存后同步本轮新增消息。同一会话同时只能有一个未结束的 Turn；如果原任务正在等待审批或表单，应恢复原 Turn，而不是创建新的普通消息任务。
 
-不配置 Provider 时，仍可显式传入历史：
+会话历史的管理方式请查看[上下文管理](./context-management)。
 
-```java
-AgentTurn turn = runner.run(agent, history,
-    new UserMessage("继续上一个问题"));
-```
+## 运行事件
 
-该入口只复制传入的历史，不会修改外部 ChatMemory。显式历史模式不绑定 conversationId；业务会话模式
-会在创建初始 Snapshot 时检查同一 conversationId 是否已有未结束 Turn。冲突时抛出
-`AgentConversationBusyException`，其中包含 `conversationId`、活动 `turnId` 和当前状态。
-
-该异常位于 `com.agentsflex.agent.exception` 包。
-
-```java
-try {
-    runner.run(agentId, conversationId, new UserMessage("继续处理"));
-} catch (AgentConversationBusyException busy) {
-    // 可以返回 HTTP 409，或把消息放入业务侧队列
-    log.info("conversation is busy: {}", busy.getStatus());
-}
-```
-
-`WAITING_FOR_USER`、`WAITING_FOR_APPROVAL` 和 `WAITING_FOR_TOOL` 不是普通消息可以覆盖的状态，
-必须使用原 Turn 的 `resume(...)` 提交表单、审批命令或外部工具结果。`RUNNING` 和 `RETRY_SCHEDULED` 也会阻止
-新的普通 Turn。Turn 进入终态后，会话可以开始下一轮。
-
-`InMemoryAgentTurnStore` 已提供同进程多个 Runner 之间的原子检查和创建。JDBC、Redis 或其他生产 Store
-应实现 `AgentTurnStore.findActiveTurn`，并在 `save(snapshot, -1)` 创建新 Turn 时使用数据库事务、唯一约束或 Redis
-脚本实现跨进程原子保护；否则只能依赖 Runner 实例内的检查，不能保证分布式并发安全。排队、拒绝响应和
-消息重试属于业务系统职责，不由 Runner 保存队列。
-
-### 业务侧排队与继续执行
-
-如果用户在 `RUNNING` 或其他未结束状态下继续发送消息，业务系统可以将消息写入自己的 Inbox 或消息队列，
-而不是立即再次调用 `runner.run(...)`。建议至少保存 `conversationId`、稳定 `messageId`、消息内容、
-`PENDING/PROCESSING/COMPLETED/FAILED` 状态和顺序号。
-
-监听终态事件，把下一条消息交给业务 Worker：
-
-```java
-runner.addEventListener(event -> {
-    if (event.getType() == AgentEventType.TURN_COMPLETED
-        || event.getType() == AgentEventType.TURN_FAILED
-        || event.getType() == AgentEventType.TURN_CANCELLED
-        || event.getType() == AgentEventType.MAX_ITERATIONS_REACHED
-        || event.getType() == AgentEventType.MAX_STEPS_REACHED
-        || event.getType() == AgentEventType.BUDGET_EXCEEDED) {
-        // 只记录可重试的触发信号；不要在监听器中递归调用 Runner
-        inbox.markTurnFinished(event.getTurnId(),
-            event.getType(), event.getEventId());
-    }
-});
-```
-
-Worker 再原子领取下一条消息并启动新的 Turn：
-
-```java
-PendingUserMessage pending = inbox.claimNext(conversationId);
-if (pending != null) {
-    try {
-        AgentTurn next = runner.run(agentId, conversationId,
-            new UserMessage(pending.getContent()));
-        inbox.markCompleted(pending.getMessageId(), next.getId());
-    } catch (AgentConversationBusyException busy) {
-        inbox.releaseForRetry(pending.getMessageId());
-    } catch (RuntimeException error) {
-        inbox.markFailed(pending.getMessageId(), error.getMessage());
-    }
-}
-```
-
-`TURN_SUSPENDED` 不表示执行完毕。`WAITING_FOR_USER`、`WAITING_FOR_APPROVAL` 和 `WAITING_FOR_TOOL`
-必须先通过原 Turn 的 `resume(...)` 或 `submitResume(...)` 完成恢复；普通排队消息
-不能替代表单数据、审批命令或工具结果。终态中的失败、取消和预算耗尽也应由业务策略决定是继续、重试还是转人工，
-不能无条件执行下一条消息。
-
-事件只在当前 Runner 进程内同步投递，不能作为唯一可靠触发源。监听器应快速写入业务 Outbox 或发送
-消息，由 Worker 做幂等消费。生产系统还应定时扫描“队列仍为 PENDING、会话没有活动 Turn、最近 Turn
-已进入终态”的记录，补偿监听器丢失或进程崩溃造成的空窗。排队消息在真正创建新 Turn 前不要写入
-`ChatMemory`，避免被当前 Turn 的模型上下文提前看到。
-
-### 异常终态的历史收束
-
-当 Turn 因取消、不可恢复错误、最大迭代次数、最大 Step 或预算耗尽而终止时，Runner 会在保存终态
-Snapshot 前收束模型消息协议：
-
-1. 为仍在 `pendingToolCalls` 中的每个 ToolCall 追加带有取消或错误原因的 `ToolMessage`。
-2. 追加一条普通的模型可见 `AiMessage`，说明本轮未正常完成。
-3. 清除待执行 ToolCall 后保存 Snapshot，并将收束后的消息投影到 ChatMemory。
-
-因此，同一 `conversationId` 在收到 `TURN_CANCELLED` 或 `TURN_FAILED` 后可以开始新的普通 Turn，
-其模型历史仍保持完整的 `assistant -> tool -> assistant -> user` 边界。`RETRY_SCHEDULED` 不会触发
-收束，因为它还会从原 ExecutionPoint 继续恢复；人工审批拒绝也会先生成正常 ToolMessage，再让模型生成最终回答。
-
-页面历史仍保留原始工具、取消和失败事件；收束消息主要用于保证后续模型请求的协议有效性。
-
-## 外部恢复边界
-
-同步 `resume(...)` 适合同一服务内立即恢复。只更新状态并交给 Worker 时使用：
-
-```java
-AgentTurn ready = runner.submitResume(
-    turnId,
-    AgentResumeCommand.approveTool(callId));
-```
-
-跨服务回调应先进入业务系统自己的数据库 Inbox 或消息队列。业务层完成幂等、重试和审计后调用 `submitResume`，Framework 不保存或消费外部恢复事件。
-
-## 监听扩展
+可以通过事件监听器接收任务状态、模型增量输出和工具进度：
 
 ```java
 runner.addEventListener(eventListener);
 ```
 
-统一事件监听器覆盖生命周期、模型增量和工具进度；持久化审计由业务监听器自行实现。监听器应快速返回，不能把业务主流程依赖在“监听一定成功”上。
+事件可用于更新页面、记录日志和采集监控指标。监听器应快速返回，不应在监听器中再次递归调用 Runner。事件只负责通知，不代替 AgentTurnStore 保存任务状态。
 
-## 自定义建议
+完整事件说明请查看 [AgentEventListener](./agent-event-listener)。
 
-- 应用层共享一个配置完整的 Runner，不要为每个请求创建一套内存 Store。
-- 短任务使用 `run`，长任务使用 `start + AgentWorker`。
-- 不要绕过 Runner 直接修改快照；状态转换、事件和版本更新必须保持一致。
-- 工具副作用使用 `AgentToolContext.current().getIdempotencyKey()` 返回的稳定调用 ID 实现业务幂等。
+## 使用建议
+
+1. 在应用中复用配置完整的 AgentRunner，不要为每个请求创建独立的内存 Store。
+2. 短任务使用 `run(...)`，长任务使用 `start(...)` 配合 AgentWorker。
+3. 每次调用后都检查 AgentTurn 状态，不要假设任务一定正常完成。
+4. 等待审批或输入时恢复原 Turn，不要创建新 Turn。
+5. 不要让两个线程同时直接执行同一个 AgentTurn。
+6. 不要绕过 Runner 直接修改任务状态或覆盖已保存的任务进度。
+7. 退款、扣款和发货等工具应在业务层做好权限校验和防重复执行。
+
+## 下一步
+
+- 了解一次任务保存的内容：[AgentTurn](./agent-turn)。
+- 了解任务暂停和恢复：[挂起与恢复](./suspend-resume)。
+- 配置任务持久化：[任务快照持久化](./store)。
+- 执行后台长任务：[Worker](./worker)。
+- 监听执行进度：[AgentEventListener](./agent-event-listener)。

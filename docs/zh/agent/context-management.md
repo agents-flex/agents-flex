@@ -1,264 +1,316 @@
 ---
 title: 上下文管理
-description: 管理业务 ChatMemory、消息窗口、摘要、多模态内容和工具结果边界。
+description: 让 Agent 在连续对话中保留必要信息，同时控制历史消息带来的成本、延迟和长度。
 ---
 
 # 上下文管理
 
 ## 概述
 
-Agent 的上下文同时面对两个目标：保留足够历史以正确决策，又避免消息和工具结果无限增长。Framework 在模型调用前构建独立的上下文窗口：按完整 Turn 选择历史，使用 `maxAttachedTurns` 控制语义范围，使用 `maxAttachedMessages` 作为消息数量上限，并可将较早的已完成工具 Turn 归一化为 UserMessage + 最终 AiMessage。该过程不会清空或重写 `ChatMemory`。
+大模型不会自动记住之前发生的事情。每次调用模型时，都需要把当前问题以及必要的历史信息一起发送给
+它，模型才能理解“它”“刚才那个订单”“继续处理”等表达。
 
-压缩扩展类型统一位于 `com.agentsflex.agent.compression` 包；Agent 通过 `compressionPolicy(...)` 统一配置规则压缩、即时语义压缩或带持久化状态的增量压缩。
+例如，在客服会话中，用户先说：
 
-## 消息的三个层次
+> 我的订单号是 O-1001，昨天显示已经发货。
 
-- 业务 `ChatMemory`：由应用维护，跨多轮 Turn 保存历史。
-- `AgentTurn` 的 `MemoryPrompt`：本次任务的协议消息和系统指令。
-- 模型调用 Prompt：依据 `maxAttachedTurns`、`maxAttachedMessages` 和工具 Turn 压缩规则生成的当前视图。
+随后又问：
 
-`ChatMemory.getMessages(count)` 返回页面使用的完整时间线；`getModelMessages(count)` 先排除
-`modelVisible=false` 的 UI 消息，再对模型消息应用数量限制。窗口策略只影响一次模型调用视图，不会
-删除 Turn、Snapshot 或业务 `ChatMemory` 中的原始消息。
+> 它什么时候能到？
 
-## 业务会话管理
+如果没有带上前一轮对话，模型就不知道“它”指的是哪个订单。但如果把几个月的所有聊天记录、工具
+结果和文件内容都发送给模型，又会带来新的问题：请求更慢、Token 成本更高，并且可能超过模型允许的
+上下文长度。
+
+上下文管理解决的就是这个平衡问题：
+
+- 保留当前任务真正需要的历史，让 Agent 能够连续理解用户意图；
+- 限制每次发送给模型的历史范围，控制响应时间和 Token 消耗；
+- 对较早内容进行精简或摘要，为近期对话留出空间；
+- 控制大型工具结果和文件内容，避免无关信息占满上下文。
+
+上下文管理只决定“这一次让模型看到哪些信息”，不会自动删除业务系统保存的原始聊天记录。
+
+## 适用场景
+
+| 场景 | 常见问题 | 建议做法 |
+| --- | --- | --- |
+| 连续客服对话 | 模型忘记订单号、产品或用户要求 | 使用固定会话 ID 保存历史 |
+| 长时间业务助手 | 历史越来越长，请求逐渐变慢 | 限制历史轮数和消息数量 |
+| 工具调用较多 | 查询结果和中间过程占用大量空间 | 精简已完成的工具过程 |
+| 长期会话 | 早期约束仍然重要，但无法保留全部原文 | 使用摘要保留关键事实 |
+| 文档、日志分析 | 单次工具结果可能非常大 | 分页、摘要或只返回文件引用 |
+| 图片和文件输入 | 二进制内容增加存储和请求压力 | 文件单独存储，上下文保留受控引用 |
+
+只有单轮问答、每次请求彼此独立的应用，通常不需要会话历史。只要用户会使用“继续”“上一个”“按刚才
+的条件”等表达，就需要考虑上下文管理。
+
+## 快速开始
+
+下面创建一个可以连续对话的客服 Agent。示例中的 `chatModel` 表示已经创建好的大模型客户端。
+
+### 1. 按会话保存聊天记录
 
 ```java
-ChatMemoryProvider memoryProvider = id -> loadMemory(id);
+String conversationId = "customer-1001";
+Map<String, ChatMemory> memories = new ConcurrentHashMap<>();
+memories.put(
+    conversationId,
+    new DefaultChatMemory(conversationId));
+
+ChatMemoryProvider memoryProvider = id -> memories.get(id);
 
 AgentRunner runner = AgentRunner.builder()
     .chatMemoryProvider(memoryProvider)
     .build();
-AgentTurn turn = runner.run(agentId, conversationId, new UserMessage("继续处理"));
 ```
 
-应用负责持久化 conversationId、`ChatMemory` 和当前未结束的 turnId。Runner 会在 Store 支持会话原子保护时
-拒绝同一业务会话的并发新 Turn；业务系统仍应捕获 `AgentConversationBusyException`，决定返回冲突、排队
-或合并消息。阻塞时必须按已保存的 turnId 恢复原 Turn，完成后再开始下一轮。`ChatMemoryProvider` 只定位 Memory，
-不创建 conversationId，也不拥有会话生命周期。Provider 未配置时，应用也可以继续显式传入历史并
-自行回写。
+| 配置 | 作用 |
+| --- | --- |
+| `ChatMemory` | 保存一段会话中的用户消息和 Agent 回复 |
+| `conversationId` | 标识一段连续会话，同一个会话应始终使用同一个 ID |
+| `ChatMemoryProvider` | 根据会话 ID 找到对应的聊天记录 |
+| `chatMemoryProvider(...)` | 将会话记录接入 `AgentRunner` |
 
-自定义持久化 `ChatMemory` 应实现以下查询和写入语义：
+业务系统负责创建会话和 `conversationId`，Provider 只负责查找已经存在的会话。找不到对应会话时，不应
+静默创建另一份同名记录。
 
-- `getMessages(offset, count)` 从最新消息向前分页，页内仍按从旧到新排列。
-- `getMessage(messageId)` 使用主键或索引读取单条消息。
-- `addMessageIfAbsent` 按稳定 `messageId` 原子幂等追加。
-- `updateMessage(message, expectedVersion)` 按消息 ID 和版本 CAS 更新。
+`DefaultChatMemory` 将消息保存在当前进程内，适合本地学习。应用重启后内容会丢失，生产环境应替换为
+数据库或缓存实现。
 
-接口为兼容已有实现提供默认分页和查询逻辑，但数据库实现应覆盖它们，避免逐步扩大尾部查询。审批消息
-需要持久化更新时必须覆盖 `updateMessage`。Runner 不会调用 `clear()`。
+### 2. 设置模型可以读取的历史范围
 
-## 模型读取窗口
+```java
+Agent agent = Agent.builder("support-agent")
+    .instructions(
+        "你是订单客服。请结合当前会话理解用户的指代；"
+            + "缺少必要信息时应明确询问，不得猜测订单状态。")
+    .chatModel(chatModel)
+    .maxAttachedTurns(6)
+    .maxAttachedMessages(40)
+    .build();
+```
+
+| 配置 | 作用 |
+| --- | --- |
+| `maxAttachedTurns(6)` | 每次调用模型时，最多附带最近 6 轮完整对话 |
+| `maxAttachedMessages(40)` | 最多附带 40 条历史消息，防止某一轮包含过多工具结果 |
+
+这里的“一轮”从一次用户输入开始，包括 Agent 为完成该请求产生的回复和工具结果。按完整轮次保留历史，
+可以避免只留下结果、却丢失对应问题。
+
+### 3. 使用同一个会话 ID 连续提问
+
+```java
+AgentTurn first = runner.run(
+    agent,
+    conversationId,
+    "我的订单号是 O-1001，昨天显示已经发货。");
+
+AgentTurn second = runner.run(
+    agent,
+    conversationId,
+    "它什么时候能到？");
+```
+
+第二次执行时，Runner 会根据 `conversationId` 找到之前的消息，并在配置范围内将历史提供给模型。因此
+模型可以知道“它”指的是订单 `O-1001`。
+
+不同用户或不同业务会话必须使用不同的 `conversationId`，否则可能造成上下文串线和数据泄露。
+
+## 聊天记录与模型上下文
+
+业务保存的聊天记录和本次发送给模型的上下文不是同一个概念：
+
+| 内容 | 用途 | 是否受窗口配置影响 |
+| --- | --- | --- |
+| 完整聊天记录 | 页面展示、业务留存和审计 | 否 |
+| 模型上下文 | 帮助模型处理当前请求 | 是 |
+
+例如，页面可以展示最近一年的完整会话，但模型每次只读取最近 6 轮。调整
+`maxAttachedTurns(...)` 或 `maxAttachedMessages(...)` 只会改变模型本次看到的范围，不会清空聊天页面
+或删除数据库中的原始消息。
+
+表单和审批等页面状态也可以出现在聊天时间线中，但不会作为普通对话内容发送给模型。
+
+## 设置上下文窗口
+
+Agents-Flex 默认最多附带最近 10 轮、100 条消息。多数应用可以先使用默认值，根据实际对话长度、模型
+限制和成本监控再进行调整。
+
+### 按轮数限制
+
+```java
+.maxAttachedTurns(6)
+```
+
+轮数最接近用户对话的语义，通常应作为主要限制。值越大，模型能看到的历史越多，但请求长度和成本也
+会增加。
+
+### 按消息数量限制
+
+```java
+.maxAttachedMessages(40)
+```
+
+一轮任务可能包含多次模型回复和工具结果，因此只限制轮数仍可能产生很长的上下文。消息数量限制用于
+防止这种情况。
+
+Runner 会尽量保留完整的近期轮次，而不是从一组相关消息中间截断。当前正在执行的任务也会优先保持
+完整，所以最终消息数在必要时可能超过配置值。
+
+### 按 Token 数限制
+
+不同消息的长度差异很大，需要更精确控制时，可以增加 Token 限制：
 
 ```java
 Agent agent = Agent.builder("support-agent")
     .chatModel(chatModel)
-    .maxAttachedTurns(5)
-    .maxAttachedMessages(40)
+    .maxAttachedTurns(10)
+    .maxAttachedMessages(100)
+    .maxAttachedTokens(
+        16_000,
+        messages -> tokenCounter.estimate(messages))
+    .build();
+```
+
+| 参数 | 作用 |
+| --- | --- |
+| `16_000` | 本次历史消息允许使用的最大估算 Token 数 |
+| `tokenCounter` | 由应用提供的 Token 估算器，应与所用模型尽量接近 |
+
+Token 限制默认为关闭状态。不同模型的分词方式不同，因此 Agents-Flex 不会假设一种固定算法；启用该
+限制时必须由应用提供估算器。
+
+### 如何选择限制
+
+| 应用情况 | 建议 |
+| --- | --- |
+| 对话较短，基本没有工具 | 先使用默认值 |
+| 只需要理解最近几次交流 | 适当降低 `maxAttachedTurns` |
+| 每轮会产生多条工具结果 | 同时设置 `maxAttachedMessages` |
+| 接近模型上下文上限 | 再增加 `maxAttachedTokens` |
+| 很早以前的信息仍然重要 | 使用摘要，不要只扩大窗口 |
+
+窗口不应设置得越大越好。过多无关历史可能稀释当前问题，让模型更难找到真正重要的信息。
+
+## 精简已完成的工具过程
+
+一次工具任务可能包含用户问题、工具调用过程、工具返回内容和最终回复。对于已经完成的较早任务，模型
+通常只需要知道用户问了什么以及最终结论，不需要反复读取全部中间过程。
+
+可以保留最近几轮的完整过程，同时精简更早的工具过程：
+
+```java
+Agent agent = Agent.builder("support-agent")
+    .chatModel(chatModel)
     .compressionPolicy(AgentContextCompressionPolicy.builder()
         .compactCompletedToolTurns(true)
-        .keepRecentTurns(2)
-        .compressor(messages -> summarizeForModel(messages))
+        .keepRecentTurns(3)
         .build())
     .build();
 ```
 
-默认最多附加最近 10 个完整 Turn 和 100 条消息。`maxAttachedTurns` 是主要的语义窗口，
-`maxAttachedMessages` 是安全上限；框架不会从 ToolCall/ToolMessage 中间硬截断。单个当前 Turn
-即使超过消息上限，也会保留完整协议，避免模型收到孤立的 ToolMessage 或未闭合 ToolCall。
+| 配置 | 作用 |
+| --- | --- |
+| `compactCompletedToolTurns(true)` | 对较早且已经完成的工具任务，只保留问题和最终回复 |
+| `keepRecentTurns(3)` | 最近 3 轮保留完整内容，不参与精简 |
 
-`compressionPolicy` 中的 `compactCompletedToolTurns` 只控制较早、已经完成且包含工具调用的 Turn 是否删除中间 `ToolCall/ToolMessage`，仅保留 `UserMessage + 最终 AiMessage`。`keepRecentTurns`（默认 2）会保护最近的若干完整 Turn，这些 Turn 保留原始协议，不参与消息压缩；当前 Turn 始终属于保护范围。
+该方式不调用额外的大模型，也不会删除完整聊天记录。默认已经开启已完成工具过程的精简，并保护最近
+2 轮；只有需要调整保护范围或关闭该行为时才需要显式配置。
 
-`compressionPolicy` 中的 `compressor` 接收较早且允许压缩的模型可见消息，返回要放入本次模型 Prompt 的消息。它只影响模型上下文，不修改 ChatMemory、Turn 或 Snapshot。返回结果必须以 `UserMessage` 开始，不能包含 UI 消息，并保持每个 `ToolMessage.toolCallId` 与前面 AiMessage 中 ToolCall ID 匹配。未配置摘要器时不会调用摘要模型，只执行已开启的工具 Turn 归一化。
+## 使用模型生成历史摘要
 
-`compressionPolicy` 中的 `compactCompletedToolTurns` 是独立的归一化选项。开启后，较早已完成工具 Turn 会先被压缩为
-`UserMessage + 最终 AiMessage`；如果同时配置了 `compressor`，语义压缩器接收的就是这个压缩后的结果。
-未配置 `compressor` 时，规则压缩仍然单独生效，不依赖语义压缩器。
-
-框架提供了几个无需额外模型调用的策略：`AgentContextCompressors.identity()` 原样复制消息，
-`compactCompletedTurns()` 每轮只保留用户问题和最终 AI 回复，`textExcerpt(maxCharacters)` 提取历史文本为
-单条摘要用户消息，`chain(...)` 可组合多个策略。生产环境通常应使用业务侧摘要模型实现
-`AgentContextCompressor`，并在摘要失败时保留原始历史。
-
-框架也提供 `AgentContextCompressors.model(...)` 适配聊天模型：
+如果会话持续很久，仅保留最近几轮可能会丢失早期的重要事实。例如，用户在很早之前指定了预算、交付
+日期或不可变更的业务约束。此时可以使用一个模型将较早历史整理成摘要：
 
 ```java
 AgentContextCompressor compressor = AgentContextCompressors.model(
     summaryModel,
-    "请压缩历史对话，保留业务事实、实体 ID、用户约束、审批结果和未完成事项，不要编造信息。");
+    "请用中文总结历史对话，保留业务事实、实体 ID、"
+        + "用户约束、审批结果和未完成事项，不要编造信息。");
 
-Agent agent = Agent.builder("support-agent")
-    .compressionPolicy(AgentContextCompressionPolicy.immediate(compressor))
-    .build();
-```
-
-需要自定义摘要前缀、历史段标题、消息格式或模型参数时，可以传入
-`AgentContextModelCompressorOptions`：
-
-```java
-AgentContextCompressor compressor = AgentContextCompressors.model(
-    summaryModel,
-    AgentContextModelCompressorOptions.builder()
-        .instruction("保留事实、ID、约束和未完成事项")
-        .historyHeader("\n\n待压缩历史：\n")
-        .summaryPrefix("以下是历史摘要，请作为当前任务的背景信息：")
-        .chatOptions(ChatOptions.builder()
-            .temperature(0.1f)
-            .maxTokens(2_000)
-            .thinkingEnabled(false)
-            .build())
-        .modelMessageFormatter(message ->
-            message.getClass().getSimpleName() + ": " + message.getTextContent() + "\n")
-        .build());
-```
-
-逐条摘要使用同一配置类型的 `perMessageRequest(...)` 和 `perMessageFormatter(...)`。
-逐条格式化结果必须包含原消息的 `messageId`，用于把模型返回的摘要写回对应消息副本。
-
-该策略只对较早已完成 Turn 调用一次摘要模型，模型返回内容会被包装为合法的
-`UserMessage + AiMessage`。摘要模型不应注册业务工具；压缩失败时 Runner 会中止本次模型调用，
-业务侧可以记录错误并重试或暂时关闭语义压缩。
-
-需要保留每条消息的 User/AI 交替结构时，使用逐消息摘要策略：
-
-```java
-AgentContextCompressor compressor = AgentContextCompressors.perMessageModel(
-    summaryModel,
-    "请压缩每条消息，保留事实、数字、实体 ID、用户约束和决定；不要改变消息角色。"
-);
-```
-
-它对一批历史只调用一次模型，并要求模型返回：
-
-```json
-[
-  {"messageId":"u1","summary":"用户咨询订单状态"},
-  {"messageId":"a1","summary":"助手说明订单正在配送"}
-]
-```
-
-框架据此复制原消息的角色、`messageId` 和 metadata，只替换正文，因此得到 `UserMessage -> AiMessage`
-的原始交替结构。包含 ToolCall 的 AiMessage 和 ToolMessage 始终原样保留，不能逐条摘要。
-
-### 按触发条件增量持久化
-
-当压缩条件不是固定的消息数量（例如 Token 总量、Turn 数、工具结果大小、时间间隔或租户配额）时，使用处理器把“何时压缩”和“如何压缩”分开：
-
-```java
 Agent agent = Agent.builder("support-agent")
     .chatModel(chatModel)
-    .compressionPolicy(AgentContextCompressionPolicy.incremental(
-        compressionStateStore,
-        input -> input.getEstimatedPendingTokens() >= 100_000,
-        AgentContextCompressors.model(summaryModel, "保留事实、ID、约束和未完成事项"),
-        messages -> tokenCounter.estimate(messages)))
+    .compressionPolicy(AgentContextCompressionPolicy.builder()
+        .compressor(compressor)
+        .keepRecentTurns(3)
+        .compressionFailureStrategy(
+            AgentCompressionFailureStrategy.USE_ORIGINAL)
+        .build())
     .build();
-
-// Runner 会按 conversationId 自动读取历史、触发增量压缩并组装模型上下文
-AgentTurn turn = runner.run(agent, conversationId, new UserMessage("继续处理"));
 ```
 
-`AgentContextCompressionStateStore` 只需要实现 `load` 和带 `expectedVersion` 的 CAS `save`。首次保存使用版本 `0`；
-处理器成功压缩后会推进 `version` 和 `coveredUntilMessageId`；本轮 Token 数和 Turn 数只用于条件判断与事件监控，不写入持久化状态。
-业务侧应把这个状态和会话放在同一事务边界内，或使用数据库/Redis 的乐观锁，避免两个请求同时摘要而互相覆盖。
-每次会话请求都会读取状态，但只有 `AgentContextCompressionDecider` 返回 `true` 且存在新增消息时才调用摘要器和保存状态；
-因此达到一次阈值后，后续请求不会每轮重复调用摘要模型，直到新增历史再次满足触发条件。配置了增量策略后，
-Runner 会自动执行处理器，业务侧不需要手工调用 `compress(...)` 或传递 `getModelMessages()`。
+| 配置 | 作用 |
+| --- | --- |
+| `summaryModel` | 用于生成摘要的模型，可以与业务模型相同，也可以使用成本更低的模型 |
+| 摘要指令 | 明确哪些事实必须保留，以及禁止编造内容 |
+| `keepRecentTurns(3)` | 保留近期原文，只摘要更早的历史 |
+| `USE_ORIGINAL` | 摘要失败时继续使用未摘要的历史，而不是直接中止当前请求 |
 
-传给处理器的可压缩历史必须是该会话对应范围内完整、按时间升序排列的消息列表。如果状态中的
-`coveredUntilMessageId` 不在列表中，处理器会抛出异常而不是静默从头重复摘要；这通常表示分页不完整、消息被错误删除或状态与会话不一致。
-处理器只生成模型调用视图，不修改 `ChatMemory`，CAS 冲突也不会覆盖已有摘要。
+摘要能够节省上下文，但也可能遗漏细节或产生错误。订单金额、权限、账户余额等关键事实仍应从业务系统
+查询，不能只依赖聊天摘要。
 
-框架不强制业务侧采用某一种数据库，但 Store 模块提供 JDBC 和 Redis 实现：
+普通摘要可能在每次构建长上下文时处理较早历史。需要长期运行并避免重复摘要时，可以使用增量压缩，
+详细配置见[上下文压缩](./context-compression)。
 
-```java
-JdbcAgentStoreConfig jdbc = JdbcAgentStoreConfig.builder(dataSource)
-    .tablePrefix("app_agent_")
-    .build();
-jdbc.schema().initialize();
-AgentContextCompressionStateStore compressionStore = jdbc.compressionStateStore();
-```
+## 控制工具结果
 
-Redis 使用同样的 CAS 语义，适合多实例服务共享状态：
+工具结果也会进入模型上下文。如果搜索、日志或报表工具直接返回大量原文，即使历史轮数不多，也可能
+迅速占满可用空间。
 
-```java
-RedisAgentStoreConfig redis = RedisAgentStoreConfig.builder("redis://127.0.0.1:6379")
-    .keyPrefix("app:agent:")
-    .build();
-AgentContextCompressionStateStore compressionStore = redis.compressionStateStore();
-```
+更合适的工具设计包括：
 
-JDBC 实现需要在启动时执行 `schema().initialize()`，或使用等价的数据库迁移脚本；Redis 实现不需要建表。
-两种实现都使用 `FastjsonAgentStoreSerializer` 保存消息多态类型，也都支持通过配置替换为业务自定义序列化器。
-应用负责关闭自己创建的 Redis 配置对象；JDBC `DataSource` 的生命周期仍由应用管理。
+- 查询接口提供分页、筛选条件和返回条数上限；
+- 搜索工具先返回摘要和结果 ID，需要时再查询详情；
+- 报表和导出文件保存到文件存储，工具只返回文件 ID 或受控链接；
+- 返回内容可能不完整时，提供 `hasMore`、`nextCursor` 等明确字段；
+- 为工具结果配置最大字符数，防止意外返回超大内容。
 
-窗口始终保证模型消息起点是 `UserMessage`（如果配置了系统指令，则系统消息位于最前面）。
-`AgentActionMessage`、`AgentFormMessage` 等 `modelVisible=false` 消息不会发送给模型。
+工具结果的字符限制和超限处理方式见[工具执行控制](./tool-execution)。
 
-### 已完成工具 Turn 的归一化
+## 图片、音频和文件
 
-开启 `compactCompletedToolTurns` 后，较早且已经完成的 Turn：
+图片、音频、视频和文件也可能成为上下文的一部分。使用这些内容时需要同时考虑：
 
-```text
-UserMessage
-AiMessage(tool_calls)
-ToolMessage
-AiMessage(最终回复)
-```
+1. 当前模型是否支持对应的输入类型。
+2. 文件是否超过模型服务允许的大小。
+3. 长期保存是否符合用户授权和数据保留要求。
+4. 多租户环境下是否进行了访问隔离。
 
-在模型上下文中会变成：
+大文件通常应保存到对象存储，消息中只保留经过鉴权、具有有效期的引用。不要把大量二进制内容长期
+复制到每一轮聊天记录中。
 
-```text
-UserMessage
-AiMessage(最终回复)
-```
+## 会话管理
 
-这只改变模型 Prompt，不删除 `ChatMemory`、Snapshot 或工具审计记录。当前 Turn、挂起 Turn、失败 Turn、
-取消 Turn 和没有最终正文的工具 Turn 会保留完整协议。
+生产环境中应由业务系统管理会话生命周期：
 
-## 业务侧语义摘要
+- 为每段连续对话生成稳定且不可猜测的 `conversationId`；
+- 确保同一个 ID 始终读取同一份聊天记录；
+- 不要在不同用户或租户之间复用会话 ID；
+- 持久化聊天记录，不能依赖 `DefaultChatMemory` 的进程内数据；
+- 同一会话已有任务正在执行或等待时，应先完成、恢复或取消该任务，再提交下一项任务。
 
-```java
-List<Message> history = loadModelMessagesByWindow(persistedMemory);
-List<Message> inputHistory = history;
-if (history.size() > 40) {
-    List<Message> older = history.subList(0, history.size() - 12);
-    List<Message> recent = history.subList(history.size() - 12, history.size());
-    String summary = summaryModel.summarize(older);
-    inputHistory = new ArrayList<>();
-    inputHistory.add(new UserMessage("Conversation summary:\n" + summary));
-    inputHistory.addAll(recent);
-}
+当同一会话已经存在未结束的任务时，Runner 会拒绝并发创建新的任务。业务接口应将这种情况转换为
+明确的“会话忙碌”提示、排队处理或稍后重试，而不是覆盖正在执行的内容。
 
-AgentTurn turn = runner.run(agent, inputHistory, new UserMessage("继续处理"));
-```
+`ChatMemory` 的持久化实现方式见 [Memory 记忆](../chat/memory)，Agent 任务状态的保存方式见
+[任务快照持久化](./store)。等待任务的处理方式见[挂起和恢复](./suspend-resume)。
 
-当前框架内置的是 Turn 边界和工具协议归一化，不会自动调用摘要模型。需要扫描很长的业务历史做语义摘要时，`loadModelMessagesByWindow` 应循环调用
-`getMessages(offset, pageSize)`，边读取边摘要或写入临时存储，不要用 `Integer.MAX_VALUE` 构造全量 List。
+## 配置建议
 
-摘要逻辑只读取业务历史并构造传给 Runner 的新列表，不应对数据库型 `ChatMemory` 调用 `clear()`。Runner 会复制传入的消息，因此也不会直接修改 `persistedMemory`。业务实现还应避免从一组 ToolCall/ToolMessage 中间截断，并在摘要失败时继续保留原历史。
+1. 先使用默认窗口运行真实场景，再根据 Token、延迟和回答质量调整。
+2. 优先限制轮数和工具结果大小，确有长期记忆需求时再增加模型摘要。
+3. 摘要中应保留实体 ID、数字、用户约束、审批结果和未完成事项。
+4. 用户权限、账户状态和订单数据应从业务系统查询，不要把上下文当作事实数据库。
+5. 监控每次请求的消息数、Token 数、摘要次数、摘要失败率和大型工具结果。
+6. 不要把 API Key、数据库连接或其他密钥写入聊天记录和摘要。
 
-自定义摘要提示应要求保留事实、业务 ID、未完成事项、审批结果和用户约束，不应把不可信工具输出提升为系统指令。
+## 相关文档
 
-## 大型工具结果设计
-
-Framework 不根据结果大小改写 ToolMessage，也不保存被替换的原始内容。Tool 应只返回模型完成下一步决策所需的数据，并根据业务语义选择以下方式控制结果规模：
-
-- 查询类 Tool 提供分页、游标、过滤、字段选择和条数上限。
-- 搜索或分析类 Tool 返回摘要与关键条目，并提供按 ID 获取详情的配套 Tool。
-- 日志、报表和导出类 Tool 把完整内容保存到业务存储，只返回业务文件 ID、下载地址或状态。
-- 数据规模不可预知时，返回 `hasMore`、`nextCursor`、截断原因等明确协议字段。
-
-这些约束属于 Tool 契约，因为只有 Tool 和业务系统知道哪些内容可以截断、如何继续读取以及怎样鉴权。Runner 只负责保存 Tool 实际返回的协议消息。
-
-## 多模态消息
-
-使用结构化 `UserMessage` 传入图片、音频、文件等内容。Turn 创建时复制消息，并由 Snapshot 保留协议数据。实际模型是否支持对应模态取决于具体 `ChatModel`；持久化 Store 还需考虑二进制内容大小，通常应把大文件保存到对象存储，在消息中保留受控引用。
-
-## 生产建议
-
-- 同时限制消息数量、Tool 单次返回规模与模型 Token 预算。
-- 业务侧摘要失败时保留原历史，不能清空或静默丢弃消息。
-- 对业务文件引用实施租户隔离、有效期和访问授权。
-- 监控 Snapshot 大小以及各 Tool 的返回大小、截断率和分页次数。
-- 恢复后仍需使用的业务标识应保存为可序列化 metadata；密钥、连接和服务对象不要写入 Snapshot。
+- 配置即时摘要和增量压缩：[上下文压缩](./context-compression)
+- 限制工具返回内容：[工具执行控制](./tool-execution)
+- 限制任务总 Token 消耗：[运行限制与预算](./budget)
+- 实现持久化聊天记录：[Memory 记忆](../chat/memory)
+- 持久化 Agent 任务状态：[任务快照持久化](./store)
+- 处理等待中的会话任务：[挂起和恢复](./suspend-resume)

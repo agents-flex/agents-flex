@@ -1,9 +1,14 @@
 # Agents-flex 的 Agent Demo 示例
 
-一个连接真实 OpenAI-compatible 大模型的全链路 Agent Demo。中央区域是由真实 `ChatMemory` 驱动的持续 AI 对话框，每轮创建独立 `AgentTurn` 并复用同一会话上下文；正文和思考过程通过原生 SSE 增量事件流式显示。
+一个连接真实 OpenAI-compatible 大模型的全链路 Agent Demo（完整的前端和后端）。
 
-## 开源地址
-开源地址：https://gitee.com/agents-flex/agents-flex-demo
+
+中央区域是由真实 `ChatMemory` 驱动的持续 AI 对话框，每轮创建独立 `AgentTurn` 并复用同一会话上下文；正文和思考过程通过原生 SSE 增量事件流式显示。
+
+
+## 示例截图
+
+![](./agent-flex-demo.png)
 
 
 ## 能力展示
@@ -22,11 +27,9 @@
 
 生产运行通过 `agents-flex-chat-openai` 调用真实模型，主对话和上下文摘要都进入 Agents-Flex OpenTelemetry Chat 拦截器链。确定性模型只用于自动化测试；Agent 的状态迁移、快照、工具执行、暂停、恢复、审批、预算、重试、压缩和事件均由框架执行。
 
+## 开源地址
+开源地址：https://gitee.com/agents-flex/agents-flex-demo
 
-
-## 示例截图
-
-![](./agent-flex-demo.png)
 
 
 

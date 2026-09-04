@@ -1,111 +1,234 @@
 ---
 title: AgentTurn
-description: 理解单次 Agent 轮次的边界、状态、阶段、消息和计数。
+description: 了解 AgentTurn 是什么，以及如何查看一次 Agent 任务的状态、结果和运行信息。
 ---
 
 # AgentTurn
 
 ## 概述
 
-`AgentTurn` 表示某个 Agent 从接收一次输入到产生最终结果的完整轮次。一个 Turn 可以包含多次模型
-迭代、工具调用、暂停恢复和自动重试。每个 Turn 都对应一次独立的 Agent 调用，输入通常来自用户消息。
+`AgentTurn` 表示 Agent 执行的一次具体任务，负责保存该任务从创建到结束期间的状态、消息、工具调用、资源消耗和最终结果。
 
-Turn 包含消息历史、当前状态与阶段、待执行 ToolCall、暂停信息、预算计数以及最终结果。
-它由 `AgentRunner` 创建和推进，调用方主要负责读取状态、提供可持久化业务元数据以及提交恢复命令。
+例如，用户对天气助手说：“查询上海天气，并告诉我是否需要带伞。”从收到这句话开始，到调用天气工具并给出最终回答为止，就是一个 AgentTurn。
 
-## Turn 与业务会话
+一次任务不一定只调用一次大模型。它可能经历下面这些步骤：
 
-一个 Turn 通常对应业务会话中的一轮用户交互。业务系统仍负责维护 conversationId、`ChatMemory` 和当前未结束的 turnId。
-Framework 不提供新的 Conversation 容器；需要融合时只在 Runner 上配置可选的 ChatMemory
-Provider：
+1. 大模型理解用户的问题。
+2. 大模型决定调用天气工具。
+3. Java 工具返回天气数据。
+4. 大模型根据工具结果生成答案。
+
+这些步骤都属于同一个 AgentTurn。一次任务即使多次调用模型和工具，也不会因此拆分成多个 Turn。
+
+从使用角度看，`AgentTurn` 相当于一张随执行过程不断更新的“任务工单”。
+
+Agent 任务可能包含多次模型调用和工具执行，也可能暂停等待审批。如果只拿到最终的一段文字，业务系统无法知道任务当前发生了什么。
+
+`AgentTurn` 主要提供以下信息：
+
+- 任务是否已经完成；
+- 当前是否在等待用户输入或人工审批；
+- 任务的最终答案或失败原因；
+- 模型和工具的调用次数；
+- Token 等资源消耗；
+- 任务保存和恢复所需的运行信息。
+
+Token 是大模型统计文本用量的基本单位，也通常会影响调用费用。
+
+任务的执行和状态变化由 `AgentRunner` 负责。业务代码通常只读取 `AgentTurn`，不应该自己把它改成“完成”或“失败”。
+
+## 与 Agent 及聊天会话的关系
+
+| 概念 | 定位 | 使用方式 |
+| --- | --- | --- |
+| `Agent` | 可复用的 AI 助手配置 | 配置一次，可以重复处理很多任务 |
+| `AgentTurn` | 单次任务的运行记录 | 每个新任务创建一个 |
+| 聊天会话 | 用户与 AI 的连续交互记录 | 可以包含多个 AgentTurn |
+
+例如：
+
+1. 用户问“上海天气怎么样”，创建第一个 AgentTurn。
+2. 用户接着问“北京呢”，创建第二个 AgentTurn。
+3. 两个 Turn 可以属于同一个聊天会话，共享之前的聊天记录。
+
+已经完成的 AgentTurn 不应该重新打开处理新问题。新问题应创建新的 Turn；只有审批结果、表单输入等针对原任务的补充信息，才用于恢复原来的 Turn。
+
+## 创建与执行
+
+通常不需要自己创建 AgentTurn。把 Agent 和用户问题交给 `AgentRunner` 即可：
 
 ```java
-AgentRunner runner = AgentRunner.builder()
-    .chatMemoryProvider(id -> loadMemory(id))
-    .build();
-
-AgentTurn turn = runner.run(agentId, "conversation-1001", new UserMessage("继续"));
+AgentTurn turn = runner.run(
+    agent,
+    "查询上海天气，并告诉我是否需要带伞"
+);
 ```
 
-绑定的 conversationId 会作为 Turn metadata 随 Snapshot 恢复。Runner 按 `maxAttachedTurns` 和
-`maxAttachedMessages` 构建完整消息边界的模型窗口，分页读取
-最近的模型可见历史并投影当前 Turn 新增的消息，不会把完整业务会话复制进 Turn，也不会替业务系统创建会话、
-选择当前 Turn 或清理历史。传入历史里的 `SystemMessage` 会被忽略，系统指令始终以当前 Agent 定义为准。
+`run(...)` 会创建 Turn，并在当前线程中开始执行，直到任务完成、失败或暂停等待外部操作。
 
-不使用融合模式时，仍可调用 `runner.run(agent, history, userMessage)`，并在完成后读取
-`turn.getConversationHistory()` 自行回写。
+如果只想先创建任务，稍后交给 `AgentWorker`（后台任务执行器）执行，可以使用：
 
-## 状态
+```java
+AgentTurn turn = runner.start(agent, "生成本周销售分析报告");
+```
 
-| 状态 | 含义 |
+`start(...)` 返回的任务初始状态是 `READY`。它只创建任务，不会自动启动新线程。要在后台真正执行，还需要配置 `AgentWorker`。
+
+## 生命周期
+
+最常见的过程可以简化成下面这张图：
+
+```mermaid
+flowchart LR
+    Ready["已创建<br/>READY"] --> Running["执行中<br/>RUNNING"]
+    Running --> Completed["已完成<br/>COMPLETED"]
+    Running --> Waiting["等待外部操作"]
+    Waiting --> Running
+    Running --> Stopped["失败、取消或达到限制"]
+```
+
+任务可能一次就完成，也可能在“执行中”和“等待外部操作”之间往返多次。
+
+### 状态说明
+
+| 状态 | 通俗说明 |
 | --- | --- |
-| `READY` | 已创建，等待推进或 Worker 领取 |
-| `RUNNING` | 正在执行 |
-| `WAITING_FOR_USER` | 等待用户补充输入 |
-| `WAITING_FOR_APPROVAL` | 等待工具审批 |
-| `WAITING_FOR_TOOL` | 等待外部执行器返回工具结果 |
-| `RETRY_SCHEDULED` | 等待 `nextRunnableAt` 到期 |
-| `COMPLETED` | 正常完成 |
-| `FAILED`、`CANCELLED` | 失败或取消 |
-| `MAX_ITERATIONS_REACHED` | 模型调用达到上限 |
-| `MAX_STEPS_REACHED` | Runner 总推进次数达到上限 |
-| `BUDGET_EXCEEDED` | 预算达到上限 |
+| `READY` | 任务已经创建，还没有开始执行 |
+| `RUNNING` | 正在调用模型、处理结果或执行工具 |
+| `WAITING_FOR_USER` | 缺少必要信息，等待用户补充 |
+| `WAITING_FOR_APPROVAL` | 某个工具需要人工同意后才能执行 |
+| `WAITING_FOR_TOOL` | 工具在其他服务中执行，正在等待结果 |
+| `RETRY_SCHEDULED` | 暂时失败，等待到指定时间后重试 |
+| `COMPLETED` | 任务正常完成，已经产生最终答案 |
+| `FAILED` | 发生无法继续的错误 |
+| `CANCELLED` | 任务已被取消 |
+| `MAX_ITERATIONS_REACHED` | 模型调用次数达到上限 |
+| `MAX_STEPS_REACHED` | 整个任务的执行步骤达到上限 |
+| `BUDGET_EXCEEDED` | 运行时间、Token 或工具调用次数超出预算 |
 
-使用 `status.isBlocked()` 和 `status.isTerminal()` 判断状态类别，不要自行维护不完整的枚举集合。
-
-## 阶段
-
-`AgentTurnExecutionPoint.INVOKE_MODEL` 表示下一步应请求模型；`PROCESS_TOOLS` 表示已保存模型产生的 ToolCall，下一步应审批或执行工具。重试和审批恢复会回到快照记录的阶段。
-
-状态回答“Turn 能否继续”，阶段回答“继续时做什么”，两者不能混用。
-
-## 读取结果与进度
+可以使用框架提供的方法判断状态属于哪一类：
 
 ```java
 AgentTurnStatus status = turn.getStatus();
-String output = turn.getFinalOutput();
-Throwable error = turn.getError();
 
-int iterations = turn.getIterationCount();
-int steps = turn.getStepCount();
-int toolCalls = turn.getToolCallCount();
-long totalTokens = turn.getTotalTokens();
+if (status.isBlocked()) {
+    System.out.println("任务正在等待外部操作");
+}
+
+if (status.isTerminal()) {
+    System.out.println("任务已经结束，不能继续执行");
+}
 ```
 
-只有正常完成时 `getFinalOutput()` 才是最终答案。失败恢复自 Snapshot 后，异常会以恢复异常表示，类型名与消息保存在快照中，不能依赖原异常对象仍然存在。
+`isBlocked()` 表示任务正在等待输入、审批、工具结果或重试时间，当前不能立即向下执行；`isTerminal()` 表示任务已经彻底结束。使用这两个方法比自己列举状态更可靠。
 
-## 消息与多模态输入
+## 读取最终结果
 
-Runner 支持 `UserMessage` 结构化输入，消息可以携带文本和多模态内容。创建 Turn 时会复制用户消息，避免调用方后续修改影响 Snapshot。
+只有状态为 `COMPLETED` 时，`getFinalOutput()` 才表示正常的最终答案：
 
 ```java
-AgentTurn turn = runner.run(agent, userMessage);
-List<Message> history = turn.getConversationHistory();
+if (turn.getStatus() == AgentTurnStatus.COMPLETED) {
+    String answer = turn.getFinalOutput();
+    System.out.println(answer);
+} else {
+    System.out.println("任务未完成，当前状态：" + turn.getStatus());
+}
 ```
 
-`getConversationHistory()` 返回排除系统消息后的模型协议消息副本，适合手工集成会话存储；
-`getConversationId()` 返回可选融合模式绑定的业务会话 ID。`getPrompt()` 暴露运行 Prompt，通常只应由
-扩展组件读取。
+如果任务失败，可以读取异常：
 
-## 元数据与流式调用
+```java
+if (turn.getStatus() == AgentTurnStatus.FAILED) {
+    Throwable error = turn.getError();
+    System.out.println(error == null ? "未知错误" : error.getMessage());
+}
+```
+
+不要在任务处于 `READY`、`RUNNING` 或等待状态时，把 `getFinalOutput()` 的返回值当作最终答案。
+
+## 执行进度与资源消耗
+
+```java
+System.out.println("任务 ID：" + turn.getId());
+System.out.println("模型调用次数：" + turn.getIterationCount());
+System.out.println("总执行步骤：" + turn.getStepCount());
+System.out.println("工具调用次数：" + turn.getToolCallCount());
+System.out.println("Token 用量：" + turn.getTotalTokens());
+```
+
+这些计数的含义如下：
+
+| 方法 | 记录什么 |
+| --- | --- |
+| `getIterationCount()` | 调用了多少次大模型 |
+| `getStepCount()` | `AgentRunner` 总共推进了多少个执行步骤 |
+| `getToolCallCount()` | 已经开始执行多少次业务工具 |
+| `getInputTokens()` | 发送给模型的累计 Token 数量 |
+| `getOutputTokens()` | 模型生成的累计 Token 数量 |
+| `getTotalTokens()` | 模型报告的累计总 Token 数量 |
+| `getRetryCount()` | 已经安排了多少次自动重试 |
+
+一次模型调用和一个执行步骤不是一回事，因此 `iterationCount` 和 `stepCount` 通常不会相等。
+
+## 单次任务选项
+
+Agent 中的配置会作为所有任务的默认值。如果某一次任务需要附加业务信息、开启流式调用或单独调整执行限制，可以使用 `AgentTurnOptions`：
 
 ```java
 AgentTurnOptions options = AgentTurnOptions.builder()
     .metadata("businessOrderId", "O-1001")
-    .metadata("tenantId", "tenant-a")
-    .metadata("userId", "u-1")
+    .metadata("userId", "U-1001")
     .streaming(true)
     .build();
+
+AgentTurn turn = runner.run(agent, "查询订单状态", options);
 ```
 
-`metadata` 用于业务订单号、租户 ID、用户 ID 等恢复后仍需使用的信息。值必须可序列化，并会进入 Snapshot。密码、Token、数据库连接和 Spring Bean 不应放入 metadata，运行期服务应由 Middleware 或 Tool 自身通过依赖注入等方式持有。
+`metadata` 可以理解为附加在任务上的业务信息。它适合保存订单号、用户 ID、租户 ID、任务类型等标识。这些信息会随任务进度一起保存，恢复任务后仍然可以读取。
 
-`streaming(true)` 设置当前 Turn 的模型调用方式，并随 Snapshot 持久化；从 Snapshot 恢复或由 Worker 执行时仍会保持一致。
+`metadata` 中的值应当可以转换为数据并保存，例如字符串、数字和布尔值。不要放入密码、API Key、数据库连接、Spring 管理的对象或其他运行中的服务对象。
 
-## 快照
+`streaming(true)` 表示大模型可以流式返回内容。要把增量内容实时显示到页面，还需要通过事件监听器接收模型
+输出，详见 [AgentEventListener](./agent-event-listener)。
+
+## 消息记录
 
 ```java
-AgentTurnSnapshot snapshot = turn.toSnapshot();
+List<Message> history = turn.getConversationHistory();
 ```
 
-快照是隔离副本，包含恢复所需状态（包括 streaming 设置），但不包含模型、工具等进程内对象。正常业务代码应通过 `runner.saveSnapshot(turn)` 持久化，由 Store 分配版本，而不是只调用 `toSnapshot()` 后自行覆盖数据。
+`getConversationHistory()` 返回这次任务使用过的用户消息、模型消息和工具消息，可以交给业务系统保存，并用于下一轮对话。返回结果不包含 Agent 的系统指令。
+
+如果需要把多个 Turn 组成连续聊天，应由业务系统保存会话 ID 和历史消息，或者接入 `ChatMemory`（聊天记录存储组件）。AgentTurn 本身不负责管理完整的会话列表。
+
+具体做法请查看[上下文管理](./context-management)。
+
+## 持久化与恢复
+
+为了在审批等待或服务重启后继续任务，Agents-Flex 会把 AgentTurn 转换成任务快照。快照就是某一时刻的任务存档，其中包含状态、消息、计数和恢复所需的信息。
+
+`AgentTurnStore` 是专门保存任务进度的组件。正常业务代码应让 `AgentRunner` 和 `AgentTurnStore` 负责保存：
+
+```java
+runner.saveSnapshot(turn);
+```
+
+虽然 `turn.toSnapshot()` 可以取得快照对象，但不建议绕过 Runner 直接覆盖 Store 中的数据，因为 Store 还需要处理版本和并发更新。
+
+恢复任务时，也应通过 `AgentRunner` 进行。详见[任务快照](./snapshot)和[任务快照持久化](./store)。
+
+## 使用约束
+
+1. 一个 AgentTurn 只代表一次任务，新问题应创建新的 Turn。
+2. 已经结束的 Turn 不能重新打开。
+3. 等待审批或表单时，应恢复原 Turn，而不是创建新 Turn。
+4. 不要让两个线程同时直接执行同一个 AgentTurn。
+5. 不要由业务代码直接修改 Turn 状态，让 `AgentRunner` 负责状态变化。
+6. 只有 `COMPLETED` 状态下的 `getFinalOutput()` 才是正常完成的最终答案。
+
+## 下一步
+
+- 了解谁负责创建和执行 Turn：[AgentRunner](./agent-runner)。
+- 了解任务如何暂停后继续：[挂起与恢复](./suspend-resume)。
+- 了解任务进度如何保存：[Snapshot](./snapshot)。
+- 了解长任务如何在后台运行：[Worker](./worker)。

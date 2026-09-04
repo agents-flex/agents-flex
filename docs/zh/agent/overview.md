@@ -1,226 +1,216 @@
 ---
 title: Agent 概述
-description: 了解 Agents-Flex Agent 的静态能力、运行控制、持久化、扩展机制和配置方式。
+description: 用简单的例子了解 Agents-Flex Agent 是什么、如何工作，以及什么时候适合使用它。
 ---
 
 # Agent 概述
 
-## Agent 解决什么问题
+## 先用一句话理解 Agent
 
-`agents-flex-agent` 是建立在 `ChatModel` 和 Tool Calling 之上的可恢复 Agent 运行时。
-它不只负责“让模型调用 Java Tool”，还把一次任务建模为可以暂停、持久化、恢复、取消、重试和分布式调度的 `AgentTurn`。
+Agent（智能体）可以理解为一个**会自己判断下一步该做什么的 AI 助手**。
 
-普通聊天通常是“发送 Prompt，得到一次响应”；真实业务任务可能经历多轮模型判断、多个工具、人工审批、表单输入、失败退避和进程重启。Agent 模块负责这些执行控制能力：
+普通的大模型通常只负责“根据问题生成回答”。Agent 除了能回答问题，还可以调用你提供的 Java 方法去查询数据、发送请求或执行操作，并根据执行结果继续思考，直到任务完成。
 
-- 模型负责决定下一步是回答、调用工具还是请求表单。
-- `AgentRunner` 负责按照状态机推进，并在安全边界保存 Snapshot。
-- 业务系统通过 Store、Loader、Listener 和 ChatMemory 接入持久化、恢复、审计和页面展示。
+例如，用户问：
 
-如果需求只是一次无工具文本生成，直接使用 `ChatModel` 更简单；如果每一步都由业务代码完全确定，工作流引擎通常更合适。Agent 适用于“路径需要模型动态决策，但执行又必须可靠可控”的场景。
+> 帮我查一下上海今天的天气，如果下雨就提醒我带伞。
 
-## 三层配置模型
+一个 Agent 大致会这样工作：
 
-Agent 的能力不是集中在一个巨大配置对象中，而是分为三层：
+1. 大模型发现自己不知道实时天气，决定调用“天气查询”工具。
+2. Agents-Flex 执行对应的 Java 方法，把“上海”作为参数传进去。
+3. 工具返回天气数据。
+4. 大模型根据数据组织答案，并提醒用户是否需要带伞。
 
-| 层次 | 配置对象 | 解决的问题 | 生命周期 |
-| --- | --- | --- | --- |
-| 静态定义 | `Agent.Builder` | 这个 Agent 能做什么、使用什么模型和工具 | 可复用、不可变 |
-| 运行基础设施 | `AgentRunner.Builder` | Turn 如何保存、加载 Agent 和关联业务会话 | 应用级复用 |
-| 单次运行 | `AgentTurnOptions.Builder` | 本次是否流式、使用哪套策略和业务元数据 | 随 Snapshot 保存 |
+这里，大模型负责“做决定”，Java 工具负责“真正做事”，Agents-Flex Agent 负责把整个过程可靠地串起来。
 
-这种分层允许同一个 Agent 定义被多个会话和多个 Worker 并发使用，同时为某一类任务临时覆盖预算或流式设置。
+## 它和普通聊天有什么不同
 
-## 先选择正确的入口
-
-下表按业务场景选择入口，避免把“新问题”“恢复旧任务”和“后台调度”混为一谈：
-
-| 场景 | 推荐入口 | 关键规则 |
+| 对比项 | 普通大模型聊天 | Agent |
 | --- | --- | --- |
-| 当前请求内完成短任务 | `runner.run(...)` | 返回完成、失败或阻塞状态，不保证一定是 `COMPLETED` |
-| 长任务、HTTP 请求不应等待 | `runner.start(...)` + `AgentWorker` | `start` 只创建 `READY` Turn，不会自动开线程 |
-| 审批或表单已提交 | `resume(turnId, command)` | 校验 Suspension 后立即继续当前 Turn |
-| 回调服务只负责入队 | `submitResume(turnId, command)` | 只恢复为可运行状态，由 Worker 执行 |
-| 用户发送了新的问题 | 创建新的 Turn | 同一会话仍有活动 Turn 时由业务排队或返回冲突 |
-| 继续一个被取消/失败的 Turn | 不复用原 Turn | 终态 Turn 不可重新打开；新问题应创建新 Turn |
+| 主要能力 | 根据已有知识生成文字 | 生成文字，也能调用工具完成任务 |
+| 执行步骤 | 通常是一问一答 | 可以经过多次“思考、调用工具、继续回答” |
+| 实时数据 | 不能凭空知道 | 可以通过工具查询数据库或第三方接口 |
+| 敏感操作 | 通常不涉及实际操作 | 可以在执行前要求人工确认 |
+| 长任务 | 请求中断后较难继续 | 可以保存进度，之后恢复 |
 
-审批和表单是对“已经暂停的原 ToolCall”提供结果，不是新的 `UserMessage`；普通追问也不能替代恢复命令。
+如果你只需要让模型写一段文字、做摘要或翻译，直接使用 `ChatModel` 就够了。如果任务需要模型自己选择工具、根据中间结果调整下一步，Agent 会更合适。
 
-## Agent 的能力配置
+## 一次任务是怎样完成的
 
-`Agent` 描述可复用的静态能力。构建完成后，Agent 及其工具集合不可变。
+下面这张图展示了最常见的执行过程：
 
-### 身份与模型
+```mermaid
+flowchart LR
+    User["用户提出任务"] --> Runner["AgentRunner 开始执行"]
+    Runner --> Model["大模型判断下一步"]
+    Model -->|可以直接回答| Answer["返回最终答案"]
+    Model -->|需要外部信息| Tool["调用 Java 工具"]
+    Tool --> Result["得到工具结果"]
+    Result --> Model
+```
 
-| Builder 方法 | 能力 |
-| --- | --- |
-| `id(...)` | Snapshot 恢复和 `AgentLoader` 使用的稳定 ID |
-| `version(...)` | 绑定任务创建时的 Agent 配置版本 |
-| `name(...)` / `description(...)` | 展示和路由时使用的描述 |
-| `instructions(...)` | 注入模型的系统指令 |
-| `chatModel(...)` | 必填，提供模型调用能力 |
-| `chatOptions(...)` | 模型参数模板，例如 model、temperature、maxTokens 和 thinking |
+大模型可能调用一次工具，也可能连续调用多个工具。`AgentRunner` 会不断推进这个过程，直到出现以下情况之一：
 
-`ChatOptions` 是模型参数，不包含 Agent 的流式开关。流式由 `AgentTurnOptions.streaming(...)` 决定，并随 Turn 保存。
+- 任务完成，得到最终答案；
+- 需要用户补充信息；
+- 某个操作需要人工审批；
+- 发生无法继续的错误；
+- 达到你设置的次数、时间或 Token 上限。Token 是大模型统计文本用量的基本单位，也通常会影响调用费用。
 
-### 工具与工具扩展
+因此，调用 `run(...)` 后不能假定任务一定成功完成，还需要查看返回的状态。
 
-| Builder 方法 | 能力 |
-| --- | --- |
-| `tool(...)` / `tools(...)` | 注册模型可见且 Runner 可执行的 Tool |
-| `toolGroup(...)` / `toolGroups(...)` | 注册按请求条件向模型暴露的 ToolGroup；组内 Tool 自动成为 Runner 可执行 Tool，但只有 matcher 匹配时才进入模型 Prompt |
-| `toolInterceptor(...)` | 为当前 Agent 的 Tool 调用增加权限、审计、参数校验或异常转换 |
-| `middleware(...)` / `middlewares(...)` | 包装 Step、模型调用和 Tool 调用，必要时注册动态 Tool Resolver |
+## 先认识 4 个核心对象
 
-Agent 会按工具名称建立索引。模型返回的 ToolCall 必须能解析到唯一 Tool；动态 Tool 可以由 Middleware 注册的 `AgentToolResolver` 提供。
+初次使用时，只需要先记住下面 4 个名字：
 
-### 执行与安全策略
+| 对象 | 可以把它理解为 | 主要作用 |
+| --- | --- | --- |
+| `Agent` | AI 助手的岗位说明书 | 配置模型、系统指令、工具和执行规则 |
+| `Tool` | AI 助手可以使用的工具 | 把 Java 方法提供给大模型调用 |
+| `AgentRunner` | 任务执行器 | 调用模型、执行工具并推动任务继续进行 |
+| `AgentTurn` | 某一次具体任务 | 保存这次任务的状态、消息、结果和统计信息 |
 
-| Builder 方法 | 能力 |
-| --- | --- |
-| `executionPolicy(...)` | 最大迭代、最大 Step、预算、重试和工具错误处理 |
-| `toolApprovalPolicy(...)` | 对退款、发布、删除等有副作用 Tool 要求人工批准 |
-| `maxAttachedTurns(...)` | 按完整 Turn 限制发送给模型的历史窗口，不拆分 Tool 协议 |
-| `maxAttachedMessages(...)` | 上下文消息数量安全上限，不删除完整历史 |
-| `compressionPolicy(...)` | 统一配置工具 Turn 归一化、语义压缩、增量触发和状态持久化 |
-| `multimodalChatModel(...)` | 当前上下文包含多模态内容时切换到专用模型 |
+它们之间的关系是：一个 `Agent` 可以重复处理很多任务；每收到一个新任务，就创建一个新的 `AgentTurn`；`AgentRunner` 负责执行它。
 
-`AgentExecutionPolicy` 的典型配置：
+::: tip 一个容易混淆的地方
+`Agent` 不是某一次对话本身。它更像一份可重复使用的配置，而 `AgentTurn` 才代表“用户这一次交代的任务”。
+:::
+
+## 最小使用示例
+
+下面省略了 `ChatModel` 和天气工具的具体创建代码，只展示 Agent 的基本用法：
 
 ```java
-AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
-    .maxIterations(8)
-    .maxSteps(100)
-    .budget(AgentBudget.builder()
-        .maxDurationMillis(120_000)
-        .maxTotalTokens(20_000)
-        .maxToolCalls(20)
-        .build())
-    .retryPolicy(AgentRetryPolicy.builder()
-        .maxRetries(2)
-        .build())
-    .toolErrorStrategy(ToolErrorStrategy.RETURN_ERROR_TO_MODEL)
+Agent agent = Agent.builder("weather-assistant")
+    .instructions("回答天气问题时，先调用天气查询工具，不要猜测实时天气。")
+    .chatModel(chatModel)
+    .tool(weatherTool)
     .build();
+
+AgentRunner runner = new AgentRunner();
+AgentTurn turn = runner.run(agent, "上海今天天气怎么样？");
+
+if (turn.getStatus() == AgentTurnStatus.COMPLETED) {
+    System.out.println(turn.getFinalOutput());
+} else {
+    System.out.println("任务当前状态：" + turn.getStatus());
+}
 ```
 
-工具错误交回模型时，还可以在该策略中配置 `ToolErrorMessageFactory`，用于脱敏、映射业务错误码或提供补救建议。`ToolErrorStrategy` 决定控制流，Factory 决定模型看到的消息内容。
+这段代码做了三件事：
 
-## AgentRunner 的能力配置
+1. 创建一个 Agent，并告诉它能使用哪个模型和工具。
+2. 使用 `AgentRunner` 执行用户任务。
+3. 根据 `AgentTurn` 的状态读取结果或进行后续处理。
 
-`AgentRunner` 是无长期业务状态的执行器。它可以作为应用级单例复用，真正的 Turn 状态由 `AgentTurnStore` 保存。
+完整可运行的依赖、模型和工具代码，请直接查看[快速开始](./getting-started)。
 
-```java
-AgentRunner runner = AgentRunner.builder()
-    .turnStore(new JdbcAgentTurnStore(dataSource))
-    .agentLoader(agentLoader)
-    .chatMemoryProvider(conversationId -> chatMemoryStore.get(conversationId))
-    .build();
-```
+## Agent 能处理哪些场景
 
-| Builder 方法 | 能力 |
-| --- | --- |
-| `turnStore(...)` | Snapshot、CAS、取消和租约的持久化能力 |
-| `agentLoader(...)` | 根据 Agent ID 和版本恢复完整 Agent 定义 |
-| `chatMemoryProvider(...)` | 可选，将业务会话历史投影到 ChatMemory；不配置时 Runner 不读写业务会话 |
-| `addEventListener(...)` | 监听不可变 `AgentEvent`，由业务侧保存审计、推送 UI 或写监控 |
+### 调用业务工具
 
-Runner 不负责保存完整事件流，也不维护 `conversationId` 的业务列表。会话列表、ChatMemory 存储和事件审计由业务系统负责。
+你可以把查询天气、搜索商品、读取订单、生成文件等 Java 能力包装成 `Tool`。大模型会根据工具名称、说明和参数定义，判断何时调用它。
 
-## 单次 Turn 的配置
+工具描述要尽量清楚。大模型并不知道 Java 方法内部做了什么，它只能根据你提供的名称和描述来选择工具、填写参数。
 
-当某次调用需要覆盖 Agent 默认策略时，使用 `AgentTurnOptions`，不会修改 Agent 定义：
+### 执行前让人确认
 
-```java
-AgentTurn turn = runner.run(
-    agent,
-    "分别查询上海和东京当前时间",
-    AgentTurnOptions.builder()
-        .streaming(true)
-        .executionPolicy(AgentExecutionPolicy.builder()
-            .maxIterations(4)
-            .maxSteps(30)
-            .build())
-        .metadata("requestId", requestId)
-        .metadata("userId", userId)
-        .build()
-);
-```
+退款、删除数据、发送通知等操作有实际影响，不应该让模型直接执行。你可以为这些工具配置人工审批：Agent 会先暂停，等用户同意后再继续。
 
-`streaming`、策略覆盖和 metadata 会随 Snapshot 保存，因此挂起恢复或 Worker 接管后仍保持一致。
+详见[人工审批](./human-approval)。
 
-## Runner 可以执行哪些操作
+### 等待用户补充信息
 
-| 操作 | 方法 | 说明 |
+当任务缺少必要参数时，Agent 可以暂停并向用户展示表单。用户填写后，原任务从暂停的位置继续，不需要从头执行。
+
+详见[表单输入](./form-input)和[挂起与恢复](./suspend-resume)。
+
+### 保存进度并恢复
+
+长任务可能遇到服务重启、网络错误，或者需要等待几小时后审批。Agents-Flex 可以把 `AgentTurn` 保存成 Snapshot（任务快照），稍后从原来的进度继续。
+
+可以把 Snapshot 理解为游戏存档：它记录任务执行到了哪里，但真正继续执行任务的仍然是 `AgentRunner`。
+
+详见[Snapshot 持久化](./snapshot)。
+
+### 控制成本和执行风险
+
+Agent 可能连续多次调用模型或工具。你可以限制：
+
+- 最多调用模型多少次；
+- 最多执行多少个步骤；
+- 最多调用多少次工具；
+- 最多消耗多少 Token；
+- 最长运行多长时间；
+- 失败后是否自动重试。
+
+这些限制可以防止任务因为模型判断不理想而长时间循环，也方便控制成本。详见[运行限制与预算](./budget)、[超时与过期](./timeouts)和[错误处理与重试](./retry)。
+
+## 应该选择哪个运行入口
+
+刚开始接入时，通常从 `run(...)` 开始。等需要长任务或后台任务时，再使用 `start(...)` 和 `AgentWorker`。
+
+| 你的需求 | 推荐方式 | 简单说明 |
 | --- | --- | --- |
-| 创建并执行 | `run(...)` | 推进到完成、失败或阻塞 |
-| 只创建 | `start(...)` | 保存 `READY` Snapshot，交给 Worker 或稍后执行 |
-| 单步推进 | `step(...)` | 执行一个状态机 Step，适合自定义调度 |
-| 继续执行 | `runUntilBlocked(...)` | 推进到终态或等待审批、表单、重试 |
-| 保存快照 | `saveSnapshot(...)` | 在业务需要时显式保存当前状态 |
-| 挂起 | `suspend(...)` | 工具或业务流程主动创建等待点 |
-| 恢复执行 | `resume(...)` | 提交审批或表单结果并立即继续 |
-| 更新可运行状态 | `submitResume(...)` | 提交恢复命令但不在当前线程执行 |
-| 取消 | `cancel(...)` | 持久化取消并在安全边界收束消息历史 |
-| 恢复查询 | `restore(...)` | 从 Store 重新装配 Turn |
-| 后台调度 | `AgentWorker` | 使用 Lease 领取可运行 Snapshot |
+| 在当前请求中执行一个短任务 | `runner.run(...)` | 立即开始，并运行到完成、失败或暂停 |
+| 先创建任务，稍后在后台执行 | `runner.start(...)` | 只创建任务，不会自动启动新线程 |
+| 用户提交了审批或表单 | `runner.resume(...)` | 恢复原来的暂停任务并立即继续 |
+| 由后台 Worker 恢复任务 | `runner.submitResume(...)` | 把任务变回可执行状态，交给 Worker 处理 |
 
-阻塞状态不是异常，而是正常的业务状态。前端可以根据事件或 ChatMemory 展示审批按钮、表单和重试状态；提交结果后调用对应的 `resume` 或 `submitResume`。
+`start(...)` 的含义只是“创建并保存任务”。要让它在后台真正运行，还需要配置 `AgentWorker`。
 
-## 能力地图
+## 一次任务和一段对话的区别
 
-| 业务需求 | 主要配置或组件 |
-| --- | --- |
-| 多轮模型与工具协作 | `Agent`、`AgentRunner`、原生 ToolCall |
-| 流式输出 | `AgentTurnOptions.streaming`、`AgentEventListener` |
-| 人工审批 | `ToolApprovalPolicy`、`AgentSuspensionType.TOOL_APPROVAL` |
-| 表单输入 | `AgentUserInputTool`、`AgentFormRequiredException`、`AgentSuspensionType.USER_INPUT` |
-| 工具失败交回模型 | `ToolErrorStrategy`、`ToolErrorMessageFactory` |
-| 自动重试 | `AgentRetryPolicy`、`RETRY_SCHEDULED` |
-| 运行预算 | `AgentBudget`、`maxIterations`、`maxSteps` |
-| 上下文窗口 | `maxAttachedTurns`、`maxAttachedMessages`、工具 Turn 归一化、业务侧 ChatMemory 和摘要 |
-| 动态工具 | `AgentMiddleware`、`AgentToolResolver` |
-| 取消与新问题 | `cancel(...)`、历史收束消息、业务侧并发策略 |
-| 进程重启恢复 | `AgentTurnSnapshot`、`AgentTurnStore`、`AgentLoader` |
-| 多实例 Worker | Lease、CAS、`AgentWorker` |
-| 前端实时状态 | `AgentEvent`、`AgentEventListener`、ChatMemory 消息投影 |
+在 Agents-Flex 中，一个 `AgentTurn` 只代表一次用户任务。例如：
 
-## 核心对象边界
+1. 用户问“上海天气怎么样？”，这是第一个 Turn。
+2. 用户接着问“那北京呢？”，这是第二个 Turn。
 
-| 对象 | 职责 | 不负责什么 |
-| --- | --- | --- |
-| `Agent` | 静态模型、指令、工具和策略 | 不保存某次对话或执行状态 |
-| `AgentTurn` | 一次输入的可变运行状态、消息、阶段和结果 | 不主动推进自己 |
-| `AgentTurnSnapshot` | 可序列化的 Turn 状态 | 不执行模型或工具 |
-| `AgentRunner` | 推进状态机、执行模型与工具、处理恢复 | 不长期持有业务任务状态 |
-| `AgentTurnStore` | CAS 保存 Snapshot、取消和租约 | 不负责事件审计 |
-| `AgentLoader` | 按 ID/版本重新加载完整 Agent | 不保存 Turn |
-| `AgentEventListener` | 观察运行过程并交给业务系统 | 不改变 Runner 状态 |
+如果希望第二个问题能看到前面的聊天记录，需要由业务系统使用同一个会话 ID，并通过 `ChatMemory` 保存和读取历史消息。
 
-## 生产边界
+如果某个 Turn 正在等待审批或用户输入，应该恢复这个 Turn，而不是把审批结果当成一个新的聊天问题。
 
-无参 `AgentRunner` 使用进程内 Loader 和 Store，只适合测试和单实例试用。生产环境至少应：
+## 什么时候适合使用 Agent
 
-1. 使用持久化 `AgentTurnStore`，支持 CAS 和租约。
-2. 使用可按版本加载 Agent 的 `AgentLoader`。
-3. 由业务侧保存 `AgentEvent`，并通过 ChatMemory 或自己的消息表渲染会话页面。
-4. 对恢复、审批、表单提交和取消接口做幂等校验。
-5. 根据任务风险配置 Tool 审批、预算、重试和错误脱敏策略。
+适合使用 Agent 的场景：
 
-一个典型的跨请求流程如下：业务 API 创建 Turn 并返回 `turnId`；Runner 运行到审批或表单后保存
-`WAITING_*` Snapshot；前端通过 ChatMemory 或业务 DTO 渲染待处理操作；用户提交后，业务系统先做鉴权、
-幂等和审计，再调用 `submitResume`；Worker 领取并继续执行；最终状态通过事件或查询接口更新页面。
-浏览器关闭不会影响 Turn，重新登录后只需根据保存的 `turnId` 恢复原任务。
+- 下一步做什么需要大模型根据当前情况判断；
+- 一个任务可能调用多个工具；
+- 工具结果会影响后续步骤；
+- 任务可能暂停、审批、重试或跨进程恢复；
+- 需要限制模型和工具的调用次数与成本。
 
-## 下一步
+不一定需要 Agent 的场景：
 
-- [快速开始](./getting-started)
-- [AgentRunner](./agent-runner)
-- [Agent 配置](./agent)
-- [挂起与恢复](./suspend-resume)
-- [人工审批](./human-approval)
-- [表单输入](./form-input)
-- [Snapshot 持久化](./snapshot)
-- [事件机制](./events)
-- [可观测性](./observability)
-- [Middleware](./middleware)
-- [Worker](./worker)
-- [常见问题](./faq)
+- 只需要生成一次文本：直接使用 `ChatModel` 更简单；
+- 每一步都固定且可预先写好：普通 Java 代码或工作流引擎更清晰；
+- 操作不能接受模型判断的不确定性：应由确定性的业务规则控制。
+
+## 从本地示例到生产环境
+
+`new AgentRunner()` 使用的是进程内配置，适合本地学习和简单测试。服务一旦重启，未持久化的任务状态就无法恢复。
+
+正式环境通常还需要配置：
+
+- `AgentTurnStore`：把任务快照保存到持久化存储中；
+- `AgentLoader`：根据 Agent 的 ID 和版本重新加载配置；
+- `ChatMemory`：保存多轮会话消息；
+- `AgentEventListener`：记录日志、监控状态，或向前端推送进度；
+- `AgentWorker`：在后台领取并执行长任务。
+
+不需要一开始就把这些组件全部接上。建议先让一个简单的 Agent 成功调用工具，再根据实际业务逐步加入持久化、审批和后台执行。
+
+## 推荐阅读顺序
+
+如果你是第一次接触 Agent，建议按下面的顺序阅读：
+
+1. [快速开始](./getting-started)：运行第一个可以调用工具的 Agent。
+2. [Agent 配置](./agent)：了解怎样配置模型、指令和工具。
+3. [AgentRunner](./agent-runner)：了解任务如何被创建和执行。
+4. [AgentTurn](./agent-turn)：认识任务状态和运行结果。
+5. [挂起与恢复](./suspend-resume)：让任务等待审批或用户输入。
+6. [任务快照持久化](./store)：让任务在服务重启后仍能继续。
+7. [Worker](./worker)：把长任务放到后台执行。
+
+遇到问题时，可以查看[常见问题](./faq)。如果需要了解完整的内部设计，再阅读[架构设计](./architecture)。
