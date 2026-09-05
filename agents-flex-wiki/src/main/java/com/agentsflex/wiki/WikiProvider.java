@@ -17,6 +17,15 @@ package com.agentsflex.wiki;
 
 public interface WikiProvider {
 
+    /**
+     * Loads one Wiki by path. The path comes from model/tool input and must be
+     * treated as untrusted data by implementations, especially file-backed
+     * providers. Implementations should reject traversal and normalize paths
+     * before accessing external storage.
+     *
+     * @param path non-blank Wiki path
+     * @return the Wiki, or {@code null} when no Wiki exists at that path
+     */
     Wiki getWiki(String path);
 
 }
