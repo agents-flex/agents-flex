@@ -167,7 +167,8 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
         }
         // 一个流式故障转移周期内不重复尝试同一节点，全部尝试过后才开始下一轮重试。
         Set<ModelEndpoint<ChatModel>> attempted = new HashSet<>();
-        streamAttempt(prompt, listener, options, attempted, new ArrayList<>(), 0, null);
+        streamAttempt(prompt, listener, options, attempted, new ArrayList<>(),
+            new AtomicBoolean(), 0, null);
     }
 
     /**
@@ -179,6 +180,7 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
      */
     private void streamAttempt(Prompt prompt, StreamResponseListener listener, ChatOptions options,
                                Set<ModelEndpoint<ChatModel>> attempted, List<Throwable> failures,
+                               AtomicBoolean errorDelivered,
                                int retryCount,
                                Throwable previous) {
         List<ModelEndpoint<ChatModel>> allCandidates = filterEndpoints(extractTags(options));
@@ -241,23 +243,29 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                     endpoint.getMetrics().endRequest();
                     failures.add(error);
                     if (!waitBeforeRetry(retryCount, error)) {
-                        listener.onError(context, error);
+                        notifyError(listener, errorDelivered, context, error);
                         return;
                     }
-                    streamAttempt(prompt, listener, options, attempted, failures, retryCount + 1, error);
+                    try {
+                        streamAttempt(prompt, listener, options, attempted, failures,
+                            errorDelivered, retryCount + 1, error);
+                    } catch (RuntimeException terminal) {
+                        // 异步回调中的路由失败不能抛回已返回的 chatStream 调用方，必须通知监听器。
+                        notifyError(listener, errorDelivered, context, terminal);
+                    }
                     return;
                 }
                 // 已经输出过内容，或异常不可重试：保持原流的生命周期并交由调用方处理。
                 if (providerOpened.get() || downstreamOpened.get()) {
                     openDownstream(context);
-                    listener.onError(context, error);
+                    notifyError(listener, errorDelivered, context, error);
                     return;
                 }
                 // Provider 在 onOpen 前失败时，契约允许只发送 onError；此时不会再有 onClose
                 // 可用于结算指标，因此必须在错误回调内结束当前请求。
                 finished.set(true);
                 try {
-                    listener.onError(context, error);
+                    notifyError(listener, errorDelivered, context, error);
                 } finally {
                     endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
                     if (shouldRecordEndpointFailure(error)) circuitBreaker.recordFailure(endpoint);
@@ -304,13 +312,22 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                 if (!waitBeforeRetry(retryCount, e)) {
                     throw routerFailure("Model request retry was interrupted.", e, failures);
                 }
-                streamAttempt(prompt, listener, options, attempted, failures, retryCount + 1, e);
+                streamAttempt(prompt, listener, options, attempted, failures,
+                    errorDelivered, retryCount + 1, e);
             } else {
                 endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
+                if (shouldRecordEndpointFailure(e)) circuitBreaker.recordFailure(endpoint);
                 endpoint.getMetrics().endRequest();
                 failures.add(e);
                 throw routerFailure("All model requests failed.", e, failures);
             }
+        }
+    }
+
+    private void notifyError(StreamResponseListener listener, AtomicBoolean errorDelivered,
+                             StreamContext context, Throwable error) {
+        if (errorDelivered.compareAndSet(false, true)) {
+            listener.onError(context, error);
         }
     }
 

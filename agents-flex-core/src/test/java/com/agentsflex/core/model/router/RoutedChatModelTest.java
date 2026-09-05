@@ -24,7 +24,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class RoutedChatModelTest {
 
@@ -204,6 +208,98 @@ public class RoutedChatModelTest {
     }
 
     @Test
+    public void asyncRetryExhaustionReportsErrorInsteadOfEscapingCallback() throws Exception {
+        CountDownLatch callbackFinished = new CountDownLatch(1);
+        AtomicReference<Throwable> escaped = new AtomicReference<>();
+        List<String> events = Collections.synchronizedList(new ArrayList<>());
+        FakeModel model = new FakeModel((p, o, l) -> {
+            Thread callback = new Thread(() -> {
+                try {
+                    l.onError(new StreamContext(null, null, null),
+                        new ModelRateLimitException("rate limited", 429, null, null, null));
+                } catch (Throwable error) {
+                    escaped.set(error);
+                } finally {
+                    callbackFinished.countDown();
+                }
+            });
+            callback.start();
+        });
+        CircuitBreaker<ChatModel> breaker = new DenyingBreaker();
+        RoutedChatModel router = new RoutedChatModel(
+            Collections.singletonList(new ModelEndpoint<>(model)),
+            new LeastActiveLoadBalancer<>(), new DefaultRetryPolicy(1), breaker);
+
+        router.chatStream(PROMPT, recordingListener(events), new ChatOptions());
+
+        Assert.assertTrue(callbackFinished.await(2, TimeUnit.SECONDS));
+        Assert.assertNull(escaped.get());
+        Assert.assertEquals(Collections.singletonList("error"), events);
+    }
+
+    @Test
+    public void synchronousStreamFailureRecordsCircuitFailureWhenNotRetried() {
+        CountingBreaker breaker = new CountingBreaker();
+        FakeModel model = new FakeModel((p, o, l) -> {
+            throw new RuntimeException("connection failed");
+        });
+        RoutedChatModel router = new RoutedChatModel(
+            Collections.singletonList(new ModelEndpoint<ChatModel>(model)),
+            new LeastActiveLoadBalancer<>(), new DefaultRetryPolicy(0), breaker);
+
+        try {
+            router.chatStream(PROMPT, recordingListener(new ArrayList<>()), new ChatOptions());
+            Assert.fail();
+        } catch (RouterException expected) {
+            // Expected: a synchronous stream setup failure is wrapped by the router.
+        }
+
+        Assert.assertEquals(1, breaker.failures.get());
+    }
+
+    @Test
+    public void listenerErrorExceptionDoesNotTriggerSecondErrorNotification() throws Exception {
+        CountDownLatch callbackFinished = new CountDownLatch(1);
+        AtomicReference<Throwable> escaped = new AtomicReference<>();
+        AtomicInteger errors = new AtomicInteger();
+        FakeModel first = new FakeModel((p, o, l) -> {
+            Thread callback = new Thread(() -> {
+                try {
+                    l.onError(new StreamContext(null, null, null),
+                        new ModelRateLimitException("rate limited", 429, null, null, null));
+                } catch (Throwable error) {
+                    escaped.set(error);
+                } finally {
+                    callbackFinished.countDown();
+                }
+            });
+            callback.start();
+        });
+        FakeModel second = new FakeModel((p, o, l) -> l.onError(
+            new StreamContext(null, null, null),
+            new ModelQuotaExceededException("quota", 429, "insufficient_quota", null)));
+        RoutedChatModel router = new RoutedChatModel(
+            Arrays.asList(new ModelEndpoint<ChatModel>(first), new ModelEndpoint<ChatModel>(second)),
+            new LeastActiveLoadBalancer<>(), new DefaultRetryPolicy(1), new CountingBreaker());
+
+        router.chatStream(PROMPT, new StreamResponseListener() {
+            @Override
+            public void onMessage(StreamContext context, AiMessageResponse response) {
+            }
+
+            @Override
+            public void onError(StreamContext context, Throwable error) {
+                errors.incrementAndGet();
+                throw new RuntimeException("listener failed");
+            }
+        }, new ChatOptions());
+
+        Assert.assertTrue(callbackFinished.await(2, TimeUnit.SECONDS));
+        Assert.assertNull(escaped.get());
+        Assert.assertEquals(1, errors.get());
+    }
+
+    @Test
     public void streamFailsBeforeMessageAndSwitchesOnce() {
         FakeModel bad = new FakeModel((p, o, l) -> {
             StreamContext c = new StreamContext(null, null, null);
@@ -336,6 +432,21 @@ public class RoutedChatModelTest {
 
         public void recordFailure(ModelEndpoint<ChatModel> e) {
             failures.incrementAndGet();
+        }
+    }
+
+    private static class DenyingBreaker implements CircuitBreaker<ChatModel> {
+        private final AtomicBoolean allow = new AtomicBoolean(true);
+
+        public boolean allowRequest(ModelEndpoint<ChatModel> e) {
+            return allow.get();
+        }
+
+        public void recordSuccess(ModelEndpoint<ChatModel> e) {
+        }
+
+        public void recordFailure(ModelEndpoint<ChatModel> e) {
+            allow.set(false);
         }
     }
 }
