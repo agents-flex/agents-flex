@@ -20,7 +20,9 @@ import com.agentsflex.core.prompt.SimplePrompt;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -141,32 +143,94 @@ public class RoutedChatModelTest {
     }
 
     @Test
-    public void streamFailsBeforeMessageAndSwitchesOnce() {
-        FakeModel bad = new FakeModel((p, o, l) -> l.onError(new StreamContext(null, null, null),
-            new ModelRateLimitException("x", 429, null, null, null)));
-        FakeModel good = new FakeModel((p, o, l) -> {
+    public void streamPreservesNormalLifecycleOrder() {
+        FakeModel model = new FakeModel((p, o, l) -> {
             StreamContext c = new StreamContext(null, null, null);
+            l.onOpen(c);
             l.onMessage(c, new AiMessageResponse(null, null, new AiMessage("ok")));
             l.onClose(c);
         });
-        AtomicInteger messages = new AtomicInteger(), opens = new AtomicInteger();
-        router(Arrays.asList(bad, good)).chatStream(PROMPT, new StreamResponseListener() {
-            public void onOpen(StreamContext c) {
-                opens.incrementAndGet();
-            }
+        List<String> events = new ArrayList<>();
 
-            public void onMessage(StreamContext c, AiMessageResponse r) {
-                messages.incrementAndGet();
-            }
-        }, new ChatOptions());
-        Assert.assertEquals(1, opens.get());
-        Assert.assertEquals(1, messages.get());
+        singleRouter(model).chatStream(PROMPT, recordingListener(events), new ChatOptions());
+
+        Assert.assertEquals(Arrays.asList("open", "message", "close"), events);
+    }
+
+    @Test
+    public void emptyStreamStillOpensBeforeClose() {
+        FakeModel model = new FakeModel((p, o, l) -> {
+            StreamContext c = new StreamContext(null, null, null);
+            l.onOpen(c);
+            l.onClose(c);
+        });
+        List<String> events = new ArrayList<>();
+
+        singleRouter(model).chatStream(PROMPT, recordingListener(events), new ChatOptions());
+
+        Assert.assertEquals(Arrays.asList("open", "close"), events);
+    }
+
+    @Test
+    public void openedStreamFailurePreservesLifecycleOrder() {
+        FakeModel model = new FakeModel((p, o, l) -> {
+            StreamContext c = new StreamContext(null, null, null);
+            l.onOpen(c);
+            l.onError(c, new ModelQuotaExceededException("quota", 429, "insufficient_quota", null));
+            l.onClose(c);
+        });
+        List<String> events = new ArrayList<>();
+
+        singleRouter(model).chatStream(PROMPT, recordingListener(events), new ChatOptions());
+
+        Assert.assertEquals(Arrays.asList("open", "error", "close"), events);
+    }
+
+    @Test
+    public void failureBeforeOpenOnlyReportsErrorAndSettlesMetrics() {
+        FakeModel model = new FakeModel((p, o, l) -> l.onError(
+            new StreamContext(null, null, null),
+            new ModelQuotaExceededException("quota", 429, "insufficient_quota", null)));
+        ModelEndpoint<ChatModel> endpoint = new ModelEndpoint<>(model);
+        RoutedChatModel router = new RoutedChatModel(Collections.singletonList(endpoint),
+            new LeastActiveLoadBalancer<>(), new DefaultRetryPolicy(0), new CountingBreaker());
+        List<String> events = new ArrayList<>();
+
+        router.chatStream(PROMPT, recordingListener(events), new ChatOptions());
+
+        Assert.assertEquals(Collections.singletonList("error"), events);
+        Assert.assertEquals(0, endpoint.getMetrics().activeRequests());
+        Assert.assertEquals(1L, endpoint.getMetrics().failedRequests());
+    }
+
+    @Test
+    public void streamFailsBeforeMessageAndSwitchesOnce() {
+        FakeModel bad = new FakeModel((p, o, l) -> {
+            StreamContext c = new StreamContext(null, null, null);
+            l.onOpen(c);
+            l.onError(c, new ModelRateLimitException("x", 429, null, null, null));
+            l.onClose(c);
+        });
+        FakeModel good = new FakeModel((p, o, l) -> {
+            StreamContext c = new StreamContext(null, null, null);
+            l.onOpen(c);
+            l.onMessage(c, new AiMessageResponse(null, null, new AiMessage("ok")));
+            l.onClose(c);
+        });
+        List<String> events = new ArrayList<>();
+
+        router(Arrays.asList(bad, good)).chatStream(PROMPT, recordingListener(events), new ChatOptions());
+
+        Assert.assertEquals(Arrays.asList("open", "message", "close"), events);
+        Assert.assertEquals(1, bad.streamCalls.get());
+        Assert.assertEquals(1, good.streamCalls.get());
     }
 
     @Test
     public void streamFailureAfterMessageDoesNotSwitch() {
         FakeModel first = new FakeModel((p, o, l) -> {
             StreamContext c = new StreamContext(null, null, null);
+            l.onOpen(c);
             l.onMessage(c, new AiMessageResponse(null, null, new AiMessage("part")));
             l.onError(c, new RuntimeException("broken"));
             l.onClose(c);
@@ -188,6 +252,34 @@ public class RoutedChatModelTest {
         Assert.assertEquals(1, errors.get());
         Assert.assertEquals(1, closes.get());
         Assert.assertEquals(0, second.streamCalls.get());
+    }
+
+    private RoutedChatModel singleRouter(FakeModel model) {
+        return new RoutedChatModel(Collections.<ChatModel>singletonList(model));
+    }
+
+    private StreamResponseListener recordingListener(List<String> events) {
+        return new StreamResponseListener() {
+            @Override
+            public void onOpen(StreamContext context) {
+                events.add("open");
+            }
+
+            @Override
+            public void onMessage(StreamContext context, AiMessageResponse response) {
+                events.add("message");
+            }
+
+            @Override
+            public void onError(StreamContext context, Throwable error) {
+                events.add("error");
+            }
+
+            @Override
+            public void onClose(StreamContext context) {
+                events.add("close");
+            }
+        };
     }
 
     private RoutedChatModel router(List<FakeModel> models) {

@@ -201,8 +201,9 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
         endpoint.getMetrics().beginRequest();
         long start = System.currentTimeMillis();
         // 回调可能来自网络线程，以下状态用于保证一次请求只结算一次。
-        AtomicBoolean delivered = new AtomicBoolean(); // 是否已向业务侧交付任意模型内容
-        AtomicBoolean opened = new AtomicBoolean();    // 是否已向业务侧发出 onOpen
+        AtomicBoolean delivered = new AtomicBoolean();        // 是否已向业务侧交付任意模型内容
+        AtomicBoolean providerOpened = new AtomicBoolean();   // 当前 Provider 是否已发出 onOpen
+        AtomicBoolean downstreamOpened = new AtomicBoolean(); // 是否已向业务侧发出 onOpen
         AtomicBoolean failed = new AtomicBoolean();
         AtomicBoolean finished = new AtomicBoolean();
         AtomicBoolean switched = new AtomicBoolean();   // 当前失败是否已交由备用节点接管
@@ -211,7 +212,7 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
             @Override
             public void onOpen(StreamContext context) {
                 // 延迟转发。若连接刚打开就失败，业务侧只会看到最终选中节点的一次 onOpen。
-                opened.set(true);
+                providerOpened.set(true);
             }
 
             @Override
@@ -223,7 +224,7 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                 }
                 // 一旦内容已可见，不能再切换模型，否则会出现重复或混合输出。
                 delivered.set(true);
-                if (opened.compareAndSet(false, true)) listener.onOpen(context);
+                openDownstream(context);
                 listener.onMessage(context, response);
             }
 
@@ -247,26 +248,48 @@ public class RoutedChatModel extends AbstractModelRouter<ChatModel> implements C
                     return;
                 }
                 // 已经输出过内容，或异常不可重试：保持原流的生命周期并交由调用方处理。
-                if (opened.compareAndSet(false, true)) listener.onOpen(context);
-                listener.onError(context, error);
+                if (providerOpened.get() || downstreamOpened.get()) {
+                    openDownstream(context);
+                    listener.onError(context, error);
+                    return;
+                }
+                // Provider 在 onOpen 前失败时，契约允许只发送 onError；此时不会再有 onClose
+                // 可用于结算指标，因此必须在错误回调内结束当前请求。
+                finished.set(true);
+                try {
+                    listener.onError(context, error);
+                } finally {
+                    endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
+                    if (shouldRecordEndpointFailure(error)) circuitBreaker.recordFailure(endpoint);
+                    endpoint.getMetrics().endRequest();
+                }
             }
 
             @Override
             public void onClose(StreamContext context) {
                 if (!finished.compareAndSet(false, true)) return;
-                if (!switched.get()) {
-                    listener.onClose(context);
-                    if (failed.get()) {
-                        endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
-                        if (shouldRecordEndpointFailure(failure.get())) {
-                            circuitBreaker.recordFailure(endpoint);
+                try {
+                    if (!switched.get()) {
+                        // 正常空流没有 onMessage，仍需在 onClose 前补发延迟的 onOpen。
+                        if (providerOpened.get()) openDownstream(context);
+                        if (downstreamOpened.get()) listener.onClose(context);
+                        if (failed.get()) {
+                            endpoint.getMetrics().recordFailure(System.currentTimeMillis() - start);
+                            if (shouldRecordEndpointFailure(failure.get())) {
+                                circuitBreaker.recordFailure(endpoint);
+                            }
+                        } else {
+                            endpoint.getMetrics().recordSuccess(System.currentTimeMillis() - start);
+                            circuitBreaker.recordSuccess(endpoint);
                         }
-                    } else {
-                        endpoint.getMetrics().recordSuccess(System.currentTimeMillis() - start);
-                        circuitBreaker.recordSuccess(endpoint);
                     }
+                } finally {
+                    endpoint.getMetrics().endRequest();
                 }
-                endpoint.getMetrics().endRequest();
+            }
+
+            private void openDownstream(StreamContext context) {
+                if (downstreamOpened.compareAndSet(false, true)) listener.onOpen(context);
             }
         };
         try {
