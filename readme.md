@@ -31,7 +31,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | `agents-flex-agent` | Durable Agent runtime: Run state, snapshot recovery, Worker leases, approval, middleware, and events |
 | `agents-flex-agent-store` | JDBC and Redis persistence for Agent runs, commands, events, and artifacts |
 | `agents-flex-observability` | OpenTelemetry span and metric exporters with JDBC persistence |
-| `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |
+| `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM, llmman |
 | `agents-flex-embedding` | Embedding model integrations: OpenAI, Ollama, Qwen |
 | `agents-flex-image` | Image model integrations: OpenAI, Gemini, Qwen, Alibaba Cloud, Gitee, Qianfan, SiliconFlow, Stability, Tencent, Volcengine |
 | `agents-flex-video` | Asynchronous video generation and editing: Alibaba Cloud Model Studio and Volcengine Ark |

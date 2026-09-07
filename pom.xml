@@ -328,6 +328,11 @@
             </dependency>
             <dependency>
                 <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-chat-llmman</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
                 <artifactId>agents-flex-chat-ollama</artifactId>
                 <version>${revision}</version>
             </dependency>
