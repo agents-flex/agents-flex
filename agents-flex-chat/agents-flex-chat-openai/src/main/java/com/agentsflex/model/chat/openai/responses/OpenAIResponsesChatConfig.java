@@ -17,8 +17,18 @@ package com.agentsflex.model.chat.openai.responses;
 
 import com.agentsflex.core.model.chat.BaseChatConfig;
 
-/** Configuration for the stateless OpenAI Responses chat adapter. */
+/**
+ * OpenAI Responses 对话模型配置。
+ * <p>
+ * 默认使用 {@code https://api.openai.com/v1/responses} 和 {@code gpt-4.1}，
+ * 支持文本对话及本地函数工具。历史消息由调用方管理，不依赖服务端会话。
+ * API Key、模型名称等通用属性通过 {@link BaseChatConfig} 的访问方法配置。
+ */
 public class OpenAIResponsesChatConfig extends BaseChatConfig {
+
+    /**
+     * 创建使用默认 Endpoint、模型和工具能力的配置。
+     */
     public OpenAIResponsesChatConfig() {
         setProvider("openai");
         setEndpoint("https://api.openai.com");
@@ -28,6 +38,11 @@ public class OpenAIResponsesChatConfig extends BaseChatConfig {
         setSupportToolMessage(true);
     }
 
+    /**
+     * 使用当前配置创建 Responses 对话模型。
+     *
+     * @return 新的对话模型实例
+     */
     public OpenAIResponsesChatModel toChatModel() {
         return new OpenAIResponsesChatModel(this);
     }

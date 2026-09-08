@@ -15,19 +15,53 @@
  */
 package com.agentsflex.model.chat.openai.responses;
 
-import com.agentsflex.core.model.chat.*;
+import com.agentsflex.core.model.chat.BaseChatModel;
+import com.agentsflex.core.model.chat.ChatContext;
+import com.agentsflex.core.model.chat.ChatContextHolder;
+import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.client.*;
+import com.agentsflex.core.model.client.ChatRequestSpec;
+import com.agentsflex.core.model.client.OpenAIChatClient;
+import com.agentsflex.core.model.client.StreamClient;
 
-/** Reuses HTTP transport while providing Responses-specific terminal and streaming parsing. */
+/**
+ * OpenAI Responses 协议客户端。
+ * <p>
+ * 复用 {@link OpenAIChatClient} 的同步 HTTP 传输和错误处理，
+ * 使用独立解析器及流式监听器处理 Responses 响应。
+ * 每次流式调用创建独立状态，客户端实例不保存请求级上下文。
+ */
 public class ResponsesChatClient extends OpenAIChatClient {
-    public ResponsesChatClient(BaseChatModel<?> model) { super(model); }
 
+    /**
+     * 创建绑定到指定模型的客户端。
+     *
+     * @param model 所属对话模型
+     */
+    public ResponsesChatClient(BaseChatModel<?> model) {
+        super(model);
+    }
+
+    /**
+     * 将同步请求的最终响应转换为框架消息或错误响应。
+     *
+     * @param raw     服务端原始 JSON
+     * @param context 本次调用的上下文
+     * @return 解析后的响应
+     */
     @Override
     protected AiMessageResponse parseResponse(String raw, ChatContext context) {
         return new ResponsesResponseParser().parse(raw, context);
     }
 
+    /**
+     * 发起 SSE 请求，由请求独享的监听器管理增量消息和终止事件。
+     * <p>
+     * 不在此处重放已开始的流，以免重复发送业务回调。
+     *
+     * @param body     已由请求构建器生成的请求体
+     * @param listener 业务响应监听器
+     */
     @Override
     public void chatStream(String body, StreamResponseListener listener) {
         ChatContext context = ChatContextHolder.currentContext();
@@ -35,8 +69,11 @@ public class ResponsesChatClient extends OpenAIChatClient {
         StreamClient transport = getStreamClient();
         ResponsesStreamListener bridge = new ResponsesStreamListener(chatModel, context, transport, listener);
         try {
+            // 先通知业务打开，允许业务在建立连接前取消请求。
             bridge.onStart(transport);
-            if (bridge.isTerminal()) return;
+            if (bridge.isTerminal()) {
+                return;
+            }
             transport.start(spec.getUrl(), spec.getHeaders(), body, bridge, chatModel.getConfig());
         } catch (Exception error) {
             bridge.onFailure(transport, error);

@@ -17,14 +17,33 @@ package com.agentsflex.model.chat.openai.responses;
 
 import com.agentsflex.core.model.chat.BaseChatModel;
 import com.agentsflex.core.model.chat.ChatInterceptor;
+
 import java.util.List;
 
-/** Opt-in Responses protocol; existing OpenAIChatModel continues to use Chat Completions. */
+/**
+ * OpenAI Responses 对话模型实现。
+ * <p>
+ * 负责组装 Responses 请求构建器和客户端，同步与流式调用共用
+ * {@link BaseChatModel} 的拦截器、日志及上下文机制。
+ * 使用本类时显式选择 Responses 协议，现有 OpenAIChatModel 仍使用 Chat Completions。
+ */
 public class OpenAIResponsesChatModel extends BaseChatModel<OpenAIResponsesChatConfig> {
+
+    /**
+     * 构造模型，不配置实例级拦截器。
+     *
+     * @param config Responses 对话配置
+     */
     public OpenAIResponsesChatModel(OpenAIResponsesChatConfig config) {
         this(config, null);
     }
 
+    /**
+     * 构造模型，并将实例级拦截器交给基础模型统一管理。
+     *
+     * @param config       Responses 对话配置
+     * @param interceptors 实例级拦截器，可为 null 或空列表
+     */
     public OpenAIResponsesChatModel(OpenAIResponsesChatConfig config, List<ChatInterceptor> interceptors) {
         super(config, interceptors);
         setChatRequestSpecBuilder(new ResponsesRequestSpecBuilder());
