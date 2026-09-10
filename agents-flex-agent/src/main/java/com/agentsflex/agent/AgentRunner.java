@@ -11,34 +11,29 @@ import com.agentsflex.agent.compression.AgentContextCompressionResult;
 import com.agentsflex.agent.compression.AgentContextCompressor;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
-import com.agentsflex.agent.exception.AgentApprovalRequiredException;
 import com.agentsflex.agent.exception.AgentConversationBusyException;
-import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
-import com.agentsflex.agent.middleware.*;
+import com.agentsflex.agent.middleware.AgentMiddleware;
+import com.agentsflex.agent.middleware.AgentMiddlewareContext;
+import com.agentsflex.agent.middleware.AgentModelCallChain;
+import com.agentsflex.agent.middleware.AgentStepChain;
 import com.agentsflex.agent.store.AgentTurnStore;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.agent.tool.*;
 import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.ChatMemoryProvider;
 import com.agentsflex.core.message.*;
-import com.agentsflex.core.model.chat.ChatContext;
-import com.agentsflex.core.model.chat.ChatContextHolder;
-import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutionTarget;
-import com.agentsflex.core.model.chat.tool.ToolExecutor;
-import com.agentsflex.core.model.chat.tool.ToolInterceptor;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * 创建、推进、暂停和恢复 {@link AgentTurn} 的核心执行器。
@@ -69,13 +64,7 @@ import java.util.concurrent.*;
  */
 public final class AgentRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(AgentRunner.class);
-    private static final String TOOL_INPUT_TARGET = "TOOL";
-    /**
-     * 标记审批请求由本地 Tool 在只读预检后主动产生，供页面展示和审计区分审批来源。
-     */
-    private static final String APPROVAL_TRIGGER_METADATA = "agentsflex.approvalTrigger";
-    private static final String TOOL_APPROVAL_TRIGGER = "TOOL";
+    static final String TOOL_INPUT_TARGET = "TOOL";
 
     /**
      * 保存 Snapshot、取消标记和 Worker 租约的 Turn 存储。
@@ -93,6 +82,10 @@ public final class AgentRunner {
      * 统一模型调用、Token 统计和事件发布的适配器。
      */
     private final AgentModelInvoker modelInvoker;
+    /**
+     * 推进模型产生的 ToolCall，并把执行结果提交回 Runner 的生命周期边界。
+     */
+    private final AgentToolCallProcessor toolCallProcessor;
     private final AgentRunnerOptions runnerOptions;
     /**
      * 可选的业务会话消息投影。未配置 Provider 时为空操作，现有显式传历史消息的 API 不受影响。
@@ -165,6 +158,7 @@ public final class AgentRunner {
         this.eventPublisher = new AgentEventPublisher(this.runnerOptions);
         this.modelInvoker = new AgentModelInvoker(eventPublisher, this.runnerOptions.getModelExecutor());
         this.chatMemory = new AgentRunnerChatMemory(chatMemoryProvider);
+        this.toolCallProcessor = new AgentToolCallProcessor(this, eventPublisher, this.runnerOptions);
     }
 
     /**
@@ -883,7 +877,7 @@ public final class AgentRunner {
             return executeModel(turn);
         }
         if (executionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS) {
-            return executePendingTools(turn, null);
+            return toolCallProcessor.executePendingTools(turn, null);
         }
         if (executionPoint == AgentTurnExecutionPoint.FINISHED) {
             return complete(turn, null, lastAiMessage(turn));
@@ -951,7 +945,7 @@ public final class AgentRunner {
 
         AiMessage message = response.getMessage();
         // 部分模型供应商不返回 ToolCall ID；在写入 Prompt 和 Snapshot 前补成稳定关联键。
-        ensureToolCallIds(turn, message);
+        toolCallProcessor.ensureToolCallIds(turn, message);
         turn.addUsage(message);
         turn.getPrompt().addMessage(message);
         String budgetReason = budgetExceededReason(turn, false);
@@ -968,7 +962,7 @@ public final class AgentRunner {
         turn.setPendingToolCalls(message.getToolCalls());
         turn.moveTo(AgentTurnExecutionPoint.PROCESS_TOOLS);
         saveSnapshot(turn);
-        return executePendingTools(turn, response);
+        return toolCallProcessor.executePendingTools(turn, response);
     }
 
     /**
@@ -1028,457 +1022,13 @@ public final class AgentRunner {
     }
 
     /**
-     * 逐个处理待执行 ToolCall，并在每个结果写入后保存 Snapshot。
-     */
-    private ChatContext chatContextForToolExecution(AgentTurn turn, AiMessageResponse response) {
-        ChatContext responseContext = response == null ? null : response.getContext();
-        if (responseContext != null && responseContext.getOptions() != null) {
-            return responseContext;
-        }
-
-        // 恢复或自定义 ChatModel 未返回 Context 时，按当前 Turn 的有效选项补齐关联字段。
-        ChatContext context = new ChatContext();
-        if (responseContext != null) {
-            context.setPrompt(responseContext.getPrompt());
-            context.setConfig(responseContext.getConfig());
-            context.setRequestSpec(responseContext.getRequestSpec());
-            context.setStreaming(responseContext.isStreaming());
-        } else {
-            context.setPrompt(turn.getPrompt());
-            context.setStreaming(turn.isStreaming());
-        }
-        ChatOptions options = turn.getChatOptionsOverride();
-        if (options == null) options = turn.getAgent().getChatOptions();
-        if (options == null) options = new ChatOptions();
-        if (StringUtil.hasText(turn.getConversationId())) {
-            options.setContextConversationId(turn.getConversationId());
-        }
-        options.setContextTurnId(turn.getId());
-        context.setOptions(options);
-        return context;
-    }
-
-    private AgentStepResult executePendingTools(AgentTurn turn, AiMessageResponse response) {
-        ChatContext chatContext = chatContextForToolExecution(turn, response);
-        if (turn.getExecutionPolicy().getToolExecutionMode() == AgentToolExecutionMode.PARALLEL
-            && turn.getPendingToolCalls().size() > 1) {
-            AgentStepResult parallel = executePendingToolsInParallel(turn, response, chatContext);
-            if (parallel != null) return parallel;
-        }
-        List<ToolMessage> results = new ArrayList<>();
-        while (!turn.getPendingToolCalls().isEmpty()) {
-            // 每个 ToolCall 前重新检查取消和通用预算；工具次数只约束后面的业务工具。
-            if (turn.isCancellationRequested()) {
-                return cancelTurn(turn);
-            }
-            String budgetReason = budgetExceededReason(turn, false);
-            if (budgetReason != null) {
-                return budgetExceeded(turn, budgetReason);
-            }
-
-            // 始终处理队首调用；成功写入 ToolMessage 后才从 pending 列表移除。
-            ToolCall call = turn.getPendingToolCalls().get(0);
-            Tool tool = resolveTool(turn, call);
-            if (tool == null) {
-                // 恢复后找不到原工具表示 Agent 版本不完整，不能跳过调用继续生成答案。
-                return handleFailure(turn, response,
-                    new AgentToolNotFoundException(call.getName()), AgentTurnExecutionPoint.PROCESS_TOOLS);
-            }
-
-            if (AgentUserInputTool.isUserInputTool(tool)) {
-                try {
-                    AgentFormDefinition form = AgentUserInputTool.resolveForm(tool, call);
-                    Object title = form.getSchema().get("title");
-                    String message = title == null
-                        ? form.getFormKey() : String.valueOf(title);
-                    AgentSuspension suspension = AgentSuspension.userInput(
-                        callKey(call), message, form.getFormKey(), form.getSchema(),
-                        AgentUserInputTool.NAME, null,
-                        turn.getExecutionPolicy().getUserInputTimeoutMillis());
-                    suspend(turn, suspension);
-                    return AgentStepResult.of(response, results, null);
-                } catch (RuntimeException error) {
-                    return handleFailure(turn, response, error, AgentTurnExecutionPoint.PROCESS_TOOLS);
-                }
-            }
-
-            // 内置控制工具不计入业务工具调用次数，真实工具执行前才检查 maxToolCalls。
-            budgetReason = budgetExceededReason(turn, true);
-            if (budgetReason != null) {
-                return budgetExceeded(turn, budgetReason);
-            }
-
-            // 中央策略始终是第一层安全边界。其人工决定只保存到 POLICY 阶段，绝不能顺带批准
-            // Tool 在只读预检后才产生的主动审批请求。
-            ToolApprovalDecision decision;
-            try {
-                ToolApprovalRecord policyRecord = turn.getToolApprovalRecord(
-                    callKey(call), ToolApprovalStage.POLICY);
-                decision = policyRecord == null
-                    ? turn.getAgent().getToolApprovalPolicy().decide(turn, call, tool)
-                    : decisionFromRecord(policyRecord);
-            } catch (RuntimeException policyError) {
-                return handleFailure(turn, response, policyError,
-                    AgentTurnExecutionPoint.PROCESS_TOOLS);
-            }
-            if (decision == null) {
-                return handleFailure(turn, response,
-                    new IllegalStateException("ToolApprovalPolicy returned null"), AgentTurnExecutionPoint.PROCESS_TOOLS);
-            }
-            if (decision.getOutcome() == ToolApprovalDecision.Outcome.REQUIRE_APPROVAL) {
-                // Suspension 保存当前 ToolCall 关联 ID 和 PROCESS_TOOLS 恢复点，审批后不会重新调用模型。
-                AgentSuspension suspension = AgentSuspension.toolApproval(
-                    callKey(call), call.getName(), decision, ToolApprovalStage.POLICY,
-                    turn.getExecutionPolicy().getApprovalTimeoutMillis());
-                suspend(turn, suspension);
-                eventPublisher.notifyToolApprovalRequested(turn, call, decision);
-                return AgentStepResult.of(response, results, null);
-            }
-            if (decision.getOutcome() == ToolApprovalDecision.Outcome.DENY) {
-                // 拒绝不是运行时异常，而是结构化 ToolMessage；模型可据此向用户解释或选择替代方案。
-                ToolMessage rejected = buildToolRejectedMessage(turn, call, decision);
-                appendToolResult(turn, call, rejected);
-                results.add(rejected);
-                continue;
-            }
-
-            // Tool 主动审批被拒绝后不应再次进入 Tool 做只读查询，也不能让中央策略覆盖该拒绝。
-            ToolApprovalRecord toolRecord = turn.getToolApprovalRecord(
-                callKey(call), ToolApprovalStage.TOOL);
-            if (toolRecord != null && !toolRecord.isApproved()) {
-                ToolMessage rejected = buildToolRejectedMessage(
-                    turn, call, decisionFromRecord(toolRecord));
-                appendToolResult(turn, call, rejected);
-                results.add(rejected);
-                continue;
-            }
-
-            if (tool.getExecutionTarget() == ToolExecutionTarget.EXTERNAL) {
-                turn.incrementToolCallCount();
-                AgentSuspension suspension = AgentSuspension.externalTool(
-                    callKey(call), call.getName(), call.getArguments(), tool.getMetadata(),
-                    turn.getExecutionPolicy().getExternalToolTimeoutMillis());
-                suspend(turn, suspension);
-                eventPublisher.notifyExternalToolRequested(turn, call, tool);
-                return AgentStepResult.of(response, results, null);
-            }
-
-            eventPublisher.notifyToolStart(turn, call);
-            ToolMessage completedResult;
-            try {
-                turn.incrementToolCallCount();
-                completedResult = executeTool(turn, tool, call, runnerOptions.getToolExecutor(), chatContext);
-            } catch (AgentApprovalRequiredException request) {
-                // Tool 主动审批与表单输入一样发生在 Tool 已进入执行之后，因此不消耗已完成调用预算。
-                // 审批结果按 ToolCall ID 持久化；恢复后仍经过上面的中央审批边界，再从头执行同一个 Tool。
-                turn.rollbackToolCallCount();
-                ToolApprovalRecord previousToolApproval = turn.getToolApprovalRecord(
-                    callKey(call), ToolApprovalStage.TOOL,
-                    request.getDecision().getRequestFingerprint());
-                if (isSameApprovedRequest(previousToolApproval, request.getDecision())) {
-                    IllegalArgumentException error = repeatedToolApproval(call, request);
-                    eventPublisher.notifyToolError(turn, call, error);
-                    return handleFailure(turn, response, error,
-                        AgentTurnExecutionPoint.PROCESS_TOOLS);
-                }
-                ToolApprovalDecision toolDecision = toolApprovalDecision(request.getDecision());
-                AgentSuspension suspension = AgentSuspension.toolApproval(
-                    callKey(call), call.getName(), toolDecision, ToolApprovalStage.TOOL,
-                    turn.getExecutionPolicy().getApprovalTimeoutMillis());
-                suspend(turn, suspension);
-                eventPublisher.notifyToolApprovalRequested(turn, call, toolDecision);
-                return AgentStepResult.of(response, results, null);
-            } catch (AgentFormRequiredException request) {
-                // 输入请求发生在副作用之前；无论第几轮表单交互，均不提前耗尽调用预算。
-                turn.rollbackToolCallCount();
-                AgentFormDefinition form = request.getForm();
-                AgentSuspension suspension = AgentSuspension.userInput(
-                    callKey(call), request.getMessage(), form.getFormKey(), form.getSchema(),
-                    call.getName(), TOOL_INPUT_TARGET,
-                    turn.getExecutionPolicy().getUserInputTimeoutMillis());
-                suspend(turn, suspension);
-                eventPublisher.notifyToolInputRequested(turn, call, form);
-                return AgentStepResult.of(response, results, null);
-            } catch (RuntimeException error) {
-                // Middleware/Interceptor 经常会包装业务异常。控制流异常沿 cause 链识别，避免审批或
-                // 表单请求被错误地纳入普通异常重试。
-                AgentApprovalRequiredException approvalRequest = findCause(
-                    error, AgentApprovalRequiredException.class);
-                if (approvalRequest != null) {
-                    turn.rollbackToolCallCount();
-                    ToolApprovalRecord previousToolApproval = turn.getToolApprovalRecord(
-                        callKey(call), ToolApprovalStage.TOOL,
-                        approvalRequest.getDecision().getRequestFingerprint());
-                    if (isSameApprovedRequest(previousToolApproval,
-                        approvalRequest.getDecision())) {
-                        IllegalArgumentException repeated = repeatedToolApproval(
-                            call, error);
-                        eventPublisher.notifyToolError(turn, call, repeated);
-                        return handleFailure(turn, response, repeated,
-                            AgentTurnExecutionPoint.PROCESS_TOOLS);
-                    }
-                    ToolApprovalDecision toolDecision = toolApprovalDecision(
-                        approvalRequest.getDecision());
-                    AgentSuspension suspension = AgentSuspension.toolApproval(
-                        callKey(call), call.getName(), toolDecision,
-                        ToolApprovalStage.TOOL,
-                        turn.getExecutionPolicy().getApprovalTimeoutMillis());
-                    suspend(turn, suspension);
-                    eventPublisher.notifyToolApprovalRequested(turn, call, toolDecision);
-                    return AgentStepResult.of(response, results, null);
-                }
-                AgentFormRequiredException formRequest = findCause(
-                    error, AgentFormRequiredException.class);
-                if (formRequest != null) {
-                    turn.rollbackToolCallCount();
-                    AgentFormDefinition form = formRequest.getForm();
-                    AgentSuspension suspension = AgentSuspension.userInput(
-                        callKey(call), formRequest.getMessage(), form.getFormKey(),
-                        form.getSchema(), call.getName(), TOOL_INPUT_TARGET,
-                        turn.getExecutionPolicy().getUserInputTimeoutMillis());
-                    suspend(turn, suspension);
-                    eventPublisher.notifyToolInputRequested(turn, call, form);
-                    return AgentStepResult.of(response, results, null);
-                }
-                eventPublisher.notifyToolError(turn, call, error);
-                if (turn.getExecutionPolicy().getToolErrorStrategy()
-                    == ToolErrorStrategy.RETURN_ERROR_TO_MODEL) {
-                    // 将错误交给模型时仍生成与原 ToolCall 匹配的 ToolMessage，保持协议完整。
-                    completedResult = buildToolErrorMessage(turn, call, error);
-                } else {
-                    return handleFailure(turn, response, error, AgentTurnExecutionPoint.PROCESS_TOOLS);
-                }
-            }
-            // Snapshot 异常必须直接交给调用方，不能被误判为工具执行异常。
-            appendToolResult(turn, call, completedResult);
-            results.add(completedResult);
-            eventPublisher.notifyToolEnd(turn, call);
-            refreshCancellation(turn);
-        }
-
-        // 当前模型回合的全部工具调用已处理，下一 step 应让模型读取 ToolMessage 并继续判断。
-        turn.moveTo(AgentTurnExecutionPoint.INVOKE_MODEL);
-        saveSnapshot(turn);
-        return AgentStepResult.of(response, results, null);
-    }
-
-    /**
-     * 并行执行一批已经被中央策略允许的本地 ToolCall。
-     *
-     * <p>任意普通 Tool 都可以在执行中抛出 {@link AgentApprovalRequiredException} 申请审批，或抛出
-     * {@link AgentFormRequiredException} 请求表单输入。并行任务一旦
-     * 提交便无法可靠撤销，因此 Runner 会等待本批任务收束、保存其他已完成结果，再挂起发起请求的
-     * Tool。Tool 主动审批只保护该 Tool 自己位于异常之后的副作用；需要阻止整个批次启动时应使用前置
-     * toolApprovalPolicy。</p>
-     */
-    private AgentStepResult executePendingToolsInParallel(AgentTurn turn, AiMessageResponse response,
-                                                          ChatContext chatContext) {
-        List<ToolCall> calls = turn.getPendingToolCalls();
-        List<Tool> tools = new ArrayList<>(calls.size());
-        for (ToolCall call : calls) {
-            Tool tool = resolveTool(turn, call);
-            if (tool == null || AgentUserInputTool.isUserInputTool(tool)
-                || tool.getExecutionTarget() == ToolExecutionTarget.EXTERNAL
-            ) return null;
-            ToolApprovalDecision decision;
-            try {
-                ToolApprovalRecord policyRecord = turn.getToolApprovalRecord(
-                    callKey(call), ToolApprovalStage.POLICY);
-                decision = policyRecord == null
-                    ? turn.getAgent().getToolApprovalPolicy().decide(turn, call, tool)
-                    : decisionFromRecord(policyRecord);
-            } catch (RuntimeException policyError) {
-                return handleFailure(turn, response, policyError,
-                    AgentTurnExecutionPoint.PROCESS_TOOLS);
-            }
-            if (decision == null || decision.getOutcome() != ToolApprovalDecision.Outcome.ALLOW) return null;
-            ToolApprovalRecord toolRecord = turn.getToolApprovalRecord(
-                callKey(call), ToolApprovalStage.TOOL);
-            if (toolRecord != null && !toolRecord.isApproved()) return null;
-            tools.add(tool);
-        }
-        String budgetReason = budgetExceededReason(turn, false);
-        if (budgetReason != null) return budgetExceeded(turn, budgetReason);
-        if (turn.getExecutionPolicy().getBudget().getMaxToolCalls() > 0
-            && turn.getToolCallCount() + calls.size() > turn.getExecutionPolicy().getBudget().getMaxToolCalls()) {
-            return null;
-        }
-
-        int maxConcurrency = Math.min(calls.size(),
-            turn.getExecutionPolicy().getMaxParallelToolCalls());
-        ExecutorService executor = Executors.newFixedThreadPool(maxConcurrency, runnable -> {
-            Thread thread = new Thread(runnable, "agent-tool-parallel-" + turn.getId());
-            thread.setDaemon(true);
-            return thread;
-        });
-        List<Future<ToolMessage>> futures = new ArrayList<>(calls.size());
-        try {
-            for (int index = 0; index < calls.size(); index++) {
-                ToolCall call = calls.get(index);
-                Tool tool = tools.get(index);
-                turn.incrementToolCallCount();
-                eventPublisher.notifyToolStart(turn, call);
-                // 协调线程只负责维持批次并发上限；实际工具调用仍进入 Runner 配置的 toolExecutor。
-                futures.add(executor.submit(() -> executeTool(
-                    turn, tool, call, runnerOptions.getToolExecutor(), chatContext)));
-            }
-            List<ToolMessage> results = new ArrayList<>(calls.size());
-            RuntimeException firstFailure = null;
-            List<RuntimeException> failures = new ArrayList<>(calls.size());
-            List<AgentApprovalRequiredException> approvalRequests =
-                new ArrayList<>(calls.size());
-            List<AgentFormRequiredException> formRequests = new ArrayList<>(calls.size());
-            for (int index = 0; index < calls.size(); index++) {
-                ToolCall call = calls.get(index);
-                try {
-                    ToolMessage result = futures.get(index).get();
-                    // 暂存成功结果，先收集完整批次，避免前序失败导致后序成功结果无法落盘。
-                    results.add(result);
-                    failures.add(null);
-                    approvalRequests.add(null);
-                    formRequests.add(null);
-                } catch (InterruptedException error) {
-                    Thread.currentThread().interrupt();
-                    return handleFailure(turn, response,
-                        new IllegalStateException("parallel tool execution was interrupted", error),
-                        AgentTurnExecutionPoint.PROCESS_TOOLS);
-                } catch (ExecutionException error) {
-                    Throwable cause = error.getCause();
-                    AgentApprovalRequiredException approvalRequest = findCause(
-                        cause, AgentApprovalRequiredException.class);
-                    AgentFormRequiredException formRequest = findCause(
-                        cause, AgentFormRequiredException.class);
-                    if (approvalRequest != null || formRequest != null) {
-                        // 控制流请求没有完成本次业务调用，不消耗 maxToolCalls 预算，也不发布 TOOL_ERROR。
-                        turn.rollbackToolCallCount();
-                        results.add(null);
-                        failures.add(null);
-                        approvalRequests.add(approvalRequest);
-                        formRequests.add(formRequest);
-                        continue;
-                    }
-                    RuntimeException failure = cause instanceof RuntimeException
-                        ? (RuntimeException) cause
-                        : new IllegalStateException("parallel tool execution failed", cause);
-                    eventPublisher.notifyToolError(turn, call, failure);
-                    if (firstFailure == null) firstFailure = failure;
-                    failures.add(failure);
-                    results.add(null);
-                    approvalRequests.add(null);
-                    formRequests.add(null);
-                    continue;
-                }
-            }
-            // 按模型声明顺序写入成功结果；并行完成顺序不影响 Prompt 顺序。
-            List<ToolMessage> returned = new ArrayList<>(calls.size());
-            boolean returnErrors = turn.getExecutionPolicy().getToolErrorStrategy()
-                == ToolErrorStrategy.RETURN_ERROR_TO_MODEL
-                || turn.getExecutionPolicy().getParallelFailureStrategy()
-                == AgentParallelFailureStrategy.RETURN_ERRORS_TO_MODEL;
-            for (int index = 0; index < calls.size(); index++) {
-                ToolCall call = calls.get(index);
-                ToolMessage result = results.get(index);
-                if (result == null) {
-                    if (approvalRequests.get(index) != null || formRequests.get(index) != null) {
-                        continue;
-                    }
-                    if (returnErrors) {
-                        result = buildToolErrorMessage(turn, call, failures.get(index));
-                        appendParallelToolResult(turn, call, result);
-                        returned.add(result);
-                    }
-                    continue;
-                }
-                appendParallelToolResult(turn, call, result);
-                returned.add(result);
-                eventPublisher.notifyToolEnd(turn, call);
-            }
-            if (firstFailure != null && !returnErrors) {
-                return handleFailure(turn, response, firstFailure, AgentTurnExecutionPoint.PROCESS_TOOLS);
-            }
-
-            // 一个 Turn 同一时刻只能暴露一个 Suspension。若同批多个 Tool 同时请求暂停，先处理模型
-            // 顺序中最靠前的一个；其余 ToolCall 保持 pending，下一次执行时会再次产生各自请求。
-            for (int index = 0; index < calls.size(); index++) {
-                ToolCall call = calls.get(index);
-                AgentApprovalRequiredException approvalRequest = approvalRequests.get(index);
-                if (approvalRequest != null) {
-                    ToolApprovalRecord previousToolApproval = turn.getToolApprovalRecord(
-                        callKey(call), ToolApprovalStage.TOOL,
-                        approvalRequest.getDecision().getRequestFingerprint());
-                    if (isSameApprovedRequest(previousToolApproval,
-                        approvalRequest.getDecision())) {
-                        return handleFailure(turn, response,
-                            repeatedToolApproval(call, approvalRequest),
-                            AgentTurnExecutionPoint.PROCESS_TOOLS);
-                    }
-                    ToolApprovalDecision toolDecision = toolApprovalDecision(
-                        approvalRequest.getDecision());
-                    AgentSuspension suspension = AgentSuspension.toolApproval(
-                        callKey(call), call.getName(), toolDecision,
-                        ToolApprovalStage.TOOL,
-                        turn.getExecutionPolicy().getApprovalTimeoutMillis());
-                    suspend(turn, suspension);
-                    eventPublisher.notifyToolApprovalRequested(turn, call, toolDecision);
-                    return AgentStepResult.of(response, returned, null);
-                }
-                AgentFormRequiredException formRequest = formRequests.get(index);
-                if (formRequest != null) {
-                    AgentFormDefinition form = formRequest.getForm();
-                    AgentSuspension suspension = AgentSuspension.userInput(
-                        callKey(call), formRequest.getMessage(), form.getFormKey(),
-                        form.getSchema(), call.getName(), TOOL_INPUT_TARGET,
-                        turn.getExecutionPolicy().getUserInputTimeoutMillis());
-                    suspend(turn, suspension);
-                    eventPublisher.notifyToolInputRequested(turn, call, form);
-                    return AgentStepResult.of(response, returned, null);
-                }
-            }
-            turn.moveTo(AgentTurnExecutionPoint.INVOKE_MODEL);
-            saveSnapshot(turn);
-            return AgentStepResult.of(response, returned, null);
-        } finally {
-            executor.shutdownNow();
-        }
-    }
-
-    /**
-     * 原子语义上提交一个工具结果：追加消息、移除 pending 调用并保存 Snapshot。
-     *
-     * <p>只有 Snapshot 成功后调用才算被运行时确认；具备外部副作用的 Tool 仍应使用
-     * {@link AgentToolContext} 中的稳定调用 ID 在业务侧实现幂等。</p>
-     */
-    private void appendToolResult(AgentTurn turn, ToolCall call, ToolMessage result) {
-        turn.getPrompt().addMessage(result);
-        turn.removeFirstPendingToolCall();
-        saveSnapshot(turn);
-    }
-
-    /**
-     * 并行批次按 ToolCall ID 提交结果，不能假设当前结果对应 pending 列表首项。
-     */
-    private void appendParallelToolResult(AgentTurn turn, ToolCall call,
-                                          ToolMessage result) {
-        turn.getPrompt().addMessage(result);
-        turn.removePendingToolCall(callKey(call));
-        saveSnapshot(turn);
-    }
-
-    /**
-     * 从恢复出的当前 Agent 定义中按名称解析工具；工具对象本身不保存在 Snapshot。
-     */
-    private Tool resolveTool(AgentTurn turn, ToolCall call) {
-        return call == null ? null : turn.getAgent().resolveTool(turn, call.getName());
-    }
-
-    /**
      * 将模型或工具异常统一转换为取消、持久化重试或最终失败状态。
      *
      * <p>安排重试时保存发生异常的 ExecutionPoint，使 Worker 到期恢复后从原模型或工具边界继续。方法只计算
      * {@code nextRunnableAt} 并返回阻塞结果，不在当前线程 sleep。</p>
      */
-    private AgentStepResult handleFailure(AgentTurn turn, AiMessageResponse response,
-                                          RuntimeException error, AgentTurnExecutionPoint resumeExecutionPoint) {
+    AgentStepResult handleFailure(AgentTurn turn, AiMessageResponse response,
+                                  RuntimeException error, AgentTurnExecutionPoint resumeExecutionPoint) {
         if (turn.isCancellationRequested()) {
             return cancelTurn(turn);
         }
@@ -1494,7 +1044,7 @@ public final class AgentRunner {
             long runAt = System.currentTimeMillis() + retry.delayMillis(retryAttempt);
             if (resumeExecutionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS && !turn.getPendingToolCalls().isEmpty()) {
                 ToolCall call = turn.getPendingToolCalls().get(0);
-                recordToolResume(turn, callKey(call), AgentToolResumeType.RETRY,
+                recordToolResume(turn, AgentToolCallProcessor.callKey(call), AgentToolResumeType.RETRY,
                     retryAttempt, runAt, null, error);
             }
             turn.scheduleRetry(error, resumeExecutionPoint, runAt);
@@ -1523,7 +1073,7 @@ public final class AgentRunner {
     /**
      * 在安全边界响应单调取消信号并保存最终 CANCELLED 状态。
      */
-    private AgentStepResult cancelTurn(AgentTurn turn) {
+    AgentStepResult cancelTurn(AgentTurn turn) {
         finalizeInterruptedHistory(turn, turn.getExecutionPolicy().getCancellationReason());
         turn.markCancelled();
         saveSnapshot(turn);
@@ -1568,7 +1118,7 @@ public final class AgentRunner {
     /**
      * 保存预算终止原因，避免调用方只能从通用失败信息推断成本限制。
      */
-    private AgentStepResult budgetExceeded(AgentTurn turn, String reason) {
+    AgentStepResult budgetExceeded(AgentTurn turn, String reason) {
         finalizeInterruptedHistory(turn, "execution budget exceeded: " + reason);
         turn.markBudgetExceeded(reason);
         saveSnapshot(turn);
@@ -1659,7 +1209,7 @@ public final class AgentRunner {
      *
      * @param beforeTool 是否即将执行一个新工具；工具次数只在该边界检查，避免已完成一次调用后被误判
      */
-    private String budgetExceededReason(AgentTurn turn, boolean beforeTool) {
+    String budgetExceededReason(AgentTurn turn, boolean beforeTool) {
         AgentBudget budget = turn.getExecutionPolicy().getBudget();
         long elapsed = System.currentTimeMillis() - turn.getCreatedAt();
         if (budget.getMaxDurationMillis() > 0 && elapsed >= budget.getMaxDurationMillis()) {
@@ -1716,250 +1266,6 @@ public final class AgentRunner {
         }
         if (response.getMessage() == null) {
             throw new IllegalStateException("chat model returned no message");
-        }
-    }
-
-    /**
-     * 执行单个业务工具并把任意 Java 返回值规范化为 ToolMessage。
-     *
-     * <p>{@link AgentToolContext} 提供跨恢复稳定的调用身份、进度上报和实时取消检查。调用顺序为
-     * Agent Middleware、ToolInterceptor、Tool 函数；受控上下文通过 Core ToolContext 传入，
-     * 不写入模型可见的工具参数 Schema。</p>
-     */
-    private ToolMessage executeTool(AgentTurn turn, Tool tool, ToolCall call,
-                                    java.util.concurrent.Executor executor,
-                                    ChatContext chatContext) {
-        List<ToolInterceptor> interceptors = turn.getAgent().getToolInterceptors();
-
-        AgentToolProgressEmitter progressEmitter = (message, data) ->
-            eventPublisher.notifyToolProgress(
-                turn, call, tool.getName(), message, data);
-
-        String toolCallId = callKey(call);
-        int executionAttempt = turn.incrementToolExecutionAttempt(toolCallId);
-        AgentToolContext toolContext = new AgentToolContext(
-            turn.getId(), turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
-            toolCallId, progressEmitter, turn::isCancellationRequested,
-            turn.getToolInputData(toolCallId), executionAttempt,
-            turn.getToolResumeInfo(toolCallId),
-            turn.getToolApprovalRecord(toolCallId, ToolApprovalStage.POLICY),
-            turn.getToolApprovalRecord(toolCallId, ToolApprovalStage.TOOL),
-            turn.getToolApprovalRecordsByRequest(toolCallId));
-
-        AgentMiddlewareContext middlewareContext =
-            AgentMiddlewareContext.forToolCall(this, turn, toolContext);
-        Object value = executeToolCallWithTimeout(
-            turn, middlewareContext, interceptors, executor, chatContext);
-        // ToolMessage 内容必须是字符串：标量直接转换，结构化对象统一序列化为 JSON。
-        ToolMessage result = new ToolMessage();
-        result.setToolCallId(callKey(call));
-        if (value == null) {
-            result.setContent("null");
-        } else if (value instanceof CharSequence || value instanceof Number
-            || value instanceof Boolean) {
-            result.setContent(value.toString());
-        } else {
-            result.setContent(JSON.toJSONString(value));
-        }
-        long maxCharacters = turn.getExecutionPolicy().getToolResultMaxCharacters();
-        if (maxCharacters > 0 && result.getContent() != null
-            && result.getContent().length() > maxCharacters) {
-            if (turn.getExecutionPolicy().getToolResultOverflowStrategy()
-                == AgentToolResultOverflowStrategy.TRUNCATE) {
-                result.setContent(truncateToolResult(result.getContent(), maxCharacters));
-            } else {
-                throw new IllegalStateException("tool result exceeded maximum size: " + maxCharacters);
-            }
-        }
-        return result;
-    }
-
-    private Object executeToolCallWithTimeout(AgentTurn turn,
-                                              AgentMiddlewareContext context,
-                                              List<ToolInterceptor> interceptors,
-                                              java.util.concurrent.Executor executor,
-                                              ChatContext chatContext) {
-        long timeout = turn.getExecutionPolicy().getToolExecutionTimeoutMillis();
-        // 无论是否配置超时，都通过 toolExecutor 执行，确保线程池隔离、上下文传播和资源配额配置一致。
-        // FutureTask 只负责同步等待结果；timeout=0 时使用无期限 get，不改变原有顺序执行语义。
-        FutureTask<Object> task = new FutureTask<>(() -> {
-            ChatContext previous = ChatContextHolder.currentContext();
-            try {
-                if (chatContext != null) ChatContextHolder.set(chatContext);
-                return proceedToolCall(context, 0, interceptors);
-            } finally {
-                if (previous == null) {
-                    ChatContextHolder.clear();
-                } else {
-                    ChatContextHolder.set(previous);
-                }
-            }
-        });
-        executor.execute(task);
-        try {
-            return timeout <= 0 ? task.get() : task.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException error) {
-            task.cancel(true);
-            throw new IllegalStateException("tool execution exceeded timeout: " + timeout + "ms", error);
-        } catch (InterruptedException error) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("tool execution was interrupted", error);
-        } catch (java.util.concurrent.ExecutionException error) {
-            Throwable cause = error.getCause();
-            if (cause instanceof RuntimeException) throw (RuntimeException) cause;
-            throw new IllegalStateException("tool execution failed", cause);
-        }
-    }
-
-    /**
-     * 递归构造 Agent 工具 Middleware 链，链尾再交给核心 ToolExecutor 和 ToolInterceptor。
-     */
-    private Object proceedToolCall(AgentMiddlewareContext context, int index,
-                                   List<ToolInterceptor> interceptors) {
-        List<AgentMiddleware> middlewares = context.getRun().getAgent().getMiddlewares();
-        if (index >= middlewares.size()) {
-            // 受控上下文只在本次 JVM 调用链存在，不会混入模型可见的工具参数。
-            AgentToolContext toolContext = context.getToolContext();
-            if (toolContext == null) {
-                throw new IllegalArgumentException(
-                    "toolContext must not be null in the tool middleware chain");
-            }
-            Map<String, Object> attributes = new LinkedHashMap<>();
-            attributes.put(AgentToolContext.CONTEXT_ATTRIBUTE, toolContext);
-            return new ToolExecutor(toolContext.getTool(), toolContext.getToolCall(), interceptors)
-                .execute(attributes);
-        }
-        AgentMiddleware middleware = middlewares.get(index);
-        AgentToolCallChain chain = next -> proceedToolCall(next, index + 1, interceptors);
-        return middleware.aroundToolCall(context, chain);
-    }
-
-    /**
-     * 把允许交回模型处理的工具异常编码为与原 ToolCall 关联的结构化错误消息。
-     */
-    private ToolMessage buildToolErrorMessage(AgentTurn turn, ToolCall call, Throwable error) {
-        ToolMessage result = turn.getExecutionPolicy().getToolErrorMessageFactory()
-            .create(turn, call, error);
-        if (result == null) {
-            throw new IllegalStateException("ToolErrorMessageFactory must not return null");
-        }
-        // 工厂只决定模型可见内容，ToolCall 关联必须与本次执行保持一致。
-        result.setToolCallId(callKey(call));
-        return result;
-    }
-
-    /**
-     * 合并审批策略与人工恢复命令中的拒绝信息，生成模型可理解的结构化结果。
-     */
-    private ToolMessage buildToolRejectedMessage(AgentTurn turn, ToolCall call,
-                                                 ToolApprovalDecision decision) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("error", true);
-        body.put("type", "tool_rejected");
-        Object resumedReason = turn.getMetadata().get("toolRejectionReason." + callKey(call));
-        Object approvalAudit = turn.getMetadata().get("toolApprovalAudit." + callKey(call));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> approvalValues = approvalAudit instanceof Map
-            ? (Map<String, Object>) approvalAudit : Collections.emptyMap();
-        String policyReason = StringUtil.hasText(decision.getMessage())
-            ? decision.getMessage() : decision.getReason();
-        body.put("code", StringUtil.hasText(decision.getCode())
-            ? decision.getCode() : approvalValues.get("approvalCode"));
-        body.put("message", resumedReason != null ? resumedReason
-            : (StringUtil.hasText(policyReason) ? policyReason
-            : (approvalValues.get("approvalReason") == null
-            ? "Tool execution was rejected" : approvalValues.get("approvalReason"))));
-        body.put("metadata", decision.getMetadata().isEmpty()
-            ? approvalValues : decision.getMetadata());
-        if (approvalAudit != null) body.put("approval", approvalAudit);
-        ToolMessage result = new ToolMessage();
-        result.setToolCallId(callKey(call));
-        result.setContent(JSON.toJSONString(body));
-        return result;
-    }
-
-    /**
-     * 为 Tool 主动产生的审批决定补充不可伪造的来源标记。
-     *
-     * <p>先复制业务 metadata，再覆盖框架保留的来源键，避免业务数据把 Tool 主动审批伪装成中央策略审批。
-     * code、message 和 reason 原样保留，使现有审批页面、事件监听器和审计逻辑无需新增协议。</p>
-     */
-    private ToolApprovalDecision toolApprovalDecision(ToolApprovalDecision source) {
-        return ToolApprovalDecision.requireApproval()
-            .code(source.getCode())
-            .message(source.getMessage())
-            .reason(source.getReason())
-            .metadata(source.getMetadata())
-            .metadata(APPROVAL_TRIGGER_METADATA, TOOL_APPROVAL_TRIGGER)
-            // 来源标记用于审计展示，不属于业务预检快照，必须沿用 Tool 原始请求指纹。
-            .requestFingerprint(source.getRequestFingerprint())
-            .build();
-    }
-
-    /**
-     * 把持久化人工记录还原为 Runner 可复用的允许或拒绝决定。
-     */
-    private ToolApprovalDecision decisionFromRecord(ToolApprovalRecord record) {
-        ToolApprovalDecision.Builder builder = record.isApproved()
-            ? ToolApprovalDecision.allow() : ToolApprovalDecision.deny();
-        String rejectionMessage = StringUtil.hasText(record.getRejectionReason())
-            ? record.getRejectionReason() : record.getMessage();
-        return builder.code(record.getCode())
-            .message(rejectionMessage)
-            .reason(record.getReason())
-            .metadata(record.getRequestMetadata())
-            .requestFingerprint(record.getRequestFingerprint())
-            .build();
-    }
-
-    /**
-     * 沿 cause 链查找 Tool 控制流异常，并用身份集合防御自定义异常形成的循环引用。
-     */
-    private <T extends Throwable> T findCause(Throwable error, Class<T> type) {
-        Set<Throwable> visited = Collections.newSetFromMap(
-            new IdentityHashMap<Throwable, Boolean>());
-        Throwable current = error;
-        while (current != null && visited.add(current)) {
-            if (type.isInstance(current)) return type.cast(current);
-            current = current.getCause();
-        }
-        return null;
-    }
-
-    private boolean isSameApprovedRequest(ToolApprovalRecord record,
-                                          ToolApprovalDecision decision) {
-        return record != null && record.isApproved() && decision != null
-            && Objects.equals(record.getRequestFingerprint(),
-            decision.getRequestFingerprint());
-    }
-
-    private IllegalArgumentException repeatedToolApproval(ToolCall call,
-                                                          Throwable cause) {
-        return new IllegalArgumentException(
-            "Tool requested the same approval after it was already approved: "
-                + call.getName(), cause);
-    }
-
-    /**
-     * 返回 ToolCall 的稳定关联键；旧供应商缺少 ID 时兼容使用工具名。
-     */
-    private String callKey(ToolCall call) {
-        return StringUtil.hasText(call.getId()) ? call.getId() : call.getName();
-    }
-
-    /**
-     * 为未提供 ID 的 ToolCall 生成可持久化且在当前 Turn 内唯一的关联 ID。
-     */
-    private void ensureToolCallIds(AgentTurn turn, AiMessage message) {
-        if (message == null || !message.hasToolCalls()) {
-            return;
-        }
-        int index = 0;
-        for (ToolCall call : message.getToolCalls()) {
-            if (!StringUtil.hasText(call.getId())) {
-                call.setId(turn.getId() + "-" + turn.getIterationCount() + "-" + index);
-            }
-            index++;
         }
     }
 
@@ -2135,19 +1441,19 @@ public final class AgentRunner {
                 throw new IllegalArgumentException(
                     "structured data is required for a suspended business tool");
             }
-            if (!suspension.getCorrelationId().equals(callKey(call))
+            if (!suspension.getCorrelationId().equals(AgentToolCallProcessor.callKey(call))
                 || !call.getName().equals(suspension.getToolName())) {
                 throw new IllegalStateException(
                     "user input suspension does not match the pending business ToolCall");
             }
-            turn.putToolInputData(callKey(call), command.getData());
+            turn.putToolInputData(AgentToolCallProcessor.callKey(call), command.getData());
             Map<String, Object> metadata = new LinkedHashMap<>(suspension.getMetadata());
             metadata.putAll(command.getMetadata());
-            recordToolResume(turn, callKey(call), AgentToolResumeType.FORM_INPUT,
+            recordToolResume(turn, AgentToolCallProcessor.callKey(call), AgentToolResumeType.FORM_INPUT,
                 metadata, null);
             return;
         }
-        if (!suspension.getCorrelationId().equals(callKey(call))
+        if (!suspension.getCorrelationId().equals(AgentToolCallProcessor.callKey(call))
             || !AgentUserInputTool.NAME.equals(call.getName())) {
             throw new IllegalStateException(
                 "user input suspension does not match the pending ToolCall");
@@ -2159,7 +1465,7 @@ public final class AgentRunner {
         if (hasData) body.put("data", command.getData());
         if (hasContent) body.put("content", command.getContent());
         ToolMessage result = new ToolMessage();
-        result.setToolCallId(callKey(call));
+        result.setToolCallId(AgentToolCallProcessor.callKey(call));
         result.setContent(JSON.toJSONString(body));
         turn.getPrompt().addMessage(result);
         turn.removeFirstPendingToolCall();
@@ -2234,7 +1540,7 @@ public final class AgentRunner {
             if (turn.getExecutionPolicy().getToolResultOverflowStrategy()
                 == AgentToolResultOverflowStrategy.TRUNCATE) {
                 command = new AgentResumeCommand(command.getType(),
-                    truncateToolResult(command.getContent(), maxCharacters),
+                    AgentToolCallProcessor.truncateToolResult(command.getContent(), maxCharacters),
                     command.getCorrelationId(), command.getData(), command.getMetadata());
             } else {
                 throw new IllegalArgumentException("external tool result exceeded maximum size: " + maxCharacters);
@@ -2245,8 +1551,8 @@ public final class AgentRunner {
             throw new IllegalStateException("external tool suspension has no pending ToolCall");
         }
         ToolCall call = pending.get(0);
-        Tool tool = resolveTool(turn, call);
-        if (!suspension.getCorrelationId().equals(callKey(call))
+        Tool tool = toolCallProcessor.resolveTool(turn, call);
+        if (!suspension.getCorrelationId().equals(AgentToolCallProcessor.callKey(call))
             || !call.getName().equals(suspension.getToolName())
             || tool == null
             || tool.getExecutionTarget() != ToolExecutionTarget.EXTERNAL) {
@@ -2254,7 +1560,7 @@ public final class AgentRunner {
                 "external tool suspension does not match the pending ToolCall");
         }
         ToolMessage result = new ToolMessage();
-        result.setToolCallId(callKey(call));
+        result.setToolCallId(AgentToolCallProcessor.callKey(call));
         result.setContent(command.getContent());
         turn.getPrompt().addMessage(result);
         turn.removeFirstPendingToolCall();
@@ -2302,26 +1608,6 @@ public final class AgentRunner {
         saveSnapshot(turn);
         publishTerminalEvent(turn);
         return true;
-    }
-
-    /**
-     * 按字符上限截断工具结果，并尽量保留完整的截断标记。
-     *
-     * <p>上限使用 {@code long} 是为了兼容持久化配置，但 Java 字符串长度是 {@code int}；这里
-     * 先安全收窄到实际可表示的范围，并避免把一个 UTF-16 代理项拆开。</p>
-     */
-    private String truncateToolResult(String content, long maxCharacters) {
-        int limit = (int) Math.min((long) Integer.MAX_VALUE, maxCharacters);
-        if (content.length() <= limit) return content;
-        String marker = "\n...[tool result truncated]";
-        if (limit <= marker.length()) return content.substring(0, limit);
-        int end = limit - marker.length();
-        if (end > 0 && end < content.length()
-            && Character.isHighSurrogate(content.charAt(end - 1))
-            && Character.isLowSurrogate(content.charAt(end))) {
-            end--;
-        }
-        return content.substring(0, end) + marker;
     }
 
     /**
@@ -2391,7 +1677,7 @@ public final class AgentRunner {
     /**
      * 将 Store 中的单调取消信号同步到当前内存 Turn。
      */
-    private void refreshCancellation(AgentTurn turn) {
+    void refreshCancellation(AgentTurn turn) {
         if (!turn.isCancellationRequested()) {
             AgentTurnSnapshot latest = turnStore.load(turn.getId());
             if (latest != null && latest.getState().isCancellationRequested()) {
