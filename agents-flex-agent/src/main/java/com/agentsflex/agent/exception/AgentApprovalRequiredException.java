@@ -29,6 +29,8 @@ public final class AgentApprovalRequiredException extends AgentToolSuspensionExc
 
     private static final long serialVersionUID = 1L;
 
+    private final ToolApprovalDecision decision;
+
     /**
      * 创建 Tool 主动审批请求。
      *
@@ -36,6 +38,28 @@ public final class AgentApprovalRequiredException extends AgentToolSuspensionExc
      *                 可持久化审批挂起点
      */
     public AgentApprovalRequiredException(ToolApprovalDecision decision) {
-        super(decision);
+        super(message(decision));
+        if (decision == null
+            || decision.getOutcome() != ToolApprovalDecision.Outcome.REQUIRE_APPROVAL) {
+            throw new IllegalArgumentException(
+                "decision outcome must be REQUIRE_APPROVAL");
+        }
+        this.decision = decision;
+    }
+
+    /**
+     * 返回本次 Tool 主动申请的审批决定。
+     *
+     * <p>该访问器只存在于审批异常上，调用方无需再通过 null 判断区分审批与表单暂停。</p>
+     *
+     * @return 非空且 outcome 为 REQUIRE_APPROVAL 的审批决定
+     */
+    public ToolApprovalDecision getDecision() {
+        return decision;
+    }
+
+    private static String message(ToolApprovalDecision decision) {
+        return decision == null || decision.getMessage() == null
+            ? "Tool requires approval" : decision.getMessage();
     }
 }

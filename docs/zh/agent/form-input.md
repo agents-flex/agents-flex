@@ -302,37 +302,94 @@ runner.submitResume(
 页面不应允许用户修改 Schema，也不应根据 Schema 执行 HTML、JavaScript 或其他表达式。提交成功后应
 禁用重复提交，并以服务端返回的任务状态为准。
 
-## 进阶：由业务工具请求表单
+## AgentFormRequiredException
 
-多数场景推荐使用前面的方式：让 Agent 在执行业务工具之前发现信息不足并请求表单。
+### 概述
 
-少数情况下，只有查询业务规则后才能确定需要补充哪些字段。例如，系统读取客户类型后，才知道还需要
-企业税号还是个人证件信息。这时可以在业务工具中请求表单：
+`AgentFormRequiredException` 是本地 Tool 主动请求用户填写表单的控制流异常。它适用于 Tool 必须先完成
+只读查询，才能确定是否缺少信息、需要哪些字段，或者应该展示哪一份表单的场景。
+
+普通本地 Tool 无需声明额外属性。Tool 在产生任何副作用之前抛出携带 `AgentFormDefinition` 的
+`AgentFormRequiredException`。Runner 捕获后会保留当前 ToolCall，创建标准用户输入挂起点，并将表单
+定义交给业务系统。用户提交后，Runner 从头重新执行同一个 Tool，而不是从抛出异常的下一行继续。
+
+`AgentFormRequiredException` 继承自抽象基类 `AgentToolSuspensionException`，但只持有表单定义，不包含
+审批决定。它与 `AgentApprovalRequiredException` 分别表示表单输入和人工审批，两者不能相互替代。
+
+### 作用
+
+`AgentFormRequiredException` 主要解决以下问题：
+
+1. **运行时确定字段**：字段取决于客户类型、地区规则、产品配置或其他只读查询结果。
+2. **选择不同表单**：同一个 Tool 可以根据业务状态选择企业、个人或其他场景的表单。
+3. **复用当前 ToolCall**：提交数据直接回到发起请求的 Tool，不需要先交给模型再生成一次新的 ToolCall。
+4. **支持多次补充**：Tool 可以根据已经提交的数据继续请求其他表单，Runner 会合并各次提交的字段。
+5. **复用统一协议**：继续使用已有的挂起、超时、恢复、持久化和输入事件，不需要建立另一套等待机制。
+
+### 适用场景
+
+| 场景 | 为什么需要在 Tool 内请求表单 | 可能补充的字段 |
+| --- | --- | --- |
+| 客户开户 | 查询客户类型后才能确定资料要求 | 企业税号、统一社会信用代码或个人证件号 |
+| 跨地区业务 | 查询地区规则后才能确定必填项 | 州、省、市、税务身份或本地许可信息 |
+| 故障处理 | 读取系统类型和诊断结果后才能确定问题清单 | 日志范围、错误时间、受影响组件 |
+| 商品定制 | 查询产品配置后才能确定可选参数 | 尺寸、材质、颜色或兼容型号 |
+| 分阶段资料收集 | 后续字段依赖前一份表单的答案 | 补充证明、联系人或确认选项 |
+
+如果在 Tool 执行前就能确定缺少哪些信息，应优先使用前文的 `AgentUserInputTool`，让 Agent 主动请求已经
+注册的表单。如果只缺少一个简单值且没有结构化校验要求，直接通过对话追问通常更自然。外部 Tool 在
+Runner 进程中没有本地函数可以抛出异常，因此不能使用 `AgentFormRequiredException`。
+
+### 执行流程
+
+1. 本地 Tool 执行可重复的只读查询，并读取 `AgentToolContext.getSubmittedFormData()`。
+2. Tool 根据业务规则和已有数据判断是否仍需补充信息。
+3. 如果需要，Tool 抛出携带对应表单定义的 `AgentFormRequiredException`。
+4. Runner 挂起当前 ToolCall，业务系统展示表单并通过 `AgentResumeCommand.userInput(...)` 提交数据。
+5. Runner 从头重新执行原 Tool；Tool 再次查询规则并校验提交数据。
+6. 如果数据完整，Tool 继续执行；如果仍缺少其他信息，可以再抛出另一份表单。
+
+### 示例代码
+
+下面的 Tool 必须先查询客户类型，才能决定收集企业资料还是个人资料：
 
 ```java
 import com.agentsflex.agent.exception.AgentFormRequiredException;
 import com.agentsflex.agent.tool.AgentToolContext;
-import com.agentsflex.agent.tool.AgentToolResumeInfo;
 
 Tool prepareCustomerTool = Tool.builder(
         "prepare_customer",
         "检查客户资料并整理开户所需信息")
     .function(arguments -> {
         AgentToolContext context = AgentToolContext.current();
+        String customerId = String.valueOf(arguments.get("customerId"));
+
+        // 该查询必须只读且可重复执行，因为提交表单后整个 Tool 会从头执行。
+        CustomerType customerType = customerService.findType(customerId);
         Map<String, Object> submitted = context.getSubmittedFormData();
 
-        if (submitted.isEmpty()) {
-            throw new AgentFormRequiredException(customerDetailsForm);
+        if (customerType == CustomerType.ENTERPRISE
+            && !containsEnterpriseDetails(submitted)) {
+            throw new AgentFormRequiredException(enterpriseCustomerForm);
+        }
+        if (customerType == CustomerType.INDIVIDUAL
+            && !containsPersonalDetails(submitted)) {
+            throw new AgentFormRequiredException(individualCustomerForm);
         }
 
-        return customerService.prepare(arguments, submitted);
+        // 对提交数据完成服务端校验后，才整理后续开户所需资料。
+        validateCustomerDetails(customerType, submitted);
+        return customerService.prepare(customerId, customerType, submitted);
     })
     .build();
 ```
 
-这种方式需要特别注意：用户提交后，工具函数会从头再次执行，而不是从抛出异常的下一行继续。因此，
-请求表单必须发生在写数据库、扣费或调用外部写入接口之前。更稳妥的做法是让该工具只负责查询和整理
-资料，再由另一个工具执行真正的业务写入。
+`enterpriseCustomerForm` 和 `individualCustomerForm` 是应用预先构造的 `AgentFormDefinition`。它们应使用
+不同且稳定的 `formKey`，并通过 JSON Schema 定义各自字段。Tool 必须检查 `submitted` 是否已经满足当前
+表单要求；如果每次执行都无条件抛出同一异常，任务将无法继续。
+
+请求表单必须发生在写数据库、扣费或调用外部写入接口之前。更稳妥的做法是让该 Tool 只负责查询和整理
+资料，再由另一个受审批策略和幂等机制保护的 Tool 执行真正的业务写入。
 
 ### 读取工具的表单恢复信息
 
@@ -389,12 +446,12 @@ if (context.isFormInputResumed()) {
 一个退款流程可以先让用户补全资料，再生成明确的退款操作，最后交给有权限的人员审批。不能用“用户已
 填写表单”代替操作授权，也不能用审批页面代替字段校验。
 
-如果是否需要审批只能在 Tool 完成只读预检后确定，可以抛出 `AgentToolSuspensionException` 主动申请
+如果是否需要审批只能在 Tool 完成只读预检后确定，可以抛出 `AgentApprovalRequiredException` 主动申请
 审批。它会复用标准工具审批的挂起和恢复协议，但批准后同样会从头执行原 Tool。Tool 应重新构造当前
 `ToolApprovalDecision`，通过 `AgentToolContext.isToolApproved(decision)` 校验批准是否仍与本次只读
 预检快照匹配。普通 Tool 无需声明额外元数据；并行批次中，Tool 主动审批仅保护
 当前 Tool 自身，批次级前置审批仍应使用 `toolApprovalPolicy`。完整用法见
-[人工审批：两级审批机制](./human-approval#两级审批机制)。
+[人工审批：AgentApprovalRequiredException](./human-approval#agentapprovalrequiredexception)。
 
 同一 ToolCall 需要财务、合规等多级批准时，可以依次构造不同的 `ToolApprovalDecision` 并执行上述
 检查。Runner 会按请求指纹累计批准记录，后一级批准不会覆盖前一级；任何一级被拒绝都会终止该 ToolCall。

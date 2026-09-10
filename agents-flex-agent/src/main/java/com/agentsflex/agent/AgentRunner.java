@@ -14,7 +14,6 @@ import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.exception.AgentApprovalRequiredException;
 import com.agentsflex.agent.exception.AgentConversationBusyException;
 import com.agentsflex.agent.exception.AgentFormRequiredException;
-import com.agentsflex.agent.exception.AgentToolSuspensionException;
 import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.middleware.*;
@@ -1203,9 +1202,9 @@ public final class AgentRunner {
             } catch (RuntimeException error) {
                 // Middleware/Interceptor 经常会包装业务异常。控制流异常沿 cause 链识别，避免审批或
                 // 表单请求被错误地纳入普通异常重试。
-                AgentToolSuspensionException approvalRequest = findCause(
-                    error, AgentToolSuspensionException.class);
-                if (approvalRequest != null && approvalRequest.getDecision() != null) {
+                AgentApprovalRequiredException approvalRequest = findCause(
+                    error, AgentApprovalRequiredException.class);
+                if (approvalRequest != null) {
                     turn.rollbackToolCallCount();
                     ToolApprovalRecord previousToolApproval = turn.getToolApprovalRecord(
                         callKey(call), ToolApprovalStage.TOOL,
@@ -1266,7 +1265,8 @@ public final class AgentRunner {
     /**
      * 并行执行一批已经被中央策略允许的本地 ToolCall。
      *
-     * <p>任意普通 Tool 都可以在执行中抛出 AgentToolSuspensionException 的具体子类。并行任务一旦
+     * <p>任意普通 Tool 都可以在执行中抛出 {@link AgentApprovalRequiredException} 申请审批，或抛出
+     * {@link AgentFormRequiredException} 请求表单输入。并行任务一旦
      * 提交便无法可靠撤销，因此 Runner 会等待本批任务收束、保存其他已完成结果，再挂起发起请求的
      * Tool。Tool 主动审批只保护该 Tool 自己位于异常之后的副作用；需要阻止整个批次启动时应使用前置
      * toolApprovalPolicy。</p>
@@ -1325,7 +1325,7 @@ public final class AgentRunner {
             List<ToolMessage> results = new ArrayList<>(calls.size());
             RuntimeException firstFailure = null;
             List<RuntimeException> failures = new ArrayList<>(calls.size());
-            List<AgentToolSuspensionException> approvalRequests =
+            List<AgentApprovalRequiredException> approvalRequests =
                 new ArrayList<>(calls.size());
             List<AgentFormRequiredException> formRequests = new ArrayList<>(calls.size());
             for (int index = 0; index < calls.size(); index++) {
@@ -1344,11 +1344,8 @@ public final class AgentRunner {
                         AgentTurnExecutionPoint.PROCESS_TOOLS);
                 } catch (ExecutionException error) {
                     Throwable cause = error.getCause();
-                    AgentToolSuspensionException approvalRequest = findCause(
-                        cause, AgentToolSuspensionException.class);
-                    if (approvalRequest != null && approvalRequest.getDecision() == null) {
-                        approvalRequest = null;
-                    }
+                    AgentApprovalRequiredException approvalRequest = findCause(
+                        cause, AgentApprovalRequiredException.class);
                     AgentFormRequiredException formRequest = findCause(
                         cause, AgentFormRequiredException.class);
                     if (approvalRequest != null || formRequest != null) {
@@ -1404,7 +1401,7 @@ public final class AgentRunner {
             // 顺序中最靠前的一个；其余 ToolCall 保持 pending，下一次执行时会再次产生各自请求。
             for (int index = 0; index < calls.size(); index++) {
                 ToolCall call = calls.get(index);
-                AgentToolSuspensionException approvalRequest = approvalRequests.get(index);
+                AgentApprovalRequiredException approvalRequest = approvalRequests.get(index);
                 if (approvalRequest != null) {
                     ToolApprovalRecord previousToolApproval = turn.getToolApprovalRecord(
                         callKey(call), ToolApprovalStage.TOOL,

@@ -108,7 +108,7 @@ public final class AgentToolContext {
     }
 
     /**
-     * 创建包含两级审批记录的完整上下文。
+     * 创建同时包含中央策略记录和 Tool 主动审批记录的完整上下文。
      *
      * <p>中央策略记录和 Tool 主动审批记录分别注入，使本地 Tool 无法把平台边界的批准误当成
      * 本次只读预检结果的批准。</p>
@@ -356,7 +356,7 @@ public final class AgentToolContext {
      * 判断已有批准是否仍适用于本次 Tool 只读预检结果。
      *
      * <p>即使同一 ToolCall 曾获批准，只要金额、目标对象、业务版本或其他审批信息改变，决策指纹
-     * 就不匹配，Tool 必须再次抛出 AgentToolSuspensionException。必须传入本次请求，避免中央策略的
+     * 就不匹配，Tool 必须再次抛出 AgentApprovalRequiredException。必须传入本次请求，避免中央策略的
      * 批准或旧业务快照的批准被误用。</p>
      */
     public boolean isToolApproved(ToolApprovalDecision decision) {

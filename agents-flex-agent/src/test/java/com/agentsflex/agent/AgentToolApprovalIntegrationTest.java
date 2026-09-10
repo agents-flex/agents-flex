@@ -25,6 +25,7 @@ import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.tool.Tool;
 import org.junit.Test;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,7 +41,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 /**
- * Agent 级中央审批策略与 Tool 主动审批组成的两级安全边界集成测试。
+ * Agent 级中央审批策略与 Tool 主动审批两类入口的安全边界集成测试。
  *
  * <p>这些测试刻意把“只读预检”和“最终副作用”分开计数，确保 Tool 主动审批只会发生在副作用之前，
  * 并验证恢复后重新执行 Tool 时不会再次申请相同审批。</p>
@@ -144,10 +145,10 @@ public class AgentToolApprovalIntegrationTest {
             contexts.add(context);
             // 每次恢复都从函数开头执行。第一级批准必须在第二级批准后仍可被准确识别。
             if (!context.isToolApproved(financeRequest)) {
-                throw new AgentToolSuspensionException(financeRequest);
+                throw new AgentApprovalRequiredException(financeRequest);
             }
             if (!context.isToolApproved(complianceRequest)) {
-                throw new AgentToolSuspensionException(complianceRequest);
+                throw new AgentApprovalRequiredException(complianceRequest);
             }
             sideEffects.incrementAndGet();
             return "released";
@@ -220,10 +221,10 @@ public class AgentToolApprovalIntegrationTest {
         Tool tool = approvalRequestingTool("release_contract", arguments -> {
             AgentToolContext context = AgentToolContext.current();
             if (!context.isToolApproved(ownerRequest)) {
-                throw new AgentToolSuspensionException(ownerRequest);
+                throw new AgentApprovalRequiredException(ownerRequest);
             }
             if (!context.isToolApproved(legalRequest)) {
-                throw new AgentToolSuspensionException(legalRequest);
+                throw new AgentApprovalRequiredException(legalRequest);
             }
             sideEffects.incrementAndGet();
             return "released";
@@ -266,10 +267,10 @@ public class AgentToolApprovalIntegrationTest {
         AtomicInteger executions = new AtomicInteger();
         Tool tool = approvalRequestingTool("misconfigured_tool", arguments -> {
             int attempt = executions.incrementAndGet();
-            if (attempt == 1) throw new AgentToolSuspensionException(firstRequest);
-            if (attempt == 2) throw new AgentToolSuspensionException(secondRequest);
+            if (attempt == 1) throw new AgentApprovalRequiredException(firstRequest);
+            if (attempt == 2) throw new AgentApprovalRequiredException(secondRequest);
             // 模拟业务 Tool 忘记调用 isToolApproved(firstRequest)，错误地重复抛出已批准的第一级。
-            throw new AgentToolSuspensionException(firstRequest);
+            throw new AgentApprovalRequiredException(firstRequest);
         });
         Agent agent = Agent.builder("repeated-approval-level")
             .chatModel(model).tool(tool).build();
@@ -653,13 +654,13 @@ public class AgentToolApprovalIntegrationTest {
     }
 
     @Test
-    public void ordinaryToolCanThrowBaseSuspensionExceptionWithoutMetadata() {
+    public void ordinaryToolCanRequestApprovalWithoutMetadataDeclaration() {
         AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> AgentScenarioTestSupport.toolCalls(
             new ToolCall("undeclared-call", "undeclared", "{}")));
         Tool ordinary = Tool.builder("undeclared", "ordinary local tool")
             .function(arguments -> {
-                throw new AgentToolSuspensionException(
+                throw new AgentApprovalRequiredException(
                     ToolApprovalDecision.requireApproval().message("approve").build());
             })
             .build();
@@ -670,6 +671,21 @@ public class AgentToolApprovalIntegrationTest {
 
         assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, waiting.getStatus());
         assertEquals(ToolApprovalStage.TOOL, waiting.getSuspension().getApprovalStage());
+    }
+
+    @Test
+    public void suspensionBaseClassDoesNotExposeApprovalProtocol() throws Exception {
+        // 基类只负责标识 Tool 控制流暂停，不能被业务代码直接实例化为一种含义不明的暂停请求。
+        assertTrue(Modifier.isAbstract(AgentToolSuspensionException.class.getModifiers()));
+
+        // ToolApprovalDecision 只能由审批子类持有；这个契约可防止表单等未来子类再次出现 null decision。
+        assertFalse(Arrays.stream(AgentToolSuspensionException.class.getDeclaredFields())
+            .anyMatch(field -> field.getType() == ToolApprovalDecision.class));
+        assertFalse(Arrays.stream(AgentToolSuspensionException.class.getDeclaredConstructors())
+            .flatMap(constructor -> Arrays.stream(constructor.getParameterTypes()))
+            .anyMatch(type -> type == ToolApprovalDecision.class));
+        assertEquals(AgentApprovalRequiredException.class,
+            AgentApprovalRequiredException.class.getMethod("getDecision").getDeclaringClass());
     }
 
     private static Tool approvalRequestingTool(

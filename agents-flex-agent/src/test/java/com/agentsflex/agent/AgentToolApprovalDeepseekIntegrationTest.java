@@ -6,7 +6,7 @@
  */
 package com.agentsflex.agent;
 
-import com.agentsflex.agent.exception.AgentToolSuspensionException;
+import com.agentsflex.agent.exception.AgentApprovalRequiredException;
 import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.agent.tool.ToolApprovalRecord;
@@ -61,10 +61,10 @@ public class AgentToolApprovalDeepseekIntegrationTest {
             .function(arguments -> {
                 AgentToolContext context = AgentToolContext.current();
                 if (!context.isToolApproved(financeRequest)) {
-                    throw new AgentToolSuspensionException(financeRequest);
+                    throw new AgentApprovalRequiredException(financeRequest);
                 }
                 if (!context.isToolApproved(riskRequest)) {
-                    throw new AgentToolSuspensionException(riskRequest);
+                    throw new AgentApprovalRequiredException(riskRequest);
                 }
                 sideEffects.incrementAndGet();
                 return "订单 AF-DEEPSEEK-1 已退款 88 元";
