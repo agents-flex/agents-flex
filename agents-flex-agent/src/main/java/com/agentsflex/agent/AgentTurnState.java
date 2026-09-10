@@ -11,11 +11,14 @@ import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.agent.tool.AgentToolResumeInfo;
+import com.agentsflex.agent.tool.ToolApprovalRecord;
+import com.agentsflex.agent.tool.ToolApprovalStage;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +63,22 @@ public final class AgentTurnState implements Serializable {
     private volatile String leaseId;
     private volatile long leaseUntil;
     private Map<String, Boolean> toolApprovals = Collections.emptyMap();
+    /**
+     * 按阶段保存的最新审批记录。toolApprovals 仅为旧 Snapshot 和旧 API 保留，并按 POLICY 阶段解释。
+     *
+     * <p>该字段继续保留，是为了兼容已经持久化的 Snapshot，并为拒绝处理及旧读取 API 提供“最近
+     * 一次决定”。Tool 主动发起的全部审批记录保存在 toolApprovalRecordsByRequest 中。</p>
+     */
+    private Map<String, ToolApprovalRecord> toolApprovalRecords = Collections.emptyMap();
+    /**
+     * 同一 ToolCall 按 requestFingerprint 累计保存的 Tool 主动审批记录。
+     *
+     * <p>一个 Tool 获得第一个批准后会从头执行，并可能继续发起第二个不同请求。若这里只保留最新
+     * 记录，第二个批准会覆盖第一个批准，下一次重放便会再次卡在第一个审批点。因此必须让每个请求
+     * 指纹拥有独立记录。</p>
+     */
+    private Map<String, ToolApprovalRecord> toolApprovalRecordsByRequest =
+        Collections.emptyMap();
     private Map<String, Map<String, Object>> toolInputData = Collections.emptyMap();
     /**
      * 按 ToolCall ID 记录实际进入 Tool 函数的次数。
@@ -97,6 +116,8 @@ public final class AgentTurnState implements Serializable {
         this.messages = new ArrayList<>();
         this.pendingToolCalls = new ArrayList<>();
         this.toolApprovals = new HashMap<>();
+        this.toolApprovalRecords = new HashMap<>();
+        this.toolApprovalRecordsByRequest = new HashMap<>();
         this.toolInputData = new HashMap<>();
         this.toolExecutionAttempts = new HashMap<>();
         this.toolResumeInfo = new HashMap<>();
@@ -138,6 +159,9 @@ public final class AgentTurnState implements Serializable {
         this.leaseUntil = source.leaseUntil;
         Map<String, Boolean> approvals = new HashMap<>(source.toolApprovals);
         this.toolApprovals = immutable ? Collections.unmodifiableMap(approvals) : approvals;
+        this.toolApprovalRecords = copyToolApprovalRecords(source.toolApprovalRecords, immutable);
+        this.toolApprovalRecordsByRequest = copyFlatToolApprovalRecordsByRequest(
+            source.toolApprovalRecordsByRequest, source.toolApprovalRecords, immutable);
         this.toolInputData = copyToolInputData(source.toolInputData, immutable);
         Map<String, Integer> attempts = source.toolExecutionAttempts == null
             ? new HashMap<String, Integer>() : new HashMap<>(source.toolExecutionAttempts);
@@ -343,6 +367,38 @@ public final class AgentTurnState implements Serializable {
      */
     public Map<String, Boolean> getToolApprovals() {
         return Collections.unmodifiableMap(toolApprovals);
+    }
+
+    /** @return 按 ToolCall 和阶段隔离的审批记录只读副本 */
+    public Map<String, Map<ToolApprovalStage, ToolApprovalRecord>> getToolApprovalRecords() {
+        Map<String, Map<ToolApprovalStage, ToolApprovalRecord>> grouped = new HashMap<>();
+        if (toolApprovalRecords != null) {
+            for (Map.Entry<String, ToolApprovalRecord> entry : toolApprovalRecords.entrySet()) {
+                ToolApprovalRecord record = entry.getValue();
+                if (record == null) continue;
+                String callId = approvalCallId(entry.getKey(), record.getStage());
+                grouped.computeIfAbsent(callId,
+                    key -> new java.util.EnumMap<>(ToolApprovalStage.class))
+                    .put(record.getStage(), record);
+            }
+        }
+        Map<String, Map<ToolApprovalStage, ToolApprovalRecord>> immutable = new HashMap<>();
+        for (Map.Entry<String, Map<ToolApprovalStage, ToolApprovalRecord>> entry
+            : grouped.entrySet()) {
+            immutable.put(entry.getKey(), Collections.unmodifiableMap(entry.getValue()));
+        }
+        return Collections.unmodifiableMap(immutable);
+    }
+
+    /**
+     * 返回 Tool 主动审批的累计记录，每个 ToolCall 下按请求指纹索引。
+     *
+     * <p>返回值是不可修改的深层 Map。POLICY 阶段仍通过 getToolApprovalRecords() 查询；本集合只保存
+     * Tool 执行只读预检后主动产生的请求。</p>
+     */
+    public Map<String, Map<String, ToolApprovalRecord>> getToolApprovalRecordsByRequest() {
+        return copyToolApprovalRecordsByRequest(
+            toolApprovalRecordsByRequest, toolApprovalRecords, true);
     }
 
     /**
@@ -648,6 +704,48 @@ public final class AgentTurnState implements Serializable {
         toolApprovals = value == null ? new HashMap<>() : new HashMap<>(value);
     }
 
+    void setToolApprovalRecords(
+        Map<String, Map<ToolApprovalStage, ToolApprovalRecord>> value) {
+        requireMutable();
+        toolApprovalRecords = new HashMap<>();
+        if (toolApprovalRecordsByRequest == null) {
+            toolApprovalRecordsByRequest = new HashMap<>();
+        }
+        if (value != null) {
+            for (Map.Entry<String, Map<ToolApprovalStage, ToolApprovalRecord>> entry
+                : value.entrySet()) {
+                if (entry.getValue() == null) continue;
+                for (ToolApprovalRecord record : entry.getValue().values()) {
+                    if (record != null) {
+                        toolApprovalRecords.put(
+                            approvalRecordKey(entry.getKey(), record.getStage()), record);
+                        putToolApprovalRecordByRequest(entry.getKey(), record);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 仅供 Snapshot 构建器和序列化测试恢复累计审批记录。
+     */
+    void setToolApprovalRecordsByRequest(
+        Map<String, Map<String, ToolApprovalRecord>> value) {
+        requireMutable();
+        toolApprovalRecordsByRequest = new HashMap<>();
+        if (value == null) return;
+        for (Map.Entry<String, Map<String, ToolApprovalRecord>> entry : value.entrySet()) {
+            if (entry.getValue() == null) continue;
+            for (ToolApprovalRecord record : entry.getValue().values()) {
+                if (record != null && record.getStage() == ToolApprovalStage.TOOL
+                    && record.getRequestFingerprint() != null) {
+                    toolApprovalRecordsByRequest.put(approvalRequestRecordKey(
+                        entry.getKey(), record.getRequestFingerprint()), record);
+                }
+            }
+        }
+    }
+
     /**
      * 记录指定工具调用的人工审批结论，供恢复后的执行阶段消费。
      *
@@ -667,6 +765,70 @@ public final class AgentTurnState implements Serializable {
      */
     Boolean getToolApproval(String callId) {
         return toolApprovals.get(callId);
+    }
+
+    /**
+     * 保存审批记录。中央阶段保持单条记录；Tool 阶段同时按请求指纹累计，彼此不会覆盖。
+     */
+    void putToolApprovalRecord(String callId, ToolApprovalRecord record) {
+        requireMutable();
+        if (callId == null || record == null) {
+            throw new IllegalArgumentException("callId and record must not be null");
+        }
+        toolApprovalRecords.put(approvalRecordKey(callId, record.getStage()), record);
+        putToolApprovalRecordByRequest(callId, record);
+        if (record.getStage() == ToolApprovalStage.POLICY) {
+            toolApprovals.put(callId, record.isApproved());
+        }
+    }
+
+    /**
+     * 查询分阶段记录。读取旧 Snapshot 时，旧布尔审批由 AgentTurn 的兼容入口转换为 POLICY 语义。
+     */
+    ToolApprovalRecord getToolApprovalRecord(String callId, ToolApprovalStage stage) {
+        return toolApprovalRecords == null ? null
+            : toolApprovalRecords.get(approvalRecordKey(callId, stage));
+    }
+
+    /**
+     * 按请求指纹读取同一 ToolCall 的某一级主动审批；不同请求的批准不会互相替代。
+     */
+    ToolApprovalRecord getToolApprovalRecord(String callId, ToolApprovalStage stage,
+                                             String requestFingerprint) {
+        if (stage != ToolApprovalStage.TOOL || requestFingerprint == null) {
+            ToolApprovalRecord latest = getToolApprovalRecord(callId, stage);
+            return latest != null && java.util.Objects.equals(
+                requestFingerprint, latest.getRequestFingerprint()) ? latest : null;
+        }
+        ToolApprovalRecord record = toolApprovalRecordsByRequest == null ? null
+            : toolApprovalRecordsByRequest.get(
+                approvalRequestRecordKey(callId, requestFingerprint));
+        if (record != null) return record;
+        // 兼容尚未包含累计字段的旧 Snapshot：其最新 TOOL 记录仍然可以按指纹读取。
+        ToolApprovalRecord latest = getToolApprovalRecord(callId, stage);
+        return latest != null && requestFingerprint.equals(latest.getRequestFingerprint())
+            ? latest : null;
+    }
+
+    /**
+     * 返回指定 ToolCall 的全部主动审批记录副本，键为 requestFingerprint。
+     */
+    Map<String, ToolApprovalRecord> getToolApprovalRecordsByRequest(String callId) {
+        Map<String, Map<String, ToolApprovalRecord>> all =
+            copyToolApprovalRecordsByRequest(
+                toolApprovalRecordsByRequest, toolApprovalRecords, true);
+        Map<String, ToolApprovalRecord> records = all.get(callId);
+        return records == null ? Collections.<String, ToolApprovalRecord>emptyMap() : records;
+    }
+
+    private void putToolApprovalRecordByRequest(String callId, ToolApprovalRecord record) {
+        if (record.getStage() != ToolApprovalStage.TOOL
+            || record.getRequestFingerprint() == null) return;
+        if (toolApprovalRecordsByRequest == null) {
+            toolApprovalRecordsByRequest = new HashMap<>();
+        }
+        toolApprovalRecordsByRequest.put(
+            approvalRequestRecordKey(callId, record.getRequestFingerprint()), record);
     }
 
     void setToolInputData(Map<String, Map<String, Object>> value) {
@@ -930,6 +1092,21 @@ public final class AgentTurnState implements Serializable {
             return this;
         }
 
+        public Builder toolApprovalRecords(
+            Map<String, Map<ToolApprovalStage, ToolApprovalRecord>> value) {
+            state.setToolApprovalRecords(value);
+            return this;
+        }
+
+        /**
+         * 恢复同一 ToolCall 按请求指纹累计保存的主动审批记录。
+         */
+        public Builder toolApprovalRecordsByRequest(
+            Map<String, Map<String, ToolApprovalRecord>> value) {
+            state.setToolApprovalRecordsByRequest(value);
+            return this;
+        }
+
         public Builder toolInputData(Map<String, Map<String, Object>> value) {
             state.setToolInputData(value);
             return this;
@@ -1024,5 +1201,93 @@ public final class AgentTurnState implements Serializable {
             }
         }
         return immutable ? Collections.unmodifiableMap(result) : result;
+    }
+
+    /** 复制按 ToolCall、阶段分组的审批记录，并冻结 Snapshot 的两层 Map。 */
+    private static Map<String, ToolApprovalRecord> copyToolApprovalRecords(
+        Map<String, ToolApprovalRecord> source, boolean immutable) {
+        Map<String, ToolApprovalRecord> result = source == null
+            ? new HashMap<String, ToolApprovalRecord>() : new HashMap<>(source);
+        return immutable ? Collections.unmodifiableMap(result) : result;
+    }
+
+    /**
+     * 深复制按 ToolCall、请求指纹分组的审批记录，并从旧版“最新记录”字段补齐缺失项。
+     */
+    private static Map<String, Map<String, ToolApprovalRecord>> copyToolApprovalRecordsByRequest(
+        Map<String, ToolApprovalRecord> source,
+        Map<String, ToolApprovalRecord> latestRecords,
+        boolean immutable) {
+        Map<String, Map<String, ToolApprovalRecord>> result = new HashMap<>();
+        Map<String, ToolApprovalRecord> flat = copyFlatToolApprovalRecordsByRequest(
+            source, latestRecords, false);
+        for (Map.Entry<String, ToolApprovalRecord> entry : flat.entrySet()) {
+            ToolApprovalRecord record = entry.getValue();
+            String callId = approvalRequestCallId(entry.getKey(), record);
+            result.computeIfAbsent(callId, key -> new LinkedHashMap<>())
+                .put(record.getRequestFingerprint(), record);
+        }
+        if (!immutable) return result;
+        Map<String, Map<String, ToolApprovalRecord>> frozen = new HashMap<>();
+        for (Map.Entry<String, Map<String, ToolApprovalRecord>> entry : result.entrySet()) {
+            frozen.put(entry.getKey(), Collections.unmodifiableMap(entry.getValue()));
+        }
+        return Collections.unmodifiableMap(frozen);
+    }
+
+    /**
+     * 复制用于 JSONB 持久化的扁平强类型 Map，并从旧版最新记录中补齐唯一可恢复的请求。
+     */
+    private static Map<String, ToolApprovalRecord> copyFlatToolApprovalRecordsByRequest(
+        Map<String, ToolApprovalRecord> source,
+        Map<String, ToolApprovalRecord> latestRecords,
+        boolean immutable) {
+        Map<String, ToolApprovalRecord> result = new HashMap<>();
+        if (source != null) {
+            for (Map.Entry<String, ToolApprovalRecord> entry : source.entrySet()) {
+                ToolApprovalRecord record = entry.getValue();
+                // 字段模式反序列化可能面对旧数据或损坏数据；无效项不得进入授权判断。
+                if (record == null || record.getStage() != ToolApprovalStage.TOOL
+                    || record.getRequestFingerprint() == null) continue;
+                String callId = approvalRequestCallId(entry.getKey(), record);
+                if (callId == null) continue;
+                result.put(approvalRequestRecordKey(
+                    callId, record.getRequestFingerprint()), record);
+            }
+        }
+        if (latestRecords != null) {
+            for (Map.Entry<String, ToolApprovalRecord> entry : latestRecords.entrySet()) {
+                ToolApprovalRecord record = entry.getValue();
+                if (record == null || record.getStage() != ToolApprovalStage.TOOL
+                    || record.getRequestFingerprint() == null) continue;
+                String callId = approvalCallId(entry.getKey(), record.getStage());
+                if (callId == null) continue;
+                result.putIfAbsent(approvalRequestRecordKey(
+                    callId, record.getRequestFingerprint()), record);
+            }
+        }
+        return immutable ? Collections.unmodifiableMap(result) : result;
+    }
+
+    private static String approvalRequestRecordKey(String callId, String requestFingerprint) {
+        return callId + "\u0000" + ToolApprovalStage.TOOL.name()
+            + "\u0000" + requestFingerprint;
+    }
+
+    private static String approvalRequestCallId(String key, ToolApprovalRecord record) {
+        String suffix = "\u0000" + ToolApprovalStage.TOOL.name()
+            + "\u0000" + record.getRequestFingerprint();
+        return key != null && key.endsWith(suffix)
+            ? key.substring(0, key.length() - suffix.length()) : key;
+    }
+
+    private static String approvalRecordKey(String callId, ToolApprovalStage stage) {
+        return callId + "\u0000" + stage.name();
+    }
+
+    private static String approvalCallId(String key, ToolApprovalStage stage) {
+        String suffix = "\u0000" + stage.name();
+        return key != null && key.endsWith(suffix)
+            ? key.substring(0, key.length() - suffix.length()) : key;
     }
 }

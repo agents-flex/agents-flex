@@ -7,6 +7,8 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.tool.ToolApprovalDecision;
+import com.agentsflex.agent.tool.ToolApprovalStage;
+import com.agentsflex.agent.tool.ToolApprovalValues;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -83,6 +85,10 @@ public final class AgentSuspension implements Serializable {
      * 审批策略返回的审计原因。
      */
     private final String approvalReason;
+    /** 审批所属层级；旧快照缺失该字段时按 POLICY 解释。 */
+    private final ToolApprovalStage approvalStage;
+    /** Tool 主动审批请求所绑定的只读预检指纹。 */
+    private final String approvalRequestFingerprint;
     /**
      * USER_INPUT 表单的稳定标识。
      */
@@ -112,7 +118,8 @@ public final class AgentSuspension implements Serializable {
     public AgentSuspension(AgentSuspensionType type, String correlationId, String message,
                            AgentTurnExecutionPoint resumeExecutionPoint, Map<String, Object> metadata) {
         this(type, correlationId, message, resumeExecutionPoint, 0L, 0L, 0L,
-            null, null, null, null, null, null, null, null, extensionMetadata(metadata));
+            null, null, null, null, null, null, null, null, null, null,
+            extensionMetadata(metadata));
     }
 
     /**
@@ -124,6 +131,8 @@ public final class AgentSuspension implements Serializable {
                             String toolName, String arguments,
                             ToolApprovalDecision.Outcome approvalOutcome,
                             String approvalCode, String approvalReason,
+                            ToolApprovalStage approvalStage,
+                            String approvalRequestFingerprint,
                             String formKey, Map<String, ?> schema, String inputTarget,
                             Map<String, ?> metadata) {
         if (type == null) {
@@ -142,6 +151,8 @@ public final class AgentSuspension implements Serializable {
         this.approvalOutcome = approvalOutcome;
         this.approvalCode = approvalCode;
         this.approvalReason = approvalReason;
+        this.approvalStage = approvalStage;
+        this.approvalRequestFingerprint = approvalRequestFingerprint;
         this.formKey = formKey;
         this.schema = immutableMap(schema);
         this.inputTarget = inputTarget;
@@ -204,7 +215,8 @@ public final class AgentSuspension implements Serializable {
         validateCallIdAndTimeout(callId, timeoutMillis);
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, callId, message,
             AgentTurnExecutionPoint.PROCESS_TOOLS, System.currentTimeMillis(), timeoutMillis,
-            0L, toolName, null, null, null, null, formKey, schema, inputTarget, null);
+            0L, toolName, null, null, null, null, null, null,
+            formKey, schema, inputTarget, null);
     }
 
     private static AgentSuspension createUserInput(String callId, String message,
@@ -216,7 +228,7 @@ public final class AgentSuspension implements Serializable {
         }
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, callId, message,
             resumePoint, System.currentTimeMillis(), timeoutMillis, 0L,
-            null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null, null, null, null, null,
             extensionMetadata(sourceMetadata));
     }
 
@@ -240,12 +252,24 @@ public final class AgentSuspension implements Serializable {
      */
     public static AgentSuspension toolApproval(String callId, String toolName,
                                                ToolApprovalDecision decision, long timeoutMillis) {
+        return toolApproval(callId, toolName, decision, ToolApprovalStage.POLICY,
+            timeoutMillis);
+    }
+
+    /**
+     * 创建明确区分中央策略和 Tool 主动请求的审批暂停点。
+     */
+    public static AgentSuspension toolApproval(String callId, String toolName,
+                                               ToolApprovalDecision decision,
+                                               ToolApprovalStage stage,
+                                               long timeoutMillis) {
         if (callId == null || callId.trim().isEmpty()) {
             throw new IllegalArgumentException("callId must not be blank");
         }
         if (timeoutMillis < 0) {
             throw new IllegalArgumentException("timeoutMillis must not be negative");
         }
+        if (stage == null) throw new IllegalArgumentException("stage must not be null");
         String message = decision != null && decision.getMessage() != null
             ? decision.getMessage() : "Tool approval is required: " + toolName;
         ToolApprovalDecision.Outcome outcome = decision == null ? null : decision.getOutcome();
@@ -257,6 +281,7 @@ public final class AgentSuspension implements Serializable {
         return new AgentSuspension(AgentSuspensionType.TOOL_APPROVAL, callId,
             message, AgentTurnExecutionPoint.PROCESS_TOOLS, System.currentTimeMillis(),
             timeoutMillis, 0L, toolName, null, outcome, code, reason,
+            stage, decision == null ? null : decision.getRequestFingerprint(),
             null, null, null, metadata);
     }
 
@@ -292,7 +317,8 @@ public final class AgentSuspension implements Serializable {
         return new AgentSuspension(AgentSuspensionType.EXTERNAL_TOOL, callId,
             "External tool result is required: " + toolName,
             AgentTurnExecutionPoint.PROCESS_TOOLS, System.currentTimeMillis(), timeoutMillis,
-            0L, toolName, arguments, null, null, null, null, null, null, metadata);
+            0L, toolName, arguments, null, null, null, null, null,
+            null, null, null, metadata);
     }
 
     /**
@@ -300,7 +326,8 @@ public final class AgentSuspension implements Serializable {
      */
     public static AgentSuspension retry(String message, AgentTurnExecutionPoint resumeExecutionPoint, long nextRunnableAt) {
         return new AgentSuspension(AgentSuspensionType.RETRY, null, message, resumeExecutionPoint,
-            0L, 0L, nextRunnableAt, null, null, null, null, null, null, null, null, null);
+            0L, 0L, nextRunnableAt, null, null, null, null, null, null,
+            null, null, null, null, null);
     }
 
     private static void validateCallIdAndTimeout(String callId, long timeoutMillis) {
@@ -344,7 +371,7 @@ public final class AgentSuspension implements Serializable {
      * @return 不可修改的暂停元数据
      */
     public Map<String, Object> getMetadata() {
-        return metadata;
+        return immutableMap(metadata);
     }
 
     /**
@@ -404,6 +431,19 @@ public final class AgentSuspension implements Serializable {
     }
 
     /**
+     * @return 审批阶段；兼容旧快照，审批挂起缺失该字段时默认为 POLICY
+     */
+    public ToolApprovalStage getApprovalStage() {
+        return type == AgentSuspensionType.TOOL_APPROVAL && approvalStage == null
+            ? ToolApprovalStage.POLICY : approvalStage;
+    }
+
+    /** @return Tool 主动审批请求绑定的只读预检指纹 */
+    public String getApprovalRequestFingerprint() {
+        return approvalRequestFingerprint;
+    }
+
+    /**
      * @return 用户输入表单的稳定标识；非表单挂起时为 {@code null}
      */
     public String getFormKey() {
@@ -414,7 +454,7 @@ public final class AgentSuspension implements Serializable {
      * @return 用户输入表单 Schema 的只读快照；没有 Schema 时为空 Map
      */
     public Map<String, Object> getSchema() {
-        return schema;
+        return immutableMap(schema);
     }
 
     /**
@@ -431,7 +471,8 @@ public final class AgentSuspension implements Serializable {
         if (getTimeoutMillis() <= 0) return this;
         return new AgentSuspension(type, correlationId, message, resumeExecutionPoint,
             value, timeoutMillis, nextRunnableAt, toolName, arguments, approvalOutcome,
-            approvalCode, approvalReason, formKey, schema, inputTarget, metadata);
+            approvalCode, approvalReason, approvalStage, approvalRequestFingerprint,
+            formKey, schema, inputTarget, metadata);
     }
 
     /**
@@ -440,13 +481,12 @@ public final class AgentSuspension implements Serializable {
     AgentSuspension copy() {
         return new AgentSuspension(type, correlationId, message, getResumeExecutionPoint(),
             requestedAt, timeoutMillis, nextRunnableAt, toolName, arguments, approvalOutcome,
-            approvalCode, approvalReason, formKey, schema, inputTarget, metadata);
+            approvalCode, approvalReason, approvalStage, approvalRequestFingerprint,
+            formKey, schema, inputTarget, metadata);
     }
 
     private static Map<String, Object> immutableMap(Map<String, ?> source) {
-        return source == null || source.isEmpty()
-            ? Collections.<String, Object>emptyMap()
-            : Collections.unmodifiableMap(new LinkedHashMap<String, Object>(source));
+        return ToolApprovalValues.immutableMap(source);
     }
 
     /**

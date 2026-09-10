@@ -13,6 +13,8 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.toolgroup.ToolGroup;
 import com.agentsflex.core.util.StringUtil;
 import com.agentsflex.agent.tool.AgentToolResumeInfo;
+import com.agentsflex.agent.tool.ToolApprovalRecord;
+import com.agentsflex.agent.tool.ToolApprovalStage;
 
 import java.util.*;
 
@@ -705,6 +707,45 @@ public final class AgentTurn {
      */
     Boolean getToolApproval(String callId) {
         return state.getToolApproval(callId);
+    }
+
+    /**
+     * 保存中央策略决定，并累计按请求指纹隔离的 Tool 主动审批记录。
+     */
+    void putToolApprovalRecord(String callId,
+                               ToolApprovalRecord record) {
+        state.putToolApprovalRecord(callId, record);
+    }
+
+    /**
+     * 读取指定审批阶段。旧 Snapshot 只有布尔字段时，仅将其解释为中央 POLICY 结果，避免旧批准
+     * 意外越过新增的 Tool 主动审批层。
+     */
+    ToolApprovalRecord getToolApprovalRecord(String callId, ToolApprovalStage stage) {
+        ToolApprovalRecord record = state.getToolApprovalRecord(callId, stage);
+        if (record == null && stage == ToolApprovalStage.POLICY) {
+            Boolean legacy = state.getToolApproval(callId);
+            if (legacy != null) {
+                return new ToolApprovalRecord(stage, legacy,
+                    null, null, null, null, null, null, null, 0L);
+            }
+        }
+        return record;
+    }
+
+    /**
+     * 按请求指纹读取 Tool 主动审批记录。该入口用于多级批准，不能退化为只检查最近一次决定。
+     */
+    ToolApprovalRecord getToolApprovalRecord(String callId, ToolApprovalStage stage,
+                                             String requestFingerprint) {
+        return state.getToolApprovalRecord(callId, stage, requestFingerprint);
+    }
+
+    /**
+     * 返回同一 ToolCall 已经作出决定的全部 Tool 主动审批请求，键为请求指纹。
+     */
+    Map<String, ToolApprovalRecord> getToolApprovalRecordsByRequest(String callId) {
+        return state.getToolApprovalRecordsByRequest(callId);
     }
 
     /**

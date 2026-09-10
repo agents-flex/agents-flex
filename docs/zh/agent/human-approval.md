@@ -222,6 +222,142 @@ Tool refundOrderTool = Tool.builder(
 如果审批被拒绝，工具函数不会执行，因此也不会进入工具内部读取这些信息。审批 metadata 适合日志关联和
 业务审计，但不能替代审批接口本身的身份、权限和额度校验。
 
+## 两级审批机制
+
+默认应使用 `toolApprovalPolicy` 作为 Agent 的中央安全边界。只有在“必须先执行只读查询，才能判断是否
+需要审批或组织审批展示内容”时，才使用 `AgentToolSuspensionException` 让本地 Tool 主动申请审批。
+
+两级机制的执行顺序固定如下：
+
+1. Runner 先调用 `toolApprovalPolicy`；返回 `DENY` 或 `REQUIRE_APPROVAL` 时不会进入 Tool。
+2. 中央策略返回 `ALLOW` 后，本地 Tool 才开始执行只读预检。
+3. Tool 根据预检结果决定直接继续，或抛出 `AgentToolSuspensionException`。
+4. Runner 复用标准 `TOOL_APPROVAL` 挂起协议；批准后从头重新执行原 ToolCall。
+
+因此，Tool 主动审批只能收紧中央策略，不能用来跳过或撤销中央策略的审批和拒绝。外部 Tool 在 Runner
+进程中没有可执行函数，不能主动抛出审批异常，必须使用 `toolApprovalPolicy` 在分发前审批。
+
+### Tool 主动审批示例
+
+```java
+import com.agentsflex.agent.exception.AgentToolSuspensionException;
+import com.agentsflex.agent.tool.AgentToolContext;
+import com.agentsflex.agent.tool.ToolApprovalDecision;
+
+Tool refundOrderTool = Tool.builder("refund_order", "按照订单号发起退款")
+    .function(arguments -> {
+        AgentToolContext context = AgentToolContext.current();
+        String orderId = String.valueOf(arguments.get("orderId"));
+
+        // 这里只允许执行可重复的只读预检。恢复后整个函数会从头执行，因此查询也会再次发生。
+        RefundPreview preview = refundService.preview(orderId);
+
+        ToolApprovalDecision request = ToolApprovalDecision.requireApproval()
+            .code("LARGE_REFUND")
+            .message("是否允许执行大额退款？")
+            .reason("退款金额超过自动处理额度")
+            .metadata("orderId", orderId)
+            .metadata("amount", preview.getAmount())
+            .build();
+        if (preview.getAmount() > AUTO_APPROVAL_LIMIT
+            && !context.isToolApproved(request)) {
+            // 普通本地 Tool 不需要添加额外 metadata，可直接抛出统一暂停异常。
+            throw new AgentToolSuspensionException(request);
+        }
+
+        // 所有写入、扣款和外部发送必须位于审批判断之后，并使用稳定幂等键防止重复生效。
+        return refundService.refund(
+            orderId, context.getIdempotencyKey());
+    })
+    .build();
+```
+
+`AgentToolSuspensionException` 和兼容别名 `AgentApprovalRequiredException` 都只接受
+`REQUIRE_APPROVAL` 决定。它携带的 `code`、`message`、`reason` 和 `metadata` 会进入现有
+`AgentSuspension`、审批事件及审计记录，不需要为 Tool 主动审批建立另一套提交接口。
+批准和拒绝仍分别使用 `AgentResumeCommand.approveTool(callId)` 与
+`AgentResumeCommand.rejectTool(callId, reason)`。
+
+### 恢复语义
+
+Tool 主动审批发生时 Tool 函数已经开始运行。批准后 Java 调用栈不会从 `throw` 的下一行继续，而是从函数开头
+重新执行，因此它和中央策略审批的执行次数语义不同：
+
+| 信息 | 中央策略审批通过 | Tool 主动审批通过 |
+| --- | --- | --- |
+| Tool 在审批前是否进入 | 否 | 是，只允许只读预检 |
+| `isPolicyApproved()` | `true` | 取决于中央策略是否曾要求人工审批 |
+| `isToolApproved(request)` | `false` | 指纹匹配时为 `true` |
+| `isApprovalResumed()` | `true` | `true` |
+| `isReplay()` | `false` | `true` |
+| 首次获批执行的 `getExecutionAttempt()` | `1` | `2` |
+
+Tool 主动申请审批时必须使用 `isToolApproved(request)`，不要只使用 `isApprovalResumed()`。
+Runner 会为 `code + message + reason + 排序后的 metadata` 生成稳定 SHA-256
+指纹；恢复后金额、目标对象或业务版本变化时，旧批准自动失效并重新挂起。业务已有版本号、ETag 时，
+也可以用 `requestFingerprint(version)` 显式绑定。`isApprovalResumed()` 只表示最近一次恢复来自审批；
+后续表单或重试不会丢失已经累计的 Tool 审批记录。
+
+中央策略审批与 Tool 主动审批分别保存为 `ToolApprovalStage.POLICY` 和 `ToolApprovalStage.TOOL`，同一
+ToolCall 可以同时拥有一条中央策略记录和多条按请求指纹隔离的 Tool 主动审批记录。旧 Snapshot 中的
+`toolApprovals` 布尔值只按 `POLICY` 解释，不会被提升为 Tool 主动审批的批准记录。
+
+### 多级批准
+
+同一个 ToolCall 可以按顺序申请多个不同批准。例如付款操作可以先经过财务审批，再经过合规审批：
+
+```java
+ToolApprovalDecision financeRequest = ToolApprovalDecision.requireApproval()
+    .code("FINANCE_APPROVAL")
+    .message("财务是否批准本次付款？")
+    .metadata("amount", preview.getAmount())
+    .build();
+if (!context.isToolApproved(financeRequest)) {
+    throw new AgentToolSuspensionException(financeRequest);
+}
+
+ToolApprovalDecision complianceRequest = ToolApprovalDecision.requireApproval()
+    .code("COMPLIANCE_APPROVAL")
+    .message("合规是否批准向该收款方付款？")
+    .metadata("payee", preview.getPayeeId())
+    .build();
+if (!context.isToolApproved(complianceRequest)) {
+    throw new AgentToolSuspensionException(complianceRequest);
+}
+
+// 两个请求均已批准后才允许产生副作用。
+return paymentService.release(context.getIdempotencyKey(), preview);
+```
+
+第一次批准后 Tool 从头执行，通过财务检查并在合规检查处再次挂起。第二次批准后 Tool 再次从头执行；
+此时两个请求的批准都能按各自指纹查到，因此可以继续完成付款。相关读取 API 如下：
+
+| API | 含义 |
+| --- | --- |
+| `isToolApproved(request)` | 指定请求是否已经批准，业务授权判断必须使用它 |
+| `getToolApprovalRecord(request)` | 指定请求的完整决定、审批人及响应 metadata |
+| `getToolApprovalRecords()` | 当前 ToolCall 全部 Tool 主动审批记录，按请求指纹索引 |
+| `getToolApprovalRecord()` | 最近一次 Tool 主动审批决定，仅用于展示和兼容，不适合作为授权判断 |
+
+多级批准一次只能暴露一个待处理请求，因为一个 Turn 同一时刻只有一个 Suspension。任一级被拒绝后，
+当前 ToolCall 都不会再次进入 Tool，也不会执行后续副作用。自动生成的指纹包含审批代码、说明、原因和
+metadata；如果显式设置 `requestFingerprint(...)`，每个独立审批级别必须使用不同且稳定的值，不能让
+财务审批和合规审批共用同一指纹。
+
+### 适用限制
+
+- 能在 Tool 执行前确定风险时，继续使用 `toolApprovalPolicy`。
+- 能拆分流程时，优先拆成“只读预检 Tool”和“受中央策略保护的副作用 Tool”。
+- 只有实时额度、查询结果或运行时生成的展示内容决定审批请求时，才在本地 Tool 内抛异常。
+- 异常之前不得写数据库、扣费、发消息或调用外部写接口；只读预检也应支持重复执行。
+- 任意普通本地 Tool 都可以直接抛出 `AgentToolSuspensionException`，不需要额外元数据声明。
+- 顺序模式下，异常会立即挂起，后续 Tool 不会开始。并行模式下，同批 Tool 已经提交后无法可靠撤销；
+  Runner 会保存其他已完成结果，再挂起当前 Tool。因此 Tool 主动审批只保护当前 Tool 自己位于异常后的副作用。
+- 如果审批必须阻止整个并行批次启动，应使用执行前的 `toolApprovalPolicy`，或把相关 Tool 配置为顺序执行。
+- 审批 metadata 会递归复制和冻结；其中仍应只放可序列化、非敏感的业务快照字段。
+- `toolApprovalPolicy` 抛异常时 Runner 按普通执行失败/重试处理并保持 fail-closed，不会默认放行。
+- Middleware/Interceptor 即使包装控制流异常，Runner 也会沿 cause 链识别审批和表单请求。
+
 ## 审批规则
 
 审批规则可以根据工具名称、工具元数据、任务上下文或调用参数决定如何处理。规则支持三种结果：

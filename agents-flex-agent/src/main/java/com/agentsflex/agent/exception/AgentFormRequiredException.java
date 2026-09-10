@@ -18,7 +18,7 @@ import com.agentsflex.agent.tool.AgentFormDefinition;
  * <p>该异常必须在工具产生任何外部副作用之前抛出。Java 调用栈不会跨暂停点保存，恢复语义始终是
  * 重新执行整个工具函数，因此工具仍应使用 {@link AgentToolContext#getIdempotencyKey()} 保证幂等。</p>
  */
-public final class AgentFormRequiredException extends RuntimeException {
+public final class AgentFormRequiredException extends AgentToolSuspensionException {
 
     private static final long serialVersionUID = 1L;
 

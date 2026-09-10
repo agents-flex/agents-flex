@@ -11,8 +11,10 @@ import com.agentsflex.agent.compression.AgentContextCompressionResult;
 import com.agentsflex.agent.compression.AgentContextCompressor;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
+import com.agentsflex.agent.exception.AgentApprovalRequiredException;
 import com.agentsflex.agent.exception.AgentConversationBusyException;
 import com.agentsflex.agent.exception.AgentFormRequiredException;
+import com.agentsflex.agent.exception.AgentToolSuspensionException;
 import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.middleware.*;
@@ -70,6 +72,11 @@ public final class AgentRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AgentRunner.class);
     private static final String TOOL_INPUT_TARGET = "TOOL";
+    /**
+     * 标记审批请求由本地 Tool 在只读预检后主动产生，供页面展示和审计区分审批来源。
+     */
+    private static final String APPROVAL_TRIGGER_METADATA = "agentsflex.approvalTrigger";
+    private static final String TOOL_APPROVAL_TRIGGER = "TOOL";
 
     /**
      * 保存 Snapshot、取消标记和 Worker 租约的 Turn 存储。
@@ -1102,11 +1109,19 @@ public final class AgentRunner {
                 return budgetExceeded(turn, budgetReason);
             }
 
-            // 已恢复的审批决定优先；首次遇到 ToolCall 时才执行动态审批策略。
-            Boolean approval = turn.getToolApproval(callKey(call));
-            ToolApprovalDecision decision = approval == null
-                ? turn.getAgent().getToolApprovalPolicy().decide(turn, call, tool)
-                : (approval ? ToolApprovalDecision.ALLOW : ToolApprovalDecision.DENY);
+            // 中央策略始终是第一层安全边界。其人工决定只保存到 POLICY 阶段，绝不能顺带批准
+            // Tool 在只读预检后才产生的主动审批请求。
+            ToolApprovalDecision decision;
+            try {
+                ToolApprovalRecord policyRecord = turn.getToolApprovalRecord(
+                    callKey(call), ToolApprovalStage.POLICY);
+                decision = policyRecord == null
+                    ? turn.getAgent().getToolApprovalPolicy().decide(turn, call, tool)
+                    : decisionFromRecord(policyRecord);
+            } catch (RuntimeException policyError) {
+                return handleFailure(turn, response, policyError,
+                    AgentTurnExecutionPoint.PROCESS_TOOLS);
+            }
             if (decision == null) {
                 return handleFailure(turn, response,
                     new IllegalStateException("ToolApprovalPolicy returned null"), AgentTurnExecutionPoint.PROCESS_TOOLS);
@@ -1114,7 +1129,7 @@ public final class AgentRunner {
             if (decision.getOutcome() == ToolApprovalDecision.Outcome.REQUIRE_APPROVAL) {
                 // Suspension 保存当前 ToolCall 关联 ID 和 PROCESS_TOOLS 恢复点，审批后不会重新调用模型。
                 AgentSuspension suspension = AgentSuspension.toolApproval(
-                    callKey(call), call.getName(), decision,
+                    callKey(call), call.getName(), decision, ToolApprovalStage.POLICY,
                     turn.getExecutionPolicy().getApprovalTimeoutMillis());
                 suspend(turn, suspension);
                 eventPublisher.notifyToolApprovalRequested(turn, call, decision);
@@ -1123,6 +1138,17 @@ public final class AgentRunner {
             if (decision.getOutcome() == ToolApprovalDecision.Outcome.DENY) {
                 // 拒绝不是运行时异常，而是结构化 ToolMessage；模型可据此向用户解释或选择替代方案。
                 ToolMessage rejected = buildToolRejectedMessage(turn, call, decision);
+                appendToolResult(turn, call, rejected);
+                results.add(rejected);
+                continue;
+            }
+
+            // Tool 主动审批被拒绝后不应再次进入 Tool 做只读查询，也不能让中央策略覆盖该拒绝。
+            ToolApprovalRecord toolRecord = turn.getToolApprovalRecord(
+                callKey(call), ToolApprovalStage.TOOL);
+            if (toolRecord != null && !toolRecord.isApproved()) {
+                ToolMessage rejected = buildToolRejectedMessage(
+                    turn, call, decisionFromRecord(toolRecord));
                 appendToolResult(turn, call, rejected);
                 results.add(rejected);
                 continue;
@@ -1143,6 +1169,26 @@ public final class AgentRunner {
             try {
                 turn.incrementToolCallCount();
                 completedResult = executeTool(turn, tool, call, runnerOptions.getToolExecutor(), chatContext);
+            } catch (AgentApprovalRequiredException request) {
+                // Tool 主动审批与表单输入一样发生在 Tool 已进入执行之后，因此不消耗已完成调用预算。
+                // 审批结果按 ToolCall ID 持久化；恢复后仍经过上面的中央审批边界，再从头执行同一个 Tool。
+                turn.rollbackToolCallCount();
+                ToolApprovalRecord previousToolApproval = turn.getToolApprovalRecord(
+                    callKey(call), ToolApprovalStage.TOOL,
+                    request.getDecision().getRequestFingerprint());
+                if (isSameApprovedRequest(previousToolApproval, request.getDecision())) {
+                    IllegalArgumentException error = repeatedToolApproval(call, request);
+                    eventPublisher.notifyToolError(turn, call, error);
+                    return handleFailure(turn, response, error,
+                        AgentTurnExecutionPoint.PROCESS_TOOLS);
+                }
+                ToolApprovalDecision toolDecision = toolApprovalDecision(request.getDecision());
+                AgentSuspension suspension = AgentSuspension.toolApproval(
+                    callKey(call), call.getName(), toolDecision, ToolApprovalStage.TOOL,
+                    turn.getExecutionPolicy().getApprovalTimeoutMillis());
+                suspend(turn, suspension);
+                eventPublisher.notifyToolApprovalRequested(turn, call, toolDecision);
+                return AgentStepResult.of(response, results, null);
             } catch (AgentFormRequiredException request) {
                 // 输入请求发生在副作用之前；无论第几轮表单交互，均不提前耗尽调用预算。
                 turn.rollbackToolCallCount();
@@ -1155,6 +1201,46 @@ public final class AgentRunner {
                 eventPublisher.notifyToolInputRequested(turn, call, form);
                 return AgentStepResult.of(response, results, null);
             } catch (RuntimeException error) {
+                // Middleware/Interceptor 经常会包装业务异常。控制流异常沿 cause 链识别，避免审批或
+                // 表单请求被错误地纳入普通异常重试。
+                AgentToolSuspensionException approvalRequest = findCause(
+                    error, AgentToolSuspensionException.class);
+                if (approvalRequest != null && approvalRequest.getDecision() != null) {
+                    turn.rollbackToolCallCount();
+                    ToolApprovalRecord previousToolApproval = turn.getToolApprovalRecord(
+                        callKey(call), ToolApprovalStage.TOOL,
+                        approvalRequest.getDecision().getRequestFingerprint());
+                    if (isSameApprovedRequest(previousToolApproval,
+                        approvalRequest.getDecision())) {
+                        IllegalArgumentException repeated = repeatedToolApproval(
+                            call, error);
+                        eventPublisher.notifyToolError(turn, call, repeated);
+                        return handleFailure(turn, response, repeated,
+                            AgentTurnExecutionPoint.PROCESS_TOOLS);
+                    }
+                    ToolApprovalDecision toolDecision = toolApprovalDecision(
+                        approvalRequest.getDecision());
+                    AgentSuspension suspension = AgentSuspension.toolApproval(
+                        callKey(call), call.getName(), toolDecision,
+                        ToolApprovalStage.TOOL,
+                        turn.getExecutionPolicy().getApprovalTimeoutMillis());
+                    suspend(turn, suspension);
+                    eventPublisher.notifyToolApprovalRequested(turn, call, toolDecision);
+                    return AgentStepResult.of(response, results, null);
+                }
+                AgentFormRequiredException formRequest = findCause(
+                    error, AgentFormRequiredException.class);
+                if (formRequest != null) {
+                    turn.rollbackToolCallCount();
+                    AgentFormDefinition form = formRequest.getForm();
+                    AgentSuspension suspension = AgentSuspension.userInput(
+                        callKey(call), formRequest.getMessage(), form.getFormKey(),
+                        form.getSchema(), call.getName(), TOOL_INPUT_TARGET,
+                        turn.getExecutionPolicy().getUserInputTimeoutMillis());
+                    suspend(turn, suspension);
+                    eventPublisher.notifyToolInputRequested(turn, call, form);
+                    return AgentStepResult.of(response, results, null);
+                }
                 eventPublisher.notifyToolError(turn, call, error);
                 if (turn.getExecutionPolicy().getToolErrorStrategy()
                     == ToolErrorStrategy.RETURN_ERROR_TO_MODEL) {
@@ -1178,22 +1264,37 @@ public final class AgentRunner {
     }
 
     /**
-     * 并行执行一批已经明确允许的本地 ToolCall。需要审批、用户输入或外部工具时返回 null，
-     * 由顺序状态机处理，以便每次挂起都能保存精确的恢复点。
+     * 并行执行一批已经被中央策略允许的本地 ToolCall。
+     *
+     * <p>任意普通 Tool 都可以在执行中抛出 AgentToolSuspensionException 的具体子类。并行任务一旦
+     * 提交便无法可靠撤销，因此 Runner 会等待本批任务收束、保存其他已完成结果，再挂起发起请求的
+     * Tool。Tool 主动审批只保护该 Tool 自己位于异常之后的副作用；需要阻止整个批次启动时应使用前置
+     * toolApprovalPolicy。</p>
      */
     private AgentStepResult executePendingToolsInParallel(AgentTurn turn, AiMessageResponse response,
-                                                         ChatContext chatContext) {
+                                                          ChatContext chatContext) {
         List<ToolCall> calls = turn.getPendingToolCalls();
         List<Tool> tools = new ArrayList<>(calls.size());
         for (ToolCall call : calls) {
             Tool tool = resolveTool(turn, call);
             if (tool == null || AgentUserInputTool.isUserInputTool(tool)
-                || tool.getExecutionTarget() == ToolExecutionTarget.EXTERNAL) return null;
-            Boolean approval = turn.getToolApproval(callKey(call));
-            ToolApprovalDecision decision = approval == null
-                ? turn.getAgent().getToolApprovalPolicy().decide(turn, call, tool)
-                : (approval ? ToolApprovalDecision.ALLOW : ToolApprovalDecision.DENY);
+                || tool.getExecutionTarget() == ToolExecutionTarget.EXTERNAL
+            ) return null;
+            ToolApprovalDecision decision;
+            try {
+                ToolApprovalRecord policyRecord = turn.getToolApprovalRecord(
+                    callKey(call), ToolApprovalStage.POLICY);
+                decision = policyRecord == null
+                    ? turn.getAgent().getToolApprovalPolicy().decide(turn, call, tool)
+                    : decisionFromRecord(policyRecord);
+            } catch (RuntimeException policyError) {
+                return handleFailure(turn, response, policyError,
+                    AgentTurnExecutionPoint.PROCESS_TOOLS);
+            }
             if (decision == null || decision.getOutcome() != ToolApprovalDecision.Outcome.ALLOW) return null;
+            ToolApprovalRecord toolRecord = turn.getToolApprovalRecord(
+                callKey(call), ToolApprovalStage.TOOL);
+            if (toolRecord != null && !toolRecord.isApproved()) return null;
             tools.add(tool);
         }
         String budgetReason = budgetExceededReason(turn, false);
@@ -1224,12 +1325,18 @@ public final class AgentRunner {
             List<ToolMessage> results = new ArrayList<>(calls.size());
             RuntimeException firstFailure = null;
             List<RuntimeException> failures = new ArrayList<>(calls.size());
+            List<AgentToolSuspensionException> approvalRequests =
+                new ArrayList<>(calls.size());
+            List<AgentFormRequiredException> formRequests = new ArrayList<>(calls.size());
             for (int index = 0; index < calls.size(); index++) {
                 ToolCall call = calls.get(index);
                 try {
                     ToolMessage result = futures.get(index).get();
                     // 暂存成功结果，先收集完整批次，避免前序失败导致后序成功结果无法落盘。
                     results.add(result);
+                    failures.add(null);
+                    approvalRequests.add(null);
+                    formRequests.add(null);
                 } catch (InterruptedException error) {
                     Thread.currentThread().interrupt();
                     return handleFailure(turn, response,
@@ -1237,15 +1344,33 @@ public final class AgentRunner {
                         AgentTurnExecutionPoint.PROCESS_TOOLS);
                 } catch (ExecutionException error) {
                     Throwable cause = error.getCause();
+                    AgentToolSuspensionException approvalRequest = findCause(
+                        cause, AgentToolSuspensionException.class);
+                    if (approvalRequest != null && approvalRequest.getDecision() == null) {
+                        approvalRequest = null;
+                    }
+                    AgentFormRequiredException formRequest = findCause(
+                        cause, AgentFormRequiredException.class);
+                    if (approvalRequest != null || formRequest != null) {
+                        // 控制流请求没有完成本次业务调用，不消耗 maxToolCalls 预算，也不发布 TOOL_ERROR。
+                        turn.rollbackToolCallCount();
+                        results.add(null);
+                        failures.add(null);
+                        approvalRequests.add(approvalRequest);
+                        formRequests.add(formRequest);
+                        continue;
+                    }
                     RuntimeException failure = cause instanceof RuntimeException
-                        ? (RuntimeException) cause : new IllegalStateException("parallel tool execution failed", cause);
+                        ? (RuntimeException) cause
+                        : new IllegalStateException("parallel tool execution failed", cause);
                     eventPublisher.notifyToolError(turn, call, failure);
                     if (firstFailure == null) firstFailure = failure;
                     failures.add(failure);
                     results.add(null);
+                    approvalRequests.add(null);
+                    formRequests.add(null);
                     continue;
                 }
-                failures.add(null);
             }
             // 按模型声明顺序写入成功结果；并行完成顺序不影响 Prompt 顺序。
             List<ToolMessage> returned = new ArrayList<>(calls.size());
@@ -1257,21 +1382,60 @@ public final class AgentRunner {
                 ToolCall call = calls.get(index);
                 ToolMessage result = results.get(index);
                 if (result == null) {
+                    if (approvalRequests.get(index) != null || formRequests.get(index) != null) {
+                        continue;
+                    }
                     if (returnErrors) {
                         result = buildToolErrorMessage(turn, call, failures.get(index));
-                        appendToolResult(turn, call, result);
+                        appendParallelToolResult(turn, call, result);
                         returned.add(result);
                     }
                     continue;
                 }
-                turn.getPrompt().addMessage(result);
-                turn.removePendingToolCall(call.getId());
-                saveSnapshot(turn);
+                appendParallelToolResult(turn, call, result);
                 returned.add(result);
                 eventPublisher.notifyToolEnd(turn, call);
             }
             if (firstFailure != null && !returnErrors) {
                 return handleFailure(turn, response, firstFailure, AgentTurnExecutionPoint.PROCESS_TOOLS);
+            }
+
+            // 一个 Turn 同一时刻只能暴露一个 Suspension。若同批多个 Tool 同时请求暂停，先处理模型
+            // 顺序中最靠前的一个；其余 ToolCall 保持 pending，下一次执行时会再次产生各自请求。
+            for (int index = 0; index < calls.size(); index++) {
+                ToolCall call = calls.get(index);
+                AgentToolSuspensionException approvalRequest = approvalRequests.get(index);
+                if (approvalRequest != null) {
+                    ToolApprovalRecord previousToolApproval = turn.getToolApprovalRecord(
+                        callKey(call), ToolApprovalStage.TOOL,
+                        approvalRequest.getDecision().getRequestFingerprint());
+                    if (isSameApprovedRequest(previousToolApproval,
+                        approvalRequest.getDecision())) {
+                        return handleFailure(turn, response,
+                            repeatedToolApproval(call, approvalRequest),
+                            AgentTurnExecutionPoint.PROCESS_TOOLS);
+                    }
+                    ToolApprovalDecision toolDecision = toolApprovalDecision(
+                        approvalRequest.getDecision());
+                    AgentSuspension suspension = AgentSuspension.toolApproval(
+                        callKey(call), call.getName(), toolDecision,
+                        ToolApprovalStage.TOOL,
+                        turn.getExecutionPolicy().getApprovalTimeoutMillis());
+                    suspend(turn, suspension);
+                    eventPublisher.notifyToolApprovalRequested(turn, call, toolDecision);
+                    return AgentStepResult.of(response, returned, null);
+                }
+                AgentFormRequiredException formRequest = formRequests.get(index);
+                if (formRequest != null) {
+                    AgentFormDefinition form = formRequest.getForm();
+                    AgentSuspension suspension = AgentSuspension.userInput(
+                        callKey(call), formRequest.getMessage(), form.getFormKey(),
+                        form.getSchema(), call.getName(), TOOL_INPUT_TARGET,
+                        turn.getExecutionPolicy().getUserInputTimeoutMillis());
+                    suspend(turn, suspension);
+                    eventPublisher.notifyToolInputRequested(turn, call, form);
+                    return AgentStepResult.of(response, returned, null);
+                }
             }
             turn.moveTo(AgentTurnExecutionPoint.INVOKE_MODEL);
             saveSnapshot(turn);
@@ -1290,6 +1454,16 @@ public final class AgentRunner {
     private void appendToolResult(AgentTurn turn, ToolCall call, ToolMessage result) {
         turn.getPrompt().addMessage(result);
         turn.removeFirstPendingToolCall();
+        saveSnapshot(turn);
+    }
+
+    /**
+     * 并行批次按 ToolCall ID 提交结果，不能假设当前结果对应 pending 列表首项。
+     */
+    private void appendParallelToolResult(AgentTurn turn, ToolCall call,
+                                          ToolMessage result) {
+        turn.getPrompt().addMessage(result);
+        turn.removePendingToolCall(callKey(call));
         saveSnapshot(turn);
     }
 
@@ -1551,7 +1725,7 @@ public final class AgentRunner {
     /**
      * 执行单个业务工具并把任意 Java 返回值规范化为 ToolMessage。
      *
-     * <p>{@link AgentToolContext} 提供跨恢复稳定的调用身份、进度上报和动态取消检查。调用顺序为
+     * <p>{@link AgentToolContext} 提供跨恢复稳定的调用身份、进度上报和实时取消检查。调用顺序为
      * Agent Middleware、ToolInterceptor、Tool 函数；受控上下文通过 Core ToolContext 传入，
      * 不写入模型可见的工具参数 Schema。</p>
      */
@@ -1570,7 +1744,10 @@ public final class AgentRunner {
             turn.getId(), turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
             toolCallId, progressEmitter, turn::isCancellationRequested,
             turn.getToolInputData(toolCallId), executionAttempt,
-            turn.getToolResumeInfo(toolCallId));
+            turn.getToolResumeInfo(toolCallId),
+            turn.getToolApprovalRecord(toolCallId, ToolApprovalStage.POLICY),
+            turn.getToolApprovalRecord(toolCallId, ToolApprovalStage.TOOL),
+            turn.getToolApprovalRecordsByRequest(toolCallId));
 
         AgentMiddlewareContext middlewareContext =
             AgentMiddlewareContext.forToolCall(this, turn, toolContext);
@@ -1702,6 +1879,68 @@ public final class AgentRunner {
         result.setToolCallId(callKey(call));
         result.setContent(JSON.toJSONString(body));
         return result;
+    }
+
+    /**
+     * 为 Tool 主动产生的审批决定补充不可伪造的来源标记。
+     *
+     * <p>先复制业务 metadata，再覆盖框架保留的来源键，避免业务数据把 Tool 主动审批伪装成中央策略审批。
+     * code、message 和 reason 原样保留，使现有审批页面、事件监听器和审计逻辑无需新增协议。</p>
+     */
+    private ToolApprovalDecision toolApprovalDecision(ToolApprovalDecision source) {
+        return ToolApprovalDecision.requireApproval()
+            .code(source.getCode())
+            .message(source.getMessage())
+            .reason(source.getReason())
+            .metadata(source.getMetadata())
+            .metadata(APPROVAL_TRIGGER_METADATA, TOOL_APPROVAL_TRIGGER)
+            // 来源标记用于审计展示，不属于业务预检快照，必须沿用 Tool 原始请求指纹。
+            .requestFingerprint(source.getRequestFingerprint())
+            .build();
+    }
+
+    /**
+     * 把持久化人工记录还原为 Runner 可复用的允许或拒绝决定。
+     */
+    private ToolApprovalDecision decisionFromRecord(ToolApprovalRecord record) {
+        ToolApprovalDecision.Builder builder = record.isApproved()
+            ? ToolApprovalDecision.allow() : ToolApprovalDecision.deny();
+        String rejectionMessage = StringUtil.hasText(record.getRejectionReason())
+            ? record.getRejectionReason() : record.getMessage();
+        return builder.code(record.getCode())
+            .message(rejectionMessage)
+            .reason(record.getReason())
+            .metadata(record.getRequestMetadata())
+            .requestFingerprint(record.getRequestFingerprint())
+            .build();
+    }
+
+    /**
+     * 沿 cause 链查找 Tool 控制流异常，并用身份集合防御自定义异常形成的循环引用。
+     */
+    private <T extends Throwable> T findCause(Throwable error, Class<T> type) {
+        Set<Throwable> visited = Collections.newSetFromMap(
+            new IdentityHashMap<Throwable, Boolean>());
+        Throwable current = error;
+        while (current != null && visited.add(current)) {
+            if (type.isInstance(current)) return type.cast(current);
+            current = current.getCause();
+        }
+        return null;
+    }
+
+    private boolean isSameApprovedRequest(ToolApprovalRecord record,
+                                          ToolApprovalDecision decision) {
+        return record != null && record.isApproved() && decision != null
+            && Objects.equals(record.getRequestFingerprint(),
+            decision.getRequestFingerprint());
+    }
+
+    private IllegalArgumentException repeatedToolApproval(ToolCall call,
+                                                          Throwable cause) {
+        return new IllegalArgumentException(
+            "Tool requested the same approval after it was already approved: "
+                + call.getName(), cause);
     }
 
     /**
@@ -1930,7 +2169,10 @@ public final class AgentRunner {
     }
 
     /**
-     * 校验审批命令及 ToolCall 关联 ID，并记录后续工具阶段可直接读取的布尔决定。
+     * 校验审批命令及 ToolCall 关联 ID，并按 POLICY/TOOL 阶段保存审计记录。
+     *
+     * <p>TOOL 阶段除保留兼容旧 UI 的“最近记录”外，还会按请求指纹保存独立审计项，确保同一
+     * ToolCall 的多级批准不会在审计视图中互相覆盖。</p>
      */
     private void applyToolApproval(AgentTurn turn, AgentSuspension suspension,
                                    AgentResumeCommand command) {
@@ -1939,9 +2181,15 @@ public final class AgentRunner {
             throw new IllegalArgumentException("APPROVE_TOOL or REJECT_TOOL command is required");
         }
         requireCorrelation(suspension, command);
-        turn.approveTool(suspension.getCorrelationId(),
-            command.getType() == AgentResumeCommandType.APPROVE_TOOL);
-        if (command.getType() == AgentResumeCommandType.APPROVE_TOOL) {
+        boolean approved = command.getType() == AgentResumeCommandType.APPROVE_TOOL;
+        ToolApprovalStage stage = suspension.getApprovalStage();
+        ToolApprovalRecord record = new ToolApprovalRecord(stage, approved,
+            suspension.getApprovalRequestFingerprint(), suspension.getApprovalCode(),
+            suspension.getMessage(), suspension.getApprovalReason(),
+            suspension.getMetadata(), command.getMetadata(),
+            approved ? null : command.getContent(), turnStore.currentTimeMillis());
+        turn.putToolApprovalRecord(suspension.getCorrelationId(), record);
+        if (approved) {
             Map<String, Object> metadata = new LinkedHashMap<>(suspension.getMetadata());
             metadata.putAll(command.getMetadata());
             recordToolResume(turn, suspension.getCorrelationId(), AgentToolResumeType.APPROVAL,
@@ -1952,8 +2200,20 @@ public final class AgentRunner {
         putIfPresent(approvalAudit, "approvalOutcome", suspension.getApprovalOutcome());
         putIfPresent(approvalAudit, "approvalCode", suspension.getApprovalCode());
         putIfPresent(approvalAudit, "approvalReason", suspension.getApprovalReason());
-        turn.putMetadata("toolApprovalAudit." + suspension.getCorrelationId(), approvalAudit);
-        if (command.getType() == AgentResumeCommandType.REJECT_TOOL
+        putIfPresent(approvalAudit, "approvalStage", stage);
+        putIfPresent(approvalAudit, "requestFingerprint",
+            suspension.getApprovalRequestFingerprint());
+        approvalAudit.putAll(command.getMetadata());
+        String auditPrefix = "toolApprovalAudit." + suspension.getCorrelationId();
+        if (stage == ToolApprovalStage.TOOL
+            && StringUtil.hasText(suspension.getApprovalRequestFingerprint())) {
+            turn.putMetadata(auditPrefix + "." + stage + "."
+                + suspension.getApprovalRequestFingerprint(), approvalAudit);
+        }
+        turn.putMetadata(auditPrefix + "." + stage, approvalAudit);
+        // 保留旧审计键，旧 UI 仍能展示最近一次审批；真实授权判断只读取结构化阶段记录。
+        turn.putMetadata(auditPrefix, approvalAudit);
+        if (!approved
             && StringUtil.hasText(command.getContent())) {
             turn.putMetadata("toolRejectionReason." + suspension.getCorrelationId(), command.getContent());
         }

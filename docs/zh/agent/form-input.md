@@ -389,6 +389,16 @@ if (context.isFormInputResumed()) {
 一个退款流程可以先让用户补全资料，再生成明确的退款操作，最后交给有权限的人员审批。不能用“用户已
 填写表单”代替操作授权，也不能用审批页面代替字段校验。
 
+如果是否需要审批只能在 Tool 完成只读预检后确定，可以抛出 `AgentToolSuspensionException` 主动申请
+审批。它会复用标准工具审批的挂起和恢复协议，但批准后同样会从头执行原 Tool。Tool 应重新构造当前
+`ToolApprovalDecision`，通过 `AgentToolContext.isToolApproved(decision)` 校验批准是否仍与本次只读
+预检快照匹配。普通 Tool 无需声明额外元数据；并行批次中，Tool 主动审批仅保护
+当前 Tool 自身，批次级前置审批仍应使用 `toolApprovalPolicy`。完整用法见
+[人工审批：两级审批机制](./human-approval#两级审批机制)。
+
+同一 ToolCall 需要财务、合规等多级批准时，可以依次构造不同的 `ToolApprovalDecision` 并执行上述
+检查。Runner 会按请求指纹累计批准记录，后一级批准不会覆盖前一级；任何一级被拒绝都会终止该 ToolCall。
+
 ## 安全要求
 
 1. 后端必须重新校验字段类型、必填项、长度、范围和枚举值，不能只依赖前端校验。

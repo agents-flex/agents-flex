@@ -4,7 +4,6 @@
 package com.agentsflex.agent.tool;
 
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -68,6 +67,10 @@ public final class ToolApprovalDecision implements Serializable {
      * 随暂停点或拒绝结果保存的只读扩展信息。
      */
     private final Map<String, Object> metadata;
+    /**
+     * 审批请求的稳定指纹。Tool 恢复后用它确认只读预检结果没有发生变化。
+     */
+    private final String requestFingerprint;
 
     /**
      * 从构建器冻结审批结果及扩展元数据。
@@ -77,7 +80,10 @@ public final class ToolApprovalDecision implements Serializable {
         this.code = builder.code;
         this.message = builder.message;
         this.reason = builder.reason;
-        this.metadata = Collections.unmodifiableMap(new LinkedHashMap<>(builder.metadata));
+        this.metadata = ToolApprovalValues.immutableMap(builder.metadata);
+        this.requestFingerprint = builder.requestFingerprint == null
+            ? ToolApprovalValues.fingerprint(code, message, reason, metadata)
+            : builder.requestFingerprint;
     }
 
     /**
@@ -144,6 +150,13 @@ public final class ToolApprovalDecision implements Serializable {
     }
 
     /**
+     * @return 当前请求的稳定指纹；未显式设置时由展示字段和递归排序后的 metadata 计算
+     */
+    public String getRequestFingerprint() {
+        return requestFingerprint;
+    }
+
+    /**
      * 结构化工具审批决定构建器。
      */
     public static final class Builder {
@@ -151,6 +164,7 @@ public final class ToolApprovalDecision implements Serializable {
         private String code;
         private String message;
         private String reason;
+        private String requestFingerprint;
         private final Map<String, Object> metadata = new LinkedHashMap<>();
 
         /**
@@ -186,11 +200,35 @@ public final class ToolApprovalDecision implements Serializable {
         }
 
         /**
+         * 显式绑定业务快照版本或摘要。
+         *
+         * <p>通常无需设置，框架会根据审批内容自动计算；当只读查询能返回数据库版本号、ETag 或业务
+         * 摘要时，显式使用该值可以把审批更直接地绑定到业务快照。</p>
+         */
+        public Builder requestFingerprint(String value) {
+            if (value != null && value.trim().isEmpty()) {
+                throw new IllegalArgumentException("requestFingerprint must not be blank");
+            }
+            requestFingerprint = value;
+            return this;
+        }
+
+        /**
          * 添加一项随决策保存的元数据。
          */
         public Builder metadata(String key, Object value) {
             if (key == null) throw new IllegalArgumentException("metadata key must not be null");
             metadata.put(key, value);
+            return this;
+        }
+
+        /**
+         * 批量添加或覆盖随审批请求持久化的业务元数据。
+         *
+         * <p>构建结果仍会复制并冻结 Map，因此调用方后续修改传入集合不会影响审批快照。</p>
+         */
+        public Builder metadata(Map<String, ?> values) {
+            if (values != null) metadata.putAll(values);
             return this;
         }
 
