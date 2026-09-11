@@ -287,6 +287,7 @@ export default withMermaid(defineConfig({
                         {text: '人工审批', link: '/zh/agent/human-approval'},
                         {text: '表单输入', link: '/zh/agent/form-input'},
                         {text: '挂起和恢复', link: '/zh/agent/suspend-resume'},
+                        {text: '模型故障恢复', link: '/zh/agent/model-recovery'},
                         {text: '运行限制与预算', link: '/zh/agent/budget'},
                         {text: '超时与过期', link: '/zh/agent/timeouts'},
                         {text: '错误处理与重试', link: '/zh/agent/retry'},

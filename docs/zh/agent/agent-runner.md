@@ -100,6 +100,7 @@ AgentRunner 提供了多种方法，但日常使用主要关注以下几个：
 | --- | --- | --- |
 | `run(...)` | 创建任务并在当前线程中执行 | 同步请求和短任务 |
 | `start(...)` | 只创建任务，不立即执行 | 后台任务和长任务 |
+| `submitMessage(...)` | 创建任务，或向会话中阻塞的 Turn 追加消息 | 异步聊天接口 |
 | `restore(...)` | 从 Store 读取任务最新进度 | 查询或重新装配已有任务 |
 | `resume(...)` | 提交外部结果，并在当前线程继续执行 | 审批或表单提交后立即继续 |
 | `submitResume(...)` | 提交外部结果，但不在当前线程执行 | 交给后台 Worker 继续 |
@@ -160,7 +161,10 @@ AgentTurn resumed = runner.submitResume(
 AgentTurn restored = runner.restore(turnId);
 ```
 
-该方法只恢复任务对象，不会自动继续执行。需要继续普通可运行任务时，可以调用 `runner.run(restored)`；处于等待状态的任务应先提交与等待原因匹配的恢复命令。
+该方法只恢复任务对象，不会自动继续执行。需要继续普通可运行任务时，可以调用 `runner.run(restored)`；
+处于等待状态的任务应提交与等待原因匹配的恢复命令。`userMessage(...)` 表示普通聊天消息，在
+`WAITING_FOR_USER` 中优先回答当前输入请求；需要无条件放弃旧等待并重新规划时使用
+`replanWithMessage(...)`。
 
 取消任务时使用：
 
@@ -202,7 +206,22 @@ AgentTurn turn = runner.run(
 );
 ```
 
-Runner 会根据会话 ID 读取之前的聊天记录，并在任务进度保存后同步本轮新增消息。同一会话同时只能有一个未结束的 Turn；如果原任务正在等待审批或表单，应恢复原 Turn，而不是创建新的普通消息任务。
+Runner 会根据会话 ID 读取之前的聊天记录，并在任务进度保存后同步本轮新增消息。同一会话同时只能有一个
+未结束的 Turn。如果活跃 Turn 正在等待模型、审批、表单、外部工具或延迟重试，带同一个
+`conversationId` 的 `run(...)` 不会创建新 Turn，而是把消息追加到原 Turn 并让模型重新规划。
+
+只提交消息、稍后由 Worker 执行时使用：
+
+```java
+AgentTurn runnable = runner.submitMessage(
+    agent,
+    "conversation-1001",
+    "继续，改用更短的方案"
+);
+```
+
+如果业务明确要求创建一个全新 Turn，应使用 `start(...)`；会话仍有活跃 Turn 时它会抛出
+`AgentConversationBusyException`。模型故障和阻塞消息的完整语义见[模型故障恢复](./model-recovery)。
 
 会话历史的管理方式请查看[上下文管理](./context-management)。
 
@@ -232,6 +251,7 @@ runner.addEventListener(eventListener);
 
 - 了解一次任务保存的内容：[AgentTurn](./agent-turn)。
 - 了解任务暂停和恢复：[挂起与恢复](./suspend-resume)。
+- 处理模型额度、限流与 Token 上限：[模型故障恢复](./model-recovery)。
 - 配置任务持久化：[任务快照持久化](./store)。
 - 执行后台长任务：[Worker](./worker)。
 - 监听执行进度：[AgentEventListener](./agent-event-listener)。

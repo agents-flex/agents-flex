@@ -40,5 +40,20 @@ public enum AgentResumeCommandType {
     /**
      * 执行已经到达调度时间的自动重试。
      */
-    RETRY
+    RETRY,
+    /**
+     * 修复模型条件后重试产生当前挂起的模型调用。
+     */
+    RETRY_MODEL,
+    /**
+     * 用户以一条新消息打断当前阻塞，并要求模型基于完整上下文重新规划。
+     */
+    USER_MESSAGE,
+    /**
+     * 无论当前等待什么，都显式放弃旧等待、闭合待处理 ToolCall，并携带新消息让模型重新规划。
+     *
+     * <p>该类型与 USER_MESSAGE 的区别只在 WAITING_FOR_USER：USER_MESSAGE 会优先尝试回答当前
+     * 输入请求，而本命令始终中断它。枚举值追加在末尾以保持旧版本序列化 ordinal 稳定。</p>
+     */
+    REPLAN_WITH_MESSAGE
 }

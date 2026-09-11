@@ -156,7 +156,7 @@ public class AgentChatMemoryIntegrationTest {
     }
 
     @Test
-    public void shouldRejectNewConversationTurnWhileAnotherTurnIsActive() {
+    public void shouldRejectExplicitNewTurnWhileAnotherTurnIsActive() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> toolCalls(new ToolCall("approval-1", "deploy", "{}")));
@@ -174,7 +174,7 @@ public class AgentChatMemoryIntegrationTest {
 
         AgentTurn waiting = first.run(agent, "busy-conversation", "执行发布");
         try {
-            second.run(agent, "busy-conversation", "再执行一个请求");
+            second.start(agent, "busy-conversation", "再执行一个请求");
             fail("an active conversation must reject a new turn");
         } catch (AgentConversationBusyException error) {
             assertEquals("busy-conversation", error.getConversationId());

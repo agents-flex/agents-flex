@@ -12,6 +12,7 @@ import com.agentsflex.agent.compression.AgentContextCompressor;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.exception.AgentConversationBusyException;
+import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.loader.AgentLoader;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.middleware.AgentMiddleware;
@@ -312,7 +313,7 @@ public final class AgentRunner {
      */
     public AgentTurn run(String agentId, String conversationId, UserMessage userMessage,
                          AgentTurnOptions options) {
-        return run(start(agentId, conversationId, userMessage, options));
+        return runUntilBlocked(submitMessage(agentId, conversationId, userMessage, options));
     }
 
     /**
@@ -343,7 +344,113 @@ public final class AgentRunner {
      */
     public AgentTurn run(Agent agent, String conversationId, UserMessage userMessage,
                          AgentTurnOptions options) {
-        return run(start(agent, conversationId, userMessage, options));
+        return runUntilBlocked(submitMessage(agent, conversationId, userMessage, options));
+    }
+
+    /**
+     * 向业务会话提交消息，但不在当前线程继续执行。
+     *
+     * <p>会话没有活跃 Turn 时创建 READY Turn；已有阻塞 Turn 时把消息追加到该 Turn，闭合仍待处理的
+     * ToolCall，并保存为 RUNNING。正在运行的 Turn 仍会抛出 AgentConversationBusyException。</p>
+     */
+    public AgentTurn submitMessage(String agentId, String conversationId,
+                                   UserMessage userMessage) {
+        return submitMessage(agentId, conversationId, userMessage, AgentTurnOptions.defaults());
+    }
+
+    /**
+     * 使用纯文本向业务会话提交消息，但不在当前线程继续执行。
+     */
+    public AgentTurn submitMessage(String agentId, String conversationId,
+                                   String userInput) {
+        return submitMessage(agentId, conversationId, new UserMessage(userInput));
+    }
+
+    /**
+     * 向业务会话提交消息；options 只在需要创建新 Turn 时生效。
+     */
+    public AgentTurn submitMessage(String agentId, String conversationId,
+                                   UserMessage userMessage, AgentTurnOptions options) {
+        return submitConversationMessage(agentId, null, conversationId, userMessage, options);
+    }
+
+    /**
+     * 使用给定 Agent 向业务会话提交消息，但不在当前线程继续执行。
+     */
+    public AgentTurn submitMessage(Agent agent, String conversationId,
+                                   UserMessage userMessage) {
+        return submitMessage(agent, conversationId, userMessage, AgentTurnOptions.defaults());
+    }
+
+    /**
+     * 使用纯文本和给定 Agent 向业务会话提交消息，但不在当前线程继续执行。
+     */
+    public AgentTurn submitMessage(Agent agent, String conversationId,
+                                   String userInput) {
+        return submitMessage(agent, conversationId, new UserMessage(userInput));
+    }
+
+    /**
+     * 使用给定 Agent 向业务会话提交消息；options 只在需要创建新 Turn 时生效。
+     */
+    public AgentTurn submitMessage(Agent agent, String conversationId,
+                                   UserMessage userMessage, AgentTurnOptions options) {
+        if (agent == null) throw new IllegalArgumentException("agent must not be null");
+        return submitConversationMessage(agent.getId(), agent, conversationId,
+            userMessage, options);
+    }
+
+    /**
+     * 原子地选择“创建新 Turn”或“向阻塞 Turn 追加消息”。
+     *
+     * <p>同一 Runner 使用 conversation lock 缩小竞争窗口；跨 Runner/进程竞争最终由 TurnStore 的
+     * active-conversation 约束和 Snapshot 乐观锁裁决。恢复状态会在下一次模型副作用之前先保存。</p>
+     */
+    private AgentTurn submitConversationMessage(String agentId, Agent requestedAgent,
+                                                String conversationId,
+                                                UserMessage userMessage,
+                                                AgentTurnOptions options) {
+        if (!chatMemory.isEnabled()) {
+            throw new IllegalStateException(
+                "ChatMemoryProvider must be configured for conversation APIs");
+        }
+        if (!StringUtil.hasText(agentId) || !StringUtil.hasText(conversationId)
+            || userMessage == null || options == null) {
+            throw new IllegalArgumentException(
+                "agentId, conversationId, userMessage and options must not be empty");
+        }
+        Object lock = conversationLocks.computeIfAbsent(conversationId, key -> new Object());
+        synchronized (lock) {
+            AgentTurnSnapshot active = turnStore.findActiveTurn(conversationId);
+            if (active == null) {
+                return requestedAgent == null
+                    ? start(agentId, conversationId, userMessage, options)
+                    : start(requestedAgent, conversationId, userMessage, options);
+            }
+            if (!agentId.equals(active.getAgentId())) {
+                throw new AgentConversationBusyException(conversationId,
+                    active.getState().getTurnId(), active.getState().getStatus());
+            }
+            AgentTurn turn = restore(active.getState().getTurnId());
+            // HTTP/消息队列重投同一个 UserMessage 时直接返回当前事实状态。检查必须早于 blocked 校验，
+            // 因为第一次提交已经可能把 Turn 保存成 RUNNING，重复请求不应因此变成“会话忙”。
+            if (turn.hasProcessedUserMessage(userMessage.getMessageId())) {
+                return turn;
+            }
+            if (!turn.getStatus().isBlocked()) {
+                throw new AgentConversationBusyException(conversationId,
+                    turn.getId(), turn.getStatus());
+            }
+            try {
+                return submitResume(turn, AgentResumeCommand.userMessage(userMessage));
+            } catch (AgentTurnVersionConflictException conflict) {
+                // 不同 Runner/进程可能同时消费同一个业务消息。CAS 失败后仅在最新 Snapshot 已经包含
+                // 同一 messageId 时折叠为幂等成功；不同消息的真实竞争仍原样抛出，不能静默丢消息。
+                AgentTurn latest = restore(turn.getId());
+                if (latest.hasProcessedUserMessage(userMessage.getMessageId())) return latest;
+                throw conflict;
+            }
+        }
     }
 
     /**
@@ -694,9 +801,19 @@ public final class AgentRunner {
         }
         assertLeaseOwnership(turn);
         AgentSuspension suspension = turn.getSuspension();
-        if (resolveExpiredSuspension(turn, suspension)) {
+        // 用户消息可以回答旧输入或主动放弃旧等待；两种行为都不应先被过期策略终止。
+        if (command.getType() != AgentResumeCommandType.USER_MESSAGE
+            && command.getType() != AgentResumeCommandType.REPLAN_WITH_MESSAGE
+            && resolveExpiredSuspension(turn, suspension)) {
             return turn;
         }
+        if ((command.getType() == AgentResumeCommandType.USER_MESSAGE
+            || command.getType() == AgentResumeCommandType.REPLAN_WITH_MESSAGE)
+            && command.getUserMessage() != null
+            && turn.hasProcessedUserMessage(command.getUserMessage().getMessageId())) {
+            return turn;
+        }
+        int interruptionCount = turn.getToolInterruptions().size();
         // 先按 Suspension 类型校验并应用命令，任何不匹配的命令都不能改变运行状态。
         applyResumeCommand(turn, suspension, command);
         // 恢复到暂停前保存的模型或工具阶段，不从任务开头重新执行。
@@ -707,7 +824,18 @@ public final class AgentRunner {
         }
         turn.resumeAt(resumeExecutionPoint);
         saveSnapshot(turn);
-        if (suspension.getType() == AgentSuspensionType.EXTERNAL_TOOL) {
+        List<AgentToolInterruption> interruptions = turn.getToolInterruptions();
+        for (int index = interruptionCount; index < interruptions.size(); index++) {
+            AgentToolInterruption interruption = interruptions.get(index);
+            eventPublisher.notifyToolInterrupted(turn, interruption);
+            if (interruption.getSuspensionType() == AgentSuspensionType.EXTERNAL_TOOL
+                && interruption.getToolCallId().equals(suspension.getCorrelationId())) {
+                eventPublisher.notifyExternalToolCancelRequested(turn, interruption);
+            }
+        }
+        if (suspension.getType() == AgentSuspensionType.EXTERNAL_TOOL
+            && (command.getType() == AgentResumeCommandType.TOOL_RESULT
+            || command.getType() == AgentResumeCommandType.TOOL_ERROR)) {
             eventPublisher.notifyExternalToolResult(turn, suspension, command);
         }
         eventPublisher.notifyTurnResumed(turn, command);
@@ -917,7 +1045,8 @@ public final class AgentRunner {
      */
     private AgentStepResult executeModel(AgentTurn turn) {
         Agent agent = turn.getAgent();
-        if (turn.getIterationCount() >= turn.getExecutionPolicy().getMaxIterations()) {
+        if (turn.getSuccessfulModelInvocationCount()
+            >= turn.getExecutionPolicy().getMaxIterations()) {
             finalizeInterruptedHistory(turn, "maximum model iterations reached");
             turn.markMaxIterationsReached();
             saveSnapshot(turn);
@@ -934,6 +1063,8 @@ public final class AgentRunner {
                 this, turn, turn.getPrompt());
             response = proceedModelCall(turn, middlewareContext, 0);
             validateResponse(response);
+            // 有效模型响应结束当前连续失败链，但 retryCount 作为生命周期累计指标继续保留。
+            turn.resetConsecutiveRetryCount();
             eventPublisher.notifyModelEnd(turn, response);
         } catch (RuntimeException error) {
             return handleFailure(turn, null, error, AgentTurnExecutionPoint.INVOKE_MODEL);
@@ -1032,15 +1163,22 @@ public final class AgentRunner {
         if (turn.isCancellationRequested()) {
             return cancelTurn(turn);
         }
+        AgentModelFailure modelFailure = resumeExecutionPoint == AgentTurnExecutionPoint.INVOKE_MODEL
+            ? AgentModelFailure.from(error, turn.getIterationCount()) : null;
+        if (resumeExecutionPoint == AgentTurnExecutionPoint.INVOKE_MODEL) {
+            // iterationCount 在请求前增加；此处单独标记失败，maxIterations 才能约束成功模型回合，
+            // 同时保留真实请求尝试次数供成本和稳定性监控。
+            turn.recordModelInvocationFailure(modelFailure);
+        }
         AgentRetryPolicy retry = turn.getExecutionPolicy().getRetryPolicy();
         if (turn.getExecutionPolicy().getRetryDecider()
             .shouldRetry(turn, error,
                 resumeExecutionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS
                     && !turn.getPendingToolCalls().isEmpty()
                     ? turn.getPendingToolCalls().get(0) : null)
-            && turn.getRetryCount() < retry.getMaxRetries()) {
-            // retryCount + 1 表示即将安排的重试序号，用于计算指数退避延迟。
-            int retryAttempt = turn.getRetryCount() + 1;
+            && turn.getConsecutiveRetryCount() < retry.getMaxRetries()) {
+            // consecutiveRetryCount + 1 表示当前失败链即将安排的重试序号，用于计算指数退避延迟。
+            int retryAttempt = turn.getConsecutiveRetryCount() + 1;
             long runAt = System.currentTimeMillis() + retry.delayMillis(retryAttempt);
             if (resumeExecutionPoint == AgentTurnExecutionPoint.PROCESS_TOOLS && !turn.getPendingToolCalls().isEmpty()) {
                 ToolCall call = turn.getPendingToolCalls().get(0);
@@ -1052,6 +1190,13 @@ public final class AgentRunner {
             publishAfterStep(() -> eventPublisher.notifyTurnSuspended(
                 turn, turn.getSuspension()));
             publishAfterStep(() -> eventPublisher.notifyRetryScheduled(turn, error));
+            return AgentStepResult.of(response, null, error);
+        }
+        if (modelFailure != null) {
+            turn.waitForModel(error, modelFailure);
+            saveSnapshot(turn);
+            publishAfterStep(() -> eventPublisher.notifyTurnSuspended(
+                turn, turn.getSuspension()));
             return AgentStepResult.of(response, null, error);
         }
         finalizeInterruptedHistory(turn, "turn failed: "
@@ -1360,6 +1505,8 @@ public final class AgentRunner {
                 return AgentTurnStatus.WAITING_FOR_APPROVAL;
             case EXTERNAL_TOOL:
                 return AgentTurnStatus.WAITING_FOR_TOOL;
+            case MODEL:
+                return AgentTurnStatus.WAITING_FOR_MODEL;
             case RETRY:
                 return AgentTurnStatus.RETRY_SCHEDULED;
             default:
@@ -1378,7 +1525,11 @@ public final class AgentRunner {
         if (suspension == null) {
             throw new IllegalStateException("blocked turn has no suspension data");
         }
-        switch (suspension.getType()) {
+        if (command.getType() == AgentResumeCommandType.USER_MESSAGE) {
+            applyOrdinaryUserMessage(turn, suspension, command);
+        } else if (command.getType() == AgentResumeCommandType.REPLAN_WITH_MESSAGE) {
+            applyReplanMessage(turn, suspension, command);
+        } else switch (suspension.getType()) {
             case USER_INPUT:
                 applyUserInput(turn, suspension, command);
                 break;
@@ -1387,6 +1538,11 @@ public final class AgentRunner {
                 break;
             case EXTERNAL_TOOL:
                 applyExternalToolResult(turn, suspension, command);
+                break;
+            case MODEL:
+                requireCommand(command, AgentResumeCommandType.RETRY_MODEL);
+                requireCorrelation(suspension, command);
+                turn.clearRetryError();
                 break;
             case RETRY:
                 if (command.getType() != AgentResumeCommandType.CONTINUE
@@ -1403,12 +1559,112 @@ public final class AgentRunner {
             default:
                 throw new IllegalStateException("Unsupported suspension type: " + suspension.getType());
         }
+        // RETRY 是调度器对同一失败链的自动推进，不能在这里重置，否则每次失败都重新获得完整预算。
+        // 其他命令都表示人工输入、审批、工具回传或显式改变了运行条件，应开始新的连续失败链。
+        if (command.getType() != AgentResumeCommandType.RETRY) {
+            turn.resetConsecutiveRetryCount();
+        }
         turn.putMetadata("lastResumeCommand", command.getType().name());
-        turn.putMetadata("lastResumeCorrelationId", command.getCorrelationId());
+        turn.putMetadata("lastResumeCorrelationId",
+            command.getCorrelationId() == null
+                ? suspension.getCorrelationId() : command.getCorrelationId());
         if (!command.getMetadata().isEmpty()) {
             turn.putMetadata("lastResumeCommandMetadata",
                 new LinkedHashMap<String, Object>(command.getMetadata()));
         }
+    }
+
+    /**
+     * 按普通聊天语义处理阻塞期间收到的用户消息。
+     *
+     * <p>WAITING_FOR_USER 优先把消息交给当前输入请求；其他等待进入重规划。结构化业务表单和
+     * 无法作为 ToolMessage 表达的多模态输入不会被猜测转换，而是保留为完整 UserMessage 重新规划。</p>
+     */
+    private void applyOrdinaryUserMessage(AgentTurn turn, AgentSuspension suspension,
+                                          AgentResumeCommand command) {
+        UserMessage message = requireUserMessage(command);
+        if (suspension.getType() != AgentSuspensionType.USER_INPUT) {
+            applyReplanMessage(turn, suspension, command);
+            return;
+        }
+
+        // 业务工具的结构化表单必须通过 userInput(callId, data) 提交。自由文本无法可靠映射 Schema，
+        // 因而普通消息在这里明确回退为重规划，绝不猜测字段名或伪造表单数据。
+        if (TOOL_INPUT_TARGET.equals(suspension.getInputTarget())) {
+            applyReplanMessage(turn, suspension, command);
+            return;
+        }
+
+        if (!StringUtil.hasText(suspension.getCorrelationId())) {
+            // 手工 USER_INPUT Suspension 没有 ToolCall 协议需要闭合；保留完整多模态消息作为回答。
+            turn.getPrompt().addMessage(message);
+            turn.markUserMessageProcessed(message.getMessageId());
+            turn.putMetadata("lastUserMessageDisposition", "INPUT_RESPONSE");
+            return;
+        }
+
+        List<ToolCall> pending = turn.getPendingToolCalls();
+        ToolCall call = pending.isEmpty() ? null : pending.get(0);
+        boolean requestUserInput = call != null
+            && suspension.getCorrelationId().equals(AgentToolCallProcessor.callKey(call))
+            && AgentUserInputTool.NAME.equals(call.getName());
+        // request_user_input 的 ToolMessage 只能承载文本/JSON。纯图片等多模态回答改走重规划，
+        // 这样附件仍会作为 UserMessage 进入模型上下文而不是被静默丢弃。
+        if (!requestUserInput || hasNonTextContent(message)
+            || !StringUtil.hasText(message.getTextContent())) {
+            applyReplanMessage(turn, suspension, command);
+            return;
+        }
+        AgentResumeCommand input = AgentResumeCommand.userInput(
+                suspension.getCorrelationId(), message.getTextContent())
+            .withMetadata(command.getMetadata());
+        applyUserInput(turn, suspension, input);
+        turn.markUserMessageProcessed(message.getMessageId());
+        turn.putMetadata("lastUserMessageDisposition", "INPUT_RESPONSE");
+    }
+
+    /**
+     * 无条件放弃当前等待，闭合全部 pending ToolCall，并把新消息交给模型重新规划。
+     */
+    private void applyReplanMessage(AgentTurn turn, AgentSuspension suspension,
+                                    AgentResumeCommand command) {
+        UserMessage message = requireUserMessage(command);
+        String reason = "blocked operation superseded by a new user message";
+        long occurredAt = turnStore.currentTimeMillis();
+        for (ToolCall call : turn.getPendingToolCalls()) {
+            if (call == null) continue;
+            ToolMessage result = new ToolMessage();
+            result.setToolCallId(AgentToolCallProcessor.callKey(call));
+            result.setContent(renderInterruptedMessage(
+                turn.getExecutionPolicy().getInterruptedToolMessageTemplate(),
+                turn, call, reason));
+            turn.getPrompt().addMessage(result);
+            turn.addToolInterruption(new AgentToolInterruption(
+                AgentToolCallProcessor.callKey(call), call.getName(), suspension.getType(),
+                reason, occurredAt, message.getMessageId()));
+        }
+        turn.clearPendingToolCalls();
+        turn.getPrompt().addMessage(message);
+        turn.markUserMessageProcessed(message.getMessageId());
+        turn.clearRetryError();
+        turn.putMetadata("lastUserMessageDisposition", "REPLAN");
+        turn.putMetadata("lastInterruptedSuspensionType", suspension.getType().name());
+        turn.putMetadata("lastInterruptedSuspensionReason", reason);
+    }
+
+    private UserMessage requireUserMessage(AgentResumeCommand command) {
+        UserMessage message = command.getUserMessage();
+        if (message == null) {
+            throw new IllegalArgumentException(command.getType() + " command requires userMessage");
+        }
+        return message;
+    }
+
+    private boolean hasNonTextContent(UserMessage message) {
+        return message.getImageUrls() != null && !message.getImageUrls().isEmpty()
+            || message.getAudioUrls() != null && !message.getAudioUrls().isEmpty()
+            || message.getVideoUrls() != null && !message.getVideoUrls().isEmpty()
+            || message.getFileUrls() != null && !message.getFileUrls().isEmpty();
     }
 
     /**

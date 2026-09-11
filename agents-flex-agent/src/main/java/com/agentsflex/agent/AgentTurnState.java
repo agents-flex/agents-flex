@@ -57,7 +57,31 @@ public final class AgentTurnState implements Serializable {
     private long outputTokens;
     private long totalTokens;
     private int toolCallCount;
+    /**
+     * 已发起但未得到有效模型响应的调用次数。
+     *
+     * <p>{@code iterationCount} 保留“实际请求总次数”的监控语义；maxIterations 使用二者之差计算
+     * 成功模型回合数，避免额度或限流恰好发生在最后一次允许调用时让人工恢复立即终止。</p>
+     */
+    private int modelInvocationFailureCount;
     private int retryCount;
+    /**
+     * 当前连续失败链已经安排的重试次数。成功执行或人工改变条件后归零。
+     * retryCount 则是 Turn 生命周期内的累计指标，不会因为恢复而减少。
+     */
+    private int consecutiveRetryCount;
+    /**
+     * Turn 生命周期内发生过的结构化模型故障，恢复后仍保留用于审计。
+     */
+    private List<AgentModelFailure> modelFailureHistory = Collections.emptyList();
+    /**
+     * 用户消息中断 pending ToolCall 的结构化记录，顺序与原 ToolCall 声明顺序一致。
+     */
+    private List<AgentToolInterruption> toolInterruptions = Collections.emptyList();
+    /**
+     * 已经消费过的普通/重规划用户消息 ID，用于阻塞恢复入口幂等去重。
+     */
+    private List<String> processedUserMessageIds = Collections.emptyList();
     private String budgetExceededReason;
     private volatile String leaseOwner;
     private volatile String leaseId;
@@ -115,6 +139,9 @@ public final class AgentTurnState implements Serializable {
         this.createdAt = createdAt;
         this.messages = new ArrayList<>();
         this.pendingToolCalls = new ArrayList<>();
+        this.modelFailureHistory = new ArrayList<>();
+        this.toolInterruptions = new ArrayList<>();
+        this.processedUserMessageIds = new ArrayList<>();
         this.toolApprovals = new HashMap<>();
         this.toolApprovalRecords = new HashMap<>();
         this.toolApprovalRecordsByRequest = new HashMap<>();
@@ -152,7 +179,20 @@ public final class AgentTurnState implements Serializable {
         this.outputTokens = source.outputTokens;
         this.totalTokens = source.totalTokens;
         this.toolCallCount = source.toolCallCount;
+        this.modelInvocationFailureCount = source.modelInvocationFailureCount;
         this.retryCount = source.retryCount;
+        this.consecutiveRetryCount = source.consecutiveRetryCount;
+        List<AgentModelFailure> failures = copyModelFailures(source.modelFailureHistory);
+        this.modelFailureHistory = immutable
+            ? Collections.unmodifiableList(failures) : failures;
+        List<AgentToolInterruption> interruptions = copyToolInterruptions(
+            source.toolInterruptions);
+        this.toolInterruptions = immutable
+            ? Collections.unmodifiableList(interruptions) : interruptions;
+        List<String> messageIds = source.processedUserMessageIds == null
+            ? new ArrayList<String>() : new ArrayList<>(source.processedUserMessageIds);
+        this.processedUserMessageIds = immutable
+            ? Collections.unmodifiableList(messageIds) : messageIds;
         this.budgetExceededReason = source.budgetExceededReason;
         this.leaseOwner = source.leaseOwner;
         this.leaseId = source.leaseId;
@@ -328,10 +368,53 @@ public final class AgentTurnState implements Serializable {
     }
 
     /**
+     * @return 已发起但未得到有效响应的模型调用次数
+     */
+    public int getModelInvocationFailureCount() {
+        return modelInvocationFailureCount;
+    }
+
+    /**
+     * @return 已成功完成的模型回合数；旧 Snapshot 中失败计数缺失时等于 iterationCount
+     */
+    public int getSuccessfulModelInvocationCount() {
+        return Math.max(0, iterationCount - modelInvocationFailureCount);
+    }
+
+    /**
      * @return 已安排的自动重试次数
      */
     public int getRetryCount() {
         return retryCount;
+    }
+
+    /**
+     * @return 当前连续失败链已经消耗的自动重试次数
+     */
+    public int getConsecutiveRetryCount() {
+        return consecutiveRetryCount;
+    }
+
+    /**
+     * 返回全部模型故障的只读副本。当前故障仍可通过 Suspension 直接读取。
+     */
+    public List<AgentModelFailure> getModelFailureHistory() {
+        return Collections.unmodifiableList(copyModelFailures(modelFailureHistory));
+    }
+
+    /**
+     * 返回全部工具中断审计记录的只读副本。
+     */
+    public List<AgentToolInterruption> getToolInterruptions() {
+        return Collections.unmodifiableList(copyToolInterruptions(toolInterruptions));
+    }
+
+    /**
+     * 返回阻塞恢复入口已经消费过的用户消息 ID。
+     */
+    public List<String> getProcessedUserMessageIds() {
+        return Collections.unmodifiableList(processedUserMessageIds == null
+            ? Collections.<String>emptyList() : new ArrayList<>(processedUserMessageIds));
     }
 
     /**
@@ -369,7 +452,9 @@ public final class AgentTurnState implements Serializable {
         return Collections.unmodifiableMap(toolApprovals);
     }
 
-    /** @return 按 ToolCall 和阶段隔离的审批记录只读副本 */
+    /**
+     * @return 按 ToolCall 和阶段隔离的审批记录只读副本
+     */
     public Map<String, Map<ToolApprovalStage, ToolApprovalRecord>> getToolApprovalRecords() {
         Map<String, Map<ToolApprovalStage, ToolApprovalRecord>> grouped = new HashMap<>();
         if (toolApprovalRecords != null) {
@@ -378,7 +463,7 @@ public final class AgentTurnState implements Serializable {
                 if (record == null) continue;
                 String callId = approvalCallId(entry.getKey(), record.getStage());
                 grouped.computeIfAbsent(callId,
-                    key -> new java.util.EnumMap<>(ToolApprovalStage.class))
+                        key -> new java.util.EnumMap<>(ToolApprovalStage.class))
                     .put(record.getStage(), record);
             }
         }
@@ -656,6 +741,19 @@ public final class AgentTurnState implements Serializable {
         toolCallCount++;
     }
 
+    void setModelInvocationFailureCount(int value) {
+        requireMutable();
+        modelInvocationFailureCount = Math.max(0, value);
+    }
+
+    /**
+     * 记录一次已经发起但没有得到有效响应的模型调用。
+     */
+    void incrementModelInvocationFailureCount() {
+        requireMutable();
+        modelInvocationFailureCount++;
+    }
+
     /**
      * 回滚尚未真正执行的工具计数，最小保持为零。
      *
@@ -677,6 +775,65 @@ public final class AgentTurnState implements Serializable {
     void incrementRetryCount() {
         requireMutable();
         retryCount++;
+    }
+
+    void setConsecutiveRetryCount(int value) {
+        requireMutable();
+        consecutiveRetryCount = Math.max(0, value);
+    }
+
+    void incrementConsecutiveRetryCount() {
+        requireMutable();
+        consecutiveRetryCount++;
+    }
+
+    void resetConsecutiveRetryCount() {
+        requireMutable();
+        consecutiveRetryCount = 0;
+    }
+
+    void setModelFailureHistory(List<AgentModelFailure> value) {
+        requireMutable();
+        modelFailureHistory = copyModelFailures(value);
+    }
+
+    void addModelFailure(AgentModelFailure failure) {
+        requireMutable();
+        if (failure == null) return;
+        if (modelFailureHistory == null) modelFailureHistory = new ArrayList<>();
+        modelFailureHistory.add(failure.copy());
+    }
+
+    void setToolInterruptions(List<AgentToolInterruption> value) {
+        requireMutable();
+        toolInterruptions = copyToolInterruptions(value);
+    }
+
+    void addToolInterruption(AgentToolInterruption interruption) {
+        requireMutable();
+        if (interruption == null) return;
+        if (toolInterruptions == null) toolInterruptions = new ArrayList<>();
+        toolInterruptions.add(interruption.copy());
+    }
+
+    void setProcessedUserMessageIds(List<String> value) {
+        requireMutable();
+        processedUserMessageIds = value == null
+            ? new ArrayList<String>() : new ArrayList<>(value);
+    }
+
+    boolean hasProcessedUserMessage(String messageId) {
+        return messageId != null && processedUserMessageIds != null
+            && processedUserMessageIds.contains(messageId);
+    }
+
+    void markUserMessageProcessed(String messageId) {
+        requireMutable();
+        if (messageId == null || messageId.trim().isEmpty()) return;
+        if (processedUserMessageIds == null) processedUserMessageIds = new ArrayList<>();
+        if (!processedUserMessageIds.contains(messageId)) {
+            processedUserMessageIds.add(messageId);
+        }
     }
 
     void setBudgetExceededReason(String value) {
@@ -802,7 +959,7 @@ public final class AgentTurnState implements Serializable {
         }
         ToolApprovalRecord record = toolApprovalRecordsByRequest == null ? null
             : toolApprovalRecordsByRequest.get(
-                approvalRequestRecordKey(callId, requestFingerprint));
+            approvalRequestRecordKey(callId, requestFingerprint));
         if (record != null) return record;
         // 兼容尚未包含累计字段的旧 Snapshot：其最新 TOOL 记录仍然可以按指纹读取。
         ToolApprovalRecord latest = getToolApprovalRecord(callId, stage);
@@ -1062,8 +1219,33 @@ public final class AgentTurnState implements Serializable {
             return this;
         }
 
+        public Builder modelInvocationFailureCount(int value) {
+            state.setModelInvocationFailureCount(value);
+            return this;
+        }
+
         public Builder retryCount(int value) {
             state.setRetryCount(value);
+            return this;
+        }
+
+        public Builder consecutiveRetryCount(int value) {
+            state.setConsecutiveRetryCount(value);
+            return this;
+        }
+
+        public Builder modelFailureHistory(List<AgentModelFailure> value) {
+            state.setModelFailureHistory(value);
+            return this;
+        }
+
+        public Builder toolInterruptions(List<AgentToolInterruption> value) {
+            state.setToolInterruptions(value);
+            return this;
+        }
+
+        public Builder processedUserMessageIds(List<String> value) {
+            state.setProcessedUserMessageIds(value);
             return this;
         }
 
@@ -1183,6 +1365,34 @@ public final class AgentTurnState implements Serializable {
     }
 
     /**
+     * 深复制模型故障列表；旧 Snapshot 未包含该字段时返回空列表。
+     */
+    private static List<AgentModelFailure> copyModelFailures(
+        List<AgentModelFailure> source) {
+        List<AgentModelFailure> result = new ArrayList<>();
+        if (source != null) {
+            for (AgentModelFailure failure : source) {
+                if (failure != null) result.add(failure.copy());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 深复制工具中断列表；保持模型声明的 ToolCall 顺序。
+     */
+    private static List<AgentToolInterruption> copyToolInterruptions(
+        List<AgentToolInterruption> source) {
+        List<AgentToolInterruption> result = new ArrayList<>();
+        if (source != null) {
+            for (AgentToolInterruption interruption : source) {
+                if (interruption != null) result.add(interruption.copy());
+            }
+        }
+        return result;
+    }
+
+    /**
      * 深复制按 Tool Call ID 分组的表单数据，并可冻结外层及内层 Map。
      *
      * @param source    原始数据；允许为空
@@ -1203,7 +1413,9 @@ public final class AgentTurnState implements Serializable {
         return immutable ? Collections.unmodifiableMap(result) : result;
     }
 
-    /** 复制按 ToolCall、阶段分组的审批记录，并冻结 Snapshot 的两层 Map。 */
+    /**
+     * 复制按 ToolCall、阶段分组的审批记录，并冻结 Snapshot 的两层 Map。
+     */
     private static Map<String, ToolApprovalRecord> copyToolApprovalRecords(
         Map<String, ToolApprovalRecord> source, boolean immutable) {
         Map<String, ToolApprovalRecord> result = source == null

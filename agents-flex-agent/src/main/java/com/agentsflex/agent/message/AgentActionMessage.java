@@ -42,7 +42,11 @@ public final class AgentActionMessage extends AbstractTextMessage<AgentActionMes
         /**
          * 用户已经拒绝。
          */
-        REJECTED
+        REJECTED,
+        /**
+         * 用户发送了新消息，原审批请求已被打断。
+         */
+        CANCELLED
     }
 
     /**

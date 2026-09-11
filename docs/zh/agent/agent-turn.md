@@ -51,7 +51,8 @@ Token 是大模型统计文本用量的基本单位，也通常会影响调用�
 2. 用户接着问“北京呢”，创建第二个 AgentTurn。
 3. 两个 Turn 可以属于同一个聊天会话，共享之前的聊天记录。
 
-已经完成的 AgentTurn 不应该重新打开处理新问题。新问题应创建新的 Turn；只有审批结果、表单输入等针对原任务的补充信息，才用于恢复原来的 Turn。
+已经完成的 AgentTurn 不应该重新打开处理新问题。新问题应创建新的 Turn；但 Turn 仍处于阻塞状态时，
+审批结果、表单输入、模型恢复命令或用户继续发送的新消息都可以恢复同一个 Turn。
 
 ## 创建与执行
 
@@ -98,11 +99,12 @@ flowchart LR
 | `WAITING_FOR_USER` | 缺少必要信息，等待用户补充 |
 | `WAITING_FOR_APPROVAL` | 某个工具需要人工同意后才能执行 |
 | `WAITING_FOR_TOOL` | 工具在其他服务中执行，正在等待结果 |
+| `WAITING_FOR_MODEL` | 模型额度、限流、Token 上限或服务异常，等待修复或新消息 |
 | `RETRY_SCHEDULED` | 暂时失败，等待到指定时间后重试 |
 | `COMPLETED` | 任务正常完成，已经产生最终答案 |
 | `FAILED` | 发生无法继续的错误 |
 | `CANCELLED` | 任务已被取消 |
-| `MAX_ITERATIONS_REACHED` | 模型调用次数达到上限 |
+| `MAX_ITERATIONS_REACHED` | 成功模型回合数达到上限；失败请求单独计入故障次数 |
 | `MAX_STEPS_REACHED` | 整个任务的执行步骤达到上限 |
 | `BUDGET_EXCEEDED` | 运行时间、Token 或工具调用次数超出预算 |
 
@@ -120,7 +122,8 @@ if (status.isTerminal()) {
 }
 ```
 
-`isBlocked()` 表示任务正在等待输入、审批、工具结果或重试时间，当前不能立即向下执行；`isTerminal()` 表示任务已经彻底结束。使用这两个方法比自己列举状态更可靠。
+`isBlocked()` 表示任务正在等待输入、审批、工具结果、模型恢复或重试时间，当前不能自动向下执行；
+`isTerminal()` 表示任务已经彻底结束。使用这两个方法比自己列举状态更可靠。
 
 ## 读取最终结果
 
@@ -230,5 +233,6 @@ runner.saveSnapshot(turn);
 
 - 了解谁负责创建和执行 Turn：[AgentRunner](./agent-runner)。
 - 了解任务如何暂停后继续：[挂起与恢复](./suspend-resume)。
+- 了解模型不可用时如何保留上下文：[模型故障恢复](./model-recovery)。
 - 了解任务进度如何保存：[Snapshot](./snapshot)。
 - 了解长任务如何在后台运行：[Worker](./worker)。

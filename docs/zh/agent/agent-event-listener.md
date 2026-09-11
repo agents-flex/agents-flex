@@ -41,6 +41,7 @@ AgentEventListener 接收通知
 | 提醒用户完成审批或表单 | `TOOL_APPROVAL_REQUESTED`、`TOOL_INPUT_REQUESTED` |
 | 统计模型和工具调用次数 | `MODEL_STARTED`、`TOOL_STARTED` |
 | 观察任务是否进入自动重试 | `RETRY_SCHEDULED` |
+| 观察模型是否等待人工恢复 | `TURN_SUSPENDED`，并检查 `suspensionType == MODEL` |
 
 如果应用只关心最终回答，可以直接读取 `AgentTurn`，不一定要注册监听器。事件更适合关注执行过程或把关键
 变化交给其他系统处理。
@@ -106,6 +107,7 @@ Map<String, Object> data = event.getData();
 - `TOOL_STARTED` 的 `toolName`：准备执行的工具名称；
 - `TOOL_PROGRESS` 的 `message`：工具上报的进度说明；
 - `TURN_FAILED` 的 `error`：失败原因；
+- 模型故障 `TURN_SUSPENDED` 的 `modelFailure`：故障 ID、类型、HTTP 状态和供应商错误码；
 - `RETRY_SCHEDULED` 的 `nextRunnableAt`：下次可以重试的时间。
 
 `data` 是只读数据。业务代码应根据事件类型读取需要的字段，并处理字段不存在的情况。
@@ -180,7 +182,8 @@ runner.addEventListener(event -> {
 | 工具 | `TOOL_STARTED`、`TOOL_PROGRESS`、`TOOL_COMPLETED`、`TOOL_FAILED` | 本地工具的执行过程 |
 | 等待与恢复 | `TURN_SUSPENDED`、`TURN_RESUMED` | 任务暂停等待，或收到结果后继续 |
 | 审批与表单 | `TOOL_APPROVAL_REQUESTED`、`TOOL_INPUT_REQUESTED` | 需要人工操作 |
-| 外部工具 | `EXTERNAL_TOOL_REQUESTED`、`EXTERNAL_TOOL_COMPLETED`、`EXTERNAL_TOOL_FAILED` | 工具交给外部系统执行 |
+| 外部工具 | `EXTERNAL_TOOL_REQUESTED`、`EXTERNAL_TOOL_COMPLETED`、`EXTERNAL_TOOL_FAILED`、`EXTERNAL_TOOL_CANCEL_REQUESTED` | 工具交给外部系统执行或请求协作式取消 |
+| 工具中断 | `TOOL_INTERRUPTED` | pending ToolCall 已闭合，并保存了用户消息中断记录 |
 | 重试与限制 | `RETRY_SCHEDULED`、`BUDGET_EXCEEDED`、`MAX_ITERATIONS_REACHED`、`MAX_STEPS_REACHED` | 等待重试或达到运行限制 |
 | 上下文压缩 | `CONTEXT_COMPRESSION_STARTED`、`CONTEXT_COMPRESSION_COMPLETED`、`CONTEXT_COMPRESSION_FAILED` | 长对话压缩过程 |
 | 任务保存 | `SNAPSHOT_SAVED` | 最新任务进度已经保存 |
@@ -188,9 +191,12 @@ runner.addEventListener(event -> {
 `SNAPSHOT_SAVED` 只表示某次进度保存成功，不代表整个任务已经完成。判断任务正常完成应监听
 `TURN_COMPLETED`，或者查询 `AgentTurn` 的状态。
 
+`EXTERNAL_TOOL_CANCEL_REQUESTED` 在中断 Snapshot 保存成功后发布。监听器应把它视为“尽力取消”请求，
+不能假定外部副作用一定已经撤回；外部工具仍需要使用幂等键，并在回传结果前核对当前 correlationId。
+
 任务也可能以其他状态结束。需要统一处理所有结束情况时，还应关注 `TURN_FAILED`、`TURN_CANCELLED`、
 `BUDGET_EXCEEDED`、`MAX_ITERATIONS_REACHED` 和 `MAX_STEPS_REACHED`。这些事件分别表示执行失败、任务
-取消、运行预算耗尽、模型调用次数达到上限和执行步骤达到上限。
+取消、运行预算耗尽、成功模型回合数达到上限和执行步骤达到上限。
 
 ## 一个任务中的事件顺序
 

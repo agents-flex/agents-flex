@@ -103,9 +103,9 @@ public enum AgentEventType {
      */
     SNAPSHOT_SAVED,
     /**
-     * Turn 已持久化为等待用户输入、工具审批或重试调度的状态。
+     * Turn 已持久化为等待用户输入、工具审批、外部工具、模型恢复或重试调度的状态。
      * 如果暂停由 Step 产生，本事件在该 Step 的 STEP_COMPLETED 之后发布。
-     * data 包含 suspensionType、correlationId、message、resumeExecutionPoint 和 metadata。
+     * data 包含 suspensionType、correlationId、message、resumeExecutionPoint、modelFailure 和 metadata。
      */
     TURN_SUSPENDED,
     /**
@@ -143,5 +143,16 @@ public enum AgentEventType {
     /**
      * 时间、Token 或工具调用次数达到 AgentBudget 上限，Turn 已终止；在最终 STEP_COMPLETED 后发布。
      */
-    BUDGET_EXCEEDED
+    BUDGET_EXCEEDED,
+    /**
+     * pending ToolCall 已被用户消息中断并写入中断 ToolMessage。data 包含持久化的 interruption。
+     */
+    TOOL_INTERRUPTED,
+    /**
+     * 已派发的外部 ToolCall 不再被当前 Turn 接受，外部执行器应尽力取消仍在运行的操作。
+     *
+     * <p>该事件在包含中断记录的 Snapshot 保存成功后发布。取消是协作式请求；即使外部操作无法撤回，
+     * 迟到结果也不能恢复已经放弃该等待的 Turn。</p>
+     */
+    EXTERNAL_TOOL_CANCEL_REQUESTED
 }

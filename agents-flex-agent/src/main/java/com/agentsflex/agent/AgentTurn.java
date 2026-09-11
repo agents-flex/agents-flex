@@ -385,10 +385,48 @@ public final class AgentTurn {
     }
 
     /**
+     * 返回当前等待恢复的结构化模型故障。
+     *
+     * @return WAITING_FOR_MODEL 状态对应的故障副本；其他状态返回 {@code null}
+     */
+    public AgentModelFailure getModelFailure() {
+        AgentSuspension suspension = state.getSuspension();
+        return suspension == null ? null : suspension.getModelFailure();
+    }
+
+    /**
      * @return 已完成或已发起的模型调用次数
      */
     public int getIterationCount() {
         return state.getIterationCount();
+    }
+
+    /**
+     * @return 没有得到有效模型响应的调用次数；用于把基础设施失败与成功模型回合分开统计
+     */
+    public int getModelInvocationFailureCount() {
+        return state.getModelInvocationFailureCount();
+    }
+
+    /**
+     * @return 已成功完成的模型回合数，也是 maxIterations 实际约束的计数
+     */
+    public int getSuccessfulModelInvocationCount() {
+        return state.getSuccessfulModelInvocationCount();
+    }
+
+    /**
+     * 返回当前 Turn 的全部模型故障历史。恢复成功只清除当前 Suspension，不删除历史审计。
+     */
+    public List<AgentModelFailure> getModelFailureHistory() {
+        return state.getModelFailureHistory();
+    }
+
+    /**
+     * 返回用户消息中断工具等待或工具重试时产生的全部审计记录。
+     */
+    public List<AgentToolInterruption> getToolInterruptions() {
+        return state.getToolInterruptions();
     }
 
     /**
@@ -483,6 +521,13 @@ public final class AgentTurn {
      */
     public int getRetryCount() {
         return state.getRetryCount();
+    }
+
+    /**
+     * @return 当前连续失败链已安排的自动重试次数；成功或人工改变条件后归零
+     */
+    public int getConsecutiveRetryCount() {
+        return state.getConsecutiveRetryCount();
     }
 
     /**
@@ -625,6 +670,39 @@ public final class AgentTurn {
      */
     void incrementIteration() {
         state.incrementIterationCount();
+    }
+
+    /**
+     * 记录一次失败模型调用，并在可识别时保存结构化故障历史。
+     */
+    void recordModelInvocationFailure(AgentModelFailure failure) {
+        state.incrementModelInvocationFailureCount();
+        state.addModelFailure(failure);
+    }
+
+    /**
+     * 模型或工具成功后结束当前连续失败链；累计 retryCount 保持不变。
+     */
+    void resetConsecutiveRetryCount() {
+        state.resetConsecutiveRetryCount();
+    }
+
+    void addToolInterruption(AgentToolInterruption interruption) {
+        state.addToolInterruption(interruption);
+    }
+
+    boolean hasProcessedUserMessage(String messageId) {
+        if (state.hasProcessedUserMessage(messageId)) return true;
+        if (messageId == null) return false;
+        // 兼容新增 processedUserMessageIds 之前创建的 Snapshot：原始 UserMessage 本身也可作为幂等凭据。
+        for (Message message : prompt.getMemory().getMessages(Integer.MAX_VALUE)) {
+            if (message instanceof UserMessage && messageId.equals(message.getMessageId())) return true;
+        }
+        return false;
+    }
+
+    void markUserMessageProcessed(String messageId) {
+        state.markUserMessageProcessed(messageId);
     }
 
     /**
@@ -783,10 +861,19 @@ public final class AgentTurn {
      */
     void scheduleRetry(Throwable error, AgentTurnExecutionPoint resumeExecutionPoint, long runAt) {
         state.incrementRetryCount();
+        state.incrementConsecutiveRetryCount();
         this.error = error;
         state.setNextRunnableAt(runAt);
         suspend(AgentTurnStatus.RETRY_SCHEDULED,
             AgentSuspension.retry(error == null ? null : error.getMessage(), resumeExecutionPoint, runAt));
+    }
+
+    /**
+     * 保存结构化模型异常并进入可恢复的模型等待状态。
+     */
+    void waitForModel(Throwable error, AgentModelFailure failure) {
+        this.error = error;
+        suspend(AgentTurnStatus.WAITING_FOR_MODEL, AgentSuspension.model(failure));
     }
 
     /**

@@ -13,6 +13,7 @@ import com.agentsflex.agent.middleware.AgentMiddlewareContext;
 import com.agentsflex.agent.middleware.AgentToolCallChain;
 import com.agentsflex.agent.tool.*;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
 import com.agentsflex.core.model.chat.ChatContext;
@@ -297,6 +298,8 @@ final class AgentToolCallProcessor {
     private void appendToolResult(AgentTurn turn, ToolMessage result) {
         turn.getPrompt().addMessage(result);
         turn.removeFirstPendingToolCall();
+        // 一个工具结果已经成功写入协议，结束此前工具失败形成的连续重试链；累计重试指标不回滚。
+        turn.resetConsecutiveRetryCount();
         runner.saveSnapshot(turn);
     }
 
@@ -511,6 +514,7 @@ final class AgentToolCallProcessor {
                                           ToolMessage result) {
         turn.getPrompt().addMessage(result);
         turn.removePendingToolCall(callKey(call));
+        turn.resetConsecutiveRetryCount();
         runner.saveSnapshot(turn);
     }
 
@@ -873,21 +877,42 @@ final class AgentToolCallProcessor {
     }
 
     /**
-     * 为模型未提供 ID 的 ToolCall 补充当前 Turn 内唯一且可持久化的 ID。
+     * 为模型未提供、同批重复或跨回合复用的 ToolCall ID 补充当前 Turn 内唯一且可持久化的 ID。
      *
      * <p>ID 在 AI 消息进入 Prompt 和 Snapshot 之前生成，由 turnId、模型迭代次数和调用序号组成，
-     * 因而审批挂起、工具结果和跨进程恢复可以稳定关联同一次调用。</p>
+     * 因而审批挂起、工具结果和跨进程恢复可以稳定关联同一次调用。模型供应商偶尔会跨回合复用 ID；
+     * 若旧调用已经被用户中断，继续沿用该 ID 会让迟到的外部结果误命中新 Suspension。Runner 因此
+     * 把 Prompt 中已经出现过的 ID 视为不可复用。</p>
      *
      * @param turn    当前 Turn
      * @param message 尚未写入 Prompt 的模型消息
      */
     void ensureToolCallIds(AgentTurn turn, AiMessage message) {
         if (message == null || !message.hasToolCalls()) return;
+        Set<String> used = new HashSet<>();
+        for (Message historical : turn.getConversationHistory()) {
+            if (historical instanceof AiMessage) {
+                AiMessage ai = (AiMessage) historical;
+                if (ai.getToolCalls() == null) continue;
+                for (ToolCall old : ai.getToolCalls()) {
+                    if (old != null && StringUtil.hasText(old.getId())) used.add(old.getId());
+                }
+            }
+        }
+        for (AgentToolInterruption interruption : turn.getToolInterruptions()) {
+            used.add(interruption.getToolCallId());
+        }
         int index = 0;
         for (ToolCall call : message.getToolCalls()) {
-            if (!StringUtil.hasText(call.getId())) {
-                call.setId(turn.getId() + "-" + turn.getIterationCount() + "-" + index);
+            String id = call.getId();
+            if (!StringUtil.hasText(id) || used.contains(id)) {
+                String base = turn.getId() + "-" + turn.getIterationCount() + "-" + index;
+                id = base;
+                int suffix = 1;
+                while (used.contains(id)) id = base + "-" + suffix++;
+                call.setId(id);
             }
+            used.add(call.getId());
             index++;
         }
     }

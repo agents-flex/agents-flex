@@ -13,6 +13,7 @@ description: 让 Agent 任务在等待用户、审批或外部结果时暂时停
 - 执行退款前，需要负责人审批；
 - 调用浏览器或移动端能力后，需要等待设备返回结果；
 - 第三方服务暂时不可用，需要过一段时间再重试。
+- 模型额度耗尽、被限流或上下文超过 Token 上限，需要修复条件后继续。
 
 这些情况的共同点是：Agent 当前无法继续，但任务也没有失败。此时可以暂时停止任务，保存已经完成的
 进度，并向业务系统返回“正在等待”的状态。所需信息或结果到达后，再继续原来的任务。
@@ -35,6 +36,7 @@ description: 让 Agent 任务在等待用户、审批或外部结果时暂时停
 | 高风险操作 | 审批人的批准或拒绝 | 根据审批结果执行或放弃操作 |
 | 外部能力 | 浏览器、移动端或其他系统的执行结果 | 将成功结果或错误交回原任务 |
 | 临时故障 | 下一次允许重试的时间 | 到期后重新尝试失败步骤 |
+| 模型不可用 | 额度、限流、Token 上限或服务过载 | 修复模型条件，或提交新消息重新规划 |
 
 普通聊天不一定需要挂起。如果 Agent 只需要回答一句“请提供订单号”，并且下一条消息可以作为新的对话
 轮次处理，使用正常多轮对话即可。只有需要保留同一次任务的执行进度时，才需要挂起和恢复。
@@ -141,6 +143,7 @@ AgentTurn result = runner.resume(
 | `WAITING_FOR_USER` | 用户补充文本或表单 | `userInput(...)` |
 | `WAITING_FOR_APPROVAL` | 审批人批准或拒绝工具操作 | `approveTool(...)` / `rejectTool(...)` |
 | `WAITING_FOR_TOOL` | 外部设备或系统返回工具结果 | `toolResult(...)` / `toolError(...)` |
+| `WAITING_FOR_MODEL` | 模型额度、限流、Token 上限或服务不可用 | `retryModel(...)` / `userMessage(...)` |
 | `RETRY_SCHEDULED` | 到达下一次重试时间 | 通常由 Worker 自动处理 |
 
 这些状态都表示“任务尚未结束，但当前不能继续”。`COMPLETED`、`FAILED`、`CANCELLED` 等状态表示任务
@@ -177,6 +180,7 @@ long timeoutMillis = waitingInfo.getTimeoutMillis();
 | 表单输入 | `getFormKey()`、`getSchema()` |
 | 工具审批 | `getToolName()`、`getApprovalCode()`、`getApprovalReason()` |
 | 外部工具 | `getToolName()`、`getArguments()` |
+| 模型故障 | `getModelFailure()`；包含故障类型、错误码、重试提示和故障 ID |
 | 延迟重试 | `getNextRunnableAt()` |
 
 页面和接口只需要读取当前场景真正需要的字段。工具参数、个人信息和支付信息等敏感内容应经过筛选和脱敏
@@ -269,6 +273,41 @@ runner.resume(turnId, AgentResumeCommand.continueTurn());
 
 自动重试的次数、间隔和适用错误应通过重试策略配置，详见[错误处理与重试](./retry)。
 
+### 模型恢复或发送新消息
+
+模型调用在自动重试耗尽后会进入 `WAITING_FOR_MODEL`。修复额度、模型配置或服务状态后，可以携带当前
+故障 ID 重试原模型调用：
+
+```java
+AgentModelFailure failure = turn.getModelFailure();
+runner.resume(turn.getId(), AgentResumeCommand.retryModel(failure.getFailureId()));
+```
+
+用户也可以不执行专门的恢复操作，直接发送“继续”、修改要求或补充一条多模态消息。对于带
+`conversationId` 的会话 API，`run(...)` 会复用当前阻塞 Turn；异步接口可以使用
+`submitMessage(...)`：
+
+```java
+AgentTurn result = runner.run(agent, conversationId, "继续");
+
+// 只保存新消息，稍后由 Worker 执行。
+AgentTurn runnable = runner.submitMessage(agent, conversationId, "改用更短的回答");
+```
+
+同一入口也适用于等待用户、审批、外部工具和延迟重试的状态，但语义会按等待类型分流：普通消息在
+`WAITING_FOR_USER` 中优先作为当前问题的回答；其他等待通常会被放弃并重新规划。业务工具要求结构化
+表单时，Runner 不会猜测自由文本到 Schema 的映射，而是改为重新规划。
+
+需要明确放弃当前问题、表单或审批时，使用：
+
+```java
+runner.resume(turnId,
+    AgentResumeCommand.replanWithMessage("取消当前操作，改为查询状态"));
+```
+
+原审批或表单会取消，外部工具会发布协作式取消请求，迟到结果不能再恢复任务。完整语义见
+[模型故障恢复](./model-recovery)。
+
 ## 同步与异步恢复
 
 `resume(...)` 会在提交结果的当前线程中继续任务，适合本地程序、内部服务或执行时间较短的请求。
@@ -288,8 +327,10 @@ AgentTurn runnable = runner.submitResume(turnId, command);
 
 | 方式 | 是否立即继续执行 | 适用场景 |
 | --- | --- | --- |
-| `resume(...)` | 是 | 命令行、本地程序、短任务 |
-| `submitResume(...)` | 否 | Web 接口、消息回调、后台任务 |
+| `resume(...)` | 是 | 提交类型化恢复命令；命令行、本地程序、短任务 |
+| `submitResume(...)` | 否 | 异步提交类型化恢复命令；Web 接口、消息回调 |
+| `run(..., conversationId, message)` | 是 | 新会话创建 Turn；阻塞会话复用原 Turn 并追加消息 |
+| `submitMessage(...)` | 否 | 新会话创建 READY Turn；阻塞会话追加消息并保存为 RUNNING |
 
 无论使用哪一种方式，都必须继续原来的 `turnId`。后台执行方式见 [Worker](./worker)。
 

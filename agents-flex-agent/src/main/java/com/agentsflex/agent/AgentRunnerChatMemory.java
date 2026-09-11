@@ -129,6 +129,22 @@ final class AgentRunnerChatMemory {
             resolveForm(memory, turn, String.valueOf(correlationId));
             return;
         }
+        if (AgentResumeCommandType.USER_MESSAGE.name().equals(commandType)
+            || AgentResumeCommandType.REPLAN_WITH_MESSAGE.name().equals(commandType)) {
+            if ("INPUT_RESPONSE".equals(
+                turn.getMetadata().get("lastUserMessageDisposition"))) {
+                resolveForm(memory, turn, String.valueOf(correlationId));
+                return;
+            }
+            Object interruptedType = turn.getMetadata().get("lastInterruptedSuspensionType");
+            if (AgentSuspensionType.TOOL_APPROVAL.name().equals(interruptedType)) {
+                resolve(memory, turn, String.valueOf(correlationId),
+                    AgentActionMessage.Status.CANCELLED);
+            } else if (AgentSuspensionType.USER_INPUT.name().equals(interruptedType)) {
+                cancelForm(memory, turn, String.valueOf(correlationId));
+            }
+            return;
+        }
         AgentActionMessage.Status status;
         if (AgentResumeCommandType.APPROVE_TOOL.name().equals(commandType)) {
             status = AgentActionMessage.Status.APPROVED;
@@ -182,6 +198,10 @@ final class AgentRunnerChatMemory {
             if (operator == null) operator = stringValue(audit.get("approverId"));
             if (operator == null) operator = stringValue(audit.get("resolvedBy"));
             String reason = stringValue(turn.getMetadata().get("toolRejectionReason." + actionId));
+            if (reason == null) {
+                reason = stringValue(turn.getMetadata().get(
+                    "lastInterruptedSuspensionReason"));
+            }
             AgentActionMessage updated = current.resolved(status, operator, reason,
                 System.currentTimeMillis());
             if (memory.updateMessage(updated, current.getVersion())) return;

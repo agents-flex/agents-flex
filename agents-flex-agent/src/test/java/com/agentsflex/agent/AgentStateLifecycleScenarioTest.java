@@ -48,6 +48,10 @@ public class AgentStateLifecycleScenarioTest {
                 AgentSuspension.toolApproval("call-1", "danger"), 0),
             blocked("external", agent, AgentTurnStatus.WAITING_FOR_TOOL,
                 AgentSuspension.externalTool("call-2", "browser", "{}", null), 0),
+            blocked("model", agent, AgentTurnStatus.WAITING_FOR_MODEL,
+                AgentSuspension.model(AgentModelFailure.from(
+                    new com.agentsflex.core.model.exception.ModelQuotaExceededException(
+                        "quota", 429, "insufficient_quota", "insufficient_quota"), 1)), 0),
             blocked("retry", agent, AgentTurnStatus.RETRY_SCHEDULED,
                 AgentSuspension.retry("temporary", AgentTurnExecutionPoint.INVOKE_MODEL, now), now)
         };

@@ -282,6 +282,7 @@ final class AgentEventPublisher {
                 "formKey", suspension.getFormKey(),
                 "schema", suspension.getSchema(),
                 "inputTarget", suspension.getInputTarget(),
+                "modelFailure", modelFailureAttributes(suspension.getModelFailure()),
                 "metadata", suspension.getMetadata()));
     }
 
@@ -347,6 +348,39 @@ final class AgentEventPublisher {
         publish(turn, type,
             attributes("toolCallId", suspension.getCorrelationId(),
                 "toolName", suspension.getToolName()));
+    }
+
+    /**
+     * 发布一个已经持久化的 ToolCall 中断事实。
+     *
+     * <p>监听器可以用 sourceMessageId 将审计记录与触发重规划的用户消息关联。事件只用于观察，
+     * ToolCall 协议闭合状态仍以 Snapshot 中的 ToolMessage 和 interruption 列表为准。</p>
+     */
+    void notifyToolInterrupted(AgentTurn turn, AgentToolInterruption interruption) {
+        publish(turn, AgentEventType.TOOL_INTERRUPTED,
+            attributes("toolCallId", interruption.getToolCallId(),
+                "toolName", interruption.getToolName(),
+                "suspensionType", interruption.getSuspensionType(),
+                "reason", interruption.getReason(),
+                "occurredAt", interruption.getOccurredAt(),
+                "sourceMessageId", interruption.getSourceMessageId(),
+                "interruption", interruption));
+    }
+
+    /**
+     * 请求外部执行器尽力取消已经派发、但当前 Turn 不再等待的 ToolCall。
+     *
+     * <p>本事件在中断 Snapshot 保存成功后发布，因此消费者即使无法真正撤回外部副作用，也可以
+     * 确认 Runner 已不会接受该旧等待的结果。</p>
+     */
+    void notifyExternalToolCancelRequested(AgentTurn turn,
+                                           AgentToolInterruption interruption) {
+        publish(turn, AgentEventType.EXTERNAL_TOOL_CANCEL_REQUESTED,
+            attributes("toolCallId", interruption.getToolCallId(),
+                "toolName", interruption.getToolName(),
+                "reason", interruption.getReason(),
+                "occurredAt", interruption.getOccurredAt(),
+                "sourceMessageId", interruption.getSourceMessageId()));
     }
 
     /**
@@ -427,6 +461,24 @@ final class AgentEventPublisher {
             "stateVersion", state.getVersion(),
             "modelMessageCount", result.getModelMessages().size()));
         return values;
+    }
+
+    /**
+     * 将模型故障转换为事件可安全冻结的结构化字段，避免未知对象被降级为 toString 文本。
+     */
+    private Map<String, Object> modelFailureAttributes(AgentModelFailure failure) {
+        if (failure == null) return null;
+        return attributes("failureId", failure.getFailureId(),
+            "type", failure.getType(),
+            "exceptionType", failure.getExceptionType(),
+            "message", failure.getMessage(),
+            "httpStatus", failure.getHttpStatus(),
+            "errorCode", failure.getErrorCode(),
+            "errorType", failure.getErrorType(),
+            "retryAfterMillis", failure.getRetryAfterMillis(),
+            "tokenLimitPhase", failure.getTokenLimitPhase(),
+            "modelAttempt", failure.getModelAttempt(),
+            "occurredAt", failure.getOccurredAt());
     }
 
     /**

@@ -25,5 +25,9 @@ public enum AgentSuspensionType {
     /**
      * 等待自动重试的调度时间到达。
      */
-    RETRY
+    RETRY,
+    /**
+     * 等待模型额度、服务状态、上下文限制或运行配置恢复。
+     */
+    MODEL
 }

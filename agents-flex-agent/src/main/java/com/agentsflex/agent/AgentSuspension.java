@@ -85,9 +85,13 @@ public final class AgentSuspension implements Serializable {
      * 审批策略返回的审计原因。
      */
     private final String approvalReason;
-    /** 审批所属层级；旧快照缺失该字段时按 POLICY 解释。 */
+    /**
+     * 审批所属层级；旧快照缺失该字段时按 POLICY 解释。
+     */
     private final ToolApprovalStage approvalStage;
-    /** Tool 主动审批请求所绑定的只读预检指纹。 */
+    /**
+     * Tool 主动审批请求所绑定的只读预检指纹。
+     */
     private final String approvalRequestFingerprint;
     /**
      * USER_INPUT 表单的稳定标识。
@@ -101,6 +105,10 @@ public final class AgentSuspension implements Serializable {
      * USER_INPUT 的目标类型，例如业务 Tool；使用固定字符串避免继续依赖 metadata 键。
      */
     private final String inputTarget;
+    /**
+     * MODEL 挂起对应的结构化故障；其他挂起类型为空。
+     */
+    private final AgentModelFailure modelFailure;
     /**
      * 业务侧自定义扩展信息，不承载上述框架协议字段。
      */
@@ -119,7 +127,7 @@ public final class AgentSuspension implements Serializable {
                            AgentTurnExecutionPoint resumeExecutionPoint, Map<String, Object> metadata) {
         this(type, correlationId, message, resumeExecutionPoint, 0L, 0L, 0L,
             null, null, null, null, null, null, null, null, null, null,
-            extensionMetadata(metadata));
+            null, extensionMetadata(metadata));
     }
 
     /**
@@ -134,6 +142,7 @@ public final class AgentSuspension implements Serializable {
                             ToolApprovalStage approvalStage,
                             String approvalRequestFingerprint,
                             String formKey, Map<String, ?> schema, String inputTarget,
+                            AgentModelFailure modelFailure,
                             Map<String, ?> metadata) {
         if (type == null) {
             throw new IllegalArgumentException("type must not be null");
@@ -156,6 +165,7 @@ public final class AgentSuspension implements Serializable {
         this.formKey = formKey;
         this.schema = immutableMap(schema);
         this.inputTarget = inputTarget;
+        this.modelFailure = modelFailure == null ? null : modelFailure.copy();
         this.metadata = immutableMap(metadata);
     }
 
@@ -216,7 +226,7 @@ public final class AgentSuspension implements Serializable {
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, callId, message,
             AgentTurnExecutionPoint.PROCESS_TOOLS, System.currentTimeMillis(), timeoutMillis,
             0L, toolName, null, null, null, null, null, null,
-            formKey, schema, inputTarget, null);
+            formKey, schema, inputTarget, null, null);
     }
 
     private static AgentSuspension createUserInput(String callId, String message,
@@ -229,7 +239,7 @@ public final class AgentSuspension implements Serializable {
         return new AgentSuspension(AgentSuspensionType.USER_INPUT, callId, message,
             resumePoint, System.currentTimeMillis(), timeoutMillis, 0L,
             null, null, null, null, null, null, null, null, null, null,
-            extensionMetadata(sourceMetadata));
+            null, extensionMetadata(sourceMetadata));
     }
 
     /**
@@ -282,7 +292,7 @@ public final class AgentSuspension implements Serializable {
             message, AgentTurnExecutionPoint.PROCESS_TOOLS, System.currentTimeMillis(),
             timeoutMillis, 0L, toolName, null, outcome, code, reason,
             stage, decision == null ? null : decision.getRequestFingerprint(),
-            null, null, null, metadata);
+            null, null, null, null, metadata);
     }
 
     /**
@@ -318,7 +328,7 @@ public final class AgentSuspension implements Serializable {
             "External tool result is required: " + toolName,
             AgentTurnExecutionPoint.PROCESS_TOOLS, System.currentTimeMillis(), timeoutMillis,
             0L, toolName, arguments, null, null, null, null, null,
-            null, null, null, metadata);
+            null, null, null, null, metadata);
     }
 
     /**
@@ -327,7 +337,24 @@ public final class AgentSuspension implements Serializable {
     public static AgentSuspension retry(String message, AgentTurnExecutionPoint resumeExecutionPoint, long nextRunnableAt) {
         return new AgentSuspension(AgentSuspensionType.RETRY, null, message, resumeExecutionPoint,
             0L, 0L, nextRunnableAt, null, null, null, null, null, null,
-            null, null, null, null, null);
+            null, null, null, null, null, null);
+    }
+
+    /**
+     * 创建等待模型恢复的暂停点。
+     *
+     * @param failure 已归一化且可持久化的模型故障
+     * @return 恢复入口固定为 INVOKE_MODEL 的暂停信息
+     */
+    public static AgentSuspension model(AgentModelFailure failure) {
+        if (failure == null || failure.getFailureId() == null
+            || failure.getFailureId().trim().isEmpty()) {
+            throw new IllegalArgumentException("model failure and failureId must not be empty");
+        }
+        return new AgentSuspension(AgentSuspensionType.MODEL, failure.getFailureId(),
+            failure.getMessage(), AgentTurnExecutionPoint.INVOKE_MODEL,
+            System.currentTimeMillis(), 0L, 0L, null, null, null, null, null,
+            null, null, null, null, null, failure, null);
     }
 
     private static void validateCallIdAndTimeout(String callId, long timeoutMillis) {
@@ -438,7 +465,9 @@ public final class AgentSuspension implements Serializable {
             ? ToolApprovalStage.POLICY : approvalStage;
     }
 
-    /** @return Tool 主动审批请求绑定的只读预检指纹 */
+    /**
+     * @return Tool 主动审批请求绑定的只读预检指纹
+     */
     public String getApprovalRequestFingerprint() {
         return approvalRequestFingerprint;
     }
@@ -465,6 +494,13 @@ public final class AgentSuspension implements Serializable {
     }
 
     /**
+     * @return MODEL 挂起的结构化故障副本；其他挂起类型返回 {@code null}
+     */
+    public AgentModelFailure getModelFailure() {
+        return modelFailure == null ? null : modelFailure.copy();
+    }
+
+    /**
      * 使用 TurnStore 的统一时钟重写等待起点，避免多节点本机时钟偏差。
      */
     AgentSuspension withRequestedAt(long value) {
@@ -472,7 +508,7 @@ public final class AgentSuspension implements Serializable {
         return new AgentSuspension(type, correlationId, message, resumeExecutionPoint,
             value, timeoutMillis, nextRunnableAt, toolName, arguments, approvalOutcome,
             approvalCode, approvalReason, approvalStage, approvalRequestFingerprint,
-            formKey, schema, inputTarget, metadata);
+            formKey, schema, inputTarget, modelFailure, metadata);
     }
 
     /**
@@ -482,7 +518,7 @@ public final class AgentSuspension implements Serializable {
         return new AgentSuspension(type, correlationId, message, getResumeExecutionPoint(),
             requestedAt, timeoutMillis, nextRunnableAt, toolName, arguments, approvalOutcome,
             approvalCode, approvalReason, approvalStage, approvalRequestFingerprint,
-            formKey, schema, inputTarget, metadata);
+            formKey, schema, inputTarget, modelFailure, metadata);
     }
 
     private static Map<String, Object> immutableMap(Map<String, ?> source) {

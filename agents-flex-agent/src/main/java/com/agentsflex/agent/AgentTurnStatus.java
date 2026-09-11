@@ -71,7 +71,12 @@ public enum AgentTurnStatus {
     /**
      * 时间、Token 或工具调用次数超过执行预算。
      */
-    BUDGET_EXCEEDED;
+    BUDGET_EXCEEDED,
+
+    /**
+     * 模型因额度、限流、Token 上限或服务不可用而无法继续，等待外部修复或用户新消息。
+     */
+    WAITING_FOR_MODEL;
 
     /**
      * 判断当前状态是否暂停并等待外部事件。
@@ -80,6 +85,7 @@ public enum AgentTurnStatus {
         return this == WAITING_FOR_USER
             || this == WAITING_FOR_APPROVAL
             || this == WAITING_FOR_TOOL
+            || this == WAITING_FOR_MODEL
             || this == RETRY_SCHEDULED;
     }
 

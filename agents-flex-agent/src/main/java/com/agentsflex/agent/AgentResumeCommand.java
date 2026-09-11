@@ -7,6 +7,7 @@
 package com.agentsflex.agent;
 
 import com.alibaba.fastjson2.JSON;
+import com.agentsflex.core.message.UserMessage;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -41,6 +42,10 @@ public final class AgentResumeCommand implements Serializable {
      */
     private final Map<String, Object> data;
     /**
+     * USER_MESSAGE 命令携带的完整用户消息；其他命令为空。
+     */
+    private final UserMessage userMessage;
+    /**
      * 业务系统附加的只读元数据。
      */
     private final Map<String, Object> metadata;
@@ -64,6 +69,12 @@ public final class AgentResumeCommand implements Serializable {
     public AgentResumeCommand(AgentResumeCommandType type, String content,
                               String correlationId, Map<String, Object> data,
                               Map<String, Object> metadata) {
+        this(type, content, correlationId, data, null, metadata);
+    }
+
+    private AgentResumeCommand(AgentResumeCommandType type, String content,
+                               String correlationId, Map<String, Object> data,
+                               UserMessage userMessage, Map<String, Object> metadata) {
         if (type == null) {
             throw new IllegalArgumentException("type must not be null");
         }
@@ -71,6 +82,7 @@ public final class AgentResumeCommand implements Serializable {
         this.content = content;
         this.correlationId = correlationId;
         this.data = immutableMap(data);
+        this.userMessage = userMessage == null ? null : userMessage.copy();
         this.metadata = metadata == null
             ? Collections.emptyMap()
             : Collections.unmodifiableMap(new HashMap<>(metadata));
@@ -150,6 +162,59 @@ public final class AgentResumeCommand implements Serializable {
     }
 
     /**
+     * 创建修复模型条件后重试原模型调用的命令。
+     *
+     * @param failureId 当前 MODEL Suspension 的关联 ID
+     */
+    public static AgentResumeCommand retryModel(String failureId) {
+        return new AgentResumeCommand(AgentResumeCommandType.RETRY_MODEL,
+            null, failureId, null);
+    }
+
+    /**
+     * 创建一条普通用户消息。
+     *
+     * <p>在 WAITING_FOR_USER 中，Runner 会优先把它解释为当前输入请求的回答；在其他阻塞状态中，
+     * 它会放弃旧等待并触发模型重新规划。需要无条件中断当前输入请求时使用
+     * {@link #replanWithMessage(String)}。</p>
+     */
+    public static AgentResumeCommand userMessage(String content) {
+        return userMessage(new UserMessage(content));
+    }
+
+    /**
+     * 创建一条保留多模态内容的普通用户消息。
+     */
+    public static AgentResumeCommand userMessage(UserMessage message) {
+        if (message == null) {
+            throw new IllegalArgumentException("userMessage must not be null");
+        }
+        return new AgentResumeCommand(AgentResumeCommandType.USER_MESSAGE,
+            null, null, null, message, null);
+    }
+
+    /**
+     * 创建使用纯文本无条件打断当前阻塞并重新规划的命令。
+     */
+    public static AgentResumeCommand replanWithMessage(String content) {
+        return replanWithMessage(new UserMessage(content));
+    }
+
+    /**
+     * 创建使用完整多模态消息无条件打断当前阻塞并重新规划的命令。
+     *
+     * <p>Runner 会先为全部 pending ToolCall 写入中断 ToolMessage 和强类型审计记录，再追加该消息。
+     * 外部工具已经派发时还会在 Snapshot 保存成功后发布取消请求事件。</p>
+     */
+    public static AgentResumeCommand replanWithMessage(UserMessage message) {
+        if (message == null) {
+            throw new IllegalArgumentException("userMessage must not be null");
+        }
+        return new AgentResumeCommand(AgentResumeCommandType.REPLAN_WITH_MESSAGE,
+            null, null, null, message, null);
+    }
+
+    /**
      * 返回附加一项审计元数据的新命令。
      */
     public AgentResumeCommand withMetadata(String key, Object value) {
@@ -158,7 +223,7 @@ public final class AgentResumeCommand implements Serializable {
         }
         Map<String, Object> values = new LinkedHashMap<>(metadata);
         values.put(key, value);
-        return new AgentResumeCommand(type, content, correlationId, data, values);
+        return new AgentResumeCommand(type, content, correlationId, data, userMessage, values);
     }
 
     /**
@@ -169,7 +234,7 @@ public final class AgentResumeCommand implements Serializable {
         if (additions != null) {
             values.putAll(additions);
         }
-        return new AgentResumeCommand(type, content, correlationId, data, values);
+        return new AgentResumeCommand(type, content, correlationId, data, userMessage, values);
     }
 
     /**
@@ -198,6 +263,13 @@ public final class AgentResumeCommand implements Serializable {
      */
     public Map<String, Object> getData() {
         return data;
+    }
+
+    /**
+     * @return USER_MESSAGE 命令携带的独立消息副本；其他命令返回 {@code null}
+     */
+    public UserMessage getUserMessage() {
+        return userMessage == null ? null : userMessage.copy();
     }
 
     /**

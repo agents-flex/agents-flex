@@ -188,7 +188,7 @@ java \
 | `FAILED` | 遇到无法继续的错误 | 错误类型、最近一次模型或工具事件 |
 | `CANCELLED` | 已取消 | 谁发起了取消、工具是否及时停止 |
 | `BUDGET_EXCEEDED` | 达到时间、Token 或工具次数限制 | `budgetExceededReason` 和实际用量 |
-| `MAX_ITERATIONS_REACHED` | 模型调用次数达到上限 | 模型是否反复调用工具或无法形成答案 |
+| `MAX_ITERATIONS_REACHED` | 成功模型回合数达到上限 | 模型是否反复调用工具或无法形成答案 |
 | `MAX_STEPS_REACHED` | 总执行步骤达到上限 | 是否出现过多重试、恢复或工具步骤 |
 
 一个实用的排查顺序是：
