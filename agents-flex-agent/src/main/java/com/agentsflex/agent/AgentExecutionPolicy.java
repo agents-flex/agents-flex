@@ -66,8 +66,8 @@ public final class AgentExecutionPolicy implements Serializable {
     /**
      * 将允许交回模型的工具异常转换为 ToolMessage 的业务规则。
      */
-    // A factory is executable process-local behavior, not durable turn state.
-    // Do not let a user-provided lambda make an otherwise serializable snapshot fail.
+    // 工厂是当前进程内的可执行行为，不属于需要持久化的 Turn 状态。
+    // 用户传入的 Lambda 可能无法序列化，不能让它破坏本来可序列化的 Snapshot。
     private transient ToolErrorMessageFactory toolErrorMessageFactory;
     /**
      * 模型或工具发生可恢复异常时使用的重试策略。

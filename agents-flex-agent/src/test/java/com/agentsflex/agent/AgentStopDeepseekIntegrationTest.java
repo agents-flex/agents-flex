@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Real-provider verification for stopping an in-flight streaming model request.
+ * 使用真实模型供应商验证停止正在进行的流式模型请求。
  */
 public class AgentStopDeepseekIntegrationTest {
 

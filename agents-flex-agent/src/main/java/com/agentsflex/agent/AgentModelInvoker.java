@@ -71,11 +71,24 @@ final class AgentModelInvoker {
         ChatModel model = selectModel(turn, prompt);
         if (!turn.isStreaming()) {
             long timeout = turn.getExecutionPolicy().getModelCallTimeoutMillis();
-            FutureTask<AiMessageResponse> task = new FutureTask<>(() -> model.chat(prompt, options));
+            AtomicReference<AgentExecutionRegistry.Registration> registrationRef = new AtomicReference<>();
+            AtomicReference<FutureTask<AiMessageResponse>> taskRef = new AtomicReference<>();
+            AgentExecutionRegistry.TrackedFutureTask<AiMessageResponse> task =
+                new AgentExecutionRegistry.TrackedFutureTask<>(
+                    () -> model.chat(prompt, options),
+                    () -> {
+                        AgentExecutionRegistry.Registration registration = registrationRef.get();
+                        if (registration != null) registration.close();
+                    });
+            taskRef.set(task);
             AgentExecutionRegistry.Registration registration = executionRegistry.register(
-                turn.getId(), () -> task.cancel(true));
+                turn.getId(), () -> taskRef.get().cancel(true));
+            registrationRef.set(registration);
+            task.registrationBound();
+            boolean submitted = false;
             try {
                 modelExecutor.execute(task);
+                submitted = true;
                 if (timeout <= 0) return task.get();
                 return task.get(timeout, TimeUnit.MILLISECONDS);
             } catch (java.util.concurrent.TimeoutException error) {
@@ -91,7 +104,8 @@ final class AgentModelInvoker {
             } catch (CancellationException error) {
                 throw new IllegalStateException("model call was stopped", error);
             } finally {
-                registration.close();
+                // 任务正常结束时由 TrackedFutureTask 关闭句柄；只有提交失败时由等待线程兜底关闭。
+                if (!submitted) registration.close();
             }
         }
         return invokeStreaming(turn, prompt, options, model);
@@ -377,7 +391,7 @@ final class AgentModelInvoker {
         } catch (java.util.concurrent.ExecutionException ignored) {
             // invokeStreaming 随后会通过 rethrowFailure 保留原始异常类型。
         } catch (CancellationException ignored) {
-            // stop() or timeout canceled the task; the caller maps it to the Turn cancellation path.
+            // stop() 或超时取消了任务；调用方会把它转换为 Turn 的取消路径。
         }
     }
 

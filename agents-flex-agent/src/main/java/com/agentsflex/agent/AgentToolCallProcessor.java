@@ -29,6 +29,7 @@ import com.alibaba.fastjson2.JSON;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 推进当前模型回合中尚未处理的 {@link ToolCall}。
@@ -655,24 +656,35 @@ final class AgentToolCallProcessor {
                                               java.util.concurrent.Executor executor,
                                               ChatContext chatContext) {
         long timeout = turn.getExecutionPolicy().getToolExecutionTimeoutMillis();
-        FutureTask<Object> task = new FutureTask<>(() -> {
-            // Executor 线程可能被复用，必须在 finally 中恢复其原有上下文，避免跨 Turn 泄漏。
-            ChatContext previous = ChatContextHolder.currentContext();
-            try {
-                if (chatContext != null) ChatContextHolder.set(chatContext);
-                return proceedToolCall(context, 0, interceptors);
-            } finally {
-                if (previous == null) {
-                    ChatContextHolder.clear();
-                } else {
-                    ChatContextHolder.set(previous);
+        AtomicReference<AgentExecutionRegistry.Registration> registrationRef = new AtomicReference<>();
+        AtomicReference<FutureTask<Object>> taskRef = new AtomicReference<>();
+        AgentExecutionRegistry.TrackedFutureTask<Object> task =
+            new AgentExecutionRegistry.TrackedFutureTask<>(() -> {
+                // Executor 线程可能被复用，必须在 finally 中恢复其原有上下文，避免跨 Turn 泄漏。
+                ChatContext previous = ChatContextHolder.currentContext();
+                try {
+                    if (chatContext != null) ChatContextHolder.set(chatContext);
+                    return proceedToolCall(context, 0, interceptors);
+                } finally {
+                    if (previous == null) {
+                        ChatContextHolder.clear();
+                    } else {
+                        ChatContextHolder.set(previous);
+                    }
                 }
-            }
-        });
+            }, () -> {
+                AgentExecutionRegistry.Registration registration = registrationRef.get();
+                if (registration != null) registration.close();
+            });
+        taskRef.set(task);
         AgentExecutionRegistry.Registration registration = runner.registerExecution(
-            turn.getId(), () -> task.cancel(true));
+            turn.getId(), () -> taskRef.get().cancel(true));
+        registrationRef.set(registration);
+        task.registrationBound();
+        boolean submitted = false;
         try {
             executor.execute(task);
+            submitted = true;
             return timeout <= 0 ? task.get() : task.get(timeout, TimeUnit.MILLISECONDS);
         } catch (TimeoutException error) {
             task.cancel(true);
@@ -688,7 +700,8 @@ final class AgentToolCallProcessor {
         } catch (CancellationException error) {
             throw new IllegalStateException("tool execution was stopped", error);
         } finally {
-            registration.close();
+            // 任务正常结束时由 TrackedFutureTask 关闭句柄；只有提交失败时由等待线程兜底关闭。
+            if (!submitted) registration.close();
         }
     }
 

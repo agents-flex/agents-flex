@@ -44,7 +44,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-/** 流式失败、执行中取消、审批恢复和并发恢复边界测试。 */
+/**
+ * 流式失败、执行中取消、审批恢复和并发恢复边界测试。
+ */
 public class AgentExecutionBoundaryContractTest {
 
     @Test
@@ -154,10 +156,14 @@ public class AgentExecutionBoundaryContractTest {
             public void chatStream(Prompt prompt, StreamResponseListener listener,
                                    ChatOptions options) {
                 StreamClient client = new StreamClient() {
-                    @Override public void start(String url, java.util.Map<String, String> headers,
-                                                 String payload, com.agentsflex.core.model.client.StreamClientListener value,
-                                                 com.agentsflex.core.model.chat.BaseChatConfig config) { }
-                    @Override public void stop() {
+                    @Override
+                    public void start(String url, java.util.Map<String, String> headers,
+                                      String payload, com.agentsflex.core.model.client.StreamClientListener value,
+                                      com.agentsflex.core.model.chat.BaseChatConfig config) {
+                    }
+
+                    @Override
+                    public void stop() {
                         clientStopped.set(true);
                         released.countDown();
                     }
@@ -171,7 +177,7 @@ public class AgentExecutionBoundaryContractTest {
                 } catch (InterruptedException ignored) {
                     Thread.currentThread().interrupt();
                 }
-                // A provider can race one final frame with cancellation. It must be ignored.
+                // 服务端可能与取消请求并发发送最后一帧；取消标记生效后的迟到帧必须丢弃。
                 lateDeltaAttempted.countDown();
                 listener.onMessage(new StreamContext(this, context, client),
                     response(prompt, new AiMessage("late")));
@@ -238,6 +244,49 @@ public class AgentExecutionBoundaryContractTest {
     }
 
     @Test
+    public void stopAndWaitShouldWaitWhenToolIgnoresInterrupt() throws Exception {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("uncooperative-1", "uncooperative", "{}")));
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch exited = new CountDownLatch(1);
+        Agent agent = Agent.builder("uncooperative-stop")
+            .chatModel(model)
+            .tool(tool("uncooperative", args -> {
+                entered.countDown();
+                try {
+                    release.await();
+                } catch (InterruptedException ignored) {
+                    // 模拟不响应中断的外部 SDK；只有业务层显式释放后才真正退出。
+                    await(release);
+                } finally {
+                    exited.countDown();
+                }
+                return "released";
+            }))
+            .build();
+        AgentRunner runner = new AgentRunner(
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
+        AgentTurn started = runner.start(agent, "stop uncooperative tool");
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<AgentTurn> execution = executor.submit(() -> runner.run(started));
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+
+        long begin = System.nanoTime();
+        AgentTurn stopped = runner.stopAndWait(started.getId(), 250);
+        long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - begin);
+        assertEquals(AgentTurnStatus.CANCELLED, stopped.getStatus());
+        assertTrue("stopAndWait returned before the timeout while tool was still running",
+            elapsedMillis >= 200);
+        assertFalse(exited.await(50, TimeUnit.MILLISECONDS));
+
+        release.countDown();
+        assertEquals(AgentTurnStatus.CANCELLED, execution.get(5, TimeUnit.SECONDS).getStatus());
+        assertTrue(exited.await(5, TimeUnit.SECONDS));
+        executor.shutdownNow();
+    }
+
+    @Test
     public void shouldAcceptNewConversationMessageAfterStoppedTurnIsTerminal() throws Exception {
         CountDownLatch entered = new CountDownLatch(1);
         AtomicInteger calls = new AtomicInteger();
@@ -298,8 +347,14 @@ public class AgentExecutionBoundaryContractTest {
         List<String> executions = new ArrayList<>();
         Agent agent = Agent.builder("multi-tool-approval")
             .chatModel(model)
-            .tool(tool("first", args -> { executions.add("first"); return "one"; }))
-            .tool(tool("second", args -> { executions.add("second"); return "two"; }))
+            .tool(tool("first", args -> {
+                executions.add("first");
+                return "one";
+            }))
+            .tool(tool("second", args -> {
+                executions.add("second");
+                return "two";
+            }))
             .toolApprovalPolicy((turn, call, value) -> "first".equals(call.getName())
                 ? ToolApprovalDecision.REQUIRE_APPROVAL : ToolApprovalDecision.ALLOW)
             .build();
@@ -365,9 +420,15 @@ public class AgentExecutionBoundaryContractTest {
     public void shouldFailAfterModelRetryAttemptsAreExhausted() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
-        model.enqueue(prompt -> { throw new RuntimeException("failure-1"); });
-        model.enqueue(prompt -> { throw new RuntimeException("failure-2"); });
-        model.enqueue(prompt -> { throw new RuntimeException("failure-3"); });
+        model.enqueue(prompt -> {
+            throw new RuntimeException("failure-1");
+        });
+        model.enqueue(prompt -> {
+            throw new RuntimeException("failure-2");
+        });
+        model.enqueue(prompt -> {
+            throw new RuntimeException("failure-3");
+        });
         Agent agent = Agent.builder("retry-exhaustion")
             .chatModel(model)
             .executionPolicy(AgentExecutionPolicy.builder()
@@ -394,10 +455,15 @@ public class AgentExecutionBoundaryContractTest {
     public void shouldFailCleanlyWhenModelReturnsNoResponse() {
         ChatModel model = new ChatModel() {
             @Override
-            public AiMessageResponse chat(Prompt prompt, ChatOptions options) { return null; }
+            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+                return null;
+            }
+
             @Override
             public void chatStream(Prompt prompt, StreamResponseListener listener,
-                                   ChatOptions options) { throw new UnsupportedOperationException(); }
+                                   ChatOptions options) {
+                throw new UnsupportedOperationException();
+            }
         };
 
         AgentTurn turn = new AgentRunner().run(Agent.builder("null-response")

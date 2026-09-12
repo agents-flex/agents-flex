@@ -88,7 +88,7 @@ public final class AgentRunner {
      */
     private final AgentToolCallProcessor toolCallProcessor;
     /**
-     * Process-local handles for interrupting an in-flight model or tool operation.
+     * 保存当前 JVM 内可中断的模型或工具执行句柄。
      */
     private final AgentExecutionRegistry executionRegistry;
     private final AgentRunnerOptions runnerOptions;
@@ -782,7 +782,7 @@ public final class AgentRunner {
     }
 
     /**
-     * Register a process-local operation that can be interrupted by stop().
+     * 登记一个可由 {@link #stop(String)} 中断的当前进程内执行操作。
      */
     AgentExecutionRegistry.Registration registerExecution(String turnId, Runnable stopAction) {
         return executionRegistry.register(turnId, stopAction);
