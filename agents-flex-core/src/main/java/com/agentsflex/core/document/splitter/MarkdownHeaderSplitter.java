@@ -84,7 +84,8 @@ public class MarkdownHeaderSplitter implements DocumentSplitter {
         StringBuilder currentContent = new StringBuilder();
         int currentStartLine = 0;
 
-        boolean inCodeBlock = false;
+        char fenceMarker = 0;
+        int fenceLength = 0;
 
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
@@ -93,15 +94,23 @@ public class MarkdownHeaderSplitter implements DocumentSplitter {
                 continue;
             }
 
-            // 检测围栏代码块的开始或结束（支持 ``` 或 ~~~）
+            // 结束围栏必须使用相同字符，长度不短于开启围栏，且后面只能有空白。
             String trimmedLine = stripLeading(line);
-            if (trimmedLine.startsWith("```") || trimmedLine.startsWith("~~~")) {
-                inCodeBlock = !inCodeBlock;
+            int currentFenceLength = fenceRunLength(trimmedLine);
+            if (currentFenceLength >= 3) {
+                if (fenceMarker == 0) {
+                    fenceMarker = trimmedLine.charAt(0);
+                    fenceLength = currentFenceLength;
+                } else if (trimmedLine.charAt(0) == fenceMarker && currentFenceLength >= fenceLength
+                    && trimmedLine.substring(currentFenceLength).trim().isEmpty()) {
+                    fenceMarker = 0;
+                    fenceLength = 0;
+                }
                 currentContent.append(line).append("\n");
                 continue;
             }
 
-            if (!inCodeBlock) {
+            if (fenceMarker == 0) {
                 HeaderInfo header = parseHeader(line);
                 if (header != null && header.level <= splitLevel) {
                     // 触发新 chunk
@@ -203,6 +212,18 @@ public class MarkdownHeaderSplitter implements DocumentSplitter {
 
         String text = line.substring(i).trim();
         return new HeaderInfo(level, text);
+    }
+
+    private static int fenceRunLength(String line) {
+        if (line.isEmpty() || (line.charAt(0) != '`' && line.charAt(0) != '~')) {
+            return 0;
+        }
+        char marker = line.charAt(0);
+        int length = 1;
+        while (length < line.length() && line.charAt(length) == marker) {
+            length++;
+        }
+        return length;
     }
 
     private static String stripLeading(String s) {
