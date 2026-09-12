@@ -13,6 +13,7 @@ import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.StreamContext;
+import com.agentsflex.core.model.client.StreamClient;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.prompt.MemoryPrompt;
 import com.agentsflex.core.util.StringUtil;
@@ -25,6 +26,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 统一调用同步或流式 ChatModel，并把流式增量转换为 Agent 实时事件。
@@ -40,6 +43,7 @@ final class AgentModelInvoker {
      */
     private final AgentEventPublisher eventPublisher;
     private final java.util.concurrent.Executor modelExecutor;
+    private final AgentExecutionRegistry executionRegistry;
 
     /**
      * 创建统一模型调用器。
@@ -47,13 +51,15 @@ final class AgentModelInvoker {
      * @param eventPublisher 用于发布模型流增量事件的发布器
      */
     AgentModelInvoker(AgentEventPublisher eventPublisher) {
-        this(eventPublisher, Runnable::run);
+        this(eventPublisher, Runnable::run, new AgentExecutionRegistry());
     }
 
     AgentModelInvoker(AgentEventPublisher eventPublisher,
-                      java.util.concurrent.Executor modelExecutor) {
+                      java.util.concurrent.Executor modelExecutor,
+                      AgentExecutionRegistry executionRegistry) {
         this.eventPublisher = eventPublisher;
         this.modelExecutor = modelExecutor;
+        this.executionRegistry = executionRegistry;
     }
 
     /**
@@ -65,10 +71,12 @@ final class AgentModelInvoker {
         ChatModel model = selectModel(turn, prompt);
         if (!turn.isStreaming()) {
             long timeout = turn.getExecutionPolicy().getModelCallTimeoutMillis();
-            if (timeout <= 0) return model.chat(prompt, options);
             FutureTask<AiMessageResponse> task = new FutureTask<>(() -> model.chat(prompt, options));
-            modelExecutor.execute(task);
+            AgentExecutionRegistry.Registration registration = executionRegistry.register(
+                turn.getId(), () -> task.cancel(true));
             try {
+                modelExecutor.execute(task);
+                if (timeout <= 0) return task.get();
                 return task.get(timeout, TimeUnit.MILLISECONDS);
             } catch (java.util.concurrent.TimeoutException error) {
                 task.cancel(true);
@@ -80,6 +88,10 @@ final class AgentModelInvoker {
                 Throwable cause = error.getCause();
                 if (cause instanceof RuntimeException) throw (RuntimeException) cause;
                 throw new IllegalStateException("model call failed", cause);
+            } catch (CancellationException error) {
+                throw new IllegalStateException("model call was stopped", error);
+            } finally {
+                registration.close();
             }
         }
         return invokeStreaming(turn, prompt, options, model);
@@ -94,6 +106,8 @@ final class AgentModelInvoker {
         AtomicReference<ChatContext> chatContext = new AtomicReference<>();
         AtomicReference<Throwable> failure = new AtomicReference<>();
         AtomicReference<Boolean> textDeltaPublished = new AtomicReference<>(false);
+        AtomicBoolean stopped = new AtomicBoolean(false);
+        AtomicReference<StreamClient> streamClient = new AtomicReference<>();
 
         StreamResponseListener listener = new StreamResponseListener() {
             /**
@@ -102,7 +116,15 @@ final class AgentModelInvoker {
              */
             @Override
             public void onOpen(StreamContext context) {
+                if (stopped.get()) {
+                    if (context != null && context.getClient() != null) context.getClient().stop();
+                    return;
+                }
                 chatContext.set(context.getChatContext());
+                if (context.getClient() != null) {
+                    streamClient.set(context.getClient());
+                    if (stopped.get()) context.getClient().stop();
+                }
             }
 
             /**
@@ -114,6 +136,7 @@ final class AgentModelInvoker {
              */
             @Override
             public void onMessage(StreamContext context, AiMessageResponse response) {
+                if (stopped.get()) return;
                 AiMessage message = response == null ? null : response.getMessage();
                 if (message == null) return;
 
@@ -133,6 +156,10 @@ final class AgentModelInvoker {
              */
             @Override
             public void onError(StreamContext context, Throwable error) {
+                if (stopped.get()) {
+                    closed.countDown();
+                    return;
+                }
                 failure.compareAndSet(null, error);
                 // 流在打开前失败时模型实现可能不会再调用 onClose。
                 closed.countDown();
@@ -143,6 +170,10 @@ final class AgentModelInvoker {
              */
             @Override
             public void onClose(StreamContext context) {
+                if (stopped.get()) {
+                    closed.countDown();
+                    return;
+                }
                 if (context != null) {
                     if (context.getFullMessage() != null) {
                         fullMessage.set(context.getFullMessage());
@@ -172,18 +203,31 @@ final class AgentModelInvoker {
             }
             return null;
         });
+        AgentExecutionRegistry.Registration registration = executionRegistry.register(
+            turn.getId(), () -> {
+                stopped.set(true);
+                StreamClient client = streamClient.get();
+                if (client != null) client.stop();
+                streamTask.cancel(true);
+                closed.countDown();
+            });
         modelExecutor.execute(streamTask);
 
-        awaitClose(turn, closed, streamTask);
-        rethrowFailure(failure.get());
-        // 包装器或兼容客户端可能只在关闭完成后补齐聚合消息；返回 Runner 前做最后一次兜底。
-        publishFinalTextIfNeeded(turn, fullMessage.get(), textDeltaPublished);
-        ChatContext context = chatContext.get();
-        if (context == null) {
-            context = new ChatContext();
-            context.setPrompt(prompt);
+        try {
+            awaitClose(turn, closed, streamTask);
+            if (stopped.get()) throw new IllegalStateException("streaming model call was stopped");
+            rethrowFailure(failure.get());
+            // 包装器或兼容客户端可能只在关闭完成后补齐聚合消息；返回 Runner 前做最后一次兜底。
+            publishFinalTextIfNeeded(turn, fullMessage.get(), textDeltaPublished);
+            ChatContext context = chatContext.get();
+            if (context == null) {
+                context = new ChatContext();
+                context.setPrompt(prompt);
+            }
+            return new AiMessageResponse(context, null, fullMessage.get());
+        } finally {
+            registration.close();
         }
-        return new AiMessageResponse(context, null, fullMessage.get());
     }
 
     /**
@@ -332,6 +376,8 @@ final class AgentModelInvoker {
             streamTask.get();
         } catch (java.util.concurrent.ExecutionException ignored) {
             // invokeStreaming 随后会通过 rethrowFailure 保留原始异常类型。
+        } catch (CancellationException ignored) {
+            // stop() or timeout canceled the task; the caller maps it to the Turn cancellation path.
         }
     }
 

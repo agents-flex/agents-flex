@@ -87,6 +87,10 @@ public final class AgentRunner {
      * 推进模型产生的 ToolCall，并把执行结果提交回 Runner 的生命周期边界。
      */
     private final AgentToolCallProcessor toolCallProcessor;
+    /**
+     * Process-local handles for interrupting an in-flight model or tool operation.
+     */
+    private final AgentExecutionRegistry executionRegistry;
     private final AgentRunnerOptions runnerOptions;
     /**
      * 可选的业务会话消息投影。未配置 Provider 时为空操作，现有显式传历史消息的 API 不受影响。
@@ -157,7 +161,9 @@ public final class AgentRunner {
         this.agentLoader = agentLoader;
         this.runnerOptions = runnerOptions == null ? AgentRunnerOptions.defaults() : runnerOptions;
         this.eventPublisher = new AgentEventPublisher(this.runnerOptions);
-        this.modelInvoker = new AgentModelInvoker(eventPublisher, this.runnerOptions.getModelExecutor());
+        this.executionRegistry = new AgentExecutionRegistry();
+        this.modelInvoker = new AgentModelInvoker(eventPublisher, this.runnerOptions.getModelExecutor(),
+            executionRegistry);
         this.chatMemory = new AgentRunnerChatMemory(chatMemoryProvider);
         this.toolCallProcessor = new AgentToolCallProcessor(this, eventPublisher, this.runnerOptions);
     }
@@ -704,9 +710,9 @@ public final class AgentRunner {
     /**
      * 请求取消指定的 Agent Turn，并返回包含最新取消标记的 Turn。
      *
-     * <p>典型场景包括：用户点击“停止生成”、取消正在执行的长任务、关闭页面前取消后台任务，
-     * 取消是协作式的，不会强制中断已经发出的模型 HTTP 请求或正在运行的 Tool；Runner 会在当前调用
-     * 返回后的安全边界停止继续推进。</p>
+     * <p>这是任务级、可持久化的协作式取消。它适用于后台任务、等待状态和跨进程 Worker；不会主动
+     * 中断已经发出的模型 HTTP 请求或正在运行的 Tool。用户交互中的“停止生成”应使用
+     * {@link #stop(String)}。</p>
      *
      * @param turnId 要取消的 Turn ID
      * @return 已记录取消请求的最新 Turn
@@ -718,6 +724,73 @@ public final class AgentRunner {
             eventPublisher.notifyCancellationRequested(turn);
         }
         return turn;
+    }
+
+    /**
+     * 请求取消并尽快停止当前进程中该 Turn 的模型流、模型 Future 或工具 Future。
+     *
+     * <p>持久化取消仍由 Store 保证；如果执行发生在其他进程，本方法会退化为协作式取消，
+     * 等待远端 Worker 在安全边界收束。</p>
+     */
+    public AgentTurn stop(String turnId) {
+        boolean requested = turnStore.requestCancellation(turnId);
+        AgentTurn turn = restore(turnId);
+        executionRegistry.stop(turnId);
+        if (requested) eventPublisher.notifyCancellationRequested(turn);
+        if (turn.getStatus().isTerminal()) executionRegistry.clear(turnId);
+        // Blocked Turn 没有活动句柄，需要本地推进一步立即落盘 CANCELLED。
+        // READY Turn 可能正被另一个线程首次推进，不能在这里并发 runUntilBlocked。
+        if (!turn.getStatus().isTerminal()
+            && turn.getStatus().isBlocked()
+            && !hasActiveLease(turn)) {
+            return runUntilBlocked(turn);
+        }
+        return turn;
+    }
+
+    /**
+     * 停止并等待当前进程中的执行句柄退出，然后返回最新 Turn 状态。
+     *
+     * <p>超时只表示底层实现没有及时响应中断，不会清除持久化取消请求。</p>
+     */
+    public AgentTurn stopAndWait(String turnId, long timeoutMillis) {
+        if (timeoutMillis < 0) {
+            throw new IllegalArgumentException("timeoutMillis must not be negative");
+        }
+        stop(turnId);
+        long deadline = System.currentTimeMillis() + timeoutMillis;
+        try {
+            executionRegistry.awaitIdle(turnId, timeoutMillis);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+        }
+        AgentTurn latest = restore(turnId);
+        while (!latest.getStatus().isTerminal() && System.currentTimeMillis() < deadline) {
+            if (latest.isCancellationRequested() && executionRegistry.isIdle(turnId)
+                && latest.getStatus().isBlocked() && !hasActiveLease(latest)) {
+                return runUntilBlocked(latest);
+            }
+            try {
+                Thread.sleep(Math.min(10L, Math.max(1L, deadline - System.currentTimeMillis())));
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            latest = restore(turnId);
+        }
+        return latest;
+    }
+
+    /**
+     * Register a process-local operation that can be interrupted by stop().
+     */
+    AgentExecutionRegistry.Registration registerExecution(String turnId, Runnable stopAction) {
+        return executionRegistry.register(turnId, stopAction);
+    }
+
+    private boolean hasActiveLease(AgentTurn turn) {
+        return StringUtil.hasText(turn.getLeaseOwner())
+            && turn.getLeaseUntil() > turnStore.currentTimeMillis();
     }
 
     /**
@@ -934,6 +1007,7 @@ public final class AgentRunner {
             }
             if (turn.getStatus().isTerminal()) {
                 eventPublisher.clearSequence(turn.getId());
+                executionRegistry.clear(turn.getId());
             }
         }
     }
@@ -1067,6 +1141,7 @@ public final class AgentRunner {
             turn.resetConsecutiveRetryCount();
             eventPublisher.notifyModelEnd(turn, response);
         } catch (RuntimeException error) {
+            refreshCancellation(turn);
             return handleFailure(turn, null, error, AgentTurnExecutionPoint.INVOKE_MODEL);
         }
         refreshCancellation(turn);

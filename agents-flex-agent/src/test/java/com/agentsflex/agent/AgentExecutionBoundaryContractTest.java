@@ -14,12 +14,14 @@ import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
+import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.client.StreamContext;
+import com.agentsflex.core.model.client.StreamClient;
 import com.agentsflex.core.prompt.Prompt;
 import org.junit.Test;
 
@@ -32,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.agentsflex.agent.AgentScenarioTestSupport.response;
 import static com.agentsflex.agent.AgentScenarioTestSupport.tool;
@@ -132,6 +135,156 @@ public class AgentExecutionBoundaryContractTest {
 
         assertEquals(AgentTurnStatus.CANCELLED, cancelled.getStatus());
         assertEquals(1, model.getCallCount());
+    }
+
+    @Test
+    public void shouldStopStreamingRequestAndIgnoreLateDeltas() throws Exception {
+        List<AgentEvent> events = new ArrayList<>();
+        CountDownLatch opened = new CountDownLatch(1);
+        CountDownLatch released = new CountDownLatch(1);
+        CountDownLatch lateDeltaAttempted = new CountDownLatch(1);
+        AtomicBoolean clientStopped = new AtomicBoolean();
+        ChatModel model = new ChatModel() {
+            @Override
+            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void chatStream(Prompt prompt, StreamResponseListener listener,
+                                   ChatOptions options) {
+                StreamClient client = new StreamClient() {
+                    @Override public void start(String url, java.util.Map<String, String> headers,
+                                                 String payload, com.agentsflex.core.model.client.StreamClientListener value,
+                                                 com.agentsflex.core.model.chat.BaseChatConfig config) { }
+                    @Override public void stop() {
+                        clientStopped.set(true);
+                        released.countDown();
+                    }
+                };
+                ChatContext context = new ChatContext();
+                context.setPrompt(prompt);
+                listener.onOpen(new StreamContext(this, context, client));
+                opened.countDown();
+                try {
+                    released.await();
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+                // A provider can race one final frame with cancellation. It must be ignored.
+                lateDeltaAttempted.countDown();
+                listener.onMessage(new StreamContext(this, context, client),
+                    response(prompt, new AiMessage("late")));
+                listener.onClose(new StreamContext(this, context, client));
+            }
+        };
+        Agent agent = Agent.builder("stop-streaming").chatModel(model).build();
+        InMemoryAgentLoader loader = new InMemoryAgentLoader(agent);
+        AgentRunner runner = new AgentRunner(new InMemoryAgentTurnStore(), loader)
+            .addEventListener(events::add);
+        AgentTurn started = runner.start(agent, "stop now",
+            AgentTurnOptions.builder().streaming(true).build());
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<AgentTurn> result = executor.submit(() -> runner.run(started));
+        assertTrue(opened.await(5, TimeUnit.SECONDS));
+
+        AgentTurn stopped = runner.stopAndWait(started.getId(), 5000);
+        assertTrue(lateDeltaAttempted.await(5, TimeUnit.SECONDS));
+        AgentTurn completed = result.get(5, TimeUnit.SECONDS);
+        executor.shutdownNow();
+
+        assertTrue(clientStopped.get());
+        assertEquals(AgentTurnStatus.CANCELLED, stopped.getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, completed.getStatus());
+        assertFalse(hasEventWithContent(events, AgentEventType.MODEL_TEXT_DELTA, "late"));
+    }
+
+    @Test
+    public void shouldStopRunningToolAndCloseEveryPendingToolCall() throws Exception {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(
+            new ToolCall("stop-1", "slow", "{}"),
+            new ToolCall("stop-2", "slow", "{}")));
+        CountDownLatch entered = new CountDownLatch(1);
+        Agent agent = Agent.builder("stop-tool")
+            .chatModel(model)
+            .tool(tool("slow", args -> {
+                entered.countDown();
+                try {
+                    Thread.sleep(30_000);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+                return "not completed";
+            }))
+            .build();
+        AgentRunner runner = new AgentRunner(
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
+        AgentTurn started = runner.start(agent, "stop tool");
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<AgentTurn> result = executor.submit(() -> runner.run(started));
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+
+        AgentTurn stopped = runner.stopAndWait(started.getId(), 5000);
+        AgentTurn completed = result.get(5, TimeUnit.SECONDS);
+        executor.shutdownNow();
+
+        assertEquals(AgentTurnStatus.CANCELLED, stopped.getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, completed.getStatus());
+        List<ToolMessage> messages = toolMessages(completed);
+        assertEquals(2, messages.size());
+        assertEquals("stop-1", messages.get(0).getToolCallId());
+        assertEquals("stop-2", messages.get(1).getToolCallId());
+    }
+
+    @Test
+    public void shouldAcceptNewConversationMessageAfterStoppedTurnIsTerminal() throws Exception {
+        CountDownLatch entered = new CountDownLatch(1);
+        AtomicInteger calls = new AtomicInteger();
+        ChatModel model = new ChatModel() {
+            @Override
+            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+                if (calls.incrementAndGet() == 1) {
+                    entered.countDown();
+                    try {
+                        Thread.sleep(30_000);
+                    } catch (InterruptedException error) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException("model stopped", error);
+                    }
+                }
+                return response(prompt, new AiMessage("continued"));
+            }
+
+            @Override
+            public void chatStream(Prompt prompt, StreamResponseListener listener,
+                                   ChatOptions options) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        Agent agent = Agent.builder("stop-conversation").chatModel(model).build();
+        DefaultChatMemory memory = new DefaultChatMemory("stop-conversation");
+        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
+        InMemoryAgentLoader loader = new InMemoryAgentLoader(agent);
+        AgentRunner runner = AgentRunner.builder()
+            .turnStore(store).agentLoader(loader)
+            .chatMemoryProvider(id -> memory).build();
+        AgentTurn started = runner.start(agent, "stop-conversation", "first question");
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<AgentTurn> first = executor.submit(() -> runner.run(started));
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+
+        AgentTurn stopped = runner.stopAndWait(started.getId(), 5000);
+        assertEquals(AgentTurnStatus.CANCELLED, stopped.getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, first.get(5, TimeUnit.SECONDS).getStatus());
+
+        AgentTurn next = runner.submitMessage(agent, "stop-conversation", "second question");
+        AgentTurn completed = runner.run(next);
+        executor.shutdownNow();
+
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
+        assertEquals("continued", completed.getFinalOutput());
+        assertEquals(2, calls.get());
     }
 
     @Test

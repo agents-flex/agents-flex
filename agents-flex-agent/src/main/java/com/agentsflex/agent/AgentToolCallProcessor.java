@@ -227,6 +227,7 @@ final class AgentToolCallProcessor {
                 eventPublisher.notifyToolInputRequested(turn, call, form);
                 return AgentStepResult.of(response, results, null);
             } catch (RuntimeException error) {
+                runner.refreshCancellation(turn);
                 // Middleware/Interceptor 可能包装控制流异常，必须沿 cause 链恢复原始语义。
                 AgentApprovalRequiredException approvalRequest = findCause(
                     error, AgentApprovalRequiredException.class);
@@ -668,8 +669,10 @@ final class AgentToolCallProcessor {
                 }
             }
         });
-        executor.execute(task);
+        AgentExecutionRegistry.Registration registration = runner.registerExecution(
+            turn.getId(), () -> task.cancel(true));
         try {
+            executor.execute(task);
             return timeout <= 0 ? task.get() : task.get(timeout, TimeUnit.MILLISECONDS);
         } catch (TimeoutException error) {
             task.cancel(true);
@@ -682,6 +685,10 @@ final class AgentToolCallProcessor {
             Throwable cause = error.getCause();
             if (cause instanceof RuntimeException) throw (RuntimeException) cause;
             throw new IllegalStateException("tool execution failed", cause);
+        } catch (CancellationException error) {
+            throw new IllegalStateException("tool execution was stopped", error);
+        } finally {
+            registration.close();
         }
     }
 
