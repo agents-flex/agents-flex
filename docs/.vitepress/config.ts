@@ -296,6 +296,7 @@ export default withMermaid(defineConfig({
                         {text: '上下文压缩', link: '/zh/agent/context-compression'},
                         {text: 'Middleware 扩展', link: '/zh/agent/middleware'},
                         {text: 'AgentToolContext', link: '/zh/agent/tool-context'},
+                        {text: 'AgentToolCancellation', link: '/zh/agent/tool-cancellation'},
                         {text: 'Agent 加载与版本', link: '/zh/agent/agent-loader'},
                         {text: '任务快照', link: '/zh/agent/snapshot'},
                         {text: '任务快照持久化', link: '/zh/agent/store'},

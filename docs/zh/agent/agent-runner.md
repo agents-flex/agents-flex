@@ -184,6 +184,11 @@ AgentTurn stopped = runner.stopAndWait(turnId, 10_000);
 
 `stop(...)` 会先写入持久化取消标记，再尝试调用当前进程中的流客户端、模型 Future 或工具 Future 的停止入口。底层客户端或工具可能忽略中断，因此该方法是尽快停止而不是强制回滚；跨进程执行时会退化为普通的协作式取消。停止后的迟到流式增量会被丢弃。
 
+本地 Tool 如果持有子进程、HTTP 长连接或其他需要主动关闭的资源，可以通过
+`AgentToolContext.getCancellation().onStop(...)` 注册轻量停止回调。回调只应发送停止信号，例如
+`process.destroy()` 或 `httpCall.cancel()`，不应在回调中长时间等待。Tool 返回、抛异常或被取消后，Runner
+会自动清理本次调用的全部回调，不会累积历史监听器。
+
 当模型已经产生尚未完成的 ToolCall 时，Runner 会为每个 pending ToolCall 补写一个带有相同 `tool_call_id` 的中断 ToolMessage，再将 Turn 收束为 `CANCELLED`，保证下一轮模型上下文仍符合工具调用协议。
 
 ## 单步执行

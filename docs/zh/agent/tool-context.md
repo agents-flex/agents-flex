@@ -119,6 +119,7 @@ Agent agent = Agent.builder("support-agent")
 | `getIdempotencyKey()` | 获取稳定的幂等键，用于防止写操作重复执行 |
 | `emitProgress(...)` | 上报工具当前执行进度 |
 | `isCancellationRequested()` | 检查用户是否已经请求取消任务 |
+| `getCancellation()` | 注册本地 stop 时关闭外部资源的一次性回调 |
 | `getSubmittedFormData()` | 读取用户为当前工具提交的表单数据 |
 
 还可以通过 `getAgentId()` 和 `getAgentVersion()` 获取本次任务使用的 Agent 标识及版本。它们适合写入
@@ -196,8 +197,10 @@ context.emitProgress(
 AgentToolContext context = AgentToolContext.current();
 
 for (int page = 1; page <= totalPages; page++) {
-    if (context.isCancellationRequested()) {
-        return "任务已停止，未继续处理剩余数据";
+    if (Thread.currentThread().isInterrupted()
+        || context.isCancellationRequested()) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("工具已停止");
     }
 
     importService.processPage(page);
@@ -207,6 +210,53 @@ for (int page = 1; page <= totalPages; page++) {
 
 return "数据导入完成";
 ```
+
+对于 Tool 自己创建的子进程、HTTP 请求或异步任务，可以注册一次性停止回调：
+
+```java
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+import com.agentsflex.agent.tool.AgentToolContext;
+import com.agentsflex.agent.tool.AgentToolCancellation;
+
+AgentToolContext context = AgentToolContext.current();
+AtomicReference<Process> processRef = new AtomicReference<>();
+
+AgentToolCancellation.Registration stopRegistration =
+    context.getCancellation().onStop(() -> {
+    Process process = processRef.get();
+    if (process != null && process.isAlive()) {
+        process.destroy();
+    }
+    });
+
+try {
+    Process process = new ProcessBuilder("my-command")
+        .redirectErrorStream(true)
+        .start();
+    processRef.set(process);
+
+    while (!process.waitFor(200, TimeUnit.MILLISECONDS)) {
+        context.getCancellation().throwIfRequested();
+    }
+    return "执行完成，退出码：" + process.exitValue();
+} catch (InterruptedException error) {
+    Thread.currentThread().interrupt();
+    throw new IllegalStateException("子进程执行被停止", error);
+} finally {
+    stopRegistration.close();
+    Process process = processRef.get();
+    if (process != null && process.isAlive()) {
+        process.destroy();
+    }
+}
+```
+
+`onStop(...)` 回调只应执行 `destroy()`、`cancel()`、`close()` 等轻量动作，不应在停止线程中等待很长时间。
+Runner 会在 Tool 执行结束时自动清理未注销的回调；返回的 `Registration` 用于资源提前释放时主动注销。
+如果命令会派生多个子进程，还需要使用进程组、容器 Job 或操作系统提供的进程树管理能力，单独调用
+`Process.destroy()` 可能只终止外层 Shell。
 
 取消检查应放在可以安全停止的位置。例如，一条数据库事务执行到一半时，不应直接留下部分数据；应先
 回滚或完成当前最小操作单元，再尽快结束工具。调用外部服务时，如果对方提供取消接口，也应由工具负责
@@ -294,6 +344,7 @@ String taxNumber =
 ## 相关文档
 
 - 在工具中动态收集用户信息：[表单输入](./form-input)
+- 主动停止工具并释放外部资源：[AgentToolCancellation](./tool-cancellation)
 - 了解任务如何暂停和继续：[挂起和恢复](./suspend-resume)
 - 接收工具进度和执行事件：[AgentEventListener](./agent-event-listener)
 - 为模型和工具调用加入统一规则：[Middleware 扩展](./middleware)

@@ -42,6 +42,7 @@ public final class AgentToolContext {
     private final String toolCallId;
     private final AgentToolProgressEmitter progressEmitter;
     private final BooleanSupplier cancellationRequested;
+    private final AgentToolCancellation cancellation;
     private final Map<String, Object> submittedFormData;
     private final int executionAttempt;
     private final AgentToolResumeInfo resumeInfo;
@@ -124,7 +125,7 @@ public final class AgentToolContext {
         this(turnId, agentId, agentVersion, tool, toolCall, toolCallId,
             progressEmitter, cancellationRequested, submittedFormData, executionAttempt,
             resumeInfo, policyApprovalRecord, toolApprovalRecord,
-            singletonToolApprovalRecord(toolApprovalRecord));
+            singletonToolApprovalRecord(toolApprovalRecord), new AgentToolCancellation());
     }
 
     /**
@@ -142,13 +143,35 @@ public final class AgentToolContext {
                             ToolApprovalRecord policyApprovalRecord,
                             ToolApprovalRecord toolApprovalRecord,
                             Map<String, ToolApprovalRecord> toolApprovalRecordsByRequest) {
+        this(turnId, agentId, agentVersion, tool, toolCall, toolCallId, progressEmitter,
+            cancellationRequested, submittedFormData, executionAttempt, resumeInfo,
+            policyApprovalRecord, toolApprovalRecord, toolApprovalRecordsByRequest,
+            new AgentToolCancellation());
+    }
+
+    /**
+     * 创建由 AgentRunner 管理停止通知的工具上下文。
+     *
+     * <p>该构造器供 AgentRunner 注入当前 Tool 调用的取消控制器；直接集成时也可以显式复用同一个
+     * 控制器来管理自定义资源。</p>
+     */
+    public AgentToolContext(String turnId, String agentId, String agentVersion,
+                            Tool tool, ToolCall toolCall,
+                            String toolCallId, AgentToolProgressEmitter progressEmitter,
+                            BooleanSupplier cancellationRequested,
+                            Map<String, ?> submittedFormData, int executionAttempt,
+                            AgentToolResumeInfo resumeInfo,
+                            ToolApprovalRecord policyApprovalRecord,
+                            ToolApprovalRecord toolApprovalRecord,
+                            Map<String, ToolApprovalRecord> toolApprovalRecordsByRequest,
+                            AgentToolCancellation cancellation) {
         if (!StringUtil.hasText(turnId) || !StringUtil.hasText(agentId)
             || !StringUtil.hasText(agentVersion) || tool == null || toolCall == null
             || !StringUtil.hasText(toolCallId) || progressEmitter == null
-            || cancellationRequested == null) {
+            || cancellationRequested == null || cancellation == null) {
             throw new IllegalArgumentException(
                 "turnId, agentId, agentVersion, tool, toolCall, toolCallId, progressEmitter "
-                    + "and cancellationRequested must be provided");
+                    + "cancellationRequested and cancellation must be provided");
         }
         this.turnId = turnId;
         this.agentId = agentId;
@@ -158,6 +181,7 @@ public final class AgentToolContext {
         this.toolCallId = toolCallId;
         this.progressEmitter = progressEmitter;
         this.cancellationRequested = cancellationRequested;
+        this.cancellation = cancellation;
         this.submittedFormData = submittedFormData == null || submittedFormData.isEmpty()
             ? Collections.<String, Object>emptyMap()
             : Collections.unmodifiableMap(new LinkedHashMap<String, Object>(submittedFormData));
@@ -255,6 +279,13 @@ public final class AgentToolContext {
      */
     public boolean isCancellationRequested() {
         return cancellationRequested.getAsBoolean();
+    }
+
+    /**
+     * @return 当前 Tool 调用的本地停止控制器，可用于注册资源清理回调
+     */
+    public AgentToolCancellation getCancellation() {
+        return cancellation;
     }
 
     /**

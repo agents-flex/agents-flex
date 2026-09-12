@@ -8,41 +8,33 @@ import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
+import com.agentsflex.agent.tool.AgentToolContext;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.agent.tool.ToolErrorStrategy;
+import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.message.ToolMessage;
-import com.agentsflex.core.memory.DefaultChatMemory;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.StreamResponseListener;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
-import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.model.client.StreamClient;
+import com.agentsflex.core.model.client.StreamContext;
 import com.agentsflex.core.prompt.Prompt;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.agentsflex.agent.AgentScenarioTestSupport.response;
-import static com.agentsflex.agent.AgentScenarioTestSupport.tool;
-import static com.agentsflex.agent.AgentScenarioTestSupport.toolCalls;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static com.agentsflex.agent.AgentScenarioTestSupport.*;
+import static org.junit.Assert.*;
 
 /**
  * 流式失败、执行中取消、审批恢复和并发恢复边界测试。
@@ -283,6 +275,40 @@ public class AgentExecutionBoundaryContractTest {
         release.countDown();
         assertEquals(AgentTurnStatus.CANCELLED, execution.get(5, TimeUnit.SECONDS).getStatus());
         assertTrue(exited.await(5, TimeUnit.SECONDS));
+        executor.shutdownNow();
+    }
+
+    @Test
+    public void shouldNotifyToolStopHandlersBeforeInterruptingTool() throws Exception {
+        AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
+        model.enqueue(prompt -> toolCalls(new ToolCall("notify-stop-1", "notify-stop", "{}")));
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch released = new CountDownLatch(1);
+        AtomicInteger callbacks = new AtomicInteger();
+        Agent agent = Agent.builder("notify-stop")
+            .chatModel(model)
+            .tool(tool("notify-stop", args -> {
+                AgentToolContext context = AgentToolContext.current();
+                context.getCancellation().onStop(() -> {
+                    callbacks.incrementAndGet();
+                    released.countDown();
+                });
+                entered.countDown();
+                await(released);
+                return "released";
+            }))
+            .build();
+        AgentRunner runner = new AgentRunner(
+            new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
+        AgentTurn started = runner.start(agent, "notify tool stop");
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<AgentTurn> execution = executor.submit(() -> runner.run(started));
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+
+        AgentTurn stopped = runner.stopAndWait(started.getId(), 5000);
+        assertEquals(AgentTurnStatus.CANCELLED, stopped.getStatus());
+        assertEquals(AgentTurnStatus.CANCELLED, execution.get(5, TimeUnit.SECONDS).getStatus());
+        assertEquals(1, callbacks.get());
         executor.shutdownNow();
     }
 

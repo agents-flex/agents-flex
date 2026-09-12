@@ -229,6 +229,10 @@ final class AgentToolCallProcessor {
                 return AgentStepResult.of(response, results, null);
             } catch (RuntimeException error) {
                 runner.refreshCancellation(turn);
+                if (turn.isCancellationRequested()) {
+                    // 停止导致的资源关闭异常不能被当成普通 ToolError 回传给模型。
+                    return runner.cancelTurn(turn);
+                }
                 // Middleware/Interceptor 可能包装控制流异常，必须沿 cause 链恢复原始语义。
                 AgentApprovalRequiredException approvalRequest = findCause(
                     error, AgentApprovalRequiredException.class);
@@ -598,20 +602,23 @@ final class AgentToolCallProcessor {
         // 执行次数在真正进入调用链前增加，恢复后的重放因此可以被业务工具明确识别。
         String toolCallId = callKey(call);
         int executionAttempt = turn.incrementToolExecutionAttempt(toolCallId);
+        // 每次 Tool 调用独立创建取消作用域，避免已经完成的 Tool 留下无用监听器。
+        AgentToolCancellation cancellation = new AgentToolCancellation();
         AgentToolContext toolContext = new AgentToolContext(
             turn.getId(), turn.getAgent().getId(), turn.getAgent().getVersion(), tool, call,
-            toolCallId, progressEmitter, turn::isCancellationRequested,
+            toolCallId, progressEmitter,
+            () -> turn.isCancellationRequested() || cancellation.isRequested(),
             turn.getToolInputData(toolCallId), executionAttempt,
             turn.getToolResumeInfo(toolCallId),
             turn.getToolApprovalRecord(toolCallId, ToolApprovalStage.POLICY),
             turn.getToolApprovalRecord(toolCallId, ToolApprovalStage.TOOL),
-            turn.getToolApprovalRecordsByRequest(toolCallId));
+            turn.getToolApprovalRecordsByRequest(toolCallId), cancellation);
 
         AgentMiddlewareContext middlewareContext =
             AgentMiddlewareContext.forToolCall(runner, turn, toolContext);
         // Middleware、Core ToolInterceptor 和工具函数都在受控执行器及同一 ChatContext 中运行。
         Object value = executeToolCallWithTimeout(
-            turn, middlewareContext, interceptors, executor, chatContext);
+            turn, middlewareContext, interceptors, executor, chatContext, cancellation);
         ToolMessage result = new ToolMessage();
         result.setToolCallId(callKey(call));
         if (value == null) {
@@ -654,7 +661,8 @@ final class AgentToolCallProcessor {
                                               AgentMiddlewareContext context,
                                               List<ToolInterceptor> interceptors,
                                               java.util.concurrent.Executor executor,
-                                              ChatContext chatContext) {
+                                              ChatContext chatContext,
+                                              AgentToolCancellation cancellation) {
         long timeout = turn.getExecutionPolicy().getToolExecutionTimeoutMillis();
         AtomicReference<AgentExecutionRegistry.Registration> registrationRef = new AtomicReference<>();
         AtomicReference<FutureTask<Object>> taskRef = new AtomicReference<>();
@@ -673,12 +681,18 @@ final class AgentToolCallProcessor {
                     }
                 }
             }, () -> {
+                // 任务真正退出或确认未启动时，统一清理 Tool 的停止监听器。
+                cancellation.close();
                 AgentExecutionRegistry.Registration registration = registrationRef.get();
                 if (registration != null) registration.close();
             });
         taskRef.set(task);
         AgentExecutionRegistry.Registration registration = runner.registerExecution(
-            turn.getId(), () -> taskRef.get().cancel(true));
+            turn.getId(), () -> {
+                // 先通知 Tool 关闭外部资源，再中断等待结果的 Java 线程。
+                cancellation.request();
+                taskRef.get().cancel(true);
+            });
         registrationRef.set(registration);
         task.registrationBound();
         boolean submitted = false;
@@ -701,7 +715,10 @@ final class AgentToolCallProcessor {
             throw new IllegalStateException("tool execution was stopped", error);
         } finally {
             // 任务正常结束时由 TrackedFutureTask 关闭句柄；只有提交失败时由等待线程兜底关闭。
-            if (!submitted) registration.close();
+            if (!submitted) {
+                cancellation.close();
+                registration.close();
+            }
         }
     }
 
