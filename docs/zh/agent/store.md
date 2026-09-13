@@ -312,6 +312,30 @@ Serializer 时需要保证：
 - 两个执行者同时保存同一版本时，只有一个成功；
 - 取消请求不会被旧 Snapshot 覆盖；
 - 重试时间和取消标记在 CAS 保存后保持一致；
+
+### 真实 MySQL 与 Redis 验证
+
+JDBC 模块的普通合约测试默认使用 H2；真实 MySQL 测试单独使用
+`MysqlAgentStoresIntegrationTest`。Redis 合约测试连接真实 Redis，但默认在 Redis 不可用时跳过。
+在 CI 或发布前，应打开 `required` 开关，让连接失败直接使构建失败：
+
+```bash
+export MYSQL_TEST_PASSWORD='your-password'
+
+mvn -pl agents-flex-agent-store/agents-flex-agent-store-jdbc \
+  -Dmysql.test.url='jdbc:mysql://127.0.0.1:3306/agents_flex_jdbc_it?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC' \
+  -Dmysql.test.user=root \
+  -Dmysql.test.required=true \
+  -Dtest=MysqlAgentStoresIntegrationTest test
+
+mvn -pl agents-flex-agent-store/agents-flex-agent-store-redis \
+  -Dredis.test.uri='redis://127.0.0.1:6379' \
+  -Dredis.test.required=true \
+  -Dtest=RedisAgentStoresIntegrationTest test
+```
+
+MySQL 数据库需要预先创建，测试只会创建带随机前缀的表并在结束时删除；Redis 测试使用随机 key 前缀，
+不会清理测试实例中的其他 key。不要在生产数据库或生产 Redis 上运行这些测试。
 - 应用重启后，Snapshot 仍能完整读取。
 
 ## 事务边界

@@ -39,6 +39,9 @@ public class RedisAgentStoresIntegrationTest {
             .keyPrefix(prefix).build();
         try { config.jedis().ping(); }
         catch (RuntimeException error) {
+            if (Boolean.getBoolean("redis.test.required")) {
+                throw new IllegalStateException("Redis is required for real Agent Store tests", error);
+            }
             config.close(); config = null;
             Assume.assumeNoException("Redis is required for Agent Store integration tests", error);
         }
@@ -83,7 +86,7 @@ public class RedisAgentStoresIntegrationTest {
 
     /** Redis Turn Store 必须拒绝旧版本写入。 */
     @Test
-    public void shouldEnforceVersionAndLeaseBoundaries() {
+    public void shouldEnforceVersionBoundaries() {
         RedisAgentTurnStore turns = config.turnStore();
         AgentTurnSnapshot created = turns.save(snapshot("boundaries", AgentTurnStatus.READY), -1);
         try {
