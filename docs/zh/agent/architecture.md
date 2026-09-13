@@ -86,7 +86,7 @@ flowchart LR
 | --- | --- | --- |
 | 连续多轮聊天 | `ChatMemory` | 保存这个会话之前聊过什么 |
 | 在页面实时显示进度 | `AgentEventListener` | 把模型输出和状态变化通知给业务系统 |
-| 在后台执行长任务 | `AgentWorker` | 从 Store 领取任务并执行 |
+| 在后台执行长任务 | 业务线程池或消息消费者 | 显式调用 Runner 执行 |
 | 服务重启后继续任务 | 持久化 `AgentTurnStore` | 从已保存的进度恢复 |
 | 按 ID 和版本恢复 Agent | `AgentLoader` | 找回任务创建时使用的 Agent 配置 |
 
@@ -98,12 +98,12 @@ flowchart LR
 | --- | --- | --- |
 | 本地学习 | `new AgentRunner()`，使用默认内存存储 | 示例和功能验证 |
 | 普通业务服务 | Runner 配合持久化 Store | 需要审批或重启恢复 |
-| 后台长任务 | API 创建任务，Worker 负责执行 | 任务耗时较长，HTTP 请求不应一直等待 |
-| 多实例服务 | 多个 Worker 共享同一个 Store | 任务量较大，或需要故障接管 |
+| 后台长任务 | API 创建任务，业务调度器负责执行 | 任务耗时较长，HTTP 请求不应一直等待 |
+| 多实例服务 | 共享 Store，并由业务保证同一 Turn 的执行协调 | 任务量较大或需要显式恢复 |
 
-`runner.run(...)` 会在当前线程中执行任务。`runner.start(...)` 只负责创建任务，不会自动启动后台线程；需要后台运行时，应使用 `AgentWorker`。
+`runner.run(...)` 会在当前线程中执行任务。`runner.start(...)` 只负责创建任务，不会自动启动后台线程；需要后台运行时，应由业务线程池、消息队列或调度器显式调用 Runner。
 
-多个 Worker 同时运行时，Store 会控制任务由谁领取。某个 Worker 意外退出后，其他 Worker 可以在执行权到期后接手。具体配置请查看 [Worker](./worker)。
+Agents-Flex 不会自动扫描 Store、领取任务或在进程重启后接管任务。多实例业务应自行协调同一 Turn 的执行，并使用版本 CAS 处理并发冲突。
 
 ## 接入时记住这几点
 
@@ -118,5 +118,4 @@ flowchart LR
 - 第一次使用 Agent：阅读[快速开始](./getting-started)。
 - 了解任务状态：阅读 [AgentTurn](./agent-turn)。
 - 保存和恢复任务：阅读[任务快照](./snapshot)与[任务快照持久化](./store)。
-- 接入后台执行：阅读 [Worker](./worker)。
 - 处理审批和用户输入：阅读[挂起与恢复](./suspend-resume)。

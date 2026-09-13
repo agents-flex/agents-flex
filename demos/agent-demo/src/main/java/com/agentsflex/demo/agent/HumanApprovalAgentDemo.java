@@ -12,7 +12,6 @@ import com.agentsflex.agent.AgentTurn;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.AgentRunner;
-import com.agentsflex.agent.AgentWorker;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.message.AgentActionMessage;
@@ -136,13 +135,8 @@ public final class HumanApprovalAgentDemo {
         DemoSupport.require(approved.getStatus() == AgentActionMessage.Status.APPROVED,
             "审批后应 CAS 更新原审批消息");
         DemoSupport.require(approved.getActions().isEmpty(), "终态审批消息不应再显示按钮");
-        List<AgentTurn> processed;
-        try (AgentWorker worker = new AgentWorker("release-worker-01", secondRunner, 30_000)) {
-            // Worker 通过 Turn Lease 领取恢复后的任务。
-            processed = worker.pollAndRun(10);
-        }
-        DemoSupport.require(processed.size() == 1, "Worker 应领取批准后的部署任务");
-        AgentTurn completed = processed.get(0);
+        // 业务线程、线程池或消息消费者负责显式推进恢复后的 Turn。
+        AgentTurn completed = secondRunner.runUntilBlocked(waiting.getId());
 
         DemoSupport.printTurn(completed);
         DemoSupport.require(completed.getStatus() == AgentTurnStatus.COMPLETED,

@@ -7,32 +7,25 @@ import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 import com.agentsflex.agent.store.AgentTurnStore;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
- * 使用 Redis Hash 与 Lua 脚本实现跨进程 AgentTurn CAS、取消和 Lease。
+ * 使用 Redis Hash、Lua 脚本和乐观锁保存 AgentTurn Snapshot。
+ *
+ * <p>AgentRunner 不会自动扫描或接管未完成 Turn，因此这里只维护 Snapshot CAS、取消标记和活动会话查询。</p>
  */
 public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements AgentTurnStore {
-    private static final String SAVE = "local a=redis.call('HGET',KEYS[1],'version'); local actual=a and tonumber(a) or -1; "
-        + "if actual~=tonumber(ARGV[1]) then return actual end; local cancel=redis.call('HGET',KEYS[1],'cancel'); "
-        + "local c=(cancel=='1' or ARGV[8]=='1') and '1' or '0'; redis.call('HSET',KEYS[1],"
-        + "'version',ARGV[2],'status',ARGV[3],'next',ARGV[4],'lease_owner',ARGV[5],'lease_id',ARGV[6],'lease_until',ARGV[7],"
-        + "'cancel',c,'payload',ARGV[9]); redis.call('SADD',KEYS[2],ARGV[10]); "
-        + "local s=ARGV[3]; local terminal=(s=='COMPLETED' or s=='FAILED' or s=='CANCELLED' or s=='MAX_ITERATIONS_REACHED' or s=='MAX_STEPS_REACHED' or s=='BUDGET_EXCEEDED'); "
-        + "local score=nil; local lu=tonumber(ARGV[7]); if (c=='1' and not terminal) or s=='READY' or s=='RUNNING' then "
-        + "score=(ARGV[5]~='' and lu or 0) elseif s=='RETRY_SCHEDULED' then score=math.max(tonumber(ARGV[4]),lu) end; "
-        + "if score then redis.call('ZADD',KEYS[3],score,ARGV[11]) else redis.call('ZREM',KEYS[3],ARGV[11]) end; return -2";
-    private static final String CLAIM = "local status=redis.call('HGET',KEYS[1],'status'); if not status then return 0 end; "
-        + "local nextRun=tonumber(redis.call('HGET',KEYS[1],'next') or '0'); local leaseUntil=tonumber(redis.call('HGET',KEYS[1],'lease_until') or '0'); "
-        + "local cancel=redis.call('HGET',KEYS[1],'cancel')=='1'; local terminal=(status=='COMPLETED' or status=='FAILED' or status=='CANCELLED' or status=='MAX_ITERATIONS_REACHED' or status=='MAX_STEPS_REACHED' or status=='BUDGET_EXCEEDED'); "
-        + "local runnable=(status=='READY' or status=='RUNNING' or (cancel and not terminal) "
-        + "or (status=='RETRY_SCHEDULED' and nextRun<=tonumber(ARGV[1]))); if not runnable then redis.call('ZREM',KEYS[3],ARGV[6]); return 0 end; "
-        + "if leaseUntil>tonumber(ARGV[1]) then redis.call('ZADD',KEYS[3],leaseUntil,ARGV[6]); return 0 end; "
-        + "redis.call('HSET',KEYS[1],'lease_owner',ARGV[2],'lease_id',ARGV[4],'lease_until',ARGV[3]); "
-        + "redis.call('HINCRBY',KEYS[1],'version',1); redis.call('ZADD',KEYS[3],ARGV[3],ARGV[6]); return 1";
+
+    private static final String SAVE =
+        "local a=redis.call('HGET',KEYS[1],'version'); "
+            + "local actual=a and tonumber(a) or -1; "
+            + "if actual~=tonumber(ARGV[1]) then return actual end; "
+            + "local cancel=redis.call('HGET',KEYS[1],'cancel'); "
+            + "local c=(cancel=='1' or ARGV[7]=='1') and '1' or '0'; "
+            + "redis.call('HSET',KEYS[1],'version',ARGV[2],'status',ARGV[3],"
+            + "'next',ARGV[4],'cancel',c,'payload',ARGV[5]); "
+            + "redis.call('SADD',KEYS[2],ARGV[6]); return -2";
 
     RedisAgentTurnStore(RedisAgentStoreConfig config) {
         super(config);
@@ -52,10 +45,10 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
         AgentTurnSnapshot payload = decode(values.get("payload"), AgentTurnSnapshot.class);
         AgentTurnState state = payload.getState().toBuilder()
             .version(Long.parseLong(values.get("version")))
-            .status(AgentTurnStatus.valueOf(values.get("status"))).nextRunnableAt(number(values.get("next")))
-            .leaseOwner(emptyToNull(values.get("lease_owner"))).leaseId(emptyToNull(values.get("lease_id")))
-            .leaseUntil(number(values.get("lease_until")))
-            .cancellationRequested("1".equals(values.get("cancel"))).build();
+            .status(AgentTurnStatus.valueOf(values.get("status")))
+            .nextRunnableAt(number(values.get("next")))
+            .cancellationRequested("1".equals(values.get("cancel")))
+            .build();
         return payload.withState(state);
     }
 
@@ -77,11 +70,10 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
         AgentTurnSnapshot saved = snapshot.withVersion(expectedVersion + 1);
         AgentTurnState state = saved.getState();
         Object result = eval(SAVE,
-            keys(key("turn", state.getTurnId()), index("turns"), index("runnable-turns")), args(
-                String.valueOf(expectedVersion), String.valueOf(state.getVersion()), state.getStatus().name(),
-                String.valueOf(state.getNextRunnableAt()), text(state.getLeaseOwner()), text(state.getLeaseId()),
-                String.valueOf(state.getLeaseUntil()), state.isCancellationRequested() ? "1" : "0",
-                encode(saved), state.getTurnId(), state.getTurnId()));
+            keys(key("turn", state.getTurnId()), index("turns")),
+            args(String.valueOf(expectedVersion), String.valueOf(state.getVersion()),
+                state.getStatus().name(), String.valueOf(state.getNextRunnableAt()), encode(saved),
+                state.getTurnId(), state.isCancellationRequested() ? "1" : "0"));
         long code = ((Number) result).longValue();
         if (code != -2) {
             throw new AgentTurnVersionConflictException(state.getTurnId(), expectedVersion, code);
@@ -91,57 +83,16 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
 
     @Override
     public boolean requestCancellation(String turnId) {
-        String script = "local status=redis.call('HGET',KEYS[1],'status'); if not status then return -1 end; "
+        String script = "local status=redis.call('HGET',KEYS[1],'status'); "
+            + "if not status then return -1 end; "
             + "if redis.call('HGET',KEYS[1],'cancel')=='1' then return 0 end; "
-            + "if status=='COMPLETED' or status=='FAILED' or status=='CANCELLED' or status=='MAX_ITERATIONS_REACHED' "
-            + "or status=='MAX_STEPS_REACHED' or status=='BUDGET_EXCEEDED' then return 0 end; "
-            + "redis.call('HSET',KEYS[1],'cancel','1'); redis.call('ZADD',KEYS[2],0,ARGV[1]); return 1";
-        long result = ((Number) eval(script, keys(key("turn", turnId), index("runnable-turns")), args(turnId))).longValue();
+            + "if status=='COMPLETED' or status=='FAILED' or status=='CANCELLED' "
+            + "or status=='MAX_ITERATIONS_REACHED' or status=='MAX_STEPS_REACHED' "
+            + "or status=='BUDGET_EXCEEDED' then return 0 end; "
+            + "redis.call('HSET',KEYS[1],'cancel','1'); return 1";
+        long result = ((Number) eval(script, keys(key("turn", turnId)), noKeys())).longValue();
         if (result == -1) throw new IllegalStateException("AgentTurn snapshot not found: " + turnId);
         return result == 1;
-    }
-
-    @Override
-    public List<AgentTurnSnapshot> claimRunnable(String workerId, long now, long leaseMillis, int limit) {
-        if (workerId == null || leaseMillis <= 0 || limit <= 0)
-            throw new IllegalArgumentException("invalid lease request");
-        List<AgentTurnSnapshot> result = new ArrayList<>();
-        List<String> ids = jedis.zrangeByScore(index("runnable-turns"), Double.NEGATIVE_INFINITY,
-            now, 0, Math.max(limit * 8, limit));
-        for (String id : ids) {
-            if (result.size() >= limit) break;
-            long claimed = ((Number) eval(CLAIM, keys(key("turn", id), key("turn", id), index("runnable-turns")), args(
-                String.valueOf(now), workerId, String.valueOf(now + leaseMillis),
-                UUID.randomUUID().toString(), "0", id))).longValue();
-            if (claimed == 1) result.add(load(id));
-        }
-        return result;
-    }
-
-    @Override
-    public AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
-                                        long now, long leaseUntil) {
-        if (leaseUntil <= now) throw new IllegalArgumentException("leaseUntil must be after now");
-        String script = "if redis.call('HGET',KEYS[1],'lease_owner')~=ARGV[1] "
-            + "or redis.call('HGET',KEYS[1],'lease_id')~=ARGV[2] "
-            + "or tonumber(redis.call('HGET',KEYS[1],'lease_until') or '0')<=tonumber(ARGV[3]) then return 0 end; "
-            + "redis.call('HSET',KEYS[1],'lease_until',ARGV[4]); redis.call('ZADD',KEYS[2],ARGV[4],ARGV[5]); return 1";
-        if (((Number) eval(script, keys(key("turn", turnId), index("runnable-turns")), args(workerId, leaseId,
-            String.valueOf(now), String.valueOf(leaseUntil), turnId))).longValue() != 1)
-            throw new IllegalStateException("AgentTurn lease is not owned by worker: " + workerId);
-        return load(turnId);
-    }
-
-    @Override
-    public void releaseLease(String turnId, String workerId, String leaseId) {
-        String script = "if redis.call('HGET',KEYS[1],'lease_owner')==ARGV[1] "
-            + "and redis.call('HGET',KEYS[1],'lease_id')==ARGV[2] then redis.call('HSET',KEYS[1],"
-            + "'lease_owner','','lease_id','','lease_until','0'); local s=redis.call('HGET',KEYS[1],'status'); "
-            + "local c=redis.call('HGET',KEYS[1],'cancel')=='1'; local terminal=(s=='COMPLETED' or s=='FAILED' or s=='CANCELLED' or s=='MAX_ITERATIONS_REACHED' or s=='MAX_STEPS_REACHED' or s=='BUDGET_EXCEEDED'); "
-            + "if (c and not terminal) or s=='READY' or s=='RUNNING' then redis.call('ZADD',KEYS[2],0,ARGV[3]) "
-            + "elseif s=='RETRY_SCHEDULED' then redis.call('ZADD',KEYS[2],redis.call('HGET',KEYS[1],'next'),ARGV[3]) "
-            + "else redis.call('ZREM',KEYS[2],ARGV[3]) end; return 1 end; return 0";
-        eval(script, keys(key("turn", turnId), index("runnable-turns")), args(workerId, leaseId, turnId));
     }
 
     private static long number(String value) {
@@ -153,9 +104,5 @@ public final class RedisAgentTurnStore extends RedisAgentStoreSupport implements
             return Long.parseLong(new String((byte[]) value, StandardCharsets.US_ASCII));
         }
         return Long.parseLong(String.valueOf(value));
-    }
-
-    private static String emptyToNull(String value) {
-        return value == null || value.isEmpty() ? null : value;
     }
 }

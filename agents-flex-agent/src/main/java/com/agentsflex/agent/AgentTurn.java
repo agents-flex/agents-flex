@@ -538,27 +538,6 @@ public final class AgentTurn {
     }
 
     /**
-     * @return 当前执行租约的 Worker ID
-     */
-    public String getLeaseOwner() {
-        return state.getLeaseOwner();
-    }
-
-    /**
-     * @return 当前领取批次的唯一租约令牌
-     */
-    public String getLeaseId() {
-        return state.getLeaseId();
-    }
-
-    /**
-     * @return 当前执行租约到期时间
-     */
-    public long getLeaseUntil() {
-        return state.getLeaseUntil();
-    }
-
-    /**
      * 返回只读元数据视图。
      *
      * @return 不允许直接修改的元数据 Map
@@ -979,15 +958,6 @@ public final class AgentTurn {
     void markBudgetExceeded(String reason) {
         state.setBudgetExceededReason(reason);
         finish(AgentTurnStatus.BUDGET_EXCEEDED);
-    }
-
-    /**
-     * 更新当前租约信息。
-     */
-    void updateLease(String owner, String id, long until) {
-        state.setLeaseOwner(owner);
-        state.setLeaseId(id);
-        state.setLeaseUntil(until);
     }
 
     /**

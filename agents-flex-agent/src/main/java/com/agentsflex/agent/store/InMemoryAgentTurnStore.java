@@ -12,9 +12,7 @@ import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.exception.AgentConversationBusyException;
 import com.agentsflex.agent.exception.AgentTurnVersionConflictException;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -61,7 +59,7 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
     }
 
     /**
-     * @return 进程当前毫秒时间，用于内存租约判断
+     * @return 进程当前毫秒时间，用于重试和超时判断
      */
     @Override
     public long currentTimeMillis() {
@@ -131,106 +129,4 @@ public final class InMemoryAgentTurnStore implements AgentTurnStore {
         }
     }
 
-    /**
-     * 原子领取可运行且没有有效租约的 Turn，并为每次领取生成唯一 leaseId。
-     */
-    @Override
-    public List<AgentTurnSnapshot> claimRunnable(String workerId, long now,
-                                                 long leaseMillis, int limit) {
-        if (workerId == null || leaseMillis <= 0 || limit <= 0) {
-            throw new IllegalArgumentException("invalid lease request");
-        }
-        List<AgentTurnSnapshot> claimed = new ArrayList<>();
-        synchronized (snapshots) {
-            for (AgentTurnSnapshot current : snapshots.values()) {
-                if (claimed.size() >= limit) {
-                    break;
-                }
-                if (!isRunnable(current, now)
-                    || (current.getState().getLeaseUntil() > now
-                    && current.getState().getLeaseOwner() != null)) {
-                    continue;
-                }
-                AgentTurnState state = current.getState();
-                AgentTurnSnapshot leased = current.withState(state.toBuilder()
-                    .leaseOwner(workerId)
-                    .leaseId(UUID.randomUUID().toString())
-                    .leaseUntil(now + leaseMillis)
-                    .version(state.getVersion() + 1)
-                    .build());
-                snapshots.put(state.getTurnId(), leased.copy());
-                claimed.add(leased.copy());
-            }
-        }
-        return claimed;
-    }
-
-    /**
-     * 仅允许当前 leaseId 持有者延长尚未过期的租约。
-     */
-    @Override
-    public AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
-                                        long now, long leaseUntil) {
-        synchronized (snapshots) {
-            AgentTurnSnapshot current = requireOwned(turnId, workerId, leaseId);
-            if (current.getState().getLeaseUntil() <= now || leaseUntil <= now) {
-                throw new IllegalStateException("AgentTurn lease has expired: " + turnId);
-            }
-            AgentTurnSnapshot renewed = current.withState(current.getState().toBuilder()
-                .leaseUntil(leaseUntil)
-                .build());
-            snapshots.put(turnId, renewed.copy());
-            return renewed.copy();
-        }
-    }
-
-    /**
-     * 释放匹配 Worker 和 leaseId 的租约；过期调用不会影响新租约。
-     */
-    @Override
-    public void releaseLease(String turnId, String workerId, String leaseId) {
-        synchronized (snapshots) {
-            AgentTurnSnapshot current = snapshots.get(turnId);
-            if (current == null || !workerId.equals(current.getState().getLeaseOwner())
-                || !leaseId.equals(current.getState().getLeaseId())) {
-                return;
-            }
-            AgentTurnSnapshot released = current.withState(current.getState().toBuilder()
-                .leaseOwner(null)
-                .leaseId(null)
-                .leaseUntil(0)
-                .build());
-            snapshots.put(turnId, released.copy());
-        }
-    }
-
-    /**
-     * 判断快照当前可以由 Worker 领取推进。
-     */
-    private boolean isRunnable(AgentTurnSnapshot snapshot, long now) {
-        AgentTurnState state = snapshot.getState();
-        if (state.isCancellationRequested() && !state.getStatus().isTerminal()) {
-            return true;
-        }
-        AgentTurnStatus status = state.getStatus();
-        if (status == AgentTurnStatus.READY || status == AgentTurnStatus.RUNNING) {
-            return true;
-        }
-        return status == AgentTurnStatus.RETRY_SCHEDULED && state.getNextRunnableAt() <= now;
-    }
-
-    /**
-     * 校验指定 Worker 和 leaseId 仍拥有目标 Turn。
-     */
-    private AgentTurnSnapshot requireOwned(String turnId, String workerId, String leaseId) {
-        AgentTurnSnapshot current = snapshots.get(turnId);
-        if (current == null) {
-            throw new IllegalStateException("AgentTurn snapshot not found: " + turnId);
-        }
-        if (!workerId.equals(current.getState().getLeaseOwner()) || leaseId == null
-            || !leaseId.equals(current.getState().getLeaseId())) {
-            throw new IllegalStateException("AgentTurn lease is not owned by worker: " + workerId);
-        }
-        return current;
-    }
 }

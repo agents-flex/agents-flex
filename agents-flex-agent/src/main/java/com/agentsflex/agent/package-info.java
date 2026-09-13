@@ -19,7 +19,7 @@
  *     <li>{@link com.agentsflex.agent.AgentTurnSnapshot}：Agent 标识与不可变运行状态组成的持久化快照；</li>
  *     <li>{@link com.agentsflex.agent.AgentRunner}：管理公共生命周期并保存稳定状态；</li>
  *     <li>{@link com.agentsflex.agent.middleware.AgentMiddleware}：包装步骤、模型调用和工具调用；</li>
- *     <li>{@link com.agentsflex.agent.store.AgentTurnStore}：保存 Snapshot、领取任务和管理 Worker 租约；</li>
+ *     <li>{@link com.agentsflex.agent.store.AgentTurnStore}：保存 Snapshot、版本和取消标记；</li>
  *     <li>{@link com.agentsflex.agent.event.AgentEventListener}：观察生命周期、模型增量和工具进度事件；</li>
  *     <li>{@link com.agentsflex.agent.loader.AgentLoader}：根据稳定 ID 和版本加载可执行 Agent；</li>
  *     <li>{@link com.agentsflex.agent.tool.AgentToolContext}：向工具提供调用身份、进度、取消和恢复输入；</li>

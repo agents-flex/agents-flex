@@ -115,10 +115,9 @@ public class AgentResilienceScenarioTest {
         assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, scheduled.getExecutionPoint());
         assertEquals(1, scheduled.getPendingToolCalls().size());
 
-        List<AgentTurn> processed = new AgentWorker("retry-worker", runner, 10000).pollAndRun(1);
+        AgentTurn processed = runner.resume(scheduled.getId(), AgentResumeCommand.retry());
 
-        assertEquals(1, processed.size());
-        assertEquals(AgentTurnStatus.COMPLETED, processed.get(0).getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, processed.getStatus());
         assertEquals(2, attempts.get());
         assertEquals(2, model.getCallCount());
     }
@@ -150,11 +149,10 @@ public class AgentResilienceScenarioTest {
         assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
 
         Thread.sleep(150);
-        List<AgentTurn> processed = new AgentWorker("budget-worker", runner, 10000).pollAndRun(1);
+        AgentTurn processed = runner.resume(scheduled.getId(), AgentResumeCommand.retry());
 
-        assertEquals(1, processed.size());
-        assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, processed.get(0).getStatus());
-        assertTrue(processed.get(0).getBudgetExceededReason()
+        assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, processed.getStatus());
+        assertTrue(processed.getBudgetExceededReason()
             .startsWith("maxDurationMillis (elapsed="));
         assertEquals(1, attempts.get());
     }

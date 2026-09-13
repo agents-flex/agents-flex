@@ -83,16 +83,14 @@ public class AgentModelRecoveryTest {
         AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
 
         AgentTurn scheduled = runner.run(agent, "hello");
-        List<AgentTurn> processed = new AgentWorker("model-retry", runner, 1000)
-            .pollAndRun(1);
+        AgentTurn processed = runner.resume(scheduled.getId(), AgentResumeCommand.retry());
 
         assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
-        assertEquals(1, processed.size());
-        assertEquals(AgentTurnStatus.WAITING_FOR_MODEL, processed.get(0).getStatus());
+        assertEquals(AgentTurnStatus.WAITING_FOR_MODEL, processed.getStatus());
         assertEquals(AgentModelFailureType.RATE_LIMITED,
-            processed.get(0).getModelFailure().getType());
+            processed.getModelFailure().getType());
         assertEquals(Long.valueOf(2500L),
-            processed.get(0).getModelFailure().getRetryAfterMillis());
+            processed.getModelFailure().getRetryAfterMillis());
     }
 
     @Test
@@ -244,12 +242,10 @@ public class AgentModelRecoveryTest {
         assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
         assertEquals(1, model.getCallCount());
 
-        List<AgentTurn> processed = new AgentWorker("async-model-worker", runner, 1000)
-            .pollAndRun(1);
+        AgentTurn processed = runner.runUntilBlocked(runnable.getId());
 
-        assertEquals(1, processed.size());
-        assertEquals(AgentTurnStatus.COMPLETED, processed.get(0).getStatus());
-        assertEquals("worker continued", processed.get(0).getFinalOutput());
+        assertEquals(AgentTurnStatus.COMPLETED, processed.getStatus());
+        assertEquals("worker continued", processed.getFinalOutput());
         assertEquals(2, model.getCallCount());
     }
 

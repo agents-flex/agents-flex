@@ -18,7 +18,7 @@ Agent 应用上线后，用户反馈通常不是一段完整的错误信息，�
 - 失败发生在模型、工具，还是外部服务？
 - 一次任务调用了多少次模型和工具，消耗了多少 Token？
 - 最近的失败率和处理时间是否异常？
-- 后台 Worker 是否还在正常领取任务？
+- 业务调度器是否还在正常推进任务？
 
 它不是某一个监控页面，也不是简单地打印模型内容。对于 Agent 任务，可以从三个层次逐步建设：
 
@@ -178,12 +178,12 @@ java \
 
 | 状态 | 通俗含义 | 优先检查 |
 | --- | --- | --- |
-| `READY` | 已创建，还没有开始执行 | Worker 是否启动，是否连接同一个 Store |
+| `READY` | 已创建，还没有开始执行 | 业务执行线程是否启动，是否连接同一个 Store |
 | `RUNNING` | 正在调用模型或处理工具 | 最近事件、模型和工具调用是否超时 |
 | `WAITING_FOR_USER` | 等待用户补充信息 | 页面是否正确展示并提交表单 |
 | `WAITING_FOR_APPROVAL` | 等待人工审批 | 审批通知和审批接口是否正常 |
 | `WAITING_FOR_TOOL` | 等待外部工具结果 | 外部执行器是否收到请求并回传结果 |
-| `RETRY_SCHEDULED` | 等待到指定时间重试 | `nextRunnableAt`、Worker 和重试次数 |
+| `RETRY_SCHEDULED` | 等待到指定时间重试 | `nextRunnableAt`、调度器和重试次数 |
 | `COMPLETED` | 已正常完成 | 读取最终结果即可 |
 | `FAILED` | 遇到无法继续的错误 | 错误类型、最近一次模型或工具事件 |
 | `CANCELLED` | 已取消 | 谁发起了取消、工具是否及时停止 |
@@ -248,7 +248,7 @@ toolCallId=call-18
 | 模型调用耗时和错误率 | 模型服务是否变慢或不可用 |
 | 工具调用耗时和错误率 | 哪个业务工具出现故障 |
 | 自动重试次数和重试后成功率 | 外部依赖是否持续不稳定 |
-| Worker 待处理任务数和最老任务年龄 | 后台处理能力是否不足 |
+| 待处理任务数和最老任务年龄 | 后台处理能力是否不足 |
 | Token 使用量 | 成本和上下文是否异常增长 |
 
 指标通常可以按 `agentId`、任务类型、工具名、模型名和部署环境分类。不要把 `turnId`、`requestId`、用户 ID
@@ -301,7 +301,7 @@ AgentTurn 关联起来。
 
 - `AgentTurnStore` 是否可以正常读写；
 - `AgentLoader` 是否能加载当前版本和未完成任务使用的历史版本；
-- Worker 最近一次成功轮询时间；
+- 调度器最近一次成功推进时间；
 - 最老的待处理任务已经等待多久；
 - 审批、表单和外部工具结果是否持续积压；
 - 日志、指标和 Trace 的数据出口是否持续失败。
@@ -310,7 +310,7 @@ AgentTurn 关联起来。
 
 - 任务失败率超过业务阈值；
 - 最老待处理任务超过服务承诺时间；
-- Worker 超过多个轮询周期没有成功工作；
+- 调度器超过多个周期没有成功工作；
 - `WAITING_FOR_TOOL` 或 `RETRY_SCHEDULED` 数量持续增长；
 - Store 保存失败或 Agent 历史版本无法加载；
 - 某个模型或工具的 P95 耗时明显升高。
@@ -352,7 +352,7 @@ agentsflex.otel.capture.content=false
 - [AgentEventListener](./agent-event-listener)：监听任务状态、模型输出和工具进度
 - [AgentTurn](./agent-turn)：查询任务状态、用量和最终结果
 - [任务快照持久化](./store)：跨进程保存并查询任务进度
-- [后台任务 Worker](./worker)：监控后台任务领取和故障接管
+- 业务调度器：监控后台任务推进和故障修复
 - [Observability 模块概述](../observability/observability)：了解模型、工具和 HTTP 自动观测
 - [Observability 快速开始](../observability/getting-started)：把 Span 和指标输出到日志或监控平台
 - [故障排查](../observability/troubleshooting)：排查数据没有产生或导出失败

@@ -83,9 +83,6 @@ public final class AgentTurnState implements Serializable {
      */
     private List<String> processedUserMessageIds = Collections.emptyList();
     private String budgetExceededReason;
-    private volatile String leaseOwner;
-    private volatile String leaseId;
-    private volatile long leaseUntil;
     private Map<String, Boolean> toolApprovals = Collections.emptyMap();
     /**
      * 按阶段保存的最新审批记录。toolApprovals 仅为旧 Snapshot 和旧 API 保留，并按 POLICY 阶段解释。
@@ -194,9 +191,6 @@ public final class AgentTurnState implements Serializable {
         this.processedUserMessageIds = immutable
             ? Collections.unmodifiableList(messageIds) : messageIds;
         this.budgetExceededReason = source.budgetExceededReason;
-        this.leaseOwner = source.leaseOwner;
-        this.leaseId = source.leaseId;
-        this.leaseUntil = source.leaseUntil;
         Map<String, Boolean> approvals = new HashMap<>(source.toolApprovals);
         this.toolApprovals = immutable ? Collections.unmodifiableMap(approvals) : approvals;
         this.toolApprovalRecords = copyToolApprovalRecords(source.toolApprovalRecords, immutable);
@@ -422,27 +416,6 @@ public final class AgentTurnState implements Serializable {
      */
     public String getBudgetExceededReason() {
         return budgetExceededReason;
-    }
-
-    /**
-     * @return 当前租约 Worker ID
-     */
-    public String getLeaseOwner() {
-        return leaseOwner;
-    }
-
-    /**
-     * @return 当前领取批次的租约令牌
-     */
-    public String getLeaseId() {
-        return leaseId;
-    }
-
-    /**
-     * @return 当前租约到期时间
-     */
-    public long getLeaseUntil() {
-        return leaseUntil;
     }
 
     /**
@@ -841,21 +814,6 @@ public final class AgentTurnState implements Serializable {
         budgetExceededReason = value;
     }
 
-    void setLeaseOwner(String value) {
-        requireMutable();
-        leaseOwner = value;
-    }
-
-    void setLeaseId(String value) {
-        requireMutable();
-        leaseId = value;
-    }
-
-    void setLeaseUntil(long value) {
-        requireMutable();
-        leaseUntil = value;
-    }
-
     void setToolApprovals(Map<String, Boolean> value) {
         requireMutable();
         toolApprovals = value == null ? new HashMap<>() : new HashMap<>(value);
@@ -1251,21 +1209,6 @@ public final class AgentTurnState implements Serializable {
 
         public Builder budgetExceededReason(String value) {
             state.setBudgetExceededReason(value);
-            return this;
-        }
-
-        public Builder leaseOwner(String value) {
-            state.setLeaseOwner(value);
-            return this;
-        }
-
-        public Builder leaseId(String value) {
-            state.setLeaseId(value);
-            return this;
-        }
-
-        public Builder leaseUntil(long value) {
-            state.setLeaseUntil(value);
             return this;
         }
 

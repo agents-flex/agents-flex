@@ -457,8 +457,7 @@ runner.submitResume(
 );
 ```
 
-`submitResume(...)` 只提交审批结果，不在当前请求中继续调用模型或执行工具。之后需要由已配置的
-`AgentWorker` 在后台继续任务。后台执行方式请参考 [Worker](./worker)。
+`submitResume(...)` 只提交审批结果，不在当前请求中继续调用模型或执行工具。之后需要由业务线程、消息队列或调度器显式调用 `runner.run(turnId)` 继续任务。
 
 | 方式 | 提交后是否立即继续任务 | 适用场景 |
 | --- | --- | --- |
@@ -494,7 +493,6 @@ runner.submitResume(
 
 - 完整的跨请求审批示例：[Demo：人工审批](./demo-human-approval)
 - 了解任务等待后如何继续：[挂起和恢复](./suspend-resume)
-- 了解后台任务处理：[Worker](./worker)
 - 了解生产环境的任务保存方式：[任务快照持久化](./store)
 - 了解如何为 Agent 注册工具：[Agent](./agent#工具配置)
 - 了解工具中的幂等键和恢复信息：[AgentToolContext](./tool-context)

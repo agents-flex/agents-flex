@@ -222,10 +222,9 @@ public class AgentToolResumeContextTest {
         AgentTurn scheduled = runner.run(agent, "run");
         assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
 
-        AgentWorker worker = new AgentWorker("resume-worker", runner, 10000);
-        AgentTurn secondScheduled = worker.pollAndRun(1).get(0);
+        AgentTurn secondScheduled = runner.resume(scheduled.getId(), AgentResumeCommand.retry());
         assertEquals(AgentTurnStatus.RETRY_SCHEDULED, secondScheduled.getStatus());
-        AgentTurn completed = worker.pollAndRun(1).get(0);
+        AgentTurn completed = runner.resume(secondScheduled.getId(), AgentResumeCommand.retry());
         assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(3, contexts.size());
         AgentToolContext firstRetry = contexts.get(1);

@@ -241,16 +241,10 @@ AgentTurn runnable = runner.submitMessage(
 );
 ```
 
-`submitResume(...)` 和 `submitMessage(...)` 只保存“任务现在可以继续”的状态，不在当前请求线程调用模型。之后由 `AgentWorker` 领取并执行：
+`submitResume(...)` 和 `submitMessage(...)` 只保存“任务现在可以继续”的状态，不在当前请求线程调用模型。之后由业务线程、消息队列或调度器显式调用 Runner：
 
 ```java
-AgentWorker worker = new AgentWorker(
-    "agent-worker-1",
-    runner,
-    30_000
-);
-
-worker.pollAndRun(10);
+runner.runUntilBlocked(turnId);
 ```
 
 常用 API 的差异如下：
@@ -260,7 +254,7 @@ worker.pollAndRun(10);
 | `run(..., conversationId, message)` | 是 | 同步聊天接口；新建任务或复用会话中的阻塞任务 |
 | `resume(..., command)` | 是 | 同步提交模型重试、审批、表单或工具结果 |
 | `submitMessage(...)` | 否 | 异步聊天接口或消息队列入口 |
-| `submitResume(..., command)` | 否 | Web 回调、控制面接口，由 Worker 后台继续 |
+| `submitResume(..., command)` | 否 | Web 回调、控制面接口，由业务调度器后台继续 |
 | `start(...)` | 否 | 明确创建一个新任务；会话已有活跃任务时会拒绝创建 |
 
 不带 `conversationId` 的 `run(agent, message)` 每次都会创建新的 `AgentTurn`，无法自动定位之前阻塞的任务。
@@ -287,7 +281,7 @@ Agent agent = Agent.builder("customer-service-agent")
     .build();
 ```
 
-发生可重试错误后，状态会先变为 `RETRY_SCHEDULED`。这个状态带有下一次可执行时间，Worker 到期后可以自动继续。
+发生可重试错误后，状态会先变为 `RETRY_SCHEDULED`。这个状态带有下一次可执行时间，业务调度器到期后可以显式调用 `resume(turnId, AgentResumeCommand.retry())` 继续。
 
 如果自动重试次数耗尽，模型仍不可用，结构化模型异常会进入 `WAITING_FOR_MODEL`。这个状态没有默认的自动唤醒时间，需要满足以下任一条件后继续：
 
@@ -523,7 +517,7 @@ AgentRunner runner = AgentRunner.builder()
     .build();
 ```
 
-之后可以只保存 `turnId`，在其他请求或其他 Worker 中恢复：
+之后可以只保存 `turnId`，在其他请求或业务线程中恢复：
 
 ```java
 AgentTurn waiting = runner.restore(turnId);
@@ -574,7 +568,7 @@ Agents-Flex 会在下一次模型或工具副作用之前保存恢复状态，�
 
 ### `WAITING_FOR_MODEL` 会占用一个线程一直等待吗？
 
-不会。Runner 保存快照后就会返回。同步调用的线程已经结束，之后可以通过恢复 API 或 Worker 继续。
+不会。Runner 保存快照后就会返回。同步调用的线程已经结束，之后可以通过恢复 API 或业务调度器继续。
 
 ### 模型恢复后会从任务开头重新执行吗？
 
@@ -594,7 +588,7 @@ Agents-Flex 会在下一次模型或工具副作用之前保存恢复状态，�
 
 ### 用户发消息时任务正在自动重试，会发生什么？
 
-如果重试发生在模型阶段，Runner 会取消原定的重试时间，追加用户消息并让模型尽快重新处理；使用 `submitMessage(...)` 时则等待 Worker 领取。工具阶段的重试会先中断旧工具调用，再重新规划。
+如果重试发生在模型阶段，Runner 会取消原定的重试时间，追加用户消息并让模型尽快重新处理；使用 `submitMessage(...)` 时由业务代码显式调用 Runner。工具阶段的重试会先中断旧工具调用，再重新规划。
 
 ### 所有模型异常都会进入 `WAITING_FOR_MODEL` 吗？
 
@@ -615,4 +609,3 @@ Agents-Flex 会在下一次模型或工具副作用之前保存恢复状态，�
 - 配置自动重试和退避：[错误处理与重试](./retry)
 - 处理超长上下文：[上下文压缩](./context-compression)
 - 跨进程保存和恢复任务：[任务快照持久化](./store)
-- 使用 Worker 异步继续：[后台任务 Worker](./worker)

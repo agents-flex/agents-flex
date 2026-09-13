@@ -46,13 +46,13 @@ AgentExecutionPolicy policy = AgentExecutionPolicy.builder()
 1. 保存当前任务进度和错误信息；
 2. 将 AgentTurn 状态更新为 `RETRY_SCHEDULED`；
 3. 记录下次允许执行的时间；
-4. 等待时间到达后，由 AgentWorker 继续原任务。
+4. 等待时间到达后，由业务调度器调用 `resume(turnId, AgentResumeCommand.retry())` 继续原任务。
 
 这样，即使服务在等待期间重启，任务仍然可以从已保存的位置继续。
 
 自动重试耗尽不等于所有错误都必须进入 `FAILED`。如果模型客户端抛出结构化 `ModelException`，Runner
 会把 Turn 保存为 `WAITING_FOR_MODEL`，保留已经完成的模型消息、ToolCall 和 ToolMessage，等待修复条件后
-继续。它与 `RETRY_SCHEDULED` 的区别是：后者有明确的下一次运行时间，可以由 Worker 自动领取；前者需要
+继续。它与 `RETRY_SCHEDULED` 的区别是：后者有明确的下一次运行时间，需要由业务调度器检查并显式继续；前者需要
 外部修复、显式 `retryModel(...)`，或者一条新的用户消息。详见[模型故障恢复](./model-recovery)。
 
 ## 重试范围
@@ -148,7 +148,7 @@ if (turn.getStatus() == AgentTurnStatus.RETRY_SCHEDULED) {
 
 `getRetryCount()` 是 Turn 生命周期内累计安排的重试次数，适合监控；真正限制 `maxRetries` 的是
 `getConsecutiveRetryCount()`。模型或工具成功、用户提交新消息或外部结果后，连续计数归零，但累计计数
-保留。Worker 使用的自动 `RETRY` 不会重置连续计数，避免持续故障无限重试。
+保留。业务调度器使用的 `RETRY` 不会重置连续计数，避免持续故障无限重试。
 
 ## 工具的防重复执行
 
@@ -174,5 +174,4 @@ String idempotencyKey = AgentToolContext.current().getIdempotencyKey();
 
 - 配置单次调用超时：[超时与过期](./timeouts)。
 - 限制任务总体消耗：[运行限制与预算](./budget)。
-- 后台执行延迟重试：[后台任务 Worker](./worker)。
 - 处理额度、限流与 Token 上限：[模型故障恢复](./model-recovery)。

@@ -47,7 +47,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p>一次标准执行由三层组成：</p>
  * <ol>
  *     <li>{@link #runUntilBlocked(AgentTurn)} 决定是否继续循环；</li>
- *     <li>{@link #step(AgentTurn)} 完成取消、Lease、预算和 Middleware 等通用检查；</li>
+ *     <li>{@link #step(AgentTurn)} 完成取消、预算和 Middleware 等通用检查；</li>
  *     <li>内置 ToolCall 状态机根据当前 ExecutionPoint 推进模型调用或工具执行。</li>
  * </ol>
  *
@@ -59,17 +59,14 @@ import java.util.concurrent.ConcurrentMap;
  * 所有需要跨进程恢复的状态最终通过 {@link AgentTurnStore} 持久化；Runner 自身不长期保存任务状态，
  * 因而通常作为应用级对象复用。</p>
  *
- * <p>直接调用 {@code run(...)} 会在当前线程推进 Turn；分布式长任务应先调用 {@code start(...)}
- * 保存 READY Snapshot，再由 AgentWorker 通过租约领取。不要让两个线程直接推进同一个
- * AgentTurn 对象。</p>
+ * <p>直接调用 {@code run(...)} 会在当前线程推进 Turn；需要异步执行时，由业务自己的线程池或调度器调用
+ * {@code run(...)}。不要让两个线程直接推进同一个 AgentTurn 对象。</p>
  */
 public final class AgentRunner {
 
     static final String TOOL_INPUT_TARGET = "TOOL";
 
-    /**
-     * 保存 Snapshot、取消标记和 Worker 租约的 Turn 存储。
-     */
+    /** 保存 Snapshot 和取消标记的 Turn 存储。 */
     private final AgentTurnStore turnStore;
     /**
      * 创建新任务和恢复旧任务时解析完整 Agent 的加载器。
@@ -96,17 +93,6 @@ public final class AgentRunner {
      * 可选的业务会话消息投影。未配置 Provider 时为空操作，现有显式传历史消息的 API 不受影响。
      */
     private final AgentRunnerChatMemory chatMemory;
-    /**
-     * 标识当前线程正在代表哪个 Worker 推进已领取的 Turn。
-     */
-    private final ThreadLocal<String> activeWorkerId = new ThreadLocal<>();
-    /**
-     * 当前 Worker 本次领取得到的唯一租约令牌。
-     *
-     * <p>仅校验 workerId 无法区分同名 Worker 的两次领取；leaseId 用作 fencing token，阻止租约已经
-     * 失效的旧执行者继续提交 Snapshot。</p>
-     */
-    private final ThreadLocal<String> activeLeaseId = new ThreadLocal<>();
     /**
      * 当前线程正在执行的 Step 结束后再发布的观察事件。
      *
@@ -671,7 +657,7 @@ public final class AgentRunner {
         prepareAgent(agent);
         AgentTurn turn = AgentTurn.start(agent, conversationHistory, userMessage, options);
         prepareTurn(turn);
-        // 初始 Snapshot 使任务在第一次模型调用之前就可以被 Worker 发现和恢复。
+        // 初始 Snapshot 使任务在第一次模型调用之前也可以被业务代码查询和恢复。
         saveSnapshot(turn);
         return turn;
     }
@@ -710,7 +696,7 @@ public final class AgentRunner {
     /**
      * 请求取消指定的 Agent Turn，并返回包含最新取消标记的 Turn。
      *
-     * <p>这是任务级、可持久化的协作式取消。它适用于后台任务、等待状态和跨进程 Worker；不会主动
+     * <p>这是任务级、可持久化的协作式取消。它适用于后台任务、等待状态和跨进程执行；不会主动
      * 中断已经发出的模型 HTTP 请求或正在运行的 Tool。用户交互中的“停止生成”应使用
      * {@link #stop(String)}。</p>
      *
@@ -730,7 +716,7 @@ public final class AgentRunner {
      * 请求取消并尽快停止当前进程中该 Turn 的模型流、模型 Future 或工具 Future。
      *
      * <p>持久化取消仍由 Store 保证；如果执行发生在其他进程，本方法会退化为协作式取消，
-     * 等待远端 Worker 在安全边界收束。</p>
+     * 等待远端执行线程在安全边界收束。</p>
      */
     public AgentTurn stop(String turnId) {
         boolean requested = turnStore.requestCancellation(turnId);
@@ -740,9 +726,7 @@ public final class AgentRunner {
         if (turn.getStatus().isTerminal()) executionRegistry.clear(turnId);
         // Blocked Turn 没有活动句柄，需要本地推进一步立即落盘 CANCELLED。
         // READY Turn 可能正被另一个线程首次推进，不能在这里并发 runUntilBlocked。
-        if (!turn.getStatus().isTerminal()
-            && turn.getStatus().isBlocked()
-            && !hasActiveLease(turn)) {
+        if (!turn.getStatus().isTerminal() && turn.getStatus().isBlocked()) {
             return runUntilBlocked(turn);
         }
         return turn;
@@ -767,7 +751,7 @@ public final class AgentRunner {
         AgentTurn latest = restore(turnId);
         while (!latest.getStatus().isTerminal() && System.currentTimeMillis() < deadline) {
             if (latest.isCancellationRequested() && executionRegistry.isIdle(turnId)
-                && latest.getStatus().isBlocked() && !hasActiveLease(latest)) {
+                && latest.getStatus().isBlocked()) {
                 return runUntilBlocked(latest);
             }
             try {
@@ -786,11 +770,6 @@ public final class AgentRunner {
      */
     AgentExecutionRegistry.Registration registerExecution(String turnId, Runnable stopAction) {
         return executionRegistry.register(turnId, stopAction);
-    }
-
-    private boolean hasActiveLease(AgentTurn turn) {
-        return StringUtil.hasText(turn.getLeaseOwner())
-            && turn.getLeaseUntil() > turnStore.currentTimeMillis();
     }
 
     /**
@@ -843,7 +822,6 @@ public final class AgentRunner {
         if (turn.getStatus().isTerminal()) {
             throw new IllegalStateException("terminal turn cannot be suspended: " + turn.getStatus());
         }
-        assertLeaseOwnership(turn);
         AgentSuspension effective = suspension.withRequestedAt(turnStore.currentTimeMillis());
         turn.suspend(blockedStatusFor(effective.getType()), effective);
         saveSnapshot(turn);
@@ -863,7 +841,7 @@ public final class AgentRunner {
     /**
      * 提交恢复命令并保存为可运行状态，但不在当前线程继续执行。
      *
-     * <p>事件消费者可以使用该方法唤醒任务，再由 AgentWorker 通过租约领取执行。</p>
+     * <p>事件消费者可以使用该方法唤醒任务，再由业务线程或调度器调用 {@link #run(AgentTurn)} 执行。</p>
      */
     public AgentTurn submitResume(AgentTurn turn, AgentResumeCommand command) {
         if (turn == null || command == null) {
@@ -872,7 +850,6 @@ public final class AgentRunner {
         if (!turn.getStatus().isBlocked()) {
             throw new IllegalStateException("turn is not blocked: " + turn.getStatus());
         }
-        assertLeaseOwnership(turn);
         AgentSuspension suspension = turn.getSuspension();
         // 用户消息可以回答旧输入或主动放弃旧等待；两种行为都不应先被过期策略终止。
         if (command.getType() != AgentResumeCommandType.USER_MESSAGE
@@ -932,8 +909,7 @@ public final class AgentRunner {
     /**
      * 保存稳定状态并更新本地乐观锁版本。
      *
-     * <p>如果当前线程代表 Worker 执行，保存前会校验 workerId、leaseId 和租约时间。版本冲突直接
-     * 抛出异常，由调用方恢复最新快照后决定是否继续。</p>
+     * <p>版本冲突直接抛出异常，由调用方恢复最新快照后决定是否继续。</p>
      *
      * <p>Store 返回的 Snapshot 包含新版本号和可能由其他控制面原子写入的取消标记。监听器只在保存
      * 成功后收到通知，因此看到的是已经持久化的稳定状态。</p>
@@ -941,7 +917,6 @@ public final class AgentRunner {
     public AgentTurnSnapshot saveSnapshot(AgentTurn turn) {
         synchronized (turn) {
             // 同步块保证同一 JVM 中 Snapshot 构造、Store CAS 和本地版本更新不可交错。
-            assertLeaseOwnership(turn);
             AgentTurnSnapshot saved = turnStore.save(turn.toSnapshot(), turn.getVersion());
             turn.updateVersion(saved.getState().getVersion());
             if (saved.getState().isCancellationRequested()) {
@@ -967,8 +942,7 @@ public final class AgentRunner {
         // 在任何 Step 事件之前完成首次 Turn 状态转换，保持 Turn > Step 的生命周期嵌套关系。
         validateStep(turn);
         ensurePreparedAndSnapshotSaved(turn);
-        // 无效 Worker 不得先发布生命周期事件；真正执行前 stepCore 还会再次校验租约和取消信号。
-        assertLeaseOwnership(turn);
+        // 真正执行前再次检查取消信号，避免控制面竞态下继续产生模型或工具副作用。
         refreshCancellation(turn);
         if (turn.markStarted()) {
             eventPublisher.notifyTurnStart(turn);
@@ -1032,8 +1006,7 @@ public final class AgentRunner {
      * 执行不包含 step Middleware 包装的通用单步状态机。
      */
     private AgentStepResult stepCore(AgentTurn turn) {
-        // Lease 和持久化取消标记必须在任何模型或工具副作用之前检查。
-        assertLeaseOwnership(turn);
+        // 持久化取消标记必须在任何模型或工具副作用之前检查。
         refreshCancellation(turn);
         if (turn.isCancellationRequested()) {
             return cancelTurn(turn);
@@ -1087,28 +1060,6 @@ public final class AgentRunner {
         return handleFailure(turn, null,
             new IllegalStateException("Unsupported agent execution point: " + executionPoint),
             executionPoint);
-    }
-
-    /**
-     * 在指定 Worker 的租约上下文中推进已经领取的 Turn。
-     */
-    AgentTurn runLeased(AgentTurn turn, String workerId, String leaseId) {
-        if (!workerId.equals(turn.getLeaseOwner())
-            || leaseId == null || !leaseId.equals(turn.getLeaseId())
-            || turn.getLeaseUntil() <= turnStore.currentTimeMillis()) {
-            throw new IllegalStateException("AgentTurn lease is not active for worker: " + workerId);
-        }
-        activeWorkerId.set(workerId);
-        activeLeaseId.set(leaseId);
-        try {
-            if (turn.getStatus() == AgentTurnStatus.RETRY_SCHEDULED) {
-                return resume(turn, AgentResumeCommand.retry());
-            }
-            return runUntilBlocked(turn);
-        } finally {
-            activeWorkerId.remove();
-            activeLeaseId.remove();
-        }
     }
 
     /**
@@ -1230,7 +1181,7 @@ public final class AgentRunner {
     /**
      * 将模型或工具异常统一转换为取消、持久化重试或最终失败状态。
      *
-     * <p>安排重试时保存发生异常的 ExecutionPoint，使 Worker 到期恢复后从原模型或工具边界继续。方法只计算
+     * <p>安排重试时保存发生异常的 ExecutionPoint，使业务调度器到期恢复后从原模型或工具边界继续。方法只计算
      * {@code nextRunnableAt} 并返回阻塞结果，不在当前线程 sleep。</p>
      */
     AgentStepResult handleFailure(AgentTurn turn, AiMessageResponse response,
@@ -1515,29 +1466,6 @@ public final class AgentRunner {
     private void prepareTurn(AgentTurn turn) {
         if (turn == null) throw new IllegalArgumentException("turn must not be null");
         prepareAgent(turn.getAgent());
-    }
-
-    /**
-     * 拒绝非租约持有者推进仍处于有效租约中的 Turn。
-     *
-     * <p>Worker 路径同时校验 owner、唯一 leaseId 和存储端到期时间；同步 API 路径只能推进当前没有
-     * 有效 Lease 的 Turn。该检查必须位于每个副作用和 Snapshot 之前，防止过期 Worker 覆盖新状态。</p>
-     */
-    private void assertLeaseOwnership(AgentTurn turn) {
-        String workerId = activeWorkerId.get();
-        if (workerId != null) {
-            if (!workerId.equals(turn.getLeaseOwner())
-                || !StringUtil.hasText(activeLeaseId.get())
-                || !activeLeaseId.get().equals(turn.getLeaseId())
-                || turn.getLeaseUntil() <= turnStore.currentTimeMillis()) {
-                throw new IllegalStateException("AgentTurn lease was lost by worker: " + workerId);
-            }
-            return;
-        }
-        if (StringUtil.hasText(turn.getLeaseOwner())
-            && turn.getLeaseUntil() > turnStore.currentTimeMillis()) {
-            throw new IllegalStateException("AgentTurn is leased by worker: " + turn.getLeaseOwner());
-        }
     }
 
     /**

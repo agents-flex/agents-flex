@@ -66,7 +66,7 @@ public class JdbcAgentStoresContractTest {
     }
 
     @Test
-    public void shouldPersistRunWithOptimisticLockCancellationAndLease() {
+    public void shouldPersistRunWithOptimisticLockAndCancellation() {
         JdbcAgentTurnStore store = config.turnStore();
         AgentTurnSnapshot created = store.save(snapshot("turn-1", AgentTurnStatus.READY), -1);
         assertEquals(0, created.getState().getVersion());
@@ -78,73 +78,12 @@ public class JdbcAgentStoresContractTest {
             .status(AgentTurnStatus.RUNNING).build()), 0);
         assertTrue(updated.getState().isCancellationRequested());
 
-        List<AgentTurnSnapshot> claimed = store.claimRunnable("worker-a", 1000, 5000, 10);
-        assertEquals(1, claimed.size());
-        assertEquals("worker-a", claimed.get(0).getState().getLeaseOwner());
-        long claimedVersion = claimed.get(0).getState().getVersion();
-        AgentTurnSnapshot renewed = store.renewLease("turn-1", "worker-a",
-            claimed.get(0).getState().getLeaseId(),
-            1500, 7000);
-        assertEquals(7000, renewed.getState().getLeaseUntil());
-        assertEquals(claimedVersion, renewed.getState().getVersion());
-        try {
-            store.renewLease("turn-1", "worker-a", "stale-token", 1600, 8000);
-            fail("stale lease token must be rejected");
-        } catch (IllegalStateException expected) {
-            assertTrue(expected.getMessage().contains("worker-a"));
-        }
-        store.releaseLease("turn-1", "worker-a", "stale-token");
-        assertEquals(claimed.get(0).getState().getLeaseId(),
-            store.load("turn-1").getState().getLeaseId());
-        store.releaseLease("turn-1", "worker-a", claimed.get(0).getState().getLeaseId());
-        assertNull(store.load("turn-1").getState().getLeaseOwner());
-        assertEquals(claimedVersion, store.load("turn-1").getState().getVersion());
-
         try {
             store.save(created, 0);
             fail("Expected optimistic lock conflict");
         } catch (AgentTurnVersionConflictException expected) {
             assertTrue(expected.getMessage().contains("turn-1"));
         }
-    }
-
-    @Test
-    public void shouldAllowOnlyOneWorkerToClaimTheSameRun() throws Exception {
-        final JdbcAgentTurnStore store = config.turnStore();
-        store.save(snapshot("race-turn", AgentTurnStatus.READY), -1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        CountDownLatch start = new CountDownLatch(1);
-        try {
-            Future<List<AgentTurnSnapshot>> first = executor.submit(() -> {
-                start.await();
-                return store.claimRunnable("worker-a", 100, 1000, 1);
-            });
-            Future<List<AgentTurnSnapshot>> second = executor.submit(() -> {
-                start.await();
-                return store.claimRunnable("worker-b", 100, 1000, 1);
-            });
-            start.countDown();
-            assertEquals(1, first.get().size() + second.get().size());
-        } finally {
-            executor.shutdownNow();
-        }
-    }
-
-    /**
-     * 取消标记在终态快照中保持为 true 时，也不能让终态 Turn 再次被领取。
-     */
-    @Test
-    public void shouldNeverReclaimCanceledTerminalTurn() {
-        JdbcAgentTurnStore store = config.turnStore();
-        store.save(snapshot("terminal", AgentTurnStatus.READY), -1);
-        assertTrue(store.requestCancellation("terminal"));
-        AgentTurnSnapshot claimed = store.claimRunnable("worker", 10, 100, 1).get(0);
-        AgentTurnSnapshot terminal = claimed.withState(claimed.getState().toBuilder()
-            .status(AgentTurnStatus.CANCELLED).build());
-        AgentTurnSnapshot saved = store.save(terminal, claimed.getState().getVersion());
-        store.releaseLease("terminal", "worker", saved.getState().getLeaseId());
-
-        assertTrue(store.claimRunnable("other", 11, 100, 1).isEmpty());
     }
 
     @Test

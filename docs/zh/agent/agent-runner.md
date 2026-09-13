@@ -31,7 +31,6 @@ description: 了解 AgentRunner 如何创建、执行、暂停和恢复 Agent �
 | `AgentTurn` | 保存一次任务的状态、消息和结果 |
 | `AgentTurnStore` | 持久化任务进度，供 Runner 保存和恢复 |
 | `AgentLoader` | 根据 Agent ID 和版本重新加载 Agent 配置 |
-| `AgentWorker` | 在后台领取并执行 Runner 创建的任务 |
 
 Runner 本身不是任务数据库。它可以在应用中重复使用，实际任务状态由 `AgentTurn` 表示，并通过 `AgentTurnStore` 保存。
 
@@ -103,7 +102,7 @@ AgentRunner 提供了多种方法，但日常使用主要关注以下几个：
 | `submitMessage(...)` | 创建任务，或向会话中阻塞的 Turn 追加消息 | 异步聊天接口 |
 | `restore(...)` | 从 Store 读取任务最新进度 | 查询或重新装配已有任务 |
 | `resume(...)` | 提交外部结果，并在当前线程继续执行 | 审批或表单提交后立即继续 |
-| `submitResume(...)` | 提交外部结果，但不在当前线程执行 | 交给后台 Worker 继续 |
+| `submitResume(...)` | 提交外部结果，但不在当前线程执行 | 交给业务线程、消息队列或调度器继续 |
 | `cancel(...)` | 请求取消任务 | 用户停止任务 |
 | `stop(...)` | 请求取消并尽快中断当前进程中的模型流或工具 | “停止生成”按钮 |
 | `stopAndWait(...)` | 停止并在限定时间内等待本地执行退出 | 需要确认旧 Turn 已收束后再继续 |
@@ -129,7 +128,7 @@ AgentTurn turn = runner.start(agent, "生成本月销售报告");
 System.out.println("任务 ID：" + turn.getId());
 ```
 
-`start(...)` 只创建并保存状态为 `READY` 的任务，不会自动创建后台线程。需要由 `AgentWorker` 领取并执行，详见 [Worker](./worker)。
+`start(...)` 只创建并保存状态为 `READY` 的任务，不会自动创建后台线程。业务代码应在自己的线程池、消息消费者或调度器中显式调用 `runner.run(turn)`。
 
 ### 恢复等待中的任务
 
@@ -142,7 +141,7 @@ AgentTurn resumed = runner.resume(
 );
 ```
 
-如果当前接口只负责接收审批结果，实际任务由后台 Worker 执行，可以使用：
+如果当前接口只负责接收审批结果，实际任务由业务线程执行，可以使用：
 
 ```java
 AgentTurn resumed = runner.submitResume(
@@ -227,7 +226,7 @@ Runner 会根据会话 ID 读取之前的聊天记录，并在任务进度保存
 未结束的 Turn。如果活跃 Turn 正在等待模型、审批、表单、外部工具或延迟重试，带同一个
 `conversationId` 的 `run(...)` 不会创建新 Turn，而是把消息追加到原 Turn 并让模型重新规划。
 
-只提交消息、稍后由 Worker 执行时使用：
+只提交消息、稍后由业务调度器执行时使用：
 
 ```java
 AgentTurn runnable = runner.submitMessage(
@@ -257,7 +256,7 @@ runner.addEventListener(eventListener);
 ## 使用建议
 
 1. 在应用中复用配置完整的 AgentRunner，不要为每个请求创建独立的内存 Store。
-2. 短任务使用 `run(...)`，长任务使用 `start(...)` 配合 AgentWorker。
+2. 短任务直接使用 `run(...)`；需要异步时使用 `start(...)`，再由业务线程显式调用 `run(turnId)`。
 3. 每次调用后都检查 AgentTurn 状态，不要假设任务一定正常完成。
 4. 等待审批或输入时恢复原 Turn，不要创建新 Turn。
 5. 不要让两个线程同时直接执行同一个 AgentTurn。
@@ -270,5 +269,4 @@ runner.addEventListener(eventListener);
 - 了解任务暂停和恢复：[挂起与恢复](./suspend-resume)。
 - 处理模型额度、限流与 Token 上限：[模型故障恢复](./model-recovery)。
 - 配置任务持久化：[任务快照持久化](./store)。
-- 执行后台长任务：[Worker](./worker)。
 - 监听执行进度：[AgentEventListener](./agent-event-listener)。

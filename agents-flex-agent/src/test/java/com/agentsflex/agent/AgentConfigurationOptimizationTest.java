@@ -227,24 +227,6 @@ public class AgentConfigurationOptimizationTest {
     }
 
     @Test
-    public void workerOptionsValidateAndExposePollingConfiguration() {
-        AgentWorkerOptions options = AgentWorkerOptions.builder("worker-1", 5000)
-            .pollIntervalMillis(250).batchSize(3).leaseRenewalFraction(0.25).build();
-        assertEquals("worker-1", options.getWorkerId());
-        assertEquals(5000, options.getLeaseMillis());
-        assertEquals(250, options.getPollIntervalMillis());
-        assertEquals(3, options.getBatchSize());
-        assertEquals(1, options.getMaxConcurrentTurns());
-        assertEquals(0.25, options.getLeaseRenewalFraction(), 0.0001);
-        try {
-            AgentWorkerOptions.builder(" ", 1).build();
-            fail("blank worker id must fail");
-        } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage().contains("workerId"));
-        }
-    }
-
-    @Test
     public void parallelToolCallLimitIsEnforcedWhileUsingConfiguredToolExecutor() throws Exception {
         for (int limit : new int[]{1, 2}) {
             AgentScenarioTestSupport.QueueChatModel model = new AgentScenarioTestSupport.QueueChatModel();
@@ -277,51 +259,6 @@ public class AgentConfigurationOptimizationTest {
             assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
             assertTrue("configured executor was not used", executorSubmissions.get() >= 3);
             assertTrue("parallel limit exceeded: " + maximum.get(), maximum.get() <= limit);
-        }
-    }
-
-    @Test
-    public void workerBatchSizeAndConcurrencyAreIndependent() throws Exception {
-        com.agentsflex.agent.store.InMemoryAgentTurnStore store =
-            new com.agentsflex.agent.store.InMemoryAgentTurnStore();
-        CountDownLatch entered = new CountDownLatch(2);
-        CountDownLatch release = new CountDownLatch(1);
-        AtomicInteger active = new AtomicInteger();
-        AtomicInteger maximum = new AtomicInteger();
-        ChatModel model = new ChatModel() {
-            @Override
-            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
-                int now = active.incrementAndGet();
-                maximum.updateAndGet(previous -> Math.max(previous, now));
-                entered.countDown();
-                try {
-                    release.await(2, TimeUnit.SECONDS);
-                } catch (InterruptedException error) {
-                    Thread.currentThread().interrupt();
-                } finally {
-                    active.decrementAndGet();
-                }
-                return AgentScenarioTestSupport.response(prompt, new AiMessage("done"));
-            }
-
-            @Override
-            public void chatStream(Prompt prompt, StreamResponseListener listener, ChatOptions options) {
-                throw new UnsupportedOperationException();
-            }
-        };
-        Agent agent = Agent.builder("worker-concurrency").chatModel(model).build();
-        AgentRunner runner = new AgentRunner(store, new com.agentsflex.agent.loader.InMemoryAgentLoader(agent));
-        runner.start(agent, "first");
-        runner.start(agent, "second");
-        AgentWorkerOptions options = AgentWorkerOptions.builder("worker", 10_000)
-            .batchSize(1).maxConcurrentTurns(2).build();
-        try (AgentWorker worker = new AgentWorker(runner, options)) {
-            Thread polling = new Thread(() -> worker.pollAndRun(2));
-            polling.start();
-            assertTrue("worker did not execute two turns concurrently", entered.await(2, TimeUnit.SECONDS));
-            release.countDown();
-            polling.join(2000);
-            assertEquals(2, maximum.get());
         }
     }
 
@@ -504,19 +441,6 @@ public class AgentConfigurationOptimizationTest {
             fail("infinite multiplier must fail validation");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("retry"));
-        }
-    }
-
-    @Test
-    public void workerRejectsNonPositivePollLimit() {
-        AgentWorker worker = new AgentWorker("limit-worker", new AgentRunner(), 1000);
-        try {
-            worker.pollAndRun(0);
-            fail("zero poll limit must fail validation");
-        } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage().contains("limit"));
-        } finally {
-            worker.close();
         }
     }
 

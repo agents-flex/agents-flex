@@ -295,5 +295,5 @@ mvn compile exec:java -Dexec.mainClass="com.example.AgentQuickStart"
 - 想在敏感操作前等待用户确认：阅读 [人工审批](./human-approval)。
 - 想让任务等待用户补充参数：阅读 [表单输入](./form-input)。
 - 想保存任务并在重启后恢复：阅读 [任务快照持久化](./store)。
-- 想把长任务放到后台执行：阅读 [Worker](./worker)。
+- 想把长任务放到后台执行：使用业务线程池、消息队列或调度器显式调用 Runner。
 - 想实现连续多轮对话：阅读 [上下文管理](./context-management)。

@@ -170,12 +170,11 @@ public class AgentRuntimeCapabilitiesScenarioTest {
         AgentTurn ready = runner.submitResume(waiting.getId(), approval);
         assertEquals(AgentTurnStatus.RUNNING, ready.getStatus());
 
-        List<AgentTurn> completed = new AgentWorker("worker-1", runner, 30_000).pollAndRun(10);
+        AgentTurn completed = runner.runUntilBlocked(ready.getId());
 
-        assertEquals(1, completed.size());
-        assertEquals(AgentTurnStatus.COMPLETED, completed.get(0).getStatus());
+        assertEquals(AgentTurnStatus.COMPLETED, completed.getStatus());
         assertEquals(1, toolExecutions.get());
-        ToolMessage toolMessage = lastToolMessage(completed.get(0));
+        ToolMessage toolMessage = lastToolMessage(completed);
         assertEquals(128, toolMessage.getContent().length());
         assertTrue(hasEvent(events, AgentEventType.MODEL_REASONING_DELTA));
         assertTrue(hasEvent(events, AgentEventType.MODEL_TOOL_CALL_DELTA));

@@ -67,13 +67,13 @@ AgentTurn turn = runner.run(
 
 `run(...)` 会创建 Turn，并在当前线程中开始执行，直到任务完成、失败或暂停等待外部操作。
 
-如果只想先创建任务，稍后交给 `AgentWorker`（后台任务执行器）执行，可以使用：
+如果只想先创建任务，稍后交给业务线程执行，可以使用：
 
 ```java
 AgentTurn turn = runner.start(agent, "生成本周销售分析报告");
 ```
 
-`start(...)` 返回的任务初始状态是 `READY`。它只创建任务，不会自动启动新线程。要在后台真正执行，还需要配置 `AgentWorker`。
+`start(...)` 返回的任务初始状态是 `READY`。它只创建任务，不会自动启动新线程；业务代码需要显式把它提交到自己的线程池或消息消费者，并调用 `runner.run(turnId)`。
 
 ## 生命周期
 
@@ -235,4 +235,3 @@ runner.saveSnapshot(turn);
 - 了解任务如何暂停后继续：[挂起与恢复](./suspend-resume)。
 - 了解模型不可用时如何保留上下文：[模型故障恢复](./model-recovery)。
 - 了解任务进度如何保存：[Snapshot](./snapshot)。
-- 了解长任务如何在后台运行：[Worker](./worker)。

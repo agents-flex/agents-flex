@@ -244,23 +244,6 @@ public class AgentToolResolutionTest {
         }
 
         @Override
-        public java.util.List<AgentTurnSnapshot> claimRunnable(
-            String workerId, long now, long leaseMillis, int limit) {
-            return delegate.claimRunnable(workerId, now, leaseMillis, limit);
-        }
-
-        @Override
-        public AgentTurnSnapshot renewLease(String turnId, String workerId,
-                                            String leaseId, long now, long leaseUntil) {
-            return delegate.renewLease(turnId, workerId, leaseId, now, leaseUntil);
-        }
-
-        @Override
-        public void releaseLease(String turnId, String workerId, String leaseId) {
-            delegate.releaseLease(turnId, workerId, leaseId);
-        }
-
-        @Override
         public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
             AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
             if (!crashed && AgentTurnExecutionPoint.PROCESS_TOOLS.equals(saved.getState().getExecutionPoint())) {

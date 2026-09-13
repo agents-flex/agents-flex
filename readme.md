@@ -28,7 +28,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | `agents-flex-async-task` | Durable tracking and scheduling for provider jobs that use submit-and-poll workflows |
 | `agents-flex-async-task-store` | JDBC and Redis persistence for async task state, scheduling indexes, and Worker leases |
 | `agents-flex-doc-extractor` | Extracts Markdown-style content from PDF, Office, HTML, email, archives, streams, and URLs |
-| `agents-flex-agent` | Durable Agent runtime: Run state, snapshot recovery, Worker leases, approval, middleware, and events |
+| `agents-flex-agent` | Durable Agent runtime: Run state, snapshot recovery, version CAS, approval, middleware, and events |
 | `agents-flex-agent-store` | JDBC and Redis persistence for Agent runs, commands, events, and artifacts |
 | `agents-flex-observability` | OpenTelemetry span and metric exporters with JDBC persistence |
 | `agents-flex-chat` | Chat model integrations: OpenAI-compatible APIs, Qwen, Ollama, DeepSeek, LiteLLM |

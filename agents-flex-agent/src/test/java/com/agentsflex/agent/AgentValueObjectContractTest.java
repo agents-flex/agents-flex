@@ -111,29 +111,6 @@ public class AgentValueObjectContractTest {
     }
 
     @Test
-    public void shouldValidateWorkerOptionBoundaries() {
-        AgentWorkerOptions edge = AgentWorkerOptions.builder("worker", 1)
-            .pollIntervalMillis(1).batchSize(1).leaseRenewalFraction(1).build();
-        assertEquals(1, edge.getLeaseMillis());
-        assertEquals(1.0, edge.getLeaseRenewalFraction(), 0.0);
-
-        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
-            .pollIntervalMillis(0).build());
-        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
-            .batchSize(0).build());
-        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
-            .maxConcurrentTurns(0).build());
-        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
-            .leaseRenewalFraction(0).build());
-        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
-            .leaseRenewalFraction(1.01).build());
-        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
-            .leaseRenewalFraction(Double.NaN).build());
-        assertIllegalArgument(() -> AgentWorkerOptions.builder("worker", 1)
-            .leaseRenewalFraction(Double.POSITIVE_INFINITY).build());
-    }
-
-    @Test
     public void shouldKeepApprovalDecisionMetadataImmutable() {
         ToolApprovalDecision decision = ToolApprovalDecision.requireApproval()
             .code("REVIEW")

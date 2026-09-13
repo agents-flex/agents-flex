@@ -27,7 +27,7 @@ Agents-Flex 的能力不是一组彼此孤立的组件，而是一条完整的�
 | 连接 | MCP、WebSearch、WebFetch、LLM Wiki | 连接外部工具、互联网和动态知识源 |
 | 知识 | 文件解析、文档切分、Embedding、Vector Store、Rerank | 构建从数据导入到召回排序的完整 RAG 链路 |
 | 技能 | AI Skills、Local/OpenSandbox/AIO Sandbox Runtime | 把提示词、脚本和资源封装成可复用、可执行的能力包 |
-| 执行 | Worker 与 Lease | 让 Agent 任务可靠执行并支持跨进程恢复 |
+| 执行 | Runner 与 Store CAS | 让 Agent Turn 可暂停、恢复并防止旧快照覆盖新进度 |
 | 工程 | Model Router、熔断、重试、拦截器、OpenTelemetry | 让智能体在生产环境中可用、可控、可观测 |
 
 这意味着，你可以用同一套抽象构建一个对话机器人，也可以继续向前，构建会查资料、读文档、分析数据库、生成文件、调用内部系统，并把复杂任务分派给多个专业 Agent 的业务助手。

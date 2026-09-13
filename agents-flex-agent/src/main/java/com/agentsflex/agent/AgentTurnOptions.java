@@ -130,7 +130,7 @@ public final class AgentTurnOptions {
         }
 
         /**
-         * 设置当前 Turn 是否使用流式模型调用。该值会随 Snapshot 保存，挂起恢复或 Worker 接管后
+         * 设置当前 Turn 是否使用流式模型调用。该值会随 Snapshot 保存，挂起恢复或跨请求恢复后
          * 仍保持一致。
          */
         public Builder streaming(boolean value) {

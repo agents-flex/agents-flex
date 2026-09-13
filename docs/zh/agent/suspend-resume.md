@@ -144,7 +144,7 @@ AgentTurn result = runner.resume(
 | `WAITING_FOR_APPROVAL` | 审批人批准或拒绝工具操作 | `approveTool(...)` / `rejectTool(...)` |
 | `WAITING_FOR_TOOL` | 外部设备或系统返回工具结果 | `toolResult(...)` / `toolError(...)` |
 | `WAITING_FOR_MODEL` | 模型额度、限流、Token 上限或服务不可用 | `retryModel(...)` / `userMessage(...)` |
-| `RETRY_SCHEDULED` | 到达下一次重试时间 | 通常由 Worker 自动处理 |
+| `RETRY_SCHEDULED` | 到达下一次重试时间 | 由业务调度器显式处理 |
 
 这些状态都表示“任务尚未结束，但当前不能继续”。`COMPLETED`、`FAILED`、`CANCELLED` 等状态表示任务
 已经结束，不能再通过恢复命令重新打开。
@@ -263,7 +263,7 @@ runner.resume(
 ### 延迟重试
 
 `RETRY_SCHEDULED` 表示暂时性错误已经安排稍后重试。大多数应用不需要手动恢复这类任务，由
-`AgentWorker` 在到达 `getNextRunnableAt()` 指定的时间后继续执行即可。
+业务调度器在到达 `getNextRunnableAt()` 指定的时间后调用 `resume(turnId, AgentResumeCommand.retry())` 即可。
 
 需要人工强制提前继续时，可以使用：
 
@@ -290,7 +290,7 @@ runner.resume(turn.getId(), AgentResumeCommand.retryModel(failure.getFailureId()
 ```java
 AgentTurn result = runner.run(agent, conversationId, "继续");
 
-// 只保存新消息，稍后由 Worker 执行。
+// 只保存新消息，稍后由业务调度器执行。
 AgentTurn runnable = runner.submitMessage(agent, conversationId, "改用更短的回答");
 ```
 
@@ -323,7 +323,7 @@ AgentTurn runnable = runner.submitResume(turnId, command);
 ```
 
 `submitResume(...)` 只接受并保存外部结果，不会在当前请求中继续调用模型或工具。之后需要由已配置的
-`AgentWorker` 在后台继续任务。
+业务线程在后台继续任务。
 
 | 方式 | 是否立即继续执行 | 适用场景 |
 | --- | --- | --- |
@@ -332,7 +332,7 @@ AgentTurn runnable = runner.submitResume(turnId, command);
 | `run(..., conversationId, message)` | 是 | 新会话创建 Turn；阻塞会话复用原 Turn 并追加消息 |
 | `submitMessage(...)` | 否 | 新会话创建 READY Turn；阻塞会话追加消息并保存为 RUNNING |
 
-无论使用哪一种方式，都必须继续原来的 `turnId`。后台执行方式见 [Worker](./worker)。
+无论使用哪一种方式，都必须继续原来的 `turnId`。
 
 ## 主动挂起与自动挂起
 
@@ -421,6 +421,5 @@ if (context != null && context.isResumed()) {
 - 为高风险操作增加授权确认：[人工审批](./human-approval)
 - 配置自动重试：[错误处理与重试](./retry)
 - 配置等待期限：[超时控制](./timeouts)
-- 了解后台任务处理：[Worker](./worker)
 - 了解生产环境的任务保存方式：[任务快照持久化](./store)
 - 读取工具的调用身份和恢复来源：[AgentToolContext](./tool-context)

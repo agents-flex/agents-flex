@@ -26,7 +26,7 @@ Agents-Flex 除了提供模型接入，还继续解决“如何构建能够长�
 | 已有 Spring Boot 系统，需要快速接入模型、Tool Calling 或 RAG | **Spring AI** | 自动配置、Fluent `ChatClient`、结构化输出、Advisor、Actuator 和 Spring 生态集成更成熟 |
 | 希望核心能力不依赖 Spring，运行在普通 Java 或其他 JVM 框架中 | **Agents-Flex** | 核心保持独立，同时提供可选的 Spring Boot Starter |
 | 需要更多国际模型与向量数据库的开箱适配 | **Spring AI** | Provider 和 Vector Store 的覆盖范围更广 |
-| 需要 Agent 跨请求、跨进程暂停和恢复 | **Agents-Flex** | Agent Turn、快照、Lease、Worker、审批和恢复是一等运行时能力 |
+| 需要 Agent 跨请求、跨进程暂停和恢复 | **Agents-Flex** | Agent Turn、快照、版本 CAS、审批和恢复是一等运行时能力 |
 | 需要模型节点负载均衡、故障转移和熔断恢复 | **Agents-Flex** | ChatModel 与 EmbeddingModel 均有对业务透明的高可用路由 |
 | 需要 OCR、视频生成等国内多模态服务 | **Agents-Flex** | 提供统一模型抽象和百度智能云、Gitee AI、MinerU、阿里云、火山引擎等适配 |
 | 需要治理供应商长任务的 QPS、账号并发、租户配额和调度顺序 | **Agents-Flex** | 通用异步任务模块内置持久化、Worker 领取、重试以及调度与准入控制 |
@@ -212,8 +212,8 @@ Tool Calling 能让模型调用方法，但它本身不等于生产级 Agent。�
 | --- | --- | --- |
 | 有状态的 Agent 执行模型 | **整体支持**。`agents-flex-agent` 以 `AgentTurn` 和 `AgentRunner` 运行任务，每次执行都有明确 Phase 与状态迁移 | ⚠️ **部分支持**。ToolCallingAdvisor 能推进工具循环，但没有对等的持久化 Turn 状态机 |
 | 完整快照并恢复 Agent 执行现场 | **整体支持**。`AgentTurnSnapshot` 保存消息、ToolCall、Phase、预算、挂起原因及父子关系，可从中断点继续 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
-| 可跨进程共享的 Agent Store | **整体支持**。`agents-flex-agent-store-jdbc/redis` 持久化 Snapshot、CAS、取消/恢复命令与 Lease | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
-| 多 Worker 安全领取和执行任务 | **整体支持**。`AgentWorker` 使用 Lease 与 fencing token 防止过期 Worker 重复提交结果 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
+| 可跨进程共享的 Agent Store | **整体支持**。`agents-flex-agent-store-jdbc/redis` 持久化 Snapshot、CAS、取消/恢复命令 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
+| Agent Turn 的并发版本保护 | **支持**。`AgentTurnStore` 使用版本 CAS 防止旧快照覆盖新进度 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | 跨请求的审批、表单、暂停与恢复 | **整体支持**。等待是可持久化的正常状态，用户或外部系统可通过另一个请求恢复执行 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | Agent 执行预算 | **整体支持**。`AgentBudget` 统一限制迭代、Step、Tool、Token 与执行耗时，达到上限后由 Agent 状态机终止 Turn | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | 可持久化的 Agent 重试调度 | **整体支持**。`AgentRetryPolicy` 定义重试次数、退避间隔和最大等待时间，下一次重试时间随 Turn 快照持久化，可由 Worker 在到期后继续执行 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |

@@ -63,27 +63,6 @@ public class RedisAgentStoresIntegrationTest {
         assertEquals(0, turn.getState().getVersion());
         assertTrue(turns.requestCancellation("turn-1"));
         assertTrue(turns.load("turn-1").getState().isCancellationRequested());
-        AgentTurnSnapshot claimedTurn = turns.claimRunnable("worker", 100, 1000, 1).get(0);
-        assertEquals("worker", claimedTurn.getState().getLeaseOwner());
-        assertEquals(2000, turns.renewLease("turn-1", "worker",
-            claimedTurn.getState().getLeaseId(), 200, 2000).getState().getLeaseUntil());
-        turns.releaseLease("turn-1", "worker", claimedTurn.getState().getLeaseId());
-
-    }
-
-    @Test
-    public void shouldAllowOnlyOneWorkerToClaimRun() throws Exception {
-        final RedisAgentTurnStore turns = config.turnStore();
-        turns.save(snapshot("race", AgentTurnStatus.READY), -1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        CountDownLatch start = new CountDownLatch(1);
-        try {
-            List<Future<List<AgentTurnSnapshot>>> futures = new ArrayList<>();
-            futures.add(executor.submit(() -> { start.await(); return turns.claimRunnable("worker-a", 100, 1000, 1); }));
-            futures.add(executor.submit(() -> { start.await(); return turns.claimRunnable("worker-b", 100, 1000, 1); }));
-            start.countDown();
-            assertEquals(1, futures.get(0).get().size() + futures.get(1).get().size());
-        } finally { executor.shutdownNow(); }
     }
 
     @Test
@@ -102,22 +81,7 @@ public class RedisAgentStoresIntegrationTest {
         assertNull(store.load("missing-conversation"));
     }
 
-    /** 取消信号即使保留在终态快照中，也不能让终态 Turn 再次进入运行队列。 */
-    @Test
-    public void shouldNeverReclaimCanceledTerminalTurn() {
-        RedisAgentTurnStore turns = config.turnStore();
-        turns.save(snapshot("terminal", AgentTurnStatus.READY), -1);
-        assertTrue(turns.requestCancellation("terminal"));
-        AgentTurnSnapshot claimed = turns.claimRunnable("worker", 10, 100, 1).get(0);
-        AgentTurnSnapshot terminal = claimed.withState(claimed.getState().toBuilder()
-            .status(AgentTurnStatus.CANCELLED).build());
-        AgentTurnSnapshot saved = turns.save(terminal, claimed.getState().getVersion());
-        turns.releaseLease("terminal", "worker", saved.getState().getLeaseId());
-
-        assertTrue(turns.claimRunnable("other", 11, 100, 1).isEmpty());
-    }
-
-    /** Redis Turn Store 必须拒绝旧版本写入与错误 fencing token。 */
+    /** Redis Turn Store 必须拒绝旧版本写入。 */
     @Test
     public void shouldEnforceVersionAndLeaseBoundaries() {
         RedisAgentTurnStore turns = config.turnStore();
@@ -129,15 +93,6 @@ public class RedisAgentStoresIntegrationTest {
             assertTrue(expected.getMessage().contains("boundaries"));
         }
 
-        AgentTurnSnapshot claimed = turns.claimRunnable("owner", 10, 100, 1).get(0);
-        try {
-            turns.renewLease("boundaries", "owner", "stale", 20, 200);
-            fail("Expected stale lease rejection");
-        } catch (IllegalStateException expected) {
-            assertTrue(expected.getMessage().contains("owner"));
-        }
-        turns.releaseLease("boundaries", "owner", "stale");
-        assertEquals(claimed.getState().getLeaseId(), turns.load("boundaries").getState().getLeaseId());
     }
 
     /** 活动会话查询必须基于 Redis 中的最新投影，而不是序列化时的旧状态。 */

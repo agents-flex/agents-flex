@@ -1,6 +1,6 @@
 ---
 title: Demo：人工审批
-description: 构建高风险工具审批流程，并通过 submitResume 和 Worker 跨请求恢复。
+description: 构建高风险工具审批流程，并通过 submitResume 和业务线程跨请求恢复。
 ---
 
 # Demo：人工审批
@@ -8,7 +8,7 @@ description: 构建高风险工具审批流程，并通过 submitResume 和 Work
 ## 概述
 
 本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Snapshot 并等待人工批准；
-ChatMemory 同时出现待处理审批消息；审批服务调用 `submitResume` 后 CAS 更新原消息；后台 Worker 使用
+ChatMemory 同时出现待处理审批消息；审批服务调用 `submitResume` 后 CAS 更新原消息；业务线程使用
 另一个 Runner 领取原 Turn 并执行一次部署。
 
 完整源码位于 `demos/agent-demo/src/main/java/com/agentsflex/demo/agent/HumanApprovalAgentDemo.java`。
@@ -102,20 +102,14 @@ secondRunner.submitResume(waiting.getId(), approval);
 `AgentActionMessage` 通过 expectedVersion CAS 更新为 `APPROVED`，`getActions()` 返回空列表，页面
 无需额外关联一条结果消息。生产环境应先由审批业务保存唯一事件 ID 并完成幂等消费，再调用该方法。
 
-## Worker 恢复
+## 显式恢复
 
 ```java
-List<AgentTurn> processed;
-try (AgentWorker worker = new AgentWorker(
-    "release-worker-01", secondRunner, 30_000)) {
-    processed = worker.pollAndRun(10);
-}
-
-AgentTurn completed = processed.get(0);
+AgentTurn completed = secondRunner.runUntilBlocked(waiting.getId());
 System.out.println(completed.getFinalOutput());
 ```
 
-Worker 领取已恢复的 Turn。Runner 从 PROCESS_TOOLS executionPoint 执行原调用，写入 ToolMessage 后请求模型生成最终答案，不会重新生成部署参数。
+Runner 从 PROCESS_TOOLS executionPoint 执行原调用，写入 ToolMessage 后请求模型生成最终答案，不会重新生成部署参数。
 
 ## 拒绝审批
 

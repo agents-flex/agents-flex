@@ -21,7 +21,7 @@
 | Message Compression | Agents-Flex Native | 可选择消息数、Turn 数、Token 数、始终或从不触发，并支持整段历史与逐消息两种模型压缩模式 |
 | Suspend / Resume | Agents-Flex Native + Demo Control | READY 可立即挂起；运行中请求会在当前原子 Step 完成后的安全检查点生效 |
 | Budget Control | Agents-Flex Native | 输入、输出、总 Token、工具次数和墙钟时长由用户创建 Agent 时配置，并展示原生超限原因 |
-| Retry | Agents-Flex Native | 来源校验前两次失败，由 `AgentRetryPolicy` 和 `AgentWorker` 恢复同一 ToolCall，同时展示间隔和退避策略 |
+| Retry | Agents-Flex Native | 来源校验前两次失败，由 `AgentRetryPolicy` 和业务调度器恢复同一 ToolCall，同时展示间隔和退避策略 |
 | Trace + Metrics | Agents-Flex OpenTelemetry | 每个 Run 使用独立 `TelemetryRoute`，展示真实 Chat/Tool Span、Token、内容和原生 Metrics；生命周期事件单独展示 |
 | Cost | Demo Projection | 金额仅按 Token 做展示性估算，标记为 `DEMO_PROJECTION` |
 
@@ -29,7 +29,6 @@
 
 ## 开源地址
 开源地址：https://gitee.com/agents-flex/agents-flex-demo
-
 
 
 

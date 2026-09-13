@@ -26,30 +26,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/** 验证 Worker、租约和事件监听器组成的长任务执行链路。 */
+/** 验证持久化 Turn、事件监听器和显式恢复组成的长任务执行链路。 */
 public class AgentLongRunningScenarioTest {
-
-    @Test
-    public void shouldAllowAnotherWorkerToClaimOnlyAfterLeaseExpires() {
-        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
-        AgentScenarioTestSupport.QueueChatModel model =
-            new AgentScenarioTestSupport.QueueChatModel();
-        Agent agent = Agent.builder("lease-expiry-agent").chatModel(model).build();
-        AgentTurn turn = new AgentRunner(store, new InMemoryAgentLoader()).start(agent, "work");
-        long now = System.currentTimeMillis();
-
-        List<AgentTurnSnapshot> first = store.claimRunnable("worker-a", now, 1000, 1);
-        List<AgentTurnSnapshot> beforeExpiry =
-            store.claimRunnable("worker-b", now + 999, 1000, 1);
-        List<AgentTurnSnapshot> afterExpiry =
-            store.claimRunnable("worker-b", now + 1001, 1000, 1);
-
-        assertEquals(1, first.size());
-        assertTrue(beforeExpiry.isEmpty());
-        assertEquals(1, afterExpiry.size());
-        assertEquals(turn.getId(), afterExpiry.get(0).getState().getTurnId());
-        assertEquals("worker-b", afterExpiry.get(0).getState().getLeaseOwner());
-    }
 
     @Test
     public void shouldObserveApprovalWorkflowAcrossRunners() {
@@ -113,13 +91,8 @@ public class AgentLongRunningScenarioTest {
         assertTrue(requested.isCancellationRequested());
         assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, requested.getStatus());
 
-        List<AgentTurn> processed;
-        try (AgentWorker worker = new AgentWorker("cancel-worker", workerRunner, 30_000)) {
-            processed = worker.pollAndRun(1);
-        }
-
-        assertEquals(1, processed.size());
-        assertEquals(AgentTurnStatus.CANCELLED, processed.get(0).getStatus());
+        AgentTurn processed = workerRunner.runUntilBlocked(requested.getId());
+        assertEquals(AgentTurnStatus.CANCELLED, processed.getStatus());
         assertEquals(0, executions.get());
         assertBefore(events, AgentEventType.CANCELLATION_REQUESTED,
             AgentEventType.TURN_CANCELLED);

@@ -394,10 +394,8 @@ public class AgentBlockedMessageRecoveryTest {
             "message-idempotency-1"));
         assertEquals(1, model.getCallCount());
 
-        List<AgentTurn> processed = new AgentWorker(
-            "idempotent-worker", secondRunner, 1000).pollAndRun(1);
-        assertEquals(1, processed.size());
-        assertEquals(AgentTurnStatus.COMPLETED, processed.get(0).getStatus());
+        AgentTurn processed = secondRunner.runUntilBlocked(duplicate.getId());
+        assertEquals(AgentTurnStatus.COMPLETED, processed.getStatus());
         assertEquals(2, model.getCallCount());
     }
 

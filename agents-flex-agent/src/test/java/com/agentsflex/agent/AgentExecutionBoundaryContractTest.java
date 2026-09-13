@@ -466,15 +466,13 @@ public class AgentExecutionBoundaryContractTest {
             new InMemoryAgentTurnStore(), new InMemoryAgentLoader(agent));
 
         AgentTurn turn = runner.run(agent, "input");
-        new AgentWorker("retry-worker", runner, 1000).pollAndRun(1);
-        List<AgentTurn> finalAttempt = new AgentWorker("retry-worker", runner, 1000)
-            .pollAndRun(1);
+        runner.resume(turn.getId(), AgentResumeCommand.retry());
+        AgentTurn finalAttempt = runner.resume(turn.getId(), AgentResumeCommand.retry());
 
         assertEquals(AgentTurnStatus.RETRY_SCHEDULED, turn.getStatus());
-        assertEquals(1, finalAttempt.size());
-        assertEquals(AgentTurnStatus.FAILED, finalAttempt.get(0).getStatus());
+        assertEquals(AgentTurnStatus.FAILED, finalAttempt.getStatus());
         assertEquals(3, model.getCallCount());
-        assertEquals(2, finalAttempt.get(0).getRetryCount());
+        assertEquals(2, finalAttempt.getRetryCount());
     }
 
     @Test

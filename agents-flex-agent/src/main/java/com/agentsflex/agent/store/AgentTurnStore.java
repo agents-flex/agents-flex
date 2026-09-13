@@ -18,8 +18,8 @@ import java.util.List;
  * <p>Store 只保存可序列化的 {@link AgentTurnSnapshot}，不保存 ChatModel、Tool 或 Agent 等运行时对象。
  * 恢复时由 {@link AgentLoader} 根据 agentId 重新绑定这些对象。</p>
  *
- * <p>{@link #save(AgentTurnSnapshot, long)} 使用乐观锁版本号，避免多个 Worker 或线程静默覆盖同一个
- * AgentTurn 的最新状态。新建记录时 expectedVersion 应为 {@code -1}。</p>
+ * <p>{@link #save(AgentTurnSnapshot, long)} 使用乐观锁版本号，避免多个线程静默覆盖同一个 AgentTurn
+ * 的最新状态。新建记录时 expectedVersion 应为 {@code -1}。</p>
  */
 public interface AgentTurnStore {
 
@@ -31,7 +31,7 @@ public interface AgentTurnStore {
     /**
      * 返回调度存储使用的当前时间。
      *
-     * <p>分布式 Store 应使用数据库或 Redis 服务端时间，避免应用节点时钟漂移导致 Lease 被提前抢占。
+     * <p>分布式 Store 可使用数据库或 Redis 服务端时间，避免应用节点时钟漂移影响重试和超时判断。
      * 进程内实现可以使用本机时间。</p>
      */
     long currentTimeMillis();
@@ -57,32 +57,10 @@ public interface AgentTurnStore {
      * 原子记录取消请求。
      *
      * <p>取消标记是单调信号：一旦写入，在 Turn 进入终止状态前不能被后续 Snapshot 清除。
-     * 该操作不要求调用方持有 Worker Lease，因此 HTTP 控制面可以取消正在后台执行或等待中的任务。</p>
+     * 该操作不要求调用方持有执行锁，因此 HTTP 控制面可以取消正在执行或等待中的任务。</p>
      *
      * @return 本次调用是否首次写入取消请求；Turn 已终止或已经请求取消时返回 {@code false}
      */
     boolean requestCancellation(String turnId);
-
-    /**
-     * 原子领取当前可执行且没有有效租约的 Turn。
-     *
-     * <p>所有 Store 实现都必须明确实现该原子操作；不支持后台调度的应用不应配置 AgentWorker。</p>
-     */
-    List<AgentTurnSnapshot> claimRunnable(String workerId, long now,
-                                          long leaseMillis, int limit);
-
-    /**
-     * 延长指定 Worker 持有的有效租约。
-     *
-     * <p>续租只更新租约时间，不改变 Snapshot 版本。leaseId 必须与领取时返回的唯一令牌一致，
-     * 防止同名 Worker 或已经失效的进程续租新的租约。</p>
-     */
-    AgentTurnSnapshot renewLease(String turnId, String workerId, String leaseId,
-                                 long now, long leaseUntil);
-
-    /**
-     * 仅在 Worker ID 和唯一租约令牌都匹配时释放租约。
-     */
-    void releaseLease(String turnId, String workerId, String leaseId);
 
 }

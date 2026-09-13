@@ -96,72 +96,6 @@ public class AgentAdvancedFeaturesTest {
     }
 
     @Test
-    public void shouldRetryDueRunThroughWorkerLease() {
-        QueueChatModel model = new QueueChatModel();
-        model.enqueue(prompt -> { throw new RuntimeException("temporary"); });
-        model.enqueue(prompt -> new AiMessage("recovered"));
-        Agent agent = Agent.builder("retry-agent")
-            .chatModel(model)
-            .executionPolicy(AgentExecutionPolicy.builder()
-                .retryPolicy(AgentRetryPolicy.builder()
-                    .maxRetries(2)
-                    .initialDelayMillis(0)
-                    .maxDelayMillis(0)
-                    .build())
-                .build())
-            .build();
-        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
-        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-
-        AgentTurn scheduled = runner.run(agent, "retry");
-        assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
-        assertEquals(1, scheduled.getRetryCount());
-
-        List<AgentTurn> processed = new AgentWorker("worker-a", runner, 10000).pollAndRun(1);
-        assertEquals(1, processed.size());
-        assertEquals(AgentTurnStatus.COMPLETED, processed.get(0).getStatus());
-        assertEquals("recovered", processed.get(0).getFinalOutput());
-    }
-
-    @Test
-    public void shouldClaimRunWithOnlyOneWorker() {
-        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
-        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader());
-        Agent agent = Agent.builder("lease-agent").chatModel(new QueueChatModel()).build();
-        AgentTurn turn = runner.start(agent, "lease");
-        long now = System.currentTimeMillis();
-
-        List<AgentTurnSnapshot> first = store.claimRunnable("worker-a", now, 10000, 1);
-        List<AgentTurnSnapshot> second = store.claimRunnable("worker-b", now, 10000, 1);
-
-        assertEquals(1, first.size());
-        assertTrue(second.isEmpty());
-        assertEquals(turn.getId(), first.get(0).getState().getTurnId());
-        store.releaseLease(turn.getId(), "worker-a", first.get(0).getState().getLeaseId());
-        assertEquals(1, store.claimRunnable("worker-b", now, 10000, 1).size());
-    }
-
-    @Test
-    public void shouldRejectExecutionOutsideActiveLease() {
-        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
-        QueueChatModel model = new QueueChatModel();
-        model.enqueue(prompt -> new AiMessage("must not run"));
-        Agent agent = Agent.builder("leased-agent").chatModel(model).build();
-        InMemoryAgentLoader registry = new InMemoryAgentLoader(agent);
-        AgentRunner runner = new AgentRunner(store, registry);
-        AgentTurn turn = runner.start(agent, "lease");
-        store.claimRunnable("worker-a", System.currentTimeMillis(), 10000, 1);
-
-        try {
-            runner.runUntilBlocked(turn.getId());
-            fail("Expected active lease validation");
-        } catch (IllegalStateException expected) {
-            assertTrue(expected.getMessage().contains("worker-a"));
-        }
-        assertEquals(0, model.getCallCount());
-    }
-
-    @Test
     public void shouldStopWhenTokenBudgetIsExceeded() {
         QueueChatModel model = new QueueChatModel();
         model.enqueue(prompt -> {
@@ -227,31 +161,6 @@ public class AgentAdvancedFeaturesTest {
         assertEquals(AgentTurnStatus.BUDGET_EXCEEDED, turn.getStatus());
         assertTrue(turn.getBudgetExceededReason().startsWith("maxToolCalls (used="));
         assertEquals(1, executions.get());
-    }
-
-    @Test
-    public void shouldAutomaticallyPollRunnableRuns() throws Exception {
-        QueueChatModel model = new QueueChatModel();
-        model.enqueue(prompt -> new AiMessage("background complete"));
-        Agent agent = Agent.builder("background-agent").chatModel(model).build();
-        InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
-        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
-        CountDownLatch completed = new CountDownLatch(1);
-        runner.addEventListener(event -> {
-            if (event.getType() == AgentEventType.TURN_COMPLETED) completed.countDown();
-        });
-        AgentTurn scheduled = runner.start(agent, "background");
-
-        AgentWorker worker = new AgentWorker("background-worker", runner, 10000);
-        try {
-            worker.startPolling(5, 1);
-            assertTrue(completed.await(2, TimeUnit.SECONDS));
-        } finally {
-            worker.close();
-        }
-
-        assertEquals(AgentTurnStatus.COMPLETED,
-            runner.restore(scheduled.getId()).getStatus());
     }
 
     @Test
@@ -372,18 +281,6 @@ public class AgentAdvancedFeaturesTest {
         @Override public boolean requestCancellation(String turnId) {
             return delegate.requestCancellation(turnId);
         }
-        @Override public java.util.List<AgentTurnSnapshot> claimRunnable(
-            String workerId, long now, long leaseMillis, int limit) {
-            return delegate.claimRunnable(workerId, now, leaseMillis, limit);
-        }
-        @Override public AgentTurnSnapshot renewLease(String turnId, String workerId,
-                                                       String leaseId, long now, long leaseUntil) {
-            return delegate.renewLease(turnId, workerId, leaseId, now, leaseUntil);
-        }
-        @Override public void releaseLease(String turnId, String workerId, String leaseId) {
-            delegate.releaseLease(turnId, workerId, leaseId);
-        }
-
         @Override
         public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
             AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
@@ -409,18 +306,6 @@ public class AgentAdvancedFeaturesTest {
         @Override public boolean requestCancellation(String turnId) {
             return delegate.requestCancellation(turnId);
         }
-        @Override public java.util.List<AgentTurnSnapshot> claimRunnable(
-            String workerId, long now, long leaseMillis, int limit) {
-            return delegate.claimRunnable(workerId, now, leaseMillis, limit);
-        }
-        @Override public AgentTurnSnapshot renewLease(String turnId, String workerId,
-                                                       String leaseId, long now, long leaseUntil) {
-            return delegate.renewLease(turnId, workerId, leaseId, now, leaseUntil);
-        }
-        @Override public void releaseLease(String turnId, String workerId, String leaseId) {
-            delegate.releaseLease(turnId, workerId, leaseId);
-        }
-
         @Override
         public AgentTurnSnapshot save(AgentTurnSnapshot snapshot, long expectedVersion) {
             AgentTurnSnapshot saved = delegate.save(snapshot, expectedVersion);
