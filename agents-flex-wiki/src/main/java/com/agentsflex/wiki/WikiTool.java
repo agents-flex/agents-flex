@@ -144,9 +144,10 @@ public class WikiTool {
                         throw new IllegalArgumentException("Tool arguments must not be null");
                     }
                     Object pathValue = arguments.get("path");
-                    String path = pathValue instanceof String
-                        ? ((String) pathValue)
-                        : (pathValue == null ? "" : pathValue.toString());
+                    if (!(pathValue instanceof String) || !hasText((String) pathValue)) {
+                        throw new IllegalArgumentException("Wiki path must be a non-blank string");
+                    }
+                    String path = (String) pathValue;
                     if (!isSafePath(path)) {
                         throw new IllegalArgumentException(
                             "Wiki path must be relative and must not contain traversal segments");

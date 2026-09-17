@@ -1,5 +1,24 @@
 # Agents-Flex ChangeLog
 
+## v2.3.0 20260916
+- docs(store): clarify persistent storage and explicit task execution semantics
+- test(jdbc): add real MySQL integration tests with required flag support
+- refactor(agent): remove worker lease mechanism and simplify task execution
+- fix(core): match Markdown header code fence delimiters
+- feat(tool): add AgentToolCancellation for managing external resource cleanup
+- refactor(agent): improve execution registry thread safety and stop handling
+- feat(agent): add stop and stopAndWait methods for immediate execution interruption
+- feat(agent): enhance agent event system and user interaction handling
+- refactor(agent): extract tool call processing logic to dedicated processor
+- refactor(agent): separate approval exception from general suspension base class
+- feat(agent): enhance tool approval system with multi-stage support
+- feat(toolsearch): add semantic tool search provider
+- feat(wiki): enhance XML/Markdown serialization and security
+- fix(router): prevent duplicate error notifications in streaming chat model
+- docs(agent): update agent documentation with detailed configuration and loading guides
+- (docs): remove task planning and subagent navigation items
+
+
 ## v2.2.9 20260903
 - fix(agent): propagate chat context into timed tool execution
 - feat(agent): enhance tool execution with chat context propagation

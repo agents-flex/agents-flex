@@ -62,7 +62,7 @@ agents-flex-agent-quickstart/
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <agents-flex.version>2.2.9</agents-flex.version>
+        <agents-flex.version>2.3.0</agents-flex.version>
     </properties>
 
     <dependencies>

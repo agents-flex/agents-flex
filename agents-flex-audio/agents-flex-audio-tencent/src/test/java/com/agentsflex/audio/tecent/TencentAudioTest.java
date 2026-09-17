@@ -5,12 +5,20 @@ import com.agentsflex.core.audio.stt.SpeechToTextModel;
 import com.agentsflex.core.audio.stt.SpeechToTextRequest;
 import com.agentsflex.core.audio.stt.SpeechToTextResponse;
 import com.agentsflex.core.audio.tts.*;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 
 public class TencentAudioTest {
+
+    @BeforeClass
+    public static void requireLiveProviderAccess() {
+        Assume.assumeTrue("Set -Dagentsflex.integration=true to run live provider tests",
+            Boolean.getBoolean("agentsflex.integration"));
+    }
 
     @Test
     public void testTextToSpeech() {
