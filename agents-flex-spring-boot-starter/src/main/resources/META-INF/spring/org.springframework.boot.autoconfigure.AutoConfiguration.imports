@@ -6,3 +6,6 @@ com.agentsflex.springboot.store.aliyun.AliyunAutoConfiguration
 com.agentsflex.springboot.store.chroma.ChromaAutoConfiguration
 com.agentsflex.springboot.store.elasticsearch.ElasticSearchAutoConfiguration
 com.agentsflex.springboot.store.opensearch.OpenSearchAutoConfiguration
+com.agentsflex.springboot.graph.neo4j.Neo4jGraphAutoConfiguration
+com.agentsflex.springboot.graph.nebula.NebulaGraphAutoConfiguration
+com.agentsflex.springboot.graph.GraphRegistryAutoConfiguration

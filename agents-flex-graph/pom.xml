@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.agentsflex</groupId>
+        <artifactId>parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <name>agents-flex-graph</name>
+    <artifactId>agents-flex-graph</artifactId>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>agents-flex-graph-api</module>
+        <module>agents-flex-graph-neo4j</module>
+        <module>agents-flex-graph-nebula</module>
+    </modules>
+</project>

@@ -170,6 +170,11 @@ const ragStoreSidebar = [
             {text: '故障排查与生产建议', link: '/zh/store/troubleshooting'},
         ]
     },
+    {
+        text: 'Graph 图数据库模块', items: [
+            {text: '模块概述', link: '/zh/graph/overview'},
+        ]
+    },
 ]
 
 const developerReferenceSidebar = [
@@ -361,6 +366,7 @@ export default withMermaid(defineConfig({
             '/zh/async-task/': mediaSidebar,
             '/zh/rag/': ragStoreSidebar,
             '/zh/store/': ragStoreSidebar,
+            '/zh/graph/': ragStoreSidebar,
         },
         footer: {
             message: 'Released under the Apache License.',

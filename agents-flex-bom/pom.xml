@@ -252,6 +252,21 @@
         </dependency>
         <!--store end-->
 
+        <!--graph start-->
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-neo4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-nebula</artifactId>
+        </dependency>
+        <!--graph end-->
+
         <!--search engines start-->
         <dependency>
             <groupId>com.agentsflex</groupId>

@@ -51,6 +51,7 @@
         <module>agents-flex-observability</module>
         <module>agents-flex-chat</module>
         <module>agents-flex-store</module>
+        <module>agents-flex-graph</module>
         <module>agents-flex-spring-boot-starter</module>
         <module>agents-flex-image</module>
         <module>agents-flex-video</module>
@@ -555,6 +556,24 @@
                 <version>${revision}</version>
             </dependency>
             <!--store end-->
+
+            <!--graph start-->
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-graph-api</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-graph-neo4j</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-graph-nebula</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!--graph end-->
 
             <!--starter start-->
             <dependency>
