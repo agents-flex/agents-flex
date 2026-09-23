@@ -20,15 +20,24 @@ public final class NativeGraphQuery {
      * 参数名到参数值的只读映射。
      */
     private final Map<String, Object> parameters;
+    /**
+     * 查询意图，默认是只读查询。
+     */
+    private final GraphQueryKind kind;
 
     /**
      * 创建并冻结原生查询。
      */
     private NativeGraphQuery(String statement, Map<String, ?> parameters) {
+        this(statement, parameters, GraphQueryKind.READ);
+    }
+
+    private NativeGraphQuery(String statement, Map<String, ?> parameters, GraphQueryKind kind) {
         this.statement = GraphIdentifiers.requireText(statement, "native statement");
         Map<String, Object> copy = new LinkedHashMap<>();
         if (parameters != null) copy.putAll(parameters);
         this.parameters = Collections.unmodifiableMap(copy);
+        this.kind = kind == null ? GraphQueryKind.READ : kind;
     }
 
     /**
@@ -36,6 +45,13 @@ public final class NativeGraphQuery {
      */
     public static NativeGraphQuery of(String statement, Map<String, ?> parameters) {
         return new NativeGraphQuery(statement, parameters);
+    }
+
+    /**
+     * 创建带意图分类的原生查询。
+     */
+    public static NativeGraphQuery of(String statement, Map<String, ?> parameters, GraphQueryKind kind) {
+        return new NativeGraphQuery(statement, parameters, kind);
     }
 
     /**
@@ -50,5 +66,19 @@ public final class NativeGraphQuery {
      */
     public Map<String, Object> getParameters() {
         return parameters;
+    }
+
+    /**
+     * @return 查询意图。
+     */
+    public GraphQueryKind getKind() {
+        return kind;
+    }
+
+    /**
+     * @return 是否声明为只读查询。
+     */
+    public boolean isReadOnly() {
+        return kind == GraphQueryKind.READ;
     }
 }

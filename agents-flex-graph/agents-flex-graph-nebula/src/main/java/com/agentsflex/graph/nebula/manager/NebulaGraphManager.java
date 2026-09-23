@@ -5,9 +5,10 @@ import com.agentsflex.graph.manager.GraphManager;
 import com.agentsflex.graph.schema.GraphSchema;
 import com.agentsflex.graph.schema.GraphSchemaInspection;
 import com.agentsflex.graph.schema.GraphSchemaValidation;
+import com.agentsflex.graph.schema.GraphSchemaApplyResult;
 import com.agentsflex.graph.manager.GraphSpaceDefinition;
 import com.agentsflex.graph.GraphException;
-import com.agentsflex.graph.UnsupportedGraphFeatureException;
+import com.agentsflex.graph.error.GraphErrorCode;
 import com.agentsflex.graph.nebula.NebulaGraphStore;
 import com.agentsflex.graph.nebula.NebulaGraphStoreConfig;
 
@@ -60,7 +61,7 @@ public final class NebulaGraphManager implements GraphManager {
         try {
             return listSpaces().contains(name);
         } catch (Exception e) {
-            throw new IllegalStateException("Unable to list Nebula spaces", e);
+            throw failure(GraphErrorCode.CONNECTION_FAILED, "Unable to list Nebula spaces", e);
         }
     }
 
@@ -71,12 +72,13 @@ public final class NebulaGraphManager implements GraphManager {
     public List<String> listSpaces() {
         try {
             ResultSet result = store.pool("").execute("SHOW SPACES");
-            if (!result.isSucceeded()) throw new IllegalStateException(result.getErrorMessage());
+            if (!result.isSucceeded()) throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
+                result.getErrorMessage());
             List<String> spaces = new ArrayList<>();
             for (int i = 0; i < result.rowsSize(); i++) spaces.add(result.rowValues(i).get(0).toString());
             return spaces;
         } catch (Exception e) {
-            throw new IllegalStateException("Unable to list Nebula spaces", e);
+            throw failure(GraphErrorCode.CONNECTION_FAILED, "Unable to list Nebula spaces", e);
         }
     }
 
@@ -95,7 +97,8 @@ public final class NebulaGraphManager implements GraphManager {
     @Override
     public void applySchema(String space, GraphSchema schema, SchemaMode mode) {
         GraphSchemaValidation validation = validateSchema(space, schema);
-        if (!validation.isValid()) throw new IllegalArgumentException(validation.getErrors().toString());
+        if (!validation.isValid()) throw new GraphException(GraphErrorCode.SCHEMA_VALIDATION_FAILED,
+            validation.getErrors().toString());
         if (mode == SchemaMode.VALIDATE_ONLY) return;
         for (GraphSchema.NodeType node : schema.getNodeTypes()) {
             StringBuilder statement = new StringBuilder("CREATE TAG IF NOT EXISTS ").append(node.getLabel()).append(" (");
@@ -134,13 +137,49 @@ public final class NebulaGraphManager implements GraphManager {
     }
 
     /**
+     * 应用 Schema 并返回适合开发工具展示的步骤和后端警告。
+     */
+    @Override
+    public GraphSchemaApplyResult applySchemaResult(String space, GraphSchema schema, SchemaMode mode) {
+        long started = System.currentTimeMillis();
+        GraphSchemaValidation validation = validateSchema(space, schema);
+        if (!validation.isValid()) {
+            return GraphSchemaApplyResult.failure(new GraphException(GraphErrorCode.SCHEMA_VALIDATION_FAILED,
+                validation.getErrors().toString()), System.currentTimeMillis() - started);
+        }
+        List<String> steps = new ArrayList<>();
+        for (GraphSchema.NodeType node : schema.getNodeTypes()) steps.add("ensure tag " + node.getLabel());
+        for (GraphSchema.EdgeType edge : schema.getEdgeTypes()) steps.add("ensure edge " + edge.getType());
+        for (GraphSchema.Index index : schema.getIndexes()) steps.add("ensure index " + index.getName());
+        try {
+            SchemaMode resolvedMode = mode == null ? SchemaMode.ADDITIVE : mode;
+            applySchema(space, schema, resolvedMode);
+            return GraphSchemaApplyResult.success(resolvedMode == SchemaMode.VALIDATE_ONLY
+                    ? java.util.Collections.<String>emptyList() : steps, validation.getWarnings(),
+                System.currentTimeMillis() - started);
+        } catch (RuntimeException error) {
+            return GraphSchemaApplyResult.failure(error, System.currentTimeMillis() - started);
+        }
+    }
+
+    /**
      * 校验空间名和 Schema 非空；更细的能力差异在应用阶段报告。
      */
     @Override
     public GraphSchemaValidation validateSchema(String space, GraphSchema schema) {
         GraphIdentifiers.requireValid(space, "space");
         if (schema == null) throw new IllegalArgumentException("schema must not be null");
-        return GraphSchemaValidation.valid();
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        for (GraphSchema.Index index : schema.getIndexes()) {
+            if (index.isUnique()) {
+                errors.add("Nebula portable Schema does not support unique indexes: " + index.getName());
+            }
+        }
+        if (!schema.getEdgeTypes().isEmpty()) {
+            warnings.add("Nebula edge endpoint labels are not enforced by portable Schema");
+        }
+        return new GraphSchemaValidation(errors, warnings);
     }
 
     /**
@@ -149,9 +188,10 @@ public final class NebulaGraphManager implements GraphManager {
     private void execute(String space, String statement) {
         try {
             ResultSet result = store.pool(space).execute(statement);
-            if (!result.isSucceeded()) throw new IllegalStateException(result.getErrorMessage());
+            if (!result.isSucceeded()) throw new GraphException(GraphErrorCode.SCHEMA_APPLY_FAILED,
+                result.getErrorMessage());
         } catch (Exception e) {
-            throw new IllegalStateException("Nebula management operation failed: " + e.getMessage(), e);
+            throw failure(GraphErrorCode.SCHEMA_APPLY_FAILED, "Nebula management operation failed", e);
         }
     }
 
@@ -183,6 +223,7 @@ public final class NebulaGraphManager implements GraphManager {
         GraphIdentifiers.requireValid(space, "space");
         GraphSchema.Builder schema = GraphSchema.builder();
         List<String> warnings = new ArrayList<>();
+        List<String> unsupportedMetadata = new ArrayList<>();
         try {
             ResultSet tags = store.pool(space).execute("SHOW TAGS");
             ensureSucceeded(tags);
@@ -205,11 +246,16 @@ public final class NebulaGraphManager implements GraphManager {
                 schema.edgeType(GraphSchema.EdgeType.any(edge, describeProperties(space, "EDGE", edge, warnings)));
             }
         } catch (Exception e) {
-            throw new GraphException("Unable to inspect Nebula schema: " + e.getMessage(), e);
+            if (e instanceof GraphException) throw (GraphException) e;
+            throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
+                "Unable to inspect Nebula schema: " + e.getMessage(), e);
         }
         warnings.add("Nebula edge schemas do not constrain source and target tags");
         warnings.add("Nebula index metadata is not included in the portable inspection result");
-        return new GraphSchemaInspection(schema.build(), false, warnings);
+        unsupportedMetadata.add("edge.endpointLabels");
+        unsupportedMetadata.add("indexes");
+        return new GraphSchemaInspection(schema.build(), false, warnings, unsupportedMetadata,
+            "", System.currentTimeMillis());
     }
 
     private GraphSchema.Property[] describeProperties(String space, String kind, String name,
@@ -232,7 +278,8 @@ public final class NebulaGraphManager implements GraphManager {
     }
 
     private void ensureSucceeded(ResultSet result) {
-        if (!result.isSucceeded()) throw new IllegalStateException(result.getErrorMessage());
+        if (!result.isSucceeded()) throw new GraphException(GraphErrorCode.SCHEMA_APPLY_FAILED,
+            result.getErrorMessage());
     }
 
     private String text(com.vesoft.nebula.client.graph.data.ValueWrapper value) throws Exception {
@@ -247,5 +294,13 @@ public final class NebulaGraphManager implements GraphManager {
         if (type.equals("date")) return GraphSchema.PropertyType.DATE;
         if (type.contains("datetime") || type.contains("timestamp")) return GraphSchema.PropertyType.DATETIME;
         return GraphSchema.PropertyType.STRING;
+    }
+
+    /**
+     * 保留已有 GraphException，统一包装底层管理异常。
+     */
+    private GraphException failure(GraphErrorCode code, String message, Exception error) {
+        if (error instanceof GraphException) return (GraphException) error;
+        return new GraphException(code, message + ": " + error.getMessage(), error);
     }
 }

@@ -1,11 +1,14 @@
 package com.agentsflex.graph.neo4j.manager;
 
 import com.agentsflex.graph.UnsupportedGraphFeatureException;
+import com.agentsflex.graph.GraphException;
+import com.agentsflex.graph.error.GraphErrorCode;
 
 import com.agentsflex.graph.manager.GraphManager;
 import com.agentsflex.graph.schema.GraphSchema;
 import com.agentsflex.graph.schema.GraphSchemaValidation;
 import com.agentsflex.graph.schema.GraphSchemaInspection;
+import com.agentsflex.graph.schema.GraphSchemaApplyResult;
 import com.agentsflex.graph.manager.GraphSpaceDefinition;
 import com.agentsflex.graph.identifier.GraphIdentifiers;
 import com.agentsflex.graph.neo4j.Neo4jGraphStoreConfig;
@@ -59,6 +62,10 @@ public final class Neo4jGraphManager implements GraphManager {
             } else {
                 session.run("CREATE DATABASE " + definition.getName()).consume();
             }
+        } catch (RuntimeException error) {
+            if (error instanceof GraphException) throw error;
+            throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
+                "Neo4j space creation failed: " + error.getMessage(), error);
         }
     }
 
@@ -73,6 +80,9 @@ public final class Neo4jGraphManager implements GraphManager {
                 Collections.<String, Object>singletonMap("name", name)).list())
                 return true;
             return false;
+        } catch (RuntimeException error) {
+            throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
+                "Neo4j space lookup failed: " + error.getMessage(), error);
         }
     }
 
@@ -87,6 +97,9 @@ public final class Neo4jGraphManager implements GraphManager {
                 result.add(record.get("name").asString());
             }
             return result;
+        } catch (RuntimeException error) {
+            throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
+                "Neo4j space listing failed: " + error.getMessage(), error);
         }
     }
 
@@ -98,6 +111,9 @@ public final class Neo4jGraphManager implements GraphManager {
         GraphIdentifiers.requireValid(name, "space");
         try (Session session = driver.session(org.neo4j.driver.SessionConfig.forDatabase("system"))) {
             session.run("DROP DATABASE " + name + " IF EXISTS").consume();
+        } catch (RuntimeException error) {
+            throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
+                "Neo4j space drop failed: " + error.getMessage(), error);
         }
     }
 
@@ -107,7 +123,8 @@ public final class Neo4jGraphManager implements GraphManager {
     @Override
     public void applySchema(String space, GraphSchema schema, SchemaMode mode) {
         GraphSchemaValidation validation = validateSchema(space, schema);
-        if (!validation.isValid()) throw new IllegalArgumentException(validation.getErrors().toString());
+        if (!validation.isValid()) throw new GraphException(GraphErrorCode.SCHEMA_VALIDATION_FAILED,
+            validation.getErrors().toString());
         if (mode == SchemaMode.VALIDATE_ONLY) return;
         try (Session session = driver.session(org.neo4j.driver.SessionConfig.forDatabase(space))) {
             for (GraphSchema.NodeType node : schema.getNodeTypes()) {
@@ -137,7 +154,42 @@ public final class Neo4jGraphManager implements GraphManager {
                         + ") ON (" + properties + ")").consume();
                 }
             }
+        } catch (RuntimeException error) {
+            if (error instanceof GraphException) throw error;
+            throw new GraphException(GraphErrorCode.SCHEMA_APPLY_FAILED,
+                "Neo4j schema apply failed: " + error.getMessage(), error);
         }
+    }
+
+    /**
+     * 应用 Schema 并返回适合开发工具展示的步骤和后端警告。
+     */
+    @Override
+    public GraphSchemaApplyResult applySchemaResult(String space, GraphSchema schema, SchemaMode mode) {
+        long started = System.currentTimeMillis();
+        GraphSchemaValidation validation = validateSchema(space, schema);
+        if (!validation.isValid()) {
+            return GraphSchemaApplyResult.failure(new GraphException(GraphErrorCode.SCHEMA_VALIDATION_FAILED,
+                validation.getErrors().toString()), System.currentTimeMillis() - started);
+        }
+        List<String> steps = schemaSteps(schema);
+        try {
+            SchemaMode resolvedMode = mode == null ? SchemaMode.ADDITIVE : mode;
+            applySchema(space, schema, resolvedMode);
+            return GraphSchemaApplyResult.success(resolvedMode == SchemaMode.VALIDATE_ONLY
+                    ? Collections.<String>emptyList() : steps, validation.getWarnings(),
+                System.currentTimeMillis() - started);
+        } catch (RuntimeException error) {
+            return GraphSchemaApplyResult.failure(error, System.currentTimeMillis() - started);
+        }
+    }
+
+    private List<String> schemaSteps(GraphSchema schema) {
+        List<String> steps = new ArrayList<>();
+        for (GraphSchema.NodeType node : schema.getNodeTypes()) steps.add("ensure node type " + node.getLabel());
+        // Neo4j 关系类型不需要独立 DDL；它们会在写入关系时自然出现。
+        for (GraphSchema.Index index : schema.getIndexes()) steps.add("ensure index " + index.getName());
+        return steps;
     }
 
     /**
@@ -147,7 +199,16 @@ public final class Neo4jGraphManager implements GraphManager {
     public GraphSchemaValidation validateSchema(String space, GraphSchema schema) {
         GraphIdentifiers.requireValid(space, "space");
         if (schema == null) throw new IllegalArgumentException("schema must not be null");
-        return GraphSchemaValidation.valid();
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        for (GraphSchema.Index index : schema.getIndexes()) {
+            if (index.isUnique() && index.getTarget() == GraphSchema.IndexTarget.EDGE) {
+                errors.add("Neo4j portable adapter does not support unique relationship indexes: "
+                    + index.getName());
+            }
+        }
+        warnings.add("Neo4j relationship endpoint labels are not enforced by portable Schema");
+        return new GraphSchemaValidation(errors, warnings);
     }
 
     /**
@@ -160,6 +221,7 @@ public final class Neo4jGraphManager implements GraphManager {
         Map<String, Map<String, GraphSchema.Property>> edges = new LinkedHashMap<>();
         List<GraphSchema.Index> indexes = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        List<String> unsupportedMetadata = new ArrayList<>();
         try (Session session = driver.session(org.neo4j.driver.SessionConfig.forDatabase(space))) {
             for (Record record : session.run("CALL db.labels() YIELD label RETURN label ORDER BY label").list()) {
                 String label = record.get("label").asString();
@@ -275,8 +337,10 @@ public final class Neo4jGraphManager implements GraphManager {
         }
         for (GraphSchema.Index index : indexes) schema.index(index);
         warnings.add("Neo4j relationship endpoint labels are data patterns, not enforceable schema constraints");
+        unsupportedMetadata.add("relationship.endpointLabels");
         // 关系端点标签无法从 Neo4j 的通用关系类型元数据中反推出，因此该结果始终不是完整反查。
-        return new GraphSchemaInspection(schema.build(), false, warnings);
+        return new GraphSchemaInspection(schema.build(), false, warnings, unsupportedMetadata,
+            "", System.currentTimeMillis());
     }
 
     private GraphSchema.PropertyType propertyType(List<String> types) {

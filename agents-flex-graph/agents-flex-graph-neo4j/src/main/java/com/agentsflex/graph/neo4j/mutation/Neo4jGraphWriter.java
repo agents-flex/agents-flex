@@ -6,6 +6,7 @@ import com.agentsflex.graph.importing.GraphImportRequest;
 import com.agentsflex.graph.mutation.GraphMutation;
 import com.agentsflex.graph.data.GraphNode;
 import com.agentsflex.graph.GraphOptions;
+import com.agentsflex.graph.error.GraphErrorCode;
 import com.agentsflex.graph.mutation.GraphWriteResult;
 import com.agentsflex.graph.mutation.GraphWriter;
 import com.agentsflex.graph.neo4j.Neo4jGraphStore;
@@ -56,7 +57,14 @@ public final class Neo4jGraphWriter implements GraphWriter {
     @Override
     public GraphWriteResult mutate(GraphMutation mutation, GraphOptions options) {
         if (mutation == null || mutation.isEmpty()) return GraphWriteResult.success(0, 0);
-        if (runner != null) return write(runner, mutation);
+        if (runner != null) {
+            try {
+                return write(runner, mutation);
+            } catch (RuntimeException e) {
+                return GraphWriteResult.failure(GraphErrorCode.WRITE_FAILED,
+                    "Neo4j mutation failed: " + e.getMessage(), e);
+            }
+        }
         String database = options == null ? config.getDefaultSpace() : options.getSpaceOrDefault(config.getDefaultSpace());
         try (Session session = driver.session(org.neo4j.driver.SessionConfig.forDatabase(database));
              Transaction tx = session.beginTransaction(Neo4jGraphStore.transactionConfig(options))) {
@@ -64,7 +72,8 @@ public final class Neo4jGraphWriter implements GraphWriter {
             tx.commit();
             return result;
         } catch (RuntimeException e) {
-            return GraphWriteResult.failure("Neo4j mutation failed: " + e.getMessage(), e);
+            return GraphWriteResult.failure(GraphErrorCode.WRITE_FAILED,
+                "Neo4j mutation failed: " + e.getMessage(), e);
         }
     }
 

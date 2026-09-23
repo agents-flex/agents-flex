@@ -48,7 +48,41 @@ public final class TraversalQuery implements GraphQuery {
         /**
          * 返回完整路径。
          */
-        PATH
+        PATH,
+        /**
+         * 聚合结果，例如计数、求和或平均值。
+         */
+        AGGREGATE
+    }
+
+    /**
+     * 可移植聚合函数。聚合投影不包含后端方言，适配器负责编译成目标语言。
+     */
+    public enum AggregateFunction {
+        /**
+         * 统计记录数量。
+         */
+        COUNT,
+        /**
+         * 统计不重复值数量。
+         */
+        COUNT_DISTINCT,
+        /**
+         * 求和。
+         */
+        SUM,
+        /**
+         * 求平均值。
+         */
+        AVG,
+        /**
+         * 求最小值。
+         */
+        MIN,
+        /**
+         * 求最大值。
+         */
+        MAX
     }
 
     /**
@@ -121,6 +155,22 @@ public final class TraversalQuery implements GraphQuery {
     }
 
     /**
+     * 按分页请求创建同一查询的不可变副本。
+     */
+    public TraversalQuery page(GraphPageRequest page) {
+        if (page == null) throw new IllegalArgumentException("page must not be null");
+        Builder builder = new Builder(start);
+        builder.steps.addAll(steps);
+        builder.filter = filter;
+        builder.projections.addAll(projections);
+        builder.sorts.addAll(sorts);
+        builder.skip = page.getOffset();
+        builder.limit = page.getLimit();
+        builder.distinct = distinct;
+        return new TraversalQuery(builder);
+    }
+
+    /**
      * 校验别名唯一性、投影引用和分页边界。
      */
     @Override
@@ -139,6 +189,24 @@ public final class TraversalQuery implements GraphQuery {
             if (projection.getKind() != ProjectionKind.PATH && !aliases.contains(projection.getAlias())) {
                 throw new IllegalArgumentException("unknown projection alias: " + projection.getAlias());
             }
+            if (projection.getKind() == ProjectionKind.AGGREGATE
+                && projection.getAggregateFunction() != AggregateFunction.COUNT
+                && projection.getProperty() == null) {
+                throw new IllegalArgumentException("aggregate projection requires a property");
+            }
+        }
+        Set<String> outputNames = new HashSet<>();
+        boolean hasAggregate = false;
+        boolean hasNonAggregate = false;
+        for (Projection projection : projections) {
+            if (!outputNames.add(projection.getOutputName())) {
+                throw new IllegalArgumentException("duplicate projection output name: " + projection.getOutputName());
+            }
+            if (projection.getKind() == ProjectionKind.AGGREGATE) hasAggregate = true;
+            else hasNonAggregate = true;
+        }
+        if (hasAggregate && hasNonAggregate) {
+            throw new IllegalArgumentException("aggregate and non-aggregate projections require explicit grouping");
         }
         for (Sort sort : sorts) {
             if (!aliases.contains(sort.getAlias()))
@@ -420,15 +488,25 @@ public final class TraversalQuery implements GraphQuery {
          * 返回记录中的列名。
          */
         private final String outputName;
+        /**
+         * 聚合函数；非聚合投影为空。
+         */
+        private final AggregateFunction aggregateFunction;
 
         /**
          * 创建投影定义。
          */
         private Projection(ProjectionKind kind, String alias, String property, String outputName) {
+            this(kind, alias, property, outputName, null);
+        }
+
+        private Projection(ProjectionKind kind, String alias, String property, String outputName,
+                           AggregateFunction aggregateFunction) {
             this.kind = kind;
             this.alias = alias;
             this.property = property;
             this.outputName = GraphIdentifiers.requireValid(outputName, "projection output name");
+            this.aggregateFunction = aggregateFunction;
         }
 
         /**
@@ -451,6 +529,27 @@ public final class TraversalQuery implements GraphQuery {
          */
         public static Projection path(String outputName) {
             return new Projection(ProjectionKind.PATH, null, null, outputName);
+        }
+
+        /**
+         * 创建针对完整实体的计数聚合。
+         */
+        public static Projection count(String alias, String outputName) {
+            return aggregate(AggregateFunction.COUNT, alias, null, outputName);
+        }
+
+        /**
+         * 创建针对属性的聚合投影。COUNT_DISTINCT 可用于去重计数。
+         */
+        public static Projection aggregate(AggregateFunction function, String alias, String property,
+                                           String outputName) {
+            if (function == null) throw new IllegalArgumentException("aggregate function must not be null");
+            String validAlias = GraphIdentifiers.requireValid(alias, "aggregate alias");
+            if (function != AggregateFunction.COUNT && property == null) {
+                throw new IllegalArgumentException(function + " requires an aggregate property");
+            }
+            String validProperty = property == null ? null : GraphIdentifiers.requireValid(property, "aggregate property");
+            return new Projection(ProjectionKind.AGGREGATE, validAlias, validProperty, outputName, function);
         }
 
         /**
@@ -479,6 +578,13 @@ public final class TraversalQuery implements GraphQuery {
          */
         public String getOutputName() {
             return outputName;
+        }
+
+        /**
+         * @return 聚合函数；普通投影返回 {@code null}。
+         */
+        public AggregateFunction getAggregateFunction() {
+            return aggregateFunction;
         }
     }
 

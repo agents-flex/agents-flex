@@ -2,6 +2,7 @@ package com.agentsflex.graph.neo4j.query;
 
 import com.agentsflex.graph.query.GraphFilter;
 import com.agentsflex.graph.query.NativeGraphQuery;
+import com.agentsflex.graph.query.GraphUnionQuery;
 import com.agentsflex.graph.query.TraversalQuery;
 
 import java.lang.reflect.Array;
@@ -36,6 +37,8 @@ final class Neo4jCypherCompiler {
                 projections.add("p AS " + projection.getOutputName());
             } else if (projection.getKind() == TraversalQuery.ProjectionKind.ENTITY) {
                 projections.add(projection.getAlias() + " AS " + projection.getOutputName());
+            } else if (projection.getKind() == TraversalQuery.ProjectionKind.AGGREGATE) {
+                projections.add(aggregate(projection) + " AS " + projection.getOutputName());
             } else {
                 projections.add(projection.getAlias() + "." + projection.getProperty()
                     + " AS " + projection.getOutputName());
@@ -60,6 +63,27 @@ final class Neo4jCypherCompiler {
      */
     Compiled compile(NativeGraphQuery query) {
         return new Compiled(query.getStatement(), query.getParameters());
+    }
+
+    /**
+     * 编译多分支 UNION，并为每个分支重命名参数避免冲突。
+     */
+    Compiled compile(GraphUnionQuery query) {
+        query.validate();
+        StringBuilder statement = new StringBuilder();
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        for (int i = 0; i < query.getBranches().size(); i++) {
+            if (i > 0) statement.append(query.isAll() ? " UNION ALL " : " UNION ");
+            Compiled branch = compile(query.getBranches().get(i));
+            String renamed = branch.statement;
+            for (String name : branch.parameters.keySet()) {
+                String target = "u" + i + "_" + name;
+                renamed = renamed.replace("$" + name, "$" + target);
+                parameters.put(target, branch.parameters.get(name));
+            }
+            statement.append(renamed);
+        }
+        return new Compiled(statement.toString(), parameters);
     }
 
     /**
@@ -164,6 +188,31 @@ final class Neo4jCypherCompiler {
                 return " <= ";
             default:
                 throw new IllegalArgumentException("Unsupported operator: " + operator);
+        }
+    }
+
+    /**
+     * 将可移植聚合投影转换为 Cypher 聚合表达式。
+     */
+    private String aggregate(TraversalQuery.Projection projection) {
+        String expression = projection.getProperty() == null
+            ? projection.getAlias() : projection.getAlias() + "." + projection.getProperty();
+        switch (projection.getAggregateFunction()) {
+            case COUNT:
+                return "count(" + expression + ")";
+            case COUNT_DISTINCT:
+                return "count(DISTINCT " + expression + ")";
+            case SUM:
+                return "sum(" + expression + ")";
+            case AVG:
+                return "avg(" + expression + ")";
+            case MIN:
+                return "min(" + expression + ")";
+            case MAX:
+                return "max(" + expression + ")";
+            default:
+                throw new IllegalArgumentException("Unsupported aggregate function: "
+                    + projection.getAggregateFunction());
         }
     }
 

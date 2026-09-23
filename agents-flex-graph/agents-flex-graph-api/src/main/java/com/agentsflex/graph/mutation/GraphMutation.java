@@ -44,6 +44,7 @@ public final class GraphMutation {
      * 将构造器中的可变集合复制为只读快照。
      */
     private GraphMutation(Builder builder) {
+        validate(builder);
         this.nodes = immutable(builder.nodes);
         this.edges = immutable(builder.edges);
         this.deleteNodeIds = Collections.unmodifiableSet(new LinkedHashSet<>(builder.deleteNodeIds));
@@ -102,6 +103,21 @@ public final class GraphMutation {
 
     private static <T> List<T> immutable(List<T> source) {
         return Collections.unmodifiableList(new ArrayList<>(source));
+    }
+
+    /**
+     * 构造阶段拒绝空实体，避免后端在执行批次时才出现难以定位的空指针。
+     */
+    private static void validate(Builder builder) {
+        for (GraphNode node : builder.nodes) {
+            if (node == null) throw new IllegalArgumentException("upsert node must not be null");
+        }
+        for (GraphEdge edge : builder.edges) {
+            if (edge == null) throw new IllegalArgumentException("upsert edge must not be null");
+        }
+        for (GraphEdgeKey key : builder.deleteEdgeKeys) {
+            if (key == null) throw new IllegalArgumentException("delete edge key must not be null");
+        }
     }
 
     public static final class Builder {
@@ -170,6 +186,7 @@ public final class GraphMutation {
          * 添加边删除操作。
          */
         public Builder deleteEdge(GraphEdgeKey key) {
+            if (key == null) throw new IllegalArgumentException("delete edge key must not be null");
             deleteEdgeKeys.add(key);
             return this;
         }

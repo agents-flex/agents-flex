@@ -38,7 +38,7 @@ public final class GraphSchemaMigrationPlan {
         private final String description;
         private final Risk risk;
 
-        Step(String description, Risk risk) {
+        public Step(String description, Risk risk) {
             this.description = description;
             this.risk = risk;
         }
@@ -61,7 +61,7 @@ public final class GraphSchemaMigrationPlan {
     private final Risk risk;
     private final List<Step> steps;
 
-    GraphSchemaMigrationPlan(Risk risk, List<Step> steps) {
+    public GraphSchemaMigrationPlan(Risk risk, List<Step> steps) {
         this.risk = risk;
         this.steps = Collections.unmodifiableList(new ArrayList<>(steps));
     }

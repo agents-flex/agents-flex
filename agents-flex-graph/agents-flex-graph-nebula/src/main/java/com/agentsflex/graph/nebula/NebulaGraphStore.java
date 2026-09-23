@@ -47,12 +47,17 @@ public final class NebulaGraphStore implements GraphStore {
     private final GraphCapabilities capabilities = GraphCapabilities.of(
             GraphFeature.CREATE_SPACE, GraphFeature.DROP_SPACE, GraphFeature.SCHEMA, GraphFeature.SCHEMA_INTROSPECTION,
             GraphFeature.INDEX, GraphFeature.VARIABLE_LENGTH_PATH,
-            GraphFeature.BULK_IMPORT, GraphFeature.NATIVE_QUERY)
+            GraphFeature.BULK_IMPORT, GraphFeature.QUERY_EXPLAIN, GraphFeature.NATIVE_QUERY)
         .withNote(GraphFeature.MULTI_LABEL, "Portable writer supports one tag per vertex")
+        .withNote(GraphFeature.SHORTEST_PATH, "Use NativeGraphQuery; no portable shortest-path AST is exposed")
         .withNote(GraphFeature.TRANSACTIONS, "SessionPool does not expose portable explicit transactions")
         .withNote(GraphFeature.UNIQUE_CONSTRAINT, "Nebula does not expose portable unique indexes")
         .withNote(GraphFeature.SCHEMA_INTROSPECTION, "Returns tags and edges; endpoint constraints and indexes are incomplete")
-        .withNote(GraphFeature.BULK_IMPORT, "Uses online UPSERT batches; offline importer is not exposed");
+        .withNote(GraphFeature.BULK_IMPORT, "Uses online UPSERT batches; offline importer is not exposed")
+        .withMode(GraphFeature.BULK_IMPORT, "ONLINE_BATCH")
+        .withNote(GraphFeature.STREAMING_CURSOR,
+            "SessionPool returns a materialized ResultSet; executeCursor uses the portable in-memory fallback")
+        .withLimit(GraphFeature.VARIABLE_LENGTH_PATH, "maxHops", "backend-defined");
 
     public NebulaGraphStore(NebulaGraphStoreConfig config) {
         this.config = config == null ? new NebulaGraphStoreConfig() : config;

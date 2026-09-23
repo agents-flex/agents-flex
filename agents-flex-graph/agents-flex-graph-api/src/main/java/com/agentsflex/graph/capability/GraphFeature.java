@@ -54,6 +54,14 @@ public enum GraphFeature {
      */
     BULK_IMPORT,
     /**
+     * 支持返回查询执行计划。
+     */
+    QUERY_EXPLAIN,
+    /**
+     * 支持不预先物化全部记录的后端流式游标。
+     */
+    STREAMING_CURSOR,
+    /**
      * 支持执行后端原生查询语言。
      */
     NATIVE_QUERY

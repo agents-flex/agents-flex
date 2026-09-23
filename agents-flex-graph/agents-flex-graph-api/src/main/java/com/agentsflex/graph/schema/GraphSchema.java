@@ -72,6 +72,10 @@ public final class GraphSchema {
      * Schema 中声明的索引定义。
      */
     private final List<Index> indexes;
+    /**
+     * 面向 Schema 版本和开发工具的元数据。
+     */
+    private final GraphSchemaMetadata metadata;
 
     /**
      * 根据构造器内容创建不可变 Schema。
@@ -81,6 +85,7 @@ public final class GraphSchema {
         this.nodeTypes = immutable(builder.nodeTypes);
         this.edgeTypes = immutable(builder.edgeTypes);
         this.indexes = immutable(builder.indexes);
+        this.metadata = builder.metadata == null ? GraphSchemaMetadata.empty() : builder.metadata;
     }
 
     /**
@@ -102,6 +107,13 @@ public final class GraphSchema {
      */
     public List<Index> getIndexes() {
         return indexes;
+    }
+
+    /**
+     * @return Schema 版本和展示元数据。
+     */
+    public GraphSchemaMetadata getMetadata() {
+        return metadata;
     }
 
     /**
@@ -176,6 +188,7 @@ public final class GraphSchema {
          * 待添加的索引。
          */
         private final List<Index> indexes = new ArrayList<>();
+        private GraphSchemaMetadata metadata = GraphSchemaMetadata.empty();
 
         /**
          * 添加一个节点类型。
@@ -202,6 +215,14 @@ public final class GraphSchema {
         }
 
         /**
+         * 设置 Schema 版本、显示名称和扩展元数据。
+         */
+        public Builder metadata(GraphSchemaMetadata metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        /**
          * @return 不可变 Schema 定义
          */
         public GraphSchema build() {
@@ -222,17 +243,29 @@ public final class GraphSchema {
          * 是否要求每个实体都提供该属性。
          */
         private final boolean required;
+        /**
+         * 属性展示、默认值和枚举元数据。
+         */
+        private final GraphPropertyMetadata metadata;
 
         /**
          * 创建属性定义。
          */
         public Property(String name, PropertyType type, boolean required) {
+            this(name, type, required, GraphPropertyMetadata.empty());
+        }
+
+        /**
+         * 创建带工具元数据的属性定义。
+         */
+        public Property(String name, PropertyType type, boolean required, GraphPropertyMetadata metadata) {
             this.name = GraphIdentifiers.requireValid(name, "property name");
             if (type == null) {
                 throw new IllegalArgumentException("property type must not be null");
             }
             this.type = type;
             this.required = required;
+            this.metadata = metadata == null ? GraphPropertyMetadata.empty() : metadata;
         }
 
         /**
@@ -255,6 +288,13 @@ public final class GraphSchema {
         public boolean isRequired() {
             return required;
         }
+
+        /**
+         * @return 属性展示和默认值元数据。
+         */
+        public GraphPropertyMetadata getMetadata() {
+            return metadata;
+        }
     }
 
     public static final class NodeType {
@@ -266,10 +306,15 @@ public final class GraphSchema {
          * 该标签声明的属性。
          */
         private final List<Property> properties;
+        /**
+         * 节点类型展示元数据。
+         */
+        private final GraphElementMetadata metadata;
 
-        private NodeType(String label, List<Property> properties) {
+        private NodeType(String label, List<Property> properties, GraphElementMetadata metadata) {
             this.label = GraphIdentifiers.requireValid(label, "node label");
             this.properties = immutable(properties);
+            this.metadata = metadata == null ? GraphElementMetadata.empty() : metadata;
         }
 
         /**
@@ -287,6 +332,13 @@ public final class GraphSchema {
         }
 
         /**
+         * @return 节点类型展示元数据。
+         */
+        public GraphElementMetadata getMetadata() {
+            return metadata;
+        }
+
+        /**
          * 创建节点类型；属性数组可以为空。
          */
         public static NodeType of(String label, Property... properties) {
@@ -294,7 +346,16 @@ public final class GraphSchema {
             if (properties != null) {
                 Collections.addAll(values, properties);
             }
-            return new NodeType(label, values);
+            return new NodeType(label, values, GraphElementMetadata.empty());
+        }
+
+        /**
+         * 创建带展示元数据的节点类型。
+         */
+        public static NodeType of(String label, GraphElementMetadata metadata, Property... properties) {
+            List<Property> values = new ArrayList<>();
+            if (properties != null) Collections.addAll(values, properties);
+            return new NodeType(label, values, metadata);
         }
     }
 
@@ -315,12 +376,18 @@ public final class GraphSchema {
          * 边属性定义。
          */
         private final List<Property> properties;
+        /**
+         * 边类型展示元数据。
+         */
+        private final GraphElementMetadata metadata;
 
-        private EdgeType(String type, String sourceLabel, String targetLabel, List<Property> properties) {
+        private EdgeType(String type, String sourceLabel, String targetLabel, List<Property> properties,
+                         GraphElementMetadata metadata) {
             this.type = GraphIdentifiers.requireValid(type, "edge type");
             this.sourceLabel = sourceLabel == null ? null : GraphIdentifiers.requireValid(sourceLabel, "source label");
             this.targetLabel = targetLabel == null ? null : GraphIdentifiers.requireValid(targetLabel, "target label");
             this.properties = immutable(properties);
+            this.metadata = metadata == null ? GraphElementMetadata.empty() : metadata;
         }
 
         /**
@@ -352,6 +419,13 @@ public final class GraphSchema {
         }
 
         /**
+         * @return 边类型展示元数据。
+         */
+        public GraphElementMetadata getMetadata() {
+            return metadata;
+        }
+
+        /**
          * 创建边类型；属性数组可以为空。
          */
         public static EdgeType of(String type, String sourceLabel, String targetLabel, Property... properties) {
@@ -359,7 +433,17 @@ public final class GraphSchema {
             if (properties != null) {
                 Collections.addAll(values, properties);
             }
-            return new EdgeType(type, sourceLabel, targetLabel, values);
+            return new EdgeType(type, sourceLabel, targetLabel, values, GraphElementMetadata.empty());
+        }
+
+        /**
+         * 创建带展示元数据的边类型。
+         */
+        public static EdgeType of(String type, String sourceLabel, String targetLabel,
+                                  GraphElementMetadata metadata, Property... properties) {
+            List<Property> values = new ArrayList<>();
+            if (properties != null) Collections.addAll(values, properties);
+            return new EdgeType(type, sourceLabel, targetLabel, values, metadata);
         }
 
         /**

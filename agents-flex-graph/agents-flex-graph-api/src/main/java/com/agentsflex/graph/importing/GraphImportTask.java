@@ -35,9 +35,27 @@ public final class GraphImportTask {
      * 完成时间；未完成时为 -1。
      */
     private final long completedAtMillis;
+    /**
+     * 已成功确认的节点偏移。
+     */
+    private final long nodesProcessed;
+    /**
+     * 已成功确认的边偏移。
+     */
+    private final long edgesProcessed;
+    /**
+     * 已处理批次序号。
+     */
+    private final int batchesProcessed;
 
     GraphImportTask(String id, GraphImportStatus status, GraphImportReport report, String message,
                     long submittedAtMillis, long startedAtMillis, long completedAtMillis) {
+        this(id, status, report, message, submittedAtMillis, startedAtMillis, completedAtMillis, 0L, 0L, 0);
+    }
+
+    GraphImportTask(String id, GraphImportStatus status, GraphImportReport report, String message,
+                    long submittedAtMillis, long startedAtMillis, long completedAtMillis,
+                    long nodesProcessed, long edgesProcessed, int batchesProcessed) {
         this.id = id;
         this.status = status;
         this.report = report == null ? new GraphImportReport() : report.snapshot();
@@ -45,6 +63,9 @@ public final class GraphImportTask {
         this.submittedAtMillis = submittedAtMillis;
         this.startedAtMillis = startedAtMillis;
         this.completedAtMillis = completedAtMillis;
+        this.nodesProcessed = Math.max(0L, nodesProcessed);
+        this.edgesProcessed = Math.max(0L, edgesProcessed);
+        this.batchesProcessed = Math.max(0, batchesProcessed);
     }
 
     /**
@@ -94,6 +115,34 @@ public final class GraphImportTask {
      */
     public long getCompletedAtMillis() {
         return completedAtMillis;
+    }
+
+    /**
+     * @return 已成功确认的节点偏移。
+     */
+    public long getNodesProcessed() {
+        return nodesProcessed;
+    }
+
+    /**
+     * @return 已成功确认的边偏移。
+     */
+    public long getEdgesProcessed() {
+        return edgesProcessed;
+    }
+
+    /**
+     * @return 已处理批次序号。
+     */
+    public int getBatchesProcessed() {
+        return batchesProcessed;
+    }
+
+    /**
+     * @return 当前任务可用于重新提交的恢复点快照。
+     */
+    public GraphImportResumePoint getResumePoint() {
+        return new GraphImportResumePoint(nodesProcessed, edgesProcessed, batchesProcessed);
     }
 
     /**

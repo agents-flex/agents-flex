@@ -1,7 +1,5 @@
 package com.agentsflex.graph.capability;
 
-import com.agentsflex.graph.capability.GraphCapabilityDetail;
-import com.agentsflex.graph.capability.GraphFeature;
 import com.agentsflex.graph.UnsupportedGraphFeatureException;
 
 import java.util.Arrays;
@@ -10,6 +8,8 @@ import java.util.EnumSet;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 图数据库适配器的不可变能力声明。
@@ -23,16 +23,37 @@ public final class GraphCapabilities {
      * 能力限制及替代方案说明。
      */
     private final Map<GraphFeature, String> notes;
+    private final Map<GraphFeature, Map<String, String>> limits;
+    private final Map<GraphFeature, List<String>> modes;
 
     private GraphCapabilities(Set<GraphFeature> features) {
         this(features, Collections.<GraphFeature, String>emptyMap());
     }
 
     private GraphCapabilities(Set<GraphFeature> features, Map<GraphFeature, String> notes) {
-        this.features = Collections.unmodifiableSet(EnumSet.copyOf(features));
+        this(features, notes, Collections.<GraphFeature, Map<String, String>>emptyMap(),
+            Collections.<GraphFeature, List<String>>emptyMap());
+    }
+
+    private GraphCapabilities(Set<GraphFeature> features, Map<GraphFeature, String> notes,
+                              Map<GraphFeature, Map<String, String>> limits,
+                              Map<GraphFeature, List<String>> modes) {
+        EnumSet<GraphFeature> featureCopy = EnumSet.noneOf(GraphFeature.class);
+        if (features != null) featureCopy.addAll(features);
+        this.features = Collections.unmodifiableSet(featureCopy);
         EnumMap<GraphFeature, String> copy = new EnumMap<>(GraphFeature.class);
         copy.putAll(notes);
         this.notes = Collections.unmodifiableMap(copy);
+        EnumMap<GraphFeature, Map<String, String>> limitCopy = new EnumMap<>(GraphFeature.class);
+        for (Map.Entry<GraphFeature, Map<String, String>> entry : limits.entrySet()) {
+            limitCopy.put(entry.getKey(), Collections.unmodifiableMap(new java.util.LinkedHashMap<>(entry.getValue())));
+        }
+        this.limits = Collections.unmodifiableMap(limitCopy);
+        EnumMap<GraphFeature, List<String>> modeCopy = new EnumMap<>(GraphFeature.class);
+        for (Map.Entry<GraphFeature, List<String>> entry : modes.entrySet()) {
+            modeCopy.put(entry.getKey(), Collections.unmodifiableList(new ArrayList<>(entry.getValue())));
+        }
+        this.modes = Collections.unmodifiableMap(modeCopy);
     }
 
     /**
@@ -80,7 +101,43 @@ public final class GraphCapabilities {
         EnumMap<GraphFeature, String> copy = new EnumMap<>(GraphFeature.class);
         copy.putAll(notes);
         copy.put(feature, note);
-        return new GraphCapabilities(features, copy);
+        return new GraphCapabilities(features, copy, limits, modes);
+    }
+
+    /**
+     * 为能力增加结构化限制，例如 {@code maxHops=16}。
+     */
+    public GraphCapabilities withLimit(GraphFeature feature, String name, String value) {
+        if (feature == null || name == null || name.trim().isEmpty())
+            throw new IllegalArgumentException("feature and limit name must be valid");
+        EnumMap<GraphFeature, Map<String, String>> copy = new EnumMap<>(GraphFeature.class);
+        for (Map.Entry<GraphFeature, Map<String, String>> entry : limits.entrySet())
+            copy.put(entry.getKey(), new java.util.LinkedHashMap<>(entry.getValue()));
+        Map<String, String> values = copy.get(feature);
+        if (values == null) {
+            values = new java.util.LinkedHashMap<>();
+            copy.put(feature, values);
+        }
+        values.put(name, value == null ? "" : value);
+        return new GraphCapabilities(features, notes, copy, modes);
+    }
+
+    /**
+     * 声明能力支持的模式，例如 {@code ONLINE_BATCH} 或 {@code OFFLINE_IMPORT}。
+     */
+    public GraphCapabilities withMode(GraphFeature feature, String mode) {
+        if (feature == null || mode == null || mode.trim().isEmpty())
+            throw new IllegalArgumentException("feature and mode must be valid");
+        EnumMap<GraphFeature, List<String>> copy = new EnumMap<>(GraphFeature.class);
+        for (Map.Entry<GraphFeature, List<String>> entry : modes.entrySet())
+            copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        List<String> values = copy.get(feature);
+        if (values == null) {
+            values = new ArrayList<>();
+            copy.put(feature, values);
+        }
+        if (!values.contains(mode)) values.add(mode);
+        return new GraphCapabilities(features, notes, limits, copy);
     }
 
     /**
@@ -88,7 +145,7 @@ public final class GraphCapabilities {
      */
     public GraphCapabilityDetail describe(GraphFeature feature) {
         if (feature == null) throw new IllegalArgumentException("feature must not be null");
-        return new GraphCapabilityDetail(feature, supports(feature), notes.get(feature));
+        return new GraphCapabilityDetail(feature, supports(feature), notes.get(feature), limits.get(feature), modes.get(feature));
     }
 
     /**

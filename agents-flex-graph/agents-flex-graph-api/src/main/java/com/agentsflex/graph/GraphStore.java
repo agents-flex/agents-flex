@@ -45,6 +45,13 @@ public interface GraphStore extends AutoCloseable {
     }
 
     /**
+     * 携带执行上下文进行健康检查；后端可覆写以关联 requestId 等诊断信息。
+     */
+    default GraphHealth health(GraphOptions options) {
+        return health();
+    }
+
+    /**
      * @return 异步导入任务服务
      */
     default GraphImportService imports() {

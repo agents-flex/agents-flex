@@ -7,6 +7,7 @@ import com.agentsflex.graph.importing.GraphImportRequest;
 import com.agentsflex.graph.mutation.GraphMutation;
 import com.agentsflex.graph.data.GraphNode;
 import com.agentsflex.graph.GraphOptions;
+import com.agentsflex.graph.error.GraphErrorCode;
 import com.agentsflex.graph.mutation.GraphWriteResult;
 import com.agentsflex.graph.mutation.GraphWriter;
 import com.agentsflex.graph.nebula.NebulaGraphStore;
@@ -69,7 +70,8 @@ public final class NebulaGraphWriter implements GraphWriter {
             }
             return GraphWriteResult.success(nodes, edges);
         } catch (Exception e) {
-            return GraphWriteResult.failure("Nebula mutation failed: " + e.getMessage(), e);
+            return GraphWriteResult.failure(GraphErrorCode.WRITE_FAILED,
+                "Nebula mutation failed: " + e.getMessage(), e);
         }
     }
 

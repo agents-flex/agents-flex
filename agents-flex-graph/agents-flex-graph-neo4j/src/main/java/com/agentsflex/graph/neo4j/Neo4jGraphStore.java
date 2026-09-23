@@ -46,10 +46,14 @@ public final class Neo4jGraphStore implements GraphStore {
             GraphFeature.CREATE_SPACE, GraphFeature.DROP_SPACE, GraphFeature.SCHEMA, GraphFeature.SCHEMA_INTROSPECTION,
             GraphFeature.INDEX, GraphFeature.UNIQUE_CONSTRAINT, GraphFeature.MULTI_LABEL,
             GraphFeature.TRANSACTIONS, GraphFeature.VARIABLE_LENGTH_PATH,
-            GraphFeature.BULK_IMPORT, GraphFeature.NATIVE_QUERY)
+            GraphFeature.BULK_IMPORT, GraphFeature.QUERY_EXPLAIN, GraphFeature.STREAMING_CURSOR,
+            GraphFeature.NATIVE_QUERY)
         .withNote(GraphFeature.VARIABLE_LENGTH_PATH, "Portable traversal limits paths to 16 hops")
+        .withLimit(GraphFeature.VARIABLE_LENGTH_PATH, "maxHops", "16")
+        .withNote(GraphFeature.SHORTEST_PATH, "Use NativeGraphQuery; no portable shortest-path AST is exposed")
         .withNote(GraphFeature.SCHEMA_INTROSPECTION, "Relationship endpoint labels are returned as unconstrained")
-        .withNote(GraphFeature.BULK_IMPORT, "Uses online transactional batches; offline neo4j-admin import is not exposed");
+        .withNote(GraphFeature.BULK_IMPORT, "Uses online transactional batches; offline neo4j-admin import is not exposed")
+        .withMode(GraphFeature.BULK_IMPORT, "ONLINE_BATCH");
 
     public Neo4jGraphStore(Neo4jGraphStoreConfig config) {
         this.config = config == null ? new Neo4jGraphStoreConfig() : config;

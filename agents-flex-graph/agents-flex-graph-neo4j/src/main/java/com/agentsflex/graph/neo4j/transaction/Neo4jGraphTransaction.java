@@ -1,6 +1,8 @@
 package com.agentsflex.graph.neo4j.transaction;
 
 import com.agentsflex.graph.query.GraphQueryExecutor;
+import com.agentsflex.graph.GraphException;
+import com.agentsflex.graph.error.GraphErrorCode;
 import com.agentsflex.graph.transaction.GraphTransaction;
 import com.agentsflex.graph.mutation.GraphWriter;
 import com.agentsflex.graph.neo4j.Neo4jGraphStoreConfig;
@@ -68,8 +70,14 @@ public final class Neo4jGraphTransaction implements GraphTransaction {
     @Override
     public void commit() {
         ensureOpen();
-        transaction.commit();
-        close();
+        try {
+            transaction.commit();
+            close();
+        } catch (RuntimeException error) {
+            close();
+            throw new GraphException(GraphErrorCode.TRANSACTION_FAILED,
+                "Neo4j transaction commit failed: " + error.getMessage(), error);
+        }
     }
 
     /**
@@ -78,8 +86,14 @@ public final class Neo4jGraphTransaction implements GraphTransaction {
     @Override
     public void rollback() {
         if (!closed) {
-            transaction.rollback();
-            close();
+            try {
+                transaction.rollback();
+                close();
+            } catch (RuntimeException error) {
+                close();
+                throw new GraphException(GraphErrorCode.TRANSACTION_FAILED,
+                    "Neo4j transaction rollback failed: " + error.getMessage(), error);
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package com.agentsflex.graph;
 
 import com.agentsflex.graph.identifier.GraphIdentifiers;
+import com.agentsflex.graph.execution.GraphExecutionContext;
 
 /**
  * 单次图操作的路由信息和安全限制。
@@ -27,12 +28,22 @@ public final class GraphOptions {
      * 客户端最多物化的记录数，用于保护查询工作台内存。
      */
     private final int maxRecords;
+    /**
+     * 可选的调用链和 Schema 版本上下文。
+     */
+    private final GraphExecutionContext context;
+    /**
+     * 是否强制当前操作只能执行只读查询。
+     */
+    private final boolean readOnly;
 
     private GraphOptions(Builder builder) {
         this.space = builder.space;
         this.timeoutMillis = builder.timeoutMillis;
         this.fetchSize = builder.fetchSize;
         this.maxRecords = builder.maxRecords;
+        this.context = builder.context;
+        this.readOnly = builder.readOnly;
     }
 
     /**
@@ -71,6 +82,30 @@ public final class GraphOptions {
     }
 
     /**
+     * @return 本次操作的可选执行上下文。
+     */
+    public GraphExecutionContext getContext() {
+        return context;
+    }
+
+    /**
+     * @return 是否启用只读保护。
+     */
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    /**
+     * 创建只调整最大物化记录数的不可变选项副本。
+     */
+    public GraphOptions withMaxRecords(int maxRecords) {
+        Builder copy = builder();
+        if (space != null) copy.space(space);
+        return copy.timeoutMillis(timeoutMillis).fetchSize(fetchSize).maxRecords(maxRecords)
+            .context(context).readOnly(readOnly).build();
+    }
+
+    /**
      * @return 新的选项构造器
      */
     public static Builder builder() {
@@ -101,6 +136,8 @@ public final class GraphOptions {
          * 默认最多物化 10000 条记录。
          */
         private int maxRecords = 10_000;
+        private GraphExecutionContext context;
+        private boolean readOnly;
 
         /**
          * 设置图空间。
@@ -138,6 +175,22 @@ public final class GraphOptions {
         public Builder maxRecords(int maxRecords) {
             if (maxRecords <= 0) throw new IllegalArgumentException("maxRecords must be positive");
             this.maxRecords = maxRecords;
+            return this;
+        }
+
+        /**
+         * 设置连接、租户、请求和 Schema 版本等关联上下文。
+         */
+        public Builder context(GraphExecutionContext context) {
+            this.context = context;
+            return this;
+        }
+
+        /**
+         * 强制原生查询只能声明为 READ。
+         */
+        public Builder readOnly(boolean readOnly) {
+            this.readOnly = readOnly;
             return this;
         }
 

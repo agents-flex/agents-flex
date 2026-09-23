@@ -1,11 +1,6 @@
 package com.agentsflex.graph.importing;
 
 import com.agentsflex.graph.data.GraphEdge;
-import com.agentsflex.graph.importing.GraphImportReport;
-import com.agentsflex.graph.importing.GraphImportRequest;
-import com.agentsflex.graph.importing.GraphImportService;
-import com.agentsflex.graph.importing.GraphImportStatus;
-import com.agentsflex.graph.importing.GraphImportTask;
 import com.agentsflex.graph.mutation.GraphMutation;
 import com.agentsflex.graph.data.GraphNode;
 import com.agentsflex.graph.mutation.GraphWriteResult;
@@ -23,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 基于 {@link GraphWriter} 的异步导入服务默认实现。
@@ -36,23 +32,33 @@ public final class AsyncGraphImportService implements GraphImportService {
     private final GraphWriter writer;
     private final ExecutorService executor;
     private final Map<String, State> tasks = new ConcurrentHashMap<>();
+    private final GraphImportTaskStore taskStore;
     private volatile boolean closed;
 
     /**
      * 使用单线程执行器创建服务。
      */
     public AsyncGraphImportService(GraphWriter writer) {
-        this(writer, Executors.newSingleThreadExecutor());
+        this(writer, Executors.newSingleThreadExecutor(), new InMemoryGraphImportTaskStore());
     }
 
     /**
      * 使用调用方提供的执行器创建服务。
      */
     public AsyncGraphImportService(GraphWriter writer, ExecutorService executor) {
+        this(writer, executor, new InMemoryGraphImportTaskStore());
+    }
+
+    /**
+     * 使用自定义任务快照存储，便于接入持久化或分布式任务系统。
+     */
+    public AsyncGraphImportService(GraphWriter writer, ExecutorService executor, GraphImportTaskStore taskStore) {
         if (writer == null) throw new IllegalArgumentException("graph writer must not be null");
         if (executor == null) throw new IllegalArgumentException("executor must not be null");
+        if (taskStore == null) throw new IllegalArgumentException("task store must not be null");
         this.writer = writer;
         this.executor = executor;
+        this.taskStore = taskStore;
     }
 
     @Override
@@ -60,7 +66,14 @@ public final class AsyncGraphImportService implements GraphImportService {
         if (request == null) throw new IllegalArgumentException("import request must not be null");
         if (closed) throw new IllegalStateException("import service is closed");
         State state = new State(UUID.randomUUID().toString(), System.currentTimeMillis());
+        state.listener = request.getListener();
+        state.checkpoint = request.getCheckpoint();
+        state.source = request.getSource();
+        state.nodesProcessed = request.getResumePoint().getNodesProcessed();
+        state.edgesProcessed = request.getResumePoint().getEdgesProcessed();
+        state.batchIndex = request.getResumePoint().getBatchesProcessed();
         tasks.put(state.id, state);
+        persist(state);
         state.future = executor.submit(() -> run(state, request, options));
         return state.snapshot();
     }
@@ -69,13 +82,14 @@ public final class AsyncGraphImportService implements GraphImportService {
     public GraphImportTask get(String id) {
         if (id == null) return null;
         State state = tasks.get(id);
-        return state == null ? null : state.snapshot();
+        return state == null ? taskStore.get(id) : state.snapshot();
     }
 
     @Override
     public List<GraphImportTask> list() {
-        List<GraphImportTask> result = new ArrayList<>();
-        for (State state : tasks.values()) result.add(state.snapshot());
+        List<GraphImportTask> result = new ArrayList<>(taskStore.list());
+        for (State state : tasks.values()) taskStore.save(state.snapshot());
+        result = new ArrayList<>(taskStore.list());
         Collections.sort(result, new Comparator<GraphImportTask>() {
             @Override
             public int compare(GraphImportTask left, GraphImportTask right) {
@@ -97,6 +111,8 @@ public final class AsyncGraphImportService implements GraphImportService {
             state.message = "Import task cancelled";
             state.completedAtMillis = System.currentTimeMillis();
             if (state.future != null) state.future.cancel(true);
+            closeSource(state);
+            persist(state);
             return true;
         }
     }
@@ -105,7 +121,9 @@ public final class AsyncGraphImportService implements GraphImportService {
     public boolean remove(String id) {
         State state = id == null ? null : tasks.get(id);
         if (state == null || !state.snapshot().isTerminal()) return false;
-        return tasks.remove(id, state);
+        boolean removed = tasks.remove(id, state);
+        if (removed) taskStore.remove(id);
+        return removed;
     }
 
     @Override
@@ -115,7 +133,10 @@ public final class AsyncGraphImportService implements GraphImportService {
             GraphImportTask task = entry.getValue().snapshot();
             if (task.isTerminal() && task.getCompletedAtMillis() >= 0
                 && task.getCompletedAtMillis() < epochMillis
-                && tasks.remove(entry.getKey(), entry.getValue())) removed++;
+                && tasks.remove(entry.getKey(), entry.getValue())) {
+                taskStore.remove(entry.getKey());
+                removed++;
+            }
         }
         return removed;
     }
@@ -125,6 +146,7 @@ public final class AsyncGraphImportService implements GraphImportService {
             if (state.cancelRequested) return;
             state.status = GraphImportStatus.RUNNING;
             state.startedAtMillis = System.currentTimeMillis();
+            persist(state);
         }
         try {
             importNodes(state, request, options);
@@ -134,6 +156,7 @@ public final class AsyncGraphImportService implements GraphImportService {
                 state.status = state.report.isSuccess() ? GraphImportStatus.SUCCEEDED : GraphImportStatus.FAILED;
                 state.message = state.report.isSuccess() ? "" : "Import completed with failed batches";
                 state.completedAtMillis = System.currentTimeMillis();
+                persist(state);
             }
         } catch (Throwable error) {
             synchronized (state) {
@@ -141,14 +164,20 @@ public final class AsyncGraphImportService implements GraphImportService {
                 state.status = GraphImportStatus.FAILED;
                 state.message = error.getMessage() == null ? error.getClass().getName() : error.getMessage();
                 state.completedAtMillis = System.currentTimeMillis();
+                persist(state);
+                notifyError(state, error);
             }
+        } finally {
+            closeSource(state);
         }
     }
 
     private void importNodes(State state, GraphImportRequest request, GraphOptions options) {
         List<GraphNode> batch = new ArrayList<>();
+        long skipped = 0L;
         for (GraphNode node : request.getNodes()) {
             checkCancelled(state);
+            if (skipped++ < request.getResumePoint().getNodesProcessed()) continue;
             batch.add(node);
             if (batch.size() >= request.getBatchSize()) {
                 writeBatch(state, GraphMutation.builder().upsertNodes(batch).build(), options,
@@ -164,8 +193,10 @@ public final class AsyncGraphImportService implements GraphImportService {
 
     private void importEdges(State state, GraphImportRequest request, GraphOptions options) {
         List<GraphEdge> batch = new ArrayList<>();
+        long skipped = 0L;
         for (GraphEdge edge : request.getEdges()) {
             checkCancelled(state);
+            if (skipped++ < request.getResumePoint().getEdgesProcessed()) continue;
             batch.add(edge);
             if (batch.size() >= request.getBatchSize()) {
                 writeBatch(state, GraphMutation.builder().upsertEdges(batch).build(), options,
@@ -182,7 +213,18 @@ public final class AsyncGraphImportService implements GraphImportService {
     private void writeBatch(State state, GraphMutation mutation, GraphOptions options, boolean stopOnError) {
         checkCancelled(state);
         GraphWriteResult result = writer.mutate(mutation, options);
-        state.report.add(result);
+        state.report.add(state.batchIndex++, result);
+        // checkpoint 只确认成功批次，失败批次必须允许调用方恢复时重新投递。
+        if (result.isSuccess() && !mutation.getNodes().isEmpty()) state.nodesProcessed += mutation.getNodes().size();
+        if (result.isSuccess() && !mutation.getEdges().isEmpty()) state.edgesProcessed += mutation.getEdges().size();
+        if (result.isSuccess() && state.checkpoint != null) {
+            try {
+                state.checkpoint.onBatch(state.id, state.nodesProcessed, state.edgesProcessed);
+            } catch (RuntimeException ignored) {
+            }
+        }
+        persist(state);
+        notifyBatch(state, result);
         if (stopOnError && !result.isSuccess()) {
             throw new GraphException(result.getMessage(), result.getError());
         }
@@ -206,7 +248,9 @@ public final class AsyncGraphImportService implements GraphImportService {
                     state.status = GraphImportStatus.CANCELLED;
                     state.message = "Import service closed";
                     state.completedAtMillis = System.currentTimeMillis();
+                    persist(state);
                 }
+                closeSource(state);
             }
         }
         executor.shutdownNow();
@@ -222,6 +266,22 @@ public final class AsyncGraphImportService implements GraphImportService {
         private volatile long completedAtMillis = -1L;
         private volatile boolean cancelRequested;
         private volatile Future<?> future;
+        private volatile GraphImportListener listener;
+        private volatile GraphImportCheckpoint checkpoint;
+        private volatile GraphImportSource source;
+        private final AtomicBoolean sourceClosed = new AtomicBoolean();
+        /**
+         * 已成功确认的节点偏移；volatile 保证轮询线程可见。
+         */
+        private volatile long nodesProcessed;
+        /**
+         * 已成功确认的边偏移；volatile 保证轮询线程可见。
+         */
+        private volatile long edgesProcessed;
+        /**
+         * 批次序号；volatile 保证轮询线程可见。
+         */
+        private volatile int batchIndex;
 
         private State(String id, long submittedAtMillis) {
             this.id = id;
@@ -231,8 +291,47 @@ public final class AsyncGraphImportService implements GraphImportService {
         private GraphImportTask snapshot() {
             synchronized (this) {
                 return new GraphImportTask(id, status, report, message, submittedAtMillis,
-                    startedAtMillis, completedAtMillis);
+                    startedAtMillis, completedAtMillis, nodesProcessed, edgesProcessed, batchIndex);
             }
+        }
+    }
+
+    /**
+     * 幂等释放外部数据源，覆盖排队取消、执行取消和服务关闭路径。
+     */
+    private void closeSource(State state) {
+        GraphImportSource source = state.source;
+        if (source != null && state.sourceClosed.compareAndSet(false, true)) {
+            try {
+                source.close();
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private void persist(State state) {
+        taskStore.save(state.snapshot());
+        notifyProgress(state);
+    }
+
+    private void notifyProgress(State state) {
+        if (state.listener != null) try {
+            state.listener.onProgress(state.snapshot());
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private void notifyBatch(State state, GraphWriteResult result) {
+        if (state.listener != null) try {
+            state.listener.onBatchCompleted(state.snapshot(), result);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private void notifyError(State state, Throwable error) {
+        if (state.listener != null) try {
+            state.listener.onError(state.snapshot(), error);
+        } catch (RuntimeException ignored) {
         }
     }
 
