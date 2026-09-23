@@ -227,6 +227,7 @@ mvn -pl agents-flex-graph/agents-flex-graph-extractor -am \
 ~~~java
 GraphDocumentStateStore documentStates = new YourPersistentDocumentStateStore();
 GraphEntityRegistry entityRegistry = new YourPersistentEntityRegistry();
+GraphIngestionOperationStore operations = new YourPersistentOperationStore();
 
 // 必须把同一个长期注册表装配进 Pipeline 的 resolver，抽取时才会复用历史节点 ID。
 GraphExtractionPipeline pipeline = new GraphExtractionPipeline(
@@ -239,7 +240,8 @@ GraphExtractionPipeline pipeline = new GraphExtractionPipeline(
 IncrementalGraphIngestionService ingestion = new IncrementalGraphIngestionService(
     pipeline,
     documentStates,
-    entityRegistry);
+    entityRegistry,
+    operations);
 
 IncrementalGraphIngestionRequest request =
     IncrementalGraphIngestionRequest.builder("novel_knowledge", "book-001/chapter-008")
@@ -295,6 +297,15 @@ IncrementalGraphIngestionResult result = ingestion.execute(plan, graphStore.writ
 队列避免多实例同时处理同一文档。`GraphMutation.operationId` 会传递给适配器，适配器应使用它实现幂等。
 SDK 提供的 `InMemoryGraphDocumentStateStore` 和
 `InMemoryGraphEntityRegistry` 只适合测试，进程重启后数据会丢失。
+
+生产环境建议同时实现 `GraphIngestionOperationStore`。服务会持久化
+`PREPARED -> GRAPH_APPLIED -> STATE_COMMITTED -> COMPLETED` 状态；若进程在图写成功后退出，使用同一
+`operationId` 重试时可以跳过重复 GraphWriter 调用并继续提交状态。`FAILED` 操作允许用同一操作号重试。
+SDK 的 `InMemoryGraphIngestionOperationStore` 同样只适合测试，不能用于多实例恢复。
+
+`GraphFactProvenance` 表示文档对事实的独立声明，不等同于图中的物化边。它包含稳定 `factId`、
+`operationId`、文档 revision、创建时间和原文证据；同一 `GraphEdgeKey` 可以由多个事实声明共同支持。
+业务需要在图中查询来源时，可以把这些事实记录映射为独立 Fact 节点，物化边则作为可重建的查询投影。
 
 默认情况下，抽取结果包含 Chunk 错误时不会允许关系删除；即使通过
 `rejectExtractionErrors(false)` 提交部分结果，也会保留旧关系。只有明确设置

@@ -16,6 +16,22 @@ import java.util.Map;
  */
 public final class GraphFactProvenance {
     /**
+     * 区分来源事实声明与物化边的稳定事实 ID。
+     */
+    private final String factId;
+    /**
+     * 产生该事实的导入操作号。
+     */
+    private final String operationId;
+    /**
+     * 产生该事实的文档 revision。
+     */
+    private final long documentRevision;
+    /**
+     * 事实记录创建时间。
+     */
+    private final long createdAtMillis;
+    /**
      * 被证据支持的物化关系身份。
      */
     private final GraphEdgeKey edgeKey;
@@ -41,6 +57,15 @@ public final class GraphFactProvenance {
      */
     public GraphFactProvenance(GraphEdgeKey edgeKey, GraphEvidence evidence, double confidence,
                                GraphAssertionType assertionType, Map<String, ?> properties) {
+        this("", "", 0L, 0L, edgeKey, evidence, confidence, assertionType, properties);
+    }
+
+    /**
+     * 创建包含完整运行身份的事实来源记录。
+     */
+    public GraphFactProvenance(String factId, String operationId, long documentRevision, long createdAtMillis,
+                               GraphEdgeKey edgeKey, GraphEvidence evidence, double confidence,
+                               GraphAssertionType assertionType, Map<String, ?> properties) {
         if (edgeKey == null || evidence == null || assertionType == null) {
             throw new IllegalArgumentException("edgeKey, evidence and assertionType must not be null");
         }
@@ -48,6 +73,13 @@ public final class GraphFactProvenance {
             || confidence < 0D || confidence > 1D) {
             throw new IllegalArgumentException("confidence must be a finite number between 0 and 1");
         }
+        if (documentRevision < 0L || createdAtMillis < 0L) {
+            throw new IllegalArgumentException("documentRevision and createdAtMillis must not be negative");
+        }
+        this.factId = factId == null ? "" : factId.trim();
+        this.operationId = operationId == null ? "" : operationId.trim();
+        this.documentRevision = documentRevision;
+        this.createdAtMillis = createdAtMillis;
         this.edgeKey = edgeKey;
         this.evidence = evidence;
         this.confidence = confidence;
@@ -55,6 +87,34 @@ public final class GraphFactProvenance {
         Map<String, Object> copy = new LinkedHashMap<>();
         if (properties != null) copy.putAll(properties);
         this.properties = Collections.unmodifiableMap(copy);
+    }
+
+    /**
+     * @return 稳定事实 ID；旧构造器创建的记录为空。
+     */
+    public String getFactId() {
+        return factId;
+    }
+
+    /**
+     * @return 产生事实的操作号。
+     */
+    public String getOperationId() {
+        return operationId;
+    }
+
+    /**
+     * @return 产生事实的文档 revision。
+     */
+    public long getDocumentRevision() {
+        return documentRevision;
+    }
+
+    /**
+     * @return 事实记录创建时间。
+     */
+    public long getCreatedAtMillis() {
+        return createdAtMillis;
     }
 
     /**

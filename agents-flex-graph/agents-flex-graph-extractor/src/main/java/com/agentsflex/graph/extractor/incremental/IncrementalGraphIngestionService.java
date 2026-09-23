@@ -53,6 +53,10 @@ public final class IncrementalGraphIngestionService {
      */
     private final GraphEntityRegistry entityRegistry;
     /**
+     * 可选的跨系统操作状态存储。
+     */
+    private final GraphIngestionOperationStore operationStore;
+    /**
      * 可注入时钟，保证状态时间可测试。
      */
     private final LongSupplier clock;
@@ -61,7 +65,7 @@ public final class IncrementalGraphIngestionService {
      * 创建不自动保存实体注册记录的增量服务。
      */
     public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore) {
-        this(pipeline, stateStore, null, System::currentTimeMillis);
+        this(pipeline, stateStore, null, null, System::currentTimeMillis);
     }
 
     /**
@@ -69,7 +73,16 @@ public final class IncrementalGraphIngestionService {
      */
     public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                             GraphEntityRegistry entityRegistry) {
-        this(pipeline, stateStore, entityRegistry, System::currentTimeMillis);
+        this(pipeline, stateStore, entityRegistry, null, System::currentTimeMillis);
+    }
+
+    /**
+     * 创建同时维护实体注册表和持久化操作状态机的增量服务。
+     */
+    public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+                                            GraphEntityRegistry entityRegistry,
+                                            GraphIngestionOperationStore operationStore) {
+        this(pipeline, stateStore, entityRegistry, operationStore, System::currentTimeMillis);
     }
 
     /**
@@ -77,12 +90,22 @@ public final class IncrementalGraphIngestionService {
      */
     IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                      GraphEntityRegistry entityRegistry, LongSupplier clock) {
+        this(pipeline, stateStore, entityRegistry, null, clock);
+    }
+
+    /**
+     * 包内测试可同时注入操作存储和确定性时钟。
+     */
+    IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+                                     GraphEntityRegistry entityRegistry,
+                                     GraphIngestionOperationStore operationStore, LongSupplier clock) {
         if (pipeline == null || stateStore == null || clock == null) {
             throw new IllegalArgumentException("pipeline, stateStore and clock must not be null");
         }
         this.pipeline = pipeline;
         this.stateStore = stateStore;
         this.entityRegistry = entityRegistry;
+        this.operationStore = operationStore;
         this.clock = clock;
     }
 
@@ -205,6 +228,8 @@ public final class IncrementalGraphIngestionService {
         }
         String operationId = plan.getNextState() == null ? plan.getMutation().getOperationId()
             : plan.getNextState().getOperationId();
+        long expectedRevision = plan.getPreviousState() == null ? 0L : plan.getPreviousState().getRevision();
+        GraphIngestionOperation operation = prepareOperation(plan, operationId, expectedRevision);
         GraphDocumentState alreadyCommitted = stateStore.findByOperationId(plan.getSpace(), plan.getDocumentId(), operationId);
         if (alreadyCommitted != null) {
             if (plan.getNextState() != null
@@ -214,13 +239,29 @@ public final class IncrementalGraphIngestionService {
                 throw new GraphExtractionException("Operation id is already used for a different document version: "
                     + operationId);
             }
+            // 上一次可能在当前状态 CAS 成功后、历史快照或操作状态提交前退出；幂等补齐这些步骤。
+            stateStore.recordVersion(alreadyCommitted);
+            completeOperation(operation);
             return new IncrementalGraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
         }
-        long expectedRevision = plan.getPreviousState() == null ? 0L : plan.getPreviousState().getRevision();
         verifyRevision(plan.getSpace(), plan.getDocumentId(), expectedRevision);
-        GraphWriteResult write = plan.isWriteRequired()
-            ? writer.mutate(plan.getMutation(), plan.getGraphOptions()) : GraphWriteResult.success(0L, 0L);
-        if (!write.isSuccess()) return new IncrementalGraphIngestionResult(plan, write, false);
+        boolean graphAlreadyApplied = operation != null
+            && (operation.getStage() == GraphIngestionOperation.Stage.GRAPH_APPLIED
+            || operation.getStage() == GraphIngestionOperation.Stage.STATE_COMMITTED
+            || operation.getStage() == GraphIngestionOperation.Stage.COMPLETED);
+        GraphWriteResult write;
+        try {
+            write = graphAlreadyApplied || !plan.isWriteRequired()
+                ? GraphWriteResult.success(0L, 0L) : writer.mutate(plan.getMutation(), plan.getGraphOptions());
+        } catch (RuntimeException exception) {
+            failOperation(operation, exception.getMessage());
+            throw exception;
+        }
+        if (!write.isSuccess()) {
+            failOperation(operation, write.getMessage());
+            return new IncrementalGraphIngestionResult(plan, write, false);
+        }
+        if (!graphAlreadyApplied) operation = advanceOperation(operation, GraphIngestionOperation.Stage.GRAPH_APPLIED);
 
         if (entityRegistry != null && !plan.getEntityRegistrations().isEmpty()) {
             entityRegistry.saveAll(plan.getSpace(), plan.getEntityRegistrations());
@@ -232,7 +273,72 @@ public final class IncrementalGraphIngestionService {
                 + plan.getSpace() + "/" + plan.getDocumentId());
         }
         stateStore.recordVersion(plan.getNextState());
+        operation = advanceOperation(operation, GraphIngestionOperation.Stage.STATE_COMMITTED);
+        completeOperation(operation);
         return new IncrementalGraphIngestionResult(plan, write, true);
+    }
+
+    /**
+     * 创建或恢复同一 operationId 的持久化操作状态。
+     */
+    private GraphIngestionOperation prepareOperation(IncrementalGraphIngestionPlan plan, String operationId,
+                                                     long expectedRevision) {
+        if (operationStore == null) return null;
+        GraphIngestionOperation operation = operationStore.get(operationId);
+        if (operation == null) {
+            GraphIngestionOperation prepared = new GraphIngestionOperation(operationId, plan.getSpace(),
+                plan.getDocumentId(), expectedRevision, GraphIngestionOperation.Stage.PREPARED,
+                clock.getAsLong(), "");
+            operationStore.createIfAbsent(prepared);
+            operation = operationStore.get(operationId);
+        }
+        if (operation == null || !operation.getSpace().equals(plan.getSpace())
+            || !operation.getDocumentId().equals(plan.getDocumentId())
+            || operation.getExpectedRevision() != expectedRevision) {
+            throw new GraphExtractionException("Operation id is already bound to another ingestion plan: "
+                + operationId);
+        }
+        if (operation.getStage() == GraphIngestionOperation.Stage.FAILED) {
+            GraphIngestionOperation retry = operation.transition(GraphIngestionOperation.Stage.PREPARED,
+                clock.getAsLong(), "");
+            if (!operationStore.compareAndSet(operationId, GraphIngestionOperation.Stage.FAILED, retry)) {
+                throw new GraphExtractionException("Operation state changed concurrently: " + operationId);
+            }
+            operation = retry;
+        }
+        return operation;
+    }
+
+    /**
+     * 原子推进操作阶段；未配置操作存储时保持无副作用。
+     */
+    private GraphIngestionOperation advanceOperation(GraphIngestionOperation operation,
+                                                     GraphIngestionOperation.Stage next) {
+        if (operation == null || operation.getStage() == next
+            || operation.getStage() == GraphIngestionOperation.Stage.COMPLETED) return operation;
+        GraphIngestionOperation advanced = operation.transition(next, clock.getAsLong(), "");
+        if (!operationStore.compareAndSet(operation.getOperationId(), operation.getStage(), advanced)) {
+            throw new GraphExtractionException("Operation state changed concurrently: " + operation.getOperationId());
+        }
+        return advanced;
+    }
+
+    /**
+     * 标记操作最终完成。
+     */
+    private void completeOperation(GraphIngestionOperation operation) {
+        if (operation == null || operation.getStage() == GraphIngestionOperation.Stage.COMPLETED) return;
+        advanceOperation(operation, GraphIngestionOperation.Stage.COMPLETED);
+    }
+
+    /**
+     * 保存可重试失败状态。
+     */
+    private void failOperation(GraphIngestionOperation operation, String message) {
+        if (operation == null) return;
+        GraphIngestionOperation failed = operation.transition(GraphIngestionOperation.Stage.FAILED,
+            clock.getAsLong(), message);
+        operationStore.compareAndSet(operation.getOperationId(), operation.getStage(), failed);
     }
 
     /**
@@ -302,6 +408,7 @@ public final class IncrementalGraphIngestionService {
             }
         }
         long nextRevision = previous == null ? 1L : previous.getRevision() + 1L;
+        long committedAtMillis = clock.getAsLong();
         String documentVersion = request.getDocumentVersion().isEmpty() ? contentHash : request.getDocumentVersion();
         String schemaVersion = request.getSchemaVersion().isEmpty()
             ? schema.getMetadata().getVersion() : request.getSchemaVersion();
@@ -309,11 +416,11 @@ public final class IncrementalGraphIngestionService {
         if (partial && !request.isAllowPartialReconcile() && previous != null) {
             nextProvenances.addAll(previous.getFactProvenances());
         }
-        nextProvenances.addAll(provenances(extraction));
+        nextProvenances.addAll(provenances(extraction, operationId, nextRevision, committedAtMillis));
         GraphDocumentState next = GraphDocumentState.builder(request.getSpace(), request.getDocumentId(), contentHash)
             .revision(nextRevision).operationId(operationId).documentVersion(documentVersion).schemaVersion(schemaVersion)
             .extractionFingerprint(extractionFingerprint).sourceUpdatedAtMillis(request.getSourceUpdatedAtMillis())
-            .batchId(request.getBatchId()).committedAtMillis(clock.getAsLong())
+            .batchId(request.getBatchId()).committedAtMillis(committedAtMillis)
             .nodeIds(nextNodes).edgeKeys(nextEdges).supersededEdgeKeys(stale)
             .factProvenances(nextProvenances).build();
         return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.READY,
@@ -336,15 +443,20 @@ public final class IncrementalGraphIngestionService {
     /**
      * 把已接受关系转换为可长期查询的来源记录；相同关系的多段证据会分别保留。
      */
-    private static List<GraphFactProvenance> provenances(GraphExtractionResult extraction) {
+    private static List<GraphFactProvenance> provenances(GraphExtractionResult extraction, String operationId,
+                                                         long documentRevision, long createdAtMillis) {
         List<GraphFactProvenance> result = new ArrayList<>();
         for (GraphRelationCandidate relation : extraction.getRelations()) {
             String source = extraction.getResolution().nodeId(relation.getSourceCandidateKey());
             String target = extraction.getResolution().nodeId(relation.getTargetCandidateKey());
             if (source == null || target == null || relation.getEvidence() == null) continue;
             GraphEdgeKey key = new GraphEdgeKey(source, relation.getType(), target, relation.getRank());
-            result.add(new GraphFactProvenance(key, relation.getEvidence(), relation.getConfidence(),
-                relation.getAssertionType(), relation.getProperties()));
+            String factId = "fact-" + resolveHash("", Collections.singletonList(key.portableId() + "\u0000"
+                + relation.getEvidence().getDocumentId() + "\u0000" + relation.getEvidence().getChunkId()
+                + "\u0000" + relation.getEvidence().getQuote()));
+            result.add(new GraphFactProvenance(factId, operationId, documentRevision, createdAtMillis,
+                key, relation.getEvidence(), relation.getConfidence(), relation.getAssertionType(),
+                relation.getProperties()));
         }
         return result;
     }

@@ -61,6 +61,12 @@ public class IncrementalGraphIngestionServiceTest {
         assertEquals(1, scenario.states.get("knowledge", "doc-1").getFactProvenances().size());
         assertEquals("doc-1", scenario.states.get("knowledge", "doc-1").getFactProvenances().get(0)
             .getEvidence().getDocumentId());
+        GraphFactProvenance fact = scenario.states.get("knowledge", "doc-1").getFactProvenances().get(0);
+        assertTrue(fact.getFactId().startsWith("fact-"));
+        assertEquals(1L, fact.getDocumentRevision());
+        assertEquals(scenario.states.get("knowledge", "doc-1").getOperationId(), fact.getOperationId());
+        assertEquals(GraphIngestionOperation.Stage.COMPLETED,
+            scenario.operations.get(fact.getOperationId()).getStage());
     }
 
     /**
@@ -179,8 +185,28 @@ public class IncrementalGraphIngestionServiceTest {
             scenario.service.execute(plan, scenario.writer);
             fail("operation id reuse should be rejected");
         } catch (GraphExtractionException expected) {
-            assertTrue(expected.getMessage().contains("already used"));
+            assertTrue(expected.getMessage().contains("Operation id"));
         }
+    }
+
+    /**
+     * 操作已记录 GRAPH_APPLIED 时，恢复执行不得再次调用 GraphWriter。
+     */
+    @Test
+    public void shouldResumeAfterGraphAppliedWithoutDuplicateWrite() {
+        Scenario scenario = scenario();
+        IncrementalGraphIngestionPlan plan = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+            request("doc-1").operationId("resume-operation").build());
+        scenario.operations.createIfAbsent(new GraphIngestionOperation("resume-operation", "knowledge", "doc-1",
+            0L, GraphIngestionOperation.Stage.GRAPH_APPLIED, 1_700_000_000_000L, ""));
+
+        IncrementalGraphIngestionResult result = scenario.service.execute(plan, scenario.writer);
+
+        assertTrue(result.isSuccess());
+        assertEquals(0, scenario.writer.calls);
+        assertEquals(GraphIngestionOperation.Stage.COMPLETED,
+            scenario.operations.get("resume-operation").getStage());
+        assertEquals(1L, scenario.states.get("knowledge", "doc-1").getRevision());
     }
 
     /**
@@ -216,6 +242,9 @@ public class IncrementalGraphIngestionServiceTest {
         assertFalse(failed.isSuccess());
         assertNull(scenario.states.get("knowledge", "doc-1"));
         assertEquals(0, scenario.registry.size());
+        String operationId = failed.getPlan().getNextState().getOperationId();
+        assertEquals(GraphIngestionOperation.Stage.FAILED,
+            scenario.operations.get(operationId).getStage());
         scenario.writer.fail = false;
         IncrementalGraphIngestionResult retried = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").batchId("batch-1").schemaVersion("v1").build(), scenario.writer);
@@ -223,6 +252,8 @@ public class IncrementalGraphIngestionServiceTest {
         assertEquals(2, scenario.registry.size());
         assertEquals("batch-1", scenario.states.get("knowledge", "doc-1").getBatchId());
         assertEquals("v1", scenario.states.get("knowledge", "doc-1").getSchemaVersion());
+        assertEquals(GraphIngestionOperation.Stage.COMPLETED,
+            scenario.operations.get(operationId).getStage());
     }
 
     /**
@@ -290,9 +321,10 @@ public class IncrementalGraphIngestionServiceTest {
             new SchemaGraphCandidateValidator(), new RegistryGraphEntityResolver(registry),
             new GraphMutationMapper());
         InMemoryGraphDocumentStateStore states = new InMemoryGraphDocumentStateStore();
+        InMemoryGraphIngestionOperationStore operations = new InMemoryGraphIngestionOperationStore();
         IncrementalGraphIngestionService service = new IncrementalGraphIngestionService(
-            pipeline, states, registry, () -> 1_700_000_000_000L);
-        return new Scenario(service, extractor, states, registry, new RecordingWriter());
+            pipeline, states, registry, operations, () -> 1_700_000_000_000L);
+        return new Scenario(service, extractor, states, registry, operations, new RecordingWriter());
     }
 
     /**
@@ -411,17 +443,22 @@ public class IncrementalGraphIngestionServiceTest {
          */
         private final InMemoryGraphEntityRegistry registry;
         /**
+         * 内存导入操作状态。
+         */
+        private final InMemoryGraphIngestionOperationStore operations;
+        /**
          * 记录图写入的 writer。
          */
         private final RecordingWriter writer;
 
         private Scenario(IncrementalGraphIngestionService service, RecordingExtractor extractor,
                          InMemoryGraphDocumentStateStore states, InMemoryGraphEntityRegistry registry,
-                         RecordingWriter writer) {
+                         InMemoryGraphIngestionOperationStore operations, RecordingWriter writer) {
             this.service = service;
             this.extractor = extractor;
             this.states = states;
             this.registry = registry;
+            this.operations = operations;
             this.writer = writer;
         }
     }
