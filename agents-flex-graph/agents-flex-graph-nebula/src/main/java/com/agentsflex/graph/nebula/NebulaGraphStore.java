@@ -26,6 +26,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class NebulaGraphStore implements GraphStore {
     /**
+     * 是否已经释放连接池和异步任务资源；关闭后禁止隐式重建会话池。
+     */
+    private volatile boolean closed;
+    /**
      * 连接和默认空间配置。
      */
     private final NebulaGraphStoreConfig config;
@@ -69,6 +73,7 @@ public final class NebulaGraphStore implements GraphStore {
      * 获取或创建指定空间的会话池。
      */
     public SessionPool pool(String space) {
+        if (closed) throw new IllegalStateException("Nebula graph store is closed");
         // 管理操作使用空字符串表示 meta space；空白空间名也必须回退到配置的默认空间。
         final String resolved = space == null || space.trim().isEmpty() ? config.getDefaultSpace() : space;
         return pools.computeIfAbsent(resolved, key -> {
@@ -153,6 +158,8 @@ public final class NebulaGraphStore implements GraphStore {
      */
     @Override
     public void close() {
+        if (closed) return;
+        closed = true;
         imports.close();
         for (SessionPool pool : pools.values()) pool.close();
         pools.clear();

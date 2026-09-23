@@ -32,10 +32,10 @@ public class NebulaNqlCompilerTest {
             .build();
 
         NebulaNqlCompiler.Compiled compiled = new NebulaNqlCompiler().compile(query);
-        assertEquals("MATCH path = (person:Person)-[knows:KNOWS]->(friend:Person) "
-            + "WHERE (person.tenant == $p0 AND friend.status IN $p1) "
-            + "RETURN path AS route, friend.name AS friendName "
-            + "ORDER BY friend.name ASC SKIP 2 LIMIT 8", compiled.statement);
+        assertEquals("MATCH p = (person:Person)-[knows:KNOWS]->(friend:Person) "
+            + "WHERE (person.Person.tenant == $p0 AND friend.Person.status IN $p1) "
+            + "RETURN p AS route, friend.Person.name AS friendName "
+            + "ORDER BY friendName ASC SKIP 2 LIMIT 8", compiled.statement);
         assertEquals("acme", compiled.parameters.get("p0"));
         assertEquals(Arrays.asList("active", "pending"), compiled.parameters.get("p1"));
     }
@@ -53,6 +53,20 @@ public class NebulaNqlCompilerTest {
 
         assertTrue(new NebulaNqlCompiler().compile(incoming).statement.contains("<-[e:FOLLOWS*2..4]-(b)"));
         assertTrue(new NebulaNqlCompiler().compile(both).statement.contains("-[e:FOLLOWS]-(b)"));
+    }
+
+    @Test
+    public void shouldKeepEdgePropertiesUnqualifiedByNodeTag() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("a", "Person"))
+            .traverse(TraversalQuery.EdgePattern.edge("e", "KNOWS", TraversalQuery.Direction.OUT),
+                TraversalQuery.NodePattern.node("b", "Person"))
+            .where(GraphFilter.gt("e", "weight", 1L))
+            .select(TraversalQuery.Projection.property("e", "weight", "weight"))
+            .build();
+
+        assertEquals("MATCH (a:Person)-[e:KNOWS]->(b:Person) WHERE e.weight > $p0 "
+                + "RETURN e.weight AS weight LIMIT 100",
+            new NebulaNqlCompiler().compile(query).statement);
     }
 
     @Test
@@ -75,7 +89,7 @@ public class NebulaNqlCompilerTest {
             .build();
 
         assertEquals("MATCH (person:Person) RETURN count(person) AS total, "
-            + "count(distinct person.city) AS cities, max(person.score) AS maxScore LIMIT 100",
+                + "count(distinct person.Person.city) AS cities, max(person.Person.score) AS maxScore LIMIT 100",
             new NebulaNqlCompiler().compile(query).statement);
     }
 

@@ -112,6 +112,7 @@ public final class NebulaGraphManager implements GraphManager {
             }
             statement.append(");");
             execute(space, statement.toString());
+            addMissingProperties(space, "TAG", node.getLabel(), node.getProperties());
         }
         for (GraphSchema.EdgeType edge : schema.getEdgeTypes()) {
             StringBuilder statement = new StringBuilder("CREATE EDGE IF NOT EXISTS ").append(edge.getType()).append(" (");
@@ -122,6 +123,7 @@ public final class NebulaGraphManager implements GraphManager {
             }
             statement.append(");");
             execute(space, statement.toString());
+            addMissingProperties(space, "EDGE", edge.getType(), edge.getProperties());
         }
         for (GraphSchema.Index index : schema.getIndexes()) {
             if (index.isUnique()) {
@@ -136,6 +138,106 @@ public final class NebulaGraphManager implements GraphManager {
             }
             statement.append(");");
             execute(space, statement.toString());
+            // Nebula 创建 TAG/EDGE index 后不会自动构建索引；只有重建完成后，MATCH
+            // 的属性过滤才能通过优化阶段并真正使用该索引。
+            rebuildIndex(space, kind, index.getName());
+        }
+    }
+
+    /**
+     * 为已存在的 TAG/EDGE 增加 Schema 中新声明的属性。
+     *
+     * <p>Nebula 的 CREATE ... IF NOT EXISTS 只保证类型存在，不会合并后续属性；因此
+     * ADDITIVE 模式必须显式读取当前定义并执行 ALTER ... ADD，避免“应用成功但属性缺失”。</p>
+     */
+    private void addMissingProperties(String space, String kind, String name,
+                                      List<GraphSchema.Property> expected) {
+        if (expected == null || expected.isEmpty()) return;
+        java.util.Set<String> existing = new java.util.HashSet<>();
+        try {
+            ResultSet result = store.pool(space).execute("DESCRIBE " + kind + " " + name);
+            ensureSucceeded(result);
+            for (int i = 0; i < result.rowsSize(); i++) {
+                ResultSet.Record row = result.rowValues(i);
+                if (row.size() > 0) existing.add(text(row.get(0)));
+            }
+        } catch (Exception error) {
+            throw failure(GraphErrorCode.SCHEMA_APPLY_FAILED,
+                "Unable to inspect Nebula " + kind + " properties: " + name, error);
+        }
+        for (GraphSchema.Property property : expected) {
+            if (existing.contains(property.getName())) continue;
+            execute(space, "ALTER " + kind + " " + name + " ADD (" + property.getName()
+                + " " + type(property.getType()) + ")");
+            waitForPropertyReady(space, kind, name, property);
+        }
+    }
+
+    /**
+     * 等待新增属性从 MetaD 传播到 StorageD；DESCRIBE 成功并不代表数据面已经可写。
+     */
+    private void waitForPropertyReady(String space, String kind, String name,
+                                      GraphSchema.Property property) {
+        long deadline = System.currentTimeMillis() + 20_000L;
+        RuntimeException last = null;
+        while (System.currentTimeMillis() < deadline) {
+            String probeId = "__agentsflex_schema_probe";
+            try {
+                ResultSet result;
+                if ("TAG".equals(kind)) {
+                    result = store.pool(space).execute("INSERT VERTEX IF NOT EXISTS " + name + "("
+                        + property.getName() + ") VALUES \"" + probeId + "\":("
+                        + probeLiteral(property.getType()) + ")");
+                } else {
+                    result = store.pool(space).execute("INSERT EDGE IF NOT EXISTS " + name + "("
+                        + property.getName() + ") VALUES \"" + probeId + "\" -> \""
+                        + probeId + "-target\" @ 0:(" + probeLiteral(property.getType()) + ")");
+                }
+                if (result.isSucceeded()) {
+                    if ("TAG".equals(kind)) {
+                        store.pool(space).execute("DELETE VERTEX \"" + probeId + "\"");
+                    } else {
+                        store.pool(space).execute("DELETE EDGE " + name + " \"" + probeId
+                            + "\" -> \"" + probeId + "-target\" @ 0");
+                    }
+                    return;
+                }
+                last = new GraphException(GraphErrorCode.SCHEMA_APPLY_FAILED, result.getErrorMessage());
+            } catch (Exception error) {
+                last = error instanceof RuntimeException
+                    ? (RuntimeException) error
+                    : new GraphException(GraphErrorCode.SCHEMA_APPLY_FAILED,
+                    "Nebula Schema probe failed: " + error.getMessage(), error);
+            }
+            try {
+                Thread.sleep(300L);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new GraphException(GraphErrorCode.SCHEMA_APPLY_FAILED,
+                    "Interrupted while waiting for Nebula Schema propagation", interrupted);
+            }
+        }
+        throw failure(GraphErrorCode.SCHEMA_APPLY_FAILED,
+            "Nebula Schema property was not ready: " + kind + " " + name + "." + property.getName(), last);
+    }
+
+    /**
+     * 生成用于 Schema 数据面探测的最小合法字面量。
+     */
+    private String probeLiteral(GraphSchema.PropertyType type) {
+        switch (type) {
+            case BOOLEAN:
+                return "false";
+            case INT64:
+                return "0";
+            case DOUBLE:
+                return "0.0";
+            case DATE:
+                return "date()";
+            case DATETIME:
+                return "datetime()";
+            default:
+                return "\"\"";
         }
     }
 
@@ -196,6 +298,35 @@ public final class NebulaGraphManager implements GraphManager {
         } catch (Exception e) {
             throw failure(GraphErrorCode.SCHEMA_APPLY_FAILED, "Nebula management operation failed", e);
         }
+    }
+
+    /**
+     * 等待异步传播后的索引可见，再执行重建。Nebula 在 CREATE INDEX 成功返回后，
+     * 短时间内可能仍让 REBUILD 返回 IndexNotFound，尤其是在重复应用 Schema 时。
+     */
+    private void rebuildIndex(String space, String kind, String name) {
+        long deadline = System.currentTimeMillis() + 20_000L;
+        RuntimeException last = null;
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                execute(space, "REBUILD " + kind + " INDEX " + name);
+                return;
+            } catch (RuntimeException error) {
+                last = error;
+                String message = String.valueOf(error.getMessage());
+                if (!message.toLowerCase().contains("index") || !message.toLowerCase().contains("not found")) {
+                    throw error;
+                }
+                try {
+                    Thread.sleep(500L);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw error;
+                }
+            }
+        }
+        throw last == null ? new GraphException(GraphErrorCode.SCHEMA_APPLY_FAILED,
+            "Nebula index rebuild timed out: " + name) : last;
     }
 
     /**

@@ -78,6 +78,19 @@ public class NebulaGraphContractTest {
     }
 
     @Test
+    public void closedStoreMustNotRecreateSessionPool() {
+        NebulaGraphStore store = new NebulaGraphStore(new NebulaGraphStoreConfig());
+        store.close();
+        try {
+            store.pool("");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("closed"));
+            return;
+        }
+        throw new AssertionError("closed Nebula store must reject new pools");
+    }
+
+    @Test
     public void valueConversionShouldNormalizeNebulaScalarAndNullValues() throws Exception {
         NebulaGraphQueryExecutor executor = new NebulaGraphQueryExecutor(null, new NebulaGraphStoreConfig());
         Method convert = NebulaGraphQueryExecutor.class.getDeclaredMethod("convert", ValueWrapper.class);

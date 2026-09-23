@@ -64,6 +64,10 @@ public final class Neo4jGraphManager implements GraphManager {
             }
         } catch (RuntimeException error) {
             if (error instanceof GraphException) throw error;
+            if (isUnsupportedAdministration(error)) {
+                throw new UnsupportedGraphFeatureException(
+                    "Neo4j database creation requires an Enterprise edition with administration privileges");
+            }
             throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
                 "Neo4j space creation failed: " + error.getMessage(), error);
         }
@@ -112,9 +116,22 @@ public final class Neo4jGraphManager implements GraphManager {
         try (Session session = driver.session(org.neo4j.driver.SessionConfig.forDatabase("system"))) {
             session.run("DROP DATABASE " + name + " IF EXISTS").consume();
         } catch (RuntimeException error) {
+            if (isUnsupportedAdministration(error)) {
+                throw new UnsupportedGraphFeatureException(
+                    "Neo4j database deletion requires an Enterprise edition with administration privileges");
+            }
             throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
                 "Neo4j space drop failed: " + error.getMessage(), error);
         }
+    }
+
+    /**
+     * 识别 Community Edition 对数据库管理命令的明确拒绝。
+     */
+    private boolean isUnsupportedAdministration(Throwable error) {
+        String message = error == null ? "" : String.valueOf(error.getMessage()).toLowerCase();
+        return message.contains("unsupported administration command")
+            || message.contains("administration command is not supported");
     }
 
     /**

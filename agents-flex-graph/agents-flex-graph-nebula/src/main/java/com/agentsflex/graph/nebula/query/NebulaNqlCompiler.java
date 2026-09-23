@@ -22,13 +22,15 @@ final class NebulaNqlCompiler {
     Compiled compile(TraversalQuery query) {
         query.validate();
         StringBuilder nql = new StringBuilder("MATCH ");
-        if (hasPathProjection(query)) nql.append("path = ");
+        Map<String, String> labels = aliasLabels(query);
+        // path 是 Nebula nGQL 保留字，不能作为路径变量名。
+        if (hasPathProjection(query)) nql.append("p = ");
         nql.append(node(query.getStart()));
         for (TraversalQuery.Step step : query.getSteps()) nql.append(pattern(step));
         Map<String, Object> params = new LinkedHashMap<>();
         if (query.getFilter() != null) {
             nql.append(" WHERE ");
-            appendFilter(nql, query.getFilter(), params);
+            appendFilter(nql, query.getFilter(), params, labels);
         }
         nql.append(" RETURN ");
         List<String> projections = new ArrayList<>();
@@ -36,19 +38,37 @@ final class NebulaNqlCompiler {
             if (projection.getKind() == TraversalQuery.ProjectionKind.ENTITY) {
                 projections.add(projection.getAlias() + " AS " + projection.getOutputName());
             } else if (projection.getKind() == TraversalQuery.ProjectionKind.PROPERTY) {
-                projections.add(projection.getAlias() + "." + projection.getProperty() + " AS " + projection.getOutputName());
+                projections.add(propertyExpression(projection.getAlias(), projection.getProperty(), labels)
+                    + " AS " + projection.getOutputName());
             } else if (projection.getKind() == TraversalQuery.ProjectionKind.AGGREGATE) {
-                projections.add(aggregate(projection) + " AS " + projection.getOutputName());
+                projections.add(aggregate(projection, labels) + " AS " + projection.getOutputName());
             } else {
-                projections.add("path AS " + projection.getOutputName());
+                projections.add("p AS " + projection.getOutputName());
             }
         }
         nql.append(join(projections, ", "));
         if (!query.getSorts().isEmpty()) {
             nql.append(" ORDER BY ");
             List<String> sorts = new ArrayList<>();
-            for (TraversalQuery.Sort sort : query.getSorts())
-                sorts.add(sort.getAlias() + "." + sort.getProperty() + " " + sort.getDirection().name());
+            for (TraversalQuery.Sort sort : query.getSorts()) {
+                // Nebula 3.x 只允许按 RETURN/YIELD 输出列名排序，不能直接使用 n.property。
+                // 优先复用同一属性投影的别名，避免真实服务返回“Only column name can be used”。
+                String output = null;
+                for (TraversalQuery.Projection projection : query.getProjections()) {
+                    if (projection.getKind() == TraversalQuery.ProjectionKind.PROPERTY
+                        && sort.getAlias().equals(projection.getAlias())
+                        && sort.getProperty().equals(projection.getProperty())) {
+                        output = projection.getOutputName();
+                        break;
+                    }
+                }
+                if (output == null) {
+                    throw new com.agentsflex.graph.UnsupportedGraphFeatureException(
+                        "Nebula ORDER BY requires the sorted property to be selected: "
+                            + sort.getAlias() + "." + sort.getProperty());
+                }
+                sorts.add(output + " " + sort.getDirection().name());
+            }
             nql.append(join(sorts, ", "));
         }
         if (query.getSkip() > 0) nql.append(" SKIP ").append(query.getSkip());
@@ -113,10 +133,11 @@ final class NebulaNqlCompiler {
     /**
      * 递归渲染过滤树并绑定参数。
      */
-    private void appendFilter(StringBuilder out, GraphFilter filter, Map<String, Object> params) {
+    private void appendFilter(StringBuilder out, GraphFilter filter, Map<String, Object> params,
+                              Map<String, String> labels) {
         switch (filter.getKind()) {
             case PREDICATE:
-                String left = filter.getAlias() + "." + filter.getProperty();
+                String left = propertyExpression(filter.getAlias(), filter.getProperty(), labels);
                 switch (filter.getOperator()) {
                     case IS_NULL:
                         out.append(left).append(" IS NULL");
@@ -138,7 +159,7 @@ final class NebulaNqlCompiler {
                 }
             case NOT:
                 out.append("NOT (");
-                appendFilter(out, filter.getChildren().get(0), params);
+                appendFilter(out, filter.getChildren().get(0), params, labels);
                 out.append(")");
                 return;
             case AND:
@@ -147,7 +168,7 @@ final class NebulaNqlCompiler {
                 String separator = filter.getKind() == GraphFilter.Kind.AND ? " AND " : " OR ";
                 for (int i = 0; i < filter.getChildren().size(); i++) {
                     if (i > 0) out.append(separator);
-                    appendFilter(out, filter.getChildren().get(i), params);
+                    appendFilter(out, filter.getChildren().get(i), params, labels);
                 }
                 out.append(")");
                 return;
@@ -190,9 +211,9 @@ final class NebulaNqlCompiler {
     /**
      * 将可移植聚合投影转换为 nGQL 聚合表达式。
      */
-    private String aggregate(TraversalQuery.Projection projection) {
+    private String aggregate(TraversalQuery.Projection projection, Map<String, String> labels) {
         String expression = projection.getProperty() == null
-            ? projection.getAlias() : projection.getAlias() + "." + projection.getProperty();
+            ? projection.getAlias() : propertyExpression(projection.getAlias(), projection.getProperty(), labels);
         switch (projection.getAggregateFunction()) {
             case COUNT:
                 return "count(" + expression + ")";
@@ -233,6 +254,32 @@ final class NebulaNqlCompiler {
             result.append(value);
         }
         return result.toString();
+    }
+
+    /**
+     * 将查询别名映射到 Nebula TAG 名称，用于生成 tag-qualified 属性表达式。
+     */
+    private Map<String, String> aliasLabels(TraversalQuery query) {
+        Map<String, String> labels = new LinkedHashMap<>();
+        labels.put(query.getStart().getAlias(), query.getStart().getLabel());
+        for (TraversalQuery.Step step : query.getSteps()) {
+            labels.put(step.getNode().getAlias(), step.getNode().getLabel());
+        }
+        return labels;
+    }
+
+    /**
+     * Nebula MATCH 属性访问要求 alias.TAG.property；无标签模式无法提供可移植属性访问。
+     */
+    private String propertyExpression(String alias, String property, Map<String, String> labels) {
+        // 不在节点别名表中的别名属于边，Nebula 边属性沿用 edgeAlias.property。
+        if (!labels.containsKey(alias)) return alias + "." + property;
+        String label = labels.get(alias);
+        if (label == null || label.trim().isEmpty()) {
+            throw new com.agentsflex.graph.UnsupportedGraphFeatureException(
+                "Nebula property queries require a labeled node pattern: " + alias);
+        }
+        return alias + "." + label + "." + property;
     }
 
     /**

@@ -24,6 +24,14 @@ import java.util.Map;
  */
 public final class NebulaGraphWriter implements GraphWriter {
     /**
+     * 空间刚创建或 Schema 刚传播时，StorageD 可能短暂返回 Not leader；最多重试若干次。
+     */
+    private static final int MAX_RETRY_ATTEMPTS = 5;
+    /**
+     * leader 选举/分片注册的退避起始间隔（毫秒）。
+     */
+    private static final long RETRY_BACKOFF_MILLIS = 200L;
+    /**
      * 所属存储。
      */
     private final NebulaGraphStore store;
@@ -87,7 +95,8 @@ public final class NebulaGraphWriter implements GraphWriter {
         }
         String tag = node.getLabelList().get(0);
         if (node.getProperties().isEmpty()) {
-            execute(pool, "INSERT VERTEX " + tag + "() VALUES " + literal(node.getId()) + ":()",
+            // 空属性也必须保持 upsert 的幂等语义；普通 INSERT 在重复导入时会失败。
+            execute(pool, "INSERT VERTEX IF NOT EXISTS " + tag + "() VALUES " + literal(node.getId()) + ":()",
                 java.util.Collections.<String, Object>emptyMap());
             return;
         }
@@ -110,7 +119,8 @@ public final class NebulaGraphWriter implements GraphWriter {
      */
     private void upsertEdge(com.vesoft.nebula.client.graph.SessionPool pool, GraphEdge edge) {
         if (edge.getProperties().isEmpty()) {
-            execute(pool, "INSERT EDGE " + edge.getType() + "() VALUES " + literal(edge.getSourceId())
+            // 与节点一致，使用 IF NOT EXISTS 避免重复导入无属性边时报错。
+            execute(pool, "INSERT EDGE IF NOT EXISTS " + edge.getType() + "() VALUES " + literal(edge.getSourceId())
                     + " -> " + literal(edge.getTargetId()) + " @ " + edge.getRank() + ":()",
                 java.util.Collections.<String, Object>emptyMap());
             return;
@@ -133,12 +143,41 @@ public final class NebulaGraphWriter implements GraphWriter {
      * 执行 nGQL 并检查 ResultSet 状态。
      */
     private void execute(com.vesoft.nebula.client.graph.SessionPool pool, String statement, Map<String, Object> parameters) {
-        try {
-            ResultSet result = pool.execute(statement, parameters);
-            if (!result.isSucceeded()) throw new IllegalStateException(result.getErrorMessage());
-        } catch (Exception e) {
-            throw new IllegalStateException("Nebula mutation failed: " + e.getMessage(), e);
+        Exception last = null;
+        for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                ResultSet result = pool.execute(statement, parameters);
+                if (!result.isSucceeded()) throw new IllegalStateException(result.getErrorMessage());
+                return;
+            } catch (Exception e) {
+                last = e;
+                if (!isRetryableLeaderError(e) || attempt == MAX_RETRY_ATTEMPTS) break;
+                try {
+                    Thread.sleep(RETRY_BACKOFF_MILLIS * attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Nebula mutation interrupted while retrying", interrupted);
+                }
+            }
         }
+        throw new IllegalStateException("Nebula mutation failed: "
+            + (last == null ? "unknown error" : last.getMessage()), last);
+    }
+
+    /**
+     * 识别 Nebula 集群在 leader 选举和分片注册窗口内返回的可恢复错误。
+     */
+    private boolean isRetryableLeaderError(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            String message = String.valueOf(current.getMessage()).toLowerCase();
+            if (message.contains("not the leader") || message.contains("leader changed")
+                || message.contains("raft leader") || message.contains("try again later")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     /**

@@ -48,6 +48,10 @@ public final class Neo4jGraphStore implements GraphStore {
             GraphFeature.TRANSACTIONS, GraphFeature.VARIABLE_LENGTH_PATH,
             GraphFeature.BULK_IMPORT, GraphFeature.QUERY_EXPLAIN, GraphFeature.STREAMING_CURSOR,
             GraphFeature.NATIVE_QUERY)
+        .withNote(GraphFeature.CREATE_SPACE,
+            "Creating databases requires Neo4j Enterprise edition and administration privileges")
+        .withNote(GraphFeature.DROP_SPACE,
+            "Dropping databases requires Neo4j Enterprise edition and administration privileges")
         .withNote(GraphFeature.VARIABLE_LENGTH_PATH, "Portable traversal limits paths to 16 hops")
         .withLimit(GraphFeature.VARIABLE_LENGTH_PATH, "maxHops", "16")
         .withNote(GraphFeature.SHORTEST_PATH, "Use NativeGraphQuery; no portable shortest-path AST is exposed")
