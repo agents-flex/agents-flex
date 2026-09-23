@@ -207,6 +207,13 @@ public final class IncrementalGraphIngestionService {
             : plan.getNextState().getOperationId();
         GraphDocumentState alreadyCommitted = stateStore.findByOperationId(plan.getSpace(), plan.getDocumentId(), operationId);
         if (alreadyCommitted != null) {
+            if (plan.getNextState() != null
+                && (!alreadyCommitted.getContentHash().equals(plan.getNextState().getContentHash())
+                || !alreadyCommitted.getExtractionFingerprint().equals(plan.getNextState().getExtractionFingerprint())
+                || alreadyCommitted.getStatus() != plan.getNextState().getStatus())) {
+                throw new GraphExtractionException("Operation id is already used for a different document version: "
+                    + operationId);
+            }
             return new IncrementalGraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
         }
         long expectedRevision = plan.getPreviousState() == null ? 0L : plan.getPreviousState().getRevision();
@@ -415,7 +422,8 @@ public final class IncrementalGraphIngestionService {
         if (!request.getOperationId().isEmpty()) return request.getOperationId();
         return "ingest-" + resolveHash("", Collections.singletonList(request.getSpace() + "\u0000"
             + request.getDocumentId() + "\u0000" + contentHash + "\u0000"
-            + request.getDocumentVersion() + "\u0000" + extractionFingerprint));
+            + request.getDocumentVersion() + "\u0000" + request.getBatchId() + "\u0000"
+            + request.isForceReextract() + "\u0000" + extractionFingerprint));
     }
 
     /**

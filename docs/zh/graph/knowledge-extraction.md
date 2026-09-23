@@ -269,9 +269,13 @@ IncrementalGraphIngestionResult result = ingestion.ingest(
 `GraphDocumentStateStore` 至少需要持久化以下字段：
 
 - Space、逻辑 `documentId`、内容哈希和业务版本；
-- Schema 版本、导入 `batchId`、提交时间和乐观锁 `revision`；
+- Schema 版本、抽取配置指纹、导入 `batchId`、幂等 `operationId`、提交时间和乐观锁 `revision`；
+- 来源更新时间 `sourceUpdatedAtMillis` 和文档状态（`ACTIVE`/`RETRACTED`）；
 - 当前文档版本产生的节点 ID、关系 `GraphEdgeKey`；
 - 每条关系的 `GraphFactProvenance`，包括 documentId、chunkId、原文证据、confidence 和 assertionType。
+
+生产实现还应保留不可变的文档版本历史，而不是只覆盖当前状态。撤回应写入 `RETRACTED` 墓碑，避免
+延迟任务或重复消息把已经撤回的文档重新导入。`sourceUpdatedAtMillis` 用于拒绝来源时间倒退的乱序版本。
 
 文档更新后，服务会把旧版本中不再出现的关系放入 `staleEdgeKeys`。默认策略 `KEEP` 只报告这些关系，不
 产生破坏性删除；显式使用 `DELETE_IF_UNREFERENCED` 时，仅当同一 Space 的其他活动文档状态不再引用该
@@ -287,9 +291,18 @@ IncrementalGraphIngestionResult result = ingestion.execute(plan, graphStore.writ
 ~~~
 
 状态存储使用乐观 `revision`。图数据库写入和外部状态存储无法组成跨系统事务：写图成功但状态 CAS 失败
-时，服务会抛出异常，调用方应按相同内容哈希重试幂等 upsert，并使用 documentId 维度的分布式锁或任务
-队列避免多实例同时处理同一文档。SDK 提供的 `InMemoryGraphDocumentStateStore` 和
+时，服务会抛出异常，调用方应按相同 `operationId` 重试幂等 upsert，并使用 documentId 维度的分布式锁或任务
+队列避免多实例同时处理同一文档。`GraphMutation.operationId` 会传递给适配器，适配器应使用它实现幂等。
+SDK 提供的 `InMemoryGraphDocumentStateStore` 和
 `InMemoryGraphEntityRegistry` 只适合测试，进程重启后数据会丢失。
+
+默认情况下，抽取结果包含 Chunk 错误时不会允许关系删除；即使通过
+`rejectExtractionErrors(false)` 提交部分结果，也会保留旧关系。只有明确设置
+`allowPartialReconcile(true)` 才允许部分结果参与 stale relation 删除。这样可以避免模型限流、临时网络错误
+导致旧知识被误删。
+
+如果使用跨 Space 的共享实体注册表，应通过带 Space 参数的 `GraphEntityRegistry.find/saveAll` 和
+`new RegistryGraphEntityResolver(space, registry)`，避免不同知识库之间的名称和别名互相污染。
 
 ## 扩展点
 

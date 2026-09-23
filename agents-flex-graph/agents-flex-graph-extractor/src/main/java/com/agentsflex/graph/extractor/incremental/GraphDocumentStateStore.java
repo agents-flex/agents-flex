@@ -69,7 +69,9 @@ public interface GraphDocumentStateStore {
      */
     default boolean isReferencedByOtherDocument(String space, String excludedDocumentId, GraphEdgeKey edgeKey) {
         for (GraphDocumentState state : list(space)) {
-            if (!state.getDocumentId().equals(excludedDocumentId) && state.getEdgeKeys().contains(edgeKey)) return true;
+            if (state.getStatus() == GraphDocumentState.Status.ACTIVE
+                && !state.getDocumentId().equals(excludedDocumentId)
+                && state.getEdgeKeys().contains(edgeKey)) return true;
         }
         return false;
     }

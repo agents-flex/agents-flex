@@ -151,6 +151,39 @@ public class IncrementalGraphIngestionServiceTest {
     }
 
     /**
+     * 强制重抽取必须生成新的默认操作号，不能被上一版本的幂等记录短路。
+     */
+    @Test
+    public void shouldAllowForceReextractWithNewBatch() {
+        Scenario scenario = scenario();
+        scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
+        IncrementalGraphIngestionResult result = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+            request("doc-1").forceReextract(true).batchId("rerun-1").build(), scenario.writer);
+
+        assertEquals(IncrementalGraphIngestionPlan.Status.READY, result.getPlan().getStatus());
+        assertEquals(2, scenario.extractor.calls.get());
+        assertEquals(2, scenario.writer.calls);
+    }
+
+    /**
+     * 同一个显式操作号不能被复用于不同文档版本。
+     */
+    @Test
+    public void shouldRejectOperationIdReuseAcrossVersions() {
+        Scenario scenario = scenario();
+        scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+            request("doc-1").operationId("operation-1").build(), scenario.writer);
+        IncrementalGraphIngestionPlan plan = scenario.service.plan(Document.of("林默离开了山门"), schema(),
+            request("doc-1").operationId("operation-1").build());
+        try {
+            scenario.service.execute(plan, scenario.writer);
+            fail("operation id reuse should be rejected");
+        } catch (GraphExtractionException expected) {
+            assertTrue(expected.getMessage().contains("already used"));
+        }
+    }
+
+    /**
      * 同一条关系被多个文档支持时，状态存储应聚合全部来源证据。
      */
     @Test
