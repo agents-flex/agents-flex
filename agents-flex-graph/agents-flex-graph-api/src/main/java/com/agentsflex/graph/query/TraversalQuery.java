@@ -1,8 +1,6 @@
 package com.agentsflex.graph.query;
 
-import com.agentsflex.graph.query.GraphFilter;
 import com.agentsflex.graph.identifier.GraphIdentifiers;
-import com.agentsflex.graph.query.GraphQuery;
 
 import java.util.ArrayList;
 import java.util.Arrays;

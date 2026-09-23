@@ -122,6 +122,17 @@ public class GraphQueryPagingContractTest {
         }, GraphPageRequest.of(0, 10));
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void pageRequestShouldRejectInvalidOffsetAndLimit() {
+        GraphPageRequest.of(-1, 0);
+    }
+
+    @Test(expected = UnsupportedGraphFeatureException.class)
+    public void defaultExplainShouldFailExplicitlyWhenBackendHasNoPlanSupport() {
+        new StaticExecutor(new GraphResult(Collections.emptyList(), "MATCH"))
+            .explain(TraversalQuery.from(TraversalQuery.NodePattern.anyNode("n")).build(), GraphOptions.DEFAULT);
+    }
+
     @Test
     public void resultCursorShouldBeReadOnlyAndClosedIdempotently() {
         GraphResult result = new GraphResult(Collections.singletonList(

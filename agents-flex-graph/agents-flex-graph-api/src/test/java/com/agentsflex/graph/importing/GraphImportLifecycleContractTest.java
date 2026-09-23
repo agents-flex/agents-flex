@@ -143,6 +143,41 @@ public class GraphImportLifecycleContractTest {
         }
     }
 
+    @Test
+    public void cancellationAfterCompletionMustNotRewriteSuccessfulTask() throws Exception {
+        AsyncGraphImportService service = new AsyncGraphImportService(new RecordingWriter());
+        try {
+            GraphImportTask completed = awaitTerminal(service, service.submit(
+                GraphImportRequest.builder().nodes(Collections.singletonList(node("done"))).build(),
+                GraphOptions.DEFAULT).getId());
+            assertEquals(GraphImportStatus.SUCCEEDED, completed.getStatus());
+            assertFalse(service.cancel(completed.getId()));
+            assertEquals(GraphImportStatus.SUCCEEDED, service.get(completed.getId()).getStatus());
+        } finally {
+            service.close();
+        }
+    }
+
+    @Test
+    public void customExecutorShouldAllowMultipleImportsToRunConcurrently() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        RecordingWriter writer = new RecordingWriter();
+        AsyncGraphImportService service = new AsyncGraphImportService(writer, executor);
+        List<String> ids = new ArrayList<>();
+        try {
+            for (int i = 0; i < 8; i++) {
+                ids.add(service.submit(GraphImportRequest.builder()
+                    .nodes(Collections.singletonList(node("n" + i))).build(), GraphOptions.DEFAULT).getId());
+            }
+            for (String id : ids) {
+                assertEquals(GraphImportStatus.SUCCEEDED, awaitTerminal(service, id).getStatus());
+            }
+            assertEquals(8, writer.calls.size());
+        } finally {
+            service.close();
+        }
+    }
+
     private static GraphNode node(String id) {
         return GraphNode.builder(id, "Person").build();
     }

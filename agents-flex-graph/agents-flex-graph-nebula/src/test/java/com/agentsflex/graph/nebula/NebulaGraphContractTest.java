@@ -6,10 +6,14 @@ import com.agentsflex.graph.manager.GraphManager;
 import com.agentsflex.graph.nebula.manager.NebulaGraphManager;
 import com.agentsflex.graph.schema.GraphSchema;
 import com.agentsflex.graph.schema.GraphSchemaValidation;
+import com.vesoft.nebula.Value;
+import com.vesoft.nebula.client.graph.data.ValueWrapper;
+import com.agentsflex.graph.nebula.query.NebulaGraphQueryExecutor;
 
 import org.junit.Test;
 
 import java.util.Collections;
+import java.lang.reflect.Method;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -71,5 +75,18 @@ public class NebulaGraphContractTest {
         assertEquals("tenant_graph", config.getDefaultSpace());
         assertEquals(2, config.getMinSessions());
         assertEquals(4, config.getMaxSessions());
+    }
+
+    @Test
+    public void valueConversionShouldNormalizeNebulaScalarAndNullValues() throws Exception {
+        NebulaGraphQueryExecutor executor = new NebulaGraphQueryExecutor(null, new NebulaGraphStoreConfig());
+        Method convert = NebulaGraphQueryExecutor.class.getDeclaredMethod("convert", ValueWrapper.class);
+        convert.setAccessible(true);
+
+        assertEquals(42L, convert.invoke(executor, new ValueWrapper(Value.iVal(42L), "UTF-8")));
+        assertEquals("Alice", convert.invoke(executor,
+            new ValueWrapper(Value.sVal("Alice".getBytes("UTF-8")), "UTF-8")));
+        assertEquals(null, convert.invoke(executor,
+            new ValueWrapper(Value.nVal(com.vesoft.nebula.NullType.__NULL__), "UTF-8")));
     }
 }

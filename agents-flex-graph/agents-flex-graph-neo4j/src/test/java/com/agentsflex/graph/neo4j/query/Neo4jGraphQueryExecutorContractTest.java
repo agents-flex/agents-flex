@@ -19,6 +19,10 @@ import org.neo4j.driver.Record;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.Session;
+import org.neo4j.driver.summary.Plan;
+import org.neo4j.driver.summary.ResultSummary;
 
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
@@ -105,6 +109,64 @@ public class Neo4jGraphQueryExecutorContractTest {
             return;
         }
         throw new AssertionError("read-only options must reject native writes");
+    }
+
+    @Test
+    public void explainShouldExposeBackendAndPlanTreeDetails() {
+        final Plan child = plan("NodeByLabelScan", Collections.<Plan>emptyList());
+        final Plan root = plan("ProduceResults", Collections.singletonList(child));
+        final ResultSummary summary = (ResultSummary) Proxy.newProxyInstance(ResultSummary.class.getClassLoader(),
+            new Class<?>[]{ResultSummary.class}, (proxy, method, args) -> {
+                if ("hasPlan".equals(method.getName())) return true;
+                if ("plan".equals(method.getName())) return root;
+                return null;
+            });
+        Result explainResult = (Result) Proxy.newProxyInstance(Result.class.getClassLoader(),
+            new Class<?>[]{Result.class}, (proxy, method, args) -> {
+                if ("consume".equals(method.getName())) return summary;
+                return null;
+            });
+        Neo4jGraphQueryExecutor executor = new Neo4jGraphQueryExecutor(runner(explainResult), new Neo4jGraphStoreConfig());
+
+        com.agentsflex.graph.query.GraphExplainResult explain = executor.explain(query(), GraphOptions.DEFAULT);
+
+        assertEquals("neo4j", explain.getBackend());
+        assertTrue(explain.getPlanText().contains("ProduceResults"));
+        assertEquals("ProduceResults", explain.getDetails().get("operator"));
+        assertEquals(1, ((List<?>) explain.getDetails().get("children")).size());
+    }
+
+    @Test
+    public void driverBackedCursorShouldReleaseSessionOnClose() {
+        final AtomicInteger sessionCloses = new AtomicInteger();
+        Result result = result(Collections.singletonList(record("id", Values.value("1"))));
+        Session session = (Session) Proxy.newProxyInstance(Session.class.getClassLoader(),
+            new Class<?>[]{Session.class}, (proxy, method, args) -> {
+                if ("run".equals(method.getName())) return result;
+                if ("close".equals(method.getName())) sessionCloses.incrementAndGet();
+                return null;
+            });
+        Driver driver = (Driver) Proxy.newProxyInstance(Driver.class.getClassLoader(),
+            new Class<?>[]{Driver.class}, (proxy, method, args) -> {
+                if ("session".equals(method.getName())) return session;
+                return null;
+            });
+        Neo4jGraphQueryExecutor executor = new Neo4jGraphQueryExecutor(driver, new Neo4jGraphStoreConfig());
+        GraphResultCursor cursor = executor.executeCursor(query(), GraphOptions.DEFAULT);
+        cursor.close();
+        cursor.close();
+        assertEquals(1, sessionCloses.get());
+    }
+
+    private static Plan plan(final String operator, final List<Plan> children) {
+        return (Plan) Proxy.newProxyInstance(Plan.class.getClassLoader(), new Class<?>[]{Plan.class},
+            (proxy, method, args) -> {
+                if ("operatorType".equals(method.getName())) return operator;
+                if ("identifiers".equals(method.getName())) return Collections.singletonList("n");
+                if ("arguments".equals(method.getName())) return Collections.emptyMap();
+                if ("children".equals(method.getName())) return children;
+                return null;
+            });
     }
 
     private static TraversalQuery query() {

@@ -115,4 +115,23 @@ public class TraversalQueryTest {
         assertTrue(query.isAll());
         assertEquals(2, query.getBranches().size());
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void unionShouldRejectDifferentProjectionCounts() {
+        TraversalQuery left = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("n"))
+            .select(TraversalQuery.Projection.entity("n")).build();
+        TraversalQuery right = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("n"))
+            .select(TraversalQuery.Projection.entity("n"), TraversalQuery.Projection.property("n", "name", "name"))
+            .build();
+        GraphUnionQuery.union(left, right);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void unionShouldRejectDifferentProjectionSemantics() {
+        TraversalQuery left = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("n"))
+            .select(TraversalQuery.Projection.property("n", "name", "value")).build();
+        TraversalQuery right = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("n"))
+            .select(TraversalQuery.Projection.property("n", "age", "value")).build();
+        GraphUnionQuery.unionAll(left, right);
+    }
 }

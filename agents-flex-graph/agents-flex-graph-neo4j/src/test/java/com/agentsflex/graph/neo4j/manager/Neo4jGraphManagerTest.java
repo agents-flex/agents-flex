@@ -1,6 +1,7 @@
 package com.agentsflex.graph.neo4j.manager;
 
 import com.agentsflex.graph.manager.GraphManager;
+import com.agentsflex.graph.manager.GraphSpaceDefinition;
 import com.agentsflex.graph.schema.GraphSchema;
 import com.agentsflex.graph.neo4j.Neo4jGraphStoreConfig;
 import org.junit.Test;
@@ -12,6 +13,7 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Collections;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -50,9 +52,27 @@ public class Neo4jGraphManagerTest {
             GraphManager.SchemaMode.VALIDATE_ONLY).getAppliedSteps().size());
     }
 
+    @Test
+    public void shouldCreateValidateAndDropLogicalSpacesWithExpectedStatements() {
+        List<String> statements = new ArrayList<>();
+        Neo4jGraphManager manager = new Neo4jGraphManager(driver(statements), new Neo4jGraphStoreConfig());
+        GraphSpaceDefinition definition = GraphSpaceDefinition.builder("tenant_graph").build();
+
+        manager.createSpace(definition, GraphManager.CreateMode.IF_ABSENT);
+        manager.createSpace(definition, GraphManager.CreateMode.VALIDATE_ONLY);
+        manager.dropSpace("tenant_graph");
+
+        assertTrue(statements.contains("CREATE DATABASE tenant_graph IF NOT EXISTS"));
+        assertTrue(statements.contains("SHOW DATABASES YIELD name WHERE name = $name RETURN name"));
+        assertTrue(statements.contains("DROP DATABASE tenant_graph IF EXISTS"));
+    }
+
     private static Driver driver(List<String> statements) {
         Result result = (Result) Proxy.newProxyInstance(Result.class.getClassLoader(),
-            new Class<?>[]{Result.class}, (proxy, method, args) -> null);
+            new Class<?>[]{Result.class}, (proxy, method, args) -> {
+                if ("list".equals(method.getName())) return Collections.emptyList();
+                return null;
+            });
         Session session = (Session) Proxy.newProxyInstance(Session.class.getClassLoader(),
             new Class<?>[]{Session.class}, (proxy, method, args) -> {
                 if ("run".equals(method.getName()) && args != null && args.length > 0
