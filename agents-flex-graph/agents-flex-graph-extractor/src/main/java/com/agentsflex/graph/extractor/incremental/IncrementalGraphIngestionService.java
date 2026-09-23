@@ -98,7 +98,9 @@ public final class IncrementalGraphIngestionService {
         String contentHash = resolveHash(request.getContentHash(),
             Collections.singletonList(document.getContent()));
         GraphDocumentState previous = stateStore.get(request.getSpace(), request.getDocumentId());
-        IncrementalGraphIngestionPlan unchanged = unchanged(previous, request, schema, contentHash);
+        verifySourceVersion(previous, request);
+        String fingerprint = extractionFingerprint(request, schema);
+        IncrementalGraphIngestionPlan unchanged = unchanged(previous, request, schema, contentHash, fingerprint);
         if (unchanged != null) return unchanged;
 
         // 使用请求中的稳定 documentId 创建浅副本，避免修改调用方 Document，同时保证 evidence 可长期定位。
@@ -107,7 +109,7 @@ public final class IncrementalGraphIngestionService {
         source.setTitle(document.getTitle());
         source.putMetadata(document.getMetadataMap());
         GraphExtractionResult extraction = pipeline.extract(source, schema, request.getExtractionOptions());
-        return createPlan(previous, extraction, schema, request, contentHash);
+        return createPlan(previous, extraction, schema, request, contentHash, fingerprint);
     }
 
     /**
@@ -127,11 +129,13 @@ public final class IncrementalGraphIngestionService {
         }
         String contentHash = resolveHash(request.getContentHash(), contents);
         GraphDocumentState previous = stateStore.get(request.getSpace(), request.getDocumentId());
-        IncrementalGraphIngestionPlan unchanged = unchanged(previous, request, schema, contentHash);
+        verifySourceVersion(previous, request);
+        String fingerprint = extractionFingerprint(request, schema);
+        IncrementalGraphIngestionPlan unchanged = unchanged(previous, request, schema, contentHash, fingerprint);
         if (unchanged != null) return unchanged;
         GraphExtractionResult extraction = pipeline.extractChunks(chunks, request.getDocumentId(), schema,
             request.getExtractionOptions());
-        return createPlan(previous, extraction, schema, request, contentHash);
+        return createPlan(previous, extraction, schema, request, contentHash, fingerprint);
     }
 
     /**
@@ -163,17 +167,27 @@ public final class IncrementalGraphIngestionService {
         GraphDocumentState previous = stateStore.get(space, documentId);
         GraphMutation.Builder mutation = GraphMutation.builder();
         Set<GraphEdgeKey> stale = new LinkedHashSet<>();
-        if (previous == null) {
+        if (previous == null || previous.getStatus() == GraphDocumentState.Status.RETRACTED) {
             return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.UNCHANGED,
                 space, documentId, graphOptions, null, null, null, mutation.build(), stale,
                 Collections.<GraphRegisteredEntity>emptyList());
         }
         stale.addAll(previous.getEdgeKeys());
+        stale.addAll(previous.getSupersededEdgeKeys());
         for (GraphEdgeKey edge : stale) {
             if (!stateStore.isReferencedByOtherDocument(space, documentId, edge)) mutation.deleteEdge(edge);
         }
+        String operationId = "retract-" + resolveHash("", Collections.singletonList(space + "\u0000" + documentId
+            + "\u0000" + previous.getRevision()));
+        GraphDocumentState next = GraphDocumentState.builder(space, documentId, previous.getContentHash())
+            .status(GraphDocumentState.Status.RETRACTED).revision(previous.getRevision() + 1L)
+            .operationId(operationId).documentVersion(previous.getDocumentVersion())
+            .schemaVersion(previous.getSchemaVersion()).extractionFingerprint(previous.getExtractionFingerprint())
+            .sourceUpdatedAtMillis(previous.getSourceUpdatedAtMillis()).batchId(previous.getBatchId())
+            .committedAtMillis(clock.getAsLong()).supersededEdgeKeys(stale).build();
+        mutation.operationId(operationId);
         return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.RETRACTION,
-            space, documentId, graphOptions, previous, null, null, mutation.build(), stale,
+            space, documentId, graphOptions, previous, next, null, mutation.build(), stale,
             Collections.<GraphRegisteredEntity>emptyList());
     }
 
@@ -189,6 +203,12 @@ public final class IncrementalGraphIngestionService {
         if (plan.getStatus() == IncrementalGraphIngestionPlan.Status.UNCHANGED) {
             return new IncrementalGraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
         }
+        String operationId = plan.getNextState() == null ? plan.getMutation().getOperationId()
+            : plan.getNextState().getOperationId();
+        GraphDocumentState alreadyCommitted = stateStore.findByOperationId(plan.getSpace(), plan.getDocumentId(), operationId);
+        if (alreadyCommitted != null) {
+            return new IncrementalGraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
+        }
         long expectedRevision = plan.getPreviousState() == null ? 0L : plan.getPreviousState().getRevision();
         verifyRevision(plan.getSpace(), plan.getDocumentId(), expectedRevision);
         GraphWriteResult write = plan.isWriteRequired()
@@ -196,15 +216,15 @@ public final class IncrementalGraphIngestionService {
         if (!write.isSuccess()) return new IncrementalGraphIngestionResult(plan, write, false);
 
         if (entityRegistry != null && !plan.getEntityRegistrations().isEmpty()) {
-            entityRegistry.saveAll(plan.getEntityRegistrations());
+            entityRegistry.saveAll(plan.getSpace(), plan.getEntityRegistrations());
         }
-        boolean committed = plan.getStatus() == IncrementalGraphIngestionPlan.Status.RETRACTION
-            ? stateStore.remove(plan.getSpace(), plan.getDocumentId(), expectedRevision)
-            : stateStore.compareAndSet(plan.getSpace(), plan.getDocumentId(), expectedRevision, plan.getNextState());
+        boolean committed = stateStore.compareAndSet(plan.getSpace(), plan.getDocumentId(), expectedRevision,
+            plan.getNextState());
         if (!committed) {
             throw new GraphExtractionException("Graph was written but document state changed concurrently: "
                 + plan.getSpace() + "/" + plan.getDocumentId());
         }
+        stateStore.recordVersion(plan.getNextState());
         return new IncrementalGraphIngestionResult(plan, write, true);
     }
 
@@ -221,13 +241,16 @@ public final class IncrementalGraphIngestionService {
      */
     private static IncrementalGraphIngestionPlan unchanged(GraphDocumentState previous,
                                                            IncrementalGraphIngestionRequest request,
-                                                           GraphSchema schema, String contentHash) {
+                                                           GraphSchema schema, String contentHash,
+                                                           String extractionFingerprint) {
         String documentVersion = request.getDocumentVersion().isEmpty() ? contentHash : request.getDocumentVersion();
         String schemaVersion = request.getSchemaVersion().isEmpty()
             ? schema.getMetadata().getVersion() : request.getSchemaVersion();
-        if (previous == null || request.isForceReextract() || !previous.getContentHash().equals(contentHash)
+        if (previous == null || previous.getStatus() != GraphDocumentState.Status.ACTIVE || request.isForceReextract()
+            || !previous.getContentHash().equals(contentHash)
             || !previous.getDocumentVersion().equals(documentVersion)
-            || !previous.getSchemaVersion().equals(schemaVersion)) return null;
+            || !previous.getSchemaVersion().equals(schemaVersion)
+            || !previous.getExtractionFingerprint().equals(extractionFingerprint)) return null;
         return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.UNCHANGED,
             request.getSpace(), request.getDocumentId(), request.getGraphOptions(), previous, previous, null,
             GraphMutation.builder().build(), Collections.<GraphEdgeKey>emptySet(),
@@ -239,7 +262,7 @@ public final class IncrementalGraphIngestionService {
      */
     private IncrementalGraphIngestionPlan createPlan(GraphDocumentState previous, GraphExtractionResult extraction,
                                                      GraphSchema schema, IncrementalGraphIngestionRequest request,
-                                                     String contentHash) {
+                                                     String contentHash, String extractionFingerprint) {
         if (request.isRejectExtractionErrors() && extraction.hasErrors()) {
             throw new GraphExtractionException("Incremental ingestion rejected extraction result containing errors");
         }
@@ -252,12 +275,22 @@ public final class IncrementalGraphIngestionService {
         Set<GraphEdgeKey> stale = new LinkedHashSet<>();
         if (previous != null) stale.addAll(previous.getEdgeKeys());
         stale.removeAll(nextEdges);
-        GraphMutation.Builder mutation = copy(extracted);
+        String operationId = effectiveOperationId(request, contentHash, extractionFingerprint);
+        GraphMutation.Builder mutation = copy(extracted).operationId(operationId);
+        boolean partial = extraction.hasErrors();
+        if (partial && !request.isAllowPartialReconcile() && previous != null) {
+            // 部分抽取默认只允许追加，不允许把失败 Chunk 的旧事实误判为已删除。
+            nextEdges.addAll(previous.getEdgeKeys());
+            nextNodes.addAll(previous.getNodeIds());
+            stale.clear();
+        }
         if (request.getStaleRelationPolicy()
             == IncrementalGraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED) {
-            for (GraphEdgeKey edge : stale) {
-                if (!stateStore.isReferencedByOtherDocument(request.getSpace(), request.getDocumentId(), edge)) {
-                    mutation.deleteEdge(edge);
+            if (!partial || request.isAllowPartialReconcile()) {
+                for (GraphEdgeKey edge : stale) {
+                    if (!stateStore.isReferencedByOtherDocument(request.getSpace(), request.getDocumentId(), edge)) {
+                        mutation.deleteEdge(edge);
+                    }
                 }
             }
         }
@@ -265,10 +298,17 @@ public final class IncrementalGraphIngestionService {
         String documentVersion = request.getDocumentVersion().isEmpty() ? contentHash : request.getDocumentVersion();
         String schemaVersion = request.getSchemaVersion().isEmpty()
             ? schema.getMetadata().getVersion() : request.getSchemaVersion();
+        List<GraphFactProvenance> nextProvenances = new ArrayList<>();
+        if (partial && !request.isAllowPartialReconcile() && previous != null) {
+            nextProvenances.addAll(previous.getFactProvenances());
+        }
+        nextProvenances.addAll(provenances(extraction));
         GraphDocumentState next = GraphDocumentState.builder(request.getSpace(), request.getDocumentId(), contentHash)
-            .revision(nextRevision).documentVersion(documentVersion).schemaVersion(schemaVersion)
+            .revision(nextRevision).operationId(operationId).documentVersion(documentVersion).schemaVersion(schemaVersion)
+            .extractionFingerprint(extractionFingerprint).sourceUpdatedAtMillis(request.getSourceUpdatedAtMillis())
             .batchId(request.getBatchId()).committedAtMillis(clock.getAsLong())
-            .nodeIds(nextNodes).edgeKeys(nextEdges).factProvenances(provenances(extraction)).build();
+            .nodeIds(nextNodes).edgeKeys(nextEdges).supersededEdgeKeys(stale)
+            .factProvenances(nextProvenances).build();
         return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.READY,
             request.getSpace(), request.getDocumentId(), request.getGraphOptions(), previous, next, extraction,
             mutation.build(), stale, registrations(extraction));
@@ -279,7 +319,8 @@ public final class IncrementalGraphIngestionService {
      */
     private static GraphMutation.Builder copy(GraphMutation source) {
         GraphMutation.Builder result = GraphMutation.builder().upsertNodes(source.getNodes())
-            .upsertEdges(source.getEdges()).detachDeletedNodes(source.isDetachDeletedNodes());
+            .upsertEdges(source.getEdges()).detachDeletedNodes(source.isDetachDeletedNodes())
+            .operationId(source.getOperationId());
         for (String id : source.getDeleteNodeIds()) result.deleteNode(id);
         for (GraphEdgeKey edge : source.getDeleteEdgeKeys()) result.deleteEdge(edge);
         return result;
@@ -339,6 +380,42 @@ public final class IncrementalGraphIngestionService {
         if (actual != expectedRevision) {
             throw new GraphExtractionException("Incremental ingestion plan is stale for " + space + "/" + documentId);
         }
+    }
+
+    /**
+     * 拒绝来源时间早于当前已提交版本的乱序导入。
+     */
+    private void verifySourceVersion(GraphDocumentState previous, IncrementalGraphIngestionRequest request) {
+        if (previous != null && previous.getStatus() == GraphDocumentState.Status.ACTIVE
+            && request.getSourceUpdatedAtMillis() >= 0L
+            && previous.getSourceUpdatedAtMillis() >= 0L
+            && request.getSourceUpdatedAtMillis() < previous.getSourceUpdatedAtMillis()) {
+            throw new GraphExtractionException("Source document version is older than the committed version: "
+                + request.getSpace() + "/" + request.getDocumentId());
+        }
+    }
+
+    /**
+     * 组合调用方指纹和 SDK 已知抽取配置，避免模型或质量选项变化被错误判重。
+     */
+    private static String extractionFingerprint(IncrementalGraphIngestionRequest request, GraphSchema schema) {
+        if (!request.getExtractionFingerprint().isEmpty()) return request.getExtractionFingerprint();
+        String schemaVersion = request.getSchemaVersion().isEmpty()
+            ? (schema.getMetadata().getVersion() == null ? "" : schema.getMetadata().getVersion())
+            : request.getSchemaVersion();
+        return resolveHash("", Collections.singletonList("schema=" + schemaVersion
+            + "\u0000options=" + request.getExtractionOptions().fingerprint()));
+    }
+
+    /**
+     * 生成稳定的默认操作号；同一文档版本的重试会得到相同操作号。
+     */
+    private static String effectiveOperationId(IncrementalGraphIngestionRequest request, String contentHash,
+                                               String extractionFingerprint) {
+        if (!request.getOperationId().isEmpty()) return request.getOperationId();
+        return "ingest-" + resolveHash("", Collections.singletonList(request.getSpace() + "\u0000"
+            + request.getDocumentId() + "\u0000" + contentHash + "\u0000"
+            + request.getDocumentVersion() + "\u0000" + extractionFingerprint));
     }
 
     /**

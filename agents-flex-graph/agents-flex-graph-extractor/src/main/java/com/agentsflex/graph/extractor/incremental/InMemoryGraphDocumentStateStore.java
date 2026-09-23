@@ -18,6 +18,10 @@ public final class InMemoryGraphDocumentStateStore implements GraphDocumentState
      * “Space + 文档 ID”到最新不可变状态的映射。
      */
     private final Map<String, GraphDocumentState> states = new LinkedHashMap<>();
+    /**
+     * 文档不可变版本快照，用于测试、审计和关系回收。
+     */
+    private final Map<String, List<GraphDocumentState>> histories = new LinkedHashMap<>();
 
     /**
      * 查询当前状态。
@@ -25,6 +29,14 @@ public final class InMemoryGraphDocumentStateStore implements GraphDocumentState
     @Override
     public synchronized GraphDocumentState get(String space, String documentId) {
         return states.get(key(space, documentId));
+    }
+
+    /**
+     * 按操作号查找当前已提交版本。
+     */
+    @Override
+    public synchronized GraphDocumentState findByOperationId(String space, String documentId, String operationId) {
+        return GraphDocumentStateStore.super.findByOperationId(space, documentId, operationId);
     }
 
     /**
@@ -58,6 +70,34 @@ public final class InMemoryGraphDocumentStateStore implements GraphDocumentState
         if (actualRevision != expectedRevision || newState.getRevision() != expectedRevision + 1L) return false;
         states.put(key(space, documentId), newState);
         return true;
+    }
+
+    /**
+     * 保存不可变历史快照；重复 revision 幂等忽略。
+     */
+    @Override
+    public synchronized void recordVersion(GraphDocumentState state) {
+        if (state == null) throw new IllegalArgumentException("state must not be null");
+        String key = key(state.getSpace(), state.getDocumentId());
+        List<GraphDocumentState> versions = histories.get(key);
+        if (versions == null) {
+            versions = new ArrayList<>();
+            histories.put(key, versions);
+        }
+        for (GraphDocumentState existing : versions) {
+            if (existing.getRevision() == state.getRevision()) return;
+        }
+        versions.add(state);
+    }
+
+    /**
+     * 返回逻辑文档的不可变版本历史。
+     */
+    @Override
+    public synchronized List<GraphDocumentState> listVersions(String space, String documentId) {
+        List<GraphDocumentState> versions = histories.get(key(space, documentId));
+        if (versions == null) return Collections.emptyList();
+        return Collections.unmodifiableList(new ArrayList<>(versions));
     }
 
     /**

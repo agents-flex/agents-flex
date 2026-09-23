@@ -56,6 +56,8 @@ public class IncrementalGraphIngestionServiceTest {
         assertEquals(1, scenario.extractor.calls.get());
         assertEquals(1, scenario.writer.calls);
         assertEquals(1L, scenario.states.get("knowledge", "doc-1").getRevision());
+        assertEquals(scenario.states.get("knowledge", "doc-1").getOperationId(),
+            scenario.writer.lastMutation.getOperationId());
         assertEquals(1, scenario.states.get("knowledge", "doc-1").getFactProvenances().size());
         assertEquals("doc-1", scenario.states.get("knowledge", "doc-1").getFactProvenances().get(0)
             .getEvidence().getDocumentId());
@@ -81,8 +83,71 @@ public class IncrementalGraphIngestionServiceTest {
         assertEquals(1, retraction.getMutation().getDeleteEdgeKeys().size());
         IncrementalGraphIngestionResult retracted = scenario.service.execute(retraction, scenario.writer);
         assertTrue(retracted.isSuccess());
-        assertNull(scenario.states.get("knowledge", "doc-b"));
+        assertNotNull(scenario.states.get("knowledge", "doc-b"));
+        assertEquals(GraphDocumentState.Status.RETRACTED,
+            scenario.states.get("knowledge", "doc-b").getStatus());
         assertNotNull(scenario.states.get("knowledge", "doc-a"));
+    }
+
+    /**
+     * 相同正文但抽取选项变化时，配置指纹变化应触发重新抽取。
+     */
+    @Test
+    public void shouldReextractWhenExtractionFingerprintChanges() {
+        Scenario scenario = scenario();
+        scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1")
+            .extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
+                .contextCharacters(100).build()).build(), scenario.writer);
+        IncrementalGraphIngestionResult second = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+            request("doc-1").extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
+                .contextCharacters(200).build()).build(), scenario.writer);
+
+        assertEquals(IncrementalGraphIngestionPlan.Status.READY, second.getPlan().getStatus());
+        assertEquals(2, scenario.extractor.calls.get());
+        assertEquals(2, scenario.states.listVersions("knowledge", "doc-1").size());
+        GraphEdgeKey edge = scenario.states.get("knowledge", "doc-1").getEdgeKeys().iterator().next();
+        assertEquals(2, scenario.states.findHistoricalProvenance("knowledge", edge).size());
+    }
+
+    /**
+     * 来源更新时间倒退时必须拒绝导入，避免旧文件覆盖新版本。
+     */
+    @Test
+    public void shouldRejectOutOfOrderSourceVersion() {
+        Scenario scenario = scenario();
+        scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+            request("doc-1").sourceUpdatedAtMillis(200L).build(), scenario.writer);
+        try {
+            scenario.service.plan(Document.of("林默返回青云会"), schema(),
+                request("doc-1").sourceUpdatedAtMillis(100L).build());
+            fail("older source version should be rejected");
+        } catch (GraphExtractionException expected) {
+            assertTrue(expected.getMessage().contains("older"));
+        }
+    }
+
+    /**
+     * 部分 Chunk 失败时即使调用方允许提交，也不得默认删除旧关系。
+     */
+    @Test
+    public void shouldPreserveOldRelationsForPartialExtraction() {
+        Scenario scenario = scenario();
+        scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
+        IncrementalGraphIngestionRequest partial = request("doc-1")
+            .staleRelationPolicy(IncrementalGraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED)
+            .rejectExtractionErrors(false)
+            .extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
+                .failOnChunkError(false).build())
+            .build();
+
+        IncrementalGraphIngestionResult result = scenario.service.ingest(Document.of("失败"), schema(), partial,
+            scenario.writer);
+
+        assertTrue(result.isSuccess());
+        assertTrue(result.getPlan().getExtractionResult().hasErrors());
+        assertTrue(result.getPlan().getStaleEdgeKeys().isEmpty());
+        assertEquals(1, scenario.states.get("knowledge", "doc-1").getEdgeKeys().size());
+        assertTrue(result.getPlan().getMutation().getDeleteEdgeKeys().isEmpty());
     }
 
     /**
@@ -228,6 +293,7 @@ public class IncrementalGraphIngestionServiceTest {
         @Override
         public GraphCandidateBatch extract(GraphExtractionRequest request) {
             calls.incrementAndGet();
+            if (request.getText().contains("失败")) throw new GraphExtractionException("synthetic chunk failure");
             GraphEntityCandidate person = entity(request, "p", "林默", "Character");
             if (!request.getText().contains("青云会")) {
                 return new GraphCandidateBatch(Collections.singletonList(person), Collections.emptyList(),

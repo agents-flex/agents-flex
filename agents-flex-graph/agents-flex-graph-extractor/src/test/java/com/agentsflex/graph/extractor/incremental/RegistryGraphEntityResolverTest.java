@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
@@ -91,6 +92,27 @@ public class RegistryGraphEntityResolverTest {
         } catch (GraphExtractionException expected) {
             assertSame(first, registry.find("Character", Collections.singletonList("林默")).get(0));
         }
+    }
+
+    /**
+     * 使用显式 Space 作用域时，不同知识库中的同名实体不得互相命中。
+     */
+    @Test
+    public void shouldIsolateRegisteredEntitiesBySpace() {
+        InMemoryGraphEntityRegistry registry = new InMemoryGraphEntityRegistry();
+        registry.saveAll("space-a", Collections.singletonList(new GraphRegisteredEntity("person-a", "Character",
+            "林默", Collections.<String>emptyList(), Collections.<String, Object>emptyMap())));
+
+        GraphEntityCandidate mention = entity("c1::m1", "林默", Collections.<String>emptyList(),
+            props("name", "林默"));
+        GraphEntityResolution inA = new RegistryGraphEntityResolver("space-a", registry)
+            .resolve(Collections.singletonList(mention));
+        GraphEntityResolution inB = new RegistryGraphEntityResolver("space-b", registry)
+            .resolve(Collections.singletonList(mention));
+
+        assertEquals("person-a", inA.nodeId("c1::m1"));
+        assertFalse("person-a".equals(inB.nodeId("c1::m1")));
+        assertEquals(0, registry.find("space-b", "Character", Collections.singletonList("林默")).size());
     }
 
     /**

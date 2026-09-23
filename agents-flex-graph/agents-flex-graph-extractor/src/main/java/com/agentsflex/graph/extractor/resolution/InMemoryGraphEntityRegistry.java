@@ -28,6 +28,69 @@ public final class InMemoryGraphEntityRegistry implements GraphEntityRegistry {
      * “类型 + 规范化名称”到节点 ID 的唯一索引。
      */
     private final Map<String, String> nodeIdByName = new LinkedHashMap<>();
+    /**
+     * 按 Space 隔离的实体记录。
+     */
+    private final Map<String, Map<String, GraphRegisteredEntity>> scopedEntities = new LinkedHashMap<>();
+    /**
+     * 按 Space 隔离的名称索引。
+     */
+    private final Map<String, Map<String, String>> scopedNames = new LinkedHashMap<>();
+
+    /**
+     * 按 Space 查询实体，避免不同知识库共享名称索引。
+     */
+    @Override
+    public synchronized List<GraphRegisteredEntity> find(String space, String type, Collection<String> names) {
+        String scope = scope(space);
+        Map<String, String> index = scopedNames.get(scope);
+        Map<String, GraphRegisteredEntity> entities = scopedEntities.get(scope);
+        if (index == null || entities == null || names == null || names.isEmpty()) return Collections.emptyList();
+        Set<String> ids = new LinkedHashSet<>();
+        for (String name : names) {
+            if (name == null || name.trim().isEmpty()) continue;
+            String id = index.get(key(type, name));
+            if (id != null) ids.add(id);
+        }
+        List<GraphRegisteredEntity> result = new ArrayList<>();
+        for (String id : ids) {
+            GraphRegisteredEntity entity = entities.get(id);
+            if (entity != null) result.add(entity);
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    /**
+     * 按 Space 幂等保存实体并检查名称唯一性。
+     */
+    @Override
+    public synchronized void saveAll(String space, Collection<GraphRegisteredEntity> values) {
+        String scope = scope(space);
+        Map<String, GraphRegisteredEntity> entities = scopedEntities.get(scope);
+        Map<String, String> names = scopedNames.get(scope);
+        if (entities == null) {
+            entities = new LinkedHashMap<>();
+            scopedEntities.put(scope, entities);
+        }
+        if (names == null) {
+            names = new LinkedHashMap<>();
+            scopedNames.put(scope, names);
+        }
+        Map<String, GraphRegisteredEntity> stagedEntities = new LinkedHashMap<>(entities);
+        Map<String, String> stagedNames = new LinkedHashMap<>(names);
+        if (values != null) for (GraphRegisteredEntity incoming : values) {
+            if (incoming == null) throw new IllegalArgumentException("entities must not contain null elements");
+            GraphRegisteredEntity existing = stagedEntities.get(incoming.getNodeId());
+            GraphRegisteredEntity merged = merge(existing, incoming);
+            assertNamesAvailable(merged, stagedNames);
+            stagedEntities.put(merged.getNodeId(), merged);
+            for (String name : names(merged)) stagedNames.put(key(merged.getType(), name), merged.getNodeId());
+        }
+        entities.clear();
+        entities.putAll(stagedEntities);
+        names.clear();
+        names.putAll(stagedNames);
+    }
 
     /**
      * 按类型和名称集合查找去重后的注册实体。
@@ -77,7 +140,9 @@ public final class InMemoryGraphEntityRegistry implements GraphEntityRegistry {
      * @return 当前注册实体数量，主要用于监控和测试。
      */
     public synchronized int size() {
-        return entitiesById.size();
+        int total = entitiesById.size();
+        for (Map<String, GraphRegisteredEntity> values : scopedEntities.values()) total += values.size();
+        return total;
     }
 
     /**
@@ -123,6 +188,13 @@ public final class InMemoryGraphEntityRegistry implements GraphEntityRegistry {
      */
     private static String key(String type, String name) {
         return normalize(type) + "\n" + normalize(name);
+    }
+
+    /**
+     * 校验并规范 Space 名称，空值只用于兼容旧的无作用域 API。
+     */
+    private static String scope(String space) {
+        return space == null ? "" : space.trim();
     }
 
     /**

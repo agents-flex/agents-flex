@@ -127,6 +127,24 @@ public final class GraphExtractionOptions {
     }
 
     /**
+     * 返回影响抽取结果的稳定配置指纹输入。
+     *
+     * <p>该值供增量导入服务组合模型、Schema 和提示词版本生成最终 extraction fingerprint；
+     * 新增会影响抽取结果的字段时必须同步加入这里。</p>
+     */
+    public String fingerprint() {
+        return "minConfidence=" + minConfidence
+            + ";requireEvidence=" + requireEvidence
+            + ";includeInferredRelations=" + includeInferredRelations
+            + ";includeOpinionRelations=" + includeOpinionRelations
+            + ";contextCharacters=" + contextCharacters
+            + ";maxEntitiesPerChunk=" + maxEntitiesPerChunk
+            + ";maxRelationsPerChunk=" + maxRelationsPerChunk
+            + ";maxResponseCharacters=" + maxResponseCharacters
+            + ";failOnChunkError=" + failOnChunkError;
+    }
+
+    /**
      * @return 新构造器。
      */
     public static Builder builder() {

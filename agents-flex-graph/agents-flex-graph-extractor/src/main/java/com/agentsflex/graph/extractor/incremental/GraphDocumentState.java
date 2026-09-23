@@ -16,6 +16,11 @@ import java.util.Set;
  */
 public final class GraphDocumentState {
     /**
+     * 文档当前生命周期状态。
+     */
+    public enum Status {ACTIVE, RETRACTED}
+
+    /**
      * 逻辑知识库或图空间。
      */
     private final String space;
@@ -24,9 +29,17 @@ public final class GraphDocumentState {
      */
     private final String documentId;
     /**
+     * 当前状态的生命周期状态。
+     */
+    private final Status status;
+    /**
      * 状态乐观锁版本，从 1 开始递增。
      */
     private final long revision;
+    /**
+     * 本次写入对应的幂等操作号。
+     */
+    private final String operationId;
     /**
      * 当前文档内容的 SHA-256 或调用方提供的稳定摘要。
      */
@@ -39,6 +52,14 @@ public final class GraphDocumentState {
      * 抽取时使用的 Schema 版本。
      */
     private final String schemaVersion;
+    /**
+     * 影响抽取结果的完整配置指纹。
+     */
+    private final String extractionFingerprint;
+    /**
+     * 外部来源更新时间；未知时为 -1。
+     */
+    private final long sourceUpdatedAtMillis;
     /**
      * 产生本状态的导入批次 ID。
      */
@@ -56,6 +77,10 @@ public final class GraphDocumentState {
      */
     private final Set<GraphEdgeKey> edgeKeys;
     /**
+     * 历史版本中已过期但暂未删除的关系线索。
+     */
+    private final Set<GraphEdgeKey> supersededEdgeKeys;
+    /**
      * 当前文档版本中每个关系候选的完整来源记录。
      */
     private final List<GraphFactProvenance> factProvenances;
@@ -66,16 +91,24 @@ public final class GraphDocumentState {
     private GraphDocumentState(Builder builder) {
         space = text(builder.space, "space");
         documentId = text(builder.documentId, "documentId");
+        status = builder.status == null ? Status.ACTIVE : builder.status;
         if (builder.revision <= 0) throw new IllegalArgumentException("revision must be positive");
         revision = builder.revision;
+        operationId = optional(builder.operationId);
         contentHash = text(builder.contentHash, "contentHash");
         documentVersion = optional(builder.documentVersion);
         schemaVersion = optional(builder.schemaVersion);
+        extractionFingerprint = optional(builder.extractionFingerprint);
+        if (builder.sourceUpdatedAtMillis < -1L) {
+            throw new IllegalArgumentException("sourceUpdatedAtMillis must be -1 or non-negative");
+        }
+        sourceUpdatedAtMillis = builder.sourceUpdatedAtMillis;
         batchId = optional(builder.batchId);
         if (builder.committedAtMillis < 0) throw new IllegalArgumentException("committedAtMillis must not be negative");
         committedAtMillis = builder.committedAtMillis;
         nodeIds = immutable(builder.nodeIds, "nodeIds");
         edgeKeys = immutable(builder.edgeKeys, "edgeKeys");
+        supersededEdgeKeys = immutable(builder.supersededEdgeKeys, "supersededEdgeKeys");
         List<GraphFactProvenance> provenanceCopy = new ArrayList<>(builder.factProvenances);
         if (provenanceCopy.contains(null)) {
             throw new IllegalArgumentException("factProvenances must not contain null elements");
@@ -105,10 +138,24 @@ public final class GraphDocumentState {
     }
 
     /**
+     * @return 当前生命周期状态。
+     */
+    public Status getStatus() {
+        return status;
+    }
+
+    /**
      * @return 乐观锁 revision。
      */
     public long getRevision() {
         return revision;
+    }
+
+    /**
+     * @return 幂等操作号。
+     */
+    public String getOperationId() {
+        return operationId;
     }
 
     /**
@@ -130,6 +177,20 @@ public final class GraphDocumentState {
      */
     public String getSchemaVersion() {
         return schemaVersion;
+    }
+
+    /**
+     * @return 抽取配置指纹。
+     */
+    public String getExtractionFingerprint() {
+        return extractionFingerprint;
+    }
+
+    /**
+     * @return 来源更新时间；未知时为 -1。
+     */
+    public long getSourceUpdatedAtMillis() {
+        return sourceUpdatedAtMillis;
     }
 
     /**
@@ -158,6 +219,13 @@ public final class GraphDocumentState {
      */
     public Set<GraphEdgeKey> getEdgeKeys() {
         return edgeKeys;
+    }
+
+    /**
+     * @return 已过期但暂未删除的历史关系键。
+     */
+    public Set<GraphEdgeKey> getSupersededEdgeKeys() {
+        return supersededEdgeKeys;
     }
 
     /**
@@ -209,9 +277,17 @@ public final class GraphDocumentState {
          */
         private final String contentHash;
         /**
+         * 生命周期状态。
+         */
+        private Status status = Status.ACTIVE;
+        /**
          * 下一状态 revision。
          */
         private long revision = 1L;
+        /**
+         * 幂等操作号。
+         */
+        private String operationId;
         /**
          * 业务版本。
          */
@@ -220,6 +296,14 @@ public final class GraphDocumentState {
          * Schema 版本。
          */
         private String schemaVersion;
+        /**
+         * 抽取配置指纹。
+         */
+        private String extractionFingerprint;
+        /**
+         * 来源更新时间。
+         */
+        private long sourceUpdatedAtMillis = -1L;
         /**
          * 导入批次。
          */
@@ -236,6 +320,10 @@ public final class GraphDocumentState {
          * 关系键。
          */
         private final Set<GraphEdgeKey> edgeKeys = new LinkedHashSet<>();
+        /**
+         * 已过期关系键。
+         */
+        private final Set<GraphEdgeKey> supersededEdgeKeys = new LinkedHashSet<>();
         /**
          * 事实来源。
          */
@@ -256,6 +344,22 @@ public final class GraphDocumentState {
         }
 
         /**
+         * 设置生命周期状态。
+         */
+        public Builder status(Status value) {
+            status = value;
+            return this;
+        }
+
+        /**
+         * 设置幂等操作号。
+         */
+        public Builder operationId(String value) {
+            operationId = value;
+            return this;
+        }
+
+        /**
          * 设置业务文档版本。
          */
         public Builder documentVersion(String value) {
@@ -268,6 +372,22 @@ public final class GraphDocumentState {
          */
         public Builder schemaVersion(String value) {
             schemaVersion = value;
+            return this;
+        }
+
+        /**
+         * 设置抽取配置指纹。
+         */
+        public Builder extractionFingerprint(String value) {
+            extractionFingerprint = value;
+            return this;
+        }
+
+        /**
+         * 设置来源更新时间。
+         */
+        public Builder sourceUpdatedAtMillis(long value) {
+            sourceUpdatedAtMillis = value;
             return this;
         }
 
@@ -316,6 +436,22 @@ public final class GraphDocumentState {
          */
         public Builder edgeKeys(java.util.Collection<GraphEdgeKey> values) {
             if (values != null) edgeKeys.addAll(values);
+            return this;
+        }
+
+        /**
+         * 添加已过期关系线索。
+         */
+        public Builder supersededEdgeKey(GraphEdgeKey value) {
+            if (value != null) supersededEdgeKeys.add(value);
+            return this;
+        }
+
+        /**
+         * 批量添加已过期关系线索。
+         */
+        public Builder supersededEdgeKeys(java.util.Collection<GraphEdgeKey> values) {
+            if (values != null) supersededEdgeKeys.addAll(values);
             return this;
         }
 

@@ -19,6 +19,16 @@ public interface GraphDocumentStateStore {
     GraphDocumentState get(String space, String documentId);
 
     /**
+     * 按操作号查询已经提交的状态，用于跨进程重试幂等返回。
+     * 默认实现扫描当前 Space，持久化实现应建立唯一索引。
+     */
+    default GraphDocumentState findByOperationId(String space, String documentId, String operationId) {
+        if (operationId == null || operationId.trim().isEmpty()) return null;
+        GraphDocumentState current = get(space, documentId);
+        return current != null && operationId.equals(current.getOperationId()) ? current : null;
+    }
+
+    /**
      * 返回指定 Space 的状态快照；实现可以覆写引用查询以避免全表扫描。
      */
     List<GraphDocumentState> list(String space);
@@ -35,6 +45,22 @@ public interface GraphDocumentStateStore {
      * 按 revision 原子删除文档状态，常用于撤回整个逻辑文档。
      */
     boolean remove(String space, String documentId, long expectedRevision);
+
+    /**
+     * 保存已提交版本的历史快照。默认实现不保留历史，生产实现应写入不可变版本表。
+     */
+    default void recordVersion(GraphDocumentState state) {
+        // 兼容只支持当前状态的旧实现；需要审计的实现应覆写。
+    }
+
+    /**
+     * 返回逻辑文档的版本历史。默认只返回当前状态。
+     */
+    default List<GraphDocumentState> listVersions(String space, String documentId) {
+        GraphDocumentState current = get(space, documentId);
+        return current == null ? Collections.<GraphDocumentState>emptyList()
+            : Collections.singletonList(current);
+    }
 
     /**
      * 判断指定关系是否仍被同一 Space 中的其他活动文档引用。
@@ -58,6 +84,21 @@ public interface GraphDocumentStateStore {
         for (GraphDocumentState state : list(space)) {
             for (GraphFactProvenance provenance : state.getFactProvenances()) {
                 if (provenance.getEdgeKey().equals(edgeKey)) result.add(provenance);
+            }
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    /**
+     * 查询当前状态和历史版本中的全部来源证据，供审计和事实回放使用。
+     */
+    default List<GraphFactProvenance> findHistoricalProvenance(String space, GraphEdgeKey edgeKey) {
+        List<GraphFactProvenance> result = new ArrayList<>();
+        for (GraphDocumentState current : list(space)) {
+            for (GraphDocumentState version : listVersions(space, current.getDocumentId())) {
+                for (GraphFactProvenance provenance : version.getFactProvenances()) {
+                    if (provenance.getEdgeKey().equals(edgeKey)) result.add(provenance);
+                }
             }
         }
         return Collections.unmodifiableList(result);

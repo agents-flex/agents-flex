@@ -47,6 +47,18 @@ public final class IncrementalGraphIngestionRequest {
      */
     private final String batchId;
     /**
+     * 本次导入的稳定幂等操作号；为空时由 SDK 根据请求内容生成。
+     */
+    private final String operationId;
+    /**
+     * 外部来源更新时间；未知时为 -1，用于拒绝乱序旧版本。
+     */
+    private final long sourceUpdatedAtMillis;
+    /**
+     * 调用方提供的抽取配置指纹；为空时由 SDK 计算。
+     */
+    private final String extractionFingerprint;
+    /**
      * 模型抽取质量和容错选项。
      */
     private final GraphExtractionOptions extractionOptions;
@@ -66,6 +78,10 @@ public final class IncrementalGraphIngestionRequest {
      * 内容未变化时是否仍然重新调用 extractor。
      */
     private final boolean forceReextract;
+    /**
+     * 是否允许在部分 Chunk 失败时重建关系集合。
+     */
+    private final boolean allowPartialReconcile;
 
     /**
      * 从 Builder 复制配置并完成跨字段校验。
@@ -77,6 +93,12 @@ public final class IncrementalGraphIngestionRequest {
         documentVersion = optional(builder.documentVersion);
         schemaVersion = optional(builder.schemaVersion);
         batchId = optional(builder.batchId);
+        operationId = optional(builder.operationId);
+        if (builder.sourceUpdatedAtMillis < -1L) {
+            throw new IllegalArgumentException("sourceUpdatedAtMillis must be -1 or non-negative");
+        }
+        sourceUpdatedAtMillis = builder.sourceUpdatedAtMillis;
+        extractionFingerprint = optional(builder.extractionFingerprint);
         extractionOptions = builder.extractionOptions == null ? GraphExtractionOptions.DEFAULT : builder.extractionOptions;
         graphOptions = builder.graphOptions == null ? GraphOptions.ofSpace(space) : builder.graphOptions;
         if (graphOptions.getSpace() == null || !space.equals(graphOptions.getSpace())) {
@@ -86,6 +108,7 @@ public final class IncrementalGraphIngestionRequest {
             ? StaleRelationPolicy.KEEP : builder.staleRelationPolicy;
         rejectExtractionErrors = builder.rejectExtractionErrors;
         forceReextract = builder.forceReextract;
+        allowPartialReconcile = builder.allowPartialReconcile;
     }
 
     /**
@@ -138,6 +161,27 @@ public final class IncrementalGraphIngestionRequest {
     }
 
     /**
+     * @return 稳定幂等操作号；为空时由服务生成。
+     */
+    public String getOperationId() {
+        return operationId;
+    }
+
+    /**
+     * @return 来源更新时间；未知时为 -1。
+     */
+    public long getSourceUpdatedAtMillis() {
+        return sourceUpdatedAtMillis;
+    }
+
+    /**
+     * @return 调用方抽取配置指纹。
+     */
+    public String getExtractionFingerprint() {
+        return extractionFingerprint;
+    }
+
+    /**
      * @return 抽取质量选项。
      */
     public GraphExtractionOptions getExtractionOptions() {
@@ -170,6 +214,13 @@ public final class IncrementalGraphIngestionRequest {
      */
     public boolean isForceReextract() {
         return forceReextract;
+    }
+
+    /**
+     * @return 是否允许部分抽取结果参与关系重建。
+     */
+    public boolean isAllowPartialReconcile() {
+        return allowPartialReconcile;
     }
 
     /**
@@ -216,6 +267,18 @@ public final class IncrementalGraphIngestionRequest {
          */
         private String batchId;
         /**
+         * 幂等操作号。
+         */
+        private String operationId;
+        /**
+         * 来源更新时间。
+         */
+        private long sourceUpdatedAtMillis = -1L;
+        /**
+         * 抽取配置指纹。
+         */
+        private String extractionFingerprint;
+        /**
          * 抽取选项。
          */
         private GraphExtractionOptions extractionOptions;
@@ -235,6 +298,10 @@ public final class IncrementalGraphIngestionRequest {
          * 默认对相同摘要执行快速跳过。
          */
         private boolean forceReextract;
+        /**
+         * 默认禁止部分结果触发关系删除。
+         */
+        private boolean allowPartialReconcile;
 
         private Builder(String space, String documentId) {
             this.space = space;
@@ -270,6 +337,30 @@ public final class IncrementalGraphIngestionRequest {
          */
         public Builder batchId(String value) {
             batchId = value;
+            return this;
+        }
+
+        /**
+         * 设置稳定幂等操作号。
+         */
+        public Builder operationId(String value) {
+            operationId = value;
+            return this;
+        }
+
+        /**
+         * 设置外部来源更新时间。
+         */
+        public Builder sourceUpdatedAtMillis(long value) {
+            sourceUpdatedAtMillis = value;
+            return this;
+        }
+
+        /**
+         * 设置调用方维护的抽取配置指纹。
+         */
+        public Builder extractionFingerprint(String value) {
+            extractionFingerprint = value;
             return this;
         }
 
@@ -310,6 +401,14 @@ public final class IncrementalGraphIngestionRequest {
          */
         public Builder forceReextract(boolean value) {
             forceReextract = value;
+            return this;
+        }
+
+        /**
+         * 设置是否允许部分抽取结果参与关系重建；默认关闭。
+         */
+        public Builder allowPartialReconcile(boolean value) {
+            allowPartialReconcile = value;
             return this;
         }
 

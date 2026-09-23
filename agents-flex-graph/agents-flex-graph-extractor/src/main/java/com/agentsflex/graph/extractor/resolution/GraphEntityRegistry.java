@@ -11,6 +11,13 @@ import java.util.List;
  */
 public interface GraphEntityRegistry {
     /**
+     * 按 Space 查询实体。默认委托旧接口，生产实现应覆盖以保证租户隔离。
+     */
+    default List<GraphRegisteredEntity> find(String space, String type, Collection<String> names) {
+        return find(type, names);
+    }
+
+    /**
      * 查找与任一名称或别名匹配的既有实体。
      *
      * @param type  Schema 节点类型
@@ -18,6 +25,13 @@ public interface GraphEntityRegistry {
      * @return 去重后的匹配记录；没有命中时返回空列表
      */
     List<GraphRegisteredEntity> find(String type, Collection<String> names);
+
+    /**
+     * 按 Space 保存实体。默认委托旧接口，生产实现应覆盖并建立 Space + 名称唯一约束。
+     */
+    default void saveAll(String space, Collection<GraphRegisteredEntity> entities) {
+        saveAll(entities);
+    }
 
     /**
      * 幂等保存或更新一组实体注册记录。

@@ -20,6 +20,10 @@ import java.util.Set;
  */
 public final class GraphMutation {
     /**
+     * 用于适配器幂等重放和审计的稳定操作号。
+     */
+    private final String operationId;
+    /**
      * 待 upsert 的节点。
      */
     private final List<GraphNode> nodes;
@@ -50,6 +54,14 @@ public final class GraphMutation {
         this.deleteNodeIds = Collections.unmodifiableSet(new LinkedHashSet<>(builder.deleteNodeIds));
         this.deleteEdgeKeys = Collections.unmodifiableSet(new LinkedHashSet<>(builder.deleteEdgeKeys));
         this.detachDeletedNodes = builder.detachDeletedNodes;
+        this.operationId = builder.operationId;
+    }
+
+    /**
+     * @return 稳定操作号；未设置时为空字符串。
+     */
+    public String getOperationId() {
+        return operationId;
     }
 
     /**
@@ -122,6 +134,10 @@ public final class GraphMutation {
 
     public static final class Builder {
         /**
+         * 当前变更批次的幂等操作号。
+         */
+        private String operationId = "";
+        /**
          * 待 upsert 节点。
          */
         private final List<GraphNode> nodes = new ArrayList<>();
@@ -141,6 +157,14 @@ public final class GraphMutation {
          * 默认级联删除关联边。
          */
         private boolean detachDeletedNodes = true;
+
+        /**
+         * 设置图变更批次的幂等操作号。
+         */
+        public Builder operationId(String value) {
+            operationId = value == null ? "" : value.trim();
+            return this;
+        }
 
         /**
          * 添加一个节点 upsert。
