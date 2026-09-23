@@ -217,7 +217,79 @@ mvn -pl agents-flex-graph/agents-flex-graph-extractor -am \
 该测试使用合成小说文本，不上传业务文档，也不连接或写入图数据库。它真实验证 DeepSeek JSON Object
 输出、严格协议解析、Schema 白名单、证据来源、实体归一和 GraphMutation 映射。测试会产生供应商调用
 费用，并在密钥无效、账户余额不足、被限流或模型响应不满足协议时失败；这类失败不应通过伪造响应或
-放宽断言隐藏。生产环境同样不应把 API Key 写入源码、配置仓库或日志。
+ 放宽断言隐藏。生产环境同样不应把 API Key 写入源码、配置仓库或日志。
+
+## 长期增量导入
+
+对于同一个 Space 持续增加文件，推荐使用 `IncrementalGraphIngestionService`。它在 extractor 外面增加
+了文档版本、内容哈希、跨批次实体注册、关系来源和旧版本差异处理：
+
+~~~java
+GraphDocumentStateStore documentStates = new YourPersistentDocumentStateStore();
+GraphEntityRegistry entityRegistry = new YourPersistentEntityRegistry();
+
+// 必须把同一个长期注册表装配进 Pipeline 的 resolver，抽取时才会复用历史节点 ID。
+GraphExtractionPipeline pipeline = new GraphExtractionPipeline(
+    extractor,
+    splitter,
+    validator,
+    new RegistryGraphEntityResolver(entityRegistry),
+    new GraphMutationMapper());
+
+IncrementalGraphIngestionService ingestion = new IncrementalGraphIngestionService(
+    pipeline,
+    documentStates,
+    entityRegistry);
+
+IncrementalGraphIngestionRequest request =
+    IncrementalGraphIngestionRequest.builder("novel_knowledge", "book-001/chapter-008")
+        .documentVersion("2026-09-23")
+        .schemaVersion("novel-schema-v3")
+        .batchId("import-2026-09-001")
+        .staleRelationPolicy(
+            IncrementalGraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED)
+        .graphOptions(GraphOptions.ofSpace("novel_knowledge"))
+        .build();
+
+IncrementalGraphIngestionResult result = ingestion.ingest(
+    document, schema, request, graphStore.writer());
+~~~
+
+首次导入会计算内容 SHA-256、抽取候选、生成 GraphMutation、写入图，然后提交文档状态。再次提交相同
+`space + documentId + contentHash + documentVersion + schemaVersion` 时返回 `UNCHANGED`，不会再次调用
+模型或写图。内容相同但 Schema 版本或业务文档版本变化时会重新抽取；需要无视哈希强制重跑时设置
+`forceReextract(true)`。
+
+`GraphEntityRegistry` 保存“节点类型 + 规范名称/稳定别名 -> 节点 ID”的长期映射。默认哈希 ID 只能保证
+同名实体得到相同 ID，不能解决同名不同人；生产注册表遇到一个候选命中多个历史节点时必须报告歧义，
+由上层审核或提供业务主键后再导入。实体注册应在图写入成功后保存，避免失败批次污染注册表。
+仅把注册表传给 `IncrementalGraphIngestionService` 只能在写入成功后保存注册结果，不能改变 Pipeline 内部
+的实体解析策略；跨批次归一必须显式使用 `RegistryGraphEntityResolver`（或开发者自己的实现）。
+
+`GraphDocumentStateStore` 至少需要持久化以下字段：
+
+- Space、逻辑 `documentId`、内容哈希和业务版本；
+- Schema 版本、导入 `batchId`、提交时间和乐观锁 `revision`；
+- 当前文档版本产生的节点 ID、关系 `GraphEdgeKey`；
+- 每条关系的 `GraphFactProvenance`，包括 documentId、chunkId、原文证据、confidence 和 assertionType。
+
+文档更新后，服务会把旧版本中不再出现的关系放入 `staleEdgeKeys`。默认策略 `KEEP` 只报告这些关系，不
+产生破坏性删除；显式使用 `DELETE_IF_UNREFERENCED` 时，仅当同一 Space 的其他活动文档状态不再引用该
+关系，才把它加入 `GraphMutation.deleteEdge`。撤回文档使用 `planRetraction`，同样不会自动删除共享实体
+节点。实体孤立回收应由独立、可审核的生命周期任务处理。
+
+计划和写入可以分开，以便人工审核：
+
+~~~java
+IncrementalGraphIngestionPlan plan = ingestion.plan(document, schema, request);
+// 审核 plan.getExtractionResult()、plan.getStaleEdgeKeys() 和 plan.getMutation()
+IncrementalGraphIngestionResult result = ingestion.execute(plan, graphStore.writer());
+~~~
+
+状态存储使用乐观 `revision`。图数据库写入和外部状态存储无法组成跨系统事务：写图成功但状态 CAS 失败
+时，服务会抛出异常，调用方应按相同内容哈希重试幂等 upsert，并使用 documentId 维度的分布式锁或任务
+队列避免多实例同时处理同一文档。SDK 提供的 `InMemoryGraphDocumentStateStore` 和
+`InMemoryGraphEntityRegistry` 只适合测试，进程重启后数据会丢失。
 
 ## 扩展点
 
