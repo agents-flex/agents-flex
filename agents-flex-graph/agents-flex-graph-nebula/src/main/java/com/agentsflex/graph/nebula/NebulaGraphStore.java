@@ -69,11 +69,12 @@ public final class NebulaGraphStore implements GraphStore {
      * 获取或创建指定空间的会话池。
      */
     public SessionPool pool(String space) {
-        final String resolved = space == null ? config.getDefaultSpace() : space;
+        // 管理操作使用空字符串表示 meta space；空白空间名也必须回退到配置的默认空间。
+        final String resolved = space == null || space.trim().isEmpty() ? config.getDefaultSpace() : space;
         return pools.computeIfAbsent(resolved, key -> {
             SessionPoolConfig poolConfig = new SessionPoolConfig(
                 Collections.singletonList(new HostAddress(config.getHost(), config.getPort())),
-                config.getUsername(), config.getPassword(), key)
+                key, config.getUsername(), config.getPassword())
                 .setMinSessionSize(config.getMinSessions())
                 .setMaxSessionSize(config.getMaxSessions());
             SessionPool pool = new SessionPool(poolConfig);

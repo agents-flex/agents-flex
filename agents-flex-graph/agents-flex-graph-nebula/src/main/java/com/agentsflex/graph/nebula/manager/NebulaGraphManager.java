@@ -48,7 +48,8 @@ public final class NebulaGraphManager implements GraphManager {
             return;
         }
         String statement = "CREATE SPACE " + (mode == CreateMode.IF_ABSENT ? "IF NOT EXISTS " : "") + definition.getName()
-            + "(partition_num = " + definition.getPartitionCount() + ", replica_factor = " + definition.getReplicaFactor() + ");";
+            + "(partition_num = " + definition.getPartitionCount() + ", replica_factor = "
+            + definition.getReplicaFactor() + ", vid_type = fixed_string(64));";
         execute("", statement);
     }
 
@@ -75,7 +76,9 @@ public final class NebulaGraphManager implements GraphManager {
             if (!result.isSucceeded()) throw new GraphException(GraphErrorCode.CONNECTION_FAILED,
                 result.getErrorMessage());
             List<String> spaces = new ArrayList<>();
-            for (int i = 0; i < result.rowsSize(); i++) spaces.add(result.rowValues(i).get(0).toString());
+            // ValueWrapper.toString() 对字符串会保留 Nebula 的引号，必须取其真实字符串值，
+            // 否则 spaceExists 会把 SHOW SPACES 的结果误判为不存在。
+            for (int i = 0; i < result.rowsSize(); i++) spaces.add(text(result.rowValues(i).get(0)));
             return spaces;
         } catch (Exception e) {
             throw failure(GraphErrorCode.CONNECTION_FAILED, "Unable to list Nebula spaces", e);

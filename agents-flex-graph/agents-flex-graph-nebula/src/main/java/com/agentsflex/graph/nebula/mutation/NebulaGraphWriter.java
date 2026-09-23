@@ -51,13 +51,15 @@ public final class NebulaGraphWriter implements GraphWriter {
             com.vesoft.nebula.client.graph.SessionPool pool = store.pool(space);
             long nodes = 0, edges = 0;
             for (String id : mutation.getDeleteNodeIds()) {
-                execute(pool, "DELETE VERTEX $id" + (mutation.isDetachDeletedNodes() ? " WITH EDGE" : ""),
-                    map("id", id));
+                execute(pool, "DELETE VERTEX " + literal(id)
+                        + (mutation.isDetachDeletedNodes() ? " WITH EDGE" : ""),
+                    java.util.Collections.<String, Object>emptyMap());
                 nodes++;
             }
             for (GraphEdgeKey key : mutation.getDeleteEdgeKeys()) {
-                execute(pool, "DELETE EDGE " + key.getType() + " $source -> $target @ $rank",
-                    map("source", key.getSourceId(), "target", key.getTargetId(), "rank", key.getRank()));
+                execute(pool, "DELETE EDGE " + key.getType() + " " + literal(key.getSourceId())
+                        + " -> " + literal(key.getTargetId()) + " @ " + key.getRank(),
+                    java.util.Collections.<String, Object>emptyMap());
                 edges++;
             }
             for (GraphNode node : mutation.getNodes()) {
@@ -85,12 +87,14 @@ public final class NebulaGraphWriter implements GraphWriter {
         }
         String tag = node.getLabelList().get(0);
         if (node.getProperties().isEmpty()) {
-            execute(pool, "INSERT VERTEX " + tag + "() VALUES $id:()", map("id", node.getId()));
+            execute(pool, "INSERT VERTEX " + tag + "() VALUES " + literal(node.getId()) + ":()",
+                java.util.Collections.<String, Object>emptyMap());
             return;
         }
-        StringBuilder statement = new StringBuilder("UPSERT VERTEX ON ").append(tag).append(" SET ");
+        // Nebula UPSERT 的 VID 位于 TAG 名称之后，不使用 SQL 风格的 WHERE 子句。
+        StringBuilder statement = new StringBuilder("UPSERT VERTEX ON ").append(tag).append(" ")
+            .append(literal(node.getId())).append(" SET ");
         Map<String, Object> parameters = new LinkedHashMap<>();
-        parameters.put("id", node.getId());
         int index = 0;
         for (Map.Entry<String, Object> property : node.getProperties().entrySet()) {
             if (index > 0) statement.append(", ");
@@ -98,7 +102,6 @@ public final class NebulaGraphWriter implements GraphWriter {
             statement.append(tag).append(".").append(property.getKey()).append(" = $").append(parameter);
             parameters.put(parameter, property.getValue());
         }
-        statement.append(" WHERE id == $id");
         execute(pool, statement.toString(), parameters);
     }
 
@@ -107,16 +110,15 @@ public final class NebulaGraphWriter implements GraphWriter {
      */
     private void upsertEdge(com.vesoft.nebula.client.graph.SessionPool pool, GraphEdge edge) {
         if (edge.getProperties().isEmpty()) {
-            execute(pool, "INSERT EDGE " + edge.getType() + "() VALUES $source -> $target @ $rank:()",
-                map("source", edge.getSourceId(), "target", edge.getTargetId(), "rank", edge.getRank()));
+            execute(pool, "INSERT EDGE " + edge.getType() + "() VALUES " + literal(edge.getSourceId())
+                    + " -> " + literal(edge.getTargetId()) + " @ " + edge.getRank() + ":()",
+                java.util.Collections.<String, Object>emptyMap());
             return;
         }
-        StringBuilder statement = new StringBuilder("UPSERT EDGE ").append(edge.getType())
-            .append(" $source -> $target @ $rank SET ");
+        StringBuilder statement = new StringBuilder("UPSERT EDGE ON ").append(edge.getType())
+            .append(" ").append(literal(edge.getSourceId())).append(" -> ")
+            .append(literal(edge.getTargetId())).append(" @ ").append(edge.getRank()).append(" SET ");
         Map<String, Object> parameters = new LinkedHashMap<>();
-        parameters.put("source", edge.getSourceId());
-        parameters.put("target", edge.getTargetId());
-        parameters.put("rank", edge.getRank());
         int index = 0;
         for (Map.Entry<String, Object> property : edge.getProperties().entrySet()) {
             if (index > 0) statement.append(", ");
@@ -178,11 +180,9 @@ public final class NebulaGraphWriter implements GraphWriter {
     }
 
     /**
-     * 构造 nGQL 参数映射。
+     * 将 VID 编译为 nGQL 字符串字面量。Nebula 3.x 不允许在 VID 位置使用参数占位符。
      */
-    private static Map<String, Object> map(Object... values) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        for (int i = 0; i < values.length; i += 2) result.put((String) values[i], values[i + 1]);
-        return result;
+    private static String literal(String value) {
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 }
