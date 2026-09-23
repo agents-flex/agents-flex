@@ -53,6 +53,11 @@ public class GraphMutationAndImportTest {
         assertEquals(0, GraphMutation.builder().build().getNodes().size());
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void mutationShouldRejectNullUpsertEntity() {
+        GraphMutation.builder().upsertNode(null).build();
+    }
+
     @Test
     public void importRequestShouldUseSafeDefaultsAndPreserveIterables() {
         Iterable<GraphNode> nodes = Arrays.asList(GraphNode.builder("a", "Person").build());
@@ -91,6 +96,8 @@ public class GraphMutationAndImportTest {
         assertEquals(4, report.getNodesImported());
         assertEquals(6, report.getEdgesImported());
         assertEquals(2, report.getBatchesCompleted());
+        assertEquals(1, report.getBatchesFailed());
+        assertEquals(3, report.getBatchesAttempted());
         assertEquals(Collections.singletonList("invalid edge"), report.getErrors());
         assertFalse(report.isSuccess());
         assertUnmodifiable(report.getErrors());

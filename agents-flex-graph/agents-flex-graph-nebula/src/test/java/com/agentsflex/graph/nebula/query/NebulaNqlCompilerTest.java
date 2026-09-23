@@ -1,6 +1,7 @@
 package com.agentsflex.graph.nebula.query;
 
 import com.agentsflex.graph.query.GraphFilter;
+import com.agentsflex.graph.query.GraphUnionQuery;
 import com.agentsflex.graph.query.NativeGraphQuery;
 import com.agentsflex.graph.query.TraversalQuery;
 import org.junit.Test;
@@ -60,5 +61,37 @@ public class NebulaNqlCompilerTest {
         NebulaNqlCompiler.Compiled compiled = new NebulaNqlCompiler().compile(query);
         assertEquals(query.getStatement(), compiled.statement);
         assertEquals("u1", compiled.parameters.get("id"));
+    }
+
+    @Test
+    public void shouldCompilePortableAggregateProjections() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("person", "Person"))
+            .select(
+                TraversalQuery.Projection.count("person", "total"),
+                TraversalQuery.Projection.aggregate(TraversalQuery.AggregateFunction.COUNT_DISTINCT,
+                    "person", "city", "cities"),
+                TraversalQuery.Projection.aggregate(TraversalQuery.AggregateFunction.MAX,
+                    "person", "score", "maxScore"))
+            .build();
+
+        assertEquals("MATCH (person:Person) RETURN count(person) AS total, "
+            + "count(distinct person.city) AS cities, max(person.score) AS maxScore LIMIT 100",
+            new NebulaNqlCompiler().compile(query).statement);
+    }
+
+    @Test
+    public void shouldCompileUnionBranchesWithIsolatedParameters() {
+        TraversalQuery left = TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Person"))
+            .where(GraphFilter.eq("n", "status", "active"))
+            .select(TraversalQuery.Projection.property("n", "name", "name")).build();
+        TraversalQuery right = TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Company"))
+            .where(GraphFilter.eq("n", "status", "active"))
+            .select(TraversalQuery.Projection.property("n", "name", "name")).build();
+
+        NebulaNqlCompiler.Compiled compiled = new NebulaNqlCompiler()
+            .compile(GraphUnionQuery.union(left, right));
+        assertTrue(compiled.statement.contains("$u0_p0"));
+        assertTrue(compiled.statement.contains(" UNION "));
+        assertTrue(compiled.statement.contains("$u1_p0"));
     }
 }

@@ -1,6 +1,7 @@
 package com.agentsflex.graph.neo4j.query;
 
 import com.agentsflex.graph.query.GraphFilter;
+import com.agentsflex.graph.query.GraphUnionQuery;
 import com.agentsflex.graph.query.NativeGraphQuery;
 import com.agentsflex.graph.query.TraversalQuery;
 import org.junit.Test;
@@ -110,5 +111,39 @@ public class Neo4jCypherCompilerTest {
         Neo4jCypherCompiler.Compiled compiled = new Neo4jCypherCompiler().compile(nativeQuery);
         assertEquals("MATCH (n) RETURN n", compiled.statement);
         assertEquals(1, compiled.parameters.get("limit"));
+    }
+
+    @Test
+    public void shouldCompilePortableAggregateProjections() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("person", "Person"))
+            .select(
+                TraversalQuery.Projection.count("person", "total"),
+                TraversalQuery.Projection.aggregate(TraversalQuery.AggregateFunction.COUNT_DISTINCT,
+                    "person", "city", "cities"),
+                TraversalQuery.Projection.aggregate(TraversalQuery.AggregateFunction.AVG,
+                    "person", "age", "averageAge"))
+            .build();
+
+        assertEquals("MATCH (person:Person) RETURN count(person) AS total, "
+                + "count(DISTINCT person.city) AS cities, avg(person.age) AS averageAge LIMIT 100",
+            new Neo4jCypherCompiler().compile(query).statement);
+    }
+
+    @Test
+    public void shouldCompileUnionBranchesWithIsolatedParameters() {
+        TraversalQuery left = TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Person"))
+            .where(GraphFilter.eq("n", "city", "Shanghai"))
+            .select(TraversalQuery.Projection.property("n", "name", "name")).build();
+        TraversalQuery right = TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Company"))
+            .where(GraphFilter.eq("n", "city", "Beijing"))
+            .select(TraversalQuery.Projection.property("n", "name", "name")).build();
+
+        Neo4jCypherCompiler.Compiled compiled = new Neo4jCypherCompiler()
+            .compile(GraphUnionQuery.unionAll(left, right));
+        assertTrue(compiled.statement.contains("$u0_p0"));
+        assertTrue(compiled.statement.contains(" UNION ALL "));
+        assertTrue(compiled.statement.contains("$u1_p0"));
+        assertEquals("Shanghai", compiled.parameters.get("u0_p0"));
+        assertEquals("Beijing", compiled.parameters.get("u1_p0"));
     }
 }

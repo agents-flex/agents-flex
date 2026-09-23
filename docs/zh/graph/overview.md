@@ -77,7 +77,7 @@ try (GraphStore graph = new Neo4jGraphStore(config)) {
 
 ## 统一查询语义
 
-`TraversalQuery` 描述节点标签、边类型、方向、有限跳数、属性过滤、投影、排序和分页。值始终作为参数传递，标签、边类型、属性名和别名只允许可移植标识符。
+`TraversalQuery` 描述节点标签、边类型、方向、有限跳数、属性过滤、投影、聚合、排序和分页。值始终作为参数传递，标签、边类型、属性名和别名只允许可移植标识符。聚合投影支持 `COUNT`、`COUNT_DISTINCT`、`SUM`、`AVG`、`MIN` 和 `MAX`，适配器会将其编译为目标数据库方言。
 
 需要使用后端特性时显式使用 `NativeGraphQuery`。Neo4j 传入 Cypher，Nebula 传入 nGQL；原生查询不承诺跨后端可移植。
 
@@ -95,6 +95,12 @@ GraphImportTask latest = graph.imports().get(task.getId());
 
 任务状态包含 `QUEUED`、`RUNNING`、`SUCCEEDED`、`FAILED` 和 `CANCELLED`。当前默认实现是进程内任务执行器，
 适用于单实例应用和 SDK 场景；需要跨实例恢复、持久化进度或分布式调度时，产品服务应实现自己的任务存储和执行器。
+
+导入请求也可以使用 `GraphImportSource` 接入任意外部数据流，并通过 `GraphImportListener` 监听批次和状态，
+通过 `GraphImportCheckpoint` 保存自己的偏移量。`GraphImportTaskStore` 是任务快照存储扩展点，SDK 默认提供
+`InMemoryGraphImportTaskStore`，开发者可以替换为自己的持久化实现；SDK 不负责数据源解析和任务调度。
+如果需要在进程重启后继续处理，调用方可以持久化 `GraphImportCheckpoint` 的偏移，并通过
+`GraphImportRequest.resumeFrom(...)` 重新提交同一顺序的数据源；任务调度、重复数据处理和最终一致性仍由上层负责。
 
 Schema 应在应用启动或迁移流程中显式执行：
 
@@ -136,6 +142,10 @@ Nebula 当前不返回可移植的索引元数据，因此这些结果必须按�
 `GraphSchema` 构建时会拒绝重复的节点标签、边类型、类型内属性、索引名和索引字段，避免比较器或 DDL
 编译器因为 Map 覆盖而产生静默错误。
 
+Schema 还可以携带版本、显示名称、属性默认值和枚举等开发工具元数据；这些元数据不会被适配器强行编译
+为数据库 DDL。`GraphManager.applySchemaResult(...)` 提供结构化成功、警告、错误码和耗时结果，原有
+`applySchema(...)` 仍保持兼容。
+
 ### 多连接注册表
 
 直接使用 SDK 时，`new GraphConnectionRegistry()` 默认拥有连接生命周期：移除或关闭注册表会关闭
@@ -163,6 +173,22 @@ Map<String, GraphHealth> health = graphConnections.health();
 `GraphOptions.maxRecords` 默认限制一次查询最多物化 10,000 条记录。`GraphResult.getMetadata()` 会返回实际
 记录数、是否因上限截断以及执行耗时，适合在管理后台展示“结果不完整”提示。`timeoutMillis` 会下推到 Neo4j
 事务；Nebula 的 SessionPool 客户端没有等价的单查询超时参数，不能把它宣传为同等级别的硬超时。
+
+`GraphQueryExecutor` 提供可关闭的 `GraphResultCursor` 契约；默认实现包装物化结果，支持原生流式游标的适配器
+可以覆写该入口。Neo4j 适配器使用驱动原生流式结果，调用方必须关闭游标；Nebula SessionPool 当前返回物化结果，能力矩阵会明确这一限制。`GraphSubgraphResult` 用节点/边结构表达图探索结果，和面向表格的 `GraphRecord` 分离。
+原生查询通过 `GraphQueryKind` 标记 READ、WRITE、SCHEMA 或 ADMIN 意图；`GraphOptions.readOnly(true)` 会拒绝
+非只读原生查询。执行计划可通过 `explain(...)` 获取，Neo4j 返回计划树，Nebula 返回 EXPLAIN 行；后端不支持时会明确抛出能力异常。
+`GraphPageRequest` 和 `GraphPageResult` 提供统一 offset 分页及 opaque 下一页 token；后端可以覆写为更高效的 keyset 分页。
+默认分页执行器会在请求页大小之外多取一条记录来判断是否存在下一页，并在返回前移除这条探测记录；opaque
+token 会交给支持它的适配器解释，通用默认实现会明确报告不支持。
+多个独立遍历分支可以通过 `GraphUnionQuery.union(...)` 或 `unionAll(...)` 组合；最短路径等后端差异较大的语义仍通过 `NativeGraphQuery` 使用，并会在能力矩阵中明确标记。
+
+异步导入任务快照除了状态和累计报告，还暴露已成功确认的节点、边偏移以及 `getResumePoint()`，调用方可以把
+该恢复点持久化后重新提交同一顺序的数据源。失败批次不会推进 checkpoint；取消或关闭服务时，SDK 会幂等释放
+通过 `GraphImportSource` 提供的外部资源。`GraphImportReport` 同时提供成功、失败和尝试批次数，避免上层自行从错误列表推导统计。
+
+能力矩阵除了支持状态和说明，还可以提供参数化限制（如最大跳数）以及支持模式（如 `ONLINE_BATCH`）。
+错误统一提供 `GraphErrorCode`，调用方不应依赖具体数据库异常文本判断错误类别。
 
 生产环境不建议把破坏性 Schema 删除放入自动初始化。数据库部署、TLS、备份、权限和高可用仍由数据库运维负责。
 

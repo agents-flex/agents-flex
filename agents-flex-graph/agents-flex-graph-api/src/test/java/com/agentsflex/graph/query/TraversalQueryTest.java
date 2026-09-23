@@ -96,4 +96,23 @@ public class TraversalQueryTest {
         assertEquals(1, edge.getMinHops());
         assertEquals(6, edge.getMaxHops());
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldRejectMixedAggregateAndEntityProjectionWithoutGrouping() {
+        TraversalQuery.from(TraversalQuery.NodePattern.anyNode("person"))
+            .select(TraversalQuery.Projection.entity("person"),
+                TraversalQuery.Projection.count("person", "total"))
+            .build();
+    }
+
+    @Test
+    public void unionShouldRequireStableProjectionNames() {
+        TraversalQuery people = TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Person"))
+            .select(TraversalQuery.Projection.property("n", "name", "name")).build();
+        TraversalQuery companies = TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Company"))
+            .select(TraversalQuery.Projection.property("n", "name", "name")).build();
+        GraphUnionQuery query = GraphUnionQuery.unionAll(people, companies);
+        assertTrue(query.isAll());
+        assertEquals(2, query.getBranches().size());
+    }
 }

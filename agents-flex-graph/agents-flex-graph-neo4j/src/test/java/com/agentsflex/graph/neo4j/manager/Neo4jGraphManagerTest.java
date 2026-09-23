@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 /**
  * 验证 Neo4j Schema DDL 能保留复合索引和唯一约束语义。
@@ -36,6 +37,17 @@ public class Neo4jGraphManagerTest {
             + "ON (n.tenant, n.name)"));
         assertTrue(statements.contains("CREATE CONSTRAINT person_external IF NOT EXISTS FOR (n:Person) "
             + "REQUIRE (n.tenant, n.externalId) IS UNIQUE"));
+    }
+
+    @Test
+    public void validateOnlyShouldNotReportAppliedSteps() {
+        Neo4jGraphManager manager = new Neo4jGraphManager(driver(new ArrayList<String>()), new Neo4jGraphStoreConfig());
+        GraphSchema schema = GraphSchema.builder()
+            .nodeType(GraphSchema.NodeType.of("Person"))
+            .edgeType(GraphSchema.EdgeType.any("KNOWS"))
+            .build();
+        assertEquals(0, manager.applySchemaResult("neo4j", schema,
+            GraphManager.SchemaMode.VALIDATE_ONLY).getAppliedSteps().size());
     }
 
     private static Driver driver(List<String> statements) {

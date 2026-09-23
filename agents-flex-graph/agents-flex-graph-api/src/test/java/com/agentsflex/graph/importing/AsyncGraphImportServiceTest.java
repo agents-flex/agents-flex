@@ -11,6 +11,9 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -88,6 +91,114 @@ public class AsyncGraphImportServiceTest {
             return;
         }
         throw new AssertionError("closed import service should reject new tasks");
+    }
+
+    @Test
+    public void sourceListenerCheckpointAndTaskStoreShouldReceiveLifecycleEvents() throws Exception {
+        final AtomicBoolean closed = new AtomicBoolean();
+        final AtomicInteger batches = new AtomicInteger();
+        final AtomicInteger checkpoints = new AtomicInteger();
+        GraphImportSource source = new GraphImportSource() {
+            @Override
+            public Iterable<GraphNode> nodes() {
+                return Collections.singletonList(GraphNode.builder("source-node", "Person").build());
+            }
+
+            @Override
+            public Iterable<com.agentsflex.graph.data.GraphEdge> edges() {
+                return Collections.emptyList();
+            }
+
+            @Override
+            public void close() {
+                closed.set(true);
+            }
+        };
+        GraphImportTaskStore store = new InMemoryGraphImportTaskStore();
+        GraphImportRequest request = GraphImportRequest.builder()
+            .source(source)
+            .listener(new GraphImportListener() {
+                @Override
+                public void onBatchCompleted(GraphImportTask task, GraphWriteResult result) {
+                    batches.incrementAndGet();
+                }
+            })
+            .checkpoint((id, nodes, edges) -> checkpoints.incrementAndGet())
+            .build();
+        AsyncGraphImportService service = new AsyncGraphImportService(
+            new StubWriter(GraphWriteResult.success(1, 0)), java.util.concurrent.Executors.newSingleThreadExecutor(), store);
+        try {
+            GraphImportTask completed = awaitTerminal(service, service.submit(request, GraphOptions.DEFAULT).getId());
+            assertEquals(GraphImportStatus.SUCCEEDED, completed.getStatus());
+            assertEquals(1, batches.get());
+            assertEquals(1, checkpoints.get());
+            assertTrue(closed.get());
+            assertNotNull(store.get(completed.getId()));
+        } finally {
+            service.close();
+        }
+    }
+
+    @Test
+    public void resumePointShouldSkipAlreadyCommittedSourceRows() throws Exception {
+        final AtomicInteger checkpointNodes = new AtomicInteger();
+        GraphImportRequest request = GraphImportRequest.builder()
+            .nodes(java.util.Arrays.asList(
+                GraphNode.builder("n1", "Person").build(),
+                GraphNode.builder("n2", "Person").build(),
+                GraphNode.builder("n3", "Person").build()))
+            .batchSize(1)
+            .resumeFrom(new GraphImportResumePoint(1, 0, 1))
+            .checkpoint((taskId, nodes, edges) -> checkpointNodes.set((int) nodes))
+            .build();
+        AsyncGraphImportService service = new AsyncGraphImportService(new StubWriter(GraphWriteResult.success(1, 0)));
+        try {
+            GraphImportTask completed = awaitTerminal(service, service.submit(request, GraphOptions.DEFAULT).getId());
+            assertEquals(GraphImportStatus.SUCCEEDED, completed.getStatus());
+            assertEquals(2, completed.getReport().getNodesImported());
+            assertEquals(3, checkpointNodes.get());
+            assertEquals(3L, completed.getNodesProcessed());
+            assertEquals(3L, completed.getResumePoint().getNodesProcessed());
+        } finally {
+            service.close();
+        }
+    }
+
+    @Test
+    public void failedBatchShouldNotAdvanceCheckpointWhenContinuing() throws Exception {
+        final AtomicReference<String> checkpoint = new AtomicReference<>();
+        GraphWriter writer = new GraphWriter() {
+            private int calls;
+
+            @Override
+            public GraphWriteResult mutate(GraphMutation mutation, GraphOptions options) {
+                return calls++ == 0
+                    ? GraphWriteResult.failure("bad row", null)
+                    : GraphWriteResult.success(1, 0);
+            }
+
+            @Override
+            public GraphImportReport importData(GraphImportRequest request, GraphOptions options) {
+                return new GraphImportReport();
+            }
+        };
+        GraphImportRequest request = GraphImportRequest.builder()
+            .nodes(java.util.Arrays.asList(
+                GraphNode.builder("n1", "Person").build(),
+                GraphNode.builder("n2", "Person").build()))
+            .batchSize(1)
+            .stopOnError(false)
+            .checkpoint((id, nodes, edges) -> checkpoint.set(nodes + ":" + edges))
+            .build();
+        AsyncGraphImportService service = new AsyncGraphImportService(writer);
+        try {
+            GraphImportTask completed = awaitTerminal(service, service.submit(request, GraphOptions.DEFAULT).getId());
+            assertEquals(GraphImportStatus.FAILED, completed.getStatus());
+            assertEquals("1:0", checkpoint.get());
+            assertEquals(1, completed.getReport().getNodesImported());
+        } finally {
+            service.close();
+        }
     }
 
     private static GraphImportTask awaitTerminal(AsyncGraphImportService service, String id) throws Exception {
