@@ -40,8 +40,19 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
         if (expected == null || next == null) throw new IllegalArgumentException("expected and next must not be null");
         GraphIngestionOperation current = operations.get(operationId);
         if (current == null || current.getStage() != expected
-            || !operationId.equals(next.getOperationId())) return false;
+            || !sameIdentity(current, next)) return false;
         operations.put(operationId, next);
         return true;
+    }
+
+    /**
+     * 防止 CAS 调用方在推进阶段时意外篡改操作绑定的计划身份。
+     */
+    private static boolean sameIdentity(GraphIngestionOperation current, GraphIngestionOperation next) {
+        return current.getOperationId().equals(next.getOperationId())
+            && current.getSpace().equals(next.getSpace())
+            && current.getDocumentId().equals(next.getDocumentId())
+            && current.getExpectedRevision() == next.getExpectedRevision()
+            && current.getPlanFingerprint().equals(next.getPlanFingerprint());
     }
 }

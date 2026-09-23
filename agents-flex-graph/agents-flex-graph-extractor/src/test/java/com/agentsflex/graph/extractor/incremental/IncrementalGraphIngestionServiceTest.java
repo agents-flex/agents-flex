@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -197,8 +198,19 @@ public class IncrementalGraphIngestionServiceTest {
         Scenario scenario = scenario();
         IncrementalGraphIngestionPlan plan = scenario.service.plan(Document.of("林默加入青云会"), schema(),
             request("doc-1").operationId("resume-operation").build());
-        scenario.operations.createIfAbsent(new GraphIngestionOperation("resume-operation", "knowledge", "doc-1",
-            0L, GraphIngestionOperation.Stage.GRAPH_APPLIED, 1_700_000_000_000L, ""));
+        scenario.writer.fail = true;
+        scenario.service.execute(plan, scenario.writer);
+        GraphIngestionOperation failed = scenario.operations.get("resume-operation");
+        GraphIngestionOperation prepared = failed.transition(GraphIngestionOperation.Stage.PREPARED,
+            failed.getUpdatedAtMillis(), "");
+        assertTrue(scenario.operations.compareAndSet("resume-operation", GraphIngestionOperation.Stage.FAILED,
+            prepared));
+        GraphIngestionOperation applied = prepared.transition(GraphIngestionOperation.Stage.GRAPH_APPLIED,
+            prepared.getUpdatedAtMillis(), "");
+        assertTrue(scenario.operations.compareAndSet("resume-operation", GraphIngestionOperation.Stage.PREPARED,
+            applied));
+        scenario.writer.fail = false;
+        scenario.writer.calls = 0;
 
         IncrementalGraphIngestionResult result = scenario.service.execute(plan, scenario.writer);
 
@@ -207,6 +219,58 @@ public class IncrementalGraphIngestionServiceTest {
         assertEquals(GraphIngestionOperation.Stage.COMPLETED,
             scenario.operations.get("resume-operation").getStage());
         assertEquals(1L, scenario.states.get("knowledge", "doc-1").getRevision());
+    }
+
+    /**
+     * 相同 operationId 和基线 revision 也不能承载另一份抽取计划，否则恢复时可能提交错配状态。
+     */
+    @Test
+    public void shouldRejectDifferentPlanWithSameOperationAndRevision() {
+        Scenario scenario = scenario();
+        IncrementalGraphIngestionPlan first = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+            request("doc-1").operationId("shared-operation").build());
+        scenario.writer.fail = true;
+        scenario.service.execute(first, scenario.writer);
+
+        IncrementalGraphIngestionPlan different = scenario.service.plan(Document.of("林默离开了山门"), schema(),
+            request("doc-1").operationId("shared-operation").build());
+        try {
+            scenario.service.execute(different, scenario.writer);
+            fail("different plan should not reuse operation id");
+        } catch (GraphExtractionException expected) {
+            assertTrue(expected.getMessage().contains("another ingestion plan"));
+        }
+        assertNull(scenario.states.get("knowledge", "doc-1"));
+    }
+
+    /**
+     * 状态机不得跳过 GRAPH_APPLIED 和 STATE_COMMITTED 直接宣告完成。
+     */
+    @Test
+    public void shouldRejectIllegalOperationStageTransition() {
+        GraphIngestionOperation operation = new GraphIngestionOperation("operation-1", "knowledge", "doc-1",
+            0L, "fingerprint", GraphIngestionOperation.Stage.PREPARED, 1_700_000_000_000L, "");
+        try {
+            operation.transition(GraphIngestionOperation.Stage.COMPLETED, 1_700_000_000_001L, "");
+            fail("illegal state transition should be rejected");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("PREPARED -> COMPLETED"));
+        }
+    }
+
+    /**
+     * 相同文档、关系和证据位于不同 Space 时必须获得不同事实 ID，避免跨知识库审计冲突。
+     */
+    @Test
+    public void shouldScopeFactIdBySpace() {
+        Scenario scenario = scenario();
+        scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
+        scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+            IncrementalGraphIngestionRequest.builder("archive", "doc-1").build(), scenario.writer);
+
+        String knowledgeFact = scenario.states.get("knowledge", "doc-1").getFactProvenances().get(0).getFactId();
+        String archiveFact = scenario.states.get("archive", "doc-1").getFactProvenances().get(0).getFactId();
+        assertFalse(knowledgeFact.equals(archiveFact));
     }
 
     /**
@@ -322,8 +386,9 @@ public class IncrementalGraphIngestionServiceTest {
             new GraphMutationMapper());
         InMemoryGraphDocumentStateStore states = new InMemoryGraphDocumentStateStore();
         InMemoryGraphIngestionOperationStore operations = new InMemoryGraphIngestionOperationStore();
+        AtomicLong clock = new AtomicLong(1_700_000_000_000L);
         IncrementalGraphIngestionService service = new IncrementalGraphIngestionService(
-            pipeline, states, registry, operations, () -> 1_700_000_000_000L);
+            pipeline, states, registry, operations, clock::getAndIncrement);
         return new Scenario(service, extractor, states, registry, operations, new RecordingWriter());
     }
 

@@ -301,11 +301,15 @@ SDK 提供的 `InMemoryGraphDocumentStateStore` 和
 生产环境建议同时实现 `GraphIngestionOperationStore`。服务会持久化
 `PREPARED -> GRAPH_APPLIED -> STATE_COMMITTED -> COMPLETED` 状态；若进程在图写成功后退出，使用同一
 `operationId` 重试时可以跳过重复 GraphWriter 调用并继续提交状态。`FAILED` 操作允许用同一操作号重试。
-SDK 的 `InMemoryGraphIngestionOperationStore` 同样只适合测试，不能用于多实例恢复。
+每条操作还会保存覆盖图路由、mutation、文档状态、事实来源和实体注册内容的 `planFingerprint`。即使两个
+计划基于相同 revision，只要大模型抽取结果或属性不同，也不能复用同一 `operationId`。生产存储必须原子
+实现 `createIfAbsent` 和 `compareAndSet`，并把 `operationId` 设为全局唯一键；SDK 的
+`InMemoryGraphIngestionOperationStore` 同样只适合测试，不能用于多实例恢复。
 
 `GraphFactProvenance` 表示文档对事实的独立声明，不等同于图中的物化边。它包含稳定 `factId`、
 `operationId`、文档 revision、创建时间和原文证据；同一 `GraphEdgeKey` 可以由多个事实声明共同支持。
-业务需要在图中查询来源时，可以把这些事实记录映射为独立 Fact 节点，物化边则作为可重建的查询投影。
+`factId` 包含 Space 作用域，同一证据位于不同知识库时不会冲突。业务需要在图中查询来源时，可以把这些
+事实记录映射为独立 Fact 节点，物化边则作为可重建的查询投影。
 
 默认情况下，抽取结果包含 Chunk 错误时不会允许关系删除；即使通过
 `rejectExtractionErrors(false)` 提交部分结果，也会保留旧关系。只有明确设置

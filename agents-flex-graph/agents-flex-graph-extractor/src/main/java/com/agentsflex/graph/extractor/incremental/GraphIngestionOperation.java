@@ -50,6 +50,10 @@ public final class GraphIngestionOperation {
      */
     private final long expectedRevision;
     /**
+     * 完整执行计划的稳定指纹，用于拒绝相同操作号承载不同写入内容。
+     */
+    private final String planFingerprint;
+    /**
      * 当前阶段。
      */
     private final Stage stage;
@@ -66,11 +70,13 @@ public final class GraphIngestionOperation {
      * 创建不可变操作记录。
      */
     public GraphIngestionOperation(String operationId, String space, String documentId, long expectedRevision,
-                                   Stage stage, long updatedAtMillis, String failureMessage) {
+                                   String planFingerprint, Stage stage, long updatedAtMillis,
+                                   String failureMessage) {
         this.operationId = text(operationId, "operationId");
         this.space = text(space, "space");
         this.documentId = text(documentId, "documentId");
         if (expectedRevision < 0L) throw new IllegalArgumentException("expectedRevision must not be negative");
+        this.planFingerprint = text(planFingerprint, "planFingerprint");
         if (stage == null) throw new IllegalArgumentException("stage must not be null");
         if (updatedAtMillis < 0L) throw new IllegalArgumentException("updatedAtMillis must not be negative");
         this.expectedRevision = expectedRevision;
@@ -108,6 +114,13 @@ public final class GraphIngestionOperation {
     }
 
     /**
+     * @return 完整执行计划的 SHA-256 指纹。
+     */
+    public String getPlanFingerprint() {
+        return planFingerprint;
+    }
+
+    /**
      * @return 当前操作阶段。
      */
     public Stage getStage() {
@@ -132,7 +145,35 @@ public final class GraphIngestionOperation {
      * 创建身份不变的新阶段记录。
      */
     public GraphIngestionOperation transition(Stage next, long time, String failure) {
-        return new GraphIngestionOperation(operationId, space, documentId, expectedRevision, next, time, failure);
+        if (!canTransition(stage, next)) {
+            throw new IllegalStateException("Illegal ingestion operation transition: " + stage + " -> " + next);
+        }
+        if (time < updatedAtMillis) {
+            throw new IllegalArgumentException("operation update time must not move backwards");
+        }
+        return new GraphIngestionOperation(operationId, space, documentId, expectedRevision, planFingerprint,
+            next, time, failure);
+    }
+
+    /**
+     * 校验状态机迁移。失败只会发生在图写入确认之前，因此重试统一回到 PREPARED；
+     * 已确认写图后则只能向状态提交和最终完成单向推进。
+     */
+    private static boolean canTransition(Stage current, Stage next) {
+        if (current == null || next == null || current == next) return false;
+        switch (current) {
+            case PREPARED:
+                return next == Stage.GRAPH_APPLIED || next == Stage.FAILED;
+            case FAILED:
+                return next == Stage.PREPARED;
+            case GRAPH_APPLIED:
+                return next == Stage.STATE_COMMITTED;
+            case STATE_COMMITTED:
+                return next == Stage.COMPLETED;
+            case COMPLETED:
+            default:
+                return false;
+        }
     }
 
     /**

@@ -229,7 +229,8 @@ public final class IncrementalGraphIngestionService {
         String operationId = plan.getNextState() == null ? plan.getMutation().getOperationId()
             : plan.getNextState().getOperationId();
         long expectedRevision = plan.getPreviousState() == null ? 0L : plan.getPreviousState().getRevision();
-        GraphIngestionOperation operation = prepareOperation(plan, operationId, expectedRevision);
+        String planFingerprint = GraphIngestionPlanFingerprint.compute(plan);
+        GraphIngestionOperation operation = prepareOperation(plan, operationId, expectedRevision, planFingerprint);
         GraphDocumentState alreadyCommitted = stateStore.findByOperationId(plan.getSpace(), plan.getDocumentId(), operationId);
         if (alreadyCommitted != null) {
             if (plan.getNextState() != null
@@ -282,19 +283,20 @@ public final class IncrementalGraphIngestionService {
      * 创建或恢复同一 operationId 的持久化操作状态。
      */
     private GraphIngestionOperation prepareOperation(IncrementalGraphIngestionPlan plan, String operationId,
-                                                     long expectedRevision) {
+                                                     long expectedRevision, String planFingerprint) {
         if (operationStore == null) return null;
         GraphIngestionOperation operation = operationStore.get(operationId);
         if (operation == null) {
             GraphIngestionOperation prepared = new GraphIngestionOperation(operationId, plan.getSpace(),
-                plan.getDocumentId(), expectedRevision, GraphIngestionOperation.Stage.PREPARED,
+                plan.getDocumentId(), expectedRevision, planFingerprint, GraphIngestionOperation.Stage.PREPARED,
                 clock.getAsLong(), "");
             operationStore.createIfAbsent(prepared);
             operation = operationStore.get(operationId);
         }
         if (operation == null || !operation.getSpace().equals(plan.getSpace())
             || !operation.getDocumentId().equals(plan.getDocumentId())
-            || operation.getExpectedRevision() != expectedRevision) {
+            || operation.getExpectedRevision() != expectedRevision
+            || !operation.getPlanFingerprint().equals(planFingerprint)) {
             throw new GraphExtractionException("Operation id is already bound to another ingestion plan: "
                 + operationId);
         }
@@ -328,7 +330,20 @@ public final class IncrementalGraphIngestionService {
      */
     private void completeOperation(GraphIngestionOperation operation) {
         if (operation == null || operation.getStage() == GraphIngestionOperation.Stage.COMPLETED) return;
-        advanceOperation(operation, GraphIngestionOperation.Stage.COMPLETED);
+        GraphIngestionOperation current = operation;
+        // 当前文档状态中的 operationId 已证明业务提交完成，可以把滞后的日志按合法路径逐级补齐。
+        if (current.getStage() == GraphIngestionOperation.Stage.FAILED) {
+            current = advanceOperation(current, GraphIngestionOperation.Stage.PREPARED);
+        }
+        if (current.getStage() == GraphIngestionOperation.Stage.PREPARED) {
+            current = advanceOperation(current, GraphIngestionOperation.Stage.GRAPH_APPLIED);
+        }
+        if (current.getStage() == GraphIngestionOperation.Stage.GRAPH_APPLIED) {
+            current = advanceOperation(current, GraphIngestionOperation.Stage.STATE_COMMITTED);
+        }
+        if (current.getStage() == GraphIngestionOperation.Stage.STATE_COMMITTED) {
+            advanceOperation(current, GraphIngestionOperation.Stage.COMPLETED);
+        }
     }
 
     /**
@@ -416,7 +431,8 @@ public final class IncrementalGraphIngestionService {
         if (partial && !request.isAllowPartialReconcile() && previous != null) {
             nextProvenances.addAll(previous.getFactProvenances());
         }
-        nextProvenances.addAll(provenances(extraction, operationId, nextRevision, committedAtMillis));
+        nextProvenances.addAll(provenances(request.getSpace(), extraction, operationId, nextRevision,
+            committedAtMillis));
         GraphDocumentState next = GraphDocumentState.builder(request.getSpace(), request.getDocumentId(), contentHash)
             .revision(nextRevision).operationId(operationId).documentVersion(documentVersion).schemaVersion(schemaVersion)
             .extractionFingerprint(extractionFingerprint).sourceUpdatedAtMillis(request.getSourceUpdatedAtMillis())
@@ -443,15 +459,17 @@ public final class IncrementalGraphIngestionService {
     /**
      * 把已接受关系转换为可长期查询的来源记录；相同关系的多段证据会分别保留。
      */
-    private static List<GraphFactProvenance> provenances(GraphExtractionResult extraction, String operationId,
-                                                         long documentRevision, long createdAtMillis) {
+    private static List<GraphFactProvenance> provenances(String space, GraphExtractionResult extraction,
+                                                         String operationId, long documentRevision,
+                                                         long createdAtMillis) {
         List<GraphFactProvenance> result = new ArrayList<>();
         for (GraphRelationCandidate relation : extraction.getRelations()) {
             String source = extraction.getResolution().nodeId(relation.getSourceCandidateKey());
             String target = extraction.getResolution().nodeId(relation.getTargetCandidateKey());
             if (source == null || target == null || relation.getEvidence() == null) continue;
             GraphEdgeKey key = new GraphEdgeKey(source, relation.getType(), target, relation.getRank());
-            String factId = "fact-" + resolveHash("", Collections.singletonList(key.portableId() + "\u0000"
+            String factId = "fact-" + resolveHash("", Collections.singletonList(space + "\u0000"
+                + key.portableId() + "\u0000"
                 + relation.getEvidence().getDocumentId() + "\u0000" + relation.getEvidence().getChunkId()
                 + "\u0000" + relation.getEvidence().getQuote()));
             result.add(new GraphFactProvenance(factId, operationId, documentRevision, createdAtMillis,
