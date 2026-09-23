@@ -15,6 +15,7 @@
 
     <modules>
         <module>agents-flex-graph-api</module>
+        <module>agents-flex-graph-extractor</module>
         <module>agents-flex-graph-neo4j</module>
         <module>agents-flex-graph-nebula</module>
     </modules>

@@ -4,6 +4,8 @@
 
 The API deliberately separates portable operations from backend-specific escape hatches. Every backend declares its `GraphCapabilities`; unsupported operations fail explicitly instead of silently changing query semantics.
 
+`agents-flex-graph-extractor` adds a reviewable document-to-graph pipeline on top of the API. It uses the existing `DocumentSplitter` and `ChatModel`, validates candidates against `GraphSchema`, resolves aliases across chunks, and produces a `GraphMutation` without writing it automatically.
+
 ## Example
 
 ```java

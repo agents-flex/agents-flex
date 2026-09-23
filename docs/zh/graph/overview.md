@@ -6,6 +6,7 @@ Graph 模块为属性图数据库提供统一 Java API，覆盖图空间管理�
 
 ```text
 agents-flex-graph-api       公共模型和接口
+agents-flex-graph-extractor 文档分段、候选知识抽取、校验和实体归一
 agents-flex-graph-neo4j     Neo4j Java Driver 适配器
 agents-flex-graph-nebula    Nebula Graph SessionPool 适配器
 ```
@@ -64,10 +65,14 @@ try (GraphStore graph = new Neo4jGraphStore(config)) {
         GraphNode.builder("u-1", "Person").property("name", "Alice").build(),
         GraphOptions.DEFAULT);
 
-    TraversalQuery query = TraversalQuery.from(NodePattern.node("person", "Person"))
-        .traverse(EdgePattern.edge("knows", "KNOWS", Direction.OUT), NodePattern.node("friend", "Person"))
+    TraversalQuery query = TraversalQuery.from(
+            TraversalQuery.NodePattern.node("person", "Person"))
+        .traverse(
+            TraversalQuery.EdgePattern.edge(
+                "knows", "KNOWS", TraversalQuery.Direction.OUT),
+            TraversalQuery.NodePattern.node("friend", "Person"))
         .where(GraphFilter.eq("person", "tenant", "tenant-a"))
-        .select(Projection.entity("friend"))
+        .select(TraversalQuery.Projection.entity("friend"))
         .limit(20)
         .build();
 
@@ -227,3 +232,18 @@ agents-flex:
       password: nebula
       default-space: agents_flex
 ```
+
+## 文档导航
+
+第一次接入建议依次阅读：
+
+1. [快速开始](/zh/graph/getting-started)：完成连接、Schema、写入和查询闭环；
+2. [架构设计](/zh/graph/architecture)与[核心概念](/zh/graph/concepts)：理解 SDK 边界和统一模型；
+3. [数据模型](/zh/graph/data-model)、[GraphStore](/zh/graph/graph-store)与[GraphOptions](/zh/graph/graph-options)：掌握公共 API；
+4. [Schema 定义](/zh/graph/schema)、[节点与边写入](/zh/graph/mutation)与[查询概览](/zh/graph/query-overview)：实现主要业务流程；
+5. [后端能力对比](/zh/graph/backend-comparison)：处理 Neo4j 与 Nebula 的能力差异。
+
+准备生产上线时，继续阅读[单元测试与契约测试](/zh/graph/testing)、[Docker 真实环境测试](/zh/graph/docker-integration-testing)、
+[故障排查](/zh/graph/troubleshooting)和[生产使用建议](/zh/graph/production-guidelines)。
+
+需要从小说、报告等非结构化文档构建图谱时，阅读[从文档抽取知识图谱](/zh/graph/knowledge-extraction)。
