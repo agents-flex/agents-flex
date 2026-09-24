@@ -71,7 +71,9 @@ public class RealNeo4jGraphIntegrationTest {
         store = new Neo4jGraphStore(config);
     }
 
-    /** 连接目标不可用时 health 必须返回 DOWN，而不是把探活异常泄露给调用方。 */
+    /**
+     * 连接目标不可用时 health 必须返回 DOWN，而不是把探活异常泄露给调用方。
+     */
     @Test
     public void shouldReportDownForUnavailableNeo4jEndpoint() {
         Neo4jGraphStore unavailable = new Neo4jGraphStore(new Neo4jGraphStoreConfig()
@@ -144,7 +146,9 @@ public class RealNeo4jGraphIntegrationTest {
         }
     }
 
-    /** 验证真实 Neo4j 数据库的创建、幂等创建、列表可见性和删除。 */
+    /**
+     * 验证真实 Neo4j 数据库的创建、幂等创建、列表可见性和删除。
+     */
     @Test
     public void shouldCreateAndDropRealNeo4jDatabase() throws InterruptedException {
         String database = "itdb_" + System.currentTimeMillis();
@@ -223,9 +227,58 @@ public class RealNeo4jGraphIntegrationTest {
             assertEquals(4L, seed.getNodesAffected());
             assertEquals(3L, seed.getEdgesAffected());
 
+            // 真实验证公共字符串 DSL 的完整入口：参数不会拼接进 Cypher，而是由编译器绑定。
+            java.util.Map<String, Object> names = new java.util.HashMap<>();
+            names.put("names", Arrays.asList("Alice", "Bob"));
+            GraphResult stringRanked = store.query().execute(
+                "MATCH (n:" + label + ") WHERE n.name IN :names "
+                    + "RETURN n.name AS name, n.score AS score ORDER BY n.score DESC LIMIT 10",
+                names, GraphOptions.ofSpace("neo4j"));
+            assertEquals(2, stringRanked.getRecords().size());
+            assertEquals("Alice", stringRanked.getRecords().get(0).get("name"));
+
+            java.util.Map<String, Object> edgeParameters = new java.util.HashMap<>();
+            edgeParameters.put("weight", 2L);
+            edgeParameters.put("fragment", "Ali");
+            GraphResult stringPath = store.query().execute(
+                "MATCH (a:" + label + ")-[r:" + edgeType + " {weight: :weight}]->(b:" + label + ") "
+                    + "WHERE a.name CONTAINS :fragment RETURN PATH AS route, b.name AS name",
+                edgeParameters, GraphOptions.ofSpace("neo4j"));
+            assertEquals(1, stringPath.getRecords().size());
+            assertNotNull(stringPath.getRecords().get(0).get("route"));
+            assertEquals("Bob", stringPath.getRecords().get(0).get("name"));
+
+            java.util.Map<String, Object> minimum = Collections.<String, Object>singletonMap("minimum", 20L);
+            GraphResult stringUnion = store.query().execute(
+                "MATCH (n:" + label + ") WHERE n.score >= :minimum RETURN n.name AS name "
+                    + "UNION ALL MATCH (n:" + label + ") WHERE n.score < :minimum RETURN n.name AS name",
+                minimum, GraphOptions.ofSpace("neo4j"));
+            assertEquals(4, stringUnion.getRecords().size());
+
+            GraphResult stringOptional = store.query().execute(
+                "OPTIONAL MATCH (n:" + label + ")-[r:" + edgeType + "]->(m:" + label + ") "
+                    + "RETURN n.name AS name, m.name AS friend ORDER BY n.name ASC LIMIT 10",
+                Collections.<String, Object>emptyMap(), GraphOptions.ofSpace("neo4j"));
+            assertEquals(3, stringOptional.getRecords().size());
+
+            GraphResult stringGrouped = store.query().execute(
+                "MATCH (n:" + label + ") RETURN n.active AS active, COUNT(n) AS total "
+                    + "GROUP BY n.active ORDER BY n.active ASC LIMIT 10",
+                Collections.<String, Object>emptyMap(), GraphOptions.ofSpace("neo4j"));
+            assertEquals(2, stringGrouped.getRecords().size());
+            GraphPageResult stringPage = store.query().executePage(
+                "MATCH (n:" + label + ") RETURN n.name AS name ORDER BY n.name ASC LIMIT 10",
+                Collections.<String, Object>emptyMap(), GraphPageRequest.of(0, 2), GraphOptions.ofSpace("neo4j"));
+            assertEquals(2, stringPage.getResult().getRecords().size());
+            assertTrue(stringPage.hasNext());
+            GraphExplainResult stringExplain = store.query().explain(
+                "MATCH (n:" + label + ") WHERE n.score >= :minimum RETURN n.name AS name",
+                minimum, GraphOptions.ofSpace("neo4j"));
+            assertFalse(stringExplain.getPlanText().trim().isEmpty());
+
             // 部分属性更新不得影响未涉及的属性。
             GraphWriteResult update = store.writer().mutate(GraphMutation.builder()
-                .upsertNode(person(alice.getId(), label, "Alice Updated", 42, true)).build(),
+                    .upsertNode(person(alice.getId(), label, "Alice Updated", 42, true)).build(),
                 GraphOptions.ofSpace("neo4j"));
             assertTrue(update.isSuccess());
             GraphResult updated = store.query().execute(NativeGraphQuery.of(
@@ -283,14 +336,14 @@ public class RealNeo4jGraphIntegrationTest {
                 .deleteNode(dave.getId()).build(), GraphOptions.ofSpace("neo4j"));
             assertTrue(deleteNode.isSuccess());
             GraphResult remaining = store.query().execute(NativeGraphQuery.of(
-                "MATCH (n:" + label + ") RETURN count(n) AS total", Collections.<String, Object>emptyMap()),
+                    "MATCH (n:" + label + ") RETURN count(n) AS total", Collections.<String, Object>emptyMap()),
                 GraphOptions.ofSpace("neo4j"));
             assertEquals(5L, ((Number) remaining.getRecords().get(0).get("total")).longValue());
 
             try {
                 store.query().execute(NativeGraphQuery.of(
-                    "CREATE (n:" + label + " {__agentsflex_id: 'should-fail'})",
-                    Collections.<String, Object>emptyMap(), GraphQueryKind.WRITE),
+                        "CREATE (n:" + label + " {__agentsflex_id: 'should-fail'})",
+                        Collections.<String, Object>emptyMap(), GraphQueryKind.WRITE),
                     GraphOptions.builder().space("neo4j").readOnly(true).build());
                 fail("read-only options must reject native write queries");
             } catch (GraphException expected) {
@@ -331,16 +384,16 @@ public class RealNeo4jGraphIntegrationTest {
             assertTrue(store.writer().mutate(GraphMutation.builder().upsertNodes(Arrays.asList(low, high)).build(),
                 GraphOptions.ofSpace("neo4j")).isSuccess());
             assertTrue(store.writer().mutate(GraphMutation.builder().upsertEdges(Arrays.asList(
-                GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(1).build(),
-                GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(2).build(),
-                GraphEdge.builder(high.getId(), edgeType, high.getId()).rank(3).build())).build(),
+                    GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(1).build(),
+                    GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(2).build(),
+                    GraphEdge.builder(high.getId(), edgeType, high.getId()).rank(3).build())).build(),
                 GraphOptions.ofSpace("neo4j")).isSuccess());
             GraphResult rankedEdges = store.query().execute(NativeGraphQuery.of(
                 "MATCH ()-[r:" + edgeType + "]->() RETURN count(r) AS total",
                 Collections.<String, Object>emptyMap()), GraphOptions.ofSpace("neo4j"));
             assertEquals(3L, ((Number) rankedEdges.getRecords().get(0).get("total")).longValue());
             assertTrue(store.writer().mutate(GraphMutation.builder().deleteEdge(
-                new com.agentsflex.graph.data.GraphEdgeKey(low.getId(), edgeType, high.getId(), 2)).build(),
+                    new com.agentsflex.graph.data.GraphEdgeKey(low.getId(), edgeType, high.getId(), 2)).build(),
                 GraphOptions.ofSpace("neo4j")).isSuccess());
 
             TraversalQuery lowQuery = TraversalQuery.from(TraversalQuery.NodePattern.node("n", label))
@@ -375,7 +428,7 @@ public class RealNeo4jGraphIntegrationTest {
             assertEquals(1, truncated.getRecords().size());
             assertTrue(truncated.getMetadata().isTruncated());
             GraphResult empty = store.query().execute(TraversalQuery.from(
-                TraversalQuery.NodePattern.node("n", label)).where(GraphFilter.eq("n", "name", "不存在"))
+                    TraversalQuery.NodePattern.node("n", label)).where(GraphFilter.eq("n", "name", "不存在"))
                 .select(TraversalQuery.Projection.property("n", "name", "name")).build(), GraphOptions.ofSpace("neo4j"));
             assertTrue(empty.getRecords().isEmpty());
             assertFalse(empty.getMetadata().isTruncated());
@@ -440,9 +493,9 @@ public class RealNeo4jGraphIntegrationTest {
                 for (int i = 0; i < 8; i++) {
                     final int index = i;
                     writes.add(concurrent.submit(() -> store.writer().mutate(GraphMutation.builder()
-                        .upsertNode(GraphNode.builder("advanced-concurrent-" + suffix + "-" + index, label)
-                            .property("name", "并发-" + index).property("score", (long) index)
-                            .property("ratio", index / 10.0D).build()).build(),
+                            .upsertNode(GraphNode.builder("advanced-concurrent-" + suffix + "-" + index, label)
+                                .property("name", "并发-" + index).property("score", (long) index)
+                                .property("ratio", index / 10.0D).build()).build(),
                         GraphOptions.ofSpace("neo4j"))));
                 }
                 for (Future<GraphWriteResult> write : writes) assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
@@ -464,10 +517,11 @@ public class RealNeo4jGraphIntegrationTest {
                         .upsertNode(person("advanced-same-key-" + suffix, label, "same-" + index, index, true))
                         .build(), GraphOptions.ofSpace("neo4j"))));
                 }
-                for (Future<GraphWriteResult> write : sameNodeWrites) assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
+                for (Future<GraphWriteResult> write : sameNodeWrites)
+                    assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
                 GraphResult sameNodeCount = store.query().execute(NativeGraphQuery.of(
-                    "MATCH (n:" + label + ") WHERE n.__agentsflex_id = $id RETURN count(n) AS total, collect(n.name) AS names",
-                    Collections.<String, Object>singletonMap("id", "advanced-same-key-" + suffix)),
+                        "MATCH (n:" + label + ") WHERE n.__agentsflex_id = $id RETURN count(n) AS total, collect(n.name) AS names",
+                        Collections.<String, Object>singletonMap("id", "advanced-same-key-" + suffix)),
                     GraphOptions.ofSpace("neo4j"));
                 assertEquals(1L, ((Number) sameNodeCount.getRecords().get(0).get("total")).longValue());
                 assertEquals(1, ((List<?>) sameNodeCount.getRecords().get(0).get("names")).size());
@@ -478,13 +532,15 @@ public class RealNeo4jGraphIntegrationTest {
                         .upsertEdge(GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(99)
                             .property("weight", 99L).build()).build(), GraphOptions.ofSpace("neo4j"))));
                 }
-                for (Future<GraphWriteResult> write : sameEdgeWrites) assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
+                for (Future<GraphWriteResult> write : sameEdgeWrites)
+                    assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
                 GraphResult sameEdgeCount = store.query().execute(NativeGraphQuery.of(
                     "MATCH (a:" + label + ")-[r:" + edgeType + "]->(b:" + label + ") "
                         + "WHERE a.__agentsflex_id = $from AND b.__agentsflex_id = $to AND r.__agentsflex_rank = 99 "
                         + "RETURN count(r) AS total",
                     new java.util.HashMap<String, Object>() {{
-                        put("from", low.getId()); put("to", high.getId());
+                        put("from", low.getId());
+                        put("to", high.getId());
                     }}), GraphOptions.ofSpace("neo4j"));
                 assertEquals(1L, ((Number) sameEdgeCount.getRecords().get(0).get("total")).longValue());
             } finally {
@@ -494,7 +550,7 @@ public class RealNeo4jGraphIntegrationTest {
             String txId = "advanced-tx-" + suffix;
             GraphTransaction transaction = store.transactions().begin(GraphOptions.ofSpace("neo4j"));
             transaction.writer().mutate(GraphMutation.builder().upsertNode(GraphNode.builder(txId, label)
-                .property("name", "事务提交").property("score", 7L).property("ratio", 0.7D).build()).build(),
+                    .property("name", "事务提交").property("score", 7L).property("ratio", 0.7D).build()).build(),
                 GraphOptions.ofSpace("neo4j"));
             GraphResult beforeCommit = store.query().execute(NativeGraphQuery.of(
                 "MATCH (n:" + label + " {__agentsflex_id: $id}) RETURN count(n) AS total",
