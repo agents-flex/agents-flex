@@ -39,8 +39,9 @@ TraversalQuery query = TraversalQuery
     .build();
 ~~~
 
-字符串 DSL 对应 `GROUP BY person.city`。`HAVING` 已进入统一 AST；Nebula 编译为 nGQL 的分组过滤，
-Neo4j 当前不能安全地把任意 HAVING 条件移植为 Cypher，因此会显式抛出
+字符串 DSL 对应 `GROUP BY person.city`。Neo4j 使用 Cypher 的隐式聚合分组；Nebula 3.8 的 `MATCH` 语法不支持
+`GROUP BY`，SDK 会显式抛出 `UnsupportedGraphFeatureException`，需要使用原生 nGQL 或在应用层聚合。
+`HAVING` 已进入统一 AST；Neo4j 当前不能安全地把任意 HAVING 条件移植为 Cypher，因此会显式抛出
 `UnsupportedGraphFeatureException`，需要改写为聚合前 `WHERE` 或使用原生 Cypher。
 
 窗口函数、复杂统计和后端专属聚合仍应使用 Native Query，或者先查询明细记录在应用层聚合。

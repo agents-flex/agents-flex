@@ -28,7 +28,7 @@ GraphResult result = graph.query().execute(
 - `WHERE` 中的 `AND`、`OR`、`NOT`、括号、比较运算、`IN`/`NOT IN`、`BETWEEN`、`IS NULL`/`IS NOT NULL`、`CONTAINS`、`STARTS WITH`、`ENDS WITH` 和 `REGEX`；
 - 字符串、整数、小数、布尔值、`NULL`、数组字面量和 `:name` 命名参数；
 - `RETURN` 实体、属性或完整路径（`PATH AS route`）投影、`COUNT(*)`、`COUNT`/`COUNT(DISTINCT ...)`、`SUM`、`AVG`、`MIN`、`MAX`、`AS` 别名、`DISTINCT`；
-- `GROUP BY` 和统一 AST 中的 `HAVING`；Neo4j 当前对 HAVING 明确报告不支持，Nebula 编译为原生分组过滤；
+- `GROUP BY` 和统一 AST 中的 `HAVING`；Neo4j 使用 Cypher 的隐式聚合分组，`HAVING` 明确报告不支持；Nebula 3.8 的 `MATCH` 不接受 `GROUP BY`，SDK 会提前抛出 `UnsupportedGraphFeatureException`；
 - 顶层 `UNION` / `UNION ALL`；各分支必须具有相同数量、名称和投影语义；
 - `ORDER BY`、`SKIP` 和 `LIMIT`。
 
@@ -36,7 +36,7 @@ GraphResult result = graph.query().execute(
 集合参数会在解析时复制并冻结，
 调用方后续修改原集合不会改变已解析查询。
 
-公共 DSL 不承诺完整支持 Cypher 或 nGQL 的子查询、写入语句、任意函数、聚合分组、路径算法和后端专属语法。需要这些能力时，
+公共 DSL 不承诺完整支持 Cypher 或 nGQL 的子查询、写入语句、任意函数、后端不支持的聚合分组、路径算法和后端专属语法。需要这些能力时，
 请显式使用 `NativeGraphQuery`，并在应用层隔离对应方言。
 
 ## 两种查询入口
@@ -75,6 +75,10 @@ GraphOptions.maxRecords 默认限制物化记录数。结果元数据会说明�
 Portable Query 表达的是统一语义，不保证后端执行计划、索引选择、锁和延迟相同；后端不具备某项能力时会抛出
 `UnsupportedGraphFeatureException`，而不是静默改变结果。复杂或后端专属语义应使用
 Native Query，并在应用层隔离方言代码。
+
+Nebula 的 `MATCH` 属性过滤还要求目标 TAG/EDGE 已建立并完成重建的索引；SDK 负责按 Schema 创建和重建索引，
+但不会为未声明索引的任意属性自动创建索引。生产环境应把常用过滤字段写入 `GraphSchema.Index`，否则真实 Nebula
+可能返回 `IndexNotFound`，此时应改用已索引字段或显式 Native Query。
 
 当前公共 AST 仍以线性遍历为核心，不支持一个查询中多个相互独立的 `MATCH` 模式或任意分支图模式；
 这类查询请拆分为 `UNION` 分支，或使用 `NativeGraphQuery`。这样可以避免把不同后端对笛卡尔组合、变量作用域

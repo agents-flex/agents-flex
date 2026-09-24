@@ -170,11 +170,6 @@ const ragStoreSidebar = [
             {text: '故障排查与生产建议', link: '/zh/store/troubleshooting'},
         ]
     },
-    {
-        text: 'Graph 图数据库模块', items: [
-            {text: '模块概述', link: '/zh/graph/overview'},
-        ]
-    },
 ]
 
 const graphSidebar = [
@@ -321,6 +316,7 @@ export default withMermaid(defineConfig({
             {text: 'ChatModel', link: '/zh/chat/chat-model', activeMatch: '/zh/chat/'},
             {text: 'Agent', link: '/zh/agent/overview', activeMatch: '/zh/agent/'},
             {text: 'RAG 知识库', link: '/zh/rag/document', activeMatch: '/zh/(?:rag|store)/'},
+            {text: '图数据库', link: '/zh/graph/overview', activeMatch: '/zh/graph/'},
             {
                 text: '多模态', activeMatch: '/zh/(?:image|audio|video|ocr|async-task)/', items: [
                     {text: '图片生成', link: '/zh/image/image-generation', activeMatch: '/zh/image/'},

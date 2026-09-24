@@ -6,6 +6,7 @@ import com.agentsflex.graph.query.GraphOptionalQuery;
 import com.agentsflex.graph.query.GraphQueryParser;
 import com.agentsflex.graph.query.NativeGraphQuery;
 import com.agentsflex.graph.query.TraversalQuery;
+import com.agentsflex.graph.UnsupportedGraphFeatureException;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -112,16 +113,19 @@ public class NebulaNqlCompilerTest {
     }
 
     @Test
-    public void shouldCompilePatternPropertiesAndGrouping() {
+    public void shouldRejectGroupingUnsupportedByNebulaMatch() {
         TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("p", "Person",
                 Collections.<String, Object>singletonMap("status", "ACTIVE")))
             .select(TraversalQuery.Projection.property("p", "city", "city"),
                 TraversalQuery.Projection.count("p", "total"))
             .groupBy(new TraversalQuery.GroupKey("p", "city"))
             .build();
-        NebulaNqlCompiler.Compiled compiled = new NebulaNqlCompiler().compile(query);
-        assertTrue(compiled.statement.contains("(p:Person {status: $p0})"));
-        assertTrue(compiled.statement.contains("GROUP BY p.Person.city"));
+        try {
+            new NebulaNqlCompiler().compile(query);
+            org.junit.Assert.fail("Nebula MATCH GROUP BY must be rejected explicitly");
+        } catch (UnsupportedGraphFeatureException expected) {
+            assertTrue(expected.getMessage().contains("GROUP BY"));
+        }
     }
 
     @Test

@@ -22,6 +22,13 @@ final class NebulaNqlCompiler {
      */
     Compiled compile(TraversalQuery query) {
         query.validate();
+        // Nebula 3.8 的 MATCH/RETURN 语法不接受 GROUP BY；如果继续下发，服务端只会返回
+        // 模糊的 SyntaxError near GROUP。提前报告统一能力异常，调用方可以改用原生 nGQL
+        // 或在应用层完成分组，而不是把后端语法差异暴露给业务代码。
+        if (!query.getGroups().isEmpty()) {
+            throw new com.agentsflex.graph.UnsupportedGraphFeatureException(
+                "Nebula MATCH GROUP BY is not supported by the configured Nebula version");
+        }
         StringBuilder nql = new StringBuilder("MATCH ");
         Map<String, String> labels = aliasLabels(query);
         Map<String, Object> params = new LinkedHashMap<>();

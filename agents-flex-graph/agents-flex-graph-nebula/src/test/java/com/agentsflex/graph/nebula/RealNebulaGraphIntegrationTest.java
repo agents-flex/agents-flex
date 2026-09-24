@@ -71,7 +71,9 @@ public class RealNebulaGraphIntegrationTest {
         store = new NebulaGraphStore(config);
     }
 
-    /** 连接目标不可用时 health 必须返回 DOWN，并且 close 可重复调用。 */
+    /**
+     * 连接目标不可用时 health 必须返回 DOWN，并且 close 可重复调用。
+     */
     @Test
     public void shouldReportDownForUnavailableNebulaEndpoint() {
         NebulaGraphStore unavailable = new NebulaGraphStore(new NebulaGraphStoreConfig()
@@ -174,6 +176,8 @@ public class RealNebulaGraphIntegrationTest {
                     new GraphSchema.Property("weight", GraphSchema.PropertyType.INT64, false)))
                 .index(new GraphSchema.Index("it_crud_score_" + suffix, GraphSchema.IndexTarget.NODE,
                     tag, Collections.singletonList("score"), false))
+                .index(new GraphSchema.Index("it_crud_weight_" + suffix, GraphSchema.IndexTarget.EDGE,
+                    edgeType, Collections.singletonList("weight"), false))
                 .build();
             manager.applySchema(space, schema, GraphManager.SchemaMode.ADDITIVE);
             manager.applySchema(space, schema, GraphManager.SchemaMode.ADDITIVE);
@@ -191,6 +195,59 @@ public class RealNebulaGraphIntegrationTest {
                 .upsertEdges(Arrays.asList(aliceBob, bobCarol, aliceDave)).build(), GraphOptions.ofSpace(space));
             assertTrue(seed.getMessage(), seed.isSuccess());
 
+            // 真实验证公共字符串 DSL：Nebula 编译器会自动补充 TAG-qualified 属性访问。
+            java.util.Map<String, Object> minimumParameters = new java.util.HashMap<>();
+            // Nebula MATCH 的属性过滤必须命中已建立的索引；本测试 Schema 为 score 建立了索引。
+            minimumParameters.put("minimum", 20L);
+            GraphResult stringRanked = store.query().execute(
+                "MATCH (n:" + tag + ") WHERE n.score >= :minimum "
+                    + "RETURN n.name AS name, n.score AS score ORDER BY n.score DESC LIMIT 10",
+                minimumParameters, GraphOptions.ofSpace(space));
+            assertEquals(2, stringRanked.getRecords().size());
+            assertEquals("Alice", stringRanked.getRecords().get(0).get("name"));
+
+            java.util.Map<String, Object> edgeParameters = new java.util.HashMap<>();
+            edgeParameters.put("weight", 2L);
+            GraphResult stringPath = store.query().execute(
+                "MATCH (a:" + tag + ")-[r:" + edgeType + " {weight: :weight}]->(b:" + tag + ") "
+                    + "RETURN PATH AS route, b.name AS name",
+                edgeParameters, GraphOptions.ofSpace(space));
+            assertEquals(1, stringPath.getRecords().size());
+            assertNotNull(stringPath.getRecords().get(0).get("route"));
+            assertEquals("Bob", stringPath.getRecords().get(0).get("name"));
+
+            java.util.Map<String, Object> minimum = Collections.<String, Object>singletonMap("minimum", 20L);
+            GraphResult stringUnion = store.query().execute(
+                "MATCH (n:" + tag + ") WHERE n.score >= :minimum RETURN n.name AS name "
+                    + "UNION ALL MATCH (n:" + tag + ") WHERE n.score < :minimum RETURN n.name AS name",
+                minimum, GraphOptions.ofSpace(space));
+            assertEquals(4, stringUnion.getRecords().size());
+
+            GraphResult stringOptional = store.query().execute(
+                "OPTIONAL MATCH (n:" + tag + ")-[r:" + edgeType + "]->(m:" + tag + ") "
+                    + "RETURN n.name AS name, m.name AS friend ORDER BY n.name ASC LIMIT 10",
+                Collections.<String, Object>emptyMap(), GraphOptions.ofSpace(space));
+            assertEquals(3, stringOptional.getRecords().size());
+
+            try {
+                store.query().execute(
+                    "MATCH (n:" + tag + ") RETURN n.active AS active, COUNT(n) AS total "
+                        + "GROUP BY n.active ORDER BY n.active ASC LIMIT 10",
+                    Collections.<String, Object>emptyMap(), GraphOptions.ofSpace(space));
+                fail("Nebula 3.8 MATCH GROUP BY must be rejected explicitly");
+            } catch (UnsupportedGraphFeatureException expected) {
+                assertTrue(expected.getMessage().contains("GROUP BY"));
+            }
+            GraphPageResult stringPage = store.query().executePage(
+                "MATCH (n:" + tag + ") RETURN n.name AS name ORDER BY n.name ASC LIMIT 10",
+                Collections.<String, Object>emptyMap(), GraphPageRequest.of(0, 2), GraphOptions.ofSpace(space));
+            assertEquals(2, stringPage.getResult().getRecords().size());
+            assertTrue(stringPage.hasNext());
+            GraphExplainResult stringExplain = store.query().explain(
+                "MATCH (n:" + tag + ") WHERE n.score >= :minimum RETURN n.name AS name",
+                minimum, GraphOptions.ofSpace(space));
+            assertFalse(stringExplain.getPlanText().trim().isEmpty());
+
             // 无属性实体也必须满足 upsert 的幂等语义。
             GraphNode empty = GraphNode.builder("nebula-empty-" + suffix, tag).build();
             assertTrue(store.writer().mutate(GraphMutation.builder().upsertNode(empty).build(),
@@ -199,12 +256,12 @@ public class RealNebulaGraphIntegrationTest {
                 GraphOptions.ofSpace(space)).isSuccess());
 
             GraphWriteResult update = store.writer().mutate(GraphMutation.builder()
-                .upsertNode(person(alice.getId(), tag, "Alice Updated", 42, true)).build(),
+                    .upsertNode(person(alice.getId(), tag, "Alice Updated", 42, true)).build(),
                 GraphOptions.ofSpace(space));
             assertTrue(update.isSuccess());
             GraphResult updated = store.query().execute(NativeGraphQuery.of(
-                "FETCH PROP ON " + tag + " \"" + alice.getId() + "\" YIELD " + tag + ".name AS name, "
-                    + tag + ".score AS score, " + tag + ".active AS active", Collections.<String, Object>emptyMap()),
+                    "FETCH PROP ON " + tag + " \"" + alice.getId() + "\" YIELD " + tag + ".name AS name, "
+                        + tag + ".score AS score, " + tag + ".active AS active", Collections.<String, Object>emptyMap()),
                 GraphOptions.ofSpace(space));
             assertEquals("Alice Updated", updated.getRecords().get(0).get("name"));
             assertEquals(42L, ((Number) updated.getRecords().get(0).get("score")).longValue());
@@ -258,13 +315,13 @@ public class RealNebulaGraphIntegrationTest {
             assertTrue(store.writer().mutate(GraphMutation.builder().deleteNode("nebula-empty-" + suffix).build(),
                 GraphOptions.ofSpace(space)).isSuccess());
             GraphResult remaining = store.query().execute(NativeGraphQuery.of(
-                "MATCH (n:" + tag + ") RETURN count(n) AS total", Collections.<String, Object>emptyMap()),
+                    "MATCH (n:" + tag + ") RETURN count(n) AS total", Collections.<String, Object>emptyMap()),
                 GraphOptions.ofSpace(space));
             assertEquals(5L, ((Number) remaining.getRecords().get(0).get("total")).longValue());
 
             try {
                 store.query().execute(NativeGraphQuery.of("INSERT VERTEX " + tag + "() VALUES \"blocked\":()",
-                    Collections.<String, Object>emptyMap(), GraphQueryKind.WRITE),
+                        Collections.<String, Object>emptyMap(), GraphQueryKind.WRITE),
                     GraphOptions.builder().space(space).readOnly(true).build());
                 fail("read-only options must reject native write queries");
             } catch (GraphException expected) {
@@ -309,16 +366,16 @@ public class RealNebulaGraphIntegrationTest {
             assertTrue(store.writer().mutate(GraphMutation.builder().upsertNodes(Arrays.asList(low, high)).build(),
                 GraphOptions.ofSpace(space)).isSuccess());
             assertTrue(store.writer().mutate(GraphMutation.builder().upsertEdges(Arrays.asList(
-                GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(1).build(),
-                GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(2).build(),
-                GraphEdge.builder(high.getId(), edgeType, high.getId()).rank(3).build())).build(),
+                    GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(1).build(),
+                    GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(2).build(),
+                    GraphEdge.builder(high.getId(), edgeType, high.getId()).rank(3).build())).build(),
                 GraphOptions.ofSpace(space)).isSuccess());
             GraphResult rankedEdges = store.query().execute(NativeGraphQuery.of(
                 "MATCH ()-[e:" + edgeType + "]->() RETURN count(e) AS total",
                 Collections.<String, Object>emptyMap()), GraphOptions.ofSpace(space));
             assertEquals(3L, ((Number) rankedEdges.getRecords().get(0).get("total")).longValue());
             assertTrue(store.writer().mutate(GraphMutation.builder().deleteEdge(
-                new com.agentsflex.graph.data.GraphEdgeKey(low.getId(), edgeType, high.getId(), 2)).build(),
+                    new com.agentsflex.graph.data.GraphEdgeKey(low.getId(), edgeType, high.getId(), 2)).build(),
                 GraphOptions.ofSpace(space)).isSuccess());
 
             TraversalQuery lowQuery = TraversalQuery.from(TraversalQuery.NodePattern.node("n", tag))
@@ -352,7 +409,7 @@ public class RealNebulaGraphIntegrationTest {
             assertEquals(1, truncated.getRecords().size());
             assertTrue(truncated.getMetadata().isTruncated());
             GraphResult empty = store.query().execute(TraversalQuery.from(
-                TraversalQuery.NodePattern.node("n", tag)).where(GraphFilter.eq("n", "name", "不存在"))
+                    TraversalQuery.NodePattern.node("n", tag)).where(GraphFilter.eq("n", "name", "不存在"))
                 .select(TraversalQuery.Projection.property("n", "name", "name")).build(), GraphOptions.ofSpace(space));
             assertTrue(empty.getRecords().isEmpty());
             assertFalse(empty.getMetadata().isTruncated());
@@ -431,9 +488,9 @@ public class RealNebulaGraphIntegrationTest {
                 for (int i = 0; i < 8; i++) {
                     final int index = i;
                     writes.add(concurrent.submit(() -> store.writer().mutate(GraphMutation.builder()
-                        .upsertNode(GraphNode.builder("nebula-concurrent-" + suffix + "-" + index, tag)
-                            .property("name", "并发-" + index).property("score", (long) index)
-                            .property("ratio", index / 10.0D).build()).build(),
+                            .upsertNode(GraphNode.builder("nebula-concurrent-" + suffix + "-" + index, tag)
+                                .property("name", "并发-" + index).property("score", (long) index)
+                                .property("ratio", index / 10.0D).build()).build(),
                         GraphOptions.ofSpace(space))));
                 }
                 for (Future<GraphWriteResult> write : writes) assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
@@ -480,7 +537,8 @@ public class RealNebulaGraphIntegrationTest {
                         .upsertEdge(GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(99).build())
                         .build(), GraphOptions.ofSpace(space))));
                 }
-                for (Future<GraphWriteResult> write : sameEdgeWrites) assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
+                for (Future<GraphWriteResult> write : sameEdgeWrites)
+                    assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
                 GraphResult sameEdgeRows = store.query().execute(NativeGraphQuery.of(
                     "MATCH ()-[e:" + edgeType + "]->() RETURN count(e) AS total",
                     Collections.<String, Object>emptyMap()), GraphOptions.ofSpace(space));
@@ -523,7 +581,9 @@ public class RealNebulaGraphIntegrationTest {
         throw new AssertionError("Nebula space was not ready: " + space);
     }
 
-    /** 等待 MetaD/Graphd 将新建 TAG 和 EDGE 的 Schema 传播到可写的 StorageD。 */
+    /**
+     * 等待 MetaD/Graphd 将新建 TAG 和 EDGE 的 Schema 传播到可写的 StorageD。
+     */
     private static void waitForSchema(NebulaGraphStore store, String space, String tag, String edgeType)
         throws InterruptedException {
         long deadline = System.currentTimeMillis() + 20_000L;
@@ -551,7 +611,9 @@ public class RealNebulaGraphIntegrationTest {
         throw new AssertionError("Nebula schema was not ready: " + tag + ", " + edgeType);
     }
 
-    /** 等待新 TAG 已在 StorageD 上可查询，供只创建节点 Schema 的高级场景使用。 */
+    /**
+     * 等待新 TAG 已在 StorageD 上可查询，供只创建节点 Schema 的高级场景使用。
+     */
     private static void waitForTag(NebulaGraphStore store, String space, String tag) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 20_000L;
         while (System.currentTimeMillis() < deadline) {
