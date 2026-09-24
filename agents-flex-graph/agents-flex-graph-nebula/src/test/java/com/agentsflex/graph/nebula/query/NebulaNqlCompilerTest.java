@@ -2,6 +2,8 @@ package com.agentsflex.graph.nebula.query;
 
 import com.agentsflex.graph.query.GraphFilter;
 import com.agentsflex.graph.query.GraphUnionQuery;
+import com.agentsflex.graph.query.GraphOptionalQuery;
+import com.agentsflex.graph.query.GraphQueryParser;
 import com.agentsflex.graph.query.NativeGraphQuery;
 import com.agentsflex.graph.query.TraversalQuery;
 import org.junit.Test;
@@ -107,5 +109,44 @@ public class NebulaNqlCompilerTest {
         assertTrue(compiled.statement.contains("$u0_p0"));
         assertTrue(compiled.statement.contains(" UNION "));
         assertTrue(compiled.statement.contains("$u1_p0"));
+    }
+
+    @Test
+    public void shouldCompilePatternPropertiesAndGrouping() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("p", "Person",
+                Collections.<String, Object>singletonMap("status", "ACTIVE")))
+            .select(TraversalQuery.Projection.property("p", "city", "city"),
+                TraversalQuery.Projection.count("p", "total"))
+            .groupBy(new TraversalQuery.GroupKey("p", "city"))
+            .build();
+        NebulaNqlCompiler.Compiled compiled = new NebulaNqlCompiler().compile(query);
+        assertTrue(compiled.statement.contains("(p:Person {status: $p0})"));
+        assertTrue(compiled.statement.contains("GROUP BY p.Person.city"));
+    }
+
+    @Test
+    public void shouldCompileOptionalMatch() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("p", "Person"))
+            .select(TraversalQuery.Projection.entity("p")).build();
+        assertTrue(new NebulaNqlCompiler().compile(GraphOptionalQuery.of(query)).statement
+            .startsWith("OPTIONAL MATCH "));
+    }
+
+    @Test
+    public void shouldCompileEntityProjectionAliasAndEdgePatternProperties() {
+        TraversalQuery query = GraphQueryParser.parse(
+            "MATCH (a:Person)-[r:KNOWS {since: :year}]->(b:Person) RETURN a AS source",
+            Collections.<String, Object>singletonMap("year", 2020L)).getQuery();
+        NebulaNqlCompiler.Compiled compiled = new NebulaNqlCompiler().compile(query);
+        assertTrue(compiled.statement.contains("[r:KNOWS {since: $p0}]->"));
+        assertTrue(compiled.statement.contains("RETURN a AS source"));
+        assertEquals(2020L, compiled.parameters.get("p0"));
+    }
+
+    @Test(expected = com.agentsflex.graph.UnsupportedGraphFeatureException.class)
+    public void shouldRejectPropertyProjectionFromUnlabeledNode() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("n"))
+            .select(TraversalQuery.Projection.property("n", "name", "name")).build();
+        new NebulaNqlCompiler().compile(query);
     }
 }

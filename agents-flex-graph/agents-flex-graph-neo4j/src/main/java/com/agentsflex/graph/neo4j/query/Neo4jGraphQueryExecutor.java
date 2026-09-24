@@ -9,6 +9,7 @@ import com.agentsflex.graph.query.GraphResultCursor;
 import com.agentsflex.graph.query.GraphResultMetadata;
 import com.agentsflex.graph.query.GraphSubgraphResult;
 import com.agentsflex.graph.query.GraphUnionQuery;
+import com.agentsflex.graph.query.GraphOptionalQuery;
 import com.agentsflex.graph.data.GraphEdge;
 import com.agentsflex.graph.data.GraphNode;
 import com.agentsflex.graph.query.NativeGraphQuery;
@@ -60,12 +61,15 @@ public final class Neo4jGraphQueryExecutor implements GraphQueryExecutor {
      */
     @Override
     public GraphResult execute(GraphQuery query, GraphOptions options) {
-        if (!(query instanceof TraversalQuery) && !(query instanceof GraphUnionQuery)) {
+        if (!(query instanceof TraversalQuery) && !(query instanceof GraphUnionQuery)
+            && !(query instanceof GraphOptionalQuery)) {
             throw new IllegalArgumentException("Unsupported portable Neo4j query: " + query.getClass().getName());
         }
         Neo4jCypherCompiler compiler = new Neo4jCypherCompiler();
         Neo4jCypherCompiler.Compiled compiled = query instanceof TraversalQuery
-            ? compiler.compile((TraversalQuery) query) : compiler.compile((GraphUnionQuery) query);
+            ? compiler.compile((TraversalQuery) query)
+            : query instanceof GraphUnionQuery ? compiler.compile((GraphUnionQuery) query)
+            : compiler.compile((GraphOptionalQuery) query);
         try {
             return executeCompiled(compiled, options);
         } catch (com.agentsflex.graph.GraphException error) {
@@ -101,12 +105,14 @@ public final class Neo4jGraphQueryExecutor implements GraphQueryExecutor {
      */
     @Override
     public GraphResultCursor executeCursor(GraphQuery query, GraphOptions options) {
-        if (!(query instanceof TraversalQuery) && !(query instanceof GraphUnionQuery)) {
+        if (!(query instanceof TraversalQuery) && !(query instanceof GraphUnionQuery)
+            && !(query instanceof GraphOptionalQuery)) {
             throw new IllegalArgumentException("Unsupported portable Neo4j query: " + query.getClass().getName());
         }
         Neo4jCypherCompiler compiler = new Neo4jCypherCompiler();
         return openCursor(query instanceof TraversalQuery ? compiler.compile((TraversalQuery) query)
-            : compiler.compile((GraphUnionQuery) query), options);
+            : query instanceof GraphUnionQuery ? compiler.compile((GraphUnionQuery) query)
+            : compiler.compile((GraphOptionalQuery) query), options);
     }
 
     /**
@@ -126,12 +132,14 @@ public final class Neo4jGraphQueryExecutor implements GraphQueryExecutor {
      */
     @Override
     public GraphExplainResult explain(GraphQuery query, GraphOptions options) {
-        if (!(query instanceof TraversalQuery) && !(query instanceof GraphUnionQuery)) {
+        if (!(query instanceof TraversalQuery) && !(query instanceof GraphUnionQuery)
+            && !(query instanceof GraphOptionalQuery)) {
             throw new IllegalArgumentException("Unsupported portable Neo4j query: " + query.getClass().getName());
         }
         Neo4jCypherCompiler compiler = new Neo4jCypherCompiler();
         return explainCompiled(query instanceof TraversalQuery ? compiler.compile((TraversalQuery) query)
-            : compiler.compile((GraphUnionQuery) query), options);
+            : query instanceof GraphUnionQuery ? compiler.compile((GraphUnionQuery) query)
+            : compiler.compile((GraphOptionalQuery) query), options);
     }
 
     /**

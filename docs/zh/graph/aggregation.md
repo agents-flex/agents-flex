@@ -1,7 +1,7 @@
 # 聚合查询
 
-TraversalQuery 支持统一聚合投影。聚合查询只能包含聚合投影，不能把普通属性投影混在同一查询中充当隐式
-分组。
+TraversalQuery 支持统一聚合投影，以及显式 `GROUP BY` 分组。混合普通属性投影和聚合投影时，普通属性必须
+出现在 `GROUP BY` 中；实体投影不能与聚合投影混用。
 
 ## 计数
 
@@ -27,8 +27,20 @@ TraversalQuery query = TraversalQuery
 支持 COUNT、COUNT_DISTINCT、SUM、AVG、MIN 和 MAX。不同数据库对 null、整数除法、浮点精度和空集合的结果
 可能不同，重要指标应在目标后端建立真实数据测试。
 
-## 分组边界
+## 分组与 HAVING
 
-当前 Portable AST 没有通用 GROUP BY 投影模型。需要按属性分组、窗口函数或复杂统计时，使用 Native Query，
-或者先查询明细记录在应用层聚合。
+~~~java
+TraversalQuery query = TraversalQuery
+    .from(TraversalQuery.NodePattern.node("person", "Person"))
+    .select(
+        TraversalQuery.Projection.property("person", "city", "city"),
+        TraversalQuery.Projection.count("person", "total"))
+    .groupBy(new TraversalQuery.GroupKey("person", "city"))
+    .build();
+~~~
 
+字符串 DSL 对应 `GROUP BY person.city`。`HAVING` 已进入统一 AST；Nebula 编译为 nGQL 的分组过滤，
+Neo4j 当前不能安全地把任意 HAVING 条件移植为 Cypher，因此会显式抛出
+`UnsupportedGraphFeatureException`，需要改写为聚合前 `WHERE` 或使用原生 Cypher。
+
+窗口函数、复杂统计和后端专属聚合仍应使用 Native Query，或者先查询明细记录在应用层聚合。

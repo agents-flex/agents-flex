@@ -37,10 +37,14 @@ final class GraphQueryFingerprint {
         for (TraversalQuery.Step step : query.getSteps()) {
             TraversalQuery.EdgePattern edge = step.getEdge();
             append(canonical, edge.getAlias());
-            append(canonical, edge.getType());
+            for (String type : edge.getTypes()) append(canonical, type);
             append(canonical, edge.getDirection().name());
             append(canonical, edge.getMinHops());
             append(canonical, edge.getMaxHops());
+            for (Map.Entry<String, Object> property : edge.getProperties().entrySet()) {
+                append(canonical, property.getKey());
+                appendValue(canonical, property.getValue());
+            }
             appendNode(canonical, step.getNode());
         }
         appendFilter(canonical, query.getFilter());
@@ -57,6 +61,11 @@ final class GraphQueryFingerprint {
             append(canonical, sort.getProperty());
             append(canonical, sort.getDirection().name());
         }
+        for (TraversalQuery.GroupKey group : query.getGroups()) {
+            append(canonical, group.getAlias());
+            append(canonical, group.getProperty());
+        }
+        appendFilter(canonical, query.getHaving());
         append(canonical, query.isDistinct());
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -74,7 +83,11 @@ final class GraphQueryFingerprint {
      */
     private static void appendNode(StringBuilder target, TraversalQuery.NodePattern node) {
         append(target, node.getAlias());
-        append(target, node.getLabel());
+        for (String label : node.getLabels()) append(target, label);
+        for (Map.Entry<String, Object> property : node.getProperties().entrySet()) {
+            append(target, property.getKey());
+            appendValue(target, property.getValue());
+        }
     }
 
     /**

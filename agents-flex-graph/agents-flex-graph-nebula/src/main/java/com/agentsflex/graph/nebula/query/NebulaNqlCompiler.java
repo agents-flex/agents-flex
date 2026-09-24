@@ -3,6 +3,7 @@ package com.agentsflex.graph.nebula.query;
 import com.agentsflex.graph.query.GraphFilter;
 import com.agentsflex.graph.query.NativeGraphQuery;
 import com.agentsflex.graph.query.GraphUnionQuery;
+import com.agentsflex.graph.query.GraphOptionalQuery;
 import com.agentsflex.graph.query.TraversalQuery;
 
 import java.lang.reflect.Array;
@@ -23,16 +24,17 @@ final class NebulaNqlCompiler {
         query.validate();
         StringBuilder nql = new StringBuilder("MATCH ");
         Map<String, String> labels = aliasLabels(query);
+        Map<String, Object> params = new LinkedHashMap<>();
         // path 是 Nebula nGQL 保留字，不能作为路径变量名。
         if (hasPathProjection(query)) nql.append("p = ");
-        nql.append(node(query.getStart()));
-        for (TraversalQuery.Step step : query.getSteps()) nql.append(pattern(step));
-        Map<String, Object> params = new LinkedHashMap<>();
+        nql.append(node(query.getStart(), params));
+        for (TraversalQuery.Step step : query.getSteps()) nql.append(pattern(step, params));
         if (query.getFilter() != null) {
             nql.append(" WHERE ");
             appendFilter(nql, query.getFilter(), params, labels);
         }
         nql.append(" RETURN ");
+        if (query.isDistinct()) nql.append("DISTINCT ");
         List<String> projections = new ArrayList<>();
         for (TraversalQuery.Projection projection : query.getProjections()) {
             if (projection.getKind() == TraversalQuery.ProjectionKind.ENTITY) {
@@ -47,6 +49,18 @@ final class NebulaNqlCompiler {
             }
         }
         nql.append(join(projections, ", "));
+        if (!query.getGroups().isEmpty()) {
+            nql.append(" GROUP BY ");
+            List<String> groups = new ArrayList<>();
+            for (TraversalQuery.GroupKey group : query.getGroups()) {
+                groups.add(propertyExpression(group.getAlias(), group.getProperty(), labels));
+            }
+            nql.append(join(groups, ", "));
+        }
+        if (query.getHaving() != null) {
+            nql.append(" HAVING ");
+            appendFilter(nql, query.getHaving(), params, labels);
+        }
         if (!query.getSorts().isEmpty()) {
             nql.append(" ORDER BY ");
             List<String> sorts = new ArrayList<>();
@@ -105,28 +119,39 @@ final class NebulaNqlCompiler {
     }
 
     /**
+     * 编译单段 OPTIONAL MATCH，并复用普通遍历的参数绑定逻辑。
+     */
+    Compiled compile(GraphOptionalQuery query) {
+        Compiled compiled = compile(query.getQuery());
+        return new Compiled(compiled.statement.replaceFirst("^MATCH ", "OPTIONAL MATCH "), compiled.parameters);
+    }
+
+    /**
      * 渲染节点模式。
      */
-    private String node(TraversalQuery.NodePattern node) {
-        return "(" + node.getAlias() + (node.getLabel() == null ? "" : ":" + node.getLabel()) + ")";
+    private String node(TraversalQuery.NodePattern node, Map<String, Object> params) {
+        return "(" + node.getAlias() + labels(node.getLabels())
+            + properties(node.getProperties(), params) + ")";
     }
 
     /**
      * 渲染一跳边模式。
      */
-    private String pattern(TraversalQuery.Step step) {
+    private String pattern(TraversalQuery.Step step, Map<String, Object> params) {
         TraversalQuery.EdgePattern edge = step.getEdge();
         String range = edge.getMinHops() == 1 && edge.getMaxHops() == 1 ? "" : "*"
             + edge.getMinHops() + ".." + edge.getMaxHops();
-        String rel = "[" + edge.getAlias() + ":" + edge.getType() + range + "]";
-        String node = node(step.getNode());
+        // 与 Neo4j 编译器保持一致：null 类型表示任意边，不能渲染成 :null 或虚构类型名。
+        String rel = "[" + edge.getAlias() + types(edge.getTypes())
+            + properties(edge.getProperties(), params) + range + "]";
+        String node = node(step.getNode(), params);
         switch (edge.getDirection()) {
             case IN:
-                return "<-[" + edge.getAlias() + ":" + edge.getType() + range + "]-" + node;
+                return "<-" + rel + "-" + node;
             case BOTH:
-                return "-[" + edge.getAlias() + ":" + edge.getType() + range + "]-" + node;
+                return "-" + rel + "-" + node;
             default:
-                return "-[" + edge.getAlias() + ":" + edge.getType() + range + "]->" + node;
+                return "-" + rel + "->" + node;
         }
     }
 
@@ -144,6 +169,18 @@ final class NebulaNqlCompiler {
                         return;
                     case IS_NOT_NULL:
                         out.append(left).append(" IS NOT NULL");
+                        return;
+                    case CONTAINS:
+                        out.append(left).append(" CONTAINS ").append(parameter(filter.getValue(), params));
+                        return;
+                    case STARTS_WITH:
+                        out.append(left).append(" STARTS WITH ").append(parameter(filter.getValue(), params));
+                        return;
+                    case ENDS_WITH:
+                        out.append(left).append(" ENDS WITH ").append(parameter(filter.getValue(), params));
+                        return;
+                    case REGEX:
+                        out.append(left).append(" =~ ").append(parameter(filter.getValue(), params));
                         return;
                     case IN:
                     case NOT_IN:
@@ -184,6 +221,20 @@ final class NebulaNqlCompiler {
         String name = "p" + params.size();
         params.put(name, value);
         return "$" + name;
+    }
+
+    /**
+     * 将节点或边属性模式渲染为参数化 nGQL Map。
+     */
+    private String properties(Map<String, Object> properties, Map<String, Object> params) {
+        if (properties.isEmpty()) return "";
+        StringBuilder result = new StringBuilder(" {");
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            if (result.length() > 2) result.append(", ");
+            result.append(entry.getKey()).append(": ")
+                .append(parameter(entry.getValue(), params));
+        }
+        return result.append('}').toString();
     }
 
     /**
@@ -252,6 +303,28 @@ final class NebulaNqlCompiler {
         for (String value : values) {
             if (result.length() > 0) result.append(separator);
             result.append(value);
+        }
+        return result.toString();
+    }
+
+    /**
+     * 将多个标签渲染为 Nebula 节点标签约束。
+     */
+    private String labels(List<String> labels) {
+        StringBuilder result = new StringBuilder();
+        for (String label : labels) result.append(':').append(label);
+        return result.toString();
+    }
+
+    /**
+     * 将多个边类型渲染为 Nebula 边类型选择约束。
+     */
+    private String types(List<String> types) {
+        if (types.isEmpty()) return "";
+        StringBuilder result = new StringBuilder(":");
+        for (int i = 0; i < types.size(); i++) {
+            if (i > 0) result.append('|');
+            result.append(types.get(i));
         }
         return result.toString();
     }

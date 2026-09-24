@@ -3,6 +3,7 @@ package com.agentsflex.graph.neo4j.query;
 import com.agentsflex.graph.query.GraphFilter;
 import com.agentsflex.graph.query.NativeGraphQuery;
 import com.agentsflex.graph.query.GraphUnionQuery;
+import com.agentsflex.graph.query.GraphOptionalQuery;
 import com.agentsflex.graph.query.TraversalQuery;
 
 import java.lang.reflect.Array;
@@ -17,13 +18,35 @@ final class Neo4jCypherCompiler {
      */
     Compiled compile(TraversalQuery query) {
         query.validate();
+        if (query.getHaving() != null) {
+            throw new com.agentsflex.graph.UnsupportedGraphFeatureException(
+                "Neo4j portable HAVING is not supported; express the condition before aggregation");
+        }
+        if (!query.getGroups().isEmpty()) {
+            for (TraversalQuery.GroupKey group : query.getGroups()) {
+                boolean projected = false;
+                for (TraversalQuery.Projection projection : query.getProjections()) {
+                    if (projection.getKind() == TraversalQuery.ProjectionKind.PROPERTY
+                        && group.getAlias().equals(projection.getAlias())
+                        && group.getProperty().equals(projection.getProperty())) {
+                        projected = true;
+                        break;
+                    }
+                }
+                if (!projected) {
+                    throw new com.agentsflex.graph.UnsupportedGraphFeatureException(
+                        "Neo4j portable GROUP BY requires the grouping property to be selected: "
+                            + group.getAlias() + "." + group.getProperty());
+                }
+            }
+        }
         StringBuilder cypher = new StringBuilder();
         Map<String, Object> parameters = new LinkedHashMap<>();
         cypher.append("MATCH ");
         if (hasPathProjection(query)) cypher.append("p = ");
-        cypher.append(node(query.getStart()));
+        cypher.append(node(query.getStart(), parameters));
         for (TraversalQuery.Step step : query.getSteps()) {
-            cypher.append(pattern(step));
+            cypher.append(pattern(step, parameters));
         }
         if (query.getFilter() != null) {
             cypher.append(" WHERE ");
@@ -87,21 +110,32 @@ final class Neo4jCypherCompiler {
     }
 
     /**
+     * 编译单段 OPTIONAL MATCH，并复用普通遍历的参数绑定逻辑。
+     */
+    Compiled compile(GraphOptionalQuery query) {
+        Compiled compiled = compile(query.getQuery());
+        return new Compiled(compiled.statement.replaceFirst("^MATCH ", "OPTIONAL MATCH "), compiled.parameters);
+    }
+
+    /**
      * 渲染节点模式。
      */
-    private String node(TraversalQuery.NodePattern node) {
-        return "(" + node.getAlias() + (node.getLabel() == null ? "" : ":" + node.getLabel()) + ")";
+    private String node(TraversalQuery.NodePattern node, Map<String, Object> parameters) {
+        return "(" + node.getAlias() + labels(node.getLabels())
+            + properties(node.getProperties(), parameters) + ")";
     }
 
     /**
      * 渲染一个有向、反向或双向遍历步骤。
      */
-    private String pattern(TraversalQuery.Step step) {
+    private String pattern(TraversalQuery.Step step, Map<String, Object> parameters) {
         TraversalQuery.EdgePattern edge = step.getEdge();
         String range = edge.getMinHops() == 1 && edge.getMaxHops() == 1 ? "" : "*"
             + edge.getMinHops() + ".." + edge.getMaxHops();
-        String rel = "[" + edge.getAlias() + ":" + edge.getType() + range + "]";
-        String target = node(step.getNode());
+        // 没有边类型时省略冒号，只生成 [alias]，避免把“任意边”错误编译为虚构类型。
+        String rel = "[" + edge.getAlias() + types(edge.getTypes())
+            + properties(edge.getProperties(), parameters) + range + "]";
+        String target = node(step.getNode(), parameters);
         switch (edge.getDirection()) {
             case IN:
                 return "< -".replace(" ", "") + rel + "-" + target;
@@ -125,6 +159,18 @@ final class Neo4jCypherCompiler {
                         return;
                     case IS_NOT_NULL:
                         out.append(left).append(" IS NOT NULL");
+                        return;
+                    case CONTAINS:
+                        out.append(left).append(" CONTAINS ").append(parameter(filter.getValue(), parameters));
+                        return;
+                    case STARTS_WITH:
+                        out.append(left).append(" STARTS WITH ").append(parameter(filter.getValue(), parameters));
+                        return;
+                    case ENDS_WITH:
+                        out.append(left).append(" ENDS WITH ").append(parameter(filter.getValue(), parameters));
+                        return;
+                    case REGEX:
+                        out.append(left).append(" =~ ").append(parameter(filter.getValue(), parameters));
                         return;
                     case IN:
                     case NOT_IN:
@@ -167,6 +213,20 @@ final class Neo4jCypherCompiler {
         String name = "p" + parameters.size();
         parameters.put(name, value);
         return "$" + name;
+    }
+
+    /**
+     * 将节点或边属性模式渲染为参数化 Cypher Map。
+     */
+    private String properties(Map<String, Object> properties, Map<String, Object> parameters) {
+        if (properties.isEmpty()) return "";
+        StringBuilder result = new StringBuilder(" {");
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            if (result.length() > 2) result.append(", ");
+            result.append(entry.getKey()).append(": ")
+                .append(parameter(entry.getValue(), parameters));
+        }
+        return result.append('}').toString();
     }
 
     /**
@@ -236,6 +296,28 @@ final class Neo4jCypherCompiler {
         for (String value : values) {
             if (result.length() > 0) result.append(separator);
             result.append(value);
+        }
+        return result.toString();
+    }
+
+    /**
+     * 将多个节点标签渲染为 Cypher 连续标签约束。
+     */
+    private String labels(List<String> labels) {
+        StringBuilder result = new StringBuilder();
+        for (String label : labels) result.append(':').append(label);
+        return result.toString();
+    }
+
+    /**
+     * 将多个边类型渲染为 Cypher 的类型选择约束。
+     */
+    private String types(List<String> types) {
+        if (types.isEmpty()) return "";
+        StringBuilder result = new StringBuilder(":");
+        for (int i = 0; i < types.size(); i++) {
+            if (i > 0) result.append('|');
+            result.append(types.get(i));
         }
         return result.toString();
     }

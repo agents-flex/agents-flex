@@ -95,6 +95,53 @@ public class GraphQueryPagingContractTest {
     }
 
     @Test
+    public void stringQueryConvenienceEntrypointsShouldReusePortableAst() {
+        final TraversalQuery[] received = new TraversalQuery[1];
+        GraphQueryExecutor executor = new GraphQueryExecutor() {
+            @Override
+            public GraphResult execute(GraphQuery query, GraphOptions options) {
+                received[0] = (TraversalQuery) query;
+                return new GraphResult(Collections.emptyList(), "MATCH");
+            }
+
+            @Override
+            public GraphResult execute(NativeGraphQuery query, GraphOptions options) {
+                throw new AssertionError("native execution is not part of this test");
+            }
+        };
+
+        executor.execute("MATCH (n:Person) WHERE n.age >= :age RETURN n",
+            Collections.<String, Object>singletonMap("age", 18L));
+
+        assertEquals("Person", received[0].getStart().getLabel());
+        assertEquals(GraphFilter.Operator.GE, received[0].getFilter().getOperator());
+        assertEquals(18L, received[0].getFilter().getValue());
+    }
+
+    @Test
+    public void stringUnionAndOptionalEntrypointsShouldForwardCompositeAst() {
+        final GraphQuery[] received = new GraphQuery[1];
+        GraphQueryExecutor executor = new GraphQueryExecutor() {
+            @Override
+            public GraphResult execute(GraphQuery query, GraphOptions options) {
+                received[0] = query;
+                return new GraphResult(Collections.emptyList(), "MATCH");
+            }
+
+            @Override
+            public GraphResult execute(NativeGraphQuery query, GraphOptions options) {
+                throw new AssertionError("native execution is not part of this test");
+            }
+        };
+
+        executor.execute("MATCH (a:Person) RETURN a.name AS value UNION ALL "
+            + "MATCH (b:Company) RETURN b.name AS value");
+        assertTrue(received[0] instanceof GraphUnionQuery);
+        executor.execute("OPTIONAL MATCH (a:Person) RETURN a");
+        assertTrue(received[0] instanceof GraphOptionalQuery);
+    }
+
+    @Test
     public void exactPageShouldNotInventNextCursor() {
         GraphQueryExecutor executor = new StaticExecutor(new GraphResult(Arrays.asList(
             new GraphRecord(Collections.<String, Object>singletonMap("id", "1")),
@@ -115,7 +162,9 @@ public class GraphQueryPagingContractTest {
             GraphPageRequest.after("backend-token", 10));
     }
 
-    /** 新版默认游标必须绑定产生它的查询，防止 offset 被误用于另一组过滤条件。 */
+    /**
+     * 新版默认游标必须绑定产生它的查询，防止 offset 被误用于另一组过滤条件。
+     */
     @Test
     public void defaultCursorMustRejectReuseAcrossDifferentQueries() {
         GraphQueryExecutor executor = lookAheadExecutor();
@@ -130,7 +179,9 @@ public class GraphQueryPagingContractTest {
         }
     }
 
-    /** 分别构建但语义相同的查询应产生同一指纹，业务层无需复用同一个 Java 对象。 */
+    /**
+     * 分别构建但语义相同的查询应产生同一指纹，业务层无需复用同一个 Java 对象。
+     */
     @Test
     public void equivalentQueryMustAcceptBoundCursor() {
         GraphQueryExecutor executor = lookAheadExecutor();
@@ -143,22 +194,26 @@ public class GraphQueryPagingContractTest {
         assertTrue(next.getResult().getRecords().size() <= 1);
     }
 
-    /** Set 和 Map 的插入顺序不属于查询语义，不能导致等价查询的游标指纹不同。 */
+    /**
+     * Set 和 Map 的插入顺序不属于查询语义，不能导致等价查询的游标指纹不同。
+     */
     @Test
     public void equivalentCollectionAndMapOrderMustAcceptBoundCursor() {
         GraphQueryExecutor executor = lookAheadExecutor();
         String cursor = executor.executePage(queryForStatuses(
-            new HashSet<>(Arrays.asList("active", "pending")), map("a", 1, "b", 2)),
+                new HashSet<>(Arrays.asList("active", "pending")), map("a", 1, "b", 2)),
             GraphPageRequest.of(0, 1)).getNextCursor();
 
         GraphPageResult next = executor.executePage(queryForStatuses(
-            new HashSet<>(Arrays.asList("pending", "active")), map("b", 2, "a", 1)),
+                new HashSet<>(Arrays.asList("pending", "active")), map("b", 2, "a", 1)),
             GraphPageRequest.after(cursor, 1));
 
         assertTrue(next.hasNext());
     }
 
-    /** 过滤值必须在创建时快照，外部集合变更不能改变已构建查询。 */
+    /**
+     * 过滤值必须在创建时快照，外部集合变更不能改变已构建查询。
+     */
     @Test
     public void filterCollectionValueMustBeImmutableSnapshot() {
         java.util.List<String> source = new java.util.ArrayList<>(Arrays.asList("active", "pending"));
@@ -239,14 +294,18 @@ public class GraphQueryPagingContractTest {
         }
     }
 
-    /** 构造始终返回两行的执行器，使 limit=1 时稳定生成下一页游标。 */
+    /**
+     * 构造始终返回两行的执行器，使 limit=1 时稳定生成下一页游标。
+     */
     private static GraphQueryExecutor lookAheadExecutor() {
         return new StaticExecutor(new GraphResult(Arrays.asList(
             new GraphRecord(Collections.<String, Object>singletonMap("id", "1")),
             new GraphRecord(Collections.<String, Object>singletonMap("id", "2"))), "MATCH"));
     }
 
-    /** 构造仅过滤值不同的查询，用于验证游标和查询语义的绑定关系。 */
+    /**
+     * 构造仅过滤值不同的查询，用于验证游标和查询语义的绑定关系。
+     */
     private static TraversalQuery queryForStatus(String status) {
         return TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Person"))
             .where(GraphFilter.eq("n", "status", status))
@@ -255,9 +314,11 @@ public class GraphQueryPagingContractTest {
             .build();
     }
 
-    /** 构造同时含 Set 和 Map 比较值的查询，验证指纹的容器规范化。 */
+    /**
+     * 构造同时含 Set 和 Map 比较值的查询，验证指纹的容器规范化。
+     */
     private static TraversalQuery queryForStatuses(java.util.Set<String> statuses,
-                                                    java.util.Map<String, Integer> attributes) {
+                                                   java.util.Map<String, Integer> attributes) {
         return TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Person"))
             .where(GraphFilter.and(GraphFilter.in("n", "status", statuses),
                 GraphFilter.eq("n", "attributes", attributes)))
@@ -266,9 +327,11 @@ public class GraphQueryPagingContractTest {
             .build();
     }
 
-    /** 创建可控插入顺序的 Map。 */
+    /**
+     * 创建可控插入顺序的 Map。
+     */
     private static java.util.Map<String, Integer> map(String firstKey, int firstValue,
-                                                       String secondKey, int secondValue) {
+                                                      String secondKey, int secondValue) {
         java.util.Map<String, Integer> result = new LinkedHashMap<>();
         result.put(firstKey, firstValue);
         result.put(secondKey, secondValue);

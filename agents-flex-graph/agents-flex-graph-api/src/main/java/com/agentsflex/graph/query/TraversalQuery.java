@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
@@ -129,6 +131,14 @@ public final class TraversalQuery implements GraphQuery {
      * 是否去重。
      */
     private final boolean distinct;
+    /**
+     * 分组键；聚合查询可用来声明普通投影的分组语义。
+     */
+    private final List<GroupKey> groups;
+    /**
+     * 分组后的过滤条件。
+     */
+    private final GraphFilter having;
 
     /**
      * 构造并校验遍历查询。
@@ -142,6 +152,8 @@ public final class TraversalQuery implements GraphQuery {
         this.skip = builder.skip;
         this.limit = builder.limit;
         this.distinct = builder.distinct;
+        this.groups = immutable(builder.groups);
+        this.having = builder.having;
         validate();
     }
 
@@ -165,6 +177,8 @@ public final class TraversalQuery implements GraphQuery {
         builder.skip = page.getOffset();
         builder.limit = page.getLimit();
         builder.distinct = distinct;
+        builder.groups.addAll(groups);
+        builder.having = having;
         return new TraversalQuery(builder);
     }
 
@@ -181,8 +195,13 @@ public final class TraversalQuery implements GraphQuery {
         for (Step step : steps) {
             addAlias(aliases, step.getEdge().getAlias());
             addAlias(aliases, step.getNode().getAlias());
+            if (!step.getEdge().getProperties().isEmpty()
+                && (step.getEdge().getMinHops() != 1 || step.getEdge().getMaxHops() != 1)) {
+                throw new IllegalArgumentException("edge property patterns cannot use variable-length hops");
+            }
         }
         validateFilterAliases(filter, aliases);
+        validateFilterAliases(having, aliases);
         for (Projection projection : projections) {
             if (projection.getKind() != ProjectionKind.PATH && !aliases.contains(projection.getAlias())) {
                 throw new IllegalArgumentException("unknown projection alias: " + projection.getAlias());
@@ -203,8 +222,24 @@ public final class TraversalQuery implements GraphQuery {
             if (projection.getKind() == ProjectionKind.AGGREGATE) hasAggregate = true;
             else hasNonAggregate = true;
         }
-        if (hasAggregate && hasNonAggregate) {
+        if (hasAggregate && hasNonAggregate && groups.isEmpty()) {
             throw new IllegalArgumentException("aggregate and non-aggregate projections require explicit grouping");
+        }
+        for (GroupKey group : groups) {
+            if (!aliases.contains(group.getAlias()))
+                throw new IllegalArgumentException("unknown group alias: " + group.getAlias());
+        }
+        if (hasAggregate && hasNonAggregate && !groups.isEmpty()) {
+            for (Projection projection : projections) {
+                if (projection.getKind() == ProjectionKind.PROPERTY && !containsGroup(groups,
+                    projection.getAlias(), projection.getProperty())) {
+                    throw new IllegalArgumentException("non-aggregate projection must be included in GROUP BY: "
+                        + projection.getAlias() + "." + projection.getProperty());
+                }
+                if (projection.getKind() == ProjectionKind.ENTITY) {
+                    throw new IllegalArgumentException("entity projection cannot be mixed with aggregate projection");
+                }
+            }
         }
         for (Sort sort : sorts) {
             if (!aliases.contains(sort.getAlias()))
@@ -217,6 +252,16 @@ public final class TraversalQuery implements GraphQuery {
      */
     private static void addAlias(Set<String> aliases, String alias) {
         if (!aliases.add(alias)) throw new IllegalArgumentException("duplicate query alias: " + alias);
+    }
+
+    /**
+     * 判断属性投影是否已声明为分组键。
+     */
+    private static boolean containsGroup(List<GroupKey> groups, String alias, String property) {
+        for (GroupKey group : groups) {
+            if (group.alias.equals(alias) && group.property.equals(property)) return true;
+        }
+        return false;
     }
 
     /**
@@ -235,6 +280,45 @@ public final class TraversalQuery implements GraphQuery {
      */
     private static <T> List<T> immutable(List<T> values) {
         return Collections.unmodifiableList(new ArrayList<>(values));
+    }
+
+    /**
+     * 校验属性名并递归冻结属性值，避免模式被外部 Map 修改。
+     */
+    private static Map<String, Object> immutableProperties(Map<String, ?> values, String name) {
+        if (values == null || values.isEmpty()) return Collections.emptyMap();
+        Map<String, Object> copy = new LinkedHashMap<>();
+        for (Map.Entry<String, ?> entry : values.entrySet()) {
+            copy.put(GraphIdentifiers.requireValid(entry.getKey(), name), immutableValue(entry.getValue()));
+        }
+        return Collections.unmodifiableMap(copy);
+    }
+
+    /**
+     * 递归冻结属性模式中的数组、集合和 Map。
+     */
+    private static Object immutableValue(Object value) {
+        if (value == null) return null;
+        if (value instanceof Map) {
+            Map<Object, Object> copy = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                copy.put(immutableValue(entry.getKey()), immutableValue(entry.getValue()));
+            }
+            return Collections.unmodifiableMap(copy);
+        }
+        if (value instanceof java.util.Collection) {
+            List<Object> copy = new ArrayList<>();
+            for (Object item : (java.util.Collection<?>) value) copy.add(immutableValue(item));
+            return Collections.unmodifiableList(copy);
+        }
+        if (value.getClass().isArray()) {
+            List<Object> copy = new ArrayList<>();
+            for (int i = 0; i < java.lang.reflect.Array.getLength(value); i++) {
+                copy.add(immutableValue(java.lang.reflect.Array.get(value, i)));
+            }
+            return Collections.unmodifiableList(copy);
+        }
+        return value;
     }
 
     /**
@@ -294,6 +378,20 @@ public final class TraversalQuery implements GraphQuery {
     }
 
     /**
+     * @return 分组键的只读列表。
+     */
+    public List<GroupKey> getGroups() {
+        return groups;
+    }
+
+    /**
+     * @return HAVING 过滤条件；没有分组过滤时返回 null。
+     */
+    public GraphFilter getHaving() {
+        return having;
+    }
+
+    /**
      * @return 是否包含变长路径步骤
      */
     public boolean hasVariableLengthStep() {
@@ -307,16 +405,43 @@ public final class TraversalQuery implements GraphQuery {
          */
         private final String alias;
         /**
-         * 节点标签；为空表示任意标签。
+         * 节点标签；为空表示任意标签。为兼容旧 API，getLabel() 返回第一个标签。
          */
-        private final String label;
+        private final List<String> labels;
+        /**
+         * 节点模式中的属性约束；为空表示不限制属性。
+         */
+        private final Map<String, Object> properties;
 
         /**
          * 创建节点模式。
          */
         private NodePattern(String alias, String label) {
+            this(alias, label == null ? Collections.<String>emptyList() : Collections.singletonList(label),
+                Collections.<String, Object>emptyMap());
+        }
+
+        /**
+         * 创建带标签和属性约束的节点模式。
+         */
+        private NodePattern(String alias, String label, Map<String, ?> properties) {
+            this(alias, label == null ? Collections.<String>emptyList() : Collections.singletonList(label), properties);
+        }
+
+        /**
+         * 创建带多个标签和属性约束的节点模式。
+         */
+        private NodePattern(String alias, List<String> labels, Map<String, ?> properties) {
             this.alias = GraphIdentifiers.requireValid(alias, "node alias");
-            this.label = label == null ? null : GraphIdentifiers.requireValid(label, "node label");
+            if (labels == null) throw new IllegalArgumentException("node labels must not be null");
+            List<String> copied = new ArrayList<>();
+            for (String label : labels) {
+                String valid = GraphIdentifiers.requireValid(label, "node label");
+                if (copied.contains(valid)) throw new IllegalArgumentException("duplicate node label: " + valid);
+                copied.add(valid);
+            }
+            this.labels = Collections.unmodifiableList(copied);
+            this.properties = immutableProperties(properties, "node property");
         }
 
         /**
@@ -334,6 +459,34 @@ public final class TraversalQuery implements GraphQuery {
         }
 
         /**
+         * 创建不限制标签但带属性约束的节点模式。
+         */
+        public static NodePattern anyNode(String alias, Map<String, ?> properties) {
+            return new NodePattern(alias, Collections.<String>emptyList(), properties);
+        }
+
+        /**
+         * 创建带标签和属性约束的节点模式。
+         */
+        public static NodePattern node(String alias, String label, Map<String, ?> properties) {
+            return new NodePattern(alias, label, properties);
+        }
+
+        /**
+         * 创建带多个标签和属性约束的节点模式。
+         */
+        public static NodePattern node(String alias, List<String> labels, Map<String, ?> properties) {
+            return new NodePattern(alias, labels, properties);
+        }
+
+        /**
+         * 创建带多个标签且不带属性约束的节点模式。
+         */
+        public static NodePattern node(String alias, List<String> labels) {
+            return new NodePattern(alias, labels, Collections.<String, Object>emptyMap());
+        }
+
+        /**
          * @return 节点别名
          */
         public String getAlias() {
@@ -344,7 +497,21 @@ public final class TraversalQuery implements GraphQuery {
          * @return 节点标签
          */
         public String getLabel() {
-            return label;
+            return labels.isEmpty() ? null : labels.get(0);
+        }
+
+        /**
+         * @return 节点标签的只读列表；空列表表示任意标签。
+         */
+        public List<String> getLabels() {
+            return labels;
+        }
+
+        /**
+         * @return 节点属性约束的只读快照。
+         */
+        public Map<String, Object> getProperties() {
+            return properties;
         }
     }
 
@@ -356,7 +523,7 @@ public final class TraversalQuery implements GraphQuery {
         /**
          * 边类型。
          */
-        private final String type;
+        private final List<String> types;
         /**
          * 遍历方向。
          */
@@ -369,13 +536,41 @@ public final class TraversalQuery implements GraphQuery {
          * 最大跳数。
          */
         private final int maxHops;
+        /**
+         * 边模式中的属性约束；为空表示不限制属性。
+         */
+        private final Map<String, Object> properties;
 
         /**
          * 创建边模式并校验跳数范围。
          */
         private EdgePattern(String alias, String type, Direction direction, int minHops, int maxHops) {
+            this(alias, type, direction, minHops, maxHops, Collections.<String, Object>emptyMap());
+        }
+
+        /**
+         * 创建带属性约束的边模式并校验所有结构字段。
+         */
+        private EdgePattern(String alias, String type, Direction direction, int minHops, int maxHops,
+                            Map<String, ?> properties) {
+            this(alias, type == null ? Collections.<String>emptyList() : Collections.singletonList(type), direction,
+                minHops, maxHops, properties);
+        }
+
+        /**
+         * 创建带多个边类型的边模式。
+         */
+        private EdgePattern(String alias, List<String> types, Direction direction, int minHops, int maxHops,
+                            Map<String, ?> properties) {
             this.alias = GraphIdentifiers.requireValid(alias, "edge alias");
-            this.type = GraphIdentifiers.requireValid(type, "edge type");
+            if (types == null) throw new IllegalArgumentException("edge types must not be null");
+            List<String> copied = new ArrayList<>();
+            for (String type : types) {
+                String valid = GraphIdentifiers.requireValid(type, "edge type");
+                if (copied.contains(valid)) throw new IllegalArgumentException("duplicate edge type: " + valid);
+                copied.add(valid);
+            }
+            this.types = Collections.unmodifiableList(copied);
             if (direction == null) throw new IllegalArgumentException("edge direction must not be null");
             if (minHops < 1 || maxHops < minHops || maxHops > 16) {
                 throw new IllegalArgumentException("hop range must satisfy 1 <= min <= max <= 16");
@@ -383,6 +578,7 @@ public final class TraversalQuery implements GraphQuery {
             this.direction = direction;
             this.minHops = minHops;
             this.maxHops = maxHops;
+            this.properties = immutableProperties(properties, "edge property");
         }
 
         /**
@@ -393,10 +589,33 @@ public final class TraversalQuery implements GraphQuery {
         }
 
         /**
+         * 创建带属性约束的单跳边模式。
+         */
+        public static EdgePattern edge(String alias, String type, Direction direction,
+                                       Map<String, ?> properties) {
+            return new EdgePattern(alias, type, direction, 1, 1, properties);
+        }
+
+        /**
+         * 创建带多个边类型的单跳边模式。
+         */
+        public static EdgePattern edge(String alias, List<String> types, Direction direction,
+                                       Map<String, ?> properties) {
+            return new EdgePattern(alias, types, direction, 1, 1, properties);
+        }
+
+        /**
+         * 创建带多个边类型且不带属性约束的单跳边模式。
+         */
+        public static EdgePattern edge(String alias, List<String> types, Direction direction) {
+            return new EdgePattern(alias, types, direction, 1, 1, Collections.<String, Object>emptyMap());
+        }
+
+        /**
          * 返回具有新跳数范围的边模式。
          */
         public EdgePattern hops(int min, int max) {
-            return new EdgePattern(alias, type, direction, min, max);
+            return new EdgePattern(alias, types, direction, min, max, properties);
         }
 
         /**
@@ -408,9 +627,17 @@ public final class TraversalQuery implements GraphQuery {
 
         /**
          * @return 边类型
+         * {@code null} 表示匹配任意边类型
          */
         public String getType() {
-            return type;
+            return types.isEmpty() ? null : types.get(0);
+        }
+
+        /**
+         * @return 边类型的只读列表；空列表表示任意边类型。
+         */
+        public List<String> getTypes() {
+            return types;
         }
 
         /**
@@ -432,6 +659,13 @@ public final class TraversalQuery implements GraphQuery {
          */
         public int getMaxHops() {
             return maxHops;
+        }
+
+        /**
+         * @return 边属性约束的只读快照。
+         */
+        public Map<String, Object> getProperties() {
+            return properties;
         }
     }
 
@@ -512,6 +746,14 @@ public final class TraversalQuery implements GraphQuery {
          */
         public static Projection entity(String alias) {
             return new Projection(ProjectionKind.ENTITY, GraphIdentifiers.requireValid(alias, "projection alias"), null, alias);
+        }
+
+        /**
+         * 投影完整实体并指定结果列别名。
+         */
+        public static Projection entity(String alias, String outputName) {
+            return new Projection(ProjectionKind.ENTITY,
+                GraphIdentifiers.requireValid(alias, "projection alias"), null, outputName);
         }
 
         /**
@@ -632,6 +874,30 @@ public final class TraversalQuery implements GraphQuery {
         }
     }
 
+    /**
+     * 聚合查询的分组键。
+     */
+    public static final class GroupKey {
+        private final String alias;
+        private final String property;
+
+        /**
+         * 创建分组键。
+         */
+        public GroupKey(String alias, String property) {
+            this.alias = GraphIdentifiers.requireValid(alias, "group alias");
+            this.property = GraphIdentifiers.requireValid(property, "group property");
+        }
+
+        public String getAlias() {
+            return alias;
+        }
+
+        public String getProperty() {
+            return property;
+        }
+    }
+
     public static final class Builder {
         /**
          * 起始节点。
@@ -665,6 +931,14 @@ public final class TraversalQuery implements GraphQuery {
          * 默认不去重。
          */
         private boolean distinct;
+        /**
+         * 分组键。
+         */
+        private final List<GroupKey> groups = new ArrayList<>();
+        /**
+         * 分组过滤条件。
+         */
+        private GraphFilter having;
 
         /**
          * 创建查询构造器。
@@ -726,6 +1000,25 @@ public final class TraversalQuery implements GraphQuery {
          */
         public Builder distinct(boolean distinct) {
             this.distinct = distinct;
+            return this;
+        }
+
+        /**
+         * 添加分组键。
+         */
+        public Builder groupBy(GroupKey... keys) {
+            if (keys != null) for (GroupKey key : keys) {
+                if (key == null) throw new IllegalArgumentException("group key must not be null");
+                groups.add(key);
+            }
+            return this;
+        }
+
+        /**
+         * 设置聚合后的 HAVING 条件。
+         */
+        public Builder having(GraphFilter filter) {
+            this.having = filter;
             return this;
         }
 

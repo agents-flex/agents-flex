@@ -2,7 +2,9 @@ package com.agentsflex.graph.neo4j.query;
 
 import com.agentsflex.graph.query.GraphFilter;
 import com.agentsflex.graph.query.GraphUnionQuery;
+import com.agentsflex.graph.query.GraphOptionalQuery;
 import com.agentsflex.graph.query.NativeGraphQuery;
+import com.agentsflex.graph.query.GraphQueryParser;
 import com.agentsflex.graph.query.TraversalQuery;
 import org.junit.Test;
 
@@ -24,6 +26,20 @@ public class Neo4jCypherCompilerTest {
         assertTrue(compiled.statement.contains("$p0"));
         assertFalse(compiled.statement.contains("Alice"));
         assertTrue(compiled.parameters.containsValue("Alice' OR true"));
+    }
+
+    @Test
+    public void shouldCompilePublicQueryStringToParameterizedCypher() {
+        TraversalQuery query = GraphQueryParser.parse(
+            "MATCH (p:Person)-[:KNOWS]->(f:Person) "
+                + "WHERE p.age >= :age RETURN f.name AS name LIMIT 5",
+            Collections.<String, Object>singletonMap("age", 18L)).getQuery();
+
+        Neo4jCypherCompiler.Compiled compiled = new Neo4jCypherCompiler().compile(query);
+
+        assertEquals("MATCH (p:Person)-[_e0:KNOWS]->(f:Person) "
+            + "WHERE p.age >= $p0 RETURN f.name AS name LIMIT 5", compiled.statement);
+        assertEquals(18L, compiled.parameters.get("p0"));
     }
 
     @Test
@@ -91,6 +107,23 @@ public class Neo4jCypherCompilerTest {
     }
 
     @Test
+    public void shouldCompileCommonTextPredicatesWithParameters() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("person"))
+            .where(GraphFilter.and(
+                GraphFilter.contains("person", "name", "an"),
+                GraphFilter.startsWith("person", "code", "A"),
+                GraphFilter.endsWith("person", "email", ".com"),
+                GraphFilter.regex("person", "alias", "^a")))
+            .build();
+
+        Neo4jCypherCompiler.Compiled compiled = new Neo4jCypherCompiler().compile(query);
+        assertTrue(compiled.statement.contains("person.name CONTAINS $p0"));
+        assertTrue(compiled.statement.contains("person.code STARTS WITH $p1"));
+        assertTrue(compiled.statement.contains("person.email ENDS WITH $p2"));
+        assertTrue(compiled.statement.contains("person.alias =~ $p3"));
+    }
+
+    @Test
     public void shouldCompileIncomingAndBidirectionalEdges() {
         TraversalQuery incoming = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("a"))
             .traverse(TraversalQuery.EdgePattern.edge("e", "KNOWS", TraversalQuery.Direction.IN),
@@ -145,5 +178,61 @@ public class Neo4jCypherCompilerTest {
         assertTrue(compiled.statement.contains("$u1_p0"));
         assertEquals("Shanghai", compiled.parameters.get("u0_p0"));
         assertEquals("Beijing", compiled.parameters.get("u1_p0"));
+    }
+
+    @Test
+    public void shouldCompileMultipleLabelsTypesAndPatternProperties() {
+        TraversalQuery query = GraphQueryParser.parse(
+            "MATCH (p:Person:Employee {status: :status})-[r:KNOWS|WORKS_WITH {since: 2020}]->(f:Person) "
+                + "RETURN PATH AS route", Collections.<String, Object>singletonMap("status", "ACTIVE")).getQuery();
+        Neo4jCypherCompiler.Compiled compiled = new Neo4jCypherCompiler().compile(query);
+        assertTrue(compiled.statement.contains("(p:Person:Employee {status: $p0})"));
+        assertTrue(compiled.statement.contains("[r:KNOWS|WORKS_WITH {since: $p1}]->"));
+        assertTrue(compiled.statement.contains("p AS route"));
+    }
+
+    @Test
+    public void shouldCompileGroupedAggregateWithoutDialectSyntaxInAst() {
+        TraversalQuery query = GraphQueryParser.parse(
+            "MATCH (p:Person) RETURN p.city AS city, COUNT(p) AS total GROUP BY p.city").getQuery();
+        Neo4jCypherCompiler.Compiled compiled = new Neo4jCypherCompiler().compile(query);
+        assertTrue(compiled.statement.contains("p.city AS city, count(p) AS total"));
+    }
+
+    @Test
+    public void shouldCompileOptionalMatch() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("p", "Person"))
+            .select(TraversalQuery.Projection.entity("p")).build();
+        assertTrue(new Neo4jCypherCompiler().compile(GraphOptionalQuery.of(query)).statement
+            .startsWith("OPTIONAL MATCH "));
+    }
+
+    @Test(expected = com.agentsflex.graph.UnsupportedGraphFeatureException.class)
+    public void shouldRejectNeo4jGroupingPropertyThatIsNotProjected() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("p", "Person"))
+            .select(TraversalQuery.Projection.count("p", "total"))
+            .groupBy(new TraversalQuery.GroupKey("p", "city"))
+            .build();
+        new Neo4jCypherCompiler().compile(query);
+    }
+
+    @Test
+    public void shouldPreserveEntityProjectionAliasAndParameterizePatternValues() {
+        TraversalQuery query = GraphQueryParser.parse(
+            "MATCH (n:Item {name: :name}) RETURN n AS item",
+            Collections.<String, Object>singletonMap("name", "Alice")).getQuery();
+        Neo4jCypherCompiler.Compiled compiled = new Neo4jCypherCompiler().compile(query);
+        assertTrue(compiled.statement.contains("RETURN n AS item"));
+        assertEquals("Alice", compiled.parameters.get("p0"));
+        assertFalse(compiled.statement.contains("Alice"));
+    }
+
+    @Test
+    public void shouldCompileAllDirectionAndTypeCombinations() {
+        TraversalQuery query = GraphQueryParser.parse(
+            "MATCH (a:Person:Employee)-[r:KNOWS|WORKS_WITH]->(b:Person) RETURN b").getQuery();
+        String statement = new Neo4jCypherCompiler().compile(query).statement;
+        assertTrue(statement.contains("(a:Person:Employee)"));
+        assertTrue(statement.contains("[r:KNOWS|WORKS_WITH]->"));
     }
 }

@@ -86,7 +86,23 @@ public final class GraphFilter {
         /**
          * 非空。
          */
-        IS_NOT_NULL
+        IS_NOT_NULL,
+        /**
+         * 字符串包含子串。
+         */
+        CONTAINS,
+        /**
+         * 字符串以前缀开头。
+         */
+        STARTS_WITH,
+        /**
+         * 字符串以后缀结尾。
+         */
+        ENDS_WITH,
+        /**
+         * 使用后端兼容的正则表达式匹配。
+         */
+        REGEX
     }
 
     /**
@@ -217,6 +233,34 @@ public final class GraphFilter {
      */
     public static GraphFilter isNotNull(String alias, String property) {
         return predicate(alias, property, Operator.IS_NOT_NULL, null);
+    }
+
+    /**
+     * 创建字符串包含谓词。
+     */
+    public static GraphFilter contains(String alias, String property, Object value) {
+        return predicate(alias, property, Operator.CONTAINS, value);
+    }
+
+    /**
+     * 创建字符串前缀谓词。
+     */
+    public static GraphFilter startsWith(String alias, String property, Object value) {
+        return predicate(alias, property, Operator.STARTS_WITH, value);
+    }
+
+    /**
+     * 创建字符串后缀谓词。
+     */
+    public static GraphFilter endsWith(String alias, String property, Object value) {
+        return predicate(alias, property, Operator.ENDS_WITH, value);
+    }
+
+    /**
+     * 创建正则表达式谓词。
+     */
+    public static GraphFilter regex(String alias, String property, Object value) {
+        return predicate(alias, property, Operator.REGEX, value);
     }
 
     /**

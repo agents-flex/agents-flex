@@ -3,10 +3,13 @@ package com.agentsflex.graph.query;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * 覆盖遍历查询 DSL 的组合语义和边界校验。
@@ -133,5 +136,53 @@ public class TraversalQueryTest {
         TraversalQuery right = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("n"))
             .select(TraversalQuery.Projection.property("n", "age", "value")).build();
         GraphUnionQuery.unionAll(left, right);
+    }
+
+    @Test
+    public void patternPropertiesShouldBeDeeplyImmutable() {
+        Map<String, Object> nested = new LinkedHashMap<>();
+        nested.put("country", "CN");
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("profile", nested);
+        TraversalQuery.NodePattern node = TraversalQuery.NodePattern.node("n", "Person", properties);
+        nested.put("changed", true);
+        properties.clear();
+
+        assertEquals("CN", ((Map<?, ?>) node.getProperties().get("profile")).get("country"));
+        try {
+            ((Map<?, ?>) node.getProperties().get("profile")).clear();
+        } catch (UnsupportedOperationException expected) {
+            return;
+        }
+        fail("pattern properties must be immutable");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldRejectDuplicateLabelsAndTypes() {
+        TraversalQuery.NodePattern.node("n", Arrays.asList("Person", "Person"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldRejectDuplicateEdgeTypes() {
+        TraversalQuery.EdgePattern.edge("r", Arrays.asList("KNOWS", "KNOWS"),
+            TraversalQuery.Direction.OUT);
+    }
+
+    @Test
+    public void groupedAggregateShouldExposeImmutableGroupingAndHaving() {
+        TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.node("n", "Person"))
+            .select(TraversalQuery.Projection.property("n", "city", "city"),
+                TraversalQuery.Projection.count("n", "total"))
+            .groupBy(new TraversalQuery.GroupKey("n", "city"))
+            .having(GraphFilter.gt("n", "total", 1L))
+            .build();
+        assertEquals("city", query.getGroups().get(0).getProperty());
+        assertEquals(GraphFilter.Operator.GT, query.getHaving().getOperator());
+        try {
+            query.getGroups().clear();
+            fail("groups must be immutable");
+        } catch (UnsupportedOperationException expected) {
+            // 预期行为。
+        }
     }
 }
