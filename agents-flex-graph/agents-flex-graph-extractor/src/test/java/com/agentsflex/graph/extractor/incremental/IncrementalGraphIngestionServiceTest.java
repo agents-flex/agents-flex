@@ -26,6 +26,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -274,6 +279,76 @@ public class IncrementalGraphIngestionServiceTest {
     }
 
     /**
+     * 新服务实例应直接读取日志中的原计划恢复，不得再次调用大模型生成可能不同的抽取结果。
+     */
+    @Test
+    public void shouldResumePersistedPlanWithoutReextracting() {
+        Scenario scenario = scenario();
+        scenario.writer.fail = true;
+        IncrementalGraphIngestionResult failed = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+            request("doc-1").operationId("recover-operation").build(), scenario.writer);
+        assertFalse(failed.isSuccess());
+        assertEquals(1, scenario.service.listRecoverableOperations(10).size());
+        assertNotNull(scenario.operations.getPlan("recover-operation"));
+
+        IncrementalGraphIngestionService restarted = new IncrementalGraphIngestionService(
+            scenario.pipeline, scenario.states, scenario.registry, scenario.operations, scenario.locks,
+            scenario.clock::getAndIncrement);
+        scenario.writer.fail = false;
+        int extractionCalls = scenario.extractor.calls.get();
+        IncrementalGraphIngestionResult recovered = restarted.resume("recover-operation", scenario.writer);
+
+        assertTrue(recovered.isSuccess());
+        assertEquals(extractionCalls, scenario.extractor.calls.get());
+        assertTrue(restarted.listRecoverableOperations(10).isEmpty());
+        assertEquals(GraphIngestionOperation.Stage.COMPLETED,
+            scenario.operations.get("recover-operation").getStage());
+    }
+
+    /**
+     * 文档级锁不能退化为服务级全局锁，不同文档应能同时进入 GraphWriter。
+     */
+    @Test
+    public void shouldExecuteDifferentDocumentsConcurrently() throws Exception {
+        Scenario scenario = scenario();
+        IncrementalGraphIngestionPlan first = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+            request("doc-a").build());
+        IncrementalGraphIngestionPlan second = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+            request("doc-b").build());
+        ConcurrentWriter writer = new ConcurrentWriter(2);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<IncrementalGraphIngestionResult> firstResult = executor.submit(
+                () -> scenario.service.execute(first, writer));
+            Future<IncrementalGraphIngestionResult> secondResult = executor.submit(
+                () -> scenario.service.execute(second, writer));
+
+            assertTrue("different documents should reach writer concurrently", writer.awaitAll());
+            assertTrue(firstResult.get(5, TimeUnit.SECONDS).isSuccess());
+            assertTrue(secondResult.get(5, TimeUnit.SECONDS).isSuccess());
+            assertEquals(2, writer.calls.get());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    /**
+     * 恢复扫描必须排除完成项，并按照最旧更新时间稳定分页。
+     */
+    @Test
+    public void shouldListOldestRecoverableOperationsFirst() {
+        InMemoryGraphIngestionOperationStore store = new InMemoryGraphIngestionOperationStore();
+        store.createIfAbsent(operation("later", GraphIngestionOperation.Stage.PREPARED, 20L));
+        store.createIfAbsent(operation("oldest", GraphIngestionOperation.Stage.FAILED, 10L));
+        store.createIfAbsent(operation("completed", GraphIngestionOperation.Stage.COMPLETED, 1L));
+
+        java.util.List<GraphIngestionOperation> operations = store.listRecoverable(1);
+
+        assertEquals(1, operations.size());
+        assertEquals("oldest", operations.get(0).getOperationId());
+    }
+
+    /**
      * 同一条关系被多个文档支持时，状态存储应聚合全部来源证据。
      */
     @Test
@@ -386,10 +461,12 @@ public class IncrementalGraphIngestionServiceTest {
             new GraphMutationMapper());
         InMemoryGraphDocumentStateStore states = new InMemoryGraphDocumentStateStore();
         InMemoryGraphIngestionOperationStore operations = new InMemoryGraphIngestionOperationStore();
+        LocalGraphIngestionLockProvider locks = new LocalGraphIngestionLockProvider();
         AtomicLong clock = new AtomicLong(1_700_000_000_000L);
         IncrementalGraphIngestionService service = new IncrementalGraphIngestionService(
-            pipeline, states, registry, operations, clock::getAndIncrement);
-        return new Scenario(service, extractor, states, registry, operations, new RecordingWriter());
+            pipeline, states, registry, operations, locks, clock::getAndIncrement);
+        return new Scenario(service, pipeline, extractor, states, registry, operations, locks, clock,
+            new RecordingWriter());
     }
 
     /**
@@ -397,6 +474,12 @@ public class IncrementalGraphIngestionServiceTest {
      */
     private static IncrementalGraphIngestionRequest.Builder request(String documentId) {
         return IncrementalGraphIngestionRequest.builder("knowledge", documentId);
+    }
+
+    /** 创建用于操作存储排序测试的最小记录。 */
+    private static GraphIngestionOperation operation(String id, GraphIngestionOperation.Stage stage, long time) {
+        return new GraphIngestionOperation(id, "knowledge", "doc-" + id, 0L, "fingerprint-" + id,
+            stage, time, "");
     }
 
     /**
@@ -488,6 +571,46 @@ public class IncrementalGraphIngestionServiceTest {
     }
 
     /**
+     * 要求指定数量调用同时到达的写入器，用于识别不必要的服务级串行化。
+     */
+    private static final class ConcurrentWriter implements GraphWriter {
+        /** 预期同时进入写入器的调用。 */
+        private final CountDownLatch entered;
+        /** 实际调用次数。 */
+        private final AtomicInteger calls = new AtomicInteger();
+
+        private ConcurrentWriter(int parties) {
+            entered = new CountDownLatch(parties);
+        }
+
+        @Override
+        public GraphWriteResult mutate(GraphMutation mutation, GraphOptions options) {
+            calls.incrementAndGet();
+            entered.countDown();
+            try {
+                if (!entered.await(3, TimeUnit.SECONDS)) {
+                    return GraphWriteResult.failure("concurrent writer timeout", null);
+                }
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                return GraphWriteResult.failure("concurrent writer interrupted", exception);
+            }
+            return GraphWriteResult.success(mutation.getNodes().size(), mutation.getEdges().size());
+        }
+
+        /** @return 两个文档是否都在超时前进入写入器。 */
+        private boolean awaitAll() throws InterruptedException {
+            return entered.await(3, TimeUnit.SECONDS);
+        }
+
+        @Override
+        public com.agentsflex.graph.importing.GraphImportReport importData(
+            com.agentsflex.graph.importing.GraphImportRequest request, GraphOptions options) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
      * 聚合测试依赖。
      */
     private static final class Scenario {
@@ -495,6 +618,8 @@ public class IncrementalGraphIngestionServiceTest {
          * 被测服务。
          */
         private final IncrementalGraphIngestionService service;
+        /** 可复用于模拟进程重启的抽取流水线。 */
+        private final GraphExtractionPipeline pipeline;
         /**
          * 记录模型调用的 extractor。
          */
@@ -511,19 +636,28 @@ public class IncrementalGraphIngestionServiceTest {
          * 内存导入操作状态。
          */
         private final InMemoryGraphIngestionOperationStore operations;
+        /** 多个服务实例共享的文档锁。 */
+        private final LocalGraphIngestionLockProvider locks;
+        /** 跨服务实例递增的测试时钟。 */
+        private final AtomicLong clock;
         /**
          * 记录图写入的 writer。
          */
         private final RecordingWriter writer;
 
-        private Scenario(IncrementalGraphIngestionService service, RecordingExtractor extractor,
+        private Scenario(IncrementalGraphIngestionService service, GraphExtractionPipeline pipeline,
+                         RecordingExtractor extractor,
                          InMemoryGraphDocumentStateStore states, InMemoryGraphEntityRegistry registry,
-                         InMemoryGraphIngestionOperationStore operations, RecordingWriter writer) {
+                         InMemoryGraphIngestionOperationStore operations,
+                         LocalGraphIngestionLockProvider locks, AtomicLong clock, RecordingWriter writer) {
             this.service = service;
+            this.pipeline = pipeline;
             this.extractor = extractor;
             this.states = states;
             this.registry = registry;
             this.operations = operations;
+            this.locks = locks;
+            this.clock = clock;
             this.writer = writer;
         }
     }

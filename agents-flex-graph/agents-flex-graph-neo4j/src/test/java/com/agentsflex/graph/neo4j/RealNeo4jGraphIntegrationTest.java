@@ -71,6 +71,19 @@ public class RealNeo4jGraphIntegrationTest {
         store = new Neo4jGraphStore(config);
     }
 
+    /** 连接目标不可用时 health 必须返回 DOWN，而不是把探活异常泄露给调用方。 */
+    @Test
+    public void shouldReportDownForUnavailableNeo4jEndpoint() {
+        Neo4jGraphStore unavailable = new Neo4jGraphStore(new Neo4jGraphStoreConfig()
+            .setUri("bolt://127.0.0.1:1").setUsername("neo4j").setPassword("invalid"));
+        try {
+            assertFalse(unavailable.health().isUp());
+        } finally {
+            unavailable.close();
+            unavailable.close();
+        }
+    }
+
     @Test
     public void shouldCreateSchemaWriteQueryInspectAndUseTransactionAgainstRealNeo4j() {
         final String suffix = String.valueOf(System.currentTimeMillis());
@@ -439,6 +452,43 @@ public class RealNeo4jGraphIntegrationTest {
                 assertEquals(8L, ((Number) concurrentCount.getRecords().get(0).get("total")).longValue());
             } finally {
                 concurrent.shutdownNow();
+            }
+
+            // 同一业务 ID 的并发 upsert 必须收敛为一个节点，不能产生重复实体。
+            ExecutorService sameKeyExecutor = Executors.newFixedThreadPool(8);
+            try {
+                List<Future<GraphWriteResult>> sameNodeWrites = new ArrayList<>();
+                for (int i = 0; i < 16; i++) {
+                    final int index = i;
+                    sameNodeWrites.add(sameKeyExecutor.submit(() -> store.writer().mutate(GraphMutation.builder()
+                        .upsertNode(person("advanced-same-key-" + suffix, label, "same-" + index, index, true))
+                        .build(), GraphOptions.ofSpace("neo4j"))));
+                }
+                for (Future<GraphWriteResult> write : sameNodeWrites) assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
+                GraphResult sameNodeCount = store.query().execute(NativeGraphQuery.of(
+                    "MATCH (n:" + label + ") WHERE n.__agentsflex_id = $id RETURN count(n) AS total, collect(n.name) AS names",
+                    Collections.<String, Object>singletonMap("id", "advanced-same-key-" + suffix)),
+                    GraphOptions.ofSpace("neo4j"));
+                assertEquals(1L, ((Number) sameNodeCount.getRecords().get(0).get("total")).longValue());
+                assertEquals(1, ((List<?>) sameNodeCount.getRecords().get(0).get("names")).size());
+
+                List<Future<GraphWriteResult>> sameEdgeWrites = new ArrayList<>();
+                for (int i = 0; i < 16; i++) {
+                    sameEdgeWrites.add(sameKeyExecutor.submit(() -> store.writer().mutate(GraphMutation.builder()
+                        .upsertEdge(GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(99)
+                            .property("weight", 99L).build()).build(), GraphOptions.ofSpace("neo4j"))));
+                }
+                for (Future<GraphWriteResult> write : sameEdgeWrites) assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
+                GraphResult sameEdgeCount = store.query().execute(NativeGraphQuery.of(
+                    "MATCH (a:" + label + ")-[r:" + edgeType + "]->(b:" + label + ") "
+                        + "WHERE a.__agentsflex_id = $from AND b.__agentsflex_id = $to AND r.__agentsflex_rank = 99 "
+                        + "RETURN count(r) AS total",
+                    new java.util.HashMap<String, Object>() {{
+                        put("from", low.getId()); put("to", high.getId());
+                    }}), GraphOptions.ofSpace("neo4j"));
+                assertEquals(1L, ((Number) sameEdgeCount.getRecords().get(0).get("total")).longValue());
+            } finally {
+                sameKeyExecutor.shutdownNow();
             }
 
             String txId = "advanced-tx-" + suffix;

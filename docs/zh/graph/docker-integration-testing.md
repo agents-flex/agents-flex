@@ -47,11 +47,28 @@
 - transactions() 明确抛出 UnsupportedGraphFeatureException；
 - executeCursor 不被误认为服务端流式游标；
 - 断连重试不会在关闭后重建 SessionPool。
+- 同一 VID 或同一边 rank 的并发 UPSERT 在 Nebula Storage 返回冲突时会有限退避重试，最终结果保持单一业务键。
 
 ## Maven 执行建议
 
 为真实测试设置显式 profile 和环境变量，例如 GRAPH_NEO4J_IT、GRAPH_NEBULA_IT。未启用 profile 时测试应跳过，而不是因为本机没有容器导致普通构建失败。CI 中使用固定镜像和等待脚本，保存失败时的数据库日志、GraphResultMetadata 和后端版本。
 
 真实测试必须断言业务结果，而不是只断言没有抛异常。对于最终一致的 DDL、索引重建和 Nebula 服务启动，使用有上限的轮询；超时后输出最后一次后端错误。
+
+仓库中的 `agents-flex-graph-integration-tests` 会对 Neo4j 和 Nebula 执行同一套跨模块场景：候选抽取、
+增量计划、真实写图、提交结果不确定时的幂等重放、共享来源关系以及逐文档撤回。容器就绪后执行：
+
+```bash
+env -u DEEPSEEK_API_KEY GRAPH_INTEGRATION=true mvn \
+  -pl agents-flex-graph/agents-flex-graph-integration-tests -am \
+  -Dtest=RealGraphExtractionIntegrationTest \
+  -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+该跨模块测试使用确定性 Extractor，不消耗模型额度；真实 DeepSeek 测试由
+`GRAPH_LLM_INTEGRATION=true` 和 `DEEPSEEK_API_KEY` 单独启用，使数据库故障与模型供应商故障可以独立诊断。
+
+当前 Docker 验收还包含两个不可用端点探活场景，验证 `health()` 返回 DOWN、`close()` 可重复调用，
+以及 Neo4j/Nebula 两个后端各自的同键并发写入场景。
 
 相关章节：[单元测试与契约测试](/zh/graph/testing)、[故障排查](/zh/graph/troubleshooting)。

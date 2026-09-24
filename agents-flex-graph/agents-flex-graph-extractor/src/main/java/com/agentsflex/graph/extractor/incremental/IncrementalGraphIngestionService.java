@@ -36,8 +36,9 @@ import java.util.function.LongSupplier;
  * 编排内容判重、版本差异、图写入、实体注册和文档状态提交的长期增量导入服务。
  *
  * <p>服务不持有图数据库连接，调用方显式传入 {@link GraphWriter}。先调用 {@code plan} 可以在写入前
- * 审核候选与删除项；{@code ingest} 是计划和执行的便捷组合。单实例内方法使用同步边界减少同文档竞争，
- * 多实例部署仍应在 documentId 维度加分布式锁，并为状态存储实现原子 compare-and-set。</p>
+ * 审核候选与删除项；{@code ingest} 是计划和执行的便捷组合。默认锁只在当前 JVM 内按文档串行，
+ * 不会阻塞不同文档；多实例部署应注入分布式 {@link GraphIngestionLockProvider}，并继续为状态存储实现
+ * 原子 compare-and-set。</p>
  */
 public final class IncrementalGraphIngestionService {
     /**
@@ -57,6 +58,10 @@ public final class IncrementalGraphIngestionService {
      */
     private final GraphIngestionOperationStore operationStore;
     /**
+     * 同一 Space 和文档的执行互斥边界。
+     */
+    private final GraphIngestionLockProvider lockProvider;
+    /**
      * 可注入时钟，保证状态时间可测试。
      */
     private final LongSupplier clock;
@@ -65,7 +70,7 @@ public final class IncrementalGraphIngestionService {
      * 创建不自动保存实体注册记录的增量服务。
      */
     public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore) {
-        this(pipeline, stateStore, null, null, System::currentTimeMillis);
+        this(pipeline, stateStore, null, null, new LocalGraphIngestionLockProvider(), System::currentTimeMillis);
     }
 
     /**
@@ -73,7 +78,8 @@ public final class IncrementalGraphIngestionService {
      */
     public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                             GraphEntityRegistry entityRegistry) {
-        this(pipeline, stateStore, entityRegistry, null, System::currentTimeMillis);
+        this(pipeline, stateStore, entityRegistry, null, new LocalGraphIngestionLockProvider(),
+            System::currentTimeMillis);
     }
 
     /**
@@ -82,7 +88,20 @@ public final class IncrementalGraphIngestionService {
     public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                             GraphEntityRegistry entityRegistry,
                                             GraphIngestionOperationStore operationStore) {
-        this(pipeline, stateStore, entityRegistry, operationStore, System::currentTimeMillis);
+        this(pipeline, stateStore, entityRegistry, operationStore, new LocalGraphIngestionLockProvider(),
+            System::currentTimeMillis);
+    }
+
+    /**
+     * 创建具有持久化恢复日志和自定义文档锁的增量服务。
+     *
+     * @param lockProvider 单实例使用本地实现，多实例应传入共享的分布式锁实现
+     */
+    public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+                                            GraphEntityRegistry entityRegistry,
+                                            GraphIngestionOperationStore operationStore,
+                                            GraphIngestionLockProvider lockProvider) {
+        this(pipeline, stateStore, entityRegistry, operationStore, lockProvider, System::currentTimeMillis);
     }
 
     /**
@@ -90,7 +109,7 @@ public final class IncrementalGraphIngestionService {
      */
     IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                      GraphEntityRegistry entityRegistry, LongSupplier clock) {
-        this(pipeline, stateStore, entityRegistry, null, clock);
+        this(pipeline, stateStore, entityRegistry, null, new LocalGraphIngestionLockProvider(), clock);
     }
 
     /**
@@ -99,21 +118,32 @@ public final class IncrementalGraphIngestionService {
     IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                      GraphEntityRegistry entityRegistry,
                                      GraphIngestionOperationStore operationStore, LongSupplier clock) {
-        if (pipeline == null || stateStore == null || clock == null) {
-            throw new IllegalArgumentException("pipeline, stateStore and clock must not be null");
+        this(pipeline, stateStore, entityRegistry, operationStore, new LocalGraphIngestionLockProvider(), clock);
+    }
+
+    /**
+     * 包内测试可同时注入操作存储、锁和确定性时钟。
+     */
+    IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+                                     GraphEntityRegistry entityRegistry,
+                                     GraphIngestionOperationStore operationStore,
+                                     GraphIngestionLockProvider lockProvider, LongSupplier clock) {
+        if (pipeline == null || stateStore == null || lockProvider == null || clock == null) {
+            throw new IllegalArgumentException("pipeline, stateStore, lockProvider and clock must not be null");
         }
         this.pipeline = pipeline;
         this.stateStore = stateStore;
         this.entityRegistry = entityRegistry;
         this.operationStore = operationStore;
+        this.lockProvider = lockProvider;
         this.clock = clock;
     }
 
     /**
      * 为完整文档生成增量执行计划；内容未变化时不会调用 extractor。
      */
-    public synchronized IncrementalGraphIngestionPlan plan(Document document, GraphSchema schema,
-                                                           IncrementalGraphIngestionRequest request) {
+    public IncrementalGraphIngestionPlan plan(Document document, GraphSchema schema,
+                                              IncrementalGraphIngestionRequest request) {
         if (document == null || document.getContent() == null || document.getContent().trim().isEmpty()) {
             throw new IllegalArgumentException("document content must not be blank");
         }
@@ -138,8 +168,8 @@ public final class IncrementalGraphIngestionService {
     /**
      * 为调用方已经切分好的文档生成增量计划，哈希按 Chunk 顺序和字符边界计算。
      */
-    public synchronized IncrementalGraphIngestionPlan planChunks(List<Document> chunks, GraphSchema schema,
-                                                                 IncrementalGraphIngestionRequest request) {
+    public IncrementalGraphIngestionPlan planChunks(List<Document> chunks, GraphSchema schema,
+                                                    IncrementalGraphIngestionRequest request) {
         if (chunks == null || chunks.isEmpty()) throw new IllegalArgumentException("chunks must not be empty");
         require(schema, request);
         List<String> contents = new ArrayList<>();
@@ -164,26 +194,32 @@ public final class IncrementalGraphIngestionService {
     /**
      * 生成并立即执行完整文档增量计划。
      */
-    public synchronized IncrementalGraphIngestionResult ingest(Document document, GraphSchema schema,
-                                                               IncrementalGraphIngestionRequest request,
-                                                               GraphWriter writer) {
-        return execute(plan(document, schema, request), writer);
+    public IncrementalGraphIngestionResult ingest(Document document, GraphSchema schema,
+                                                  IncrementalGraphIngestionRequest request,
+                                                  GraphWriter writer) {
+        if (request == null) throw new IllegalArgumentException("request must not be null");
+        try (GraphIngestionLockProvider.Lease ignored = acquire(request.getSpace(), request.getDocumentId())) {
+            return executeLocked(plan(document, schema, request), writer);
+        }
     }
 
     /**
      * 生成并立即执行预分段文档增量计划。
      */
-    public synchronized IncrementalGraphIngestionResult ingestChunks(List<Document> chunks, GraphSchema schema,
-                                                                     IncrementalGraphIngestionRequest request,
-                                                                     GraphWriter writer) {
-        return execute(planChunks(chunks, schema, request), writer);
+    public IncrementalGraphIngestionResult ingestChunks(List<Document> chunks, GraphSchema schema,
+                                                        IncrementalGraphIngestionRequest request,
+                                                        GraphWriter writer) {
+        if (request == null) throw new IllegalArgumentException("request must not be null");
+        try (GraphIngestionLockProvider.Lease ignored = acquire(request.getSpace(), request.getDocumentId())) {
+            return executeLocked(planChunks(chunks, schema, request), writer);
+        }
     }
 
     /**
      * 生成文档撤回计划，只删除没有被其他活动文档引用的关系，不自动删除可能共享的实体节点。
      */
-    public synchronized IncrementalGraphIngestionPlan planRetraction(String space, String documentId,
-                                                                     GraphOptions graphOptions) {
+    public IncrementalGraphIngestionPlan planRetraction(String space, String documentId,
+                                                        GraphOptions graphOptions) {
         if (graphOptions == null || graphOptions.getSpace() == null || !space.equals(graphOptions.getSpace())) {
             throw new IllegalArgumentException("graphOptions must explicitly target retraction space");
         }
@@ -220,8 +256,47 @@ public final class IncrementalGraphIngestionService {
      * <p>写入前会再次检查 revision，尽早拒绝过期计划。图写入与外部状态存储无法组成跨系统事务；
      * 若写图后 CAS 仍因多实例竞争失败，方法会抛出异常，调用方应按相同内容摘要重试幂等 upsert。</p>
      */
-    public synchronized IncrementalGraphIngestionResult execute(IncrementalGraphIngestionPlan plan,
-                                                                GraphWriter writer) {
+    public IncrementalGraphIngestionResult execute(IncrementalGraphIngestionPlan plan, GraphWriter writer) {
+        if (plan == null || writer == null) throw new IllegalArgumentException("plan and writer must not be null");
+        try (GraphIngestionLockProvider.Lease ignored = acquire(plan.getSpace(), plan.getDocumentId())) {
+            return executeLocked(plan, writer);
+        }
+    }
+
+    /**
+     * 从操作日志中读取首次冻结的计划并继续执行，不会重新调用大模型抽取。
+     *
+     * @param operationId 要恢复的稳定操作号
+     * @param writer      目标图写入器
+     * @return 本次恢复执行结果
+     */
+    public IncrementalGraphIngestionResult resume(String operationId, GraphWriter writer) {
+        if (operationStore == null) {
+            throw new IllegalStateException("operationStore is required for ingestion recovery");
+        }
+        if (operationId == null || operationId.trim().isEmpty() || writer == null) {
+            throw new IllegalArgumentException("operationId and writer must not be null or blank");
+        }
+        IncrementalGraphIngestionPlan plan = operationStore.getPlan(operationId.trim());
+        if (plan == null) {
+            throw new GraphExtractionException("Persisted ingestion plan was not found: " + operationId.trim());
+        }
+        return execute(plan, writer);
+    }
+
+    /**
+     * 返回可由 {@link #resume(String, GraphWriter)} 恢复的未完成操作。
+     */
+    public List<GraphIngestionOperation> listRecoverableOperations(int limit) {
+        if (limit <= 0) throw new IllegalArgumentException("limit must be positive");
+        if (operationStore == null) return Collections.emptyList();
+        return operationStore.listRecoverable(limit);
+    }
+
+    /**
+     * 在已经持有文档锁的前提下执行计划。
+     */
+    private IncrementalGraphIngestionResult executeLocked(IncrementalGraphIngestionPlan plan, GraphWriter writer) {
         if (plan == null || writer == null) throw new IllegalArgumentException("plan and writer must not be null");
         if (plan.getStatus() == IncrementalGraphIngestionPlan.Status.UNCHANGED) {
             return new IncrementalGraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
@@ -290,7 +365,7 @@ public final class IncrementalGraphIngestionService {
             GraphIngestionOperation prepared = new GraphIngestionOperation(operationId, plan.getSpace(),
                 plan.getDocumentId(), expectedRevision, planFingerprint, GraphIngestionOperation.Stage.PREPARED,
                 clock.getAsLong(), "");
-            operationStore.createIfAbsent(prepared);
+            operationStore.createIfAbsent(prepared, plan);
             operation = operationStore.get(operationId);
         }
         if (operation == null || !operation.getSpace().equals(plan.getSpace())
@@ -309,6 +384,15 @@ public final class IncrementalGraphIngestionService {
             operation = retry;
         }
         return operation;
+    }
+
+    /**
+     * 获取文档锁并拒绝返回 null 的错误实现。
+     */
+    private GraphIngestionLockProvider.Lease acquire(String space, String documentId) {
+        GraphIngestionLockProvider.Lease lease = lockProvider.acquire(space, documentId);
+        if (lease == null) throw new IllegalStateException("lockProvider returned null lease");
+        return lease;
     }
 
     /**

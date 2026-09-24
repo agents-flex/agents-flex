@@ -19,16 +19,21 @@ public final class GraphPageRequest {
      * 上一页返回的不透明游标；第一页为空。
      */
     private final String cursor;
+    /**
+     * 默认 offset 游标携带的查询结构指纹；旧版游标和后端 opaque cursor 为空。
+     */
+    private final String queryFingerprint;
 
     /**
      * 创建并校验分页请求的内部构造器。
      */
-    private GraphPageRequest(int offset, int limit, String cursor) {
+    private GraphPageRequest(int offset, int limit, String cursor, String queryFingerprint) {
         if (offset < 0) throw new IllegalArgumentException("offset must not be negative");
         if (limit <= 0 || limit > 10_000) throw new IllegalArgumentException("limit must be between 1 and 10000");
         this.offset = offset;
         this.limit = limit;
         this.cursor = cursor == null ? "" : cursor.trim();
+        this.queryFingerprint = queryFingerprint == null ? "" : queryFingerprint;
         // 适配器可以返回 opaque cursor；默认执行器只解释 offset 游标。
     }
 
@@ -40,7 +45,7 @@ public final class GraphPageRequest {
      * @return 不可变分页请求
      */
     public static GraphPageRequest of(int offset, int limit) {
-        return new GraphPageRequest(offset, limit, "");
+        return new GraphPageRequest(offset, limit, "", "");
     }
 
     /**
@@ -56,9 +61,14 @@ public final class GraphPageRequest {
     public static GraphPageRequest after(String cursor, int limit) {
         if (cursor == null || cursor.trim().isEmpty()) throw new IllegalArgumentException("cursor must not be blank");
         String value = cursor.trim();
-        if (!value.startsWith("offset:")) return new GraphPageRequest(0, limit, value);
+        if (!value.startsWith("offset:")) return new GraphPageRequest(0, limit, value, "");
         try {
-            return new GraphPageRequest(Integer.parseInt(value.substring("offset:".length())), limit, value);
+            String payload = value.substring("offset:".length());
+            int separator = payload.indexOf(':');
+            String offset = separator < 0 ? payload : payload.substring(0, separator);
+            String fingerprint = separator < 0 ? "" : payload.substring(separator + 1);
+            if (separator >= 0 && fingerprint.isEmpty()) throw new NumberFormatException("empty query fingerprint");
+            return new GraphPageRequest(Integer.parseInt(offset), limit, value, fingerprint);
         } catch (NumberFormatException error) {
             throw new IllegalArgumentException("invalid graph page cursor", error);
         }
@@ -83,5 +93,12 @@ public final class GraphPageRequest {
      */
     public String getCursor() {
         return cursor;
+    }
+
+    /**
+     * @return 默认分页游标携带的查询指纹；仅供同包执行器校验
+     */
+    String getQueryFingerprint() {
+        return queryFingerprint;
     }
 }

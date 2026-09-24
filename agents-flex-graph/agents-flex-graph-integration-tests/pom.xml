@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.agentsflex</groupId>
+        <artifactId>agents-flex-graph</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <name>agents-flex-graph-integration-tests</name>
+    <artifactId>agents-flex-graph-integration-tests</artifactId>
+
+    <!--
+        该模块只组合 SDK 子模块执行真实环境验收，不提供可发布的运行时 API。
+        普通构建会加载测试但通过 GRAPH_INTEGRATION 开关安全跳过外部环境。
+    -->
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-extractor</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-neo4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-nebula</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

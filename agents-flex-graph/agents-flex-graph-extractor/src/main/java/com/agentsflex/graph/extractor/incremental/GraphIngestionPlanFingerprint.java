@@ -75,6 +75,7 @@ final class GraphIngestionPlanFingerprint {
      * 将图数据库实际执行的全部变更纳入指纹。
      */
     private static void appendMutation(Digester digest, GraphMutation mutation) {
+        digest.add("mutation.operationId", mutation.getOperationId());
         digest.add("mutation.detach", Boolean.toString(mutation.isDetachDeletedNodes()));
         for (GraphNode node : mutation.getNodes()) {
             digest.add("node.id", node.getId());
@@ -106,6 +107,7 @@ final class GraphIngestionPlanFingerprint {
         }
         digest.add("state.status", state.getStatus().name());
         digest.add("state.revision", Long.toString(state.getRevision()));
+        digest.add("state.operationId", state.getOperationId());
         digest.add("state.contentHash", state.getContentHash());
         digest.add("state.documentVersion", state.getDocumentVersion());
         digest.add("state.schemaVersion", state.getSchemaVersion());
@@ -123,6 +125,8 @@ final class GraphIngestionPlanFingerprint {
      */
     private static void appendFact(Digester digest, GraphFactProvenance fact) {
         digest.add("fact.id", fact.getFactId());
+        digest.add("fact.operationId", fact.getOperationId());
+        digest.add("fact.documentRevision", Long.toString(fact.getDocumentRevision()));
         digest.add("fact.edge", fact.getEdgeKey().portableId());
         digest.add("fact.confidence", Double.toString(fact.getConfidence()));
         digest.add("fact.assertion", fact.getAssertionType().name());

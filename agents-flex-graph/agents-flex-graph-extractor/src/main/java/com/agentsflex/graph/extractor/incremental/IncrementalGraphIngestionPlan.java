@@ -102,6 +102,38 @@ public final class IncrementalGraphIngestionPlan {
     }
 
     /**
+     * 从持久化字段恢复一份不可变执行计划。
+     *
+     * <p>该工厂主要供 {@link GraphIngestionOperationStore} 的数据库实现反序列化原始计划。恢复实现应
+     * 完整保留 mutation、待提交状态和实体注册内容；否则计划指纹校验会拒绝继续执行。抽取结果只用于
+     * 展示和审核，可以在存储空间受限时保存为 null。</p>
+     *
+     * @param status              计划类型
+     * @param space               目标 Space
+     * @param documentId          逻辑文档 ID
+     * @param graphOptions        图写入和路由选项
+     * @param previousState       生成计划时的旧状态，首次导入时为空
+     * @param nextState           写入成功后提交的新状态
+     * @param extractionResult    可选抽取结果
+     * @param mutation            待执行图变更
+     * @param staleEdgeKeys       当前计划识别出的过期关系
+     * @param entityRegistrations 写图成功后保存的实体注册记录
+     * @return 经过防御性复制的不可变计划
+     */
+    public static IncrementalGraphIngestionPlan restore(
+        Status status, String space, String documentId,
+        GraphOptions graphOptions,
+        GraphDocumentState previousState,
+        GraphDocumentState nextState,
+        GraphExtractionResult extractionResult,
+        GraphMutation mutation,
+        Set<GraphEdgeKey> staleEdgeKeys,
+        List<GraphRegisteredEntity> entityRegistrations) {
+        return new IncrementalGraphIngestionPlan(status, space, documentId, graphOptions, previousState, nextState,
+            extractionResult, mutation, staleEdgeKeys, entityRegistrations);
+    }
+
+    /**
      * @return 计划类型。
      */
     public Status getStatus() {

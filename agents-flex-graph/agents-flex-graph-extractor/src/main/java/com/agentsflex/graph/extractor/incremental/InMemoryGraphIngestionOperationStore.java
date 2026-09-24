@@ -1,6 +1,10 @@
 package com.agentsflex.graph.extractor.incremental;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -11,6 +15,10 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
      * operationId 到最新阶段记录的映射。
      */
     private final Map<String, GraphIngestionOperation> operations = new LinkedHashMap<>();
+    /**
+     * operationId 到首次执行计划的映射，用于模拟进程恢复。
+     */
+    private final Map<String, IncrementalGraphIngestionPlan> plans = new LinkedHashMap<>();
 
     /**
      * 查询当前阶段记录。
@@ -32,6 +40,21 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
     }
 
     /**
+     * 在同一个同步临界区中原子保存操作和原始计划。
+     */
+    @Override
+    public synchronized boolean createIfAbsent(GraphIngestionOperation operation,
+                                               IncrementalGraphIngestionPlan plan) {
+        if (operation == null || plan == null) {
+            throw new IllegalArgumentException("operation and plan must not be null");
+        }
+        if (operations.containsKey(operation.getOperationId())) return false;
+        operations.put(operation.getOperationId(), operation);
+        plans.put(operation.getOperationId(), plan);
+        return true;
+    }
+
+    /**
      * 原子推进阶段。
      */
     @Override
@@ -43,6 +66,35 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
             || !sameIdentity(current, next)) return false;
         operations.put(operationId, next);
         return true;
+    }
+
+    /**
+     * 查询首次执行时冻结的计划对象。
+     */
+    @Override
+    public synchronized IncrementalGraphIngestionPlan getPlan(String operationId) {
+        return plans.get(operationId);
+    }
+
+    /**
+     * 返回按更新时间、操作号稳定排序的未完成操作。
+     */
+    @Override
+    public synchronized List<GraphIngestionOperation> listRecoverable(int limit) {
+        if (limit <= 0) throw new IllegalArgumentException("limit must be positive");
+        List<GraphIngestionOperation> result = new ArrayList<>();
+        for (GraphIngestionOperation operation : operations.values()) {
+            if (operation.getStage() != GraphIngestionOperation.Stage.COMPLETED) result.add(operation);
+        }
+        Collections.sort(result, new Comparator<GraphIngestionOperation>() {
+            @Override
+            public int compare(GraphIngestionOperation left, GraphIngestionOperation right) {
+                int time = Long.compare(left.getUpdatedAtMillis(), right.getUpdatedAtMillis());
+                return time != 0 ? time : left.getOperationId().compareTo(right.getOperationId());
+            }
+        });
+        if (result.size() > limit) result = new ArrayList<>(result.subList(0, limit));
+        return Collections.unmodifiableList(result);
     }
 
     /**

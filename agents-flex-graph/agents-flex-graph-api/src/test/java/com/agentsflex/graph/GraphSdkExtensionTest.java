@@ -188,8 +188,8 @@ public class GraphSdkExtensionTest {
         TraversalQuery query = TraversalQuery.from(TraversalQuery.NodePattern.anyNode("n")).build();
         GraphPageResult page = executor.executePage(query, GraphPageRequest.of(10, 2));
         assertTrue(page.hasNext());
-        assertEquals("offset:12", page.getNextCursor());
-        assertEquals("offset:12", page.getResult().getMetadata().getNextCursor());
+        assertTrue(page.getNextCursor().startsWith("offset:12:"));
+        assertEquals(page.getNextCursor(), page.getResult().getMetadata().getNextCursor());
         assertEquals(12, GraphPageRequest.after(page.getNextCursor(), 2).getOffset());
         assertEquals("opaque-token", GraphPageRequest.after("opaque-token", 2).getCursor());
     }
@@ -219,6 +219,6 @@ public class GraphSdkExtensionTest {
         assertEquals(3, received[0].getLimit());
         assertEquals(2, page.getResult().getRecords().size());
         assertTrue(page.hasNext());
-        assertEquals("offset:2", page.getNextCursor());
+        assertTrue(page.getNextCursor().startsWith("offset:2:"));
     }
 }

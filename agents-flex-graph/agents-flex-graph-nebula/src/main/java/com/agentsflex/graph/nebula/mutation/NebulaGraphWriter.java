@@ -26,7 +26,7 @@ public final class NebulaGraphWriter implements GraphWriter {
     /**
      * 空间刚创建或 Schema 刚传播时，StorageD 可能短暂返回 Not leader；最多重试若干次。
      */
-    private static final int MAX_RETRY_ATTEMPTS = 5;
+    private static final int MAX_RETRY_ATTEMPTS = 10;
     /**
      * leader 选举/分片注册的退避起始间隔（毫秒）。
      */
@@ -172,7 +172,8 @@ public final class NebulaGraphWriter implements GraphWriter {
         while (current != null) {
             String message = String.valueOf(current.getMessage()).toLowerCase();
             if (message.contains("not the leader") || message.contains("leader changed")
-                || message.contains("raft leader") || message.contains("try again later")) {
+                || message.contains("raft leader") || message.contains("try again later")
+                || message.contains("more than one request trying to add/update/delete one edge/vertex")) {
                 return true;
             }
             current = current.getCause();

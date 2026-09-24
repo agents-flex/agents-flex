@@ -44,6 +44,11 @@ public interface GraphQueryExecutor {
             throw new com.agentsflex.graph.UnsupportedGraphFeatureException(
                 "Portable default paging only understands offset cursors");
         }
+        String queryFingerprint = GraphQueryFingerprint.of((TraversalQuery) query);
+        if (!resolved.getQueryFingerprint().isEmpty()
+            && !resolved.getQueryFingerprint().equals(queryFingerprint)) {
+            throw new IllegalArgumentException("graph page cursor belongs to a different query");
+        }
         // 多取一条记录探测下一页；适配器可覆写为原生 keyset 分页。
         int lookAhead = resolved.getLimit() == 10_000 ? resolved.getLimit() : resolved.getLimit() + 1;
         GraphOptions resolvedOptions = options == null ? GraphOptions.DEFAULT : options;
@@ -51,7 +56,8 @@ public interface GraphQueryExecutor {
         GraphResult result = execute(((TraversalQuery) query).page(GraphPageRequest.of(resolved.getOffset(), lookAhead)), resolvedOptions);
         boolean nextPage = result.getRecords().size() > resolved.getLimit() || result.getMetadata().isTruncated();
         String next = nextPage
-            ? "offset:" + (resolved.getOffset() + Math.min(resolved.getLimit(), result.getRecords().size())) : "";
+            ? "offset:" + (resolved.getOffset() + Math.min(resolved.getLimit(), result.getRecords().size()))
+            + ":" + queryFingerprint : "";
         GraphResult pageResult = result.forPage(resolved.getLimit(), nextPage, next);
         return new GraphPageResult(pageResult, next);
     }

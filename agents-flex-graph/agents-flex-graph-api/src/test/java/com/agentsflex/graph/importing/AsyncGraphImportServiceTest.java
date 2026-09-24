@@ -10,6 +10,7 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -91,6 +92,24 @@ public class AsyncGraphImportServiceTest {
             return;
         }
         throw new AssertionError("closed import service should reject new tasks");
+    }
+
+    /** close 必须中断正在执行的任务并关闭执行器，避免应用热更新或销毁 Bean 时残留线程。 */
+    @Test
+    public void closeShouldCancelRunningTaskAndTerminateExecutor() throws Exception {
+        ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        BlockingWriter writer = new BlockingWriter();
+        AsyncGraphImportService service = new AsyncGraphImportService(writer, executor);
+        GraphImportTask submitted = service.submit(REQUEST, GraphOptions.DEFAULT);
+        assertTrue(writer.started.await(2, TimeUnit.SECONDS));
+
+        service.close();
+
+        assertEquals(GraphImportStatus.CANCELLED, service.get(submitted.getId()).getStatus());
+        assertTrue(executor.isShutdown());
+        assertTrue("import executor must terminate after close", executor.awaitTermination(2, TimeUnit.SECONDS));
+        // 重复关闭应保持幂等。
+        service.close();
     }
 
     @Test

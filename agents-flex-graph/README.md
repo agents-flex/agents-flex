@@ -6,6 +6,11 @@ The API deliberately separates portable operations from backend-specific escape 
 
 `agents-flex-graph-extractor` adds a reviewable document-to-graph pipeline on top of the API. It uses the existing `DocumentSplitter` and `ChatModel`, validates candidates against `GraphSchema`, resolves aliases across chunks, and produces a `GraphMutation` without writing it automatically.
 
+`agents-flex-graph-testkit` publishes reusable JUnit contracts for document-state stores, recoverable operation stores, and ingestion lock providers. `agents-flex-graph-integration-tests` is a non-deployable reactor module that verifies the complete extraction, recovery, write, query, and retraction lifecycle against real Neo4j and Nebula instances.
+
+测试还覆盖默认分页游标的查询指纹绑定、过滤值快照、异步服务关闭后的线程回收、不可用端点探活和同键并发 upsert；
+Nebula writer 会对 Storage 返回的并发冲突执行有限退避重试。
+
 ## Example
 
 ```java

@@ -263,6 +263,10 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-testkit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-graph-neo4j</artifactId>
         </dependency>
         <dependency>

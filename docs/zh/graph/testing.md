@@ -43,7 +43,8 @@ Neo4jCypherCompiler 和 NebulaNqlCompiler 应使用参数化断言测试：
 7. 原生 READ/WRITE 与 readOnly 保护；
 8. Explain 和不支持能力异常；
 9. 导入报告、失败记录、取消和恢复点；
-10. close 后资源释放及重复 close 的幂等性。
+10. close 后资源释放及重复 close 的幂等性；
+11. 同一节点或同一边的并发 upsert 最终只保留一个业务键，不同业务键仍可并行写入。
 
 对于不能统一的项目，要显式写成后端特定测试：Neo4j 事务提交/回滚和流式游标，Nebula 单 TAG、索引重建、无显式事务和物化游标。
 
@@ -53,9 +54,62 @@ Neo4jCypherCompiler 和 NebulaNqlCompiler 应使用参数化断言测试：
 
 - 同一业务 ID 重复 upsert 的幂等性；
 - 并发写入同一节点或同一边时的最终状态；
-- 分页 token 不重复、不遗漏且不能跨查询复用；
+- 分页 token 不重复、不遗漏且不能跨查询复用；默认 token 绑定查询结构指纹，把某条查询的 token
+  用到另一条过滤、排序或投影不同的查询时必须拒绝；
 - 异步导入关闭期间不泄漏线程；
 - 超时、断连和后端重试不会产生无法解释的重复写入。
+
+当前 API 测试还使用固定种子生成节点、边、rank、过滤树和分页形状，验证实体键、查询校验和结果截断的不变量；
+过滤条件会在构建时冻结集合、数组和 Map，防止调用方后续修改查询语义。
+
+## 增量抽取恢复测试
+
+`agents-flex-graph-extractor` 使用故障注入测试覆盖 PREPARED、GRAPH_APPLIED、STATE_COMMITTED 和
+COMPLETED 的完整恢复路径。重点验证以下故障窗口：
+
+- GraphWriter 抛异常或返回失败；
+- 图已经写入，但 GRAPH_APPLIED 日志 CAS 失败；
+- 实体注册、文档状态 CAS 或历史快照保存失败；
+- 文档状态已提交，但操作日志尚未推进；
+- 新服务实例从首次冻结的计划恢复，不重新调用模型；
+- 同一文档并发导入只产生一次有效写入，不同文档仍可并行。
+
+离线执行 Graph 全部单元和契约测试：
+
+```bash
+env -u DEEPSEEK_API_KEY mvn -f agents-flex-graph/pom.xml test
+```
+
+`agents-flex-graph-extractor` 在 Maven `verify` 阶段生成 JaCoCo 报告，并执行最低 85% 行覆盖率、60%
+分支覆盖率门禁。门禁用于防止覆盖率回退，不能替代故障注入或真实数据库断言：
+
+```bash
+env -u DEEPSEEK_API_KEY mvn \
+  -pl agents-flex-graph/agents-flex-graph-extractor -am verify
+```
+
+## 持久化扩展契约 Testkit
+
+`agents-flex-graph-testkit` 提供三个可继承的 JUnit 4 契约基类：
+
+- `AbstractGraphDocumentStateStoreContractTest`；
+- `AbstractGraphIngestionOperationStoreContractTest`；
+- `AbstractGraphIngestionLockProviderContractTest`。
+
+持久化或分布式实现只需覆盖工厂方法并为每个测试返回空的隔离实例。例如：
+
+```java
+public class JdbcOperationStoreContractTest
+    extends AbstractGraphIngestionOperationStoreContractTest {
+    @Override
+    protected GraphIngestionOperationStore createStore() {
+        return new JdbcGraphIngestionOperationStore(testDataSource);
+    }
+}
+```
+
+操作日志契约面向支持完整恢复的实现，要求 operation 与原始 plan 原子保存；只实现兼容层基础方法、
+无法保存 plan 的旧实现不能通过该契约。
 
 ## 测试数据与清理
 

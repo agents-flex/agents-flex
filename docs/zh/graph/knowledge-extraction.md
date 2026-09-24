@@ -204,18 +204,18 @@ Parser 也必须支持并发调用。
 
 ## 真实 DeepSeek 集成测试
 
-`agents-flex-graph-extractor` 包含一个 opt-in 的真实 DeepSeek 测试。密钥只从环境变量读取，未配置时
-测试会自动跳过：
+`agents-flex-graph-extractor` 包含一个 opt-in 的真实 DeepSeek 测试。测试要求显式启用在线模型开关，
+密钥只从环境变量读取；开关或密钥未配置时测试会自动跳过：
 
 ~~~bash
 export DEEPSEEK_API_KEY="your-api-key"
-mvn -pl agents-flex-graph/agents-flex-graph-extractor -am \
+GRAPH_LLM_INTEGRATION=true mvn -pl agents-flex-graph/agents-flex-graph-extractor -am \
   -Dtest=DeepseekGraphExtractorIntegrationTest \
   -Dsurefire.failIfNoSpecifiedTests=false test
 ~~~
 
 该测试使用合成小说文本，不上传业务文档，也不连接或写入图数据库。它真实验证 DeepSeek JSON Object
-输出、严格协议解析、Schema 白名单、证据来源、实体归一和 GraphMutation 映射。测试会产生供应商调用
+输出、严格协议解析、Schema 白名单、证据来源、实体归一、原文提示注入隔离、否定关系和 GraphMutation 映射。测试会产生供应商调用
 费用，并在密钥无效、账户余额不足、被限流或模型响应不满足协议时失败；这类失败不应通过伪造响应或
  放宽断言隐藏。生产环境同样不应把 API Key 写入源码、配置仓库或日志。
 
@@ -228,6 +228,7 @@ mvn -pl agents-flex-graph/agents-flex-graph-extractor -am \
 GraphDocumentStateStore documentStates = new YourPersistentDocumentStateStore();
 GraphEntityRegistry entityRegistry = new YourPersistentEntityRegistry();
 GraphIngestionOperationStore operations = new YourPersistentOperationStore();
+GraphIngestionLockProvider locks = new YourDistributedDocumentLockProvider();
 
 // 必须把同一个长期注册表装配进 Pipeline 的 resolver，抽取时才会复用历史节点 ID。
 GraphExtractionPipeline pipeline = new GraphExtractionPipeline(
@@ -241,7 +242,8 @@ IncrementalGraphIngestionService ingestion = new IncrementalGraphIngestionServic
     pipeline,
     documentStates,
     entityRegistry,
-    operations);
+    operations,
+    locks);
 
 IncrementalGraphIngestionRequest request =
     IncrementalGraphIngestionRequest.builder("novel_knowledge", "book-001/chapter-008")
@@ -293,18 +295,38 @@ IncrementalGraphIngestionResult result = ingestion.execute(plan, graphStore.writ
 ~~~
 
 状态存储使用乐观 `revision`。图数据库写入和外部状态存储无法组成跨系统事务：写图成功但状态 CAS 失败
-时，服务会抛出异常，调用方应按相同 `operationId` 重试幂等 upsert，并使用 documentId 维度的分布式锁或任务
-队列避免多实例同时处理同一文档。`GraphMutation.operationId` 会传递给适配器，适配器应使用它实现幂等。
+时，服务会抛出异常，调用方应按相同 `operationId` 重试幂等 upsert。SDK 默认使用
+`LocalGraphIngestionLockProvider`，只在当前 JVM 内按 `Space + documentId` 串行，同一实例中的不同文档仍可
+并行处理。多实例部署必须注入共享的 `GraphIngestionLockProvider` 实现，例如数据库租约、Redis 锁或任务
+分区；锁实现需要处理获取超时、租约续期和持有者身份校验。`GraphMutation.operationId` 会传递给适配器，
+适配器仍应使用它实现幂等，不能用分布式锁替代幂等和 revision CAS。
+启用不同文档并行后，注入的 `GraphExtractionPipeline`、模型客户端、自定义 resolver 和各持久化实现也必须
+是线程安全的；如果某个模型客户端不支持并发，应在该客户端自身使用连接池或限流器，而不是重新把整个
+增量服务变成全局锁。
 SDK 提供的 `InMemoryGraphDocumentStateStore` 和
 `InMemoryGraphEntityRegistry` 只适合测试，进程重启后数据会丢失。
 
-生产环境建议同时实现 `GraphIngestionOperationStore`。服务会持久化
+生产环境建议同时实现 `GraphIngestionOperationStore`。服务会原子持久化操作记录及其首次执行计划，并维护
 `PREPARED -> GRAPH_APPLIED -> STATE_COMMITTED -> COMPLETED` 状态；若进程在图写成功后退出，使用同一
 `operationId` 重试时可以跳过重复 GraphWriter 调用并继续提交状态。`FAILED` 操作允许用同一操作号重试。
 每条操作还会保存覆盖图路由、mutation、文档状态、事实来源和实体注册内容的 `planFingerprint`。即使两个
 计划基于相同 revision，只要大模型抽取结果或属性不同，也不能复用同一 `operationId`。生产存储必须原子
 实现 `createIfAbsent` 和 `compareAndSet`，并把 `operationId` 设为全局唯一键；SDK 的
 `InMemoryGraphIngestionOperationStore` 同样只适合测试，不能用于多实例恢复。
+
+应用启动后的恢复任务可以先扫描未完成操作，再按操作号恢复。`resume` 读取持久化的原计划，不会重新调用
+大模型，因此不会因模型输出非确定性而生成另一份 mutation：
+
+~~~java
+for (GraphIngestionOperation operation : ingestion.listRecoverableOperations(100)) {
+    ingestion.resume(operation.getOperationId(), graphStore.writer());
+}
+~~~
+
+生产 `GraphIngestionOperationStore` 应覆盖 `createIfAbsent(operation, plan)`、`getPlan` 和
+`listRecoverable`，并在同一个存储事务中写入操作与计划。反序列化计划时可使用
+`IncrementalGraphIngestionPlan.restore(...)`。恢复任务的调度、退避、最大尝试次数和告警由开发者的任务
+系统决定，SDK 不会自行创建后台线程。
 
 `GraphFactProvenance` 表示文档对事实的独立声明，不等同于图中的物化边。它包含稳定 `factId`、
 `operationId`、文档 revision、创建时间和原文证据；同一 `GraphEdgeKey` 可以由多个事实声明共同支持。

@@ -84,6 +84,8 @@ public interface GraphDocumentStateStore {
     default List<GraphFactProvenance> findProvenance(String space, GraphEdgeKey edgeKey) {
         List<GraphFactProvenance> result = new ArrayList<>();
         for (GraphDocumentState state : list(space)) {
+            // 当前来源只代表仍然生效的文档版本；撤回状态只应通过历史来源接口参与审计。
+            if (state.getStatus() != GraphDocumentState.Status.ACTIVE) continue;
             for (GraphFactProvenance provenance : state.getFactProvenances()) {
                 if (provenance.getEdgeKey().equals(edgeKey)) result.add(provenance);
             }

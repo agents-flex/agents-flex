@@ -6,7 +6,9 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 可移植查询使用的不可变过滤条件树。
@@ -121,7 +123,7 @@ public final class GraphFilter {
         this.alias = alias;
         this.property = property;
         this.operator = operator;
-        this.value = value;
+        this.value = immutableValue(value);
         this.children = children == null ? Collections.<GraphFilter>emptyList()
             : Collections.unmodifiableList(new ArrayList<>(children));
     }
@@ -274,6 +276,32 @@ public final class GraphFilter {
     private static int collectionSize(Object value) {
         if (value instanceof Collection) return ((Collection<?>) value).size();
         return value != null && value.getClass().isArray() ? Array.getLength(value) : 0;
+    }
+
+    /**
+     * 冻结过滤值的容器结构，避免调用方在查询创建后修改 IN、BETWEEN 或复合参数，
+     * 导致编译结果、分页指纹和实际执行条件不一致。
+     */
+    private static Object immutableValue(Object value) {
+        if (value == null) return null;
+        if (value instanceof Collection) {
+            List<Object> copy = new ArrayList<>();
+            for (Object item : (Collection<?>) value) copy.add(immutableValue(item));
+            return Collections.unmodifiableList(copy);
+        }
+        if (value instanceof Map) {
+            Map<Object, Object> copy = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                copy.put(immutableValue(entry.getKey()), immutableValue(entry.getValue()));
+            }
+            return Collections.unmodifiableMap(copy);
+        }
+        if (value.getClass().isArray()) {
+            List<Object> copy = new ArrayList<>();
+            for (int i = 0; i < Array.getLength(value); i++) copy.add(immutableValue(Array.get(value, i)));
+            return Collections.unmodifiableList(copy);
+        }
+        return value;
     }
 
     /**

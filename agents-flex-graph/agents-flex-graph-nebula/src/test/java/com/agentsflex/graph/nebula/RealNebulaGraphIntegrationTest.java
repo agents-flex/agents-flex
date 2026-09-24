@@ -71,6 +71,20 @@ public class RealNebulaGraphIntegrationTest {
         store = new NebulaGraphStore(config);
     }
 
+    /** 连接目标不可用时 health 必须返回 DOWN，并且 close 可重复调用。 */
+    @Test
+    public void shouldReportDownForUnavailableNebulaEndpoint() {
+        NebulaGraphStore unavailable = new NebulaGraphStore(new NebulaGraphStoreConfig()
+            .setHost("127.0.0.1").setPort(1).setUsername("root").setPassword("invalid")
+            .setDefaultSpace(BOOTSTRAP_SPACE));
+        try {
+            assertFalse(unavailable.health().isUp());
+        } finally {
+            unavailable.close();
+            unavailable.close();
+        }
+    }
+
     @Test
     public void shouldCreateSchemaWriteQueryAndInspectAgainstRealNebula() throws Exception {
         final String tag = "ItPerson";
@@ -433,6 +447,48 @@ public class RealNebulaGraphIntegrationTest {
                 assertEquals(8, concurrentCount);
             } finally {
                 concurrent.shutdownNow();
+            }
+
+            // 同一 VID 的并发 upsert 必须收敛为一个 TAG，不能产生重复顶点。
+            ExecutorService sameKeyExecutor = Executors.newFixedThreadPool(8);
+            try {
+                List<Future<GraphWriteResult>> sameNodeWrites = new ArrayList<>();
+                for (int i = 0; i < 16; i++) {
+                    final int index = i;
+                    sameNodeWrites.add(sameKeyExecutor.submit(() -> store.writer().mutate(GraphMutation.builder()
+                        .upsertNode(GraphNode.builder("nebula-same-key-" + suffix, tag)
+                            .property("name", "same-" + index).property("score", (long) index)
+                            .property("ratio", index / 10.0D).build())
+                        .build(), GraphOptions.ofSpace(space))));
+                }
+                for (Future<GraphWriteResult> write : sameNodeWrites) {
+                    GraphWriteResult result = write.get(20, TimeUnit.SECONDS);
+                    assertTrue(result.getMessage(), result.isSuccess());
+                }
+                GraphResult sameNodeRows = store.query().execute(NativeGraphQuery.of(
+                    "MATCH (n:" + tag + ") RETURN n." + tag + ".name AS name",
+                    Collections.<String, Object>emptyMap()), GraphOptions.ofSpace(space));
+                int sameNodeCount = 0;
+                for (com.agentsflex.graph.query.GraphRecord row : sameNodeRows.getRecords()) {
+                    if (String.valueOf(row.get("name")).startsWith("same-")) sameNodeCount++;
+                }
+                assertEquals(1, sameNodeCount);
+
+                List<Future<GraphWriteResult>> sameEdgeWrites = new ArrayList<>();
+                for (int i = 0; i < 16; i++) {
+                    sameEdgeWrites.add(sameKeyExecutor.submit(() -> store.writer().mutate(GraphMutation.builder()
+                        .upsertEdge(GraphEdge.builder(low.getId(), edgeType, high.getId()).rank(99).build())
+                        .build(), GraphOptions.ofSpace(space))));
+                }
+                for (Future<GraphWriteResult> write : sameEdgeWrites) assertTrue(write.get(20, TimeUnit.SECONDS).isSuccess());
+                GraphResult sameEdgeRows = store.query().execute(NativeGraphQuery.of(
+                    "MATCH ()-[e:" + edgeType + "]->() RETURN count(e) AS total",
+                    Collections.<String, Object>emptyMap()), GraphOptions.ofSpace(space));
+                // 此前保留了 rank=1、rank=3 和 stopOnError=false 成功写入的 rank=10，
+                // 同一 rank=99 的并发 upsert 只能额外产生一条边。
+                assertEquals(4L, ((Number) sameEdgeRows.getRecords().get(0).get("total")).longValue());
+            } finally {
+                sameKeyExecutor.shutdownNow();
             }
         } finally {
             try {
