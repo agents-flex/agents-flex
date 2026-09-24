@@ -1,50 +1,400 @@
 # 空间管理
 
-空间管理由 GraphManager 提供。它属于控制面，通常在应用启动、租户开通或迁移任务中执行。
+## 概述
+
+Graph Space 是 Graph SDK 对“一个独立图数据空间”的统一抽象。一个 Space 包含一组可以相互连接和遍历的节点、边，以及服务于这些数据的 Schema 和索引。
+
+它可以类比 MySQL 中的 Database，但两者并不完全等价：MySQL Database 主要组织表，Graph Space 组织的是一张可遍历的图。一次查询通常只能在选定的 Space 中寻找节点、关系和路径，因此 Space 不只是数据存放位置，也是建模、查询和生命周期管理的重要边界。
+
+在当前后端中：
+
+| Graph SDK 概念 | Neo4j | Nebula Graph |
+| --- | --- | --- |
+| Graph Space | Database | Space |
+| 节点类型 | Label | Tag |
+| 边类型 | Relationship Type | Edge Type |
+| 空间内结构 | 约束、索引和图数据 | Tag、Edge、索引和图数据 |
+
+Graph SDK 使用同一个 Space 概念屏蔽名称差异，但不会掩盖数据库版本、部署方式、权限和创建参数上的实际区别。
+
+## 为什么需要空间
+
+### 隔离不同知识库或业务图谱
+
+假设一个平台同时维护小说人物图谱、企业客户图谱和产品知识图谱。如果把所有数据放入同一个图中，就必须在每个节点、每条边和每次查询中持续携带业务范围条件；一旦某次查询遗漏条件，就可能读到其他图谱的数据。
+
+将它们放入不同 Space 后，每个 Space 都拥有独立的图数据和结构边界：
+
+```text
+novel_knowledge       小说人物、地点、事件及其关系
+customer_knowledge    客户、联系人、合同及其关系
+product_knowledge     产品、功能、文档及其关系
+```
+
+这种划分使导入、查询、Schema 演进和数据清理都能围绕一个明确范围进行。
+
+### 支持租户、项目和环境隔离
+
+Space 常被用于以下隔离场景：
+
+- 每个租户维护一张独立业务图；
+- 每个知识库维护独立的文档知识图谱；
+- 每个项目或业务域维护不同的节点和边模型；
+- 开发、测试、预发布和生产环境彼此隔离；
+- 新旧 Schema 或新旧数据版本并行验证。
+
+但是，Space 只是 SDK 和数据库层的数据边界，不自动等于完整的安全边界。真正的租户隔离还需要数据库账号权限、应用鉴权、路由校验、凭据管理和审计共同保证。
+
+### 限定查询与运维影响范围
+
+Space 决定一次写入、导入、查询或删除针对哪张图。明确的空间边界可以降低以下风险：
+
+- 把数据导入错误的知识库；
+- 使用另一套 Schema 解释当前数据；
+- 清理测试数据时误删生产图谱；
+- 大范围查询影响无关业务；
+- Schema 迁移波及不属于本次发布的数据。
+
+因此，Space 应被视为一项业务设计，而不是连接建立之后随意填写的字符串。
+
+## 如何划分 Space
+
+### 一库一空间
+
+每个知识库、租户或项目使用一个 Space，边界最清晰，也最容易独立导入、迁移、备份和删除。
+
+适合：
+
+- 数据必须严格隔离；
+- 不同知识库使用不同 Schema；
+- 需要独立发布和清理；
+- 不需要跨库遍历关系。
+
+需要考虑：
+
+- Space 数量较多时，数据库元数据、连接、索引和运维成本会上升；
+- 某些数据库版本不支持动态创建大量空间；
+- 不同 Space 之间通常不能使用一条 Portable Query 直接遍历。
+
+### 多租户共享空间
+
+多个租户或知识库共享一个 Space，通过节点和边上的 `tenantId`、`knowledgeBaseId` 等属性区分数据。
+
+适合：
+
+- 租户数量很大且单租户数据量较小；
+- 所有租户共享同一套 Schema；
+- 后端不适合创建大量 database/Space；
+- 应用具备可靠的租户过滤、权限和审计机制。
+
+主要风险是查询遗漏租户条件。Graph SDK 不会自动为所有查询注入租户过滤，因此如果采用共享 Space，上层必须把租户约束设计成不可绕过的业务规则，并使用数据库权限和测试共同验证。
+
+### 按业务域划分空间
+
+将同一业务域中需要频繁相互遍历的数据放在一个 Space，不同业务域分别管理。例如“商品、分类、品牌”可以属于商品图，而“账户、设备、交易”可以属于风险图。
+
+判断原则是：**需要在一次图查询中连续遍历的数据，应优先放在同一个 Space；很少发生关联且生命周期不同的数据，可以拆分。**
+
+### 不应如何划分
+
+以下方式通常会增加复杂度：
+
+- 为每个文件或每次导入创建一个 Space；
+- 仅为了节点数量变多就随意拆分 Space；
+- 把需要频繁多跳查询的节点拆到不同 Space；
+- 在同一 Space 中混放完全不同且相互无关的 Schema；
+- 把 Space 名称直接暴露给用户并允许任意输入。
+
+文件和批次通常应通过节点属性、来源信息或导入状态管理，而不是通过不断创建 Space 管理。
+
+## Space 的完整生命周期
+
+空间管理不应止于“创建”和“删除”。生产系统通常需要管理以下生命周期：
+
+```text
+规划
+  │
+  ▼
+校验配置与后端能力
+  │
+  ▼
+创建 Space
+  │
+  ▼
+等待数据面就绪
+  │
+  ▼
+应用 Schema 和索引
+  │
+  ▼
+执行读写验证
+  │
+  ▼
+开放导入与查询
+  │
+  ▼
+持续维护和 Schema 演进
+  │
+  ▼
+停止写入、归档、删除
+```
+
+Graph SDK 提供空间和 Schema 操作，但不会自动维护这套业务状态。上层平台可以保存 Space 的业务状态、负责人、Schema 版本、创建时间和退役时间，并在状态允许时才开放相应操作。
+
+## 规划空间
+
+创建前至少应确定以下内容：
+
+| 决策 | 需要回答的问题 |
+| --- | --- |
+| 业务边界 | 这个 Space 对应哪个租户、知识库、项目或环境？ |
+| 数据归属 | 哪些节点和边可以进入这里？ |
+| 查询边界 | 哪些实体必须能够在一次查询中相互遍历？ |
+| Schema | 需要哪些节点类型、边类型、属性和索引？ |
+| 容量 | 预计节点、边、属性和每日增量规模是多少？ |
+| 后端 | 使用 Neo4j 还是 Nebula，版本和部署模式是什么？ |
+| 权限 | 谁可以创建、写入、查询、迁移和删除？ |
+| 生命周期 | 数据保留多久，如何备份、归档和删除？ |
+
+Space 名称应由应用生成和维护，不建议使用随时可变的展示名称。可以把展示名称保存在业务系统中，再映射为稳定、合法的内部 Space 名称。
+
+推荐使用可读且稳定的命名规则，例如：
+
+```text
+kb_customer_service
+tenant_1001_knowledge
+risk_graph_prod
+```
+
+名称必须符合 Graph SDK 的可移植标识符规则。不要把未经校验的租户名称、文件名或用户输入直接作为 Space 名称。
 
 ## 创建空间
 
-~~~java
-GraphSpaceDefinition definition = GraphSpaceDefinition.builder("tenant_graph")
-    .partitionCount(1).replicaFactor(1).build();
+空间创建由 `GraphManager` 执行。定义中包含统一空间名称，以及部分分布式后端使用的分区和副本配置：
+
+```java
+GraphSpaceDefinition definition = GraphSpaceDefinition.builder("tenant_1001_knowledge")
+    .partitionCount(10)
+    .replicaFactor(1)
+    .build();
+
 graph.manager().createSpace(definition, GraphManager.CreateMode.IF_ABSENT);
-~~~
+```
 
-CreateMode：
+`partitionCount` 和 `replicaFactor` 主要服务于 Nebula 等分布式图数据库。Neo4j 的 database 创建不会使用这些参数。不能把统一字段理解成所有后端都具备完全相同的物理部署语义。
 
-| 模式 | 行为 |
-| --- | --- |
-| IF_ABSENT | 不存在时创建，存在时复用 |
-| FAIL_IF_EXISTS | 已存在时失败 |
-| VALIDATE_ONLY | 只检查，不执行 DDL |
+### 创建模式
+
+| 模式 | 适用场景 | 行为 |
+| --- | --- | --- |
+| `IF_ABSENT` | 应用初始化、租户开通、可重复部署 | 空间不存在时创建，存在时复用 |
+| `FAIL_IF_EXISTS` | 要求本次必须创建全新空间 | 已存在时失败，避免误用历史空间 |
+| `VALIDATE_ONLY` | 上线前检查名称和空间查询是否可执行 | 不执行创建 DDL |
+
+`IF_ABSENT` 只表示创建动作可重复，并不表示已有 Space 的 Schema、分区、副本和业务归属一定符合当前期望。复用已有空间后，仍应检查实际 Schema 和应用记录的空间元数据。
+
+`VALIDATE_ONLY` 不会创建 Space；当前语义主要验证空间名称以及后端空间查询是否可以执行，不证明当前账号拥有创建权限，也不等同于容量、Schema 和数据面验证。生产发布前仍需执行能力检查、Schema 校验和真实读写探测。
+
+## 从“已创建”到“可使用”
+
+数据库返回创建成功，不一定意味着 Space 已经能够立即承载 Schema 和数据操作。
+
+尤其在 Nebula 中，Space 创建涉及 MetaD、GraphD 和 StorageD 之间的异步传播。`SHOW SPACES` 已能看到名称时，分区可能仍未完全就绪；随后立即创建 Schema 或写入数据，可能暂时收到 `SpaceNotFound` 或 Schema 尚不可用的错误。
+
+因此，空间初始化应分阶段确认：
+
+1. `spaceExists` 或 `listSpaces` 能看到空间；
+2. 能在目标空间执行轻量管理或读取语句；
+3. Schema 已成功应用；
+4. 索引已创建并在需要时完成重建；
+5. 一次最小写入和查询验证成功；
+6. 最后才把 Space 标记为可导入、可查询。
+
+等待过程应使用有超时上限的轮询，并记录最后一次错误，不要使用无限重试。Neo4j 的就绪模型与 Nebula 不同，但应用仍应把“存在”和“业务可用”视为两个状态。
+
+## 初始化 Schema
+
+空 Space 只是容器，还不能代表业务图谱已经准备完成。创建后应应用预期 Schema，包括节点类型、边类型、属性和索引：
+
+```java
+graph.manager().applySchema(
+    "tenant_1001_knowledge",
+    expectedSchema,
+    GraphManager.SchemaMode.ADDITIVE);
+```
+
+推荐顺序是：
+
+1. 创建或确认 Space；
+2. 读取后端能力；
+3. 校验待应用的 Schema；
+4. 比较期望 Schema 与实际 Schema；
+5. 应用兼容的新增定义；
+6. 等待 Schema 和索引可用；
+7. 执行抽样读写；
+8. 开放正式导入。
+
+创建 Space 与应用 Schema 是两个独立步骤。`IF_ABSENT` 不会自动把已存在 Space 更新为最新 Schema，Schema 版本和迁移状态应由上层发布流程管理。
+
+## 默认空间与单次路由
+
+GraphStore 配置可以指定默认 Space。当一次操作没有显式传入空间时，SDK 使用默认值。需要访问其他 Space 时，通过 `GraphOptions` 为本次操作指定：
+
+```java
+GraphOptions options = GraphOptions.ofSpace("tenant_1001_knowledge");
+
+graph.writer().mutate(mutation, options);
+GraphResult result = graph.query().execute(query, options);
+```
+
+同一业务流程中的写入、查询、事务和导入必须使用一致的空间路由。常见错误包括：
+
+- 数据写入默认 Space，却在显式 Space 中查询；
+- 导入任务恢复时使用了另一个 Space；
+- 事务开始于一个 Space，内部操作却携带另一个 Space；
+- 动态配置更新后，新旧请求同时使用不同默认 Space；
+- 将用户提供的 Space 名称直接传入 SDK，绕过租户映射和权限检查。
+
+在多租户应用中，建议由服务端根据已认证租户解析 Space，而不是由客户端自由指定。关键写入和导入任务应把解析后的 Space 记录到审计日志、任务快照和恢复信息中。
+
+## 一个 GraphStore 如何访问多个 Space
+
+一个 GraphStore 通常对应一个后端连接配置和一个默认 Space。通过 `GraphOptions`，同一个 Store 可以把不同操作路由到不同 Space，但实际行为受后端连接模型影响：
+
+- Neo4j Driver 可以针对指定 database 创建会话；
+- Nebula SessionPool 通常需要绑定目标 Space，SDK 会按 Space 管理相应资源；
+- 数据库账号必须拥有目标 Space 的权限；
+- 后端版本可能限制动态空间管理或切换。
+
+GraphStore 应长期复用，不要为了切换 Space 而在每个请求中反复创建和关闭。若不同 Space 使用不同地址、账号、TLS 或资源策略，则应建立多个命名连接，并由连接注册表选择对应 Store。
 
 ## 列出和检查空间
 
-~~~java
+```java
 List<String> spaces = graph.manager().listSpaces();
-boolean exists = graph.manager().spaceExists("tenant_graph");
-~~~
+boolean exists = graph.manager().spaceExists("tenant_1001_knowledge");
+```
 
-空间存在不一定表示已经可以立即写入。Nebula 的 MetaD、GraphD、StorageD 之间存在传播窗口，应用应等待
-数据面就绪后再执行 Schema 和写入。
+这些操作常用于管理后台、启动检查和迁移任务，但需要正确理解结果：
 
-## 删除空间
+- `spaceExists` 只能说明当前账号能够观察到该名称，不代表 Schema 正确；
+- `listSpaces` 返回的是当前后端和当前账号可见的空间，不一定是数据库中的全部空间；
+- 空间可见不代表索引已经完成构建；
+- 空间存在不代表当前账号拥有写入、Schema 或删除权限；
+- 健康检查成功也不代表空间管理权限可用。
 
-~~~java
-graph.manager().dropSpace("tenant_graph");
-~~~
+如果上层平台维护了空间目录，应同时保存业务记录和数据库实际状态，并定期检测二者是否漂移。
 
-删除空间是破坏性操作。生产服务应在上层执行权限校验、二次确认、审计和备份策略。SDK 不负责恢复被删除
-的数据。
+## 持续导入与长期维护
 
-## 后端映射
+一个知识库 Space 可以在首次导入后持续使用数月或数年。后续导入不需要重新创建 Space，而应继续使用相同空间和稳定实体标识：
 
-| SDK 概念 | Neo4j | Nebula |
+```text
+首次导入：历史文档 A、B、C
+一个月后：增量导入文档 D、E
+一年后：更新文档 B，撤回文档 C，导入文档 F
+```
+
+为了保证长期维护，应在上层记录：
+
+- Space 对应的知识库或租户；
+- 当前 Schema 版本；
+- 每个文档或数据源的稳定 ID；
+- 导入批次、版本、状态和 checkpoint；
+- 节点和边的来源信息；
+- 删除、撤回和重新抽取策略。
+
+Space 提供数据边界，但不会自动解决实体消歧、来源追踪和版本冲突。这些信息需要通过稳定 ID、属性、来源边以及导入状态共同设计。
+
+## 删除与退役
+
+删除 Space 通常会删除其中的 Schema、索引、节点和边，是不可逆的高风险操作：
+
+```java
+graph.manager().dropSpace("tenant_1001_knowledge");
+```
+
+生产环境不应把 `dropSpace` 直接暴露为普通业务操作。建议采用以下退役流程：
+
+1. 将 Space 标记为只读或停止新的导入任务；
+2. 等待正在执行的写入和迁移结束；
+3. 校验目标名称、后端连接和租户归属；
+4. 获取需要的备份、导出或归档；
+5. 由具备高权限的操作者二次确认；
+6. 写入审计记录；
+7. 执行删除并轮询确认不可见；
+8. 清理上层目录、任务和凭据引用。
+
+不要使用未经解析的环境变量、通配符或用户输入拼接删除目标。Graph SDK 负责执行明确的空间删除请求，不负责恢复数据，也不替代数据库自身的备份机制。
+
+## Neo4j 与 Nebula 的差异
+
+| 维度 | Neo4j | Nebula Graph |
 | --- | --- | --- |
-| Graph Space | database | Space |
-| 创建参数 | database name | partition / replica |
-| 空间传播 | 取决于数据库状态 | MetaD 到 StorageD 的异步传播 |
+| SDK 映射 | Database | Space |
+| 创建入口 | 在 `system` database 执行管理命令 | 通过 GraphD 执行 `CREATE SPACE` |
+| 分区与副本参数 | Portable 定义中的参数不参与 database 创建 | 创建 Space 时使用 partition 和 replica |
+| 创建后传播 | 受 database 状态和集群模式影响 | MetaD、GraphD、StorageD 之间存在明显传播窗口 |
+| 动态创建和删除 | 取决于版本、Edition 和管理权限 | 取决于账号权限和集群状态 |
+| Schema | Label、约束和索引 | Tag、Edge 和索引 |
+| 多空间访问 | 按 database 创建会话 | SessionPool 通常绑定具体 Space |
 
-Neo4j Community Edition 不支持通过 SDK 创建和删除数据库；调用会转换为 UnsupportedGraphFeatureException，并在
-能力说明中标注 Enterprise 限制。
+Neo4j Community Edition 通常不支持 SDK 所需的动态 database 创建和删除管理命令。此时，空间可以由运维预先创建，应用连接已有 database；Graph SDK 会对不支持的管理操作报告明确的能力异常。
 
+Nebula 创建 Space 时需要合理设置分区数和副本数。副本数不能脱离 StorageD 数量和集群拓扑随意配置；单机开发环境常使用一个副本，生产环境应根据容灾和容量规划决定。创建完成后还必须考虑空间、Schema 和索引的异步传播时间。
+
+## 权限与安全边界
+
+建议区分以下数据库权限：
+
+- **查询账号**：只能读取指定 Space；
+- **写入账号**：可以修改节点和边，但不能删除 Space；
+- **Schema 账号**：可以应用 Schema 和索引；
+- **管理账号**：可以创建、删除 Space，并应严格限制使用范围。
+
+GraphOptions 的只读保护和应用层权限不能替代数据库授权。对于多租户系统，至少应同时具备：
+
+- 服务端租户到 Space 的可信映射；
+- 数据库最小权限账号；
+- Space 创建、迁移和删除的审计记录；
+- 原生查询的限制或审核；
+- 导入任务与 Space 的不可变绑定；
+- 备份、保留和销毁策略。
+
+## 常见问题
+
+### Space 已存在，为什么仍然无法写入？
+
+可能是数据面尚未就绪、Schema 未创建、Schema 仍在传播、索引未完成重建，或者当前账号没有写权限。应分别检查空间可见性、Schema、索引、权限和一次最小写入，而不是只反复调用 `spaceExists`。
+
+### 是否应该每次导入都创建新 Space？
+
+通常不应该。同一个知识库的后续文件和增量数据应继续导入原 Space，并依靠稳定 ID、来源信息和导入版本实现幂等更新。只有业务隔离边界、Schema 或生命周期真正不同，才考虑创建新 Space。
+
+### Space 能否替代租户权限控制？
+
+不能。Space 提供数据隔离单元，但客户端路由、数据库账号、应用鉴权和审计仍必须存在。尤其在一个管理账号可访问多个 Space 时，上层错误路由仍可能造成跨租户访问。
+
+### 能否跨 Space 查询路径？
+
+Portable Query 以单个 Space 为执行边界，不提供跨 Space 路径遍历。需要跨空间分析时，应重新评估空间划分，或由上层分别查询后合并结果；后端专属能力则需要显式使用 Native Query，并接受不可移植性。
+
+### 修改后台连接配置后，已有 Store 会自动切换吗？
+
+不会假设自动切换。GraphStore 是长期复用且绑定连接配置的运行实例。配置变化时，上层应创建并验证新 Store，原子替换连接注册项，再等待旧请求结束后关闭旧 Store，避免在请求执行中修改共享连接对象。
+
+## 推荐的生产检查清单
+
+- Space 的业务归属、名称和后端连接是否明确；
+- 空间划分是否符合实际的跨节点遍历需求；
+- 是否评估了 Space 数量带来的数据库和运维成本；
+- 是否检查后端版本、Edition、权限和能力矩阵；
+- Nebula 的分区数、副本数是否符合真实集群拓扑；
+- 创建后是否等待 Space、Schema 和索引真正可用；
+- 默认 Space 和显式路由是否有一致、可信的来源；
+- 导入任务、恢复点和事务是否绑定同一个 Space；
+- 是否使用最小权限账号并记录管理操作审计；
+- 删除前是否停止写入、完成备份并进行二次确认；
+- 数据库升级或 Graph SDK 升级后是否执行真实环境回归测试。
+
+完成空间规划和创建后，下一步通常是定义并应用 [Schema](/zh/graph/schema)，然后再进行[节点与边写入](/zh/graph/mutation)或[批量导入](/zh/graph/import)。
