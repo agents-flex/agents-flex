@@ -125,6 +125,10 @@ java -Dmcp.input.api-token=... -jar app.jar
 
 没有对应属性时当前实现会解析为空字符串。`inputs` 只承载描述信息，Manager 不会交互式询问用户。
 
+上述占位符解析只处理 `env` 字段。HTTP 传输中的 `headers` 值会原样发送，不会展开 `${input:...}` 或 `${ENV_NAME}`，也不会从同一服务的 `env` 中替换 Header。
+
+如果远端服务需要凭据，应由应用显式读取环境变量或密钥服务，构造 `headers` 后再通过 `registerFromJson(...)` 注册配置。不要将真实凭据写入版本库或日志；配置中的占位符字符串本身不是已注入的密钥。
+
 ## 传输方式
 
 ### stdio
