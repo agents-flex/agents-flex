@@ -7,7 +7,7 @@ Graph 模块按公共契约和后端实现拆分。应用只应引入实际使�
 | 模块 | 职责 |
 | --- | --- |
 | agents-flex-graph-api | 公共模型、接口、查询 DSL、Schema、导入和异常 |
-| agents-flex-graph-extractor | 基于 DocumentSplitter 和 ChatModel 的候选实体/关系抽取流水线 |
+| agents-flex-graph-extractor | 基于 DocumentSplitter 和 ChatModel 的知识抽取流程 |
 | agents-flex-graph-neo4j | Neo4j Java Driver 适配器 |
 | agents-flex-graph-nebula | Nebula Graph SessionPool 适配器 |
 
