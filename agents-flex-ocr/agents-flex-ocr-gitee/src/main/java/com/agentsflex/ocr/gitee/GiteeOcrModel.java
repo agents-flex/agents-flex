@@ -158,9 +158,10 @@ public class GiteeOcrModel extends BaseOcrModel<GiteeOcrConfig> {
             ? OcrTaskStatus.SUBMITTED : mapStatus(root.getString("status")));
         JSONObject output = root.getJSONObject("output");
         if (output != null) parseOutput(response, output);
-        if (response.getStatus() == OcrTaskStatus.FAILED) {
+        if (response.getStatus() == OcrTaskStatus.FAILED || root.get("error") != null) {
             response.setError(true);
-            response.setErrorCode(firstText(root, "error_code", "code"));
+            response.setStatus(OcrTaskStatus.FAILED);
+            response.setErrorCode(firstText(root, "error_code", "code", "error"));
             response.setErrorMessage(firstText(root, "error_message", "message"));
         }
         setProviderMetadata(response, root);
