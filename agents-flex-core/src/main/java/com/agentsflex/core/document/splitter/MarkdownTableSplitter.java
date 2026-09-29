@@ -226,7 +226,7 @@ public class MarkdownTableSplitter implements DocumentSplitter {
     /**
      * 将指定的非表格行区间合并为普通文档分段。
      *
-     * @param result      输出列表
+     * @param chunkDocuments 输出列表
      * @param lines       全部文档行
      * @param start       起始行索引，包含
      * @param end         结束行索引，不包含
@@ -248,7 +248,7 @@ public class MarkdownTableSplitter implements DocumentSplitter {
      * 下一行会超过限制，则先输出当前分段，再根据 {@link #overlapRows} 构造下一分段
      * 的重叠部分。所有表格元数据写入完成后才调用 ID 生成器。</p>
      *
-     * @param result      输出列表
+     * @param chunkDocuments 输出列表
      * @param lines       全部文档行
      * @param table       当前长表格的行区间
      * @param tableIndex  当前长表格的索引
