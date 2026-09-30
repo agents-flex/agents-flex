@@ -43,6 +43,7 @@ public class ParallelSearchProviderTest {
     private final List<String> protocolVersions = new ArrayList<>();
     private final List<String> authorizations = new ArrayList<>();
     private boolean textResponse;
+    private boolean missingTitleResponse;
 
     @Before
     public void startServer() throws IOException {
@@ -112,6 +113,21 @@ public class ParallelSearchProviderTest {
         assertEquals("Agents-Flex docs", results.get(0).getTitle());
         assertEquals("https://agentsflex.com/docs", results.get(0).getUrl());
         assertEquals("Search usage and provider setup.", results.get(0).getDescription());
+    }
+
+    @Test
+    public void shouldKeepSearchResultsWithNoOptionalTitle() {
+        missingTitleResponse = true;
+        SearchRequest request = new SearchRequest();
+        request.setQuery("Agents Flex search");
+        request.setMaxResults(5);
+
+        List<SearchResult> results = provider().search(request);
+
+        assertEquals(1, results.size());
+        assertEquals("https://agentsflex.com/no-title", results.get(0).getTitle());
+        assertEquals("https://agentsflex.com/no-title", results.get(0).getUrl());
+        assertEquals("A valid result without an optional title.", results.get(0).getDescription());
     }
 
     @Test
@@ -216,8 +232,12 @@ public class ParallelSearchProviderTest {
             } else {
                 JSONObject structured = new JSONObject();
                 JSONArray values = new JSONArray();
-                values.add(searchResult("Agents-Flex documentation", "https://agentsflex.com/docs", "Official framework guide."));
-                values.add(searchResult("Other result", "https://example.com/other", "Filtered by canonical domain selection."));
+                if (missingTitleResponse) {
+                    values.add(searchResult(null, "https://agentsflex.com/no-title", "A valid result without an optional title."));
+                } else {
+                    values.add(searchResult("Agents-Flex documentation", "https://agentsflex.com/docs", "Official framework guide."));
+                    values.add(searchResult("Other result", "https://example.com/other", "Filtered by canonical domain selection."));
+                }
                 structured.put("results", values);
                 result.put("structuredContent", structured);
             }
@@ -237,7 +257,7 @@ public class ParallelSearchProviderTest {
 
     private JSONObject searchResult(String title, String url, String excerpt) {
         JSONObject result = new JSONObject();
-        result.put("title", title);
+        if (title != null) result.put("title", title);
         result.put("url", url);
         result.put("excerpts", Collections.singletonList(excerpt));
         return result;

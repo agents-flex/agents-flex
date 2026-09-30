@@ -298,7 +298,8 @@ public class ParallelSearchProvider implements SearchProvider {
             if (item == null) continue;
             String title = item.getString("title");
             String url = item.getString("url");
-            if (StringUtil.noText(title) || StringUtil.noText(url)) continue;
+            if (StringUtil.noText(url)) continue;
+            if (StringUtil.noText(title)) title = url;
             SearchResult result = new SearchResult();
             result.setTitle(title);
             result.setUrl(url);
