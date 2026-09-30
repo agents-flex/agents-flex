@@ -140,10 +140,10 @@ public class TemporaryFileStreamDocumentSource implements DocumentSource {
      */
     private String sanitizeFileName(String fileName) {
         if (fileName == null) return "unknown";
-        return fileName
+        String sanitized = fileName
                 .replaceAll("[\\\\/:*?\"<>|]", "_")
                 .replaceAll("\\.\\.", "_")
-                .replaceAll("^\\s+|\\s+$", "")
-                .isEmpty() ? "file" : fileName;
+                .replaceAll("^\\s+|\\s+$", "");
+        return sanitized.isEmpty() ? "file" : sanitized;
     }
 }
