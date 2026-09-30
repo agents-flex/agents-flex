@@ -71,6 +71,7 @@ public class WebSearchDemo {
 //            .provider(new BochaSearchProvider(System.getenv("BOCHA_APIKEY")))
 //            .provider(new TavilySearchProvider(System.getenv("TAVILY_API_KEY")))
 //            .provider(new FirecrawlSearchProvider(System.getenv("FIRECRAWL_API_KEY")))
+//            .provider(new YouComSearchProvider(System.getenv("YDC_API_KEY")))
             .provider(new BaiduQianfanSearchProvider(System.getenv("BAIDU_APIKEY")))
             .build()));
 
