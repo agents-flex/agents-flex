@@ -50,16 +50,27 @@ public final class JdbcAgentStoreSchema extends JdbcAgentStoreSupport {
                 // MySQL 使用 MODIFY 语法；其他数据库已在上面的标准语法中完成迁移。
             }
         }
-        statement.execute("ALTER TABLE " + table("turns")
-            + " MODIFY lease_until BIGINT NULL");
+        try {
+            statement.execute("ALTER TABLE " + table("turns")
+                + " MODIFY lease_until BIGINT NULL");
+        } catch (SQLException modifyError) {
+            // 新库中并不存在该遗留列（例如多个库共用同一 MySQL 实例时，
+            // 元数据探测可能命中其他库的同名表）。视为无需迁移，不应导致启动失败。
+            if (!hasColumn(metadata, table("turns"), "lease_until")) {
+                return;
+            }
+            throw modifyError;
+        }
     }
 
     private boolean hasColumn(DatabaseMetaData metadata, String tableName, String columnName)
         throws SQLException {
-        try (ResultSet columns = metadata.getColumns(null, null, tableName, columnName)) {
+        // 限定到当前连接的库/模式，避免 schemaPattern=null 时在多个库间误判同名表。
+        String catalog = metadata.getConnection().getCatalog();
+        try (ResultSet columns = metadata.getColumns(catalog, null, tableName, columnName)) {
             if (columns.next()) return true;
         }
-        try (ResultSet columns = metadata.getColumns(null, null, tableName.toUpperCase(), columnName.toUpperCase())) {
+        try (ResultSet columns = metadata.getColumns(catalog, null, tableName.toUpperCase(), columnName.toUpperCase())) {
             return columns.next();
         }
     }
