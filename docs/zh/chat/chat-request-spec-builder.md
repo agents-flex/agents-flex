@@ -121,6 +121,7 @@ Body 在责任链末端才调用 `buildRequestBody(...)`，使用的是最终 Co
 
 ## 下一步
 
+- [OpenAI Responses API](./openai-responses.md)
 - [ChatMessageSerializer](./chat-message-serializer.md)
 - [对话拦截器](./chat-interceptor.md)
 - [ChatClient](./chat-client.md)

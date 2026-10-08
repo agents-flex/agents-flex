@@ -114,6 +114,7 @@ AiMessageParser<JSONObject> parser = (json, context) -> {
 
 ## 下一步
 
+- [OpenAI Responses API](./openai-responses.md)
 - [ChatClient](./chat-client.md)
 - [Message 消息](./message.md)
 - [Function Call](./function-call.md)

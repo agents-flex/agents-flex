@@ -36,6 +36,7 @@ const startAndChatSidebar = [
             {text: '快速开始', link: '/zh/chat/getting-started'},
             {text: 'ChatModel', link: '/zh/chat/chat-model'},
             {text: 'ChatConfig', link: '/zh/chat/chat-config'},
+            {text: 'OpenAI Responses API', link: '/zh/chat/openai-responses'},
             {text: 'Function Call', link: '/zh/chat/function-call'},
             {text: '对话拦截器', link: '/zh/chat/chat-interceptor'},
             {text: '对话上下文', link: '/zh/chat/chat-context'},
