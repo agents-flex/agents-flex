@@ -157,11 +157,11 @@ public class HttpDocumentSource implements DocumentSource {
 
     public static String sanitizeFileName(String filename) {
         if (filename == null) return "unknown";
-        return filename
+        String sanitized = filename
             .replaceAll("[\\\\/:*?\"<>|]", "_")
             .replaceAll("\\.\\.", "_")
-            .replaceAll("^\\s+|\\s+$", "")
-            .isEmpty() ? "file" : filename;
+            .replaceAll("^\\s+|\\s+$", "");
+        return sanitized.isEmpty() ? "file" : sanitized;
     }
 
     @Override

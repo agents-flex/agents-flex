@@ -252,7 +252,8 @@ public class HtmlExtractor implements DocumentExtractor {
 
             if (tagName.matches("h[1-6]")) {
                 text.append("\n")
-                    .append(repeat("##", Integer.parseInt(tagName.substring(1))))
+                    .append(repeat("#", Integer.parseInt(tagName.substring(1))))
+                    .append(" ")
                     .append(el.text().trim())
                     .append("\n\n");
             } else if (tagName.equals("p")) {
@@ -285,7 +286,7 @@ public class HtmlExtractor implements DocumentExtractor {
                 text.append("\n");
             } else {
                 for (Node child : el.childNodes()) {
-                    appendNodeText(child, text, level);
+                    appendNodeText(child, text, level + 1);
                 }
             }
         }
