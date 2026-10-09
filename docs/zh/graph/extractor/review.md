@@ -67,7 +67,7 @@ GraphIngestionRequest request = GraphIngestionRequest.builder(
 
 | 变量 | 类型 | 从哪里来、用于什么 |
 | --- | --- | --- |
-| `pipeline` | `GraphExtractionPipeline` | 按[知识抽取流程](/zh/graph/knowledge-extraction-pipeline)配置，负责调用模型、校验和实体归一 |
+| `pipeline` | `GraphExtractionPipeline` | 按[知识抽取流程](/zh/graph/extractor/extraction-process)配置，负责调用模型、校验和实体归一 |
 | `document` | `Document` | 文档解析得到的文本对象，是本次待抽取内容 |
 | `schema` | `GraphSchema` | 应用定义的实体类型、关系类型和属性约束 |
 | `request` | `GraphIngestionRequest` | 上节创建的入图请求 |
@@ -96,7 +96,7 @@ GraphReviewService reviewService = new GraphReviewService(
 
 `GraphReviewStore` 保存“等待确认的任务”，文档状态存储记录“已经入图的文档版本”，两者用途不同。内存实现的数据会在进程退出后丢失。
 
-生产环境需要自行实现持久化的 `GraphReviewStore`，保存完整任务和计划，并支持带 `reviewVersion` 条件的原子更新。文档状态等长期存储的配置见[知识入图](/zh/graph/knowledge-extraction-ingestion)。
+生产环境需要自行实现持久化的 `GraphReviewStore`，保存完整任务和计划，并支持带 `reviewVersion` 条件的原子更新。文档状态等长期存储的配置见[知识入图](/zh/graph/extractor/ingestion)。
 
 ### 按规则选择处理方式
 
@@ -312,7 +312,7 @@ GraphReviewTask archived = reviewService.archive(
 
 ### 接受时失败，是否重新抽取后再次提交？
 
-应先确认原执行是否中断，并读取任务最新状态。对已中断的 `EXECUTING` 或 `FAILED` 任务，使用 `reviewService.resume(taskId, reviewVersion, writer, actor)` 恢复原计划。恢复要求入图服务配置支持恢复的操作存储，具体配置见[故障恢复](/zh/graph/knowledge-extraction-recovery)。
+应先确认原执行是否中断，并读取任务最新状态。对已中断的 `EXECUTING` 或 `FAILED` 任务，使用 `reviewService.resume(taskId, reviewVersion, writer, actor)` 恢复原计划。恢复要求入图服务配置支持恢复的操作存储，具体配置见[故障恢复](/zh/graph/extractor/recovery)。
 
 ### 任务等待审核期间，文档已经更新怎么办？
 

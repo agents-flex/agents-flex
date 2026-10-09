@@ -19,7 +19,7 @@ Graph SDK 使用 `GraphNode`、`GraphEdge` 和 `GraphMutation` 表达这些变�
 - 定时任务撤销过期关系，或删除已经失效的实体；
 - 应用把多项相关变化组合成一次变更提交。
 
-当数据量很大、需要分批处理、观察进度或从中断位置恢复时，应使用[批量导入](/zh/graph/import)。当多项读写必须共同成功或共同失败时，应先确认后端能力，再使用[事务](/zh/graph/transaction)。
+当数据量很大、需要分批处理、观察进度或从中断位置恢复时，应使用[批量导入](/zh/graph/batch-import)。当多项读写必须共同成功或共同失败时，应先确认后端能力，再使用[事务](/zh/graph/transaction)。
 
 ## 写入前需要明确什么
 
@@ -303,4 +303,4 @@ Portable Writer 只提供两种后端的公共写入语义。需要条件更新�
 - 是否记录 operationId、Space、业务来源和错误码用于审计；
 - 写入后是否通过关键业务查询和数据质量规则完成验证。
 
-少量在线变化可以直接使用 `GraphWriter`。需要装载大量节点和边时，继续阅读[批量导入](/zh/graph/import)；需要把相关读写作为一个原子单元时，继续阅读[事务](/zh/graph/transaction)。
+少量在线变化可以直接使用 `GraphWriter`。需要装载大量节点和边时，继续阅读[批量导入](/zh/graph/batch-import)；需要把相关读写作为一个原子单元时，继续阅读[事务](/zh/graph/transaction)。

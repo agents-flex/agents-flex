@@ -138,9 +138,9 @@ Neo4j 和 Nebula 都可以作为 Graph 模块的后端，但两者在数据库�
 1. [核心概念](/zh/graph/concepts)：理解节点、边、Space 和图模型；
 2. [快速开始](/zh/graph/getting-started)：完成连接、建模、写入和查询闭环；
 3. [数据模型](/zh/graph/data-model)与[Schema 定义](/zh/graph/schema)：设计实体、关系和索引；
-4. [节点与边写入](/zh/graph/mutation)、[批量导入](/zh/graph/import)与[异步导入](/zh/graph/async-import)：建设和维护图数据；
+4. [节点与边写入](/zh/graph/mutation)、[批量导入](/zh/graph/batch-import)与[异步导入](/zh/graph/async-import)：建设和维护图数据；
 5. [查询概览](/zh/graph/query-overview)与[遍历查询](/zh/graph/traversal-query)：实现关系检索和路径分析；
 6. [后端能力对比](/zh/graph/backend-comparison)：评估 Neo4j 与 Nebula 的差异；
-7. [知识抽取模块](/zh/graph/knowledge-extraction)：从非结构化内容生成可审核、可追溯并可长期维护的图数据。
+7. [知识抽取模块](/zh/graph/extractor/overview)：从非结构化内容生成可审核、可追溯并可长期维护的图数据。
 
 生产使用前，建议继续阅读[测试指南](/zh/graph/testing)、[Docker 真实环境测试](/zh/graph/docker-integration-testing)、[故障排查](/zh/graph/troubleshooting)和[生产使用建议](/zh/graph/production-guidelines)。

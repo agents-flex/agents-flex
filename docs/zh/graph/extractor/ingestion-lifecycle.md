@@ -6,7 +6,7 @@
 
 **知识入图生命周期**描述的就是：一条候选知识如何经过计划、审核、写入、状态提交、更新、撤回和故障恢复，最终成为 Graph Space 中可查询、可维护的数据。
 
-本章讲的是一条知识从文本出现，到进入 Graph Space，再到后续更新、撤回和恢复的完整生命周期。它关注的是执行边界和状态变化，而不是 Chunk 如何分段、模型如何生成候选；一次抽取的具体处理步骤见[知识抽取流程](/zh/graph/knowledge-extraction-pipeline)。
+本章讲的是一条知识从文本出现，到进入 Graph Space，再到后续更新、撤回和恢复的完整生命周期。它关注的是执行边界和状态变化，而不是 Chunk 如何分段、模型如何生成候选；一次抽取的具体处理步骤见[知识抽取流程](/zh/graph/extractor/extraction-process)。
 
 ## 解决什么问题
 
@@ -84,7 +84,7 @@
 开发者可以根据候选证据、质量问题、实体匹配和过期关系建立自动或人工审核规则。审核通过后，应执行审核过的原计划；不要审核一份结果，再重新调用模型生成另一份计划。
 
 SDK 通过 `GraphReviewStore` 和 `GraphReviewService` 提供审核任务的创建、查询、修改、接受、拒绝和归档；
-审核页面、审批权限和具体 HTTP 路由仍由应用负责。审核细节见[审核](/zh/graph/knowledge-extraction-quality)。
+审核页面、审批权限和具体 HTTP 路由仍由应用负责。审核细节见[审核](/zh/graph/extractor/review)。
 
 ### 4. 执行：产生跨系统副作用
 
@@ -104,7 +104,7 @@ SDK 通过 `GraphReviewStore` 和 `GraphReviewService` 提供审核任务的创�
 
 `planRetraction(space, documentId, graphOptions)` 用于撤回整个逻辑文档。撤回不是提交空文档，而是生成 `RETRACTION` 计划并保存 `RETRACTED` 墓碑状态。
 
-`resume(operationId, writer)` 从持久化操作中读取原计划继续执行，不重新调用模型。故障恢复细节见[故障恢复](/zh/graph/knowledge-extraction-recovery)。
+`resume(operationId, writer)` 从持久化操作中读取原计划继续执行，不重新调用模型。故障恢复细节见[故障恢复](/zh/graph/extractor/recovery)。
 
 ## 状态与副作用边界
 
@@ -216,17 +216,17 @@ GraphIngestionResult recovered =
         graphStore.writer());
 ~~~
 
-`resume(...)` 不重新抽取模型，而是根据操作阶段跳过已经确认完成的步骤，继续后续步骤。详细故障窗口和恢复策略见[故障恢复](/zh/graph/knowledge-extraction-recovery)。
+`resume(...)` 不重新抽取模型，而是根据操作阶段跳过已经确认完成的步骤，继续后续步骤。详细故障窗口和恢复策略见[故障恢复](/zh/graph/extractor/recovery)。
 
-## 同“文档生命周期”的区别
+## 与文档状态的区别
 
-“知识入图生命周期”关注一次知识处理操作如何执行、恢复和完成；“文档生命周期”关注某个 `Space + documentId` 的版本、事实来源和 ACTIVE/RETRACTED 状态。
+“知识入图生命周期”关注一次知识处理操作如何执行、恢复和完成；核心类中的 `GraphDocumentState` 和 `GraphFactSource` 关注某个 `Space + documentId` 的版本、事实来源和 ACTIVE/RETRACTED 状态。
 
 可以这样理解：
 
 ```text
 知识入图生命周期 = 一次操作如何推进
-文档生命周期     = 文档作为知识来源如何演进
+文档状态与事实来源 = 文档作为知识来源如何演进
 ```
 
 两者通过文档 revision、operationId 和事实来源关联，但不是同一个状态机。
@@ -267,7 +267,6 @@ operationId 标识一次业务操作；节点由实体归一产生，边由 `Gra
 
 ## 下一步阅读
 
-- [数据模型](/zh/graph/knowledge-extraction-contract)：了解阶段之间传递的数据；
-- [审核](/zh/graph/knowledge-extraction-quality)：了解如何审核候选和执行计划；
-- [知识入图](/zh/graph/knowledge-extraction-ingestion)：了解版本差异和写入顺序；
-- [文档生命周期](/zh/graph/knowledge-extraction-lifecycle)：了解来源、版本和撤回语义。
+- [核心类](/zh/graph/extractor/core-classes)：了解阶段之间传递的数据、状态和扩展类；
+- [审核](/zh/graph/extractor/review)：了解如何审核候选和执行计划；
+- [知识入图](/zh/graph/extractor/ingestion)：了解版本差异、写入顺序和撤回语义。

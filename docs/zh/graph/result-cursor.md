@@ -25,4 +25,3 @@ executeCursor 使用统一的内存包装器，并不代表后端真正支持流
 
 游标同样遵守 GraphOptions.maxRecords。达到上限后，metadata.truncated 会说明后端仍有未返回记录。需要继续
 读取时改用分页，而不是重复读取同一游标。
-

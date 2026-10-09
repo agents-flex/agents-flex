@@ -197,4 +197,4 @@ Pipeline 中的 Resolver 负责查询和映射；入图服务在写图成功后�
 - 合并、拆分和别名修改是否有审计；
 - 默认内存注册表是否仅用于测试。
 
-身份确定后，继续阅读[知识入图](/zh/graph/knowledge-extraction-ingestion)。
+身份确定后，继续阅读[知识入图](/zh/graph/extractor/ingestion)。

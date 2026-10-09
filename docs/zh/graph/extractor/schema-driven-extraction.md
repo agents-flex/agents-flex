@@ -454,4 +454,4 @@ if (!result.hasErrors()) {
 - 后端数据库 Schema 是否在入图前独立应用并验证；
 - Schema 变化是否配套历史数据迁移或重抽策略。
 
-Schema 确定后，下一步阅读[知识抽取流程](/zh/graph/knowledge-extraction-pipeline)。
+Schema 确定后，下一步阅读[知识抽取流程](/zh/graph/extractor/extraction-process)。

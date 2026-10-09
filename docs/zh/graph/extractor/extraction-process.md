@@ -15,7 +15,7 @@
 
 **知识抽取流程**就是把一份文档按可管理的文本单元分段，逐段发现候选实体和关系，再统一完成校验、实体归一和图变更映射的处理过程。
 
-它解决的是“文本如何被转换成可审核的图知识”，而不是“如何把知识写入图数据库”。流程最终产生 `GraphExtractionResult`，不会自动修改 Neo4j、Nebula 或其他图数据库。计划、审核、写入、更新和恢复属于[知识入图生命周期](/zh/graph/knowledge-extraction-flow)。
+它解决的是“文本如何被转换成可审核的图知识”，而不是“如何把知识写入图数据库”。流程最终产生 `GraphExtractionResult`，不会自动修改 Neo4j、Nebula 或其他图数据库。计划、审核、写入、更新和恢复属于[知识入图生命周期](/zh/graph/extractor/ingestion-lifecycle)。
 
 `GraphExtractionPipeline` 把完整文档拆成可管理的 Chunk，对每个 Chunk 执行候选抽取和校验，再统一完成实体归一与 Mutation 映射。
 
@@ -329,4 +329,4 @@ Chunk ID 只能定位分段；父 documentId 用于跨版本状态、事实来�
 - 模型和抽取配置是否在任务期间固定；
 - 原始文档、Chunk 和证据偏移是否可以重建。
 
-流水线产生候选后，继续阅读[审核](/zh/graph/knowledge-extraction-quality)。
+流水线产生候选后，继续阅读[审核](/zh/graph/extractor/review)。

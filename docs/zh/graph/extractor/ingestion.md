@@ -136,7 +136,7 @@ if (plan.getType() != GraphIngestionPlan.Type.NO_OP) {
 ~~~
 
 后台查询和人工确认统一调用 `reviewService.get/list/accept/reject`；修改候选调用 `applyPatch`。
-配置和完整示例参见[审核](/zh/graph/knowledge-extraction-quality)。自动接受仍直接调用 `ingest` 或 `execute`。
+配置和完整示例参见[审核](/zh/graph/extractor/review)。自动接受仍直接调用 `ingest` 或 `execute`。
 
 计划包含：
 
@@ -199,7 +199,7 @@ Space + documentId + contentHash + documentVersion
   -> 完成操作状态
 ~~~
 
-图数据库和状态存储通常不能组成一个事务，因此任何阶段都可能中断。生产环境必须配置操作存储并按原计划恢复，详见[故障恢复](/zh/graph/knowledge-extraction-recovery)。
+图数据库和状态存储通常不能组成一个事务，因此任何阶段都可能中断。生产环境必须配置操作存储并按原计划恢复，详见[故障恢复](/zh/graph/extractor/recovery)。
 
 ## 与普通批量导入的区别
 
@@ -244,4 +244,4 @@ Space + documentId + contentHash + documentVersion
 - 图写入后是否提交版本历史和事实来源；
 - 首次入图和后续文档更新是否执行相同的数据质量规则。
 
-新旧版本差异和撤回策略见[文档生命周期](/zh/graph/knowledge-extraction-lifecycle)。
+新旧版本差异和撤回策略见[核心类](/zh/graph/extractor/core-classes)中的 `GraphDocumentState` 与 `GraphFactSource`。

@@ -397,4 +397,4 @@ Portable Query 以单个 Space 为执行边界，不提供跨 Space 路径遍历
 - 删除前是否停止写入、完成备份并进行二次确认；
 - 数据库升级或 Graph SDK 升级后是否执行真实环境回归测试。
 
-完成空间规划和创建后，下一步通常是定义并应用 [Schema](/zh/graph/schema)，然后再进行[节点与边写入](/zh/graph/mutation)或[批量导入](/zh/graph/import)。
+完成空间规划和创建后，下一步通常是定义并应用 [Schema](/zh/graph/schema)，然后再进行[节点与边写入](/zh/graph/mutation)或[批量导入](/zh/graph/batch-import)。

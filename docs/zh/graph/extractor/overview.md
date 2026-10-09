@@ -151,23 +151,19 @@ Document + 文档版本 + 已有文档状态 + 实体注册表
 
 第一次接入时建议依次阅读：
 
-1. [Schema 驱动抽取](/zh/graph/knowledge-extraction-schema)：先确定允许抽取什么；
-2. [知识抽取流程](/zh/graph/knowledge-extraction-pipeline)：理解文本如何进入抽取流程；
-3. [知识入图生命周期](/zh/graph/knowledge-extraction-flow)：明确抽取、计划、执行和恢复的副作用边界；
-4. [数据模型](/zh/graph/knowledge-extraction-contract)：理解请求、候选、证据和身份字段；
-5. [审核](/zh/graph/knowledge-extraction-quality)：决定什么可以进入审核和 Mutation，并把候选、证据和计划接入自己的产品流程；
-7. [实体归一](/zh/graph/knowledge-extraction-entity-resolution)：避免重复实体；
-8. [知识入图](/zh/graph/knowledge-extraction-ingestion)：把结果接入目标 Space。
+1. [Schema 驱动抽取](/zh/graph/extractor/schema-driven-extraction)：先确定允许抽取什么；
+2. [知识抽取流程](/zh/graph/extractor/extraction-process)：理解文本如何进入抽取流程；
+3. [知识入图生命周期](/zh/graph/extractor/ingestion-lifecycle)：明确抽取、计划、执行和恢复的副作用边界；
+4. [核心类](/zh/graph/extractor/core-classes)：按包了解请求、候选、状态、入图和扩展类；
+5. [审核](/zh/graph/extractor/review)：决定什么可以进入审核和 Mutation，并把候选、证据和计划接入自己的产品流程；
+6. [实体归一](/zh/graph/extractor/entity-resolution)：避免重复实体；
+7. [知识入图](/zh/graph/extractor/ingestion)：把结果接入目标 Space。
 
 准备生产运行时继续阅读：
 
-9. [文档生命周期](/zh/graph/knowledge-extraction-lifecycle)；
-10. [状态模型](/zh/graph/knowledge-extraction-state)；
-11. [故障恢复](/zh/graph/knowledge-extraction-recovery)；
-12. [错误处理](/zh/graph/knowledge-extraction-errors)；
-13. [模型接入](/zh/graph/knowledge-extraction-model-security)；
-14. [扩展接口](/zh/graph/knowledge-extraction-extension)；
-15. [生产实践](/zh/graph/knowledge-extraction-production)。
+8. [故障恢复](/zh/graph/extractor/recovery)；
+9. [错误处理](/zh/graph/extractor/error-handling)；
+10. [模型接入](/zh/graph/extractor/model-integration)。
 
 ## 最小依赖
 

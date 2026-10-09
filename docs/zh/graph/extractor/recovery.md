@@ -215,4 +215,4 @@ Graph 数据库、状态库、消息队列和对象存储不是一个统一事�
 - 是否有图、文档状态、注册表之间的周期对账；
 - 是否提供人工恢复和补偿流程。
 
-模型自身的协议、隐私和真实测试要求见[模型接入](/zh/graph/knowledge-extraction-model-security)。
+模型自身的协议、隐私和真实测试要求见[模型接入](/zh/graph/extractor/model-integration)。

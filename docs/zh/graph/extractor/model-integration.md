@@ -199,4 +199,4 @@ GRAPH_LLM_INTEGRATION=true mvn \
 - 是否有领域标注集和版本对比指标；
 - 是否同时运行确定性测试与真实模型回归。
 
-完整的扩展点、部署和运维建议见[生产实践](/zh/graph/knowledge-extraction-production)。
+完整的扩展点、部署和运维建议见[核心类](/zh/graph/extractor/core-classes)。

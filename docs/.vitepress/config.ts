@@ -197,42 +197,38 @@ const graphSidebar = [
     {
         text: '写入、导入与事务', items: [
             {text: '节点与边写入', link: '/zh/graph/mutation'},
-            {text: '批量导入', link: '/zh/graph/import'},
+            {text: '批量导入', link: '/zh/graph/batch-import'},
             {text: '异步导入任务', link: '/zh/graph/async-import'},
             {text: '事务', link: '/zh/graph/transaction'},
         ]
     },
     {
         text: '知识抽取模块', items: [
-            {text: '模块概览', link: '/zh/graph/knowledge-extraction'},
-            {text: 'Schema 驱动抽取', link: '/zh/graph/knowledge-extraction-schema'},
-            {text: '知识抽取流程', link: '/zh/graph/knowledge-extraction-pipeline'},
-            {text: '知识入图生命周期', link: '/zh/graph/knowledge-extraction-flow'},
-            {text: '数据模型', link: '/zh/graph/knowledge-extraction-contract'},
-            {text: '审核', link: '/zh/graph/knowledge-extraction-quality'},
-            {text: '实体归一', link: '/zh/graph/knowledge-extraction-entity-resolution'},
-            {text: '增量入图', link: '/zh/graph/knowledge-extraction-ingestion'},
-            {text: '文档生命周期', link: '/zh/graph/knowledge-extraction-lifecycle'},
-            {text: '状态模型', link: '/zh/graph/knowledge-extraction-state'},
-            {text: '故障恢复', link: '/zh/graph/knowledge-extraction-recovery'},
-            {text: '错误处理', link: '/zh/graph/knowledge-extraction-errors'},
-            {text: '模型接入', link: '/zh/graph/knowledge-extraction-model-security'},
-            {text: '扩展接口', link: '/zh/graph/knowledge-extraction-extension'},
-            {text: '生产实践', link: '/zh/graph/knowledge-extraction-production'},
+            {text: '模块概览', link: '/zh/graph/extractor/overview'},
+            {text: 'Schema 驱动抽取', link: '/zh/graph/extractor/schema-driven-extraction'},
+            {text: '知识抽取流程', link: '/zh/graph/extractor/extraction-process'},
+            {text: '知识入图生命周期', link: '/zh/graph/extractor/ingestion-lifecycle'},
+            {text: '核心类', link: '/zh/graph/extractor/core-classes'},
+            {text: '审核', link: '/zh/graph/extractor/review'},
+            {text: '实体归一', link: '/zh/graph/extractor/entity-resolution'},
+            {text: '知识入图', link: '/zh/graph/extractor/ingestion'},
+            {text: '故障恢复', link: '/zh/graph/extractor/recovery'},
+            {text: '错误处理', link: '/zh/graph/extractor/error-handling'},
+            {text: '模型接入', link: '/zh/graph/extractor/model-integration'},
         ]
     },
     {
         text: '统一查询', items: [
             {text: '查询概览', link: '/zh/graph/query-overview'},
             {text: '遍历查询', link: '/zh/graph/traversal-query'},
-            {text: '过滤条件', link: '/zh/graph/filter-expression'},
+            {text: '过滤条件', link: '/zh/graph/filter-conditions'},
             {text: '聚合查询', link: '/zh/graph/aggregation'},
             {text: 'Union 查询', link: '/zh/graph/union-query'},
             {text: '分页', link: '/zh/graph/pagination'},
-            {text: '结果游标', link: '/zh/graph/cursor'},
+            {text: '结果游标', link: '/zh/graph/result-cursor'},
             {text: '原生查询', link: '/zh/graph/native-query'},
             {text: 'Explain 执行计划', link: '/zh/graph/explain'},
-            {text: '结果模型', link: '/zh/graph/graph-result'},
+            {text: '结果模型', link: '/zh/graph/query-result'},
         ]
     },
     {
