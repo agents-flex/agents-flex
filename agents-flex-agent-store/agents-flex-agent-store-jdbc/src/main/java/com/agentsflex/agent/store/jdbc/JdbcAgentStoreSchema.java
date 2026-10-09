@@ -1,8 +1,6 @@
 package com.agentsflex.agent.store.jdbc;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -26,52 +24,8 @@ public final class JdbcAgentStoreSchema extends JdbcAgentStoreSupport {
                 + "cancellation_requested BOOLEAN NOT NULL, payload " + binary + " NOT NULL)");
             statement.execute("CREATE TABLE IF NOT EXISTS " + table("compression_states") + " ("
                 + "conversation_id VARCHAR(191) PRIMARY KEY, version BIGINT NOT NULL, payload " + binary + " NOT NULL)");
-            // 旧版本表可能包含 lease_until 且声明为 NOT NULL。新的 Store 不再写租约列，
-            // 因此必须把遗留列改为可空，避免升级后的 INSERT 因缺少 lease 值失败。
-            makeLegacyLeaseColumnNullable(connection, statement);
         } catch (SQLException error) {
             throw failure("initialize JDBC Agent Store schema", error);
-        }
-    }
-
-    private void makeLegacyLeaseColumnNullable(Connection connection, Statement statement) throws SQLException {
-        DatabaseMetaData metadata = connection.getMetaData();
-        if (!hasColumn(metadata, table("turns"), "lease_until")) return;
-        try {
-            statement.execute("ALTER TABLE " + table("turns")
-                + " ALTER COLUMN lease_until DROP NOT NULL");
-            return;
-        } catch (SQLException dropNotNullSyntaxError) {
-            try {
-                statement.execute("ALTER TABLE " + table("turns")
-                    + " ALTER COLUMN lease_until BIGINT NULL");
-                return;
-            } catch (SQLException standardSyntaxError) {
-                // MySQL 使用 MODIFY 语法；其他数据库已在上面的标准语法中完成迁移。
-            }
-        }
-        try {
-            statement.execute("ALTER TABLE " + table("turns")
-                + " MODIFY lease_until BIGINT NULL");
-        } catch (SQLException modifyError) {
-            // 新库中并不存在该遗留列（例如多个库共用同一 MySQL 实例时，
-            // 元数据探测可能命中其他库的同名表）。视为无需迁移，不应导致启动失败。
-            if (!hasColumn(metadata, table("turns"), "lease_until")) {
-                return;
-            }
-            throw modifyError;
-        }
-    }
-
-    private boolean hasColumn(DatabaseMetaData metadata, String tableName, String columnName)
-        throws SQLException {
-        // 限定到当前连接的库/模式，避免 schemaPattern=null 时在多个库间误判同名表。
-        String catalog = metadata.getConnection().getCatalog();
-        try (ResultSet columns = metadata.getColumns(catalog, null, tableName, columnName)) {
-            if (columns.next()) return true;
-        }
-        try (ResultSet columns = metadata.getColumns(catalog, null, tableName.toUpperCase(), columnName.toUpperCase())) {
-            return columns.next();
         }
     }
 
