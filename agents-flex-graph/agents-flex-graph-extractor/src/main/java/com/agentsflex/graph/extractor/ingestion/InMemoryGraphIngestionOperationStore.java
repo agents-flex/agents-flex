@@ -29,13 +29,10 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
     }
 
     /**
-     * 原子创建操作。
+     * 支持当前进程内的计划恢复；进程退出后仍需由持久化实现保存记录。
      */
     @Override
-    public synchronized boolean createIfAbsent(GraphIngestionOperation operation) {
-        if (operation == null) throw new IllegalArgumentException("operation must not be null");
-        if (operations.containsKey(operation.getOperationId())) return false;
-        operations.put(operation.getOperationId(), operation);
+    public boolean isRecoverySupported() {
         return true;
     }
 
@@ -80,7 +77,7 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
      * 返回按更新时间、操作号稳定排序的未完成操作。
      */
     @Override
-    public synchronized List<GraphIngestionOperation> listRecoverable(int limit) {
+    public synchronized List<GraphIngestionOperation> listRecoverableOperations(int limit) {
         if (limit <= 0) throw new IllegalArgumentException("limit must be positive");
         List<GraphIngestionOperation> result = new ArrayList<>();
         for (GraphIngestionOperation operation : operations.values()) {

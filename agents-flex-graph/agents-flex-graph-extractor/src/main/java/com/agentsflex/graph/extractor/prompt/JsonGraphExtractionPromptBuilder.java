@@ -64,9 +64,9 @@ public final class JsonGraphExtractionPromptBuilder implements GraphExtractionPr
             .append("\"targetMentionId\":\"m2\",\"rank\":0,\"properties\":{},\"evidence\":\"原文\",")
             .append("\"startOffset\":-1,\"endOffset\":-1,\"confidence\":0.9,")
             .append("\"assertionType\":\"EXPLICIT\"}]}\n\n");
-        if (!request.getContext().isEmpty()) {
+        if (!request.getPreviousContext().isEmpty()) {
             prompt.append("<<<UNTRUSTED_CONTEXT_BEGIN>>>\n")
-                .append(request.getContext())
+                .append(request.getPreviousContext())
                 .append("\n<<<UNTRUSTED_CONTEXT_END>>>\n\n");
         }
         prompt.append("<<<UNTRUSTED_CURRENT_TEXT_BEGIN>>>\n")

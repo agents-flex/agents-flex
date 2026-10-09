@@ -34,8 +34,8 @@ public class GraphCandidateMutationMapper {
         for (GraphRelationCandidate relation : relations) {
             if (relation == null) throw new IllegalArgumentException("relations must not contain null elements");
             // 关系仍引用候选键，必须通过实体归一结果转换成最终数据库节点 ID。
-            String source = resolution.nodeId(relation.getSourceCandidateKey());
-            String target = resolution.nodeId(relation.getTargetCandidateKey());
+            String source = resolution.findNodeId(relation.getSourceCandidateKey());
+            String target = resolution.findNodeId(relation.getTargetCandidateKey());
             if (source == null || target == null) {
                 throw new GraphExtractionException("Resolved node is missing for relation endpoint: "
                     + relation.getSourceCandidateKey() + " -> " + relation.getTargetCandidateKey());

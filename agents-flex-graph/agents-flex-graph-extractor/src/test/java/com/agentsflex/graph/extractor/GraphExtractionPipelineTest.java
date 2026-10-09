@@ -92,7 +92,7 @@ public class GraphExtractionPipelineTest {
         List<String> contexts = new ArrayList<>();
         GraphExtractor extractor = request -> {
             chunkIds.add(request.getChunkId());
-            contexts.add(request.getContext());
+            contexts.add(request.getPreviousContext());
             return new GraphCandidateResult(Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), "{}");
         };
@@ -199,7 +199,7 @@ public class GraphExtractionPipelineTest {
 
         @Override
         public GraphCandidateResult extract(GraphExtractionRequest request) {
-            contexts.add(request.getContext());
+            contexts.add(request.getPreviousContext());
             if (request.getText().startsWith("林默")) {
                 GraphEntityCandidate person = entity(request, "m1", "林默", "Character",
                     Collections.singletonList("林公子"));

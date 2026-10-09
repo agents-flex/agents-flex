@@ -39,12 +39,19 @@ public class InMemoryGraphIngestionOperationStoreTest {
     }
 
     /**
-     * 兼容旧接口时只创建操作，不得伪造一个不存在的恢复计划。
+     * 操作与计划缺一不可，失败不能留下部分记录。
      */
     @Test
-    public void legacyCreateShouldLeavePlanAbsent() {
+    public void atomicCreationShouldRequirePlan() {
         InMemoryGraphIngestionOperationStore store = new InMemoryGraphIngestionOperationStore();
-        assertTrue(store.createIfAbsent(operation("operation-1", "doc-1", 10L)));
+        assertTrue(store.isRecoverySupported());
+        try {
+            store.createIfAbsent(operation("operation-1", "doc-1", 10L), null);
+            fail("plan must be required");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("plan"));
+        }
+        assertNull(store.get("operation-1"));
         assertNull(store.getPlan("operation-1"));
     }
 
@@ -76,7 +83,7 @@ public class InMemoryGraphIngestionOperationStoreTest {
     public void compareAndSetShouldProtectStageAndIdentity() {
         InMemoryGraphIngestionOperationStore store = new InMemoryGraphIngestionOperationStore();
         GraphIngestionOperation prepared = operation("operation-1", "doc-1", 10L);
-        store.createIfAbsent(prepared);
+        store.createIfAbsent(prepared, plan("operation-1", "doc-1"));
         GraphIngestionOperation applied = prepared.transition(GraphIngestionOperation.Stage.GRAPH_APPLIED, 11L, "");
 
         assertFalse(store.compareAndSet("operation-1", GraphIngestionOperation.Stage.FAILED, applied));
@@ -92,15 +99,15 @@ public class InMemoryGraphIngestionOperationStoreTest {
     @Test
     public void recoverableScanShouldBeStableBoundedAndReadOnly() {
         InMemoryGraphIngestionOperationStore store = new InMemoryGraphIngestionOperationStore();
-        store.createIfAbsent(operation("b", "doc-b", 10L));
-        store.createIfAbsent(operation("a", "doc-a", 10L));
+        store.createIfAbsent(operation("b", "doc-b", 10L), plan("b", "doc-b"));
+        store.createIfAbsent(operation("a", "doc-a", 10L), plan("a", "doc-a"));
         GraphIngestionOperation completed = operation("completed", "doc-c", 1L)
             .transition(GraphIngestionOperation.Stage.GRAPH_APPLIED, 2L, "")
             .transition(GraphIngestionOperation.Stage.STATE_COMMITTED, 3L, "")
             .transition(GraphIngestionOperation.Stage.COMPLETED, 4L, "");
-        store.createIfAbsent(completed);
+        store.createIfAbsent(completed, plan("completed", "doc-c"));
 
-        List<GraphIngestionOperation> values = store.listRecoverable(1);
+        List<GraphIngestionOperation> values = store.listRecoverableOperations(1);
         assertEquals(1, values.size());
         assertEquals("a", values.get(0).getOperationId());
         try {
@@ -110,7 +117,7 @@ public class InMemoryGraphIngestionOperationStoreTest {
             // 只读集合符合契约。
         }
         try {
-            store.listRecoverable(0);
+            store.listRecoverableOperations(0);
             fail("non-positive limit must be rejected");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("positive"));
@@ -163,12 +170,12 @@ public class InMemoryGraphIngestionOperationStoreTest {
     }
 
     /**
-     * 创建可由恢复日志保存的最小 READY 计划。
+     * 创建可由恢复日志保存的最小 INGESTION 计划。
      */
     private static GraphIngestionPlan plan(String operationId, String documentId) {
         GraphDocumentState next = GraphDocumentState.builder("space", documentId, "hash")
             .revision(1L).operationId(operationId).build();
-        return GraphIngestionPlan.restore(GraphIngestionPlan.Status.READY, "space", documentId,
+        return GraphIngestionPlan.restore(GraphIngestionPlan.Type.INGESTION, "space", documentId,
             GraphOptions.ofSpace("space"), null, next, null,
             GraphMutation.builder().operationId(operationId).build(), Collections.emptySet(),
             Collections.emptyList());

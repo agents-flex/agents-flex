@@ -32,11 +32,11 @@ GraphExtractionResult
 
 ### 执行计划
 
-`GraphIngestionPlan` 描述基于某个文档 revision 准备执行的变更，其状态为：
+`GraphIngestionPlan` 描述基于某个文档 revision 准备执行的变更。通过 `getType()` 获取计划类型：
 
 ```text
-UNCHANGED   内容和配置没有变化，无需写图
-READY       首次导入或新版本已经形成变更计划
+NO_OP       内容和配置没有变化，无需写图
+INGESTION   首次导入或新版本已经形成变更计划
 RETRACTION  准备撤回当前文档来源
 ```
 
@@ -89,7 +89,7 @@ PREPARED -> FAILED -> PREPARED
 | `GraphIngestionOperation` | operationId | PREPARED 到 COMPLETED | 只表示执行进度 |
 | `GraphDocumentState` | Space + documentId + revision | ACTIVE/RETRACTED 版本演进 | 是，已提交版本 |
 
-一次文档更新可能产生一个抽取结果和一个 READY 计划；执行该计划时创建操作记录；操作完成后，新 `GraphDocumentState` 才成为当前已提交版本。
+一次文档更新可能产生一个抽取结果和一个 INGESTION 计划；执行该计划时创建操作记录；操作完成后，新 `GraphDocumentState` 才成为当前已提交版本。
 
 ## 推荐持久化方式
 
@@ -111,9 +111,9 @@ PREPARED -> FAILED -> PREPARED
 
 不是。它只表示执行流程完成。业务正确性仍取决于 Schema、审核、实体归一、来源和写入后验证。
 
-### `READY` 是否可以直接展示为已入图？
+### `INGESTION` 是否可以直接展示为已入图？
 
-不可以。READY 只表示存在可执行计划，应在 `execute` 成功并完成状态提交后展示为生效。
+不可以。INGESTION 只表示存在可执行计划，应在 `execute` 成功并完成状态提交后展示为生效。
 
 ### 可以只保存文档状态，不保存计划吗？
 

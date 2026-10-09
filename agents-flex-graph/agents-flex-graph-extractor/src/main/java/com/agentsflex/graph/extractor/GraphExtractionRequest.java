@@ -10,7 +10,7 @@ import java.util.Map;
  * 单个文本分段的不可变知识抽取请求。
  *
  * <p>请求同时携带当前正文、只读消歧上下文、Schema、来源信息和质量选项。扩展实现应只从
- * {@link #getText()} 抽取事实，不能把 {@link #getContext()} 中的内容当成当前 Chunk 的证据。</p>
+ * {@link #getText()} 抽取事实，不能把 {@link #getPreviousContext()} 中的内容当成当前 Chunk 的证据。</p>
  */
 public final class GraphExtractionRequest {
     /**
@@ -32,7 +32,7 @@ public final class GraphExtractionRequest {
     /**
      * 只用于指代消解的前文，不允许作为候选证据。
      */
-    private final String context;
+    private final String previousContext;
     /**
      * 从来源 Document 复制的只读元数据快照。
      */
@@ -55,7 +55,7 @@ public final class GraphExtractionRequest {
         schema = builder.schema;
         documentId = builder.documentId == null ? "" : builder.documentId.trim();
         chunkId = builder.chunkId.trim();
-        context = builder.context == null ? "" : builder.context;
+        previousContext = builder.previousContext == null ? "" : builder.previousContext;
         metadata = Collections.unmodifiableMap(new LinkedHashMap<>(builder.metadata));
         options = builder.options == null ? GraphExtractionOptions.DEFAULT : builder.options;
     }
@@ -91,8 +91,8 @@ public final class GraphExtractionRequest {
     /**
      * @return 只用于消歧的前文上下文。
      */
-    public String getContext() {
-        return context;
+    public String getPreviousContext() {
+        return previousContext;
     }
 
     /**
@@ -147,7 +147,7 @@ public final class GraphExtractionRequest {
         /**
          * 仅用于指代消解的前文。
          */
-        private String context;
+        private String previousContext;
         /**
          * 待复制到证据对象的来源元数据。
          */
@@ -179,8 +179,8 @@ public final class GraphExtractionRequest {
          * @param value 仅用于指代消解的前文；允许为 {@code null}
          * @return 当前构造器
          */
-        public Builder context(String value) {
-            context = value;
+        public Builder previousContext(String value) {
+            previousContext = value;
             return this;
         }
 

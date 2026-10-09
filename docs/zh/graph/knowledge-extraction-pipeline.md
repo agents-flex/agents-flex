@@ -182,7 +182,7 @@ GraphExtractionResult result =
 
 文档重叠会让前后 Chunk 包含部分相同原文，提高跨边界关系被看见的概率，但也会产生重复候选。
 
-流水线还会把上一 Chunk 尾部作为下一 Chunk 的消歧上下文，长度由 `contextCharacters` 控制。上下文只帮助模型理解当前文本，不是当前 Chunk 的证据来源；默认提示词要求不得从上下文重复抽取事实。
+流水线还会把上一 Chunk 尾部作为下一 Chunk 的消歧上下文，长度由 `maxPreviousContextCharacters` 控制。上下文只帮助模型理解当前文本，不是当前 Chunk 的证据来源；默认提示词要求不得从上下文重复抽取事实。
 
 即便如此，不能假设模型一定遵守。证据校验和 Mutation 去重仍然必须存在。
 

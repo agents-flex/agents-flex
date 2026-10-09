@@ -196,7 +196,7 @@ public final class GraphExtractionPipeline {
             Document chunk = chunks.get(i);
             String chunkId = chunkIds.get(i);
             GraphExtractionRequest request = GraphExtractionRequest.builder(chunk.getContent(), schema, chunkId)
-                .documentId(documentId).context(tail(previous, options.getContextCharacters()))
+                .documentId(documentId).previousContext(tail(previous, options.getMaxPreviousContextCharacters()))
                 .metadata(chunk.getMetadataMap()).options(options).build();
             GraphCandidateResult extracted;
             try {
@@ -214,13 +214,13 @@ public final class GraphExtractionPipeline {
             allEntities.addAll(extracted.getEntities());
             allRelations.addAll(extracted.getRelations());
             rawResponses.add(extracted.getRawResponse());
-            GraphCandidateResult accepted;
+            GraphCandidateResult validatedCandidates;
             try {
                 GraphCandidateValidationResult validation = validator.validate(extracted, request);
-                if (validation == null || validation.getAccepted() == null) {
+                if (validation == null || validation.getValidatedCandidates() == null) {
                     throw new GraphExtractionException("GraphCandidateValidator returned null");
                 }
-                accepted = validation.getAccepted();
+                validatedCandidates = validation.getValidatedCandidates();
             } catch (RuntimeException exception) {
                 if (options.isFailOnChunkError()) throw exception;
                 // 解析器已经发现的问题仍需保留，随后追加校验阶段自身的失败原因。
@@ -231,9 +231,9 @@ public final class GraphExtractionPipeline {
                 previous = chunk.getContent();
                 continue;
             }
-            entities.addAll(accepted.getEntities());
-            relations.addAll(accepted.getRelations());
-            issues.addAll(accepted.getIssues());
+            entities.addAll(validatedCandidates.getEntities());
+            relations.addAll(validatedCandidates.getRelations());
+            issues.addAll(validatedCandidates.getIssues());
             previous = chunk.getContent();
         }
         GraphEntityResolutionResult resolution = resolver.resolve(entities);

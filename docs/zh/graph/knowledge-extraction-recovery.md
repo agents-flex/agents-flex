@@ -69,13 +69,23 @@ PREPARED -> FAILED -> PREPARED
 - 保留失败原因、更新时间和尝试次数等运维信息；
 - 防止同一个恢复任务被多个实例同时认领。
 
-默认接口允许旧实现只保存操作状态，但没有保存计划就无法进行跨进程可靠恢复。
+接口要求实现 `createIfAbsent(operation, plan)`，原子保存操作记录和首次执行计划，不提供只保存操作状态的重载或降级实现。
+
+实现还必须通过 `isRecoverySupported()` 明确声明是否支持 `getPlan(operationId)` 和
+`listRecoverableOperations(limit)`。声明不支持时，服务仍可执行调用方持有的原计划，但会拒绝
+`resume` 和恢复扫描，避免把“配置了操作存储”误判为“支持恢复”。
+
+这个能力声明表示恢复 API 可用，并不保证跨进程持久化。内存实现返回 `true`，只能在当前进程内恢复；
+生产环境需要数据库等可靠存储保存计划和阶段。
 
 ## 启动恢复
 
 应用自己的任务系统可以在启动或周期调度时扫描：
 
 ~~~java
+if (!ingestion.isRecoverySupported()) {
+    throw new IllegalStateException("当前操作存储不支持恢复");
+}
 for (GraphIngestionOperation operation :
         ingestion.listRecoverableOperations(100)) {
     ingestion.resume(

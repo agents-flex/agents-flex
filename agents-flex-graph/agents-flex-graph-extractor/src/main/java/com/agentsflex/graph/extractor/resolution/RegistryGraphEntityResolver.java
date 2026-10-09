@@ -5,6 +5,7 @@ import com.agentsflex.graph.extractor.GraphExtractionException;
 import com.agentsflex.graph.extractor.registry.GraphEntityRegistry;
 import com.agentsflex.graph.extractor.registry.GraphRegisteredEntity;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
+import com.agentsflex.graph.identifier.GraphIdentifiers;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -27,27 +28,13 @@ public final class RegistryGraphEntityResolver implements GraphEntityResolver {
      */
     private final GraphEntityRegistry registry;
     /**
-     * 可选 Space 作用域；为空时兼容旧版无作用域注册表。
+     * 必填 Space 作用域，所有注册表查询均限定到该空间。
      */
     private final String space;
     /**
      * 没有命中既有实体时使用的新节点 ID 生成器。
      */
     private final GraphEntityIdGenerator idGenerator;
-
-    /**
-     * 使用默认哈希 ID 生成器创建解析器。
-     */
-    public RegistryGraphEntityResolver(GraphEntityRegistry registry) {
-        this(null, registry, new HashGraphEntityIdGenerator());
-    }
-
-    /**
-     * 使用指定注册表和新实体 ID 策略创建解析器。
-     */
-    public RegistryGraphEntityResolver(GraphEntityRegistry registry, GraphEntityIdGenerator idGenerator) {
-        this(null, registry, idGenerator);
-    }
 
     /**
      * 使用明确 Space 作用域的注册表创建解析器。
@@ -64,7 +51,7 @@ public final class RegistryGraphEntityResolver implements GraphEntityResolver {
         if (registry == null || idGenerator == null) {
             throw new IllegalArgumentException("registry and idGenerator must not be null");
         }
-        this.space = space == null ? "" : space.trim();
+        this.space = GraphIdentifiers.requireText(space, "space").trim();
         this.registry = registry;
         this.idGenerator = idGenerator;
     }
@@ -104,9 +91,7 @@ public final class RegistryGraphEntityResolver implements GraphEntityResolver {
         List<GraphNode> nodes = new ArrayList<>();
         Map<Cluster, String> nodeIds = new LinkedHashMap<>();
         for (Cluster cluster : clusters) {
-            List<GraphRegisteredEntity> registered = space.isEmpty()
-                ? registry.find(cluster.type, cluster.names)
-                : registry.find(space, cluster.type, cluster.names);
+            List<GraphRegisteredEntity> registered = registry.findMatches(space, cluster.type, cluster.names);
             GraphRegisteredEntity existing = uniqueMatch(cluster, registered);
             String nodeId = existing == null
                 ? idGenerator.generate(cluster.type, cluster.canonicalName) : existing.getNodeId();

@@ -10,9 +10,6 @@ import com.agentsflex.graph.extractor.model.GraphExtractionIssue;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
 import com.agentsflex.graph.schema.GraphSchema;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,7 +26,7 @@ import java.util.Set;
  */
 public final class SchemaGraphCandidateValidator implements GraphCandidateValidator {
     /**
-     * 按请求 Schema 和质量选项筛选可接受候选项。
+     * 按请求 Schema 和质量选项筛选合法候选项，不作审核接受决定。
      *
      * <p>先校验实体，再校验关系。关系只能引用本轮已经通过校验的实体，因此坏实体不会通过
      * 关系间接进入后续 GraphMutation。</p>
@@ -45,20 +42,20 @@ public final class SchemaGraphCandidateValidator implements GraphCandidateValida
         Map<String, GraphSchema.EdgeType> edgeTypes = edgeTypes(request.getSchema());
         List<GraphExtractionIssue> issues = new ArrayList<>(candidates.getIssues());
         List<GraphEntityCandidate> entities = new ArrayList<>();
-        Map<String, GraphEntityCandidate> acceptedByKey = new HashMap<>();
+        Map<String, GraphEntityCandidate> validatedByKey = new HashMap<>();
         Set<String> seenKeys = new HashSet<>();
         for (GraphEntityCandidate entity : candidates.getEntities()) {
             String problem = entityProblem(entity, nodeTypes.get(entity.getType()), request, seenKeys);
             if (problem == null) {
                 entities.add(entity);
-                acceptedByKey.put(entity.getCandidateKey(), entity);
+                validatedByKey.put(entity.getCandidateKey(), entity);
             } else {
                 issues.add(error("INVALID_ENTITY", entity.getCandidateKey(), problem));
             }
         }
         List<GraphRelationCandidate> relations = new ArrayList<>();
         for (GraphRelationCandidate relation : candidates.getRelations()) {
-            String problem = relationProblem(relation, edgeTypes.get(relation.getType()), acceptedByKey,
+            String problem = relationProblem(relation, edgeTypes.get(relation.getType()), validatedByKey,
                 request);
             if (problem == null) relations.add(relation);
             else
@@ -81,7 +78,9 @@ public final class SchemaGraphCandidateValidator implements GraphCandidateValida
         if (type == null) return "unknown node type: " + entity.getType();
         String quality = qualityProblem(entity.getConfidence(), entity.getEvidence(), request);
         if (quality != null) return quality;
-        return propertyProblem(entity.getProperties(), type.getProperties());
+        GraphPropertyViolation violation = GraphSchemaPropertyValidator.findViolation(
+            entity.getProperties(), type.getProperties());
+        return violation == null ? null : violation.getMessage();
     }
 
     /**
@@ -93,7 +92,7 @@ public final class SchemaGraphCandidateValidator implements GraphCandidateValida
         if (type == null) return "unknown edge type: " + relation.getType();
         GraphEntityCandidate source = entities.get(relation.getSourceCandidateKey());
         GraphEntityCandidate target = entities.get(relation.getTargetCandidateKey());
-        if (source == null || target == null) return "relation endpoint does not reference an accepted entity";
+        if (source == null || target == null) return "relation endpoint does not reference a validated entity";
         if (type.getSourceLabel() != null && !type.getSourceLabel().equals(source.getType()))
             return "source type does not match Schema";
         if (type.getTargetLabel() != null && !type.getTargetLabel().equals(target.getType()))
@@ -103,7 +102,10 @@ public final class SchemaGraphCandidateValidator implements GraphCandidateValida
         if (relation.getAssertionType() == GraphAssertionType.OPINION && !options.isIncludeOpinionRelations())
             return "opinion relations are disabled";
         String quality = qualityProblem(relation.getConfidence(), relation.getEvidence(), request);
-        return quality == null ? propertyProblem(relation.getProperties(), type.getProperties()) : quality;
+        if (quality != null) return quality;
+        GraphPropertyViolation violation = GraphSchemaPropertyValidator.findViolation(
+            relation.getProperties(), type.getProperties());
+        return violation == null ? null : violation.getMessage();
     }
 
     /**
@@ -139,95 +141,6 @@ public final class SchemaGraphCandidateValidator implements GraphCandidateValida
             return "evidence offsets do not match the evidence quote";
         }
         return null;
-    }
-
-    /**
-     * 校验候选属性白名单、可移植类型、枚举限制和必填约束。
-     *
-     * @param values 待校验的完整属性映射
-     * @param definitions Schema 属性定义
-     * @return 首个问题说明；合法时返回 null，供抽取和人工修改共用相同约束
-     */
-    public static String propertyProblem(Map<String, Object> values, List<GraphSchema.Property> definitions) {
-        Map<String, GraphSchema.Property> properties = new HashMap<>();
-        for (GraphSchema.Property property : definitions) properties.put(property.getName(), property);
-        for (Map.Entry<String, Object> entry : values.entrySet()) {
-            GraphSchema.Property property = properties.get(entry.getKey());
-            if (property == null) return "unknown property: " + entry.getKey();
-            if (!matches(entry.getValue(), property.getType()))
-                return "invalid value type for property: " + entry.getKey();
-            if (!property.getMetadata().getEnumValues().isEmpty() && entry.getValue() != null
-                && !property.getMetadata().getEnumValues().contains(String.valueOf(entry.getValue()))) {
-                return "value is not in the allowed enum for property: " + entry.getKey();
-            }
-        }
-        for (GraphSchema.Property property : definitions) {
-            if (property.isRequired() && (!values.containsKey(property.getName()) || values.get(property.getName()) == null)) {
-                return "missing required property: " + property.getName();
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 判断 Java 值是否符合 GraphSchema 的可移植属性类型。
-     *
-     * <p>模型 JSON 中的日期通常表现为字符串，因此 DATE 和 DATETIME 同时接受 Java 时间对象
-     * 与严格 ISO-8601 字符串；不能解析的任意字符串不会再被误判为合法日期。</p>
-     */
-    private static boolean matches(Object value, GraphSchema.PropertyType type) {
-        if (value == null) return true;
-        switch (type) {
-            case STRING:
-                return value instanceof String;
-            case BOOLEAN:
-                return value instanceof Boolean;
-            case INT64:
-                return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long;
-            case DOUBLE:
-                return finiteNumber(value);
-            case DATE:
-                return value instanceof LocalDate || parseDate(value);
-            case DATETIME:
-                return value instanceof LocalDateTime || parseDateTime(value);
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * DOUBLE 接受任意 Number 子类，但拒绝无法安全写入多数图数据库的 NaN 和无穷值。
-     */
-    private static boolean finiteNumber(Object value) {
-        if (!(value instanceof Number)) return false;
-        double number = ((Number) value).doubleValue();
-        return !Double.isNaN(number) && !Double.isInfinite(number);
-    }
-
-    /**
-     * 尝试按 ISO-8601 日期格式解析字符串值。
-     */
-    private static boolean parseDate(Object value) {
-        if (!(value instanceof String)) return false;
-        try {
-            LocalDate.parse((String) value);
-            return true;
-        } catch (DateTimeParseException exception) {
-            return false;
-        }
-    }
-
-    /**
-     * 尝试按 ISO-8601 本地日期时间格式解析字符串值。
-     */
-    private static boolean parseDateTime(Object value) {
-        if (!(value instanceof String)) return false;
-        try {
-            LocalDateTime.parse((String) value);
-            return true;
-        } catch (DateTimeParseException exception) {
-            return false;
-        }
     }
 
     /**

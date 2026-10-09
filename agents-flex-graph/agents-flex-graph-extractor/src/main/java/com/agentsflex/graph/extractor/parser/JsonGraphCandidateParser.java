@@ -220,7 +220,7 @@ public final class JsonGraphCandidateParser implements GraphCandidateParser {
     /**
      * 解析关系断言类型。
      *
-     * <p>字段缺失时按显式事实处理以兼容早期协议；字段存在但值非法时必须失败，禁止把未知值
+     * <p>字段缺失时使用默认值 EXPLICIT；字段存在但值非法时必须失败，禁止把未知值
      * 静默解释成推断关系。</p>
      */
     private static GraphAssertionType assertion(JSONObject candidate) {

@@ -27,7 +27,7 @@ public final class InMemoryGraphDocumentStateStore implements GraphDocumentState
      * 查询当前状态。
      */
     @Override
-    public synchronized GraphDocumentState get(String space, String documentId) {
+    public synchronized GraphDocumentState findCurrent(String space, String documentId) {
         return states.get(key(space, documentId));
     }
 

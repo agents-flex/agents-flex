@@ -31,7 +31,7 @@ public class LlmGraphExtractorTest {
         FixedChatModel model = new FixedChatModel("{\"entities\":[{\"mentionId\":\"m1\",\"name\":\"林默\","
             + "\"type\":\"Character\",\"properties\":{},\"evidence\":\"林默\",\"confidence\":1}],\"relations\":[]}");
         GraphExtractionRequest request = GraphExtractionRequest.builder("林默", GraphExtractorTestSupport.schema(), "c1")
-            .context("上一段文字").build();
+            .previousContext("上一段文字").build();
 
         GraphCandidateResult result = new LlmGraphExtractor(model).extract(request);
 

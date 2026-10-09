@@ -41,7 +41,7 @@ final class GraphIngestionPlanFingerprint {
     static String compute(GraphIngestionPlan plan) {
         if (plan == null) throw new IllegalArgumentException("plan must not be null");
         Digester digest = new Digester();
-        digest.add("status", plan.getStatus().name());
+        digest.add("type", plan.getType().name());
         digest.add("space", plan.getSpace());
         digest.add("documentId", plan.getDocumentId());
         appendOptions(digest, plan.getGraphOptions());

@@ -23,15 +23,15 @@ public final class GraphIngestionPlan {
     /**
      * 计划类型。
      */
-    public enum Status {
+    public enum Type {
         /**
          * 内容摘要与已提交版本相同，无需调用模型或写图。
          */
-        UNCHANGED,
+        NO_OP,
         /**
          * 新文档或新版本已经生成待写入 mutation。
          */
-        READY,
+        INGESTION,
         /**
          * 撤回文档当前版本及不再被其他文档支持的关系。
          */
@@ -41,7 +41,7 @@ public final class GraphIngestionPlan {
     /**
      * 计划类型。
      */
-    private final Status status;
+    private final Type type;
     /**
      * 目标 Space。
      */
@@ -78,32 +78,36 @@ public final class GraphIngestionPlan {
      * 写成功后需要注册的实体。
      */
     private final List<GraphRegisteredEntity> entityRegistrations;
-    /** 原始 Schema；人工修改时重新校验属性与类型。 */
-    private final GraphSchema reviewSchema;
-    /** 原始请求；人工修改时保留过期关系策略和部分抽取保护。 */
-    private final GraphIngestionRequest reviewRequest;
+    /**
+     * 原始 Schema；人工修改时重新校验属性与类型。
+     */
+    private final GraphSchema sourceSchema;
+    /**
+     * 原始请求；人工修改时保留过期关系策略和部分抽取保护。
+     */
+    private final GraphIngestionRequest sourceRequest;
 
     /**
      * 包内服务专用构造器。
      */
-    GraphIngestionPlan(Status status, String space, String documentId, GraphOptions graphOptions,
-                                  GraphDocumentState previousState, GraphDocumentState nextState,
-                                  GraphExtractionResult extractionResult, GraphMutation mutation,
-                                  Set<GraphEdgeKey> staleEdgeKeys,
-                                  List<GraphRegisteredEntity> entityRegistrations) {
-        this(status, space, documentId, graphOptions, previousState, nextState, extractionResult,
+    GraphIngestionPlan(Type type, String space, String documentId, GraphOptions graphOptions,
+                       GraphDocumentState previousState, GraphDocumentState nextState,
+                       GraphExtractionResult extractionResult, GraphMutation mutation,
+                       Set<GraphEdgeKey> staleEdgeKeys,
+                       List<GraphRegisteredEntity> entityRegistrations) {
+        this(type, space, documentId, graphOptions, previousState, nextState, extractionResult,
             mutation, staleEdgeKeys, entityRegistrations, null, null);
     }
 
-    private GraphIngestionPlan(Status status, String space, String documentId, GraphOptions graphOptions,
+    private GraphIngestionPlan(Type type, String space, String documentId, GraphOptions graphOptions,
                                GraphDocumentState previousState, GraphDocumentState nextState,
                                GraphExtractionResult extractionResult, GraphMutation mutation,
                                Set<GraphEdgeKey> staleEdgeKeys, List<GraphRegisteredEntity> entityRegistrations,
-                               GraphSchema reviewSchema, GraphIngestionRequest reviewRequest) {
-        if (status == null || graphOptions == null || mutation == null) {
-            throw new IllegalArgumentException("status, graphOptions and mutation must not be null");
+                               GraphSchema sourceSchema, GraphIngestionRequest sourceRequest) {
+        if (type == null || graphOptions == null || mutation == null) {
+            throw new IllegalArgumentException("type, graphOptions and mutation must not be null");
         }
-        this.status = status;
+        this.type = type;
         this.space = space;
         this.documentId = documentId;
         this.graphOptions = graphOptions;
@@ -113,33 +117,43 @@ public final class GraphIngestionPlan {
         this.mutation = mutation;
         this.staleEdgeKeys = Collections.unmodifiableSet(new LinkedHashSet<>(staleEdgeKeys));
         this.entityRegistrations = Collections.unmodifiableList(new ArrayList<>(entityRegistrations));
-        if ((reviewSchema == null) != (reviewRequest == null)) {
-            throw new IllegalArgumentException("reviewSchema and reviewRequest must be supplied together");
+        if ((sourceSchema == null) != (sourceRequest == null)) {
+            throw new IllegalArgumentException("sourceSchema and sourceRequest must be supplied together");
         }
-        this.reviewSchema = reviewSchema;
-        this.reviewRequest = reviewRequest;
+        this.sourceSchema = sourceSchema;
+        this.sourceRequest = sourceRequest;
     }
 
-    /** 创建带原始审核上下文的副本。 */
-    GraphIngestionPlan withReviewContext(GraphSchema schema, GraphIngestionRequest request) {
-        return restore(status, space, documentId, graphOptions, previousState, nextState,
+    /**
+     * 创建带原始来源上下文的副本，供审核修改后重建计划。
+     */
+    GraphIngestionPlan withSourceContext(GraphSchema schema, GraphIngestionRequest request) {
+        return restore(type, space, documentId, graphOptions, previousState, nextState,
             extractionResult, mutation, staleEdgeKeys, entityRegistrations, schema, request);
     }
 
-    /** @return 人工修改所需的原始 Schema；不可局部修改的计划为空。 */
-    public GraphSchema getReviewSchema() { return reviewSchema; }
+    /**
+     * @return 生成计划时使用的 Schema；不可局部修改的计划为空。
+     */
+    public GraphSchema getSourceSchema() {
+        return sourceSchema;
+    }
 
-    /** @return 人工修改所需的原始请求；不可局部修改的计划为空。 */
-    public GraphIngestionRequest getReviewRequest() { return reviewRequest; }
+    /**
+     * @return 生成计划时使用的请求；不可局部修改的计划为空。
+     */
+    public GraphIngestionRequest getSourceRequest() {
+        return sourceRequest;
+    }
 
     /**
      * 恢复可以继续人工修改的完整计划。审核任务存储应同时保存抽取结果、Schema 和原始请求。
      */
-    public static GraphIngestionPlan restore(Status status, String space, String documentId,
-        GraphOptions graphOptions, GraphDocumentState previousState, GraphDocumentState nextState,
-        GraphExtractionResult extractionResult, GraphMutation mutation, Set<GraphEdgeKey> staleEdgeKeys,
-        List<GraphRegisteredEntity> entityRegistrations, GraphSchema schema, GraphIngestionRequest request) {
-        return new GraphIngestionPlan(status, space, documentId, graphOptions, previousState, nextState,
+    public static GraphIngestionPlan restore(Type type, String space, String documentId,
+                                             GraphOptions graphOptions, GraphDocumentState previousState, GraphDocumentState nextState,
+                                             GraphExtractionResult extractionResult, GraphMutation mutation, Set<GraphEdgeKey> staleEdgeKeys,
+                                             List<GraphRegisteredEntity> entityRegistrations, GraphSchema schema, GraphIngestionRequest request) {
+        return new GraphIngestionPlan(type, space, documentId, graphOptions, previousState, nextState,
             extractionResult, mutation, staleEdgeKeys, entityRegistrations, schema, request);
     }
 
@@ -150,7 +164,7 @@ public final class GraphIngestionPlan {
      * 完整保留 mutation、待提交状态和实体注册内容；否则计划指纹校验会拒绝继续执行。抽取结果只用于
      * 展示和审核，可以在存储空间受限时保存为 null。</p>
      *
-     * @param status              计划类型
+     * @param type                计划类型
      * @param space               目标 Space
      * @param documentId          逻辑文档 ID
      * @param graphOptions        图写入和路由选项
@@ -163,7 +177,7 @@ public final class GraphIngestionPlan {
      * @return 经过防御性复制的不可变计划
      */
     public static GraphIngestionPlan restore(
-        Status status, String space, String documentId,
+        Type type, String space, String documentId,
         GraphOptions graphOptions,
         GraphDocumentState previousState,
         GraphDocumentState nextState,
@@ -171,15 +185,15 @@ public final class GraphIngestionPlan {
         GraphMutation mutation,
         Set<GraphEdgeKey> staleEdgeKeys,
         List<GraphRegisteredEntity> entityRegistrations) {
-        return new GraphIngestionPlan(status, space, documentId, graphOptions, previousState, nextState,
+        return new GraphIngestionPlan(type, space, documentId, graphOptions, previousState, nextState,
             extractionResult, mutation, staleEdgeKeys, entityRegistrations);
     }
 
     /**
      * @return 计划类型。
      */
-    public Status getStatus() {
-        return status;
+    public Type getType() {
+        return type;
     }
 
     /**

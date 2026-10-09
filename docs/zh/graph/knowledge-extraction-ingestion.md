@@ -128,7 +128,7 @@ GraphIngestionRequest request =
 GraphIngestionPlan plan =
     ingestion.plan(document, schema, request);
 
-if (plan.getStatus() != GraphIngestionPlan.Status.UNCHANGED) {
+if (plan.getType() != GraphIngestionPlan.Type.NO_OP) {
     // 只在需要人工确认时配置 reviewService，不立即写图。
     GraphReviewTask task = reviewService.submit(plan);
     // 向自己的后台返回 task.getTaskId()。
@@ -150,7 +150,7 @@ if (plan.getStatus() != GraphIngestionPlan.Status.UNCHANGED) {
 
 `ingest(...)` 是 plan 与 execute 的便捷组合，适合已经建立自动接受策略的场景。
 
-## 重复提交与 UNCHANGED
+## 重复提交与 NO_OP
 
 服务比较：
 
@@ -159,7 +159,7 @@ Space + documentId + contentHash + documentVersion
 + schemaVersion + extractionFingerprint
 ~~~
 
-内容和相关版本都未变化时返回 `UNCHANGED` 语义，不再次调用模型或写图。
+内容和相关版本都未变化时返回 `NO_OP` 语义，不再次调用模型或写图。
 
 以下情况会重新抽取：
 
@@ -167,7 +167,7 @@ Space + documentId + contentHash + documentVersion
 - 业务文档版本变化；
 - Schema 版本变化；
 - 抽取配置指纹变化；
-- 显式启用 `forceReextract(true)`。
+- 显式启用 `reextractUnchangedContent(true)`。
 
 模型名称、Prompt 模板、温度、解析协议或业务词典发生变化时，应更新 extractionFingerprint。只依赖基础 Options 指纹无法覆盖所有自定义组件。
 

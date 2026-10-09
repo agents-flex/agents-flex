@@ -73,15 +73,15 @@ public final class GraphIngestionRequest {
     /**
      * 抽取结果出现 ERROR 时是否禁止生成可执行计划。
      */
-    private final boolean rejectExtractionErrors;
+    private final boolean failOnExtractionError;
     /**
      * 内容未变化时是否仍然重新调用 extractor。
      */
-    private final boolean forceReextract;
+    private final boolean reextractUnchangedContent;
     /**
      * 是否允许在部分 Chunk 失败时重建关系集合。
      */
-    private final boolean allowPartialReconcile;
+    private final boolean partialReconciliationAllowed;
 
     /**
      * 从 Builder 复制配置并完成跨字段校验。
@@ -106,9 +106,9 @@ public final class GraphIngestionRequest {
         }
         staleRelationPolicy = builder.staleRelationPolicy == null
             ? StaleRelationPolicy.KEEP : builder.staleRelationPolicy;
-        rejectExtractionErrors = builder.rejectExtractionErrors;
-        forceReextract = builder.forceReextract;
-        allowPartialReconcile = builder.allowPartialReconcile;
+        failOnExtractionError = builder.failOnExtractionError;
+        reextractUnchangedContent = builder.reextractUnchangedContent;
+        partialReconciliationAllowed = builder.partialReconciliationAllowed;
     }
 
     /**
@@ -205,22 +205,22 @@ public final class GraphIngestionRequest {
     /**
      * @return 是否拒绝带 ERROR 的部分抽取结果。
      */
-    public boolean isRejectExtractionErrors() {
-        return rejectExtractionErrors;
+    public boolean isFailOnExtractionError() {
+        return failOnExtractionError;
     }
 
     /**
      * @return 是否强制重新抽取未变化内容。
      */
-    public boolean isForceReextract() {
-        return forceReextract;
+    public boolean isReextractUnchangedContent() {
+        return reextractUnchangedContent;
     }
 
     /**
      * @return 是否允许部分抽取结果参与关系重建。
      */
-    public boolean isAllowPartialReconcile() {
-        return allowPartialReconcile;
+    public boolean isPartialReconciliationAllowed() {
+        return partialReconciliationAllowed;
     }
 
     /**
@@ -293,15 +293,15 @@ public final class GraphIngestionRequest {
         /**
          * 默认拒绝带 ERROR 的部分结果，避免把失败版本提交为当前状态。
          */
-        private boolean rejectExtractionErrors = true;
+        private boolean failOnExtractionError = true;
         /**
          * 默认对相同摘要执行快速跳过。
          */
-        private boolean forceReextract;
+        private boolean reextractUnchangedContent;
         /**
          * 默认禁止部分结果触发关系删除。
          */
-        private boolean allowPartialReconcile;
+        private boolean partialReconciliationAllowed;
 
         private Builder(String space, String documentId) {
             this.space = space;
@@ -391,24 +391,24 @@ public final class GraphIngestionRequest {
         /**
          * 设置是否拒绝带 ERROR 的部分结果。
          */
-        public Builder rejectExtractionErrors(boolean value) {
-            rejectExtractionErrors = value;
+        public Builder failOnExtractionError(boolean value) {
+            failOnExtractionError = value;
             return this;
         }
 
         /**
          * 设置是否忽略内容判重并强制重新抽取。
          */
-        public Builder forceReextract(boolean value) {
-            forceReextract = value;
+        public Builder reextractUnchangedContent(boolean value) {
+            reextractUnchangedContent = value;
             return this;
         }
 
         /**
          * 设置是否允许部分抽取结果参与关系重建；默认关闭。
          */
-        public Builder allowPartialReconcile(boolean value) {
-            allowPartialReconcile = value;
+        public Builder allowPartialReconciliation(boolean value) {
+            partialReconciliationAllowed = value;
             return this;
         }
 

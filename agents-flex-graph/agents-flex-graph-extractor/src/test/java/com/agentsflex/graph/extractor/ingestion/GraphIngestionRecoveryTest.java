@@ -65,7 +65,7 @@ public class GraphIngestionRecoveryTest {
             assertTrue(expected.getMessage().contains("writer"));
         }
         assertStage(scenario, "writer-failure", GraphIngestionOperation.Stage.FAILED);
-        assertNull(scenario.states.get("knowledge", "doc-1"));
+        assertNull(scenario.states.findCurrent("knowledge", "doc-1"));
 
         GraphIngestionResult recovered = scenario.service.resume("writer-failure", scenario.writer);
 
@@ -113,7 +113,7 @@ public class GraphIngestionRecoveryTest {
             assertTrue(expected.getMessage().contains("registry"));
         }
         assertStage(scenario, "registry-failure", GraphIngestionOperation.Stage.GRAPH_APPLIED);
-        assertNull(scenario.states.get("knowledge", "doc-1"));
+        assertNull(scenario.states.findCurrent("knowledge", "doc-1"));
 
         assertTrue(scenario.service.resume("registry-failure", scenario.writer).isSuccess());
         assertEquals(1, scenario.writer.calls.get());
@@ -139,7 +139,7 @@ public class GraphIngestionRecoveryTest {
 
         assertTrue(scenario.service.resume("state-cas-failure", scenario.writer).isSuccess());
         assertEquals(1, scenario.writer.calls.get());
-        assertNotNull(scenario.states.get("knowledge", "doc-1"));
+        assertNotNull(scenario.states.findCurrent("knowledge", "doc-1"));
         assertStage(scenario, "state-cas-failure", GraphIngestionOperation.Stage.COMPLETED);
     }
 
@@ -157,7 +157,7 @@ public class GraphIngestionRecoveryTest {
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("history"));
         }
-        assertNotNull(scenario.states.get("knowledge", "doc-1"));
+        assertNotNull(scenario.states.findCurrent("knowledge", "doc-1"));
         assertTrue(scenario.states.listVersions("knowledge", "doc-1").isEmpty());
         assertStage(scenario, "history-failure", GraphIngestionOperation.Stage.GRAPH_APPLIED);
 
@@ -181,7 +181,7 @@ public class GraphIngestionRecoveryTest {
         } catch (GraphExtractionException expected) {
             assertTrue(expected.getMessage().contains("state changed concurrently"));
         }
-        assertNotNull(scenario.states.get("knowledge", "doc-1"));
+        assertNotNull(scenario.states.findCurrent("knowledge", "doc-1"));
         assertStage(scenario, "commit-log-failure", GraphIngestionOperation.Stage.GRAPH_APPLIED);
 
         assertTrue(scenario.service.resume("commit-log-failure", scenario.writer).isSuccess());
@@ -224,15 +224,13 @@ public class GraphIngestionRecoveryTest {
     }
 
     /**
-     * 旧存储只保存 operation 而没有 plan 时，恢复必须给出可诊断错误。
+     * 未知操作没有冻结计划时，恢复必须给出可诊断错误。
      */
     @Test
     public void resumeShouldRejectOperationWithoutPersistedPlan() {
         Scenario scenario = scenario();
-        scenario.operations.createIfAbsent(new GraphIngestionOperation("legacy", "knowledge", "doc-1", 0L,
-            "fingerprint", GraphIngestionOperation.Stage.PREPARED, 1L, ""));
         try {
-            scenario.service.resume("legacy", scenario.writer);
+            scenario.service.resume("unknown", scenario.writer);
             fail("missing persisted plan must be rejected");
         } catch (GraphExtractionException expected) {
             assertTrue(expected.getMessage().contains("plan was not found"));
@@ -240,7 +238,7 @@ public class GraphIngestionRecoveryTest {
     }
 
     /**
-     * 同一 Service 中两个相同导入并发时，文档锁应让后进入者走 UNCHANGED 快速路径。
+     * 同一 Service 中两个相同导入并发时，文档锁应让后进入者走 NO_OP 快速路径。
      */
     @Test
     public void concurrentSameDocumentIngestionShouldWriteExactlyOnce() throws Exception {
@@ -278,7 +276,7 @@ public class GraphIngestionRecoveryTest {
             assertTrue(second.get(5, TimeUnit.SECONDS).isSuccess());
             assertEquals(1, scenario.writer.calls.get());
             assertEquals(1, scenario.extractor.calls.get());
-            assertEquals(1L, scenario.states.get("knowledge", "doc-1").getRevision());
+            assertEquals(1L, scenario.states.findCurrent("knowledge", "doc-1").getRevision());
         } finally {
             executor.shutdownNow();
         }
@@ -304,7 +302,7 @@ public class GraphIngestionRecoveryTest {
         FaultingRegistry registry = new FaultingRegistry();
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor,
             (document, idGenerator) -> Collections.singletonList(document), new SchemaGraphCandidateValidator(),
-            new RegistryGraphEntityResolver(registry), new GraphCandidateMutationMapper());
+            new RegistryGraphEntityResolver("knowledge", registry), new GraphCandidateMutationMapper());
         FaultingStateStore states = new FaultingStateStore();
         FaultingOperationStore operations = new FaultingOperationStore();
         LocalGraphIngestionLockProvider locks = new LocalGraphIngestionLockProvider();
@@ -405,13 +403,8 @@ public class GraphIngestionRecoveryTest {
         private volatile boolean failNextSave;
 
         @Override
-        public List<GraphRegisteredEntity> find(String space, String type, Collection<String> names) {
-            return delegate.find(space, type, names);
-        }
-
-        @Override
-        public List<GraphRegisteredEntity> find(String type, Collection<String> names) {
-            return delegate.find(type, names);
+        public List<GraphRegisteredEntity> findMatches(String space, String type, Collection<String> names) {
+            return delegate.findMatches(space, type, names);
         }
 
         @Override
@@ -424,10 +417,6 @@ public class GraphIngestionRecoveryTest {
             delegate.saveAll(space, entities);
         }
 
-        @Override
-        public void saveAll(Collection<GraphRegisteredEntity> entities) {
-            delegate.saveAll(entities);
-        }
     }
 
     /**
@@ -439,8 +428,8 @@ public class GraphIngestionRecoveryTest {
         private volatile boolean failNextRecordVersion;
 
         @Override
-        public GraphDocumentState get(String space, String documentId) {
-            return delegate.get(space, documentId);
+        public GraphDocumentState findCurrent(String space, String documentId) {
+            return delegate.findCurrent(space, documentId);
         }
 
         @Override
@@ -491,8 +480,8 @@ public class GraphIngestionRecoveryTest {
         }
 
         @Override
-        public boolean createIfAbsent(GraphIngestionOperation operation) {
-            return delegate.createIfAbsent(operation);
+        public boolean isRecoverySupported() {
+            return delegate.isRecoverySupported();
         }
 
         @Override
@@ -516,8 +505,8 @@ public class GraphIngestionRecoveryTest {
         }
 
         @Override
-        public List<GraphIngestionOperation> listRecoverable(int limit) {
-            return delegate.listRecoverable(limit);
+        public List<GraphIngestionOperation> listRecoverableOperations(int limit) {
+            return delegate.listRecoverableOperations(limit);
         }
     }
 

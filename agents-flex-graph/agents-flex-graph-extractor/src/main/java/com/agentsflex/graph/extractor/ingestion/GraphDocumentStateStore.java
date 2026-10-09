@@ -16,15 +16,15 @@ public interface GraphDocumentStateStore {
     /**
      * 查询指定 Space 中逻辑文档的当前已提交状态，不存在时返回 null。
      */
-    GraphDocumentState get(String space, String documentId);
+    GraphDocumentState findCurrent(String space, String documentId);
 
     /**
      * 按操作号查询已经提交的状态，用于跨进程重试幂等返回。
-     * 默认实现扫描当前 Space，持久化实现应建立唯一索引。
+     * 默认实现检查该文档的当前状态，持久化实现应查询版本历史并建立唯一索引。
      */
     default GraphDocumentState findByOperationId(String space, String documentId, String operationId) {
         if (operationId == null || operationId.trim().isEmpty()) return null;
-        GraphDocumentState current = get(space, documentId);
+        GraphDocumentState current = findCurrent(space, documentId);
         return current != null && operationId.equals(current.getOperationId()) ? current : null;
     }
 
@@ -50,14 +50,14 @@ public interface GraphDocumentStateStore {
      * 保存已提交版本的历史快照。默认实现不保留历史，生产实现应写入不可变版本表。
      */
     default void recordVersion(GraphDocumentState state) {
-        // 兼容只支持当前状态的旧实现；需要审计的实现应覆写。
+        // 历史存储是可选扩展；需要审计的实现应覆写，并原子保存不可变版本快照。
     }
 
     /**
      * 返回逻辑文档的版本历史。默认只返回当前状态。
      */
     default List<GraphDocumentState> listVersions(String space, String documentId) {
-        GraphDocumentState current = get(space, documentId);
+        GraphDocumentState current = findCurrent(space, documentId);
         return current == null ? Collections.<GraphDocumentState>emptyList()
             : Collections.singletonList(current);
     }
@@ -81,7 +81,7 @@ public interface GraphDocumentStateStore {
      *
      * <p>默认实现扫描 Space 状态；持久化实现可以通过 edgeKey 反向索引加速。</p>
      */
-    default List<GraphFactSource> findFactSources(String space, GraphEdgeKey edgeKey) {
+    default List<GraphFactSource> findCurrentFactSources(String space, GraphEdgeKey edgeKey) {
         List<GraphFactSource> result = new ArrayList<>();
         for (GraphDocumentState state : list(space)) {
             // 当前来源只代表仍然生效的文档版本；撤回状态只应通过历史来源接口参与审计。
@@ -96,7 +96,7 @@ public interface GraphDocumentStateStore {
     /**
      * 查询当前状态和历史版本中的全部来源证据，供审计和事实回放使用。
      */
-    default List<GraphFactSource> findHistoricalFactSources(String space, GraphEdgeKey edgeKey) {
+    default List<GraphFactSource> findFactSourceHistory(String space, GraphEdgeKey edgeKey) {
         List<GraphFactSource> result = new ArrayList<>();
         for (GraphDocumentState current : list(space)) {
             for (GraphDocumentState version : listVersions(space, current.getDocumentId())) {

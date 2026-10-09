@@ -26,8 +26,8 @@ import static org.junit.Assert.fail;
 /**
  * 支持跨进程恢复的 {@link GraphIngestionOperationStore} 公共契约测试。
  *
- * <p>该契约要求实现覆盖 plan 存取和 recoverable 扫描；只实现兼容层三个基础方法的旧存储不应继承
- * 此测试，因为它本身不具备跨进程恢复能力。</p>
+ * <p>该契约要求实现显式声明支持恢复，并覆盖计划的原子保存、读取及待恢复操作扫描。
+ * 内存实现可以验证相同 API 契约，跨进程恢复仍要求可靠的持久化存储。</p>
  */
 public abstract class AbstractGraphIngestionOperationStoreContractTest {
     /**
@@ -47,6 +47,7 @@ public abstract class AbstractGraphIngestionOperationStoreContractTest {
     public void setUpGraphIngestionOperationStoreContract() {
         store = createStore();
         if (store == null) throw new IllegalStateException("createStore must not return null");
+        assertTrue("recovery contract requires explicit capability", store.isRecoverySupported());
     }
 
     /**
@@ -111,7 +112,7 @@ public abstract class AbstractGraphIngestionOperationStoreContractTest {
             .transition(GraphIngestionOperation.Stage.COMPLETED, 4L, "");
         store.createIfAbsent(completed, plan("completed", "doc-c"));
 
-        List<GraphIngestionOperation> values = store.listRecoverable(1);
+        List<GraphIngestionOperation> values = store.listRecoverableOperations(1);
         assertEquals(1, values.size());
         assertEquals("a", values.get(0).getOperationId());
         try {
@@ -136,7 +137,7 @@ public abstract class AbstractGraphIngestionOperationStoreContractTest {
     protected static GraphIngestionPlan plan(String operationId, String documentId) {
         GraphDocumentState next = GraphDocumentState.builder("space_a", documentId, "hash")
             .revision(1L).operationId(operationId).build();
-        return GraphIngestionPlan.restore(GraphIngestionPlan.Status.READY, "space_a",
+        return GraphIngestionPlan.restore(GraphIngestionPlan.Type.INGESTION, "space_a",
             documentId, GraphOptions.ofSpace("space_a"), null, next, null,
             GraphMutation.builder().operationId(operationId).build(), Collections.emptySet(),
             Collections.emptyList());

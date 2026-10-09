@@ -73,9 +73,24 @@
 
 - 抽取结果有 ERROR 时拒绝执行计划；
 - 即使允许提交合法子集，也保留旧关系；
-- 只有明确启用 `allowPartialReconcile(true)`，部分结果才参与 stale 关系删除。
+- 只有明确启用 `allowPartialReconciliation(true)`，部分结果才参与 stale 关系删除。
 
 最后一个选项风险很高，只适合调用方能够证明失败 Chunk 与需要清理的关系无关。
+
+例如，允许提交合法子集，但仍保留失败分段可能支持的旧关系：
+
+~~~java
+GraphIngestionRequest request = GraphIngestionRequest.builder("knowledge", "doc-001")
+    .extractionOptions(GraphExtractionOptions.builder()
+        .failOnChunkError(false).build())
+    .failOnExtractionError(false)
+    .allowPartialReconciliation(false)
+    .build();
+~~~
+
+`failOnChunkError(false)` 让流水线在分段异常后继续处理，`failOnExtractionError(false)` 允许
+入图服务为含 ERROR 的结果生成计划；`allowPartialReconciliation(false)` 则防止部分结果
+撤销旧版本的来源。三个选项控制不同阶段，不能相互替代。
 
 ## 文档撤回
 
@@ -118,8 +133,8 @@ factId 包含 Space 作用域，因此相同证据在不同知识库中不会被
 
 `GraphDocumentStateStore` 提供两种语义：
 
-- `findFactSources`：只返回当前 ACTIVE 文档版本仍然有效的来源；
-- `findHistoricalFactSources`：遍历当前和历史版本，供审计与回放。
+- `findCurrentFactSources`：只返回当前 ACTIVE 文档版本仍然有效的来源；
+- `findFactSourceHistory`：遍历当前和历史版本，供审计与回放。
 
 大规模生产实现不应依赖默认全表扫描，应对 Space、edgeKey、documentId、status 和 revision 建立索引。
 

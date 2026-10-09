@@ -138,7 +138,7 @@ public class RealGraphExtractionIntegrationTest {
         InMemoryGraphEntityRegistry registry = new InMemoryGraphEntityRegistry();
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor,
             (document, idGenerator) -> Collections.singletonList(document), new SchemaGraphCandidateValidator(),
-            new RegistryGraphEntityResolver(registry), new GraphCandidateMutationMapper());
+            new RegistryGraphEntityResolver(space, registry), new GraphCandidateMutationMapper());
         InMemoryGraphDocumentStateStore states = new InMemoryGraphDocumentStateStore();
         InMemoryGraphIngestionOperationStore operations = new InMemoryGraphIngestionOperationStore();
         GraphIngestionService service = new GraphIngestionService(pipeline, states, registry,
@@ -168,14 +168,14 @@ public class RealGraphExtractionIntegrationTest {
         assertTrue(service.execute(service.planRetraction(space, "doc-a", GraphOptions.ofSpace(space)),
             store.writer()).isSuccess());
         assertEquals(1L, count(store, space, relationCountQuery));
-        assertEquals(GraphDocumentState.Status.RETRACTED, states.get(space, "doc-a").getStatus());
+        assertEquals(GraphDocumentState.Status.RETRACTED, states.findCurrent(space, "doc-a").getStatus());
 
         assertTrue(service.execute(service.planRetraction(space, "doc-b", GraphOptions.ofSpace(space)),
             store.writer()).isSuccess());
         assertEquals(0L, count(store, space, relationCountQuery));
         assertEquals(1L, count(store, space, characterCountQuery));
         assertEquals(1L, count(store, space, organizationCountQuery));
-        assertEquals(GraphDocumentState.Status.RETRACTED, states.get(space, "doc-b").getStatus());
+        assertEquals(GraphDocumentState.Status.RETRACTED, states.findCurrent(space, "doc-b").getStatus());
     }
 
     /**

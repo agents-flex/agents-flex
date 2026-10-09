@@ -36,7 +36,7 @@
 必须保证：
 
 - 只返回候选，不直接写 GraphStore；
-- 不把 `context` 当作当前 evidence；
+- 不把 `previousContext`（前文上下文）当作当前 evidence；
 - 保留 documentId、chunkId 和来源 metadata；
 - 对并发调用提供明确的线程安全保证；
 - 将模型超时、协议失败等包装为可诊断异常。
@@ -48,7 +48,7 @@
 `LlmGraphExtractor` 默认使用 `JsonGraphExtractionPromptBuilder`，要求模型按照约定的 JSON 结构
 输出候选；对应解析器是 `JsonGraphCandidateParser`。采用其他输出格式时，应配套替换提示词构建器和解析器。
 
-Prompt 变化应进入 extraction fingerprint，否则同一内容可能在配置变化后被错误判定为 UNCHANGED。
+Prompt 变化应进入 extraction fingerprint，否则同一内容可能在配置变化后被错误判定为 NO_OP。
 
 ### `GraphCandidateParser`
 
@@ -60,6 +60,14 @@ Prompt 变化应进入 extraction fingerprint，否则同一内容可能在配�
 
 Validator 不应静默修复不可解释的数据；若执行规范化或默认值填充，应产生可审核记录。
 
+校验结果通过 `GraphCandidateValidationResult.getValidatedCandidates()` 返回合法候选。
+“通过校验”仅表示符合 Schema 和质量规则，不代表已经审核接受或已经写入图数据库。
+
+属性校验由 `validation` 包下的 `GraphSchemaPropertyValidator` 统一承担，候选校验和人工修改
+使用同一套白名单、类型、枚举和必填规则。`findViolation(properties, definitions)` 返回首个
+`GraphPropertyViolation`，没有问题时返回 `null`；问题包含 `code`、`propertyName` 和 `message`，
+便于开发者在自己的 UI 中定位字段。
+
 ## 身份和图投影扩展
 
 ### `GraphEntityResolver`
@@ -69,6 +77,10 @@ Validator 不应静默修复不可解释的数据；若执行规范化或默认�
 ### `GraphEntityRegistry`
 
 负责跨文档和跨批次保存长期实体身份。生产实现应按 Space 隔离，使用唯一约束处理并发注册，并能返回同名歧义而不是最后写入覆盖。
+
+`findMatches(space, type, names)` 和 `saveAll(space, entities)` 都要求显式传入 Space，
+没有不带 Space 的查询或保存方法。查询还按实体类型隔离；批量保存应原子处理别名和属性合并，
+发生名称冲突时不得只提交批次中的一部分。
 
 Registry 是身份存储，Resolver 是身份决策，两者职责不同。常见组合是 Resolver 查询 Registry，增量服务在写图成功后幂等保存注册项。
 
@@ -96,9 +108,17 @@ Registry 是身份存储，Resolver 是身份决策，两者职责不同。常�
 
 保存文档当前状态、版本历史和事实来源查询。生产实现必须为 revision 提供原子 CAS，并为 Space、documentId、edgeKey 和状态建立索引。
 
+使用 `findCurrent(space, documentId)` 查询当前状态，`findCurrentFactSources(space, edgeKey)`
+查询当前有效来源，`findFactSourceHistory(space, edgeKey)` 查询包含历史版本的来源记录。
+当前有效来源和历史来源用途不同，不能用历史记录判断一条关系现在是否仍有文档支持。
+
 ### `GraphIngestionOperationStore`
 
 保存 operationId、planFingerprint、原始计划和操作阶段。操作和计划应原子创建，阶段推进使用 CAS，并支持稳定扫描未完成操作。
+
+实现必须提供 `createIfAbsent(operation, plan)`，并通过 `isRecoverySupported()` 明确声明恢复能力。
+支持恢复的实现提供 `getPlan(operationId)` 和 `listRecoverableOperations(limit)`；内存实现的恢复
+能力仅在当前进程内有效。完整要求见[故障恢复](/zh/graph/knowledge-extraction-recovery)。
 
 ### `GraphIngestionLockProvider`
 

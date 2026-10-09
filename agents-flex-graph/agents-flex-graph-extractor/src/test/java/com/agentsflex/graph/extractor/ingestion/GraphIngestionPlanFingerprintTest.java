@@ -102,7 +102,7 @@ public class GraphIngestionPlanFingerprintTest {
         GraphIngestionPlan original = plan("operation-1",
             Collections.<String, Object>singletonMap("name", "林默"),
             Collections.singleton("node-a"), 100L);
-        GraphIngestionPlan restored = GraphIngestionPlan.restore(original.getStatus(),
+        GraphIngestionPlan restored = GraphIngestionPlan.restore(original.getType(),
             original.getSpace(), original.getDocumentId(), original.getGraphOptions(), original.getPreviousState(),
             original.getNextState(), null, original.getMutation(), original.getStaleEdgeKeys(),
             original.getEntityRegistrations());
@@ -131,7 +131,7 @@ public class GraphIngestionPlanFingerprintTest {
         GraphMutation mutation = GraphMutation.builder().operationId(operationId)
             .upsertNodes(Arrays.asList(person, organization)).upsertEdge(edge)
             .deleteEdge(new GraphEdgeKey("old-a", "MEMBER_OF", "old-b", 0L)).build();
-        return GraphIngestionPlan.restore(GraphIngestionPlan.Status.READY, "knowledge", "doc-1",
+        return GraphIngestionPlan.restore(GraphIngestionPlan.Type.INGESTION, "knowledge", "doc-1",
             GraphOptions.ofSpace("knowledge"), null, next, null, mutation,
             Collections.singleton(edge.getKey()), Collections.emptyList());
     }

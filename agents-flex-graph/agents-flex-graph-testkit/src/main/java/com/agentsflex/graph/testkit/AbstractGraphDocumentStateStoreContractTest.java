@@ -57,7 +57,7 @@ public abstract class AbstractGraphDocumentStateStoreContractTest {
         assertTrue(store.compareAndSet("space_a", "doc-1", 0L, first));
         assertFalse(store.compareAndSet("space_a", "doc-1", 0L, second));
         assertTrue(store.compareAndSet("space_a", "doc-1", 1L, second));
-        assertEquals(2L, store.get("space_a", "doc-1").getRevision());
+        assertEquals(2L, store.findCurrent("space_a", "doc-1").getRevision());
     }
 
     /**
@@ -93,8 +93,8 @@ public abstract class AbstractGraphDocumentStateStoreContractTest {
             state("space_a", "doc-1", 1L, "operation-a", GraphDocumentState.Status.ACTIVE));
         store.compareAndSet("space_b", "doc-1", 0L,
             state("space_b", "doc-1", 1L, "operation-b", GraphDocumentState.Status.ACTIVE));
-        assertEquals("operation-a", store.get("space_a", "doc-1").getOperationId());
-        assertEquals("operation-b", store.get("space_b", "doc-1").getOperationId());
+        assertEquals("operation-a", store.findCurrent("space_a", "doc-1").getOperationId());
+        assertEquals("operation-b", store.findCurrent("space_b", "doc-1").getOperationId());
         assertEquals(1, store.list("space_a").size());
     }
 
@@ -126,7 +126,7 @@ public abstract class AbstractGraphDocumentStateStoreContractTest {
             state("space_a", "doc-1", 1L, "operation-1", GraphDocumentState.Status.ACTIVE));
         assertFalse(store.remove("space_a", "doc-1", 2L));
         assertTrue(store.remove("space_a", "doc-1", 1L));
-        assertNull(store.get("space_a", "doc-1"));
+        assertNull(store.findCurrent("space_a", "doc-1"));
     }
 
     /**

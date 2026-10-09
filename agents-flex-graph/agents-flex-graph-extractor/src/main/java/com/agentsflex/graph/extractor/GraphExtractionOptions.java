@@ -30,7 +30,7 @@ public final class GraphExtractionOptions {
     /**
      * 传给下一 Chunk 用于指代消解的前文最大字符数。
      */
-    private final int contextCharacters;
+    private final int maxPreviousContextCharacters;
     /**
      * JSON 解析阶段保留的单 Chunk 实体候选上限。
      */
@@ -56,7 +56,7 @@ public final class GraphExtractionOptions {
         requireEvidence = builder.requireEvidence;
         includeInferredRelations = builder.includeInferredRelations;
         includeOpinionRelations = builder.includeOpinionRelations;
-        contextCharacters = builder.contextCharacters;
+        maxPreviousContextCharacters = builder.maxPreviousContextCharacters;
         maxEntitiesPerChunk = builder.maxEntitiesPerChunk;
         maxRelationsPerChunk = builder.maxRelationsPerChunk;
         maxResponseCharacters = builder.maxResponseCharacters;
@@ -92,10 +92,10 @@ public final class GraphExtractionOptions {
     }
 
     /**
-     * @return 上下文字符数。
+     * @return 传给下一分段的前文最大字符数；0 表示不携带前文。
      */
-    public int getContextCharacters() {
-        return contextCharacters;
+    public int getMaxPreviousContextCharacters() {
+        return maxPreviousContextCharacters;
     }
 
     /**
@@ -137,7 +137,7 @@ public final class GraphExtractionOptions {
             + ";requireEvidence=" + requireEvidence
             + ";includeInferredRelations=" + includeInferredRelations
             + ";includeOpinionRelations=" + includeOpinionRelations
-            + ";contextCharacters=" + contextCharacters
+            + ";maxPreviousContextCharacters=" + maxPreviousContextCharacters
             + ";maxEntitiesPerChunk=" + maxEntitiesPerChunk
             + ";maxRelationsPerChunk=" + maxRelationsPerChunk
             + ";maxResponseCharacters=" + maxResponseCharacters
@@ -174,7 +174,7 @@ public final class GraphExtractionOptions {
         /**
          * 构造阶段暂存的前文字符上限。
          */
-        private int contextCharacters = 1000;
+        private int maxPreviousContextCharacters = 1000;
         /**
          * 构造阶段暂存的实体数量上限。
          */
@@ -233,9 +233,9 @@ public final class GraphExtractionOptions {
         /**
          * 设置传给下一 Chunk 的前文字符上限；设为 0 可关闭跨 Chunk 上下文。
          */
-        public Builder contextCharacters(int value) {
-            if (value < 0) throw new IllegalArgumentException("contextCharacters must not be negative");
-            contextCharacters = value;
+        public Builder maxPreviousContextCharacters(int value) {
+            if (value < 0) throw new IllegalArgumentException("maxPreviousContextCharacters must not be negative");
+            maxPreviousContextCharacters = value;
             return this;
         }
 

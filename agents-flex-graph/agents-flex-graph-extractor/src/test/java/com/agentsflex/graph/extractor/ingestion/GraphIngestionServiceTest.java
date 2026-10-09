@@ -39,6 +39,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 /**
@@ -58,19 +59,19 @@ public class GraphIngestionServiceTest {
         GraphIngestionResult second = scenario.service.ingest(document, schema(), request, scenario.writer);
 
         assertTrue(first.isSuccess());
-        assertEquals(GraphIngestionPlan.Status.UNCHANGED, second.getPlan().getStatus());
+        assertEquals(GraphIngestionPlan.Type.NO_OP, second.getPlan().getType());
         assertEquals(1, scenario.extractor.calls.get());
         assertEquals(1, scenario.writer.calls);
-        assertEquals(1L, scenario.states.get("knowledge", "doc-1").getRevision());
-        assertEquals(scenario.states.get("knowledge", "doc-1").getOperationId(),
+        assertEquals(1L, scenario.states.findCurrent("knowledge", "doc-1").getRevision());
+        assertEquals(scenario.states.findCurrent("knowledge", "doc-1").getOperationId(),
             scenario.writer.lastMutation.getOperationId());
-        assertEquals(1, scenario.states.get("knowledge", "doc-1").getFactSources().size());
-        assertEquals("doc-1", scenario.states.get("knowledge", "doc-1").getFactSources().get(0)
+        assertEquals(1, scenario.states.findCurrent("knowledge", "doc-1").getFactSources().size());
+        assertEquals("doc-1", scenario.states.findCurrent("knowledge", "doc-1").getFactSources().get(0)
             .getEvidence().getDocumentId());
-        GraphFactSource fact = scenario.states.get("knowledge", "doc-1").getFactSources().get(0);
+        GraphFactSource fact = scenario.states.findCurrent("knowledge", "doc-1").getFactSources().get(0);
         assertTrue(fact.getFactId().startsWith("fact-"));
         assertEquals(1L, fact.getDocumentRevision());
-        assertEquals(scenario.states.get("knowledge", "doc-1").getOperationId(), fact.getOperationId());
+        assertEquals(scenario.states.findCurrent("knowledge", "doc-1").getOperationId(), fact.getOperationId());
         assertEquals(GraphIngestionOperation.Stage.COMPLETED,
             scenario.operations.get(fact.getOperationId()).getStage());
     }
@@ -95,10 +96,10 @@ public class GraphIngestionServiceTest {
         assertEquals(1, retraction.getMutation().getDeleteEdgeKeys().size());
         GraphIngestionResult retracted = scenario.service.execute(retraction, scenario.writer);
         assertTrue(retracted.isSuccess());
-        assertNotNull(scenario.states.get("knowledge", "doc-b"));
+        assertNotNull(scenario.states.findCurrent("knowledge", "doc-b"));
         assertEquals(GraphDocumentState.Status.RETRACTED,
-            scenario.states.get("knowledge", "doc-b").getStatus());
-        assertNotNull(scenario.states.get("knowledge", "doc-a"));
+            scenario.states.findCurrent("knowledge", "doc-b").getStatus());
+        assertNotNull(scenario.states.findCurrent("knowledge", "doc-a"));
     }
 
     /**
@@ -109,16 +110,16 @@ public class GraphIngestionServiceTest {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1")
             .extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
-                .contextCharacters(100).build()).build(), scenario.writer);
+                .maxPreviousContextCharacters(100).build()).build(), scenario.writer);
         GraphIngestionResult second = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
-                .contextCharacters(200).build()).build(), scenario.writer);
+                .maxPreviousContextCharacters(200).build()).build(), scenario.writer);
 
-        assertEquals(GraphIngestionPlan.Status.READY, second.getPlan().getStatus());
+        assertEquals(GraphIngestionPlan.Type.INGESTION, second.getPlan().getType());
         assertEquals(2, scenario.extractor.calls.get());
         assertEquals(2, scenario.states.listVersions("knowledge", "doc-1").size());
-        GraphEdgeKey edge = scenario.states.get("knowledge", "doc-1").getEdgeKeys().iterator().next();
-        assertEquals(2, scenario.states.findHistoricalFactSources("knowledge", edge).size());
+        GraphEdgeKey edge = scenario.states.findCurrent("knowledge", "doc-1").getEdgeKeys().iterator().next();
+        assertEquals(2, scenario.states.findFactSourceHistory("knowledge", edge).size());
     }
 
     /**
@@ -147,7 +148,7 @@ public class GraphIngestionServiceTest {
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
         GraphIngestionRequest partial = request("doc-1")
             .staleRelationPolicy(GraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED)
-            .rejectExtractionErrors(false)
+            .failOnExtractionError(false)
             .extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
                 .failOnChunkError(false).build())
             .build();
@@ -158,8 +159,28 @@ public class GraphIngestionServiceTest {
         assertTrue(result.isSuccess());
         assertTrue(result.getPlan().getExtractionResult().hasErrors());
         assertTrue(result.getPlan().getStaleEdgeKeys().isEmpty());
-        assertEquals(1, scenario.states.get("knowledge", "doc-1").getEdgeKeys().size());
+        assertEquals(1, scenario.states.findCurrent("knowledge", "doc-1").getEdgeKeys().size());
         assertTrue(result.getPlan().getMutation().getDeleteEdgeKeys().isEmpty());
+    }
+
+    /** 只有显式开启部分关系重建时，失败分段遗漏的旧关系才会参与删除。 */
+    @Test
+    public void shouldReconcilePartialExtractionOnlyWhenExplicitlyAllowed() {
+        Scenario scenario = scenario();
+        scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
+        GraphIngestionRequest request = request("doc-1")
+            .staleRelationPolicy(GraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED)
+            .failOnExtractionError(false)
+            .allowPartialReconciliation(true)
+            .extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
+                .failOnChunkError(false).build())
+            .build();
+        GraphIngestionResult result = scenario.service.ingest(Document.of("失败"), schema(), request, scenario.writer);
+        assertTrue(result.isSuccess());
+        assertTrue(result.getPlan().getExtractionResult().hasErrors());
+        assertEquals(1, result.getPlan().getStaleEdgeKeys().size());
+        assertEquals(1, result.getPlan().getMutation().getDeleteEdgeKeys().size());
+        assertTrue(scenario.states.findCurrent("knowledge", "doc-1").getEdgeKeys().isEmpty());
     }
 
     /**
@@ -170,9 +191,9 @@ public class GraphIngestionServiceTest {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
         GraphIngestionResult result = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
-            request("doc-1").forceReextract(true).batchId("rerun-1").build(), scenario.writer);
+            request("doc-1").reextractUnchangedContent(true).batchId("rerun-1").build(), scenario.writer);
 
-        assertEquals(GraphIngestionPlan.Status.READY, result.getPlan().getStatus());
+        assertEquals(GraphIngestionPlan.Type.INGESTION, result.getPlan().getType());
         assertEquals(2, scenario.extractor.calls.get());
         assertEquals(2, scenario.writer.calls);
     }
@@ -223,7 +244,7 @@ public class GraphIngestionServiceTest {
         assertEquals(0, scenario.writer.calls);
         assertEquals(GraphIngestionOperation.Stage.COMPLETED,
             scenario.operations.get("resume-operation").getStage());
-        assertEquals(1L, scenario.states.get("knowledge", "doc-1").getRevision());
+        assertEquals(1L, scenario.states.findCurrent("knowledge", "doc-1").getRevision());
     }
 
     /**
@@ -245,7 +266,7 @@ public class GraphIngestionServiceTest {
         } catch (GraphExtractionException expected) {
             assertTrue(expected.getMessage().contains("another ingestion plan"));
         }
-        assertNull(scenario.states.get("knowledge", "doc-1"));
+        assertNull(scenario.states.findCurrent("knowledge", "doc-1"));
     }
 
     /**
@@ -273,8 +294,8 @@ public class GraphIngestionServiceTest {
         scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             GraphIngestionRequest.builder("archive", "doc-1").build(), scenario.writer);
 
-        String knowledgeFact = scenario.states.get("knowledge", "doc-1").getFactSources().get(0).getFactId();
-        String archiveFact = scenario.states.get("archive", "doc-1").getFactSources().get(0).getFactId();
+        String knowledgeFact = scenario.states.findCurrent("knowledge", "doc-1").getFactSources().get(0).getFactId();
+        String archiveFact = scenario.states.findCurrent("archive", "doc-1").getFactSources().get(0).getFactId();
         assertFalse(knowledgeFact.equals(archiveFact));
     }
 
@@ -338,11 +359,11 @@ public class GraphIngestionServiceTest {
     @Test
     public void shouldListOldestRecoverableOperationsFirst() {
         InMemoryGraphIngestionOperationStore store = new InMemoryGraphIngestionOperationStore();
-        store.createIfAbsent(operation("later", GraphIngestionOperation.Stage.PREPARED, 20L));
-        store.createIfAbsent(operation("oldest", GraphIngestionOperation.Stage.FAILED, 10L));
-        store.createIfAbsent(operation("completed", GraphIngestionOperation.Stage.COMPLETED, 1L));
+        store.createIfAbsent(operation("later", GraphIngestionOperation.Stage.PREPARED, 20L), operationPlan("later"));
+        store.createIfAbsent(operation("oldest", GraphIngestionOperation.Stage.FAILED, 10L), operationPlan("oldest"));
+        store.createIfAbsent(operation("completed", GraphIngestionOperation.Stage.COMPLETED, 1L), operationPlan("completed"));
 
-        java.util.List<GraphIngestionOperation> operations = store.listRecoverable(1);
+        java.util.List<GraphIngestionOperation> operations = store.listRecoverableOperations(1);
 
         assertEquals(1, operations.size());
         assertEquals("oldest", operations.get(0).getOperationId());
@@ -357,8 +378,8 @@ public class GraphIngestionServiceTest {
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-a").build(), scenario.writer);
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-b").build(), scenario.writer);
 
-        GraphEdgeKey sharedEdge = scenario.states.get("knowledge", "doc-a").getEdgeKeys().iterator().next();
-        java.util.List<GraphFactSource> factSources = scenario.states.findFactSources("knowledge", sharedEdge);
+        GraphEdgeKey sharedEdge = scenario.states.findCurrent("knowledge", "doc-a").getEdgeKeys().iterator().next();
+        java.util.List<GraphFactSource> factSources = scenario.states.findCurrentFactSources("knowledge", sharedEdge);
 
         assertEquals(2, factSources.size());
         assertEquals("doc-a", factSources.get(0).getEvidence().getDocumentId());
@@ -379,7 +400,7 @@ public class GraphIngestionServiceTest {
             request("doc-1").batchId("batch-1").schemaVersion("v1").build(), scenario.writer);
 
         assertFalse(failed.isSuccess());
-        assertNull(scenario.states.get("knowledge", "doc-1"));
+        assertNull(scenario.states.findCurrent("knowledge", "doc-1"));
         assertEquals(0, scenario.registry.size());
         String operationId = failed.getPlan().getNextState().getOperationId();
         assertEquals(GraphIngestionOperation.Stage.FAILED,
@@ -389,8 +410,8 @@ public class GraphIngestionServiceTest {
             request("doc-1").batchId("batch-1").schemaVersion("v1").build(), scenario.writer);
         assertTrue(retried.isSuccess());
         assertEquals(2, scenario.registry.size());
-        assertEquals("batch-1", scenario.states.get("knowledge", "doc-1").getBatchId());
-        assertEquals("v1", scenario.states.get("knowledge", "doc-1").getSchemaVersion());
+        assertEquals("batch-1", scenario.states.findCurrent("knowledge", "doc-1").getBatchId());
+        assertEquals("v1", scenario.states.findCurrent("knowledge", "doc-1").getSchemaVersion());
         assertEquals(GraphIngestionOperation.Stage.COMPLETED,
             scenario.operations.get(operationId).getStage());
     }
@@ -444,20 +465,80 @@ public class GraphIngestionServiceTest {
         GraphIngestionResult second = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").schemaVersion("v2").build(), scenario.writer);
 
-        assertEquals(GraphIngestionPlan.Status.READY, second.getPlan().getStatus());
+        assertEquals(GraphIngestionPlan.Type.INGESTION, second.getPlan().getType());
         assertEquals(2, scenario.extractor.calls.get());
-        assertEquals(2L, scenario.states.get("knowledge", "doc-1").getRevision());
+        assertEquals(2L, scenario.states.findCurrent("knowledge", "doc-1").getRevision());
     }
 
     /**
-     * 创建包含注册表解析器、内存状态和记录写入器的测试场景。
+     * 配置了操作存储但未声明恢复能力时，只能执行调用方持有的计划，不能进入恢复 API。
      */
+    @Test
+    public void shouldRespectExplicitRecoveryCapability() {
+        Scenario scenario = scenario();
+        GraphIngestionOperationStore executionOnly = new GraphIngestionOperationStore() {
+            @Override
+            public GraphIngestionOperation get(String id) {
+                return scenario.operations.get(id);
+            }
+
+            @Override
+            public boolean isRecoverySupported() { return false; }
+
+            @Override
+            public boolean createIfAbsent(GraphIngestionOperation operation, GraphIngestionPlan plan) {
+                return scenario.operations.createIfAbsent(operation, plan);
+            }
+
+            @Override
+            public boolean compareAndSet(String id, GraphIngestionOperation.Stage expected,
+                                         GraphIngestionOperation next) {
+                return scenario.operations.compareAndSet(id, expected, next);
+            }
+
+            @Override
+            public GraphIngestionPlan getPlan(String id) {
+                throw new AssertionError("unsupported recovery must not read plans");
+            }
+
+            @Override
+            public java.util.List<GraphIngestionOperation> listRecoverableOperations(int limit) {
+                throw new AssertionError("unsupported recovery must not scan operations");
+            }
+        };
+        GraphIngestionService service = new GraphIngestionService(scenario.pipeline, scenario.states,
+            scenario.registry, executionOnly, scenario.locks, scenario.clock::getAndIncrement);
+        assertFalse(service.isRecoverySupported());
+        assertThrows(IllegalStateException.class, () -> service.resume("op", scenario.writer));
+        assertThrows(IllegalStateException.class, () -> service.listRecoverableOperations(10));
+        assertThrows(IllegalArgumentException.class, () -> service.listRecoverableOperations(0));
+
+        assertTrue(service.ingest(Document.of("林默加入青云会"), schema(),
+            request("doc-execution-only").build(), scenario.writer).isSuccess());
+        assertEquals(1, scenario.writer.calls);
+        assertNotNull(scenario.states.findCurrent("knowledge", "doc-execution-only"));
+    }
+
+    /** 不配置操作存储时明确报告不支持恢复；配置内存存储时支持进程内恢复。 */
+    @Test
+    public void shouldDistinguishMissingAndRecoveryCapableStore() {
+        Scenario scenario = scenario();
+        assertTrue(scenario.service.isRecoverySupported());
+        GraphIngestionService service = new GraphIngestionService(scenario.pipeline, scenario.states,
+            scenario.registry, null, scenario.locks, scenario.clock::getAndIncrement);
+        assertFalse(service.isRecoverySupported());
+        assertTrue(service.listRecoverableOperations(10).isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> service.listRecoverableOperations(-1));
+        assertThrows(IllegalStateException.class, () -> service.resume("op", scenario.writer));
+    }
+
+    /** 创建包含注册表解析器、内存状态和记录写入器的测试场景。 */
     private static Scenario scenario() {
         InMemoryGraphEntityRegistry registry = new InMemoryGraphEntityRegistry();
         RecordingExtractor extractor = new RecordingExtractor();
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor,
             (document, idGenerator) -> Collections.singletonList(document),
-            new SchemaGraphCandidateValidator(), new RegistryGraphEntityResolver(registry),
+            new SchemaGraphCandidateValidator(), new RegistryGraphEntityResolver("knowledge", registry),
             new GraphCandidateMutationMapper());
         InMemoryGraphDocumentStateStore states = new InMemoryGraphDocumentStateStore();
         InMemoryGraphIngestionOperationStore operations = new InMemoryGraphIngestionOperationStore();
@@ -480,6 +561,15 @@ public class GraphIngestionServiceTest {
     private static GraphIngestionOperation operation(String id, GraphIngestionOperation.Stage stage, long time) {
         return new GraphIngestionOperation(id, "knowledge", "doc-" + id, 0L, "fingerprint-" + id,
             stage, time, "");
+    }
+
+    /** 创建与排序测试操作身份一致的计划。 */
+    private static GraphIngestionPlan operationPlan(String id) {
+        GraphDocumentState next = GraphDocumentState.builder("knowledge", "doc-" + id, "hash")
+            .revision(1L).operationId(id).build();
+        return GraphIngestionPlan.restore(GraphIngestionPlan.Type.INGESTION, "knowledge", "doc-" + id,
+            GraphOptions.ofSpace("knowledge"), null, next, null,
+            GraphMutation.builder().operationId(id).build(), Collections.emptySet(), Collections.emptyList());
     }
 
     /**

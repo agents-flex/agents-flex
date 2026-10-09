@@ -19,6 +19,8 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -31,15 +33,15 @@ public class RegistryGraphEntityResolverTest {
     @Test
     public void shouldReuseRegisteredNodeIdByAliasAcrossBatches() {
         InMemoryGraphEntityRegistry registry = new InMemoryGraphEntityRegistry();
-        registry.saveAll(Collections.singletonList(new GraphRegisteredEntity("person-001", "Character", "林默",
+        registry.saveAll("knowledge", Collections.singletonList(new GraphRegisteredEntity("person-001", "Character", "林默",
             Collections.singletonList("林公子"), props("age", 30L))));
         GraphEntityCandidate aliasMention = entity("c2::m1", "林公子", Collections.<String>emptyList(),
             props("age", 18L));
 
-        GraphEntityResolutionResult resolution = new RegistryGraphEntityResolver(registry)
+        GraphEntityResolutionResult resolution = new RegistryGraphEntityResolver("knowledge", registry)
             .resolve(Collections.singletonList(aliasMention));
 
-        assertEquals("person-001", resolution.nodeId("c2::m1"));
+        assertEquals("person-001", resolution.findNodeId("c2::m1"));
         assertEquals(30L, resolution.getNodes().get(0).getProperties().get("age"));
     }
 
@@ -54,12 +56,12 @@ public class RegistryGraphEntityResolverTest {
             Collections.<String>emptyList(), Collections.<String, Object>emptyMap());
         GraphEntityRegistry ambiguous = new GraphEntityRegistry() {
             @Override
-            public List<GraphRegisteredEntity> find(String type, java.util.Collection<String> names) {
+            public List<GraphRegisteredEntity> findMatches(String space, String type, java.util.Collection<String> names) {
                 return Arrays.asList(first, second);
             }
 
             @Override
-            public void saveAll(java.util.Collection<GraphRegisteredEntity> entities) {
+            public void saveAll(String space, java.util.Collection<GraphRegisteredEntity> entities) {
                 throw new UnsupportedOperationException();
             }
         };
@@ -67,7 +69,7 @@ public class RegistryGraphEntityResolverTest {
             props("name", "林默"));
 
         try {
-            new RegistryGraphEntityResolver(ambiguous).resolve(Collections.singletonList(bridge));
+            new RegistryGraphEntityResolver("knowledge", ambiguous).resolve(Collections.singletonList(bridge));
             fail("ambiguous registry matches should be rejected");
         } catch (GraphExtractionException expected) {
             assertEquals(true, expected.getMessage().contains("Ambiguous registered entities"));
@@ -84,13 +86,13 @@ public class RegistryGraphEntityResolverTest {
             Collections.<String>emptyList(), Collections.<String, Object>emptyMap());
         GraphRegisteredEntity conflicting = new GraphRegisteredEntity("person-002", "Character", "林默",
             Collections.<String>emptyList(), Collections.<String, Object>emptyMap());
-        registry.saveAll(Collections.singletonList(first));
+        registry.saveAll("knowledge", Collections.singletonList(first));
 
         try {
-            registry.saveAll(Collections.singletonList(conflicting));
+            registry.saveAll("knowledge", Collections.singletonList(conflicting));
             fail("name reassignment should be rejected");
         } catch (GraphExtractionException expected) {
-            assertSame(first, registry.find("Character", Collections.singletonList("林默")).get(0));
+            assertSame(first, registry.findMatches("knowledge", "Character", Collections.singletonList("林默")).get(0));
         }
     }
 
@@ -110,14 +112,68 @@ public class RegistryGraphEntityResolverTest {
         GraphEntityResolutionResult inB = new RegistryGraphEntityResolver("space-b", registry)
             .resolve(Collections.singletonList(mention));
 
-        assertEquals("person-a", inA.nodeId("c1::m1"));
-        assertFalse("person-a".equals(inB.nodeId("c1::m1")));
-        assertEquals(0, registry.find("space-b", "Character", Collections.singletonList("林默")).size());
+        assertEquals("person-a", inA.findNodeId("c1::m1"));
+        assertFalse("person-a".equals(inB.findNodeId("c1::m1")));
+        assertEquals(0, registry.findMatches("space-b", "Character", Collections.singletonList("林默")).size());
     }
 
-    /**
-     * 创建人物候选。
-     */
+    /** 所有持久身份查询和写入必须限定 Space，不接受隐式的全局注册表。 */
+    @Test
+    public void shouldRequireExplicitSpaceForRegistryAndResolver() {
+        InMemoryGraphEntityRegistry registry = new InMemoryGraphEntityRegistry();
+        for (String space : Arrays.asList(null, "", "  ")) {
+            assertThrows(IllegalArgumentException.class,
+                () -> registry.findMatches(space, "Character", Collections.singletonList("林默")));
+            assertThrows(IllegalArgumentException.class,
+                () -> registry.saveAll(space, Collections.emptyList()));
+            assertThrows(IllegalArgumentException.class,
+                () -> new RegistryGraphEntityResolver(space, registry));
+        }
+        assertThrows(IllegalArgumentException.class,
+            () -> registry.findMatches("knowledge", "", Collections.singletonList("林默")));
+    }
+
+    /** 批次后部的别名冲突不能留下前部新实体或属性修改。 */
+    @Test
+    public void shouldRollbackWholeRegistrationBatchOnNameConflict() {
+        InMemoryGraphEntityRegistry registry = new InMemoryGraphEntityRegistry();
+        GraphRegisteredEntity original = new GraphRegisteredEntity("p1", "Character", "林默",
+            Collections.singletonList("林公子"), props("age", 30L));
+        registry.saveAll("knowledge", Collections.singletonList(original));
+        GraphRegisteredEntity update = new GraphRegisteredEntity("p1", "Character", "林默",
+            Collections.singletonList("掌门"), props("age", 31L));
+        GraphRegisteredEntity newEntity = new GraphRegisteredEntity("p2", "Character", "苏青",
+            Collections.emptyList(), Collections.emptyMap());
+        GraphRegisteredEntity conflict = new GraphRegisteredEntity("p3", "Character", "黑衣人",
+            Collections.singletonList("林公子"), Collections.emptyMap());
+        assertThrows(GraphExtractionException.class,
+            () -> registry.saveAll("knowledge", Arrays.asList(update, newEntity, conflict)));
+        assertEquals(1, registry.size());
+        assertSame(original, registry.findMatches("knowledge", "Character", Collections.singletonList("林默")).get(0));
+        assertTrue(registry.findMatches("knowledge", "Character", Arrays.asList("掌门", "苏青")).isEmpty());
+    }
+
+    /** 同一身份重复注册合并别名与属性，并保持 Space 和类型隔离。 */
+    @Test
+    public void shouldMergeIdentityAndIsolateTypeAndSpace() {
+        InMemoryGraphEntityRegistry registry = new InMemoryGraphEntityRegistry();
+        registry.saveAll("knowledge", Collections.singletonList(new GraphRegisteredEntity("p1", "Character", "林默",
+            Collections.singletonList("林公子"), props("age", 30L))));
+        GraphRegisteredEntity update = new GraphRegisteredEntity("p1", "Character", "林默",
+            Collections.singletonList("掌门"), props("title", "宗主"));
+        registry.saveAll("knowledge", Arrays.asList(update, update));
+        assertEquals(1, registry.size());
+        List<GraphRegisteredEntity> matches = registry.findMatches("knowledge", "Character",
+            Arrays.asList("林公子", "掌门"));
+        assertEquals(1, matches.size());
+        assertEquals(30L, matches.get(0).getProperties().get("age"));
+        assertEquals("宗主", matches.get(0).getProperties().get("title"));
+        assertTrue(registry.findMatches("other", "Character", Collections.singletonList("掌门")).isEmpty());
+        assertTrue(registry.findMatches("knowledge", "Organization", Collections.singletonList("林默")).isEmpty());
+        assertThrows(UnsupportedOperationException.class, () -> matches.clear());
+    }
+
+    /** 创建人物候选。 */
     private static GraphEntityCandidate entity(String key, String name, List<String> aliases,
                                                Map<String, Object> properties) {
         return new GraphEntityCandidate(key, name, "Character", aliases, properties,

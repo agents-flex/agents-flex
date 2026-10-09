@@ -37,8 +37,8 @@ public class SchemaGraphCandidateValidatorTest {
             new GraphCandidateResult(Arrays.asList(person, organization), Collections.singletonList(relation),
                 Collections.emptyList(), "{}"), request);
 
-        assertEquals(2, result.getAccepted().getEntities().size());
-        assertEquals(1, result.getAccepted().getRelations().size());
+        assertEquals(2, result.getValidatedCandidates().getEntities().size());
+        assertEquals(1, result.getValidatedCandidates().getRelations().size());
         assertTrue(result.getIssues().isEmpty());
     }
 
@@ -60,8 +60,8 @@ public class SchemaGraphCandidateValidatorTest {
                 Collections.singletonList(wrongEndpoint), Collections.emptyList(), "{}"),
             request(GraphExtractionOptions.DEFAULT));
 
-        assertEquals(1, result.getAccepted().getEntities().size());
-        assertTrue(result.getAccepted().getRelations().isEmpty());
+        assertEquals(1, result.getValidatedCandidates().getEntities().size());
+        assertTrue(result.getValidatedCandidates().getRelations().isEmpty());
         assertEquals(3, result.getIssues().size());
     }
 
@@ -77,10 +77,10 @@ public class SchemaGraphCandidateValidatorTest {
             Collections.singletonList(relation), Collections.emptyList(), "{}");
 
         assertTrue(new SchemaGraphCandidateValidator().validate(batch, request(GraphExtractionOptions.DEFAULT))
-            .getAccepted().getRelations().isEmpty());
+            .getValidatedCandidates().getRelations().isEmpty());
         GraphExtractionOptions enabled = GraphExtractionOptions.builder().includeInferredRelations(true).build();
         assertEquals(1, new SchemaGraphCandidateValidator().validate(batch, request(enabled))
-            .getAccepted().getRelations().size());
+            .getValidatedCandidates().getRelations().size());
     }
 
     /**
@@ -100,7 +100,7 @@ public class SchemaGraphCandidateValidatorTest {
             new GraphCandidateResult(Arrays.asList(valid, mismatched, outOfBounds), Collections.emptyList(),
                 Collections.emptyList(), "{}"), request(GraphExtractionOptions.DEFAULT));
 
-        assertEquals(1, result.getAccepted().getEntities().size());
+        assertEquals(1, result.getValidatedCandidates().getEntities().size());
         assertEquals(2, result.getIssues().size());
         assertTrue(result.getIssues().get(0).getMessage().contains("offsets"));
         assertTrue(result.getIssues().get(1).getMessage().contains("offsets"));
@@ -135,7 +135,7 @@ public class SchemaGraphCandidateValidatorTest {
             Collections.emptyList(), Collections.emptyList(), "{}");
         GraphCandidateValidationResult result = new SchemaGraphCandidateValidator().validate(batch, request);
 
-        assertEquals(1, result.getAccepted().getEntities().size());
+        assertEquals(1, result.getValidatedCandidates().getEntities().size());
         assertEquals(2, result.getIssues().size());
         assertTrue(result.getIssues().get(0).getMessage().contains("invalid value type"));
         assertTrue(result.getIssues().get(1).getMessage().contains("allowed enum"));
@@ -161,7 +161,7 @@ public class SchemaGraphCandidateValidatorTest {
             new GraphCandidateResult(Arrays.asList(foreignKey, foreignChunk, foreignDocument),
                 Collections.emptyList(), Collections.emptyList(), "{}"), request);
 
-        assertTrue(result.getAccepted().getEntities().isEmpty());
+        assertTrue(result.getValidatedCandidates().getEntities().isEmpty());
         assertEquals(3, result.getIssues().size());
         assertTrue(result.getIssues().get(0).getMessage().contains("chunk scope"));
         assertTrue(result.getIssues().get(1).getMessage().contains("chunk id"));
@@ -186,8 +186,24 @@ public class SchemaGraphCandidateValidatorTest {
                 Collections.emptyList(), "{}"),
             GraphExtractionRequest.builder("林默", schema, "c").build());
 
-        assertTrue(result.getAccepted().getEntities().isEmpty());
+        assertTrue(result.getValidatedCandidates().getEntities().isEmpty());
         assertTrue(result.getIssues().get(0).getMessage().contains("invalid value type"));
+    }
+
+    /** 未知的空属性键应成为候选诊断，不能导致整批校验抛错或丢弃其他合法实体。 */
+    @Test
+    public void shouldIsolateCandidateWithInvalidPropertyKey() {
+        Map<String, Object> invalidProperties = props("name", "林默");
+        invalidProperties.put(null, "unexpected");
+        GraphEntityCandidate invalid = entity("c::bad", "林默", "Character", "林默", invalidProperties);
+        GraphEntityCandidate valid = entity("c::good", "苏青", "Character", "苏青", props("name", "苏青"));
+        GraphCandidateValidationResult result = new SchemaGraphCandidateValidator().validate(
+            new GraphCandidateResult(Arrays.asList(invalid, valid), Collections.emptyList(), Collections.emptyList(), "{}"),
+            request(GraphExtractionOptions.DEFAULT));
+        assertEquals(1, result.getValidatedCandidates().getEntities().size());
+        assertEquals("c::good", result.getValidatedCandidates().getEntities().get(0).getCandidateKey());
+        assertEquals(1, result.getIssues().size());
+        assertTrue(result.getIssues().get(0).getMessage().contains("unknown property"));
     }
 
     private static GraphExtractionRequest request(GraphExtractionOptions options) {

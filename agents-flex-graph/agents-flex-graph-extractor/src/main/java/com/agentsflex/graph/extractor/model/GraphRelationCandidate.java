@@ -54,7 +54,7 @@ public final class GraphRelationCandidate {
      * @param properties         待 Schema 校验的候选属性
      * @param evidence           支持该关系的当前分段证据，可以为 {@code null}
      * @param confidence         0 到 1 的模型置信度
-     * @param assertionType      明确事实、推断或观点；为 {@code null} 时兼容为 EXPLICIT
+     * @param assertionType      明确事实、推断或观点；为 {@code null} 时默认为 EXPLICIT
      */
     public GraphRelationCandidate(String sourceCandidateKey, String type, String targetCandidateKey, long rank,
                                   Map<String, ?> properties, GraphEvidence evidence, double confidence,

@@ -162,7 +162,7 @@ if (!result.isSuccess()) {
 ```text
 没有文档状态
   -> 抽取文档
-  -> 生成 READY 计划
+  -> 生成 INGESTION 计划
   -> 写入节点和关系
   -> 保存 ACTIVE 文档状态
 ```

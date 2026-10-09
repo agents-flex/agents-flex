@@ -58,7 +58,7 @@ public final class GraphEntityResolutionResult {
     /**
      * @return 指定候选实体对应的节点 ID；不存在时为 {@code null}。
      */
-    public String nodeId(String candidateKey) {
+    public String findNodeId(String candidateKey) {
         return candidateToNodeId.get(candidateKey);
     }
 }

@@ -49,7 +49,7 @@ public final class GraphReviewService {
      */
     public GraphReviewTask submit(GraphIngestionPlan plan) {
         if (plan == null) throw new IllegalArgumentException("plan must not be null");
-        if (plan.getStatus() == GraphIngestionPlan.Status.UNCHANGED) {
+        if (plan.getType() == GraphIngestionPlan.Type.NO_OP) {
             throw new IllegalArgumentException("unchanged plan does not require review");
         }
         return store.create(GraphReviewTask.pending(plan, clock.getAsLong()));
@@ -58,15 +58,15 @@ public final class GraphReviewService {
     /**
      * 按 taskId 查询审核任务。
      */
-    public GraphReviewTask get(String taskId) {
-        return store.get(taskId);
+    public GraphReviewTask findTask(String taskId) {
+        return store.findTask(taskId);
     }
 
     /**
      * 按条件分页查询审核任务。
      */
-    public List<GraphReviewTask> list(GraphReviewTaskQuery query) {
-        return store.list(query);
+    public List<GraphReviewTask> findTasks(GraphReviewTaskQuery query) {
+        return store.findTasks(query);
     }
 
     /**
@@ -77,7 +77,7 @@ public final class GraphReviewService {
         if (plan == null) throw new IllegalArgumentException("plan must not be null");
         GraphReviewTask current = requireActionable(taskId);
         requireVersion(current, expectedReviewVersion);
-        if (plan.getStatus() == GraphIngestionPlan.Status.UNCHANGED)
+        if (plan.getType() == GraphIngestionPlan.Type.NO_OP)
             throw new IllegalArgumentException("unchanged plan does not require review");
         if (!current.getPlan().getSpace().equals(plan.getSpace())
             || !current.getPlan().getDocumentId().equals(plan.getDocumentId())) {
@@ -108,8 +108,8 @@ public final class GraphReviewService {
         GraphReviewTask current = requireActionable(taskId);
         requireVersion(current, expectedReviewVersion);
         GraphIngestionPlan old = current.getPlan();
-        GraphIngestionPlan reviewed = ingestion.rebuild(old,
-            patch.apply(old.getExtractionResult(), old.getReviewSchema()));
+        GraphIngestionPlan reviewed = ingestion.rebuildPlan(old,
+            patch.apply(old.getExtractionResult(), old.getSourceSchema()));
         return updatePlan(taskId, expectedReviewVersion, reviewed, reason, actor);
     }
 
@@ -129,7 +129,7 @@ public final class GraphReviewService {
     public GraphReviewExecutionResult accept(String taskId, long expectedReviewVersion,
                                              GraphWriter writer, String actor) {
         if (writer == null) throw new IllegalArgumentException("writer must not be null");
-        GraphReviewTask current = store.get(taskId);
+        GraphReviewTask current = store.findTask(taskId);
         if (current == null) throw new IllegalArgumentException("review task was not found: " + taskId);
         requireVersion(current, expectedReviewVersion);
         // 客户端超时后可能重复点击。已完成任务不再写图，直接返回幂等成功结果。
@@ -157,7 +157,7 @@ public final class GraphReviewService {
         if (writer == null) throw new IllegalArgumentException("writer must not be null");
         if (!ingestion.isRecoverySupported())
             throw new IllegalStateException("operationStore is required for review recovery");
-        GraphReviewTask current = store.get(taskId);
+        GraphReviewTask current = store.findTask(taskId);
         if (current == null) throw new IllegalArgumentException("review task was not found: " + taskId);
         requireVersion(current, expectedReviewVersion);
         if (current.getStatus() == GraphReviewTaskStatus.COMPLETED) return alreadyCompleted(current);
@@ -245,7 +245,7 @@ public final class GraphReviewService {
      * 执行中和失败任务可能已经部分写图，必须先恢复，不能通过归档丢弃恢复线索。
      */
     public GraphReviewTask archive(String taskId, long expectedReviewVersion, String actor) {
-        GraphReviewTask current = store.get(taskId);
+        GraphReviewTask current = store.findTask(taskId);
         if (current == null) throw new IllegalArgumentException("review task was not found: " + taskId);
         requireVersion(current, expectedReviewVersion);
         if (current.getStatus() != GraphReviewTaskStatus.COMPLETED && current.getStatus() != GraphReviewTaskStatus.REJECTED)
@@ -265,7 +265,7 @@ public final class GraphReviewService {
      * 查询并限制可修改或拒绝的状态。
      */
     private GraphReviewTask requireActionable(String taskId) {
-        GraphReviewTask task = store.get(taskId);
+        GraphReviewTask task = store.findTask(taskId);
         if (task == null) throw new IllegalArgumentException("review task was not found: " + taskId);
         if (task.getStatus() != GraphReviewTaskStatus.PENDING_REVIEW && task.getStatus() != GraphReviewTaskStatus.CHANGES_REQUESTED)
             throw new IllegalStateException("review task is not actionable: " + task.getStatus());

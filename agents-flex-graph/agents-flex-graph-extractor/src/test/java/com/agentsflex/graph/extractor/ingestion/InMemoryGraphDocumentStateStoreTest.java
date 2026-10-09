@@ -46,7 +46,7 @@ public class InMemoryGraphDocumentStateStoreTest {
             int winners = (first.get(2, TimeUnit.SECONDS) ? 1 : 0)
                 + (second.get(2, TimeUnit.SECONDS) ? 1 : 0);
             assertEquals(1, winners);
-            assertEquals(1L, store.get("space", "doc").getRevision());
+            assertEquals(1L, store.findCurrent("space", "doc").getRevision());
         } finally {
             executor.shutdownNow();
         }
@@ -115,9 +115,9 @@ public class InMemoryGraphDocumentStateStoreTest {
         assertTrue(store.compareAndSet("space", "doc", 1L, retracted));
         store.recordVersion(retracted);
 
-        assertTrue(store.findFactSources("space", edge).isEmpty());
-        assertEquals(2, store.findHistoricalFactSources("space", edge).size());
-        assertTrue(store.findFactSources("other", edge).isEmpty());
+        assertTrue(store.findCurrentFactSources("space", edge).isEmpty());
+        assertEquals(2, store.findFactSourceHistory("space", edge).size());
+        assertTrue(store.findCurrentFactSources("other", edge).isEmpty());
     }
 
     /**
@@ -131,7 +131,7 @@ public class InMemoryGraphDocumentStateStoreTest {
 
         assertFalse(store.remove("space", "doc", 2L));
         assertTrue(store.remove("space", "doc", 1L));
-        assertNull(store.get("space", "doc"));
+        assertNull(store.findCurrent("space", "doc"));
         assertFalse(store.remove("space", "doc", 1L));
     }
 

@@ -180,7 +180,7 @@ chunkText.substring(startOffset, endOffset).equals(quote)
 
 ## 明确事实、推断和观点
 
-`GraphAssertionType` 用于区分关系的认识论性质。默认协议把缺失类型视为明确事实以兼容早期响应，非法值会被拒绝。
+`GraphAssertionType` 用于区分关系的认识论性质。默认协议把缺失类型视为明确事实（`EXPLICIT`），非法值会被拒绝。
 
 默认配置不让 INFERRED 和 OPINION 进入 Mutation。即使业务允许，也建议：
 
@@ -201,7 +201,7 @@ GraphExtractionOptions options =
         .requireEvidence(true)
         .includeInferredRelations(false)
         .includeOpinionRelations(false)
-        .contextCharacters(1500)
+        .maxPreviousContextCharacters(1500)
         .maxEntitiesPerChunk(100)
         .maxRelationsPerChunk(100)
         .maxResponseCharacters(500_000)
@@ -349,8 +349,8 @@ COMPLETED / REJECTED -> ARCHIVED
 | 操作 | SDK 方法 | 结果 |
 | --- | --- | --- |
 | 生成任务 | `reviewService.submit(plan)` | 返回 `GraphReviewTask` 和 `taskId` |
-| 查询详情 | `reviewService.get(taskId)` | 返回任务，不存在时返回 `null` |
-| 查询列表 | `reviewService.list(query)` | 按 Space、文档和状态分页查询 |
+| 查询详情 | `reviewService.findTask(taskId)` | 返回任务，不存在时返回 `null` |
+| 查询列表 | `reviewService.findTasks(query)` | 按 Space、文档和状态分页查询 |
 | 修改候选 | `reviewService.applyPatch(...)` | SDK 重建计划并递增审核版本 |
 | 替换完整计划 | `reviewService.updatePlan(...)` | 保存重新抽取或撤回生成的计划 |
 | 恢复执行 | `reviewService.resume(...)` | 恢复冻结计划并同步审核状态 |
@@ -368,7 +368,7 @@ COMPLETED / REJECTED -> ARCHIVED
 
 ```java
 GraphIngestionPlan plan = ingestion.plan(document, schema, request);
-if (plan.getStatus() == GraphIngestionPlan.Status.UNCHANGED) {
+if (plan.getType() == GraphIngestionPlan.Type.NO_OP) {
     // 内容未变，无抽取结果，也无需人工审核。
     ingestion.execute(plan, graphStore.writer());
 } else {
@@ -397,7 +397,7 @@ if (plan.getStatus() == GraphIngestionPlan.Status.UNCHANGED) {
 审核页面可以直接调用 SDK 的查询方法：
 
 ```java
-List<GraphReviewTask> tasks = reviewService.list(
+List<GraphReviewTask> tasks = reviewService.findTasks(
     GraphReviewTaskQuery.builder()
         .space("novel_knowledge")
         .status(GraphReviewTaskStatus.PENDING_REVIEW)
@@ -406,21 +406,21 @@ List<GraphReviewTask> tasks = reviewService.list(
         .build());
 
 // 详情页：读取任务、候选快照和当前待执行 Mutation。
-GraphReviewTask task = reviewService.get(taskId);
+GraphReviewTask task = reviewService.findTask(taskId);
 GraphIngestionPlan plan = task.getPlan();
 GraphExtractionResult extraction = plan.getExtractionResult();
 GraphMutation mutation = plan.getMutation();
 ```
 
 UI 可以把 `tasks` 展示在审核列表，把 `task` 中的计划和抽取结果展示在详情页。这里仍然要区分
-`reviewService.list(...)` 和 `ingestion.listRecoverableOperations(...)`：前者是人工审核任务列表，后者是图写入失败后的恢复操作列表。
+`reviewService.findTasks(...)` 和 `ingestion.listRecoverableOperations(...)`：前者是人工审核任务列表，后者是图写入失败后的恢复操作列表。
 
 ### 3. 审核者修改任务时调用什么
 
 常见修改直接通过 `GraphReviewPatch` 表达，应用不用手动拼装 Mutation 和文档状态：
 
 ```java
-GraphReviewTask task = reviewService.get(taskId);
+GraphReviewTask task = reviewService.findTask(taskId);
 GraphExtractionResult extraction = task.getPlan().getExtractionResult();
 String candidateKey = extraction.getValidatedEntities().get(0).getCandidateKey();
 
@@ -441,10 +441,10 @@ GraphReviewTask updated = reviewService.applyPatch(
 不能把上一版本的下标用在修改后的任务上。实体操作使用 SDK 结果返回的完整候选键，不自行拼接。
 
 还可以调用 `rejectEntity(candidateKey)` 拒绝实体及其关联关系，调用
-`entityProperties(candidateKey, properties)` 或 `relationProperties(index, properties)`
+`replaceEntityProperties(candidateKey, properties)` 或 `replaceRelationProperties(index, properties)`
 替换完整属性映射。属性修改会重新检查 Schema 白名单、类型和必填约束；匹配节点必须具有与候选相同的类型。
 
-SDK 会重建批准候选、实体映射、Mutation、文档状态、事实来源和实体注册记录，并递增审核版本。
+SDK 会重建修订后的候选、实体映射、Mutation、文档状态、事实来源和实体注册记录，并递增审核版本。
 拒绝关系不会直接删除共享关系：是否删除旧事实仍取决于原计划的旧关系策略及其他文档来源。
 原始模型候选和问题保留在 allEntities/allRelations/issues 中；审核 Patch 不会把原始 ERROR 自动清除。
 
@@ -467,7 +467,7 @@ public GraphReviewExecutionResult accept(String taskId, long expectedReviewVersi
 如果进程退出后任务滞留在 EXECUTING，或任务显示 FAILED，先读取最新版本，再恢复原计划：
 
 ```java
-GraphReviewTask task = reviewService.get(taskId);
+GraphReviewTask task = reviewService.findTask(taskId);
 GraphReviewExecutionResult recovered = reviewService.resume(
     taskId, task.getReviewVersion(), graphStore.writer(), currentUser());
 ```
@@ -539,7 +539,7 @@ ERROR    RELATION_ENDPOINT_TYPE_MISMATCH
 | 缺少必填属性 | 修改属性 | 校验新值的 Schema 类型和必填约束，再重建节点 |
 | 端点类型或实体身份不确定 | 匹配已有实体/创建新实体 | 更新 Registry 映射、关系端点和实体注册快照 |
 | 引文或偏移不正确 | 修正证据/重新抽取 | 重新验证引文位于当前 Chunk，不能只把问题标记为已解决 |
-| 低置信度或推断关系 | 接受为业务事实/拒绝关系 | 保存审核理由，并从批准候选中保留或移除该关系 |
+| 低置信度或推断关系 | 接受为业务事实/拒绝关系 | 保存审核理由，并在修订后的候选中保留或移除该关系 |
 | 过期关系待撤回 | 确认撤回/保留关系 | 检查其他 ACTIVE 文档来源，再决定是否加入删除变更 |
 | 模型协议或 Schema 错误 | 重新抽取/退回修改 | 产生新的抽取版本或让上游修复，不能伪造一个通过状态 |
 
@@ -558,7 +558,7 @@ ERROR    RELATION_ENDPOINT_TYPE_MISMATCH
 | 修改后接受 | `applyPatch` 后重新预览，再 `accept` | SDK 重建并执行新计划 |
 | 匹配已有实体 | `GraphReviewPatch.resolveEntity` + `applyPatch` | 重建端点、来源和注册记录 |
 | 创建新实体 | 同上，指定新的稳定节点 ID | 写成功后注册实体 |
-| 拒绝关系 | `GraphReviewPatch.rejectRelation` + `applyPatch` | 重建批准关系和文档来源 |
+| 拒绝关系 | `GraphReviewPatch.rejectRelation` + `applyPatch` | 重建修订后的关系和文档来源 |
 | 确认撤回 | 提交撤回计划后调用 `updatePlan` 和 `accept` | 执行已确认的删除变更 |
 | 要求重新抽取 | 重新调用 `GraphIngestionService.plan(...)` 后 `updatePlan` | 替换任务当前快照；历史由 Store 保存 |
 
@@ -612,11 +612,11 @@ GraphReviewExecutionResult result = reviewService.accept(
 修改属性或选择另一个实体时，不能只改数据库中的审核 JSON，也不能直接从 `getValidatedEntities()` 或 `getValidatedRelations()`
 列表中删除元素后继续执行旧计划。
 
-对于拒绝候选、属性修改和实体匹配，`applyPatch` 会自动重建批准结果，再交给入图服务计算
+对于拒绝候选、属性修改和实体匹配，`applyPatch` 会自动重建修订后的结果，再交给入图服务计算
 新计划。调用方只负责传入审核意图和业务理由，不应自行同步 nodeIds、edgeKeys 或 factSources。
 
 审核任务存储必须保存完整计划。如果要在进程重启后继续修改，还应保存计划中的抽取结果、
-`reviewSchema` 和 `reviewRequest`；恢复时使用 `GraphIngestionPlan.restore(..., schema, request)`
+`sourceSchema` 和 `sourceRequest`；恢复时使用 `GraphIngestionPlan.restore(..., schema, request)`
 和 `GraphReviewTask.restore(...)`，保留原审核版本。只保存执行字段的计划可以执行，但不能使用 Patch。
 
 Patch 仅修改已经通过自动校验的候选，不能新增未经校验的证据或把无效候选强行转为合法。
@@ -651,7 +651,7 @@ Patch 仅修改已经通过自动校验的候选，不能新增未经校验的�
 ```
 
 审核者选择“匹配已有实体”后，应用先展示 Registry 候选；选择完成并点击“接受并入图”时，后端应执行“更新
-端点 -> `applyPatch` 重建计划 -> `accept` 校验 revision 并执行”这条链路。审核者选择“拒绝关系”时，通过 Patch 从批准候选中移除这条边，
+端点 -> `applyPatch` 重建计划 -> `accept` 校验 revision 并执行”这条链路。审核者选择“拒绝关系”时，通过 Patch 从当前合法候选中移除这条边，
 仍可保留同一批次中已经确认的实体或其他关系；最终执行的 Mutation 必须在变更预览区重新展示给审核者。
 
 ## 一个审核策略示例
@@ -697,8 +697,8 @@ ReviewDecision decide(GraphExtractionResult result) {
 }
 
 GraphIngestionPlan plan = ingestion.plan(document, schema, request);
-// UNCHANGED 计划没有抽取结果，先处理内容判重。
-if (plan.getStatus() == GraphIngestionPlan.Status.UNCHANGED) {
+// NO_OP 计划没有抽取结果，先处理内容判重。
+if (plan.getType() == GraphIngestionPlan.Type.NO_OP) {
     ingestion.execute(plan, graphStore.writer());
     return;
 }
@@ -722,7 +722,7 @@ switch (decision) {
 }
 ~~~
 
-这个示例是“整份抽取结果”的审核策略。如果产品需要只拒绝某一条候选、保留同一批次的其他候选，应在 `GraphCandidateValidator` 阶段实现候选级规则，或者通过 `GraphReviewPatch` 和 `applyPatch` 修改批准候选；不能直接修改 `getValidatedEntities()` 或 `getValidatedRelations()` 返回的只读列表。
+这个示例是“整份抽取结果”的审核策略。如果产品需要只拒绝某一条候选、保留同一批次的其他候选，应在 `GraphCandidateValidator` 阶段实现候选级规则，或者通过 `GraphReviewPatch` 和 `applyPatch` 修改当前合法候选；不能直接修改 `getValidatedEntities()` 或 `getValidatedRelations()` 返回的只读列表。
 
 ## 修改候选和审核待撤回关系
 
@@ -809,7 +809,7 @@ switch (decision) {
 
 ~~~java
 GraphIngestionPlan plan = ingestion.plan(document, schema, request);
-if (plan.getStatus() != GraphIngestionPlan.Status.UNCHANGED
+if (plan.getType() != GraphIngestionPlan.Type.NO_OP
     && needsHumanReview(plan)) {
     // 只有转人工的分支需要审核服务。
     GraphReviewTask task = reviewService.submit(plan);

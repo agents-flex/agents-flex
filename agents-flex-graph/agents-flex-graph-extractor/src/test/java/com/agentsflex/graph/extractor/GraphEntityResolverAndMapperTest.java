@@ -38,8 +38,8 @@ public class GraphEntityResolverAndMapperTest {
             Arrays.asList(first, alias, placeWithSameName));
 
         assertEquals(2, resolution.getNodes().size());
-        assertEquals(resolution.nodeId(first.getCandidateKey()), resolution.nodeId(alias.getCandidateKey()));
-        assertNotEquals(resolution.nodeId(first.getCandidateKey()), resolution.nodeId(placeWithSameName.getCandidateKey()));
+        assertEquals(resolution.findNodeId(first.getCandidateKey()), resolution.findNodeId(alias.getCandidateKey()));
+        assertNotEquals(resolution.findNodeId(first.getCandidateKey()), resolution.findNodeId(placeWithSameName.getCandidateKey()));
         assertEquals("林默", resolution.getNodes().get(0).getProperties().get("name"));
         assertEquals(18L, resolution.getNodes().get(0).getProperties().get("age"));
     }
@@ -59,7 +59,7 @@ public class GraphEntityResolverAndMapperTest {
 
         assertEquals(2, mutation.getNodes().size());
         assertEquals(1, mutation.getEdges().size());
-        assertEquals(resolution.nodeId("c::p"), mutation.getEdges().get(0).getSourceId());
+        assertEquals(resolution.findNodeId("c::p"), mutation.getEdges().get(0).getSourceId());
     }
 
     /**
@@ -89,8 +89,8 @@ public class GraphEntityResolverAndMapperTest {
     @Test
     public void generatedIdsShouldBeDeterministic() {
         GraphEntityCandidate candidate = entity("c::p", "林默", "Character", Collections.emptyList(), props("name", "林默"));
-        String first = new NameAliasGraphEntityResolver().resolve(Collections.singletonList(candidate)).nodeId("c::p");
-        String second = new NameAliasGraphEntityResolver().resolve(Collections.singletonList(candidate)).nodeId("c::p");
+        String first = new NameAliasGraphEntityResolver().resolve(Collections.singletonList(candidate)).findNodeId("c::p");
+        String second = new NameAliasGraphEntityResolver().resolve(Collections.singletonList(candidate)).findNodeId("c::p");
         assertEquals(first, second);
         assertTrue(first.startsWith("character:"));
     }
@@ -107,7 +107,7 @@ public class GraphEntityResolverAndMapperTest {
         GraphEntityResolutionResult resolution = new NameAliasGraphEntityResolver().resolve(Arrays.asList(first, second, bridge));
 
         assertEquals(1, resolution.getNodes().size());
-        assertEquals(resolution.nodeId("c1::a"), resolution.nodeId("c2::b"));
+        assertEquals(resolution.findNodeId("c1::a"), resolution.findNodeId("c2::b"));
     }
 
     /**

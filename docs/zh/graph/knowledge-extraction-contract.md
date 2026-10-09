@@ -111,11 +111,11 @@ GraphExtractionRequest
 | `schema` | 允许的节点、关系、属性和类型 |
 | `documentId` | 跨版本稳定的逻辑文档 ID |
 | `chunkId` | 当前分段 ID，参与证据定位和候选作用域 |
-| `context` | 仅用于指代消解的前文，不能作为当前证据 |
+| `previousContext` | 仅用于指代消解的前文，不能作为当前证据 |
 | `metadata` | 页码、章节和来源系统等只读来源信息 |
 | `options` | 置信度、数量上限、断言类型和响应大小策略 |
 
-例如，前一个 Chunk 提到“林默”，当前 Chunk 只写“他加入了青云宗”。前文 context 可以帮助模型理解“他”是谁，但证据仍必须来自当前 Chunk，不能引用 context 中没有出现在当前正文的句子。
+例如，前一个 Chunk 提到“林默”，当前 Chunk 只写“他加入了青云宗”。`previousContext` 可以帮助模型理解“他”是谁，但证据仍必须来自当前 Chunk，不能引用前文中没有出现在当前正文的句子。
 
 ## 候选结果：模型认为文本中有什么
 
@@ -147,7 +147,7 @@ Schema 和质量校验；校验器也使用这个类型保存通过校验的候�
 
 表示两个候选实体之间可能存在的关系。它使用 `sourceMentionId` 和 `targetMentionId` 引用当前候选实体，并携带关系类型、属性、证据、置信度和 `assertionType`。
 
-关系候选不能直接把名称当作长期端点，也不能引用只存在于 context、没有出现在当前候选集合中的实体。
+关系候选不能直接把名称当作长期端点，也不能引用只存在于 `previousContext`、没有出现在当前候选集合中的实体。
 
 ## 证据：说明为什么得到这条知识
 
@@ -268,7 +268,7 @@ mentionId != candidateKey != nodeId != factId != operationId
 1. 缺失 `entities` 或 `relations` 时返回明确问题；
 2. 单个坏候选尽量隔离，不丢弃同一响应中的合法候选；
 3. 保留请求中的 documentId、chunkId 和 metadata；
-4. 不把 context 中的文字当作 evidence；
+4. 不把 `previousContext` 中的文字当作 evidence；
 5. 把未知 Schema 类型和非法端点交给 Validator；
 6. 保存足够的响应和版本信息，使结果可以回放。
 

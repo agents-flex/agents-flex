@@ -6,7 +6,8 @@ import com.agentsflex.graph.extractor.mapping.GraphCandidateMutationMapper;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
 import com.agentsflex.graph.extractor.resolution.GraphEntityResolutionResult;
-import com.agentsflex.graph.extractor.validation.SchemaGraphCandidateValidator;
+import com.agentsflex.graph.extractor.validation.GraphPropertyViolation;
+import com.agentsflex.graph.extractor.validation.GraphSchemaPropertyValidator;
 import com.agentsflex.graph.schema.GraphSchema;
 
 import java.util.*;
@@ -14,38 +15,38 @@ import java.util.*;
 /**
  * 对合法候选的不可变人工修改集合，不直接操作数据库。
  *
- * <p>关系使用当前结果 relations 列表的下标定位，必须与任务 reviewVersion 一起提交。
+ * <p>关系使用当前结果 validatedRelations 列表的下标定位，必须与任务 reviewVersion 一起提交。
  * 拒绝实体会同时移除其关联关系；解析实体后 SDK 重新生成端点、Mutation、来源与注册记录。
  * 原始 allEntities/allRelations 和问题列表保持不变，便于追溯模型输出。</p>
  */
 public final class GraphReviewPatch {
     /**
-     * 要从批准候选中移除的实体键。
+     * 要从当前合法候选中移除的实体键。
      */
-    private final Set<String> rejectedEntities;
+    private final Set<String> rejectedEntityKeys;
     /**
-     * 当前版本 relations 列表中要移除的下标。
+     * 当前版本 validatedRelations 列表中要移除的下标。
      */
-    private final Set<Integer> rejectedRelations;
+    private final Set<Integer> rejectedRelationIndexes;
     /**
      * 人工确认的候选到最终节点映射。
      */
-    private final Map<String, GraphNode> resolvedEntities;
+    private final Map<String, GraphNode> resolvedNodesByCandidateKey;
     /**
      * 按候选键替换完整属性映射。
      */
-    private final Map<String, Map<String, Object>> entityProperties;
+    private final Map<String, Map<String, Object>> replacementPropertiesByEntityKey;
     /**
      * 按关系下标替换完整属性映射。
      */
-    private final Map<Integer, Map<String, Object>> relationProperties;
+    private final Map<Integer, Map<String, Object>> replacementPropertiesByRelationIndex;
 
     private GraphReviewPatch(Builder b) {
-        rejectedEntities = Collections.unmodifiableSet(new LinkedHashSet<>(b.rejectedEntities));
-        rejectedRelations = Collections.unmodifiableSet(new LinkedHashSet<>(b.rejectedRelations));
-        resolvedEntities = Collections.unmodifiableMap(new LinkedHashMap<>(b.resolvedEntities));
-        entityProperties = Collections.unmodifiableMap(new LinkedHashMap<>(b.entityProperties));
-        relationProperties = Collections.unmodifiableMap(new LinkedHashMap<>(b.relationProperties));
+        rejectedEntityKeys = Collections.unmodifiableSet(new LinkedHashSet<>(b.rejectedEntityKeys));
+        rejectedRelationIndexes = Collections.unmodifiableSet(new LinkedHashSet<>(b.rejectedRelationIndexes));
+        resolvedNodesByCandidateKey = Collections.unmodifiableMap(new LinkedHashMap<>(b.resolvedNodesByCandidateKey));
+        replacementPropertiesByEntityKey = Collections.unmodifiableMap(new LinkedHashMap<>(b.replacementPropertiesByEntityKey));
+        replacementPropertiesByRelationIndex = Collections.unmodifiableMap(new LinkedHashMap<>(b.replacementPropertiesByRelationIndex));
     }
 
     /**
@@ -56,17 +57,17 @@ public final class GraphReviewPatch {
     }
 
     /**
-     * 修改批准候选并重新映射节点和边；保留证据，不重新调用模型。
+     * 修改合法候选并重新映射节点和边；保留证据，不重新调用模型。后续仍需接受任务才会入图。
      */
     GraphExtractionResult apply(GraphExtractionResult old, GraphSchema schema) {
         if (old == null || schema == null) throw new IllegalArgumentException("complete review context is required");
         Set<String> keys = new LinkedHashSet<>();
         for (GraphEntityCandidate e : old.getValidatedEntities()) keys.add(e.getCandidateKey());
-        for (String key : rejectedEntities) requireKey(keys, key);
-        for (String key : resolvedEntities.keySet()) requireKey(keys, key);
-        for (String key : entityProperties.keySet()) requireKey(keys, key);
-        for (Integer index : rejectedRelations) requireIndex(index, old.getValidatedRelations().size());
-        for (Integer index : relationProperties.keySet()) requireIndex(index, old.getValidatedRelations().size());
+        for (String key : rejectedEntityKeys) requireKey(keys, key);
+        for (String key : resolvedNodesByCandidateKey.keySet()) requireKey(keys, key);
+        for (String key : replacementPropertiesByEntityKey.keySet()) requireKey(keys, key);
+        for (Integer index : rejectedRelationIndexes) requireIndex(index, old.getValidatedRelations().size());
+        for (Integer index : replacementPropertiesByRelationIndex.keySet()) requireIndex(index, old.getValidatedRelations().size());
         List<GraphEntityCandidate> entities = new ArrayList<>();
         Map<String, String> mapping = new LinkedHashMap<>();
         Map<String, GraphNode> nodes = new LinkedHashMap<>();
@@ -74,8 +75,8 @@ public final class GraphReviewPatch {
         for (GraphNode n : old.getEntityResolution().getNodes()) originalNodes.put(n.getId(), n);
         // 先保留原节点，再应用显式人工决策，避免遍历顺序覆盖人工修改。
         for (GraphEntityCandidate e : old.getValidatedEntities()) {
-            if (rejectedEntities.contains(e.getCandidateKey())) continue;
-            String id = old.getEntityResolution().nodeId(e.getCandidateKey());
+            if (rejectedEntityKeys.contains(e.getCandidateKey())) continue;
+            String id = old.getEntityResolution().findNodeId(e.getCandidateKey());
             GraphNode n = originalNodes.get(id);
             if (n == null) throw new IllegalArgumentException("resolved node is missing: " + e.getCandidateKey());
             mapping.put(e.getCandidateKey(), id);
@@ -84,13 +85,13 @@ public final class GraphReviewPatch {
         Map<String, GraphNode> editedNodes = new LinkedHashMap<>();
         for (GraphEntityCandidate e : old.getValidatedEntities()) {
             String key = e.getCandidateKey();
-            if (rejectedEntities.contains(key)) {
-                if (resolvedEntities.containsKey(key) || entityProperties.containsKey(key))
+            if (rejectedEntityKeys.contains(key)) {
+                if (resolvedNodesByCandidateKey.containsKey(key) || replacementPropertiesByEntityKey.containsKey(key))
                     throw new IllegalArgumentException("cannot reject and edit the same entity");
                 continue;
             }
-            GraphNode resolved = resolvedEntities.get(key);
-            Map<String, Object> props = entityProperties.containsKey(key) ? entityProperties.get(key)
+            GraphNode resolved = resolvedNodesByCandidateKey.get(key);
+            Map<String, Object> props = replacementPropertiesByEntityKey.containsKey(key) ? replacementPropertiesByEntityKey.get(key)
                 : resolved != null ? resolved.getProperties() : e.getProperties();
             GraphSchema.NodeType definition = null;
             for (GraphSchema.NodeType type : schema.getNodeTypes())
@@ -100,7 +101,7 @@ public final class GraphReviewPatch {
             if (resolved != null && (resolved.getLabels().size() != 1 || !resolved.getLabels().contains(e.getType())))
                 throw new IllegalArgumentException("resolved node type must match candidate type");
             String id = resolved == null ? mapping.get(key) : resolved.getId();
-            if (resolved != null || entityProperties.containsKey(key)) {
+            if (resolved != null || replacementPropertiesByEntityKey.containsKey(key)) {
                 GraphNode replacement = GraphNode.builder(id, e.getType()).properties(props).build();
                 GraphNode collision = nodes.get(id);
                 if (collision != null && !collision.getLabels().contains(e.getType()))
@@ -119,11 +120,11 @@ public final class GraphReviewPatch {
         List<GraphRelationCandidate> relations = new ArrayList<>();
         for (int i = 0; i < old.getValidatedRelations().size(); i++) {
             GraphRelationCandidate r = old.getValidatedRelations().get(i);
-            if (rejectedRelations.contains(i) && relationProperties.containsKey(i))
+            if (rejectedRelationIndexes.contains(i) && replacementPropertiesByRelationIndex.containsKey(i))
                 throw new IllegalArgumentException("cannot reject and edit the same relation");
-            if (rejectedRelations.contains(i) || !mapping.containsKey(r.getSourceCandidateKey())
+            if (rejectedRelationIndexes.contains(i) || !mapping.containsKey(r.getSourceCandidateKey())
                 || !mapping.containsKey(r.getTargetCandidateKey())) continue;
-            Map<String, Object> props = relationProperties.containsKey(i) ? relationProperties.get(i) : r.getProperties();
+            Map<String, Object> props = replacementPropertiesByRelationIndex.containsKey(i) ? replacementPropertiesByRelationIndex.get(i) : r.getProperties();
             GraphSchema.EdgeType definition = null;
             for (GraphSchema.EdgeType type : schema.getEdgeTypes())
                 if (type.getType().equals(r.getType())) definition = type;
@@ -141,15 +142,15 @@ public final class GraphReviewPatch {
      * 人工审核仍须满足 Schema 的类型和必填约束。
      */
     private static void checkProperties(Map<String, Object> props, List<GraphSchema.Property> definitions) {
-        String problem = SchemaGraphCandidateValidator.propertyProblem(props, definitions);
-        if (problem != null) throw new IllegalArgumentException(problem);
+        GraphPropertyViolation violation = GraphSchemaPropertyValidator.findViolation(props, definitions);
+        if (violation != null) throw new IllegalArgumentException(violation.getMessage());
     }
 
     /**
      * 拒绝失效的候选定位，不能悄悄忽略 UI 传来的错误身份。
      */
     private static void requireKey(Set<String> keys, String key) {
-        if (!keys.contains(key)) throw new IllegalArgumentException("unknown accepted candidate: " + key);
+        if (!keys.contains(key)) throw new IllegalArgumentException("unknown validated candidate: " + key);
     }
 
     /**
@@ -166,37 +167,37 @@ public final class GraphReviewPatch {
         /**
          * 拒绝的候选实体键。
          */
-        private final Set<String> rejectedEntities = new LinkedHashSet<>();
+        private final Set<String> rejectedEntityKeys = new LinkedHashSet<>();
         /**
          * 拒绝的关系下标。
          */
-        private final Set<Integer> rejectedRelations = new LinkedHashSet<>();
+        private final Set<Integer> rejectedRelationIndexes = new LinkedHashSet<>();
         /**
          * 人工确认的最终节点。
          */
-        private final Map<String, GraphNode> resolvedEntities = new LinkedHashMap<>();
+        private final Map<String, GraphNode> resolvedNodesByCandidateKey = new LinkedHashMap<>();
         /**
          * 完整替换的实体属性。
          */
-        private final Map<String, Map<String, Object>> entityProperties = new LinkedHashMap<>();
+        private final Map<String, Map<String, Object>> replacementPropertiesByEntityKey = new LinkedHashMap<>();
         /**
          * 完整替换的关系属性。
          */
-        private final Map<Integer, Map<String, Object>> relationProperties = new LinkedHashMap<>();
+        private final Map<Integer, Map<String, Object>> replacementPropertiesByRelationIndex = new LinkedHashMap<>();
 
         /**
          * 拒绝实体及其关联关系；不会删除图中的共享实体。
          */
         public Builder rejectEntity(String key) {
-            rejectedEntities.add(text(key));
+            rejectedEntityKeys.add(text(key));
             return this;
         }
 
         /**
-         * 拒绝当前 relations 列表中的关系。
+         * 拒绝当前 validatedRelations 列表中的关系。
          */
         public Builder rejectRelation(int index) {
-            rejectedRelations.add(index);
+            rejectedRelationIndexes.add(index);
             return this;
         }
 
@@ -205,23 +206,23 @@ public final class GraphReviewPatch {
          */
         public Builder resolveEntity(String key, GraphNode node) {
             if (node == null) throw new IllegalArgumentException("node must not be null");
-            resolvedEntities.put(text(key), node);
+            resolvedNodesByCandidateKey.put(text(key), node);
             return this;
         }
 
         /**
          * 替换实体完整属性，不修改候选身份和证据。
          */
-        public Builder entityProperties(String key, Map<String, ?> properties) {
-            entityProperties.put(text(key), properties(properties));
+        public Builder replaceEntityProperties(String key, Map<String, ?> properties) {
+            replacementPropertiesByEntityKey.put(text(key), properties(properties));
             return this;
         }
 
         /**
          * 替换关系完整属性，不修改端点和证据。
          */
-        public Builder relationProperties(int index, Map<String, ?> properties) {
-            relationProperties.put(index, properties(properties));
+        public Builder replaceRelationProperties(int index, Map<String, ?> properties) {
+            replacementPropertiesByRelationIndex.put(index, properties(properties));
             return this;
         }
 

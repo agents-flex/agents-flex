@@ -24,7 +24,7 @@ public class GraphExtractionModelTest {
     public void optionsShouldExposeConservativeDefaults() {
         GraphExtractionOptions options = GraphExtractionOptions.DEFAULT;
         assertEquals(0.6D, options.getMinConfidence(), 0D);
-        assertEquals(1000, options.getContextCharacters());
+        assertEquals(1000, options.getMaxPreviousContextCharacters());
         assertEquals(200, options.getMaxEntitiesPerChunk());
         assertEquals(true, options.isRequireEvidence());
         assertEquals(true, options.isFailOnChunkError());
