@@ -38,6 +38,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 | `agents-flex-audio` | Speech-to-text and text-to-speech: Alibaba Cloud, Tencent Cloud, Volcengine |
 | `agents-flex-ocr` | OCR model integrations: Baidu AI Cloud, Gitee AI, and MinerU |
 | `agents-flex-store` | Vector stores: Redis, Qdrant, Chroma, Pgvector, MariaDB, Milvus, OpenSearch, Elasticsearch, Alibaba Cloud, Tencent Cloud |
+| `agents-flex-graph` | Portable graph SDK, Neo4j/Nebula backends, knowledge extraction, and progressive knowledge-query tools |
 | `agents-flex-search-engine` | Search engine wrappers: Lucene, Elasticsearch, and search service interfaces |
 | `agents-flex-rerank` | Rerank models: default implementation and Gitee Rerank |
 | `agents-flex-tool` | Common tools: file system, Shell, Grep, Glob, WebFetch, Python, JavaScript |
@@ -306,6 +307,7 @@ agents-flex-video/                Video model integrations
 agents-flex-audio/                Audio model integrations
 agents-flex-ocr/                  OCR model integrations
 agents-flex-store/                Vector store integrations
+agents-flex-graph/                Graph SDK, backends, extraction, and knowledge tools
 agents-flex-search-engine/        Search engine integrations
 agents-flex-tool/                 Common tools
 agents-flex-toolsearch/           Progressive tool discovery

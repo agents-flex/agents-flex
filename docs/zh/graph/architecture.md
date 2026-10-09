@@ -46,12 +46,14 @@ Graph SDK 由多个协作模块组成，但对应用仍表现为一套统一的 
 | 模块 | 定位 | 主要职责 |
 | --- | --- | --- |
 | `agents-flex-graph-api` | SDK 公共核心 | 公共模型、接口、查询语言、AST、能力声明、错误和结果契约 |
+| `agents-flex-graph-tools` | Agent 知识检索扩展 | 显式知识源白名单、渐进式 Schema 披露、只读 Portable Query 和受控结果输出 |
 | `agents-flex-graph-neo4j` | SDK 的 Neo4j 后端实现 | Neo4j 连接、Cypher 编译执行、事务、游标、Schema 和结果转换 |
 | `agents-flex-graph-nebula` | SDK 的 Nebula 后端实现 | Nebula 连接、nGQL 编译执行、Space、Schema/索引和结果转换 |
 | `agents-flex-graph-extractor` | 可选知识抽取扩展 | 文档内容到节点/边候选的抽取、校验、实体归一、知识入图和审核任务 |
 | `agents-flex-graph-testkit` | 测试支持模块 | 面向实现方的内存替身、契约测试和导入/任务行为验证 |
 
-其中，`agents-flex-graph-api` 是公共语义的中心；后端模块依赖它并实现具体数据库能力；Extractor 不属于数据库驱动，而是面向知识图谱数据生产的上层扩展；Testkit 不参与生产运行时。
+其中，`agents-flex-graph-api` 是公共语义的中心；后端模块依赖它并实现具体数据库能力；Tools 和 Extractor
+分别是面向知识查询与知识生产的上层扩展；Testkit 不参与生产运行时。
 
 ## Graph SDK 的内部层次
 

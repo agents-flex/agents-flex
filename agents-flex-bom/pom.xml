@@ -259,6 +259,10 @@
         </dependency>
         <dependency>
             <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-graph-tools</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-graph-extractor</artifactId>
         </dependency>
         <dependency>

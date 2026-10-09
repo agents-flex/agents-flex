@@ -15,6 +15,7 @@
 
     <modules>
         <module>agents-flex-graph-api</module>
+        <module>agents-flex-graph-tools</module>
         <module>agents-flex-graph-extractor</module>
         <module>agents-flex-graph-testkit</module>
         <module>agents-flex-graph-store-jdbc</module>

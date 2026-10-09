@@ -218,6 +218,11 @@ const graphSidebar = [
         ]
     },
     {
+        text: 'Agent 知识检索', items: [
+            {text: '渐进式知识检索 Tools', link: '/zh/graph/knowledge-tools'},
+        ]
+    },
+    {
         text: '统一查询', items: [
             {text: '查询概览', link: '/zh/graph/query-overview'},
             {text: '遍历查询', link: '/zh/graph/traversal-query'},

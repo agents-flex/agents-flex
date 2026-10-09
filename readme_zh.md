@@ -38,6 +38,7 @@ Agents-Flex 是一个面向 Java 生态的轻量级 AI 应用开发框架。它�
 | `agents-flex-audio` | 语音识别与语音合成：阿里云、腾讯云、火山引擎 |
 | `agents-flex-ocr` | OCR 模型适配：百度智能云、Gitee AI、MinerU |
 | `agents-flex-store` | 向量存储：Redis、Qdrant、Chroma、Pgvector、MariaDB、Milvus、OpenSearch、Elasticsearch、阿里云、腾讯云 |
+| `agents-flex-graph` | 可移植 Graph SDK、Neo4j/Nebula 后端、知识抽取和渐进式知识检索工具 |
 | `agents-flex-search-engine` | 搜索引擎封装：Lucene、Elasticsearch、搜索服务接口 |
 | `agents-flex-rerank` | Rerank 模型：默认实现、Gitee Rerank |
 | `agents-flex-tool` | 通用工具：文件系统、Shell、Grep、Glob、WebFetch、Python、JavaScript |
@@ -306,6 +307,7 @@ agents-flex-video/                视频模型适配
 agents-flex-audio/                语音模型适配
 agents-flex-ocr/                  OCR 模型适配
 agents-flex-store/                向量存储适配
+agents-flex-graph/                Graph SDK、后端、知识抽取和知识检索工具
 agents-flex-search-engine/        搜索引擎适配
 agents-flex-tool/                 通用工具集
 agents-flex-toolsearch/           渐进式工具发现
