@@ -163,7 +163,7 @@ Document + 文档版本 + 已有文档状态 + 实体注册表
 
 8. [故障恢复](/zh/graph/extractor/recovery)；
 9. [错误处理](/zh/graph/extractor/error-handling)；
-10. [模型接入](/zh/graph/extractor/model-integration)。
+10. [大模型知识提取](/zh/graph/extractor/model-integration)。
 
 ## 最小依赖
 

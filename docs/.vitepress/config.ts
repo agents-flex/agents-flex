@@ -214,7 +214,7 @@ const graphSidebar = [
             {text: '知识入图', link: '/zh/graph/extractor/ingestion'},
             {text: '故障恢复', link: '/zh/graph/extractor/recovery'},
             {text: '错误处理', link: '/zh/graph/extractor/error-handling'},
-            {text: '模型接入', link: '/zh/graph/extractor/model-integration'},
+            {text: '大模型知识提取', link: '/zh/graph/extractor/model-integration'},
         ]
     },
     {

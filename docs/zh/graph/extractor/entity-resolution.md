@@ -2,199 +2,273 @@
 
 ## 概述
 
-抽取出“林默”“林公子”和“他”并不等于知道它们是否指向同一个人。实体归一负责把多个文本提及映射到稳定的图节点身份，是知识图谱能否长期维护的关键。
+假设从一部小说中抽取出“林默”和“林公子”，只说明这部小说里出现了两个名字；它们可能指向同一个人，也可能不是。
 
-如果实体归一错误，会出现两种相反问题：
+实体归一（Entity Resolution）就是根据名称、类型、别名、业务主键和上下文等信息，判断多个候选是否指向同一个业务实体，并把确认属于同一实体的候选映射到一个稳定的图节点 ID。
 
-- **拆分错误**：同一实体生成多个节点，关系被分散；
-- **合并错误**：同名不同实体被合并，产生错误关系传播。
+可以先把问题想成下面这样：
 
-前者降低召回，后者可能污染整个图谱。不能只靠字符串相等解决。
+```text
+第一段：林默加入青云宗。
+第二段：林公子后来成为青云宗长老。
 
-## 四个不同概念
+抽取结果：
+  c1::m1  Character  林默
+  c2::m1  Character  林公子
 
-### 文本提及
+归一结果：
+  c1::m1 ─┐
+          ├── Character:person-001（一个图节点）
+  c2::m1 ─┘
+```
 
-模型响应中的 `mentionId` 表示当前 Chunk 的一个局部提及，只在单次响应内有效。
+如果不归一，图数据库可能创建两个节点，人物的关系会被拆散；如果把两个同名但不同的人错误合并，关系又会传播到错误的对象。实体归一的作用，是在“避免重复节点”和“避免错误合并”之间做出可解释、可复用的身份判断。
 
-### 候选实体
+它通常出现在知识抽取流程的这一步：
 
-`GraphEntityCandidate` 包含名称、类型、别名、属性、证据和候选键。它仍然可能与其他候选指向同一实体。
+```text
+文档 -> 分段 -> 抽取候选 -> Schema 校验 -> 实体归一 -> GraphMutation
+```
 
-### 实体解析结果
+实体归一只负责身份映射，不负责证明文本中的事实一定正确，也不会自动把结果写入图数据库。审核、入图和失败恢复分别由后续流程负责。
 
-`GraphEntityResolver` 对候选进行聚类或匹配，产生候选键到 nodeId 的映射。
+## 先区分四个对象
 
-### 实体注册记录
+第一次接触这部分代码时，最容易混淆的是“文本里出现的名字”和“图数据库里的节点”。它们不是同一个对象：
 
-`GraphEntityRegistry` 保存跨文档、跨任务可复用的稳定实体身份。它属于长期状态，而不是单次模型输出。
+| 对象 | 含义 | 生命周期 | 示例 |
+| --- | --- | --- | --- |
+| 文本提及（mention） | 某个 Chunk 中的一次局部出现 | 一次模型响应 | `c1::m1` |
+| 候选实体（candidate） | 抽取器把提及整理成的结构化对象，包含名称、类型、别名、属性和证据 | 一次抽取结果 | `Character / 林默 / 林公子` |
+| 业务实体 | 现实世界中被识别和维护的对象 | 跨文档、跨批次 | 林默这个人物 |
+| 图节点（node） | 业务实体在图数据库中的表示，有稳定 `nodeId` | 长期存储 | `person-001` |
 
-## 默认名称与别名归一
+`candidateKey`（例如 `c1::m1`）只用于在当前流水线中引用候选，尤其是关系的端点；它不是最终的数据库 ID。`GraphEntityResolutionResult` 会返回两部分结果：去重后的 `GraphNode` 列表，以及每个候选键到最终 `nodeId` 的映射。
 
-`NameAliasGraphEntityResolver` 按“节点类型 + Unicode 规范化名称/别名”合并候选，并通过 SHA-256 生成确定性 nodeId。
+## 一个最小的可运行例子
 
-~~~text
-林默 / 林公子 -> 同一个 Character
-林默(Character) / 林默(Organization) -> 不同节点
-~~~
+下面直接构造两个候选，模拟它们来自不同 Chunk。第二个候选使用“林公子”作为名称，但与第一个候选共享同一个 `Character` 类型和别名，因此默认解析器会把它们归为一个节点。
 
-常见中英文代词即使被模型放进 aliases，也不会作为合并键。属性冲突默认保留首次值，后续候选只补充缺失属性；它不会根据时间、来源可信度或业务优先级自动裁决。
+```java
+import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
+import com.agentsflex.graph.extractor.resolution.GraphEntityResolutionResult;
+import com.agentsflex.graph.extractor.resolution.NameAliasGraphEntityResolver;
 
-默认实现适合单次文档内的基础去重，但无法可靠处理：
+import java.util.Arrays;
+import java.util.Collections;
 
-- “他”“她”“该公司”等指代；
-- 同名不同人；
-- 名称发生变化；
-- 翻译名和音译名；
-- 只有上下文才能区分的角色；
-- 与已有业务主数据匹配。
+GraphEntityCandidate first = new GraphEntityCandidate(
+    "c1::m1", "林默", "Character",
+    Collections.singletonList("林公子"),
+    Collections.singletonMap("name", "林默"),
+    null, 1D);
 
-## 稳定 ID 的来源
+GraphEntityCandidate alias = new GraphEntityCandidate(
+    "c2::m1", "林公子", "Character",
+    Collections.emptyList(),
+    Collections.singletonMap("role", "长老"),
+    null, 1D);
 
-nodeId 应表示业务实体，而不是文本出现位置。可选来源包括：
+GraphEntityResolutionResult result = new NameAliasGraphEntityResolver()
+    .resolve(Arrays.asList(first, alias));
 
-- 业务系统主键；
-- 权威主数据 ID；
+System.out.println(result.getNodes().size());
+// 1
+System.out.println(result.findNodeId(first.getCandidateKey()));
+// 例如：character:...
+System.out.println(result.findNodeId(alias.getCandidateKey()));
+// 与上一个 nodeId 相同
+```
+
+这个例子里发生了三件事：
+
+1. 解析器比较候选的类型、名称和强别名；
+2. 两个候选被放进同一个实体集合，并合并缺失属性；
+3. 解析器为集合生成一个稳定 `nodeId`，再把两个 `candidateKey` 都映射到这个 ID。
+
+关系候选仍然使用 `candidateKey` 指向端点。后续的 `GraphCandidateMutationMapper` 会根据这个映射，把关系端点替换成真正的节点 ID。因此，关系不需要在抽取阶段猜测最终 ID。
+
+## 默认归一规则
+
+`NameAliasGraphEntityResolver` 是流水线的默认实现。它使用“节点类型 + 规范化名称或强别名”进行确定性归一：
+
+```text
+Character / 林默 + 林公子  -> 同一个节点
+Character / 林默            -> Character 类型的节点
+Organization / 林默         -> 另一个节点
+```
+
+默认实现会进行 Unicode NFKC、首尾空白、连续空白和大小写规范化；常见代词不会作为合并键。例如，即使模型把“他”放进两个候选的 `aliases`，也不会因此把两个角色合并。
+
+属性处理也需要理解：同一实体的多个候选被合并时，默认策略保留先出现的属性值，只补充此前缺失的属性。它不会根据时间、来源可信度或业务优先级自动裁决冲突。
+
+### 默认实现能解决什么
+
+- 同一文档或同一批次中重复出现的实体；
+- 明确的名称和稳定别名，例如“北京大学”和“北大”；
+- 相同名称但节点类型不同的实体隔离；
+- 重试时由类型和规范名称生成相同的确定性 ID。
+
+### 默认实现不能替你决定什么
+
+- “他”“她”“该公司”等指代词具体指向谁；
+- 两个同名人物是否是同一个人；
+- 人物改名、公司更名前后是否是同一实体；
+- 翻译名、音译名或只有上下文才能判断的称呼；
+- 抽取结果是否已经达到可以自动入图的业务可信度。
+
+因此，“名称相同”是默认实现的匹配信号，不是普遍成立的事实。
+
+### `nodeId` 应该从哪里来
+
+`nodeId` 表示业务实体，不表示它在某个 Chunk 中出现的位置。长期图谱可以按业务情况选择：
+
+- 业务系统主键或权威主数据 ID；
 - 外部标准编号；
 - 持久化实体注册表分配的 ID；
-- 在有限场景下，由类型和规范名称确定性生成的哈希。
+- 仅在名称足够稳定、歧义较少时，使用类型和规范名称生成的哈希。
 
-不要使用 mentionId、chunkId、随机数或当前时间生成长期实体 ID。否则文档重试和后续导入会持续创建重复节点。
+不要把 `candidateKey`、`chunkId`、随机数或当前时间当作长期 ID，否则同一文档重试或后续增量导入时会不断创建重复节点。需要接入自己的 ID 策略时，可以实现 `GraphEntityIdGenerator`，再传给 `NameAliasGraphEntityResolver` 或 `RegistryGraphEntityResolver` 的构造方法。
 
-可以实现 `GraphEntityIdGenerator` 接入自己的 ID 策略。
+## 把解析器装配到抽取流水线
 
-## 为什么默认哈希不足以支持长期图谱
+使用 `new GraphExtractionPipeline(extractor)` 时，流水线已经自动使用 `NameAliasGraphEntityResolver`。如果要显式表达这个选择，或替换为自己的实现，可以把 Resolver 作为第四个组件传入：
 
-默认哈希取决于本次抽取中确定的规范名称。它能让同一名称重复得到相同 ID，但不能回答：
+```java
+GraphExtractionPipeline pipeline = new GraphExtractionPipeline(
+    extractor,
+    documentSplitter,
+    new SchemaGraphCandidateValidator(),
+    new NameAliasGraphEntityResolver(),
+    new GraphCandidateMutationMapper());
 
-- 名称变化前后是否同一实体；
-- 同名的两个实体是否应该分开；
-- 新别名是否属于已有实体；
-- 不同 Space 是否允许共享身份；
-- 实体已经有业务主键时应使用哪个 ID。
+GraphExtractionResult extraction = pipeline.extract(document, schema);
 
-所以长期知识入图应使用 `GraphEntityRegistry`，并在 Pipeline 中装配 `RegistryGraphEntityResolver`。
+// extraction.getEntityResolution() 中包含：
+// 1. 去重后的 GraphNode；
+// 2. candidateKey -> nodeId 的映射。
+// 此时仍是内存结果，不会自动写入图数据库。
+```
 
-## 使用实体注册表
+如果业务已有主数据、向量检索或人工审核规则，可以实现 `GraphEntityResolver`，在 `resolve(List<GraphEntityCandidate>)` 中使用这些信息。自定义实现仍应返回 `GraphEntityResolutionResult`，并保证每个已接收候选都有对应的节点 ID。
 
-~~~java
-GraphEntityRegistry registry =
-    new YourPersistentEntityRegistry();
+## 为什么需要实体注册表
 
-GraphExtractionPipeline pipeline =
-    new GraphExtractionPipeline(
-        extractor,
-        splitter,
-        validator,
-        new RegistryGraphEntityResolver(
-            "novel_knowledge",
-            registry),
-        new GraphCandidateMutationMapper());
-~~~
+默认解析器的 ID 由“类型 + 规范名称”生成。它适合开始验证，但长期知识库通常还需要跨批次复用身份：
 
-解析器按 Space、节点类型、规范名称和别名查询已有注册记录：
+```text
+第一次导入：林默 -> person-001
+后来导入：  林公子 -> 仍然应该是 person-001
+```
 
-- 没有命中时生成新 nodeId；
-- 唯一命中时复用已有 nodeId；
-- 命中多个不同 nodeId 时属于歧义，应失败并进入审核，而不是任选一个。
+名称可能变化，同名实体也可能被人工拆分。仅靠名称哈希无法回答这些问题，所以需要一个持久化的 `GraphEntityRegistry`，保存已经确认的“名称/别名 -> nodeId”关系。
 
-仅把 registry 传给 `GraphIngestionService` 只能在图写成功后保存注册结果，不能改变抽取阶段的解析。跨批次复用历史身份，必须在 Pipeline 的 Resolver 中使用同一个 registry。
+注册表不是图节点的完整副本，而是跨文档、跨任务解析身份所需的索引。它至少应保存：
 
-## 注册表的生产约束
+- `space`：知识库作用域；
+- `type`：Schema 中的节点类型；
+- `nodeId`：已确认的稳定节点 ID；
+- `canonicalName`：规范名称；
+- `aliases`：可以复用的稳定别名；
+- 已确认的属性快照（可选）。
 
-生产实现至少需要：
+## 使用注册表复用历史身份
 
-- 以 Space 隔离不同知识库；
-- 查询时同时限定节点类型；
-- 对名称和别名使用与 Resolver 一致的 NFKC、大小写和空白规范化；
-- 为“Space + 类型 + 规范名称/别名”建立可验证的唯一性规则；
-- 同一个名称已指向另一 nodeId 时拒绝静默覆盖；
-- 幂等保存实体及其新增别名；
-- 保留合并、拆分和人工裁决审计记录；
-- 支持并发创建时的唯一约束或原子冲突处理。
+先用内存注册表演示 API。它只适合测试和示例，进程退出后数据会丢失。
 
-如果多个 Space 共用一个底层表，仍必须把 Space 放入查询和唯一键。否则同名实体会跨知识库污染。
+```java
+import com.agentsflex.graph.extractor.registry.GraphEntityRegistry;
+import com.agentsflex.graph.extractor.registry.GraphRegisteredEntity;
+import com.agentsflex.graph.extractor.registry.InMemoryGraphEntityRegistry;
+import com.agentsflex.graph.extractor.resolution.RegistryGraphEntityResolver;
 
-## 实体注册的提交时机
+GraphEntityRegistry registry = new InMemoryGraphEntityRegistry();
+registry.saveAll("novel_knowledge", Collections.singletonList(
+    new GraphRegisteredEntity(
+        "person-001", "Character", "林默",
+        Collections.singletonList("林公子"),
+        Collections.singletonMap("age", 30L))));
 
-注册记录应在 Graph Mutation 写入成功后保存，避免失败写入留下指向不存在节点的身份。
+GraphExtractionPipeline pipeline = new GraphExtractionPipeline(
+    extractor,
+    documentSplitter,
+    new SchemaGraphCandidateValidator(),
+    new RegistryGraphEntityResolver("novel_knowledge", registry),
+    new GraphCandidateMutationMapper());
+```
 
-但图数据库和注册表通常不在同一个事务中，因此仍可能出现：
+在这条流水线中，解析器先在当前批次内按名称和别名聚类，再按 `space`、节点类型和名称查询注册表：
 
-~~~text
-图写入成功 -> 注册表保存失败
-~~~
+- 没有历史命中：生成新的 `nodeId`；
+- 只命中一个历史实体：复用它的 `nodeId`，并优先使用已注册属性；
+- 命中多个不同 `nodeId`：抛出歧义错误，交给审核，不能随机选择。
 
-长期入图服务通过持久化操作状态和重试降低这个风险。生产系统还需要对账，发现图节点与注册表不一致。
+注意，下面两件事不是同一件事：
 
-## 同名歧义与人工审核
+```text
+把 registry 传给 GraphIngestionService
+  -> 图写成功后保存本次注册结果
 
-当多个已有实体匹配同一候选时，上层审核界面可以展示：
+把 registry 传给 RegistryGraphEntityResolver
+  -> 抽取阶段就能复用已有 nodeId
+```
 
-- 候选名称、类型和别名；
-- 当前文档上下文与证据；
-- 每个历史实体的属性和关联；
-- 来源文档；
-- 可能的业务主键；
-- 新建实体选项。
+要跨批次复用身份，必须在 Pipeline 的 Resolver 中使用同一个持久化注册表；只在入图服务中保存注册结果，无法改变本次抽取已经产生的映射。
 
-审核结果应形成可持久化的别名或身份映射，而不是只修改当前 Mutation。否则下一批文档还会重复产生同样歧义。
+## 什么时候需要人工审核
 
-## 指代消解与语义匹配
+以下情况不应静默自动合并：
 
-复杂 Resolver 可以组合：
+- 同一候选的名称和别名分别命中多个历史实体；
+- 两个同名实体的属性、来源或图谱邻居互相矛盾；
+- 新名称可能是改名，也可能是另一个实体；
+- 只有上下文、时间或业务主键才能判断身份。
 
-- 章节或会话上下文；
-- 已有图谱邻居；
-- 业务主数据；
-- 向量检索；
-- 规则词典；
-- 第二次模型判断；
-- 人工确认。
+审核界面至少应展示候选名称、类型、别名、原文证据、当前文档上下文、历史实体属性和来源，并提供“复用已有实体”“新建实体”“暂不决定”等选项。审核结果应保存为注册表中的别名或身份映射，使下一批文档可以复用，而不是只修改当前一次 Mutation。
 
-无论使用什么方法，都应输出可解释的匹配依据和置信信息。高相似度并不等于同一实体，尤其是短名称和常见人名。
+## 注册、写图与合并拆分的边界
 
-## 实体合并和拆分
+推荐在 Graph Mutation 写入成功后再保存注册记录，避免注册表指向尚未存在的节点：
 
-发现历史实体重复后，不能只修改注册表指向。图中可能已经存在：
+```text
+抽取/审核 -> 生成 Mutation -> 图写入成功 -> 保存实体注册 -> 保存文档和来源状态
+```
 
-- 两个节点的不同属性；
-- 指向它们的关系；
-- 不同来源事实；
-- 外部系统引用；
-- 历史文档状态中的 nodeId。
+图数据库和注册表通常不在同一个事务中，因此仍可能出现“图写入成功但注册表保存失败”。生产系统应保存操作状态、支持重试，并定期对账。
 
-实体合并和拆分应作为独立、可审核的数据治理操作，规划属性合并、关系迁移、别名更新、来源保留和回滚。它不属于默认抽取 Resolver 的自动职责。
+如果发现历史上已经创建了两个重复节点，也不能只把注册表的指向改掉。图中可能还有关系、来源事实、外部系统引用和历史文档状态。实体合并或拆分应作为独立、可审核、可回滚的数据治理操作，规划属性合并、关系迁移、别名更新和审计记录；它不是默认 Resolver 的自动职责。
 
 ## 常见问题
 
 ### 同名同类型一定是同一实体吗？
 
-不一定。默认实现只能做保守的名称归一，生产场景应结合主键、上下文或审核。
+不一定。默认解析器只能做保守的名称/别名归一；生产场景应结合业务主键、上下文、来源或人工审核。
 
-### 可以跨 Space 共用实体 ID 吗？
+### `candidateKey` 可以直接当图节点 ID 吗？
 
-可以由业务决定，但注册查询必须显式带 Space，或者建立清晰的全局身份域。不要因为底层表共享就默认合并知识库。
+不可以。`candidateKey` 通常带有 Chunk 标识，只在一次抽取流程内有效。长期节点应使用业务主键、注册表 ID 或确定性 ID 生成器。
 
-### Registry 会自动保存吗？
+### 可以把“他”加入别名帮助归一吗？
 
-Pipeline 中的 Resolver 负责查询和映射；入图服务在写图成功后才保存注册结果。单次 Pipeline 抽取不会自动提交业务注册表。
+可以保留在候选或证据中供审核，但默认解析器不会把常见代词当作跨候选合并键。代词消解需要上下文规则、模型判断或人工确认。
 
 ### 修改规范名称会改变节点 ID 吗？
 
-默认哈希策略可能改变。使用持久化注册表或业务主键后，应保持 nodeId 不变，只更新名称和别名。
+默认哈希策略可能改变。长期图谱应使用业务主键或持久化注册表，让名称变化只更新名称和别名，保持 `nodeId` 不变。
+
+### 注册表使用内存实现可以吗？
+
+可以用于测试、示例和单次进程内任务；跨天、跨批次或多实例部署必须实现持久化的 `GraphEntityRegistry`，并提供唯一约束、并发冲突处理和审计。
 
 ## 生产检查清单
 
-- 是否明确提及、候选、实体和注册记录的区别；
-- nodeId 是否稳定、可复用且与 Chunk 无关；
-- Pipeline 是否真正装配持久化 Registry Resolver；
-- 查询和唯一约束是否包含 Space 与类型；
-- 同名多命中是否进入审核而非随机选择；
-- 属性冲突是否有业务合并策略；
-- 注册是否只在图写成功后提交；
-- 图与注册表不一致是否可恢复和对账；
-- 合并、拆分和别名修改是否有审计；
-- 默认内存注册表是否仅用于测试。
+- 是否先向读者和调用方区分了 mention、candidate、业务实体和 GraphNode？
+- 是否明确 `candidateKey` 只是局部引用，而不是长期节点 ID？
+- 是否根据业务风险选择默认 Resolver、注册表 Resolver 或人工审核？
+- 是否把 `space` 和节点类型纳入注册表查询及唯一约束？
+- 同名多命中时是否进入审核，而不是随机选一个？
+- 属性冲突是否有明确的来源优先级或合并策略？
+- 注册记录是否在图写入成功后提交，并能处理两边不一致？
+- 合并、拆分和别名修改是否有审计、回滚和来源迁移方案？
 
-身份确定后，继续阅读[知识入图](/zh/graph/extractor/ingestion)。
+完成身份判断后，可以继续阅读[知识入图](/zh/graph/extractor/ingestion)，了解如何把审核后的 Mutation 写入目标 Graph Space。
