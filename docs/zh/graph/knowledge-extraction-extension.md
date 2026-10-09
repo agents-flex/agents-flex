@@ -6,6 +6,27 @@
 
 扩展的目标不是复制整个流水线，而是在保持阶段契约的前提下替换一个职责。这样审核、恢复和增量语义仍然一致，也便于测试自定义实现。
 
+## 按职责查找 SDK 类型
+
+模块的包路径统一以 `com.agentsflex.graph.extractor` 开始。核心入口、请求、选项和结果位于根包，
+扩展策略及长期状态按职责放在子包中：
+
+| 包 | 主要职责 | 代表类型 |
+| --- | --- | --- |
+| 根包 | 抽取入口和完整流程编排 | `GraphExtractor`、`GraphExtractionPipeline`、`GraphExtractionResult` |
+| `model` | 候选知识和原文证据 | `GraphEntityCandidate`、`GraphRelationCandidate`、`GraphEvidence` |
+| `prompt` | 组织模型输入 | `GraphExtractionPromptBuilder`、`JsonGraphExtractionPromptBuilder` |
+| `parser` | 解析模型输出 | `GraphCandidateParser`、`JsonGraphCandidateParser` |
+| `validation` | 校验候选结构和质量 | `GraphCandidateValidator` |
+| `resolution` | 决定候选对应哪个长期实体 | `GraphEntityResolver`、`GraphEntityResolutionResult` |
+| `registry` | 保存和查询已确认的实体身份 | `GraphEntityRegistry`、`GraphRegisteredEntity`、`InMemoryGraphEntityRegistry` |
+| `mapping` | 将候选知识转换为待写入变更 | `GraphCandidateMutationMapper` |
+| `ingestion` | 生成和执行入图计划，维护文档状态和恢复记录 | `GraphIngestionService`、`GraphIngestionPlan` |
+| `review` | 管理人工审核任务及后续入图执行 | `GraphReviewService`、`GraphReviewStore`、`GraphReviewTaskQuery`、`GraphReviewTaskStatus` |
+
+注册表属于 `registry`；使用注册表执行实体归一的 `RegistryGraphEntityResolver` 仍属于 `resolution`。
+应用实现持久化注册表时依赖 `registry` 包，替换实体匹配策略时依赖 `resolution` 包。
+
 ## 抽取阶段扩展
 
 ### `GraphExtractor`
@@ -23,6 +44,9 @@
 ### `GraphExtractionPromptBuilder`
 
 负责把 Schema、请求选项和正文组织为模型输入。它可以加入领域示例、术语表和供应商结构化输出要求，但不能绕过后续 Validator。
+
+`LlmGraphExtractor` 默认使用 `JsonGraphExtractionPromptBuilder`，要求模型按照约定的 JSON 结构
+输出候选；对应解析器是 `JsonGraphCandidateParser`。采用其他输出格式时，应配套替换提示词构建器和解析器。
 
 Prompt 变化应进入 extraction fingerprint，否则同一内容可能在配置变化后被错误判定为 UNCHANGED。
 
@@ -52,7 +76,7 @@ Registry 是身份存储，Resolver 是身份决策，两者职责不同。常�
 
 负责在无法复用已有实体时产生 nodeId。接入业务主键优先于名称哈希；任何算法变化都可能让历史实体产生新 ID，应进行迁移或保持版本兼容。
 
-### `GraphMutationMapper`
+### `GraphCandidateMutationMapper`
 
 负责把合法候选和归一结果映射成节点 Upsert、边 Upsert，并按 `GraphEdgeKey` 去重；默认重复关系保留置信度更高的候选。
 
@@ -101,7 +125,7 @@ Registry 是身份存储，Resolver 是身份决策，两者职责不同。常�
 | 增加业务校验 | `GraphCandidateValidator` |
 | 接入主数据或别名库 | `GraphEntityResolver` / Registry |
 | 使用业务节点主键 | `GraphEntityIdGenerator` |
-| 调整图属性和投影 | `GraphMutationMapper` |
+| 调整图属性和投影 | `GraphCandidateMutationMapper` |
 | 多实例长期增量 | 三个 Store/Lock 接口 |
 
 仅增加业务校验时，不应复制 Pipeline；仅改变图投影时，也不应把数据库写入放进 Mapper。

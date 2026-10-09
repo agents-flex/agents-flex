@@ -10,8 +10,8 @@ import com.agentsflex.graph.extractor.GraphExtractionPipeline;
 import com.agentsflex.graph.extractor.GraphExtractionResult;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
-import com.agentsflex.graph.extractor.resolution.GraphEntityRegistry;
-import com.agentsflex.graph.extractor.resolution.GraphRegisteredEntity;
+import com.agentsflex.graph.extractor.registry.GraphEntityRegistry;
+import com.agentsflex.graph.extractor.registry.GraphRegisteredEntity;
 import com.agentsflex.graph.mutation.GraphMutation;
 import com.agentsflex.graph.mutation.GraphWriteResult;
 import com.agentsflex.graph.mutation.GraphWriter;
@@ -566,9 +566,9 @@ public final class GraphIngestionService {
                                                          String operationId, long documentRevision,
                                                          long createdAtMillis) {
         List<GraphFactSource> result = new ArrayList<>();
-        for (GraphRelationCandidate relation : extraction.getRelations()) {
-            String source = extraction.getResolution().nodeId(relation.getSourceCandidateKey());
-            String target = extraction.getResolution().nodeId(relation.getTargetCandidateKey());
+        for (GraphRelationCandidate relation : extraction.getValidatedRelations()) {
+            String source = extraction.getEntityResolution().nodeId(relation.getSourceCandidateKey());
+            String target = extraction.getEntityResolution().nodeId(relation.getTargetCandidateKey());
             if (source == null || target == null || relation.getEvidence() == null) continue;
             GraphEdgeKey key = new GraphEdgeKey(source, relation.getType(), target, relation.getRank());
             String factId = "fact-" + resolveHash("", Collections.singletonList(space + "\u0000"
@@ -587,10 +587,10 @@ public final class GraphIngestionService {
      */
     private static List<GraphRegisteredEntity> registrations(GraphExtractionResult extraction) {
         Map<String, GraphNode> nodes = new LinkedHashMap<>();
-        for (GraphNode node : extraction.getResolution().getNodes()) nodes.put(node.getId(), node);
+        for (GraphNode node : extraction.getEntityResolution().getNodes()) nodes.put(node.getId(), node);
         Map<String, Registration> registrations = new LinkedHashMap<>();
-        for (GraphEntityCandidate candidate : extraction.getEntities()) {
-            String nodeId = extraction.getResolution().nodeId(candidate.getCandidateKey());
+        for (GraphEntityCandidate candidate : extraction.getValidatedEntities()) {
+            String nodeId = extraction.getEntityResolution().nodeId(candidate.getCandidateKey());
             if (nodeId == null) continue;
             Registration value = registrations.get(nodeId);
             if (value == null) {

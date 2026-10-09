@@ -65,13 +65,13 @@ public class DeepseekGraphExtractorIntegrationTest {
 
         String diagnostic = "DeepSeek raw response: " + result.getRawResponses();
         assertFalse(diagnostic, result.hasErrors());
-        assertEquals(diagnostic, 3, result.getResolution().getNodes().size());
-        assertEquals(diagnostic, 2, result.getRelations().size());
+        assertEquals(diagnostic, 3, result.getEntityResolution().getNodes().size());
+        assertEquals(diagnostic, 2, result.getValidatedRelations().size());
         assertEquals(diagnostic, 3, result.getMutation().getNodes().size());
         assertEquals(diagnostic, 2, result.getMutation().getEdges().size());
 
         Set<String> entityNames = new HashSet<>();
-        for (GraphEntityCandidate entity : result.getEntities()) {
+        for (GraphEntityCandidate entity : result.getValidatedEntities()) {
             entityNames.add(entity.getName());
             assertEquals(DOCUMENT_ID, entity.getEvidence().getDocumentId());
             assertEquals(CHUNK_ID, entity.getEvidence().getChunkId());
@@ -82,7 +82,7 @@ public class DeepseekGraphExtractorIntegrationTest {
         assertTrue(diagnostic, entityNames.contains("苏瑶"));
         assertTrue(diagnostic, entityNames.contains("青云会"));
 
-        for (GraphRelationCandidate relation : result.getRelations()) {
+        for (GraphRelationCandidate relation : result.getValidatedRelations()) {
             assertEquals("MEMBER_OF", relation.getType());
             assertEquals(DOCUMENT_ID, relation.getEvidence().getDocumentId());
             assertEquals(CHUNK_ID, relation.getEvidence().getChunkId());
@@ -103,13 +103,13 @@ public class DeepseekGraphExtractorIntegrationTest {
             "deepseek-injection", schema(), GraphExtractionOptions.builder().requireEvidence(true).build());
 
         assertFalse(result.getRawResponses().toString(), result.hasErrors());
-        assertEquals(result.getRawResponses().toString(), 1, result.getRelations().size());
-        for (GraphEntityCandidate entity : result.getEntities()) {
+        assertEquals(result.getRawResponses().toString(), 1, result.getValidatedRelations().size());
+        for (GraphEntityCandidate entity : result.getValidatedEntities()) {
             assertTrue(entity.getType().equals("Character") || entity.getType().equals("Organization"));
             assertTrue(text.contains(entity.getEvidence().getQuote()));
         }
-        assertEquals("MEMBER_OF", result.getRelations().get(0).getType());
-        assertTrue(text.contains(result.getRelations().get(0).getEvidence().getQuote()));
+        assertEquals("MEMBER_OF", result.getValidatedRelations().get(0).getType());
+        assertTrue(text.contains(result.getValidatedRelations().get(0).getEvidence().getQuote()));
     }
 
     /**
@@ -126,7 +126,7 @@ public class DeepseekGraphExtractorIntegrationTest {
 
         assertFalse(result.getRawResponses().toString(), result.hasErrors());
         assertTrue("negated membership must not become MEMBER_OF: " + result.getRawResponses(),
-            result.getRelations().isEmpty());
+            result.getValidatedRelations().isEmpty());
         assertTrue(result.getMutation().getEdges().isEmpty());
     }
 

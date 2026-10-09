@@ -1,12 +1,12 @@
 package com.agentsflex.graph.extractor.review;
 
 /**
- * 审核任务的生命周期状态。
+ * 审核任务的生命周期状态，覆盖待审核、入图执行、完成、失败和归档。
  *
  * <p>该状态属于 Graph SDK 的审核任务，而不是图数据库事务状态。自动接受路径不会创建审核任务，
  * 因此也不会使用这些状态。</p>
  */
-public enum GraphReviewStatus {
+public enum GraphReviewTaskStatus {
     /**
      * 等待审核者处理。
      */

@@ -34,7 +34,7 @@ public final class InMemoryGraphReviewStore implements GraphReviewStore {
     }
 
     @Override
-    public synchronized List<GraphReviewTask> list(GraphReviewQuery query) {
+    public synchronized List<GraphReviewTask> list(GraphReviewTaskQuery query) {
         if (query == null) throw new IllegalArgumentException("query must not be null");
         List<GraphReviewTask> matched = new ArrayList<>();
         for (GraphReviewTask task : tasks.values()) {

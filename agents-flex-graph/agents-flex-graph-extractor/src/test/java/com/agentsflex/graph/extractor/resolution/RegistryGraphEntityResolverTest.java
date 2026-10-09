@@ -1,12 +1,12 @@
-package com.agentsflex.graph.extractor.ingestion;
+package com.agentsflex.graph.extractor.resolution;
 
 import com.agentsflex.graph.extractor.GraphExtractionException;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphEvidence;
-import com.agentsflex.graph.extractor.resolution.GraphEntityRegistry;
-import com.agentsflex.graph.extractor.resolution.GraphEntityResolution;
-import com.agentsflex.graph.extractor.resolution.GraphRegisteredEntity;
-import com.agentsflex.graph.extractor.resolution.InMemoryGraphEntityRegistry;
+import com.agentsflex.graph.extractor.registry.GraphEntityRegistry;
+import com.agentsflex.graph.extractor.resolution.GraphEntityResolutionResult;
+import com.agentsflex.graph.extractor.registry.GraphRegisteredEntity;
+import com.agentsflex.graph.extractor.registry.InMemoryGraphEntityRegistry;
 import com.agentsflex.graph.extractor.resolution.RegistryGraphEntityResolver;
 import org.junit.Test;
 
@@ -36,7 +36,7 @@ public class RegistryGraphEntityResolverTest {
         GraphEntityCandidate aliasMention = entity("c2::m1", "林公子", Collections.<String>emptyList(),
             props("age", 18L));
 
-        GraphEntityResolution resolution = new RegistryGraphEntityResolver(registry)
+        GraphEntityResolutionResult resolution = new RegistryGraphEntityResolver(registry)
             .resolve(Collections.singletonList(aliasMention));
 
         assertEquals("person-001", resolution.nodeId("c2::m1"));
@@ -105,9 +105,9 @@ public class RegistryGraphEntityResolverTest {
 
         GraphEntityCandidate mention = entity("c1::m1", "林默", Collections.<String>emptyList(),
             props("name", "林默"));
-        GraphEntityResolution inA = new RegistryGraphEntityResolver("space-a", registry)
+        GraphEntityResolutionResult inA = new RegistryGraphEntityResolver("space-a", registry)
             .resolve(Collections.singletonList(mention));
-        GraphEntityResolution inB = new RegistryGraphEntityResolver("space-b", registry)
+        GraphEntityResolutionResult inB = new RegistryGraphEntityResolver("space-b", registry)
             .resolve(Collections.singletonList(mention));
 
         assertEquals("person-a", inA.nodeId("c1::m1"));

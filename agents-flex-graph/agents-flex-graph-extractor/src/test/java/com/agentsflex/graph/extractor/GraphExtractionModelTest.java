@@ -3,7 +3,7 @@ package com.agentsflex.graph.extractor;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphEvidence;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
-import com.agentsflex.graph.extractor.resolution.GraphEntityResolution;
+import com.agentsflex.graph.extractor.resolution.GraphEntityResolutionResult;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -139,6 +139,6 @@ public class GraphExtractionModelTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void entityResolutionShouldRejectNullCollections() {
-        new GraphEntityResolution(null, Collections.emptyMap());
+        new GraphEntityResolutionResult(null, Collections.emptyMap());
     }
 }

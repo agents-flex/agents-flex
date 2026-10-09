@@ -2,10 +2,10 @@ package com.agentsflex.graph.extractor.review;
 
 import com.agentsflex.graph.data.GraphNode;
 import com.agentsflex.graph.extractor.GraphExtractionResult;
-import com.agentsflex.graph.extractor.GraphMutationMapper;
+import com.agentsflex.graph.extractor.mapping.GraphCandidateMutationMapper;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
-import com.agentsflex.graph.extractor.resolution.GraphEntityResolution;
+import com.agentsflex.graph.extractor.resolution.GraphEntityResolutionResult;
 import com.agentsflex.graph.extractor.validation.SchemaGraphCandidateValidator;
 import com.agentsflex.graph.schema.GraphSchema;
 
@@ -61,28 +61,28 @@ public final class GraphReviewPatch {
     GraphExtractionResult apply(GraphExtractionResult old, GraphSchema schema) {
         if (old == null || schema == null) throw new IllegalArgumentException("complete review context is required");
         Set<String> keys = new LinkedHashSet<>();
-        for (GraphEntityCandidate e : old.getEntities()) keys.add(e.getCandidateKey());
+        for (GraphEntityCandidate e : old.getValidatedEntities()) keys.add(e.getCandidateKey());
         for (String key : rejectedEntities) requireKey(keys, key);
         for (String key : resolvedEntities.keySet()) requireKey(keys, key);
         for (String key : entityProperties.keySet()) requireKey(keys, key);
-        for (Integer index : rejectedRelations) requireIndex(index, old.getRelations().size());
-        for (Integer index : relationProperties.keySet()) requireIndex(index, old.getRelations().size());
+        for (Integer index : rejectedRelations) requireIndex(index, old.getValidatedRelations().size());
+        for (Integer index : relationProperties.keySet()) requireIndex(index, old.getValidatedRelations().size());
         List<GraphEntityCandidate> entities = new ArrayList<>();
         Map<String, String> mapping = new LinkedHashMap<>();
         Map<String, GraphNode> nodes = new LinkedHashMap<>();
         Map<String, GraphNode> originalNodes = new LinkedHashMap<>();
-        for (GraphNode n : old.getResolution().getNodes()) originalNodes.put(n.getId(), n);
+        for (GraphNode n : old.getEntityResolution().getNodes()) originalNodes.put(n.getId(), n);
         // 先保留原节点，再应用显式人工决策，避免遍历顺序覆盖人工修改。
-        for (GraphEntityCandidate e : old.getEntities()) {
+        for (GraphEntityCandidate e : old.getValidatedEntities()) {
             if (rejectedEntities.contains(e.getCandidateKey())) continue;
-            String id = old.getResolution().nodeId(e.getCandidateKey());
+            String id = old.getEntityResolution().nodeId(e.getCandidateKey());
             GraphNode n = originalNodes.get(id);
             if (n == null) throw new IllegalArgumentException("resolved node is missing: " + e.getCandidateKey());
             mapping.put(e.getCandidateKey(), id);
             nodes.put(id, n);
         }
         Map<String, GraphNode> editedNodes = new LinkedHashMap<>();
-        for (GraphEntityCandidate e : old.getEntities()) {
+        for (GraphEntityCandidate e : old.getValidatedEntities()) {
             String key = e.getCandidateKey();
             if (rejectedEntities.contains(key)) {
                 if (resolvedEntities.containsKey(key) || entityProperties.containsKey(key))
@@ -117,8 +117,8 @@ public final class GraphReviewPatch {
         }
         nodes.keySet().retainAll(new LinkedHashSet<>(mapping.values()));
         List<GraphRelationCandidate> relations = new ArrayList<>();
-        for (int i = 0; i < old.getRelations().size(); i++) {
-            GraphRelationCandidate r = old.getRelations().get(i);
+        for (int i = 0; i < old.getValidatedRelations().size(); i++) {
+            GraphRelationCandidate r = old.getValidatedRelations().get(i);
             if (rejectedRelations.contains(i) && relationProperties.containsKey(i))
                 throw new IllegalArgumentException("cannot reject and edit the same relation");
             if (rejectedRelations.contains(i) || !mapping.containsKey(r.getSourceCandidateKey())
@@ -132,9 +132,9 @@ public final class GraphReviewPatch {
             relations.add(new GraphRelationCandidate(r.getSourceCandidateKey(), r.getType(), r.getTargetCandidateKey(),
                 r.getRank(), props, r.getEvidence(), r.getConfidence(), r.getAssertionType()));
         }
-        GraphEntityResolution resolution = new GraphEntityResolution(new ArrayList<>(nodes.values()), mapping);
+        GraphEntityResolutionResult resolution = new GraphEntityResolutionResult(new ArrayList<>(nodes.values()), mapping);
         return new GraphExtractionResult(old.getAllEntities(), old.getAllRelations(), entities, relations, resolution,
-            new GraphMutationMapper().map(resolution, relations), old.getIssues(), old.getRawResponses());
+            new GraphCandidateMutationMapper().map(resolution, relations), old.getIssues(), old.getRawResponses());
     }
 
     /**

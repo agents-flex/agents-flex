@@ -1,9 +1,10 @@
 package com.agentsflex.graph.extractor;
 
+import com.agentsflex.graph.extractor.mapping.GraphCandidateMutationMapper;
 import com.agentsflex.graph.extractor.model.GraphAssertionType;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
-import com.agentsflex.graph.extractor.resolution.GraphEntityResolution;
+import com.agentsflex.graph.extractor.resolution.GraphEntityResolutionResult;
 import com.agentsflex.graph.extractor.resolution.NameAliasGraphEntityResolver;
 import com.agentsflex.graph.mutation.GraphMutation;
 import org.junit.Test;
@@ -33,7 +34,7 @@ public class GraphEntityResolverAndMapperTest {
         GraphEntityCandidate placeWithSameName = entity("c3::m1", "林默", "Organization",
             Collections.emptyList(), props("name", "林默"));
 
-        GraphEntityResolution resolution = new NameAliasGraphEntityResolver().resolve(
+        GraphEntityResolutionResult resolution = new NameAliasGraphEntityResolver().resolve(
             Arrays.asList(first, alias, placeWithSameName));
 
         assertEquals(2, resolution.getNodes().size());
@@ -50,11 +51,11 @@ public class GraphEntityResolverAndMapperTest {
     public void mapperShouldDeduplicateOverlapRelations() {
         GraphEntityCandidate person = entity("c::p", "林默", "Character", Collections.emptyList(), props("name", "林默"));
         GraphEntityCandidate organization = entity("c::o", "青云宗", "Organization", Collections.emptyList(), props("name", "青云宗"));
-        GraphEntityResolution resolution = new NameAliasGraphEntityResolver().resolve(Arrays.asList(person, organization));
+        GraphEntityResolutionResult resolution = new NameAliasGraphEntityResolver().resolve(Arrays.asList(person, organization));
         GraphRelationCandidate relation = new GraphRelationCandidate("c::p", "MEMBER_OF", "c::o", 0L,
             props("chapter", 1L), GraphExtractorTestSupport.evidence("c", "加入青云宗"), 1D, GraphAssertionType.EXPLICIT);
 
-        GraphMutation mutation = new GraphMutationMapper().map(resolution, Arrays.asList(relation, relation));
+        GraphMutation mutation = new GraphCandidateMutationMapper().map(resolution, Arrays.asList(relation, relation));
 
         assertEquals(2, mutation.getNodes().size());
         assertEquals(1, mutation.getEdges().size());
@@ -68,7 +69,7 @@ public class GraphEntityResolverAndMapperTest {
     public void mapperShouldPreferHigherConfidenceDuplicateRelation() {
         GraphEntityCandidate person = entity("c::p", "林默", "Character", Collections.emptyList(), props("name", "林默"));
         GraphEntityCandidate organization = entity("c::o", "青云宗", "Organization", Collections.emptyList(), props("name", "青云宗"));
-        GraphEntityResolution resolution = new NameAliasGraphEntityResolver().resolve(Arrays.asList(person, organization));
+        GraphEntityResolutionResult resolution = new NameAliasGraphEntityResolver().resolve(Arrays.asList(person, organization));
         GraphRelationCandidate low = new GraphRelationCandidate("c::p", "MEMBER_OF", "c::o", 0L,
             props("chapter", 1L), GraphExtractorTestSupport.evidence("c", "加入"), 0.7D,
             GraphAssertionType.EXPLICIT);
@@ -76,7 +77,7 @@ public class GraphEntityResolverAndMapperTest {
             props("chapter", 2L), GraphExtractorTestSupport.evidence("c", "加入"), 0.9D,
             GraphAssertionType.EXPLICIT);
 
-        GraphMutation mutation = new GraphMutationMapper().map(resolution, Arrays.asList(low, high));
+        GraphMutation mutation = new GraphCandidateMutationMapper().map(resolution, Arrays.asList(low, high));
 
         assertEquals(1, mutation.getEdges().size());
         assertEquals(2L, mutation.getEdges().get(0).getProperties().get("chapter"));
@@ -103,7 +104,7 @@ public class GraphEntityResolverAndMapperTest {
         GraphEntityCandidate second = entity("c2::b", "黑衣人", "Character", Collections.emptyList(), props("name", "黑衣人"));
         GraphEntityCandidate bridge = entity("c3::c", "林默", "Character", Collections.singletonList("黑衣人"), props("age", 18L));
 
-        GraphEntityResolution resolution = new NameAliasGraphEntityResolver().resolve(Arrays.asList(first, second, bridge));
+        GraphEntityResolutionResult resolution = new NameAliasGraphEntityResolver().resolve(Arrays.asList(first, second, bridge));
 
         assertEquals(1, resolution.getNodes().size());
         assertEquals(resolution.nodeId("c1::a"), resolution.nodeId("c2::b"));

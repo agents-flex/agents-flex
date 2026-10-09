@@ -1,9 +1,11 @@
-package com.agentsflex.graph.extractor;
+package com.agentsflex.graph.extractor.mapping;
+
+import com.agentsflex.graph.extractor.GraphExtractionException;
 
 import com.agentsflex.graph.data.GraphEdge;
 import com.agentsflex.graph.data.GraphEdgeKey;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
-import com.agentsflex.graph.extractor.resolution.GraphEntityResolution;
+import com.agentsflex.graph.extractor.resolution.GraphEntityResolutionResult;
 import com.agentsflex.graph.mutation.GraphMutation;
 
 import java.util.LinkedHashMap;
@@ -16,7 +18,7 @@ import java.util.Map;
  * <p>映射器只生成内存中的 GraphMutation，不会访问或写入图数据库。调用方仍可在人工审核、
  * 权限检查或批次审批后决定是否通过 GraphWriter 提交。</p>
  */
-public class GraphMutationMapper {
+public class GraphCandidateMutationMapper {
     /**
      * 映射节点和边，并按 GraphEdgeKey 去除分段重叠产生的重复关系。
      *
@@ -24,7 +26,7 @@ public class GraphMutationMapper {
      * @param relations  已通过 Schema 校验的关系
      * @return 只包含 upsert 的 GraphMutation
      */
-    public GraphMutation map(GraphEntityResolution resolution, List<GraphRelationCandidate> relations) {
+    public GraphMutation map(GraphEntityResolutionResult resolution, List<GraphRelationCandidate> relations) {
         if (resolution == null || relations == null)
             throw new IllegalArgumentException("resolution and relations must not be null");
         Map<GraphEdgeKey, GraphEdge> edges = new LinkedHashMap<>();

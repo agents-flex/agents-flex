@@ -41,6 +41,6 @@ public final class GraphReviewExecutionResult {
      * @return 图写入和文档状态是否均已成功。
      */
     public boolean isSuccess() {
-        return ingestionResult.isSuccess() && task.getStatus() == GraphReviewStatus.COMPLETED;
+        return ingestionResult.isSuccess() && task.getStatus() == GraphReviewTaskStatus.COMPLETED;
     }
 }

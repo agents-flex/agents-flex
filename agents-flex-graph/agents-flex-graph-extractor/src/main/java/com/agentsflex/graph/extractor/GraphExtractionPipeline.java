@@ -3,10 +3,11 @@ package com.agentsflex.graph.extractor;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentSplitter;
 import com.agentsflex.core.document.splitter.SimpleDocumentSplitter;
+import com.agentsflex.graph.extractor.mapping.GraphCandidateMutationMapper;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphExtractionIssue;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
-import com.agentsflex.graph.extractor.resolution.GraphEntityResolution;
+import com.agentsflex.graph.extractor.resolution.GraphEntityResolutionResult;
 import com.agentsflex.graph.extractor.resolution.GraphEntityResolver;
 import com.agentsflex.graph.extractor.resolution.NameAliasGraphEntityResolver;
 import com.agentsflex.graph.extractor.validation.GraphCandidateValidationResult;
@@ -47,7 +48,7 @@ public final class GraphExtractionPipeline {
     /**
      * 候选知识到 GraphMutation 的映射器。
      */
-    private final GraphMutationMapper mutationMapper;
+    private final GraphCandidateMutationMapper mutationMapper;
 
     /**
      * 使用 1200 字符、200 字符重叠及默认校验、归一和映射策略创建流水线。
@@ -56,7 +57,7 @@ public final class GraphExtractionPipeline {
      */
     public GraphExtractionPipeline(GraphExtractor extractor) {
         this(extractor, new SimpleDocumentSplitter(1200, 200), new SchemaGraphCandidateValidator(),
-            new NameAliasGraphEntityResolver(), new GraphMutationMapper());
+            new NameAliasGraphEntityResolver(), new GraphCandidateMutationMapper());
     }
 
     /**
@@ -70,7 +71,7 @@ public final class GraphExtractionPipeline {
      */
     public GraphExtractionPipeline(GraphExtractor extractor, DocumentSplitter splitter,
                                    GraphCandidateValidator validator, GraphEntityResolver resolver,
-                                   GraphMutationMapper mutationMapper) {
+                                   GraphCandidateMutationMapper mutationMapper) {
         if (extractor == null || splitter == null || validator == null || resolver == null || mutationMapper == null) {
             throw new IllegalArgumentException("pipeline components must not be null");
         }
@@ -235,7 +236,7 @@ public final class GraphExtractionPipeline {
             issues.addAll(accepted.getIssues());
             previous = chunk.getContent();
         }
-        GraphEntityResolution resolution = resolver.resolve(entities);
+        GraphEntityResolutionResult resolution = resolver.resolve(entities);
         GraphMutation mutation = mutationMapper.map(resolution, relations);
         return new GraphExtractionResult(allEntities, allRelations, entities, relations,
             resolution, mutation, issues, rawResponses);

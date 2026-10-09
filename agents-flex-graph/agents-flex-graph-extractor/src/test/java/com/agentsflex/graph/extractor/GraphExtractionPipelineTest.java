@@ -1,5 +1,6 @@
 package com.agentsflex.graph.extractor;
 
+import com.agentsflex.graph.extractor.mapping.GraphCandidateMutationMapper;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.DocumentSplitter;
 import com.agentsflex.graph.extractor.model.GraphAssertionType;
@@ -34,16 +35,16 @@ public class GraphExtractionPipelineTest {
         DocumentSplitter splitter = (document, idGenerator) -> Arrays.asList(
             chunk(document, "林默自称林公子。"), chunk(document, "林公子加入青云宗。"));
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor, splitter,
-            new SchemaGraphCandidateValidator(), new NameAliasGraphEntityResolver(), new GraphMutationMapper());
+            new SchemaGraphCandidateValidator(), new NameAliasGraphEntityResolver(), new GraphCandidateMutationMapper());
         Document novel = Document.of("完整小说正文");
         novel.setId("novel-1");
         novel.putMetadata("chapter", 1);
 
         GraphExtractionResult result = pipeline.extract(novel, GraphExtractorTestSupport.schema());
 
-        assertEquals(3, result.getEntities().size());
+        assertEquals(3, result.getValidatedEntities().size());
         assertEquals(3, result.getAllEntities().size());
-        assertEquals(2, result.getResolution().getNodes().size());
+        assertEquals(2, result.getEntityResolution().getNodes().size());
         assertEquals(2, result.getMutation().getNodes().size());
         assertEquals(1, result.getMutation().getEdges().size());
         assertTrue(extractor.contexts.get(0).isEmpty());
@@ -72,7 +73,7 @@ public class GraphExtractionPipelineTest {
             return new GraphCandidateResult(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), "{}");
         };
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor, splitter,
-            new SchemaGraphCandidateValidator(), new NameAliasGraphEntityResolver(), new GraphMutationMapper());
+            new SchemaGraphCandidateValidator(), new NameAliasGraphEntityResolver(), new GraphCandidateMutationMapper());
 
         GraphExtractionResult result = pipeline.extract(Document.of("full"), GraphExtractorTestSupport.schema(),
             GraphExtractionOptions.builder().failOnChunkError(false).build());
@@ -99,7 +100,7 @@ public class GraphExtractionPipelineTest {
             throw new AssertionError("extractChunks must not invoke DocumentSplitter");
         };
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor, forbiddenSplitter,
-            new SchemaGraphCandidateValidator(), new NameAliasGraphEntityResolver(), new GraphMutationMapper());
+            new SchemaGraphCandidateValidator(), new NameAliasGraphEntityResolver(), new GraphCandidateMutationMapper());
         Document first = Document.of("第一段");
         first.setId("chapter-1");
         Document second = Document.of("第二段");
@@ -173,7 +174,7 @@ public class GraphExtractionPipelineTest {
             (batch, request) -> {
                 throw new GraphExtractionException("validator unavailable");
             },
-            new NameAliasGraphEntityResolver(), new GraphMutationMapper());
+            new NameAliasGraphEntityResolver(), new GraphCandidateMutationMapper());
 
         GraphExtractionResult result = pipeline.extract(Document.of("全文"), GraphExtractorTestSupport.schema(),
             GraphExtractionOptions.builder().failOnChunkError(false).build());

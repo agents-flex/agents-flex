@@ -3,7 +3,7 @@ package com.agentsflex.graph.extractor.ingestion;
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.data.GraphEdgeKey;
 import com.agentsflex.graph.extractor.GraphExtractionResult;
-import com.agentsflex.graph.extractor.resolution.GraphRegisteredEntity;
+import com.agentsflex.graph.extractor.registry.GraphRegisteredEntity;
 import com.agentsflex.graph.mutation.GraphMutation;
 import com.agentsflex.graph.schema.GraphSchema;
 

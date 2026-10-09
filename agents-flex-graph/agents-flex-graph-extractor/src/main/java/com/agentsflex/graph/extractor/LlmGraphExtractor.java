@@ -4,7 +4,7 @@ import com.agentsflex.core.model.chat.ChatModel;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.graph.extractor.parser.GraphCandidateParser;
 import com.agentsflex.graph.extractor.parser.JsonGraphCandidateParser;
-import com.agentsflex.graph.extractor.prompt.DefaultGraphExtractionPromptBuilder;
+import com.agentsflex.graph.extractor.prompt.JsonGraphExtractionPromptBuilder;
 import com.agentsflex.graph.extractor.prompt.GraphExtractionPromptBuilder;
 
 /**
@@ -40,7 +40,7 @@ public final class LlmGraphExtractor implements GraphExtractor {
      * @param chatModel 执行同步模型调用的 ChatModel
      */
     public LlmGraphExtractor(ChatModel chatModel) {
-        this(chatModel, new DefaultGraphExtractionPromptBuilder(), new JsonGraphCandidateParser());
+        this(chatModel, new JsonGraphExtractionPromptBuilder(), new JsonGraphCandidateParser());
     }
 
     /**

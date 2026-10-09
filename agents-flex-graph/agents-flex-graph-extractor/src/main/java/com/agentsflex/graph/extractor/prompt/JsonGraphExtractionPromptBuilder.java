@@ -13,7 +13,7 @@ import com.agentsflex.graph.schema.GraphSchemaMetadata;
  * 数据，降低正文中提示注入指令改变输出协议的风险；真正的强约束仍应由响应解析器和 Schema
  * 校验器执行，不能只依赖模型遵循提示词。</p>
  */
-public final class DefaultGraphExtractionPromptBuilder implements GraphExtractionPromptBuilder {
+public final class JsonGraphExtractionPromptBuilder implements GraphExtractionPromptBuilder {
     /**
      * 构造只允许使用给定 Schema、必须返回证据且允许空结果的提示词。
      *

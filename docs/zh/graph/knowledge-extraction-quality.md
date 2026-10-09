@@ -74,10 +74,10 @@ List<GraphEntityCandidate> allEntities =
 List<GraphRelationCandidate> allRelations =
     result.getAllRelations();
 
-List<GraphEntityCandidate> acceptedEntities =
-    result.getEntities();
-List<GraphRelationCandidate> acceptedRelations =
-    result.getRelations();
+List<GraphEntityCandidate> validatedEntities =
+    result.getValidatedEntities();
+List<GraphRelationCandidate> validatedRelations =
+    result.getValidatedRelations();
 
 List<GraphExtractionIssue> issues =
     result.getIssues();
@@ -87,7 +87,7 @@ GraphMutation mutation = result.getMutation();
 | 内容 | 含义 |
 | --- | --- |
 | `allEntities/allRelations` | 解析器得到的全部候选，包括后续被校验拒绝的候选 |
-| `entities/relations` | 通过 Schema 和质量校验的合法子集 |
+| `validatedEntities/validatedRelations` | 通过 Schema 和质量校验的候选子集，不代表人工审核已接受 |
 | `issues` | 解析、校验和 Chunk 容错产生的问题 |
 | `mutation` | 合法候选经实体归一后生成的待审核变更 |
 
@@ -100,17 +100,17 @@ List<GraphEntityCandidate> allEntities =
     result.getAllEntities();
 List<GraphRelationCandidate> allRelations =
     result.getAllRelations();
-List<GraphEntityCandidate> acceptedEntities =
-    result.getEntities();
-List<GraphRelationCandidate> acceptedRelations =
-    result.getRelations();
+List<GraphEntityCandidate> validatedEntities =
+    result.getValidatedEntities();
+List<GraphRelationCandidate> validatedRelations =
+    result.getValidatedRelations();
 List<GraphExtractionIssue> issues =
     result.getIssues();
 GraphMutation mutation = result.getMutation();
 
 // 审核系统可以展示全部候选、合法候选、证据和问题。
-review(allEntities, allRelations, acceptedEntities,
-    acceptedRelations, issues, mutation);
+review(allEntities, allRelations, validatedEntities,
+    validatedRelations, issues, mutation);
 ~~~
 
 其中，`allEntities/allRelations` 不能省略。它们包含被拒绝的候选，便于审核者理解模型原本返回了什么，也便于后续质量评估和问题回放。
@@ -118,7 +118,7 @@ review(allEntities, allRelations, acceptedEntities,
 审核后台还应根据审核场景保存：
 
 - `GraphEvidence` 的文档、Chunk、引文和偏移；
-- `GraphEntityResolution`、`nodeId` 和 `GraphEdgeKey`；
+- `GraphEntityResolutionResult`、`nodeId` 和 `GraphEdgeKey`；
 - 入图计划的 `previousState`、`nextState` 和 expected revision；
 - `staleEdgeKeys`，以及其他 ACTIVE 文档是否仍然支持这些关系；
 - `operationId`、`planFingerprint`、Schema 版本和抽取配置指纹；
@@ -338,7 +338,7 @@ FAILED / 中断的 EXECUTING -> resume -> COMPLETED 或 FAILED
 COMPLETED / REJECTED -> ARCHIVED
 ```
 
-这些状态由 `GraphReviewStatus` 定义，`GraphReviewService` 负责合法流转。它们描述的是审核任务，
+这些状态由 `GraphReviewTaskStatus` 定义，`GraphReviewService` 负责合法流转。它们描述的是审核任务，
 不是图数据库事务状态。
 
 ### 审核任务的增删改查到底由谁完成
@@ -398,9 +398,9 @@ if (plan.getStatus() == GraphIngestionPlan.Status.UNCHANGED) {
 
 ```java
 List<GraphReviewTask> tasks = reviewService.list(
-    GraphReviewQuery.builder()
+    GraphReviewTaskQuery.builder()
         .space("novel_knowledge")
-        .status(GraphReviewStatus.PENDING_REVIEW)
+        .status(GraphReviewTaskStatus.PENDING_REVIEW)
         .offset(0)
         .limit(20)
         .build());
@@ -422,14 +422,14 @@ UI 可以把 `tasks` 展示在审核列表，把 `task` 中的计划和抽取结
 ```java
 GraphReviewTask task = reviewService.get(taskId);
 GraphExtractionResult extraction = task.getPlan().getExtractionResult();
-String candidateKey = extraction.getEntities().get(0).getCandidateKey();
+String candidateKey = extraction.getValidatedEntities().get(0).getCandidateKey();
 
 GraphReviewPatch patch = GraphReviewPatch.builder()
     // 匹配已有实体：提供已确认的完整节点标签和属性。
     .resolveEntity(candidateKey,
         GraphNode.builder("person-42", "Person")
             .property("name", "张三").build())
-    // 0 表示当前 extraction.getRelations() 的第一个关系候选。
+    // 0 表示当前 extraction.getValidatedRelations() 的第一个关系候选。
     .rejectRelation(0)
     .build();
 
@@ -609,7 +609,7 @@ GraphReviewExecutionResult result = reviewService.accept(
 ### 修改后为什么必须重建计划
 
 `GraphExtractionResult`、`GraphMutation` 和 `GraphIngestionPlan` 都是不可变快照。人工点击“拒绝关系”、
-修改属性或选择另一个实体时，不能只改数据库中的审核 JSON，也不能直接从 `getEntities()` 或 `getRelations()`
+修改属性或选择另一个实体时，不能只改数据库中的审核 JSON，也不能直接从 `getValidatedEntities()` 或 `getValidatedRelations()`
 列表中删除元素后继续执行旧计划。
 
 对于拒绝候选、属性修改和实体匹配，`applyPatch` 会自动重建批准结果，再交给入图服务计算
@@ -671,7 +671,7 @@ ReviewDecision decide(GraphExtractionResult result) {
         return ReviewDecision.AUTO_REJECT;
     }
 
-    for (GraphRelationCandidate relation : result.getRelations()) {
+    for (GraphRelationCandidate relation : result.getValidatedRelations()) {
         // 观点和推断需要人工确认。
         if (relation.getAssertionType() != GraphAssertionType.EXPLICIT) {
             return ReviewDecision.HUMAN_REVIEW;
@@ -686,7 +686,7 @@ ReviewDecision decide(GraphExtractionResult result) {
         }
     }
 
-    for (GraphEntityCandidate entity : result.getEntities()) {
+    for (GraphEntityCandidate entity : result.getValidatedEntities()) {
         if (entity.getConfidence() < 0.90D
             || entity.getEvidence() == null) {
             return ReviewDecision.HUMAN_REVIEW;
@@ -722,7 +722,7 @@ switch (decision) {
 }
 ~~~
 
-这个示例是“整份抽取结果”的审核策略。如果产品需要只拒绝某一条候选、保留同一批次的其他候选，应在 `GraphCandidateValidator` 阶段实现候选级规则，或者通过 `GraphReviewPatch` 和 `applyPatch` 修改批准候选；不能直接修改 `getEntities()` 或 `getRelations()` 返回的只读列表。
+这个示例是“整份抽取结果”的审核策略。如果产品需要只拒绝某一条候选、保留同一批次的其他候选，应在 `GraphCandidateValidator` 阶段实现候选级规则，或者通过 `GraphReviewPatch` 和 `applyPatch` 修改批准候选；不能直接修改 `getValidatedEntities()` 或 `getValidatedRelations()` 返回的只读列表。
 
 ## 修改候选和审核待撤回关系
 

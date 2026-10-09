@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 跨分段实体归一后的不可变节点集合，以及候选键到节点 ID 的映射。
+ * 跨分段实体归一的不可变结果，包含最终节点集合，以及候选键到节点 ID 的映射。
  *
- * <p>候选关系仍使用 candidateKey 表示端点，GraphMutationMapper 通过该映射把端点替换为最终
+ * <p>候选关系仍使用 candidateKey 表示端点，GraphCandidateMutationMapper 通过该映射把端点替换为最终
  * GraphNode ID。所有被接收的候选实体都应出现在映射中。</p>
  */
-public final class GraphEntityResolution {
+public final class GraphEntityResolutionResult {
     /**
      * 归一和去重后的节点。
      */
@@ -30,7 +30,7 @@ public final class GraphEntityResolution {
      * @param nodes             归一和去重后的节点
      * @param candidateToNodeId 每个候选实体键对应的最终节点 ID
      */
-    public GraphEntityResolution(List<GraphNode> nodes, Map<String, String> candidateToNodeId) {
+    public GraphEntityResolutionResult(List<GraphNode> nodes, Map<String, String> candidateToNodeId) {
         if (nodes == null || candidateToNodeId == null) {
             throw new IllegalArgumentException("nodes and candidateToNodeId must not be null");
         }

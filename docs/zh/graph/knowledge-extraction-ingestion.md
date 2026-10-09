@@ -74,7 +74,7 @@ GraphExtractionPipeline pipeline =
         new RegistryGraphEntityResolver(
             "novel_knowledge",
             entityRegistry),
-        new GraphMutationMapper());
+        new GraphCandidateMutationMapper());
 
 GraphIngestionService ingestion =
     new GraphIngestionService(

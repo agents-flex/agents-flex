@@ -5,11 +5,11 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * 审核任务查询条件。
+ * 查询审核任务列表的不可变条件，支持按空间、文档和任务状态过滤以及分页。
  *
  * <p>查询条件只描述通用过滤维度，具体数据库实现可以在此基础上增加索引和分页优化。</p>
  */
-public final class GraphReviewQuery {
+public final class GraphReviewTaskQuery {
     /**
      * Space 过滤条件。
      */
@@ -21,7 +21,7 @@ public final class GraphReviewQuery {
     /**
      * 审核状态过滤集合。
      */
-    private final Set<GraphReviewStatus> statuses;
+    private final Set<GraphReviewTaskStatus> statuses;
     /**
      * 分页起始偏移。
      */
@@ -31,12 +31,12 @@ public final class GraphReviewQuery {
      */
     private final int limit;
 
-    private GraphReviewQuery(Builder builder) {
+    private GraphReviewTaskQuery(Builder builder) {
         this.space = optional(builder.space);
         this.documentId = optional(builder.documentId);
         this.statuses = Collections.unmodifiableSet(
             builder.statuses.isEmpty()
-                ? EnumSet.allOf(GraphReviewStatus.class)
+                ? EnumSet.allOf(GraphReviewTaskStatus.class)
                 : EnumSet.copyOf(builder.statuses));
         if (builder.offset < 0) throw new IllegalArgumentException("offset must not be negative");
         if (builder.limit <= 0) throw new IllegalArgumentException("limit must be positive");
@@ -68,7 +68,7 @@ public final class GraphReviewQuery {
     /**
      * @return 状态过滤集合。
      */
-    public Set<GraphReviewStatus> getStatuses() {
+    public Set<GraphReviewTaskStatus> getStatuses() {
         return statuses;
     }
 
@@ -105,7 +105,7 @@ public final class GraphReviewQuery {
         /**
          * 待过滤的审核状态。
          */
-        private final Set<GraphReviewStatus> statuses = EnumSet.noneOf(GraphReviewStatus.class);
+        private final Set<GraphReviewTaskStatus> statuses = EnumSet.noneOf(GraphReviewTaskStatus.class);
         /**
          * 分页偏移。
          */
@@ -134,7 +134,7 @@ public final class GraphReviewQuery {
         /**
          * 只查询指定状态。
          */
-        public Builder status(GraphReviewStatus value) {
+        public Builder status(GraphReviewTaskStatus value) {
             if (value != null) statuses.add(value);
             return this;
         }
@@ -142,8 +142,8 @@ public final class GraphReviewQuery {
         /**
          * 查询多个状态。
          */
-        public Builder statuses(Iterable<GraphReviewStatus> values) {
-            if (values != null) for (GraphReviewStatus value : values) if (value != null) statuses.add(value);
+        public Builder statuses(Iterable<GraphReviewTaskStatus> values) {
+            if (values != null) for (GraphReviewTaskStatus value : values) if (value != null) statuses.add(value);
             return this;
         }
 
@@ -166,8 +166,8 @@ public final class GraphReviewQuery {
         /**
          * 构造不可变查询条件。
          */
-        public GraphReviewQuery build() {
-            return new GraphReviewQuery(this);
+        public GraphReviewTaskQuery build() {
+            return new GraphReviewTaskQuery(this);
         }
     }
 }

@@ -22,7 +22,7 @@ public final class GraphReviewTask {
     /**
      * 当前审核状态。
      */
-    private final GraphReviewStatus status;
+    private final GraphReviewTaskStatus status;
     /**
      * 审核任务乐观锁版本。
      */
@@ -44,7 +44,7 @@ public final class GraphReviewTask {
      */
     private final long updatedAtMillis;
 
-    private GraphReviewTask(String taskId, GraphIngestionPlan plan, GraphReviewStatus status,
+    private GraphReviewTask(String taskId, GraphIngestionPlan plan, GraphReviewTaskStatus status,
                             long reviewVersion, String reason, String actor,
                             long createdAtMillis, long updatedAtMillis) {
         if (taskId == null || taskId.trim().isEmpty()) throw new IllegalArgumentException("taskId must not be blank");
@@ -75,7 +75,7 @@ public final class GraphReviewTask {
      * 使用调用方生成的稳定 taskId 创建等待审核任务。
      */
     public static GraphReviewTask pending(String taskId, GraphIngestionPlan plan, long nowMillis) {
-        return new GraphReviewTask(taskId, plan, GraphReviewStatus.PENDING_REVIEW, 0L,
+        return new GraphReviewTask(taskId, plan, GraphReviewTaskStatus.PENDING_REVIEW, 0L,
             "", "", nowMillis, nowMillis);
     }
 
@@ -85,14 +85,14 @@ public final class GraphReviewTask {
      * <p>数据库实现反序列化后应使用此方法，而不是通过反射调用私有构造器。恢复不会重置版本号，
      * 因此可以继续使用乐观锁保护审核者之间的并发操作。</p>
      */
-    public static GraphReviewTask restore(String taskId, GraphIngestionPlan plan, GraphReviewStatus status,
+    public static GraphReviewTask restore(String taskId, GraphIngestionPlan plan, GraphReviewTaskStatus status,
                                           long reviewVersion, String reason, String actor,
                                           long createdAtMillis, long updatedAtMillis) {
         return new GraphReviewTask(taskId, plan, status, reviewVersion, reason, actor,
             createdAtMillis, updatedAtMillis);
     }
 
-    GraphReviewTask transition(GraphReviewStatus next, GraphIngestionPlan nextPlan,
+    GraphReviewTask transition(GraphReviewTaskStatus next, GraphIngestionPlan nextPlan,
                                String nextReason, String nextActor, long nowMillis) {
         return new GraphReviewTask(taskId, nextPlan == null ? plan : nextPlan, next,
             reviewVersion + 1L, nextReason, nextActor, createdAtMillis, nowMillis);
@@ -115,7 +115,7 @@ public final class GraphReviewTask {
     /**
      * @return 当前审核状态。
      */
-    public GraphReviewStatus getStatus() {
+    public GraphReviewTaskStatus getStatus() {
         return status;
     }
 

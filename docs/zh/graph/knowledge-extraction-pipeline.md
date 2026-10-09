@@ -57,7 +57,7 @@ Document
   -> GraphCandidateValidator
   -> 合并所有合法候选
   -> GraphEntityResolver
-  -> GraphMutationMapper
+  -> GraphCandidateMutationMapper
   -> GraphExtractionResult
 ~~~
 
@@ -121,8 +121,8 @@ GraphExtractionResult result =
     pipeline.extract(document, schema);
 
 // 这里只得到抽取结果，不会自动写入图数据库。
-System.out.println(result.getEntities());
-System.out.println(result.getRelations());
+System.out.println(result.getValidatedEntities());
+System.out.println(result.getValidatedRelations());
 System.out.println(result.getIssues());
 ~~~
 
@@ -161,7 +161,7 @@ GraphExtractionResult result =
 - 1200 字符、200 字符重叠的 `SimpleDocumentSplitter`；
 - `SchemaGraphCandidateValidator`；
 - `NameAliasGraphEntityResolver`；
-- `GraphMutationMapper`。
+- `GraphCandidateMutationMapper`。
 
 默认参数适合开始验证，不代表适合所有语言、文档结构和模型。生产环境应使用真实文档评估分段召回率和成本。
 
@@ -198,7 +198,7 @@ GraphExtractionPipeline pipeline = new GraphExtractionPipeline(
     documentSplitter,
     new SchemaGraphCandidateValidator(),
     new NameAliasGraphEntityResolver(),
-    new GraphMutationMapper());
+    new GraphCandidateMutationMapper());
 ~~~
 
 知识抽取分段应尽量满足：

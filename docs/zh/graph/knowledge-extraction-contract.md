@@ -175,11 +175,17 @@ text.substring(startOffset, endOffset).equals(quote)
 | 内容 | 作用 |
 | --- | --- |
 | `allEntities/allRelations` | 保留全部解析候选，便于审核和回放 |
-| `entities/relations` | 通过 Schema、证据和质量校验的合法子集 |
+| `validatedEntities/validatedRelations` | 通过 Schema、证据和质量校验的候选子集 |
 | `issues` | 解析、校验和 Chunk 容错问题 |
-| `resolution` | 候选提及到规范实体的映射 |
+| `entityResolution` | 实体归一结果，包含最终节点及候选键到节点 ID 的映射 |
 | `mutation` | 待审核的节点和边变更 |
 | `rawResponses` | 各 Chunk 的模型原始响应 |
+
+`validated` 表示候选通过了校验，不表示人工审核已经同意。人工修改或拒绝部分候选后，
+这两个集合保存重新校验的当前子集；`allEntities/allRelations` 继续保留原始候选。
+
+`entityResolution` 的类型是 `GraphEntityResolutionResult`，由 `GraphEntityResolver.resolve(...)`
+返回。它包含归一后的节点和候选键到节点 ID 的映射，供候选变更映射器生成 `GraphMutation`。
 
 结果对象不等于数据库写入结果。即使存在合法 Mutation，也仍然需要经过审核策略和显式写入。
 
@@ -189,9 +195,10 @@ text.substring(startOffset, endOffset).equals(quote)
 GraphExtractionResult result = pipeline.extract(document, schema);
 
 // allEntities / allRelations：模型和解析器返回的全部候选。
-// entities / relations：通过 Schema 和质量校验的合法子集。
+// validatedEntities / validatedRelations：通过校验的子集，不代表审核已接受。
 review(result.getAllEntities(), result.getAllRelations());
-review(result.getIssues(), result.getResolution());
+review(result.getValidatedEntities(), result.getValidatedRelations());
+review(result.getIssues(), result.getEntityResolution());
 
 if (!result.hasErrors()) {
     // mutation 仍然只是待执行变化，不代表已经写入数据库。
@@ -240,11 +247,11 @@ mentionId != candidateKey != nodeId != factId != operationId
 候选实体和关系
   -> Schema 与证据校验
   -> 实体归一，得到 nodeId
-  -> GraphMutationMapper
+  -> GraphCandidateMutationMapper
   -> 节点 Upsert、边 Upsert 和稳定 EdgeKey 去重
 ```
 
-`GraphMutationMapper` 不负责审核、删除、写数据库或解决来源冲突。旧关系是否删除，由增量计划结合文档状态和事实来源决定。
+`GraphCandidateMutationMapper` 不负责审核、删除、写数据库或解决来源冲突。旧关系是否删除，由增量计划结合文档状态和事实来源决定。
 
 ## 开发者什么时候需要关注这些数据
 

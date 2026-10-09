@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.resolution;
+package com.agentsflex.graph.extractor.registry;
 
 import java.util.ArrayList;
 import java.util.Collections;

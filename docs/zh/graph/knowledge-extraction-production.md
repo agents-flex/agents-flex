@@ -14,7 +14,7 @@
 | `GraphCandidateValidator` | 词表、租户、合规和业务约束 |
 | `GraphEntityResolver` | 指代、同名消歧和已有实体匹配 |
 | `GraphEntityIdGenerator` | 接入业务主键或 ID 服务 |
-| `GraphMutationMapper` | 自定义属性、证据状态和图投影 |
+| `GraphCandidateMutationMapper` | 自定义属性、证据状态和图投影 |
 | `GraphEntityRegistry` | 长期实体身份存储 |
 | `GraphDocumentStateStore` | 文档当前状态、历史和来源索引 |
 | `GraphIngestionOperationStore` | 持久化计划和恢复状态机 |

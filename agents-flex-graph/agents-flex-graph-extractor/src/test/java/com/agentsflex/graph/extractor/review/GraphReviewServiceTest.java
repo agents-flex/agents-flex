@@ -48,11 +48,11 @@ public class GraphReviewServiceTest {
         scenario.reviews.submit(plan("operation-2", "doc-b", "node-b"));
 
         assertNotNull(scenario.reviews.get(first.getTaskId()));
-        assertEquals(GraphReviewStatus.PENDING_REVIEW, first.getStatus());
+        assertEquals(GraphReviewTaskStatus.PENDING_REVIEW, first.getStatus());
         assertEquals(0L, first.getReviewVersion());
-        List<GraphReviewTask> tasks = scenario.reviews.list(GraphReviewQuery.builder()
+        List<GraphReviewTask> tasks = scenario.reviews.list(GraphReviewTaskQuery.builder()
             .space("knowledge").documentId("doc-a")
-            .status(GraphReviewStatus.PENDING_REVIEW).build());
+            .status(GraphReviewTaskStatus.PENDING_REVIEW).build());
         assertEquals(1, tasks.size());
         assertEquals(first.getTaskId(), tasks.get(0).getTaskId());
     }
@@ -66,7 +66,7 @@ public class GraphReviewServiceTest {
             task.getTaskId(), task.getReviewVersion(), scenario.writer, "reviewer-a");
 
         assertTrue(result.isSuccess());
-        assertEquals(GraphReviewStatus.COMPLETED, result.getTask().getStatus());
+        assertEquals(GraphReviewTaskStatus.COMPLETED, result.getTask().getStatus());
         assertEquals(2L, result.getTask().getReviewVersion());
         assertEquals("reviewer-a", result.getTask().getActor());
         assertEquals(1, scenario.writer.calls);
@@ -87,7 +87,7 @@ public class GraphReviewServiceTest {
         GraphReviewTask rejected = scenario.reviews.reject(
             task.getTaskId(), 0L, "evidence is insufficient", "reviewer-b");
 
-        assertEquals(GraphReviewStatus.REJECTED, rejected.getStatus());
+        assertEquals(GraphReviewTaskStatus.REJECTED, rejected.getStatus());
         assertEquals("evidence is insufficient", rejected.getReason());
         assertEquals(0, scenario.writer.calls);
         assertNull(scenario.states.get("knowledge", "doc-reject"));
@@ -106,7 +106,7 @@ public class GraphReviewServiceTest {
         GraphReviewTask updated = scenario.reviews.updatePlan(task.getTaskId(), 0L,
             plan("operation-update", "doc-update", "node-new"), "resolved entity", "reviewer-c");
 
-        assertEquals(GraphReviewStatus.CHANGES_REQUESTED, updated.getStatus());
+        assertEquals(GraphReviewTaskStatus.CHANGES_REQUESTED, updated.getStatus());
         assertEquals("node-new", updated.getPlan().getMutation().getNodes().get(0).getId());
         try {
             scenario.reviews.reject(task.getTaskId(), 0L, "stale decision");
@@ -124,7 +124,7 @@ public class GraphReviewServiceTest {
 
         GraphReviewExecutionResult failed = scenario.reviews.accept(task.getTaskId(), 0L, failing);
         assertFalse(failed.isSuccess());
-        assertEquals(GraphReviewStatus.FAILED, failed.getTask().getStatus());
+        assertEquals(GraphReviewTaskStatus.FAILED, failed.getTask().getStatus());
 
         try {
             scenario.reviews.archive(task.getTaskId(), failed.getTask().getReviewVersion());
@@ -134,7 +134,7 @@ public class GraphReviewServiceTest {
             failed.getTask().getReviewVersion(), scenario.writer);
         assertTrue(recovered.isSuccess());
         GraphReviewTask archived = scenario.reviews.archive(task.getTaskId(), recovered.getTask().getReviewVersion());
-        assertEquals(GraphReviewStatus.ARCHIVED, archived.getStatus());
+        assertEquals(GraphReviewTaskStatus.ARCHIVED, archived.getStatus());
     }
 
     @Test
@@ -142,7 +142,7 @@ public class GraphReviewServiceTest {
         Scenario scenario = scenario();
         GraphIngestionPlan plan = extractedPlan(scenario, "doc-patch");
         GraphReviewTask task = scenario.reviews.submit(plan);
-        String key = plan.getExtractionResult().getEntities().get(0).getCandidateKey();
+        String key = plan.getExtractionResult().getValidatedEntities().get(0).getCandidateKey();
         GraphReviewPatch patch = GraphReviewPatch.builder()
             .entityProperties(key, Collections.singletonMap("name", "corrected"))
             .relationProperties(0, Collections.singletonMap("since", 2024L))
@@ -150,7 +150,7 @@ public class GraphReviewServiceTest {
 
         GraphReviewTask updated = scenario.reviews.applyPatch(task.getTaskId(), 0L, patch, "corrected property");
 
-        assertEquals(GraphReviewStatus.CHANGES_REQUESTED, updated.getStatus());
+        assertEquals(GraphReviewTaskStatus.CHANGES_REQUESTED, updated.getStatus());
         assertEquals("corrected", updated.getPlan().getMutation().getNodes().get(0).getProperties().get("name"));
         assertEquals(2, updated.getPlan().getNextState().getNodeIds().size());
         assertEquals("corrected", updated.getPlan().getEntityRegistrations().get(0).getProperties().get("name"));
@@ -162,10 +162,10 @@ public class GraphReviewServiceTest {
     public void shouldRestoreTaskWithoutResettingVersion() {
         GraphReviewTask original = GraphReviewTask.pending("persisted-task", plan("operation-restore", "doc-restore", "node"), 10L);
         GraphReviewTask restored = GraphReviewTask.restore(original.getTaskId(), original.getPlan(),
-            GraphReviewStatus.CHANGES_REQUESTED, 7L, "needs review", "operator", 10L, 20L);
+            GraphReviewTaskStatus.CHANGES_REQUESTED, 7L, "needs review", "operator", 10L, 20L);
         assertEquals("persisted-task", restored.getTaskId());
         assertEquals(7L, restored.getReviewVersion());
-        assertEquals(GraphReviewStatus.CHANGES_REQUESTED, restored.getStatus());
+        assertEquals(GraphReviewTaskStatus.CHANGES_REQUESTED, restored.getStatus());
         assertEquals("operator", restored.getActor());
     }
 
@@ -266,7 +266,7 @@ public class GraphReviewServiceTest {
         Scenario s = scenario();
         GraphIngestionPlan plan = extractedPlan(s, "resolve");
         GraphReviewTask task = s.reviews.submit(plan);
-        String key = plan.getExtractionResult().getEntities().get(0).getCandidateKey();
+        String key = plan.getExtractionResult().getValidatedEntities().get(0).getCandidateKey();
         GraphReviewTask patched = s.reviews.applyPatch(task.getTaskId(), 0L, GraphReviewPatch.builder()
             .resolveEntity(key, GraphNode.builder("existing-alice", "Person").property("name", "Alice").build())
             .build(), "matched identity");
@@ -282,7 +282,7 @@ public class GraphReviewServiceTest {
         GraphIngestionPlan plan = extractedPlan(s, "reject-entity");
         GraphReviewTask task = s.reviews.submit(plan);
         GraphReviewTask patched = s.reviews.applyPatch(task.getTaskId(), 0L, GraphReviewPatch.builder()
-            .rejectEntity(plan.getExtractionResult().getEntities().get(0).getCandidateKey()).build(), "wrong entity");
+            .rejectEntity(plan.getExtractionResult().getValidatedEntities().get(0).getCandidateKey()).build(), "wrong entity");
         assertEquals(1, patched.getPlan().getMutation().getNodes().size());
         assertTrue(patched.getPlan().getMutation().getEdges().isEmpty());
         assertTrue(patched.getPlan().getMutation().getDeleteNodeIds().isEmpty());
@@ -294,7 +294,7 @@ public class GraphReviewServiceTest {
         Scenario s = scenario();
         GraphIngestionPlan plan = extractedPlan(s, "bad-patch");
         GraphReviewTask task = s.reviews.submit(plan);
-        String key = plan.getExtractionResult().getEntities().get(0).getCandidateKey();
+        String key = plan.getExtractionResult().getValidatedEntities().get(0).getCandidateKey();
         List<GraphReviewPatch> invalid = Arrays.asList(
             GraphReviewPatch.builder().rejectRelation(99).build(),
             GraphReviewPatch.builder().rejectEntity("missing").build(),
@@ -342,9 +342,9 @@ public class GraphReviewServiceTest {
             private boolean failOnce = true;
             public GraphReviewTask create(GraphReviewTask task) { return delegate.create(task); }
             public GraphReviewTask get(String id) { return delegate.get(id); }
-            public List<GraphReviewTask> list(GraphReviewQuery query) { return delegate.list(query); }
+            public List<GraphReviewTask> list(GraphReviewTaskQuery query) { return delegate.list(query); }
             public GraphReviewTask update(GraphReviewTask task, long version) {
-                if (task.getStatus() == GraphReviewStatus.COMPLETED && failOnce) {
+                if (task.getStatus() == GraphReviewTaskStatus.COMPLETED && failOnce) {
                     failOnce = false;
                     throw new IllegalStateException("review database unavailable");
                 }
@@ -356,13 +356,13 @@ public class GraphReviewServiceTest {
         try { reviews.accept(task.getTaskId(), 0L, s.writer); fail("persistence must fail once"); }
         catch (IllegalStateException expected) { assertEquals("review database unavailable", expected.getMessage()); }
         assertNotNull(s.states.get("knowledge", "review-save-failure"));
-        assertEquals(GraphReviewStatus.EXECUTING, reviews.get(task.getTaskId()).getStatus());
+        assertEquals(GraphReviewTaskStatus.EXECUTING, reviews.get(task.getTaskId()).getStatus());
         // 新建审核服务模拟重启，恢复时不能重复写图。
         GraphReviewExecutionResult resumed = new GraphReviewService(failing, s.ingestion)
             .resume(task.getTaskId(), 1L, s.writer);
         assertTrue(resumed.isSuccess());
         assertEquals(1, s.writer.calls);
-        assertEquals(GraphReviewStatus.COMPLETED, resumed.getTask().getStatus());
+        assertEquals(GraphReviewTaskStatus.COMPLETED, resumed.getTask().getStatus());
     }
 
     @Test
@@ -379,15 +379,15 @@ public class GraphReviewServiceTest {
         GraphReviewTask b = GraphReviewTask.pending("b", plan("b", "b", "node"), 10L);
         GraphReviewTask a = GraphReviewTask.pending("a", plan("a", "a", "node"), 10L);
         store.create(b); store.create(a);
-        assertEquals("a", store.list(GraphReviewQuery.builder().limit(1).build()).get(0).getTaskId());
-        assertEquals("b", store.list(GraphReviewQuery.builder().offset(1).limit(Integer.MAX_VALUE).build()).get(0).getTaskId());
-        GraphReviewTask next = a.transition(GraphReviewStatus.CHANGES_REQUESTED, null, "change", "user", 20L);
+        assertEquals("a", store.list(GraphReviewTaskQuery.builder().limit(1).build()).get(0).getTaskId());
+        assertEquals("b", store.list(GraphReviewTaskQuery.builder().offset(1).limit(Integer.MAX_VALUE).build()).get(0).getTaskId());
+        GraphReviewTask next = a.transition(GraphReviewTaskStatus.CHANGES_REQUESTED, null, "change", "user", 20L);
         store.update(next, 0L);
         try { store.update(next, 0L); fail("stale update must fail"); }
         catch (IllegalStateException expected) { assertTrue(expected.getMessage().contains("version conflict")); }
         try { store.create(a); fail("duplicate ID must fail"); }
         catch (IllegalStateException expected) { assertTrue(expected.getMessage().contains("already exists")); }
-        assertTrue(store.list(GraphReviewQuery.builder().offset(Integer.MAX_VALUE).build()).isEmpty());
+        assertTrue(store.list(GraphReviewTaskQuery.builder().offset(Integer.MAX_VALUE).build()).isEmpty());
     }
 
     private static GraphIngestionPlan plan(String operationId, String documentId, String nodeId) {

@@ -6,7 +6,7 @@ import com.agentsflex.graph.data.GraphEdgeKey;
 import com.agentsflex.graph.data.GraphNode;
 import com.agentsflex.graph.execution.GraphExecutionContext;
 import com.agentsflex.graph.extractor.model.GraphEvidence;
-import com.agentsflex.graph.extractor.resolution.GraphRegisteredEntity;
+import com.agentsflex.graph.extractor.registry.GraphRegisteredEntity;
 import com.agentsflex.graph.mutation.GraphMutation;
 
 import java.lang.reflect.Array;

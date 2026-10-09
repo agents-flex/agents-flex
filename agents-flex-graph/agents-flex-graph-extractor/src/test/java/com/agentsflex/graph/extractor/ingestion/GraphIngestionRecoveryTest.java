@@ -8,14 +8,14 @@ import com.agentsflex.graph.extractor.GraphExtractionException;
 import com.agentsflex.graph.extractor.GraphExtractionPipeline;
 import com.agentsflex.graph.extractor.GraphExtractionRequest;
 import com.agentsflex.graph.extractor.GraphExtractor;
-import com.agentsflex.graph.extractor.GraphMutationMapper;
+import com.agentsflex.graph.extractor.mapping.GraphCandidateMutationMapper;
 import com.agentsflex.graph.extractor.model.GraphAssertionType;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphEvidence;
 import com.agentsflex.graph.extractor.model.GraphRelationCandidate;
-import com.agentsflex.graph.extractor.resolution.GraphEntityRegistry;
-import com.agentsflex.graph.extractor.resolution.GraphRegisteredEntity;
-import com.agentsflex.graph.extractor.resolution.InMemoryGraphEntityRegistry;
+import com.agentsflex.graph.extractor.registry.GraphEntityRegistry;
+import com.agentsflex.graph.extractor.registry.GraphRegisteredEntity;
+import com.agentsflex.graph.extractor.registry.InMemoryGraphEntityRegistry;
 import com.agentsflex.graph.extractor.resolution.RegistryGraphEntityResolver;
 import com.agentsflex.graph.extractor.validation.SchemaGraphCandidateValidator;
 import com.agentsflex.graph.importing.GraphImportReport;
@@ -304,7 +304,7 @@ public class GraphIngestionRecoveryTest {
         FaultingRegistry registry = new FaultingRegistry();
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor,
             (document, idGenerator) -> Collections.singletonList(document), new SchemaGraphCandidateValidator(),
-            new RegistryGraphEntityResolver(registry), new GraphMutationMapper());
+            new RegistryGraphEntityResolver(registry), new GraphCandidateMutationMapper());
         FaultingStateStore states = new FaultingStateStore();
         FaultingOperationStore operations = new FaultingOperationStore();
         LocalGraphIngestionLockProvider locks = new LocalGraphIngestionLockProvider();

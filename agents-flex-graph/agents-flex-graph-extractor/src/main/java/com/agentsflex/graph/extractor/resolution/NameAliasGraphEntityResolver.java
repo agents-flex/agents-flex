@@ -46,7 +46,7 @@ public final class NameAliasGraphEntityResolver implements GraphEntityResolver {
      * 两个旧集合，此时执行传递合并。属性冲突采用首次值优先，保证结果与输入顺序确定。</p>
      */
     @Override
-    public GraphEntityResolution resolve(List<GraphEntityCandidate> candidates) {
+    public GraphEntityResolutionResult resolve(List<GraphEntityCandidate> candidates) {
         if (candidates == null) throw new IllegalArgumentException("candidates must not be null");
         Map<String, Aggregate> aliasIndex = new LinkedHashMap<>();
         List<Aggregate> aggregates = new ArrayList<>();
@@ -83,7 +83,7 @@ public final class NameAliasGraphEntityResolver implements GraphEntityResolver {
         Map<String, String> candidateToNode = new LinkedHashMap<>();
         for (Map.Entry<String, Aggregate> entry : candidateMappings.entrySet())
             candidateToNode.put(entry.getKey(), ids.get(entry.getValue()));
-        return new GraphEntityResolution(nodes, candidateToNode);
+        return new GraphEntityResolutionResult(nodes, candidateToNode);
     }
 
     /**

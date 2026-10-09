@@ -22,7 +22,7 @@ public interface GraphReviewStore {
     /**
      * 按条件查询任务，结果应按更新时间倒序返回。
      */
-    List<GraphReviewTask> list(GraphReviewQuery query);
+    List<GraphReviewTask> list(GraphReviewTaskQuery query);
 
     /**
      * 以乐观锁版本更新任务。

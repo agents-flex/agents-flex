@@ -17,5 +17,5 @@ public interface GraphEntityResolver {
      * @param candidates 已通过 Schema 校验的候选实体，按 Chunk 处理顺序排列
      * @return 归一节点和完整候选键映射
      */
-    GraphEntityResolution resolve(List<GraphEntityCandidate> candidates);
+    GraphEntityResolutionResult resolve(List<GraphEntityCandidate> candidates);
 }

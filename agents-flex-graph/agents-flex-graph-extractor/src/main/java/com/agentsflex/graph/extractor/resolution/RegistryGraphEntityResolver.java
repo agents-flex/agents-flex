@@ -2,6 +2,8 @@ package com.agentsflex.graph.extractor.resolution;
 
 import com.agentsflex.graph.data.GraphNode;
 import com.agentsflex.graph.extractor.GraphExtractionException;
+import com.agentsflex.graph.extractor.registry.GraphEntityRegistry;
+import com.agentsflex.graph.extractor.registry.GraphRegisteredEntity;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 
 import java.text.Normalizer;
@@ -71,7 +73,7 @@ public final class RegistryGraphEntityResolver implements GraphEntityResolver {
      * 解析当前批次，并优先复用实体注册表中已经确认的节点身份。
      */
     @Override
-    public GraphEntityResolution resolve(List<GraphEntityCandidate> candidates) {
+    public GraphEntityResolutionResult resolve(List<GraphEntityCandidate> candidates) {
         if (candidates == null) throw new IllegalArgumentException("candidates must not be null");
         List<Cluster> clusters = new ArrayList<>();
         Map<String, Cluster> localIndex = new LinkedHashMap<>();
@@ -121,7 +123,7 @@ public final class RegistryGraphEntityResolver implements GraphEntityResolver {
         for (Map.Entry<String, Cluster> mapping : candidateClusters.entrySet()) {
             candidateToNode.put(mapping.getKey(), nodeIds.get(mapping.getValue()));
         }
-        return new GraphEntityResolution(nodes, candidateToNode);
+        return new GraphEntityResolutionResult(nodes, candidateToNode);
     }
 
     /**

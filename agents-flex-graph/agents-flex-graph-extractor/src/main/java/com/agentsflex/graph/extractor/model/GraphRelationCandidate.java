@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * 大模型或其他抽取器识别出的不可变有向候选关系。
  *
- * <p>关系端点引用候选实体键而非数据库节点 ID。实体归一结束后，GraphMutationMapper 才会把
+ * <p>关系端点引用候选实体键而非数据库节点 ID。实体归一结束后，GraphCandidateMutationMapper 才会把
  * 两端转换为稳定节点 ID，并使用 type 与 rank 构造最终 GraphEdgeKey。</p>
  */
 public final class GraphRelationCandidate {

@@ -89,7 +89,7 @@ GraphExtractionPipeline pipeline =
         new RegistryGraphEntityResolver(
             "novel_knowledge",
             registry),
-        new GraphMutationMapper());
+        new GraphCandidateMutationMapper());
 ~~~
 
 解析器按 Space、节点类型、规范名称和别名查询已有注册记录：
