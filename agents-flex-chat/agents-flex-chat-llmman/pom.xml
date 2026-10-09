@@ -5,27 +5,25 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.agentsflex</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>agents-flex-chat</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <name>agents-flex-chat</name>
-    <artifactId>agents-flex-chat</artifactId>
-
-    <packaging>pom</packaging>
-    <modules>
-        <module>agents-flex-chat-openai</module>
-        <module>agents-flex-chat-qwen</module>
-        <module>agents-flex-chat-ollama</module>
-        <module>agents-flex-chat-deepseek</module>
-        <module>agents-flex-chat-litellm</module>
-        <module>agents-flex-chat-llmman</module>
-    </modules>
+    <name>agents-flex-chat-llmman</name>
+    <artifactId>agents-flex-chat-llmman</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-chat-ollama</artifactId>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
 
 </project>
