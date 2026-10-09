@@ -32,7 +32,7 @@
        -> ChatModel
        -> Parser / Validator / Resolver
   -> 审核或自动策略
-  -> IncrementalGraphIngestionService
+  -> GraphIngestionService
        -> GraphWriter
        -> DocumentStateStore
        -> EntityRegistry
@@ -224,7 +224,7 @@ Neo4j 与 Nebula 的写入和查询差异应在真实 Docker 或生产等价环�
 - [数据模型](/zh/graph/knowledge-extraction-contract)
 - [审核](/zh/graph/knowledge-extraction-quality)
 - [实体归一](/zh/graph/knowledge-extraction-entity-resolution)
-- [增量入图](/zh/graph/knowledge-extraction-ingestion)
+- [知识入图](/zh/graph/knowledge-extraction-ingestion)
 - [文档生命周期](/zh/graph/knowledge-extraction-lifecycle)
 - [状态模型](/zh/graph/knowledge-extraction-state)
 - [故障恢复](/zh/graph/knowledge-extraction-recovery)

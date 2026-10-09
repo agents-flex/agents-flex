@@ -33,7 +33,7 @@ public class LlmGraphExtractorTest {
         GraphExtractionRequest request = GraphExtractionRequest.builder("林默", GraphExtractorTestSupport.schema(), "c1")
             .context("上一段文字").build();
 
-        GraphCandidateBatch result = new LlmGraphExtractor(model).extract(request);
+        GraphCandidateResult result = new LlmGraphExtractor(model).extract(request);
 
         assertEquals(1, result.getEntities().size());
         assertTrue(model.prompt.contains("Character"));

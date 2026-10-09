@@ -1,7 +1,7 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 /**
- * 一次增量导入跨越图写入、实体注册和文档状态提交的不可变恢复记录。
+ * 一次文档入图跨越图写入、实体注册和文档状态提交的不可变恢复记录。
  *
  * <p>操作记录不是分布式事务，但可以准确识别故障发生在哪个阶段。调用方使用同一 operationId
  * 重试时，服务可以跳过已经成功的图写入，并继续完成后续幂等步骤。</p>

@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.data.GraphEdgeKey;
 
@@ -81,13 +81,13 @@ public interface GraphDocumentStateStore {
      *
      * <p>默认实现扫描 Space 状态；持久化实现可以通过 edgeKey 反向索引加速。</p>
      */
-    default List<GraphFactProvenance> findProvenance(String space, GraphEdgeKey edgeKey) {
-        List<GraphFactProvenance> result = new ArrayList<>();
+    default List<GraphFactSource> findFactSources(String space, GraphEdgeKey edgeKey) {
+        List<GraphFactSource> result = new ArrayList<>();
         for (GraphDocumentState state : list(space)) {
             // 当前来源只代表仍然生效的文档版本；撤回状态只应通过历史来源接口参与审计。
             if (state.getStatus() != GraphDocumentState.Status.ACTIVE) continue;
-            for (GraphFactProvenance provenance : state.getFactProvenances()) {
-                if (provenance.getEdgeKey().equals(edgeKey)) result.add(provenance);
+            for (GraphFactSource factSource : state.getFactSources()) {
+                if (factSource.getEdgeKey().equals(edgeKey)) result.add(factSource);
             }
         }
         return Collections.unmodifiableList(result);
@@ -96,12 +96,12 @@ public interface GraphDocumentStateStore {
     /**
      * 查询当前状态和历史版本中的全部来源证据，供审计和事实回放使用。
      */
-    default List<GraphFactProvenance> findHistoricalProvenance(String space, GraphEdgeKey edgeKey) {
-        List<GraphFactProvenance> result = new ArrayList<>();
+    default List<GraphFactSource> findHistoricalFactSources(String space, GraphEdgeKey edgeKey) {
+        List<GraphFactSource> result = new ArrayList<>();
         for (GraphDocumentState current : list(space)) {
             for (GraphDocumentState version : listVersions(space, current.getDocumentId())) {
-                for (GraphFactProvenance provenance : version.getFactProvenances()) {
-                    if (provenance.getEdgeKey().equals(edgeKey)) result.add(provenance);
+                for (GraphFactSource factSource : version.getFactSources()) {
+                    if (factSource.getEdgeKey().equals(edgeKey)) result.add(factSource);
                 }
             }
         }

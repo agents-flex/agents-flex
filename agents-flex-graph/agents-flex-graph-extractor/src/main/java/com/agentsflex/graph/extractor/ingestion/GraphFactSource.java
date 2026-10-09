@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.data.GraphEdgeKey;
 import com.agentsflex.graph.extractor.model.GraphAssertionType;
@@ -12,9 +12,12 @@ import java.util.Map;
  * 一个文档版本对某条物化关系提供的不可变事实来源记录。
  *
  * <p>同一 GraphEdgeKey 可以拥有多条来源记录，分别指向不同文档、Chunk 或原文证据。删除一个
- * 文档版本时，增量服务会先确认是否仍有其他文档支持该关系。</p>
+ * 文档版本时，入图服务会先确认是否仍有其他文档支持该关系。</p>
+ *
+ * <p>来源记录同时保存原文证据、文档版本、抽取操作、置信度和关系属性快照，方便查询来源和历史回放。
+ * 事实的业务可靠性仍需结合证据、断言类型和审核结果判断。</p>
  */
-public final class GraphFactProvenance {
+public final class GraphFactSource {
     /**
      * 区分来源事实声明与物化边的稳定事实 ID。
      */
@@ -55,7 +58,7 @@ public final class GraphFactProvenance {
     /**
      * 创建事实来源记录。
      */
-    public GraphFactProvenance(GraphEdgeKey edgeKey, GraphEvidence evidence, double confidence,
+    public GraphFactSource(GraphEdgeKey edgeKey, GraphEvidence evidence, double confidence,
                                GraphAssertionType assertionType, Map<String, ?> properties) {
         this("", "", 0L, 0L, edgeKey, evidence, confidence, assertionType, properties);
     }
@@ -63,7 +66,7 @@ public final class GraphFactProvenance {
     /**
      * 创建包含完整运行身份的事实来源记录。
      */
-    public GraphFactProvenance(String factId, String operationId, long documentRevision, long createdAtMillis,
+    public GraphFactSource(String factId, String operationId, long documentRevision, long createdAtMillis,
                                GraphEdgeKey edgeKey, GraphEvidence evidence, double confidence,
                                GraphAssertionType assertionType, Map<String, ?> properties) {
         if (edgeKey == null || evidence == null || assertionType == null) {

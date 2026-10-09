@@ -1,15 +1,15 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.mutation.GraphWriteResult;
 
 /**
- * 增量计划执行后的不可变结果。
+ * 入图计划执行后的不可变结果。
  */
-public final class IncrementalGraphIngestionResult {
+public final class GraphIngestionResult {
     /**
      * 已执行或跳过的计划。
      */
-    private final IncrementalGraphIngestionPlan plan;
+    private final GraphIngestionPlan plan;
     /**
      * 图写入结果；无变更时为零影响成功结果。
      */
@@ -22,7 +22,7 @@ public final class IncrementalGraphIngestionResult {
     /**
      * 创建执行结果。
      */
-    public IncrementalGraphIngestionResult(IncrementalGraphIngestionPlan plan, GraphWriteResult writeResult,
+    public GraphIngestionResult(GraphIngestionPlan plan, GraphWriteResult writeResult,
                                            boolean stateCommitted) {
         if (plan == null || writeResult == null)
             throw new IllegalArgumentException("plan and writeResult must not be null");
@@ -34,7 +34,7 @@ public final class IncrementalGraphIngestionResult {
     /**
      * @return 对应执行计划。
      */
-    public IncrementalGraphIngestionPlan getPlan() {
+    public GraphIngestionPlan getPlan() {
         return plan;
     }
 

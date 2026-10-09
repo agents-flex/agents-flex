@@ -1,8 +1,8 @@
 package com.agentsflex.graph.testkit;
 
 import com.agentsflex.graph.data.GraphEdgeKey;
-import com.agentsflex.graph.extractor.incremental.GraphDocumentState;
-import com.agentsflex.graph.extractor.incremental.GraphDocumentStateStore;
+import com.agentsflex.graph.extractor.ingestion.GraphDocumentState;
+import com.agentsflex.graph.extractor.ingestion.GraphDocumentStateStore;
 import org.junit.Before;
 import org.junit.Test;
 

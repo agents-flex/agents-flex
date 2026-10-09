@@ -57,7 +57,7 @@ public class GraphExtractionPipelineTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void shouldRejectBlankDocument() {
-        new GraphExtractionPipeline(request -> new GraphCandidateBatch(null, null, null, ""))
+        new GraphExtractionPipeline(request -> new GraphCandidateResult(null, null, null, ""))
             .extract(Document.of(" "), GraphExtractorTestSupport.schema());
     }
 
@@ -69,7 +69,7 @@ public class GraphExtractionPipelineTest {
         DocumentSplitter splitter = (document, idGenerator) -> Arrays.asList(Document.of("失败段"), Document.of("成功段"));
         GraphExtractor extractor = request -> {
             if (request.getText().equals("失败段")) throw new GraphExtractionException("bad response");
-            return new GraphCandidateBatch(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), "{}");
+            return new GraphCandidateResult(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), "{}");
         };
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor, splitter,
             new SchemaGraphCandidateValidator(), new NameAliasGraphEntityResolver(), new GraphMutationMapper());
@@ -92,7 +92,7 @@ public class GraphExtractionPipelineTest {
         GraphExtractor extractor = request -> {
             chunkIds.add(request.getChunkId());
             contexts.add(request.getContext());
-            return new GraphCandidateBatch(Collections.emptyList(), Collections.emptyList(),
+            return new GraphCandidateResult(Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), "{}");
         };
         DocumentSplitter forbiddenSplitter = (document, idGenerator) -> {
@@ -120,7 +120,7 @@ public class GraphExtractionPipelineTest {
         final int[] calls = {0};
         GraphExtractor extractor = request -> {
             calls[0]++;
-            return new GraphCandidateBatch(null, null, null, "{}");
+            return new GraphCandidateResult(null, null, null, "{}");
         };
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor);
         Document first = Document.of("第一段");
@@ -147,7 +147,7 @@ public class GraphExtractionPipelineTest {
         GraphExtractor extractor = request -> {
             documentIds.add(request.getDocumentId());
             chunkIds.add(request.getChunkId());
-            return new GraphCandidateBatch(Collections.emptyList(), Collections.emptyList(),
+            return new GraphCandidateResult(Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), "{}");
         };
         Document explicit = Document.of("第一段");
@@ -166,7 +166,7 @@ public class GraphExtractionPipelineTest {
      */
     @Test
     public void shouldContinueAfterValidatorFailureWhenConfigured() {
-        GraphExtractor extractor = request -> new GraphCandidateBatch(Collections.emptyList(),
+        GraphExtractor extractor = request -> new GraphCandidateResult(Collections.emptyList(),
             Collections.emptyList(), Collections.emptyList(), "raw-response");
         GraphExtractionPipeline pipeline = new GraphExtractionPipeline(extractor,
             (document, idGenerator) -> Collections.singletonList(Document.of("第一段")),
@@ -197,12 +197,12 @@ public class GraphExtractionPipelineTest {
         private final List<String> contexts = new ArrayList<>();
 
         @Override
-        public GraphCandidateBatch extract(GraphExtractionRequest request) {
+        public GraphCandidateResult extract(GraphExtractionRequest request) {
             contexts.add(request.getContext());
             if (request.getText().startsWith("林默")) {
                 GraphEntityCandidate person = entity(request, "m1", "林默", "Character",
                     Collections.singletonList("林公子"));
-                return new GraphCandidateBatch(Collections.singletonList(person), Collections.emptyList(),
+                return new GraphCandidateResult(Collections.singletonList(person), Collections.emptyList(),
                     Collections.emptyList(), "chunk-1-response");
             }
             GraphEntityCandidate person = entity(request, "m1", "林公子", "Character", Collections.emptyList());
@@ -213,7 +213,7 @@ public class GraphExtractionPipelineTest {
                 organization.getCandidateKey(), 0L, properties,
                 GraphExtractorTestSupport.evidence(request.getChunkId(), "加入青云宗"), 1D,
                 GraphAssertionType.EXPLICIT);
-            return new GraphCandidateBatch(Arrays.asList(person, organization), Collections.singletonList(relation),
+            return new GraphCandidateResult(Arrays.asList(person, organization), Collections.singletonList(relation),
                 Collections.emptyList(), "chunk-2-response");
         }
 

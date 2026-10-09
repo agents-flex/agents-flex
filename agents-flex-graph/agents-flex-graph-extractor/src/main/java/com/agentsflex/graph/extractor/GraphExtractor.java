@@ -11,7 +11,7 @@ public interface GraphExtractor {
      * 抽取单个 Chunk 的局部候选知识。
      *
      * @param request 包含当前文本、Schema、来源和质量选项的单分段请求
-     * @return 候选实体、候选关系、结构化问题和原始响应组成的批次
+     * @return 包含候选实体、候选关系、结构化问题和原始响应的候选结果
      */
-    GraphCandidateBatch extract(GraphExtractionRequest request);
+    GraphCandidateResult extract(GraphExtractionRequest request);
 }

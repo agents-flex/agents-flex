@@ -1,6 +1,6 @@
 package com.agentsflex.graph.testkit;
 
-import com.agentsflex.graph.extractor.incremental.GraphIngestionLockProvider;
+import com.agentsflex.graph.extractor.ingestion.GraphIngestionLockProvider;
 import org.junit.Before;
 import org.junit.Test;
 

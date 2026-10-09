@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.data.GraphEdgeKey;
 
@@ -83,7 +83,7 @@ public final class GraphDocumentState {
     /**
      * 当前文档版本中每个关系候选的完整来源记录。
      */
-    private final List<GraphFactProvenance> factProvenances;
+    private final List<GraphFactSource> factSources;
 
     /**
      * 从构造器复制并冻结状态。
@@ -109,11 +109,11 @@ public final class GraphDocumentState {
         nodeIds = immutable(builder.nodeIds, "nodeIds");
         edgeKeys = immutable(builder.edgeKeys, "edgeKeys");
         supersededEdgeKeys = immutable(builder.supersededEdgeKeys, "supersededEdgeKeys");
-        List<GraphFactProvenance> provenanceCopy = new ArrayList<>(builder.factProvenances);
-        if (provenanceCopy.contains(null)) {
-            throw new IllegalArgumentException("factProvenances must not contain null elements");
+        List<GraphFactSource> factSourceCopy = new ArrayList<>(builder.factSources);
+        if (factSourceCopy.contains(null)) {
+            throw new IllegalArgumentException("factSources must not contain null elements");
         }
-        factProvenances = Collections.unmodifiableList(provenanceCopy);
+        factSources = Collections.unmodifiableList(factSourceCopy);
     }
 
     /**
@@ -231,8 +231,8 @@ public final class GraphDocumentState {
     /**
      * @return 当前版本按抽取顺序保存的事实来源记录。
      */
-    public List<GraphFactProvenance> getFactProvenances() {
-        return factProvenances;
+    public List<GraphFactSource> getFactSources() {
+        return factSources;
     }
 
     /**
@@ -327,7 +327,7 @@ public final class GraphDocumentState {
         /**
          * 事实来源。
          */
-        private final List<GraphFactProvenance> factProvenances = new ArrayList<>();
+        private final List<GraphFactSource> factSources = new ArrayList<>();
 
         private Builder(String space, String documentId, String contentHash) {
             this.space = space;
@@ -458,9 +458,9 @@ public final class GraphDocumentState {
         /**
          * 添加事实来源，并自动登记对应关系键。
          */
-        public Builder factProvenance(GraphFactProvenance value) {
+        public Builder factSource(GraphFactSource value) {
             if (value != null) {
-                factProvenances.add(value);
+                factSources.add(value);
                 edgeKeys.add(value.getEdgeKey());
             }
             return this;
@@ -469,8 +469,8 @@ public final class GraphDocumentState {
         /**
          * 批量添加事实来源，并自动登记对应关系键。
          */
-        public Builder factProvenances(java.util.Collection<GraphFactProvenance> values) {
-            if (values != null) for (GraphFactProvenance value : values) factProvenance(value);
+        public Builder factSources(java.util.Collection<GraphFactSource> values) {
+            if (values != null) for (GraphFactSource value : values) factSource(value);
             return this;
         }
 

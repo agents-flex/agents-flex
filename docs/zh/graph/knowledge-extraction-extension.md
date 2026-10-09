@@ -10,7 +10,7 @@
 
 ### `GraphExtractor`
 
-负责从单个 `GraphExtractionRequest` 产生 `GraphCandidateBatch`。实现可以使用 LLM、规则引擎或外部 NLP 服务。
+负责从单个 `GraphExtractionRequest` 产生 `GraphCandidateResult`。实现可以使用 LLM、规则引擎或外部 NLP 服务。
 
 必须保证：
 

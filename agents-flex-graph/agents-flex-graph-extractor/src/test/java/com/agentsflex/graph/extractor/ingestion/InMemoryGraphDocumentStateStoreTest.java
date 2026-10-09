@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.data.GraphEdgeKey;
 import com.agentsflex.graph.extractor.model.GraphAssertionType;
@@ -103,7 +103,7 @@ public class InMemoryGraphDocumentStateStoreTest {
      * 当前来源只统计活动文档，历史来源仍应包含已经撤回的旧版本。
      */
     @Test
-    public void provenanceShouldSeparateActiveAndHistoricalVersions() {
+    public void factSourceShouldSeparateActiveAndHistoricalVersions() {
         InMemoryGraphDocumentStateStore store = new InMemoryGraphDocumentStateStore();
         GraphEdgeKey edge = edge();
         GraphDocumentState active = state("space", "doc", 1, "operation-1",
@@ -115,9 +115,9 @@ public class InMemoryGraphDocumentStateStoreTest {
         assertTrue(store.compareAndSet("space", "doc", 1L, retracted));
         store.recordVersion(retracted);
 
-        assertTrue(store.findProvenance("space", edge).isEmpty());
-        assertEquals(2, store.findHistoricalProvenance("space", edge).size());
-        assertTrue(store.findProvenance("other", edge).isEmpty());
+        assertTrue(store.findFactSources("space", edge).isEmpty());
+        assertEquals(2, store.findHistoricalFactSources("space", edge).size());
+        assertTrue(store.findFactSources("other", edge).isEmpty());
     }
 
     /**
@@ -156,8 +156,8 @@ public class InMemoryGraphDocumentStateStoreTest {
         if (edge != null) {
             GraphEvidence evidence = new GraphEvidence(documentId, "chunk-1", "林默加入青云会", -1, -1,
                 Collections.<String, Object>emptyMap());
-            builder.edgeKeys(Collections.singleton(edge)).factProvenances(Collections.singletonList(
-                new GraphFactProvenance("fact-" + revision, operationId, revision, revision, edge, evidence,
+            builder.edgeKeys(Collections.singleton(edge)).factSources(Collections.singletonList(
+                new GraphFactSource("fact-" + revision, operationId, revision, revision, edge, evidence,
                     1D, GraphAssertionType.EXPLICIT, Collections.<String, Object>emptyMap())));
         }
         return builder.build();

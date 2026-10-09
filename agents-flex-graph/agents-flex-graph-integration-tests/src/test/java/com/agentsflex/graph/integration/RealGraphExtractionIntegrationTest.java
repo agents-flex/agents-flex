@@ -3,16 +3,16 @@ package com.agentsflex.graph.integration;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.GraphStore;
-import com.agentsflex.graph.extractor.GraphCandidateBatch;
+import com.agentsflex.graph.extractor.GraphCandidateResult;
 import com.agentsflex.graph.extractor.GraphExtractionPipeline;
 import com.agentsflex.graph.extractor.GraphExtractionRequest;
 import com.agentsflex.graph.extractor.GraphExtractor;
 import com.agentsflex.graph.extractor.GraphMutationMapper;
-import com.agentsflex.graph.extractor.incremental.GraphDocumentState;
-import com.agentsflex.graph.extractor.incremental.InMemoryGraphDocumentStateStore;
-import com.agentsflex.graph.extractor.incremental.InMemoryGraphIngestionOperationStore;
-import com.agentsflex.graph.extractor.incremental.IncrementalGraphIngestionRequest;
-import com.agentsflex.graph.extractor.incremental.IncrementalGraphIngestionService;
+import com.agentsflex.graph.extractor.ingestion.GraphDocumentState;
+import com.agentsflex.graph.extractor.ingestion.InMemoryGraphDocumentStateStore;
+import com.agentsflex.graph.extractor.ingestion.InMemoryGraphIngestionOperationStore;
+import com.agentsflex.graph.extractor.ingestion.GraphIngestionRequest;
+import com.agentsflex.graph.extractor.ingestion.GraphIngestionService;
 import com.agentsflex.graph.extractor.model.GraphAssertionType;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;
 import com.agentsflex.graph.extractor.model.GraphEvidence;
@@ -141,12 +141,12 @@ public class RealGraphExtractionIntegrationTest {
             new RegistryGraphEntityResolver(registry), new GraphMutationMapper());
         InMemoryGraphDocumentStateStore states = new InMemoryGraphDocumentStateStore();
         InMemoryGraphIngestionOperationStore operations = new InMemoryGraphIngestionOperationStore();
-        IncrementalGraphIngestionService service = new IncrementalGraphIngestionService(pipeline, states, registry,
+        GraphIngestionService service = new GraphIngestionService(pipeline, states, registry,
             operations);
         CommitThenFailWriter uncertainWriter = new CommitThenFailWriter(store.writer());
-        IncrementalGraphIngestionRequest firstRequest = IncrementalGraphIngestionRequest.builder(space, "doc-a")
+        GraphIngestionRequest firstRequest = GraphIngestionRequest.builder(space, "doc-a")
             .operationId("extract-first-" + System.nanoTime())
-            .staleRelationPolicy(IncrementalGraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED).build();
+            .staleRelationPolicy(GraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED).build();
         try {
             service.ingest(Document.of("林默加入青云会"), schema, firstRequest, uncertainWriter);
             fail("the first client response should be interrupted after backend commit");
@@ -159,9 +159,9 @@ public class RealGraphExtractionIntegrationTest {
         assertEquals(1L, count(store, space, relationCountQuery));
         assertEquals(1, extractor.calls.get());
 
-        IncrementalGraphIngestionRequest secondRequest = IncrementalGraphIngestionRequest.builder(space, "doc-b")
+        GraphIngestionRequest secondRequest = GraphIngestionRequest.builder(space, "doc-b")
             .operationId("extract-second-" + System.nanoTime())
-            .staleRelationPolicy(IncrementalGraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED).build();
+            .staleRelationPolicy(GraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED).build();
         assertTrue(service.ingest(Document.of("林默加入青云会"), schema, secondRequest, store.writer()).isSuccess());
         assertEquals(1L, count(store, space, relationCountQuery));
 
@@ -273,7 +273,7 @@ public class RealGraphExtractionIntegrationTest {
         }
 
         @Override
-        public GraphCandidateBatch extract(GraphExtractionRequest request) {
+        public GraphCandidateResult extract(GraphExtractionRequest request) {
             calls.incrementAndGet();
             GraphEvidence evidence = new GraphEvidence(request.getDocumentId(), request.getChunkId(), request.getText(),
                 -1, -1, Collections.<String, Object>emptyMap());
@@ -286,7 +286,7 @@ public class RealGraphExtractionIntegrationTest {
             GraphRelationCandidate relation = new GraphRelationCandidate(person.getCandidateKey(), relationType,
                 group.getCandidateKey(), 0L, Collections.<String, Object>emptyMap(), evidence, 1D,
                 GraphAssertionType.EXPLICIT);
-            return new GraphCandidateBatch(Arrays.asList(person, group), Collections.singletonList(relation),
+            return new GraphCandidateResult(Arrays.asList(person, group), Collections.singletonList(relation),
                 Collections.emptyList(), "{}");
         }
     }

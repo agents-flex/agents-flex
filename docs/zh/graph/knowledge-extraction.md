@@ -31,7 +31,7 @@ Graph Extractor 因此是一套从非结构化内容到可维护图数据变更�
 
 ### 让同一个知识库持续增长
 
-同一个 Space 可以先导入一批历史文件，之后持续接收新文件和文档新版本。长期增量服务通过稳定文档 ID、内容摘要、Schema 版本、实体注册表和事实来源，计算本次需要新增、更新或撤销的图数据。
+同一个 Space 可以先导入一批历史文件，之后持续接收新文件和文档新版本。长期入图服务通过稳定文档 ID、内容摘要、Schema 版本、实体注册表和事实来源，计算本次需要新增、更新或撤销的图数据。
 
 ### 为开发者自己的产品提供 SDK 基础
 
@@ -92,7 +92,7 @@ Graph SDK 提供数据模型、状态和扩展点，不负责实现这些 UI。
 | Graph Entity Resolver | 判断候选是否指向同一个业务实体 |
 | Graph Mutation | 表达审核后准备执行的节点和边变化 |
 | Graph Writer | 把变化写入 Neo4j、Nebula 等后端 |
-| 增量入图服务 | 管理文档版本、差异、来源和恢复状态 |
+| 知识入图服务 | 管理文档版本、差异、来源和恢复状态 |
 | Graph Query | 查询已经物化到 Space 中的图数据 |
 
 Extractor 不依赖具体 Neo4j 或 Nebula 适配器。抽取和审核可以在没有数据库连接的环境中进行，确认后再把 Mutation 交给任意 `GraphWriter`。
@@ -111,13 +111,13 @@ Document -> GraphExtractionPipeline -> GraphExtractionResult
 
 流水线本身不会自动写入数据库。即使结果包含可执行 Mutation，调用方也应先检查问题、证据和业务审核策略。
 
-### 长期增量入图
+### 长期知识入图
 
 适合一个知识库持续接收文件：
 
 ~~~text
 Document + 文档版本 + 已有文档状态 + 实体注册表
-  -> IncrementalGraphIngestionPlan
+  -> GraphIngestionPlan
   -> 审核
   -> 图写入
   -> 文档状态、事实来源和操作状态提交
@@ -157,7 +157,7 @@ Document + 文档版本 + 已有文档状态 + 实体注册表
 4. [数据模型](/zh/graph/knowledge-extraction-contract)：理解请求、候选、证据和身份字段；
 5. [审核](/zh/graph/knowledge-extraction-quality)：决定什么可以进入审核和 Mutation，并把候选、证据和计划接入自己的产品流程；
 7. [实体归一](/zh/graph/knowledge-extraction-entity-resolution)：避免重复实体；
-8. [增量入图](/zh/graph/knowledge-extraction-ingestion)：把结果接入目标 Space。
+8. [知识入图](/zh/graph/knowledge-extraction-ingestion)：把结果接入目标 Space。
 
 准备生产运行时继续阅读：
 

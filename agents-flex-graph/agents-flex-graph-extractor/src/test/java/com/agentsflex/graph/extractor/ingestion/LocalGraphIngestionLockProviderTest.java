@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import org.junit.Test;
 

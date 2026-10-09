@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,7 +18,7 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
     /**
      * operationId 到首次执行计划的映射，用于模拟进程恢复。
      */
-    private final Map<String, IncrementalGraphIngestionPlan> plans = new LinkedHashMap<>();
+    private final Map<String, GraphIngestionPlan> plans = new LinkedHashMap<>();
 
     /**
      * 查询当前阶段记录。
@@ -44,7 +44,7 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
      */
     @Override
     public synchronized boolean createIfAbsent(GraphIngestionOperation operation,
-                                               IncrementalGraphIngestionPlan plan) {
+                                               GraphIngestionPlan plan) {
         if (operation == null || plan == null) {
             throw new IllegalArgumentException("operation and plan must not be null");
         }
@@ -72,7 +72,7 @@ public final class InMemoryGraphIngestionOperationStore implements GraphIngestio
      * 查询首次执行时冻结的计划对象。
      */
     @Override
-    public synchronized IncrementalGraphIngestionPlan getPlan(String operationId) {
+    public synchronized GraphIngestionPlan getPlan(String operationId) {
         return plans.get(operationId);
     }
 

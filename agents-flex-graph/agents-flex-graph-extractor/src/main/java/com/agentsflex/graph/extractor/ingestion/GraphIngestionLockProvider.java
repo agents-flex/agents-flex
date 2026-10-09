@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 /**
  * 为“Space + documentId”提供互斥执行边界的扩展点。

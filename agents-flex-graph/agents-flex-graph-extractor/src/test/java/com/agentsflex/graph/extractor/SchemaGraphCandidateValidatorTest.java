@@ -34,7 +34,7 @@ public class SchemaGraphCandidateValidatorTest {
         GraphExtractionRequest request = request(GraphExtractionOptions.DEFAULT);
 
         GraphCandidateValidationResult result = new SchemaGraphCandidateValidator().validate(
-            new GraphCandidateBatch(Arrays.asList(person, organization), Collections.singletonList(relation),
+            new GraphCandidateResult(Arrays.asList(person, organization), Collections.singletonList(relation),
                 Collections.emptyList(), "{}"), request);
 
         assertEquals(2, result.getAccepted().getEntities().size());
@@ -56,7 +56,7 @@ public class SchemaGraphCandidateValidatorTest {
         GraphRelationCandidate wrongEndpoint = relation(organization, fakeEvidence, GraphAssertionType.EXPLICIT, "加入青云宗");
 
         GraphCandidateValidationResult result = new SchemaGraphCandidateValidator().validate(
-            new GraphCandidateBatch(Arrays.asList(unknownProperty, fakeEvidence, organization),
+            new GraphCandidateResult(Arrays.asList(unknownProperty, fakeEvidence, organization),
                 Collections.singletonList(wrongEndpoint), Collections.emptyList(), "{}"),
             request(GraphExtractionOptions.DEFAULT));
 
@@ -73,7 +73,7 @@ public class SchemaGraphCandidateValidatorTest {
         GraphEntityCandidate person = entity("c::p", "林默", "Character", "林默", props("name", "林默"));
         GraphEntityCandidate organization = entity("c::o", "青云宗", "Organization", "青云宗", props("name", "青云宗"));
         GraphRelationCandidate relation = relation(person, organization, GraphAssertionType.INFERRED, "加入青云宗");
-        GraphCandidateBatch batch = new GraphCandidateBatch(Arrays.asList(person, organization),
+        GraphCandidateResult batch = new GraphCandidateResult(Arrays.asList(person, organization),
             Collections.singletonList(relation), Collections.emptyList(), "{}");
 
         assertTrue(new SchemaGraphCandidateValidator().validate(batch, request(GraphExtractionOptions.DEFAULT))
@@ -97,7 +97,7 @@ public class SchemaGraphCandidateValidatorTest {
             Collections.emptyList(), properties, evidence("林默", 0, 99), 1D);
 
         GraphCandidateValidationResult result = new SchemaGraphCandidateValidator().validate(
-            new GraphCandidateBatch(Arrays.asList(valid, mismatched, outOfBounds), Collections.emptyList(),
+            new GraphCandidateResult(Arrays.asList(valid, mismatched, outOfBounds), Collections.emptyList(),
                 Collections.emptyList(), "{}"), request(GraphExtractionOptions.DEFAULT));
 
         assertEquals(1, result.getAccepted().getEntities().size());
@@ -128,7 +128,7 @@ public class SchemaGraphCandidateValidatorTest {
         Map<String, Object> invalidEnum = props("name", "叶舟");
         invalidEnum.put("status", "UNKNOWN");
 
-        GraphCandidateBatch batch = new GraphCandidateBatch(Arrays.asList(
+        GraphCandidateResult batch = new GraphCandidateResult(Arrays.asList(
             entity("c::valid", "林默", "Character", "林默", validValues),
             entity("c::date", "苏青", "Character", "苏青", invalidDate),
             entity("c::enum", "叶舟", "Character", "叶舟", invalidEnum)),
@@ -158,7 +158,7 @@ public class SchemaGraphCandidateValidatorTest {
             new GraphEvidence("novel-2", "c", "林默", 0, 2, Collections.emptyMap()), 1D);
 
         GraphCandidateValidationResult result = new SchemaGraphCandidateValidator().validate(
-            new GraphCandidateBatch(Arrays.asList(foreignKey, foreignChunk, foreignDocument),
+            new GraphCandidateResult(Arrays.asList(foreignKey, foreignChunk, foreignDocument),
                 Collections.emptyList(), Collections.emptyList(), "{}"), request);
 
         assertTrue(result.getAccepted().getEntities().isEmpty());
@@ -182,7 +182,7 @@ public class SchemaGraphCandidateValidatorTest {
             Collections.emptyList(), values, evidence("林默", 0, 2), 1D);
 
         GraphCandidateValidationResult result = new SchemaGraphCandidateValidator().validate(
-            new GraphCandidateBatch(Collections.singletonList(candidate), Collections.emptyList(),
+            new GraphCandidateResult(Collections.singletonList(candidate), Collections.emptyList(),
                 Collections.emptyList(), "{}"),
             GraphExtractionRequest.builder("林默", schema, "c").build());
 

@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.data.GraphEdge;
@@ -22,7 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 为不可变增量执行计划生成确定性指纹。
+ * 为不可变入图执行计划生成确定性指纹。
  *
  * <p>指纹覆盖图路由、全部 mutation、待提交文档状态、事实来源和实体注册内容，但有意忽略
  * 超时、请求链 ID 与提交时间等非业务字段。这样进程重启后可以确认恢复的确实是同一份计划，
@@ -38,7 +38,7 @@ final class GraphIngestionPlanFingerprint {
     /**
      * @return 计划业务内容的 SHA-256 十六进制摘要。
      */
-    static String compute(IncrementalGraphIngestionPlan plan) {
+    static String compute(GraphIngestionPlan plan) {
         if (plan == null) throw new IllegalArgumentException("plan must not be null");
         Digester digest = new Digester();
         digest.add("status", plan.getStatus().name());
@@ -117,13 +117,13 @@ final class GraphIngestionPlanFingerprint {
         digest.add("state.nodeIds", canonicalSorted(state.getNodeIds()));
         digest.add("state.edgeKeys", canonicalEdgeKeys(state.getEdgeKeys()));
         digest.add("state.supersededEdges", canonicalEdgeKeys(state.getSupersededEdgeKeys()));
-        for (GraphFactProvenance fact : state.getFactProvenances()) appendFact(digest, fact);
+        for (GraphFactSource fact : state.getFactSources()) appendFact(digest, fact);
     }
 
     /**
      * 追加一条事实来源；不包含创建时间，避免同一计划重建时因时钟变化产生误冲突。
      */
-    private static void appendFact(Digester digest, GraphFactProvenance fact) {
+    private static void appendFact(Digester digest, GraphFactSource fact) {
         digest.add("fact.id", fact.getFactId());
         digest.add("fact.operationId", fact.getOperationId());
         digest.add("fact.documentRevision", Long.toString(fact.getDocumentRevision()));

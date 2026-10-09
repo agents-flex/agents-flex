@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.extractor.GraphExtractionException;
 import com.agentsflex.graph.extractor.model.GraphEntityCandidate;

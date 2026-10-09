@@ -1,6 +1,6 @@
 package com.agentsflex.graph.extractor.validation;
 
-import com.agentsflex.graph.extractor.GraphCandidateBatch;
+import com.agentsflex.graph.extractor.GraphCandidateResult;
 import com.agentsflex.graph.extractor.GraphExtractionOptions;
 import com.agentsflex.graph.extractor.GraphExtractionRequest;
 import com.agentsflex.graph.extractor.model.GraphAssertionType;
@@ -34,20 +34,20 @@ public final class SchemaGraphCandidateValidator implements GraphCandidateValida
      * <p>先校验实体，再校验关系。关系只能引用本轮已经通过校验的实体，因此坏实体不会通过
      * 关系间接进入后续 GraphMutation。</p>
      *
-     * @param batch   解析器生成的候选批次
+     * @param candidates 解析器生成的候选结果
      * @param request 当前 Chunk 的抽取请求
      * @return 合法候选及解析、校验阶段的完整问题列表
      */
     @Override
-    public GraphCandidateValidationResult validate(GraphCandidateBatch batch, GraphExtractionRequest request) {
-        if (batch == null || request == null) throw new IllegalArgumentException("batch and request must not be null");
+    public GraphCandidateValidationResult validate(GraphCandidateResult candidates, GraphExtractionRequest request) {
+        if (candidates == null || request == null) throw new IllegalArgumentException("candidates and request must not be null");
         Map<String, GraphSchema.NodeType> nodeTypes = nodeTypes(request.getSchema());
         Map<String, GraphSchema.EdgeType> edgeTypes = edgeTypes(request.getSchema());
-        List<GraphExtractionIssue> issues = new ArrayList<>(batch.getIssues());
+        List<GraphExtractionIssue> issues = new ArrayList<>(candidates.getIssues());
         List<GraphEntityCandidate> entities = new ArrayList<>();
         Map<String, GraphEntityCandidate> acceptedByKey = new HashMap<>();
         Set<String> seenKeys = new HashSet<>();
-        for (GraphEntityCandidate entity : batch.getEntities()) {
+        for (GraphEntityCandidate entity : candidates.getEntities()) {
             String problem = entityProblem(entity, nodeTypes.get(entity.getType()), request, seenKeys);
             if (problem == null) {
                 entities.add(entity);
@@ -57,14 +57,14 @@ public final class SchemaGraphCandidateValidator implements GraphCandidateValida
             }
         }
         List<GraphRelationCandidate> relations = new ArrayList<>();
-        for (GraphRelationCandidate relation : batch.getRelations()) {
+        for (GraphRelationCandidate relation : candidates.getRelations()) {
             String problem = relationProblem(relation, edgeTypes.get(relation.getType()), acceptedByKey,
                 request);
             if (problem == null) relations.add(relation);
             else
                 issues.add(error("INVALID_RELATION", relation.getSourceCandidateKey() + "->" + relation.getTargetCandidateKey(), problem));
         }
-        return new GraphCandidateValidationResult(new GraphCandidateBatch(entities, relations, issues, batch.getRawResponse()));
+        return new GraphCandidateValidationResult(new GraphCandidateResult(entities, relations, issues, candidates.getRawResponse()));
     }
 
     /**
@@ -143,8 +143,12 @@ public final class SchemaGraphCandidateValidator implements GraphCandidateValida
 
     /**
      * 校验候选属性白名单、可移植类型、枚举限制和必填约束。
+     *
+     * @param values 待校验的完整属性映射
+     * @param definitions Schema 属性定义
+     * @return 首个问题说明；合法时返回 null，供抽取和人工修改共用相同约束
      */
-    private static String propertyProblem(Map<String, Object> values, List<GraphSchema.Property> definitions) {
+    public static String propertyProblem(Map<String, Object> values, List<GraphSchema.Property> definitions) {
         Map<String, GraphSchema.Property> properties = new HashMap<>();
         for (GraphSchema.Property property : definitions) properties.put(property.getName(), property);
         for (Map.Entry<String, Object> entry : values.entrySet()) {

@@ -377,7 +377,7 @@ Schema 不只保存机器名称，还可以通过类型和属性的展示名称�
 - 修改类型或属性描述；
 - 将直接关系重构为事件节点。
 
-内容没有变化但 Schema 版本变化时，增量入图服务也可能需要重新抽取。破坏性调整还要配合[Schema 增量迁移](/zh/graph/schema-migration)。
+内容没有变化但 Schema 版本变化时，`GraphIngestionService` 也可能需要重新抽取。破坏性调整还要配合[Schema 增量迁移](/zh/graph/schema-migration)。
 
 抽取 Schema 和后端数据库 Schema 建议使用同一份 `GraphSchema`，但职责不同：
 

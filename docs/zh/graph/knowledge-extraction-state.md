@@ -4,11 +4,11 @@
 
 知识抽取会产生候选、执行计划、文档版本和操作阶段。它们都可以被称为“状态”，但代表不同时间尺度和一致性边界。若把这些对象混在一张任务表中，产品很难回答“模型是否抽取完成”“计划是否审核”“图是否写入”以及“文档当前版本是否生效”。
 
-SDK 将状态拆成四层：
+SDK 将入图数据拆成四层；选择人工审核时，另外用 `GraphReviewTask` 管理批准过程：
 
 ```text
 GraphExtractionResult
-  -> IncrementalGraphIngestionPlan
+  -> GraphIngestionPlan
   -> GraphIngestionOperation
   -> GraphDocumentState
 ```
@@ -32,7 +32,7 @@ GraphExtractionResult
 
 ### 执行计划
 
-`IncrementalGraphIngestionPlan` 描述基于某个文档 revision 准备执行的变更，其状态为：
+`GraphIngestionPlan` 描述基于某个文档 revision 准备执行的变更，其状态为：
 
 ```text
 UNCHANGED   内容和配置没有变化，无需写图
@@ -69,12 +69,23 @@ PREPARED -> FAILED -> PREPARED
 
 它回答“副作用执行到哪一步”，用于恢复，不用于替代文档当前状态。一个操作完成后，文档仍然可能被后续操作更新或撤回。
 
+### 可选的审核任务
+
+`GraphReviewTask` 把冻结的计划与人工决策连接起来。它保存 `taskId`、计划、审核状态、
+`reviewVersion`、最近操作人和理由。应用通过 `GraphReviewService` 创建、查询、修改、接受、拒绝和归档任务。
+
+自动接受路径直接执行入图计划，不创建审核任务，也不需要 `GraphReviewStore`。
+人工接受开始执行后，计划不能再修改；执行中断通过审核服务的 `resume` 恢复，并同步审核状态。
+
+审核版本与文档 revision 不同：前者防止两位审核者覆盖彼此的修改，后者防止旧计划覆盖已经生效的新文档版本。
+
 ## 对象之间的关系
 
 | 对象 | 关键身份 | 典型生命周期 | 是否表示当前真相 |
 | --- | --- | --- | --- |
 | `GraphExtractionResult` | 一次抽取上下文 | 候选产生到审核 | 否 |
-| `IncrementalGraphIngestionPlan` | operationId + planFingerprint | 规划到执行或废弃 | 否 |
+| `GraphIngestionPlan` | operationId + planFingerprint | 规划到执行或废弃 | 否 |
+| `GraphReviewTask` | taskId + reviewVersion | 待审核到接受/拒绝/归档 | 只表示审核与执行结果 |
 | `GraphIngestionOperation` | operationId | PREPARED 到 COMPLETED | 只表示执行进度 |
 | `GraphDocumentState` | Space + documentId + revision | ACTIVE/RETRACTED 版本演进 | 是，已提交版本 |
 
@@ -85,13 +96,14 @@ PREPARED -> FAILED -> PREPARED
 生产系统通常应分别保存：
 
 - 抽取结果或审核快照：保留候选、证据、问题和人工修改；
+- 审核任务：只在人工流程中保存，更新使用审核版本 CAS；历史快照可由 Store 追加保存；
 - 原始执行计划：与 operationId 原子创建，供恢复使用；
 - 操作日志：以 operationId 唯一，阶段更新使用 CAS；
 - 文档当前状态：以 `Space + documentId` 唯一，revision 使用 CAS；
 - 文档版本历史：追加式保存不可变快照；
 - 事实来源和实体注册：建立独立索引，支持跨文档查询。
 
-这些数据可以位于同一数据库，但不应因为物理存储相同就合并语义。图中的 `GraphNode/GraphEdge` 是查询投影，`GraphFactProvenance` 是来源声明，`GraphDocumentState` 是版本状态，三者也不是同一种记录。
+这些数据可以位于同一数据库，但不应因为物理存储相同就合并语义。图中的 `GraphNode/GraphEdge` 是查询投影，`GraphFactSource` 是来源声明，`GraphDocumentState` 是版本状态，三者也不是同一种记录。
 
 ## 常见问题
 

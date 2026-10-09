@@ -95,7 +95,7 @@ RETRACTED 墓碑非常重要。直接删除状态会让延迟消息或重复任�
 
 ## 事实来源模型
 
-`GraphFactProvenance` 描述一份文档对一条物化边的独立声明，包含：
+`GraphFactSource` 描述一份文档对一条物化边的独立声明，包含：
 
 - 稳定 factId；
 - operationId；
@@ -107,14 +107,19 @@ RETRACTED 墓碑非常重要。直接删除状态会让延迟消息或重复任�
 - GraphAssertionType；
 - 来源文档和分段上下文。
 
+同一条关系可以有多份独立来源。例如，两份不同文档都记载“张三任职于星河科技”，会各自形成一条
+`GraphFactSource`，共同支持同一个 `GraphEdgeKey`。撤回其中一份文档时，SDK 可以检查剩余来源，
+判断这条关系是否仍应保留。来源记录也会保存抽取时的关系属性快照；其可信程度应结合原文证据、
+断言类型和审核结果判断。
+
 factId 包含 Space 作用域，因此相同证据在不同知识库中不会被误认为同一事实。
 
 ## 查询当前与历史来源
 
 `GraphDocumentStateStore` 提供两种语义：
 
-- `findProvenance`：只返回当前 ACTIVE 文档版本仍然有效的来源；
-- `findHistoricalProvenance`：遍历当前和历史版本，供审计与回放。
+- `findFactSources`：只返回当前 ACTIVE 文档版本仍然有效的来源；
+- `findHistoricalFactSources`：遍历当前和历史版本，供审计与回放。
 
 大规模生产实现不应依赖默认全表扫描，应对 Space、edgeKey、documentId、status 和 revision 建立索引。
 

@@ -1,6 +1,6 @@
 package com.agentsflex.graph.extractor.validation;
 
-import com.agentsflex.graph.extractor.GraphCandidateBatch;
+import com.agentsflex.graph.extractor.GraphCandidateResult;
 import com.agentsflex.graph.extractor.GraphExtractionRequest;
 
 /**
@@ -13,9 +13,9 @@ public interface GraphCandidateValidator {
     /**
      * 校验一个分段的候选结果，并返回可进入实体解析阶段的子集。
      *
-     * @param batch   解析阶段生成的局部候选批次
+     * @param candidates 解析阶段生成的局部候选结果
      * @param request 对应 Chunk 请求，提供 Schema、原文和质量选项
      * @return 合法候选子集与完整问题列表
      */
-    GraphCandidateValidationResult validate(GraphCandidateBatch batch, GraphExtractionRequest request);
+    GraphCandidateValidationResult validate(GraphCandidateResult candidates, GraphExtractionRequest request);
 }

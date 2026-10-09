@@ -10,7 +10,7 @@ import java.util.Locale;
  * 根据实体类型和规范化名称生成确定性 SHA-256 摘要 ID。
  *
  * <p>相同输入始终得到相同 ID，便于同一批次重复执行。它不查询已有图谱，因此无法判断两个
- * 批次中的同名实体是否确实是同一对象；长期增量导入应考虑业务实体注册策略。</p>
+ * 批次中的同名实体是否确实是同一对象；长期知识入图应考虑业务实体注册策略。</p>
  */
 public final class HashGraphEntityIdGenerator implements GraphEntityIdGenerator {
     /**

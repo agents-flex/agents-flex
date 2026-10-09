@@ -1,9 +1,9 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.data.GraphEdgeKey;
-import com.agentsflex.graph.extractor.GraphCandidateBatch;
+import com.agentsflex.graph.extractor.GraphCandidateResult;
 import com.agentsflex.graph.extractor.GraphExtractionException;
 import com.agentsflex.graph.extractor.GraphExtractionPipeline;
 import com.agentsflex.graph.extractor.GraphExtractionRequest;
@@ -44,12 +44,12 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 增量导入跨图写入、实体注册、状态提交和操作日志的故障恢复矩阵。
+ * 文档入图跨图写入、实体注册、状态提交和操作日志的故障恢复矩阵。
  *
  * <p>测试逐一在边界处注入一次性失败，随后通过同一 operationId 恢复。这样可以证明恢复使用首次
  * 冻结的计划，不会再次调用非确定性模型，也可以明确哪些窗口会触发图写入重放。</p>
  */
-public class IncrementalGraphIngestionRecoveryTest {
+public class GraphIngestionRecoveryTest {
     /**
      * GraphWriter 抛异常时操作进入 FAILED，恢复后重新写图并完成提交。
      */
@@ -67,7 +67,7 @@ public class IncrementalGraphIngestionRecoveryTest {
         assertStage(scenario, "writer-failure", GraphIngestionOperation.Stage.FAILED);
         assertNull(scenario.states.get("knowledge", "doc-1"));
 
-        IncrementalGraphIngestionResult recovered = scenario.service.resume("writer-failure", scenario.writer);
+        GraphIngestionResult recovered = scenario.service.resume("writer-failure", scenario.writer);
 
         assertTrue(recovered.isSuccess());
         assertEquals(2, scenario.writer.calls.get());
@@ -195,12 +195,12 @@ public class IncrementalGraphIngestionRecoveryTest {
     @Test
     public void preparedPlanShouldResumeAfterServiceRestart() {
         Scenario scenario = scenario();
-        IncrementalGraphIngestionPlan plan = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+        GraphIngestionPlan plan = scenario.service.plan(Document.of("林默加入青云会"), schema(),
             request("prepared-restart"));
         GraphIngestionOperation prepared = new GraphIngestionOperation("prepared-restart", "knowledge", "doc-1",
             0L, GraphIngestionPlanFingerprint.compute(plan), GraphIngestionOperation.Stage.PREPARED, 10L, "");
         assertTrue(scenario.operations.createIfAbsent(prepared, plan));
-        IncrementalGraphIngestionService restarted = scenario.newService();
+        GraphIngestionService restarted = scenario.newService();
 
         assertTrue(restarted.resume("prepared-restart", scenario.writer).isSuccess());
         assertEquals(1, scenario.writer.calls.get());
@@ -260,17 +260,17 @@ public class IncrementalGraphIngestionRecoveryTest {
     /**
      * 并发启动两个相同请求并验证只有一个写图。
      */
-    private static void assertConcurrentSameDocument(IncrementalGraphIngestionService firstService,
-                                                     IncrementalGraphIngestionService secondService,
+    private static void assertConcurrentSameDocument(GraphIngestionService firstService,
+                                                     GraphIngestionService secondService,
                                                      Scenario scenario) throws Exception {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         scenario.writer.delayMillis = 100L;
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            Future<IncrementalGraphIngestionResult> first = executor.submit(() -> ingestAfterBarrier(firstService,
+            Future<GraphIngestionResult> first = executor.submit(() -> ingestAfterBarrier(firstService,
                 "same-document", scenario.writer, ready, start));
-            Future<IncrementalGraphIngestionResult> second = executor.submit(() -> ingestAfterBarrier(secondService,
+            Future<GraphIngestionResult> second = executor.submit(() -> ingestAfterBarrier(secondService,
                 "same-document", scenario.writer, ready, start));
             assertTrue(ready.await(2, TimeUnit.SECONDS));
             start.countDown();
@@ -287,7 +287,7 @@ public class IncrementalGraphIngestionRecoveryTest {
     /**
      * 等待统一起跑信号后导入固定文档。
      */
-    private static IncrementalGraphIngestionResult ingestAfterBarrier(IncrementalGraphIngestionService service,
+    private static GraphIngestionResult ingestAfterBarrier(GraphIngestionService service,
                                                                       String operationId, CountingWriter writer,
                                                                       CountDownLatch ready, CountDownLatch start)
         throws Exception {
@@ -309,7 +309,7 @@ public class IncrementalGraphIngestionRecoveryTest {
         FaultingOperationStore operations = new FaultingOperationStore();
         LocalGraphIngestionLockProvider locks = new LocalGraphIngestionLockProvider();
         AtomicLong clock = new AtomicLong(100L);
-        IncrementalGraphIngestionService service = new IncrementalGraphIngestionService(pipeline, states, registry,
+        GraphIngestionService service = new GraphIngestionService(pipeline, states, registry,
             operations, locks, clock::getAndIncrement);
         return new Scenario(service, pipeline, extractor, states, registry, operations, locks, clock,
             new CountingWriter());
@@ -328,8 +328,8 @@ public class IncrementalGraphIngestionRecoveryTest {
     /**
      * 创建具有稳定 operationId 的导入请求。
      */
-    private static IncrementalGraphIngestionRequest request(String operationId) {
-        return IncrementalGraphIngestionRequest.builder("knowledge", "doc-1").operationId(operationId).build();
+    private static GraphIngestionRequest request(String operationId) {
+        return GraphIngestionRequest.builder("knowledge", "doc-1").operationId(operationId).build();
     }
 
     /**
@@ -346,7 +346,7 @@ public class IncrementalGraphIngestionRecoveryTest {
         private final AtomicInteger calls = new AtomicInteger();
 
         @Override
-        public GraphCandidateBatch extract(GraphExtractionRequest request) {
+        public GraphCandidateResult extract(GraphExtractionRequest request) {
             calls.incrementAndGet();
             GraphEvidence evidence = new GraphEvidence(request.getDocumentId(), request.getChunkId(), request.getText(),
                 -1, -1, Collections.<String, Object>emptyMap());
@@ -359,7 +359,7 @@ public class IncrementalGraphIngestionRecoveryTest {
             GraphRelationCandidate relation = new GraphRelationCandidate(person.getCandidateKey(), "MEMBER_OF",
                 organization.getCandidateKey(), 0L, Collections.<String, Object>emptyMap(), evidence, 1D,
                 GraphAssertionType.EXPLICIT);
-            return new GraphCandidateBatch(java.util.Arrays.asList(person, organization),
+            return new GraphCandidateResult(java.util.Arrays.asList(person, organization),
                 Collections.singletonList(relation), Collections.emptyList(), "{}");
         }
     }
@@ -496,7 +496,7 @@ public class IncrementalGraphIngestionRecoveryTest {
         }
 
         @Override
-        public boolean createIfAbsent(GraphIngestionOperation operation, IncrementalGraphIngestionPlan plan) {
+        public boolean createIfAbsent(GraphIngestionOperation operation, GraphIngestionPlan plan) {
             return delegate.createIfAbsent(operation, plan);
         }
 
@@ -511,7 +511,7 @@ public class IncrementalGraphIngestionRecoveryTest {
         }
 
         @Override
-        public IncrementalGraphIngestionPlan getPlan(String operationId) {
+        public GraphIngestionPlan getPlan(String operationId) {
             return delegate.getPlan(operationId);
         }
 
@@ -525,7 +525,7 @@ public class IncrementalGraphIngestionRecoveryTest {
      * 聚合恢复测试共享组件，并可创建模拟重启后的 Service。
      */
     private static final class Scenario {
-        private final IncrementalGraphIngestionService service;
+        private final GraphIngestionService service;
         private final GraphExtractionPipeline pipeline;
         private final CountingExtractor extractor;
         private final FaultingStateStore states;
@@ -535,7 +535,7 @@ public class IncrementalGraphIngestionRecoveryTest {
         private final AtomicLong clock;
         private final CountingWriter writer;
 
-        private Scenario(IncrementalGraphIngestionService service, GraphExtractionPipeline pipeline,
+        private Scenario(GraphIngestionService service, GraphExtractionPipeline pipeline,
                          CountingExtractor extractor, FaultingStateStore states, FaultingRegistry registry,
                          FaultingOperationStore operations, LocalGraphIngestionLockProvider locks, AtomicLong clock,
                          CountingWriter writer) {
@@ -550,8 +550,8 @@ public class IncrementalGraphIngestionRecoveryTest {
             this.writer = writer;
         }
 
-        private IncrementalGraphIngestionService newService() {
-            return new IncrementalGraphIngestionService(pipeline, states, registry, operations, locks,
+        private GraphIngestionService newService() {
+            return new GraphIngestionService(pipeline, states, registry, operations, locks,
                 clock::getAndIncrement);
         }
     }

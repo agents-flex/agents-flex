@@ -130,8 +130,8 @@ public class GraphExtractionModelTest {
      * 候选批次应在边界处拒绝 null 元素，避免后续校验阶段出现无上下文空指针。
      */
     @Test(expected = IllegalArgumentException.class)
-    public void candidateBatchShouldRejectNullElements() {
-        new GraphCandidateBatch(Arrays.asList((GraphEntityCandidate) null), null, null, "{}");
+    public void candidateResultShouldRejectNullElements() {
+        new GraphCandidateResult(Arrays.asList((GraphEntityCandidate) null), null, null, "{}");
     }
 
     /**

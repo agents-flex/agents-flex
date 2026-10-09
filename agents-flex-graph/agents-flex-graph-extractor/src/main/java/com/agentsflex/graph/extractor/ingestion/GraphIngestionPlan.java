@@ -1,10 +1,11 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.data.GraphEdgeKey;
 import com.agentsflex.graph.extractor.GraphExtractionResult;
 import com.agentsflex.graph.extractor.resolution.GraphRegisteredEntity;
 import com.agentsflex.graph.mutation.GraphMutation;
+import com.agentsflex.graph.schema.GraphSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,12 +14,12 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 增量抽取计算出的不可变、可审核执行计划。
+ * 文档知识入图计算出的不可变、可审核执行计划。
  *
  * <p>创建计划不会写图或提交文档状态。调用方可以审核抽取问题、过期关系和 mutation，确认后再交给
- * {@link IncrementalGraphIngestionService#execute(IncrementalGraphIngestionPlan, com.agentsflex.graph.mutation.GraphWriter)}。</p>
+ * {@link GraphIngestionService#execute(GraphIngestionPlan, com.agentsflex.graph.mutation.GraphWriter)}。</p>
  */
-public final class IncrementalGraphIngestionPlan {
+public final class GraphIngestionPlan {
     /**
      * 计划类型。
      */
@@ -77,15 +78,28 @@ public final class IncrementalGraphIngestionPlan {
      * 写成功后需要注册的实体。
      */
     private final List<GraphRegisteredEntity> entityRegistrations;
+    /** 原始 Schema；人工修改时重新校验属性与类型。 */
+    private final GraphSchema reviewSchema;
+    /** 原始请求；人工修改时保留过期关系策略和部分抽取保护。 */
+    private final GraphIngestionRequest reviewRequest;
 
     /**
      * 包内服务专用构造器。
      */
-    IncrementalGraphIngestionPlan(Status status, String space, String documentId, GraphOptions graphOptions,
+    GraphIngestionPlan(Status status, String space, String documentId, GraphOptions graphOptions,
                                   GraphDocumentState previousState, GraphDocumentState nextState,
                                   GraphExtractionResult extractionResult, GraphMutation mutation,
                                   Set<GraphEdgeKey> staleEdgeKeys,
                                   List<GraphRegisteredEntity> entityRegistrations) {
+        this(status, space, documentId, graphOptions, previousState, nextState, extractionResult,
+            mutation, staleEdgeKeys, entityRegistrations, null, null);
+    }
+
+    private GraphIngestionPlan(Status status, String space, String documentId, GraphOptions graphOptions,
+                               GraphDocumentState previousState, GraphDocumentState nextState,
+                               GraphExtractionResult extractionResult, GraphMutation mutation,
+                               Set<GraphEdgeKey> staleEdgeKeys, List<GraphRegisteredEntity> entityRegistrations,
+                               GraphSchema reviewSchema, GraphIngestionRequest reviewRequest) {
         if (status == null || graphOptions == null || mutation == null) {
             throw new IllegalArgumentException("status, graphOptions and mutation must not be null");
         }
@@ -99,6 +113,34 @@ public final class IncrementalGraphIngestionPlan {
         this.mutation = mutation;
         this.staleEdgeKeys = Collections.unmodifiableSet(new LinkedHashSet<>(staleEdgeKeys));
         this.entityRegistrations = Collections.unmodifiableList(new ArrayList<>(entityRegistrations));
+        if ((reviewSchema == null) != (reviewRequest == null)) {
+            throw new IllegalArgumentException("reviewSchema and reviewRequest must be supplied together");
+        }
+        this.reviewSchema = reviewSchema;
+        this.reviewRequest = reviewRequest;
+    }
+
+    /** 创建带原始审核上下文的副本。 */
+    GraphIngestionPlan withReviewContext(GraphSchema schema, GraphIngestionRequest request) {
+        return restore(status, space, documentId, graphOptions, previousState, nextState,
+            extractionResult, mutation, staleEdgeKeys, entityRegistrations, schema, request);
+    }
+
+    /** @return 人工修改所需的原始 Schema；不可局部修改的计划为空。 */
+    public GraphSchema getReviewSchema() { return reviewSchema; }
+
+    /** @return 人工修改所需的原始请求；不可局部修改的计划为空。 */
+    public GraphIngestionRequest getReviewRequest() { return reviewRequest; }
+
+    /**
+     * 恢复可以继续人工修改的完整计划。审核任务存储应同时保存抽取结果、Schema 和原始请求。
+     */
+    public static GraphIngestionPlan restore(Status status, String space, String documentId,
+        GraphOptions graphOptions, GraphDocumentState previousState, GraphDocumentState nextState,
+        GraphExtractionResult extractionResult, GraphMutation mutation, Set<GraphEdgeKey> staleEdgeKeys,
+        List<GraphRegisteredEntity> entityRegistrations, GraphSchema schema, GraphIngestionRequest request) {
+        return new GraphIngestionPlan(status, space, documentId, graphOptions, previousState, nextState,
+            extractionResult, mutation, staleEdgeKeys, entityRegistrations, schema, request);
     }
 
     /**
@@ -120,7 +162,7 @@ public final class IncrementalGraphIngestionPlan {
      * @param entityRegistrations 写图成功后保存的实体注册记录
      * @return 经过防御性复制的不可变计划
      */
-    public static IncrementalGraphIngestionPlan restore(
+    public static GraphIngestionPlan restore(
         Status status, String space, String documentId,
         GraphOptions graphOptions,
         GraphDocumentState previousState,
@@ -129,7 +171,7 @@ public final class IncrementalGraphIngestionPlan {
         GraphMutation mutation,
         Set<GraphEdgeKey> staleEdgeKeys,
         List<GraphRegisteredEntity> entityRegistrations) {
-        return new IncrementalGraphIngestionPlan(status, space, documentId, graphOptions, previousState, nextState,
+        return new GraphIngestionPlan(status, space, documentId, graphOptions, previousState, nextState,
             extractionResult, mutation, staleEdgeKeys, entityRegistrations);
     }
 

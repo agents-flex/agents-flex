@@ -27,7 +27,7 @@ public class JsonGraphCandidateParserTest {
         GraphExtractionRequest request = GraphExtractionRequest.builder("林默加入青云宗", GraphExtractorTestSupport.schema(), "c1")
             .documentId("novel-1").build();
 
-        GraphCandidateBatch batch = new JsonGraphCandidateParser().parse(response, request);
+        GraphCandidateResult batch = new JsonGraphCandidateParser().parse(response, request);
 
         assertEquals(2, batch.getEntities().size());
         assertEquals("c1::m1", batch.getEntities().get(0).getCandidateKey());
@@ -45,7 +45,7 @@ public class JsonGraphCandidateParserTest {
     public void shouldNormalizeIncompleteOffsets() {
         String response = "{\"entities\":[{\"mentionId\":\"m1\",\"name\":\"林默\",\"type\":\"Character\","
             + "\"properties\":{},\"evidence\":\"林默\",\"startOffset\":0,\"confidence\":1}],\"relations\":[]}";
-        GraphCandidateBatch batch = new JsonGraphCandidateParser().parse(response,
+        GraphCandidateResult batch = new JsonGraphCandidateParser().parse(response,
             GraphExtractionRequest.builder("林默", GraphExtractorTestSupport.schema(), "c1").build());
         assertEquals(-1, batch.getEntities().get(0).getEvidence().getStartOffset());
         assertEquals(-1, batch.getEntities().get(0).getEvidence().getEndOffset());
@@ -62,7 +62,7 @@ public class JsonGraphCandidateParserTest {
             + "\"properties\":{},\"evidence\":\"林默\",\"confidence\":1}],"
             + "\"relations\":[]}";
 
-        GraphCandidateBatch batch = new JsonGraphCandidateParser().parse(response,
+        GraphCandidateResult batch = new JsonGraphCandidateParser().parse(response,
             GraphExtractionRequest.builder("林默", GraphExtractorTestSupport.schema(), "chapter-1").build());
 
         assertEquals(1, batch.getEntities().size());
@@ -83,7 +83,7 @@ public class JsonGraphCandidateParserTest {
             + "{\"sourceMentionId\":\"m1\",\"type\":\"MEMBER_OF\",\"targetMentionId\":\"m2\","
             + "\"evidence\":\"加入\",\"confidence\":1,\"assertionType\":\"EXPLICIT\"}]}";
 
-        GraphCandidateBatch batch = new JsonGraphCandidateParser().parse(response,
+        GraphCandidateResult batch = new JsonGraphCandidateParser().parse(response,
             GraphExtractionRequest.builder("林默加入青云宗", GraphExtractorTestSupport.schema(), "c1").build());
 
         assertEquals(1, batch.getRelations().size());
@@ -108,7 +108,7 @@ public class JsonGraphCandidateParserTest {
     public void shouldLocateProtocolObjectAmongExplanatoryBraces() {
         String response = "说明 {not-json} 前缀 {\"entities\":[],\"relations\":[]} 后缀 {done}";
 
-        GraphCandidateBatch batch = new JsonGraphCandidateParser().parse(response,
+        GraphCandidateResult batch = new JsonGraphCandidateParser().parse(response,
             GraphExtractionRequest.builder("林默", GraphExtractorTestSupport.schema(), "c1").build());
 
         assertTrue(batch.getEntities().isEmpty());
@@ -134,7 +134,7 @@ public class JsonGraphCandidateParserTest {
             + "{\"mentionId\":\"m2\",\"name\":\"林默\",\"type\":\"Character\",\"properties\":{},"
             + "\"evidence\":\"林默\",\"confidence\":1}],\"relations\":[]}";
 
-        GraphCandidateBatch batch = new JsonGraphCandidateParser().parse(response,
+        GraphCandidateResult batch = new JsonGraphCandidateParser().parse(response,
             GraphExtractionRequest.builder("林默", GraphExtractorTestSupport.schema(), "c1").build());
 
         assertEquals(1, batch.getEntities().size());
@@ -150,7 +150,7 @@ public class JsonGraphCandidateParserTest {
             + "\"type\":\"Character\",\"properties\":{},\"evidence\":\"林默\","
             + "\"startOffset\":2,\"endOffset\":0,\"confidence\":1}],\"relations\":[]}";
 
-        GraphCandidateBatch batch = new JsonGraphCandidateParser().parse(response,
+        GraphCandidateResult batch = new JsonGraphCandidateParser().parse(response,
             GraphExtractionRequest.builder("林默", GraphExtractorTestSupport.schema(), "c1").build());
 
         assertTrue(batch.getEntities().isEmpty());
@@ -186,7 +186,7 @@ public class JsonGraphCandidateParserTest {
      */
     @Test(expected = UnsupportedOperationException.class)
     public void parsedCandidatesShouldBeImmutable() {
-        GraphCandidateBatch batch = new JsonGraphCandidateParser().parse("{\"entities\":[],\"relations\":[]}",
+        GraphCandidateResult batch = new JsonGraphCandidateParser().parse("{\"entities\":[],\"relations\":[]}",
             GraphExtractionRequest.builder("text", GraphExtractorTestSupport.schema(), "c1").build());
         batch.getEntities().clear();
     }

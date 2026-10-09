@@ -29,7 +29,7 @@
   -> 知识抽取流程得到人物、组织和关系候选
   -> 校验证据、Schema 和置信度
   -> 归一“林默”和“青云宗”的长期实体身份
-  -> 生成增量入图计划
+  -> 生成知识入图计划
   -> 自动规则或人工审核
   -> 执行 GraphMutation
   -> 提交文档版本、事实来源和操作状态
@@ -44,7 +44,7 @@
 | 对象 | 用简单的话说 | 是否已经改变图数据库 |
 | --- | --- | --- |
 | `GraphExtractionResult` | 模型和校验器认为文本中有什么 | 否 |
-| `IncrementalGraphIngestionPlan` | 本次确认后应该改变什么 | 否 |
+| `GraphIngestionPlan` | 本次确认后应该改变什么 | 否 |
 | `GraphIngestionOperation` | 一次执行已经进行到哪一步 | 记录进度，不等于写图 |
 | `GraphDocumentState` | 某个文档当前哪个版本已经生效 | 保存外部状态 |
 
@@ -53,7 +53,7 @@
 ```text
 文本
   -> GraphExtractionResult
-  -> IncrementalGraphIngestionPlan
+  -> GraphIngestionPlan
   -> GraphIngestionOperation
   -> GraphDocumentState
 ```
@@ -70,20 +70,21 @@
 
 ### 2. 规划：计算本次应该改变什么
 
-`IncrementalGraphIngestionService.plan(...)` 结合当前 `GraphDocumentState`、实体注册表和文档版本，判断本次请求属于：
+`GraphIngestionService.plan(...)` 结合当前 `GraphDocumentState`、实体注册表和文档版本，判断本次请求属于：
 
 - 首次导入；
 - 同一文档的新版本；
 - 内容和配置都没有变化的重复提交；
 - 需要撤回的文档。
 
-规划结果是 `IncrementalGraphIngestionPlan`，其中包含新旧状态、Mutation、`staleEdgeKeys`、实体注册项和目标 Space。计划阶段不写图，也不提交文档状态，是接入审核和风险门槛的主要边界。
+规划结果是 `GraphIngestionPlan`，其中包含新旧状态、Mutation、`staleEdgeKeys`、实体注册项和目标 Space。计划阶段不写图，也不提交文档状态，是接入审核和风险门槛的主要边界。
 
 ### 3. 审核：决定计划是否可以执行
 
 开发者可以根据候选证据、质量问题、实体匹配和过期关系建立自动或人工审核规则。审核通过后，应执行审核过的原计划；不要审核一份结果，再重新调用模型生成另一份计划。
 
-SDK 提供审核所需的数据，但不实现审核页面、审批权限或产品工作流。审核细节见[审核](/zh/graph/knowledge-extraction-quality)。
+SDK 通过 `GraphReviewStore` 和 `GraphReviewService` 提供审核任务的创建、查询、修改、接受、拒绝和归档；
+审核页面、审批权限和具体 HTTP 路由仍由应用负责。审核细节见[审核](/zh/graph/knowledge-extraction-quality)。
 
 ### 4. 执行：产生跨系统副作用
 
@@ -110,7 +111,7 @@ SDK 提供审核所需的数据，但不实现审核页面、审批权限或产�
 | 对象或动作 | 回答的问题 | 是否写图 |
 | --- | --- | --- |
 | `GraphExtractionResult` | 文本中发现了哪些候选知识 | 否 |
-| `IncrementalGraphIngestionPlan` | 本次确认后应该改变什么 | 否 |
+| `GraphIngestionPlan` | 本次确认后应该改变什么 | 否 |
 | `execute(plan, writer)` | 按计划执行哪些图变更 | 是 |
 | `GraphIngestionOperation` | 跨系统执行到了哪一步 | 间接记录 |
 | `GraphDocumentState` | 某文档当前哪个版本已生效 | 否，保存外部状态 |
@@ -125,7 +126,7 @@ SDK 提供审核所需的数据，但不实现审核页面、审批权限或产�
 
 ~~~java
 // 1. 根据文档、Schema、版本和当前状态生成计划。
-IncrementalGraphIngestionPlan plan =
+GraphIngestionPlan plan =
     ingestion.plan(document, schema, request);
 
 // 2. 审核候选、证据和可能失效的旧关系。
@@ -135,7 +136,7 @@ review(
     plan.getMutation());
 
 // 3. 只有确认后才产生图数据库副作用。
-IncrementalGraphIngestionResult result =
+GraphIngestionResult result =
     ingestion.execute(plan, graphStore.writer());
 
 if (!result.isSuccess()) {
@@ -185,7 +186,7 @@ if (!result.isSuccess()) {
 文档撤回表示它不再是当前知识来源。应使用：
 
 ~~~java
-IncrementalGraphIngestionPlan plan =
+GraphIngestionPlan plan =
     ingestion.planRetraction(
         "company_knowledge",
         "meeting-2026-001",
@@ -209,7 +210,7 @@ ingestion.execute(plan, graphStore.writer());
 如果恢复时重新调用模型，可能得到另一份候选和另一份 Mutation，审核结果也无法对应。生产环境应保存原始计划、`operationId` 和 `planFingerprint`，恢复时执行原计划：
 
 ~~~java
-IncrementalGraphIngestionResult recovered =
+GraphIngestionResult recovered =
     ingestion.resume(
         operationId,
         graphStore.writer());
@@ -244,7 +245,7 @@ IncrementalGraphIngestionResult recovered =
   -> 对账、重试、撤回或修复
 ```
 
-SDK 提供数据模型、计划和恢复入口；文件上传、任务调度、审核 UI、审批权限、死信队列和告警由应用负责。
+SDK 提供数据模型、入图计划、审核任务服务和恢复入口；文件上传、任务调度、审核 UI、审批权限、死信队列和告警由应用负责。
 
 ## 常见误区
 
@@ -268,5 +269,5 @@ operationId 标识一次业务操作；节点由实体归一产生，边由 `Gra
 
 - [数据模型](/zh/graph/knowledge-extraction-contract)：了解阶段之间传递的数据；
 - [审核](/zh/graph/knowledge-extraction-quality)：了解如何审核候选和执行计划；
-- [增量入图](/zh/graph/knowledge-extraction-ingestion)：了解版本差异和写入顺序；
+- [知识入图](/zh/graph/knowledge-extraction-ingestion)：了解版本差异和写入顺序；
 - [文档生命周期](/zh/graph/knowledge-extraction-lifecycle)：了解来源、版本和撤回语义。

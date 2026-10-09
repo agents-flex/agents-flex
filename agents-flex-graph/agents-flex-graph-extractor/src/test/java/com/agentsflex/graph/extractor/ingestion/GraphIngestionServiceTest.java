@@ -1,9 +1,9 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.data.GraphEdgeKey;
-import com.agentsflex.graph.extractor.GraphCandidateBatch;
+import com.agentsflex.graph.extractor.GraphCandidateResult;
 import com.agentsflex.graph.extractor.GraphExtractionException;
 import com.agentsflex.graph.extractor.GraphExtractionPipeline;
 import com.agentsflex.graph.extractor.GraphExtractionRequest;
@@ -42,9 +42,9 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 长期增量文档判重、版本替换、来源引用和提交边界测试。
+ * 长期文档入图的判重、版本替换、来源引用和提交边界测试。
  */
-public class IncrementalGraphIngestionServiceTest {
+public class GraphIngestionServiceTest {
     /**
      * 相同内容摘要再次导入时不得调用 extractor 或 GraphWriter。
      */
@@ -52,22 +52,22 @@ public class IncrementalGraphIngestionServiceTest {
     public void shouldSkipUnchangedDocumentBeforeModelCall() {
         Scenario scenario = scenario();
         Document document = Document.of("林默加入青云会");
-        IncrementalGraphIngestionRequest request = request("doc-1").build();
+        GraphIngestionRequest request = request("doc-1").build();
 
-        IncrementalGraphIngestionResult first = scenario.service.ingest(document, schema(), request, scenario.writer);
-        IncrementalGraphIngestionResult second = scenario.service.ingest(document, schema(), request, scenario.writer);
+        GraphIngestionResult first = scenario.service.ingest(document, schema(), request, scenario.writer);
+        GraphIngestionResult second = scenario.service.ingest(document, schema(), request, scenario.writer);
 
         assertTrue(first.isSuccess());
-        assertEquals(IncrementalGraphIngestionPlan.Status.UNCHANGED, second.getPlan().getStatus());
+        assertEquals(GraphIngestionPlan.Status.UNCHANGED, second.getPlan().getStatus());
         assertEquals(1, scenario.extractor.calls.get());
         assertEquals(1, scenario.writer.calls);
         assertEquals(1L, scenario.states.get("knowledge", "doc-1").getRevision());
         assertEquals(scenario.states.get("knowledge", "doc-1").getOperationId(),
             scenario.writer.lastMutation.getOperationId());
-        assertEquals(1, scenario.states.get("knowledge", "doc-1").getFactProvenances().size());
-        assertEquals("doc-1", scenario.states.get("knowledge", "doc-1").getFactProvenances().get(0)
+        assertEquals(1, scenario.states.get("knowledge", "doc-1").getFactSources().size());
+        assertEquals("doc-1", scenario.states.get("knowledge", "doc-1").getFactSources().get(0)
             .getEvidence().getDocumentId());
-        GraphFactProvenance fact = scenario.states.get("knowledge", "doc-1").getFactProvenances().get(0);
+        GraphFactSource fact = scenario.states.get("knowledge", "doc-1").getFactSources().get(0);
         assertTrue(fact.getFactId().startsWith("fact-"));
         assertEquals(1L, fact.getDocumentRevision());
         assertEquals(scenario.states.get("knowledge", "doc-1").getOperationId(), fact.getOperationId());
@@ -84,16 +84,16 @@ public class IncrementalGraphIngestionServiceTest {
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-a").build(), scenario.writer);
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-b").build(), scenario.writer);
 
-        IncrementalGraphIngestionResult updated = scenario.service.ingest(Document.of("林默离开了山门"), schema(),
+        GraphIngestionResult updated = scenario.service.ingest(Document.of("林默离开了山门"), schema(),
             request("doc-a").staleRelationPolicy(
-                IncrementalGraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED).build(), scenario.writer);
+                GraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED).build(), scenario.writer);
 
         assertEquals(1, updated.getPlan().getStaleEdgeKeys().size());
         assertTrue(updated.getPlan().getMutation().getDeleteEdgeKeys().isEmpty());
-        IncrementalGraphIngestionPlan retraction = scenario.service.planRetraction("knowledge", "doc-b",
+        GraphIngestionPlan retraction = scenario.service.planRetraction("knowledge", "doc-b",
             GraphOptions.ofSpace("knowledge"));
         assertEquals(1, retraction.getMutation().getDeleteEdgeKeys().size());
-        IncrementalGraphIngestionResult retracted = scenario.service.execute(retraction, scenario.writer);
+        GraphIngestionResult retracted = scenario.service.execute(retraction, scenario.writer);
         assertTrue(retracted.isSuccess());
         assertNotNull(scenario.states.get("knowledge", "doc-b"));
         assertEquals(GraphDocumentState.Status.RETRACTED,
@@ -110,15 +110,15 @@ public class IncrementalGraphIngestionServiceTest {
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1")
             .extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
                 .contextCharacters(100).build()).build(), scenario.writer);
-        IncrementalGraphIngestionResult second = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+        GraphIngestionResult second = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
                 .contextCharacters(200).build()).build(), scenario.writer);
 
-        assertEquals(IncrementalGraphIngestionPlan.Status.READY, second.getPlan().getStatus());
+        assertEquals(GraphIngestionPlan.Status.READY, second.getPlan().getStatus());
         assertEquals(2, scenario.extractor.calls.get());
         assertEquals(2, scenario.states.listVersions("knowledge", "doc-1").size());
         GraphEdgeKey edge = scenario.states.get("knowledge", "doc-1").getEdgeKeys().iterator().next();
-        assertEquals(2, scenario.states.findHistoricalProvenance("knowledge", edge).size());
+        assertEquals(2, scenario.states.findHistoricalFactSources("knowledge", edge).size());
     }
 
     /**
@@ -145,14 +145,14 @@ public class IncrementalGraphIngestionServiceTest {
     public void shouldPreserveOldRelationsForPartialExtraction() {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
-        IncrementalGraphIngestionRequest partial = request("doc-1")
-            .staleRelationPolicy(IncrementalGraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED)
+        GraphIngestionRequest partial = request("doc-1")
+            .staleRelationPolicy(GraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED)
             .rejectExtractionErrors(false)
             .extractionOptions(com.agentsflex.graph.extractor.GraphExtractionOptions.builder()
                 .failOnChunkError(false).build())
             .build();
 
-        IncrementalGraphIngestionResult result = scenario.service.ingest(Document.of("失败"), schema(), partial,
+        GraphIngestionResult result = scenario.service.ingest(Document.of("失败"), schema(), partial,
             scenario.writer);
 
         assertTrue(result.isSuccess());
@@ -169,10 +169,10 @@ public class IncrementalGraphIngestionServiceTest {
     public void shouldAllowForceReextractWithNewBatch() {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
-        IncrementalGraphIngestionResult result = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+        GraphIngestionResult result = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").forceReextract(true).batchId("rerun-1").build(), scenario.writer);
 
-        assertEquals(IncrementalGraphIngestionPlan.Status.READY, result.getPlan().getStatus());
+        assertEquals(GraphIngestionPlan.Status.READY, result.getPlan().getStatus());
         assertEquals(2, scenario.extractor.calls.get());
         assertEquals(2, scenario.writer.calls);
     }
@@ -185,7 +185,7 @@ public class IncrementalGraphIngestionServiceTest {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").operationId("operation-1").build(), scenario.writer);
-        IncrementalGraphIngestionPlan plan = scenario.service.plan(Document.of("林默离开了山门"), schema(),
+        GraphIngestionPlan plan = scenario.service.plan(Document.of("林默离开了山门"), schema(),
             request("doc-1").operationId("operation-1").build());
         try {
             scenario.service.execute(plan, scenario.writer);
@@ -201,7 +201,7 @@ public class IncrementalGraphIngestionServiceTest {
     @Test
     public void shouldResumeAfterGraphAppliedWithoutDuplicateWrite() {
         Scenario scenario = scenario();
-        IncrementalGraphIngestionPlan plan = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+        GraphIngestionPlan plan = scenario.service.plan(Document.of("林默加入青云会"), schema(),
             request("doc-1").operationId("resume-operation").build());
         scenario.writer.fail = true;
         scenario.service.execute(plan, scenario.writer);
@@ -217,7 +217,7 @@ public class IncrementalGraphIngestionServiceTest {
         scenario.writer.fail = false;
         scenario.writer.calls = 0;
 
-        IncrementalGraphIngestionResult result = scenario.service.execute(plan, scenario.writer);
+        GraphIngestionResult result = scenario.service.execute(plan, scenario.writer);
 
         assertTrue(result.isSuccess());
         assertEquals(0, scenario.writer.calls);
@@ -232,12 +232,12 @@ public class IncrementalGraphIngestionServiceTest {
     @Test
     public void shouldRejectDifferentPlanWithSameOperationAndRevision() {
         Scenario scenario = scenario();
-        IncrementalGraphIngestionPlan first = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+        GraphIngestionPlan first = scenario.service.plan(Document.of("林默加入青云会"), schema(),
             request("doc-1").operationId("shared-operation").build());
         scenario.writer.fail = true;
         scenario.service.execute(first, scenario.writer);
 
-        IncrementalGraphIngestionPlan different = scenario.service.plan(Document.of("林默离开了山门"), schema(),
+        GraphIngestionPlan different = scenario.service.plan(Document.of("林默离开了山门"), schema(),
             request("doc-1").operationId("shared-operation").build());
         try {
             scenario.service.execute(different, scenario.writer);
@@ -271,10 +271,10 @@ public class IncrementalGraphIngestionServiceTest {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
         scenario.service.ingest(Document.of("林默加入青云会"), schema(),
-            IncrementalGraphIngestionRequest.builder("archive", "doc-1").build(), scenario.writer);
+            GraphIngestionRequest.builder("archive", "doc-1").build(), scenario.writer);
 
-        String knowledgeFact = scenario.states.get("knowledge", "doc-1").getFactProvenances().get(0).getFactId();
-        String archiveFact = scenario.states.get("archive", "doc-1").getFactProvenances().get(0).getFactId();
+        String knowledgeFact = scenario.states.get("knowledge", "doc-1").getFactSources().get(0).getFactId();
+        String archiveFact = scenario.states.get("archive", "doc-1").getFactSources().get(0).getFactId();
         assertFalse(knowledgeFact.equals(archiveFact));
     }
 
@@ -285,18 +285,18 @@ public class IncrementalGraphIngestionServiceTest {
     public void shouldResumePersistedPlanWithoutReextracting() {
         Scenario scenario = scenario();
         scenario.writer.fail = true;
-        IncrementalGraphIngestionResult failed = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+        GraphIngestionResult failed = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").operationId("recover-operation").build(), scenario.writer);
         assertFalse(failed.isSuccess());
         assertEquals(1, scenario.service.listRecoverableOperations(10).size());
         assertNotNull(scenario.operations.getPlan("recover-operation"));
 
-        IncrementalGraphIngestionService restarted = new IncrementalGraphIngestionService(
+        GraphIngestionService restarted = new GraphIngestionService(
             scenario.pipeline, scenario.states, scenario.registry, scenario.operations, scenario.locks,
             scenario.clock::getAndIncrement);
         scenario.writer.fail = false;
         int extractionCalls = scenario.extractor.calls.get();
-        IncrementalGraphIngestionResult recovered = restarted.resume("recover-operation", scenario.writer);
+        GraphIngestionResult recovered = restarted.resume("recover-operation", scenario.writer);
 
         assertTrue(recovered.isSuccess());
         assertEquals(extractionCalls, scenario.extractor.calls.get());
@@ -311,16 +311,16 @@ public class IncrementalGraphIngestionServiceTest {
     @Test
     public void shouldExecuteDifferentDocumentsConcurrently() throws Exception {
         Scenario scenario = scenario();
-        IncrementalGraphIngestionPlan first = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+        GraphIngestionPlan first = scenario.service.plan(Document.of("林默加入青云会"), schema(),
             request("doc-a").build());
-        IncrementalGraphIngestionPlan second = scenario.service.plan(Document.of("林默加入青云会"), schema(),
+        GraphIngestionPlan second = scenario.service.plan(Document.of("林默加入青云会"), schema(),
             request("doc-b").build());
         ConcurrentWriter writer = new ConcurrentWriter(2);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            Future<IncrementalGraphIngestionResult> firstResult = executor.submit(
+            Future<GraphIngestionResult> firstResult = executor.submit(
                 () -> scenario.service.execute(first, writer));
-            Future<IncrementalGraphIngestionResult> secondResult = executor.submit(
+            Future<GraphIngestionResult> secondResult = executor.submit(
                 () -> scenario.service.execute(second, writer));
 
             assertTrue("different documents should reach writer concurrently", writer.awaitAll());
@@ -352,19 +352,19 @@ public class IncrementalGraphIngestionServiceTest {
      * 同一条关系被多个文档支持时，状态存储应聚合全部来源证据。
      */
     @Test
-    public void shouldAggregateProvenanceAcrossDocuments() {
+    public void shouldAggregateFactSourcesAcrossDocuments() {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-a").build(), scenario.writer);
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-b").build(), scenario.writer);
 
         GraphEdgeKey sharedEdge = scenario.states.get("knowledge", "doc-a").getEdgeKeys().iterator().next();
-        java.util.List<GraphFactProvenance> provenance = scenario.states.findProvenance("knowledge", sharedEdge);
+        java.util.List<GraphFactSource> factSources = scenario.states.findFactSources("knowledge", sharedEdge);
 
-        assertEquals(2, provenance.size());
-        assertEquals("doc-a", provenance.get(0).getEvidence().getDocumentId());
-        assertEquals("doc-b", provenance.get(1).getEvidence().getDocumentId());
-        assertEquals(sharedEdge, provenance.get(0).getEdgeKey());
-        assertEquals(sharedEdge, provenance.get(1).getEdgeKey());
+        assertEquals(2, factSources.size());
+        assertEquals("doc-a", factSources.get(0).getEvidence().getDocumentId());
+        assertEquals("doc-b", factSources.get(1).getEvidence().getDocumentId());
+        assertEquals(sharedEdge, factSources.get(0).getEdgeKey());
+        assertEquals(sharedEdge, factSources.get(1).getEdgeKey());
     }
 
     /**
@@ -375,7 +375,7 @@ public class IncrementalGraphIngestionServiceTest {
         Scenario scenario = scenario();
         scenario.writer.fail = true;
 
-        IncrementalGraphIngestionResult failed = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+        GraphIngestionResult failed = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").batchId("batch-1").schemaVersion("v1").build(), scenario.writer);
 
         assertFalse(failed.isSuccess());
@@ -385,7 +385,7 @@ public class IncrementalGraphIngestionServiceTest {
         assertEquals(GraphIngestionOperation.Stage.FAILED,
             scenario.operations.get(operationId).getStage());
         scenario.writer.fail = false;
-        IncrementalGraphIngestionResult retried = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+        GraphIngestionResult retried = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").batchId("batch-1").schemaVersion("v1").build(), scenario.writer);
         assertTrue(retried.isSuccess());
         assertEquals(2, scenario.registry.size());
@@ -402,9 +402,9 @@ public class IncrementalGraphIngestionServiceTest {
     public void shouldRejectStalePlanBeforeSecondGraphWrite() {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
-        IncrementalGraphIngestionPlan first = scenario.service.plan(Document.of("林默离开了山门"), schema(),
+        GraphIngestionPlan first = scenario.service.plan(Document.of("林默离开了山门"), schema(),
             request("doc-1").build());
-        IncrementalGraphIngestionPlan stale = scenario.service.plan(Document.of("林默返回青云会"), schema(),
+        GraphIngestionPlan stale = scenario.service.plan(Document.of("林默返回青云会"), schema(),
             request("doc-1").build());
         scenario.service.execute(first, scenario.writer);
         int callsBeforeStaleExecution = scenario.writer.calls;
@@ -426,7 +426,7 @@ public class IncrementalGraphIngestionServiceTest {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(), request("doc-1").build(), scenario.writer);
 
-        IncrementalGraphIngestionPlan plan = scenario.service.plan(Document.of("林默离开了山门"), schema(),
+        GraphIngestionPlan plan = scenario.service.plan(Document.of("林默离开了山门"), schema(),
             request("doc-1").build());
 
         assertEquals(1, plan.getStaleEdgeKeys().size());
@@ -441,10 +441,10 @@ public class IncrementalGraphIngestionServiceTest {
         Scenario scenario = scenario();
         scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").schemaVersion("v1").build(), scenario.writer);
-        IncrementalGraphIngestionResult second = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
+        GraphIngestionResult second = scenario.service.ingest(Document.of("林默加入青云会"), schema(),
             request("doc-1").schemaVersion("v2").build(), scenario.writer);
 
-        assertEquals(IncrementalGraphIngestionPlan.Status.READY, second.getPlan().getStatus());
+        assertEquals(GraphIngestionPlan.Status.READY, second.getPlan().getStatus());
         assertEquals(2, scenario.extractor.calls.get());
         assertEquals(2L, scenario.states.get("knowledge", "doc-1").getRevision());
     }
@@ -463,7 +463,7 @@ public class IncrementalGraphIngestionServiceTest {
         InMemoryGraphIngestionOperationStore operations = new InMemoryGraphIngestionOperationStore();
         LocalGraphIngestionLockProvider locks = new LocalGraphIngestionLockProvider();
         AtomicLong clock = new AtomicLong(1_700_000_000_000L);
-        IncrementalGraphIngestionService service = new IncrementalGraphIngestionService(
+        GraphIngestionService service = new GraphIngestionService(
             pipeline, states, registry, operations, locks, clock::getAndIncrement);
         return new Scenario(service, pipeline, extractor, states, registry, operations, locks, clock,
             new RecordingWriter());
@@ -472,8 +472,8 @@ public class IncrementalGraphIngestionServiceTest {
     /**
      * 创建目标 Space 固定为 knowledge 的请求构造器。
      */
-    private static IncrementalGraphIngestionRequest.Builder request(String documentId) {
-        return IncrementalGraphIngestionRequest.builder("knowledge", documentId);
+    private static GraphIngestionRequest.Builder request(String documentId) {
+        return GraphIngestionRequest.builder("knowledge", documentId);
     }
 
     /** 创建用于操作存储排序测试的最小记录。 */
@@ -504,19 +504,19 @@ public class IncrementalGraphIngestionServiceTest {
         private final AtomicInteger calls = new AtomicInteger();
 
         @Override
-        public GraphCandidateBatch extract(GraphExtractionRequest request) {
+        public GraphCandidateResult extract(GraphExtractionRequest request) {
             calls.incrementAndGet();
             if (request.getText().contains("失败")) throw new GraphExtractionException("synthetic chunk failure");
             GraphEntityCandidate person = entity(request, "p", "林默", "Character");
             if (!request.getText().contains("青云会")) {
-                return new GraphCandidateBatch(Collections.singletonList(person), Collections.emptyList(),
+                return new GraphCandidateResult(Collections.singletonList(person), Collections.emptyList(),
                     Collections.emptyList(), "{}");
             }
             GraphEntityCandidate organization = entity(request, "o", "青云会", "Organization");
             GraphRelationCandidate relation = new GraphRelationCandidate(person.getCandidateKey(), "MEMBER_OF",
                 organization.getCandidateKey(), 0L, Collections.<String, Object>emptyMap(),
                 evidence(request, request.getText()), 1D, GraphAssertionType.EXPLICIT);
-            return new GraphCandidateBatch(Arrays.asList(person, organization), Collections.singletonList(relation),
+            return new GraphCandidateResult(Arrays.asList(person, organization), Collections.singletonList(relation),
                 Collections.emptyList(), "{}");
         }
 
@@ -617,7 +617,7 @@ public class IncrementalGraphIngestionServiceTest {
         /**
          * 被测服务。
          */
-        private final IncrementalGraphIngestionService service;
+        private final GraphIngestionService service;
         /** 可复用于模拟进程重启的抽取流水线。 */
         private final GraphExtractionPipeline pipeline;
         /**
@@ -645,7 +645,7 @@ public class IncrementalGraphIngestionServiceTest {
          */
         private final RecordingWriter writer;
 
-        private Scenario(IncrementalGraphIngestionService service, GraphExtractionPipeline pipeline,
+        private Scenario(GraphIngestionService service, GraphExtractionPipeline pipeline,
                          RecordingExtractor extractor,
                          InMemoryGraphDocumentStateStore states, InMemoryGraphEntityRegistry registry,
                          InMemoryGraphIngestionOperationStore operations,

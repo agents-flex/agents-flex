@@ -73,7 +73,7 @@ nodeId 应表示业务实体，而不是文本出现位置。可选来源包括�
 - 不同 Space 是否允许共享身份；
 - 实体已经有业务主键时应使用哪个 ID。
 
-所以长期增量入图应使用 `GraphEntityRegistry`，并在 Pipeline 中装配 `RegistryGraphEntityResolver`。
+所以长期知识入图应使用 `GraphEntityRegistry`，并在 Pipeline 中装配 `RegistryGraphEntityResolver`。
 
 ## 使用实体注册表
 
@@ -98,7 +98,7 @@ GraphExtractionPipeline pipeline =
 - 唯一命中时复用已有 nodeId；
 - 命中多个不同 nodeId 时属于歧义，应失败并进入审核，而不是任选一个。
 
-仅把 registry 传给 `IncrementalGraphIngestionService` 只能在图写成功后保存注册结果，不能改变抽取阶段的解析。跨批次复用历史身份，必须在 Pipeline 的 Resolver 中使用同一个 registry。
+仅把 registry 传给 `GraphIngestionService` 只能在图写成功后保存注册结果，不能改变抽取阶段的解析。跨批次复用历史身份，必须在 Pipeline 的 Resolver 中使用同一个 registry。
 
 ## 注册表的生产约束
 
@@ -178,7 +178,7 @@ GraphExtractionPipeline pipeline =
 
 ### Registry 会自动保存吗？
 
-Pipeline 中的 Resolver 负责查询和映射；增量服务在写图成功后才保存注册结果。单次 Pipeline 抽取不会自动提交业务注册表。
+Pipeline 中的 Resolver 负责查询和映射；入图服务在写图成功后才保存注册结果。单次 Pipeline 抽取不会自动提交业务注册表。
 
 ### 修改规范名称会改变节点 ID 吗？
 
@@ -197,4 +197,4 @@ Pipeline 中的 Resolver 负责查询和映射；增量服务在写图成功后�
 - 合并、拆分和别名修改是否有审计；
 - 默认内存注册表是否仅用于测试。
 
-身份确定后，继续阅读[增量入图](/zh/graph/knowledge-extraction-ingestion)。
+身份确定后，继续阅读[知识入图](/zh/graph/knowledge-extraction-ingestion)。

@@ -41,7 +41,7 @@
 | 层次 | 代表对象 | 用简单的话说 |
 | --- | --- | --- |
 | 输入层 | `GraphExtractionRequest` | 本次要处理哪段文本，以及允许使用什么 Schema |
-| 候选层 | `GraphCandidateBatch` | 模型从这段文本中发现了什么 |
+| 候选层 | `GraphCandidateResult` | 模型从这段文本中发现了什么 |
 | 结果层 | `GraphExtractionResult` | 哪些候选通过了校验，并准备如何映射 |
 | 执行层 | `GraphMutation` | 如果审核通过，图数据库需要做哪些变化 |
 
@@ -52,7 +52,7 @@
 ```text
 GraphExtractionRequest
   -> 模型响应
-  -> GraphCandidateBatch
+  -> GraphCandidateResult
   -> GraphCandidateValidator
   -> GraphExtractionResult
   -> GraphEntityResolver / Registry
@@ -119,7 +119,7 @@ GraphExtractionRequest
 
 ## 候选结果：模型认为文本中有什么
 
-### `GraphCandidateBatch`
+### `GraphCandidateResult`
 
 一个 Chunk 的解析结果，包括：
 
@@ -127,6 +127,10 @@ GraphExtractionRequest
 - `relations`：关系候选；
 - `issues`：解析阶段发现的问题；
 - `rawResponse`：模型原始响应，可能包含敏感原文。
+
+这里的 Result 表示一次候选处理的整体结果，实体和关系分别保存在集合中。解析器返回的候选还需要经过
+Schema 和质量校验；校验器也使用这个类型保存通过校验的候选子集。后续流程将多个 Chunk 的结果汇总，
+完成实体归一并生成 Mutation，最终返回 `GraphExtractionResult`。
 
 ### `GraphEntityCandidate`
 
@@ -195,7 +199,7 @@ if (!result.hasErrors()) {
 }
 ~~~
 
-审核通过后，应用再把 Mutation 交给 Writer，或者交给增量入图服务生成包含文档版本和来源的执行计划。
+审核通过后，应用再把 Mutation 交给 Writer，或者交给 `GraphIngestionService` 生成包含文档版本和来源的入图计划。
 
 ## 身份字段不能混用
 
@@ -207,7 +211,7 @@ if (!result.hasErrors()) {
 | `candidateKey` | `chunk-01:m1` | 定位候选和问题 | 一次抽取或 Chunk |
 | `nodeId` | `character:lin-mo` | Graph Space 中的长期实体 | Space |
 | `factId` | `fact:doc-01:001` | 某个来源对事实的声明 | 来源事实 |
-| `operationId` | `import-2026-001` | 一次增量入图操作 | 业务操作 |
+| `operationId` | `import-2026-001` | 一次入图操作 | 业务操作 |
 
 必须牢记：
 

@@ -48,7 +48,7 @@ public final class LlmGraphExtractor implements GraphExtractor {
      *
      * @param chatModel     执行同步模型调用的 ChatModel
      * @param promptBuilder 把抽取请求转换为模型提示词的策略
-     * @param parser        把模型响应转换为候选批次的策略
+     * @param parser        把模型响应转换为候选结果的策略
      */
     public LlmGraphExtractor(ChatModel chatModel, GraphExtractionPromptBuilder promptBuilder,
                              GraphCandidateParser parser) {
@@ -82,10 +82,10 @@ public final class LlmGraphExtractor implements GraphExtractor {
      * 异常原样传播，底层模型或扩展点异常则统一包装为 GraphExtractionException。</p>
      *
      * @param request 当前 Chunk 的不可变抽取请求
-     * @return 尚未经过全局实体归一和 GraphMutation 映射的局部候选批次
+     * @return 尚未经过全局实体归一和 GraphMutation 映射的局部候选结果
      */
     @Override
-    public GraphCandidateBatch extract(GraphExtractionRequest request) {
+    public GraphCandidateResult extract(GraphExtractionRequest request) {
         if (request == null) throw new IllegalArgumentException("request must not be null");
         try {
             // 在调用开始时固定配置快照，避免并发 setChatOptions 让同一次调用观察到两套配置。

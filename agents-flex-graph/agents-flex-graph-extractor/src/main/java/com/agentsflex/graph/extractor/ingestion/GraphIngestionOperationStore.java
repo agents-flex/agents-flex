@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import java.util.Collections;
 import java.util.List;
@@ -29,7 +29,7 @@ public interface GraphIngestionOperationStore {
      *
      * @return 首次创建返回 true；已存在时返回 false
      */
-    default boolean createIfAbsent(GraphIngestionOperation operation, IncrementalGraphIngestionPlan plan) {
+    default boolean createIfAbsent(GraphIngestionOperation operation, GraphIngestionPlan plan) {
         return createIfAbsent(operation);
     }
 
@@ -42,7 +42,7 @@ public interface GraphIngestionOperationStore {
     /**
      * 返回首次创建操作时保存的不可变计划，不存在或实现不支持时返回 null。
      */
-    default IncrementalGraphIngestionPlan getPlan(String operationId) {
+    default GraphIngestionPlan getPlan(String operationId) {
         return null;
     }
 

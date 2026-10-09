@@ -1,6 +1,6 @@
 package com.agentsflex.graph.extractor.parser;
 
-import com.agentsflex.graph.extractor.GraphCandidateBatch;
+import com.agentsflex.graph.extractor.GraphCandidateResult;
 import com.agentsflex.graph.extractor.GraphExtractionException;
 import com.agentsflex.graph.extractor.GraphExtractionRequest;
 import com.agentsflex.graph.extractor.model.GraphAssertionType;
@@ -32,11 +32,11 @@ public final class JsonGraphCandidateParser implements GraphCandidateParser {
      *
      * @param response 模型返回的 JSON 文本，也可以包含 Markdown 围栏或前后说明
      * @param request  当前 Chunk 的抽取请求，用于补充来源信息和解析上限
-     * @return 包含合法候选、逐项解析问题和原始响应的不可变批次
+     * @return 包含合法候选、逐项解析问题和原始响应的不可变候选结果
      * @throws GraphExtractionException 响应为空、找不到 JSON 根对象或根对象无法解析时抛出
      */
     @Override
-    public GraphCandidateBatch parse(String response, GraphExtractionRequest request) {
+    public GraphCandidateResult parse(String response, GraphExtractionRequest request) {
         if (request == null) throw new IllegalArgumentException("request must not be null");
         if (response == null || response.trim().isEmpty())
             throw new GraphExtractionException("Graph extraction response is empty");
@@ -48,7 +48,7 @@ public final class JsonGraphCandidateParser implements GraphCandidateParser {
             List<GraphExtractionIssue> issues = new ArrayList<>();
             List<GraphEntityCandidate> entities = parseEntities(root.getJSONArray("entities"), request, issues);
             List<GraphRelationCandidate> relations = parseRelations(root.getJSONArray("relations"), request, issues);
-            return new GraphCandidateBatch(entities, relations, issues, response);
+            return new GraphCandidateResult(entities, relations, issues, response);
         } catch (GraphExtractionException exception) {
             throw exception;
         } catch (RuntimeException exception) {

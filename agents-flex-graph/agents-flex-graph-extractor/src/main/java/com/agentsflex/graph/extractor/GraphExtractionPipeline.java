@@ -197,7 +197,7 @@ public final class GraphExtractionPipeline {
             GraphExtractionRequest request = GraphExtractionRequest.builder(chunk.getContent(), schema, chunkId)
                 .documentId(documentId).context(tail(previous, options.getContextCharacters()))
                 .metadata(chunk.getMetadataMap()).options(options).build();
-            GraphCandidateBatch extracted;
+            GraphCandidateResult extracted;
             try {
                 extracted = extractor.extract(request);
                 if (extracted == null) throw new GraphExtractionException("GraphExtractor returned null");
@@ -213,7 +213,7 @@ public final class GraphExtractionPipeline {
             allEntities.addAll(extracted.getEntities());
             allRelations.addAll(extracted.getRelations());
             rawResponses.add(extracted.getRawResponse());
-            GraphCandidateBatch accepted;
+            GraphCandidateResult accepted;
             try {
                 GraphCandidateValidationResult validation = validator.validate(extracted, request);
                 if (validation == null || validation.getAccepted() == null) {

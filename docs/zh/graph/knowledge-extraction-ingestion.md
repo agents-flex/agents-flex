@@ -1,10 +1,10 @@
-# 增量入图
+# 知识入图
 
 ## 概述
 
 单次抽取只回答“这份文本中可能有哪些实体和关系”。真正的知识库需要在同一个 Space 中持续接收新文件、文档新版本和人工修订，并避免每次都生成一套互不相关的节点。
 
-`IncrementalGraphIngestionService` 在知识抽取流程之外增加：
+`GraphIngestionService` 在知识抽取流程之外增加：
 
 - 内容摘要和重复提交判断；
 - 稳定文档 ID 与业务版本；
@@ -14,7 +14,8 @@
 - 文档当前状态与历史版本；
 - 图写入、状态提交和恢复计划。
 
-它是文档增量入图编排器，不是通用文件导入器，也不自动创建后台任务。
+它是文档知识入图编排器，不是通用文件导入器。需要人工确认时，可将计划交给 `GraphReviewService` 创建审核任务；
+自动接受时不需要审核任务。
 
 ## 首次入图的准备
 
@@ -41,7 +42,7 @@
 
 ### GraphEntityRegistry
 
-保存跨文档可复用的实体身份。它应同时装配给 Pipeline 的 `RegistryGraphEntityResolver`，以及增量服务。
+保存跨文档可复用的实体身份。它应同时装配给 Pipeline 的 `RegistryGraphEntityResolver`，以及入图服务。
 
 ### GraphIngestionOperationStore
 
@@ -75,8 +76,8 @@ GraphExtractionPipeline pipeline =
             entityRegistry),
         new GraphMutationMapper());
 
-IncrementalGraphIngestionService ingestion =
-    new IncrementalGraphIngestionService(
+GraphIngestionService ingestion =
+    new GraphIngestionService(
         pipeline,
         documentStates,
         entityRegistry,
@@ -86,11 +87,11 @@ IncrementalGraphIngestionService ingestion =
 
 这里的 Space 必须保持一致：Registry Resolver、请求、GraphOptions 和状态存储都应指向同一知识库。
 
-## 构造增量请求
+## 构造入图请求
 
 ~~~java
-IncrementalGraphIngestionRequest request =
-    IncrementalGraphIngestionRequest.builder(
+GraphIngestionRequest request =
+    GraphIngestionRequest.builder(
             "novel_knowledge",
             "book-001/chapter-008")
         .documentVersion("2026-09-25")
@@ -124,17 +125,18 @@ IncrementalGraphIngestionRequest request =
 高风险或需要人工审核的系统应先生成计划：
 
 ~~~java
-IncrementalGraphIngestionPlan plan =
+GraphIngestionPlan plan =
     ingestion.plan(document, schema, request);
 
-review(
-    plan.getExtractionResult(),
-    plan.getStaleEdgeKeys(),
-    plan.getMutation());
-
-IncrementalGraphIngestionResult result =
-    ingestion.execute(plan, graphStore.writer());
+if (plan.getStatus() != GraphIngestionPlan.Status.UNCHANGED) {
+    // 只在需要人工确认时配置 reviewService，不立即写图。
+    GraphReviewTask task = reviewService.submit(plan);
+    // 向自己的后台返回 task.getTaskId()。
+}
 ~~~
+
+后台查询和人工确认统一调用 `reviewService.get/list/accept/reject`；修改候选调用 `applyPatch`。
+配置和完整示例参见[审核](/zh/graph/knowledge-extraction-quality)。自动接受仍直接调用 `ingest` 或 `execute`。
 
 计划包含：
 
@@ -201,7 +203,7 @@ Space + documentId + contentHash + documentVersion
 
 ## 与普通批量导入的区别
 
-普通 `GraphWriter.importData` 接收已经准备好的节点和边，按批写入。增量入图服务额外理解：
+普通 `GraphWriter.importData` 接收已经准备好的节点和边，按批写入。知识入图服务额外理解：
 
 - 哪一份文档产生了哪些事实；
 - 当前内容是否已经处理；
@@ -209,13 +211,13 @@ Space + documentId + contentHash + documentVersion
 - 哪条关系是否仍被其他文档支持；
 - 图写入后如何提交外部状态。
 
-大规模历史文件可以由上层任务系统逐个调用增量服务；不要因为文件很多就绕过文档状态和来源管理，除非图谱确实不需要更新和撤回。
+大规模历史文件可以由上层任务系统逐个调用入图服务；不要因为文件很多就绕过文档状态和来源管理，除非图谱确实不需要更新和撤回。
 
 ## 常见问题
 
 ### 后续几年导入新文件需要新 Space 吗？
 
-通常不需要。同一知识库继续使用原 Space，依靠稳定文档 ID、实体注册和事实来源增量维护。
+通常不需要。同一知识库继续使用原 Space，依靠稳定文档 ID、实体注册和事实来源持续维护。
 
 ### contentHash 相同就一定不用重抽吗？
 
@@ -223,7 +225,7 @@ Space + documentId + contentHash + documentVersion
 
 ### 可以只使用 DocumentStateStore，不使用 OperationStore 吗？
 
-可以完成基本增量，但图写入成功、状态提交前崩溃时缺少可靠阶段记录和原计划。生产恢复建议同时实现 OperationStore。
+可以完成基本入图，但图写入成功、状态提交前崩溃时缺少可靠阶段记录和原计划。生产恢复建议同时实现 OperationStore。
 
 ### plan 生成后可以长期保存再执行吗？
 
@@ -240,6 +242,6 @@ Space + documentId + contentHash + documentVersion
 - contentHash 是否可信且可重建；
 - 是否使用来源时间或业务 revision 防止旧版本倒灌；
 - 图写入后是否提交版本历史和事实来源；
-- 首次入图和后续增量是否执行相同的数据质量规则。
+- 首次入图和后续文档更新是否执行相同的数据质量规则。
 
 新旧版本差异和撤回策略见[文档生命周期](/zh/graph/knowledge-extraction-lifecycle)。

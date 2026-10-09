@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.data.GraphEdge;
@@ -99,10 +99,10 @@ public class GraphIngestionPlanFingerprintTest {
      */
     @Test
     public void restoredPlanShouldRetainFingerprint() {
-        IncrementalGraphIngestionPlan original = plan("operation-1",
+        GraphIngestionPlan original = plan("operation-1",
             Collections.<String, Object>singletonMap("name", "林默"),
             Collections.singleton("node-a"), 100L);
-        IncrementalGraphIngestionPlan restored = IncrementalGraphIngestionPlan.restore(original.getStatus(),
+        GraphIngestionPlan restored = GraphIngestionPlan.restore(original.getStatus(),
             original.getSpace(), original.getDocumentId(), original.getGraphOptions(), original.getPreviousState(),
             original.getNextState(), null, original.getMutation(), original.getStaleEdgeKeys(),
             original.getEntityRegistrations());
@@ -114,24 +114,24 @@ public class GraphIngestionPlanFingerprintTest {
     /**
      * 创建覆盖节点、关系、状态和来源记录的可恢复计划。
      */
-    private static IncrementalGraphIngestionPlan plan(String operationId, Map<String, Object> nodeProperties,
+    private static GraphIngestionPlan plan(String operationId, Map<String, Object> nodeProperties,
                                                       java.util.Set<String> nodeIds, long committedAtMillis) {
         GraphNode person = GraphNode.builder("node-a", "Character").properties(nodeProperties).build();
         GraphNode organization = GraphNode.builder("node-b", "Organization").property("name", "青云会").build();
         GraphEdge edge = GraphEdge.builder("node-a", "MEMBER_OF", "node-b").property("chapter", 1L).build();
         GraphEvidence evidence = new GraphEvidence("doc-1", "chunk-1", "林默加入青云会", 0, 7,
             Collections.<String, Object>singletonMap("page", 1L));
-        GraphFactProvenance fact = new GraphFactProvenance("fact-1", operationId, 1L, committedAtMillis,
+        GraphFactSource fact = new GraphFactSource("fact-1", operationId, 1L, committedAtMillis,
             edge.getKey(), evidence, 0.95D, GraphAssertionType.EXPLICIT,
             Collections.<String, Object>singletonMap("chapter", 1L));
         GraphDocumentState next = GraphDocumentState.builder("knowledge", "doc-1", "content-hash")
             .revision(1L).operationId(operationId).documentVersion("v1").schemaVersion("schema-v1")
             .extractionFingerprint("extractor-v1").sourceUpdatedAtMillis(10L).batchId("batch-1")
-            .committedAtMillis(committedAtMillis).nodeIds(nodeIds).edgeKey(edge.getKey()).factProvenance(fact).build();
+            .committedAtMillis(committedAtMillis).nodeIds(nodeIds).edgeKey(edge.getKey()).factSource(fact).build();
         GraphMutation mutation = GraphMutation.builder().operationId(operationId)
             .upsertNodes(Arrays.asList(person, organization)).upsertEdge(edge)
             .deleteEdge(new GraphEdgeKey("old-a", "MEMBER_OF", "old-b", 0L)).build();
-        return IncrementalGraphIngestionPlan.restore(IncrementalGraphIngestionPlan.Status.READY, "knowledge", "doc-1",
+        return GraphIngestionPlan.restore(GraphIngestionPlan.Status.READY, "knowledge", "doc-1",
             GraphOptions.ofSpace("knowledge"), null, next, null, mutation,
             Collections.singleton(edge.getKey()), Collections.emptyList());
     }

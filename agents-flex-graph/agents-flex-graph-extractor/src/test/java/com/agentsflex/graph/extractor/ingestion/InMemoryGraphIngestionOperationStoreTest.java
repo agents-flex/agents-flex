@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.mutation.GraphMutation;
@@ -29,8 +29,8 @@ public class InMemoryGraphIngestionOperationStoreTest {
     @Test
     public void createWithPlanShouldBeAtomicAndFirstWriteWins() {
         InMemoryGraphIngestionOperationStore store = new InMemoryGraphIngestionOperationStore();
-        IncrementalGraphIngestionPlan firstPlan = plan("operation-1", "doc-1");
-        IncrementalGraphIngestionPlan secondPlan = plan("operation-1", "doc-2");
+        GraphIngestionPlan firstPlan = plan("operation-1", "doc-1");
+        GraphIngestionPlan secondPlan = plan("operation-1", "doc-2");
 
         assertTrue(store.createIfAbsent(operation("operation-1", "doc-1", 10L), firstPlan));
         assertFalse(store.createIfAbsent(operation("operation-1", "doc-2", 20L), secondPlan));
@@ -165,10 +165,10 @@ public class InMemoryGraphIngestionOperationStoreTest {
     /**
      * 创建可由恢复日志保存的最小 READY 计划。
      */
-    private static IncrementalGraphIngestionPlan plan(String operationId, String documentId) {
+    private static GraphIngestionPlan plan(String operationId, String documentId) {
         GraphDocumentState next = GraphDocumentState.builder("space", documentId, "hash")
             .revision(1L).operationId(operationId).build();
-        return IncrementalGraphIngestionPlan.restore(IncrementalGraphIngestionPlan.Status.READY, "space", documentId,
+        return GraphIngestionPlan.restore(GraphIngestionPlan.Status.READY, "space", documentId,
             GraphOptions.ofSpace("space"), null, next, null,
             GraphMutation.builder().operationId(operationId).build(), Collections.emptySet(),
             Collections.emptyList());

@@ -11,10 +11,13 @@ import java.util.List;
 /**
  * 单个文本分段的不可变候选知识抽取结果。
  *
- * <p>批次可以同时携带成功候选和局部解析问题。rawResponse 便于审核和离线评估，但可能包含
+ * <p>结果可以同时携带成功候选和局部解析问题。抽取器与解析器返回原始候选，校验器可以使用本类型
+ * 保存通过校验的候选子集。完整文档的汇总、实体归一和待写入变更由 {@link GraphExtractionResult} 表达。</p>
+ *
+ * <p>rawResponse 便于审核和离线评估，但可能包含
  * 原始业务文本，生产系统持久化或记录日志前应执行脱敏和访问控制。</p>
  */
-public final class GraphCandidateBatch {
+public final class GraphCandidateResult {
     /**
      * 候选实体。
      */
@@ -33,14 +36,14 @@ public final class GraphCandidateBatch {
     private final String rawResponse;
 
     /**
-     * 创建不可变候选批次，并对所有集合执行防御性复制。
+     * 创建不可变候选结果，并对所有集合执行防御性复制。
      *
      * @param entities    当前 Chunk 的合法格式实体候选
      * @param relations   当前 Chunk 的合法格式关系候选
      * @param issues      解析或前置处理阶段产生的问题
      * @param rawResponse 模型原始响应；为 {@code null} 时保存为空字符串
      */
-    public GraphCandidateBatch(List<GraphEntityCandidate> entities, List<GraphRelationCandidate> relations,
+    public GraphCandidateResult(List<GraphEntityCandidate> entities, List<GraphRelationCandidate> relations,
                                List<GraphExtractionIssue> issues, String rawResponse) {
         this.entities = immutable(entities, "entities");
         this.relations = immutable(relations, "relations");

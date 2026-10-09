@@ -1,4 +1,4 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.core.document.Document;
 import com.agentsflex.graph.GraphOptions;
@@ -33,14 +33,14 @@ import java.util.Set;
 import java.util.function.LongSupplier;
 
 /**
- * 编排内容判重、版本差异、图写入、实体注册和文档状态提交的长期增量导入服务。
+ * 编排内容判重、版本差异、图写入、实体注册和文档状态提交的长期文档入图服务。
  *
  * <p>服务不持有图数据库连接，调用方显式传入 {@link GraphWriter}。先调用 {@code plan} 可以在写入前
  * 审核候选与删除项；{@code ingest} 是计划和执行的便捷组合。默认锁只在当前 JVM 内按文档串行，
  * 不会阻塞不同文档；多实例部署应注入分布式 {@link GraphIngestionLockProvider}，并继续为状态存储实现
  * 原子 compare-and-set。</p>
  */
-public final class IncrementalGraphIngestionService {
+public final class GraphIngestionService {
     /**
      * 完整文档抽取流水线。
      */
@@ -50,7 +50,7 @@ public final class IncrementalGraphIngestionService {
      */
     private final GraphDocumentStateStore stateStore;
     /**
-     * 可选实体注册表；为空时只管理文档增量状态。
+     * 可选实体注册表；为空时只管理文档版本状态。
      */
     private final GraphEntityRegistry entityRegistry;
     /**
@@ -67,25 +67,25 @@ public final class IncrementalGraphIngestionService {
     private final LongSupplier clock;
 
     /**
-     * 创建不自动保存实体注册记录的增量服务。
+     * 创建不自动保存实体注册记录的入图服务。
      */
-    public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore) {
+    public GraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore) {
         this(pipeline, stateStore, null, null, new LocalGraphIngestionLockProvider(), System::currentTimeMillis);
     }
 
     /**
-     * 创建同时维护跨批次实体注册表的增量服务。
+     * 创建同时维护跨批次实体注册表的入图服务。
      */
-    public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+    public GraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                             GraphEntityRegistry entityRegistry) {
         this(pipeline, stateStore, entityRegistry, null, new LocalGraphIngestionLockProvider(),
             System::currentTimeMillis);
     }
 
     /**
-     * 创建同时维护实体注册表和持久化操作状态机的增量服务。
+     * 创建同时维护实体注册表和持久化操作状态机的入图服务。
      */
-    public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+    public GraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                             GraphEntityRegistry entityRegistry,
                                             GraphIngestionOperationStore operationStore) {
         this(pipeline, stateStore, entityRegistry, operationStore, new LocalGraphIngestionLockProvider(),
@@ -93,11 +93,11 @@ public final class IncrementalGraphIngestionService {
     }
 
     /**
-     * 创建具有持久化恢复日志和自定义文档锁的增量服务。
+     * 创建具有持久化恢复日志和自定义文档锁的入图服务。
      *
      * @param lockProvider 单实例使用本地实现，多实例应传入共享的分布式锁实现
      */
-    public IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+    public GraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                             GraphEntityRegistry entityRegistry,
                                             GraphIngestionOperationStore operationStore,
                                             GraphIngestionLockProvider lockProvider) {
@@ -107,7 +107,7 @@ public final class IncrementalGraphIngestionService {
     /**
      * 包内测试可使用确定性时钟。
      */
-    IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+    GraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                      GraphEntityRegistry entityRegistry, LongSupplier clock) {
         this(pipeline, stateStore, entityRegistry, null, new LocalGraphIngestionLockProvider(), clock);
     }
@@ -115,7 +115,7 @@ public final class IncrementalGraphIngestionService {
     /**
      * 包内测试可同时注入操作存储和确定性时钟。
      */
-    IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+    GraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                      GraphEntityRegistry entityRegistry,
                                      GraphIngestionOperationStore operationStore, LongSupplier clock) {
         this(pipeline, stateStore, entityRegistry, operationStore, new LocalGraphIngestionLockProvider(), clock);
@@ -124,7 +124,7 @@ public final class IncrementalGraphIngestionService {
     /**
      * 包内测试可同时注入操作存储、锁和确定性时钟。
      */
-    IncrementalGraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
+    GraphIngestionService(GraphExtractionPipeline pipeline, GraphDocumentStateStore stateStore,
                                      GraphEntityRegistry entityRegistry,
                                      GraphIngestionOperationStore operationStore,
                                      GraphIngestionLockProvider lockProvider, LongSupplier clock) {
@@ -140,10 +140,10 @@ public final class IncrementalGraphIngestionService {
     }
 
     /**
-     * 为完整文档生成增量执行计划；内容未变化时不会调用 extractor。
+     * 为完整文档生成入图执行计划；内容未变化时不会调用 extractor。
      */
-    public IncrementalGraphIngestionPlan plan(Document document, GraphSchema schema,
-                                              IncrementalGraphIngestionRequest request) {
+    public GraphIngestionPlan plan(Document document, GraphSchema schema,
+                                              GraphIngestionRequest request) {
         if (document == null || document.getContent() == null || document.getContent().trim().isEmpty()) {
             throw new IllegalArgumentException("document content must not be blank");
         }
@@ -153,7 +153,7 @@ public final class IncrementalGraphIngestionService {
         GraphDocumentState previous = stateStore.get(request.getSpace(), request.getDocumentId());
         verifySourceVersion(previous, request);
         String fingerprint = extractionFingerprint(request, schema);
-        IncrementalGraphIngestionPlan unchanged = unchanged(previous, request, schema, contentHash, fingerprint);
+        GraphIngestionPlan unchanged = unchanged(previous, request, schema, contentHash, fingerprint);
         if (unchanged != null) return unchanged;
 
         // 使用请求中的稳定 documentId 创建浅副本，避免修改调用方 Document，同时保证 evidence 可长期定位。
@@ -166,10 +166,10 @@ public final class IncrementalGraphIngestionService {
     }
 
     /**
-     * 为调用方已经切分好的文档生成增量计划，哈希按 Chunk 顺序和字符边界计算。
+     * 为调用方已经切分好的文档生成入图计划，哈希按 Chunk 顺序和字符边界计算。
      */
-    public IncrementalGraphIngestionPlan planChunks(List<Document> chunks, GraphSchema schema,
-                                                    IncrementalGraphIngestionRequest request) {
+    public GraphIngestionPlan planChunks(List<Document> chunks, GraphSchema schema,
+                                                    GraphIngestionRequest request) {
         if (chunks == null || chunks.isEmpty()) throw new IllegalArgumentException("chunks must not be empty");
         require(schema, request);
         List<String> contents = new ArrayList<>();
@@ -184,7 +184,7 @@ public final class IncrementalGraphIngestionService {
         GraphDocumentState previous = stateStore.get(request.getSpace(), request.getDocumentId());
         verifySourceVersion(previous, request);
         String fingerprint = extractionFingerprint(request, schema);
-        IncrementalGraphIngestionPlan unchanged = unchanged(previous, request, schema, contentHash, fingerprint);
+        GraphIngestionPlan unchanged = unchanged(previous, request, schema, contentHash, fingerprint);
         if (unchanged != null) return unchanged;
         GraphExtractionResult extraction = pipeline.extractChunks(chunks, request.getDocumentId(), schema,
             request.getExtractionOptions());
@@ -192,10 +192,10 @@ public final class IncrementalGraphIngestionService {
     }
 
     /**
-     * 生成并立即执行完整文档增量计划。
+     * 生成并立即执行完整文档入图计划。
      */
-    public IncrementalGraphIngestionResult ingest(Document document, GraphSchema schema,
-                                                  IncrementalGraphIngestionRequest request,
+    public GraphIngestionResult ingest(Document document, GraphSchema schema,
+                                                  GraphIngestionRequest request,
                                                   GraphWriter writer) {
         if (request == null) throw new IllegalArgumentException("request must not be null");
         try (GraphIngestionLockProvider.Lease ignored = acquire(request.getSpace(), request.getDocumentId())) {
@@ -204,10 +204,10 @@ public final class IncrementalGraphIngestionService {
     }
 
     /**
-     * 生成并立即执行预分段文档增量计划。
+     * 生成并立即执行预分段文档入图计划。
      */
-    public IncrementalGraphIngestionResult ingestChunks(List<Document> chunks, GraphSchema schema,
-                                                        IncrementalGraphIngestionRequest request,
+    public GraphIngestionResult ingestChunks(List<Document> chunks, GraphSchema schema,
+                                                        GraphIngestionRequest request,
                                                         GraphWriter writer) {
         if (request == null) throw new IllegalArgumentException("request must not be null");
         try (GraphIngestionLockProvider.Lease ignored = acquire(request.getSpace(), request.getDocumentId())) {
@@ -218,7 +218,7 @@ public final class IncrementalGraphIngestionService {
     /**
      * 生成文档撤回计划，只删除没有被其他活动文档引用的关系，不自动删除可能共享的实体节点。
      */
-    public IncrementalGraphIngestionPlan planRetraction(String space, String documentId,
+    public GraphIngestionPlan planRetraction(String space, String documentId,
                                                         GraphOptions graphOptions) {
         if (graphOptions == null || graphOptions.getSpace() == null || !space.equals(graphOptions.getSpace())) {
             throw new IllegalArgumentException("graphOptions must explicitly target retraction space");
@@ -227,7 +227,7 @@ public final class IncrementalGraphIngestionService {
         GraphMutation.Builder mutation = GraphMutation.builder();
         Set<GraphEdgeKey> stale = new LinkedHashSet<>();
         if (previous == null || previous.getStatus() == GraphDocumentState.Status.RETRACTED) {
-            return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.UNCHANGED,
+            return new GraphIngestionPlan(GraphIngestionPlan.Status.UNCHANGED,
                 space, documentId, graphOptions, null, null, null, mutation.build(), stale,
                 Collections.<GraphRegisteredEntity>emptyList());
         }
@@ -245,7 +245,7 @@ public final class IncrementalGraphIngestionService {
             .sourceUpdatedAtMillis(previous.getSourceUpdatedAtMillis()).batchId(previous.getBatchId())
             .committedAtMillis(clock.getAsLong()).supersededEdgeKeys(stale).build();
         mutation.operationId(operationId);
-        return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.RETRACTION,
+        return new GraphIngestionPlan(GraphIngestionPlan.Status.RETRACTION,
             space, documentId, graphOptions, previous, next, null, mutation.build(), stale,
             Collections.<GraphRegisteredEntity>emptyList());
     }
@@ -256,7 +256,7 @@ public final class IncrementalGraphIngestionService {
      * <p>写入前会再次检查 revision，尽早拒绝过期计划。图写入与外部状态存储无法组成跨系统事务；
      * 若写图后 CAS 仍因多实例竞争失败，方法会抛出异常，调用方应按相同内容摘要重试幂等 upsert。</p>
      */
-    public IncrementalGraphIngestionResult execute(IncrementalGraphIngestionPlan plan, GraphWriter writer) {
+    public GraphIngestionResult execute(GraphIngestionPlan plan, GraphWriter writer) {
         if (plan == null || writer == null) throw new IllegalArgumentException("plan and writer must not be null");
         try (GraphIngestionLockProvider.Lease ignored = acquire(plan.getSpace(), plan.getDocumentId())) {
             return executeLocked(plan, writer);
@@ -270,14 +270,14 @@ public final class IncrementalGraphIngestionService {
      * @param writer      目标图写入器
      * @return 本次恢复执行结果
      */
-    public IncrementalGraphIngestionResult resume(String operationId, GraphWriter writer) {
+    public GraphIngestionResult resume(String operationId, GraphWriter writer) {
         if (operationStore == null) {
             throw new IllegalStateException("operationStore is required for ingestion recovery");
         }
         if (operationId == null || operationId.trim().isEmpty() || writer == null) {
             throw new IllegalArgumentException("operationId and writer must not be null or blank");
         }
-        IncrementalGraphIngestionPlan plan = operationStore.getPlan(operationId.trim());
+        GraphIngestionPlan plan = operationStore.getPlan(operationId.trim());
         if (plan == null) {
             throw new GraphExtractionException("Persisted ingestion plan was not found: " + operationId.trim());
         }
@@ -293,13 +293,16 @@ public final class IncrementalGraphIngestionService {
         return operationStore.listRecoverable(limit);
     }
 
+    /** @return 是否已配置持久化操作日志以支持跨进程阶段恢复。 */
+    public boolean isRecoverySupported() { return operationStore != null; }
+
     /**
      * 在已经持有文档锁的前提下执行计划。
      */
-    private IncrementalGraphIngestionResult executeLocked(IncrementalGraphIngestionPlan plan, GraphWriter writer) {
+    private GraphIngestionResult executeLocked(GraphIngestionPlan plan, GraphWriter writer) {
         if (plan == null || writer == null) throw new IllegalArgumentException("plan and writer must not be null");
-        if (plan.getStatus() == IncrementalGraphIngestionPlan.Status.UNCHANGED) {
-            return new IncrementalGraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
+        if (plan.getStatus() == GraphIngestionPlan.Status.UNCHANGED) {
+            return new GraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
         }
         String operationId = plan.getNextState() == null ? plan.getMutation().getOperationId()
             : plan.getNextState().getOperationId();
@@ -318,7 +321,7 @@ public final class IncrementalGraphIngestionService {
             // 上一次可能在当前状态 CAS 成功后、历史快照或操作状态提交前退出；幂等补齐这些步骤。
             stateStore.recordVersion(alreadyCommitted);
             completeOperation(operation);
-            return new IncrementalGraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
+            return new GraphIngestionResult(plan, GraphWriteResult.success(0L, 0L), true);
         }
         verifyRevision(plan.getSpace(), plan.getDocumentId(), expectedRevision);
         boolean graphAlreadyApplied = operation != null
@@ -335,7 +338,7 @@ public final class IncrementalGraphIngestionService {
         }
         if (!write.isSuccess()) {
             failOperation(operation, write.getMessage());
-            return new IncrementalGraphIngestionResult(plan, write, false);
+            return new GraphIngestionResult(plan, write, false);
         }
         if (!graphAlreadyApplied) operation = advanceOperation(operation, GraphIngestionOperation.Stage.GRAPH_APPLIED);
 
@@ -351,13 +354,13 @@ public final class IncrementalGraphIngestionService {
         stateStore.recordVersion(plan.getNextState());
         operation = advanceOperation(operation, GraphIngestionOperation.Stage.STATE_COMMITTED);
         completeOperation(operation);
-        return new IncrementalGraphIngestionResult(plan, write, true);
+        return new GraphIngestionResult(plan, write, true);
     }
 
     /**
      * 创建或恢复同一 operationId 的持久化操作状态。
      */
-    private GraphIngestionOperation prepareOperation(IncrementalGraphIngestionPlan plan, String operationId,
+    private GraphIngestionOperation prepareOperation(GraphIngestionPlan plan, String operationId,
                                                      long expectedRevision, String planFingerprint) {
         if (operationStore == null) return null;
         GraphIngestionOperation operation = operationStore.get(operationId);
@@ -443,7 +446,7 @@ public final class IncrementalGraphIngestionService {
     /**
      * 校验公共必填参数。
      */
-    private static void require(GraphSchema schema, IncrementalGraphIngestionRequest request) {
+    private static void require(GraphSchema schema, GraphIngestionRequest request) {
         if (schema == null || request == null)
             throw new IllegalArgumentException("schema and request must not be null");
     }
@@ -451,8 +454,8 @@ public final class IncrementalGraphIngestionService {
     /**
      * 内容未变化且没有强制重抽取时创建零副作用计划。
      */
-    private static IncrementalGraphIngestionPlan unchanged(GraphDocumentState previous,
-                                                           IncrementalGraphIngestionRequest request,
+    private static GraphIngestionPlan unchanged(GraphDocumentState previous,
+                                                           GraphIngestionRequest request,
                                                            GraphSchema schema, String contentHash,
                                                            String extractionFingerprint) {
         String documentVersion = request.getDocumentVersion().isEmpty() ? contentHash : request.getDocumentVersion();
@@ -463,7 +466,7 @@ public final class IncrementalGraphIngestionService {
             || !previous.getDocumentVersion().equals(documentVersion)
             || !previous.getSchemaVersion().equals(schemaVersion)
             || !previous.getExtractionFingerprint().equals(extractionFingerprint)) return null;
-        return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.UNCHANGED,
+        return new GraphIngestionPlan(GraphIngestionPlan.Status.UNCHANGED,
             request.getSpace(), request.getDocumentId(), request.getGraphOptions(), previous, previous, null,
             GraphMutation.builder().build(), Collections.<GraphEdgeKey>emptySet(),
             Collections.<GraphRegisteredEntity>emptyList());
@@ -472,11 +475,11 @@ public final class IncrementalGraphIngestionService {
     /**
      * 根据抽取结果、旧状态和旧关系策略创建新版本计划。
      */
-    private IncrementalGraphIngestionPlan createPlan(GraphDocumentState previous, GraphExtractionResult extraction,
-                                                     GraphSchema schema, IncrementalGraphIngestionRequest request,
+    private GraphIngestionPlan createPlan(GraphDocumentState previous, GraphExtractionResult extraction,
+                                                     GraphSchema schema, GraphIngestionRequest request,
                                                      String contentHash, String extractionFingerprint) {
         if (request.isRejectExtractionErrors() && extraction.hasErrors()) {
-            throw new GraphExtractionException("Incremental ingestion rejected extraction result containing errors");
+            throw new GraphExtractionException("Ingestion rejected extraction result containing errors");
         }
         GraphMutation extracted = extraction.getMutation();
         Set<GraphEdgeKey> nextEdges = new LinkedHashSet<>();
@@ -497,7 +500,7 @@ public final class IncrementalGraphIngestionService {
             stale.clear();
         }
         if (request.getStaleRelationPolicy()
-            == IncrementalGraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED) {
+            == GraphIngestionRequest.StaleRelationPolicy.DELETE_IF_UNREFERENCED) {
             if (!partial || request.isAllowPartialReconcile()) {
                 for (GraphEdgeKey edge : stale) {
                     if (!stateStore.isReferencedByOtherDocument(request.getSpace(), request.getDocumentId(), edge)) {
@@ -511,25 +514,41 @@ public final class IncrementalGraphIngestionService {
         String documentVersion = request.getDocumentVersion().isEmpty() ? contentHash : request.getDocumentVersion();
         String schemaVersion = request.getSchemaVersion().isEmpty()
             ? schema.getMetadata().getVersion() : request.getSchemaVersion();
-        List<GraphFactProvenance> nextProvenances = new ArrayList<>();
+        List<GraphFactSource> nextFactSources = new ArrayList<>();
         if (partial && !request.isAllowPartialReconcile() && previous != null) {
-            nextProvenances.addAll(previous.getFactProvenances());
+            nextFactSources.addAll(previous.getFactSources());
         }
-        nextProvenances.addAll(provenances(request.getSpace(), extraction, operationId, nextRevision,
+        nextFactSources.addAll(factSources(request.getSpace(), extraction, operationId, nextRevision,
             committedAtMillis));
         GraphDocumentState next = GraphDocumentState.builder(request.getSpace(), request.getDocumentId(), contentHash)
             .revision(nextRevision).operationId(operationId).documentVersion(documentVersion).schemaVersion(schemaVersion)
             .extractionFingerprint(extractionFingerprint).sourceUpdatedAtMillis(request.getSourceUpdatedAtMillis())
             .batchId(request.getBatchId()).committedAtMillis(committedAtMillis)
             .nodeIds(nextNodes).edgeKeys(nextEdges).supersededEdgeKeys(stale)
-            .factProvenances(nextProvenances).build();
-        return new IncrementalGraphIngestionPlan(IncrementalGraphIngestionPlan.Status.READY,
+            .factSources(nextFactSources).build();
+        return new GraphIngestionPlan(GraphIngestionPlan.Status.READY,
             request.getSpace(), request.getDocumentId(), request.getGraphOptions(), previous, next, extraction,
-            mutation.build(), stale, registrations(extraction));
+            mutation.build(), stale, registrations(extraction)).withReviewContext(schema, request);
     }
 
     /**
-     * 复制抽取 mutation，随后由增量逻辑追加安全删除项。
+     * 根据人工审核后的候选重建计划，不调用模型、不写图。
+     *
+     * <p>沿用原文版本、操作号和旧状态，重新计算 Mutation、过期关系、事实来源及实体注册记录。
+     * 原请求的安全删除和部分抽取保护仍然有效。</p>
+     */
+    public GraphIngestionPlan rebuild(GraphIngestionPlan original, GraphExtractionResult reviewed) {
+        if (original == null || reviewed == null || original.getStatus() != GraphIngestionPlan.Status.READY
+            || original.getReviewSchema() == null || original.getReviewRequest() == null) {
+            throw new IllegalArgumentException("a READY plan with complete review context is required");
+        }
+        GraphDocumentState next = original.getNextState();
+        return createPlan(original.getPreviousState(), reviewed, original.getReviewSchema(),
+            original.getReviewRequest(), next.getContentHash(), next.getExtractionFingerprint());
+    }
+
+    /**
+     * 复制抽取 mutation，随后由文档版本逻辑追加安全删除项。
      */
     private static GraphMutation.Builder copy(GraphMutation source) {
         GraphMutation.Builder result = GraphMutation.builder().upsertNodes(source.getNodes())
@@ -543,10 +562,10 @@ public final class IncrementalGraphIngestionService {
     /**
      * 把已接受关系转换为可长期查询的来源记录；相同关系的多段证据会分别保留。
      */
-    private static List<GraphFactProvenance> provenances(String space, GraphExtractionResult extraction,
+    private static List<GraphFactSource> factSources(String space, GraphExtractionResult extraction,
                                                          String operationId, long documentRevision,
                                                          long createdAtMillis) {
-        List<GraphFactProvenance> result = new ArrayList<>();
+        List<GraphFactSource> result = new ArrayList<>();
         for (GraphRelationCandidate relation : extraction.getRelations()) {
             String source = extraction.getResolution().nodeId(relation.getSourceCandidateKey());
             String target = extraction.getResolution().nodeId(relation.getTargetCandidateKey());
@@ -556,7 +575,7 @@ public final class IncrementalGraphIngestionService {
                 + key.portableId() + "\u0000"
                 + relation.getEvidence().getDocumentId() + "\u0000" + relation.getEvidence().getChunkId()
                 + "\u0000" + relation.getEvidence().getQuote()));
-            result.add(new GraphFactProvenance(factId, operationId, documentRevision, createdAtMillis,
+            result.add(new GraphFactSource(factId, operationId, documentRevision, createdAtMillis,
                 key, relation.getEvidence(), relation.getConfidence(), relation.getAssertionType(),
                 relation.getProperties()));
         }
@@ -606,7 +625,7 @@ public final class IncrementalGraphIngestionService {
     /**
      * 拒绝来源时间早于当前已提交版本的乱序导入。
      */
-    private void verifySourceVersion(GraphDocumentState previous, IncrementalGraphIngestionRequest request) {
+    private void verifySourceVersion(GraphDocumentState previous, GraphIngestionRequest request) {
         if (previous != null && previous.getStatus() == GraphDocumentState.Status.ACTIVE
             && request.getSourceUpdatedAtMillis() >= 0L
             && previous.getSourceUpdatedAtMillis() >= 0L
@@ -619,7 +638,7 @@ public final class IncrementalGraphIngestionService {
     /**
      * 组合调用方指纹和 SDK 已知抽取配置，避免模型或质量选项变化被错误判重。
      */
-    private static String extractionFingerprint(IncrementalGraphIngestionRequest request, GraphSchema schema) {
+    private static String extractionFingerprint(GraphIngestionRequest request, GraphSchema schema) {
         if (!request.getExtractionFingerprint().isEmpty()) return request.getExtractionFingerprint();
         String schemaVersion = request.getSchemaVersion().isEmpty()
             ? (schema.getMetadata().getVersion() == null ? "" : schema.getMetadata().getVersion())
@@ -631,7 +650,7 @@ public final class IncrementalGraphIngestionService {
     /**
      * 生成稳定的默认操作号；同一文档版本的重试会得到相同操作号。
      */
-    private static String effectiveOperationId(IncrementalGraphIngestionRequest request, String contentHash,
+    private static String effectiveOperationId(GraphIngestionRequest request, String contentHash,
                                                String extractionFingerprint) {
         if (!request.getOperationId().isEmpty()) return request.getOperationId();
         return "ingest-" + resolveHash("", Collections.singletonList(request.getSpace() + "\u0000"

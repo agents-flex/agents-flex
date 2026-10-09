@@ -1,13 +1,13 @@
-package com.agentsflex.graph.extractor.incremental;
+package com.agentsflex.graph.extractor.ingestion;
 
 import com.agentsflex.graph.GraphOptions;
 import com.agentsflex.graph.extractor.GraphExtractionOptions;
 import com.agentsflex.graph.identifier.GraphIdentifiers;
 
 /**
- * 一次长期增量文档抽取的不可变请求配置。
+ * 一次长期文档知识入图的不可变请求配置。
  */
-public final class IncrementalGraphIngestionRequest {
+public final class GraphIngestionRequest {
     /**
      * 发现新版本不再包含旧关系时的处理策略。
      */
@@ -86,7 +86,7 @@ public final class IncrementalGraphIngestionRequest {
     /**
      * 从 Builder 复制配置并完成跨字段校验。
      */
-    private IncrementalGraphIngestionRequest(Builder builder) {
+    private GraphIngestionRequest(Builder builder) {
         space = GraphIdentifiers.requireValid(builder.space, "space");
         documentId = text(builder.documentId, "documentId");
         contentHash = optional(builder.contentHash);
@@ -239,7 +239,7 @@ public final class IncrementalGraphIngestionRequest {
     }
 
     /**
-     * 增量导入请求构造器。
+     * 文档入图请求构造器。
      */
     public static final class Builder {
         /**
@@ -413,10 +413,10 @@ public final class IncrementalGraphIngestionRequest {
         }
 
         /**
-         * @return 校验并冻结后的增量请求。
+         * @return 校验并冻结后的入图请求。
          */
-        public IncrementalGraphIngestionRequest build() {
-            return new IncrementalGraphIngestionRequest(this);
+        public GraphIngestionRequest build() {
+            return new GraphIngestionRequest(this);
         }
     }
 }

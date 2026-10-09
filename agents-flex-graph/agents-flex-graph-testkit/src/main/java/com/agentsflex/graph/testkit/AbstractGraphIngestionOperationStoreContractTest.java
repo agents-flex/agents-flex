@@ -1,10 +1,10 @@
 package com.agentsflex.graph.testkit;
 
 import com.agentsflex.graph.GraphOptions;
-import com.agentsflex.graph.extractor.incremental.GraphDocumentState;
-import com.agentsflex.graph.extractor.incremental.GraphIngestionOperation;
-import com.agentsflex.graph.extractor.incremental.GraphIngestionOperationStore;
-import com.agentsflex.graph.extractor.incremental.IncrementalGraphIngestionPlan;
+import com.agentsflex.graph.extractor.ingestion.GraphDocumentState;
+import com.agentsflex.graph.extractor.ingestion.GraphIngestionOperation;
+import com.agentsflex.graph.extractor.ingestion.GraphIngestionOperationStore;
+import com.agentsflex.graph.extractor.ingestion.GraphIngestionPlan;
 import com.agentsflex.graph.mutation.GraphMutation;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,7 +55,7 @@ public abstract class AbstractGraphIngestionOperationStoreContractTest {
     @Test
     public void operationAndPlanMustBeCreatedAtomically() {
         GraphIngestionOperation first = operation("operation-1", "doc-1", 10L);
-        IncrementalGraphIngestionPlan firstPlan = plan("operation-1", "doc-1");
+        GraphIngestionPlan firstPlan = plan("operation-1", "doc-1");
         assertTrue(store.createIfAbsent(first, firstPlan));
         assertFalse(store.createIfAbsent(operation("operation-1", "doc-2", 20L),
             plan("operation-1", "doc-2")));
@@ -133,10 +133,10 @@ public abstract class AbstractGraphIngestionOperationStoreContractTest {
     /**
      * 创建与操作号和文档绑定的最小恢复计划。
      */
-    protected static IncrementalGraphIngestionPlan plan(String operationId, String documentId) {
+    protected static GraphIngestionPlan plan(String operationId, String documentId) {
         GraphDocumentState next = GraphDocumentState.builder("space_a", documentId, "hash")
             .revision(1L).operationId(operationId).build();
-        return IncrementalGraphIngestionPlan.restore(IncrementalGraphIngestionPlan.Status.READY, "space_a",
+        return GraphIngestionPlan.restore(GraphIngestionPlan.Status.READY, "space_a",
             documentId, GraphOptions.ofSpace("space_a"), null, next, null,
             GraphMutation.builder().operationId(operationId).build(), Collections.emptySet(),
             Collections.emptyList());
