@@ -154,9 +154,8 @@ Document + 文档版本 + 已有文档状态 + 实体注册表
 1. [Schema 驱动抽取](/zh/graph/knowledge-extraction-schema)：先确定允许抽取什么；
 2. [知识抽取流程](/zh/graph/knowledge-extraction-pipeline)：理解文本如何进入抽取流程；
 3. [知识入图生命周期](/zh/graph/knowledge-extraction-flow)：明确抽取、计划、执行和恢复的副作用边界；
-4. [知识抽取数据模型](/zh/graph/knowledge-extraction-contract)：理解请求、候选、证据和身份字段；
-5. [候选质量审核](/zh/graph/knowledge-extraction-quality)：决定什么可以进入审核和 Mutation；
-6. [审核工作流](/zh/graph/knowledge-extraction-review)：把候选、证据和计划接入自己的产品流程；
+4. [数据模型](/zh/graph/knowledge-extraction-contract)：理解请求、候选、证据和身份字段；
+5. [审核](/zh/graph/knowledge-extraction-quality)：决定什么可以进入审核和 Mutation，并把候选、证据和计划接入自己的产品流程；
 7. [实体归一](/zh/graph/knowledge-extraction-entity-resolution)：避免重复实体；
 8. [增量入图](/zh/graph/knowledge-extraction-ingestion)：把结果接入目标 Space。
 

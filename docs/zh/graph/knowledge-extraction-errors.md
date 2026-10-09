@@ -112,5 +112,5 @@ PREPARED -> GRAPH_APPLIED -> STATE_COMMITTED -> COMPLETED
 ## 下一步阅读
 
 - [故障恢复](/zh/graph/knowledge-extraction-recovery)：了解崩溃窗口和恢复入口；
-- [审核工作流](/zh/graph/knowledge-extraction-review)：了解如何把质量问题转交人工；
+- [审核](/zh/graph/knowledge-extraction-quality)：了解如何把质量问题转交人工；
 - [生产实践](/zh/graph/knowledge-extraction-production)：了解指标、告警和对账。

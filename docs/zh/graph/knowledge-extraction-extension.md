@@ -120,6 +120,6 @@ Registry 是身份存储，Resolver 是身份决策，两者职责不同。常�
 
 ## 下一步阅读
 
-- [知识抽取数据模型](/zh/graph/knowledge-extraction-contract)：了解扩展组件传递的数据；
+- [数据模型](/zh/graph/knowledge-extraction-contract)：了解扩展组件传递的数据；
 - [错误处理](/zh/graph/knowledge-extraction-errors)：了解异常和 issue 边界；
 - [生产实践](/zh/graph/knowledge-extraction-production)：了解部署、指标和升级。

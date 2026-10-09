@@ -174,7 +174,7 @@ Neo4j 与 Nebula 的写入和查询差异应在真实 Docker 或生产等价环�
 
 - 分布式任务调度；
 - 持久化默认实现；
-- 人工审核工作流；
+- 人工审核流程；
 - 跨系统原子事务；
 - 任意实体的完美消歧；
 - 模型事实正确性保证；
@@ -221,9 +221,8 @@ Neo4j 与 Nebula 的写入和查询差异应在真实 Docker 或生产等价环�
 - [Schema 驱动抽取](/zh/graph/knowledge-extraction-schema)
 - [知识抽取流程](/zh/graph/knowledge-extraction-pipeline)
 - [知识入图生命周期](/zh/graph/knowledge-extraction-flow)
-- [知识抽取数据模型](/zh/graph/knowledge-extraction-contract)
-- [候选质量审核](/zh/graph/knowledge-extraction-quality)
-- [审核工作流](/zh/graph/knowledge-extraction-review)
+- [数据模型](/zh/graph/knowledge-extraction-contract)
+- [审核](/zh/graph/knowledge-extraction-quality)
 - [实体归一](/zh/graph/knowledge-extraction-entity-resolution)
 - [增量入图](/zh/graph/knowledge-extraction-ingestion)
 - [文档生命周期](/zh/graph/knowledge-extraction-lifecycle)

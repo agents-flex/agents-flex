@@ -2,7 +2,9 @@
 
 ## 概述
 
-知识抽取流程得到的只是“可能存在的知识”。这些候选还要经过审核、规划和写入，才能成为知识库中可以查询、更新和撤回的图数据。
+假设应用从一份会议纪要中抽取出“张三任职于星河科技”。模型已经返回了候选实体、关系和原文证据，但这条关系此时还不能直接被当作知识库中的正式数据：它可能需要人工审核，也可能已经被另一份文档支持，甚至可能在图写入成功后还没有完成文档状态保存。
+
+**知识入图生命周期**描述的就是：一条候选知识如何经过计划、审核、写入、状态提交、更新、撤回和故障恢复，最终成为 Graph Space 中可查询、可维护的数据。
 
 本章讲的是一条知识从文本出现，到进入 Graph Space，再到后续更新、撤回和恢复的完整生命周期。它关注的是执行边界和状态变化，而不是 Chunk 如何分段、模型如何生成候选；一次抽取的具体处理步骤见[知识抽取流程](/zh/graph/knowledge-extraction-pipeline)。
 
@@ -16,7 +18,7 @@
 - 图写入成功、状态保存失败时，重试可能造成不一致；
 - 文档撤回时，无法判断一条关系是否还有其他来源支持。
 
-知识入图生命周期通过 `extract`、`plan`、`execute`、`resume` 和 `planRetraction` 这些边界，把“发现知识”和“改变图数据”分开管理。
+知识入图生命周期通过 `extract`、`plan`、`execute`、`resume` 和 `planRetraction` 这些边界，把“发现知识”和“改变图数据”分开管理。它解决的是一次知识变更如何安全、可审核、可重试地落到图数据库，而不是如何调用某个具体的大模型。
 
 ## 一条知识如何进入图数据库
 
@@ -34,6 +36,29 @@
 ```
 
 只有执行计划并完成状态提交后，这条知识才算成为当前图数据的一部分。前面的抽取结果和计划都可以保存、审核或废弃，但不会自动改变图数据库。
+
+## 先区分四个对象
+
+为了理解后面的代码，可以先把四个对象分别看成四种记录：
+
+| 对象 | 用简单的话说 | 是否已经改变图数据库 |
+| --- | --- | --- |
+| `GraphExtractionResult` | 模型和校验器认为文本中有什么 | 否 |
+| `IncrementalGraphIngestionPlan` | 本次确认后应该改变什么 | 否 |
+| `GraphIngestionOperation` | 一次执行已经进行到哪一步 | 记录进度，不等于写图 |
+| `GraphDocumentState` | 某个文档当前哪个版本已经生效 | 保存外部状态 |
+
+可以用下面的关系理解它们：
+
+```text
+文本
+  -> GraphExtractionResult
+  -> IncrementalGraphIngestionPlan
+  -> GraphIngestionOperation
+  -> GraphDocumentState
+```
+
+它们不是同一个对象的不同名称，也不应全部合并成一条“任务状态”。
 
 ## 生命周期阶段
 
@@ -58,7 +83,7 @@
 
 开发者可以根据候选证据、质量问题、实体匹配和过期关系建立自动或人工审核规则。审核通过后，应执行审核过的原计划；不要审核一份结果，再重新调用模型生成另一份计划。
 
-SDK 提供审核所需的数据，但不实现审核页面、审批权限或产品工作流。审核细节见[审核工作流](/zh/graph/knowledge-extraction-review)。
+SDK 提供审核所需的数据，但不实现审核页面、审批权限或产品工作流。审核细节见[审核](/zh/graph/knowledge-extraction-quality)。
 
 ### 4. 执行：产生跨系统副作用
 
@@ -93,6 +118,104 @@ SDK 提供审核所需的数据，但不实现审核页面、审批权限或产�
 | `planRetraction(...)` | 如何生成文档撤回变更 | 否 |
 
 `GraphExtractionResult.hasErrors()` 只表示存在 ERROR 级问题，不表示结果为空、Mutation 为空或已经写入数据库。
+
+## 最小代码示例：先计划，再执行
+
+高风险或需要人工审核的场景，建议把计划和执行拆开：
+
+~~~java
+// 1. 根据文档、Schema、版本和当前状态生成计划。
+IncrementalGraphIngestionPlan plan =
+    ingestion.plan(document, schema, request);
+
+// 2. 审核候选、证据和可能失效的旧关系。
+review(
+    plan.getExtractionResult(),
+    plan.getStaleEdgeKeys(),
+    plan.getMutation());
+
+// 3. 只有确认后才产生图数据库副作用。
+IncrementalGraphIngestionResult result =
+    ingestion.execute(plan, graphStore.writer());
+
+if (!result.isSuccess()) {
+    // 进入重试、对账或人工修复流程。
+}
+~~~
+
+这段代码中：
+
+1. `plan(...)` 只计算变更，不写图；
+2. `review(...)` 代表开发者自己的自动规则或审核后台；
+3. `execute(...)` 才会调用 `GraphWriter`，并继续提交实体注册和文档状态；
+4. `result` 表示本次执行结果，不代表模型事实永远正确。
+
+如果业务已经确定可以自动接受，也可以使用 `ingest(...)` 组合规划和执行。但对于高风险关系、撤回操作和需要展示证据的场景，不建议跳过计划审核边界。
+
+## 首次导入、更新和撤回
+
+### 首次导入
+
+首次导入通常是：
+
+```text
+没有文档状态
+  -> 抽取文档
+  -> 生成 READY 计划
+  -> 写入节点和关系
+  -> 保存 ACTIVE 文档状态
+```
+
+首次导入也必须使用稳定的 `documentId`、Schema 版本、实体注册和事实来源。否则下一批文档到来时，系统无法判断它们是在引用已有实体，还是产生了新的实体。
+
+### 同一文档更新
+
+同一个 `documentId` 收到新版本时，服务会比较旧版本和新版本：
+
+```text
+新增关系   = 新版本关系 - 旧版本关系
+继续存在   = 新版本关系 ∩ 旧版本关系
+过期关系   = 旧版本关系 - 新版本关系
+```
+
+过期关系先放入 `staleEdgeKeys`，不代表一定删除。只有确认没有其他 ACTIVE 文档支持该关系，或者业务明确采用删除策略时，才生成删除变化。
+
+### 文档撤回
+
+文档撤回表示它不再是当前知识来源。应使用：
+
+~~~java
+IncrementalGraphIngestionPlan plan =
+    ingestion.planRetraction(
+        "company_knowledge",
+        "meeting-2026-001",
+        GraphOptions.ofSpace("company_knowledge"));
+
+ingestion.execute(plan, graphStore.writer());
+~~~
+
+撤回不是提交一份空文档。服务需要根据其他来源判断哪些关系可以删除，并保存 `RETRACTED` 墓碑，防止延迟消息或旧版本重新激活文档。
+
+## 为什么需要持久化计划
+
+下面这个故障窗口很常见：
+
+```text
+图数据库写入成功
+  -> 进程退出
+  -> 文档状态还没有提交
+```
+
+如果恢复时重新调用模型，可能得到另一份候选和另一份 Mutation，审核结果也无法对应。生产环境应保存原始计划、`operationId` 和 `planFingerprint`，恢复时执行原计划：
+
+~~~java
+IncrementalGraphIngestionResult recovered =
+    ingestion.resume(
+        operationId,
+        graphStore.writer());
+~~~
+
+`resume(...)` 不重新抽取模型，而是根据操作阶段跳过已经确认完成的步骤，继续后续步骤。详细故障窗口和恢复策略见[故障恢复](/zh/graph/knowledge-extraction-recovery)。
 
 ## 同“文档生命周期”的区别
 
@@ -143,7 +266,7 @@ operationId 标识一次业务操作；节点由实体归一产生，边由 `Gra
 
 ## 下一步阅读
 
-- [知识抽取数据模型](/zh/graph/knowledge-extraction-contract)：了解阶段之间传递的数据；
-- [审核工作流](/zh/graph/knowledge-extraction-review)：了解如何审核候选和执行计划；
+- [数据模型](/zh/graph/knowledge-extraction-contract)：了解阶段之间传递的数据；
+- [审核](/zh/graph/knowledge-extraction-quality)：了解如何审核候选和执行计划；
 - [增量入图](/zh/graph/knowledge-extraction-ingestion)：了解版本差异和写入顺序；
 - [文档生命周期](/zh/graph/knowledge-extraction-lifecycle)：了解来源、版本和撤回语义。

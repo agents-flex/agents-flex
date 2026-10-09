@@ -1,8 +1,16 @@
-# 知识抽取数据模型
+# 数据模型
 
 ## 概述
 
-大模型可以从“林默加入青云宗”中识别出人物、组织和关系，但模型返回的内容还不是图数据库数据。SDK 需要知道：候选是什么、证据在哪里、关系连接哪些实体、哪些候选通过了校验，以及最终如何生成稳定的节点和边。
+假设应用把下面这句话交给大模型：
+
+```text
+张三自 2020 年起在星河科技工作。
+```
+
+模型可能会返回“张三”“星河科技”和“任职”关系，但这段返回内容还不是可以直接写入图数据库的数据。应用还需要知道：它们分别是什么类型，关系连接哪两个对象，证据来自原文的哪里，是否符合当前 Schema，以及“张三”是否已经是知识库中的已有实体。
+
+**数据模型**就是 Graph Extractor 在这些处理阶段之间传递信息的统一结构。它把自然语言中的一次提及、一个候选事实、一个长期实体、一条来源声明和一次写入操作区分开来。
 
 本章介绍 `agents-flex-graph-extractor` 在各阶段之间传递的数据模型。它不是查询语言，也不是网络通信协议，而是模型输出、SDK 校验、审核系统和图变更之间共同遵守的数据约定。
 
@@ -26,6 +34,19 @@
 能否入图？       -> issue、审核结果和 GraphMutation
 ```
 
+## 先按处理阶段理解数据
+
+不熟悉 SDK 时，可以先把数据模型分成四层：
+
+| 层次 | 代表对象 | 用简单的话说 |
+| --- | --- | --- |
+| 输入层 | `GraphExtractionRequest` | 本次要处理哪段文本，以及允许使用什么 Schema |
+| 候选层 | `GraphCandidateBatch` | 模型从这段文本中发现了什么 |
+| 结果层 | `GraphExtractionResult` | 哪些候选通过了校验，并准备如何映射 |
+| 执行层 | `GraphMutation` | 如果审核通过，图数据库需要做哪些变化 |
+
+实体归一、事实来源和增量操作会在结果之后继续补充长期身份和生命周期信息。它们不能被一个临时的模型候选对象替代。
+
 ## 从模型输出到图变更
 
 ```text
@@ -39,6 +60,46 @@ GraphExtractionRequest
 ```
 
 这条链路中，每个对象都有明确职责：请求描述抽取范围，候选表示模型发现的知识，校验器筛选合法子集，Resolver 确定长期实体身份，Mutation 表示准备写入图数据库的变化。
+
+## 一个完整的候选示例
+
+对于“张三自 2020 年起在星河科技工作”，模型适配器可以返回这样的结构化候选：
+
+~~~json
+{
+  "entities": [
+    {
+      "mentionId": "m1",
+      "name": "张三",
+      "type": "Person",
+      "properties": {"name": "张三"},
+      "evidence": "张三自 2020 年起在星河科技工作。",
+      "confidence": 0.98
+    },
+    {
+      "mentionId": "m2",
+      "name": "星河科技",
+      "type": "Company",
+      "properties": {"name": "星河科技"},
+      "evidence": "张三自 2020 年起在星河科技工作。",
+      "confidence": 0.97
+    }
+  ],
+  "relations": [
+    {
+      "sourceMentionId": "m1",
+      "type": "WORKS_FOR",
+      "targetMentionId": "m2",
+      "properties": {"since": 2020},
+      "evidence": "张三自 2020 年起在星河科技工作。",
+      "confidence": 0.95,
+      "assertionType": "EXPLICIT"
+    }
+  ]
+}
+~~~
+
+这个 JSON 仍然只是一个 Chunk 的候选响应。Parser 会把它转换为 SDK 对象，Validator 会检查类型、属性、端点和证据，Resolver 再决定 `m1` 是否对应已有的长期 `nodeId`。
 
 ## 抽取请求：告诉模型和 SDK 要处理什么
 
@@ -118,6 +179,24 @@ text.substring(startOffset, endOffset).equals(quote)
 
 结果对象不等于数据库写入结果。即使存在合法 Mutation，也仍然需要经过审核策略和显式写入。
 
+调用方可以这样理解和检查结果：
+
+~~~java
+GraphExtractionResult result = pipeline.extract(document, schema);
+
+// allEntities / allRelations：模型和解析器返回的全部候选。
+// entities / relations：通过 Schema 和质量校验的合法子集。
+review(result.getAllEntities(), result.getAllRelations());
+review(result.getIssues(), result.getResolution());
+
+if (!result.hasErrors()) {
+    // mutation 仍然只是待执行变化，不代表已经写入数据库。
+    GraphMutation mutation = result.getMutation();
+}
+~~~
+
+审核通过后，应用再把 Mutation 交给 Writer，或者交给增量入图服务生成包含文档版本和来源的执行计划。
+
 ## 身份字段不能混用
 
 同一个“林默”在不同阶段会有不同身份。它们解决的问题不同：
@@ -184,7 +263,6 @@ mentionId != candidateKey != nodeId != factId != operationId
 
 ## 下一步阅读
 
-- [候选质量审核](/zh/graph/knowledge-extraction-quality)：了解哪些候选可以进入审核和 Mutation；
-- [审核工作流](/zh/graph/knowledge-extraction-review)：了解如何接受、修改或拒绝结果；
+- [审核](/zh/graph/knowledge-extraction-quality)：了解候选如何进入审核、被接受、修改或拒绝；
 - [实体归一](/zh/graph/knowledge-extraction-entity-resolution)：了解 mention 如何映射为 nodeId；
 - [文档生命周期](/zh/graph/knowledge-extraction-lifecycle)：了解 fact、edge 和来源状态。
