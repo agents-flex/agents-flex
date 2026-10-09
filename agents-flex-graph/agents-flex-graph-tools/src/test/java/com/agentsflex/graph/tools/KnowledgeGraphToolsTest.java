@@ -55,8 +55,7 @@ public class KnowledgeGraphToolsTest {
         assertTrue(list.getDescription().contains("People &amp; companies"));
         assertEquals("company_knowledge", list.getParameters()[0].getEnums()[0]);
 
-        String result = (String) list.invoke(Collections.<String, Object>singletonMap(
-            "knowledgeSourceName", "company_knowledge"));
+        String result = (String) list.invoke(Collections.<String, Object>singletonMap("knowledgeSourceName", "company_knowledge"));
         assertTrue(result.contains("Person"));
         assertTrue(result.contains("WORKS_AT"));
         assertFalse(result.contains("\"properties\""));
@@ -67,8 +66,10 @@ public class KnowledgeGraphToolsTest {
     public void shouldDescribeOnlyRequestedSchemaElements() {
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(new StubExecutor())));
 
-        String result = tools.describeKnowledgeGraphTypes("company_knowledge",
-            Collections.singletonList("Person"), Collections.<String>emptyList());
+        String result = tools.describeKnowledgeGraphTypes(
+            "company_knowledge",
+            Collections.singletonList("Person"),
+            Collections.<String>emptyList());
 
         assertTrue(result.contains("\"name\":\"Person\""));
         assertTrue(result.contains("\"name\":\"status\""));
@@ -79,15 +80,16 @@ public class KnowledgeGraphToolsTest {
 
     @Test
     public void shouldRejectUnknownAndExcessiveSchemaDisclosure() {
-        KnowledgeGraphTools tools = new KnowledgeGraphTools(
-            Collections.singletonList(source(new StubExecutor())), 1);
+        KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(new StubExecutor())), 1);
 
-        assertTrue(tools.describeKnowledgeGraphTypes("company_knowledge",
-                Collections.singletonList("Missing"), Collections.<String>emptyList())
-            .startsWith("Error: UNKNOWN_GRAPH_TYPE:"));
-        assertTrue(tools.describeKnowledgeGraphTypes("company_knowledge",
-                Collections.singletonList("Person"), Collections.singletonList("WORKS_AT"))
-            .startsWith("Error: SCHEMA_DISCLOSURE_LIMIT:"));
+        assertTrue(
+            tools.describeKnowledgeGraphTypes("company_knowledge", Collections.singletonList("Missing"), Collections.<String>emptyList())
+                .startsWith("Error: UNKNOWN_GRAPH_TYPE:"));
+        assertTrue(
+            tools.describeKnowledgeGraphTypes(
+                "company_knowledge",
+                Collections.singletonList("Person"),
+                Collections.singletonList("WORKS_AT")).startsWith("Error: SCHEMA_DISCLOSURE_LIMIT:"));
     }
 
     @Test
@@ -96,10 +98,12 @@ public class KnowledgeGraphToolsTest {
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(executor)));
         Map<String, Object> parameters = Collections.<String, Object>singletonMap("status", "ACTIVE");
 
-        String result = tools.queryKnowledgeGraph("company_knowledge",
-            "MATCH (p:Person)-[r:WORKS_AT]->(c:Company) "
-                + "WHERE p.status = :status RETURN p, c.name AS company ORDER BY c.name",
-            parameters, 1, null);
+        String result = tools.queryKnowledgeGraph(
+            "company_knowledge",
+            "MATCH (p:Person)-[r:WORKS_AT]->(c:Company) " + "WHERE p.status = :status RETURN p, c.name AS company ORDER BY c.name",
+            parameters,
+            1,
+            null);
 
         assertFalse(result, result.startsWith("Error:"));
         assertTrue(result.contains("Alice"));
@@ -119,13 +123,24 @@ public class KnowledgeGraphToolsTest {
         StubExecutor executor = new StubExecutor();
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(executor)));
 
-        String unknownProperty = tools.queryKnowledgeGraph("company_knowledge",
+        String unknownProperty = tools.queryKnowledgeGraph(
+            "company_knowledge",
             "MATCH (p:Person) WHERE p.secret = :value RETURN p",
-            Collections.<String, Object>singletonMap("value", "x"), null, null);
-        String untypedNode = tools.queryKnowledgeGraph("company_knowledge",
-            "MATCH (p) RETURN p", Collections.<String, Object>emptyMap(), null, null);
-        String optional = tools.queryKnowledgeGraph("company_knowledge",
-            "OPTIONAL MATCH (p:Person) RETURN p", Collections.<String, Object>emptyMap(), null, null);
+            Collections.<String, Object>singletonMap("value", "x"),
+            null,
+            null);
+        String untypedNode = tools.queryKnowledgeGraph(
+            "company_knowledge",
+            "MATCH (p) RETURN p",
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
+        String optional = tools.queryKnowledgeGraph(
+            "company_knowledge",
+            "OPTIONAL MATCH (p:Person) RETURN p",
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
 
         assertTrue(unknownProperty.startsWith("Error: QUERY_NOT_ALLOWED:"));
         assertTrue(untypedNode.startsWith("Error: QUERY_NOT_ALLOWED:"));
@@ -138,14 +153,24 @@ public class KnowledgeGraphToolsTest {
         StubExecutor executor = new StubExecutor();
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(executor)));
 
-        String union = tools.queryKnowledgeGraph("company_knowledge",
+        String union = tools.queryKnowledgeGraph(
+            "company_knowledge",
             "MATCH (p:Person) RETURN p AS item UNION MATCH (c:Company) RETURN c AS item",
-            Collections.<String, Object>emptyMap(), null, null);
-        String write = tools.queryKnowledgeGraph("company_knowledge",
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
+        String write = tools.queryKnowledgeGraph(
+            "company_knowledge",
             "MATCH (p:Person) RETURN p DELETE p",
-            Collections.<String, Object>emptyMap(), null, null);
-        String nativeDialect = tools.queryKnowledgeGraph("company_knowledge",
-            "CALL db.labels()", Collections.<String, Object>emptyMap(), null, null);
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
+        String nativeDialect = tools.queryKnowledgeGraph(
+            "company_knowledge",
+            "CALL db.labels()",
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
 
         assertTrue(union.startsWith("Error: UNSUPPORTED_QUERY:"));
         assertTrue(write.startsWith("Error: INVALID_QUERY:"));
@@ -170,10 +195,11 @@ public class KnowledgeGraphToolsTest {
                     .property("since", "2024-01-01")
                     .property("secret", "hidden-edge-value")
                     .build();
-                GraphSubgraphResult path = new GraphSubgraphResult(Arrays.asList(person, company),
-                    Collections.singletonList(employment), null);
-                return new GraphResult(Collections.singletonList(new GraphRecord(
-                    Collections.<String, Object>singletonMap("matchedPath", path))), "backend query", null);
+                GraphSubgraphResult path = new GraphSubgraphResult(Arrays.asList(person, company), Collections.singletonList(employment),
+                    null);
+                return new GraphResult(
+                    Collections.singletonList(new GraphRecord(Collections.<String, Object>singletonMap("matchedPath", path))),
+                    "backend query", null);
             }
 
             @Override
@@ -183,9 +209,12 @@ public class KnowledgeGraphToolsTest {
         };
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(executor)));
 
-        String result = tools.queryKnowledgeGraph("company_knowledge",
+        String result = tools.queryKnowledgeGraph(
+            "company_knowledge",
             "MATCH (p:Person)-[:WORKS_AT]->(c:Company) RETURN PATH AS matchedPath",
-            Collections.<String, Object>emptyMap(), null, null);
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
 
         assertFalse(result, result.startsWith("Error:"));
         assertTrue(result.contains("Alice"));
@@ -202,9 +231,12 @@ public class KnowledgeGraphToolsTest {
         StubExecutor executor = new StubExecutor();
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(executor)));
 
-        String result = tools.queryKnowledgeGraph("company_knowledge",
+        String result = tools.queryKnowledgeGraph(
+            "company_knowledge",
             "MATCH (c:Company)-[:WORKS_AT]->(p:Person) RETURN p",
-            Collections.<String, Object>emptyMap(), null, null);
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
 
         assertTrue(result.startsWith("Error: QUERY_NOT_ALLOWED:"));
         assertEquals(0, executor.executions);
@@ -222,13 +254,24 @@ public class KnowledgeGraphToolsTest {
             .build();
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source));
 
-        String hops = tools.queryKnowledgeGraph("company_knowledge",
+        String hops = tools.queryKnowledgeGraph(
+            "company_knowledge",
             "MATCH (p:Person)-[:KNOWS*1..2]->(f:Person) RETURN f",
-            Collections.<String, Object>emptyMap(), null, null);
-        String page = tools.queryKnowledgeGraph("company_knowledge",
-            "MATCH (p:Person) RETURN p", Collections.<String, Object>emptyMap(), 6, null);
-        String inlineLimit = tools.queryKnowledgeGraph("company_knowledge",
-            "MATCH (p:Person) RETURN p LIMIT 2", Collections.<String, Object>emptyMap(), null, null);
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
+        String page = tools.queryKnowledgeGraph(
+            "company_knowledge",
+            "MATCH (p:Person) RETURN p",
+            Collections.<String, Object>emptyMap(),
+            6,
+            null);
+        String inlineLimit = tools.queryKnowledgeGraph(
+            "company_knowledge",
+            "MATCH (p:Person) RETURN p LIMIT 2",
+            Collections.<String, Object>emptyMap(),
+            null,
+            null);
 
         assertTrue(hops.startsWith("Error: QUERY_NOT_ALLOWED:"));
         assertTrue(page.startsWith("Error: INVALID_ARGUMENT:"));
@@ -240,12 +283,20 @@ public class KnowledgeGraphToolsTest {
     public void shouldBindCursorToTheSameQuery() {
         StubExecutor executor = new StubExecutor();
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(executor)));
-        String first = tools.queryKnowledgeGraph("company_knowledge",
-            "MATCH (p:Person) RETURN p", Collections.<String, Object>emptyMap(), 1, null);
+        String first = tools.queryKnowledgeGraph(
+            "company_knowledge",
+            "MATCH (p:Person) RETURN p",
+            Collections.<String, Object>emptyMap(),
+            1,
+            null);
         String cursor = JSON.parseObject(first).getJSONObject("metadata").getString("nextCursor");
 
-        String second = tools.queryKnowledgeGraph("company_knowledge",
-            "MATCH (c:Company) RETURN c", Collections.<String, Object>emptyMap(), 1, cursor);
+        String second = tools.queryKnowledgeGraph(
+            "company_knowledge",
+            "MATCH (c:Company) RETURN c",
+            Collections.<String, Object>emptyMap(),
+            1,
+            cursor);
 
         assertTrue(second.startsWith("Error: INVALID_ARGUMENT:"));
     }
@@ -263,11 +314,10 @@ public class KnowledgeGraphToolsTest {
     @Test
     public void shouldInvokeQueryThroughScannedToolWithJsonArguments() {
         StubExecutor executor = new StubExecutor();
-        Tool query = tool(KnowledgeGraphTools.builder().addSource(source(executor)).buildTools(),
-            "queryKnowledgeGraph");
-        JSONObject arguments = JSON.parseObject("{\"knowledgeSourceName\":\"company_knowledge\","
-            + "\"expression\":\"MATCH (p:Person) WHERE p.status = :status RETURN p\","
-            + "\"parameters\":{\"status\":\"ACTIVE\"},\"pageSize\":1}");
+        Tool query = tool(KnowledgeGraphTools.builder().addSource(source(executor)).buildTools(), "queryKnowledgeGraph");
+        JSONObject arguments = JSON.parseObject(
+            "{\"knowledgeSourceName\":\"company_knowledge\"," + "\"expression\":\"MATCH (p:Person) WHERE p.status = :status RETURN p\","
+                + "\"parameters\":{\"status\":\"ACTIVE\"},\"pageSize\":1}");
 
         String result = (String) query.invoke(arguments);
 
@@ -278,8 +328,10 @@ public class KnowledgeGraphToolsTest {
     @Test
     public void shouldRequireExactAllowlistedSourceName() {
         KnowledgeGraphTools tools = new KnowledgeGraphTools(Collections.singletonList(source(new StubExecutor())));
-        String result = tools.describeKnowledgeGraphTypes("COMPANY_KNOWLEDGE",
-            Collections.singletonList("Person"), Collections.<String>emptyList());
+        String result = tools.describeKnowledgeGraphTypes(
+            "COMPANY_KNOWLEDGE",
+            Collections.singletonList("Person"),
+            Collections.<String>emptyList());
         assertTrue(result.startsWith("Error: UNKNOWN_KNOWLEDGE_SOURCE:"));
     }
 
@@ -331,19 +383,28 @@ public class KnowledgeGraphToolsTest {
      * 构造同时包含可公开属性和测试用隐藏属性的最小业务 Schema。
      */
     private static GraphSchema schema() {
-        GraphPropertyMetadata status = new GraphPropertyMetadata("Status", "Current status", null,
-            Arrays.asList("ACTIVE", "INACTIVE"));
+        GraphPropertyMetadata status = new GraphPropertyMetadata("Status", "Current status", null, Arrays.asList("ACTIVE", "INACTIVE"));
         return GraphSchema.builder()
             .metadata(new GraphSchemaMetadata("company", "1", "Company knowledge", "People and employers", null))
-            .nodeType(GraphSchema.NodeType.of("Person", new GraphElementMetadata("Person", "A known person"),
-                new GraphSchema.Property("name", GraphSchema.PropertyType.STRING, true),
-                new GraphSchema.Property("status", GraphSchema.PropertyType.STRING, false, status)))
-            .nodeType(GraphSchema.NodeType.of("Company", new GraphElementMetadata("Company", "An employer"),
-                new GraphSchema.Property("name", GraphSchema.PropertyType.STRING, true,
-                    new GraphPropertyMetadata("Company name", "Legal name", null, null))))
-            .edgeType(GraphSchema.EdgeType.of("WORKS_AT", "Person", "Company",
-                new GraphElementMetadata("Works at", "Employment relationship"),
-                new GraphSchema.Property("since", GraphSchema.PropertyType.DATE, false)))
+            .nodeType(
+                GraphSchema.NodeType.of(
+                    "Person",
+                    new GraphElementMetadata("Person", "A known person"),
+                    new GraphSchema.Property("name", GraphSchema.PropertyType.STRING, true),
+                    new GraphSchema.Property("status", GraphSchema.PropertyType.STRING, false, status)))
+            .nodeType(
+                GraphSchema.NodeType.of(
+                    "Company",
+                    new GraphElementMetadata("Company", "An employer"),
+                    new GraphSchema.Property("name", GraphSchema.PropertyType.STRING, true,
+                        new GraphPropertyMetadata("Company name", "Legal name", null, null))))
+            .edgeType(
+                GraphSchema.EdgeType.of(
+                    "WORKS_AT",
+                    "Person",
+                    "Company",
+                    new GraphElementMetadata("Works at", "Employment relationship"),
+                    new GraphSchema.Property("since", GraphSchema.PropertyType.DATE, false)))
             .edgeType(GraphSchema.EdgeType.of("KNOWS", "Person", "Person"))
             .build();
     }
@@ -364,8 +425,7 @@ public class KnowledgeGraphToolsTest {
             List<GraphRecord> records = new ArrayList<>();
             records.add(record("Alice", "Acme"));
             records.add(record("Bob", "Beta"));
-            return new GraphResult(records, "backend query must not be returned",
-                new GraphResultMetadata(records.size(), false, 7L));
+            return new GraphResult(records, "backend query must not be returned", new GraphResultMetadata(records.size(), false, 7L));
         }
 
         @Override

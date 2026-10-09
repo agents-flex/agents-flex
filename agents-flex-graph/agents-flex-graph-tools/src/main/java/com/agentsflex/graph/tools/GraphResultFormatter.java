@@ -190,8 +190,8 @@ final class GraphResultFormatter {
     /**
      * 按允许列表复制属性，并递归规范化属性值中的容器或图实体。
      */
-    private static Map<String, Object> filterProperties(Map<String, Object> values, Collection<String> allowed,
-                                                        GraphSchema schema, int depth) {
+    private static Map<String, Object> filterProperties(Map<String, Object> values, Collection<String> allowed, GraphSchema schema,
+        int depth) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String name : allowed) {
             if (values.containsKey(name)) {

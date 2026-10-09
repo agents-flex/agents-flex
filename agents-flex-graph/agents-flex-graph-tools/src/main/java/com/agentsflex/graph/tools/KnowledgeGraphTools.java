@@ -105,12 +105,10 @@ public final class KnowledgeGraphTools {
      */
     public Tool buildListKnowledgeGraphTypesTool() {
         String description = "[Knowledge retrieval - Step 1] List the node and edge types available in one knowledge source.\n\n"
-            + "Required workflow:\n"
-            + "1. Call listKnowledgeGraphTypes.\n"
+            + "Required workflow:\n" + "1. Call listKnowledgeGraphTypes.\n"
             + "2. Call describeKnowledgeGraphTypes for only the relevant types.\n"
             + "3. Call queryKnowledgeGraph with a portable MATCH query.\n\n"
-            + "Never invent source names, node labels, edge types, or properties.\n"
-            + availableSourcesDescription();
+            + "Never invent source names, node labels, edge types, or properties.\n" + availableSourcesDescription();
 
         Parameter source = Parameter.builder()
             .name("knowledgeSourceName")
@@ -126,8 +124,8 @@ public final class KnowledgeGraphTools {
             .addParameter(source)
             .function(arguments -> {
                 try {
-                    KnowledgeGraphSource target = requireSource(asString(arguments == null
-                        ? null : arguments.get("knowledgeSourceName")));
+                    KnowledgeGraphSource target = requireSource(
+                        asString(arguments == null ? null : arguments.get("knowledgeSourceName")));
                     return GraphSchemaFormatter.summary(target);
                 } catch (KnowledgeGraphToolException error) {
                     return error(error.getCode(), error.getMessage());
@@ -147,21 +145,14 @@ public final class KnowledgeGraphTools {
      * @param edgeTypes           需要展开的边类型，可以为空集合
      * @return Schema 详情 JSON，失败时返回稳定软错误
      */
-    @ToolDef(
-        name = "describeKnowledgeGraphTypes",
-        description = "[Knowledge retrieval - Step 2] Expand only the selected node and edge types before writing a graph query.\n\n"
-            + "Names must come from listKnowledgeGraphTypes. The result includes exact property names, portable types, "
-            + "required flags, descriptions, enum values, and edge endpoints. Do not request unrelated types and do not "
-            + "invent properties."
-    )
+    @ToolDef(name = "describeKnowledgeGraphTypes", description = "[Knowledge retrieval - Step 2] Expand only the selected node and edge types before writing a graph query.\n\n"
+        + "Names must come from listKnowledgeGraphTypes. The result includes exact property names, portable types, "
+        + "required flags, descriptions, enum values, and edge endpoints. Do not request unrelated types and do not "
+        + "invent properties.")
     public String describeKnowledgeGraphTypes(
-        @ToolParam(name = "knowledgeSourceName", required = true,
-            description = "Exact logical source name from listKnowledgeGraphTypes.") String knowledgeSourceName,
-        @ToolParam(name = "nodeLabels",
-            description = "Node labels to expand. Use an empty array when no node type is needed.") List<String> nodeLabels,
-        @ToolParam(name = "edgeTypes",
-            description = "Edge types to expand. Use an empty array when no edge type is needed.") List<String> edgeTypes
-    ) {
+        @ToolParam(name = "knowledgeSourceName", required = true, description = "Exact logical source name from listKnowledgeGraphTypes.") String knowledgeSourceName,
+        @ToolParam(name = "nodeLabels", description = "Node labels to expand. Use an empty array when no node type is needed.") List<String> nodeLabels,
+        @ToolParam(name = "edgeTypes", description = "Edge types to expand. Use an empty array when no edge type is needed.") List<String> edgeTypes) {
         try {
             KnowledgeGraphSource source = requireSource(knowledgeSourceName);
             List<String> nodes = distinct(nodeLabels);
@@ -171,7 +162,7 @@ public final class KnowledgeGraphTools {
             }
             if (nodes.size() + edges.size() > maxSchemaElements) {
                 throw new KnowledgeGraphToolException("SCHEMA_DISCLOSURE_LIMIT",
-                    "At most " + maxSchemaElements + " schema elements may be expanded in one call");
+                        "At most " + maxSchemaElements + " schema elements may be expanded in one call");
             }
             // 先完成全部名称校验，避免详情格式化到一半才发现未知类型。
             for (String label : nodes) {
@@ -202,50 +193,38 @@ public final class KnowledgeGraphTools {
      * @param cursor              上一页返回的不透明游标，第一页传 null 或空字符串
      * @return 规范化结果 JSON，失败时返回稳定软错误
      */
-    @ToolDef(
-        name = "queryKnowledgeGraph",
-        description = "[Knowledge retrieval - Step 3] Execute one read-only portable graph query.\n\n"
-            + "Call listKnowledgeGraphTypes and describeKnowledgeGraphTypes first. Only a single linear MATCH query is "
-            + "accepted; native Cypher/nGQL, OPTIONAL MATCH, UNION, writes, untyped nodes, and untyped edges are prohibited. "
-            + "Use :name parameters for dynamic values and pass those values in parameters. Use explicit RETURN projections. "
-            + "Pagination is controlled by pageSize and cursor, so omit SKIP and LIMIT from the expression."
-    )
+    @ToolDef(name = "queryKnowledgeGraph", description = "[Knowledge retrieval - Step 3] Execute one read-only portable graph query.\n\n"
+        + "Call listKnowledgeGraphTypes and describeKnowledgeGraphTypes first. Only a single linear MATCH query is "
+        + "accepted; native Cypher/nGQL, OPTIONAL MATCH, UNION, writes, untyped nodes, and untyped edges are prohibited. "
+        + "Use :name parameters for dynamic values and pass those values in parameters. Use explicit RETURN projections. "
+        + "Pagination is controlled by pageSize and cursor, so omit SKIP and LIMIT from the expression.")
     public String queryKnowledgeGraph(
-        @ToolParam(name = "knowledgeSourceName", required = true,
-            description = "Exact logical source name from listKnowledgeGraphTypes.") String knowledgeSourceName,
-        @ToolParam(name = "expression", required = true,
-            description = "Portable graph query using MATCH, optional WHERE, RETURN, GROUP BY and ORDER BY clauses.") String expression,
-        @ToolParam(name = "parameters", required = true,
-            description = "JSON object of values bound to :name references. Use an empty object when there are no parameters.")
-        Map<String, Object> parameters,
-        @ToolParam(name = "pageSize",
-            description = "Maximum records in this page. Omit to use the source default.") Integer pageSize,
-        @ToolParam(name = "cursor",
-            description = "Opaque nextCursor returned by the preceding call. Omit for the first page.") String cursor
-    ) {
+        @ToolParam(name = "knowledgeSourceName", required = true, description = "Exact logical source name from listKnowledgeGraphTypes.") String knowledgeSourceName,
+        @ToolParam(name = "expression", required = true, description = "Portable graph query using MATCH, optional WHERE, RETURN, GROUP BY and ORDER BY clauses.") String expression,
+        @ToolParam(name = "parameters", required = true, description = "JSON object of values bound to :name references. Use an empty object when there are no parameters.") Map<String, Object> parameters,
+        @ToolParam(name = "pageSize", description = "Maximum records in this page. Omit to use the source default.") Integer pageSize,
+        @ToolParam(name = "cursor", description = "Opaque nextCursor returned by the preceding call. Omit for the first page.") String cursor) {
         KnowledgeGraphSource source;
         try {
             source = requireSource(knowledgeSourceName);
             int resolvedPageSize = resolvePageSize(source, pageSize);
-            ParsedGraphQuery parsed = GraphQueryParser.parse(expression,
+            ParsedGraphQuery parsed = GraphQueryParser.parse(
+                expression,
                 parameters == null ? Collections.<String, Object>emptyMap() : parameters);
             GraphQuery parsedQuery = parsed.getGraphQuery();
             if (!(parsedQuery instanceof TraversalQuery)) {
-                throw new KnowledgeGraphToolException("UNSUPPORTED_QUERY",
-                    "Only a single linear MATCH query is supported by this tool");
+                throw new KnowledgeGraphToolException("UNSUPPORTED_QUERY", "Only a single linear MATCH query is supported by this tool");
             }
             TraversalQuery query = (TraversalQuery) parsedQuery;
             if (query.getSkip() != 0 || query.getLimit() != 100) {
-                throw new KnowledgeGraphToolException("QUERY_NOT_ALLOWED",
-                    "Omit SKIP and LIMIT; use pageSize and cursor for pagination");
+                throw new KnowledgeGraphToolException("QUERY_NOT_ALLOWED", "Omit SKIP and LIMIT; use pageSize and cursor for pagination");
             }
             // Schema 校验必须发生在构造分页请求和访问数据库之前。
             GraphSchemaQueryValidator.validate(query, source.getSchema(), source.getMaxHops());
             GraphPageRequest page = cursor == null || cursor.trim().isEmpty()
-                ? GraphPageRequest.of(0, resolvedPageSize)
-                : GraphPageRequest.after(cursor.trim(), resolvedPageSize);
-            GraphPageResult result = source.getQueryExecutor().executePage(query, page,
-                source.optionsForPage(resolvedPageSize));
+                    ? GraphPageRequest.of(0, resolvedPageSize)
+                    : GraphPageRequest.after(cursor.trim(), resolvedPageSize);
+            GraphPageResult result = source.getQueryExecutor().executePage(query, page, source.optionsForPage(resolvedPageSize));
             return GraphResultFormatter.format(source, result);
         } catch (KnowledgeGraphToolException error) {
             return error(error.getCode(), error.getMessage());
@@ -279,7 +258,7 @@ public final class KnowledgeGraphTools {
         KnowledgeGraphSource source = sources.get(name);
         if (source == null) {
             throw new KnowledgeGraphToolException("UNKNOWN_KNOWLEDGE_SOURCE",
-                "Unknown knowledge source '" + ToolText.clean(name, 200) + "'; available sources: " + sources.keySet());
+                    "Unknown knowledge source '" + ToolText.clean(name, 200) + "'; available sources: " + sources.keySet());
         }
         return source;
     }
@@ -290,8 +269,7 @@ public final class KnowledgeGraphTools {
     private int resolvePageSize(KnowledgeGraphSource source, Integer pageSize) {
         int value = pageSize == null ? source.getDefaultPageSize() : pageSize;
         if (value <= 0 || value > source.getMaxPageSize()) {
-            throw new KnowledgeGraphToolException("INVALID_ARGUMENT",
-                "pageSize must be between 1 and " + source.getMaxPageSize());
+            throw new KnowledgeGraphToolException("INVALID_ARGUMENT", "pageSize must be between 1 and " + source.getMaxPageSize());
         }
         return value;
     }
@@ -304,10 +282,8 @@ public final class KnowledgeGraphTools {
     private String availableSourcesDescription() {
         StringBuilder value = new StringBuilder("<available_knowledge_sources>\n");
         for (KnowledgeGraphSource source : sources.values()) {
-            value.append("  <knowledge_source>\n")
-                .append("    <name>").append(ToolText.xml(source.getName(), 200)).append("</name>\n")
-                .append("    <description>").append(ToolText.xml(source.getDescription(), 500))
-                .append("</description>\n")
+            value.append("  <knowledge_source>\n").append("    <name>").append(ToolText.xml(source.getName(), 200)).append("</name>\n")
+                .append("    <description>").append(ToolText.xml(source.getDescription(), 500)).append("</description>\n")
                 .append("  </knowledge_source>\n");
         }
         if (sources.isEmpty()) {
@@ -375,7 +351,8 @@ public final class KnowledgeGraphTools {
         private int maxSchemaElements = DEFAULT_MAX_SCHEMA_ELEMENTS;
 
         /**
-         * @param source 待注册知识源 @return 当前 Builder
+         * @param source 待注册知识源
+         * @return 当前 Builder
          */
         public Builder addSource(KnowledgeGraphSource source) {
             if (source != null) {
@@ -385,7 +362,8 @@ public final class KnowledgeGraphTools {
         }
 
         /**
-         * @param sources 待注册知识源列表 @return 当前 Builder
+         * @param sources 待注册知识源列表
+         * @return 当前 Builder
          */
         public Builder addSources(List<KnowledgeGraphSource> sources) {
             if (sources != null) {
@@ -395,7 +373,8 @@ public final class KnowledgeGraphTools {
         }
 
         /**
-         * @param maxSchemaElements 单次 Schema 详情披露上限 @return 当前 Builder
+         * @param maxSchemaElements 单次 Schema 详情披露上限
+         * @return 当前 Builder
          */
         public Builder maxSchemaElements(int maxSchemaElements) {
             this.maxSchemaElements = maxSchemaElements;

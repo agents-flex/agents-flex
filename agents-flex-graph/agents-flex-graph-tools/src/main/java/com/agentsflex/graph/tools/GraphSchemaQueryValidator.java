@@ -144,8 +144,8 @@ final class GraphSchemaQueryValidator {
      *
      * <p>某些后端反查得到的 Schema 可能没有端点信息；端点为空时只能校验边类型本身，方向检查会跳过。</p>
      */
-    private static void validateEndpoints(List<String> fromLabels, List<String> toLabels,
-                                          TraversalQuery.EdgePattern pattern, GraphSchema schema) {
+    private static void validateEndpoints(List<String> fromLabels, List<String> toLabels, TraversalQuery.EdgePattern pattern,
+        GraphSchema schema) {
         for (String type : pattern.getTypes()) {
             GraphSchema.EdgeType edge = GraphSchemaFormatter.findEdge(schema, type);
             if (edge.getSourceLabel() == null || edge.getTargetLabel() == null) {
@@ -197,8 +197,7 @@ final class GraphSchemaQueryValidator {
          */
         private final boolean requirePropertyOnEveryType;
 
-        private AliasDefinition(List<String> names, List<List<GraphSchema.Property>> propertySets,
-                                boolean requirePropertyOnEveryType) {
+        private AliasDefinition(List<String> names, List<List<GraphSchema.Property>> propertySets, boolean requirePropertyOnEveryType) {
             this.names = names;
             this.propertySets = propertySets;
             this.requirePropertyOnEveryType = requirePropertyOnEveryType;

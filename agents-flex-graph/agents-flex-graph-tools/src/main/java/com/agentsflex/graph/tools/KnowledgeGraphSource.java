@@ -217,7 +217,8 @@ public final class KnowledgeGraphSource {
         }
 
         /**
-         * @param description 知识源说明 @return 当前 Builder
+         * @param description 知识源说明
+         * @return 当前 Builder
          */
         public Builder description(String description) {
             this.description = description;
@@ -225,7 +226,8 @@ public final class KnowledgeGraphSource {
         }
 
         /**
-         * @param space 固定图空间 @return 当前 Builder
+         * @param space 固定图空间
+         * @return 当前 Builder
          */
         public Builder space(String space) {
             this.space = space;
@@ -233,7 +235,8 @@ public final class KnowledgeGraphSource {
         }
 
         /**
-         * @param timeoutMillis 单次查询超时毫秒数 @return 当前 Builder
+         * @param timeoutMillis 单次查询超时毫秒数
+         * @return 当前 Builder
          */
         public Builder timeoutMillis(long timeoutMillis) {
             if (timeoutMillis <= 0) {
@@ -244,7 +247,8 @@ public final class KnowledgeGraphSource {
         }
 
         /**
-         * @param fetchSize 后端批量抓取大小 @return 当前 Builder
+         * @param fetchSize 后端批量抓取大小
+         * @return 当前 Builder
          */
         public Builder fetchSize(int fetchSize) {
             if (fetchSize <= 0) {
@@ -255,7 +259,8 @@ public final class KnowledgeGraphSource {
         }
 
         /**
-         * @param context 可选执行上下文 @return 当前 Builder
+         * @param context 可选执行上下文
+         * @return 当前 Builder
          */
         public Builder context(GraphExecutionContext context) {
             this.context = context;
@@ -263,7 +268,8 @@ public final class KnowledgeGraphSource {
         }
 
         /**
-         * @param defaultPageSize 默认页大小 @return 当前 Builder
+         * @param defaultPageSize 默认页大小
+         * @return 当前 Builder
          */
         public Builder defaultPageSize(int defaultPageSize) {
             this.defaultPageSize = defaultPageSize;
@@ -271,7 +277,8 @@ public final class KnowledgeGraphSource {
         }
 
         /**
-         * @param maxPageSize 最大页大小 @return 当前 Builder
+         * @param maxPageSize 最大页大小
+         * @return 当前 Builder
          */
         public Builder maxPageSize(int maxPageSize) {
             this.maxPageSize = maxPageSize;
@@ -279,7 +286,8 @@ public final class KnowledgeGraphSource {
         }
 
         /**
-         * @param maxHops 最大累计遍历跳数 @return 当前 Builder
+         * @param maxHops 最大累计遍历跳数
+         * @return 当前 Builder
          */
         public Builder maxHops(int maxHops) {
             this.maxHops = maxHops;
