@@ -29,6 +29,10 @@ Agents-Flex 用统一的 `ChatModel` 接口连接 OpenAI、DeepSeek、Qwen 以�
 客服、知识助手和 Tool Calling Agent 需要使用 `Prompt` 保存多条消息，并在每轮把模型回复和工具结果加入后续
 请求。需要跨请求保存历史时，再配合 `MemoryPrompt`。
 
+### OpenAI Responses
+
+使用 `/v1/responses` 时，选择独立的 [OpenAI Responses 适配器](./openai-responses.md)，支持文本、流式输出和本地工具调用。
+
 ### OpenAI 兼容服务迁移
 
 自建网关或第三方服务实现 Chat Completions 协议时，可以复用 `OpenAIChatConfig`，覆盖 `endpoint`、
