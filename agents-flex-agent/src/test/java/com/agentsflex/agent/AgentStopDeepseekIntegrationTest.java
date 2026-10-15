@@ -9,6 +9,7 @@ import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.model.chat.deepseek.DeepseekChatModel;
 import com.agentsflex.model.chat.deepseek.DeepseekConfig;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;
@@ -25,6 +26,12 @@ import static org.junit.Assert.assertTrue;
  * 使用真实模型供应商验证停止正在进行的流式模型请求。
  */
 public class AgentStopDeepseekIntegrationTest {
+
+    @BeforeClass
+    public static void requireLiveProviderAccess() {
+        Assume.assumeTrue("Set -Dagentsflex.integration=true to run live provider tests",
+            Boolean.getBoolean("agentsflex.integration"));
+    }
 
     @Test
     public void shouldStopRealDeepseekStreamAfterFirstDelta() throws Exception {

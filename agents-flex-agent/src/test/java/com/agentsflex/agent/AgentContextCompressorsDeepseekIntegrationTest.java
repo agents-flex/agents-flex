@@ -140,8 +140,11 @@ public class AgentContextCompressorsDeepseekIntegrationTest {
     }
 
     private DeepseekChatModel model() {
+        Assume.assumeTrue("Set -Dagentsflex.integration=true to run live provider tests",
+            Boolean.getBoolean("agentsflex.integration"));
         String apiKey = System.getenv("DEEPSEEK_API_KEY");
-        Assume.assumeTrue("DEEPSEEK_API_KEY is required for integration test", apiKey != null && !apiKey.trim().isEmpty());
+        Assume.assumeTrue("DEEPSEEK_API_KEY is required for integration test",
+            apiKey != null && !apiKey.trim().isEmpty());
         DeepseekConfig config = new DeepseekConfig();
         config.setApiKey(apiKey);
         return new DeepseekChatModel(config);

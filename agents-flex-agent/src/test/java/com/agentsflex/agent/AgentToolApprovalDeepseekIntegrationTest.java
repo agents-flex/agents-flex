@@ -15,6 +15,7 @@ import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.model.chat.deepseek.DeepseekChatModel;
 import com.agentsflex.model.chat.deepseek.DeepseekConfig;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Map;
@@ -31,6 +32,12 @@ import static org.junit.Assert.assertTrue;
  * 预检后挂起；批准后恢复原 ToolCall，第二次模型调用再根据真实 ToolMessage 生成最终答复。</p>
  */
 public class AgentToolApprovalDeepseekIntegrationTest {
+
+    @BeforeClass
+    public static void requireLiveProviderAccess() {
+        Assume.assumeTrue("Set -Dagentsflex.integration=true to run live provider tests",
+            Boolean.getBoolean("agentsflex.integration"));
+    }
 
     @Test
     public void realDeepseekToolCallCanCompleteMultipleApprovalLevels() {
