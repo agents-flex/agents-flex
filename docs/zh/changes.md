@@ -1,5 +1,43 @@
 # Agents-Flex ChangeLog
 
+## v2.3.1 20261015
+- docs(graph): update knowledge graph tools documentation
+- style(graph-tools): format code according to team style guide
+- refactor(jdbc): remove legacy lease column migration logic from schema initialization
+- feat(graph): add knowledge graph tools module for agent integration
+- docs(graph): update documentation for entity resolution and error handling
+- docs(menu): update navigation links and remove unused documentation pages
+- feat(graph): add JDBC graph store implementation
+- docs(graph): update knowledge extraction quality documentation
+- refactor(graph): refactor ingestion components with improved naming and interfaces
+- refactor(extractor): migrate entity resolution and registry components
+- refactor(graph): remove incremental graph ingestion components
+- docs(graph): refactor knowledge extraction documentation structure
+- fix: Delete fields that do not need to be created
+- fix(文档提取): 修复文件名清理和HTML标题转换
+- feat: Gitee interface returns error code for docking
+- docs: fix stale @param result in MarkdownTableSplitter javadoc
+- docs(graph): restructure knowledge extraction documentation
+- docs(graph): update documentation for Graph SDK architecture and concepts
+- fix(nebula): reject GROUP BY in MATCH syntax for Nebula 3.8 compatibility
+- test(graph): add comprehensive integration tests for Neo4j graph operations
+- feat(query): extend graph query with string operations and advanced filtering
+- feat(graph): enhance query filtering and ingestion reliability
+- feat(graph): add plan fingerprint verification and state machine validation
+- feat(graph): add operation persistence and fact provenance tracking
+- fix(graph): refine incremental ingestion logic and document state handling
+- feat(graph): add operation idempotency and audit trail support
+- feat(graph): add incremental graph ingestion service with document state management
+- feat(graph): add knowledge graph extraction module with document processing pipeline
+- feat(nebula): enhance NebulaGraph integration with schema management and query compilation
+- fix(nebula): resolve VID handling and space management issues
+- test(graph): add comprehensive test coverage for graph API contracts
+- test(graph): add comprehensive test coverage for graph import lifecycle and query contracts
+- feat(graph): enhance graph capabilities and import service with structured limits and streaming support
+- docs: clarify MCP header placeholder behavior
+- feat(graph): add graph database module with Neo4j and Nebula support
+
+
 ## v2.3.0 20260916
 - docs(store): clarify persistent storage and explicit task execution semantics
 - test(jdbc): add real MySQL integration tests with required flag support
