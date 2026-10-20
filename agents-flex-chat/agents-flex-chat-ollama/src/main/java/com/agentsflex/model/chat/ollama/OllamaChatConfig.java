@@ -27,6 +27,7 @@ public class OllamaChatConfig extends BaseChatConfig {
         setProvider(DEFAULT_PROVIDER);
         setEndpoint(DEFAULT_ENDPOINT);
         setRequestPath(DEFAULT_REQUEST_PATH);
+        setThinkingProtocol("ollama");
     }
 
 }

@@ -16,12 +16,10 @@
 package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.Message;
-import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.model.chat.BaseChatConfig;
 import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.prompt.Prompt;
 import com.agentsflex.core.util.Maps;
-import com.agentsflex.core.util.MessageUtil;
 
 import java.util.HashMap;
 import java.util.List;
@@ -41,7 +39,7 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
 
     @Override
     public ChatRequestSpec buildRequestSpec(Prompt prompt, ChatOptions options, BaseChatConfig config) {
-
+        if (options == null) options = new ChatOptions();
         String url = buildRequestUrl(prompt, options, config);
         Map<String, String> headers = buildRequestHeaders(prompt, options, config);
         boolean retryEnabled = options.getRetryEnabledOrDefault(config.isRetryEnabled());
@@ -72,13 +70,13 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
     @Override
     public String buildRequestBody(Prompt prompt, ChatOptions options, BaseChatConfig config,
                                    boolean streaming) {
+        if (options == null) options = new ChatOptions();
         List<Message> messages = prompt.getMessages();
-        UserMessage userMessage = MessageUtil.findLastUserMessage(messages);
 
         Maps baseBodyJsonMap = buildBaseParamsOfRequestBody(prompt, options, config, streaming);
 
         Maps bodyJsonMap = baseBodyJsonMap
-            .set("messages", chatMessageSerializer.serializeMessages(messages, config))
+            .set("messages", chatMessageSerializer.serializeMessages(messages, config, options))
             .setIfNotEmpty("tools", chatMessageSerializer.serializeTools(prompt, config))
             .setIf(maps -> prompt.getToolChoice() != null
                 && maps.containsKey("tools"), "tool_choice", prompt.getToolChoice());
@@ -88,45 +86,35 @@ public class OpenAIChatRequestSpecBuilder implements ChatRequestSpecBuilder {
             bodyJsonMap.set("stream_options", Maps.of("include_usage", true));
         }
 
-        if (config.isPreserveThinkingEnable()) {
-            bodyJsonMap.set("preserve_thinking", true);
-        }
-
         buildThinkingBody(options, config, bodyJsonMap);
 
         if (options.getExtraBody() != null) {
-            bodyJsonMap.putAll(options.getExtraBody());
+            for (Map.Entry<String, Object> entry : options.getExtraBody().entrySet()) {
+                if (isThinkingParameter(entry.getKey()) && bodyJsonMap.containsKey(entry.getKey())
+                    && !java.util.Objects.equals(bodyJsonMap.get(entry.getKey()), entry.getValue())) {
+                    throw new IllegalArgumentException("Conflicting thinking parameter in extraBody: " + entry.getKey());
+                }
+                bodyJsonMap.put(entry.getKey(), entry.getValue());
+            }
         }
 
         return bodyJsonMap.toJSON();
     }
 
     protected void buildThinkingBody(ChatOptions options, BaseChatConfig config, Maps bodyJsonMap) {
+        Boolean thinkingEnabled = config.resolveThinkingEnabled(options);
         if (!config.isSupportThinking()) {
+            if (thinkingEnabled != null) {
+                throw new IllegalArgumentException("This model does not support overriding thinkingEnabled");
+            }
             return;
         }
-        Boolean thinkingEnabled = options.getThinkingEnabled();
-        if (thinkingEnabled == null) {
-            return;
-        }
+        config.getThinkingProtocolHandler().apply(thinkingEnabled, bodyJsonMap);
+    }
 
-        String thinkingProtocol = config.getThinkingProtocol();
-        if (thinkingProtocol == null || "none".equals(thinkingProtocol)) {
-            return;
-        }
-
-        switch (thinkingProtocol) {
-            case "qwen":
-                bodyJsonMap.set("enable_thinking", thinkingEnabled);
-                break;
-            case "deepseek":
-                bodyJsonMap.set("thinking", Maps.of("type", thinkingEnabled ? "enabled" : "disabled"));
-                break;
-            case "ollama":
-                bodyJsonMap.set("thinking", thinkingEnabled);
-            default:
-                // do nothing
-        }
+    private boolean isThinkingParameter(String key) {
+        return "thinking".equals(key) || "think".equals(key) || "enable_thinking".equals(key)
+            || "reasoning_effort".equals(key);
     }
 
 

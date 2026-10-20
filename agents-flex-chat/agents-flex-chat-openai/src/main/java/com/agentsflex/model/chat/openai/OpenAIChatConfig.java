@@ -184,7 +184,7 @@ public class OpenAIChatConfig extends BaseChatConfig {
             return this;
         }
 
-        public Builder thinkingEnabled(boolean thinkingEnabled) {
+        public Builder thinkingEnabled(Boolean thinkingEnabled) {
             config.setThinkingEnabled(thinkingEnabled);
             return this;
         }

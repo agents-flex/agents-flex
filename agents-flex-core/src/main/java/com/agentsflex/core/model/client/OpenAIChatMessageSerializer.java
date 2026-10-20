@@ -17,6 +17,7 @@ package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.model.chat.BaseChatConfig;
+import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.tool.ProviderTool;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.Parameter;
@@ -38,15 +39,13 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
      * @return 序列化后的消息数组，若输入为空则返回空列表
      */
     @Override
-    public List<Map<String, Object>> serializeMessages(List<Message> messages, BaseChatConfig config) {
-        if (messages == null || messages.isEmpty()) {
-            return null;
-        }
-
-        return buildMessageList(messages, config);
+    public List<Map<String, Object>> serializeMessages(List<Message> messages, BaseChatConfig config,
+                                                       ChatOptions options) {
+        return messages == null || messages.isEmpty() ? null : buildMessageList(messages, config, options);
     }
 
-    protected List<Map<String, Object>> buildMessageList(List<Message> messages, BaseChatConfig config) {
+    protected List<Map<String, Object>> buildMessageList(List<Message> messages, BaseChatConfig config,
+                                                         ChatOptions options) {
         List<Map<String, Object>> messageList = new ArrayList<>(messages.size());
         messages.forEach(message -> {
             Map<String, Object> objectMap = new HashMap<>(2);
@@ -54,6 +53,14 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
                 buildUserMessageObject(objectMap, (UserMessage) message, config);
             } else if (message instanceof AiMessage) {
                 buildAIMessageObject(objectMap, (AiMessage) message, config);
+                AiMessage aiMessage = (AiMessage) message;
+                if (aiMessage.hasToolCalls() && config.isSupportToolMessage()) {
+                    if (config.shouldPreserveThinking(options) && StringUtil.hasText(aiMessage.resolveReasoningText())) {
+                        objectMap.put("reasoning_content", aiMessage.resolveReasoningText());
+                    } else {
+                        objectMap.remove("reasoning_content");
+                    }
+                }
             } else if (message instanceof SystemMessage) {
                 buildSystemMessageObject(objectMap, (SystemMessage) message, config);
             } else if (message instanceof ToolMessage) {
@@ -63,6 +70,7 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         });
         return messageList;
     }
+
 
     protected void buildToolMessageObject(Map<String, Object> objectMap, ToolMessage message, BaseChatConfig config) {
         if (config.isSupportToolMessage()) {
@@ -102,8 +110,8 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
                 buildAIMessageToolCalls(objectMap, calls, false);
 
                 // 兼容性处理，在 ToolMessage 中，需要将 reasoning_content 添加到 payload 中，比如 deepseek、qwen3.6 等模型
-                if (config.isPreserveThinkingEnable() && StringUtil.hasText(message.getReasoningContent())) {
-                    objectMap.put("reasoning_content", message.getReasoningContent());
+                if (config.shouldPreserveThinking(null) && StringUtil.hasText(message.resolveReasoningText())) {
+                    objectMap.put("reasoning_content", message.resolveReasoningText());
                 }
             } else {
                 objectMap.put("role", "system");
@@ -306,4 +314,3 @@ public class OpenAIChatMessageSerializer implements ChatMessageSerializer {
         }
     }
 }
-

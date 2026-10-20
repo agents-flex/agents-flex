@@ -31,6 +31,7 @@ public class DeepseekConfig extends BaseChatConfig {
         setEndpoint(DEFAULT_ENDPOINT);
         setRequestPath(DEFAULT_REQUEST_PATH);
         setModel(DEFAULT_MODEL);
+        setThinkingProtocol("deepseek");
     }
 
 }

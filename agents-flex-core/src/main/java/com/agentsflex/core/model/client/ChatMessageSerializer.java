@@ -17,6 +17,7 @@ package com.agentsflex.core.model.client;
 
 import com.agentsflex.core.message.Message;
 import com.agentsflex.core.model.chat.BaseChatConfig;
+import com.agentsflex.core.model.chat.ChatOptions;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.prompt.Prompt;
 
@@ -37,7 +38,11 @@ public interface ChatMessageSerializer {
      * @param messages 消息列表，不可为 null
      * @return 序列化后的消息数组，若输入为空则返回空列表
      */
-    List<Map<String, Object>> serializeMessages(List<Message> messages, BaseChatConfig config);
+     List<Map<String, Object>> serializeMessages(List<Message> messages, BaseChatConfig config,
+                                                       ChatOptions options) ;
+//     {
+//        return serializeMessages(messages, config);
+//    }
 
     /**
      * 将函数定义列表序列化为模型所需的工具（tools）或函数（functions）格式。

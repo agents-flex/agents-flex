@@ -404,6 +404,13 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
         return reasoningContent;
     }
 
+    /**
+     * 完整推理文本；对同步结果、流式累计结果和最终消息使用同一读取契约。
+     */
+    public String resolveReasoningText() {
+        return fullReasoningContent != null ? fullReasoningContent : reasoningContent;
+    }
+
     public void setReasoningContent(String reasoningContent) {
         this.reasoningContent = reasoningContent;
     }

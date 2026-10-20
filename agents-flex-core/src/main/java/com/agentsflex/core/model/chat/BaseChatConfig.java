@@ -39,8 +39,9 @@ public class BaseChatConfig extends BaseModelConfig {
     protected Boolean preserveThinkingEnable;
 
     protected boolean observabilityEnabled = true; // 默认开启
-    protected boolean thinkingEnabled = false; // 默认关闭
+    protected Boolean thinkingEnabled; // null：使用服务端默认行为
     protected String thinkingProtocol = "none"; // "deepseek" "qwen" "ollama" "none"
+    protected ThinkingProtocol thinkingProtocolHandler;
     protected boolean logEnabled = true;
 
 
@@ -184,7 +185,8 @@ public class BaseChatConfig extends BaseModelConfig {
 
     /**
      * 是否需要推理结果作为 reasoning_content 传给大模型
-     * 比如 Deepseek 在工具调佣的时候，需要推理结果作为 reasoning_content 传给大模型
+     * 比如 Deepseek 在工具调用的时候，需要推理结果作为 reasoning_content 传给大模型。
+     * 此方法只返回显式配置；请求有效策略请使用 shouldPreserveThinking(options)。
      *
      * @return 默认值为 false
      */
@@ -193,11 +195,36 @@ public class BaseChatConfig extends BaseModelConfig {
     }
 
     public boolean isThinkingEnabled() {
+        return Boolean.TRUE.equals(thinkingEnabled);
+    }
+
+    public Boolean getThinkingEnabled() {
         return thinkingEnabled;
     }
 
-    public void setThinkingEnabled(boolean thinkingEnabled) {
+    public void setThinkingEnabled(Boolean thinkingEnabled) {
         this.thinkingEnabled = thinkingEnabled;
+    }
+
+    /** 按字段继承：Options 显式值 > Config 默认值 > 服务端默认。 */
+    public Boolean resolveThinkingEnabled(ChatOptions options) {
+        return options != null && options.getThinkingEnabled() != null
+            ? options.getThinkingEnabled() : thinkingEnabled;
+    }
+
+    public ThinkingProtocol getThinkingProtocolHandler() {
+        return thinkingProtocolHandler != null ? thinkingProtocolHandler : ThinkingProtocols.resolve(thinkingProtocol);
+    }
+
+    /** 自定义网关协议无需替换整个请求 Builder。 */
+    public void setThinkingProtocolHandler(ThinkingProtocol handler) {
+        this.thinkingProtocolHandler = handler;
+    }
+
+    public boolean shouldPreserveThinking(ChatOptions options) {
+        if (preserveThinkingEnable != null) return preserveThinkingEnable;
+        return isSupportThinking()
+            && getThinkingProtocolHandler().preserveReasoningContent(resolveThinkingEnabled(options));
     }
 
     public String getThinkingProtocol() {

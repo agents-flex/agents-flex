@@ -103,9 +103,9 @@ OpenAIChatConfig config = OpenAIChatConfig.builder()
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `thinkingEnabled` | `false` | 模型级默认是否启用思考 |
+| `thinkingEnabled` | `null` | 模型级默认开关；空值不发送参数，交给远端决定 |
 | `thinkingProtocol` | `none` | 推理字段协议，如 `deepseek`、`qwen`、`ollama` |
-| `preserveThinkingEnable` | `false` | Tool 调用后是否保留推理内容 |
+| `preserveThinkingEnable` | `null` | Tool 调用时是否回传推理内容；空值由协议自动决定 |
 | `observabilityEnabled` | `true` | 是否启用框架可观测拦截器 |
 | `logEnabled` | `true` | 是否记录 Chat 请求与响应日志 |
 | `retryEnabled` | `true` | 是否启用模型级错误重试 |
@@ -114,6 +114,46 @@ OpenAIChatConfig config = OpenAIChatConfig.builder()
 
 单次调用可以通过 `ChatOptions` 覆盖 thinking 和 retry 等部分行为。长期默认值放模型配置，请求差异放
 `ChatOptions`，避免并发修改共享对象。
+
+### 思考开关与协议
+
+开关按字段解析：`ChatOptions.thinkingEnabled` 非空时覆盖 Config；否则继承
+`BaseChatConfig.thinkingEnabled`。两者都为空时不发送开关参数。传入只包含温度等字段的 Options
+不会改变模型的默认思考开关。
+
+```java
+OpenAIChatConfig config = OpenAIChatConfig.builder()
+    .apiKey(apiKey)
+    .thinkingProtocol("deepseek")
+    .thinkingEnabled(true)
+    .build();
+ChatModel model = config.toChatModel();
+ChatOptions options = ChatOptions.builder().thinkingEnabled(false).build();
+model.chat(new SimplePrompt("你好"), options);
+```
+
+协议由接口决定，不根据模型名称猜测。DeepseekConfig、QwenChatConfig、OllamaChatConfig 已设置各自协议；
+通用 OpenAIChatConfig 连接兼容接口时，需要显式选择协议。
+
+| 协议 | 请求字段 | 注意事项 |
+| --- | --- | --- |
+| `none` | 不发送 | 显式覆盖开关会报配置错误 |
+| `qwen` | `enable_thinking` | 布尔值 |
+| `deepseek` | `thinking.type` | `enabled` / `disabled` |
+| `openai` | `reasoning_effort` | `medium` / `none`，仅限支持这两个值的 Chat Completions 模型 |
+| `ollama` | `reasoning_effort` | Ollama 的 OpenAI 兼容接口 |
+| `ollama_native` | `think` | 仅供自行实现原生接口的请求构建器使用 |
+
+`supportThinking=false` 的连接拒绝显式开关，不静默忽略。`extraBody` 与生成的同名思考参数冲突时也会报错。
+自定义网关可调用 `config.setThinkingProtocolHandler(ThinkingProtocol)` 实现参数映射，无需替换整个请求构建器。
+Handler 必须无状态且线程安全。
+
+DeepSeek / Qwen 在思考未关闭时自动为带工具调用的 assistant 消息回传 `reasoning_content`。
+`preserveThinkingEnable` 仅覆盖这一消息回传策略，不会发送 `preserve_thinking` 请求参数。
+界面的隐藏、简化和展开状态属于应用展示策略，不应控制此回传行为。
+
+流式结束后使用 `AiMessage.resolveReasoningText()` 读取完整推理内容；它优先读取 `fullReasoningContent`，
+否则读取当前 `reasoningContent`。该只读便捷方法不会增加持久化 JSON 字段。
 
 ## OpenAIChatConfig 默认值
 

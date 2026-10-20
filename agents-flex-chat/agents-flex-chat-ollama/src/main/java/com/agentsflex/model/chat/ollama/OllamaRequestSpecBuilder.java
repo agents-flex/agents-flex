@@ -12,11 +12,6 @@ public class OllamaRequestSpecBuilder extends OpenAIChatRequestSpecBuilder {
         Maps params = super.buildBaseParamsOfRequestBody(prompt, options, config, streaming);
         params.setIf(!streaming, "stream", false);
 
-        // 支持思考
-        if (config.isSupportThinking()) {
-            params.setIf(options.getThinkingEnabled() != null, "thinking", options.getThinkingEnabled());
-        }
-
         return params;
     }
 }

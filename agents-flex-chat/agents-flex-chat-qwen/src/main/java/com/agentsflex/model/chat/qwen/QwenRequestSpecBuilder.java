@@ -23,8 +23,7 @@ public class QwenRequestSpecBuilder extends OpenAIChatRequestSpecBuilder {
             params.setIf(op.getTranslationOptions() != null, "translation_options", op.getTranslationOptions());
             params.setIf(op.getEnableSearch() != null, "enable_search", op.getEnableSearch());
             params.setIf(op.getEnableSearch() != null && op.getEnableSearch() && op.getSearchOptions() != null, "search_options", op.getSearchOptions());
-            params.setIf(op.getThinkingEnabled() != null, "enable_thinking", op.getThinkingEnabled());
-            params.setIf(op.getThinkingEnabled() != null && op.getThinkingEnabled() && op.getThinkingBudget() != null, "thinking_budget", op.getThinkingBudget());
+            params.setIf(Boolean.TRUE.equals(config.resolveThinkingEnabled(op)) && op.getThinkingBudget() != null, "thinking_budget", op.getThinkingBudget());
         }
         return params;
     }
