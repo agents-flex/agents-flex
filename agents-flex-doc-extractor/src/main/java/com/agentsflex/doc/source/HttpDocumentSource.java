@@ -166,6 +166,8 @@ public class HttpDocumentSource implements DocumentSource {
 
     @Override
     public String getMimeType() {
+        // 已知类型时无需 HEAD；S3 等 GET 签名 URL 通常不允许 HEAD 请求。
+        if (mimeType != null && !mimeType.trim().isEmpty()) return mimeType;
         if (resolvedMimeType != null) {
             return resolvedMimeType;
         }

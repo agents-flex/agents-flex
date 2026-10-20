@@ -24,6 +24,7 @@ import com.agentsflex.doc.source.*;
 
 import java.io.File;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -107,16 +108,27 @@ public class DocumentExtractionService {
         this.documentImagePublisher = documentImagePublisher;
     }
 
-    public String extractFromUrl(String httpUrl) {
-        return extract(new HttpDocumentSource(httpUrl));
+    public String extractFromUrl(String url) {
+        return extractFromUrl(url, null, null);
     }
 
-    public String extractFromUrl(String httpUrl, String fileName) {
-        return extract(new HttpDocumentSource(httpUrl, fileName));
+    public String extractFromUrl(String url, String fileName) {
+        return extractFromUrl(url, fileName, null);
     }
 
-    public String extractFromUrl(String httpUrl, String fileName, String mimeType) {
-        return extract(new HttpDocumentSource(httpUrl, fileName, mimeType));
+    /**
+     * 从 HTTP(S) 或本地 file URL 提取正文。对象键没有扩展名时可传入原始文件名和 MIME 类型。
+     * 调用方应在传入 URL 前完成访问授权，尤其不能将不受信任的 file URL 直接交给此方法。
+     */
+    public String extractFromUrl(String url, String fileName, String mimeType) {
+        URI uri = URI.create(url);
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            return extract(new FileDocumentSource(new File(uri), fileName, mimeType));
+        }
+        if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
+            throw new IllegalArgumentException("Document URL must use http, https or file");
+        }
+        return extract(new HttpDocumentSource(url, fileName, mimeType));
     }
 
     public String extract(File file) {

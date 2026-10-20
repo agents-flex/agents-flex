@@ -23,6 +23,7 @@ import java.io.InputStream;
 public class FileDocumentSource implements DocumentSource {
 
     private final File file;
+    private final String fileName;
     private final String mimeType;
 
     public FileDocumentSource(File file) {
@@ -30,13 +31,18 @@ public class FileDocumentSource implements DocumentSource {
     }
 
     public FileDocumentSource(File file, String mimeType) {
+        this(file, null, mimeType);
+    }
+
+    public FileDocumentSource(File file, String fileName, String mimeType) {
         this.file = file;
+        this.fileName = fileName;
         this.mimeType = mimeType;
     }
 
     @Override
     public String getFileName() {
-        return file.getName();
+        return fileName == null || fileName.trim().isEmpty() ? file.getName() : fileName;
     }
 
     @Override

@@ -20,7 +20,6 @@ import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.source.ByteArrayDocumentSource;
 import com.agentsflex.doc.source.ByteStreamDocumentSource;
 import com.agentsflex.doc.source.FileDocumentSource;
-import com.agentsflex.doc.source.HttpDocumentSource;
 
 import java.io.File;
 import java.io.InputStream;
@@ -50,16 +49,16 @@ public class DocumentExtractors {
         defaultService.setDocumentImagePublisher(documentImagePublisher);
     }
 
-    public static String extractFromUrl(String httpUrl) {
-        return defaultService.extract(new HttpDocumentSource(httpUrl));
+    public static String extractFromUrl(String url) {
+        return defaultService.extractFromUrl(url);
     }
 
-    public static String extractFromUrl(String httpUrl, String fileName) {
-        return defaultService.extract(new HttpDocumentSource(httpUrl, fileName));
+    public static String extractFromUrl(String url, String fileName) {
+        return defaultService.extractFromUrl(url, fileName);
     }
 
-    public static String extractFromUrl(String httpUrl, String fileName, String mimeType) {
-        return defaultService.extract(new HttpDocumentSource(httpUrl, fileName, mimeType));
+    public static String extractFromUrl(String url, String fileName, String mimeType) {
+        return defaultService.extractFromUrl(url, fileName, mimeType);
     }
 
     public static String extract(File file) {
