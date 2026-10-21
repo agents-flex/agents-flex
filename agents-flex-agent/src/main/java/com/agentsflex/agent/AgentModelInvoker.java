@@ -301,12 +301,14 @@ final class AgentModelInvoker {
     private boolean publishDeltas(AgentTurn turn, AiMessage message) {
         if (message.isFinalDelta()) return false;
         boolean textPublished = false;
-        if (StringUtil.hasText(message.getContent())) {
+        // 增量协议必须逐字保真。模型可能把换行或缩进作为独立 token 发送；这些字符
+        // 对 Markdown 围栏、表格和 JSON 都有语义，不能用 hasText 当作空内容丢弃。
+        if (hasStreamDelta(message.getContent())) {
             eventPublisher.publish(turn, AgentEventType.MODEL_TEXT_DELTA,
                 data("content", message.getContent()));
             textPublished = true;
         }
-        if (StringUtil.hasText(message.getReasoningContent())) {
+        if (hasStreamDelta(message.getReasoningContent())) {
             eventPublisher.publish(turn, AgentEventType.MODEL_REASONING_DELTA,
                 data("content", message.getReasoningContent()));
         }
@@ -323,6 +325,13 @@ final class AgentModelInvoker {
                 data("toolCalls", toolCalls));
         }
         return textPublished;
+    }
+
+    /**
+     * 判断模型是否实际发送了一个增量，同时保留仅包含空格、制表符或换行的合法 token。
+     */
+    private boolean hasStreamDelta(String value) {
+        return value != null && !value.isEmpty();
     }
 
     /**

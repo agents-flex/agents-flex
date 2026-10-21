@@ -100,6 +100,52 @@ public class AgentExecutionBoundaryContractTest {
             "final-only"));
     }
 
+    /**
+     * 流式正文必须逐字保留只包含空白的增量。Markdown 的代码围栏依赖换行位于行首，
+     * 如果丢弃模型单独发送的换行 token，围栏就会粘到上一段文字后面，直到最终正文
+     * 覆盖流式正文时才被渲染器识别。
+     */
+    @Test
+    public void shouldPreserveWhitespaceOnlyTextDeltasForMarkdownFences() {
+        List<AgentEvent> events = new ArrayList<>();
+        String[] deltas = {"统计结果", "\n", "```echart", "\n", "{", "\n  ",
+            "\"series\": []", "\n", "}", "\n", "```", "\n", "后续分析"};
+        String expected = String.join("", deltas);
+        ChatModel model = new ChatModel() {
+            @Override
+            public AiMessageResponse chat(Prompt prompt, ChatOptions options) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void chatStream(Prompt prompt, StreamResponseListener listener,
+                                   ChatOptions options) {
+                for (String content : deltas) {
+                    AiMessage delta = new AiMessage(content);
+                    delta.setFinished(false);
+                    listener.onMessage(null, response(prompt, delta));
+                }
+                AiMessage finalMessage = new AiMessage();
+                finalMessage.setFinished(true);
+                finalMessage.setFullContent(expected);
+                listener.onMessage(null, response(prompt, finalMessage));
+                listener.onClose(null);
+            }
+        };
+        AgentTurn turn = new AgentRunner().addEventListener(events::add).run(
+            Agent.builder("markdown-fence-stream").chatModel(model).build(), "input",
+            AgentTurnOptions.builder().streaming(true).build());
+
+        StringBuilder streamed = new StringBuilder();
+        for (AgentEvent event : events) {
+            if (event.getType() == AgentEventType.MODEL_TEXT_DELTA) {
+                streamed.append(event.getData().get("content"));
+            }
+        }
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals(expected, streamed.toString());
+    }
+
     @Test
     public void shouldCancelAfterRunningToolReturnsWithoutCallingModelAgain() throws Exception {
         AgentScenarioTestSupport.QueueChatModel model =
