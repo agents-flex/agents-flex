@@ -72,7 +72,8 @@ graph TB
     C --> F[BaiduQianfanSearchProvider]
     C --> G[TavilySearchProvider]
     C --> H[FirecrawlSearchProvider]
-    C --> I[Custom Provider]
+    C --> I[ParallelSearchProvider]
+    C --> J[Custom Provider]
 
     B --> J[SearchRequest]
     B --> K[SearchResult]
@@ -318,7 +319,35 @@ String results = searchTool.webSearch("Java 17 new features", null, null);
 System.out.println(results);
 ```
 
-#### 示例 5：与 ChatModel 集成
+#### 示例 5：使用 Parallel Search MCP
+
+```java
+import com.agentsflex.websearch.WebSearchTool;
+import com.agentsflex.websearch.parallel.ParallelSearchProvider;
+
+// Anonymous Search MCP access is free and does not require an API key.
+ParallelSearchProvider provider = new ParallelSearchProvider();
+WebSearchTool searchTool = new WebSearchTool(provider);
+
+String results = searchTool.webSearch(
+    "Java 17 new features",
+    null,  // Optional local result filter
+    null
+);
+System.out.println(results);
+```
+
+`ParallelSearchProvider` uses the MCP Streamable HTTP endpoint at
+`https://search.parallel.ai/mcp`. Each provider instance keeps a stable MCP
+search session id, so create one per conversation. `WebSearchTool` continues to
+apply `allowedDomains` and `blockedDomains` locally to the returned results.
+The provider caps its returned results at `SearchRequest.maxResults`.
+
+Parallel Search MCP also offers `web_fetch`, but this provider only implements
+the `SearchProvider` search path. Use the framework's `WebFetchTool` for page
+content retrieval.
+
+#### 示例 6：与 ChatModel 集成
 
 ```java
 WebSearchTool searchTool = new WebSearchTool(
@@ -523,6 +552,7 @@ String results = tool.webSearch("Kubernetes deployment guide", null, null);
 | Brave | `brave/BraveSearchProvider.java` | https://api.search.brave.com/app/documentation               |
 | Tavily | `tavily/TavilySearchProvider.java` | https://docs.tavily.com                                      |
 | Firecrawl | `firecrawl/FirecrawlSearchProvider.java` | https://docs.firecrawl.dev/features/search                   |
+| Parallel Search MCP | `parallel/ParallelSearchProvider.java` | https://docs.parallel.ai/integrations/mcp/search-mcp         |
 
 
 
