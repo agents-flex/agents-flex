@@ -7,6 +7,8 @@ import com.agentsflex.agent.AgentTurnStatus;
 import com.agentsflex.agent.loader.InMemoryAgentLoader;
 import com.agentsflex.agent.store.InMemoryAgentTurnStore;
 import com.agentsflex.core.message.AiMessage;
+import com.agentsflex.core.message.Message;
+import com.agentsflex.core.message.UserMessage;
 import com.agentsflex.core.message.ToolCall;
 import com.agentsflex.core.model.chat.ChatContext;
 import com.agentsflex.core.model.chat.ChatModel;
@@ -33,6 +35,57 @@ import static org.junit.Assert.assertTrue;
 
 /** ToolSearch 通过 Middleware 接入 AgentRunner 的恢复与可见性契约测试。 */
 public class ToolSearchAgentMiddlewareTest {
+
+    /**
+     * Issue #82: maxAttachedMessages must only trim history between turns. Within the
+     * current turn the only UserMessage has to reach the model on every call.
+     */
+    @Test
+    public void shouldKeepCurrentUserMessageWhenTurnExceedsMaxAttachedMessages() {
+        Tool weather = Tool.builder("weatherLookup", arguments -> "sunny")
+            .description("Look up weather forecasts").build();
+        ToolSearchTool searchTool = ToolSearchTool.builder().addTool(weather).build();
+        QueueChatModel model = new QueueChatModel();
+        Function<Prompt, AiMessage> search = prompt -> {
+            assertCurrentUserMessagePresent(prompt);
+            return toolCalls(new ToolCall("search-" + model.callCount, ToolSearchTool.NAME,
+                "{\"query\":\"weather forecast\"}"));
+        };
+        // 1 user message + 4 x (AiMessage + ToolMessage) = 9 messages before the last call.
+        for (int i = 0; i < 4; i++) model.enqueue(search);
+        model.enqueue(prompt -> {
+            assertCurrentUserMessagePresent(prompt);
+            return new AiMessage("done");
+        });
+        Agent agent = Agent.builder("search-agent")
+            .chatModel(model)
+            .middleware(ToolSearchAgentMiddleware.of(searchTool))
+            .maxAttachedMessages(3)
+            .build();
+
+        AgentTurn turn = new AgentRunner().run(agent, "What is the weather?");
+
+        assertNull(rootMessage(turn.getError()), turn.getError());
+        assertEquals(AgentTurnStatus.COMPLETED, turn.getStatus());
+        assertEquals(5, model.callCount);
+    }
+
+    private static String rootMessage(Throwable error) {
+        Throwable root = error;
+        while (root != null && root.getCause() != null) root = root.getCause();
+        return root == null ? null : root.getMessage();
+    }
+
+    private static void assertCurrentUserMessagePresent(Prompt prompt) {
+        boolean found = false;
+        for (Message message : prompt.getMessages()) {
+            if (message instanceof UserMessage
+                && "What is the weather?".equals(((UserMessage) message).getContent())) {
+                found = true;
+            }
+        }
+        assertTrue("current user message was trimmed from the model prompt", found);
+    }
 
     @Test
     @SuppressWarnings("unchecked")
