@@ -121,6 +121,7 @@ Client 依赖 `ChatContextHolder`，应由 `ChatModel` 调用。如果你需要�
 
 ## 下一步
 
+- [OpenAI Responses API](./openai-responses.md)
 - [ChatRequestSpecBuilder](./chat-request-spec-builder.md)
 - [AiMessageParser](./ai-message-parser.md)
 - [错误重试](./retry.md)
