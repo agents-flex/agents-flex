@@ -1084,8 +1084,10 @@ public final class AgentRunner {
         AiMessageResponse response;
         try {
             // 模型 Middleware 以责任链包裹最终调用，可用于 tracing、缓存或受控 Prompt 增强。
+            // 先按 Turn 边界构建上下文窗口，再交给 Middleware。Middleware 替换 Prompt 时
+            // 不会绕过窗口，maxAttachedMessages 也只会在 Turn 之间裁剪（#82）。
             AgentMiddlewareContext middlewareContext = new AgentMiddlewareContext(
-                this, turn, turn.getPrompt());
+                this, turn, buildModelPrompt(turn, turn.getPrompt()));
             response = proceedModelCall(turn, middlewareContext, 0);
             validateResponse(response);
             // 有效模型响应结束当前连续失败链，但 retryCount 作为生命周期累计指标继续保留。
@@ -1139,6 +1141,13 @@ public final class AgentRunner {
      * 调用模型适配器，并由适配器发布细粒度流式事件。
      */
     private AiMessageResponse invokeModel(AgentTurn turn, Prompt prompt) {
+        return modelInvoker.invoke(turn, prompt);
+    }
+
+    /**
+     * 为一次模型调用生成按 Turn 边界裁剪的 Prompt 视图；当前 Turn 永远不被拆开。
+     */
+    private Prompt buildModelPrompt(AgentTurn turn, Prompt prompt) {
         Prompt modelPrompt = prompt;
         if (prompt instanceof com.agentsflex.core.prompt.MemoryPrompt) {
             AgentContextCompressionPolicy policy = turn.getAgent().getCompressionPolicy();
@@ -1157,7 +1166,7 @@ public final class AgentRunner {
                 policy.getKeepRecentTurns(),
                 effectiveCompressor, policy.getCompressionFailureStrategy());
         }
-        return modelInvoker.invoke(turn, modelPrompt);
+        return modelPrompt;
     }
 
     /**
