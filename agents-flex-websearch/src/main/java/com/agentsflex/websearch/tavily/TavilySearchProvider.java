@@ -75,6 +75,8 @@ public class TavilySearchProvider implements SearchProvider {
             JSONArray arr = root.getJSONArray("results");
 
             return parse(arr);
+        } catch (SearchException e) {
+            throw e;
         } catch (Exception e) {
             throw new SearchException(e);
         }
@@ -107,12 +109,13 @@ public class TavilySearchProvider implements SearchProvider {
 
         try (Response response = httpClient.newCall(httpRequest).execute()) {
 
+            ResponseBody responseBody = response.body();
+            String body = responseBody != null ? responseBody.string() : "";
             if (!response.isSuccessful()) {
-                return "";
+                throw new SearchException("Tavily Search HTTP Error: " + response.code()
+                    + (StringUtil.hasText(body) ? ", body=" + body : ""));
             }
-
-            ResponseBody body = response.body();
-            return body != null ? body.string() : "";
+            return body;
         }
     }
 
