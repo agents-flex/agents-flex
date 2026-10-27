@@ -15,5 +15,6 @@
 
     <modules>
         <module>agents-flex-observability-jdbc</module>
+        <module>agents-flex-observability-otel</module>
     </modules>
 </project>
