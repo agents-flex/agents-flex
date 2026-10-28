@@ -1,0 +1,22 @@
+services:
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: agents-flex-otel-lgtm
+    ports:
+      - "3000:3000"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/grafana/conf/provisioning/dashboards/custom/agents-flex.json
+    volumes:
+      - lgtm-data:/data
+      - ./grafana/dashboards/agents-flex.json:/otel-lgtm/grafana/conf/provisioning/dashboards/custom/agents-flex.json:ro
+      - ./grafana/provisioning/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/custom.yaml:ro
+    restart: unless-stopped
+
+volumes:
+  lgtm-data:

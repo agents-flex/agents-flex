@@ -22,10 +22,22 @@ mvn -f demos/agent-demo/pom.xml exec:java -Dexec.args=approval
 mvn -f demos/agent-demo/pom.xml exec:java -Dexec.args=runtime
 ```
 
+运行真实 DeepSeek + OpenTelemetry 场景（需先启动 `observability/otel-lgtm`）：
+
+```bash
+set -a
+source .env
+set +a
+mvn -f demos/agent-demo/pom.xml exec:java \
+  -Dexec.args=deepseek-otel \
+  -Dexec.cleanupDaemonThreads=false
+```
+
 | 参数 | 场景 |
 | --- | --- |
 | `tool` | 模型原生 ToolCall、ToolMessage、预算和工具幂等上下文 |
 | `approval` | 工具审批、Snapshot、跨 Runner 恢复和统一事件监听 |
 | `runtime` | Middleware、AgentEvent、上下文压缩和工具进度 |
+| `deepseek-otel` | 真实 DeepSeek Agent、Tool Calling、OTLP Trace 和 Metrics |
 
 `DemoScriptedChatModel` 只负责返回预先配置的模型消息，使 Demo 在离线环境中也能稳定运行。接入真实模型时，只需替换 Agent Builder 中的 `chatModel`。

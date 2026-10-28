@@ -24,13 +24,17 @@ public final class AgentDemoLauncher {
         if ("all".equalsIgnoreCase(scenario) || "runtime".equalsIgnoreCase(scenario)) {
             RuntimeExtensionsAgentDemo.run();
         }
+        if ("deepseek-otel".equalsIgnoreCase(scenario)) {
+            DeepseekObservabilityAgentDemo.run();
+        }
         if (!"all".equalsIgnoreCase(scenario)
             && !"tool".equalsIgnoreCase(scenario)
             && !"approval".equalsIgnoreCase(scenario)
-            && !"runtime".equalsIgnoreCase(scenario)) {
+            && !"runtime".equalsIgnoreCase(scenario)
+            && !"deepseek-otel".equalsIgnoreCase(scenario)) {
             throw new IllegalArgumentException(
                 "未知场景: " + scenario
-                    + "，可选值为 tool、approval、runtime");
+                    + "，可选值为 tool、approval、runtime、deepseek-otel");
         }
     }
 }
