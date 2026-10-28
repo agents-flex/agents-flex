@@ -164,7 +164,8 @@ Agents-Flex 不会替换应用已经注册的全局 OpenTelemetry。没有显式
 4. 等待 Metric 导出周期，观察请求计数和耗时；
 5. 确认数据符合预期后，再切换到 OTLP 或 JDBC。
 
-完整命令和验证方法见[快速开始](./getting-started)。
+完整命令和验证方法见[快速开始](./getting-started)。如果希望直接使用 Docker 启动 Grafana、Prometheus、
+Tempo 和 Collector，并运行真实 DeepSeek Agent 查看 Dashboard，请阅读 [Grafana 入门与部署](./grafana)。
 
 ## 隐私默认值
 
@@ -192,6 +193,7 @@ agentsflex.otel.capture.content=false
 - [零基础理解 Trace、Span、Metric 和 Context](./concepts)
 - [用真实问题理解典型场景](./scenarios)
 - [快速开始](./getting-started)
+- [使用 Grafana 查看 Agents-Flex 指标](./grafana)
 - [按执行上下文路由到一个或多个后端](./runtime-routing)
 - [模型与 HTTP 可观测](./model)
 - [工具调用可观测](./tool)

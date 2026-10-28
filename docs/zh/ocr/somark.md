@@ -89,7 +89,49 @@ featureConfig.put("keep_header_footer", false);
 request.putOption("feature_config", featureConfig);
 ```
 
-当 `output_formats` 包含 `zip` 时，SoMark 要求 `element_formats.image` 使用 `file`。如果只请求 JSON，结构化结果仍保留在 `response.getMetadata("data")` 中；Markdown 和 ZIP 则会映射到统一响应的 `markdown` 与 `resources`。
+当 `output_formats` 包含 `zip` 时，SoMark 要求 `element_formats.image` 使用 `file`。Markdown 和 ZIP 会分别映射到统一响应的 `markdown` 与 `resources`。
+
+## 结构化版面结果
+
+SoMark 的 `outputs.json.pages` 会映射到公共的 `OcrDocument`：
+
+```java
+import com.agentsflex.core.model.ocr.OcrBlock;
+import com.agentsflex.core.model.ocr.OcrDocument;
+import com.agentsflex.core.model.ocr.OcrPage;
+
+OcrDocument document = response.getDocument();
+for (OcrPage page : document.getPages()) {
+    System.out.println(page.getPageNumber());
+    System.out.println(page.getSize().getWidth() + " x " + page.getSize().getHeight());
+
+    for (OcrBlock block : page.getBlocks()) {
+        System.out.println(block.getType() + " " + block.getBoundingBox());
+        System.out.println(block.getContent());
+    }
+}
+```
+
+具体映射包括：
+
+| SoMark 字段 | 公共模型 |
+| --- | --- |
+| `file_name` | `OcrDocument.fileName` |
+| `pages` | `OcrDocument.pages` |
+| `page_num` | `OcrPage.pageNumber` |
+| `page_size.w/h` | `OcrPageSize.width/height` |
+| `merge_content_from_pre_page` | `OcrPage.mergedFromPreviousPage` |
+| `idx` | `OcrBlock.index` |
+| `type` | `OcrBlock.type` 和 `providerType` |
+| `bbox` | `OcrBoundingBox` |
+| `content` / `format` | `OcrBlock.content/format` |
+| `captions` | `OcrBlock.captionBlockIndexes` |
+| `img_url` | `OcrBlock.imageUrl` |
+| `title_level` | `OcrBlock.titleLevel` |
+
+边界框在公共模型中固定按 `x1, y1, x2, y2` 保存。SoMark 当前文档没有明确声明坐标单位和原点，
+因此适配器将 `OcrCoordinateUnit` 和 `OcrCoordinateOrigin` 保守映射为 `UNKNOWN`，不会根据示例数值猜测。
+未标准化的跨页信息仍保存在块级 metadata，完整供应商响应仍可通过 `response.getMetadata("data")` 读取。
 
 SoMark 正式版当前限制为单文件 200MB、最多 300 页、每账号 QPS 4。远程 `file_url` 必须可以由供应商直接打开或下载。
 

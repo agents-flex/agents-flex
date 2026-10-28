@@ -419,6 +419,7 @@ export default withMermaid(defineConfig({
                         {text: '核心概念', link: '/zh/observability/concepts'},
                         {text: '典型场景', link: '/zh/observability/scenarios'},
                         {text: '快速开始', link: '/zh/observability/getting-started'},
+                        {text: 'Grafana 入门与部署', link: '/zh/observability/grafana'},
                         {text: '按执行上下文路由', link: '/zh/observability/runtime-routing'},
                         {text: '模型观测', link: '/zh/observability/model'},
                         {text: '工具观测', link: '/zh/observability/tool'},

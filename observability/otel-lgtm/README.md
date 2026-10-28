@@ -31,6 +31,13 @@ export DEEPSEEK_ENDPOINT=https://api.deepseek.com
 export MAVEN_OPTS="-Dotel.exporter.otlp.endpoint=http://127.0.0.1:4317"
 ```
 
+需要为 Grafana 生成更丰富的累计值和时间序列时，可以在同一 JVM 中连续运行多组缓存探测：
+
+```bash
+export DEEPSEEK_DEMO_CACHE_PROBE_PAIRS=8
+export DEEPSEEK_DEMO_PAUSE_MILLIS=1500
+```
+
 ## 3. 查看数据
 
 - 首页会打开 `Agents-Flex / Agents-Flex DeepSeek Agent Observability` 面板；

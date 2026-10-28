@@ -187,6 +187,9 @@ Agents-Flex 直接配置。
 - Metric 在一个导出周期后出现；
 - Collector 不持续报告拒绝、认证失败或后端超时。
 
+如果本地还没有 Collector 或 APM，可以直接使用仓库预置的 Docker LGTM 环境和 Grafana Dashboard，
+详见 [Grafana 入门与部署](./grafana)。
+
 ## 复用应用已有 OpenTelemetry
 
 如果 Java Agent、Spring 或应用启动代码已经注册了全局 OpenTelemetry，保持默认配置即可：

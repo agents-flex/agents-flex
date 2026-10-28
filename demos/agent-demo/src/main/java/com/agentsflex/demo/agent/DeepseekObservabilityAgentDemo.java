@@ -95,12 +95,27 @@ public final class DeepseekObservabilityAgentDemo {
                 Observability.getTracer(), Observability.getMeter()));
 
         try {
-            AgentTurn first = runCacheProbe(runner, agent, "first");
-            AgentTurn second = runCacheProbe(runner, agent, "second");
-            System.out.println("Prompt Cache summary: first(read="
-                + first.getCacheReadInputTokens() + ", miss=" + first.getCacheMissInputTokens()
-                + "), second(read=" + second.getCacheReadInputTokens()
-                + ", miss=" + second.getCacheMissInputTokens() + ")");
+            int probePairs = positiveEnvironmentInteger("DEEPSEEK_DEMO_CACHE_PROBE_PAIRS", 1);
+            int pauseMillis = positiveEnvironmentInteger("DEEPSEEK_DEMO_PAUSE_MILLIS", 1);
+            long totalRead = 0L;
+            long totalMiss = 0L;
+            for (int pair = 1; pair <= probePairs; pair++) {
+                AgentTurn first = runCacheProbe(runner, agent, "pair-" + pair + "-first");
+                pause(pauseMillis);
+                AgentTurn second = runCacheProbe(runner, agent, "pair-" + pair + "-second");
+                totalRead += first.getCacheReadInputTokens() + second.getCacheReadInputTokens();
+                totalMiss += first.getCacheMissInputTokens() + second.getCacheMissInputTokens();
+                System.out.println("Prompt Cache pair " + pair + "/" + probePairs
+                    + " summary: first(read=" + first.getCacheReadInputTokens()
+                    + ", miss=" + first.getCacheMissInputTokens()
+                    + "), second(read=" + second.getCacheReadInputTokens()
+                    + ", miss=" + second.getCacheMissInputTokens() + ")");
+                if (pair < probePairs) {
+                    pause(pauseMillis);
+                }
+            }
+            System.out.println("Prompt Cache total: pairs=" + probePairs
+                + ", read=" + totalRead + ", miss=" + totalMiss);
             System.out.println("提示：DeepSeek Prompt Cache 为尽力命中机制，单次演示不保证 read > 0。");
         } finally {
             // 命令行 Demo 立即退出，显式 shutdown 可将 Batch Span 和末尾 Metric 刷到 OTLP。
@@ -148,5 +163,29 @@ public final class DeepseekObservabilityAgentDemo {
     private static String environment(String name, String defaultValue) {
         String value = System.getenv(name);
         return value == null || value.trim().isEmpty() ? defaultValue : value.trim();
+    }
+
+    private static int positiveEnvironmentInteger(String name, int defaultValue) {
+        String value = System.getenv(name);
+        if (value == null || value.trim().isEmpty()) {
+            return defaultValue;
+        }
+        int parsed = Integer.parseInt(value.trim());
+        if (parsed < 1) {
+            throw new IllegalArgumentException(name + " 必须大于 0");
+        }
+        return parsed;
+    }
+
+    private static void pause(int millis) {
+        if (millis <= 1) {
+            return;
+        }
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("DeepSeek Demo 等待期间被中断", interrupted);
+        }
     }
 }

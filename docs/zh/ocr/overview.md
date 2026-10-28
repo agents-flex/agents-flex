@@ -16,6 +16,10 @@ agents-flex-core
     ├── OcrModel
     ├── OcrRequest
     ├── OcrResponse
+    ├── OcrDocument
+    ├── OcrPage
+    ├── OcrBlock
+    ├── OcrBoundingBox
     ├── OcrResource
     └── OcrTaskStatus
 
@@ -80,6 +84,7 @@ request.putOption("language", "ch");
 | `status` | 统一任务状态 |
 | `text` | 纯文本识别结果，供应商提供时可用 |
 | `markdown` | Markdown 识别结果，供应商提供时可用 |
+| `document` | 标准化的页面、内容块、页面尺寸及空间坐标 |
 | `resources` | Markdown、JSON、ZIP 等结果资源 |
 | `errorCode` / `errorMessage` | 标准化错误信息 |
 | metadata（元数据） | 尚未标准化的供应商原始字段 |
@@ -97,6 +102,30 @@ request.putOption("language", "ch");
 | `UNKNOWN` | 无法映射的供应商状态 |
 
 当状态为 `TIMED_OUT` 时，响应会保留 `taskId`，可以继续调用 `getResult()`。
+
+## 结构化文档与空间坐标
+
+供应商返回版面 JSON 时，适配器会将其映射到 `OcrDocument`，同时继续在响应 metadata 中保留原始返回：
+
+```java
+OcrDocument document = response.getDocument();
+if (document != null) {
+    for (OcrPage page : document.getPages()) {
+        OcrPageSize size = page.getSize();
+        for (OcrBlock block : page.getBlocks()) {
+            OcrBoundingBox bbox = block.getBoundingBox();
+            System.out.println(block.getType() + ": " + block.getContent());
+        }
+    }
+}
+```
+
+`OcrPageSize` 同时声明页面宽高和 `OcrCoordinateUnit`；`OcrPage.coordinateOrigin` 声明原点位置，
+`OcrBoundingBox` 固定使用 `x1, y1, x2, y2`。坐标必须结合所属页面的尺寸、单位、原点和可选旋转角度解释。
+
+内容块使用公共的 `OcrBlockType`。无法识别的供应商类型会映射为 `OTHER`，并通过
+`providerType` 保留原始类型名称。页面和块继承 `Metadata`，尚未进入公共协议的供应商字段可以继续保留，
+因此标准化不会替代或丢失原始结果。
 
 ## 供应商对比
 
