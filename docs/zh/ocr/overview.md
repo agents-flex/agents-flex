@@ -1,6 +1,6 @@
 # OCR 文档识别
 
-Agents-Flex OCR 为图片、PDF 等文档解析场景提供统一接口。目前支持百度智能云 PaddleOCR-VL、Gitee AI 模力方舟和 MinerU。公共模型位于 `agents-flex-core`，每个供应商使用独立 Maven 模块。
+Agents-Flex OCR 为图片、PDF 等文档解析场景提供统一接口。目前支持百度智能云 PaddleOCR-VL、Gitee AI 模力方舟、MinerU 和 SoMark。公共模型位于 `agents-flex-core`，每个供应商使用独立 Maven 模块。
 
 ## 适合解决什么问题
 
@@ -22,7 +22,8 @@ agents-flex-core
 agents-flex-ocr
 ├── agents-flex-ocr-baidu
 ├── agents-flex-ocr-gitee
-└── agents-flex-ocr-mineru
+├── agents-flex-ocr-mineru
+└── agents-flex-ocr-somark
 ```
 
 ## 统一调用模型
@@ -104,6 +105,7 @@ request.putOption("language", "ch");
 | 百度智能云 | `agents-flex-ocr-baidu` | Base64 上传 | 支持 | Markdown、解析 JSON 资源 |
 | Gitee AI | `agents-flex-ocr-gitee` | multipart 上传 | 支持，适配器先下载再上传 | 可直接返回 Markdown，结果 URL 短期有效 |
 | MinerU | `agents-flex-ocr-mineru` | 预签名 URL 上传 | 支持 | 常返回完整结果 ZIP |
+| SoMark | `agents-flex-ocr-somark` | multipart 上传 | 支持，由供应商下载 | 内联 Markdown、结构化 JSON、可选 ZIP |
 
 选择供应商时，除了模型效果，还应评估文件大小和页数限制、输入方式、结果链接有效期、并发额度及数据合规要求。
 
@@ -135,4 +137,5 @@ Publisher 返回的 URL。图片可以来自 ZIP、Base64 Data URI 或 HTTP/HTTP
 - [百度智能云](./baidu)
 - [Gitee AI](./gitee)
 - [MinerU](./mineru)
+- [SoMark](./somark)
 - [使用异步任务持久化跟踪](../async-task/getting-started)

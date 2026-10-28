@@ -163,6 +163,10 @@
             <groupId>com.agentsflex</groupId>
             <artifactId>agents-flex-ocr-mineru</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.agentsflex</groupId>
+            <artifactId>agents-flex-ocr-somark</artifactId>
+        </dependency>
         <!--ocr model end-->
 
 

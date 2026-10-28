@@ -110,6 +110,7 @@ const mediaSidebar = [
             {text: '百度智能云', link: '/zh/ocr/baidu'},
             {text: 'Gitee AI', link: '/zh/ocr/gitee'},
             {text: 'MinerU', link: '/zh/ocr/mineru'},
+            {text: 'SoMark', link: '/zh/ocr/somark'},
         ]
     },
     {

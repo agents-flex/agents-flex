@@ -296,6 +296,7 @@ OCR 与普通文档读取解决的问题不同。文档 Reader 适合从带文�
 | 百度智能云 OCR | **整体支持**。`agents-flex-ocr-baidu` 适配 PaddleOCR-VL 文档解析异步 API | <span class="vp-nowrap">❌ <strong>不支持</strong></span>       |
 | Gitee AI OCR | **整体支持**。`agents-flex-ocr-gitee` 适配模力方舟异步文档解析接口 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>       |
 | MinerU 文档解析 | **整体支持**。`agents-flex-ocr-mineru` 支持远程 URL，以及本地文件的预签名上传流程 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>       |
+| SoMark 文档解析 | **整体支持**。`agents-flex-ocr-somark` 支持同步解析及异步提交、查询流程 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>       |
 | 统一任务状态与结果 | **整体支持**。不同供应商的处理中、成功、失败状态统一映射，并返回 Markdown、资源文件或原始结果 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>               |
 | 接入持久化异步任务运行时 | **整体支持**。`OcrAsyncTaskHandler` 可将 OCR 任务交给通用异步任务模块持续跟踪 | <span class="vp-nowrap">❌ <strong>不支持</strong></span>               |
 

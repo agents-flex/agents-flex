@@ -15,5 +15,6 @@
         <module>agents-flex-ocr-baidu</module>
         <module>agents-flex-ocr-gitee</module>
         <module>agents-flex-ocr-mineru</module>
+        <module>agents-flex-ocr-somark</module>
     </modules>
 </project>

@@ -1,6 +1,6 @@
 # OCR 快速开始
 
-本节以 Gitee AI 和本地 PDF 为例完成一次文档识别。三家供应商共享 `OcrModel`、`OcrRequest` 和 `OcrResponse`，但支持的输入形式、选项和结果资源不同，切换实现时仍应阅读对应供应商文档。
+本节以 Gitee AI 和本地 PDF 为例完成一次文档识别。四家供应商共享 `OcrModel`、`OcrRequest` 和 `OcrResponse`，但支持的输入形式、选项和结果资源不同，切换实现时仍应阅读对应供应商文档。
 
 ## 第一步：添加依赖
 
@@ -19,6 +19,7 @@
 | 百度智能云 | `agents-flex-ocr-baidu` |
 | Gitee AI | `agents-flex-ocr-gitee` |
 | MinerU | `agents-flex-ocr-mineru` |
+| SoMark | `agents-flex-ocr-somark` |
 
 ## 第二步：配置模型
 
@@ -50,7 +51,7 @@ import java.io.File;
 OcrRequest request = OcrRequest.ofFile(new File("input/report.pdf"));
 ```
 
-三种内置适配器都支持远程文件：百度和 MinerU 把 URL 交给供应商，Gitee 会先由当前进程下载，再通过
+四种内置适配器都支持远程文件：百度、MinerU 和 SoMark 把 URL 交给供应商，Gitee 会先由当前进程下载，再通过
 multipart 上传：
 
 ```java

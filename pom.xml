@@ -308,6 +308,11 @@
                 <artifactId>agents-flex-ocr-mineru</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>com.agentsflex</groupId>
+                <artifactId>agents-flex-ocr-somark</artifactId>
+                <version>${revision}</version>
+            </dependency>
             <!--ocr model end-->
 
 
