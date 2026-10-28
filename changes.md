@@ -1,5 +1,29 @@
 # Agents-Flex ChangeLog
 
+## v2.3.2 20261028
+- docs(observability): add Grafana tutorial and enhance cache probe demo
+- feat(ocr): add structured document model to OCR response and providers
+- docs(observability): add Grafana tutorial and enhance cache probe demo
+- refactor(observability): align metric names with OTel GenAI conventions
+- feat(cache): add prompt cache token tracking and observability
+- test(somark): add integration test for synchronous OCR recognition
+- feat(ocr): add SoMark document parsing adapter
+- feat(http-client): support collections in multipart form data
+- feat(demo): add DeepSeek + OTel observability demo
+- style(observability): reformat javadoc comments to multi-line format
+- feat(websearch): add Serply search provider serply
+- test: add OpenTelemetryAgentEventListener span/metric tests
+- feat: implement OpenTelemetry AgentEventListener
+- chore: add agents-flex-observability-otel module skeleton
+- fix(agent): window context before model middleware so maxAttachedMessages only trims between turns
+- fix(agent): preserve whitespace-only tokens in streaming deltas
+- feat: add optional you.com search integration
+- feat(doc-extractor): support file:// URLs in extractFromUrl method
+- refactor(chat): extract thinking protocol into pluggable handler
+- fix(websearch): Brave HTTP 错误时抛出 SearchException 而非静默返回空结果
+- fix(websearch): Tavily HTTP 错误时抛出 SearchException 而非静默返回空结果
+
+
 ## v2.3.1 20261015
 - docs(graph): update knowledge graph tools documentation
 - style(graph-tools): format code according to team style guide
