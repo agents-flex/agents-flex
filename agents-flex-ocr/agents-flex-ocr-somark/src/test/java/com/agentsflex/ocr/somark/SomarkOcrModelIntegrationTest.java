@@ -96,4 +96,26 @@ public class SomarkOcrModelIntegrationTest {
         assertTrue("默认输出应包含 Markdown", response.getMarkdown() != null
             && !response.getMarkdown().trim().isEmpty());
     }
+
+    /**
+     * 验证同步接口的文件上传、结果映射和 Markdown 解析全链路。
+     */
+    @Test
+    public void shouldRecognizeImageSynchronouslyThroughRealSomarkApi() {
+        String apiKey = System.getenv("SOMARK_OCR_API_KEY");
+        Assume.assumeTrue("未设置 SOMARK_OCR_API_KEY，跳过真实 SoMark OCR 测试",
+            apiKey != null && !apiKey.trim().isEmpty());
+
+        SomarkOcrConfig config = new SomarkOcrConfig();
+        config.setApiKey(apiKey);
+        OcrResponse response = new SomarkOcrModel(config).recognizeSync(OcrRequest.ofFile(sampleImage));
+
+        assertNotNull("供应商不应返回空响应", response);
+        assertFalse("真实 SoMark 同步 OCR 请求失败: " + response.getErrorCode() + " / "
+            + response.getErrorMessage(), response.isError());
+        assertEquals(OcrTaskStatus.SUCCEEDED, response.getStatus());
+        assertNotNull("成功响应必须保留任务编号", response.getTaskId());
+        assertTrue("默认输出应包含 Markdown", response.getMarkdown() != null
+            && !response.getMarkdown().trim().isEmpty());
+    }
 }
