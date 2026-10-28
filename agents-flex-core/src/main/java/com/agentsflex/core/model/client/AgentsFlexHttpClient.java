@@ -45,6 +45,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Array;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
@@ -321,20 +322,7 @@ public class AgentsFlexHttpClient {
         }
 
         MultipartBody.Builder mbBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
-        payload.forEach((key, value) -> {
-            if (value instanceof File) {
-                File file = (File) value;
-                RequestBody body = RequestBody.create(file, MediaType.parse("application/octet-stream"));
-                mbBuilder.addFormDataPart(key, file.getName(), body);
-            } else if (value instanceof InputStream) {
-                RequestBody body = new InputStreamRequestBody(MediaType.parse("application/octet-stream"), (InputStream) value);
-                mbBuilder.addFormDataPart(key, key, body);
-            } else if (value instanceof byte[]) {
-                mbBuilder.addFormDataPart(key, key, RequestBody.create((byte[]) value));
-            } else {
-                mbBuilder.addFormDataPart(key, String.valueOf(value));
-            }
-        });
+        payload.forEach((key, value) -> addMultipartValue(mbBuilder, key, value));
 
         MultipartBody multipartBody = mbBuilder.build();
         Request request = propagateTraceContext(builder.post(multipartBody)).build();
@@ -343,6 +331,32 @@ public class AgentsFlexHttpClient {
         // 同时记录到 Span 和请求观察状态，供后续 Metrics 使用。
         recordResponseStatus(response, observation);
         return response;
+    }
+
+    /**
+     * Adds one logical multipart value. Collections and non-byte arrays are expanded into
+     * repeated form fields, matching how HTML forms represent array parameters.
+     */
+    private static void addMultipartValue(MultipartBody.Builder builder, String key, Object value) {
+        if (value == null) return;
+        if (value instanceof File) {
+            File file = (File) value;
+            RequestBody body = RequestBody.create(file, MediaType.parse("application/octet-stream"));
+            builder.addFormDataPart(key, file.getName(), body);
+        } else if (value instanceof InputStream) {
+            RequestBody body = new InputStreamRequestBody(
+                MediaType.parse("application/octet-stream"), (InputStream) value);
+            builder.addFormDataPart(key, key, body);
+        } else if (value instanceof byte[]) {
+            builder.addFormDataPart(key, key, RequestBody.create((byte[]) value));
+        } else if (value instanceof Iterable) {
+            for (Object item : (Iterable<?>) value) addMultipartValue(builder, key, item);
+        } else if (value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            for (int i = 0; i < length; i++) addMultipartValue(builder, key, Array.get(value, i));
+        } else {
+            builder.addFormDataPart(key, String.valueOf(value));
+        }
     }
 
     // ===== HTTP 状态记录 =====

@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import okio.Buffer;
 import okio.BufferedSource;
 import okio.Okio;
 import org.junit.Test;
@@ -18,8 +19,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPOutputStream;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -128,6 +133,37 @@ public class AgentsFlexHttpClientTest {
             MediaType.parse("application/octet-stream"), stream);
 
         assertEquals(-1, body.contentLength());
+    }
+
+    @Test
+    public void shouldExpandMultipartCollectionIntoRepeatedFields() throws IOException {
+        AtomicReference<String> requestBody = new AtomicReference<>();
+        OkHttpClient okHttpClient = new OkHttpClient.Builder().addInterceptor(chain -> {
+            Buffer buffer = new Buffer();
+            chain.request().body().writeTo(buffer);
+            requestBody.set(buffer.readUtf8());
+            return response(chain.request(), 200, "ok");
+        }).build();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("output_formats", Arrays.asList("markdown", "json"));
+
+        String response = new AgentsFlexHttpClient(okHttpClient).multipartString(
+            "https://example.test/multipart", Collections.emptyMap(), payload);
+
+        assertEquals("ok", response);
+        assertEquals(2, occurrences(requestBody.get(), "name=\"output_formats\""));
+        assertEquals(1, occurrences(requestBody.get(), "\r\n\r\nmarkdown\r\n"));
+        assertEquals(1, occurrences(requestBody.get(), "\r\n\r\njson\r\n"));
+    }
+
+    private static int occurrences(String source, String value) {
+        int count = 0;
+        int offset = 0;
+        while ((offset = source.indexOf(value, offset)) >= 0) {
+            count++;
+            offset += value.length();
+        }
+        return count;
     }
 
     private static AgentsFlexHttpClient clientReturning(int statusCode, String body) {
