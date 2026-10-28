@@ -17,11 +17,21 @@ package com.agentsflex.ocr.baidu;
 
 import com.agentsflex.core.model.client.OkHttpClientUtil;
 import com.agentsflex.core.model.ocr.BaseOcrModel;
+import com.agentsflex.core.model.ocr.OcrBlock;
+import com.agentsflex.core.model.ocr.OcrBlockType;
+import com.agentsflex.core.model.ocr.OcrBoundingBox;
+import com.agentsflex.core.model.ocr.OcrCoordinateOrigin;
+import com.agentsflex.core.model.ocr.OcrCoordinateUnit;
+import com.agentsflex.core.model.ocr.OcrDocument;
+import com.agentsflex.core.model.ocr.OcrPage;
+import com.agentsflex.core.model.ocr.OcrPageSize;
 import com.agentsflex.core.model.ocr.OcrRequest;
+import com.agentsflex.core.model.ocr.OcrResource;
 import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
@@ -99,8 +109,131 @@ public class BaiduOcrModel extends BaseOcrModel<BaiduOcrConfig> {
     public OcrResponse getResult(String taskId) {
         if (StringUtil.noText(taskId)) return OcrResponse.error("taskId must not be empty");
         if (StringUtil.noText(config.getApiKey())) return OcrResponse.error("Baidu access token must not be empty");
-        return resolveResultMarkdown(
-            execute(config.getQueryUrl(), new FormBody.Builder().add("task_id", taskId).build(), false));
+        OcrResponse response = execute(
+            config.getQueryUrl(), new FormBody.Builder().add("task_id", taskId).build(), false);
+        resolveStructuredDocument(response);
+        return resolveResultMarkdown(response);
+    }
+
+    private void resolveStructuredDocument(OcrResponse response) {
+        if (response == null || response.isError() || response.getStatus() != OcrTaskStatus.SUCCEEDED) return;
+        OcrResource json = findResource(response, "json");
+        if (json == null) return;
+        try {
+            Request request = new Request.Builder().url(json.getUrl()).get().build();
+            try (Response resourceResponse = httpClient.newCall(request).execute();
+                 ResponseBody body = resourceResponse.body()) {
+                if (resourceResponse.isSuccessful() && body != null)
+                    response.setDocument(parseStructuredDocument(body.string()));
+            }
+        } catch (Exception error) {
+            response.putMetadata("structured_document_error", error.getMessage());
+        }
+    }
+
+    static OcrDocument parseStructuredDocument(String json) {
+        JSONObject root = JSON.parseObject(json);
+        OcrDocument document = new OcrDocument();
+        document.setFileName(root.getString("file_name"));
+        JSONArray pages = root.getJSONArray("pages");
+        if (pages == null) return document;
+        for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
+            JSONObject source = pages.getJSONObject(pageIndex);
+            if (source == null) continue;
+            OcrPage page = new OcrPage();
+            page.setPageNumber(source.containsKey("page_num") ? source.getIntValue("page_num") : pageIndex);
+            page.setRotationDegrees(source.getInteger("page_angle"));
+            page.setCoordinateOrigin(OcrCoordinateOrigin.TOP_LEFT);
+            JSONObject meta = source.getJSONObject("meta");
+            if (meta != null && meta.containsKey("page_width") && meta.containsKey("page_height")) {
+                page.setSize(new OcrPageSize(meta.getDoubleValue("page_width"),
+                    meta.getDoubleValue("page_height"), OcrCoordinateUnit.UNKNOWN));
+            }
+            JSONArray layouts = source.getJSONArray("layouts");
+            if (layouts != null) for (int i = 0; i < layouts.size(); i++) {
+                JSONObject layout = layouts.getJSONObject(i);
+                if (layout != null) page.addBlock(parseLayout(layout, source, i));
+            }
+            document.addPage(page);
+        }
+        return document;
+    }
+
+    private static OcrBlock parseLayout(JSONObject source, JSONObject page, int index) {
+        OcrBlock block = new OcrBlock();
+        block.setIndex(index);
+        String providerType = source.getString("type");
+        block.setProviderType(providerType);
+        block.setType(mapBlockType(providerType));
+        String tableHtml = source.getString("table_html");
+        block.setContent(StringUtil.hasText(tableHtml) ? tableHtml : source.getString("text"));
+        block.setFormat(StringUtil.hasText(tableHtml) ? "html" : "text");
+        if ("doc_title".equalsIgnoreCase(providerType)) block.setTitleLevel(1);
+        block.setBoundingBox(polygonBounds(source.getJSONArray("polygon"), source.getJSONArray("position")));
+        block.setImageUrl(findImageUrl(page.getJSONArray("images"), source.getString("layout_id")));
+        copyMetadata(source, block, "layout_id");
+        copyMetadata(source, block, "score");
+        copyMetadata(source, block, "polygon");
+        copyMetadata(source, block, "position");
+        return block;
+    }
+
+    private static OcrBoundingBox polygonBounds(JSONArray polygon, JSONArray position) {
+        if (polygon != null && !polygon.isEmpty()) {
+            double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
+            double maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+            for (int i = 0; i < polygon.size(); i++) {
+                JSONArray point = polygon.getJSONArray(i);
+                if (point == null || point.size() < 2) continue;
+                double x = point.getDoubleValue(0), y = point.getDoubleValue(1);
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            }
+            if (minX != Double.MAX_VALUE) return new OcrBoundingBox(minX, minY, maxX, maxY);
+        }
+        if (position != null && position.size() >= 4) {
+            double x = position.getDoubleValue(0), y = position.getDoubleValue(1);
+            return new OcrBoundingBox(x, y, x + position.getDoubleValue(2), y + position.getDoubleValue(3));
+        }
+        return null;
+    }
+
+    private static String findImageUrl(JSONArray images, String layoutId) {
+        if (images == null || layoutId == null) return null;
+        for (int i = 0; i < images.size(); i++) {
+            JSONObject image = images.getJSONObject(i);
+            if (image != null && layoutId.equals(image.getString("layout_id"))) return image.getString("data_url");
+        }
+        return null;
+    }
+
+    private static OcrBlockType mapBlockType(String type) {
+        if (type == null) return OcrBlockType.OTHER;
+        String value = type.toLowerCase();
+        if ("doc_title".equals(value) || "paragraph_title".equals(value)) return OcrBlockType.TITLE;
+        if ("image".equals(value) || "chart".equals(value)) return OcrBlockType.IMAGE;
+        if ("table".equals(value)) return OcrBlockType.TABLE;
+        if ("header".equals(value)) return OcrBlockType.HEADER;
+        if ("footer".equals(value)) return OcrBlockType.FOOTER;
+        if ("text".equals(value) || "abstract".equals(value) || "aside_text".equals(value)
+            || "reference_content".equals(value) || "figure_title".equals(value) || "number".equals(value))
+            return OcrBlockType.TEXT;
+        return OcrBlockType.OTHER;
+    }
+
+    private static OcrResource findResource(OcrResponse response, String type) {
+        for (OcrResource resource : response.getResources()) {
+            if (resource != null && type.equalsIgnoreCase(resource.getType()) && StringUtil.hasText(resource.getUrl()))
+                return resource;
+        }
+        return null;
+    }
+
+    private static void copyMetadata(JSONObject source, OcrBlock target, String key) {
+        Object value = source.get(key);
+        if (value != null) target.putMetadata(key, value);
     }
 
     /**

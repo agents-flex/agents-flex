@@ -16,6 +16,12 @@
 package com.agentsflex.ocr.somark;
 
 import com.agentsflex.core.model.client.AgentsFlexHttpClient;
+import com.agentsflex.core.model.ocr.OcrBlock;
+import com.agentsflex.core.model.ocr.OcrBlockType;
+import com.agentsflex.core.model.ocr.OcrCoordinateOrigin;
+import com.agentsflex.core.model.ocr.OcrCoordinateUnit;
+import com.agentsflex.core.model.ocr.OcrDocument;
+import com.agentsflex.core.model.ocr.OcrPage;
 import com.agentsflex.core.model.ocr.OcrRequest;
 import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
@@ -117,6 +123,54 @@ public class SomarkOcrModelTest {
     }
 
     /**
+     * 验证 SoMark JSON 页面、块和坐标信息完整映射到公共结构化文档。
+     */
+    @Test
+    public void shouldMapStructuredDocumentLayout() {
+        String json = "{\"code\":0,\"data\":{\"task_id\":\"layout-1\",\"status\":\"SUCCESS\"," +
+            "\"result\":{\"file_name\":\"document.pdf\",\"outputs\":{\"json\":{\"pages\":[{" +
+            "\"page_num\":0,\"page_size\":{\"h\":1684,\"w\":1190}," +
+            "\"merge_content_from_pre_page\":false,\"blocks\":[{" +
+            "\"idx\":0,\"type\":\"title\",\"bbox\":[72,50,540,80]," +
+            "\"content\":\"第一章 引言\",\"format\":\"text\",\"captions\":[1]," +
+            "\"img_url\":\"\",\"title_level\":1},{" +
+            "\"idx\":1,\"type\":\"sidebar\",\"bbox\":[72,100,540,200]," +
+            "\"content\":\"本文档介绍了...\",\"format\":\"text\",\"captions\":[]," +
+            "\"img_url\":\"https://cdn.example/image.png\"," +
+            "\"text_cross_page\":{\"page_num\":0,\"block_idx\":0}}]}]}}}}}";
+
+        OcrResponse response = SomarkOcrModel.parseResponse(json, false);
+
+        OcrDocument document = response.getDocument();
+        assertNotNull(document);
+        assertEquals("document.pdf", document.getFileName());
+        assertEquals(1, document.getPages().size());
+        OcrPage page = document.getPages().get(0);
+        assertEquals(0, page.getPageNumber());
+        assertEquals(1190D, page.getSize().getWidth(), 0D);
+        assertEquals(1684D, page.getSize().getHeight(), 0D);
+        assertEquals(OcrCoordinateUnit.UNKNOWN, page.getSize().getUnit());
+        assertEquals(OcrCoordinateOrigin.UNKNOWN, page.getCoordinateOrigin());
+        assertFalse(page.isMergedFromPreviousPage());
+        assertEquals(2, page.getBlocks().size());
+
+        OcrBlock title = page.getBlocks().get(0);
+        assertEquals(OcrBlockType.TITLE, title.getType());
+        assertEquals("title", title.getProviderType());
+        assertEquals("第一章 引言", title.getContent());
+        assertEquals(Integer.valueOf(1), title.getTitleLevel());
+        assertEquals(Collections.singletonList(1), title.getCaptionBlockIndexes());
+        assertEquals(72D, title.getBoundingBox().getX1(), 0D);
+        assertEquals(80D, title.getBoundingBox().getY2(), 0D);
+
+        OcrBlock unknown = page.getBlocks().get(1);
+        assertEquals(OcrBlockType.OTHER, unknown.getType());
+        assertEquals("sidebar", unknown.getProviderType());
+        assertEquals("https://cdn.example/image.png", unknown.getImageUrl());
+        assertNotNull(unknown.getMetadata("text_cross_page"));
+    }
+
+    /**
      * 验证查询使用 POST multipart，并物化成功结果中的内联 Markdown 图片。
      */
     @Test
@@ -181,6 +235,8 @@ public class SomarkOcrModelTest {
 
         assertEquals(OcrTaskStatus.SUCCEEDED, response.getStatus());
         assertNull(response.getMarkdown());
+        assertNotNull(response.getDocument());
+        assertTrue(response.getDocument().getPages().isEmpty());
         JSONObject data = ((JSONObject) response.getMetadata("data"));
         assertNotNull(data.getJSONObject("result").getJSONObject("outputs").getJSONObject("json"));
     }

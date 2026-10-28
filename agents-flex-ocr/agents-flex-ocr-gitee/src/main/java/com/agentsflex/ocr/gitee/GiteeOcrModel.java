@@ -17,6 +17,11 @@ package com.agentsflex.ocr.gitee;
 
 import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.ocr.BaseOcrModel;
+import com.agentsflex.core.model.ocr.OcrBlock;
+import com.agentsflex.core.model.ocr.OcrBlockType;
+import com.agentsflex.core.model.ocr.OcrCoordinateOrigin;
+import com.agentsflex.core.model.ocr.OcrDocument;
+import com.agentsflex.core.model.ocr.OcrPage;
 import com.agentsflex.core.model.ocr.OcrRequest;
 import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
@@ -187,6 +192,7 @@ public class GiteeOcrModel extends BaseOcrModel<GiteeOcrConfig> {
             }
             if (markdown.length() > 0) response.setMarkdown(markdown.toString());
         }
+        if (segments != null && !segments.isEmpty()) response.setDocument(parseSegments(segments));
         addResource(response, "markdown", firstText(output, "markdown_url", "md_url"));
         addResource(response, "json", firstText(output, "json_url", "content_list_url"));
         addResource(response, "archive", firstText(output, "full_zip_url", "zip_url"));
@@ -197,6 +203,29 @@ public class GiteeOcrModel extends BaseOcrModel<GiteeOcrConfig> {
             if (file != null)
                 addResource(response, firstText(file, "type", "format"), firstText(file, "url", "file_url"));
         }
+    }
+
+    private static OcrDocument parseSegments(JSONArray segments) {
+        OcrDocument document = new OcrDocument();
+        OcrPage page = new OcrPage();
+        page.setPageNumber(0);
+        page.setCoordinateOrigin(OcrCoordinateOrigin.UNKNOWN);
+        page.putMetadata("synthetic_page", true);
+        page.putMetadata("synthetic_page_reason",
+            "Gitee segments do not expose page boundaries, page size, or bounding boxes");
+        for (int i = 0; i < segments.size(); i++) {
+            JSONObject segment = segments.getJSONObject(i);
+            if (segment == null) continue;
+            OcrBlock block = new OcrBlock();
+            block.setIndex(segment.containsKey("index") ? segment.getIntValue("index") : i);
+            block.setType(OcrBlockType.TEXT);
+            block.setProviderType("segment");
+            block.setContent(segment.getString("content"));
+            block.setFormat("markdown");
+            page.addBlock(block);
+        }
+        document.addPage(page);
+        return document;
     }
 
     /**

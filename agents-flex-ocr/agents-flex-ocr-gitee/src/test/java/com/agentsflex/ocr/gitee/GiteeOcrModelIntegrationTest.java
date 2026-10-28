@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -162,6 +163,11 @@ public class GiteeOcrModelIntegrationTest {
         assertEquals("真实 PDF OCR 任务未成功完成", OcrTaskStatus.SUCCEEDED, response.getStatus());
         assertTrue("PDF OCR 应直接返回已物化的 Markdown", hasText(response.getMarkdown()));
         assertFalse("Markdown 不应保留 Base64 图片", response.getMarkdown().contains("data:image/"));
+        assertNotNull("Gitee segments 应映射为结构化文档", response.getDocument());
+        assertFalse("Gitee segments 应映射为 blocks", response.getDocument().getPages().get(0).getBlocks().isEmpty());
+        assertNull("真实 Gitee segments 未提供页面尺寸，不应猜测", response.getDocument().getPages().get(0).getSize());
+        assertNull("真实 Gitee segments 未提供 bbox，不应猜测",
+            response.getDocument().getPages().get(0).getBlocks().get(0).getBoundingBox());
 
         Files.write(PDF_OUTPUT.resolve("result.md"), response.getMarkdown().getBytes(StandardCharsets.UTF_8));
         String summary = "taskId=" + response.getTaskId() + System.lineSeparator()

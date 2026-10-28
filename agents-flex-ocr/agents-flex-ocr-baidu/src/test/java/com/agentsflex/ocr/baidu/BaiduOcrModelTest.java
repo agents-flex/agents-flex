@@ -15,6 +15,8 @@
  */
 package com.agentsflex.ocr.baidu;
 
+import com.agentsflex.core.model.ocr.OcrBlockType;
+import com.agentsflex.core.model.ocr.OcrDocument;
 import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
 import okhttp3.OkHttpClient;
@@ -96,5 +98,20 @@ public class BaiduOcrModelTest {
             "{\"error_code\":282003,\"error_msg\":\"missing parameters\",\"result\":null}", true);
         assertTrue(response.isError());
         assertEquals("282003", response.getErrorCode());
+    }
+
+    @Test
+    public void shouldParseStructuredPagesFromRealResultShape() {
+        OcrDocument document = BaiduOcrModel.parseStructuredDocument(
+            "{\"file_name\":\"sample.pdf\",\"pages\":[{\"page_num\":0,\"page_angle\":0," +
+                "\"meta\":{\"page_width\":612,\"page_height\":792},\"layouts\":[" +
+                "{\"layout_id\":\"l1\",\"type\":\"doc_title\",\"text\":\"Title\"," +
+                "\"position\":[133,113,348,33],\"polygon\":[[133,113],[481,113],[481,146],[133,146]],\"score\":0.9}]," +
+                "\"images\":[]}]}");
+
+        assertEquals(1, document.getPages().size());
+        assertEquals(612D, document.getPages().get(0).getSize().getWidth(), 0D);
+        assertEquals(OcrBlockType.TITLE, document.getPages().get(0).getBlocks().get(0).getType());
+        assertEquals(481D, document.getPages().get(0).getBlocks().get(0).getBoundingBox().getX2(), 0D);
     }
 }

@@ -15,6 +15,10 @@
  */
 package com.agentsflex.ocr.somark;
 
+import com.agentsflex.core.model.ocr.OcrBlock;
+import com.agentsflex.core.model.ocr.OcrCoordinateOrigin;
+import com.agentsflex.core.model.ocr.OcrDocument;
+import com.agentsflex.core.model.ocr.OcrPage;
 import com.agentsflex.core.model.ocr.OcrRequest;
 import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
@@ -95,6 +99,7 @@ public class SomarkOcrModelIntegrationTest {
         assertNotNull("成功响应必须保留任务编号", response.getTaskId());
         assertTrue("默认输出应包含 Markdown", response.getMarkdown() != null
             && !response.getMarkdown().trim().isEmpty());
+        assertStructuredDocument(response);
     }
 
     /**
@@ -117,5 +122,26 @@ public class SomarkOcrModelIntegrationTest {
         assertNotNull("成功响应必须保留任务编号", response.getTaskId());
         assertTrue("默认输出应包含 Markdown", response.getMarkdown() != null
             && !response.getMarkdown().trim().isEmpty());
+        assertStructuredDocument(response);
+    }
+
+    private static void assertStructuredDocument(OcrResponse response) {
+        OcrDocument document = response.getDocument();
+        assertNotNull("成功响应应包含结构化文档", document);
+        assertFalse("结构化文档应至少包含一页", document.getPages().isEmpty());
+        OcrPage page = document.getPages().get(0);
+        assertNotNull("页面应包含尺寸", page.getSize());
+        assertTrue("页面宽度应大于零", page.getSize().getWidth() > 0);
+        assertTrue("页面高度应大于零", page.getSize().getHeight() > 0);
+        assertEquals(OcrCoordinateOrigin.UNKNOWN, page.getCoordinateOrigin());
+        assertFalse("页面应至少包含一个内容块", page.getBlocks().isEmpty());
+        boolean hasBoundingBox = false;
+        for (OcrBlock block : page.getBlocks()) {
+            if (block.getBoundingBox() != null) {
+                hasBoundingBox = true;
+                break;
+            }
+        }
+        assertTrue("至少一个内容块应包含 bbox", hasBoundingBox);
     }
 }

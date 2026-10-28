@@ -129,12 +129,17 @@ if (document != null) {
 
 ## 供应商对比
 
-| 供应商 | Maven 模块 | 本地文件 | 远程 URL | 结果特点 |
-| --- | --- | --- | --- | --- |
-| 百度智能云 | `agents-flex-ocr-baidu` | Base64 上传 | 支持 | Markdown、解析 JSON 资源 |
-| Gitee AI | `agents-flex-ocr-gitee` | multipart 上传 | 支持，适配器先下载再上传 | 可直接返回 Markdown，结果 URL 短期有效 |
-| MinerU | `agents-flex-ocr-mineru` | 预签名 URL 上传 | 支持 | 常返回完整结果 ZIP |
-| SoMark | `agents-flex-ocr-somark` | multipart 上传 | 支持，由供应商下载 | 内联 Markdown、结构化 JSON、可选 ZIP |
+| 供应商 | Maven 模块 | 本地文件 | 远程 URL | `page.size` | `blocks` | `bbox` |
+| --- | --- | --- | --- | --- | --- | --- |
+| 百度智能云 | `agents-flex-ocr-baidu` | Base64 上传 | 支持 | 支持 | 支持 | 支持 |
+| Gitee AI | `agents-flex-ocr-gitee` | multipart 上传 | 支持，适配器先下载再上传 | 不支持 | 由返回的 `segments` 合成 | 不支持 |
+| MinerU | `agents-flex-ocr-mineru` | 预签名 URL 上传 | 支持 | 支持 | 支持 | 支持 |
+| SoMark | `agents-flex-ocr-somark` | multipart 上传 | 支持，由供应商下载 | 支持 | 支持 | 支持 |
+
+以上能力已使用各供应商的真实服务响应验证。百度从 `parse_result_url` 指向的解析 JSON 中读取页面尺寸、
+版面块和多边形坐标；MinerU 从结果 ZIP 的 `layout.json` 中读取页面尺寸、段落块和边界框；SoMark 直接从
+结构化页面结果中读取。Gitee 当前真实响应只包含按顺序排列的 `segments`，没有页边界、页面尺寸或空间
+坐标。
 
 选择供应商时，除了模型效果，还应评估文件大小和页数限制、输入方式、结果链接有效期、并发额度及数据合规要求。
 

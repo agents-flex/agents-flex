@@ -17,14 +17,24 @@ package com.agentsflex.ocr.somark;
 
 import com.agentsflex.core.model.client.AgentsFlexHttpClient;
 import com.agentsflex.core.model.ocr.BaseOcrModel;
+import com.agentsflex.core.model.ocr.OcrBlock;
+import com.agentsflex.core.model.ocr.OcrBlockType;
+import com.agentsflex.core.model.ocr.OcrBoundingBox;
+import com.agentsflex.core.model.ocr.OcrCoordinateOrigin;
+import com.agentsflex.core.model.ocr.OcrCoordinateUnit;
+import com.agentsflex.core.model.ocr.OcrDocument;
+import com.agentsflex.core.model.ocr.OcrPage;
+import com.agentsflex.core.model.ocr.OcrPageSize;
 import com.agentsflex.core.model.ocr.OcrRequest;
 import com.agentsflex.core.model.ocr.OcrResource;
 import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
 import com.agentsflex.core.util.StringUtil;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -184,7 +194,121 @@ public class SomarkOcrModel extends BaseOcrModel<SomarkOcrConfig> {
         response.setMarkdown(outputs.getString("markdown"));
         addResource(response, "archive", outputs.getString("zip"));
         Object jsonOutput = outputs.get("json");
-        if (jsonOutput instanceof String) addResource(response, "json", (String) jsonOutput);
+        JSONObject structuredOutput = parseStructuredOutput(jsonOutput);
+        OcrDocument document = parseDocument(result.getString("file_name"), structuredOutput);
+        if (document != null) response.setDocument(document);
+        if (jsonOutput instanceof String && isRemoteUrl((String) jsonOutput)) {
+            addResource(response, "json", (String) jsonOutput);
+        }
+    }
+
+    private static OcrDocument parseDocument(String fileName, JSONObject structuredOutput) {
+        if (structuredOutput == null) return null;
+        OcrDocument document = new OcrDocument();
+        document.setFileName(fileName);
+        JSONArray pages = structuredOutput == null ? null : structuredOutput.getJSONArray("pages");
+        if (pages == null) return document;
+        for (int i = 0; i < pages.size(); i++) {
+            JSONObject source = pages.getJSONObject(i);
+            if (source != null) document.addPage(parsePage(source));
+        }
+        return document;
+    }
+
+    private static OcrPage parsePage(JSONObject source) {
+        OcrPage page = new OcrPage();
+        page.setPageNumber(source.getIntValue("page_num"));
+        page.setCoordinateOrigin(OcrCoordinateOrigin.UNKNOWN);
+        page.setMergedFromPreviousPage(source.getBooleanValue("merge_content_from_pre_page"));
+        JSONObject pageSize = source.getJSONObject("page_size");
+        if (pageSize != null) {
+            page.setSize(new OcrPageSize(
+                pageSize.getDoubleValue("w"), pageSize.getDoubleValue("h"), OcrCoordinateUnit.UNKNOWN));
+        }
+        JSONArray blocks = source.getJSONArray("blocks");
+        if (blocks != null) for (int i = 0; i < blocks.size(); i++) {
+            JSONObject block = blocks.getJSONObject(i);
+            if (block != null) page.addBlock(parseBlock(block));
+        }
+        return page;
+    }
+
+    private static OcrBlock parseBlock(JSONObject source) {
+        OcrBlock block = new OcrBlock();
+        block.setIndex(source.getIntValue("idx"));
+        String providerType = source.getString("type");
+        block.setProviderType(providerType);
+        block.setType(mapBlockType(providerType));
+        block.setContent(source.getString("content"));
+        block.setFormat(source.getString("format"));
+        block.setImageUrl(source.getString("img_url"));
+        block.setTitleLevel(source.getInteger("title_level"));
+
+        JSONArray bbox = source.getJSONArray("bbox");
+        if (bbox != null && bbox.size() >= 4) {
+            block.setBoundingBox(new OcrBoundingBox(
+                number(bbox, 0), number(bbox, 1), number(bbox, 2), number(bbox, 3)));
+        }
+        JSONArray captions = source.getJSONArray("captions");
+        if (captions != null && !captions.isEmpty()) {
+            ArrayList<Integer> indexes = new ArrayList<>(captions.size());
+            for (int i = 0; i < captions.size(); i++) {
+                Integer index = captions.getInteger(i);
+                if (index != null) indexes.add(index);
+            }
+            block.setCaptionBlockIndexes(indexes);
+        }
+        // 尚未进入公共模型的跨页细节保留在块级元数据中。
+        copyMetadata(source, block, "text_cross_page");
+        copyMetadata(source, block, "table_cross_page");
+        return block;
+    }
+
+    private static JSONObject parseStructuredOutput(Object value) {
+        if (value instanceof JSONObject) return (JSONObject) value;
+        if (value == null) return null;
+        if (value instanceof Map) return JSON.parseObject(JSON.toJSONString(value));
+        if (!(value instanceof String)) return null;
+        String text = ((String) value).trim();
+        if (!text.startsWith("{")) return null;
+        try {
+            return JSON.parseObject(text);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static OcrBlockType mapBlockType(String type) {
+        if (type == null) return OcrBlockType.OTHER;
+        String value = type.toLowerCase();
+        if ("title".equals(value)) return OcrBlockType.TITLE;
+        if ("text".equals(value) || "paragraph".equals(value)) return OcrBlockType.TEXT;
+        if ("image".equals(value) || "figure".equals(value)) return OcrBlockType.IMAGE;
+        if ("table".equals(value)) return OcrBlockType.TABLE;
+        if ("formula".equals(value) || "equation".equals(value)) return OcrBlockType.FORMULA;
+        if ("code".equals(value) || "code_block".equals(value)) return OcrBlockType.CODE;
+        if ("header".equals(value)) return OcrBlockType.HEADER;
+        if ("footer".equals(value)) return OcrBlockType.FOOTER;
+        return OcrBlockType.OTHER;
+    }
+
+    private static double number(JSONArray values, int index) {
+        Object value = values.get(index);
+        if (value instanceof Number) return ((Number) value).doubleValue();
+        try {
+            return value == null ? 0D : Double.parseDouble(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return 0D;
+        }
+    }
+
+    private static void copyMetadata(JSONObject source, OcrBlock target, String key) {
+        Object value = source.get(key);
+        if (value != null) target.putMetadata(key, value);
+    }
+
+    private static boolean isRemoteUrl(String value) {
+        return value != null && (value.startsWith("https://") || value.startsWith("http://"));
     }
 
     private OcrResponse resolveMarkdownWhenAvailable(OcrResponse response) {

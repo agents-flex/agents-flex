@@ -46,6 +46,10 @@ public class OcrResponse extends Metadata {
      */
     private String markdown;
     /**
+     * 供应商返回并已标准化的页面、内容块和空间位置信息。
+     */
+    private OcrDocument document;
+    /**
      * 供应商返回的可下载结果资源。
      */
     private List<OcrResource> resources;
@@ -167,6 +171,20 @@ public class OcrResponse extends Metadata {
      */
     public void setMarkdown(String markdown) {
         this.markdown = markdown;
+    }
+
+    /**
+     * 返回结构化文档结果；供应商未提供版面信息时可能为空。
+     */
+    public OcrDocument getDocument() {
+        return document;
+    }
+
+    /**
+     * 设置结构化文档结果。
+     */
+    public void setDocument(OcrDocument document) {
+        this.document = document;
     }
 
     /**

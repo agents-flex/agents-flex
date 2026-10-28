@@ -16,6 +16,8 @@
 package com.agentsflex.ocr.mineru;
 
 import com.agentsflex.core.model.client.AgentsFlexHttpClient;
+import com.agentsflex.core.model.ocr.OcrBlockType;
+import com.agentsflex.core.model.ocr.OcrDocument;
 import com.agentsflex.core.model.ocr.OcrRequest;
 import com.agentsflex.core.model.ocr.OcrResponse;
 import com.agentsflex.core.model.ocr.OcrTaskStatus;
@@ -211,6 +213,20 @@ public class MineruOcrModelTest {
         OcrResponse response = model.getResult("m3");
 
         assertEquals("![](https://cdn.example/image.png)", response.getMarkdown());
+    }
+
+    @Test
+    public void shouldParseStructuredLayoutFromRealArchiveShape() {
+        OcrDocument document = MineruOcrModel.parseLayoutDocument(
+            "{\"pdf_info\":[{\"page_idx\":0,\"page_size\":[612,792],\"para_blocks\":[" +
+                "{\"score\":0.9693,\"bbox\":[133,111,480,146],\"index\":2,\"type\":\"title\",\"level\":1," +
+                "\"lines\":[{\"bbox\":[135,114,480,128],\"spans\":[{\"type\":\"text\",\"content\":\"Title\"}]}]}]}]}");
+
+        assertEquals(1, document.getPages().size());
+        assertEquals(792D, document.getPages().get(0).getSize().getHeight(), 0D);
+        assertEquals(OcrBlockType.TITLE, document.getPages().get(0).getBlocks().get(0).getType());
+        assertEquals("Title", document.getPages().get(0).getBlocks().get(0).getContent());
+        assertEquals(480D, document.getPages().get(0).getBlocks().get(0).getBoundingBox().getX2(), 0D);
     }
 
     private static MineruOcrConfig tokenConfig() {

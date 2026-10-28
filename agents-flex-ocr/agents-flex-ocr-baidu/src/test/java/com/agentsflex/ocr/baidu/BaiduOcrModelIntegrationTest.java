@@ -167,6 +167,12 @@ public class BaiduOcrModelIntegrationTest {
         assertEquals("真实 PDF OCR 任务未成功完成", OcrTaskStatus.SUCCEEDED, response.getStatus());
         assertTrue("PDF OCR 应直接返回已物化的 Markdown", hasText(response.getMarkdown()));
         assertFalse("Markdown 不应保留 Base64 图片", response.getMarkdown().contains("data:image/"));
+        assertNotNull("百度真实结果应包含结构化文档", response.getDocument());
+        assertFalse("百度真实结果应包含页面", response.getDocument().getPages().isEmpty());
+        assertNotNull("百度页面应包含尺寸", response.getDocument().getPages().get(0).getSize());
+        assertFalse("百度页面应包含 blocks", response.getDocument().getPages().get(0).getBlocks().isEmpty());
+        assertNotNull("百度 block 应包含 bbox",
+            response.getDocument().getPages().get(0).getBlocks().get(0).getBoundingBox());
 
         Files.write(PDF_OUTPUT.resolve("result.md"), response.getMarkdown().getBytes(StandardCharsets.UTF_8));
         String summary = "taskId=" + response.getTaskId() + System.lineSeparator()

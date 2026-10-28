@@ -104,6 +104,12 @@ public class GiteeOcrModelTest {
 
         assertEquals(OcrTaskStatus.SUCCEEDED, response.getStatus());
         assertEquals("# AgentsFlex\nOCR result", response.getMarkdown());
+        assertNotNull(response.getDocument());
+        assertEquals(1, response.getDocument().getPages().size());
+        assertEquals(2, response.getDocument().getPages().get(0).getBlocks().size());
+        assertNull(response.getDocument().getPages().get(0).getSize());
+        assertNull(response.getDocument().getPages().get(0).getBlocks().get(0).getBoundingBox());
+        assertEquals(Boolean.TRUE, response.getDocument().getPages().get(0).getMetadata("synthetic_page"));
     }
 
     /** 验证 getResult 会物化 Markdown，并应用 model 上配置的图片处理器。 */

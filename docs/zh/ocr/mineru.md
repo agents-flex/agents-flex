@@ -119,6 +119,26 @@ MinerU 完成后通常返回 `full_zip_url`，其中包含 `full.md`、JSON 和�
 类型 `OcrResource`；`getResult()` 和 `getBatchResult()` 会自动下载 ZIP、提取 Markdown 并写入
 `response.markdown`。下载 URL 可能过期，原始资源仍应及时转存。
 
+适配器会同时读取 ZIP 中的 `layout.json`，将 `pdf_info` 映射到 `response.document`：
+
+- `page_idx` 映射为页码；
+- `page_size: [width, height]` 映射为 `OcrPageSize`；
+- `para_blocks` 映射为 `OcrBlock`；
+- `bbox: [x1, y1, x2, y2]` 映射为 `OcrBoundingBox`；
+- block 的 `type`、`level`、`score`，以及 span 的 `content`、`html`、`image_path` 会尽可能保留。
+
+```java
+OcrPage firstPage = response.getDocument().getPages().get(0);
+System.out.println(firstPage.getSize().getWidth());
+for (OcrBlock block : firstPage.getBlocks()) {
+    System.out.println(block.getProviderType() + " " + block.getBoundingBox());
+}
+```
+
+该结构已经通过真实 MinerU PDF 解析 ZIP 验证：页面尺寸、段落块和边界框均可获得。坐标原点设置为
+`TOP_LEFT`；由于结果文件没有明确声明物理单位，`coordinateUnit` 保守设置为 `UNKNOWN`。为避免处理
+异常压缩包，结构解析会限制 ZIP entry 数量和 `layout.json` 大小。
+
 ## 常见问题
 
 ### 本地文件为什么比远程 URL 多一个 batch 流程？

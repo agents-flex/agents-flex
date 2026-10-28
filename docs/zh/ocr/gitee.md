@@ -41,6 +41,20 @@ OcrResponse response = model.recognizeAndWait(
 
 本地文件使用 multipart 上传。任务成功后，适配器会按供应商返回顺序合并文本片段到 `OcrResponse.markdown`，并保留结果资源。
 
+Gitee 当前真实接口响应中的 `output.segments` 只提供 `index` 和 Markdown `content`，没有页边界、
+页面尺寸或空间坐标。适配器会把所有 segments 按顺序映射为一个合成 `OcrPage` 下的 `OcrBlock`，
+让业务代码仍可统一遍历 `response.document`；但 `page.size` 和 `block.boundingBox` 保持 `null`，不会
+根据文本顺序伪造坐标。合成页面的 metadata 会包含 `synthetic_page=true` 和原因说明。
+
+```java
+OcrPage page = response.getDocument().getPages().get(0);
+assert page.getSize() == null;
+for (OcrBlock block : page.getBlocks()) {
+    assert block.getBoundingBox() == null;
+    System.out.println(block.getContent());
+}
+```
+
 ### 3. 检查结果
 
 ```java
@@ -114,6 +128,12 @@ Worker 访问，并且有效期覆盖本地排队和下载时间。
 如果供应商提供了内联 Markdown、Markdown URL、包含 Markdown 的 ZIP 或纯文本，`getResult()` 都会填充
 `markdown`。仍为空通常表示供应商只返回了无法通用转换的 JSON 或其他未知格式，请检查 `resources` 和
 供应商原始元数据。
+
+### 为什么 `document` 中没有页面尺寸和坐标？
+
+当前真实服务只返回顺序 segments，没有可验证的页码、页面宽高或 bbox。公共结构会保留可确认的内容块，
+但无法可靠填充的 `page.size` 和 `boundingBox` 必须保持为空。如果未来供应商响应增加版面字段，适配器可在
+不改变公共 API 的情况下继续补充。
 
 ## 下一步
 

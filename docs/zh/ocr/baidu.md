@@ -105,6 +105,23 @@ config.setModel(BaiduOcrModels.PADDLE_OCR_VL_1_6);
 `recognizeAndWait()` 轮询该方法，因此同样可以直接调用 `response.getMarkdown()`。原始资源仍会保留在
 `resources` 中，供应商结果链接存在有效期，应及时转存。
 
+适配器还会下载 `parse_result_url` 指向的解析 JSON，并将百度返回的 `pages`、`meta.page_width`、
+`meta.page_height` 和 `layouts` 映射到 `response.document`。每个 layout 会转换为 `OcrBlock`；边界框
+优先根据 `polygon` 的最小/最大坐标生成，缺少多边形时再使用 `[x, y, width, height]` 形式的
+`position`。百度原始 `type` 会保留在 `providerType` 中，图片 layout 会通过 `layout_id` 关联页面
+`images` 中的临时 URL。
+
+```java
+OcrPage firstPage = response.getDocument().getPages().get(0);
+System.out.println(firstPage.getSize().getWidth());
+for (OcrBlock block : firstPage.getBlocks()) {
+    System.out.println(block.getProviderType() + " " + block.getBoundingBox());
+}
+```
+
+该结构已经通过真实百度 PDF 解析响应验证：页面尺寸、版面块和边界框均可获得。坐标原点设置为
+`TOP_LEFT`；由于供应商响应没有明确声明物理单位，`coordinateUnit` 保守设置为 `UNKNOWN`。
+
 百度结果中的图片通常使用 HTML `<img src="...">` 和临时签名 URL。配置 `DocumentImagePublisher` 后，
 框架会下载这些图片、交给 Publisher 转存，并将 `src` 替换为 Publisher 返回的持久 URL。
 
