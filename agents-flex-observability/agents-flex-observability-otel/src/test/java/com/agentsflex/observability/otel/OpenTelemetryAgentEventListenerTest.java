@@ -5,6 +5,7 @@ import com.agentsflex.agent.event.AgentEventType;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.data.MetricData;
+import io.opentelemetry.sdk.metrics.data.HistogramPointData;
 import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -184,6 +185,7 @@ public class OpenTelemetryAgentEventListenerTest {
         listener.onEvent(event(turn, AgentEventType.TURN_COMPLETED, null));
 
         Collection<MetricData> metrics = metricReader.collectAllMetrics();
+        assertFalse(hasMetric(metrics, "agentsflex.agent.model.token.usage"));
         assertFalse(hasMetric(metrics, "agentsflex.agent.token.usage"));
     }
 
@@ -204,13 +206,33 @@ public class OpenTelemetryAgentEventListenerTest {
             com.agentsflex.core.observability.ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS));
         assertEquals(Long.valueOf(25), turnSpan.getAttributes().get(
             com.agentsflex.core.observability.ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_MISS_INPUT_TOKENS));
-        assertTrue(hasMetric(metricReader.collectAllMetrics(), "agentsflex.agent.token.usage"));
+        Collection<MetricData> metrics = metricReader.collectAllMetrics();
+        assertTrue(hasMetric(metrics, "agentsflex.agent.model.token.usage"));
+        assertTrue(hasHistogramAttribute(metrics, "agentsflex.agent.model.token.usage",
+            "agentsflex.agent.token.type", "cache_read"));
+        assertFalse(hasMetric(metrics, "agentsflex.agent.token.usage"));
     }
 
     private static boolean hasMetric(Collection<MetricData> metrics, String name) {
         for (MetricData metric : metrics) {
             if (name.equals(metric.getName())) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasHistogramAttribute(Collection<MetricData> metrics, String metricName,
+                                                 String key, String expected) {
+        for (MetricData metric : metrics) {
+            if (!metricName.equals(metric.getName())) {
+                continue;
+            }
+            for (HistogramPointData point : metric.getHistogramData().getPoints()) {
+                if (expected.equals(point.getAttributes().get(
+                    io.opentelemetry.api.common.AttributeKey.stringKey(key)))) {
+                    return true;
+                }
             }
         }
         return false;

@@ -126,7 +126,7 @@ Span 在调用结束后即可导出，但 Metrics 默认每 60 秒由 `PeriodicM
 -Dagentsflex.otel.metric.export.interval=5
 ```
 
-等待至少 5 秒后，应看到 `agentsflex.gen_ai.request.count`、`gen_ai.client.operation.duration` 和 HTTP 指标。
+等待至少 5 秒后，应看到 `agentsflex.gen_ai.request.count`、`gen_ai.client.inference.duration` 和 HTTP 指标。
 理解两者区别：
 
 - Span 是“刚才这一条请求发生了什么”；

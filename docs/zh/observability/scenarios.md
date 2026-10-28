@@ -61,7 +61,7 @@ business.ai.request             12.0s
 
 ### 使用的数据
 
-- `gen_ai.client.operation.duration`：按 provider、model 查看 P50/P95/P99；
+- `gen_ai.client.inference.duration`：按 provider、model 查看 P50/P95/P99；
 - `agentsflex.gen_ai.request.count`：确认请求量是否变化；
 - `agentsflex.gen_ai.request.error.count`：计算失败率；
 - `http.client.request.duration`：判断慢在模型服务还是应用内部。

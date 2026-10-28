@@ -97,7 +97,7 @@ public final class ObservabilityAttributeKeys {
      * 供应商报告的缓存未命中输入 Token 数，属于 Agents-Flex 扩展属性。
      */
     public static final AttributeKey<Long> GEN_AI_USAGE_CACHE_MISS_INPUT_TOKENS =
-        AttributeKey.longKey("gen_ai.usage.cache_miss.input_tokens");
+        AttributeKey.longKey("agentsflex.gen_ai.usage.cache_miss.input_tokens");
 
     /**
      * 模型返回的结束原因列表。
@@ -106,16 +106,22 @@ public final class ObservabilityAttributeKeys {
         AttributeKey.stringArrayKey("gen_ai.response.finish_reasons");
 
     /**
-     * GenAI Token 指标的数据类型，取值为 {@code input} 或 {@code output}。
+     * 标准 GenAI Token 指标的模态。当前通用 ChatModel 无法可靠拆分模态时使用 {@code unknown}。
      */
-    public static final AttributeKey<String> GEN_AI_TOKEN_TYPE =
-        AttributeKey.stringKey("gen_ai.token.type");
+    public static final AttributeKey<String> GEN_AI_TOKEN_MODALITY =
+        AttributeKey.stringKey("gen_ai.token.modality");
+
+    /**
+     * Agent 模型调用 Token 分类：input、output、cache_read 或 cache_miss。
+     */
+    public static final AttributeKey<String> AGENT_TOKEN_TYPE =
+        AttributeKey.stringKey("agentsflex.agent.token.type");
 
     /**
      * Prompt Cache 请求结果：full_hit、partial_hit 或 miss。
      */
-    public static final AttributeKey<String> GEN_AI_CACHE_OUTCOME =
-        AttributeKey.stringKey("agentsflex.cache.outcome");
+    public static final AttributeKey<String> GEN_AI_PROMPT_CACHE_OUTCOME =
+        AttributeKey.stringKey("agentsflex.gen_ai.prompt_cache.outcome");
 
     /**
      * 被调用的工具名称。

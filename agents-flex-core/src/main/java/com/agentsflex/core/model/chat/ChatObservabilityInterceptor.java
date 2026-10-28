@@ -84,17 +84,17 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         private final LongCounter errorCount;
 
         /**
-         * 按输入、输出类型记录 Token 用量的标准 GenAI Histogram。
+         * 标准 GenAI 输入 Token 累计数，包含缓存读取 Token。
          */
-        private final DoubleHistogram tokenUsage;
+        private final LongCounter inputTokens;
         /**
-         * 缓存读取输入 Token 累计数。
+         * 标准 GenAI 输出 Token 累计数。
+         */
+        private final LongCounter outputTokens;
+        /**
+         * 标准 GenAI 供应商缓存读取 Token 累计数。
          */
         private final LongCounter cacheReadInputTokens;
-        /**
-         * 缓存未命中输入 Token 累计数。
-         */
-        private final LongCounter cacheMissInputTokens;
         /**
          * 按 full_hit / partial_hit / miss 记录可识别缓存结果的请求数。
          */
@@ -106,26 +106,27 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             this.requestCount = meter.counterBuilder("agentsflex.gen_ai.request.count")
                 .setDescription("Total number of LLM requests")
                 .build();
-            this.latency = meter.histogramBuilder("gen_ai.client.operation.duration")
+            this.latency = meter.histogramBuilder("gen_ai.client.inference.duration")
                 .setDescription("LLM request latency in seconds")
                 .setUnit("s")
                 .build();
             this.errorCount = meter.counterBuilder("agentsflex.gen_ai.request.error.count")
                 .setDescription("Total number of LLM request errors")
                 .build();
-            this.tokenUsage = meter.histogramBuilder("gen_ai.client.token.usage")
-                .setDescription("Number of input and output tokens used by GenAI requests")
+            this.inputTokens = meter.counterBuilder("gen_ai.client.inference.usage.input_tokens")
+                .setDescription("Number of input tokens used, including cached tokens")
                 .setUnit("{token}")
                 .build();
-            this.cacheReadInputTokens = meter.counterBuilder("agentsflex.gen_ai.cache.read.input_tokens")
+            this.outputTokens = meter.counterBuilder("gen_ai.client.inference.usage.output_tokens")
+                .setDescription("Number of output tokens used")
+                .setUnit("{token}")
+                .build();
+            this.cacheReadInputTokens = meter.counterBuilder(
+                    "gen_ai.client.inference.usage.cache_read.input_tokens")
                 .setDescription("Number of input tokens read from the provider prompt cache")
                 .setUnit("{token}")
                 .build();
-            this.cacheMissInputTokens = meter.counterBuilder("agentsflex.gen_ai.cache.miss.input_tokens")
-                .setDescription("Number of input tokens not found in the provider prompt cache")
-                .setUnit("{token}")
-                .build();
-            this.cacheRequestCount = meter.counterBuilder("agentsflex.gen_ai.cache.request.count")
+            this.cacheRequestCount = meter.counterBuilder("agentsflex.gen_ai.prompt_cache.request.count")
                 .setDescription("Number of GenAI requests reporting prompt cache usage")
                 .build();
         }
@@ -394,14 +395,15 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             return;
         }
         Integer inputTokens = effectiveInputTokens(message);
-        if (inputTokens != null) {
-            instruments.tokenUsage.record(inputTokens.doubleValue(), baseMetricAttributes(provider, model)
-                .put(ObservabilityAttributeKeys.GEN_AI_TOKEN_TYPE, "input").build());
+        Attributes tokenAttributes = baseMetricAttributes(provider, model)
+            .put(ObservabilityAttributeKeys.GEN_AI_TOKEN_MODALITY, "unknown")
+            .build();
+        if (inputTokens != null && inputTokens > 0) {
+            instruments.inputTokens.add(inputTokens.longValue(), tokenAttributes);
         }
         Integer outputTokens = effectiveOutputTokens(message);
-        if (outputTokens != null) {
-            instruments.tokenUsage.record(outputTokens.doubleValue(), baseMetricAttributes(provider, model)
-                .put(ObservabilityAttributeKeys.GEN_AI_TOKEN_TYPE, "output").build());
+        if (outputTokens != null && outputTokens > 0) {
+            instruments.outputTokens.add(outputTokens.longValue(), tokenAttributes);
         }
     }
 
@@ -416,17 +418,15 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         }
         long read = cacheReadTokens == null ? 0L : Math.max(0, cacheReadTokens.longValue());
         long miss = cacheMissTokens == null ? 0L : Math.max(0, cacheMissTokens.longValue());
-        AttributesBuilder attributes = baseMetricAttributes(provider, model);
         if (read > 0) {
-            instruments.cacheReadInputTokens.add(read, attributes.build());
-        }
-        if (miss > 0) {
-            instruments.cacheMissInputTokens.add(miss, attributes.build());
+            instruments.cacheReadInputTokens.add(read, baseMetricAttributes(provider, model)
+                .put(ObservabilityAttributeKeys.GEN_AI_TOKEN_MODALITY, "unknown")
+                .build());
         }
         String outcome = read > 0 ? (miss > 0 ? "partial_hit" : "full_hit") : "miss";
         instruments.cacheRequestCount.add(1,
             baseMetricAttributes(provider, model)
-                .put(ObservabilityAttributeKeys.GEN_AI_CACHE_OUTCOME, outcome)
+                .put(ObservabilityAttributeKeys.GEN_AI_PROMPT_CACHE_OUTCOME, outcome)
                 .build());
     }
 

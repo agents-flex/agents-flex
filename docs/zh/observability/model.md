@@ -68,7 +68,7 @@ agentsflex.otel.enabled=true
 | `gen_ai.usage.input_tokens` | 可取得 Usage | 输入 Token；优先服务端值，缺失时使用本地统计 |
 | `gen_ai.usage.output_tokens` | 可取得 Usage | 输出 Token；优先服务端值，缺失时使用本地统计 |
 | `gen_ai.usage.cache_read.input_tokens` | 服务端报告缓存用量 | 从模型供应商 Prompt Cache 读取的输入 Token |
-| `gen_ai.usage.cache_miss.input_tokens` | 服务端报告缓存用量 | 未命中模型供应商 Prompt Cache 的输入 Token |
+| `agentsflex.gen_ai.usage.cache_miss.input_tokens` | 服务端报告缓存用量 | 未命中模型供应商 Prompt Cache 的输入 Token，Agents-Flex 扩展属性 |
 | `gen_ai.response.finish_reasons` | 模型返回结束原因 | 例如 `stop`、`length`、`tool_calls` |
 | `agentsflex.bot.id` | ChatOptions 已设置 | 宿主系统业务 Bot ID |
 | `gen_ai.conversation.id` | ChatOptions 已设置 | 会话关联 ID |
@@ -88,14 +88,30 @@ agentsflex.otel.enabled=true
 
 ## Chat Metrics
 
+### 命名规则
+
+Agents-Flex 对遥测名称采用严格的所有权规则：
+
+- OpenTelemetry GenAI 语义约定已经定义、且含义完全一致的 Span 属性和 Metric，使用 `gen_ai.*`；
+- Agents-Flex 自己增加的生命周期、错误计数、内容采集和分类字段，使用 `agentsflex.*`；
+- 禁止在 `gen_ai.*` 下创建 OpenTelemetry 尚未定义的自定义名称；
+- `agentsflex.gen_ai.*` 表示“由 Agents-Flex 定义、属于 GenAI 领域”，并不表示 OpenTelemetry 标准；
+- 标准中不存在 cache miss 指标，因此 Metric 侧通过标准
+  `input_tokens - cache_read.input_tokens` 计算；Span 侧保留供应商原始值时使用
+  `agentsflex.gen_ai.usage.cache_miss.input_tokens`。
+
+当前实现以 OpenTelemetry Semantic Conventions v1.44.0 的 GenAI client inference 命名为基线。
+OpenTelemetry 的 GenAI 约定仍处于 Development 阶段，升级基线时应同步修改代码、测试、文档和 Dashboard，
+不能同时长期发布两套标准名称。
+
 | Metric | 类型 | 单位 | 说明 |
 | --- | --- | --- | --- |
 | `agentsflex.gen_ai.request.count` | Counter | 次 | 模型请求总数，Agents-Flex 扩展指标 |
-| `gen_ai.client.operation.duration` | Histogram | 秒 | 同步或完整流式请求耗时 |
-| `gen_ai.client.token.usage` | Histogram | Token | 输入或输出 Token 用量 |
-| `agentsflex.gen_ai.cache.read.input_tokens` | Counter | Token | 从 Prompt Cache 读取的输入 Token 累计数 |
-| `agentsflex.gen_ai.cache.miss.input_tokens` | Counter | Token | 未命中 Prompt Cache 的输入 Token 累计数 |
-| `agentsflex.gen_ai.cache.request.count` | Counter | 次 | 可识别缓存结果的模型请求数 |
+| `gen_ai.client.inference.duration` | Histogram | 秒 | 同步或完整流式推理耗时 |
+| `gen_ai.client.inference.usage.input_tokens` | Counter | Token | 输入 Token 累计数，包含缓存读取 Token |
+| `gen_ai.client.inference.usage.output_tokens` | Counter | Token | 输出 Token 累计数 |
+| `gen_ai.client.inference.usage.cache_read.input_tokens` | Counter | Token | 从供应商缓存读取的输入 Token 累计数 |
+| `agentsflex.gen_ai.prompt_cache.request.count` | Counter | 次 | 可识别 Prompt Cache 结果的模型请求数 |
 | `agentsflex.gen_ai.request.error.count` | Counter | 次 | 失败请求数，Agents-Flex 扩展指标 |
 
 Metrics 属性包括：
@@ -103,8 +119,8 @@ Metrics 属性包括：
 - `gen_ai.provider.name`
 - `gen_ai.request.model`
 - `gen_ai.operation.name`
-- `gen_ai.token.type`，仅 Token 指标存在，值为 `input` 或 `output`
-- `agentsflex.cache.outcome`，仅缓存请求指标存在，值为 `full_hit`、`partial_hit` 或 `miss`
+- `gen_ai.token.modality`，仅标准 Token 指标存在；当前通用实现无法可靠拆分模态时为 `unknown`
+- `agentsflex.gen_ai.prompt_cache.outcome`，仅缓存请求指标存在，值为 `full_hit`、`partial_hit` 或 `miss`
 - `error.type`，仅失败请求存在
 
 bot、conversation、account、turn 和任意用户 ID 不进入内置 Metrics，避免时间序列基数快速增长。这些
@@ -121,14 +137,15 @@ Agents-Flex 优先读取 DeepSeek 风格的 `usage.prompt_cache_hit_tokens` 和
 按 Token 计算的缓存命中率为：
 
 ```text
-cache_read / (cache_read + cache_miss)
+cache_read / input_tokens
 ```
 
-`full_hit` 表示 read 大于 0 且 miss 为 0，`partial_hit` 表示 read 和 miss 都大于 0，
+其中标准 `input_tokens` 已包含 cache read，未命中 Token 可按
+`input_tokens - cache_read` 计算。`full_hit` 表示 read 大于 0 且 miss 为 0，`partial_hit` 表示 read 和 miss 都大于 0，
 `miss` 表示 read 为 0。供应商缓存通常是尽力命中机制，因此重复请求也不保证一定产生缓存读取。
 Agent Turn 会累计所有模型调用的 cache read/miss Token，并通过 Turn 快照、终态事件和
-`agent.turn` Span 暴露；`agentsflex.agent.token.usage` 还会用
-`gen_ai.token.type=cache_read|cache_miss` 记录每次模型调用的 Agent 侧用量。
+`agent.turn` Span 暴露；`agentsflex.agent.model.token.usage` 还会用
+`agentsflex.agent.token.type=cache_read|cache_miss` 记录每次模型调用的 Agent 侧用量。
 
 ### 如何结合 Span 和 Metric 判断问题
 
@@ -252,7 +269,7 @@ openai.chatStream             10.0s
 └── http.client.request        1.0s 或持续到响应体关闭
 ```
 
-此时 `gen_ai.client.operation.duration` 记录完整 10 秒，因为用户实际等待到流结束；HTTP Span 的结束时间取决于客户端如何
+此时 `gen_ai.client.inference.duration` 记录完整 10 秒，因为用户实际等待到流结束；HTTP Span 的结束时间取决于客户端如何
 消费响应体。分析时不要把两者都简单理解为“模型服务器计算时间”。
 
 ## 相关文档

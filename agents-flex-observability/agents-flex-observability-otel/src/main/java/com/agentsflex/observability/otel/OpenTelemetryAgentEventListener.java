@@ -67,7 +67,7 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
     private final ConcurrentHashMap<String, ToolSpanState> toolSpans = new ConcurrentHashMap<>();
 
     /**
-     * Token 用量直方图，维度 {@code gen_ai.token.type}。
+     * Agent 模型 Token 用量直方图，维度 {@code agentsflex.agent.token.type}。
      */
     private final DoubleHistogram tokenUsage;
     /**
@@ -92,7 +92,7 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
             throw new IllegalArgumentException("tracer and meter must not be null");
         }
         this.tracer = tracer;
-        this.tokenUsage = meter.histogramBuilder("agentsflex.agent.token.usage")
+        this.tokenUsage = meter.histogramBuilder("agentsflex.agent.model.token.usage")
             .setUnit("{token}")
             .setDescription("Number of tokens consumed by agent model calls")
             .build();
@@ -341,7 +341,7 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
         Long value = asLong(e.getData().get(field));
         if (value == null || value < 0) return;
         tokenUsage.record(value.doubleValue(), Attributes.of(
-            ObservabilityAttributeKeys.GEN_AI_TOKEN_TYPE, tokenType));
+            ObservabilityAttributeKeys.AGENT_TOKEN_TYPE, tokenType));
     }
 
     private static double seconds(long startNanos) {

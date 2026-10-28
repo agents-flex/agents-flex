@@ -79,8 +79,10 @@ Agents-Flex 内置的常见 Metric：
 | Metric | 含义 |
 | --- | --- |
 | `agentsflex.gen_ai.request.count` | 模型请求总数 |
-| `gen_ai.client.operation.duration` | 模型请求耗时分布 |
-| `gen_ai.client.token.usage` | 输入、输出 Token 用量分布 |
+| `gen_ai.client.inference.duration` | 模型推理耗时分布 |
+| `gen_ai.client.inference.usage.input_tokens` | 输入 Token 累计数 |
+| `gen_ai.client.inference.usage.output_tokens` | 输出 Token 累计数 |
+| `gen_ai.client.inference.usage.cache_read.input_tokens` | 缓存读取输入 Token 累计数 |
 | `agentsflex.gen_ai.request.error.count` | 模型失败请求数 |
 | `agentsflex.gen_ai.tool.call.count` | 工具调用总数 |
 | `agentsflex.gen_ai.tool.call.duration` | 工具调用耗时分布 |

@@ -23,6 +23,7 @@ import io.opentelemetry.sdk.metrics.Aggregation;
 import io.opentelemetry.sdk.metrics.InstrumentType;
 import io.opentelemetry.sdk.metrics.data.AggregationTemporality;
 import io.opentelemetry.sdk.metrics.data.MetricData;
+import io.opentelemetry.sdk.metrics.data.LongPointData;
 import io.opentelemetry.sdk.metrics.export.AggregationTemporalitySelector;
 import io.opentelemetry.sdk.metrics.export.DefaultAggregationSelector;
 import io.opentelemetry.sdk.metrics.export.MetricExporter;
@@ -297,13 +298,39 @@ public class ChatObservabilityInterceptorTest {
             .map(MetricData::getName)
             .collect(Collectors.toSet());
         assertTrue(metricNames.contains("agentsflex.gen_ai.request.count"));
-        assertTrue(metricNames.contains("gen_ai.client.operation.duration"));
-        assertTrue(metricNames.contains("gen_ai.client.token.usage"));
-        assertTrue(metricNames.contains("agentsflex.gen_ai.cache.read.input_tokens"));
-        assertTrue(metricNames.contains("agentsflex.gen_ai.cache.miss.input_tokens"));
-        assertTrue(metricNames.contains("agentsflex.gen_ai.cache.request.count"));
+        assertTrue(metricNames.contains("gen_ai.client.inference.duration"));
+        assertTrue(metricNames.contains("gen_ai.client.inference.usage.input_tokens"));
+        assertTrue(metricNames.contains("gen_ai.client.inference.usage.output_tokens"));
+        assertTrue(metricNames.contains("gen_ai.client.inference.usage.cache_read.input_tokens"));
+        assertTrue(metricNames.contains("agentsflex.gen_ai.prompt_cache.request.count"));
+        assertFalse(metricNames.contains("gen_ai.client.operation.duration"));
+        assertFalse(metricNames.contains("gen_ai.client.token.usage"));
+        assertFalse(metricNames.contains("agentsflex.gen_ai.cache.read.input_tokens"));
+        assertFalse(metricNames.contains("agentsflex.gen_ai.cache.miss.input_tokens"));
+        assertFalse(metricNames.contains("agentsflex.gen_ai.cache.request.count"));
         assertFalse(metricNames.contains("llm.request.count"));
         assertFalse(metricNames.contains("llm.request.latency"));
+        assertTrue(hasLongSumAttribute(metricExporter.metrics,
+            "gen_ai.client.inference.usage.input_tokens",
+            ObservabilityAttributeKeys.GEN_AI_TOKEN_MODALITY, "unknown"));
+        assertTrue(hasLongSumAttribute(metricExporter.metrics,
+            "agentsflex.gen_ai.prompt_cache.request.count",
+            ObservabilityAttributeKeys.GEN_AI_PROMPT_CACHE_OUTCOME, "partial_hit"));
+    }
+
+    private static boolean hasLongSumAttribute(List<MetricData> metrics, String metricName,
+                                               AttributeKey<String> key, String expected) {
+        for (MetricData metric : metrics) {
+            if (!metricName.equals(metric.getName())) {
+                continue;
+            }
+            for (LongPointData point : metric.getLongSumData().getPoints()) {
+                if (expected.equals(point.getAttributes().get(key))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static final class TestRuntime implements ObservabilityRuntime {

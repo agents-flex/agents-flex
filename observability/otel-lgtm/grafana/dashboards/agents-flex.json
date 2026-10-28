@@ -87,7 +87,7 @@
       "gridPos": {"h": 5, "w": 8, "x": 0, "y": 5},
       "id": 10,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "sum(agentsflex_gen_ai_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)", "legendFormat": "cache read tokens", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "sum(gen_ai_client_inference_usage_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)", "legendFormat": "cache read tokens", "range": true, "refId": "A"}],
       "title": "Cache Read Tokens",
       "type": "stat"
     },
@@ -97,7 +97,7 @@
       "gridPos": {"h": 5, "w": 8, "x": 8, "y": 5},
       "id": 11,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "sum(agentsflex_gen_ai_cache_miss_input_tokens_total{service_name=\"$service\"}) or vector(0)", "legendFormat": "cache miss tokens", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "clamp_min((sum(gen_ai_client_inference_usage_input_tokens_total{service_name=\"$service\"}) or vector(0)) - (sum(gen_ai_client_inference_usage_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)), 0)", "legendFormat": "cache miss tokens", "range": true, "refId": "A"}],
       "title": "Cache Miss Tokens",
       "type": "stat"
     },
@@ -107,7 +107,7 @@
       "gridPos": {"h": 5, "w": 8, "x": 16, "y": 5},
       "id": 12,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "100 * (sum(agentsflex_gen_ai_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)) / clamp_min((sum(agentsflex_gen_ai_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)) + (sum(agentsflex_gen_ai_cache_miss_input_tokens_total{service_name=\"$service\"}) or vector(0)), 1)", "legendFormat": "token hit rate", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "100 * (sum(gen_ai_client_inference_usage_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)) / clamp_min((sum(gen_ai_client_inference_usage_input_tokens_total{service_name=\"$service\"}) or vector(0)), 1)", "legendFormat": "token hit rate", "range": true, "refId": "A"}],
       "title": "Token Cache Hit Rate",
       "type": "stat"
     },
@@ -118,7 +118,7 @@
       "id": 7,
       "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
       "targets": [
-        {"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(gen_ai_client_operation_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))", "legendFormat": "model p95", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(gen_ai_client_inference_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))", "legendFormat": "model p95", "range": true, "refId": "A"},
         {"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_client_request_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))", "legendFormat": "http p95", "range": true, "refId": "B"},
         {"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(agentsflex_agent_tool_call_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))", "legendFormat": "agent tool p95", "range": true, "refId": "C"}
       ],
@@ -131,7 +131,11 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
       "id": 8,
       "options": {"legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-      "targets": [{"editorMode": "code", "expr": "sum by (gen_ai_token_type) (gen_ai_client_token_usage_sum{service_name=\"$service\"})", "legendFormat": "{{gen_ai_token_type}}", "range": true, "refId": "A"}],
+      "targets": [
+        {"editorMode": "code", "expr": "sum(gen_ai_client_inference_usage_input_tokens_total{service_name=\"$service\"})", "legendFormat": "input", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "sum(gen_ai_client_inference_usage_output_tokens_total{service_name=\"$service\"})", "legendFormat": "output", "range": true, "refId": "B"},
+        {"editorMode": "code", "expr": "sum(gen_ai_client_inference_usage_cache_read_input_tokens_total{service_name=\"$service\"})", "legendFormat": "cache_read", "range": true, "refId": "C"}
+      ],
       "title": "Token Usage",
       "type": "timeseries"
     },
@@ -141,7 +145,7 @@
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 18},
       "id": 13,
       "options": {"displayLabels": ["name", "value", "percent"], "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true, "values": ["value", "percent"]}, "pieType": "pie", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "tooltip": {"hideZeros": false, "mode": "single", "sort": "none"}},
-      "targets": [{"editorMode": "code", "expr": "sum by (agentsflex_cache_outcome) (agentsflex_gen_ai_cache_request_count_total{service_name=\"$service\"})", "instant": true, "legendFormat": "{{agentsflex_cache_outcome}}", "range": false, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "sum by (agentsflex_gen_ai_prompt_cache_outcome) (agentsflex_gen_ai_prompt_cache_request_count_total{service_name=\"$service\"})", "instant": true, "legendFormat": "{{agentsflex_gen_ai_prompt_cache_outcome}}", "range": false, "refId": "A"}],
       "title": "Cache Request Outcomes",
       "type": "piechart"
     },
@@ -151,7 +155,7 @@
       "gridPos": {"h": 8, "w": 16, "x": 8, "y": 18},
       "id": 14,
       "options": {"legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-      "targets": [{"editorMode": "code", "expr": "sum by (gen_ai_token_type) (agentsflex_agent_token_usage_sum{service_name=\"$service\"})", "legendFormat": "{{gen_ai_token_type}}", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "sum by (agentsflex_agent_token_type) (agentsflex_agent_model_token_usage_sum{service_name=\"$service\"})", "legendFormat": "{{agentsflex_agent_token_type}}", "range": true, "refId": "A"}],
       "title": "Agent Model Token Usage",
       "type": "timeseries"
     },
