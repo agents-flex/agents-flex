@@ -53,11 +53,17 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
 
     private final Tracer tracer;
 
-    /** turnId -> 根 span。 */
+    /**
+     * turnId -> 根 span。
+     */
     private final ConcurrentHashMap<String, Span> turnSpans = new ConcurrentHashMap<>();
-    /** modelKey -> 在途 LLM 子 span。 */
+    /**
+     * modelKey -> 在途 LLM 子 span。
+     */
     private final ConcurrentHashMap<String, Span> modelSpans = new ConcurrentHashMap<>();
-    /** toolKey -> 在途工具子 span 及其计时起点。 */
+    /**
+     * toolKey -> 在途工具子 span 及其计时起点。
+     */
     private final ConcurrentHashMap<String, ToolSpanState> toolSpans = new ConcurrentHashMap<>();
 
     /**
@@ -65,11 +71,17 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
      * instrument 建好备用，但不 record（已知缺口）。
      */
     private final DoubleHistogram tokenUsage;
-    /** 工具调用计数，维度 {@code gen_ai.tool.name} + {@code agentsflex.outcome}。 */
+    /**
+     * 工具调用计数，维度 {@code gen_ai.tool.name} + {@code agentsflex.outcome}。
+     */
     private final LongCounter toolCallCount;
-    /** 工具失败计数，维度 {@code gen_ai.tool.name}。 */
+    /**
+     * 工具失败计数，维度 {@code gen_ai.tool.name}。
+     */
     private final LongCounter toolCallErrorCount;
-    /** 工具耗时（秒）直方图，维度 {@code gen_ai.tool.name} + {@code agentsflex.outcome}。 */
+    /**
+     * 工具耗时（秒）直方图，维度 {@code gen_ai.tool.name} + {@code agentsflex.outcome}。
+     */
     private final DoubleHistogram toolCallDuration;
 
     /**
@@ -242,7 +254,9 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
         cleanupInFlight(turnId);
     }
 
-    /** 清理同一 turn 残留的在途 model/tool 子 span（缺失 completed 或乱序时兜底）。 */
+    /**
+     * 清理同一 turn 残留的在途 model/tool 子 span（缺失 completed 或乱序时兜底）。
+     */
     private void cleanupInFlight(String turnId) {
         String prefix = turnId + "#";
         for (Iterator<Map.Entry<String, Span>> it = modelSpans.entrySet().iterator(); it.hasNext(); ) {
@@ -261,7 +275,9 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
         }
     }
 
-    /** 取根 span 作为父 Context；根 span 不存在时降级为无父的 root。 */
+    /**
+     * 取根 span 作为父 Context；根 span 不存在时降级为无父的 root。
+     */
     private Context parentContext(String turnId) {
         Span parent = turnSpans.get(turnId);
         if (parent == null) {
@@ -271,13 +287,17 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
         return Context.root().with(parent);
     }
 
-    /** MODEL_STARTED / MODEL_COMPLETED 用 turnId + iteration 配对；iteration 缺失回退仅 turnId。 */
+    /**
+     * MODEL_STARTED / MODEL_COMPLETED 用 turnId + iteration 配对；iteration 缺失回退仅 turnId。
+     */
     private String modelKey(AgentEvent e) {
         Long iteration = asLong(e.getData().get("iteration"));
         return iteration == null ? e.getTurnId() + "#iter" : e.getTurnId() + "#iter#" + iteration;
     }
 
-    /** TOOL_* 用 turnId + toolCallId 配对；toolCallId 由 publisher 的 callKey 保证非空。 */
+    /**
+     * TOOL_* 用 turnId + toolCallId 配对；toolCallId 由 publisher 的 callKey 保证非空。
+     */
     private String toolKey(AgentEvent e) {
         String toolCallId = string(e, "toolCallId");
         return e.getTurnId() + "#tool#" + toolCallId;
@@ -307,7 +327,9 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
         return value instanceof Number ? ((Number) value).longValue() : null;
     }
 
-    /** 工具子 span 与其计时起点的不可变封装。 */
+    /**
+     * 工具子 span 与其计时起点的不可变封装。
+     */
     private static final class ToolSpanState {
         final Span span;
         final long startNanos;

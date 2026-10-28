@@ -15,21 +15,25 @@ import io.opentelemetry.api.common.AttributeKey;
  */
 public final class OtelAttributeNames {
 
-    /** 产生事件的 Agent 稳定标识。 */
-    public static final AttributeKey<String> AGENT_ID =
-        AttributeKey.stringKey("agentsflex.agent.id");
+    /**
+     * 产生事件的 Agent 稳定标识。
+     */
+    public static final AttributeKey<String> AGENT_ID = AttributeKey.stringKey("agentsflex.agent.id");
 
-    /** 产生事件时使用的 Agent 定义版本。 */
-    public static final AttributeKey<String> AGENT_VERSION =
-        AttributeKey.stringKey("agentsflex.agent.version");
+    /**
+     * 产生事件时使用的 Agent 定义版本。
+     */
+    public static final AttributeKey<String> AGENT_VERSION = AttributeKey.stringKey("agentsflex.agent.version");
 
-    /** 事件在同一 Turn 内的递增序号，用于调试与排序。 */
-    public static final AttributeKey<Long> EVENT_SEQUENCE =
-        AttributeKey.longKey("agentsflex.event.sequence");
+    /**
+     * 事件在同一 Turn 内的递增序号，用于调试与排序。
+     */
+    public static final AttributeKey<Long> EVENT_SEQUENCE = AttributeKey.longKey("agentsflex.event.sequence");
 
-    /** 工具/Turn 终止结果维度，取值 {@code success} 或 {@code error}。 */
-    public static final AttributeKey<String> OUTCOME =
-        AttributeKey.stringKey("agentsflex.outcome");
+    /**
+     * 工具/Turn 终止结果维度，取值 {@code success} 或 {@code error}。
+     */
+    public static final AttributeKey<String> OUTCOME = AttributeKey.stringKey("agentsflex.outcome");
 
     private OtelAttributeNames() {
     }
